@@ -22,6 +22,7 @@ import io.opaa.common.ConflictException;
 import io.opaa.common.FieldValidationException;
 import io.opaa.common.FieldValidationException.FieldError;
 import io.opaa.common.NotFoundException;
+import io.opaa.diagnosticaccess.DiagnosticImpersonationGrantService;
 import io.opaa.security.PasswordGenerator;
 import io.opaa.space.Space;
 import io.opaa.space.SpaceRepository;
@@ -86,6 +87,7 @@ public class LocalUserService {
   private final PasswordEncoder passwordEncoder;
   private final PasswordGenerator passwordGenerator;
   private final SpaceRepository spaces;
+  private final DiagnosticImpersonationGrantService impersonationGrants;
   private final AuditEventRecorder audit;
   private final ApplicationEventPublisher events;
   private final Clock clock;
@@ -101,6 +103,7 @@ public class LocalUserService {
       PasswordEncoder passwordEncoder,
       PasswordGenerator passwordGenerator,
       SpaceRepository spaces,
+      DiagnosticImpersonationGrantService impersonationGrants,
       AuditEventRecorder audit,
       ApplicationEventPublisher events,
       Clock clock) {
@@ -114,6 +117,7 @@ public class LocalUserService {
     this.passwordEncoder = passwordEncoder;
     this.passwordGenerator = passwordGenerator;
     this.spaces = spaces;
+    this.impersonationGrants = impersonationGrants;
     this.audit = audit;
     this.events = events;
     this.clock = clock;
@@ -455,6 +459,10 @@ public class LocalUserService {
    * deletion ({@code fk_spaces_owner_organization} is RESTRICT and leaves no choice); credentials,
    * tokens, memberships and the pseudonym mapping follow by the schema's cascades. The refusal
    * names the blocking tables in the log only - the response says "referenced", nothing more.
+   *
+   * <p>The diagnostic impersonation grants the account issued are no blocker - the schema lets them
+   * cascade - but are revoked here first, in this transaction: each one a holder who remains would
+   * otherwise lose without a revocation event (ADR-0016, Nachtrag).
    */
   @Transactional
   public void delete(CurrentUser actor, UUID userId) {
@@ -479,6 +487,7 @@ public class LocalUserService {
     before.put("systemRole", user.getSystemRole().name());
     before.put("state", current.state().name());
     recordAdminAct(actor, user, AuditEventType.LOCAL_USER_DELETED, before, null);
+    impersonationGrants.revokeGrantsIssuedBy(actor, userId);
     List<Space> personal = spaces.findByOwnerId(userId);
     for (Space space : personal) {
       audit.recordUserAction(
@@ -526,9 +535,6 @@ public class LocalUserService {
     }
     if (counts.getIncidentScopes() > 0) {
       blockers.add("audit_incident_scope_grants");
-    }
-    if (counts.getImpersonationGrants() > 0) {
-      blockers.add("diagnostic_impersonation_grants");
     }
     return blockers;
   }

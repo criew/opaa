@@ -2,8 +2,10 @@ package io.opaa.auth;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.opaa.auth.local.LocalUserService;
 import io.opaa.test.OpaaIntegrationTest;
 import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -31,13 +33,14 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * would surface in {@link #noSubQueryCountsBeyondTheRestrictingReferences()} as an unexpected
  * sub-query rather than pass unnoticed.
  *
- * <p><b>Two limits, deliberately left open.</b> The comparison is per {@code (table, column)}
+ * <p>All three links of the chain sub-query - accessor - {@code LocalUserService#blockers} are
+ * checked, each by its own test: a link that is missing anywhere leaves the count silently short of
+ * the schema.
+ *
+ * <p><b>One limit, deliberately left open.</b> The comparison is per {@code (table, column)}
  * mention, not per predicate: a narrowing condition beside it stays unseen - the {@code spaces}
  * sub-query already carries {@code AND is_default = false}, and a future {@code AND created_at >
- * :cutoff} would leave this guard green while the count lost blocking rows. And of the chain
- * sub-query - accessor - {@code LocalUserService#blockers}, only the first link is checked (by
- * {@link #everyCountedTableHasAnAccessorOnTheProjection()}); a count no branch of {@code blockers}
- * reads would still refuse without naming itself.
+ * :cutoff} would leave this guard green while the count lost blocking rows.
  */
 @OpaaIntegrationTest
 class UserDeletionBlockerCoverageIntegrationTest {
@@ -77,26 +80,16 @@ class UserDeletionBlockerCoverageIntegrationTest {
         AND parent_column.attname <> 'organization_id'
       """;
 
-  /** One {@code (SELECT count(*) FROM <table> WHERE <condition>)} of the native query. */
+  /**
+   * One {@code (SELECT count(*) FROM <table> WHERE <condition>) AS <alias>} of the native query -
+   * the three things every comparison below is read from, taken from the same match so no test can
+   * pair a table with another sub-query's alias.
+   */
   private static final Pattern SUB_QUERY =
-      Pattern.compile("\\(SELECT count\\(\\*\\) FROM (\\w+) WHERE ([^)]+)\\)");
+      Pattern.compile("\\(SELECT count\\(\\*\\) FROM (\\w+) WHERE ([^)]+)\\) AS (\\w+)");
 
   /** The columns such a condition compares against the account being deleted. */
   private static final Pattern USER_COLUMN = Pattern.compile("(\\w+) = :id");
-
-  /** The name a sub-query's result is returned under, and its accessor is derived from. */
-  private static final Pattern RESULT_ALIAS = Pattern.compile("\\) AS (\\w+)");
-
-  /**
-   * References the query refuses a deletion for although the schema lets them go. <b>Open, not
-   * intended:</b> ADR-0016 switched these two columns to {@code CASCADE} precisely so they would
-   * stop blocking. That the count still blocks them is #1697's subject and the maintainer's
-   * decision; this list records the deviation, it does not endorse it.
-   */
-  private static final Set<String> BLOCKED_BEYOND_THE_SCHEMA =
-      Set.of(
-          "diagnostic_impersonation_grants.granted_by_user_id",
-          "diagnostic_impersonation_grants.revoked_by_user_id");
 
   @Autowired private JdbcTemplate jdbc;
 
@@ -135,10 +128,9 @@ class UserDeletionBlockerCoverageIntegrationTest {
     assertThat(beyond)
         .as(
             "UserRepository#countDeletionBlockers refuses a deletion for these columns, but the"
-                + " schema lets them go - either the sub-query outlived its foreign key, or the"
-                + " deviation belongs in BLOCKED_BEYOND_THE_SCHEMA together with the issue that"
-                + " decides it (#1589)")
-        .containsExactlyInAnyOrderElementsOf(BLOCKED_BEYOND_THE_SCHEMA);
+                + " schema lets them go - the sub-query outlived its foreign key, and the refusal"
+                + " it causes is one the schema no longer asks for (#1589, #1697)")
+        .isEmpty();
   }
 
   /**
@@ -148,11 +140,7 @@ class UserDeletionBlockerCoverageIntegrationTest {
    */
   @Test
   void everyCountedTableHasAnAccessorOnTheProjection() {
-    Set<String> expected = new LinkedHashSet<>();
-    Matcher alias = RESULT_ALIAS.matcher(normalizedQuery());
-    while (alias.find()) {
-      expected.add(accessorFor(alias.group(1)));
-    }
+    Set<String> expected = new LinkedHashSet<>(tableByAccessor().keySet());
     Set<String> declared =
         Arrays.stream(UserRepository.DeletionBlockers.class.getDeclaredMethods())
             .map(Method::getName)
@@ -165,6 +153,30 @@ class UserDeletionBlockerCoverageIntegrationTest {
                 + " by the projection in silence, an accessor without one fails at call time"
                 + " (#1589)")
         .containsExactlyInAnyOrderElementsOf(declared);
+  }
+
+  /**
+   * The chain's third link: an accessor no branch of {@code LocalUserService#blockers} reads counts
+   * for nothing - the deletion is then refused by the constraint without its table in the log,
+   * exactly the state a missing sub-query causes. Proved by calling that method with a projection
+   * counting one single table, so its branch has to name that table and no other.
+   */
+  @Test
+  void everyAccessorIsReadByTheBranchOfBlockersThatNamesItsTable() throws Exception {
+    Map<String, String> tables = tableByAccessor();
+    Map<String, List<String>> named = new LinkedHashMap<>();
+    Map<String, List<String>> expected = new LinkedHashMap<>();
+    for (Map.Entry<String, String> accessor : tables.entrySet()) {
+      named.put(accessor.getKey(), namedBlockers(countingOnly(accessor.getKey(), tables.keySet())));
+      expected.put(accessor.getKey(), List.of(accessor.getValue()));
+    }
+
+    assertThat(named)
+        .as(
+            "every accessor of DeletionBlockers needs a branch in LocalUserService#blockers naming"
+                + " its own table - one no branch reads counts silently for nothing, and the"
+                + " deletion fails on the constraint without the table in the log (#1589, #1697)")
+        .containsExactlyInAnyOrderEntriesOf(expected);
   }
 
   /**
@@ -214,6 +226,41 @@ class UserDeletionBlockerCoverageIntegrationTest {
       }
     }
     return counted;
+  }
+
+  /** The table each accessor stands for, both read from the same sub-query match. */
+  private static Map<String, String> tableByAccessor() {
+    Map<String, String> tables = new LinkedHashMap<>();
+    Matcher subQuery = SUB_QUERY.matcher(normalizedQuery());
+    while (subQuery.find()) {
+      tables.put(accessorFor(subQuery.group(3)), subQuery.group(1));
+    }
+    return tables;
+  }
+
+  /** A projection counting one row for {@code counting} and none for any other accessor. */
+  private static UserRepository.DeletionBlockers countingOnly(
+      String counting, Set<String> accessors) {
+    return (UserRepository.DeletionBlockers)
+        Proxy.newProxyInstance(
+            UserDeletionBlockerCoverageIntegrationTest.class.getClassLoader(),
+            new Class<?>[] {UserRepository.DeletionBlockers.class},
+            (proxy, method, args) -> {
+              if (!accessors.contains(method.getName())) {
+                throw new IllegalStateException("unexpected accessor " + method.getName());
+              }
+              return method.getName().equals(counting) ? 1L : 0L;
+            });
+  }
+
+  /** The tables {@code LocalUserService#blockers} names for {@code counts} - a private method. */
+  @SuppressWarnings("unchecked")
+  private static List<String> namedBlockers(UserRepository.DeletionBlockers counts)
+      throws ReflectiveOperationException {
+    Method blockers =
+        LocalUserService.class.getDeclaredMethod("blockers", UserRepository.DeletionBlockers.class);
+    blockers.setAccessible(true);
+    return (List<String>) blockers.invoke(null, counts);
   }
 
   /** {@code group_history} becomes {@code getGroupHistory}, the way the projection binds it. */

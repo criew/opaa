@@ -1434,8 +1434,9 @@ gilt:
 > Konto gelöscht — Inhaber, Ausstellender oder Widerrufender —, verschwindet die Vollmachtszeile mit
 > ihm; dasselbe gilt für die Löschung der Gruppe, die ihren Geltungsbereich bildet. Über die
 > Aussteller- und Widerruferspalte trifft das auch **Vollmachten anderer, weiterhin existierender
-> Inhaber**; eine künftige Kontolöschungsfunktion widerruft sie ausdrücklich, statt sich auf die
-> Kaskade zu verlassen.
+> Inhaber**; die Kontolöschung widerruft die davon noch gültigen deshalb ausdrücklich
+> ([#1697](https://github.com/criew/opaa/issues/1697)) — je Vollmacht ein Widerrufsereignis, und die
+> Kaskade greift nur noch als Netz.
 >
 > Die Erteilung und der Widerruf stehen als eigene Ereignisse im `audit_log` und hängen an keinem
 > Konto — der Vorgang als solcher bleibt also protokolliert. **Die Person darin bleibt es nicht:**

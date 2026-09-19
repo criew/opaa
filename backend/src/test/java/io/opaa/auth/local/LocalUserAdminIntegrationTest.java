@@ -22,6 +22,8 @@ import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.ConflictException;
+import io.opaa.diagnosticaccess.DiagnosticImpersonationGrant;
+import io.opaa.diagnosticaccess.DiagnosticImpersonationGrantRepository;
 import io.opaa.group.Group;
 import io.opaa.group.GroupMembershipHistory;
 import io.opaa.group.GroupMembershipHistoryCause;
@@ -74,9 +76,10 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
  * Entscheidungen 4, 11 and 13): invitation with mail and link fallback, generated initial password,
  * lock and unlock with immediate effect on running sessions, password reset by link and by
  * generated password, changes with the audit rule "before/after for the expiry only", deletion of
- * accounts without content, the guards around the caller and the last login-capable system
- * administrator - also under two concurrent requests - and a list that shows local accounts only.
- * Mail goes to an in-JVM GreenMail; every link path is proved by the message that arrived.
+ * accounts without content (with the befugnisse the account issued revoked first), the guards
+ * around the caller and the last login-capable system administrator - also under two concurrent
+ * requests - and a list that shows local accounts only. Mail goes to an in-JVM GreenMail; every
+ * link path is proved by the message that arrived.
  */
 @OpaaLocalAuthLinkTest
 class LocalUserAdminIntegrationTest {
@@ -95,6 +98,7 @@ class LocalUserAdminIntegrationTest {
   @Autowired private UserRepository users;
   @Autowired private KnowledgeLibraryRepository libraries;
   @Autowired private GroupRepository groups;
+  @Autowired private DiagnosticImpersonationGrantRepository impersonationGrants;
   @Autowired private GroupMembershipHistoryRepository groupHistory;
   @Autowired private OrganizationRepository organizations;
   @Autowired private MailSettingsService mailSettings;
@@ -737,6 +741,121 @@ class LocalUserAdminIntegrationTest {
     asAdmin(get(LOCAL_USERS + "/" + bootstrap.id()))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.bootstrap").value(true));
+  }
+
+  /**
+   * Diagnostic impersonation grants are no deletion blocker (#1697): the schema lets all their
+   * person columns cascade since #1509, and an account that once granted or revoked one would
+   * otherwise stay undeletable forever. What the account still confers on a holder who remains is
+   * revoked first, with the event a regular revocation writes - ADR-0016's Auflage, without which
+   * the cascade would take those grants in silence.
+   */
+  @Test
+  void deletionRevokesWhatTheAccountStillConfersAndIsNotBlockedByItsGrants() throws Exception {
+    LocalAccount issuer = fixtures.activeAdmin("geberin-" + UUID.randomUUID() + "@stadt.example");
+    LocalAccount holder = fixtures.activeUser("halterin-" + UUID.randomUUID() + "@stadt.example");
+    UUID issuerPseudonym = audit.pseudonymFor(issuer.id(), Organization.DEFAULT_ID);
+    Group unit =
+        groups.save(
+            new Group(
+                Organization.DEFAULT_ID,
+                GroupKind.ORG_UNIT,
+                "Amt " + UUID.randomUUID(),
+                null,
+                null,
+                null));
+    Instant now = Instant.now();
+    // the one that still confers something to a holder who remains
+    grant(
+        holder.id(),
+        unit,
+        issuer.id(),
+        now.minus(Duration.ofDays(1)),
+        now.plus(Duration.ofDays(30)),
+        null);
+    // spent: its window has run out, so there is nothing left to revoke
+    grant(
+        holder.id(),
+        unit,
+        issuer.id(),
+        now.minus(Duration.ofDays(40)),
+        now.minus(Duration.ofDays(10)),
+        null);
+    // already revoked by the account being deleted - that revocation has its own event
+    grant(
+        holder.id(),
+        unit,
+        admin.id(),
+        now.minus(Duration.ofDays(5)),
+        now.plus(Duration.ofDays(30)),
+        issuer.id());
+    // held by the account itself: its Gegenstand goes with the account (ADR-0016, Nachtrag)
+    grant(
+        issuer.id(),
+        unit,
+        admin.id(),
+        now.minus(Duration.ofDays(1)),
+        now.plus(Duration.ofDays(30)),
+        null);
+
+    try {
+      asAdmin(delete(LOCAL_USERS + "/" + issuer.id())).andExpect(status().isNoContent());
+
+      assertThat(users.findById(issuer.id())).isEmpty();
+      // exactly one revocation, for the one grant that still conferred something
+      List<Map<String, Object>> revocations =
+          auditRows("DIAGNOSTIC_IMPERSONATION_REVOKED", holder.id());
+      assertThat(revocations).hasSize(1);
+      Map<String, Object> revocation = revocations.getFirst();
+      assertThat(revocation.get("actor_ref"))
+          .isEqualTo(audit.pseudonymFor(admin.id(), Organization.DEFAULT_ID).toString());
+      assertThat(revocation.get("after").toString())
+          .contains("\"revoked\":\"true\"")
+          .contains(unit.getId().toString());
+      // the deleted account's own grant is not revoked in its name - nobody is left to hold it
+      assertThat(
+              jdbc.queryForObject(
+                  "SELECT count(*) FROM audit_log WHERE event_type ="
+                      + " 'DIAGNOSTIC_IMPERSONATION_REVOKED' AND subject_ref = ?",
+                  Long.class,
+                  issuerPseudonym.toString()))
+          .isZero();
+      // the rows themselves went with the cascade, which is now only the net behind the revocation
+      assertThat(
+              jdbc.queryForObject(
+                  "SELECT count(*) FROM diagnostic_impersonation_grants WHERE scope_group_id = ?",
+                  Long.class,
+                  unit.getId()))
+          .isZero();
+    } finally {
+      jdbc.update(
+          "DELETE FROM diagnostic_impersonation_grants WHERE scope_group_id = ?", unit.getId());
+      groups.delete(unit);
+      fixtures.deleteAuditRowsNaming(issuerPseudonym);
+    }
+  }
+
+  /** A grant row as the repository holds it, revoked beforehand when {@code revokedBy} is given. */
+  private void grant(
+      UUID holderId,
+      Group scope,
+      UUID grantedBy,
+      Instant validFrom,
+      Instant validUntil,
+      UUID revokedBy) {
+    DiagnosticImpersonationGrant grant =
+        new DiagnosticImpersonationGrant(
+            Organization.DEFAULT_ID,
+            holderId,
+            scope.getId(),
+            validFrom,
+            validUntil,
+            grantedBy,
+            validFrom);
+    if (revokedBy != null) {
+      grant.revoke(revokedBy, validFrom);
+    }
+    impersonationGrants.save(grant);
   }
 
   @Test

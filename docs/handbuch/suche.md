@@ -736,6 +736,10 @@ kann das nicht. Jede Diagnose im Personenkontext hinterlässt einen Protokollein
 und Rechte-Abbild; die betroffene Person sieht die Einträge zu sich selbst, die Rolle AUDITOR das
 Gesamtprotokoll. Die Aufbewahrungsfrist ist einstellbar; abschalten lässt sich die Löschung nicht.
 
+Eine Befugnis endet mit ihrer Frist, mit dem Entzug von Hand — oder mit der Löschung des Kontos, das
+sie erteilt hat: Dann entzieht OPAA die noch gültigen Befugnisse dieses Kontos, jede mit eigenem
+Nachweiseintrag ([Benutzerverwaltung](benutzerverwaltung.md), Abschnitt 8).
+
 ## 9. Typische Befunde
 
 | Befund | Wo er sichtbar wird | Übliche Ursache |

@@ -239,9 +239,16 @@ Sie entzieht den Zugang sofort und lässt nachvollziehbar, dass es dieses Konto 
 
 Gelöscht werden kann ein lokales Konto nur, wenn **nichts mehr darauf verweist**. Das ist mehr als
 Besitz: Neben einer eigenen Bibliothek, einem Raum außer dem persönlichen und einem Chat sperren
-auch Rechtevergaben, Raumzuordnungen, Geltungsbereiche einer anlassbezogenen Klärung, erteilte oder
-widerrufene Diagnose-Vollmachten sowie **Nachweiseinträge** über Gruppenmitgliedschaften und
-Rechteänderungen. Sonst lehnt OPAA die Löschung ab und verweist auf die Sperre.
+auch Rechtevergaben, Raumzuordnungen, Geltungsbereiche einer anlassbezogenen Klärung sowie
+**Nachweiseinträge** über Gruppenmitgliedschaften und Rechteänderungen. Sonst lehnt OPAA die
+Löschung ab und verweist auf die Sperre.
+
+Eine Ausnahme ist die Befugnis „Sicht als" ([Suche](suche.md), Abschnitt 8.2): Sie hält keine
+Löschung auf. Hat das Konto solche Befugnisse erteilt, **entzieht OPAA sie beim Löschen** — jede
+noch gültige einzeln und mit einem eigenen Eintrag im Nachweisprotokoll, wie bei einem Entzug von
+Hand. Die Personen, die sie hielten, verlieren sie damit. Abgelaufene und bereits entzogene
+Befugnisse bleiben unberührt, ebenso Befugnisse, die das gelöschte Konto selbst hielt: Sie entfallen
+mit ihm.
 
 Praktisch heißt das: Löschen ist der Weg für ein Konto, das nie benutzt wurde — eine falsch getippte
 Adresse, eine Einladung an die falsche Person, ein Testkonto. Wer dagegen je Mitglied einer Gruppe
