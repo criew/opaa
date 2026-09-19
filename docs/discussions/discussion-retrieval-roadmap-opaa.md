@@ -15,7 +15,7 @@
 **Rahmenbedingungen, die jede Phase einhalten muss:**
 
 1. **pgvector bleibt der einzige Vektorspeicher** (ADR-0014). Eine zweite Suchengine (Elasticsearch, OpenSearch, Vespa) ist ein Betriebs- und Souveränitätspreis, der nur bei nachgewiesener Unzulänglichkeit von PostgreSQL zur Debatte steht.
-2. **Rechtefilter in der Suche, nie als Nachfilter** (ADR-0008) — gilt für jeden neuen Suchpfad (Volltext, Graph, Summary-Index) gleichermaßen.
+2. **Rechtefilter in der Suche, nie als Nachfilter** ([spaces-and-assets.md, „Durchsetzung zur Abfragezeit"](../features/spaces-and-assets.md#durchsetzung-zur-abfragezeit)) — gilt für jeden neuen Suchpfad (Volltext, Graph, Summary-Index) gleichermaßen.
 3. **On-prem-Fähigkeit:** Jeder Baustein muss ohne Cloud-API betreibbar sein; Cloud-Varianten sind zulässige Alternativen, nie Voraussetzung.
 4. **Messpflicht:** Keine Strategie wird ohne Golden-Fälle eingeführt, die ihren behaupteten Nutzen messen — und ohne Beleg, dass die bestehenden Baselines (ADR-0013) nicht regredieren. Der Eval-Harness muss dafür die **produktive Pipeline** messen können, nicht nur die rohe Vektorsuche (heutige Lücke, siehe Phase 0).
 5. **Zitierpflicht:** Verfahren, deren Belege auf LLM-Zusammenfassungen statt Originaltext zeigen, sind unvereinbar mit der deterministischen Zitatvalidierung (#939).

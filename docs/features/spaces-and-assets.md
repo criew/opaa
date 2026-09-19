@@ -100,14 +100,36 @@ lesbare_Bibliotheken(u) =
 
 **Space-Assoziationen kommen in diesem Ausdruck nicht vor.** Das ist die Kernaussage des Modells.
 
-**Der Ausdruck kennt keine Ausnahme.** Beide Wege, auf denen Rechte geprüft werden — die Anzeige
-einer einzelnen Bibliothek und der Filter der Suche — werten denselben Ausdruck aus. Solange sie das
+**Der Ausdruck kennt keine Ausnahme je Bibliothek — und, bis auf die Systemverwaltung (siehe unten), auch
+keine je Nutzer.** Beide Wege, auf denen Rechte geprüft werden — die Anzeige einer einzelnen Bibliothek
+und der Filter der Suche — werten denselben Ausdruck aus. Solange sie das
 nicht taten, konnte dieselbe Bibliothek über den einen Weg lesbar und über den anderen verboten sein
 ([#406](https://github.com/criew/opaa/issues/406)). Bis [#521](https://github.com/criew/opaa/issues/521)
 bewährte sich das an einer System-Bibliothek ohne Eigentümer (`PRIVATE`, ohne Grants seit ihrer
 Migration-Saat, #201) — die keine Bibliothek mit eigenen Regeln war, sondern von sich aus aus jeder
 lesbaren Menge herausfiel. #521 hat sie samt Inhalt gelöscht; jede verbleibende Bibliothek hat einen
 echten Eigentümer.
+
+**Die Abweichung, auf die es hier ankommt, und sie zeigt in die sichere Richtung: die Systemverwaltung.**
+Für die Verwaltung einer einzelnen Bibliothek — ansehen, umbenennen, Sichtbarkeit ändern, Rechte
+vergeben, Dokumente öffnen — gilt ein `SYSTEM_ADMIN` als `OWNER`, ohne dass der Ausdruck oben ihn
+erreicht. Für die **Suche** gilt das nicht: Der Filter der gewöhnlichen Suche wertet ausschließlich den
+Ausdruck aus und kennt keinen Zweig für die Systemverwaltung. Ein Administrator darf also jede Bibliothek
+verwalten, ruft in einem Chat aber nur aus denen ab, die ihm der Ausdruck zugesteht — nichts, was er in
+einer Antwort zu lesen bekommt, kann aus einer Bibliothek stammen, auf die er keinen Grant hat. Dieselbe
+Trennung erklärt die Bibliotheksliste: Sie wird aus dem Ausdruck gebildet, nicht aus dem Verwaltungsweg.
+Einordnung und Begründung in
+[Identität, Rechte & Mandanten](./access-control.md#verwalten-ist-nicht-lesen-die-asymmetrie-bei-wissensbibliotheken).
+
+**Die Befugnis „Sicht als" ist die zweite Stelle, an der der Ausdruck für jemand anderen ausgewertet
+wird.** Eine Suchdiagnose im fremden Rechtekontext bildet die Bibliotheksmenge nach demselben Ausdruck —
+für die Zielperson statt für die ausführende Person, bei einem Rechteprofil aus den beiden Zweigen, die
+eine Gruppe überhaupt erreichen kann (Grant an die Gruppe, organisationsweite Sichtbarkeit). Der
+Ausdruck selbst bleibt dabei unangetastet; wer ihn für wen auswerten darf, entscheidet die einzeln
+vergebene Befugnis. Nur die zusätzliche Eindämmungsprüfung beim Rechteprofil — das Profil darf keine
+Bibliothek umfassen, die die ausführende Person nicht selbst einsehen darf — entfällt für einen
+`SYSTEM_ADMIN`. Beides steht in
+[Identität, Rechte & Mandanten](./access-control.md#zwei-befugnisse-neben-den-rollen).
 
 ### Gruppen als Rechtesubjekt
 
@@ -171,14 +193,17 @@ Bis hierher ging es darum, **wer** auf ein Asset zugreifen darf. Jetzt geht es d
 
 Die Verteilungsstufen der Produktvision — persönlich → Team → Fachbereich → organisationsweit — bilden sich auf die **Aufbauorganisation** ab, die im Verzeichnisdienst ohnehin gepflegt wird. Es gibt kein eigenes Abteilungs- oder Amts-Objekt und keine Space-Hierarchie.
 
-Gruppen haben zwei Ausprägungen:
+Gruppen haben drei Ausprägungen:
 
 | `Group.kind` | Herkunft | Verwendung |
 |---|---|---|
 | `ORG_UNIT` | aus dem Verzeichnis synchronisiert (Referat, Abteilung, Amt) | Rechtesubjekt **und** Freigabeziel; kennt ihre übergeordnete Einheit |
 | `AD_HOC` | im System angelegt | nur Rechtesubjekt (z. B. „Projektbeteiligte Phoenix", „Stabsstelle Leserunde") |
+| `IDENTITY_PROVIDER` | aus dem Gruppen-Claim eines OIDC-Anbieters, bei jeder Anmeldung abgeglichen ([ADR-0025](../decisions/0025-mehrere-oidc-anbieter.md), Entscheidung 4) | nur Rechtesubjekt; in der Gruppenverwaltung schreibgeschützt |
 
-**Verhältnis von Rechtesubjekt und Freigabeziel:** Es ist **dasselbe Objekt in zwei Verwendungen**, und materiell derselbe Vorgang. „Ein Asset an die Abteilung 5 freigeben" heißt: ein Grant an die Gruppe „Abteilung 5". Erteilt wird er wie jede andere Rechtevergabe von einem `MANAGER` des Assets — für beide Gruppenarten gleich.
+**Zu `IDENTITY_PROVIDER`:** Die `external_id` liegt im Namensraum des Anbieters (`oidc:<Anbieter-ID>:<Name>`) — gleichnamige Gruppen zweier Anbieter sind zwei Gruppen, und kein Anbieter erreicht die Gruppen eines anderen. Die Mitgliedschaft folgt ausschließlich dem Token und wird bei jeder Anmeldung neu gesetzt; die Gruppe selbst bleibt bestehen und ist in der Gruppenverwaltung weder änderbar noch löschbar. Sie ist weder Gegenstand des Verzeichnisabgleichs noch als Geltungsbereich der Befugnis „Sicht als" wählbar (Einzelheiten in [Identität, Rechte & Mandanten](./access-control.md)).
+
+**Verhältnis von Rechtesubjekt und Freigabeziel:** Es ist **dasselbe Objekt in zwei Verwendungen**, und materiell derselbe Vorgang. „Ein Asset an die Abteilung 5 freigeben" heißt: ein Grant an die Gruppe „Abteilung 5". Erteilt wird er wie jede andere Rechtevergabe von einem `MANAGER` des Assets — für jede Gruppenart gleich.
 
 **Mitgliedschaft vererbt nicht.** Wer in einer Einheit Mitglied ist, sagt das Verzeichnis. OPAA erfindet keine Vererbung nach unten: Ein Grant an „Amt 5" erreicht nur, wen das Verzeichnis dieser Gruppe zurechnet.
 
@@ -199,7 +224,7 @@ Dagegen wirken zwei Mittel, die es ohnehin gibt:
 
 **Was damit ersatzlos entfällt:** Kuratoren als Objekt an der Organisationseinheit, die Zuständigkeitsvererbung nach oben, die konfigurierbare Größenschwelle, die Sonderbehandlung des Umgehungswegs über `AD_HOC`-Gruppen sowie Freigabeanfragen mit Frist, Eskalation und Liegezeit-Listen. Eine frühere Fassung sah das alles vor; die Begründung für die Streichung steht unter [Geprüfte und verworfene Alternativen](#verteilung-von-assets-1).
 
-**Wo eine Obergrenze bleibt:** Bibliotheken mit einem lauf-basierten Quellentyp (Dateiverzeichnis, Webverzeichnis, RSS-Feed) tragen weiterhin eine Freigabe-Obergrenze (siehe [Konnektoren und Quellzuordnung](#konnektoren-und-quellzuordnung)). Sie ist die einzige Stelle, an der die Reichweite eines Grants technisch gedeckelt ist. Ihre ursprüngliche Begründung — ein Admin speist einen Bestand ein, über den ein Bibliotheks-Eigentümer sonst frei verfügen könnte — setzte voraus, dass nur die Systemverwaltung eine solche Bibliothek anlegen kann; das gilt mit [ADR-0018](../decisions/0018-quellkonfiguration-in-der-bibliothek.md) nicht mehr (Entscheidung 6 öffnet die Anlage dauerhaft für jeden Berechtigten, kein Rollenkonstrukt tritt an ihre Stelle). Die genaue Wirkung der Obergrenze bleibt deshalb bei **Issue #207** zu entscheiden — dringlicher als zuvor, weil ihre Grundannahme sich verschoben hat.
+**Wo eine Obergrenze bleibt:** Bibliotheken mit einem lauf-basierten Quellentyp (Dateiverzeichnis, Webverzeichnis, RSS-Feed) tragen weiterhin eine Freigabe-Obergrenze (siehe [Konnektoren und Quellzuordnung](#konnektoren-und-quellzuordnung)). Sie ist die einzige Stelle, an der die Reichweite eines Grants technisch gedeckelt ist. Ihre ursprüngliche Begründung — ein Admin speist einen Bestand ein, über den ein Bibliotheks-Eigentümer sonst frei verfügen könnte — setzte voraus, dass nur die Systemverwaltung eine solche Bibliothek anlegen kann; das gilt mit [ADR-0018](../decisions/0018-quellkonfiguration-in-der-bibliothek.md) nicht mehr (Entscheidung 6 öffnet die Anlage dauerhaft für jeden Berechtigten, kein Rollenkonstrukt tritt an ihre Stelle). Die genaue Wirkung der Obergrenze bleibt deshalb bei **Issue #797** zu entscheiden — dringlicher als zuvor, weil ihre Grundannahme sich verschoben hat.
 
 ### Referenz statt Kopie
 
@@ -799,7 +824,7 @@ Das ist der Preis dafür, dass es keinen Kanal gibt, über den Wissen an der Rec
 
 Eine Konnektor-Quelle wird **genau einer** Wissensbibliothek zugeordnet — mit [ADR-0018](../decisions/0018-quellkonfiguration-in-der-bibliothek.md) strukturell erzwungen: Die Bibliothek trägt ihren Quellentyp und ihre Quellkonfiguration selbst, es gibt keine davon getrennte Zuordnung mehr, die auf mehr als ein Ziel zeigen könnte. Wird derselbe Bestand an mehreren Stellen gebraucht, wird die Bibliothek freigegeben, nicht das Dokument vervielfacht.
 
-Die Trennung von Technik und Fachlichkeit, die diese Zuordnung ursprünglich begründete — jemand entscheidet, wohin indiziert wird, der Bibliotheks-Eigentümer entscheidet, wer es sieht —, gilt weiterhin, nur ist „jemand" mit ADR-0018 dauerhaft nicht mehr auf den System-Admin beschränkt: Wer eine Bibliothek anlegen darf, wählt Typ und Konfiguration selbst — kein Rollenkonstrukt tritt an die Stelle dieser Öffnung (siehe [ADR-0018, Entscheidung 6](../decisions/0018-quellkonfiguration-in-der-bibliothek.md)). Die Sicherung bleibt trotzdem nötig: Bibliotheken mit einem lauf-basierten Quellentyp tragen eine **Obergrenze der Freigabe**. Sonst könnte ein Bibliotheks-Eigentümer einen konnektorgespeisten Bestand organisationsweit freigeben. Ihre genaue Ausgestaltung ist offen und in **Issue #207** zu entscheiden.
+Die Trennung von Technik und Fachlichkeit, die diese Zuordnung ursprünglich begründete — jemand entscheidet, wohin indiziert wird, der Bibliotheks-Eigentümer entscheidet, wer es sieht —, gilt weiterhin, nur ist „jemand" mit ADR-0018 dauerhaft nicht mehr auf den System-Admin beschränkt: Wer eine Bibliothek anlegen darf, wählt Typ und Konfiguration selbst — kein Rollenkonstrukt tritt an die Stelle dieser Öffnung (siehe [ADR-0018, Entscheidung 6](../decisions/0018-quellkonfiguration-in-der-bibliothek.md)). Die Sicherung bleibt trotzdem nötig: Bibliotheken mit einem lauf-basierten Quellentyp tragen eine **Obergrenze der Freigabe**. Sonst könnte ein Bibliotheks-Eigentümer einen konnektorgespeisten Bestand organisationsweit freigeben. Ihre genaue Ausgestaltung ist offen und in **Issue #797** zu entscheiden.
 
 Der Ausschluss einzelner Konnektor-Dokumente ist noch nicht gebaut (**Zielbild**); im Zielbild wirkt er an der Bibliothek — an genau einer Stelle statt je Workspace.
 

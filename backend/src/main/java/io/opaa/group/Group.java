@@ -42,16 +42,19 @@ public class Group {
   private String description;
 
   /**
-   * Stable directory identifier (objectGUID or SCIM externalId) that directory synchronisation
-   * (#237) matches on instead of the name - a rename in the directory must never orphan grants.
-   * Null for {@link GroupKind#AD_HOC} groups, which have no directory counterpart.
+   * The source's stable identifier, matched on instead of the name so a rename at the source never
+   * orphans grants: the directory's objectGUID or SCIM externalId for {@link GroupKind#ORG_UNIT},
+   * the provider-namespaced {@code oidc:<provider-id>:<name>} for {@link
+   * GroupKind#IDENTITY_PROVIDER}. Null only for {@link GroupKind#AD_HOC}, which has no source
+   * outside this system.
    */
   @Column(name = "external_id", length = 255)
   private String externalId;
 
   /**
-   * Parent organizational unit; only meaningful for {@link GroupKind#ORG_UNIT} groups. Used to
-   * escalate curator responsibility upward when a unit has no curator of its own (see #208).
+   * The parent unit the directory reports for an {@link GroupKind#ORG_UNIT}; null for the other
+   * kinds, which have no hierarchy. Stored and exposed as reported, never resolved into membership:
+   * a member of a child unit is not a member of its parent.
    */
   @Column(name = "parent_group_id")
   private UUID parentGroupId;
@@ -67,7 +70,9 @@ public class Group {
    * directory - a merge or reorganisation, not a deletion. Existing grants to a dissolved group
    * keep working for its current members; the group's membership is simply frozen at its
    * last-known-good state and never grows again through synchronisation. Always {@code false} for
-   * {@link GroupKind#AD_HOC} groups, which have no directory counterpart to disappear from.
+   * the other two kinds: synchronisation reads {@link GroupKind#ORG_UNIT} groups alone, an {@link
+   * GroupKind#AD_HOC} group has no directory counterpart to disappear from, and an {@link
+   * GroupKind#IDENTITY_PROVIDER} group simply stops being refreshed.
    */
   @Column(name = "dissolved", nullable = false)
   private boolean dissolved;

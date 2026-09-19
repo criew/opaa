@@ -209,8 +209,9 @@ class RetrievalPipelineTest {
   }
 
   /**
-   * ADR-0008 §5: the stage that establishes the permission filter is not a measurable variant, and
-   * the refusal is a configuration error at startup rather than a surprise at query time.
+   * The stage that establishes the permission filter is not a measurable variant
+   * (docs/features/spaces-and-assets.md#durchsetzung-zur-abfragezeit), and the refusal is a
+   * configuration error at startup rather than a surprise at query time.
    */
   @Test
   void permissionFilterStageCannotBeSwitchedOff() {

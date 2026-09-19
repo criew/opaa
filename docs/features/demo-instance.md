@@ -205,9 +205,9 @@ Passwörtern (Demo-Werte, keine Secrets), öffentliche Instanz, Korpus-Aktualisi
   vorhandenen vor.
 - **Quellzuordnung:** Dass eine Konnektorquelle zu genau einer Wissensbibliothek gehört, ist seit
   ADR-0018 strukturell gegeben und damit Voraussetzung dafür, dass die sieben Bibliotheken sauber getrennt
-  befüllt werden. Offen sind in **#207** unter anderem die Obergrenze der Freigabe für
-  konnektorgespeiste Bibliotheken und der Ausschluss einzelner Konnektordokumente; für die Demo genügen
-  gezielte Grants an die vier Nutzer.
+  befüllt werden. Offen ist in **#797** die Obergrenze der Freigabe für
+  konnektorgespeiste Bibliotheken; der Ausschluss einzelner Konnektordokumente ist ebenfalls noch nicht
+  gebaut. Für die Demo genügen gezielte Grants an die vier Nutzer.
 - **E2E-Suite:** Seit **#233** bezieht die Suite unter `e2e/` ihre Ausgangsdaten aus dem
   `e2e`-Datenprofil des gemeinsamen Seeds (`demo/seed/seed.py --profile e2e`, von
   `scripts/run-e2e.mjs` vor der Playwright-Suite ausgeführt) statt aus einer eigenen

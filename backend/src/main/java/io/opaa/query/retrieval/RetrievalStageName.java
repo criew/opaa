@@ -18,8 +18,9 @@ public enum RetrievalStageName {
 
   /**
    * Turns the caller-supplied, already permission-resolved search scope into the {@code library_id
-   * IN (...)} filter every search stage must apply (ADR-0008 §5). Halts the run when the scope is
-   * empty; no later stage may widen it.
+   * IN (...)} filter every search stage must apply
+   * (docs/features/spaces-and-assets.md#durchsetzung-zur-abfragezeit). Halts the run when the scope
+   * is empty; no later stage may widen it.
    *
    * <p><b>Not switchable.</b> A run without the permission filter is a bypass, not a measurable
    * variant; {@link RetrievalPipeline} rejects such a configuration at construction time.

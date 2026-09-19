@@ -19,9 +19,10 @@ import org.springframework.stereotype.Component;
  * ranking path would be a second quality truth that nobody maintains (#1720,
  * docs/features/external-access.md, "Was ein Fremdzugang erreicht").
  *
- * <p>{@code searchScope} is taken as given (ADR-0008 §5); resolving it stays with the caller, which
- * is what lets the query take a chat's own settings and the search take the effective view of a
- * request.
+ * <p>{@code searchScope} is taken as given
+ * (docs/features/spaces-and-assets.md#ein-agent-liest-immer-mit-den-rechten-des-nutzers); resolving
+ * it stays with the caller, which is what lets the query take a chat's own settings and the search
+ * take the effective view of a request.
  */
 @Component
 public class KnowledgeRetrieval {

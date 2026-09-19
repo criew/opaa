@@ -68,9 +68,9 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * reports as its direct members; a member of a child organizational unit is never treated as an
  * implicit member of the parent. Nested-group membership inheritance is called out as an open point
  * in the feature spec and is deliberately left unresolved by this service - {@code parentGroupId}
- * is recorded for #208's curator escalation only, resolved in a second pass in {@link #applyPlan}
- * so it works regardless of the order the directory reports groups in and applies to existing
- * groups too, not only newly created ones (review of PR #297).
+ * is recorded as reported, resolved in a second pass in {@link #applyPlan} so it works regardless
+ * of the order the directory reports groups in and applies to existing groups too, not only newly
+ * created ones (review of PR #297).
  *
  * <p><b>Plausibility threshold ({@link #buildPlan}):</b> {@code changedFraction} is the worse of
  * two independent measures, each checked against the same configured threshold.
