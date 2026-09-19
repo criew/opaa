@@ -20,6 +20,7 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -51,8 +52,11 @@ import tools.jackson.databind.json.JsonMapper;
  * both premises are read off the production side rather than listed. No Spring context.
  *
  * <p>What the raw-body scan cannot see (#1788): an intake that bounds its body with a copy of the
- * check instead of calling the shared method, and one declared inside a nested class rather than at
- * class level.
+ * check instead of calling the shared method, and one that reaches the method through a static
+ * import - today the production sources hold no static import from {@code io.opaa} at all. An
+ * intake inside a nested class it sees only by accident: a member of the outer class before it
+ * makes its body collection swallow the nested one, which trips the caller assertion on the
+ * constructor; without such a member it stays silent.
  */
 class TransportStatusCodeSpecificationTest {
 
@@ -110,17 +114,25 @@ class TransportStatusCodeSpecificationTest {
 
   private static final Pattern STRING_LITERAL = Pattern.compile("\"([^\"]*)\"");
 
+  private static final Pattern ROUTE_ATTRIBUTE = Pattern.compile("\\b(?:value|path)\\s*=");
+
+  /**
+   * A brace group runs to the closing brace that an argument boundary follows - a path template
+   * carries braces of its own, so the first one will not do.
+   */
+  private static final String ARGUMENT_VALUE = "(\\{.*?}(?=\\s*[,)])|\"[^\"]*\")";
+
+  private static final Pattern ROUTE_ATTRIBUTE_VALUE =
+      Pattern.compile("\\b(?:value|path)\\s*=\\s*" + ARGUMENT_VALUE);
+
+  private static final Pattern NAMED_ARGUMENT =
+      Pattern.compile("\\b[A-Za-z]+\\s*=\\s*(?:" + ARGUMENT_VALUE + "|[^,)]+)");
+
   /** The routes bounded today; the scan may only ever find more of them, never fewer. */
   private static final List<String> KNOWN_INTAKES =
       List.of(
           "post /api/v1/libraries/{libraryId}/confluence-webhook",
           "post /api/v1/libraries/{libraryId}/s3-events");
-
-  /**
-   * The scan reaches all two hundred-odd mapped handlers of the production sources; well below this
-   * it parsed next to nothing, and a guard that finds nothing passes.
-   */
-  private static final int MAPPED_HANDLER_FLOOR = 150;
 
   private static final String CLIENT = "203.0.113.9";
   private static final String PATH_VARIABLE = "11111111-1111-1111-1111-111111111111";
@@ -189,33 +201,49 @@ class TransportStatusCodeSpecificationTest {
    * sources: whichever mapped handler calls {@link ConfluenceWebhookController#readBounded} has to
    * declare {@code 413} at its own route. A third intake is found by the same scan, and removing
    * the declaration from both of today's at once fails here too.
+   *
+   * <p>Its self-check is a parity, not a threshold: every mapping annotation in the sources has to
+   * belong to a parsed member. A threshold grows weaker as handlers are added and lets a signature
+   * form the scan cannot read slip through - the way it let one through in the review of #1788.
    */
   @Test
   void everyHandlerReadingThroughTheSharedBoundDeclaresItsSizeLimit() throws IOException {
     List<Member> members = parseMainSources();
+
+    assertThat(filesWhereAMappingAnnotationHasNoMember(members))
+        .as(
+            "every mapping annotation of the production sources has to belong to a member this"
+                + " scan parsed - a file listed here carries a signature form the scan walks past,"
+                + " and a handler it walks past is a handler it passes")
+        .isEmpty();
+
     List<Member> intakes =
         members.stream().filter(Member::callsTheSharedBound).filter(Member::isMapped).toList();
-
-    assertThat(members.stream().filter(Member::isMapped).count())
-        .as("below %d mapped handlers the scan is broken, not the code", MAPPED_HANDLER_FLOOR)
-        .isGreaterThanOrEqualTo(MAPPED_HANDLER_FLOOR);
-    assertThat(intakes.stream().map(Member::route).toList())
+    assertThat(describedRoutesOf(intakes))
         .as("the routes bounded today have to be among what the scan found")
         .containsAll(KNOWN_INTAKES);
 
     for (Member intake : intakes) {
-      assertThat(intake.path())
+      assertThat(intake.httpMethod())
+          .as(
+              "%s#%s: a @RequestMapping on an intake has to name the method it answers, otherwise"
+                  + " there is no single operation to check",
+              intake.source(), intake.name())
+          .isNotNull();
+      assertThat(intake.routes())
           .as(
               "%s#%s: the route of an intake has to stand as a literal in its mapping annotation,"
                   + " otherwise there is nothing to check it against",
               intake.source(), intake.name())
           .isNotNull();
-      assertThat(declaredStatusesAt(intake.httpMethod(), intake.path()))
-          .as(
-              "%s#%s reads its body through the shared bound and must declare 413 at %s - an empty"
-                  + " status set means the specification has no operation at that route",
-              intake.source(), intake.name(), intake.route())
-          .contains("413");
+      for (String route : intake.routes()) {
+        assertThat(declaredStatusesAt(intake.httpMethod(), route))
+            .as(
+                "%s#%s reads its body through the shared bound and must declare 413 at %s %s - an"
+                    + " empty status set means the specification has no operation at that route",
+                intake.source(), intake.name(), intake.httpMethod(), route)
+            .contains("413");
+      }
     }
   }
 
@@ -385,15 +413,17 @@ class TransportStatusCodeSpecificationTest {
   }
 
   /**
-   * A top-level member of a production class: the file it stands in, its name, the route of its
-   * mapping annotation if it carries one, and its body without comments.
+   * A top-level member of a production class: the file it stands in, its name, whether it carries a
+   * mapping annotation, the method and routes that annotation resolves to - each of them null when
+   * the annotation does not spell it out - and its body without comments.
    */
   private record Member(
-      String source, String name, String httpMethod, String path, List<String> code) {
-
-    boolean isMapped() {
-      return httpMethod != null;
-    }
+      String source,
+      String name,
+      boolean isMapped,
+      String httpMethod,
+      List<String> routes,
+      List<String> code) {
 
     boolean callsTheSharedBound() {
       boolean inTheDeclaringClass = source.equals(BOUND_OWNER + ".java");
@@ -403,22 +433,70 @@ class TransportStatusCodeSpecificationTest {
                   line.contains(BOUND_OWNER + "." + SHARED_BOUND)
                       || (inTheDeclaringClass && line.contains(SHARED_BOUND)));
     }
+  }
 
-    String route() {
-      return httpMethod + " " + path;
+  private static List<String> describedRoutesOf(List<Member> members) {
+    return members.stream()
+        .filter(member -> member.routes() != null)
+        .flatMap(member -> member.routes().stream().map(route -> member.httpMethod() + " " + route))
+        .toList();
+  }
+
+  /**
+   * Which files hold a mapping annotation without a member the scan parsed, counted both ways. The
+   * parity holds the scan to the sources themselves instead of to a number that ages.
+   */
+  private static Set<String> filesWhereAMappingAnnotationHasNoMember(List<Member> members)
+      throws IOException {
+    Map<String, Long> parsed = new HashMap<>();
+    members.stream()
+        .filter(Member::isMapped)
+        .forEach(member -> parsed.merge(member.source(), 1L, Long::sum));
+    Map<String, Long> annotated = mappingAnnotationsPerFile();
+
+    Set<String> mismatching = new TreeSet<>();
+    Set<String> files = new TreeSet<>(annotated.keySet());
+    files.addAll(parsed.keySet());
+    for (String file : files) {
+      long annotations = annotated.getOrDefault(file, 0L);
+      long handlers = parsed.getOrDefault(file, 0L);
+      if (annotations != handlers) {
+        mismatching.add(
+            "%s (%d mapping annotations, %d parsed)".formatted(file, annotations, handlers));
+      }
     }
+    return mismatching;
+  }
+
+  /** Counted off the raw lines, deliberately without the member parsing this is meant to check. */
+  private static Map<String, Long> mappingAnnotationsPerFile() throws IOException {
+    Map<String, Long> perFile = new HashMap<>();
+    for (Path source : mainSources()) {
+      long count =
+          Files.readAllLines(source).stream()
+              .filter(
+                  line ->
+                      MAPPING_ANNOTATIONS.stream().anyMatch(name -> line.startsWith("  @" + name)))
+              .count();
+      if (count > 0) {
+        perFile.put(source.getFileName().toString(), count);
+      }
+    }
+    return perFile;
   }
 
   private static List<Member> parseMainSources() throws IOException {
-    List<Path> sources;
-    try (Stream<Path> files = Files.walk(MAIN_SOURCES)) {
-      sources = files.filter(path -> path.toString().endsWith(".java")).toList();
-    }
     List<Member> members = new ArrayList<>();
-    for (Path source : sources) {
+    for (Path source : mainSources()) {
       members.addAll(parseMembers(source));
     }
     return members;
+  }
+
+  private static List<Path> mainSources() throws IOException {
+    try (Stream<Path> files = Files.walk(MAIN_SOURCES)) {
+      return files.filter(path -> path.toString().endsWith(".java")).toList();
+    }
   }
 
   /**
@@ -427,7 +505,7 @@ class TransportStatusCodeSpecificationTest {
    */
   private static List<Member> parseMembers(Path source) throws IOException {
     List<String> lines = Files.readAllLines(source);
-    String classPath = classLevelPath(lines);
+    List<String> classPaths = classLevelPaths(lines);
     List<Member> members = new ArrayList<>();
 
     for (int index = 0; index < lines.size(); index++) {
@@ -447,8 +525,9 @@ class TransportStatusCodeSpecificationTest {
           new Member(
               source.getFileName().toString(),
               memberName(lines.get(index)),
+              mapping != null,
               mapping == null ? null : httpMethodOf(mapping),
-              mapping == null ? null : routePath(classPath, mapping),
+              mapping == null ? null : routesOf(classPaths, mapping),
               List.copyOf(code)));
       index = cursor < lines.size() && isMemberDeclaration(lines.get(cursor)) ? cursor - 1 : cursor;
     }
@@ -532,49 +611,66 @@ class TransportStatusCodeSpecificationTest {
     return joined.toString();
   }
 
-  /** The class-level prefix: empty when there is none, null when it is not a literal. */
-  private static String classLevelPath(List<String> lines) {
+  /** The class-level prefixes: empty when there are none, null when they are not literals. */
+  private static List<String> classLevelPaths(List<String> lines) {
     for (int index = 0; index < lines.size(); index++) {
       if (lines.get(index).startsWith("@RequestMapping")) {
-        return pathOf(joinedWithItsContinuations(lines, index));
+        return pathsOf(joinedWithItsContinuations(lines, index));
       }
     }
-    return "";
+    return List.of();
   }
 
-  private static String routePath(String classPath, String mapping) {
-    String path = pathOf(mapping);
-    return classPath == null || path == null ? null : classPath + path;
+  /** Every route the annotation answers at, each carrying the class-level prefix it sits under. */
+  private static List<String> routesOf(List<String> classPaths, String mapping) {
+    List<String> paths = pathsOf(mapping);
+    if (classPaths == null || paths == null) {
+      return null;
+    }
+    List<String> prefixes = classPaths.isEmpty() ? List.of("") : classPaths;
+    List<String> routes = new ArrayList<>();
+    for (String prefix : prefixes) {
+      if (paths.isEmpty()) {
+        routes.add(prefix);
+      } else {
+        paths.forEach(path -> routes.add(prefix + path));
+      }
+    }
+    return List.copyOf(routes);
   }
 
   /**
-   * The route an annotation declares: empty when it carries none, null when it is not spelled out
-   * as a literal - which leaves the route unresolvable rather than silently wrong.
+   * The routes an annotation declares - it may declare several: empty when it carries none, null
+   * when they are not spelled out as literals, which leaves them unresolvable rather than silently
+   * wrong. Named arguments are dropped first, so a {@code consumes} beside a positional path is not
+   * mistaken for one.
    */
-  private static String pathOf(String annotation) {
+  private static List<String> pathsOf(String annotation) {
     int parenthesis = annotation.indexOf('(');
     if (parenthesis < 0) {
-      return "";
+      return List.of();
     }
     String arguments = annotation.substring(parenthesis + 1);
-    String named = literalOf(arguments, "value");
-    if (named == null) {
-      named = literalOf(arguments, "path");
+    if (ROUTE_ATTRIBUTE.matcher(arguments).find()) {
+      Matcher matcher = ROUTE_ATTRIBUTE_VALUE.matcher(arguments);
+      return matcher.find() ? literalsOrNull(matcher.group(1)) : null;
     }
-    if (named != null) {
-      return named;
-    }
-    return arguments.contains("=") ? null : firstLiteral(arguments);
+    String positional = NAMED_ARGUMENT.matcher(arguments).replaceAll("");
+    return carriesNoArgument(positional) ? List.of() : literalsOrNull(positional);
   }
 
-  private static String literalOf(String arguments, String attribute) {
-    Matcher matcher = Pattern.compile(attribute + "\\s*=\\s*\"([^\"]*)\"").matcher(arguments);
-    return matcher.find() ? matcher.group(1) : null;
-  }
-
-  private static String firstLiteral(String arguments) {
+  private static List<String> literalsOrNull(String arguments) {
+    List<String> literals = new ArrayList<>();
     Matcher matcher = STRING_LITERAL.matcher(arguments);
-    return matcher.find() ? matcher.group(1) : null;
+    while (matcher.find()) {
+      literals.add(matcher.group(1));
+    }
+    return literals.isEmpty() ? null : List.copyOf(literals);
+  }
+
+  /** Whether an argument list holds nothing but syntax once its named arguments are gone. */
+  private static boolean carriesNoArgument(String arguments) {
+    return arguments.replaceAll("[\\s,)]", "").isEmpty();
   }
 
   private static String httpMethodOf(String annotation) {
