@@ -1333,14 +1333,14 @@ liefern nie ein Embedding — die Spalte wird gar nicht erst gelesen.
 >   für den Altbestand.
 >
 >   **Was die Administration weiterhin allein erreicht**, ohne dass eine zweite Person mitwirkt:
->   Gehört die Bibliothek einer Gruppe, die keine `ORG_UNIT` ist, kann ein `SYSTEM_ADMIN` sich über
->   `POST /api/v1/groups/{id}/members` selbst in diese Eigentümergruppe eintragen — die
->   Gruppenverwaltung kennt keinen Selbstausschluss, und `rejectOrgUnit` greift nur für
->   Verzeichnis-Organisationseinheiten. Danach ist er „benannte zuständige Stelle“ und löst die
->   Sperre. Die Eigentümerperson (`ownerUserId`) ist von diesem Weg nicht betroffen: sie ist
->   unveränderlich. Ebenfalls nicht ausgeschlossen bleibt, dass die Administration einem anderen,
->   benannten Konto `OWNER` gibt, das die Sperre dann löst. Beide Wege stehen vollständig im
->   Protokoll, keiner ist verhindert.
+>   Gehört die Bibliothek einer `AD_HOC`-Gruppe, kann ein `SYSTEM_ADMIN` sich über
+>   `POST /api/v1/admin/groups/{groupId}/members` selbst in diese Eigentümergruppe eintragen — die
+>   Gruppenverwaltung kennt keinen Selbstausschluss, und `rejectOrgUnit` weist nur
+>   Verzeichnis-Organisationseinheiten und Anbietergruppen ab. Danach ist er „benannte zuständige
+>   Stelle“ und löst die Sperre. Die Eigentümerperson (`ownerUserId`) ist von diesem Weg nicht
+>   betroffen: sie ist unveränderlich. Ebenfalls nicht ausgeschlossen bleibt, dass die Administration
+>   einem anderen, benannten Konto `OWNER` gibt, das die Sperre dann löst. Beide Wege stehen
+>   vollständig im Protokoll, keiner ist verhindert.
 >
 >   **Entschieden (Maintainer, 04.09.2026, [#1124](https://github.com/criew/opaa/issues/1124)):
 >   Das bleibt so.** Kein Selbstausschluss in der Gruppenverwaltung, keine engere Regel für
