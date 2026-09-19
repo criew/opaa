@@ -92,6 +92,16 @@ jmustache = "1.16"
 # than as a container, so a send is proved end to end - STARTTLS negotiation, AUTH, the MIME parts
 # - without Docker being required for that particular test. Not managed by the Spring Boot BOM.
 greenmail = "2.1.13"
+# Transitive-only pin (see the dependencyManagement block in build.gradle.kts). Tika's crypto, pdf,
+# microsoft and digest parser modules resolve Bouncy Castle 1.84, which is affected by
+# CVE-2026-8763 (name constraint bypass) and CVE-2026-13506 (ASN.1 nesting depth reset). All four
+# artifacts must carry the same version. Remove entry and override once Tika resolves >= 1.85
+# on its own (#1464).
+bouncycastle = "1.85"
+# Transitive-only pin (see the dependencyManagement block in build.gradle.kts). Tika's pkg parser
+# module resolves junrar 7.6.0, which is affected by CVE-2026-86071 (directory escape while
+# extracting). Remove entry and override once Tika resolves >= 7.6.1 on its own (#1464).
+junrar = "7.6.1"
 
 [libraries]
 # Spring Boot starters (versions managed by Spring Boot BOM)

@@ -432,6 +432,16 @@ dependencyManagement {
             entry("tomcat-embed-el")
             entry("tomcat-embed-websocket")
         }
+        // Raises the Bouncy Castle and junrar versions Tika's parser modules resolve; see the
+        // bouncycastle and junrar entries in libs.versions.toml. Remove once Tika resolves those
+        // versions on its own (#1464).
+        dependencySet("org.bouncycastle:${libs.versions.bouncycastle.get()}") {
+            entry("bcprov-jdk18on")
+            entry("bcutil-jdk18on")
+            entry("bcpkix-jdk18on")
+            entry("bcjmail-jdk18on")
+        }
+        dependency("com.github.junrar:junrar:${libs.versions.junrar.get()}")
     }
 }
 
