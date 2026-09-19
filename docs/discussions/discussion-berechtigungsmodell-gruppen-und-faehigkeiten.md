@@ -2,8 +2,11 @@
 
 Konzeptpapier zu Issue [#1809](https://github.com/criew/opaa/issues/1809) (Epic
 [#1295](https://github.com/criew/opaa/issues/1295) „Gruppen, Rollen und Berechtigungen", Phase 1),
-zweite Fassung vom 19.09.2026 (erste Fassung bewertet durch die Perspektiven Betrieb, Personalrat,
-Referatsleitung und Sachbearbeitung, siehe [Abschnitt 12](#12-stakeholder-bewertung)). Es nimmt die Ausarbeitung aus
+dritte Fassung vom 19.09.2026 (erste Fassung bewertet durch die Perspektiven Betrieb, Personalrat,
+Referatsleitung und Sachbearbeitung, zweite Fassung durch Code-Review und eine zweite Sichtung des
+Personalrats; Berichte unverändert in
+[`discussion-berechtigungsmodell-stakeholder.md`](discussion-berechtigungsmodell-stakeholder.md),
+Antworten in [Abschnitt 12](#12-stakeholder-bewertung)). Es nimmt die Ausarbeitung aus
 [#1443](https://github.com/criew/opaa/issues/1443) vollständig auf und endet mit einer
 Entscheidungsvorlage für den ADR ([#1810](https://github.com/criew/opaa/issues/1810)). Die
 Umsetzungs-Issues des Epics (#1811 bis #1824) sind gegen die Empfehlungen geprüft; wo eine Empfehlung
@@ -50,12 +53,13 @@ zur Wahl gestellt, sondern vorausgesetzt:
    gehört genau einer Organisation; nichts überschreitet die Organisationsgrenze.
 
 Was darunter offen ist, behandeln die sieben Abschnitte 2 bis 8. Jeder endet mit **einer** Empfehlung.
-Die Abschnitte 9 bis 9c tragen die Querschnittsfestlegungen, die die Stakeholder-Runde verlangt hat.
+Abschnitt 9 trägt die Randbedingung Mandantenfähigkeit; die Abschnitte 9a bis 9c die
+Querschnittsfestlegungen, die die Stakeholder-Runde verlangt hat.
 
 ### Begriffe
 
-Das Papier verwendet vier Wörter für vier rechtlich verschiedene Dinge. Im Amtsdeutsch ist „Befugnis"
-das Alltagswort für alle zusammen; die Oberfläche muss deshalb unterscheidbare Wörter benutzen.
+Das Papier verwendet fünf Begriffe für fünf verschiedene Dinge. Im Amtsdeutsch ist „Befugnis" das
+Alltagswort für die ersten drei zusammen; die Oberfläche muss deshalb unterscheidbare Wörter benutzen.
 
 | Begriff im Papier | In der Oberfläche | Bedeutung | Beispiel |
 |---|---|---|---|
@@ -63,7 +67,8 @@ das Alltagswort für alle zusammen; die Oberfläche muss deshalb unterscheidbare
 | **Fähigkeit** | Anlegerecht | unbefristetes Recht, etwas **anzulegen**; an Person, Gruppe oder „Alle Konten"; ohne Gegenstand; öffnet nie einen Inhalt | „darf Spaces anlegen" |
 | **Befugnis** | Vollmacht | befristete, an **genau eine Person** gebundene Erlaubnis mit Gegenstand und Begründungspflicht | „Sicht als" für Referat 50 bis 31.03. |
 | **Systemrolle** | Systemrolle | `SYSTEM_ADMIN`, `AUDITOR` | — |
-| **Wirksame Gruppe** | — | eine Gruppe, die Rechte tatsächlich vermitteln kann: nicht aufgelöst, ihr Anbieter aktiviert (bei internen Gruppen entfällt das), mindestens ein **aktives** Konto als Mitglied | — |
+| **Wirksame Gruppe** | — | eine Gruppe, der ein Recht **erteilt** werden darf: nicht aufgelöst und ihr Anbieter aktiviert (bei internen Gruppen entfällt das Zweite). Eine wirksame Gruppe darf leer sein — eine frisch angelegte interne Gruppe, das Ziel einer Übertragung vor der ersten Anmeldung, eine Keycloak-Abteilung mit nur Untergruppen; das Erteilen an eine leere Gruppe warnt und trägt sie in „Freigaben ohne Empfänger" ein (Abschnitt 7.5) | — |
+| **Handlungsfähige Gruppe** | — | eine wirksame Gruppe mit mindestens einem **aktiven** Konto als Mitglied — das Maß dafür, ob sie als Eigentümerin oder Space-`ADMIN` für ein Objekt **handeln** kann (Abschnitt 7.1) | — |
 
 „Vollmacht" ist bereits Sprachgebrauch des Projekts (ADR-0016, Nachtrag: „Diagnose-Vollmacht").
 „Anlegerecht" ist neu und deckt die erste Liste der Fähigkeiten vollständig ab (Abschnitt 6.1).
@@ -151,7 +156,13 @@ roles](https://confluence.atlassian.com/adminjiraserver/managing-project-roles-9
   `effectiveRole` den Systemverwalter als `OWNER` — der ADR spricht beides aus, damit es nicht zwei
   Lesarten gibt. Die Betriebsfolge gehört dazu: Wer eine Störung („die Suche liefert ein Dokument, das
   ich nicht sehen dürfte") nachstellen muss, tut das über die Suchdiagnose mit **Rechteprofil**
-  (Abschnitt 8) — das ist der dafür vorgesehene Weg, nicht ein Umweg über eine Rolle.
+  (Abschnitt 8) — das ist der dafür vorgesehene Weg, nicht ein Umweg über eine Rolle. **Offen und
+  hier nicht entschieden:** #1828 hat bei der Bestandsaufnahme gefunden, dass die Systemverwaltung
+  heute das Original jedes Dokuments ohne Grant und ohne Protokolleintrag herunterlädt
+  (`LibraryDocumentService#loadContent` über `effectiveRole`) — „Verwalten ist nicht Lesen" gilt
+  damit für die Suche, nicht für den Download. Ob der Weg geschlossen oder zu einem protokollierten,
+  begründeten Verwaltungsakt wird, entscheidet #1828 im Zusammenhang des Epics; das Papier hält nur
+  fest, dass Variante „wie heute, Spezifikation zurücknehmen" der Grundlinie widerspräche.
 - **„Read/Write" ins Verzeichnis.** OPAA schreibt nie ins Verzeichnis. Die Verwaltung führt ihr
   Verzeichnis mit eigenen Verfahren; ein zweiter Schreibweg wäre ein Prüfungsbefund.
 
@@ -398,8 +409,13 @@ lesbare Zeile mit Verfallsdatum.
 
 ### 3.4 Deaktivieren und Löschen eines Anbieters
 
-**Deaktivieren** ist der Notweg (Token ab sofort abgewiesen, ADR-0025) und muss ohne Bedingung
-möglich bleiben. Gruppen, Mitgliedschaften und Grants bleiben unverändert stehen; Token-Gruppen ändern
+**Deaktivieren** ist der Notweg (Token ab sofort abgewiesen, ADR-0025). Er ist nicht bedingungslos —
+`OidcProviderService#setEnabled` weist heute ab, wenn der Standardanbieter bei weiteren aktiven
+Anbietern deaktiviert werden soll (zuerst einen anderen zum Standard machen), verlangt für den letzten
+aktiven OIDC-Anbieter die ausdrückliche Bestätigung und lässt in keinem Fall eine Installation ohne
+anmeldefähigen Systemverwalter zurück (`LocalAdminAvailabilityGuard`, ADR-0033). Diese Bedingungen
+bleiben; das Papier fügt **keine** hinzu. Gruppen, Mitgliedschaften und Grants bleiben unverändert
+stehen; Token-Gruppen ändern
 sich nicht (niemand meldet sich mehr an), der Verzeichnisabgleich dieses Anbieters pausiert. Wird der
 Anbieter wieder aktiviert, läuft alles weiter, als wäre nichts gewesen.
 
@@ -409,9 +425,12 @@ Fassung ließ sie „in Auswahlfeldern weiter wählbar, mit Hinweis" — das wid
 den funktional gleichen Zustand (leer, aufgelöst) vom neuen Grant ausschließt, und es erzeugte einen
 Schaden: Eine Freigabe an „Referat 50 (Anbieter deaktiviert)" wirkt für niemanden, bis der Anbieter
 wieder aktiv ist, und dann schlagartig für alle, ohne erneute Entscheidung (Betrieb, Auflage 2.3).
-**Aufgelöst:** Nur wirksame Gruppen sind neues Grant-Ziel und neues Space-Mitglied. Gruppen eines
-deaktivierten Anbieters erscheinen in der Auswahl als nicht wählbar mit Grund; bestehende Grants bleiben
-unangetastet. Dieselbe Regel gilt in Abschnitt 7.4 für leere und aufgelöste Gruppen.
+**Aufgelöst:** Nur wirksame Gruppen (Abschnitt 0: nicht aufgelöst, Anbieter aktiviert) sind neues
+Grant-Ziel und neues Space-Mitglied. Gruppen eines deaktivierten Anbieters erscheinen in der Auswahl als
+nicht wählbar mit Grund; bestehende Grants bleiben unangetastet. Dieselbe Regel gilt in Abschnitt 7.4
+für aufgelöste Gruppen; **leere** Gruppen bleiben wählbar, weil sonst eine frisch angelegte Gruppe und
+das Ziel einer Anbieterablösung ausgesperrt wären — das Erteilen warnt und schreibt den Eintrag in
+„Freigaben ohne Empfänger".
 
 **Rücknahme nach einem Vorfall.** Die Deaktivierung nimmt keine Mitgliedschaft zurück, die ein
 kompromittierter Anbieter vorher über manipulierte Tokens gesetzt hat. Die Rechtehistorie
@@ -436,8 +455,12 @@ verweist auf die **Arbeitsliste je Anbieter** (Ergänzung zu #1821, das die Sich
 von der aus jede Gruppe übertragen oder ihre Wirkung entfernt wird. Der Lebenszyklus (Abschnitt 7)
 braucht keinen eigenen Fall „Anbieter gelöscht".
 
-**Folge für #1812:** Die Alternative „aufgelöst" entfällt; das Löschen setzt die Übertragungsoperation
-voraus (Abschnitt 9c wird eigenes Umsetzungs-Issue, von dem #1812 abhängt).
+**Folge für #1812:** Die Alternative „aufgelöst" entfällt. #1812 liefert `provider_id`, `RESTRICT`
+und den `409` mit Zählung und Arbeitsliste; die Übertragungsoperation (Abschnitt 9c) ist ein eigenes
+Issue, von dem #1812 **nicht** abhängt — bis sie gebaut ist, bleibt der `409` beim Löschen eines
+Anbieters mit wirkenden Gruppen ohne Ausweg außer dem Entfernen der Wirkungen, und der ADR sagt das
+ausdrücklich. Das Löschen eines Anbieters ist kein Vorgang, den eine Installation in diesem Zeitfenster
+braucht; Deaktivieren bleibt jederzeit möglich.
 
 ### 3.5 Verhältnis zu lokalen Konten (#1368, ADR-0033)
 
@@ -504,9 +527,10 @@ ersten Schritt. Begründung:
   Spezifikation nennt; GitLab fährt LDAP-Gruppen stündlich), Trockenlauf jederzeit, Läufe über der
   Schwelle als ausstehender Plan, den ein Systemverwalter bestätigt oder verwirft.
 
-**Der Vorgabeweg ist der ungeschützte — das muss der ADR aussprechen.** Die vier Schutzmechaniken
-(Trockenlauf, Schwelle, Leerergebnis-Schutz, Bestätigungsweg) hat nur der Verzeichnisabgleich, der wegen
-`NoOpDirectoryClient` heute nirgends läuft. Der Token-Pfad hat keine davon: `TokenGroupSynchronizer`
+**Der Vorgabeweg ist der ungeschützte — das muss der ADR aussprechen.** Die vier Schutzmechaniken —
+drei gebaute (Trockenlauf, Schwelle, Leerergebnis-Schutz) und der mit #1816 vorgeschlagene
+Bestätigungsweg — hat nur der Verzeichnisabgleich, der wegen `NoOpDirectoryClient` heute nirgends
+läuft. Der Token-Pfad hat keine davon: `TokenGroupSynchronizer`
 setzt je Anmeldung „genau die Gruppen, die das Token nennt". Was das im Alltag heißt (Betrieb,
 Auflage 3.1): Das Identitätsmanagement benennt den Gruppenanspruch `Ref50` in `Referat 50` um — eine
 Pflegemaßnahme, kein Fehler. Ab der ersten Anmeldung ist jede Person Mitglied der **neuen** Gruppe und
@@ -557,8 +581,9 @@ braucht (dann auch als Antwort auf den Overage-Fall).
 Drei Festlegungen, die #1817 braucht (Betrieb, Auflagen 3.2 bis 3.4):
 
 - **Direkte Mitglieder, nicht transitiv.** `GET /admin/realms/{realm}/groups/{group-id}/members` ruft
-  `session.users().getGroupMembersStream(realm, group, …)` auf und liefert nur die direkten Mitglieder
-  der Gruppe, keine Mitglieder von Untergruppen (geprüft am
+  `session.users().getGroupMembersStream(realm, group, …)` auf — die Mitgliedsabfrage des
+  `UserProvider` für **diese** Gruppe — und liefert nur ihre direkten Mitglieder, keine Mitglieder von
+  Untergruppen (geprüft am
   [Quelltext von `GroupResource`](https://github.com/keycloak/keycloak/blob/main/services/src/main/java/org/keycloak/services/resources/admin/GroupResource.java)).
   Das deckt sich mit der Spezifikation („Mitgliedschaft vererbt nicht — ein Grant an ‚Amt 5' erreicht
   nur, wen das Verzeichnis dieser Gruppe zurechnet") und mit Keycloaks eigener Semantik, in der Rollen
@@ -612,7 +637,11 @@ Mechanismus" folgt: In einem Haus, das im Token-Modus bleibt, entstehen nie `ORG
 Vollmacht ist dort dauerhaft nicht vergebbar (Betrieb, Auflage 3.6). **Empfehlung:** Der Geltungsbereich
 wird auf **jede Anbietergruppe** erweitert (`ORG_UNIT` und `IDENTITY_PROVIDER`), sofern sie oberhalb
 der Mindestgruppengröße liegt; interne Gruppen bleiben ausgeschlossen. Eine Token-Gruppe „Referat 50" ist
-dieselbe Organisationseinheit wie die Verzeichnisgruppe gleichen Namens — nur anders gepflegt.
+dieselbe Organisationseinheit wie die Verzeichnisgruppe gleichen Namens — nur anders gepflegt. Die
+Mindestgruppengröße wird **zum Zeitpunkt jeder Nutzung** der Vollmacht geprüft, nicht nur bei der
+Erteilung: Eine Token-Gruppe mit sieben aktiven Mitgliedern bei Erteilung kann ein halbes Jahr später
+eines haben, und die Vollmacht wäre dann ein Personenkontext ohne dessen Schutzmechanik (Personalrat,
+zweite Sichtung).
 
 ### 4.4 Verhalten beim Wechsel des Mechanismus
 
@@ -743,8 +772,9 @@ zuständig sind; sie als globale Fähigkeit zu doppeln, erzeugte zwei Prüfstell
 - **`SYSTEM_ADMIN` besitzt jede Fähigkeit implizit.** Die Systemrolle bleibt die Verwaltungsrolle;
   Fähigkeiten sind darunter angesiedelt und **niemals** Leserechte: Eine Fähigkeit öffnet einen
   Anlegepfad, nie einen Inhalt.
-- **`AUDITOR` besitzt keine Fähigkeit.** Die Rolle ist ein Lesepfad in das Protokoll und sonst nichts
-  (`SystemRole`-Javadoc).
+- **Die Rolle `AUDITOR` verleiht keine Fähigkeit.** Sie ist ein Lesepfad in das Protokoll und sonst
+  nichts (`SystemRole`-Javadoc); ein Konto mit dieser Rolle hat, was „Alle Konten" oder seine Gruppen
+  ihm geben, nicht mehr.
 - **„Sicht als" und Vorfallsbereich bleiben Befugnisse, keine Fähigkeiten.** Beide sind gebunden
   (Geltungsbereich, Frist, bei Vorfällen Zweck und Vier-Augen-Freigabe), folgen aus keiner Rolle und
   dürfen **nicht** an Gruppen oder „Alle Konten" vergebbar sein — eine befristete, bereichsgebundene
@@ -814,10 +844,10 @@ eine seiner Gruppen`.
 ### 7.1 Begriff: der handlungsfähige Verantwortliche
 
 Alle Fälle lassen sich auf eine Frage zurückführen: **Hat dieses Objekt gerade jemanden, der für es
-handeln kann?** Für ein Asset ist das der Eigentümer (Person: Konto aktiv; Gruppe: nicht aufgelöst und
-mindestens ein aktives Mitglied); für einen Space der Eigentümer oder ein wirksames `ADMIN`-Mitglied
-(Person aktiv, oder Gruppe nicht aufgelöst mit mindestens einem aktiven Mitglied); für eine interne
-Gruppe mindestens ein aktiver Verantwortlicher.
+handeln kann?** Für ein Asset ist das der Eigentümer (Person: Konto aktiv; Gruppe: handlungsfähig im
+Sinne von Abschnitt 0, also wirksam **und** mindestens ein aktives Mitglied); für einen Space der
+Eigentümer oder ein handlungsfähiges `ADMIN`-Mitglied; für eine interne Gruppe mindestens ein aktiver
+Verantwortlicher.
 
 **„Nachfolge offen" ist die Abwesenheit eines handlungsfähigen Verantwortlichen** — und sollte als
 **abgeleiteter Zustand** ausgewertet werden, nicht als gespeichertes Flag. Ein Flag müsste an jedem
@@ -893,8 +923,13 @@ Verantwortlichen" ist mit einer Liste, die Stufe 1 und 2 nicht enthält, nicht b
    „Pflichtsichtung" der Referatsleitung in der Form, die ohne Frist auskommt: Sie verhindert, dass eine
    Zeile zehn Jahre unberührt bleibt, ersetzt aber keine fachliche Zuständigkeit und löst nichts aus.
 5. **Sichtbar am Objekt, nicht nur in der Liste.** Ein Asset oder Space im Zustand „Nachfolge offen"
-   trägt die Kennzeichnung in seiner Übersicht und Detailansicht für jeden, der es lesen darf, samt
-   Adressat („Nachfolge offen seit 14.03.2026 — zuständig: Systemverwaltung"). Sonst zitiert ein
+   trägt die Kennzeichnung in seiner Übersicht und Detailansicht für jeden, der es lesen darf — mit
+   **Zustand und Adressat** („Nachfolge offen — zuständig: Systemverwaltung"), ohne Datum, ohne den
+   bisherigen Eigentümer und ohne Grund: Der Zustand tritt bei einem personengehörenden Asset mit der
+   Kontosperre ein, und ein datierter Vermerk neben dem Eigentümernamen wäre eine Statusmeldung über
+   eine Kollegin, die jeder Leseberechtigte auslegt (Personalrat Z5). Das Datum steht in der
+   Betriebsliste, wo es gebraucht wird; die Detailansicht stellt Eigentümer und Zustand nicht in
+   denselben Satz. Sonst zitiert ein
    Mitarbeiter eine Quelle, ohne zu wissen, dass sie seit zwei Jahren niemand fachlich verantwortet
    (Referatsleitung), und ein Team merkt den Zustand erst, wenn das Hinzufügen einer Kollegin scheitert
    (Sachbearbeitung). **Nicht** gekennzeichnet werden Suchtreffer und Quellenverweise in Antworten: Der
@@ -904,7 +939,11 @@ Verantwortlichen" ist mit einer Liste, die Stufe 1 und 2 nicht enthält, nicht b
    genannt (sonst ist die Nachfolge nicht beurteilbar), aber es gibt keine Abfrage „was gehörte
    Person X" und keine Sortierung oder Filterung nach Person — dieselbe Regel wie für die Berichte in
    `security-and-compliance.md` („Einstieg über das Objekt und einen Zeitraum, nie über eine Person";
-   Personalrat E1).
+   Personalrat E1). Sie gilt **in beide Richtungen**: auch keine Sortierung, Filterung oder Zählung
+   nach der **handelnden** Person — wer einen Vorgang beendet oder einen Sichtungsvermerk gesetzt hat,
+   steht am Vorgang und ist dort lesbar, ist aber keine Auswertungsachse und kein API-Parameter
+   (Personalrat Z7: Feststellungslauf, Sichtungsvermerk und vollständige Liste ergäben sonst eine
+   Bearbeitungsspur über die Systemverwaltung).
 
 **Hinweis statt Auswertung:** Die Liste darf als **Vorschlag** die Verzeichnisgruppen des Ausgeschiedenen
 nennen („war Mitglied von Referat 50") — das ist Bestandsinformation, keine Aktivitätsauswertung, und
@@ -913,17 +952,26 @@ weiterhin der Regelfall für zentral gepflegte Bestände; die Liste ist das Auff
 
 ### 7.4 Schutzregeln, die den Zustand vermeiden
 
-- **Ein Space verliert nie sein letztes wirksames `ADMIN`-Mitglied durch eine Verwaltungshandlung**:
-  Entfernen, Herabstufen oder Austritt des letzten `ADMIN` wird mit `409` abgelehnt (heute nur für den
-  Eigentümer). **Eine Gruppe zählt als `ADMIN`, solange sie wirksam ist** (Begriff in Abschnitt 0) —
-  das beantwortet die offene Frage aus #1815.
-- **Eine Kontosperre wird nie abgelehnt.** Sie ist die eine Handlung, die den Zustand erzeugen darf,
-  weil der Zugang wichtiger ist als die Zuständigkeit (Spezifikation: „Die Deaktivierung wird nie durch
-  offene Eigentumsfragen aufgehalten").
+- **Ein Space verliert nie sein letztes handlungsfähiges `ADMIN`-Mitglied durch eine
+  Verwaltungshandlung**: Entfernen, Herabstufen oder Austritt des letzten `ADMIN` wird mit `409`
+  abgelehnt (heute schützt `SpaceService#removeMember` nur den Eigentümer, und das als
+  `ValidationException`, also `400`). **Eine Gruppe zählt als `ADMIN`, solange sie handlungsfähig ist**
+  (Begriff in Abschnitt 0: wirksam und mindestens ein aktives Mitglied) — das beantwortet die offene
+  Frage aus #1815.
+- **Eine Kontosperre wird nie wegen offener Eigentums- oder Zuständigkeitsfragen abgelehnt.** Sie ist
+  die eine Handlung, die den Zustand erzeugen darf, weil der Zugang wichtiger ist als die
+  Zuständigkeit (Spezifikation: „Die Deaktivierung wird nie durch offene Eigentumsfragen
+  aufgehalten"). Die einzige Ausnahme ist der Schutz des letzten anmeldefähigen Systemverwalters
+  (#1349, ADR-0033; heute `LocalUserService#lock` über `requireAnotherLoginCapableAdmin`, `409`) — sie
+  bleibt.
 - **Der letzte Verantwortliche einer internen Gruppe kann sich nicht entfernen** (Abschnitt 5).
 - **Nur wirksame Gruppen sind neues Grant-Ziel und neues Space-Mitglied.** Das deckt aufgelöste Gruppen
-  (heute `requireGrantableGroup`), leere Gruppen und Gruppen deaktivierter Anbieter (Abschnitt 3.4)
-  mit **einer** Regel und einer verständlichen Meldung.
+  (heute `requireGrantableGroup`, das nur `isDissolved()` prüft) und Gruppen deaktivierter Anbieter
+  (Abschnitt 3.4) mit **einer** Regel und einer verständlichen Meldung. Eine **leere** wirksame Gruppe
+  bleibt erteilbar — mit Warnung und Eintrag in „Freigaben ohne Empfänger" —, sonst scheiterte der
+  Ablauf „Gecko anlegen, freigeben, Mitglieder aufnehmen" am ersten Schritt, und das Ziel einer
+  Anbieterablösung im Token-Modus (Gruppe entsteht erst mit der ersten Anmeldung,
+  `TokenGroupSynchronizer#findOrCreate`) wäre nie erreichbar.
 - **„Nachfolge offen" lässt laufende Arbeit unberührt.** Das Objekt bleibt nutzbar, bestehende Rechte
   bleiben; nur die Reichweite ist eingefroren. Der Satz gehört in ADR und Handbuch, sonst wird aus einem
   Verwaltungszustand ein Arbeitshindernis, dessen Druck bei den Betroffenen landet (Personalrat E2).
@@ -950,8 +998,9 @@ Eskalation und Mail bleiben bewusst draußen. Typunabhängigkeit bleibt (#1726).
 
 Das Rechteprofil der Suchdiagnose **ist** eine Gruppe: `SearchDiagnosisService.PermissionProfile(id,
 name, libraryCount)` wird aus `GroupService#listGroups` gebildet, die Bibliotheksmenge aus
-`LibraryAccessService#readableLibraryIdsForGroup` (direkte Gruppen-Grants ∪ Gruppeneigentum ∪
-organisationsweite Freigabe). Der Profilkontext ist die Voreinstellung, braucht keine Befugnis und keine
+`LibraryAccessService#readableLibraryIdsForGroup` (`findReadableLibraryIdsByGroupGrant` ∪
+`findIdsByOrganizationIdAndVisibility` — Gruppen-Grants und organisationsweite Freigabe; Eigentum einer
+Gruppe wirkt nur über den `MANAGER`-Grant, den `createLibrary` ihr schreibt und der entziehbar ist). Der Profilkontext ist die Voreinstellung, braucht keine Befugnis und keine
 Begründung, und `target_ref` trägt die Gruppen-ID, „damit ‚kein Personenbezug im Protokoll' eine
 Struktureigenschaft" ist (`hybrid-retrieval.md`). Damit ist die Randbedingung des Epics — eine Auswertung
 im Kontext einer Gruppe ist weniger personenbezogen als im Kontext einer Person — für Bibliotheken
@@ -977,8 +1026,11 @@ bereits eingelöst.
    Schnittmenge. Ein Profil „Referat 50" (23 Mitglieder) in einem Space, in dem aus Referat 50 genau
    eine Person Mitglied ist, zeigt, was diese eine Person dort findet — ohne jede Schutzmechanik des
    Personenkontexts, weil formal ein Profil gewählt wurde. **Aufgelöst:** Die Mindestgruppengröße gilt
-   für die **Schnittmenge** aus aktiven Mitgliedern der Gruppe und Zugang zum Space, geprüft **zum
-   Zeitpunkt des Laufs**; liegt sie darunter, antwortet der Endpunkt mit `403` und dem Hinweis, dass
+   für die **Schnittmenge** aus aktiven Mitgliedern der Gruppe und Zugang zum Space — Zugang auf
+   **jedem** Weg: direkt, über diese oder über eine andere Gruppe; gerechnet gegen „Mitglieder, die
+   über G im Space sind", wäre die Schnittmenge bei einer Gruppe, die selbst nicht Space-Mitglied ist,
+   strukturell null —, geprüft **zum Zeitpunkt des Laufs**; liegt sie darunter, antwortet der Endpunkt
+   mit `403` und dem Hinweis, dass
    für diese Sicht der Personenkontext mit Vollmacht zu wählen ist. Ist die Schnittmengen-Prüfung zu
    teuer, entfällt der Space-Kontext — nicht die Prüfung.
 5. **Gezählt werden aktive Konten.** Abschnitt 7.2 lässt Mitgliedschaften gesperrter Konten stehen;
@@ -993,7 +1045,10 @@ bereits eingelöst.
    Personenkontext; eine Dienststelle, die sie auf 1 stellt, schaltet den Schutz aus. Das Produkt
    setzt eine Voreinstellung **und erzwingt eine Untergrenze**, wie `spaces-and-assets.md` es für die
    Nutzungstransparenz bereits vorsieht (Personalrat B5); Änderungen des Werts sind
-   Governance-Ereignisse.
+   Governance-Ereignisse. Die Untergrenze steht als **Zahl** in der Konfigurationstabelle des Handbuchs,
+   nicht nur als Zusicherung — eine Validierung ohne nachlesbaren Wert ist nicht überprüfbar; das
+   Papier schlägt **5** vor (eine Gruppe von vier ist in einem Referat eine Person mit Namen), der ADR
+   setzt den Wert.
 7. **Protokollpflicht für Profil-Läufe mit Space-Kontext.** Mit dem Space-Kontext richtet sich ein
    Profil-Lauf erstmals auf einen konkreten, oft kleinen Personenkreis. Profil-Läufe **mit**
    Space-Kontext werden protokolliert (ausführende Person, Profil, Space, Zeitpunkt — eine Zeile je
@@ -1007,9 +1062,13 @@ bereits eingelöst.
    unverändert: Die Diagnose ist kein Zugriffshistorien-Nachweis — dafür gibt es die Stichtagsauskunft
    (Abschnitt 9a), und beide bleiben getrennt.
 
-**Folge für die Umsetzungs-Issues:** Punkt 2 gehört zu #1820/#1821; Punkte 1, 4, 5, 7 und 8 sind
-Nacharbeiten an `SearchDiagnosisService` nach #1815 und stehen im ADR als Randbedingung, damit sie
-nicht verloren gehen; Punkt 6 ist eine Konfigurationsvalidierung.
+**Folge für die Umsetzungs-Issues:** Punkt 2 gehört zu #1820/#1821; Punkt 6 ist eine
+Konfigurationsvalidierung. Die Punkte 1, 4, 5, 7 und 8 bekommen ein **eigenes Umsetzungs-Issue des
+Epics** „Space-Kontext im Rechteprofil" (nach #1815), dessen Abnahmekriterien die fünf Punkte einzeln
+aufführen; **bis es umgesetzt ist, nimmt `SearchDiagnosisRequest` keine Space-ID entgegen**
+(Integrationstest auf `403`). Schutzregel und Fähigkeit werden im selben Arbeitsschritt geliefert —
+„im ADR als Randbedingung, damit sie nicht verloren gehen" war die Formulierung, mit der Zusagen
+verloren gehen (Personalrat Z1, Bedingung für das Ja zu Empfehlung 7).
 
 ---
 
@@ -1036,27 +1095,55 @@ Historientabelle, nur Audit-Ereignisse, die nach 12–120 Monaten gelöscht werd
 (`chk_audit_retention_settings_months`) — und ausgerechnet #1815 macht die Space-Mitgliedschaft zur
 Massenberechtigung. Beide treffen sich in **einer** Entscheidung, die vier Dinge trennt und festlegt.
 
+**Die Optionen** (der Code-Reviewer hat zu Recht verlangt, dass auch dieser Abschnitt eine Wahl trifft
+und keine Feststellung):
+
+| Option | Wirkung | Beurteilung |
+|---|---|---|
+| **A — Stand halten:** drei Historientabellen, alles Neue nur Audit | keine neue Dauerdatenspur; Space-Mitgliedschaft, Eigentum, Fähigkeit nur innerhalb der Protokollfrist rekonstruierbar | Mit #1815 wird eine Space-Zeile zur Berechtigung für 120 Personen; „beweisen Sie, dass Frau K. im März 2026 **keinen** Zugriff auf den Space Personal hatte" ist nach Ablauf der Audit-Frist unbeantwortbar — genau die Frage, die gestellt wird |
+| **B — Historie erweitern, mit Höchstdauer und geregeltem Lesepfad als Vorbedingung** | Stichtagsauskunft für alle Rechtequellen; Personenbezug begrenzt durch Höchstdauer, Vollmacht, Abrufprotokoll | Die Höchstdauer ist klein (ein Aufräumlauf nach dem Muster von `AuditRetentionScheduler` und eine Governance-Zeile) und in `security-and-compliance.md` ohnehin zugesagt; der Lesepfad ist #1822 |
+| **C — Historie erweitern ohne Höchstdauer** | Nachweis gewahrt, Datenspur unbefristet — der heutige Zustand, auf acht Quellen ausgedehnt | Die Bedingung D1 des Personalrats ist damit verletzt; keine Dienstvereinbarung |
+
+**Empfehlung: B.** Die Höchstdauer wird ein eigenes, kleines Umsetzungs-Issue der Phase 2 **vor**
+#1815; #1813, #1815, #1818 und #1819 hängen daran. **Wird die Vorbedingung abgelehnt oder verzögert
+sich das Issue**, werden die Issues so geschnitten: #1815 und #1819 schreiben ihre Historientabellen
+trotzdem (Variante C nur für Space-Mitgliedschaft und Eigentum, weil dort die Nachweislücke am
+größten ist und ein späterer Rückbau auf Audit nicht nachholbar wäre), #1813 und #1818 bleiben bei
+Audit (Variante A), und in keinem Fall gibt es vor der Höchstdauer einen Personen-Einstieg, einen
+Namensschnappschuss oder eine Kontozustandshistorie. Das steht so im ADR, damit die Wahl bewusst
+ist und nicht in einem Sub-Issue fällt.
+
 **Audit verfällt, Historie bleibt.** Ein Audit-Ereignis sagt, *dass* jemand etwas getan hat, und wird
 nach der Protokollfrist gelöscht. Eine Historienzeile sagt, *in welchem Zeitraum* ein Recht galt, und
 trägt die Stichtagsauskunft. Jede Änderungsart des Epics wird genau einer Seite zugeordnet:
 
-| Änderungsart | Tabelle der Stichtagsauskunft (bleibt) | Audit (verfällt) |
-|---|---|---|
-| Asset-Grant | `asset_grant_history` (heute) | ja |
-| Gruppenmitgliedschaft | `group_membership_history` (heute) | ja |
-| Reichweitenfelder am Asset | `library_visibility_history` (heute) | ja |
-| **Space-Mitgliedschaft** (Person oder Gruppe, mit Rolle) | **neu**, #1815 | ja |
-| **Eigentum** an Asset und Space | **neu** (`asset_ownership_history`), #1819 | ja (`ASSET_OWNER_CHANGED` heute) |
-| **Fähigkeit** | **neu** (`capability_grant_history`), #1813 | ja, Governance-Ereignis |
-| **Systemrolle** | **neu** — weil `effectiveRole` `SYSTEM_ADMIN` als `OWNER` führt | ja (heute) |
-| **Kontozustand** (aktiv/gesperrt) | **neu**, #1818 — Beleg der Kontenmenge zum Stichtag, Voraussetzung für „Alle Konten" und für die rückholbare Sperre | ja (heute) |
-| Verantwortliche interner Gruppen | **keine** — Betriebsrecht der Gegenwart (ADR-0016, Nachtrag) | ja |
-| Vollmachten | keine (heute, ADR-0016 Nachtrag) | ja |
-| Nachfolgevorgänge, Sichtungsvermerke | keine | ja |
+| Änderungsart | Tabelle der Stichtagsauskunft (bleibt) | Personenspalte | Audit (verfällt) |
+|---|---|---|---|
+| Asset-Grant | `asset_grant_history` (heute) | `RESTRICT` (heute) | ja |
+| Gruppenmitgliedschaft | `group_membership_history` (heute) | `RESTRICT` (heute) | ja |
+| Reichweitenfelder am Asset | `library_visibility_history` (heute) | — (Akteur `SET NULL`) | ja |
+| **Space-Mitgliedschaft** (Person oder Gruppe, mit Rolle) | **neu**, #1815 | `RESTRICT` | ja |
+| **Eigentum** an Asset und Space | **neu** (`asset_ownership_history`), #1819 | `RESTRICT` | ja (`ASSET_OWNER_CHANGED` heute) |
+| **Fähigkeit** | **neu** (`capability_grant_history`), #1813 | `RESTRICT` | ja, Governance-Ereignis |
+| **Systemrolle** | **neu** — weil `effectiveRole` `SYSTEM_ADMIN` als `OWNER` führt | `RESTRICT` | ja (heute) |
+| **Kontozustand** (aktiv/gesperrt) | **neu**, #1818 — Beleg der Kontenmenge zum Stichtag, Voraussetzung für „Alle Konten" und für die rückholbare Sperre | `RESTRICT` | ja (heute) |
+| Verantwortliche interner Gruppen | **keine** — Betriebsrecht der Gegenwart (ADR-0016, Nachtrag) | — | ja |
+| Vollmachten | keine (heute, ADR-0016 Nachtrag) | — | ja |
+| Nachfolgevorgänge, Sichtungsvermerke | keine | — | ja |
 
 Alle Historientabellen tragen `valid_from`/`valid_to` wie `group_membership_history` und folgen ADR-0016
 (Subjektspalten `RESTRICT`, Objektspalten ohne FK). Jede neue Tabelle mit Personenspalte wird dieser
-Einordnung ausdrücklich zugeordnet („nichts Architektonisches wird implizit festgelegt").
+Einordnung ausdrücklich zugeordnet („nichts Architektonisches wird implizit festgelegt"). **Die
+Personenspalten der fünf neuen Tabellen werden `RESTRICT` angelegt, nicht von vornherein
+pseudonymisiert** (Personalrat Z3b verlangte die ausdrückliche Wahl): Der vorhandene
+Pseudonym-Mechanismus (`audit_actor_pseudonyms`, `CASCADE` auf `users`) liegt im eigenen
+Privilegienmodell des Protokolls (ADR-0015) und ist ohne eigene Entscheidung nicht auf die Historie
+übertragbar; zwei Modelle nebeneinander — drei Tabellen `RESTRICT`, fünf pseudonymisiert — machten
+#391/#395 nicht kleiner, sondern zweiteilig. Die Zahl der `RESTRICT`-Spalten gegen `users` steigt damit
+von zwei auf sieben, und **diese Zahl ist das Maß der aufgeschobenen Löschschuld**; der ADR schreibt sie
+hin, und #391/#395 stellt alle sieben in einem Zug um. Die Kontozustandshistorie bekommt **keinen
+zweiten Lesepfad** („Verlauf" am Konto in der Benutzerverwaltung) neben der Stichtagsauskunft — sonst
+wäre D2 an dieser Stelle umgangen.
 
 **Wer abruft — der Lesepfad, den es heute nicht gibt.** `PermissionHistoryService#readableLibraryIdsAsOf`
 ist gebaut, aber ohne Endpunkt (#1822). Die Stichtagsauskunft ist eine Funktion der Rolle `AUDITOR`,
@@ -1064,7 +1151,12 @@ mit zwei Einstiegen:
 
 - **Objekt-Einstieg** („wer durfte Bibliothek Z am 3. März lesen") — für `AUDITOR` ohne weitere
   Vollmacht, mit verpflichtendem, begrenztem Zeitfenster und Seitenobergrenze; eine zu weite Anfrage wird
-  abgelehnt, nicht zurechtgestutzt (Vorbild `AuditFrom`: höchstens 92 Tage; Personalrat D4).
+  abgelehnt, nicht zurechtgestutzt (Vorbild `AuditFrom`: höchstens 92 Tage; Personalrat D4). Und
+  **genau ein benanntes Objekt je Abfrage** — keine Sammelabfrage über einen Space, eine
+  Organisationseinheit oder einen Bibliotheksfilter (Personalrat Z3): Sonst setzt ein `AUDITOR` aus
+  dreißig Objektabfragen desselben Referats das Rechteprofil jeder Person dieses Referats zusammen,
+  ohne Vollmacht. D3 macht das sichtbar, D4 begrenzt die einzelne Abfrage; die Ein-Objekt-Regel begrenzt
+  die Zahl der nötigen Abfragen so, dass die Umgehung Aufwand kostet und im Protokoll auffällt.
 - **Personen-Einstieg** („worauf hatte Person X am 3. März Zugriff") — nur mit einer eigenen,
   befristeten, begründeten **Vollmacht nach dem Muster des Vorfallsbereichs**
   (`audit_incident_scope_grants`: Person, Zeitraum, Zweck, Vier-Augen-Freigabe zweier `AUDITOR`;
@@ -1084,10 +1176,14 @@ Objekts, nicht die Höchstdauer — das sind zwei Achsen.
 
 **Pseudonymisierung** (#391/#395) ist benannte Voraussetzung für den **Personen-Einstieg** der
 Stichtagsauskunft und für die Kontolöschung, die heute an `RESTRICT` scheitert (ADR-0016) — nicht für
-das Schreiben von Historienzeilen. Das ist eine Abschwächung von D7: Historienzeilen ohne Lesepfad
-erzeugen keinen Auswertungspfad, und die Kontolöschung ist heute für jedes Konto blockiert, das je ein
-Recht hatte; eine weitere `RESTRICT`-Spalte ändert daran nichts, solange der Lesepfad die Vollmacht
-verlangt. Der ADR verweist auf #391/#395 als Blocker des Personen-Einstiegs.
+das Schreiben von Historienzeilen. Das ist eine Abschwächung von D7, und ihre Begründung ist **nicht**
+„Historienzeilen ohne Lesepfad erzeugen keinen Auswertungspfad" — diese Prämisse trägt ab dem Moment
+nicht mehr, in dem Entscheidung 8 den Lesepfad baut (Personalrat Z3). Die zutreffende Begründung: Der
+Auswertungspfad **entsteht mit Entscheidung 8** und wird durch D1 (Höchstdauer), D2 (Vollmacht für den
+Personen-Einstieg), D3 (Abrufprotokoll), D4 (Zeitfenster, Seitenobergrenze) und die Ein-Objekt-Regel
+begrenzt; die Pseudonymisierung an den Personen-Einstieg zu koppeln, ist der stärkere Hebel, weil eine
+fehlende Auswertungsfunktion auffällt, während eine Schreibblockade unter Termindruck per Ausnahme
+fällt. Der ADR verweist auf #391/#395 als Blocker des Personen-Einstiegs.
 
 **Verfahren** (Personalrat F1 bis F3): Vor dem Rollout legt die Dienststelle die Auskunft über die
 Datenerhebung vollständig vor — einschließlich der neuen Tabellen; die Personalvertretung erhält einen
@@ -1099,19 +1195,43 @@ auf.
 ## 9b. Querschnitt: Sichtbarkeit von Gruppen und die Herleitung „warum sehe ich das"
 
 Vier Bewertungen stellten dieselbe Frage von vier Seiten: Der Betrieb fand, dass die Gruppen**liste**
-(nicht nur die Mitgliederliste) unentschieden ist — `GET /api/v1/groups` verlangt heute
+(nicht nur die Mitgliederliste) unentschieden ist — `GET /api/v1/admin/groups` verlangt heute
 `SYSTEM_ADMIN`, eine Bibliotheksverwalterin kann eine Gruppe nicht einmal finden. Die Referatsleitung
 will als Grant-Geberin die Mitglieder sehen („ich gebe frei, ohne zu wissen, an wen"). Der Personalrat
 will Gruppennamen und Mitgliederzahl vor Kollegen schützen und fand, dass #1815/#1820 den Gruppennamen
 in jede Space-Mitgliederliste setzen. Die Sachbearbeitung fragt, warum sie eine Bibliothek sieht — und
 bekommt vom Modell keine Antwort. Das ist **eine** Entscheidung.
 
-**Was schon gilt und die Frage verkleinert:** Die Space-Mitgliederliste ist heute **nicht** für alle
-Mitglieder sichtbar. `SpaceAccessPolicy` beschränkt sie auf `ADMIN`, Eigentümer und `SYSTEM_ADMIN`;
+**Was heute gilt — und die Frage an zwei Stellen verändert.** Erstens ist die Space-Mitgliederliste
+heute **nicht** für alle Mitglieder sichtbar. `SpaceAccessPolicy` beschränkt sie auf `ADMIN`, Eigentümer und `SYSTEM_ADMIN`;
 `MEMBER` und `CURATOR` erhalten nur `roleCounts` (`spaces-and-assets.md`, „Die Mitgliederliste ist nicht
 jedem Mitglied zugänglich"). Eine Gruppenzeile in dieser Liste sehen also genau die, die die
 Mitgliedschaft verwalten — nicht „jeder Kollege im Space". Die Prämisse des Personalrats-Befunds 4(c)
-trifft insoweit nicht zu; der Schutz besteht, und die Regel unten macht ihn ausdrücklich.
+trifft insoweit nicht zu; der Schutz besteht, und die Regel unten macht ihn ausdrücklich. Zweitens —
+und das unterschätzte die zweite Fassung — kann heute **jeder `MANAGER` an jede Gruppe der Organisation
+freigeben**: `AssetGrantService#requireGrantableGroup` prüft nur Organisation und `isDissolved()`,
+keine Sichtbarkeit, und `LibraryGrantsDialog` lässt eine Gruppe per ID benennen (`manualGroupEntry`),
+auch wenn `GET /api/v1/admin/groups` dem Aufrufer verschlossen ist. Eine Sichtbarkeitsregel für interne
+Gruppen ist deshalb eine **Bestandsänderung**, und sie ist nur dann eine Regel, wenn sie im Service
+durchgesetzt wird — in der Auswahlliste allein wäre sie Kosmetik (Code-Review, Befund 4).
+
+**Die Optionen für interne Gruppen in der Subjekt-Auswahl:**
+
+| Option | Wirkung | Beurteilung |
+|---|---|---|
+| **A — wie heute:** jede Gruppe ist für jeden `MANAGER` erteilbar, per Liste oder ID | keine Bestandsänderung | Der Gruppen**name** ist das schutzwürdige Datum (Betrieb 4.1, Personalrat 2b); mit delegierter Anlage entstehen Gruppen wie „Disziplinarverfahren 2026", die jeder Freigebende sieht |
+| **B — Vorgabe freigegeben (Opt-out):** Verantwortliche können eine Gruppe aus der Auswahl nehmen | kleinste Bestandsänderung | Der Schutz hängt davon ab, dass jemand ihn setzt — und die Gruppen, die ihn brauchen, werden von Leuten angelegt, die an Freigabedialoge nicht denken |
+| **C — Vorgabe nicht freigegeben (Opt-in):** Verantwortliche geben zur Verwendung frei; Bestandsgruppen, die bereits Grants tragen, werden bei der Migration als freigegeben übernommen | Bestandsänderung für neue Gruppen; nichts Bestehendes bricht | Auffindbarkeit als bewusste Handlung — dasselbe Muster wie `listed` bei Assets |
+
+**Empfehlung: C**, mit drei Festlegungen: (1) Die Migration setzt `selectable = true` für jede
+interne Gruppe, die am Migrationstag einen Grant trägt, Space-Mitglied ist oder ein Asset besitzt —
+ein Bibliotheksverwalter verliert keine Möglichkeit, die er benutzt hat. (2) Die Durchsetzung liegt in
+`requireGrantableGroup` bzw. seinem Nachfolger im Paket aus #1811 und gilt für **jeden** Weg, auch die
+Eingabe per ID: Eine nicht freigegebene interne Gruppe ist für einen Aufrufer, der weder Mitglied noch
+Verantwortlicher noch `SYSTEM_ADMIN` ist, „nicht gefunden" (404, wie über die Organisationsgrenze). Das
+steht in den Abnahmekriterien von #1814 und #1820. (3) Der ADR spricht die Bestandsänderung aus:
+„Ein `MANAGER` kann eine neue interne Gruppe erst dann als Empfänger wählen, wenn deren Verantwortliche
+sie freigegeben haben."
 
 **Die Regel — „wer ein Recht gibt, sieht, an wen":**
 
@@ -1120,7 +1240,7 @@ trifft insoweit nicht zu; der Schutz besteht, und die Regel unten macht ihn ausd
 | **Verantwortliche** einer internen Gruppe | ja | voll | ja |
 | **`SYSTEM_ADMIN`** | ja | voll | ja — der Abruf ist ein Audit-Ereignis (Personalrat A6; Verantwortliche pflegen sie ohnehin) |
 | **Wer der Gruppe an einem Objekt ein Recht einräumt oder verwaltet** (`MANAGER`/`OWNER` des Assets, `ADMIN`/Eigentümer des Space), solange die Gruppe dort ein Recht hält | ja | voll | ja (Referatsleitung, Auflage 4) — Ausnahme geschützte Gruppen, siehe unten |
-| **Rechtevergebende** in der Subjekt-Auswahl (Freigabedialog, Space-Mitgliederverwaltung) | Anbietergruppen: ja. Interne Gruppen: nur, wenn ihre Verantwortlichen sie **zur Verwendung freigegeben** haben (Vorgabe: nicht freigegeben — dann wählbar nur für Mitglieder, Verantwortliche, `SYSTEM_ADMIN`; Betrieb, Auflage 4.1) | Zahl aktiver Konten; **unterhalb der Mindestgruppengröße „kleine Gruppe"** statt Zahl (Personalrat A2) | nein |
+| **Rechtevergebende** in der Subjekt-Auswahl (Freigabedialog, Space-Mitgliederverwaltung) | Anbietergruppen: ja. Interne Gruppen: nur, wenn ihre Verantwortlichen sie **zur Verwendung freigegeben** haben (Option C oben; sonst wählbar nur für Mitglieder, Verantwortliche, `SYSTEM_ADMIN`; Betrieb, Auflage 4.1) | Zahl aktiver Konten; **unterhalb der Mindestgruppengröße „kleine Gruppe"** statt Zahl (Personalrat A2) | nein |
 | **Mitglied** der Gruppe | seine eigenen Gruppen mit Verantwortlichen (`GET /api/v1/me/groups`) | Größe | nein |
 | **Sonstige** | nichts | — | — |
 
@@ -1128,15 +1248,32 @@ Die Freigabe zur Verwendung ist das Gegenstück zu `listed` bei Assets: Auffindb
 Handlung der Verantwortlichen, nicht die Vorgabe. Sie beantwortet zugleich die Namenskollision unter
 internen Gruppen (Abschnitt 3.3): Was nicht freigegeben ist, kollidiert mit nichts.
 
-**Geschützte Gruppen** (Personalrat A3). Für Gruppen der Personalvertretung, der
-Schwerbehindertenvertretung, der Gleichstellung und für Personalvorgänge — die Stellen, die
-`hybrid-retrieval.md`, Leitplanke (e), für Bibliotheken benennt — gilt dieselbe Sonderstellung: Das
-Kennzeichen setzt und löst die zuständige Stelle selbst (ihre Verantwortlichen), nicht die
-Administration (Audit-Ereignis wie `LIBRARY_DIAGNOSTICS_LOCK_CHANGED`). Eine geschützte Gruppe ist nicht
-über Suche auffindbar, sondern nur über ihre vollständige Bezeichnung wählbar; in fremden Listen (Space-
-Mitgliederliste, Freigabeliste) erscheint sie als „geschützte Gruppe" ohne Namen; und der Grant-Geber
-sieht statt der Mitgliederliste die **Verantwortlichen** als Ansprechstelle. Das ist die Ausnahme von
-„wer ein Recht gibt, sieht, an wen" — mit einer benannten Person, die er stattdessen fragen kann.
+**Geschützte Gruppen** (Personalrat A3, geändert — siehe Abschnitt 12.2). Für Gruppen der
+Personalvertretung, der Schwerbehindertenvertretung, der Gleichstellung und für Personalvorgänge — die
+Stellen, die `hybrid-retrieval.md`, Leitplanke (e), für Bibliotheken benennt — gilt dieselbe
+Sonderstellung: Das Kennzeichen setzt und löst die zuständige Stelle selbst, nicht die Administration
+(Audit-Ereignis wie `LIBRARY_DIAGNOSTICS_LOCK_CHANGED`). Eine geschützte Gruppe ist nicht über Suche
+auffindbar, sondern nur über ihre vollständige Bezeichnung wählbar; in fremden Listen
+(Space-Mitgliederliste, Freigabeliste) erscheint sie als „geschützte Gruppe" ohne Namen — A3 verlangte
+„in keiner fremden Liste"; die namenlose Zeile ist nötig, weil ein Space-`ADMIN` sonst eine
+Mitgliedschaft nicht beenden kann, die er nicht sieht —; und der Grant-Geber sieht statt der
+Mitgliederliste die **Ansprechstelle**. Das ist die Ausnahme von „wer ein Recht gibt, sieht, an wen" —
+mit einer benannten Person, die er stattdessen fragen kann. Zwei Folgen aus der zweiten Sichtung:
+
+- **Wer kennzeichnet eine Anbietergruppe** (Personalrat Z2b)? Verantwortliche gibt es nur an internen
+  Gruppen; eine aus dem Verzeichnis gelieferte Gruppe „Personalrat" — in einem Haus mit gepflegtem
+  Verzeichnis der Normalfall — hätte sonst niemanden. Festlegung: Die Systemverwaltung **benennt** an
+  einer Anbietergruppe eine oder mehrere **Ansprechstellen** (Personen, die Mitglied der Gruppe sind),
+  ohne Pflegerechte an der Gruppe — ein Verwaltungsakt mit Audit-Ereignis, der die Gruppe nicht
+  verändert. Nur Ansprechstellen setzen und lösen das Schutzkennzeichen, und sie sind für Grant-Geber
+  die Ansprechstelle. Bei internen Gruppen sind das die Verantwortlichen. Damit bleibt der Grundsatz
+  „die zuständige Stelle selbst, nicht die Administration" für beide Herkünfte gewahrt.
+- **Die Herleitung verrät bei einer geschützten Gruppe alles** (Personalrat Z2): Steht in der
+  Space-Mitgliederliste bei Frau S. „Rolle über eine geschützte Gruppe" und im Space wirkt genau eine
+  solche Gruppe, ist die Namenlosigkeit der Gruppenzeile wertlos. Festlegung: Bei einer geschützten
+  Gruppe zeigt die Herleitung **gegenüber Dritten — auch Space-`ADMIN` und Eigentümer — keine
+  Gruppenableitung**, sondern nur die effektive Rolle. Die eigene Herleitung der betroffenen Person
+  bleibt vollständig.
 
 **Die Herleitung für die eigene Person** (#1822, Sachbearbeitung, Personalrat A1). Flach zu *sein* und
 das flach zu *zeigen* sind zwei Zusagen; die erste Fassung löste nur die erste ein. Für jede
@@ -1157,7 +1294,11 @@ Jeder Grant und jede Space-Mitgliedschaft an eine Gruppe speichert die **Zahl ak
 Zeitpunkt der Erteilung**; die Freigabeansicht zeigt beide Zahlen („Referat 50: 23 bei Erteilung, heute
 41"). Keine Mail, kein Vorgang — eine Zeile, die jemand liest, der für die Freigabe geradesteht. Die
 allgemeine Autoren-Benachrichtigung aus `spaces-and-assets.md` bleibt außerhalb des Epics (Abschnitt
-11); dieses Signal ist ihr kleinster Vorläufer.
+11); dieses Signal ist ihr kleinster Vorläufer. Für beide Zahlen gilt die Unterdrückungsregel aus A2:
+unterhalb der Mindestgruppengröße „kleine Gruppe" statt einer Zahl, einschließlich der Werte, die sich
+aus dem Vergleich errechnen ließen; **für geschützte Gruppen entfällt das Signal ganz**, der Grant-Geber
+hat die Ansprechstelle (Personalrat Z6 — bei diesen Gruppen ist die Größe die eigentliche Auskunft).
+Die gespeicherten Zahlen sind Teil der Grant-Historie und unterliegen deren Höchstdauer (D1).
 
 ## 9c. Querschnitt: die Übertragungsoperation
 
@@ -1176,26 +1317,48 @@ endet, B beginnt, gleicher Zeitpunkt, gleicher Vorgangsbezug).
 | **Sonderfall je Anlass** (Mechanismuswechsel, Anbieterablösung, Nachfolge je eigene Mechanik) | dreimal dieselbe Historienschreibung mit drei Fehlerquellen |
 | **Eine allgemeine Operation** mit vier Anlässen | löst Reorganisation (Referat 50 → 52), Anbieterablösung, Mechanismuswechsel und Nachfolgeübernahme mit derselben Mechanik; jede Anwendung ist ein Vorgang mit Vorschau und Historienschnitt |
 
-**Empfehlung: die allgemeine Operation, als eigenes Umsetzungs-Issue des Epics** (Abhängigkeit für #1812,
-#1816 und #1819). Festlegungen:
+**Empfehlung: die allgemeine Operation auf der Gruppenachse, als eigenes Umsetzungs-Issue des Epics.**
+Die zweite Fassung ließ als Quelle auch eine Person mit „allen Wirkungen" zu; die Vorschau dazu wäre
+eine Abfrage „alle Wirkungen der Person X" mit Zahl und Aufzählung der Objekte — für `SYSTEM_ADMIN`,
+ohne Vollmacht, ohne Begründung: die personenbezogene Rechteübersicht, die Entscheidung 8 für die
+Vergangenheit unter eine Vier-Augen-Vollmacht stellt, für die Gegenwart als Formularaufruf daneben
+(Personalrat Z4, gewichtigster Befund der zweiten Sichtung). Fachlich wird das nicht gebraucht: Eine
+Nachfolge betrifft Eigentum und Verantwortung — die Dinge, die herrenlos werden; die Grants einer
+ausgeschiedenen Person enden mit dem Konto. Festlegungen:
 
-- **Quelle und Ziel:** Gruppe → Gruppe (Regelfall), Gruppe → Person und Person → Person (Nachfolge,
-  Abgabe der Verantwortung). Das Ziel muss wirksam sein (Abschnitt 0); Organisationsgrenze wie überall.
-- **Umfang wählbar:** alle Wirkungen der Quelle oder eine Teilmenge (nur Grants, nur Eigentum, nur die
-  Wirkungen an einem Anbieter — die Arbeitsliste je Anbieter aus Abschnitt 3.4).
+- **Quelle und Ziel:** Gruppe → Gruppe (Regelfall, voller Umfang), Gruppe → Person und Person → Person
+  (Nachfolge, Abgabe der Verantwortung). **Bei einer Person als Quelle ist der Umfang auf Eigentum an
+  Assets und Spaces sowie Verantwortung für interne Gruppen beschränkt**; Grants und
+  Space-Mitgliedschaften einer Person sind weder übertragbar noch in der Vorschau aufzählbar. Das Ziel
+  muss wirksam sein (Abschnitt 0 — es darf leer sein: im Token-Modus entsteht die Gruppe des neuen
+  Anbieters erst mit der ersten Anmeldung); Organisationsgrenze wie überall.
+- **Umfang wählbar** (bei Gruppen): alle Wirkungen der Quelle oder eine Teilmenge (nur Grants, nur
+  Eigentum, nur die Wirkungen an einem Anbieter — die Arbeitsliste je Anbieter aus Abschnitt 3.4).
 - **Wer:** `SYSTEM_ADMIN` organisationsweit; für den Umfang „Eigentum und Verantwortung, die ich selbst
   trage" auch die Person selbst (Abgabe, Abschnitt 5.3). Ein `MANAGER` ändert Grants an seinem Asset
   weiterhin einzeln; die Massenoperation bleibt ein Verwaltungsakt.
 - **Historienschnitt:** je betroffener Zeile ein `valid_to` für A und ein `valid_from` für B mit
   demselben Zeitstempel und einer gemeinsamen Vorgangskennung; die Stichtagsauskunft zeigt an jedem
   Tag genau ein Subjekt.
-- **Vorschau ist Pflicht, Bestätigung ist ausdrücklich, Audit trägt Quelle, Ziel, Umfang und Zahl der
-  Zeilen**; die betroffenen Objekte tragen den Vorgang in ihrer Freigabeansicht („übertragen von
-  Referat 50 am 14.03.2026").
+- **Vorschau ist Pflicht und selbst ein Protokollereignis — auch bei Abbruch** (wie jeder Abruf der
+  Stichtagsauskunft nach D3); Bestätigung ist ausdrücklich; Audit trägt Quelle, Ziel, Umfang und Zahl
+  der Zeilen. Die betroffenen Objekte tragen in ihrer Freigabeansicht den **Vorgang** („übertragen am
+  14.03.2026, Vorgang …"), bei einer Gruppe als Quelle auch deren Namen, bei einer Person als Quelle
+  **nicht** deren Namen — ein an vielen Objekten wiederholter Hinweis auf das Ausscheiden einer
+  benannten Person außerhalb jeder Protokollfrist wäre sonst die Folge.
 - **Nicht** enthalten: die Rücknahme von Mitgliedschaften nach einem Vorfall (Abschnitt 3.4, bewusst
   Handarbeit im ersten Schritt) und automatische Auslösung durch den Verzeichnisabgleich — eine
   Reorganisation im Verzeichnis erzeugt eine aufgelöste Gruppe und einen Eintrag in der Betriebsliste,
   die Übertragung bleibt eine Entscheidung.
+
+**Abhängigkeiten, schmal geschnitten** (Code-Review, Nit 5): Das Issue setzt #1811 (Grant-Fundament)
+und #1815 (Space-Mitgliedschaft mit Subjekt) voraus. **#1819 hängt real daran** — die „Übernahme durch
+eine Person oder Gruppe" wird aus #1819 herausgeschnitten und ist diese Operation mit Umfang Eigentum
+und Verantwortung. **#1812 hängt nicht daran**: Es liefert `provider_id`, `RESTRICT` und den `409`; bis
+zur Übertragungsoperation bleibt der `409` beim Anbieterlöschen ohne Ausweg außer dem Entfernen der
+Wirkungen, und der ADR sagt das (Abschnitt 3.4). **#1816 hängt nicht daran**: Der Mechanismuswechsel ist
+mit „eingefroren plus Differenzbericht" bereits frei von stillem Entzug (Personalrat C4); die
+Übertragung der Token-Gruppen ist dort Komfort, kein Schutz.
 
 ---
 
@@ -1217,9 +1380,11 @@ aufnehmen sollte. Die Entscheidungen 8 bis 11 sind aus der Stakeholder-Runde hin
    `kind` bleibt der Mechanismus, `external_id` verliert das Präfix, `source_path` trägt den Pfad der
    Quelle; je Anbieter genau ein Gruppenmechanismus; die Herkunft wird als Zusatz zum Namen angezeigt,
    Gruppen externer Anbieter sichtbar abgehoben und mit Zwischenfrage; keine erzwungene
-   Namenseindeutigkeit (Warnung statt `409`); Deaktivieren eines Anbieters lässt alles stehen, seine
-   Gruppen sind aber keine wirksamen Gruppen mehr; Löschen wird verweigert, solange seine Gruppen
-   wirken, mit Arbeitsliste je Anbieter und Übertragungsoperation als Ausgang; die Rücknahme von
+   Namenseindeutigkeit (Warnung statt `409`); Deaktivieren eines Anbieters behält die heutigen
+   Wächter (Standardanbieter, letzter Anbieter, anmeldefähiger Systemverwalter) und bekommt keine
+   neuen, seine Gruppen sind aber keine wirksamen Gruppen mehr; Löschen wird verweigert, solange
+   seine Gruppen wirken, mit Zählung und Arbeitsliste je Anbieter — bis zur Übertragungsoperation
+   ohne anderen Ausweg als das Entfernen der Wirkungen, was der ADR ausspricht; die Rücknahme von
    Mitgliedschaften nach einem Vorfall bleibt im ersten Schritt Handarbeit.
 3. **Synchronisation.** Je Anbieter Token (Vorgabe) oder zeitgesteuerter Pull mit Bestätigungsweg;
    kein SCIM im ersten Schritt; erster Konnektor ist die Keycloak Admin REST API (direkte Mitglieder,
@@ -1230,7 +1395,7 @@ aufnehmen sollte. Die Entscheidungen 8 bis 11 sind aus der Stakeholder-Runde hin
    Lebenszyklus (Leerergebnis bleibt Abbruch, neuer Lauf ersetzt, frische Berechnung beim Bestätigen,
    Alter sichtbar); Kontosperren aus dem Abgleich unterliegen Schwelle und Bestätigungsweg, sind
    rückholbar und nennen der Person Grund und Ansprechstelle; die Vollmacht „Sicht als" gilt für jede
-   Anbietergruppe oberhalb der Mindestgruppengröße.
+   Anbietergruppe oberhalb der Mindestgruppengröße, geprüft zum Zeitpunkt jeder Nutzung.
 4. **Interne Gruppen.** Jede interne Gruppe hat mindestens einen Verantwortlichen (natürliche Person),
    der Mitglieder, Namen, Beschreibung, weitere Verantwortliche, die Freigabe zur Verwendung und das
    Schutzkennzeichen pflegt; der letzte kann sich nicht entfernen; Verantwortung wird ausdrücklich
@@ -1242,53 +1407,76 @@ aufnehmen sollte. Die Entscheidungen 8 bis 11 sind aus der Stakeholder-Runde hin
    Fähigkeiten `CREATE_SPACE`, `CREATE_LIBRARY`, `CREATE_CONNECTOR_LIBRARY` (ausgeliefert an „Alle
    Konten", Klartextzeile in der Verwaltung, `CREATE_CONNECTOR_LIBRARY` als erster
    Einschränkungskandidat im Handbuch) und `CREATE_INTERNAL_GROUP` (ausgeliefert an niemanden);
-   `SYSTEM_ADMIN` hat alle implizit, `AUDITOR` keine; Vergabe und Entzug sind Governance-Ereignisse;
-   Fähigkeiten öffnen nie einen Inhalt; „Sicht als" und Vorfallsbereich bleiben Vollmachten (befristet,
-   personengebunden, mit Gegenstand) und werden nie Fähigkeiten; der Entzug wirkt ohne Neuanmeldung
-   unter der Single-Instance-Annahme (ADR-0021); ADR-0018, Entscheidung 6 ist abgelöst.
+   `SYSTEM_ADMIN` hat alle implizit, die Rolle `AUDITOR` verleiht keine; Vergabe und Entzug sind
+   Governance-Ereignisse; Fähigkeiten öffnen nie einen Inhalt; „Sicht als" und Vorfallsbereich bleiben
+   Vollmachten (befristet, personengebunden, mit Gegenstand) und werden nie Fähigkeiten; der Entzug
+   wirkt ohne Neuanmeldung unter der Single-Instance-Annahme (ADR-0021); ADR-0018, Entscheidung 6 ist
+   abgelöst; der Verwaltungszugriff auf Originale (#1828) bleibt offen und wird dort entschieden.
 6. **Lebenszyklus.** „Nachfolge offen" ist der abgeleitete Zustand „kein handlungsfähiger
-   Verantwortlicher" mit eingefrorener Reichweite bei unveränderter Nutzbarkeit; ein benannter
-   Feststellungslauf schreibt Erstfeststellung und Ende; die Liste der Systemverwaltung enthält alle
-   offenen Nachfolgen ab Tag eins mit Adressat und Alter, objektbezogen, mit Alterungsschwelle und
-   Sichtungsvermerk ohne Zwang; Adressat gestuft (wirksame Space-`ADMIN`s, Verantwortliche der
+   Verantwortlicher" (Person aktiv; Gruppe wirksam mit mindestens einem aktiven Mitglied) mit
+   eingefrorener Reichweite bei unveränderter Nutzbarkeit; ein benannter Feststellungslauf schreibt
+   Erstfeststellung und Ende; die Liste der Systemverwaltung enthält alle offenen Nachfolgen ab Tag
+   eins mit Adressat und Alter, objektbezogen in beide Richtungen (kein Einstieg, keine Sortierung,
+   keine Zählung nach früherem Eigentümer oder handelnder Person), mit Alterungsschwelle und
+   Sichtungsvermerk ohne Zwang; Adressat gestuft (handlungsfähige Space-`ADMIN`s, Verantwortliche der
    Eigentümergruppe, sonst Systemverwaltung); die Übernahme ist die Übertragungsoperation; der Zustand
-   ist am Objekt für Leseberechtigte gekennzeichnet, nicht in Suchtreffern; keine Frist, keine
-   Eskalation, keine Mail; eine Kontosperre wird nie abgelehnt; nur wirksame Gruppen sind neues
-   Grant-Ziel und Space-Mitglied; eine wirksame Gruppe zählt als Space-`ADMIN`; die Betriebsliste führt
-   zusätzlich „Freigaben ohne Empfänger" und „Gruppen ohne Wirkung".
-7. **Diagnose.** Das Rechteprofil bleibt eine Gruppe; nach #1815 wird es um einen optionalen
-   Space-Kontext erweitert, für den die Mindestgruppengröße für die Schnittmenge aus aktiven
-   Mitgliedern und Space-Zugang zum Zeitpunkt des Laufs gilt (sonst `403` mit Verweis auf den
-   Personenkontext); Profil-Läufe mit Space-Kontext werden protokolliert; die Mindestgruppengröße zählt
-   aktive Konten, ist ein anderes Maß als die der Nutzungstransparenz und hat eine erzwungene
-   Untergrenze; die Suchdiagnose bleibt `SYSTEM_ADMIN` vorbehalten, keine Fähigkeit öffnet sie;
-   Leitplanke (b) bleibt.
-8. **Rechtehistorie, Stichtagsauskunft, Aufbewahrung** (Abschnitt 9a). Audit verfällt, Historie bleibt;
-   historisiert werden mit `valid_from`/`valid_to` Asset-Grants, Gruppenmitgliedschaft,
-   Reichweitenfelder, Space-Mitgliedschaft, Eigentum, Fähigkeiten, Systemrolle und Kontozustand —
-   nicht Verantwortliche, Vollmachten und Nachfolgevorgänge; die Stichtagsauskunft ist eine Funktion des
-   `AUDITOR` mit Objekt-Einstieg ohne Vollmacht (begrenztes Zeitfenster, Seitenobergrenze) und
-   Personen-Einstieg nur mit Vier-Augen-Vollmacht nach dem Muster des Vorfallsbereichs; jeder Abruf
-   einschließlich abgewiesener ist ein Protokollereignis; die Historie erhält eine
-   Aufbewahrungshöchstdauer als Governance-Einstellung mit erzwungenen Grenzen, ohne die keine weitere
-   personenbezogene Historienquelle angeschlossen wird; der Namensschnappschuss ist nur mit ihr
+   ist am Objekt für Leseberechtigte mit Zustand und Adressat gekennzeichnet — ohne Datum, Eigentümer
+   und Grund, nicht in Suchtreffern; keine Frist, keine Eskalation, keine Mail; eine Kontosperre wird
+   nie wegen offener Eigentums- oder Zuständigkeitsfragen abgelehnt, einzige Ausnahme bleibt der
+   Schutz des letzten anmeldefähigen Systemverwalters (#1349); nur wirksame Gruppen sind neues
+   Grant-Ziel und Space-Mitglied, leere wirksame Gruppen mit Warnung; eine handlungsfähige Gruppe zählt
+   als Space-`ADMIN`; die Betriebsliste führt zusätzlich „Freigaben ohne Empfänger" und „Gruppen ohne
+   Wirkung".
+7. **Diagnose.** Das Rechteprofil bleibt eine Gruppe; nach #1815 wird es in einem **eigenen
+   Umsetzungs-Issue** um einen optionalen Space-Kontext erweitert, dessen Abnahmekriterien die fünf
+   Schutzpunkte einzeln führen — bis dahin nimmt `SearchDiagnosisRequest` keine Space-ID an; die
+   Mindestgruppengröße gilt dort für die Schnittmenge aus aktiven Mitgliedern und Space-Zugang auf
+   jedem Weg, zum Zeitpunkt des Laufs (sonst `403` mit Verweis auf den Personenkontext); Profil-Läufe
+   mit Space-Kontext werden protokolliert; die Mindestgruppengröße zählt aktive Konten, ist ein anderes
+   Maß als die der Nutzungstransparenz und hat eine erzwungene Untergrenze, die als Zahl im Handbuch
+   steht (Vorschlag 5); die Suchdiagnose bleibt `SYSTEM_ADMIN` vorbehalten, keine Fähigkeit öffnet
+   sie; Leitplanke (b) bleibt; `target_ref` trägt die Gruppen-ID, damit „kein Personenbezug im
+   Protokoll" eine Struktureigenschaft ist.
+8. **Rechtehistorie, Stichtagsauskunft, Aufbewahrung** (Abschnitt 9a; Option B von drei). Audit
+   verfällt, Historie bleibt; historisiert werden mit `valid_from`/`valid_to` Asset-Grants,
+   Gruppenmitgliedschaft, Reichweitenfelder, Space-Mitgliedschaft, Eigentum, Fähigkeiten, Systemrolle
+   und Kontozustand — nicht Verantwortliche, Vollmachten und Nachfolgevorgänge; die Personenspalten
+   der fünf neuen Tabellen sind `RESTRICT` wie die bestehenden, die Zahl der `RESTRICT`-Spalten (sieben)
+   ist das Maß der aufgeschobenen Löschschuld und steht im ADR; die Stichtagsauskunft ist eine Funktion
+   des `AUDITOR` mit Objekt-Einstieg ohne Vollmacht (genau ein benanntes Objekt je Abfrage, begrenztes
+   Zeitfenster, Seitenobergrenze) und Personen-Einstieg nur mit Vier-Augen-Vollmacht nach dem Muster
+   des Vorfallsbereichs; jeder Abruf einschließlich abgewiesener ist ein Protokollereignis; die
+   Kontozustandshistorie hat keinen zweiten Lesepfad; die Historie erhält eine Aufbewahrungshöchstdauer
+   als Governance-Einstellung mit erzwungenen Grenzen in einem eigenen Issue vor #1815, ohne die keine
+   weitere personenbezogene Historienquelle angeschlossen wird — bei Ablehnung werden #1815/#1819 mit
+   Historie ohne Höchstdauer, #1813/#1818 nur mit Audit geschnitten, ohne Personen-Einstieg,
+   Namensschnappschuss und Kontozustandshistorie; der Namensschnappschuss ist nur mit der Höchstdauer
    zulässig; Pseudonymisierung (#391/#395) ist Voraussetzung des Personen-Einstiegs und der
-   Kontolöschung.
-9. **Sichtbarkeit und Herleitung** (Abschnitt 9b). Wer einer Gruppe ein Recht gibt oder es verwaltet,
-   sieht ihre Mitgliederliste — ebenso ihre Verantwortlichen und `SYSTEM_ADMIN` (dessen Abruf ein
-   Audit-Ereignis ist); Rechtevergebende sehen Anbietergruppen und zur Verwendung freigegebene interne
-   Gruppen mit Zahl aktiver Konten („kleine Gruppe" unterhalb der Mindestgruppengröße), sonst nichts;
-   geschützte Gruppen (Kennzeichen durch die zuständige Stelle) sind nicht auffindbar, erscheinen in
-   fremden Listen ohne Namen, und der Grant-Geber sieht statt der Mitglieder die Verantwortlichen; jede
-   Person sieht ihre eigene Herleitung je Bibliothek und Space (Weg, Gruppe mit Herkunft und
-   Mechanismus, Zeitpunkt) ohne Vollmacht; Grants an Gruppen speichern die Mitgliederzahl bei Erteilung
-   als passives Zuwachssignal.
+   Kontolöschung, begründet damit, dass der Auswertungspfad mit dieser Entscheidung entsteht und durch
+   D1 bis D4 begrenzt wird.
+9. **Sichtbarkeit und Herleitung** (Abschnitt 9b; Option C von drei). Wer einer Gruppe ein Recht gibt
+   oder es verwaltet, sieht ihre Mitgliederliste — ebenso ihre Verantwortlichen und `SYSTEM_ADMIN`
+   (dessen Abruf ein Audit-Ereignis ist); Rechtevergebende sehen Anbietergruppen und zur Verwendung
+   freigegebene interne Gruppen mit Zahl aktiver Konten („kleine Gruppe" unterhalb der
+   Mindestgruppengröße), sonst nichts — eine Bestandsänderung gegenüber heute (jeder `MANAGER` an jede
+   Gruppe per ID), durchgesetzt in `requireGrantableGroup` bzw. seinem Nachfolger für jeden Weg, mit
+   Migration der Bestandsgruppen mit Wirkung als freigegeben; geschützte Gruppen (Kennzeichen durch
+   die Verantwortlichen, bei Anbietergruppen durch von der Systemverwaltung benannte Ansprechstellen
+   ohne Pflegerechte) sind nicht auffindbar, erscheinen in fremden Listen ohne Namen, der Grant-Geber
+   sieht statt der Mitglieder die Ansprechstelle, und die Herleitung zeigt Dritten bei ihnen keine
+   Gruppenableitung; jede Person sieht ihre eigene Herleitung je Bibliothek und Space (Weg, Gruppe mit
+   Herkunft und Mechanismus, Zeitpunkt) ohne Vollmacht; Grants an Gruppen speichern die Mitgliederzahl
+   bei Erteilung als passives Zuwachssignal, für beide Zahlen mit der „kleine Gruppe"-Unterdrückung und
+   ohne Signal bei geschützten Gruppen.
 10. **Übertragungsoperation** (Abschnitt 9c). Eine allgemeine, protokollierte Operation überträgt
-    Grants, Space-Mitgliedschaften, Eigentum und Verantwortung von einer Gruppe oder Person auf eine
-    wirksame Gruppe oder Person, mit Vorschau, Bestätigung, Audit und Historienschnitt mit gemeinsamer
-    Vorgangskennung; sie ist der Ausgang für Reorganisation, Anbieterablösung, Mechanismuswechsel,
-    Nachfolge und Abgabe der Verantwortung und wird eigenes Umsetzungs-Issue, von dem #1812, #1816 und
-    #1819 abhängen.
+    Grants, Space-Mitgliedschaften, Eigentum und Verantwortung von einer **Gruppe** auf eine wirksame
+    Gruppe oder Person, mit Vorschau (selbst ein Protokollereignis, auch bei Abbruch), Bestätigung,
+    Audit und Historienschnitt mit gemeinsamer Vorgangskennung; bei einer **Person** als Quelle ist der
+    Umfang auf Eigentum und Verantwortung beschränkt, Grants und Space-Mitgliedschaften sind weder
+    übertragbar noch aufzählbar, und die Objekte nennen den Vorgang, nicht die Person; sie ist der
+    Ausgang für Reorganisation, Anbieterablösung, Mechanismuswechsel, Nachfolge und Abgabe der
+    Verantwortung und wird eigenes Umsetzungs-Issue nach #1811 und #1815, von dem #1819 abhängt —
+    nicht #1812 und nicht #1816.
 11. **Migration und ihre Fehlerfälle** (Abschnitt 3.6). Waisen-Gruppen gelöschter Anbieter und
     `ORG_UNIT`-Gruppen ohne Standardanbieter werden zu internen Gruppen ohne Verantwortliche
     umgewandelt (Audit je Zeile, sofort in der Nachfolgeliste); der `dev`-Modus ohne Anbieterzeile wird
@@ -1300,16 +1488,23 @@ Dazu die übergreifenden Festlegungen: alles je Organisation (Abschnitt 9); Begr
 Vollmacht, Systemrolle und wirksame Gruppe (Abschnitt 0) in ADR, Oberfläche und Handbuch; die
 Typunabhängigkeit der Grants (#1811) als Vorgabe für #1726.
 
-**Folgen für die Umsetzungs-Issues:** Neu geschnitten werden die Übertragungsoperation (Entscheidung
-10) und die Historien-/Stichtagsentscheidung (Entscheidung 8, erweitert #1822 um Vollmacht,
-Zeitfenster, Abrufereignis und Höchstdauer). Erweitert werden #1812 (Migration, `source_path`, extern),
-#1813 (zwei Fähigkeiten, `ALL_ACCOUNTS`, Governance-Ereignis, Historie mit Zeitspanne), #1814
-(Freigabe zur Verwendung, Schutzkennzeichen, Abgabe, Benachrichtigung), #1815 (Historie,
-Mitgliederzahl bei Erteilung, wirksame Gruppe als `ADMIN`), #1816 (Plan-Lebenszyklus, Mechanismuskonflikt),
-#1817 (Keycloak-Festlegungen), #1818 (Schwelle, Rückholbarkeit, Kontozustandshistorie, Meldung an die
-Person), #1819 (Feststellungslauf, vollständige Liste, Betriebsliste, Kennzeichnung), #1820 (externe
-Anbieter, „kleine Gruppe", Herleitung), #1821 (Arbeitsliste je Anbieter, Klartextzeile der Fähigkeiten,
-Betriebsliste).
+**Folgen für die Umsetzungs-Issues und den Wellenplan.** Neu zu schneiden sind vier Issues:
+(a) **Aufbewahrungshöchstdauer der Rechtehistorie** (klein, Phase 2, vor #1815; Vorbedingung von
+#1813, #1815, #1818, #1819); (b) **Übertragungsoperation** (nach #1811 und #1815; #1819 hängt daran);
+(c) **Space-Kontext im Rechteprofil** (nach #1815; bis dahin keine Space-ID im Diagnose-Request);
+(d) die **Historien-/Stichtagsentscheidung** erweitert #1822 um Vollmacht, Ein-Objekt-Regel,
+Zeitfenster und Abrufereignis. Erweitert werden #1812 (Migration, `source_path`, extern; **kein**
+Ausweg aus dem `409` vor (b), im ADR benannt), #1813 (zwei Fähigkeiten, `ALL_ACCOUNTS`,
+Governance-Ereignis, Historie mit Zeitspanne), #1814 (Freigabe zur Verwendung mit Durchsetzung im
+Service, Schutzkennzeichen, Abgabe, Benachrichtigung), #1815 (Historie, Mitgliederzahl bei Erteilung,
+handlungsfähige Gruppe als `ADMIN`), #1816 (Plan-Lebenszyklus, Mechanismuskonflikt, `dev`-Modus), #1817
+(Keycloak-Festlegungen), #1818 (Schwelle, Rückholbarkeit, Kontozustandshistorie, Meldung an die
+Person), #1819 (Feststellungslauf, vollständige Liste in beide Richtungen, Betriebsliste,
+Kennzeichnung ohne Eigentümer und Datum; Übernahme herausgeschnitten nach (b)), #1820 (externe
+Anbieter, „kleine Gruppe", Herleitung ohne Gruppenableitung bei geschützten Gruppen, Durchsetzung auch
+für die Eingabe per ID), #1821 (Arbeitsliste je Anbieter, Klartextzeile der Fähigkeiten,
+Betriebsliste, Ansprechstellen an Anbietergruppen). Reihenfolge der Wellen: #1811 → (a) → #1812,
+#1813, #1815 → #1814, #1816, #1818, (b) → #1817, #1819, (c), #1822 → #1820, #1821, #1823, #1824.
 
 ---
 
@@ -1328,6 +1523,8 @@ Betriebsliste).
   kleinster Vorläufer, nicht ihr Ersatz.
 - **Die allgemeine Protokollpflicht für Profil-Läufe ohne Space-Kontext** (Abschnitt 8.2, Punkt 7).
 - **Die Rücknahme von Mitgliedschaften nach einem Vorfall** (Abschnitt 3.4): Handarbeit, im ADR benannt.
+- **Der Verwaltungszugriff auf Originale ohne Grant und ohne Protokoll** (#1828): im Papier als offener
+  Punkt unter „Verwalten ist nicht Lesen" (Abschnitt 2.1) genannt, dort entschieden.
 - **Anbieter je Organisation** (Abschnitt 9) — gehört zu #1442.
 - **Die Werte** für Intervall (6 Stunden), Schwelle (30 %), Mindestgruppengröße, Alterungsschwelle
   (12 Monate), Feststellungsintervall und Aufbewahrungshöchstdauer sind Vorgaben, keine Entscheidungen
@@ -1342,11 +1539,13 @@ Betriebsliste).
 
 ## 12. Stakeholder-Bewertung
 
-Die vier Bewertungen der ersten Fassung (Verfahren nach
-[`docs/AGENT-ORGANIZATION.md`](../AGENT-ORGANIZATION.md#stakeholder-review)) liegen vollständig als
-Berichte vor; hier stehen je Perspektive das Urteil je Empfehlung und die Antwort auf jede Auflage —
-übernommen, geändert zu …, oder zurückgewiesen, weil …. Eine stillschweigende Nichtübernahme gibt es
-nicht (Personalrat F4). Vier Befunde waren keine Meinungsfragen, sondern Widersprüche im Papier selbst;
+Die vier Bewertungen der ersten Fassung, der Code-Review der zweiten Fassung und die zweite Sichtung
+des Personalrats (Verfahren nach
+[`docs/AGENT-ORGANIZATION.md`](../AGENT-ORGANIZATION.md#stakeholder-review)) liegen **unverändert** in
+[`discussion-berechtigungsmodell-stakeholder.md`](discussion-berechtigungsmodell-stakeholder.md)
+(Präzedenz: `discussion-lokale-benutzerverwaltung-stakeholder.md` aus Epic #1529); hier stehen je
+Perspektive das Urteil je Empfehlung und die Antwort auf jede Auflage — übernommen, geändert zu …,
+oder zurückgewiesen, weil …. Eine stillschweigende Nichtübernahme gibt es nicht (Personalrat F4). Vier Befunde waren keine Meinungsfragen, sondern Widersprüche im Papier selbst;
 sie sind aufgelöst in Abschnitt 3.4 (deaktivierter Anbieter gegen 7.4), Abschnitt 8.2 (Space-Kontext
 gegen Mindestgruppengröße), Abschnitt 7.3 (Stufung ohne Zeitelement) und Abschnitt 3.6 (Migration).
 
@@ -1404,7 +1603,7 @@ weiteren Historienzeile. Die 28 Bedingungen A1–F4:
 | Empf. 2b: Hinweis beim Anlegen | **Übernommen** (Abschnitt 3.3). |
 | A1 Herleitung nennt Dritten nie den Gruppennamen | **Geändert** — zusätzlich sehen ihn `ADMIN`/Eigentümer eines Space in dessen Mitgliederliste, weil sie die Mitgliedschaft verwalten und nach der Regel in 9b ohnehin die Mitgliederliste der Gruppe sehen; die Space-Mitgliederliste ist heute schon nur ihnen zugänglich (`SpaceAccessPolicy`), die Prämisse „sichtbar für alle Space-Mitglieder" trifft nicht zu (Abschnitt 9b). |
 | A2 „kleine Gruppe" statt Zahl | **Übernommen** (Abschnitt 9b). |
-| A3 Geschützte Gruppen | **Übernommen, konkretisiert** — Kennzeichen durch die Verantwortlichen, nicht auffindbar, ohne Namen in fremden Listen, Grant-Geber sieht Verantwortliche statt Mitglieder (Abschnitt 9b). |
+| A3 Geschützte Gruppen | **Geändert** — A3 verlangte „in keiner fremden Mitglieder- oder Space-Liste"; das Papier führt sie dort als namenlose Zeile „geschützte Gruppe", weil ein Space-`ADMIN` sonst eine Mitgliedschaft nicht beenden könnte, die er nicht sieht. Übernommen: Kennzeichen durch die zuständige Stelle, nicht auffindbar, Grant-Geber sieht die Ansprechstelle statt der Mitglieder (Abschnitt 9b). Wer bei Anbietergruppen kennzeichnet, klärt die zweite Sichtung (Z2b, Abschnitt 12.6). |
 | A4 Mitglieder sehen Verantwortliche; Anzeige bei Aufnahme und Entfernung | **Übernommen** (Abschnitt 5.3, über ADR-0019 ohne Mail). |
 | A5 Hinweis beim Anlegen | **Übernommen** (Abschnitt 3.3). |
 | A6 Mitgliederlisten-Abruf durch `SYSTEM_ADMIN` als Audit-Ereignis | **Übernommen** (Abschnitt 9b). |
@@ -1475,6 +1674,50 @@ Auflage · 4 mit Auflage · 5 alltagstauglich · 6 mit Auflage · 7 nur indirekt
 | 6: Team merkt „Nachfolge offen" erst beim Scheitern | **Übernommen** — Kennzeichnung am Objekt mit Adressat (Abschnitt 7.3, Punkt 5); die abgelehnte Handlung nennt die Zuständigkeit. |
 | Vertiefung „warum sehe ich das" | **Übernommen** — eigene Herleitung je Bibliothek und Space, Entscheidung 9 (Abschnitt 9b). |
 
+### 12.5 Code-Review der zweiten Fassung (Runde 1)
+
+Sechs wichtige Befunde, sechs Nits, alle am Code bestätigt; die vier aufgelösten Widersprüche und die
+Vorentscheidungen wurden als durchgängig gehalten bestätigt.
+
+| Befund | Antwort |
+|---|---|
+| 1 „Deaktivieren ohne Bedingung" ist falsch (`setEnabled`-Wächter, `LocalAdminAvailabilityGuard`) | **Übernommen** — die drei heutigen Wächter bleiben, keine neuen (Abschnitt 3.4, Entscheidung 2). |
+| 2 „Kontosperre wird nie abgelehnt" zu absolut (#1349, `requireAnotherLoginCapableAdmin`) | **Übernommen** — nie wegen Eigentums-/Zuständigkeitsfragen; Schutz des letzten Systemverwalters bleibt die einzige Ausnahme (Abschnitt 7.4, Entscheidung 6). |
+| 3 „wirksame Gruppe" mit ≥ 1 aktivem Konto sperrt leere neue Gruppen, das Übertragungsziel und Keycloak-Abteilungen aus | **Übernommen** — Begriff geteilt: *wirksam* (erteilbar: nicht aufgelöst, Anbieter aktiviert; darf leer sein, mit Warnung und Eintrag in „Freigaben ohne Empfänger") und *handlungsfähig* (wirksam mit ≥ 1 aktivem Konto; Maß für Eigentum und Space-`ADMIN`) (Abschnitte 0, 3.4, 7.1, 7.4, 9c). |
+| 4 Entscheidung 9 unterschätzt den Ist-Stand; „nicht freigegeben" ist Bestandsänderung und muss in `requireGrantableGroup` durchgesetzt werden | **Übernommen** — Ist-Stand benannt, Optionen A/B/C, Empfehlung C mit Migration der Bestandsgruppen mit Wirkung, Durchsetzung im Service für jeden Weg inkl. ID-Eingabe, Bestandsänderung im ADR ausgesprochen (Abschnitt 9b, Entscheidung 9). |
+| 5 Originalberichte gehören ins Repository | **Übernommen** — `discussion-berechtigungsmodell-stakeholder.md` mit allen sechs Berichten unverändert, §12 verlinkt; A3 nach F4 als „geändert" ausgewiesen (Nit 4). |
+| 6 Entscheidung 8 (und 9) als Feststellung statt Wahl; Schnitt bei Ablehnung der Vorbedingung fehlt | **Übernommen** — Optionstabellen in 9a (A/B/C) und 9b (A/B/C); Höchstdauer als eigenes kleines Issue vor #1815; Ablehnungsschnitt ausformuliert (Abschnitt 9a, Entscheidung 8). |
+| Nit 1 `readableLibraryIdsForGroup` ohne Eigentumsterm | **Übernommen** (Abschnitt 8.1). |
+| Nit 2 „vier Schutzmechaniken" — der Bestätigungsweg ist nicht gebaut | **Übernommen** (Abschnitt 4.2). |
+| Nit 3 „`AUDITOR` besitzt keine Fähigkeit" | **Übernommen** — „die Rolle verleiht keine" (Abschnitt 6.2, Entscheidung 5). |
+| Nit 4 A3 ist „geändert" | **Übernommen** (Abschnitt 12.2). |
+| Nit 5 Abhängigkeiten der Übertragung aufgebläht (#1816), #1812 nur Freigabebedingung, #1819 real | **Übernommen** — schmaler Schnitt: nach #1811/#1815, #1819 hängt daran, #1812 und #1816 nicht; Übernahme aus #1819 herausgeschnitten (Abschnitt 9c, Entscheidung 10). |
+| Nit 6 Pfad `/api/v1/admin/groups`; heute `400` statt `409` beim Eigentümer; „vier Wörter"; §9-Zuschreibung; Keycloak-Beweiskette | **Übernommen** (Abschnitte 0, 4.3, 7.4, 9b). |
+| Vorbestehend: `LibraryAccessService`-Javadoc, ADR-0019 „Vorgeschlagen" obwohl gebaut | In Anhang B aufgenommen, für #1808. |
+
+### 12.6 Personalrat, zweite Sichtung
+
+**Votum: Empfehlung 7 ist mitbestimmungsfähig unter der Bedingung Z1.** B1 bis B6 sämtlich erfüllt;
+A1 und D7 mitgetragen (A1, weil die eigene Prämisse am Quelltext widerlegt war; D7 aus einem anderen
+Grund als angegeben); vier neue Befunde Z4 bis Z7 aus den Elementen der zweiten Fassung.
+
+| Nr. | Antwort |
+|---|---|
+| Z1 Space-Kontext als eigenes Issue mit den fünf Schutzpunkten; bis dahin keine Space-ID | **Übernommen** (Abschnitt 8.2, Entscheidung 7, Wellenplan (c)). |
+| B2-Präzisierung „Zugang zum Space auf jedem Weg" | **Übernommen** (Abschnitt 8.2, Punkt 4). |
+| B5-Nachsatz: Untergrenze als Zahl im Handbuch | **Übernommen** — Vorschlag 5, der ADR setzt den Wert (Abschnitt 8.2, Punkt 6). |
+| Z2 Herleitung zeigt bei geschützten Gruppen Dritten keine Gruppenableitung | **Übernommen** (Abschnitt 9b, Entscheidung 9). |
+| Z2b Wer kennzeichnet eine Anbietergruppe | **Übernommen, entschieden** — von der Systemverwaltung benannte Ansprechstellen (Mitglieder, ohne Pflegerechte) setzen und lösen das Kennzeichen; A3 ist damit auch für Verzeichnisgruppen eingelöst (Abschnitt 9b). |
+| Z3 D7-Begründung korrigieren; Objekt-Einstieg genau ein benanntes Objekt je Abfrage | **Übernommen** beides (Abschnitt 9a, Entscheidung 8). |
+| Z3b Je neuer Historientabelle `RESTRICT` oder pseudonymisiert ausweisen | **Übernommen, entschieden** — `RESTRICT` für alle fünf, Begründung und Zahl (sieben) im ADR (Abschnitt 9a). |
+| Z4 Person als Quelle: nur Eigentum und Verantwortung; Vorschau ist Protokollereignis auch bei Abbruch; Objekthinweis nennt den Vorgang, nicht die Person | **Übernommen** vollständig (Abschnitt 9c, Entscheidung 10). |
+| Z5 Kennzeichnung am Objekt: Zustand und Adressat, nicht Eigentümer, Grund oder Datum | **Übernommen** (Abschnitt 7.3, Punkt 5). |
+| Z6 A2-Unterdrückung für beide Zahlen des Zuwachssignals; kein Signal bei geschützten Gruppen | **Übernommen** (Abschnitt 9b). |
+| Z7 E1 auch für die handelnde Person in der Betriebsliste | **Übernommen** (Abschnitt 7.3, Punkt 6). |
+| Nachsatz 4.3b: Mindestgruppengröße der Vollmacht zum Zeitpunkt der Nutzung | **Übernommen** (Abschnitt 4.3b). |
+| Nachsatz Kontozustand: kein zweiter Lesepfad am Konto | **Übernommen** (Abschnitt 9a). |
+| Hinweis: die vier Begrenzungen der Mitgliederlisten-Ausweitung müssen alle im ADR stehen | **Übernommen** — Entscheidung 9 nennt Bedingung „solange die Gruppe dort ein Recht hält", Freigabe zur Verwendung, Vorgabe nicht freigegeben und die Ausnahme geschützter Gruppen ausdrücklich. |
+
 ## Anhang A: Quellen des Vergleichs
 
 Alle Quellen am 19.09.2026 abgerufen.
@@ -1534,3 +1777,6 @@ Für die Konzeptarbeit galt jeweils der Code.
 | 10 | `opaa-api` `GroupKind` (Javadoc) | Kurator-Zustimmung nach Gruppengröße | weder gebaut noch spezifiziert (#1808 kennt das) |
 | 11 | `hybrid-retrieval.md`, „Das Diagnosewerkzeug" | Rechteprofil als „eine Rolle mit der zugehörigen Bibliotheksmenge" | gebaut ist es als **Gruppe** (`SearchDiagnosisService.PermissionProfile`); das Wort „Rolle" widerspricht der Vorentscheidung „keine freien Rollen" und sollte „Gruppe" heißen |
 | 12 | `OidcProviderService#deleteProvider` | — | Löscht den Anbieter ohne Blick auf Gruppen, deren `external_id` seine ID trägt; die Spezifikation trifft dazu keine Aussage (Gegenstand von #1812) |
+| 13 | `LibraryAccessService` (Javadoc, Z. 182) | „rejectOrgUnit covers only ORG_UNIT" | `GroupService#rejectOrgUnit` weist auch `IDENTITY_PROVIDER` ab (Code-Review; geht in die Nachbesserung von #1826) |
+| 14 | ADR-0019 | Status „Vorgeschlagen" | Die Benachrichtigungsinfrastruktur (`notifications`) ist gebaut; Abschnitt 5.3 stützt sich darauf (Code-Review; für #1808) |
+| 15 | `access-control.md` „Verwalten ist nicht Lesen", `security-and-compliance.md` „Verwaltungsaktionen" | Übernahme ist ein protokollierter Verwaltungsakt; alles, was die Systemverwaltung tut, ist protokollpflichtig | `LibraryDocumentService#loadContent` lässt `SYSTEM_ADMIN` jedes Original ohne Grant und ohne Protokolleintrag laden (#1828, offen) |
