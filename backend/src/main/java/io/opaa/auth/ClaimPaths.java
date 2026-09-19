@@ -43,7 +43,11 @@ final class ClaimPaths {
     return List.copyOf(result);
   }
 
-  private static Object valueAt(Map<String, Object> claims, String path) {
+  /**
+   * The raw value at {@code path}, {@code null} when the path leads nowhere. Only a reader that has
+   * to tell "absent" from "present but empty" needs it - {@link TokenGroups} is the one.
+   */
+  static Object valueAt(Map<String, Object> claims, String path) {
     if (claims == null || path == null || path.isBlank()) {
       return null;
     }

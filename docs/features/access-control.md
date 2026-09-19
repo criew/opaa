@@ -890,6 +890,23 @@ Gruppenmitgliedschaft kann Zugriff auf ganze Bestände geben oder nehmen.
   gemeldet. Ein leeres Abgleichergebnis darf nie als „alle Gruppenmitgliedschaften entfallen" gedeutet
   werden.
 
+**Dieselbe Regel gilt für die Gruppen aus dem Token.** „Keine Auskunft" und „ausdrücklich keine
+Gruppen" sind zwei verschiedene Aussagen, und nur die zweite ist ein Entzug. Der Anmeldeweg
+unterscheidet deshalb drei Fälle:
+
+| Was das Token sagt | Was geschieht |
+|---|---|
+| Der Gruppen-Claim ist vorhanden und nennt Gruppen | Die Mitgliedschaften dieses Anbieters werden auf genau diese Gruppen gebracht — Zugang und Entzug wie bisher, je Änderung historisiert und protokolliert. |
+| Der Gruppen-Claim ist vorhanden und **leer** | Entzug aller Mitgliedschaften dieses Anbieters, historisiert und protokolliert. Der Anbieter bleibt die führende Quelle, und „ein Entzug wirkt bei der nächsten Anmeldung" bleibt gültig. |
+| Der Gruppen-Claim **fehlt**, ist falsch geformt, nennt nur unbrauchbare Werte oder wurde vom Anbieter durch einen Overage-Hinweis ersetzt | **Nichts ändert sich.** Der letzte bekannte Stand bleibt; Mitgliedschaften, Rechtehistorie und Nachweisprotokoll bleiben unberührt. Der Vorfall wird je Anbieter **und Ursache** gedrosselt gemeldet — ein Wechsel der Ursache ist eine eigene Meldung, der Overage eigens benannt. |
+
+Der dritte Fall ist kein Randfall: Wird am Identitätsanbieter der Gruppen-Mapper versehentlich
+entfernt oder umbenannt, trüge jede einzelne Anmeldung sonst einen stillen Rechteentzug — Konto für
+Konto, ohne dass je eine Schwelle überschritten würde, an der ein Lauf bestätigungspflichtig wird.
+Der **Overage-Hinweis** ist der Fall, in dem der Anbieter den Claim wegen seiner Größe durch einen
+Verweis ersetzt (Entra ID ab 200 Gruppen, `_claim_names` nach OpenID Connect 5.6.2); das Nachladen
+über die Schnittstelle des Anbieters ist nicht gebaut, gemeldet wird der Vorfall trotzdem.
+
 Die Synchronisation ändert nur die **Herkunft** von Gruppenmitgliedschaften, nicht das Rechtemodell. In
 der ersten Ausbaustufe werden Gruppen im System gepflegt.
 

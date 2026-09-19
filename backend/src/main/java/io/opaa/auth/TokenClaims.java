@@ -9,7 +9,12 @@ import org.springframework.security.oauth2.jwt.Jwt;
  * What a token says about its bearer, read through the provider's {@link OidcClaimMapping}
  * (ADR-0025, Entscheidung 4): the address, the display name (the configured claim, then {@code
  * preferred_username}, else none - a raw subject is no display name), and the role and group values
- * the provider's mapping points at - empty lists when the mapping names no such claim.
+ * the provider's mapping points at - an empty role list when the mapping names no roles claim.
+ *
+ * <p>{@link #groups()} is deliberately not a list: a token that carries no usable groups claim must
+ * not read like one that carries an empty claim (#1807), so the distinction is in {@link
+ * TokenGroups} and a mapping without a groups claim yields {@link
+ * TokenGroups.Reason#CLAIM_MISSING}.
  */
 public record TokenClaims(
     String subject,
@@ -17,7 +22,7 @@ public record TokenClaims(
     String email,
     String displayName,
     List<String> roles,
-    List<String> groups) {
+    TokenGroups groups) {
 
   static final String PREFERRED_USERNAME_CLAIM = "preferred_username";
 
@@ -33,8 +38,6 @@ public record TokenClaims(
         ClaimPaths.string(claims, mapping.emailClaim()),
         displayName,
         mapping.rolesClaim() == null ? List.of() : ClaimPaths.strings(claims, mapping.rolesClaim()),
-        mapping.groupsClaim() == null
-            ? List.of()
-            : ClaimPaths.strings(claims, mapping.groupsClaim()));
+        TokenGroups.read(claims, mapping.groupsClaim()));
   }
 }
