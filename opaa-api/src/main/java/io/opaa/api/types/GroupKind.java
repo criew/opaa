@@ -8,9 +8,9 @@ package io.opaa.api.types;
  *
  * <ul>
  *   <li>{@link #ORG_UNIT} - synchronised from the directory (department, division, agency), the
- *       only kind directory synchronisation creates, renames or dissolves. Carries a parent unit
- *       for display and aggregation, never for inherited membership: a group holds exactly the
- *       members the directory places in it. Not editable in the group management, and the only kind
+ *       only kind directory synchronisation creates, renames or dissolves. Carries the parent unit
+ *       the directory reports, never for inherited membership: a group holds exactly the members
+ *       the directory places in it. Not editable in the group management, and the only kind
  *       admissible as the scope of a "Sicht als" befugnis.
  *   <li>{@link #AD_HOC} - created in the group management (e.g. "Projektbeteiligte Phoenix"), the
  *       only kind editable there. Has no directory counterpart and therefore no {@code external_id}

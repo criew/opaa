@@ -35,9 +35,8 @@ import org.springframework.stereotype.Service;
  *
  * <p><b>Remaining window: an admin edit between fetch and apply.</b> The lock covers concurrent
  * synchronisation runs, not concurrent admin activity. A change made through the admin UI while a
- * run is in flight - e.g. an operator adding someone to an {@code AD_HOC} group, or (once #208
- * exists) a curator action on an {@code ORG_UNIT} group - is not part of the snapshot this run
- * diffs against and can be reverted by it.
+ * run is in flight - e.g. an operator adding someone to an {@code AD_HOC} group - is not part of
+ * the snapshot this run diffs against and can be reverted by it.
  */
 @Service
 public class DirectorySyncService {

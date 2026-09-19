@@ -183,12 +183,12 @@ public class LibraryAccessService {
    * reachable.</b> {@code library.getOwnerUserId()} is immutable and has no setter. {@code
    * library.getOwnerGroupId()} is immutable as well, but membership in that group is not: {@code
    * GroupController#addMember} is open to {@code SYSTEM_ADMIN}, {@code GroupService#addMember}
-   * knows no self-exclusion, and its {@code rejectOrgUnit} guard covers only {@code ORG_UNIT}
-   * groups. An administrator can therefore add themselves to a non-{@code ORG_UNIT} owning group in
-   * one step, become {@code namedOwner}, and validate their own self-issued {@code OWNER} grant.
-   * That path stays open by decision, not by omission: docs/features/hybrid-retrieval.md,
-   * Berechtigungs-Leitplanken (e). Closing it would be a change to group administration, not to
-   * this method.
+   * knows no self-exclusion, and its {@code rejectOrgUnit} guard refuses {@code ORG_UNIT} and
+   * {@code IDENTITY_PROVIDER} groups but leaves {@code AD_HOC} groups editable. An administrator
+   * can therefore add themselves to an {@code AD_HOC} owning group in one step, become {@code
+   * namedOwner}, and validate their own self-issued {@code OWNER} grant. That path stays open by
+   * decision, not by omission: docs/features/hybrid-retrieval.md, Berechtigungs-Leitplanken (e).
+   * Closing it would be a change to group administration, not to this method.
    */
   public boolean holdsIndependentOwnerRole(KnowledgeLibrary library, UUID userId) {
     Set<UUID> groupIds = membershipResolver.groupIdsForUser(userId);
