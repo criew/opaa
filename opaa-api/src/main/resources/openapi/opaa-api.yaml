@@ -1,7 +1,41 @@
 openapi: 3.0.3
 info:
   title: OPAA API
-  description: Open Project AI Assistant REST API
+  description: |
+    Open Project AI Assistant REST API.
+
+    # Status codes
+
+    **An operation declares what it decides itself. What the infrastructure decides the same way
+    for every operation is described here once and is not repeated per operation.**
+
+    The outcomes below can therefore reach any call without being declared at the operation that
+    produced them:
+
+    | Status | When |
+    | --- | --- |
+    | `400` | The request could not be read at all: an unparseable body, or a path or query parameter of the wrong type. An operation's own validation of its payload is a decision of that operation and *is* declared there. |
+    | `401` | The call carries no usable session - no bearer token, an expired or otherwise invalid one. Declared only where the operation itself refuses a credential it was handed: the sign-in, the refresh cookie, a webhook signature, the provider token of a handover. |
+    | `403` | The call is turned away before it reaches the operation at all: a local token that must change its password first (code `PASSWORD_CHANGE_REQUIRED`) reaches nothing outside `/api/v1/auth/local/`, and an external access token reaches nothing outside the paths its channel owns. An operation's own permission check *is* declared at that operation. |
+    | `404` | No such route. An operation's own "this resource is not there" is a decision of that operation and *is* declared there - including the deliberate `404` that hides an existing but inaccessible resource instead of confirming it with a `403`. |
+    | `405` | The method is not supported for this path. The answer names the supported ones in `Allow`. |
+    | `406` | Nothing this API writes is acceptable to the caller. **This answer carries no body** - a body could not be written for the very reason the request was refused. |
+    | `415` | The `Content-Type` of the request is not supported. |
+    | `500` | An unexpected internal error. |
+
+    Error answers carry an `ErrorResponse`, whether they are declared at an operation or listed
+    above. Two do not: the `406`, and *one* of the refusals behind the `401` - the resource
+    server's own, which states its reason in `WWW-Authenticate` instead of in a body. The other
+    two do carry one: an access token refused **anywhere** - the external-access chain claims every
+    call that presents one, wherever it is aimed - is answered with `WWW-Authenticate` **and** an
+    `ErrorResponse`, and a call that reaches a handler without any caller identity with the body
+    alone. Independently of all this, a caller whose `Accept` admits nothing
+    this API writes is answered without a body whatever went wrong.
+
+    `429` is deliberately absent from the list: the rate limits are per endpoint, not global. It is
+    declared at exactly those operations that have a budget of their own. Its answer carries
+    `Retry-After` **where the waiting time is known** - a refusal from a concurrency ceiling rather
+    than from a time window has none to name.
   version: 0.1.0
   license:
     name: AGPL-3.0
@@ -44,10 +78,18 @@ paths:
                 $ref: "#/components/schemas/QueryResponse"
         "400":
           $ref: "#/components/responses/ValidationError"
+        "403":
+          description: >
+            The author of the named chat is no longer a member of its space (#525): querying
+            is chatting, so the turn is refused where merely reading the chat is not.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "409":
           $ref: "#/components/responses/Conflict"
-        "500":
-          $ref: "#/components/responses/InternalError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
   /api/v1/search/metadata-filter-options:
     get:
@@ -86,8 +128,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/MetadataFilterOptionsResponse"
-        "500":
-          $ref: "#/components/responses/InternalError"
 
   /api/v1/search:
     post:
@@ -118,8 +158,6 @@ paths:
           $ref: "#/components/responses/ValidationError"
         "429":
           $ref: "#/components/responses/TooManyRequests"
-        "500":
-          $ref: "#/components/responses/InternalError"
 
   /api/v1/search/libraries:
     get:
@@ -142,8 +180,6 @@ paths:
                   $ref: "#/components/schemas/SearchableLibrary"
         "429":
           $ref: "#/components/responses/TooManyRequests"
-        "500":
-          $ref: "#/components/responses/InternalError"
 
   /api/v1/search/hits/{hitId}:
     get:
@@ -179,8 +215,6 @@ paths:
           $ref: "#/components/responses/NotFound"
         "429":
           $ref: "#/components/responses/TooManyRequests"
-        "500":
-          $ref: "#/components/responses/InternalError"
 
   /api/v1/auth/config:
     get:
@@ -207,8 +241,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/UserInfoResponse"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
 
   /api/v1/auth/local/login:
     post:
@@ -240,6 +272,8 @@ paths:
           $ref: "#/components/responses/ValidationError"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
   /api/v1/auth/local/refresh:
     post:
@@ -278,6 +312,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
   /api/v1/auth/local/logout:
     post:
@@ -298,12 +334,6 @@ paths:
       responses:
         "204":
           description: Signed out; the cookie is cleared
-        "401":
-          description: An expired or otherwise invalid Bearer token accompanied the call
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
         "403":
           description: CSRF double-submit token missing or wrong (code CSRF_TOKEN_MISSING)
           content:
@@ -340,10 +370,10 @@ paths:
                 $ref: "#/components/schemas/LocalTokenResponse"
         "400":
           $ref: "#/components/responses/ValidationError"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
         "409":
           $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
   /api/v1/auth/local/set-password:
     post:
@@ -626,8 +656,6 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/GroupListResponse"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
 
   /api/v1/users:
     get:
@@ -672,8 +700,6 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/UserSummaryResponse"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
 
   /api/v1/admin/users:
     get:
@@ -2624,8 +2650,6 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/SpaceListResponse"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
 
     post:
       operationId: createSpace
@@ -3294,8 +3318,6 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/LibraryListResponse"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
 
     post:
       operationId: createLibrary
@@ -3371,12 +3393,12 @@ paths:
                 $ref: "#/components/schemas/SourceConnectionTestResponse"
         "400":
           $ref: "#/components/responses/ValidationError"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
   /api/v1/libraries/confluence/spaces:
     post:
@@ -3410,12 +3432,12 @@ paths:
                 $ref: "#/components/schemas/ConfluenceSpaceListResponse"
         "400":
           $ref: "#/components/responses/ValidationError"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
   /api/v1/libraries/s3/buckets:
     post:
@@ -3449,12 +3471,12 @@ paths:
                 $ref: "#/components/schemas/S3BucketListResponse"
         "400":
           $ref: "#/components/responses/ValidationError"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
   /api/v1/libraries/{libraryId}:
     parameters:
@@ -5010,6 +5032,12 @@ paths:
           description: Accepted and queued (or nothing to queue)
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "413":
+          description: Body larger than 256 KiB
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "429":
           description: Too many requests
           content:
@@ -5116,6 +5144,10 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "413":
           description: Body larger than 256 KiB
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "429":
           description: Too many requests
           content:
@@ -5176,8 +5208,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
-        "500":
-          $ref: "#/components/responses/InternalError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
         "503":
           $ref: "#/components/responses/ServiceUnavailable"
 
@@ -5205,8 +5237,6 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
-        "500":
-          $ref: "#/components/responses/InternalError"
 
   /api/v1/libraries/{libraryId}/indexing/runs:
     parameters:
@@ -5243,8 +5273,6 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
-        "500":
-          $ref: "#/components/responses/InternalError"
 
   /api/v1/libraries/{libraryId}/spaces:
     parameters:
@@ -6316,8 +6344,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ExternalAccessChannelInfoResponse"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
 
   /api/v1/external-access/tokens:
     get:
@@ -6334,8 +6360,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/OwnExternalAccessTokenListResponse"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
     post:
       operationId: createExternalAccessToken
       tags: [external-access]
@@ -6360,8 +6384,6 @@ paths:
                 $ref: "#/components/schemas/CreatedExternalAccessTokenResponse"
         "400":
           $ref: "#/components/responses/ValidationError"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
 
@@ -6382,8 +6404,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/EligibleExternalAccessLibraryListResponse"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
 
   /api/v1/external-access/tokens/{tokenId}:
     delete:
@@ -6403,8 +6423,6 @@ paths:
       responses:
         "204":
           description: Revoked
-        "401":
-          $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
 
@@ -15293,12 +15311,6 @@ components:
   responses:
     ValidationError:
       description: Validation error
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/ErrorResponse"
-    InternalError:
-      description: Internal server error
       content:
         application/json:
           schema:
