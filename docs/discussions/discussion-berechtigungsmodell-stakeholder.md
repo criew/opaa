@@ -1510,6 +1510,10 @@ Alle Befunde am Code auf origin/main bestätigt. Gut: die vier Widersprüche sin
 
 ## Teil 6: Personalrat, zweite Sichtung (zweite Fassung)
 
+> Anmerkung: Der im Bericht genannte absolute Pfad ist der Arbeitsbaum der Sitzung; gemeint ist
+> `docs/discussions/discussion-berechtigungsmodell-gruppen-und-faehigkeiten.md` in der zweiten
+> Fassung. Der Berichtstext ist unverändert.
+
 # Zweite Bewertung aus Sicht des Personalrats
 
 **Gegenstand:** `/home/devtank42/projects/opaa-1809/docs/discussions/discussion-berechtigungsmodell-gruppen-und-faehigkeiten.md`
