@@ -119,6 +119,23 @@ class GlobalExceptionHandlerBodyFunnelTest {
         .containsExactly(SOURCE.getFileName().toString());
   }
 
+  /**
+   * A selector on the advice would take the branches above off the paths they matter most on
+   * (#1786): {@code HandlerTypePredicate} rejects the {@code null} handler type every exception
+   * raised before a handler method is resolved carries, so the unmapped-path 404 (#456) and the 405
+   * with its {@code Allow} header would answer from Spring Boot's own error page instead - in
+   * English, naming the requested path, measured rather than assumed.
+   */
+  @Test
+  void theAdviceIsDeclaredWithoutASelector() throws IOException {
+    List<String> declarations =
+        readFile(SOURCE).lines().filter(line -> line.startsWith("@RestControllerAdvice")).toList();
+
+    assertThat(declarations)
+        .as("narrowing the advice silently drops every branch reached without a handler method")
+        .containsExactly("@RestControllerAdvice");
+  }
+
   /** A member of the guarded class: its name, its code lines, and whether it is a branch. */
   private record Member(String name, boolean isExceptionHandler, List<String> code) {}
 

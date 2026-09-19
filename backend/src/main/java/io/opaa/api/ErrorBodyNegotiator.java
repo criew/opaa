@@ -14,12 +14,13 @@ import org.springframework.http.MediaType;
  * header (#1780): the same compatibility test {@code AbstractMessageConverterMethodProcessor} runs,
  * against the types the Jackson converter writes for the envelope.
  *
- * <p>Pre-check and writer agree while two conditions hold - no other registered converter writes
+ * <p>Pre-check and writer agree while one condition holds - no other registered converter writes
  * {@link ErrorResponse} ({@code Jaxb2RootElementHttpMessageConverter} is registered and declines
- * only for want of XML annotations on the generated DTO), and the matched mapping declares no
- * narrower {@code produces=}. No mapping in {@code io.opaa} does. Actuator's {@code
- * /actuator/prometheus} does, and since a {@code @RestControllerAdvice} without a selector covers
- * its mappings too, that is the one place where the two would part ways.
+ * only for want of XML annotations on the generated DTO). A {@code produces=} on the matched
+ * mapping does <em>not</em> enter into it, {@code /actuator/prometheus} included (#1786): {@code
+ * DispatcherServlet#processHandlerException} removes the producible media types before any
+ * exception resolver runs, so the envelope is negotiated against the converters either way. {@code
+ * GlobalExceptionHandlerProducibleTypesTest} holds that.
  */
 class ErrorBodyNegotiator {
 

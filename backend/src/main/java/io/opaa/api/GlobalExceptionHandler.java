@@ -51,6 +51,15 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
+/**
+ * <b>Declared without a selector on purpose (#1786).</b> Any selector - {@code basePackages =
+ * "io.opaa"} included - makes Spring's {@code HandlerTypePredicate} reject the {@code null} handler
+ * type of every exception raised before a handler method is resolved: the unmapped-path 404 (#456)
+ * and the 405 with its {@code Allow} header would leave this class for Spring Boot's own error
+ * page, English and naming the requested path. The Actuator mappings it therefore covers as well
+ * need no narrowing: their error bodies are negotiated like any other ({@link
+ * ErrorBodyNegotiator}).
+ */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -363,15 +372,15 @@ public class GlobalExceptionHandler {
    * is a bodyless 406 either way - what {@link #handleGenericException} added was a stacktrace per
    * request, raisable without a session by anyone sending {@code Accept: application/xml}.
    *
-   * <p><b>The one branch that does not go through {@link #respond} (#1780).</b> Since that method
-   * exists, an {@link ErrorResponse} here would no longer bring the stacktrace back - it would be
-   * dropped just the same, because every 406 reachable through {@code io.opaa} arises from an
-   * {@code Accept} that excludes the envelope as well (no mapping there declares {@code produces=},
-   * and both binary endpoints preset a concrete {@code Content-Type}, skipping negotiation; for the
-   * Actuator mappings this advice also covers, see {@link ErrorBodyNegotiator}). Routing this
-   * branch through {@link #respond} would therefore change no answer and only add a German wording
-   * no caller can receive. {@code GlobalExceptionHandlerNotAcceptableTest} taps the ROOT logger,
-   * not this class's, because the stacktrace in question came from a Spring logger.
+   * <p><b>The one branch that does not go through {@link #respond} (#1780).</b> A 406 is answered
+   * with the status alone, for either kind of caller this advice serves. Through a mapping in
+   * {@code io.opaa} the {@code Accept} that caused it excludes the envelope as well - no mapping
+   * there declares {@code produces=}, and both binary endpoints preset a concrete {@code
+   * Content-Type}, skipping negotiation - so {@link #respond} would drop the body regardless. For
+   * the Actuator mappings this advice also covers, a body would be writable (#1786): a metrics
+   * scraper is sent the status, not this application's German envelope. {@code
+   * GlobalExceptionHandlerNotAcceptableTest} taps the ROOT logger, not this class's, because the
+   * stacktrace in question came from a Spring logger.
    */
   @ExceptionHandler(HttpMediaTypeNotAcceptableException.class)
   public ResponseEntity<ErrorResponse> handleHttpMediaTypeNotAcceptableException(
