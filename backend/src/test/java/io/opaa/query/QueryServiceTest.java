@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
@@ -62,6 +63,7 @@ import io.opaa.query.retrieval.search.FullTextSearchStage;
 import io.opaa.query.retrieval.search.QueryDecompositionService;
 import io.opaa.query.retrieval.search.SubQueryDecompositionStage;
 import io.opaa.query.retrieval.search.VectorSearchStage;
+import io.opaa.query.spike.SpikeToolLoopQueryHandler;
 import java.lang.reflect.Method;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -91,6 +93,7 @@ import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.transaction.annotation.Transactional;
 
 @ExtendWith(MockitoExtension.class)
@@ -127,6 +130,18 @@ class QueryServiceTest {
    * tests can never run a different stage order than the application does.
    */
   private QueryService newQueryService(QueryProperties queryProperties, ChatMemory memory) {
+    return newQueryService(queryProperties, memory, spikeProvider(null));
+  }
+
+  /**
+   * #1789: {@code spikeHandler} stands in for the {@code opaa.spike.tool-loop.enabled}-gated bean -
+   * {@code null} is the switched-off state every other test in this class runs under, matching
+   * production without the property set.
+   */
+  private QueryService newQueryService(
+      QueryProperties queryProperties,
+      ChatMemory memory,
+      ObjectProvider<SpikeToolLoopQueryHandler> spikeHandlerProvider) {
     RetrievalPipeline pipeline =
         new QueryConfiguration()
             .retrievalPipeline(
@@ -164,7 +179,27 @@ class QueryServiceTest {
         chatNoteService,
         chatNoteExtractionService,
         new QueryMetrics(new SimpleMeterRegistry()),
-        mock(MetadataFilterValidator.class));
+        mock(MetadataFilterValidator.class),
+        spikeHandlerProvider);
+  }
+
+  /**
+   * A bare {@link ObjectProvider} stand-in, since Mockito cannot mock the interface's own generic
+   * default methods reliably across the {@code T} type parameter here.
+   */
+  private static ObjectProvider<SpikeToolLoopQueryHandler> spikeProvider(
+      SpikeToolLoopQueryHandler handler) {
+    return new ObjectProvider<>() {
+      @Override
+      public SpikeToolLoopQueryHandler getObject() {
+        return handler;
+      }
+
+      @Override
+      public SpikeToolLoopQueryHandler getIfAvailable() {
+        return handler;
+      }
+    };
   }
 
   /**
@@ -197,6 +232,86 @@ class QueryServiceTest {
     // #525 default: no chatId given (or it does not resolve to a chat the caller authored) runs
     // the query ephemerally, exactly as before persisted chats existed.
     lenient().when(chatService.findOwnedChat(any(), any())).thenReturn(Optional.empty());
+  }
+
+  /**
+   * #1789 acceptance criterion: without the switch, a {@code "@test "} question is not
+   * special-cased at all - it reaches the ordinary retrieval/answer path with the prefix still
+   * attached, byte for byte like any other question.
+   */
+  @Test
+  void queryRunsAnOrdinaryTestPrefixedQuestionUnchangedWhenTheSpikeSwitchIsOff() {
+    when(chatMemory.get(any())).thenReturn(List.of());
+    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+    when(answerGenerationService.generateAnswer(
+            eq("@test Frage"), any(), any(), any(), anyBoolean()))
+        .thenReturn(chatResponse);
+
+    QueryResult response = queryService.query("@test Frage", null, caller, true, List.of());
+
+    assertThat(response.answer()).isEqualTo("Answer");
+    verify(answerGenerationService)
+        .generateAnswer(eq("@test Frage"), any(), any(), any(), anyBoolean());
+  }
+
+  /**
+   * #1789: once the switch is on (the handler bean present), a question the handler declines (no
+   * {@code "@test "} prefix) still reaches the ordinary path unmodified - the weiche in {@code
+   * QueryService#query} only short-circuits on a present {@link Optional}.
+   */
+  @Test
+  void queryFallsThroughToTheOrdinaryPathWhenTheSpikeHandlerDeclines() {
+    SpikeToolLoopQueryHandler spikeHandler = mock(SpikeToolLoopQueryHandler.class);
+    when(spikeHandler.handle(any(), any(), any(), any(), any(), any(), any(), anyLong()))
+        .thenReturn(Optional.empty());
+    QueryService serviceWithSpikeEnabled =
+        newQueryService(
+            new QueryProperties(8, 25, 1.0, 0.3, true, 3, 2, false, 50, 20, 2),
+            chatMemory,
+            spikeProvider(spikeHandler));
+    when(chatMemory.get(any())).thenReturn(List.of());
+    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
+        .thenReturn(chatResponse);
+
+    QueryResult response = serviceWithSpikeEnabled.query("Question", null, caller, true, List.of());
+
+    assertThat(response.answer()).isEqualTo("Answer");
+    verify(answerGenerationService).generateAnswer(any(), any(), any(), any(), anyBoolean());
+  }
+
+  /**
+   * #1789: once the handler accepts (returns a present {@link Optional}), {@code QueryService}
+   * hands its result straight back and never touches the ordinary retrieval/answer path - the
+   * handler ran the whole turn itself.
+   */
+  @Test
+  void queryReturnsTheSpikeHandlersResultUnmodifiedWhenItAccepts() {
+    SpikeToolLoopQueryHandler spikeHandler = mock(SpikeToolLoopQueryHandler.class);
+    QueryResult spikeResult =
+        new QueryResult(
+            "Spike-Antwort",
+            List.of(),
+            new QueryOutcome("gpt-4o", 10, 5L, false, false, List.of()),
+            UUID.randomUUID(),
+            null,
+            null);
+    when(spikeHandler.handle(
+            eq("@test Frage"), any(), any(), any(), any(), any(), any(), anyLong()))
+        .thenReturn(Optional.of(spikeResult));
+    QueryService serviceWithSpikeEnabled =
+        newQueryService(
+            new QueryProperties(8, 25, 1.0, 0.3, true, 3, 2, false, 50, 20, 2),
+            chatMemory,
+            spikeProvider(spikeHandler));
+
+    QueryResult response =
+        serviceWithSpikeEnabled.query("@test Frage", null, caller, true, List.of());
+
+    assertThat(response).isSameAs(spikeResult);
+    verifyNoInteractions(vectorStore, answerGenerationService);
   }
 
   /**

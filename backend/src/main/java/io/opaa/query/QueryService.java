@@ -21,6 +21,7 @@ import io.opaa.query.citation.CitationValidator;
 import io.opaa.query.retrieval.RetrievalPipeline;
 import io.opaa.query.retrieval.RetrievalPipelineResult;
 import io.opaa.query.retrieval.search.SubQueryDecompositionStage;
+import io.opaa.query.spike.SpikeToolLoopQueryHandler;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -32,6 +33,7 @@ import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 
 /**
@@ -69,6 +71,7 @@ public class QueryService {
   private final ChatNoteExtractionService chatNoteExtractionService;
   private final QueryMetrics metrics;
   private final MetadataFilterValidator metadataFilterValidator;
+  private final ObjectProvider<SpikeToolLoopQueryHandler> spikeToolLoopQueryHandler;
 
   public QueryService(
       KnowledgeRetrieval knowledgeRetrieval,
@@ -84,7 +87,8 @@ public class QueryService {
       ChatNoteService chatNoteService,
       ChatNoteExtractionService chatNoteExtractionService,
       QueryMetrics metrics,
-      MetadataFilterValidator metadataFilterValidator) {
+      MetadataFilterValidator metadataFilterValidator,
+      ObjectProvider<SpikeToolLoopQueryHandler> spikeToolLoopQueryHandler) {
     this.knowledgeRetrieval = knowledgeRetrieval;
     this.retrievalContextFactory = retrievalContextFactory;
     this.searchScopeResolver = searchScopeResolver;
@@ -99,6 +103,7 @@ public class QueryService {
     this.chatNoteExtractionService = chatNoteExtractionService;
     this.metrics = metrics;
     this.metadataFilterValidator = metadataFilterValidator;
+    this.spikeToolLoopQueryHandler = spikeToolLoopQueryHandler;
   }
 
   /**
@@ -198,6 +203,29 @@ public class QueryService {
                                 requestedMetadataFilter == null
                                     ? MetadataFilter.NONE
                                     : requestedMetadataFilter));
+
+                // SPIKE (#1789), behind opaa.spike.tool-loop.enabled: a "@test " question runs a
+                // model-driven tool-calling loop instead of everything below, with exactly the
+                // rights and scope just resolved above. The bean only exists while the switch is
+                // set, and it hands back an empty Optional for any other question - both are why
+                // this is the only place #1789 touches this method.
+                SpikeToolLoopQueryHandler spikeHandler = spikeToolLoopQueryHandler.getIfAvailable();
+                if (spikeHandler != null) {
+                  Optional<QueryResult> spikeResult =
+                      spikeHandler.handle(
+                          question,
+                          chat,
+                          effectiveChatId,
+                          conversationKey,
+                          notePoints,
+                          searchScope,
+                          metadataFilter,
+                          startTime);
+                  if (spikeResult.isPresent()) {
+                    return spikeResult.get();
+                  }
+                }
+
                 boolean effectiveUseKnowledge = chat.map(Chat::isUseKnowledge).orElse(useKnowledge);
                 boolean answeredWithoutKnowledge = !effectiveUseKnowledge && searchScope.isEmpty();
                 // Distinct from answeredWithoutKnowledge above: the chat's space is curated
