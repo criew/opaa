@@ -146,6 +146,20 @@ künftige Kontolöschungsfunktion widerruft betroffene Vollmachten ausdrücklich
 Kaskade zu verlassen — dann entsteht je Vollmacht ein Widerrufsereignis, und die Kaskade greift nur
 noch als Netz.
 
+**Auflage eingelöst (19.09.2026, #1697).** Die Kontolöschung (`LocalUserService#delete`) widerruft
+vor dem Löschen ausdrücklich die Vollmachten, die das Konto erteilt hat und die noch gelten — je
+Vollmacht ein `DIAGNOSTIC_IMPERSONATION_REVOKED` in derselben Form wie ein regulärer Widerruf, in
+derselben Transaktion wie die Löschung. Die Kaskade ist damit nur noch das Netz dahinter. Drei
+Gruppen bleiben bewusst ohne eigenes Ereignis: eine bereits widerrufene Vollmacht trägt ihres schon,
+eine abgelaufene bewirkt nichts mehr, und für die Vollmachten, deren **Inhaber das gelöschte Konto
+selbst ist**, ist der ereignislose Wegfall genau die Entscheidung der Tabelle oben zu
+`holder_user_id` — mit dem Konto entfällt ihr Gegenstand.
+
+Zugleich ist die Sperre entfallen, die die Anwendungsschicht bis dahin über `granted_by_user_id` und
+`revoked_by_user_id` gelegt hatte: Die Kontolöschung zählte beide Spalten als Löschhindernis und
+hätte die Entscheidung dieses Nachtrags damit weiterhin leerlaufen lassen (Befund im Review zu
+#1693).
+
 **Was nach einer Kontolöschung belegbar bleibt.** Erteilung und Widerruf schreiben je einen Eintrag ins
 `audit_log` (`DIAGNOSTIC_IMPERSONATION_GRANTED`/`_REVOKED`); dessen `actor_ref`/`subject_ref` sind
 `varchar` ohne Fremdschlüssel und überleben die Löschung. Der **Bestandssatz** überlebt sie bewusst

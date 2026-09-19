@@ -29,4 +29,21 @@ public interface DiagnosticImpersonationGrantRepository
       @Param("organizationId") UUID organizationId,
       @Param("holderUserId") UUID holderUserId,
       @Param("at") Instant at);
+
+  /**
+   * The grants {@code issuerUserId} handed out that still confer something at {@code at} and are
+   * held by somebody else - what a deletion of that account has to revoke before the schema's
+   * cascade takes the rows with it (ADR-0016, Nachtrag). Three exclusions, each for its own reason:
+   * a revoked grant already carries its revocation event, a grant whose window has run out confers
+   * nothing any more, and a grant the deleted account holds itself loses its Gegenstand with the
+   * account - the cascade is the decided outcome for those.
+   */
+  @Query(
+      "SELECT g FROM DiagnosticImpersonationGrant g WHERE g.organizationId = :organizationId"
+          + " AND g.grantedByUserId = :issuerUserId AND g.holderUserId <> :issuerUserId"
+          + " AND g.revokedAt IS NULL AND g.validUntil > :at")
+  List<DiagnosticImpersonationGrant> findUnspentIssuedBy(
+      @Param("organizationId") UUID organizationId,
+      @Param("issuerUserId") UUID issuerUserId,
+      @Param("at") Instant at);
 }

@@ -410,11 +410,16 @@ gesendet) oder mit **erzeugtem Passwort** (einmalig in der Antwort, Wechsel mit 
 `LOCAL_USER_PASSWORD_GENERATED`) — beides beendet alle Sitzungen. **Löschen** ist die Ausnahme:
 nur ein Konto, das nichts referenziert — keine Bibliothek, kein Space außer dem persönlichen, kein
 Chat und kein Eintrag in den Rechte- und Nachweisbeständen mit Nutzerbezug (Gruppenhistorie,
-Grant-Historie, Grants, Space-Zuordnungen, Klärungsvorgänge, Diagnosefreigaben) —, praktisch also
+Grant-Historie, Grants, Space-Zuordnungen, Klärungsvorgänge) —, praktisch also
 ein nie benutztes Konto; sonst 409 `ACCOUNT_OWNS_CONTENT` mit dem Rat zu sperren (die blockierenden
 Tabellen stehen nur im Anwendungslog), nie das Notanker-Konto (409 `BOOTSTRAP_ACCOUNT`). Der
 persönliche Space wird als `SPACE_DELETED` protokolliert mitgelöscht, Zugangsdaten, Tokens und die
-Pseudonymzuordnung gehen mit, das Protokoll behält seine pseudonymen Zeilen (`LOCAL_USER_DELETED`). Ein `PATCH` mit einem Ablaufdatum in der Vergangenheit lässt das Konto sofort ablaufen (beim
+Pseudonymzuordnung gehen mit, das Protokoll behält seine pseudonymen Zeilen (`LOCAL_USER_DELETED`).
+Die **Diagnose-Vollmachten** sperren nicht: Alle ihre Personenspalten kaskadieren (ADR-0016,
+Nachtrag), und vor dem Löschen widerruft OPAA die vom Konto erteilten, noch gültigen Vollmachten
+weiterbestehender Inhaber ausdrücklich — je Vollmacht ein `DIAGNOSTIC_IMPERSONATION_REVOKED` in der
+Form eines regulären Widerrufs, in derselben Transaktion; die übrigen Zeilen gehen ohne eigenes
+Ereignis mit der Kaskade. Ein `PATCH` mit einem Ablaufdatum in der Vergangenheit lässt das Konto sofort ablaufen (beim
 Anlegen ist ein vergangenes Datum ein 400). **Einstellungen:** `enabled` schaltet die
 `LOCAL`-Zeile über denselben Pfad wie die Anbieter-API (die Antwort nennt beim Abschalten die Zahl der
 beendeten Sitzungen), die übrigen Werte liegen in `local_auth_settings` mit den Grenzen aus ADR-0033

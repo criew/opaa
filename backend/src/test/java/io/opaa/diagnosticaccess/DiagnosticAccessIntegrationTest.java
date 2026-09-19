@@ -36,6 +36,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.IllegalTransactionStateException;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
@@ -148,6 +149,24 @@ class DiagnosticAccessIntegrationTest {
               assertThat(stored.isActiveAt(from.plus(1, ChronoUnit.DAYS))).isTrue();
               assertThat(stored.isActiveAt(from.plus(31, ChronoUnit.DAYS))).isFalse();
             });
+  }
+
+  /**
+   * The deletion path's revocation is only true if the deletion it belongs to commits, so {@code
+   * Propagation.MANDATORY} refuses a call that would open a transaction of its own - what keeps a
+   * later caller from revoking beside a deletion instead of inside it. The second half proves the
+   * refusal is the propagation's and not some other failure of the same call.
+   */
+  @Test
+  void theDeletionPathsRevocationRefusesToRunOutsideTheCallersTransaction() {
+    UUID deletedAccountId = persistUser("issuer").getId();
+
+    assertThatThrownBy(() -> grantService.revokeGrantsIssuedBy(admin, deletedAccountId))
+        .isInstanceOf(IllegalTransactionStateException.class);
+    List<DiagnosticImpersonationGrant> insideATransaction =
+        transactionTemplate.execute(
+            status -> grantService.revokeGrantsIssuedBy(admin, deletedAccountId));
+    assertThat(insideATransaction).isEmpty();
   }
 
   @Test

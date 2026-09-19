@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -119,6 +120,33 @@ public class DiagnosticImpersonationGrantService {
     DiagnosticImpersonationGrant saved = grantRepository.save(grant);
     recordGrantEvent(actor, saved, AuditEventType.DIAGNOSTIC_IMPERSONATION_REVOKED);
     return saved;
+  }
+
+  /**
+   * Revokes what {@code issuerUserId}'s account still confers on others, as the deletion of that
+   * account (ADR-0016, Nachtrag: the Auflage on a Kontolöschungsfunktion). Without this the
+   * schema's cascade would take those rows from holders who remain - silently, and without the
+   * revocation event every other end of a befugnis has. The event is the one {@link #revoke}
+   * writes, so an evaluation reads both alike; the rows themselves then go with the cascade.
+   *
+   * <p>{@code MANDATORY}: the revocation is only true if the deletion it belongs to commits, so it
+   * has to run in the caller's transaction, never in one of its own.
+   */
+  @Transactional(propagation = Propagation.MANDATORY)
+  public List<DiagnosticImpersonationGrant> revokeGrantsIssuedBy(
+      CurrentUser actor, UUID issuerUserId) {
+    if (!actor.isSystemAdmin()) {
+      throw new AccessDeniedException("Nur die Administration darf die Befugnis entziehen");
+    }
+    Instant now = clock.instant();
+    List<DiagnosticImpersonationGrant> affected =
+        grantRepository.findUnspentIssuedBy(actor.organizationId(), issuerUserId, now);
+    for (DiagnosticImpersonationGrant grant : affected) {
+      grant.revoke(actor.id(), now);
+      grantRepository.save(grant);
+      recordGrantEvent(actor, grant, AuditEventType.DIAGNOSTIC_IMPERSONATION_REVOKED);
+    }
+    return affected;
   }
 
   /** All grants of the organization, newest first - the administration's own overview. */

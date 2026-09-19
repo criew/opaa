@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -157,6 +158,44 @@ class DiagnosticImpersonationGrantServiceTest {
 
     assertThat(grant.getRevokedAt()).isEqualTo(firstRevocation);
     assertThat(grant.isActiveAt(NOW)).isFalse();
+  }
+
+  /**
+   * The revocation the account deletion runs (ADR-0016, Nachtrag, #1697): one event per grant, of
+   * the same shape and under the same object as a regular revocation, recorded for the person
+   * deleting - which grants are affected is the repository query's part, not this one's.
+   */
+  @Test
+  void revokingWhatADeletedAccountIssuedWritesOneRegularRevocationPerGrant() {
+    UUID deletedIssuerId = UUID.randomUUID();
+    DiagnosticImpersonationGrant first = activeGrant();
+    DiagnosticImpersonationGrant second = activeGrant();
+    when(grantRepository.findUnspentIssuedBy(ORGANIZATION_ID, deletedIssuerId, NOW))
+        .thenReturn(List.of(first, second));
+
+    assertThat(service.revokeGrantsIssuedBy(admin(), deletedIssuerId))
+        .containsExactly(first, second);
+
+    assertThat(first.getRevokedAt()).isEqualTo(NOW);
+    assertThat(first.getRevokedByUserId()).isEqualTo(adminId);
+    assertThat(second.isActiveAt(NOW)).isFalse();
+    ArgumentCaptor<AuditEvent> events = ArgumentCaptor.forClass(AuditEvent.class);
+    verify(auditEventRecorder, times(2)).recordUserActionOnSubject(events.capture());
+    assertThat(events.getAllValues())
+        .allSatisfy(
+            event -> {
+              assertThat(event.eventType())
+                  .isEqualTo(AuditEventType.DIAGNOSTIC_IMPERSONATION_REVOKED);
+              assertThat(event.subjectId()).isEqualTo(holderId);
+              assertThat(event.after()).containsEntry("revoked", "true");
+            });
+  }
+
+  @Test
+  void onlyAnAdministratorMayRevokeWhatADeletedAccountIssued() {
+    assertThatThrownBy(() -> service.revokeGrantsIssuedBy(ordinaryUser(holderId), adminId))
+        .isInstanceOf(AccessDeniedException.class);
+    verify(grantRepository, never()).findUnspentIssuedBy(any(), any(), any());
   }
 
   private DiagnosticImpersonationGrant activeGrant() {

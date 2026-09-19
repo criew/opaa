@@ -93,8 +93,8 @@ public interface UserRepository extends JpaRepository<User, UUID> {
    * RESTRICT} reference to {@code users} needs a sub-query here</b>; one this list misses is caught
    * only by the constraint itself, without its name in the log - {@code
    * io.opaa.auth.UserDeletionBlockerCoverageIntegrationTest} compares the list against the schema's
-   * delete rules. The diagnostic impersonation grants cascade since #1509 and are counted all the
-   * same: an open deviation, see #1697.
+   * delete rules, and every counted reference against the branch of {@code
+   * LocalUserService#blockers} that names it.
    */
   @Query(
       value =
@@ -109,9 +109,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
               + " (SELECT count(*) FROM space_asset_associations WHERE created_by_user_id = :id)"
               + "   AS associations,"
               + " (SELECT count(*) FROM audit_incident_scope_grants WHERE requested_by_user_id = :id"
-              + "   OR approved_by_user_id = :id OR subject_user_id = :id) AS incident_scopes,"
-              + " (SELECT count(*) FROM diagnostic_impersonation_grants WHERE granted_by_user_id = :id"
-              + "   OR revoked_by_user_id = :id) AS impersonation_grants",
+              + "   OR approved_by_user_id = :id OR subject_user_id = :id) AS incident_scopes",
       nativeQuery = true)
   DeletionBlockers countDeletionBlockers(@Param("id") UUID userId);
 
@@ -132,8 +130,6 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     long getAssociations();
 
     long getIncidentScopes();
-
-    long getImpersonationGrants();
   }
 
   /** Writes {@code role} only while the stored role is still {@code expected}. */
