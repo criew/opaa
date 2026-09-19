@@ -16,20 +16,25 @@ info:
     | --- | --- |
     | `400` | The request could not be read at all: an unparseable body, or a path or query parameter of the wrong type. An operation's own validation of its payload is a decision of that operation and *is* declared there. |
     | `401` | The call carries no usable session - no bearer token, an expired or otherwise invalid one. Declared only where the operation itself refuses a credential it was handed: the sign-in, the refresh cookie, a webhook signature, the provider token of a handover. |
+    | `403` | The call is turned away before it reaches the operation at all: a local token that must change its password first (code `PASSWORD_CHANGE_REQUIRED`) reaches nothing outside `/api/v1/auth/local/`, and an external access token reaches nothing outside the paths its channel owns. An operation's own permission check *is* declared at that operation. |
     | `404` | No such route. An operation's own "this resource is not there" is a decision of that operation and *is* declared there - including the deliberate `404` that hides an existing but inaccessible resource instead of confirming it with a `403`. |
     | `405` | The method is not supported for this path. The answer names the supported ones in `Allow`. |
     | `406` | Nothing this API writes is acceptable to the caller. **This answer carries no body** - a body could not be written for the very reason the request was refused. |
     | `415` | The `Content-Type` of the request is not supported. |
     | `500` | An unexpected internal error. |
 
-    Two of them answer without a body: the cross-cutting `401`, which is the resource server's own
-    refusal and states its reason in `WWW-Authenticate`, and the `406` above. Every other error
-    answer of this API carries an `ErrorResponse`, whether it is declared at the operation or
-    listed here - as far as the caller's own `Accept` admits one at all.
+    Error answers carry an `ErrorResponse`, whether they are declared at an operation or listed
+    above. Two do not: the `406`, and *one* of the refusals behind the `401` - the resource
+    server's own, which states its reason in `WWW-Authenticate` instead of in a body. The other
+    two do carry one: an access token refused on an external-access read path is answered with
+    `WWW-Authenticate` **and** an `ErrorResponse`, a call that reaches a handler without any caller
+    identity with the body alone. Independently of all this, a caller whose `Accept` admits nothing
+    this API writes is answered without a body whatever went wrong.
 
     `429` is deliberately absent from the list: the rate limits are per endpoint, not global. It is
-    declared at exactly those operations that have a budget of their own, and its answer carries
-    `Retry-After`.
+    declared at exactly those operations that have a budget of their own. Its answer carries
+    `Retry-After` **where the waiting time is known** - a refusal from a concurrency ceiling rather
+    than from a time window has none to name.
   version: 0.1.0
   license:
     name: AGPL-3.0
@@ -76,6 +81,10 @@ paths:
           description: >
             The author of the named chat is no longer a member of its space (#525): querying
             is chatting, so the turn is refused where merely reading the chat is not.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "409":
           $ref: "#/components/responses/Conflict"
         "429":
@@ -5022,6 +5031,12 @@ paths:
           description: Accepted and queued (or nothing to queue)
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "413":
+          description: Body larger than 256 KiB
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "429":
           description: Too many requests
           content:
@@ -5128,6 +5143,10 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "413":
           description: Body larger than 256 KiB
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "429":
           description: Too many requests
           content:

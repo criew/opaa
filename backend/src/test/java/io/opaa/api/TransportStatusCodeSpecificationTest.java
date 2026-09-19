@@ -36,7 +36,10 @@ import tools.jackson.databind.json.JsonMapper;
  * <p>The {@code 429} half derives its expectation from the production wiring rather than from a
  * list: every path of the specification is run through the very {@link RateLimitFilter} {@link
  * RateLimitConfiguration} builds, so a new rate-limit rule without the matching declaration fails
- * here. No Spring context.
+ * here. The {@code 413} half can only be derived for multipart uploads, which share one configured
+ * bound; a raw-body bound read inside a controller is invisible from here, so the two event intakes
+ * are held to the same declarations instead - they share the one bound literally. No Spring
+ * context.
  */
 class TransportStatusCodeSpecificationTest {
 
@@ -95,10 +98,41 @@ class TransportStatusCodeSpecificationTest {
   void theCentralDescriptionNamesEveryStatusTheOperationsNoLongerDeclare() {
     String description = (String) map(spec, "info").get("description");
 
-    assertThat(description).contains("401").contains("404");
+    assertThat(description).contains("401").contains("403").contains("404");
     for (String status : CROSS_CUTTING) {
       assertThat(description).as("info.description covers %s", status).contains(status);
     }
+  }
+
+  /**
+   * The multipart half of the upload limit, which is mechanical: {@code
+   * spring.servlet.multipart.max-file-size} bounds every multipart request alike, so an operation
+   * that takes one can always answer {@code 413}.
+   */
+  @Test
+  void everyMultipartUploadDeclaresItsSizeLimit() {
+    forEachOperation(
+        (path, method, operation) -> {
+          if (!consumesMultipart(operation)) {
+            return;
+          }
+          assertThat(map(operation, "responses"))
+              .as("%s takes multipart and must declare 413", operation.get("operationId"))
+              .containsKey("413");
+        });
+  }
+
+  /**
+   * The two event intakes read their body through the one {@code
+   * ConfluenceWebhookController#readBounded} against the one {@code MAX_BODY_BYTES} and share one
+   * rate-limit rule, so a status one of them can answer the other can answer too. Keeping their
+   * declarations equal is the only guard against the half that no rule can derive: a raw-body bound
+   * is nowhere visible in the specification.
+   */
+  @Test
+  void theTwoEventIntakesDeclareTheSameStatuses() {
+    assertThat(declaredStatusesOf("receiveConfluenceWebhook"))
+        .isEqualTo(declaredStatusesOf("receiveS3Events"));
   }
 
   @Test
@@ -194,6 +228,27 @@ class TransportStatusCodeSpecificationTest {
           }
         });
     return declaring;
+  }
+
+  private static Set<String> declaredStatusesOf(String operationId) {
+    Set<String> statuses = new TreeSet<>();
+    forEachOperation(
+        (path, method, operation) -> {
+          if (operationId.equals(operation.get("operationId"))) {
+            statuses.addAll(map(operation, "responses").keySet());
+          }
+        });
+    assertThat(statuses).as("no operation named %s", operationId).isNotEmpty();
+    return statuses;
+  }
+
+  private static boolean consumesMultipart(Map<String, Object> operation) {
+    Object requestBody = operation.get("requestBody");
+    if (!(requestBody instanceof Map<?, ?> body)) {
+      return false;
+    }
+    Object content = body.get("content");
+    return content instanceof Map<?, ?> types && types.containsKey("multipart/form-data");
   }
 
   private interface OperationVisitor {
