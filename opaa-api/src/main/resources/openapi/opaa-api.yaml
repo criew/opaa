@@ -19,12 +19,12 @@ info:
     | `403` | The call is turned away before it reaches the operation at all: a local token that must change its password first (code `PASSWORD_CHANGE_REQUIRED`) reaches nothing outside `/api/v1/auth/local/`, and an external access token reaches nothing outside the paths its channel owns. An operation's own permission check *is* declared at that operation. |
     | `404` | No such route. An operation's own "this resource is not there" is a decision of that operation and *is* declared there - including the deliberate `404` that hides an existing but inaccessible resource instead of confirming it with a `403`. |
     | `405` | The method is not supported for this path. The answer names the supported ones in `Allow`. |
-    | `406` | Nothing this API writes is acceptable to the caller. **This answer carries no body** - a body could not be written for the very reason the request was refused. |
+    | `406` | Nothing this API writes is acceptable to the caller. **This answer carries no body wherever the caller's `Accept` excludes the error envelope as well** - which is every `406` the routes described here can raise, none of them declaring a narrower set of response types. |
     | `415` | The `Content-Type` of the request is not supported. |
     | `500` | An unexpected internal error. |
 
     Error answers carry an `ErrorResponse`, whether they are declared at an operation or listed
-    above. Two do not: the `406`, and *one* of the refusals behind the `401` - the resource
+    above. One does not: *one* of the refusals behind the `401` - the resource
     server's own, which states its reason in `WWW-Authenticate` instead of in a body. The other
     two do carry one: an access token refused **anywhere** - the external-access chain claims every
     call that presents one, wherever it is aimed - is answered with `WWW-Authenticate` **and** an

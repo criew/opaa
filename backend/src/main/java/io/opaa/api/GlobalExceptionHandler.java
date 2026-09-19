@@ -56,7 +56,7 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
  * "io.opaa"} included - makes Spring's {@code HandlerTypePredicate} reject the {@code null} handler
  * type of every exception raised before a handler method is resolved: the unmapped-path 404 (#456)
  * and the 405 with its {@code Allow} header would leave this class for Spring Boot's own error
- * page, dropping the German envelope and five assertions that hold it. The Actuator mappings it
+ * page, dropping the German envelope and six assertions that hold it. The Actuator mappings it
  * therefore covers as well need no narrowing: their error bodies are negotiated like any other
  * ({@link ErrorBodyNegotiator}).
  */
