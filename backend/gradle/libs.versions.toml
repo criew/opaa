@@ -98,7 +98,7 @@ greenmail = "2.1.13"
 # CVE-2026-8763 (name constraint bypass) and CVE-2026-13506 (ASN.1 nesting depth reset). All four
 # artifacts ship from the same release and must carry the same version. Remove this entry, its
 # [libraries] entries and the override once Tika resolves >= 1.85 on its own.
-bouncycastle = "1.85"
+bouncycastle = "1.86"
 # Transitive-only pin (see the dependencyManagement block in build.gradle.kts). Tika's pkg parser
 # module resolves junrar 7.6.0, which is affected by CVE-2026-86071 (directory escape while
 # extracting). Remove this entry, its [libraries] entry and the override once Tika resolves
