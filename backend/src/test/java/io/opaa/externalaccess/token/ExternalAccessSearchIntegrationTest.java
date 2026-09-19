@@ -109,7 +109,7 @@ class ExternalAccessSearchIntegrationTest {
     for (UUID library : List.of(selectedLibraryId, otherLibraryId)) {
       vectorChunkStore.deleteByLibraryId(library);
       jdbc.update("DELETE FROM documents WHERE library_id = ?", library);
-      jdbc.update("DELETE FROM asset_grants WHERE library_id = ?", library);
+      jdbc.update("DELETE FROM asset_grants WHERE asset_id = ?", library);
       jdbc.update("DELETE FROM library_visibility_history WHERE library_id = ?", library);
       jdbc.update("DELETE FROM knowledge_libraries WHERE id = ?", library);
     }
@@ -326,8 +326,8 @@ class ExternalAccessSearchIntegrationTest {
         name,
         owner.getId());
     jdbc.update(
-        "INSERT INTO asset_grants (id, library_id, organization_id, subject_type, subject_user_id,"
-            + " role, created_at, updated_at) VALUES (?, ?, ?, 'USER', ?, 'OWNER', now(), now())",
+        "INSERT INTO asset_grants (id, asset_type, asset_id, organization_id, subject_type, subject_user_id,"
+            + " role, created_at, updated_at) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, ?, 'USER', ?, 'OWNER', now(), now())",
         UUID.randomUUID(),
         id,
         DEFAULT_ORGANIZATION_ID,

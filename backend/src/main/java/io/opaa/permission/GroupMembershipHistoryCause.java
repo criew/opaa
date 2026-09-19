@@ -32,18 +32,17 @@ public enum GroupMembershipHistoryCause {
 
   /**
    * The interval was written by the #238 backfill for a membership that already existed before this
-   * feature - reconstructed from {@code group_memberships.created_at}, with no actor (that column
-   * does not record who added an existing membership; code review of #238, finding 1).
+   * feature - reconstructed from {@code group_memberships.created_at}, with no actor - that column
+   * does not record who added an existing membership.
    */
   BACKFILL,
 
   /**
    * Closes an open interval because the group itself was deleted ({@code GroupService#deleteGroup})
    * - closes only, like {@link #REMOVED}. Without this, a deleted group's still-open membership
-   * intervals kept reporting "currently a member" of a group that no longer exists (code review of
-   * #427, nit 3): {@code group_id} carries no foreign key (see {@code
-   * io.opaa.permission.PermissionHistoryService}'s "Deletion survival" comment on {@code
-   * 018-permission-history.yaml}), so deleting the group never closed them on its own.
+   * intervals kept reporting "currently a member" of a group that no longer exists - {@code
+   * group_id} carries no foreign key (ADR-0016, "Objektspalten ohne FK"), so deleting the group
+   * never closes them on its own.
    */
   GROUP_DELETED
 }

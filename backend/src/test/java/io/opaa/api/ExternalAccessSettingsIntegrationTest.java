@@ -14,10 +14,12 @@ import io.opaa.externalaccess.ExternalAccessSettingsRepository;
 import io.opaa.externalaccess.ExternalAccessSettingsService;
 import io.opaa.test.OpaaIntegrationTest;
 import jakarta.servlet.http.HttpServletRequest;
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -33,7 +35,9 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
  *
  * <p>Carries the canonical {@link OpaaIntegrationTest} signature (AGENTS.md,
  * "Spring-Testkontexte"). The settings row itself is put back by {@code SeededRowRestorer}; this
- * class only removes the audit entries it wrote, which no other class produces.
+ * class reads and removes only the audit entries written since its own method started - every class
+ * that switches the channel on goes through the same audited service, so both an unfiltered
+ * assertion and an unfiltered cleanup would depend on which class Gradle happens to run first.
  */
 @OpaaIntegrationTest
 class ExternalAccessSettingsIntegrationTest {
@@ -46,12 +50,23 @@ class ExternalAccessSettingsIntegrationTest {
   @Autowired private ExternalAccessSettingsService settingsService;
   @Autowired private ExternalAccessNetworkPolicy networkPolicy;
 
+  /** Every audit row from here on belongs to this test method; earlier ones do not. */
+  private Instant methodStartedAt;
+
+  @BeforeEach
+  void markOwnAuditWindow() {
+    methodStartedAt = Instant.now();
+  }
+
   @AfterEach
   void resetSettingsAndItsTrail() {
     ExternalAccessSettings row = settings.findSingleton().orElseThrow();
     row.replace(ExternalAccessSettings.Values.defaults(), null, Instant.now());
     settings.save(row);
-    jdbc.update("DELETE FROM audit_log WHERE event_type = 'EXTERNAL_ACCESS_SETTINGS_CHANGED'");
+    jdbc.update(
+        "DELETE FROM audit_log WHERE event_type = 'EXTERNAL_ACCESS_SETTINGS_CHANGED'"
+            + " AND recorded_at >= ?",
+        Timestamp.from(methodStartedAt));
   }
 
   @Test
@@ -262,8 +277,9 @@ class ExternalAccessSettingsIntegrationTest {
   private List<Map<String, Object>> settingsEvents() {
     return jdbc.queryForList(
         "SELECT actor_ref, CAST(before AS text) AS before, CAST(after AS text) AS after FROM"
-            + " audit_log WHERE event_type = 'EXTERNAL_ACCESS_SETTINGS_CHANGED' ORDER BY"
-            + " recorded_at");
+            + " audit_log WHERE event_type = 'EXTERNAL_ACCESS_SETTINGS_CHANGED'"
+            + " AND recorded_at >= ? ORDER BY recorded_at",
+        Timestamp.from(methodStartedAt));
   }
 
   private static String body(

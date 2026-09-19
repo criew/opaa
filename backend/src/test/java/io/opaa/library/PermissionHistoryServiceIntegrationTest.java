@@ -28,6 +28,7 @@ import io.opaa.group.sync.DirectorySyncStatusRepository;
 import io.opaa.group.sync.SyncReport;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
+import io.opaa.permission.AssetAccessService;
 import io.opaa.permission.AssetGrantHistory;
 import io.opaa.permission.AssetGrantHistoryCause;
 import io.opaa.permission.AssetGrantHistoryRepository;
@@ -35,6 +36,8 @@ import io.opaa.permission.AssetGrantRepository;
 import io.opaa.permission.GroupMembershipHistoryCause;
 import io.opaa.permission.GroupMembershipHistoryRepository;
 import io.opaa.permission.GroupMembershipResolver;
+import io.opaa.permission.GroupMembershipSource;
+import io.opaa.permission.GroupSubjectDirectory;
 import io.opaa.permission.PermissionHistoryClock;
 import io.opaa.permission.PermissionHistoryService;
 import io.opaa.test.FakeDirectoryClient;
@@ -876,8 +879,16 @@ class PermissionHistoryServiceIntegrationTest {
    */
   @Test
   void everyBeanReachingTheGrantOrMembershipTablesIsAccountedFor() {
+    // The ports and the shared formula count as well as the repositories behind them (#1811): a
+    // bean reaching the grant or membership tables through io.opaa.permission is reaching them.
     Set<Class<?>> rightsRepositories =
-        Set.of(AssetGrantRepository.class, GroupRepository.class, GroupMembershipRepository.class);
+        Set.of(
+            AssetGrantRepository.class,
+            GroupRepository.class,
+            GroupMembershipRepository.class,
+            GroupMembershipSource.class,
+            GroupSubjectDirectory.class,
+            AssetAccessService.class);
 
     Set<String> holders = new HashSet<>();
     for (String beanName : applicationContext.getBeanDefinitionNames()) {
@@ -903,21 +914,24 @@ class PermissionHistoryServiceIntegrationTest {
   /**
    * Every bean holding a grant or membership repository. The writers among them are covered by
    * {@link #readabilityWritePaths}; the rest only read - the two diagnostic services resolve a
-   * group to validate a request, {@link GroupMembershipResolver} and {@link LibraryAccessService}
-   * are the read side of the live formula itself. {@code LocalHandoverAccountService} (#1563) only
-   * counts: the preview of a handover tells the person how many memberships move with their
-   * account, and the handover itself rewrites the identity of a {@code users} row - it writes no
-   * membership and no grant, and everything keyed by {@code users.id} therefore survives it
-   * untouched.
+   * group to validate a request, {@code GroupSubjectDirectoryAdapter} answers what a grant path
+   * needs to know about a group, and {@link GroupMembershipResolver}, {@link AssetAccessService}
+   * and {@link LibraryAccessService} are the read side of the live formula itself. {@code
+   * LocalHandoverAccountService} (#1563) only counts: the preview of a handover tells the person
+   * how many memberships move with their account, and the handover itself rewrites the identity of
+   * a {@code users} row - it writes no membership and no grant, and everything keyed by {@code
+   * users.id} therefore survives it untouched.
    */
   private static final Set<String> BEANS_REACHING_THE_RIGHTS_TABLES =
       Set.of(
+          "AssetAccessService",
           "AssetGrantService",
           "DiagnosticImpersonationGrantService",
           "DirectorySyncPlanExecutor",
           "ForeignDiagnosticContextService",
           "GroupMembershipResolver",
           "GroupService",
+          "GroupSubjectDirectoryAdapter",
           "KnowledgeLibraryService",
           "LibraryAccessService",
           "LocalHandoverAccountService",

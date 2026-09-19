@@ -90,7 +90,7 @@ class KnowledgeLibraryServiceConnectorDeleteOrderTest {
     documentRepository = mock(DocumentRepository.class);
     AssetGrantRepository grantRepository = mock(AssetGrantRepository.class);
     AssetGrantService grantService = mock(AssetGrantService.class);
-    when(grantRepository.findByAssetTypeAndAssetId(KnowledgeLibrary.ASSET_TYPE, any()))
+    when(grantRepository.findByAssetTypeAndAssetId(eq(KnowledgeLibrary.ASSET_TYPE), any()))
         .thenReturn(List.of());
     LibraryAccessService accessService = mock(LibraryAccessService.class);
     PermissionHistoryService permissionHistoryService = mock(PermissionHistoryService.class);

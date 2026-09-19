@@ -181,7 +181,7 @@ class SearchIntegrationTest {
     vectorChunkStore.deleteByLibraryId(libraryId);
     vectorChunkStore.deleteByLibraryId(foreignLibraryId);
     jdbc.update("DELETE FROM documents WHERE library_id IN (?, ?)", libraryId, foreignLibraryId);
-    jdbc.update("DELETE FROM asset_grants WHERE library_id IN (?, ?)", libraryId, foreignLibraryId);
+    jdbc.update("DELETE FROM asset_grants WHERE asset_id IN (?, ?)", libraryId, foreignLibraryId);
     jdbc.update(
         "DELETE FROM library_visibility_history WHERE library_id IN (?, ?)",
         libraryId,
@@ -467,8 +467,8 @@ class SearchIntegrationTest {
         name,
         ownerId);
     jdbc.update(
-        "INSERT INTO asset_grants (id, library_id, organization_id, subject_type, subject_user_id,"
-            + " role, created_at, updated_at) VALUES (?, ?, ?, 'USER', ?, 'OWNER', now(), now())",
+        "INSERT INTO asset_grants (id, asset_type, asset_id, organization_id, subject_type, subject_user_id,"
+            + " role, created_at, updated_at) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, ?, 'USER', ?, 'OWNER', now(), now())",
         UUID.randomUUID(),
         id,
         DEFAULT_ORGANIZATION_ID,

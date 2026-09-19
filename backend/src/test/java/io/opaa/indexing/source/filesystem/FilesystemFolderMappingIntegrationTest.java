@@ -116,8 +116,8 @@ class FilesystemFolderMappingIntegrationTest {
 
   private void grantOwner(UUID libraryId, UUID granteeId) {
     jdbcTemplate.update(
-        "INSERT INTO asset_grants (id, library_id, organization_id, subject_type,"
-            + " subject_user_id, role, created_at, updated_at) VALUES (?, ?, ?, 'USER', ?,"
+        "INSERT INTO asset_grants (id, asset_type, asset_id, organization_id, subject_type,"
+            + " subject_user_id, role, created_at, updated_at) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, ?, 'USER', ?,"
             + " 'OWNER', now(), now())",
         UUID.randomUUID(),
         libraryId,

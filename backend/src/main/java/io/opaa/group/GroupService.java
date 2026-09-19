@@ -209,8 +209,8 @@ public class GroupService {
         throw new ConflictException(ownership.ownedAssetConflictMessage());
       }
     }
-    // #202 code review: a group that merely holds a grant (never owns anything) hits the same
-    // RESTRICT constraint via fk_asset_grants_subject_group_organization - see the class Javadoc.
+    // A group that merely holds a grant (never owns anything) hits the same RESTRICT constraint
+    // via fk_asset_grants_subject_group_organization - see the class Javadoc.
     if (grantRepository.existsBySubjectGroupId(groupId)) {
       throw new ConflictException(
           "Die Gruppe hat noch Berechtigungen auf Bibliotheken und kann nicht gelöscht werden");

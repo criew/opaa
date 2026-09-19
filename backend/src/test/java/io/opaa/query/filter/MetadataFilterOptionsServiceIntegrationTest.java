@@ -253,7 +253,7 @@ class MetadataFilterOptionsServiceIntegrationTest {
         "DELETE FROM documents WHERE parent_document_id IS NOT NULL AND library_id IN "
             + OWN_LIBRARIES);
     jdbcTemplate.update("DELETE FROM documents WHERE library_id IN " + OWN_LIBRARIES);
-    jdbcTemplate.update("DELETE FROM asset_grants WHERE library_id IN " + OWN_LIBRARIES);
+    jdbcTemplate.update("DELETE FROM asset_grants WHERE asset_id IN " + OWN_LIBRARIES);
     jdbcTemplate.update(
         "DELETE FROM group_memberships WHERE user_id IN (SELECT id FROM users WHERE subject LIKE 'metadata-options-%')");
     // History rows reference users with RESTRICT - they go before the users themselves.
