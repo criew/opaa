@@ -79,11 +79,11 @@ public class GlobalExceptionHandler {
    * The decision 30 of this class's 31 branches route through - all but the bodyless 406 below: the
    * envelope is attached only when the caller's {@code Accept} lets it be written (#1780).
    * Attaching an unwritable one makes {@code ExceptionHandlerExceptionResolver} log a stacktrace
-   * and discard this response, upon which the caller gets whatever renders the exception next -
-   * {@code DefaultHandlerExceptionResolver} for 405, 415 and 404, the container's 500 for every
-   * other branch. A branch with a builder of its own ({@code Allow}, {@code Retry-After}) hands it
-   * here instead of calling {@code builder.body(...)}; {@code GlobalExceptionHandlerBodyFunnelTest}
-   * holds that rule.
+   * and discard this response, upon which the caller gets whatever renders the exception next: an
+   * exception Spring's own {@code DefaultHandlerExceptionResolver} renders keeps its status, every
+   * other branch arrives as the container's 500. A branch with a builder of its own ({@code Allow},
+   * {@code Retry-After}) hands it here instead of calling {@code builder.body(...)}; {@code
+   * GlobalExceptionHandlerBodyFunnelTest} holds that rule.
    */
   private ResponseEntity<ErrorResponse> respond(
       ResponseEntity.BodyBuilder builder, ErrorResponse body) {
@@ -365,9 +365,10 @@ public class GlobalExceptionHandler {
    *
    * <p><b>The one branch that does not go through {@link #respond} (#1780).</b> Since that method
    * exists, an {@link ErrorResponse} here would no longer bring the stacktrace back - it would be
-   * dropped just the same, because every 406 reachable in this codebase arises from an {@code
-   * Accept} that excludes the envelope as well (no mapping declares {@code produces=}, and both
-   * binary endpoints preset a concrete {@code Content-Type}, skipping negotiation). Routing this
+   * dropped just the same, because every 406 reachable through {@code io.opaa} arises from an
+   * {@code Accept} that excludes the envelope as well (no mapping there declares {@code produces=},
+   * and both binary endpoints preset a concrete {@code Content-Type}, skipping negotiation; for the
+   * Actuator mappings this advice also covers, see {@link ErrorBodyNegotiator}). Routing this
    * branch through {@link #respond} would therefore change no answer and only add a German wording
    * no caller can receive. {@code GlobalExceptionHandlerNotAcceptableTest} taps the ROOT logger,
    * not this class's, because the stacktrace in question came from a Spring logger.
