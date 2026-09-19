@@ -2,7 +2,10 @@
 
 ## Status
 
-Akzeptiert
+Akzeptiert — **Entscheidung 6 samt ihrem Nachtrag vom 19.08.2026 ist seit dem 19.09.2026 durch
+[ADR-0036](0036-berechtigungsmodell-gruppen-und-faehigkeiten.md), Entscheidung 5, abgelöst** (siehe
+dort und die Ablösungsnotiz in [Entscheidung 6](#6-anlage-zunächst-für-jeden-berechtigten--einschränkung-ist-ein-benanntes-folgeticket)).
+Alle übrigen Entscheidungen dieses ADR gelten unverändert.
 
 ## Kontext
 
@@ -149,6 +152,15 @@ lauf-basierten Bibliothek nimmt deshalb ihren Bestand mit** — Dokumentzeilen, 
 Vektorspeicher — nach ausdrücklicher Bestätigung und mit Protokolleintrag.
 
 ### 6. Anlage zunächst für jeden Berechtigten — Einschränkung ist ein benanntes Folgeticket
+
+> **Abgelöst (19.09.2026, #1810):** Diese Entscheidung und ihr Nachtrag vom 19.08.2026 gelten nicht
+> mehr. [ADR-0036](0036-berechtigungsmodell-gruppen-und-faehigkeiten.md), Entscheidung 5, macht die
+> Anlage zu einer vergebbaren **Fähigkeit** — `CREATE_LIBRARY` für Upload-Bibliotheken,
+> `CREATE_CONNECTOR_LIBRARY` für lauf-basierte Quellen —, ausgeliefert an „Alle Konten", sodass sich
+> für Bestandsinstallationen nichts ändert; wer einschränken will, entzieht „Alle Konten". Der Satz
+> des Nachtrags, die Anlage-Berechtigung bleibe **dauerhaft** offen, ist damit aufgehoben. Was bleibt:
+> Pfad-Allowlist und `TargetAddressValidator` sichern **unabhängig davon**, wer die Bibliothek
+> anlegt — beide Sicherungen werden durch die Fähigkeit weder ersetzt noch entbehrlich.
 
 Wer Bibliotheken anlegen darf, darf zunächst jeden Typ anlegen. Das ist eine bewusste, **befristete**
 Entscheidung zugunsten eines schnellen Umbaus — und sie verschiebt zwei bekannte Risiken von der
