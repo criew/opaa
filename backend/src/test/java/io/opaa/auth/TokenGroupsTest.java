@@ -107,6 +107,32 @@ class TokenGroupsTest {
         .isEqualTo(TokenGroups.named(List.of("Fachbereich 3")));
   }
 
+  /** The reference wins over a claim that is there anyway: what it still names may be a remnant. */
+  @Test
+  void anOverageReferenceWinsOverAClaimThatIsThereAsWell() {
+    Map<String, Object> claims =
+        Map.of("groups", List.of("Fachbereich 3"), "_claim_names", Map.of("groups", "src1"));
+
+    assertThat(TokenGroups.read(claims, "groups"))
+        .isEqualTo(TokenGroups.unavailable(Reason.CLAIM_OVERAGE));
+  }
+
+  /**
+   * regression guard for #1807: a claim path of nothing but dots splits into an empty array, so
+   * reading its first segment threw - and with a token that carries {@code _claim_names}, every
+   * request of every account of that provider failed. No claim layout may fail a request; such a
+   * path reaches nothing usable and therefore changes nothing.
+   */
+  @Test
+  void aClaimPathOfNothingButDotsIsNoOverageAndThrowsNothing() {
+    Map<String, Object> claims = Map.of("_claim_names", Map.of("groups", "src1"));
+
+    assertThat(TokenGroups.read(claims, "."))
+        .isEqualTo(TokenGroups.unavailable(Reason.CLAIM_MALFORMED));
+    assertThat(TokenGroups.read(claims, ".."))
+        .isEqualTo(TokenGroups.unavailable(Reason.CLAIM_MALFORMED));
+  }
+
   @Test
   void theNamesOfAValueDoNotChangeWithTheListPassedIn() {
     List<String> names = new ArrayList<>(List.of("Fachbereich 3"));

@@ -1671,7 +1671,7 @@ Bei eingeschalteter lokaler Benutzerverwaltung heißt das zugleich: Gelingt der 
 |---|---|
 | Gruppen-Claim mit Werten | Die Mitgliedschaften dieses Anbieters werden auf genau diese Gruppen gebracht (Zugang und Entzug, je Änderung historisiert und auditiert). |
 | Gruppen-Claim vorhanden und leer | Alle Mitgliedschaften dieses Anbieters werden entzogen, historisiert und auditiert — der Anbieter ist die führende Quelle. |
-| Kein Gruppen-Claim, falsch geformter Claim, nur unbrauchbare Werte, oder Overage-Hinweis | Es ändert sich **nichts**: Mitgliedschaften, Rechtehistorie und Nachweisprotokoll bleiben unberührt. Das Backend meldet den Vorfall im Anwendungsprotokoll, je Anbieter höchstens alle fünf Minuten einmal. |
+| Kein Gruppen-Claim, falsch geformter Claim, nur unbrauchbare Werte, oder Overage-Hinweis | Es ändert sich **nichts**: Mitgliedschaften, Rechtehistorie und Nachweisprotokoll bleiben unberührt. Das Backend meldet den Vorfall im Anwendungsprotokoll, je Anbieter und Ursache höchstens alle fünf Minuten einmal (ein Wechsel der Ursache wird also gemeldet, eine Wiederholung nicht). |
 
 Der dritte Fall ist der praktisch wichtige: Wird am Anbieter der Gruppen-Mapper entfernt oder umbenannt, verlöre sonst jedes Konto bei seiner nächsten Anmeldung alle Gruppenrechte — einzeln und unauffällig. Der **Overage-Hinweis** ist der Sonderfall, in dem der Anbieter den Claim wegen seiner Größe durch einen Verweis ersetzt (Entra ID ab 200 Gruppen, `_claim_names` nach OpenID Connect 5.6.2); OPAA lädt die Gruppen nicht nach, meldet den Vorfall aber eigens benannt. Wer die Meldung sieht, prüft die Claim-Zuordnung des Anbieters und die Mapper-Konfiguration dort — bis dahin arbeiten die Konten mit ihrem letzten bekannten Gruppenstand weiter.
 

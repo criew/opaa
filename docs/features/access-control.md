@@ -898,7 +898,7 @@ unterscheidet deshalb drei Fälle:
 |---|---|
 | Der Gruppen-Claim ist vorhanden und nennt Gruppen | Die Mitgliedschaften dieses Anbieters werden auf genau diese Gruppen gebracht — Zugang und Entzug wie bisher, je Änderung historisiert und protokolliert. |
 | Der Gruppen-Claim ist vorhanden und **leer** | Entzug aller Mitgliedschaften dieses Anbieters, historisiert und protokolliert. Der Anbieter bleibt die führende Quelle, und „ein Entzug wirkt bei der nächsten Anmeldung" bleibt gültig. |
-| Der Gruppen-Claim **fehlt**, ist falsch geformt, nennt nur unbrauchbare Werte oder wurde vom Anbieter durch einen Overage-Hinweis ersetzt | **Nichts ändert sich.** Der letzte bekannte Stand bleibt; Mitgliedschaften, Rechtehistorie und Nachweisprotokoll bleiben unberührt. Der Vorfall wird je Anbieter gedrosselt gemeldet, der Overage eigens benannt. |
+| Der Gruppen-Claim **fehlt**, ist falsch geformt, nennt nur unbrauchbare Werte oder wurde vom Anbieter durch einen Overage-Hinweis ersetzt | **Nichts ändert sich.** Der letzte bekannte Stand bleibt; Mitgliedschaften, Rechtehistorie und Nachweisprotokoll bleiben unberührt. Der Vorfall wird je Anbieter **und Ursache** gedrosselt gemeldet — ein Wechsel der Ursache ist eine eigene Meldung, der Overage eigens benannt. |
 
 Der dritte Fall ist kein Randfall: Wird am Identitätsanbieter der Gruppen-Mapper versehentlich
 entfernt oder umbenannt, trüge jede einzelne Anmeldung sonst einen stillen Rechteentzug — Konto für

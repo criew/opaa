@@ -44,9 +44,9 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * <p>Only a claim the token actually carried is authoritative (#1807): an empty claim is the
  * provider ending every membership of its namespace, but a token whose claim is absent, of another
  * shape or replaced by an overage reference leaves the last known memberships as they are and is
- * logged per provider at most once per {@link #INCIDENT_WINDOW_SECONDS} seconds. Without that
- * distinction a removed group mapper at the provider would silently revoke every account's access
- * on its next sign-in.
+ * logged per provider and cause at most once per {@link #INCIDENT_WINDOW_SECONDS} seconds. Without
+ * that distinction a removed group mapper at the provider would silently revoke every account's
+ * access on its next sign-in. One call writes at most one such entry.
  */
 @Component
 public class TokenGroupSynchronizer {
@@ -57,10 +57,15 @@ public class TokenGroupSynchronizer {
   /** {@code groups.external_id} is 255 characters; the namespace takes 42 of them. */
   static final int MAX_NAME_LENGTH = 255 - (EXTERNAL_ID_PREFIX.length() + 36 + 1);
 
-  /** One incident per provider per window: a broken provider must not flood the log. */
+  /** One incident per provider and cause per window: a broken provider must not flood the log. */
   static final int INCIDENT_WINDOW_SECONDS = 300;
 
   private static final int INCIDENTS_PER_WINDOW = 1;
+
+  /** Causes of {@link #incidentDue} that are no {@link TokenGroups.Reason}. */
+  private static final String NO_USABLE_NAME = "NO_USABLE_NAME";
+
+  private static final String OVERLONG_NAME = "OVERLONG_NAME";
 
   private static final Logger log = LoggerFactory.getLogger(TokenGroupSynchronizer.class);
 
@@ -99,60 +104,88 @@ public class TokenGroupSynchronizer {
   public void apply(User user, OidcProvider provider, TokenGroups groups) {
     switch (groups) {
       case TokenGroups.Unavailable unavailable ->
-          report(provider, unavailable.reason().description());
+          reportUnchanged(
+              provider, unavailable.reason().name(), unavailable.reason().description());
       case TokenGroups.Named named -> applyNames(user, provider, named.names());
     }
   }
 
   private void applyNames(User user, OidcProvider provider, List<String> groupNames) {
     String prefix = namespaceOf(provider);
-    Map<String, String> desired = desiredByExternalId(provider, prefix, groupNames);
+    DesiredGroups desired = desiredByExternalId(prefix, groupNames);
+    Map<String, String> byExternalId = desired.byExternalId();
     // a claim that named groups but none this installation can hold is no revocation either
-    if (desired.isEmpty() && !groupNames.isEmpty()) {
-      report(provider, "names only groups that cannot be held here");
+    if (byExternalId.isEmpty() && !groupNames.isEmpty()) {
+      reportUnchanged(provider, NO_USABLE_NAME, "names only groups that cannot be held here");
       return;
     }
+    reportIgnoredNames(provider, desired.tooLongNames());
     Set<String> current =
         groupRepository.findIdentityProviderExternalIdsOfUser(user.getId(), prefix);
-    if (current.equals(desired.keySet())) {
+    if (current.equals(byExternalId.keySet())) {
       return;
     }
-    resync(user, provider, prefix, desired, current);
+    resync(user, provider, prefix, byExternalId, current);
   }
 
-  /** Names the provider and the cause once per window; the memberships are left as they are. */
-  private void report(OidcProvider provider, String cause) {
-    if (!incidentLog.isAllowed(String.valueOf(provider.getId()))) {
+  /** Names the provider and the cause; the memberships are left as they are. */
+  private void reportUnchanged(OidcProvider provider, String cause, String description) {
+    if (!incidentDue(provider, cause)) {
       return;
     }
     log.warn(
         "The token of provider '{}' {}; the group memberships of its accounts are left unchanged"
-            + " (further incidents of this provider are suppressed for {} seconds)",
+            + " (further incidents of this cause are suppressed for {} seconds)",
         provider.getDisplayName(),
-        cause,
+        description,
         INCIDENT_WINDOW_SECONDS);
   }
 
-  private static Map<String, String> desiredByExternalId(
-      OidcProvider provider, String prefix, List<String> groupNames) {
+  /** The other names of the same token are applied, so this is no "left unchanged". */
+  private void reportIgnoredNames(OidcProvider provider, int tooLongNames) {
+    if (tooLongNames == 0 || !incidentDue(provider, OVERLONG_NAME)) {
+      return;
+    }
+    log.warn(
+        "The token of provider '{}' names {} group(s) longer than {} characters, which are ignored"
+            + " (further incidents of this cause are suppressed for {} seconds)",
+        provider.getDisplayName(),
+        tooLongNames,
+        MAX_NAME_LENGTH,
+        INCIDENT_WINDOW_SECONDS);
+  }
+
+  /**
+   * At most one log entry per provider and cause per {@link #INCIDENT_WINDOW_SECONDS} seconds: a
+   * provider whose tokens are broken sends every account of its own through here, and a changed
+   * cause is news of its own rather than a repetition.
+   */
+  private boolean incidentDue(OidcProvider provider, String cause) {
+    return incidentLog.isAllowed(provider.getId() + ":" + cause);
+  }
+
+  /**
+   * @param byExternalId the namespaced names the token's claim can be held under
+   * @param tooLongNames how many of its names exceed {@link #MAX_NAME_LENGTH} and were dropped -
+   *     counted rather than logged here, so that one call writes at most one log entry
+   */
+  private record DesiredGroups(Map<String, String> byExternalId, int tooLongNames) {}
+
+  private static DesiredGroups desiredByExternalId(String prefix, List<String> groupNames) {
     Map<String, String> desired = new LinkedHashMap<>();
+    int tooLongNames = 0;
     for (String raw : groupNames) {
       String name = raw == null ? "" : raw.trim();
       if (name.isEmpty()) {
         continue;
       }
       if (name.length() > MAX_NAME_LENGTH) {
-        log.warn(
-            "Provider '{}' names a group of {} characters in its token; groups longer than {}"
-                + " characters are ignored",
-            provider.getDisplayName(),
-            name.length(),
-            MAX_NAME_LENGTH);
+        tooLongNames++;
         continue;
       }
       desired.putIfAbsent(prefix + name, name);
     }
-    return desired;
+    return new DesiredGroups(desired, tooLongNames);
   }
 
   private void resync(

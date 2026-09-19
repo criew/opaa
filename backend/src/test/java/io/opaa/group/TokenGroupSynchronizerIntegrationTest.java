@@ -204,6 +204,7 @@ class TokenGroupSynchronizerIntegrationTest {
     Set<String> before = storedExternalIdsOfAlice();
     int historyRows = historyRowsOfAlice();
     int auditRows = auditRowsOfOrganization();
+    assertThat(before).hasSize(1);
 
     synchronizer.apply(
         alice, beschaeftigte, TokenGroups.unavailable(TokenGroups.Reason.CLAIM_OVERAGE));
@@ -218,6 +219,7 @@ class TokenGroupSynchronizerIntegrationTest {
   void aClaimOfOnlyUnusableNamesRevokesNothing() {
     synchronizer.apply(alice, beschaeftigte, TokenGroups.named(List.of("Fachbereich 3")));
     Set<String> before = storedExternalIdsOfAlice();
+    assertThat(before).hasSize(1);
 
     synchronizer.apply(
         alice,

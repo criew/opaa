@@ -98,13 +98,15 @@ public sealed interface TokenGroups {
 
   /**
    * Whether the token replaced the claim by a distributed-claim reference: {@code _claim_names}
-   * maps the top-level claim name - the first segment of {@code path} - to a source entry.
+   * maps the top-level claim name - the first segment of {@code path} - to a source entry. The
+   * split keeps its limit: without it a path of nothing but dots yields an empty array and reading
+   * its first segment would fail the request, which no claim layout may do.
    */
   private static boolean signalsOverage(Map<String, Object> claims, String path) {
     if (claims == null || path == null || path.isBlank()) {
       return false;
     }
     return claims.get(OVERAGE_CLAIM) instanceof Map<?, ?> names
-        && names.containsKey(path.split("\\.")[0]);
+        && names.containsKey(path.split("\\.", 2)[0]);
   }
 }
