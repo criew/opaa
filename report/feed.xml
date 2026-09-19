@@ -5,8 +5,33 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-09-18T04:58:49Z</updated>
+  <updated>2026-09-19T04:52:04Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Freitag, 18. September 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-09-18.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-09-18.html</id>
+    <updated>2026-09-19T04:52:04Z</updated>
+    <summary type="text">feat: OPAA als Wissensschicht für andere KI-Werkzeuge — Zugangstokens, Such-Endpunkt und MCP-Server:
+— Fremdzugänge vollständig umgesetzt und abgenommen
+— MCP-Server über Streamable HTTP mit search, fetch, list_libraries
+— Such-Endpunkt ohne Generierung, Dokumentabruf, Kontingent je Token
+— Persönliche Zugangstokens mit Ausstellung, Widerruf, Authentifizierungsfilter
+feat: Viele Chats im Space beherrschen — Suche, Zeitgruppen, Anheften und Archiv:
+— Chatliste beherrschbar gemacht: Suche, Zeitgruppen, Anheften, Archiv
+— Chatsuche mit Volltextindex und Such-Endpunkt je Space
+— Chat-Archiv je Space mit Seite, archivieren, zurückholen, Mehrfachauswahl
+— Chatliste ordnen: Titelfilter, Zeitgruppen, Anheften
+feat: Fundament für Werkzeugaufrufe im Chat — Modellfähigkeit, Werkzeugschleife, Grenzen und Messung:
+— Werkzeugschleife im Chat mit search_knowledge, drei Grenzen, Platzlimit
+— Werkzeugfähigkeit am Modelleintrag mit drei Werten und Prüfangabe
+— Schrittprotokoll des Werkzeuglaufs: Ablage, Frist, Löschlauf
+— Antwort und Zwischenschritte im Fluss sichtbar machen
+Sonstiges:
+— MCP-Server: fetch akzeptiert documentId, Suchtreffer als Auszug
+— Abschalten lokaler Verwaltung nennt seinen eigenen Grund
+— Filter 90 Tage nicht genutzt nimmt Notanker-Konto aus</summary>
+  </entry>
   <entry>
     <title>Tagesreport Donnerstag, 17. September 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-09-17.html"/>

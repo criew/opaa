@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tagesreport 2026-09-18</title>
+<link rel="alternate" type="application/atom+xml" title="OPAA Tagesreport" href="../feed.xml">
+<style>:root {
+  color-scheme: light dark;
+  --bg: #ffffff;
+  --fg: #1a1a1a;
+  --muted: #5c6370;
+  --line: #e2e5e9;
+  --accent: #2f6feb;
+  --card: #f7f8fa;
+  --green: #1a7f37;
+  --red: #cf222e;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14161a;
+    --fg: #e6e8eb;
+    --muted: #9aa1ab;
+    --line: #2a2e35;
+    --accent: #6ea0ff;
+    --card: #1b1e24;
+    --green: #3fb950;
+    --red: #f85149;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 2rem 1.25rem 4rem;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+main { max-width: 46rem; margin: 0 auto; }
+a { color: var(--accent); }
+header { border-bottom: 1px solid var(--line); padding-bottom: 1.25rem; margin-bottom: 2rem; }
+h1 { font-size: 1.6rem; margin: 0 0 .35rem; letter-spacing: -.01em; }
+h2 { font-size: 1.1rem; margin: 2.25rem 0 .85rem; letter-spacing: -.01em; }
+.sub { color: var(--muted); font-size: .9rem; margin: 0; }
+.num { font-variant-numeric: tabular-nums; color: var(--muted); margin-right: .4rem; }
+.empty { color: var(--muted); font-style: italic; }
+
+.blaettern { color: var(--muted); font-size: .9rem; }
+.blaettern a { text-decoration: none; }
+.blaettern a:hover { text-decoration: underline; }
+
+.linkbar { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .85rem; }
+.linkbar a {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  font-size: .85rem;
+  padding: .3rem .7rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  text-decoration: none;
+}
+.linkbar a:hover { border-color: var(--accent); }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.dot.green { background: var(--green); }
+.dot.red { background: var(--red); }
+
+.kpi-row { display: flex; gap: .75rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.kpi {
+  flex: 1;
+  min-width: 7rem;
+  padding: .75rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  text-align: center;
+}
+.kpi-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+.kpi-value.green { color: var(--green); }
+.kpi-label {
+  font-size: .78rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.epic-section {
+  margin-bottom: 1.25rem;
+  padding: .85rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+}
+.epic-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  margin-bottom: .5rem;
+}
+.epic-title { font-weight: 600; font-size: .95rem; }
+.epic-progress {
+  font-size: .8rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.progress-bar {
+  height: 4px;
+  background: var(--line);
+  border-radius: 2px;
+  margin-bottom: .6rem;
+  overflow: hidden;
+}
+.progress-fill { height: 100%; background: var(--accent); border-radius: 2px; }
+.epic-section ul { margin: 0; padding-left: 1.25rem; font-size: .9rem; }
+.epic-section li { margin-bottom: .25rem; }
+
+.merged-summary {
+  margin-top: .5rem;
+  padding-top: .5rem;
+  border-top: 1px dashed var(--line);
+  font-size: .85rem;
+  color: var(--muted);
+}
+.merged-summary ul { margin: .25rem 0 0; padding-left: 1.25rem; }
+.merged-summary li { margin-bottom: .2rem; }
+
+ul.items { list-style: none; margin: 0; padding: 0; }
+ul.items li {
+  padding: .7rem .9rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-bottom: .5rem;
+  background: var(--card);
+}
+.meta { display: block; color: var(--muted); font-size: .82rem; margin-top: .25rem; }
+
+footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; }
+.status.bad { color: var(--red); font-weight: 600; }
+</style>
+</head>
+<body>
+<main>
+<header>
+<h1>Tagesreport Freitag, 18. September 2026</h1>
+<nav class="blaettern"><a href="2026-09-17.html" rel="prev" title="Donnerstag, 17. September 2026">← Vorheriger Tag</a> · <a href="../index.html">Alle Reports</a></nav>
+<div class="linkbar"><a href="https://opaa.ewerlin.com/chat">Testumgebung</a><a href="https://github.com/criew/opaa">Repository</a><a href="https://github.com/criew/opaa/issues">Issues</a><a href="https://github.com/criew/opaa/pulls">Pull Requests</a><a href="https://github.com/criew/opaa/actions/runs/35402436965" title="Letzter CI-Lauf auf dem Hauptbranch: erfolgreich">CI <span class="dot green"></span></a></div>
+</header>
+
+<div class="kpi-row"><div class="kpi"><div class="kpi-value">50</div><div class="kpi-label">Issues offen</div></div><div class="kpi"><div class="kpi-value green">+37</div><div class="kpi-label">Neu angelegt</div></div><div class="kpi"><div class="kpi-value">31</div><div class="kpi-label">Abgeschlossen</div></div><div class="kpi"><div class="kpi-value">35</div><div class="kpi-label">PRs gemergt</div></div></div>
+
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/1715">#1715</a> feat: OPAA als Wissensschicht für andere KI-Werkzeuge — Zugangstokens, Such-Endpunkt und MCP-Server</span>
+<span class="epic-progress">9 / 9 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 100%"></div></div>
+<ul><li>Fremdzugänge vollständig umgesetzt und abgenommen</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/1721">#1721</a></span>MCP-Server über Streamable HTTP mit search, fetch, list_libraries</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/1720">#1720</a></span>Such-Endpunkt ohne Generierung, Dokumentabruf, Kontingent je Token</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/1718">#1718</a></span>Persönliche Zugangstokens mit Ausstellung, Widerruf, Authentifizierungsfilter</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/1764">#1764</a></span>test(e2e): Fremdzugänge — Schalter, Bibliotheksfreigabe, Tokenverwaltung und MCP-Zugriff (+1026/−1, 7 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1760">#1760</a></span>docs(handbuch): Kapitel „Fremdzugänge&quot; samt Client-Einrichtung, Störungssuche und Restore-Prüfliste (+725/−14, 6 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1758">#1758</a></span>feat(api): MCP-Server über Streamable HTTP (STATELESS) mit search, fetch und list_libraries (+2128/−41, 27 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1756">#1756</a></span>feat(frontend): Zugangstokens im Profil verwalten und in der Systemverwaltung sperren (+2517/−392, 29 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1746">#1746</a></span>feat(api): Such-Endpunkt ohne Generierung, Abruf nach Trefferkennung, Kontingent und Abflussalarm (+3701/−49, 41 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1744">#1744</a></span>feat(auth): Persönliche Zugangstokens — Modell, Ausstellung, Widerruf, Authentifizierungsfilter und Verwaltungsliste (+5452/−87, 64 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1743">#1743</a></span>feat(auth): Bibliotheksfreigabe für Fremdzugänge als befristetes, historisiertes Reichweitenfeld (+3327/−22, 54 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1740">#1740</a></span>feat(auth): Fremdzugänge installationsweit schalten — Notaus, Netzbereich, Grenzwerte und Einleitungstext (+2286/−41, 33 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1737">#1737</a></span>docs(adr): ADR-0035 — MCP-Server, persönliche Zugangstokens und Freigabemodell der Fremdzugänge (+532/−0, 1 Datei)</li></ul></div>
+</div>
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/1762">#1762</a> feat: Viele Chats im Space beherrschen — Suche, Zeitgruppen, Anheften und Archiv</span>
+<span class="epic-progress">4 / 4 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 100%"></div></div>
+<ul><li>Chatliste beherrschbar gemacht: Suche, Zeitgruppen, Anheften, Archiv</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/1770">#1770</a></span>Chatsuche mit Volltextindex und Such-Endpunkt je Space</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/1769">#1769</a></span>Chat-Archiv je Space mit Seite, archivieren, zurückholen, Mehrfachauswahl</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/1768">#1768</a></span>Chatliste ordnen: Titelfilter, Zeitgruppen, Anheften</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/1782">#1782</a></span>feat(chat): Chatsuche mit Trefferauszug und Sprung an die Trefferstelle (+1644/−250, 19 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1779">#1779</a></span>feat(chat): Chat-Archiv je Space — Seite „Chats“, archivieren, zurückholen, Mehrfachauswahl (+2948/−57, 36 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1777">#1777</a></span>feat(chat): Chatsuche — Volltextindex über Nachrichten und Such-Endpunkt je Space (+1840/−14, 26 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1775">#1775</a></span>feat(chat): Chatliste ordnen — Titelfilter, Zeitgruppen und Anheften (+1848/−115, 29 Dateien)</li></ul></div>
+</div>
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/1747">#1747</a> feat: Fundament für Werkzeugaufrufe im Chat — Modellfähigkeit, Werkzeugschleife, Grenzen und Messung</span>
+<span class="epic-progress">0 / 7 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 0%"></div></div>
+<ul><li><span class="num"><a href="https://github.com/criew/opaa/issues/1750">#1750</a></span>Werkzeugschleife im Chat mit search_knowledge, drei Grenzen, Platzlimit</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/1749">#1749</a></span>Werkzeugfähigkeit am Modelleintrag mit drei Werten und Prüfangabe</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/1751">#1751</a></span>Schrittprotokoll des Werkzeuglaufs: Ablage, Frist, Löschlauf</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/1752">#1752</a></span>Antwort und Zwischenschritte im Fluss sichtbar machen</li></ul>
+
+</div>
+<div class="epic-section">
+<div class="epic-header"><span class="epic-title">Sonstiges</span></div>
+<ul><li><span class="num"><a href="https://github.com/criew/opaa/issues/1766">#1766</a></span>MCP-Server: fetch akzeptiert documentId, Suchtreffer als Auszug</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/1698">#1698</a></span>Abschalten lokaler Verwaltung nennt seinen eigenen Grund</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/1694">#1694</a></span>Filter 90 Tage nicht genutzt nimmt Notanker-Konto aus</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/1774">#1774</a></span>docs(features): Fremdzugänge nach Abnahme als umgesetzt kennzeichnen (+7/−6, 3 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1772">#1772</a></span>docs(features): Konzept der Chatliste eines Space — Suche, Zeitgruppen, Anheften, Archiv (+434/−16, 5 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1767">#1767</a></span>fix(mcp): fetch nimmt auch die Dokumentkennung, search fasst je Dokument zusammen (+723/−31, 12 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1765">#1765</a></span>fix(frontend): /mcp im Reverse-Proxy an das Backend durchreichen (+171/−29, 12 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1763">#1763</a></span>docs(design): Chats bleiben privat, bis sie geteilt werden (+19/−15, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1761">#1761</a></span>docs(features): offene Fragen zur Oberfläche von Skills, Läufen und Artefakten (+13/−0, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1757">#1757</a></span>docs(features): Fähigkeitsangabe führt Grundlage statt prüfender Stelle (+1/−1, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1755">#1755</a></span>docs(features): agents-and-tools um Marktbefunde, Szenarien und Reihenfolge ergänzen (+304/−23, 5 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1742">#1742</a></span>docs(vision): Barrierefreiheit als fünftes Unterscheidungsmerkmal (+9/−4, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1741">#1741</a></span>docs: Übernahme von Rechten aus Quellsystemen als bedingte Zusage formulieren (+20/−11, 5 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1738">#1738</a></span>docs: Zitierzwang durch Belegvalidierung ersetzen (+87/−66, 15 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1736">#1736</a></span>chore(deps): aws-java-sdk-v2 monorepo aktualisieren (+1/−1, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1735">#1735</a></span>chore(deps): ollama/ollama docker tag to v0.34.2 (+2/−2, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1734">#1734</a></span>docs(features): Der Ausgang als Kontrollpunkt — Zugangsdaten außerhalb der Ausführungsumgebung (+29/−0, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1730">#1730</a></span>feat(db): Zielschema der Datenbank konfigurierbar machen, public.-Präfix entfernen (+1027/−440, 38 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1729">#1729</a></span>docs(vision): Belegbarkeit, Unterscheidungsmerkmale, aufgenommene Ideen — und Quellrechte als bedingte Zusage (+102/−8, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1724">#1724</a></span>docs(features): Fremdzugänge spezifizieren — Zugangstokens und MCP-Server (+858/−15, 6 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1714">#1714</a></span>chore(backend): testJavadoc in ein eigenes Ausgabeverzeichnis schreiben lassen (+3/−0, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1700">#1700</a></span>feat(auth): Abgeschaltete Selbstbedienungsflüsse von unbekannten Routen ununterscheidbar machen (+660/−192, 20 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1698">#1698</a></span>fix(auth): Abschalten der lokalen Verwaltung nennt seinen eigenen Grund (+245/−45, 16 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1694">#1694</a></span>fix(auth): Filter „länger als 90 Tage nicht genutzt“ nimmt das Notanker-Konto aus (+194/−13, 15 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1693">#1693</a></span>test(auth): Löschsperre lokaler Konten gegen die RESTRICT-Fremdschlüssel aus information_schema absichern (+263/−18, 4 Dateien)</li></ul></div>
+</div>
+
+<footer>
+Erzeugt am 2026-09-19 um 06:52 Uhr ·
+<a href="../feed.xml">Feed abonnieren</a>
+<br><span class="empty">Berichtszeitraum: 2026-09-18T00:00:00 bis 2026-09-18T23:59:59 (Europe/Berlin)</span>
+</footer>
+</main>
+</body>
+</html>
