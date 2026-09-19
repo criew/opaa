@@ -767,8 +767,8 @@ class LocalUserAdminIntegrationTest {
     Instant now = Instant.now();
     Instant yesterday = now.minus(Duration.ofDays(1));
     Instant inAMonth = now.plus(Duration.ofDays(30));
-    // Every row below is issued by the account being deleted, so each one reaches the selection
-    // and every exclusion below is the only reason its row is left out.
+    // The four rows below are issued by the account being deleted, so each one reaches the
+    // selection and the exclusion named at it is the only reason its row is left out.
     // the one that still confers something to a holder who remains
     grant(holder.id(), unit, issuer.id(), yesterday, inAMonth, null);
     // spent: its window has run out, so there is nothing left to revoke
@@ -785,6 +785,9 @@ class LocalUserAdminIntegrationTest {
     // held by the account itself: its Gegenstand goes with the account (ADR-0016, Nachtrag), and a
     // revocation event would name a pseudonym this transaction deletes
     grant(issuer.id(), unit, issuer.id(), yesterday, inAMonth, null);
+    // a third party's grant, untouched by this deletion in every way: neither revoked nor removed
+    DiagnosticImpersonationGrant ofAThirdParty =
+        grant(holder.id(), unit, admin.id(), yesterday, inAMonth, null);
 
     try {
       asAdmin(delete(LOCAL_USERS + "/" + issuer.id())).andExpect(status().isNoContent());
@@ -808,13 +811,15 @@ class LocalUserAdminIntegrationTest {
                   Long.class,
                   issuerPseudonym.toString()))
           .isZero();
-      // the rows themselves went with the cascade, which is now only the net behind the revocation
+      // every row the deleted account was part of went with the cascade - the net behind the
+      // revocation - and the third party's grant is untouched by all of it
       assertThat(
-              jdbc.queryForObject(
-                  "SELECT count(*) FROM diagnostic_impersonation_grants WHERE scope_group_id = ?",
-                  Long.class,
+              jdbc.queryForList(
+                  "SELECT CAST(id AS text) FROM diagnostic_impersonation_grants"
+                      + " WHERE scope_group_id = ?",
+                  String.class,
                   unit.getId()))
-          .isZero();
+          .containsExactly(ofAThirdParty.getId().toString());
     } finally {
       jdbc.update(
           "DELETE FROM diagnostic_impersonation_grants WHERE scope_group_id = ?", unit.getId());
@@ -824,7 +829,7 @@ class LocalUserAdminIntegrationTest {
   }
 
   /** A grant row as the repository holds it, revoked beforehand when {@code revokedBy} is given. */
-  private void grant(
+  private DiagnosticImpersonationGrant grant(
       UUID holderId,
       Group scope,
       UUID grantedBy,
@@ -843,7 +848,7 @@ class LocalUserAdminIntegrationTest {
     if (revokedBy != null) {
       grant.revoke(revokedBy, validFrom);
     }
-    impersonationGrants.save(grant);
+    return impersonationGrants.save(grant);
   }
 
   @Test
