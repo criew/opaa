@@ -35,7 +35,8 @@ Die Zugangskontrolle in OPAA hat vier Schichten:
 1. **Asset-Rechte** — wer auf Wissensbibliotheken, Agenten und Prompt-Bibliotheken zugreift →
    [Spaces, Assets & Zugangskontrolle](./spaces-and-assets.md)
 2. **Space-Rollen** — wer in einem Arbeitsraum mitarbeitet, kuratiert und verwaltet → ebenda
-3. **Systemverwaltung** — wer das System als Ganzes verwaltet → dieses Dokument
+3. **Systemverwaltung und Revision** — wer das System als Ganzes verwaltet, wer das Protokoll
+   auswerten darf und welche beiden Befugnisse neben den Rollen stehen → dieses Dokument
 4. **Identität und Kontenlebenszyklus** — woher Nutzer kommen, wie sie sich anmelden und wie ihr Zugang
    endet → dieses Dokument
 
@@ -70,6 +71,77 @@ Wichtige Abgrenzung: System-Admins verwalten das System, sind aber **nicht autom
 Inhalt zu lesen**. Der Zugriff auf Wissensbibliotheken folgt der Rechteliste des Assets. Wo eine Übernahme
 nötig ist (offene Nachfolge, Offboarding), ist sie ein protokollierter Verwaltungsakt und keine
 stillschweigende Leseberechtigung. Private Inhalte bleiben auch dabei unlesbar — in jedem Space.
+
+Wie weit diese Abgrenzung im gebauten Stand trägt und wo sie es heute **nicht** tut, steht unten unter
+[Verwalten ist nicht Lesen](#verwalten-ist-nicht-lesen-die-asymmetrie-bei-wissensbibliotheken).
+
+### Die Revisionsrolle `AUDITOR`
+
+Neben `SYSTEM_ADMIN` trägt die Benutzer-Entität eine zweite systemweite Rolle: **`AUDITOR`** (gebaut,
+#393/#394). Ein Konto hält genau einen der drei Werte `USER`, `SYSTEM_ADMIN` oder `AUDITOR` — die Rollen
+sind Alternativen, nicht Stufen.
+
+`AUDITOR` öffnet ausschließlich den Revisionsweg: die vier begrenzten Abfragen auf das Protokoll und den
+Vorgang der anlassbezogenen Klärung (siehe
+[Zugriffswege](./security-and-compliance.md#zugriffswege-was-es-gibt-und-was-es-nicht-gibt)). Sie trägt
+keine einzige der oben aufgezählten Verwaltungsbefugnisse.
+
+**Die Trennung gilt in beide Richtungen.** `SYSTEM_ADMIN` trägt keinen Lesezugriff auf das Protokoll: Ein
+Leseversuch der Systemverwaltung wird abgewiesen — und der abgewiesene Versuch wird selbst protokolliert.
+Wer das System verwaltet, wertet die Spur seines eigenen Verwaltungshandelns nicht aus.
+
+Ist bei einem OIDC-Anbieter ein Rollen-Claim gesetzt, ist der Anbieter für beide Rollen führend; die
+manuelle Rollenvergabe ist für Konten dieses Anbieters dann gesperrt (siehe
+[Claim-Zuordnung je Anbieter](#übergabe-eines-lokalen-kontos-an-eine-anbieteridentität-gebaut-1563)).
+
+### Zwei Befugnisse neben den Rollen
+
+Zwei Zugriffe stehen **neben** dem Rollenmodell und werden einzeln, benannt und befristet vergeben. Sie
+sind eigene Tabellenzeilen, keine Rolleneigenschaft:
+
+| Befugnis | Ablage | Wer vergibt | Technische Grenze |
+|---|---|---|---|
+| **„Sicht als"** — eine Suchdiagnose im Rechtekontext einer anderen Person ausführen | `diagnostic_impersonation_grants` | die Systemverwaltung | Geltungsbereich ist genau eine Gruppe, die der Dienst auf `ORG_UNIT` einschränkt; Laufzeit höchstens zwölf Monate je Vergabe, als `CHECK` in der Datenbank |
+| **Vorfallsbereich** — die anlassbezogene Klärung mit Personenfilter | `audit_incident_scope_grants` | zwei verschiedene `AUDITOR`-Konten, eines beantragt, ein anderes gibt frei | Vier-Augen-Prinzip als `CHECK` in der Datenbank; Person, Zeitraum und Zweck vorab festgelegt; die Freigabe ist 30 Tage nutzbar |
+
+> **`SYSTEM_ADMIN` schließt keine von beiden ein**, und die beiden schließen einander nicht ein.
+
+Im Einzelnen:
+
+- **„Sicht als":** Die Systemverwaltung *erteilt* die Befugnis, hält sie dadurch aber nicht. Die Prüfung
+  beim Ausführen sieht ausschließlich die Zeilen der Vollmachtstabelle an und kennt keinen Rollenzweig —
+  für keine Rolle. Ein Administrator ohne eigene Vollmacht wird abgewiesen wie jeder andere.
+- **Vorfallsbereich:** Antrag, Freigabe und Abfrage stehen allein `AUDITOR` offen; die Systemverwaltung
+  erreicht diesen Weg gar nicht.
+- **Zueinander:** Wer diagnostiziert, wertet nicht das Protokoll aus, in dem seine Diagnose steht. Die
+  Begründung steht bei den
+  [Berechtigungs-Leitplanken](./hybrid-retrieval.md#berechtigungs-leitplanken), Leitplanke (c).
+
+### Verwalten ist nicht Lesen: die Asymmetrie bei Wissensbibliotheken
+
+Die Abgrenzung oben — Systemverwaltung ist nicht automatisch Leseberechtigung — ist im Code als
+Asymmetrie zwischen zwei Prüfwegen umgesetzt, und die wird ohne Erklärung leicht als Widerspruch
+gelesen.
+
+Auf dem Weg der **einzelnen Bibliothek** gilt die Systemverwaltung als `OWNER`: Sie kann jede Bibliothek
+ansehen, umbenennen, ihre Sichtbarkeit ändern, Rechte darauf vergeben — und auch ihre Dokumente öffnen
+und herunterladen. Die Abgrenzung oben ist an dieser Stelle also enger formuliert, als der gebaute Stand
+sie hält; die Fassung des Rechtemodells ist Gegenstand von Epic #1295.
+
+Auf dem Weg der **Suche** gilt das nicht. Die Menge der lesbaren Bibliotheken wird allein aus Grants,
+Gruppenmitgliedschaften und organisationsweiter Sichtbarkeit gebildet — ohne Ausnahme für die
+Systemverwaltung.
+
+Ein Administrator darf also jede Bibliothek verwalten, ruft in einem Chat aber nur aus denen ab, die ihm
+tatsächlich zugestanden wurden (die Formel steht unter
+[Rechte an einem Asset erhalten](./spaces-and-assets.md#rechte-an-einem-asset-erhalten)). Die Asymmetrie
+zeigt damit dort in die sichere Richtung, wo es auf die Antwort ankommt: Nichts, was ein Administrator in
+einer Antwort zu lesen bekommt, kann aus einer Bibliothek stammen, auf die er keinen Grant hat. Ein
+Zugriff über den Verwaltungsweg bleibt dagegen ein einzelner, gezielter Aufruf und reichert seine
+Suchtreffer nicht stillschweigend an.
+
+Die **Bibliotheksliste** folgt dabei der Suchformel, nicht dem Verwaltungsweg: Ein Administrator sieht
+dort nur, was ihm zugestanden wurde. Einzeln aufrufen und verwalten kann er trotzdem jede Bibliothek.
 
 ### Dokumentenfluss: Konnektoren gegen Benutzer-Uploads
 
