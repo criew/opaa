@@ -424,14 +424,19 @@ dependencyManagement {
     imports {
         mavenBom("org.springframework.ai:spring-ai-bom:${libs.versions.spring.ai.get()}")
     }
-    // Raises the embedded Tomcat above the version pinned by spring-boot-dependencies; see the
-    // tomcat entry in libs.versions.toml. Remove once a Spring Boot release pins >= 11.0.25 (#1431).
+    // Security overrides for artifacts nothing here declares directly: the embedded Tomcat pinned
+    // by spring-boot-dependencies (#1431) and the Bouncy Castle / junrar versions Tika's parser
+    // modules resolve (CVE-2026-8763, CVE-2026-13506, CVE-2026-86071). Each entry states its own
+    // removal condition in libs.versions.toml, which is also where the versions live.
     dependencies {
-        dependencySet("org.apache.tomcat.embed:${libs.versions.tomcat.get()}") {
-            entry("tomcat-embed-core")
-            entry("tomcat-embed-el")
-            entry("tomcat-embed-websocket")
-        }
+        dependency(libs.tomcat.embed.core.get().toString())
+        dependency(libs.tomcat.embed.el.get().toString())
+        dependency(libs.tomcat.embed.websocket.get().toString())
+        dependency(libs.bouncycastle.bcprov.get().toString())
+        dependency(libs.bouncycastle.bcutil.get().toString())
+        dependency(libs.bouncycastle.bcpkix.get().toString())
+        dependency(libs.bouncycastle.bcjmail.get().toString())
+        dependency(libs.junrar.get().toString())
     }
 }
 

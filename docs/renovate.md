@@ -23,6 +23,14 @@ jederzeit auch lokal ausführen (unten).
 | Demo-Seed-/Generator-Requirements (`demo/*/requirements.txt`) | `pip_requirements` | `demo` |
 | Node-Version für die lokale Entwicklung (`frontend/.nvmrc`) | `nvm` | `frontend` |
 
+**Rein transitive Sicherheits-Pins brauchen einen `[libraries]`-Eintrag.** Wird eine Bibliothek
+angehoben, die kein Build-Skript direkt deklariert (eingebetteter Tomcat, Bouncy Castle, junrar —
+siehe den `dependencyManagement`-Block in `backend/build.gradle.kts`), genügt ein bloßer
+`[versions]`-Eintrag nicht: Der `gradle`-Manager leitet seine Koordinaten aus `[libraries]` ab und
+sieht eine Version ohne `module` überhaupt nicht. Der Pin bekäme dann nie einen Update-PR und
+bliebe auf dem Stand stehen, auf den ihn die damalige CVE gehoben hat. Deshalb steht zu jedem
+solchen Pin ein `[libraries]`-Eintrag mit `version.ref`, den der Override über `libs.*` verwendet.
+
 Achtung bei den Demo-Requirements: Für Änderungen ausschließlich unter `demo/` läuft derzeit
 **kein** CI-Job (die Pfadfilter in `ci.yml` kennen `demo/` nicht) — solche Update-PRs vor dem
 Merge lokal gegen `demo/seed/seed.py` bzw. den Generator prüfen.
@@ -158,7 +166,9 @@ docker run --rm -v "$(pwd)":/usr/src/app -w /usr/src/app \
   `gh auth token` liefert nur ein gültiges Token, solange `gh auth status` angemeldet ist.
 - **Gradle-Updates fehlen im Log:** Der `gradle`-Manager braucht die
   `libs.versions.toml`-Einträge in Standardform (`[versions]`/`[libraries]`-Referenzen) —
-  direkt in `build.gradle.kts` eingetragene Versionen sind ohnehin verboten (AGENTS.md).
+  direkt in `build.gradle.kts` eingetragene Versionen sind ohnehin verboten (AGENTS.md). Ein
+  `[versions]`-Eintrag **ohne** zugehörigen `[libraries]`-Eintrag hat keine Koordinate und wird
+  still übergangen; das trifft besonders transitive Pins (siehe oben).
 - **`pnpm install --frozen-lockfile` bricht nach einem Renovate-Tag mit
   `ERR_PNPM_LOCKFILE_MISSING_DEPENDENCY` (#996):** Mehrere Lockfile-ändernde npm-PRs mergten
   nacheinander, ohne dass die späteren gegen den neuen Stand rebased waren — die textuell
