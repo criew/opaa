@@ -3,7 +3,15 @@ package io.opaa.api;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.openai.core.http.Headers;
+import com.openai.errors.BadRequestException;
+import com.openai.errors.InternalServerException;
+import com.openai.errors.OpenAIInvalidDataException;
+import com.openai.errors.OpenAIIoException;
+import com.openai.errors.OpenAIRetryableException;
+import com.openai.errors.RateLimitException;
 import io.opaa.common.ServiceUnavailableException;
+import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.SourceCredentialsConverter;
 import io.opaa.library.UploadProperties;
 import io.opaa.query.answer.AnswerGenerationService;
@@ -11,6 +19,7 @@ import io.opaa.query.retrieval.RetrievalPipeline;
 import io.opaa.security.CredentialsEncryptionKeyMissingException;
 import io.opaa.security.CredentialsEncryptionProperties;
 import io.opaa.security.CredentialsEncryptor;
+import jakarta.persistence.Convert;
 import java.io.InputStream;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
@@ -34,6 +43,7 @@ import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.core.type.filter.AnnotationTypeFilter;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -50,27 +60,47 @@ import org.yaml.snakeyaml.Yaml;
  * they are answered by the few operations that themselves depend on something outside this service
  * - the AI provider one of them calls on the request thread, the object store another reads an
  * original from, the worker capacity a run is handed to, the encryption key a stored credential
- * needs. This test is what keeps that set from drifting in either direction.
+ * needs. This test holds the AI half and the encryption-key half of that set against drift in both
+ * directions; the object-store and capacity half it does not hold at all, see the list below.
  *
  * <p>The premises are read off the production side rather than listed: the two statuses are taken
  * from the very {@link GlobalExceptionHandler} branches that answer them, the operations that may
  * declare the AI pair are derived from the constructor-injected object graph of the
  * {@code @RestController}s - whichever of them can reach the retrieval pipeline or the answer
- * generation -, and the write/read asymmetry that decides which library operation declares the
- * missing encryption key is asserted against the production {@link SourceCredentialsConverter}
- * itself. No Spring context.
+ * generation -, the encrypted columns are counted off {@link KnowledgeLibrary}, and the write/read
+ * asymmetry that decides which library operation declares the missing encryption key is asserted
+ * against the production {@link SourceCredentialsConverter} itself. No Spring context.
  *
- * <p><b>What this test cannot see, deliberately named rather than hidden.</b> The AI half is
- * derived at <em>controller</em> granularity: an object graph says which controller class runs the
- * model, never which of its handler methods does. A controller that serves both a model-calling and
- * a plain operation therefore passes as long as <em>one</em> of them declares the pair, and moving
- * the declaration between them would go unnoticed. Two further blind spots follow from the same
- * limit: a model call made through {@code ActiveChatModelResolver} directly rather than through the
- * pipeline is not a seam here (the asynchronous title, note and indexing calls hold that resolver
- * as an ordinary field and answer nothing to a caller, so treating it as one would demand the pair
- * at every chat operation), and an operation that stores a source credential without answering with
- * the stored library escapes the credential half. A guard for those would need a call graph, which
- * cannot tell a caught exception or an executor hand-off from a failure that reaches the caller.
+ * <p><b>What this test cannot see, deliberately named rather than hidden.</b>
+ *
+ * <ol>
+ *   <li><b>The object-store and capacity half is held by nothing here</b> - seven of the thirteen
+ *       {@code 503} declarations. Taking the {@code 503} off {@code triggerLibraryIndexing} or off
+ *       any of the four orphan-cleanup operations leaves this class green. Deriving that half would
+ *       mean treating {@code UploadedOriginalStore} as a seam, which every controller that touches
+ *       a document reaches - it would demand the status at operations that cannot answer it.
+ *   <li><b>The AI half is derived at controller granularity</b>, not per operation: an object graph
+ *       says which controller class runs the model, never which of its handler methods does. Moving
+ *       the pair from {@code searchKnowledge} to {@code listSearchableLibraries} - a plain database
+ *       read on the same controller - leaves this class green.
+ *   <li><b>{@code VectorChunkStore} is not a seam</b>, although it is the third place an embedding
+ *       call is made on a request thread: today every caller of it catches per document. That is a
+ *       statement about today's callers, not a structural one - {@code PipelineReindexService}
+ *       showed how such a claim decays, since its <em>source-file</em> access sits outside the very
+ *       {@code catch} that covers the re-index itself. The same holds for {@code
+ *       ActiveChatModelResolver}: the asynchronous title, note and indexing calls hold it as an
+ *       ordinary field and answer nothing to a caller, so treating it as a seam would demand the
+ *       pair at every chat operation.
+ *   <li><b>The push-secret pair is named, not derived</b> (see {@link
+ *       #everyOperationThatStoresAPushSecretDeclaresTheMissingKey}) - what is derived is that
+ *       {@link KnowledgeLibrary} has exactly the two encrypted columns these rules account for.
+ * </ol>
+ *
+ * <p>A sharper guard would need a call graph. That remains the wrong trade here - it cannot tell a
+ * caught exception or an executor hand-off from a failure that reaches the caller, so it would need
+ * a hand-kept exception list for the half dozen places that catch - but the claim should not be
+ * overstated either: a crude "is this call inside a {@code try}?" would have found {@code
+ * PipelineReindexService}, which this analysis first got wrong by hand.
  */
 class OperationalFailureStatusSpecificationTest {
 
@@ -102,43 +132,84 @@ class OperationalFailureStatusSpecificationTest {
 
   /**
    * The two statuses the specification declares are the two the handlers actually answer - read off
-   * the production branches, so a handler remapped to something else takes this test with it
-   * instead of leaving the specification quietly wrong.
+   * every production branch that can produce one, so a handler remapped to something else takes
+   * this test with it instead of leaving the specification quietly wrong. The wrapped variants go
+   * through {@code handleGenericException}, which unwraps the cause chain: that is the branch the
+   * JPA flush of an encrypted column and Spring AI's own retry machinery actually arrive at.
    */
   @Test
   void theTwoStatusesAreTheOnesTheProductionHandlersAnswer() {
     GlobalExceptionHandler handler =
         new GlobalExceptionHandler(new UploadProperties(null, null, 52_428_800L, null, 0, 0));
+    Headers noHeaders = Headers.builder().build();
 
-    assertThat(
-            handler
-                .handleTransientAiException(new TransientAiException("x"))
-                .getStatusCode()
-                .value())
+    assertThat(status(handler.handleTransientAiException(new TransientAiException("x"))))
         .as("a transient AI failure")
         .isEqualTo(503);
-    assertThat(
-            handler
-                .handleNonTransientAiException(new NonTransientAiException("x"))
-                .getStatusCode()
-                .value())
+    assertThat(status(handler.handleNonTransientAiException(new NonTransientAiException("x"))))
         .as("a non-transient AI failure")
         .isEqualTo(502);
+    assertThat(status(handler.handleOpenAiTransientException(new OpenAIIoException("x"))))
+        .as("a connection-level SDK failure")
+        .isEqualTo(503);
+    assertThat(status(handler.handleOpenAiTransientException(new OpenAIRetryableException("x"))))
+        .as("an SDK failure the SDK itself calls retryable")
+        .isEqualTo(503);
     assertThat(
-            handler
-                .handleServiceUnavailableException(new ServiceUnavailableException("x"))
-                .getStatusCode()
-                .value())
+            status(
+                handler.handleOpenAiServiceException(
+                    RateLimitException.builder().headers(noHeaders).build())))
+        .as("a provider that rate-limited")
+        .isEqualTo(503);
+    assertThat(
+            status(
+                handler.handleOpenAiServiceException(
+                    InternalServerException.builder().statusCode(500).headers(noHeaders).build())))
+        .as("a provider's own server error")
+        .isEqualTo(503);
+    assertThat(
+            status(
+                handler.handleOpenAiServiceException(
+                    BadRequestException.builder().headers(noHeaders).build())))
+        .as("a provider request that will keep failing")
+        .isEqualTo(502);
+    assertThat(status(handler.handleOpenAiException(new OpenAIInvalidDataException("x"))))
+        .as("a provider answer the SDK cannot read")
+        .isEqualTo(502);
+    assertThat(
+            status(handler.handleServiceUnavailableException(new ServiceUnavailableException("x"))))
         .as("an unavailable dependency of the operation")
         .isEqualTo(503);
     assertThat(
-            handler
-                .handleCredentialsEncryptionKeyMissingException(
-                    new CredentialsEncryptionKeyMissingException("x"))
-                .getStatusCode()
-                .value())
+            status(
+                handler.handleCredentialsEncryptionKeyMissingException(
+                    new CredentialsEncryptionKeyMissingException("x"))))
         .as("a missing credentials encryption key")
         .isEqualTo(503);
+
+    assertThat(
+            status(
+                handler.handleGenericException(
+                    new RuntimeException(
+                        "flush", new CredentialsEncryptionKeyMissingException("x")))))
+        .as("a missing key unwrapped from a wrapping exception")
+        .isEqualTo(503);
+    assertThat(
+            status(
+                handler.handleGenericException(
+                    new RuntimeException("wrapped", new OpenAIIoException("x")))))
+        .as("a transient SDK failure unwrapped from a wrapping exception")
+        .isEqualTo(503);
+    assertThat(
+            status(
+                handler.handleGenericException(
+                    new RuntimeException("wrapped", new OpenAIInvalidDataException("x")))))
+        .as("an unreadable provider answer unwrapped from a wrapping exception")
+        .isEqualTo(502);
+  }
+
+  private static int status(ResponseEntity<?> response) {
+    return response.getStatusCode().value();
   }
 
   /**
@@ -200,28 +271,47 @@ class OperationalFailureStatusSpecificationTest {
   }
 
   /**
-   * The premise the credential half rests on, asserted against the production converter: without a
-   * usable key a credential on its way <em>into</em> the database is refused, while one on its way
-   * out is reported as absent. Only an operation that writes one can therefore answer {@code 503}.
+   * The premise the encryption-key half rests on, asserted against the production converter:
+   * without a usable key a secret on its way <em>into</em> the database is refused, one on its way
+   * out is reported as absent, and a blank write needs no key at all. Only an operation that writes
+   * a non-blank value can therefore answer {@code 503} - which is why the two removals below do
+   * not.
    */
   @Test
-  void aCredentialIsRefusedOnWriteWithoutTheKeyAndToleratedOnRead() {
+  void aSecretIsRefusedOnWriteWithoutTheKeyAndToleratedOnReadAndOnErasure() {
     SourceCredentialsConverter converter =
         new SourceCredentialsConverter(
             new CredentialsEncryptor(new CredentialsEncryptionProperties(null)));
 
     assertThatThrownBy(() -> converter.convertToDatabaseColumn("user:secret"))
-        .as("a credential written without a key")
+        .as("a secret written without a key")
         .isInstanceOf(CredentialsEncryptionKeyMissingException.class);
     assertThat(converter.convertToEntityAttribute("enc:v1:Zm9vYmFy"))
-        .as("a credential read without a key")
+        .as("a secret read without a key")
+        .isNull();
+    assertThat(converter.convertToDatabaseColumn(null))
+        .as("an erased secret written without a key")
         .isNull();
   }
 
   /**
-   * Of the operations whose request carries a {@code sourceCredentials}, the ones that answer with
-   * the stored library have persisted it and declare the missing key; the ones that only probe with
-   * it have written nothing and must not.
+   * The columns that go through {@link SourceCredentialsConverter}, counted off {@link
+   * KnowledgeLibrary} rather than listed from memory: each one is a write path that can answer
+   * {@code 503}, and the two tests below account for exactly these two. The equality is the
+   * tripwire - a third encrypted column arrives here before it can arrive unnoticed in the
+   * specification.
+   */
+  @Test
+  void theEncryptedColumnsOfALibraryAreTheOnesTheRulesBelowAccountFor() {
+    assertThat(encryptedColumnsOfALibrary())
+        .as("a column goes through SourceCredentialsConverter without a rule for its writers")
+        .containsExactlyInAnyOrder("sourceCredentials", "webhookSecret");
+  }
+
+  /**
+   * The first encrypted column. Of the operations whose request carries a {@code
+   * sourceCredentials}, the ones that answer with the stored library have persisted it and declare
+   * the missing key; the ones that only probe with it have written nothing and must not.
    */
   @Test
   void everyOperationThatStoresASourceCredentialDeclaresTheMissingKey() {
@@ -247,6 +337,29 @@ class OperationalFailureStatusSpecificationTest {
         .as("storing a credential: %s, probing with one: %s", storing, probing)
         .containsAll(storing)
         .doesNotContainAnyElementsOf(probing);
+  }
+
+  /**
+   * The second encrypted column, {@code webhookSecret}. Both pairs are named here rather than
+   * derived: a generated secret leaves no trace in the request - these operations carry no body at
+   * all -, so nothing in the specification marks them apart from any other POST. What is derived is
+   * that there are exactly these two encrypted columns ({@link
+   * #theEncryptedColumnsOfALibraryAreTheOnesTheRulesBelowAccountFor}) and that a non-blank write
+   * needs the key while an erasure does not ({@link
+   * #aSecretIsRefusedOnWriteWithoutTheKeyAndToleratedOnReadAndOnErasure}).
+   */
+  @Test
+  void everyOperationThatStoresAPushSecretDeclaresTheMissingKey() {
+    Set<String> generating = Set.of("generateConfluenceWebhookSecret", "generateS3EventsToken");
+    Set<String> erasing = Set.of("removeConfluenceWebhookSecret", "removeS3EventsToken");
+    Set<String> known = allOperationIds();
+    assertThat(known).as("the named push-secret operations").containsAll(generating);
+    assertThat(known).as("the named push-secret operations").containsAll(erasing);
+
+    assertThat(operationsDeclaring("503"))
+        .as("generating a push secret: %s, erasing one: %s", generating, erasing)
+        .containsAll(generating)
+        .doesNotContainAnyElementsOf(erasing);
   }
 
   private static void assertSharedBody(
@@ -391,13 +504,22 @@ class OperationalFailureStatusSpecificationTest {
     }
   }
 
+  /**
+   * The mapped path of a request-mapping annotation. Both attribute names are read: {@code value}
+   * and {@code path} are aliases of each other, and on the unsynthesized annotation the one the
+   * author did not write is empty rather than mirrored.
+   */
   private static String firstPath(Annotation mapping) {
     if (mapping == null) {
       return "";
     }
-    Object value = AnnotationUtils.getValue(mapping, "value");
-    String[] paths = value instanceof String[] array ? array : new String[0];
-    return paths.length == 0 ? "" : paths[0];
+    for (String attribute : new String[] {"value", "path"}) {
+      Object declared = AnnotationUtils.getValue(mapping, attribute);
+      if (declared instanceof String[] paths && paths.length > 0) {
+        return paths[0];
+      }
+    }
+    return "";
   }
 
   private static String operationIdAt(String httpMethod, String path) {
@@ -407,6 +529,24 @@ class OperationalFailureStatusSpecificationTest {
     }
     Object operation = pathItem.get(httpMethod);
     return operation instanceof Map<?, ?> found ? (String) found.get("operationId") : null;
+  }
+
+  /** The names of the {@link KnowledgeLibrary} columns converted by the credentials converter. */
+  private static Set<String> encryptedColumnsOfALibrary() {
+    Set<String> columns = new TreeSet<>();
+    for (Field field : KnowledgeLibrary.class.getDeclaredFields()) {
+      Convert convert = field.getDeclaredAnnotation(Convert.class);
+      if (convert != null && convert.converter() == SourceCredentialsConverter.class) {
+        columns.add(field.getName());
+      }
+    }
+    return columns;
+  }
+
+  private static Set<String> allOperationIds() {
+    Set<String> ids = new TreeSet<>();
+    forEachOperation((path, method, operation) -> ids.add((String) operation.get("operationId")));
+    return ids;
   }
 
   private static Set<String> operationsDeclaring(String status) {

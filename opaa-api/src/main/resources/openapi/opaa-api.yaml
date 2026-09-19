@@ -2188,6 +2188,12 @@ paths:
         chunk metadata on every call, so an interrupted run continues where it stood instead of
         starting over. Repeat until done is true. Whether and when a bestand is nachgezogen at all is
         an explicit operator decision - nothing triggers this automatically.
+
+
+        A document whose re-index itself fails costs only that candidate and is counted as
+        skipped. Fetching its source file is not part of that: with opaa.upload.store=s3, a store
+        that cannot be reached ends the whole batch with 503 rather than skipping the document.
+        Nothing written so far is lost - the next call re-derives the remaining work.
       requestBody:
         required: true
         content:
@@ -2205,6 +2211,8 @@ paths:
           $ref: "#/components/responses/ValidationError"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
 
   /api/v1/admin/indexing/metadata-backfill:
     post:
@@ -5018,6 +5026,10 @@ paths:
         MANAGER or above, the same threshold as every other change of the source configuration.
         Rejected with 400 for every other sourceType. Recorded in the audit log as
         LIBRARY_SOURCE_UPDATED with changedFields [confluenceWebhookSecret], never with the value.
+        The secret is stored through the same encryption as sourceCredentials, so this operation
+        needs the credentials encryption key (OPAA_CREDENTIALS_ENCRYPTION_KEY): without a usable
+        key no secret is stored and the answer is 503 naming the missing key. Removing a secret
+        (DELETE below) does not need the key - it stores nothing.
       responses:
         "200":
           description: The new secret, shown once
@@ -5031,6 +5043,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
 
     delete:
       operationId: removeConfluenceWebhookSecret
@@ -5122,7 +5136,10 @@ paths:
         store has to notify. Calling again rotates: the previous token stops authenticating
         immediately. MANAGER or above. Rejected with 400 for every other sourceType. Recorded in
         the audit log as LIBRARY_SOURCE_UPDATED with changedFields [s3EventsToken], never with
-        the value.
+        the value. The token is stored through the same encryption as sourceCredentials, so this
+        operation needs the credentials encryption key (OPAA_CREDENTIALS_ENCRYPTION_KEY): without
+        a usable key no token is stored and the answer is 503 naming the missing key. Removing a
+        token (DELETE below) does not need the key - it stores nothing.
       responses:
         "200":
           description: The new token, shown once
@@ -5136,6 +5153,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
 
     delete:
       operationId: removeS3EventsToken
