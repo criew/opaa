@@ -132,18 +132,9 @@ public class SpikeToolLoopQueryHandler {
    * persists the turn via {@code chatService.appendTurn} and returns the finished {@link
    * QueryResult}.
    *
-   * <p>What is persisted (and added to {@code chatMemory}) and what this call returns deliberately
-   * differ: the prefix never reaches {@code appendTurn}/{@code chatMemory} - a follow-up turn's
-   * {@code ConversationWindowMessages.reloaded} must rebuild the exact same window whether the
-   * cache is warm or was just reloaded from the persisted history, and a stray {@code "@test "}
-   * would ride along into that window, the derived chat title and the chat's full-text index
-   * otherwise. The "Suchschritte" line is display-only for this one response for the same reason:
-   * persisting it would leave the same window inconsistent after a reload, since {@link
-   * ConversationWindowMessages#answer} strips only citation markers, not this block.
-   *
-   * <p>The Gesprächsnotiz ({@code notePoints}) rides along in the returned {@link QueryResult}
-   * unchanged, but - unlike the ordinary path's {@code AnswerGenerationService#generateAnswer} -
-   * never reaches the model prompt here; out of scope for this spike (#1789).
+   * <p>The prefix and the "Suchschritte" line never reach {@code appendTurn}/{@code chatMemory} -
+   * only the returned {@link QueryResult#answer()} carries the line, display-only for this one
+   * response.
    *
    * @param startTime {@code System.currentTimeMillis()} at the start of the caller's turn, for
    *     {@link QueryOutcome#durationMs()} - the same reference point the ordinary path uses.
@@ -218,10 +209,13 @@ public class SpikeToolLoopQueryHandler {
     chat.ifPresent(
         c -> chatNoteExtractionService.condenseAsync(c.getId(), c.getSpaceId(), question));
 
+    // INFO carries counts only, never message content; the sub-questions themselves - user
+    // content - are DEBUG only.
     log.info(
-        "Spike tool-loop turn finished with {} tool call(s); teilfragen: {}",
+        "Spike tool-loop turn finished with {} tool call(s), {} chunk(s)",
         runState.searchSteps().size(),
-        runState.searchSteps());
+        chunks.size());
+    log.debug("Spike tool-loop sub-questions: {}", runState.searchSteps());
 
     long durationMs = System.currentTimeMillis() - startTime;
     int tokenCount = ChatResponses.totalTokens(response);
