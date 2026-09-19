@@ -1,0 +1,225 @@
+package io.opaa.permission;
+
+import io.opaa.api.types.PermissionSubjectType;
+import java.time.Instant;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.UUID;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+/**
+ * Records and reconstructs the permission-state history #238 asks for: every change to an {@link
+ * AssetGrant} and to a group membership is written here as a half-open interval, with the operation
+ * that caused it - so a subject's reach is reconstructable at any past instant, not only "now" (see
+ * docs/features/security-and-compliance.md#nachweisbarkeit-historisierung-von-rechten). Every
+ * recording method runs inside the caller's own transaction (default propagation): a grant change
+ * and its history row commit or roll back together, the same as any other write this class's
+ * callers already make in the same transaction.
+ *
+ * <p><b>The third source of the readable-library formula is not here.</b> A library's
+ * visibility/release history is library state, not a grant, and lives in {@code
+ * io.opaa.library.LibraryVisibilityHistoryService} - which composes {@link #readableAssetIdsAsOf}
+ * with its own organization-wide part, exactly as {@code io.opaa.library.LibraryAccessService}
+ * composes {@link AssetAccessService} with the visibility floor for "now". Both halves share the
+ * one {@link PermissionHistoryClock}, so the interval contract below holds across all three tables.
+ *
+ * <p><b>Interval contract</b> (#1497, ADR-0032), holding for every row written from that change on
+ * - rows written before it can still carry the empty intervals it prevents, and are not repaired:
+ * successive <i>state</i> intervals of the same object have strictly increasing boundaries - two
+ * changes that fall into the same clock tick still get different ones, because every boundary comes
+ * from {@link PermissionHistoryClock} rather than from the wall clock directly. A state interval is
+ * therefore never empty, and {@code validFrom <= asOf < validTo} has a solution for every state the
+ * object ever held. Successive intervals stay gapless: closing one and opening the next share a
+ * single boundary value. Zero-length rows exist on purpose, but only as event markers ({@link
+ * AssetGrantHistory#terminal}, {@link GroupMembershipHistory#terminal}) recording a revocation or
+ * deletion; they are exempt from the strictly-increasing rule and are never selected by the
+ * reconstruction. The contract orders the <i>issuing</i> of boundaries, not the commits around
+ * them: that two concurrent transactions cannot leave an interleaved chain behind is what the
+ * partial unique indexes on the open rows enforce, not the clock.
+ *
+ * <p>Deliberately not the event log #391/#392 are building in parallel - this class records only
+ * the resulting state interval, never a stream of "who read what".
+ *
+ * <p><b>Writers</b> (all deferred to after the change they historise, on the same already-loaded
+ * entity, never a second lookup): {@code AssetGrantService#upsertGrant}/{@code revokeGrant}, {@code
+ * GroupService#addMember}/{@code removeMember}/{@code deleteGroup}, {@code
+ * DirectorySyncPlanExecutor#applyPlan} (with {@link
+ * GroupMembershipHistoryCause#DIRECTORY_SYNC_ADDED}/{@link
+ * GroupMembershipHistoryCause#DIRECTORY_SYNC_REMOVED} and no actor - a sync run has no acting
+ * user), and {@code KnowledgeLibraryService#deleteLibrary}. The delete paths close every open
+ * interval the deleted asset/group left behind ({@link AssetGrantHistoryCause#LIBRARY_DELETED},
+ * {@link GroupMembershipHistoryCause#GROUP_DELETED}) - required because {@code asset_id}/{@code
+ * group_id}/{@code subject_group_id} carry no foreign key (ADR-0016), so the deletion itself never
+ * closes them.
+ */
+@Service
+public class PermissionHistoryService {
+
+  private final AssetGrantHistoryRepository grantHistoryRepository;
+  private final GroupMembershipHistoryRepository membershipHistoryRepository;
+  private final PermissionHistoryClock clock;
+
+  PermissionHistoryService(
+      AssetGrantHistoryRepository grantHistoryRepository,
+      GroupMembershipHistoryRepository membershipHistoryRepository,
+      PermissionHistoryClock clock) {
+    this.grantHistoryRepository = grantHistoryRepository;
+    this.membershipHistoryRepository = membershipHistoryRepository;
+    this.clock = clock;
+  }
+
+  // -------------------------------------------------------------------------------------------
+  // Asset grants
+  // -------------------------------------------------------------------------------------------
+
+  /** Opens the first interval for a newly created {@link AssetGrant}. */
+  public void recordGrantCreated(AssetGrant grant, UUID actorUserId) {
+    grantHistoryRepository.save(
+        AssetGrantHistory.open(
+            grant, AssetGrantHistoryCause.GRANTED, actorUserId, clock.nextBoundary()));
+  }
+
+  /**
+   * Closes the currently open interval for {@code grant} (which must already reflect the *new*
+   * role/expiresAt - callers apply the change to the entity first) and opens a new one with those
+   * new values. If no open interval is found (a pre-#238 grant that predates this table), the
+   * closing step is a no-op and only the new interval is written - the history is deliberately
+   * incomplete for grants that existed before this feature, not broken by it.
+   */
+  public void recordGrantRoleChanged(AssetGrant grant, UUID actorUserId) {
+    Instant now = clock.nextBoundary();
+    closeOpenGrantInterval(grant, now);
+    grantHistoryRepository.save(
+        AssetGrantHistory.open(grant, AssetGrantHistoryCause.ROLE_CHANGED, actorUserId, now));
+  }
+
+  /**
+   * Closes the currently open interval for a revoked {@code grant} (keeping its own recorded cause,
+   * e.g. {@code GRANTED}, unchanged) and additionally writes a zero-length {@link
+   * AssetGrantHistory#terminal} marker with {@link AssetGrantHistoryCause#REVOKED} - see that
+   * factory's Javadoc for why the revocation needs its own row. Call before the grant itself is
+   * deleted; {@code grant} must still carry its last-active role/expiresAt.
+   */
+  public void recordGrantRevoked(AssetGrant grant, UUID actorUserId) {
+    Instant now = clock.nextBoundary();
+    closeOpenGrantInterval(grant, now);
+    grantHistoryRepository.save(
+        AssetGrantHistory.terminal(grant, AssetGrantHistoryCause.REVOKED, actorUserId, now));
+  }
+
+  /**
+   * The asset-deletion counterpart of {@link #recordGrantRevoked} - same closing/marker mechanics,
+   * cause {@link AssetGrantHistoryCause#LIBRARY_DELETED} instead of {@code REVOKED}. Call once per
+   * live grant on the asset, before the asset itself is deleted: {@code asset_id} carries no
+   * foreign key, so an asset deletion never closes these intervals on its own, leaving a deleted
+   * asset's grants looking "currently readable".
+   */
+  public void recordGrantClosedByAssetDeletion(AssetGrant grant, UUID actorUserId) {
+    Instant now = clock.nextBoundary();
+    closeOpenGrantInterval(grant, now);
+    grantHistoryRepository.save(
+        AssetGrantHistory.terminal(
+            grant, AssetGrantHistoryCause.LIBRARY_DELETED, actorUserId, now));
+  }
+
+  /**
+   * Closes the open interval, if any, and flushes immediately - not left to the transaction's
+   * normal flush at commit. Hibernate's default flush order runs every queued insert before every
+   * queued update, so without this explicit {@code saveAndFlush}, closing the old interval and
+   * opening the new one in the same transaction would send the new row's {@code INSERT} to Postgres
+   * before the old row's {@code UPDATE ... SET valid_to}, transiently violating the "at most one
+   * open interval" unique index even though the two operations are correctly ordered in this
+   * method's own call order.
+   */
+  private void closeOpenGrantInterval(AssetGrant grant, Instant now) {
+    var open =
+        grant.getSubjectType() == PermissionSubjectType.USER
+            ? grantHistoryRepository
+                .findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectUserIdAndValidToIsNull(
+                    grant.getAssetType(),
+                    grant.getAssetId(),
+                    grant.getSubjectType(),
+                    grant.getSubjectUserId())
+            : grantHistoryRepository
+                .findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectGroupIdAndValidToIsNull(
+                    grant.getAssetType(),
+                    grant.getAssetId(),
+                    grant.getSubjectType(),
+                    grant.getSubjectGroupId());
+    open.ifPresent(
+        interval -> {
+          interval.close(now);
+          grantHistoryRepository.saveAndFlush(interval);
+        });
+  }
+
+  // -------------------------------------------------------------------------------------------
+  // Group memberships
+  // -------------------------------------------------------------------------------------------
+
+  public void recordMembershipAdded(
+      UUID groupId,
+      UUID organizationId,
+      UUID userId,
+      GroupMembershipHistoryCause cause,
+      UUID actorUserId) {
+    membershipHistoryRepository.save(
+        new GroupMembershipHistory(
+            groupId, organizationId, userId, cause, actorUserId, clock.nextBoundary()));
+  }
+
+  /**
+   * Closes the currently open membership interval (keeping its own recorded cause unchanged) and
+   * additionally writes a zero-length {@link GroupMembershipHistory#terminal} marker with {@code
+   * cause} - see that factory's Javadoc for why the removal needs its own row. {@code cause} must
+   * be {@link GroupMembershipHistoryCause#REMOVED} or {@link
+   * GroupMembershipHistoryCause#DIRECTORY_SYNC_REMOVED}.
+   */
+  public void recordMembershipRemoved(
+      UUID groupId,
+      UUID organizationId,
+      UUID userId,
+      GroupMembershipHistoryCause cause,
+      UUID actorUserId) {
+    Instant now = clock.nextBoundary();
+    membershipHistoryRepository
+        .findByGroupIdAndUserIdAndValidToIsNull(groupId, userId)
+        .ifPresent(
+            interval -> {
+              interval.close(now);
+              membershipHistoryRepository.saveAndFlush(interval);
+            });
+    membershipHistoryRepository.save(
+        GroupMembershipHistory.terminal(groupId, organizationId, userId, cause, actorUserId, now));
+  }
+
+  // -------------------------------------------------------------------------------------------
+  // Reconstruction
+  // -------------------------------------------------------------------------------------------
+
+  /**
+   * Every asset id of {@code assetType} that a grant to {@code userId} - directly, or to a group
+   * they belonged to - covered at {@code asOf}. The grant half of the formula {@link
+   * AssetAccessService#readableAssetIds} evaluates for "now", evaluated against the two history
+   * tables for any past instant. Whatever an asset type adds on top of grants (a library's
+   * organization-wide visibility) is composed by that type's own reader.
+   */
+  @Transactional(readOnly = true)
+  public Set<UUID> readableAssetIdsAsOf(
+      AssetType assetType, UUID userId, UUID organizationId, Instant asOf) {
+    Set<UUID> readable =
+        new HashSet<>(
+            grantHistoryRepository.findReadableAssetIdsByDirectGrantAsOf(
+                assetType, userId, organizationId, asOf));
+
+    Set<UUID> groupIds =
+        membershipHistoryRepository.findGroupIdsByUserIdAsOf(userId, organizationId, asOf);
+    if (!groupIds.isEmpty()) {
+      readable.addAll(
+          grantHistoryRepository.findReadableAssetIdsByGroupGrantAsOf(
+              assetType, groupIds, organizationId, asOf));
+    }
+    return readable;
+  }
+}

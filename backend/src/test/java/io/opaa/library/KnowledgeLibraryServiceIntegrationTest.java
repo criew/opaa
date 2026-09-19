@@ -22,8 +22,6 @@ import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.group.Group;
 import io.opaa.group.GroupMembership;
-import io.opaa.group.GroupMembershipHistoryRepository;
-import io.opaa.group.GroupMembershipResolver;
 import io.opaa.group.GroupRepository;
 import io.opaa.group.GroupService;
 import io.opaa.indexing.document.Document;
@@ -35,6 +33,11 @@ import io.opaa.indexing.source.rss.RssFeedState;
 import io.opaa.indexing.source.rss.RssFeedStateRepository;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
+import io.opaa.permission.AssetGrant;
+import io.opaa.permission.AssetGrantHistoryRepository;
+import io.opaa.permission.AssetGrantRepository;
+import io.opaa.permission.GroupMembershipHistoryRepository;
+import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.space.SpaceCreation;
 import io.opaa.space.SpaceRepository;
 import io.opaa.space.SpaceService;
@@ -1564,7 +1567,9 @@ class KnowledgeLibraryServiceIntegrationTest {
     // escalation guard this exact scenario motivated (Befund 1): a MANAGER may never touch a grant
     // that already carries a role higher than its own, regardless of the last-active-OWNER count.
     AssetGrant creatorsOwnerGrant =
-        grantRepository.findByLibraryId(library.library().getId()).stream()
+        grantRepository
+            .findByAssetTypeAndAssetId(KnowledgeLibrary.ASSET_TYPE, library.library().getId())
+            .stream()
             .filter(g -> g.getSubjectType() == PermissionSubjectType.USER)
             .filter(g -> creator.equals(g.getSubjectUserId()))
             .findFirst()
@@ -1764,7 +1769,9 @@ class KnowledgeLibraryServiceIntegrationTest {
             libraryCreation("Rechtsquellen Soziales", DocumentSourceType.UPLOAD).build(),
             currentUserOf(firstOwner));
     AssetGrant firstOwnerGrant =
-        grantRepository.findByLibraryId(library.library().getId()).stream()
+        grantRepository
+            .findByAssetTypeAndAssetId(KnowledgeLibrary.ASSET_TYPE, library.library().getId())
+            .stream()
             .filter(g -> firstOwner.equals(g.getSubjectUserId()))
             .findFirst()
             .orElseThrow();
@@ -1803,7 +1810,9 @@ class KnowledgeLibraryServiceIntegrationTest {
 
       assertThat(successes).as("exactly one revoke must succeed").isEqualTo(1);
       assertThat(conflicts).as("the other must be rejected as the last active owner").isEqualTo(1);
-      List<AssetGrant> remainingGrants = grantRepository.findByLibraryId(library.library().getId());
+      List<AssetGrant> remainingGrants =
+          grantRepository.findByAssetTypeAndAssetId(
+              KnowledgeLibrary.ASSET_TYPE, library.library().getId());
       long activeOwnerCount =
           remainingGrants.stream()
               .filter(g -> g.getRole() == AssetRole.OWNER && !g.isExpired(Instant.now()))
@@ -1860,7 +1869,9 @@ class KnowledgeLibraryServiceIntegrationTest {
             libraryCreation("Rechtsquellen Soziales", DocumentSourceType.UPLOAD).build(),
             currentUserOf(firstOwner));
     AssetGrant firstOwnerGrant =
-        grantRepository.findByLibraryId(library.library().getId()).stream()
+        grantRepository
+            .findByAssetTypeAndAssetId(KnowledgeLibrary.ASSET_TYPE, library.library().getId())
+            .stream()
             .filter(g -> firstOwner.equals(g.getSubjectUserId()))
             .findFirst()
             .orElseThrow();
@@ -1908,7 +1919,9 @@ class KnowledgeLibraryServiceIntegrationTest {
 
       assertThat(successes).as("exactly one of downgrade/revoke must succeed").isEqualTo(1);
       assertThat(conflicts).as("the other must be rejected as the last active owner").isEqualTo(1);
-      List<AssetGrant> remainingGrants = grantRepository.findByLibraryId(library.library().getId());
+      List<AssetGrant> remainingGrants =
+          grantRepository.findByAssetTypeAndAssetId(
+              KnowledgeLibrary.ASSET_TYPE, library.library().getId());
       long activeOwnerCount =
           remainingGrants.stream()
               .filter(g -> g.getRole() == AssetRole.OWNER && !g.isExpired(Instant.now()))

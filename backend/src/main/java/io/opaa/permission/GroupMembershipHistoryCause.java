@@ -1,4 +1,4 @@
-package io.opaa.group;
+package io.opaa.permission;
 
 /**
  * The operation that opened or closed a {@link GroupMembershipHistory} interval (#238). Mirrored by
@@ -31,10 +31,9 @@ public enum GroupMembershipHistoryCause {
   IDENTITY_PROVIDER_REMOVED,
 
   /**
-   * The interval was written by migration 018's backfill changeSet for a membership that already
-   * existed before this feature - reconstructed from {@code group_memberships.created_at}, with no
-   * actor (that column does not record who added an existing membership; code review of #238,
-   * finding 1).
+   * The interval was written by the #238 backfill for a membership that already existed before this
+   * feature - reconstructed from {@code group_memberships.created_at}, with no actor (that column
+   * does not record who added an existing membership; code review of #238, finding 1).
    */
   BACKFILL,
 
@@ -43,7 +42,7 @@ public enum GroupMembershipHistoryCause {
    * - closes only, like {@link #REMOVED}. Without this, a deleted group's still-open membership
    * intervals kept reporting "currently a member" of a group that no longer exists (code review of
    * #427, nit 3): {@code group_id} carries no foreign key (see {@code
-   * io.opaa.library.PermissionHistoryService}'s "Deletion survival" comment on {@code
+   * io.opaa.permission.PermissionHistoryService}'s "Deletion survival" comment on {@code
    * 018-permission-history.yaml}), so deleting the group never closed them on its own.
    */
   GROUP_DELETED

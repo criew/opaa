@@ -12,11 +12,11 @@ import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
-import io.opaa.library.AssetGrant;
-import io.opaa.library.AssetGrantRepository;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
+import io.opaa.permission.AssetGrant;
+import io.opaa.permission.AssetGrantRepository;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OpaaTestDirectory;
 import io.opaa.test.OwnLibraryFixtures;
@@ -104,6 +104,7 @@ class IndexingJobRecoveryIntegrationTest {
     ownLibraryIds.add(library.getId());
     grantRepository.save(
         AssetGrant.forUser(
+            KnowledgeLibrary.ASSET_TYPE,
             library.getId(),
             Organization.DEFAULT_ID,
             devAdmin.getId(),

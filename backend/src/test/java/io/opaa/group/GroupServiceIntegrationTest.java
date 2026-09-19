@@ -12,12 +12,14 @@ import io.opaa.auth.UserRepository;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
-import io.opaa.library.AssetGrant;
-import io.opaa.library.AssetGrantRepository;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
+import io.opaa.permission.AssetGrant;
+import io.opaa.permission.AssetGrantRepository;
+import io.opaa.permission.GroupMembershipHistoryRepository;
+import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.test.OpaaIntegrationTest;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -243,7 +245,13 @@ class GroupServiceIntegrationTest {
     KnowledgeLibrary savedLibrary = libraryRepository.save(library);
     AssetGrant grant =
         AssetGrant.forGroup(
-            savedLibrary.getId(), organizationA, saved.getId(), AssetRole.VIEWER, null, owner);
+            KnowledgeLibrary.ASSET_TYPE,
+            savedLibrary.getId(),
+            organizationA,
+            saved.getId(),
+            AssetRole.VIEWER,
+            null,
+            owner);
     grantRepository.save(grant);
 
     assertThatThrownBy(() -> groupService.deleteGroup(saved.getId(), currentUserOf(admin)))

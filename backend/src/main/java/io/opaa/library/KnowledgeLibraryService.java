@@ -19,9 +19,6 @@ import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
-import io.opaa.group.Group;
-import io.opaa.group.GroupMembershipResolver;
-import io.opaa.group.GroupRepository;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.document.Document;
 import io.opaa.indexing.document.DocumentRepository;
@@ -42,6 +39,12 @@ import io.opaa.indexing.source.s3.S3Connection;
 import io.opaa.indexing.source.s3.S3Credentials;
 import io.opaa.indexing.source.s3.S3SourceSettings;
 import io.opaa.indexing.source.s3.S3SourceSettingsJson;
+import io.opaa.permission.AssetGrant;
+import io.opaa.permission.AssetGrantRepository;
+import io.opaa.permission.GroupMembershipResolver;
+import io.opaa.permission.GroupSubject;
+import io.opaa.permission.GroupSubjectDirectory;
+import io.opaa.permission.PermissionHistoryService;
 import io.opaa.sourceaccess.ProxyAndCredentials;
 import java.net.URI;
 import java.security.SecureRandom;
@@ -125,13 +128,14 @@ public class KnowledgeLibraryService {
 
   private final KnowledgeLibraryRepository libraryRepository;
   private final UserRepository userRepository;
-  private final GroupRepository groupRepository;
+  private final GroupSubjectDirectory groupDirectory;
   private final GroupMembershipResolver membershipResolver;
   private final DocumentRepository documentRepository;
   private final AssetGrantRepository grantRepository;
   private final AssetGrantService grantService;
   private final LibraryAccessService accessService;
   private final PermissionHistoryService permissionHistoryService;
+  private final LibraryVisibilityHistoryService visibilityHistoryService;
   private final AuditEventRecorder auditEventRecorder;
   private final VectorChunkStore vectorChunkStore;
   private final FilesystemPathAllowlist filesystemAllowlist;
@@ -151,13 +155,14 @@ public class KnowledgeLibraryService {
   public KnowledgeLibraryService(
       KnowledgeLibraryRepository libraryRepository,
       UserRepository userRepository,
-      GroupRepository groupRepository,
+      GroupSubjectDirectory groupDirectory,
       GroupMembershipResolver membershipResolver,
       DocumentRepository documentRepository,
       AssetGrantRepository grantRepository,
       AssetGrantService grantService,
       LibraryAccessService accessService,
       PermissionHistoryService permissionHistoryService,
+      LibraryVisibilityHistoryService visibilityHistoryService,
       AuditEventRecorder auditEventRecorder,
       VectorChunkStore vectorChunkStore,
       FilesystemPathAllowlist filesystemAllowlist,
@@ -175,13 +180,14 @@ public class KnowledgeLibraryService {
       S3ClientFactory s3ClientFactory) {
     this.libraryRepository = libraryRepository;
     this.userRepository = userRepository;
-    this.groupRepository = groupRepository;
+    this.groupDirectory = groupDirectory;
     this.membershipResolver = membershipResolver;
     this.documentRepository = documentRepository;
     this.grantRepository = grantRepository;
     this.grantService = grantService;
     this.accessService = accessService;
     this.permissionHistoryService = permissionHistoryService;
+    this.visibilityHistoryService = visibilityHistoryService;
     this.auditEventRecorder = auditEventRecorder;
     this.vectorChunkStore = vectorChunkStore;
     this.filesystemAllowlist = filesystemAllowlist;
@@ -214,13 +220,13 @@ public class KnowledgeLibraryService {
     SourceConfiguration sourceConfiguration = validateSourceConfiguration(request);
 
     KnowledgeLibrary library;
-    Group ownerGroup = null;
+    GroupSubject ownerGroup = null;
     if (ownerType == LibraryOwnerType.GROUP) {
       if (request.ownerId() == null) {
         throw new ValidationException("ownerId ist erforderlich, wenn ownerType GROUP ist");
       }
       ownerGroup = requireGroupInOrganization(request.ownerId(), caller.organizationId());
-      if (!membershipResolver.groupIdsForUser(currentUserId).contains(ownerGroup.getId())) {
+      if (!membershipResolver.groupIdsForUser(currentUserId).contains(ownerGroup.id())) {
         throw new AccessDeniedException(
             "Nur Mitglieder der Gruppe können eine Bibliothek in ihrem Namen anlegen");
       }
@@ -228,13 +234,13 @@ public class KnowledgeLibraryService {
       // AssetGrantService#upsertGrant's own check for the exact same case - reused here rather
       // than duplicated so the two grant-writing paths can never disagree on which groups are
       // grantable.
-      grantService.requireGrantableGroup(ownerGroup.getId(), caller.organizationId());
+      grantService.requireGrantableGroup(ownerGroup.id(), caller.organizationId());
       library =
           KnowledgeLibrary.ownedByGroup(
               caller.organizationId(),
               normalizedName,
               request.description(),
-              ownerGroup.getId(),
+              ownerGroup.id(),
               visibility,
               listed,
               sourceConfiguration.sourceType(),
@@ -301,9 +307,10 @@ public class KnowledgeLibraryService {
       AssetGrant groupGrant =
           grantRepository.save(
               AssetGrant.forGroup(
+                  KnowledgeLibrary.ASSET_TYPE,
                   saved.getId(),
                   saved.getOrganizationId(),
-                  ownerGroup.getId(),
+                  ownerGroup.id(),
                   AssetRole.MANAGER,
                   null,
                   currentUserId));
@@ -321,6 +328,7 @@ public class KnowledgeLibraryService {
     AssetGrant ownerGrant =
         grantRepository.save(
             AssetGrant.forUser(
+                KnowledgeLibrary.ASSET_TYPE,
                 saved.getId(),
                 saved.getOrganizationId(),
                 currentUserId,
@@ -462,9 +470,7 @@ public class KnowledgeLibraryService {
         ownerNames.put(user.getId(), user.getDisplayName());
       }
     }
-    for (Group group : groupRepository.findAllById(groupOwnerIds)) {
-      ownerNames.put(group.getId(), group.getName());
-    }
+    ownerNames.putAll(groupDirectory.namesById(groupOwnerIds));
     return ownerNames;
   }
 
@@ -806,16 +812,16 @@ public class KnowledgeLibraryService {
           });
     }
 
-    // #238 code review (#427 nit 3): library_id carries no foreign key on the history tables
-    // (deliberately - see PermissionHistoryService's class Javadoc), so the CASCADE delete below
-    // (fk_asset_grants_library_organization) never closes these intervals on its own. Without this,
-    // a deleted library's still-open grant/visibility intervals kept reporting "currently
-    // readable"/"currently visible" for a library that no longer exists. Read the live grants
-    // before the delete cascades them away.
-    for (AssetGrant grant : grantRepository.findByLibraryId(libraryId)) {
-      permissionHistoryService.recordGrantClosedByLibraryDeletion(grant, currentUserId);
+    // asset_id/library_id carry no foreign key on the history tables (deliberately - see
+    // PermissionHistoryService's class Javadoc), so the grant deletion below never closes these
+    // intervals on its own. Without this, a deleted library's still-open grant/visibility
+    // intervals kept reporting "currently readable"/"currently visible" for a library that no
+    // longer exists. Read the live grants before they are deleted.
+    for (AssetGrant grant :
+        grantRepository.findByAssetTypeAndAssetId(KnowledgeLibrary.ASSET_TYPE, libraryId)) {
+      permissionHistoryService.recordGrantClosedByAssetDeletion(grant, currentUserId);
     }
-    permissionHistoryService.recordVisibilityClosedByLibraryDeletion(library, currentUserId);
+    visibilityHistoryService.recordVisibilityClosedByLibraryDeletion(library, currentUserId);
 
     // #392: recorded before the row is gone, same reasoning as the history calls above. For a
     // connector library whose bestand was just taken with it (ADR-0018, Entscheidung 5), the
@@ -1669,12 +1675,12 @@ public class KnowledgeLibraryService {
    * group" from "group in another organization" - the same lesson #199's review drew for foreign
    * ids in a request body.
    */
-  private Group requireGroupInOrganization(UUID groupId, UUID organizationId) {
-    Group group =
-        groupRepository
-            .findById(groupId)
+  private GroupSubject requireGroupInOrganization(UUID groupId, UUID organizationId) {
+    GroupSubject group =
+        groupDirectory
+            .find(groupId)
             .orElseThrow(() -> new NotFoundException("Gruppe nicht gefunden"));
-    if (!group.getOrganizationId().equals(organizationId)) {
+    if (!group.organizationId().equals(organizationId)) {
       throw new NotFoundException("Gruppe nicht gefunden");
     }
     return group;

@@ -14,9 +14,11 @@ import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.OrganizationScopedLoader;
 import io.opaa.common.ValidationException;
-import io.opaa.library.AssetGrantRepository;
-import io.opaa.library.KnowledgeLibraryRepository;
-import io.opaa.library.PermissionHistoryService;
+import io.opaa.permission.AssetGrantRepository;
+import io.opaa.permission.AssetOwnershipDirectory;
+import io.opaa.permission.GroupMembershipHistoryCause;
+import io.opaa.permission.GroupMembershipResolver;
+import io.opaa.permission.PermissionHistoryService;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -40,19 +42,17 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * are read-only through this service.
  *
  * <p>Deleting a group that owns an asset is blocked until ownership is transferred (see the feature
- * spec's "Eigentuemerschaft und Verwaisung" and issue #200's acceptance criteria). #201 introduced
- * the first asset type ({@link io.opaa.library.KnowledgeLibrary}), so {@link #deleteGroup} now has
- * something to check against; a fuller asset model (agents, prompt libraries) in later stages of
- * the epic extends the same check, it does not replace it.
+ * spec's "Eigentuemerschaft und Verwaisung" and issue #200's acceptance criteria). Which asset
+ * types exist is not this class's business: every one of them contributes an {@link
+ * AssetOwnershipDirectory}, and {@link #deleteGroup} asks all of them.
  *
- * <p>#202 code review: deleting a group that merely <em>holds a grant</em> - not necessarily owns
- * anything - must be blocked too, and independently of the ownership check above. {@code
- * fk_asset_grants_subject_group_organization} (migration 013) is RESTRICT, exactly like {@code
- * fk_knowledge_libraries_owner_group_organization}; without the check in {@link #deleteGroup}, the
- * everyday case the feature spec's "Freigabestufen und Auffindbarkeit" describes - "an Abteilung 5
- * freigeben" is a grant to the group representing Abteilung 5, not ownership - would surface as an
- * unhandled {@code DataIntegrityViolationException} (HTTP 500) the first time anyone tried to
- * delete such a group.
+ * <p>Deleting a group that merely <em>holds a grant</em> - not necessarily owns anything - is
+ * blocked too, and independently of the ownership check above. {@code
+ * fk_asset_grants_subject_group_organization} is RESTRICT, exactly like the owner keys; without the
+ * check in {@link #deleteGroup}, the everyday case the feature spec's "Freigabestufen und
+ * Auffindbarkeit" describes - "an Abteilung 5 freigeben" is a grant to the group representing
+ * Abteilung 5, not ownership - would surface as an unhandled {@code
+ * DataIntegrityViolationException} (HTTP 500) the first time anyone tried to delete such a group.
  */
 @Service
 @Transactional(readOnly = true)
@@ -64,7 +64,7 @@ public class GroupService {
   private final GroupRepository groupRepository;
   private final UserRepository userRepository;
   private final GroupMembershipResolver membershipResolver;
-  private final KnowledgeLibraryRepository libraryRepository;
+  private final List<AssetOwnershipDirectory> assetOwnershipDirectories;
   private final AssetGrantRepository grantRepository;
   private final PermissionHistoryService permissionHistoryService;
   private final AuditEventRecorder auditEventRecorder;
@@ -73,14 +73,14 @@ public class GroupService {
       GroupRepository groupRepository,
       UserRepository userRepository,
       GroupMembershipResolver membershipResolver,
-      KnowledgeLibraryRepository libraryRepository,
+      List<AssetOwnershipDirectory> assetOwnershipDirectories,
       AssetGrantRepository grantRepository,
       PermissionHistoryService permissionHistoryService,
       AuditEventRecorder auditEventRecorder) {
     this.groupRepository = groupRepository;
     this.userRepository = userRepository;
     this.membershipResolver = membershipResolver;
-    this.libraryRepository = libraryRepository;
+    this.assetOwnershipDirectories = assetOwnershipDirectories;
     this.grantRepository = grantRepository;
     this.permissionHistoryService = permissionHistoryService;
     this.auditEventRecorder = auditEventRecorder;
@@ -200,17 +200,14 @@ public class GroupService {
   public void deleteGroup(UUID groupId, CurrentUser caller) {
     Group group = loadGroup(groupId, caller);
     rejectOrgUnit(group);
-    // fk_knowledge_libraries_owner_group_organization is RESTRICT (migration 012): without this
-    // check, deleting a group that still owns a library would surface as an unhandled
-    // DataIntegrityViolationException -> HTTP 500 with no indication of the actual cause, a path
-    // that could not fail before #201 introduced the first asset type a group can own. Checking
-    // first turns that into a clean, actionable 409 - the block on deleting a group that still
-    // owns an asset the class Javadoc and #200's acceptance criteria require. A fuller asset model
-    // (agents, prompt libraries, in later epic stages) extends this same check to those tables; it
-    // does not replace it.
-    if (libraryRepository.existsByOwnerGroupId(groupId)) {
-      throw new ConflictException(
-          "Die Gruppe besitzt noch Bibliotheken und kann nicht gelöscht werden");
+    // The owner foreign keys of the asset tables are RESTRICT: without this check, deleting a
+    // group that still owns an asset would surface as an unhandled DataIntegrityViolationException
+    // -> HTTP 500 with no indication of the actual cause. Every asset type answers for itself
+    // through AssetOwnershipDirectory, so a further type extends this check by adding a bean.
+    for (AssetOwnershipDirectory ownership : assetOwnershipDirectories) {
+      if (ownership.existsAssetOwnedByGroup(groupId)) {
+        throw new ConflictException(ownership.ownedAssetConflictMessage());
+      }
     }
     // #202 code review: a group that merely holds a grant (never owns anything) hits the same
     // RESTRICT constraint via fk_asset_grants_subject_group_organization - see the class Javadoc.
@@ -221,8 +218,8 @@ public class GroupService {
 
     List<UUID> affectedUserIds =
         group.getMemberships().stream().map(GroupMembership::getUserId).toList();
-    // #238 code review (#427 nit 3): group_id carries no foreign key on group_membership_history
-    // (deliberately - see PermissionHistoryService's class Javadoc), so the CASCADE delete below
+    // group_id carries no foreign key on group_membership_history (deliberately - see
+    // PermissionHistoryService's class Javadoc), so the CASCADE delete below
     // (fk_group_memberships_group_organization) never closes these intervals on its own. Without
     // this, a deleted group's still-open membership intervals kept reporting "currently a member"
     // of a group that no longer exists. Read the live memberships before the delete cascades them
@@ -273,7 +270,11 @@ public class GroupService {
     group.addMembership(membership);
     groupRepository.save(group);
     permissionHistoryService.recordMembershipAdded(
-        membership, GroupMembershipHistoryCause.ADDED, caller.id());
+        group.getId(),
+        group.getOrganizationId(),
+        memberUserId,
+        GroupMembershipHistoryCause.ADDED,
+        caller.id());
     auditEventRecorder.recordUserActionOnSubject(
         AuditEvent.builder()
             .organizationId(group.getOrganizationId())

@@ -1,5 +1,6 @@
 package io.opaa.library;
 
+import io.opaa.permission.PermissionHistoryService;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
@@ -15,9 +16,13 @@ import org.springframework.stereotype.Component;
 class PermissionHistoryListener {
 
   private final PermissionHistoryService permissionHistoryService;
+  private final LibraryVisibilityHistoryService visibilityHistoryService;
 
-  PermissionHistoryListener(PermissionHistoryService permissionHistoryService) {
+  PermissionHistoryListener(
+      PermissionHistoryService permissionHistoryService,
+      LibraryVisibilityHistoryService visibilityHistoryService) {
     this.permissionHistoryService = permissionHistoryService;
+    this.visibilityHistoryService = visibilityHistoryService;
   }
 
   @EventListener
@@ -36,11 +41,11 @@ class PermissionHistoryListener {
   void onLibraryChanged(LibraryChanged event) {
     switch (event.cause()) {
       case CREATED ->
-          permissionHistoryService.recordLibraryCreated(event.library(), event.actorUserId());
+          visibilityHistoryService.recordLibraryCreated(event.library(), event.actorUserId());
       case VISIBILITY_CHANGED ->
-          permissionHistoryService.recordVisibilityChanged(event.library(), event.actorUserId());
+          visibilityHistoryService.recordVisibilityChanged(event.library(), event.actorUserId());
       case EXTERNAL_ACCESS_CHANGED ->
-          permissionHistoryService.recordExternalAccessChanged(
+          visibilityHistoryService.recordExternalAccessChanged(
               event.library(),
               LibraryVisibilityHistoryCause.EXTERNAL_ACCESS_CHANGED,
               event.actorUserId());

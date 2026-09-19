@@ -9,7 +9,9 @@ import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.User;
 import io.opaa.auth.oidc.OidcProvider;
-import io.opaa.library.PermissionHistoryService;
+import io.opaa.permission.GroupMembershipHistoryCause;
+import io.opaa.permission.GroupMembershipResolver;
+import io.opaa.permission.PermissionHistoryService;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -132,7 +134,11 @@ public class TokenGroupSynchronizer {
       membership.assignGroup(group);
       membershipRepository.save(membership);
       permissionHistoryService.recordMembershipAdded(
-          membership, GroupMembershipHistoryCause.IDENTITY_PROVIDER_ADDED, null);
+          group.getId(),
+          organizationId,
+          user.getId(),
+          GroupMembershipHistoryCause.IDENTITY_PROVIDER_ADDED,
+          null);
       recordMembershipChange(user, provider, group, AuditEventType.GROUP_MEMBER_ADDED);
       changed = true;
     }

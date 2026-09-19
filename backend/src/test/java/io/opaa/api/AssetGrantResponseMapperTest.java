@@ -6,9 +6,10 @@ import io.opaa.api.dto.AssetGrantRequest;
 import io.opaa.api.dto.AssetGrantResponse;
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.PermissionSubjectType;
-import io.opaa.library.AssetGrant;
 import io.opaa.library.AssetGrantUpsert;
 import io.opaa.library.AssetGrantView;
+import io.opaa.library.KnowledgeLibrary;
+import io.opaa.permission.AssetGrant;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -30,7 +31,13 @@ class AssetGrantResponseMapperTest {
     Instant expiresAt = Instant.now().plusSeconds(3600);
     AssetGrant grant =
         AssetGrant.forUser(
-            libraryId, organizationId, subjectId, AssetRole.MANAGER, expiresAt, grantedByUserId);
+            KnowledgeLibrary.ASSET_TYPE,
+            libraryId,
+            organizationId,
+            subjectId,
+            AssetRole.MANAGER,
+            expiresAt,
+            grantedByUserId);
     AssetGrantView view = new AssetGrantView(grant, "Subjekt Person", "Erteilende Person");
 
     AssetGrantResponse response = AssetGrantResponseMapper.toResponse(view);
@@ -51,7 +58,13 @@ class AssetGrantResponseMapperTest {
   void toResponseAllowsNullDisplayNamesForADeletedSubjectOrGranter() {
     AssetGrant grant =
         AssetGrant.forGroup(
-            UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), AssetRole.VIEWER, null, null);
+            KnowledgeLibrary.ASSET_TYPE,
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            AssetRole.VIEWER,
+            null,
+            null);
     AssetGrantView view = new AssetGrantView(grant, null, null);
 
     AssetGrantResponse response = AssetGrantResponseMapper.toResponse(view);
@@ -66,10 +79,22 @@ class AssetGrantResponseMapperTest {
   void toResponsesMapsEveryViewInOrder() {
     AssetGrant first =
         AssetGrant.forUser(
-            UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), AssetRole.VIEWER, null, null);
+            KnowledgeLibrary.ASSET_TYPE,
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            AssetRole.VIEWER,
+            null,
+            null);
     AssetGrant second =
         AssetGrant.forUser(
-            UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), AssetRole.OWNER, null, null);
+            KnowledgeLibrary.ASSET_TYPE,
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            AssetRole.OWNER,
+            null,
+            null);
     List<AssetGrantView> views =
         List.of(
             new AssetGrantView(first, "First", null), new AssetGrantView(second, "Second", null));

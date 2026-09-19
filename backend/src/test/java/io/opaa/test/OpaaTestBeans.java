@@ -2,10 +2,10 @@ package io.opaa.test;
 
 import io.opaa.FakeEmbeddingModel;
 import io.opaa.auth.UserRepository;
-import io.opaa.group.GroupMembershipHistoryRepository;
 import io.opaa.group.sync.DirectoryClient;
 import io.opaa.indexing.chunk.VectorChunkStore;
-import io.opaa.library.AssetGrantHistoryRepository;
+import io.opaa.permission.AssetGrantHistoryRepository;
+import io.opaa.permission.GroupMembershipHistoryRepository;
 import io.opaa.space.SpaceRepository;
 import org.mockito.Mockito;
 import org.springframework.ai.chat.model.ChatModel;

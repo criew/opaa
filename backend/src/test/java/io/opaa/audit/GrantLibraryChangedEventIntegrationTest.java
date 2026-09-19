@@ -9,17 +9,17 @@ import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
-import io.opaa.library.AssetGrant;
-import io.opaa.library.AssetGrantHistoryRepository;
 import io.opaa.library.AssetGrantService;
 import io.opaa.library.GrantChanged;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.library.LibraryChanged;
 import io.opaa.library.LibraryVisibilityHistoryRepository;
-import io.opaa.library.PermissionHistoryService;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
+import io.opaa.permission.AssetGrant;
+import io.opaa.permission.AssetGrantHistoryRepository;
+import io.opaa.permission.PermissionHistoryService;
 import io.opaa.test.OpaaIntegrationTest;
 import java.util.ArrayList;
 import java.util.List;
@@ -95,7 +95,7 @@ class GrantLibraryChangedEventIntegrationTest {
     // apply here.
     grantHistoryRepository.deleteAll(
         grantHistoryRepository.findAll().stream()
-            .filter(h -> createdLibraryIds.contains(h.getLibraryId()))
+            .filter(h -> createdLibraryIds.contains(h.getAssetId()))
             .toList());
     visibilityHistoryRepository.deleteAll(
         visibilityHistoryRepository.findAll().stream()
@@ -119,7 +119,13 @@ class GrantLibraryChangedEventIntegrationTest {
 
   private AssetGrant newGrant(KnowledgeLibrary library, UUID subjectGroupId) {
     return AssetGrant.forGroup(
-        library.getId(), organizationId, subjectGroupId, AssetRole.MANAGER, null, actorUserId);
+        KnowledgeLibrary.ASSET_TYPE,
+        library.getId(),
+        organizationId,
+        subjectGroupId,
+        AssetRole.MANAGER,
+        null,
+        actorUserId);
   }
 
   @Test
@@ -138,8 +144,12 @@ class GrantLibraryChangedEventIntegrationTest {
             Map.of("role", "MANAGER")));
 
     assertThat(
-            grantHistoryRepository.findByLibraryIdAndSubjectTypeAndSubjectGroupIdAndValidToIsNull(
-                library.getId(), PermissionSubjectType.GROUP, subjectGroupId))
+            grantHistoryRepository
+                .findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectGroupIdAndValidToIsNull(
+                    KnowledgeLibrary.ASSET_TYPE,
+                    library.getId(),
+                    PermissionSubjectType.GROUP,
+                    subjectGroupId))
         .isPresent();
     assertThat(
             auditLogRepository.findAll().stream()
@@ -176,8 +186,12 @@ class GrantLibraryChangedEventIntegrationTest {
         .isInstanceOf(RuntimeException.class);
 
     assertThat(
-            grantHistoryRepository.findByLibraryIdAndSubjectTypeAndSubjectGroupIdAndValidToIsNull(
-                library.getId(), PermissionSubjectType.GROUP, subjectGroupId))
+            grantHistoryRepository
+                .findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectGroupIdAndValidToIsNull(
+                    KnowledgeLibrary.ASSET_TYPE,
+                    library.getId(),
+                    PermissionSubjectType.GROUP,
+                    subjectGroupId))
         .isEmpty();
     assertThat(
             auditLogRepository.findAll().stream()

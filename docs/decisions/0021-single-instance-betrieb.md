@@ -41,13 +41,13 @@ potenziell veraltete Kopie):
 | Fundstelle | Zustand | Invalidierung |
 | --- | --- | --- |
 | `GroupMembershipResolver.groupIdsByUser` | Gruppenmitgliedschaften pro Nutzer (max. 50.000 Einträge) | 10 Minuten TTL, gezielt bei Mitgliedschaftsänderung (`invalidate`/`invalidateAll`) |
-| `LibraryAccessService.grantsByLibrary` | Zugriffsrechte pro Bibliothek (max. 50.000 Einträge) | 10 Minuten TTL, gezielt nach Commit bei Grant-Änderung — mirrort `GroupMembershipResolver`s Muster bewusst |
+| `AssetAccessService.grantsByAsset` | Zugriffsrechte pro Asset (max. 50.000 Einträge) | 10 Minuten TTL, gezielt nach Commit bei Grant-Änderung — mirrort `GroupMembershipResolver`s Muster bewusst |
 | `SpaceService.personalSpaceProvisioned` | Flag "persönlicher Space bereits angelegt" pro Nutzer (max. 50.000 Einträge) | kein TTL, nur additiv gesetzt (Flag kann nie fälschlich `true` werden, nur fälschlich fehlen) |
 | `RateLimitService.requestLog` | Zeitfenster-Anfragehistorie pro Client-IP | `expireAfterAccess`, kein aktives Invalidieren |
 | `ActiveChatModelResolver.cache` | Der eine `ChatClient` des systemweit aktiven LLM-Modells (Single-Slot, kein Map-Cache) | Ereignisgesteuert via `ActiveChatModelChangedEvent` nach Commit (`TransactionalEventListener`) |
 | `OidcProviderRegistry` (ADR-0025, #1329) | Ein `JwtDecoder` samt `AuthenticationManager` je aktiviertem Identitätsanbieter, geschlüsselt nach Issuer; dazu der Fehlzustand nicht aufbaubarer Anbieter | Ereignisgesteuert via `OidcProvidersChangedEvent` nach Commit (`TransactionalEventListener`); fehlerhafte Anbieter werden beim nächsten Token ihres Issuers nach kurzer Wartezeit erneut versucht |
 | `CaffeineChatMemoryRepository` | Chatverlauf, LRU auf 50 gleichzeitige Konversationen begrenzt | TTL nach letztem Zugriff. Seit #525 nicht mehr die Wahrheit, sondern eine Leseoptimierung vor `chat_messages`: `QueryService` lädt den Eintrag bei einem Fehlgriff aus dem persistierten Verlauf nach. Ein Instanzwechsel mitten im Gespräch kostet damit einen Fehlgriff, keinen Gesprächskontext — anders als bei den übrigen Zeilen dieser Tabelle |
-| `MetadataFilterOptionsCache` | Die Filteroptionen je Person **und** dem Suchraum, auf den ihre Rechte aufgelöst haben (max. 10.000 Einträge) | `expireAfterWrite` aus `opaa.query.metadata-filter.options-cache-ttl`, gezielt bei jeder Rechteänderung, die die Person berührt — dieselben Ereignisse und Haken wie bei `GroupMembershipResolver`/`LibraryAccessService`, und damit dieselbe Rechtelücke bei mehreren Instanzen |
+| `MetadataFilterOptionsCache` | Die Filteroptionen je Person **und** dem Suchraum, auf den ihre Rechte aufgelöst haben (max. 10.000 Einträge) | `expireAfterWrite` aus `opaa.query.metadata-filter.options-cache-ttl`, gezielt bei jeder Rechteänderung, die die Person berührt — dieselben Ereignisse und Haken wie bei `GroupMembershipResolver`/`AssetAccessService`, und damit dieselbe Rechtelücke bei mehreren Instanzen |
 | `RerankClient.dialect` | Welche Sprechweise der konfigurierte Rerank-Endpunkt spricht, aus dem ersten erfolgreichen Aufruf gelernt | Kein Verfall; bei mehreren Instanzen handelt jede einmal selbst aus. Einzige Zeile dieser Tabelle ohne Konsistenzfolge |
 | `OidcProviderRegistry`, Eintrag des lokalen Issuers ([ADR-0033](0033-lokale-benutzerverwaltung.md), #1533) | Der HS256-Decoder des lokalen Ausstellers samt Widerrufs-Validator, unabhängig vom `enabled` der `LOCAL`-Anbieterzeile registriert | Wie die übrigen Einträge ereignisgesteuert nach Commit; der Schlüssel selbst ist aus `OPAA_AUTH_JWT_SECRET` abgeleitet und ändert sich nur mit einem Neustart |
 | `LocalTokenRevocationService`-Denylist (ADR-0033, #1533) | Widerrufene `jti`-Hashes lokaler Access-Tokens (Caffeine, `expireAfterWrite = access-token-ttl`) vor der Tabelle `local_revoked_tokens` | Additiv (ein Widerruf wird eingetragen, nie zurückgenommen); Verfall mit der Token-Lebensdauer. Bei mehreren Instanzen sähe Instanz B einen auf A widerrufenen `jti` erst nach dem Cache-Miss — die Tabelle bleibt die Wahrheit, der Cache nur ein Negativ-Cache für „nicht widerrufen" und müsste dann entfallen |
@@ -240,7 +240,7 @@ Prüfung erneut durch Code-Archäologie entstehen muss.
 
 Diese Skizze ist keine Umsetzungsplanung, nur eine Einordnung der Größenordnung je Kategorie:
 
-- **Prozesslokale Caches** (`GroupMembershipResolver`, `LibraryAccessService`, `SpaceService`,
+- **Prozesslokale Caches** (`GroupMembershipResolver`, `AssetAccessService`, `SpaceService`,
   `ActiveChatModelResolver`, `CaffeineChatMemoryRepository`): Ersatz durch einen verteilten Cache
   (z. B. Redis) oder ein Pub/Sub-Invalidierungssignal, das jede Instanz zwingt, ihre lokale Kopie beim
   Empfang zu verwerfen (etwa über Postgres `LISTEN`/`NOTIFY` oder einen Message-Broker). Der reine

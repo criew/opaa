@@ -2,9 +2,9 @@ package io.opaa.api;
 
 import io.opaa.api.dto.AssetGrantRequest;
 import io.opaa.api.dto.AssetGrantResponse;
-import io.opaa.library.AssetGrant;
 import io.opaa.library.AssetGrantUpsert;
 import io.opaa.library.AssetGrantView;
+import io.opaa.permission.AssetGrant;
 import java.util.List;
 
 /**

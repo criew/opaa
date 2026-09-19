@@ -13,10 +13,10 @@ import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.group.Group;
 import io.opaa.group.GroupMembership;
-import io.opaa.group.GroupMembershipHistoryCause;
-import io.opaa.group.GroupMembershipResolver;
 import io.opaa.group.GroupRepository;
-import io.opaa.library.PermissionHistoryService;
+import io.opaa.permission.GroupMembershipHistoryCause;
+import io.opaa.permission.GroupMembershipResolver;
+import io.opaa.permission.PermissionHistoryService;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -557,7 +557,11 @@ class DirectorySyncPlanExecutor {
       // row's FK - all of a newly created group's memberships are new, so every one is recorded.
       for (GroupMembership membership : group.getMemberships()) {
         permissionHistoryService.recordMembershipAdded(
-            membership, GroupMembershipHistoryCause.DIRECTORY_SYNC_ADDED, null);
+            group.getId(),
+            organizationId,
+            membership.getUserId(),
+            GroupMembershipHistoryCause.DIRECTORY_SYNC_ADDED,
+            null);
       }
       // #392: one DIRECTORY_SYNC_CHANGE_APPLIED entry for the group's creation itself, not one per
       // initial member - unlike an add/remove on an *existing* group (below), the group's own
@@ -623,7 +627,11 @@ class DirectorySyncPlanExecutor {
         // #238: change.group() already exists in the database (unlike PlannedCreate's brand new
         // group above), so its FK is satisfied immediately.
         permissionHistoryService.recordMembershipAdded(
-            membership, GroupMembershipHistoryCause.DIRECTORY_SYNC_ADDED, null);
+            change.group().getId(),
+            organizationId,
+            member.id(),
+            GroupMembershipHistoryCause.DIRECTORY_SYNC_ADDED,
+            null);
         recordSyncChange(
             organizationId,
             correlationRef,

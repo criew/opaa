@@ -2,8 +2,8 @@ package io.opaa.test;
 
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
-import io.opaa.group.GroupMembershipHistoryRepository;
-import io.opaa.library.AssetGrantHistoryRepository;
+import io.opaa.permission.AssetGrantHistoryRepository;
+import io.opaa.permission.GroupMembershipHistoryRepository;
 import io.opaa.space.SpaceRepository;
 import java.util.List;
 import java.util.Objects;

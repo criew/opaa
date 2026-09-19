@@ -1,9 +1,9 @@
-package io.opaa.library;
+package io.opaa.permission;
 
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.PermissionSubjectType;
-import io.opaa.group.PermissionSubject;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -15,17 +15,21 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * A grant of an {@link AssetRole} on a {@link KnowledgeLibrary} to a {@link PermissionSubject} -
- * the actual mechanism behind "readable libraries" (#202, see
+ * A grant of an {@link AssetRole} on one asset to a {@link PermissionSubject} - the actual
+ * mechanism behind "readable assets" (#202, see
  * docs/features/spaces-and-assets.md#rechte-an-einem-asset-erhalten). Every grant carries an
  * optional {@code expiresAt} from the start, even though recertification only arrives with #241:
  * adding the field later is cheap, assessing an existing body of grants without one is not.
  *
- * <p>Ownership uses the same two-nullable-columns pattern as {@link
- * KnowledgeLibrary#getOwnerUserId()} / {@link KnowledgeLibrary#getOwnerGroupId()} rather than one
- * polymorphic subject id, so each column carries a real foreign key to its own target table
- * (migration 013) instead of an unenforced UUID. {@code chk_asset_grants_subject} enforces that
- * exactly the column matching {@link #subjectType} is non-null.
+ * <p><b>The asset is named by {@link AssetType} plus id, not by a column of one asset table</b>
+ * (ADR-0036, Entscheidung 12): a second asset type needs no second rights logic. The price is that
+ * {@code asset_id} carries no foreign key - the guarantees that dropped with it and what replaces
+ * them are named in {@code changes/038-asset-grants-type-independent.yaml}.
+ *
+ * <p>The subject uses two nullable columns rather than one polymorphic id, so each column keeps a
+ * real foreign key to its own target table instead of an unenforced UUID. {@code
+ * chk_asset_grants_subject} enforces that exactly the column matching {@link #subjectType} is
+ * non-null.
  */
 @Entity
 @Table(name = "asset_grants")
@@ -33,8 +37,12 @@ public class AssetGrant {
 
   @Id private UUID id;
 
-  @Column(name = "library_id", nullable = false)
-  private UUID libraryId;
+  @Convert(converter = AssetTypeConverter.class)
+  @Column(name = "asset_type", nullable = false, length = 30)
+  private AssetType assetType;
+
+  @Column(name = "asset_id", nullable = false)
+  private UUID assetId;
 
   @Column(name = "organization_id", nullable = false)
   private UUID organizationId;
@@ -69,7 +77,8 @@ public class AssetGrant {
   protected AssetGrant() {}
 
   private AssetGrant(
-      UUID libraryId,
+      AssetType assetType,
+      UUID assetId,
       UUID organizationId,
       PermissionSubjectType subjectType,
       UUID subjectUserId,
@@ -78,7 +87,8 @@ public class AssetGrant {
       Instant expiresAt,
       UUID grantedByUserId) {
     this.id = UUID.randomUUID();
-    this.libraryId = libraryId;
+    this.assetType = assetType;
+    this.assetId = assetId;
     this.organizationId = organizationId;
     this.subjectType = subjectType;
     this.subjectUserId = subjectUserId;
@@ -89,14 +99,16 @@ public class AssetGrant {
   }
 
   public static AssetGrant forUser(
-      UUID libraryId,
+      AssetType assetType,
+      UUID assetId,
       UUID organizationId,
       UUID subjectUserId,
       AssetRole role,
       Instant expiresAt,
       UUID grantedByUserId) {
     return new AssetGrant(
-        libraryId,
+        assetType,
+        assetId,
         organizationId,
         PermissionSubjectType.USER,
         subjectUserId,
@@ -107,14 +119,16 @@ public class AssetGrant {
   }
 
   public static AssetGrant forGroup(
-      UUID libraryId,
+      AssetType assetType,
+      UUID assetId,
       UUID organizationId,
       UUID subjectGroupId,
       AssetRole role,
       Instant expiresAt,
       UUID grantedByUserId) {
     return new AssetGrant(
-        libraryId,
+        assetType,
+        assetId,
         organizationId,
         PermissionSubjectType.GROUP,
         null,
@@ -139,7 +153,7 @@ public class AssetGrant {
   /**
    * Moves this grant to a new role, recording who conferred it. {@code granted_by_user_id} answers
    * "who procured this role", not "who created this row" - {@code
-   * LibraryAccessService#holdsIndependentOwnerRole} reads it to tell a self-issued {@link
+   * AssetAccessService#holdsIndependentOwnerRole} reads it to tell a self-issued {@link
    * AssetRole#OWNER} from one somebody else issued, and without carrying the changer forward an
    * administrator could raise a pre-existing foreign grant to {@code OWNER} and still appear as
    * "not self-granted".
@@ -166,7 +180,7 @@ public class AssetGrant {
     return expiresAt != null && expiresAt.isBefore(now);
   }
 
-  /** The subject this grant reaches, for {@link io.opaa.group.GroupMembershipResolver}. */
+  /** The subject this grant reaches, for {@link GroupMembershipResolver}. */
   public PermissionSubject subject() {
     UUID subjectId = subjectType == PermissionSubjectType.USER ? subjectUserId : subjectGroupId;
     return new PermissionSubject(subjectType, subjectId, organizationId);
@@ -176,8 +190,12 @@ public class AssetGrant {
     return id;
   }
 
-  public UUID getLibraryId() {
-    return libraryId;
+  public AssetType getAssetType() {
+    return assetType;
+  }
+
+  public UUID getAssetId() {
+    return assetId;
   }
 
   public UUID getOrganizationId() {

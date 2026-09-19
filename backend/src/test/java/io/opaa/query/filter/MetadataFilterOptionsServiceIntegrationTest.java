@@ -19,13 +19,13 @@ import io.opaa.indexing.metadata.CoreMetadataField;
 import io.opaa.indexing.metadata.DocumentMetadataCorrectionService;
 import io.opaa.indexing.metadata.FormatMetadataField;
 import io.opaa.indexing.metadata.MetadataValueInput;
-import io.opaa.library.AssetGrant;
-import io.opaa.library.AssetGrantRepository;
 import io.opaa.library.AssetGrantService;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
 import io.opaa.organization.Organization;
+import io.opaa.permission.AssetGrant;
+import io.opaa.permission.AssetGrantRepository;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OpaaTestDirectory;
 import java.io.IOException;
@@ -162,7 +162,9 @@ class MetadataFilterOptionsServiceIntegrationTest {
     assertThat(cache.contains(both.id(), scopeBefore)).isTrue();
 
     AssetGrant grantOnB =
-        grantRepository.findByLibraryId(libraryB.getId()).stream()
+        grantRepository
+            .findByAssetTypeAndAssetId(KnowledgeLibrary.ASSET_TYPE, libraryB.getId())
+            .stream()
             .filter(grant -> both.id().equals(grant.getSubjectUserId()))
             .findFirst()
             .orElseThrow();
@@ -184,6 +186,7 @@ class MetadataFilterOptionsServiceIntegrationTest {
                 Organization.DEFAULT_ID, GroupKind.AD_HOC, "Filteroptionen", null, null, null));
     grantRepository.save(
         AssetGrant.forGroup(
+            KnowledgeLibrary.ASSET_TYPE,
             libraryB.getId(),
             Organization.DEFAULT_ID,
             group.getId(),
@@ -298,6 +301,7 @@ class MetadataFilterOptionsServiceIntegrationTest {
   private void grant(KnowledgeLibrary target, CurrentUser subject) {
     grantRepository.save(
         AssetGrant.forUser(
+            KnowledgeLibrary.ASSET_TYPE,
             target.getId(),
             Organization.DEFAULT_ID,
             subject.id(),

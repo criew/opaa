@@ -1,0 +1,71 @@
+databaseChangeLog:
+  - changeSet:
+      id: 039-asset-grant-history-type-independent
+      author: opaa
+      comment: >-
+        asset_grant_history folgt asset_grants in die Typunabhaengigkeit (#1811, ADR-0036
+        Entscheidung 12): asset_type plus asset_id statt library_id. Ohne diesen Schritt truege die
+        Historie ein anderes Objektmodell als die Tabelle, die sie historisiert, und die
+        Stichtagsauskunft eines zweiten Asset-Typs (#1726) waere nicht beantwortbar. Bestehende
+        Intervalle werden migriert, nicht neu erzeugt - jedes bekommt asset_type =
+        'KNOWLEDGE_LIBRARY', die Werte von library_id bleiben unveraendert; die Rechtehistorie
+        bleibt damit lesbar (ADR-0016).
+        .
+        Hier entfaellt keine Fremdschluessel-Zusage: library_id trug nie einen. Das ist Absicht und
+        aelter als dieses Issue - eine Historienzeile ueberlebt das Objekt, ueber das sie Auskunft
+        gibt, sonst waere die Negativfrage "war Bibliothek Z an Tag X nicht dabei" nach der ersten
+        Loeschung unbeantwortbar (ADR-0016, "Objektspalten ohne FK"). Geschlossen werden offene
+        Intervalle stattdessen von der Anwendung, mit dem Grund LIBRARY_DELETED.
+        .
+        Die beiden eindeutigen Teilindexe auf den offenen Intervallen und der Lookup-Index fuehren
+        asset_type mit, aus demselben Grund wie in 038: Zwei Asset-Typen mit derselben ID duerfen
+        sich weder blockieren noch vermischen.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE asset_grant_history
+                  ADD COLUMN asset_type character varying(30);
+
+              UPDATE asset_grant_history SET asset_type = 'KNOWLEDGE_LIBRARY';
+
+              ALTER TABLE asset_grant_history
+                  ALTER COLUMN asset_type SET NOT NULL;
+
+              ALTER TABLE asset_grant_history
+                  RENAME COLUMN library_id TO asset_id;
+
+              DROP INDEX idx_asset_grant_history_library;
+
+              DROP INDEX uk_asset_grant_history_open_group;
+
+              DROP INDEX uk_asset_grant_history_open_user;
+
+              CREATE INDEX idx_asset_grant_history_asset ON asset_grant_history USING btree (asset_type, asset_id);
+
+              CREATE UNIQUE INDEX uk_asset_grant_history_open_group ON asset_grant_history USING btree (asset_type, asset_id, subject_group_id) WHERE (((subject_type)::text = 'GROUP'::text) AND (valid_to IS NULL));
+
+              CREATE UNIQUE INDEX uk_asset_grant_history_open_user ON asset_grant_history USING btree (asset_type, asset_id, subject_user_id) WHERE (((subject_type)::text = 'USER'::text) AND (valid_to IS NULL));
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              DROP INDEX IF EXISTS idx_asset_grant_history_asset;
+
+              DROP INDEX IF EXISTS uk_asset_grant_history_open_group;
+
+              DROP INDEX IF EXISTS uk_asset_grant_history_open_user;
+
+              DELETE FROM asset_grant_history WHERE asset_type <> 'KNOWLEDGE_LIBRARY';
+
+              ALTER TABLE asset_grant_history
+                  RENAME COLUMN asset_id TO library_id;
+
+              ALTER TABLE asset_grant_history
+                  DROP COLUMN asset_type;
+
+              CREATE INDEX idx_asset_grant_history_library ON asset_grant_history USING btree (library_id);
+
+              CREATE UNIQUE INDEX uk_asset_grant_history_open_group ON asset_grant_history USING btree (library_id, subject_group_id) WHERE (((subject_type)::text = 'GROUP'::text) AND (valid_to IS NULL));
+
+              CREATE UNIQUE INDEX uk_asset_grant_history_open_user ON asset_grant_history USING btree (library_id, subject_user_id) WHERE (((subject_type)::text = 'USER'::text) AND (valid_to IS NULL));

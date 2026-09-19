@@ -100,6 +100,20 @@ lesbare_Bibliotheken(u) =
 
 **Space-Assoziationen kommen in diesem Ausdruck nicht vor.** Das ist die Kernaussage des Modells.
 
+**Der Grant benennt sein Objekt typunabhängig.** Eine Freigabe trägt eine Asset-Art und eine
+Asset-ID (`asset_type`, `asset_id`), keine Spalte einer einzelnen Asset-Tabelle. Der Ausdruck oben
+gilt damit unverändert für jede weitere Asset-Art — eine zweite Rechtelogik entsteht nicht, und die
+Frage „warum sehe ich das" wird an einer Stelle beantwortet (`io.opaa.permission`, ADR-0036,
+Entscheidung 12). Die Asset-Arten selbst gehören den Fachpaketen: Die Wissensbibliothek bringt ihre
+Kennung mit, das Berechtigungsmodell führt keine Liste.
+
+Der Preis ist ein Fremdschlüssel weniger: `asset_id` kann auf keine einzelne Tabelle zeigen. Was
+damit entfällt, ist benannt und ersetzt — die Zusage „keine Freigabe überlebt ihr Asset" hält ein
+Trigger an der Bibliothek, die Zusagen „das Asset existiert" und „die Freigabe gehört derselben
+Organisation wie das Asset" hält die Anwendung, die das Asset vor jedem Schreiben lädt. Die
+Empfängerseite bleibt unverändert am Fremdschlüssel: Eine Freigabe an eine Person oder Gruppe einer
+anderen Organisation ist weiterhin nicht darstellbar.
+
 **Der Ausdruck kennt keine Ausnahme.** Beide Wege, auf denen Rechte geprüft werden — die Anzeige
 einer einzelnen Bibliothek und der Filter der Suche — werten denselben Ausdruck aus. Solange sie das
 nicht taten, konnte dieselbe Bibliothek über den einen Weg lesbar und über den anderen verboten sein
@@ -919,7 +933,7 @@ Eine Zusage dieser Härte ruht nicht auf einer einzelnen Prüfung. Die Grenze wi
 
 Die dritte Schicht ist die Lehre aus einem konkreten Befund: Die Datenbankebene war zunächst **einseitig** abgesichert — die Seite des besitzenden Objekts führte die Organisation mit, die Nutzerseite nicht. Die Migrationen 046-049 ([#400](https://github.com/criew/opaa/issues/400), [#289](https://github.com/criew/opaa/issues/289), [#677](https://github.com/criew/opaa/issues/677), [#401](https://github.com/criew/opaa/issues/401)) haben das nachgezogen. Ein Verhaltenstest, der zwischenzeitlich grün war, hätte das nicht erzwungen und hätte auch nicht verhindert, dass eine spätere Änderung am Datenmodell erneut einen Verweis ohne Organisation anlegt. Deshalb existiert seit [#390](https://github.com/criew/opaa/issues/390) `OrganizationBoundarySchemaTest` (`backend/src/test/java/io/opaa/migration/`) als permanenter struktureller Prüflauf: Er wendet das vollständige Migrations-Changelog gegen eine echte Postgres-Instanz an und liest danach das tatsächliche Schema aus den Postgres-Katalogen, nicht die Changelog-Dateien selbst. Er schließt damit **die Klasse des Fehlers, nicht den Einzelfall** — und hat bei seinem ersten Lauf bereits einen weiteren, bis dahin unbemerkten Fall gefunden und in derselben Änderung mitbehoben: `space_memberships` führte neben dem korrekten zusammengesetzten Fremdschlüssel auf `spaces` (aus Migration 008) noch einen nie entfernten einspaltigen Fremdschlüssel aus derselben Migration mit (Migration 050).
 
-Zwei strukturelle Grenzen dieses Prüflaufs sind bewusst hingenommen, nicht nachgerüstet: Die Historientabellen aus Migration 018 (`asset_grant_history`, `group_membership_history`, `library_visibility_history`) führen `library_id`/`subject_group_id`/`group_id` absichtlich **ohne** Fremdschlüssel, damit das Löschen einer Bibliothek oder Gruppe ihre Rechtehistorie nicht mitreißt — ein fremdschlüsselbasierter Prüflauf sieht eine Spalte, die nie ein Fremdschlüssel war, strukturell nicht. Und `vector_store` (die Spring-AI-Vektortabelle) trägt die Organisation nur als JSON-Metadatum, nicht als relationale Spalte, und fällt damit ebenfalls außerhalb dessen, was der Prüflauf einsehen kann.
+Zwei strukturelle Grenzen dieses Prüflaufs sind bewusst hingenommen, nicht nachgerüstet: Die Historientabellen (`asset_grant_history`, `group_membership_history`, `library_visibility_history`) führen `asset_id`/`subject_group_id`/`group_id` absichtlich **ohne** Fremdschlüssel, damit das Löschen einer Bibliothek oder Gruppe ihre Rechtehistorie nicht mitreißt — ein fremdschlüsselbasierter Prüflauf sieht eine Spalte, die nie ein Fremdschlüssel war, strukturell nicht. Und `vector_store` (die Spring-AI-Vektortabelle) trägt die Organisation nur als JSON-Metadatum, nicht als relationale Spalte, und fällt damit ebenfalls außerhalb dessen, was der Prüflauf einsehen kann.
 
 Solange genau eine Organisation existiert, ist keine verbleibende Lücke ausnutzbar. Der Tag, an dem die zweite dazukommt, ist der Tag, an dem sie **alle gleichzeitig** scharf würden — im Betrieb, nicht im Test. Das ist kein theoretisches Risiko, sondern ein Zeitpunkt, den jemand festlegt: Die Absicherung der Datenbankebene ist inzwischen abgeschlossen; die Durchsetzung im Verwaltungspfad ([#271](https://github.com/criew/opaa/issues/271)) bleibt Voraussetzung dafür, dass überhaupt eine zweite Organisation angelegt wird.
 

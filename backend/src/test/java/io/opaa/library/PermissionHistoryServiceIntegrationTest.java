@@ -18,8 +18,6 @@ import io.opaa.auth.oidc.OidcClaimMapping;
 import io.opaa.auth.oidc.OidcProvider;
 import io.opaa.group.Group;
 import io.opaa.group.GroupMembership;
-import io.opaa.group.GroupMembershipHistoryCause;
-import io.opaa.group.GroupMembershipHistoryRepository;
 import io.opaa.group.GroupMembershipRepository;
 import io.opaa.group.GroupRepository;
 import io.opaa.group.GroupService;
@@ -30,6 +28,15 @@ import io.opaa.group.sync.DirectorySyncStatusRepository;
 import io.opaa.group.sync.SyncReport;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
+import io.opaa.permission.AssetGrantHistory;
+import io.opaa.permission.AssetGrantHistoryCause;
+import io.opaa.permission.AssetGrantHistoryRepository;
+import io.opaa.permission.AssetGrantRepository;
+import io.opaa.permission.GroupMembershipHistoryCause;
+import io.opaa.permission.GroupMembershipHistoryRepository;
+import io.opaa.permission.GroupMembershipResolver;
+import io.opaa.permission.PermissionHistoryClock;
+import io.opaa.permission.PermissionHistoryService;
 import io.opaa.test.FakeDirectoryClient;
 import io.opaa.test.OpaaIntegrationTest;
 import java.lang.reflect.Field;
@@ -60,14 +67,14 @@ import org.springframework.util.ClassUtils;
 
 /**
  * Exercises #238's Stichtag reconstruction ({@link
- * PermissionHistoryService#readableLibraryIdsAsOf}) against a real Postgres database with the real,
- * versioned Liquibase schema applied ({@code spring.liquibase.enabled=true}, {@code ddl-auto=none})
- * - not Hibernate-generated DDL, mirroring {@code KnowledgeLibraryServiceIntegrationTest}'s
- * pattern. Every scenario grants access, captures an instant while it is active, revokes it
- * (manually, via a directory sync run, or by narrowing library visibility) and captures a second
- * instant afterwards - proving both the positive question ("could this person read library X on day
- * A") and the acceptance criteria's harder negative one ("prove they could not on day B") from the
- * same reconstruction.
+ * LibraryVisibilityHistoryService#readableLibraryIdsAsOf}) against a real Postgres database with
+ * the real, versioned Liquibase schema applied ({@code spring.liquibase.enabled=true}, {@code
+ * ddl-auto=none}) - not Hibernate-generated DDL, mirroring {@code
+ * KnowledgeLibraryServiceIntegrationTest}'s pattern. Every scenario grants access, captures an
+ * instant while it is active, revokes it (manually, via a directory sync run, or by narrowing
+ * library visibility) and captures a second instant afterwards - proving both the positive question
+ * ("could this person read library X on day A") and the acceptance criteria's harder negative one
+ * ("prove they could not on day B") from the same reconstruction.
  *
  * <p>{@link #everyWritePathChangingReadabilityKeepsLiveAndHistoryInAgreement} additionally holds
  * every operation that changes the readable set against both formulas at once. It is what keeps the
@@ -89,6 +96,7 @@ class PermissionHistoryServiceIntegrationTest {
   @Autowired private GroupMembershipRepository membershipRepository;
   @Autowired private LibraryVisibilityHistoryRepository visibilityHistoryRepository;
   @Autowired private PermissionHistoryService permissionHistoryService;
+  @Autowired private LibraryVisibilityHistoryService visibilityHistoryService;
   // Every Stichtag below is drawn from the same monotonic source the recorded boundaries come
   // from (#1497). Instant.now() would not do: its readings can be several milliseconds coarser
   // than the boundaries, so an "after the change" stamp could land before the change it follows.
@@ -211,8 +219,8 @@ class PermissionHistoryServiceIntegrationTest {
 
     AssetGrantHistory grantHistory =
         grantHistoryRepository
-            .findByLibraryIdAndSubjectTypeAndSubjectUserIdAndValidToIsNull(
-                libraryId, PermissionSubjectType.USER, reader)
+            .findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectUserIdAndValidToIsNull(
+                KnowledgeLibrary.ASSET_TYPE, libraryId, PermissionSubjectType.USER, reader)
             .orElseThrow();
     UUID grantId = grantHistory.getId();
     assertThat(grantHistory.getCause()).isEqualTo(AssetGrantHistoryCause.GRANTED);
@@ -221,11 +229,11 @@ class PermissionHistoryServiceIntegrationTest {
     Instant afterRevocation = historyClock.nextBoundary();
 
     assertThat(
-            permissionHistoryService.readableLibraryIdsAsOf(reader, organizationId, whileGranted))
+            visibilityHistoryService.readableLibraryIdsAsOf(reader, organizationId, whileGranted))
         .contains(libraryId);
     // The negative question: prove absence, not merely the lack of a log entry.
     assertThat(
-            permissionHistoryService.readableLibraryIdsAsOf(
+            visibilityHistoryService.readableLibraryIdsAsOf(
                 reader, organizationId, afterRevocation))
         .doesNotContain(libraryId);
 
@@ -236,7 +244,7 @@ class PermissionHistoryServiceIntegrationTest {
                 .filter(h -> h.getId() != grantId)
                 .anyMatch(
                     h ->
-                        h.getLibraryId().equals(libraryId)
+                        h.getAssetId().equals(libraryId)
                             && reader.equals(h.getSubjectUserId())
                             && h.getCause() == AssetGrantHistoryCause.REVOKED
                             && owner.equals(h.getActorUserId())))
@@ -262,10 +270,10 @@ class PermissionHistoryServiceIntegrationTest {
     groupService.removeMember(savedGroup.getId(), member, currentUserOf(owner));
     Instant afterRemoval = historyClock.nextBoundary();
 
-    assertThat(permissionHistoryService.readableLibraryIdsAsOf(member, organizationId, whileMember))
+    assertThat(visibilityHistoryService.readableLibraryIdsAsOf(member, organizationId, whileMember))
         .contains(libraryId);
     assertThat(
-            permissionHistoryService.readableLibraryIdsAsOf(member, organizationId, afterRemoval))
+            visibilityHistoryService.readableLibraryIdsAsOf(member, organizationId, afterRemoval))
         .doesNotContain(libraryId);
   }
 
@@ -311,11 +319,11 @@ class PermissionHistoryServiceIntegrationTest {
     Instant afterNarrowing = historyClock.nextBoundary();
 
     assertThat(
-            permissionHistoryService.readableLibraryIdsAsOf(
+            visibilityHistoryService.readableLibraryIdsAsOf(
                 otherUser, organizationId, whileOrganizationWide))
         .contains(libraryId);
     assertThat(
-            permissionHistoryService.readableLibraryIdsAsOf(
+            visibilityHistoryService.readableLibraryIdsAsOf(
                 otherUser, organizationId, afterNarrowing))
         .doesNotContain(libraryId);
   }
@@ -342,12 +350,9 @@ class PermissionHistoryServiceIntegrationTest {
             .plus(1, ChronoUnit.MICROS);
     PermissionHistoryClock standingClock =
         new PermissionHistoryClock(InstantSource.fixed(standstill));
-    PermissionHistoryService serviceOnAStandingClock =
-        new PermissionHistoryService(
-            grantHistoryRepository,
-            membershipHistoryRepository,
-            visibilityHistoryRepository,
-            standingClock);
+    LibraryVisibilityHistoryService serviceOnAStandingClock =
+        new LibraryVisibilityHistoryService(
+            visibilityHistoryRepository, permissionHistoryService, standingClock);
 
     KnowledgeLibrary library = libraryRepository.findById(libraryId).orElseThrow();
     library.updateDetails(
@@ -375,11 +380,11 @@ class PermissionHistoryServiceIntegrationTest {
         .isAfter(organizationWide.getValidFrom());
 
     assertThat(
-            permissionHistoryService.readableLibraryIdsAsOf(
+            visibilityHistoryService.readableLibraryIdsAsOf(
                 otherUser, organizationId, whileOrganizationWide))
         .contains(libraryId);
     assertThat(
-            permissionHistoryService.readableLibraryIdsAsOf(
+            visibilityHistoryService.readableLibraryIdsAsOf(
                 otherUser, organizationId, afterNarrowing))
         .doesNotContain(libraryId);
 
@@ -441,7 +446,7 @@ class PermissionHistoryServiceIntegrationTest {
     return grantHistoryRepository.findAll().stream()
         .filter(
             h ->
-                h.getLibraryId().equals(libraryId)
+                h.getAssetId().equals(libraryId)
                     && subjectUserId.equals(h.getSubjectUserId())
                     && h.getCause() == cause)
         .findFirst()
@@ -486,7 +491,7 @@ class PermissionHistoryServiceIntegrationTest {
     Instant now = historyClock.nextBoundary();
     Set<UUID> live = accessService.readableLibraryIds(user, organizationId);
     Set<UUID> historized =
-        permissionHistoryService.readableLibraryIdsAsOf(user, organizationId, now);
+        visibilityHistoryService.readableLibraryIdsAsOf(user, organizationId, now);
 
     assertThat(historized).isEqualTo(live);
     assertThat(historized)
@@ -512,14 +517,15 @@ class PermissionHistoryServiceIntegrationTest {
         grantHistoryRepository.findAll().stream()
             .anyMatch(
                 h ->
-                    h.getLibraryId().equals(libraryId)
+                    h.getAssetId().equals(libraryId)
                         && reader.equals(h.getSubjectUserId())
                         && h.getCause() == AssetGrantHistoryCause.LIBRARY_DELETED
                         && owner.equals(h.getActorUserId()));
     assertThat(grantClosedWithCorrectCause).isTrue();
     assertThat(
-            grantHistoryRepository.findByLibraryIdAndSubjectTypeAndSubjectUserIdAndValidToIsNull(
-                libraryId, PermissionSubjectType.USER, reader))
+            grantHistoryRepository
+                .findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectUserIdAndValidToIsNull(
+                    KnowledgeLibrary.ASSET_TYPE, libraryId, PermissionSubjectType.USER, reader))
         .isEmpty();
 
     boolean visibilityClosedWithCorrectCause =
@@ -533,7 +539,7 @@ class PermissionHistoryServiceIntegrationTest {
     assertThat(visibilityHistoryRepository.findByLibraryIdAndValidToIsNull(libraryId)).isEmpty();
 
     assertThat(
-            permissionHistoryService.readableLibraryIdsAsOf(
+            visibilityHistoryService.readableLibraryIdsAsOf(
                 reader, organizationId, historyClock.nextBoundary()))
         .doesNotContain(libraryId);
   }
@@ -610,7 +616,7 @@ class PermissionHistoryServiceIntegrationTest {
         .as("the operation must have left the release in the expected state")
         .isEqualTo(change.releasedAfterwards());
     assertThat(
-            permissionHistoryService.externalAccessActiveAsOf(change.libraryId(), afterTheChange))
+            visibilityHistoryService.externalAccessActiveAsOf(change.libraryId(), afterTheChange))
         .as("the history must describe the same release state as the library itself")
         .isEqualTo(live);
   }
@@ -648,7 +654,7 @@ class PermissionHistoryServiceIntegrationTest {
    */
   private LibraryExternalAccessExpiryService expiryServiceAt(Instant now) {
     return new LibraryExternalAccessExpiryService(
-        libraryRepository, permissionHistoryService, auditEventRecorder, () -> now);
+        libraryRepository, visibilityHistoryService, auditEventRecorder, () -> now);
   }
 
   /**
@@ -674,10 +680,10 @@ class PermissionHistoryServiceIntegrationTest {
         .doesNotContain(libraryId);
     assertThat(accessService.readableLibraryIds(owner, organizationId)).isEqualTo(ownerBefore);
     assertThat(
-            permissionHistoryService.readableLibraryIdsAsOf(
+            visibilityHistoryService.readableLibraryIdsAsOf(
                 outsider, organizationId, afterTheRelease))
         .isEqualTo(
-            permissionHistoryService.readableLibraryIdsAsOf(
+            visibilityHistoryService.readableLibraryIdsAsOf(
                 outsider, organizationId, beforeTheRelease));
   }
 
@@ -694,11 +700,11 @@ class PermissionHistoryServiceIntegrationTest {
     externalAccessService.setExternalAccess(currentUserOf(owner), libraryId, true, expiresAt);
 
     assertThat(
-            permissionHistoryService.externalAccessActiveAsOf(
+            visibilityHistoryService.externalAccessActiveAsOf(
                 libraryId, historyClock.nextBoundary()))
         .isTrue();
     assertThat(
-            permissionHistoryService.externalAccessActiveAsOf(
+            visibilityHistoryService.externalAccessActiveAsOf(
                 libraryId, expiresAt.plus(1, ChronoUnit.HOURS)))
         .isFalse();
   }
@@ -724,11 +730,11 @@ class PermissionHistoryServiceIntegrationTest {
 
     jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organizationId);
 
-    assertThat(permissionHistoryService.externalAccessActiveAsOf(libraryId, beforeTheRelease))
+    assertThat(visibilityHistoryService.externalAccessActiveAsOf(libraryId, beforeTheRelease))
         .isFalse();
-    assertThat(permissionHistoryService.externalAccessActiveAsOf(libraryId, whileReleased))
+    assertThat(visibilityHistoryService.externalAccessActiveAsOf(libraryId, whileReleased))
         .isTrue();
-    assertThat(permissionHistoryService.externalAccessActiveAsOf(libraryId, afterItExpired))
+    assertThat(visibilityHistoryService.externalAccessActiveAsOf(libraryId, afterItExpired))
         .isFalse();
   }
 
@@ -952,7 +958,7 @@ class PermissionHistoryServiceIntegrationTest {
     Instant afterTheChange = historyClock.nextBoundary();
     Set<UUID> live = accessService.readableLibraryIds(change.userId(), organizationId);
     Set<UUID> historized =
-        permissionHistoryService.readableLibraryIdsAsOf(
+        visibilityHistoryService.readableLibraryIdsAsOf(
             change.userId(), organizationId, afterTheChange);
 
     // Without this the entry would pass for an operation that changed nothing at all, and the
@@ -1363,16 +1369,16 @@ class PermissionHistoryServiceIntegrationTest {
 
   private UUID findLiveGroupGrantId(UUID libraryId, UUID subjectGroupId) {
     return grantRepository
-        .findByLibraryIdAndSubjectTypeAndSubjectGroupId(
-            libraryId, PermissionSubjectType.GROUP, subjectGroupId)
+        .findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectGroupId(
+            KnowledgeLibrary.ASSET_TYPE, libraryId, PermissionSubjectType.GROUP, subjectGroupId)
         .orElseThrow()
         .getId();
   }
 
   private UUID findLiveGrantId(UUID libraryId, UUID subjectUserId) {
     return grantRepository
-        .findByLibraryIdAndSubjectTypeAndSubjectUserId(
-            libraryId, PermissionSubjectType.USER, subjectUserId)
+        .findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectUserId(
+            KnowledgeLibrary.ASSET_TYPE, libraryId, PermissionSubjectType.USER, subjectUserId)
         .orElseThrow()
         .getId();
   }

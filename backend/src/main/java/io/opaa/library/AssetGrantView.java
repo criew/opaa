@@ -1,5 +1,7 @@
 package io.opaa.library;
 
+import io.opaa.permission.AssetGrant;
+
 /**
  * A {@link AssetGrant} enriched with the subject's and granter's display names, resolved by {@link
  * AssetGrantService#toViews} (#423) - the domain counterpart of the generated {@code

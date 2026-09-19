@@ -16,14 +16,14 @@ import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ValidationException;
 import io.opaa.group.Group;
 import io.opaa.group.GroupRepository;
-import io.opaa.library.AssetGrant;
-import io.opaa.library.AssetGrantRepository;
 import io.opaa.library.AssetGrantService;
 import io.opaa.library.AssetGrantUpsert;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
+import io.opaa.permission.AssetGrant;
+import io.opaa.permission.AssetGrantRepository;
 import io.opaa.test.OpaaIntegrationTest;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -383,8 +383,11 @@ class DiagnosticAccessIntegrationTest {
         .isTrue();
     assertThat(
             assetGrantRepository
-                .findByLibraryIdAndSubjectTypeAndSubjectUserId(
-                    library.getId(), PermissionSubjectType.USER, admin.id())
+                .findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectUserId(
+                    KnowledgeLibrary.ASSET_TYPE,
+                    library.getId(),
+                    PermissionSubjectType.USER,
+                    admin.id())
                 .orElseThrow()
                 .getGrantedByUserId())
         .isEqualTo(admin.id());
@@ -402,6 +405,7 @@ class DiagnosticAccessIntegrationTest {
     KnowledgeLibrary library = persistLibraryOwnedBy(holderId);
     assetGrantRepository.save(
         AssetGrant.forUser(
+            KnowledgeLibrary.ASSET_TYPE,
             library.getId(),
             organizationId,
             admin.id(),
@@ -428,8 +432,11 @@ class DiagnosticAccessIntegrationTest {
         .isTrue();
     assertThat(
             assetGrantRepository
-                .findByLibraryIdAndSubjectTypeAndSubjectUserId(
-                    library.getId(), PermissionSubjectType.USER, admin.id())
+                .findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectUserId(
+                    KnowledgeLibrary.ASSET_TYPE,
+                    library.getId(),
+                    PermissionSubjectType.USER,
+                    admin.id())
                 .orElseThrow()
                 .getGrantedByUserId())
         .isEqualTo(admin.id());
@@ -457,7 +464,13 @@ class DiagnosticAccessIntegrationTest {
                 false));
     assetGrantRepository.save(
         AssetGrant.forUser(
-            library.getId(), organizationId, ownerUserId, AssetRole.OWNER, null, ownerUserId));
+            KnowledgeLibrary.ASSET_TYPE,
+            library.getId(),
+            organizationId,
+            ownerUserId,
+            AssetRole.OWNER,
+            null,
+            ownerUserId));
     return library;
   }
 

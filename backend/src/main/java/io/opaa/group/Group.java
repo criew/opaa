@@ -1,6 +1,8 @@
 package io.opaa.group;
 
 import io.opaa.api.types.GroupKind;
+import io.opaa.permission.GroupMembershipResolver;
+import io.opaa.permission.PermissionSubject;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

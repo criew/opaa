@@ -15,11 +15,11 @@ import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.indexing.job.IndexingJobRepository;
 import io.opaa.indexing.job.JobStatus;
-import io.opaa.library.AssetGrant;
-import io.opaa.library.AssetGrantRepository;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
+import io.opaa.permission.AssetGrant;
+import io.opaa.permission.AssetGrantRepository;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OpaaTestDirectory;
 import io.opaa.test.OwnLibraryFixtures;
@@ -178,6 +178,7 @@ class LibraryIndexingAuthorizationIntegrationTest {
 
     grantRepository.save(
         AssetGrant.forUser(
+            KnowledgeLibrary.ASSET_TYPE,
             library.getId(),
             Organization.DEFAULT_ID,
             devAdmin.getId(),
@@ -204,6 +205,7 @@ class LibraryIndexingAuthorizationIntegrationTest {
     KnowledgeLibrary library = createForeignLibraryWithNoGrantForDevAdmin();
     grantRepository.save(
         AssetGrant.forUser(
+            KnowledgeLibrary.ASSET_TYPE,
             library.getId(),
             Organization.DEFAULT_ID,
             regularUser.getId(),
@@ -246,6 +248,7 @@ class LibraryIndexingAuthorizationIntegrationTest {
     ownLibraryIds.add(library.getId());
     grantRepository.save(
         AssetGrant.forUser(
+            KnowledgeLibrary.ASSET_TYPE,
             library.getId(),
             Organization.DEFAULT_ID,
             devAdmin.getId(),
@@ -268,6 +271,7 @@ class LibraryIndexingAuthorizationIntegrationTest {
     KnowledgeLibrary libraryB = createFilesystemLibrary("Test-Bibliothek B", devAdmin.getId());
     grantRepository.save(
         AssetGrant.forUser(
+            KnowledgeLibrary.ASSET_TYPE,
             libraryA.getId(),
             Organization.DEFAULT_ID,
             devAdmin.getId(),
@@ -276,6 +280,7 @@ class LibraryIndexingAuthorizationIntegrationTest {
             devAdmin.getId()));
     grantRepository.save(
         AssetGrant.forUser(
+            KnowledgeLibrary.ASSET_TYPE,
             libraryB.getId(),
             Organization.DEFAULT_ID,
             devAdmin.getId(),

@@ -19,11 +19,14 @@ import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.PayloadTooLargeException;
 import io.opaa.common.ValidationException;
-import io.opaa.group.GroupMembershipHistoryRepository;
 import io.opaa.indexing.document.Document;
 import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
+import io.opaa.permission.AssetGrant;
+import io.opaa.permission.AssetGrantHistoryRepository;
+import io.opaa.permission.AssetGrantRepository;
+import io.opaa.permission.GroupMembershipHistoryRepository;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OpaaTestDirectory;
 import io.opaa.test.OwnLibraryFixtures;
@@ -699,6 +702,7 @@ class LibraryDocumentServiceIntegrationTest {
     library = libraryRepository.save(library);
     assetGrantRepository.save(
         AssetGrant.forUser(
+            KnowledgeLibrary.ASSET_TYPE,
             library.getId(),
             organizationId,
             editor.getId(),
@@ -867,6 +871,7 @@ class LibraryDocumentServiceIntegrationTest {
     remoteLibrary = libraryRepository.save(remoteLibrary);
     assetGrantRepository.save(
         AssetGrant.forUser(
+            KnowledgeLibrary.ASSET_TYPE,
             remoteLibrary.getId(),
             organizationId,
             editor.getId(),
@@ -997,6 +1002,7 @@ class LibraryDocumentServiceIntegrationTest {
     // exactly like a library nobody has any grant on at all.
     assetGrantRepository.save(
         AssetGrant.forUser(
+            KnowledgeLibrary.ASSET_TYPE,
             library.getId(),
             organizationId,
             editor.getId(),

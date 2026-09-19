@@ -13,8 +13,6 @@ import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.NotFoundException;
-import io.opaa.library.AssetGrant;
-import io.opaa.library.AssetGrantRepository;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
@@ -22,6 +20,8 @@ import io.opaa.notification.Notification;
 import io.opaa.notification.NotificationRepository;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
+import io.opaa.permission.AssetGrant;
+import io.opaa.permission.AssetGrantRepository;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OwnOrganizationFixtures;
 import java.util.List;
@@ -94,7 +94,9 @@ class SpaceAssetAssociationServiceIntegrationTest {
   }
 
   private void grant(UUID libraryId, UUID userId, AssetRole role) {
-    grantRepository.save(AssetGrant.forUser(libraryId, organizationA, userId, role, null, userId));
+    grantRepository.save(
+        AssetGrant.forUser(
+            KnowledgeLibrary.ASSET_TYPE, libraryId, organizationA, userId, role, null, userId));
   }
 
   private CurrentUser currentUserOf(UUID userId) {

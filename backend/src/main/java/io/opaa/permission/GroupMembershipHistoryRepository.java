@@ -1,4 +1,4 @@
-package io.opaa.group;
+package io.opaa.permission;
 
 import java.time.Instant;
 import java.util.Collection;
@@ -18,9 +18,9 @@ public interface GroupMembershipHistoryRepository
 
   /**
    * Test-only cleanup helper - see {@link
-   * io.opaa.library.AssetGrantHistoryRepository#deleteBySubjectUserIdIn} for the full reasoning and
-   * for why {@code @Transactional} is required here; {@code user_id} here is the same {@code ON
-   * DELETE RESTRICT} pattern (migration 018, code review of #238 finding 4).
+   * io.opaa.permission.AssetGrantHistoryRepository#deleteBySubjectUserIdIn} for the full reasoning
+   * and for why {@code @Transactional} is required here; {@code user_id} here is the same {@code ON
+   * DELETE RESTRICT} pattern (#238).
    */
   @Transactional
   void deleteByUserIdIn(Collection<UUID> userIds);
@@ -28,9 +28,9 @@ public interface GroupMembershipHistoryRepository
   /**
    * Every group {@code userId} belonged to at {@code asOf} - the interval's {@code validFrom <=
    * asOf} and ({@code validTo IS NULL OR validTo > asOf}). Used by {@link
-   * io.opaa.library.PermissionHistoryService#readableLibraryIdsAsOf} to resolve the group side of
-   * the readable-library formula at a past instant, the same way {@link
-   * io.opaa.group.GroupMembershipResolver#groupIdsForUser} resolves it for "now".
+   * io.opaa.permission.PermissionHistoryService#readableAssetIdsAsOf} to resolve the group side of
+   * the grant formula at a past instant, the same way {@link
+   * io.opaa.permission.GroupMembershipResolver#groupIdsForUser} resolves it for "now".
    */
   @Query(
       "select h.groupId from GroupMembershipHistory h "

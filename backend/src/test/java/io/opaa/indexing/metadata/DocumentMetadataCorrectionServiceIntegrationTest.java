@@ -19,12 +19,12 @@ import io.opaa.indexing.document.DocumentIngestResult;
 import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.indexing.maintenance.MetadataBackfillService;
-import io.opaa.library.AssetGrant;
-import io.opaa.library.AssetGrantRepository;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
 import io.opaa.organization.Organization;
+import io.opaa.permission.AssetGrant;
+import io.opaa.permission.AssetGrantRepository;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OpaaTestDirectory;
 import io.opaa.test.OwnLibraryFixtures;
@@ -539,7 +539,13 @@ class DocumentMetadataCorrectionServiceIntegrationTest {
   private void grant(KnowledgeLibrary target, CurrentUser subject, AssetRole role) {
     grantRepository.save(
         AssetGrant.forUser(
-            target.getId(), Organization.DEFAULT_ID, subject.id(), role, null, owner.id()));
+            KnowledgeLibrary.ASSET_TYPE,
+            target.getId(),
+            Organization.DEFAULT_ID,
+            subject.id(),
+            role,
+            null,
+            owner.id()));
     accessService.invalidateLibrary(target.getId());
   }
 
