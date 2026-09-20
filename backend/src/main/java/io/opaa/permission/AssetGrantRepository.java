@@ -151,11 +151,12 @@ public interface AssetGrantRepository extends JpaRepository<AssetGrant, UUID> {
   /**
    * Whether the given group is the subject of any grant, on any asset - used by {@code
    * GroupService#deleteGroup} to reject deleting a group that still holds a grant ({@code
-   * fk_asset_grants_subject_group_organization} is RESTRICT, so without this check the delete would
-   * surface as an unhandled {@code DataIntegrityViolationException} -> HTTP 500). Deliberately a
-   * second, independent check next to {@link AssetOwnershipDirectory} (ownership), not a
-   * replacement for it - a group can be both the owner of an asset and hold a grant on an unrelated
-   * one; deleting it must be rejected for either reason.
+   * fk_asset_grants_subject_group_organization} is RESTRICT, so without this check the delete is
+   * refused by the constraint alone, with the generic foreign-key message and without naming what
+   * still holds the group). Deliberately a second, independent check next to {@link
+   * AssetOwnershipDirectory} (ownership), not a replacement for it - a group can be both the owner
+   * of an asset and hold a grant on an unrelated one; deleting it must be rejected for either
+   * reason.
    */
   boolean existsBySubjectGroupId(UUID subjectGroupId);
 

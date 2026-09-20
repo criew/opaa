@@ -318,7 +318,12 @@ describe('OidcProviderManagementPage', () => {
       ),
     )
     renderWithProviders(<OidcProviderManagementPage />, { withRouter: true })
-    expect(await screen.findByText(/Kein Anbieter ist Standardanbieter/)).toBeInTheDocument()
+    const hinweis = await screen.findByText(/Kein Anbieter ist Standardanbieter/)
+    expect(hinweis).toBeInTheDocument()
+    // Der Verzeichnisabgleich haengt seit #1816 an der Anbieterzeile selbst; der Hinweis darf ihn
+    // nicht mehr als Folge eines fehlenden Standardanbieters nennen.
+    expect(hinweis).toHaveTextContent(/Der Verzeichnisabgleich h.ngt nicht daran/)
+    expect(hinweis).not.toHaveTextContent(/Verzeichnisabgleich greifen nicht/)
   })
 
   it('runs the connection test from the dialog and shows the outcome', async () => {

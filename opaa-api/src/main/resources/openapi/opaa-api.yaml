@@ -688,6 +688,23 @@ paths:
                 items:
                   $ref: "#/components/schemas/GroupListResponse"
 
+  /api/v1/me/capabilities:
+    get:
+      operationId: listMyCapabilities
+      tags: [auth]
+      summary: >
+        The installation-wide capabilities ("Anlegerechte") the caller holds - what the interface
+        needs to explain a missing right before the attempt instead of hiding the button
+        (ADR-0036, Entscheidung 5). A SYSTEM_ADMIN holds every one of them implicitly. Evaluated
+        per request from the database, so a withdrawal takes effect without a new sign-in.
+      responses:
+        "200":
+          description: The caller's capabilities
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MyCapabilitiesResponse"
+
   /api/v1/users:
     get:
       operationId: listUsersForSelection
@@ -1428,6 +1445,127 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
+  /api/v1/admin/capabilities:
+    get:
+      operationId: listCapabilities
+      tags: [admin]
+      summary: >
+        Every capability with the subjects that currently hold it (system admin only) - one line
+        per capability including the ones nobody holds, so the delivered state is visible and can
+        be confirmed or changed rather than discovered later (ADR-0036, Entscheidung 5).
+      responses:
+        "200":
+          description: One entry per capability
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CapabilityOverviewResponse"
+        "403":
+          description: >
+            Managing capabilities is reserved to SYSTEM_ADMIN. Holding a capability is not the
+            same as being allowed to hand it out.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/admin/capabilities/{capability}/grants:
+    parameters:
+      - name: capability
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Capability"
+
+    post:
+      operationId: grantCapability
+      tags: [admin]
+      summary: >
+        Grant a capability to an account, a group or to all accounts (system admin only). A
+        governance event: withdrawing a capability from all accounts changes the working
+        conditions of every employee, so grant and revocation both appear in the audit trail and
+        carry an interval in the rights history.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CapabilityGrantRequest"
+      responses:
+        "201":
+          description: Capability granted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CapabilityGrantResponse"
+        "400":
+          description: >
+            subjectId is missing for a USER or GROUP subject, or given for an ALL_ACCOUNTS one,
+            which names no subject; or the group is no effective one - dissolved, or belonging to a
+            switched-off identity provider. Such a group keeps the rights it has and receives no
+            new one.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Managing capabilities is reserved to SYSTEM_ADMIN.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: No such account or group in the caller's organization.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: This subject already holds this capability.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/admin/capabilities/{capability}/grants/{grantId}:
+    parameters:
+      - name: capability
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Capability"
+      - name: grantId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    delete:
+      operationId: revokeCapability
+      tags: [admin]
+      summary: >
+        Withdraw one capability grant (system admin only). Takes effect without a new sign-in: the
+        capability is evaluated per request. The withdrawal closes the interval in the rights
+        history and is recorded as a governance event.
+      responses:
+        "204":
+          description: Grant withdrawn
+        "403":
+          description: Managing capabilities is reserved to SYSTEM_ADMIN.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: No such grant for this capability in the caller's organization.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /api/v1/admin/groups:
     get:
       operationId: listGroups
@@ -1451,7 +1589,9 @@ paths:
       summary: Create an ad-hoc group (system admin only)
       description: >
         Always creates a group of kind AD_HOC. Groups of kind ORG_UNIT are created only by
-        directory synchronisation (see #237) and cannot be created through this endpoint.
+        directory synchronisation (see #237) and cannot be created through this endpoint. Needs
+        the capability CREATE_INTERNAL_GROUP, which is delivered to nobody and held implicitly by
+        every SYSTEM_ADMIN - the delivered behaviour is therefore unchanged.
       requestBody:
         required: true
         content:
@@ -1468,7 +1608,13 @@ paths:
         "400":
           $ref: "#/components/responses/ValidationError"
         "403":
-          $ref: "#/components/responses/Forbidden"
+          description: >
+            The caller is no SYSTEM_ADMIN, or lacks the capability CREATE_INTERNAL_GROUP (code
+            CAPABILITY_REQUIRED).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /api/v1/admin/groups/{groupId}:
     parameters:
@@ -2680,16 +2826,91 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /api/v1/admin/directory-sync/dry-run:
+  /api/v1/admin/directory-sync/status:
+    get:
+      operationId: listDirectorySyncStatus
+      tags: [admin]
+      summary: The directory run's status line of every provider (system admin only)
+      description: >
+        One entry per identity provider that has the directory run switched on or has ever run
+        one - the management overview of ADR-0036, Entscheidung 3. Each entry carries the age of
+        a pending plan, so a plan waiting for a decision is visible without opening a subpage.
+      responses:
+        "200":
+          description: One status line per provider, in the providers' own order
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DirectorySyncStatusResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/oidc-providers/{providerId}/directory-sync:
+    put:
+      operationId: setOidcProviderDirectorySync
+      tags: [admin]
+      summary: Switch a provider's directory run on or off (system admin only)
+      description: >
+        A provider has exactly one group mechanism (ADR-0036, Entscheidung 2): switching the
+        directory run on requires an empty groups claim, and setting a groups claim requires the
+        directory run to be off. The conflict is refused with 409 (code
+        DIRECTORY_SYNC_MECHANISM_CONFLICT) and a readable reason - otherwise the same directory
+        group would exist twice, with two truths about its membership and two moments of
+        revocation. Refused with 409 for the LOCAL row of the local account management, which has
+        no directory. Switching it on does not run it; the schedule does, and dry-run/run are
+        there for a run on demand.
+      parameters:
+        - name: providerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OidcProviderDirectorySyncRequest"
+      responses:
+        "200":
+          description: Identity provider updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OidcProviderResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/admin/oidc-providers/{providerId}/directory-sync/dry-run:
     post:
       operationId: runDirectorySyncDryRun
       tags: [admin]
-      summary: Compute the directory synchronisation diff without applying it (system admin only)
+      summary: Compute one provider's directory diff without applying it (system admin only)
       description: >
-        Fetches the current directory state and computes what would change, but never writes
-        anything - not even when the run would otherwise be applicable. See #237.
-        Returns 409 (DIRECTORY_SYNC_ALREADY_RUNNING) while another run or dry run of the same
-        organization is still in flight.
+        Fetches this provider's directory state and computes what would change, but never writes
+        anything - not even when the run would otherwise be applicable, and it never leaves a
+        pending plan behind either. Members are resolved among the accounts of this provider's
+        issuer only. Refused with 409 while the directory run is switched off for this provider
+        (DIRECTORY_SYNC_NOT_ENABLED), while the provider itself is disabled
+        (DIRECTORY_SYNC_PROVIDER_DISABLED - a disabled provider is no anchor of trust, so its run
+        pauses), and while another run or dry run of the same provider is still in flight
+        (DIRECTORY_SYNC_ALREADY_RUNNING). See #237 and #1816.
+      parameters:
+        - name: providerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
       responses:
         "200":
           description: Dry-run report
@@ -2699,21 +2920,30 @@ paths:
                 $ref: "#/components/schemas/DirectorySyncReportResponse"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
 
-  /api/v1/admin/directory-sync/run:
+  /api/v1/admin/oidc-providers/{providerId}/directory-sync/run:
     post:
       operationId: runDirectorySync
       tags: [admin]
-      summary: Run directory synchronisation and apply changes if plausible (system admin only)
+      summary: Run one provider's directory synchronisation on demand (system admin only)
       description: >
         Applies changes only if the directory is reachable, did not return an empty group list
-        while ORG_UNIT groups already exist, and the fraction of memberships that would be
-        removed does not exceed the configured threshold. Otherwise the run is aborted without
-        writing anything, and the report explains why. See #237.
-        Returns 409 (DIRECTORY_SYNC_ALREADY_RUNNING) while another run or dry run of the same
-        organization is still in flight.
+        while this provider's ORG_UNIT groups already exist, and the fraction of memberships that
+        would be removed does not exceed the configured threshold. Above the threshold the run
+        writes nothing and leaves a pending plan behind (outcome PENDING_CONFIRMATION), replacing
+        any plan this provider already had; an empty group list stays a hard abort and leaves no
+        plan at all. Same 409s as the dry run. See #237 and #1816.
+      parameters:
+        - name: providerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
       responses:
         "200":
           description: Synchronisation report
@@ -2723,23 +2953,125 @@ paths:
                 $ref: "#/components/schemas/DirectorySyncReportResponse"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
 
-  /api/v1/admin/directory-sync/status:
+  /api/v1/admin/oidc-providers/{providerId}/directory-sync/pending-plan:
     get:
-      operationId: getDirectorySyncStatus
+      operationId: getDirectorySyncPendingPlan
       tags: [admin]
-      summary: Get the outcome of the most recent directory synchronisation run (system admin only)
+      summary: The plan waiting for a decision for this provider (system admin only)
+      description: >
+        404 when this provider has no pending plan - that is the answer, not an error condition
+        worth a field of its own.
+      parameters:
+        - name: providerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
       responses:
         "200":
-          description: Last known synchronisation status; all fields are null if no run has happened yet
+          description: The pending plan, exactly as the run presented it
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/DirectorySyncStatusResponse"
+                $ref: "#/components/schemas/DirectorySyncPendingPlanResponse"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/admin/oidc-providers/{providerId}/directory-sync/pending-plan/{planId}/confirm:
+    post:
+      operationId: confirmDirectorySyncPlan
+      tags: [admin]
+      summary: Apply a pending directory plan (system admin only)
+      description: >
+        Recomputes the diff against a fresh directory snapshot and applies it only if the result
+        still matches the plan that was shown (ADR-0036, Entscheidung 3). A result that differs is
+        stored as the new pending plan and refused with 409 (code DIRECTORY_SYNC_PLAN_CHANGED), so
+        nobody confirms a diff they never saw; a planId that is not the pending one any more - a
+        later run replaced it - answers 404. The threshold is not applied again: confirming is
+        exactly the decision it guards. An unreachable directory keeps the plan and reports
+        UNREACHABLE. The reason is mandatory and goes into the run's audit entry together with the
+        confirming person.
+      parameters:
+        - name: providerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: planId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DirectorySyncPlanDecisionRequest"
+      responses:
+        "200":
+          description: Report of the confirmed run
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DirectorySyncReportResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/admin/oidc-providers/{providerId}/directory-sync/pending-plan/{planId}/discard:
+    post:
+      operationId: discardDirectorySyncPlan
+      tags: [admin]
+      summary: Discard a pending directory plan without applying it (system admin only)
+      description: >
+        Removes the plan; nothing is written to groups or memberships. The next scheduled run
+        computes the diff afresh and may present it again - discarding is a decision about this
+        plan, not a suppression of the finding. The reason is mandatory and goes into the audit
+        entry.
+      parameters:
+        - name: providerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: planId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DirectorySyncPlanDecisionRequest"
+      responses:
+        "204":
+          description: Plan discarded
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   /api/v1/spaces:
     get:
@@ -2759,7 +3091,10 @@ paths:
     post:
       operationId: createSpace
       tags: [space]
-      summary: Create a new space (project spaces are self-service, team spaces are system admin only)
+      summary: >
+        Create a new space. Needs the capability CREATE_SPACE, delivered to all accounts
+        (ADR-0036, Entscheidung 5); the personal space is provisioned at first sign-in and does
+        not depend on it.
       requestBody:
         required: true
         content:
@@ -2776,7 +3111,13 @@ paths:
         "400":
           $ref: "#/components/responses/ValidationError"
         "403":
-          $ref: "#/components/responses/Forbidden"
+          description: >
+            The caller lacks the capability CREATE_SPACE (code CAPABILITY_REQUIRED), or named
+            another owner without being a SYSTEM_ADMIN.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "409":
           $ref: "#/components/responses/Conflict"
 
@@ -3471,7 +3812,14 @@ paths:
         "400":
           $ref: "#/components/responses/ValidationError"
         "403":
-          $ref: "#/components/responses/Forbidden"
+          description: >
+            The caller lacks the capability the source type requires (code CAPABILITY_REQUIRED):
+            CREATE_LIBRARY for an upload library, CREATE_CONNECTOR_LIBRARY for every connector
+            type. Or the named owner group is one the caller is not a member of.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "404":
           $ref: "#/components/responses/NotFound"
         "503":
@@ -3483,10 +3831,12 @@ paths:
       tags: [library]
       summary: >
         Test a quellkonfiguration before a library is created, or an existing library's
-        quellkonfiguration while editing it (#514, #544). Without libraryId, the permission bar
-        is the same as createLibrary (any authenticated user; there is no library yet to hold a
-        role on). With libraryId, the caller additionally needs AssetRole.MANAGER on that
-        library (see SourceConnectionTestRequest.libraryId).
+        quellkonfiguration while editing it (#514, #544). Without libraryId, any authenticated
+        user may probe: there is no library yet to hold a role on, and the guards that matter
+        here - the operator-configured path allowlist and the address validator - are independent
+        of any permission (ADR-0036, Entscheidung 5). The capability CREATE_CONNECTOR_LIBRARY is
+        therefore checked at creation, not here. With libraryId, the caller additionally needs
+        AssetRole.MANAGER on that library (see SourceConnectionTestRequest.libraryId).
       description: >
         Checks the given sourceType/sourcePath/sourceUrl/sourceProxy/sourceCredentials/
         sourceInsecureSsl combination the way the corresponding indexing run later would,
@@ -9366,7 +9716,7 @@ components:
     GroupProviderResponse:
       type: object
       description: The identity provider a PROVIDER group originates from (ADR-0036/2).
-      required: [id, displayName, external, enabled]
+      required: [id, displayName, external, enabled, groupMechanism]
       properties:
         id:
           type: string
@@ -9384,6 +9734,23 @@ components:
           description: >
             While false the group is no effective group: no new grant target and no new space
             member, shown as not selectable with that reason. Existing grants stay untouched.
+            A disabled provider is also synchronised no further - its directory run pauses.
+        groupMechanism:
+          $ref: "#/components/schemas/GroupMechanism"
+        directorySyncIntervalMinutes:
+          type: integer
+          nullable: true
+          description: >
+            How often the directory run is due, in minutes; null unless groupMechanism is
+            DIRECTORY. Part of the delay a member can see for themselves (ADR-0036/3).
+          example: 360
+        lastDirectorySyncAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: >
+            When this provider was last read from its directory - regardless of whether that run
+            applied anything. Null unless groupMechanism is DIRECTORY and a run has happened.
 
     GroupRequest:
       type: object
@@ -13126,6 +13493,105 @@ components:
       enum: [USER, GROUP]
       example: USER
 
+    Capability:
+      type: string
+      description: >
+        An installation-wide right to create something ("Anlegerecht"), granted to accounts,
+        groups or to all accounts at once. A capability opens a creation path and never an
+        existing content. CREATE_CONNECTOR_LIBRARY is separate from CREATE_LIBRARY because a
+        connector library reaches server paths and stored credentials.
+      enum:
+        [
+          CREATE_SPACE,
+          CREATE_LIBRARY,
+          CREATE_CONNECTOR_LIBRARY,
+          CREATE_INTERNAL_GROUP,
+        ]
+      example: CREATE_SPACE
+
+    CapabilitySubjectType:
+      type: string
+      description: >
+        Who a capability grant refers to. ALL_ACCOUNTS names every account of the organization
+        without naming one and is the delivered state of the three creation capabilities; it is
+        deliberately not modelled as a synthetic group.
+      enum: [USER, GROUP, ALL_ACCOUNTS]
+      example: ALL_ACCOUNTS
+
+    MyCapabilitiesResponse:
+      type: object
+      required: [capabilities]
+      properties:
+        capabilities:
+          type: array
+          items:
+            $ref: "#/components/schemas/Capability"
+
+    CapabilityGrantRequest:
+      type: object
+      required: [subjectType]
+      properties:
+        subjectType:
+          $ref: "#/components/schemas/CapabilitySubjectType"
+        subjectId:
+          type: string
+          format: uuid
+          description: >
+            The account or group the capability is granted to. Required for USER and GROUP,
+            rejected for ALL_ACCOUNTS, which names no subject.
+
+    CapabilityGrantResponse:
+      type: object
+      required: [id, capability, subjectType, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        capability:
+          $ref: "#/components/schemas/Capability"
+        subjectType:
+          $ref: "#/components/schemas/CapabilitySubjectType"
+        subjectId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Absent for ALL_ACCOUNTS.
+        subjectName:
+          type: string
+          nullable: true
+          description: >
+            The display name of the account or group, for the overview. Absent for ALL_ACCOUNTS
+            and for a subject whose row is no longer resolvable.
+        grantedByUserId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Absent for the delivered grants, which nobody decided.
+        createdAt:
+          type: string
+          format: date-time
+
+    CapabilityOverviewResponse:
+      type: object
+      required: [capability, label, statement, grants]
+      properties:
+        capability:
+          $ref: "#/components/schemas/Capability"
+        label:
+          type: string
+          description: The German name of the capability, as interface and manual use it.
+          example: Konnektorbibliotheken anlegen
+        statement:
+          type: string
+          description: >
+            The plain-text line of who currently holds this capability - one display line, not a
+            wizard ("Alle Konten dürfen Konnektorbibliotheken anlegen").
+          example: Alle Konten dürfen Konnektorbibliotheken anlegen.
+        grants:
+          type: array
+          items:
+            $ref: "#/components/schemas/CapabilityGrantResponse"
+
     AssetGrantRequest:
       type: object
       required: [subjectType, subjectId, role]
@@ -13201,18 +13667,34 @@ components:
       type: string
       description: >
         What a directory synchronisation run did. APPLIED and DRY_RUN both mean the run computed
-        a valid diff; the ABORTED_* and UNREACHABLE values mean nothing was written on purpose -
-        see #237.
+        a valid diff and did (or deliberately did not) write it. PENDING_CONFIRMATION is the
+        confirmation path of ADR-0036, Entscheidung 3: a run above the threshold writes nothing
+        and leaves a pending plan behind that a system administrator confirms or discards.
+        ABORTED_THRESHOLD is the same measurement on a dry run, which never leaves a plan.
+        ABORTED_EMPTY_RESULT stays a hard abort - "the source did not answer the way it should"
+        is nothing anyone may click away - and UNREACHABLE keeps the last known good state in
+        force. See #237 and #1816.
       enum:
         [
           APPLIED,
           DRY_RUN,
+          PENDING_CONFIRMATION,
           ABORTED_THRESHOLD,
           ABORTED_EMPTY_RESULT,
-          ABORTED_NO_TRUSTED_PROVIDER,
           UNREACHABLE,
         ]
       example: APPLIED
+
+    GroupMechanism:
+      type: string
+      description: >
+        Which mechanism maintains a provider's groups - exactly one per provider (ADR-0036,
+        Entscheidung 2 and 3). TOKEN reads them from the groups claim on every sign-in, DIRECTORY
+        pulls them on a schedule, NONE means the provider contributes no groups at all. Visible
+        to every signed-in user through GET /api/v1/me/groups, together with interval and last
+        run: the delay is no protectable information and saves the call to the IT department.
+      enum: [TOKEN, DIRECTORY, NONE]
+      example: DIRECTORY
 
     DirectorySyncGroupChange:
       type: object
@@ -13271,6 +13753,7 @@ components:
         - groupsCreated
         - groupsRenamed
         - groupsDissolved
+        - unmaintainedTokenGroups
         - membershipChanges
         - membershipsAdded
         - membershipsRemoved
@@ -13293,6 +13776,16 @@ components:
             $ref: "#/components/schemas/DirectorySyncGroupChange"
         groupsDissolved:
           type: array
+          items:
+            $ref: "#/components/schemas/DirectorySyncGroupChange"
+        unmaintainedTokenGroups:
+          type: array
+          description: >
+            The groups this provider still carries from its groups claim while the directory run
+            is switched on for it - "no longer maintained" (ADR-0036, Entscheidung 3). They keep
+            their frozen membership and are not touched by the run: switching the mechanism
+            revokes nothing silently. Empty in the normal case, since enabling the run requires an
+            empty groups claim and only a provider that once had one can have such groups left.
           items:
             $ref: "#/components/schemas/DirectorySyncGroupChange"
         membershipChanges:
@@ -13336,7 +13829,29 @@ components:
 
     DirectorySyncStatusResponse:
       type: object
+      description: >
+        The status line of one provider's directory run (ADR-0036, Entscheidung 3) - per provider
+        since #1816, not per organization. Every field but the provider's own is null until that
+        provider has run once.
+      required: [providerId, providerDisplayName, providerEnabled, enabled]
       properties:
+        providerId:
+          type: string
+          format: uuid
+        providerDisplayName:
+          type: string
+          example: Beschäftigte (Keycloak)
+        providerEnabled:
+          type: boolean
+          description: A disabled provider is not synchronised - its run pauses (ADR-0036/2).
+        enabled:
+          type: boolean
+          description: Whether the directory run is switched on for this provider.
+        intervalMinutes:
+          type: integer
+          nullable: true
+          description: How often the run is due; null while the run is switched off.
+          example: 360
         lastRunAt:
           type: string
           format: date-time
@@ -13357,6 +13872,89 @@ components:
           type: number
           format: double
           nullable: true
+        pendingPlan:
+          allOf:
+            - $ref: "#/components/schemas/DirectorySyncPendingPlanSummary"
+          nullable: true
+          description: >
+            A plan waiting for a decision, if any. A pending plan is a loud state (ADR-0036/3):
+            its age belongs in the status line itself, not only on a subpage - which is why the
+            summary carries createdAt here rather than making a caller fetch the plan for it.
+
+    DirectorySyncPendingPlanSummary:
+      type: object
+      required: [id, createdAt, changedFraction, membershipsRemoved]
+      properties:
+        id:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+          description: When the run that produced this plan read the directory - its age.
+        changedFraction:
+          type: number
+          format: double
+          example: 0.67
+        membershipsRemoved:
+          type: integer
+          example: 12
+
+    DirectorySyncPendingPlanResponse:
+      type: object
+      required: [id, providerId, createdAt, report]
+      description: >
+        The plan a run above the threshold left behind, exactly as it was shown. Confirming it
+        recomputes the diff against a fresh snapshot; a result that differs from this report is
+        presented anew instead of applied (ADR-0036, Entscheidung 3).
+      properties:
+        id:
+          type: string
+          format: uuid
+        providerId:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        report:
+          $ref: "#/components/schemas/DirectorySyncReportResponse"
+
+    DirectorySyncPlanDecisionRequest:
+      type: object
+      required: [reason]
+      description: >
+        The confirming or discarding person's own reason. Mandatory because the audit trail of a
+        run above the threshold names "the confirming person and their reason"
+        (security-and-compliance.md, closed event list).
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+          example: Reorganisation zum 01.10., mit dem Personalreferat abgestimmt
+
+    OidcProviderDirectorySyncRequest:
+      type: object
+      required: [enabled]
+      description: >
+        Switches this provider's directory run on or off and sets its interval (ADR-0036,
+        Entscheidung 2 and 3).
+      properties:
+        enabled:
+          type: boolean
+        intervalMinutes:
+          type: integer
+          minimum: 5
+          maximum: 10080
+          nullable: true
+          description: >
+            How often the run is due. Null keeps the current value, or takes the shipped default
+            of 360 minutes (6 hours) when the run is switched on for the first time. The bounds
+            apply to any value given, including alongside enabled=false - a request naming a
+            value outside them is refused with 400 rather than silently dropped; what a
+            switched-off run does with the value (nothing - it stores none) is a separate matter.
+          example: 360
 
     # #393 - audit revision access path. See
     # docs/features/security-and-compliance.md#zugriffswege-was-es-gibt-und-was-es-nicht-gibt.
@@ -13442,11 +14040,14 @@ components:
           API_TOKEN_EXPIRED,
           DIRECTORY_SYNC_CHANGE_APPLIED,
           DIRECTORY_SYNC_RUN_COMPLETED,
+          DIRECTORY_SYNC_PLAN_DISCARDED,
           GOVERNANCE_SETTINGS_CHANGED,
           AUDIT_LOG_CONFIGURATION_CHANGED,
           PERMISSION_HISTORY_RETENTION_CHANGED,
           MODEL_POLICY_CHANGED,
           CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED,
+          CAPABILITY_GRANTED,
+          CAPABILITY_REVOKED,
           INDEXING_PIPELINE_REINDEX_TRIGGERED,
           INDEXING_METADATA_BACKFILL_TRIGGERED,
           INDEXING_CONTEXT_PREFIX_RERUN_TRIGGERED,
@@ -14323,6 +14924,7 @@ components:
           issuerUri,
           clientId,
           claimMapping,
+          directorySyncEnabled,
           registryState,
           createdAt,
           updatedAt,
@@ -14373,6 +14975,17 @@ components:
             anchor of every account of this issuer; null when discovery is used.
         claimMapping:
           $ref: "#/components/schemas/OidcClaimMappingDto"
+        directorySyncEnabled:
+          type: boolean
+          description: >
+            Whether this provider's groups come from a scheduled directory run instead of its
+            tokens' groups claim (ADR-0036, Entscheidung 2: one group mechanism per provider).
+            Never true for the LOCAL row.
+        directorySyncIntervalMinutes:
+          type: integer
+          nullable: true
+          description: How often the directory run is due; null while it is switched off.
+          example: 360
         registryState:
           $ref: "#/components/schemas/OidcProviderRegistryState"
         registryMessage:

@@ -1,0 +1,82 @@
+databaseChangeLog:
+  - changeSet:
+      id: 051-seed-delivered-capability-grants
+      author: opaa
+      comment: >-
+        Der Auslieferungszustand der Faehigkeiten (#1813, ADR-0036 Entscheidung 5): je Organisation
+        drei Zeilen an ALL_ACCOUNTS - CREATE_SPACE, CREATE_LIBRARY, CREATE_CONNECTOR_LIBRARY -,
+        keine fuer CREATE_INTERNAL_GROUP. Nach dieser Migration verhaelt sich jede Installation wie
+        vorher: Anlegen bleibt fuer jedes Konto offen, interne Gruppen bleiben der
+        Systemverwaltung vorbehalten (sie besitzt jede Faehigkeit implizit). Wer einschraenken
+        will, entzieht "Alle Konten".
+        .
+        Zu jeder Zeile ein offenes Historienintervall mit dem Grund DELIVERED: sonst begaenne die
+        Stichtagsauskunft erst bei der ersten Aenderung, und der ausgelieferte Zustand - der
+        laengste, den die meisten Installationen je haben - waere der einzige unbelegte.
+        .
+        valid_from ist der Erstellungszeitpunkt der Organisation, nicht der Migrationszeitpunkt.
+        Das Recht galt seit ihrem ersten Tag (ADR-0018 Entscheidung 6: die Anlage stand jedem
+        angemeldeten Konto offen); ein valid_from von heute liesse die Stichtagsauskunft fuer jeden
+        frueheren Stichtag "niemand durfte" antworten, was der abgeloesten Entscheidung
+        widerspricht. Dieselbe Systematik wie der Backfill aus #238, der valid_from aus
+        group_memberships.created_at nimmt. Der Trigger unten setzt dagegen now(): dort ist die
+        Organisation in diesem Augenblick entstanden, beide Werte sind derselbe.
+        .
+        Der Trigger traegt denselben Zustand fuer jede spaeter entstehende Organisation nach. Er
+        steht hier und nicht in der Anwendung, weil es keinen Anlagepfad fuer Organisationen gibt
+        (kein Service, kein Repository-Schreibzugriff im Produktionscode): die Zusage "jede
+        Organisation startet mit dem Auslieferungszustand" haette sonst keinen Ort und gaelte
+        stillschweigend nur fuer die eine geseedete Zeile. Mit der Mandantenfaehigkeit (#1442)
+        entsteht der Anlagepfad; der Trigger bleibt die strukturelle Zusicherung darunter.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              INSERT INTO capability_grants (id, organization_id, capability, subject_type, created_at)
+              SELECT gen_random_uuid(), organizations.id, delivered.capability, 'ALL_ACCOUNTS',
+                     organizations.created_at
+                FROM organizations
+                CROSS JOIN (VALUES ('CREATE_SPACE'), ('CREATE_LIBRARY'), ('CREATE_CONNECTOR_LIBRARY'))
+                     AS delivered(capability);
+
+              INSERT INTO capability_grant_history
+                (id, organization_id, capability, subject_type, cause, valid_from, created_at)
+              SELECT gen_random_uuid(), capability_grants.organization_id, capability_grants.capability,
+                     'ALL_ACCOUNTS', 'DELIVERED', capability_grants.created_at, now()
+                FROM capability_grants
+               WHERE capability_grants.subject_type = 'ALL_ACCOUNTS';
+
+              CREATE FUNCTION organizations_seed_capability_grants() RETURNS trigger
+                  LANGUAGE plpgsql
+                  SET search_path TO 'pg_catalog', '${database.defaultSchemaName}', 'pg_temp'
+                  AS $$
+              DECLARE
+                delivered_capability text;
+                granted_at timestamp with time zone := now();
+              BEGIN
+                FOREACH delivered_capability IN ARRAY ARRAY['CREATE_SPACE', 'CREATE_LIBRARY', 'CREATE_CONNECTOR_LIBRARY'] LOOP
+                  INSERT INTO capability_grants (id, organization_id, capability, subject_type, created_at)
+                  VALUES (gen_random_uuid(), NEW.id, delivered_capability, 'ALL_ACCOUNTS', granted_at);
+
+                  INSERT INTO capability_grant_history
+                    (id, organization_id, capability, subject_type, cause, valid_from, created_at)
+                  VALUES (gen_random_uuid(), NEW.id, delivered_capability, 'ALL_ACCOUNTS', 'DELIVERED', granted_at, granted_at);
+                END LOOP;
+                RETURN NEW;
+              END; $$;
+
+              CREATE TRIGGER trg_organizations_seed_capability_grants AFTER INSERT ON organizations FOR EACH ROW EXECUTE FUNCTION organizations_seed_capability_grants();
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              DROP TRIGGER IF EXISTS trg_organizations_seed_capability_grants ON organizations;
+
+              DROP FUNCTION IF EXISTS organizations_seed_capability_grants();
+
+              DELETE FROM capability_grant_history
+               WHERE cause = 'DELIVERED' AND subject_type = 'ALL_ACCOUNTS';
+
+              DELETE FROM capability_grants
+               WHERE subject_type = 'ALL_ACCOUNTS'
+                 AND capability IN ('CREATE_SPACE', 'CREATE_LIBRARY', 'CREATE_CONNECTOR_LIBRARY');

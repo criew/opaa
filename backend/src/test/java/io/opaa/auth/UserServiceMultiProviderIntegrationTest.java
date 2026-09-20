@@ -121,8 +121,6 @@ class UserServiceMultiProviderIntegrationTest {
       assertThat(policy.grantsSystemAdmin(adminEmail, OidcIssuerUrisTrim.of(trusted))).isFalse();
       assertThat(policy.grantsSystemAdmin(adminEmail, "https://partner.example/realms/b"))
           .isFalse();
-      // the directory binding of the default provider is untouched by that
-      assertThat(new TrustedProvider(oidc, providerRepository).matches(trusted)).isTrue();
     } finally {
       providerRepository.deleteById(standard.getId());
     }

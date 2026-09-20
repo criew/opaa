@@ -131,6 +131,60 @@ Im Einzelnen:
   Begründung steht bei den
   [Berechtigungs-Leitplanken](./hybrid-retrieval.md#berechtigungs-leitplanken), Leitplanke (c).
 
+### Fähigkeiten: die installationsweiten Anlegerechte
+
+Neben den Rollen und den beiden Befugnissen steht eine dritte Art von Recht: die **Fähigkeit** (in der
+Oberfläche **Anlegerecht**) — das unbefristete Recht, etwas *anzulegen*. Sie wird an eine Person, eine
+Gruppe oder an **„Alle Konten"** vergeben, hat keinen Gegenstand und öffnet **nie** einen Inhalt.
+Festgelegt in [ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md),
+Entscheidung 5, die damit ADR-0018, Entscheidung 6 samt Nachtrag ablöst.
+
+| Fähigkeit | Was sie öffnet | Ausgeliefert an |
+|---|---|---|
+| `CREATE_SPACE` | einen Space anlegen | Alle Konten |
+| `CREATE_LIBRARY` | eine Bibliothek für Uploads anlegen | Alle Konten |
+| `CREATE_CONNECTOR_LIBRARY` | eine Bibliothek mit Konnektor anlegen (Dateisystem, Webverzeichnis, Feed, Confluence, S3) | Alle Konten |
+| `CREATE_INTERNAL_GROUP` | eine interne Gruppe anlegen | niemanden |
+
+> **`CREATE_INTERNAL_GROUP` ist heute Vokabular, keine Öffnung.** Der Endpunkt hinter dem Anlegen
+> interner Gruppen ist unverändert `SYSTEM_ADMIN`-beschränkt, und die Systemverwaltung hält die
+> Fähigkeit ohnehin implizit. Eine Erteilung an eine Person oder Gruppe wird protokolliert und
+> historisiert, wirkt aber erst, wenn es einen Anlegepfad außerhalb der Systemverwaltung gibt
+> ([#1814](https://github.com/criew/opaa/issues/1814)). Die Verwaltungsübersicht sagt das in ihrer
+> Klartextzeile mit.
+
+- **Der ausgelieferte Zustand ist der heutige.** Nach der Migration legt jedes Konto Spaces und
+  Bibliotheken genau wie vorher an; interne Gruppen bleiben der Systemverwaltung vorbehalten. Wer
+  einschränken will, entzieht „Alle Konten" und erteilt einer benannten Gruppe.
+- **`CREATE_CONNECTOR_LIBRARY` ist eine eigene Fähigkeit**, weil Konnektorbibliotheken Serverpfade und
+  Zugangsdaten erreichen und die Freigabe-Obergrenze für Fremdzugänge tragen — der erste Kandidat, den
+  ein Haus nach der Migration auf eine benannte Gruppe einschränkt.
+- **Die Auswertung** lautet: `SYSTEM_ADMIN` **oder** Erteilung an „Alle Konten" **oder** an das Konto
+  **oder** an eine seiner Gruppen. `SYSTEM_ADMIN` besitzt damit jede Fähigkeit implizit; **die Rolle
+  `AUDITOR` verleiht keine** — sie ist ein Lesepfad in das Protokoll und sonst nichts.
+- **Keine Fähigkeit öffnet einen Inhalt.** Insbesondere verändert keine von ihnen die Menge der
+  lesbaren Bibliotheken; der fehlende Systemverwalter-Durchgriff in der Suche bleibt, wie er ist
+  (siehe [Verwalten ist nicht Lesen](#verwalten-ist-nicht-lesen-die-asymmetrie-bei-wissensbibliotheken)).
+- **Der persönliche Space** entsteht bei der ersten Anmeldung unabhängig von `CREATE_SPACE`: das ist
+  Bereitstellung, kein Anlegen.
+- **Fehlt die Fähigkeit, erklärt die Antwort statt zu verschweigen:** `403` mit dem Code
+  `CAPABILITY_REQUIRED`, dem Namen des fehlenden Anlegerechts und dem Hinweis, an wen man sich wendet.
+  `GET /api/v1/me/capabilities` liefert der Oberfläche die eigenen Fähigkeiten, damit sie das schon vor
+  dem Versuch sagen kann.
+- **Der Entzug wirkt ohne Neuanmeldung.** Die Fähigkeit wird je Anfrage aus der Datenbank ausgewertet.
+  Diese Zusage trägt, weil [ADR-0021](../decisions/0021-single-instance-betrieb.md) einen einzigen
+  Prozess voraussetzt; fällt diese Annahme, fällt die Zusage mit.
+- **Vergabe und Entzug sind Governance-Ereignisse** (`CAPABILITY_GRANTED`/`CAPABILITY_REVOKED`) und
+  bekommen zusätzlich ein Intervall in `capability_grant_history` — die Stichtagsauskunft „wer durfte
+  am 3. März Konnektorbibliotheken anlegen" ist damit innerhalb der Aufbewahrungshöchstdauer
+  beantwortbar. Der Entzug einer Fähigkeit von „Alle Konten" ändert die Arbeitsbedingungen aller
+  Beschäftigten und ist deshalb kein technisches Ereignis unter vielen.
+- **Verwaltet wird die Fähigkeit von `SYSTEM_ADMIN`** (`/api/v1/admin/capabilities`). Eine Fähigkeit zu
+  *halten* heißt nicht, sie *vergeben* zu dürfen.
+- **Was keine Fähigkeit ist:** „Space organisationsweit sichtbar machen", „Bibliothek organisationsweit
+  freigeben" und „Fremdzugang freigeben" sind Reichweitenentscheidungen am Objekt und bleiben bei
+  `MANAGER`/`OWNER`. „Sicht als" und Vorfallsbereich bleiben Befugnisse und werden nie Fähigkeiten.
+
 ### Verwalten ist nicht Lesen: die Asymmetrie bei Wissensbibliotheken
 
 Die Abgrenzung oben — Systemverwaltung ist nicht automatisch Leseberechtigung — ist im Code als
@@ -850,10 +904,14 @@ Gruppen zweier Anbieter sind zwei Gruppen, ein Anbieter erreicht nie die Gruppen
 Mitgliedschaften folgen dem Token (Historie `IDENTITY_PROVIDER_ADDED`/`_REMOVED`, Audit unter
 `identity-provider`), die Gruppen selbst bleiben bestehen und sind in der Gruppenverwaltung
 schreibgeschützt; sie sind weder Gegenstand des Verzeichnisabgleichs noch als „Sicht als"-Bereich
-wählbar. Der **Verzeichnisabgleich** ist an den Standardanbieter gebunden: Er löst die Subjects
-des Verzeichnisses nur unter dessen Konten auf (ein gleichnamiges Subject eines zweiten Anbieters
-erbt keine Mitgliedschaft) und verwaltet ausschließlich Organisationseinheiten; ohne
-Standardanbieter bricht ein Lauf ohne Änderungen ab.
+wählbar. Der **Verzeichnisabgleich** ist seit #1816 an die **Anbieterzeile selbst** gebunden, nicht
+mehr an den Standardanbieter: Er ist je Anbieter einschaltbar, löst die Subjects des Verzeichnisses
+nur unter den Konten **dieses** Anbieters auf (ein gleichnamiges Subject eines zweiten Anbieters
+erbt keine Mitgliedschaft) und verwaltet ausschließlich dessen Organisationseinheiten. Ohne
+Anbieterzeile — im Betriebsmodus `dev` — findet gar kein Abgleich statt; ist die Zeile deaktiviert,
+pausiert er. Schaltet ein Haus einen Anbieter vom Gruppen-Claim auf den Abgleich um, bleiben seine
+Token-Gruppen mit eingefrorener Mitgliedschaft stehen und sind **kein neues Ziel einer
+Berechtigung** mehr; bestehende bleiben unverändert.
 
 **Was ein Token über Rollen sagt — und was nicht (gebaut, #1830).** „Keine Auskunft" und
 „ausdrücklich keine erhöhte Rolle" sind zwei verschiedene Aussagen, und nur die zweite ist ein
@@ -914,11 +972,15 @@ darauf hin, dass Anbieter erst im OIDC-Modus wirken.
 
 ### Was übernommen wird
 
-OPAA gleicht mit dem Verzeichnisdienst ab — bevorzugt über eine Bereitstellungsschnittstelle nach
-**SCIM**, die Änderungen aktiv meldet, ersatzweise über einen wiederkehrenden Abgleich:
+OPAA gleicht mit dem Verzeichnisdienst über einen **wiederkehrenden Abgleich** ab, den es selbst
+anstößt. **SCIM ist ausdrücklich nicht der Weg** ([ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md),
+Entscheidung 3): Ein Pull nutzt die gebaute Schutzmechanik unverändert — sie ist auf Schnappschüsse
+gebaut, ein Push liefert Deltas, für die es weder ein „leeres Ergebnis" noch eine Schwelle je Lauf
+gibt —, öffnet keinen eingehenden Schreibpfad und kommt mit jeder Quelle aus, die eine
+Leseschnittstelle hat.
 
 ```
-Abgleich: ereignisgesteuert, ersatzweise turnusmäßig (z. B. alle 6 Stunden)
+Abgleich: turnusmäßig je Anbieter (Vorgabe alle 6 Stunden, 5 Minuten bis 1 Woche)
 
 Aus dem Verzeichnis:
   - Benutzernamen und E-Mail-Adressen
@@ -931,13 +993,23 @@ Aus dem Verzeichnis:
 Das Verzeichnis ist die **führende Quelle**. Wer dort gesperrt ist, ist in OPAA gesperrt; ein
 abweichender Zustand in OPAA ist kein Zustand, den ein Admin von Hand herstellen können sollte.
 
-**Je Anbieter (ADR-0025):** Der Verzeichnisabgleich gilt für die Konten des **Standardanbieters** —
-nur unter ihnen werden die Subjects des Verzeichnisses aufgelöst, und nur seine Organisationseinheiten
-entstehen daraus. Ein zweiter Anbieter (Partnerportal, Landesanbieter) hat keinen Verzeichnisabgleich;
-seine Gruppen kommen, wenn überhaupt, aus seinem Gruppen-Claim (siehe [„Claim-Zuordnung je
-Anbieter"](#anmeldung-und-identität)) und benennen ihn als ihre Herkunft. Ein gleichnamiges
-Subject bei zwei Anbietern ergibt zwei Konten, und nur das des Standardanbieters erhält die
-Verzeichnisgruppen.
+**Je Anbieter genau eine Gruppenquelle (ADR-0036, Entscheidung 2):** Der Verzeichnisabgleich ist
+**je Anbieter ein- und ausschaltbar** und gilt für die Konten genau dieses Anbieters — nur unter
+ihnen werden die Subjects seines Verzeichnisses aufgelöst, und nur seine Organisationseinheiten
+entstehen daraus. Ein Anbieter mit eingeschaltetem Abgleich hat keinen Gruppen-Claim und umgekehrt;
+die Verwaltung weist den Konflikt mit `409` und verständlichem Grund ab, weil dieselbe Gruppe sonst
+zweimal entstünde, mit zwei Wahrheiten über die Mitgliedschaft und zwei Entzugszeitpunkten. Ein
+gleichnamiges Subject bei zwei Anbietern ergibt zwei Konten, und jedes erhält nur die Gruppen seines
+eigenen Anbieters. **Der Abgleich eines deaktivierten Anbieters pausiert.**
+
+**Der Zeitverzug ist für alle sichtbar, nicht nur für die Systemverwaltung.** „Meine Gruppen“
+(`GET /api/v1/me/groups`) nennt je Anbieter Mechanismus, Intervall und Zeitpunkt des letzten
+Abgleichs. Das ist keine schutzwürdige Information und erspart den Anruf bei der IT, wenn eine neu
+aufgenommene Kollegin bis zum nächsten Lauf nichts sieht.
+
+**Die Genauigkeit der Rechtehistorie hängt am Mechanismus.** Im Token-Modus erscheint eine
+Verzeichnisänderung vom 3. März für eine Person, die sich am 20. März anmeldet, mit dem 20. März; im
+Abgleichmodus mit dem Zeitpunkt des Laufs.
 
 ### Der Lebenszyklus eines Kontos
 
@@ -963,8 +1035,8 @@ Verzeichnisgruppen.
    seine Rechte, **ohne dass jemand in OPAA etwas tut**. Das ist der Regelfall und der Grund, warum die
    Synchronisation als Rechteereignis behandelt wird (siehe unten).
 4. **Ausscheiden.** Verschwindet ein Konto im Verzeichnis oder wird es dort gesperrt, wird der Zugang in
-   OPAA **beim nächsten Abgleich automatisch entzogen** — ohne Ticket, ohne Handgriff und ohne
-   Bedingung. Das ist die Anforderung, an der der IT-Grundschutz und jede Prüfung als Erstes ansetzen.
+   OPAA **beim nächsten Abgleich des betreffenden Anbieters automatisch entzogen** — ohne Ticket,
+   ohne Handgriff und ohne Bedingung. Das ist die Anforderung, an der der IT-Grundschutz und jede Prüfung als Erstes ansetzen.
    Für Konten anderer Anbieter ist der Hebel der Anbieter selbst (gesperrtes Konto: keine Anmeldung
    mehr, Token-Gruppen enden mit der nächsten Anmeldung) oder das Deaktivieren des ganzen Anbieters in
    der Anbieterverwaltung (ab dem nächsten Token abgewiesen, Konten bleiben).
@@ -999,10 +1071,21 @@ Gruppenmitgliedschaft kann Zugriff auf ganze Bestände geben oder nehmen.
 - Ein Lauf, der eine **auffällig große** Zahl an Entzügen oder Zuweisungen bewirken würde — etwa weil im
   Verzeichnis eine Gruppe umbenannt wurde —, wird angezeigt und ist bestätigungspflichtig, statt
   stillschweigend durchzulaufen. Der häufigste Fehlerfall ist nicht der Angriff, sondern die
-  fehlgeschlagene Umstellung.
+  fehlgeschlagene Umstellung. Vier Festlegungen zum Lebenszyklus eines solchen Plans:
+  **ein neuer Lauf ersetzt ihn** (sonst staut sich alle sechs Stunden einer, und irgendwann wird der
+  älteste bestätigt); **bestätigt wird gegen einen frischen Schnappschuss**, und weicht das Ergebnis
+  vom gezeigten ab, wird neu vorgelegt statt angewendet; **sein Alter steht in der Statuszeile** und
+  auf der Verwaltungsübersicht, nicht nur auf einer Unterseite; und **Bestätigung wie Verwerfen sind
+  Protokollereignisse** mit der handelnden Person und ihrem Anlass.
 - Fällt der Verzeichnisdienst aus, gilt der **letzte bekannte Stand weiter**, und der Ausfall wird
   gemeldet. Ein leeres Abgleichergebnis darf nie als „alle Gruppenmitgliedschaften entfallen" gedeutet
-  werden.
+  werden — und es ist der eine Fall, der **nicht** bestätigungsfähig ist: „Die Quelle hat nicht
+  geantwortet, wie sie soll" darf niemand wegklicken.
+- **Der Wechsel des Mechanismus entzieht nichts still.** Token-Gruppen und Verzeichnisgruppen sind
+  verschiedene Objekte. Wird der Abgleich für einen Anbieter eingeschaltet, weist der
+  Differenzbericht des ersten Laufs seine Token-Gruppen als **„werden nicht mehr gepflegt"** aus; sie
+  bleiben mit eingefrorener Mitgliedschaft stehen. Die Übertragung ihrer Berechtigungen auf die neuen
+  Gruppen ist eine eigene Handlung.
 
 **Dieselbe Regel gilt für die Gruppen aus dem Token.** „Keine Auskunft" und „ausdrücklich keine
 Gruppen" sind zwei verschiedene Aussagen, und nur die zweite ist ein Entzug. Der Anmeldeweg

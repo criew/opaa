@@ -53,39 +53,42 @@ public class DirectorySyncStatusRecorder {
    */
   public void record(
       UUID organizationId,
+      UUID providerId,
       Instant runAt,
       DirectorySyncOutcome outcome,
       String message,
       double changedFraction) {
-    Optional<DirectorySyncStatus> existing = statusRepository.findByOrganizationId(organizationId);
+    Optional<DirectorySyncStatus> existing =
+        statusRepository.findByOrganizationIdAndProviderId(organizationId, providerId);
     if (existing.isPresent()) {
       updateExisting(existing.get(), runAt, outcome, message, changedFraction);
       return;
     }
-    insertOrUpdateOnRaceLost(organizationId, runAt, outcome, message, changedFraction);
+    insertOrUpdateOnRaceLost(organizationId, providerId, runAt, outcome, message, changedFraction);
   }
 
   /**
    * Creates the organization's status row, tolerating the race of two concurrent <em>first</em>
-   * runs for the same organization getting past the {@code findByOrganizationId} check in {@link
-   * #record} together (#300). Only the first run of an organization can reach this method at all;
+   * runs for the same provider getting past the {@code findByOrganizationIdAndProviderId} check in
+   * {@link #record} together (#300). Only the first run of a provider can reach this method at all;
    * every later run takes {@link #record}'s update branch.
    *
    * <p>Because {@link #record} is deliberately not {@code @Transactional} (see its javadoc), the
    * {@code saveAndFlush} below runs in its own short-lived, implicit transaction. A {@link
-   * DataIntegrityViolationException} on {@code uk_directory_sync_status_organization} rolls back
-   * only that insert; nothing else is poisoned by it, so the loser of the race can simply update
-   * the row the winner has by now committed instead of surfacing the violation to {@code
-   * DirectorySyncService.recordStatusSafely}, where it would be logged and the run's outcome lost.
-   * Same fallback-read pattern as {@code UserService#createOrFetchUser} (#293).
+   * DataIntegrityViolationException} on {@code uk_directory_sync_status_organization_provider}
+   * rolls back only that insert; nothing else is poisoned by it, so the loser of the race can
+   * simply update the row the winner has by now committed instead of surfacing the violation to
+   * {@code DirectorySyncService.recordStatusSafely}, where it would be logged and the run's outcome
+   * lost. Same fallback-read pattern as {@code UserService#createOrFetchUser} (#293).
    */
   private void insertOrUpdateOnRaceLost(
       UUID organizationId,
+      UUID providerId,
       Instant runAt,
       DirectorySyncOutcome outcome,
       String message,
       double changedFraction) {
-    DirectorySyncStatus status = new DirectorySyncStatus(organizationId);
+    DirectorySyncStatus status = new DirectorySyncStatus(organizationId, providerId);
     status.recordRun(runAt, outcome, message, changedFraction);
     try {
       // saveAndFlush forces the INSERT to execute (and thus to fail, if it must) here, instead of
@@ -94,7 +97,9 @@ public class DirectorySyncStatusRecorder {
       statusRepository.saveAndFlush(status);
     } catch (DataIntegrityViolationException raceLost) {
       DirectorySyncStatus winner =
-          statusRepository.findByOrganizationId(organizationId).orElseThrow(() -> raceLost);
+          statusRepository
+              .findByOrganizationIdAndProviderId(organizationId, providerId)
+              .orElseThrow(() -> raceLost);
       updateExisting(winner, runAt, outcome, message, changedFraction);
     }
   }

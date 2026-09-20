@@ -79,6 +79,12 @@ final class GroupResponseMapper {
       return null;
     }
     return new GroupProviderResponse(
-        provider.id(), provider.displayName(), provider.external(), provider.enabled());
+            provider.id(),
+            provider.displayName(),
+            provider.external(),
+            provider.enabled(),
+            provider.mechanism())
+        .directorySyncIntervalMinutes(provider.syncIntervalMinutes())
+        .lastDirectorySyncAt(provider.lastSyncAt());
   }
 }

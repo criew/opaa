@@ -6,6 +6,7 @@ import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.api.types.AuditSubjectKind;
+import io.opaa.api.types.Capability;
 import io.opaa.api.types.GroupKind;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
@@ -18,12 +19,17 @@ import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.OrganizationScopedLoader;
 import io.opaa.common.ValidationException;
+import io.opaa.group.sync.DirectorySyncStatus;
+import io.opaa.group.sync.DirectorySyncStatusRepository;
 import io.opaa.permission.AssetGrantRepository;
 import io.opaa.permission.AssetOwnershipDirectory;
+import io.opaa.permission.CapabilityGrantRepository;
+import io.opaa.permission.CapabilityService;
 import io.opaa.permission.GroupMembershipHistoryCause;
 import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.GroupSpaceMembershipDirectory;
 import io.opaa.permission.PermissionHistoryService;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -56,8 +62,9 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * fk_asset_grants_subject_group_organization} is RESTRICT, exactly like the owner keys; without the
  * check in {@link #deleteGroup}, the everyday case the feature spec's "Freigabestufen und
  * Auffindbarkeit" describes - "an Abteilung 5 freigeben" is a grant to the group representing
- * Abteilung 5, not ownership - would surface as an unhandled {@code
- * DataIntegrityViolationException} (HTTP 500) the first time anyone tried to delete such a group.
+ * Abteilung 5, not ownership - would be refused by the constraint alone, with the generic
+ * foreign-key message {@code GlobalExceptionHandler} turns a {@code
+ * DataIntegrityViolationException} into and without naming what still holds the group.
  */
 @Service
 @Transactional(readOnly = true)
@@ -69,10 +76,13 @@ public class GroupService {
   private final GroupRepository groupRepository;
   private final UserRepository userRepository;
   private final OidcProviderRepository providerRepository;
+  private final DirectorySyncStatusRepository directorySyncStatusRepository;
   private final GroupMembershipResolver membershipResolver;
   private final GroupSpaceMembershipDirectory spaceMembershipDirectory;
   private final List<AssetOwnershipDirectory> assetOwnershipDirectories;
   private final AssetGrantRepository grantRepository;
+  private final CapabilityGrantRepository capabilityGrantRepository;
+  private final CapabilityService capabilityService;
   private final PermissionHistoryService permissionHistoryService;
   private final AuditEventRecorder auditEventRecorder;
 
@@ -80,25 +90,32 @@ public class GroupService {
       GroupRepository groupRepository,
       UserRepository userRepository,
       OidcProviderRepository providerRepository,
+      DirectorySyncStatusRepository directorySyncStatusRepository,
       GroupMembershipResolver membershipResolver,
       GroupSpaceMembershipDirectory spaceMembershipDirectory,
       List<AssetOwnershipDirectory> assetOwnershipDirectories,
       AssetGrantRepository grantRepository,
+      CapabilityGrantRepository capabilityGrantRepository,
+      CapabilityService capabilityService,
       PermissionHistoryService permissionHistoryService,
       AuditEventRecorder auditEventRecorder) {
     this.groupRepository = groupRepository;
     this.userRepository = userRepository;
     this.providerRepository = providerRepository;
+    this.directorySyncStatusRepository = directorySyncStatusRepository;
     this.membershipResolver = membershipResolver;
     this.spaceMembershipDirectory = spaceMembershipDirectory;
     this.assetOwnershipDirectories = assetOwnershipDirectories;
     this.grantRepository = grantRepository;
+    this.capabilityGrantRepository = capabilityGrantRepository;
+    this.capabilityService = capabilityService;
     this.permissionHistoryService = permissionHistoryService;
     this.auditEventRecorder = auditEventRecorder;
   }
 
   @Transactional
   public GroupDetail createGroup(GroupCreation creation, CurrentUser caller) {
+    capabilityService.requireCapability(caller, Capability.CREATE_INTERNAL_GROUP);
     String normalizedName = validateName(creation.name());
     validateDescription(creation.description());
 
@@ -169,9 +186,11 @@ public class GroupService {
         groups.stream().map(Group::getProviderId).filter(Objects::nonNull).collect(toSet());
     Map<UUID, GroupProviderView> byId = new HashMap<>();
     if (!providerIds.isEmpty()) {
+      UUID organizationId = groups.get(0).getOrganizationId();
       providerRepository
           .findAllById(providerIds)
-          .forEach(provider -> byId.put(provider.getId(), toProviderView(provider)));
+          .forEach(
+              provider -> byId.put(provider.getId(), toProviderView(provider, organizationId)));
     }
     return groups.stream()
         .map(group -> new GroupOverview(group, byId.get(group.getProviderId())))
@@ -184,13 +203,31 @@ public class GroupService {
     }
     return providerRepository
         .findById(group.getProviderId())
-        .map(GroupService::toProviderView)
+        .map(provider -> toProviderView(provider, group.getOrganizationId()))
         .orElse(null);
   }
 
-  private static GroupProviderView toProviderView(OidcProvider provider) {
+  /**
+   * The last time this provider's directory was read, or null while its groups come from tokens -
+   * the delay a member may see for themselves (ADR-0036, Entscheidung 3). Read per provider, not
+   * per group: {@code toOverviews} resolves a whole list through the handful of provider rows.
+   */
+  private GroupProviderView toProviderView(OidcProvider provider, UUID organizationId) {
+    Instant lastSyncAt =
+        provider.isDirectorySyncEnabled()
+            ? directorySyncStatusRepository
+                .findByOrganizationIdAndProviderId(organizationId, provider.getId())
+                .map(DirectorySyncStatus::getLastRunAt)
+                .orElse(null)
+            : null;
     return new GroupProviderView(
-        provider.getId(), provider.getDisplayName(), provider.isExternal(), provider.isEnabled());
+        provider.getId(),
+        provider.getDisplayName(),
+        provider.isExternal(),
+        provider.isEnabled(),
+        provider.groupMechanism(),
+        provider.getDirectorySyncIntervalMinutes(),
+        lastSyncAt);
   }
 
   public GroupDetail getGroup(UUID groupId, CurrentUser caller) {
@@ -241,9 +278,10 @@ public class GroupService {
     Group group = loadGroup(groupId, caller);
     rejectOrgUnit(group);
     // The owner foreign keys of the asset tables are RESTRICT: without this check, deleting a
-    // group that still owns an asset would surface as an unhandled DataIntegrityViolationException
-    // -> HTTP 500 with no indication of the actual cause. Every asset type answers for itself
-    // through AssetOwnershipDirectory, so a further type extends this check by adding a bean.
+    // group that still owns an asset is refused by the constraint alone, with the generic
+    // foreign-key message and no indication of the actual cause. Every asset type answers for
+    // itself through AssetOwnershipDirectory, so a further type extends this check by adding a
+    // bean.
     for (AssetOwnershipDirectory ownership : assetOwnershipDirectories) {
       if (ownership.existsAssetOwnedByGroup(groupId)) {
         throw new ConflictException(ownership.ownedAssetConflictMessage());
@@ -254,6 +292,13 @@ public class GroupService {
     if (grantRepository.existsBySubjectGroupId(groupId)) {
       throw new ConflictException(
           "Die Gruppe hat noch Berechtigungen auf Bibliotheken und kann nicht gelöscht werden");
+    }
+    // The same RESTRICT pattern one table further
+    // (fk_capability_grants_subject_group_organization): without this check the deletion is still
+    // refused, but with the generic foreign-key message instead of the reason.
+    if (capabilityGrantRepository.existsBySubjectGroupId(groupId)) {
+      throw new ConflictException(
+          "Die Gruppe hat noch Anlegerechte und kann nicht gelöscht werden");
     }
     // Same class of RESTRICT reference on the space axis since #1815
     // (fk_space_memberships_group_organization) - without this the deletion would surface as an

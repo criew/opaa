@@ -20,6 +20,7 @@ import io.opaa.auth.UserRepository;
 import io.opaa.chat.ChatRepository;
 import io.opaa.common.ConflictException;
 import io.opaa.permission.AssetOwnershipHistoryService;
+import io.opaa.permission.CapabilityService;
 import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.GroupSubjectDirectory;
 import java.util.Optional;
@@ -63,6 +64,7 @@ class SpaceServiceTest {
     SpaceAssetAssociationService associationService = mock(SpaceAssetAssociationService.class);
     accessPolicy = mock(SpaceAccessPolicy.class);
     membershipHistory = mock(SpaceMembershipHistoryService.class);
+    CapabilityService capabilityService = mock(CapabilityService.class);
     spaceService =
         new SpaceService(
             spaceRepository,
@@ -75,6 +77,7 @@ class SpaceServiceTest {
             mock(AssetOwnershipHistoryService.class),
             mock(GroupMembershipResolver.class),
             mock(GroupSubjectDirectory.class),
+            capabilityService,
             transactionManager);
   }
 

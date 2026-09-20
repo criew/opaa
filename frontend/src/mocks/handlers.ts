@@ -60,6 +60,7 @@ import {
   resetMockDocumentMetadata,
   mockLibraryGrants,
   mockMyGroups,
+  mockMyCapabilities,
   mockChatDetails,
   mockChatPins,
   mockChatArchive,
@@ -1442,6 +1443,7 @@ export const handlers = [
       // Vorgabe aus ADR-0036, Entscheidung 2: alles außer dem Standardanbieter ist extern
       isExternal: mockOidcProviders.length > 0,
       providerType: 'OIDC',
+      directorySyncEnabled: false,
       sortOrder: mockOidcProviders.length,
       issuerUri: body.issuerUri,
       clientId: body.clientId,
@@ -3361,6 +3363,11 @@ export const handlers = [
 
   http.get('/api/v1/me/groups', () => {
     return HttpResponse.json(mockMyGroups)
+  }),
+
+  // The delivered state of ADR-0036, Entscheidung 5: all three creation capabilities, no group one.
+  http.get('/api/v1/me/capabilities', () => {
+    return HttpResponse.json(mockMyCapabilities)
   }),
 
   http.get('/api/v1/auth/config', () => {

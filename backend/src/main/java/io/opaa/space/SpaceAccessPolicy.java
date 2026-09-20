@@ -221,14 +221,15 @@ public class SpaceAccessPolicy {
   }
 
   /**
-   * Whether a group can act: effective (neither dissolved nor belonging to a switched-off identity
-   * provider, ADR-0036 Entscheidung 6) <em>and</em> reaching at least one active account. A group
+   * Whether a group can act: effective (neither dissolved, nor belonging to a switched-off identity
+   * provider, nor a token group whose provider has since switched to the directory run - ADR-0036
+   * Entscheidung 6, extended by #1816) <em>and</em> reaching at least one active account. A group
    * that has lost its last account is still a member and keeps conferring its role on nobody - it
    * simply no longer counts as the space's {@code ADMIN}.
    */
   public boolean isCapableGroup(UUID groupId) {
     GroupSubject group = groupDirectory.find(groupId).orElse(null);
-    if (group == null || group.dissolved() || group.providerDisabled()) {
+    if (group == null || group.dissolved() || group.providerDisabled() || group.unmaintained()) {
       return false;
     }
     return groupMemberships.activeMemberCount(groupId, group.organizationId()) > 0;

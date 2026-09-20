@@ -44,12 +44,14 @@ class DirectorySyncServiceStatusFailureTest {
   @Autowired private GroupMembershipHistoryRepository membershipHistoryRepository;
   @Autowired private UserRepository userRepository;
   @Autowired private FakeDirectoryClient directoryClient;
-  @Autowired private io.opaa.auth.AuthProperties authProperties;
+  @Autowired private io.opaa.auth.oidc.OidcProviderRepository providerRepository;
   @Autowired private DirectorySyncStatusRecorder statusRecorder;
 
   private static final String DIRECTORY_GUID = "dir-guid-9";
 
   private UUID organizationId;
+
+  private io.opaa.auth.oidc.OidcProvider syncProvider;
 
   private final List<UUID> createdUserIds = new ArrayList<>();
 
@@ -57,15 +59,25 @@ class DirectorySyncServiceStatusFailureTest {
   void setUp() {
     organizationId = Organization.DEFAULT_ID;
     removeOwnRows();
+    syncProvider =
+        new io.opaa.auth.oidc.OidcProvider(
+            "Verzeichnis " + UUID.randomUUID(),
+            "https://idp.example/realms/" + UUID.randomUUID(),
+            "opaa-frontend",
+            null,
+            io.opaa.auth.oidc.OidcClaimMapping.keycloakDefaults());
+    syncProvider.configureDirectorySync(true, 360);
+    providerRepository.save(syncProvider);
     directoryClient.respondWith();
     doThrow(new RuntimeException("simulated status write failure"))
         .when(statusRecorder)
-        .record(any(), any(), any(), anyString(), anyDouble());
+        .record(any(), any(), any(), any(), anyString(), anyDouble());
   }
 
   @AfterEach
   void tearDown() {
     removeOwnRows();
+    providerRepository.deleteById(syncProvider.getId());
   }
 
   /**
@@ -87,7 +99,7 @@ class DirectorySyncServiceStatusFailureTest {
 
   private UUID createUser(String subject) {
     User user =
-        new User(subject, authProperties.dev().issuer(), subject + "@example.com", "Test User");
+        new User(subject, syncProvider.getIssuerUri(), subject + "@example.com", "Test User");
     user.setOrganizationId(organizationId);
     UUID id = userRepository.save(user).getId();
     createdUserIds.add(id);
@@ -100,7 +112,7 @@ class DirectorySyncServiceStatusFailureTest {
     directoryClient.respondWith(
         new DirectoryGroup(DIRECTORY_GUID, "Referat 99", null, Set.of("member-1")));
 
-    SyncReport report = directorySyncService.run(organizationId);
+    SyncReport report = directorySyncService.run(organizationId, syncProvider.getId());
 
     assertThat(report.outcome()).isEqualTo(DirectorySyncOutcome.APPLIED);
     // The group/membership change is real and committed, regardless of the status write failure.

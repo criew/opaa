@@ -20,6 +20,7 @@ import io.opaa.diagnosticaccess.DiagnosticImpersonationGrantRepository;
 import io.opaa.group.Group;
 import io.opaa.group.GroupRepository;
 import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.ProviderFixtures;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -57,12 +58,14 @@ class SearchDiagnosisPersonContextHttpIntegrationTest {
   @Autowired private DiagnosticImpersonationGrantRepository grantRepository;
   @Autowired private DiagnosticContextLogRepository logRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private io.opaa.auth.oidc.OidcProviderRepository providerRepository;
 
   private User devAdmin;
   private UUID organizationId;
   private UUID targetUserId;
   private UUID targetWithoutLockedRightId;
   private UUID orgUnitId;
+  private UUID providerId;
   private UUID openLibraryId;
   private UUID lockedLibraryId;
   private UUID ungrantedLockedLibraryId;
@@ -100,11 +103,20 @@ class SearchDiagnosisPersonContextHttpIntegrationTest {
     withoutLockedRight.setOrganizationId(organizationId);
     targetWithoutLockedRightId = userRepository.save(withoutLockedRight).getId();
 
+    // Every ORG_UNIT group carries its provider since #1816 (chk_groups_provider_kind).
+    providerId = ProviderFixtures.tokenProvider(providerRepository).getId();
     orgUnitId =
         groupRepository
             .save(
                 new Group(
-                    organizationId, GroupKind.ORG_UNIT, "Bürgerbüro", null, null, null, null, null))
+                    organizationId,
+                    GroupKind.ORG_UNIT,
+                    "Bürgerbüro",
+                    null,
+                    providerId,
+                    null,
+                    null,
+                    null))
             .getId();
     jdbcTemplate.update(
         "INSERT INTO group_memberships (id, user_id, group_id, organization_id, created_at)"
@@ -158,6 +170,9 @@ class SearchDiagnosisPersonContextHttpIntegrationTest {
     jdbcTemplate.update("DELETE FROM groups WHERE id = ?", orgUnitId);
     jdbcTemplate.update("DELETE FROM users WHERE id = ?", targetUserId);
     jdbcTemplate.update("DELETE FROM users WHERE id = ?", targetWithoutLockedRightId);
+    // fk_groups_provider is RESTRICT, so the provider goes after the unit above. A provider row
+    // left behind would make the next class's first provider not the default one.
+    jdbcTemplate.update("DELETE FROM oidc_providers WHERE id = ?", providerId);
   }
 
   @Test

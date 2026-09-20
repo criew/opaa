@@ -40,6 +40,11 @@ import org.springframework.beans.factory.annotation.Autowired;
  * DirectoryClient} bean (marked {@code @Primary}, so it wins regardless of bean registration order)
  * - the one seam between the synchronisation policy under test and an actual directory, per {@link
  * DirectoryClient}'s own javadoc.
+ *
+ * <p>Since #1816 every run is bound to an identity provider row: this class creates one per test
+ * method, switches its directory run on, and provisions its accounts under that provider's issuer.
+ * That works in the {@code local,dev} context because the run reads issuer and origin from the row
+ * rather than from the operating mode.
  */
 @OpaaIntegrationTest
 class DirectorySyncServiceIntegrationTest {
@@ -49,9 +54,9 @@ class DirectorySyncServiceIntegrationTest {
   @Autowired private GroupMembershipRepository membershipRepository;
   @Autowired private GroupMembershipHistoryRepository membershipHistoryRepository;
   @Autowired private UserRepository userRepository;
-  @Autowired private io.opaa.auth.AuthProperties authProperties;
   @Autowired private io.opaa.auth.oidc.OidcProviderRepository providerRepository;
   @Autowired private DirectorySyncStatusRepository statusRepository;
+  @Autowired private DirectorySyncPendingPlanRepository pendingPlanRepository;
   @Autowired private FakeDirectoryClient directoryClient;
 
   // Real Liquibase FKs are in force in this test (fk_users_organization,
@@ -66,11 +71,35 @@ class DirectorySyncServiceIntegrationTest {
   /** Same reasoning; fk_groups_provider is RESTRICT, so these go after the groups. */
   private static final List<UUID> createdProviderIds = new ArrayList<>();
 
+  /** The provider this method's run is bound to - its issuer is the one accounts are created at. */
+  private OidcProvider syncProvider;
+
+  private UUID providerId;
+
   @BeforeEach
   void setUp() {
     wipeOrganizationData();
     organizationId = Organization.DEFAULT_ID;
+    syncProvider = createSyncProvider();
+    providerId = syncProvider.getId();
     directoryClient.respondWith();
+  }
+
+  /**
+   * An ordinary provider row with its directory run switched on - the binding of every run here.
+   */
+  private OidcProvider createSyncProvider() {
+    OidcProvider provider =
+        new OidcProvider(
+            "Verzeichnis " + UUID.randomUUID(),
+            "https://idp.example/realms/" + UUID.randomUUID(),
+            "opaa-frontend",
+            null,
+            OidcClaimMapping.keycloakDefaults());
+    provider.configureDirectorySync(true, 360);
+    providerRepository.save(provider);
+    createdProviderIds.add(provider.getId());
+    return provider;
   }
 
   // Scoped to the users this class created, not every user of Organization.DEFAULT_ID: the whole
@@ -79,9 +108,9 @@ class DirectorySyncServiceIntegrationTest {
   // fk_spaces_owner_organization. Called from both @BeforeEach and @AfterEach so this class's own
   // data neither survives into, nor depends on leftovers from, another test's run.
   private void wipeOrganizationData() {
-    statusRepository
-        .findByOrganizationId(Organization.DEFAULT_ID)
-        .ifPresent(status -> statusRepository.deleteById(status.getId()));
+    pendingPlanRepository.deleteAll(
+        pendingPlanRepository.findByOrganizationId(Organization.DEFAULT_ID));
+    statusRepository.deleteAll(statusRepository.findByOrganizationId(Organization.DEFAULT_ID));
     List<Group> groups = groupRepository.findByOrganizationId(Organization.DEFAULT_ID);
     // #238 code review, finding 2+4: a sync run now historises every membership change it applies,
     // and group_membership_history.user_id is ON DELETE RESTRICT (see
@@ -107,9 +136,9 @@ class DirectorySyncServiceIntegrationTest {
     wipeOrganizationData();
   }
 
-  /** An account of the trusted provider - the dev issuer in this context (ADR-0025). */
+  /** An account of the provider the run is bound to - the only issuer it resolves (ADR-0036/2). */
   private UUID createUser(UUID organizationId, String subject) {
-    return createUser(organizationId, subject, authProperties.dev().issuer());
+    return createUser(organizationId, subject, syncProvider.getIssuerUri());
   }
 
   private UUID createUser(UUID organizationId, String subject, String issuer) {
@@ -122,7 +151,8 @@ class DirectorySyncServiceIntegrationTest {
 
   private Group persistOrgUnit(String externalId, String name, UUID... memberIds) {
     Group group =
-        new Group(organizationId, GroupKind.ORG_UNIT, name, null, null, externalId, null, null);
+        new Group(
+            organizationId, GroupKind.ORG_UNIT, name, null, providerId, externalId, null, null);
     for (UUID memberId : memberIds) {
       group.addMembership(new GroupMembership(memberId, organizationId));
     }
@@ -134,12 +164,13 @@ class DirectorySyncServiceIntegrationTest {
   // ---------------------------------------------------------------------------------------
 
   /**
-   * ADR-0025, Entscheidung 4: the directory's subjects are accounts of the trusted provider only -
-   * a second provider's account with the same subject is a different person and never inherits the
-   * directory's memberships, and a token-derived group is no directory group.
+   * ADR-0025, Entscheidung 4 and ADR-0036, Entscheidung 2: the directory's subjects are accounts of
+   * the provider the run is bound to - a second provider's account with the same subject is a
+   * different person and never inherits the directory's memberships, and that provider's
+   * token-derived group is untouched.
    */
   @Test
-  void membersResolveOnlyAmongTheTrustedProvidersAccountsAndTokenGroupsAreLeftAlone() {
+  void membersResolveOnlyAmongTheBoundProvidersAccountsAndAnotherProvidersGroupsAreLeftAlone() {
     UUID trusted = createUser(organizationId, "member-1");
     UUID partnerAccount =
         createUser(organizationId, "member-1", "https://partner.example/realms/b");
@@ -168,7 +199,7 @@ class DirectorySyncServiceIntegrationTest {
     directoryClient.respondWith(
         new DirectoryGroup("dir-guid-1", "Referat 12", null, Set.of("member-1")));
 
-    SyncReport report = directorySyncService.run(organizationId);
+    SyncReport report = directorySyncService.run(organizationId, providerId);
 
     assertThat(report.outcome()).isEqualTo(DirectorySyncOutcome.APPLIED);
     assertThat(report.unresolvedMemberCount()).isZero();
@@ -194,7 +225,7 @@ class DirectorySyncServiceIntegrationTest {
     directoryClient.respondWith(
         new DirectoryGroup("dir-guid-1", "Neues Referat", null, Set.of("member-1")));
 
-    SyncReport report = directorySyncService.run(organizationId);
+    SyncReport report = directorySyncService.run(organizationId, providerId);
 
     assertThat(report.outcome()).isEqualTo(DirectorySyncOutcome.APPLIED);
     assertThat(report.groupsRenamed()).hasSize(1);
@@ -211,7 +242,7 @@ class DirectorySyncServiceIntegrationTest {
   // ---------------------------------------------------------------------------------------
 
   @Test
-  void aRunThatRemovesMoreThanTheThresholdIsAbortedWithoutAnyChange() {
+  void aRunThatRemovesMoreThanTheThresholdChangesNothingAndLeavesAPlanPending() {
     UUID memberA = createUser(organizationId, "a");
     UUID memberB = createUser(organizationId, "b");
     UUID memberC = createUser(organizationId, "c");
@@ -221,9 +252,9 @@ class DirectorySyncServiceIntegrationTest {
     // default threshold.
     directoryClient.respondWith(new DirectoryGroup("dir-guid-1", "Referat 50", null, Set.of("a")));
 
-    SyncReport report = directorySyncService.run(organizationId);
+    SyncReport report = directorySyncService.run(organizationId, providerId);
 
-    assertThat(report.outcome()).isEqualTo(DirectorySyncOutcome.ABORTED_THRESHOLD);
+    assertThat(report.outcome()).isEqualTo(DirectorySyncOutcome.PENDING_CONFIRMATION);
     assertThat(membershipRepository.findByGroupId(existing.getId())).hasSize(3);
   }
 
@@ -238,7 +269,7 @@ class DirectorySyncServiceIntegrationTest {
 
     directoryClient.respondWith(); // empty group list
 
-    SyncReport report = directorySyncService.run(organizationId);
+    SyncReport report = directorySyncService.run(organizationId, providerId);
 
     assertThat(report.outcome()).isEqualTo(DirectorySyncOutcome.ABORTED_EMPTY_RESULT);
     assertThat(membershipRepository.findByGroupId(existing.getId())).hasSize(1);
@@ -256,7 +287,7 @@ class DirectorySyncServiceIntegrationTest {
 
     directoryClient.failWith("connection refused");
 
-    SyncReport report = directorySyncService.run(organizationId);
+    SyncReport report = directorySyncService.run(organizationId, providerId);
 
     assertThat(report.outcome()).isEqualTo(DirectorySyncOutcome.UNREACHABLE);
     assertThat(membershipRepository.findByGroupId(existing.getId())).hasSize(1);
@@ -276,7 +307,7 @@ class DirectorySyncServiceIntegrationTest {
         new DirectoryGroup("dir-guid-1", "Referat 50", null, Set.of("a", "b")),
         new DirectoryGroup("dir-guid-2", "Referat 60", null, Set.of()));
 
-    SyncReport report = directorySyncService.dryRun(organizationId);
+    SyncReport report = directorySyncService.dryRun(organizationId, providerId);
 
     assertThat(report.outcome()).isEqualTo(DirectorySyncOutcome.DRY_RUN);
     assertThat(report.groupsCreated()).hasSize(1);
@@ -296,7 +327,7 @@ class DirectorySyncServiceIntegrationTest {
     directoryClient.respondWith(
         new DirectoryGroup("dir-guid-9", "Referat 99", null, Set.of("new-member")));
 
-    SyncReport report = directorySyncService.run(organizationId);
+    SyncReport report = directorySyncService.run(organizationId, providerId);
 
     assertThat(report.outcome()).isEqualTo(DirectorySyncOutcome.APPLIED);
     List<Group> groups = groupRepository.findByOrganizationId(organizationId);
@@ -341,7 +372,7 @@ class DirectorySyncServiceIntegrationTest {
                 "bulk-0", "bulk-1", "bulk-2", "bulk-3", "bulk-4", "bulk-5", "bulk-6", "bulk-7",
                 "bulk-8")));
 
-    SyncReport report = directorySyncService.run(organizationId);
+    SyncReport report = directorySyncService.run(organizationId, providerId);
 
     assertThat(report.outcome()).isEqualTo(DirectorySyncOutcome.APPLIED);
     assertThat(report.groupsDissolved()).hasSize(1);
@@ -365,7 +396,7 @@ class DirectorySyncServiceIntegrationTest {
     directoryClient.respondWith(
         new DirectoryGroup("dir-guid-1", "Referat 50", null, Set.of("member-1", "member-2")));
 
-    SyncReport report = directorySyncService.run(organizationId);
+    SyncReport report = directorySyncService.run(organizationId, providerId);
 
     assertThat(report.outcome()).isEqualTo(DirectorySyncOutcome.APPLIED);
     Group reloaded = groupRepository.findById(existing.getId()).orElseThrow();
@@ -398,9 +429,9 @@ class DirectorySyncServiceIntegrationTest {
     }
     directoryClient.respondWith(stillReported.toArray(new DirectoryGroup[0]));
 
-    SyncReport report = directorySyncService.run(organizationId);
+    SyncReport report = directorySyncService.run(organizationId, providerId);
 
-    assertThat(report.outcome()).isEqualTo(DirectorySyncOutcome.ABORTED_THRESHOLD);
+    assertThat(report.outcome()).isEqualTo(DirectorySyncOutcome.PENDING_CONFIRMATION);
     assertThat(report.changedFraction()).isEqualTo(0.8);
     long dissolvedCount =
         groupRepository.findByOrganizationId(organizationId).stream()
@@ -428,9 +459,9 @@ class DirectorySyncServiceIntegrationTest {
     directoryClient.respondWith(
         new DirectoryGroup("dir-guid-1", "Referat 50", null, Set.of("kept")));
 
-    SyncReport report = directorySyncService.run(organizationId);
+    SyncReport report = directorySyncService.run(organizationId, providerId);
 
-    assertThat(report.outcome()).isEqualTo(DirectorySyncOutcome.ABORTED_THRESHOLD);
+    assertThat(report.outcome()).isEqualTo(DirectorySyncOutcome.PENDING_CONFIRMATION);
     assertThat(report.changedFraction()).isEqualTo(0.75);
     Group reloaded = groupRepository.findById(group.getId()).orElseThrow();
     // Aborted - still dissolved, membership untouched.
@@ -453,9 +484,9 @@ class DirectorySyncServiceIntegrationTest {
     }
     directoryClient.respondWith(stillReported.toArray(new DirectoryGroup[0]));
 
-    SyncReport report = directorySyncService.run(organizationId);
+    SyncReport report = directorySyncService.run(organizationId, providerId);
 
-    assertThat(report.outcome()).isEqualTo(DirectorySyncOutcome.ABORTED_THRESHOLD);
+    assertThat(report.outcome()).isEqualTo(DirectorySyncOutcome.PENDING_CONFIRMATION);
     assertThat(report.changedFraction()).isEqualTo(0.98);
     long dissolvedCount =
         groupRepository.findByOrganizationId(organizationId).stream()
@@ -495,7 +526,7 @@ class DirectorySyncServiceIntegrationTest {
         new DirectoryGroup("dir-team-a", "Team A", null, teamASubjects),
         new DirectoryGroup("dir-team-b", "Team B", null, teamBSubjects));
 
-    SyncReport report = directorySyncService.run(organizationId);
+    SyncReport report = directorySyncService.run(organizationId, providerId);
 
     assertThat(report.outcome()).isEqualTo(DirectorySyncOutcome.APPLIED);
     assertThat(report.changedFraction()).isEqualTo(0.0);
@@ -514,10 +545,12 @@ class DirectorySyncServiceIntegrationTest {
     directoryClient.respondWith(
         new DirectoryGroup("dir-guid-1", "Referat 50", null, Set.of("member-1")));
 
-    directorySyncService.dryRun(organizationId);
+    directorySyncService.dryRun(organizationId, providerId);
 
     DirectorySyncStatus status =
-        statusRepository.findByOrganizationId(organizationId).orElseThrow();
+        statusRepository
+            .findByOrganizationIdAndProviderId(organizationId, providerId)
+            .orElseThrow();
     assertThat(status.getLastOutcome()).isEqualTo(DirectorySyncOutcome.DRY_RUN);
   }
 
@@ -525,11 +558,13 @@ class DirectorySyncServiceIntegrationTest {
   void dryRunAgainstAnUnreachableDirectoryStillRecordsTheOutcomeDurably() {
     directoryClient.failWith("timeout");
 
-    SyncReport report = directorySyncService.dryRun(organizationId);
+    SyncReport report = directorySyncService.dryRun(organizationId, providerId);
 
     assertThat(report.outcome()).isEqualTo(DirectorySyncOutcome.UNREACHABLE);
     DirectorySyncStatus status =
-        statusRepository.findByOrganizationId(organizationId).orElseThrow();
+        statusRepository
+            .findByOrganizationIdAndProviderId(organizationId, providerId)
+            .orElseThrow();
     assertThat(status.getLastOutcome()).isEqualTo(DirectorySyncOutcome.UNREACHABLE);
   }
 
@@ -546,7 +581,7 @@ class DirectorySyncServiceIntegrationTest {
         new DirectoryGroup("dir-child", "Unterabteilung", "dir-parent", Set.of()),
         new DirectoryGroup("dir-parent", "Abteilung", null, Set.of()));
 
-    directorySyncService.run(organizationId);
+    directorySyncService.run(organizationId, providerId);
 
     Group parent =
         groupRepository.findByOrganizationId(organizationId).stream()
@@ -567,7 +602,7 @@ class DirectorySyncServiceIntegrationTest {
     directoryClient.respondWith(
         new DirectoryGroup("dir-a", "Referat A", null, Set.of()),
         new DirectoryGroup("dir-b", "Referat B", null, Set.of()));
-    directorySyncService.run(organizationId);
+    directorySyncService.run(organizationId, providerId);
     Group groupA =
         groupRepository.findByOrganizationId(organizationId).stream()
             .filter(g -> "dir-a".equals(g.getExternalId()))
@@ -579,7 +614,7 @@ class DirectorySyncServiceIntegrationTest {
     directoryClient.respondWith(
         new DirectoryGroup("dir-a", "Referat A", "dir-b", Set.of()),
         new DirectoryGroup("dir-b", "Referat B", null, Set.of()));
-    directorySyncService.run(organizationId);
+    directorySyncService.run(organizationId, providerId);
 
     Group groupB =
         groupRepository.findByOrganizationId(organizationId).stream()
@@ -603,8 +638,12 @@ class DirectorySyncServiceIntegrationTest {
     persistOrgUnit("dir-guid-1", "Referat 50", member);
     directoryClient.respondWith(
         new DirectoryGroup("dir-guid-1", "Referat 50", null, Set.of("member-1")));
-    directorySyncService.dryRun(organizationId);
-    assertThat(statusRepository.findByOrganizationId(organizationId).orElseThrow().getLastOutcome())
+    directorySyncService.dryRun(organizationId, providerId);
+    assertThat(
+            statusRepository
+                .findByOrganizationIdAndProviderId(organizationId, providerId)
+                .orElseThrow()
+                .getLastOutcome())
         .isEqualTo(DirectorySyncOutcome.DRY_RUN);
 
     // A directory-supplied group name exceeding groups.name's varchar(255) makes the CREATE fail
@@ -614,11 +653,13 @@ class DirectorySyncServiceIntegrationTest {
         new DirectoryGroup("dir-guid-1", "Referat 50", null, Set.of("member-1")),
         new DirectoryGroup("dir-guid-9", tooLongName, null, Set.of()));
 
-    assertThatThrownBy(() -> directorySyncService.run(organizationId))
+    assertThatThrownBy(() -> directorySyncService.run(organizationId, providerId))
         .isInstanceOf(RuntimeException.class);
 
     DirectorySyncStatus status =
-        statusRepository.findByOrganizationId(organizationId).orElseThrow();
+        statusRepository
+            .findByOrganizationIdAndProviderId(organizationId, providerId)
+            .orElseThrow();
     assertThat(status.getLastOutcome()).isEqualTo(DirectorySyncOutcome.DRY_RUN);
     assertThat(status.getLastAppliedAt()).isNull();
   }
@@ -636,7 +677,7 @@ class DirectorySyncServiceIntegrationTest {
     directoryClient.respondWith(
         new DirectoryGroup("dir-guid-1", "Referat 50", null, Set.of("keep")));
 
-    SyncReport report = directorySyncService.dryRun(organizationId);
+    SyncReport report = directorySyncService.dryRun(organizationId, providerId);
 
     assertThat(report.membershipChanges()).hasSize(1);
     MembershipChange change = report.membershipChanges().get(0);
@@ -651,14 +692,23 @@ class DirectorySyncServiceIntegrationTest {
 
   @Test
   void statusReflectsTheMostRecentRunIncludingUnreachableAttempts() {
-    assertThat(directorySyncService.getStatus(organizationId)).isEmpty();
+    assertThat(statusRepository.findByOrganizationIdAndProviderId(organizationId, providerId))
+        .isEmpty();
 
     directoryClient.failWith("timeout");
-    directorySyncService.run(organizationId);
+    directorySyncService.run(organizationId, providerId);
 
-    assertThat(directorySyncService.getStatus(organizationId).orElseThrow().getLastOutcome())
+    assertThat(
+            statusRepository
+                .findByOrganizationIdAndProviderId(organizationId, providerId)
+                .orElseThrow()
+                .getLastOutcome())
         .isEqualTo(DirectorySyncOutcome.UNREACHABLE);
-    assertThat(directorySyncService.getStatus(organizationId).orElseThrow().getLastAppliedAt())
+    assertThat(
+            statusRepository
+                .findByOrganizationIdAndProviderId(organizationId, providerId)
+                .orElseThrow()
+                .getLastAppliedAt())
         .isNull();
   }
 }

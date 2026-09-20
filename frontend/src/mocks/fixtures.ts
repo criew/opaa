@@ -21,6 +21,7 @@ import type {
   SpaceResponse,
   GroupListResponse,
   GroupResponse,
+  MyCapabilitiesResponse,
   LibraryDocumentResponse,
   LibraryResponse,
   SpaceLibraryAssociationListResponse,
@@ -658,6 +659,7 @@ function initialOidcProviders(): OidcProviderResponse[] {
       isDefault: true,
       isExternal: false,
       providerType: 'OIDC',
+      directorySyncEnabled: false,
       sortOrder: 1,
       issuerUri: 'http://localhost:8180/realms/opaa',
       clientId: 'opaa-frontend',
@@ -682,6 +684,7 @@ function initialOidcProviders(): OidcProviderResponse[] {
       isDefault: false,
       isExternal: true,
       providerType: 'OIDC',
+      directorySyncEnabled: false,
       sortOrder: 2,
       issuerUri: 'https://partner.example/realms/extern',
       clientId: 'opaa-partner',
@@ -706,6 +709,7 @@ function initialOidcProviders(): OidcProviderResponse[] {
       isDefault: false,
       isExternal: true,
       providerType: 'OIDC',
+      directorySyncEnabled: false,
       sortOrder: 3,
       issuerUri: 'https://land.example/realms/verwaltung',
       clientId: 'opaa-land',
@@ -735,6 +739,7 @@ function initialOidcProviders(): OidcProviderResponse[] {
       isDefault: false,
       isExternal: false,
       providerType: 'LOCAL',
+      directorySyncEnabled: false,
       sortOrder: 0,
       issuerUri: 'urn:opaa:local',
       clientId: null,
@@ -1216,6 +1221,7 @@ export const mockGroups: GroupListResponse[] = [
       displayName: 'Verzeichnisdienst',
       external: false,
       enabled: true,
+      groupMechanism: 'TOKEN',
     },
     sourcePath: '/Haus A/Abteilung 5/Referat 50',
     parentGroupId: null,
@@ -1264,6 +1270,7 @@ export const mockGroupDetails: Record<string, GroupResponse> = {
       displayName: 'Verzeichnisdienst',
       external: false,
       enabled: true,
+      groupMechanism: 'TOKEN',
     },
     sourcePath: '/Haus A/Abteilung 5/Referat 50',
     parentGroupId: null,
@@ -1510,6 +1517,14 @@ export const mockLibraryDetails: Record<string, LibraryResponse> = {
 export const mockMyGroups: GroupListResponse[] = mockGroups.filter((group) =>
   mockGroupDetails[group.id]?.members.some((member) => member.userId === 'mock-user-id'),
 )
+
+/**
+ * The delivered capabilities of ADR-0036, Entscheidung 5 - the three creation rights every account
+ * holds, without CREATE_INTERNAL_GROUP, which is delivered to nobody.
+ */
+export const mockMyCapabilities: MyCapabilitiesResponse = {
+  capabilities: ['CREATE_SPACE', 'CREATE_LIBRARY', 'CREATE_CONNECTOR_LIBRARY'],
+}
 
 const INITIAL_LIBRARY_DOCUMENTS: Record<string, LibraryDocumentResponse[]> = {
   'library-mine': [

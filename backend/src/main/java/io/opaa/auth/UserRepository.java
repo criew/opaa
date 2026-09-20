@@ -110,6 +110,10 @@ public interface UserRepository extends JpaRepository<User, UUID> {
               + "   AS associations,"
               + " (SELECT count(*) FROM audit_incident_scope_grants WHERE requested_by_user_id = :id"
               + "   OR approved_by_user_id = :id OR subject_user_id = :id) AS incident_scopes,"
+              + " (SELECT count(*) FROM capability_grants WHERE subject_user_id = :id"
+              + "   OR granted_by_user_id = :id) AS capabilities,"
+              + " (SELECT count(*) FROM capability_grant_history WHERE subject_user_id = :id)"
+              + "   AS capability_history,"
               + " (SELECT count(*) FROM space_membership_history WHERE subject_user_id = :id)"
               + "   AS space_membership_history,"
               + " (SELECT count(*) FROM asset_ownership_history WHERE owner_user_id = :id)"
@@ -134,6 +138,10 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     long getAssociations();
 
     long getIncidentScopes();
+
+    long getCapabilities();
+
+    long getCapabilityHistory();
 
     long getSpaceMembershipHistory();
 

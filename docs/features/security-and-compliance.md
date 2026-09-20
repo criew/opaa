@@ -197,7 +197,8 @@ ersten Stufe nicht geschrieben.
   betroffene Person ist das Pseudonym in `subject_ref`
 - **Jede bewirkte** Rechteänderung aus einem Verzeichnisabgleich — je Änderung, nicht je Lauf, verbunden
   über `correlation_ref`; dazu ein Kopfeintrag des Laufs mit Ergebnis und, oberhalb der Schwelle, mit
-  der bestätigenden Person und ihrem Anlass
+  der bestätigenden Person und ihrem Anlass. **Das Verwerfen** eines vorgelegten Plans ist ein
+  eigenes Ereignis mit derselben Angabe — eine Entscheidung, die keine Spur hinterlässt, ist keine
 
 **Systemeinstellungen**
 
@@ -619,8 +620,9 @@ der Vektorsuche ist, existiert kein abgelehnter Zugriff, den man protokollieren 
 Chunks werden nie geladen. Was es gibt, ist der Nachweis über die **Rechtehistorie** — und er ist der
 stärkere, weil er den Zustand belegt und nicht das Ausbleiben eines Ereignisses.
 
-**Umsetzungsstand (#238):** Grants, Gruppenmitgliedschaften und die Reichweitenfelder einer Bibliothek
-sind als Intervalle mit auslösendem Vorgang historisiert, einschließlich eines Backfills für den
+**Umsetzungsstand (#238, #1813):** Grants, Gruppenmitgliedschaften, die Reichweitenfelder einer
+Bibliothek und die installationsweiten Fähigkeiten (ADR-0036, Entscheidung 5) sind als Intervalle mit
+auslösendem Vorgang historisiert, einschließlich eines Backfills für den
 Altbestand (Ursache `BACKFILL`, `valid_from` aus dem jeweiligen Erstellungszeitpunkt der Fachzeile) —
 ohne ihn wäre die Rekonstruktion für jeden Stichtag vor der Migration und für jedes seither unveränderte
 Recht falsch, nicht bloß lückenhaft. Die Historie überlebt die Löschung einer Bibliothek oder Gruppe
@@ -681,7 +683,11 @@ Datenbestand mehr existierte, der das Gegenteil belegt. Das ist eine Dateneigens
 Code: Die Migration kann nur historisieren, was zu ihrem Zeitpunkt noch da ist. Ab dem
 Migrationszeitpunkt — und für jedes seither unverändert bestehende Recht rückwirkend bis zu seiner
 Entstehung, weil der Backfill dessen `created_at` übernimmt — sind die Rechtemenge zu einem Stichtag und
-die Negativfrage korrekt beantwortbar. Für einen Prüfzeitraum, der vor die Migration zurückreicht und
+die Negativfrage korrekt beantwortbar. **Die Fähigkeiten folgen derselben Systematik:** Ihre
+ausgelieferten Intervalle (Ursache `DELIVERED`) beginnen beim Erstellungszeitpunkt der Organisation,
+nicht bei der Migration — das Anlegen stand jedem angemeldeten Konto von deren erstem Tag an offen, und
+ein Intervallbeginn von heute ließe die Auskunft für jeden früheren Stichtag fälschlich „niemand durfte"
+antworten. Für einen Prüfzeitraum, der vor die Migration zurückreicht und
 Rechte betrifft, die dort bereits beendet waren, bleibt die Rechtehistorie ohne Aussage.
 
 **Die Rückwirkung bis zur Entstehung gilt nur für drei der Tabellen** — `asset_grant_history`,

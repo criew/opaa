@@ -2,20 +2,25 @@ package io.opaa.api;
 
 import io.opaa.api.dto.DirectorySyncGroupChange;
 import io.opaa.api.dto.DirectorySyncMembershipChange;
+import io.opaa.api.dto.DirectorySyncPendingPlanResponse;
+import io.opaa.api.dto.DirectorySyncPendingPlanSummary;
 import io.opaa.api.dto.DirectorySyncReportResponse;
 import io.opaa.api.dto.DirectorySyncStatusResponse;
 import io.opaa.api.dto.DirectorySyncUserRef;
+import io.opaa.group.sync.DirectorySyncPendingPlan;
 import io.opaa.group.sync.DirectorySyncStatus;
+import io.opaa.group.sync.DirectorySyncStatusView;
 import io.opaa.group.sync.GroupChange;
 import io.opaa.group.sync.MembershipChange;
+import io.opaa.group.sync.PendingPlanView;
 import io.opaa.group.sync.SyncReport;
 import io.opaa.group.sync.UserRef;
 import java.util.List;
-import java.util.Optional;
 
 /**
- * Maps {@link SyncReport} and {@link DirectorySyncStatus} onto their generated response
- * counterparts (ADR-0006: API DTOs are generated from the specification, never hand-written).
+ * Maps {@link SyncReport}, {@link DirectorySyncStatusView} and {@link PendingPlanView} onto their
+ * generated response counterparts (ADR-0006: API DTOs are generated from the specification, never
+ * hand-written).
  */
 final class DirectorySyncResponseMapper {
 
@@ -29,6 +34,7 @@ final class DirectorySyncResponseMapper {
             toGroupChanges(report.groupsCreated()),
             toGroupChanges(report.groupsRenamed()),
             toGroupChanges(report.groupsDissolved()),
+            toGroupChanges(report.unmaintainedTokenGroups()),
             toMembershipChanges(report.membershipChanges()),
             report.membershipsAdded(),
             report.membershipsRemoved(),
@@ -39,17 +45,43 @@ final class DirectorySyncResponseMapper {
     return response;
   }
 
-  static DirectorySyncStatusResponse toStatusResponse(Optional<DirectorySyncStatus> status) {
-    return status
-        .map(
-            s ->
-                new DirectorySyncStatusResponse()
-                    .lastRunAt(s.getLastRunAt())
-                    .lastOutcome(s.getLastOutcome())
-                    .lastMessage(s.getLastMessage())
-                    .lastAppliedAt(s.getLastAppliedAt())
-                    .lastChangedFraction(s.getLastChangedFraction()))
-        .orElseGet(DirectorySyncStatusResponse::new);
+  static List<DirectorySyncStatusResponse> toStatusResponses(List<DirectorySyncStatusView> views) {
+    return views.stream().map(DirectorySyncResponseMapper::toStatusResponse).toList();
+  }
+
+  static DirectorySyncStatusResponse toStatusResponse(DirectorySyncStatusView view) {
+    DirectorySyncStatusResponse response =
+        new DirectorySyncStatusResponse(
+                view.providerId(),
+                view.providerDisplayName(),
+                view.providerEnabled(),
+                view.enabled())
+            .intervalMinutes(view.intervalMinutes())
+            .pendingPlan(toPendingPlanSummary(view.pendingPlan()));
+    DirectorySyncStatus status = view.status();
+    if (status != null) {
+      response
+          .lastRunAt(status.getLastRunAt())
+          .lastOutcome(status.getLastOutcome())
+          .lastMessage(status.getLastMessage())
+          .lastAppliedAt(status.getLastAppliedAt())
+          .lastChangedFraction(status.getLastChangedFraction());
+    }
+    return response;
+  }
+
+  static DirectorySyncPendingPlanResponse toPendingPlanResponse(PendingPlanView view) {
+    return new DirectorySyncPendingPlanResponse(
+        view.id(), view.providerId(), view.createdAt(), toReportResponse(view.report()));
+  }
+
+  private static DirectorySyncPendingPlanSummary toPendingPlanSummary(
+      DirectorySyncPendingPlan plan) {
+    if (plan == null) {
+      return null;
+    }
+    return new DirectorySyncPendingPlanSummary(
+        plan.getId(), plan.getCreatedAt(), plan.getChangedFraction(), plan.getMembershipsRemoved());
   }
 
   private static DirectorySyncGroupChange toGroupChange(GroupChange change) {

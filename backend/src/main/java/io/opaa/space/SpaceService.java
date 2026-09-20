@@ -6,6 +6,7 @@ import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.api.types.AuditSubjectKind;
+import io.opaa.api.types.Capability;
 import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.api.types.SpaceRole;
 import io.opaa.api.types.SpaceVisibility;
@@ -21,6 +22,7 @@ import io.opaa.common.NotFoundException;
 import io.opaa.common.OrganizationScopedLoader;
 import io.opaa.common.ValidationException;
 import io.opaa.permission.AssetOwnershipHistoryService;
+import io.opaa.permission.CapabilityService;
 import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.GroupSubject;
 import io.opaa.permission.GroupSubjectDirectory;
@@ -59,6 +61,7 @@ public class SpaceService {
   private final AssetOwnershipHistoryService ownershipHistory;
   private final GroupMembershipResolver groupMemberships;
   private final GroupSubjectDirectory groupDirectory;
+  private final CapabilityService capabilityService;
   private final TransactionTemplate requiresNewTransactionTemplate;
 
   /**
@@ -80,6 +83,7 @@ public class SpaceService {
       AssetOwnershipHistoryService ownershipHistory,
       GroupMembershipResolver groupMemberships,
       GroupSubjectDirectory groupDirectory,
+      CapabilityService capabilityService,
       PlatformTransactionManager transactionManager) {
     this.spaceRepository = spaceRepository;
     this.chatRepository = chatRepository;
@@ -91,6 +95,7 @@ public class SpaceService {
     this.ownershipHistory = ownershipHistory;
     this.groupMemberships = groupMemberships;
     this.groupDirectory = groupDirectory;
+    this.capabilityService = capabilityService;
     this.requiresNewTransactionTemplate = new TransactionTemplate(transactionManager);
     this.requiresNewTransactionTemplate.setPropagationBehavior(
         TransactionDefinition.PROPAGATION_REQUIRES_NEW);
@@ -101,9 +106,10 @@ public class SpaceService {
 
   @Transactional
   public Space createSpace(SpaceCreation creation, CurrentUser caller) {
-    // #333 removed SpaceKind: every user may create any number of spaces, including ones they work
-    // in alone. Only the default space is special, and it is created automatically rather than
-    // through this endpoint - see ensureDefaultSpace.
+    // #333 removed SpaceKind: a caller holding CREATE_SPACE may create any number of spaces,
+    // including ones they work in alone. Only the default space is special: it is provisioned at
+    // first sign-in and therefore independent of this capability - see ensureDefaultSpace.
+    capabilityService.requireCapability(caller, Capability.CREATE_SPACE);
     UUID ownerId = creation.ownerId() != null ? creation.ownerId() : caller.id();
     if (!caller.isSystemAdmin() && !ownerId.equals(caller.id())) {
       throw new AccessDeniedException(
@@ -351,12 +357,15 @@ public class SpaceService {
 
   /**
    * Only an effective group becomes a new space member (ADR-0036, Entscheidung 6, Schutzregel 4):
-   * neither dissolved nor belonging to a switched-off identity provider - otherwise the membership
-   * would reach nobody now and, with the provider switched back on, everybody at once without a
-   * second decision. An <em>empty</em> effective group is admitted on purpose: otherwise "create
-   * the group, admit it, then fill it" failed at the first step, and a group that only comes into
-   * existence with the first sign-in ({@code TokenGroupSynchronizer#findOrCreate}) could never be
-   * the target of a provider changeover.
+   * neither dissolved, nor belonging to a switched-off identity provider, nor a token group whose
+   * provider has since switched to the directory run (#1816) - otherwise the membership would reach
+   * nobody now and, with the provider switched back on, everybody at once without a second
+   * decision, or it would sit on a membership that is frozen for good. Same three reasons {@code
+   * AssetGrantService#requireGrantableGroup} refuses a grant for; "wirksam" is one notion. An
+   * <em>empty</em> effective group is admitted on purpose: otherwise "create the group, admit it,
+   * then fill it" failed at the first step, and a group that only comes into existence with the
+   * first sign-in ({@code TokenGroupSynchronizer#findOrCreate}) could never be the target of a
+   * provider changeover.
    */
   private SpaceMembership addGroupMembership(Space space, UUID groupId, SpaceRole role) {
     GroupSubject group =
@@ -373,6 +382,13 @@ public class SpaceService {
           "Der Identitätsanbieter dieser Gruppe ist deaktiviert. Sie kann nicht Mitglied eines"
               + " Space werden, solange er es bleibt; bestehende Mitgliedschaften bleiben"
               + " unverändert.");
+    }
+    if (group.unmaintained()) {
+      throw new ConflictException(
+          "Diese Gruppe stammt aus dem Gruppen-Claim eines Anbieters, der inzwischen über den"
+              + " Verzeichnisabgleich gepflegt wird. Ihre Mitgliedschaft ist eingefroren, deshalb"
+              + " kann sie nicht mehr Mitglied eines Space werden; bestehende Mitgliedschaften"
+              + " bleiben unverändert. Nehmen Sie die entsprechende Organisationseinheit auf.");
     }
     SpaceMembership membership =
         SpaceMembership.ofGroup(

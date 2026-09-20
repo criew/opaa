@@ -178,10 +178,16 @@ Entscheidung.
 > **Präzisierung gegenüber dem Papier, erledigt.** Dass „der Verzeichnisabgleich eines deaktivierten
 > Anbieters pausiert", war zum Zeitpunkt dieses ADR **nicht** der Fall: `TrustedProvider#issuer()`
 > löste den Standardanbieter über `findByDefaultProviderTrue()` auf, **ohne** `enabled` zu prüfen.
-> Mit **#1832** (PR #1837, gemergt) prüft er `findByDefaultProviderTrueAndEnabledTrue()`; der
-> Abgleich pausiert seither, solange der Standardanbieter deaktiviert ist. Der Abgleich **je
-> Anbieter**, an den aktivierten Zustand des jeweiligen Anbieters gebunden, bleibt Anforderung an
-> #1816.
+> Mit **#1832** (PR #1837, gemergt) prüfte er `findByDefaultProviderTrueAndEnabledTrue()`.
+>
+> **Mit #1816 (PR #1855) ist die Bindung an `is_default` aufgehoben und `TrustedProvider` entfallen.**
+> Der Abgleich ist eine Einstellung der Anbieterzeile: Er liest Issuer und Herkunft aus **ihr**,
+> läuft je Anbieter und pausiert, solange **diese** Zeile deaktiviert ist (`409`
+> `DIRECTORY_SYNC_PROVIDER_DISABLED`) oder ihr Abgleich ausgeschaltet ist (`409`
+> `DIRECTORY_SYNC_NOT_ENABLED`). `is_default` wirkt damit nur noch auf den Anmeldevorschlag und den
+> Löschschutz des Standardanbieters. `TrustedProvider` hatte nach dem Umbau keinen produktiven
+> Aufrufer mehr — „der eine Anbieter, dem eine Installation über die Anmeldung hinaus vertraut" ist
+> kein Begriff des Modells mehr — und ist ersatzlos gelöscht.
 
 **Die Rücknahme von Mitgliedschaften nach einem Vorfall bleibt im ersten Schritt Handarbeit.** Die
 Deaktivierung nimmt keine Mitgliedschaft zurück, die ein kompromittierter Anbieter vorher über
@@ -748,7 +754,7 @@ Rollback-Blöcke** (ADR-0034). Deshalb:
 | --- | --- | --- |
 | Token-Gruppe, deren Anbieter-UUID in `oidc_providers` fehlt | Umwandlung in eine **interne Gruppe** (`kind = AD_HOC`, `provider_id = NULL`, `external_id = NULL`, Beschreibung mit Herkunftsvermerk), **ohne Verantwortliche**; je Zeile ein Audit-Ereignis unter einem Systemprozess-Akteur `migration`. Dass sie damit in der Liste offener Nachfolgen erscheint, ist eine **Anforderung an #1819** — die Liste entsteht erst dort, #1812 legt nur den Zustand an | Fixture mit einer solchen Waisen-Gruppe samt Grant; nach der Migration ist sie intern, ihr Grant unverändert |
 | `ORG_UNIT`-Gruppe in einer Installation **ohne Standardanbieter** (die Anbietermenge darf leer sein; die `LOCAL`-Zeile ist nie Standard) | dieselbe Umwandlung; `dissolved` bleibt als Beschreibungsvermerk erhalten | Fixture ohne `is_default`-Zeile |
-| `ORG_UNIT`-Gruppen im Betriebsmodus `dev` (dort gibt es keine Anbieterzeile; `TrustedProvider` liest den Issuer aus `opaa.auth.dev`) | **#1816 entscheidet**, ob der Abgleich im `dev`-Modus über eine synthetische Anbieterzeile läuft oder entfällt; die Migration darf im `dev`-Modus **nicht abbrechen** | Suite unter `local,dev` |
+| `ORG_UNIT`-Gruppen im Betriebsmodus `dev` (dort gibt es keine Anbieterzeile) | **#1816 hat entschieden: keine synthetische Anbieterzeile, also kein Abgleich im `dev`-Modus.** Jede Zeile von `oidc_providers` ist ein Vertrauensanker der Anmeldung, aus dem die Registry einen Token-Prüfer baut; eine Zeile, die niemanden anmeldet und nur zwei Einstellungsspalten hält, wäre der falsche Preis. Weil der Lauf Issuer und Herkunft aus der Zeile liest statt aus dem Betriebsmodus, ist er dort trotzdem fahrbar, sobald jemand eine gewöhnliche Anbieterzeile anlegt. Damit zieht **Changeset 054** (#1816) die strenge Form der Prüfregel nach (`kind = AD_HOC ⇔ provider_id IS NULL`) und wandelt die verbliebenen anbieterlosen `ORG_UNIT`-Gruppen — nur zwischen 041 und 054 im `dev`-Modus entstehbar — nach dem Muster von 041 in interne Gruppen um; die Migration bricht im `dev`-Modus nicht ab | Suite unter `local,dev`; Delta-Test 054 (Umwandlung, Audit-Zeile, Mitgliedschaften und Grants unangetastet) |
 | Reihenfolge der Eindeutigkeit (`uk_groups_organization_external_id` ist heute `(organization_id, external_id)` und der Nebenläufigkeitsschutz von `TokenGroupSynchronizer`) | erst den neuen Teilindex `(organization_id, provider_id, kind, external_id)` anlegen, **dann** den alten Schlüssel fallen lassen, **dann** das Präfix schneiden. Unter dem alten `(organization_id, external_id)` kollidierten zwei gleichnamige Gruppen zweier Anbieter im Moment des Schnitts; das Changeset ist eine Transaktion, ein Abbruch lässt also kein Fenster ohne Schlüssel zurück. `TokenGroupSynchronizer.MAX_NAME_LENGTH` ändert sich mit dem Präfix (213 → 255) | Fixture mit gleichnamigen Gruppen zweier Anbieter |
 | Vorabprüfung durch den Betrieb | `docs/handbuch/deployment.md` erhält vor dem Update eine Prüfabfrage (Zahl der Waisen-Gruppen, Zahl der `ORG_UNIT`-Gruppen, Vorhandensein eines Standardanbieters) | — |
 
@@ -818,7 +824,7 @@ für Mitgliedschaften zieht.
 | **Feststellungsintervall** | Vorgabe **stündlich** | Entscheidung 6 |
 | **Aufbewahrungshöchstdauer der Rechtehistorie** | Grenzen **12–120 Monate**, ausgeliefert **36** | Die Grenzen sind dieselben wie `chk_audit_retention_settings_months`, weil `security-and-compliance.md` („Aufbewahrung und Löschschicksal der Historie folgen derselben Logik wie das Protokoll") es so verlangt. **Derselbe Satz trägt auch den ausgelieferten Wert:** Das Nachweisprotokoll wird mit **36** geseedet (`001-baseline.yaml`), und die Begründung dort ist ausdrücklich — 3 Jahre decken „den üblichen Abstand zwischen Vorgang und Prüfung", 10 Jahre sind die Obergrenze, weil „was länger liegt, keiner Prüfung mehr dient". **120 wäre der falsche Auslieferungswert gewesen:** Personalrat D1 verlangt die Höchstdauer als Vorbedingung weiterer Quellen, und eine ausgelieferte Obergrenze begrenzt im Auslieferungszustand nichts |
 | **Personenspalten in Historientabellen** | **2 → 7** | heute `group_membership_history.user_id` und `asset_grant_history.subject_user_id`; dazu fünf neue Tabellen |
-| **`RESTRICT`-Personenspalten insgesamt (Löschschuld)** | **11 → 16** | `UserRepository#countDeletionBlockers` zählt heute elf Spalten in acht Tabellen (`spaces`, `chats`, `knowledge_libraries`, `asset_grants` ×2, `space_asset_associations`, `asset_grant_history`, `group_membership_history`, `audit_incident_scope_grants` ×3); `UserDeletionBlockerCoverageIntegrationTest` hält die Liste gegen `pg_constraint`. **Diese Zahl ist das Maß der aufgeschobenen Löschschuld**; `countDeletionBlockers` wächst mit jeder neuen Tabelle, und #391/#395 stellt die sieben Historienspalten in einem Zug um |
+| **`RESTRICT`-Personenspalten insgesamt (Löschschuld)** | **11 → mindestens 16** | Gezählt wird **jede `RESTRICT`/`NO ACTION`-Fremdschlüsselspalte auf `users`** — Subjekt **und** Akteur —, in Grant- **wie** Historientabellen; nicht nur eine Spalte je neuer Historientabelle. Heute sind es elf Spalten in acht Tabellen (`spaces`, `chats`, `knowledge_libraries`, `asset_grants` ×2, `space_asset_associations`, `asset_grant_history`, `group_membership_history`, `audit_incident_scope_grants` ×3). Jede der fünf neuen Historientabellen bringt mindestens eine; eine neue Grant-Tabelle daneben bringt ihre eigenen mit — #1813 zum Beispiel drei (`capability_grant_history.subject_user_id`, `capability_grants.subject_user_id`, `capability_grants.granted_by_user_id`), also 11 → 14. **„16" ist deshalb eine Größenordnung, keine Zielzahl:** nach Abschluss des Epics sind es ≥ 16. Autorität ist `UserDeletionBlockerCoverageIntegrationTest`, der die Liste aus `pg_constraint` ableitet, nicht diese Tabelle. **Die Zahl ist das Maß der aufgeschobenen Löschschuld**; `countDeletionBlockers` wächst mit jeder neuen Tabelle, und #391/#395 stellt die Historienspalten in einem Zug um |
 
 ## Randbedingungen aus der Stakeholder-Runde
 
@@ -897,7 +903,7 @@ ausdrücklichen Vergabe zu sperren (Sachbearbeitung 4a — die Auslieferung darf
 | #1813 Fähigkeiten | eigene Tabelle mit `ALL_ACCOUNTS`; vier Fähigkeiten; Governance-Ereignis; Historie mit Zeitspanne; Klartextzeile; `403` als eigene Entscheidung (5) | Liste um `CREATE_CONNECTOR_LIBRARY` und `CREATE_INTERNAL_GROUP` ergänzen; „Alle Konten" als **dritte Subjektart**, nicht als Gruppenobjekt; Liquibase 042; **nach (a)** |
 | #1814 Gruppenverantwortliche | Freigabe zur Verwendung **mit Durchsetzung im Service**, Schutzkennzeichen, Abgabe der Verantwortung, Anzeige der Verantwortlichen, Benachrichtigung (4, 9) | Verantwortliche **ohne** Historientabelle; API ohne `/admin`; `404` statt `403` |
 | #1815 Gruppen als Space-Mitglieder | Subjektspalten, beste Rolle, Historie, **handlungsfähige Gruppe zählt als `ADMIN`**, Mitgliederzahl bei Erteilung (6, 8, 9) | offene Frage „zählt eine Gruppe als `ADMIN`" ist entschieden; `409` statt `400` für den letzten `ADMIN`; Eigentümerwechsel durch jeden wirksamen `ADMIN`; Liquibase 043–044; **nach (a)** |
-| #1816 Abgleich je Anbieter | Plan-Lebenszyklus (vier Festlegungen), Mechanismuskonflikt mit `409`, `dev`-Modus, Bindung an den **aktivierten** Anbieter (3, 11) | `dev`-Modus ausdrücklich entscheiden; `TrustedProvider` prüft heute `enabled` **nicht** (#1832); **hängt nicht** an (b) |
+| #1816 Abgleich je Anbieter | **Umgesetzt (PR #1855).** Plan-Lebenszyklus (vier Festlegungen), Mechanismuskonflikt mit `409`, Zeitplan je Anbieter, Bindung an die **aktivierte Anbieterzeile** (3, 11) | `dev`-Modus entschieden: **keine synthetische Zeile, kein Abgleich**; `TrustedProvider` entfallen, `is_default` nicht mehr die Bindung; Liquibase 047–049 und 054; **hing nicht** an (b) |
 | #1817 Erster Konnektor | **Keycloak Admin REST API**; direkte Mitglieder; `CredentialsEncryptor`; Verbindungstest und Allowlist (3) | Typ ist nicht mehr offen; Mitgliederzahl je Gruppe im Differenzbericht; `SettingsEncryptor` → `CredentialsEncryptor` |
 | #1818 Kontostatus | Schwelle und Bestätigungsweg, Rückholbarkeit, Kontozustandshistorie, Grund und Ansprechstelle für die Person (3, 8) | **nach #1817**, weil der Kontostatus den Konnektor braucht; Historie nur nach (a), sonst Audit |
 | #1819 Lebenszyklus | Feststellungslauf, vollständige Liste in beide Richtungen, Betriebsliste mit drei Reitern, Kennzeichnung ohne Eigentümer und Datum, Alterungsschwelle mit Sichtungsvermerk (6) | „Nachfolge offen" **abgeleitet**, kein Flag; Frist, Eskalation und Mail bleiben draußen; **Übernahme herausgeschnitten nach (b)** |
@@ -967,7 +973,8 @@ weil es die Oberflächen aus #1820 und #1821 beschreibt.
 
 ### Negativ
 
-- **Die Löschschuld wächst von elf auf sechzehn `RESTRICT`-Personenspalten.** Eine Kontolöschung
+- **Die Löschschuld wächst von elf auf mindestens sechzehn `RESTRICT`-Personenspalten** (siehe die
+  Zahlentabelle: gezählt wird jede Personenspalte, auch die der Grant-Tabellen). Eine Kontolöschung
   bleibt blockiert, bis #391/#395 die Pseudonymisierung liefern — jetzt an mehr Stellen als vorher.
 - **Zwischen #1812 und der Übertragungsoperation ist das Löschen eines Anbieters mit wirkenden
   Gruppen eine Sackgasse** mit dem einzigen Ausweg „Wirkungen entfernen". Deaktivieren bleibt

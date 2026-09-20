@@ -48,10 +48,12 @@ final class OidcProviderResponseMapper {
             provider.getIssuerUri(),
             provider.getClientId(),
             mappingDto,
+            provider.isDirectorySyncEnabled(),
             state,
             provider.getCreatedAt(),
             provider.getUpdatedAt())
         .jwkSetUri(provider.getJwkSetUri())
+        .directorySyncIntervalMinutes(provider.getDirectorySyncIntervalMinutes())
         .registryMessage(provider.isEnabled() ? health.message() : null);
   }
 

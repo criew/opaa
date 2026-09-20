@@ -172,7 +172,11 @@ class SpaceAccessPolicyTest {
   @ParameterizedTest
   @MethodSource("groupCapability")
   void aGroupCountsAsAdminOnlyWhileItCanAct(
-      boolean dissolved, boolean providerDisabled, int activeMembers, boolean expected) {
+      boolean dissolved,
+      boolean providerDisabled,
+      boolean unmaintained,
+      int activeMembers,
+      boolean expected) {
     UUID owner = UUID.randomUUID();
     UUID group = UUID.randomUUID();
     Space space = spaceWithOwner(owner);
@@ -182,7 +186,8 @@ class SpaceAccessPolicyTest {
     when(groupDirectory.find(group))
         .thenReturn(
             Optional.of(
-                new GroupSubject(group, ORGANIZATION, "Referat 50", dissolved, providerDisabled)));
+                new GroupSubject(
+                    group, ORGANIZATION, "Referat 50", dissolved, providerDisabled, unmaintained)));
     when(groupMemberships.activeMemberCount(eq(group), any())).thenReturn(activeMembers);
 
     // The owner's row is removed in the hypothetical, so only the group can still hold the space.
@@ -220,13 +225,18 @@ class SpaceAccessPolicyTest {
     return Stream.of(SpaceRole.values());
   }
 
-  /** (dissolved, provider disabled, active accounts, counts as the space's ADMIN). */
+  /**
+   * (dissolved, provider disabled, unmaintained, active accounts, counts as the space's ADMIN) -
+   * the three reasons a group is not effective (ADR-0036 Entscheidung 6, the third added by #1816)
+   * plus the account requirement.
+   */
   private static Stream<Arguments> groupCapability() {
     return Stream.of(
-        Arguments.of(false, false, 3, true),
-        Arguments.of(false, false, 0, false),
-        Arguments.of(true, false, 3, false),
-        Arguments.of(false, true, 3, false));
+        Arguments.of(false, false, false, 3, true),
+        Arguments.of(false, false, false, 0, false),
+        Arguments.of(true, false, false, 3, false),
+        Arguments.of(false, true, false, 3, false),
+        Arguments.of(false, false, true, 3, false));
   }
 
   /**

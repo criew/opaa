@@ -148,6 +148,13 @@ class OidcProviderServiceIntegrationTest {
         OWN_ISSUER_PREFIX + "%",
         "http://127.0.0.1:%");
     jdbcTemplate.update(
+        "DELETE FROM capability_grants WHERE subject_group_id IN"
+            + " (SELECT id FROM groups WHERE provider_id IN ("
+            + ownProviders
+            + "))",
+        OWN_ISSUER_PREFIX + "%",
+        "http://127.0.0.1:%");
+    jdbcTemplate.update(
         "DELETE FROM groups WHERE provider_id IN (" + ownProviders + ")",
         OWN_ISSUER_PREFIX + "%",
         "http://127.0.0.1:%");
@@ -181,6 +188,16 @@ class OidcProviderServiceIntegrationTest {
             + " subject_group_id, role) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, ?, 'GROUP', ?,"
             + " 'VIEWER')",
         UUID.randomUUID(),
+        UUID.randomUUID(),
+        organizationId,
+        group.getId());
+  }
+
+  /** An Anlegerecht held by {@code group} - the only right it has (#1813). */
+  private void capabilityFor(Group group) {
+    jdbcTemplate.update(
+        "INSERT INTO capability_grants (id, organization_id, capability, subject_type,"
+            + " subject_group_id) VALUES (?, ?, 'CREATE_SPACE', 'GROUP', ?)",
         UUID.randomUUID(),
         organizationId,
         group.getId());
@@ -273,6 +290,29 @@ class OidcProviderServiceIntegrationTest {
                 Integer.class,
                 group.getId()))
         .isEqualTo(1);
+  }
+
+  /**
+   * {@code fk_capability_grants_subject_group_organization} is RESTRICT (#1813): a group that holds
+   * only an Anlegerecht and nothing else is still effective, and deleting its provider would
+   * otherwise run into the constraint from inside {@code deleteGroupsOfProvider} - past the very
+   * counting that exists to ask the caller first.
+   */
+  @Test
+  void aProviderWhoseGroupHoldsOnlyACapabilityIsRefused() {
+    OidcProvider partner = secondProvider();
+    Group group = providerGroup(partner, "Fachbereich 3");
+    capabilityFor(group);
+
+    assertThatThrownBy(() -> service.deleteProvider(organizationId, userId, partner.getId()))
+        .isInstanceOf(ConflictException.class)
+        .satisfies(
+            thrown ->
+                assertThat(((ConflictException) thrown).getCode())
+                    .isEqualTo(OidcProviderService.PROVIDER_GROUPS_IN_EFFECT))
+        .hasMessageContaining("1 Gruppe wirkt noch");
+    assertThat(repository.findById(partner.getId())).isPresent();
+    assertThat(groupRepository.findById(group.getId())).isPresent();
   }
 
   /**
@@ -477,8 +517,7 @@ class OidcProviderServiceIntegrationTest {
 
   /**
    * Regression guard for #1832: switching off the last enabled provider leaves {@code is_default}
-   * on its row (ADR-0033, Entscheidung 4), so the enabled default - the directory provider {@code
-   * TrustedProvider} resolves members through - has to be asked for separately.
+   * on its row (ADR-0033, Entscheidung 4), so "the enabled default" has to be asked for separately.
    */
   @Test
   void theLastProviderSwitchedOffKeepsIsDefaultButIsNoLongerTheEnabledDefault() {

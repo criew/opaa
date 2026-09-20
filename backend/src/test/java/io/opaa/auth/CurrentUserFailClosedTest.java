@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 
 import io.opaa.api.MeController;
 import io.opaa.group.GroupService;
+import io.opaa.permission.CapabilityService;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -27,7 +28,7 @@ class CurrentUserFailClosedTest {
   @Test
   void queryParametersNeverBindAnAttackerChosenCurrentUserWithoutTheDedicatedResolver() {
     GroupService groupService = mock(GroupService.class);
-    MeController controller = new MeController(groupService);
+    MeController controller = new MeController(groupService, mock(CapabilityService.class));
     MockMvc mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
 
     // No GlobalExceptionHandler wired in this standalone setup - MockMvc rethrows the failure

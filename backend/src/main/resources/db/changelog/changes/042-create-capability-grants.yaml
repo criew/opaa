@@ -1,0 +1,72 @@
+databaseChangeLog:
+  - changeSet:
+      id: 042-create-capability-grants
+      author: opaa
+      comment: >-
+        Installationsweite Faehigkeiten als vergebbare Zeilen (#1813, ADR-0036 Entscheidung 5, loest
+        ADR-0018 Entscheidung 6 samt Nachtrag #484 ab). Eine Faehigkeit oeffnet einen Anlegepfad und
+        nie einen Inhalt; sie ist unbefristet und traegt deshalb - anders als asset_grants - kein
+        expires_at. Die Zeile wird eingefuegt und geloescht, nie geaendert: Faehigkeit und Subjekt
+        sind ihre Identitaet, ein updated_at haette nichts zu tragen.
+        .
+        Das Subjekt folgt dem Muster von asset_grants (zwei nullbare Spalten mit je eigenem
+        Fremdschluessel statt einer polymorphen ID) und bekommt die dritte Art ALL_ACCOUNTS, fuer
+        die beide Spalten leer bleiben. chk_capability_grants_subject erzwingt genau die zur
+        subject_type passende Belegung. ALL_ACCOUNTS ist bewusst kein synthetisches Gruppenobjekt:
+        eines tauchte in jeder Gruppenauswahl auf und dopplete visibility = ORGANIZATION.
+        .
+        Drei eindeutige Teilindexe statt eines gemeinsamen: NULL ist in einem gewoehnlichen
+        UNIQUE-Index nie gleich NULL, ein Index ueber (organization_id, capability, subject_user_id,
+        subject_group_id) liesse also beliebig viele ALL_ACCOUNTS-Zeilen je Faehigkeit zu - genau
+        die Doppelung, die die Eindeutigkeit je (Organisation, Faehigkeit, Subjekt) ausschliesst.
+        .
+        organization_id traegt als einzige Spalte dieser Tabelle ON DELETE CASCADE: die Zeile ist
+        Konfiguration des Mandanten selbst und ohne ihn gegenstandslos, und die Zeilen entstehen
+        nicht von Hand, sondern mit der Organisation (Changeset 051). Die Personenspalten sind
+        RESTRICT nach ADR-0016 - sie sind die Loeschschuld, die #391/#395 aufloest; jede von ihnen
+        braucht ihre Unterabfrage in UserRepository#countDeletionBlockers.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE TABLE capability_grants (
+                  id uuid NOT NULL,
+                  organization_id uuid NOT NULL,
+                  capability character varying(40) NOT NULL,
+                  subject_type character varying(20) NOT NULL,
+                  subject_user_id uuid,
+                  subject_group_id uuid,
+                  granted_by_user_id uuid,
+                  created_at timestamp with time zone DEFAULT now() NOT NULL,
+                  CONSTRAINT chk_capability_grants_capability CHECK ((capability IN ('CREATE_SPACE', 'CREATE_LIBRARY', 'CREATE_CONNECTOR_LIBRARY', 'CREATE_INTERNAL_GROUP'))),
+                  CONSTRAINT chk_capability_grants_subject_type CHECK ((subject_type IN ('USER', 'GROUP', 'ALL_ACCOUNTS'))),
+                  CONSTRAINT chk_capability_grants_subject CHECK (((((subject_type)::text = 'USER'::text) AND (subject_user_id IS NOT NULL) AND (subject_group_id IS NULL)) OR (((subject_type)::text = 'GROUP'::text) AND (subject_group_id IS NOT NULL) AND (subject_user_id IS NULL)) OR (((subject_type)::text = 'ALL_ACCOUNTS'::text) AND (subject_user_id IS NULL) AND (subject_group_id IS NULL))))
+              );
+
+              ALTER TABLE ONLY capability_grants
+                  ADD CONSTRAINT capability_grants_pkey PRIMARY KEY (id);
+
+              CREATE INDEX idx_capability_grants_organization_capability ON capability_grants USING btree (organization_id, capability);
+
+              CREATE UNIQUE INDEX uk_capability_grants_all_accounts ON capability_grants USING btree (organization_id, capability) WHERE ((subject_type)::text = 'ALL_ACCOUNTS'::text);
+
+              CREATE UNIQUE INDEX uk_capability_grants_group_subject ON capability_grants USING btree (organization_id, capability, subject_group_id) WHERE ((subject_type)::text = 'GROUP'::text);
+
+              CREATE UNIQUE INDEX uk_capability_grants_user_subject ON capability_grants USING btree (organization_id, capability, subject_user_id) WHERE ((subject_type)::text = 'USER'::text);
+
+              ALTER TABLE ONLY capability_grants
+                  ADD CONSTRAINT fk_capability_grants_organization FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY capability_grants
+                  ADD CONSTRAINT fk_capability_grants_subject_user_organization FOREIGN KEY (subject_user_id, organization_id) REFERENCES users(id, organization_id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY capability_grants
+                  ADD CONSTRAINT fk_capability_grants_subject_group_organization FOREIGN KEY (subject_group_id, organization_id) REFERENCES groups(id, organization_id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY capability_grants
+                  ADD CONSTRAINT fk_capability_grants_granted_by_user_organization FOREIGN KEY (granted_by_user_id, organization_id) REFERENCES users(id, organization_id) ON DELETE RESTRICT;
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              DROP TABLE capability_grants;

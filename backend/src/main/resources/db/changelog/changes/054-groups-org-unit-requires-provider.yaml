@@ -1,0 +1,100 @@
+databaseChangeLog:
+  - changeSet:
+      id: 054-groups-org-unit-requires-provider
+      author: opaa
+      comment: >-
+        Die Pruefregel aus ADR-0036 Entscheidung 2 in ihrer strengen Form:
+        kind = AD_HOC genau dann, wenn provider_id leer ist. 041 hatte ORG_UNIT bewusst in
+        beide Richtungen offen gelassen, weil im Betriebsmodus dev keine Anbieterzeile
+        existiert und #1816 erst entscheiden musste, ob der Abgleich dort ueber eine
+        synthetische Anbieterzeile laeuft oder entfaellt.
+        .
+        DIE ENTSCHEIDUNG (#1816): keine synthetische Anbieterzeile. Der Verzeichnisabgleich
+        ist an eine Anbieterzeile gebunden - er liest Issuer und Herkunft aus ihr - und
+        laeuft ohne sie nicht. Im dev-Modus gibt es keine, dort findet also von sich aus
+        kein Abgleich statt. oidc_providers eine Zeile hinzuzufuegen, die keine Anmeldung
+        traegt, nur um zwei Einstellungsspalten zu halten, waere der falsche Preis: Jede
+        Zeile dieser Tabelle ist ein Vertrauensanker der Anmeldung, aus dem die Registry
+        einen Token-Decoder baut. Damit traegt ab hier jede Verzeichnisgruppe ihren
+        Anbieter, und "eine Anbietergruppe enthaelt nur Konten mit diesem Issuer" ist
+        strukturell gehalten statt nur im Dienst geprueft.
+        .
+        BESTAND. Nach 041 hat jede ORG_UNIT-Gruppe einen Anbieter; Zeilen ohne einen
+        konnten nur zwischen 041 und hier entstehen, naemlich durch einen Lauf im
+        dev-Modus. Sie werden - wie die Waisen in 041 und aus demselben Grund (mit
+        RESTRICT liesse sich provider_id fuer sie nicht setzen, Liquibase braeche ab) - zu
+        internen Gruppen: kind = AD_HOC, external_id = NULL, parent_group_id = NULL,
+        Herkunftsvermerk in der Beschreibung, je Zeile ein Audit-Ereignis unter dem
+        Systemprozess-Akteur 'migration'. Kein Grant und keine Mitgliedschaft wird
+        angefasst; die Zeilenzahl aendert sich nicht.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              WITH orphan AS (
+                  SELECT id, organization_id, name, kind, external_id, description, dissolved
+                    FROM groups
+                   WHERE provider_id IS NULL
+                     AND kind = 'ORG_UNIT'
+              ),
+              audited AS (
+                  INSERT INTO audit_log (
+                      event_id, recorded_at, organization_id, actor_kind, actor_ref, event_type,
+                      object_type, object_id, object_label, before, after, outcome, reason)
+                  SELECT gen_random_uuid(), now(), o.organization_id, 'SYSTEM_PROCESS', 'migration',
+                         'GROUP_CHANGED', 'GROUP', o.id::text, o.name,
+                         json_build_object(
+                             'kind', o.kind,
+                             'externalId', o.external_id,
+                             'dissolved', o.dissolved)::text,
+                         json_build_object(
+                             'kind', 'AD_HOC',
+                             'externalId', NULL,
+                             'providerId', NULL)::text,
+                         'SUCCESS',
+                         'Diese Verzeichnisgruppe traegt keinen Anbieter; der Verzeichnisabgleich ist seit #1816 an eine Anbieterzeile gebunden, und sie wurde bei der Umstellung zu einer internen Gruppe ohne Verantwortliche.'
+                    FROM orphan o
+                  RETURNING event_id
+              )
+              UPDATE groups g
+                 SET kind = 'AD_HOC',
+                     external_id = NULL,
+                     parent_group_id = NULL,
+                     source_path = NULL,
+                     dissolved = false,
+                     dissolved_at = NULL,
+                     description = left(
+                         coalesce(g.description || E'\n\n', '')
+                         || 'Übernommen aus einem Verzeichnisabgleich ohne Anbieterzeile (Kennung '
+                         || coalesce(g.external_id, '-')
+                         || '). Verantwortliche sind offen.'
+                         || CASE WHEN g.dissolved
+                                 THEN ' Zum Zeitpunkt der Umstellung war sie aufgelöst.'
+                                 ELSE ''
+                            END,
+                         2000),
+                     updated_at = now()
+               WHERE g.id IN (SELECT id FROM orphan);
+
+              ALTER TABLE groups
+                  DROP CONSTRAINT chk_groups_provider_kind;
+
+              ALTER TABLE groups
+                  ADD CONSTRAINT chk_groups_provider_kind CHECK (
+                      ((kind = 'AD_HOC' AND provider_id IS NULL)
+                       OR (kind <> 'AD_HOC' AND provider_id IS NOT NULL)));
+      rollback:
+        # Stellt nur die weichere Pruefbedingung wieder her; die Umwandlung wird nicht
+        # zurueckgenommen - der dev-Modus, aus dem diese Zeilen stammen, kennt keine
+        # Anbieterzeile, der sie wieder zuzuordnen waeren.
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE groups
+                  DROP CONSTRAINT chk_groups_provider_kind;
+
+              ALTER TABLE groups
+                  ADD CONSTRAINT chk_groups_provider_kind CHECK (
+                      ((kind = 'AD_HOC' AND provider_id IS NULL)
+                       OR (kind = 'IDENTITY_PROVIDER' AND provider_id IS NOT NULL)
+                       OR (kind = 'ORG_UNIT')));
