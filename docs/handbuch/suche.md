@@ -210,7 +210,8 @@ nichts gesucht; die übrigen Stufen stehen im Protokoll als „nicht erreicht".
 Die Leserechte, aus denen der Filter entsteht, werden für die Frage einmal live aus den aktuellen
 Berechtigungen berechnet. Parallel dazu führt OPAA eine **Rechtehistorie**, in der jede Änderung an
 Berechtigungen, Gruppenmitgliedschaften und Freigaben mit Zeitpunkt festgehalten wird; aus ihr lässt
-sich für Prüfer zu jedem Stichtag rekonstruieren, wer worauf Zugriff hatte. Die Historie wird beim
+sich für Prüfer zu jedem Stichtag innerhalb der Aufbewahrungsfrist rekonstruieren, wer worauf
+Zugriff hatte (Abschnitt 8.4). Die Historie wird beim
 Beantworten einer Frage nicht gelesen: Ein Abgleich beider Rechenwege je Anfrage findet nicht statt.
 Dass beide Wege dieselbe Bibliotheksmenge ergeben, sichert die Testsuite für jede Operation ab, die
 Leserechte ändert — Berechtigungen, Gruppenmitgliedschaften aus der Verwaltung, dem
@@ -739,6 +740,41 @@ Gesamtprotokoll. Die Aufbewahrungsfrist ist einstellbar; abschalten lässt sich 
 Eine Befugnis endet mit ihrer Frist, mit dem Entzug von Hand — oder mit der Löschung des Kontos, das
 sie erteilt hat: Dann entzieht OPAA die noch gültigen Befugnisse dieses Kontos, jede mit eigenem
 Nachweiseintrag ([Benutzerverwaltung](benutzerverwaltung.md), Abschnitt 8).
+
+### 8.4 Wie lange die Rechtehistorie liegt
+
+Die Rechtehistorie aus Stufe 1 besteht aus Zeiträumen: je Berechtigung, Gruppenmitgliedschaft und
+Reichweite einer Bibliothek einer, mit Beginn und — sobald das Recht endet — Ende. Ein Zeitraum mit
+**Ende** wird nach Ablauf der Aufbewahrungshöchstdauer automatisch gelöscht; der Lauf dafür ist
+monatlich und lässt sich nicht abschalten. Ein **offener** Zeitraum — ein Recht, das gerade gilt —
+wird nie gelöscht, so weit sein Beginn auch zurückliegt.
+
+| Einstellung | Bedeutung | Grenzen |
+|---|---|---|
+| Aufbewahrungshöchstdauer der Rechtehistorie | Wie lange ein beendeter Zeitraum nach seinem Ende liegen bleibt | 12 bis 120 Monate, ausgeliefert 36 |
+
+Innerhalb der Frist ist die Rekonstruktion **lückenlos**: Wer zu einem Stichtag Zugriff hatte, steht
+in der Antwort, und wer nicht darin steht, hatte keinen. **Vor** der Frist trägt dieselbe Antwort
+nichts mehr — sie ist leer, und leer heißt dort „nicht mehr vorgehalten", nicht „kein Zugriff".
+
+Das ist eine zweite Achse neben der Löschung des Gegenstands: Ein Zeitraum überlebt das Löschen der
+Bibliothek, der Gruppe oder der Berechtigung, auf die er sich bezieht — aber nicht den Ablauf der
+Frist. Für Konten heißt das: Die Löschsperre aus [Benutzerverwaltung](benutzerverwaltung.md),
+Abschnitt 8, endet, sobald der letzte Zeitraum zu diesem Konto die Frist verlassen hat.
+
+Eine **Verkürzung wirkt mit dem nächsten Lauf**, und zwar vollständig: Wer von drei Jahren auf ein
+Jahr geht, hat nach dem nächsten Monatslauf nichts mehr, was älter als ein Jahr ist. Eine
+**Verlängerung** wirkt sofort, nimmt aber nichts zurück: Was gelöscht ist, kommt nicht wieder, und
+die erreichte Grenze bleibt stehen, wo sie war. Jede Änderung der Frist wird selbst im
+Nachweisprotokoll festgehalten.
+
+> **Für den Betrieb:** Der erste Lauf nach einer deutlichen Verkürzung kann viele Zeilen auf einmal
+> entfernen — er läuft am Monatsersten um 4 Uhr und in einer Transaktion. Die Löschung geschieht
+> vollständig in der Datenbank; laufende Rechteänderungen blockiert sie nicht, und ein Neustart
+> mittendrin macht nichts kaputt: Der nächste Lauf holt es nach.
+
+Gesetzt wird die Frist über `GET`/`PUT /api/v1/admin/permission-history/retention`; eine
+Bedienoberfläche dafür gibt es noch nicht.
 
 ## 9. Typische Befunde
 

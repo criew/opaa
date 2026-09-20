@@ -5922,6 +5922,49 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
+  /api/v1/admin/permission-history/retention:
+    get:
+      operationId: getPermissionHistoryRetention
+      tags: [admin]
+      summary: >
+        Reads the maximum retention period of the rights history (system admin only). 36 months by
+        default, configurable between 12 and 120 - the same bounds as the protocol's own retention.
+        There is no field to switch the deletion off, here or anywhere else.
+      responses:
+        "200":
+          description: Current retention configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PermissionHistoryRetentionResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    put:
+      operationId: updatePermissionHistoryRetention
+      tags: [admin]
+      summary: >
+        Changes the maximum retention period of the rights history (system admin only). The change
+        is a governance event. A shortening takes effect with the next monthly pass, in full; a
+        lengthening takes effect at once and takes nothing back - what is already deleted does not
+        come back.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PermissionHistoryRetentionRequest"
+      responses:
+        "200":
+          description: Retention configuration updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PermissionHistoryRetentionResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
   /api/v1/admin/diagnostics/client-address:
     get:
       operationId: getClientAddressDiagnostics
@@ -13306,6 +13349,7 @@ components:
           DIRECTORY_SYNC_RUN_COMPLETED,
           GOVERNANCE_SETTINGS_CHANGED,
           AUDIT_LOG_CONFIGURATION_CHANGED,
+          PERMISSION_HISTORY_RETENTION_CHANGED,
           MODEL_POLICY_CHANGED,
           CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED,
           INDEXING_PIPELINE_REINDEX_TRIGGERED,
@@ -13530,6 +13574,34 @@ components:
           type: string
           format: date-time
           nullable: true
+        updatedAt:
+          type: string
+          format: date-time
+
+    PermissionHistoryRetentionRequest:
+      type: object
+      required: [retentionMonths]
+      properties:
+        retentionMonths:
+          type: integer
+          minimum: 12
+          maximum: 120
+
+    PermissionHistoryRetentionResponse:
+      type: object
+      required: [retentionMonths, updatedAt]
+      properties:
+        retentionMonths:
+          type: integer
+        lastCutoff:
+          type: string
+          format: date-time
+          nullable: true
+          description: >
+            How far the deletion has actually got: the latest cutoff any pass has deleted by. Only
+            ever moves forward, so after a lengthening of the period it stays ahead of that
+            period's own cutoff - what is deleted does not come back. Also the boundary of what a
+            Stichtag reconstruction can still answer.
         updatedAt:
           type: string
           format: date-time

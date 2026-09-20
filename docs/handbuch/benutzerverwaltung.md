@@ -253,9 +253,11 @@ Konto nicht beteiligt war.
 
 Praktisch heißt das: Löschen ist der Weg für ein Konto, das nie benutzt wurde — eine falsch getippte
 Adresse, eine Einladung an die falsche Person, ein Testkonto. Wer dagegen je Mitglied einer Gruppe
-war, hinterlässt einen Nachweiseintrag, der bleibt; ein solches Konto ist dauerhaft nicht mehr
-löschbar. Das ist beabsichtigt — der Nachweis, wer wann welche Rechte hatte, überlebt das Konto. Für
-alle diese Fälle ist die Sperre der vorgesehene Weg.
+war, hinterlässt einen Nachweiseintrag, der bleibt; ein solches Konto ist nicht mehr löschbar,
+solange dieser Eintrag liegt — wie lange das ist, steht im Kapitel [Suche](suche.md),
+Abschnitt 8.4 („Wie lange die Rechtehistorie liegt"). Das
+ist beabsichtigt — der Nachweis, wer wann welche Rechte hatte, überlebt das Konto. Für alle diese
+Fälle ist die Sperre der vorgesehene Weg.
 
 Das Notanker-Konto der Systemverwaltung lässt sich **nicht löschen**. Sperren, Befristen und
 Herabsetzen sind daran nicht grundsätzlich gesperrt — sie werden abgelehnt, solange es der letzte

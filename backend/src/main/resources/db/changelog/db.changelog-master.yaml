@@ -89,3 +89,7 @@ databaseChangeLog:
   # Kennzeichen "extern" an der Anbieterzeile (#1812, ADR-0036 Entscheidung 2).
   - include:
       file: db/changelog/changes/046-oidc-providers-external.yaml
+  # Aufbewahrungshöchstdauer der Rechtehistorie als Governance-Einstellung (#1833, ADR-0036
+  # Entscheidung 8).
+  - include:
+      file: db/changelog/changes/045-create-permission-history-retention-settings.yaml
