@@ -947,7 +947,7 @@ anhält.
 entschieden — siehe [ADR-0020](../decisions/0020-ordner-in-bibliotheken-navigation.md): eine eigene
 Tabelle `library_folders` (statt virtueller Pfad-Präfixe), Ordner sind reine Navigation innerhalb
 einer Bibliothek und **keine eigene Rechtegrenze** — Grants bleiben ausschließlich auf
-Bibliotheksebene (`asset_grants.library_id`). Details zur Rechte-Abgrenzung stehen in
+Bibliotheksebene (`asset_grants.asset_id` mit `asset_type = KNOWLEDGE_LIBRARY`, #1811). Details zur Rechte-Abgrenzung stehen in
 [Spaces, Assets und Zugangskontrolle](./spaces-and-assets.md).
 
 Schema und CRUD-API (Ordner anlegen, umbenennen, rekursiv löschen) sind mit #820 **gebaut**, die

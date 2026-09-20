@@ -9,7 +9,10 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.List;
+import java.sql.Timestamp;
+import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -25,6 +28,14 @@ class Migration038AssetGrantsTypeIndependentTest extends AbstractMigrationTest {
 
   private static final String CHANGELOG_PATH =
       "db/changelog/changes/038-asset-grants-type-independent.yaml";
+
+  /**
+   * A grant with an expiry, so the migration is held against a populated column, not only nulls.
+   */
+  private static final Instant USER_GRANT_EXPIRY = Instant.parse("2027-01-31T12:00:00Z");
+
+  /** {@code Map.of} refuses null values; this stands in for "the column must be empty". */
+  private static final Object NULL = "<null>";
 
   private Connection connection;
 
@@ -64,6 +75,24 @@ class Migration038AssetGrantsTypeIndependentTest extends AbstractMigrationTest {
         .contains("(asset_type, asset_id, subject_user_id)");
     assertThat(indexDefinition("uk_asset_grants_group_subject"))
         .contains("(asset_type, asset_id, subject_group_id)");
+    assertThat(constraintExists("chk_asset_grants_asset_type_format")).isTrue();
+  }
+
+  /**
+   * The format check stands in for the enum the column deliberately is not: {@code AssetType}
+   * refuses anything outside {@code [A-Z][A-Z0-9_]*}, so a row smuggled past the application would
+   * otherwise take down every entity read of the whole table, not only its own row.
+   */
+  @Test
+  void anAssetTypeOutsideTheAllowedFormIsRefused() throws Exception {
+    Fixture fixture = seedLibraryWithGrants();
+    applyChangelog(connection, CHANGELOG_PATH);
+
+    assertThatThrownBy(() -> insertGrantOfType(fixture, "prompt_library"))
+        .hasMessageContaining("chk_asset_grants_asset_type_format");
+    assertThatThrownBy(() -> insertGrantOfType(fixture, "PROMPT LIBRARY"))
+        .hasMessageContaining("chk_asset_grants_asset_type_format");
+    insertGrantOfType(fixture, "PROMPT_LIBRARY2");
   }
 
   /**
@@ -80,10 +109,39 @@ class Migration038AssetGrantsTypeIndependentTest extends AbstractMigrationTest {
     assertThat(count("SELECT count(*) FROM asset_grants")).isEqualTo(before);
     assertThat(count("SELECT count(*) FROM asset_grants WHERE asset_type <> 'KNOWLEDGE_LIBRARY'"))
         .isZero();
-    assertThat(assetIdsOfGrants(fixture.userGrant(), fixture.groupGrant()))
-        .containsExactly(fixture.libraryId(), fixture.libraryId());
-    assertThat(roleOf(fixture.userGrant())).isEqualTo("OWNER");
-    assertThat(roleOf(fixture.groupGrant())).isEqualTo("MANAGER");
+    assertThat(grantRow(fixture.userGrant()))
+        .containsExactlyInAnyOrderEntriesOf(
+            Map.of(
+                "asset_type", "KNOWLEDGE_LIBRARY",
+                "asset_id", fixture.libraryId(),
+                "organization_id", fixture.organizationId(),
+                "subject_type", "USER",
+                "subject_user_id", fixture.userId(),
+                "subject_group_id", NULL,
+                "role", "OWNER",
+                "expires_at", Timestamp.from(USER_GRANT_EXPIRY),
+                "granted_by_user_id", fixture.userId()));
+    assertThat(grantRow(fixture.groupGrant()))
+        .containsExactlyInAnyOrderEntriesOf(
+            Map.of(
+                "asset_type",
+                "KNOWLEDGE_LIBRARY",
+                "asset_id",
+                fixture.libraryId(),
+                "organization_id",
+                fixture.organizationId(),
+                "subject_type",
+                "GROUP",
+                "subject_user_id",
+                NULL,
+                "subject_group_id",
+                fixture.groupId(),
+                "role",
+                "MANAGER",
+                "expires_at",
+                NULL,
+                "granted_by_user_id",
+                fixture.userId()));
   }
 
   /**
@@ -211,11 +269,12 @@ class Migration038AssetGrantsTypeIndependentTest extends AbstractMigrationTest {
     UUID userGrant = UUID.randomUUID();
     execute(
         "INSERT INTO asset_grants (id, library_id, organization_id, subject_type, subject_user_id,"
-            + " role, granted_by_user_id) VALUES (?, ?, ?, 'USER', ?, 'OWNER', ?)",
+            + " role, expires_at, granted_by_user_id) VALUES (?, ?, ?, 'USER', ?, 'OWNER', ?, ?)",
         userGrant,
         library,
         organization,
         user,
+        Timestamp.from(USER_GRANT_EXPIRY),
         user);
     UUID groupGrant = UUID.randomUUID();
     execute(
@@ -230,30 +289,44 @@ class Migration038AssetGrantsTypeIndependentTest extends AbstractMigrationTest {
     return new Fixture(organization, user, group, library, userGrant, groupGrant);
   }
 
-  private List<UUID> assetIdsOfGrants(UUID... grantIds) throws SQLException {
-    List<UUID> assetIds = new java.util.ArrayList<>();
-    for (UUID grantId : grantIds) {
-      try (PreparedStatement statement =
-          connection.prepareStatement("SELECT asset_id FROM asset_grants WHERE id = ?")) {
-        statement.setObject(1, grantId);
-        try (ResultSet rows = statement.executeQuery()) {
-          assertThat(rows.next()).isTrue();
-          assetIds.add(rows.getObject(1, UUID.class));
-        }
-      }
-    }
-    return assetIds;
-  }
-
-  private String roleOf(UUID grantId) throws SQLException {
+  /** Every column the migration could have damaged, {@code NULL} where the row must be empty. */
+  private Map<String, Object> grantRow(UUID grantId) throws SQLException {
+    String[] columns = {
+      "asset_type",
+      "asset_id",
+      "organization_id",
+      "subject_type",
+      "subject_user_id",
+      "subject_group_id",
+      "role",
+      "expires_at",
+      "granted_by_user_id"
+    };
     try (PreparedStatement statement =
-        connection.prepareStatement("SELECT role FROM asset_grants WHERE id = ?")) {
+        connection.prepareStatement(
+            "SELECT " + String.join(", ", columns) + " FROM asset_grants WHERE id = ?")) {
       statement.setObject(1, grantId);
       try (ResultSet rows = statement.executeQuery()) {
         assertThat(rows.next()).isTrue();
-        return rows.getString(1);
+        Map<String, Object> row = new LinkedHashMap<>();
+        for (int i = 0; i < columns.length; i++) {
+          Object value = rows.getObject(i + 1);
+          row.put(columns[i], value == null ? NULL : value);
+        }
+        return row;
       }
     }
+  }
+
+  private void insertGrantOfType(Fixture fixture, String assetType) throws SQLException {
+    execute(
+        "INSERT INTO asset_grants (id, asset_type, asset_id, organization_id, subject_type,"
+            + " subject_user_id, role) VALUES (?, ?, ?, ?, 'USER', ?, 'VIEWER')",
+        UUID.randomUUID(),
+        assetType,
+        UUID.randomUUID(),
+        fixture.organizationId(),
+        fixture.userId());
   }
 
   private void execute(String sql, Object... parameters) throws SQLException {

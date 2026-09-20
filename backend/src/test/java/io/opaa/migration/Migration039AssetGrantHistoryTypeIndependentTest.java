@@ -9,6 +9,10 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -25,6 +29,13 @@ class Migration039AssetGrantHistoryTypeIndependentTest extends AbstractMigration
       "db/changelog/changes/038-asset-grants-type-independent.yaml";
   private static final String CHANGELOG_PATH =
       "db/changelog/changes/039-asset-grant-history-type-independent.yaml";
+
+  private static final Instant CLOSED_FROM = Instant.parse("2026-09-01T08:00:00Z");
+  private static final Instant CLOSED_TO = Instant.parse("2026-09-02T08:00:00Z");
+  private static final Instant OPEN_FROM = Instant.parse("2026-09-02T08:00:00Z");
+
+  /** {@code Map.of} refuses null values; this stands in for "the column must be empty". */
+  private static final Object NULL = "<null>";
 
   private Connection connection;
 
@@ -65,6 +76,18 @@ class Migration039AssetGrantHistoryTypeIndependentTest extends AbstractMigration
     assertThat(indexDefinition("uk_asset_grant_history_open_group"))
         .contains("(asset_type, asset_id, subject_group_id)")
         .contains("valid_to IS NULL");
+    assertThat(constraintExists("chk_asset_grant_history_asset_type_format")).isTrue();
+  }
+
+  /** The same format check as on the live table - one converter reads both. */
+  @Test
+  void anAssetTypeOutsideTheAllowedFormIsRefused() throws Exception {
+    Fixture fixture = seedHistory();
+    applyChangelog(connection, CHANGELOG_PATH);
+
+    assertThatThrownBy(() -> insertIntervalOfType(fixture, "prompt_library"))
+        .hasMessageContaining("chk_asset_grant_history_asset_type_format");
+    insertIntervalOfType(fixture, "PROMPT_LIBRARY2");
   }
 
   /** Datenerhalt: the interval bestand is migrated, not rebuilt. */
@@ -81,14 +104,54 @@ class Migration039AssetGrantHistoryTypeIndependentTest extends AbstractMigration
             count(
                 "SELECT count(*) FROM asset_grant_history WHERE asset_type <> 'KNOWLEDGE_LIBRARY'"))
         .isZero();
-    assertThat(assetIdOf(fixture.openInterval())).isEqualTo(fixture.libraryId());
-    assertThat(assetIdOf(fixture.closedInterval())).isEqualTo(fixture.libraryId());
-    assertThat(
-            count(
-                "SELECT count(*) FROM asset_grant_history WHERE id = '"
-                    + fixture.openInterval()
-                    + "' AND valid_to IS NULL"))
-        .isEqualTo(1);
+    assertThat(intervalRow(fixture.closedInterval()))
+        .containsExactlyInAnyOrderEntriesOf(
+            Map.of(
+                "asset_type",
+                "KNOWLEDGE_LIBRARY",
+                "asset_id",
+                fixture.libraryId(),
+                "organization_id",
+                fixture.organizationId(),
+                "subject_type",
+                "USER",
+                "subject_user_id",
+                fixture.userId(),
+                "subject_group_id",
+                NULL,
+                "role",
+                "VIEWER",
+                "cause",
+                "GRANTED",
+                "actor_user_id",
+                fixture.userId(),
+                "valid_from",
+                Timestamp.from(CLOSED_FROM)));
+    assertThat(intervalRow(fixture.openInterval()))
+        .containsExactlyInAnyOrderEntriesOf(
+            Map.of(
+                "asset_type",
+                "KNOWLEDGE_LIBRARY",
+                "asset_id",
+                fixture.libraryId(),
+                "organization_id",
+                fixture.organizationId(),
+                "subject_type",
+                "USER",
+                "subject_user_id",
+                fixture.userId(),
+                "subject_group_id",
+                NULL,
+                "role",
+                "MANAGER",
+                "cause",
+                "ROLE_CHANGED",
+                "actor_user_id",
+                fixture.userId(),
+                "valid_from",
+                Timestamp.from(OPEN_FROM)));
+    assertThat(validTo(fixture.closedInterval())).isEqualTo(Timestamp.from(CLOSED_TO));
+    assertThat(validTo(fixture.openInterval())).isNull();
   }
 
   /** The "at most one open interval" rule now holds per asset type, not across all of them. */
@@ -184,33 +247,87 @@ class Migration039AssetGrantHistoryTypeIndependentTest extends AbstractMigration
     execute(
         "INSERT INTO asset_grant_history (id, library_id, organization_id, subject_type,"
             + " subject_user_id, role, cause, actor_user_id, valid_from, valid_to) VALUES (?, ?,"
-            + " ?, 'USER', ?, 'VIEWER', 'GRANTED', ?, now() - interval '2 days', now() -"
-            + " interval '1 day')",
+            + " ?, 'USER', ?, 'VIEWER', 'GRANTED', ?, ?, ?)",
         closed,
         library,
         organization,
         user,
-        user);
+        user,
+        Timestamp.from(CLOSED_FROM),
+        Timestamp.from(CLOSED_TO));
     UUID open = UUID.randomUUID();
     execute(
         "INSERT INTO asset_grant_history (id, library_id, organization_id, subject_type,"
             + " subject_user_id, role, cause, actor_user_id, valid_from) VALUES (?, ?, ?, 'USER',"
-            + " ?, 'MANAGER', 'ROLE_CHANGED', ?, now() - interval '1 day')",
+            + " ?, 'MANAGER', 'ROLE_CHANGED', ?, ?)",
         open,
         library,
         organization,
         user,
-        user);
+        user,
+        Timestamp.from(OPEN_FROM));
     return new Fixture(organization, user, library, open, closed);
   }
 
-  private UUID assetIdOf(UUID intervalId) throws SQLException {
+  /** Every column the migration could have damaged, {@code NULL} where the row must be empty. */
+  private Map<String, Object> intervalRow(UUID intervalId) throws SQLException {
+    String[] columns = {
+      "asset_type",
+      "asset_id",
+      "organization_id",
+      "subject_type",
+      "subject_user_id",
+      "subject_group_id",
+      "role",
+      "cause",
+      "actor_user_id",
+      "valid_from"
+    };
     try (PreparedStatement statement =
-        connection.prepareStatement("SELECT asset_id FROM asset_grant_history WHERE id = ?")) {
+        connection.prepareStatement(
+            "SELECT " + String.join(", ", columns) + " FROM asset_grant_history WHERE id = ?")) {
       statement.setObject(1, intervalId);
       try (ResultSet rows = statement.executeQuery()) {
         assertThat(rows.next()).isTrue();
-        return rows.getObject(1, UUID.class);
+        Map<String, Object> row = new LinkedHashMap<>();
+        for (int i = 0; i < columns.length; i++) {
+          Object value = rows.getObject(i + 1);
+          row.put(columns[i], value == null ? NULL : value);
+        }
+        return row;
+      }
+    }
+  }
+
+  private Timestamp validTo(UUID intervalId) throws SQLException {
+    try (PreparedStatement statement =
+        connection.prepareStatement("SELECT valid_to FROM asset_grant_history WHERE id = ?")) {
+      statement.setObject(1, intervalId);
+      try (ResultSet rows = statement.executeQuery()) {
+        assertThat(rows.next()).isTrue();
+        return rows.getTimestamp(1);
+      }
+    }
+  }
+
+  private void insertIntervalOfType(Fixture fixture, String assetType) throws SQLException {
+    execute(
+        "INSERT INTO asset_grant_history (id, asset_type, asset_id, organization_id, subject_type,"
+            + " subject_user_id, role, cause, valid_from, valid_to) VALUES (?, ?, ?, ?, 'USER', ?,"
+            + " 'VIEWER', 'GRANTED', now(), now())",
+        UUID.randomUUID(),
+        assetType,
+        UUID.randomUUID(),
+        fixture.organizationId(),
+        fixture.userId());
+  }
+
+  private boolean constraintExists(String name) throws SQLException {
+    try (PreparedStatement statement =
+        connection.prepareStatement("SELECT 1 FROM pg_constraint WHERE conname = ?")) {
+      statement.setString(1, name);
+      try (ResultSet rows = statement.executeQuery()) {
+        return rows.next();
       }
     }
   }

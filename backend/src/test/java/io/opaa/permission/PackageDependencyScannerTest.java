@@ -99,6 +99,27 @@ class PackageDependencyScannerTest {
         .containsExactly("io.opaa.group.sync");
   }
 
+  /** The second branch of the scanner's pattern - a wildcard import names no type to match on. */
+  @Test
+  void aWildcardImportIsReportedAsADependencyOnItsPackage(@TempDir Path root) throws IOException {
+    write(
+        root,
+        "io/opaa/permission/Wildcard.java",
+        """
+        package io.opaa.permission;
+
+        import io.opaa.group.*;
+
+        class Wildcard {
+          Group group;
+        }
+        """);
+
+    assertThat(PackageDependencyScanner.scan(root))
+        .extracting(Reference::fromPackage, Reference::toPackage, Reference::line)
+        .containsExactly(tuple("io.opaa.permission", "io.opaa.group", 3));
+  }
+
   @Test
   void aTreeWithoutCrossPackageReferencesReportsNothing(@TempDir Path root) throws IOException {
     write(

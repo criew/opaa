@@ -19,6 +19,14 @@
  * belong to the business package that owns the asset - {@code KnowledgeLibrary.ASSET_TYPE} is the
  * first one; this package never enumerates them.
  *
+ * <p><b>What a further asset type owes in return.</b> {@code asset_grants.asset_id} carries no
+ * foreign key - it cannot, since it names an asset of any type - so the guarantee "no grant
+ * outlives its asset" is held per asset type by a delete trigger on that type's own table ({@code
+ * trg_knowledge_libraries_delete_asset_grants} is the first one). A new asset type brings its own;
+ * that trigger is the only place a new type touches the database at all. Existence and organization
+ * of the referenced asset are held by the owning service, which loads the asset before any grant is
+ * written. See {@code changes/038-asset-grants-type-independent.yaml}.
+ *
  * <p><b>What deliberately stays outside.</b> Everything that only holds for one asset type: the
  * role a library's organization-wide visibility grants, the guards of {@code AssetGrantService}
  * around a library's last owner, and the visibility history of a library ({@code

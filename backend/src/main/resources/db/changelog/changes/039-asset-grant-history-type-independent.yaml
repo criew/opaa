@@ -19,7 +19,9 @@ databaseChangeLog:
         .
         Die beiden eindeutigen Teilindexe auf den offenen Intervallen und der Lookup-Index fuehren
         asset_type mit, aus demselben Grund wie in 038: Zwei Asset-Typen mit derselben ID duerfen
-        sich weder blockieren noch vermischen.
+        sich weder blockieren noch vermischen. Die Formpruefung
+        chk_asset_grant_history_asset_type_format spiegelt die von 038 - dieselbe Konvertierung
+        liest beide Tabellen.
       changes:
         - sql:
             splitStatements: false
@@ -31,6 +33,9 @@ databaseChangeLog:
 
               ALTER TABLE asset_grant_history
                   ALTER COLUMN asset_type SET NOT NULL;
+
+              ALTER TABLE asset_grant_history
+                  ADD CONSTRAINT chk_asset_grant_history_asset_type_format CHECK ((asset_type ~ '^[A-Z][A-Z0-9_]*$'));
 
               ALTER TABLE asset_grant_history
                   RENAME COLUMN library_id TO asset_id;

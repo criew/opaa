@@ -177,10 +177,14 @@ public class AssetAccessService {
    * <em>and</em> on the revival of an expired grant, so both raising a pre-existing foreign grant
    * to {@code OWNER} and re-arming an expired foreign {@code OWNER} grant at an unchanged role
    * count as self-issued - the expiry filter below is what makes the second case necessary.
+   *
+   * @param groupIds the caller's groups, as {@link #groupIdsForUser} returned them to whoever
+   *     decided {@code namedOwner} - passed in rather than resolved again, so an invalidation
+   *     between the two reads cannot pair a stale {@code namedOwner} with a fresh reach and fail
+   *     open.
    */
   public boolean holdsIndependentOwnerRole(
-      AssetType assetType, UUID assetId, UUID userId, boolean namedOwner) {
-    Set<UUID> groupIds = membershipResolver.groupIdsForUser(userId);
+      AssetType assetType, UUID assetId, UUID userId, Set<UUID> groupIds, boolean namedOwner) {
     Instant now = Instant.now();
     return cachedGrants(assetType, assetId).stream()
         .filter(grant -> !grant.isExpired(now))

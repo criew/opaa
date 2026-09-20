@@ -9,7 +9,10 @@ databaseChangeLog:
         migriert, nicht neu erzeugt - jede bekommt asset_type = 'KNOWLEDGE_LIBRARY', die Spalte
         library_id wird umbenannt und behaelt ihre Werte. asset_type traegt bewusst KEINE
         Pruefbedingung mit einer Werteliste: Die Menge der Asset-Typen gehoert den Fachpaketen, und
-        eine Liste in der Datenbank machte jeden neuen Typ zu einer Migration.
+        eine Liste in der Datenbank machte jeden neuen Typ zu einer Migration. Die FORM wird
+        dagegen geprueft (chk_asset_grants_asset_type_format): AssetType laesst nur
+        [A-Z][A-Z0-9_]* zu, und eine per SQL vorbei eingespielte Zeile mit einem anderen Wert
+        brachte sonst jede Entity-Abfrage der Tabelle zum Absturz, nicht nur die eigene Zeile.
         .
         DAMIT ENTFAELLT fk_asset_grants_library_organization (library_id, organization_id ->
         knowledge_libraries(id, organization_id) ON DELETE CASCADE). Ein Fremdschluessel kann nur
@@ -44,6 +47,9 @@ databaseChangeLog:
 
               ALTER TABLE asset_grants
                   ALTER COLUMN asset_type SET NOT NULL;
+
+              ALTER TABLE asset_grants
+                  ADD CONSTRAINT chk_asset_grants_asset_type_format CHECK ((asset_type ~ '^[A-Z][A-Z0-9_]*$'));
 
               ALTER TABLE asset_grants
                   DROP CONSTRAINT fk_asset_grants_library_organization;

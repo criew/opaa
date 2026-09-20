@@ -228,7 +228,10 @@ dann bei der Zeitgeberauflösung des Betriebssystems — auf einer Maschine 3,64
   Änderung datiert, damit aus einer leeren Rekonstruktion über einen Altzeitraum niemand auf „kein
   Zugriff" schließt.
 - **Die Invariante ist nicht datenbankseitig abgesichert.** Sie hält, solange alle Schreiber durch
-  `PermissionHistoryService` gehen; ein Migrationsskript oder eine Handkorrektur per SQL könnte sie
+  `PermissionHistoryService` und — seit dem Paketschnitt in
+  [#1811](https://github.com/criew/opaa/issues/1811) — `LibraryVisibilityHistoryService` gehen; beide
+  beziehen ihre Intervallgrenzen aus derselben einen `PermissionHistoryClock`, die Zusage gilt also
+  unverändert über alle drei Historientabellen. Ein Migrationsskript oder eine Handkorrektur per SQL könnte sie
   verletzen, ohne dass etwas es bemerkt. Ein `EXCLUDE`-Constraint, der leere Zustandsintervalle und
   Überschneidungen je Objekt zurückweist und dabei die Nulllängen-Marker ausnimmt, wäre die
   Ergänzung — bewusst offen gelassen und als #1517 geführt, nicht Teil dieser Entscheidung. Dort

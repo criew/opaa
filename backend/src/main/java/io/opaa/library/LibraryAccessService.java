@@ -120,11 +120,12 @@ public class LibraryAccessService {
    * formula in docs/features/spaces-and-assets.md#rechte-an-einem-asset-erhalten. Space
    * associations deliberately do not appear anywhere in this computation, per the same
    * specification section. No system-admin bypass: the vector search always reads with the calling
-   * user's own rights, with no second rights context (ADR-0008 §5) - unlike {@link #effectiveRole},
-   * which fail-opens system admins for library administration. That asymmetry is intentional and
-   * points the safe way: an admin may administer every library but retrieves only from those the
-   * formula grants them, so nothing an admin reads in a chat can come from a library they were not
-   * granted.
+   * user's own rights, with no second rights context
+   * (docs/features/spaces-and-assets.md#ein-agent-liest-immer-mit-den-rechten-des-nutzers) - unlike
+   * {@link #effectiveRole}, which fail-opens system admins for library administration. That
+   * asymmetry is intentional and points the safe way: an admin may administer every library but
+   * retrieves only from those the formula grants them, so nothing an admin reads in a chat can come
+   * from a library they were not granted.
    */
   public Set<UUID> readableLibraryIds(UUID userId, UUID organizationId) {
     Set<UUID> readable =
@@ -143,12 +144,12 @@ public class LibraryAccessService {
    * reachable.</b> {@code library.getOwnerUserId()} is immutable and has no setter. {@code
    * library.getOwnerGroupId()} is immutable as well, but membership in that group is not: {@code
    * GroupController#addMember} is open to {@code SYSTEM_ADMIN}, {@code GroupService#addMember}
-   * knows no self-exclusion, and its {@code rejectOrgUnit} guard covers only {@code ORG_UNIT}
-   * groups. An administrator can therefore add themselves to a non-{@code ORG_UNIT} owning group in
-   * one step, become the named owner, and validate their own self-issued {@code OWNER} grant. That
-   * path stays open by decision, not by omission: docs/features/hybrid-retrieval.md,
-   * Berechtigungs-Leitplanken (e). Closing it would be a change to group administration, not to
-   * this method.
+   * knows no self-exclusion, and its {@code rejectOrgUnit} guard refuses {@code ORG_UNIT} and
+   * {@code IDENTITY_PROVIDER} groups but leaves {@code AD_HOC} groups editable. An administrator
+   * can therefore add themselves to an {@code AD_HOC} owning group in one step, become {@code
+   * namedOwner}, and validate their own self-issued {@code OWNER} grant. That path stays open by
+   * decision, not by omission: docs/features/hybrid-retrieval.md, Berechtigungs-Leitplanken (e).
+   * Closing it would be a change to group administration, not to this method.
    */
   public boolean holdsIndependentOwnerRole(KnowledgeLibrary library, UUID userId) {
     Set<UUID> groupIds = assetAccessService.groupIdsForUser(userId);
@@ -156,7 +157,7 @@ public class LibraryAccessService {
         userId.equals(library.getOwnerUserId())
             || (library.getOwnerGroupId() != null && groupIds.contains(library.getOwnerGroupId()));
     return assetAccessService.holdsIndependentOwnerRole(
-        KnowledgeLibrary.ASSET_TYPE, library.getId(), userId, namedOwner);
+        KnowledgeLibrary.ASSET_TYPE, library.getId(), userId, groupIds, namedOwner);
   }
 
   /**
