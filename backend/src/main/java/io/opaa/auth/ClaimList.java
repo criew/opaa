@@ -34,7 +34,7 @@ sealed interface ClaimList {
     MALFORMED,
     /**
      * The provider replaced the claim by a reference because it grew too large (OpenID Connect
-     * 5.6.2 distributed claims; Entra ID does this above 200 groups).
+     * 5.6.2 distributed claims; Entra ID does this above 200 entries).
      */
     OVERAGE
   }
