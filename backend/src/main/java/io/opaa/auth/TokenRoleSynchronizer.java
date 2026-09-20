@@ -31,7 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
  * UPDATE} under the organization's advisory lock that writes only if another administrator who can
  * actually sign in remains. A refused withdrawal is logged and audited ({@link
  * AuditEventType#SYSTEM_ADMIN_ROLE_REVOCATION_REFUSED}); the account keeps the role the provider
- * withdrew. {@code AUDITOR} is not protected.
+ * withdrew. {@code AUDITOR} has no such protection: a claim that no longer names it withdraws it.
  *
  * <p>Only a claim the token actually carried is authoritative (#1830): a claim that names none of
  * the configured role values is the provider withdrawing the elevated role, but a token whose claim

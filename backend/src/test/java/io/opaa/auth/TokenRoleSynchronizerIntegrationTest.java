@@ -183,23 +183,35 @@ class TokenRoleSynchronizerIntegrationTest {
 
   /**
    * regression guard for #1830: a token that carries no usable roles claim used to read as an empty
-   * list, and an empty list means {@code USER} - every auditor and every administrator but the last
-   * one was demoted, one sign-in at a time. The stored roles are read back from the database, and
-   * the administrator here is not the last one, so nothing but this guard keeps the role.
+   * list, and an empty list means {@code USER} - every administrator but the last one was demoted,
+   * one sign-in at a time. The role is read back from the database, and the administrator here is
+   * not the last one, so nothing but this guard keeps the role.
    */
   @ParameterizedTest
   @EnumSource(TokenRoles.Reason.class)
-  void aTokenWithoutAUsableRolesClaimWithdrawsNothing(TokenRoles.Reason reason) {
+  void aTokenWithoutAUsableRolesClaimKeepsTheSystemAdminRole(TokenRoles.Reason reason) {
     assertThat(storedRole(first)).isEqualTo(SystemRole.SYSTEM_ADMIN);
     assertThat(storedRole(second)).isEqualTo(SystemRole.SYSTEM_ADMIN);
+
+    User after = synchronizer.apply(first, provider, TokenRoles.unavailable(reason));
+
+    assertThat(after.getSystemRole()).isEqualTo(SystemRole.SYSTEM_ADMIN);
+    assertThat(storedRole(first)).isEqualTo(SystemRole.SYSTEM_ADMIN);
+    assertThat(auditRows()).isEmpty();
+  }
+
+  /**
+   * regression guard for #1830: {@code AUDITOR} has no last-one protection at all, so every auditor
+   * of a provider whose role mapper is gone lost the role on the next sign-in.
+   */
+  @ParameterizedTest
+  @EnumSource(TokenRoles.Reason.class)
+  void aTokenWithoutAUsableRolesClaimKeepsTheAuditorRole(TokenRoles.Reason reason) {
     assertThat(storedRole(auditor)).isEqualTo(SystemRole.AUDITOR);
 
-    User adminAfter = synchronizer.apply(first, provider, TokenRoles.unavailable(reason));
-    User auditorAfter = synchronizer.apply(auditor, provider, TokenRoles.unavailable(reason));
+    User after = synchronizer.apply(auditor, provider, TokenRoles.unavailable(reason));
 
-    assertThat(adminAfter.getSystemRole()).isEqualTo(SystemRole.SYSTEM_ADMIN);
-    assertThat(auditorAfter.getSystemRole()).isEqualTo(SystemRole.AUDITOR);
-    assertThat(storedRole(first)).isEqualTo(SystemRole.SYSTEM_ADMIN);
+    assertThat(after.getSystemRole()).isEqualTo(SystemRole.AUDITOR);
     assertThat(storedRole(auditor)).isEqualTo(SystemRole.AUDITOR);
     assertThat(auditRows()).isEmpty();
   }
