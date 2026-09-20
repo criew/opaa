@@ -9,6 +9,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import io.opaa.api.types.SystemRole;
+import io.opaa.auth.local.LocalAdminAvailabilityGuard;
+import io.opaa.common.ConflictException;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -146,6 +148,28 @@ class AdminControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"role\": \"SYSTEM_ADMIN\"}"))
         .andExpect(status().isForbidden());
+  }
+
+  /**
+   * The lockout guard's refusal (#1349) reaches the client as 409 with its stable code and the
+   * German sentence - the code is what the frontend acts on, the message what it shows.
+   */
+  @Test
+  void changeRoleRefusedByTheLockoutGuardReturns409WithItsCode() throws Exception {
+    UUID userId = UUID.randomUUID();
+    String refusal = "Der letzte anmeldefähige Systemverwalter kann nicht entfernt werden.";
+    when(userService.updateRole(any(), any(), any()))
+        .thenThrow(new ConflictException(refusal, LocalAdminAvailabilityGuard.ERROR_CODE));
+
+    mockMvc
+        .perform(
+            post("/api/v1/admin/users/" + userId + "/role")
+                .with(asAdmin())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"role\": \"USER\"}"))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value(LocalAdminAvailabilityGuard.ERROR_CODE))
+        .andExpect(jsonPath("$.error").value(refusal));
   }
 
   @Test

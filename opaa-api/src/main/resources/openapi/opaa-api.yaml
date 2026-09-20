@@ -762,6 +762,14 @@ paths:
       operationId: changeUserRole
       tags: [admin]
       summary: Change a user's system role (system admin only)
+      description: >
+        Two conflicts of its own are refused with 409. The withdrawal of the SYSTEM_ADMIN role
+        while no other login-capable system administrator of the organization remains carries the
+        code LAST_LOGIN_CAPABLE_ADMIN (ADR-0033, Entscheidung 4); the check runs under the
+        organization's advisory lock, so it also holds when a manual and a token-driven
+        withdrawal run at the same time. A role that an enabled OIDC provider with a roles claim
+        manages itself cannot be changed here (ADR-0025, Entscheidung 4) - that refusal names the
+        provider in its message and carries no code.
       requestBody:
         required: true
         content:
@@ -779,6 +787,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
 
   /api/v1/admin/local-users:
     get:
