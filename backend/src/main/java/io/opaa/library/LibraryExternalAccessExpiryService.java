@@ -45,25 +45,25 @@ public class LibraryExternalAccessExpiryService {
       LoggerFactory.getLogger(LibraryExternalAccessExpiryService.class);
 
   private final KnowledgeLibraryRepository libraryRepository;
-  private final PermissionHistoryService permissionHistoryService;
+  private final LibraryVisibilityHistoryService visibilityHistoryService;
   private final AuditEventRecorder auditEventRecorder;
   private final InstantSource clock;
 
   @Autowired
   public LibraryExternalAccessExpiryService(
       KnowledgeLibraryRepository libraryRepository,
-      PermissionHistoryService permissionHistoryService,
+      LibraryVisibilityHistoryService visibilityHistoryService,
       AuditEventRecorder auditEventRecorder) {
-    this(libraryRepository, permissionHistoryService, auditEventRecorder, InstantSource.system());
+    this(libraryRepository, visibilityHistoryService, auditEventRecorder, InstantSource.system());
   }
 
   LibraryExternalAccessExpiryService(
       KnowledgeLibraryRepository libraryRepository,
-      PermissionHistoryService permissionHistoryService,
+      LibraryVisibilityHistoryService visibilityHistoryService,
       AuditEventRecorder auditEventRecorder,
       InstantSource clock) {
     this.libraryRepository = libraryRepository;
-    this.permissionHistoryService = permissionHistoryService;
+    this.visibilityHistoryService = visibilityHistoryService;
     this.auditEventRecorder = auditEventRecorder;
     this.clock = clock;
   }
@@ -81,7 +81,7 @@ public class LibraryExternalAccessExpiryService {
       Instant ranTo = library.getExternalAccessExpiresAt();
       library.expireExternalAccess();
       KnowledgeLibrary saved = libraryRepository.save(library);
-      permissionHistoryService.recordExternalAccessChanged(
+      visibilityHistoryService.recordExternalAccessChanged(
           saved, LibraryVisibilityHistoryCause.EXTERNAL_ACCESS_EXPIRED, null);
       auditEventRecorder.recordSystemProcessAction(
           AuditEvent.builder()

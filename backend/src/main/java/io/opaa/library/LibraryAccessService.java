@@ -1,16 +1,10 @@
 package io.opaa.library;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.LibraryVisibility;
-import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.NotFoundException;
-import io.opaa.group.GroupMembershipResolver;
-import java.time.Duration;
-import java.time.Instant;
-import java.util.Collection;
+import io.opaa.permission.AssetAccessService;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -23,8 +17,13 @@ import org.springframework.stereotype.Component;
 /**
  * Resolves the {@link AssetRole} a user effectively holds on a {@link KnowledgeLibrary}, and the
  * set of libraries a user may read (see {@code
- * docs/features/spaces-and-assets.md#rechte-an-einem-asset-erhalten}). Management rights come
- * exclusively from an explicit {@link AssetGrant} (see {@code
+ * docs/features/spaces-and-assets.md#rechte-an-einem-asset-erhalten}). The grant half of that
+ * formula is {@link AssetAccessService}, shared with every other asset type; this class adds the
+ * two things that hold for a library alone - the {@link AssetRole#VIEWER} floor an
+ * organization-wide library grants, and the {@link AssetRole#OWNER} floor library administration
+ * grants a system admin - and keeps the library-shaped call surface every library endpoint uses.
+ *
+ * <p>Management rights come exclusively from an explicit grant (see {@code
  * KnowledgeLibraryService#createLibrary}, which grants the creator {@link AssetRole#OWNER} and, for
  * a group-owned library, additionally grants the owning group {@link AssetRole#MANAGER} - never
  * {@code OWNER} to the group, which would be an unbounded, non-downgradable grant) or from
@@ -35,8 +34,8 @@ import org.springframework.stereotype.Component;
  * <ul>
  *   <li>{@link #effectiveRole}, backing {@code canRead}/{@code canManage} for the library CRUD
  *       endpoints, is a single-library lookup on the hot path of every such request and is cached
- *       per library id, invalidated after commit whenever a grant on that library changes -
- *       mirroring {@link GroupMembershipResolver}'s cache and invalidation pattern.
+ *       (in {@link AssetAccessService}) per asset, invalidated after commit whenever a grant on
+ *       that library changes.
  *   <li>{@link #readableLibraryIds}, backing the permission-aware vector search filter, is
  *       deliberately <b>not</b> cached: it is a single indexed query per call, so a revoked grant
  *       takes effect on the very next query without depending on a second cache-invalidation path
@@ -47,24 +46,13 @@ import org.springframework.stereotype.Component;
 @Component
 public class LibraryAccessService {
 
-  private final AssetGrantRepository grantRepository;
+  private final AssetAccessService assetAccessService;
   private final KnowledgeLibraryRepository libraryRepository;
-  private final GroupMembershipResolver membershipResolver;
-  private final Cache<UUID, List<AssetGrant>> grantsByLibrary;
 
   public LibraryAccessService(
-      AssetGrantRepository grantRepository,
-      KnowledgeLibraryRepository libraryRepository,
-      GroupMembershipResolver membershipResolver) {
-    this.grantRepository = grantRepository;
+      AssetAccessService assetAccessService, KnowledgeLibraryRepository libraryRepository) {
+    this.assetAccessService = assetAccessService;
     this.libraryRepository = libraryRepository;
-    this.membershipResolver = membershipResolver;
-    // Same reasoning as GroupMembershipResolver#groupIdsByUser: a stale entry only ever grants
-    // access a moment too long between a completed transaction's invalidation and the next read,
-    // never too little - invalidateLibrary below, called post-commit, is the primary correctness
-    // mechanism. Time-based expiry is a safety net only.
-    this.grantsByLibrary =
-        Caffeine.newBuilder().maximumSize(50_000).expireAfterWrite(Duration.ofMinutes(10)).build();
   }
 
   /**
@@ -90,9 +78,9 @@ public class LibraryAccessService {
   /**
    * Requires at least {@code required} on {@code library}, distinguishing "no access at all" from
    * "some access, but not enough" (#436) - the single helper every library-scoped endpoint calls
-   * instead of the {@code canXxx}/throw-403 pairs above, so a user who holds no {@link AssetGrant}
-   * on the library at all and no organization-wide floor gets the same {@code 404} the library's
-   * own lookup already produces for "does not exist", rather than a {@code 403} that confirms the
+   * instead of the {@code canXxx}/throw-403 pairs above, so a user who holds no grant on the
+   * library at all and no organization-wide floor gets the same {@code 404} the library's own
+   * lookup already produces for "does not exist", rather than a {@code 403} that confirms the
    * library is there.
    *
    * @return the caller's resolved role, at least {@code required} - callers that also need the
@@ -122,16 +110,8 @@ public class LibraryAccessService {
     if (systemAdmin) {
       return AssetRole.OWNER;
     }
-
-    AssetRole organizationWideFloor =
-        library.getVisibility() == LibraryVisibility.ORGANIZATION ? AssetRole.VIEWER : null;
-    Set<UUID> groupIds = membershipResolver.groupIdsForUser(userId);
-    return bestRole(
-        grantsByLibrary.get(library.getId(), grantRepository::findByLibraryId),
-        userId,
-        groupIds,
-        Instant.now(),
-        organizationWideFloor);
+    return assetAccessService.effectiveRole(
+        KnowledgeLibrary.ASSET_TYPE, library.getId(), userId, organizationWideFloor(library));
   }
 
   /**
@@ -148,36 +128,17 @@ public class LibraryAccessService {
    * from a library they were not granted.
    */
   public Set<UUID> readableLibraryIds(UUID userId, UUID organizationId) {
-    Instant now = Instant.now();
-    Set<UUID> groupIds = membershipResolver.groupIdsForUser(userId);
-
-    Set<UUID> readable = new HashSet<>();
-    readable.addAll(
-        grantRepository.findReadableLibraryIdsByDirectGrant(userId, organizationId, now));
-    if (!groupIds.isEmpty()) {
-      readable.addAll(
-          grantRepository.findReadableLibraryIdsByGroupGrant(groupIds, organizationId, now));
-    }
-    readable.addAll(
-        libraryRepository.findIdsByOrganizationIdAndVisibility(
-            organizationId, LibraryVisibility.ORGANIZATION));
+    Set<UUID> readable =
+        assetAccessService.readableAssetIds(KnowledgeLibrary.ASSET_TYPE, userId, organizationId);
+    readable.addAll(organizationWideLibraryIds(organizationId));
     return readable;
   }
 
   /**
    * Whether {@code userId} holds {@link AssetRole#OWNER} on {@code library} on a basis they did not
-   * create for themselves: an unexpired {@code OWNER} grant somebody else issued, or one they
-   * issued to themselves while being the library's named owner ({@code ownerUserId}, or a member of
-   * the owning group). Unlike {@link #effectiveRole} there is no system-admin floor here, and an
-   * {@code OWNER} grant an administrator issued to themselves through that floor does not count -
-   * closing the two-step path "grant myself OWNER via the administrative floor, then act as the
-   * responsible owner". {@link AssetGrant#updateRole} carries the changer into {@code
-   * grantedByUserId} on a role change <em>and</em> on the revival of an expired grant, so both
-   * raising a pre-existing foreign grant to {@code OWNER} and re-arming an expired foreign {@code
-   * OWNER} grant at an unchanged role count as self-issued - the expiry filter below is what makes
-   * the second case necessary. Used by {@code LibraryDiagnosticsLockService} for the one rule that
-   * must hold against the administration itself; every other library endpoint keeps using {@link
-   * #requireRole}.
+   * create for themselves - see {@link AssetAccessService#holdsIndependentOwnerRole} for the rule
+   * itself. Used by {@code LibraryDiagnosticsLockService} for the one rule that must hold against
+   * the administration itself; every other library endpoint keeps using {@link #requireRole}.
    *
    * <p><b>The named-owner exception is only half closed, and the open half is administratively
    * reachable.</b> {@code library.getOwnerUserId()} is immutable and has no setter. {@code
@@ -191,16 +152,12 @@ public class LibraryAccessService {
    * Closing it would be a change to group administration, not to this method.
    */
   public boolean holdsIndependentOwnerRole(KnowledgeLibrary library, UUID userId) {
-    Set<UUID> groupIds = membershipResolver.groupIdsForUser(userId);
+    Set<UUID> groupIds = assetAccessService.groupIdsForUser(userId);
     boolean namedOwner =
         userId.equals(library.getOwnerUserId())
             || (library.getOwnerGroupId() != null && groupIds.contains(library.getOwnerGroupId()));
-    Instant now = Instant.now();
-    return grantsByLibrary.get(library.getId(), grantRepository::findByLibraryId).stream()
-        .filter(grant -> !grant.isExpired(now))
-        .filter(grant -> grant.getRole() == AssetRole.OWNER)
-        .filter(grant -> reaches(grant, userId, groupIds))
-        .anyMatch(grant -> namedOwner || !userId.equals(grant.getGrantedByUserId()));
+    return assetAccessService.holdsIndependentOwnerRole(
+        KnowledgeLibrary.ASSET_TYPE, library.getId(), userId, groupIds, namedOwner);
   }
 
   /**
@@ -215,12 +172,9 @@ public class LibraryAccessService {
    */
   public Set<UUID> readableLibraryIdsForGroup(UUID groupId, UUID organizationId) {
     Set<UUID> readable =
-        new HashSet<>(
-            grantRepository.findReadableLibraryIdsByGroupGrant(
-                Set.of(groupId), organizationId, Instant.now()));
-    readable.addAll(
-        libraryRepository.findIdsByOrganizationIdAndVisibility(
-            organizationId, LibraryVisibility.ORGANIZATION));
+        assetAccessService.grantedAssetIdsForGroup(
+            KnowledgeLibrary.ASSET_TYPE, groupId, organizationId);
+    readable.addAll(organizationWideLibraryIds(organizationId));
     return readable;
   }
 
@@ -231,18 +185,10 @@ public class LibraryAccessService {
    * reaches every organization-wide library.
    */
   public Map<UUID, Integer> readableLibraryCountsForGroups(
-      Collection<UUID> groupIds, UUID organizationId) {
-    Instant now = Instant.now();
-    Set<UUID> organizationWide =
-        new HashSet<>(
-            libraryRepository.findIdsByOrganizationIdAndVisibility(
-                organizationId, LibraryVisibility.ORGANIZATION));
-    Map<UUID, Set<UUID>> grantedByGroup = new HashMap<>();
-    for (AssetGrant grant : grantRepository.findActiveGroupGrants(organizationId, now)) {
-      grantedByGroup
-          .computeIfAbsent(grant.getSubjectGroupId(), id -> new HashSet<>())
-          .add(grant.getLibraryId());
-    }
+      java.util.Collection<UUID> groupIds, UUID organizationId) {
+    Set<UUID> organizationWide = organizationWideLibraryIds(organizationId);
+    Map<UUID, Set<UUID>> grantedByGroup =
+        assetAccessService.grantedAssetIdsByGroup(KnowledgeLibrary.ASSET_TYPE, organizationId);
 
     Map<UUID, Integer> counts = new HashMap<>();
     for (UUID groupId : groupIds) {
@@ -256,20 +202,14 @@ public class LibraryAccessService {
   /**
    * The effective {@link AssetRole} for every one of {@code libraries}, for {@code userId} - the
    * {@code listLibraries} counterpart of {@link #effectiveRole}, deliberately not built by calling
-   * that method once per library:
-   *
-   * <ul>
-   *   <li><b>Correctness:</b> {@code listLibraries} membership comes from {@link
-   *       #readableLibraryIds}, which is deliberately uncached so a just-granted or just-revoked
-   *       right is reflected immediately, while {@link #effectiveRole} reads the separately cached
-   *       {@link #grantsByLibrary}, invalidated only after commit. This method instead reads every
-   *       grant for {@code libraries} in one query, giving the same freshness guarantee, and floors
-   *       the result at {@link AssetRole#VIEWER}: every library in {@code libraries} is assumed to
-   *       already be in the caller's {@link #readableLibraryIds}, which the formula guarantees is
-   *       reachable only at {@code VIEWER} or above - a {@code null} role would break the OpenAPI
-   *       specification, which declares {@code myRole} required.
-   *   <li><b>Performance:</b> one query for N libraries instead of up to N queries on a cold cache.
-   * </ul>
+   * that method once per library: list membership comes from {@link #readableLibraryIds}, which is
+   * uncached, while {@link #effectiveRole} reads a cache invalidated only after commit. {@link
+   * AssetAccessService#effectiveRoles} instead reads every grant for {@code libraries} in one
+   * query, giving the same freshness guarantee - and the result is floored at {@link
+   * AssetRole#VIEWER}: every library in {@code libraries} is assumed to already be in the caller's
+   * {@link #readableLibraryIds}, which the formula guarantees is reachable only at {@code VIEWER}
+   * or above - a {@code null} role would break the OpenAPI specification, which declares {@code
+   * myRole} required.
    *
    * <p><b>Never bypasses to {@link AssetRole#OWNER} for a system admin</b> - unlike {@link
    * #effectiveRole}. {@code listLibraries} membership itself never bypasses (see {@link
@@ -281,52 +221,22 @@ public class LibraryAccessService {
    */
   public Map<UUID, AssetRole> effectiveRolesForReadableLibraries(
       List<KnowledgeLibrary> libraries, UUID userId) {
-    Instant now = Instant.now();
     Set<UUID> libraryIds =
         libraries.stream().map(KnowledgeLibrary::getId).collect(Collectors.toSet());
-    Set<UUID> groupIds = membershipResolver.groupIdsForUser(userId);
-    Map<UUID, List<AssetGrant>> grantsByLibraryId =
-        grantRepository.findByLibraryIdIn(libraryIds).stream()
-            .collect(Collectors.groupingBy(AssetGrant::getLibraryId));
-
-    Map<UUID, AssetRole> roles = new HashMap<>();
+    Map<UUID, AssetRole> floors = new HashMap<>();
     for (KnowledgeLibrary library : libraries) {
-      AssetRole organizationWideFloor =
-          library.getVisibility() == LibraryVisibility.ORGANIZATION ? AssetRole.VIEWER : null;
-      AssetRole best =
-          bestRole(
-              grantsByLibraryId.getOrDefault(library.getId(), List.of()),
-              userId,
-              groupIds,
-              now,
-              organizationWideFloor);
-      // Every library here is assumed to already be in the caller's readableLibraryIds, which the
-      // formula guarantees is reachable only at VIEWER or above - see this method's own Javadoc.
-      roles.put(library.getId(), best != null ? best : AssetRole.VIEWER);
+      AssetRole floor = organizationWideFloor(library);
+      if (floor != null) {
+        floors.put(library.getId(), floor);
+      }
     }
-    return roles;
-  }
 
-  /**
-   * The single rights-resolution formula both {@link #effectiveRole} and {@link
-   * #effectiveRolesForReadableLibraries} apply, over two different grant sources (a single cached
-   * library's grants vs. a batch-loaded map across many), so the formula itself cannot drift
-   * between the two call sites. Highest role among {@code seed} (the caller's starting floor, e.g.
-   * organization-wide visibility, or {@code null} for none) and every non-expired grant in {@code
-   * grants} that reaches {@code userId} - directly, or via one of {@code groupIds}.
-   */
-  private static AssetRole bestRole(
-      List<AssetGrant> grants, UUID userId, Set<UUID> groupIds, Instant now, AssetRole seed) {
-    AssetRole best = seed;
-    for (AssetGrant grant : grants) {
-      if (grant.isExpired(now)) {
-        continue;
-      }
-      if (reaches(grant, userId, groupIds) && (best == null || grant.getRole().atLeast(best))) {
-        best = grant.getRole();
-      }
-    }
-    return best;
+    Map<UUID, AssetRole> roles =
+        assetAccessService.effectiveRoles(KnowledgeLibrary.ASSET_TYPE, libraryIds, userId, floors);
+    // Every library here is assumed to already be in the caller's readableLibraryIds, which the
+    // formula guarantees is reachable only at VIEWER or above - see this method's own Javadoc.
+    roles.replaceAll((id, role) -> role != null ? role : AssetRole.VIEWER);
+    return roles;
   }
 
   /**
@@ -335,15 +245,17 @@ public class LibraryAccessService {
    * rather than inline.
    */
   public void invalidateLibrary(UUID libraryId) {
-    grantsByLibrary.invalidate(libraryId);
+    assetAccessService.invalidateAsset(KnowledgeLibrary.ASSET_TYPE, libraryId);
   }
 
-  /** Whether {@code grant} reaches {@code userId} - directly, or via one of {@code groupIds}. */
-  private static boolean reaches(AssetGrant grant, UUID userId, Set<UUID> groupIds) {
-    return (grant.getSubjectType() == PermissionSubjectType.USER
-            && grant.getSubjectUserId().equals(userId))
-        || (grant.getSubjectType() == PermissionSubjectType.GROUP
-            && groupIds.contains(grant.getSubjectGroupId()));
+  private static AssetRole organizationWideFloor(KnowledgeLibrary library) {
+    return library.getVisibility() == LibraryVisibility.ORGANIZATION ? AssetRole.VIEWER : null;
+  }
+
+  private Set<UUID> organizationWideLibraryIds(UUID organizationId) {
+    return new HashSet<>(
+        libraryRepository.findIdsByOrganizationIdAndVisibility(
+            organizationId, LibraryVisibility.ORGANIZATION));
   }
 
   private static boolean atLeast(AssetRole role, AssetRole required) {

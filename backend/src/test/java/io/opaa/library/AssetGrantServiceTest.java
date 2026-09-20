@@ -12,7 +12,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.AssetRole;
-import io.opaa.api.types.GroupKind;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.api.types.SystemRole;
@@ -24,8 +23,10 @@ import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
-import io.opaa.group.Group;
-import io.opaa.group.GroupRepository;
+import io.opaa.permission.AssetGrant;
+import io.opaa.permission.AssetGrantRepository;
+import io.opaa.permission.GroupSubject;
+import io.opaa.permission.GroupSubjectDirectory;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -39,7 +40,7 @@ class AssetGrantServiceTest {
   private AssetGrantRepository grantRepository;
   private KnowledgeLibraryRepository libraryRepository;
   private UserRepository userRepository;
-  private GroupRepository groupRepository;
+  private GroupSubjectDirectory groupDirectory;
   private LibraryAccessService accessService;
   private AuditEventRecorder auditEventRecorder;
   private ApplicationEventPublisher eventPublisher;
@@ -57,7 +58,7 @@ class AssetGrantServiceTest {
     grantRepository = mock(AssetGrantRepository.class);
     libraryRepository = mock(KnowledgeLibraryRepository.class);
     userRepository = mock(UserRepository.class);
-    groupRepository = mock(GroupRepository.class);
+    groupDirectory = mock(GroupSubjectDirectory.class);
     accessService = mock(LibraryAccessService.class);
     auditEventRecorder = mock(AuditEventRecorder.class);
     eventPublisher = mock(ApplicationEventPublisher.class);
@@ -66,7 +67,7 @@ class AssetGrantServiceTest {
             grantRepository,
             libraryRepository,
             userRepository,
-            groupRepository,
+            groupDirectory,
             accessService,
             auditEventRecorder,
             eventPublisher);
@@ -108,8 +109,8 @@ class AssetGrantServiceTest {
     User subjectUser = new User("subject", "issuer", "subject@example.com", "Subject");
     subjectUser.setOrganizationId(organizationId);
     when(userRepository.findById(subjectId)).thenReturn(Optional.of(subjectUser));
-    when(grantRepository.findByLibraryIdAndSubjectTypeAndSubjectUserId(
-            libraryId, PermissionSubjectType.USER, subjectId))
+    when(grantRepository.findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectUserId(
+            KnowledgeLibrary.ASSET_TYPE, libraryId, PermissionSubjectType.USER, subjectId))
         .thenReturn(Optional.empty());
     when(grantRepository.save(any(AssetGrant.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
@@ -123,6 +124,61 @@ class AssetGrantServiceTest {
     // No active transaction synchronization in this unit test, so invalidation runs immediately -
     // see AssetGrantService#invalidateAfterCommit's fallback branch.
     verify(accessService).invalidateLibrary(libraryId);
+  }
+
+  /**
+   * One of the two application-side checks replacing {@code fk_asset_grants_library_organization}
+   * (#1811, see {@code changes/038-asset-grants-type-independent.yaml}): the grant takes its asset
+   * reference and its organization from the loaded library, never from the request, so a grant can
+   * still not name an asset of another organization.
+   */
+  @Test
+  void aNewGrantTakesAssetTypeAssetIdAndOrganizationFromTheLoadedLibrary() {
+    when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
+        .thenReturn(AssetRole.OWNER);
+    when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
+        .thenReturn(AssetRole.OWNER);
+    UUID subjectId = UUID.randomUUID();
+    User subjectUser = new User("subject", "issuer", "subject@example.com", "Subject");
+    subjectUser.setOrganizationId(organizationId);
+    when(userRepository.findById(subjectId)).thenReturn(Optional.of(subjectUser));
+    when(grantRepository.findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectUserId(
+            KnowledgeLibrary.ASSET_TYPE, libraryId, PermissionSubjectType.USER, subjectId))
+        .thenReturn(Optional.empty());
+    when(grantRepository.save(any(AssetGrant.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    AssetGrant saved =
+        grantService
+            .upsertGrant(
+                libraryId,
+                new AssetGrantUpsert(PermissionSubjectType.USER, subjectId, AssetRole.VIEWER),
+                managerCaller)
+            .grant();
+
+    assertThat(saved.getAssetType()).isEqualTo(KnowledgeLibrary.ASSET_TYPE);
+    assertThat(saved.getAssetId()).isEqualTo(libraryId);
+    assertThat(saved.getOrganizationId()).isEqualTo(library.getOrganizationId());
+  }
+
+  /**
+   * The other one: a grant is never written for an asset id nobody could load, so the dropped
+   * foreign key's existence guarantee holds on every write path that exists.
+   */
+  @Test
+  void upsertGrantOnAnUnknownLibraryIsNotFoundAndWritesNothing() {
+    UUID unknownLibraryId = UUID.randomUUID();
+    when(libraryRepository.findById(unknownLibraryId)).thenReturn(Optional.empty());
+
+    assertThatThrownBy(
+            () ->
+                grantService.upsertGrant(
+                    unknownLibraryId,
+                    new AssetGrantUpsert(
+                        PermissionSubjectType.USER, UUID.randomUUID(), AssetRole.VIEWER),
+                    managerCaller))
+        .isInstanceOf(NotFoundException.class);
+    verify(grantRepository, never()).save(any());
   }
 
   @Test
@@ -150,8 +206,8 @@ class AssetGrantServiceTest {
     when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
         .thenReturn(AssetRole.OWNER);
     UUID foreignGroupId = UUID.randomUUID();
-    Group foreignGroup = new Group(UUID.randomUUID(), GroupKind.AD_HOC, "Fremd", null, null, null);
-    when(groupRepository.findById(foreignGroupId)).thenReturn(Optional.of(foreignGroup));
+    GroupSubject foreignGroup = new GroupSubject(foreignGroupId, UUID.randomUUID(), "Fremd", false);
+    when(groupDirectory.find(foreignGroupId)).thenReturn(Optional.of(foreignGroup));
 
     AssetGrantUpsert request =
         new AssetGrantUpsert(PermissionSubjectType.GROUP, foreignGroupId, AssetRole.VIEWER);
@@ -171,9 +227,16 @@ class AssetGrantServiceTest {
     subjectUser.setOrganizationId(organizationId);
     when(userRepository.findById(subjectId)).thenReturn(Optional.of(subjectUser));
     AssetGrant existing =
-        AssetGrant.forUser(libraryId, organizationId, subjectId, AssetRole.VIEWER, null, managerId);
-    when(grantRepository.findByLibraryIdAndSubjectTypeAndSubjectUserId(
-            libraryId, PermissionSubjectType.USER, subjectId))
+        AssetGrant.forUser(
+            KnowledgeLibrary.ASSET_TYPE,
+            libraryId,
+            organizationId,
+            subjectId,
+            AssetRole.VIEWER,
+            null,
+            managerId);
+    when(grantRepository.findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectUserId(
+            KnowledgeLibrary.ASSET_TYPE, libraryId, PermissionSubjectType.USER, subjectId))
         .thenReturn(Optional.of(existing));
     when(grantRepository.save(any(AssetGrant.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
@@ -195,7 +258,13 @@ class AssetGrantServiceTest {
     UUID grantId = UUID.randomUUID();
     AssetGrant grant =
         AssetGrant.forUser(
-            libraryId, organizationId, UUID.randomUUID(), AssetRole.VIEWER, null, managerId);
+            KnowledgeLibrary.ASSET_TYPE,
+            libraryId,
+            organizationId,
+            UUID.randomUUID(),
+            AssetRole.VIEWER,
+            null,
+            managerId);
     when(grantRepository.findById(grantId)).thenReturn(Optional.of(grant));
 
     grantService.revokeGrant(libraryId, grantId, managerCaller);
@@ -213,6 +282,7 @@ class AssetGrantServiceTest {
     UUID grantId = UUID.randomUUID();
     AssetGrant grantOnAnotherLibrary =
         AssetGrant.forUser(
+            KnowledgeLibrary.ASSET_TYPE,
             UUID.randomUUID(),
             organizationId,
             UUID.randomUUID(),
@@ -287,13 +357,12 @@ class AssetGrantServiceTest {
         .thenReturn(AssetRole.OWNER);
     when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
         .thenReturn(AssetRole.OWNER);
-    Group dissolvedGroup =
-        new Group(organizationId, GroupKind.AD_HOC, "Aufgeloest", null, null, null);
-    dissolvedGroup.dissolve(Instant.now());
-    when(groupRepository.findById(dissolvedGroup.getId())).thenReturn(Optional.of(dissolvedGroup));
+    GroupSubject dissolvedGroup =
+        new GroupSubject(UUID.randomUUID(), organizationId, "Aufgeloest", true);
+    when(groupDirectory.find(dissolvedGroup.id())).thenReturn(Optional.of(dissolvedGroup));
 
     AssetGrantUpsert request =
-        new AssetGrantUpsert(PermissionSubjectType.GROUP, dissolvedGroup.getId(), AssetRole.VIEWER);
+        new AssetGrantUpsert(PermissionSubjectType.GROUP, dissolvedGroup.id(), AssetRole.VIEWER);
 
     assertThatThrownBy(() -> grantService.upsertGrant(libraryId, request, managerCaller))
         .isInstanceOf(ValidationException.class)
@@ -322,12 +391,22 @@ class AssetGrantServiceTest {
     subjectUser.setOrganizationId(organizationId);
     when(userRepository.findById(subjectId)).thenReturn(Optional.of(subjectUser));
     AssetGrant onlyOwnerGrant =
-        AssetGrant.forUser(libraryId, organizationId, subjectId, AssetRole.OWNER, null, managerId);
-    when(grantRepository.findByLibraryIdAndSubjectTypeAndSubjectUserId(
-            libraryId, PermissionSubjectType.USER, subjectId))
+        AssetGrant.forUser(
+            KnowledgeLibrary.ASSET_TYPE,
+            libraryId,
+            organizationId,
+            subjectId,
+            AssetRole.OWNER,
+            null,
+            managerId);
+    when(grantRepository.findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectUserId(
+            KnowledgeLibrary.ASSET_TYPE, libraryId, PermissionSubjectType.USER, subjectId))
         .thenReturn(Optional.of(onlyOwnerGrant));
     when(grantRepository.countOtherActiveOwnerGrants(
-            eq(libraryId), eq(onlyOwnerGrant.getId()), any()))
+            eq(KnowledgeLibrary.ASSET_TYPE.value()),
+            eq(libraryId),
+            eq(onlyOwnerGrant.getId()),
+            any()))
         .thenReturn(0L);
 
     AssetGrantUpsert request =
@@ -354,10 +433,20 @@ class AssetGrantServiceTest {
         .thenReturn(AssetRole.OWNER);
     UUID grantId = UUID.randomUUID();
     AssetGrant onlyOwnerGrant =
-        AssetGrant.forUser(libraryId, organizationId, managerId, AssetRole.OWNER, null, managerId);
+        AssetGrant.forUser(
+            KnowledgeLibrary.ASSET_TYPE,
+            libraryId,
+            organizationId,
+            managerId,
+            AssetRole.OWNER,
+            null,
+            managerId);
     when(grantRepository.findById(grantId)).thenReturn(Optional.of(onlyOwnerGrant));
     when(grantRepository.countOtherActiveOwnerGrants(
-            eq(libraryId), eq(onlyOwnerGrant.getId()), any()))
+            eq(KnowledgeLibrary.ASSET_TYPE.value()),
+            eq(libraryId),
+            eq(onlyOwnerGrant.getId()),
+            any()))
         .thenReturn(0L);
 
     assertThatThrownBy(() -> grantService.revokeGrant(libraryId, grantId, managerCaller))
@@ -381,13 +470,23 @@ class AssetGrantServiceTest {
         .thenReturn(AssetRole.OWNER);
     UUID grantId = UUID.randomUUID();
     AssetGrant grantToRemove =
-        AssetGrant.forUser(libraryId, organizationId, managerId, AssetRole.OWNER, null, managerId);
+        AssetGrant.forUser(
+            KnowledgeLibrary.ASSET_TYPE,
+            libraryId,
+            organizationId,
+            managerId,
+            AssetRole.OWNER,
+            null,
+            managerId);
     when(grantRepository.findById(grantId)).thenReturn(Optional.of(grantToRemove));
     // Keyed on grantToRemove's own id (not the lookup id grantId) - AssetGrantService passes
     // grant.getId() to the guard, and AssetGrant.forUser mints its own random id independent of
     // grantId.
     when(grantRepository.countOtherActiveOwnerGrants(
-            eq(libraryId), eq(grantToRemove.getId()), any()))
+            eq(KnowledgeLibrary.ASSET_TYPE.value()),
+            eq(libraryId),
+            eq(grantToRemove.getId()),
+            any()))
         .thenReturn(1L);
 
     grantService.revokeGrant(libraryId, grantId, managerCaller);
@@ -410,14 +509,23 @@ class AssetGrantServiceTest {
     UUID grantId = UUID.randomUUID();
     AssetGrant ownerGrantToRemove =
         AssetGrant.forUser(
-            libraryId, organizationId, UUID.randomUUID(), AssetRole.OWNER, null, managerId);
+            KnowledgeLibrary.ASSET_TYPE,
+            libraryId,
+            organizationId,
+            UUID.randomUUID(),
+            AssetRole.OWNER,
+            null,
+            managerId);
     when(grantRepository.findById(grantId)).thenReturn(Optional.of(ownerGrantToRemove));
     // Deliberately stubbed even though the test asserts it is never called: proves the rejection
     // below is not an accidental side effect of an unstubbed count defaulting to 0 and the
     // last-active-OWNER guard firing for the wrong reason - a second active OWNER grant genuinely
     // exists, so that guard alone would allow the removal.
     when(grantRepository.countOtherActiveOwnerGrants(
-            eq(libraryId), eq(ownerGrantToRemove.getId()), any()))
+            eq(KnowledgeLibrary.ASSET_TYPE.value()),
+            eq(libraryId),
+            eq(ownerGrantToRemove.getId()),
+            any()))
         .thenReturn(1L);
 
     assertThatThrownBy(() -> grantService.revokeGrant(libraryId, grantId, managerCaller))
@@ -434,7 +542,7 @@ class AssetGrantServiceTest {
     // The role-escalation guard must short-circuit before the last-active-OWNER count is even
     // read - a MANAGER is refused for the more fundamental reason regardless of how many other
     // OWNER grants exist.
-    verify(grantRepository, never()).countOtherActiveOwnerGrants(any(), any(), any());
+    verify(grantRepository, never()).countOtherActiveOwnerGrants(any(), any(), any(), any());
   }
 
   @Test
@@ -451,9 +559,16 @@ class AssetGrantServiceTest {
     subjectUser.setOrganizationId(organizationId);
     when(userRepository.findById(subjectId)).thenReturn(Optional.of(subjectUser));
     AssetGrant existingOwnerGrant =
-        AssetGrant.forUser(libraryId, organizationId, subjectId, AssetRole.OWNER, null, managerId);
-    when(grantRepository.findByLibraryIdAndSubjectTypeAndSubjectUserId(
-            libraryId, PermissionSubjectType.USER, subjectId))
+        AssetGrant.forUser(
+            KnowledgeLibrary.ASSET_TYPE,
+            libraryId,
+            organizationId,
+            subjectId,
+            AssetRole.OWNER,
+            null,
+            managerId);
+    when(grantRepository.findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectUserId(
+            KnowledgeLibrary.ASSET_TYPE, libraryId, PermissionSubjectType.USER, subjectId))
         .thenReturn(Optional.of(existingOwnerGrant));
 
     AssetGrantUpsert request =
@@ -483,12 +598,22 @@ class AssetGrantServiceTest {
     when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
         .thenReturn(AssetRole.OWNER);
     AssetGrant onlyOwnerGrant =
-        AssetGrant.forUser(libraryId, organizationId, managerId, AssetRole.OWNER, null, managerId);
-    when(grantRepository.findByLibraryIdAndSubjectTypeAndSubjectUserId(
-            libraryId, PermissionSubjectType.USER, managerId))
+        AssetGrant.forUser(
+            KnowledgeLibrary.ASSET_TYPE,
+            libraryId,
+            organizationId,
+            managerId,
+            AssetRole.OWNER,
+            null,
+            managerId);
+    when(grantRepository.findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectUserId(
+            KnowledgeLibrary.ASSET_TYPE, libraryId, PermissionSubjectType.USER, managerId))
         .thenReturn(Optional.of(onlyOwnerGrant));
     when(grantRepository.countOtherActiveOwnerGrants(
-            eq(libraryId), eq(onlyOwnerGrant.getId()), any()))
+            eq(KnowledgeLibrary.ASSET_TYPE.value()),
+            eq(libraryId),
+            eq(onlyOwnerGrant.getId()),
+            any()))
         .thenReturn(0L);
 
     AssetGrantUpsert request =
@@ -509,9 +634,16 @@ class AssetGrantServiceTest {
     when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
         .thenReturn(AssetRole.OWNER);
     AssetGrant onlyOwnerGrant =
-        AssetGrant.forUser(libraryId, organizationId, managerId, AssetRole.OWNER, null, managerId);
-    when(grantRepository.findByLibraryIdAndSubjectTypeAndSubjectUserId(
-            libraryId, PermissionSubjectType.USER, managerId))
+        AssetGrant.forUser(
+            KnowledgeLibrary.ASSET_TYPE,
+            libraryId,
+            organizationId,
+            managerId,
+            AssetRole.OWNER,
+            null,
+            managerId);
+    when(grantRepository.findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectUserId(
+            KnowledgeLibrary.ASSET_TYPE, libraryId, PermissionSubjectType.USER, managerId))
         .thenReturn(Optional.of(onlyOwnerGrant));
     when(grantRepository.save(any(AssetGrant.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
@@ -521,7 +653,7 @@ class AssetGrantServiceTest {
     var response = grantService.upsertGrant(libraryId, request, managerCaller);
 
     assertThat(response.grant().getRole()).isEqualTo(AssetRole.OWNER);
-    verify(grantRepository, never()).countOtherActiveOwnerGrants(any(), any(), any());
+    verify(grantRepository, never()).countOtherActiveOwnerGrants(any(), any(), any(), any());
   }
 
   // #423 code review, finding 1: subjectDisplayName/grantedByDisplayName must be resolved by the
@@ -541,13 +673,15 @@ class AssetGrantServiceTest {
     // stub below matches entities by their own id, same as the real JpaRepository would.
     AssetGrant grant =
         AssetGrant.forUser(
+            KnowledgeLibrary.ASSET_TYPE,
             libraryId,
             organizationId,
             subjectUser.getId(),
             AssetRole.VIEWER,
             null,
             granter.getId());
-    when(grantRepository.findByLibraryId(libraryId)).thenReturn(List.of(grant));
+    when(grantRepository.findByAssetTypeAndAssetId(KnowledgeLibrary.ASSET_TYPE, libraryId))
+        .thenReturn(List.of(grant));
     when(userRepository.findAllById(any())).thenReturn(List.of(subjectUser, granter));
 
     var responses = grantService.listGrants(libraryId, managerCaller);
@@ -561,12 +695,19 @@ class AssetGrantServiceTest {
   void listGrantsResolvesGroupSubjectDisplayName() {
     when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
         .thenReturn(AssetRole.OWNER);
-    Group group = new Group(organizationId, GroupKind.AD_HOC, "Referat 50", null, null, null);
+    UUID groupId = UUID.randomUUID();
     AssetGrant grant =
         AssetGrant.forGroup(
-            libraryId, organizationId, group.getId(), AssetRole.VIEWER, null, managerId);
-    when(grantRepository.findByLibraryId(libraryId)).thenReturn(List.of(grant));
-    when(groupRepository.findAllById(any())).thenReturn(List.of(group));
+            KnowledgeLibrary.ASSET_TYPE,
+            libraryId,
+            organizationId,
+            groupId,
+            AssetRole.VIEWER,
+            null,
+            managerId);
+    when(grantRepository.findByAssetTypeAndAssetId(KnowledgeLibrary.ASSET_TYPE, libraryId))
+        .thenReturn(List.of(grant));
+    when(groupDirectory.namesById(any())).thenReturn(java.util.Map.of(groupId, "Referat 50"));
 
     var responses = grantService.listGrants(libraryId, managerCaller);
 
@@ -587,8 +728,15 @@ class AssetGrantServiceTest {
     subjectUser.setOrganizationId(organizationId);
     AssetGrant grant =
         AssetGrant.forUser(
-            libraryId, organizationId, subjectUser.getId(), AssetRole.VIEWER, null, null);
-    when(grantRepository.findByLibraryId(libraryId)).thenReturn(List.of(grant));
+            KnowledgeLibrary.ASSET_TYPE,
+            libraryId,
+            organizationId,
+            subjectUser.getId(),
+            AssetRole.VIEWER,
+            null,
+            null);
+    when(grantRepository.findByAssetTypeAndAssetId(KnowledgeLibrary.ASSET_TYPE, libraryId))
+        .thenReturn(List.of(grant));
     when(userRepository.findAllById(any())).thenReturn(List.of(subjectUser));
 
     var responses = grantService.listGrants(libraryId, managerCaller);
@@ -603,8 +751,15 @@ class AssetGrantServiceTest {
         .thenReturn(AssetRole.OWNER);
     AssetGrant grant =
         AssetGrant.forUser(
-            libraryId, organizationId, UUID.randomUUID(), AssetRole.VIEWER, null, null);
-    when(grantRepository.findByLibraryId(libraryId)).thenReturn(List.of(grant));
+            KnowledgeLibrary.ASSET_TYPE,
+            libraryId,
+            organizationId,
+            UUID.randomUUID(),
+            AssetRole.VIEWER,
+            null,
+            null);
+    when(grantRepository.findByAssetTypeAndAssetId(KnowledgeLibrary.ASSET_TYPE, libraryId))
+        .thenReturn(List.of(grant));
     // Deliberately not stubbing userRepository.findAllById - a Mockito mock's default answer for
     // an unstubbed List-returning method is an empty list, exercising the "subject deleted" branch.
 

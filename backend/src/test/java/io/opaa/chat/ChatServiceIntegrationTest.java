@@ -129,9 +129,9 @@ class ChatServiceIntegrationTest {
     // #202: ownership alone does not grant read access - LibraryAccessService#readableLibraryIds
     // only ever consults asset_grants (plus group grants and ORGANIZATION visibility).
     jdbcTemplate.update(
-        "INSERT INTO asset_grants (id, library_id, organization_id, subject_type,"
+        "INSERT INTO asset_grants (id, asset_type, asset_id, organization_id, subject_type,"
             + " subject_user_id, role, created_at, updated_at)"
-            + " VALUES (?, ?, ?, 'USER', ?, 'OWNER', now(), now())",
+            + " VALUES (?, 'KNOWLEDGE_LIBRARY', ?, ?, 'USER', ?, 'OWNER', now(), now())",
         UUID.randomUUID(),
         id,
         organizationA,

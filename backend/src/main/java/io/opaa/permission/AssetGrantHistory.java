@@ -1,8 +1,9 @@
-package io.opaa.library;
+package io.opaa.permission;
 
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.PermissionSubjectType;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -31,8 +32,12 @@ public class AssetGrantHistory {
 
   @Id private UUID id;
 
-  @Column(name = "library_id", nullable = false)
-  private UUID libraryId;
+  @Convert(converter = AssetTypeConverter.class)
+  @Column(name = "asset_type", nullable = false, length = 30)
+  private AssetType assetType;
+
+  @Column(name = "asset_id", nullable = false)
+  private UUID assetId;
 
   @Column(name = "organization_id", nullable = false)
   private UUID organizationId;
@@ -73,7 +78,8 @@ public class AssetGrantHistory {
   protected AssetGrantHistory() {}
 
   private AssetGrantHistory(
-      UUID libraryId,
+      AssetType assetType,
+      UUID assetId,
       UUID organizationId,
       PermissionSubjectType subjectType,
       UUID subjectUserId,
@@ -84,7 +90,8 @@ public class AssetGrantHistory {
       UUID actorUserId,
       Instant validFrom) {
     this.id = UUID.randomUUID();
-    this.libraryId = libraryId;
+    this.assetType = assetType;
+    this.assetId = assetId;
     this.organizationId = organizationId;
     this.subjectType = subjectType;
     this.subjectUserId = subjectUserId;
@@ -100,7 +107,8 @@ public class AssetGrantHistory {
   static AssetGrantHistory open(
       AssetGrant grant, AssetGrantHistoryCause cause, UUID actorUserId, Instant now) {
     return new AssetGrantHistory(
-        grant.getLibraryId(),
+        grant.getAssetType(),
+        grant.getAssetId(),
         grant.getOrganizationId(),
         grant.getSubjectType(),
         grant.getSubjectUserId(),
@@ -120,7 +128,7 @@ public class AssetGrantHistory {
    * from the closing of the previous {@link AssetGrantHistoryCause#GRANTED}/ {@link
    * AssetGrantHistoryCause#ROLE_CHANGED} interval (whose own cause must stay unchanged - it really
    * was granted or role-changed at the time). Never selected by {@link
-   * PermissionHistoryService#readableLibraryIdsAsOf} 's {@code validFrom <= asOf < validTo} check,
+   * PermissionHistoryService#readableAssetIdsAsOf}'s {@code validFrom <= asOf < validTo} check,
    * since that is never true for a zero-length interval.
    */
   static AssetGrantHistory terminal(
@@ -143,8 +151,12 @@ public class AssetGrantHistory {
     return id;
   }
 
-  public UUID getLibraryId() {
-    return libraryId;
+  public AssetType getAssetType() {
+    return assetType;
+  }
+
+  public UUID getAssetId() {
+    return assetId;
   }
 
   public UUID getOrganizationId() {

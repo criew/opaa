@@ -14,6 +14,7 @@ import io.opaa.auth.oidc.OidcProvider;
 import io.opaa.common.ValidationException;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
+import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.test.OpaaIntegrationTest;
 import java.util.List;
 import java.util.Map;

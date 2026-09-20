@@ -30,13 +30,13 @@ import io.opaa.indexing.metadata.LibraryMetadataFieldInput;
 import io.opaa.indexing.metadata.LibraryMetadataFieldService;
 import io.opaa.indexing.metadata.MetadataFilter;
 import io.opaa.indexing.metadata.MetadataValueInput;
-import io.opaa.library.AssetGrant;
-import io.opaa.library.AssetGrantRepository;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
 import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.organization.Organization;
+import io.opaa.permission.AssetGrant;
+import io.opaa.permission.AssetGrantRepository;
 import io.opaa.query.retrieval.RerankAvailability;
 import io.opaa.query.retrieval.RetrievalContext;
 import io.opaa.query.retrieval.RetrievalNote;
@@ -560,7 +560,7 @@ class MetadataFilterSearchIntegrationTest {
         "DELETE FROM documents WHERE parent_document_id IS NOT NULL AND library_id IN "
             + OWN_LIBRARIES);
     jdbcTemplate.update("DELETE FROM documents WHERE library_id IN " + OWN_LIBRARIES);
-    jdbcTemplate.update("DELETE FROM asset_grants WHERE library_id IN " + OWN_LIBRARIES);
+    jdbcTemplate.update("DELETE FROM asset_grants WHERE asset_id IN " + OWN_LIBRARIES);
     // History rows reference users with RESTRICT - they go before the users themselves.
     jdbcTemplate.update(
         "DELETE FROM asset_grant_history WHERE subject_user_id IN (SELECT id FROM users WHERE"
@@ -606,7 +606,13 @@ class MetadataFilterSearchIntegrationTest {
   private void grant(KnowledgeLibrary target, CurrentUser subject, AssetRole role) {
     grantRepository.save(
         AssetGrant.forUser(
-            target.getId(), Organization.DEFAULT_ID, subject.id(), role, null, owner.id()));
+            KnowledgeLibrary.ASSET_TYPE,
+            target.getId(),
+            Organization.DEFAULT_ID,
+            subject.id(),
+            role,
+            null,
+            owner.id()));
     accessService.invalidateLibrary(target.getId());
   }
 

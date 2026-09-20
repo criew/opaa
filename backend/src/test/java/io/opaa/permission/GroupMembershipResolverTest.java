@@ -1,4 +1,4 @@
-package io.opaa.group;
+package io.opaa.permission;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.times;
@@ -19,7 +19,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class GroupMembershipResolverTest {
 
-  @Mock private GroupMembershipRepository membershipRepository;
+  @Mock private GroupMembershipSource membershipSource;
   @Mock private UserRepository userRepository;
 
   private GroupMembershipResolver resolver;
@@ -28,31 +28,31 @@ class GroupMembershipResolverTest {
   void setUp() {
     resolver =
         new GroupMembershipResolver(
-            membershipRepository,
+            membershipSource,
             userRepository,
             new org.springframework.beans.factory.support.StaticListableBeanFactory()
-                .getBeanProvider(io.opaa.group.GroupMembershipChangeListener.class));
+                .getBeanProvider(GroupMembershipChangeListener.class));
   }
 
   @Test
   void groupIdsForUserIsCachedAcrossRepeatedCalls() {
     UUID user = UUID.randomUUID();
     UUID group = UUID.randomUUID();
-    when(membershipRepository.findGroupIdsByUserId(user)).thenReturn(Set.of(group));
+    when(membershipSource.findGroupIdsByUserId(user)).thenReturn(Set.of(group));
 
     Set<UUID> first = resolver.groupIdsForUser(user);
     Set<UUID> second = resolver.groupIdsForUser(user);
 
     assertThat(first).containsExactly(group);
     assertThat(second).containsExactly(group);
-    verify(membershipRepository, times(1)).findGroupIdsByUserId(user);
+    verify(membershipSource, times(1)).findGroupIdsByUserId(user);
   }
 
   @Test
   void invalidateUserForcesTheNextCallToHitTheRepositoryAgain() {
     UUID user = UUID.randomUUID();
     UUID group = UUID.randomUUID();
-    when(membershipRepository.findGroupIdsByUserId(user)).thenReturn(Set.of(group), Set.of());
+    when(membershipSource.findGroupIdsByUserId(user)).thenReturn(Set.of(group), Set.of());
 
     Set<UUID> before = resolver.groupIdsForUser(user);
     resolver.invalidateUser(user);
@@ -60,15 +60,15 @@ class GroupMembershipResolverTest {
 
     assertThat(before).containsExactly(group);
     assertThat(after).isEmpty();
-    verify(membershipRepository, times(2)).findGroupIdsByUserId(user);
+    verify(membershipSource, times(2)).findGroupIdsByUserId(user);
   }
 
   @Test
   void invalidateUsersEvictsMultipleUsersAtOnce() {
     UUID userOne = UUID.randomUUID();
     UUID userTwo = UUID.randomUUID();
-    when(membershipRepository.findGroupIdsByUserId(userOne)).thenReturn(Set.of());
-    when(membershipRepository.findGroupIdsByUserId(userTwo)).thenReturn(Set.of());
+    when(membershipSource.findGroupIdsByUserId(userOne)).thenReturn(Set.of());
+    when(membershipSource.findGroupIdsByUserId(userTwo)).thenReturn(Set.of());
     resolver.groupIdsForUser(userOne);
     resolver.groupIdsForUser(userTwo);
 
@@ -76,8 +76,8 @@ class GroupMembershipResolverTest {
     resolver.groupIdsForUser(userOne);
     resolver.groupIdsForUser(userTwo);
 
-    verify(membershipRepository, times(2)).findGroupIdsByUserId(userOne);
-    verify(membershipRepository, times(2)).findGroupIdsByUserId(userTwo);
+    verify(membershipSource, times(2)).findGroupIdsByUserId(userOne);
+    verify(membershipSource, times(2)).findGroupIdsByUserId(userTwo);
   }
 
   @Test
@@ -128,7 +128,7 @@ class GroupMembershipResolverTest {
     UUID organizationId = UUID.randomUUID();
     UUID memberOne = UUID.randomUUID();
     UUID memberTwo = UUID.randomUUID();
-    when(membershipRepository.findUserIdsByGroupIdAndOrganizationId(groupId, organizationId))
+    when(membershipSource.findUserIdsByGroupIdAndOrganizationId(groupId, organizationId))
         .thenReturn(Set.of(memberOne, memberTwo));
 
     Set<UUID> resolved = resolver.resolveUserIds(PermissionSubject.group(groupId, organizationId));
@@ -143,7 +143,7 @@ class GroupMembershipResolverTest {
     // The repository itself filters by organization; returning an empty set for the wrong
     // organizationId here simulates that and shows resolveUserIds passes the subject's
     // organizationId through rather than trusting the group id alone.
-    when(membershipRepository.findUserIdsByGroupIdAndOrganizationId(groupId, otherOrganizationId))
+    when(membershipSource.findUserIdsByGroupIdAndOrganizationId(groupId, otherOrganizationId))
         .thenReturn(Set.of());
 
     Set<UUID> resolved =

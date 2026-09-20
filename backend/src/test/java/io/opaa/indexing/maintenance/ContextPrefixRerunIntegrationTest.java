@@ -26,12 +26,12 @@ import io.opaa.indexing.metadata.MetadataChangeImpact;
 import io.opaa.indexing.metadata.MetadataChangeKind;
 import io.opaa.indexing.metadata.MetadataFieldRef;
 import io.opaa.indexing.metadata.MetadataValueInput;
-import io.opaa.library.AssetGrant;
-import io.opaa.library.AssetGrantRepository;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
 import io.opaa.organization.Organization;
+import io.opaa.permission.AssetGrant;
+import io.opaa.permission.AssetGrantRepository;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OpaaTestDirectory;
 import io.opaa.test.OwnLibraryFixtures;
@@ -78,6 +78,7 @@ class ContextPrefixRerunIntegrationTest {
     library = library();
     grantRepository.save(
         AssetGrant.forUser(
+            KnowledgeLibrary.ASSET_TYPE,
             library.getId(),
             Organization.DEFAULT_ID,
             owner.id(),

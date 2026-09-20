@@ -1,4 +1,4 @@
-package io.opaa.library;
+package io.opaa.permission;
 
 import java.time.Instant;
 import java.time.InstantSource;
@@ -7,11 +7,13 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.springframework.stereotype.Component;
 
 /**
- * Strictly monotonic source of the interval boundaries {@link PermissionHistoryService} records:
- * every call returns an instant strictly greater than the one returned before, at the microsecond
- * resolution {@code timestamptz} stores - so two boundaries that differ here still differ once read
- * back from the database. A wall-clock reading that is not greater than the last boundary is
- * replaced by that boundary plus one microsecond.
+ * Strictly monotonic source of the interval boundaries every permission-history writer records
+ * ({@link PermissionHistoryService} and {@code io.opaa.library.LibraryVisibilityHistoryService},
+ * which share this one bean so the contract holds across all three history tables): every call
+ * returns an instant strictly greater than the one returned before, at the microsecond resolution
+ * {@code timestamptz} stores - so two boundaries that differ here still differ once read back from
+ * the database. A wall-clock reading that is not greater than the last boundary is replaced by that
+ * boundary plus one microsecond.
  *
  * <p>Monotonicity is unconditional, absolute accuracy is not. Within one coarse clock tick the
  * result runs one microsecond per call ahead of the wall clock and is caught up by the next tick.
@@ -24,12 +26,12 @@ import org.springframework.stereotype.Component;
  * records the decision and what a multi-instance setup would need instead.
  */
 @Component
-class PermissionHistoryClock {
+public class PermissionHistoryClock {
 
   private final InstantSource wallClock;
   private final AtomicReference<Instant> lastBoundary = new AtomicReference<>(Instant.EPOCH);
 
-  PermissionHistoryClock() {
+  public PermissionHistoryClock() {
     this(InstantSource.system());
   }
 
@@ -37,11 +39,11 @@ class PermissionHistoryClock {
    * Spring instantiates the no-arg constructor; this one takes a standing or stepping wall clock,
    * the only way to exercise "two changes within one clock tick" without a wait or a retry loop.
    */
-  PermissionHistoryClock(InstantSource wallClock) {
+  public PermissionHistoryClock(InstantSource wallClock) {
     this.wallClock = wallClock;
   }
 
-  Instant nextBoundary() {
+  public Instant nextBoundary() {
     return lastBoundary.updateAndGet(
         previous -> {
           Instant reading = wallClock.instant().truncatedTo(ChronoUnit.MICROS);

@@ -2,6 +2,8 @@ package io.opaa.library;
 
 import io.opaa.api.types.ExternalAccessState;
 import io.opaa.api.types.LibraryVisibility;
+import io.opaa.permission.AssetGrantHistory;
+import io.opaa.permission.PermissionHistoryService;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -94,10 +96,11 @@ public class LibraryVisibilityHistory {
   /**
    * A zero-length marker interval ({@code validFrom == validTo == at}) recording that {@code
    * library}'s visibility interval ended with {@code cause} - see {@code
-   * io.opaa.library.AssetGrantHistory#terminal} for why a closing-only change needs its own marker
-   * row rather than relying on the closed interval alone: the closed interval's own cause must stay
-   * whatever it originally was ({@code CREATED} or {@code VISIBILITY_CHANGED}), and the closing
-   * event is a separate, actor-bearing fact #238's acceptance criteria require to be recorded.
+   * io.opaa.permission.AssetGrantHistory#terminal} for why a closing-only change needs its own
+   * marker row rather than relying on the closed interval alone: the closed interval's own cause
+   * must stay whatever it originally was ({@code CREATED} or {@code VISIBILITY_CHANGED}), and the
+   * closing event is a separate, actor-bearing fact #238's acceptance criteria require to be
+   * recorded.
    */
   static LibraryVisibilityHistory terminal(
       KnowledgeLibrary library, LibraryVisibilityHistoryCause cause, UUID actorUserId, Instant at) {

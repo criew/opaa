@@ -23,14 +23,15 @@ import io.opaa.auth.UserRepository;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.externalaccess.ExternalAccessSettings;
 import io.opaa.externalaccess.ExternalAccessSettingsService;
-import io.opaa.library.AssetGrant;
-import io.opaa.library.AssetGrantRepository;
+import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.library.LibraryAccessService;
 import io.opaa.library.LibraryCreation;
 import io.opaa.library.LibraryExternalAccessService;
 import io.opaa.library.LibraryExternalAccessTokenCounter;
+import io.opaa.permission.AssetGrant;
+import io.opaa.permission.AssetGrantRepository;
 import io.opaa.security.LocalAuthKeyService;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OwnLibraryFixtures;
@@ -549,7 +550,7 @@ class ExternalAccessTokenIntegrationTest {
     UUID tokenId = issueTokenId();
     assertThat(scope.effectiveLibraryIds(tokenId)).containsExactly(libraryId);
 
-    grants.deleteAll(grants.findByLibraryId(libraryId));
+    grants.deleteAll(grants.findByAssetTypeAndAssetId(KnowledgeLibrary.ASSET_TYPE, libraryId));
     libraryAccess.invalidateLibrary(libraryId);
 
     assertThat(scope.effectiveLibraryIds(tokenId)).isEmpty();
@@ -616,6 +617,7 @@ class ExternalAccessTokenIntegrationTest {
     // Granted, readable and not released: it is not part of the effective view.
     grants.save(
         AssetGrant.forUser(
+            KnowledgeLibrary.ASSET_TYPE,
             foreignLibraryId,
             administrator.getOrganizationId(),
             owner.getId(),
@@ -670,6 +672,7 @@ class ExternalAccessTokenIntegrationTest {
   void aGrantMakesAForeignLibrarySelectable() throws Exception {
     grants.save(
         AssetGrant.forUser(
+            KnowledgeLibrary.ASSET_TYPE,
             foreignLibraryId,
             administrator.getOrganizationId(),
             owner.getId(),

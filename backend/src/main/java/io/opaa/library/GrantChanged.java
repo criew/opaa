@@ -1,6 +1,8 @@
 package io.opaa.library;
 
 import io.opaa.api.types.AuditEventType;
+import io.opaa.permission.AssetGrant;
+import io.opaa.permission.PermissionHistoryService;
 import java.util.Map;
 import java.util.UUID;
 

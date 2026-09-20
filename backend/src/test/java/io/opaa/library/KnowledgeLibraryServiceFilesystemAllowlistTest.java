@@ -14,8 +14,6 @@ import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.ValidationException;
-import io.opaa.group.GroupMembershipResolver;
-import io.opaa.group.GroupRepository;
 import io.opaa.indexing.chunk.EmbeddingRateEstimator;
 import io.opaa.indexing.chunk.FullTextChunkStore;
 import io.opaa.indexing.chunk.VectorChunkStore;
@@ -28,6 +26,10 @@ import io.opaa.indexing.source.filesystem.FilesystemPathAllowlist;
 import io.opaa.indexing.source.rss.RssFeedStateRepository;
 import io.opaa.indexing.source.s3.S3ClientFactory;
 import io.opaa.indexing.source.s3.S3Properties;
+import io.opaa.permission.AssetGrantRepository;
+import io.opaa.permission.GroupMembershipResolver;
+import io.opaa.permission.GroupSubjectDirectory;
+import io.opaa.permission.PermissionHistoryService;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import java.time.Clock;
 import java.util.Optional;
@@ -57,7 +59,7 @@ class KnowledgeLibraryServiceFilesystemAllowlistTest {
     KnowledgeLibraryRepository libraryRepository = mock(KnowledgeLibraryRepository.class);
     when(libraryRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
     UserRepository userRepository = mock(UserRepository.class);
-    GroupRepository groupRepository = mock(GroupRepository.class);
+    GroupSubjectDirectory groupDirectory = mock(GroupSubjectDirectory.class);
     GroupMembershipResolver membershipResolver = mock(GroupMembershipResolver.class);
     DocumentRepository documentRepository = mock(DocumentRepository.class);
     AssetGrantRepository grantRepository = mock(AssetGrantRepository.class);
@@ -65,6 +67,8 @@ class KnowledgeLibraryServiceFilesystemAllowlistTest {
     AssetGrantService grantService = mock(AssetGrantService.class);
     LibraryAccessService accessService = mock(LibraryAccessService.class);
     PermissionHistoryService permissionHistoryService = mock(PermissionHistoryService.class);
+    LibraryVisibilityHistoryService visibilityHistoryService =
+        mock(LibraryVisibilityHistoryService.class);
     AuditEventRecorder auditEventRecorder = mock(AuditEventRecorder.class);
     VectorChunkStore vectorChunkStore =
         new VectorChunkStore(
@@ -89,13 +93,14 @@ class KnowledgeLibraryServiceFilesystemAllowlistTest {
         new KnowledgeLibraryService(
             libraryRepository,
             userRepository,
-            groupRepository,
+            groupDirectory,
             membershipResolver,
             documentRepository,
             grantRepository,
             grantService,
             accessService,
             permissionHistoryService,
+            visibilityHistoryService,
             auditEventRecorder,
             vectorChunkStore,
             filesystemAllowlist,

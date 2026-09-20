@@ -348,7 +348,8 @@ tasks.named("check") {
 val testShards = mapOf(
     "api" to listOf(
         "io.opaa.api.*", "io.opaa.library.*", "io.opaa.auth.*", "io.opaa.audit.*",
-        "io.opaa.chat.*", "io.opaa.space.*", "io.opaa.group.*", "io.opaa.branding.*",
+        "io.opaa.chat.*", "io.opaa.space.*", "io.opaa.group.*", "io.opaa.permission.*",
+        "io.opaa.branding.*",
         "io.opaa.security.*", "io.opaa.diagnosticaccess.*", "io.opaa.sourceaccess.*",
     ),
     "indexing" to listOf("io.opaa.indexing.*", "io.opaa.llm.*"),

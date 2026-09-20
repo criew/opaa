@@ -32,7 +32,7 @@ class DirectorySyncRunLock {
 
   /**
    * Namespace of this class's advisory locks - see {@code
-   * io.opaa.library.AssetGrantRepository#ASSET_GRANT_MUTATION_LOCK_NAMESPACE} for the list every
+   * io.opaa.permission.AssetGrantRepository#ASSET_GRANT_MUTATION_LOCK_NAMESPACE} for the list every
    * namespace is registered in.
    */
   static final int DIRECTORY_SYNC_RUN_LOCK_NAMESPACE = 205;

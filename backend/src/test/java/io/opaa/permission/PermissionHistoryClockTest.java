@@ -1,4 +1,4 @@
-package io.opaa.library;
+package io.opaa.permission;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

@@ -1,8 +1,9 @@
-package io.opaa.library;
+package io.opaa.permission;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.api.types.AssetRole;
+import io.opaa.library.KnowledgeLibrary;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
@@ -88,6 +89,12 @@ class AssetGrantTest {
 
   private static AssetGrant grantOf(AssetRole role, Instant expiresAt, UUID grantedByUserId) {
     return AssetGrant.forUser(
-        LIBRARY_ID, ORGANIZATION_ID, UUID.randomUUID(), role, expiresAt, grantedByUserId);
+        KnowledgeLibrary.ASSET_TYPE,
+        LIBRARY_ID,
+        ORGANIZATION_ID,
+        UUID.randomUUID(),
+        role,
+        expiresAt,
+        grantedByUserId);
   }
 }

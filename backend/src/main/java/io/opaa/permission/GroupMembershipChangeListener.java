@@ -1,4 +1,4 @@
-package io.opaa.group;
+package io.opaa.permission;
 
 import java.util.Collection;
 

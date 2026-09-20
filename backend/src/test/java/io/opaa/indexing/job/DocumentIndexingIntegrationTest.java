@@ -207,8 +207,8 @@ class DocumentIndexingIntegrationTest {
 
   private void grantOwner(UUID libraryId, UUID granteeId) {
     jdbcTemplate.update(
-        "INSERT INTO asset_grants (id, library_id, organization_id, subject_type,"
-            + " subject_user_id, role, created_at, updated_at) VALUES (?, ?, ?, 'USER', ?,"
+        "INSERT INTO asset_grants (id, asset_type, asset_id, organization_id, subject_type,"
+            + " subject_user_id, role, created_at, updated_at) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, ?, 'USER', ?,"
             + " 'OWNER', now(), now())",
         UUID.randomUUID(),
         libraryId,
@@ -374,7 +374,7 @@ class DocumentIndexingIntegrationTest {
     // pruning never looked past its own libraryId.
     assertThat(indexingJobRepository.findById(otherLibraryJob.getId())).isPresent();
 
-    jdbcTemplate.update("DELETE FROM asset_grants WHERE library_id = ?", otherLibraryId);
+    jdbcTemplate.update("DELETE FROM asset_grants WHERE asset_id = ?", otherLibraryId);
     jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE id = ?", otherLibraryId);
   }
 
@@ -915,7 +915,7 @@ class DocumentIndexingIntegrationTest {
         .as("a user without any grant on the target library must not find the indexed document")
         .noneMatch(source -> "findable.txt".equals(source.getFileName()));
 
-    jdbcTemplate.update("DELETE FROM asset_grants WHERE library_id = ?", strangerLibrary.getId());
+    jdbcTemplate.update("DELETE FROM asset_grants WHERE asset_id = ?", strangerLibrary.getId());
     jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE id = ?", strangerLibrary.getId());
     jdbcTemplate.update("DELETE FROM users WHERE id = ?", strangerId);
   }
@@ -1146,8 +1146,8 @@ class DocumentIndexingIntegrationTest {
 
   private void grantOwner(UUID libraryId, UUID granteeId, UUID organizationId) {
     jdbcTemplate.update(
-        "INSERT INTO asset_grants (id, library_id, organization_id, subject_type,"
-            + " subject_user_id, role, created_at, updated_at) VALUES (?, ?, ?, 'USER', ?,"
+        "INSERT INTO asset_grants (id, asset_type, asset_id, organization_id, subject_type,"
+            + " subject_user_id, role, created_at, updated_at) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, ?, 'USER', ?,"
             + " 'OWNER', now(), now())",
         UUID.randomUUID(),
         libraryId,

@@ -14,12 +14,12 @@ import io.opaa.common.AccessDeniedException;
 import io.opaa.common.NotFoundException;
 import io.opaa.indexing.document.Document;
 import io.opaa.indexing.document.DocumentRepository;
-import io.opaa.library.AssetGrant;
-import io.opaa.library.AssetGrantRepository;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
 import io.opaa.organization.Organization;
+import io.opaa.permission.AssetGrant;
+import io.opaa.permission.AssetGrantRepository;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OwnLibraryFixtures;
 import java.util.List;
@@ -74,6 +74,7 @@ class LibraryMetadataExtractionServiceIntegrationTest {
                 false));
     grantRepository.save(
         AssetGrant.forUser(
+            KnowledgeLibrary.ASSET_TYPE,
             library.getId(),
             Organization.DEFAULT_ID,
             owner.id(),
@@ -82,6 +83,7 @@ class LibraryMetadataExtractionServiceIntegrationTest {
             owner.id()));
     grantRepository.save(
         AssetGrant.forUser(
+            KnowledgeLibrary.ASSET_TYPE,
             library.getId(),
             Organization.DEFAULT_ID,
             viewer.id(),

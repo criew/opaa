@@ -26,6 +26,7 @@ import io.opaa.mail.MailTemplateKey;
 import io.opaa.mail.SendResult;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
+import io.opaa.permission.AssetGrantHistoryRepository;
 import io.opaa.test.OpaaIntegrationTest;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -62,7 +63,10 @@ class LibraryExternalAccessReminderServiceIntegrationTest {
   @Autowired private AssetGrantHistoryRepository grantHistoryRepository;
   @Autowired private UserRepository userRepository;
   @Autowired private GroupRepository groupRepository;
-  @Autowired private io.opaa.group.GroupMembershipHistoryRepository membershipHistoryRepository;
+
+  @Autowired
+  private io.opaa.permission.GroupMembershipHistoryRepository membershipHistoryRepository;
+
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private PublicBaseUrl publicBaseUrl;
   @Autowired private JdbcTemplate jdbcTemplate;

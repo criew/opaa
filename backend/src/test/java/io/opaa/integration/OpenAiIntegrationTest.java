@@ -118,8 +118,8 @@ class OpenAiIntegrationTest {
     // Reading it back via query still needs a grant too, exactly like every other reader (#202:
     // search never bypasses grants, not even for a system admin).
     jdbcTemplate.update(
-        "INSERT INTO asset_grants (id, library_id, organization_id, subject_type,"
-            + " subject_user_id, role, created_at, updated_at) VALUES (?, ?, ?, 'USER', ?,"
+        "INSERT INTO asset_grants (id, asset_type, asset_id, organization_id, subject_type,"
+            + " subject_user_id, role, created_at, updated_at) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, ?, 'USER', ?,"
             + " 'OWNER', now(), now())",
         UUID.randomUUID(),
         targetLibraryId,

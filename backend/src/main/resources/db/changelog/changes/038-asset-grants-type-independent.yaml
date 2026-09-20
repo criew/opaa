@@ -1,0 +1,104 @@
+databaseChangeLog:
+  - changeSet:
+      id: 038-asset-grants-type-independent
+      author: opaa
+      comment: >-
+        asset_grants benennt sein Objekt ab hier ueber asset_type plus asset_id statt ueber
+        library_id (#1811, ADR-0036 Entscheidung 12): Dieselbe Rechtemechanik traegt einen zweiten
+        Asset-Typ (#1726), ohne dass eine zweite Rechtelogik entsteht. Bestehende Zeilen werden
+        migriert, nicht neu erzeugt - jede bekommt asset_type = 'KNOWLEDGE_LIBRARY', die Spalte
+        library_id wird umbenannt und behaelt ihre Werte. asset_type traegt bewusst KEINE
+        Pruefbedingung mit einer Werteliste: Die Menge der Asset-Typen gehoert den Fachpaketen, und
+        eine Liste in der Datenbank machte jeden neuen Typ zu einer Migration. Die FORM wird
+        dagegen geprueft (chk_asset_grants_asset_type_format): AssetType laesst nur
+        [A-Z][A-Z0-9_]* zu, und eine per SQL vorbei eingespielte Zeile mit einem anderen Wert
+        brachte sonst jede Entity-Abfrage der Tabelle zum Absturz, nicht nur die eigene Zeile.
+        .
+        DAMIT ENTFAELLT fk_asset_grants_library_organization (library_id, organization_id ->
+        knowledge_libraries(id, organization_id) ON DELETE CASCADE). Ein Fremdschluessel kann nur
+        auf genau eine Tabelle zeigen; eine typunabhaengige Spalte kann keinen haben. Die drei
+        Zusagen, die damit entfallen, und was sie ersetzt:
+        .
+        (1) "Keine Freigabe ueberlebt ihr Asset" (das ON DELETE CASCADE). Ersetzt durch den Trigger
+        trg_knowledge_libraries_delete_asset_grants unten - dieselbe Zusage, auf derselben Ebene,
+        nur an der Bibliothek statt an der Freigabe. Jeder weitere Asset-Typ bringt seinen eigenen
+        Trigger mit; das ist die einzige Stelle, an der ein neuer Typ die Datenbank beruehrt.
+        .
+        (2) "Das Asset existiert". Ersetzt durch die Anwendung: AssetGrantService laedt die
+        Bibliothek ueber ihre ID, bevor eine Freigabe geschrieben wird, und antwortet sonst 404 -
+        eine Freigabe auf eine unbekannte ID ist auf keinem Weg schreibbar.
+        .
+        (3) "organization_id der Freigabe = organization_id des Assets". Ersetzt durch die
+        Anwendung: Die Fabrikmethoden von AssetGrant nehmen die organization_id des geladenen
+        Assets, nie eine aus der Anfrage. Die Gegenseite bleibt in der Datenbank -
+        fk_asset_grants_subject_user_organization und fk_asset_grants_subject_group_organization
+        binden dieselbe Spalte weiter an die Organisation des Empfaengers.
+        .
+        Die beiden eindeutigen Teilindexe fuehren asset_type mit: Ohne ihn kollidierten zwei
+        Asset-Typen, die dieselbe ID tragen.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE asset_grants
+                  ADD COLUMN asset_type character varying(30);
+
+              UPDATE asset_grants SET asset_type = 'KNOWLEDGE_LIBRARY';
+
+              ALTER TABLE asset_grants
+                  ALTER COLUMN asset_type SET NOT NULL;
+
+              ALTER TABLE asset_grants
+                  ADD CONSTRAINT chk_asset_grants_asset_type_format CHECK ((asset_type ~ '^[A-Z][A-Z0-9_]*$'));
+
+              ALTER TABLE asset_grants
+                  DROP CONSTRAINT fk_asset_grants_library_organization;
+
+              ALTER TABLE asset_grants
+                  RENAME COLUMN library_id TO asset_id;
+
+              DROP INDEX uk_asset_grants_group_subject;
+
+              DROP INDEX uk_asset_grants_user_subject;
+
+              CREATE UNIQUE INDEX uk_asset_grants_group_subject ON asset_grants USING btree (asset_type, asset_id, subject_group_id) WHERE ((subject_type)::text = 'GROUP'::text);
+
+              CREATE UNIQUE INDEX uk_asset_grants_user_subject ON asset_grants USING btree (asset_type, asset_id, subject_user_id) WHERE ((subject_type)::text = 'USER'::text);
+
+              CREATE FUNCTION knowledge_libraries_delete_asset_grants() RETURNS trigger
+                  LANGUAGE plpgsql
+                  SET search_path TO 'pg_catalog', '${database.defaultSchemaName}', 'pg_temp'
+                  AS $$ BEGIN
+                DELETE FROM asset_grants
+                 WHERE asset_type = 'KNOWLEDGE_LIBRARY'
+                   AND asset_id = OLD.id;
+                RETURN OLD;
+              END; $$;
+
+              CREATE TRIGGER trg_knowledge_libraries_delete_asset_grants BEFORE DELETE ON knowledge_libraries FOR EACH ROW EXECUTE FUNCTION knowledge_libraries_delete_asset_grants();
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              DROP TRIGGER IF EXISTS trg_knowledge_libraries_delete_asset_grants ON knowledge_libraries;
+
+              DROP FUNCTION IF EXISTS knowledge_libraries_delete_asset_grants();
+
+              DROP INDEX IF EXISTS uk_asset_grants_group_subject;
+
+              DROP INDEX IF EXISTS uk_asset_grants_user_subject;
+
+              DELETE FROM asset_grants WHERE asset_type <> 'KNOWLEDGE_LIBRARY';
+
+              ALTER TABLE asset_grants
+                  RENAME COLUMN asset_id TO library_id;
+
+              ALTER TABLE asset_grants
+                  DROP COLUMN asset_type;
+
+              CREATE UNIQUE INDEX uk_asset_grants_group_subject ON asset_grants USING btree (library_id, subject_group_id) WHERE ((subject_type)::text = 'GROUP'::text);
+
+              CREATE UNIQUE INDEX uk_asset_grants_user_subject ON asset_grants USING btree (library_id, subject_user_id) WHERE ((subject_type)::text = 'USER'::text);
+
+              ALTER TABLE asset_grants
+                  ADD CONSTRAINT fk_asset_grants_library_organization FOREIGN KEY (library_id, organization_id) REFERENCES knowledge_libraries(id, organization_id) ON DELETE CASCADE;

@@ -6,6 +6,7 @@ import io.opaa.api.types.AuditSubjectKind;
 import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.permission.AssetGrant;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 

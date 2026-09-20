@@ -141,7 +141,7 @@ class SearchDiagnosisPersonContextHttpIntegrationTest {
         lockedLibraryId,
         ungrantedLockedLibraryId);
     jdbcTemplate.update(
-        "DELETE FROM asset_grants WHERE library_id in (?, ?, ?)",
+        "DELETE FROM asset_grants WHERE asset_id in (?, ?, ?)",
         openLibraryId,
         lockedLibraryId,
         ungrantedLockedLibraryId);
@@ -385,8 +385,8 @@ class SearchDiagnosisPersonContextHttpIntegrationTest {
 
   private void grantLibraryToTarget(UUID libraryId, UUID userId) {
     jdbcTemplate.update(
-        "INSERT INTO asset_grants (id, library_id, organization_id, subject_type, subject_user_id,"
-            + " role, created_at, updated_at) VALUES (?, ?, ?, 'USER', ?, 'VIEWER', now(), now())",
+        "INSERT INTO asset_grants (id, asset_type, asset_id, organization_id, subject_type, subject_user_id,"
+            + " role, created_at, updated_at) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, ?, 'USER', ?, 'VIEWER', now(), now())",
         UUID.randomUUID(),
         libraryId,
         organizationId,

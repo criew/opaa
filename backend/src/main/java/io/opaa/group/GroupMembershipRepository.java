@@ -1,5 +1,6 @@
 package io.opaa.group;
 
+import io.opaa.permission.GroupMembershipSource;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -8,7 +9,14 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-public interface GroupMembershipRepository extends JpaRepository<GroupMembership, UUID> {
+/**
+ * Also the one implementation of {@link GroupMembershipSource}: the permission model asks the two
+ * membership questions through that port, so {@code io.opaa.permission} needs no dependency on this
+ * package (ADR-0036, Entscheidung 12). Spring Data implements the inherited methods from the
+ * {@code @Query} declarations below.
+ */
+public interface GroupMembershipRepository
+    extends JpaRepository<GroupMembership, UUID>, GroupMembershipSource {
 
   List<GroupMembership> findByGroupId(UUID groupId);
 
@@ -17,16 +25,11 @@ public interface GroupMembershipRepository extends JpaRepository<GroupMembership
   /** How many groups the account is a member of - part of what a handover moves (#1563). */
   long countByUserId(UUID userId);
 
+  @Override
   @Query("select m.group.id from GroupMembership m where m.userId = :userId")
   Set<UUID> findGroupIdsByUserId(@Param("userId") UUID userId);
 
-  /**
-   * The members of a group, scoped to the given organization - so a subject carrying the wrong
-   * {@code organizationId} (whether by bug or by a crafted request) resolves to nobody instead of
-   * leaking members across the organization boundary. Used by {@link
-   * GroupMembershipResolver#resolveUserIds}. There is no unscoped equivalent on purpose: a caller
-   * that skips the organization would reintroduce exactly the cross-tenant leak #199 closed.
-   */
+  @Override
   @Query(
       "select m.userId from GroupMembership m "
           + "where m.group.id = :groupId and m.organizationId = :organizationId")

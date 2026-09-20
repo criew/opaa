@@ -1,0 +1,43 @@
+databaseChangeLog:
+  - changeSet:
+      id: 040-asset-grant-history-drop-user-role
+      author: opaa
+      comment: >-
+        chk_asset_grant_history_role laesst seit #238 den Wert 'USER' zu. Die Rolle AssetRole.USER
+        wurde mit #330 gestrichen; seither kann keine Zeile mehr mit diesem Wert entstehen, und die
+        Pruefbedingung erlaubt einen Wert, den kein Java-Enum mehr kennt (#1811, ADR-0036
+        Entscheidung 12). asset_grants selbst kannte den Wert nie - chk_asset_grants_role fuehrt
+        seit der Baseline nur VIEWER..OWNER.
+        .
+        Die Vorbedingung haelt die Einschraenkung "sofern keine Zeile ihn traegt" maschinell fest:
+        Findet sich in asset_grant_history noch eine Zeile mit role = 'USER', wird dieses Changeset
+        als ausgefuehrt vermerkt, OHNE die Bedingung zu ersetzen (MARK_RAN) - eine Installation mit
+        Altbestand startet weiter, statt an einer nicht erfuellbaren Pruefbedingung zu scheitern,
+        und die Historie bleibt lesbar (ADR-0016). Erwartet wird dieser Fall nicht: Zeilen mit
+        'USER' koennen nur aus der Zeit vor #330 stammen.
+      preConditions:
+        onFail: MARK_RAN
+        onFailMessage: >-
+          asset_grant_history still carries rows with role = 'USER' (from before #330); the check
+          constraint keeps allowing the value so those rows stay readable.
+        sqlCheck:
+          expectedResult: 0
+          sql: SELECT count(*) FROM asset_grant_history WHERE role = 'USER'
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE asset_grant_history
+                  DROP CONSTRAINT chk_asset_grant_history_role;
+
+              ALTER TABLE asset_grant_history
+                  ADD CONSTRAINT chk_asset_grant_history_role CHECK ((role IN ('VIEWER', 'EDITOR', 'MANAGER', 'OWNER')));
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE asset_grant_history
+                  DROP CONSTRAINT chk_asset_grant_history_role;
+
+              ALTER TABLE asset_grant_history
+                  ADD CONSTRAINT chk_asset_grant_history_role CHECK ((role IN ('USER', 'VIEWER', 'EDITOR', 'MANAGER', 'OWNER')));

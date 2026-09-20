@@ -18,6 +18,8 @@ import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ValidationException;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
+import io.opaa.permission.AssetGrantHistoryRepository;
+import io.opaa.permission.AssetGrantRepository;
 import io.opaa.test.OpaaIntegrationTest;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -49,7 +51,7 @@ class LibraryExternalAccessServiceIntegrationTest {
   @Autowired private AssetGrantService grantService;
   @Autowired private AssetGrantRepository grantRepository;
   @Autowired private AssetGrantHistoryRepository grantHistoryRepository;
-  @Autowired private PermissionHistoryService permissionHistoryService;
+  @Autowired private LibraryVisibilityHistoryService visibilityHistoryService;
   @Autowired private AuditEventRecorder auditEventRecorder;
   @Autowired private LibraryAccessService accessService;
   @Autowired private ExternalAccessProperties externalAccessProperties;
@@ -325,7 +327,7 @@ class LibraryExternalAccessServiceIntegrationTest {
    */
   private LibraryExternalAccessExpiryService expiryServiceAt(Instant now) {
     return new LibraryExternalAccessExpiryService(
-        libraryRepository, permissionHistoryService, auditEventRecorder, () -> now);
+        libraryRepository, visibilityHistoryService, auditEventRecorder, () -> now);
   }
 
   /** The release service with its clock moved - same reasoning as {@link #expiryServiceAt}. */

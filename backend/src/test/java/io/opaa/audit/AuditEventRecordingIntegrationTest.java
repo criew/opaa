@@ -27,23 +27,24 @@ import io.opaa.common.AccessDeniedException;
 import io.opaa.common.NotFoundException;
 import io.opaa.group.Group;
 import io.opaa.group.GroupCreation;
-import io.opaa.group.GroupMembershipHistoryRepository;
 import io.opaa.group.GroupRepository;
 import io.opaa.group.GroupService;
 import io.opaa.group.GroupUpdate;
 import io.opaa.group.sync.DirectoryGroup;
 import io.opaa.group.sync.DirectorySyncService;
 import io.opaa.group.sync.DirectorySyncStatusRepository;
-import io.opaa.library.AssetGrantHistoryRepository;
-import io.opaa.library.AssetGrantRepository;
 import io.opaa.library.AssetGrantService;
 import io.opaa.library.AssetGrantUpsert;
+import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.library.LibraryDetail;
 import io.opaa.library.LibraryVisibilityHistoryRepository;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
+import io.opaa.permission.AssetGrantHistoryRepository;
+import io.opaa.permission.AssetGrantRepository;
+import io.opaa.permission.GroupMembershipHistoryRepository;
 import io.opaa.space.Space;
 import io.opaa.space.SpaceCreation;
 import io.opaa.space.SpaceRepository;
@@ -138,7 +139,7 @@ class AuditEventRecordingIntegrationTest {
             .toList();
     grantRepository.deleteAll(
         grantRepository.findAll().stream()
-            .filter(g -> ownLibraryIds.contains(g.getLibraryId()))
+            .filter(g -> ownLibraryIds.contains(g.getAssetId()))
             .toList());
     grantHistoryRepository.deleteBySubjectUserIdIn(createdUserIds);
     visibilityHistoryRepository.deleteAll(
@@ -268,8 +269,8 @@ class AuditEventRecordingIntegrationTest {
 
     UUID grantId =
         grantRepository
-            .findByLibraryIdAndSubjectTypeAndSubjectUserId(
-                libraryId, PermissionSubjectType.USER, reader)
+            .findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectUserId(
+                KnowledgeLibrary.ASSET_TYPE, libraryId, PermissionSubjectType.USER, reader)
             .orElseThrow()
             .getId();
     grantService.revokeGrant(libraryId, grantId, currentUserOf(owner, false));
@@ -314,8 +315,8 @@ class AuditEventRecordingIntegrationTest {
     assertThat(denied.get(0).getReason()).isNotBlank();
     // The rejected grant itself must never have been written.
     assertThat(
-            grantRepository.findByLibraryIdAndSubjectTypeAndSubjectUserId(
-                libraryId, PermissionSubjectType.USER, targetUser))
+            grantRepository.findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectUserId(
+                KnowledgeLibrary.ASSET_TYPE, libraryId, PermissionSubjectType.USER, targetUser))
         .isEmpty();
   }
 
@@ -830,8 +831,8 @@ class AuditEventRecordingIntegrationTest {
             .toList();
     assertThat(readerGrantEntries).isEmpty();
     assertThat(
-            grantRepository.findByLibraryIdAndSubjectTypeAndSubjectUserId(
-                libraryId, PermissionSubjectType.USER, reader))
+            grantRepository.findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectUserId(
+                KnowledgeLibrary.ASSET_TYPE, libraryId, PermissionSubjectType.USER, reader))
         .isEmpty();
   }
 }

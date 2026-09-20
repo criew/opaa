@@ -7,6 +7,8 @@ import io.opaa.api.types.LibraryOwnerType;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.indexing.source.s3.S3SourceSettings;
 import io.opaa.indexing.source.s3.S3SourceSettingsJson;
+import io.opaa.permission.AssetType;
+import io.opaa.permission.PermissionHistoryService;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
@@ -57,6 +59,14 @@ import org.hibernate.type.SqlTypes;
 @Entity
 @Table(name = "knowledge_libraries")
 public class KnowledgeLibrary {
+
+  /**
+   * The value {@code asset_grants.asset_type} carries for a knowledge library - the first asset
+   * type of the type-independent grant model (ADR-0036, Entscheidung 12). The constant lives here,
+   * with the asset, not in {@code io.opaa.permission}: the permission model never enumerates asset
+   * types.
+   */
+  public static final AssetType ASSET_TYPE = AssetType.of("KNOWLEDGE_LIBRARY");
 
   @Id private UUID id;
 

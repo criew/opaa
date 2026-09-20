@@ -86,8 +86,8 @@ class SearchDiagnosisIntegrationTest {
         DEFAULT_ORGANIZATION_ID);
     // The profile reaches exactly one of the two libraries - the whole point of the scope tests.
     jdbcTemplate.update(
-        "INSERT INTO asset_grants (id, library_id, organization_id, subject_type, subject_group_id,"
-            + " role, created_at, updated_at) VALUES (?, ?, ?, 'GROUP', ?, 'VIEWER', now(), now())",
+        "INSERT INTO asset_grants (id, asset_type, asset_id, organization_id, subject_type, subject_group_id,"
+            + " role, created_at, updated_at) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, ?, 'GROUP', ?, 'VIEWER', now(), now())",
         UUID.randomUUID(),
         grantedLibraryId,
         DEFAULT_ORGANIZATION_ID,
@@ -117,9 +117,7 @@ class SearchDiagnosisIntegrationTest {
     jdbcTemplate.update(
         "DELETE FROM documents WHERE library_id in (?, ?)", grantedLibraryId, ungrantedLibraryId);
     jdbcTemplate.update(
-        "DELETE FROM asset_grants WHERE library_id in (?, ?)",
-        grantedLibraryId,
-        ungrantedLibraryId);
+        "DELETE FROM asset_grants WHERE asset_id in (?, ?)", grantedLibraryId, ungrantedLibraryId);
     jdbcTemplate.update(
         "DELETE FROM knowledge_libraries WHERE id in (?, ?)", grantedLibraryId, ungrantedLibraryId);
     jdbcTemplate.update("DELETE FROM groups WHERE id = ?", profileGroupId);
@@ -340,8 +338,8 @@ class SearchDiagnosisIntegrationTest {
 
   private void grantToAdmin(UUID libraryId) {
     jdbcTemplate.update(
-        "INSERT INTO asset_grants (id, library_id, organization_id, subject_type, subject_user_id,"
-            + " role, created_at, updated_at) VALUES (?, ?, ?, 'USER', ?, 'OWNER', now(), now())",
+        "INSERT INTO asset_grants (id, asset_type, asset_id, organization_id, subject_type, subject_user_id,"
+            + " role, created_at, updated_at) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, ?, 'USER', ?, 'OWNER', now(), now())",
         UUID.randomUUID(),
         libraryId,
         DEFAULT_ORGANIZATION_ID,

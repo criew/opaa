@@ -1,4 +1,4 @@
-package io.opaa.group;
+package io.opaa.permission;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
@@ -12,12 +12,14 @@ import org.springframework.stereotype.Component;
 
 /**
  * Resolves which groups a user belongs to, and which users a permission subject (see {@link
- * PermissionSubject}) reaches. This resolution sits on the hot path of every future permission
- * check (readable libraries, agent access - see #202), so it is cached; the cache is invalidated
- * only after the enclosing transaction commits (or rolls back), which {@link GroupService} does on
- * every add, remove and group deletion via its {@code invalidateAfterCommit} helper - not inline,
- * because an inline invalidation can race a concurrent reader into repopulating the cache with the
- * pre-commit state (see {@code GroupService#invalidateAfterCommit} for the sequence).
+ * PermissionSubject}) reaches - asking {@link GroupMembershipSource} rather than a repository of
+ * {@code io.opaa.group}, so the derivation lives with the permission model and not with the group
+ * administration (ADR-0036, Entscheidung 12). This resolution sits on the hot path of every
+ * permission check, so it is cached; the cache is invalidated only after the enclosing transaction
+ * commits (or rolls back), which {@code GroupService} does on every add, remove and group deletion
+ * via its {@code invalidateAfterCommit} helper - not inline, because an inline invalidation can
+ * race a concurrent reader into repopulating the cache with the pre-commit state (see {@code
+ * GroupService#invalidateAfterCommit} for the sequence).
  *
  * <p>Follows the same direct-Caffeine-cache pattern as {@link io.opaa.api.RateLimitService} rather
  * than the Spring Cache abstraction, to avoid introducing a second caching mechanism into the
@@ -31,16 +33,16 @@ import org.springframework.stereotype.Component;
 @Component
 public class GroupMembershipResolver {
 
-  private final GroupMembershipRepository membershipRepository;
+  private final GroupMembershipSource membershipSource;
   private final UserRepository userRepository;
   private final ObjectProvider<GroupMembershipChangeListener> changeListeners;
   private final Cache<UUID, Set<UUID>> groupIdsByUser;
 
   public GroupMembershipResolver(
-      GroupMembershipRepository membershipRepository,
+      GroupMembershipSource membershipSource,
       UserRepository userRepository,
       ObjectProvider<GroupMembershipChangeListener> changeListeners) {
-    this.membershipRepository = membershipRepository;
+    this.membershipSource = membershipSource;
     this.userRepository = userRepository;
     this.changeListeners = changeListeners;
     // A stale entry only ever grants access a moment too long between a completed transaction's
@@ -54,26 +56,26 @@ public class GroupMembershipResolver {
 
   /** The set of group ids the given user is a direct member of. Cached until invalidated. */
   public Set<UUID> groupIdsForUser(UUID userId) {
-    return groupIdsByUser.get(userId, membershipRepository::findGroupIdsByUserId);
+    return groupIdsByUser.get(userId, membershipSource::findGroupIdsByUserId);
   }
 
   /**
    * The set of user ids that a grant to {@code subject} would reach, scoped to {@link
    * PermissionSubject#organizationId()} in both branches: for a {@code GROUP} subject it is the
    * group's current membership, filtered to that organization at the query in {@link
-   * GroupMembershipRepository#findUserIdsByGroupIdAndOrganizationId} - membership is never
-   * inherited downward beyond what is recorded there (see #237, #208). For a {@code USER} subject
-   * it is that one user, but only if the user actually belongs to the given organization; otherwise
-   * the empty set. This is the one place every future caller (#202) goes through, so it is
-   * deliberately not left to each caller to re-check the boundary for the {@code USER} case - the
-   * extra lookup costs one indexed hit on the hot path, which is cheaper than repeating the
-   * organization-boundary bug class that #199 had to fix in review.
+   * GroupMembershipSource#findUserIdsByGroupIdAndOrganizationId} - membership is never inherited
+   * downward beyond what is recorded there (see #237, #208). For a {@code USER} subject it is that
+   * one user, but only if the user actually belongs to the given organization; otherwise the empty
+   * set. This is the one place every future caller (#202) goes through, so it is deliberately not
+   * left to each caller to re-check the boundary for the {@code USER} case - the extra lookup costs
+   * one indexed hit on the hot path, which is cheaper than repeating the organization-boundary bug
+   * class that #199 had to fix in review.
    */
   public Set<UUID> resolveUserIds(PermissionSubject subject) {
     return switch (subject.type()) {
       case USER -> resolveUserSubject(subject);
       case GROUP ->
-          membershipRepository.findUserIdsByGroupIdAndOrganizationId(
+          membershipSource.findUserIdsByGroupIdAndOrganizationId(
               subject.id(), subject.organizationId());
     };
   }

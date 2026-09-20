@@ -1,4 +1,4 @@
-package io.opaa.group;
+package io.opaa.permission;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -15,11 +15,8 @@ import java.util.UUID;
  * group (#238, see
  * docs/features/security-and-compliance.md#nachweisbarkeit-historisierung-von-rechten). {@code
  * validTo == null} means the interval is still open, i.e. the user is a member right now. Written
- * and closed exclusively by {@link io.opaa.library.PermissionHistoryService}, which lives in {@code
- * io.opaa.library} because it reconstructs the readable-library formula that combines this table
- * with {@link io.opaa.library.AssetGrantHistory} and {@code
- * io.opaa.library.LibraryVisibilityHistory} - this entity itself stays in {@code io.opaa.group}
- * next to {@link GroupMembership}, the table it historises.
+ * and closed exclusively by {@link PermissionHistoryService}, which combines this table with {@link
+ * AssetGrantHistory} into the grant half of the Stichtag reconstruction.
  */
 @Entity
 @Table(name = "group_membership_history")
@@ -73,10 +70,10 @@ public class GroupMembershipHistory {
   /**
    * A zero-length marker interval ({@code validFrom == validTo == at}) recording that the {@code
    * userId}/{@code groupId} membership ended with {@code cause} - see {@code
-   * io.opaa.library.AssetGrantHistory#terminal} for why a removal needs its own marker row rather
-   * than relying on the closed interval alone: the closed interval's own cause must stay whatever
-   * it originally was (ADDED or a directory-sync add), and the removal is a separate, actor-bearing
-   * event #238's acceptance criteria require to be recorded.
+   * io.opaa.permission.AssetGrantHistory#terminal} for why a removal needs its own marker row
+   * rather than relying on the closed interval alone: the closed interval's own cause must stay
+   * whatever it originally was (ADDED or a directory-sync add), and the removal is a separate,
+   * actor-bearing event #238's acceptance criteria require to be recorded.
    */
   public static GroupMembershipHistory terminal(
       UUID groupId,

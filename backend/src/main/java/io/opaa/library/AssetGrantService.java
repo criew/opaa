@@ -15,8 +15,10 @@ import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
-import io.opaa.group.Group;
-import io.opaa.group.GroupRepository;
+import io.opaa.permission.AssetGrant;
+import io.opaa.permission.AssetGrantRepository;
+import io.opaa.permission.GroupSubject;
+import io.opaa.permission.GroupSubjectDirectory;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -63,7 +65,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * {@code OWNER} renewing their own grant with {@code role = OWNER} does not by itself prove the
  * grant stays active if the caller also supplies an {@code expiresAt} in the past. See {@link
  * #requireNotDowngradingTheLastActiveOwnerGrant}, {@link
- * AssetGrantRepository#lockLibraryGrantsForMutation} and {@link
+ * AssetGrantRepository#lockAssetGrantsForMutation} and {@link
  * AssetGrantRepository#countOtherActiveOwnerGrants} for how this count is additionally protected
  * against two concurrent callers each observing the other's OWNER grant as still active (#202 code
  * review round 2 nit 2), first via a locked entity read that turned out to be stale under that
@@ -87,7 +89,7 @@ public class AssetGrantService {
   private final AssetGrantRepository grantRepository;
   private final KnowledgeLibraryRepository libraryRepository;
   private final UserRepository userRepository;
-  private final GroupRepository groupRepository;
+  private final GroupSubjectDirectory groupDirectory;
   private final LibraryAccessService accessService;
   private final AuditEventRecorder auditEventRecorder;
   private final ApplicationEventPublisher eventPublisher;
@@ -96,14 +98,14 @@ public class AssetGrantService {
       AssetGrantRepository grantRepository,
       KnowledgeLibraryRepository libraryRepository,
       UserRepository userRepository,
-      GroupRepository groupRepository,
+      GroupSubjectDirectory groupDirectory,
       LibraryAccessService accessService,
       AuditEventRecorder auditEventRecorder,
       ApplicationEventPublisher eventPublisher) {
     this.grantRepository = grantRepository;
     this.libraryRepository = libraryRepository;
     this.userRepository = userRepository;
-    this.groupRepository = groupRepository;
+    this.groupDirectory = groupDirectory;
     this.accessService = accessService;
     this.auditEventRecorder = auditEventRecorder;
     this.eventPublisher = eventPublisher;
@@ -111,7 +113,8 @@ public class AssetGrantService {
 
   public List<AssetGrantView> listGrants(UUID libraryId, CurrentUser caller) {
     KnowledgeLibrary library = requireManageable(libraryId, caller);
-    return toViews(grantRepository.findByLibraryId(library.getId()));
+    return toViews(
+        grantRepository.findByAssetTypeAndAssetId(KnowledgeLibrary.ASSET_TYPE, library.getId()));
   }
 
   // #392: noRollbackFor(AccessDeniedException) - without it, the DENIED audit entry the
@@ -203,13 +206,17 @@ public class AssetGrantService {
     if (request.subjectType() == PermissionSubjectType.USER) {
       grant =
           grantRepository
-              .findByLibraryIdAndSubjectTypeAndSubjectUserId(
-                  library.getId(), PermissionSubjectType.USER, request.subjectId())
+              .findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectUserId(
+                  KnowledgeLibrary.ASSET_TYPE,
+                  library.getId(),
+                  PermissionSubjectType.USER,
+                  request.subjectId())
               .orElse(null);
       isNewGrant = grant == null;
       if (grant == null) {
         grant =
             AssetGrant.forUser(
+                KnowledgeLibrary.ASSET_TYPE,
                 library.getId(),
                 library.getOrganizationId(),
                 request.subjectId(),
@@ -227,13 +234,17 @@ public class AssetGrantService {
     } else {
       grant =
           grantRepository
-              .findByLibraryIdAndSubjectTypeAndSubjectGroupId(
-                  library.getId(), PermissionSubjectType.GROUP, request.subjectId())
+              .findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectGroupId(
+                  KnowledgeLibrary.ASSET_TYPE,
+                  library.getId(),
+                  PermissionSubjectType.GROUP,
+                  request.subjectId())
               .orElse(null);
       isNewGrant = grant == null;
       if (grant == null) {
         grant =
             AssetGrant.forGroup(
+                KnowledgeLibrary.ASSET_TYPE,
                 library.getId(),
                 library.getOrganizationId(),
                 request.subjectId(),
@@ -296,7 +307,8 @@ public class AssetGrantService {
         grantRepository
             .findById(grantId)
             .orElseThrow(() -> new NotFoundException("Berechtigung nicht gefunden"));
-    if (!grant.getLibraryId().equals(library.getId())) {
+    if (!grant.getAssetId().equals(library.getId())
+        || !grant.getAssetType().equals(KnowledgeLibrary.ASSET_TYPE)) {
       throw new NotFoundException("Berechtigung nicht gefunden");
     }
     // Escalation guard, half 2 - see the class Javadoc: a caller may never touch a grant that
@@ -309,7 +321,7 @@ public class AssetGrantService {
     // Last-active-OWNER guard, the mirror image of upsertGrant's downgrade guard: removing the
     // last non-expired OWNER grant would leave the library in a state the application can no
     // longer manage - nobody left with the role required to grant, revoke or delete. See the class
-    // Javadoc and AssetGrantRepository#lockLibraryGrantsForMutation for why this locks per library
+    // Javadoc and AssetGrantRepository#lockAssetGrantsForMutation for why this locks per library
     // via an advisory lock before counting, rather than row-locking the grants directly.
     if (grant.getRole() == AssetRole.OWNER
         && !grant.isExpired(Instant.now())
@@ -379,14 +391,16 @@ public class AssetGrantService {
   /**
    * Whether {@code excludingGrantId} is the library's only active {@code OWNER} grant, i.e.
    * removing or downgrading it would leave zero. Acquires {@link
-   * AssetGrantRepository#lockLibraryGrantsForMutation}'s per-library advisory lock first, then
-   * counts via {@link AssetGrantRepository#countOtherActiveOwnerGrants} - see both methods' Javadoc
-   * for why this two-step, lock-then-plain-read sequence is both deadlock- and staleness-safe where
-   * a single {@code SELECT ... FOR UPDATE} on the grant rows was neither.
+   * AssetGrantRepository#lockAssetGrantsForMutation}'s per-library advisory lock first, then counts
+   * via {@link AssetGrantRepository#countOtherActiveOwnerGrants} - see both methods' Javadoc for
+   * why this two-step, lock-then-plain-read sequence is both deadlock- and staleness-safe where a
+   * single {@code SELECT ... FOR UPDATE} on the grant rows was neither.
    */
   private boolean isLastActiveOwnerGrant(UUID libraryId, UUID excludingGrantId) {
-    grantRepository.lockLibraryGrantsForMutation(libraryId);
-    return grantRepository.countOtherActiveOwnerGrants(libraryId, excludingGrantId, Instant.now())
+    String assetType = KnowledgeLibrary.ASSET_TYPE.value();
+    grantRepository.lockAssetGrantsForMutation(assetType, libraryId);
+    return grantRepository.countOtherActiveOwnerGrants(
+            assetType, libraryId, excludingGrantId, Instant.now())
         == 0;
   }
 
@@ -412,7 +426,7 @@ public class AssetGrantService {
     if (staysActiveOwner) {
       return;
     }
-    // See AssetGrantRepository#lockLibraryGrantsForMutation for why this locks per library via an
+    // See AssetGrantRepository#lockAssetGrantsForMutation for why this locks per library via an
     // advisory lock before counting, rather than row-locking the grants directly (#202 code review
     // round 2 nit 2, round 3 blocker 2).
     if (isLastActiveOwnerGrant(libraryId, existingGrant.getId())) {
@@ -454,22 +468,22 @@ public class AssetGrantService {
   /**
    * Resolves a group, enforces the organization boundary, and rejects a dissolved group as a grant
    * target - see the class Javadoc for why: existing grants to a dissolved group keep working (see
-   * {@link LibraryAccessService#effectiveRole}, which does not check {@link Group#isDissolved()}
-   * either), but no new or updated grant may target it.
+   * {@link LibraryAccessService#effectiveRole}, which does not check the dissolved flag either),
+   * but no new or updated grant may target it.
    *
    * <p>Package-private (not {@code private}) so {@link KnowledgeLibraryService#createLibrary} can
    * reuse the same check for the initial owner-group grant of a group-owned library, instead of
-   * duplicating the {@link Group#isDissolved()} check outside this service (#441).
+   * duplicating the dissolved check outside this service (#441).
    */
   void requireGrantableGroup(UUID groupId, UUID organizationId) {
-    Group group =
-        groupRepository
-            .findById(groupId)
+    GroupSubject group =
+        groupDirectory
+            .find(groupId)
             .orElseThrow(() -> new NotFoundException("Gruppe nicht gefunden"));
-    if (!group.getOrganizationId().equals(organizationId)) {
+    if (!group.organizationId().equals(organizationId)) {
       throw new NotFoundException("Gruppe nicht gefunden");
     }
-    if (group.isDissolved()) {
+    if (group.dissolved()) {
       throw new ValidationException(
           "Die Gruppe ist aufgelöst und kann keine neuen Berechtigungen mehr erhalten");
     }
@@ -532,10 +546,7 @@ public class AssetGrantService {
       String name = user.getDisplayName() != null ? user.getDisplayName() : user.getEmail();
       userNames.put(user.getId(), name);
     }
-    Map<UUID, String> groupNames = new HashMap<>();
-    for (Group group : groupRepository.findAllById(groupIds)) {
-      groupNames.put(group.getId(), group.getName());
-    }
+    Map<UUID, String> groupNames = groupDirectory.namesById(groupIds);
 
     return grants.stream()
         .map(
