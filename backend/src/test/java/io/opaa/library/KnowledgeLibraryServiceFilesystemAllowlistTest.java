@@ -95,6 +95,7 @@ class KnowledgeLibraryServiceFilesystemAllowlistTest {
             userRepository,
             groupDirectory,
             membershipResolver,
+            mock(io.opaa.permission.CapabilityService.class),
             documentRepository,
             grantRepository,
             grantService,

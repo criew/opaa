@@ -6,6 +6,7 @@ import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.api.types.AuditSubjectKind;
+import io.opaa.api.types.Capability;
 import io.opaa.api.types.GroupKind;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
@@ -20,6 +21,8 @@ import io.opaa.common.OrganizationScopedLoader;
 import io.opaa.common.ValidationException;
 import io.opaa.permission.AssetGrantRepository;
 import io.opaa.permission.AssetOwnershipDirectory;
+import io.opaa.permission.CapabilityGrantRepository;
+import io.opaa.permission.CapabilityService;
 import io.opaa.permission.GroupMembershipHistoryCause;
 import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.PermissionHistoryService;
@@ -71,6 +74,8 @@ public class GroupService {
   private final GroupMembershipResolver membershipResolver;
   private final List<AssetOwnershipDirectory> assetOwnershipDirectories;
   private final AssetGrantRepository grantRepository;
+  private final CapabilityGrantRepository capabilityGrantRepository;
+  private final CapabilityService capabilityService;
   private final PermissionHistoryService permissionHistoryService;
   private final AuditEventRecorder auditEventRecorder;
 
@@ -81,6 +86,8 @@ public class GroupService {
       GroupMembershipResolver membershipResolver,
       List<AssetOwnershipDirectory> assetOwnershipDirectories,
       AssetGrantRepository grantRepository,
+      CapabilityGrantRepository capabilityGrantRepository,
+      CapabilityService capabilityService,
       PermissionHistoryService permissionHistoryService,
       AuditEventRecorder auditEventRecorder) {
     this.groupRepository = groupRepository;
@@ -89,12 +96,15 @@ public class GroupService {
     this.membershipResolver = membershipResolver;
     this.assetOwnershipDirectories = assetOwnershipDirectories;
     this.grantRepository = grantRepository;
+    this.capabilityGrantRepository = capabilityGrantRepository;
+    this.capabilityService = capabilityService;
     this.permissionHistoryService = permissionHistoryService;
     this.auditEventRecorder = auditEventRecorder;
   }
 
   @Transactional
   public GroupDetail createGroup(GroupCreation creation, CurrentUser caller) {
+    capabilityService.requireCapability(caller, Capability.CREATE_INTERNAL_GROUP);
     String normalizedName = validateName(creation.name());
     validateDescription(creation.description());
 
@@ -250,6 +260,12 @@ public class GroupService {
     if (grantRepository.existsBySubjectGroupId(groupId)) {
       throw new ConflictException(
           "Die Gruppe hat noch Berechtigungen auf Bibliotheken und kann nicht gelöscht werden");
+    }
+    // The same RESTRICT pattern one table further:
+    // fk_capability_grants_subject_group_organization.
+    if (capabilityGrantRepository.existsBySubjectGroupId(groupId)) {
+      throw new ConflictException(
+          "Die Gruppe hat noch Anlegerechte und kann nicht gelöscht werden");
     }
 
     List<UUID> affectedUserIds =

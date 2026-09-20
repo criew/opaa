@@ -426,9 +426,11 @@ class AuditEventRecordingIntegrationTest {
   @Test
   void creatingAGroupOwnedLibraryGrantsTheOwningGroupItself() {
     UUID admin = createUser();
+    // Creating an internal group needs CREATE_INTERNAL_GROUP, which is delivered to nobody and
+    // held implicitly by SYSTEM_ADMIN - the only role the endpoint lets through anyway (#1813).
     var group =
         groupService.createGroup(
-            new GroupCreation("Referat 50", "Grundsatz"), currentUserOf(admin));
+            new GroupCreation("Referat 50", "Grundsatz"), currentUserOf(admin, true));
     UUID groupId = group.group().getId();
     createdGroupIds.add(groupId);
     groupService.addMember(groupId, admin, currentUserOf(admin));
@@ -463,7 +465,8 @@ class AuditEventRecordingIntegrationTest {
   void groupLifecycleAndMembershipChangesEachProduceAnAuditEntry() {
     UUID admin = createUser();
     var created =
-        groupService.createGroup(new GroupCreation("Referat 5", "Test"), currentUserOf(admin));
+        groupService.createGroup(
+            new GroupCreation("Referat 5", "Test"), currentUserOf(admin, true));
     UUID groupId = created.group().getId();
     createdGroupIds.add(groupId);
 

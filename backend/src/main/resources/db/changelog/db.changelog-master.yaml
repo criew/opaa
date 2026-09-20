@@ -93,3 +93,11 @@ databaseChangeLog:
   # Entscheidung 8).
   - include:
       file: db/changelog/changes/045-create-permission-history-retention-settings.yaml
+  # Installationsweite Fähigkeiten als vergebbare Zeilen, ihre Historie und der
+  # Auslieferungszustand „Alle Konten dürfen" (#1813, ADR-0036 Entscheidung 5 und 8).
+  - include:
+      file: db/changelog/changes/042-create-capability-grants.yaml
+  - include:
+      file: db/changelog/changes/050-create-capability-grant-history.yaml
+  - include:
+      file: db/changelog/changes/051-seed-delivered-capability-grants.yaml

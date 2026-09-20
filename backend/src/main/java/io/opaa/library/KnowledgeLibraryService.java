@@ -4,6 +4,7 @@ import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
+import io.opaa.api.types.Capability;
 import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
@@ -41,6 +42,7 @@ import io.opaa.indexing.source.s3.S3SourceSettings;
 import io.opaa.indexing.source.s3.S3SourceSettingsJson;
 import io.opaa.permission.AssetGrant;
 import io.opaa.permission.AssetGrantRepository;
+import io.opaa.permission.CapabilityService;
 import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.GroupSubject;
 import io.opaa.permission.GroupSubjectDirectory;
@@ -130,6 +132,7 @@ public class KnowledgeLibraryService {
   private final UserRepository userRepository;
   private final GroupSubjectDirectory groupDirectory;
   private final GroupMembershipResolver membershipResolver;
+  private final CapabilityService capabilityService;
   private final DocumentRepository documentRepository;
   private final AssetGrantRepository grantRepository;
   private final AssetGrantService grantService;
@@ -157,6 +160,7 @@ public class KnowledgeLibraryService {
       UserRepository userRepository,
       GroupSubjectDirectory groupDirectory,
       GroupMembershipResolver membershipResolver,
+      CapabilityService capabilityService,
       DocumentRepository documentRepository,
       AssetGrantRepository grantRepository,
       AssetGrantService grantService,
@@ -182,6 +186,7 @@ public class KnowledgeLibraryService {
     this.userRepository = userRepository;
     this.groupDirectory = groupDirectory;
     this.membershipResolver = membershipResolver;
+    this.capabilityService = capabilityService;
     this.documentRepository = documentRepository;
     this.grantRepository = grantRepository;
     this.grantService = grantService;
@@ -207,6 +212,7 @@ public class KnowledgeLibraryService {
 
   @Transactional
   public LibraryDetail createLibrary(LibraryCreation request, CurrentUser caller) {
+    capabilityService.requireCapability(caller, capabilityFor(request.sourceType()));
     UUID currentUserId = caller.id();
     String normalizedName = validateName(request.name());
     validateDescription(request.description());
@@ -1169,6 +1175,18 @@ public class KnowledgeLibraryService {
    * sourceInsecureSsl} defaults to {@code false} when omitted, mirroring {@code
    * IndexingTriggerRequest}'s equivalent field.
    */
+  /**
+   * Which capability a library of this source type needs (ADR-0036, Entscheidung 5). A connector
+   * library is its own capability because it reaches server paths and stored credentials; a missing
+   * source type - rejected a few lines later by {@link #validateSourceConfiguration} - takes the
+   * upload capability, so an unreadable request never decides which right is checked.
+   */
+  private static Capability capabilityFor(DocumentSourceType sourceType) {
+    return sourceType == null || sourceType == DocumentSourceType.UPLOAD
+        ? Capability.CREATE_LIBRARY
+        : Capability.CREATE_CONNECTOR_LIBRARY;
+  }
+
   private SourceConfiguration validateSourceConfiguration(LibraryCreation request) {
     DocumentSourceType sourceType = request.sourceType();
     if (sourceType == null) {

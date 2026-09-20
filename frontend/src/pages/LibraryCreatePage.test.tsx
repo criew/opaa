@@ -13,19 +13,26 @@ vi.mock('react-router', async () => {
   return { ...actual, useNavigate: () => mockNavigate }
 })
 
-const { mockGetMyGroups, mockTestLibrarySource, mockListConfluenceSpaces, mockListS3Buckets } =
-  vi.hoisted(() => ({
-    mockGetMyGroups: vi.fn().mockResolvedValue([]),
-    mockTestLibrarySource: vi.fn(),
-    mockListConfluenceSpaces: vi.fn(),
-    mockListS3Buckets: vi.fn(),
-  }))
+const {
+  mockGetMyGroups,
+  mockGetMyCapabilities,
+  mockTestLibrarySource,
+  mockListConfluenceSpaces,
+  mockListS3Buckets,
+} = vi.hoisted(() => ({
+  mockGetMyGroups: vi.fn().mockResolvedValue([]),
+  mockGetMyCapabilities: vi.fn(),
+  mockTestLibrarySource: vi.fn(),
+  mockListConfluenceSpaces: vi.fn(),
+  mockListS3Buckets: vi.fn(),
+}))
 
 vi.mock('../services/api', async () => {
   const actual = await vi.importActual<typeof import('../services/api')>('../services/api')
   return {
     ...actual,
     getMyGroups: mockGetMyGroups,
+    getMyCapabilities: mockGetMyCapabilities,
     getUserSummaries: vi.fn().mockResolvedValue([]),
     testLibrarySource: mockTestLibrarySource,
     listConfluenceSpaces: mockListConfluenceSpaces,
@@ -46,6 +53,11 @@ describe('LibraryCreatePage (#596, Mockup 1e)', () => {
     mockCreateNewLibrary.mockClear()
     mockTriggerIndexing.mockClear()
     mockGetMyGroups.mockResolvedValue([])
+    mockGetMyCapabilities.mockResolvedValue([
+      'CREATE_SPACE',
+      'CREATE_LIBRARY',
+      'CREATE_CONNECTOR_LIBRARY',
+    ])
     useLibraryStore.setState({ createNewLibrary: mockCreateNewLibrary })
     useIndexingStore.setState({ triggerIndexing: mockTriggerIndexing })
   })
@@ -61,6 +73,37 @@ describe('LibraryCreatePage (#596, Mockup 1e)', () => {
     expect(screen.getByRole('button', { name: 'Weiter' })).toBeDisabled()
     await user.type(screen.getByLabelText(/Name/), 'Rechtsquellen Soziales')
     expect(screen.getByRole('button', { name: 'Weiter' })).toBeEnabled()
+  })
+
+  describe('Anlegerechte (#1813, ADR-0036 Entscheidung 5)', () => {
+    it('names the upload right when only the connector right is held', async () => {
+      mockGetMyCapabilities.mockResolvedValue(['CREATE_CONNECTOR_LIBRARY'])
+      const user = userEvent.setup()
+      renderPage()
+
+      expect(
+        await screen.findByText(/Anlegerecht „Bibliotheken für Uploads anlegen“/),
+      ).toBeInTheDocument()
+      await user.type(screen.getByLabelText(/^Name/), 'Rechtsquellen Soziales')
+      await user.click(screen.getByRole('button', { name: 'Weiter' }))
+      await user.click(screen.getByRole('button', { name: 'Weiter zu Rechten' }))
+      expect(screen.getByRole('button', { name: 'Bibliothek anlegen' })).toBeDisabled()
+    })
+
+    it('names the connector right once a connector source is chosen', async () => {
+      mockGetMyCapabilities.mockResolvedValue(['CREATE_LIBRARY'])
+      const user = userEvent.setup()
+      renderPage()
+
+      expect(screen.queryByText(/Ihnen fehlt das Anlegerecht/)).not.toBeInTheDocument()
+      await user.type(screen.getByLabelText(/^Name/), 'Rechtsquellen Soziales')
+      await user.click(screen.getByRole('button', { name: 'Weiter' }))
+      await user.click(screen.getByRole('radio', { name: /Dateisystem/ }))
+
+      expect(
+        await screen.findByText(/Anlegerecht „Konnektorbibliotheken anlegen“/),
+      ).toBeInTheDocument()
+    })
   })
 
   describe('S3 origin (#1377, ADR-0027)', () => {

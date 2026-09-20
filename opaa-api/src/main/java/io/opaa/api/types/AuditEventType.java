@@ -133,6 +133,15 @@ public enum AuditEventType {
   MODEL_POLICY_CHANGED,
   CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED,
   /**
+   * A capability was granted to an account, a group or to all accounts (ADR-0036, Entscheidung 5).
+   * A governance event rather than an ordinary permission change: withdrawing a capability from all
+   * accounts changes the working conditions of every employee, so the personnel council's extract
+   * has to show it.
+   */
+  CAPABILITY_GRANTED,
+  /** The reverse of {@link #CAPABILITY_GRANTED} - a capability grant withdrawn. */
+  CAPABILITY_REVOKED,
+  /**
    * A selective re-index of the chunk bestand by ingestion pipeline version was triggered
    * (docs/features/ingestion-pipelines.md, cross-cutting rule (d)). Recorded per triggering call,
    * not per document: the call is the administrative decision, the documents are its effect.

@@ -27,7 +27,8 @@ class CurrentUserFailClosedTest {
   @Test
   void queryParametersNeverBindAnAttackerChosenCurrentUserWithoutTheDedicatedResolver() {
     GroupService groupService = mock(GroupService.class);
-    MeController controller = new MeController(groupService);
+    MeController controller =
+        new MeController(groupService, mock(io.opaa.permission.CapabilityService.class));
     MockMvc mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
 
     // No GlobalExceptionHandler wired in this standalone setup - MockMvc rethrows the failure

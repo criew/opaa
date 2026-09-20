@@ -340,8 +340,9 @@ trägt. Genau das wäre ein Bruch der Leerwert-Regel, und ein Test spielt die Ke
 löschen → neu anlegen) durch.
 
 **Das Muster eines `PATTERN`-Feldes wird unter einem Schrittbudget ausgewertet.** Das Verwaltungsrecht
-ist keine Vertrauensgrenze: Jede angemeldete Person darf eine Bibliothek anlegen und ist deren
-Eigentümerin, ein Feldmuster ist also Nutzereingabe. `java.util.regex` kennt kein Zeitlimit, deshalb
+ist keine Vertrauensgrenze: Wer das Anlegerecht `CREATE_LIBRARY` hält — im Auslieferungszustand
+jede angemeldete Person, siehe [access-control.md](access-control.md#fähigkeiten-die-installationsweiten-anlegerechte) —
+legt eine Bibliothek an und ist deren Eigentümerin, ein Feldmuster ist also Nutzereingabe. `java.util.regex` kennt kein Zeitlimit, deshalb
 liest der Matcher seine Eingabe über eine Zeichenfolge, die seine Schritte zählt und nach dem Budget
 abbricht — beim Setzen eines Wertes und, gegen selbst erzeugte Worst-Case-Eingaben, schon beim
 Anlegen des Feldes. Ein Muster, das daran scheitert, wird mit 400 abgewiesen.

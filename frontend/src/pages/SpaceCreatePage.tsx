@@ -24,6 +24,7 @@ import WizardStepBar from '../components/wizard/WizardStepBar'
 import { getLibraries } from '../services/api'
 import { confirmAction } from '../stores/confirmStore'
 import { useSpaceStore } from '../stores/spaceStore'
+import { useMyCapabilities } from '../hooks/useMyCapabilities'
 import { useUserSearch } from '../hooks/useUserSearch'
 import {
   spaceRoleLabel,
@@ -67,6 +68,10 @@ export default function SpaceCreatePage() {
   } = useUserSearch()
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // ADR-0036, Entscheidung 5: a missing Anlegerecht is explained, not hidden - the button stays
+  // visible and says why it cannot be used. The backend refuses the same call regardless.
+  const { isMissing } = useMyCapabilities()
+  const mayNotCreate = isMissing('CREATE_SPACE')
   // #686: only libraries the creator may themselves read are offered - GET /v1/libraries already
   // returns exactly that set, and the backend re-checks the same rule when the space is created
   // (SpaceAssetAssociationService#associate).
@@ -155,6 +160,13 @@ export default function SpaceCreatePage() {
           {STEPS[activeStep]}
         </Typography>
         <WizardStepBar steps={STEPS} active={activeStep} />
+
+        {mayNotCreate && (
+          <Alert severity="info" sx={{ mb: 2 }}>
+            Ihnen fehlt das Anlegerecht „Spaces anlegen“. Wenden Sie sich an die Systemverwaltung,
+            wenn Sie es benötigen.
+          </Alert>
+        )}
 
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>
@@ -447,7 +459,7 @@ export default function SpaceCreatePage() {
             <Button
               variant="contained"
               onClick={() => void handleCreate()}
-              disabled={submitting || name.trim() === ''}
+              disabled={submitting || mayNotCreate || name.trim() === ''}
             >
               {submitting ? 'Wird angelegt …' : 'Space anlegen'}
             </Button>

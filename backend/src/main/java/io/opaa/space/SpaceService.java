@@ -6,6 +6,7 @@ import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.api.types.AuditSubjectKind;
+import io.opaa.api.types.Capability;
 import io.opaa.api.types.SpaceRole;
 import io.opaa.api.types.SpaceVisibility;
 import io.opaa.audit.AuditEvent;
@@ -19,6 +20,7 @@ import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.OrganizationScopedLoader;
 import io.opaa.common.ValidationException;
+import io.opaa.permission.CapabilityService;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -47,6 +49,7 @@ public class SpaceService {
   private final AuditEventRecorder auditEventRecorder;
   private final ChatRepository chatRepository;
   private final SpaceAssetAssociationService associationService;
+  private final CapabilityService capabilityService;
   private final TransactionTemplate requiresNewTransactionTemplate;
 
   /**
@@ -63,12 +66,14 @@ public class SpaceService {
       AuditEventRecorder auditEventRecorder,
       ChatRepository chatRepository,
       SpaceAssetAssociationService associationService,
+      CapabilityService capabilityService,
       PlatformTransactionManager transactionManager) {
     this.spaceRepository = spaceRepository;
     this.chatRepository = chatRepository;
     this.userRepository = userRepository;
     this.auditEventRecorder = auditEventRecorder;
     this.associationService = associationService;
+    this.capabilityService = capabilityService;
     this.requiresNewTransactionTemplate = new TransactionTemplate(transactionManager);
     this.requiresNewTransactionTemplate.setPropagationBehavior(
         TransactionDefinition.PROPAGATION_REQUIRES_NEW);
@@ -79,9 +84,10 @@ public class SpaceService {
 
   @Transactional
   public Space createSpace(SpaceCreation creation, CurrentUser caller) {
-    // #333 removed SpaceKind: every user may create any number of spaces, including ones they work
-    // in alone. Only the default space is special, and it is created automatically rather than
-    // through this endpoint - see ensureDefaultSpace.
+    // #333 removed SpaceKind: a caller holding CREATE_SPACE may create any number of spaces,
+    // including ones they work in alone. Only the default space is special: it is provisioned at
+    // first sign-in and therefore independent of this capability - see ensureDefaultSpace.
+    capabilityService.requireCapability(caller, Capability.CREATE_SPACE);
     UUID ownerId = creation.ownerId() != null ? creation.ownerId() : caller.id();
     if (!caller.isSystemAdmin() && !ownerId.equals(caller.id())) {
       throw new AccessDeniedException(

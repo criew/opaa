@@ -15,11 +15,13 @@ import org.springframework.transaction.support.TransactionTemplate;
  * Puts the installation-wide settings rows back after every test method, exactly as the class found
  * them.
  *
- * <p>These tables hold a seeded singleton row (or, for the seed markers and {@code mail_templates},
- * rows no test class owns): there is no id a class could scope its cleanup to, and a seeded value
- * cannot be reconstructed once it was overwritten. The snapshot is taken when a class starts; the
- * restore runs after the method's own {@code @AfterEach}, so a cleanup that throws does not skip
- * it. A class may still reset a row itself - it then simply finds nothing to restore.
+ * <p>These tables hold a seeded singleton row (or, for the seed markers, {@code mail_templates} and
+ * the delivered capability grants, rows no test class owns): there is no id a class could scope its
+ * cleanup to, and a seeded value cannot be reconstructed once it was overwritten - a capability
+ * withdrawn from "Alle Konten" would otherwise leave every later class unable to create a space.
+ * The snapshot is taken when a class starts; the restore runs after the method's own
+ * {@code @AfterEach}, so a cleanup that throws does not skip it. A class may still reset a row
+ * itself - it then simply finds nothing to restore.
  */
 final class SeededRowRestorer extends AbstractTestExecutionListener {
 
@@ -29,6 +31,8 @@ final class SeededRowRestorer extends AbstractTestExecutionListener {
           "audit_retention_settings",
           "diagnostic_context_retention_settings",
           "permission_history_retention_settings",
+          "capability_grants",
+          "capability_grant_history",
           "local_auth_settings",
           "external_access_settings",
           "mail_settings",

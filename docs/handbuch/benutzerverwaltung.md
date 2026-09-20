@@ -232,6 +232,37 @@ Systemverwalterkonten sind **persönliche** Konten, je Person eines — keine Sa
 Notanker-Konto, das der Erststart anlegt, ist davon ausgenommen und kein Arbeitskonto; wofür es
 gedacht ist und welche Auflagen dafür gelten, steht im Kapitel [Deployment](deployment.md).
 
+### Anlegerechte
+
+Neben der Rolle steht eine zweite installationsweite Entscheidung: **wer etwas anlegen darf**. Diese
+**Anlegerechte** gelten für alle Konten der Installation, gleich ob lokal oder aus einem
+Identitätsanbieter, und werden an eine Person, eine Gruppe oder an **„Alle Konten"** vergeben.
+
+| Anlegerecht | Ausgeliefert an |
+|---|---|
+| **Spaces anlegen** | Alle Konten |
+| **Bibliotheken für Uploads anlegen** | Alle Konten |
+| **Konnektorbibliotheken anlegen** | Alle Konten |
+| **Interne Gruppen anlegen** | niemanden — die Systemverwaltung hat es ohnehin |
+
+Vier Punkte dazu:
+
+- **Der ausgelieferte Zustand ändert nichts.** Wer bisher Spaces und Bibliotheken anlegen konnte, kann
+  es weiterhin. Einschränken heißt: „Alle Konten" das Recht entziehen und es einer benannten Gruppe
+  geben.
+- **Konnektorbibliotheken sind der erste Kandidat für eine Einschränkung.** Sie erreichen Serverpfade
+  und hinterlegte Zugangsdaten und tragen die Freigabe für [Fremdzugänge](fremdzugaenge.md). Wer das
+  Anlegen dieser Bibliotheken auf eine benannte Gruppe begrenzt, begrenzt zugleich, wer serverseitige
+  Quellen anschließen kann.
+- **Ein Anlegerecht öffnet nie einen Inhalt.** Es erlaubt das Anlegen und sonst nichts; an der Menge
+  der lesbaren Bibliotheken ändert es nichts.
+- **Ein Entzug wirkt sofort**, ohne dass sich die betroffene Person neu anmelden muss. Fehlt das Recht,
+  nennt die Anwendung es beim Namen und sagt, an wen man sich wendet — sie versteckt die Funktion
+  nicht. Vergabe und Entzug stehen im Nachweisprotokoll und werden mit ihrem Zeitraum festgehalten.
+
+Eine Oberfläche zur Vergabe gibt es noch nicht (Issues #1820, #1821); bis dahin werden Anlegerechte
+über die Verwaltungsschnittstelle vergeben und entzogen.
+
 ## 8. Löschen oder sperren
 
 **Löschen ist die Ausnahme.** Für das Ausscheiden einer Person ist die Sperre der vorgesehene Weg:

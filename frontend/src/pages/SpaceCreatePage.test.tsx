@@ -43,6 +43,36 @@ describe('SpaceCreatePage (#594, Mockup 1b)', () => {
     expect(screen.getByRole('button', { name: 'Weiter' })).toBeEnabled()
   })
 
+  it('explains a missing Anlegerecht instead of hiding the button (#1813)', async () => {
+    server.use(
+      http.get('/api/v1/me/capabilities', () =>
+        HttpResponse.json({ capabilities: ['CREATE_LIBRARY'] }),
+      ),
+    )
+    const user = userEvent.setup()
+    renderWithProviders(<SpaceCreatePage />, { withRouter: true })
+
+    expect(await screen.findByText(/Ihnen fehlt das Anlegerecht/)).toBeInTheDocument()
+    await user.type(screen.getByLabelText(/Name/), 'Widerspruchsstelle')
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    expect(screen.getByRole('button', { name: 'Space anlegen' })).toBeDisabled()
+  })
+
+  it('leaves the button usable while the capabilities are still unknown (#1813)', async () => {
+    server.use(http.get('/api/v1/me/capabilities', () => HttpResponse.error()))
+    const user = userEvent.setup()
+    renderWithProviders(<SpaceCreatePage />, { withRouter: true })
+
+    await user.type(screen.getByLabelText(/Name/), 'Widerspruchsstelle')
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    expect(screen.queryByText(/Ihnen fehlt das Anlegerecht/)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Space anlegen' })).toBeEnabled()
+  })
+
   it('keeps entered values when going back a step', async () => {
     const user = userEvent.setup()
     renderWithProviders(<SpaceCreatePage />, { withRouter: true })

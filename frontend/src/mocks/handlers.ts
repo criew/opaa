@@ -60,6 +60,7 @@ import {
   resetMockDocumentMetadata,
   mockLibraryGrants,
   mockMyGroups,
+  mockMyCapabilities,
   mockChatDetails,
   mockChatPins,
   mockChatArchive,
@@ -3326,6 +3327,11 @@ export const handlers = [
 
   http.get('/api/v1/me/groups', () => {
     return HttpResponse.json(mockMyGroups)
+  }),
+
+  // The delivered state of ADR-0036, Entscheidung 5: all three creation capabilities, no group one.
+  http.get('/api/v1/me/capabilities', () => {
+    return HttpResponse.json(mockMyCapabilities)
   }),
 
   http.get('/api/v1/auth/config', () => {
