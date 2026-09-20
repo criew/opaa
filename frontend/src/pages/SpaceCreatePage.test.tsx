@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { answerConfirm, renderWithProviders } from '../test/test-utils'
 import { server } from '../mocks/server'
+import { capabilityMissingMessage } from '../utils/labels'
 import SpaceCreatePage from './SpaceCreatePage'
 import { useSpaceStore } from '../stores/spaceStore'
 
@@ -41,6 +42,39 @@ describe('SpaceCreatePage (#594, Mockup 1b)', () => {
     expect(screen.getByRole('button', { name: 'Weiter' })).toBeDisabled()
     await user.type(screen.getByLabelText(/Name/), 'Widerspruchsstelle')
     expect(screen.getByRole('button', { name: 'Weiter' })).toBeEnabled()
+  })
+
+  it('explains a missing Anlegerecht instead of hiding the button (#1813)', async () => {
+    server.use(
+      http.get('/api/v1/me/capabilities', () =>
+        HttpResponse.json({ capabilities: ['CREATE_LIBRARY'] }),
+      ),
+    )
+    const user = userEvent.setup()
+    renderWithProviders(<SpaceCreatePage />, { withRouter: true })
+
+    const hint = await screen.findByText(capabilityMissingMessage('CREATE_SPACE'))
+    await user.type(screen.getByLabelText(/Name/), 'Widerspruchsstelle')
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    const createButton = screen.getByRole('button', { name: 'Space anlegen' })
+    expect(createButton).toBeDisabled()
+    // the reason is not merely on the page, it is attached to the button that cannot be used
+    expect(createButton).toHaveAccessibleDescription(hint.textContent ?? '')
+  })
+
+  it('leaves the button usable while the capabilities are still unknown (#1813)', async () => {
+    server.use(http.get('/api/v1/me/capabilities', () => HttpResponse.error()))
+    const user = userEvent.setup()
+    renderWithProviders(<SpaceCreatePage />, { withRouter: true })
+
+    await user.type(screen.getByLabelText(/Name/), 'Widerspruchsstelle')
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    expect(screen.queryByText(/Ihnen fehlt das Anlegerecht/)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Space anlegen' })).toBeEnabled()
   })
 
   it('keeps entered values when going back a step', async () => {

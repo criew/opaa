@@ -10,6 +10,7 @@ import io.opaa.auth.oidc.ProviderGroupEffects;
 import io.opaa.permission.AssetGrant;
 import io.opaa.permission.AssetGrantRepository;
 import io.opaa.permission.AssetOwnershipDirectory;
+import io.opaa.permission.CapabilityGrantRepository;
 import io.opaa.permission.GroupMembershipHistoryCause;
 import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.PermissionHistoryService;
@@ -40,6 +41,7 @@ class ProviderGroupDirectoryAdapter implements ProviderGroupDirectory {
 
   private final GroupRepository groupRepository;
   private final AssetGrantRepository grantRepository;
+  private final CapabilityGrantRepository capabilityGrantRepository;
   private final List<AssetOwnershipDirectory> assetOwnershipDirectories;
   private final GroupScopeUsageDirectory scopeUsageDirectory;
   private final GroupMembershipResolver membershipResolver;
@@ -49,6 +51,7 @@ class ProviderGroupDirectoryAdapter implements ProviderGroupDirectory {
   ProviderGroupDirectoryAdapter(
       GroupRepository groupRepository,
       AssetGrantRepository grantRepository,
+      CapabilityGrantRepository capabilityGrantRepository,
       List<AssetOwnershipDirectory> assetOwnershipDirectories,
       GroupScopeUsageDirectory scopeUsageDirectory,
       GroupMembershipResolver membershipResolver,
@@ -56,6 +59,7 @@ class ProviderGroupDirectoryAdapter implements ProviderGroupDirectory {
       AuditEventRecorder auditEventRecorder) {
     this.groupRepository = groupRepository;
     this.grantRepository = grantRepository;
+    this.capabilityGrantRepository = capabilityGrantRepository;
     this.assetOwnershipDirectories = assetOwnershipDirectories;
     this.scopeUsageDirectory = scopeUsageDirectory;
     this.membershipResolver = membershipResolver;
@@ -87,6 +91,10 @@ class ProviderGroupDirectoryAdapter implements ProviderGroupDirectory {
     List<UUID> scopedAuthorizations =
         scopeUsageDirectory.scopeGroupsOfUnspentAuthorizations(groupIds);
     effective.addAll(scopedAuthorizations);
+    // A group holding only a capability is effective too: its rows block
+    // fk_capability_grants_subject_group_organization, and deleteGroupsOfProvider below deletes
+    // every group of the provider once the caller confirms there is no effect left to decide about.
+    effective.addAll(capabilityGrantRepository.findSubjectGroupIdsIn(groupIds));
     return new ProviderGroupEffects(
         effective.size(),
         grants.size(),

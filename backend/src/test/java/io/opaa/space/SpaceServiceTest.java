@@ -13,6 +13,7 @@ import static org.mockito.Mockito.when;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.UserRepository;
 import io.opaa.chat.ChatRepository;
+import io.opaa.permission.CapabilityService;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -49,6 +50,7 @@ class SpaceServiceTest {
     AuditEventRecorder auditEventRecorder = mock(AuditEventRecorder.class);
     ChatRepository chatRepository = mock(ChatRepository.class);
     SpaceAssetAssociationService associationService = mock(SpaceAssetAssociationService.class);
+    CapabilityService capabilityService = mock(CapabilityService.class);
     spaceService =
         new SpaceService(
             spaceRepository,
@@ -56,6 +58,7 @@ class SpaceServiceTest {
             auditEventRecorder,
             chatRepository,
             associationService,
+            capabilityService,
             transactionManager);
   }
 

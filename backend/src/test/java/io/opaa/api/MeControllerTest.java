@@ -15,6 +15,7 @@ import io.opaa.auth.UserService;
 import io.opaa.group.Group;
 import io.opaa.group.GroupOverview;
 import io.opaa.group.GroupService;
+import io.opaa.permission.CapabilityService;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -48,6 +49,7 @@ class MeControllerTest {
   @Autowired private MockMvc mockMvc;
   @MockitoBean private GroupService groupService;
   @MockitoBean private UserService userService;
+  @MockitoBean private CapabilityService capabilityService;
 
   private User user;
   private CurrentUser expectedCaller;

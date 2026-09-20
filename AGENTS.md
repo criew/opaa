@@ -214,7 +214,11 @@ der eine Zählung gewachsen ist — nur sie, nicht jede folgende.
 die Seed-Marker) haben keine eigene ID, auf die eine Klasse ihr Aufräumen eingrenzen könnte.
 `SeededRowRestorer` sichert sie zu Beginn jeder Klasse und stellt sie nach jeder Testmethode wieder
 her, nach deren `@AfterEach` — auch wenn dort eine Aufräumanweisung geworfen hat. Eine weitere
-solche Tabelle gehört in seine Liste.
+solche Tabelle gehört in seine Liste. **Trägt die Tabelle auch Zeilen, die eine Testklasse selbst
+schreibt** (`capability_grants`, `capability_grant_history`), wird sie dort als `BY_ID` geführt: Der
+Restorer merkt sich die vorgefundenen IDs und fasst nur die an. Ein Prädikat über die Zeilenform
+träfe die eigene Zeile einer Klasse mit — und nähme ihr damit das Aufräumen ab, das
+`LeftoverRowGuard` einfordert.
 
 **`SpringContextSignatureTest` zieht die Grenze maschinell.** Er baut über
 `BootstrapUtils.resolveTestContextBootstrapper(...)` je Testklasse die `MergedContextConfiguration`,

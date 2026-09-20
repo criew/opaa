@@ -129,6 +129,60 @@ Im Einzelnen:
   Begründung steht bei den
   [Berechtigungs-Leitplanken](./hybrid-retrieval.md#berechtigungs-leitplanken), Leitplanke (c).
 
+### Fähigkeiten: die installationsweiten Anlegerechte
+
+Neben den Rollen und den beiden Befugnissen steht eine dritte Art von Recht: die **Fähigkeit** (in der
+Oberfläche **Anlegerecht**) — das unbefristete Recht, etwas *anzulegen*. Sie wird an eine Person, eine
+Gruppe oder an **„Alle Konten"** vergeben, hat keinen Gegenstand und öffnet **nie** einen Inhalt.
+Festgelegt in [ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md),
+Entscheidung 5, die damit ADR-0018, Entscheidung 6 samt Nachtrag ablöst.
+
+| Fähigkeit | Was sie öffnet | Ausgeliefert an |
+|---|---|---|
+| `CREATE_SPACE` | einen Space anlegen | Alle Konten |
+| `CREATE_LIBRARY` | eine Bibliothek für Uploads anlegen | Alle Konten |
+| `CREATE_CONNECTOR_LIBRARY` | eine Bibliothek mit Konnektor anlegen (Dateisystem, Webverzeichnis, Feed, Confluence, S3) | Alle Konten |
+| `CREATE_INTERNAL_GROUP` | eine interne Gruppe anlegen | niemanden |
+
+> **`CREATE_INTERNAL_GROUP` ist heute Vokabular, keine Öffnung.** Der Endpunkt hinter dem Anlegen
+> interner Gruppen ist unverändert `SYSTEM_ADMIN`-beschränkt, und die Systemverwaltung hält die
+> Fähigkeit ohnehin implizit. Eine Erteilung an eine Person oder Gruppe wird protokolliert und
+> historisiert, wirkt aber erst, wenn es einen Anlegepfad außerhalb der Systemverwaltung gibt
+> ([#1814](https://github.com/criew/opaa/issues/1814)). Die Verwaltungsübersicht sagt das in ihrer
+> Klartextzeile mit.
+
+- **Der ausgelieferte Zustand ist der heutige.** Nach der Migration legt jedes Konto Spaces und
+  Bibliotheken genau wie vorher an; interne Gruppen bleiben der Systemverwaltung vorbehalten. Wer
+  einschränken will, entzieht „Alle Konten" und erteilt einer benannten Gruppe.
+- **`CREATE_CONNECTOR_LIBRARY` ist eine eigene Fähigkeit**, weil Konnektorbibliotheken Serverpfade und
+  Zugangsdaten erreichen und die Freigabe-Obergrenze für Fremdzugänge tragen — der erste Kandidat, den
+  ein Haus nach der Migration auf eine benannte Gruppe einschränkt.
+- **Die Auswertung** lautet: `SYSTEM_ADMIN` **oder** Erteilung an „Alle Konten" **oder** an das Konto
+  **oder** an eine seiner Gruppen. `SYSTEM_ADMIN` besitzt damit jede Fähigkeit implizit; **die Rolle
+  `AUDITOR` verleiht keine** — sie ist ein Lesepfad in das Protokoll und sonst nichts.
+- **Keine Fähigkeit öffnet einen Inhalt.** Insbesondere verändert keine von ihnen die Menge der
+  lesbaren Bibliotheken; der fehlende Systemverwalter-Durchgriff in der Suche bleibt, wie er ist
+  (siehe [Verwalten ist nicht Lesen](#verwalten-ist-nicht-lesen-die-asymmetrie-bei-wissensbibliotheken)).
+- **Der persönliche Space** entsteht bei der ersten Anmeldung unabhängig von `CREATE_SPACE`: das ist
+  Bereitstellung, kein Anlegen.
+- **Fehlt die Fähigkeit, erklärt die Antwort statt zu verschweigen:** `403` mit dem Code
+  `CAPABILITY_REQUIRED`, dem Namen des fehlenden Anlegerechts und dem Hinweis, an wen man sich wendet.
+  `GET /api/v1/me/capabilities` liefert der Oberfläche die eigenen Fähigkeiten, damit sie das schon vor
+  dem Versuch sagen kann.
+- **Der Entzug wirkt ohne Neuanmeldung.** Die Fähigkeit wird je Anfrage aus der Datenbank ausgewertet.
+  Diese Zusage trägt, weil [ADR-0021](../decisions/0021-single-instance-betrieb.md) einen einzigen
+  Prozess voraussetzt; fällt diese Annahme, fällt die Zusage mit.
+- **Vergabe und Entzug sind Governance-Ereignisse** (`CAPABILITY_GRANTED`/`CAPABILITY_REVOKED`) und
+  bekommen zusätzlich ein Intervall in `capability_grant_history` — die Stichtagsauskunft „wer durfte
+  am 3. März Konnektorbibliotheken anlegen" ist damit innerhalb der Aufbewahrungshöchstdauer
+  beantwortbar. Der Entzug einer Fähigkeit von „Alle Konten" ändert die Arbeitsbedingungen aller
+  Beschäftigten und ist deshalb kein technisches Ereignis unter vielen.
+- **Verwaltet wird die Fähigkeit von `SYSTEM_ADMIN`** (`/api/v1/admin/capabilities`). Eine Fähigkeit zu
+  *halten* heißt nicht, sie *vergeben* zu dürfen.
+- **Was keine Fähigkeit ist:** „Space organisationsweit sichtbar machen", „Bibliothek organisationsweit
+  freigeben" und „Fremdzugang freigeben" sind Reichweitenentscheidungen am Objekt und bleiben bei
+  `MANAGER`/`OWNER`. „Sicht als" und Vorfallsbereich bleiben Befugnisse und werden nie Fähigkeiten.
+
 ### Verwalten ist nicht Lesen: die Asymmetrie bei Wissensbibliotheken
 
 Die Abgrenzung oben — Systemverwaltung ist nicht automatisch Leseberechtigung — ist im Code als

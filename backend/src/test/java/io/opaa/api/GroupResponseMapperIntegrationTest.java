@@ -3,6 +3,7 @@ package io.opaa.api;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.api.dto.GroupListResponse;
+import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
@@ -71,9 +72,22 @@ class GroupResponseMapperIntegrationTest {
   }
 
   private UUID createUser() {
+    return createUser(SystemRole.USER);
+  }
+
+  /**
+   * Creating an internal group needs CREATE_INTERNAL_GROUP, which is delivered to nobody and held
+   * implicitly by SYSTEM_ADMIN - the only role the endpoint lets through anyway (#1813).
+   */
+  private UUID createAdmin() {
+    return createUser(SystemRole.SYSTEM_ADMIN);
+  }
+
+  private UUID createUser(SystemRole role) {
     User user =
         new User(UUID.randomUUID().toString(), "test-issuer", "user@example.com", "Test User");
     user.setOrganizationId(organizationId);
+    user.setSystemRole(role);
     UUID id = userRepository.save(user).getId();
     createdUserIds.add(id);
     return id;
@@ -91,7 +105,7 @@ class GroupResponseMapperIntegrationTest {
 
   @Test
   void listGroupsFollowedByTheMapperDoesNotThrowAndReflectsTheMemberCount() {
-    UUID admin = createUser();
+    UUID admin = createAdmin();
     UUID member = createUser();
     CurrentUser adminCaller = currentUserOf(admin);
     Group created = groupService.createGroup(new GroupCreation("Team", null), adminCaller).group();
@@ -106,7 +120,7 @@ class GroupResponseMapperIntegrationTest {
 
   @Test
   void listMyGroupsFollowedByTheMapperDoesNotThrowAndReflectsTheMemberCount() {
-    UUID admin = createUser();
+    UUID admin = createAdmin();
     UUID member = createUser();
     CurrentUser adminCaller = currentUserOf(admin);
     Group created = groupService.createGroup(new GroupCreation("Team", null), adminCaller).group();

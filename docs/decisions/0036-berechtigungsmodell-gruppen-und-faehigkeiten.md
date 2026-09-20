@@ -824,7 +824,7 @@ für Mitgliedschaften zieht.
 | **Feststellungsintervall** | Vorgabe **stündlich** | Entscheidung 6 |
 | **Aufbewahrungshöchstdauer der Rechtehistorie** | Grenzen **12–120 Monate**, ausgeliefert **36** | Die Grenzen sind dieselben wie `chk_audit_retention_settings_months`, weil `security-and-compliance.md` („Aufbewahrung und Löschschicksal der Historie folgen derselben Logik wie das Protokoll") es so verlangt. **Derselbe Satz trägt auch den ausgelieferten Wert:** Das Nachweisprotokoll wird mit **36** geseedet (`001-baseline.yaml`), und die Begründung dort ist ausdrücklich — 3 Jahre decken „den üblichen Abstand zwischen Vorgang und Prüfung", 10 Jahre sind die Obergrenze, weil „was länger liegt, keiner Prüfung mehr dient". **120 wäre der falsche Auslieferungswert gewesen:** Personalrat D1 verlangt die Höchstdauer als Vorbedingung weiterer Quellen, und eine ausgelieferte Obergrenze begrenzt im Auslieferungszustand nichts |
 | **Personenspalten in Historientabellen** | **2 → 7** | heute `group_membership_history.user_id` und `asset_grant_history.subject_user_id`; dazu fünf neue Tabellen |
-| **`RESTRICT`-Personenspalten insgesamt (Löschschuld)** | **11 → 16** | `UserRepository#countDeletionBlockers` zählt heute elf Spalten in acht Tabellen (`spaces`, `chats`, `knowledge_libraries`, `asset_grants` ×2, `space_asset_associations`, `asset_grant_history`, `group_membership_history`, `audit_incident_scope_grants` ×3); `UserDeletionBlockerCoverageIntegrationTest` hält die Liste gegen `pg_constraint`. **Diese Zahl ist das Maß der aufgeschobenen Löschschuld**; `countDeletionBlockers` wächst mit jeder neuen Tabelle, und #391/#395 stellt die sieben Historienspalten in einem Zug um |
+| **`RESTRICT`-Personenspalten insgesamt (Löschschuld)** | **11 → mindestens 16** | Gezählt wird **jede `RESTRICT`/`NO ACTION`-Fremdschlüsselspalte auf `users`** — Subjekt **und** Akteur —, in Grant- **wie** Historientabellen; nicht nur eine Spalte je neuer Historientabelle. Heute sind es elf Spalten in acht Tabellen (`spaces`, `chats`, `knowledge_libraries`, `asset_grants` ×2, `space_asset_associations`, `asset_grant_history`, `group_membership_history`, `audit_incident_scope_grants` ×3). Jede der fünf neuen Historientabellen bringt mindestens eine; eine neue Grant-Tabelle daneben bringt ihre eigenen mit — #1813 zum Beispiel drei (`capability_grant_history.subject_user_id`, `capability_grants.subject_user_id`, `capability_grants.granted_by_user_id`), also 11 → 14. **„16" ist deshalb eine Größenordnung, keine Zielzahl:** nach Abschluss des Epics sind es ≥ 16. Autorität ist `UserDeletionBlockerCoverageIntegrationTest`, der die Liste aus `pg_constraint` ableitet, nicht diese Tabelle. **Die Zahl ist das Maß der aufgeschobenen Löschschuld**; `countDeletionBlockers` wächst mit jeder neuen Tabelle, und #391/#395 stellt die Historienspalten in einem Zug um |
 
 ## Randbedingungen aus der Stakeholder-Runde
 
@@ -973,7 +973,8 @@ weil es die Oberflächen aus #1820 und #1821 beschreibt.
 
 ### Negativ
 
-- **Die Löschschuld wächst von elf auf sechzehn `RESTRICT`-Personenspalten.** Eine Kontolöschung
+- **Die Löschschuld wächst von elf auf mindestens sechzehn `RESTRICT`-Personenspalten** (siehe die
+  Zahlentabelle: gezählt wird jede Personenspalte, auch die der Grant-Tabellen). Eine Kontolöschung
   bleibt blockiert, bis #391/#395 die Pseudonymisierung liefern — jetzt an mehr Stellen als vorher.
 - **Zwischen #1812 und der Übertragungsoperation ist das Löschen eines Anbieters mit wirkenden
   Gruppen eine Sackgasse** mit dem einzigen Ausweg „Wirkungen entfernen". Deaktivieren bleibt

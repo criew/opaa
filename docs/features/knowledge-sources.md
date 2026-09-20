@@ -773,9 +773,11 @@ dieser Fehler ist strukturell ausgeschlossen.
 ### Zuständigkeit und Obergrenze der Freigabe
 
 Die frühere Trennung „die Systemverwaltung entscheidet, wohin indiziert wird" gilt in dieser Form
-**nicht mehr**: Wer eine Bibliothek anlegen darf, wählt Typ und Konfiguration selbst — eine dauerhafte
-Entscheidung, kein Rollenkonstrukt tritt an ihre Stelle (ADR-0018, Entscheidung 6, siehe
-[Überblick](#überblick)). Was bleibt:
+**nicht mehr**: Wer eine Bibliothek anlegen darf, wählt Typ und Konfiguration selbst (ADR-0018,
+Entscheidung 6, siehe [Überblick](#überblick)). Wer das darf, ist seit
+[ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md), Entscheidung 5 die
+vergebbare Fähigkeit `CREATE_CONNECTOR_LIBRARY` — ausgeliefert an „Alle Konten", also im
+Auslieferungszustand offen, aber auf eine benannte Gruppe einschränkbar. Was bleibt:
 
 | Wer | Entscheidet |
 |---|---|

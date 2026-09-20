@@ -969,12 +969,17 @@ class PermissionHistoryServiceIntegrationTest {
    * users.id} therefore survives it untouched. {@code ProviderGroupDirectoryAdapter} (#1812) does
    * delete groups and their memberships when their identity provider is deleted, but only after
    * reporting that none of them holds a grant or owns an asset - a group without either moves no
-   * library into or out of anybody's readable set.
+   * library into or out of anybody's readable set. {@code CapabilityService} (#1813) resolves a
+   * group only to decide whether it may receive an Anlegerecht; a capability opens a creation path
+   * and never an existing content, which {@code
+   * io.opaa.permission.CapabilityServiceIntegrationTest#noCapabilityWidensTheSetOfReadableLibraries}
+   * holds against this very formula.
    */
   private static final Set<String> BEANS_REACHING_THE_RIGHTS_TABLES =
       Set.of(
           "AssetAccessService",
           "AssetGrantService",
+          "CapabilityService",
           "DiagnosticImpersonationGrantService",
           "DirectorySyncPlanExecutor",
           "ForeignDiagnosticContextService",
