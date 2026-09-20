@@ -102,7 +102,9 @@ class SearchDiagnosisPersonContextHttpIntegrationTest {
 
     orgUnitId =
         groupRepository
-            .save(new Group(organizationId, GroupKind.ORG_UNIT, "Bürgerbüro", null, null, null))
+            .save(
+                new Group(
+                    organizationId, GroupKind.ORG_UNIT, "Bürgerbüro", null, null, null, null, null))
             .getId();
     jdbcTemplate.update(
         "INSERT INTO group_memberships (id, user_id, group_id, organization_id, created_at)"

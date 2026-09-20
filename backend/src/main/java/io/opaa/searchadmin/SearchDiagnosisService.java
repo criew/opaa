@@ -99,7 +99,8 @@ public class SearchDiagnosisService {
 
   /** The profiles a diagnosis can be run in: the caller's organization's groups, by name. */
   public List<PermissionProfile> permissionProfiles(CurrentUser caller) {
-    List<io.opaa.group.Group> groups = groupService.listGroups(caller);
+    List<io.opaa.group.Group> groups =
+        groupService.listGroups(caller).stream().map(io.opaa.group.GroupOverview::group).toList();
     Map<UUID, Integer> counts =
         libraryAccessService.readableLibraryCountsForGroups(
             groups.stream().map(io.opaa.group.Group::getId).toList(), caller.organizationId());

@@ -654,7 +654,8 @@ class AuditEventRecordingIntegrationTest {
     // ORG_UNIT group already exists is DirectorySyncPlanExecutor#handle's ABORTED_EMPTY_RESULT
     // branch - the classic "misconfigured connection" symptom, nothing is written.
     Group group =
-        new Group(organizationId, GroupKind.ORG_UNIT, "Pre-existing", null, "ext-x", null);
+        new Group(
+            organizationId, GroupKind.ORG_UNIT, "Pre-existing", null, null, "ext-x", null, null);
     groupRepository.save(group);
     directoryClient.respondWith();
 

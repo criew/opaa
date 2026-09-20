@@ -206,7 +206,8 @@ class AssetGrantServiceTest {
     when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
         .thenReturn(AssetRole.OWNER);
     UUID foreignGroupId = UUID.randomUUID();
-    GroupSubject foreignGroup = new GroupSubject(foreignGroupId, UUID.randomUUID(), "Fremd", false);
+    GroupSubject foreignGroup =
+        new GroupSubject(foreignGroupId, UUID.randomUUID(), "Fremd", false, false);
     when(groupDirectory.find(foreignGroupId)).thenReturn(Optional.of(foreignGroup));
 
     AssetGrantUpsert request =
@@ -358,7 +359,7 @@ class AssetGrantServiceTest {
     when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
         .thenReturn(AssetRole.OWNER);
     GroupSubject dissolvedGroup =
-        new GroupSubject(UUID.randomUUID(), organizationId, "Aufgeloest", true);
+        new GroupSubject(UUID.randomUUID(), organizationId, "Aufgeloest", true, false);
     when(groupDirectory.find(dissolvedGroup.id())).thenReturn(Optional.of(dissolvedGroup));
 
     AssetGrantUpsert request =
@@ -374,6 +375,30 @@ class AssetGrantServiceTest {
                       "Die Gruppe ist aufgelöst und kann keine neuen Berechtigungen mehr"
                           + " erhalten");
             });
+    verify(grantRepository, never()).save(any());
+  }
+
+  /**
+   * ADR-0036, Entscheidung 2: the groups of a disabled provider are no effective groups. Without
+   * this a release to them would reach nobody and then, with the provider switched back on, reach
+   * everybody at once without a second decision.
+   */
+  @Test
+  void upsertGrantRejectsTargetingAGroupOfADisabledProvider() {
+    when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
+        .thenReturn(AssetRole.OWNER);
+    when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
+        .thenReturn(AssetRole.OWNER);
+    GroupSubject group =
+        new GroupSubject(UUID.randomUUID(), organizationId, "Fachbereich 3", false, true);
+    when(groupDirectory.find(group.id())).thenReturn(Optional.of(group));
+
+    AssetGrantUpsert request =
+        new AssetGrantUpsert(PermissionSubjectType.GROUP, group.id(), AssetRole.VIEWER);
+
+    assertThatThrownBy(() -> grantService.upsertGrant(libraryId, request, managerCaller))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("Identitätsanbieter dieser Gruppe ist deaktiviert");
     verify(grantRepository, never()).save(any());
   }
 

@@ -6,10 +6,13 @@ import io.opaa.api.dto.GroupListResponse;
 import io.opaa.api.dto.GroupMemberResponse;
 import io.opaa.api.dto.GroupResponse;
 import io.opaa.api.types.GroupKind;
+import io.opaa.api.types.GroupOrigin;
 import io.opaa.group.Group;
 import io.opaa.group.GroupDetail;
 import io.opaa.group.GroupMemberView;
 import io.opaa.group.GroupMembership;
+import io.opaa.group.GroupOverview;
+import io.opaa.group.GroupProviderView;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -24,26 +27,50 @@ class GroupResponseMapperTest {
 
   @Test
   void toListResponseCopiesEveryFieldFromTheEntity() {
+    UUID providerId = UUID.randomUUID();
     Group group =
         new Group(
             UUID.randomUUID(),
             GroupKind.ORG_UNIT,
             "Referat 5",
             "Beschreibung",
+            providerId,
             "ext-1",
+            "/Haus/Abteilung 5/Referat 5",
             UUID.randomUUID());
 
-    GroupListResponse response = GroupResponseMapper.toListResponse(group);
+    GroupListResponse response =
+        GroupResponseMapper.toListResponse(
+            new GroupOverview(
+                group, new GroupProviderView(providerId, "Verzeichnis Haus A", true, false)));
 
     assertThat(response.getId()).isEqualTo(group.getId());
     assertThat(response.getName()).isEqualTo("Referat 5");
     assertThat(response.getDescription()).isEqualTo("Beschreibung");
     assertThat(response.getKind()).isEqualTo(GroupKind.ORG_UNIT);
     assertThat(response.getExternalId()).isEqualTo("ext-1");
+    assertThat(response.getSourcePath()).isEqualTo("/Haus/Abteilung 5/Referat 5");
+    assertThat(response.getOrigin()).isEqualTo(GroupOrigin.PROVIDER);
+    assertThat(response.getProvider().getId()).isEqualTo(providerId);
+    assertThat(response.getProvider().getDisplayName()).isEqualTo("Verzeichnis Haus A");
+    assertThat(response.getProvider().getExternal()).isTrue();
+    assertThat(response.getProvider().getEnabled()).isFalse();
     assertThat(response.getParentGroupId()).isEqualTo(group.getParentGroupId());
     assertThat(response.getMemberCount()).isZero();
     assertThat(response.getCreatedAt()).isEqualTo(group.getCreatedAt());
     assertThat(response.getUpdatedAt()).isEqualTo(group.getUpdatedAt());
+  }
+
+  /** A group without a provider is INTERNAL and carries no provider block at all. */
+  @Test
+  void aGroupWithoutAProviderIsMappedAsInternal() {
+    Group group = Group.internal(UUID.randomUUID(), "Projektteam", null, null);
+
+    GroupListResponse response = GroupResponseMapper.toListResponse(new GroupOverview(group, null));
+
+    assertThat(response.getOrigin()).isEqualTo(GroupOrigin.INTERNAL);
+    assertThat(response.getProvider()).isNull();
+    assertThat(response.getSourcePath()).isNull();
   }
 
   @Test
@@ -52,31 +79,33 @@ class GroupResponseMapperTest {
     // memberships were never initialized (LAZY, no fetch join) would throw
     // LazyInitializationException here instead of returning a wrong count - this case exercises
     // the non-empty path, which an always-empty-collection test cannot.
-    Group group = new Group(UUID.randomUUID(), GroupKind.AD_HOC, "Team", null, null, null);
+    Group group = Group.internal(UUID.randomUUID(), "Team", null, null);
     group.addMembership(new GroupMembership(UUID.randomUUID(), group.getOrganizationId()));
     group.addMembership(new GroupMembership(UUID.randomUUID(), group.getOrganizationId()));
 
-    GroupListResponse response = GroupResponseMapper.toListResponse(group);
+    GroupListResponse response = GroupResponseMapper.toListResponse(new GroupOverview(group, null));
 
     assertThat(response.getMemberCount()).isEqualTo(2);
   }
 
   @Test
   void toListResponsesMapsEveryGroupInOrder() {
-    Group first = new Group(UUID.randomUUID(), GroupKind.AD_HOC, "A", null, null, null);
-    Group second = new Group(UUID.randomUUID(), GroupKind.AD_HOC, "B", null, null, null);
+    Group first = Group.internal(UUID.randomUUID(), "A", null, null);
+    Group second = Group.internal(UUID.randomUUID(), "B", null, null);
 
-    List<GroupListResponse> responses = GroupResponseMapper.toListResponses(List.of(first, second));
+    List<GroupListResponse> responses =
+        GroupResponseMapper.toListResponses(
+            List.of(new GroupOverview(first, null), new GroupOverview(second, null)));
 
     assertThat(responses).extracting(GroupListResponse::getName).containsExactly("A", "B");
   }
 
   @Test
   void toResponseCarriesTheMemberListAndItsSize() {
-    Group group = new Group(UUID.randomUUID(), GroupKind.AD_HOC, "Team", "Desc", null, null);
+    Group group = Group.internal(UUID.randomUUID(), "Team", "Desc", null);
     GroupMembership membership = new GroupMembership(UUID.randomUUID(), group.getOrganizationId());
     GroupMemberView view = new GroupMemberView(membership, "Ada Lovelace");
-    GroupDetail detail = new GroupDetail(group, List.of(view));
+    GroupDetail detail = new GroupDetail(group, List.of(view), null);
 
     GroupResponse response = GroupResponseMapper.toResponse(detail);
 
@@ -91,8 +120,8 @@ class GroupResponseMapperTest {
 
   @Test
   void toResponseReturnsAnEmptyMemberListInsteadOfNullForAGroupWithoutMembers() {
-    Group group = new Group(UUID.randomUUID(), GroupKind.AD_HOC, "Team", null, null, null);
-    GroupDetail detail = new GroupDetail(group, List.of());
+    Group group = Group.internal(UUID.randomUUID(), "Team", null, null);
+    GroupDetail detail = new GroupDetail(group, List.of(), null);
 
     GroupResponse response = GroupResponseMapper.toResponse(detail);
 

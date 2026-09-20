@@ -12,13 +12,17 @@ import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import com.sun.net.httpserver.HttpServer;
+import io.opaa.api.types.GroupKind;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.AuthProperties;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.ConflictException;
+import io.opaa.group.Group;
+import io.opaa.group.GroupRepository;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
+import io.opaa.permission.GroupSubjectDirectory;
 import io.opaa.test.OpaaIntegrationTest;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
@@ -60,6 +64,8 @@ class OidcProviderServiceIntegrationTest {
   @Autowired private OidcProviderService service;
   @Autowired private OidcProviderRegistry registry;
   @Autowired private OidcProviderRepository repository;
+  @Autowired private GroupRepository groupRepository;
+  @Autowired private GroupSubjectDirectory groupDirectory;
   @Autowired private UserRepository userRepository;
   @Autowired private AuthProperties authProperties;
   @Autowired private OrganizationRepository organizationRepository;
@@ -114,6 +120,7 @@ class OidcProviderServiceIntegrationTest {
     jwks.stop(0);
     jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organizationId);
     removeOwnProviders();
+    jdbcTemplate.update("DELETE FROM groups WHERE organization_id = ?", organizationId);
     registry.refresh();
     userRepository.deleteById(userId);
     organizationRepository.deleteById(organizationId);
@@ -126,10 +133,151 @@ class OidcProviderServiceIntegrationTest {
    * https://idp.example/realms/...} as well, and this table is shared like every other.
    */
   private void removeOwnProviders() {
+    // fk_groups_provider is RESTRICT and a group's grants are RESTRICT in turn (#1812): the three
+    // deletions have to run from the inside out, or the provider row cannot go at all.
+    String ownProviders =
+        "SELECT id FROM oidc_providers WHERE issuer_uri LIKE ? OR issuer_uri LIKE ?";
+    jdbcTemplate.update(
+        "DELETE FROM asset_grants WHERE subject_group_id IN"
+            + " (SELECT id FROM groups WHERE provider_id IN ("
+            + ownProviders
+            + "))",
+        OWN_ISSUER_PREFIX + "%",
+        "http://127.0.0.1:%");
+    jdbcTemplate.update(
+        "DELETE FROM groups WHERE provider_id IN (" + ownProviders + ")",
+        OWN_ISSUER_PREFIX + "%",
+        "http://127.0.0.1:%");
     jdbcTemplate.update(
         "DELETE FROM oidc_providers WHERE issuer_uri LIKE ? OR issuer_uri LIKE ?",
         OWN_ISSUER_PREFIX + "%",
         "http://127.0.0.1:%");
+  }
+
+  /** A group of {@code provider}, the way the token synchronisation would create it. */
+  private Group providerGroup(OidcProvider provider, String name) {
+    return groupRepository.save(
+        new Group(
+            organizationId,
+            GroupKind.IDENTITY_PROVIDER,
+            name,
+            null,
+            provider.getId(),
+            name,
+            null,
+            null));
+  }
+
+  /**
+   * A grant of {@code group} on an arbitrary asset - {@code asset_grants.asset_id} carries no
+   * foreign key since #1811, so no library row is needed to make the group "wirksam".
+   */
+  private void grantOnSomeAsset(Group group) {
+    jdbcTemplate.update(
+        "INSERT INTO asset_grants (id, asset_type, asset_id, organization_id, subject_type,"
+            + " subject_group_id, role) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, ?, 'GROUP', ?,"
+            + " 'VIEWER')",
+        UUID.randomUUID(),
+        UUID.randomUUID(),
+        organizationId,
+        group.getId());
+  }
+
+  /** A second provider besides the default one, which may be deleted and disabled. */
+  private OidcProvider secondProvider() {
+    service.createProvider(organizationId, userId, draft("Erster", issuer));
+    return service.createProvider(organizationId, userId, draft("Partner", issuer + "-2"));
+  }
+
+  /** The groups of a provider go with it as long as none of them carries a right (ADR-0036/2). */
+  @Test
+  void deletingAProviderTakesItsEffectFreeGroupsWithIt() {
+    OidcProvider partner = secondProvider();
+    Group group = providerGroup(partner, "Fachbereich 3");
+
+    service.deleteProvider(organizationId, userId, partner.getId());
+
+    assertThat(groupRepository.findById(group.getId())).isEmpty();
+    assertThat(repository.findById(partner.getId())).isEmpty();
+  }
+
+  /**
+   * The counterpart: until the transfer operation exists there is no way past this 409 other than
+   * removing the rights - the message has to say how much work that is.
+   */
+  @Test
+  void aProviderWhoseGroupStillCarriesARightIsRefusedWithTheCounts() {
+    OidcProvider partner = secondProvider();
+    Group group = providerGroup(partner, "Fachbereich 3");
+    grantOnSomeAsset(group);
+
+    assertThatThrownBy(() -> service.deleteProvider(organizationId, userId, partner.getId()))
+        .isInstanceOf(ConflictException.class)
+        .satisfies(
+            thrown ->
+                assertThat(((ConflictException) thrown).getCode())
+                    .isEqualTo(OidcProviderService.PROVIDER_GROUPS_IN_EFFECT))
+        .hasMessageContaining("1 Gruppe wirkt noch")
+        .hasMessageContaining("1 Berechtigung")
+        .hasMessageContaining("1 Objekt");
+    assertThat(repository.findById(partner.getId())).isPresent();
+    assertThat(groupRepository.findById(group.getId())).isPresent();
+  }
+
+  /**
+   * Disabling leaves group, membership and grant untouched, but the group stops being an effective
+   * one: no new grant may target it while the provider is off (ADR-0036, Entscheidung 2).
+   */
+  @Test
+  void theGroupsOfADisabledProviderStopBeingEffectiveWithoutLosingAnything() {
+    OidcProvider partner = secondProvider();
+    Group group = providerGroup(partner, "Fachbereich 3");
+    grantOnSomeAsset(group);
+    assertThat(groupDirectory.find(group.getId()).orElseThrow().providerDisabled()).isFalse();
+
+    service.setEnabled(organizationId, userId, partner.getId(), false);
+
+    assertThat(groupDirectory.find(group.getId()).orElseThrow().providerDisabled()).isTrue();
+    assertThat(groupRepository.findById(group.getId())).isPresent();
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM asset_grants WHERE subject_group_id = ?",
+                Integer.class,
+                group.getId()))
+        .isEqualTo(1);
+  }
+
+  /**
+   * Vorgabe of ADR-0036/2: the default provider is this installation's own, every further one is
+   * another house's until the system administration says otherwise.
+   */
+  @Test
+  void theDefaultProviderIsNotExternalAndEveryFurtherOneIs() {
+    OidcProvider first = service.createProvider(organizationId, userId, draft("Erster", issuer));
+    OidcProvider partner =
+        service.createProvider(organizationId, userId, draft("Partner", issuer + "-2"));
+
+    assertThat(first.isDefaultProvider()).isTrue();
+    assertThat(first.isExternal()).isFalse();
+    assertThat(partner.isExternal()).isTrue();
+  }
+
+  @Test
+  void theExternalMarkIsChangedAndAudited() {
+    OidcProvider partner = secondProvider();
+
+    OidcProvider updated = service.setExternal(organizationId, userId, partner.getId(), false);
+
+    assertThat(updated.isExternal()).isFalse();
+    assertThat(repository.findById(partner.getId()).orElseThrow().isExternal()).isFalse();
+    assertThat(
+            jdbcTemplate.queryForList(
+                "SELECT after FROM audit_log WHERE organization_id = ? AND event_type ="
+                    + " 'OIDC_PROVIDER_CHANGED' AND object_id = ?",
+                organizationId,
+                partner.getId().toString()))
+        .anySatisfy(
+            row -> assertThat(row.get("after").toString()).contains("\"isExternal\":false"));
   }
 
   private OidcProviderDraft draft(String name, String issuerUri) {

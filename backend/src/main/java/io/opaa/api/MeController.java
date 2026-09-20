@@ -3,7 +3,7 @@ package io.opaa.api;
 import io.opaa.api.dto.GroupListResponse;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
-import io.opaa.group.Group;
+import io.opaa.group.GroupOverview;
 import io.opaa.group.GroupService;
 import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,7 +30,7 @@ public class MeController {
 
   @GetMapping("/groups")
   public List<GroupListResponse> myGroups(@Caller CurrentUser caller) {
-    List<Group> groups = groupService.listMyGroups(caller);
+    List<GroupOverview> groups = groupService.listMyGroups(caller);
     return GroupResponseMapper.toListResponses(groups);
   }
 }

@@ -63,6 +63,8 @@ class OidcProviderServiceTest {
   private final AuditEventRecorder auditEventRecorder = mock(AuditEventRecorder.class);
   private final ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
 
+  private final ProviderGroupDirectory providerGroups = mock(ProviderGroupDirectory.class);
+
   private OidcProviderService service;
 
   @BeforeEach
@@ -71,6 +73,7 @@ class OidcProviderServiceTest {
         new OidcProviderService(
             repository,
             userRepository,
+            providerGroups,
             addressPolicy,
             registry,
             adminGuard,
@@ -87,6 +90,7 @@ class OidcProviderServiceTest {
     when(repository.count()).thenReturn(0L);
     when(repository.countByProviderType(ProviderType.OIDC)).thenReturn(0L);
     when(auditEventRecorder.pseudonymFor(any(), any())).thenReturn(UUID.randomUUID());
+    when(providerGroups.effectsOf(any())).thenReturn(ProviderGroupEffects.NONE);
   }
 
   /** Another enabled OIDC provider besides {@code self} exists - the common, unguarded case. */
@@ -458,6 +462,19 @@ class OidcProviderServiceTest {
     verify(repository, never()).delete(any());
     verify(eventPublisher, never()).publishEvent(any());
     verify(adminGuard, never()).requireLoginCapableAdminWithoutProvider(any(), any());
+  }
+
+  /** ADR-0036, Entscheidung 2: the local account management is this installation's own. */
+  @Test
+  void theLocalRowCanNeverBeMarkedExternal() {
+    OidcProvider local = OidcProvider.localProvider("Lokale Konten");
+    when(repository.findById(local.getId())).thenReturn(Optional.of(local));
+
+    assertThatThrownBy(() -> service.setExternal(ORGANIZATION_ID, ACTOR_ID, local.getId(), true))
+        .isInstanceOf(ConflictException.class)
+        .hasMessageContaining("lokalen Konten");
+    assertThat(local.isExternal()).isFalse();
+    verify(eventPublisher, never()).publishEvent(any());
   }
 
   @Test

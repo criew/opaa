@@ -1001,6 +1001,40 @@ Verweis ersetzt (Entra ID ab 200 Gruppen, `_claim_names` nach OpenID Connect 5.6
 Die Synchronisation ändert nur die **Herkunft** von Gruppenmitgliedschaften, nicht das Rechtemodell. In
 der ersten Ausbaustufe werden Gruppen im System gepflegt.
 
+#### Herkunft einer Gruppe (gebaut, #1812)
+
+Jede Gruppe trägt ihre Herkunft als **Verweis auf den Identitätsanbieter**, nicht als Namenszusatz:
+Entweder sie gehört zu genau einem Anbieter — dann stammt sie aus dessen Verzeichnisabgleich oder
+aus dessen Gruppen-Claim —, oder sie ist eine **interne Gruppe** dieser Installation. Die Antwort der
+Schnittstelle nennt beides: `origin` (`INTERNAL` oder `PROVIDER`), den Anbieter mit Anzeigename und
+Kennzeichen „extern", und `sourcePath`, den Pfad der Quelle („/Haus/Abteilung 5/Referat 50"). Ohne
+diesen Pfad sind die gleichnamigen Untergruppen eines Verzeichnisses („Leitung", „Sachbearbeitung")
+nicht auseinanderzuhalten, und der Anbietername hilft dort nicht.
+
+Gleichnamige Gruppen zweier Anbieter bleiben **zwei Gruppen** und sind über ihre Kennung getrennt;
+eine Namenseindeutigkeit wird nicht erzwungen. Die Anzeige unterscheidet sie („Referat 50 ·
+Verzeichnis Haus A"), der gespeicherte Name trägt nie ein Präfix.
+
+**Ein Anbieter, den die Systemverwaltung als „extern" kennzeichnet**, gehört einem anderen Haus.
+Vorgabe ist: jeder Anbieter außer dem Standardanbieter ist extern, bis die Systemverwaltung es
+ändert; die Zeile der lokalen Konten ist es nie. Das Kennzeichen ist nur durch die Systemverwaltung
+änderbar und wird als Änderung der Anbieterzeile protokolliert.
+
+**Ein deaktivierter Anbieter lässt seine Gruppen, Mitgliedschaften und Berechtigungen unverändert
+stehen — sie sind aber keine wirksamen Gruppen mehr:** Sie sind kein neues Ziel einer Berechtigung,
+und eine Berechtigung an sie wird mit einem Hinweis abgelehnt. Bestehende Berechtigungen bleiben
+unangetastet. Ohne diese Regel wirkte eine Freigabe an „Referat 50 (Anbieter deaktiviert)" für
+niemanden — und mit der Wiederaktivierung schlagartig für alle, ohne erneute Entscheidung.
+
+**Wird ein Anbieter gelöscht**, gehen seine Gruppen mit ihm — aber nur, solange keine von ihnen noch
+wirkt. Trägt eine seiner Gruppen noch eine Berechtigung oder ist sie Eigentümerin eines Objekts,
+wird das Löschen mit `409` abgelehnt; die Meldung nennt die Zahl der betroffenen Gruppen,
+Berechtigungen und Objekte. **Solange die Übertragungsoperation nicht gebaut ist, führt an dieser
+Ablehnung nur das Entfernen der Wirkungen vorbei** — Deaktivieren bleibt jederzeit möglich.
+
+> Festgeschrieben in [ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md),
+> Entscheidungen 2 und 11.
+
 Der Nachweis, worauf eine Person zu einem beliebigen Stichtag Zugriff hatte, entsteht aus der
 Historisierung dieser drei Quellen und ist in
 [Sicherheit, Nachweis & Prüfbarkeit](./security-and-compliance.md#nachweisbarkeit-historisierung-von-rechten)

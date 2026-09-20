@@ -8,10 +8,10 @@ import io.opaa.api.dto.GroupResponse;
 import io.opaa.api.dto.GroupUpdateRequest;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
-import io.opaa.group.Group;
 import io.opaa.group.GroupCreation;
 import io.opaa.group.GroupDetail;
 import io.opaa.group.GroupMemberView;
+import io.opaa.group.GroupOverview;
 import io.opaa.group.GroupService;
 import io.opaa.group.GroupUpdate;
 import jakarta.validation.Valid;
@@ -42,7 +42,7 @@ public class GroupController {
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @GetMapping
   public List<GroupListResponse> listGroups(@Caller CurrentUser caller) {
-    List<Group> groups = groupService.listGroups(caller);
+    List<GroupOverview> groups = groupService.listGroups(caller);
     return GroupResponseMapper.toListResponses(groups);
   }
 

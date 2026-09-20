@@ -68,6 +68,9 @@ public class OidcProviderService {
   public static final String LAST_PROVIDER_ACKNOWLEDGEMENT_REQUIRED =
       "LAST_PROVIDER_ACKNOWLEDGEMENT_REQUIRED";
 
+  /** The 409 code when the provider's groups still carry rights (ADR-0036, Entscheidung 2). */
+  public static final String PROVIDER_GROUPS_IN_EFFECT = "PROVIDER_GROUPS_IN_EFFECT";
+
   private static final String OBJECT_LABEL_PREFIX = "Identitätsanbieter";
   private static final String ISSUER_LABEL = "Issuer-URI";
   private static final String JWK_SET_LABEL = "JWK-Set-URI";
@@ -75,6 +78,7 @@ public class OidcProviderService {
 
   private final OidcProviderRepository repository;
   private final UserRepository userRepository;
+  private final ProviderGroupDirectory providerGroups;
   private final OidcAddressPolicy addressPolicy;
   private final OidcProviderRegistry registry;
   private final LocalAdminAvailabilityGuard adminGuard;
@@ -87,6 +91,7 @@ public class OidcProviderService {
   public OidcProviderService(
       OidcProviderRepository repository,
       UserRepository userRepository,
+      ProviderGroupDirectory providerGroups,
       OidcAddressPolicy addressPolicy,
       OidcProviderRegistry registry,
       LocalAdminAvailabilityGuard adminGuard,
@@ -97,6 +102,7 @@ public class OidcProviderService {
       Clock clock) {
     this.repository = repository;
     this.userRepository = userRepository;
+    this.providerGroups = providerGroups;
     this.addressPolicy = addressPolicy;
     this.registry = registry;
     this.adminGuard = adminGuard;
@@ -131,6 +137,9 @@ public class OidcProviderService {
     provider.setSortOrder((int) repository.count());
     if (repository.countByProviderType(ProviderType.OIDC) == 0) {
       provider.markDefault();
+      // The default provider is this installation's own directory; every further one is another
+      // house's until the system administration says otherwise (ADR-0036, Entscheidung 2).
+      provider.setExternal(false);
     }
     repository.save(provider);
     recordChange(
@@ -227,6 +236,10 @@ public class OidcProviderService {
    * table); only their sign-in stops until a provider with the same issuer exists again. The LOCAL
    * row is never deleted; the last enabled OIDC provider only with {@code acknowledgeLastProvider}
    * and a login-capable local administrator.
+   *
+   * <p>Its groups go with it - but only while none of them still carries a right (ADR-0036,
+   * Entscheidung 2). Until the transfer operation exists (#1834) the only way past this 409 is to
+   * remove those rights; disabling the provider stays possible at any time.
    */
   @Transactional
   public void deleteProvider(
@@ -251,7 +264,17 @@ public class OidcProviderService {
       }
       adminGuard.requireLoginCapableAdminWithoutProvider(organizationId, provider.getId());
     }
+    ProviderGroupEffects effects = providerGroups.effectsOf(provider.getId());
+    if (effects.any()) {
+      throw new ConflictException(
+          "Der Anbieter kann nicht gelöscht werden, solange seine Gruppen wirken. "
+              + effects.describe()
+              + " Entfernen Sie diese Wirkungen zuerst; Gruppen ohne Wirkung werden mit dem"
+              + " Anbieter gelöscht. Deaktivieren ist jederzeit möglich.",
+          PROVIDER_GROUPS_IN_EFFECT);
+    }
     Map<String, Object> before = auditState(provider);
+    providerGroups.deleteGroupsOfProvider(provider.getId(), actorUserId);
     repository.delete(provider);
     auditEventRecorder.recordUserAction(
         AuditEvent.builder()
@@ -263,6 +286,36 @@ public class OidcProviderService {
             .outcome(AuditOutcome.SUCCESS)
             .build());
     eventPublisher.publishEvent(new OidcProvidersChangedEvent());
+  }
+
+  /**
+   * Marks a provider as belonging to another organisation, or takes that mark back (ADR-0036,
+   * Entscheidung 2) - system administration only, like every other write here, and audited as a
+   * change of the provider row. The LOCAL row of the local account management is never external.
+   */
+  @Transactional
+  public OidcProvider setExternal(
+      UUID organizationId, UUID actorUserId, UUID id, boolean external) {
+    OidcProvider provider = repository.findById(id).orElseThrow(() -> notFound(id));
+    if (provider.isExternal() == external) {
+      return provider;
+    }
+    if (provider.isLocal() && external) {
+      throw new ConflictException(
+          "Die Zeile der lokalen Konten kann nicht als extern gekennzeichnet werden; sie ist die"
+              + " Benutzerverwaltung dieser Installation.");
+    }
+    provider.setExternal(external);
+    repository.save(provider);
+    recordChange(
+        organizationId,
+        actorUserId,
+        AuditEventType.OIDC_PROVIDER_CHANGED,
+        provider,
+        Map.of("isExternal", !external),
+        Map.of("isExternal", external));
+    eventPublisher.publishEvent(new OidcProvidersChangedEvent());
+    return provider;
   }
 
   /** {@link #setEnabled(UUID, UUID, UUID, boolean, boolean)} without the acknowledgement. */
@@ -588,6 +641,7 @@ public class OidcProviderService {
     putIfPresent(state, "jwkSetUri", provider.getJwkSetUri());
     state.put("enabled", provider.isEnabled());
     state.put("isDefault", provider.isDefaultProvider());
+    state.put("isExternal", provider.isExternal());
     state.put("sortOrder", provider.getSortOrder());
     state.put("providerType", provider.getProviderType().name());
     OidcClaimMapping mapping = provider.getClaimMapping();

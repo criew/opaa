@@ -227,7 +227,8 @@ class KnowledgeLibraryServiceIntegrationTest {
 
   private Group createGroup(UUID organizationId, UUID... memberIds) {
     Group group =
-        new Group(organizationId, GroupKind.AD_HOC, "Referat", "Ad-hoc-Gruppe", null, null);
+        new Group(
+            organizationId, GroupKind.AD_HOC, "Referat", "Ad-hoc-Gruppe", null, null, null, null);
     for (UUID memberId : memberIds) {
       group.addMembership(new GroupMembership(memberId, organizationId));
     }

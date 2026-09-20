@@ -214,7 +214,7 @@ class DiagnosticImpersonationGrantServiceTest {
   }
 
   private Group group(GroupKind kind) {
-    return new Group(ORGANIZATION_ID, kind, "Amt für Personal", null, null, null);
+    return new Group(ORGANIZATION_ID, kind, "Amt für Personal", null, null, null, null, null);
   }
 
   private CurrentUser admin() {

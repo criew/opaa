@@ -534,6 +534,10 @@ class DirectorySyncPlanExecutor {
   private void applyPlan(UUID organizationId, Instant now, SyncPlan plan, UUID correlationRef) {
     Set<UUID> affectedUserIds = new HashSet<>();
     List<Group> createdGroups = new ArrayList<>();
+    // The origin of a directory group is the provider the synchronisation runs for (ADR-0036,
+    // Entscheidung 2). Empty in the dev mode, which has no provider row; #1816 decides whether
+    // the synchronisation runs there over a synthetic row or not at all.
+    UUID providerId = trustedProvider.id().orElse(null);
 
     for (PlannedCreate create : plan.creates()) {
       DirectoryGroup incoming = create.directoryGroup();
@@ -543,7 +547,9 @@ class DirectorySyncPlanExecutor {
               GroupKind.ORG_UNIT,
               incoming.name(),
               null,
+              providerId,
               incoming.externalId(),
+              null,
               null);
       for (ResolvedUserRef member : create.members()) {
         group.addMembership(new GroupMembership(member.id(), organizationId));
