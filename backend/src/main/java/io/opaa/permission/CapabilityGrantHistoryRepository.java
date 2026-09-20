@@ -3,7 +3,6 @@ package io.opaa.permission;
 import io.opaa.api.types.Capability;
 import io.opaa.api.types.CapabilitySubjectType;
 import java.time.Instant;
-import java.util.Collection;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -11,7 +10,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.transaction.annotation.Transactional;
 
 public interface CapabilityGrantHistoryRepository
     extends JpaRepository<CapabilityGrantHistory, UUID>, PermissionHistorySweeper {
@@ -58,12 +56,4 @@ public interface CapabilityGrantHistoryRepository
       @Param("organizationId") UUID organizationId,
       @Param("capability") Capability capability,
       @Param("asOf") Instant asOf);
-
-  /**
-   * Test-only cleanup helper - see {@link AssetGrantHistoryRepository#deleteBySubjectUserIdIn} for
-   * the full reasoning and for why {@code @Transactional} is required here; {@code subject_user_id}
-   * here is the same {@code ON DELETE RESTRICT} pattern.
-   */
-  @Transactional
-  void deleteBySubjectUserIdIn(Collection<UUID> subjectUserIds);
 }

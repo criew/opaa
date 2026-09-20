@@ -193,10 +193,6 @@ class OidcProviderServiceIntegrationTest {
         group.getId());
   }
 
-  /**
-   * A still-conferring diagnostic authorisation (ADR-0016) scoped to {@code group} - written
-   * directly, because the service that issues one demands a holder that is an auditor.
-   */
   /** An Anlegerecht held by {@code group} - the only right it has (#1813). */
   private void capabilityFor(Group group) {
     jdbcTemplate.update(
@@ -207,6 +203,10 @@ class OidcProviderServiceIntegrationTest {
         group.getId());
   }
 
+  /**
+   * A still-conferring diagnostic authorisation (ADR-0016) scoped to {@code group} - written
+   * directly, because the service that issues one demands a holder that is an auditor.
+   */
   private void diagnosticAuthorizationScopedTo(Group group) {
     jdbcTemplate.update(
         "INSERT INTO diagnostic_impersonation_grants (id, organization_id, holder_user_id,"

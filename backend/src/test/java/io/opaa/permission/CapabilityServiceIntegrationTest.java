@@ -38,10 +38,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * state, the four ways a capability is reached, and that a withdrawal takes effect on the next
  * request rather than on the next sign-in.
  *
- * <p>The delivered grants are installation-wide rows without an id a class could scope a cleanup
- * to; {@code SeededRowRestorer} puts them - and every interval this class opens - back after each
+ * <p>{@code SeededRowRestorer} puts the delivered grants and their intervals back after each
  * method, which is why withdrawing from "Alle Konten" here does not leave the next class unable to
- * create a space.
+ * create a space. It restores only the rows it found, so every row this class writes - grants, the
+ * intervals behind them and the revocation markers - is cleaned up here.
  */
 @OpaaIntegrationTest
 class CapabilityServiceIntegrationTest {
@@ -61,18 +61,33 @@ class CapabilityServiceIntegrationTest {
   private final List<UUID> groupIds = new ArrayList<>();
   private final List<UUID> libraryIds = new ArrayList<>();
 
+  /**
+   * The interval rows present before this method ran; what appeared since is this method's own and
+   * is removed below. The revocation markers and the group intervals never reach the test code by
+   * id, and a filter over their shape would take a neighbour's rows with it. {@code null} until the
+   * first snapshot exists - the cleanup that opens the first method has nothing to compare against
+   * and must not mistake the whole table for its own.
+   */
+  private List<UUID> foreignHistoryIds;
+
   private CurrentUser member;
   private CurrentUser admin;
 
   @BeforeEach
   void setUp() {
     cleanUp();
+    foreignHistoryIds = historyIds();
     member = persistUser(SystemRole.USER);
     admin = persistUser(SystemRole.SYSTEM_ADMIN);
   }
 
   @AfterEach
   void cleanUp() {
+    if (foreignHistoryIds != null) {
+      List<UUID> ownHistory = new ArrayList<>(historyIds());
+      ownHistory.removeAll(foreignHistoryIds);
+      historyRepository.deleteAllById(ownHistory);
+    }
     grantRepository.deleteAll(
         grantRepository.findByOrganizationId(Organization.DEFAULT_ID).stream()
             .filter(grant -> grant.getSubjectType() != CapabilitySubjectType.ALL_ACCOUNTS)
@@ -81,7 +96,6 @@ class CapabilityServiceIntegrationTest {
                     userIds.contains(grant.getSubjectUserId())
                         || groupIds.contains(grant.getSubjectGroupId()))
             .toList());
-    historyRepository.deleteBySubjectUserIdIn(userIds);
     libraryRepository.deleteAll(libraryRepository.findAllById(libraryIds));
     groupRepository.deleteAll(groupRepository.findAllById(groupIds));
     userRepository.deleteAll(userRepository.findAllById(userIds));
@@ -89,6 +103,10 @@ class CapabilityServiceIntegrationTest {
     libraryIds.clear();
     groupIds.clear();
     userIds.clear();
+  }
+
+  private List<UUID> historyIds() {
+    return jdbcTemplate.queryForList("SELECT id FROM capability_grant_history", UUID.class);
   }
 
   @Test

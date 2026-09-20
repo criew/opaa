@@ -17,6 +17,7 @@ import io.opaa.test.OwnLibraryFixtures;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -52,9 +53,17 @@ class CapabilityEnforcementIntegrationTest {
    */
   private List<UUID> foreignLibraryIds = List.of();
 
+  /**
+   * The same difference for the interval rows: a withdrawal closes a delivered interval - which
+   * {@code SeededRowRestorer} puts back, because it found it - and writes a revocation marker,
+   * which is this class's own and reaches the test code by no other route than this snapshot.
+   */
+  private List<UUID> foreignHistoryIds = List.of();
+
   @BeforeEach
-  void rememberForeignLibraries() {
+  void rememberForeignRows() {
     foreignLibraryIds = libraryIds();
+    foreignHistoryIds = historyIds();
   }
 
   @AfterEach
@@ -62,12 +71,23 @@ class CapabilityEnforcementIntegrationTest {
     List<UUID> own = new ArrayList<>(libraryIds());
     own.removeAll(foreignLibraryIds);
     ownLibraryFixtures.removeLibraries(own.toArray(new UUID[0]));
+    List<UUID> ownHistory = new ArrayList<>(historyIds());
+    ownHistory.removeAll(foreignHistoryIds);
+    if (!ownHistory.isEmpty()) {
+      jdbcTemplate.update(
+          "DELETE FROM capability_grant_history WHERE id = ANY(CAST(? AS uuid[]))",
+          ownHistory.stream().map(UUID::toString).collect(Collectors.joining(",", "{", "}")));
+    }
     spaceRepository.deleteAll(spaceRepository.findAllById(spaceIds));
     spaceIds.clear();
   }
 
   private List<UUID> libraryIds() {
     return jdbcTemplate.queryForList("SELECT id FROM knowledge_libraries", UUID.class);
+  }
+
+  private List<UUID> historyIds() {
+    return jdbcTemplate.queryForList("SELECT id FROM capability_grant_history", UUID.class);
   }
 
   @Test
@@ -103,7 +123,13 @@ class CapabilityEnforcementIntegrationTest {
         .perform(post("/api/v1/spaces").with(devUser()).content(spaceBody("Nicht mehr erlaubt")))
         .andExpect(status().isForbidden())
         .andExpect(jsonPath("$.code").value("CAPABILITY_REQUIRED"))
-        .andExpect(jsonPath("$.error").value(org.hamcrest.Matchers.containsString("Anlegerecht")));
+        // the literal, not a fragment: the interface shows the same sentence before the attempt
+        // (frontend capabilityMissingMessage), and the two are only the same while both are pinned
+        .andExpect(
+            jsonPath("$.error")
+                .value(
+                    "Ihnen fehlt das Anlegerecht „Spaces anlegen“. Wenden Sie sich an die"
+                        + " Systemverwaltung, wenn Sie es benötigen."));
     mockMvc
         .perform(get("/api/v1/me/capabilities").with(devUser()))
         .andExpect(status().isOk())

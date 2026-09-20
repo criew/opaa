@@ -1502,9 +1502,10 @@ paths:
                 $ref: "#/components/schemas/CapabilityGrantResponse"
         "400":
           description: >
-            subjectId is missing for a USER or GROUP subject, or the group is no effective one -
-            dissolved, or belonging to a switched-off identity provider. Such a group keeps the
-            rights it has and receives no new one.
+            subjectId is missing for a USER or GROUP subject, or given for an ALL_ACCOUNTS one,
+            which names no subject; or the group is no effective one - dissolved, or belonging to a
+            switched-off identity provider. Such a group keeps the rights it has and receives no
+            new one.
           content:
             application/json:
               schema:
