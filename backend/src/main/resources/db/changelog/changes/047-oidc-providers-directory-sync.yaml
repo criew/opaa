@@ -1,0 +1,60 @@
+databaseChangeLog:
+  - changeSet:
+      id: 047-oidc-providers-directory-sync
+      author: opaa
+      comment: >-
+        Der Verzeichnisabgleich ist ab hier eine Einstellung der Anbieterzeile (#1816,
+        ADR-0036 Entscheidungen 2 und 3): directory_sync_enabled schaltet ihn je Anbieter
+        ein, directory_sync_interval_minutes sagt, wie oft er faellig ist. Bisher war der
+        Abgleich fest an den Standardanbieter gebunden (TrustedProvider) und lief nur von
+        Hand; #1443 verlangt "fuer einen Anbieter an, fuer einen anderen aus", und ohne
+        Zeitplan wirkt ein Rechteentzug im Verzeichnis erst bei der naechsten Anmeldung.
+        .
+        JE ANBIETER GENAU EIN GRUPPENMECHANISMUS (ADR-0036 Entscheidung 2). Die
+        Pruefbedingung chk_oidc_providers_directory_sync haelt drei Dinge zusammen fest,
+        damit sie auch gegen einen Schreibzugriff an der Anwendung vorbei gelten:
+        (1) Abgleich an verlangt einen leeren groups_claim - sonst entstuende dieselbe
+        Verzeichnisgruppe zweimal, mit zwei Wahrheiten ueber die Mitgliedschaft und zwei
+        Entzugszeitpunkten; (2) nur eine OIDC-Zeile hat ein Verzeichnis, die Zeile der
+        lokalen Konten (ADR-0033) nie; (3) ein eingeschalteter Abgleich hat immer ein
+        Intervall zwischen 5 Minuten und einer Woche, ein ausgeschalteter nie eines - ein
+        Intervall ohne Abgleich waere ein Wert, den niemand liest, und ein Abgleich ohne
+        Intervall haette keinen faelligen Zeitpunkt.
+        .
+        VORGABEWERT. Die Spalte startet fuer jede bestehende Zeile auf false: Das Update
+        schaltet nirgends einen Abgleich ein, der vorher nicht lief. Der ausgelieferte
+        Intervallwert (360 Minuten, 6 Stunden - ADR-0036, "Zahlen, die dieser ADR setzt")
+        steht in der Anwendung und nicht als Spalten-Default, weil er nur beim Einschalten
+        gilt und eine ausgeschaltete Zeile ihn nach der Pruefbedingung gar nicht tragen
+        darf.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE oidc_providers
+                  ADD COLUMN directory_sync_enabled boolean DEFAULT false NOT NULL;
+
+              ALTER TABLE oidc_providers
+                  ADD COLUMN directory_sync_interval_minutes integer;
+
+              ALTER TABLE oidc_providers
+                  ADD CONSTRAINT chk_oidc_providers_directory_sync CHECK (
+                      ((directory_sync_enabled = false
+                        AND directory_sync_interval_minutes IS NULL)
+                       OR (directory_sync_enabled = true
+                           AND provider_type = 'OIDC'
+                           AND groups_claim IS NULL
+                           AND directory_sync_interval_minutes >= 5
+                           AND directory_sync_interval_minutes <= 10080)));
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE oidc_providers
+                  DROP CONSTRAINT chk_oidc_providers_directory_sync;
+
+              ALTER TABLE oidc_providers
+                  DROP COLUMN directory_sync_interval_minutes;
+
+              ALTER TABLE oidc_providers
+                  DROP COLUMN directory_sync_enabled;

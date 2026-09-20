@@ -197,7 +197,8 @@ ersten Stufe nicht geschrieben.
   betroffene Person ist das Pseudonym in `subject_ref`
 - **Jede bewirkte** Rechteänderung aus einem Verzeichnisabgleich — je Änderung, nicht je Lauf, verbunden
   über `correlation_ref`; dazu ein Kopfeintrag des Laufs mit Ergebnis und, oberhalb der Schwelle, mit
-  der bestätigenden Person und ihrem Anlass
+  der bestätigenden Person und ihrem Anlass. **Das Verwerfen** eines vorgelegten Plans ist ein
+  eigenes Ereignis mit derselben Angabe — eine Entscheidung, die keine Spur hinterlässt, ist keine
 
 **Systemeinstellungen**
 

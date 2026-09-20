@@ -50,6 +50,24 @@ public interface GroupRepository extends JpaRepository<Group, UUID> {
   List<Group> findByOrganizationIdAndKindOrgUnit(@Param("organizationId") UUID organizationId);
 
   /**
+   * The {@link GroupKind#ORG_UNIT} groups of <b>one provider</b>, with their memberships eagerly
+   * fetched - what a synchronisation run of that provider diffs its snapshot against (#1816). A run
+   * never sees another provider's groups, so it can neither dissolve nor rename them.
+   */
+  @Query(
+      "select distinct g from Group g left join fetch g.memberships"
+          + " where g.organizationId = :organizationId and g.providerId = :providerId"
+          + " and g.kind = io.opaa.api.types.GroupKind.ORG_UNIT")
+  List<Group> findByOrganizationIdAndProviderIdAndKindOrgUnit(
+      @Param("organizationId") UUID organizationId, @Param("providerId") UUID providerId);
+
+  /**
+   * One provider's groups of one kind - the token groups a directory run reports as "no longer
+   * maintained" (ADR-0036, Entscheidung 3).
+   */
+  List<Group> findByProviderIdAndKind(UUID providerId, GroupKind kind);
+
+  /**
    * The external ids of the {@link GroupKind#IDENTITY_PROVIDER} groups a user is a member of at one
    * provider - the one read {@code TokenGroupSynchronizer} pays per request to tell "nothing
    * changed" from "resync".

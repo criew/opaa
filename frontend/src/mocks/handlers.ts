@@ -1407,6 +1407,7 @@ export const handlers = [
       // Vorgabe aus ADR-0036, Entscheidung 2: alles außer dem Standardanbieter ist extern
       isExternal: mockOidcProviders.length > 0,
       providerType: 'OIDC',
+      directorySyncEnabled: false,
       sortOrder: mockOidcProviders.length,
       issuerUri: body.issuerUri,
       clientId: body.clientId,

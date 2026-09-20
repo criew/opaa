@@ -22,10 +22,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * Exercises the race described in #300: two or more concurrent <em>first</em> synchronisation runs
- * of the same organization reaching {@link DirectorySyncStatusRecorder#record} together, before
- * either has committed the organization's single {@code directory_sync_status} row. Nothing
- * serialises concurrent runs today (see {@link DirectorySyncService}'s class javadoc), so two
- * administrators triggering a first run at the same time is constructible, if rare.
+ * of the same provider reaching {@link DirectorySyncStatusRecorder#record} together, before either
+ * has committed that provider's single {@code directory_sync_status} row (per provider since
+ * #1816). The run lock serialises the runs themselves, but the recorder is called outside it and
+ * has to stand on its own.
  *
  * <p>Runs against a real Postgres instance with the real, versioned Liquibase schema ({@code
  * spring.liquibase.enabled=true}, {@code ddl-auto=none}) and real threads, following {@code
@@ -33,11 +33,12 @@ import org.springframework.beans.factory.annotation.Autowired;
  * exercise the catch block and not the propagation and visibility semantics the fix depends on,
  * which is precisely where the two previous attempts at this class of fix went wrong (#280, #297).
  *
- * <p>Before the fix, {@link #concurrentFirstRunsOfTheSameOrganizationRecordExactlyOneStatusRow()}
+ * <p>Before the fix, {@link #concurrentFirstRunsOfTheSameProviderRecordExactlyOneStatusRow()}
  * fails: the losers of the race throw {@link
  * org.springframework.dao.DataIntegrityViolationException} with {@code duplicate key value violates
- * unique constraint "uk_directory_sync_status_organization"}, because {@code record} checked for an
- * existing row and inserted a new one without handling the unique-constraint race between the two.
+ * unique constraint "uk_directory_sync_status_organization_provider"}, because {@code record}
+ * checked for an existing row and inserted a new one without handling the unique-constraint race
+ * between the two.
  *
  * <p>The assertion is made on {@code record} directly rather than through {@link
  * DirectorySyncService#run}: {@code recordStatusSafely} deliberately swallows and logs any failure
@@ -60,23 +61,38 @@ class DirectorySyncStatusRecorderRaceIntegrationTest {
   @Autowired private DirectorySyncStatusRecorder statusRecorder;
   @Autowired private DirectorySyncStatusRepository statusRepository;
 
-  // Only this organization's row: directory_sync_status holds at most one per organization
-  // (uk_directory_sync_status_organization), and the rows of other classes are none of this
-  // class's business.
+  @Autowired private io.opaa.auth.oidc.OidcProviderRepository providerRepository;
+
+  /**
+   * This class's own provider. {@code directory_sync_status.provider_id} is a foreign key since
+   * #1816, so the status row needs a real provider row to point at; it is created per method and
+   * removed again afterwards, together with the status row it carries.
+   */
+  private UUID providerId;
+
   @BeforeEach
-  void removeOwnStatus() {
-    statusRepository
-        .findByOrganizationId(Organization.DEFAULT_ID)
-        .ifPresent(status -> statusRepository.deleteById(status.getId()));
+  void createOwnProvider() {
+    io.opaa.auth.oidc.OidcProvider provider =
+        new io.opaa.auth.oidc.OidcProvider(
+            "Statuszeile " + UUID.randomUUID(),
+            "https://idp.example/realms/" + UUID.randomUUID(),
+            "opaa-frontend",
+            null,
+            io.opaa.auth.oidc.OidcClaimMapping.keycloakDefaults());
+    providerRepository.save(provider);
+    providerId = provider.getId();
   }
 
   @AfterEach
-  void removeOwnStatusAgain() {
-    removeOwnStatus();
+  void removeOwnProvider() {
+    statusRepository
+        .findByOrganizationIdAndProviderId(Organization.DEFAULT_ID, providerId)
+        .ifPresent(status -> statusRepository.deleteById(status.getId()));
+    providerRepository.deleteById(providerId);
   }
 
   @Test
-  void concurrentFirstRunsOfTheSameOrganizationRecordExactlyOneStatusRow() throws Exception {
+  void concurrentFirstRunsOfTheSameProviderRecordExactlyOneStatusRow() throws Exception {
     UUID organizationId = Organization.DEFAULT_ID;
     Instant runAt = Instant.now();
 
@@ -94,8 +110,8 @@ class DirectorySyncStatusRecorderRaceIntegrationTest {
       start.countDown();
 
       for (Future<Void> future : futures) {
-        // Any DataIntegrityViolationException on uk_directory_sync_status_organization surfaces
-        // here as a reproduction of #300 (see the class javadoc) - none of the calls may fail.
+        // Any DataIntegrityViolationException on uk_directory_sync_status_organization_provider
+        // surfaces here as a reproduction of #300 (see the class javadoc) - none may fail.
         future.get(30, TimeUnit.SECONDS);
       }
     } finally {
@@ -103,7 +119,9 @@ class DirectorySyncStatusRecorderRaceIntegrationTest {
     }
 
     DirectorySyncStatus status =
-        statusRepository.findByOrganizationId(organizationId).orElseThrow();
+        statusRepository
+            .findByOrganizationIdAndProviderId(organizationId, providerId)
+            .orElseThrow();
     assertThat(status.getOrganizationId()).isEqualTo(organizationId);
     assertThat(status.getLastOutcome()).isEqualTo(DirectorySyncOutcome.APPLIED);
     assertThat(status.getLastRunAt()).isNotNull();
@@ -119,16 +137,19 @@ class DirectorySyncStatusRecorderRaceIntegrationTest {
     Instant firstRun = Instant.now();
 
     statusRecorder.record(
-        organizationId, firstRun, DirectorySyncOutcome.APPLIED, "Erster Lauf", 0.1);
+        organizationId, providerId, firstRun, DirectorySyncOutcome.APPLIED, "Erster Lauf", 0.1);
     statusRecorder.record(
         organizationId,
+        providerId,
         firstRun.plusSeconds(60),
         DirectorySyncOutcome.UNREACHABLE,
         "Zweiter Lauf",
         0.0);
 
     DirectorySyncStatus status =
-        statusRepository.findByOrganizationId(organizationId).orElseThrow();
+        statusRepository
+            .findByOrganizationIdAndProviderId(organizationId, providerId)
+            .orElseThrow();
     assertThat(status.getLastOutcome()).isEqualTo(DirectorySyncOutcome.UNREACHABLE);
     assertThat(status.getLastMessage()).isEqualTo("Zweiter Lauf");
     // lastAppliedAt is the timestamp of the last run that actually changed rights, so the later
@@ -141,7 +162,8 @@ class DirectorySyncStatusRecorderRaceIntegrationTest {
     return () -> {
       ready.countDown();
       start.await();
-      statusRecorder.record(organizationId, runAt, DirectorySyncOutcome.APPLIED, "Race", 0.25);
+      statusRecorder.record(
+          organizationId, providerId, runAt, DirectorySyncOutcome.APPLIED, "Race", 0.25);
       return null;
     };
   }

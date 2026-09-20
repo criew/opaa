@@ -114,8 +114,19 @@ public enum AuditEventType {
   API_TOKEN_EXPIRED,
   /** One entry per effected change from a directory sync run, linked via {@code correlationRef}. */
   DIRECTORY_SYNC_CHANGE_APPLIED,
-  /** The header entry of a directory sync run, with its outcome. */
+  /**
+   * The header entry of a directory sync run, with its outcome. For a run a person confirmed, the
+   * actor is that person and {@code reason} their stated one (security-and-compliance.md: "oberhalb
+   * der Schwelle, mit der bestätigenden Person und ihrem Anlass"); every other run is written under
+   * the directory-sync system process actor.
+   */
   DIRECTORY_SYNC_RUN_COMPLETED,
+  /**
+   * A plan above the plausibility threshold was discarded without being applied (#1816, ADR-0036
+   * Entscheidung 3). The counterpart of a confirmation, which is the run's own header entry - a
+   * decision that leaves no trace is no decision.
+   */
+  DIRECTORY_SYNC_PLAN_DISCARDED,
 
   // Systemeinstellungen
   GOVERNANCE_SETTINGS_CHANGED,

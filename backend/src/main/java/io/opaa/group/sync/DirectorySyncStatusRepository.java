@@ -1,10 +1,14 @@
 package io.opaa.group.sync;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface DirectorySyncStatusRepository extends JpaRepository<DirectorySyncStatus, UUID> {
 
-  Optional<DirectorySyncStatus> findByOrganizationId(UUID organizationId);
+  Optional<DirectorySyncStatus> findByOrganizationIdAndProviderId(
+      UUID organizationId, UUID providerId);
+
+  List<DirectorySyncStatus> findByOrganizationId(UUID organizationId);
 }

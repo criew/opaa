@@ -89,3 +89,17 @@ databaseChangeLog:
   # Kennzeichen "extern" an der Anbieterzeile (#1812, ADR-0036 Entscheidung 2).
   - include:
       file: db/changelog/changes/046-oidc-providers-external.yaml
+  # Der Verzeichnisabgleich als Einstellung der Anbieterzeile: einschaltbar und
+  # zeitgesteuert je Anbieter (#1816, ADR-0036 Entscheidungen 2 und 3).
+  - include:
+      file: db/changelog/changes/047-oidc-providers-directory-sync.yaml
+  # Die Statuszeile des Abgleichs je Anbieter statt je Organisation (#1816).
+  - include:
+      file: db/changelog/changes/048-directory-sync-status-per-provider.yaml
+  # Der ausstehende Plan des Bestätigungswegs für Läufe über der Schwelle (#1816).
+  - include:
+      file: db/changelog/changes/049-create-directory-sync-pending-plans.yaml
+  # Jede Anbietergruppe trägt ihren Anbieter — die strenge Form der Prüfregel aus
+  # ADR-0036 Entscheidung 2, die 041 bis zur dev-Modus-Entscheidung offengelassen hat (#1816).
+  - include:
+      file: db/changelog/changes/050-groups-org-unit-requires-provider.yaml

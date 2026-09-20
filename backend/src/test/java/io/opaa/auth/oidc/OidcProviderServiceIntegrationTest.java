@@ -477,8 +477,8 @@ class OidcProviderServiceIntegrationTest {
 
   /**
    * Regression guard for #1832: switching off the last enabled provider leaves {@code is_default}
-   * on its row (ADR-0033, Entscheidung 4), so the enabled default - the directory provider {@code
-   * TrustedProvider} resolves members through - has to be asked for separately.
+   * on its row (ADR-0033, Entscheidung 4), so "the enabled default" has to be asked for
+   * separately.
    */
   @Test
   void theLastProviderSwitchedOffKeepsIsDefaultButIsNoLongerTheEnabledDefault() {

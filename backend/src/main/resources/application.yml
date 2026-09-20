@@ -545,6 +545,9 @@ opaa:
     write-timeout: ${OPAA_MAIL_WRITE_TIMEOUT:15s}
   directory-sync:
     change-threshold-fraction: ${OPAA_DIRECTORY_SYNC_CHANGE_THRESHOLD_FRACTION:0.3}
+    # The minute tick that starts a due provider's run. The interval itself is a setting of the
+    # provider row (ADR-0036, Entscheidung 2); this switch only decides whether the tick exists.
+    schedule-enabled: ${OPAA_DIRECTORY_SYNC_SCHEDULE_ENABLED:true}
   security:
     credentials:
       # AES-256 key (Base64, 32 raw bytes) for encrypting knowledge_libraries.source_credentials at

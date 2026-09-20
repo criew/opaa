@@ -912,11 +912,15 @@ darauf hin, dass Anbieter erst im OIDC-Modus wirken.
 
 ### Was übernommen wird
 
-OPAA gleicht mit dem Verzeichnisdienst ab — bevorzugt über eine Bereitstellungsschnittstelle nach
-**SCIM**, die Änderungen aktiv meldet, ersatzweise über einen wiederkehrenden Abgleich:
+OPAA gleicht mit dem Verzeichnisdienst über einen **wiederkehrenden Abgleich** ab, den es selbst
+anstößt. **SCIM ist ausdrücklich nicht der Weg** ([ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md),
+Entscheidung 3): Ein Pull nutzt die gebaute Schutzmechanik unverändert — sie ist auf Schnappschüsse
+gebaut, ein Push liefert Deltas, für die es weder ein „leeres Ergebnis" noch eine Schwelle je Lauf
+gibt —, öffnet keinen eingehenden Schreibpfad und kommt mit jeder Quelle aus, die eine
+Leseschnittstelle hat.
 
 ```
-Abgleich: ereignisgesteuert, ersatzweise turnusmäßig (z. B. alle 6 Stunden)
+Abgleich: turnusmäßig je Anbieter (Vorgabe alle 6 Stunden, 5 Minuten bis 1 Woche)
 
 Aus dem Verzeichnis:
   - Benutzernamen und E-Mail-Adressen
@@ -929,13 +933,23 @@ Aus dem Verzeichnis:
 Das Verzeichnis ist die **führende Quelle**. Wer dort gesperrt ist, ist in OPAA gesperrt; ein
 abweichender Zustand in OPAA ist kein Zustand, den ein Admin von Hand herstellen können sollte.
 
-**Je Anbieter (ADR-0025):** Der Verzeichnisabgleich gilt für die Konten des **Standardanbieters** —
-nur unter ihnen werden die Subjects des Verzeichnisses aufgelöst, und nur seine Organisationseinheiten
-entstehen daraus. Ein zweiter Anbieter (Partnerportal, Landesanbieter) hat keinen Verzeichnisabgleich;
-seine Gruppen kommen, wenn überhaupt, aus seinem Gruppen-Claim (siehe [„Claim-Zuordnung je
-Anbieter"](#anmeldung-und-identität)) und benennen ihn als ihre Herkunft. Ein gleichnamiges
-Subject bei zwei Anbietern ergibt zwei Konten, und nur das des Standardanbieters erhält die
-Verzeichnisgruppen.
+**Je Anbieter genau eine Gruppenquelle (ADR-0036, Entscheidung 2):** Der Verzeichnisabgleich ist
+**je Anbieter ein- und ausschaltbar** und gilt für die Konten genau dieses Anbieters — nur unter
+ihnen werden die Subjects seines Verzeichnisses aufgelöst, und nur seine Organisationseinheiten
+entstehen daraus. Ein Anbieter mit eingeschaltetem Abgleich hat keinen Gruppen-Claim und umgekehrt;
+die Verwaltung weist den Konflikt mit `409` und verständlichem Grund ab, weil dieselbe Gruppe sonst
+zweimal entstünde, mit zwei Wahrheiten über die Mitgliedschaft und zwei Entzugszeitpunkten. Ein
+gleichnamiges Subject bei zwei Anbietern ergibt zwei Konten, und jedes erhält nur die Gruppen seines
+eigenen Anbieters. **Der Abgleich eines deaktivierten Anbieters pausiert.**
+
+**Der Zeitverzug ist für alle sichtbar, nicht nur für die Systemverwaltung.** „Meine Gruppen“
+(`GET /api/v1/me/groups`) nennt je Anbieter Mechanismus, Intervall und Zeitpunkt des letzten
+Abgleichs. Das ist keine schutzwürdige Information und erspart den Anruf bei der IT, wenn eine neu
+aufgenommene Kollegin bis zum nächsten Lauf nichts sieht.
+
+**Die Genauigkeit der Rechtehistorie hängt am Mechanismus.** Im Token-Modus erscheint eine
+Verzeichnisänderung vom 3. März für eine Person, die sich am 20. März anmeldet, mit dem 20. März; im
+Abgleichmodus mit dem Zeitpunkt des Laufs.
 
 ### Der Lebenszyklus eines Kontos
 
@@ -961,8 +975,8 @@ Verzeichnisgruppen.
    seine Rechte, **ohne dass jemand in OPAA etwas tut**. Das ist der Regelfall und der Grund, warum die
    Synchronisation als Rechteereignis behandelt wird (siehe unten).
 4. **Ausscheiden.** Verschwindet ein Konto im Verzeichnis oder wird es dort gesperrt, wird der Zugang in
-   OPAA **beim nächsten Abgleich automatisch entzogen** — ohne Ticket, ohne Handgriff und ohne
-   Bedingung. Das ist die Anforderung, an der der IT-Grundschutz und jede Prüfung als Erstes ansetzen.
+   OPAA **beim nächsten Abgleich des betreffenden Anbieters automatisch entzogen** — ohne Ticket,
+   ohne Handgriff und ohne Bedingung. Das ist die Anforderung, an der der IT-Grundschutz und jede Prüfung als Erstes ansetzen.
    Für Konten anderer Anbieter ist der Hebel der Anbieter selbst (gesperrtes Konto: keine Anmeldung
    mehr, Token-Gruppen enden mit der nächsten Anmeldung) oder das Deaktivieren des ganzen Anbieters in
    der Anbieterverwaltung (ab dem nächsten Token abgewiesen, Konten bleiben).
@@ -997,10 +1011,21 @@ Gruppenmitgliedschaft kann Zugriff auf ganze Bestände geben oder nehmen.
 - Ein Lauf, der eine **auffällig große** Zahl an Entzügen oder Zuweisungen bewirken würde — etwa weil im
   Verzeichnis eine Gruppe umbenannt wurde —, wird angezeigt und ist bestätigungspflichtig, statt
   stillschweigend durchzulaufen. Der häufigste Fehlerfall ist nicht der Angriff, sondern die
-  fehlgeschlagene Umstellung.
+  fehlgeschlagene Umstellung. Vier Festlegungen zum Lebenszyklus eines solchen Plans:
+  **ein neuer Lauf ersetzt ihn** (sonst staut sich alle sechs Stunden einer, und irgendwann wird der
+  älteste bestätigt); **bestätigt wird gegen einen frischen Schnappschuss**, und weicht das Ergebnis
+  vom gezeigten ab, wird neu vorgelegt statt angewendet; **sein Alter steht in der Statuszeile** und
+  auf der Verwaltungsübersicht, nicht nur auf einer Unterseite; und **Bestätigung wie Verwerfen sind
+  Protokollereignisse** mit der handelnden Person und ihrem Anlass.
 - Fällt der Verzeichnisdienst aus, gilt der **letzte bekannte Stand weiter**, und der Ausfall wird
   gemeldet. Ein leeres Abgleichergebnis darf nie als „alle Gruppenmitgliedschaften entfallen" gedeutet
-  werden.
+  werden — und es ist der eine Fall, der **nicht** bestätigungsfähig ist: „Die Quelle hat nicht
+  geantwortet, wie sie soll" darf niemand wegklicken.
+- **Der Wechsel des Mechanismus entzieht nichts still.** Token-Gruppen und Verzeichnisgruppen sind
+  verschiedene Objekte. Wird der Abgleich für einen Anbieter eingeschaltet, weist der
+  Differenzbericht des ersten Laufs seine Token-Gruppen als **„werden nicht mehr gepflegt"** aus; sie
+  bleiben mit eingefrorener Mitgliedschaft stehen. Die Übertragung ihrer Berechtigungen auf die neuen
+  Gruppen ist eine eigene Handlung.
 
 **Dieselbe Regel gilt für die Gruppen aus dem Token.** „Keine Auskunft" und „ausdrücklich keine
 Gruppen" sind zwei verschiedene Aussagen, und nur die zweite ist ein Entzug. Der Anmeldeweg
