@@ -112,6 +112,7 @@ class PermissionHistoryServiceIntegrationTest {
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private DirectorySyncService directorySyncService;
   @Autowired private DirectorySyncStatusRepository directorySyncStatusRepository;
+  @Autowired private io.opaa.group.sync.DirectorySyncPendingPlanRepository pendingPlanRepository;
   @Autowired private FakeDirectoryClient directoryClient;
   @Autowired private TokenGroupSynchronizer synchronizer;
   @Autowired private io.opaa.auth.oidc.OidcProviderRepository providerRepository;
@@ -125,6 +126,9 @@ class PermissionHistoryServiceIntegrationTest {
   private final List<UUID> createdGroupIds = new ArrayList<>();
   private final List<UUID> createdProviderIds = new ArrayList<>();
 
+  /** The provider every directory run of this class is bound to (#1816). */
+  private io.opaa.auth.oidc.OidcProvider syncProvider;
+
   @BeforeEach
   void setUp() {
     createdUserIds.clear();
@@ -132,6 +136,16 @@ class PermissionHistoryServiceIntegrationTest {
     createdProviderIds.clear();
     organizationId =
         organizationRepository.save(new Organization(UUID.randomUUID(), "Org")).getId();
+    syncProvider =
+        new io.opaa.auth.oidc.OidcProvider(
+            "Verzeichnis " + UUID.randomUUID(),
+            "https://idp.example/realms/" + UUID.randomUUID(),
+            "opaa-frontend",
+            null,
+            io.opaa.auth.oidc.OidcClaimMapping.keycloakDefaults());
+    syncProvider.configureDirectorySync(true, 360);
+    providerRepository.save(syncProvider);
+    createdProviderIds.add(syncProvider.getId());
     directoryClient.respondWith();
   }
 
@@ -139,9 +153,9 @@ class PermissionHistoryServiceIntegrationTest {
   void tearDown() {
     // fk_directory_sync_status_organization is RESTRICT - a run against organizationId leaves a
     // status row behind that would otherwise block deleting the organization below.
-    directorySyncStatusRepository
-        .findByOrganizationId(organizationId)
-        .ifPresent(status -> directorySyncStatusRepository.deleteById(status.getId()));
+    pendingPlanRepository.deleteAll(pendingPlanRepository.findByOrganizationId(organizationId));
+    directorySyncStatusRepository.deleteAll(
+        directorySyncStatusRepository.findByOrganizationId(organizationId));
     List<KnowledgeLibrary> ownLibraries =
         libraryRepository.findAll().stream()
             .filter(
@@ -179,11 +193,21 @@ class PermissionHistoryServiceIntegrationTest {
     return createUserEntity().getId();
   }
 
+  /** An account at another provider's issuer - what a run bound to that provider resolves. */
+  private UUID createUserAt(String issuer) {
+    User user = new User(UUID.randomUUID().toString(), issuer, "user@example.com", "Test User");
+    user.setOrganizationId(organizationId);
+    User saved = userRepository.save(user);
+    createdUserIds.add(saved.getId());
+    return saved.getId();
+  }
+
   private User createUserEntity() {
     User user =
         new User(
             UUID.randomUUID().toString(),
-            authProperties.dev().issuer(),
+            // the issuer the directory run of this class resolves members at (#1816)
+            syncProvider.getIssuerUri(),
             "user@example.com",
             "Test User");
     user.setOrganizationId(organizationId);
@@ -298,7 +322,7 @@ class PermissionHistoryServiceIntegrationTest {
             GroupKind.ORG_UNIT,
             "Altes Referat",
             null,
-            null,
+            syncProvider.getId(),
             "dir-guid-1",
             null,
             null);
@@ -307,7 +331,7 @@ class PermissionHistoryServiceIntegrationTest {
 
     directoryClient.respondWith(
         new DirectoryGroup("dir-guid-1", "Referat", null, Set.of(memberSubject(member))));
-    directorySyncService.run(organizationId);
+    directorySyncService.run(organizationId, syncProvider.getId());
 
     boolean recorded =
         membershipHistoryRepository.findAll().stream()
@@ -792,6 +816,9 @@ class PermissionHistoryServiceIntegrationTest {
         this::directorySyncCreatedGroupWithMembership);
     paths.put(
         "DirectorySyncService#run (membership removed)", this::directorySyncRemovedMembership);
+    paths.put(
+        "DirectorySyncService#confirmPlan (membership removed)",
+        this::directorySyncConfirmedMembershipRemoval);
     paths.put("KnowledgeLibraryService#createLibrary", this::libraryCreated);
     paths.put(
         "KnowledgeLibraryService#updateLibrary (visibility widened)", this::visibilityWidened);
@@ -988,7 +1015,11 @@ class PermissionHistoryServiceIntegrationTest {
           "LibraryExternalAccessService#describe",
           "LibraryExternalAccessService#listReleasedLibraries",
           "DirectorySyncService#dryRun",
-          "DirectorySyncService#getStatus");
+          // #1816: reading a pending plan and the status lines changes nothing, and discarding a
+          // plan is precisely the decision not to apply it.
+          "DirectorySyncService#getPendingPlan",
+          "DirectorySyncService#listStatus",
+          "DirectorySyncService#discardPlan");
 
   private void assertLiveAndHistoryAgree(ReadabilityChange change) {
     Instant afterTheChange = historyClock.nextBoundary();
@@ -1284,6 +1315,70 @@ class PermissionHistoryServiceIntegrationTest {
     return new ReadabilityChange(leaving, libraryId, false);
   }
 
+  /**
+   * The confirmation path of #1816: a run above the plausibility threshold writes nothing and
+   * leaves a plan, and only the confirmation takes the membership - and with it the read - away.
+   * Without this entry the one operation of the directory synchronisation that a person triggers
+   * deliberately would be the one never checked against the Stichtag reconstruction.
+   */
+  private ReadabilityChange directorySyncConfirmedMembershipRemoval() {
+    // Its own provider, so the run sees exactly this one unit: every entry of this test shares one
+    // organization, and the plausibility threshold measured over all of its units would otherwise
+    // decide whether this path needs a confirmation at all.
+    io.opaa.auth.oidc.OidcProvider provider =
+        providerRepository.save(
+            new io.opaa.auth.oidc.OidcProvider(
+                "Verzeichnis Bestätigung",
+                "https://idp.example/realms/" + UUID.randomUUID(),
+                "opaa-frontend",
+                null,
+                io.opaa.auth.oidc.OidcClaimMapping.keycloakDefaults()));
+    provider.configureDirectorySync(true, 360);
+    providerRepository.save(provider);
+    createdProviderIds.add(provider.getId());
+
+    UUID owner = createUser();
+    UUID libraryId = createLibrary(owner);
+    Group orgUnit =
+        groupRepository.save(
+            new Group(
+                organizationId,
+                GroupKind.ORG_UNIT,
+                "Referat Bestätigung",
+                null,
+                provider.getId(),
+                "dir-guid-sync-confirmed",
+                null,
+                null));
+    createdGroupIds.add(orgUnit.getId());
+    grantService.upsertGrant(
+        libraryId,
+        new AssetGrantUpsert(PermissionSubjectType.GROUP, orgUnit.getId(), AssetRole.VIEWER),
+        currentUserOf(owner));
+    UUID leaving = createUserAt(provider.getIssuerUri());
+    Set<String> staying = Set.of(memberSubject(createUserAt(provider.getIssuerUri())));
+    Set<String> everyone = new HashSet<>(staying);
+    everyone.add(memberSubject(leaving));
+    directoryClient.respondWithFor(
+        provider.getId(),
+        new DirectoryGroup("dir-guid-sync-confirmed", "Referat Bestätigung", null, everyone));
+    directorySyncService.run(organizationId, provider.getId());
+
+    // One of two memberships is 50% - above the 30% threshold, so this run only leaves a plan.
+    directoryClient.respondWithFor(
+        provider.getId(),
+        new DirectoryGroup("dir-guid-sync-confirmed", "Referat Bestätigung", null, staying));
+    SyncReport pending = directorySyncService.run(organizationId, provider.getId());
+    assertThat(pending.outcome()).isEqualTo(DirectorySyncOutcome.PENDING_CONFIRMATION);
+    UUID planId =
+        directorySyncService.getPendingPlan(organizationId, provider.getId()).orElseThrow().id();
+
+    directorySyncService.confirmPlan(
+        organizationId, provider.getId(), planId, owner, "Reorganisation");
+
+    return new ReadabilityChange(leaving, libraryId, false);
+  }
+
   private ReadabilityChange libraryCreated() {
     UUID owner = createUser();
 
@@ -1367,7 +1462,14 @@ class PermissionHistoryServiceIntegrationTest {
     Group saved =
         groupRepository.save(
             new Group(
-                organizationId, GroupKind.ORG_UNIT, name, null, null, externalId, null, null));
+                organizationId,
+                GroupKind.ORG_UNIT,
+                name,
+                null,
+                syncProvider.getId(),
+                externalId,
+                null,
+                null));
     createdGroupIds.add(saved.getId());
     return saved;
   }
@@ -1395,7 +1497,7 @@ class PermissionHistoryServiceIntegrationTest {
     }
     directoryClient.respondWith(response.toArray(DirectoryGroup[]::new));
 
-    SyncReport report = directorySyncService.run(organizationId);
+    SyncReport report = directorySyncService.run(organizationId, syncProvider.getId());
 
     assertThat(report.outcome()).isEqualTo(DirectorySyncOutcome.APPLIED);
   }

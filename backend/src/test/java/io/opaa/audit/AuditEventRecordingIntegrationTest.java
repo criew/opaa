@@ -97,6 +97,8 @@ class AuditEventRecordingIntegrationTest {
   @Autowired private SpaceRepository spaceRepository;
   @Autowired private DirectorySyncService directorySyncService;
   @Autowired private DirectorySyncStatusRepository directorySyncStatusRepository;
+  @Autowired private io.opaa.group.sync.DirectorySyncPendingPlanRepository pendingPlanRepository;
+  @Autowired private io.opaa.auth.oidc.OidcProviderRepository oidcProviderRepository;
   @Autowired private FakeDirectoryClient directoryClient;
   @Autowired private UserRepository userRepository;
   @Autowired private UserService userService;
@@ -106,6 +108,10 @@ class AuditEventRecordingIntegrationTest {
   @Autowired private JdbcTemplate jdbcTemplate;
 
   private UUID organizationId;
+
+  /** The provider every directory run of this class is bound to (#1816). */
+  private io.opaa.auth.oidc.OidcProvider syncProvider;
+
   private final List<UUID> createdUserIds = new ArrayList<>();
   private final List<UUID> createdGroupIds = new ArrayList<>();
 
@@ -115,14 +121,23 @@ class AuditEventRecordingIntegrationTest {
     createdGroupIds.clear();
     organizationId =
         organizationRepository.save(new Organization(UUID.randomUUID(), "Audit Org")).getId();
+    syncProvider =
+        new io.opaa.auth.oidc.OidcProvider(
+            "Verzeichnis " + UUID.randomUUID(),
+            "https://idp.example/realms/" + UUID.randomUUID(),
+            "opaa-frontend",
+            null,
+            io.opaa.auth.oidc.OidcClaimMapping.keycloakDefaults());
+    syncProvider.configureDirectorySync(true, 360);
+    oidcProviderRepository.save(syncProvider);
     directoryClient.respondWith();
   }
 
   @AfterEach
   void tearDown() {
-    directorySyncStatusRepository
-        .findByOrganizationId(organizationId)
-        .ifPresent(status -> directorySyncStatusRepository.deleteById(status.getId()));
+    pendingPlanRepository.deleteAll(pendingPlanRepository.findByOrganizationId(organizationId));
+    directorySyncStatusRepository.deleteAll(
+        directorySyncStatusRepository.findByOrganizationId(organizationId));
     // Only the spaces of this test's own organization; their memberships go with them
     // (Space#memberships cascades, and so does fk_space_memberships_space_organization). Nothing of
     // this class is missed: a membership carries both its space's and its user's organization
@@ -168,6 +183,8 @@ class AuditEventRecordingIntegrationTest {
     for (UUID userId : createdUserIds) {
       userRepository.deleteById(userId);
     }
+    // fk_groups_provider is RESTRICT, so the provider goes after this class's groups above.
+    oidcProviderRepository.deleteById(syncProvider.getId());
     organizationRepository.deleteById(organizationId);
   }
 
@@ -589,7 +606,7 @@ class AuditEventRecordingIntegrationTest {
         new DirectoryGroup("ext-1", "Team A", null, Set.of()),
         new DirectoryGroup("ext-2", "Team B", null, Set.of()));
 
-    directorySyncService.run(organizationId);
+    directorySyncService.run(organizationId, syncProvider.getId());
 
     List<AuditLogEntry> allForOrg =
         auditLogRepository.findAll().stream()
@@ -627,7 +644,7 @@ class AuditEventRecordingIntegrationTest {
     // calling dryRun, not run().
     directoryClient.respondWith(new DirectoryGroup("ext-1", "Team A", null, Set.of()));
 
-    directorySyncService.dryRun(organizationId);
+    directorySyncService.dryRun(organizationId, syncProvider.getId());
 
     List<AuditLogEntry> allForOrg =
         auditLogRepository.findAll().stream()
@@ -655,11 +672,18 @@ class AuditEventRecordingIntegrationTest {
     // branch - the classic "misconfigured connection" symptom, nothing is written.
     Group group =
         new Group(
-            organizationId, GroupKind.ORG_UNIT, "Pre-existing", null, null, "ext-x", null, null);
+            organizationId,
+            GroupKind.ORG_UNIT,
+            "Pre-existing",
+            null,
+            syncProvider.getId(),
+            "ext-x",
+            null,
+            null);
     groupRepository.save(group);
     directoryClient.respondWith();
 
-    directorySyncService.run(organizationId);
+    directorySyncService.run(organizationId, syncProvider.getId());
 
     List<AuditLogEntry> headers =
         auditLogRepository.findAll().stream()
@@ -683,7 +707,7 @@ class AuditEventRecordingIntegrationTest {
     // write, on this class.
     directoryClient.failWith("simulated directory outage");
 
-    directorySyncService.run(organizationId);
+    directorySyncService.run(organizationId, syncProvider.getId());
 
     List<AuditLogEntry> headers =
         auditLogRepository.findAll().stream()
@@ -698,7 +722,7 @@ class AuditEventRecordingIntegrationTest {
   @Test
   void aDirectorySyncRunWithNoEffectedChangesWritesNoChangeEntriesButStillWritesTheHeader() {
     // Empty directory, no existing ORG_UNIT groups - a routine, no-op run.
-    directorySyncService.run(organizationId);
+    directorySyncService.run(organizationId, syncProvider.getId());
 
     List<AuditLogEntry> allForOrg =
         auditLogRepository.findAll().stream()

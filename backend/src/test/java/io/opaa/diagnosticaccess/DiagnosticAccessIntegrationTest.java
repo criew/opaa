@@ -25,6 +25,7 @@ import io.opaa.organization.OrganizationRepository;
 import io.opaa.permission.AssetGrant;
 import io.opaa.permission.AssetGrantRepository;
 import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.ProviderFixtures;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -63,11 +64,13 @@ class DiagnosticAccessIntegrationTest {
   @Autowired private UserRepository userRepository;
   @Autowired private GroupRepository groupRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private io.opaa.auth.oidc.OidcProviderRepository providerRepository;
 
   private UUID organizationId;
   private CurrentUser admin;
   private UUID holderId;
   private UUID scopeGroupId;
+  private UUID scopeProviderId;
 
   @BeforeEach
   void setUp() {
@@ -78,6 +81,8 @@ class DiagnosticAccessIntegrationTest {
     holderId = persistUser("holder").getId();
     UUID adminId = persistUser("admin").getId();
     admin = CurrentUser.of(adminId, organizationId, SystemRole.SYSTEM_ADMIN, "Admin");
+    // Every ORG_UNIT group carries its provider since #1816 (chk_groups_provider_kind).
+    scopeProviderId = ProviderFixtures.tokenProvider(providerRepository).getId();
     scopeGroupId =
         groupRepository
             .save(
@@ -86,7 +91,7 @@ class DiagnosticAccessIntegrationTest {
                     GroupKind.ORG_UNIT,
                     "Amt für Personal",
                     null,
-                    null,
+                    scopeProviderId,
                     null,
                     null,
                     null))
@@ -112,6 +117,8 @@ class DiagnosticAccessIntegrationTest {
         "DELETE FROM knowledge_libraries WHERE organization_id = ?", organizationId);
     jdbcTemplate.update("DELETE FROM users WHERE organization_id = ?", organizationId);
     jdbcTemplate.update("DELETE FROM groups WHERE organization_id = ?", organizationId);
+    // fk_groups_provider is RESTRICT, so the provider goes after its groups.
+    providerRepository.deleteById(scopeProviderId);
   }
 
   @Test

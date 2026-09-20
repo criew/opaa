@@ -56,6 +56,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
       "opaa.rate-limit.local-auth.set-password.max-requests=100000",
       "opaa.rate-limit.local-auth.verify-email.max-requests=100000",
       "opaa.rate-limit.local-auth.handover.max-requests=100000",
+      // Off for the same reason as under the canonical signature: a class of this family
+      // creates provider rows, and a tick must not start a run behind its back.
+      "opaa.directory-sync.schedule-enabled=false",
       // #1563: the provider rows these classes create point at a host that exists nowhere. The
       // allowlist short-circuits the sign-in's address check before it would resolve it, so no
       // class of this family makes a DNS lookup for a fixture. The check itself stays on.

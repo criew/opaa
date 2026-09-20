@@ -90,10 +90,10 @@ export default function OidcProviderManagementPage() {
 
         {!isLoading && providers.length > 0 && !providers.some((p) => p.isDefault) && (
           <Alert severity="warning" sx={{ mb: 2 }}>
-            Kein Anbieter ist Standardanbieter – die Erstadministrator-Regel und der
-            Verzeichnisabgleich greifen nicht. Machen Sie einen aktivierten, erreichbaren Anbieter
-            zum Standard oder stellen Sie den Umgebungsanbieter mit OPAA_OIDC_BOOTSTRAP=force wieder
-            her.
+            Kein Anbieter ist Standardanbieter – der Anmeldevorschlag und der Löschschutz des
+            Standardanbieters greifen nicht. Machen Sie einen aktivierten, erreichbaren Anbieter zum
+            Standard oder stellen Sie den Umgebungsanbieter mit OPAA_OIDC_BOOTSTRAP=force wieder
+            her. Der Verzeichnisabgleich hängt nicht daran: Er wird je Anbieter eingeschaltet.
           </Alert>
         )}
 

@@ -40,6 +40,7 @@ import io.opaa.test.LocalAccountFixtures;
 import io.opaa.test.LocalAccountFixtures.LocalAccount;
 import io.opaa.test.LocalAccountFixturesFactory;
 import io.opaa.test.OpaaLocalAuthLinkTest;
+import io.opaa.test.ProviderFixtures;
 import jakarta.mail.Part;
 import jakarta.mail.internet.MimeMessage;
 import jakarta.mail.internet.MimeMultipart;
@@ -98,6 +99,16 @@ class LocalUserAdminIntegrationTest {
   @Autowired private UserRepository users;
   @Autowired private KnowledgeLibraryRepository libraries;
   @Autowired private GroupRepository groups;
+  @Autowired private io.opaa.auth.oidc.OidcProviderRepository providerRepository;
+
+  /** Every ORG_UNIT group carries its provider since #1816 (chk_groups_provider_kind). */
+  private UUID directoryProvider;
+
+  private UUID directoryProviderId() {
+    directoryProvider = ProviderFixtures.tokenProvider(providerRepository).getId();
+    return directoryProvider;
+  }
+
   @Autowired private DiagnosticImpersonationGrantRepository impersonationGrants;
   @Autowired private GroupMembershipHistoryRepository groupHistory;
   @Autowired private OrganizationRepository organizations;
@@ -129,6 +140,12 @@ class LocalUserAdminIntegrationTest {
     configureSmtp(false);
     MailTestSupport.resetCaches(mailSettings);
     fixtures.cleanUp();
+    if (directoryProvider != null) {
+      // fk_groups_provider is RESTRICT, so the unit this class created goes with its provider.
+      groups.deleteAll(groups.findByProviderId(directoryProvider));
+      providerRepository.deleteById(directoryProvider);
+      directoryProvider = null;
+    }
   }
 
   @Test
@@ -764,7 +781,7 @@ class LocalUserAdminIntegrationTest {
                 GroupKind.ORG_UNIT,
                 "Amt " + UUID.randomUUID(),
                 null,
-                null,
+                directoryProviderId(),
                 null,
                 null,
                 null));

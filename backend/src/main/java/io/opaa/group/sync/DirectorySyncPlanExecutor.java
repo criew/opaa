@@ -8,7 +8,6 @@ import io.opaa.api.types.DirectorySyncOutcome;
 import io.opaa.api.types.GroupKind;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
-import io.opaa.auth.TrustedProvider;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.group.Group;
@@ -45,10 +44,24 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * regardless of what the caller was doing - unlike a self-invoked private method on the same
  * instance would be.
  *
+ * <p><b>Bound to one identity provider</b> (ADR-0036, Entscheidung 2, #1816). The {@link
+ * SyncTarget} names the provider whose directory was read: members are resolved among the accounts
+ * of that provider's issuer only, the diff is computed against that provider's {@code ORG_UNIT}
+ * groups alone, and a group this run creates carries the provider as its origin. Another provider's
+ * groups are invisible to this run - neither dissolved nor renamed by it.
+ *
  * <p><b>Plan, then act.</b> {@link #buildPlan} computes the entire diff without mutating anything.
- * {@link #planOnly} and the plausibility-threshold abort path inside {@link #handle} both stop
- * there and only turn the plan into a report. Only {@link #planAndApply}, once the plan has been
- * judged plausible, calls {@link #applyPlan}.
+ * {@link #planOnly} and the threshold path inside {@link #handle} both stop there and only turn the
+ * plan into a report. Only {@link #planAndApply} past the threshold, and {@link #confirmPlan}, call
+ * {@link #applyPlan}.
+ *
+ * <p><b>Above the threshold a run leaves a plan behind</b> instead of aborting (ADR-0036,
+ * Entscheidung 3): {@link #planAndApply} stores it, replacing whatever this provider had pending,
+ * and reports {@code PENDING_CONFIRMATION}. {@link #confirmPlan} recomputes the diff against a
+ * fresh snapshot and applies it only while its fingerprint still matches the plan that was shown;
+ * otherwise it replaces the plan and reports {@code PENDING_CONFIRMATION} again, which the service
+ * turns into the caller's 409. A dry run never stores a plan, and an empty group list stays a hard
+ * abort with no plan at all.
  *
  * <p><b>Status is recorded by the caller, not here.</b> An earlier version of this class recorded
  * the outcome itself, in a {@code REQUIRES_NEW} transaction that committed before this class's own
@@ -119,27 +132,27 @@ class DirectorySyncPlanExecutor {
 
   private final GroupRepository groupRepository;
   private final UserRepository userRepository;
-  private final TrustedProvider trustedProvider;
   private final GroupMembershipResolver membershipResolver;
   private final DirectorySyncProperties properties;
   private final PermissionHistoryService permissionHistoryService;
   private final AuditEventRecorder auditEventRecorder;
+  private final DirectorySyncPendingPlanRepository pendingPlanRepository;
 
   DirectorySyncPlanExecutor(
       GroupRepository groupRepository,
       UserRepository userRepository,
-      TrustedProvider trustedProvider,
       GroupMembershipResolver membershipResolver,
       DirectorySyncProperties properties,
       PermissionHistoryService permissionHistoryService,
-      AuditEventRecorder auditEventRecorder) {
+      AuditEventRecorder auditEventRecorder,
+      DirectorySyncPendingPlanRepository pendingPlanRepository) {
     this.groupRepository = groupRepository;
     this.userRepository = userRepository;
-    this.trustedProvider = trustedProvider;
     this.membershipResolver = membershipResolver;
     this.properties = properties;
     this.permissionHistoryService = permissionHistoryService;
     this.auditEventRecorder = auditEventRecorder;
+    this.pendingPlanRepository = pendingPlanRepository;
   }
 
   // #392 code review, finding 1: this can no longer be readOnly - handle() -> finish() now writes
@@ -150,23 +163,91 @@ class DirectorySyncPlanExecutor {
   // dry-run's only other write in this method, none, made readOnly look safe until this entry
   // needed writing too.
   @Transactional
-  SyncReport planOnly(UUID organizationId, Instant now, DirectorySnapshot snapshot) {
-    return handle(organizationId, now, snapshot, false);
+  SyncReport planOnly(SyncTarget target, Instant now, DirectorySnapshot snapshot) {
+    return handle(target, now, snapshot, Mode.DRY_RUN, null, null, null);
   }
 
   @Transactional
-  SyncReport planAndApply(UUID organizationId, Instant now, DirectorySnapshot snapshot) {
-    return handle(organizationId, now, snapshot, true);
+  SyncReport planAndApply(SyncTarget target, Instant now, DirectorySnapshot snapshot) {
+    return handle(target, now, snapshot, Mode.APPLY, null, null, null);
+  }
+
+  /**
+   * Applies {@code plan} against a snapshot read moments ago, but only while the recomputed diff
+   * still carries the plan's fingerprint (ADR-0036, Entscheidung 3). The plausibility threshold is
+   * deliberately not applied again: confirming is exactly the decision it guards, and re-applying
+   * it would make a confirmed reorganisation unapplicable for good.
+   */
+  @Transactional
+  SyncReport confirmPlan(
+      SyncTarget target,
+      Instant now,
+      DirectorySnapshot snapshot,
+      DirectorySyncPendingPlan plan,
+      UUID actorUserId,
+      String reason) {
+    return handle(target, now, snapshot, Mode.CONFIRM, plan, actorUserId, reason);
+  }
+
+  /**
+   * Drops a pending plan and records the decision in one transaction (#1816). The delete is scoped
+   * to the plan's own id, so a second, concurrent decision about the same plan removes no row - and
+   * then writes no entry either: an audit trail that claims two people discarded the same plan is
+   * worse than one that names the one who did.
+   *
+   * @return whether this call was the one that removed the plan
+   */
+  @Transactional
+  boolean discardPlan(DirectorySyncPendingPlan plan, UUID actorUserId, String reason) {
+    if (pendingPlanRepository.removeById(plan.getId()) == 0) {
+      return false;
+    }
+    Map<String, Object> before = new LinkedHashMap<>();
+    before.put("providerId", plan.getProviderId().toString());
+    before.put("changedFraction", plan.getChangedFraction());
+    before.put("membershipsRemoved", plan.getMembershipsRemoved());
+    auditEventRecorder.recordUserAction(
+        AuditEvent.builder()
+            .organizationId(plan.getOrganizationId())
+            .actor(actorUserId)
+            .type(AuditEventType.DIRECTORY_SYNC_PLAN_DISCARDED)
+            .object(
+                AuditObjectType.DIRECTORY_SYNC_RUN,
+                plan.getId(),
+                "Verzeichnisabgleich, verworfener Plan " + plan.getId())
+            .before(before)
+            .outcome(AuditOutcome.SUCCESS)
+            .reason(reason)
+            .build());
+    return true;
+  }
+
+  /** What {@link #handle} is asked to do with the plan it computes. */
+  private enum Mode {
+    DRY_RUN,
+    APPLY,
+    CONFIRM
   }
 
   private SyncReport handle(
-      UUID organizationId, Instant now, DirectorySnapshot snapshot, boolean applyIfPlausible) {
+      SyncTarget target,
+      Instant now,
+      DirectorySnapshot snapshot,
+      Mode mode,
+      DirectorySyncPendingPlan pending,
+      UUID actorUserId,
+      String reason) {
+    UUID organizationId = target.organizationId();
     // #392: one correlation id per run, shared by the header entry below and, if the run actually
     // applies anything, by every DIRECTORY_SYNC_CHANGE_APPLIED entry applyPlan writes - "verbunden
     // ueber correlation_ref" (docs/features/security-and-compliance.md).
     UUID correlationRef = UUID.randomUUID();
     List<Group> existingOrgUnits =
-        groupRepository.findByOrganizationIdAndKindOrgUnit(organizationId);
+        groupRepository.findByOrganizationIdAndProviderIdAndKindOrgUnit(
+            organizationId, target.providerId());
+    List<Group> tokenGroups =
+        groupRepository.findByOrganizationIdAndProviderIdAndKind(
+            organizationId, target.providerId(), GroupKind.IDENTITY_PROVIDER);
 
     if (snapshot.groups().isEmpty() && !existingOrgUnits.isEmpty()) {
       String message =
@@ -180,41 +261,20 @@ class DirectorySyncPlanExecutor {
           organizationId,
           existingOrgUnits.size());
       return finish(
-          organizationId,
+          target,
           correlationRef,
           now,
           DirectorySyncOutcome.ABORTED_EMPTY_RESULT,
           message,
-          emptyPlan());
+          emptyPlan(),
+          null,
+          null);
     }
 
-    // ADR-0025, Entscheidung 4: the directory's subjects are accounts of the trusted provider
-    // only - without one there is nobody to resolve, and resolving nobody would read as "remove
-    // every membership", so the run stops here instead. A disabled default provider is none
-    // (ADR-0033, Entscheidung 4), so this branch covers "no default" and "default switched off".
-    String issuer = trustedProvider.issuer().orElse(null);
-    if (issuer == null) {
-      String message =
-          "Kein aktivierter Standardanbieter: Die Mitglieder des Verzeichnisses können keinem"
-              + " Konto zugeordnet werden. Der Lauf wurde ohne Änderungen abgebrochen. Ein"
-              + " deaktivierter Standardanbieter zählt nicht - aktivieren Sie ihn oder machen Sie"
-              + " einen aktivierten Anbieter zum Standard.";
-      log.warn(
-          "Directory sync: no trusted provider to resolve members through for organization {} -"
-              + " aborting without changes",
-          organizationId);
-      return finish(
-          organizationId,
-          correlationRef,
-          now,
-          DirectorySyncOutcome.ABORTED_NO_TRUSTED_PROVIDER,
-          message,
-          emptyPlan());
-    }
+    SyncPlan plan =
+        buildPlan(organizationId, target.issuer(), snapshot, existingOrgUnits, tokenGroups);
 
-    SyncPlan plan = buildPlan(organizationId, issuer, snapshot, existingOrgUnits);
-
-    if (plan.changedFraction() > properties.changeThresholdFraction()) {
+    if (mode != Mode.CONFIRM && plan.changedFraction() > properties.changeThresholdFraction()) {
       String changedPercent = formatPercent(plan.changedFraction());
       String thresholdPercent = formatPercent(properties.changeThresholdFraction());
       String message =
@@ -235,33 +295,113 @@ class DirectorySyncPlanExecutor {
           plan.activeGroupCount(),
           changedPercent,
           thresholdPercent);
-      return finish(
-          organizationId,
-          correlationRef,
-          now,
-          DirectorySyncOutcome.ABORTED_THRESHOLD,
-          message,
-          plan);
+      if (mode == Mode.DRY_RUN) {
+        return finish(
+            target,
+            correlationRef,
+            now,
+            DirectorySyncOutcome.ABORTED_THRESHOLD,
+            message
+                + " Ein Trockenlauf legt keinen bestätigungspflichtigen Plan an; lösen Sie den"
+                + " Abgleich aus, wenn Sie ihn zur Bestätigung vorlegen wollen.",
+            plan,
+            null,
+            null);
+      }
+      SyncReport report =
+          finish(
+              target,
+              correlationRef,
+              now,
+              DirectorySyncOutcome.PENDING_CONFIRMATION,
+              message + " Der Plan liegt zur Bestätigung vor und ersetzt einen zuvor ausstehenden.",
+              plan,
+              null,
+              null);
+      storePendingPlan(target, now, report, plan);
+      return report;
     }
 
-    if (!applyIfPlausible) {
+    if (mode == Mode.DRY_RUN) {
       return finish(
-          organizationId,
+          target,
           correlationRef,
           now,
           DirectorySyncOutcome.DRY_RUN,
           "Trockenlauf - keine Änderung.",
-          plan);
+          plan,
+          null,
+          null);
     }
 
-    applyPlan(organizationId, now, plan, correlationRef);
+    if (mode == Mode.CONFIRM) {
+      SyncReport recomputed = buildReport(now, DirectorySyncOutcome.PENDING_CONFIRMATION, "", plan);
+      if (!fingerprintOf(recomputed, plan).equals(pending.getFingerprint())) {
+        SyncReport report =
+            finish(
+                target,
+                correlationRef,
+                now,
+                DirectorySyncOutcome.PENDING_CONFIRMATION,
+                "Das Verzeichnis hat sich seit der Vorlage geändert. Es wurde nichts angewendet;"
+                    + " der neu gerechnete Plan liegt zur Bestätigung vor.",
+                plan,
+                actorUserId,
+                reason);
+        storePendingPlan(target, now, report, plan);
+        return report;
+      }
+    }
+
+    applyPlan(target, now, plan, correlationRef);
+    if (mode == Mode.CONFIRM) {
+      pendingPlanRepository.delete(pending);
+    }
     return finish(
-        organizationId,
+        target,
         correlationRef,
         now,
         DirectorySyncOutcome.APPLIED,
-        "Synchronisation angewendet.",
-        plan);
+        mode == Mode.CONFIRM ? "Bestätigter Lauf angewendet." : "Synchronisation angewendet.",
+        plan,
+        actorUserId,
+        reason);
+  }
+
+  /**
+   * Writes this provider's pending plan, replacing whatever it had - "ein neuer Lauf ersetzt den
+   * ausstehenden Plan" (ADR-0036, Entscheidung 3). The delete and the insert share this class's
+   * transaction, so a provider never ends up with two plans or with none where one was due; {@code
+   * uk_directory_sync_pending_plans_provider} holds the same invariant in the schema.
+   */
+  private void storePendingPlan(SyncTarget target, Instant now, SyncReport report, SyncPlan plan) {
+    pendingPlanRepository
+        .findByOrganizationIdAndProviderId(target.organizationId(), target.providerId())
+        .ifPresent(pendingPlanRepository::delete);
+    pendingPlanRepository.flush();
+    pendingPlanRepository.save(
+        new DirectorySyncPendingPlan(
+            target.organizationId(),
+            target.providerId(),
+            now,
+            fingerprintOf(report, plan),
+            plan.changedFraction(),
+            plan.membershipsRemoved(),
+            DirectorySyncReportCodec.write(report)));
+  }
+
+  /**
+   * The print of a plan as it was shown. Reactivation and the hierarchy the directory reports are
+   * no part of the report - neither changes a membership - but both are changes this run would
+   * apply, so they belong in what a confirmation is compared against.
+   */
+  private String fingerprintOf(SyncReport report, SyncPlan plan) {
+    List<String> reactivated =
+        plan.reactivations().stream().map(r -> r.group().getExternalId()).toList();
+    Map<String, String> parents = new LinkedHashMap<>();
+    plan.incomingByExternalId()
+        .forEach((externalId, incoming) -> parents.put(externalId, incoming.parentExternalId()));
+    return DirectorySyncPlanFingerprint.of(report, reactivated, parents);
   }
 
   /**
@@ -273,31 +413,40 @@ class DirectorySyncPlanExecutor {
    * correlationRef}.
    */
   private SyncReport finish(
-      UUID organizationId,
+      SyncTarget target,
       UUID correlationRef,
       Instant now,
       DirectorySyncOutcome outcome,
       String message,
-      SyncPlan plan) {
+      SyncPlan plan,
+      UUID actorUserId,
+      String reason) {
     SyncReport report = buildReport(now, outcome, message, plan);
     Map<String, Object> after = new LinkedHashMap<>();
     after.put("outcome", outcome.name());
+    after.put("providerId", target.providerId().toString());
     after.put("membershipsAdded", report.membershipsAdded());
     after.put("membershipsRemoved", report.membershipsRemoved());
-    auditEventRecorder.recordSystemProcessAction(
+    AuditEvent.Builder event =
         AuditEvent.builder()
-            .organizationId(organizationId)
-            .actorRef(DIRECTORY_SYNC_ACTOR)
+            .organizationId(target.organizationId())
             .type(AuditEventType.DIRECTORY_SYNC_RUN_COMPLETED)
             .object(
                 AuditObjectType.DIRECTORY_SYNC_RUN,
                 correlationRef,
-                "Verzeichnisabgleich " + correlationRef)
+                "Verzeichnisabgleich " + correlationRef + " (" + target.displayName() + ")")
             .after(after)
             .outcome(toAuditOutcome(outcome))
-            .reason(message)
-            .correlationRef(correlationRef.toString())
-            .build());
+            .reason(reason == null ? message : message + " Anlass: " + reason)
+            .correlationRef(correlationRef.toString());
+    // "oberhalb der Schwelle, mit der bestaetigenden Person und ihrem Anlass"
+    // (security-and-compliance.md): a confirmed run is a person's decision, every other run is
+    // the system process acting on its own.
+    if (actorUserId == null) {
+      auditEventRecorder.recordSystemProcessAction(event.actorRef(DIRECTORY_SYNC_ACTOR).build());
+    } else {
+      auditEventRecorder.recordUserAction(event.actor(actorUserId).build());
+    }
     return report;
   }
 
@@ -307,16 +456,17 @@ class DirectorySyncPlanExecutor {
    * != SUCCESS} would otherwise never surface an aborted run, even though the human-readable result
    * was always available in {@code after.outcome}/{@code reason}. {@code APPLIED} and {@code
    * DRY_RUN} both did exactly what they were asked (write the diff, or only compute it); {@code
-   * ABORTED_THRESHOLD} and {@code ABORTED_EMPTY_RESULT} are the plausibility guard refusing to
-   * write anything it judged unsafe - a failure to complete, not a permission decision, hence
-   * {@code FAILURE} rather than {@code DENIED}. {@code UNREACHABLE} is handled by {@link
-   * DirectorySyncService} itself, which never reaches this class - see its own header entry.
+   * ABORTED_THRESHOLD}, {@code ABORTED_EMPTY_RESULT} and {@code PENDING_CONFIRMATION} are the
+   * plausibility guard refusing to write anything it judged unsafe without a decision - a failure
+   * to complete, not a permission decision, hence {@code FAILURE} rather than {@code DENIED}; a
+   * filter on {@code outcome != SUCCESS} therefore surfaces a run still waiting for one. {@code
+   * UNREACHABLE} is handled by {@link DirectorySyncService} itself, which never reaches this class
+   * - see its own header entry.
    */
   private AuditOutcome toAuditOutcome(DirectorySyncOutcome outcome) {
     return switch (outcome) {
       case APPLIED, DRY_RUN -> AuditOutcome.SUCCESS;
-      case ABORTED_THRESHOLD, ABORTED_EMPTY_RESULT, ABORTED_NO_TRUSTED_PROVIDER ->
-          AuditOutcome.FAILURE;
+      case PENDING_CONFIRMATION, ABORTED_THRESHOLD, ABORTED_EMPTY_RESULT -> AuditOutcome.FAILURE;
       case UNREACHABLE ->
           throw new IllegalStateException(
               "UNREACHABLE is handled by DirectorySyncService before this class ever runs");
@@ -335,7 +485,8 @@ class DirectorySyncPlanExecutor {
       UUID organizationId,
       String issuer,
       DirectorySnapshot snapshot,
-      List<Group> existingOrgUnits) {
+      List<Group> existingOrgUnits,
+      List<Group> tokenGroups) {
     Map<String, Group> existingByExternalId = new HashMap<>();
     for (Group group : existingOrgUnits) {
       if (group.getExternalId() != null) {
@@ -475,6 +626,7 @@ class DirectorySyncPlanExecutor {
 
     return new SyncPlan(
         existingOrgUnits,
+        tokenGroups,
         incomingByExternalId,
         creates,
         renames,
@@ -531,13 +683,13 @@ class DirectorySyncPlanExecutor {
   // Applying the plan
   // ---------------------------------------------------------------------------------------
 
-  private void applyPlan(UUID organizationId, Instant now, SyncPlan plan, UUID correlationRef) {
+  private void applyPlan(SyncTarget target, Instant now, SyncPlan plan, UUID correlationRef) {
+    UUID organizationId = target.organizationId();
     Set<UUID> affectedUserIds = new HashSet<>();
     List<Group> createdGroups = new ArrayList<>();
-    // The origin of a directory group is the provider the synchronisation runs for (ADR-0036,
-    // Entscheidung 2). Empty in the dev mode, which has no provider row; #1816 decides whether
-    // the synchronisation runs there over a synthetic row or not at all.
-    UUID providerId = trustedProvider.id().orElse(null);
+    // The origin of a directory group is the provider the run is bound to (ADR-0036,
+    // Entscheidung 2). Never null: without a provider row there is no run at all (#1816).
+    UUID providerId = target.providerId();
 
     for (PlannedCreate create : plan.creates()) {
       DirectoryGroup incoming = create.directoryGroup();
@@ -821,6 +973,7 @@ class DirectorySyncPlanExecutor {
         toChanges(plan.creates()),
         toRenameChanges(plan.renames()),
         toDissolutionChanges(plan.dissolutions()),
+        toUnmaintainedChanges(plan.tokenGroups()),
         toMembershipChanges(plan),
         plan.membershipsAdded(),
         plan.membershipsRemoved(),
@@ -832,8 +985,8 @@ class DirectorySyncPlanExecutor {
 
   static SyncPlan emptyPlan() {
     return new SyncPlan(
-        List.of(), Map.of(), List.of(), List.of(), List.of(), List.of(), List.of(), 0, 0, 0, 0, 0,
-        0, 0.0);
+        List.of(), List.of(), Map.of(), List.of(), List.of(), List.of(), List.of(), List.of(), 0, 0,
+        0, 0, 0, 0, 0.0);
   }
 
   private List<GroupChange> toChanges(List<PlannedCreate> creates) {
@@ -862,6 +1015,20 @@ class DirectorySyncPlanExecutor {
       result.add(
           new GroupChange(
               dissolution.group().getExternalId(), dissolution.group().getName(), null));
+    }
+    return result;
+  }
+
+  /**
+   * The provider's token groups while its directory run is on: "no longer maintained" (ADR-0036,
+   * Entscheidung 3). They are reported, never touched - a change of mechanism freezes them, it does
+   * not revoke anything. Empty in the normal case, since switching the run on requires an empty
+   * groups claim.
+   */
+  private List<GroupChange> toUnmaintainedChanges(List<Group> tokenGroups) {
+    List<GroupChange> result = new ArrayList<>();
+    for (Group group : tokenGroups) {
+      result.add(new GroupChange(group.getExternalId(), group.getName(), null));
     }
     return result;
   }
@@ -938,6 +1105,7 @@ class DirectorySyncPlanExecutor {
 
   private record SyncPlan(
       List<Group> existingOrgUnits,
+      List<Group> tokenGroups,
       Map<String, DirectoryGroup> incomingByExternalId,
       List<PlannedCreate> creates,
       List<PlannedRename> renames,

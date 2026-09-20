@@ -71,6 +71,20 @@ public class OidcProviderService {
   /** The 409 code when the provider's groups still carry rights (ADR-0036, Entscheidung 2). */
   public static final String PROVIDER_GROUPS_IN_EFFECT = "PROVIDER_GROUPS_IN_EFFECT";
 
+  /**
+   * The 409 code when both group mechanisms of one provider would be on at once - the directory run
+   * and a groups claim (ADR-0036, Entscheidung 2).
+   */
+  public static final String DIRECTORY_SYNC_MECHANISM_CONFLICT =
+      "DIRECTORY_SYNC_MECHANISM_CONFLICT";
+
+  /** The shipped interval of a directory run, six hours (ADR-0036). */
+  public static final int DEFAULT_SYNC_INTERVAL_MINUTES = 360;
+
+  static final int MIN_SYNC_INTERVAL_MINUTES = 5;
+
+  static final int MAX_SYNC_INTERVAL_MINUTES = 10080;
+
   private static final String OBJECT_LABEL_PREFIX = "Identitätsanbieter";
   private static final String ISSUER_LABEL = "Issuer-URI";
   private static final String JWK_SET_LABEL = "JWK-Set-URI";
@@ -168,6 +182,15 @@ public class OidcProviderService {
       return renameLocalRow(organizationId, actorUserId, provider, draft);
     }
     validate(draft, provider.getId());
+    if (provider.isDirectorySyncEnabled()
+        && draft.claimMapping() != null
+        && draft.claimMapping().groupsClaim() != null) {
+      throw new ConflictException(
+          "Für diesen Anbieter läuft der Verzeichnisabgleich. Je Anbieter gibt es genau einen"
+              + " Gruppenmechanismus: Schalten Sie den Abgleich aus, bevor Sie einen"
+              + " Gruppen-Claim setzen.",
+          DIRECTORY_SYNC_MECHANISM_CONFLICT);
+    }
     if (!draft.issuerUri().trim().equals(provider.getIssuerUri())) {
       long accounts = userRepository.countByIssuer(provider.getIssuerUri());
       if (accounts > 0) {
@@ -319,6 +342,76 @@ public class OidcProviderService {
         Map.of("isExternal", !external),
         Map.of("isExternal", external));
     return provider;
+  }
+
+  /**
+   * Switches a provider's directory run on or off and sets its interval (ADR-0036, Entscheidung 2
+   * and 3). A provider has exactly one group mechanism: switching the run on while a groups claim
+   * is set is refused, and so is the reverse in {@link #updateProvider}. Without that rule the same
+   * directory group would exist twice, with two truths about its membership and two moments of
+   * revocation.
+   *
+   * <p>Publishes no {@link OidcProvidersChangedEvent}, for the same reason {@link #setExternal}
+   * does not: {@link OidcProviderRegistry} builds decoders from issuer, client id and JWK set
+   * alone, none of which this touches.
+   */
+  @Transactional
+  public OidcProvider setDirectorySync(
+      UUID organizationId, UUID actorUserId, UUID id, boolean enabled, Integer intervalMinutes) {
+    OidcProvider provider = repository.findById(id).orElseThrow(() -> notFound(id));
+    if (provider.isLocal()) {
+      throw new ConflictException(
+          "Die Zeile der lokalen Konten hat kein Verzeichnis. Lokale Konten werden Mitglied"
+              + " interner Gruppen.",
+          DIRECTORY_SYNC_MECHANISM_CONFLICT);
+    }
+    if (enabled
+        && provider.getClaimMapping() != null
+        && provider.getClaimMapping().groupsClaim() != null) {
+      throw new ConflictException(
+          "Der Anbieter bezieht seine Gruppen aus dem Gruppen-Claim „"
+              + provider.getClaimMapping().groupsClaim()
+              + "“. Je Anbieter gibt es genau einen Gruppenmechanismus: Leeren Sie den"
+              + " Gruppen-Claim, bevor Sie den Verzeichnisabgleich einschalten.",
+          DIRECTORY_SYNC_MECHANISM_CONFLICT);
+    }
+    int interval = resolveInterval(provider, intervalMinutes);
+    if (enabled && (interval < MIN_SYNC_INTERVAL_MINUTES || interval > MAX_SYNC_INTERVAL_MINUTES)) {
+      throw new ValidationException(
+          "Das Abgleichintervall muss zwischen "
+              + MIN_SYNC_INTERVAL_MINUTES
+              + " Minuten und "
+              + MAX_SYNC_INTERVAL_MINUTES
+              + " Minuten (eine Woche) liegen.");
+    }
+    if (provider.isDirectorySyncEnabled() == enabled
+        && (!enabled
+            || Integer.valueOf(interval).equals(provider.getDirectorySyncIntervalMinutes()))) {
+      return provider;
+    }
+    Map<String, Object> before = new HashMap<>();
+    before.put("directorySyncEnabled", provider.isDirectorySyncEnabled());
+    putIntervalIfPresent(before, provider.getDirectorySyncIntervalMinutes());
+    provider.configureDirectorySync(enabled, interval);
+    repository.save(provider);
+    Map<String, Object> after = new HashMap<>();
+    after.put("directorySyncEnabled", enabled);
+    putIntervalIfPresent(after, provider.getDirectorySyncIntervalMinutes());
+    recordChange(
+        organizationId, actorUserId, AuditEventType.OIDC_PROVIDER_CHANGED, provider, before, after);
+    return provider;
+  }
+
+  /**
+   * The interval a switch-on takes when the caller names none: the provider's current one if it has
+   * one, otherwise the shipped default of six hours (ADR-0036, "Zahlen, die dieser ADR setzt").
+   */
+  private int resolveInterval(OidcProvider provider, Integer requested) {
+    if (requested != null) {
+      return requested;
+    }
+    Integer current = provider.getDirectorySyncIntervalMinutes();
+    return current != null ? current : DEFAULT_SYNC_INTERVAL_MINUTES;
   }
 
   /** {@link #setEnabled(UUID, UUID, UUID, boolean, boolean)} without the acknowledgement. */
@@ -655,6 +748,13 @@ public class OidcProviderService {
     putIfPresent(state, "auditorRole", mapping.auditorRole());
     putIfPresent(state, "groupsClaim", mapping.groupsClaim());
     return state;
+  }
+
+  /** {@link AuditEvent}'s immutable maps refuse a null value, so an unset interval is left out. */
+  private static void putIntervalIfPresent(Map<String, Object> state, Integer intervalMinutes) {
+    if (intervalMinutes != null) {
+      state.put("directorySyncIntervalMinutes", intervalMinutes);
+    }
   }
 
   private static void putIfPresent(Map<String, Object> state, String key, String value) {
