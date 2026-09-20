@@ -26,7 +26,7 @@ class TokenGroupProvisioner {
   @Order(UserProvisionedEvent.TOKEN_GROUPS_ORDER)
   @EventListener
   void onUserProvisioned(UserProvisionedEvent event) {
-    if (!event.hasTokenGroups()) {
+    if (!event.hasGroupsClaim()) {
       return;
     }
     synchronizer.apply(event.user(), event.provider(), event.tokenGroups());

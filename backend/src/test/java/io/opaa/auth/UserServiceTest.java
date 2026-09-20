@@ -177,11 +177,11 @@ class UserServiceTest {
     verify(roleSynchronizer, never()).apply(eq(atBeschaeftigte), any(), any());
     verify(roleSynchronizer).apply(atPartner, partner, List.of("opaa-admin"));
     assertThat(publishedEvents).hasSize(2);
-    assertThat(publishedEvents.get(0).hasTokenGroups()).isFalse();
+    assertThat(publishedEvents.get(0).hasGroupsClaim()).isFalse();
     UserProvisionedEvent fromPartner = publishedEvents.get(1);
     assertThat(fromPartner.user()).isSameAs(atPartner);
     assertThat(fromPartner.provider()).isSameAs(partner);
-    assertThat(fromPartner.tokenGroups()).containsExactly("Fachbereich 3");
+    assertThat(fromPartner.tokenGroups()).isEqualTo(TokenGroups.named(List.of("Fachbereich 3")));
   }
 
   /**
@@ -242,7 +242,7 @@ class UserServiceTest {
     assertThat(user.getEmail()).isEqualTo("alice@behoerde.example");
     assertThat(user.getDisplayName()).isEqualTo("Alice");
     verifyNoInteractions(roleSynchronizer);
-    assertThat(onlyEvent().hasTokenGroups()).isFalse();
+    assertThat(onlyEvent().hasGroupsClaim()).isFalse();
   }
 
   @Test

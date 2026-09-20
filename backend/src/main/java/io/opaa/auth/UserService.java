@@ -80,6 +80,9 @@ public class UserService {
    * provider is authoritative: the stored role is aligned with the token here, the token's group
    * memberships by the {@link UserProvisionedEvent} this method publishes exactly once - as does
    * the personal-space provisioning, which is why neither package is reached into from here.
+   *
+   * <p>What the token said about the groups travels as a {@link TokenGroups}: a token that carries
+   * no usable claim must not reach a listener as "this account has no groups" (#1807).
    */
   public User provisionFromToken(Jwt jwt) {
     String issuer = JwtUserClaims.issuer(jwt);

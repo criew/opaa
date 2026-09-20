@@ -7,6 +7,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
+import io.opaa.auth.TokenGroups;
 import io.opaa.auth.User;
 import io.opaa.auth.UserProvisionedEvent;
 import io.opaa.auth.oidc.OidcClaimMapping;
@@ -51,11 +52,28 @@ class TokenGroupProvisionerTest {
   void aTokenWithGroupsIsSynchronized() {
     User user = user();
     OidcProvider provider = provider();
+    TokenGroups groups = TokenGroups.named(List.of("Fachbereich 3"));
 
     provisioner.onUserProvisioned(
-        UserProvisionedEvent.withTokenGroups(user, false, provider, List.of("Fachbereich 3")));
+        UserProvisionedEvent.withTokenGroups(user, false, provider, groups));
 
-    verify(synchronizer).apply(user, provider, List.of("Fachbereich 3"));
+    verify(synchronizer).apply(user, provider, groups);
+  }
+
+  /**
+   * regression guard for #1807: the synchronizer decides what an unusable claim means, not this
+   * listener - one that filtered it out here would swallow the incident report with it.
+   */
+  @Test
+  void aTokenWithoutAUsableClaimStillReachesTheSynchronizer() {
+    User user = user();
+    OidcProvider provider = provider();
+    TokenGroups groups = TokenGroups.unavailable(TokenGroups.Reason.CLAIM_MISSING);
+
+    provisioner.onUserProvisioned(
+        UserProvisionedEvent.withTokenGroups(user, false, provider, groups));
+
+    verify(synchronizer).apply(user, provider, groups);
   }
 
   @Test
@@ -74,7 +92,7 @@ class TokenGroupProvisionerTest {
             () ->
                 provisioner.onUserProvisioned(
                     UserProvisionedEvent.withTokenGroups(
-                        user(), false, provider(), List.of("Fachbereich 3"))))
+                        user(), false, provider(), TokenGroups.named(List.of("Fachbereich 3")))))
         .isSameAs(failure);
   }
 }
