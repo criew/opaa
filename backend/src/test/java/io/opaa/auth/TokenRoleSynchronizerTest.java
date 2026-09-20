@@ -59,7 +59,9 @@ class TokenRoleSynchronizerTest {
 
   @Test
   void aTokenWithTheAdminRoleGrantsSystemAdminAndWritesTheGrantEvent() {
-    User result = synchronizer.apply(user, provider, List.of("offline_access", "opaa-admin"));
+    User result =
+        synchronizer.apply(
+            user, provider, TokenRoles.named(List.of("offline_access", "opaa-admin")));
 
     assertThat(result.getSystemRole()).isEqualTo(SystemRole.SYSTEM_ADMIN);
     verify(userRepository)
@@ -86,7 +88,7 @@ class TokenRoleSynchronizerTest {
   void anUnchangedRoleWritesNothing() {
     user.setSystemRole(SystemRole.AUDITOR);
 
-    synchronizer.apply(user, provider, List.of("opaa-auditor"));
+    synchronizer.apply(user, provider, TokenRoles.named(List.of("opaa-auditor")));
 
     verify(userRepository, never()).changeRoleIfStill(any(), any(), any());
     verify(guard, never()).withdrawSystemAdminIfAnotherRemains(any(), any());
@@ -97,7 +99,7 @@ class TokenRoleSynchronizerTest {
   void aWithdrawalOfSystemAdminIsConditionalAndAuditedAsRevokedPlusGranted() {
     user.setSystemRole(SystemRole.SYSTEM_ADMIN);
 
-    User result = synchronizer.apply(user, provider, List.of("opaa-auditor"));
+    User result = synchronizer.apply(user, provider, TokenRoles.named(List.of("opaa-auditor")));
 
     assertThat(result.getSystemRole()).isEqualTo(SystemRole.AUDITOR);
     // the guard is the one place that counts login-capable administrators (ADR-0033, 4)
@@ -115,7 +117,7 @@ class TokenRoleSynchronizerTest {
     user.setSystemRole(SystemRole.SYSTEM_ADMIN);
     when(guard.withdrawSystemAdminIfAnotherRemains(any(), any())).thenReturn(0);
 
-    User result = synchronizer.apply(user, provider, List.of());
+    User result = synchronizer.apply(user, provider, TokenRoles.named(List.of()));
 
     assertThat(result.getSystemRole()).isEqualTo(SystemRole.SYSTEM_ADMIN);
     ArgumentCaptor<AuditEvent> audit = ArgumentCaptor.forClass(AuditEvent.class);
@@ -132,7 +134,7 @@ class TokenRoleSynchronizerTest {
     concurrent.setSystemRole(SystemRole.SYSTEM_ADMIN);
     when(userRepository.findById(user.getId())).thenReturn(Optional.of(concurrent));
 
-    User result = synchronizer.apply(user, provider, List.of("opaa-admin"));
+    User result = synchronizer.apply(user, provider, TokenRoles.named(List.of("opaa-admin")));
 
     assertThat(result).isSameAs(concurrent);
     verify(auditEventRecorder, never()).recordSystemProcessAction(any());
