@@ -561,7 +561,9 @@ export const mockSpaceDetails: Record<string, SpaceResponse> = {
 export const mockSpaceMembers: Record<string, SpaceMemberResponse[]> = {
   'space-personal': [
     {
-      userId: 'mock-user-id',
+      id: 'membership-personal-admin',
+      subjectType: 'USER',
+      subjectId: 'mock-user-id',
       displayName: 'Admin',
       role: 'ADMIN',
       createdAt: '2026-03-01T10:00:00Z',
@@ -569,33 +571,56 @@ export const mockSpaceMembers: Record<string, SpaceMemberResponse[]> = {
   ],
   'space-engineering': [
     {
-      userId: 'owner-1',
+      id: 'membership-engineering-alice',
+      subjectType: 'USER',
+      subjectId: 'owner-1',
       displayName: 'Alice',
       role: 'ADMIN',
       createdAt: '2026-03-01T10:00:00Z',
     },
     {
-      userId: 'mock-user-id',
+      id: 'membership-engineering-admin',
+      subjectType: 'USER',
+      subjectId: 'mock-user-id',
       displayName: 'Admin',
       role: 'ADMIN',
       createdAt: '2026-03-01T10:00:00Z',
     },
     {
-      userId: 'curator-1',
+      id: 'membership-engineering-bob',
+      subjectType: 'USER',
+      subjectId: 'curator-1',
       displayName: 'Bob',
       role: 'CURATOR',
+      createdAt: '2026-03-01T10:00:00Z',
+    },
+    // #1815: a group as a member, with the growth signal of ADR-0036, Entscheidung 9.
+    {
+      id: 'membership-engineering-referat-50',
+      subjectType: 'GROUP',
+      subjectId: 'group-referat-50',
+      displayName: 'Referat 50',
+      role: 'MEMBER',
+      memberCountAtGrant: 23,
+      memberCountNow: 41,
+      smallGroup: false,
+      emptyGroup: false,
       createdAt: '2026-03-01T10:00:00Z',
     },
   ],
   'space-phoenix': [
     {
-      userId: 'owner-2',
+      id: 'membership-phoenix-chris',
+      subjectType: 'USER',
+      subjectId: 'owner-2',
       displayName: 'Chris',
       role: 'ADMIN',
       createdAt: '2026-03-01T10:00:00Z',
     },
     {
-      userId: 'mock-user-id',
+      id: 'membership-phoenix-admin',
+      subjectType: 'USER',
+      subjectId: 'mock-user-id',
       displayName: 'Admin',
       role: 'CURATOR',
       createdAt: '2026-03-01T10:00:00Z',

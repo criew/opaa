@@ -3,7 +3,9 @@ package io.opaa.test;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.permission.AssetGrantHistoryRepository;
+import io.opaa.permission.AssetOwnershipHistoryRepository;
 import io.opaa.permission.GroupMembershipHistoryRepository;
+import io.opaa.space.SpaceMembershipHistoryRepository;
 import io.opaa.space.SpaceRepository;
 import java.util.List;
 import java.util.Objects;
@@ -17,7 +19,7 @@ import java.util.stream.Collectors;
  * users}, {@code spaces} or the history tables would take a sibling class's still-needed rows with
  * it.
  *
- * <p>Covers users, the spaces they are a member of, and the two permission-history tables that
+ * <p>Covers users, the spaces they are a member of, and the four rights-history tables that
  * reference users with RESTRICT. Deliberately <b>not</b> {@code asset_grants}, {@code chats},
  * libraries or {@code group_memberships}: a class that creates those removes them itself, scoped to
  * its own ids, and a half-hearted sweep here would turn a loud RESTRICT violation into a silent
@@ -29,16 +31,22 @@ public final class OwnUserFixtures {
   private final SpaceRepository spaces;
   private final AssetGrantHistoryRepository grantHistory;
   private final GroupMembershipHistoryRepository membershipHistory;
+  private final SpaceMembershipHistoryRepository spaceMembershipHistory;
+  private final AssetOwnershipHistoryRepository ownershipHistory;
 
   OwnUserFixtures(
       UserRepository users,
       SpaceRepository spaces,
       AssetGrantHistoryRepository grantHistory,
-      GroupMembershipHistoryRepository membershipHistory) {
+      GroupMembershipHistoryRepository membershipHistory,
+      SpaceMembershipHistoryRepository spaceMembershipHistory,
+      AssetOwnershipHistoryRepository ownershipHistory) {
     this.users = users;
     this.spaces = spaces;
     this.grantHistory = grantHistory;
     this.membershipHistory = membershipHistory;
+    this.spaceMembershipHistory = spaceMembershipHistory;
+    this.ownershipHistory = ownershipHistory;
   }
 
   /** Snapshot for a {@code @BeforeEach}: every user that is none of this test method's business. */
@@ -71,9 +79,13 @@ public final class OwnUserFixtures {
             .flatMap(id -> spaces.findDistinctByMembershipsUserId(id).stream())
             .distinct()
             .toList());
-    // The permission-history tables reference users with RESTRICT: they go before the users.
+    // The rights-history tables reference users with RESTRICT: they go before the users. The two
+    // added with #1815 carry no foreign key to their space, so deleting the spaces above left
+    // their intervals behind (ADR-0016).
     grantHistory.deleteBySubjectUserIdIn(own);
     membershipHistory.deleteByUserIdIn(own);
+    spaceMembershipHistory.deleteBySubjectUserIdIn(own);
+    ownershipHistory.deleteByOwnerUserIdIn(own);
     users.deleteAllById(own);
   }
 }

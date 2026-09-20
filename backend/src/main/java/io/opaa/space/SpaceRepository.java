@@ -1,5 +1,6 @@
 package io.opaa.space;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -17,6 +18,18 @@ public interface SpaceRepository extends JpaRepository<Space, UUID> {
           + "left join fetch s.memberships "
           + "where s.id in (select m.space.id from SpaceMembership m where m.userId = :userId)")
   List<Space> findDistinctByMembershipsUserIdWithMemberships(@Param("userId") UUID userId);
+
+  /**
+   * The spaces one of the caller's groups is a member of (#1815). Separate from the query above
+   * rather than one disjunction: a caller who belongs to no group would otherwise have to send an
+   * empty {@code IN} list. Never called with an empty set - see {@code SpaceService#listSpaces}.
+   */
+  @Query(
+      "select distinct s from Space s "
+          + "left join fetch s.memberships "
+          + "where s.id in (select m.space.id from SpaceMembership m where m.groupId in :groupIds)")
+  List<Space> findDistinctByMembershipGroupIdsWithMemberships(
+      @Param("groupIds") Collection<UUID> groupIds);
 
   @Query("select distinct s from Space s left join fetch s.memberships where s.id = :spaceId")
   Optional<Space> findByIdWithMemberships(@Param("spaceId") UUID spaceId);
@@ -39,6 +52,17 @@ public interface SpaceRepository extends JpaRepository<Space, UUID> {
    * fired, exactly one row (and therefore exactly one membership insert) if it did not. A losing
    * caller's membership insert is correctly skipped without a second query to find out whether it
    * lost, because both inserts happen in the one statement Postgres evaluates as a whole.
+   *
+   * <p><b>No rights-history interval is written here</b> (#1815, ADR-0036 Entscheidung 8), and that
+   * is the same rule {@code UserRepository#countDeletionBlockers} already applies with {@code
+   * spaces ... AND is_default = false}: the personal space and everything provisioned with it are
+   * the account itself, not a right anybody decided, and they go with the account when it is
+   * deleted. Writing the intervals here would make every account that ever signed in permanently
+   * undeletable through their {@code RESTRICT} person columns, without any decision having been
+   * recorded. Consequence, named rather than hidden: a Stichtag reconstruction ({@link
+   * SpaceMembershipHistoryService#spaceIdsAsOf}) does not report the personal space. Every
+   * membership and every ownership a person decides on - including one in a personal space - goes
+   * through {@link SpaceService} and is historised there.
    */
   @Modifying
   @Query(
@@ -51,8 +75,9 @@ public interface SpaceRepository extends JpaRepository<Space, UUID> {
               + "  ON CONFLICT (owner_id) WHERE is_default DO NOTHING"
               + "  RETURNING id"
               + ") "
-              + "INSERT INTO space_memberships (id, user_id, space_id, role, organization_id, created_at) "
-              + "SELECT :membershipId, :ownerId, id, 'ADMIN', :organizationId, now() FROM new_space",
+              + "INSERT INTO space_memberships"
+              + "  (id, subject_type, user_id, space_id, role, organization_id, created_at) "
+              + "SELECT :membershipId, 'USER', :ownerId, id, 'ADMIN', :organizationId, now() FROM new_space",
       nativeQuery = true)
   void insertDefaultSpaceIfAbsent(
       @Param("spaceId") UUID spaceId,

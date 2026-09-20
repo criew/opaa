@@ -13,6 +13,9 @@ import static org.mockito.Mockito.when;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.UserRepository;
 import io.opaa.chat.ChatRepository;
+import io.opaa.permission.AssetOwnershipHistoryService;
+import io.opaa.permission.GroupMembershipResolver;
+import io.opaa.permission.GroupSubjectDirectory;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -56,6 +59,11 @@ class SpaceServiceTest {
             auditEventRecorder,
             chatRepository,
             associationService,
+            mock(SpaceAccessPolicy.class),
+            mock(SpaceMembershipHistoryService.class),
+            mock(AssetOwnershipHistoryService.class),
+            mock(GroupMembershipResolver.class),
+            mock(GroupSubjectDirectory.class),
             transactionManager);
   }
 

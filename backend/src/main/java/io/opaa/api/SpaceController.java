@@ -13,6 +13,7 @@ import io.opaa.api.dto.SpaceTransferOwnershipRequest;
 import io.opaa.api.dto.SpaceUpdateRequest;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
+import io.opaa.permission.PermissionSubject;
 import io.opaa.space.Space;
 import io.opaa.space.SpaceAssetAssociationService;
 import io.opaa.space.SpaceCreation;
@@ -55,7 +56,7 @@ public class SpaceController {
     // the same transaction as the space row - a library that cannot be associated rolls the whole
     // creation back instead of leaving a half-created space behind.
     Space created = spaceService.createSpace(toSpaceCreation(request), caller);
-    SpaceResponse response = SpaceResponseMapper.toResponse(created, caller.id());
+    SpaceResponse response = SpaceResponseMapper.toResponse(spaceService.detailOf(created, caller));
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 
@@ -87,13 +88,13 @@ public class SpaceController {
   @GetMapping
   public List<SpaceListResponse> listSpaces(@Caller CurrentUser caller) {
     List<SpaceOverview> overviews = spaceService.listSpaces(caller);
-    return SpaceResponseMapper.toListResponses(overviews, caller.id());
+    return SpaceResponseMapper.toListResponses(overviews);
   }
 
   @GetMapping("/{spaceId}")
   public SpaceResponse getSpace(@PathVariable UUID spaceId, @Caller CurrentUser caller) {
     Space space = spaceService.getSpace(spaceId, caller);
-    return SpaceResponseMapper.toResponse(space, caller.id());
+    return SpaceResponseMapper.toResponse(spaceService.detailOf(space, caller));
   }
 
   @PutMapping("/{spaceId}")
@@ -106,7 +107,7 @@ public class SpaceController {
             spaceId,
             new SpaceUpdate(request.getName(), request.getDescription(), request.getVisibility()),
             caller);
-    return SpaceResponseMapper.toResponse(updated, caller.id());
+    return SpaceResponseMapper.toResponse(spaceService.detailOf(updated, caller));
   }
 
   @DeleteMapping("/{spaceId}")
@@ -118,7 +119,7 @@ public class SpaceController {
   @PostMapping("/{spaceId}/archive")
   public SpaceResponse archiveSpace(@PathVariable UUID spaceId, @Caller CurrentUser caller) {
     Space archived = spaceService.archiveSpace(spaceId, caller);
-    return SpaceResponseMapper.toResponse(archived, caller.id());
+    return SpaceResponseMapper.toResponse(spaceService.detailOf(archived, caller));
   }
 
   @GetMapping("/{spaceId}/members")
@@ -133,27 +134,31 @@ public class SpaceController {
       @PathVariable UUID spaceId,
       @Valid @RequestBody SpaceAddMemberRequest request,
       @Caller CurrentUser caller) {
+    // The subject's organization is the caller's own - a request body never names one (#199).
+    PermissionSubject subject =
+        new PermissionSubject(
+            request.getSubjectType(), request.getSubjectId(), caller.organizationId());
     SpaceMemberResponse response =
         SpaceResponseMapper.toMemberResponse(
-            spaceService.addMember(spaceId, request.getUserId(), request.getRole(), caller));
+            spaceService.addMember(spaceId, subject, request.getRole(), caller));
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 
-  @DeleteMapping("/{spaceId}/members/{userId}")
+  @DeleteMapping("/{spaceId}/members/{membershipId}")
   public ResponseEntity<Void> removeMember(
-      @PathVariable UUID spaceId, @PathVariable UUID userId, @Caller CurrentUser caller) {
-    spaceService.removeMember(spaceId, userId, caller);
+      @PathVariable UUID spaceId, @PathVariable UUID membershipId, @Caller CurrentUser caller) {
+    spaceService.removeMember(spaceId, membershipId, caller);
     return ResponseEntity.noContent().build();
   }
 
-  @PutMapping("/{spaceId}/members/{userId}/role")
+  @PutMapping("/{spaceId}/members/{membershipId}/role")
   public SpaceMemberResponse updateMemberRole(
       @PathVariable UUID spaceId,
-      @PathVariable UUID userId,
+      @PathVariable UUID membershipId,
       @Valid @RequestBody SpaceRoleUpdateRequest request,
       @Caller CurrentUser caller) {
     return SpaceResponseMapper.toMemberResponse(
-        spaceService.updateMemberRole(spaceId, userId, request.getRole(), caller));
+        spaceService.updateMemberRole(spaceId, membershipId, request.getRole(), caller));
   }
 
   @PostMapping("/{spaceId}/transfer-ownership")

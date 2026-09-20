@@ -12,14 +12,24 @@ import java.util.List;
  * @param grants how many grants those groups hold
  * @param grantedAssets across how many distinct assets those grants run
  * @param owningGroups how many of those groups own an asset themselves
+ * @param spaceMemberships how many space memberships those groups hold (#1815) - {@code
+ *     space_memberships.group_id} is {@code ON DELETE RESTRICT}, so without this count the deletion
+ *     would run into the foreign key instead of into the refusal
+ * @param spaces across how many distinct spaces those memberships run
  * @param scopedAuthorizations how many still-conferring diagnostic authorisations (ADR-0016) name
  *     one of those groups as their scope - they would cascade away with the group, without the
  *     revocation event ADR-0016 requires
  */
 public record ProviderGroupEffects(
-    long groups, long grants, long grantedAssets, long owningGroups, long scopedAuthorizations) {
+    long groups,
+    long grants,
+    long grantedAssets,
+    long owningGroups,
+    long spaceMemberships,
+    long spaces,
+    long scopedAuthorizations) {
 
-  public static final ProviderGroupEffects NONE = new ProviderGroupEffects(0, 0, 0, 0, 0);
+  public static final ProviderGroupEffects NONE = new ProviderGroupEffects(0, 0, 0, 0, 0, 0, 0);
 
   public boolean any() {
     return groups > 0;
@@ -40,6 +50,14 @@ public record ProviderGroupEffects(
           owningGroups == 1
               ? "1 Gruppe ist Eigentümerin eines Objekts"
               : owningGroups + " Gruppen sind Eigentümerinnen eines Objekts");
+    }
+    if (spaceMemberships > 0) {
+      parts.add(
+          (spaceMemberships == 1
+                  ? "1 Space-Mitgliedschaft"
+                  : spaceMemberships + " Space-Mitgliedschaften")
+              + " in "
+              + (spaces == 1 ? "1 Space" : spaces + " Spaces"));
     }
     if (scopedAuthorizations > 0) {
       parts.add(

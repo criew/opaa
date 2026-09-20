@@ -536,6 +536,12 @@ public class LocalUserService {
     if (counts.getIncidentScopes() > 0) {
       blockers.add("audit_incident_scope_grants");
     }
+    if (counts.getSpaceMembershipHistory() > 0) {
+      blockers.add("space_membership_history");
+    }
+    if (counts.getAssetOwnershipHistory() > 0) {
+      blockers.add("asset_ownership_history");
+    }
     return blockers;
   }
 

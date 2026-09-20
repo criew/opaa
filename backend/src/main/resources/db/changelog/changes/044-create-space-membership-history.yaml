@@ -1,0 +1,86 @@
+databaseChangeLog:
+  - changeSet:
+      id: 044-create-space-membership-history
+      author: opaa
+      comment: >-
+        Die Rechtehistorie der Space-Mitgliedschaft (#1815, ADR-0036 Entscheidung 8): halboffene
+        Intervalle [valid_from, valid_to) je Subjekt, Space und Rolle. Damit ist "war X am Tag Y
+        Mitglied von Space Z" beantwortbar - und vor allem die Negativfrage, die das
+        Nachweisprotokoll nach seiner eigenen Frist nicht mehr beantworten kann.
+        .
+        ADR-0016 gibt die Spaltenregel vor und dieses Changeset folgt ihr genau:
+        Personenspalten RESTRICT (subject_user_id; der Akteur SET NULL, weil er keine Aussage
+        ueber ein Recht traegt), OBJEKTSPALTEN OHNE FREMDSCHLUESSEL. space_id traegt deshalb
+        keinen: Eine Historienzeile ueberlebt den Space, ueber den sie Auskunft gibt - sonst waere
+        "war Person X an Tag Y NICHT Mitglied" nach der ersten Loeschung unbeantwortbar. Offene
+        Intervalle werden stattdessen von der Anwendung geschlossen (Grund SPACE_DELETED), genau
+        wie asset_grant_history es fuer LIBRARY_DELETED tut.
+        .
+        subject_group_id traegt ebenfalls keinen Fremdschluessel, aus demselben Grund wie in
+        asset_grant_history: Eine Gruppe ist loeschbar (GroupService#deleteGroup), ihre Historie
+        muss die Loeschung ueberleben. Die LEBENDE Tabelle space_memberships haelt die Gegenseite
+        mit RESTRICT (Changeset 043).
+        .
+        Die beiden eindeutigen Teilindexe auf den offenen Intervallen sind der Wächter, der
+        verhindert, dass zwei nebenlaeufige Transaktionen eine verschraenkte Kette hinterlassen -
+        die Zeitquelle (PermissionHistoryClock) ordnet nur die Grenzen, nicht die Commits.
+        Nulllange Markerzeilen (valid_from = valid_to) sind davon nicht betroffen und bleiben
+        erlaubt: Sie halten das Entfernen als eigenes, akteurstragendes Ereignis fest.
+        .
+        BESTAND: Jede am Migrationstag vorhandene Mitgliedschaft bekommt ein OFFENES Intervall ab
+        jetzt, mit dem Grund BACKFILL - dieselbe Loesung, die group_membership_history und
+        asset_grant_history bei ihrer Einfuehrung getroffen haben. Die Historie beginnt damit an
+        diesem Tag und behauptet fuer die Zeit davor nichts; sie rueckwirkend aus created_at zu
+        erfinden wuerde eine Rollenhistorie vortaeuschen, die es nie gab.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE TABLE space_membership_history (
+                  id uuid NOT NULL,
+                  space_id uuid NOT NULL,
+                  organization_id uuid NOT NULL,
+                  subject_type character varying(20) NOT NULL,
+                  subject_user_id uuid,
+                  subject_group_id uuid,
+                  role character varying(20) NOT NULL,
+                  member_count_at_grant integer,
+                  cause character varying(30) NOT NULL,
+                  actor_user_id uuid,
+                  valid_from timestamp with time zone NOT NULL,
+                  valid_to timestamp with time zone,
+                  created_at timestamp with time zone DEFAULT now() NOT NULL,
+                  CONSTRAINT chk_space_membership_history_cause CHECK ((cause IN ('ADDED', 'ROLE_CHANGED', 'REMOVED', 'BACKFILL', 'SPACE_DELETED'))),
+                  CONSTRAINT chk_space_membership_history_role CHECK ((role IN ('MEMBER', 'CURATOR', 'ADMIN'))),
+                  CONSTRAINT chk_space_membership_history_subject CHECK (((((subject_type)::text = 'USER'::text) AND (subject_user_id IS NOT NULL) AND (subject_group_id IS NULL)) OR (((subject_type)::text = 'GROUP'::text) AND (subject_group_id IS NOT NULL) AND (subject_user_id IS NULL)))),
+                  CONSTRAINT chk_space_membership_history_subject_type CHECK ((subject_type IN ('USER', 'GROUP')))
+              );
+
+              ALTER TABLE ONLY space_membership_history
+                  ADD CONSTRAINT space_membership_history_pkey PRIMARY KEY (id);
+
+              CREATE INDEX idx_space_membership_history_space ON space_membership_history USING btree (space_id);
+
+              CREATE INDEX idx_space_membership_history_subject_user_organization ON space_membership_history USING btree (subject_user_id, organization_id, valid_from) WHERE ((subject_type)::text = 'USER'::text);
+
+              CREATE INDEX idx_space_membership_history_subject_group_organization ON space_membership_history USING btree (subject_group_id, organization_id, valid_from) WHERE ((subject_type)::text = 'GROUP'::text);
+
+              CREATE UNIQUE INDEX uk_space_membership_history_open_user ON space_membership_history USING btree (space_id, subject_user_id) WHERE (((subject_type)::text = 'USER'::text) AND (valid_to IS NULL));
+
+              CREATE UNIQUE INDEX uk_space_membership_history_open_group ON space_membership_history USING btree (space_id, subject_group_id) WHERE (((subject_type)::text = 'GROUP'::text) AND (valid_to IS NULL));
+
+              ALTER TABLE ONLY space_membership_history
+                  ADD CONSTRAINT fk_space_membership_history_subject_user_organization FOREIGN KEY (subject_user_id, organization_id) REFERENCES users(id, organization_id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY space_membership_history
+                  ADD CONSTRAINT fk_space_membership_history_actor_user_organization FOREIGN KEY (actor_user_id, organization_id) REFERENCES users(id, organization_id) ON DELETE SET NULL (actor_user_id);
+
+              INSERT INTO space_membership_history
+                  (id, space_id, organization_id, subject_type, subject_user_id, subject_group_id, role, member_count_at_grant, cause, actor_user_id, valid_from, created_at)
+              SELECT gen_random_uuid(), m.space_id, m.organization_id, m.subject_type, m.user_id, m.group_id, m.role, m.member_count_at_grant, 'BACKFILL', NULL, now(), now()
+                FROM space_memberships m;
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              DROP TABLE space_membership_history;

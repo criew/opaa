@@ -6,6 +6,7 @@ import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.api.types.AuditSubjectKind;
+import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.api.types.SpaceRole;
 import io.opaa.api.types.SpaceVisibility;
 import io.opaa.audit.AuditEvent;
@@ -19,12 +20,18 @@ import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.OrganizationScopedLoader;
 import io.opaa.common.ValidationException;
+import io.opaa.permission.AssetOwnershipHistoryService;
+import io.opaa.permission.GroupMembershipResolver;
+import io.opaa.permission.GroupSubject;
+import io.opaa.permission.GroupSubjectDirectory;
+import io.opaa.permission.PermissionSubject;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -47,6 +54,11 @@ public class SpaceService {
   private final AuditEventRecorder auditEventRecorder;
   private final ChatRepository chatRepository;
   private final SpaceAssetAssociationService associationService;
+  private final SpaceAccessPolicy accessPolicy;
+  private final SpaceMembershipHistoryService membershipHistory;
+  private final AssetOwnershipHistoryService ownershipHistory;
+  private final GroupMembershipResolver groupMemberships;
+  private final GroupSubjectDirectory groupDirectory;
   private final TransactionTemplate requiresNewTransactionTemplate;
 
   /**
@@ -63,12 +75,22 @@ public class SpaceService {
       AuditEventRecorder auditEventRecorder,
       ChatRepository chatRepository,
       SpaceAssetAssociationService associationService,
+      SpaceAccessPolicy accessPolicy,
+      SpaceMembershipHistoryService membershipHistory,
+      AssetOwnershipHistoryService ownershipHistory,
+      GroupMembershipResolver groupMemberships,
+      GroupSubjectDirectory groupDirectory,
       PlatformTransactionManager transactionManager) {
     this.spaceRepository = spaceRepository;
     this.chatRepository = chatRepository;
     this.userRepository = userRepository;
     this.auditEventRecorder = auditEventRecorder;
     this.associationService = associationService;
+    this.accessPolicy = accessPolicy;
+    this.membershipHistory = membershipHistory;
+    this.ownershipHistory = ownershipHistory;
+    this.groupMemberships = groupMemberships;
+    this.groupDirectory = groupDirectory;
     this.requiresNewTransactionTemplate = new TransactionTemplate(transactionManager);
     this.requiresNewTransactionTemplate.setPropagationBehavior(
         TransactionDefinition.PROPAGATION_REQUIRES_NEW);
@@ -107,6 +129,14 @@ public class SpaceService {
     appendInitialMemberships(space, ownerId, creation.initialMembers());
 
     Space saved = spaceRepository.save(space);
+    for (SpaceMembership membership : saved.getMemberships()) {
+      membershipHistory.recordAdded(membership, caller.id());
+    }
+    ownershipHistory.recordCreated(
+        Space.ASSET_TYPE,
+        saved.getId(),
+        PermissionSubject.user(saved.getOwnerId(), saved.getOrganizationId()),
+        caller.id());
     auditEventRecorder.recordUserAction(
         AuditEvent.builder()
             .organizationId(saved.getOrganizationId())
@@ -141,8 +171,22 @@ public class SpaceService {
   }
 
   public List<SpaceOverview> listSpaces(CurrentUser caller) {
+    Set<UUID> callerGroupIds = groupMemberships.groupIdsForUser(caller.id());
+    // Two queries rather than one disjunction: a caller who belongs to no group must not send an
+    // empty IN list, and the union is by entity identity within the same persistence context.
+    Map<UUID, Space> reachable = new LinkedHashMap<>();
+    for (Space space :
+        spaceRepository.findDistinctByMembershipsUserIdWithMemberships(caller.id())) {
+      reachable.put(space.getId(), space);
+    }
+    if (!callerGroupIds.isEmpty()) {
+      for (Space space :
+          spaceRepository.findDistinctByMembershipGroupIdsWithMemberships(callerGroupIds)) {
+        reachable.putIfAbsent(space.getId(), space);
+      }
+    }
     List<Space> memberSpaces =
-        spaceRepository.findDistinctByMembershipsUserIdWithMemberships(caller.id()).stream()
+        reachable.values().stream()
             .filter(space -> space.getOrganizationId().equals(caller.organizationId()))
             .toList();
     List<UUID> spaceIds = memberSpaces.stream().map(Space::getId).toList();
@@ -169,7 +213,9 @@ public class SpaceService {
                 new SpaceOverview(
                     space,
                     libraryCounts.getOrDefault(space.getId(), 0L).intValue(),
-                    chatCounts.getOrDefault(space.getId(), 0L).intValue()))
+                    chatCounts.getOrDefault(space.getId(), 0L).intValue(),
+                    SpaceAccessPolicy.effectiveRole(space, caller.id(), callerGroupIds),
+                    !accessPolicy.hasCapableAdmin(space)))
         .toList();
   }
 
@@ -184,10 +230,20 @@ public class SpaceService {
                 ChatRepository.SpaceChatCount::getChatCount));
   }
 
+  /**
+   * The space with the two derived values a response shows: the caller's effective role and
+   * "Nachfolge offen" (ADR-0036, Entscheidung 6). Kept in this package rather than computed in the
+   * controller, so the mapper stays a pure entity-to-response step (AGENTS.md, API-Konvention).
+   */
+  public SpaceDetail detailOf(Space space, CurrentUser caller) {
+    return new SpaceDetail(
+        space, accessPolicy.effectiveRole(space, caller), !accessPolicy.hasCapableAdmin(space));
+  }
+
   public Space getSpace(UUID spaceId, CurrentUser caller) {
     Space space = loadSpace(spaceId, caller);
 
-    SpaceAccessPolicy.requireMember(space, caller);
+    accessPolicy.requireMember(space, caller);
 
     return space;
   }
@@ -197,106 +253,185 @@ public class SpaceService {
     // #144: the member list names every member of the space - who else works in "Disziplinar-
     // verfahren" or "Umstrukturierung Abteilung 3" is itself sensitive. Unlike getSpace, which only
     // checks membership, this is restricted to ADMIN, the owner and system admins - see
-    // SpaceAccessPolicy#requireMemberListViewer.
+    // SpaceAccessPolicy#requireMemberListViewer. A group row is therefore named only to those who
+    // manage its membership here (ADR-0036, Entscheidung 9).
     if (!caller.isSystemAdmin()) {
-      SpaceAccessPolicy.requireMemberListViewer(space, caller);
+      accessPolicy.requireMemberListViewer(space, caller);
     }
 
-    List<UUID> userIds = space.getMemberships().stream().map(SpaceMembership::getUserId).toList();
+    List<UUID> userIds =
+        space.getMemberships().stream()
+            .filter(SpaceMembership::isUserSubject)
+            .map(SpaceMembership::getUserId)
+            .toList();
     Map<UUID, String> displayNames = resolveDisplayNames(userIds);
+    List<UUID> groupIds =
+        space.getMemberships().stream()
+            .filter(SpaceMembership::isGroupSubject)
+            .map(SpaceMembership::getGroupId)
+            .toList();
+    Map<UUID, String> groupNames =
+        groupIds.isEmpty() ? Map.of() : groupDirectory.namesById(groupIds);
 
     return space.getMemberships().stream()
-        .map(m -> new SpaceMemberView(m, displayNames.get(m.getUserId())))
+        .map(
+            membership ->
+                membership.isUserSubject()
+                    ? SpaceMemberView.ofUser(membership, displayNames.get(membership.getUserId()))
+                    : new SpaceMemberView(
+                        membership,
+                        groupNames.get(membership.getGroupId()),
+                        groupSizeSignal(membership)))
         .toList();
   }
 
+  /**
+   * The growth signal of a group membership (ADR-0036, Entscheidung 9), with the "kleine Gruppe"
+   * suppression applied - see {@link GroupSizeSignal}.
+   */
+  private GroupSizeSignal groupSizeSignal(SpaceMembership membership) {
+    return GroupSizeSignal.of(
+        membership.getMemberCountAtGrant(),
+        groupMemberships.activeMemberCount(
+            membership.getGroupId(), membership.getOrganizationId()));
+  }
+
+  /**
+   * Admits a person or a group to the space (#1815, ADR-0036 Entscheidung 6). A group's members
+   * hold the role without a row of their own; only an <em>effective</em> group may be admitted, and
+   * an effective but empty one may - with the warning the response carries.
+   */
   @Transactional
   public SpaceMemberView addMember(
-      UUID spaceId, UUID memberUserId, SpaceRole requestedRole, CurrentUser caller) {
+      UUID spaceId, PermissionSubject subject, SpaceRole requestedRole, CurrentUser caller) {
     Space space = loadSpace(spaceId, caller);
-    SpaceAccessPolicy.requireManager(space, caller);
+    accessPolicy.requireManager(space, caller);
     // #613 review, finding 2: an archived space accepts no new content, and a new member is new
     // content in the sense the specification means - see docs/features/spaces-and-assets.md#einen-
     // space-stilllegen-archivieren-statt-löschen ("keine neuen Chats, Nachrichten, Umbenennungen
     // oder Mitglieder").
     requireNotArchived(space);
-    // Resolving the target user first also turns a non-existent userId into a clean 404 instead
-    // of a raw foreign-key violation from the membership insert below.
-    requireUserInOrganization(memberUserId, space.getOrganizationId());
-
-    if (userMembership(space, memberUserId) != null) {
-      throw new ConflictException("Der Benutzer ist bereits Mitglied dieses Space");
+    if (membershipOf(space, subject) != null) {
+      throw new ConflictException(
+          subject.type() == PermissionSubjectType.USER
+              ? "Der Benutzer ist bereits Mitglied dieses Space"
+              : "Die Gruppe ist bereits Mitglied dieses Space");
     }
 
     SpaceRole roleToAssign = requestedRole == null ? SpaceRole.MEMBER : requestedRole;
     SpaceMembership membership =
-        new SpaceMembership(memberUserId, roleToAssign, space.getOrganizationId());
-    space.addMembership(membership);
+        subject.type() == PermissionSubjectType.USER
+            ? addUserMembership(space, subject.id(), roleToAssign)
+            : addGroupMembership(space, subject.id(), roleToAssign);
     spaceRepository.save(space);
+    membershipHistory.recordAdded(membership, caller.id());
     auditEventRecorder.recordUserActionOnSubject(
         AuditEvent.builder()
             .organizationId(space.getOrganizationId())
             .actor(caller.id())
             .type(AuditEventType.SPACE_MEMBER_ADDED)
             .object(AuditObjectType.SPACE, space.getId(), space.getName())
-            .subject(AuditSubjectKind.USER, memberUserId)
+            .subject(auditSubjectKind(membership), membership.subjectId())
             .after(Map.of("role", roleToAssign.name()))
             .outcome(AuditOutcome.SUCCESS)
             .build());
 
-    return new SpaceMemberView(membership, resolveDisplayName(membership.getUserId()));
+    return toView(membership);
+  }
+
+  private SpaceMembership addUserMembership(Space space, UUID memberUserId, SpaceRole role) {
+    // Resolving the target user first also turns a non-existent userId into a clean 404 instead
+    // of a raw foreign-key violation from the membership insert below.
+    requireUserInOrganization(memberUserId, space.getOrganizationId());
+    SpaceMembership membership =
+        SpaceMembership.ofUser(memberUserId, role, space.getOrganizationId());
+    space.addMembership(membership);
+    return membership;
+  }
+
+  /**
+   * Only an effective group becomes a new space member (ADR-0036, Entscheidung 6, Schutzregel 4):
+   * neither dissolved nor belonging to a switched-off identity provider - otherwise the membership
+   * would reach nobody now and, with the provider switched back on, everybody at once without a
+   * second decision. An <em>empty</em> effective group is admitted on purpose: otherwise "create
+   * the group, admit it, then fill it" failed at the first step, and a group that only comes into
+   * existence with the first sign-in ({@code TokenGroupSynchronizer#findOrCreate}) could never be
+   * the target of a provider changeover.
+   */
+  private SpaceMembership addGroupMembership(Space space, UUID groupId, SpaceRole role) {
+    GroupSubject group =
+        groupDirectory
+            .find(groupId)
+            .filter(found -> found.organizationId().equals(space.getOrganizationId()))
+            .orElseThrow(() -> new NotFoundException("Gruppe nicht gefunden"));
+    if (group.dissolved()) {
+      throw new ConflictException(
+          "Die Gruppe ist aufgelöst und kann nicht mehr Mitglied eines Space werden");
+    }
+    if (group.providerDisabled()) {
+      throw new ConflictException(
+          "Der Identitätsanbieter dieser Gruppe ist deaktiviert. Sie kann nicht Mitglied eines"
+              + " Space werden, solange er es bleibt; bestehende Mitgliedschaften bleiben"
+              + " unverändert.");
+    }
+    SpaceMembership membership =
+        SpaceMembership.ofGroup(
+            groupId,
+            role,
+            groupMemberships.activeMemberCount(groupId, space.getOrganizationId()),
+            space.getOrganizationId());
+    space.addMembership(membership);
+    return membership;
   }
 
   @Transactional
   public SpaceMemberView updateMemberRole(
-      UUID spaceId, UUID memberUserId, SpaceRole newRole, CurrentUser caller) {
+      UUID spaceId, UUID membershipId, SpaceRole newRole, CurrentUser caller) {
     Space space = loadSpace(spaceId, caller);
-    SpaceAccessPolicy.requireManager(space, caller);
+    accessPolicy.requireManager(space, caller);
     if (newRole == null) {
       throw new ValidationException("role ist erforderlich");
     }
 
-    SpaceMembership target = userMembership(space, memberUserId);
-    if (target == null) {
-      throw new NotFoundException("Mitglied des Space nicht gefunden");
-    }
-    if (space.getOwnerId().equals(memberUserId) && newRole != SpaceRole.ADMIN) {
-      throw new ValidationException(
+    SpaceMembership target = requireMembership(space, membershipId);
+    if (isOwnerMembership(space, target) && newRole != SpaceRole.ADMIN) {
+      throw new ConflictException(
           "Die Rolle des Eigentümers kann nicht geändert werden; übertragen Sie zuerst die"
               + " Verantwortung");
     }
+    requireCapableAdminRemains(space, target, newRole);
 
     SpaceRole previousRole = target.getRole();
     target.setRole(newRole);
     spaceRepository.save(space);
+    membershipHistory.recordRoleChanged(target, caller.id());
     auditEventRecorder.recordUserActionOnSubject(
         AuditEvent.builder()
             .organizationId(space.getOrganizationId())
             .actor(caller.id())
             .type(AuditEventType.SPACE_MEMBER_ROLE_CHANGED)
             .object(AuditObjectType.SPACE, space.getId(), space.getName())
-            .subject(AuditSubjectKind.USER, memberUserId)
+            .subject(auditSubjectKind(target), target.subjectId())
             .before(Map.of("role", previousRole.name()))
             .after(Map.of("role", newRole.name()))
             .outcome(AuditOutcome.SUCCESS)
             .build());
-    return new SpaceMemberView(target, resolveDisplayName(target.getUserId()));
+    return toView(target);
   }
 
   @Transactional
-  public void removeMember(UUID spaceId, UUID memberUserId, CurrentUser caller) {
+  public void removeMember(UUID spaceId, UUID membershipId, CurrentUser caller) {
     Space space = loadSpace(spaceId, caller);
-    SpaceAccessPolicy.requireManager(space, caller);
+    accessPolicy.requireManager(space, caller);
 
-    SpaceMembership target = userMembership(space, memberUserId);
-    if (target == null) {
-      throw new NotFoundException("Mitglied des Space nicht gefunden");
-    }
-    if (space.getOwnerId().equals(memberUserId)) {
-      throw new ValidationException(
+    SpaceMembership target = requireMembership(space, membershipId);
+    if (isOwnerMembership(space, target)) {
+      throw new ConflictException(
           "Der Eigentümer kann nicht entfernt werden; übertragen Sie zuerst die Verantwortung");
     }
+    requireCapableAdminRemains(space, target, null);
 
+    membershipHistory.recordRemoved(target, caller.id());
     space.removeMembership(target);
     spaceRepository.save(space);
     auditEventRecorder.recordUserActionOnSubject(
@@ -305,18 +440,55 @@ public class SpaceService {
             .actor(caller.id())
             .type(AuditEventType.SPACE_MEMBER_REMOVED)
             .object(AuditObjectType.SPACE, space.getId(), space.getName())
-            .subject(AuditSubjectKind.USER, memberUserId)
+            .subject(auditSubjectKind(target), target.subjectId())
             .before(Map.of("role", target.getRole().name()))
             .outcome(AuditOutcome.SUCCESS)
             .build());
   }
 
+  /**
+   * ADR-0036, Entscheidung 6, Schutzregel 1: a space never loses its last capable {@code ADMIN}
+   * member through a management action - removing, downgrading or leaving is refused with 409, not
+   * the 400 the pre-#1815 owner protection used. A group counts as {@code ADMIN} while it is
+   * capable of acting.
+   *
+   * <p><b>Today this check never fires</b>, and the reason belongs here rather than in a review
+   * thread: a space always has an owner, the owner is always a member, and until #1818 gives
+   * accounts a state every person is capable - so the owner's own row is always a capable {@code
+   * ADMIN}, and the only reachable instance of the rule is the owner's own removal or downgrade,
+   * which the two explicit guards above refuse first (with the same 409 the ADR's nit asks for).
+   * The check is nevertheless the structural home of the rule: ADR-0036, Schutzregel 2 names the
+   * account lock as the one action allowed to create the state, so #1818 activates it without
+   * touching this call site. Its group half is exercised directly in {@code SpaceAccessPolicyTest}.
+   */
+  private void requireCapableAdminRemains(Space space, SpaceMembership changed, SpaceRole newRole) {
+    if (!accessPolicy.hasCapableAdminAfter(space, changed, newRole)) {
+      throw new ConflictException(
+          "Der Space verlöre damit sein letztes handlungsfähiges ADMIN-Mitglied. Bestimmen Sie"
+              + " zuerst eine Nachfolge.");
+    }
+  }
+
+  /**
+   * Hands the space over to another member (#1815, ADR-0036 Entscheidung 6). <b>Behaviour change:
+   * every capable {@code ADMIN} member that is a natural person may do this</b> - to themselves or
+   * to another such member - where before only the owner or a system administrator could. A group
+   * never becomes owner: "wirksam" is defined for groups alone and is the wrong yardstick here, and
+   * the space owner stays a natural person.
+   *
+   * <p><b>The two sides are not symmetric, on purpose.</b> The caller only needs the ADMIN role,
+   * which they may hold through a group. The <em>target</em> needs a membership row of their own:
+   * an owner who appears in the member list only through a group would be a responsible party the
+   * list does not name, and removing that group would silently take the owner's own membership with
+   * it.
+   */
   @Transactional
   public void transferOwnership(UUID spaceId, UUID newOwnerUserId, CurrentUser caller) {
     Space space = loadSpace(spaceId, caller);
-    if (!caller.isSystemAdmin() && !space.getOwnerId().equals(caller.id())) {
+    if (!caller.isSystemAdmin() && !accessPolicy.hasAtLeast(space, caller.id(), SpaceRole.ADMIN)) {
       throw new AccessDeniedException(
-          "Nur der Eigentümer oder ein Systemadministrator kann die Verantwortung übertragen");
+          "Nur ein handlungsfähiges ADMIN-Mitglied oder ein Systemadministrator kann die"
+              + " Verantwortung übertragen");
     }
 
     SpaceMembership newOwnerMembership = userMembership(space, newOwnerUserId);
@@ -327,6 +499,11 @@ public class SpaceService {
     UUID previousOwnerId = space.getOwnerId();
     space.transferOwnershipTo(newOwnerUserId);
     spaceRepository.save(space);
+    ownershipHistory.recordTransferred(
+        Space.ASSET_TYPE,
+        space.getId(),
+        PermissionSubject.user(newOwnerUserId, space.getOrganizationId()),
+        caller.id());
     // #392 code review: ASSET_OWNER_CHANGED is in the closed list without a library-only
     // restriction, and the spec's "Eigentuemerwechsel" line sits in the "Spaces, Bibliotheken und
     // Gruppen" block, not a library-specific one - a space ownership transfer belongs under this
@@ -348,11 +525,7 @@ public class SpaceService {
   public Space updateSpace(UUID spaceId, SpaceUpdate update, CurrentUser caller) {
     Space space = loadSpace(spaceId, caller);
 
-    SpaceMembership membership = userMembership(space, caller.id());
-    boolean adminOrOwner =
-        (membership != null && membership.getRole() == SpaceRole.ADMIN)
-            || space.getOwnerId().equals(caller.id());
-    if (!caller.isSystemAdmin() && !adminOrOwner) {
+    if (!caller.isSystemAdmin() && !accessPolicy.hasAtLeast(space, caller.id(), SpaceRole.ADMIN)) {
       throw new AccessDeniedException(
           "Nur Administratoren oder der Eigentümer können einen Space ändern");
     }
@@ -429,6 +602,13 @@ public class SpaceService {
               + " den Space stattdessen.");
     }
 
+    // space_id and asset_id carry no foreign key on the two history tables (ADR-0016), so the
+    // cascade below never closes their open intervals - a deleted space would keep reporting
+    // current members and a current owner forever.
+    for (SpaceMembership membership : space.getMemberships()) {
+      membershipHistory.recordSpaceDeleted(membership, caller.id());
+    }
+    ownershipHistory.recordAssetDeleted(Space.ASSET_TYPE, space.getId());
     auditEventRecorder.recordUserAction(
         AuditEvent.builder()
             .organizationId(space.getOrganizationId())
@@ -680,14 +860,55 @@ public class SpaceService {
           // being validated as an admin action, and the membership would violate the
           // organization invariant.
           requireUserInOrganization(userId, space.getOrganizationId());
-          space.addMembership(new SpaceMembership(userId, role, space.getOrganizationId()));
+          space.addMembership(SpaceMembership.ofUser(userId, role, space.getOrganizationId()));
         });
   }
 
+  /** The person's own membership row, if they hold one - never a group row. */
   private SpaceMembership userMembership(Space space, UUID userId) {
     return space.getMemberships().stream()
-        .filter(membership -> membership.getUserId().equals(userId))
+        .filter(membership -> membership.isUserSubject() && membership.getUserId().equals(userId))
         .findFirst()
         .orElse(null);
+  }
+
+  private SpaceMembership membershipOf(Space space, PermissionSubject subject) {
+    return space.getMemberships().stream()
+        .filter(
+            membership ->
+                membership.getSubjectType() == subject.type()
+                    && membership.subjectId().equals(subject.id()))
+        .findFirst()
+        .orElse(null);
+  }
+
+  /**
+   * The membership addressed by its own id, the way a grant is addressed by {@code grantId} - so a
+   * person and a group carrying the same id can never be confused, and the caller never has to name
+   * the subject type a second time.
+   */
+  private SpaceMembership requireMembership(Space space, UUID membershipId) {
+    return space.getMemberships().stream()
+        .filter(membership -> membership.getId().equals(membershipId))
+        .findFirst()
+        .orElseThrow(() -> new NotFoundException("Mitglied des Space nicht gefunden"));
+  }
+
+  private static boolean isOwnerMembership(Space space, SpaceMembership membership) {
+    return membership.isUserSubject() && space.getOwnerId().equals(membership.getUserId());
+  }
+
+  private static AuditSubjectKind auditSubjectKind(SpaceMembership membership) {
+    return membership.isUserSubject() ? AuditSubjectKind.USER : AuditSubjectKind.GROUP;
+  }
+
+  private SpaceMemberView toView(SpaceMembership membership) {
+    if (membership.isUserSubject()) {
+      return SpaceMemberView.ofUser(membership, resolveDisplayName(membership.getUserId()));
+    }
+    return new SpaceMemberView(
+        membership,
+        groupDirectory.namesById(List.of(membership.getGroupId())).get(membership.getGroupId()),
+        groupSizeSignal(membership));
   }
 }

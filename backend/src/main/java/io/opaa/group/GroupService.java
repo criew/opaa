@@ -22,6 +22,7 @@ import io.opaa.permission.AssetGrantRepository;
 import io.opaa.permission.AssetOwnershipDirectory;
 import io.opaa.permission.GroupMembershipHistoryCause;
 import io.opaa.permission.GroupMembershipResolver;
+import io.opaa.permission.GroupSpaceMembershipDirectory;
 import io.opaa.permission.PermissionHistoryService;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -69,6 +70,7 @@ public class GroupService {
   private final UserRepository userRepository;
   private final OidcProviderRepository providerRepository;
   private final GroupMembershipResolver membershipResolver;
+  private final GroupSpaceMembershipDirectory spaceMembershipDirectory;
   private final List<AssetOwnershipDirectory> assetOwnershipDirectories;
   private final AssetGrantRepository grantRepository;
   private final PermissionHistoryService permissionHistoryService;
@@ -79,6 +81,7 @@ public class GroupService {
       UserRepository userRepository,
       OidcProviderRepository providerRepository,
       GroupMembershipResolver membershipResolver,
+      GroupSpaceMembershipDirectory spaceMembershipDirectory,
       List<AssetOwnershipDirectory> assetOwnershipDirectories,
       AssetGrantRepository grantRepository,
       PermissionHistoryService permissionHistoryService,
@@ -87,6 +90,7 @@ public class GroupService {
     this.userRepository = userRepository;
     this.providerRepository = providerRepository;
     this.membershipResolver = membershipResolver;
+    this.spaceMembershipDirectory = spaceMembershipDirectory;
     this.assetOwnershipDirectories = assetOwnershipDirectories;
     this.grantRepository = grantRepository;
     this.permissionHistoryService = permissionHistoryService;
@@ -251,6 +255,16 @@ public class GroupService {
       throw new ConflictException(
           "Die Gruppe hat noch Berechtigungen auf Bibliotheken und kann nicht gelöscht werden");
     }
+    // Same class of RESTRICT reference on the space axis since #1815
+    // (fk_space_memberships_group_organization) - without this the deletion would surface as an
+    // opaque 500 instead of naming the spaces that are in the way.
+    int spaceMemberships = spaceMemberships(groupId);
+    if (spaceMemberships > 0) {
+      throw new ConflictException(
+          "Die Gruppe ist noch Mitglied von "
+              + (spaceMemberships == 1 ? "1 Space" : spaceMemberships + " Spaces")
+              + " und kann nicht gelöscht werden");
+    }
 
     List<UUID> affectedUserIds =
         group.getMemberships().stream().map(GroupMembership::getUserId).toList();
@@ -283,6 +297,11 @@ public class GroupService {
             .build());
     groupRepository.delete(group);
     invalidateAfterCommit(() -> membershipResolver.invalidateUsers(affectedUserIds));
+  }
+
+  /** How many spaces this group is a member of - the RESTRICT reference #1815 introduced. */
+  private int spaceMemberships(UUID groupId) {
+    return spaceMembershipDirectory.spaceMembershipsOf(List.of(groupId)).size();
   }
 
   public List<GroupMemberView> listMembers(UUID groupId, CurrentUser caller) {

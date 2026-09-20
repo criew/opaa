@@ -409,9 +409,9 @@ class ChatArchiveIntegrationTest {
             SpaceVisibility.PRIVATE,
             owner,
             organizationId);
-    space.addMembership(new SpaceMembership(owner, SpaceRole.ADMIN, organizationId));
+    space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organizationId));
     for (UUID member : otherMembers) {
-      space.addMembership(new SpaceMembership(member, SpaceRole.MEMBER, organizationId));
+      space.addMembership(SpaceMembership.ofUser(member, SpaceRole.MEMBER, organizationId));
     }
     return spaceRepository.save(space).getId();
   }

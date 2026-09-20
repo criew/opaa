@@ -86,11 +86,11 @@ class SpaceRepositoryTest {
 
     Space eng =
         new Space("Engineering", "Engineering docs", false, SpaceVisibility.PRIVATE, userA, org);
-    eng.addMembership(new SpaceMembership(userA, SpaceRole.ADMIN, org));
-    eng.addMembership(new SpaceMembership(userB, SpaceRole.CURATOR, org));
+    eng.addMembership(SpaceMembership.ofUser(userA, SpaceRole.ADMIN, org));
+    eng.addMembership(SpaceMembership.ofUser(userB, SpaceRole.CURATOR, org));
 
     Space hr = new Space("HR", "HR docs", false, SpaceVisibility.PRIVATE, userB, org);
-    hr.addMembership(new SpaceMembership(userB, SpaceRole.ADMIN, org));
+    hr.addMembership(SpaceMembership.ofUser(userB, SpaceRole.ADMIN, org));
 
     spaceRepository.saveAll(List.of(eng, hr));
 
@@ -108,8 +108,8 @@ class SpaceRepositoryTest {
     UUID owner = createUser();
     UUID curator = createUser();
     Space space = new Space("Phoenix", "Project space", false, SpaceVisibility.PRIVATE, owner, org);
-    space.addMembership(new SpaceMembership(owner, SpaceRole.ADMIN, org));
-    space.addMembership(new SpaceMembership(curator, SpaceRole.CURATOR, org));
+    space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, org));
+    space.addMembership(SpaceMembership.ofUser(curator, SpaceRole.CURATOR, org));
 
     Space savedSpace = spaceRepository.save(space);
 
@@ -126,7 +126,7 @@ class SpaceRepositoryTest {
     UUID owner = createUser();
     Space space =
         new Space("Company", "Company-wide space", false, SpaceVisibility.PRIVATE, owner, org);
-    space.addMembership(new SpaceMembership(owner, SpaceRole.ADMIN, org));
+    space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, org));
 
     Space savedSpace = spaceRepository.save(space);
     UUID spaceId = savedSpace.getId();
@@ -145,10 +145,10 @@ class SpaceRepositoryTest {
     UUID userB = createUser();
     Space projectA =
         new Space("Phoenix", "User A's project", false, SpaceVisibility.PRIVATE, userA, org);
-    projectA.addMembership(new SpaceMembership(userA, SpaceRole.ADMIN, org));
+    projectA.addMembership(SpaceMembership.ofUser(userA, SpaceRole.ADMIN, org));
     Space projectB =
         new Space("Phoenix", "User B's project", false, SpaceVisibility.PRIVATE, userB, org);
-    projectB.addMembership(new SpaceMembership(userB, SpaceRole.ADMIN, org));
+    projectB.addMembership(SpaceMembership.ofUser(userB, SpaceRole.ADMIN, org));
 
     List<Space> saved = spaceRepository.saveAll(List.of(projectA, projectB));
 

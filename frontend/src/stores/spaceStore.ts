@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type {
+  PermissionSubjectType,
   SpaceLibraryAssociationResponse,
   SpaceListResponse,
   SpaceMemberResponse,
@@ -62,9 +63,15 @@ interface SpaceState {
   loadSpaces: () => Promise<void>
   selectSpace: (spaceId: string) => Promise<void>
   loadMembers: (spaceId: string) => Promise<void>
-  addMember: (spaceId: string, userId: string, role?: SpaceRole) => Promise<void>
-  updateMemberRole: (spaceId: string, userId: string, role: SpaceRole) => Promise<void>
-  removeMember: (spaceId: string, userId: string) => Promise<void>
+  // #1815: a member is a person or a group; every membership is addressed by its own id.
+  addMember: (
+    spaceId: string,
+    subjectType: PermissionSubjectType,
+    subjectId: string,
+    role?: SpaceRole,
+  ) => Promise<void>
+  updateMemberRole: (spaceId: string, membershipId: string, role: SpaceRole) => Promise<void>
+  removeMember: (spaceId: string, membershipId: string) => Promise<void>
   transferOwnership: (spaceId: string, userId: string) => Promise<void>
   updateDetails: (
     spaceId: string,
@@ -202,18 +209,18 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
     }
   },
 
-  addMember: async (spaceId, userId, role) => {
-    await addSpaceMember(spaceId, userId, role)
+  addMember: async (spaceId, subjectType, subjectId, role) => {
+    await addSpaceMember(spaceId, subjectType, subjectId, role)
     await Promise.all([get().selectSpace(spaceId), get().loadMembers(spaceId)])
   },
 
-  updateMemberRole: async (spaceId, userId, role) => {
-    await updateSpaceMemberRole(spaceId, userId, role)
+  updateMemberRole: async (spaceId, membershipId, role) => {
+    await updateSpaceMemberRole(spaceId, membershipId, role)
     await Promise.all([get().selectSpace(spaceId), get().loadMembers(spaceId)])
   },
 
-  removeMember: async (spaceId, userId) => {
-    await removeSpaceMember(spaceId, userId)
+  removeMember: async (spaceId, membershipId) => {
+    await removeSpaceMember(spaceId, membershipId)
     await Promise.all([get().selectSpace(spaceId), get().loadMembers(spaceId)])
   },
 

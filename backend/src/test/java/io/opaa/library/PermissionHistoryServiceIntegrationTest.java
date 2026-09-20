@@ -942,11 +942,18 @@ class PermissionHistoryServiceIntegrationTest {
    * users.id} therefore survives it untouched. {@code ProviderGroupDirectoryAdapter} (#1812) does
    * delete groups and their memberships when their identity provider is deleted, but only after
    * reporting that none of them holds a grant or owns an asset - a group without either moves no
-   * library into or out of anybody's readable set.
+   * library into or out of anybody's readable set. {@code SpaceAccessPolicy} and {@code
+   * SpaceService} (#1815) resolve a group to decide a space role - they write no grant and no group
+   * membership, and a space membership is not an input of the readable-library formula at all: a
+   * library associated to a space is shown to a member only if that member may already read it
+   * ({@code SpaceAssetAssociationService}), so admitting somebody to a space moves no library into
+   * anybody's readable set.
    */
   private static final Set<String> BEANS_REACHING_THE_RIGHTS_TABLES =
       Set.of(
           "AssetAccessService",
+          "SpaceAccessPolicy",
+          "SpaceService",
           "AssetGrantService",
           "DiagnosticImpersonationGrantService",
           "DirectorySyncPlanExecutor",

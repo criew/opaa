@@ -44,9 +44,13 @@ import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.permission.AssetGrantHistoryRepository;
 import io.opaa.permission.AssetGrantRepository;
+import io.opaa.permission.AssetOwnershipHistoryRepository;
 import io.opaa.permission.GroupMembershipHistoryRepository;
+import io.opaa.permission.PermissionSubject;
 import io.opaa.space.Space;
 import io.opaa.space.SpaceCreation;
+import io.opaa.space.SpaceMembershipHistoryRepository;
+import io.opaa.space.SpaceMembershipRepository;
 import io.opaa.space.SpaceRepository;
 import io.opaa.space.SpaceService;
 import io.opaa.test.FakeDirectoryClient;
@@ -109,6 +113,10 @@ class AuditEventRecordingIntegrationTest {
   private final List<UUID> createdUserIds = new ArrayList<>();
   private final List<UUID> createdGroupIds = new ArrayList<>();
 
+  @Autowired private SpaceMembershipHistoryRepository spaceMembershipHistoryRepository;
+  @Autowired private SpaceMembershipRepository spaceMembershipRepository;
+  @Autowired private AssetOwnershipHistoryRepository ownershipHistoryRepository;
+
   @BeforeEach
   void setUp() {
     createdUserIds.clear();
@@ -151,6 +159,11 @@ class AuditEventRecordingIntegrationTest {
             .filter(l -> l.getOrganizationId().equals(organizationId))
             .toList());
     membershipHistoryRepository.deleteByUserIdIn(createdUserIds);
+    // space_membership_history.subject_user_id and asset_ownership_history.owner_user_id are
+    // ON DELETE RESTRICT (#1815) - and carry no foreign key to the space, so deleting the spaces
+    // above left them behind.
+    spaceMembershipHistoryRepository.deleteBySubjectUserIdIn(createdUserIds);
+    ownershipHistoryRepository.deleteByOwnerUserIdIn(createdUserIds);
     // Covers both groups created through GroupService (tracked in createdGroupIds) and ORG_UNIT
     // groups a directory sync test run created directly (never added to that list).
     groupRepository.deleteAll(
@@ -169,6 +182,15 @@ class AuditEventRecordingIntegrationTest {
       userRepository.deleteById(userId);
     }
     organizationRepository.deleteById(organizationId);
+  }
+
+  /** A space membership is addressed by its own id since #1815 - never by the subject's. */
+  private UUID spaceMembershipIdOf(UUID spaceId, UUID userId) {
+    return spaceMembershipRepository.findBySpaceId(spaceId).stream()
+        .filter(membership -> userId.equals(membership.getUserId()))
+        .findFirst()
+        .orElseThrow()
+        .getId();
   }
 
   private UUID createUser() {
@@ -528,14 +550,19 @@ class AuditEventRecordingIntegrationTest {
         .hasSize(1);
 
     UUID member = createUser();
-    spaceService.addMember(spaceId, member, SpaceRole.MEMBER, currentUserOf(owner));
+    spaceService.addMember(
+        spaceId,
+        PermissionSubject.user(member, organizationId),
+        SpaceRole.MEMBER,
+        currentUserOf(owner));
     assertThat(
             entriesFor(AuditObjectType.SPACE, spaceId).stream()
                 .filter(e -> e.getEventType() == AuditEventType.SPACE_MEMBER_ADDED)
                 .toList())
         .hasSize(1);
 
-    spaceService.updateMemberRole(spaceId, member, SpaceRole.CURATOR, currentUserOf(owner));
+    UUID membershipId = spaceMembershipIdOf(spaceId, member);
+    spaceService.updateMemberRole(spaceId, membershipId, SpaceRole.CURATOR, currentUserOf(owner));
     List<AuditLogEntry> roleChanged =
         entriesFor(AuditObjectType.SPACE, spaceId).stream()
             .filter(e -> e.getEventType() == AuditEventType.SPACE_MEMBER_ROLE_CHANGED)
@@ -563,7 +590,7 @@ class AuditEventRecordingIntegrationTest {
                 .toList())
         .isEmpty();
 
-    spaceService.removeMember(spaceId, member, currentUserOf(owner));
+    spaceService.removeMember(spaceId, membershipId, currentUserOf(owner));
     assertThat(
             entriesFor(AuditObjectType.SPACE, spaceId).stream()
                 .filter(e -> e.getEventType() == AuditEventType.SPACE_MEMBER_REMOVED)

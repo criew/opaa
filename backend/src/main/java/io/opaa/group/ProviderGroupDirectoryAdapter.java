@@ -12,6 +12,8 @@ import io.opaa.permission.AssetGrantRepository;
 import io.opaa.permission.AssetOwnershipDirectory;
 import io.opaa.permission.GroupMembershipHistoryCause;
 import io.opaa.permission.GroupMembershipResolver;
+import io.opaa.permission.GroupSpaceMembershipDirectory;
+import io.opaa.permission.GroupSpaceMembershipRef;
 import io.opaa.permission.PermissionHistoryService;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -31,9 +33,10 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * <p>"Effect" is every reason a group must not silently disappear with its provider: a grant it
  * holds, an asset it owns, and a still-conferring diagnostic authorisation whose scope it is - that
  * last one because {@code fk_diagnostic_impersonation_grants_scope_organization} cascades, so the
- * row would go without the revocation event ADR-0016 requires. Group membership in a space is not
- * among them because a space has no group members yet (#1815 adds them, and its counter belongs
- * here then).
+ * row would go without the revocation event ADR-0016 requires - and, since #1815, a space
+ * membership the group holds: {@code space_memberships.group_id} is {@code ON DELETE RESTRICT} as
+ * well, so a group that is a space member would take {@link #deleteGroupsOfProvider} into a
+ * foreign-key violation instead of into the 409.
  */
 @Component
 class ProviderGroupDirectoryAdapter implements ProviderGroupDirectory {
@@ -42,6 +45,7 @@ class ProviderGroupDirectoryAdapter implements ProviderGroupDirectory {
   private final AssetGrantRepository grantRepository;
   private final List<AssetOwnershipDirectory> assetOwnershipDirectories;
   private final GroupScopeUsageDirectory scopeUsageDirectory;
+  private final GroupSpaceMembershipDirectory spaceMembershipDirectory;
   private final GroupMembershipResolver membershipResolver;
   private final PermissionHistoryService permissionHistoryService;
   private final AuditEventRecorder auditEventRecorder;
@@ -51,6 +55,7 @@ class ProviderGroupDirectoryAdapter implements ProviderGroupDirectory {
       AssetGrantRepository grantRepository,
       List<AssetOwnershipDirectory> assetOwnershipDirectories,
       GroupScopeUsageDirectory scopeUsageDirectory,
+      GroupSpaceMembershipDirectory spaceMembershipDirectory,
       GroupMembershipResolver membershipResolver,
       PermissionHistoryService permissionHistoryService,
       AuditEventRecorder auditEventRecorder) {
@@ -58,6 +63,7 @@ class ProviderGroupDirectoryAdapter implements ProviderGroupDirectory {
     this.grantRepository = grantRepository;
     this.assetOwnershipDirectories = assetOwnershipDirectories;
     this.scopeUsageDirectory = scopeUsageDirectory;
+    this.spaceMembershipDirectory = spaceMembershipDirectory;
     this.membershipResolver = membershipResolver;
     this.permissionHistoryService = permissionHistoryService;
     this.auditEventRecorder = auditEventRecorder;
@@ -84,6 +90,13 @@ class ProviderGroupDirectoryAdapter implements ProviderGroupDirectory {
         effective.add(groupId);
       }
     }
+    List<GroupSpaceMembershipRef> spaceMemberships =
+        spaceMembershipDirectory.spaceMembershipsOf(groupIds);
+    Set<UUID> spaces = new HashSet<>();
+    for (GroupSpaceMembershipRef membership : spaceMemberships) {
+      effective.add(membership.groupId());
+      spaces.add(membership.spaceId());
+    }
     List<UUID> scopedAuthorizations =
         scopeUsageDirectory.scopeGroupsOfUnspentAuthorizations(groupIds);
     effective.addAll(scopedAuthorizations);
@@ -92,6 +105,8 @@ class ProviderGroupDirectoryAdapter implements ProviderGroupDirectory {
         grants.size(),
         grantedAssets.size(),
         owningGroups,
+        spaceMemberships.size(),
+        spaces.size(),
         scopedAuthorizations.size());
   }
 

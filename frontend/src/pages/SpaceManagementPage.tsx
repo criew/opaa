@@ -11,8 +11,15 @@ import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { useNavigate, useParams } from 'react-router'
-import type { LibraryListResponse, SpaceRole, SpaceVisibility, UserSummary } from '../types/api'
-import { getLibraries } from '../services/api'
+import type {
+  GroupListResponse,
+  LibraryListResponse,
+  SpaceMemberResponse,
+  SpaceRole,
+  SpaceVisibility,
+  UserSummary,
+} from '../types/api'
+import { getLibraries, getMyGroups } from '../services/api'
 import { useAuthStore } from '../stores/authStore'
 import { confirmAction } from '../stores/confirmStore'
 import { useSpaceStore } from '../stores/spaceStore'
@@ -29,6 +36,17 @@ import MetaBadge from '../components/MetaBadge'
 import SectionHead from '../components/SectionHead'
 
 const editableRoles: SpaceRole[] = ['MEMBER', 'CURATOR', 'ADMIN']
+
+// #1815, ADR-0036 Entscheidung 9: the growth signal beside a group row - "23 bei Erteilung, heute
+// 41". Below the enforced minimum group size the backend withholds both figures and sets
+// smallGroup; the row then says so instead of showing a number.
+function groupSizeHint(member: SpaceMemberResponse): string | null {
+  if (member.subjectType !== 'GROUP') return null
+  if (member.emptyGroup) return 'erreicht derzeit niemanden'
+  if (member.smallGroup) return 'kleine Gruppe'
+  if (member.memberCountAtGrant == null || member.memberCountNow == null) return null
+  return `${member.memberCountAtGrant} bei Aufnahme, heute ${member.memberCountNow}`
+}
 
 function canManageMembers(role: SpaceRole | undefined): boolean {
   return role === 'ADMIN'
@@ -77,6 +95,9 @@ export default function SpaceManagementPage() {
   })
   const [selectedUser, setSelectedUser] = useState<UserSummary | null>(null)
   const [newMemberRole, setNewMemberRole] = useState<SpaceRole>('MEMBER')
+  const [ownGroups, setOwnGroups] = useState<GroupListResponse[]>([])
+  const [selectedGroup, setSelectedGroup] = useState<GroupListResponse | null>(null)
+  const [newGroupRole, setNewGroupRole] = useState<SpaceRole>('MEMBER')
   const [localError, setLocalError] = useState<string | null>(null)
   // #543: deleteSpace's 409 - "Der Space enthält noch Chats ... Archivieren Sie den Space
   // stattdessen." - is the one failure this page offers a direct way out of, instead of just
@@ -115,6 +136,16 @@ export default function SpaceManagementPage() {
     }
   }, [loadLibraryAssociations, spaceId])
 
+  // #1815: the group picker offers the caller's own groups (GET /v1/me/groups), the one group
+  // list a non-SYSTEM_ADMIN may read today. The wider selection ADR-0036, Entscheidung 9 describes
+  // - every released group - needs the release flag #1814 introduces; until then this is a subset
+  // of what the rule allows, never more.
+  useEffect(() => {
+    void getMyGroups()
+      .then(setOwnGroups)
+      .catch(() => setOwnGroups([]))
+  }, [])
+
   useEffect(() => {
     // #203: a CURATOR may only associate a library they themselves can read - GET /v1/libraries
     // already returns exactly that set, and the backend re-checks the same rule.
@@ -125,9 +156,17 @@ export default function SpaceManagementPage() {
 
   const canManage = useMemo(() => canManageMembers(space?.userRole), [space?.userRole])
   const availableUsers = useMemo(() => {
-    const memberIds = new Set(members.map((m) => m.userId))
+    const memberIds = new Set(
+      members.filter((m) => m.subjectType === 'USER').map((m) => m.subjectId),
+    )
     return userResults.filter((u) => !memberIds.has(u.id))
   }, [userResults, members])
+  const availableGroups = useMemo(() => {
+    const memberGroupIds = new Set(
+      members.filter((m) => m.subjectType === 'GROUP').map((m) => m.subjectId),
+    )
+    return ownGroups.filter((group) => !memberGroupIds.has(group.id))
+  }, [ownGroups, members])
   const isOwner = Boolean(currentUserId) && space?.ownerId === currentUserId
   const canManageAssociations = canManageLibraries(space?.userRole, isOwner)
   const associableLibraries = useMemo(() => {
@@ -201,6 +240,15 @@ export default function SpaceManagementPage() {
       {successMessage && (
         <Alert severity="success" sx={{ mb: 2 }}>
           {successMessage}
+        </Alert>
+      )}
+      {space.successionOpen && (
+        // #1815, ADR-0036 Entscheidung 6: state and addressee, deliberately without a date,
+        // without the previous owner and without a reason - those belong in the operational list
+        // (#1819), not beside a colleague's name. The space stays fully usable.
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          Nachfolge offen — zuständig: Systemverwaltung. Der Space bleibt nutzbar, bestehende Rechte
+          bleiben bestehen.
         </Alert>
       )}
 
@@ -383,10 +431,13 @@ export default function SpaceManagementPage() {
           ) : (
             <Stack spacing={0}>
               {members.map((member) => {
-                const memberIsOwner = member.userId === space.ownerId
+                const isGroup = member.subjectType === 'GROUP'
+                const memberIsOwner = !isGroup && member.subjectId === space.ownerId
+                const memberLabel = member.displayName ?? member.subjectId
+                const sizeHint = groupSizeHint(member)
                 return (
                   <Box
-                    key={member.userId}
+                    key={member.id}
                     sx={{
                       display: 'flex',
                       alignItems: 'center',
@@ -403,8 +454,10 @@ export default function SpaceManagementPage() {
                         ...(member.displayName ? {} : { fontFamily: 'monospace' }),
                       }}
                     >
-                      {member.displayName ?? member.userId}
+                      {memberLabel}
                       {memberIsOwner ? ' · Eigentümer' : ''}
+                      {isGroup ? ' · Gruppe' : ''}
+                      {sizeHint ? ` · ${sizeHint}` : ''}
                     </Typography>
                     <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
                       {memberIsOwner ? (
@@ -422,7 +475,7 @@ export default function SpaceManagementPage() {
                             const nextRole = event.target.value as SpaceRole
                             setLocalError(null)
                             try {
-                              await updateMemberRole(spaceId, member.userId, nextRole)
+                              await updateMemberRole(spaceId, member.id, nextRole)
                             } catch (err) {
                               setLocalError(
                                 err instanceof Error
@@ -447,14 +500,14 @@ export default function SpaceManagementPage() {
                           size="small"
                           onClick={async () => {
                             const confirmed = await confirmAction({
-                              question: `${member.displayName ?? member.userId} aus diesem Space entfernen?`,
+                              question: `${memberLabel} aus diesem Space entfernen?`,
                               confirmLabel: 'Entfernen',
                               tone: 'caution',
                             })
                             if (!confirmed) return
                             setLocalError(null)
                             try {
-                              await removeMember(spaceId, member.userId)
+                              await removeMember(spaceId, member.id)
                             } catch (err) {
                               setLocalError(
                                 err instanceof Error
@@ -467,19 +520,21 @@ export default function SpaceManagementPage() {
                           Entfernen
                         </Button>
                       )}
-                      {isOwner && !memberIsOwner && (
+                      {/* Ein Space-Eigentümer ist immer eine natürliche Person (ADR-0036
+                          Entscheidung 6) - eine Gruppenzeile bietet die Übertragung nicht an. */}
+                      {isOwner && !memberIsOwner && !isGroup && (
                         <Button
                           size="small"
                           onClick={async () => {
                             const confirmed = await confirmAction({
-                              question: `Verantwortung an ${member.displayName ?? member.userId} übertragen?`,
+                              question: `Verantwortung an ${memberLabel} übertragen?`,
                               confirmLabel: 'Übertragen',
                               tone: 'caution',
                             })
                             if (!confirmed) return
                             setLocalError(null)
                             try {
-                              await transferOwnership(spaceId, member.userId)
+                              await transferOwnership(spaceId, member.subjectId)
                               setSuccessMessage('Verantwortung übertragen')
                             } catch (err) {
                               setLocalError(
@@ -566,7 +621,7 @@ export default function SpaceManagementPage() {
                         if (!selectedUser) return
                         setLocalError(null)
                         try {
-                          await addMember(spaceId, selectedUser.id, newMemberRole)
+                          await addMember(spaceId, 'USER', selectedUser.id, newMemberRole)
                           setSelectedUser(null)
                           setUserQuery('')
                           setSuccessMessage('Mitglied hinzugefügt')
@@ -580,6 +635,66 @@ export default function SpaceManagementPage() {
                       }}
                     >
                       Mitglied hinzufügen
+                    </Button>
+                  </Stack>
+                  <Typography variant="body2" sx={{ color: 'text.secondary', pt: 1 }}>
+                    Eine Gruppe als Mitglied gibt ihre Rolle an alle Mitglieder weiter — ohne eigene
+                    Zeile, und sie endet mit dem Austritt aus der Gruppe.
+                  </Typography>
+                  <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5}>
+                    <Autocomplete
+                      options={availableGroups}
+                      size="small"
+                      getOptionLabel={(option) => option.name}
+                      noOptionsText="Keine Gruppe verfügbar"
+                      value={selectedGroup}
+                      onChange={(_event, value) => setSelectedGroup(value)}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          placeholder="Gruppe auswählen …"
+                          slotProps={{
+                            ...params.slotProps,
+                            htmlInput: { ...params.slotProps.htmlInput, 'aria-label': 'Gruppe' },
+                          }}
+                        />
+                      )}
+                      isOptionEqualToValue={(option, value) => option.id === value.id}
+                      sx={{ minWidth: 280, flex: 1 }}
+                    />
+                    <Select
+                      size="small"
+                      value={newGroupRole}
+                      onChange={(event) => setNewGroupRole(event.target.value as SpaceRole)}
+                      aria-label="Rolle der neuen Gruppe"
+                      sx={{ width: 180 }}
+                    >
+                      {editableRoles.map((role) => (
+                        <MenuItem key={role} value={role}>
+                          {spaceRoleLabel(role)}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                    <Button
+                      variant="contained"
+                      disabled={!selectedGroup}
+                      onClick={async () => {
+                        if (!selectedGroup) return
+                        setLocalError(null)
+                        try {
+                          await addMember(spaceId, 'GROUP', selectedGroup.id, newGroupRole)
+                          setSelectedGroup(null)
+                          setSuccessMessage('Gruppe hinzugefügt')
+                        } catch (err) {
+                          setLocalError(
+                            err instanceof Error
+                              ? err.message
+                              : 'Gruppe konnte nicht hinzugefügt werden',
+                          )
+                        }
+                      }}
+                    >
+                      Gruppe hinzufügen
                     </Button>
                   </Stack>
                 </Stack>

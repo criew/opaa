@@ -109,7 +109,11 @@ public interface UserRepository extends JpaRepository<User, UUID> {
               + " (SELECT count(*) FROM space_asset_associations WHERE created_by_user_id = :id)"
               + "   AS associations,"
               + " (SELECT count(*) FROM audit_incident_scope_grants WHERE requested_by_user_id = :id"
-              + "   OR approved_by_user_id = :id OR subject_user_id = :id) AS incident_scopes",
+              + "   OR approved_by_user_id = :id OR subject_user_id = :id) AS incident_scopes,"
+              + " (SELECT count(*) FROM space_membership_history WHERE subject_user_id = :id)"
+              + "   AS space_membership_history,"
+              + " (SELECT count(*) FROM asset_ownership_history WHERE owner_user_id = :id)"
+              + "   AS asset_ownership_history",
       nativeQuery = true)
   DeletionBlockers countDeletionBlockers(@Param("id") UUID userId);
 
@@ -130,6 +134,10 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     long getAssociations();
 
     long getIncidentScopes();
+
+    long getSpaceMembershipHistory();
+
+    long getAssetOwnershipHistory();
   }
 
   /** Writes {@code role} only while the stored role is still {@code expected}. */
