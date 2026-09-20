@@ -66,6 +66,8 @@ class OidcProviderSeederTest {
     assertThat(seeded.getClientId()).isEqualTo("opaa-frontend");
     assertThat(seeded.isEnabled()).isTrue();
     assertThat(seeded.isDefaultProvider()).isTrue();
+    // ADR-0036, Entscheidung 2: the bootstrap provider is this installation's own directory
+    assertThat(seeded.isExternal()).isFalse();
     assertThat(seeded.getClaimMapping()).isEqualTo(OidcClaimMapping.keycloakDefaults());
     verify(markerRepository).save(any(OidcProviderSeedMarker.class));
   }
@@ -145,6 +147,7 @@ class OidcProviderSeederTest {
 
     assertThat(mistyped.isEnabled()).isTrue();
     assertThat(mistyped.isDefaultProvider()).isTrue();
+    assertThat(mistyped.isExternal()).isFalse();
     assertThat(mistyped.getClientId()).isEqualTo("opaa-frontend");
     assertThat(partner.isDefaultProvider()).isFalse();
     verify(repository).save(mistyped);
@@ -170,6 +173,7 @@ class OidcProviderSeederTest {
     verify(repository).save(captor.capture());
     assertThat(captor.getValue().getIssuerUri()).isEqualTo("https://idp.example/realms/opaa");
     assertThat(captor.getValue().isDefaultProvider()).isTrue();
+    assertThat(captor.getValue().isExternal()).isFalse();
   }
 
   /**

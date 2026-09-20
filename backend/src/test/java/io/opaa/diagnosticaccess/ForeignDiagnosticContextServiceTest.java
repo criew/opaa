@@ -59,7 +59,15 @@ class ForeignDiagnosticContextServiceTest {
   private final UUID openLibrary = UUID.randomUUID();
   private final UUID lockedLibrary = UUID.randomUUID();
   private final Group profileGroup =
-      new Group(ORGANIZATION_ID, GroupKind.AD_HOC, "Sachbearbeitung Bauamt", null, null, null);
+      new Group(
+          ORGANIZATION_ID,
+          GroupKind.AD_HOC,
+          "Sachbearbeitung Bauamt",
+          null,
+          null,
+          null,
+          null,
+          null);
 
   @BeforeEach
   void setUp() {
@@ -273,7 +281,8 @@ class ForeignDiagnosticContextServiceTest {
   @Test
   void refusesAProfileOfAForeignOrganization() {
     Group foreign =
-        new Group(UUID.randomUUID(), GroupKind.AD_HOC, "Fremde Gruppe", null, null, null);
+        new Group(
+            UUID.randomUUID(), GroupKind.AD_HOC, "Fremde Gruppe", null, null, null, null, null);
     when(groupRepository.findById(foreign.getId())).thenReturn(Optional.of(foreign));
 
     assertThatThrownBy(

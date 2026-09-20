@@ -1,5 +1,6 @@
 package io.opaa.api;
 
+import io.opaa.api.dto.OidcProviderExternalRequest;
 import io.opaa.api.dto.OidcProviderOrderRequest;
 import io.opaa.api.dto.OidcProviderRequest;
 import io.opaa.api.dto.OidcProviderResponse;
@@ -121,6 +122,17 @@ public class OidcProviderController {
     return toResponse(
         providerService.setEnabled(
             caller.organizationId(), caller.id(), providerId, false, acknowledgeLastProvider));
+  }
+
+  @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+  @PostMapping("/{providerId}/external")
+  public OidcProviderResponse setExternal(
+      @PathVariable UUID providerId,
+      @Valid @RequestBody OidcProviderExternalRequest request,
+      @Caller CurrentUser caller) {
+    return toResponse(
+        providerService.setExternal(
+            caller.organizationId(), caller.id(), providerId, request.getExternal()));
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")

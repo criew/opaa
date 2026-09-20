@@ -1,6 +1,7 @@
 package io.opaa.diagnosticaccess;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -46,4 +47,17 @@ public interface DiagnosticImpersonationGrantRepository
       @Param("organizationId") UUID organizationId,
       @Param("issuerUserId") UUID issuerUserId,
       @Param("at") Instant at);
+
+  /**
+   * The scope groups of the grants that still confer something at {@code at}, one entry per grant -
+   * what deleting those groups together with their identity provider has to refuse (#1812). Same
+   * "unspent" definition as {@link #findUnspentIssuedBy}: a revoked grant already carries its
+   * revocation event, and one whose window has run out confers nothing any more, so neither would
+   * lose anything to the cascade.
+   */
+  @Query(
+      "SELECT g.scopeGroupId FROM DiagnosticImpersonationGrant g WHERE g.scopeGroupId IN :groupIds"
+          + " AND g.revokedAt IS NULL AND g.validUntil > :at")
+  List<UUID> findUnspentScopeGroupIdsIn(
+      @Param("groupIds") Collection<UUID> groupIds, @Param("at") Instant at);
 }

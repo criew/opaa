@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.auth.oidc.OidcClaimMapping;
 import io.opaa.auth.oidc.OidcProvider;
-import io.opaa.group.TokenGroupSynchronizer;
+import io.opaa.auth.oidc.OidcProviderRepository;
 import io.opaa.organization.Organization;
 import io.opaa.test.OpaaIntegrationTest;
 import java.util.List;
@@ -32,6 +32,7 @@ class UserProvisionedEventIntegrationTest {
   @Autowired private UserService userService;
   @Autowired private UserRepository userRepository;
   @Autowired private ApplicationEventPublisher eventPublisher;
+  @Autowired private OidcProviderRepository providerRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
 
   private final String subject = "sub-" + UUID.randomUUID();
@@ -50,6 +51,7 @@ class UserProvisionedEventIntegrationTest {
         "DELETE FROM group_memberships WHERE group_id IN (SELECT id FROM groups WHERE name = ?)",
         groupName);
     jdbcTemplate.update("DELETE FROM groups WHERE name = ?", groupName);
+    jdbcTemplate.update("DELETE FROM oidc_providers WHERE issuer_uri = ?", ISSUER);
     jdbcTemplate.update(
         "DELETE FROM spaces WHERE owner_id IN (SELECT id FROM users WHERE subject = ?)", subject);
     jdbcTemplate.update("DELETE FROM users WHERE subject = ?", subject);
@@ -65,7 +67,7 @@ class UserProvisionedEventIntegrationTest {
   @Test
   void anEventWithTokenGroupsCreatesTheGroupAndTheMembership() {
     User user = persistedUser();
-    OidcProvider provider = providerWithGroupsClaim();
+    OidcProvider provider = persistedProviderWithGroupsClaim();
 
     eventPublisher.publishEvent(
         UserProvisionedEvent.withTokenGroups(
@@ -86,20 +88,13 @@ class UserProvisionedEventIntegrationTest {
   /**
    * The listener order is a contract, not a preference: the personal space must already be in place
    * when a rights-affecting listener of the same event fails. The failure is provoked with a
-   * conflicting {@code external_id} the synchronizer's own kind filter cannot see, so its insert
-   * hits {@code uk_groups_organization_external_id}.
+   * provider row that does not exist, so the synchronizer's insert hits {@code fk_groups_provider}
+   * - the key that carries "no group without its provider" since #1812.
    */
   @Test
   void aFailingGroupSynchronizationStillLeavesThePersonalSpaceBehind() {
     User user = persistedUser();
     OidcProvider provider = providerWithGroupsClaim();
-    jdbcTemplate.update(
-        "INSERT INTO groups (id, organization_id, kind, name, external_id) VALUES (?, ?, 'ORG_UNIT',"
-            + " ?, ?)",
-        UUID.randomUUID(),
-        Organization.DEFAULT_ID,
-        groupName,
-        TokenGroupSynchronizer.namespaceOf(provider) + groupName);
 
     assertThatThrownBy(
             () ->
@@ -117,6 +112,11 @@ class UserProvisionedEventIntegrationTest {
     return userRepository.save(user);
   }
 
+  private OidcProvider persistedProviderWithGroupsClaim() {
+    return providerRepository.save(providerWithGroupsClaim());
+  }
+
+  /** Unpersisted on purpose - {@code groups.provider_id} refuses a group of an unknown provider. */
   private static OidcProvider providerWithGroupsClaim() {
     return new OidcProvider(
         "Beschäftigte",

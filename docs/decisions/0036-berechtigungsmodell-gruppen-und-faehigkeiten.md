@@ -175,11 +175,13 @@ bestehende Grants bleiben unangetastet. Sonst wirkte eine Freigabe an „Referat
 deaktiviert)" für niemanden — und mit der Wiederaktivierung schlagartig für alle, ohne erneute
 Entscheidung.
 
-> **Präzisierung gegenüber dem Papier.** Dass „der Verzeichnisabgleich eines deaktivierten Anbieters
-> pausiert", ist heute **nicht** der Fall: `TrustedProvider#issuer()` löst den Standardanbieter über
-> `findByDefaultProviderTrue()` auf, **ohne** `enabled` zu prüfen — obwohl ADR-0033 „nur aktiviert"
-> verlangt. Das ist als **#1832** erfasst. Das Pausieren ist deshalb eine Anforderung an #1816
-> (Abgleich je Anbieter, an den aktivierten Zustand gebunden), keine Zustandsbeschreibung.
+> **Präzisierung gegenüber dem Papier, erledigt.** Dass „der Verzeichnisabgleich eines deaktivierten
+> Anbieters pausiert", war zum Zeitpunkt dieses ADR **nicht** der Fall: `TrustedProvider#issuer()`
+> löste den Standardanbieter über `findByDefaultProviderTrue()` auf, **ohne** `enabled` zu prüfen.
+> Mit **#1832** (PR #1837, gemergt) prüft er `findByDefaultProviderTrueAndEnabledTrue()`; der
+> Abgleich pausiert seither, solange der Standardanbieter deaktiviert ist. Der Abgleich **je
+> Anbieter**, an den aktivierten Zustand des jeweiligen Anbieters gebunden, bleibt Anforderung an
+> #1816.
 
 **Die Rücknahme von Mitgliedschaften nach einem Vorfall bleibt im ersten Schritt Handarbeit.** Die
 Deaktivierung nimmt keine Mitgliedschaft zurück, die ein kompromittierter Anbieter vorher über
@@ -747,7 +749,7 @@ Rollback-Blöcke** (ADR-0034). Deshalb:
 | Token-Gruppe, deren Anbieter-UUID in `oidc_providers` fehlt | Umwandlung in eine **interne Gruppe** (`kind = AD_HOC`, `provider_id = NULL`, `external_id = NULL`, Beschreibung mit Herkunftsvermerk), **ohne Verantwortliche**; je Zeile ein Audit-Ereignis unter einem Systemprozess-Akteur `migration`. Dass sie damit in der Liste offener Nachfolgen erscheint, ist eine **Anforderung an #1819** — die Liste entsteht erst dort, #1812 legt nur den Zustand an | Fixture mit einer solchen Waisen-Gruppe samt Grant; nach der Migration ist sie intern, ihr Grant unverändert |
 | `ORG_UNIT`-Gruppe in einer Installation **ohne Standardanbieter** (die Anbietermenge darf leer sein; die `LOCAL`-Zeile ist nie Standard) | dieselbe Umwandlung; `dissolved` bleibt als Beschreibungsvermerk erhalten | Fixture ohne `is_default`-Zeile |
 | `ORG_UNIT`-Gruppen im Betriebsmodus `dev` (dort gibt es keine Anbieterzeile; `TrustedProvider` liest den Issuer aus `opaa.auth.dev`) | **#1816 entscheidet**, ob der Abgleich im `dev`-Modus über eine synthetische Anbieterzeile läuft oder entfällt; die Migration darf im `dev`-Modus **nicht abbrechen** | Suite unter `local,dev` |
-| Reihenfolge der Eindeutigkeit (`uk_groups_organization_external_id` ist heute `(organization_id, external_id)` und der Nebenläufigkeitsschutz von `TokenGroupSynchronizer`) | erst neuen Schlüssel `(organization_id, provider_id, kind, external_id)` anlegen, **dann** Präfix schneiden, **dann** alten Schlüssel fallen lassen — sonst kollidieren zwei gleichnamige Gruppen zweier Anbieter **während** des Updates; `TokenGroupSynchronizer.MAX_NAME_LENGTH` ändert sich mit dem Präfix | Fixture mit gleichnamigen Gruppen zweier Anbieter |
+| Reihenfolge der Eindeutigkeit (`uk_groups_organization_external_id` ist heute `(organization_id, external_id)` und der Nebenläufigkeitsschutz von `TokenGroupSynchronizer`) | erst den neuen Teilindex `(organization_id, provider_id, kind, external_id)` anlegen, **dann** den alten Schlüssel fallen lassen, **dann** das Präfix schneiden. Unter dem alten `(organization_id, external_id)` kollidierten zwei gleichnamige Gruppen zweier Anbieter im Moment des Schnitts; das Changeset ist eine Transaktion, ein Abbruch lässt also kein Fenster ohne Schlüssel zurück. `TokenGroupSynchronizer.MAX_NAME_LENGTH` ändert sich mit dem Präfix (213 → 255) | Fixture mit gleichnamigen Gruppen zweier Anbieter |
 | Vorabprüfung durch den Betrieb | `docs/handbuch/deployment.md` erhält vor dem Update eine Prüfabfrage (Zahl der Waisen-Gruppen, Zahl der `ORG_UNIT`-Gruppen, Vorhandensein eines Standardanbieters) | — |
 
 **Das Muster „ein Migrationsfehler, den man vorher kennt, ist ein Testfall" gilt für jedes Changeset

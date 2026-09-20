@@ -1979,6 +1979,11 @@ paths:
         einrichten"). Deleting the last enabled OIDC provider additionally needs
         acknowledgeLastProvider=true (409 with code LAST_PROVIDER_ACKNOWLEDGEMENT_REQUIRED
         otherwise); afterwards only local accounts can sign in (ADR-0033, Entscheidung 4).
+        The provider's groups are deleted with it, but only while none of them still carries a
+        right: a group that holds a grant or owns an asset answers 409 with code
+        PROVIDER_GROUPS_IN_EFFECT and a message quoting the counts (ADR-0036, Entscheidung 2).
+        Until the transfer operation exists there is no way past that other than removing those
+        rights; disabling the provider stays possible at any time.
       parameters:
         - name: acknowledgeLastProvider
           in: query
@@ -2068,6 +2073,46 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/OidcProviderResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/admin/oidc-providers/{providerId}/external:
+    post:
+      operationId: setOidcProviderExternal
+      tags: [admin]
+      summary: Mark an identity provider as belonging to another organisation (system admin only)
+      description: >
+        Sets or clears the external mark (ADR-0036, Entscheidung 2). Every provider but the default
+        one starts external; the mark decides how this provider's groups are shown in a selection
+        and whether granting a right to one of them asks back. Rejected with 409 for the LOCAL row
+        of the local account management, which is this installation's own user administration and
+        never external.
+      parameters:
+        - name: providerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OidcProviderExternalRequest"
+      responses:
+        "200":
+          description: Identity provider updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OidcProviderResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
         "403":
           $ref: "#/components/responses/Forbidden"
         "404":
@@ -9213,6 +9258,38 @@ components:
       enum: [ORG_UNIT, AD_HOC, IDENTITY_PROVIDER]
       example: AD_HOC
 
+    GroupOrigin:
+      type: string
+      description: >
+        Where a group comes from (ADR-0036, Entscheidung 2). INTERNAL groups are created in this
+        system and have no provider; PROVIDER groups originate from an identity provider - its
+        directory or its tokens' groups claim - and name it in the provider field. Derived from
+        groups.provider_id, not stored twice.
+      enum: [INTERNAL, PROVIDER]
+      example: INTERNAL
+
+    GroupProviderResponse:
+      type: object
+      description: The identity provider a PROVIDER group originates from (ADR-0036/2).
+      required: [id, displayName, external, enabled]
+      properties:
+        id:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+          example: Beschäftigte (Keycloak)
+        external:
+          type: boolean
+          description: >
+            Whether the provider belongs to another organisation. Groups of an external provider
+            are shown differently in every selection, and granting a right to one asks back.
+        enabled:
+          type: boolean
+          description: >
+            While false the group is no effective group: no new grant target and no new space
+            member, shown as not selectable with that reason. Existing grants stay untouched.
+
     GroupRequest:
       type: object
       required: [name]
@@ -9259,7 +9336,7 @@ components:
 
     GroupListResponse:
       type: object
-      required: [id, name, kind, memberCount, createdAt, updatedAt]
+      required: [id, name, kind, origin, memberCount, createdAt, updatedAt]
       properties:
         id:
           type: string
@@ -9276,6 +9353,19 @@ components:
           type: string
           nullable: true
           description: Stable directory identifier (objectGUID or SCIM externalId); null for AD_HOC groups
+        origin:
+          $ref: "#/components/schemas/GroupOrigin"
+        provider:
+          allOf:
+            - $ref: "#/components/schemas/GroupProviderResponse"
+          nullable: true
+          description: Absent (null) exactly when origin is INTERNAL.
+        sourcePath:
+          type: string
+          nullable: true
+          description: >
+            The path the source reports ("/Haus/Abteilung 5/Referat 50"); what tells the same-named
+            subgroups of one directory apart. Null when the source names none.
         parentGroupId:
           type: string
           format: uuid
@@ -9293,7 +9383,7 @@ components:
 
     GroupResponse:
       type: object
-      required: [id, name, kind, memberCount, members, createdAt, updatedAt]
+      required: [id, name, kind, origin, memberCount, members, createdAt, updatedAt]
       properties:
         id:
           type: string
@@ -9310,6 +9400,19 @@ components:
           type: string
           nullable: true
           description: Stable directory identifier (objectGUID or SCIM externalId); null for AD_HOC groups
+        origin:
+          $ref: "#/components/schemas/GroupOrigin"
+        provider:
+          allOf:
+            - $ref: "#/components/schemas/GroupProviderResponse"
+          nullable: true
+          description: Absent (null) exactly when origin is INTERNAL.
+        sourcePath:
+          type: string
+          nullable: true
+          description: >
+            The path the source reports ("/Haus/Abteilung 5/Referat 50"); what tells the same-named
+            subgroups of one directory apart. Null when the source names none.
         parentGroupId:
           type: string
           format: uuid
@@ -14099,6 +14202,15 @@ components:
       enum: [READY, UNAVAILABLE, DISABLED]
       example: READY
 
+    OidcProviderExternalRequest:
+      type: object
+      required: [external]
+      properties:
+        external:
+          type: boolean
+          description: >
+            True marks the provider as another organisation's, false as this installation's own.
+
     OidcProviderResponse:
       type: object
       description: >
@@ -14110,6 +14222,7 @@ components:
           displayName,
           enabled,
           isDefault,
+          isExternal,
           providerType,
           sortOrder,
           issuerUri,
@@ -14135,6 +14248,13 @@ components:
           description: >
             The directory provider (ADR-0025); only an OIDC row is ever the default, the LOCAL row
             never (ADR-0033).
+        isExternal:
+          type: boolean
+          description: >
+            Whether this provider belongs to another organisation (ADR-0036, Entscheidung 2).
+            Every provider but the default one starts external; the LOCAL row never is. Groups of
+            an external provider are shown differently in every selection, and granting a right to
+            one asks back.
         providerType:
           $ref: "#/components/schemas/ProviderType"
         sortOrder:

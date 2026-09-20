@@ -2,6 +2,7 @@ package io.opaa.permission;
 
 import io.opaa.api.types.PermissionSubjectType;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -157,4 +158,12 @@ public interface AssetGrantRepository extends JpaRepository<AssetGrant, UUID> {
    * one; deleting it must be rejected for either reason.
    */
   boolean existsBySubjectGroupId(UUID subjectGroupId);
+
+  /**
+   * Every grant the given groups hold, expired ones included - what deleting an identity provider
+   * counts to decide whether its groups still have an effect (ADR-0036, Entscheidung 2). An expired
+   * grant counts too: its row still blocks the RESTRICT key, and it is still a right someone has to
+   * decide about.
+   */
+  List<AssetGrant> findBySubjectGroupIdIn(Collection<UUID> subjectGroupIds);
 }

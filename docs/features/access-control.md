@@ -838,10 +838,12 @@ Systemprozess-Akteur `identity-provider`. Drei Sicherungen: Der letzte `SYSTEM_A
 Token entzogen (bedingter, je Organisation serialisierter `UPDATE`; der abgelehnte Entzug wird
 protokolliert und als `SYSTEM_ADMIN_ROLE_REVOCATION_REFUSED` auditiert), die manuelle Rollenvergabe
 ist für Konten eines solchen Anbieters gesperrt (409), und die Oberfläche (#1333) verlangt beim
-Setzen des Rollen-Claims eine Bestätigung. `AUDITOR` ist nicht geschützt. Ist ein
-**Gruppen-Claim** gesetzt, werden die Gruppennamen des Tokens bei jeder Anmeldung zu
-Mitgliedschaften in Gruppen der Art „Gruppe aus dem Identitätsanbieter" (`IDENTITY_PROVIDER`) im
-Namensraum des Anbieters (`oidc:<Anbieter-ID>:<Name>`, Namen bis 213 Zeichen): gleichnamige
+Setzen des Rollen-Claims eine Bestätigung. `AUDITOR` ist gegen den Entzug durch einen benannten
+Claim nicht geschützt — gegen einen fehlenden oder unbrauchbaren Claim seit #1830 schon (siehe
+unten). Ist ein **Gruppen-Claim** gesetzt, werden die Gruppennamen des Tokens bei jeder Anmeldung zu
+Mitgliedschaften in Gruppen der Art „Gruppe aus dem Identitätsanbieter" (`IDENTITY_PROVIDER`).
+Jede solche Gruppe benennt ihren Anbieter als Fremdschlüssel (`groups.provider_id`, seit #1812);
+`external_id` trägt den blanken Namen aus dem Claim, bis zu 255 Zeichen: gleichnamige
 Gruppen zweier Anbieter sind zwei Gruppen, ein Anbieter erreicht nie die Gruppen eines anderen;
 Mitgliedschaften folgen dem Token (Historie `IDENTITY_PROVIDER_ADDED`/`_REMOVED`, Audit unter
 `identity-provider`), die Gruppen selbst bleiben bestehen und sind in der Gruppenverwaltung
@@ -850,6 +852,25 @@ wählbar. Der **Verzeichnisabgleich** ist an den Standardanbieter gebunden: Er l
 des Verzeichnisses nur unter dessen Konten auf (ein gleichnamiges Subject eines zweiten Anbieters
 erbt keine Mitgliedschaft) und verwaltet ausschließlich Organisationseinheiten; ohne
 Standardanbieter bricht ein Lauf ohne Änderungen ab.
+
+**Was ein Token über Rollen sagt — und was nicht (gebaut, #1830).** „Keine Auskunft" und
+„ausdrücklich keine erhöhte Rolle" sind zwei verschiedene Aussagen, und nur die zweite ist ein
+Entzug — dieselbe Unterscheidung wie bei den Gruppen (siehe
+[Gruppensynchronisation ist ein Rechteereignis](#gruppensynchronisation-ist-ein-rechteereignis)).
+Der Anmeldeweg unterscheidet deshalb drei Fälle:
+
+| Was das Token sagt | Was geschieht |
+|---|---|
+| Der Rollen-Claim ist vorhanden und nennt einen der konfigurierten Rollenwerte | Die Rolle wird übernommen (`SYSTEM_ADMIN` vor `AUDITOR`), bei Abweichung geschrieben und auditiert. |
+| Der Rollen-Claim ist vorhanden und nennt **keinen** der konfigurierten Werte — auch der leere Claim | Herabstufung auf `USER`, auditiert. Der Anbieter bleibt die führende Quelle; nur der letzte anmeldefähige `SYSTEM_ADMIN` wird davon ausgenommen. |
+| Der Rollen-Claim **fehlt**, ist falsch geformt (anderer Typ, nur unbrauchbare Werte) oder wurde vom Anbieter durch einen Overage-Hinweis (`_claim_names`) ersetzt | **Nichts ändert sich.** Die gespeicherte Rolle bleibt, es wird kein Rollenereignis und kein Audit-Eintrag geschrieben. Der Vorfall wird je Anbieter **und Ursache** gedrosselt im Anwendungsprotokoll gemeldet (höchstens alle 300 Sekunden einmal); ein Wechsel der Ursache ist eine eigene Meldung. |
+
+Der dritte Fall ist der praktisch wichtige: Wird am Identitätsanbieter der Rollen-Mapper entfernt,
+umbenannt oder bei einer Umstellung vorübergehend falsch gesetzt, verlöre sonst **jeder** Revisor
+seine `AUDITOR`-Rolle und **jeder Systemverwalter bis auf einen** seine `SYSTEM_ADMIN`-Rolle — je
+Anmeldung eine Herabstufung, jede davon als reguläres „Rolle geändert"-Ereignis, das den Vorfall wie
+eine beabsichtigte Änderung aussehen lässt. Das Nachladen über die Schnittstelle des Anbieters ist
+auch hier nicht gebaut.
 
 **Anmeldeseite mit mehreren Anbietern (gebaut, #1332).** `GET /api/v1/auth/config` liefert ohne
 Anmeldung die aktivierten Anbieter, deren Schlüssel das Backend abrufen konnte — Anzeigename,
@@ -912,7 +933,7 @@ abweichender Zustand in OPAA ist kein Zustand, den ein Admin von Hand herstellen
 nur unter ihnen werden die Subjects des Verzeichnisses aufgelöst, und nur seine Organisationseinheiten
 entstehen daraus. Ein zweiter Anbieter (Partnerportal, Landesanbieter) hat keinen Verzeichnisabgleich;
 seine Gruppen kommen, wenn überhaupt, aus seinem Gruppen-Claim (siehe [„Claim-Zuordnung je
-Anbieter"](#anmeldung-und-identität)) und leben im Namensraum dieses Anbieters. Ein gleichnamiges
+Anbieter"](#anmeldung-und-identität)) und benennen ihn als ihre Herkunft. Ein gleichnamiges
 Subject bei zwei Anbietern ergibt zwei Konten, und nur das des Standardanbieters erhält die
 Verzeichnisgruppen.
 
@@ -1000,6 +1021,40 @@ Verweis ersetzt (Entra ID ab 200 Gruppen, `_claim_names` nach OpenID Connect 5.6
 
 Die Synchronisation ändert nur die **Herkunft** von Gruppenmitgliedschaften, nicht das Rechtemodell. In
 der ersten Ausbaustufe werden Gruppen im System gepflegt.
+
+#### Herkunft einer Gruppe (gebaut, #1812)
+
+Jede Gruppe trägt ihre Herkunft als **Verweis auf den Identitätsanbieter**, nicht als Namenszusatz:
+Entweder sie gehört zu genau einem Anbieter — dann stammt sie aus dessen Verzeichnisabgleich oder
+aus dessen Gruppen-Claim —, oder sie ist eine **interne Gruppe** dieser Installation. Die Antwort der
+Schnittstelle nennt beides: `origin` (`INTERNAL` oder `PROVIDER`), den Anbieter mit Anzeigename und
+Kennzeichen „extern", und `sourcePath`, den Pfad der Quelle („/Haus/Abteilung 5/Referat 50"). Ohne
+diesen Pfad sind die gleichnamigen Untergruppen eines Verzeichnisses („Leitung", „Sachbearbeitung")
+nicht auseinanderzuhalten, und der Anbietername hilft dort nicht.
+
+Gleichnamige Gruppen zweier Anbieter bleiben **zwei Gruppen** und sind über ihre Kennung getrennt;
+eine Namenseindeutigkeit wird nicht erzwungen. Die Anzeige unterscheidet sie („Referat 50 ·
+Verzeichnis Haus A"), der gespeicherte Name trägt nie ein Präfix.
+
+**Ein Anbieter, den die Systemverwaltung als „extern" kennzeichnet**, gehört einem anderen Haus.
+Vorgabe ist: jeder Anbieter außer dem Standardanbieter ist extern, bis die Systemverwaltung es
+ändert; die Zeile der lokalen Konten ist es nie. Das Kennzeichen ist nur durch die Systemverwaltung
+änderbar und wird als Änderung der Anbieterzeile protokolliert.
+
+**Ein deaktivierter Anbieter lässt seine Gruppen, Mitgliedschaften und Berechtigungen unverändert
+stehen — sie sind aber keine wirksamen Gruppen mehr:** Sie sind kein neues Ziel einer Berechtigung,
+und eine Berechtigung an sie wird mit einem Hinweis abgelehnt. Bestehende Berechtigungen bleiben
+unangetastet. Ohne diese Regel wirkte eine Freigabe an „Referat 50 (Anbieter deaktiviert)" für
+niemanden — und mit der Wiederaktivierung schlagartig für alle, ohne erneute Entscheidung.
+
+**Wird ein Anbieter gelöscht**, gehen seine Gruppen mit ihm — aber nur, solange keine von ihnen noch
+wirkt. Trägt eine seiner Gruppen noch eine Berechtigung oder ist sie Eigentümerin eines Objekts,
+wird das Löschen mit `409` abgelehnt; die Meldung nennt die Zahl der betroffenen Gruppen,
+Berechtigungen und Objekte. **Solange die Übertragungsoperation nicht gebaut ist, führt an dieser
+Ablehnung nur das Entfernen der Wirkungen vorbei** — Deaktivieren bleibt jederzeit möglich.
+
+> Festgeschrieben in [ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md),
+> Entscheidungen 2 und 11.
 
 Der Nachweis, worauf eine Person zu einem beliebigen Stichtag Zugriff hatte, entsteht aus der
 Historisierung dieser drei Quellen und ist in

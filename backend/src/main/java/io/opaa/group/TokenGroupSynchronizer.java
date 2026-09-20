@@ -14,7 +14,6 @@ import io.opaa.auth.oidc.OidcProvider;
 import io.opaa.permission.GroupMembershipHistoryCause;
 import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.PermissionHistoryService;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -32,16 +31,17 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * Mirrors a provider's groups claim into {@link GroupKind#IDENTITY_PROVIDER} groups (ADR-0025,
  * Entscheidung 4): on every sign-in of a provider with a {@code groups_claim}, the user is a member
  * of exactly the groups the token names - created on first sight, membership added or removed as
- * the token changes - inside the provider's namespace {@value #EXTERNAL_ID_PREFIX}{@code
- * <provider-id>:<name>}, so same-named groups of two providers are two groups and no provider can
- * reach into another's. A name longer than {@link #MAX_NAME_LENGTH} is skipped and logged.
+ * the token changes. The group carries its provider in {@code groups.provider_id} (ADR-0036,
+ * Entscheidung 2), so same-named groups of two providers are two groups and no provider can reach
+ * into another's; {@code external_id} is the plain name the claim carried. A name longer than
+ * {@link #MAX_NAME_LENGTH} is skipped and logged.
  *
  * <p>One read per request decides whether anything changed; only then are writes made, serialized
  * per provider through an advisory lock so two first sign-ins cannot create the same group twice
- * ({@code uk_groups_organization_external_id} backs that). Every change is historised ({@link
- * GroupMembershipHistoryCause#IDENTITY_PROVIDER_ADDED}/{@code _REMOVED}) and audited under the
- * {@value #IDENTITY_PROVIDER_ACTOR} system actor; the user's cached group set is evicted after the
- * commit. ORG_UNIT and AD_HOC groups are never touched.
+ * ({@code uk_groups_organization_provider_kind_external_id} backs that). Every change is historised
+ * ({@link GroupMembershipHistoryCause#IDENTITY_PROVIDER_ADDED}/{@code _REMOVED}) and audited under
+ * the {@value #IDENTITY_PROVIDER_ACTOR} system actor; the user's cached group set is evicted after
+ * the commit. ORG_UNIT and AD_HOC groups are never touched.
  *
  * <p>Only a claim the token actually carried is authoritative (#1807): an empty claim is the
  * provider ending every membership of its namespace, but a token whose claim is absent, of another
@@ -53,11 +53,10 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 @Component
 public class TokenGroupSynchronizer {
 
-  public static final String EXTERNAL_ID_PREFIX = "oidc:";
   static final String IDENTITY_PROVIDER_ACTOR = "identity-provider";
 
-  /** {@code groups.external_id} is 255 characters; the namespace takes 42 of them. */
-  static final int MAX_NAME_LENGTH = 255 - (EXTERNAL_ID_PREFIX.length() + 36 + 1);
+  /** The full width of {@code groups.external_id}, which since #1812 carries the bare name. */
+  static final int MAX_NAME_LENGTH = 255;
 
   /** One incident per provider and cause per window: a broken provider must not flood the log. */
   static final int INCIDENT_WINDOW_SECONDS = 300;
@@ -93,11 +92,6 @@ public class TokenGroupSynchronizer {
     this.auditEventRecorder = auditEventRecorder;
   }
 
-  /** The namespace of {@code provider}'s groups. */
-  public static String namespaceOf(OidcProvider provider) {
-    return EXTERNAL_ID_PREFIX + provider.getId() + ":";
-  }
-
   /**
    * Cheap when the token's groups equal the stored memberships; otherwise a resync. A token that
    * named no usable claim changes nothing at all and is only reported (#1807).
@@ -113,9 +107,8 @@ public class TokenGroupSynchronizer {
   }
 
   private void applyNames(User user, OidcProvider provider, List<String> groupNames) {
-    String prefix = namespaceOf(provider);
-    DesiredGroups desired = desiredByExternalId(prefix, groupNames);
-    Map<String, String> byExternalId = desired.byExternalId();
+    DesiredGroups desired = desiredExternalIds(groupNames);
+    Set<String> byExternalId = desired.externalIds();
     // a claim that named groups but none this installation can hold is no revocation either
     if (byExternalId.isEmpty() && !groupNames.isEmpty()) {
       reportUnchanged(provider, NO_USABLE_NAME, "names only groups that cannot be held here");
@@ -123,11 +116,11 @@ public class TokenGroupSynchronizer {
     }
     reportIgnoredNames(provider, desired.tooLongNames());
     Set<String> current =
-        groupRepository.findIdentityProviderExternalIdsOfUser(user.getId(), prefix);
-    if (current.equals(byExternalId.keySet())) {
+        groupRepository.findIdentityProviderExternalIdsOfUser(user.getId(), provider.getId());
+    if (current.equals(byExternalId)) {
       return;
     }
-    resync(user, provider, prefix, byExternalId, current);
+    resync(user, provider, byExternalId, current);
   }
 
   /** Names the provider and the cause; the memberships are left as they are. */
@@ -167,14 +160,15 @@ public class TokenGroupSynchronizer {
   }
 
   /**
-   * @param byExternalId the namespaced names the token's claim can be held under
+   * @param externalIds the names of the token's claim this installation can hold - since #1812 the
+   *     external id is the bare name, the provider is carried by {@code groups.provider_id}
    * @param tooLongNames how many of its names exceed {@link #MAX_NAME_LENGTH} and were dropped -
    *     counted rather than logged here, so that one call writes at most one log entry
    */
-  private record DesiredGroups(Map<String, String> byExternalId, int tooLongNames) {}
+  private record DesiredGroups(Set<String> externalIds, int tooLongNames) {}
 
-  private static DesiredGroups desiredByExternalId(String prefix, List<String> groupNames) {
-    Map<String, String> desired = new LinkedHashMap<>();
+  private static DesiredGroups desiredExternalIds(List<String> groupNames) {
+    Set<String> desired = new LinkedHashSet<>();
     int tooLongNames = 0;
     for (String raw : groupNames) {
       String name = raw == null ? "" : raw.trim();
@@ -185,25 +179,20 @@ public class TokenGroupSynchronizer {
         tooLongNames++;
         continue;
       }
-      desired.putIfAbsent(prefix + name, name);
+      desired.add(name);
     }
     return new DesiredGroups(desired, tooLongNames);
   }
 
-  private void resync(
-      User user,
-      OidcProvider provider,
-      String prefix,
-      Map<String, String> desired,
-      Set<String> current) {
+  private void resync(User user, OidcProvider provider, Set<String> desired, Set<String> current) {
     groupRepository.lockIdentityProviderGroups(provider.getId());
     UUID organizationId = user.getOrganizationId();
     boolean changed = false;
-    for (Map.Entry<String, String> entry : desired.entrySet()) {
-      if (current.contains(entry.getKey())) {
+    for (String desiredExternalId : desired) {
+      if (current.contains(desiredExternalId)) {
         continue;
       }
-      Group group = findOrCreate(organizationId, provider, entry.getKey(), entry.getValue());
+      Group group = findOrCreate(organizationId, provider, desiredExternalId);
       // one row, not the group's whole membership list - a large group must not be loaded on
       // every first sign-in of a further member
       if (membershipRepository.findByGroupIdAndUserId(group.getId(), user.getId()).isPresent()) {
@@ -222,12 +211,12 @@ public class TokenGroupSynchronizer {
       changed = true;
     }
     for (String externalId : new LinkedHashSet<>(current)) {
-      if (desired.containsKey(externalId)) {
+      if (desired.contains(externalId)) {
         continue;
       }
       Optional<Group> group =
-          groupRepository.findByOrganizationIdAndKindAndExternalId(
-              organizationId, GroupKind.IDENTITY_PROVIDER, externalId);
+          groupRepository.findByOrganizationIdAndProviderIdAndKindAndExternalId(
+              organizationId, provider.getId(), GroupKind.IDENTITY_PROVIDER, externalId);
       Optional<GroupMembership> membership =
           group.flatMap(g -> membershipRepository.findByGroupIdAndUserId(g.getId(), user.getId()));
       if (group.isEmpty() || membership.isEmpty()) {
@@ -248,16 +237,22 @@ public class TokenGroupSynchronizer {
     }
   }
 
-  private Group findOrCreate(
-      UUID organizationId, OidcProvider provider, String externalId, String name) {
+  private Group findOrCreate(UUID organizationId, OidcProvider provider, String externalId) {
     return groupRepository
-        .findByOrganizationIdAndKindAndExternalId(
-            organizationId, GroupKind.IDENTITY_PROVIDER, externalId)
+        .findByOrganizationIdAndProviderIdAndKindAndExternalId(
+            organizationId, provider.getId(), GroupKind.IDENTITY_PROVIDER, externalId)
         .orElseGet(
             () -> {
               Group group =
                   new Group(
-                      organizationId, GroupKind.IDENTITY_PROVIDER, name, null, externalId, null);
+                      organizationId,
+                      GroupKind.IDENTITY_PROVIDER,
+                      externalId,
+                      null,
+                      provider.getId(),
+                      externalId,
+                      null,
+                      null);
               Group saved = groupRepository.save(group);
               auditEventRecorder.recordSystemProcessAction(
                   AuditEvent.builder()
@@ -270,8 +265,7 @@ public class TokenGroupSynchronizer {
                       .outcome(AuditOutcome.SUCCESS)
                       .build());
               log.info(
-                  "Created identity-provider group '{}' ({}) for provider '{}'",
-                  name,
+                  "Created identity-provider group '{}' for provider '{}'",
                   externalId,
                   provider.getDisplayName());
               return saved;

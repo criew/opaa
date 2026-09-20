@@ -175,7 +175,7 @@ class UserServiceTest {
     assertThat(atPartner.getEmail()).isEqualTo("alice@partner.example");
     // no roles/groups claim: the first provider never touches roles, and names no group source
     verify(roleSynchronizer, never()).apply(eq(atBeschaeftigte), any(), any());
-    verify(roleSynchronizer).apply(atPartner, partner, List.of("opaa-admin"));
+    verify(roleSynchronizer).apply(atPartner, partner, TokenRoles.named(List.of("opaa-admin")));
     assertThat(publishedEvents).hasSize(2);
     assertThat(publishedEvents.get(0).hasGroupsClaim()).isFalse();
     UserProvisionedEvent fromPartner = publishedEvents.get(1);

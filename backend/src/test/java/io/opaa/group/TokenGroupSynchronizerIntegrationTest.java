@@ -28,10 +28,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * {@link TokenGroupSynchronizer} against a real Postgres (#1331, ADR-0025 Entscheidung 4): a
- * sign-in's groups claim becomes {@link GroupKind#IDENTITY_PROVIDER} memberships in the provider's
- * namespace, same-named groups of two providers stay two groups, a token that drops a group ends
- * the membership, an unchanged token writes nothing, and the group management refuses to touch such
- * a group.
+ * sign-in's groups claim becomes {@link GroupKind#IDENTITY_PROVIDER} memberships carrying the
+ * provider in {@code groups.provider_id}, same-named groups of two providers stay two groups, a
+ * token that drops a group ends the membership, an unchanged token writes nothing, and the group
+ * management refuses to touch such a group.
  *
  * <p>And the distinction #1807 is about: an empty claim revokes, a claim that is absent, malformed
  * or replaced by an overage reference leaves memberships, rights history and audit log untouched.
@@ -46,6 +46,7 @@ class TokenGroupSynchronizerIntegrationTest {
   @Autowired private GroupMembershipResolver membershipResolver;
   @Autowired private UserRepository userRepository;
   @Autowired private OrganizationRepository organizationRepository;
+  @Autowired private io.opaa.auth.oidc.OidcProviderRepository providerRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
 
   private UUID organizationId;
@@ -62,12 +63,23 @@ class TokenGroupSynchronizerIntegrationTest {
     alice.setOrganizationId(organizationId);
     alice = userRepository.save(alice);
     OidcClaimMapping withGroups = new OidcClaimMapping(null, null, null, null, null, "groups");
+    // persisted: groups.provider_id is a foreign key on oidc_providers since #1812
     beschaeftigte =
-        new OidcProvider(
-            "Beschäftigte", "https://idp.example/realms/a", "opaa-frontend", null, withGroups);
+        providerRepository.save(
+            new OidcProvider(
+                "Beschäftigte",
+                "https://idp.example/realms/a-" + UUID.randomUUID(),
+                "opaa-frontend",
+                null,
+                withGroups));
     partner =
-        new OidcProvider(
-            "Partner", "https://partner.example/realms/b", "opaa-frontend", null, withGroups);
+        providerRepository.save(
+            new OidcProvider(
+                "Partner",
+                "https://partner.example/realms/b-" + UUID.randomUUID(),
+                "opaa-frontend",
+                null,
+                withGroups));
   }
 
   @AfterEach
@@ -80,6 +92,8 @@ class TokenGroupSynchronizerIntegrationTest {
     jdbcTemplate.update("DELETE FROM spaces WHERE owner_id = ?", alice.getId());
     userRepository.deleteById(alice.getId());
     organizationRepository.deleteById(organizationId);
+    providerRepository.deleteById(beschaeftigte.getId());
+    providerRepository.deleteById(partner.getId());
   }
 
   private List<Group> tokenGroups() {
@@ -89,16 +103,15 @@ class TokenGroupSynchronizerIntegrationTest {
   }
 
   @Test
-  void theTokensGroupsBecomeNamespacedMembershipsAndFollowTheToken() {
+  void theTokensGroupsBecomeMembershipsOfTheProvidersGroupsAndFollowTheToken() {
     synchronizer.apply(
         alice, beschaeftigte, TokenGroups.named(List.of("Fachbereich 3", "Projekt Phoenix")));
 
     List<Group> groups = tokenGroups();
     assertThat(groups)
         .extracting(Group::getExternalId)
-        .containsExactlyInAnyOrder(
-            "oidc:" + beschaeftigte.getId() + ":Fachbereich 3",
-            "oidc:" + beschaeftigte.getId() + ":Projekt Phoenix");
+        .containsExactlyInAnyOrder("Fachbereich 3", "Projekt Phoenix");
+    assertThat(groups).extracting(Group::getProviderId).containsOnly(beschaeftigte.getId());
     assertThat(groups)
         .extracting(Group::getName)
         .containsExactlyInAnyOrder("Fachbereich 3", "Projekt Phoenix");
@@ -150,9 +163,12 @@ class TokenGroupSynchronizerIntegrationTest {
       List<Group> groups = tokenGroups();
       assertThat(groups).hasSize(2);
       assertThat(groups).extracting(Group::getName).containsOnly("Fachbereich 3");
+      assertThat(groups)
+          .extracting(Group::getProviderId)
+          .containsExactlyInAnyOrder(beschaeftigte.getId(), partner.getId());
       assertThat(membershipResolver.groupIdsForUser(alice.getId()))
           .doesNotContainAnyElementsOf(membershipResolver.groupIdsForUser(bob.getId()));
-      // the partner's next token without the group touches only the partner's namespace
+      // the partner's next token without the group touches only the partner's own groups
       synchronizer.apply(bob, partner, TokenGroups.named(List.of()));
       assertThat(membershipResolver.groupIdsForUser(alice.getId())).hasSize(1);
       assertThat(membershipResolver.groupIdsForUser(bob.getId())).isEmpty();
@@ -271,7 +287,7 @@ class TokenGroupSynchronizerIntegrationTest {
   /** Read from the database, not from {@link GroupMembershipResolver}'s cache. */
   private Set<String> storedExternalIdsOfAlice() {
     return groupRepository.findIdentityProviderExternalIdsOfUser(
-        alice.getId(), TokenGroupSynchronizer.namespaceOf(beschaeftigte));
+        alice.getId(), beschaeftigte.getId());
   }
 
   private int auditRowsOfOrganization() {

@@ -1,5 +1,7 @@
 package io.opaa.group;
 
+import static java.util.stream.Collectors.toSet;
+
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
@@ -10,6 +12,8 @@ import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.auth.oidc.OidcProvider;
+import io.opaa.auth.oidc.OidcProviderRepository;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.OrganizationScopedLoader;
@@ -63,6 +67,7 @@ public class GroupService {
 
   private final GroupRepository groupRepository;
   private final UserRepository userRepository;
+  private final OidcProviderRepository providerRepository;
   private final GroupMembershipResolver membershipResolver;
   private final List<AssetOwnershipDirectory> assetOwnershipDirectories;
   private final AssetGrantRepository grantRepository;
@@ -72,6 +77,7 @@ public class GroupService {
   public GroupService(
       GroupRepository groupRepository,
       UserRepository userRepository,
+      OidcProviderRepository providerRepository,
       GroupMembershipResolver membershipResolver,
       List<AssetOwnershipDirectory> assetOwnershipDirectories,
       AssetGrantRepository grantRepository,
@@ -79,6 +85,7 @@ public class GroupService {
       AuditEventRecorder auditEventRecorder) {
     this.groupRepository = groupRepository;
     this.userRepository = userRepository;
+    this.providerRepository = providerRepository;
     this.membershipResolver = membershipResolver;
     this.assetOwnershipDirectories = assetOwnershipDirectories;
     this.grantRepository = grantRepository;
@@ -92,13 +99,7 @@ public class GroupService {
     validateDescription(creation.description());
 
     Group group =
-        new Group(
-            caller.organizationId(),
-            GroupKind.AD_HOC,
-            normalizedName,
-            creation.description(),
-            null,
-            null);
+        Group.internal(caller.organizationId(), normalizedName, creation.description(), null);
     Group saved = groupRepository.save(group);
     auditEventRecorder.recordUserAction(
         AuditEvent.builder()
@@ -111,8 +112,9 @@ public class GroupService {
     return toGroupDetail(saved);
   }
 
-  public List<Group> listGroups(CurrentUser caller) {
-    return groupRepository.findByOrganizationIdWithMemberships(caller.organizationId());
+  public List<GroupOverview> listGroups(CurrentUser caller) {
+    return toOverviews(
+        groupRepository.findByOrganizationIdWithMemberships(caller.organizationId()));
   }
 
   /**
@@ -142,15 +144,49 @@ public class GroupService {
    * rely on the schema invariant above continuing to hold, in case a future migration ever loosens
    * it.
    */
-  public List<Group> listMyGroups(CurrentUser caller) {
+  public List<GroupOverview> listMyGroups(CurrentUser caller) {
     Set<UUID> groupIds = membershipResolver.groupIdsForUser(caller.id());
     if (groupIds.isEmpty()) {
       return List.of();
     }
-    return groupRepository.findAllByIdWithMemberships(groupIds).stream()
-        .filter(group -> !group.isDissolved())
-        .filter(group -> group.getOrganizationId().equals(caller.organizationId()))
+    return toOverviews(
+        groupRepository.findAllByIdWithMemberships(groupIds).stream()
+            .filter(group -> !group.isDissolved())
+            .filter(group -> group.getOrganizationId().equals(caller.organizationId()))
+            .toList());
+  }
+
+  /**
+   * Resolves the origin of a whole list in one read of {@code oidc_providers} - a table with a
+   * handful of rows, read once instead of once per group.
+   */
+  private List<GroupOverview> toOverviews(List<Group> groups) {
+    Set<UUID> providerIds =
+        groups.stream().map(Group::getProviderId).filter(Objects::nonNull).collect(toSet());
+    Map<UUID, GroupProviderView> byId = new HashMap<>();
+    if (!providerIds.isEmpty()) {
+      providerRepository
+          .findAllById(providerIds)
+          .forEach(provider -> byId.put(provider.getId(), toProviderView(provider)));
+    }
+    return groups.stream()
+        .map(group -> new GroupOverview(group, byId.get(group.getProviderId())))
         .toList();
+  }
+
+  private GroupProviderView providerOf(Group group) {
+    if (group.getProviderId() == null) {
+      return null;
+    }
+    return providerRepository
+        .findById(group.getProviderId())
+        .map(GroupService::toProviderView)
+        .orElse(null);
+  }
+
+  private static GroupProviderView toProviderView(OidcProvider provider) {
+    return new GroupProviderView(
+        provider.getId(), provider.getDisplayName(), provider.isExternal(), provider.isEnabled());
   }
 
   public GroupDetail getGroup(UUID groupId, CurrentUser caller) {
@@ -442,6 +478,6 @@ public class GroupService {
   }
 
   private GroupDetail toGroupDetail(Group group) {
-    return new GroupDetail(group, toGroupMemberViews(group));
+    return new GroupDetail(group, toGroupMemberViews(group), providerOf(group));
   }
 }

@@ -44,6 +44,16 @@ public class OidcProvider {
   @Column(name = "is_default", nullable = false)
   private boolean defaultProvider;
 
+  /**
+   * Whether this provider belongs to another organisation than the one running this installation
+   * (ADR-0036, Entscheidung 2). Groups of an external provider are shown differently in every
+   * selection and granting a right to one asks back. Default at creation: every provider but the
+   * default one is external, until the system administration says otherwise; the {@link
+   * ProviderType#LOCAL} row never is ({@code chk_oidc_providers_local_not_external}).
+   */
+  @Column(name = "is_external", nullable = false)
+  private boolean external;
+
   @Column(name = "sort_order", nullable = false)
   private int sortOrder;
 
@@ -80,6 +90,7 @@ public class OidcProvider {
     this.id = UUID.randomUUID();
     this.createdAt = Instant.now();
     this.updatedAt = createdAt;
+    this.external = true;
     replaceDetails(displayName, issuerUri, clientId, jwkSetUri, claimMapping);
   }
 
@@ -101,6 +112,7 @@ public class OidcProvider {
     provider.claimMapping = OidcClaimMapping.keycloakDefaults();
     provider.enabled = false;
     provider.defaultProvider = false;
+    provider.external = false;
     return provider;
   }
 
@@ -168,6 +180,18 @@ public class OidcProvider {
     this.updatedAt = Instant.now();
   }
 
+  /**
+   * Refused for the {@link ProviderType#LOCAL} row: the local account management is this
+   * installation's own, never a foreign house's.
+   */
+  public void setExternal(boolean external) {
+    if (isLocal() && external) {
+      throw new IllegalStateException("the local provider row is never external (ADR-0036)");
+    }
+    this.external = external;
+    this.updatedAt = Instant.now();
+  }
+
   public void clearDefault() {
     this.defaultProvider = false;
     this.updatedAt = Instant.now();
@@ -192,6 +216,10 @@ public class OidcProvider {
 
   public boolean isDefaultProvider() {
     return defaultProvider;
+  }
+
+  public boolean isExternal() {
+    return external;
   }
 
   public int getSortOrder() {

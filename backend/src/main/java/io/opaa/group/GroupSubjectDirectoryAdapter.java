@@ -1,5 +1,6 @@
 package io.opaa.group;
 
+import io.opaa.auth.oidc.OidcProviderRepository;
 import io.opaa.permission.GroupSubject;
 import io.opaa.permission.GroupSubjectDirectory;
 import java.util.Collection;
@@ -18,9 +19,12 @@ import org.springframework.stereotype.Component;
 class GroupSubjectDirectoryAdapter implements GroupSubjectDirectory {
 
   private final GroupRepository groupRepository;
+  private final OidcProviderRepository providerRepository;
 
-  GroupSubjectDirectoryAdapter(GroupRepository groupRepository) {
+  GroupSubjectDirectoryAdapter(
+      GroupRepository groupRepository, OidcProviderRepository providerRepository) {
     this.groupRepository = groupRepository;
+    this.providerRepository = providerRepository;
   }
 
   @Override
@@ -33,7 +37,19 @@ class GroupSubjectDirectoryAdapter implements GroupSubjectDirectory {
                     group.getId(),
                     group.getOrganizationId(),
                     group.getName(),
-                    group.isDissolved()));
+                    group.isDissolved(),
+                    providerDisabled(group)));
+  }
+
+  /** An internal group has no provider and is therefore never held back by one. */
+  private boolean providerDisabled(Group group) {
+    if (group.getProviderId() == null) {
+      return false;
+    }
+    return providerRepository
+        .findById(group.getProviderId())
+        .map(provider -> !provider.isEnabled())
+        .orElse(false);
   }
 
   @Override

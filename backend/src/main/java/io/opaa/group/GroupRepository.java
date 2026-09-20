@@ -50,19 +50,22 @@ public interface GroupRepository extends JpaRepository<Group, UUID> {
   List<Group> findByOrganizationIdAndKindOrgUnit(@Param("organizationId") UUID organizationId);
 
   /**
-   * The external ids of the {@link GroupKind#IDENTITY_PROVIDER} groups a user is a member of within
-   * one provider's namespace ({@code prefix} = {@code oidc:<provider-id>:}) - the one read {@code
-   * TokenGroupSynchronizer} pays per request to tell "nothing changed" from "resync".
+   * The external ids of the {@link GroupKind#IDENTITY_PROVIDER} groups a user is a member of at one
+   * provider - the one read {@code TokenGroupSynchronizer} pays per request to tell "nothing
+   * changed" from "resync".
    */
   @Query(
       "select g.externalId from GroupMembership m join m.group g"
           + " where m.userId = :userId and g.kind = io.opaa.api.types.GroupKind.IDENTITY_PROVIDER"
-          + " and g.externalId like concat(:prefix, '%')")
+          + " and g.providerId = :providerId")
   Set<String> findIdentityProviderExternalIdsOfUser(
-      @Param("userId") UUID userId, @Param("prefix") String prefix);
+      @Param("userId") UUID userId, @Param("providerId") UUID providerId);
 
-  Optional<Group> findByOrganizationIdAndKindAndExternalId(
-      UUID organizationId, GroupKind kind, String externalId);
+  Optional<Group> findByOrganizationIdAndProviderIdAndKindAndExternalId(
+      UUID organizationId, UUID providerId, GroupKind kind, String externalId);
+
+  /** Every group of one provider - what the provider's deletion decides on (ADR-0036/2). */
+  List<Group> findByProviderId(UUID providerId);
 
   /**
    * Serializes {@code TokenGroupSynchronizer}'s writes for one provider for the rest of the

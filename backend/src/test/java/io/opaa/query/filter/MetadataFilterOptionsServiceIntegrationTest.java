@@ -183,7 +183,14 @@ class MetadataFilterOptionsServiceIntegrationTest {
     Group group =
         groupRepository.save(
             new Group(
-                Organization.DEFAULT_ID, GroupKind.AD_HOC, "Filteroptionen", null, null, null));
+                Organization.DEFAULT_ID,
+                GroupKind.AD_HOC,
+                "Filteroptionen",
+                null,
+                null,
+                null,
+                null,
+                null));
     grantRepository.save(
         AssetGrant.forGroup(
             KnowledgeLibrary.ASSET_TYPE,

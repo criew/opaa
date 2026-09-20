@@ -291,7 +291,14 @@ class LibraryExternalAccessReminderServiceIntegrationTest {
   private UUID createGroupOwnedLibrary(UUID creator) {
     Group group =
         new Group(
-            organizationId, GroupKind.AD_HOC, "Referat " + UUID.randomUUID(), null, null, null);
+            organizationId,
+            GroupKind.AD_HOC,
+            "Referat " + UUID.randomUUID(),
+            null,
+            null,
+            null,
+            null,
+            null);
     group.addMembership(new GroupMembership(creator, organizationId));
     group = groupRepository.save(group);
     createdGroupIds.add(group.getId());

@@ -1174,6 +1174,9 @@ export const handlers = [
       description: body.description?.trim() ?? null,
       kind: 'AD_HOC',
       externalId: null,
+      origin: 'INTERNAL',
+      provider: null,
+      sourcePath: null,
       parentGroupId: null,
       memberCount: 0,
       createdAt: now,
@@ -1401,6 +1404,8 @@ export const handlers = [
       displayName: body.displayName,
       enabled: true,
       isDefault: mockOidcProviders.length === 0,
+      // Vorgabe aus ADR-0036, Entscheidung 2: alles außer dem Standardanbieter ist extern
+      isExternal: mockOidcProviders.length > 0,
       providerType: 'OIDC',
       sortOrder: mockOidcProviders.length,
       issuerUri: body.issuerUri,

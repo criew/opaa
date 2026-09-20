@@ -81,7 +81,15 @@ class DiagnosticAccessIntegrationTest {
     scopeGroupId =
         groupRepository
             .save(
-                new Group(organizationId, GroupKind.ORG_UNIT, "Amt für Personal", null, null, null))
+                new Group(
+                    organizationId,
+                    GroupKind.ORG_UNIT,
+                    "Amt für Personal",
+                    null,
+                    null,
+                    null,
+                    null,
+                    null))
             .getId();
   }
 
@@ -311,7 +319,8 @@ class DiagnosticAccessIntegrationTest {
     lockService.setLocked(owner, library.getId(), false);
     Group profile =
         groupRepository.save(
-            new Group(organizationId, GroupKind.AD_HOC, "Sachbearbeitung", null, null, null));
+            new Group(
+                organizationId, GroupKind.AD_HOC, "Sachbearbeitung", null, null, null, null, null));
     assetGrantService.upsertGrant(
         library.getId(),
         new AssetGrantUpsert(PermissionSubjectType.GROUP, profile.getId(), AssetRole.VIEWER),

@@ -164,7 +164,8 @@ class GroupServiceIntegrationTest {
   @Test
   void renamesAGroup() {
     UUID admin = createUser(organizationA);
-    Group group = new Group(organizationA, GroupKind.AD_HOC, "Old name", null, null, null);
+    Group group =
+        new Group(organizationA, GroupKind.AD_HOC, "Old name", null, null, null, null, null);
     Group saved = groupRepository.save(group);
 
     GroupUpdate update = new GroupUpdate("New name", "Updated");
@@ -178,7 +179,15 @@ class GroupServiceIntegrationTest {
   void cannotRenameAnOrgUnitGroup() {
     UUID admin = createUser(organizationA);
     Group group =
-        new Group(organizationA, GroupKind.ORG_UNIT, "Referat 50", null, "directory-guid", null);
+        new Group(
+            organizationA,
+            GroupKind.ORG_UNIT,
+            "Referat 50",
+            null,
+            null,
+            "directory-guid",
+            null,
+            null);
     Group saved = groupRepository.save(group);
 
     GroupUpdate update = new GroupUpdate("Renamed", null);
@@ -190,7 +199,7 @@ class GroupServiceIntegrationTest {
   void deletesAGroupAndRemovesMemberships() {
     UUID admin = createUser(organizationA);
     UUID member = createUser(organizationA);
-    Group group = new Group(organizationA, GroupKind.AD_HOC, "Team", null, null, null);
+    Group group = new Group(organizationA, GroupKind.AD_HOC, "Team", null, null, null, null, null);
     group.addMembership(new GroupMembership(member, organizationA));
     Group saved = groupRepository.save(group);
 
@@ -209,7 +218,7 @@ class GroupServiceIntegrationTest {
     // schema - see the class Javadoc for why the previous Hibernate-generated schema could not
     // exercise this at all (#308).
     UUID admin = createUser(organizationA);
-    Group group = new Group(organizationA, GroupKind.AD_HOC, "Team", null, null, null);
+    Group group = new Group(organizationA, GroupKind.AD_HOC, "Team", null, null, null, null, null);
     Group saved = groupRepository.save(group);
     KnowledgeLibrary library =
         KnowledgeLibrary.ownedByGroup(
@@ -237,7 +246,8 @@ class GroupServiceIntegrationTest {
     // DataIntegrityViolationException (500) instead of a clean 409.
     UUID admin = createUser(organizationA);
     UUID owner = createUser(organizationA);
-    Group group = new Group(organizationA, GroupKind.AD_HOC, "Abteilung 5", null, null, null);
+    Group group =
+        new Group(organizationA, GroupKind.AD_HOC, "Abteilung 5", null, null, null, null, null);
     Group saved = groupRepository.save(group);
     KnowledgeLibrary library =
         KnowledgeLibrary.ownedByUser(
@@ -269,7 +279,15 @@ class GroupServiceIntegrationTest {
   void cannotDeleteAnOrgUnitGroup() {
     UUID admin = createUser(organizationA);
     Group group =
-        new Group(organizationA, GroupKind.ORG_UNIT, "Referat 50", null, "directory-guid", null);
+        new Group(
+            organizationA,
+            GroupKind.ORG_UNIT,
+            "Referat 50",
+            null,
+            null,
+            "directory-guid",
+            null,
+            null);
     Group saved = groupRepository.save(group);
 
     assertThatThrownBy(() -> groupService.deleteGroup(saved.getId(), currentUserOf(admin)))
@@ -281,7 +299,7 @@ class GroupServiceIntegrationTest {
   void addsAndRemovesAMember() {
     UUID admin = createUser(organizationA);
     UUID member = createUser(organizationA);
-    Group group = new Group(organizationA, GroupKind.AD_HOC, "Team", null, null, null);
+    Group group = new Group(organizationA, GroupKind.AD_HOC, "Team", null, null, null, null, null);
     Group saved = groupRepository.save(group);
 
     groupService.addMember(saved.getId(), member, currentUserOf(admin));
@@ -297,7 +315,7 @@ class GroupServiceIntegrationTest {
   void addingTheSameMemberTwiceIsRejectedWithConflict() {
     UUID admin = createUser(organizationA);
     UUID member = createUser(organizationA);
-    Group group = new Group(organizationA, GroupKind.AD_HOC, "Team", null, null, null);
+    Group group = new Group(organizationA, GroupKind.AD_HOC, "Team", null, null, null, null, null);
     Group saved = groupRepository.save(group);
     groupService.addMember(saved.getId(), member, currentUserOf(admin));
 
@@ -309,7 +327,7 @@ class GroupServiceIntegrationTest {
   void addMemberRejectsAUserFromAnotherOrganization() {
     UUID admin = createUser(organizationA);
     UUID outsider = createUser(organizationB);
-    Group group = new Group(organizationA, GroupKind.AD_HOC, "Team", null, null, null);
+    Group group = new Group(organizationA, GroupKind.AD_HOC, "Team", null, null, null, null, null);
     Group saved = groupRepository.save(group);
 
     assertThatThrownBy(() -> groupService.addMember(saved.getId(), outsider, currentUserOf(admin)))
@@ -321,7 +339,7 @@ class GroupServiceIntegrationTest {
   void groupsNeverCrossAnOrganizationBoundaryEvenForTheAdminOfAnotherOrganization() {
     UUID owner = createUser(organizationA);
     UUID adminOfOtherOrganization = createUser(organizationB);
-    Group group = new Group(organizationA, GroupKind.AD_HOC, "Team", null, null, null);
+    Group group = new Group(organizationA, GroupKind.AD_HOC, "Team", null, null, null, null, null);
     Group saved = groupRepository.save(group);
 
     assertThatThrownBy(
@@ -335,12 +353,15 @@ class GroupServiceIntegrationTest {
   void listGroupsReturnsOnlyGroupsOfTheCallersOrganization() {
     UUID adminA = createUser(organizationA);
     createUser(organizationB);
-    groupRepository.save(new Group(organizationA, GroupKind.AD_HOC, "Team A", null, null, null));
-    groupRepository.save(new Group(organizationB, GroupKind.AD_HOC, "Team B", null, null, null));
+    groupRepository.save(
+        new Group(organizationA, GroupKind.AD_HOC, "Team A", null, null, null, null, null));
+    groupRepository.save(
+        new Group(organizationB, GroupKind.AD_HOC, "Team B", null, null, null, null, null));
 
-    List<Group> groups = groupService.listGroups(currentUserOf(adminA));
+    List<GroupOverview> groups = groupService.listGroups(currentUserOf(adminA));
 
-    assertThat(groups).extracting(Group::getName).containsExactly("Team A");
+    assertThat(groups).extracting(o -> o.group().getName()).containsExactly("Team A");
+    assertThat(groups).extracting(GroupOverview::provider).containsOnlyNulls();
   }
 
   @Test
@@ -349,16 +370,16 @@ class GroupServiceIntegrationTest {
     createUser(organizationA);
     Group memberGroup =
         groupRepository.save(
-            new Group(organizationA, GroupKind.AD_HOC, "Team A", null, null, null));
+            new Group(organizationA, GroupKind.AD_HOC, "Team A", null, null, null, null, null));
     Group otherGroup =
         groupRepository.save(
-            new Group(organizationA, GroupKind.AD_HOC, "Team B", null, null, null));
+            new Group(organizationA, GroupKind.AD_HOC, "Team B", null, null, null, null, null));
     memberGroup.addMembership(new GroupMembership(member, organizationA));
     groupRepository.save(memberGroup);
 
-    List<Group> groups = groupService.listMyGroups(currentUserOf(member));
+    List<GroupOverview> groups = groupService.listMyGroups(currentUserOf(member));
 
-    assertThat(groups).extracting(Group::getName).containsExactly("Team A");
+    assertThat(groups).extracting(o -> o.group().getName()).containsExactly("Team A");
     assertThat(otherGroup.getId()).isNotNull();
   }
 
@@ -369,7 +390,7 @@ class GroupServiceIntegrationTest {
     // GET /api/v1/me/groups directly with a non-admin role.
     UUID user = createUser(organizationA);
 
-    List<Group> groups = groupService.listMyGroups(currentUserOf(user));
+    List<GroupOverview> groups = groupService.listMyGroups(currentUserOf(user));
 
     assertThat(groups).isEmpty();
   }
@@ -380,13 +401,13 @@ class GroupServiceIntegrationTest {
     // cleared (see Group#isDissolved()'s Javadoc), so it would otherwise still surface here and
     // become pickable as a library owner for a group that no longer organisationally exists.
     UUID member = createUser(organizationA);
-    Group group = new Group(organizationA, GroupKind.AD_HOC, "Team", null, null, null);
+    Group group = new Group(organizationA, GroupKind.AD_HOC, "Team", null, null, null, null, null);
     group.addMembership(new GroupMembership(member, organizationA));
     Group saved = groupRepository.save(group);
     saved.dissolve(Instant.now());
     groupRepository.save(saved);
 
-    List<Group> groups = groupService.listMyGroups(currentUserOf(member));
+    List<GroupOverview> groups = groupService.listMyGroups(currentUserOf(member));
 
     assertThat(groups).isEmpty();
   }
@@ -405,7 +426,7 @@ class GroupServiceIntegrationTest {
     // makes impossible to create in the first place.
     UUID member = createUser(organizationA);
     Group foreignGroup =
-        new Group(organizationB, GroupKind.AD_HOC, "Foreign Team", null, null, null);
+        new Group(organizationB, GroupKind.AD_HOC, "Foreign Team", null, null, null, null, null);
     foreignGroup.addMembership(new GroupMembership(member, organizationB));
 
     assertThatThrownBy(() -> groupRepository.save(foreignGroup))
@@ -417,7 +438,7 @@ class GroupServiceIntegrationTest {
   void resolvingTheGroupsOfAUserIsCachedAndInvalidatedOnMembershipChange() {
     UUID admin = createUser(organizationA);
     UUID member = createUser(organizationA);
-    Group group = new Group(organizationA, GroupKind.AD_HOC, "Team", null, null, null);
+    Group group = new Group(organizationA, GroupKind.AD_HOC, "Team", null, null, null, null, null);
     Group saved = groupRepository.save(group);
 
     assertThat(membershipResolver.groupIdsForUser(member)).isEmpty();
@@ -435,7 +456,7 @@ class GroupServiceIntegrationTest {
   void deletingAGroupInvalidatesTheCacheForItsFormerMembers() {
     UUID admin = createUser(organizationA);
     UUID member = createUser(organizationA);
-    Group group = new Group(organizationA, GroupKind.AD_HOC, "Team", null, null, null);
+    Group group = new Group(organizationA, GroupKind.AD_HOC, "Team", null, null, null, null, null);
     group.addMembership(new GroupMembership(member, organizationA));
     Group saved = groupRepository.save(group);
     assertThat(membershipResolver.groupIdsForUser(member)).containsExactly(saved.getId());
@@ -466,7 +487,7 @@ class GroupServiceIntegrationTest {
       throws InterruptedException {
     UUID admin = createUser(organizationA);
     UUID member = createUser(organizationA);
-    Group group = new Group(organizationA, GroupKind.AD_HOC, "Team", null, null, null);
+    Group group = new Group(organizationA, GroupKind.AD_HOC, "Team", null, null, null, null, null);
     group.addMembership(new GroupMembership(member, organizationA));
     Group saved = groupRepository.save(group);
     // Start from a known, uncached state right before the race.
