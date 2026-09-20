@@ -33,10 +33,17 @@ public interface OidcProviderRepository extends JpaRepository<OidcProvider, UUID
   Optional<OidcProvider> findByDefaultProviderTrue();
 
   /**
-   * The default provider while it is enabled - the directory provider of {@code TrustedProvider}. A
-   * disabled row keeps {@code is_default} (ADR-0033, Entscheidung 4), so the two lookups differ.
+   * The default provider while it is enabled. A disabled row keeps {@code is_default} (ADR-0033,
+   * Entscheidung 4), so the two lookups differ.
    */
   Optional<OidcProvider> findByDefaultProviderTrueAndEnabledTrue();
+
+  /**
+   * The providers whose directory run is switched on and whose row is enabled - what the schedule
+   * ticks over. A disabled provider is no anchor of trust, so its run pauses (ADR-0036/2).
+   */
+  List<OidcProvider>
+      findByDirectorySyncEnabledTrueAndEnabledTrueOrderBySortOrderAscDisplayNameAsc();
 
   /** How many rows of {@code providerType} exist - the OIDC count decides the first default. */
   long countByProviderType(ProviderType providerType);

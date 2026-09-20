@@ -1,5 +1,6 @@
 package io.opaa.auth.oidc;
 
+import io.opaa.api.types.GroupMechanism;
 import io.opaa.api.types.ProviderType;
 import io.opaa.auth.LocalIssuer;
 import jakarta.persistence.Column;
@@ -72,6 +73,19 @@ public class OidcProvider {
   private String jwkSetUri;
 
   @Embedded private OidcClaimMapping claimMapping;
+
+  /**
+   * Whether this provider's groups come from a scheduled directory run instead of its tokens'
+   * groups claim (ADR-0036, Entscheidung 2 and 3, #1816). A provider has exactly one group
+   * mechanism: {@code chk_oidc_providers_directory_sync} holds "enabled implies an empty groups
+   * claim, an OIDC row and an interval" against a write past the application too.
+   */
+  @Column(name = "directory_sync_enabled", nullable = false)
+  private boolean directorySyncEnabled;
+
+  /** Non-null exactly while {@link #directorySyncEnabled} is true; see the CHECK named above. */
+  @Column(name = "directory_sync_interval_minutes")
+  private Integer directorySyncIntervalMinutes;
 
   @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt;
@@ -192,6 +206,30 @@ public class OidcProvider {
     this.updatedAt = Instant.now();
   }
 
+  /**
+   * Switches this provider's directory run on or off (#1816). The caller has already established
+   * that the mechanisms do not collide - this method only keeps the entity consistent with {@code
+   * chk_oidc_providers_directory_sync}: a switched-off run carries no interval.
+   */
+  public void configureDirectorySync(boolean enabled, int intervalMinutes) {
+    this.directorySyncEnabled = enabled;
+    this.directorySyncIntervalMinutes = enabled ? intervalMinutes : null;
+    this.updatedAt = Instant.now();
+  }
+
+  /**
+   * Which mechanism maintains this provider's groups. Derived, never stored twice: the directory
+   * run wins because it cannot be switched on while a groups claim is set (ADR-0036/2).
+   */
+  public GroupMechanism groupMechanism() {
+    if (directorySyncEnabled) {
+      return GroupMechanism.DIRECTORY;
+    }
+    return claimMapping != null && claimMapping.groupsClaim() != null
+        ? GroupMechanism.TOKEN
+        : GroupMechanism.NONE;
+  }
+
   public void clearDefault() {
     this.defaultProvider = false;
     this.updatedAt = Instant.now();
@@ -244,6 +282,14 @@ public class OidcProvider {
 
   public OidcClaimMapping getClaimMapping() {
     return claimMapping;
+  }
+
+  public boolean isDirectorySyncEnabled() {
+    return directorySyncEnabled;
+  }
+
+  public Integer getDirectorySyncIntervalMinutes() {
+    return directorySyncIntervalMinutes;
   }
 
   public Instant getCreatedAt() {

@@ -12,7 +12,8 @@ import java.util.UUID;
 public class NoOpDirectoryClient implements DirectoryClient {
 
   @Override
-  public DirectorySnapshot fetchGroups(UUID organizationId) throws DirectoryUnavailableException {
+  public DirectorySnapshot fetchGroups(UUID organizationId, UUID providerId)
+      throws DirectoryUnavailableException {
     throw new DirectoryUnavailableException(
         "No directory client is configured for this deployment");
   }

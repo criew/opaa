@@ -15,25 +15,25 @@ class DirectorySyncPropertiesTest {
 
   @Test
   void rejectsAZeroThreshold() {
-    assertThatThrownBy(() -> new DirectorySyncProperties(0.0))
+    assertThatThrownBy(() -> new DirectorySyncProperties(0.0, true))
         .isInstanceOf(IllegalArgumentException.class);
   }
 
   @Test
   void rejectsANegativeThreshold() {
-    assertThatThrownBy(() -> new DirectorySyncProperties(-0.3))
+    assertThatThrownBy(() -> new DirectorySyncProperties(-0.3, true))
         .isInstanceOf(IllegalArgumentException.class);
   }
 
   @Test
   void rejectsAThresholdAboveOne() {
-    assertThatThrownBy(() -> new DirectorySyncProperties(1.5))
+    assertThatThrownBy(() -> new DirectorySyncProperties(1.5, true))
         .isInstanceOf(IllegalArgumentException.class);
   }
 
   @Test
   void acceptsAValidThreshold() {
-    DirectorySyncProperties properties = new DirectorySyncProperties(0.3);
+    DirectorySyncProperties properties = new DirectorySyncProperties(0.3, true);
     assertThat(properties.changeThresholdFraction()).isEqualTo(0.3);
   }
 }

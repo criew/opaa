@@ -5,7 +5,11 @@ import io.opaa.group.sync.DirectoryGroup;
 import io.opaa.group.sync.DirectorySnapshot;
 import io.opaa.group.sync.DirectoryUnavailableException;
 import java.time.Instant;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
 
@@ -14,13 +18,19 @@ import java.util.function.Consumer;
  * DirectoryClient}'s own Javadoc): a scriptable response instead of the production {@code
  * NoOpDirectoryClient}, published for the whole suite by {@code OpaaTestBeans}.
  *
+ * <p>Since #1816 a run names the provider whose directory it reads, so a response can be scripted
+ * per provider ({@link #respondWithFor}) - what a test of "two providers, only one of them
+ * synchronised" needs. {@link #respondWith} scripts the answer every provider without one of its
+ * own gets.
+ *
  * <p>{@code OpaaTestBeanResetListener} calls {@link #reset()} before every test method, so no class
- * inherits whatever a sibling sharing the context last configured via {@link #respondWith}/{@link
- * #failWith}.
+ * inherits whatever a sibling sharing the context last configured.
  */
 public final class FakeDirectoryClient implements DirectoryClient {
 
   private DirectorySnapshot snapshot = new DirectorySnapshot(Instant.now(), List.of());
+  private final Map<UUID, DirectorySnapshot> snapshotsByProvider = new HashMap<>();
+  private final Set<UUID> brokenProviders = new HashSet<>();
   private DirectoryUnavailableException failure;
   private volatile Consumer<UUID> fetchGate = organizationId -> {};
 
@@ -29,8 +39,23 @@ public final class FakeDirectoryClient implements DirectoryClient {
     this.snapshot = new DirectorySnapshot(Instant.now(), List.of(groups));
   }
 
+  /** The answer this one provider's directory gives, whatever {@link #respondWith} set. */
+  public void respondWithFor(UUID providerId, DirectoryGroup... groups) {
+    this.failure = null;
+    snapshotsByProvider.put(providerId, new DirectorySnapshot(Instant.now(), List.of(groups)));
+  }
+
   public void failWith(String message) {
     this.failure = new DirectoryUnavailableException(message);
+  }
+
+  /**
+   * Makes this one provider's fetch fail the way a defective connector would - with an unchecked
+   * exception rather than the declared {@link DirectoryUnavailableException}, which the run
+   * handles. What a caller does with an exception it does not expect is the point of the test.
+   */
+  public void breakFor(UUID providerId) {
+    brokenProviders.add(providerId);
   }
 
   /**
@@ -46,15 +71,21 @@ public final class FakeDirectoryClient implements DirectoryClient {
   public void reset() {
     this.failure = null;
     this.snapshot = new DirectorySnapshot(Instant.now(), List.of());
+    this.snapshotsByProvider.clear();
+    this.brokenProviders.clear();
     this.fetchGate = organizationId -> {};
   }
 
   @Override
-  public DirectorySnapshot fetchGroups(UUID organizationId) throws DirectoryUnavailableException {
+  public DirectorySnapshot fetchGroups(UUID organizationId, UUID providerId)
+      throws DirectoryUnavailableException {
     fetchGate.accept(organizationId);
+    if (brokenProviders.contains(providerId)) {
+      throw new IllegalStateException("simulated connector defect for provider " + providerId);
+    }
     if (failure != null) {
       throw failure;
     }
-    return snapshot;
+    return snapshotsByProvider.getOrDefault(providerId, snapshot);
   }
 }

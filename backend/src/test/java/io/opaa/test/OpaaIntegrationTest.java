@@ -65,6 +65,10 @@ import org.testcontainers.junit.jupiter.Testcontainers;
       "opaa.upload.max-file-size=4096",
       // Only read by the startup ApplicationRunner, which finds no rows at that point.
       "opaa.upload.pending-recovery-threshold-minutes=1",
+      // The minute tick of the directory run is off here: a class that switches the run on for a
+      // provider would otherwise race a tick that applies a plan behind its back. The tick itself
+      // is exercised by calling it (DirectorySyncSchedulerIntegrationTest).
+      "opaa.directory-sync.schedule-enabled=false",
       // Exact search instead of the production HNSW index (which no test asserts on): every
       // embedding of a test is FakeEmbeddingModel's one constant vector, so the graph degenerates
       // into one cluster of ties and a library-filtered scan can walk hundreds of foreign chunks

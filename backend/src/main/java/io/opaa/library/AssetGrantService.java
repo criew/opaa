@@ -467,10 +467,11 @@ public class AssetGrantService {
 
   /**
    * Resolves a group, enforces the organization boundary, and rejects a group that is no effective
-   * group as a grant target - dissolved, or belonging to a disabled identity provider (ADR-0036,
-   * Entscheidung 2). See the class Javadoc for why: existing grants to such a group keep working
-   * (see {@link LibraryAccessService#effectiveRole}, which checks neither), but no new or updated
-   * grant may target it.
+   * group as a grant target - dissolved, belonging to a disabled identity provider (ADR-0036,
+   * Entscheidung 2), or a token group its provider no longer maintains because the directory run
+   * took over (ADR-0036, Entscheidung 3). See the class Javadoc for why: existing grants to such a
+   * group keep working (see {@link LibraryAccessService#effectiveRole}, which checks neither), but
+   * no new or updated grant may target it.
    *
    * <p>Package-private (not {@code private}) so {@link KnowledgeLibraryService#createLibrary} can
    * reuse the same check for the initial owner-group grant of a group-owned library, instead of
@@ -493,6 +494,14 @@ public class AssetGrantService {
           "Der Identitätsanbieter dieser Gruppe ist deaktiviert. Sie kann keine neuen"
               + " Berechtigungen erhalten, solange er es bleibt; bestehende Berechtigungen"
               + " bleiben unverändert.");
+    }
+    if (group.unmaintained()) {
+      throw new ValidationException(
+          "Diese Gruppe stammt aus dem Gruppen-Claim eines Anbieters, der inzwischen über den"
+              + " Verzeichnisabgleich gepflegt wird. Ihre Mitgliedschaft ist eingefroren, deshalb"
+              + " kann sie keine neuen Berechtigungen mehr erhalten; bestehende bleiben"
+              + " unverändert. Vergeben Sie das Recht an die entsprechende"
+              + " Organisationseinheit.");
     }
   }
 

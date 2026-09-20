@@ -1,0 +1,67 @@
+databaseChangeLog:
+  - changeSet:
+      id: 048-directory-sync-status-per-provider
+      author: opaa
+      comment: >-
+        Die Statuszeile des Verzeichnisabgleichs gehoert ab hier zum Anbieter, nicht zur
+        Organisation (#1816, ADR-0036 Entscheidung 3). Bisher hielt
+        uk_directory_sync_status_organization genau eine Zeile je Organisation fest - mit
+        dem Abgleich je Anbieter wuerde der Lauf des zweiten Anbieters den Stand des
+        ersten ueberschreiben, und "wann wurde zuletzt abgeglichen" haette keine
+        Antwort mehr je Anbieter.
+        .
+        BESTAND. Die vorhandenen Zeilen beschreiben den letzten Lauf einer Bindung, die
+        es nicht mehr gibt ("der Abgleich dieser Organisation"), und es gibt keinen
+        Anbieter, dem sie zuzuordnen waeren: Der Abgleich lief bisher gegen den
+        Standardanbieter, aber eine Installation ohne Standardanbieter hatte ebenfalls
+        Statuszeilen (Ergebnis ABORTED_NO_TRUSTED_PROVIDER). Sie werden deshalb
+        geloescht statt geraten. Das ist kein Rechteverlust: Die Tabelle haelt keinen
+        Rechtestand, sondern das Ergebnis des letzten Laufs; die bewirkten Aenderungen
+        selbst stehen im Nachweisprotokoll und in der Rechtehistorie und bleiben
+        unangetastet. Der naechste Lauf je Anbieter schreibt die Zeile neu.
+        .
+        LOESCHWEG. Der Fremdschluessel auf oidc_providers ist ON DELETE CASCADE. Die
+        Statuszeile ist kein Rechtenachweis (ADR-0016 unterscheidet Subjektspalten mit
+        RESTRICT von Objektspalten ohne Fremdschluessel; diese Zeile ist keines von
+        beiden), und RESTRICT wuerde das Loeschen eines Anbieters an einer Zeile
+        aufhalten, die ohne ihn keine Aussage mehr hat.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              DELETE FROM directory_sync_status;
+
+              ALTER TABLE directory_sync_status
+                  ADD COLUMN provider_id uuid NOT NULL;
+
+              ALTER TABLE directory_sync_status
+                  DROP CONSTRAINT uk_directory_sync_status_organization;
+
+              ALTER TABLE directory_sync_status
+                  ADD CONSTRAINT uk_directory_sync_status_organization_provider
+                      UNIQUE (organization_id, provider_id);
+
+              ALTER TABLE directory_sync_status
+                  ADD CONSTRAINT fk_directory_sync_status_provider
+                      FOREIGN KEY (provider_id) REFERENCES oidc_providers(id)
+                      ON DELETE CASCADE;
+      rollback:
+        # Stellt Spalte und Schluessel wieder her, nicht die geloeschten Zeilen - siehe
+        # ADR-0034: Eine Installation wird nicht zurueckgedreht, sondern neu aufgesetzt.
+        - sql:
+            splitStatements: false
+            sql: |
+              DELETE FROM directory_sync_status;
+
+              ALTER TABLE directory_sync_status
+                  DROP CONSTRAINT fk_directory_sync_status_provider;
+
+              ALTER TABLE directory_sync_status
+                  DROP CONSTRAINT uk_directory_sync_status_organization_provider;
+
+              ALTER TABLE directory_sync_status
+                  DROP COLUMN provider_id;
+
+              ALTER TABLE directory_sync_status
+                  ADD CONSTRAINT uk_directory_sync_status_organization
+                      UNIQUE (organization_id);

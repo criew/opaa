@@ -6,6 +6,7 @@ import io.opaa.api.dto.GroupListResponse;
 import io.opaa.api.dto.GroupMemberResponse;
 import io.opaa.api.dto.GroupResponse;
 import io.opaa.api.types.GroupKind;
+import io.opaa.api.types.GroupMechanism;
 import io.opaa.api.types.GroupOrigin;
 import io.opaa.group.Group;
 import io.opaa.group.GroupDetail;
@@ -25,6 +26,9 @@ import org.junit.jupiter.api.Test;
  */
 class GroupResponseMapperTest {
 
+  private static final java.time.Instant LAST_SYNC_AT =
+      java.time.Instant.parse("2026-09-20T04:00:00Z");
+
   @Test
   void toListResponseCopiesEveryFieldFromTheEntity() {
     UUID providerId = UUID.randomUUID();
@@ -42,7 +46,15 @@ class GroupResponseMapperTest {
     GroupListResponse response =
         GroupResponseMapper.toListResponse(
             new GroupOverview(
-                group, new GroupProviderView(providerId, "Verzeichnis Haus A", true, false)));
+                group,
+                new GroupProviderView(
+                    providerId,
+                    "Verzeichnis Haus A",
+                    true,
+                    false,
+                    GroupMechanism.DIRECTORY,
+                    360,
+                    LAST_SYNC_AT)));
 
     assertThat(response.getId()).isEqualTo(group.getId());
     assertThat(response.getName()).isEqualTo("Referat 5");
@@ -55,6 +67,11 @@ class GroupResponseMapperTest {
     assertThat(response.getProvider().getDisplayName()).isEqualTo("Verzeichnis Haus A");
     assertThat(response.getProvider().getExternal()).isTrue();
     assertThat(response.getProvider().getEnabled()).isFalse();
+    // The delay of the directory run is visible to every member, not only to the management
+    // (ADR-0036, Entscheidung 3).
+    assertThat(response.getProvider().getGroupMechanism()).isEqualTo(GroupMechanism.DIRECTORY);
+    assertThat(response.getProvider().getDirectorySyncIntervalMinutes()).isEqualTo(360);
+    assertThat(response.getProvider().getLastDirectorySyncAt()).isEqualTo(LAST_SYNC_AT);
     assertThat(response.getParentGroupId()).isEqualTo(group.getParentGroupId());
     assertThat(response.getMemberCount()).isZero();
     assertThat(response.getCreatedAt()).isEqualTo(group.getCreatedAt());
@@ -134,7 +151,10 @@ class GroupResponseMapperTest {
             null);
     GroupDetail detail =
         new GroupDetail(
-            group, List.of(), new GroupProviderView(providerId, "Verzeichnis Haus A", true, false));
+            group,
+            List.of(),
+            new GroupProviderView(
+                providerId, "Verzeichnis Haus A", true, false, GroupMechanism.TOKEN, null, null));
 
     GroupResponse response = GroupResponseMapper.toResponse(detail);
 
@@ -145,6 +165,9 @@ class GroupResponseMapperTest {
     assertThat(response.getProvider().getDisplayName()).isEqualTo("Verzeichnis Haus A");
     assertThat(response.getProvider().getExternal()).isTrue();
     assertThat(response.getProvider().getEnabled()).isFalse();
+    assertThat(response.getProvider().getGroupMechanism()).isEqualTo(GroupMechanism.TOKEN);
+    assertThat(response.getProvider().getDirectorySyncIntervalMinutes()).isNull();
+    assertThat(response.getProvider().getLastDirectorySyncAt()).isNull();
   }
 
   @Test

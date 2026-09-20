@@ -1,0 +1,63 @@
+databaseChangeLog:
+  - changeSet:
+      id: 049-create-directory-sync-pending-plans
+      author: opaa
+      comment: >-
+        Der Bestaetigungsweg fuer auffaellig grosse Laeufe (#1816, ADR-0036 Entscheidung 3).
+        Bisher brach ein Lauf oberhalb der Plausibilitaetsschwelle ab
+        (ABORTED_THRESHOLD); ein legitimer grosser Lauf - eine Reorganisation - liess sich
+        damit ueberhaupt nicht anwenden. Ab hier legt ein solcher Lauf seinen Plan hier ab
+        und wartet auf eine Entscheidung der Systemverwaltung.
+        .
+        EINE ZEILE JE ANBIETER (uk_directory_sync_pending_plans_provider). "Ein neuer Lauf
+        ersetzt den ausstehenden Plan" ist eine Festlegung des ADR und steht hier als
+        Schluessel: Sonst staute sich alle sechs Stunden einer, und irgendwann wuerde der
+        aelteste bestaetigt.
+        .
+        fingerprint ist der Abdruck des gezeigten Plans (SHA-256 ueber die normalisierte
+        Aenderungsliste). Bestaetigt wird gegen einen frischen Schnappschuss: Weicht der
+        neu gerechnete Abdruck ab, wird nicht angewendet, sondern neu vorgelegt. report
+        haelt den Bericht als JSON, damit die Verwaltung genau das wieder anzeigen kann,
+        was der Lauf gezeigt hat, ohne das Verzeichnis erneut zu lesen.
+        changed_fraction und memberships_removed stehen zusaetzlich als Spalten, weil die
+        Verwaltungsuebersicht sie je Anbieter zeigt, ohne jeden Bericht zu lesen.
+        .
+        created_at ist der Zeitpunkt, zu dem der Lauf das Verzeichnis gelesen hat - das
+        Alter des Plans, das nach ADR-0036 in der Statuszeile steht und nicht erst auf
+        einer Unterseite. Der Fremdschluessel auf den Anbieter kaskadiert wie die
+        Statuszeile (048): Ohne den Anbieter hat der Plan keine Aussage mehr.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE TABLE directory_sync_pending_plans (
+                  id uuid NOT NULL,
+                  organization_id uuid NOT NULL,
+                  provider_id uuid NOT NULL,
+                  created_at timestamp with time zone NOT NULL,
+                  fingerprint character varying(64) NOT NULL,
+                  changed_fraction double precision NOT NULL,
+                  memberships_removed integer NOT NULL,
+                  report text NOT NULL
+              );
+
+              ALTER TABLE directory_sync_pending_plans
+                  ADD CONSTRAINT directory_sync_pending_plans_pkey PRIMARY KEY (id);
+
+              ALTER TABLE directory_sync_pending_plans
+                  ADD CONSTRAINT uk_directory_sync_pending_plans_provider UNIQUE (provider_id);
+
+              ALTER TABLE directory_sync_pending_plans
+                  ADD CONSTRAINT fk_directory_sync_pending_plans_organization
+                      FOREIGN KEY (organization_id) REFERENCES organizations(id)
+                      ON DELETE RESTRICT;
+
+              ALTER TABLE directory_sync_pending_plans
+                  ADD CONSTRAINT fk_directory_sync_pending_plans_provider
+                      FOREIGN KEY (provider_id) REFERENCES oidc_providers(id)
+                      ON DELETE CASCADE;
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              DROP TABLE directory_sync_pending_plans;

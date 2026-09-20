@@ -12,24 +12,31 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * The durable half of "last-known-good" (#237): one row per organization recording the outcome of
- * the most recent synchronisation run, including dry runs and unreachable attempts. Exists so an
- * unreachable directory's state is reported persistently - visible to whoever checks later, not
- * only to whoever happened to trigger the run that discovered it.
+ * The durable half of "last-known-good" (#237): one row per identity provider recording the outcome
+ * of that provider's most recent synchronisation run, including dry runs and unreachable attempts.
+ * Exists so an unreachable directory's state is reported persistently - visible to whoever checks
+ * later, not only to whoever happened to trigger the run that discovered it.
+ *
+ * <p>Per provider since #1816, not per organization: with a run per provider, the second provider's
+ * run would otherwise overwrite the first one's state and "when was this provider last read" would
+ * have no answer at all.
  */
 @Entity
 @Table(
     name = "directory_sync_status",
     uniqueConstraints =
         @UniqueConstraint(
-            name = "uk_directory_sync_status_organization",
-            columnNames = "organization_id"))
+            name = "uk_directory_sync_status_organization_provider",
+            columnNames = {"organization_id", "provider_id"}))
 public class DirectorySyncStatus {
 
   @Id private UUID id;
 
   @Column(name = "organization_id", nullable = false)
   private UUID organizationId;
+
+  @Column(name = "provider_id", nullable = false)
+  private UUID providerId;
 
   @Column(name = "last_run_at", nullable = false)
   private Instant lastRunAt;
@@ -49,9 +56,10 @@ public class DirectorySyncStatus {
 
   protected DirectorySyncStatus() {}
 
-  public DirectorySyncStatus(UUID organizationId) {
+  public DirectorySyncStatus(UUID organizationId, UUID providerId) {
     this.id = UUID.randomUUID();
     this.organizationId = organizationId;
+    this.providerId = providerId;
   }
 
   /**
@@ -76,6 +84,10 @@ public class DirectorySyncStatus {
 
   public UUID getOrganizationId() {
     return organizationId;
+  }
+
+  public UUID getProviderId() {
+    return providerId;
   }
 
   public Instant getLastRunAt() {

@@ -1,5 +1,7 @@
 package io.opaa.group;
 
+import io.opaa.api.types.GroupKind;
+import io.opaa.auth.oidc.OidcProvider;
 import io.opaa.auth.oidc.OidcProviderRepository;
 import io.opaa.permission.GroupSubject;
 import io.opaa.permission.GroupSubjectDirectory;
@@ -32,24 +34,31 @@ class GroupSubjectDirectoryAdapter implements GroupSubjectDirectory {
     return groupRepository
         .findById(groupId)
         .map(
-            group ->
-                new GroupSubject(
-                    group.getId(),
-                    group.getOrganizationId(),
-                    group.getName(),
-                    group.isDissolved(),
-                    providerDisabled(group)));
+            group -> {
+              OidcProvider provider =
+                  group.getProviderId() == null
+                      ? null
+                      : providerRepository.findById(group.getProviderId()).orElse(null);
+              return new GroupSubject(
+                  group.getId(),
+                  group.getOrganizationId(),
+                  group.getName(),
+                  group.isDissolved(),
+                  // An internal group has no provider and is therefore never held back by one.
+                  provider != null && !provider.isEnabled(),
+                  unmaintained(group, provider));
+            });
   }
 
-  /** An internal group has no provider and is therefore never held back by one. */
-  private boolean providerDisabled(Group group) {
-    if (group.getProviderId() == null) {
-      return false;
-    }
-    return providerRepository
-        .findById(group.getProviderId())
-        .map(provider -> !provider.isEnabled())
-        .orElse(false);
+  /**
+   * A token group whose provider has since switched to the directory run (#1816, ADR-0036
+   * Entscheidung 3): the run reports it as no longer maintained and leaves its membership frozen,
+   * so it may hold what it holds but must not become a new grant target.
+   */
+  private boolean unmaintained(Group group, OidcProvider provider) {
+    return provider != null
+        && group.getKind() == GroupKind.IDENTITY_PROVIDER
+        && provider.isDirectorySyncEnabled();
   }
 
   @Override

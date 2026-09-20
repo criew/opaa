@@ -14,11 +14,11 @@ import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.stereotype.Component;
 
 /**
- * Serializes {@link DirectorySyncService}'s runs per organization: at most one run of one
- * organization is in flight at a time, a second caller is rejected with a {@link ConflictException}
- * rather than queued behind the first, and runs of different organizations never wait for each
- * other. The lock sits on a connection of its own so that it can cover the directory fetch, which
- * the caller deliberately performs outside any transaction.
+ * Serializes {@link DirectorySyncService}'s runs per identity provider: at most one run of one
+ * provider is in flight at a time, a second caller is rejected with a {@link ConflictException}
+ * rather than queued behind the first, and runs of different providers never wait for each other.
+ * The lock sits on a connection of its own so that it can cover the directory fetch, which the
+ * caller deliberately performs outside any transaction.
  *
  * <p><b>Operating precondition:</b> that connection sits idle in transaction for the whole run.
  * Anything that ends the session early - {@code idle_in_transaction_session_timeout}, a transaction
@@ -39,8 +39,7 @@ class DirectorySyncRunLock {
 
   static final String ALREADY_RUNNING_CODE = "DIRECTORY_SYNC_ALREADY_RUNNING";
 
-  static final String ALREADY_RUNNING_MESSAGE =
-      "Für diese Organisation läuft bereits ein Abgleich.";
+  static final String ALREADY_RUNNING_MESSAGE = "Für diesen Anbieter läuft bereits ein Abgleich.";
 
   private static final String TRY_LOCK_SQL =
       "SELECT pg_try_advisory_xact_lock("
@@ -54,26 +53,26 @@ class DirectorySyncRunLock {
   }
 
   /**
-   * Runs {@code body} while holding the organization's run lock.
+   * Runs {@code body} while holding the provider's run lock.
    *
-   * @throws ConflictException if another run of the same organization is already in flight; {@code
+   * @throws ConflictException if another run of the same provider is already in flight; {@code
    *     body} is then not called at all
    */
-  <T> T runExclusively(UUID organizationId, Supplier<T> body) {
+  <T> T runExclusively(UUID providerId, Supplier<T> body) {
     try (Connection connection = dataSource.getConnection()) {
       boolean autoCommit = connection.getAutoCommit();
       connection.setAutoCommit(false);
       try {
-        if (!tryLock(connection, organizationId)) {
+        if (!tryLock(connection, providerId)) {
           throw new ConflictException(ALREADY_RUNNING_MESSAGE, ALREADY_RUNNING_CODE);
         }
         return body.get();
       } finally {
-        releaseQuietly(connection, autoCommit, organizationId);
+        releaseQuietly(connection, autoCommit, providerId);
       }
     } catch (SQLException e) {
       throw new DataAccessResourceFailureException(
-          "Directory sync run lock failed for organization " + organizationId, e);
+          "Directory sync run lock failed for provider " + providerId, e);
     }
   }
 
@@ -83,22 +82,22 @@ class DirectorySyncRunLock {
    * connections, and the lock is gone either way once try-with-resources hands this connection back
    * and the pool rolls it back.
    */
-  private void releaseQuietly(Connection connection, boolean autoCommit, UUID organizationId) {
+  private void releaseQuietly(Connection connection, boolean autoCommit, UUID providerId) {
     try {
       connection.rollback();
       connection.setAutoCommit(autoCommit);
     } catch (SQLException e) {
       log.warn(
-          "Directory sync: failed to release the run lock for organization {} - the run's own"
+          "Directory sync: failed to release the run lock for provider {} - the run's own"
               + " outcome is unaffected, and the lock goes with the connection",
-          organizationId,
+          providerId,
           e);
     }
   }
 
-  private boolean tryLock(Connection connection, UUID organizationId) throws SQLException {
+  private boolean tryLock(Connection connection, UUID providerId) throws SQLException {
     try (PreparedStatement statement = connection.prepareStatement(TRY_LOCK_SQL)) {
-      statement.setString(1, organizationId.toString());
+      statement.setString(1, providerId.toString());
       try (ResultSet resultSet = statement.executeQuery()) {
         return resultSet.next() && resultSet.getBoolean(1);
       }

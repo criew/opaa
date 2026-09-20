@@ -62,6 +62,7 @@ const orgUnitGroup: GroupListResponse = {
     displayName: 'Verzeichnisdienst',
     external: false,
     enabled: true,
+    groupMechanism: 'TOKEN',
   },
   sourcePath: '/Haus A/Referat 50',
   parentGroupId: null,

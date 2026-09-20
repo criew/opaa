@@ -22,6 +22,7 @@ import io.opaa.permission.AssetGrantRepository;
 import io.opaa.permission.GroupMembershipHistoryRepository;
 import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.ProviderFixtures;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -65,6 +66,11 @@ class GroupServiceIntegrationTest {
 
   @Autowired private GroupService groupService;
   @Autowired private GroupRepository groupRepository;
+  @Autowired private io.opaa.auth.oidc.OidcProviderRepository providerRepository;
+
+  /** Every ORG_UNIT group carries its provider since #1816 (chk_groups_provider_kind). */
+  private UUID directoryProviderId;
+
   @Autowired private GroupMembershipRepository membershipRepository;
   @Autowired private GroupMembershipHistoryRepository membershipHistoryRepository;
   @Autowired private GroupMembershipResolver membershipResolver;
@@ -86,6 +92,7 @@ class GroupServiceIntegrationTest {
         organizationRepository.save(new Organization(UUID.randomUUID(), "Org A")).getId();
     organizationB =
         organizationRepository.save(new Organization(UUID.randomUUID(), "Org B")).getId();
+    directoryProviderId = ProviderFixtures.tokenProvider(providerRepository).getId();
   }
 
   @AfterEach
@@ -126,6 +133,11 @@ class GroupServiceIntegrationTest {
     jdbcTemplate.update(
         "DELETE FROM audit_log WHERE organization_id IN (?, ?)", organizationA, organizationB);
     organizationRepository.deleteAllById(List.of(organizationA, organizationB));
+    // fk_groups_provider is RESTRICT, so the provider goes after this class's groups above.
+    if (directoryProviderId != null) {
+      providerRepository.deleteById(directoryProviderId);
+      directoryProviderId = null;
+    }
   }
 
   private UUID createUser(UUID organizationId) {
@@ -199,7 +211,7 @@ class GroupServiceIntegrationTest {
             GroupKind.ORG_UNIT,
             "Referat 50",
             null,
-            null,
+            directoryProviderId,
             "directory-guid",
             null,
             null);
@@ -299,7 +311,7 @@ class GroupServiceIntegrationTest {
             GroupKind.ORG_UNIT,
             "Referat 50",
             null,
-            null,
+            directoryProviderId,
             "directory-guid",
             null,
             null);

@@ -57,6 +57,7 @@ const group: GroupListResponse = {
     displayName: 'Verzeichnisdienst',
     external: false,
     enabled: true,
+    groupMechanism: 'TOKEN',
   },
   sourcePath: null,
   parentGroupId: null,

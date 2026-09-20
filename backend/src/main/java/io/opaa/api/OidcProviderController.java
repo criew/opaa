@@ -1,5 +1,6 @@
 package io.opaa.api;
 
+import io.opaa.api.dto.OidcProviderDirectorySyncRequest;
 import io.opaa.api.dto.OidcProviderExternalRequest;
 import io.opaa.api.dto.OidcProviderOrderRequest;
 import io.opaa.api.dto.OidcProviderRequest;
@@ -133,6 +134,21 @@ public class OidcProviderController {
     return toResponse(
         providerService.setExternal(
             caller.organizationId(), caller.id(), providerId, request.getExternal()));
+  }
+
+  @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+  @PutMapping("/{providerId}/directory-sync")
+  public OidcProviderResponse setDirectorySync(
+      @PathVariable UUID providerId,
+      @Valid @RequestBody OidcProviderDirectorySyncRequest request,
+      @Caller CurrentUser caller) {
+    return toResponse(
+        providerService.setDirectorySync(
+            caller.organizationId(),
+            caller.id(),
+            providerId,
+            Boolean.TRUE.equals(request.getEnabled()),
+            request.getIntervalMinutes()));
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
