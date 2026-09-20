@@ -160,6 +160,37 @@ class DirectorySyncSchedulerIntegrationTest {
     assertThat(groupsOf(provider.getId())).isEmpty();
   }
 
+  /**
+   * One provider's failure must not keep the others from running - otherwise a single unreachable
+   * directory would silently stop every other provider's schedule.
+   */
+  @Test
+  void aProviderWhoseRunFailsDoesNotStopTheTick() {
+    OidcProvider failing = createProvider(true, true, 5);
+    OidcProvider healthy = createProvider(true, true, 5);
+    // The failing one comes first in the order the tick walks, so it is reached before the other.
+    failing.setSortOrder(1);
+    healthy.setSortOrder(2);
+    providerRepository.save(failing);
+    providerRepository.save(healthy);
+    directoryClient.breakFor(failing.getId());
+    directoryClient.respondWithFor(
+        healthy.getId(), new DirectoryGroup("dir-1", "Referat 50", null, Set.of()));
+
+    scheduler.triggerDueProviders();
+
+    assertThat(statusRepository.findByOrganizationIdAndProviderId(ORGANIZATION_ID, failing.getId()))
+        .as("the defective provider recorded nothing")
+        .isEmpty();
+    assertThat(
+            statusRepository
+                .findByOrganizationIdAndProviderId(ORGANIZATION_ID, healthy.getId())
+                .orElseThrow()
+                .getLastOutcome())
+        .isEqualTo(DirectorySyncOutcome.APPLIED);
+    assertThat(groupsOf(healthy.getId())).hasSize(1);
+  }
+
   // ---------------------------------------------------------------------------------------
   // Fixtures
   // ---------------------------------------------------------------------------------------

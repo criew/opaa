@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.api.types.DirectorySyncOutcome;
 import io.opaa.api.types.GroupKind;
+import io.opaa.api.types.GroupMechanism;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.auth.oidc.OidcClaimMapping;
@@ -16,11 +17,14 @@ import io.opaa.common.NotFoundException;
 import io.opaa.group.Group;
 import io.opaa.group.GroupMembership;
 import io.opaa.group.GroupMembershipRepository;
+import io.opaa.group.GroupOverview;
+import io.opaa.group.GroupProviderView;
 import io.opaa.group.GroupRepository;
 import io.opaa.organization.Organization;
 import io.opaa.permission.GroupMembershipHistoryRepository;
 import io.opaa.test.FakeDirectoryClient;
 import io.opaa.test.OpaaIntegrationTest;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -53,6 +57,8 @@ class DirectorySyncProviderBindingIntegrationTest {
   @Autowired private DirectorySyncStatusRepository statusRepository;
   @Autowired private DirectorySyncPendingPlanRepository pendingPlanRepository;
   @Autowired private FakeDirectoryClient directoryClient;
+  @Autowired private io.opaa.permission.GroupSubjectDirectory groupSubjectDirectory;
+  @Autowired private io.opaa.group.GroupService groupService;
 
   private static final UUID ORGANIZATION_ID = Organization.DEFAULT_ID;
 
@@ -265,6 +271,120 @@ class DirectorySyncProviderBindingIntegrationTest {
         .containsExactly(member);
   }
 
+  /**
+   * The other half of "nothing is revoked silently" (#1816, ADR-0036 Entscheidung 3): a frozen
+   * token group keeps what it holds, but a group nobody can ever join or leave again must not
+   * become a new grant target.
+   */
+  @Test
+  void aTokenGroupOfAProviderWithTheRunIsMarkedAsNoLongerMaintained() {
+    OidcProvider provider = createProvider(true);
+    Group tokenGroup =
+        groupRepository.save(
+            new Group(
+                ORGANIZATION_ID,
+                GroupKind.IDENTITY_PROVIDER,
+                "Referat 12",
+                null,
+                provider.getId(),
+                "Referat 12",
+                null,
+                null));
+    createdGroupIds.add(tokenGroup.getId());
+
+    // The refusal itself is AssetGrantServiceTest's; what this asserts is the derivation - that
+    // the adapter marks exactly this group, from the provider row and the group's kind.
+    assertThat(groupSubjectDirectory.find(tokenGroup.getId()).orElseThrow().unmaintained())
+        .isTrue();
+  }
+
+  /** The same group at a provider still fed by its claim stays an ordinary grant target. */
+  @Test
+  void aTokenGroupOfAProviderWithoutTheRunIsNotMarked() {
+    OidcProvider provider = createProviderWithGroupsClaim();
+    Group tokenGroup =
+        groupRepository.save(
+            new Group(
+                ORGANIZATION_ID,
+                GroupKind.IDENTITY_PROVIDER,
+                "Referat 13",
+                null,
+                provider.getId(),
+                "Referat 13",
+                null,
+                null));
+    createdGroupIds.add(tokenGroup.getId());
+
+    assertThat(groupSubjectDirectory.find(tokenGroup.getId()).orElseThrow().unmaintained())
+        .isFalse();
+  }
+
+  // ---------------------------------------------------------------------------------------
+  // What a member sees about the delay
+  // ---------------------------------------------------------------------------------------
+
+  /**
+   * "Meine Gruppen" names mechanism, interval and last run per provider (ADR-0036, Entscheidung 3).
+   * Asserted at the producer, not only at the mapper: the mapper copies whatever it is handed, and
+   * handing it the wrong mechanism would look identical there.
+   */
+  @Test
+  void myGroupsNamesTheMechanismTheIntervalAndTheLastRunOfTheProvider() {
+    OidcProvider provider = createProvider(true);
+    UUID member = createUser("member-1", provider.getIssuerUri());
+    Group unit = persistOrgUnit(provider.getId(), "dir-1", "Referat 50", member);
+    directoryClient.respondWithFor(
+        provider.getId(), new DirectoryGroup("dir-1", "Referat 50", null, Set.of("member-1")));
+    directorySyncService.run(ORGANIZATION_ID, provider.getId());
+    Instant lastRunAt =
+        statusRepository
+            .findByOrganizationIdAndProviderId(ORGANIZATION_ID, provider.getId())
+            .orElseThrow()
+            .getLastRunAt();
+
+    GroupProviderView view =
+        groupService.listMyGroups(currentUser(member)).stream()
+            .filter(overview -> overview.group().getId().equals(unit.getId()))
+            .map(GroupOverview::provider)
+            .findFirst()
+            .orElseThrow();
+
+    assertThat(view.mechanism()).isEqualTo(GroupMechanism.DIRECTORY);
+    assertThat(view.syncIntervalMinutes()).isEqualTo(360);
+    assertThat(view.lastSyncAt()).isEqualTo(lastRunAt);
+    assertThat(view.enabled()).isTrue();
+  }
+
+  /** A provider fed by its claim names no interval and no last run - there is none. */
+  @Test
+  void aTokenProvidersGroupsNameNoIntervalAndNoLastRun() {
+    OidcProvider provider = createProviderWithGroupsClaim();
+    UUID member = createUser("member-2", provider.getIssuerUri());
+    Group tokenGroup =
+        new Group(
+            ORGANIZATION_ID,
+            GroupKind.IDENTITY_PROVIDER,
+            "Referat 12",
+            null,
+            provider.getId(),
+            "Referat 12",
+            null,
+            null);
+    tokenGroup.addMembership(new GroupMembership(member, ORGANIZATION_ID));
+    createdGroupIds.add(groupRepository.save(tokenGroup).getId());
+
+    GroupProviderView view =
+        groupService.listMyGroups(currentUser(member)).stream()
+            .filter(overview -> overview.group().getId().equals(tokenGroup.getId()))
+            .map(GroupOverview::provider)
+            .findFirst()
+            .orElseThrow();
+
+    assertThat(view.mechanism()).isEqualTo(GroupMechanism.TOKEN);
+    assertThat(view.syncIntervalMinutes()).isNull();
+    assertThat(view.lastSyncAt()).isNull();
+  }
+
   // ---------------------------------------------------------------------------------------
   // Fixtures
   // ---------------------------------------------------------------------------------------
@@ -304,6 +424,12 @@ class DirectorySyncProviderBindingIntegrationTest {
     UUID id = userRepository.save(user).getId();
     createdUserIds.add(id);
     return id;
+  }
+
+  /** The caller "Meine Gruppen" is asked for - only the id and the organization matter here. */
+  private io.opaa.auth.CurrentUser currentUser(UUID userId) {
+    return io.opaa.auth.CurrentUser.of(
+        userId, ORGANIZATION_ID, io.opaa.api.types.SystemRole.USER, "Test User");
   }
 
   private Group persistOrgUnit(UUID providerId, String externalId, String name, UUID... memberIds) {

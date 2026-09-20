@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.opaa.api.types.DirectorySyncOutcome;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
@@ -35,8 +36,7 @@ class DirectorySyncPlanFingerprintTest {
                     "ext-1", "Referat 1", List.of(ref(GRACE), ref(ADA)), List.of())),
             List.of(new GroupChange("ext-b", "B", null), new GroupChange("ext-a", "A", null)));
 
-    assertThat(DirectorySyncPlanFingerprint.of(first))
-        .isEqualTo(DirectorySyncPlanFingerprint.of(reordered));
+    assertThat(printOf(first)).isEqualTo(printOf(reordered));
   }
 
   /** The moment of the run is no part of the plan - two identical runs are the same plan. */
@@ -45,8 +45,7 @@ class DirectorySyncPlanFingerprintTest {
     List<MembershipChange> changes =
         List.of(new MembershipChange("ext-1", "Referat 1", List.of(ref(ADA)), List.of()));
 
-    assertThat(DirectorySyncPlanFingerprint.of(report(changes, List.of())))
-        .isEqualTo(DirectorySyncPlanFingerprint.of(report(changes, List.of())));
+    assertThat(printOf(report(changes, List.of()))).isEqualTo(printOf(report(changes, List.of())));
   }
 
   @Test
@@ -60,8 +59,7 @@ class DirectorySyncPlanFingerprintTest {
             List.of(new MembershipChange("ext-1", "Referat 1", List.of(), List.of(ref(GRACE)))),
             List.of());
 
-    assertThat(DirectorySyncPlanFingerprint.of(shown))
-        .isNotEqualTo(DirectorySyncPlanFingerprint.of(recomputed));
+    assertThat(printOf(shown)).isNotEqualTo(printOf(recomputed));
   }
 
   /** Adding and removing the same user are different changes and must not print the same. */
@@ -76,8 +74,7 @@ class DirectorySyncPlanFingerprintTest {
             List.of(new MembershipChange("ext-1", "Referat 1", List.of(), List.of(ref(ADA)))),
             List.of());
 
-    assertThat(DirectorySyncPlanFingerprint.of(added))
-        .isNotEqualTo(DirectorySyncPlanFingerprint.of(removed));
+    assertThat(printOf(added)).isNotEqualTo(printOf(removed));
   }
 
   @Test
@@ -99,8 +96,34 @@ class DirectorySyncPlanFingerprintTest {
             0.3,
             "");
 
-    assertThat(DirectorySyncPlanFingerprint.of(shown))
-        .isNotEqualTo(DirectorySyncPlanFingerprint.of(recomputed));
+    assertThat(printOf(shown)).isNotEqualTo(printOf(recomputed));
+  }
+
+  /**
+   * Reactivation and hierarchy are the two facts the print carries beyond the report; the cases
+   * above vary the report, the two below vary these.
+   */
+  @Test
+  void aReactivatedGroupChangesThePrint() {
+    SyncReport shown = report(List.of(), List.of());
+
+    assertThat(printOf(shown))
+        .isNotEqualTo(DirectorySyncPlanFingerprint.of(shown, List.of("ext-back"), Map.of()));
+  }
+
+  @Test
+  void aChangedParentUnitChangesThePrint() {
+    SyncReport shown = report(List.of(), List.of());
+
+    assertThat(
+            DirectorySyncPlanFingerprint.of(shown, List.of(), Map.of("ext-child", "ext-parent-a")))
+        .isNotEqualTo(
+            DirectorySyncPlanFingerprint.of(shown, List.of(), Map.of("ext-child", "ext-parent-b")));
+  }
+
+  /** The print of a plan that changes neither of the two - what the cases above compare. */
+  private static String printOf(SyncReport report) {
+    return DirectorySyncPlanFingerprint.of(report, List.of(), Map.of());
   }
 
   private static UserRef ref(UUID id) {

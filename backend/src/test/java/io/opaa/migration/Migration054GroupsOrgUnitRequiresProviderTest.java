@@ -89,6 +89,39 @@ class Migration054GroupsOrgUnitRequiresProviderTest extends AbstractMigrationTes
         .isZero();
   }
 
+  /**
+   * The conversion is a change of kind, not of reach: the group keeps every membership and every
+   * grant it held. Without this the update would be a silent revocation dressed up as a migration.
+   */
+  @Test
+  void theConvertedGroupKeepsItsMembershipsAndItsGrants() throws Exception {
+    UUID group = seedOrgUnit("Referat 55", "dir-guid-6", null, false);
+    UUID member = seedUser();
+    UUID membership = seedMembership(group, member);
+    UUID grant = seedGroupGrant(group);
+
+    applyChangelog(connection, CHANGELOG_PATH);
+
+    assertThat(
+            count(
+                "SELECT count(*) FROM group_memberships WHERE id = '"
+                    + membership
+                    + "' AND group_id = '"
+                    + group
+                    + "' AND user_id = '"
+                    + member
+                    + "'"))
+        .isEqualTo(1);
+    assertThat(
+            count(
+                "SELECT count(*) FROM asset_grants WHERE id = '"
+                    + grant
+                    + "' AND subject_group_id = '"
+                    + group
+                    + "' AND role = 'MANAGER'"))
+        .isEqualTo(1);
+  }
+
   /** The conversion is traceable afterwards, under the system-process actor. */
   @Test
   void everyConvertedGroupLeavesAnAuditEntry() throws Exception {
@@ -176,6 +209,56 @@ class Migration054GroupsOrgUnitRequiresProviderTest extends AbstractMigrationTes
             ? java.sql.Timestamp.from(java.time.Instant.parse("2026-01-01T00:00:00Z"))
             : null);
     return group;
+  }
+
+  private UUID seedUser() throws SQLException {
+    UUID user = UUID.randomUUID();
+    execute(
+        "INSERT INTO users (id, organization_id, subject, issuer, email, display_name)"
+            + " VALUES (?, ?, ?, ?, ?, ?)",
+        user,
+        DEFAULT_ORGANIZATION,
+        "subject-" + user,
+        "https://idp.example/realms/a",
+        user + "@example.com",
+        "Test User");
+    return user;
+  }
+
+  private UUID seedMembership(UUID groupId, UUID userId) throws SQLException {
+    UUID membership = UUID.randomUUID();
+    execute(
+        "INSERT INTO group_memberships (id, user_id, group_id, organization_id)"
+            + " VALUES (?, ?, ?, ?)",
+        membership,
+        userId,
+        groupId,
+        DEFAULT_ORGANIZATION);
+    return membership;
+  }
+
+  private UUID seedGroupGrant(UUID groupId) throws SQLException {
+    UUID owner = seedUser();
+    UUID library = UUID.randomUUID();
+    execute(
+        "INSERT INTO knowledge_libraries (id, organization_id, name, owner_type, owner_user_id,"
+            + " visibility, source_type) VALUES (?, ?, ?, 'USER', ?, 'PRIVATE', 'UPLOAD')",
+        library,
+        DEFAULT_ORGANIZATION,
+        "Bibliothek " + library,
+        owner);
+    UUID grant = UUID.randomUUID();
+    // The fixture chain stops before 038/039, so a grant still names its library directly.
+    execute(
+        "INSERT INTO asset_grants (id, library_id, organization_id, subject_type,"
+            + " subject_group_id, role, granted_by_user_id) VALUES (?, ?, ?, 'GROUP', ?,"
+            + " 'MANAGER', ?)",
+        grant,
+        library,
+        DEFAULT_ORGANIZATION,
+        groupId,
+        owner);
+    return grant;
   }
 
   private void seedInternalGroupWithProvider(UUID providerId) throws SQLException {

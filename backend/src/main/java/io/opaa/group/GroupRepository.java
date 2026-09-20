@@ -62,9 +62,15 @@ public interface GroupRepository extends JpaRepository<Group, UUID> {
       @Param("organizationId") UUID organizationId, @Param("providerId") UUID providerId);
 
   /**
-   * One provider's groups of one kind - the token groups a directory run reports as "no longer
-   * maintained" (ADR-0036, Entscheidung 3).
+   * One provider's groups of one kind inside one organization - the token groups a directory run
+   * reports as "no longer maintained" (ADR-0036, Entscheidung 3). Scoped by organization like every
+   * other read of this repository a run makes: a provider is organization-wide today (ADR-0025),
+   * and the day it is not, this query must not be the one that crossed the boundary.
    */
+  List<Group> findByOrganizationIdAndProviderIdAndKind(
+      UUID organizationId, UUID providerId, GroupKind kind);
+
+  /** Every group of one provider, regardless of organization - what its deletion decides on. */
   List<Group> findByProviderIdAndKind(UUID providerId, GroupKind kind);
 
   /**

@@ -204,11 +204,17 @@ class DirectorySyncPlanConfirmationIntegrationTest {
     assertThat(membershipRepository.findByGroupId(group.getId())).hasSize(1);
     assertThat(directorySyncService.getPendingPlan(ORGANIZATION_ID, provider.getId())).isEmpty();
     // "oberhalb der Schwelle, mit der bestaetigenden Person und ihrem Anlass"
-    // (security-and-compliance.md): the header entry of a confirmed run names both.
-    assertThat(
-            countAuditEntries(
-                AuditEventType.DIRECTORY_SYNC_RUN_COMPLETED, "%Reorganisation zum 01.10.%"))
-        .isEqualTo(1);
+    // (security-and-compliance.md): the header entry of a confirmed run names both. The actor is
+    // asserted, not only the reason - a run recorded under the system process actor would carry
+    // the same reason and say nobody decided it.
+    assertThat(actorsOf(AuditEventType.DIRECTORY_SYNC_RUN_COMPLETED, "%Reorganisation zum 01.10.%"))
+        .singleElement()
+        .satisfies(
+            recorded -> {
+              assertThat(recorded.kind()).isEqualTo("USER");
+              assertThat(recorded.ref()).isNotEqualTo("directory-sync");
+              assertThat(recorded.ref()).isNotBlank();
+            });
   }
 
   /** Third decision: confirmed against a fresh snapshot, re-presented when it differs. */
@@ -253,9 +259,14 @@ class DirectorySyncPlanConfirmationIntegrationTest {
     assertThat(directorySyncService.getPendingPlan(ORGANIZATION_ID, provider.getId())).isEmpty();
     assertThat(membershipRepository.findByGroupId(group.getId())).hasSize(3);
     assertThat(
-            countAuditEntries(
-                AuditEventType.DIRECTORY_SYNC_PLAN_DISCARDED, "Verzeichnis war fehlerhaft."))
-        .isEqualTo(1);
+            actorsOf(AuditEventType.DIRECTORY_SYNC_PLAN_DISCARDED, "Verzeichnis war fehlerhaft."))
+        .singleElement()
+        .satisfies(
+            recorded -> {
+              assertThat(recorded.kind()).isEqualTo("USER");
+              assertThat(recorded.ref()).isNotEqualTo("directory-sync");
+              assertThat(recorded.ref()).isNotBlank();
+            });
   }
 
   @Test
@@ -311,16 +322,17 @@ class DirectorySyncPlanConfirmationIntegrationTest {
   }
 
   /**
-   * Read through JDBC rather than a repository: {@code AuditLogRepository} is package-private, and
-   * the audit log is insert-only at the application layer anyway.
+   * The actor of every matching entry. Read through JDBC rather than a repository: {@code
+   * AuditLogRepository} is package-private, and the audit log is insert-only at the application
+   * layer anyway.
    */
-  private int countAuditEntries(AuditEventType eventType, String reasonPattern) {
-    Integer count =
-        jdbcTemplate.queryForObject(
-            "SELECT count(*) FROM audit_log WHERE event_type = ? AND reason LIKE ?",
-            Integer.class,
-            eventType.name(),
-            reasonPattern);
-    return count == null ? 0 : count;
+  private List<Actor> actorsOf(AuditEventType eventType, String reasonPattern) {
+    return jdbcTemplate.query(
+        "SELECT actor_kind, actor_ref FROM audit_log WHERE event_type = ? AND reason LIKE ?",
+        (rs, row) -> new Actor(rs.getString("actor_kind"), rs.getString("actor_ref")),
+        eventType.name(),
+        reasonPattern);
   }
+
+  private record Actor(String kind, String ref) {}
 }

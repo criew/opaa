@@ -13592,8 +13592,10 @@ components:
           nullable: true
           description: >
             How often the run is due. Null keeps the current value, or takes the shipped default
-            of 360 minutes (6 hours) when the run is switched on for the first time. Ignored when
-            enabled is false.
+            of 360 minutes (6 hours) when the run is switched on for the first time. The bounds
+            apply to any value given, including alongside enabled=false - a request naming a
+            value outside them is refused with 400 rather than silently dropped; what a
+            switched-off run does with the value (nothing - it stores none) is a separate matter.
           example: 360
 
     # #393 - audit revision access path. See

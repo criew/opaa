@@ -207,7 +207,7 @@ class AssetGrantServiceTest {
         .thenReturn(AssetRole.OWNER);
     UUID foreignGroupId = UUID.randomUUID();
     GroupSubject foreignGroup =
-        new GroupSubject(foreignGroupId, UUID.randomUUID(), "Fremd", false, false);
+        new GroupSubject(foreignGroupId, UUID.randomUUID(), "Fremd", false, false, false);
     when(groupDirectory.find(foreignGroupId)).thenReturn(Optional.of(foreignGroup));
 
     AssetGrantUpsert request =
@@ -359,7 +359,7 @@ class AssetGrantServiceTest {
     when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
         .thenReturn(AssetRole.OWNER);
     GroupSubject dissolvedGroup =
-        new GroupSubject(UUID.randomUUID(), organizationId, "Aufgeloest", true, false);
+        new GroupSubject(UUID.randomUUID(), organizationId, "Aufgeloest", true, false, false);
     when(groupDirectory.find(dissolvedGroup.id())).thenReturn(Optional.of(dissolvedGroup));
 
     AssetGrantUpsert request =
@@ -379,6 +379,30 @@ class AssetGrantServiceTest {
   }
 
   /**
+   * ADR-0036, Entscheidung 3 (#1816): a token group its provider no longer maintains keeps what it
+   * holds - its membership is frozen, not cleared - but exactly that is why it may not become a new
+   * grant target: nobody would ever join or leave it again.
+   */
+  @Test
+  void upsertGrantRejectsTargetingAGroupTheProviderNoLongerMaintains() {
+    when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
+        .thenReturn(AssetRole.OWNER);
+    when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
+        .thenReturn(AssetRole.OWNER);
+    GroupSubject group =
+        new GroupSubject(UUID.randomUUID(), organizationId, "Referat 12", false, false, true);
+    when(groupDirectory.find(group.id())).thenReturn(Optional.of(group));
+
+    AssetGrantUpsert request =
+        new AssetGrantUpsert(PermissionSubjectType.GROUP, group.id(), AssetRole.VIEWER);
+
+    assertThatThrownBy(() -> grantService.upsertGrant(libraryId, request, managerCaller))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("Verzeichnisabgleich");
+    verify(grantRepository, never()).save(any());
+  }
+
+  /**
    * ADR-0036, Entscheidung 2: the groups of a disabled provider are no effective groups. Without
    * this a release to them would reach nobody and then, with the provider switched back on, reach
    * everybody at once without a second decision.
@@ -390,7 +414,7 @@ class AssetGrantServiceTest {
     when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
         .thenReturn(AssetRole.OWNER);
     GroupSubject group =
-        new GroupSubject(UUID.randomUUID(), organizationId, "Fachbereich 3", false, true);
+        new GroupSubject(UUID.randomUUID(), organizationId, "Fachbereich 3", false, true, false);
     when(groupDirectory.find(group.id())).thenReturn(Optional.of(group));
 
     AssetGrantUpsert request =

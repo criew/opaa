@@ -173,25 +173,16 @@ public class DirectorySyncService {
    */
   public void discardPlan(
       UUID organizationId, UUID providerId, UUID planId, UUID actorUserId, String reason) {
-    DirectorySyncPendingPlan plan = requirePendingPlan(organizationId, providerId, planId);
-    pendingPlanRepository.delete(plan);
-    Map<String, Object> before = new HashMap<>();
-    before.put("providerId", providerId.toString());
-    before.put("changedFraction", plan.getChangedFraction());
-    before.put("membershipsRemoved", plan.getMembershipsRemoved());
-    auditEventRecorder.recordUserAction(
-        AuditEvent.builder()
-            .organizationId(organizationId)
-            .actor(actorUserId)
-            .type(AuditEventType.DIRECTORY_SYNC_PLAN_DISCARDED)
-            .object(
-                AuditObjectType.DIRECTORY_SYNC_RUN,
-                plan.getId(),
-                "Verzeichnisabgleich, verworfener Plan " + plan.getId())
-            .before(before)
-            .outcome(AuditOutcome.SUCCESS)
-            .reason(reason)
-            .build());
+    runLock.runExclusively(
+        providerId,
+        () -> {
+          DirectorySyncPendingPlan plan = requirePendingPlan(organizationId, providerId, planId);
+          // Under the same lock a run takes: otherwise a run finishing right now could replace
+          // this plan between the read above and the delete, and the entry would name a decision
+          // about a plan that no longer existed.
+          planExecutor.discardPlan(plan, actorUserId, reason);
+          return null;
+        });
   }
 
   /** The provider's pending plan with the report exactly as it was presented, if it has one. */

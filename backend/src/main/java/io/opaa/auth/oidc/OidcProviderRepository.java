@@ -45,9 +45,6 @@ public interface OidcProviderRepository extends JpaRepository<OidcProvider, UUID
   List<OidcProvider>
       findByDirectorySyncEnabledTrueAndEnabledTrueOrderBySortOrderAscDisplayNameAsc();
 
-  /** Every provider whose directory run is switched on, enabled or not - the status overview. */
-  List<OidcProvider> findByDirectorySyncEnabledTrueOrderBySortOrderAscDisplayNameAsc();
-
   /** How many rows of {@code providerType} exist - the OIDC count decides the first default. */
   long countByProviderType(ProviderType providerType);
 

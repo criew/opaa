@@ -189,6 +189,39 @@ class DirectorySyncPlanExecutor {
     return handle(target, now, snapshot, Mode.CONFIRM, plan, actorUserId, reason);
   }
 
+  /**
+   * Drops a pending plan and records the decision in one transaction (#1816). The delete is scoped
+   * to the plan's own id, so a second, concurrent decision about the same plan removes no row - and
+   * then writes no entry either: an audit trail that claims two people discarded the same plan is
+   * worse than one that names the one who did.
+   *
+   * @return whether this call was the one that removed the plan
+   */
+  @Transactional
+  boolean discardPlan(DirectorySyncPendingPlan plan, UUID actorUserId, String reason) {
+    if (pendingPlanRepository.removeById(plan.getId()) == 0) {
+      return false;
+    }
+    Map<String, Object> before = new LinkedHashMap<>();
+    before.put("providerId", plan.getProviderId().toString());
+    before.put("changedFraction", plan.getChangedFraction());
+    before.put("membershipsRemoved", plan.getMembershipsRemoved());
+    auditEventRecorder.recordUserAction(
+        AuditEvent.builder()
+            .organizationId(plan.getOrganizationId())
+            .actor(actorUserId)
+            .type(AuditEventType.DIRECTORY_SYNC_PLAN_DISCARDED)
+            .object(
+                AuditObjectType.DIRECTORY_SYNC_RUN,
+                plan.getId(),
+                "Verzeichnisabgleich, verworfener Plan " + plan.getId())
+            .before(before)
+            .outcome(AuditOutcome.SUCCESS)
+            .reason(reason)
+            .build());
+    return true;
+  }
+
   /** What {@link #handle} is asked to do with the plan it computes. */
   private enum Mode {
     DRY_RUN,
@@ -213,7 +246,8 @@ class DirectorySyncPlanExecutor {
         groupRepository.findByOrganizationIdAndProviderIdAndKindOrgUnit(
             organizationId, target.providerId());
     List<Group> tokenGroups =
-        groupRepository.findByProviderIdAndKind(target.providerId(), GroupKind.IDENTITY_PROVIDER);
+        groupRepository.findByOrganizationIdAndProviderIdAndKind(
+            organizationId, target.providerId(), GroupKind.IDENTITY_PROVIDER);
 
     if (snapshot.groups().isEmpty() && !existingOrgUnits.isEmpty()) {
       String message =
@@ -302,7 +336,7 @@ class DirectorySyncPlanExecutor {
 
     if (mode == Mode.CONFIRM) {
       SyncReport recomputed = buildReport(now, DirectorySyncOutcome.PENDING_CONFIRMATION, "", plan);
-      if (!DirectorySyncPlanFingerprint.of(recomputed).equals(pending.getFingerprint())) {
+      if (!fingerprintOf(recomputed, plan).equals(pending.getFingerprint())) {
         SyncReport report =
             finish(
                 target,
@@ -350,10 +384,24 @@ class DirectorySyncPlanExecutor {
             target.organizationId(),
             target.providerId(),
             now,
-            DirectorySyncPlanFingerprint.of(report),
+            fingerprintOf(report, plan),
             plan.changedFraction(),
             plan.membershipsRemoved(),
             DirectorySyncReportCodec.write(report)));
+  }
+
+  /**
+   * The print of a plan as it was shown. Reactivation and the hierarchy the directory reports are
+   * no part of the report - neither changes a membership - but both are changes this run would
+   * apply, so they belong in what a confirmation is compared against.
+   */
+  private String fingerprintOf(SyncReport report, SyncPlan plan) {
+    List<String> reactivated =
+        plan.reactivations().stream().map(r -> r.group().getExternalId()).toList();
+    Map<String, String> parents = new LinkedHashMap<>();
+    plan.incomingByExternalId()
+        .forEach((externalId, incoming) -> parents.put(externalId, incoming.parentExternalId()));
+    return DirectorySyncPlanFingerprint.of(report, reactivated, parents);
   }
 
   /**

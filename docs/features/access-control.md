@@ -848,10 +848,14 @@ Gruppen zweier Anbieter sind zwei Gruppen, ein Anbieter erreicht nie die Gruppen
 Mitgliedschaften folgen dem Token (Historie `IDENTITY_PROVIDER_ADDED`/`_REMOVED`, Audit unter
 `identity-provider`), die Gruppen selbst bleiben bestehen und sind in der Gruppenverwaltung
 schreibgeschützt; sie sind weder Gegenstand des Verzeichnisabgleichs noch als „Sicht als"-Bereich
-wählbar. Der **Verzeichnisabgleich** ist an den Standardanbieter gebunden: Er löst die Subjects
-des Verzeichnisses nur unter dessen Konten auf (ein gleichnamiges Subject eines zweiten Anbieters
-erbt keine Mitgliedschaft) und verwaltet ausschließlich Organisationseinheiten; ohne
-Standardanbieter bricht ein Lauf ohne Änderungen ab.
+wählbar. Der **Verzeichnisabgleich** ist seit #1816 an die **Anbieterzeile selbst** gebunden, nicht
+mehr an den Standardanbieter: Er ist je Anbieter einschaltbar, löst die Subjects des Verzeichnisses
+nur unter den Konten **dieses** Anbieters auf (ein gleichnamiges Subject eines zweiten Anbieters
+erbt keine Mitgliedschaft) und verwaltet ausschließlich dessen Organisationseinheiten. Ohne
+Anbieterzeile — im Betriebsmodus `dev` — findet gar kein Abgleich statt; ist die Zeile deaktiviert,
+pausiert er. Schaltet ein Haus einen Anbieter vom Gruppen-Claim auf den Abgleich um, bleiben seine
+Token-Gruppen mit eingefrorener Mitgliedschaft stehen und sind **kein neues Ziel einer
+Berechtigung** mehr; bestehende bleiben unverändert.
 
 **Was ein Token über Rollen sagt — und was nicht (gebaut, #1830).** „Keine Auskunft" und
 „ausdrücklich keine erhöhte Rolle" sind zwei verschiedene Aussagen, und nur die zweite ist ein

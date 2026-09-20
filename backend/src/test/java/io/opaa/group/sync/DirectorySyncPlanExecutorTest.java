@@ -57,7 +57,8 @@ class DirectorySyncPlanExecutorTest {
     when(groupRepository.findByOrganizationIdAndProviderIdAndKindOrgUnit(
             organizationId, providerId))
         .thenReturn(List.of());
-    when(groupRepository.findByProviderIdAndKind(providerId, GroupKind.IDENTITY_PROVIDER))
+    when(groupRepository.findByOrganizationIdAndProviderIdAndKind(
+            organizationId, providerId, GroupKind.IDENTITY_PROVIDER))
         .thenReturn(List.of());
     when(userRepository.findByOrganizationIdAndIssuerAndSubjectIn(any(), any(), any()))
         .thenReturn(List.of());
@@ -96,7 +97,8 @@ class DirectorySyncPlanExecutorTest {
     when(groupRepository.findByOrganizationIdAndProviderIdAndKindOrgUnit(
             organizationId, providerId))
         .thenReturn(List.of());
-    when(groupRepository.findByProviderIdAndKind(providerId, GroupKind.IDENTITY_PROVIDER))
+    when(groupRepository.findByOrganizationIdAndProviderIdAndKind(
+            organizationId, providerId, GroupKind.IDENTITY_PROVIDER))
         .thenReturn(List.of(tokenGroup));
     when(userRepository.findByOrganizationIdAndIssuerAndSubjectIn(any(), any(), any()))
         .thenReturn(List.of());

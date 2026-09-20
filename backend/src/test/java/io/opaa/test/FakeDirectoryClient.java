@@ -6,8 +6,10 @@ import io.opaa.group.sync.DirectorySnapshot;
 import io.opaa.group.sync.DirectoryUnavailableException;
 import java.time.Instant;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
 
@@ -28,6 +30,7 @@ public final class FakeDirectoryClient implements DirectoryClient {
 
   private DirectorySnapshot snapshot = new DirectorySnapshot(Instant.now(), List.of());
   private final Map<UUID, DirectorySnapshot> snapshotsByProvider = new HashMap<>();
+  private final Set<UUID> brokenProviders = new HashSet<>();
   private DirectoryUnavailableException failure;
   private volatile Consumer<UUID> fetchGate = organizationId -> {};
 
@@ -47,6 +50,15 @@ public final class FakeDirectoryClient implements DirectoryClient {
   }
 
   /**
+   * Makes this one provider's fetch fail the way a defective connector would - with an unchecked
+   * exception rather than the declared {@link DirectoryUnavailableException}, which the run
+   * handles. What a caller does with an exception it does not expect is the point of the test.
+   */
+  public void breakFor(UUID providerId) {
+    brokenProviders.add(providerId);
+  }
+
+  /**
    * Stands in for the one slow step of a real run: {@code gate} is invoked inside {@link
    * #fetchGroups}, so a test can hold a run open at exactly the point a production fetch would take
    * its time and observe what a second, concurrent caller sees.
@@ -60,6 +72,7 @@ public final class FakeDirectoryClient implements DirectoryClient {
     this.failure = null;
     this.snapshot = new DirectorySnapshot(Instant.now(), List.of());
     this.snapshotsByProvider.clear();
+    this.brokenProviders.clear();
     this.fetchGate = organizationId -> {};
   }
 
@@ -67,6 +80,9 @@ public final class FakeDirectoryClient implements DirectoryClient {
   public DirectorySnapshot fetchGroups(UUID organizationId, UUID providerId)
       throws DirectoryUnavailableException {
     fetchGate.accept(organizationId);
+    if (brokenProviders.contains(providerId)) {
+      throw new IllegalStateException("simulated connector defect for provider " + providerId);
+    }
     if (failure != null) {
       throw failure;
     }

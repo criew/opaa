@@ -97,6 +97,7 @@ class AuditEventRecordingIntegrationTest {
   @Autowired private SpaceRepository spaceRepository;
   @Autowired private DirectorySyncService directorySyncService;
   @Autowired private DirectorySyncStatusRepository directorySyncStatusRepository;
+  @Autowired private io.opaa.group.sync.DirectorySyncPendingPlanRepository pendingPlanRepository;
   @Autowired private io.opaa.auth.oidc.OidcProviderRepository oidcProviderRepository;
   @Autowired private FakeDirectoryClient directoryClient;
   @Autowired private UserRepository userRepository;
@@ -134,6 +135,7 @@ class AuditEventRecordingIntegrationTest {
 
   @AfterEach
   void tearDown() {
+    pendingPlanRepository.deleteAll(pendingPlanRepository.findByOrganizationId(organizationId));
     directorySyncStatusRepository.deleteAll(
         directorySyncStatusRepository.findByOrganizationId(organizationId));
     // Only the spaces of this test's own organization; their memberships go with them

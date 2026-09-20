@@ -178,6 +178,10 @@ Das ändert drei Regeln aus ADR-0025, Entscheidung 3, und hebt eine auf:
   und steuert, wie bisher, den Verzeichnisabgleich (`TrustedProvider`). Die `LOCAL`-Zeile ist nie
   Standard (der `CHECK` oben). Die Erstadministrator-Wirkung des Standardanbieters entfällt
   (Entscheidung 5).
+
+  > **Nachtrag (#1816, PR #1855):** Mit dem Abgleich je Anbieter hängt er an der Anbieterzeile
+  > selbst — `is_default` wirkt seither nur noch auf den Anmeldevorschlag und den Löschschutz des
+  > Standardanbieters; `TrustedProvider` ist entfallen.
 - **Ein Zustand ohne OIDC-Anbieter ist zulässig** — eine frische Installation *ist* dieser Zustand.
   Die Regel „genau ein Standard, solange Anbieter existieren" gilt weiter, aber nur über die
   `OIDC`-Zeilen.
