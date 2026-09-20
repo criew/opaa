@@ -190,12 +190,15 @@ class DirectorySyncPlanExecutor {
 
     // ADR-0025, Entscheidung 4: the directory's subjects are accounts of the trusted provider
     // only - without one there is nobody to resolve, and resolving nobody would read as "remove
-    // every membership", so the run stops here instead.
+    // every membership", so the run stops here instead. A disabled default provider is none
+    // (ADR-0033, Entscheidung 4), so this branch covers "no default" and "default switched off".
     String issuer = trustedProvider.issuer().orElse(null);
     if (issuer == null) {
       String message =
-          "Kein Standardanbieter hinterlegt: Die Mitglieder des Verzeichnisses können keinem"
-              + " Konto zugeordnet werden. Der Lauf wurde ohne Änderungen abgebrochen.";
+          "Kein aktivierter Standardanbieter: Die Mitglieder des Verzeichnisses können keinem"
+              + " Konto zugeordnet werden. Der Lauf wurde ohne Änderungen abgebrochen. Ein"
+              + " deaktivierter Standardanbieter zählt nicht - aktivieren Sie ihn oder machen Sie"
+              + " einen aktivierten Anbieter zum Standard.";
       log.warn(
           "Directory sync: no trusted provider to resolve members through for organization {} -"
               + " aborting without changes",
