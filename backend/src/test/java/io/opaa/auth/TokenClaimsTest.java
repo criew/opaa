@@ -12,7 +12,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
  * {@link TokenClaims} (#1331, ADR-0025 Entscheidung 4): the same token read through two providers'
  * mappings yields two different identities - address, display name, roles and groups each come from
  * the claim the provider's mapping names, nested paths included; a mapping without a roles or
- * groups claim yields none.
+ * groups claim knows nothing about them, which is not "none".
  */
 class TokenClaimsTest {
 
@@ -39,7 +39,8 @@ class TokenClaimsTest {
     assertThat(claims.issuer()).isEqualTo("https://idp.example/realms/a");
     assertThat(claims.email()).isEqualTo("alice@behoerde.example");
     assertThat(claims.displayName()).isEqualTo("Alice Mustermann");
-    assertThat(claims.roles()).isEmpty();
+    // a mapping without a roles claim knows nothing about roles - which is not "no elevated role"
+    assertThat(claims.roles()).isEqualTo(TokenRoles.unavailable(TokenRoles.Reason.CLAIM_MISSING));
     // a mapping without a groups claim knows nothing about groups - which is not "no groups"
     assertThat(claims.groups())
         .isEqualTo(TokenGroups.unavailable(TokenGroups.Reason.CLAIM_MISSING));
@@ -56,7 +57,7 @@ class TokenClaimsTest {
     assertThat(claims.email()).isEqualTo("alice.mustermann@partner.example");
     // given_name is absent: preferred_username is the fallback, never the subject
     assertThat(claims.displayName()).isEqualTo("amustermann");
-    assertThat(claims.roles()).containsExactly("opaa-admin", "offline_access");
+    assertThat(claims.roles()).isEqualTo(TokenRoles.named(List.of("opaa-admin", "offline_access")));
     assertThat(claims.groups()).isEqualTo(TokenGroups.named(List.of("CN=Referat 12")));
   }
 
@@ -75,7 +76,9 @@ class TokenClaimsTest {
     Jwt bare = Jwt.withTokenValue("t").header("alg", "none").claim("sub", "bob").build();
 
     TokenClaims claims = TokenClaims.read(token(), mapping);
-    assertThat(claims.roles()).isEmpty();
+    // regression guard for #1830: a path that leads nowhere is not an empty roles claim, which
+    // would read as USER and demote the account
+    assertThat(claims.roles()).isEqualTo(TokenRoles.unavailable(TokenRoles.Reason.CLAIM_MISSING));
     // regression guard for #1807: a path that leads nowhere is not an empty groups claim
     assertThat(claims.groups())
         .isEqualTo(TokenGroups.unavailable(TokenGroups.Reason.CLAIM_MISSING));

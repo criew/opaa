@@ -15,6 +15,8 @@ import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -24,7 +26,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * UPDATE} behind {@link TokenRoleSynchronizer} withdraws {@code SYSTEM_ADMIN} only while another
  * <em>login-capable</em> administrator of the organization remains - here an account of the enabled
  * provider row this test saves - a second withdrawal is refused and audited, and a withdrawal a
- * concurrent request already wrote is read back rather than misreported as refused.
+ * concurrent request already wrote is read back rather than misreported as refused. Since #1830 it
+ * also holds the other half against the same database: a token without a usable roles claim
+ * withdraws nothing at all, while an empty claim and one naming none of the configured values keep
+ * withdrawing.
  */
 @OpaaIntegrationTest
 class TokenRoleSynchronizerIntegrationTest {
@@ -38,6 +43,7 @@ class TokenRoleSynchronizerIntegrationTest {
   private UUID organizationId;
   private User first;
   private User second;
+  private User auditor;
   private final OidcProvider provider =
       new OidcProvider(
           "Beschäftigte",
@@ -55,9 +61,14 @@ class TokenRoleSynchronizerIntegrationTest {
     providerRepository.save(provider);
     first = admin("erste");
     second = admin("zweite");
+    auditor = account("pruefer", SystemRole.AUDITOR);
   }
 
   private User admin(String subject) {
+    return account(subject, SystemRole.SYSTEM_ADMIN);
+  }
+
+  private User account(String subject, SystemRole role) {
     User user =
         new User(
             subject + "-" + UUID.randomUUID(),
@@ -65,14 +76,14 @@ class TokenRoleSynchronizerIntegrationTest {
             subject + "@x.example",
             subject);
     user.setOrganizationId(organizationId);
-    user.setSystemRole(SystemRole.SYSTEM_ADMIN);
+    user.setSystemRole(role);
     return userRepository.save(user);
   }
 
   @AfterEach
   void tearDown() {
     jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organizationId);
-    userRepository.deleteAll(List.of(first, second));
+    userRepository.deleteAll(List.of(first, second, auditor));
     providerRepository.delete(provider);
     organizationRepository.deleteById(organizationId);
   }
@@ -90,11 +101,12 @@ class TokenRoleSynchronizerIntegrationTest {
 
   @Test
   void theSecondToLastWithdrawalIsWrittenAndTheLastOneIsRefusedAndAudited() {
-    User firstAfter = synchronizer.apply(first, provider, List.of("opaa-auditor"));
+    User firstAfter =
+        synchronizer.apply(first, provider, TokenRoles.named(List.of("opaa-auditor")));
     assertThat(firstAfter.getSystemRole()).isEqualTo(SystemRole.AUDITOR);
     assertThat(storedRole(first)).isEqualTo(SystemRole.AUDITOR);
 
-    User secondAfter = synchronizer.apply(second, provider, List.of());
+    User secondAfter = synchronizer.apply(second, provider, TokenRoles.named(List.of()));
     assertThat(secondAfter.getSystemRole()).isEqualTo(SystemRole.SYSTEM_ADMIN);
     assertThat(storedRole(second)).isEqualTo(SystemRole.SYSTEM_ADMIN);
 
@@ -123,8 +135,8 @@ class TokenRoleSynchronizerIntegrationTest {
     ofDisabled.setSystemRole(SystemRole.SYSTEM_ADMIN);
     ofDisabled = userRepository.save(ofDisabled);
     try {
-      synchronizer.apply(first, provider, List.of());
-      User result = synchronizer.apply(second, provider, List.of());
+      synchronizer.apply(first, provider, TokenRoles.named(List.of()));
+      User result = synchronizer.apply(second, provider, TokenRoles.named(List.of()));
 
       assertThat(result.getSystemRole()).isEqualTo(SystemRole.SYSTEM_ADMIN);
       assertThat(storedRole(second)).isEqualTo(SystemRole.SYSTEM_ADMIN);
@@ -143,8 +155,8 @@ class TokenRoleSynchronizerIntegrationTest {
     elsewhere.setSystemRole(SystemRole.SYSTEM_ADMIN);
     elsewhere = userRepository.save(elsewhere);
     try {
-      synchronizer.apply(first, provider, List.of());
-      User result = synchronizer.apply(second, provider, List.of());
+      synchronizer.apply(first, provider, TokenRoles.named(List.of()));
+      User result = synchronizer.apply(second, provider, TokenRoles.named(List.of()));
 
       assertThat(result.getSystemRole()).isEqualTo(SystemRole.SYSTEM_ADMIN);
       assertThat(storedRole(second)).isEqualTo(SystemRole.SYSTEM_ADMIN);
@@ -163,10 +175,49 @@ class TokenRoleSynchronizerIntegrationTest {
     // the in-memory user still says SYSTEM_ADMIN, the row already says USER
     jdbcTemplate.update("UPDATE users SET system_role = 'USER' WHERE id = ?", first.getId());
 
-    User result = synchronizer.apply(first, provider, List.of());
+    User result = synchronizer.apply(first, provider, TokenRoles.named(List.of()));
 
     assertThat(result.getSystemRole()).isEqualTo(SystemRole.USER);
     assertThat(auditRows()).isEmpty();
+  }
+
+  /**
+   * regression guard for #1830: a token that carries no usable roles claim used to read as an empty
+   * list, and an empty list means {@code USER} - every auditor and every administrator but the last
+   * one was demoted, one sign-in at a time. The stored roles are read back from the database, and
+   * the administrator here is not the last one, so nothing but this guard keeps the role.
+   */
+  @ParameterizedTest
+  @EnumSource(TokenRoles.Reason.class)
+  void aTokenWithoutAUsableRolesClaimWithdrawsNothing(TokenRoles.Reason reason) {
+    assertThat(storedRole(first)).isEqualTo(SystemRole.SYSTEM_ADMIN);
+    assertThat(storedRole(second)).isEqualTo(SystemRole.SYSTEM_ADMIN);
+    assertThat(storedRole(auditor)).isEqualTo(SystemRole.AUDITOR);
+
+    User adminAfter = synchronizer.apply(first, provider, TokenRoles.unavailable(reason));
+    User auditorAfter = synchronizer.apply(auditor, provider, TokenRoles.unavailable(reason));
+
+    assertThat(adminAfter.getSystemRole()).isEqualTo(SystemRole.SYSTEM_ADMIN);
+    assertThat(auditorAfter.getSystemRole()).isEqualTo(SystemRole.AUDITOR);
+    assertThat(storedRole(first)).isEqualTo(SystemRole.SYSTEM_ADMIN);
+    assertThat(storedRole(auditor)).isEqualTo(SystemRole.AUDITOR);
+    assertThat(auditRows()).isEmpty();
+  }
+
+  /** The withdrawal a provider means stays a withdrawal: an empty claim and one without a hit. */
+  @Test
+  void anEmptyClaimAndOneWithoutTheConfiguredValuesStillWithdraw() {
+    assertThat(storedRole(auditor)).isEqualTo(SystemRole.AUDITOR);
+    assertThat(storedRole(first)).isEqualTo(SystemRole.SYSTEM_ADMIN);
+
+    synchronizer.apply(auditor, provider, TokenRoles.named(List.of()));
+    synchronizer.apply(first, provider, TokenRoles.named(List.of("offline_access")));
+
+    assertThat(storedRole(auditor)).isEqualTo(SystemRole.USER);
+    assertThat(storedRole(first)).isEqualTo(SystemRole.USER);
+    assertThat(auditRows())
+        .extracting(row -> row.get("event_type"))
+        .containsExactly("AUDITOR_ROLE_REVOKED", "SYSTEM_ADMIN_ROLE_REVOKED");
   }
 
   @Test
@@ -175,7 +226,7 @@ class TokenRoleSynchronizerIntegrationTest {
     regular.setOrganizationId(organizationId);
     regular = userRepository.save(regular);
     try {
-      User result = synchronizer.apply(regular, provider, List.of("opaa-admin"));
+      User result = synchronizer.apply(regular, provider, TokenRoles.named(List.of("opaa-admin")));
 
       assertThat(result.getSystemRole()).isEqualTo(SystemRole.SYSTEM_ADMIN);
       assertThat(storedRole(regular)).isEqualTo(SystemRole.SYSTEM_ADMIN);

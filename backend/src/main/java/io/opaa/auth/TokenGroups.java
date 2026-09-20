@@ -1,6 +1,5 @@
 package io.opaa.auth;
 
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -12,9 +11,6 @@ import java.util.Map;
  * so that no caller can fold them back into one empty list.
  */
 public sealed interface TokenGroups {
-
-  /** OpenID Connect 5.6.2: the names of the claims delivered as aggregated or distributed. */
-  String OVERAGE_CLAIM = "_claim_names";
 
   /**
    * The claim's group names; empty means the provider revokes every membership of its namespace.
@@ -50,6 +46,18 @@ public sealed interface TokenGroups {
     public String description() {
       return description;
     }
+
+    /**
+     * The shared reader classifies, this names the cause in the wording of a groups claim; the
+     * switch is exhaustive, so a further cause has to be worded here as well.
+     */
+    static Reason of(ClaimList.Cause cause) {
+      return switch (cause) {
+        case MISSING -> CLAIM_MISSING;
+        case MALFORMED -> CLAIM_MALFORMED;
+        case OVERAGE -> CLAIM_OVERAGE;
+      };
+    }
   }
 
   /** The claim named nothing usable, for the given reason. */
@@ -63,50 +71,14 @@ public sealed interface TokenGroups {
   }
 
   /**
-   * The value under {@code path}, classified. A {@code null} or blank path - a provider that names
-   * no groups claim at all - reads as {@link Reason#CLAIM_MISSING}: nothing is known about this
-   * account's groups, so nothing about them may change.
+   * The value under {@code path}, classified by {@link ClaimList}. A {@code null} or blank path - a
+   * provider that names no groups claim at all - reads as {@link Reason#CLAIM_MISSING}: nothing is
+   * known about this account's groups, so nothing about them may change.
    */
   static TokenGroups read(Map<String, Object> claims, String path) {
-    if (signalsOverage(claims, path)) {
-      return unavailable(Reason.CLAIM_OVERAGE);
-    }
-    Object value = ClaimPaths.valueAt(claims, path);
-    if (value == null) {
-      return unavailable(Reason.CLAIM_MISSING);
-    }
-    if (value instanceof Collection<?> values) {
-      // an empty list is the provider saying "no groups"; a non-empty one that yields no name is
-      // a claim this reader cannot make sense of, and never a revocation
-      List<String> names = usableNames(values);
-      return values.isEmpty() || !names.isEmpty()
-          ? named(names)
-          : unavailable(Reason.CLAIM_MALFORMED);
-    }
-    if (value instanceof String text && !text.isBlank()) {
-      return named(List.of(text));
-    }
-    return unavailable(Reason.CLAIM_MALFORMED);
-  }
-
-  private static List<String> usableNames(Collection<?> values) {
-    return values.stream()
-        .filter(element -> element instanceof String text && !text.isBlank())
-        .map(String.class::cast)
-        .toList();
-  }
-
-  /**
-   * Whether the token replaced the claim by a distributed-claim reference: {@code _claim_names}
-   * maps the top-level claim name - the first segment of {@code path} - to a source entry. The
-   * split keeps its limit: without it a path of nothing but dots yields an empty array and reading
-   * its first segment would fail the request, which no claim layout may do.
-   */
-  private static boolean signalsOverage(Map<String, Object> claims, String path) {
-    if (claims == null || path == null || path.isBlank()) {
-      return false;
-    }
-    return claims.get(OVERAGE_CLAIM) instanceof Map<?, ?> names
-        && names.containsKey(path.split("\\.", 2)[0]);
+    return switch (ClaimList.read(claims, path)) {
+      case ClaimList.Values values -> named(values.values());
+      case ClaimList.Unusable unusable -> unavailable(Reason.of(unusable.cause()));
+    };
   }
 }

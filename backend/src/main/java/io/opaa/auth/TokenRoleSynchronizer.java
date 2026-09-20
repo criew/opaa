@@ -1,5 +1,6 @@
 package io.opaa.auth;
 
+import io.opaa.api.RateLimitService;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
@@ -31,13 +32,28 @@ import org.springframework.transaction.annotation.Transactional;
  * actually sign in remains. A refused withdrawal is logged and audited ({@link
  * AuditEventType#SYSTEM_ADMIN_ROLE_REVOCATION_REFUSED}); the account keeps the role the provider
  * withdrew. {@code AUDITOR} is not protected.
+ *
+ * <p>Only a claim the token actually carried is authoritative (#1830): a claim that names none of
+ * the configured role values is the provider withdrawing the elevated role, but a token whose claim
+ * is absent, of another shape or replaced by an overage reference leaves the stored role as it is
+ * and is logged per provider and cause at most once per {@link #INCIDENT_WINDOW_SECONDS} seconds.
+ * Without that distinction a removed role mapper at the provider would demote every auditor and
+ * every administrator but the last one, one sign-in at a time.
  */
 @Component
 public class TokenRoleSynchronizer {
 
   static final String IDENTITY_PROVIDER_ACTOR = "identity-provider";
 
+  /** One incident per provider and cause per window: a broken provider must not flood the log. */
+  static final int INCIDENT_WINDOW_SECONDS = 300;
+
+  private static final int INCIDENTS_PER_WINDOW = 1;
+
   private static final Logger log = LoggerFactory.getLogger(TokenRoleSynchronizer.class);
+
+  private final RateLimitService incidentLog =
+      new RateLimitService(INCIDENTS_PER_WINDOW, INCIDENT_WINDOW_SECONDS);
 
   private final UserRepository userRepository;
   private final LocalAdminAvailabilityGuard adminGuard;
@@ -65,10 +81,39 @@ public class TokenRoleSynchronizer {
 
   /**
    * Aligns {@code user}'s stored role with what the token says; returns the user with the role it
-   * has after this call. No write when nothing changed.
+   * has after this call. No write when nothing changed, and none at all when the token named no
+   * usable roles claim - then only the incident is reported.
    */
   @Transactional
-  public User apply(User user, OidcProvider provider, List<String> tokenRoles) {
+  public User apply(User user, OidcProvider provider, TokenRoles tokenRoles) {
+    return switch (tokenRoles) {
+      case TokenRoles.Unavailable unavailable -> {
+        reportUnchanged(provider, unavailable.reason());
+        yield user;
+      }
+      case TokenRoles.Named named -> align(user, provider, named.values());
+    };
+  }
+
+  /**
+   * Names the provider and the cause; the stored role is left as it is. At most one log entry per
+   * provider and cause per {@link #INCIDENT_WINDOW_SECONDS} seconds: a provider whose tokens are
+   * broken sends every account of its own through here, and a changed cause is news of its own
+   * rather than a repetition.
+   */
+  private void reportUnchanged(OidcProvider provider, TokenRoles.Reason reason) {
+    if (!incidentLog.isAllowed(provider.getId() + ":" + reason.name())) {
+      return;
+    }
+    log.warn(
+        "The token of provider '{}' {}; the system roles of its accounts are left unchanged"
+            + " (further incidents of this cause are suppressed for {} seconds)",
+        provider.getDisplayName(),
+        reason.description(),
+        INCIDENT_WINDOW_SECONDS);
+  }
+
+  private User align(User user, OidcProvider provider, List<String> tokenRoles) {
     SystemRole target = roleFor(provider.getClaimMapping(), tokenRoles);
     SystemRole current = user.getSystemRole();
     if (target == current) {
