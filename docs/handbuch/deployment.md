@@ -1666,6 +1666,16 @@ Bei eingeschalteter lokaler Benutzerverwaltung heißt das zugleich: Gelingt der 
 
 **Rollen und Gruppen aus dem Token** (optional, je Anbieter). Ist ein **Rollen-Claim** gesetzt (Pfad in Punktnotation, z. B. `realm_access.roles`, mit den Rollenwerten für `SYSTEM_ADMIN` und `AUDITOR`), ist der Anbieter für diese Systemrollen führend: Die Rolle wird bei jeder Anfrage aus dem Token übernommen, die manuelle Rollenvergabe ist für Konten dieses Anbieters gesperrt, und der letzte `SYSTEM_ADMIN` der Installation wird nie per Token entzogen (der abgelehnte Entzug wird protokolliert und auditiert). Das Setzen des Rollen-Claims verlangt in der Oberfläche eine Bestätigung. Ist ein **Gruppen-Claim** gesetzt, werden die Gruppennamen des Tokens bei jeder Anmeldung zu Mitgliedschaften in Gruppen der Art „Gruppe aus dem Identitätsanbieter"; jede solche Gruppe trägt ihren Anbieter als Verweis, gleichnamige Gruppen zweier Anbieter sind zwei Gruppen. Diese Gruppen sind in der Gruppenverwaltung schreibgeschützt und nicht Gegenstand des Verzeichnisabgleichs.
 
+**Was ein Token über Rollen sagt — und was nicht.** Ein Rollen-Claim ist nur dann führend, wenn das Token ihn auch trägt. OPAA unterscheidet drei Fälle:
+
+| Was das Token trägt | Was bei der Anmeldung geschieht |
+|---|---|
+| Rollen-Claim mit einem der konfigurierten Rollenwerte | Die Rolle wird übernommen (`SYSTEM_ADMIN` vor `AUDITOR`), bei Abweichung geschrieben und auditiert. |
+| Rollen-Claim vorhanden, aber ohne einen der konfigurierten Werte (auch der leere Claim) | Herabstufung auf `USER`, auditiert — der Anbieter ist die führende Quelle. Ausgenommen bleibt nur der letzte anmeldefähige `SYSTEM_ADMIN`. |
+| Kein Rollen-Claim, falsch geformter Claim (anderer Typ, nur unbrauchbare Werte), oder Overage-Hinweis | Es ändert sich **nichts**: Die gespeicherte Rolle bleibt, es wird kein Rollenereignis und kein Audit-Eintrag geschrieben. Das Backend meldet den Vorfall im Anwendungsprotokoll, je Anbieter und Ursache höchstens alle fünf Minuten einmal. |
+
+Der dritte Fall ist der praktisch wichtige: Wird am Anbieter der Rollen-Mapper entfernt, umbenannt oder bei einer Umstellung vorübergehend falsch gesetzt, verlöre sonst jeder Revisor seine `AUDITOR`-Rolle und jeder Systemverwalter bis auf einen seine `SYSTEM_ADMIN`-Rolle — je Anmeldung eine Herabstufung, jede davon als reguläres „Rolle geändert"-Ereignis, das den Vorfall wie eine beabsichtigte Änderung aussehen lässt. Wer die Meldung sieht, prüft die Claim-Zuordnung des Anbieters und die Mapper-Konfiguration dort; bis dahin arbeiten die Konten mit ihrer zuletzt bekannten Rolle weiter.
+
 **Was ein Token über Gruppen sagt — und was nicht.** Ein Gruppen-Claim ist nur dann führend, wenn das Token ihn auch trägt. OPAA unterscheidet drei Fälle:
 
 | Was das Token trägt | Was bei der Anmeldung geschieht |
@@ -1720,7 +1730,7 @@ Die Variablen `OPAA_OIDC_ISSUER_URI`, `OPAA_OIDC_CLIENT_ID` und `OPAA_OIDC_JWK_S
 - **Kein SAML, kein reines OAuth2:** Ausschließlich OpenID Connect mit Discovery-Dokument und Authorization Code Flow (PKCE, öffentlicher Client).
 - **Ein Verzeichnisabgleich je Installation:** Der Abgleich ist an den Standardanbieter gebunden; Gruppen anderer Anbieter kommen nur über deren Gruppen-Claim. Im Betriebsmodus `dev` gibt es keine Anbieterzeile — dort entstehende Verzeichnisgruppen tragen deshalb (noch) keinen Anbieterverweis.
 - **Keine Übertragung von Berechtigungen zwischen Gruppen:** Ein Anbieter, dessen Gruppen noch Berechtigungen tragen, ist nicht löschbar; die Berechtigungen müssen einzeln entfernt werden. Deaktivieren bleibt jederzeit möglich.
-- **`AUDITOR` ist nicht geschützt:** Ein per Token entzogener letzter Prüfer ist nur im Anbieter wiederherstellbar.
+- **`AUDITOR` ist nicht geschützt:** Ein durch einen benannten Rollen-Claim entzogener letzter Prüfer ist nur im Anbieter wiederherstellbar (ein fehlender oder unbrauchbarer Claim entzieht die Rolle nicht).
 - **Eine Organisation:** Alle Anbieter provisionieren in dieselbe Organisation.
 
 ### Erststart und Systemverwalter-Konto

@@ -81,8 +81,9 @@ public class UserService {
    * memberships by the {@link UserProvisionedEvent} this method publishes exactly once - as does
    * the personal-space provisioning, which is why neither package is reached into from here.
    *
-   * <p>What the token said about the groups travels as a {@link TokenGroups}: a token that carries
-   * no usable claim must not reach a listener as "this account has no groups" (#1807).
+   * <p>What the token said travels as a {@link TokenRoles} and a {@link TokenGroups}: a token that
+   * carries no usable claim must not reach the role synchronizer as "this account has no elevated
+   * role" (#1830) nor a listener as "this account has no groups" (#1807).
    */
   public User provisionFromToken(Jwt jwt) {
     String issuer = JwtUserClaims.issuer(jwt);

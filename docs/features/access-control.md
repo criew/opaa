@@ -838,8 +838,9 @@ Systemprozess-Akteur `identity-provider`. Drei Sicherungen: Der letzte `SYSTEM_A
 Token entzogen (bedingter, je Organisation serialisierter `UPDATE`; der abgelehnte Entzug wird
 protokolliert und als `SYSTEM_ADMIN_ROLE_REVOCATION_REFUSED` auditiert), die manuelle Rollenvergabe
 ist für Konten eines solchen Anbieters gesperrt (409), und die Oberfläche (#1333) verlangt beim
-Setzen des Rollen-Claims eine Bestätigung. `AUDITOR` ist nicht geschützt. Ist ein
-**Gruppen-Claim** gesetzt, werden die Gruppennamen des Tokens bei jeder Anmeldung zu
+Setzen des Rollen-Claims eine Bestätigung. `AUDITOR` ist gegen den Entzug durch einen benannten
+Claim nicht geschützt — gegen einen fehlenden oder unbrauchbaren Claim seit #1830 schon (siehe
+unten). Ist ein **Gruppen-Claim** gesetzt, werden die Gruppennamen des Tokens bei jeder Anmeldung zu
 Mitgliedschaften in Gruppen der Art „Gruppe aus dem Identitätsanbieter" (`IDENTITY_PROVIDER`).
 Jede solche Gruppe benennt ihren Anbieter als Fremdschlüssel (`groups.provider_id`, seit #1812);
 `external_id` trägt den blanken Namen aus dem Claim, bis zu 255 Zeichen: gleichnamige
@@ -851,6 +852,25 @@ wählbar. Der **Verzeichnisabgleich** ist an den Standardanbieter gebunden: Er l
 des Verzeichnisses nur unter dessen Konten auf (ein gleichnamiges Subject eines zweiten Anbieters
 erbt keine Mitgliedschaft) und verwaltet ausschließlich Organisationseinheiten; ohne
 Standardanbieter bricht ein Lauf ohne Änderungen ab.
+
+**Was ein Token über Rollen sagt — und was nicht (gebaut, #1830).** „Keine Auskunft" und
+„ausdrücklich keine erhöhte Rolle" sind zwei verschiedene Aussagen, und nur die zweite ist ein
+Entzug — dieselbe Unterscheidung wie bei den Gruppen (siehe
+[Gruppensynchronisation ist ein Rechteereignis](#gruppensynchronisation-ist-ein-rechteereignis)).
+Der Anmeldeweg unterscheidet deshalb drei Fälle:
+
+| Was das Token sagt | Was geschieht |
+|---|---|
+| Der Rollen-Claim ist vorhanden und nennt einen der konfigurierten Rollenwerte | Die Rolle wird übernommen (`SYSTEM_ADMIN` vor `AUDITOR`), bei Abweichung geschrieben und auditiert. |
+| Der Rollen-Claim ist vorhanden und nennt **keinen** der konfigurierten Werte — auch der leere Claim | Herabstufung auf `USER`, auditiert. Der Anbieter bleibt die führende Quelle; nur der letzte anmeldefähige `SYSTEM_ADMIN` wird davon ausgenommen. |
+| Der Rollen-Claim **fehlt**, ist falsch geformt (anderer Typ, nur unbrauchbare Werte) oder wurde vom Anbieter durch einen Overage-Hinweis (`_claim_names`) ersetzt | **Nichts ändert sich.** Die gespeicherte Rolle bleibt, es wird kein Rollenereignis und kein Audit-Eintrag geschrieben. Der Vorfall wird je Anbieter **und Ursache** gedrosselt im Anwendungsprotokoll gemeldet (höchstens alle 300 Sekunden einmal); ein Wechsel der Ursache ist eine eigene Meldung. |
+
+Der dritte Fall ist der praktisch wichtige: Wird am Identitätsanbieter der Rollen-Mapper entfernt,
+umbenannt oder bei einer Umstellung vorübergehend falsch gesetzt, verlöre sonst **jeder** Revisor
+seine `AUDITOR`-Rolle und **jeder Systemverwalter bis auf einen** seine `SYSTEM_ADMIN`-Rolle — je
+Anmeldung eine Herabstufung, jede davon als reguläres „Rolle geändert"-Ereignis, das den Vorfall wie
+eine beabsichtigte Änderung aussehen lässt. Das Nachladen über die Schnittstelle des Anbieters ist
+auch hier nicht gebaut.
 
 **Anmeldeseite mit mehreren Anbietern (gebaut, #1332).** `GET /api/v1/auth/config` liefert ohne
 Anmeldung die aktivierten Anbieter, deren Schlüssel das Backend abrufen konnte — Anzeigename,

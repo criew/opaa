@@ -388,7 +388,7 @@ services:
   # "mailpit" (the backend reaches it over the Compose network), port 1025, encryption NONE, no
   # credentials. Both ports are published to 127.0.0.1 only.
   mailpit:
-    image: axllent/mailpit:v1.31.1
+    image: axllent/mailpit:v1.31.2
     environment:
       MP_MAX_MESSAGES: 500
       MP_SMTP_AUTH_ACCEPT_ANY: 1

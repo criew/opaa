@@ -160,7 +160,7 @@ class ManualAndTokenRoleWithdrawalIntegrationTest {
   }
 
   private User withdrawByToken() {
-    return synchronizer.apply(tokenAdmin, tokenProvider, List.of());
+    return synchronizer.apply(tokenAdmin, tokenProvider, TokenRoles.named(List.of()));
   }
 
   @Test

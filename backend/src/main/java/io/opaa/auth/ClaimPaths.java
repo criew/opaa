@@ -1,8 +1,5 @@
 package io.opaa.auth;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -25,27 +22,8 @@ final class ClaimPaths {
   }
 
   /**
-   * The strings at {@code path}: every string element of a collection there, or the one string
-   * there; blank entries dropped; empty when absent.
-   */
-  static List<String> strings(Map<String, Object> claims, String path) {
-    Object value = valueAt(claims, path);
-    List<String> result = new ArrayList<>();
-    if (value instanceof Collection<?> values) {
-      for (Object element : values) {
-        if (element instanceof String text && !text.isBlank()) {
-          result.add(text);
-        }
-      }
-    } else if (value instanceof String text && !text.isBlank()) {
-      result.add(text);
-    }
-    return List.copyOf(result);
-  }
-
-  /**
-   * The raw value at {@code path}, {@code null} when the path leads nowhere. Only a reader that has
-   * to tell "absent" from "present but empty" needs it - {@link TokenGroups} is the one.
+   * The raw value at {@code path}, {@code null} when the path leads nowhere. A reader that has to
+   * tell "absent" from "present but empty" classifies it further - {@link ClaimList} is the one.
    */
   static Object valueAt(Map<String, Object> claims, String path) {
     if (claims == null || path == null || path.isBlank()) {
