@@ -14,6 +14,14 @@ databaseChangeLog:
         Stichtagsauskunft erst bei der ersten Aenderung, und der ausgelieferte Zustand - der
         laengste, den die meisten Installationen je haben - waere der einzige unbelegte.
         .
+        valid_from ist der Erstellungszeitpunkt der Organisation, nicht der Migrationszeitpunkt.
+        Das Recht galt seit ihrem ersten Tag (ADR-0018 Entscheidung 6: die Anlage stand jedem
+        angemeldeten Konto offen); ein valid_from von heute liesse die Stichtagsauskunft fuer jeden
+        frueheren Stichtag "niemand durfte" antworten, was der abgeloesten Entscheidung
+        widerspricht. Dieselbe Systematik wie der Backfill aus #238, der valid_from aus
+        group_memberships.created_at nimmt. Der Trigger unten setzt dagegen now(): dort ist die
+        Organisation in diesem Augenblick entstanden, beide Werte sind derselbe.
+        .
         Der Trigger traegt denselben Zustand fuer jede spaeter entstehende Organisation nach. Er
         steht hier und nicht in der Anwendung, weil es keinen Anlagepfad fuer Organisationen gibt
         (kein Service, kein Repository-Schreibzugriff im Produktionscode): die Zusage "jede
@@ -25,7 +33,8 @@ databaseChangeLog:
             splitStatements: false
             sql: |
               INSERT INTO capability_grants (id, organization_id, capability, subject_type, created_at)
-              SELECT gen_random_uuid(), organizations.id, delivered.capability, 'ALL_ACCOUNTS', now()
+              SELECT gen_random_uuid(), organizations.id, delivered.capability, 'ALL_ACCOUNTS',
+                     organizations.created_at
                 FROM organizations
                 CROSS JOIN (VALUES ('CREATE_SPACE'), ('CREATE_LIBRARY'), ('CREATE_CONNECTOR_LIBRARY'))
                      AS delivered(capability);
@@ -65,6 +74,9 @@ databaseChangeLog:
 
               DROP FUNCTION IF EXISTS organizations_seed_capability_grants();
 
-              DELETE FROM capability_grant_history WHERE cause = 'DELIVERED';
+              DELETE FROM capability_grant_history
+               WHERE cause = 'DELIVERED' AND subject_type = 'ALL_ACCOUNTS';
 
-              DELETE FROM capability_grants WHERE subject_type = 'ALL_ACCOUNTS';
+              DELETE FROM capability_grants
+               WHERE subject_type = 'ALL_ACCOUNTS'
+                 AND capability IN ('CREATE_SPACE', 'CREATE_LIBRARY', 'CREATE_CONNECTOR_LIBRARY');

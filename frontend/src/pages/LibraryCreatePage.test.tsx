@@ -5,6 +5,7 @@ import { answerConfirm, renderWithProviders } from '../test/test-utils'
 import LibraryCreatePage from './LibraryCreatePage'
 import { useLibraryStore } from '../stores/libraryStore'
 import { useIndexingStore } from '../stores/indexingStore'
+import { capabilityMissingMessage } from '../utils/labels'
 
 const mockNavigate = vi.fn()
 
@@ -82,7 +83,7 @@ describe('LibraryCreatePage (#596, Mockup 1e)', () => {
       renderPage()
 
       expect(
-        await screen.findByText(/Anlegerecht „Bibliotheken für Uploads anlegen“/),
+        await screen.findByText(capabilityMissingMessage('CREATE_LIBRARY')),
       ).toBeInTheDocument()
       await user.type(screen.getByLabelText(/^Name/), 'Rechtsquellen Soziales')
       await user.click(screen.getByRole('button', { name: 'Weiter' }))
@@ -101,7 +102,7 @@ describe('LibraryCreatePage (#596, Mockup 1e)', () => {
       await user.click(screen.getByRole('radio', { name: /Dateisystem/ }))
 
       expect(
-        await screen.findByText(/Anlegerecht „Konnektorbibliotheken anlegen“/),
+        await screen.findByText(capabilityMissingMessage('CREATE_CONNECTOR_LIBRARY')),
       ).toBeInTheDocument()
     })
   })

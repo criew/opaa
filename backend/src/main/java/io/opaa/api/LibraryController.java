@@ -112,15 +112,14 @@ public class LibraryController {
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 
-  // #514: without libraryId, any authenticated, known user may probe - there is no library yet
-  // for a role to be checked against, and what protects a probe is the path allowlist and the
-  // address validator, which ADR-0036 (Entscheidung 5) keeps independent of any permission. The
-  // capability CREATE_CONNECTOR_LIBRARY is therefore checked at creation, not here, so this bar
-  // is deliberately lower than createLibrary's. With libraryId set (#544),
-  // SourceConnectionTestService
+  // #514: without libraryId, any authenticated, known user may probe - there is no library yet for
+  // a role to be checked against, and what protects a probe is the path allowlist and the address
+  // validator, which ADR-0036 (Entscheidung 5) keeps independent of any permission. The capability
+  // CREATE_CONNECTOR_LIBRARY is therefore checked at creation, not here, so this bar is
+  // deliberately lower than createLibrary's. With libraryId set (#544), SourceConnectionTestService
   // itself enforces the additional MANAGER bar on that library, passed the same systemAdmin flag
-  // updateLibrary below gets (#615 review, finding 3) - a SYSTEM_ADMIN who can save the
-  // quellkonfiguration without a grant must not have "Verbindung testen" fail 404 right before it.
+  // updateLibrary below gets - a SYSTEM_ADMIN who can save the quellkonfiguration without a grant
+  // must not have "Verbindung testen" fail 404 right before it.
   @PostMapping("/source-test")
   public SourceConnectionTestResponse testLibrarySource(
       @Valid @RequestBody SourceConnectionTestRequest request, @Caller CurrentUser caller) {

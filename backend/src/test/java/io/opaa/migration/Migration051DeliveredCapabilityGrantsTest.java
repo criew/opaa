@@ -55,6 +55,30 @@ class Migration051DeliveredCapabilityGrantsTest extends AbstractMigrationTest {
     }
   }
 
+  /**
+   * The delivered right was in force from the organization's first day (ADR-0018, Entscheidung 6,
+   * which ADR-0036 replaces), so its interval starts there and not at the migration. A valid_from
+   * of "today" would make the Stichtag answer "nobody was allowed to" for every earlier date - the
+   * same reasoning the #238 backfill follows, which takes valid_from from the business row.
+   */
+  @Test
+  void datesTheDeliveredStateToTheOrganizationsOwnBeginning() throws SQLException {
+    assertThat(
+            queryForBoolean(
+                "SELECT bool_and(g.created_at = o.created_at)"
+                    + "  FROM capability_grants g JOIN organizations o ON o.id = g.organization_id"))
+        .as("the grant carries the organization's beginning, not the migration's moment")
+        .isTrue();
+    assertThat(
+            queryForBoolean(
+                "SELECT bool_and(h.valid_from = o.created_at)"
+                    + "  FROM capability_grant_history h"
+                    + "  JOIN organizations o ON o.id = h.organization_id"
+                    + " WHERE h.cause = 'DELIVERED'"))
+        .as("and so does its interval, which is what the Stichtag reads")
+        .isTrue();
+  }
+
   @Test
   void opensOneHistoryIntervalPerDeliveredGrant() throws SQLException {
     assertThat(
@@ -96,6 +120,16 @@ class Migration051DeliveredCapabilityGrantsTest extends AbstractMigrationTest {
                     + later
                     + "'::uuid AND cause = 'DELIVERED' AND valid_to IS NULL"))
         .isEqualTo(3);
+    assertThat(
+            queryForBoolean(
+                "SELECT bool_and(h.valid_from >= o.created_at)"
+                    + "  FROM capability_grant_history h"
+                    + "  JOIN organizations o ON o.id = h.organization_id"
+                    + " WHERE h.organization_id = '"
+                    + later
+                    + "'::uuid"))
+        .as("the trigger fires as the organization comes into being - now() is that instant")
+        .isTrue();
   }
 
   private List<String> deliveredCapabilitiesOf(UUID organizationId) throws SQLException {

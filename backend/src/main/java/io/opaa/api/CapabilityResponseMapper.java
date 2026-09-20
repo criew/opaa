@@ -9,6 +9,7 @@ import io.opaa.permission.CapabilityGrant;
 import io.opaa.permission.CapabilityGrantView;
 import io.opaa.permission.CapabilityOverview;
 import io.opaa.permission.CapabilityService;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 
@@ -20,11 +21,21 @@ import java.util.Set;
  */
 final class CapabilityResponseMapper {
 
+  /**
+   * The reservation {@link #statement} appends for {@link Capability#CREATE_INTERNAL_GROUP} as long
+   * as no creation path outside the system administration exists: the endpoint behind it is {@code
+   * SYSTEM_ADMIN}-only, so a grant to anybody else is recorded and has no effect yet. Active
+   * restriction, removed with the creation path of #1814.
+   */
+  private static final String WITHOUT_A_CREATION_PATH_YET =
+      " Wirksam wird das Anlegerecht, sobald interne Gruppen außerhalb der Systemverwaltung"
+          + " angelegt werden können (#1814).";
+
   private CapabilityResponseMapper() {}
 
   static MyCapabilitiesResponse toMyCapabilities(Set<Capability> capabilities) {
     return new MyCapabilitiesResponse(
-        java.util.Arrays.stream(Capability.values()).filter(capabilities::contains).toList());
+        Arrays.stream(Capability.values()).filter(capabilities::contains).toList());
   }
 
   static List<CapabilityOverviewResponse> toOverviewResponses(List<CapabilityOverview> overviews) {
@@ -49,9 +60,11 @@ final class CapabilityResponseMapper {
   }
 
   /**
-   * "Alle Konten dürfen Konnektorbibliotheken anlegen." - or, once the delivery state has been
+   * "Alle Konten dürfen Konnektorbibliotheken anlegen." - or, once the delivered state has been
    * narrowed, who may instead. Names at most three subjects and counts the rest, so the line stays
-   * a line.
+   * a line. A subject whose name no longer resolves is named by its kind alone, never by its id: a
+   * UUID in a sentence meant to be read tells a reader nothing and carries an identifier into a
+   * place that has no use for one.
    */
   private static String statement(CapabilityOverview overview) {
     String what = CapabilityService.creatable(overview.capability());
@@ -59,23 +72,28 @@ final class CapabilityResponseMapper {
     if (grants.isEmpty()) {
       return "Nur die Systemverwaltung darf " + what + " anlegen.";
     }
+    String reservation =
+        overview.capability() == Capability.CREATE_INTERNAL_GROUP
+            ? WITHOUT_A_CREATION_PATH_YET
+            : "";
     if (grants.stream()
         .anyMatch(view -> view.grant().getSubjectType() == CapabilitySubjectType.ALL_ACCOUNTS)) {
-      return "Alle Konten dürfen " + what + " anlegen.";
+      return "Alle Konten dürfen " + what + " anlegen." + reservation;
     }
-    List<String> named = grants.stream().map(view -> subjectLabel(view)).sorted().limit(3).toList();
+    List<String> named =
+        grants.stream().map(CapabilityResponseMapper::subjectLabel).sorted().limit(3).toList();
     String subjects = String.join(", ", named);
     if (grants.size() > named.size()) {
       subjects += " und " + (grants.size() - named.size()) + " weitere";
     }
-    return subjects + " sowie die Systemverwaltung dürfen " + what + " anlegen.";
+    return subjects + " sowie die Systemverwaltung dürfen " + what + " anlegen." + reservation;
   }
 
   private static String subjectLabel(CapabilityGrantView view) {
-    String kind =
-        view.grant().getSubjectType() == CapabilitySubjectType.GROUP ? "Gruppe " : "Konto ";
-    String name =
-        view.subjectName() != null ? view.subjectName() : view.grant().getSubjectId().toString();
-    return kind + name;
+    boolean group = view.grant().getSubjectType() == CapabilitySubjectType.GROUP;
+    if (view.subjectName() == null) {
+      return group ? "Eine Gruppe ohne auflösbaren Namen" : "Ein Konto ohne auflösbaren Namen";
+    }
+    return (group ? "Gruppe " : "Konto ") + view.subjectName();
   }
 }

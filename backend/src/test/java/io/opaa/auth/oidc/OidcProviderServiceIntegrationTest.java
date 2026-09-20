@@ -148,6 +148,13 @@ class OidcProviderServiceIntegrationTest {
         OWN_ISSUER_PREFIX + "%",
         "http://127.0.0.1:%");
     jdbcTemplate.update(
+        "DELETE FROM capability_grants WHERE subject_group_id IN"
+            + " (SELECT id FROM groups WHERE provider_id IN ("
+            + ownProviders
+            + "))",
+        OWN_ISSUER_PREFIX + "%",
+        "http://127.0.0.1:%");
+    jdbcTemplate.update(
         "DELETE FROM groups WHERE provider_id IN (" + ownProviders + ")",
         OWN_ISSUER_PREFIX + "%",
         "http://127.0.0.1:%");
@@ -190,6 +197,16 @@ class OidcProviderServiceIntegrationTest {
    * A still-conferring diagnostic authorisation (ADR-0016) scoped to {@code group} - written
    * directly, because the service that issues one demands a holder that is an auditor.
    */
+  /** An Anlegerecht held by {@code group} - the only right it has (#1813). */
+  private void capabilityFor(Group group) {
+    jdbcTemplate.update(
+        "INSERT INTO capability_grants (id, organization_id, capability, subject_type,"
+            + " subject_group_id) VALUES (?, ?, 'CREATE_SPACE', 'GROUP', ?)",
+        UUID.randomUUID(),
+        organizationId,
+        group.getId());
+  }
+
   private void diagnosticAuthorizationScopedTo(Group group) {
     jdbcTemplate.update(
         "INSERT INTO diagnostic_impersonation_grants (id, organization_id, holder_user_id,"
@@ -273,6 +290,29 @@ class OidcProviderServiceIntegrationTest {
                 Integer.class,
                 group.getId()))
         .isEqualTo(1);
+  }
+
+  /**
+   * {@code fk_capability_grants_subject_group_organization} is RESTRICT (#1813): a group that holds
+   * only an Anlegerecht and nothing else is still effective, and deleting its provider would
+   * otherwise run into the constraint from inside {@code deleteGroupsOfProvider} - past the very
+   * counting that exists to ask the caller first.
+   */
+  @Test
+  void aProviderWhoseGroupHoldsOnlyACapabilityIsRefused() {
+    OidcProvider partner = secondProvider();
+    Group group = providerGroup(partner, "Fachbereich 3");
+    capabilityFor(group);
+
+    assertThatThrownBy(() -> service.deleteProvider(organizationId, userId, partner.getId()))
+        .isInstanceOf(ConflictException.class)
+        .satisfies(
+            thrown ->
+                assertThat(((ConflictException) thrown).getCode())
+                    .isEqualTo(OidcProviderService.PROVIDER_GROUPS_IN_EFFECT))
+        .hasMessageContaining("1 Gruppe wirkt noch");
+    assertThat(repository.findById(partner.getId())).isPresent();
+    assertThat(groupRepository.findById(group.getId())).isPresent();
   }
 
   /**

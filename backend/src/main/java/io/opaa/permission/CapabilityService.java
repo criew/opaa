@@ -14,6 +14,7 @@ import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.LinkedHashMap;
@@ -204,6 +205,13 @@ public class CapabilityService {
   public CapabilityGrant grant(
       Capability capability, CapabilitySubjectType subjectType, UUID subjectId, CurrentUser actor) {
     UUID organizationId = actor.organizationId();
+    // Ahead of the conflict check on purpose: a request that names a subject where none may stand
+    // is malformed, and answering it with the 409 of the grant it did not ask for would tell the
+    // caller their request went through in a different shape.
+    if (subjectType == CapabilitySubjectType.ALL_ACCOUNTS && subjectId != null) {
+      throw new ValidationException(
+          "subjectType ALL_ACCOUNTS benennt kein Subjekt - subjectId ist hier unzulässig");
+    }
     requireNoExistingGrant(capability, subjectType, subjectId, organizationId);
 
     CapabilityGrant grant =
@@ -358,7 +366,6 @@ public class CapabilityService {
    */
   static UUID capabilityObjectId(Capability capability) {
     return UUID.nameUUIDFromBytes(
-        ("io.opaa.permission.capability:" + capability.name())
-            .getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        ("io.opaa.permission.capability:" + capability.name()).getBytes(StandardCharsets.UTF_8));
   }
 }

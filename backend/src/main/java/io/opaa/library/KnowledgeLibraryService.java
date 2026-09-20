@@ -210,6 +210,18 @@ public class KnowledgeLibraryService {
     this.s3ClientFactory = s3ClientFactory;
   }
 
+  /**
+   * Which capability a library of this source type needs (ADR-0036, Entscheidung 5). A connector
+   * library is its own capability because it reaches server paths and stored credentials; a missing
+   * source type - rejected by {@code validateSourceConfiguration} inside {@link #createLibrary} -
+   * takes the upload capability, so an unreadable request never decides which right is checked.
+   */
+  private static Capability capabilityFor(DocumentSourceType sourceType) {
+    return sourceType == null || sourceType == DocumentSourceType.UPLOAD
+        ? Capability.CREATE_LIBRARY
+        : Capability.CREATE_CONNECTOR_LIBRARY;
+  }
+
   @Transactional
   public LibraryDetail createLibrary(LibraryCreation request, CurrentUser caller) {
     capabilityService.requireCapability(caller, capabilityFor(request.sourceType()));
@@ -1175,18 +1187,6 @@ public class KnowledgeLibraryService {
    * sourceInsecureSsl} defaults to {@code false} when omitted, mirroring {@code
    * IndexingTriggerRequest}'s equivalent field.
    */
-  /**
-   * Which capability a library of this source type needs (ADR-0036, Entscheidung 5). A connector
-   * library is its own capability because it reaches server paths and stored credentials; a missing
-   * source type - rejected a few lines later by {@link #validateSourceConfiguration} - takes the
-   * upload capability, so an unreadable request never decides which right is checked.
-   */
-  private static Capability capabilityFor(DocumentSourceType sourceType) {
-    return sourceType == null || sourceType == DocumentSourceType.UPLOAD
-        ? Capability.CREATE_LIBRARY
-        : Capability.CREATE_CONNECTOR_LIBRARY;
-  }
-
   private SourceConfiguration validateSourceConfiguration(LibraryCreation request) {
     DocumentSourceType sourceType = request.sourceType();
     if (sourceType == null) {

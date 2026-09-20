@@ -27,6 +27,7 @@ import { useSpaceStore } from '../stores/spaceStore'
 import { useMyCapabilities } from '../hooks/useMyCapabilities'
 import { useUserSearch } from '../hooks/useUserSearch'
 import {
+  capabilityMissingMessage,
   spaceRoleLabel,
   spaceVisibilities,
   spaceVisibilityDescription,
@@ -162,9 +163,8 @@ export default function SpaceCreatePage() {
         <WizardStepBar steps={STEPS} active={activeStep} />
 
         {mayNotCreate && (
-          <Alert severity="info" sx={{ mb: 2 }}>
-            Ihnen fehlt das Anlegerecht „Spaces anlegen“. Wenden Sie sich an die Systemverwaltung,
-            wenn Sie es benötigen.
+          <Alert severity="info" sx={{ mb: 2 }} id="space-create-capability-hint">
+            {capabilityMissingMessage('CREATE_SPACE')}
           </Alert>
         )}
 
@@ -460,6 +460,7 @@ export default function SpaceCreatePage() {
               variant="contained"
               onClick={() => void handleCreate()}
               disabled={submitting || mayNotCreate || name.trim() === ''}
+              aria-describedby={mayNotCreate ? 'space-create-capability-hint' : undefined}
             >
               {submitting ? 'Wird angelegt …' : 'Space anlegen'}
             </Button>

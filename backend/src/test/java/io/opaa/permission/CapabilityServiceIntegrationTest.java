@@ -13,14 +13,17 @@ import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
+import io.opaa.common.ValidationException;
 import io.opaa.group.Group;
 import io.opaa.group.GroupMembership;
 import io.opaa.group.GroupRepository;
+import io.opaa.group.GroupService;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
 import io.opaa.organization.Organization;
 import io.opaa.test.OpaaIntegrationTest;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -49,6 +52,7 @@ class CapabilityServiceIntegrationTest {
   @Autowired private GroupMembershipResolver membershipResolver;
   @Autowired private UserRepository userRepository;
   @Autowired private GroupRepository groupRepository;
+  @Autowired private GroupService groupService;
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private LibraryAccessService libraryAccessService;
@@ -259,6 +263,78 @@ class CapabilityServiceIntegrationTest {
     UUID libraryId = libraryRepository.save(library).getId();
     libraryIds.add(libraryId);
     return libraryId;
+  }
+
+  /**
+   * {@code fk_capability_grants_subject_group_organization} is RESTRICT: without the check in
+   * {@code GroupService#deleteGroup} the deletion is refused by the constraint alone, with the
+   * generic foreign-key message and without naming the Anlegerecht as the reason.
+   */
+  @Test
+  void aGroupHoldingAnAnlegerechtIsNotDeletedAndTheRefusalSaysWhy() {
+    UUID groupId = persistGroupWithMember(member.id());
+    capabilityService.grant(Capability.CREATE_SPACE, CapabilitySubjectType.GROUP, groupId, admin);
+
+    assertThatThrownBy(() -> groupService.deleteGroup(groupId, admin))
+        .isInstanceOf(ConflictException.class)
+        .hasMessageContaining("Anlegerechte");
+    assertThat(groupRepository.findById(groupId)).isPresent();
+  }
+
+  @Test
+  void refusesAGrantToAllAccountsThatNamesASubjectAnyway() {
+    assertThatThrownBy(
+            () ->
+                capabilityService.grant(
+                    Capability.CREATE_SPACE,
+                    CapabilitySubjectType.ALL_ACCOUNTS,
+                    member.id(),
+                    admin))
+        .as("a silently dropped subjectId would answer 201 to a request nobody meant that way")
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("ALL_ACCOUNTS");
+  }
+
+  /**
+   * The Stichtag side of the same rows, which the reading path of #1822 will call: an interval
+   * covers {@code asOf} when it began at or before it and has not ended by then. The zero-length
+   * revocation marker satisfies neither half of {@code validTo > asOf} and is therefore never
+   * selected - it is an event, not a state.
+   */
+  @Test
+  void reconstructsWhoHeldACapabilityAtAPastInstantWithoutTheRevocationMarkers() {
+    CapabilityGrant grant =
+        capabilityService.grant(
+            Capability.CREATE_INTERNAL_GROUP, CapabilitySubjectType.USER, member.id(), admin);
+    // The interval's own boundary, not a wall-clock reading: PermissionHistoryClock may run a
+    // microsecond ahead of the wall clock inside one tick, which would make a reading taken here
+    // land on the wrong side of the boundary.
+    Instant whileHeld =
+        historyRepository
+            .findByOrganizationIdAndCapabilityAndSubjectTypeAndSubjectUserIdAndValidToIsNull(
+                Organization.DEFAULT_ID,
+                Capability.CREATE_INTERNAL_GROUP,
+                CapabilitySubjectType.USER,
+                member.id())
+            .orElseThrow()
+            .getValidFrom();
+    Instant beforeTheGrant = whileHeld.minusSeconds(60);
+    capabilityService.revoke(Capability.CREATE_INTERNAL_GROUP, grant.getId(), admin);
+    Instant afterTheWithdrawal = Instant.now().plusSeconds(60);
+
+    assertThat(holdersAsOf(beforeTheGrant)).doesNotContain(member.id());
+    assertThat(holdersAsOf(whileHeld)).contains(member.id());
+    assertThat(holdersAsOf(afterTheWithdrawal))
+        .as("the closed interval has ended and the marker is zero-length")
+        .doesNotContain(member.id());
+  }
+
+  private List<UUID> holdersAsOf(Instant asOf) {
+    return historyRepository
+        .findHoldersAsOf(Organization.DEFAULT_ID, Capability.CREATE_INTERNAL_GROUP, asOf)
+        .stream()
+        .map(CapabilityGrantHistory::getSubjectUserId)
+        .toList();
   }
 
   private void revokeFromAllAccounts(Capability capability) {

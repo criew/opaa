@@ -27,6 +27,7 @@ import io.opaa.indexing.source.rss.RssFeedStateRepository;
 import io.opaa.indexing.source.s3.S3ClientFactory;
 import io.opaa.indexing.source.s3.S3Properties;
 import io.opaa.permission.AssetGrantRepository;
+import io.opaa.permission.CapabilityService;
 import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.GroupSubjectDirectory;
 import io.opaa.permission.PermissionHistoryService;
@@ -95,7 +96,7 @@ class KnowledgeLibraryServiceFilesystemAllowlistTest {
             userRepository,
             groupDirectory,
             membershipResolver,
-            mock(io.opaa.permission.CapabilityService.class),
+            mock(CapabilityService.class),
             documentRepository,
             grantRepository,
             grantService,

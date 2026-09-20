@@ -60,8 +60,10 @@ public interface CapabilityGrantRepository extends JpaRepository<CapabilityGrant
   /**
    * Whether the given group holds any capability - read by {@code GroupService#deleteGroup} before
    * deleting a group, for the same reason as {@code AssetGrantRepository#existsBySubjectGroupId}:
-   * {@code fk_capability_grants_subject_group_organization} is RESTRICT, so without this check the
-   * deletion would surface as an unhandled {@code DataIntegrityViolationException} -> HTTP 500.
+   * {@code fk_capability_grants_subject_group_organization} is RESTRICT. Without the check the
+   * refusal still arrives as a {@code 409} ({@code GlobalExceptionHandler} maps a foreign-key
+   * violation there), but with the generic "Der Datensatz wird noch verwendet" instead of the
+   * reason - and the caller cannot tell an Anlegerecht from an asset grant or an ownership.
    */
   boolean existsBySubjectGroupId(UUID subjectGroupId);
 

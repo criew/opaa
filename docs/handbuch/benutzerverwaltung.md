@@ -245,6 +245,11 @@ Identitätsanbieter, und werden an eine Person, eine Gruppe oder an **„Alle Ko
 | **Konnektorbibliotheken anlegen** | Alle Konten |
 | **Interne Gruppen anlegen** | niemanden — die Systemverwaltung hat es ohnehin |
 
+Das Anlegerecht **„Interne Gruppen anlegen"** lässt sich heute zwar vergeben, wirkt aber noch nicht:
+Interne Gruppen werden weiterhin ausschließlich unter „Administration" angelegt. Die Übersicht sagt
+das in ihrer Zeile mit; die Erteilung wird protokolliert und greift, sobald es einen Anlegepfad
+außerhalb der Systemverwaltung gibt (Issue #1814).
+
 Vier Punkte dazu:
 
 - **Der ausgelieferte Zustand ändert nichts.** Wer bisher Spaces und Bibliotheken anlegen konnte, kann
@@ -256,6 +261,9 @@ Vier Punkte dazu:
   Quellen anschließen kann.
 - **Ein Anlegerecht öffnet nie einen Inhalt.** Es erlaubt das Anlegen und sonst nichts; an der Menge
   der lesbaren Bibliotheken ändert es nichts.
+- **Die Rolle entscheidet nicht mit.** Die Systemverwaltung hat jedes Anlegerecht ohnehin; die
+  Rolle **Revision** verleiht keines — sie ist ein Lesezugang zum Nachweisprotokoll und sonst nichts.
+  Ein Revisionskonto hat genau das, was „Alle Konten" oder seine Gruppen ihm geben.
 - **Ein Entzug wirkt sofort**, ohne dass sich die betroffene Person neu anmelden muss. Fehlt das Recht,
   nennt die Anwendung es beim Namen und sagt, an wen man sich wendet — sie versteckt die Funktion
   nicht. Vergabe und Entzug stehen im Nachweisprotokoll und werden mit ihrem Zeitraum festgehalten.

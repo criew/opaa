@@ -58,8 +58,9 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * fk_asset_grants_subject_group_organization} is RESTRICT, exactly like the owner keys; without the
  * check in {@link #deleteGroup}, the everyday case the feature spec's "Freigabestufen und
  * Auffindbarkeit" describes - "an Abteilung 5 freigeben" is a grant to the group representing
- * Abteilung 5, not ownership - would surface as an unhandled {@code
- * DataIntegrityViolationException} (HTTP 500) the first time anyone tried to delete such a group.
+ * Abteilung 5, not ownership - would be refused by the constraint alone, with the generic
+ * foreign-key message {@code GlobalExceptionHandler} turns a {@code
+ * DataIntegrityViolationException} into and without naming what still holds the group.
  */
 @Service
 @Transactional(readOnly = true)
@@ -247,9 +248,10 @@ public class GroupService {
     Group group = loadGroup(groupId, caller);
     rejectOrgUnit(group);
     // The owner foreign keys of the asset tables are RESTRICT: without this check, deleting a
-    // group that still owns an asset would surface as an unhandled DataIntegrityViolationException
-    // -> HTTP 500 with no indication of the actual cause. Every asset type answers for itself
-    // through AssetOwnershipDirectory, so a further type extends this check by adding a bean.
+    // group that still owns an asset is refused by the constraint alone, with the generic
+    // foreign-key message and no indication of the actual cause. Every asset type answers for
+    // itself through AssetOwnershipDirectory, so a further type extends this check by adding a
+    // bean.
     for (AssetOwnershipDirectory ownership : assetOwnershipDirectories) {
       if (ownership.existsAssetOwnedByGroup(groupId)) {
         throw new ConflictException(ownership.ownedAssetConflictMessage());
@@ -261,8 +263,9 @@ public class GroupService {
       throw new ConflictException(
           "Die Gruppe hat noch Berechtigungen auf Bibliotheken und kann nicht gelöscht werden");
     }
-    // The same RESTRICT pattern one table further:
-    // fk_capability_grants_subject_group_organization.
+    // The same RESTRICT pattern one table further
+    // (fk_capability_grants_subject_group_organization): without this check the deletion is still
+    // refused, but with the generic foreign-key message instead of the reason.
     if (capabilityGrantRepository.existsBySubjectGroupId(groupId)) {
       throw new ConflictException(
           "Die Gruppe hat noch Anlegerechte und kann nicht gelöscht werden");

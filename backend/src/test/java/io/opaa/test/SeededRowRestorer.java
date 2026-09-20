@@ -3,7 +3,6 @@ package io.opaa.test;
 import io.opaa.mail.MailSettingsService;
 import io.opaa.mail.MailTestSupport;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
@@ -12,33 +11,43 @@ import org.springframework.test.context.support.AbstractTestExecutionListener;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * Puts the installation-wide settings rows back after every test method, exactly as the class found
+ * Puts the installation-wide seeded rows back after every test method, exactly as the class found
  * them.
  *
- * <p>These tables hold a seeded singleton row (or, for the seed markers, {@code mail_templates} and
- * the delivered capability grants, rows no test class owns): there is no id a class could scope its
- * cleanup to, and a seeded value cannot be reconstructed once it was overwritten - a capability
- * withdrawn from "Alle Konten" would otherwise leave every later class unable to create a space.
- * The snapshot is taken when a class starts; the restore runs after the method's own
- * {@code @AfterEach}, so a cleanup that throws does not skip it. A class may still reset a row
- * itself - it then simply finds nothing to restore.
+ * <p>These rows have no id a class could scope its cleanup to, and a seeded value cannot be
+ * reconstructed once it was overwritten - a capability withdrawn from "Alle Konten" would otherwise
+ * leave every later class unable to create a space. The snapshot is taken when a class starts; the
+ * restore runs after the method's own {@code @AfterEach}, so a cleanup that throws does not skip
+ * it. A class may still reset a row itself - it then simply finds nothing to restore.
+ *
+ * <p><b>This listener owns the seeded rows, never a test's own.</b> Most of the tables below hold
+ * nothing else, so their filter is the whole table. The two capability tables are mixed: next to
+ * the delivered {@code ALL_ACCOUNTS} rows and their {@code DELIVERED} intervals, a test writes
+ * grants of its own that carry an id it can and must clean up itself. Restoring those as well would
+ * quietly cover for a class that forgot - the very omission {@code LeftoverRowGuard} exists to
+ * report - so the filter leaves them alone.
  */
 final class SeededRowRestorer extends AbstractTestExecutionListener {
 
-  static final List<String> RESTORED_TABLES =
-      List.of(
-          "branding_settings",
-          "audit_retention_settings",
-          "diagnostic_context_retention_settings",
-          "permission_history_retention_settings",
-          "capability_grants",
-          "capability_grant_history",
-          "local_auth_settings",
-          "external_access_settings",
-          "mail_settings",
-          "mail_templates",
-          "local_admin_seed_marker",
-          "oidc_provider_seed_marker");
+  /**
+   * Table to the {@code WHERE} condition selecting the rows this listener owns; {@code true} means
+   * the whole table.
+   */
+  static final Map<String, String> RESTORED_TABLES =
+      new LinkedHashMap<>(
+          Map.ofEntries(
+              Map.entry("branding_settings", "true"),
+              Map.entry("audit_retention_settings", "true"),
+              Map.entry("diagnostic_context_retention_settings", "true"),
+              Map.entry("permission_history_retention_settings", "true"),
+              Map.entry("capability_grants", "subject_type = 'ALL_ACCOUNTS'"),
+              Map.entry("capability_grant_history", "cause = 'DELIVERED'"),
+              Map.entry("local_auth_settings", "true"),
+              Map.entry("external_access_settings", "true"),
+              Map.entry("mail_settings", "true"),
+              Map.entry("mail_templates", "true"),
+              Map.entry("local_admin_seed_marker", "true"),
+              Map.entry("oidc_provider_seed_marker", "true")));
 
   private static final String SNAPSHOT = SeededRowRestorer.class.getName() + ".snapshot";
 
@@ -74,7 +83,8 @@ final class SeededRowRestorer extends AbstractTestExecutionListener {
             status ->
                 changed.forEach(
                     (table, rows) -> {
-                      jdbcTemplate.update("DELETE FROM " + table);
+                      jdbcTemplate.update(
+                          "DELETE FROM " + table + " WHERE " + RESTORED_TABLES.get(table));
                       jdbcTemplate.update(
                           "INSERT INTO "
                               + table
@@ -89,18 +99,20 @@ final class SeededRowRestorer extends AbstractTestExecutionListener {
     }
   }
 
-  /** Every row of every restored table as JSON text, in a stable order. */
+  /** The owned rows of every restored table as JSON text, in a stable order. */
   private static Map<String, String> snapshot(JdbcTemplate jdbcTemplate) {
     Map<String, String> snapshot = new LinkedHashMap<>();
-    for (String table : RESTORED_TABLES) {
-      snapshot.put(
-          table,
-          jdbcTemplate.queryForObject(
-              "SELECT CAST(coalesce(json_agg(r ORDER BY CAST(r AS text)), '[]') AS text) FROM "
-                  + table
-                  + " r",
-              String.class));
-    }
+    RESTORED_TABLES.forEach(
+        (table, owned) ->
+            snapshot.put(
+                table,
+                jdbcTemplate.queryForObject(
+                    "SELECT CAST(coalesce(json_agg(r ORDER BY CAST(r AS text)), '[]') AS text)"
+                        + " FROM "
+                        + table
+                        + " r WHERE "
+                        + owned,
+                    String.class)));
     return snapshot;
   }
 

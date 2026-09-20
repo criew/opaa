@@ -144,6 +144,13 @@ Entscheidung 5, die damit ADR-0018, Entscheidung 6 samt Nachtrag ablöst.
 | `CREATE_CONNECTOR_LIBRARY` | eine Bibliothek mit Konnektor anlegen (Dateisystem, Webverzeichnis, Feed, Confluence, S3) | Alle Konten |
 | `CREATE_INTERNAL_GROUP` | eine interne Gruppe anlegen | niemanden |
 
+> **`CREATE_INTERNAL_GROUP` ist heute Vokabular, keine Öffnung.** Der Endpunkt hinter dem Anlegen
+> interner Gruppen ist unverändert `SYSTEM_ADMIN`-beschränkt, und die Systemverwaltung hält die
+> Fähigkeit ohnehin implizit. Eine Erteilung an eine Person oder Gruppe wird protokolliert und
+> historisiert, wirkt aber erst, wenn es einen Anlegepfad außerhalb der Systemverwaltung gibt
+> ([#1814](https://github.com/criew/opaa/issues/1814)). Die Verwaltungsübersicht sagt das in ihrer
+> Klartextzeile mit.
+
 - **Der ausgelieferte Zustand ist der heutige.** Nach der Migration legt jedes Konto Spaces und
   Bibliotheken genau wie vorher an; interne Gruppen bleiben der Systemverwaltung vorbehalten. Wer
   einschränken will, entzieht „Alle Konten" und erteilt einer benannten Gruppe.
