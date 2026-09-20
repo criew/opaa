@@ -1,15 +1,33 @@
 package io.opaa.library;
 
+import io.opaa.permission.PermissionHistorySweeper;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface LibraryVisibilityHistoryRepository
-    extends JpaRepository<LibraryVisibilityHistory, UUID> {
+    extends JpaRepository<LibraryVisibilityHistory, UUID>, PermissionHistorySweeper {
+
+  @Override
+  default String historyTable() {
+    return "library_visibility_history";
+  }
+
+  /**
+   * This table's part of the retention deletion - see {@link PermissionHistorySweeper}. The third
+   * source of the readable-library formula ages out with the two grant tables, so the reach of the
+   * retention period is the same for all three.
+   */
+  @Override
+  @Modifying
+  @Query(
+      "delete from LibraryVisibilityHistory h where h.validTo is not null and h.validTo < :cutoff")
+  int deleteClosedIntervalsEndingBefore(@Param("cutoff") Instant cutoff);
 
   Optional<LibraryVisibilityHistory> findByLibraryIdAndValidToIsNull(UUID libraryId);
 

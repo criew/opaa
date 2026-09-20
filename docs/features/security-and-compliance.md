@@ -260,7 +260,8 @@ Anlass und der Angabe, ob die Person selbst oder die Systemverwaltung widerrufen
 `ACCOUNT_LIFECYCLE` beim Sperren eines Kontos und bei der abgeschlossenen Übergabe an eine
 Anbieteridentität — alle drei mit der
 Token-Kennung statt des frei formulierten Tokennamens, und die **Nutzung** eines Tokens erzeugt
-keinen Eintrag). Die Anfrage
+keinen Eintrag) und — seit #1833 — die Aufbewahrungshöchstdauer der Rechtehistorie
+(`PERMISSION_HISTORY_RETENTION_CHANGED` mit Vorher/Nachher der Monatszahl). Die Anfrage
 „Passwort vergessen" ändert keinen Zustand; die Bestätigung der eigenen Adresse ist eine Handlung
 der Person am eigenen Konto und nach ADR-0033, Entscheidung 13, kein Verwaltungsakt — beide
 erzeugen kein Ereignis. Noch **nicht** verdrahtet — weil
@@ -269,7 +270,8 @@ Grant-Befristung (kein Scheduler; der Ablauf eines Zugangstokens hat mit #1718 e
 von Grants durch eine gesenkte Freigabe-Obergrenze, Bereitstellung einer
 Bibliothek in einem Space, Eigentümerübernahme ohne Zuständigkeit und der Übergang in „Nachfolge
 offen", Deaktivierung eines Kontos, erzwungene Neuanmeldung, die übrigen Systemeinstellungen
-(Governance, Protokollkonfiguration, Modellvorgaben, Freigabe-Obergrenze konnektor-gespeister
+(Governance außer der Aufbewahrungshöchstdauer der Rechtehistorie, Protokollkonfiguration,
+Modellvorgaben, Freigabe-Obergrenze konnektor-gespeister
 Bibliotheken) und die Fremdzugangsfreigabe einer Wissensbibliothek. Jede dieser Lücken schließt das jeweilige Folge-Issue, sobald
 die zugehörige Funktion existiert — die Liste selbst bleibt geschlossen und ändert sich nicht.
 
@@ -559,6 +561,21 @@ entstünden zwei unvereinbare Aussagen — entweder wäre die Zusage „danach n
 zurückführbar" nicht haltbar, oder für ausgeschiedene Personen wäre nichts mehr belegbar, obwohl
 Prüfungen gerade sie häufig betreffen.
 
+**Stand #1833, technisch umgesetzt — die Höchstdauer, nicht die Pseudonymisierung.** Die Höchstdauer
+ist eine einzige, systemweite Einstellung (`permission_history_retention_settings`) mit denselben
+erzwungenen Grenzen wie die Protokollfrist: **12 bis 120 Monate**, als `CHECK` in der Datenbank und
+nicht nur in der Validierung, **ausgeliefert mit 36 Monaten** — dieselbe Zahl und dieselbe
+Begründung wie beim Protokoll. Ein monatlicher Lauf entfernt **abgeschlossene** Historienintervalle,
+deren Ende älter ist als die Frist; **offene Intervalle bleiben unberührt**, weil sie ein gerade
+geltendes Recht beschreiben und ihr Beginn beliebig weit zurückliegen darf. Für jeden Stichtag
+innerhalb der Frist bleibt die Rekonstruktion damit lückenlos. Eine **Verkürzung wirkt auch hier nur
+nach vorn** (höchstens ein Kalendermonat Fortschritt je Kalendermonat), und jede Änderung ist ein
+Governance-Ereignis (`PERMISSION_HISTORY_RETENTION_CHANGED`). Der zweite Halbsatz der Zusage oben —
+Pseudonymisierung ab Schreibzeitpunkt — ist damit **nicht** eingelöst:
+[ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md), Entscheidung 8, hebt
+ihn auf und koppelt die Pseudonymisierung an den Personen-Einstieg und die Kontolöschung
+(#391/#395); der Satz selbst wird mit #1824 umgeschrieben.
+
 **Regressionsprüfung gegen Filterfehler:** Wendet eine Abfrage einen Suchbereich an, der eine nach der
 Historie zu diesem Zeitpunkt nicht lesbare Bibliothek enthält, ist das ein beweisbarer
 Durchsetzungsfehler. Der Nachweis führt über die **Rechtehistorie** und ihre Rekonstruktion zum
@@ -642,11 +659,13 @@ halten den auslösenden Vorgang fest und werden von der Rekonstruktion nie als Z
 
 **Noch offen, bewusst nicht Teil dieser Ausbaustufe:**
 
-- **Aufbewahrungshöchstdauer und Pseudonymisierung der Historie selbst.** Die oben zugesagte
-  Pseudonymisierung ab Schreibzeitpunkt ist noch nicht umgesetzt; die Subjektspalten der
+- **Pseudonymisierung der Historie selbst.** Die oben zugesagte
+  Pseudonymisierung ab Schreibzeitpunkt ist nicht umgesetzt und wird es nach ADR-0036,
+  Entscheidung 8, auch nicht in dieser Form; die Subjektspalten der
   Rechtehistorie sind stattdessen `ON DELETE RESTRICT` gegen die Nutzertabelle — eine Kontolöschung
   ist damit blockiert, solange Rechtehistorie zu diesem Konto existiert, bis #391/#395 die
-  Pseudonymisierung liefern (siehe ADR-0016).
+  Pseudonymisierung liefern (siehe ADR-0016). Die **Aufbewahrungshöchstdauer** steht seit #1833 und
+  begrenzt diese Sperre der Länge nach: Was die Frist verlässt, wird gelöscht.
 - **Verzeichnislauf ohne Laufbezug.** Ein historisierter Eintrag mit Ursache `DIRECTORY_SYNC_ADDED`/
   `DIRECTORY_SYNC_REMOVED` lässt sich nicht auf den konkreten Synchronisationslauf zurückführen, der
   ihn verursacht hat — `DirectorySyncStatus` hält nur den jeweils letzten Lauf je Organisation.

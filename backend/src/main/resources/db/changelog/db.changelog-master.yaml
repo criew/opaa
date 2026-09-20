@@ -82,3 +82,7 @@ databaseChangeLog:
   # Altwert 'USER' aus chk_asset_grant_history_role entfernen - die Rolle entfiel mit #330 (#1811).
   - include:
       file: db/changelog/changes/040-asset-grant-history-drop-user-role.yaml
+  # Aufbewahrungshöchstdauer der Rechtehistorie als Governance-Einstellung (#1833, ADR-0036
+  # Entscheidung 8).
+  - include:
+      file: db/changelog/changes/045-create-permission-history-retention-settings.yaml
