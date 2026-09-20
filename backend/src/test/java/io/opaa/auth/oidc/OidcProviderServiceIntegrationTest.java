@@ -251,6 +251,26 @@ class OidcProviderServiceIntegrationTest {
   }
 
   /**
+   * Regression guard for #1832: switching off the last enabled provider leaves {@code is_default}
+   * on its row (ADR-0033, Entscheidung 4), so the enabled default - the directory provider {@code
+   * TrustedProvider} resolves members through - has to be asked for separately.
+   */
+  @Test
+  void theLastProviderSwitchedOffKeepsIsDefaultButIsNoLongerTheEnabledDefault() {
+    OidcProvider standard = service.createProvider(organizationId, userId, draft("Erster", issuer));
+    assertThat(repository.findByDefaultProviderTrueAndEnabledTrue())
+        .map(OidcProvider::getId)
+        .contains(standard.getId());
+
+    service.setEnabled(organizationId, userId, standard.getId(), false, true);
+
+    assertThat(repository.findByDefaultProviderTrue())
+        .map(OidcProvider::getId)
+        .contains(standard.getId());
+    assertThat(repository.findByDefaultProviderTrueAndEnabledTrue()).isEmpty();
+  }
+
+  /**
    * The rule with irreversible data effect, against real rows: {@code users.issuer} holds the
    * token's {@code iss} exactly as minted (here with a trailing slash), and the provider's stored
    * issuer must count those rows - a normalized comparison would find none and let the change

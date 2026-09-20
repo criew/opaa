@@ -8,9 +8,9 @@ import org.springframework.stereotype.Component;
 
 /**
  * The one provider an installation trusts beyond signing in (ADR-0025, Entscheidung 3 and 4): the
- * default provider in the {@code oidc} mode, the dev issuer in the {@code dev} mode. The initial
- * administrator rule is bound to it, and the directory synchronisation resolves members among its
- * accounts only. Empty while no such provider exists - the callers decide what that means for them.
+ * enabled default provider in the {@code oidc} mode, the dev issuer in the {@code dev} mode. The
+ * directory synchronisation resolves members among its accounts only. Empty while no such provider
+ * exists - the callers decide what that means for them.
  */
 @Component
 public class TrustedProvider {
@@ -26,14 +26,21 @@ public class TrustedProvider {
     this.providerRepository = providerRepository;
   }
 
-  /** The trusted provider's issuer exactly as its tokens carry it ({@code users.issuer}). */
+  /**
+   * The trusted provider's issuer exactly as its tokens carry it ({@code users.issuer}) - in the
+   * {@code oidc} mode only while the default provider is enabled: a disabled row keeps {@code
+   * is_default} (ADR-0033, Entscheidung 4), but is no anchor of trust, so the synchronisation
+   * pauses instead of resolving members through it.
+   */
   public Optional<String> issuer() {
     String mode = authProperties.mode();
     if (DEV_MODE.equals(mode)) {
       return Optional.ofNullable(authProperties.dev()).map(AuthProperties.DevAuth::issuer);
     }
     if (OIDC_MODE.equals(mode)) {
-      return providerRepository.findByDefaultProviderTrue().map(OidcProvider::getIssuerUri);
+      return providerRepository
+          .findByDefaultProviderTrueAndEnabledTrue()
+          .map(OidcProvider::getIssuerUri);
     }
     return Optional.empty();
   }

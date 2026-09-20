@@ -29,7 +29,7 @@ class TrustedProviderTest {
             null,
             OidcClaimMapping.keycloakDefaults());
     standard.markDefault();
-    when(repository.findByDefaultProviderTrue()).thenReturn(Optional.of(standard));
+    when(repository.findByDefaultProviderTrueAndEnabledTrue()).thenReturn(Optional.of(standard));
     TrustedProvider trusted =
         new TrustedProvider(new AuthProperties("oidc", null, null, null), repository);
 
@@ -39,9 +39,35 @@ class TrustedProviderTest {
     assertThat(trusted.matches(null)).isFalse();
   }
 
+  /**
+   * Regression guard for #1832: the last enabled OIDC provider keeps {@code is_default} when it is
+   * switched off (ADR-0033, Entscheidung 4), so the lookup has to ask for {@code enabled} as well -
+   * otherwise a disabled provider would stay the anchor the directory synchronisation resolves
+   * members through.
+   */
+  @Test
+  void aDisabledDefaultProviderIsNotTrusted() {
+    OidcProvider standard =
+        new OidcProvider(
+            "Beschäftigte",
+            "https://idp.example/realms/a/",
+            "opaa-frontend",
+            null,
+            OidcClaimMapping.keycloakDefaults());
+    standard.markDefault();
+    standard.disable();
+    when(repository.findByDefaultProviderTrue()).thenReturn(Optional.of(standard));
+    when(repository.findByDefaultProviderTrueAndEnabledTrue()).thenReturn(Optional.empty());
+    TrustedProvider trusted =
+        new TrustedProvider(new AuthProperties("oidc", null, null, null), repository);
+
+    assertThat(trusted.issuer()).isEmpty();
+    assertThat(trusted.matches("https://idp.example/realms/a")).isFalse();
+  }
+
   @Test
   void withoutADefaultProviderNothingIsTrusted() {
-    when(repository.findByDefaultProviderTrue()).thenReturn(Optional.empty());
+    when(repository.findByDefaultProviderTrueAndEnabledTrue()).thenReturn(Optional.empty());
     TrustedProvider trusted =
         new TrustedProvider(new AuthProperties("oidc", null, null, null), repository);
 
