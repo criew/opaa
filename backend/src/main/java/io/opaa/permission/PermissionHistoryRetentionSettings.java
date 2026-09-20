@@ -20,7 +20,10 @@ import java.time.LocalDate;
  *
  * <p>{@code lastCutoff}/{@code lastRunMonth} carry the progress of {@link
  * PermissionHistoryRetentionDeletionService}, not a configured value; they are seeded to the
- * installation date so a later shortening of the period only takes effect going forward.
+ * installation date so a later shortening of the period only takes effect going forward. {@code
+ * lastCutoff} is a <b>high-water mark</b> and only ever moves forward - it is also the boundary of
+ * what the Stichtag reconstruction can still answer, which is why {@link
+ * PermissionHistoryRetentionService#retentionCutoff()} hands it out without a rights check.
  *
  * <p>Read-only end to end - every field is {@code insertable = false, updatable = false} and there
  * is no setter, so the two write paths of {@link PermissionHistoryRetentionSettingsRepository} stay

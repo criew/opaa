@@ -2,11 +2,16 @@ package io.opaa.permission;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
+import io.opaa.auth.DevAuthFilter;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.AccessDeniedException;
@@ -22,7 +27,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 /**
  * The governance setting itself against the real, Liquibase-built schema (#1833, ADR-0036
@@ -40,6 +48,7 @@ class PermissionHistoryRetentionIntegrationTest {
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private UserRepository userRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private MockMvc mockMvc;
 
   private UUID organizationId;
   private CurrentUser admin;
@@ -58,9 +67,17 @@ class PermissionHistoryRetentionIntegrationTest {
         CurrentUser.of(persistUser("user"), organizationId, SystemRole.USER, "Sachbearbeitung");
   }
 
+  /**
+   * The HTTP methods below act as the dev users of the default organization, so their governance
+   * events are not covered by the organization-scoped delete. No other class writes this event type
+   * - the second delete is this class's own footprint, not a sweep over foreign rows.
+   */
   @AfterEach
   void tearDown() {
     jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organizationId);
+    jdbcTemplate.update(
+        "DELETE FROM audit_log WHERE event_type = ?",
+        AuditEventType.PERMISSION_HISTORY_RETENTION_CHANGED.name());
     jdbcTemplate.update("DELETE FROM users WHERE organization_id = ?", organizationId);
     organizationRepository.deleteById(organizationId);
   }
@@ -141,6 +158,73 @@ class PermissionHistoryRetentionIntegrationTest {
         .isInstanceOf(AccessDeniedException.class);
 
     assertThat(repository.findSingleton().orElseThrow().getRetentionMonths()).isEqualTo(36);
+  }
+
+  @Test
+  void theEndpointAnswersTheSystemAdministrationWithTheCurrentSetting() throws Exception {
+    mockMvc
+        .perform(get("/api/v1/admin/permission-history/retention").with(devUser("dev-admin")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.retentionMonths").value(36))
+        .andExpect(jsonPath("$.lastCutoff").isNotEmpty())
+        .andExpect(jsonPath("$.updatedAt").isNotEmpty());
+  }
+
+  @Test
+  void theEndpointAnswersAChangeWithTheNewValue() throws Exception {
+    mockMvc
+        .perform(
+            put("/api/v1/admin/permission-history/retention")
+                .with(devUser("dev-admin"))
+                .content(
+                    """
+                    {"retentionMonths": 60}
+                    """))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.retentionMonths").value(60));
+
+    assertThat(repository.findSingleton().orElseThrow().getRetentionMonths()).isEqualTo(60);
+  }
+
+  @Test
+  void theEndpointRefusesAValueOutsideTheBounds() throws Exception {
+    mockMvc
+        .perform(
+            put("/api/v1/admin/permission-history/retention")
+                .with(devUser("dev-admin"))
+                .content(
+                    """
+                    {"retentionMonths": 121}
+                    """))
+        .andExpect(status().isBadRequest());
+
+    assertThat(repository.findSingleton().orElseThrow().getRetentionMonths()).isEqualTo(36);
+  }
+
+  @Test
+  void theEndpointIsClosedToEverybodyButTheSystemAdministration() throws Exception {
+    mockMvc
+        .perform(get("/api/v1/admin/permission-history/retention").with(devUser("dev-user")))
+        .andExpect(status().isForbidden());
+    mockMvc
+        .perform(
+            put("/api/v1/admin/permission-history/retention")
+                .with(devUser("dev-user"))
+                .content(
+                    """
+                    {"retentionMonths": 60}
+                    """))
+        .andExpect(status().isForbidden());
+
+    assertThat(repository.findSingleton().orElseThrow().getRetentionMonths()).isEqualTo(36);
+  }
+
+  private static RequestPostProcessor devUser(String subject) {
+    return request -> {
+      request.addHeader(DevAuthFilter.DEV_USER_HEADER, subject);
+      request.setContentType(MediaType.APPLICATION_JSON_VALUE);
+      return request;
+    };
   }
 
   private static String updateMonths(int months) {

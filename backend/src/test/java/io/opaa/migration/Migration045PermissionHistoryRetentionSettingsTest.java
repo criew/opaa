@@ -27,10 +27,17 @@ class Migration045PermissionHistoryRetentionSettingsTest extends AbstractMigrati
     return "db/changelog/test-master-through-baseline.yaml";
   }
 
+  /**
+   * The changelog is applied under a session zone far from UTC on purpose: the seeded month
+   * boundary must be the UTC one, because the deletion pass computes its own target in UTC. A seed
+   * that followed the session zone would sit hours ahead of that target for ever, and every pass
+   * would report a period that is "not fully effective yet".
+   */
   @BeforeEach
   void setUp() throws Exception {
     connection = connect();
     connection.setAutoCommit(true);
+    execute("SET TIME ZONE 'Pacific/Kiritimati'");
     applyChangelog(
         connection, "db/changelog/changes/045-create-permission-history-retention-settings.yaml");
   }
@@ -61,10 +68,24 @@ class Migration045PermissionHistoryRetentionSettingsTest extends AbstractMigrati
     }
     assertThat(
             queryForBoolean(
-                "SELECT last_cutoff = date_trunc('month', updated_at) - interval '36 months'"
-                    + " AND last_run_month = date_trunc('month', updated_at)::date"
+                "SELECT last_cutoff = (date_trunc('month', updated_at AT TIME ZONE 'UTC')"
+                    + " - interval '36 months') AT TIME ZONE 'UTC'"
+                    + " AND last_run_month = date_trunc('month', updated_at AT TIME ZONE"
+                    + " 'UTC')::date"
                     + " FROM permission_history_retention_settings WHERE id = 1"))
         .as("the progress starts exactly one retention period before the installation month")
+        .isTrue();
+  }
+
+  /** See {@link #setUp()} for why the session this runs in is fourteen hours off UTC. */
+  @Test
+  void seedsTheMonthBoundaryInUtcWhateverTheSessionZoneIs() throws SQLException {
+    assertThat(
+            queryForBoolean(
+                "SELECT (last_cutoff AT TIME ZONE 'UTC')::time = time '00:00:00'"
+                    + " AND date_part('day', last_cutoff AT TIME ZONE 'UTC') = 1"
+                    + " FROM permission_history_retention_settings WHERE id = 1"))
+        .as("midnight on the first of a month, read in UTC")
         .isTrue();
   }
 

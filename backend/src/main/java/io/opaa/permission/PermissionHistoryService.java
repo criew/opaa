@@ -202,8 +202,15 @@ public class PermissionHistoryService {
    * Every asset id of {@code assetType} that a grant to {@code userId} - directly, or to a group
    * they belonged to - covered at {@code asOf}. The grant half of the formula {@link
    * AssetAccessService#readableAssetIds} evaluates for "now", evaluated against the two history
-   * tables for any past instant. Whatever an asset type adds on top of grants (a library's
-   * organization-wide visibility) is composed by that type's own reader.
+   * tables. Whatever an asset type adds on top of grants (a library's organization-wide visibility)
+   * is composed by that type's own reader.
+   *
+   * <p><b>Only inside the retention period</b> (#1833). A closed interval whose {@code validTo}
+   * lies before {@link PermissionHistoryRetentionService#retentionCutoff()} is deleted, so an
+   * {@code asOf} before that cutoff yields an <b>empty</b> answer, not a negative one: "no access"
+   * and "no longer on record" are indistinguishable in the return value. Every caller that turns
+   * this into an Auskunft has to compare its {@code asOf} against the cutoff first and say which of
+   * the two it is - the reading path #1822 builds is the one that owes this.
    */
   @Transactional(readOnly = true)
   public Set<UUID> readableAssetIdsAsOf(

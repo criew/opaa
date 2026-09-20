@@ -82,7 +82,7 @@ public class PermissionHistoryRetentionDeletionService {
             sweeper.historyTable());
       }
     }
-    repository.recordRun(cutoff, currentMonth);
+    repository.recordRun(reachedProgress(settings, cutoff), currentMonth);
 
     Instant targetCutoff = targetCutoff(currentMonth, settings.getRetentionMonths());
     if (cutoff.isBefore(targetCutoff)) {
@@ -98,9 +98,12 @@ public class PermissionHistoryRetentionDeletionService {
   }
 
   /**
-   * The cutoff this run may reach: the configured period's own target, capped at one calendar month
-   * of progress per calendar month elapsed since the last run. A row seeded with {@code lastCutoff}
-   * from the installation date therefore never jumps.
+   * How far this run deletes: the configured period's own target, capped at one calendar month of
+   * progress per calendar month elapsed since the last run. A row seeded with {@code lastCutoff}
+   * from the installation date therefore never jumps. Lengthening the period moves this cutoff
+   * <i>back</i> - the run then deletes less, which is what a longer period means; what is already
+   * gone stays gone, and {@link #reachedProgress} keeps the recorded progress from following it
+   * back.
    */
   private Instant cutoffFor(PermissionHistoryRetentionSettings settings, LocalDate currentMonth) {
     Instant target = targetCutoff(currentMonth, settings.getRetentionMonths());
@@ -115,6 +118,18 @@ public class PermissionHistoryRetentionDeletionService {
             ChronoUnit.MONTHS.between(YearMonth.from(lastRunMonth), YearMonth.from(currentMonth)));
     Instant capped = lastCutoff.atZone(ZoneOffset.UTC).plusMonths(elapsedMonths).toInstant();
     return capped.isBefore(target) ? capped : target;
+  }
+
+  /**
+   * The high-water mark written to {@code last_cutoff}: never behind where a previous run already
+   * got. Recording a lengthened period's earlier cutoff as the progress would surrender the
+   * forward-only cap's own base - a later shortening would then have to creep back over months the
+   * deletion had long passed, while rows inside them stood untouched.
+   */
+  private static Instant reachedProgress(
+      PermissionHistoryRetentionSettings settings, Instant cutoff) {
+    Instant lastCutoff = settings.getLastCutoff();
+    return lastCutoff == null || cutoff.isAfter(lastCutoff) ? cutoff : lastCutoff;
   }
 
   private static Instant targetCutoff(LocalDate currentMonth, int retentionMonths) {

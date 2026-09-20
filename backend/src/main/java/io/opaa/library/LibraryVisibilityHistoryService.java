@@ -97,12 +97,17 @@ public class LibraryVisibilityHistoryService {
   /**
    * Every library id {@code userId} could have read at {@code asOf} - the same formula {@link
    * LibraryAccessService#readableLibraryIds} evaluates for "now", evaluated here against the
-   * history tables for any past instant: direct grants, grants to whichever groups the user
-   * belonged to at {@code asOf}, and every library that was organization-wide at {@code asOf}.
-   * Answers both #238's acceptance criteria directly - "which libraries could this person read on
-   * day X" is this method's return value, and the negative question "prove library Z was not among
-   * them" is answered by checking its absence in that same, single reconstruction rather than by
-   * the absence of a log entry, which the feature spec explicitly rejects as unprovable.
+   * history tables: direct grants, grants to whichever groups the user belonged to at {@code asOf},
+   * and every library that was organization-wide at {@code asOf}. Answers both #238's acceptance
+   * criteria directly - "which libraries could this person read on day X" is this method's return
+   * value, and the negative question "prove library Z was not among them" is answered by checking
+   * its absence in that same, single reconstruction rather than by the absence of a log entry,
+   * which the feature spec explicitly rejects as unprovable.
+   *
+   * <p>That negative proof holds <b>inside the retention period only</b>: before the cutoff of
+   * {@code PermissionHistoryRetentionService} the intervals are deleted and the absence proves
+   * nothing - see {@code PermissionHistoryService#readableAssetIdsAsOf} for the contract a caller
+   * owes there.
    */
   @Transactional(readOnly = true)
   public Set<UUID> readableLibraryIdsAsOf(UUID userId, UUID organizationId, Instant asOf) {
@@ -120,7 +125,8 @@ public class LibraryVisibilityHistoryService {
    * counterpart of {@link KnowledgeLibrary#isExternalAccessActive(Instant)} (#1731). Answers the
    * audit question "was this Bestand reachable from outside the house in 2026" from the history
    * alone, which is the point of historising the field rather than only logging it: the log is
-   * deleted monthwise after its retention, the interval is not.
+   * deleted monthwise after its retention, the interval only after the separate retention of the
+   * rights history (#1833).
    *
    * <p>The Befristung counts at {@code asOf} itself, not at the moment {@link
    * LibraryExternalAccessExpiryService} wrote the expiry down: an interval that still reads {@code

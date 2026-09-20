@@ -14,7 +14,11 @@ databaseChangeLog:
         last_cutoff/last_run_month tragen den Fortschritt des Loeschlaufs und werden wie bei
         audit_retention_settings auf den Installationszeitpunkt geseedet, damit eine Verkuerzung
         der Frist nur nach vorn wirkt (hoechstens ein Kalendermonat je Lauf) statt beim ersten
-        Lauf einen unbequemen Zeitraum auf einmal zu entfernen.
+        Lauf einen unbequemen Zeitraum auf einmal zu entfernen. Der Monatsanfang wird dabei in UTC
+        gerechnet und nicht in der Zeitzone der Sitzung, weil der Loeschlauf selbst in UTC rechnet:
+        Unter einer anderen Zeitzone laege der Seed sonst dauerhaft ein paar Stunden vor dem
+        Zielschnitt, und der Lauf meldete Monat fuer Monat eine Frist, die "noch nicht voll
+        wirksam" ist.
         .
         Anders als audit_retention_settings und diagnostic_context_retention_settings gehoert
         diese Zeile NICHT opaa_audit_owner: Die drei Historientabellen sind gewoehnliche
@@ -42,8 +46,9 @@ databaseChangeLog:
                 (id, retention_months, last_cutoff, last_run_month, updated_at)
               VALUES (
                 1, 36,
-                date_trunc('month', now()) - interval '36 months',
-                date_trunc('month', now())::date,
+                (date_trunc('month', now() AT TIME ZONE 'UTC') - interval '36 months')
+                  AT TIME ZONE 'UTC',
+                (date_trunc('month', now() AT TIME ZONE 'UTC'))::date,
                 now()
               );
       rollback:

@@ -9,7 +9,9 @@ import io.opaa.auth.CurrentUser;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ValidationException;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,6 +45,18 @@ public class PermissionHistoryRetentionService {
       AuditEventRecorder auditEventRecorder) {
     this.repository = repository;
     this.auditEventRecorder = auditEventRecorder;
+  }
+
+  /**
+   * How far the deletion has got - every Stichtag before it lies outside the retention and cannot
+   * be answered from the history any more. Deliberately without an actor, unlike {@link #read}:
+   * this is the boundary of what an Auskunft can state, not the configured period, and the reading
+   * path #1822 builds needs it on every call to tell "no access" from "no longer on record" (see
+   * {@link PermissionHistoryService#readableAssetIdsAsOf}). Empty before the first pass.
+   */
+  @Transactional(readOnly = true)
+  public Optional<Instant> retentionCutoff() {
+    return Optional.ofNullable(settingsRow().getLastCutoff());
   }
 
   @Transactional(readOnly = true)

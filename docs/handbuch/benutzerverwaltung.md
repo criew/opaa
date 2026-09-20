@@ -254,8 +254,9 @@ Konto nicht beteiligt war.
 Praktisch heißt das: Löschen ist der Weg für ein Konto, das nie benutzt wurde — eine falsch getippte
 Adresse, eine Einladung an die falsche Person, ein Testkonto. Wer dagegen je Mitglied einer Gruppe
 war, hinterlässt einen Nachweiseintrag, der bleibt; ein solches Konto ist nicht mehr löschbar,
-solange dieser Eintrag liegt (Abschnitt 13). Das ist beabsichtigt — der Nachweis, wer wann welche
-Rechte hatte, überlebt das Konto. Für alle diese Fälle ist die Sperre der vorgesehene Weg.
+solange dieser Eintrag liegt — wie lange das ist, steht in [Suche](suche.md), Abschnitt 8.4. Das
+ist beabsichtigt — der Nachweis, wer wann welche Rechte hatte, überlebt das Konto. Für alle diese
+Fälle ist die Sperre der vorgesehene Weg.
 
 Das Notanker-Konto der Systemverwaltung lässt sich **nicht löschen**. Sperren, Befristen und
 Herabsetzen sind daran nicht grundsätzlich gesperrt — sie werden abgelehnt, solange es der letzte
@@ -384,32 +385,7 @@ nicht. Die Eingabemasken zeigen die Regel an und bieten „Sicheres Passwort erz
 > Sonderzeichen zählen mehrfach; eine sehr lange Passphrase aus Sonderzeichen kann deshalb vor der
 > Zeichengrenze abgewiesen werden. Die Eingabemaske sagt das im Feldfehler.
 
-## 13. Wie lange Nachweiseinträge liegen
-
-Jede Rechteänderung hinterlässt einen Nachweiseintrag mit Zeitraum: Berechtigungen an Bibliotheken,
-Gruppenmitgliedschaften und die Reichweite einer Bibliothek. Ein Eintrag mit **abgeschlossenem**
-Zeitraum wird nach Ablauf der Aufbewahrungshöchstdauer automatisch gelöscht; der Lauf dafür ist
-monatlich und lässt sich nicht abschalten. Ein **offener** Zeitraum — ein Recht, das gerade gilt —
-wird nie gelöscht, so weit sein Beginn auch zurückliegt.
-
-| Einstellung | Bedeutung | Grenzen |
-|---|---|---|
-| Aufbewahrungshöchstdauer der Rechtehistorie | Wie lange ein abgeschlossener Nachweiseintrag nach seinem Ende liegen bleibt | 12 bis 120 Monate, ausgeliefert 36 |
-
-Das ist eine zweite Achse neben der Löschung des Gegenstands: Ein Nachweiseintrag überlebt das
-Löschen der Bibliothek, der Gruppe oder der Berechtigung, auf die er sich bezieht — aber nicht den
-Ablauf der Frist. Für Konten heißt das: Die Löschsperre aus Abschnitt 8 endet, sobald der letzte
-Nachweiseintrag zu diesem Konto die Frist verlassen hat.
-
-Eine **Verkürzung der Frist wirkt nur nach vorn**: Der Schnittzeitpunkt rückt je Kalendermonat um
-höchstens einen Monat vor. Eine von drei Jahren auf ein Jahr gesetzte Frist entfernt also nicht mit
-dem nächsten Lauf alles Ältere, sondern arbeitet sich monatsweise dorthin. Jede Änderung der Frist
-wird selbst im Nachweisprotokoll festgehalten.
-
-Gesetzt wird die Frist über `GET`/`PUT /api/v1/admin/permission-history/retention`; eine
-Bedienoberfläche dafür gibt es noch nicht.
-
-## 14. Was es hier nicht gibt
+## 13. Was es hier nicht gibt
 
 - **Keinen zweiten Faktor.** Lokale Konten melden sich mit Adresse und Passwort an. Für lokale
   Systemverwalterkonten lässt sich stattdessen der Zugang auf bestimmte Netze begrenzen; das Kapitel
