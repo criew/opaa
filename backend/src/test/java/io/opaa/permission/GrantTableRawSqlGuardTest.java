@@ -8,8 +8,10 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.function.Consumer;
+import java.util.Set;
+import java.util.function.BiConsumer;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
@@ -27,6 +29,14 @@ import org.junit.jupiter.api.Test;
  * own column keeps that name. {@code io.opaa.migration} is excluded by construction, not by an
  * allowlist of known offenders: a delta test proves what a changeset does to the <em>old</em>
  * schema and therefore has to write the old column name.
+ *
+ * <p><b>What it cannot see</b>, named rather than left to be rediscovered: a statement assembled
+ * from something other than adjacent literals - a table or column name behind a constant ({@code
+ * "... WHERE asset_id IN " + OWN_LIBRARIES}, whose literal half this does read), {@code
+ * String.format}/{@code formatted}, {@code String.join}, or a value built at runtime. A statement
+ * split so that the table name and the renamed column land in different literals of different
+ * chains would also pass. {@link #theScanFindsEveryFileThatNamesAGrantTableInAStatement} keeps the
+ * reassembler honest about the files it does reach; it cannot vouch for these shapes.
  */
 class GrantTableRawSqlGuardTest {
 
@@ -42,7 +52,8 @@ class GrantTableRawSqlGuardTest {
   private static final String RENAMED_COLUMN = "library" + "_id";
 
   private static final Pattern SQL_VERB =
-      Pattern.compile("\\b(INSERT\\s+INTO|UPDATE|DELETE\\s+FROM|SELECT)\\b");
+      Pattern.compile(
+          "\\b(INSERT\\s+INTO|UPDATE|DELETE\\s+FROM|SELECT)\\b", Pattern.CASE_INSENSITIVE);
 
   /** What may stand between two literals of one concatenated statement. */
   private static final Pattern CONCATENATION = Pattern.compile("\\s*\\+\\s*");
@@ -50,10 +61,12 @@ class GrantTableRawSqlGuardTest {
   @Test
   void noSourceSetWritesTheGrantTablesWithTheRenamedColumn() {
     List<String> offenses = new ArrayList<>();
-    for (Path root : SOURCE_ROOTS) {
-      assertThat(Files.isDirectory(root)).as("source root %s must exist", root).isTrue();
-      collectOffensesUnder(root, offenses);
-    }
+    forEachSourceFile(
+        (file, statements) ->
+            statements.stream()
+                .filter(GrantTableRawSqlGuardTest::namesAGrantTable)
+                .filter(statement -> statement.contains(RENAMED_COLUMN))
+                .forEach(statement -> offenses.add(file + " -> " + statement)));
 
     assertThat(offenses)
         .as(
@@ -62,50 +75,62 @@ class GrantTableRawSqlGuardTest {
         .isEmpty();
   }
 
-  /** Guards the premise: the scan must actually reassemble statements, not find nothing at all. */
+  /**
+   * The premise, as an equality rather than a floor: every file a plain text search finds - a line
+   * carrying a string literal, a grant table and a SQL verb - must be a file the reassembler found
+   * a statement in. A reassembler that silently stopped merging concatenations, or stopped
+   * recognising a verb, would otherwise keep passing on an ever smaller share of the tree.
+   */
   @Test
-  void theScanSeesTheRawStatementsAgainstTheGrantTables() {
-    List<String> statements = new ArrayList<>();
-    for (Path root : SOURCE_ROOTS) {
-      collectGrantStatementsUnder(root, statements);
-    }
-
-    assertThat(statements)
-        .as("the source tree does contain raw SQL against the grant tables")
-        .isNotEmpty();
-    assertThat(statements).anyMatch(statement -> statement.contains("INSERT INTO asset_grants"));
-  }
-
-  private static void collectOffensesUnder(Path root, List<String> offenses) {
-    walk(
-        root,
-        file -> {
-          for (String statement : sqlStatementsOf(read(file))) {
-            if (namesAGrantTable(statement) && statement.contains(RENAMED_COLUMN)) {
-              offenses.add(file + " -> " + statement);
-            }
+  void theScanFindsEveryFileThatNamesAGrantTableInAStatement() {
+    Set<String> reassembled = new LinkedHashSet<>();
+    forEachSourceFile(
+        (file, statements) -> {
+          if (statements.stream().anyMatch(GrantTableRawSqlGuardTest::namesAGrantTable)) {
+            reassembled.add(file.toString());
           }
         });
+
+    Set<String> textSearch = new LinkedHashSet<>();
+    forEachSourceFile(
+        (file, statements) -> {
+          if (hasAGrantStatementLine(read(file))) {
+            textSearch.add(file.toString());
+          }
+        });
+
+    assertThat(textSearch)
+        .as("the source tree does carry raw SQL against these tables")
+        .isNotEmpty();
+    assertThat(reassembled)
+        .as("every file a plain text search attributes a grant statement to must be reassembled")
+        .containsExactlyInAnyOrderElementsOf(textSearch);
   }
 
-  private static void collectGrantStatementsUnder(Path root, List<String> statements) {
-    walk(
-        root,
-        file ->
-            sqlStatementsOf(read(file)).stream()
-                .filter(GrantTableRawSqlGuardTest::namesAGrantTable)
-                .forEach(statements::add));
+  /** Independent of the reassembler on purpose: one line, no concatenation, no comment handling. */
+  private static boolean hasAGrantStatementLine(String source) {
+    for (String line : source.split("\n", -1)) {
+      if (line.indexOf('"') >= 0
+          && GRANT_TABLES.stream().anyMatch(line::contains)
+          && SQL_VERB.matcher(line).find()) {
+        return true;
+      }
+    }
+    return false;
   }
 
-  private static void walk(Path root, Consumer<Path> visitor) {
-    try (Stream<Path> files = Files.walk(root)) {
-      files
-          .filter(path -> path.getFileName().toString().endsWith(".java"))
-          .filter(path -> !path.toString().replace('\\', '/').contains("/io/opaa/migration/"))
-          .sorted()
-          .forEach(visitor);
-    } catch (IOException e) {
-      throw new UncheckedIOException(e);
+  private static void forEachSourceFile(BiConsumer<Path, List<String>> visitor) {
+    for (Path root : SOURCE_ROOTS) {
+      assertThat(Files.isDirectory(root)).as("source root %s must exist", root).isTrue();
+      try (Stream<Path> files = Files.walk(root)) {
+        files
+            .filter(path -> path.getFileName().toString().endsWith(".java"))
+            .filter(path -> !path.toString().replace('\\', '/').contains("/io/opaa/migration/"))
+            .sorted()
+            .forEach(file -> visitor.accept(file, sqlStatementsOf(read(file))));
+      } catch (IOException e) {
+        throw new UncheckedIOException(e);
+      }
     }
   }
 
@@ -116,82 +141,87 @@ class GrantTableRawSqlGuardTest {
   /**
    * Every SQL statement of a source file, each reassembled from the literals its {@code +} chain
    * concatenates. A literal that carries no SQL verb is prose (a message, a constant) and is
-   * dropped.
+   * dropped. One pass over the source: comments and literals are recognised by the same scanner, so
+   * neither a {@code //} inside a literal nor a literal inside a comment is mistaken for the other.
    */
   private static List<String> sqlStatementsOf(String source) {
-    String code = stripComments(source);
     List<String> statements = new ArrayList<>();
     StringBuilder current = new StringBuilder();
-    int previousEnd = -1;
+    StringBuilder gap = new StringBuilder();
+    boolean open = false;
     int i = 0;
     // Hand-written rather than a literal-matching regex: that one backtracks per character and
     // overflows the stack on this codebase's longest SQL strings and text blocks.
-    while (i < code.length()) {
-      if (code.charAt(i) != '"') {
-        i++;
-        continue;
-      }
-      int start = i;
-      StringBuilder literal = new StringBuilder();
-      if (code.startsWith("\"\"\"", i)) {
-        i += 3;
-        while (i < code.length() && !code.startsWith("\"\"\"", i)) {
-          literal.append(code.charAt(i++));
+    while (i < source.length()) {
+      char c = source.charAt(i);
+      if (c == '/' && source.startsWith("//", i)) {
+        while (i < source.length() && source.charAt(i) != '\n') {
+          i++;
         }
-        i = Math.min(code.length(), i + 3);
+      } else if (c == '/' && source.startsWith("/*", i)) {
+        i += 2;
+        while (i < source.length() && !source.startsWith("*/", i)) {
+          i++;
+        }
+        i = Math.min(source.length(), i + 2);
+      } else if (c == '\'') {
+        i = skipCharLiteral(source, i);
+      } else if (c == '"') {
+        StringBuilder literal = new StringBuilder();
+        i = readStringLiteral(source, i, literal);
+        if (open && !CONCATENATION.matcher(gap).matches()) {
+          addIfSql(statements, current.toString());
+          current.setLength(0);
+        }
+        current.append(literal);
+        gap.setLength(0);
+        open = true;
       } else {
-        i++;
-        while (i < code.length() && code.charAt(i) != '"' && code.charAt(i) != '\n') {
-          if (code.charAt(i) == '\\' && i + 1 < code.length()) {
-            i++;
-          }
-          literal.append(code.charAt(i++));
+        if (open) {
+          gap.append(c);
         }
-        i = Math.min(code.length(), i + 1);
+        i++;
       }
-      boolean continues =
-          previousEnd >= 0 && CONCATENATION.matcher(code.substring(previousEnd, start)).matches();
-      if (!continues) {
-        addIfSql(statements, current.toString());
-        current.setLength(0);
-      }
-      current.append(literal);
-      previousEnd = i;
     }
     addIfSql(statements, current.toString());
     return statements;
+  }
+
+  /** Advances past the literal starting at {@code start}, appending its content to {@code into}. */
+  private static int readStringLiteral(String source, int start, StringBuilder into) {
+    int i = start;
+    if (source.startsWith("\"\"\"", i)) {
+      i += 3;
+      while (i < source.length() && !source.startsWith("\"\"\"", i)) {
+        into.append(source.charAt(i++));
+      }
+      return Math.min(source.length(), i + 3);
+    }
+    i++;
+    while (i < source.length() && source.charAt(i) != '"' && source.charAt(i) != '\n') {
+      if (source.charAt(i) == '\\' && i + 1 < source.length()) {
+        i++;
+      }
+      into.append(source.charAt(i++));
+    }
+    return Math.min(source.length(), i + 1);
+  }
+
+  private static int skipCharLiteral(String source, int start) {
+    int i = start + 1;
+    while (i < source.length() && source.charAt(i) != '\'' && source.charAt(i) != '\n') {
+      if (source.charAt(i) == '\\' && i + 1 < source.length()) {
+        i++;
+      }
+      i++;
+    }
+    return Math.min(source.length(), i + 1);
   }
 
   private static void addIfSql(List<String> statements, String candidate) {
     if (!candidate.isEmpty() && SQL_VERB.matcher(candidate).find()) {
       statements.add(candidate);
     }
-  }
-
-  /** Blanks comments while keeping every offset, so a literal inside one is never picked up. */
-  private static String stripComments(String source) {
-    char[] out = source.toCharArray();
-    int i = 0;
-    while (i < out.length) {
-      if (out[i] == '/' && i + 1 < out.length && out[i + 1] == '/') {
-        while (i < out.length && out[i] != '\n') {
-          out[i++] = ' ';
-        }
-      } else if (out[i] == '/' && i + 1 < out.length && out[i + 1] == '*') {
-        while (i < out.length && !(out[i] == '*' && i + 1 < out.length && out[i + 1] == '/')) {
-          if (out[i] != '\n') {
-            out[i] = ' ';
-          }
-          i++;
-        }
-        for (int end = 0; end < 2 && i < out.length; end++) {
-          out[i++] = ' ';
-        }
-      } else {
-        i++;
-      }
-    }
-    return new String(out);
   }
 
   private static String read(Path file) {
