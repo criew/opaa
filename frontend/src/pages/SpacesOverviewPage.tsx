@@ -25,7 +25,9 @@ function spaceFigures(space: SpaceListResponse): string {
   const members =
     space.isDefault && space.memberCount <= 1
       ? 'nur Sie'
-      : plural(space.memberCount, 'Mitglied', 'Mitglieder')
+      : // #1815: a membership row may be a group standing for any number of people - see
+        // Sidebar#spaceSubtitle for why the figure is not resolved to persons.
+        plural(space.memberCount, 'Mitgliedschaft', 'Mitgliedschaften')
   if (space.libraryCount === undefined || space.chatCount === undefined) return members
   return [
     plural(space.libraryCount, 'Quelle', 'Quellen'),

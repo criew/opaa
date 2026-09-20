@@ -28,6 +28,7 @@ const {
   mockArchiveSpace,
   mockListSpaceMembers,
   mockGetSpaceLibraryAssociations,
+  mockGetMyGroups,
   membersBySpaceId,
 } = vi.hoisted(() => {
   const membersBySpaceId: Record<
@@ -101,6 +102,16 @@ const {
         return { hasAssociations: false, items: [] }
       },
     ),
+    mockGetMyGroups: vi.fn(async () => [
+      {
+        id: 'group-phoenix',
+        name: 'Projektbeteiligte Phoenix',
+        kind: 'AD_HOC' as const,
+        memberCount: 6,
+        createdAt: '2026-03-01T10:00:00Z',
+        updatedAt: '2026-03-01T10:00:00Z',
+      },
+    ]),
     membersBySpaceId,
   }
 })
@@ -114,16 +125,7 @@ vi.mock('../services/api', async () => {
     getSpaces: vi.fn(async () => []),
     getLibraries: vi.fn(async () => []),
     // #1815: the group picker reads the caller's own groups.
-    getMyGroups: vi.fn(async () => [
-      {
-        id: 'group-phoenix',
-        name: 'Projektbeteiligte Phoenix',
-        kind: 'AD_HOC' as const,
-        memberCount: 6,
-        createdAt: '2026-03-01T10:00:00Z',
-        updatedAt: '2026-03-01T10:00:00Z',
-      },
-    ]),
+    getMyGroups: mockGetMyGroups,
     getSpace: vi.fn(
       async (spaceId: string) => useSpaceStore.getState().selectedSpace ?? { id: spaceId },
     ),
@@ -313,6 +315,37 @@ describe('SpaceManagementPage', () => {
         'MEMBER',
       )
     })
+  })
+
+  /**
+   * #1815, ADR-0036 Entscheidung 6: the handover is no longer the owner's alone - every capable
+   * ADMIN member that is a natural person may perform it. Driven here with an ADMIN caller who is
+   * not the owner, which before this change saw no button at all.
+   */
+  it('offers the handover to an ADMIN member who is not the owner', async () => {
+    setSpaceState({ ...teamSpace, ownerId: 'someone-else', userRole: 'ADMIN' })
+    renderWithProviders(<SpaceManagementPage />, { withRouter: true })
+    const user = userEvent.setup()
+
+    await screen.findByText('Colleague')
+    const handoverButtons = screen.getAllByRole('button', { name: /zum eigentümer machen/i })
+    // Both person rows, never the group row - a space owner is always a natural person.
+    expect(handoverButtons).toHaveLength(2)
+
+    await user.click(handoverButtons[0])
+    await user.click(await screen.findByRole('button', { name: /übertragen/i }))
+
+    await waitFor(() => {
+      expect(mockTransferSpaceOwnership).toHaveBeenCalledWith('space-team', 'u1')
+    })
+  })
+
+  it('names a failed group load instead of showing an empty picker', async () => {
+    mockGetMyGroups.mockRejectedValueOnce(new Error('offline'))
+    setSpaceState(teamSpace)
+    renderWithProviders(<SpaceManagementPage />, { withRouter: true })
+
+    expect(await screen.findByText(/Ihre Gruppen konnten nicht geladen werden/)).toBeInTheDocument()
   })
 
   // #1815, ADR-0036 Entscheidung 6: state and addressee, without a date and without the previous

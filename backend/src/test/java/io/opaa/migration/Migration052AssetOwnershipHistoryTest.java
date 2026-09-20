@@ -79,6 +79,7 @@ class Migration052AssetOwnershipHistoryTest extends AbstractMigrationTest {
             count(
                 "SELECT count(*) FROM asset_ownership_history WHERE asset_type = 'SPACE'"
                     + " AND cause = 'BACKFILL' AND valid_to IS NULL AND owner_type = 'USER'"))
+        .as("the two ordinary spaces of the fixture, never its personal one")
         .isEqualTo(2);
     assertThat(
             count(
@@ -91,6 +92,34 @@ class Migration052AssetOwnershipHistoryTest extends AbstractMigrationTest {
     assertThat(count("SELECT count(*) FROM asset_ownership_history WHERE asset_type <> 'SPACE'"))
         .as("the library side of the table comes with its writer in #1819")
         .isZero();
+  }
+
+  /**
+   * The condition under which an existing account stays deletable at all - see {@code
+   * Migration044SpaceMembershipHistoryTest#thePersonalSpaceGetsNoBackfillIntervalAndItsOwnerStays
+   * Deletable} for the same rule on the membership side: nobody decides the ownership of the
+   * personal space, no path ever closes its interval, and {@code owner_user_id} is {@code ON DELETE
+   * RESTRICT}.
+   */
+  @Test
+  void thePersonalSpaceGetsNoBackfillIntervalAndItsOwnerStaysDeletable() throws Exception {
+    Fixture fixture = seedTwoSpaces();
+
+    applyChangelog(connection, CHANGELOG_PATH);
+
+    assertThat(
+            count(
+                "SELECT count(*) FROM asset_ownership_history WHERE asset_id = '"
+                    + fixture.personalSpace()
+                    + "'"))
+        .isZero();
+
+    execute("DELETE FROM asset_ownership_history WHERE asset_id = ?", fixture.firstSpace());
+    execute("DELETE FROM space_memberships WHERE organization_id = ?", fixture.organization());
+    execute("DELETE FROM spaces WHERE owner_id = ?", fixture.owner());
+    execute("DELETE FROM users WHERE id = ?", fixture.owner());
+
+    assertThat(count("SELECT count(*) FROM users WHERE id = '" + fixture.owner() + "'")).isZero();
   }
 
   @Test
@@ -184,14 +213,17 @@ class Migration052AssetOwnershipHistoryTest extends AbstractMigrationTest {
   // Fixture
   // -----------------------------------------------------------------------------------------
 
-  private record Fixture(UUID organization, UUID owner, UUID firstSpace, UUID group) {}
+  private record Fixture(
+      UUID organization, UUID owner, UUID firstSpace, UUID group, UUID personalSpace) {}
 
   private Fixture seedTwoSpaces() throws SQLException {
     UUID organization = seedOrganization();
     UUID owner = seedUser(organization);
     UUID first = seedSpace(organization, owner);
     seedSpace(organization, seedUser(organization));
-    return new Fixture(organization, owner, first, seedGroup(organization));
+    // The personal space every account gets at first sign-in.
+    UUID personalSpace = seedPersonalSpace(organization, owner);
+    return new Fixture(organization, owner, first, seedGroup(organization), personalSpace);
   }
 
   private void insertOpenInterval(Fixture fixture, UUID assetId) throws SQLException {
@@ -231,6 +263,17 @@ class Migration052AssetOwnershipHistoryTest extends AbstractMigrationTest {
     execute(
         "INSERT INTO spaces (id, name, owner_id, organization_id, visibility)"
             + " VALUES (?, 'Team', ?, ?, 'PRIVATE')",
+        space,
+        owner,
+        organization);
+    return space;
+  }
+
+  private UUID seedPersonalSpace(UUID organization, UUID owner) throws SQLException {
+    UUID space = UUID.randomUUID();
+    execute(
+        "INSERT INTO spaces (id, name, owner_id, organization_id, visibility, is_default)"
+            + " VALUES (?, 'Meine Dokumente', ?, ?, 'PRIVATE', true)",
         space,
         owner,
         organization);

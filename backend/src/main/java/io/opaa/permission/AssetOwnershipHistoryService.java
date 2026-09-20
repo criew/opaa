@@ -70,11 +70,28 @@ public class AssetOwnershipHistoryService {
   }
 
   /**
-   * Closes the open interval of a deleted asset. {@code asset_id} carries no foreign key (ADR-0016)
-   * - without this call the deleted asset would keep reporting a current owner forever.
+   * Closes the open interval of a deleted asset and writes the zero-length marker that records the
+   * deletion itself, with its actor. {@code asset_id} carries no foreign key (ADR-0016) - without
+   * this call the deleted asset would keep reporting a current owner forever, and without the
+   * marker the deletion would be the one ownership event nobody is named for: the closed interval
+   * keeps the cause it was opened with, and that cause is somebody else's act. Same mechanics as
+   * {@code io.opaa.space.SpaceMembershipHistoryService#recordSpaceDeleted}.
    */
-  public void recordAssetDeleted(AssetType assetType, UUID assetId) {
-    closeOpenInterval(assetType, assetId, clock.nextBoundary());
+  public void recordAssetDeleted(
+      AssetType assetType, UUID assetId, PermissionSubject lastOwner, UUID actorUserId) {
+    Instant now = clock.nextBoundary();
+    closeOpenInterval(assetType, assetId, now);
+    AssetOwnershipHistory marker =
+        new AssetOwnershipHistory(
+            assetType,
+            assetId,
+            lastOwner.organizationId(),
+            lastOwner,
+            AssetOwnershipHistoryCause.ASSET_DELETED,
+            actorUserId,
+            now);
+    marker.close(now);
+    repository.save(marker);
   }
 
   /**

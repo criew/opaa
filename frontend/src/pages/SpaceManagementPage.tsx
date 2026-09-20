@@ -98,6 +98,7 @@ export default function SpaceManagementPage() {
   const [ownGroups, setOwnGroups] = useState<GroupListResponse[]>([])
   const [selectedGroup, setSelectedGroup] = useState<GroupListResponse | null>(null)
   const [newGroupRole, setNewGroupRole] = useState<SpaceRole>('MEMBER')
+  const [groupLoadError, setGroupLoadError] = useState<string | null>(null)
   const [localError, setLocalError] = useState<string | null>(null)
   // #543: deleteSpace's 409 - "Der Space enthält noch Chats ... Archivieren Sie den Space
   // stattdessen." - is the one failure this page offers a direct way out of, instead of just
@@ -142,8 +143,16 @@ export default function SpaceManagementPage() {
   // of what the rule allows, never more.
   useEffect(() => {
     void getMyGroups()
-      .then(setOwnGroups)
-      .catch(() => setOwnGroups([]))
+      .then((groups) => {
+        setOwnGroups(groups)
+        setGroupLoadError(null)
+      })
+      .catch(() => {
+        // A failed load and "you belong to no group" look identical in an empty picker - the one
+        // is a reason to try again, the other is not.
+        setOwnGroups([])
+        setGroupLoadError('Ihre Gruppen konnten nicht geladen werden.')
+      })
   }, [])
 
   useEffect(() => {
@@ -520,9 +529,11 @@ export default function SpaceManagementPage() {
                           Entfernen
                         </Button>
                       )}
-                      {/* Ein Space-Eigentümer ist immer eine natürliche Person (ADR-0036
-                          Entscheidung 6) - eine Gruppenzeile bietet die Übertragung nicht an. */}
-                      {isOwner && !memberIsOwner && !isGroup && (
+                      {/* #1815: Die Verantwortung darf jedes handlungsfähige ADMIN-Mitglied
+                          übertragen — an sich oder an ein anderes solches Mitglied (ADR-0036
+                          Entscheidung 6). Eine Gruppe kommt dafür nicht in Betracht: Der
+                          Eigentümer bleibt eine natürliche Person. */}
+                      {(canManage || isOwner) && !memberIsOwner && !isGroup && (
                         <Button
                           size="small"
                           onClick={async () => {
@@ -641,6 +652,11 @@ export default function SpaceManagementPage() {
                     Eine Gruppe als Mitglied gibt ihre Rolle an alle Mitglieder weiter — ohne eigene
                     Zeile, und sie endet mit dem Austritt aus der Gruppe.
                   </Typography>
+                  {groupLoadError && (
+                    <Alert severity="error" sx={{ mb: 0.5 }}>
+                      {groupLoadError}
+                    </Alert>
+                  )}
                   <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5}>
                     <Autocomplete
                       options={availableGroups}

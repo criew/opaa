@@ -21,7 +21,12 @@ databaseChangeLog:
         Fremdschluessel. Ein Fremdschluessel waere hier ohnehin nicht moeglich - asset_id benennt
         ein Objekt beliebigen Typs -, aber die Zusage ist dieselbe wie in 039: Die Historie
         ueberlebt das Objekt, und das offene Intervall wird beim Loeschen von der Anwendung
-        geschlossen (Grund ASSET_DELETED).
+        geschlossen. Daneben schreibt sie eine nulllange Markierung mit dem Grund ASSET_DELETED
+        und dem Akteur: Das geschlossene Intervall behaelt den Grund, mit dem es eroeffnet wurde,
+        und das ist die Handlung einer anderen Person - ohne die Markierung waere die Loeschung
+        das eine Eigentumsereignis ohne Verantwortlichen. Die nulllange Zeile verletzt
+        uk_asset_ownership_history_open nicht (der Teilindex greift nur bei valid_to IS NULL) und
+        wird von keiner Rekonstruktion ausgewaehlt, die valid_from <= asOf < valid_to verlangt.
         .
         owner_group_id steht von Anfang an in der Tabelle, obwohl ein Space-Eigentuemer immer
         eine natuerliche Person ist (ADR-0036 Entscheidung 6): Eine Bibliothek kann einer Gruppe
@@ -31,6 +36,11 @@ databaseChangeLog:
         BESTAND: Jeder am Migrationstag vorhandene Space bekommt ein offenes Intervall ab jetzt
         mit dem Grund BACKFILL - wie in 044 und aus demselben Grund: Ein rueckwirkend aus
         created_at erfundenes Intervall behauptete eine Eigentumshistorie, die es nie gab.
+        .
+        AUSGENOMMEN IST DER PERSOENLICHE SPACE (NOT s.is_default), wie in 044 und aus demselben
+        Grund: Sein Eigentum entscheidet niemand, kein Pfad schliesst das Intervall je wieder, und
+        owner_user_id ist ON DELETE RESTRICT - ein Intervall hier machte jedes Bestandskonto
+        dauerhaft unloeschbar.
       changes:
         - sql:
             splitStatements: false
@@ -74,7 +84,8 @@ databaseChangeLog:
               INSERT INTO asset_ownership_history
                   (id, asset_type, asset_id, organization_id, owner_type, owner_user_id, cause, actor_user_id, valid_from, created_at)
               SELECT gen_random_uuid(), 'SPACE', s.id, s.organization_id, 'USER', s.owner_id, 'BACKFILL', NULL, now(), now()
-                FROM spaces s;
+                FROM spaces s
+               WHERE NOT s.is_default;
       rollback:
         - sql:
             splitStatements: false

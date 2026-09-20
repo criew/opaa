@@ -8623,6 +8623,11 @@ components:
           $ref: "#/components/schemas/SpaceVisibility"
         memberCount:
           type: integer
+          description: >
+            Number of membership rows, not of people (#1815): one row may be a group standing for
+            any number of members. Resolving it to persons would disclose group sizes to every
+            member of the space - the figure ADR-0036, Entscheidung 9 withholds below the minimum
+            group size. Clients name it accordingly ("Mitgliedschaften").
           example: 5
         libraryCount:
           type: integer
@@ -8750,6 +8755,9 @@ components:
           format: uuid
         memberCount:
           type: integer
+          description: >
+            Number of membership rows, not of people - see SpaceListResponse.memberCount. The same
+            holds for roleCounts, which counts rows per role.
           example: 5
         userRole:
           $ref: "#/components/schemas/SpaceRole"

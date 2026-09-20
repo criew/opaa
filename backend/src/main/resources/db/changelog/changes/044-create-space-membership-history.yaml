@@ -32,6 +32,16 @@ databaseChangeLog:
         asset_grant_history bei ihrer Einfuehrung getroffen haben. Die Historie beginnt damit an
         diesem Tag und behauptet fuer die Zeit davor nichts; sie rueckwirkend aus created_at zu
         erfinden wuerde eine Rollenhistorie vortaeuschen, die es nie gab.
+        .
+        AUSGENOMMEN IST DER PERSOENLICHE SPACE (NOT s.is_default), und das ist keine Feinheit,
+        sondern die Bedingung dafuer, dass Bestandskonten loeschbar bleiben: Die Mitgliedszeile des
+        persoenlichen Space legt SpaceRepository#insertDefaultSpaceIfAbsent an, kein Mensch
+        entscheidet sie, und kein Pfad schliesst ihr Intervall je wieder - SpaceService#deleteSpace
+        weist den Standard-Space ab, und LocalUserService loescht ihn an jedem Historienschreiber
+        vorbei. Ein offenes Intervall hier machte jedes Konto, das sich je angemeldet hat, ueber
+        subject_user_id (ON DELETE RESTRICT) dauerhaft unloeschbar. Dieselbe Grenze zieht
+        UserRepository#countDeletionBlockers seit jeher mit "spaces ... AND is_default = false",
+        und insertDefaultSpaceIfAbsent schreibt aus demselben Grund gar kein Intervall.
       changes:
         - sql:
             splitStatements: false
@@ -78,7 +88,9 @@ databaseChangeLog:
               INSERT INTO space_membership_history
                   (id, space_id, organization_id, subject_type, subject_user_id, subject_group_id, role, member_count_at_grant, cause, actor_user_id, valid_from, created_at)
               SELECT gen_random_uuid(), m.space_id, m.organization_id, m.subject_type, m.user_id, m.group_id, m.role, m.member_count_at_grant, 'BACKFILL', NULL, now(), now()
-                FROM space_memberships m;
+                FROM space_memberships m
+                JOIN spaces s ON s.id = m.space_id
+               WHERE NOT s.is_default;
       rollback:
         - sql:
             splitStatements: false

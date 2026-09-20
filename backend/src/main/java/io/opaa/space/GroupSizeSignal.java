@@ -7,9 +7,14 @@ package io.opaa.space;
  * admission.
  *
  * <p><b>The "kleine Gruppe" suppression applies to both figures at once</b>, and to the difference
- * with them: if either lies below {@link #MINIMUM_GROUP_SIZE}, neither is disclosed, because
- * publishing one of them beside the difference reconstructs the other. A group of four is, in a
- * unit of that size, a person with a name.
+ * with them: if either lies below {@link #MINIMUM_GROUP_SIZE}, neither <em>figure</em> is
+ * disclosed, because publishing one of them beside the difference reconstructs the other. A group
+ * of four is, in a unit of that size, a person with a name.
+ *
+ * <p><b>One size does stay visible, on purpose:</b> {@link #emptyGroup} says that the group reaches
+ * nobody, and that is the number zero. ADR-0036, Entscheidung 6 requires the warning - an empty
+ * effective group is admitted deliberately - and the suppression protects members from being
+ * identifiable, of which an empty group has none.
  *
  * <p><b>The minimum is a constant here, not a setting yet.</b> ADR-0036 makes it a governance
  * setting with an enforced lower bound of 5 and a default of 5 - the two values coincide, so the

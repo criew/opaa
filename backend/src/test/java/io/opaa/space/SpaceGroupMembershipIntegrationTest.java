@@ -17,6 +17,8 @@ import io.opaa.group.GroupRepository;
 import io.opaa.group.GroupService;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
+import io.opaa.permission.AssetOwnershipHistoryCause;
+import io.opaa.permission.AssetOwnershipHistoryRepository;
 import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.PermissionSubject;
 import io.opaa.test.OpaaIntegrationTest;
@@ -45,6 +47,7 @@ class SpaceGroupMembershipIntegrationTest {
   @Autowired private SpaceMembershipRepository membershipRepository;
   @Autowired private SpaceMembershipHistoryRepository historyRepository;
   @Autowired private SpaceMembershipHistoryService historyService;
+  @Autowired private AssetOwnershipHistoryRepository ownershipHistoryRepository;
   @Autowired private GroupService groupService;
   @Autowired private GroupRepository groupRepository;
   @Autowired private GroupMembershipResolver groupMembershipResolver;
@@ -295,15 +298,15 @@ class SpaceGroupMembershipIntegrationTest {
   }
 
   /**
-   * ADR-0036, Entscheidung 6, Schutzregel 1 in the one shape it can take today: the owner's own row
-   * is the space's last capable ADMIN, and removing or downgrading it is refused with <b>409</b> -
-   * where the pre-#1815 owner protection answered 400. The rule's other shapes (an ADMIN group
-   * losing its last account, a blocked ADMIN person) need #1818; see {@code
-   * SpaceService#requireCapableAdminRemains} for why, and {@code SpaceAccessPolicyTest} for the
-   * group half of the decision.
+   * The owner protection, which #1815 moves from {@code 400} to <b>{@code 409}</b> (ADR-0036,
+   * Entscheidung 6 names the old status explicitly as the thing to straighten out). Pinned on the
+   * <em>message</em>, not only on the exception type: {@code requireCapableAdminRemains} throws the
+   * same {@link ConflictException}, so without this the test would pass while claiming to exercise
+   * a guard it never reaches. That guard has its own test in {@code
+   * SpaceServiceTest#theLastCapableAdminIsProtectedEvenWhenTheOwnerRuleDoesNotApply}.
    */
   @Test
-  void removingOrDowngradingTheLastCapableAdminIsRefusedWithAConflict() {
+  void removingOrDowngradingTheOwnerIsRefusedWithAConflictNotAValidationError() {
     UUID owner = createUser(organizationA);
     UUID admin = createUser(organizationA);
     Space space = createSpace(owner);
@@ -314,18 +317,16 @@ class SpaceGroupMembershipIntegrationTest {
         currentUserOf(owner));
     UUID ownerMembership = membershipIdOfUser(space.getId(), owner);
 
-    // The owner's own row is the space's last capable ADMIN once the other one is gone again.
-    spaceService.removeMember(
-        space.getId(), membershipIdOfUser(space.getId(), admin), currentUserOf(owner));
-
     assertThatThrownBy(
             () -> spaceService.removeMember(space.getId(), ownerMembership, currentUserOf(owner)))
-        .isInstanceOf(ConflictException.class);
+        .isInstanceOf(ConflictException.class)
+        .hasMessageContaining("Der Eigentümer kann nicht entfernt werden");
     assertThatThrownBy(
             () ->
                 spaceService.updateMemberRole(
                     space.getId(), ownerMembership, SpaceRole.MEMBER, currentUserOf(owner)))
-        .isInstanceOf(ConflictException.class);
+        .isInstanceOf(ConflictException.class)
+        .hasMessageContaining("Die Rolle des Eigentümers kann nicht geändert werden");
   }
 
   // -------------------------------------------------------------------------------------------
@@ -398,6 +399,22 @@ class SpaceGroupMembershipIntegrationTest {
     spaceService.deleteSpace(space.getId(), currentUserOf(owner));
 
     assertThat(historyRepository.findBySpaceIdAndValidToIsNull(space.getId())).isEmpty();
+    assertThat(
+            ownershipHistoryRepository.findByAssetTypeAndAssetIdAndValidToIsNull(
+                Space.ASSET_TYPE, space.getId()))
+        .isEmpty();
+    // The deletion is an ownership event of its own and carries its actor - the closed interval
+    // keeps the cause it was opened with.
+    assertThat(ownershipHistoryRepository.findAll())
+        .filteredOn(row -> space.getId().equals(row.getAssetId()))
+        .filteredOn(row -> row.getCause() == AssetOwnershipHistoryCause.ASSET_DELETED)
+        .singleElement()
+        .satisfies(
+            marker -> {
+              assertThat(marker.getActorUserId()).isEqualTo(owner);
+              assertThat(marker.getOwnerUserId()).isEqualTo(owner);
+              assertThat(marker.getValidTo()).isEqualTo(marker.getValidFrom());
+            });
   }
 
   // -------------------------------------------------------------------------------------------

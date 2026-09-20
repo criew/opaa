@@ -111,6 +111,36 @@ class Migration044SpaceMembershipHistoryTest extends AbstractMigrationTest {
         .isEqualTo(1);
   }
 
+  /**
+   * The condition under which an existing account stays deletable at all: nobody decides the
+   * membership of the personal space, no path ever closes its interval ({@code
+   * SpaceService#deleteSpace} refuses the default space, {@code LocalUserService} deletes it past
+   * every history writer), and {@code subject_user_id} is {@code ON DELETE RESTRICT} - so an
+   * interval here would make every account that ever signed in permanently undeletable.
+   */
+  @Test
+  void thePersonalSpaceGetsNoBackfillIntervalAndItsOwnerStaysDeletable() throws Exception {
+    Fixture fixture = seedSpaceWithAPersonAndAGroupMembership();
+
+    applyChangelog(connection, CHANGELOG_PATH);
+
+    assertThat(
+            count(
+                "SELECT count(*) FROM space_membership_history WHERE space_id = '"
+                    + fixture.personalSpace()
+                    + "'"))
+        .isZero();
+
+    // What the exclusion is for: after the account's own rows are gone, nothing of the personal
+    // space is left to hold the users row back.
+    execute("DELETE FROM space_memberships WHERE organization_id = ?", fixture.organization());
+    execute("DELETE FROM space_membership_history WHERE space_id = ?", fixture.space());
+    execute("DELETE FROM spaces WHERE organization_id = ?", fixture.organization());
+    execute("DELETE FROM users WHERE id = ?", fixture.owner());
+
+    assertThat(count("SELECT count(*) FROM users WHERE id = '" + fixture.owner() + "'")).isZero();
+  }
+
   @Test
   void theSubjectCheckRejectsAMixedOrEmptySubject() throws Exception {
     Fixture fixture = seedSpaceWithAPersonAndAGroupMembership();
@@ -164,8 +194,10 @@ class Migration044SpaceMembershipHistoryTest extends AbstractMigrationTest {
 
     applyChangelog(connection, CHANGELOG_PATH);
 
-    execute("DELETE FROM space_memberships WHERE space_id = ?", fixture.space());
-    execute("DELETE FROM spaces WHERE id = ?", fixture.space());
+    // Both spaces of the fixture, personal one included - otherwise the users row would be held
+    // back by fk_spaces_owner and this would prove nothing about the history.
+    execute("DELETE FROM space_memberships WHERE organization_id = ?", fixture.organization());
+    execute("DELETE FROM spaces WHERE organization_id = ?", fixture.organization());
 
     assertThatThrownBy(() -> execute("DELETE FROM users WHERE id = ?", fixture.owner()))
         .hasMessageContaining("fk_space_membership_history_subject_user_organization");
@@ -180,7 +212,8 @@ class Migration044SpaceMembershipHistoryTest extends AbstractMigrationTest {
   // Fixture
   // -----------------------------------------------------------------------------------------
 
-  private record Fixture(UUID organization, UUID owner, UUID space, UUID group) {}
+  private record Fixture(
+      UUID organization, UUID owner, UUID space, UUID group, UUID personalSpace) {}
 
   private Fixture seedSpaceWithAPersonAndAGroupMembership() throws SQLException {
     UUID organization = seedOrganization();
@@ -202,7 +235,17 @@ class Migration044SpaceMembershipHistoryTest extends AbstractMigrationTest {
         group,
         space,
         organization);
-    return new Fixture(organization, owner, space, group);
+    // The personal space every account gets at first sign-in, with the membership row
+    // SpaceRepository#insertDefaultSpaceIfAbsent writes for it.
+    UUID personalSpace = seedPersonalSpace(organization, owner);
+    execute(
+        "INSERT INTO space_memberships (id, subject_type, user_id, space_id, role,"
+            + " organization_id) VALUES (?, 'USER', ?, ?, 'ADMIN', ?)",
+        UUID.randomUUID(),
+        owner,
+        personalSpace,
+        organization);
+    return new Fixture(organization, owner, space, group, personalSpace);
   }
 
   private void insertInterval(
@@ -262,6 +305,17 @@ class Migration044SpaceMembershipHistoryTest extends AbstractMigrationTest {
     execute(
         "INSERT INTO spaces (id, name, owner_id, organization_id, visibility)"
             + " VALUES (?, 'Team', ?, ?, 'PRIVATE')",
+        space,
+        owner,
+        organization);
+    return space;
+  }
+
+  private UUID seedPersonalSpace(UUID organization, UUID owner) throws SQLException {
+    UUID space = UUID.randomUUID();
+    execute(
+        "INSERT INTO spaces (id, name, owner_id, organization_id, visibility, is_default)"
+            + " VALUES (?, 'Meine Dokumente', ?, ?, 'PRIVATE', true)",
         space,
         owner,
         organization);

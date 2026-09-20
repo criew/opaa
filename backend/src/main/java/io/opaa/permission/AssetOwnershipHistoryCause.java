@@ -12,8 +12,10 @@ public enum AssetOwnershipHistoryCause {
   /** Written once by changelog 052 for the assets that existed before this table. */
   BACKFILL,
   /**
-   * The asset itself was deleted. {@code asset_id} carries no foreign key (ADR-0016), so nothing
-   * but the application closes the interval a deleted asset leaves behind.
+   * The asset itself was deleted, recorded as a zero-length marker beside the interval that is
+   * closed with it - see {@link AssetOwnershipHistoryService#recordAssetDeleted}. {@code asset_id}
+   * carries no foreign key (ADR-0016), so nothing but the application closes the interval a deleted
+   * asset leaves behind.
    */
   ASSET_DELETED
 }

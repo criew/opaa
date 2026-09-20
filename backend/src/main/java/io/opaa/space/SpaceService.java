@@ -608,7 +608,11 @@ public class SpaceService {
     for (SpaceMembership membership : space.getMemberships()) {
       membershipHistory.recordSpaceDeleted(membership, caller.id());
     }
-    ownershipHistory.recordAssetDeleted(Space.ASSET_TYPE, space.getId());
+    ownershipHistory.recordAssetDeleted(
+        Space.ASSET_TYPE,
+        space.getId(),
+        PermissionSubject.user(space.getOwnerId(), space.getOrganizationId()),
+        caller.id());
     auditEventRecorder.recordUserAction(
         AuditEvent.builder()
             .organizationId(space.getOrganizationId())

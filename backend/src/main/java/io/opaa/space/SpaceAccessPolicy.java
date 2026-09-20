@@ -169,6 +169,11 @@ public class SpaceAccessPolicy {
    * created or transferred through the API has one - so "Nachfolge offen" is <em>not reachable</em>
    * for a space today. What is decided here today is the group half: whether a group still counts
    * as this space's {@code ADMIN}.
+   *
+   * <p><b>What the state does not do yet:</b> ADR-0036, Entscheidung 6 freezes an object's reach
+   * while its succession is open - no new grants, no higher release level, for a space no new
+   * members. Nothing here enforces that; the state is derived and shown, and the enforcement
+   * belongs to the lifecycle work (#1819) together with the run that records the Vorgänge.
    */
   public boolean hasCapableAdmin(Space space) {
     return hasCapableAdminAfter(space, null, null);
@@ -182,21 +187,37 @@ public class SpaceAccessPolicy {
    * management action.
    */
   public boolean hasCapableAdminAfter(Space space, SpaceMembership changed, SpaceRole newRole) {
+    // Person rows first, and deliberately in two passes: deciding a person costs nothing, deciding
+    // a group costs a directory lookup and a count. On the list path of every space
+    // (SpaceService#listSpaces) the first pass answers almost every case.
     for (SpaceMembership membership : space.getMemberships()) {
-      SpaceRole role = membership == changed ? newRole : membership.getRole();
-      if (role == null) {
-        continue;
+      if (membership.isUserSubject() && qualifies(space, membership, changed, newRole)) {
+        return true;
       }
-      boolean ownerRow =
-          membership.isUserSubject() && space.getOwnerId().equals(membership.getUserId());
-      if (!ownerRow && !role.atLeast(SpaceRole.ADMIN)) {
-        continue;
-      }
-      if (membership.isUserSubject() || isCapableGroup(membership.getGroupId())) {
+    }
+    for (SpaceMembership membership : space.getMemberships()) {
+      if (membership.isGroupSubject()
+          && qualifies(space, membership, changed, newRole)
+          && isCapableGroup(membership.getGroupId())) {
         return true;
       }
     }
     return false;
+  }
+
+  /**
+   * Whether the row would still rank as {@code ADMIN} after the pending change - the owner's own
+   * row always does, whatever role it carries, unless the change removes it.
+   */
+  private static boolean qualifies(
+      Space space, SpaceMembership membership, SpaceMembership changed, SpaceRole newRole) {
+    SpaceRole role = membership == changed ? newRole : membership.getRole();
+    if (role == null) {
+      return false;
+    }
+    boolean ownerRow =
+        membership.isUserSubject() && space.getOwnerId().equals(membership.getUserId());
+    return ownerRow || role.atLeast(SpaceRole.ADMIN);
   }
 
   /**

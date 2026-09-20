@@ -338,6 +338,10 @@ public class SpaceAssetAssociationService {
    * Whether every current member of {@code space} already has at least VIEWER on {@code library}.
    */
   private boolean allMembersCanRead(Space space, KnowledgeLibrary library) {
+    // A space that reaches nobody - one empty group and no person - answers true, and that is the
+    // right answer rather than a gap: there is no member here who cannot read, so there is nobody
+    // the mixed-audience notification would be about. It becomes false again with the first
+    // account the group gains.
     for (UUID memberId : personalMembersOf(space)) {
       // Deliberately not systemAdmin-bypassed: a system-admin member would trivially satisfy "can
       // read", masking whether ordinary members actually have a real grant - the exact signal

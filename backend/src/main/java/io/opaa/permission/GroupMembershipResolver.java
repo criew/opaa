@@ -88,9 +88,14 @@ public class GroupMembershipResolver {
    * does not exist yet - {@code LocalAccountState} is the derived state of a <em>local</em>
    * credential, not of the account - and #1818 introduces it. This method is the one place that has
    * to narrow then, so no caller carries its own notion of "active".
+   *
+   * <p>Counts in the database rather than sizing {@link #resolveUserIds}: this sits on the list
+   * path of every space a caller sees, and a department's whole membership is a large answer to a
+   * question about its size.
    */
   public int activeMemberCount(UUID groupId, UUID organizationId) {
-    return resolveUserIds(PermissionSubject.group(groupId, organizationId)).size();
+    return Math.toIntExact(
+        membershipSource.countUserIdsByGroupIdAndOrganizationId(groupId, organizationId));
   }
 
   private Set<UUID> resolveUserSubject(PermissionSubject subject) {
