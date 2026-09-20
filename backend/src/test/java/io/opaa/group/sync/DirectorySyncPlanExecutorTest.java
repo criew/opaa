@@ -58,7 +58,7 @@ class DirectorySyncPlanExecutorTest {
     SyncReport report = executor.planAndApply(organizationId, Instant.now(), snapshot);
 
     assertThat(report.outcome()).isEqualTo(DirectorySyncOutcome.ABORTED_NO_TRUSTED_PROVIDER);
-    assertThat(report.message()).contains("Kein Standardanbieter");
+    assertThat(report.message()).contains("Kein aktivierter Standardanbieter");
     assertThat(report.groupsCreated()).isEmpty();
     assertThat(report.membershipChanges()).isEmpty();
     verifyNoInteractions(userRepository);

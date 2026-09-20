@@ -27,6 +27,7 @@ import java.time.Instant;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -201,9 +202,11 @@ class OidcProviderServiceIntegrationTest {
         service.createProvider(organizationId, userId, draft("Partner", issuer + "-2"));
     service.makeDefault(organizationId, userId, partner.getId());
 
-    List<OidcProvider> all = repository.findAllByOrderBySortOrderAscDisplayNameAsc();
-    assertThat(all).filteredOn(OidcProvider::isDefaultProvider).singleElement();
-    assertThat(all).filteredOn(OidcProvider::isDefaultProvider).first().isEqualTo(partner);
+    List<OidcProvider> own =
+        repository.findAllByOrderBySortOrderAscDisplayNameAsc().stream()
+            .filter(provider -> provider.getIssuerUri().startsWith(OWN_ISSUER_PREFIX))
+            .toList();
+    assertThat(own).filteredOn(OidcProvider::isDefaultProvider).singleElement().isEqualTo(partner);
   }
 
   @Test
@@ -248,6 +251,28 @@ class OidcProviderServiceIntegrationTest {
     service.deleteProvider(organizationId, userId, standard.getId());
     assertThat(repository.findById(standard.getId())).isEmpty();
     assertThat(registry.findEnabledByIssuer(issuer)).isEmpty();
+  }
+
+  /**
+   * Regression guard for #1832: switching off the last enabled provider leaves {@code is_default}
+   * on its row (ADR-0033, Entscheidung 4), so the enabled default - the directory provider {@code
+   * TrustedProvider} resolves members through - has to be asked for separately.
+   */
+  @Test
+  void theLastProviderSwitchedOffKeepsIsDefaultButIsNoLongerTheEnabledDefault() {
+    OidcProvider standard = service.createProvider(organizationId, userId, draft("Erster", issuer));
+    assertThat(repository.findByDefaultProviderTrueAndEnabledTrue())
+        .map(OidcProvider::getId)
+        .contains(standard.getId());
+
+    service.setEnabled(organizationId, userId, standard.getId(), false, true);
+
+    assertThat(repository.findByDefaultProviderTrue())
+        .map(OidcProvider::getId)
+        .contains(standard.getId());
+    assertThat(repository.findByDefaultProviderTrueAndEnabledTrue())
+        .map(OidcProvider::getId)
+        .isNotEqualTo(Optional.of(standard.getId()));
   }
 
   /**
