@@ -15,9 +15,9 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Applies changelog 050 in isolation (#1813, ADR-0036 Entscheidung 8): the interval table of the
- * capability history, its delete rules per column kind (subject RESTRICT, actor SET NULL, group and
- * organization without a key at all) and the partial unique indexes that allow exactly one open
- * interval per subject.
+ * capability history, its delete rules per column kind (subject RESTRICT, actor SET NULL, the group
+ * of the object without a key at all, the tenant CASCADE) and the partial unique indexes that allow
+ * exactly one open interval per subject.
  */
 class Migration050CapabilityGrantHistoryTest extends AbstractMigrationTest {
 
@@ -81,21 +81,51 @@ class Migration050CapabilityGrantHistoryTest extends AbstractMigrationTest {
 
   /**
    * ADR-0016's split, applied to this table: the person the interval is about keeps the account
-   * alive, the actor is merely detached, and the object columns carry no key at all so a history
-   * row outlives the group and the organization it speaks about.
+   * alive, the actor is merely detached, and the column of the object the row speaks about carries
+   * no key at all, so a history row outlives the group. The tenant column is the one exception -
+   * see {@link #letsTheTenantTakeItsIntervalsWithIt()}.
    */
   @Test
-  void keepsTheSubjectRestrictingTheActorDetachableAndTheObjectColumnsFree() throws SQLException {
+  void keepsTheSubjectRestrictingTheActorDetachableAndTheObjectColumnFree() throws SQLException {
     assertThat(deleteRule("fk_capability_grant_history_subject_user_organization")).isEqualTo("r");
     assertThat(deleteRule("fk_capability_grant_history_actor_user_organization")).isEqualTo("n");
     assertThat(foreignKeysOfColumn("subject_group_id"))
         .as("a deleted group must not take its history with it")
         .isZero();
-    assertThat(foreignKeysReferencing("organizations"))
-        .as(
-            "mirrors group_membership_history: organization_id only ever travels as the tenant half"
-                + " of a composite key into users, never as a key of its own")
-        .isZero();
+  }
+
+  /**
+   * {@code organization_id} is the tenant boundary, not the object the row is about: without the
+   * organization nobody is left to be given a Stichtag answer, and the delivered interval came into
+   * being with it rather than from a decision. Left behind, the open interval would collide with
+   * {@code uk_capability_grant_history_open_all_accounts} as soon as an organization exists under
+   * that id again.
+   */
+  @Test
+  void letsTheTenantTakeItsIntervalsWithIt() throws SQLException {
+    assertThat(deleteRule("fk_capability_grant_history_organization")).isEqualTo("c");
+
+    UUID organizationId = UUID.randomUUID();
+    execute(
+        "INSERT INTO organizations (id, name, created_at) VALUES ('"
+            + organizationId
+            + "'::uuid, 'Vorübergehend', now())");
+    execute(
+        "INSERT INTO capability_grant_history"
+            + " (id, organization_id, capability, subject_type, cause, valid_from, created_at)"
+            + " VALUES (gen_random_uuid(), '"
+            + organizationId
+            + "'::uuid, 'CREATE_SPACE', 'ALL_ACCOUNTS', 'DELIVERED', now(), now())");
+
+    execute("DELETE FROM organizations WHERE id = '" + organizationId + "'::uuid");
+
+    assertThat(
+            queryForBoolean(
+                "SELECT NOT EXISTS (SELECT 1 FROM capability_grant_history"
+                    + " WHERE organization_id = '"
+                    + organizationId
+                    + "'::uuid)"))
+        .isTrue();
   }
 
   private void insertInterval(String capability, String cause, String validTo) throws SQLException {
@@ -143,18 +173,11 @@ class Migration050CapabilityGrantHistoryTest extends AbstractMigrationTest {
     }
   }
 
-  private long foreignKeysReferencing(String referencedTable) throws SQLException {
+  private boolean queryForBoolean(String sql) throws SQLException {
     try (Statement statement = connection.createStatement();
-        ResultSet keys =
-            statement.executeQuery(
-                "SELECT count(*) FROM pg_constraint"
-                    + " WHERE contype = 'f'"
-                    + "   AND conrelid = 'capability_grant_history'::regclass"
-                    + "   AND confrelid = '"
-                    + referencedTable
-                    + "'::regclass")) {
-      assertThat(keys.next()).isTrue();
-      return keys.getLong(1);
+        ResultSet result = statement.executeQuery(sql)) {
+      assertThat(result.next()).isTrue();
+      return result.getBoolean(1);
     }
   }
 

@@ -10,14 +10,21 @@ databaseChangeLog:
         deshalb ihren PermissionHistorySweeper, was PermissionHistorySweeperCoverageTest
         maschinell haelt.
         .
-        subject_user_id ist RESTRICT (Subjektspalte), actor_user_id SET NULL, subject_group_id und
-        organization_id ohne Fremdschluessel - genau die Aufteilung von asset_grant_history: eine
-        Historienzeile ueberlebt das Objekt, ueber das sie Auskunft gibt, sonst waere die
-        Negativfrage "hatte diese Gruppe das Anlegerecht am Tag X nicht" nach der ersten Loeschung
-        unbeantwortbar (ADR-0016). Geschlossen werden offene Intervalle stattdessen von der
-        Anwendung; eine Gruppe mit Faehigkeit wird gar nicht erst geloescht
-        (GroupService#deleteGroup weist sie ab, weil fk_capability_grants_subject_group_organization
-        RESTRICT ist).
+        subject_user_id ist RESTRICT (Subjektspalte), actor_user_id SET NULL, subject_group_id ohne
+        Fremdschluessel - die Aufteilung von asset_grant_history: eine Historienzeile ueberlebt das
+        Objekt, ueber das sie Auskunft gibt, sonst waere die Negativfrage "hatte diese Gruppe das
+        Anlegerecht am Tag X nicht" nach der ersten Loeschung unbeantwortbar (ADR-0016).
+        Geschlossen werden offene Intervalle stattdessen von der Anwendung; eine Gruppe mit
+        Faehigkeit wird gar nicht erst geloescht (GroupService#deleteGroup weist sie ab, weil
+        fk_capability_grants_subject_group_organization RESTRICT ist).
+        .
+        organization_id ist dagegen CASCADE, wie in capability_grants. Sie ist nicht die Spalte des
+        Objekts, ueber das die Zeile Auskunft gibt, sondern die Mandantengrenze: Ohne die
+        Organisation gibt es niemanden mehr, dem eine Stichtagsauskunft zustuende, und das
+        ausgelieferte Intervall entsteht mit ihr (Changeset 051) statt aus einer Entscheidung.
+        Ohne diesen Schluessel ueberlebte das offene Intervall seine Organisation und kollidierte
+        mit uk_capability_grant_history_open_all_accounts, sobald eine Organisation unter derselben
+        ID wieder entsteht.
         .
         Die drei eindeutigen Teilindexe auf den offenen Intervallen sind die Sperre gegen eine
         verschraenkte Kette aus zwei gleichzeitigen Transaktionen - dieselbe Rolle wie
@@ -59,6 +66,9 @@ databaseChangeLog:
               CREATE UNIQUE INDEX uk_capability_grant_history_open_group ON capability_grant_history USING btree (organization_id, capability, subject_group_id) WHERE (((subject_type)::text = 'GROUP'::text) AND (valid_to IS NULL));
 
               CREATE UNIQUE INDEX uk_capability_grant_history_open_user ON capability_grant_history USING btree (organization_id, capability, subject_user_id) WHERE (((subject_type)::text = 'USER'::text) AND (valid_to IS NULL));
+
+              ALTER TABLE ONLY capability_grant_history
+                  ADD CONSTRAINT fk_capability_grant_history_organization FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
               ALTER TABLE ONLY capability_grant_history
                   ADD CONSTRAINT fk_capability_grant_history_subject_user_organization FOREIGN KEY (subject_user_id, organization_id) REFERENCES users(id, organization_id) ON DELETE RESTRICT;
