@@ -21,7 +21,7 @@ public interface GroupMembershipHistoryRepository
 
   /** This table's part of the retention deletion - see {@link PermissionHistorySweeper}. */
   @Override
-  @Modifying
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
   @Query("delete from GroupMembershipHistory h where h.validTo is not null and h.validTo < :cutoff")
   int deleteClosedIntervalsEndingBefore(@Param("cutoff") Instant cutoff);
 

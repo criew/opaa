@@ -20,9 +20,9 @@ import org.springframework.transaction.annotation.Transactional;
  * release for Fremdzugaenge are library state, not grants - the permission model must not know
  * either. The composition mirrors the live path exactly: {@link LibraryAccessService} composes the
  * grant formula with the organization-wide floor for "now", this class composes the grant history
- * with the organization-wide history for any past instant. Both halves take their interval
- * boundaries from the one {@link PermissionHistoryClock}, so the interval contract holds across all
- * three tables.
+ * with the organization-wide history for any past instant inside the retention period of the rights
+ * history (#1833). Both halves take their interval boundaries from the one {@link
+ * PermissionHistoryClock}, so the interval contract holds across all three tables.
  *
  * <p>Every recording method runs inside the caller's own transaction (default propagation): a
  * visibility change and its history row commit or roll back together.

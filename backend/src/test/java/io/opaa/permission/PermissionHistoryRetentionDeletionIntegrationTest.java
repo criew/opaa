@@ -13,8 +13,10 @@ import io.opaa.library.LibraryVisibilityHistoryRepository;
 import io.opaa.organization.Organization;
 import io.opaa.test.OpaaIntegrationTest;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -137,23 +139,31 @@ class PermissionHistoryRetentionDeletionIntegrationTest {
   }
 
   /**
-   * The guarantee "eine Verkürzung wirkt nur nach vorn": setting the period to its floor does not
-   * make the next pass remove everything older than a year - the cutoff advances at most one
-   * calendar month per elapsed calendar month, from where the last pass left it.
+   * A shortening takes effect with the next pass, in full, and the cutoff stays there. Held over
+   * several passes because the failure it guards against is not visible in one: a cap of one
+   * month's progress per elapsed month would leave the gap between the reached cutoff and the
+   * configured period's own open for ever - the configured cutoff moves forward by a month every
+   * month as well, so the pass never catches up and the shortening never takes effect.
    */
   @Test
-  void aShorteningOfThePeriodDoesNotTakeEffectAtOnce() {
+  void aShorteningTakesEffectWithTheNextPassAndTheCutoffStaysThere() {
     UUID row = closedGrantInterval(monthsAgo(24), monthsAgo(20));
     updateRetentionMonths(PermissionHistoryRetentionSettings.MIN_RETENTION_MONTHS);
+    Instant configuredCutoff = cutoffOf(PermissionHistoryRetentionSettings.MIN_RETENTION_MONTHS);
 
-    PermissionHistoryRetentionRun run = deletionService.runOnce();
+    PermissionHistoryRetentionRun first = deletionService.runOnce();
+    deletionService.runOnce();
+    PermissionHistoryRetentionRun third = deletionService.runOnce();
 
+    assertThat(gapMonths(first.cutoff(), configuredCutoff))
+        .as("the first pass after the shortening already deletes by the configured period")
+        .isZero();
+    assertThat(gapMonths(third.cutoff(), configuredCutoff))
+        .as("and no later pass moves away from it again")
+        .isZero();
     assertThat(grantHistoryRepository.existsById(row))
-        .as("20 months old, the configured period now 12 - and the row still stands")
-        .isTrue();
-    assertThat(run.cutoff())
-        .as("the cutoff stays where the installation left it, not at twelve months")
-        .isBefore(monthsAgo(30));
+        .as("20 months old, the configured period is now 12 - it is out")
+        .isFalse();
   }
 
   /**
@@ -222,7 +232,6 @@ class PermissionHistoryRetentionDeletionIntegrationTest {
 
     PermissionHistoryRetentionSettings settings = settingsRepository.findSingleton().orElseThrow();
     assertThat(settings.getLastCutoff()).isEqualTo(run.cutoff());
-    assertThat(settings.getLastRunMonth()).isNotNull();
   }
 
   /**
@@ -252,6 +261,24 @@ class PermissionHistoryRetentionDeletionIntegrationTest {
 
   private static Instant monthsAgo(int months) {
     return ZonedDateTime.now(ZoneOffset.UTC).minusMonths(months).toInstant();
+  }
+
+  /**
+   * The cutoff a configured period of {@code months} yields, stated here rather than read off the
+   * production code: the start of the month that many months back, in UTC.
+   */
+  private static Instant cutoffOf(int months) {
+    return LocalDate.now(ZoneOffset.UTC)
+        .withDayOfMonth(1)
+        .minusMonths(months)
+        .atStartOfDay(ZoneOffset.UTC)
+        .toInstant();
+  }
+
+  /** How far a pass's cutoff still is from the one its configured period asks for. */
+  private static long gapMonths(Instant reached, Instant configured) {
+    return ChronoUnit.MONTHS.between(
+        reached.atZone(ZoneOffset.UTC), configured.atZone(ZoneOffset.UTC));
   }
 
   private UUID closedGrantInterval(Instant from, Instant to) {

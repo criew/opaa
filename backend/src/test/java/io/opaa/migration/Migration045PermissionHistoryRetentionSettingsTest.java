@@ -52,7 +52,7 @@ class Migration045PermissionHistoryRetentionSettingsTest extends AbstractMigrati
     try (Statement statement = connection.createStatement();
         ResultSet rows =
             statement.executeQuery(
-                "SELECT id, retention_months, last_cutoff, last_run_month, updated_at"
+                "SELECT id, retention_months, last_cutoff, updated_at"
                     + " FROM permission_history_retention_settings")) {
       assertThat(rows.next()).isTrue();
       assertThat(rows.getInt("id")).isEqualTo(1);
@@ -62,7 +62,6 @@ class Migration045PermissionHistoryRetentionSettingsTest extends AbstractMigrati
       assertThat(rows.getTimestamp("last_cutoff"))
           .as("the deletion starts where the installation does - see the forward-only cap")
           .isNotNull();
-      assertThat(rows.getDate("last_run_month")).isNotNull();
       assertThat(rows.getTimestamp("updated_at")).isNotNull();
       assertThat(rows.next()).as("exactly one row").isFalse();
     }
@@ -70,8 +69,6 @@ class Migration045PermissionHistoryRetentionSettingsTest extends AbstractMigrati
             queryForBoolean(
                 "SELECT last_cutoff = (date_trunc('month', updated_at AT TIME ZONE 'UTC')"
                     + " - interval '36 months') AT TIME ZONE 'UTC'"
-                    + " AND last_run_month = date_trunc('month', updated_at AT TIME ZONE"
-                    + " 'UTC')::date"
                     + " FROM permission_history_retention_settings WHERE id = 1"))
         .as("the progress starts exactly one retention period before the installation month")
         .isTrue();

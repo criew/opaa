@@ -3,10 +3,10 @@ package io.opaa.permission;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.YearMonth;
 import java.time.ZoneOffset;
-import java.time.temporal.ChronoUnit;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -18,18 +18,21 @@ import org.springframework.transaction.annotation.Transactional;
  * configured period yields. {@link PermissionHistoryRetentionScheduler} is the only production
  * caller; both are separate so a test can run the deletion without Spring's scheduling machinery.
  *
- * <p><b>A shortening of the period only takes effect going forward</b>
- * (docs/features/security-and-compliance.md#aufbewahrung): the cutoff advances at most one calendar
- * month per elapsed calendar month, from where the last run left it. Setting the period to its
- * floor therefore does not make one run remove seven years of history - the same forward-only cap
- * {@code opaa_audit_delete_expired_partitions()} applies to the protocol. Unlike there, this cap is
- * a guarantee of the application code and not of a database privilege: the three history tables are
- * ordinary application tables that the application account writes itself, so there is nothing here
- * that a {@code SECURITY DEFINER} function could withhold from it (ADR-0015 separates {@code
- * audit_log} and {@code diagnostic_context_log}, not these).
+ * <p><b>A shortening takes effect with the next pass</b>, in full. Deliberately no cap of one
+ * calendar month of progress per elapsed month: with the cutoff of the configured period moving
+ * forward by a month every month as well, such a cap never closes a gap it once opened - a
+ * shortening would stay without effect for good, which is the opposite of what the setting is for
+ * (Datensparsamkeit, Personalrat D1). What a pass may delete is therefore decided by the configured
+ * period alone.
+ *
+ * <p><b>A lengthening takes effect at once and takes nothing back.</b> The pass then deletes by the
+ * longer period's own, earlier cutoff, while {@code last_cutoff} stays where a previous pass
+ * already got: what is deleted does not come back, and that high-water mark is the boundary of what
+ * the Stichtag reconstruction can still answer.
  *
  * <p>One transaction per pass, with the settings row locked: either every table is swept to the new
- * cutoff and the cutoff is recorded, or neither.
+ * cutoff and the progress is recorded, or neither. A pass that dies halfway leaves the progress
+ * untouched and is simply redone.
  */
 @Service
 public class PermissionHistoryRetentionDeletionService {
@@ -68,80 +71,50 @@ public class PermissionHistoryRetentionDeletionService {
                             + " - changelog 045 should have seeded it; refusing to silently skip"
                             + " the retention deletion"));
 
-    LocalDate currentMonth = currentMonthStart();
-    Instant cutoff = cutoffFor(settings, currentMonth);
+    Instant cutoff = cutoffFor(settings.getRetentionMonths());
 
     long deletedRows = 0;
+    Map<String, Integer> deletedPerTable = new LinkedHashMap<>();
     for (PermissionHistorySweeper sweeper : sweepers) {
       int deleted = sweeper.deleteClosedIntervalsEndingBefore(cutoff);
       deletedRows += deleted;
       if (deleted > 0) {
-        log.info(
-            "Permission history retention: deleted {} rows from {}",
-            deleted,
-            sweeper.historyTable());
+        deletedPerTable.put(sweeper.historyTable(), deleted);
       }
     }
-    repository.recordRun(reachedProgress(settings, cutoff), currentMonth);
+    repository.recordProgress(reachedProgress(settings, cutoff));
 
-    Instant targetCutoff = targetCutoff(currentMonth, settings.getRetentionMonths());
-    if (cutoff.isBefore(targetCutoff)) {
+    if (deletedRows > 0) {
       log.info(
-          "Permission history retention: the configured window ({} months, target cutoff {}) is not"
-              + " fully effective yet - the forward-only progress stands at {} and advances at most"
-              + " one calendar month per run",
-          settings.getRetentionMonths(),
-          targetCutoff,
-          cutoff);
+          "Permission history retention: deleted {} rows up to {} ({})",
+          deletedRows,
+          cutoff,
+          deletedPerTable);
     }
     return new PermissionHistoryRetentionRun(cutoff, deletedRows);
   }
 
   /**
-   * How far this run deletes: the configured period's own target, capped at one calendar month of
-   * progress per calendar month elapsed since the last run. A row seeded with {@code lastCutoff}
-   * from the installation date therefore never jumps. Lengthening the period moves this cutoff
-   * <i>back</i> - the run then deletes less, which is what a longer period means; what is already
-   * gone stays gone, and {@link #reachedProgress} keeps the recorded progress from following it
-   * back.
+   * How far this pass deletes: the start of the month that lies {@code retentionMonths} back, in
+   * UTC. Computed from the configured period alone - a pass never deletes by anything a previous
+   * pass reached, see this class's own Javadoc for why there is no cap.
    */
-  private Instant cutoffFor(PermissionHistoryRetentionSettings settings, LocalDate currentMonth) {
-    Instant target = targetCutoff(currentMonth, settings.getRetentionMonths());
-    Instant lastCutoff = settings.getLastCutoff();
-    LocalDate lastRunMonth = settings.getLastRunMonth();
-    if (lastCutoff == null || lastRunMonth == null) {
-      return target;
-    }
-    long elapsedMonths =
-        Math.max(
-            0,
-            ChronoUnit.MONTHS.between(YearMonth.from(lastRunMonth), YearMonth.from(currentMonth)));
-    Instant capped = lastCutoff.atZone(ZoneOffset.UTC).plusMonths(elapsedMonths).toInstant();
-    return capped.isBefore(target) ? capped : target;
+  private Instant cutoffFor(int retentionMonths) {
+    return LocalDate.ofInstant(clock.instant(), ZoneOffset.UTC)
+        .withDayOfMonth(1)
+        .minusMonths(retentionMonths)
+        .atStartOfDay(ZoneOffset.UTC)
+        .toInstant();
   }
 
   /**
-   * The high-water mark written to {@code last_cutoff}: never behind where a previous run already
-   * got. Recording a lengthened period's earlier cutoff as the progress would surrender the
-   * forward-only cap's own base - a later shortening would then have to creep back over months the
-   * deletion had long passed, while rows inside them stood untouched.
+   * The high-water mark written to {@code last_cutoff}: never behind where a previous pass already
+   * got. After a lengthening the pass's own cutoff lies before it - recording that earlier value
+   * would claim the history still answers for months whose intervals are long gone.
    */
   private static Instant reachedProgress(
       PermissionHistoryRetentionSettings settings, Instant cutoff) {
     Instant lastCutoff = settings.getLastCutoff();
     return lastCutoff == null || cutoff.isAfter(lastCutoff) ? cutoff : lastCutoff;
-  }
-
-  private static Instant targetCutoff(LocalDate currentMonth, int retentionMonths) {
-    return currentMonth.minusMonths(retentionMonths).atStartOfDay(ZoneOffset.UTC).toInstant();
-  }
-
-  /**
-   * The first day of the current month in UTC - the same reference the seeded {@code last_cutoff}
-   * is computed from, and deliberately not the local zone: the cutoff must not move by a month's
-   * worth of history because a server's zone changed.
-   */
-  private LocalDate currentMonthStart() {
-    return LocalDate.ofInstant(clock.instant(), ZoneOffset.UTC).withDayOfMonth(1);
   }
 }

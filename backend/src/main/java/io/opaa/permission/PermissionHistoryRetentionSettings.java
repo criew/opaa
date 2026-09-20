@@ -5,7 +5,6 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
-import java.time.LocalDate;
 
 /**
  * The single, installation-wide maximum retention period of the rights history (ADR-0036,
@@ -18,11 +17,11 @@ import java.time.LocalDate;
  * the deletion of the <em>object</em> it describes (library, group, grant) and the deletion of an
  * account. Only time removes a row.
  *
- * <p>{@code lastCutoff}/{@code lastRunMonth} carry the progress of {@link
- * PermissionHistoryRetentionDeletionService}, not a configured value; they are seeded to the
- * installation date so a later shortening of the period only takes effect going forward. {@code
- * lastCutoff} is a <b>high-water mark</b> and only ever moves forward - it is also the boundary of
- * what the Stichtag reconstruction can still answer, which is why {@link
+ * <p>{@code lastCutoff} carries the progress of {@link PermissionHistoryRetentionDeletionService},
+ * not a configured value: the latest cutoff any pass has deleted by. It is a <b>high-water mark</b>
+ * and only ever moves forward, so after a lengthening of the period it stays ahead of that period's
+ * own cutoff - what is deleted does not come back. It is therefore also the boundary of what the
+ * Stichtag reconstruction can still answer, which is why {@link
  * PermissionHistoryRetentionService#retentionCutoff()} hands it out without a rights check.
  *
  * <p>Read-only end to end - every field is {@code insertable = false, updatable = false} and there
@@ -54,9 +53,6 @@ public class PermissionHistoryRetentionSettings {
   @Column(name = "last_cutoff", insertable = false, updatable = false)
   private Instant lastCutoff;
 
-  @Column(name = "last_run_month", insertable = false, updatable = false)
-  private LocalDate lastRunMonth;
-
   @Column(name = "updated_at", insertable = false, updatable = false)
   private Instant updatedAt;
 
@@ -72,10 +68,6 @@ public class PermissionHistoryRetentionSettings {
 
   public Instant getLastCutoff() {
     return lastCutoff;
-  }
-
-  public LocalDate getLastRunMonth() {
-    return lastRunMonth;
   }
 
   public Instant getUpdatedAt() {

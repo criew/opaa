@@ -24,7 +24,7 @@ public interface LibraryVisibilityHistoryRepository
    * retention period is the same for all three.
    */
   @Override
-  @Modifying
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
   @Query(
       "delete from LibraryVisibilityHistory h where h.validTo is not null and h.validTo < :cutoff")
   int deleteClosedIntervalsEndingBefore(@Param("cutoff") Instant cutoff);

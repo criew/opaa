@@ -2,7 +2,6 @@ package io.opaa.permission;
 
 import jakarta.persistence.LockModeType;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -28,9 +27,13 @@ public interface PermissionHistoryRetentionSettingsRepository
    * run and a concurrent change of the period serialize against each other, so a run never deletes
    * against a period that was replaced while it was computing its cutoff.
    */
+  default Optional<PermissionHistoryRetentionSettings> findSingletonForUpdate() {
+    return findByIdForUpdate(PermissionHistoryRetentionSettings.SINGLETON_ID);
+  }
+
   @Lock(LockModeType.PESSIMISTIC_WRITE)
-  @Query("select s from PermissionHistoryRetentionSettings s where s.id = 1")
-  Optional<PermissionHistoryRetentionSettings> findSingletonForUpdate();
+  @Query("select s from PermissionHistoryRetentionSettings s where s.id = :id")
+  Optional<PermissionHistoryRetentionSettings> findByIdForUpdate(@Param("id") int id);
 
   /**
    * The only way this codebase changes the configured period. {@code clearAutomatically} matters
@@ -46,12 +49,14 @@ public interface PermissionHistoryRetentionSettingsRepository
       nativeQuery = true)
   int updateRetentionMonths(@Param("retentionMonths") int retentionMonths);
 
-  /** Records how far the last deletion run actually got; never touches {@code retention_months}. */
+  /**
+   * Records how far the deletion has got; never touches {@code retention_months}. The value only
+   * ever moves forward - {@code PermissionHistoryRetentionDeletionService} is the one caller and
+   * decides that.
+   */
   @Modifying(clearAutomatically = true, flushAutomatically = true)
   @Query(
-      value =
-          "UPDATE permission_history_retention_settings SET last_cutoff = :cutoff,"
-              + " last_run_month = :runMonth WHERE id = 1",
+      value = "UPDATE permission_history_retention_settings SET last_cutoff = :cutoff WHERE id = 1",
       nativeQuery = true)
-  int recordRun(@Param("cutoff") Instant cutoff, @Param("runMonth") LocalDate runMonth);
+  int recordProgress(@Param("cutoff") Instant cutoff);
 }

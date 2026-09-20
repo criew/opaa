@@ -69,15 +69,17 @@ class PermissionHistoryRetentionIntegrationTest {
 
   /**
    * The HTTP methods below act as the dev users of the default organization, so their governance
-   * events are not covered by the organization-scoped delete. No other class writes this event type
-   * - the second delete is this class's own footprint, not a sweep over foreign rows.
+   * events are not covered by the organization-scoped delete. The second delete names the fixed
+   * object id of this one settings row - this class's own footprint, not a sweep by event type over
+   * whatever else may carry it.
    */
   @AfterEach
   void tearDown() {
     jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organizationId);
     jdbcTemplate.update(
-        "DELETE FROM audit_log WHERE event_type = ?",
-        AuditEventType.PERMISSION_HISTORY_RETENTION_CHANGED.name());
+        "DELETE FROM audit_log WHERE event_type = ? AND object_id = ?",
+        AuditEventType.PERMISSION_HISTORY_RETENTION_CHANGED.name(),
+        PermissionHistoryRetentionService.SETTINGS_OBJECT_ID.toString());
     jdbcTemplate.update("DELETE FROM users WHERE organization_id = ?", organizationId);
     organizationRepository.deleteById(organizationId);
   }

@@ -762,12 +762,16 @@ Bibliothek, der Gruppe oder der Berechtigung, auf die er sich bezieht — aber n
 Frist. Für Konten heißt das: Die Löschsperre aus [Benutzerverwaltung](benutzerverwaltung.md),
 Abschnitt 8, endet, sobald der letzte Zeitraum zu diesem Konto die Frist verlassen hat.
 
-Eine **Verkürzung der Frist wirkt nur nach vorn**: Der Schnittzeitpunkt rückt je Kalendermonat um
-höchstens einen Monat vor. Eine von drei Jahren auf ein Jahr gesetzte Frist entfernt also nicht mit
-dem nächsten Lauf alles Ältere, sondern arbeitet sich monatsweise dorthin. Eine **Verlängerung**
-wirkt sofort und nimmt nichts zurück: Was bereits gelöscht ist, kommt nicht wieder, und der
-Schnittzeitpunkt bleibt stehen, wo er war. Jede Änderung der Frist wird selbst im Nachweisprotokoll
-festgehalten.
+Eine **Verkürzung wirkt mit dem nächsten Lauf**, und zwar vollständig: Wer von drei Jahren auf ein
+Jahr geht, hat nach dem nächsten Monatslauf nichts mehr, was älter als ein Jahr ist. Eine
+**Verlängerung** wirkt sofort, nimmt aber nichts zurück: Was gelöscht ist, kommt nicht wieder, und
+die erreichte Grenze bleibt stehen, wo sie war. Jede Änderung der Frist wird selbst im
+Nachweisprotokoll festgehalten.
+
+> **Für den Betrieb:** Der erste Lauf nach einer deutlichen Verkürzung kann viele Zeilen auf einmal
+> entfernen — er läuft am Monatsersten um 4 Uhr und in einer Transaktion. Die Löschung geschieht
+> vollständig in der Datenbank; laufende Rechteänderungen blockiert sie nicht, und ein Neustart
+> mittendrin macht nichts kaputt: Der nächste Lauf holt es nach.
 
 Gesetzt wird die Frist über `GET`/`PUT /api/v1/admin/permission-history/retention`; eine
 Bedienoberfläche dafür gibt es noch nicht.

@@ -27,7 +27,7 @@ public interface AssetGrantHistoryRepository
    * gone by then.
    */
   @Override
-  @Modifying
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
   @Query("delete from AssetGrantHistory h where h.validTo is not null and h.validTo < :cutoff")
   int deleteClosedIntervalsEndingBefore(@Param("cutoff") Instant cutoff);
 
