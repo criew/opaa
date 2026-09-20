@@ -58,6 +58,7 @@ class SpecEnumParityTest {
         Arguments.of("SpaceVisibility", SpaceVisibility.values()),
         Arguments.of("SystemRole", SystemRole.values()),
         Arguments.of("GroupKind", GroupKind.values()),
+        Arguments.of("GroupOrigin", GroupOrigin.values()),
         Arguments.of("DirectorySyncOutcome", DirectorySyncOutcome.values()),
         Arguments.of("LibraryOwnerType", LibraryOwnerType.values()),
         Arguments.of("LibraryVisibility", LibraryVisibility.values()),

@@ -704,6 +704,8 @@ class LocalUserAdminIntegrationTest {
                 "Projekt " + UUID.randomUUID(),
                 null,
                 null,
+                null,
+                null,
                 null));
     GroupMembershipHistory history =
         groupHistory.save(
@@ -761,6 +763,8 @@ class LocalUserAdminIntegrationTest {
                 Organization.DEFAULT_ID,
                 GroupKind.ORG_UNIT,
                 "Amt " + UUID.randomUUID(),
+                null,
+                null,
                 null,
                 null,
                 null));

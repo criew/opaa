@@ -4,6 +4,7 @@ import io.opaa.auth.oidc.OidcIssuerUris;
 import io.opaa.auth.oidc.OidcProvider;
 import io.opaa.auth.oidc.OidcProviderRepository;
 import java.util.Optional;
+import java.util.UUID;
 import org.springframework.stereotype.Component;
 
 /**
@@ -43,6 +44,19 @@ public class TrustedProvider {
           .map(OidcProvider::getIssuerUri);
     }
     return Optional.empty();
+  }
+
+  /**
+   * The trusted provider's row id, which the groups of a directory synchronisation carry as their
+   * origin ({@code groups.provider_id}, ADR-0036 Entscheidung 2). Empty in the {@code dev} mode,
+   * where no provider row exists at all - whether the synchronisation runs there over a synthetic
+   * row or not at all is decided by #1816.
+   */
+  public Optional<UUID> id() {
+    if (!OIDC_MODE.equals(authProperties.mode())) {
+      return Optional.empty();
+    }
+    return providerRepository.findByDefaultProviderTrueAndEnabledTrue().map(OidcProvider::getId);
   }
 
   /** Whether {@code issuer} names the trusted provider - compared without trailing slashes. */

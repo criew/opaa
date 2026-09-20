@@ -8,6 +8,7 @@ import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.group.Group;
 import io.opaa.group.GroupCreation;
+import io.opaa.group.GroupOverview;
 import io.opaa.group.GroupRepository;
 import io.opaa.group.GroupService;
 import io.opaa.organization.Organization;
@@ -96,7 +97,7 @@ class GroupResponseMapperIntegrationTest {
     Group created = groupService.createGroup(new GroupCreation("Team", null), adminCaller).group();
     groupService.addMember(created.getId(), member, adminCaller);
 
-    List<Group> groups = groupService.listGroups(adminCaller);
+    List<GroupOverview> groups = groupService.listGroups(adminCaller);
     List<GroupListResponse> responses = GroupResponseMapper.toListResponses(groups);
 
     assertThat(responses).extracting(GroupListResponse::getName).containsExactly("Team");
@@ -112,7 +113,7 @@ class GroupResponseMapperIntegrationTest {
     groupService.addMember(created.getId(), member, adminCaller);
     groupService.addMember(created.getId(), admin, adminCaller);
 
-    List<Group> groups = groupService.listMyGroups(adminCaller);
+    List<GroupOverview> groups = groupService.listMyGroups(adminCaller);
     List<GroupListResponse> responses = GroupResponseMapper.toListResponses(groups);
 
     assertThat(responses).extracting(GroupListResponse::getName).containsExactly("Team");

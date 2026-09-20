@@ -114,6 +114,7 @@ class PermissionHistoryServiceIntegrationTest {
   @Autowired private DirectorySyncStatusRepository directorySyncStatusRepository;
   @Autowired private FakeDirectoryClient directoryClient;
   @Autowired private TokenGroupSynchronizer synchronizer;
+  @Autowired private io.opaa.auth.oidc.OidcProviderRepository providerRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private ApplicationContext applicationContext;
 
@@ -122,11 +123,13 @@ class PermissionHistoryServiceIntegrationTest {
   private UUID organizationId;
   private final List<UUID> createdUserIds = new ArrayList<>();
   private final List<UUID> createdGroupIds = new ArrayList<>();
+  private final List<UUID> createdProviderIds = new ArrayList<>();
 
   @BeforeEach
   void setUp() {
     createdUserIds.clear();
     createdGroupIds.clear();
+    createdProviderIds.clear();
     organizationId =
         organizationRepository.save(new Organization(UUID.randomUUID(), "Org")).getId();
     directoryClient.respondWith();
@@ -160,6 +163,10 @@ class PermissionHistoryServiceIntegrationTest {
     }
     for (UUID userId : createdUserIds) {
       userRepository.deleteById(userId);
+    }
+    // fk_groups_provider is RESTRICT: the provider rows can only go once their groups are gone
+    for (UUID providerId : createdProviderIds) {
+      providerRepository.deleteById(providerId);
     }
     // #392: every library/grant/group operation this class exercises now also writes an audit_log
     // row (fk_audit_log_organization is ON DELETE RESTRICT, migration 017) - purged via
@@ -260,7 +267,8 @@ class PermissionHistoryServiceIntegrationTest {
     UUID owner = createUser();
     UUID libraryId = createLibrary(owner);
     UUID member = createUser();
-    Group group = new Group(organizationId, GroupKind.AD_HOC, "Referat", null, null, null);
+    Group group =
+        new Group(organizationId, GroupKind.AD_HOC, "Referat", null, null, null, null, null);
     Group savedGroup = groupRepository.save(group);
     createdGroupIds.add(savedGroup.getId());
 
@@ -285,7 +293,15 @@ class PermissionHistoryServiceIntegrationTest {
   void aDirectorySyncRunRecordsMembershipChangesWithTheDirectorySyncCause() {
     UUID member = createUser();
     Group orgUnit =
-        new Group(organizationId, GroupKind.ORG_UNIT, "Altes Referat", null, "dir-guid-1", null);
+        new Group(
+            organizationId,
+            GroupKind.ORG_UNIT,
+            "Altes Referat",
+            null,
+            null,
+            "dir-guid-1",
+            null,
+            null);
     Group savedOrgUnit = groupRepository.save(orgUnit);
     createdGroupIds.add(savedOrgUnit.getId());
 
@@ -474,7 +490,8 @@ class PermissionHistoryServiceIntegrationTest {
         new AssetGrantUpsert(PermissionSubjectType.USER, user, AssetRole.VIEWER),
         currentUserOf(sharedOwner));
 
-    Group group = new Group(organizationId, GroupKind.AD_HOC, "Referat", null, null, null);
+    Group group =
+        new Group(organizationId, GroupKind.AD_HOC, "Referat", null, null, null, null, null);
     Group savedGroup = groupRepository.save(group);
     createdGroupIds.add(savedGroup.getId());
     UUID groupOwner = createUser();
@@ -553,7 +570,8 @@ class PermissionHistoryServiceIntegrationTest {
     // Code review of #427, nit 3 - the group-side counterpart of the library test above.
     UUID owner = createUser();
     UUID member = createUser();
-    Group group = new Group(organizationId, GroupKind.AD_HOC, "Referat", null, null, null);
+    Group group =
+        new Group(organizationId, GroupKind.AD_HOC, "Referat", null, null, null, null, null);
     Group savedGroup = groupRepository.save(group);
     createdGroupIds.add(savedGroup.getId());
     groupService.addMember(savedGroup.getId(), member, currentUserOf(owner));
@@ -921,7 +939,10 @@ class PermissionHistoryServiceIntegrationTest {
    * LocalHandoverAccountService} (#1563) only counts: the preview of a handover tells the person
    * how many memberships move with their account, and the handover itself rewrites the identity of
    * a {@code users} row - it writes no membership and no grant, and everything keyed by {@code
-   * users.id} therefore survives it untouched.
+   * users.id} therefore survives it untouched. {@code ProviderGroupDirectoryAdapter} (#1812) does
+   * delete groups and their memberships when their identity provider is deleted, but only after
+   * reporting that none of them holds a grant or owns an asset - a group without either moves no
+   * library into or out of anybody's readable set.
    */
   private static final Set<String> BEANS_REACHING_THE_RIGHTS_TABLES =
       Set.of(
@@ -936,6 +957,7 @@ class PermissionHistoryServiceIntegrationTest {
           "KnowledgeLibraryService",
           "LibraryAccessService",
           "LocalHandoverAccountService",
+          "ProviderGroupDirectoryAdapter",
           "TokenGroupSynchronizer");
 
   /**
@@ -966,8 +988,7 @@ class PermissionHistoryServiceIntegrationTest {
           "LibraryExternalAccessService#describe",
           "LibraryExternalAccessService#listReleasedLibraries",
           "DirectorySyncService#dryRun",
-          "DirectorySyncService#getStatus",
-          "TokenGroupSynchronizer#namespaceOf");
+          "DirectorySyncService#getStatus");
 
   private void assertLiveAndHistoryAgree(ReadabilityChange change) {
     Instant afterTheChange = historyClock.nextBoundary();
@@ -1153,13 +1174,18 @@ class PermissionHistoryServiceIntegrationTest {
     return new ReadabilityChange(member.getId(), libraryId, false);
   }
 
+  /** Persisted: a token group names its provider through {@code groups.provider_id} (#1812). */
   private OidcProvider tokenProvider(String displayName) {
-    return new OidcProvider(
-        displayName,
-        "https://idp.example/realms/" + UUID.randomUUID(),
-        "opaa-frontend",
-        null,
-        new OidcClaimMapping(null, null, null, null, null, "groups"));
+    OidcProvider provider =
+        providerRepository.save(
+            new OidcProvider(
+                displayName,
+                "https://idp.example/realms/" + UUID.randomUUID(),
+                "opaa-frontend",
+                null,
+                new OidcClaimMapping(null, null, null, null, null, "groups")));
+    createdProviderIds.add(provider.getId());
+    return provider;
   }
 
   /**
@@ -1169,10 +1195,8 @@ class PermissionHistoryServiceIntegrationTest {
   private Group registerTokenGroup(OidcProvider provider, String name) {
     Group group =
         groupRepository
-            .findByOrganizationIdAndKindAndExternalId(
-                organizationId,
-                GroupKind.IDENTITY_PROVIDER,
-                TokenGroupSynchronizer.namespaceOf(provider) + name)
+            .findByOrganizationIdAndProviderIdAndKindAndExternalId(
+                organizationId, provider.getId(), GroupKind.IDENTITY_PROVIDER, name)
             .orElseThrow();
     createdGroupIds.add(group.getId());
     return group;
@@ -1222,9 +1246,9 @@ class PermissionHistoryServiceIntegrationTest {
   /** Counterpart of {@link #registerTokenGroup} for a unit the synchronisation created. */
   private Group registerSyncedOrgUnit(String externalId) {
     Group group =
-        groupRepository
-            .findByOrganizationIdAndKindAndExternalId(
-                organizationId, GroupKind.ORG_UNIT, externalId)
+        groupRepository.findByOrganizationIdAndKindOrgUnit(organizationId).stream()
+            .filter(candidate -> externalId.equals(candidate.getExternalId()))
+            .findFirst()
             .orElseThrow();
     createdGroupIds.add(group.getId());
     return group;
@@ -1333,7 +1357,8 @@ class PermissionHistoryServiceIntegrationTest {
 
   private Group createAdHocGroup(String name) {
     Group saved =
-        groupRepository.save(new Group(organizationId, GroupKind.AD_HOC, name, null, null, null));
+        groupRepository.save(
+            new Group(organizationId, GroupKind.AD_HOC, name, null, null, null, null, null));
     createdGroupIds.add(saved.getId());
     return saved;
   }
@@ -1341,7 +1366,8 @@ class PermissionHistoryServiceIntegrationTest {
   private Group createOrgUnit(String externalId, String name) {
     Group saved =
         groupRepository.save(
-            new Group(organizationId, GroupKind.ORG_UNIT, name, null, externalId, null));
+            new Group(
+                organizationId, GroupKind.ORG_UNIT, name, null, null, externalId, null, null));
     createdGroupIds.add(saved.getId());
     return saved;
   }

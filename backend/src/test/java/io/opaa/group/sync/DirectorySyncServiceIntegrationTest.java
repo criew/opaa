@@ -7,6 +7,8 @@ import io.opaa.api.types.DirectorySyncOutcome;
 import io.opaa.api.types.GroupKind;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.auth.oidc.OidcClaimMapping;
+import io.opaa.auth.oidc.OidcProvider;
 import io.opaa.group.Group;
 import io.opaa.group.GroupMembership;
 import io.opaa.group.GroupMembershipRepository;
@@ -48,6 +50,7 @@ class DirectorySyncServiceIntegrationTest {
   @Autowired private GroupMembershipHistoryRepository membershipHistoryRepository;
   @Autowired private UserRepository userRepository;
   @Autowired private io.opaa.auth.AuthProperties authProperties;
+  @Autowired private io.opaa.auth.oidc.OidcProviderRepository providerRepository;
   @Autowired private DirectorySyncStatusRepository statusRepository;
   @Autowired private FakeDirectoryClient directoryClient;
 
@@ -59,6 +62,9 @@ class DirectorySyncServiceIntegrationTest {
 
   /** Static so the {@code @BeforeEach} wipe also catches what a method that failed midway left. */
   private static final List<UUID> createdUserIds = new ArrayList<>();
+
+  /** Same reasoning; fk_groups_provider is RESTRICT, so these go after the groups. */
+  private static final List<UUID> createdProviderIds = new ArrayList<>();
 
   @BeforeEach
   void setUp() {
@@ -92,6 +98,8 @@ class DirectorySyncServiceIntegrationTest {
     groupRepository.deleteAll(groups);
     userRepository.deleteAllById(userIds);
     createdUserIds.clear();
+    createdProviderIds.forEach(providerRepository::deleteById);
+    createdProviderIds.clear();
   }
 
   @AfterEach
@@ -113,7 +121,8 @@ class DirectorySyncServiceIntegrationTest {
   }
 
   private Group persistOrgUnit(String externalId, String name, UUID... memberIds) {
-    Group group = new Group(organizationId, GroupKind.ORG_UNIT, name, null, externalId, null);
+    Group group =
+        new Group(organizationId, GroupKind.ORG_UNIT, name, null, null, externalId, null, null);
     for (UUID memberId : memberIds) {
       group.addMembership(new GroupMembership(memberId, organizationId));
     }
@@ -134,13 +143,25 @@ class DirectorySyncServiceIntegrationTest {
     UUID trusted = createUser(organizationId, "member-1");
     UUID partnerAccount =
         createUser(organizationId, "member-1", "https://partner.example/realms/b");
+    // a token group names its provider row since #1812 (chk_groups_provider_kind)
+    OidcProvider tokenProvider =
+        providerRepository.save(
+            new OidcProvider(
+                "Partner",
+                "https://partner.example/realms/b-" + UUID.randomUUID(),
+                "opaa-frontend",
+                null,
+                OidcClaimMapping.keycloakDefaults()));
+    createdProviderIds.add(tokenProvider.getId());
     Group tokenGroup =
         new Group(
             organizationId,
             GroupKind.IDENTITY_PROVIDER,
             "Referat 12",
             null,
-            "oidc:p:Referat 12",
+            tokenProvider.getId(),
+            "Referat 12",
+            null,
             null);
     tokenGroup.addMembership(new GroupMembership(partnerAccount, organizationId));
     groupRepository.save(tokenGroup);

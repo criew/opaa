@@ -86,6 +86,10 @@ class OidcProviderSeeder {
     }
     OidcProvider provider = environmentProvider(oidc, issuer);
     provider.markDefault();
+    // The bootstrap provider is this installation's own directory, not another house's - the
+    // constructor's default is the safe one for every provider the administration adds later
+    // (ADR-0036, Entscheidung 2).
+    provider.setExternal(false);
     repository.save(provider);
     markerRepository.save(new OidcProviderSeedMarker(Instant.now()));
     log.info(
@@ -129,6 +133,7 @@ class OidcProviderSeeder {
       provider = environmentProvider(oidc, issuer);
     }
     provider.markDefault();
+    provider.setExternal(false);
     repository.save(provider);
     if (!markerRepository.seedAlreadyAttempted()) {
       markerRepository.save(new OidcProviderSeedMarker(Instant.now()));

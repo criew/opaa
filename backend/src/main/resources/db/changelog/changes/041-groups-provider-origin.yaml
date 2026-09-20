@@ -1,0 +1,189 @@
+databaseChangeLog:
+  - changeSet:
+      id: 041-groups-provider-origin
+      author: opaa
+      comment: >-
+        Die Herkunft einer Gruppe steht ab hier als echter Fremdschluessel an der Zeile
+        (#1812, ADR-0036 Entscheidung 2): groups.provider_id zeigt auf oidc_providers,
+        NULL bedeutet "interne Gruppe". Bisher steckte der Anbieterbezug nur als
+        Zeichenkette im Praefix von external_id ('oidc:<uuid>:<name>') - ohne
+        Integritaetszusage, weshalb die Gruppen eines geloeschten Anbieters samt ihrer
+        Berechtigungen wirksam stehenblieben, ohne dass je wieder jemand Mitglied werden
+        oder austreten konnte. ON DELETE RESTRICT traegt "keine Gruppe ohne Anbieter"
+        ab hier strukturell.
+        .
+        source_path traegt den Pfad der Quelle ("/Haus/Abteilung 5/Referat 50"). Ohne
+        ihn sind die gleichnamigen Untergruppen eines Verzeichnisses ("Leitung",
+        "Sachbearbeitung") nicht unterscheidbar; befuellt wird er mit dem Abgleich je
+        Anbieter (#1816), diese Migration legt nur die Spalte an.
+        .
+        REIHENFOLGE. Der alte Schluessel uk_groups_organization_external_id ist
+        (organization_id, external_id) - mit Praefix. Wird das Praefix geschnitten,
+        solange er steht, kollidieren zwei gleichnamige Gruppen zweier Anbieter. Also:
+        provider_id befuellen, Waisen umwandeln, neuen Schluessel anlegen, alten
+        Schluessel fallen lassen, DANN das Praefix schneiden. ADR-0036 Entscheidung 11
+        nennt "erst neuen Schluessel, dann Praefix schneiden, dann alten Schluessel
+        fallen lassen" - in dieser Reihenfolge scheitert der Schnitt am alten Schluessel;
+        die Absicht ("zu keinem Zeitpunkt ohne Schluessel, und der Schnitt bereits unter
+        dem neuen") ist hier eingehalten. TokenGroupSynchronizer.MAX_NAME_LENGTH waechst
+        mit dem entfallenen Praefix auf die vollen 255 Zeichen.
+        .
+        WAISEN (ADR-0036 Entscheidung 11). Fuer eine Zeile, deren Anbieter-UUID in
+        oidc_providers fehlt, liesse sich provider_id mit RESTRICT nicht setzen -
+        Liquibase braeche ab und die Anwendung startete nicht. Solche Zeilen werden
+        deshalb zu internen Gruppen (kind = AD_HOC, provider_id = NULL, external_id =
+        NULL, parent_group_id = NULL, Herkunftsvermerk in der Beschreibung), ohne
+        Verantwortliche; je Zeile entsteht ein Audit-Ereignis unter dem
+        Systemprozess-Akteur 'migration'. Betroffen sind zwei Faelle: Token-Gruppen eines
+        geloeschten Anbieters und ORG_UNIT-Gruppen einer Installation ohne
+        Standardanbieter. Bei letzteren bleibt 'dissolved' als Beschreibungsvermerk
+        erhalten - das Flag gilt nur fuer ORG_UNIT und wird beim Uebergang zu AD_HOC
+        geloescht. Die Zeilenzahl aendert sich nicht; kein Grant, keine Mitgliedschaft
+        wird angefasst.
+        .
+        PRUEFBEDINGUNG. chk_groups_provider_kind haelt "AD_HOC hat nie einen Anbieter"
+        und "IDENTITY_PROVIDER hat immer einen" fest. ORG_UNIT bleibt bewusst in beide
+        Richtungen offen: Im Betriebsmodus dev existiert keine Anbieterzeile
+        (TrustedProvider liest den Issuer aus opaa.auth.dev), und ob der Abgleich dort
+        ueber eine synthetische Anbieterzeile laeuft oder entfaellt, entscheidet #1816
+        (ADR-0036 Entscheidung 11). Die strenge Form "kind = AD_HOC <=> provider_id IS
+        NULL" naehme diese Entscheidung vorweg.
+        .
+        EINDEUTIGKEIT. Der neue Schluessel ist ein eindeutiger Teilindex ueber
+        (organization_id, provider_id, kind, external_id) mit NULLS NOT DISTINCT,
+        eingeschraenkt auf external_id IS NOT NULL. NULLS NOT DISTINCT, weil provider_id
+        einer ORG_UNIT-Gruppe im dev-Modus leer ist und zwei gleiche Kennungen dort sonst
+        nebeneinander stuenden; die Einschraenkung, weil eine interne Gruppe gar keine
+        Kennung aus einer Quelle hat und alle internen Gruppen sonst miteinander
+        kollidierten.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE groups
+                  ADD COLUMN provider_id uuid;
+
+              ALTER TABLE groups
+                  ADD COLUMN source_path character varying(1000);
+
+              -- Token groups name their provider in the prefix; compared as text so a value that
+              -- is not a UUID at all simply finds no provider and falls to the orphan case below.
+              UPDATE groups g
+                 SET provider_id = p.id
+                FROM oidc_providers p
+               WHERE g.kind = 'IDENTITY_PROVIDER'
+                 AND g.external_id LIKE 'oidc:%'
+                 AND substring(g.external_id FROM 6 FOR 36) = p.id::text;
+
+              -- The directory synchronisation runs for the default provider (TrustedProvider).
+              UPDATE groups g
+                 SET provider_id = p.id
+                FROM oidc_providers p
+               WHERE g.kind = 'ORG_UNIT'
+                 AND p.is_default;
+
+              WITH orphan AS (
+                  SELECT id, organization_id, name, kind, external_id, description, dissolved
+                    FROM groups
+                   WHERE provider_id IS NULL
+                     AND kind <> 'AD_HOC'
+              ),
+              audited AS (
+                  INSERT INTO audit_log (
+                      event_id, recorded_at, organization_id, actor_kind, actor_ref, event_type,
+                      object_type, object_id, object_label, before, after, outcome, reason)
+                  SELECT gen_random_uuid(), now(), o.organization_id, 'SYSTEM_PROCESS', 'migration',
+                         'GROUP_CHANGED', 'GROUP', o.id::text, o.name,
+                         json_build_object(
+                             'kind', o.kind,
+                             'externalId', o.external_id,
+                             'dissolved', o.dissolved)::text,
+                         json_build_object(
+                             'kind', 'AD_HOC',
+                             'externalId', NULL,
+                             'providerId', NULL)::text,
+                         'SUCCESS',
+                         CASE WHEN o.kind = 'IDENTITY_PROVIDER'
+                              THEN 'Der Identitaetsanbieter dieser Gruppe existiert nicht mehr; sie wurde bei der Umstellung auf groups.provider_id (#1812) zu einer internen Gruppe ohne Verantwortliche.'
+                              ELSE 'Diese Verzeichnisgruppe hat keinen Standardanbieter mehr; sie wurde bei der Umstellung auf groups.provider_id (#1812) zu einer internen Gruppe ohne Verantwortliche.'
+                         END
+                    FROM orphan o
+                  RETURNING event_id
+              )
+              UPDATE groups g
+                 SET kind = 'AD_HOC',
+                     external_id = NULL,
+                     parent_group_id = NULL,
+                     dissolved = false,
+                     dissolved_at = NULL,
+                     description = left(
+                         coalesce(g.description || E'\n\n', '')
+                         || CASE WHEN g.kind = 'IDENTITY_PROVIDER'
+                                 THEN 'Übernommen aus einem gelöschten Identitätsanbieter (Kennung ' || coalesce(g.external_id, '-') || '). Verantwortliche sind offen.'
+                                 ELSE 'Übernommen aus dem Verzeichnisabgleich ohne Standardanbieter (Kennung ' || coalesce(g.external_id, '-') || '). Verantwortliche sind offen.'
+                            END
+                         || CASE WHEN g.dissolved
+                                 THEN ' Zum Zeitpunkt der Umstellung war sie aufgelöst.'
+                                 ELSE ''
+                            END,
+                         2000),
+                     updated_at = now()
+               WHERE g.id IN (SELECT id FROM orphan);
+
+              CREATE UNIQUE INDEX uk_groups_organization_provider_kind_external_id
+                  ON groups USING btree (organization_id, provider_id, kind, external_id)
+                  NULLS NOT DISTINCT
+                  WHERE (external_id IS NOT NULL);
+
+              ALTER TABLE groups
+                  DROP CONSTRAINT uk_groups_organization_external_id;
+
+              UPDATE groups
+                 SET external_id = substring(external_id FROM 43)
+               WHERE kind = 'IDENTITY_PROVIDER'
+                 AND provider_id IS NOT NULL
+                 AND external_id LIKE 'oidc:%';
+
+              ALTER TABLE groups
+                  ADD CONSTRAINT chk_groups_provider_kind CHECK (
+                      ((kind = 'AD_HOC' AND provider_id IS NULL)
+                       OR (kind = 'IDENTITY_PROVIDER' AND provider_id IS NOT NULL)
+                       OR (kind = 'ORG_UNIT')));
+
+              ALTER TABLE groups
+                  ADD CONSTRAINT fk_groups_provider FOREIGN KEY (provider_id) REFERENCES oidc_providers(id) ON DELETE RESTRICT;
+
+              CREATE INDEX idx_groups_provider ON groups USING btree (provider_id) WHERE (provider_id IS NOT NULL);
+      rollback:
+        # Stellt das Schema und das Praefix wieder her. Die Umwandlung der Waisen wird NICHT
+        # zurueckgenommen - der geloeschte Anbieter, aus dem sie stammen, existiert nicht mehr,
+        # und die Audit-Zeilen der Umwandlung bleiben ohnehin stehen (ADR-0015). Ein Name, der
+        # die vollen 255 Zeichen ausnutzt, passt mit dem wieder angesetzten Praefix nicht mehr in
+        # external_id; der Rollback bricht dann ab. Das ist bewusst nicht abgefangen: Eine
+        # Installation wird nach ADR-0034 nicht zurueckgedreht, sondern neu aufgesetzt.
+        - sql:
+            splitStatements: false
+            sql: |
+              DROP INDEX IF EXISTS idx_groups_provider;
+
+              ALTER TABLE groups
+                  DROP CONSTRAINT fk_groups_provider;
+
+              ALTER TABLE groups
+                  DROP CONSTRAINT chk_groups_provider_kind;
+
+              UPDATE groups
+                 SET external_id = 'oidc:' || provider_id::text || ':' || external_id
+               WHERE kind = 'IDENTITY_PROVIDER'
+                 AND provider_id IS NOT NULL;
+
+              ALTER TABLE groups
+                  ADD CONSTRAINT uk_groups_organization_external_id UNIQUE (organization_id, external_id);
+
+              DROP INDEX IF EXISTS uk_groups_organization_provider_kind_external_id;
+
+              ALTER TABLE groups
+                  DROP COLUMN source_path;
+
+              ALTER TABLE groups
+                  DROP COLUMN provider_id;

@@ -44,14 +44,33 @@ public class Group {
   private String description;
 
   /**
+   * The provider this group originates from ({@code oidc_providers}), or null for an internal group
+   * - the group's origin as a real foreign key rather than a namespace in {@link #externalId}
+   * (ADR-0036, Entscheidung 2). Never set for {@link GroupKind#AD_HOC} and always set for {@link
+   * GroupKind#IDENTITY_PROVIDER} ({@code chk_groups_provider_kind}); for {@link GroupKind#ORG_UNIT}
+   * it names the provider the directory synchronisation runs for, which is absent while no default
+   * provider exists.
+   */
+  @Column(name = "provider_id")
+  private UUID providerId;
+
+  /**
    * The source's stable identifier, matched on instead of the name so a rename at the source never
    * orphans grants: the directory's objectGUID or SCIM externalId for {@link GroupKind#ORG_UNIT},
-   * the provider-namespaced {@code oidc:<provider-id>:<name>} for {@link
-   * GroupKind#IDENTITY_PROVIDER}. Null only for {@link GroupKind#AD_HOC}, which has no source
-   * outside this system.
+   * the group name as the token's claim carries it for {@link GroupKind#IDENTITY_PROVIDER} - since
+   * #1812 without a provider namespace, because {@link #providerId} carries the provider. Null only
+   * for {@link GroupKind#AD_HOC}, which has no source outside this system.
    */
   @Column(name = "external_id", length = 255)
   private String externalId;
+
+  /**
+   * The path the source reports for this group ("/Haus/Abteilung 5/Referat 50"), null when the
+   * source names none. Display only: it tells the same-named subgroups of one directory apart,
+   * which neither the name nor the provider does.
+   */
+  @Column(name = "source_path", length = 1000)
+  private String sourcePath;
 
   /**
    * The parent unit the directory reports for an {@link GroupKind#ORG_UNIT}; null for the other
@@ -92,15 +111,26 @@ public class Group {
       GroupKind kind,
       String name,
       String description,
+      UUID providerId,
       String externalId,
+      String sourcePath,
       UUID parentGroupId) {
     this.id = UUID.randomUUID();
     this.organizationId = organizationId;
     this.kind = kind;
     this.name = name;
     this.description = description;
+    this.providerId = providerId;
     this.externalId = externalId;
+    this.sourcePath = sourcePath;
     this.parentGroupId = parentGroupId;
+  }
+
+  /** An internal group: no source outside this system, and therefore no provider. */
+  public static Group internal(
+      UUID organizationId, String name, String description, UUID parentGroupId) {
+    return new Group(
+        organizationId, GroupKind.AD_HOC, name, description, null, null, null, parentGroupId);
   }
 
   @PrePersist
@@ -196,8 +226,16 @@ public class Group {
     return description;
   }
 
+  public UUID getProviderId() {
+    return providerId;
+  }
+
   public String getExternalId() {
     return externalId;
+  }
+
+  public String getSourcePath() {
+    return sourcePath;
   }
 
   public UUID getParentGroupId() {

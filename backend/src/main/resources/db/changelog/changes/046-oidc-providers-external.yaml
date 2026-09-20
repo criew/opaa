@@ -1,0 +1,50 @@
+databaseChangeLog:
+  - changeSet:
+      id: 046-oidc-providers-external
+      author: opaa
+      comment: >-
+        Die Anbieterzeile traegt ab hier ein Kennzeichen "extern" (#1812, ADR-0036
+        Entscheidung 2). Gruppen externer Anbieter werden in jeder Auswahl sichtbar
+        anders dargestellt, und das Erteilen eines Rechts an eine solche Gruppe verlangt
+        eine Zwischenfrage - dieselbe Mechanik, die access-control.md fuer externe Konten
+        schon vorsieht. Ohne das Kennzeichen waere "extern" nur ein Textzusatz am Namen.
+        .
+        VORGABE: jeder Anbieter ausser dem Standardanbieter ist extern, bis die
+        Systemverwaltung es aendert. Der Standardanbieter ist der Verzeichnis-Anbieter
+        der eigenen Einrichtung (ADR-0025), die Zeile der lokalen Konten (ADR-0033) ist
+        die eigene Benutzerverwaltung - beide sind nie extern. Fuer die LOCAL-Zeile haelt
+        chk_oidc_providers_local_not_external das auch gegen einen Schreibzugriff an der
+        Anwendung vorbei fest; fuer den Standardanbieter gilt es nur als Vorgabe, weil
+        eine Installation den Standardanbieter durchaus bei einem fremden Haus betreiben
+        kann.
+        .
+        Der Vorgabewert der Spalte ist true: Ein Anbieter, den jemand per SQL einfuegt,
+        ist im Zweifel der fremde - die sichere Richtung.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE oidc_providers
+                  ADD COLUMN is_external boolean;
+
+              UPDATE oidc_providers
+                 SET is_external = (NOT is_default AND provider_type <> 'LOCAL');
+
+              ALTER TABLE oidc_providers
+                  ALTER COLUMN is_external SET NOT NULL;
+
+              ALTER TABLE oidc_providers
+                  ALTER COLUMN is_external SET DEFAULT true;
+
+              ALTER TABLE oidc_providers
+                  ADD CONSTRAINT chk_oidc_providers_local_not_external CHECK (
+                      ((provider_type <> 'LOCAL') OR (is_external = false)));
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE oidc_providers
+                  DROP CONSTRAINT chk_oidc_providers_local_not_external;
+
+              ALTER TABLE oidc_providers
+                  DROP COLUMN is_external;
