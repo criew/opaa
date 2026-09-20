@@ -1,6 +1,6 @@
 databaseChangeLog:
   - changeSet:
-      id: 050-groups-org-unit-requires-provider
+      id: 054-groups-org-unit-requires-provider
       author: opaa
       comment: >-
         Die Pruefregel aus ADR-0036 Entscheidung 2 in ihrer strengen Form:

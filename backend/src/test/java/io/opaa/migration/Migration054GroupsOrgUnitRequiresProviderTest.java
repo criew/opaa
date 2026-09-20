@@ -16,17 +16,17 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Delta tests for {@code changes/050-groups-org-unit-requires-provider.yaml} (#1816, ADR-0036
+ * Delta tests for {@code changes/054-groups-org-unit-requires-provider.yaml} (#1816, ADR-0036
  * Entscheidung 2): every provider group carries its provider. {@code 041} runs first - it brings
  * {@code provider_id} and the softer form of the check this changeset tightens.
  */
-class Migration050GroupsOrgUnitRequiresProviderTest extends AbstractMigrationTest {
+class Migration054GroupsOrgUnitRequiresProviderTest extends AbstractMigrationTest {
 
   private static final String PROVIDER_ORIGIN_PATH =
       "db/changelog/changes/041-groups-provider-origin.yaml";
 
   private static final String CHANGELOG_PATH =
-      "db/changelog/changes/050-groups-org-unit-requires-provider.yaml";
+      "db/changelog/changes/054-groups-org-unit-requires-provider.yaml";
 
   private static final UUID DEFAULT_ORGANIZATION =
       UUID.fromString("00000000-0000-0000-0000-000000000001");

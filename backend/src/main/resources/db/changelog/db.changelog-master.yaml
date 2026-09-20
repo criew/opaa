@@ -106,4 +106,4 @@ databaseChangeLog:
   # Jede Anbietergruppe trägt ihren Anbieter — die strenge Form der Prüfregel aus
   # ADR-0036 Entscheidung 2, die 041 bis zur dev-Modus-Entscheidung offengelassen hat (#1816).
   - include:
-      file: db/changelog/changes/050-groups-org-unit-requires-provider.yaml
+      file: db/changelog/changes/054-groups-org-unit-requires-provider.yaml
