@@ -17,8 +17,9 @@ import io.opaa.auth.TokenGroups.Reason;
 import io.opaa.auth.User;
 import io.opaa.auth.oidc.OidcClaimMapping;
 import io.opaa.auth.oidc.OidcProvider;
-import io.opaa.library.PermissionHistoryService;
 import io.opaa.organization.Organization;
+import io.opaa.permission.GroupMembershipResolver;
+import io.opaa.permission.PermissionHistoryService;
 import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.AfterEach;
@@ -148,10 +149,8 @@ class TokenGroupSynchronizerIncidentTest {
   void aDroppedNameIsReportedOnceAndDoesNotStopTheOtherNames() {
     OidcProvider provider = provider("Beschäftigte");
     User user = user();
-    String held = TokenGroupSynchronizer.namespaceOf(provider) + "Fachbereich 3";
-    when(groupRepository.findIdentityProviderExternalIdsOfUser(
-            user.getId(), TokenGroupSynchronizer.namespaceOf(provider)))
-        .thenReturn(Set.of(held));
+    when(groupRepository.findIdentityProviderExternalIdsOfUser(user.getId(), provider.getId()))
+        .thenReturn(Set.of("Fachbereich 3"));
 
     synchronizer.apply(user, provider, TokenGroups.named(List.of("Fachbereich 3", overlong())));
     synchronizer.apply(user, provider, TokenGroups.named(List.of("Fachbereich 3", overlong())));
@@ -164,8 +163,7 @@ class TokenGroupSynchronizerIncidentTest {
         .doesNotContain("left unchanged");
     // the usable name of the same token is still the account's membership: read, nothing to change
     verify(groupRepository, times(2))
-        .findIdentityProviderExternalIdsOfUser(
-            user.getId(), TokenGroupSynchronizer.namespaceOf(provider));
+        .findIdentityProviderExternalIdsOfUser(user.getId(), provider.getId());
     verifyNoInteractions(membershipRepository, permissionHistoryService, auditEventRecorder);
   }
 
