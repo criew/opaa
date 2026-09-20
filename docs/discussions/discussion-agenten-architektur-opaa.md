@@ -7,7 +7,7 @@
 **Rahmenbedingungen:**
 
 1. **ADR-0021 (Single Instance):** genau ein Backend-Prozess. Agent-Läufe dürfen darauf aufsetzen, aber jeder Neustart killt laufende Arbeit — die Restart-Semantik muss von Anfang an mitgedacht werden.
-2. **ADR-0008 (Rechte in der Suche):** Ein Agent recherchiert immer mit den effektiven Rechten des Nutzers, in dessen Auftrag er läuft — nie mit eigenen, nie mit denen des Agent-Autors.
+2. **Rechte in der Suche** ([spaces-and-assets.md, „Ein Agent liest immer mit den Rechten des Nutzers"](../features/spaces-and-assets.md#ein-agent-liest-immer-mit-den-rechten-des-nutzers)): Ein Agent recherchiert immer mit den effektiven Rechten des Nutzers, in dessen Auftrag er läuft — nie mit eigenen, nie mit denen des Agent-Autors.
 3. **On-Prem-Fähigkeit:** Keine Cloud-Sandbox, kein gehosteter Code-Interpreter als Voraussetzung. Cloud-Varianten sind zulässige Alternativen, nie Bedingung.
 4. **Nachweisbarkeit:** Jede Agentenaktion ist auditierbar (bestehender `AuditEventRecorder`-Pfad); schreibende Aktionen laufen durch ein Freigabetor (Zielbild agents-and-tools.md).
 5. **Kein fremder Code in Phase A/B:** Die Trennlinie aus dem Sandbox-Report ist verbindlich — solange kein generierter/nutzergelieferter Code und kein stdio-Prozess ausgeführt wird, braucht es keine Sandbox; ab dem ersten Skript ist der Runner Pflicht, nicht optional.

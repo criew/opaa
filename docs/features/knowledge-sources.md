@@ -785,7 +785,7 @@ Entscheidung, kein Rollenkonstrukt tritt an ihre Stelle (ADR-0018, Entscheidung 
 Ohne die Obergrenze könnte ein Bibliothekseigentümer einen lauf-basierten Bestand organisationsweit
 öffnen. Sie ist die einzige technische Sicherung zwischen „von einem Konnektor eingespeist" und
 „hausweit lesbar" und deshalb kein Randthema. Ihre genaue Definition — was sie begrenzt und was beim
-nachträglichen Absenken mit bereits erteilten Freigaben geschieht — ist Gegenstand von **Issue #207**
+nachträglichen Absenken mit bereits erteilten Freigaben geschieht — ist Gegenstand von **Issue #797**
 und wird dort entschieden; die Grundannahme, auf der sie beruhte — „die Systemverwaltung speist ein,
 der Eigentümer gibt frei" —, gilt mit der freien Anlageberechtigung nicht mehr uneingeschränkt, was die
 Entscheidung dort **dringlicher** macht, nicht überflüssig. Die frühere Frage nach der Obergrenze bei
@@ -901,7 +901,7 @@ rücknehmbar.
   Vorgang; der Inhalt ist weg.
 - **Löschverlangen nach Datenschutzrecht** — greift auf alle Ableitungen durch: Chunks, Einbettungen,
   zwischengespeicherte Extrakte und Vorschauen. Verfahren und Fristen stehen in
-  [Zugangskontrolle](./access-control.md#datenlöschung-dsgvo).
+  [Sicherheit, Nachweis & Prüfbarkeit](./security-and-compliance.md#vollständigkeit-nach-dsgvo-löschung-und-export).
 - **Löschung der ganzen Bibliothek (gebaut, [ADR-0018](../decisions/0018-quellkonfiguration-in-der-bibliothek.md), Entscheidung 5).**
   Sie ist typabhängig geregelt, weil eine Einzellöschung bei lauf-basierten Bibliotheken wirkungslos
   wäre — der nächste Lauf nähme das Dokument wieder auf, solange es dessen vollständige Quelle bleibt.
@@ -1203,7 +1203,7 @@ Idee wieder aufgemacht werden.
 - **Die 1:1-Zuordnung von Quelle und Wissensbibliothek ist strukturell erzwungen.** Eine Bibliothek trägt
   höchstens eine Quelle, eine Quelle speist höchstens eine Bibliothek; Mehrfachverwendung geschieht über
   die Bereitstellung derselben Bibliothek, nicht über mehrere Zuflüsse. Mit ADR-0018 ist das kein
-  Policy-Beschluss mehr, sondern eine Eigenschaft des Datenmodells; offen bleibt in **Issue #207**
+  Policy-Beschluss mehr, sondern eine Eigenschaft des Datenmodells; offen bleibt in **Issue #797**
   ausschließlich die Obergrenze der Freigabe.
 - **Lesen ist der Normalfall, Schreiben die Ausnahme** mit ausdrücklicher Freischaltung je Integration
   und menschlichem Freigabeschritt im Einzelfall.
@@ -1229,7 +1229,7 @@ Idee wieder aufgemacht werden.
   weiter reichenden Freigaben, wenn sie nachträglich abgesenkt wird? Für eine Prüfstelle ist das der
   Unterschied zwischen „behoben" und „nicht behoben". Mit der zunächst freien Anlageberechtigung
   (ADR-0018, Entscheidung 6) ist diese Frage dringlicher geworden, nicht weniger relevant. Entschieden
-  wird das in **Issue #207**.
+  wird das in **Issue #797**.
 - Welche Quellsysteme geben Rechte belastbar genug heraus, dass Option 2 der Spiegelung sich lohnt?
 - **Der Rotationsweg für Zugangsdaten ist geklärt (gebaut, #516):** die Detailseite bearbeitet die
   Quellkonfiguration einer Bibliothek jederzeit, ohne einen Lauf zu unterbrechen (siehe oben, Abschnitt

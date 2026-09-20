@@ -54,7 +54,7 @@ Zwei strukturelle Alternativen ergänzen den Stapel: **Wissensgraphen** (GraphRA
 
 Vollständig spezifiziert in [retrieval-algorithm.md](../features/retrieval-algorithm.md); Kurzfassung:
 
-- **Reine Vektorsuche** (pgvector, Kosinus, HNSW; Embedding `nomic-embed-text` lokal via Ollama), Rechtefilter (`library_id`) als Teil der Suche, nie als Nachfilter (ADR-0008).
+- **Reine Vektorsuche** (pgvector, Kosinus, HNSW; Embedding `nomic-embed-text` lokal via Ollama), Rechtefilter (`library_id`) als Teil der Suche, nie als Nachfilter ([spaces-and-assets.md, „Durchsetzung zur Abfragezeit"](../features/spaces-and-assets.md#durchsetzung-zur-abfragezeit)).
 - **LLM-Teilfragen-Zerlegung** (#923): 1–3 Suchanfragen pro Nutzerfrage, Zusammenführung per **Reciprocal Rank Fusion**.
 - **MMR-Diversifizierung** vorhanden, per Default aus (λ=1,0, #914).
 - **DocumentCompletion** (#932/#935): bis zu 2 Chunks je Dokument, zweistufige Verdrängungslogik.
@@ -251,7 +251,7 @@ Jede Strategieentscheidung dieses Reports ist nur so gut wie ihre Messung — un
 
 - **Azure AI Search** ist die klarste Referenzarchitektur des Marktes: Hybrid (BM25+Vektor, RRF) → Semantic Ranker (Bing-Cross-Encoder über Top 50) → optional generatives Query-Rewriting (bis 10 Umformulierungen, SLM) → „Agentic Retrieval" für komplexe konversationale Fälle (LLM-Query-Planning, parallele Subqueries, +40 % Relevanz laut Eigenmessung). Microsofts eigene Benchmark-Botschaft seit 2023 unverändert: **Chunking ~512 Token + Hybrid + Reranking** — nDCG@3 von 43,8 (nur Vektor) auf 60,1 (Hybrid+Ranker).
 - **GraphRAG** hat Microsoft selbst faktisch eingeordnet: Das OSS-Repo ist im Wartungsmodus, die Weiterentwicklung (LazyGraphRAG) verschiebt alle LLM-Arbeit in die Query-Zeit und floss nur in Produkte. Die Lehre: **Nicht der Graph war die bleibende Idee, sondern das Kostenmodell** — billig indexieren, Qualität zur Query-Zeit dosieren.
-- **M365 Copilot** (Semantic Index): hybrides Retrieval mit strikter Rechte-Übernahme (Index erzeugt keine neuen Zugriffsrechte) — architektonisch dasselbe Prinzip wie OPAAs ADR-0008-Rechtefilter, in Tenant-Größe.
+- **M365 Copilot** (Semantic Index): hybrides Retrieval mit strikter Rechte-Übernahme (Index erzeugt keine neuen Zugriffsrechte) — architektonisch dasselbe Prinzip wie OPAAs [Rechtefilter zur Abfragezeit](../features/spaces-and-assets.md#durchsetzung-zur-abfragezeit), in Tenant-Größe.
 
 ### RAGFlow (infiniflow)
 
@@ -305,7 +305,7 @@ Die Domäne von Global-Search-Verfahren (GraphRAG-Communities, Document-Summary-
 
 ### Szenario 7: Berechtigungssensitive Auskunft (Demo-Frage 5: verschiedene Konten sehen Verschiedenes)
 
-OPAAs Stärke durch ADR-0008 (Rechtefilter in der Suche). Jede neue Strategie muss diese Invariante erhalten — das ist das härteste Ausschlusskriterium gegen naive Graph-Übernahme (Kanten verraten Existenz unlesbarer Dokumente) und gegen „alles in den Kontext"-Long-Context-Ansätze.
+OPAAs Stärke durch den [Rechtefilter in der Suche](../features/spaces-and-assets.md#durchsetzung-zur-abfragezeit). Jede neue Strategie muss diese Invariante erhalten — das ist das härteste Ausschlusskriterium gegen naive Graph-Übernahme (Kanten verraten Existenz unlesbarer Dokumente) und gegen „alles in den Kontext"-Long-Context-Ansätze.
 
 ### Szenario 8: Ehrliches Nichtwissen (Demo-Frage 8: Fischereierlaubnis — nicht im Bestand)
 

@@ -44,7 +44,8 @@ der Volltextpfad (AP 2) und die Reranking-Stufe (AP 4) eingehängt.
 Administrationsoberfläche); die abgeschaltete Stufe entfällt dann vollständig, statt neutralisiert
 mitzulaufen — der Unterschied zweier Läufe ist so der Beitrag der Stufe und nicht der Unterschied zweier
 Codepfade. Einzige Ausnahme ist die Stufe `SEARCH_SCOPE`: „ohne Rechtefilter" ist keine Messvariante,
-sondern eine Rechteumgehung, und wird beim Start abgelehnt (ADR-0008 §5).
+sondern eine Rechteumgehung, und wird beim Start abgelehnt
+([Durchsetzung zur Abfragezeit](./spaces-and-assets.md#durchsetzung-zur-abfragezeit)).
 
 **Für den Benchmark ist der Schalter (noch) nicht zugelassen.** Der Harness weist eine nicht-leere Menge
 ab (`PipelineHarnessSupport#requireMeasurableConfiguration`): Kein Feld eines Pipeline-Reports hält fest,
@@ -166,8 +167,9 @@ Stellschrauben-Tabelle.
 
 Stufenname: `FULL_TEXT_SEARCH`. `FullTextSearchStage` führt für **jede** Suchanfrage aus Schritt 2 eine PostgreSQL-Volltextabfrage gegen
 `chunk_full_text` aus — mit **identischem Rechtefilter** wie Schritt 3 (`library_id = ANY(...)` als Teil
-der `WHERE`-Klausel, nie ein Nachfilter, ADR-0008 §5) und identischem `opaa.query.fetch-k`. Sortiert wird
-nach `ts_rank`.
+der `WHERE`-Klausel, nie ein Nachfilter,
+[Durchsetzung zur Abfragezeit](./spaces-and-assets.md#durchsetzung-zur-abfragezeit)) und identischem
+`opaa.query.fetch-k`. Sortiert wird nach `ts_rank`.
 
 **Die Suchanfrage wird genauso gebaut wie der Index** (`FullTextChunkSearch`), aus zwei Hälften:
 

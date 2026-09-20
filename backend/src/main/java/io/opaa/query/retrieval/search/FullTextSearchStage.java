@@ -50,7 +50,8 @@ public class FullTextSearchStage implements RetrievalStage {
   @Override
   public StageOutcome apply(RetrievalContext context, RetrievalState state) {
     // Not read for the SQL - which needs the raw library ids - but demanded all the same: a search
-    // stage running before SEARCH_SCOPE established the filter must fail loudly (ADR-0008 §5),
+    // stage running before SEARCH_SCOPE established the filter must fail loudly
+    // (docs/features/spaces-and-assets.md#durchsetzung-zur-abfragezeit),
     // exactly as it does in the vector path.
     state.requiredLibraryFilter();
 

@@ -24,7 +24,8 @@ public interface RetrievalStage {
   /**
    * Whether this stage may be switched off. {@code true} for every stage except the one that
    * establishes the permission filter: "without that stage" would not be a measurable pipeline
-   * variant but a search without a rights filter (ADR-0008 §5).
+   * variant but a search without a rights filter
+   * (docs/features/spaces-and-assets.md#durchsetzung-zur-abfragezeit).
    */
   default boolean switchable() {
     return true;

@@ -288,8 +288,9 @@ vollständigen nicht unterscheidbar und würde als Codeänderung gegen die Basel
 Stufen-Auswahl zur Messgröße zu machen ist ein Vertragsnachtrag mit neuem Fixpunkt, erhöhter
 Vertragsversion und neu gezogenen Baselines. **Eine zweite Ausnahme, aus der Umsetzung:** die
 Stufe, die den Rechtefilter setzt (`SEARCH_SCOPE`), ist nicht abschaltbar — „ohne diese Stufe" wäre keine
-Messvariante, sondern eine Suche ohne Rechtefilter (ADR-0008 §5). Eine Konfiguration, die es versucht,
-scheitert beim Start, nicht bei der Abfrage.
+Messvariante, sondern eine Suche ohne Rechtefilter
+([Durchsetzung zur Abfragezeit](./spaces-and-assets.md#durchsetzung-zur-abfragezeit)). Eine Konfiguration,
+die es versucht, scheitert beim Start, nicht bei der Abfrage.
 
 **Jede Stufe erklärt ihr Ergebnis, und zwar als Pflicht-Rückgabewert.** Das Erklärprotokoll ist Teil
 des Rückgabewerts der Stufenschnittstelle — nicht ein optionaler Nebeneffekt, den eine Stufe erzeugen
@@ -322,7 +323,7 @@ nebenbei die Suchqualität verändert, ist im Nachhinein nicht mehr von einer Re
 
 > **Stand: gebaut** ([#1048](https://github.com/criew/opaa/issues/1048)); die Schemaänderung und der
 > Backfill (AP 2a) davor mit [#1047](https://github.com/criew/opaa/issues/1047). Der gebaute Ablauf steht
-> in [Retrieval-Algorithmus (Ist-Stand)](./retrieval-algorithm.md#3b-volltextsuche-je-teilfrage-1048);
+> in [Retrieval-Algorithmus (Ist-Stand)](./retrieval-algorithm.md#3b-volltextsuche-je-teilfrage-10481049);
 > dieser Abschnitt bleibt die Begründung und der Zuschnitt.
 >
 > **Seit [#1049](https://github.com/criew/opaa/issues/1049) in der Fusion.** Die Stufe liefert je
@@ -605,9 +606,8 @@ LLM-Teilfragen-Zerlegung nebenbei (#923). Wiedervorlage bei gemessenem Bedarf, n
 
 Der Filter auf die lesbaren Bibliotheken (`library_id IN (...)`) ist **Teil der Volltextabfrage selbst**,
 genau wie im Vektorpfad — nie ein Filter auf deren Ergebnis. Das ist keine Optimierung, sondern die
-tragende Zusicherung von ADR-0008 (der Grundsatz ist mit #326 in die Spezifikation überführt worden;
-maßgeblich ist heute
-[Durchsetzung zur Abfragezeit](./spaces-and-assets.md#durchsetzung-zur-abfragezeit)).
+tragende Zusicherung des Rechtemodells —
+[Durchsetzung zur Abfragezeit](./spaces-and-assets.md#durchsetzung-zur-abfragezeit).
 
 Zwei Folgerungen sind verbindlich:
 
@@ -1333,14 +1333,14 @@ liefern nie ein Embedding — die Spalte wird gar nicht erst gelesen.
 >   für den Altbestand.
 >
 >   **Was die Administration weiterhin allein erreicht**, ohne dass eine zweite Person mitwirkt:
->   Gehört die Bibliothek einer Gruppe, die keine `ORG_UNIT` ist, kann ein `SYSTEM_ADMIN` sich über
->   `POST /api/v1/groups/{id}/members` selbst in diese Eigentümergruppe eintragen — die
->   Gruppenverwaltung kennt keinen Selbstausschluss, und `rejectOrgUnit` greift nur für
->   Verzeichnis-Organisationseinheiten. Danach ist er „benannte zuständige Stelle“ und löst die
->   Sperre. Die Eigentümerperson (`ownerUserId`) ist von diesem Weg nicht betroffen: sie ist
->   unveränderlich. Ebenfalls nicht ausgeschlossen bleibt, dass die Administration einem anderen,
->   benannten Konto `OWNER` gibt, das die Sperre dann löst. Beide Wege stehen vollständig im
->   Protokoll, keiner ist verhindert.
+>   Gehört die Bibliothek einer `AD_HOC`-Gruppe, kann ein `SYSTEM_ADMIN` sich über
+>   `POST /api/v1/admin/groups/{groupId}/members` selbst in diese Eigentümergruppe eintragen — die
+>   Gruppenverwaltung kennt keinen Selbstausschluss, und `rejectOrgUnit` weist nur
+>   Verzeichnis-Organisationseinheiten und Anbietergruppen ab. Danach ist er „benannte zuständige
+>   Stelle“ und löst die Sperre. Die Eigentümerperson (`ownerUserId`) ist von diesem Weg nicht
+>   betroffen: sie ist unveränderlich. Ebenfalls nicht ausgeschlossen bleibt, dass die Administration
+>   einem anderen, benannten Konto `OWNER` gibt, das die Sperre dann löst. Beide Wege stehen
+>   vollständig im Protokoll, keiner ist verhindert.
 >
 >   **Entschieden (Maintainer, 04.09.2026, [#1124](https://github.com/criew/opaa/issues/1124)):
 >   Das bleibt so.** Kein Selbstausschluss in der Gruppenverwaltung, keine engere Regel für

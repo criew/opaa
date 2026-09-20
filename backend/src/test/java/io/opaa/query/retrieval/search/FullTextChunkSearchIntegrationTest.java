@@ -72,7 +72,8 @@ class FullTextChunkSearchIntegrationTest {
   }
 
   /**
-   * ADR-0008 §5: the readable-library filter is part of the query. The forbidden chunk is the
+   * The readable-library filter is part of the query
+   * (docs/features/spaces-and-assets.md#durchsetzung-zur-abfragezeit). The forbidden chunk is the
    * <em>better</em> match for the question, so a path that filtered afterwards - or not at all -
    * would return it here.
    */

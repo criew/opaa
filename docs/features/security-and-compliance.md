@@ -220,7 +220,7 @@ ersten Stufe nicht geschrieben.
 **Zugriff auf die Protokolldaten selbst**
 
 - Jedes Lesen, jede Auswertung und jeder Export von Protokolldaten, einschließlich der **abgelehnten**
-  Versuche — siehe [unten](#der-zugriff-auf-protokolldaten-erzeugt-selbst-einen-eintrag)
+  Versuche — siehe [unten](#zugriffswege-was-es-gibt-und-was-es-nicht-gibt)
 
 ### Umsetzungsstand der geschlossenen Liste (#392)
 
@@ -410,7 +410,8 @@ Zwei Kategorien, die über die gewöhnliche Nutzerhandlung hinausgehen und desha
 - **Verwaltungsaktionen.** Alles, was die Systemverwaltung tut, ist protokollpflichtig — gerade weil
   System-Admins nicht automatisch leseberechtigt sind, muss jeder Übernahme- und Verwaltungsakt sichtbar
   sein. Ein Admin, der ein Asset einer neuen Zuständigkeit zuweist, hinterlässt eine Spur, die er selbst
-  nicht entfernen kann.
+  nicht entfernen kann. Wo der gebaute Stand diese Zusage heute nicht hält, steht unter
+  [Verwalten ist nicht Lesen](./access-control.md#verwalten-ist-nicht-lesen-die-asymmetrie-bei-wissensbibliotheken).
 - **Agentenaktionen** — Teil einer späteren Stufe, weil es heute keine Agenten gibt; die Festlegung
   steht hier, damit sie nicht später neu verhandelt wird. Ein Agent handelt **immer mit den Rechten der
   aufrufenden Person**. Der Protokolleintrag hält deshalb beides fest: die aufrufende Person und den

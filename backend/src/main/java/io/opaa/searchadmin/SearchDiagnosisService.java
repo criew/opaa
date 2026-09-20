@@ -45,7 +45,8 @@ import org.springframework.stereotype.Service;
  *   <li><b>No search without a permission filter.</b> The scope is resolved through {@link
  *       LibraryAccessService} exactly as a chat query resolves it, then handed to the pipeline,
  *       which turns it into the {@code library_id} filter of every search stage. The diagnosis sets
- *       that filter differently from a chat query; it never omits it (ADR-0008 §5).
+ *       that filter differently from a chat query; it never omits it
+ *       (docs/features/spaces-and-assets.md#durchsetzung-zur-abfragezeit).
  *   <li><b>No chat is ever read.</b> The pipeline runs with an empty conversation history - there
  *       is no parameter on this service that could name an existing conversation.
  *   <li><b>The same retrieval a chat query runs.</b> The context comes from the same {@link
