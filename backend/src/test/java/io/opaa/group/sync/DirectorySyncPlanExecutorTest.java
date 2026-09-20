@@ -69,7 +69,8 @@ class DirectorySyncPlanExecutorTest {
             Instant.now(),
             new DirectorySnapshot(
                 Instant.now(),
-                List.of(new DirectoryGroup("dir-1", "Referat 12", null, Set.of("member-1")))));
+                List.of(
+                    new DirectoryGroup("dir-1", "Referat 12", null, null, Set.of("member-1")))));
 
     assertThat(report.outcome()).isEqualTo(DirectorySyncOutcome.DRY_RUN);
     verify(groupRepository)
@@ -108,7 +109,8 @@ class DirectorySyncPlanExecutorTest {
             target,
             Instant.now(),
             new DirectorySnapshot(
-                Instant.now(), List.of(new DirectoryGroup("dir-1", "Referat 50", null, Set.of()))));
+                Instant.now(),
+                List.of(new DirectoryGroup("dir-1", "Referat 50", null, null, Set.of()))));
 
     assertThat(report.outcome()).isEqualTo(DirectorySyncOutcome.APPLIED);
     assertThat(report.unmaintainedTokenGroups())

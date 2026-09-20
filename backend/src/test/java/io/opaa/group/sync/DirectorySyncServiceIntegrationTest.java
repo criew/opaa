@@ -36,10 +36,10 @@ import org.springframework.beans.factory.annotation.Autowired;
  * scenarios and the {@code fk_group_memberships_group_organization} composite foreign key both
  * depend on real constraints that only the versioned changelog creates.
  *
- * <p>{@link FakeDirectoryClient} replaces the production {@link NoOpDirectoryClient} as the {@link
- * DirectoryClient} bean (marked {@code @Primary}, so it wins regardless of bean registration order)
- * - the one seam between the synchronisation policy under test and an actual directory, per {@link
- * DirectoryClient}'s own javadoc.
+ * <p>{@link FakeDirectoryClient} replaces the production {@code ProviderDirectoryClient} as the
+ * {@link DirectoryClient} bean (marked {@code @Primary}, so it wins regardless of bean registration
+ * order) - the one seam between the synchronisation policy under test and an actual directory, per
+ * {@link DirectoryClient}'s own javadoc.
  *
  * <p>Since #1816 every run is bound to an identity provider row: this class creates one per test
  * method, switches its directory run on, and provisions its accounts under that provider's issuer.
@@ -197,7 +197,7 @@ class DirectorySyncServiceIntegrationTest {
     tokenGroup.addMembership(new GroupMembership(partnerAccount, organizationId));
     groupRepository.save(tokenGroup);
     directoryClient.respondWith(
-        new DirectoryGroup("dir-guid-1", "Referat 12", null, Set.of("member-1")));
+        new DirectoryGroup("dir-guid-1", "Referat 12", null, null, Set.of("member-1")));
 
     SyncReport report = directorySyncService.run(organizationId, providerId);
 
@@ -223,7 +223,7 @@ class DirectorySyncServiceIntegrationTest {
     Group existing = persistOrgUnit("dir-guid-1", "Altes Referat", member);
 
     directoryClient.respondWith(
-        new DirectoryGroup("dir-guid-1", "Neues Referat", null, Set.of("member-1")));
+        new DirectoryGroup("dir-guid-1", "Neues Referat", null, null, Set.of("member-1")));
 
     SyncReport report = directorySyncService.run(organizationId, providerId);
 
@@ -235,6 +235,39 @@ class DirectorySyncServiceIntegrationTest {
     assertThat(membershipRepository.findByGroupId(reloaded.getId()))
         .extracting(GroupMembership::getUserId)
         .containsExactly(member);
+  }
+
+  /**
+   * The report of an <em>applied</em> run must say the same thing as the dry run that showed it.
+   * Both values are read off the group entity, which the apply has already changed by the time the
+   * report is assembled - so they are captured while the plan is built.
+   */
+  @Test
+  void theReportOfAnAppliedRenameNamesThePreviousNameAndTheMemberCountBeforeTheRun() {
+    // Four members, one of whom leaves: 25% removed stays below the 30% threshold, so the run is
+    // applied rather than left pending - and the member count still changes with it.
+    UUID first = createUser(organizationId, "member-1");
+    UUID second = createUser(organizationId, "member-2");
+    UUID third = createUser(organizationId, "member-3");
+    UUID leaving = createUser(organizationId, "member-4");
+    persistOrgUnit("dir-guid-1", "Altes Referat", first, second, third, leaving);
+
+    directoryClient.respondWith(
+        new DirectoryGroup(
+            "dir-guid-1", "Neues Referat", null, null, Set.of("member-1", "member-2", "member-3")));
+    SyncReport dryRun = directorySyncService.dryRun(organizationId, providerId);
+    SyncReport applied = directorySyncService.run(organizationId, providerId);
+
+    assertThat(applied.outcome()).isEqualTo(DirectorySyncOutcome.APPLIED);
+    assertThat(applied.groupsRenamed())
+        .singleElement()
+        .satisfies(
+            change -> {
+              assertThat(change.previousName()).isEqualTo("Altes Referat");
+              assertThat(change.name()).isEqualTo("Neues Referat");
+              assertThat(change.memberCount()).isEqualTo(4);
+            });
+    assertThat(applied.groupsRenamed()).isEqualTo(dryRun.groupsRenamed());
   }
 
   // ---------------------------------------------------------------------------------------
@@ -250,7 +283,8 @@ class DirectorySyncServiceIntegrationTest {
 
     // Directory now reports only "a" - removing 2 of 3 memberships (67%), well above the 30%
     // default threshold.
-    directoryClient.respondWith(new DirectoryGroup("dir-guid-1", "Referat 50", null, Set.of("a")));
+    directoryClient.respondWith(
+        new DirectoryGroup("dir-guid-1", "Referat 50", null, null, Set.of("a")));
 
     SyncReport report = directorySyncService.run(organizationId, providerId);
 
@@ -304,8 +338,8 @@ class DirectorySyncServiceIntegrationTest {
     Group existing = persistOrgUnit("dir-guid-1", "Referat 50", memberA);
 
     directoryClient.respondWith(
-        new DirectoryGroup("dir-guid-1", "Referat 50", null, Set.of("a", "b")),
-        new DirectoryGroup("dir-guid-2", "Referat 60", null, Set.of()));
+        new DirectoryGroup("dir-guid-1", "Referat 50", null, null, Set.of("a", "b")),
+        new DirectoryGroup("dir-guid-2", "Referat 60", null, null, Set.of()));
 
     SyncReport report = directorySyncService.dryRun(organizationId, providerId);
 
@@ -325,7 +359,7 @@ class DirectorySyncServiceIntegrationTest {
   void createsANewOrgUnitGroupWithItsMembers() {
     UUID member = createUser(organizationId, "new-member");
     directoryClient.respondWith(
-        new DirectoryGroup("dir-guid-9", "Referat 99", null, Set.of("new-member")));
+        new DirectoryGroup("dir-guid-9", "Referat 99", null, null, Set.of("new-member")));
 
     SyncReport report = directorySyncService.run(organizationId, providerId);
 
@@ -338,6 +372,73 @@ class DirectorySyncServiceIntegrationTest {
     assertThat(membershipRepository.findByGroupId(created.getId()))
         .extracting(GroupMembership::getUserId)
         .containsExactly(member);
+  }
+
+  /**
+   * #1817: the path the directory reports is recorded on the group - the only thing that tells two
+   * same-named subgroups of one directory apart - and the report names it alongside the member
+   * count an operator decides on before applying.
+   */
+  @Test
+  void aCreatedGroupKeepsTheReportedPathAndTheReportNamesItsMemberCount() {
+    createUser(organizationId, "new-member");
+    directoryClient.respondWith(
+        new DirectoryGroup(
+            "dir-guid-9", "Referat 99", null, "/Haus/Amt 9/Referat 99", Set.of("new-member")));
+
+    SyncReport report = directorySyncService.run(organizationId, providerId);
+
+    assertThat(report.groupsCreated())
+        .singleElement()
+        .satisfies(
+            change -> {
+              assertThat(change.sourcePath()).isEqualTo("/Haus/Amt 9/Referat 99");
+              assertThat(change.memberCount()).isEqualTo(1);
+            });
+    assertThat(groupRepository.findByOrganizationId(organizationId).get(0).getSourcePath())
+        .isEqualTo("/Haus/Amt 9/Referat 99");
+  }
+
+  /**
+   * ADR-0036, Entscheidung 3: a department whose members all sit in its subgroups is an empty group
+   * here, and the diff report is where the operator sees that before applying - the count is the
+   * number the <em>directory</em> reports, not the number of memberships that could be resolved.
+   */
+  @Test
+  void aDepartmentWithoutDirectMembersIsReportedWithAMemberCountOfZero() {
+    createUser(organizationId, "child-member");
+    directoryClient.respondWith(
+        new DirectoryGroup("dir-haus", "Haus", null, "/Haus", Set.of()),
+        new DirectoryGroup(
+            "dir-50", "Referat 50", "dir-haus", "/Haus/Referat 50", Set.of("child-member")));
+
+    SyncReport report = directorySyncService.run(organizationId, providerId);
+
+    assertThat(report.groupsCreated())
+        .filteredOn(change -> change.externalId().equals("dir-haus"))
+        .singleElement()
+        .satisfies(change -> assertThat(change.memberCount()).isZero());
+    Group haus =
+        groupRepository.findByOrganizationId(organizationId).stream()
+            .filter(group -> "dir-haus".equals(group.getExternalId()))
+            .findFirst()
+            .orElseThrow();
+    assertThat(membershipRepository.findByGroupId(haus.getId())).isEmpty();
+  }
+
+  /** A parent's rename moves every descendant's path without the descendant itself changing. */
+  @Test
+  void aPathThatMovedInTheDirectoryIsRefreshedOnALaterRun() {
+    directoryClient.respondWith(
+        new DirectoryGroup("dir-50", "Referat 50", null, "/Haus/Referat 50", Set.of()));
+    directorySyncService.run(organizationId, providerId);
+
+    directoryClient.respondWith(
+        new DirectoryGroup("dir-50", "Referat 50", null, "/Amt 5/Referat 50", Set.of()));
+    directorySyncService.run(organizationId, providerId);
+
+    assertThat(groupRepository.findByOrganizationId(organizationId).get(0).getSourcePath())
+        .isEqualTo("/Amt 5/Referat 50");
   }
 
   // ---------------------------------------------------------------------------------------
@@ -363,10 +464,11 @@ class DirectorySyncServiceIntegrationTest {
     // Directory no longer reports dir-guid-1 at all (merged into another unit); the bulk group is
     // still reported unchanged.
     directoryClient.respondWith(
-        new DirectoryGroup("dir-guid-2", "Referat 60", null, Set.of()),
+        new DirectoryGroup("dir-guid-2", "Referat 60", null, null, Set.of()),
         new DirectoryGroup(
             "dir-guid-bulk",
             "Referat Bulk",
+            null,
             null,
             Set.of(
                 "bulk-0", "bulk-1", "bulk-2", "bulk-3", "bulk-4", "bulk-5", "bulk-6", "bulk-7",
@@ -394,7 +496,7 @@ class DirectorySyncServiceIntegrationTest {
     groupRepository.save(existing);
 
     directoryClient.respondWith(
-        new DirectoryGroup("dir-guid-1", "Referat 50", null, Set.of("member-1", "member-2")));
+        new DirectoryGroup("dir-guid-1", "Referat 50", null, null, Set.of("member-1", "member-2")));
 
     SyncReport report = directorySyncService.run(organizationId, providerId);
 
@@ -424,7 +526,7 @@ class DirectorySyncServiceIntegrationTest {
       persistOrgUnit("dir-guid-" + i, "Referat " + i, member);
       if (i < 2) {
         stillReported.add(
-            new DirectoryGroup("dir-guid-" + i, "Referat " + i, null, Set.of("unit-" + i)));
+            new DirectoryGroup("dir-guid-" + i, "Referat " + i, null, null, Set.of("unit-" + i)));
       }
     }
     directoryClient.respondWith(stillReported.toArray(new DirectoryGroup[0]));
@@ -457,7 +559,7 @@ class DirectorySyncServiceIntegrationTest {
     // The directory reports the unit again (reactivation) but with only 1 of its 4 frozen
     // members - a 75% loss within the only group that exists.
     directoryClient.respondWith(
-        new DirectoryGroup("dir-guid-1", "Referat 50", null, Set.of("kept")));
+        new DirectoryGroup("dir-guid-1", "Referat 50", null, null, Set.of("kept")));
 
     SyncReport report = directorySyncService.run(organizationId, providerId);
 
@@ -479,7 +581,8 @@ class DirectorySyncServiceIntegrationTest {
     for (int i = 0; i < 50; i++) {
       persistOrgUnit("dir-guid-" + i, "Referat " + i);
       if (i == 0) {
-        stillReported.add(new DirectoryGroup("dir-guid-" + i, "Referat " + i, null, Set.of()));
+        stillReported.add(
+            new DirectoryGroup("dir-guid-" + i, "Referat " + i, null, null, Set.of()));
       }
     }
     directoryClient.respondWith(stillReported.toArray(new DirectoryGroup[0]));
@@ -523,8 +626,8 @@ class DirectorySyncServiceIntegrationTest {
     persistOrgUnit("dir-placeholder", "Platzhalter"); // empty, about to legitimately disappear
 
     directoryClient.respondWith(
-        new DirectoryGroup("dir-team-a", "Team A", null, teamASubjects),
-        new DirectoryGroup("dir-team-b", "Team B", null, teamBSubjects));
+        new DirectoryGroup("dir-team-a", "Team A", null, null, teamASubjects),
+        new DirectoryGroup("dir-team-b", "Team B", null, null, teamBSubjects));
 
     SyncReport report = directorySyncService.run(organizationId, providerId);
 
@@ -543,7 +646,7 @@ class DirectorySyncServiceIntegrationTest {
     UUID member = createUser(organizationId, "member-1");
     persistOrgUnit("dir-guid-1", "Referat 50", member);
     directoryClient.respondWith(
-        new DirectoryGroup("dir-guid-1", "Referat 50", null, Set.of("member-1")));
+        new DirectoryGroup("dir-guid-1", "Referat 50", null, null, Set.of("member-1")));
 
     directorySyncService.dryRun(organizationId, providerId);
 
@@ -578,8 +681,8 @@ class DirectorySyncServiceIntegrationTest {
     // The child is listed before the parent in the very same snapshot - a real LDAP response has
     // no guaranteed order.
     directoryClient.respondWith(
-        new DirectoryGroup("dir-child", "Unterabteilung", "dir-parent", Set.of()),
-        new DirectoryGroup("dir-parent", "Abteilung", null, Set.of()));
+        new DirectoryGroup("dir-child", "Unterabteilung", "dir-parent", null, Set.of()),
+        new DirectoryGroup("dir-parent", "Abteilung", null, null, Set.of()));
 
     directorySyncService.run(organizationId, providerId);
 
@@ -600,8 +703,8 @@ class DirectorySyncServiceIntegrationTest {
   void aReorganisationReassignsAnExistingGroupsParentOnALaterRun() {
     // Run 1: two independent, top-level groups.
     directoryClient.respondWith(
-        new DirectoryGroup("dir-a", "Referat A", null, Set.of()),
-        new DirectoryGroup("dir-b", "Referat B", null, Set.of()));
+        new DirectoryGroup("dir-a", "Referat A", null, null, Set.of()),
+        new DirectoryGroup("dir-b", "Referat B", null, null, Set.of()));
     directorySyncService.run(organizationId, providerId);
     Group groupA =
         groupRepository.findByOrganizationId(organizationId).stream()
@@ -612,8 +715,8 @@ class DirectorySyncServiceIntegrationTest {
 
     // Run 2: a reorganisation puts A under B.
     directoryClient.respondWith(
-        new DirectoryGroup("dir-a", "Referat A", "dir-b", Set.of()),
-        new DirectoryGroup("dir-b", "Referat B", null, Set.of()));
+        new DirectoryGroup("dir-a", "Referat A", "dir-b", null, Set.of()),
+        new DirectoryGroup("dir-b", "Referat B", null, null, Set.of()));
     directorySyncService.run(organizationId, providerId);
 
     Group groupB =
@@ -637,7 +740,7 @@ class DirectorySyncServiceIntegrationTest {
     UUID member = createUser(organizationId, "member-1");
     persistOrgUnit("dir-guid-1", "Referat 50", member);
     directoryClient.respondWith(
-        new DirectoryGroup("dir-guid-1", "Referat 50", null, Set.of("member-1")));
+        new DirectoryGroup("dir-guid-1", "Referat 50", null, null, Set.of("member-1")));
     directorySyncService.dryRun(organizationId, providerId);
     assertThat(
             statusRepository
@@ -650,8 +753,8 @@ class DirectorySyncServiceIntegrationTest {
     // at commit time - a real, if unusual, directory response, not a test-only trick.
     String tooLongName = "x".repeat(300);
     directoryClient.respondWith(
-        new DirectoryGroup("dir-guid-1", "Referat 50", null, Set.of("member-1")),
-        new DirectoryGroup("dir-guid-9", tooLongName, null, Set.of()));
+        new DirectoryGroup("dir-guid-1", "Referat 50", null, null, Set.of("member-1")),
+        new DirectoryGroup("dir-guid-9", tooLongName, null, null, Set.of()));
 
     assertThatThrownBy(() -> directorySyncService.run(organizationId, providerId))
         .isInstanceOf(RuntimeException.class);
@@ -675,7 +778,7 @@ class DirectorySyncServiceIntegrationTest {
     UUID leaving = createUser(organizationId, "leaving");
     persistOrgUnit("dir-guid-1", "Referat 50", keep, leaving);
     directoryClient.respondWith(
-        new DirectoryGroup("dir-guid-1", "Referat 50", null, Set.of("keep")));
+        new DirectoryGroup("dir-guid-1", "Referat 50", null, null, Set.of("keep")));
 
     SyncReport report = directorySyncService.dryRun(organizationId, providerId);
 

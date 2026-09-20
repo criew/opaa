@@ -61,6 +61,7 @@ class SpecEnumParityTest {
         Arguments.of("GroupOrigin", GroupOrigin.values()),
         Arguments.of("GroupMechanism", GroupMechanism.values()),
         Arguments.of("DirectorySyncOutcome", DirectorySyncOutcome.values()),
+        Arguments.of("DirectoryConnectorType", DirectoryConnectorType.values()),
         Arguments.of("LibraryOwnerType", LibraryOwnerType.values()),
         Arguments.of("LibraryVisibility", LibraryVisibility.values()),
         Arguments.of("ExternalAccessState", ExternalAccessState.values()),

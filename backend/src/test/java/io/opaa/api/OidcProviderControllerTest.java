@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import io.opaa.api.types.DirectoryConnectorType;
 import io.opaa.auth.AdminTestSecurityConfig;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
@@ -22,7 +23,13 @@ import io.opaa.auth.oidc.OidcProviderDraft;
 import io.opaa.auth.oidc.OidcProviderRegistry;
 import io.opaa.auth.oidc.OidcProviderService;
 import io.opaa.common.ConflictException;
+import io.opaa.group.sync.connector.DirectoryConnectorService;
+import io.opaa.group.sync.connector.DirectoryConnectorView;
+import io.opaa.group.sync.keycloak.KeycloakDirectoryConnector;
+import java.time.Instant;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -48,6 +55,9 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 class OidcProviderControllerTest {
 
   private static final String TEST_ISSUER = "test-issuer";
+
+  private static final String CONNECTOR_BODY =
+      "{\"type\":\"KEYCLOAK\",\"clientId\":\"opaa-directory\",\"clientSecret\":\"geheim\"}";
   private static final String TEST_SUBJECT = "test-subject";
 
   @Autowired private MockMvc mockMvc;
@@ -55,6 +65,7 @@ class OidcProviderControllerTest {
   @MockitoBean private OidcProviderConnectionTester connectionTester;
   @MockitoBean private OidcProviderRegistry registry;
   @MockitoBean private UserService userService;
+  @MockitoBean private DirectoryConnectorService connectorService;
 
   private final UUID actingAdminId = UUID.randomUUID();
   private final UUID actingAdminOrganizationId = UUID.randomUUID();
@@ -81,6 +92,8 @@ class OidcProviderControllerTest {
                 token -> token != null && TEST_SUBJECT.equals(token.getSubject()))))
         .thenReturn(actingAdmin);
     when(registry.healthOf(any())).thenReturn(new OidcProviderRegistry.Health(true, null));
+    when(connectorService.findByProvider(any())).thenReturn(Optional.empty());
+    when(connectorService.viewsByProvider(any())).thenReturn(Map.of());
   }
 
   private void setId(User user, UUID id) {
@@ -135,6 +148,25 @@ class OidcProviderControllerTest {
                 .with(asRegularUser())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"issuerUri\":\"https://idp.example\"}"))
+        .andExpect(status().isForbidden());
+    mockMvc
+        .perform(
+            put("/api/v1/admin/oidc-providers/" + id + "/directory-connector")
+                .with(asRegularUser())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(CONNECTOR_BODY))
+        .andExpect(status().isForbidden());
+    mockMvc
+        .perform(
+            delete("/api/v1/admin/oidc-providers/" + id + "/directory-connector")
+                .with(asRegularUser()))
+        .andExpect(status().isForbidden());
+    mockMvc
+        .perform(
+            post("/api/v1/admin/oidc-providers/" + id + "/directory-connector/test")
+                .with(asRegularUser())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(CONNECTOR_BODY))
         .andExpect(status().isForbidden());
   }
 
@@ -300,6 +332,90 @@ class OidcProviderControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"providerIds\":[\"" + second + "\",\"" + first + "\"]}"))
         .andExpect(status().isOk());
+  }
+
+  /** #1817: the response of a provider carries its stored access, never the secret behind it. */
+  @Test
+  void aProvidersStoredDirectoryAccessIsPartOfItsResponseWithoutTheSecret() throws Exception {
+    OidcProvider provider = provider("Verzeichnisdienst", "https://idp.example/realms/a");
+    when(providerService.listProviders()).thenReturn(List.of(provider));
+    when(connectorService.viewsByProvider(actingAdminOrganizationId))
+        .thenReturn(Map.of(provider.getId(), connectorView()));
+
+    mockMvc
+        .perform(get("/api/v1/admin/oidc-providers").with(asAdmin()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[0].directoryConnector.type").value("KEYCLOAK"))
+        .andExpect(jsonPath("$[0].directoryConnector.realm").value("a"))
+        .andExpect(jsonPath("$[0].directoryConnector.clientId").value("opaa-directory"))
+        .andExpect(jsonPath("$[0].directoryConnector.clientSecret").doesNotExist());
+  }
+
+  @Test
+  void storingADirectoryAccessHandsEveryFieldToTheService() throws Exception {
+    UUID providerId = UUID.randomUUID();
+    when(connectorService.save(
+            eq(actingAdminOrganizationId),
+            eq(actingAdminId),
+            eq(providerId),
+            eq(DirectoryConnectorType.KEYCLOAK),
+            eq("http://keycloak:8180"),
+            eq("opaa-directory"),
+            eq("geheim")))
+        .thenReturn(connectorView());
+
+    mockMvc
+        .perform(
+            put("/api/v1/admin/oidc-providers/" + providerId + "/directory-connector")
+                .with(asAdmin())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"type\":\"KEYCLOAK\",\"baseUrl\":\"http://keycloak:8180\","
+                        + "\"clientId\":\"opaa-directory\",\"clientSecret\":\"geheim\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.baseUrl").value("http://keycloak:8180"))
+        .andExpect(jsonPath("$.clientSecret").doesNotExist());
+  }
+
+  @Test
+  void removingADirectoryAccessAnswers204() throws Exception {
+    UUID providerId = UUID.randomUUID();
+
+    mockMvc
+        .perform(
+            delete("/api/v1/admin/oidc-providers/" + providerId + "/directory-connector")
+                .with(asAdmin()))
+        .andExpect(status().isNoContent());
+
+    verify(connectorService).delete(actingAdminOrganizationId, actingAdminId, providerId);
+  }
+
+  /** An omitted secret means "probe with the stored one" and must reach the service as null. */
+  @Test
+  void probingADirectoryAccessWithoutASecretHandsNullToTheService() throws Exception {
+    UUID providerId = UUID.randomUUID();
+    when(connectorService.probe(
+            providerId, DirectoryConnectorType.KEYCLOAK, null, "opaa-directory", null))
+        .thenReturn(new KeycloakDirectoryConnector.ProbeOutcome(true, "Verzeichnis erreichbar."));
+
+    mockMvc
+        .perform(
+            post("/api/v1/admin/oidc-providers/" + providerId + "/directory-connector/test")
+                .with(asAdmin())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"type\":\"KEYCLOAK\",\"clientId\":\"opaa-directory\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.success").value(true))
+        .andExpect(jsonPath("$.message").value("Verzeichnis erreichbar."));
+  }
+
+  private static DirectoryConnectorView connectorView() {
+    return new DirectoryConnectorView(
+        DirectoryConnectorType.KEYCLOAK,
+        "http://keycloak:8180",
+        "a",
+        "opaa-directory",
+        Instant.parse("2026-09-21T08:00:00Z"));
   }
 
   @Test

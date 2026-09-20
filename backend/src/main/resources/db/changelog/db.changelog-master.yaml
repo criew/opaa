@@ -107,3 +107,7 @@ databaseChangeLog:
   # ADR-0036 Entscheidung 2, die 041 bis zur dev-Modus-Entscheidung offengelassen hat (#1816).
   - include:
       file: db/changelog/changes/054-groups-org-unit-requires-provider.yaml
+  # Der Zugang, mit dem der Verzeichnisabgleich eines Anbieters sein Verzeichnis liest —
+  # erster Konnektor ist die Keycloak Admin REST API (#1817, ADR-0036 Entscheidung 3).
+  - include:
+      file: db/changelog/changes/053-create-directory-connectors.yaml

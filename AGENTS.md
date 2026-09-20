@@ -53,6 +53,12 @@ OPAA_CONFLUENCE_IT=true ./gradlew confluenceIntegrationTest
                                   # braucht Docker, ~4 GB RAM und Internet für die 3-Stunden-
                                   # Testlizenz; nicht Teil von build/test, in CI nightly und per
                                   # Label "confluence-suite" (ADR-0023, #1171)
+./gradlew keycloakIntegrationTest # Verzeichnis-Konnektor gegen ein echtes Keycloak im
+                                  # Container (io.opaa.integration.keycloak.*); braucht nur Docker,
+                                  # keine Lizenz und kein Internet, deshalb auch keine
+                                  # Umgebungsvariable. Nicht Teil von build/test: gemessen ~46 s
+                                  # Startzeit und ~720 MiB je Test-JVM. In CI nightly und per Label
+                                  # "keycloak-suite" (#1817, ADR-0036 Entscheidung 3)
 # Die MinIO-Suite des S3-Konnektors (io.opaa.indexing.source.s3.*Minio*, ADR-0027, #1382)
 # läuft innerhalb von test/build, sobald Docker erreichbar ist (sonst übersprungen). Fußabdruck:
 # ein geteilter MinIO je Test-JVM (MinioFixture) plus je Methode des Ereignisweg-Tests ein
