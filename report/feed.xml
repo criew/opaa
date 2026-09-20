@@ -5,8 +5,23 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-09-19T04:52:04Z</updated>
+  <updated>2026-09-20T05:11:01Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Samstag, 19. September 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-09-19.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-09-19.html</id>
+    <updated>2026-09-20T05:11:01Z</updated>
+    <summary type="text">feat: Gruppen, Rollen und Berechtigungen: Subjekte, Herkunft und Folgen für Freigaben:
+— Berechtigungsmodell konzeptuell durchgearbeitet und dokumentiert
+— Gruppen mit Herkunft und Verzeichnisabgleich implementiert
+— Globale Berechtigungen und Lebenszyklus von Eigentum aufgebaut
+— Verwaltungsoberflächen und Freigabedialog für Gruppen erweitert
+Sonstiges:
+— Fehlerbehandlung in API konsistent gemacht und dokumentiert
+— Sicherheitslücken in Authentifizierung und Bibliotheken behoben
+— Abhängigkeiten aktualisiert, CVE-2026-8763 gepinnt</summary>
+  </entry>
   <entry>
     <title>Tagesreport Freitag, 18. September 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-09-18.html"/>
