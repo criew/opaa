@@ -840,8 +840,9 @@ protokolliert und als `SYSTEM_ADMIN_ROLE_REVOCATION_REFUSED` auditiert), die man
 ist für Konten eines solchen Anbieters gesperrt (409), und die Oberfläche (#1333) verlangt beim
 Setzen des Rollen-Claims eine Bestätigung. `AUDITOR` ist nicht geschützt. Ist ein
 **Gruppen-Claim** gesetzt, werden die Gruppennamen des Tokens bei jeder Anmeldung zu
-Mitgliedschaften in Gruppen der Art „Gruppe aus dem Identitätsanbieter" (`IDENTITY_PROVIDER`) im
-Namensraum des Anbieters (`oidc:<Anbieter-ID>:<Name>`, Namen bis 213 Zeichen): gleichnamige
+Mitgliedschaften in Gruppen der Art „Gruppe aus dem Identitätsanbieter" (`IDENTITY_PROVIDER`).
+Jede solche Gruppe benennt ihren Anbieter als Fremdschlüssel (`groups.provider_id`, seit #1812);
+`external_id` trägt den blanken Namen aus dem Claim, bis zu 255 Zeichen: gleichnamige
 Gruppen zweier Anbieter sind zwei Gruppen, ein Anbieter erreicht nie die Gruppen eines anderen;
 Mitgliedschaften folgen dem Token (Historie `IDENTITY_PROVIDER_ADDED`/`_REMOVED`, Audit unter
 `identity-provider`), die Gruppen selbst bleiben bestehen und sind in der Gruppenverwaltung
@@ -912,7 +913,7 @@ abweichender Zustand in OPAA ist kein Zustand, den ein Admin von Hand herstellen
 nur unter ihnen werden die Subjects des Verzeichnisses aufgelöst, und nur seine Organisationseinheiten
 entstehen daraus. Ein zweiter Anbieter (Partnerportal, Landesanbieter) hat keinen Verzeichnisabgleich;
 seine Gruppen kommen, wenn überhaupt, aus seinem Gruppen-Claim (siehe [„Claim-Zuordnung je
-Anbieter"](#anmeldung-und-identität)) und leben im Namensraum dieses Anbieters. Ein gleichnamiges
+Anbieter"](#anmeldung-und-identität)) und benennen ihn als ihre Herkunft. Ein gleichnamiges
 Subject bei zwei Anbietern ergibt zwei Konten, und nur das des Standardanbieters erhält die
 Verzeichnisgruppen.
 

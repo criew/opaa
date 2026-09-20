@@ -1698,8 +1698,11 @@ SELECT count(*) FROM groups WHERE kind = 'ORG_UNIT';
 SELECT count(*) FROM oidc_providers WHERE is_default;
 ```
 
-Die Baseline hat bewusst keine Rollback-Blöcke: Ein Update wird nicht zurückgedreht, sondern eine
-kaputte Installation neu aufgesetzt. Die Zahl der Gruppen ändert sich durch das Update nicht.
+Die Zahl der Gruppen ändert sich durch das Update nicht. Das Changeset bringt zwar einen
+Rollback-Block mit, der Schema und Präfix wiederherstellt — die Umwandlung der Waisen nimmt er
+aber **nicht** zurück, und die Baseline darunter hat gar keinen. Der vorgesehene Weg aus einem
+fehlgeschlagenen Update ist deshalb nicht das Zurückdrehen, sondern das Neuaufsetzen aus einer
+Sicherung.
 
 #### Bestandsübernahme aus `OPAA_OIDC_*`
 

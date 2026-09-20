@@ -27,6 +27,7 @@ import io.opaa.test.OpaaIntegrationTest;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.Date;
 import java.util.List;
@@ -119,6 +120,8 @@ class OidcProviderServiceIntegrationTest {
   void tearDown() {
     jwks.stop(0);
     jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organizationId);
+    jdbcTemplate.update(
+        "DELETE FROM diagnostic_impersonation_grants WHERE organization_id = ?", organizationId);
     removeOwnProviders();
     jdbcTemplate.update("DELETE FROM groups WHERE organization_id = ?", organizationId);
     registry.refresh();
@@ -183,6 +186,25 @@ class OidcProviderServiceIntegrationTest {
         group.getId());
   }
 
+  /**
+   * A still-conferring diagnostic authorisation (ADR-0016) scoped to {@code group} - written
+   * directly, because the service that issues one demands a holder that is an auditor.
+   */
+  private void diagnosticAuthorizationScopedTo(Group group) {
+    jdbcTemplate.update(
+        "INSERT INTO diagnostic_impersonation_grants (id, organization_id, holder_user_id,"
+            + " scope_group_id, valid_from, valid_until, granted_by_user_id, granted_at)"
+            + " VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        UUID.randomUUID(),
+        organizationId,
+        userId,
+        group.getId(),
+        Timestamp.from(Instant.now().minusSeconds(60)),
+        Timestamp.from(Instant.now().plusSeconds(3600)),
+        userId,
+        Timestamp.from(Instant.now().minusSeconds(60)));
+  }
+
   /** A second provider besides the default one, which may be deleted and disabled. */
   private OidcProvider secondProvider() {
     service.createProvider(organizationId, userId, draft("Erster", issuer));
@@ -222,6 +244,58 @@ class OidcProviderServiceIntegrationTest {
         .hasMessageContaining("1 Objekt");
     assertThat(repository.findById(partner.getId())).isPresent();
     assertThat(groupRepository.findById(group.getId())).isPresent();
+  }
+
+  /**
+   * {@code fk_diagnostic_impersonation_grants_scope_organization} is {@code ON DELETE CASCADE}
+   * (changeset 003): without counting the authorisation as an effect, deleting the provider would
+   * take a valid Diagnose-Vollmacht with it, silently and without the {@code
+   * DIAGNOSTIC_IMPERSONATION_REVOKED} event ADR-0016 requires.
+   */
+  @Test
+  void aProviderWhoseGroupIsTheScopeOfADiagnosticAuthorizationIsRefused() {
+    OidcProvider partner = secondProvider();
+    Group group = providerGroup(partner, "Fachbereich 3");
+    diagnosticAuthorizationScopedTo(group);
+
+    assertThatThrownBy(() -> service.deleteProvider(organizationId, userId, partner.getId()))
+        .isInstanceOf(ConflictException.class)
+        .satisfies(
+            thrown ->
+                assertThat(((ConflictException) thrown).getCode())
+                    .isEqualTo(OidcProviderService.PROVIDER_GROUPS_IN_EFFECT))
+        .hasMessageContaining("1 Gruppe wirkt noch")
+        .hasMessageContaining("Geltungsbereich von 1 Diagnose-Vollmacht");
+    assertThat(repository.findById(partner.getId())).isPresent();
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM diagnostic_impersonation_grants WHERE scope_group_id = ?",
+                Integer.class,
+                group.getId()))
+        .isEqualTo(1);
+  }
+
+  /**
+   * The counterpart: a revoked authorisation already carries its revocation event and confers
+   * nothing, so it must not make the provider undeletable for good - there is no operation that
+   * removes such a row.
+   */
+  @Test
+  void aRevokedDiagnosticAuthorizationDoesNotHoldTheProviderBack() {
+    OidcProvider partner = secondProvider();
+    Group group = providerGroup(partner, "Fachbereich 3");
+    diagnosticAuthorizationScopedTo(group);
+    jdbcTemplate.update(
+        "UPDATE diagnostic_impersonation_grants SET revoked_at = ?, revoked_by_user_id = ?"
+            + " WHERE scope_group_id = ?",
+        Timestamp.from(Instant.now()),
+        userId,
+        group.getId());
+
+    service.deleteProvider(organizationId, userId, partner.getId());
+
+    assertThat(repository.findById(partner.getId())).isEmpty();
+    assertThat(groupRepository.findById(group.getId())).isEmpty();
   }
 
   /**

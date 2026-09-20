@@ -28,9 +28,12 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * provider administration learns anything about groups, so {@code io.opaa.auth.oidc} holds no
  * {@link Group} and the dependency between the two packages stays one-way.
  *
- * <p>"Effect" is the same set of reasons {@code GroupService#deleteGroup} refuses a deletion for: a
- * grant the group holds and an asset it owns. Group membership in a space is not among them because
- * a space has no group members yet (#1815 adds them, and its counter belongs here then).
+ * <p>"Effect" is every reason a group must not silently disappear with its provider: a grant it
+ * holds, an asset it owns, and a still-conferring diagnostic authorisation whose scope it is - that
+ * last one because {@code fk_diagnostic_impersonation_grants_scope_organization} cascades, so the
+ * row would go without the revocation event ADR-0016 requires. Group membership in a space is not
+ * among them because a space has no group members yet (#1815 adds them, and its counter belongs
+ * here then).
  */
 @Component
 class ProviderGroupDirectoryAdapter implements ProviderGroupDirectory {
@@ -38,6 +41,7 @@ class ProviderGroupDirectoryAdapter implements ProviderGroupDirectory {
   private final GroupRepository groupRepository;
   private final AssetGrantRepository grantRepository;
   private final List<AssetOwnershipDirectory> assetOwnershipDirectories;
+  private final GroupScopeUsageDirectory scopeUsageDirectory;
   private final GroupMembershipResolver membershipResolver;
   private final PermissionHistoryService permissionHistoryService;
   private final AuditEventRecorder auditEventRecorder;
@@ -46,12 +50,14 @@ class ProviderGroupDirectoryAdapter implements ProviderGroupDirectory {
       GroupRepository groupRepository,
       AssetGrantRepository grantRepository,
       List<AssetOwnershipDirectory> assetOwnershipDirectories,
+      GroupScopeUsageDirectory scopeUsageDirectory,
       GroupMembershipResolver membershipResolver,
       PermissionHistoryService permissionHistoryService,
       AuditEventRecorder auditEventRecorder) {
     this.groupRepository = groupRepository;
     this.grantRepository = grantRepository;
     this.assetOwnershipDirectories = assetOwnershipDirectories;
+    this.scopeUsageDirectory = scopeUsageDirectory;
     this.membershipResolver = membershipResolver;
     this.permissionHistoryService = permissionHistoryService;
     this.auditEventRecorder = auditEventRecorder;
@@ -78,8 +84,15 @@ class ProviderGroupDirectoryAdapter implements ProviderGroupDirectory {
         effective.add(groupId);
       }
     }
+    List<UUID> scopedAuthorizations =
+        scopeUsageDirectory.scopeGroupsOfUnspentAuthorizations(groupIds);
+    effective.addAll(scopedAuthorizations);
     return new ProviderGroupEffects(
-        effective.size(), grants.size(), grantedAssets.size(), owningGroups);
+        effective.size(),
+        grants.size(),
+        grantedAssets.size(),
+        owningGroups,
+        scopedAuthorizations.size());
   }
 
   @Override

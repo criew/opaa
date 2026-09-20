@@ -1,5 +1,8 @@
 package io.opaa.auth.oidc;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * How far the groups of one identity provider still reach (ADR-0036, Entscheidung 2). The counts
  * are what the 409 of a refused provider deletion quotes, so an administrator sees the size of the
@@ -9,11 +12,14 @@ package io.opaa.auth.oidc;
  * @param grants how many grants those groups hold
  * @param grantedAssets across how many distinct assets those grants run
  * @param owningGroups how many of those groups own an asset themselves
+ * @param scopedAuthorizations how many still-conferring diagnostic authorisations (ADR-0016) name
+ *     one of those groups as their scope - they would cascade away with the group, without the
+ *     revocation event ADR-0016 requires
  */
 public record ProviderGroupEffects(
-    long groups, long grants, long grantedAssets, long owningGroups) {
+    long groups, long grants, long grantedAssets, long owningGroups, long scopedAuthorizations) {
 
-  public static final ProviderGroupEffects NONE = new ProviderGroupEffects(0, 0, 0, 0);
+  public static final ProviderGroupEffects NONE = new ProviderGroupEffects(0, 0, 0, 0, 0);
 
   public boolean any() {
     return groups > 0;
@@ -21,21 +27,27 @@ public record ProviderGroupEffects(
 
   /** The German sentence the refusal carries; only meaningful while {@link #any()}. */
   public String describe() {
-    StringBuilder text = new StringBuilder();
-    text.append(groups == 1 ? "1 Gruppe wirkt noch" : groups + " Gruppen wirken noch");
+    String lead = groups == 1 ? "1 Gruppe wirkt noch" : groups + " Gruppen wirken noch";
+    List<String> parts = new ArrayList<>();
     if (grants > 0) {
-      text.append(": ")
-          .append(grants == 1 ? "1 Berechtigung" : grants + " Berechtigungen")
-          .append(" an ")
-          .append(grantedAssets == 1 ? "1 Objekt" : grantedAssets + " Objekten");
+      parts.add(
+          (grants == 1 ? "1 Berechtigung" : grants + " Berechtigungen")
+              + " an "
+              + (grantedAssets == 1 ? "1 Objekt" : grantedAssets + " Objekten"));
     }
     if (owningGroups > 0) {
-      text.append(grants > 0 ? ", " : ": ")
-          .append(
-              owningGroups == 1
-                  ? "1 Gruppe ist Eigentümerin eines Objekts"
-                  : owningGroups + " Gruppen sind Eigentümerin eines Objekts");
+      parts.add(
+          owningGroups == 1
+              ? "1 Gruppe ist Eigentümerin eines Objekts"
+              : owningGroups + " Gruppen sind Eigentümerinnen eines Objekts");
     }
-    return text.append(".").toString();
+    if (scopedAuthorizations > 0) {
+      parts.add(
+          "Geltungsbereich von "
+              + (scopedAuthorizations == 1
+                  ? "1 Diagnose-Vollmacht"
+                  : scopedAuthorizations + " Diagnose-Vollmachten"));
+    }
+    return parts.isEmpty() ? lead + "." : lead + ": " + String.join(", ", parts) + ".";
   }
 }

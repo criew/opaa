@@ -292,6 +292,10 @@ public class OidcProviderService {
    * Marks a provider as belonging to another organisation, or takes that mark back (ADR-0036,
    * Entscheidung 2) - system administration only, like every other write here, and audited as a
    * change of the provider row. The LOCAL row of the local account management is never external.
+   *
+   * <p>Publishes no {@link OidcProvidersChangedEvent}: the mark decides how this provider's groups
+   * are presented, and {@link OidcProviderRegistry} builds decoders from issuer, client id and JWK
+   * set alone - a rebuild would cost every provider's decoder for a change none of them reads.
    */
   @Transactional
   public OidcProvider setExternal(
@@ -314,7 +318,6 @@ public class OidcProviderService {
         provider,
         Map.of("isExternal", !external),
         Map.of("isExternal", external));
-    eventPublisher.publishEvent(new OidcProvidersChangedEvent());
     return provider;
   }
 

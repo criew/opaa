@@ -118,6 +118,47 @@ class GroupResponseMapperTest {
     assertThat(response.getMembers().get(0).getDisplayName()).isEqualTo("Ada Lovelace");
   }
 
+  /** The detail path has to carry the origin as fully as the list path does (AGENTS.md). */
+  @Test
+  void toResponseCopiesTheOriginOfAProviderGroup() {
+    UUID providerId = UUID.randomUUID();
+    Group group =
+        new Group(
+            UUID.randomUUID(),
+            GroupKind.IDENTITY_PROVIDER,
+            "Referat 50",
+            null,
+            providerId,
+            "Referat 50",
+            "/Haus/Abteilung 5/Referat 50",
+            null);
+    GroupDetail detail =
+        new GroupDetail(
+            group, List.of(), new GroupProviderView(providerId, "Verzeichnis Haus A", true, false));
+
+    GroupResponse response = GroupResponseMapper.toResponse(detail);
+
+    assertThat(response.getOrigin()).isEqualTo(GroupOrigin.PROVIDER);
+    assertThat(response.getExternalId()).isEqualTo("Referat 50");
+    assertThat(response.getSourcePath()).isEqualTo("/Haus/Abteilung 5/Referat 50");
+    assertThat(response.getProvider().getId()).isEqualTo(providerId);
+    assertThat(response.getProvider().getDisplayName()).isEqualTo("Verzeichnis Haus A");
+    assertThat(response.getProvider().getExternal()).isTrue();
+    assertThat(response.getProvider().getEnabled()).isFalse();
+  }
+
+  @Test
+  void toResponseMapsAGroupWithoutAProviderAsInternal() {
+    Group group = Group.internal(UUID.randomUUID(), "Projektteam", null, null);
+
+    GroupResponse response =
+        GroupResponseMapper.toResponse(new GroupDetail(group, List.of(), null));
+
+    assertThat(response.getOrigin()).isEqualTo(GroupOrigin.INTERNAL);
+    assertThat(response.getProvider()).isNull();
+    assertThat(response.getSourcePath()).isNull();
+  }
+
   @Test
   void toResponseReturnsAnEmptyMemberListInsteadOfNullForAGroupWithoutMembers() {
     Group group = Group.internal(UUID.randomUUID(), "Team", null, null);
