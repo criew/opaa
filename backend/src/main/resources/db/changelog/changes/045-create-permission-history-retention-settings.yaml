@@ -1,0 +1,55 @@
+databaseChangeLog:
+  - changeSet:
+      id: 045-create-permission-history-retention-settings
+      author: opaa
+      comment: >-
+        Aufbewahrungshoechstdauer der Rechtehistorie als installationsweite Einstellungszeile
+        (#1833, ADR-0036 Entscheidung 8). security-and-compliance.md sagt fuer die Historie
+        dieselbe Logik zu wie fuer das Protokoll; die Zeile traegt deshalb dieselben Grenzen wie
+        chk_audit_retention_settings_months (12 bis 120 Monate) und denselben Seed (36 Monate,
+        "deckt den ueblichen Abstand zwischen Vorgang und Pruefung"). 120 waere als
+        Auslieferungswert falsch: Eine ausgelieferte Obergrenze begrenzt im Auslieferungszustand
+        nichts.
+        .
+        last_cutoff traegt den Fortschritt des Loeschlaufs: den spaetesten Schnitt, bis zu dem ein
+        Lauf geloescht hat. Der Wert geht nie zurueck und ist damit zugleich die Grenze dessen, was
+        die Stichtagsauskunft noch beantworten kann. Geseedet wird er auf den Zielschnitt der
+        ausgelieferten Frist, damit eine Installation nicht mit der Behauptung startet, sie habe
+        noch nie geloescht. Der Monatsanfang wird dabei in UTC gerechnet und nicht in der Zeitzone
+        der Sitzung, weil der Loeschlauf selbst in UTC rechnet - sonst laege der Seed unter einer
+        anderen Zeitzone dauerhaft neben dem Zielschnitt des Laufs.
+        .
+        Anders als audit_retention_settings und diagnostic_context_retention_settings gehoert
+        diese Zeile NICHT opaa_audit_owner: Die drei Historientabellen sind gewoehnliche
+        Anwendungstabellen, die das Anwendungskonto selbst schreibt (ADR-0015 trennt nur
+        audit_log und diagnostic_context_log ab). Ein eigenes Privilegienmodell haette hier
+        nichts zu trennen.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE TABLE permission_history_retention_settings (
+                  id integer DEFAULT 1 NOT NULL,
+                  retention_months integer NOT NULL,
+                  last_cutoff timestamp with time zone,
+                  updated_at timestamp with time zone NOT NULL,
+                  CONSTRAINT chk_permission_history_retention_months CHECK (((retention_months >= 12) AND (retention_months <= 120))),
+                  CONSTRAINT chk_permission_history_retention_singleton CHECK ((id = 1))
+              );
+
+              ALTER TABLE ONLY permission_history_retention_settings
+                  ADD CONSTRAINT permission_history_retention_settings_pkey PRIMARY KEY (id);
+
+              INSERT INTO permission_history_retention_settings
+                (id, retention_months, last_cutoff, updated_at)
+              VALUES (
+                1, 36,
+                (date_trunc('month', now() AT TIME ZONE 'UTC') - interval '36 months')
+                  AT TIME ZONE 'UTC',
+                now()
+              );
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              DROP TABLE permission_history_retention_settings;

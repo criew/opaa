@@ -132,6 +132,14 @@ public enum AuditEventType {
   GOVERNANCE_SETTINGS_CHANGED,
   /** Includes enabling the network address field, per the specification's explicit requirement. */
   AUDIT_LOG_CONFIGURATION_CHANGED,
+  /**
+   * The maximum retention period of the rights history changed (ADR-0036, Entscheidung 8). Its own
+   * type rather than a payload of {@link #AUDIT_LOG_CONFIGURATION_CHANGED}: the two periods bound
+   * different holdings - the protocol says <em>that</em> something happened, the history says
+   * <em>for which span</em> a right was in force - and the personnel council's extract has to name
+   * each of them on its own.
+   */
+  PERMISSION_HISTORY_RETENTION_CHANGED,
   /** Covers both model defaults and the approval of external models. */
   MODEL_POLICY_CHANGED,
   CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED,

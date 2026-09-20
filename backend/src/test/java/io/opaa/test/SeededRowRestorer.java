@@ -28,6 +28,7 @@ final class SeededRowRestorer extends AbstractTestExecutionListener {
           "branding_settings",
           "audit_retention_settings",
           "diagnostic_context_retention_settings",
+          "permission_history_retention_settings",
           "local_auth_settings",
           "external_access_settings",
           "mail_settings",
