@@ -168,7 +168,7 @@ public class LibraryController {
   public LibraryResponse getLibrary(@PathVariable UUID libraryId, @Caller CurrentUser caller) {
     return LibraryResponseMapper.toResponse(
         libraryService.getLibrary(libraryId, caller),
-        transferService.markOf(KnowledgeLibrary.ASSET_TYPE, libraryId).orElse(null));
+        transferService.markOf(KnowledgeLibrary.ASSET_TYPE, libraryId, caller).orElse(null));
   }
 
   @PutMapping("/{libraryId}")

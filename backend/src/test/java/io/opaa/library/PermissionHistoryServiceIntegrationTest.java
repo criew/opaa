@@ -12,6 +12,7 @@ import io.opaa.api.types.LibraryOwnerType;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.api.types.PermissionTransferScope;
+import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.TokenGroups;
 import io.opaa.auth.User;
@@ -55,6 +56,7 @@ import java.time.InstantSource;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -982,7 +984,9 @@ class PermissionHistoryServiceIntegrationTest {
    * anybody's readable set. {@code GroupStewardshipDirectoryAdapter} (#1834) reads groups only to
    * hand responsibility for them over - responsibility carries no read right at all, which is why
    * it produces audit events and no history rows. {@code PermissionTransferService} (#1834) is a
-   * writer and is covered by {@link #readabilityWritePaths}.
+   * writer and is covered by {@link #readabilityWritePaths}; {@code LibraryAssetOwnershipDirectory}
+   * writes the grant that goes with a library's ownership and is reachable only through that one
+   * write path, never on its own.
    */
   private static final Set<String> BEANS_REACHING_THE_RIGHTS_TABLES =
       Set.of(
@@ -1000,6 +1004,7 @@ class PermissionHistoryServiceIntegrationTest {
           "GroupSubjectDirectoryAdapter",
           "KnowledgeLibraryService",
           "LibraryAccessService",
+          "LibraryAssetOwnershipDirectory",
           "LocalHandoverAccountService",
           "PermissionTransferService",
           "ProviderGroupDirectoryAdapter",
@@ -1137,15 +1142,15 @@ class PermissionHistoryServiceIntegrationTest {
         new AssetGrantUpsert(PermissionSubjectType.GROUP, source.getId(), AssetRole.VIEWER),
         currentUserOf(owner));
 
-    transferService.transfer(
+    PermissionTransferOrder order =
         new PermissionTransferOrder(
             PermissionSubjectType.GROUP,
             source.getId(),
             PermissionSubjectType.GROUP,
             target.getId(),
-            java.util.EnumSet.of(PermissionTransferScope.ASSET_GRANTS)),
-        true,
-        currentUserOf(createSystemAdmin()));
+            EnumSet.of(PermissionTransferScope.ASSET_GRANTS));
+    CurrentUser admin = currentUserOf(createSystemAdmin());
+    transferService.transfer(order, true, transferService.preview(order, admin).previewId(), admin);
 
     return new ReadabilityChange(member, libraryId, true);
   }
@@ -1153,7 +1158,7 @@ class PermissionHistoryServiceIntegrationTest {
   /** A transfer is an administrative act - the one caller this class needs with that role. */
   private UUID createSystemAdmin() {
     User admin = userRepository.findById(createUser()).orElseThrow();
-    admin.setSystemRole(io.opaa.api.types.SystemRole.SYSTEM_ADMIN);
+    admin.setSystemRole(SystemRole.SYSTEM_ADMIN);
     return userRepository.save(admin).getId();
   }
 

@@ -101,7 +101,7 @@ public class SpaceController {
     Space space = spaceService.getSpace(spaceId, caller);
     return SpaceResponseMapper.toResponse(
         spaceService.detailOf(space, caller),
-        transferService.markOf(Space.ASSET_TYPE, space.getId()).orElse(null));
+        transferService.markOf(Space.ASSET_TYPE, space.getId(), caller).orElse(null));
   }
 
   @PutMapping("/{spaceId}")

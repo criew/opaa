@@ -15,6 +15,12 @@ databaseChangeLog:
         Zeitstempel. asset_ownership_history behaelt ihr vorhandenes TRANSFERRED: Ein Objekt hat
         genau einen Eigentuemer, die Uebertragung ist dort eine einzige Kette ohne zwei Seiten.
         .
+        DER ROLLBACK LOESCHT DIE ZEILEN DER BEIDEN NEUEN GRUENDE MIT. Er verengt die drei
+        Pruefbedingungen wieder auf ihre alte Werteliste; Zeilen mit TRANSFERRED_IN oder
+        TRANSFERRED_OUT muessen dafuer weg, sonst ist er nicht fahrbar. Diese Zeilen gibt es nur,
+        weil es dieses Changeset gibt - ihr Verlust ist die Ruecknahme der Funktion, nicht ein
+        Datenverlust daneben.
+        .
         ON DELETE SET NULL, nicht CASCADE: Faellt der Vorgang einmal weg, bleibt die
         Historienzeile mit transfer_id = NULL stehen. Der Schluessel ist zusammengesetzt
         ((transfer_id, organization_id) -> (id, organization_id)) und setzt gezielt nur
@@ -78,6 +84,10 @@ databaseChangeLog:
         - sql:
             splitStatements: false
             sql: |
+              DELETE FROM asset_grant_history WHERE cause IN ('TRANSFERRED_IN', 'TRANSFERRED_OUT');
+              DELETE FROM space_membership_history WHERE cause IN ('TRANSFERRED_IN', 'TRANSFERRED_OUT');
+              DELETE FROM capability_grant_history WHERE cause IN ('TRANSFERRED_IN', 'TRANSFERRED_OUT');
+
               ALTER TABLE asset_ownership_history DROP COLUMN transfer_id;
               ALTER TABLE capability_grant_history DROP COLUMN transfer_id;
               ALTER TABLE space_membership_history DROP COLUMN transfer_id;

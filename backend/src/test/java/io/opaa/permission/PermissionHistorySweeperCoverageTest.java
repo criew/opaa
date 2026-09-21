@@ -3,6 +3,7 @@ package io.opaa.permission;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.test.OpaaIntegrationTest;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -27,6 +28,14 @@ class PermissionHistorySweeperCoverageTest {
   @Autowired private List<PermissionHistorySweeper> sweepers;
   @Autowired private JdbcTemplate jdbcTemplate;
 
+  /**
+   * The one swept table whose name does not end in {@code _history} (#1834): {@code
+   * permission_transfers} records the operation the intervals belong to and carries the name
+   * snapshot of the source group, so it expires with them.
+   */
+  private static final Set<String> SWEPT_BESIDES_THE_HISTORY_TABLES =
+      Set.of("permission_transfers");
+
   @Test
   void everyHistoryTableOfTheSchemaIsSweptByExactlyOneSweeper() {
     Set<String> sweptTables =
@@ -35,7 +44,9 @@ class PermissionHistorySweeperCoverageTest {
     assertThat(sweptTables)
         .as("two sweepers naming the same table would leave another one unswept")
         .hasSize(sweepers.size());
-    assertThat(historyTablesOfTheSchema())
+    Set<String> expected = new HashSet<>(historyTablesOfTheSchema());
+    expected.addAll(SWEPT_BESIDES_THE_HISTORY_TABLES);
+    assertThat(expected)
         .as(
             "every history table needs its own PermissionHistorySweeper - the retention period is"
                 + " the precondition of every personal history source")

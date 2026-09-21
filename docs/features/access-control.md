@@ -1251,8 +1251,17 @@ dem Tag wertlos macht — gibt es **eine** protokollierte Operation.
 | Berechtigungen an Objekten | ja | — | — |
 | Mitgliedschaften in Spaces | ja | — | — |
 | Anlegerechte | ja | — | — |
-| Eigentum an Objekten | ja | ja | ja |
+| Eigentum an Bibliotheken | ja | ja | ja |
+| Eigentum an Spaces | — | — | ja |
 | Verantwortung für interne Gruppen | — | — | ja |
+
+**Ein Space gehört immer einer natürlichen Person** (Entscheidung 6), sein Eigentum wechselt deshalb
+nur zwischen Personen; der neue Eigentümer wird dabei, falls nötig, als `ADMIN`-Mitglied aufgenommen.
+
+**Mit dem Eigentum geht die Rolle mit.** Eine Rolle an einer Bibliothek entsteht aus Grants, nicht
+aus der Eigentümerspalte — die Übertragung des Eigentums verschiebt deshalb auch den Grant, der zum
+Eigentum gehört: `OWNER` für eine Person, `MANAGER` für eine Gruppe, wie beim Anlegen. Ohne das hielte
+der Nachfolger nichts und die Quelle alles.
 
 **Bei einer Person als Quelle bleibt es bei Eigentum und Verantwortung.** Berechtigungen und
 Space-Mitgliedschaften einer Person sind hier weder übertragbar noch aufzählbar: Die Vorschau wäre
@@ -1268,9 +1277,23 @@ Berechtigungen an seinem Objekt weiterhin einzeln; die Massenoperation bleibt ei
 **Ablauf.** Die **Vorschau ist Pflicht** und nennt in einem Satz, was bewegt würde („12
 Berechtigungen an 7 Objekten, Mitglied in 2 Spaces, Eigentum an 3 Objekten"). Sie ist **selbst ein
 Protokollereignis** (`PERMISSION_TRANSFER_PREVIEWED`) — auch wenn niemand sie ausführt: Sie liest
-alles, was ein Subjekt hält, und dass jemand gelesen hat, gehört ins Protokoll. Die Ausführung
-verlangt eine **ausdrückliche Bestätigung** und schreibt `PERMISSION_TRANSFER_EXECUTED` mit Quelle,
-Ziel, Umfang und Zahl der Zeilen.
+alles, was ein Subjekt hält, und dass jemand gelesen hat, gehört ins Protokoll. **Die Pflicht ist
+durchgesetzt, nicht nur beschrieben:** Die Vorschau gibt eine Kennung zurück, die die Ausführung
+vorzeigen muss; sie gilt 30 Minuten, gehört dem Aufrufer, dem sie gezeigt wurde, und trägt die
+Zahlen, die sie gezeigt hat. Weicht der Stand inzwischen ab, wird nichts übertragen und die Vorschau
+neu vorgelegt (`409`, Code `TRANSFER_PREVIEW_REQUIRED`) — dieselbe Mechanik wie bei der Bestätigung
+eines Abgleichsplans. Die Ausführung verlangt darüber hinaus eine **ausdrückliche Bestätigung** und
+schreibt `PERMISSION_TRANSFER_EXECUTED` mit Quelle, Ziel, Umfang und Zahl der Zeilen.
+
+**Eine Obergrenze je Vorgang.** Höchstens 500 Zeilen; darüber wird abgelehnt, mit der Zahl und dem
+Weg über eine Teilmenge des Umfangs. Eine Übertragung ist eine Schreibtransaktion über bis zu vier
+Historientabellen — unbegrenzt zu laufen ist für genau die Anlässe, für die sie gebaut ist, kein
+Betriebszustand.
+
+**Eine bereits abgelaufene Berechtigung der Quelle wird beendet, aber nicht neu vergeben** — sie
+verschafft nichts, und am Ziel entstünde eine tote Zeile. Ihre Zeile verschwindet trotzdem: Sie ist
+sonst weiterhin ein Grund, aus dem die Gruppe nicht gelöscht werden kann. In den Zahlen der Vorschau
+erscheint sie nicht.
 
 **Das Ziel muss wirksam sein** — nicht aufgelöst, sein Anbieter aktiviert —, **darf aber leer
 sein**: Im Token-Modus entsteht die Gruppe des neuen Anbieters erst mit der ersten Anmeldung, und
@@ -1291,6 +1314,17 @@ kein neues Intervall — sein Zustand hat sich nicht geändert.
 Vorgang …"), bei einer Gruppe als Quelle mit deren Namen. **Bei einer Person als Quelle ohne ihren
 Namen:** Ein an vielen Objekten wiederholter Hinweis auf das Ausscheiden einer benannten Person,
 außerhalb jeder Protokollfrist, wäre sonst die Folge.
+
+**Wer den Namen der Quellgruppe zu sehen bekommt, entscheidet Entscheidung 9, nicht der Vermerk.**
+Eine **geschützte** Gruppe erscheint dort wie in jeder anderen fremden Liste als „geschützte Gruppe"
+ohne Namen; eine **nicht freigegebene** interne Gruppe wird gegenüber jemandem, der weder Mitglied
+noch verantwortlich noch Systemverwaltung ist, nicht benannt. Eine Quellgruppe, die es nicht mehr
+gibt, nennt der Vermerk nur der Systemverwaltung — ihre Sichtbarkeit kann niemand mehr prüfen.
+
+**Der Vorgang unterliegt der Aufbewahrungshöchstdauer der Rechtehistorie** (#1833): Er wird mit dem
+Löschlauf entfernt, sobald er älter ist als die eingestellte Frist. Die Objektliste geht mit ihm, die
+Historienintervalle bleiben und verlieren nur die Vorgangskennung. Ohne das stünden der
+Namensschnappschuss der Quellgruppe und der Vermerk an jedem Objekt unbefristet.
 
 **Nicht enthalten:** die Rücknahme von Mitgliedschaften nach einem Vorfall („alle Mitgliedschaften
 dieses Anbieters seit T") und jede automatische Auslösung durch den Verzeichnisabgleich. Eine

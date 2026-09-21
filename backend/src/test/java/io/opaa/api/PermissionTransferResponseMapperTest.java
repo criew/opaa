@@ -32,6 +32,7 @@ class PermissionTransferResponseMapperTest {
         PermissionTransferResponseMapper.toResponse(
             preview(new PermissionTransferCounts(12, 2, 1, 3, 0), 7, 2));
 
+    assertThat(response.getPreviewId()).isNotNull();
     assertThat(response.getSourceType()).isEqualTo(PermissionSubjectType.GROUP);
     assertThat(response.getSourceId()).isEqualTo(SOURCE);
     assertThat(response.getSourceName()).isEqualTo("Referat 50");
@@ -78,21 +79,29 @@ class PermissionTransferResponseMapperTest {
 
     PermissionTransferMarkResponse named =
         PermissionTransferResponseMapper.toResponse(
-            new PermissionTransferMark(transferId, at, "Referat 50"));
+            new PermissionTransferMark(transferId, at, "Referat 50", false));
     PermissionTransferMarkResponse anonymous =
         PermissionTransferResponseMapper.toResponse(
-            new PermissionTransferMark(transferId, at, null));
+            new PermissionTransferMark(transferId, at, null, false));
 
     assertThat(named.getTransferId()).isEqualTo(transferId);
     assertThat(named.getTransferredAt()).isEqualTo(at);
     assertThat(named.getSourceName()).isEqualTo("Referat 50");
     assertThat(anonymous.getSourceName()).isNull();
+    PermissionTransferMarkResponse protectedSource =
+        PermissionTransferResponseMapper.toResponse(
+            new PermissionTransferMark(transferId, at, null, true));
+    assertThat(protectedSource.getSourceName())
+        .as("a protected group is named by its protection, never by itself")
+        .isEqualTo("Geschützte Gruppe");
+    assertThat(protectedSource.getSourceProtected()).isTrue();
     assertThat(PermissionTransferResponseMapper.toResponse((PermissionTransferMark) null)).isNull();
   }
 
   private PermissionTransferPreview preview(
       PermissionTransferCounts counts, int grantedAssets, int spaces) {
     return new PermissionTransferPreview(
+        UUID.randomUUID(),
         new PermissionSubject(PermissionSubjectType.GROUP, SOURCE, ORGANIZATION),
         "Referat 50",
         new PermissionSubject(PermissionSubjectType.GROUP, TARGET, ORGANIZATION),

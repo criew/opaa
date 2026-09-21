@@ -187,7 +187,13 @@ class SpaceAccessPolicyTest {
         .thenReturn(
             Optional.of(
                 new GroupSubject(
-                    group, ORGANIZATION, "Referat 50", dissolved, providerDisabled, unmaintained)));
+                    group,
+                    ORGANIZATION,
+                    "Referat 50",
+                    dissolved,
+                    providerDisabled,
+                    unmaintained,
+                    false)));
     when(groupMemberships.activeMemberCount(eq(group), any())).thenReturn(activeMembers);
 
     // The owner's row is removed in the hypothetical, so only the group can still hold the space.

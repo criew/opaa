@@ -64,6 +64,9 @@ public class PermissionTransferController {
         .body(
             PermissionTransferResponseMapper.toResponse(
                 transferService.transfer(
-                    order, Boolean.TRUE.equals(request.getConfirmed()), caller)));
+                    order,
+                    Boolean.TRUE.equals(request.getConfirmed()),
+                    request.getPreviewId(),
+                    caller)));
   }
 }

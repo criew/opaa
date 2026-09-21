@@ -25,6 +25,7 @@ final class PermissionTransferResponseMapper {
     PermissionTransferCountsResponse counts =
         toCounts(preview.counts(), preview.grantedAssets(), preview.spaces());
     return new PermissionTransferPreviewResponse(
+            preview.previewId(),
             preview.source().type(),
             preview.source().id(),
             preview.target().type(),
@@ -59,12 +60,18 @@ final class PermissionTransferResponseMapper {
         .targetName(transfer.getTargetLabel());
   }
 
+  /**
+   * The note an object carries. A protected source group is named the way every other list names it
+   * - by its protection, not by itself (ADR-0036, Entscheidung 9); the service has already decided
+   * whether this caller may read the name at all.
+   */
   static PermissionTransferMarkResponse toResponse(PermissionTransferMark mark) {
     if (mark == null) {
       return null;
     }
     return new PermissionTransferMarkResponse(mark.transferId(), mark.transferredAt())
-        .sourceName(mark.sourceLabel());
+        .sourceName(mark.sourceProtected() ? "Geschützte Gruppe" : mark.sourceLabel())
+        .sourceProtected(mark.sourceProtected());
   }
 
   static List<PermissionTransferScope> toScope(List<PermissionTransferScope> scope) {

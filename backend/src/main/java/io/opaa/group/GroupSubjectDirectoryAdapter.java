@@ -53,7 +53,8 @@ class GroupSubjectDirectoryAdapter implements GroupSubjectDirectory {
                   group.isDissolved(),
                   // An internal group has no provider and is therefore never held back by one.
                   provider != null && !provider.isEnabled(),
-                  unmaintained(group, provider));
+                  unmaintained(group, provider),
+                  group.isProtectedGroup());
             });
   }
 

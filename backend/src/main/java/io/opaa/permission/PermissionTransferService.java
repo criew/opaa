@@ -1,5 +1,7 @@
 package io.opaa.permission;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
@@ -14,8 +16,10 @@ import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.AccessDeniedException;
+import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -68,6 +72,15 @@ public class PermissionTransferService {
   private static final Set<PermissionTransferScope> SELF_SERVICE =
       EnumSet.of(PermissionTransferScope.OWNERSHIP, PermissionTransferScope.STEWARDSHIP);
 
+  /** The stable {@code code} of the {@code 409} a missing or outdated preview produces. */
+  public static final String PREVIEW_REQUIRED = "TRANSFER_PREVIEW_REQUIRED";
+
+  /** How long a shown preview may be acted upon. */
+  private static final Duration PREVIEW_VALIDITY = Duration.ofMinutes(30);
+
+  /** The most rows one transfer moves - see {@link #requireWithinTheWorkLimit}. */
+  static final int MAX_ROWS_PER_TRANSFER = 500;
+
   private final PermissionTransferRepository transferRepository;
   private final PermissionTransferObjectRepository transferObjectRepository;
   private final AssetGrantRepository grantRepository;
@@ -81,6 +94,14 @@ public class PermissionTransferService {
   private final AssetAccessService assetAccessService;
   private final UserRepository userRepository;
   private final AuditEventRecorder auditEventRecorder;
+
+  /**
+   * The previews shown but not yet acted upon, keyed by the id the caller gets back. Bounded by
+   * {@link #PREVIEW_VALIDITY} and by a size cap, so a caller who previews and walks away leaks
+   * nothing.
+   */
+  private final Cache<UUID, ShownPreview> shownPreviews =
+      Caffeine.newBuilder().expireAfterWrite(PREVIEW_VALIDITY).maximumSize(1_000).build();
 
   PermissionTransferService(
       PermissionTransferRepository transferRepository,
@@ -123,13 +144,16 @@ public class PermissionTransferService {
   @Transactional
   public PermissionTransferPreview preview(PermissionTransferOrder order, CurrentUser caller) {
     Parties parties = resolve(order, caller);
-    PermissionTransferPreview preview = count(parties);
+    UUID previewId = UUID.randomUUID();
+    PermissionTransferPreview preview = count(parties, previewId);
+    shownPreviews.put(
+        previewId, new ShownPreview(caller.id(), signatureOf(parties), preview.counts()));
     recordEvent(AuditEventType.PERMISSION_TRANSFER_PREVIEWED, parties, preview.counts(), caller);
     return preview;
   }
 
-  private PermissionTransferPreview count(Parties parties) {
-    List<AssetGrant> grants = sourceGrants(parties);
+  private PermissionTransferPreview count(Parties parties, UUID previewId) {
+    List<AssetGrant> grants = effectiveSourceGrants(parties);
     Set<UUID> grantedAssets = new HashSet<>();
     grants.forEach(grant -> grantedAssets.add(grant.getAssetId()));
 
@@ -162,6 +186,7 @@ public class PermissionTransferService {
             : 0;
 
     return new PermissionTransferPreview(
+        previewId,
         parties.source(),
         parties.sourceLabel(),
         parties.target(),
@@ -178,17 +203,21 @@ public class PermissionTransferService {
   // -------------------------------------------------------------------------------------------
 
   /**
-   * Carries the transfer out. {@code confirmed} must be true - the confirmation is explicit, and a
-   * request without it is a malformed request rather than a silent no-op.
+   * Carries the transfer out. <b>Only against a preview this caller has just been shown</b>
+   * (ADR-0036, Entscheidung 10 - "Die Vorschau ist Pflicht"): {@code previewId} names it, and what
+   * it showed must still be what stands. {@code confirmed} must be true on top of that - the
+   * confirmation is an explicit act, not a default.
    */
   @Transactional
   public PermissionTransfer transfer(
-      PermissionTransferOrder order, boolean confirmed, CurrentUser caller) {
+      PermissionTransferOrder order, boolean confirmed, UUID previewId, CurrentUser caller) {
     Parties parties = resolve(order, caller);
     if (!confirmed) {
       throw new ValidationException(
           "Die Übertragung muss ausdrücklich bestätigt werden; rufen Sie zuvor die Vorschau ab.");
     }
+    PermissionTransferCounts effective = requireUnchangedPreview(previewId, parties, caller);
+    requireWithinTheWorkLimit(parties, effective);
 
     Instant at = clock.nextBoundary();
     PermissionTransfer transfer =
@@ -221,9 +250,84 @@ public class PermissionTransferService {
                         new PermissionTransferObject(
                             transfer.getId(), parties.organizationId(), assetType, assetId))));
 
+    shownPreviews.invalidate(previewId);
     recordEvent(AuditEventType.PERMISSION_TRANSFER_EXECUTED, parties, transfer.counts(), caller);
     invalidateAfterCompletion(touched);
     return transfer;
+  }
+
+  /**
+   * The preview this execution stands on: it must exist, belong to this caller, name the same
+   * subjects and the same scope, and still describe the current state. Anything else is answered
+   * with a conflict and a fresh preview - the treatment a directory-sync plan gets when the
+   * snapshot moved under it (ADR-0036, Entscheidung 3).
+   *
+   * <p>Held in memory rather than in a table: a preview is one step of one session, valid for
+   * {@link #PREVIEW_VALIDITY}. ADR-0021 (one process) carries that; after a restart the caller
+   * previews again, which costs one request and one more protocol entry.
+   */
+  private PermissionTransferCounts requireUnchangedPreview(
+      UUID previewId, Parties parties, CurrentUser caller) {
+    ShownPreview shown = previewId == null ? null : shownPreviews.getIfPresent(previewId);
+    if (shown == null
+        || !shown.callerUserId().equals(caller.id())
+        || !shown.signature().equals(signatureOf(parties))) {
+      throw new ConflictException(
+          "Zu dieser Übertragung liegt keine gültige Vorschau vor. Rufen Sie die Vorschau erneut"
+              + " ab und bestätigen Sie sie.",
+          PREVIEW_REQUIRED);
+    }
+    PermissionTransferCounts current = count(parties, previewId).counts();
+    if (!current.equals(shown.counts())) {
+      shownPreviews.invalidate(previewId);
+      throw new ConflictException(
+          "Der Stand hat sich seit der Vorschau geändert. Die Übertragung wurde nicht ausgeführt;"
+              + " rufen Sie die Vorschau erneut ab.",
+          PREVIEW_REQUIRED);
+    }
+    return current;
+  }
+
+  /**
+   * The one hard limit of the operation. Every moved row costs a history read, a flushed close, an
+   * insert and a delete, all in one transaction holding rows in up to four history tables - and the
+   * occasions this operation exists for (a provider replacement, a dissolved Referat) are exactly
+   * the ones that can carry thousands. Above the limit the transfer is refused with the figure and
+   * the way out: a smaller scope, one part at a time.
+   */
+  private void requireWithinTheWorkLimit(Parties parties, PermissionTransferCounts effective) {
+    int workload = workloadOf(parties, effective);
+    if (workload > MAX_ROWS_PER_TRANSFER) {
+      throw new ValidationException(
+          "Diese Übertragung bewegt "
+              + workload
+              + " Zeilen und liegt damit über der Grenze von "
+              + MAX_ROWS_PER_TRANSFER
+              + " je Vorgang. Übertragen Sie in mehreren Schritten - etwa erst die Berechtigungen,"
+              + " dann das Eigentum.");
+    }
+  }
+
+  /**
+   * What the transfer actually touches, expired grants included: they are removed from the source
+   * like any other row - an expired grant still blocks the RESTRICT key of a group deletion - and
+   * are only not granted to the target again.
+   */
+  private int workloadOf(Parties parties, PermissionTransferCounts effective) {
+    return sourceGrants(parties).size()
+        + effective.spaceMemberships()
+        + effective.capabilities()
+        + effective.ownedAssets()
+        + effective.stewardships();
+  }
+
+  private PreviewSignature signatureOf(Parties parties) {
+    return new PreviewSignature(
+        parties.source().type(),
+        parties.source().id(),
+        parties.target().type(),
+        parties.target().id(),
+        EnumSet.copyOf(parties.scope()));
   }
 
   private int transferGrants(
@@ -233,8 +337,19 @@ public class PermissionTransferService {
       CurrentUser caller,
       Map<AssetType, Set<UUID>> touched) {
     List<AssetGrant> grants = sourceGrants(parties);
+    int transferred = 0;
     for (AssetGrant grant : grants) {
       permissionHistoryService.recordGrantTransferredOut(grant, caller.id(), transferId, at);
+      if (grant.isExpired(at)) {
+        // Ended, not handed on: an expired grant confers nothing, so the target would receive a
+        // dead row. The source's row still has to go - it blocks the RESTRICT key of a deletion.
+        grantRepository.delete(grant);
+        touched
+            .computeIfAbsent(grant.getAssetType(), key -> new LinkedHashSet<>())
+            .add(grant.getAssetId());
+        continue;
+      }
+      transferred++;
       Optional<AssetGrant> existing =
           grantRepository.findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectGroupId(
               grant.getAssetType(),
@@ -270,7 +385,7 @@ public class PermissionTransferService {
           .computeIfAbsent(grant.getAssetType(), key -> new LinkedHashSet<>())
           .add(grant.getAssetId());
     }
-    return grants.size();
+    return transferred;
   }
 
   private int transferSpaceMemberships(
@@ -364,18 +479,48 @@ public class PermissionTransferService {
   // -------------------------------------------------------------------------------------------
 
   /**
-   * The transfer that last touched this object, for its sharing view. Empty for an object no
-   * transfer ever touched - the ordinary case, and one extra indexed read per detail view.
+   * The transfer that last touched this object, for its sharing view - resolved for {@code caller}.
+   * Empty for an object no transfer ever touched: the ordinary case, and one extra indexed read per
+   * detail view.
+   *
+   * <p><b>Whether the source group is named is the caller's question, not the record's</b>
+   * (ADR-0036, Entscheidung 9). The snapshot in {@code permission_transfers.source_label} is
+   * complete; who gets to read it is decided here: a protected group is never named, a group the
+   * caller may not see is not named either, and a source group that no longer exists is named to
+   * the system administration alone - nobody can ask a deleted group about its visibility any more.
    */
-  public Optional<PermissionTransferMark> markOf(AssetType assetType, UUID assetId) {
+  public Optional<PermissionTransferMark> markOf(
+      AssetType assetType, UUID assetId, CurrentUser caller) {
     return transferRepository
-        .findTransfersOfAsset(assetType, assetId, PageRequest.of(0, 1))
+        .findTransfersOfAsset(assetType, assetId, caller.organizationId(), PageRequest.of(0, 1))
         .stream()
         .findFirst()
-        .map(
-            transfer ->
-                new PermissionTransferMark(
-                    transfer.getId(), transfer.getPerformedAt(), transfer.getSourceLabel()));
+        .map(transfer -> toMark(transfer, caller));
+  }
+
+  private PermissionTransferMark toMark(PermissionTransfer transfer, CurrentUser caller) {
+    if (transfer.source().type() != PermissionSubjectType.GROUP) {
+      return new PermissionTransferMark(transfer.getId(), transfer.getPerformedAt(), null, false);
+    }
+    UUID sourceGroupId = transfer.source().id();
+    GroupSubject group = groupDirectory.find(sourceGroupId).orElse(null);
+    if (group == null) {
+      return new PermissionTransferMark(
+          transfer.getId(),
+          transfer.getPerformedAt(),
+          caller.isSystemAdmin() ? transfer.getSourceLabel() : null,
+          false);
+    }
+    if (group.protectedGroup()) {
+      return new PermissionTransferMark(transfer.getId(), transfer.getPerformedAt(), null, true);
+    }
+    boolean visible =
+        groupDirectory.isSelectableBy(sourceGroupId, caller.id(), caller.isSystemAdmin());
+    return new PermissionTransferMark(
+        transfer.getId(),
+        transfer.getPerformedAt(),
+        visible ? transfer.getSourceLabel() : null,
+        false);
   }
 
   // -------------------------------------------------------------------------------------------
@@ -383,9 +528,9 @@ public class PermissionTransferService {
   // -------------------------------------------------------------------------------------------
 
   /**
-   * The source's grants, or an empty list whenever grants are outside the scope - a person's grants
-   * are never listed here, whatever the scope says, and that is enforced in {@link
-   * #requireScopeFits} before this is reached.
+   * Every grant row the source holds, expired ones included - what the transfer has to move out of
+   * the way. Empty whenever grants are outside the scope; a person's grants are never listed here,
+   * whatever the scope says, which {@link #requireScopeFits} has already enforced.
    */
   private List<AssetGrant> sourceGrants(Parties parties) {
     if (!parties.scope().contains(PermissionTransferScope.ASSET_GRANTS)
@@ -393,6 +538,17 @@ public class PermissionTransferService {
       return List.of();
     }
     return grantRepository.findBySubjectGroupIdIn(List.of(parties.source().id()));
+  }
+
+  /**
+   * The subset of {@link #sourceGrants} that actually confers something right now. An expired grant
+   * is ended by the transfer like every other row of the source, but it is <b>not</b> granted to
+   * the target again - it would arrive dead - and it is not counted: the preview would otherwise
+   * promise more reach than the operation delivers.
+   */
+  private List<AssetGrant> effectiveSourceGrants(Parties parties) {
+    Instant now = Instant.now();
+    return sourceGrants(parties).stream().filter(grant -> !grant.isExpired(now)).toList();
   }
 
   private Parties resolve(PermissionTransferOrder order, CurrentUser caller) {
@@ -603,6 +759,18 @@ public class PermissionTransferService {
           }
         });
   }
+
+  /** What a preview was shown for - the execution must name exactly the same. */
+  private record PreviewSignature(
+      PermissionSubjectType sourceType,
+      UUID sourceId,
+      PermissionSubjectType targetType,
+      UUID targetId,
+      Set<PermissionTransferScope> scope) {}
+
+  /** One preview shown to one caller, with the figures it showed. */
+  private record ShownPreview(
+      UUID callerUserId, PreviewSignature signature, PermissionTransferCounts counts) {}
 
   /** The validated, resolved form of a {@link PermissionTransferOrder}. */
   private record Parties(

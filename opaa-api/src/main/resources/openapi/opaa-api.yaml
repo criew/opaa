@@ -2041,8 +2041,10 @@ paths:
       tags: [admin]
       summary: Transfer the rights of one subject to another (#1834, ADR-0036 Entscheidung 10)
       description: >
-        Carries out what the preview showed. The confirmation is explicit: without confirmed =
-        true the request is refused with 400.
+        Carries out what the preview showed. It runs only against a preview this caller was shown
+        for exactly this source, target and scope, and only while that preview still describes the
+        current state - otherwise 409 and the caller previews again. The confirmation is explicit
+        on top of that: without confirmed = true the request is refused with 400.
 
         Every moved row closes the source's interval and opens the target's at one and the same
         instant, carrying one and the same transfer id, so the Stichtagsauskunft shows exactly one
@@ -2067,7 +2069,18 @@ paths:
                 $ref: "#/components/schemas/PermissionTransferResponse"
         "400":
           description: >
-            Same reasons as the preview, plus a missing confirmation.
+            Same reasons as the preview, plus a missing confirmation and a transfer above the limit
+            of 500 rows per operation - the message names the figure and the way out (a smaller
+            scope, one part at a time).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: >
+            No valid preview (code TRANSFER_PREVIEW_REQUIRED): none was taken for this caller and
+            this order, it has expired, or the state has changed since it was shown. Nothing was
+            transferred; the caller previews again.
           content:
             application/json:
               schema:
@@ -14206,7 +14219,7 @@ components:
 
     PermissionTransferRequest:
       type: object
-      required: [sourceType, sourceId, targetType, targetId, scope, confirmed]
+      required: [previewId, sourceType, sourceId, targetType, targetId, scope, confirmed]
       description: >
         The preview's request plus the explicit confirmation. Spelled out rather than composed
         from PermissionTransferPreviewRequest, so the generated type carries its own required
@@ -14233,6 +14246,10 @@ components:
             Must be true. The confirmation is explicit, and a request without it is refused rather
             than silently ignored.
           example: true
+        previewId:
+          type: string
+          format: uuid
+          description: The id of the preview this confirmation answers.
 
     PermissionTransferCountsResponse:
       type: object
@@ -14275,8 +14292,16 @@ components:
 
     PermissionTransferPreviewResponse:
       type: object
-      required: [sourceType, sourceId, targetType, targetId, scope, counts, summary]
+      required: [previewId, sourceType, sourceId, targetType, targetId, scope, counts, summary]
       properties:
+        previewId:
+          type: string
+          format: uuid
+          description: >
+            What the execution has to show. The transfer runs only against a preview that was
+            taken, still describes the current state and belongs to the same caller; otherwise it
+            is refused with 409 and the caller previews again. Valid for 30 minutes and held in
+            the running process (ADR-0021), so a restart means one more preview.
         sourceType:
           $ref: "#/components/schemas/PermissionSubjectType"
         sourceId:
@@ -14374,8 +14399,17 @@ components:
           type: string
           nullable: true
           description: >
-            The source group's name, or null when the source was a person: a hint repeated at many
-            objects that a named colleague left the house is exactly what this null prevents.
+            The source group's name - null when the source was a person (a hint repeated at many
+            objects that a named colleague left the house is exactly what this null prevents),
+            when the group is protected (sourceProtected says so instead), and when the caller may
+            not see the group at all (ADR-0036, Entscheidung 9). A source group that no longer
+            exists is named to the system administration alone.
+        sourceProtected:
+          type: boolean
+          description: >
+            True when the source was a protected group (staff council and the comparable bodies).
+            The interface then shows "geschützte Gruppe" instead of a name, as in every other list.
+          example: false
 
     AssetGrantResponse:
       type: object

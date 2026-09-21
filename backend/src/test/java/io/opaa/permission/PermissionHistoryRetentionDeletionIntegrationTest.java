@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.ExternalAccessState;
 import io.opaa.api.types.LibraryVisibility;
+import io.opaa.api.types.PermissionTransferScope;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.library.LibraryVisibilityHistory;
@@ -18,6 +19,7 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -50,11 +52,13 @@ class PermissionHistoryRetentionDeletionIntegrationTest {
   @Autowired private TransactionTemplate transactionTemplate;
   @Autowired private PermissionHistoryService permissionHistoryService;
   @Autowired private PermissionHistoryRetentionService retentionService;
+  @Autowired private PermissionTransferRepository transferRepository;
 
   private final List<UUID> grantRowIds = new ArrayList<>();
   private final List<UUID> membershipRowIds = new ArrayList<>();
   private final List<UUID> visibilityRowIds = new ArrayList<>();
   private final List<UUID> userIds = new ArrayList<>();
+  private final List<UUID> transferIds = new ArrayList<>();
 
   private UUID memberUserId;
 
@@ -73,6 +77,8 @@ class PermissionHistoryRetentionDeletionIntegrationTest {
     visibilityHistoryRepository.deleteAll(
         visibilityHistoryRepository.findAllById(visibilityRowIds));
     userRepository.deleteAll(userRepository.findAllById(userIds));
+    transferRepository.deleteAll(transferRepository.findAllById(transferIds));
+    transferIds.clear();
     grantRowIds.clear();
     membershipRowIds.clear();
     visibilityRowIds.clear();
@@ -279,6 +285,52 @@ class PermissionHistoryRetentionDeletionIntegrationTest {
   private static long gapMonths(Instant reached, Instant configured) {
     return ChronoUnit.MONTHS.between(
         reached.atZone(ZoneOffset.UTC), configured.atZone(ZoneOffset.UTC));
+  }
+
+  /**
+   * The transfer record ages out like the intervals it grouped (#1834): its objects follow through
+   * {@code ON DELETE CASCADE}, and an interval still in force keeps answering - it only loses the
+   * id that grouped it ({@code ON DELETE SET NULL}). Without this the name snapshot of the source
+   * group and the note at every touched object would stand for ever.
+   */
+  @Test
+  void anAgedTransferGoesWithItsObjectsAndLeavesTheIntervalsBehind() {
+    PermissionTransfer aged = transfer(monthsAgo(48));
+    PermissionTransfer fresh = transfer(monthsAgo(1));
+    UUID interval = openGrantIntervalOfTransfer(aged);
+
+    deletionService.runOnce();
+
+    assertThat(transferRepository.existsById(aged.getId())).isFalse();
+    assertThat(transferRepository.existsById(fresh.getId())).isTrue();
+    assertThat(grantHistoryRepository.findById(interval))
+        .as("the interval is the Auskunft - it survives the record that grouped it")
+        .isPresent()
+        .get()
+        .satisfies(row -> assertThat(row.getTransferId()).isNull());
+  }
+
+  private PermissionTransfer transfer(Instant performedAt) {
+    PermissionTransfer transfer =
+        transferRepository.saveAndFlush(
+            new PermissionTransfer(
+                Organization.DEFAULT_ID,
+                PermissionSubject.group(UUID.randomUUID(), Organization.DEFAULT_ID),
+                "Referat 50",
+                PermissionSubject.group(UUID.randomUUID(), Organization.DEFAULT_ID),
+                "Referat 52",
+                EnumSet.of(PermissionTransferScope.ASSET_GRANTS),
+                null,
+                performedAt));
+    transferIds.add(transfer.getId());
+    return transfer;
+  }
+
+  /** An interval in force that names the transfer - the row that must outlive it. */
+  private UUID openGrantIntervalOfTransfer(PermissionTransfer transfer) {
+    AssetGrantHistory row = grantInterval(transfer.getPerformedAt());
+    row.belongsToTransfer(transfer.getId());
+    return saveGrantInterval(row);
   }
 
   private UUID closedGrantInterval(Instant from, Instant to) {
