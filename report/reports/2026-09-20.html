@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tagesreport 2026-09-20</title>
+<link rel="alternate" type="application/atom+xml" title="OPAA Tagesreport" href="../feed.xml">
+<style>:root {
+  color-scheme: light dark;
+  --bg: #ffffff;
+  --fg: #1a1a1a;
+  --muted: #5c6370;
+  --line: #e2e5e9;
+  --accent: #2f6feb;
+  --card: #f7f8fa;
+  --green: #1a7f37;
+  --red: #cf222e;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14161a;
+    --fg: #e6e8eb;
+    --muted: #9aa1ab;
+    --line: #2a2e35;
+    --accent: #6ea0ff;
+    --card: #1b1e24;
+    --green: #3fb950;
+    --red: #f85149;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 2rem 1.25rem 4rem;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+main { max-width: 46rem; margin: 0 auto; }
+a { color: var(--accent); }
+header { border-bottom: 1px solid var(--line); padding-bottom: 1.25rem; margin-bottom: 2rem; }
+h1 { font-size: 1.6rem; margin: 0 0 .35rem; letter-spacing: -.01em; }
+h2 { font-size: 1.1rem; margin: 2.25rem 0 .85rem; letter-spacing: -.01em; }
+.sub { color: var(--muted); font-size: .9rem; margin: 0; }
+.num { font-variant-numeric: tabular-nums; color: var(--muted); margin-right: .4rem; }
+.empty { color: var(--muted); font-style: italic; }
+
+.blaettern { color: var(--muted); font-size: .9rem; }
+.blaettern a { text-decoration: none; }
+.blaettern a:hover { text-decoration: underline; }
+
+.linkbar { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .85rem; }
+.linkbar a {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  font-size: .85rem;
+  padding: .3rem .7rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  text-decoration: none;
+}
+.linkbar a:hover { border-color: var(--accent); }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.dot.green { background: var(--green); }
+.dot.red { background: var(--red); }
+
+.kpi-row { display: flex; gap: .75rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.kpi {
+  flex: 1;
+  min-width: 7rem;
+  padding: .75rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  text-align: center;
+}
+.kpi-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+.kpi-value.green { color: var(--green); }
+.kpi-label {
+  font-size: .78rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.epic-section {
+  margin-bottom: 1.25rem;
+  padding: .85rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+}
+.epic-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  margin-bottom: .5rem;
+}
+.epic-title { font-weight: 600; font-size: .95rem; }
+.epic-progress {
+  font-size: .8rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.progress-bar {
+  height: 4px;
+  background: var(--line);
+  border-radius: 2px;
+  margin-bottom: .6rem;
+  overflow: hidden;
+}
+.progress-fill { height: 100%; background: var(--accent); border-radius: 2px; }
+.epic-section ul { margin: 0; padding-left: 1.25rem; font-size: .9rem; }
+.epic-section li { margin-bottom: .25rem; }
+
+.merged-summary {
+  margin-top: .5rem;
+  padding-top: .5rem;
+  border-top: 1px dashed var(--line);
+  font-size: .85rem;
+  color: var(--muted);
+}
+.merged-summary ul { margin: .25rem 0 0; padding-left: 1.25rem; }
+.merged-summary li { margin-bottom: .2rem; }
+
+ul.items { list-style: none; margin: 0; padding: 0; }
+ul.items li {
+  padding: .7rem .9rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-bottom: .5rem;
+  background: var(--card);
+}
+.meta { display: block; color: var(--muted); font-size: .82rem; margin-top: .25rem; }
+
+footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; }
+.status.bad { color: var(--red); font-weight: 600; }
+</style>
+</head>
+<body>
+<main>
+<header>
+<h1>Tagesreport Sonntag, 20. September 2026</h1>
+<nav class="blaettern"><a href="2026-09-19.html" rel="prev" title="Samstag, 19. September 2026">← Vorheriger Tag</a> · <a href="../index.html">Alle Reports</a></nav>
+<div class="linkbar"><a href="https://opaa.ewerlin.com/chat">Testumgebung</a><a href="https://github.com/criew/opaa">Repository</a><a href="https://github.com/criew/opaa/issues">Issues</a><a href="https://github.com/criew/opaa/pulls">Pull Requests</a><a href="https://github.com/criew/opaa/actions/runs/35542132048" title="Letzter CI-Lauf auf dem Hauptbranch: erfolgreich">CI <span class="dot green"></span></a></div>
+</header>
+
+<div class="kpi-row"><div class="kpi"><div class="kpi-value">70</div><div class="kpi-label">Issues offen</div></div><div class="kpi"><div class="kpi-value green">+11</div><div class="kpi-label">Neu angelegt</div></div><div class="kpi"><div class="kpi-value">14</div><div class="kpi-label">Abgeschlossen</div></div><div class="kpi"><div class="kpi-value">12</div><div class="kpi-label">PRs gemergt</div></div></div>
+
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/1295">#1295</a> feat: Gruppen, Rollen und Berechtigungen: Subjekte, Herkunft und Folgen für Freigaben</span>
+<span class="epic-progress">12 / 27 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 44%"></div></div>
+<ul><li><span class="num"><a href="https://github.com/criew/opaa/issues/1856">#1856</a></span>Quellprobe und Auswahl-Endpunkte an CREATE_CONNECTOR_LIBRARY-Recht gebunden</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/1833">#1833</a></span>Aufbewahrungshöchstdauer der Rechtehistorie als Governance-Einstellung</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/1812">#1812</a></span>Gruppenherkunft als Anbieterbezug mit Verhalten beim Deaktivieren</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/1811">#1811</a></span>Eigenes Paket für Subjekt, Grant und Rechtehistorie, Zyklus aufgelöst</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/1849">#1849</a></span>feat(group): Gruppenherkunft als Anbieterverweis, Kennzeichen „extern&quot; und geschütztes Anbieterlöschen (+2487/−220, 71 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1846">#1846</a></span>feat(permission): Aufbewahrungshöchstdauer der Rechtehistorie als Governance-Einstellung (+1740/−33, 28 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1843">#1843</a></span>fix(auth): Ein fehlender oder unbrauchbarer Rollen-Claim darf Systemrollen nicht entziehen (+693/−110, 17 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1837">#1837</a></span>fix(auth): TrustedProvider liefert nur noch einen aktivierten Standardanbieter (+84/−17, 6 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1836">#1836</a></span>refactor(permission): Eigenes Paket für Subjekt, Grant, Herleitung und Rechtehistorie — typunabhängige Grants, Zyklus library ↔ group auflösen (+4548/−1347, 131 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1831">#1831</a></span>docs(decisions): ADR-0036 Berechtigungsmodell — Gruppen und Fähigkeiten (+1174/−1, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1829">#1829</a></span>test(auth): Aussperrschutz für manuellen und Token-Rollenentzug gegen echtes Postgres absichern (+330/−3, 5 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1827">#1827</a></span>fix(group): Ein fehlender groups-Claim darf keine Anbieter-Gruppenmitgliedschaften entziehen (+747/−60, 18 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1826">#1826</a></span>docs(auth): Spezifikationen und Code-Kommentare an den gebauten Stand des Berechtigungsmodells angleichen (+254/−113, 33 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1825">#1825</a></span>docs(auth): Konzeptpapier zum Berechtigungsmodell — Gruppenherkunft, Synchronisation, Fähigkeiten, Lebenszyklus (+3866/−0, 2 Dateien)</li></ul></div>
+</div>
+<div class="epic-section">
+<div class="epic-header"><span class="epic-title">Sonstiges</span></div>
+<ul><li><span class="num"><a href="https://github.com/criew/opaa/issues/1851">#1851</a></span>Löschlauf des Nachweisprotokolls konvergiert nicht bei Fristverkürzung</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/1850">#1850</a></span>PUT Diagnosekontext-Aufbewahrungsfrist antwortet mit altem Wert</li><li>E2E-Suite und Retrieval-Regressionstests fehlgeschlagen</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/1847">#1847</a></span>chore(deps): axllent/mailpit docker tag to v1.31.2 (+1/−1, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1845">#1845</a></span>fix(test): main-Testkompilat reparieren — Importe auf io.opaa.permission (+2/−1, 1 Datei)</li></ul></div>
+</div>
+
+<footer>
+Erzeugt am 2026-09-21 um 07:15 Uhr ·
+<a href="../feed.xml">Feed abonnieren</a>
+<br><span class="empty">Berichtszeitraum: 2026-09-20T00:00:00 bis 2026-09-20T23:59:59 (Europe/Berlin)</span>
+</footer>
+</main>
+</body>
+</html>

@@ -5,8 +5,23 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-09-20T05:11:01Z</updated>
+  <updated>2026-09-21T05:15:40Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Sonntag, 20. September 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-09-20.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-09-20.html</id>
+    <updated>2026-09-21T05:15:40Z</updated>
+    <summary type="text">feat: Gruppen, Rollen und Berechtigungen: Subjekte, Herkunft und Folgen für Freigaben:
+— Quellprobe und Auswahl-Endpunkte an CREATE_CONNECTOR_LIBRARY-Recht gebunden
+— Aufbewahrungshöchstdauer der Rechtehistorie als Governance-Einstellung
+— Gruppenherkunft als Anbieterbezug mit Verhalten beim Deaktivieren
+— Eigenes Paket für Subjekt, Grant und Rechtehistorie, Zyklus aufgelöst
+Sonstiges:
+— Löschlauf des Nachweisprotokolls konvergiert nicht bei Fristverkürzung
+— PUT Diagnosekontext-Aufbewahrungsfrist antwortet mit altem Wert
+— E2E-Suite und Retrieval-Regressionstests fehlgeschlagen</summary>
+  </entry>
   <entry>
     <title>Tagesreport Samstag, 19. September 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-09-19.html"/>
