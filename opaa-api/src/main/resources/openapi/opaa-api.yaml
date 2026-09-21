@@ -4517,7 +4517,10 @@ paths:
         credentials encryption key (OPAA_CREDENTIALS_ENCRYPTION_KEY). Without a usable key
         nothing is changed and the answer is 503 naming the missing key - a write never silently
         drops a credential. A request that carries no new credential keeps the stored one and is
-        unaffected.
+        unaffected. For a connector library, visibility/listed above the share cap the system
+        administration set (#797, PUT /api/v1/libraries/{libraryId}/share-cap) is refused with
+        409 - the caller's own MANAGER/OWNER role is not in question, the requested state
+        conflicts with that ceiling.
       requestBody:
         required: true
         content:
@@ -4537,6 +4540,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
         "503":
           $ref: "#/components/responses/ServiceUnavailable"
 
@@ -4562,6 +4567,47 @@ paths:
         "409":
           $ref: "#/components/responses/Conflict"
 
+  /api/v1/libraries/{libraryId}/share-cap:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    put:
+      operationId: updateLibraryShareCap
+      tags: [library]
+      summary: Set a connector library's share cap - the ceiling visibility/listed may not exceed (#797)
+      description: >
+        SYSTEM_ADMIN only (403 otherwise). Rejected with 400 for an UPLOAD library, which is never
+        capped - the same person who uploads already curates every document individually, so there
+        is nothing the cap would protect. Narrowing the cap below what the library currently
+        carries clamps visibility/listed back down to it immediately, in the same request - never
+        a state left "verletzt, aber geduldet": the clamp writes the same history interval and
+        audit entry (ASSET_VISIBILITY_CHANGED) an owner's own edit would, and the cap change
+        itself is recorded separately (CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LibraryShareCapRequest"
+      responses:
+        "200":
+          description: Library after the cap change (and, if applicable, the immediate clamp)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LibraryResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/libraries/{libraryId}/access-derivation:
     parameters:
       - name: libraryId
@@ -4570,6 +4616,7 @@ paths:
         schema:
           type: string
           format: uuid
+
     get:
       operationId: getLibraryAccessDerivation
       tags: [libraries]
@@ -11383,6 +11430,19 @@ components:
         schedule:
           $ref: "#/components/schemas/LibraryScheduleRequest"
 
+    LibraryShareCapRequest:
+      type: object
+      required: [visibilityCap, listedCap]
+      description: >
+        Body for PUT /api/v1/libraries/{libraryId}/share-cap (#797). Both fields are required and
+        replace the cap as a whole - there is no partial update, the same reasoning
+        LibraryUpdateRequest.s3Settings already follows for its own all-or-nothing replacement.
+      properties:
+        visibilityCap:
+          $ref: "#/components/schemas/LibraryVisibility"
+        listedCap:
+          type: boolean
+
     LibraryListResponse:
       type: object
       required:
@@ -11674,6 +11734,21 @@ components:
           nullable: true
           allOf:
             - $ref: "#/components/schemas/LibraryExternalAccessResponse"
+        visibilityCap:
+          description: >
+            The ceiling visibility may not exceed (#797), set by the system administration per
+            connector library - null for UPLOAD (which is never capped) and, like sourcePath
+            above, absent (not merely null) below MANAGER. PUT /api/v1/libraries/{libraryId}
+            answers 409 when visibility would exceed it.
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/LibraryVisibility"
+        listedCap:
+          type: boolean
+          nullable: true
+          description: >
+            The counterpart cap on listed - false forbids listing regardless of visibility. Same
+            gating as visibilityCap.
         lastTransfer:
           description: >
             The transfer that last touched this library (#1834, ADR-0036 Entscheidung 10), or
@@ -15092,7 +15167,6 @@ components:
           ASSET_GRANT_REVOKED,
           ASSET_GRANT_EXPIRED,
           ASSET_VISIBILITY_CHANGED,
-          ASSET_GRANT_SUSPENDED,
           ASSET_EXTERNAL_ACCESS_CHANGED,
           ASSET_EXTERNAL_ACCESS_EXPIRED,
           SPACE_CREATED,
