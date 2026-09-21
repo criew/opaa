@@ -1140,7 +1140,7 @@ Ablehnung nur das Entfernen der Wirkungen vorbei** — Deaktivieren bleibt jeder
 > Festgeschrieben in [ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md),
 > Entscheidungen 2 und 11.
 
-#### Interne Gruppen: Verantwortliche, Freigabe und Schutz (gebaut, #1814)
+#### Interne Gruppen: Verantwortliche, Freigabe und Schutzkennzeichen (gebaut, #1814 — ohne die Schutzwirkungen nach außen, #1820)
 
 Eine **interne Gruppe** wird nicht von der Systemverwaltung gepflegt, sondern von benannten
 **Verantwortlichen**. Die Vorentscheidung „Wer eine Querschnittsgruppe braucht, legt sie explizit
@@ -1186,10 +1186,14 @@ Auffindbarkeit ist eine bewusste Handlung. Drei Festlegungen dazu:
 1. **Die Durchsetzung liegt im Dienst, nicht in der Auswahlliste**, und gilt für jeden Weg — auch
    für die Eingabe der Kennung von Hand. Eine nicht freigegebene interne Gruppe ist für einen
    Aufrufer, der weder Mitglied noch Verantwortlicher noch `SYSTEM_ADMIN` ist, „nicht gefunden".
+   Gebaut ist das an beiden Wegen, die eine Gruppe heute zum Zuge bringen: der Berechtigung auf ein
+   Objekt (`AssetGrantService`) und der Aufnahme als Mitglied eines Space (`SpaceService`). Die
+   Vergabe eines Anlegerechts fragt nicht danach, weil sie ausschließlich der Systemverwaltung
+   offensteht und die Freigabe für sie ohnehin ohne Wirkung ist.
 2. **Die Migration hat „freigegeben" gesetzt** für jede interne Gruppe, die am Migrationstag eine
-   Wirkung hatte: eine Berechtigung auf ein Objekt, ein Anlegerecht oder Eigentum an einem Objekt.
-   Niemand verliert eine Möglichkeit, die er benutzt hat; „Vorgabe nicht freigegeben" gilt damit
-   **nur prospektiv**.
+   Wirkung hatte: eine Berechtigung auf ein Objekt, ein Anlegerecht, Eigentum an einem Objekt oder
+   eine Mitgliedschaft in einem Space (#1815). Niemand verliert eine Möglichkeit, die er benutzt
+   hat; „Vorgabe nicht freigegeben" gilt damit **nur prospektiv**.
 3. **Das ist eine Bestandsänderung, und sie wird ausgesprochen:** Ein `MANAGER` kann eine neu
    angelegte interne Gruppe erst nach deren Freigabe als Empfänger wählen. Die Rücknahme der
    Freigabe nimmt die Gruppe aus jeder Auswahl; bestehende Berechtigungen bleiben unberührt.
@@ -1197,12 +1201,24 @@ Auffindbarkeit ist eine bewusste Handlung. Drei Festlegungen dazu:
 **Geschützte Gruppen.** Für die Gruppen der Personalvertretung, der Schwerbehindertenvertretung, der
 Gleichstellung und für Personalvorgänge gilt dieselbe Sonderstellung wie für die entsprechenden
 Bibliotheken ([hybrid-retrieval.md](./hybrid-retrieval.md#berechtigungs-leitplanken), Leitplanke
-(e)): Eine geschützte Gruppe ist nicht über die Suche auffindbar, erscheint in fremden Listen
-namenlos als „geschützte Gruppe", und wer ihr ein Recht einräumt, sieht statt der Mitgliederliste
-die Ansprechstelle. **Das Kennzeichen setzt und löst die zuständige Stelle selbst, nicht die
-Administration** — bei einer internen Gruppe ihre Verantwortlichen. Eine Systemverwaltung, die es
-setzen oder lösen könnte, machte den Schutz zu ihrem; die Antwort auf ihren Versuch ist `403` mit
-dem Code `STEWARDSHIP_REQUIRED`.
+(e)). **Das Kennzeichen setzt und löst die zuständige Stelle selbst, nicht die Administration** —
+bei einer internen Gruppe ihre Verantwortlichen. Eine Systemverwaltung, die es setzen oder lösen
+könnte, machte den Schutz zu ihrem; die Antwort auf ihren Versuch ist `403` mit dem Code
+`STEWARDSHIP_REQUIRED`. **Dieselbe Antwort bekommt sie an der Freigabe einer geschützten Gruppe**:
+Wer die Gruppe in jede Auswahl stellen kann, entscheidet sonst über den Schutz, ohne das Kennzeichen
+anfassen zu dürfen.
+
+**Was vom Schutz gebaut ist.** Gebaut sind das Kennzeichen, sein Vorbehalt für die Verantwortlichen
+samt der Freigabe, und das Audit-Ereignis jeder Änderung. **Noch nicht gebaut** sind die drei
+Wirkungen nach außen: nicht über die Suche auffindbar, in fremden Listen namenlos als „geschützte
+Gruppe", und statt der Mitgliederliste die Ansprechstelle für den, der ihr ein Recht einräumt. Sie
+kommen mit der gemeinsamen Subjekt-Auswahl (#1820); bis dahin verhält sich eine geschützte,
+freigegebene Gruppe gegenüber Dritten wie jede andere freigegebene Gruppe.
+
+**Der Abruf der Mitgliederliste durch die Systemverwaltung ist ein Audit-Ereignis**
+(`GROUP_MEMBERS_READ` mit der Zahl der Mitglieder) — ADR-0036, Entscheidung 9 räumt ihr die volle
+Liste ein und hält dafür fest, dass sie sie abgerufen hat. Wer die Gruppe selbst verantwortet,
+erzeugt beim Lesen nichts.
 
 > Festgeschrieben in [ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md),
 > Entscheidungen 4 und 9.

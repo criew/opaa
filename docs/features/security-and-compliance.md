@@ -277,7 +277,13 @@ keinen Eintrag) und — seit #1833 — die Aufbewahrungshöchstdauer der Rechteh
 Verantwortlichen interner Gruppen samt Reichweitenfeldern (`GROUP_STEWARD_APPOINTED`,
 `GROUP_STEWARD_DISMISSED`, `GROUP_RELEASE_CHANGED` und `GROUP_PROTECTION_CHANGED`, die beiden
 letzten mit Vorher/Nachher des Kennzeichens; die betroffene Person steht als Pseudonym im Subjekt,
-und keines der vier erzeugt eine Historienzeile). Die Anfrage
+und keines der vier erzeugt eine Historienzeile) und — ebenfalls seit #1814 — der Abruf der
+Mitgliederliste einer Gruppe durch die Systemverwaltung, die diese Gruppe nicht selbst verantwortet
+(`GROUP_MEMBERS_READ` mit der Zahl der Mitglieder). Das ist das einzige **Leseereignis** dieser
+Liste und die bewusste Ausnahme von „Abfragen werden nicht protokolliert": ADR-0036,
+Entscheidung 9, räumt der Verwaltung die volle Mitgliederliste ein — und hält dafür fest, dass sie
+sie abgerufen hat. Wer die Gruppe selbst verantwortet, erzeugt beim Lesen nichts; es ist die
+eigene Gruppe. Die Anfrage
 „Passwort vergessen" ändert keinen Zustand; die Bestätigung der eigenen Adresse ist eine Handlung
 der Person am eigenen Konto und nach ADR-0033, Entscheidung 13, kein Verwaltungsakt — beide
 erzeugen kein Ereignis. Noch **nicht** verdrahtet — weil

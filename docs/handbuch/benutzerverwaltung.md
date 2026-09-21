@@ -277,6 +277,11 @@ Eine **interne Gruppe** ist eine Gruppe, die in OPAA selbst entsteht — anders 
 Verzeichnisdienst oder dem Anmeldetoken. Sie wird nicht von der Systemverwaltung gepflegt, sondern von
 benannten **Verantwortlichen**. Für lokale Konten ist das der einzige Weg zu einer Gruppe.
 
+Dieser Abschnitt ist der einzige des Kapitels, der **nicht** auf lokale Konten begrenzt ist: Mitglied
+und verantwortlich sein können Konten jeder Herkunft. Er steht hier, weil die Verwaltung von Rollen
+und Anlegerechten daneben steht; sein endgültiger Platz ist das vorgesehene Kapitel „Bibliotheken und
+Berechtigungen".
+
 **Wer sie anlegt, ist verantwortlich.** Das Anlegen verlangt das Anlegerecht „Interne Gruppen
 anlegen"; die anlegende Person wird im selben Schritt erste verantwortliche Person. Verantwortliche
 sind immer Personen, nie Gruppen, und sie sind nicht automatisch Mitglied.
@@ -302,21 +307,34 @@ Gruppe steht dann ohne Verantwortliche da, bis eine neue benannt wird.
 
 **Freigabe zur Verwendung.** Eine neu angelegte interne Gruppe ist für andere zunächst **nicht**
 wählbar: Wer eine Bibliothek freigibt, findet sie weder in der Auswahl noch über ihre Kennung. Erst
-die Freigabe durch die Verantwortlichen macht sie zu einem möglichen Empfänger. Bei der Umstellung
-wurde jede interne Gruppe, die bereits eine Berechtigung, ein Anlegerecht oder Eigentum trug,
-automatisch als freigegeben übernommen — niemand verliert eine Möglichkeit, die er benutzt hat.
+die Freigabe durch die Verantwortlichen macht sie zu einem möglichen Empfänger. Das gilt für jeden
+Weg, auf dem eine Gruppe zum Zuge kommt: Berechtigung auf eine Bibliothek, Anlegerecht, Eigentum und
+Aufnahme als Mitglied eines Raums. Bei der Umstellung wurde jede interne Gruppe, die bereits eines
+davon trug, automatisch als freigegeben übernommen — niemand verliert eine Möglichkeit, die er
+benutzt hat.
 
 **Geschützte Gruppen** sind die Gruppen der Personalvertretung, der Schwerbehindertenvertretung, der
-Gleichstellung und der Personalvorgänge. Eine geschützte Gruppe ist nicht über die Suche auffindbar,
-erscheint in fremden Listen ohne Namen, und wer ihr ein Recht einräumt, sieht statt der Mitglieder die
-Ansprechstelle. **Das Kennzeichen setzen und lösen die Verantwortlichen der Gruppe selbst — die
-Systemverwaltung kann es nicht**, auch nicht mit Systemrolle.
+Gleichstellung und der Personalvorgänge. **Das Kennzeichen setzen und lösen die Verantwortlichen der
+Gruppe selbst — die Systemverwaltung kann es nicht**, auch nicht mit Systemrolle. Dasselbe gilt für
+die Freigabe zur Verwendung, sobald eine Gruppe geschützt ist: Wer die Gruppe in jede Auswahl stellen
+könnte, entschiede sonst über den Schutz, ohne das Kennzeichen anfassen zu dürfen.
+
+**Was das Kennzeichen heute bewirkt — und was noch nicht.** Gebaut sind das Kennzeichen selbst, sein
+Vorbehalt für die Verantwortlichen samt der Freigabe, und der Eintrag jeder Änderung im
+Nachweisprotokoll. Die drei Wirkungen nach außen — eine geschützte Gruppe ist nicht über die Suche
+auffindbar, erscheint in fremden Listen ohne Namen, und wer ihr ein Recht einräumt, sieht statt der
+Mitglieder die Ansprechstelle — sind **noch nicht gebaut**; sie kommen mit der gemeinsamen
+Subjekt-Auswahl (Issue #1820). Bis dahin verhält sich eine geschützte, freigegebene Gruppe gegenüber
+Dritten wie jede andere freigegebene Gruppe.
 
 **Was festgehalten wird.** Aufnahme und Entfernung eines Mitglieds werden der betroffenen Person in
 der Anwendung angezeigt (ohne E-Mail) und stehen mit der handelnden verantwortlichen Person im
 Nachweisprotokoll und in der Rechtehistorie. Benennung, Entlassung und Abgabe der Verantwortung sowie
 jede Änderung an Freigabe und Schutzkennzeichen stehen im Nachweisprotokoll; eine Rechtehistorie
-führen sie nicht — Verantwortung trägt kein Leserecht.
+führen sie nicht — Verantwortung trägt kein Leserecht. Ruft die **Systemverwaltung** die
+Mitgliederliste einer Gruppe ab, die sie nicht selbst verantwortet, steht auch dieser Abruf im
+Nachweisprotokoll — mit der Zahl der Mitglieder, ohne die Namen. Verantwortliche erzeugen beim Lesen
+ihrer eigenen Gruppe keinen Eintrag.
 
 **Gruppen aus dem Verzeichnis oder dem Anmeldetoken lassen sich hier nicht bearbeiten.** Sie haben
 keine Verantwortlichen, sondern Ansprechstellen, die die Systemverwaltung benennt; eine Oberfläche
