@@ -133,3 +133,7 @@ databaseChangeLog:
   # erster Konnektor ist die Keycloak Admin REST API (#1817, ADR-0036 Entscheidung 3).
   - include:
       file: db/changelog/changes/053-create-directory-connectors.yaml
+  # Die Rechtehistorie des Kontozustands und zugleich sein Speicher: gesperrt ist das Konto mit
+  # einem offenen BLOCKED-Intervall (#1818, ADR-0036 Entscheidungen 3 und 8).
+  - include:
+      file: db/changelog/changes/060-create-account-state-history.yaml

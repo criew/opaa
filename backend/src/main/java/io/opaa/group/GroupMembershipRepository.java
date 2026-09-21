@@ -36,10 +36,18 @@ public interface GroupMembershipRepository
   Set<UUID> findUserIdsByGroupIdAndOrganizationId(
       @Param("groupId") UUID groupId, @Param("organizationId") UUID organizationId);
 
+  /**
+   * Counts only accounts that are not blocked (#1818): a blocked person keeps their membership -
+   * the block ends the way in, not the right - but a group that reaches nobody who can act is not
+   * "handlungsfähig" (ADR-0036, Entscheidung 6). The {@code not exists} runs against {@code
+   * uk_account_state_history_open}, the partial unique index on the open interval.
+   */
   @Override
   @Query(
       "select count(m) from GroupMembership m "
-          + "where m.group.id = :groupId and m.organizationId = :organizationId")
+          + "where m.group.id = :groupId and m.organizationId = :organizationId "
+          + "and not exists (select 1 from AccountStateHistory h where h.userId = m.userId "
+          + "and h.validTo is null and h.state = io.opaa.auth.AccountState.BLOCKED)")
   long countUserIdsByGroupIdAndOrganizationId(
       @Param("groupId") UUID groupId, @Param("organizationId") UUID organizationId);
 }

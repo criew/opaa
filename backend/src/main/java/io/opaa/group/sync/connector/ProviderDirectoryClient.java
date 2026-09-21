@@ -53,7 +53,7 @@ public class ProviderDirectoryClient implements DirectoryClient {
   }
 
   @Override
-  public DirectorySnapshot fetchGroups(UUID organizationId, UUID providerId)
+  public DirectorySnapshot fetchDirectory(UUID organizationId, UUID providerId)
       throws DirectoryUnavailableException {
     DirectoryConnector connector =
         readFromDatabase(() -> connectors.findByProviderId(providerId))
@@ -82,7 +82,7 @@ public class ProviderDirectoryClient implements DirectoryClient {
               addressPolicy.requireAllowed(resolved.baseUrl(), "Admin-API-Adresse");
               return resolved;
             });
-    return keycloak.fetchGroups(address, connector.getClientId(), connector.getClientSecret());
+    return keycloak.fetchDirectory(address, connector.getClientId(), connector.getClientSecret());
   }
 
   /**

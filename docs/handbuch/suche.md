@@ -743,8 +743,9 @@ Nachweiseintrag ([Benutzerverwaltung](benutzerverwaltung.md), Abschnitt 8).
 
 ### 8.4 Wie lange die Rechtehistorie liegt
 
-Die Rechtehistorie aus Stufe 1 besteht aus Zeiträumen: je Berechtigung, Gruppenmitgliedschaft und
-Reichweite einer Bibliothek einer, mit Beginn und — sobald das Recht endet — Ende. Ein Zeitraum mit
+Die Rechtehistorie aus Stufe 1 besteht aus Zeiträumen: je Berechtigung, Gruppenmitgliedschaft,
+Reichweite einer Bibliothek, Space-Mitgliedschaft, Eigentum, Fähigkeit und Kontozustand einer, mit
+Beginn und — sobald das Recht endet — Ende. Ein Zeitraum mit
 **Ende** wird nach Ablauf der Aufbewahrungshöchstdauer automatisch gelöscht; der Lauf dafür ist
 monatlich und lässt sich nicht abschalten. Ein **offener** Zeitraum — ein Recht, das gerade gilt —
 wird nie gelöscht, so weit sein Beginn auch zurückliegt.

@@ -15,6 +15,10 @@ import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.LibraryOwnerType;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.LockReason;
+import io.opaa.auth.AccountStateHistory;
+import io.opaa.auth.AccountStateHistoryCause;
+import io.opaa.auth.AccountStateHistoryRepository;
+import io.opaa.auth.AccountStateService;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.DevAuthFilter;
 import io.opaa.auth.User;
@@ -33,6 +37,7 @@ import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OwnLibraryFixtures;
 import java.time.Clock;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -70,6 +75,12 @@ class ExternalAccessTokenAuthenticationIntegrationTest {
     "/api/v1/notifications"
   };
 
+  /**
+   * The correlation reference every state change of this class carries, so its audit rows are
+   * reachable for the cleanup without an unfiltered delete on the shared table.
+   */
+  private static final String CORRELATION_REF = "external-access-account-state-test";
+
   @Autowired private MockMvc mockMvc;
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private OwnLibraryFixtures ownLibraryFixtures;
@@ -81,9 +92,13 @@ class ExternalAccessTokenAuthenticationIntegrationTest {
   @Autowired private ExternalAccessTokenService tokenService;
   @Autowired private LocalUserService localUsers;
   @Autowired private LocalAccountFixturesFactory localAccountFixtures;
+  @Autowired private AccountStateService accountState;
+  @Autowired private AccountStateHistoryRepository accountStateHistory;
   @Autowired private Clock clock;
 
   private LocalAccountFixtures fixtures;
+  private final List<UUID> providerAccounts = new ArrayList<>();
+  private final List<UUID> providerAccountTokens = new ArrayList<>();
 
   private User owner;
   private User administrator;
@@ -175,10 +190,60 @@ class ExternalAccessTokenAuthenticationIntegrationTest {
   @AfterEach
   void tearDown() {
     removeOwnTokens();
+    removeProviderAccounts();
     // Takes the local accounts of this method with their tokens (ON DELETE CASCADE) and with the
     // audit rows naming them.
     fixtures.cleanUp();
     ownLibraryFixtures.removeLibraries(libraryId);
+  }
+
+  /**
+   * The provider accounts a method of this class created, with everything that points at them.
+   * {@code user_id} of the state history is {@code ON DELETE RESTRICT}, so it goes first; the audit
+   * rows are reached through the correlation reference this class hands to every state change,
+   * never through an unfiltered delete on the shared table.
+   */
+  private void removeProviderAccounts() {
+    if (providerAccounts.isEmpty()) {
+      return;
+    }
+    accountStateHistory.deleteByUserIdIn(providerAccounts);
+    for (UUID tokenId : providerAccountTokens) {
+      jdbcTemplate.update("DELETE FROM audit_log WHERE object_id = ?", tokenId.toString());
+    }
+    jdbcTemplate.update("DELETE FROM audit_log WHERE correlation_ref = ?", CORRELATION_REF);
+    for (UUID userId : providerAccounts) {
+      jdbcTemplate.update("DELETE FROM external_access_tokens WHERE user_id = ?", userId);
+      users.deleteById(userId);
+    }
+    providerAccounts.clear();
+    providerAccountTokens.clear();
+  }
+
+  /** A provider account of this organization - the kind a directory run can block (#1818). */
+  private User createProviderAccount() {
+    User account =
+        new User(
+            "verzeichnis-" + UUID.randomUUID(),
+            "https://idp.test.example/realms/beschaeftigte",
+            "verzeichnis@example.com",
+            "Verzeichniskonto");
+    account.setOrganizationId(owner.getOrganizationId());
+    User saved = users.save(account);
+    providerAccounts.add(saved.getId());
+    return saved;
+  }
+
+  private ExternalAccessTokenService.IssuedExternalAccessToken issueFor(User account) {
+    ExternalAccessTokenService.IssuedExternalAccessToken issued =
+        tokenService.issue(
+            account.getId(),
+            account.getOrganizationId(),
+            "Für " + account.getId(),
+            List.of(libraryId),
+            clock.instant().plus(Duration.ofDays(10)));
+    providerAccountTokens.add(issued.token().getId());
+    return issued;
   }
 
   private void removeOwnTokens() {
@@ -354,6 +419,56 @@ class ExternalAccessTokenAuthenticationIntegrationTest {
         .singleElement()
         .asString()
         .contains(ExternalAccessTokenRevocationReason.ACCOUNT_LIFECYCLE.name());
+  }
+
+  /**
+   * #1818, ADR-0035: the block of a provider account by the directory run ends its access tokens in
+   * the same transaction, through the listener of {@code AccountAccessEndedEvent} - the same rule
+   * and the same Anlass a locked local account gets. "Seine Sitzungen und Zugangstokens werden
+   * unwirksam" is otherwise a claim with a whole mechanism between it and the code.
+   */
+  @Test
+  void blockingAProviderAccountFromTheDirectoryEndsItsAccessTokens() throws Exception {
+    User account = createProviderAccount();
+    ExternalAccessTokenService.IssuedExternalAccessToken issued = issueFor(account);
+
+    accountState.apply(
+        account,
+        AccountStateHistoryCause.DIRECTORY_ABSENT,
+        UUID.randomUUID(),
+        null,
+        CORRELATION_REF);
+
+    ExternalAccessToken ended = tokens.findById(issued.token().getId()).orElseThrow();
+    assertThat(ended.getRevocationReason())
+        .isEqualTo(ExternalAccessTokenRevocationReason.ACCOUNT_LIFECYCLE);
+    assertRefusedWith(issued.rawValue(), "token_revoked");
+  }
+
+  /**
+   * The per-call half of the same promise. The interval is written straight to the history here, so
+   * no event runs and the token row stays active - the state a revocation that somehow missed a row
+   * would leave behind. The authenticator refuses it on the account state alone, with the marker
+   * every other unusable account gets.
+   */
+  @Test
+  void aStillActiveTokenOfABlockedAccountIsRefusedOnTheAccountStateAlone() throws Exception {
+    User account = createProviderAccount();
+    ExternalAccessTokenService.IssuedExternalAccessToken issued = issueFor(account);
+
+    accountStateHistory.save(
+        AccountStateHistory.open(
+            account.getId(),
+            account.getOrganizationId(),
+            AccountStateHistoryCause.DIRECTORY_DISABLED,
+            UUID.randomUUID(),
+            null,
+            clock.instant()));
+
+    assertThat(tokens.findById(issued.token().getId()).orElseThrow().getRevocationReason())
+        .as("the guard under test is the one that has to work without the revocation")
+        .isNull();
+    assertRefusedWith(issued.rawValue(), "account_not_active");
   }
 
   /** Issues a token for a local account against the shared library, and returns its id. */

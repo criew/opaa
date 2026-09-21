@@ -8,9 +8,11 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.SpaceRole;
 import io.opaa.api.types.SpaceVisibility;
+import io.opaa.auth.AccountStateService;
 import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.GroupSubject;
 import io.opaa.permission.GroupSubjectDirectory;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -34,9 +36,10 @@ class SpaceAccessPolicyTest {
 
   private final GroupMembershipResolver groupMemberships = mock(GroupMembershipResolver.class);
   private final GroupSubjectDirectory groupDirectory = mock(GroupSubjectDirectory.class);
+  private final AccountStateService accountState = mock(AccountStateService.class);
   private final SpaceAccessPolicy policy =
       new SpaceAccessPolicy(
-          groupMemberships, groupDirectory, mock(SpaceMembershipRepository.class));
+          groupMemberships, groupDirectory, mock(SpaceMembershipRepository.class), accountState);
 
   private Space spaceWithOwner(UUID ownerId) {
     return new Space("Team", null, false, SpaceVisibility.PRIVATE, ownerId, ORGANIZATION);
@@ -194,16 +197,43 @@ class SpaceAccessPolicyTest {
     assertThat(policy.hasCapableAdminAfter(space, ownerRow, null)).isEqualTo(expected);
   }
 
-  /**
-   * The owner's own row always counts, whatever role it carries - which is why "Nachfolge offen" is
-   * not reachable for a space through the API today (see {@link
-   * SpaceAccessPolicy#hasCapableAdmin}).
-   */
+  /** The owner's own row always counts, whatever role it carries - as long as it can act. */
   @Test
   void theOwnersOwnRowCountsAsAdminWhateverRoleItCarries() {
     UUID owner = UUID.randomUUID();
     Space space = spaceWithOwner(owner);
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.MEMBER, ORGANIZATION));
+
+    assertThat(policy.hasCapableAdmin(space)).isTrue();
+  }
+
+  /**
+   * #1818 is what makes "Nachfolge offen" reachable for a space at all: an account the directory
+   * run has blocked keeps its membership and its role but can no longer act, so it stops holding
+   * the space's succession closed. Before the account state existed, the owner's own row always
+   * qualified and this state could not arise.
+   */
+  @Test
+  void aBlockedOwnerNoLongerKeepsTheSuccessionClosed() {
+    UUID owner = UUID.randomUUID();
+    Space space = spaceWithOwner(owner);
+    space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, ORGANIZATION));
+    when(accountState.blockedAmong(List.of(owner))).thenReturn(Set.of(owner));
+
+    assertThat(policy.hasCapableAdmin(space)).isFalse();
+  }
+
+  /**
+   * One usable account among the {@code ADMIN} rows is enough - the query is batched, not paged.
+   */
+  @Test
+  void oneUnblockedAdminPersonAmongBlockedOnesIsEnough() {
+    UUID owner = UUID.randomUUID();
+    UUID admin = UUID.randomUUID();
+    Space space = spaceWithOwner(owner);
+    space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, ORGANIZATION));
+    space.addMembership(SpaceMembership.ofUser(admin, SpaceRole.ADMIN, ORGANIZATION));
+    when(accountState.blockedAmong(List.of(owner, admin))).thenReturn(Set.of(owner));
 
     assertThat(policy.hasCapableAdmin(space)).isTrue();
   }

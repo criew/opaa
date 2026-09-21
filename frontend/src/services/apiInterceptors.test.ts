@@ -117,6 +117,9 @@ describe('setupAuthInterceptors', () => {
     ['local_accounts_disabled', 'local_accounts_disabled'],
     ['account_locked:failed_logins', 'account_locked:failed_logins'],
     ['account_expired', 'account_expired'],
+    // #1818: a block from the directory run - a renewed provider token would be refused for the
+    // very same reason, so the session ends rather than renewing.
+    ['account_blocked:directory', 'account_blocked:directory'],
     ['session_revoked:password_changed', 'session_revoked:password_changed'],
     ['account_not_active', 'account_not_active'],
     ['unknown_account', 'unknown_account'],

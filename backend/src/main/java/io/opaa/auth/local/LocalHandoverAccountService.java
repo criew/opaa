@@ -9,6 +9,7 @@ import io.opaa.api.types.ProviderType;
 import io.opaa.api.types.SystemRole;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.auth.AccountAccessEndedEvent;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.LocalIssuer;
 import io.opaa.auth.User;
@@ -255,7 +256,7 @@ public class LocalHandoverAccountService {
     }
     // The local access of this account is over: the person signs in through the provider from now
     // on, and every merkmal that was bound to the local account ends with it.
-    events.publishEvent(LocalAccountAccessEndedEvent.by(user, user.getId()));
+    events.publishEvent(AccountAccessEndedEvent.by(user, user.getId()));
     return new HandedOver(user, provider, scope);
   }
 

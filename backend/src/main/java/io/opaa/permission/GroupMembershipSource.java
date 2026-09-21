@@ -23,10 +23,11 @@ public interface GroupMembershipSource {
   Set<UUID> findUserIdsByGroupIdAndOrganizationId(UUID groupId, UUID organizationId);
 
   /**
-   * How many members that same scope holds, without loading them. Separate from the method above
-   * because {@link GroupMembershipResolver#activeMemberCount} is on the list path of every space
-   * ({@code SpaceService#listSpaces}), where loading a whole department to learn its size is the
-   * difference between one indexed count and a row set per space.
+   * How many <em>active</em> members that same scope holds, without loading them - see {@link
+   * GroupMembershipResolver#activeMemberCount} for what "active" narrows by and what it does not.
+   * Separate from the method above because that method is on the list path of every space ({@code
+   * SpaceService#listSpaces}), where loading a whole department to learn its size is the difference
+   * between one indexed count and a row set per space.
    */
   long countUserIdsByGroupIdAndOrganizationId(UUID groupId, UUID organizationId);
 }

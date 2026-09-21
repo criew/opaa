@@ -617,6 +617,8 @@ describe('authStore - local session', () => {
     ['account_locked:failed_logins', /mehreren Fehlversuchen/],
     ['account_locked:admin', /von der Systemverwaltung gesperrt/],
     ['account_expired', /abgelaufen/],
+    // #1818, Personalrat C3: Grund und Ansprechstelle, nicht nur eine Abweisung.
+    ['account_blocked:directory', /Verzeichnis Ihrer Organisation gesperrt/],
     ['session_revoked:password_changed', /Passwort geändert/],
     ['session_revoked:admin_reset', /Passwort zurückgesetzt/],
     ['session_revoked:admin_action', /von der Systemverwaltung beendet/],

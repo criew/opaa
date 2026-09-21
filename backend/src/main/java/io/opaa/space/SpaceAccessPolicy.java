@@ -1,11 +1,14 @@
 package io.opaa.space;
 
 import io.opaa.api.types.SpaceRole;
+import io.opaa.auth.AccountStateService;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.GroupSubject;
 import io.opaa.permission.GroupSubjectDirectory;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
@@ -39,14 +42,17 @@ public class SpaceAccessPolicy {
   private final GroupMembershipResolver groupMemberships;
   private final GroupSubjectDirectory groupDirectory;
   private final SpaceMembershipRepository membershipRepository;
+  private final AccountStateService accountState;
 
   SpaceAccessPolicy(
       GroupMembershipResolver groupMemberships,
       GroupSubjectDirectory groupDirectory,
-      SpaceMembershipRepository membershipRepository) {
+      SpaceMembershipRepository membershipRepository,
+      AccountStateService accountState) {
     this.groupMemberships = groupMemberships;
     this.groupDirectory = groupDirectory;
     this.membershipRepository = membershipRepository;
+    this.accountState = accountState;
   }
 
   /**
@@ -158,17 +164,23 @@ public class SpaceAccessPolicy {
   }
 
   /**
-   * Whether the space still has somebody who can act for it: the owner, an {@code ADMIN} person, or
-   * an {@code ADMIN} group that is capable of acting. Its negation is the derived state "Nachfolge
-   * offen" (ADR-0036, Entscheidung 6) - derived on every read, never stored, so no write path can
-   * forget to set or clear a flag.
+   * Whether the space still has somebody who can act for it: the owner or an {@code ADMIN} person
+   * whose account is usable, or an {@code ADMIN} group that is capable of acting. Its negation is
+   * the derived state "Nachfolge offen" (ADR-0036, Entscheidung 6) - derived on every read, never
+   * stored, so no write path can forget to set or clear a flag.
    *
-   * <p><b>Two limits, stated rather than hidden.</b> First, the person half is unconditional: an
-   * account state that would make a person incapable arrives with #1818, so until then every
-   * account counts. Second, the owner is reached through their own membership row, and every space
-   * created or transferred through the API has one - so "Nachfolge offen" is <em>not reachable</em>
-   * for a space today. What is decided here today is the group half: whether a group still counts
-   * as this space's {@code ADMIN}.
+   * <p><b>The person half narrows by the account state since #1818:</b> an account the directory
+   * run has blocked keeps its membership and its role but can no longer act, so it does not keep
+   * the space's succession closed. That is what makes "Nachfolge offen" reachable at all - until a
+   * block existed, the owner's own membership row always qualified.
+   *
+   * <p><b>One limit, stated rather than hidden:</b> the lock of a <em>local</em> account (ADR-0033)
+   * does not narrow here, for the reason {@code GroupMembershipResolver#activeMemberCount} states
+   * for the group half.
+   *
+   * <p><b>Cost:</b> one indexed lookup over this space's qualifying person rows, batched - not one
+   * per row. On the list path of every space ({@code SpaceService#listSpaces}) that is one query
+   * per space, the same order the group half already costs.
    *
    * <p><b>What the state does not do yet:</b> ADR-0036, Entscheidung 6 freezes an object's reach
    * while its succession is open - no new grants, no higher release level, for a space no new
@@ -187,11 +199,18 @@ public class SpaceAccessPolicy {
    * management action.
    */
   public boolean hasCapableAdminAfter(Space space, SpaceMembership changed, SpaceRole newRole) {
-    // Person rows first, and deliberately in two passes: deciding a person costs nothing, deciding
-    // a group costs a directory lookup and a count. On the list path of every space
-    // (SpaceService#listSpaces) the first pass answers almost every case.
+    // Person rows first, and deliberately in two passes: deciding the people costs one batched
+    // lookup, deciding a group costs a directory lookup and a count per group. On the list path of
+    // every space (SpaceService#listSpaces) the first pass answers almost every case.
+    List<UUID> personCandidates = new ArrayList<>();
     for (SpaceMembership membership : space.getMemberships()) {
       if (membership.isUserSubject() && qualifies(space, membership, changed, newRole)) {
+        personCandidates.add(membership.getUserId());
+      }
+    }
+    if (!personCandidates.isEmpty()) {
+      Set<UUID> blocked = accountState.blockedAmong(personCandidates);
+      if (personCandidates.stream().anyMatch(userId -> !blocked.contains(userId))) {
         return true;
       }
     }

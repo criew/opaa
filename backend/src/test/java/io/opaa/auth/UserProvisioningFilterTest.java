@@ -22,6 +22,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 class UserProvisioningFilterTest {
 
   @Mock private UserService userService;
+  @Mock private AccountStateService accountState;
   @Mock private FilterChain filterChain;
 
   @AfterEach
@@ -43,7 +44,7 @@ class UserProvisioningFilterTest {
     when(userService.provisionFromToken(jwt)).thenReturn(provisioned);
 
     MockHttpServletRequest request = new MockHttpServletRequest();
-    UserProvisioningFilter filter = new UserProvisioningFilter(userService);
+    UserProvisioningFilter filter = new UserProvisioningFilter(userService, accountState);
     filter.doFilter(request, new MockHttpServletResponse(), filterChain);
 
     verify(userService).provisionFromToken(jwt);

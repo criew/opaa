@@ -84,10 +84,13 @@ public class GroupMembershipResolver {
    * How many active accounts a grant or a space membership to this group currently reaches - the
    * figure ADR-0036, Entscheidung 9 stores at the moment of the grant and compares against "today".
    *
-   * <p><b>Today every member account counts as active.</b> A general account state (active/blocked)
-   * does not exist yet - {@code LocalAccountState} is the derived state of a <em>local</em>
-   * credential, not of the account - and #1818 introduces it. This method is the one place that has
-   * to narrow then, so no caller carries its own notion of "active".
+   * <p><b>Active means "not blocked by the directory run"</b> (#1818): a blocked account keeps its
+   * membership and its rights, but it can no longer act, so it does not make a group capable.
+   * <b>The one state it does not yet narrow by</b> is the lock of a <em>local</em> account ({@code
+   * LocalAccountState}, ADR-0033): that state is derived from {@code local_credentials} against the
+   * current instant and has no counterpart in the one indexed condition this count runs on. A
+   * locked local member therefore still counts here. The limit is named rather than hidden; #1818
+   * covers the directory lifecycle, the local one is its own (ADR-0033).
    *
    * <p>Counts in the database rather than sizing {@link #resolveUserIds}: this sits on the list
    * path of every space a caller sees, and a department's whole membership is a large answer to a

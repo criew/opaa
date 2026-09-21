@@ -1,5 +1,6 @@
 package io.opaa.externalaccess.token;
 
+import io.opaa.auth.AccountStateService;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.auth.local.LocalCredentials;
@@ -34,6 +35,7 @@ public class ExternalAccessTokenAuthenticator {
   private final ExternalAccessTokenRepository tokens;
   private final UserRepository users;
   private final LocalCredentialsRepository credentials;
+  private final AccountStateService accountState;
   private final LocalAuthKeyService keys;
   private final ExternalAccessSettingsService settings;
   private final Clock clock;
@@ -42,12 +44,14 @@ public class ExternalAccessTokenAuthenticator {
       ExternalAccessTokenRepository tokens,
       UserRepository users,
       LocalCredentialsRepository credentials,
+      AccountStateService accountState,
       LocalAuthKeyService keys,
       ExternalAccessSettingsService settings,
       Clock clock) {
     this.tokens = tokens;
     this.users = users;
     this.credentials = credentials;
+    this.accountState = accountState;
     this.keys = keys;
     this.settings = settings;
     this.clock = clock;
@@ -114,6 +118,12 @@ public class ExternalAccessTokenAuthenticator {
     if (row != null && !row.isLoginCapable(now)) {
       // A token that outlives a lock or an expiry would be the most convenient way around the
       // account lifecycle - access-control.md applies the same rule to everything else.
+      return new Result.Refused(ExternalAccessTokenRejection.ACCOUNT_NOT_ACTIVE);
+    }
+    // The same rule for a provider account the directory run has blocked (#1818). The token rows
+    // of such an account are already revoked by the listener of AccountAccessEndedEvent; this is
+    // the per-call half of that promise, for a row that revocation somehow missed.
+    if (accountState.isBlocked(user.getId())) {
       return new Result.Refused(ExternalAccessTokenRejection.ACCOUNT_NOT_ACTIVE);
     }
     return new Result.Authenticated(user, token.getId(), token.getLastUsedOn());

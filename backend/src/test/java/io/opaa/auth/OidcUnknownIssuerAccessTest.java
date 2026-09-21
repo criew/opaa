@@ -115,6 +115,10 @@ class OidcUnknownIssuerAccessTest {
   @Autowired private MockMvc mockMvc;
   @MockitoBean private UserService userService;
 
+  // #1818: the production chain refuses a blocked account in UserProvisioningFilter; this slice
+  // scans no service package, so the state answers "not blocked" for every account here.
+  @MockitoBean private AccountStateService accountState;
+
   // Der Controller dieser Scheibe liest seit ADR-0033 den Anlagegrund des eigenen Kontos; die
   // @WebMvcTest-Scheibe scannt das Paket io.opaa.auth.local nicht mit.
   @MockitoBean private LocalAccountSelfDisclosure localAccountSelfDisclosure;

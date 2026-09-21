@@ -1,5 +1,6 @@
 package io.opaa.group.sync.keycloak;
 
+import io.opaa.group.sync.DirectoryAccount;
 import io.opaa.group.sync.DirectoryGroup;
 import io.opaa.group.sync.DirectorySnapshot;
 import io.opaa.group.sync.DirectoryUnavailableException;
@@ -35,10 +36,18 @@ import tools.jackson.databind.JsonNode;
  * children come from {@code /groups/{id}/children}. Only groups that report children are asked for
  * them.
  *
- * <p><b>A truncated read is a failure, not a smaller directory.</b> Both ceilings of {@link
- * KeycloakDirectoryProperties} raise {@link DirectoryUnavailableException} instead of returning
+ * <p><b>A truncated read is a failure, not a smaller directory.</b> Every ceiling of {@link
+ * KeycloakDirectoryProperties} raises {@link DirectoryUnavailableException} instead of returning
  * what was read so far: a truncated group list is indistinguishable from a reorganisation that
- * dissolved everything beyond it, and the run would apply the latter.
+ * dissolved everything beyond it, a truncated account list from a realm everybody beyond it has
+ * left - and the run would apply the latter in both cases.
+ *
+ * <p><b>Account states come from the same reading</b> (#1818, ADR-0036 Entscheidung 3): after the
+ * group tree, the realm's complete account list is read from {@code /users} - one paginated read,
+ * covered by the very {@code view-users} role the member lists already need, so the role
+ * requirement of the Handbuch is unchanged. Groups and accounts of one run therefore describe one
+ * instant, which is what lets a confirmed plan apply a block that belonged to the reading it was
+ * shown for.
  */
 public class KeycloakDirectoryConnector {
 
@@ -62,9 +71,9 @@ public class KeycloakDirectoryConnector {
 
   /**
    * Signs in with the service account and reads the realm's complete group tree with its direct
-   * memberships.
+   * memberships, plus the realm's complete account list with each account's {@code enabled} flag.
    */
-  public DirectorySnapshot fetchGroups(
+  public DirectorySnapshot fetchDirectory(
       KeycloakRealmAddress address, String clientId, String clientSecret)
       throws DirectoryUnavailableException {
     KeycloakAdminApi api = api(address, clientId, clientSecret);
@@ -87,12 +96,39 @@ public class KeycloakDirectoryConnector {
         collect(api, node, parentId, groups, pending);
       }
     }
+    List<DirectoryAccount> accounts = accounts(api);
     log.info(
-        "Keycloak directory: read {} group(s) of realm {} at {}",
+        "Keycloak directory: read {} group(s) and {} account(s) of realm {} at {}",
         groups.size(),
+        accounts.size(),
         address.realm(),
         address.baseUrl());
-    return new DirectorySnapshot(clock.instant(), groups);
+    return new DirectorySnapshot(clock.instant(), groups, accounts);
+  }
+
+  /**
+   * The realm's accounts. An entry without an {@code id} is skipped rather than treated as an error
+   * - the same handling a group without an id gets - but it is logged, because a skipped account
+   * would otherwise look like a departure on the next run.
+   */
+  private List<DirectoryAccount> accounts(KeycloakAdminApi api)
+      throws DirectoryUnavailableException {
+    List<DirectoryAccount> accounts = new ArrayList<>();
+    for (JsonNode node :
+        pages(
+            first -> api.users(first, properties.pageSize()),
+            properties.maxAccounts(),
+            accountCeilingMessage())) {
+      String id = node.path("id").asString(null);
+      if (id == null || id.isBlank()) {
+        log.warn("Keycloak directory: skipping an account the directory reported without id");
+        continue;
+      }
+      // Absent "enabled" means the representation does not say - read as usable, so a Keycloak
+      // version that omits it never blocks the whole realm.
+      accounts.add(new DirectoryAccount(id, node.path("enabled").asBoolean(true)));
+    }
+    return accounts;
   }
 
   /**
@@ -171,6 +207,12 @@ public class KeycloakDirectoryConnector {
     return "Das Verzeichnis meldet mehr als "
         + properties.maxGroups()
         + " Gruppen. Der Lauf bricht ab, statt eine abgeschnittene Liste anzuwenden.";
+  }
+
+  private String accountCeilingMessage() {
+    return "Das Verzeichnis meldet mehr als "
+        + properties.maxAccounts()
+        + " Konten. Der Lauf bricht ab, statt eine abgeschnittene Kontenliste anzuwenden.";
   }
 
   private String memberCeilingMessage() {

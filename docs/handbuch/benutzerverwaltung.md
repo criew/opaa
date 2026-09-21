@@ -186,6 +186,14 @@ mehr existiert — das Konto bleibt, der Weg hinein ist zu. In der Spalte Herkun
 Anbieter", und der Tooltip nennt den Issuer. Sein Zeilenmenü bietet „Rolle ändern"
 (Abschnitt 7) und den Weg zur Anbieterverwaltung.
 
+**Ein Anbieterkonto kann darüber hinaus aus dem Verzeichnis gesperrt sein.** Ist für seinen Anbieter
+der Verzeichnisabgleich eingeschaltet und meldet das Verzeichnis das Konto als gesperrt oder gar
+nicht mehr, entzieht der nächste Lauf den Zugang — ohne Handgriff in dieser Verwaltung, und ohne
+dass an diesem Konto etwas zu entsperren wäre: Zurückgenommen wird eine solche Sperre im Verzeichnis,
+und der nächste Lauf holt sie zurück. Rechte, Mitgliedschaften und Eigentum bleiben dabei
+unangetastet. Diese Liste zeigt den Zustand nicht an; was geschieht und was nicht, steht in
+[Deployment → Kontostatus aus dem Verzeichnis](deployment.md#verzeichnisabgleich-je-anbieter).
+
 Drei Filter bedienen die Prüfpflicht — sie beschreiben lokale Konten und blenden Anbieterkonten
 aus:
 

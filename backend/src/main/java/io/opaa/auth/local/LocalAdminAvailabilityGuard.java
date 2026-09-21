@@ -2,6 +2,7 @@ package io.opaa.auth.local;
 
 import io.opaa.api.types.ProviderType;
 import io.opaa.api.types.SystemRole;
+import io.opaa.auth.AccountStateService;
 import io.opaa.auth.AuthProperties;
 import io.opaa.auth.LocalIssuer;
 import io.opaa.auth.User;
@@ -12,8 +13,10 @@ import io.opaa.auth.oidc.OidcProviderRepository;
 import io.opaa.common.ConflictException;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -26,9 +29,9 @@ import org.springframework.transaction.annotation.Transactional;
  * Entscheidung 4). Login capable is a {@code SYSTEM_ADMIN} that is either a local account for which
  * {@link LocalAccountAccess#isLoginCapable} holds - the one rule the login, the rotation and the
  * token validator apply, not a second formulation - or an account of an <em>enabled</em> OIDC
- * provider (in the {@code dev} mode: of the dev issuer, the trusted provider of ADR-0005). An
- * administrator of a disabled provider, a locked, expired or still invited local account does not
- * count.
+ * provider (in the {@code dev} mode: of the dev issuer, the trusted provider of ADR-0005) - and in
+ * both cases one the directory run has not blocked (#1818). An administrator of a disabled
+ * provider, a locked, expired or still invited local account and a blocked account do not count.
  *
  * <p>Every path that could remove the last such administrator runs through here under the advisory
  * lock {@link UserRepository#lockRoleChanges} of the organization, so two concurrent changes never
@@ -57,6 +60,7 @@ public class LocalAdminAvailabilityGuard {
   private final UserRepository users;
   private final LocalCredentialsRepository credentials;
   private final OidcProviderRepository providers;
+  private final AccountStateService accountState;
   private final AuthProperties authProperties;
   private final Clock clock;
 
@@ -64,11 +68,13 @@ public class LocalAdminAvailabilityGuard {
       UserRepository users,
       LocalCredentialsRepository credentials,
       OidcProviderRepository providers,
+      AccountStateService accountState,
       AuthProperties authProperties,
       Clock clock) {
     this.users = users;
     this.credentials = credentials;
     this.providers = providers;
+    this.accountState = accountState;
     this.authProperties = authProperties;
     this.clock = clock;
   }
@@ -81,7 +87,7 @@ public class LocalAdminAvailabilityGuard {
   @Transactional
   public int withdrawSystemAdminIfAnotherRemains(User user, SystemRole target) {
     users.lockRoleChanges(user.getOrganizationId());
-    if (countLoginCapable(user.getOrganizationId(), user.getId(), null) == 0) {
+    if (countLoginCapable(user.getOrganizationId(), Set.of(user.getId()), null) == 0) {
       return 0;
     }
     return users.changeRoleIfStill(user.getId(), SystemRole.SYSTEM_ADMIN, target);
@@ -95,9 +101,28 @@ public class LocalAdminAvailabilityGuard {
   @Transactional(propagation = Propagation.MANDATORY)
   public void requireAnotherLoginCapableAdmin(UUID organizationId, UUID excludedUserId) {
     users.lockRoleChanges(organizationId);
-    if (countLoginCapable(organizationId, excludedUserId, null) == 0) {
+    if (countLoginCapable(organizationId, Set.of(excludedUserId), null) == 0) {
       throw new ConflictException(LAST_ADMIN_MESSAGE, ERROR_CODE);
     }
+  }
+
+  /**
+   * How many login-capable administrators would remain if every account in {@code excludedUserIds}
+   * were blocked - the question a directory run asks before it takes the way in from an
+   * administrator (#1818, ADR-0036 Entscheidung 6, Schutzregel 2). Takes the same advisory lock the
+   * {@code require...} checks take, so the count and the caller's own write commit under it; hence
+   * the same {@code MANDATORY} propagation and the same obligation on the caller to be inside a
+   * transaction.
+   *
+   * <p>Counts rather than refuses, because a run is no request a caller could retry differently: a
+   * {@code 409} would abandon the whole run over one account, including the blocks that are
+   * entirely unproblematic.
+   */
+  @Transactional(propagation = Propagation.MANDATORY)
+  public long countLoginCapableAdminsExcluding(
+      UUID organizationId, Collection<UUID> excludedUserIds) {
+    users.lockRoleChanges(organizationId);
+    return countLoginCapable(organizationId, Set.copyOf(excludedUserIds), null);
   }
 
   /**
@@ -108,7 +133,7 @@ public class LocalAdminAvailabilityGuard {
   @Transactional(propagation = Propagation.MANDATORY)
   public void requireLoginCapableAdminWithoutProvider(UUID organizationId, UUID providerId) {
     users.lockRoleChanges(organizationId);
-    if (countLoginCapable(organizationId, null, providerId) == 0) {
+    if (countLoginCapable(organizationId, Set.of(), providerId) == 0) {
       throw new ConflictException(LOCAL_ADMIN_REQUIRED_MESSAGE, ERROR_CODE);
     }
   }
@@ -116,11 +141,11 @@ public class LocalAdminAvailabilityGuard {
   /** How many login-capable administrators the organization has right now (no lock). */
   @Transactional(readOnly = true)
   public long countLoginCapableSystemAdmins(UUID organizationId) {
-    return countLoginCapable(organizationId, null, null);
+    return countLoginCapable(organizationId, Set.of(), null);
   }
 
   private long countLoginCapable(
-      UUID organizationId, UUID excludedUserId, UUID excludedProviderId) {
+      UUID organizationId, Set<UUID> excludedUserIds, UUID excludedProviderId) {
     Instant now = clock.instant();
     List<OidcProvider> enabledProviders =
         providers.findAllByEnabledTrueOrderBySortOrderAscDisplayNameAsc().stream()
@@ -131,8 +156,11 @@ public class LocalAdminAvailabilityGuard {
         DEV_MODE.equals(authProperties.mode()) ? authProperties.dev().issuer() : null;
     List<User> admins =
         users.findByOrganizationIdAndSystemRole(organizationId, SystemRole.SYSTEM_ADMIN).stream()
-            .filter(admin -> !admin.getId().equals(excludedUserId))
+            .filter(admin -> !excludedUserIds.contains(admin.getId()))
             .toList();
+    // A blocked account cannot sign in whatever its issuer says (#1818) - read once for the whole
+    // set rather than per administrator.
+    Set<UUID> blocked = accountState.blockedAmong(admins.stream().map(User::getId).toList());
     Map<UUID, LocalCredentials> localRows =
         credentials
             .findAllById(
@@ -143,6 +171,7 @@ public class LocalAdminAvailabilityGuard {
             .stream()
             .collect(Collectors.toMap(LocalCredentials::getUserId, Function.identity()));
     return admins.stream()
+        .filter(admin -> !blocked.contains(admin.getId()))
         .filter(admin -> isLoginCapable(admin, localRows, enabledProviders, devIssuer, now))
         .count();
   }

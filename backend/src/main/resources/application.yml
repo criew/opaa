@@ -556,6 +556,9 @@ opaa:
       # truncated list, which is indistinguishable from a reorganisation that dissolved the rest.
       max-groups: ${OPAA_DIRECTORY_SYNC_KEYCLOAK_MAX_GROUPS:5000}
       max-members-per-group: ${OPAA_DIRECTORY_SYNC_KEYCLOAK_MAX_MEMBERS_PER_GROUP:20000}
+      # Same reasoning for the realm's account list (#1818): a truncated read looks exactly like a
+      # realm in which everybody beyond the ceiling has departed, and the run would block them all.
+      max-accounts: ${OPAA_DIRECTORY_SYNC_KEYCLOAK_MAX_ACCOUNTS:50000}
       connect-timeout: ${OPAA_DIRECTORY_SYNC_KEYCLOAK_CONNECT_TIMEOUT:5s}
       request-timeout: ${OPAA_DIRECTORY_SYNC_KEYCLOAK_REQUEST_TIMEOUT:30s}
   security:

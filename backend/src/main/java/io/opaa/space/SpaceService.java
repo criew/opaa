@@ -468,14 +468,11 @@ public class SpaceService {
    * the 400 the pre-#1815 owner protection used. A group counts as {@code ADMIN} while it is
    * capable of acting.
    *
-   * <p><b>Today this check never fires</b>, and the reason belongs here rather than in a review
-   * thread: a space always has an owner, the owner is always a member, and until #1818 gives
-   * accounts a state every person is capable - so the owner's own row is always a capable {@code
-   * ADMIN}, and the only reachable instance of the rule is the owner's own removal or downgrade,
-   * which the two explicit guards above refuse first (with the same 409 the ADR's nit asks for).
-   * The check is nevertheless the structural home of the rule: ADR-0036, Schutzregel 2 names the
-   * account lock as the one action allowed to create the state, so #1818 activates it without
-   * touching this call site. Its group half is exercised directly in {@code SpaceAccessPolicyTest}.
+   * <p><b>Since #1818 this check fires on its own account half too.</b> A space whose owner's
+   * account the directory run has blocked no longer has a capable {@code ADMIN} through that
+   * owner's row, so removing or downgrading the one remaining {@code ADMIN} member is refused here
+   * - the first instance of the rule that neither explicit guard above catches first. Its group
+   * half is exercised directly in {@code SpaceAccessPolicyTest}.
    */
   private void requireCapableAdminRemains(Space space, SpaceMembership changed, SpaceRole newRole) {
     if (!accessPolicy.hasCapableAdminAfter(space, changed, newRole)) {

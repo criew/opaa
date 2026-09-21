@@ -13978,6 +13978,9 @@ components:
         - groupsDissolved
         - unmaintainedTokenGroups
         - membershipChanges
+        - accountsBlocked
+        - accountsReactivated
+        - accountsProtected
         - membershipsAdded
         - membershipsRemoved
         - changedFraction
@@ -14015,6 +14018,32 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/DirectorySyncMembershipChange"
+        accountsBlocked:
+          type: array
+          description: >
+            The accounts this run would block: the directory reports them as disabled, or no
+            longer reports them at all (ADR-0036, Entscheidung 3). Memberships, grants and
+            ownership stay untouched - only the way in ends, which is what makes the block
+            reversible. Named person by person, not only counted: a plan that says "40 Konten" and
+            one that says who is among them are not the same decision.
+          items:
+            $ref: "#/components/schemas/DirectorySyncUserRef"
+        accountsReactivated:
+          type: array
+          description: >
+            The accounts this run would unblock because the directory reports them as usable
+            again - the reversal of a block, through the same mechanism that made it.
+          items:
+            $ref: "#/components/schemas/DirectorySyncUserRef"
+        accountsProtected:
+          type: array
+          description: >
+            The accounts the directory reports as no longer usable but that this run leaves
+            active, because blocking them would leave the installation without a login-capable
+            system administrator (ADR-0036, Entscheidung 6, Schutzregel 2). Reported rather than
+            silently omitted, so the difference between the directory and OPAA is visible.
+          items:
+            $ref: "#/components/schemas/DirectorySyncUserRef"
         membershipsAdded:
           type: integer
           example: 4
@@ -14029,7 +14058,7 @@ components:
           type: number
           format: double
           description: >
-            The worse of two independent risk measures, each compared against the configured
+            The worst of three independent risk measures, each compared against the configured
             threshold on its own: the fraction of memberships at risk (removals plus the
             memberships of groups that would be dissolved, relative to the memberships of every
             group that was active before this run or is reactivated by it - a group that stayed
@@ -14040,7 +14069,12 @@ components:
             introduction-phase directory often has ORG_UNIT groups with no members yet, which the
             first measure cannot see a mass dissolution of; it only applies once the active-group
             count or the dissolution count is large enough for a fraction to be meaningful, so a
-            single legitimate dissolution in a small organisation is never blocked by it.
+            single legitimate dissolution in a small organisation is never blocked by it. The
+            third is the fraction of this provider's usable accounts the run would block - account
+            blocks are subject to the same threshold and the same confirmation path as membership
+            revocations (ADR-0036, Entscheidung 3). It carries the same kind of floor as the second
+            measure, because a single routine departure must end the access without waiting for a
+            person; the measure exists for the mass case.
           example: 0.05
         thresholdFraction:
           type: number
@@ -14257,6 +14291,7 @@ components:
           AUDITOR_ROLE_REVOKED,
           SYSTEM_ADMIN_ROLE_REVOCATION_REFUSED,
           ACCOUNT_DEACTIVATED,
+          ACCOUNT_REACTIVATED,
           ACCOUNT_REAUTHENTICATION_FORCED,
           API_TOKEN_ISSUED,
           API_TOKEN_REVOKED,

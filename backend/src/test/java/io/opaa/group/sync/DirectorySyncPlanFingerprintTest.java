@@ -93,6 +93,9 @@ class DirectorySyncPlanFingerprintTest {
             List.of(new GroupChange("ext-gone", "Weg", null, null, 0)),
             List.of(),
             List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
             0,
             0,
             0,
@@ -144,6 +147,27 @@ class DirectorySyncPlanFingerprintTest {
                 shown, List.of(), Map.of(), Map.of("ext-child", "/Amt/Referat 50")));
   }
 
+  /**
+   * #1818: an account block is a change a run applies, so a plan that would block somebody else -
+   * or nobody - is a different plan. Without this, a confirmation could apply a lock that was not
+   * in the plan it confirmed.
+   */
+  @Test
+  void anAccountBlockChangesThePrint() {
+    SyncReport withoutBlock = report(List.of(), List.of());
+    SyncReport blockingAda = reportBlocking(List.of(ref(ADA)), List.of(), List.of());
+    SyncReport blockingGrace = reportBlocking(List.of(ref(GRACE)), List.of(), List.of());
+    SyncReport reactivatingAda = reportBlocking(List.of(), List.of(ref(ADA)), List.of());
+    SyncReport protectingAda = reportBlocking(List.of(), List.of(), List.of(ref(ADA)));
+
+    assertThat(printOf(blockingAda)).isNotEqualTo(printOf(withoutBlock));
+    assertThat(printOf(blockingAda)).isNotEqualTo(printOf(blockingGrace));
+    assertThat(printOf(reactivatingAda)).isNotEqualTo(printOf(blockingAda));
+    assertThat(printOf(protectingAda))
+        .as("the administrator a run spares is part of what was shown")
+        .isNotEqualTo(printOf(withoutBlock));
+  }
+
   /** The print of a plan that changes none of the three - what the cases above compare. */
   private static String printOf(SyncReport report) {
     return DirectorySyncPlanFingerprint.of(report, List.of(), Map.of(), Map.of());
@@ -151,6 +175,27 @@ class DirectorySyncPlanFingerprintTest {
 
   private static UserRef ref(UUID id) {
     return new UserRef(id, "Test User");
+  }
+
+  private static SyncReport reportBlocking(
+      List<UserRef> blocked, List<UserRef> reactivated, List<UserRef> protectedAdmins) {
+    return new SyncReport(
+        DirectorySyncOutcome.PENDING_CONFIRMATION,
+        Instant.now(),
+        List.of(),
+        List.of(),
+        List.of(),
+        List.of(),
+        List.of(),
+        blocked,
+        reactivated,
+        protectedAdmins,
+        0,
+        0,
+        0,
+        0.9,
+        0.3,
+        "Bestätigung erforderlich.");
   }
 
   private static SyncReport report(
@@ -163,6 +208,9 @@ class DirectorySyncPlanFingerprintTest {
         List.of(),
         List.of(),
         membershipChanges,
+        List.of(),
+        List.of(),
+        List.of(),
         0,
         0,
         0,

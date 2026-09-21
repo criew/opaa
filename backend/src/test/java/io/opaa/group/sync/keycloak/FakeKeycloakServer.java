@@ -19,13 +19,13 @@ import java.util.concurrent.atomic.AtomicInteger;
  * io.opaa.integration.keycloak}'s real container (ADR-0023's split between a contract-level double
  * and a container-level acceptance suite, applied to #1817).
  *
- * <p>It answers the five calls {@link KeycloakAdminApi} makes and reproduces the two shapes of the
- * real API that the connector depends on and that a hand-written stub gets wrong most easily:
- * {@code /groups} returns <b>top-level groups only</b> with a {@code subGroupCount} and an empty
- * {@code subGroups} array, and {@code /members} returns <b>direct</b> members only. Both are
- * re-verified against a real Keycloak by {@code KeycloakDirectoryConnectorRealmTest}; this double
- * exists for the cases that are tedious there - deep pagination, a rejected sign-in, a malformed
- * answer.
+ * <p>It answers the six calls {@link KeycloakAdminApi} makes and reproduces the shapes of the real
+ * API that the connector depends on and that a hand-written stub gets wrong most easily: {@code
+ * /groups} returns <b>top-level groups only</b> with a {@code subGroupCount} and an empty {@code
+ * subGroups} array, {@code /members} returns <b>direct</b> members only, and {@code /users} returns
+ * the realm's accounts with their {@code enabled} flag. Both are re-verified against a real
+ * Keycloak by {@code KeycloakDirectoryConnectorRealmTest}; this double exists for the cases that
+ * are tedious there - deep pagination, a rejected sign-in, a malformed answer.
  */
 public final class FakeKeycloakServer implements AutoCloseable {
 
@@ -35,6 +35,8 @@ public final class FakeKeycloakServer implements AutoCloseable {
 
   private final HttpServer server;
   private final Map<String, Group> groups = new LinkedHashMap<>();
+  private final Map<String, Boolean> accounts = new LinkedHashMap<>();
+  private final java.util.Set<String> accountsWithoutEnabledFlag = new java.util.HashSet<>();
   private final AtomicInteger tokenRequests = new AtomicInteger();
   // The HttpServer answers on its own threads; a test reads this list from the test thread.
   private final List<String> requestedPaths = Collections.synchronizedList(new ArrayList<>());
@@ -54,6 +56,7 @@ public final class FakeKeycloakServer implements AutoCloseable {
     server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
     server.createContext("/realms/" + REALM + "/protocol/openid-connect/token", this::token);
     server.createContext("/admin/realms/" + REALM + "/groups", this::groups);
+    server.createContext("/admin/realms/" + REALM + "/users", this::users);
     server.start();
   }
 
@@ -86,6 +89,30 @@ public final class FakeKeycloakServer implements AutoCloseable {
       members.add(id + "-member-" + i);
     }
     groups.put(id, new Group(id, name, path, parentId, members));
+    return this;
+  }
+
+  /** One account of the realm, with the {@code enabled} flag the connector reads (#1818). */
+  public FakeKeycloakServer withAccount(String id, boolean enabled) {
+    accounts.put(id, enabled);
+    return this;
+  }
+
+  /**
+   * An account whose representation omits {@code enabled} - some Keycloak versions do, and reading
+   * that as "blocked" would block the whole realm.
+   */
+  public FakeKeycloakServer withAccountWithoutEnabledFlag(String id) {
+    accounts.put(id, true);
+    accountsWithoutEnabledFlag.add(id);
+    return this;
+  }
+
+  /** {@code count} usable accounts, for the pagination and ceiling cases. */
+  public FakeKeycloakServer withAccounts(int count) {
+    for (int i = 0; i < count; i++) {
+      accounts.put("u-" + i, true);
+    }
     return this;
   }
 
@@ -176,6 +203,41 @@ public final class FakeKeycloakServer implements AutoCloseable {
       return;
     }
     respond(exchange, 404, "{\"error\":\"unknown\"}");
+  }
+
+  private void users(HttpExchange exchange) throws IOException {
+    Map<String, String> query = parseForm(exchange.getRequestURI().getRawQuery());
+    requestedPaths.add(
+        exchange.getRequestURI().getPath()
+            + (query.isEmpty() ? "" : "?" + exchange.getRequestURI().getRawQuery()));
+    if (!exchange.getRequestHeaders().getFirst("Authorization").startsWith("Bearer token-")) {
+      respond(exchange, 401, "{\"error\":\"HTTP 401 Unauthorized\"}");
+      return;
+    }
+    if (adminStatus != null) {
+      respond(exchange, adminStatus, "{\"error\":\"nope\"}");
+      return;
+    }
+    respond(exchange, 200, userArray(page(List.copyOf(accounts.keySet()), query)));
+  }
+
+  private String userArray(List<String> ids) {
+    StringBuilder body = new StringBuilder("[");
+    for (int i = 0; i < ids.size(); i++) {
+      if (i > 0) {
+        body.append(',');
+      }
+      body.append("{\"id\":\"")
+          .append(ids.get(i))
+          .append("\",\"username\":\"u")
+          .append(i)
+          .append('"');
+      if (!accountsWithoutEnabledFlag.contains(ids.get(i))) {
+        body.append(",\"enabled\":").append(accounts.get(ids.get(i)));
+      }
+      body.append('}');
+    }
+    return body.append(']').toString();
   }
 
   // ------------------------------------------------------------------------------------ bodies

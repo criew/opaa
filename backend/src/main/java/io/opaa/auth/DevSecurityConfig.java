@@ -34,10 +34,13 @@ public class DevSecurityConfig {
 
   private final AuthProperties authProperties;
   private final UserService userService;
+  private final AccountStateService accountState;
 
-  public DevSecurityConfig(AuthProperties authProperties, UserService userService) {
+  public DevSecurityConfig(
+      AuthProperties authProperties, UserService userService, AccountStateService accountState) {
     this.authProperties = authProperties;
     this.userService = userService;
+    this.accountState = accountState;
   }
 
   @PostConstruct
@@ -109,7 +112,7 @@ public class DevSecurityConfig {
                     .anyRequest()
                     .permitAll())
         .addFilterBefore(devAuthFilter, UsernamePasswordAuthenticationFilter.class)
-        .addFilterAfter(new UserProvisioningFilter(userService), DevAuthFilter.class)
+        .addFilterAfter(new UserProvisioningFilter(userService, accountState), DevAuthFilter.class)
         .build();
   }
 }

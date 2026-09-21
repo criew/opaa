@@ -3,6 +3,7 @@ package io.opaa.group.sync.keycloak;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.opaa.group.sync.DirectoryAccount;
 import io.opaa.group.sync.DirectoryGroup;
 import io.opaa.group.sync.DirectorySnapshot;
 import io.opaa.group.sync.DirectoryUnavailableException;
@@ -38,10 +39,20 @@ class KeycloakDirectoryConnectorTest {
   }
 
   private KeycloakDirectoryConnector connector(int pageSize, int maxGroups, int maxMembers) {
+    return connector(pageSize, maxGroups, maxMembers, 50000);
+  }
+
+  private KeycloakDirectoryConnector connector(
+      int pageSize, int maxGroups, int maxMembers, int maxAccounts) {
     return new KeycloakDirectoryConnector(
         HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NEVER).build(),
         new KeycloakDirectoryProperties(
-            pageSize, maxGroups, maxMembers, Duration.ofSeconds(5), Duration.ofSeconds(10)),
+            pageSize,
+            maxGroups,
+            maxMembers,
+            maxAccounts,
+            Duration.ofSeconds(5),
+            Duration.ofSeconds(10)),
         Clock.fixed(NOW, ZoneOffset.UTC));
   }
 
@@ -51,7 +62,7 @@ class KeycloakDirectoryConnectorTest {
 
   private DirectorySnapshot fetch(KeycloakDirectoryConnector connector)
       throws DirectoryUnavailableException {
-    return connector.fetchGroups(
+    return connector.fetchDirectory(
         KeycloakRealmAddress.of(keycloak.issuerUri(), null),
         FakeKeycloakServer.CLIENT_ID,
         FakeKeycloakServer.CLIENT_SECRET);
@@ -82,6 +93,59 @@ class KeycloakDirectoryConnectorTest {
     assertThat(referat.parentExternalId()).isEqualTo("g-haus");
     assertThat(referat.sourcePath()).isEqualTo("/Haus/Referat 50");
     assertThat(referat.memberSubjects()).containsExactlyInAnyOrder("u-1", "u-2");
+  }
+
+  /**
+   * #1818: the account list comes from the very same reading as the groups - a run must never
+   * present a group diff of one instant and apply a block that belonged to another.
+   */
+  @Test
+  void theAccountsOfTheRealmArriveWithTheSameReadingAsTheGroups() throws Exception {
+    keycloak
+        .withGroup("g-50", "Referat 50", "/Referat 50", null, "u-1")
+        .withAccount("u-1", true)
+        .withAccount("u-2", false);
+
+    DirectorySnapshot snapshot = fetch(connector());
+
+    assertThat(snapshot.reportsAccounts()).isTrue();
+    assertThat(snapshot.accounts())
+        .containsExactlyInAnyOrder(
+            new DirectoryAccount("u-1", true), new DirectoryAccount("u-2", false));
+    assertThat(keycloak.requestedPaths()).anyMatch(path -> path.contains("/users?"));
+  }
+
+  /** The account list is paginated the same way every other list is. */
+  @Test
+  void accountsBeyondOnePageAreFetched() throws Exception {
+    keycloak.withGroup("g-1", "Haus", "/Haus", null).withAccounts(7);
+
+    DirectorySnapshot snapshot = fetch(connector(3, 5000, 20000));
+
+    assertThat(snapshot.accounts()).hasSize(7);
+  }
+
+  /**
+   * A truncated account list is indistinguishable from a realm everybody beyond the ceiling has
+   * left - and the run would block them all.
+   */
+  @Test
+  void anAccountListBeyondTheCeilingFailsInsteadOfBeingTruncated() {
+    keycloak.withGroup("g-1", "Haus", "/Haus", null).withAccounts(12);
+
+    assertThatThrownBy(() -> fetch(connector(5, 5000, 20000, 10)))
+        .isInstanceOf(DirectoryUnavailableException.class)
+        .hasMessageContaining("mehr als 10 Konten");
+  }
+
+  /** A Keycloak version that omits {@code enabled} must not make the run block the whole realm. */
+  @Test
+  void anAccountWithoutAnEnabledFlagCountsAsUsable() throws Exception {
+    keycloak.withGroup("g-1", "Haus", "/Haus", null).withAccountWithoutEnabledFlag("u-9");
+
+    DirectorySnapshot snapshot = fetch(connector());
+
+    assertThat(snapshot.accounts()).containsExactly(new DirectoryAccount("u-9", true));
   }
 
   /**
@@ -172,7 +236,7 @@ class KeycloakDirectoryConnectorTest {
     assertThatThrownBy(
             () ->
                 connector()
-                    .fetchGroups(
+                    .fetchDirectory(
                         KeycloakRealmAddress.of(keycloak.issuerUri(), null),
                         FakeKeycloakServer.CLIENT_ID,
                         "falsch"))
@@ -279,7 +343,7 @@ class KeycloakDirectoryConnectorTest {
 
     DirectorySnapshot snapshot =
         connector()
-            .fetchGroups(
+            .fetchDirectory(
                 KeycloakRealmAddress.of(keycloak.issuerUri(), null),
                 FakeKeycloakServer.CLIENT_ID,
                 "a&b=c");
