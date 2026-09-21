@@ -86,6 +86,37 @@ public class SpaceMembershipHistoryService {
   }
 
   /**
+   * The source's side of a transfer (#1834, ADR-0036 Entscheidung 10): closes the open interval at
+   * the boundary the whole transfer shares and writes the {@link
+   * SpaceMembershipHistoryCause#TRANSFERRED_OUT} marker naming the operation. Call before the
+   * source's membership row is deleted; {@code membership} must still carry its last role.
+   */
+  public void recordTransferredOut(
+      SpaceMembership membership, UUID actorUserId, UUID transferId, Instant at) {
+    SpaceRole lastRole = membership.getRole();
+    closeOpenInterval(membership, at);
+    SpaceMembershipHistory marker =
+        SpaceMembershipHistory.terminal(
+            membership, lastRole, SpaceMembershipHistoryCause.TRANSFERRED_OUT, actorUserId, at);
+    marker.belongsToTransfer(transferId);
+    repository.save(marker);
+  }
+
+  /**
+   * The target's side of {@link #recordTransferredOut} - closes whatever interval the target
+   * already held in that space at the same instant and opens the one it holds from then on.
+   */
+  public void recordTransferredIn(
+      SpaceMembership membership, UUID actorUserId, UUID transferId, Instant at) {
+    closeOpenInterval(membership, at);
+    SpaceMembershipHistory opened =
+        SpaceMembershipHistory.open(
+            membership, SpaceMembershipHistoryCause.TRANSFERRED_IN, actorUserId, at);
+    opened.belongsToTransfer(transferId);
+    repository.save(opened);
+  }
+
+  /**
    * Every space {@code userId} reached at {@code asOf} - through a membership of their own or
    * through a group they belonged to at that same instant, resolved from {@code
    * group_membership_history} rather than from today's memberships.

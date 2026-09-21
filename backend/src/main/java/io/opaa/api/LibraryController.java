@@ -40,10 +40,12 @@ import io.opaa.indexing.job.IndexingRunDetail;
 import io.opaa.indexing.job.IndexingStatusView;
 import io.opaa.indexing.job.JobStatus;
 import io.opaa.library.AssetGrantService;
+import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.library.LibraryDocumentService;
 import io.opaa.library.LibraryFolderService;
 import io.opaa.library.SourceConnectionTestService;
+import io.opaa.permission.PermissionTransferService;
 import io.opaa.space.SpaceAssetAssociationService;
 import jakarta.validation.Valid;
 import java.time.Instant;
@@ -79,6 +81,7 @@ public class LibraryController {
   private final DocumentIndexingService indexingService;
   private final SourceConnectionTestService sourceConnectionTestService;
   private final SpaceAssetAssociationService associationService;
+  private final PermissionTransferService transferService;
 
   public LibraryController(
       KnowledgeLibraryService libraryService,
@@ -87,7 +90,8 @@ public class LibraryController {
       LibraryFolderService folderService,
       DocumentIndexingService indexingService,
       SourceConnectionTestService sourceConnectionTestService,
-      SpaceAssetAssociationService associationService) {
+      SpaceAssetAssociationService associationService,
+      PermissionTransferService transferService) {
     this.libraryService = libraryService;
     this.grantService = grantService;
     this.documentService = documentService;
@@ -95,6 +99,7 @@ public class LibraryController {
     this.indexingService = indexingService;
     this.sourceConnectionTestService = sourceConnectionTestService;
     this.associationService = associationService;
+    this.transferService = transferService;
   }
 
   @GetMapping("/{libraryId}/spaces")
@@ -164,7 +169,9 @@ public class LibraryController {
 
   @GetMapping("/{libraryId}")
   public LibraryResponse getLibrary(@PathVariable UUID libraryId, @Caller CurrentUser caller) {
-    return LibraryResponseMapper.toResponse(libraryService.getLibrary(libraryId, caller));
+    return LibraryResponseMapper.toResponse(
+        libraryService.getLibrary(libraryId, caller),
+        transferService.markOf(KnowledgeLibrary.ASSET_TYPE, libraryId, caller).orElse(null));
   }
 
   /**

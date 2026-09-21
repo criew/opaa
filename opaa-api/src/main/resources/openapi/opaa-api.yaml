@@ -1976,6 +1976,130 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /api/v1/permission-transfers/preview:
+    post:
+      operationId: previewPermissionTransfer
+      tags: [admin]
+      summary: >
+        Show what transferring the rights of one subject to another would move (#1834, ADR-0036
+        Entscheidung 10).
+      description: >
+        The preview is mandatory before a transfer and is itself an audit event, also when the
+        caller then abandons it - it reads everything one subject holds, and that it was read is
+        on the record.
+
+        A person as the source is limited to ownership and stewardship: grants, space memberships
+        and capabilities of a person are neither transferable nor listable here, because the
+        preview would otherwise be an "every effect of person X" query without an authorisation
+        and without a reason. A request naming them is refused with 400.
+
+        Everything a system administrator may do within their organization; without that role, only
+        the ownership and the responsibility the caller carries themselves.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PermissionTransferPreviewRequest"
+      responses:
+        "200":
+          description: What the transfer would move
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PermissionTransferPreviewResponse"
+        "400":
+          description: >
+            The scope is empty, source and target are the same subject, the pair of subjects does
+            not admit a requested part, or the target group is no effective one - dissolved,
+            belonging to a switched-off provider, or a token group its provider no longer
+            maintains. An effective but empty target group is accepted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: >
+            Only the system administration transfers rights; everybody else only hands over their
+            own ownership and responsibility.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: >
+            No such group or account in the caller's organization - the same answer across the
+            organization boundary, which no transfer crosses.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/permission-transfers:
+    post:
+      operationId: executePermissionTransfer
+      tags: [admin]
+      summary: Transfer the rights of one subject to another (#1834, ADR-0036 Entscheidung 10)
+      description: >
+        Carries out what the preview showed. It runs only against a preview this caller was shown
+        for exactly this source, target and scope, and only while that preview still describes the
+        current state - otherwise 409 and the caller previews again. The confirmation is explicit
+        on top of that: without confirmed = true the request is refused with 400.
+
+        Every moved row closes the source's interval and opens the target's at one and the same
+        instant, carrying one and the same transfer id, so the Stichtagsauskunft shows exactly one
+        subject per object and day. Where both sides already meet on the same object, the stronger
+        role stays and only the source's row goes - a transfer never lowers what the target
+        already held.
+
+        Each touched object names the operation in its sharing view afterwards (lastTransfer). The
+        source group's name is part of that note; the name of a person as the source is not.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PermissionTransferRequest"
+      responses:
+        "201":
+          description: Transfer carried out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PermissionTransferResponse"
+        "400":
+          description: >
+            Same reasons as the preview, plus a missing confirmation and a transfer above the limit
+            of 500 rows per operation - the message names the figure and the way out (a smaller
+            scope, one part at a time).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: >
+            No valid preview (code TRANSFER_PREVIEW_REQUIRED): none was taken for this caller and
+            this order, it has expired, or the state has changed since it was shown. Nothing was
+            transferred; the caller previews again.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: >
+            Only the system administration transfers rights; everybody else only hands over their
+            own ownership and responsibility.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: No such group or account in the caller's organization.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /api/v1/admin/groups:
     get:
       operationId: listGroups
@@ -9621,6 +9745,8 @@ components:
             neither a date nor the previous owner: the operational list with those figures is
             #1819's. The space stays fully usable; nothing is deleted.
           example: false
+        lastTransfer:
+          $ref: "#/components/schemas/PermissionTransferMarkResponse"
         createdAt:
           type: string
           format: date-time
@@ -11548,6 +11674,13 @@ components:
           nullable: true
           allOf:
             - $ref: "#/components/schemas/LibraryExternalAccessResponse"
+        lastTransfer:
+          description: >
+            The transfer that last touched this library (#1834, ADR-0036 Entscheidung 10), or
+            absent if none ever did.
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/PermissionTransferMarkResponse"
         createdAt:
           type: string
           format: date-time
@@ -14195,6 +14328,235 @@ components:
             Null means the grant never expires. Present from the start even though
             recertification only arrives with #241.
 
+    PermissionTransferScope:
+      type: string
+      description: >
+        One kind of effect a transfer moves (ADR-0036, Entscheidung 10). ASSET_GRANTS,
+        SPACE_MEMBERSHIPS and CAPABILITIES are group-to-group only; STEWARDSHIP is
+        person-to-person only, since a group is never responsible for a group. OWNERSHIP works
+        between groups, from a group to a person and between two people.
+      enum: [ASSET_GRANTS, SPACE_MEMBERSHIPS, CAPABILITIES, OWNERSHIP, STEWARDSHIP]
+      example: ASSET_GRANTS
+
+    PermissionTransferPreviewRequest:
+      type: object
+      required: [sourceType, sourceId, targetType, targetId, scope]
+      description: >
+        Whose effects, of which kinds, go to whom. The same shape backs the preview and the
+        execution, so the figures shown and the rows moved answer the same question.
+      properties:
+        sourceType:
+          $ref: "#/components/schemas/PermissionSubjectType"
+        sourceId:
+          type: string
+          format: uuid
+        targetType:
+          $ref: "#/components/schemas/PermissionSubjectType"
+        targetId:
+          type: string
+          format: uuid
+        scope:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/PermissionTransferScope"
+
+    PermissionTransferRequest:
+      type: object
+      required: [previewId, sourceType, sourceId, targetType, targetId, scope, confirmed]
+      description: >
+        The preview's request plus the explicit confirmation. Spelled out rather than composed
+        from PermissionTransferPreviewRequest, so the generated type carries its own required
+        constructor instead of an inherited one.
+      properties:
+        sourceType:
+          $ref: "#/components/schemas/PermissionSubjectType"
+        sourceId:
+          type: string
+          format: uuid
+        targetType:
+          $ref: "#/components/schemas/PermissionSubjectType"
+        targetId:
+          type: string
+          format: uuid
+        scope:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/PermissionTransferScope"
+        confirmed:
+          type: boolean
+          description: >
+            Must be true. The confirmation is explicit, and a request without it is refused rather
+            than silently ignored.
+          example: true
+        previewId:
+          type: string
+          format: uuid
+          description: The id of the preview this confirmation answers.
+
+    PermissionTransferCountsResponse:
+      type: object
+      required:
+        [
+          assetGrants,
+          grantedAssets,
+          spaceMemberships,
+          spaces,
+          capabilities,
+          ownedAssets,
+          stewardships,
+        ]
+      description: >
+        The row counts of the source side, plus the distinct-object figures the sentence needs
+        beside them ("12 Berechtigungen an 7 Bibliotheken"). A part outside the requested scope
+        counts zero.
+      properties:
+        assetGrants:
+          type: integer
+          example: 12
+        grantedAssets:
+          type: integer
+          example: 7
+        spaceMemberships:
+          type: integer
+          example: 2
+        spaces:
+          type: integer
+          example: 2
+        capabilities:
+          type: integer
+          example: 1
+        ownedAssets:
+          type: integer
+          example: 3
+        stewardships:
+          type: integer
+          example: 0
+
+    PermissionTransferPreviewResponse:
+      type: object
+      required: [previewId, sourceType, sourceId, targetType, targetId, scope, counts, summary]
+      properties:
+        previewId:
+          type: string
+          format: uuid
+          description: >
+            What the execution has to show. The transfer runs only against a preview that was
+            taken, belongs to the same caller and still describes the same rows - compared by a
+            print over the affected rows, so a role changed in between is caught although the
+            figures stay the same. Otherwise it is refused with 409 and the caller previews again.
+            Valid for 30 minutes and held in the running process (ADR-0021), so a restart means one
+            more preview.
+        sourceType:
+          $ref: "#/components/schemas/PermissionSubjectType"
+        sourceId:
+          type: string
+          format: uuid
+        sourceName:
+          type: string
+          nullable: true
+          description: >
+            The source group's name. Null whenever the source is a person - a succession names the
+            objects, never the person who left.
+        targetType:
+          $ref: "#/components/schemas/PermissionSubjectType"
+        targetId:
+          type: string
+          format: uuid
+        targetName:
+          type: string
+          nullable: true
+        scope:
+          type: array
+          items:
+            $ref: "#/components/schemas/PermissionTransferScope"
+        counts:
+          $ref: "#/components/schemas/PermissionTransferCountsResponse"
+        summary:
+          type: string
+          description: The German sentence the confirmation dialog shows.
+          example: 12 Berechtigungen an 7 Bibliotheken, Mitglied in 2 Spaces, Eigentümerin von 3 Objekten
+
+    PermissionTransferResponse:
+      type: object
+      required:
+        [
+          transferId,
+          performedAt,
+          sourceType,
+          sourceId,
+          targetType,
+          targetId,
+          scope,
+          counts,
+          summary,
+        ]
+      properties:
+        transferId:
+          type: string
+          format: uuid
+          description: >
+            The operation's id - carried by every history interval it wrote and by every object it
+            touched.
+        performedAt:
+          type: string
+          format: date-time
+          description: >
+            The one instant every closed and every opened interval of this transfer carries.
+        sourceType:
+          $ref: "#/components/schemas/PermissionSubjectType"
+        sourceId:
+          type: string
+          format: uuid
+        sourceName:
+          type: string
+          nullable: true
+        targetType:
+          $ref: "#/components/schemas/PermissionSubjectType"
+        targetId:
+          type: string
+          format: uuid
+        targetName:
+          type: string
+          nullable: true
+        scope:
+          type: array
+          items:
+            $ref: "#/components/schemas/PermissionTransferScope"
+        counts:
+          $ref: "#/components/schemas/PermissionTransferCountsResponse"
+        summary:
+          type: string
+
+    PermissionTransferMarkResponse:
+      type: object
+      required: [transferId, transferredAt]
+      description: >
+        The note an object carries after a transfer touched it ("übertragen am …, Vorgang …").
+      properties:
+        transferId:
+          type: string
+          format: uuid
+        transferredAt:
+          type: string
+          format: date-time
+        sourceName:
+          type: string
+          nullable: true
+          description: >
+            The source group's name - null when the source was a person (a hint repeated at many
+            objects that a named colleague left the house is exactly what this null prevents),
+            when the group is protected (sourceProtected says so instead), and when the caller may
+            not see the group at all (ADR-0036, Entscheidung 9). A source group that no longer
+            exists is named to the system administration alone.
+        sourceProtected:
+          type: boolean
+          description: >
+            True when the source was a protected group (staff council and the comparable bodies).
+            The interface then shows "geschützte Gruppe" instead of a name, as in every other list.
+          example: false
+
     AssetGrantResponse:
       type: object
       required: [id, subjectType, subjectId, role, createdAt, updatedAt]
@@ -14781,6 +15143,8 @@ components:
           CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED,
           CAPABILITY_GRANTED,
           CAPABILITY_REVOKED,
+          PERMISSION_TRANSFER_PREVIEWED,
+          PERMISSION_TRANSFER_EXECUTED,
           INDEXING_PIPELINE_REINDEX_TRIGGERED,
           INDEXING_METADATA_BACKFILL_TRIGGERED,
           INDEXING_CONTEXT_PREFIX_RERUN_TRIGGERED,

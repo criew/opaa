@@ -17,5 +17,11 @@ public enum CapabilityGrantHistoryCause {
   GRANTED,
 
   /** A system administrator withdrew the capability from this subject. */
-  REVOKED
+  REVOKED,
+
+  /** The capability was handed to another subject by a transfer (#1834) - closes the source. */
+  TRANSFERRED_OUT,
+
+  /** The counterpart of {@link #TRANSFERRED_OUT}: the interval the target holds from then on. */
+  TRANSFERRED_IN
 }
