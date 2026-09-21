@@ -8,7 +8,7 @@
  * {@code io.opaa.group} (a group's stewards and its effect) - and all three already depend on
  * {@code io.opaa.permission}. Putting the composition there would make every one of those edges a
  * cycle. This package sits above them; each of them contributes a {@link
- * io.opaa.succession.SuccessionFindingSource} for its own object type, and a further asset type
+ * io.opaa.permission.SuccessionFindingSource} for its own object type, and a further asset type
  * (#1726) adds a bean rather than a branch.
  *
  * <p><b>The state itself is never stored.</b> {@code succession_cases} carries only what cannot be
