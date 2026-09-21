@@ -1058,6 +1058,9 @@ class PermissionHistoryServiceIntegrationTest {
           "GroupService#listMembers",
           "GroupService#listStewardedGroups",
           "GroupService#listStewards",
+          // #1820: Die Subjekt-Auswahl sucht und zaehlt, sie erteilt nichts - wer welche
+          // Bibliothek lesen darf, bleibt davon unberuehrt.
+          "GroupService#searchSelectableGroups",
           // #1814: responsibility for a group carries no read right at all, and the release and
           // the protection mark decide who may name the group and who sees its members - never
           // which libraries anybody may read.
