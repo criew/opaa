@@ -62,6 +62,9 @@ const group: GroupListResponse = {
   sourcePath: null,
   parentGroupId: null,
   memberCount: 3,
+  releasedForUse: true,
+  protectedGroup: false,
+  stewards: [],
   createdAt: '2026-03-01T10:00:00Z',
   updatedAt: '2026-03-01T10:00:00Z',
 }

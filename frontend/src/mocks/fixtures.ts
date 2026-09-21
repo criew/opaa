@@ -1206,6 +1206,11 @@ export const mockGroups: GroupListResponse[] = [
     sourcePath: null,
     parentGroupId: null,
     memberCount: 2,
+    releasedForUse: true,
+    protectedGroup: false,
+    stewards: [
+      { userId: 'mock-user-id', displayName: 'Admin', appointedAt: '2026-03-01T10:00:00Z' },
+    ],
     createdAt: '2026-03-01T10:00:00Z',
     updatedAt: '2026-03-01T10:00:00Z',
   },
@@ -1226,6 +1231,28 @@ export const mockGroups: GroupListResponse[] = [
     sourcePath: '/Haus A/Abteilung 5/Referat 50',
     parentGroupId: null,
     memberCount: 1,
+    releasedForUse: true,
+    protectedGroup: false,
+    stewards: [],
+    createdAt: '2026-03-01T10:00:00Z',
+    updatedAt: '2026-03-01T10:00:00Z',
+  },
+  {
+    id: 'group-personalrat',
+    name: 'Personalrat',
+    description: 'Geschuetzte Gruppe der Personalvertretung',
+    kind: 'AD_HOC',
+    externalId: null,
+    origin: 'INTERNAL',
+    provider: null,
+    sourcePath: null,
+    parentGroupId: null,
+    memberCount: 0,
+    releasedForUse: false,
+    protectedGroup: true,
+    stewards: [
+      { userId: 'mock-user-id', displayName: 'Admin', appointedAt: '2026-03-01T10:00:00Z' },
+    ],
     createdAt: '2026-03-01T10:00:00Z',
     updatedAt: '2026-03-01T10:00:00Z',
   },
@@ -1243,6 +1270,11 @@ export const mockGroupDetails: Record<string, GroupResponse> = {
     sourcePath: null,
     parentGroupId: null,
     memberCount: 2,
+    releasedForUse: true,
+    protectedGroup: false,
+    stewards: [
+      { userId: 'mock-user-id', displayName: 'Admin', appointedAt: '2026-03-01T10:00:00Z' },
+    ],
     members: [
       {
         userId: 'mock-user-id',
@@ -1275,6 +1307,9 @@ export const mockGroupDetails: Record<string, GroupResponse> = {
     sourcePath: '/Haus A/Abteilung 5/Referat 50',
     parentGroupId: null,
     memberCount: 1,
+    releasedForUse: true,
+    protectedGroup: false,
+    stewards: [],
     members: [
       {
         userId: 'curator-1',
@@ -1282,6 +1317,26 @@ export const mockGroupDetails: Record<string, GroupResponse> = {
         createdAt: '2026-03-01T10:00:00Z',
       },
     ],
+    createdAt: '2026-03-01T10:00:00Z',
+    updatedAt: '2026-03-01T10:00:00Z',
+  },
+  'group-personalrat': {
+    id: 'group-personalrat',
+    name: 'Personalrat',
+    description: 'Geschuetzte Gruppe der Personalvertretung',
+    kind: 'AD_HOC',
+    externalId: null,
+    origin: 'INTERNAL',
+    provider: null,
+    sourcePath: null,
+    parentGroupId: null,
+    memberCount: 0,
+    releasedForUse: false,
+    protectedGroup: true,
+    stewards: [
+      { userId: 'mock-user-id', displayName: 'Admin', appointedAt: '2026-03-01T10:00:00Z' },
+    ],
+    members: [],
     createdAt: '2026-03-01T10:00:00Z',
     updatedAt: '2026-03-01T10:00:00Z',
   },
@@ -1519,11 +1574,27 @@ export const mockMyGroups: GroupListResponse[] = mockGroups.filter((group) =>
 )
 
 /**
- * The delivered capabilities of ADR-0036, Entscheidung 5 - the three creation rights every account
- * holds, without CREATE_INTERNAL_GROUP, which is delivered to nobody.
+ * Groups the mock user is responsible for - what GET /api/v1/me/stewarded-groups returns (#1814).
+ * Deliberately a different set than mockMyGroups: being responsible for a group is not being a
+ * member of it, and the protected group below has the mock user as its steward without a single
+ * member.
+ */
+export const mockMyStewardedGroups: GroupListResponse[] = mockGroups.filter((group) =>
+  group.stewards.some((steward) => steward.userId === 'mock-user-id'),
+)
+
+/**
+ * The capabilities of the mock account. The three delivered ones of ADR-0036, Entscheidung 5, plus
+ * CREATE_INTERNAL_GROUP - which is delivered to nobody, but the mock account is a system
+ * administrator and holds every capability implicitly (#1814).
  */
 export const mockMyCapabilities: MyCapabilitiesResponse = {
-  capabilities: ['CREATE_SPACE', 'CREATE_LIBRARY', 'CREATE_CONNECTOR_LIBRARY'],
+  capabilities: [
+    'CREATE_SPACE',
+    'CREATE_LIBRARY',
+    'CREATE_CONNECTOR_LIBRARY',
+    'CREATE_INTERNAL_GROUP',
+  ],
 }
 
 const INITIAL_LIBRARY_DOCUMENTS: Record<string, LibraryDocumentResponse[]> = {

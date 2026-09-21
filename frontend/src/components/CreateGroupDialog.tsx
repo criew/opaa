@@ -88,6 +88,11 @@ export default function CreateGroupDialog({ open, onClose, onCreated }: CreateGr
             slotProps={{ htmlInput: { maxLength: 2000 } }}
           />
         </Box>
+        <Alert severity="info" sx={{ mt: 2 }}>
+          Sie werden die erste verantwortliche Person dieser Gruppe. Die Gruppe ist zunächst nicht
+          zur Verwendung freigegeben; sobald Sie sie freigeben, werden Name und Herkunft für alle
+          sichtbar, denen die Gruppe zur Auswahl steht.
+        </Alert>
       </DialogContent>
       <DialogActions>
         <Button onClick={handleClose} disabled={submitting}>

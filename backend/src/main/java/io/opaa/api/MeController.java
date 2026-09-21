@@ -15,11 +15,11 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * Self-service endpoints scoped to the caller, deliberately separate from {@link
  * io.opaa.auth.UserInfoController} (which owns {@code /api/v1/auth/me}, the identity endpoint used
- * during login) and from {@link GroupController} (whose {@code /api/v1/admin/groups} is
- * system-admin only). {@link #myGroups} exists because the library-creation dialog needs the
- * caller's own group memberships to offer a GROUP owner - {@code GroupService#listMyGroups}'s
- * Javadoc explains why {@code listGroups} cannot serve that purpose; {@link #myCapabilities} for
- * the same reason on the creation dialogs themselves.
+ * during login) and from {@link GroupController} (which acts on one named group). {@link #myGroups}
+ * exists because the library-creation dialog needs the caller's own group memberships to offer a
+ * GROUP owner - {@code GroupService#listMyGroups}'s Javadoc explains why {@code listGroups} cannot
+ * serve that purpose; {@link #myCapabilities} for the same reason on the creation dialogs
+ * themselves.
  */
 @RestController
 @RequestMapping("/api/v1/me")
@@ -36,6 +36,17 @@ public class MeController {
   @GetMapping("/groups")
   public List<GroupListResponse> myGroups(@Caller CurrentUser caller) {
     List<GroupOverview> groups = groupService.listMyGroups(caller);
+    return GroupResponseMapper.toListResponses(groups);
+  }
+
+  /**
+   * The internal groups the caller is responsible for - what "Meine Gruppen" shows (#1814, ADR-0036
+   * Entscheidung 4). Separate from {@link #myGroups} because a steward is no member: that endpoint
+   * answers "which groups may I own a library through", this one "which groups do I maintain".
+   */
+  @GetMapping("/stewarded-groups")
+  public List<GroupListResponse> myStewardedGroups(@Caller CurrentUser caller) {
+    List<GroupOverview> groups = groupService.listStewardedGroups(caller);
     return GroupResponseMapper.toListResponses(groups);
   }
 

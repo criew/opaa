@@ -328,7 +328,7 @@ public class SpaceService {
     SpaceMembership membership =
         subject.type() == PermissionSubjectType.USER
             ? addUserMembership(space, subject.id(), roleToAssign)
-            : addGroupMembership(space, subject.id(), roleToAssign);
+            : addGroupMembership(space, subject.id(), roleToAssign, caller);
     spaceRepository.save(space);
     membershipHistory.recordAdded(membership, caller.id());
     auditEventRecorder.recordUserActionOnSubject(
@@ -366,13 +366,21 @@ public class SpaceService {
    * then fill it" failed at the first step, and a group that only comes into existence with the
    * first sign-in ({@code TokenGroupSynchronizer#findOrCreate}) could never be the target of a
    * provider changeover.
+   *
+   * <p>An internal group its stewards have not released answers like an unknown one (ADR-0036,
+   * Entscheidung 9) - on this path as on every other, including the id typed by hand, because in
+   * the selection list alone the rule would be cosmetics.
    */
-  private SpaceMembership addGroupMembership(Space space, UUID groupId, SpaceRole role) {
+  private SpaceMembership addGroupMembership(
+      Space space, UUID groupId, SpaceRole role, CurrentUser caller) {
     GroupSubject group =
         groupDirectory
             .find(groupId)
             .filter(found -> found.organizationId().equals(space.getOrganizationId()))
             .orElseThrow(() -> new NotFoundException("Gruppe nicht gefunden"));
+    if (!groupDirectory.isSelectableBy(groupId, caller.id(), caller.isSystemAdmin())) {
+      throw new NotFoundException("Gruppe nicht gefunden");
+    }
     if (group.dissolved()) {
       throw new ConflictException(
           "Die Gruppe ist aufgelöst und kann nicht mehr Mitglied eines Space werden");

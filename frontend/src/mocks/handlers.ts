@@ -1197,7 +1197,7 @@ export const handlers = [
     return HttpResponse.json(mockGroups)
   }),
 
-  http.post('/api/v1/admin/groups', async ({ request }) => {
+  http.post('/api/v1/groups', async ({ request }) => {
     const body = (await request.json()) as { name: string; description?: string }
     if (!body.name || body.name.trim() === '') {
       return HttpResponse.json({ error: 'Der Name der Gruppe ist erforderlich' }, { status: 400 })
@@ -1215,6 +1215,11 @@ export const handlers = [
       sourcePath: null,
       parentGroupId: null,
       memberCount: 0,
+      // Wie im Dienst: nicht freigegeben, und die anlegende Person ist erste verantwortliche
+      // Person (#1814, ADR-0036 Entscheidung 4 und 9).
+      releasedForUse: false,
+      protectedGroup: false,
+      stewards: [{ userId: 'mock-user-id', displayName: 'Admin', appointedAt: now }],
       createdAt: now,
       updatedAt: now,
     }
@@ -1223,7 +1228,7 @@ export const handlers = [
     return HttpResponse.json(mockGroupDetails[id], { status: 201 })
   }),
 
-  http.get('/api/v1/admin/groups/:groupId', ({ params }) => {
+  http.get('/api/v1/groups/:groupId', ({ params }) => {
     const groupId = String(params.groupId)
     const group = mockGroupDetails[groupId]
     if (!group) {
@@ -1232,7 +1237,7 @@ export const handlers = [
     return HttpResponse.json(group)
   }),
 
-  http.put('/api/v1/admin/groups/:groupId', async ({ params, request }) => {
+  http.put('/api/v1/groups/:groupId', async ({ params, request }) => {
     const groupId = String(params.groupId)
     const group = mockGroupDetails[groupId]
     const listEntry = mockGroups.find((item) => item.id === groupId)
@@ -1247,7 +1252,7 @@ export const handlers = [
     return HttpResponse.json(group)
   }),
 
-  http.delete('/api/v1/admin/groups/:groupId', ({ params }) => {
+  http.delete('/api/v1/groups/:groupId', ({ params }) => {
     const groupId = String(params.groupId)
     delete mockGroupDetails[groupId]
     const idx = mockGroups.findIndex((item) => item.id === groupId)
@@ -1257,7 +1262,7 @@ export const handlers = [
     return new HttpResponse(null, { status: 204 })
   }),
 
-  http.post('/api/v1/admin/groups/:groupId/members', async ({ params, request }) => {
+  http.post('/api/v1/groups/:groupId/members', async ({ params, request }) => {
     const groupId = String(params.groupId)
     const group = mockGroupDetails[groupId]
     const listEntry = mockGroups.find((item) => item.id === groupId)
@@ -1281,7 +1286,7 @@ export const handlers = [
     return HttpResponse.json(member, { status: 201 })
   }),
 
-  http.delete('/api/v1/admin/groups/:groupId/members/:userId', ({ params }) => {
+  http.delete('/api/v1/groups/:groupId/members/:userId', ({ params }) => {
     const groupId = String(params.groupId)
     const userId = String(params.userId)
     const group = mockGroupDetails[groupId]
@@ -1293,6 +1298,91 @@ export const handlers = [
     group.memberCount = group.members.length
     listEntry.memberCount = group.members.length
     return new HttpResponse(null, { status: 204 })
+  }),
+
+  http.get('/api/v1/me/stewarded-groups', () => {
+    return HttpResponse.json(
+      mockGroups.filter((group) =>
+        group.stewards.some((steward) => steward.userId === 'mock-user-id'),
+      ),
+    )
+  }),
+
+  http.get('/api/v1/groups/:groupId/stewards', ({ params }) => {
+    const group = mockGroupDetails[String(params.groupId)]
+    if (!group) {
+      return HttpResponse.json({ error: 'Gruppe nicht gefunden' }, { status: 404 })
+    }
+    return HttpResponse.json(group.stewards)
+  }),
+
+  http.post('/api/v1/groups/:groupId/stewards', async ({ params, request }) => {
+    const groupId = String(params.groupId)
+    const group = mockGroupDetails[groupId]
+    const listEntry = mockGroups.find((item) => item.id === groupId)
+    if (!group || !listEntry) {
+      return HttpResponse.json({ error: 'Gruppe nicht gefunden' }, { status: 404 })
+    }
+    const body = (await request.json()) as { userId: string }
+    if (group.stewards.some((steward) => steward.userId === body.userId)) {
+      return HttpResponse.json(
+        { error: 'Die Person ist bereits verantwortlich für diese Gruppe' },
+        { status: 409 },
+      )
+    }
+    const displayName = mockUsers.find((user) => user.id === body.userId)?.displayName ?? null
+    const steward = { userId: body.userId, displayName, appointedAt: new Date().toISOString() }
+    group.stewards = [...group.stewards, steward]
+    listEntry.stewards = group.stewards
+    return HttpResponse.json(steward, { status: 201 })
+  }),
+
+  http.delete('/api/v1/groups/:groupId/stewards/:userId', ({ params }) => {
+    const groupId = String(params.groupId)
+    const group = mockGroupDetails[groupId]
+    const listEntry = mockGroups.find((item) => item.id === groupId)
+    if (!group || !listEntry) {
+      return HttpResponse.json({ error: 'Gruppe nicht gefunden' }, { status: 404 })
+    }
+    if (group.stewards.length <= 1) {
+      return HttpResponse.json(
+        {
+          error:
+            'Dies ist die letzte verantwortliche Person dieser Gruppe. Benennen Sie zuerst eine' +
+            ' Nachfolge und geben Sie die Verantwortung dann ab.',
+        },
+        { status: 409 },
+      )
+    }
+    group.stewards = group.stewards.filter((steward) => steward.userId !== String(params.userId))
+    listEntry.stewards = group.stewards
+    return new HttpResponse(null, { status: 204 })
+  }),
+
+  http.put('/api/v1/groups/:groupId/release', async ({ params, request }) => {
+    const groupId = String(params.groupId)
+    const group = mockGroupDetails[groupId]
+    const listEntry = mockGroups.find((item) => item.id === groupId)
+    if (!group || !listEntry) {
+      return HttpResponse.json({ error: 'Gruppe nicht gefunden' }, { status: 404 })
+    }
+    const body = (await request.json()) as { releasedForUse: boolean }
+    group.releasedForUse = body.releasedForUse
+    listEntry.releasedForUse = body.releasedForUse
+    return HttpResponse.json(group)
+  }),
+
+  http.put('/api/v1/groups/:groupId/protection', async ({ params, request }) => {
+    const groupId = String(params.groupId)
+    const group = mockGroupDetails[groupId]
+    const listEntry = mockGroups.find((item) => item.id === groupId)
+    if (!group || !listEntry) {
+      return HttpResponse.json({ error: 'Gruppe nicht gefunden' }, { status: 404 })
+    }
+    const body = (await request.json()) as { protectedGroup: boolean }
+    group.protectedGroup = body.protectedGroup
+    listEntry.protectedGroup = body.protectedGroup
+    return HttpResponse.json(group)
   }),
 
   // managed chat models ('s admin API). apiKey is never echoed back - only apiKeySet,

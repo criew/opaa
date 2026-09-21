@@ -688,6 +688,26 @@ paths:
                 items:
                   $ref: "#/components/schemas/GroupListResponse"
 
+  /api/v1/me/stewarded-groups:
+    get:
+      operationId: listMyStewardedGroups
+      tags: [auth]
+      summary: >
+        The internal groups the caller is responsible for - what "Meine Gruppen" shows, together
+        with the way out: responsibility is handed over as a deliberate step, by appointing the
+        successor and then dismissing oneself (ADR-0036, Entscheidung 4). Deliberately separate
+        from GET /api/v1/me/groups: a steward is no member, and that endpoint answers the question
+        "which groups may I own a library through".
+      responses:
+        "200":
+          description: Groups the caller is a steward of
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GroupListResponse"
+
   /api/v1/me/capabilities:
     get:
       operationId: listMyCapabilities
@@ -704,6 +724,396 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/MyCapabilitiesResponse"
+
+  /api/v1/groups:
+    post:
+      operationId: createGroup
+      tags: [groups]
+      summary: Create an internal group; the caller becomes its first steward
+      description: >
+        Always creates a group of kind AD_HOC - ORG_UNIT and IDENTITY_PROVIDER groups come from a
+        provider and are never created here. Needs the capability CREATE_INTERNAL_GROUP, which
+        every SYSTEM_ADMIN holds implicitly. The caller is appointed the group's first steward in
+        the same transaction, so no internal group is created without one (ADR-0036, Entscheidung
+        4). A new group is not released for use: it becomes selectable for other people granting
+        rights only once a steward releases it (ADR-0036, Entscheidung 9).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GroupRequest"
+      responses:
+        "201":
+          description: Group created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroupResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          description: The caller lacks the capability CREATE_INTERNAL_GROUP (code CAPABILITY_REQUIRED).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/groups/{groupId}:
+    parameters:
+      - name: groupId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: getGroup
+      tags: [groups]
+      summary: Group details, for its stewards and for a system administrator
+      description: >
+        A caller who is neither a steward of this group nor a SYSTEM_ADMIN gets the same answer as
+        for a group that does not exist (404) - the treatment the organization boundary has always
+        had (ADR-0036, Entscheidung 4).
+      responses:
+        "200":
+          description: Group details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroupResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      operationId: updateGroup
+      tags: [groups]
+      summary: Change an internal group's name or description
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GroupUpdateRequest"
+      responses:
+        "200":
+          description: Group updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroupResponse"
+        "400":
+          description: >
+            The payload is unusable, or the group comes from a provider and is maintained there
+            rather than here.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      operationId: deleteGroup
+      tags: [groups]
+      summary: Delete an internal group
+      responses:
+        "204":
+          description: Group deleted
+        "400":
+          description: The group comes from a provider and is maintained there rather than here.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: >
+            The group still holds a grant, owns an asset or holds a capability; what still refers
+            to it has to be moved first.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/groups/{groupId}/members:
+    parameters:
+      - name: groupId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: listGroupMembers
+      tags: [groups]
+      summary: List an internal group's members
+      responses:
+        "200":
+          description: List of members
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GroupMemberResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    post:
+      operationId: addGroupMember
+      tags: [groups]
+      summary: Add a member to an internal group
+      description: >
+        Only accounts of the same organization. The person taken in is notified in the
+        application, without mail (ADR-0036, Entscheidung 4).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GroupAddMemberRequest"
+      responses:
+        "201":
+          description: Member added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroupMemberResponse"
+        "400":
+          description: The group comes from a provider and is maintained there rather than here.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/groups/{groupId}/members/{userId}:
+    parameters:
+      - name: groupId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    delete:
+      operationId: removeGroupMember
+      tags: [groups]
+      summary: Remove a member from an internal group
+      responses:
+        "204":
+          description: Member removed
+        "400":
+          description: The group comes from a provider and is maintained there rather than here.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/groups/{groupId}/stewards:
+    parameters:
+      - name: groupId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: listGroupStewards
+      tags: [groups]
+      summary: List the people responsible for an internal group
+      responses:
+        "200":
+          description: The group's stewards
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GroupStewardResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    post:
+      operationId: appointGroupSteward
+      tags: [groups]
+      summary: Appoint a further steward of an internal group
+      description: >
+        Only natural persons of the same organization - a group as a steward would be nesting
+        through the back door (ADR-0036, Entscheidung 4). A steward is not a member.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GroupAppointStewardRequest"
+      responses:
+        "201":
+          description: Steward appointed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroupStewardResponse"
+        "400":
+          description: The group comes from a provider and has contact points rather than stewards.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: The account is already a steward of this group.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/groups/{groupId}/stewards/{userId}:
+    parameters:
+      - name: groupId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    delete:
+      operationId: dismissGroupSteward
+      tags: [groups]
+      summary: Dismiss a steward of an internal group
+      description: >
+        A steward never leaves the group without one: handing responsibility over means appointing
+        the successor first (ADR-0036, Entscheidung 4). A SYSTEM_ADMIN may dismiss the last one -
+        an account leaving the house has to be releasable - and the group then has no steward until
+        one is appointed again.
+      responses:
+        "204":
+          description: Steward dismissed
+        "400":
+          description: The group comes from a provider and has contact points rather than stewards.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: This is the group's last steward.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/groups/{groupId}/release:
+    parameters:
+      - name: groupId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    put:
+      operationId: setGroupRelease
+      tags: [groups]
+      summary: Release an internal group for use, or take the release back
+      description: >
+        An internal group is selectable for other people granting rights only once its stewards
+        have released it; the default is not released (ADR-0036, Entscheidung 9). Taking the
+        release back removes the group from every selection - grants it already holds stay
+        untouched.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GroupReleaseRequest"
+      responses:
+        "200":
+          description: Release changed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroupResponse"
+        "400":
+          description: The group comes from a provider; only internal groups are released here.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/groups/{groupId}/protection:
+    parameters:
+      - name: groupId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    put:
+      operationId: setGroupProtection
+      tags: [groups]
+      summary: Mark an internal group as protected, or take the mark back
+      description: >
+        For the groups of the staff council, the representation of severely disabled employees,
+        the equality office and for personnel matters. The mark is set and released by the body
+        concerned itself, never by the administration (ADR-0036, Entscheidung 9) - a SYSTEM_ADMIN
+        who is no steward of this group is refused with 403.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GroupProtectionRequest"
+      responses:
+        "200":
+          description: Protection changed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroupResponse"
+        "400":
+          description: The group comes from a provider; its contact points set the mark there (#1821).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: >
+            The caller is a system administrator but no steward of this group (code
+            STEWARDSHIP_REQUIRED).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   /api/v1/users:
     get:
@@ -1570,7 +1980,12 @@ paths:
     get:
       operationId: listGroups
       tags: [admin]
-      summary: List groups in the caller's organization (system admin only)
+      summary: List every group in the caller's organization (system admin only)
+      description: >
+        The one group path left under /admin (#1814, ADR-0036 Entscheidung 4): reading every
+        group of the organization regardless of who maintains it is an administrative act. Every
+        operation on a single group moved to /api/v1/groups, where the right is decided per group
+        rather than by role.
       responses:
         "200":
           description: List of groups
@@ -1582,184 +1997,6 @@ paths:
                   $ref: "#/components/schemas/GroupListResponse"
         "403":
           $ref: "#/components/responses/Forbidden"
-
-    post:
-      operationId: createGroup
-      tags: [admin]
-      summary: Create an ad-hoc group (system admin only)
-      description: >
-        Always creates a group of kind AD_HOC. Groups of kind ORG_UNIT are created only by
-        directory synchronisation (see #237) and cannot be created through this endpoint. Needs
-        the capability CREATE_INTERNAL_GROUP, which is delivered to nobody and held implicitly by
-        every SYSTEM_ADMIN - the delivered behaviour is therefore unchanged.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/GroupRequest"
-      responses:
-        "201":
-          description: Group created
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GroupResponse"
-        "400":
-          $ref: "#/components/responses/ValidationError"
-        "403":
-          description: >
-            The caller is no SYSTEM_ADMIN, or lacks the capability CREATE_INTERNAL_GROUP (code
-            CAPABILITY_REQUIRED).
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-
-  /api/v1/admin/groups/{groupId}:
-    parameters:
-      - name: groupId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-
-    get:
-      operationId: getGroup
-      tags: [admin]
-      summary: Get group details (system admin only)
-      responses:
-        "200":
-          description: Group details
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GroupResponse"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-    put:
-      operationId: updateGroup
-      tags: [admin]
-      summary: Rename an ad-hoc group or change its description (system admin only)
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/GroupUpdateRequest"
-      responses:
-        "200":
-          description: Group updated
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GroupResponse"
-        "400":
-          $ref: "#/components/responses/ValidationError"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-    delete:
-      operationId: deleteGroup
-      tags: [admin]
-      summary: Delete an ad-hoc group (system admin only)
-      responses:
-        "204":
-          description: Group deleted
-        "400":
-          $ref: "#/components/responses/ValidationError"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-  /api/v1/admin/groups/{groupId}/members:
-    parameters:
-      - name: groupId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-
-    get:
-      operationId: listGroupMembers
-      tags: [admin]
-      summary: List group members (system admin only)
-      responses:
-        "200":
-          description: List of members
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/GroupMemberResponse"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-    post:
-      operationId: addGroupMember
-      tags: [admin]
-      summary: Add a member to an ad-hoc group (system admin only)
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/GroupAddMemberRequest"
-      responses:
-        "201":
-          description: Member added
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GroupMemberResponse"
-        "400":
-          $ref: "#/components/responses/ValidationError"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "409":
-          $ref: "#/components/responses/Conflict"
-
-  /api/v1/admin/groups/{groupId}/members/{userId}:
-    parameters:
-      - name: groupId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: userId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-
-    delete:
-      operationId: removeGroupMember
-      tags: [admin]
-      summary: Remove a member from an ad-hoc group (system admin only)
-      responses:
-        "204":
-          description: Member removed
-        "400":
-          $ref: "#/components/responses/ValidationError"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
 
   /api/v1/admin/models:
     get:
@@ -9378,10 +9615,16 @@ components:
     NotificationType:
       type: string
       description: >
-        The closed vocabulary of a notification's type - see
-        io.opaa.api.types.NotificationType, kept in lockstep with the database check
-        constraint chk_notifications_type (migration 052).
-      enum: [LIBRARY_ASSOCIATED_TO_MIXED_SPACE, EXTERNAL_ACCESS_MASS_RETRIEVAL]
+        The closed vocabulary of a notification's type - see io.opaa.api.types.NotificationType,
+        which is the sole write guard since the database check constraint that used to enforce the
+        same set was dropped (#862).
+      enum:
+        [
+          LIBRARY_ASSOCIATED_TO_MIXED_SPACE,
+          EXTERNAL_ACCESS_MASS_RETRIEVAL,
+          GROUP_MEMBER_ADDED,
+          GROUP_MEMBER_REMOVED,
+        ]
       example: LIBRARY_ASSOCIATED_TO_MIXED_SPACE
 
     NotificationResponse:
@@ -9908,9 +10151,55 @@ components:
           type: string
           format: date-time
 
+    GroupStewardResponse:
+      type: object
+      description: >
+        A person responsible for an internal group (ADR-0036, Entscheidung 4) - always a natural
+        person, never a group, and not a member by virtue of being a steward.
+      required: [userId, appointedAt]
+      properties:
+        userId:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+          nullable: true
+        appointedAt:
+          type: string
+          format: date-time
+
+    GroupAppointStewardRequest:
+      type: object
+      required: [userId]
+      properties:
+        userId:
+          type: string
+          format: uuid
+
+    GroupReleaseRequest:
+      type: object
+      required: [releasedForUse]
+      properties:
+        releasedForUse:
+          type: boolean
+          description: >
+            Whether other people granting rights may choose this group as a subject at all
+            (ADR-0036, Entscheidung 9).
+
+    GroupProtectionRequest:
+      type: object
+      required: [protectedGroup]
+      properties:
+        protectedGroup:
+          type: boolean
+          description: >
+            Whether this group carries the protection of the staff council and the comparable
+            bodies (ADR-0036, Entscheidung 9). Named protectedGroup rather than protected because
+            the latter is a Java keyword and the generated DTO would have to escape it.
+
     GroupListResponse:
       type: object
-      required: [id, name, kind, origin, memberCount, createdAt, updatedAt]
+      required: [id, name, kind, origin, memberCount, createdAt, updatedAt, releasedForUse, protectedGroup, stewards]
       properties:
         id:
           type: string
@@ -9948,6 +10237,25 @@ components:
         memberCount:
           type: integer
           example: 4
+        releasedForUse:
+          type: boolean
+          description: >
+            Whether this internal group has been released for use by its stewards and is
+            therefore selectable as a grant subject by others (ADR-0036, Entscheidung 9). Always
+            true for a group with a provider - a provider group needs no release.
+        protectedGroup:
+          type: boolean
+          description: >
+            Whether this group carries the protection of the staff council and the comparable
+            bodies: not findable by search, shown namelessly in other people's lists, and its
+            grant-giver sees the stewards instead of the members (ADR-0036, Entscheidung 9).
+        stewards:
+          type: array
+          description: >
+            The people responsible for this group - empty for a provider group, and empty for an
+            internal group whose succession is open (#1819).
+          items:
+            $ref: "#/components/schemas/GroupStewardResponse"
         createdAt:
           type: string
           format: date-time
@@ -9957,7 +10265,7 @@ components:
 
     GroupResponse:
       type: object
-      required: [id, name, kind, origin, memberCount, members, createdAt, updatedAt]
+      required: [id, name, kind, origin, memberCount, members, createdAt, updatedAt, releasedForUse, protectedGroup, stewards]
       properties:
         id:
           type: string
@@ -9999,6 +10307,25 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/GroupMemberResponse"
+        releasedForUse:
+          type: boolean
+          description: >
+            Whether this internal group has been released for use by its stewards and is
+            therefore selectable as a grant subject by others (ADR-0036, Entscheidung 9). Always
+            true for a group with a provider - a provider group needs no release.
+        protectedGroup:
+          type: boolean
+          description: >
+            Whether this group carries the protection of the staff council and the comparable
+            bodies: not findable by search, shown namelessly in other people's lists, and its
+            grant-giver sees the stewards instead of the members (ADR-0036, Entscheidung 9).
+        stewards:
+          type: array
+          description: >
+            The people responsible for this group - empty for a provider group, and empty for an
+            internal group whose succession is open (#1819).
+          items:
+            $ref: "#/components/schemas/GroupStewardResponse"
         createdAt:
           type: string
           format: date-time
@@ -14246,6 +14573,11 @@ components:
           SPACE_MEMBER_REMOVED,
           GROUP_MEMBER_ADDED,
           GROUP_MEMBER_REMOVED,
+          GROUP_STEWARD_APPOINTED,
+          GROUP_STEWARD_DISMISSED,
+          GROUP_RELEASE_CHANGED,
+          GROUP_PROTECTION_CHANGED,
+          GROUP_MEMBERS_READ,
           LIBRARY_SHARED_TO_SPACE,
           LIBRARY_DETACHED_FROM_SPACE,
           ASSET_OWNER_CHANGED,

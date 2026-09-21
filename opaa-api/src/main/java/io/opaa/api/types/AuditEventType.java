@@ -71,6 +71,33 @@ public enum AuditEventType {
   GROUP_MEMBER_ADDED,
   GROUP_MEMBER_REMOVED,
   /**
+   * Somebody was made responsible for an internal group (#1814, ADR-0036 Entscheidung 4).
+   * Deliberately an audit event and no history row: responsibility carries no read access and is
+   * therefore meaningless for "who could read what on day X" (ADR-0036, Entscheidung 8).
+   */
+  GROUP_STEWARD_APPOINTED,
+  /** The reverse of {@link #GROUP_STEWARD_APPOINTED} - including handing responsibility over. */
+  GROUP_STEWARD_DISMISSED,
+  /**
+   * An internal group was released for use by other people granting rights, or the release was
+   * taken back (ADR-0036, Entscheidung 9). A reach field like {@link #ASSET_VISIBILITY_CHANGED}: it
+   * decides who may name this group as a grant subject at all.
+   */
+  GROUP_RELEASE_CHANGED,
+  /**
+   * The protection mark of the staff council and the comparable bodies was set or released
+   * (ADR-0036, Entscheidung 9) - by the body itself, never by the administration, the same
+   * treatment {@link #LIBRARY_DIAGNOSTICS_LOCK_CHANGED} gets.
+   */
+  GROUP_PROTECTION_CHANGED,
+  /**
+   * A system administrator who is no steward of the group read its member list (ADR-0036,
+   * Entscheidung 9: "der Abruf ist ein Audit-Ereignis"; Personalrat A6). The administration may see
+   * who is in a group, and that it looked is on the record; a steward reading their own group's
+   * list writes nothing.
+   */
+  GROUP_MEMBERS_READ,
+  /**
    * A library associated with (made available in) a space - recorded for every association, not
    * only the mixed-audience case the name might suggest; whether the audience was mixed is a
    * separate fact (the owner notification), not part of this event's own condition. See {@link

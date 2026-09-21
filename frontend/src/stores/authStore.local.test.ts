@@ -621,7 +621,8 @@ describe('authStore - local session', () => {
     ['session_revoked:admin_reset', /Passwort zurückgesetzt/],
     ['session_revoked:admin_action', /von der Systemverwaltung beendet/],
     ['account_not_active', /nicht anmeldefähig/],
-  ])('ends the session with the named cause for %s', (reason, expected) => {
+  ])('ends the session with the named cause for %s', async (reason, expected) => {
+    withLocalConfig()
     useAuthStore.setState({ sessionKind: 'local', isAuthenticated: true, token: 't' })
 
     useAuthStore.getState().expireSession(reason as never)
@@ -630,6 +631,10 @@ describe('authStore - local session', () => {
     expect(state.isAuthenticated).toBe(false)
     expect(state.sessionKind).toBeNull()
     expect(state.error).toMatch(expected)
+    // expireSession lädt die Anmeldekonfiguration bewusst ohne Abwarten nach (#1612). Ohne dieses
+    // Abwarten läuft die Anfrage in den nächsten Test hinein: Die Handler sind dort schon
+    // zurückgesetzt, und die späte Antwort überschreibt den Stand, den er selbst gesetzt hat.
+    await vi.waitFor(() => expect(useAuthStore.getState().localAccounts.enabled).toBe(true))
   })
 
   it('reports no missing provider while local accounts are the way in', async () => {

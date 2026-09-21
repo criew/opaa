@@ -33,6 +33,7 @@ import type {
   GroupListResponse,
   GroupMemberResponse,
   GroupResponse,
+  GroupStewardResponse,
   HealthResponse,
   IndexingRunListResponse,
   IndexingStatusResponse,
@@ -793,7 +794,7 @@ export async function getGroups(): Promise<GroupListResponse[]> {
 
 export async function getGroup(groupId: string): Promise<GroupResponse> {
   try {
-    const { data } = await client.get<GroupResponse>(`/v1/admin/groups/${groupId}`)
+    const { data } = await client.get<GroupResponse>(`/v1/groups/${groupId}`)
     return data
   } catch (err) {
     normalizeError(err)
@@ -802,7 +803,7 @@ export async function getGroup(groupId: string): Promise<GroupResponse> {
 
 export async function createGroup(name: string, description: string): Promise<GroupResponse> {
   try {
-    const { data } = await client.post<GroupResponse>('/v1/admin/groups', { name, description })
+    const { data } = await client.post<GroupResponse>('/v1/groups', { name, description })
     return data
   } catch (err) {
     normalizeError(err)
@@ -815,7 +816,7 @@ export async function updateGroup(
   description: string,
 ): Promise<GroupResponse> {
   try {
-    const { data } = await client.put<GroupResponse>(`/v1/admin/groups/${groupId}`, {
+    const { data } = await client.put<GroupResponse>(`/v1/groups/${groupId}`, {
       name,
       description,
     })
@@ -827,7 +828,7 @@ export async function updateGroup(
 
 export async function deleteGroup(groupId: string): Promise<void> {
   try {
-    await client.delete(`/v1/admin/groups/${groupId}`)
+    await client.delete(`/v1/groups/${groupId}`)
   } catch (err) {
     normalizeError(err)
   }
@@ -838,7 +839,7 @@ export async function addGroupMember(
   userId: string,
 ): Promise<GroupMemberResponse> {
   try {
-    const { data } = await client.post<GroupMemberResponse>(`/v1/admin/groups/${groupId}/members`, {
+    const { data } = await client.post<GroupMemberResponse>(`/v1/groups/${groupId}/members`, {
       userId,
     })
     return data
@@ -849,7 +850,71 @@ export async function addGroupMember(
 
 export async function removeGroupMember(groupId: string, userId: string): Promise<void> {
   try {
-    await client.delete(`/v1/admin/groups/${groupId}/members/${userId}`)
+    await client.delete(`/v1/groups/${groupId}/members/${userId}`)
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/**
+ * Die internen Gruppen, für die das eigene Konto verantwortlich ist (#1814) - die Grundlage von
+ * „Meine Gruppen". Bewusst getrennt von {@link getMyGroups}: verantwortlich zu sein heißt nicht,
+ * Mitglied zu sein.
+ */
+export async function getMyStewardedGroups(): Promise<GroupListResponse[]> {
+  try {
+    const { data } = await client.get<GroupListResponse[]>('/v1/me/stewarded-groups')
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function appointGroupSteward(
+  groupId: string,
+  userId: string,
+): Promise<GroupStewardResponse> {
+  try {
+    const { data } = await client.post<GroupStewardResponse>(`/v1/groups/${groupId}/stewards`, {
+      userId,
+    })
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function dismissGroupSteward(groupId: string, userId: string): Promise<void> {
+  try {
+    await client.delete(`/v1/groups/${groupId}/stewards/${userId}`)
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function setGroupRelease(
+  groupId: string,
+  releasedForUse: boolean,
+): Promise<GroupResponse> {
+  try {
+    const { data } = await client.put<GroupResponse>(`/v1/groups/${groupId}/release`, {
+      releasedForUse,
+    })
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function setGroupProtection(
+  groupId: string,
+  protectedGroup: boolean,
+): Promise<GroupResponse> {
+  try {
+    const { data } = await client.put<GroupResponse>(`/v1/groups/${groupId}/protection`, {
+      protectedGroup,
+    })
+    return data
   } catch (err) {
     normalizeError(err)
   }

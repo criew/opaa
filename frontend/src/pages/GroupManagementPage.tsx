@@ -7,6 +7,8 @@ import Autocomplete from '@mui/material/Autocomplete'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Divider from '@mui/material/Divider'
+import FormControlLabel from '@mui/material/FormControlLabel'
+import Switch from '@mui/material/Switch'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
@@ -15,21 +17,25 @@ import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import type { GroupListResponse, UserInfo } from '../types/api'
 import { getUsers } from '../services/api'
 import { confirmAction } from '../stores/confirmStore'
+import { useAuthStore } from '../stores/authStore'
 import { useGroupStore } from '../stores/groupStore'
 import { groupKindLabel } from '../utils/labels'
 import CreateGroupDialog from '../components/CreateGroupDialog'
+import GroupStewardsSection from '../components/groups/GroupStewardsSection'
 import FieldLabel from '../components/wizard/FieldLabel'
 import MetaBadge from '../components/MetaBadge'
 import AreaPageHeader from '../components/AreaPageHeader'
 import { contentWidth } from '../theme/tokens'
 
 function GroupCard({ group }: { group: GroupListResponse }) {
+  const currentUserId = useAuthStore((s) => s.user?.id)
   const details = useGroupStore((s) => s.groupDetails[group.id])
   const loadGroupDetails = useGroupStore((s) => s.loadGroupDetails)
   const renameGroup = useGroupStore((s) => s.renameGroup)
   const deleteExistingGroup = useGroupStore((s) => s.deleteExistingGroup)
   const addMember = useGroupStore((s) => s.addMember)
   const removeMember = useGroupStore((s) => s.removeMember)
+  const changeRelease = useGroupStore((s) => s.changeRelease)
 
   const [expanded, setExpanded] = useState(false)
   const [draft, setDraft] = useState<{ groupId: string | null; name: string; description: string }>(
@@ -68,6 +74,10 @@ function GroupCard({ group }: { group: GroupListResponse }) {
         <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexGrow: 1 }}>
           <Typography sx={{ fontSize: 14.5, fontWeight: 600 }}>{group.name}</Typography>
           <MetaBadge>{groupKindLabel(group.kind)}</MetaBadge>
+          {group.protectedGroup && <MetaBadge>geschützt</MetaBadge>}
+          {group.kind === 'AD_HOC' && !group.releasedForUse && (
+            <MetaBadge>nicht freigegeben</MetaBadge>
+          )}
           <Typography sx={{ fontSize: 13, color: 'text.secondary', ml: 'auto', mr: 1 }}>
             {group.memberCount} {group.memberCount === 1 ? 'Mitglied' : 'Mitglieder'}
           </Typography>
@@ -163,7 +173,47 @@ function GroupCard({ group }: { group: GroupListResponse }) {
           )}
         </Stack>
 
-        <Divider sx={{ mb: 2 }} />
+        {isAdHoc && (
+          <>
+            <Divider sx={{ mb: 2 }} />
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={group.releasedForUse}
+                  onChange={async (e) => {
+                    setLocalError(null)
+                    try {
+                      await changeRelease(group.id, e.target.checked)
+                    } catch (err) {
+                      setLocalError(
+                        err instanceof Error
+                          ? err.message
+                          : 'Die Freigabe konnte nicht geändert werden',
+                      )
+                    }
+                  }}
+                />
+              }
+              label="Zur Verwendung freigeben"
+            />
+            <Typography sx={{ fontSize: 13, color: 'text.secondary', mb: 2 }}>
+              Erst freigegeben ist die Gruppe für andere Rechtevergebende wählbar. Das
+              Schutzkennzeichen setzen und lösen die Verantwortlichen der Gruppe selbst — die
+              Systemverwaltung kann es nicht; bei einer geschützten Gruppe gilt das auch für die
+              Freigabe.
+            </Typography>
+
+            <Divider sx={{ mb: 2 }} />
+            <GroupStewardsSection
+              groupId={group.id}
+              groupName={group.name}
+              stewards={details?.stewards ?? group.stewards}
+              currentUserId={currentUserId}
+            />
+          </>
+        )}
+
+        <Divider sx={{ my: 2 }} />
 
         <Typography
           component="h3"

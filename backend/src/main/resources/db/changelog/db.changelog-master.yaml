@@ -133,3 +133,12 @@ databaseChangeLog:
   # erster Konnektor ist die Keycloak Admin REST API (#1817, ADR-0036 Entscheidung 3).
   - include:
       file: db/changelog/changes/053-create-directory-connectors.yaml
+  # Gruppenverantwortliche interner Gruppen, ihre Freigabe zur Verwendung samt Bestandsmigration
+  # und das Schutzkennzeichen (#1814, ADR-0036 Entscheidungen 4 und 9). 058 steht nach 043: seine
+  # Bestandsmigration liest space_memberships.group_id, die 043 anlegt.
+  - include:
+      file: db/changelog/changes/057-create-group-stewards.yaml
+  - include:
+      file: db/changelog/changes/058-groups-released-for-use.yaml
+  - include:
+      file: db/changelog/changes/059-groups-protected.yaml

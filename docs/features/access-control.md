@@ -146,16 +146,15 @@ Entscheidung 5, die damit ADR-0018, Entscheidung 6 samt Nachtrag ablöst.
 | `CREATE_CONNECTOR_LIBRARY` | eine Bibliothek mit Konnektor anlegen (Dateisystem, Webverzeichnis, Feed, Confluence, S3) | Alle Konten |
 | `CREATE_INTERNAL_GROUP` | eine interne Gruppe anlegen | niemanden |
 
-> **`CREATE_INTERNAL_GROUP` ist heute Vokabular, keine Öffnung.** Der Endpunkt hinter dem Anlegen
-> interner Gruppen ist unverändert `SYSTEM_ADMIN`-beschränkt, und die Systemverwaltung hält die
-> Fähigkeit ohnehin implizit. Eine Erteilung an eine Person oder Gruppe wird protokolliert und
-> historisiert, wirkt aber erst, wenn es einen Anlegepfad außerhalb der Systemverwaltung gibt
-> ([#1814](https://github.com/criew/opaa/issues/1814)). Die Verwaltungsübersicht sagt das in ihrer
-> Klartextzeile mit.
+> **`CREATE_INTERNAL_GROUP` wirkt seit #1814.** Wer sie hält, legt eine interne Gruppe an und wird
+> deren erster Verantwortlicher — ohne Systemrolle und ohne Ticket. Die Verwaltungsübersicht nennt
+> in ihrer Klartextzeile, wer sie hält; ausgeliefert ist sie an niemanden, die Öffnung ist eine
+> Entscheidung des Hauses.
 
 - **Der ausgelieferte Zustand ist der heutige.** Nach der Migration legt jedes Konto Spaces und
-  Bibliotheken genau wie vorher an; interne Gruppen bleiben der Systemverwaltung vorbehalten. Wer
-  einschränken will, entzieht „Alle Konten" und erteilt einer benannten Gruppe.
+  Bibliotheken genau wie vorher an; interne Gruppen bleiben der Systemverwaltung vorbehalten,
+  solange niemand `CREATE_INTERNAL_GROUP` hält. Wer einschränken will, entzieht „Alle Konten" und
+  erteilt einer benannten Gruppe.
 - **`CREATE_CONNECTOR_LIBRARY` ist eine eigene Fähigkeit**, weil Konnektorbibliotheken Serverpfade und
   Zugangsdaten erreichen und die Freigabe-Obergrenze für Fremdzugänge tragen — der erste Kandidat, den
   ein Haus nach der Migration auf eine benannte Gruppe einschränkt.
@@ -1150,6 +1149,89 @@ Ablehnung nur das Entfernen der Wirkungen vorbei** — Deaktivieren bleibt jeder
 
 > Festgeschrieben in [ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md),
 > Entscheidungen 2 und 11.
+
+#### Interne Gruppen: Verantwortliche, Freigabe und Schutzkennzeichen (gebaut, #1814 — ohne die Schutzwirkungen nach außen, #1820)
+
+Eine **interne Gruppe** wird nicht von der Systemverwaltung gepflegt, sondern von benannten
+**Verantwortlichen**. Die Vorentscheidung „Wer eine Querschnittsgruppe braucht, legt sie explizit
+an" trägt im Alltag nur, wenn nicht jede Mitgliederänderung ein Ticket ist — und lokale Konten
+([ADR-0033](../decisions/0033-lokale-benutzerverwaltung.md)) bekommen Gruppen ausschließlich auf
+diesem Weg.
+
+- **Verantwortliche sind ausschließlich natürliche Personen.** Eine Gruppe als Verantwortliche wäre
+  Schachtelung durch die Hintertür. Verantwortlich zu sein macht niemanden zum Mitglied.
+- **Wer eine interne Gruppe anlegt, wird ihr erster Verantwortlicher** — im selben Vorgang, damit
+  keine Gruppe ohne Verantwortliche entsteht.
+- **Verantwortliche dürfen:** Mitglieder aufnehmen und entfernen (nur Konten der eigenen
+  Organisation), Name und Beschreibung ändern, weitere Verantwortliche ernennen und entlassen, die
+  Gruppe zur Verwendung freigeben, sie als geschützt kennzeichnen und sie löschen — Letzteres unter
+  denselben Bedingungen wie bisher (`409`, solange die Gruppe Berechtigungen trägt, ein Anlegerecht
+  hält oder ein Objekt besitzt).
+- **Die Rechteprüfung ist je Gruppe, nicht je Rolle.** Die Schnittstelle liegt deshalb unter
+  `/api/v1/groups` statt unter `/admin`; wer nicht verantwortlich ist, erhält dieselbe Antwort wie
+  für eine unbekannte Gruppe (`404`). Ein `403` verriete, dass es die Gruppe gibt. Unter `/admin`
+  bleibt genau eine Gruppenoperation: die Liste **aller** Gruppen der Organisation.
+- **Die Systemverwaltung darf jede Gruppe pflegen** — sie muss eine Bestandsgruppe ohne
+  Verantwortliche wieder besetzen können. **Die eine Ausnahme ist das Schutzkennzeichen** (siehe
+  unten).
+- **Der letzte Verantwortliche kann sich nicht selbst entfernen.** Die Abgabe der Verantwortung ist
+  ein eigener, sichtbarer Schritt: erst die Nachfolge benennen, dann selbst zurücktreten. Nur die
+  Systemverwaltung kann den letzten Verantwortlichen entlassen — ein Konto, das das Haus verlässt,
+  muss lösbar sein; die Gruppe steht danach ohne Verantwortliche da und gehört in die Betriebsliste
+  offener Nachfolgen.
+- **Aufnahme und Entfernung werden der betroffenen Person angezeigt** — in der Anwendung, ohne Mail.
+  Sonst endet ein Leserecht „sofort", ohne dass die Person erfährt, dass und durch wen. **Mitglieder
+  sehen ihre Verantwortlichen namentlich** (`GET /api/v1/me/groups`).
+- **Verantwortlichkeit ist Protokoll, keine Historienzeile.** Ernennung, Entlassung und Abgabe
+  erzeugen Audit-Ereignisse; eine Historientabelle gibt es bewusst nicht, weil Verantwortung kein
+  Leserecht trägt und für „wer konnte am Tag X was lesen" ohne Bedeutung ist. Mitglieder**änderungen**
+  stehen unverändert in der Rechtehistorie — mit dem Verantwortlichen als Akteur.
+- **Anbietergruppen bleiben schreibgeschützt.** Sie haben keine Verantwortlichen, sondern
+  Ansprechstellen, die die Systemverwaltung benennt (#1821).
+
+**Freigabe zur Verwendung.** Eine interne Gruppe ist erst dann für andere Rechtevergebende wählbar,
+wenn ihre Verantwortlichen sie **freigegeben** haben — das Gegenstück zu `listed` bei Assets:
+Auffindbarkeit ist eine bewusste Handlung. Drei Festlegungen dazu:
+
+1. **Die Durchsetzung liegt im Dienst, nicht in der Auswahlliste**, und gilt für jeden Weg — auch
+   für die Eingabe der Kennung von Hand. Eine nicht freigegebene interne Gruppe ist für einen
+   Aufrufer, der weder Mitglied noch Verantwortlicher noch `SYSTEM_ADMIN` ist, „nicht gefunden".
+   Gebaut ist das an beiden Wegen, die eine Gruppe heute zum Zuge bringen: der Berechtigung auf ein
+   Objekt (`AssetGrantService`) und der Aufnahme als Mitglied eines Space (`SpaceService`). Die
+   Vergabe eines Anlegerechts fragt nicht danach, weil sie ausschließlich der Systemverwaltung
+   offensteht und die Freigabe für sie ohnehin ohne Wirkung ist.
+2. **Die Migration hat „freigegeben" gesetzt** für jede interne Gruppe, die am Migrationstag eine
+   Wirkung hatte: eine Berechtigung auf ein Objekt, ein Anlegerecht, Eigentum an einem Objekt oder
+   eine Mitgliedschaft in einem Space (#1815). Niemand verliert eine Möglichkeit, die er benutzt
+   hat; „Vorgabe nicht freigegeben" gilt damit **nur prospektiv**.
+3. **Das ist eine Bestandsänderung, und sie wird ausgesprochen:** Ein `MANAGER` kann eine neu
+   angelegte interne Gruppe erst nach deren Freigabe als Empfänger wählen. Die Rücknahme der
+   Freigabe nimmt die Gruppe aus jeder Auswahl; bestehende Berechtigungen bleiben unberührt.
+
+**Geschützte Gruppen.** Für die Gruppen der Personalvertretung, der Schwerbehindertenvertretung, der
+Gleichstellung und für Personalvorgänge gilt dieselbe Sonderstellung wie für die entsprechenden
+Bibliotheken ([hybrid-retrieval.md](./hybrid-retrieval.md#berechtigungs-leitplanken), Leitplanke
+(e)). **Das Kennzeichen setzt und löst die zuständige Stelle selbst, nicht die Administration** —
+bei einer internen Gruppe ihre Verantwortlichen. Eine Systemverwaltung, die es setzen oder lösen
+könnte, machte den Schutz zu ihrem; die Antwort auf ihren Versuch ist `403` mit dem Code
+`STEWARDSHIP_REQUIRED`. **Dieselbe Antwort bekommt sie an der Freigabe einer geschützten Gruppe**:
+Wer die Gruppe in jede Auswahl stellen kann, entscheidet sonst über den Schutz, ohne das Kennzeichen
+anfassen zu dürfen.
+
+**Was vom Schutz gebaut ist.** Gebaut sind das Kennzeichen, sein Vorbehalt für die Verantwortlichen
+samt der Freigabe, und das Audit-Ereignis jeder Änderung. **Noch nicht gebaut** sind die drei
+Wirkungen nach außen: nicht über die Suche auffindbar, in fremden Listen namenlos als „geschützte
+Gruppe", und statt der Mitgliederliste die Ansprechstelle für den, der ihr ein Recht einräumt. Sie
+kommen mit der gemeinsamen Subjekt-Auswahl (#1820); bis dahin verhält sich eine geschützte,
+freigegebene Gruppe gegenüber Dritten wie jede andere freigegebene Gruppe.
+
+**Der Abruf der Mitgliederliste durch die Systemverwaltung ist ein Audit-Ereignis**
+(`GROUP_MEMBERS_READ` mit der Zahl der Mitglieder) — ADR-0036, Entscheidung 9 räumt ihr die volle
+Liste ein und hält dafür fest, dass sie sie abgerufen hat. Wer die Gruppe selbst verantwortet,
+erzeugt beim Lesen nichts.
+
+> Festgeschrieben in [ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md),
+> Entscheidungen 4 und 9.
 
 Der Nachweis, worauf eine Person zu einem beliebigen Stichtag Zugriff hatte, entsteht aus der
 Historisierung dieser drei Quellen und ist in

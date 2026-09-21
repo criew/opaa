@@ -1,13 +1,14 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { useGroupStore } from './groupStore'
 import { resetAllStores } from './resettableStores'
-import { getGroups } from '../services/api'
+import { getGroup, getGroups } from '../services/api'
 
 const mockCreateGroup = vi.fn()
 const mockAddGroupMember = vi.fn()
 const mockRemoveGroupMember = vi.fn()
 const mockDeleteGroup = vi.fn()
 const mockUpdateGroup = vi.fn()
+const mockDismissGroupSteward = vi.fn()
 
 vi.mock('../services/api', () => ({
   getGroups: vi.fn(async () => [
@@ -51,6 +52,7 @@ vi.mock('../services/api', () => ({
   deleteGroup: (...args: unknown[]) => mockDeleteGroup(...args),
   addGroupMember: (...args: unknown[]) => mockAddGroupMember(...args),
   removeGroupMember: (...args: unknown[]) => mockRemoveGroupMember(...args),
+  dismissGroupSteward: (...args: unknown[]) => mockDismissGroupSteward(...args),
 }))
 
 describe('groupStore', () => {
@@ -61,6 +63,7 @@ describe('groupStore', () => {
     mockRemoveGroupMember.mockReset()
     mockDeleteGroup.mockReset()
     mockUpdateGroup.mockReset()
+    mockDismissGroupSteward.mockReset()
   })
 
   it('sorts groups alphabetically', async () => {
@@ -103,6 +106,9 @@ describe('groupStore', () => {
           kind: 'AD_HOC',
           origin: 'INTERNAL',
           memberCount: 0,
+          releasedForUse: false,
+          protectedGroup: false,
+          stewards: [],
           members: [],
           createdAt: '2026-03-01T10:00:00Z',
           updatedAt: '2026-03-01T10:00:00Z',
@@ -123,6 +129,39 @@ describe('groupStore', () => {
     expect(mockUpdateGroup).toHaveBeenCalledWith('group-a', 'Renamed', 'desc')
   })
 
+  /**
+   * Wer sich selbst entlässt, darf die Gruppe nicht mehr lesen: Das Nachladen der Details
+   * antwortet 404, und vor #1859 landete diese Meldung nach einer gelungenen Handlung im
+   * Fehlerband. Deshalb lehnt getGroup hier ab - ein Mock, der immer auflöst, deckt den Fall zu.
+   */
+  it('reports no error when the dismissed steward may no longer read the group', async () => {
+    useGroupStore.setState({
+      groupDetails: {
+        'group-a': {
+          id: 'group-a',
+          name: 'Team A',
+          kind: 'AD_HOC',
+          origin: 'INTERNAL',
+          memberCount: 0,
+          releasedForUse: false,
+          protectedGroup: false,
+          stewards: [],
+          members: [],
+          createdAt: '2026-03-01T10:00:00Z',
+          updatedAt: '2026-03-01T10:00:00Z',
+        },
+      },
+    })
+    mockDismissGroupSteward.mockResolvedValueOnce(undefined)
+    vi.mocked(getGroup).mockRejectedValue(new Error('Gruppe nicht gefunden'))
+
+    await useGroupStore.getState().dismissSteward('group-a', 'u1')
+
+    expect(mockDismissGroupSteward).toHaveBeenCalledWith('group-a', 'u1')
+    expect(useGroupStore.getState().error).toBeNull()
+    expect(useGroupStore.getState().groupDetails['group-a']).toBeUndefined()
+  })
+
   // #575: found while systematically checking the resettableStores registry for further
   // unguarded async set() paths beyond the ones the issue named explicitly.
   it('a loadGroups response arriving after a session reset does not resurrect groups', async () => {
@@ -138,6 +177,9 @@ describe('groupStore', () => {
           externalId: null,
           parentGroupId: null,
           memberCount: 2,
+          releasedForUse: true,
+          protectedGroup: false,
+          stewards: [],
           createdAt: '2026-03-01T10:00:00Z',
           updatedAt: '2026-03-01T10:00:00Z',
         },

@@ -111,20 +111,15 @@ class CapabilityResponseMapperTest {
   }
 
   /**
-   * The reservation the line carries as long as internal groups are created by the system
-   * administration alone - a grant to anybody else is recorded and has no effect yet (#1814).
+   * Since #1814 the capability has a creation path outside the system administration, so its line
+   * reads like every other one - no capability is qualified any more.
    */
   @Test
-  void addsTheReservationToTheInternalGroupCapabilityWhileItHasNoCreationPath() {
+  void statesTheInternalGroupCapabilityWithoutAnyReservation() {
     assertThat(statementOf(Capability.CREATE_INTERNAL_GROUP, List.of(group("Referat 50"))))
-        .contains("#1814")
-        .startsWith("Gruppe Referat 50 sowie die Systemverwaltung dürfen interne Gruppen anlegen.");
+        .isEqualTo("Gruppe Referat 50 sowie die Systemverwaltung dürfen interne Gruppen anlegen.");
     assertThat(statementOf(Capability.CREATE_INTERNAL_GROUP, List.of()))
-        .as("nobody holds it, so there is nothing to qualify")
         .isEqualTo("Nur die Systemverwaltung darf interne Gruppen anlegen.");
-    assertThat(statementOf(Capability.CREATE_SPACE, List.of(group("Referat 50"))))
-        .as("no other capability carries it")
-        .doesNotContain("#1814");
   }
 
   @Test
