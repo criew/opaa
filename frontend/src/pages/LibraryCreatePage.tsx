@@ -29,10 +29,12 @@ import { getMyGroups, testLibrarySource, upsertLibraryGrant } from '../services/
 import { confirmAction } from '../stores/confirmStore'
 import { useLibraryStore } from '../stores/libraryStore'
 import { useIndexingStore } from '../stores/indexingStore'
+import { useMyCapabilities } from '../hooks/useMyCapabilities'
 import { useUserSearch } from '../hooks/useUserSearch'
 import {
   allDocumentSourceTypes,
   assetRoleLabel,
+  capabilityMissingMessage,
   documentSourceTypeConfigKind,
   documentSourceTypeDescription,
   documentSourceTypeLabel,
@@ -47,6 +49,7 @@ import {
 } from '../utils/librarySourceConfig'
 import type {
   AssetRole,
+  Capability,
   DocumentSourceType,
   GroupListResponse,
   LibraryOwnerType,
@@ -81,6 +84,10 @@ export default function LibraryCreatePage() {
   const [activeStep, setActiveStep] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  // ADR-0036, Entscheidung 5: uploads and connectors are separate Anlegerechte, because a
+  // connector library reaches server paths and stored credentials. A missing right is explained
+  // rather than hidden; the backend refuses the same call regardless.
+  const { isMissing } = useMyCapabilities()
 
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
@@ -104,6 +111,12 @@ export default function LibraryCreatePage() {
   const [testResult, setTestResult] = useState<SourceConnectionTestResponse | null>(null)
   const [testErrorMessage, setTestErrorMessage] = useState<string | null>(null)
   const [testing, setTesting] = useState(false)
+
+  const requiredCapability: Capability =
+    sourceType === 'UPLOAD' ? 'CREATE_LIBRARY' : 'CREATE_CONNECTOR_LIBRARY'
+  const missingCapability = isMissing(requiredCapability)
+    ? capabilityMissingMessage(requiredCapability)
+    : null
 
   const [visibility, setVisibility] = useState<LibraryVisibility>('PRIVATE')
   const [pendingGrants, setPendingGrants] = useState<PendingGrant[]>([])
@@ -338,6 +351,12 @@ export default function LibraryCreatePage() {
           {STEP_TITLES[activeStep]}
         </Typography>
         <WizardStepBar steps={STEPS} active={activeStep} />
+
+        {missingCapability && (
+          <Alert severity="info" sx={{ mb: 2 }} id="library-create-capability-hint">
+            {missingCapability}
+          </Alert>
+        )}
 
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>
@@ -886,7 +905,10 @@ export default function LibraryCreatePage() {
             <Button
               variant="contained"
               onClick={() => void handleCreate()}
-              disabled={submitting || name.trim() === ''}
+              disabled={submitting || missingCapability !== null || name.trim() === ''}
+              aria-describedby={
+                missingCapability !== null ? 'library-create-capability-hint' : undefined
+              }
             >
               {submitting ? 'Wird angelegt …' : 'Bibliothek anlegen'}
             </Button>

@@ -411,11 +411,18 @@ public class GlobalExceptionHandler {
         new ErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND.value(), Instant.now()));
   }
 
+  /**
+   * A refusal may carry a stable {@code code} the client acts on (e.g. {@code
+   * CAPABILITY_REQUIRED}).
+   */
   @ExceptionHandler(AccessDeniedException.class)
   public ResponseEntity<ErrorResponse> handleDomainAccessDeniedException(AccessDeniedException ex) {
-    return respond(
-        HttpStatus.FORBIDDEN,
-        new ErrorResponse(ex.getMessage(), HttpStatus.FORBIDDEN.value(), Instant.now()));
+    ErrorResponse body =
+        new ErrorResponse(ex.getMessage(), HttpStatus.FORBIDDEN.value(), Instant.now());
+    if (ex.getCode() != null) {
+      body.setCode(ex.getCode());
+    }
+    return respond(HttpStatus.FORBIDDEN, body);
   }
 
   /** A conflict may carry a stable {@code code} the client acts on (ADR-0033, Entscheidung 4). */

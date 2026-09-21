@@ -107,6 +107,17 @@ databaseChangeLog:
   # ADR-0036 Entscheidung 2, die 041 bis zur dev-Modus-Entscheidung offengelassen hat (#1816).
   - include:
       file: db/changelog/changes/054-groups-org-unit-requires-provider.yaml
+  # Installationsweite Fähigkeiten als vergebbare Zeilen, ihre Historie und der
+  # Auslieferungszustand „Alle Konten dürfen" (#1813, ADR-0036 Entscheidung 5 und 8). Die drei
+  # laufen in dieser Reihenfolge, nicht in der ihrer Nummern: 051 füllt beide Tabellen und setzt
+  # 042 und 050 voraus; 045 steht davor, weil die Aufbewahrungshöchstdauer die Vorbedingung der
+  # Historientabelle ist. Liquibase folgt der Reihenfolge dieser Datei, nicht den Dateinamen.
+  - include:
+      file: db/changelog/changes/042-create-capability-grants.yaml
+  - include:
+      file: db/changelog/changes/050-create-capability-grant-history.yaml
+  - include:
+      file: db/changelog/changes/051-seed-delivered-capability-grants.yaml
   # Der Zugang, mit dem der Verzeichnisabgleich eines Anbieters sein Verzeichnis liest —
   # erster Konnektor ist die Keycloak Admin REST API (#1817, ADR-0036 Entscheidung 3).
   - include:

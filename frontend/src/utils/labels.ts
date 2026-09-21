@@ -1,5 +1,6 @@
 import type {
   AssetRole,
+  Capability,
   DatePrecision,
   DocumentSourceType,
   DocumentStatus,
@@ -391,4 +392,24 @@ export function datePrecisionLabel(precision: DatePrecision | string | null | un
  */
 export function formatShare(share: number): string {
   return `${Math.round(share * 100)} %`
+}
+
+const capabilityLabels: Record<Capability, string> = {
+  CREATE_SPACE: 'Spaces anlegen',
+  CREATE_LIBRARY: 'Bibliotheken für Uploads anlegen',
+  CREATE_CONNECTOR_LIBRARY: 'Konnektorbibliotheken anlegen',
+  CREATE_INTERNAL_GROUP: 'Interne Gruppen anlegen',
+}
+
+/**
+ * The sentence a creation dialog shows for a missing Anlegerecht - word for word the one the
+ * backend answers with, so the explanation before the attempt and the refusal after it do not
+ * differ. `CapabilityService#requireCapability` holds the other copy; its wording is asserted in
+ * `CapabilityEnforcementIntegrationTest`.
+ */
+export function capabilityMissingMessage(capability: Capability): string {
+  return (
+    `Ihnen fehlt das Anlegerecht „${capabilityLabels[capability]}“. ` +
+    'Wenden Sie sich an die Systemverwaltung, wenn Sie es benötigen.'
+  )
 }

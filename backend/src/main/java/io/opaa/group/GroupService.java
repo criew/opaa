@@ -6,6 +6,7 @@ import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.api.types.AuditSubjectKind;
+import io.opaa.api.types.Capability;
 import io.opaa.api.types.GroupKind;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
@@ -22,6 +23,8 @@ import io.opaa.group.sync.DirectorySyncStatus;
 import io.opaa.group.sync.DirectorySyncStatusRepository;
 import io.opaa.permission.AssetGrantRepository;
 import io.opaa.permission.AssetOwnershipDirectory;
+import io.opaa.permission.CapabilityGrantRepository;
+import io.opaa.permission.CapabilityService;
 import io.opaa.permission.GroupMembershipHistoryCause;
 import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.PermissionHistoryService;
@@ -58,8 +61,9 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * fk_asset_grants_subject_group_organization} is RESTRICT, exactly like the owner keys; without the
  * check in {@link #deleteGroup}, the everyday case the feature spec's "Freigabestufen und
  * Auffindbarkeit" describes - "an Abteilung 5 freigeben" is a grant to the group representing
- * Abteilung 5, not ownership - would surface as an unhandled {@code
- * DataIntegrityViolationException} (HTTP 500) the first time anyone tried to delete such a group.
+ * Abteilung 5, not ownership - would be refused by the constraint alone, with the generic
+ * foreign-key message {@code GlobalExceptionHandler} turns a {@code
+ * DataIntegrityViolationException} into and without naming what still holds the group.
  */
 @Service
 @Transactional(readOnly = true)
@@ -75,6 +79,8 @@ public class GroupService {
   private final GroupMembershipResolver membershipResolver;
   private final List<AssetOwnershipDirectory> assetOwnershipDirectories;
   private final AssetGrantRepository grantRepository;
+  private final CapabilityGrantRepository capabilityGrantRepository;
+  private final CapabilityService capabilityService;
   private final PermissionHistoryService permissionHistoryService;
   private final AuditEventRecorder auditEventRecorder;
 
@@ -86,6 +92,8 @@ public class GroupService {
       GroupMembershipResolver membershipResolver,
       List<AssetOwnershipDirectory> assetOwnershipDirectories,
       AssetGrantRepository grantRepository,
+      CapabilityGrantRepository capabilityGrantRepository,
+      CapabilityService capabilityService,
       PermissionHistoryService permissionHistoryService,
       AuditEventRecorder auditEventRecorder) {
     this.groupRepository = groupRepository;
@@ -95,12 +103,15 @@ public class GroupService {
     this.membershipResolver = membershipResolver;
     this.assetOwnershipDirectories = assetOwnershipDirectories;
     this.grantRepository = grantRepository;
+    this.capabilityGrantRepository = capabilityGrantRepository;
+    this.capabilityService = capabilityService;
     this.permissionHistoryService = permissionHistoryService;
     this.auditEventRecorder = auditEventRecorder;
   }
 
   @Transactional
   public GroupDetail createGroup(GroupCreation creation, CurrentUser caller) {
+    capabilityService.requireCapability(caller, Capability.CREATE_INTERNAL_GROUP);
     String normalizedName = validateName(creation.name());
     validateDescription(creation.description());
 
@@ -263,9 +274,10 @@ public class GroupService {
     Group group = loadGroup(groupId, caller);
     rejectOrgUnit(group);
     // The owner foreign keys of the asset tables are RESTRICT: without this check, deleting a
-    // group that still owns an asset would surface as an unhandled DataIntegrityViolationException
-    // -> HTTP 500 with no indication of the actual cause. Every asset type answers for itself
-    // through AssetOwnershipDirectory, so a further type extends this check by adding a bean.
+    // group that still owns an asset is refused by the constraint alone, with the generic
+    // foreign-key message and no indication of the actual cause. Every asset type answers for
+    // itself through AssetOwnershipDirectory, so a further type extends this check by adding a
+    // bean.
     for (AssetOwnershipDirectory ownership : assetOwnershipDirectories) {
       if (ownership.existsAssetOwnedByGroup(groupId)) {
         throw new ConflictException(ownership.ownedAssetConflictMessage());
@@ -276,6 +288,13 @@ public class GroupService {
     if (grantRepository.existsBySubjectGroupId(groupId)) {
       throw new ConflictException(
           "Die Gruppe hat noch Berechtigungen auf Bibliotheken und kann nicht gelöscht werden");
+    }
+    // The same RESTRICT pattern one table further
+    // (fk_capability_grants_subject_group_organization): without this check the deletion is still
+    // refused, but with the generic foreign-key message instead of the reason.
+    if (capabilityGrantRepository.existsBySubjectGroupId(groupId)) {
+      throw new ConflictException(
+          "Die Gruppe hat noch Anlegerechte und kann nicht gelöscht werden");
     }
 
     List<UUID> affectedUserIds =

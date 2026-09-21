@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.GroupKind;
 import io.opaa.api.types.LibraryVisibility;
+import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
@@ -149,6 +150,20 @@ class GroupServiceIntegrationTest {
   }
 
   /**
+   * Creating an internal group needs CREATE_INTERNAL_GROUP, which is delivered to nobody and held
+   * implicitly by SYSTEM_ADMIN - the only role the endpoint lets through anyway (#1813).
+   */
+  private UUID createAdmin(UUID organizationId) {
+    User user =
+        new User(UUID.randomUUID().toString(), "test-issuer", "admin@example.com", "Test Admin");
+    user.setOrganizationId(organizationId);
+    user.setSystemRole(SystemRole.SYSTEM_ADMIN);
+    UUID id = userRepository.save(user).getId();
+    createdUserIds.add(id);
+    return id;
+  }
+
+  /**
    * {@link CurrentUser} snapshot for a user id this test already created via {@link #createUser}.
    */
   private CurrentUser currentUserOf(UUID userId) {
@@ -163,7 +178,7 @@ class GroupServiceIntegrationTest {
 
   @Test
   void createsAnAdHocGroup() {
-    UUID admin = createUser(organizationA);
+    UUID admin = createAdmin(organizationA);
     GroupCreation creation = new GroupCreation("Projektbeteiligte Phoenix", "Ad hoc");
 
     GroupDetail created = groupService.createGroup(creation, currentUserOf(admin));

@@ -21,6 +21,7 @@ import type {
   SpaceResponse,
   GroupListResponse,
   GroupResponse,
+  MyCapabilitiesResponse,
   LibraryDocumentResponse,
   LibraryResponse,
   SpaceLibraryAssociationListResponse,
@@ -1491,6 +1492,14 @@ export const mockLibraryDetails: Record<string, LibraryResponse> = {
 export const mockMyGroups: GroupListResponse[] = mockGroups.filter((group) =>
   mockGroupDetails[group.id]?.members.some((member) => member.userId === 'mock-user-id'),
 )
+
+/**
+ * The delivered capabilities of ADR-0036, Entscheidung 5 - the three creation rights every account
+ * holds, without CREATE_INTERNAL_GROUP, which is delivered to nobody.
+ */
+export const mockMyCapabilities: MyCapabilitiesResponse = {
+  capabilities: ['CREATE_SPACE', 'CREATE_LIBRARY', 'CREATE_CONNECTOR_LIBRARY'],
+}
 
 const INITIAL_LIBRARY_DOCUMENTS: Record<string, LibraryDocumentResponse[]> = {
   'library-mine': [

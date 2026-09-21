@@ -62,6 +62,9 @@ export type GroupListResponse = components['schemas']['GroupListResponse']
 export type GroupResponse = components['schemas']['GroupResponse']
 export type GroupAddMemberRequest = components['schemas']['GroupAddMemberRequest']
 
+export type Capability = components['schemas']['Capability']
+export type MyCapabilitiesResponse = components['schemas']['MyCapabilitiesResponse']
+
 export type AssetRole = components['schemas']['AssetRole']
 export type LibraryOwnerType = components['schemas']['LibraryOwnerType']
 export type LibraryVisibility = components['schemas']['LibraryVisibility']

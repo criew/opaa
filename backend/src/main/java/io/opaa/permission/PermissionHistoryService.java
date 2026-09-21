@@ -10,9 +10,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Records and reconstructs the permission-state history #238 asks for: every change to an {@link
- * AssetGrant} and to a group membership is written here as a half-open interval, with the operation
- * that caused it - so a subject's reach is reconstructable at any past instant inside the retention
- * period, not only "now" (see
+ * AssetGrant}, to a group membership and to a {@link CapabilityGrant} is written here as a
+ * half-open interval, with the operation that caused it - so a subject's reach is reconstructable
+ * at any past instant inside the retention period, not only "now" (see
  * docs/features/security-and-compliance.md#nachweisbarkeit-historisierung-von-rechten). Every
  * recording method runs inside the caller's own transaction (default propagation): a grant change
  * and its history row commit or roll back together, the same as any other write this class's
@@ -35,11 +35,11 @@ import org.springframework.transaction.annotation.Transactional;
  * PermissionHistoryRetentionService#retentionCutoff()} is deleted and has none (#1833). Successive
  * intervals stay gapless: closing one and opening the next share a single boundary value.
  * Zero-length rows exist on purpose, but only as event markers ({@link AssetGrantHistory#terminal},
- * {@link GroupMembershipHistory#terminal}) recording a revocation or deletion; they are exempt from
- * the strictly-increasing rule and are never selected by the reconstruction. The contract orders
- * the <i>issuing</i> of boundaries, not the commits around them: that two concurrent transactions
- * cannot leave an interleaved chain behind is what the partial unique indexes on the open rows
- * enforce, not the clock.
+ * {@link GroupMembershipHistory#terminal}, {@link CapabilityGrantHistory#terminal}) recording a
+ * revocation or deletion; they are exempt from the strictly-increasing rule and are never selected
+ * by the reconstruction. The contract orders the <i>issuing</i> of boundaries, not the commits
+ * around them: that two concurrent transactions cannot leave an interleaved chain behind is what
+ * the partial unique indexes on the open rows enforce, not the clock.
  *
  * <p>Deliberately not the event log #391/#392 are building in parallel - this class records only
  * the resulting state interval, never a stream of "who read what".
@@ -50,9 +50,10 @@ import org.springframework.transaction.annotation.Transactional;
  * DirectorySyncPlanExecutor#applyPlan} (with {@link
  * GroupMembershipHistoryCause#DIRECTORY_SYNC_ADDED}/{@link
  * GroupMembershipHistoryCause#DIRECTORY_SYNC_REMOVED} and no actor - a sync run has no acting
- * user), and {@code KnowledgeLibraryService#deleteLibrary}. The delete paths close every open
- * interval the deleted asset/group left behind ({@link AssetGrantHistoryCause#LIBRARY_DELETED},
- * {@link GroupMembershipHistoryCause#GROUP_DELETED}) - required because {@code asset_id}/{@code
+ * user), {@code KnowledgeLibraryService#deleteLibrary} and {@link CapabilityService#grant}/{@link
+ * CapabilityService#revoke}. The delete paths close every open interval the deleted asset/group
+ * left behind ({@link AssetGrantHistoryCause#LIBRARY_DELETED}, {@link
+ * GroupMembershipHistoryCause#GROUP_DELETED}) - required because {@code asset_id}/{@code
  * group_id}/{@code subject_group_id} carry no foreign key (ADR-0016), so the deletion itself never
  * closes them.
  */
@@ -61,14 +62,17 @@ public class PermissionHistoryService {
 
   private final AssetGrantHistoryRepository grantHistoryRepository;
   private final GroupMembershipHistoryRepository membershipHistoryRepository;
+  private final CapabilityGrantHistoryRepository capabilityHistoryRepository;
   private final PermissionHistoryClock clock;
 
   PermissionHistoryService(
       AssetGrantHistoryRepository grantHistoryRepository,
       GroupMembershipHistoryRepository membershipHistoryRepository,
+      CapabilityGrantHistoryRepository capabilityHistoryRepository,
       PermissionHistoryClock clock) {
     this.grantHistoryRepository = grantHistoryRepository;
     this.membershipHistoryRepository = membershipHistoryRepository;
+    this.capabilityHistoryRepository = capabilityHistoryRepository;
     this.clock = clock;
   }
 
@@ -195,6 +199,61 @@ public class PermissionHistoryService {
             });
     membershipHistoryRepository.save(
         GroupMembershipHistory.terminal(groupId, organizationId, userId, cause, actorUserId, now));
+  }
+
+  // -------------------------------------------------------------------------------------------
+  // Capabilities
+  // -------------------------------------------------------------------------------------------
+
+  /** Opens the first interval for a newly granted {@link CapabilityGrant}. */
+  public void recordCapabilityGranted(CapabilityGrant grant, UUID actorUserId) {
+    capabilityHistoryRepository.save(
+        CapabilityGrantHistory.open(
+            grant, CapabilityGrantHistoryCause.GRANTED, actorUserId, clock.nextBoundary()));
+  }
+
+  /**
+   * Closes the currently open interval of a withdrawn {@code grant} (keeping its own recorded
+   * cause, e.g. {@code DELIVERED}, unchanged) and additionally writes a zero-length {@link
+   * CapabilityGrantHistory#terminal} marker with {@link CapabilityGrantHistoryCause#REVOKED}. Call
+   * before the grant row itself is deleted.
+   */
+  public void recordCapabilityRevoked(CapabilityGrant grant, UUID actorUserId) {
+    Instant now = clock.nextBoundary();
+    closeOpenCapabilityInterval(grant, now);
+    capabilityHistoryRepository.save(
+        CapabilityGrantHistory.terminal(
+            grant, CapabilityGrantHistoryCause.REVOKED, actorUserId, now));
+  }
+
+  /** Flushes for the same reason {@link #closeOpenGrantInterval} does. */
+  private void closeOpenCapabilityInterval(CapabilityGrant grant, Instant now) {
+    var open =
+        switch (grant.getSubjectType()) {
+          case USER ->
+              capabilityHistoryRepository
+                  .findByOrganizationIdAndCapabilityAndSubjectTypeAndSubjectUserIdAndValidToIsNull(
+                      grant.getOrganizationId(),
+                      grant.getCapability(),
+                      grant.getSubjectType(),
+                      grant.getSubjectUserId());
+          case GROUP ->
+              capabilityHistoryRepository
+                  .findByOrganizationIdAndCapabilityAndSubjectTypeAndSubjectGroupIdAndValidToIsNull(
+                      grant.getOrganizationId(),
+                      grant.getCapability(),
+                      grant.getSubjectType(),
+                      grant.getSubjectGroupId());
+          case ALL_ACCOUNTS ->
+              capabilityHistoryRepository
+                  .findByOrganizationIdAndCapabilityAndSubjectTypeAndValidToIsNull(
+                      grant.getOrganizationId(), grant.getCapability(), grant.getSubjectType());
+        };
+    open.ifPresent(
+        interval -> {
+          interval.close(now);
+          capabilityHistoryRepository.saveAndFlush(interval);
+        });
   }
 
   // -------------------------------------------------------------------------------------------

@@ -1,0 +1,82 @@
+databaseChangeLog:
+  - changeSet:
+      id: 050-create-capability-grant-history
+      author: opaa
+      comment: >-
+        Die Stichtagsauskunft ueber Faehigkeiten (#1813, ADR-0036 Entscheidung 8): halboffene
+        Intervalle [valid_from, valid_to) nach dem Muster von group_membership_history. Zulaessig
+        erst, seit die Aufbewahrungshoechstdauer steht (#1833, Changeset 045) - ohne sie wird keine
+        weitere personenbezogene Historienquelle angeschlossen; capability_grant_history braucht
+        deshalb ihren PermissionHistorySweeper, was PermissionHistorySweeperCoverageTest
+        maschinell haelt.
+        .
+        subject_user_id ist RESTRICT (Subjektspalte), actor_user_id SET NULL, subject_group_id ohne
+        Fremdschluessel - die Aufteilung von asset_grant_history: eine Historienzeile ueberlebt das
+        Objekt, ueber das sie Auskunft gibt, sonst waere die Negativfrage "hatte diese Gruppe das
+        Anlegerecht am Tag X nicht" nach der ersten Loeschung unbeantwortbar (ADR-0016).
+        Geschlossen werden offene Intervalle stattdessen von der Anwendung; eine Gruppe mit
+        Faehigkeit wird gar nicht erst geloescht (GroupService#deleteGroup weist sie ab, weil
+        fk_capability_grants_subject_group_organization RESTRICT ist).
+        .
+        organization_id ist dagegen CASCADE, wie in capability_grants. Sie ist nicht die Spalte des
+        Objekts, ueber das die Zeile Auskunft gibt, sondern die Mandantengrenze: Ohne die
+        Organisation gibt es niemanden mehr, dem eine Stichtagsauskunft zustuende, und das
+        ausgelieferte Intervall entsteht mit ihr (Changeset 051) statt aus einer Entscheidung.
+        Ohne diesen Schluessel ueberlebte das offene Intervall seine Organisation und kollidierte
+        mit uk_capability_grant_history_open_all_accounts, sobald eine Organisation unter derselben
+        ID wieder entsteht.
+        .
+        Die drei eindeutigen Teilindexe auf den offenen Intervallen sind die Sperre gegen eine
+        verschraenkte Kette aus zwei gleichzeitigen Transaktionen - dieselbe Rolle wie
+        uk_asset_grant_history_open_user/-group. Nulllange Markierungszeilen (valid_from =
+        valid_to) tragen den Entzug und sind von ihnen ausgenommen, weil sie kein offenes
+        Intervall sind.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE TABLE capability_grant_history (
+                  id uuid NOT NULL,
+                  organization_id uuid NOT NULL,
+                  capability character varying(40) NOT NULL,
+                  subject_type character varying(20) NOT NULL,
+                  subject_user_id uuid,
+                  subject_group_id uuid,
+                  cause character varying(30) NOT NULL,
+                  actor_user_id uuid,
+                  valid_from timestamp with time zone NOT NULL,
+                  valid_to timestamp with time zone,
+                  created_at timestamp with time zone DEFAULT now() NOT NULL,
+                  CONSTRAINT chk_capability_grant_history_capability CHECK ((capability IN ('CREATE_SPACE', 'CREATE_LIBRARY', 'CREATE_CONNECTOR_LIBRARY', 'CREATE_INTERNAL_GROUP'))),
+                  CONSTRAINT chk_capability_grant_history_cause CHECK ((cause IN ('DELIVERED', 'GRANTED', 'REVOKED'))),
+                  CONSTRAINT chk_capability_grant_history_subject_type CHECK ((subject_type IN ('USER', 'GROUP', 'ALL_ACCOUNTS'))),
+                  CONSTRAINT chk_capability_grant_history_subject CHECK (((((subject_type)::text = 'USER'::text) AND (subject_user_id IS NOT NULL) AND (subject_group_id IS NULL)) OR (((subject_type)::text = 'GROUP'::text) AND (subject_group_id IS NOT NULL) AND (subject_user_id IS NULL)) OR (((subject_type)::text = 'ALL_ACCOUNTS'::text) AND (subject_user_id IS NULL) AND (subject_group_id IS NULL)))),
+                  CONSTRAINT chk_capability_grant_history_interval CHECK (((valid_to IS NULL) OR (valid_to >= valid_from)))
+              );
+
+              ALTER TABLE ONLY capability_grant_history
+                  ADD CONSTRAINT capability_grant_history_pkey PRIMARY KEY (id);
+
+              CREATE INDEX idx_capability_grant_history_lookup ON capability_grant_history USING btree (organization_id, capability, valid_from);
+
+              CREATE INDEX idx_capability_grant_history_subject_user ON capability_grant_history USING btree (subject_user_id, organization_id, valid_from) WHERE ((subject_type)::text = 'USER'::text);
+
+              CREATE UNIQUE INDEX uk_capability_grant_history_open_all_accounts ON capability_grant_history USING btree (organization_id, capability) WHERE (((subject_type)::text = 'ALL_ACCOUNTS'::text) AND (valid_to IS NULL));
+
+              CREATE UNIQUE INDEX uk_capability_grant_history_open_group ON capability_grant_history USING btree (organization_id, capability, subject_group_id) WHERE (((subject_type)::text = 'GROUP'::text) AND (valid_to IS NULL));
+
+              CREATE UNIQUE INDEX uk_capability_grant_history_open_user ON capability_grant_history USING btree (organization_id, capability, subject_user_id) WHERE (((subject_type)::text = 'USER'::text) AND (valid_to IS NULL));
+
+              ALTER TABLE ONLY capability_grant_history
+                  ADD CONSTRAINT fk_capability_grant_history_organization FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY capability_grant_history
+                  ADD CONSTRAINT fk_capability_grant_history_subject_user_organization FOREIGN KEY (subject_user_id, organization_id) REFERENCES users(id, organization_id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY capability_grant_history
+                  ADD CONSTRAINT fk_capability_grant_history_actor_user_organization FOREIGN KEY (actor_user_id, organization_id) REFERENCES users(id, organization_id) ON DELETE SET NULL (actor_user_id);
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              DROP TABLE capability_grant_history;
