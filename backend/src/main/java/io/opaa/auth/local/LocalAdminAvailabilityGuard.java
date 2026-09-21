@@ -105,10 +105,24 @@ public class LocalAdminAvailabilityGuard {
    */
   @Transactional(propagation = Propagation.MANDATORY)
   public void requireLoginCapableAdminBesides(UUID organizationId, Set<UUID> excludedUserIds) {
-    users.lockRoleChanges(organizationId);
-    if (countLoginCapable(organizationId, excludedUserIds, null) == 0) {
+    if (!hasLoginCapableAdminBesides(organizationId, excludedUserIds)) {
       throw new ConflictException(LAST_ADMIN_MESSAGE, ERROR_CODE);
     }
+  }
+
+  /**
+   * The same rule as an answer instead of an exception - what a caller needs that <b>continues</b>
+   * after a refusal, inside the transaction it shares with this guard. A {@code RuntimeException}
+   * out of a participating {@code @Transactional} proxy marks the surrounding transaction
+   * rollback-only ({@code globalRollbackOnParticipationFailure}), so catching it there would end
+   * the whole caller at its commit; same reasoning as {@link #withdrawSystemAdminIfAnotherRemains},
+   * which returns {@code 0} rather than throwing. Takes the advisory lock for the rest of the
+   * caller's transaction, exactly like the throwing variants.
+   */
+  @Transactional(propagation = Propagation.MANDATORY)
+  public boolean hasLoginCapableAdminBesides(UUID organizationId, Set<UUID> excludedUserIds) {
+    users.lockRoleChanges(organizationId);
+    return countLoginCapable(organizationId, excludedUserIds, null) > 0;
   }
 
   /**

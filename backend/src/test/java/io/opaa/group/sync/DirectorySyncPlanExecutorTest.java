@@ -2,7 +2,6 @@ package io.opaa.group.sync;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -14,8 +13,8 @@ import io.opaa.api.types.SystemRole;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.auth.UserRepository.DirectoryAccountState;
 import io.opaa.auth.local.LocalAdminAvailabilityGuard;
-import io.opaa.common.ConflictException;
 import io.opaa.group.Group;
 import io.opaa.group.GroupRepository;
 import io.opaa.permission.AccountStateHistoryService;
@@ -133,42 +132,12 @@ class DirectorySyncPlanExecutorTest {
   }
 
   /**
-   * ADR-0036, Entscheidung 6: a lock is never refused for open ownership questions, and the one
-   * exception is the last login-capable system administrator - decided by the guard of ADR-0033,
-   * not by a second rule here. The withheld lock is named in the report instead of silently
-   * dropped.
+   * An ordinary account is locked without the guard being asked at all - only a {@code
+   * SYSTEM_ADMIN} reaches it. That the guard withholds the lock of the <b>last</b> login-capable
+   * administrator is exercised in {@code DirectoryAccountLockIntegrationTest} against the real
+   * guard: it takes part in the run's transaction, so a mock cannot show what its refusal does to
+   * the run.
    */
-  @Test
-  void theLockOfTheLastLoginCapableAdministratorIsWithheldAndNamed() {
-    User admin = account("subject-admin", SystemRole.SYSTEM_ADMIN);
-    when(groupRepository.findByOrganizationIdAndProviderIdAndKindOrgUnit(
-            organizationId, providerId))
-        .thenReturn(List.of());
-    when(groupRepository.findByOrganizationIdAndProviderIdAndKind(
-            organizationId, providerId, GroupKind.IDENTITY_PROVIDER))
-        .thenReturn(List.of());
-    when(userRepository.findByOrganizationIdAndIssuer(organizationId, target.issuer()))
-        .thenReturn(List.of(admin));
-    doThrow(new ConflictException("kein weiterer", LocalAdminAvailabilityGuard.ERROR_CODE))
-        .when(adminGuard)
-        .requireLoginCapableAdminBesides(any(), any());
-
-    SyncReport report =
-        executor.planAndApply(
-            target,
-            Instant.now(),
-            new DirectorySnapshot(
-                Instant.now(), List.of(), List.of(new DirectoryAccount("subject-admin", false))));
-
-    assertThat(report.outcome()).isEqualTo(DirectorySyncOutcome.APPLIED);
-    assertThat(report.accountsLocked()).isEmpty();
-    assertThat(report.accountLocksWithheld())
-        .extracting(UserRef::id)
-        .containsExactly(admin.getId());
-    assertThat(admin.isDirectoryLocked()).isFalse();
-  }
-
-  /** An ordinary account is locked without the guard being asked at all. */
   @Test
   void anOrdinaryAccountTheDirectoryDisabledIsLocked() {
     User account = account("subject-gone", SystemRole.USER);
@@ -178,8 +147,9 @@ class DirectorySyncPlanExecutorTest {
     when(groupRepository.findByOrganizationIdAndProviderIdAndKind(
             organizationId, providerId, GroupKind.IDENTITY_PROVIDER))
         .thenReturn(List.of());
-    when(userRepository.findByOrganizationIdAndIssuer(organizationId, target.issuer()))
-        .thenReturn(List.of(account));
+    when(userRepository.findAccountStatesOf(organizationId, target.issuer()))
+        .thenReturn(List.of(stateOf(account)));
+    when(userRepository.findAllById(List.of(account.getId()))).thenReturn(List.of(account));
     // The audit entry about an account names its pseudonym, never its id (#392).
     when(auditEventRecorder.pseudonymFor(any(), any())).thenReturn(UUID.randomUUID());
 
@@ -192,7 +162,7 @@ class DirectorySyncPlanExecutorTest {
 
     assertThat(report.accountsLocked()).extracting(UserRef::id).containsExactly(account.getId());
     assertThat(account.isDirectoryLocked()).isTrue();
-    verify(adminGuard, never()).requireLoginCapableAdminBesides(any(), any());
+    verify(adminGuard, never()).hasLoginCapableAdminBesides(any(), any());
   }
 
   private User account(String subject, SystemRole role) {
@@ -200,5 +170,40 @@ class DirectorySyncPlanExecutorTest {
     user.setOrganizationId(organizationId);
     user.setSystemRole(role);
     return user;
+  }
+
+  /** The projection the run plans from, filled from an entity the test already has. */
+  private static DirectoryAccountState stateOf(User user) {
+    return new DirectoryAccountState() {
+      @Override
+      public UUID getId() {
+        return user.getId();
+      }
+
+      @Override
+      public String getSubject() {
+        return user.getSubject();
+      }
+
+      @Override
+      public SystemRole getSystemRole() {
+        return user.getSystemRole();
+      }
+
+      @Override
+      public Instant getDirectoryLockedAt() {
+        return user.getDirectoryLockedAt();
+      }
+
+      @Override
+      public String getDisplayName() {
+        return user.getDisplayName();
+      }
+
+      @Override
+      public String getEmail() {
+        return user.getEmail();
+      }
+    };
   }
 }

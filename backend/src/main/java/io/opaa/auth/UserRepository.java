@@ -1,6 +1,7 @@
 package io.opaa.auth;
 
 import io.opaa.api.types.SystemRole;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -86,6 +87,42 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
   /** Every account of {@code issuer} - what the daily local-account run walks (#1537). */
   List<User> findByIssuer(String issuer);
+
+  /**
+   * The columns a directory run needs to decide an account's state (#1818) - a projection, not the
+   * entity: a realm may report tens of thousands of accounts (see {@code
+   * OPAA_DIRECTORY_SYNC_KEYCLOAK_MAX_ACCOUNTS}), and loading every one of them as a managed entity
+   * would keep them in the persistence context - and under dirty checking - for the whole of the
+   * run's transaction. The few accounts a run actually locks or unlocks are loaded by id
+   * afterwards.
+   */
+  @Query(
+      "select u.id as id, u.subject as subject, u.systemRole as systemRole,"
+          + " u.directoryLockedAt as directoryLockedAt, u.displayName as displayName,"
+          + " u.email as email from User u"
+          + " where u.organizationId = :organizationId and u.issuer = :issuer")
+  List<DirectoryAccountState> findAccountStatesOf(
+      @Param("organizationId") UUID organizationId, @Param("issuer") String issuer);
+
+  /** The projection {@link #findAccountStatesOf} returns. */
+  interface DirectoryAccountState {
+
+    UUID getId();
+
+    String getSubject();
+
+    SystemRole getSystemRole();
+
+    Instant getDirectoryLockedAt();
+
+    String getDisplayName();
+
+    String getEmail();
+
+    default boolean isDirectoryLocked() {
+      return getDirectoryLockedAt() != null;
+    }
+  }
 
   /**
    * Per-table counts of the rows that deleting a local account has to be clear of (#1537), in one

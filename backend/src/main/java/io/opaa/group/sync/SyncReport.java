@@ -34,4 +34,23 @@ public record SyncReport(
     int unresolvedMemberCount,
     double changedFraction,
     double thresholdFraction,
-    String message) {}
+    String message) {
+
+  /**
+   * Every list is empty rather than {@code null}, whatever the source. A report is read back from
+   * {@code directory_sync_pending_plans.report}, and a row written before a field existed carries
+   * no value for it - the mapper would then read {@code null} where it expects a list.
+   */
+  public SyncReport {
+    groupsCreated = groupsCreated == null ? List.of() : List.copyOf(groupsCreated);
+    groupsRenamed = groupsRenamed == null ? List.of() : List.copyOf(groupsRenamed);
+    groupsDissolved = groupsDissolved == null ? List.of() : List.copyOf(groupsDissolved);
+    unmaintainedTokenGroups =
+        unmaintainedTokenGroups == null ? List.of() : List.copyOf(unmaintainedTokenGroups);
+    membershipChanges = membershipChanges == null ? List.of() : List.copyOf(membershipChanges);
+    accountsLocked = accountsLocked == null ? List.of() : List.copyOf(accountsLocked);
+    accountsUnlocked = accountsUnlocked == null ? List.of() : List.copyOf(accountsUnlocked);
+    accountLocksWithheld =
+        accountLocksWithheld == null ? List.of() : List.copyOf(accountLocksWithheld);
+  }
+}

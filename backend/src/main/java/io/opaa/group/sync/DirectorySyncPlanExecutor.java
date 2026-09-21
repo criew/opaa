@@ -11,9 +11,9 @@ import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.auth.UserRepository.DirectoryAccountState;
 import io.opaa.auth.local.LocalAccountAccessEndedEvent;
 import io.opaa.auth.local.LocalAdminAvailabilityGuard;
-import io.opaa.common.ConflictException;
 import io.opaa.group.Group;
 import io.opaa.group.GroupMembership;
 import io.opaa.group.GroupRepository;
@@ -118,10 +118,10 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * per-run override available (a second regression review of PR #297 found and measured).
  *
  * <p>A third measure covers the account locks (#1818): the fraction of this provider's active
- * accounts the run would lock, with the same kind of floor and against the same threshold. A lock
- * takes a person's access away, so it belongs under the same confirmation path as a membership
- * withdrawal (ADR-0036, Entscheidung 3) - and an empty account list aborts the run outright, the
- * way an empty group list does.
+ * accounts the run would lock, against the same threshold but with a lower count floor ({@link
+ * #MIN_LOCKS_FOR_ACCOUNT_MEASURE}). A lock takes a person's access away, so it belongs under the
+ * same confirmation path as a membership withdrawal (ADR-0036, Entscheidung 3) - and an empty
+ * account list aborts the run outright, the way an empty group list does.
  */
 @Service
 class DirectorySyncPlanExecutor {
@@ -136,10 +136,18 @@ class DirectorySyncPlanExecutor {
 
   private static final int MIN_DISSOLUTIONS_FOR_GROUP_MEASURE = 5;
 
-  /** The same two floors for the account measure (#1818) - see {@link #buildPlan}. */
+  /** The population floor of the account measure (#1818), the same as the group one. */
   private static final int MIN_ACTIVE_ACCOUNTS_FOR_ACCOUNT_MEASURE = 10;
 
-  private static final int MIN_LOCKS_FOR_ACCOUNT_MEASURE = 5;
+  /**
+   * The count floor of the account measure, deliberately <b>lower</b> than {@link
+   * #MIN_DISSOLUTIONS_FOR_GROUP_MEASURE}: at five, a small authority whose four accounts all stop
+   * being reported would lock all four without a confirmation - four people before a locked access,
+   * which is exactly the case Personalrat C1 asks to slow down (ADR-0036, Entscheidung 3). At two,
+   * a single departure stays a routine, directly applied change in every house size, while two or
+   * more locks in one run are always measured against the threshold.
+   */
+  private static final int MIN_LOCKS_FOR_ACCOUNT_MEASURE = 2;
 
   /**
    * The fixed, non-pseudonymised actor label #392's audit entries for this class use - "a sync run
@@ -275,8 +283,8 @@ class DirectorySyncPlanExecutor {
     List<Group> tokenGroups =
         groupRepository.findByOrganizationIdAndProviderIdAndKind(
             organizationId, target.providerId(), GroupKind.IDENTITY_PROVIDER);
-    List<User> providerAccounts =
-        userRepository.findByOrganizationIdAndIssuer(organizationId, target.issuer());
+    List<DirectoryAccountState> providerAccounts =
+        userRepository.findAccountStatesOf(organizationId, target.issuer());
 
     // #1818: the account half of the empty-result protection. A directory that reports account
     // status but not a single account is the same finding as an empty group list - it must never
@@ -558,7 +566,7 @@ class DirectorySyncPlanExecutor {
       DirectorySnapshot snapshot,
       List<Group> existingOrgUnits,
       List<Group> tokenGroups,
-      List<User> providerAccounts) {
+      List<DirectoryAccountState> providerAccounts) {
     Map<String, Group> existingByExternalId = new HashMap<>();
     for (Group group : existingOrgUnits) {
       if (group.getExternalId() != null) {
@@ -698,9 +706,9 @@ class DirectorySyncPlanExecutor {
             : 0.0;
 
     AccountPlan accounts = planAccounts(organizationId, snapshot, providerAccounts);
-    // The third measure (#1818), with the same floors and against the same threshold as the group
-    // one: a mass lock is the account-side equivalent of a mass dissolution, and a single
-    // departure in a small authority must stay a routine, applicable change.
+    // The third measure (#1818), against the same threshold as the group one: a mass lock is the
+    // account-side equivalent of a mass dissolution, and a single departure must stay a routine,
+    // applicable change. Its count floor is lower - see MIN_LOCKS_FOR_ACCOUNT_MEASURE.
     boolean accountMeasureApplies =
         accounts.activeAccountCount() >= MIN_ACTIVE_ACCOUNTS_FOR_ACCOUNT_MEASURE
             || accounts.locks().size() >= MIN_LOCKS_FOR_ACCOUNT_MEASURE;
@@ -748,7 +756,9 @@ class DirectorySyncPlanExecutor {
    * held until it commits, so the count cannot go stale between plan and apply.
    */
   private AccountPlan planAccounts(
-      UUID organizationId, DirectorySnapshot snapshot, List<User> providerAccounts) {
+      UUID organizationId,
+      DirectorySnapshot snapshot,
+      List<DirectoryAccountState> providerAccounts) {
     if (!snapshot.reportsAccounts()) {
       return new AccountPlan(List.of(), List.of(), List.of(), 0);
     }
@@ -757,10 +767,10 @@ class DirectorySyncPlanExecutor {
       enabledBySubject.merge(account.subject(), account.enabled(), Boolean::logicalAnd);
     }
 
-    List<User> candidates = new ArrayList<>();
-    List<User> unlocks = new ArrayList<>();
+    List<DirectoryAccountState> candidates = new ArrayList<>();
+    List<DirectoryAccountState> unlocks = new ArrayList<>();
     int activeAccountCount = 0;
-    for (User account : providerAccounts) {
+    for (DirectoryAccountState account : providerAccounts) {
       boolean enabledInDirectory =
           Boolean.TRUE.equals(enabledBySubject.getOrDefault(account.getSubject(), Boolean.FALSE));
       if (!account.isDirectoryLocked()) {
@@ -772,18 +782,19 @@ class DirectorySyncPlanExecutor {
         unlocks.add(account);
       }
     }
-    candidates.sort(Comparator.comparing(User::getId));
+    candidates.sort(Comparator.comparing(DirectoryAccountState::getId));
 
-    List<User> locks = new ArrayList<>();
-    List<User> withheld = new ArrayList<>();
+    List<DirectoryAccountState> locks = new ArrayList<>();
+    List<DirectoryAccountState> withheld = new ArrayList<>();
     Set<UUID> plannedForLock = new HashSet<>();
-    for (User candidate : candidates) {
+    for (DirectoryAccountState candidate : candidates) {
       if (candidate.getSystemRole() == SystemRole.SYSTEM_ADMIN) {
         Set<UUID> excluded = new HashSet<>(plannedForLock);
         excluded.add(candidate.getId());
-        try {
-          adminGuard.requireLoginCapableAdminBesides(organizationId, excluded);
-        } catch (ConflictException lastAdmin) {
+        // The answering variant of the guard, never the throwing one: it takes part in this run's
+        // transaction, and a RuntimeException out of it would mark that transaction rollback-only -
+        // the withheld lock would then take the whole run down at its commit.
+        if (!adminGuard.hasLoginCapableAdminBesides(organizationId, excluded)) {
           log.warn(
               "Directory sync: account {} is not locked - it is the last login-capable system"
                   + " administrator of organization {}",
@@ -1037,10 +1048,13 @@ class DirectorySyncPlanExecutor {
    * does end is every other Merkmal of the account: {@code LocalAccountAccessEndedEvent} is what
    * lapses the person's access tokens (ADR-0035), inside this transaction, so the lock and the end
    * of the tokens commit together.
+   *
+   * <p>Only the accounts a run actually changes are loaded as entities - the plan itself is built
+   * from a projection (see {@code UserRepository#findAccountStatesOf}).
    */
   private void applyAccountStates(
       SyncTarget target, Instant now, SyncPlan plan, UUID correlationRef) {
-    for (User account : plan.accountLocks()) {
+    for (User account : entitiesOf(plan.accountLocks())) {
       account.lockFromDirectory(now);
       userRepository.save(account);
       accountStateHistoryService.recordLocked(
@@ -1054,7 +1068,7 @@ class DirectorySyncPlanExecutor {
       eventPublisher.publishEvent(
           LocalAccountAccessEndedEvent.bySystem(account, DIRECTORY_SYNC_ACTOR));
     }
-    for (User account : plan.accountUnlocks()) {
+    for (User account : entitiesOf(plan.accountUnlocks())) {
       account.unlockFromDirectory();
       userRepository.save(account);
       accountStateHistoryService.recordUnlocked(account.getId(), account.getOrganizationId());
@@ -1064,6 +1078,25 @@ class DirectorySyncPlanExecutor {
           "Directory sync: account {} unlocked - the directory reports it as enabled again",
           account.getId());
     }
+  }
+
+  /** The entities behind a planned set of accounts, in the plan's own order. */
+  private List<User> entitiesOf(List<DirectoryAccountState> accounts) {
+    if (accounts.isEmpty()) {
+      return List.of();
+    }
+    Map<UUID, User> byId = new HashMap<>();
+    userRepository
+        .findAllById(accounts.stream().map(DirectoryAccountState::getId).toList())
+        .forEach(user -> byId.put(user.getId(), user));
+    List<User> ordered = new ArrayList<>(accounts.size());
+    for (DirectoryAccountState account : accounts) {
+      User user = byId.get(account.getId());
+      if (user != null) {
+        ordered.add(user);
+      }
+    }
+    return ordered;
   }
 
   /**
@@ -1224,9 +1257,15 @@ class DirectorySyncPlanExecutor {
         List.of(), List.of(), List.of(), 0, 0, 0, 0, 0, 0, 0, 0.0);
   }
 
-  private List<UserRef> toUserRefList(List<User> accounts) {
+  private List<UserRef> toUserRefList(List<DirectoryAccountState> accounts) {
     return accounts.stream()
-        .map(user -> new UserRef(user.getId(), toResolvedUserRef(user).displayName()))
+        .map(
+            account ->
+                new UserRef(
+                    account.getId(),
+                    account.getDisplayName() != null
+                        ? account.getDisplayName()
+                        : account.getEmail()))
         .toList();
   }
 
@@ -1378,7 +1417,10 @@ class DirectorySyncPlanExecutor {
    * provider that is not locked right now.
    */
   private record AccountPlan(
-      List<User> locks, List<User> unlocks, List<User> withheldLocks, int activeAccountCount) {}
+      List<DirectoryAccountState> locks,
+      List<DirectoryAccountState> unlocks,
+      List<DirectoryAccountState> withheldLocks,
+      int activeAccountCount) {}
 
   private record SyncPlan(
       List<Group> existingOrgUnits,
@@ -1389,9 +1431,9 @@ class DirectorySyncPlanExecutor {
       List<PlannedReactivation> reactivations,
       List<PlannedMembershipChange> membershipChanges,
       List<PlannedDissolution> dissolutions,
-      List<User> accountLocks,
-      List<User> accountUnlocks,
-      List<User> withheldAccountLocks,
+      List<DirectoryAccountState> accountLocks,
+      List<DirectoryAccountState> accountUnlocks,
+      List<DirectoryAccountState> withheldAccountLocks,
       int activeAccountCount,
       int membershipsAdded,
       int membershipsRemoved,

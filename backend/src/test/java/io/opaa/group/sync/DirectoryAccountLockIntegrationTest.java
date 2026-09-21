@@ -10,6 +10,7 @@ import io.opaa.auth.oidc.OidcClaimMapping;
 import io.opaa.auth.oidc.OidcProvider;
 import io.opaa.auth.oidc.OidcProviderRepository;
 import io.opaa.organization.Organization;
+import io.opaa.organization.OrganizationRepository;
 import io.opaa.permission.AccountState;
 import io.opaa.permission.AccountStateHistory;
 import io.opaa.permission.AccountStateHistoryCause;
@@ -24,6 +25,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * The account status a run takes over from the directory (#1818, ADR-0036 Entscheidungen 3, 6 and
@@ -45,9 +47,12 @@ class DirectoryAccountLockIntegrationTest {
   @Autowired private DirectorySyncStatusRepository statusRepository;
   @Autowired private DirectorySyncPendingPlanRepository pendingPlanRepository;
   @Autowired private FakeDirectoryClient directoryClient;
+  @Autowired private OrganizationRepository organizationRepository;
+  @Autowired private JdbcTemplate jdbcTemplate;
 
   private static final List<UUID> createdUserIds = new ArrayList<>();
   private static final List<UUID> createdProviderIds = new ArrayList<>();
+  private static final List<UUID> createdOrganizationIds = new ArrayList<>();
 
   private UUID organizationId;
   private OidcProvider syncProvider;
@@ -76,9 +81,12 @@ class DirectoryAccountLockIntegrationTest {
   }
 
   private void wipe() {
-    pendingPlanRepository.deleteAll(
-        pendingPlanRepository.findByOrganizationId(Organization.DEFAULT_ID));
-    statusRepository.deleteAll(statusRepository.findByOrganizationId(Organization.DEFAULT_ID));
+    List<UUID> organizationIds = new ArrayList<>(createdOrganizationIds);
+    organizationIds.add(Organization.DEFAULT_ID);
+    for (UUID organization : organizationIds) {
+      pendingPlanRepository.deleteAll(pendingPlanRepository.findByOrganizationId(organization));
+      statusRepository.deleteAll(statusRepository.findByOrganizationId(organization));
+    }
     List<UUID> userIds = List.copyOf(createdUserIds);
     if (!userIds.isEmpty()) {
       // user_id is ON DELETE RESTRICT - the history goes before the accounts it names.
@@ -88,6 +96,16 @@ class DirectoryAccountLockIntegrationTest {
     createdUserIds.clear();
     createdProviderIds.forEach(providerRepository::deleteById);
     createdProviderIds.clear();
+    for (UUID organization : createdOrganizationIds) {
+      // fk_audit_log_organization is ON DELETE RESTRICT, and the run this class fires writes its
+      // entries against this organization - same cleanup as AuditLogServiceIntegrationTest, and
+      // for the same reason it goes through JdbcTemplate rather than a repository.
+      jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organization);
+      jdbcTemplate.update(
+          "DELETE FROM audit_actor_pseudonyms WHERE organization_id = ?", organization);
+      organizationRepository.deleteById(organization);
+    }
+    createdOrganizationIds.clear();
   }
 
   @Test
@@ -220,6 +238,41 @@ class DirectoryAccountLockIntegrationTest {
   }
 
   /**
+   * The count floor of the account measure is lower than the one for dissolved groups: in a house
+   * of three accounts, a run that would lock all three waits for a decision instead of leaving
+   * three people before a locked access (ADR-0036, Entscheidung 3, Personalrat C1).
+   */
+  @Test
+  void aSmallHouseLosingEveryAccountAtOnceStillWaitsForAConfirmation() {
+    createAccount("subject-a", SystemRole.USER);
+    createAccount("subject-b", SystemRole.USER);
+    UUID third = createAccount("subject-c", SystemRole.USER);
+    respondWithAccounts(
+        new DirectoryAccount("subject-a", false),
+        new DirectoryAccount("subject-b", false),
+        new DirectoryAccount("subject-c", false));
+
+    SyncReport report = directorySyncService.run(organizationId, syncProvider.getId());
+
+    assertThat(report.outcome()).isEqualTo(DirectorySyncOutcome.PENDING_CONFIRMATION);
+    assertThat(userRepository.findById(third).orElseThrow().isDirectoryLocked()).isFalse();
+  }
+
+  /** A single departure stays a routine change in a house of any size - the floor's other half. */
+  @Test
+  void aSingleDepartureInASmallHouseIsAppliedWithoutAConfirmation() {
+    UUID leaving = createAccount("subject-gone", SystemRole.USER);
+    createAccount("subject-here", SystemRole.USER);
+    respondWithAccounts(
+        new DirectoryAccount("subject-gone", false), new DirectoryAccount("subject-here", true));
+
+    SyncReport report = directorySyncService.run(organizationId, syncProvider.getId());
+
+    assertThat(report.outcome()).isEqualTo(DirectorySyncOutcome.APPLIED);
+    assertThat(userRepository.findById(leaving).orElseThrow().isDirectoryLocked()).isTrue();
+  }
+
+  /**
    * A departing administrator is locked like anyone else while another login-capable one remains -
    * the run consults {@code LocalAdminAvailabilityGuard} and is not blocked by it. That the guard
    * withholds the lock of the <em>last</em> one is exercised in {@code
@@ -241,6 +294,35 @@ class DirectoryAccountLockIntegrationTest {
     assertThat(userRepository.findById(leaving).orElseThrow().isDirectoryLocked()).isTrue();
   }
 
+  /**
+   * The promise of ADR-0036, Entscheidung 6 against the <b>real</b> guard: the lock of the last
+   * login-capable system administrator is withheld, and <b>everything else of the run is still
+   * applied</b>. Against a mocked guard the second half of that sentence is untestable - the guard
+   * is {@code @Transactional(MANDATORY)} and takes part in the run's transaction, so how it refuses
+   * decides whether the run survives its own commit.
+   *
+   * <p>In an organization of its own, because "no other login-capable administrator" is not a state
+   * the default organization can be brought into: the suite's dev accounts live there.
+   */
+  @Test
+  void theLastLoginCapableAdministratorIsWithheldAndTheRestOfTheRunStillApplies() {
+    UUID isolated = createOrganization();
+    UUID admin = createAccount(isolated, "subject-admin", SystemRole.SYSTEM_ADMIN);
+    UUID ordinary = createAccount(isolated, "subject-gone", SystemRole.USER);
+    respondWithAccounts(
+        new DirectoryAccount("subject-admin", false), new DirectoryAccount("subject-gone", false));
+
+    SyncReport report = directorySyncService.run(isolated, syncProvider.getId());
+
+    assertThat(report.outcome()).isEqualTo(DirectorySyncOutcome.APPLIED);
+    assertThat(report.accountLocksWithheld()).extracting(UserRef::id).containsExactly(admin);
+    assertThat(userRepository.findById(admin).orElseThrow().isDirectoryLocked()).isFalse();
+    assertThat(report.accountsLocked()).extracting(UserRef::id).containsExactly(ordinary);
+    assertThat(userRepository.findById(ordinary).orElseThrow().isDirectoryLocked())
+        .as("the withheld lock must not take the rest of the run with it")
+        .isTrue();
+  }
+
   // ---------------------------------------------------------------------------------------
 
   private void respondWithAccounts(DirectoryAccount... accounts) {
@@ -248,13 +330,24 @@ class DirectoryAccountLockIntegrationTest {
   }
 
   private UUID createAccount(String subject, SystemRole role) {
+    return createAccount(Organization.DEFAULT_ID, subject, role);
+  }
+
+  private UUID createAccount(UUID organization, String subject, SystemRole role) {
     User user =
         new User(
             subject, syncProvider.getIssuerUri(), subject + "@example.com", "Konto " + subject);
-    user.setOrganizationId(Organization.DEFAULT_ID);
+    user.setOrganizationId(organization);
     user.setSystemRole(role);
     UUID id = userRepository.save(user).getId();
     createdUserIds.add(id);
+    return id;
+  }
+
+  private UUID createOrganization() {
+    UUID id = UUID.randomUUID();
+    organizationRepository.save(new Organization(id, "Organisation " + id));
+    createdOrganizationIds.add(id);
     return id;
   }
 
