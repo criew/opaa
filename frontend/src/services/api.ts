@@ -34,6 +34,9 @@ import type {
   GroupMemberResponse,
   GroupResponse,
   GroupStewardResponse,
+  LibraryAccessDerivationResponse,
+  SelectableGroupResponse,
+  SpaceAccessDerivationResponse,
   HealthResponse,
   IndexingRunListResponse,
   IndexingStatusResponse,
@@ -778,6 +781,59 @@ export async function getMyCapabilities(): Promise<Capability[]> {
   try {
     const { data } = await client.get<MyCapabilitiesResponse>('/v1/me/capabilities')
     return data.capabilities
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/**
+ * Die Gruppen, die man selbst als Empfänger eines Rechts benennen darf (#1820) — jede
+ * Anbietergruppe der Organisation, eine interne Gruppe erst nach ihrer Freigabe. Die Regel setzt
+ * der Dienst durch; diese Liste ist die Bequemlichkeit, nie die Durchsetzung. Eine geschützte
+ * Gruppe antwortet nur auf ihre vollständige Bezeichnung.
+ */
+export async function searchSelectableGroups(query: string): Promise<SelectableGroupResponse[]> {
+  try {
+    const { data } = await client.get<SelectableGroupResponse[]>('/v1/groups/selectable', {
+      params: { query },
+    })
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/**
+ * Die eigene Herleitung an einer Bibliothek (#1822): jeder eigene Weg zur wirksamen Rolle, ohne
+ * Vollmacht, ohne Protokoll, ohne ein Mitglied einer Gruppe zu nennen.
+ */
+export async function getLibraryAccessDerivation(
+  libraryId: string,
+): Promise<LibraryAccessDerivationResponse> {
+  try {
+    const { data } = await client.get<LibraryAccessDerivationResponse>(
+      `/v1/libraries/${libraryId}/access-derivation`,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/**
+ * Die Herleitung an einem Space (#1822). Ohne `userId` geht es um die eigene Person; mit `userId`
+ * um ein Mitglied, und das ist denen vorbehalten, die die Mitgliedschaft hier verwalten.
+ */
+export async function getSpaceAccessDerivation(
+  spaceId: string,
+  userId?: string,
+): Promise<SpaceAccessDerivationResponse> {
+  try {
+    const { data } = await client.get<SpaceAccessDerivationResponse>(
+      `/v1/spaces/${spaceId}/access-derivation`,
+      userId ? { params: { userId } } : undefined,
+    )
+    return data
   } catch (err) {
     normalizeError(err)
   }

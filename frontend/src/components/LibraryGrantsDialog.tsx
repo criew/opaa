@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
-import Autocomplete from '@mui/material/Autocomplete'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
@@ -10,35 +9,35 @@ import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import Divider from '@mui/material/Divider'
 import FormControl from '@mui/material/FormControl'
-import FormControlLabel from '@mui/material/FormControlLabel'
 import IconButton from '@mui/material/IconButton'
 import InputLabel from '@mui/material/InputLabel'
 import Link from '@mui/material/Link'
 import MenuItem from '@mui/material/MenuItem'
-import Radio from '@mui/material/Radio'
-import RadioGroup from '@mui/material/RadioGroup'
 import Select from '@mui/material/Select'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import AddIcon from '@mui/icons-material/Add'
 import DeleteIcon from '@mui/icons-material/Delete'
-import FieldLabel from './wizard/FieldLabel'
 import SectionHead from './SectionHead'
 import LibraryExternalAccessSection from './library/LibraryExternalAccessSection'
-import type {
-  AssetGrantResponse,
-  AssetRole,
-  GroupListResponse,
-  PermissionSubjectType,
-  UserSummary,
-} from '../types/api'
-import { getGroups, getMyGroups } from '../services/api'
+import type { AssetGrantResponse, AssetRole } from '../types/api'
 import { useAuthStore } from '../stores/authStore'
 import { confirmAction } from '../stores/confirmStore'
 import { useGrantStore } from '../stores/grantStore'
-import { useUserSearch } from '../hooks/useUserSearch'
-import { assetRoleDescription, assetRoleLabel, permissionSubjectTypeLabel } from '../utils/labels'
+import SubjectPicker from './permissions/SubjectPicker'
+import {
+  confirmExternalSubject,
+  emptySubjectSelection,
+  selectedSubjectId,
+  type SubjectSelection,
+} from './permissions/subjectSelection'
+import {
+  assetRoleDescription,
+  assetRoleLabel,
+  groupGrowthLabel,
+  permissionSubjectTypeLabel,
+} from '../utils/labels'
 
 const grantableRoles: AssetRole[] = ['VIEWER', 'EDITOR', 'MANAGER', 'OWNER']
 
@@ -82,7 +81,11 @@ function isDateInThePast(dateInput: string): boolean {
 // backend (AssetGrantService#toResponses) instead of being looked up here via GET /v1/admin/users,
 // which is SYSTEM_ADMIN-only and left every name blank for the MANAGER the issue is built for.
 // Falls back to the raw id only if the backend itself could not resolve it (a deleted subject).
+//
+// #1820: Eine geschützte Gruppe hat hier keinen Namen - der Dienst liefert keinen, und die Zeile
+// bleibt trotzdem, damit die Freigabe entzogen werden kann (ADR-0036, Entscheidung 9).
 function subjectDisplayName(grant: AssetGrantResponse): string {
+  if (grant.protectedGroup) return 'Geschützte Gruppe'
   return grant.subjectDisplayName ?? grant.subjectId
 }
 
@@ -93,7 +96,6 @@ function grantedByDisplayName(grant: AssetGrantResponse): string {
 
 export default function LibraryGrantsDialog({ open, library, onClose }: LibraryGrantsDialogProps) {
   const currentUserId = useAuthStore((s) => s.user?.id)
-  const isSystemAdmin = useAuthStore((s) => s.user?.systemRole === 'SYSTEM_ADMIN')
   const grants = useGrantStore((s) => s.grantsByLibrary[library.id]) ?? []
   const isLoading = useGrantStore((s) => s.isLoading)
   const loadError = useGrantStore((s) => s.error)
@@ -101,36 +103,13 @@ export default function LibraryGrantsDialog({ open, library, onClose }: LibraryG
   const upsertExistingGrant = useGrantStore((s) => s.upsertExistingGrant)
   const revokeExistingGrant = useGrantStore((s) => s.revokeExistingGrant)
 
-  const [groups, setGroups] = useState<GroupListResponse[]>([])
-  const [groupsError, setGroupsError] = useState<string | null>(null)
-  // #777: GET /v1/users is reachable for any authenticated organization member (unlike GET
-  // /v1/admin/users, which never fed this picker's names either - see
-  // subjectDisplayName/grantedByDisplayName above, which read the backend-resolved fields
-  // instead).
-  const {
-    query: userQuery,
-    setQuery: setUserQuery,
-    users,
-    isLoading: isSearchingUsers,
-    error: userSearchError,
-  } = useUserSearch()
-  // #778 review, finding 1: gated on the search having actually failed, not on "no results yet" -
-  // an empty `users` array is the ordinary state before typing 2 characters or while a search is
-  // still in flight, neither of which is "unavailable". The free-text id fallback below is only
-  // for the case a caller could never resolve any name in the first place.
-  const usersUnavailable = Boolean(userSearchError)
-
   const [showForm, setShowForm] = useState(false)
-  const [subjectType, setSubjectType] = useState<PermissionSubjectType>('USER')
-  const [selectedUser, setSelectedUser] = useState<UserSummary | null>(null)
-  const [manualUserId, setManualUserId] = useState('')
-  const [selectedGroup, setSelectedGroup] = useState<GroupListResponse | null>(null)
-  // #423 code review, finding 3: GET /v1/me/groups only ever returns the caller's own memberships,
-  // but AssetGrantService#requireGrantableGroup accepts any group in the organization - a MANAGER
-  // of a library can legitimately share it with a group they do not belong to. The picker above
-  // stays as a convenience for the common case; this lets a caller name a group by id regardless.
-  const [manualGroupEntry, setManualGroupEntry] = useState(false)
-  const [manualGroupId, setManualGroupId] = useState('')
+  const [subject, setSubject] = useState<SubjectSelection>(emptySubjectSelection)
+  // #1820: Die Eingabe per Kennung bleibt der Rückfall, wenn die Suche nichts hergibt - für eine
+  // Gruppe unterliegt sie derselben Durchsetzung wie die Suche: eine nicht freigegebene Gruppe
+  // antwortet auch hier mit „nicht gefunden" (ADR-0036, Entscheidung 9).
+  const [manualIdEntry, setManualIdEntry] = useState(false)
+  const [manualId, setManualId] = useState('')
   const [role, setRole] = useState<AssetRole>('VIEWER')
   const [expiryInput, setExpiryInput] = useState('')
   const [formError, setFormError] = useState<string | null>(null)
@@ -140,26 +119,13 @@ export default function LibraryGrantsDialog({ open, library, onClose }: LibraryG
   useEffect(() => {
     if (!open) return
     void loadGrants(library.id)
-    void (isSystemAdmin ? getGroups() : getMyGroups())
-      .then((result) => {
-        setGroups(result)
-        setGroupsError(null)
-      })
-      .catch((err) => {
-        setGroups([])
-        setGroupsError(err instanceof Error ? err.message : 'Gruppen konnten nicht geladen werden')
-      })
-  }, [open, library.id, isSystemAdmin, loadGrants])
+  }, [open, library.id, loadGrants])
 
   function resetForm() {
     setShowForm(false)
-    setSubjectType('USER')
-    setSelectedUser(null)
-    setUserQuery('')
-    setManualUserId('')
-    setSelectedGroup(null)
-    setManualGroupEntry(false)
-    setManualGroupId('')
+    setSubject(emptySubjectSelection)
+    setManualIdEntry(false)
+    setManualId('')
     setRole('VIEWER')
     setExpiryInput('')
     setFormError(null)
@@ -212,24 +178,16 @@ export default function LibraryGrantsDialog({ open, library, onClose }: LibraryG
 
   async function handleSubmit() {
     setFormError(null)
-    const subjectId: string | null =
-      subjectType === 'GROUP'
-        ? manualGroupEntry
-          ? manualGroupId.trim()
-          : (selectedGroup?.id ?? null)
-        : usersUnavailable
-          ? manualUserId.trim()
-          : (selectedUser?.id ?? null)
+    const subjectId: string | null = manualIdEntry ? manualId.trim() : selectedSubjectId(subject)
     if (!subjectId) {
       setFormError(
-        subjectType === 'GROUP' ? 'Bitte eine Gruppe auswählen' : 'Bitte eine Person auswählen',
+        subject.type === 'GROUP' ? 'Bitte eine Gruppe auswählen' : 'Bitte eine Person auswählen',
       )
       return
     }
-    const isManualEntry = subjectType === 'GROUP' ? manualGroupEntry : usersUnavailable
-    if (isManualEntry && !isValidUuid(subjectId)) {
+    if (manualIdEntry && !isValidUuid(subjectId)) {
       setFormError(
-        subjectType === 'GROUP'
+        subject.type === 'GROUP'
           ? 'Die Gruppen-ID muss eine gültige UUID sein'
           : 'Die Nutzer-ID muss eine gültige UUID sein',
       )
@@ -239,10 +197,11 @@ export default function LibraryGrantsDialog({ open, library, onClose }: LibraryG
       setFormError('Das Ablaufdatum darf nicht in der Vergangenheit liegen')
       return
     }
+    if (!(await confirmExternalSubject(subject))) return
     setSubmitting(true)
     try {
       await upsertExistingGrant(library.id, {
-        subjectType,
+        subjectType: subject.type,
         subjectId,
         role,
         expiresAt: toExpiresAt(expiryInput),
@@ -286,6 +245,10 @@ export default function LibraryGrantsDialog({ open, library, onClose }: LibraryG
             {grants.map((grant) => {
               const expired = isExpired(grant.expiresAt)
               const subjectName = subjectDisplayName(grant)
+              // #1820, ADR-0036 Entscheidung 9: „Referat 50: 23 bei Erteilung, heute 41" - eine
+              // Zeile, die jemand liest, der für die Freigabe geradesteht.
+              const growthHint =
+                grant.subjectType === 'GROUP' ? groupGrowthLabel(grant, 'Erteilung') : null
               const roleSelectId = `grant-role-${grant.id}`
               return (
                 <Box
@@ -312,6 +275,7 @@ export default function LibraryGrantsDialog({ open, library, onClose }: LibraryG
                       {permissionSubjectTypeLabel(grant.subjectType)} · Rolle vergeben von{' '}
                       {grantedByDisplayName(grant)} · zuletzt geändert am{' '}
                       {new Date(grant.updatedAt).toLocaleDateString('de-DE')}
+                      {growthHint ? ` · ${growthHint}` : ''}
                     </Typography>
                   </Stack>
                   <FormControl size="small" sx={{ minWidth: 160 }}>
@@ -366,118 +330,45 @@ export default function LibraryGrantsDialog({ open, library, onClose }: LibraryG
             <SectionHead component="h3">Freigeben</SectionHead>
             {formError && <Alert severity="error">{formError}</Alert>}
 
-            <FormControl>
-              <FieldLabel id="grant-subject-type-label">Subjekt</FieldLabel>
-              <RadioGroup
-                row
-                aria-labelledby="grant-subject-type-label"
-                value={subjectType}
-                onChange={(e) => setSubjectType(e.target.value as PermissionSubjectType)}
-              >
-                <FormControlLabel value="USER" control={<Radio />} label="Person" />
-                <FormControlLabel value="GROUP" control={<Radio />} label="Gruppe" />
-              </RadioGroup>
-            </FormControl>
+            <SubjectPicker
+              labelId="grant-subject-type-label"
+              value={subject}
+              onChange={setSubject}
+              hideSearch={manualIdEntry}
+            />
 
-            {subjectType === 'USER' &&
-              (usersUnavailable ? (
-                <Stack spacing={0.5}>
-                  <TextField
-                    label="Nutzer-ID"
-                    placeholder="UUID des Nutzers"
-                    value={manualUserId}
-                    onChange={(e) => setManualUserId(e.target.value)}
-                    size="small"
-                  />
-                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                    Die Nutzerauswahl konnte nicht geladen werden; die Nutzer-ID muss bekannt sein.
-                  </Typography>
-                </Stack>
-              ) : (
-                <Autocomplete
-                  options={users}
-                  loading={isSearchingUsers}
-                  filterOptions={(x) => x}
-                  inputValue={userQuery}
-                  onInputChange={(_event, value, reason) => {
-                    // 'reset' fires when the input text is set to match a just-selected option's
-                    // label (or reverted on blur) - propagating that as a fresh query would
-                    // re-fire a search for text the caller never typed.
-                    if (reason !== 'reset') setUserQuery(value)
-                  }}
-                  noOptionsText={
-                    userQuery.trim().length < 2 ? 'Mindestens 2 Zeichen eingeben' : 'Keine Treffer'
-                  }
-                  getOptionLabel={(option) =>
-                    option.displayName
-                      ? `${option.displayName} (${option.email ?? option.id})`
-                      : (option.email ?? option.id)
-                  }
-                  value={selectedUser}
-                  onChange={(_event, value) => setSelectedUser(value)}
-                  isOptionEqualToValue={(option, value) => option.id === value.id}
-                  renderInput={(params) => (
-                    <TextField {...params} label="Person auswählen" placeholder="Person suchen …" />
-                  )}
-                  size="small"
-                />
-              ))}
-
-            {subjectType === 'GROUP' && (
-              <Stack spacing={0.5}>
-                {groupsError && <Alert severity="error">{groupsError}</Alert>}
-                {groups.length === 0 && !groupsError && !manualGroupEntry && (
-                  <Alert severity="info">
-                    Es sind keine Gruppen verfügbar, denen eine Freigabe erteilt werden kann.
-                  </Alert>
-                )}
-                {manualGroupEntry ? (
-                  <TextField
-                    label="Gruppen-ID"
-                    placeholder="UUID der Gruppe"
-                    value={manualGroupId}
-                    onChange={(e) => setManualGroupId(e.target.value)}
-                    size="small"
-                  />
-                ) : (
-                  <Autocomplete
-                    options={groups}
-                    getOptionLabel={(option) => option.name}
-                    noOptionsText="Keine Treffer"
-                    value={selectedGroup}
-                    onChange={(_event, value) => setSelectedGroup(value)}
-                    isOptionEqualToValue={(option, value) => option.id === value.id}
-                    disabled={groups.length === 0}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        label="Gruppe auswählen"
-                        placeholder="Gruppe auswählen …"
-                      />
-                    )}
-                    size="small"
-                  />
-                )}
-                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                  {manualGroupEntry
-                    ? 'Jede Gruppe der eigenen Organisation ist zulässig, auch ohne eigene Mitgliedschaft.'
-                    : 'Diese Auswahl zeigt nur Gruppen, in denen Sie selbst Mitglied sind.'}{' '}
-                  <Link
-                    component="button"
-                    type="button"
-                    onClick={() => {
-                      setManualGroupEntry((current) => !current)
-                      setSelectedGroup(null)
-                      setManualGroupId('')
-                    }}
-                  >
-                    {manualGroupEntry
-                      ? 'Stattdessen aus Liste wählen'
-                      : 'Andere Gruppen-ID eingeben'}
-                  </Link>
-                </Typography>
-              </Stack>
+            {manualIdEntry && (
+              <TextField
+                label={subject.type === 'GROUP' ? 'Gruppen-ID' : 'Nutzer-ID'}
+                placeholder={subject.type === 'GROUP' ? 'UUID der Gruppe' : 'UUID des Nutzers'}
+                value={manualId}
+                onChange={(e) => setManualId(e.target.value)}
+                size="small"
+              />
             )}
+
+            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+              {manualIdEntry
+                ? 'Für die Eingabe per Kennung gilt dieselbe Regel wie für die Suche: Was Ihnen die Suche nicht zeigt, ist auch hier nicht zu finden.'
+                : subject.type === 'GROUP'
+                  ? 'Angezeigt werden Anbietergruppen und interne Gruppen, die ihre Verantwortlichen zur Verwendung freigegeben haben.'
+                  : 'Gesucht wird in Ihrer Organisation.'}{' '}
+              <Link
+                component="button"
+                type="button"
+                onClick={() => {
+                  setManualIdEntry((current) => !current)
+                  setSubject({ ...subject, user: null, group: null })
+                  setManualId('')
+                }}
+              >
+                {manualIdEntry
+                  ? 'Stattdessen suchen'
+                  : subject.type === 'GROUP'
+                    ? 'Gruppen-ID eingeben'
+                    : 'Nutzer-ID eingeben'}
+              </Link>
+            </Typography>
 
             <FormControl size="small">
               <InputLabel id="grant-role-label">Rolle</InputLabel>

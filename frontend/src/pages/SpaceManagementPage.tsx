@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Autocomplete from '@mui/material/Autocomplete'
+import Link from '@mui/material/Link'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import FormControl from '@mui/material/FormControl'
@@ -12,24 +13,30 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { useNavigate, useParams } from 'react-router'
 import type {
-  GroupListResponse,
   LibraryListResponse,
   SpaceMemberResponse,
   SpaceRole,
   SpaceVisibility,
-  UserSummary,
 } from '../types/api'
-import { getLibraries, getMyGroups } from '../services/api'
+import { getLibraries } from '../services/api'
 import { useAuthStore } from '../stores/authStore'
 import { confirmAction } from '../stores/confirmStore'
 import { useSpaceStore } from '../stores/spaceStore'
-import { useUserSearch } from '../hooks/useUserSearch'
 import {
+  groupGrowthLabel,
   spaceRoleLabel,
   spaceVisibilities,
   spaceVisibilityDescription,
   spaceVisibilityLabel,
 } from '../utils/labels'
+import AccessDerivation from '../components/permissions/AccessDerivation'
+import SubjectPicker from '../components/permissions/SubjectPicker'
+import {
+  confirmExternalSubject,
+  emptySubjectSelection,
+  selectedSubjectId,
+  type SubjectSelection,
+} from '../components/permissions/subjectSelection'
 import PageHeading from '../components/a11y/PageHeading'
 import FieldLabel from '../components/wizard/FieldLabel'
 import MetaBadge from '../components/MetaBadge'
@@ -37,15 +44,22 @@ import SectionHead from '../components/SectionHead'
 
 const editableRoles: SpaceRole[] = ['MEMBER', 'CURATOR', 'ADMIN']
 
-// #1815, ADR-0036 Entscheidung 9: the growth signal beside a group row - "23 bei Erteilung, heute
+// #1815, ADR-0036 Entscheidung 9: the growth signal beside a group row - "23 bei Aufnahme, heute
 // 41". Below the enforced minimum group size the backend withholds both figures and sets
-// smallGroup; the row then says so instead of showing a number.
+// smallGroup; for a protected group the signal drops out entirely.
 function groupSizeHint(member: SpaceMemberResponse): string | null {
   if (member.subjectType !== 'GROUP') return null
-  if (member.emptyGroup) return 'erreicht derzeit niemanden'
-  if (member.smallGroup) return 'kleine Gruppe'
-  if (member.memberCountAtGrant == null || member.memberCountNow == null) return null
-  return `${member.memberCountAtGrant} bei Aufnahme, heute ${member.memberCountNow}`
+  return groupGrowthLabel(member, 'Aufnahme')
+}
+
+/**
+ * #1820, ADR-0036 Entscheidung 9: eine geschützte Gruppe erscheint in fremden Listen ohne Namen -
+ * der Dienst liefert keinen. Die Zeile bleibt, sonst könnte ein ADMIN eine Mitgliedschaft nicht
+ * beenden, die er nicht sieht.
+ */
+function memberLabelOf(member: SpaceMemberResponse): string {
+  if (member.protectedGroup) return 'Geschützte Gruppe'
+  return member.displayName ?? member.subjectId
 }
 
 function canManageMembers(role: SpaceRole | undefined): boolean {
@@ -93,25 +107,16 @@ export default function SpaceManagementPage() {
     description: '',
     visibility: 'PRIVATE',
   })
-  const [selectedUser, setSelectedUser] = useState<UserSummary | null>(null)
+  const [subject, setSubject] = useState<SubjectSelection>(emptySubjectSelection)
   const [newMemberRole, setNewMemberRole] = useState<SpaceRole>('MEMBER')
-  const [ownGroups, setOwnGroups] = useState<GroupListResponse[]>([])
-  const [selectedGroup, setSelectedGroup] = useState<GroupListResponse | null>(null)
-  const [newGroupRole, setNewGroupRole] = useState<SpaceRole>('MEMBER')
-  const [groupLoadError, setGroupLoadError] = useState<string | null>(null)
+  /** Die Mitgliedszeile, deren Herleitung gerade aufgeklappt ist (#1822). */
+  const [derivationFor, setDerivationFor] = useState<string | null>(null)
   const [localError, setLocalError] = useState<string | null>(null)
   // #543: deleteSpace's 409 - "Der Space enthält noch Chats ... Archivieren Sie den Space
   // stattdessen." - is the one failure this page offers a direct way out of, instead of just
   // showing the message.
   const [deleteBlockedByChats, setDeleteBlockedByChats] = useState(false)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
-  const {
-    query: userQuery,
-    setQuery: setUserQuery,
-    users: userResults,
-    isLoading: isSearchingUsers,
-    error: userSearchError,
-  } = useUserSearch()
   const [readableLibraries, setReadableLibraries] = useState<LibraryListResponse[]>([])
   const [selectedLibrary, setSelectedLibrary] = useState<LibraryListResponse | null>(null)
 
@@ -137,24 +142,6 @@ export default function SpaceManagementPage() {
     }
   }, [loadLibraryAssociations, spaceId])
 
-  // #1815: the group picker offers the caller's own groups (GET /v1/me/groups), the one group
-  // list a non-SYSTEM_ADMIN may read today. The wider selection ADR-0036, Entscheidung 9 describes
-  // - every released group - needs the release flag #1814 introduces; until then this is a subset
-  // of what the rule allows, never more.
-  useEffect(() => {
-    void getMyGroups()
-      .then((groups) => {
-        setOwnGroups(groups)
-        setGroupLoadError(null)
-      })
-      .catch(() => {
-        // A failed load and "you belong to no group" look identical in an empty picker - the one
-        // is a reason to try again, the other is not.
-        setOwnGroups([])
-        setGroupLoadError('Ihre Gruppen konnten nicht geladen werden.')
-      })
-  }, [])
-
   useEffect(() => {
     // #203: a CURATOR may only associate a library they themselves can read - GET /v1/libraries
     // already returns exactly that set, and the backend re-checks the same rule.
@@ -164,18 +151,6 @@ export default function SpaceManagementPage() {
   }, [])
 
   const canManage = useMemo(() => canManageMembers(space?.userRole), [space?.userRole])
-  const availableUsers = useMemo(() => {
-    const memberIds = new Set(
-      members.filter((m) => m.subjectType === 'USER').map((m) => m.subjectId),
-    )
-    return userResults.filter((u) => !memberIds.has(u.id))
-  }, [userResults, members])
-  const availableGroups = useMemo(() => {
-    const memberGroupIds = new Set(
-      members.filter((m) => m.subjectType === 'GROUP').map((m) => m.subjectId),
-    )
-    return ownGroups.filter((group) => !memberGroupIds.has(group.id))
-  }, [ownGroups, members])
   const isOwner = Boolean(currentUserId) && space?.ownerId === currentUserId
   const canManageAssociations = canManageLibraries(space?.userRole, isOwner)
   const associableLibraries = useMemo(() => {
@@ -442,8 +417,9 @@ export default function SpaceManagementPage() {
               {members.map((member) => {
                 const isGroup = member.subjectType === 'GROUP'
                 const memberIsOwner = !isGroup && member.subjectId === space.ownerId
-                const memberLabel = member.displayName ?? member.subjectId
+                const memberLabel = memberLabelOf(member)
                 const sizeHint = groupSizeHint(member)
+                const namelessRow = !member.displayName && !member.protectedGroup
                 return (
                   <Box
                     key={member.id}
@@ -457,17 +433,43 @@ export default function SpaceManagementPage() {
                       '& + &': { borderTop: 1, borderColor: 'divider' },
                     }}
                   >
-                    <Typography
-                      sx={{
-                        fontSize: 13.5,
-                        ...(member.displayName ? {} : { fontFamily: 'monospace' }),
-                      }}
-                    >
-                      {memberLabel}
-                      {memberIsOwner ? ' · Eigentümer' : ''}
-                      {isGroup ? ' · Gruppe' : ''}
-                      {sizeHint ? ` · ${sizeHint}` : ''}
-                    </Typography>
+                    <Stack spacing={0.25} sx={{ minWidth: 200, flexGrow: 1 }}>
+                      <Typography
+                        sx={{
+                          fontSize: 13.5,
+                          ...(namelessRow ? { fontFamily: 'monospace' } : {}),
+                          ...(member.protectedGroup ? { fontStyle: 'italic' } : {}),
+                        }}
+                      >
+                        {memberLabel}
+                        {memberIsOwner ? ' · Eigentümer' : ''}
+                        {isGroup && !member.protectedGroup ? ' · Gruppe' : ''}
+                        {sizeHint ? ` · ${sizeHint}` : ''}
+                      </Typography>
+                      {!isGroup && (
+                        // #1822: ob eine Rolle direkt oder über eine Gruppe kommt, steht in der
+                        // Herleitung - hier für die Person, deren Mitgliedschaft man verwaltet.
+                        <Link
+                          component="button"
+                          type="button"
+                          sx={{ alignSelf: 'flex-start', fontSize: 12 }}
+                          onClick={() =>
+                            setDerivationFor((current) =>
+                              current === member.subjectId ? null : member.subjectId,
+                            )
+                          }
+                        >
+                          {derivationFor === member.subjectId
+                            ? 'Herleitung ausblenden'
+                            : `Herleitung für ${memberLabel}`}
+                        </Link>
+                      )}
+                      {derivationFor === member.subjectId && (
+                        <AccessDerivation
+                          target={{ kind: 'space', spaceId, userId: member.subjectId }}
+                        />
+                      )}
+                    </Stack>
                     <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
                       {memberIsOwner ? (
                         // #777: the owner's role can only change via "Zum Eigentümer machen" on
@@ -565,53 +567,24 @@ export default function SpaceManagementPage() {
               })}
 
               {canManage && (
-                <Stack spacing={1} sx={{ pt: 2 }}>
-                  {userSearchError && (
-                    // #778 review, finding 3: a failed search must not just read as "no matches" -
-                    // the field looks identically empty either way otherwise, and the person typing
-                    // has no way to tell "nobody found" from "the request failed".
-                    <Alert severity="error" sx={{ mb: 0.5 }}>
-                      {userSearchError}
-                    </Alert>
-                  )}
+                <Stack spacing={1.5} sx={{ pt: 2 }}>
+                  <SectionHead component="h3">Mitglied hinzufügen</SectionHead>
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                    Eine Gruppe als Mitglied gibt ihre Rolle an alle Mitglieder weiter — ohne eigene
+                    Zeile, und sie endet mit dem Austritt aus der Gruppe.
+                  </Typography>
+                  <SubjectPicker
+                    labelId="space-member-subject-label"
+                    value={subject}
+                    onChange={setSubject}
+                    excludedUserIds={members
+                      .filter((member) => member.subjectType === 'USER')
+                      .map((member) => member.subjectId)}
+                    excludedGroupIds={members
+                      .filter((member) => member.subjectType === 'GROUP')
+                      .map((member) => member.subjectId)}
+                  />
                   <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5}>
-                    <Autocomplete
-                      options={availableUsers}
-                      size="small"
-                      loading={isSearchingUsers}
-                      filterOptions={(x) => x}
-                      inputValue={userQuery}
-                      onInputChange={(_event, value, reason) => {
-                        // 'reset' fires when the input text is set to match a just-selected
-                        // option's label (or reverted on blur) - propagating that as a fresh
-                        // query would re-fire a search for text the caller never typed.
-                        if (reason !== 'reset') setUserQuery(value)
-                      }}
-                      noOptionsText={
-                        userQuery.trim().length < 2
-                          ? 'Mindestens 2 Zeichen eingeben'
-                          : 'Keine Treffer'
-                      }
-                      getOptionLabel={(option) =>
-                        option.displayName
-                          ? `${option.displayName} (${option.email ?? option.id})`
-                          : (option.email ?? option.id)
-                      }
-                      value={selectedUser}
-                      onChange={(_event, value) => setSelectedUser(value)}
-                      renderInput={(params) => (
-                        <TextField
-                          {...params}
-                          placeholder="Benutzer suchen …"
-                          slotProps={{
-                            ...params.slotProps,
-                            htmlInput: { ...params.slotProps.htmlInput, 'aria-label': 'Benutzer' },
-                          }}
-                        />
-                      )}
-                      isOptionEqualToValue={(option, value) => option.id === value.id}
-                      sx={{ minWidth: 280, flex: 1 }}
-                    />
                     <Select
                       size="small"
                       value={newMemberRole}
@@ -627,90 +600,30 @@ export default function SpaceManagementPage() {
                     </Select>
                     <Button
                       variant="contained"
-                      disabled={!selectedUser}
+                      disabled={!selectedSubjectId(subject)}
                       onClick={async () => {
-                        if (!selectedUser) return
+                        const subjectId = selectedSubjectId(subject)
+                        if (!subjectId) return
+                        if (!(await confirmExternalSubject(subject))) return
                         setLocalError(null)
                         try {
-                          await addMember(spaceId, 'USER', selectedUser.id, newMemberRole)
-                          setSelectedUser(null)
-                          setUserQuery('')
-                          setSuccessMessage('Mitglied hinzugefügt')
+                          await addMember(spaceId, subject.type, subjectId, newMemberRole)
+                          setSubject(emptySubjectSelection)
+                          setSuccessMessage(
+                            subject.type === 'GROUP'
+                              ? 'Gruppe hinzugefügt'
+                              : 'Mitglied hinzugefügt',
+                          )
                         } catch (err) {
                           setLocalError(
                             err instanceof Error
                               ? err.message
-                              : 'Mitglied konnte nicht hinzugefügt werden',
+                              : 'Das Mitglied konnte nicht hinzugefügt werden',
                           )
                         }
                       }}
                     >
-                      Mitglied hinzufügen
-                    </Button>
-                  </Stack>
-                  <Typography variant="body2" sx={{ color: 'text.secondary', pt: 1 }}>
-                    Eine Gruppe als Mitglied gibt ihre Rolle an alle Mitglieder weiter — ohne eigene
-                    Zeile, und sie endet mit dem Austritt aus der Gruppe.
-                  </Typography>
-                  {groupLoadError && (
-                    <Alert severity="error" sx={{ mb: 0.5 }}>
-                      {groupLoadError}
-                    </Alert>
-                  )}
-                  <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5}>
-                    <Autocomplete
-                      options={availableGroups}
-                      size="small"
-                      getOptionLabel={(option) => option.name}
-                      noOptionsText="Keine Gruppe verfügbar"
-                      value={selectedGroup}
-                      onChange={(_event, value) => setSelectedGroup(value)}
-                      renderInput={(params) => (
-                        <TextField
-                          {...params}
-                          placeholder="Gruppe auswählen …"
-                          slotProps={{
-                            ...params.slotProps,
-                            htmlInput: { ...params.slotProps.htmlInput, 'aria-label': 'Gruppe' },
-                          }}
-                        />
-                      )}
-                      isOptionEqualToValue={(option, value) => option.id === value.id}
-                      sx={{ minWidth: 280, flex: 1 }}
-                    />
-                    <Select
-                      size="small"
-                      value={newGroupRole}
-                      onChange={(event) => setNewGroupRole(event.target.value as SpaceRole)}
-                      aria-label="Rolle der neuen Gruppe"
-                      sx={{ width: 180 }}
-                    >
-                      {editableRoles.map((role) => (
-                        <MenuItem key={role} value={role}>
-                          {spaceRoleLabel(role)}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                    <Button
-                      variant="contained"
-                      disabled={!selectedGroup}
-                      onClick={async () => {
-                        if (!selectedGroup) return
-                        setLocalError(null)
-                        try {
-                          await addMember(spaceId, 'GROUP', selectedGroup.id, newGroupRole)
-                          setSelectedGroup(null)
-                          setSuccessMessage('Gruppe hinzugefügt')
-                        } catch (err) {
-                          setLocalError(
-                            err instanceof Error
-                              ? err.message
-                              : 'Gruppe konnte nicht hinzugefügt werden',
-                          )
-                        }
-                      }}
-                    >
-                      Gruppe hinzufügen
+                      Hinzufügen
                     </Button>
                   </Stack>
                 </Stack>

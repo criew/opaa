@@ -96,6 +96,7 @@ import {
   resolveDroppedItems,
 } from '../utils/directoryEntries'
 import LibraryGrantsDialog from '../components/LibraryGrantsDialog'
+import AccessDerivation from '../components/permissions/AccessDerivation'
 import EditLibrarySourceDialog from '../components/EditLibrarySourceDialog'
 import EditLibraryScheduleDialog from '../components/EditLibraryScheduleDialog'
 import ConfluenceWebhookSection from '../components/library/ConfluenceWebhookSection'
@@ -1125,6 +1126,15 @@ export default function LibraryDetailPage() {
               }
             >
               <LibrarySpacesSection key={`spaces-${libraryId}`} libraryId={libraryId} />
+            </PageSection>
+
+            {/* #1822, ADR-0036 Entscheidung 9: Flach zu sein und das flach zu zeigen sind zwei
+                Zusagen - jede Person sieht ihren eigenen Weg zu dieser Bibliothek. */}
+            <PageSection
+              title="Warum sehe ich diese Bibliothek?"
+              description="Ihr eigener Weg zur wirksamen Rolle. Ohne Vollmacht, ohne Protokoll."
+            >
+              <AccessDerivation target={{ kind: 'library', libraryId }} />
             </PageSection>
 
             {canDelete && (
