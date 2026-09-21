@@ -181,6 +181,16 @@ class GroupStewardshipIntegrationTest {
         .isInstanceOf(NotFoundException.class);
     assertThatThrownBy(() -> groupService.setRelease(groupId, true, stranger))
         .isInstanceOf(NotFoundException.class);
+    assertThatThrownBy(() -> groupService.setProtection(groupId, true, stranger))
+        .isInstanceOf(NotFoundException.class);
+    assertThatThrownBy(() -> groupService.listMembers(groupId, stranger))
+        .isInstanceOf(NotFoundException.class);
+    assertThatThrownBy(() -> groupService.listStewards(groupId, stranger))
+        .isInstanceOf(NotFoundException.class);
+    assertThatThrownBy(() -> groupService.removeMember(groupId, someone, stranger))
+        .isInstanceOf(NotFoundException.class);
+    assertThatThrownBy(() -> groupService.dismissSteward(groupId, steward.id(), stranger))
+        .isInstanceOf(NotFoundException.class);
     assertThatThrownBy(() -> groupService.deleteGroup(groupId, stranger))
         .isInstanceOf(NotFoundException.class);
   }
@@ -362,6 +372,75 @@ class GroupStewardshipIntegrationTest {
     assertThat(auditCount(groupId, AuditEventType.GROUP_PROTECTION_CHANGED)).isEqualTo(1);
   }
 
+  /**
+   * A protected group decides its own release as well (ADR-0036, Entscheidung 9; Personalrat A3):
+   * an administration that may not set the mark must not be able to put the group into every
+   * selection either. Without the protection the administration keeps the release, and the group's
+   * own stewards keep it with the protection.
+   */
+  @Test
+  void theAdministrationDoesNotReleaseAProtectedGroup() {
+    CurrentUser steward = grantInternalGroupCapability(regularUser());
+    UUID guarded =
+        groupService.createGroup(new GroupCreation("Personalrat", null), steward).group().getId();
+    UUID ordinary =
+        groupService.createGroup(new GroupCreation("Projektteam", null), steward).group().getId();
+    groupService.setProtection(guarded, true, steward);
+    CurrentUser admin = currentUserOf(systemAdmin());
+
+    assertThatThrownBy(() -> groupService.setRelease(guarded, true, admin))
+        .isInstanceOf(AccessDeniedException.class)
+        .hasMessageContaining("Verantwortlichen selbst")
+        .extracting(denied -> ((AccessDeniedException) denied).getCode())
+        .isEqualTo(GroupService.STEWARDSHIP_REQUIRED);
+    assertThat(groupRepository.findById(guarded).orElseThrow().isReleasedForUse()).isFalse();
+
+    assertThat(groupService.setRelease(ordinary, true, admin).group().isReleasedForUse())
+        .as("an unprotected group is the administration's to release")
+        .isTrue();
+    assertThat(groupService.setRelease(guarded, true, steward).group().isReleasedForUse())
+        .as("the protection binds the administration, not the group's own stewards")
+        .isTrue();
+  }
+
+  /**
+   * "Der Abruf ist ein Audit-Ereignis" (ADR-0036, Entscheidung 9; Personalrat A6): the
+   * administration may see who is in a group, and that it looked is on the record. A steward
+   * reading the list they maintain writes nothing.
+   */
+  @Test
+  void theAdministrationReadingAMemberListLeavesAnEntryAndAStewardDoesNot() {
+    CurrentUser steward = grantInternalGroupCapability(regularUser());
+    UUID groupId =
+        groupService.createGroup(new GroupCreation("Personalrat", null), steward).group().getId();
+    groupService.addMember(groupId, regularUser(), steward);
+    CurrentUser admin = currentUserOf(systemAdmin());
+
+    groupService.listMembers(groupId, steward);
+
+    assertThat(auditCount(groupId, AuditEventType.GROUP_MEMBERS_READ)).isZero();
+
+    groupService.listMembers(groupId, admin);
+
+    assertThat(auditCount(groupId, AuditEventType.GROUP_MEMBERS_READ)).isEqualTo(1);
+    assertThat(auditPayload(groupId, AuditEventType.GROUP_MEMBERS_READ))
+        .contains("\"memberCount\":1");
+  }
+
+  /** A system administrator who is a steward acts as a steward, not as the administration. */
+  @Test
+  void anAdministratorWhoIsAStewardReadsTheirOwnGroupWithoutAnEntry() {
+    CurrentUser steward = grantInternalGroupCapability(regularUser());
+    UUID groupId =
+        groupService.createGroup(new GroupCreation("Personalrat", null), steward).group().getId();
+    CurrentUser admin = currentUserOf(systemAdmin());
+    groupService.appointSteward(groupId, admin.id(), steward);
+
+    groupService.listMembers(groupId, admin);
+
+    assertThat(auditCount(groupId, AuditEventType.GROUP_MEMBERS_READ)).isZero();
+  }
+
   // -------------------------------------------------------------------------------------------
   // Anbietergruppen, Benachrichtigung, Akteur
   // -------------------------------------------------------------------------------------------
@@ -531,6 +610,14 @@ class GroupStewardshipIntegrationTest {
             Integer.class,
             groupId);
     return count == null ? 0 : count;
+  }
+
+  private String auditPayload(UUID groupId, AuditEventType type) {
+    return jdbcTemplate.queryForObject(
+        "SELECT after FROM audit_log WHERE object_id = ? AND event_type = ?",
+        String.class,
+        groupId.toString(),
+        type.name());
   }
 
   private int auditCount(UUID groupId, AuditEventType type) {

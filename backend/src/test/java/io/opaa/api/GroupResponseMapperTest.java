@@ -16,9 +16,11 @@ import io.opaa.group.GroupOverview;
 import io.opaa.group.GroupProviderView;
 import io.opaa.group.GroupSteward;
 import io.opaa.group.GroupStewardView;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
 
 /**
  * Pure JUnit tests (no Spring context) against directly constructed entities - pins the mapper's
@@ -27,6 +29,16 @@ import org.junit.jupiter.api.Test;
  * shape.
  */
 class GroupResponseMapperTest {
+
+  /**
+   * Timestamps are written by {@code @PrePersist}, so an entity built here carries {@code null}
+   * until it is set: an assertion against the entity's own getter would compare {@code null} with
+   * {@code null} and pass whatever the mapper did with the field.
+   */
+  private static <T> T withTimestamp(T entity, String field, Instant value) {
+    ReflectionTestUtils.setField(entity, field, value);
+    return entity;
+  }
 
   private static final java.time.Instant LAST_SYNC_AT =
       java.time.Instant.parse("2026-09-20T04:00:00Z");
@@ -44,6 +56,8 @@ class GroupResponseMapperTest {
             "ext-1",
             "/Haus/Abteilung 5/Referat 5",
             UUID.randomUUID());
+    withTimestamp(group, "createdAt", Instant.parse("2026-03-01T10:00:00Z"));
+    withTimestamp(group, "updatedAt", Instant.parse("2026-03-02T11:30:00Z"));
 
     GroupListResponse response =
         GroupResponseMapper.toListResponse(
@@ -211,7 +225,10 @@ class GroupResponseMapperTest {
     group.release(true);
     group.markProtected(true);
     GroupSteward steward =
-        new GroupSteward(group.getId(), UUID.randomUUID(), group.getOrganizationId(), null);
+        withTimestamp(
+            new GroupSteward(group.getId(), UUID.randomUUID(), group.getOrganizationId(), null),
+            "createdAt",
+            Instant.parse("2026-03-01T10:00:00Z"));
 
     GroupListResponse response =
         GroupResponseMapper.toListResponse(
@@ -286,7 +303,11 @@ class GroupResponseMapperTest {
   @Test
   void toMemberResponseCarriesTheResolvedDisplayName() {
     UUID organizationId = UUID.randomUUID();
-    GroupMembership membership = new GroupMembership(UUID.randomUUID(), organizationId);
+    GroupMembership membership =
+        withTimestamp(
+            new GroupMembership(UUID.randomUUID(), organizationId),
+            "createdAt",
+            Instant.parse("2026-03-01T10:00:00Z"));
     GroupMemberView view = new GroupMemberView(membership, "Ada Lovelace");
 
     GroupMemberResponse response = GroupResponseMapper.toMemberResponse(view);

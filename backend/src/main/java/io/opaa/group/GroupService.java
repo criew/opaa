@@ -502,9 +502,9 @@ public class GroupService {
 
   /**
    * A group's members. For a system administrator who stewards none of it, reading this list is
-   * itself an event (ADR-0036, Entscheidung 9: "der Abruf ist ein Audit-Ereignis"; Personalrat
-   * A6) - the administration may see who is in a group, and that it looked is on the record. A
-   * steward reading the list they maintain writes nothing: it is their own group.
+   * itself an event (ADR-0036, Entscheidung 9: "der Abruf ist ein Audit-Ereignis"; Personalrat A6)
+   * - the administration may see who is in a group, and that it looked is on the record. A steward
+   * reading the list they maintain writes nothing: it is their own group.
    */
   @Transactional
   public List<GroupMemberView> listMembers(UUID groupId, CurrentUser caller) {
@@ -706,10 +706,10 @@ public class GroupService {
 
   /**
    * Refuses a caller who is no steward of this group, whatever their system role - the two
-   * decisions a protected group keeps to itself (ADR-0036, Entscheidung 9). {@code 403} rather
-   * than {@code 404} here on purpose: the caller has already got past {@link
-   * #requireMaintainable}, so the group's existence is no longer a secret from them, and the
-   * refusal is meant to explain rather than hide.
+   * decisions a protected group keeps to itself (ADR-0036, Entscheidung 9). {@code 403} rather than
+   * {@code 404} here on purpose: the caller has already got past {@link #requireMaintainable}, so
+   * the group's existence is no longer a secret from them, and the refusal is meant to explain
+   * rather than hide.
    */
   private void requireStewardship(Group group, CurrentUser caller, String message) {
     if (!stewardRepository.existsByGroupIdAndUserId(group.getId(), caller.id())) {
