@@ -20,6 +20,7 @@ import io.opaa.indexing.document.DocumentService;
 import io.opaa.indexing.source.filesystem.FilesystemPathAllowlist;
 import io.opaa.indexing.source.rss.RssFeedParser;
 import io.opaa.indexing.source.web.AutoindexCrawlerService;
+import io.opaa.permission.CapabilityService;
 import io.opaa.sourceaccess.SourceRequestPolicy;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import io.opaa.test.ProductionDocumentFormats;
@@ -51,6 +52,15 @@ class SourceConnectionTestServiceTest {
   private FilesystemPathAllowlist filesystemAllowlist;
   private KnowledgeLibraryRepository libraryRepository;
   private LibraryAccessService libraryAccessService;
+
+  /**
+   * A full mock, deliberately not stubbed here: every method (including {@code requireCapability})
+   * is a void no-op by default, so the object-less call sites below run exactly as before #1856 -
+   * {@link #sourceTestWithoutLibraryIdIsRefusedWithoutTheConnectorCapability} is the one test that
+   * stubs a refusal.
+   */
+  private CapabilityService capabilityService;
+
   private SourceConnectionTestService service;
   private UUID currentUserId;
   private UUID organizationId;
@@ -66,6 +76,7 @@ class SourceConnectionTestServiceTest {
     filesystemAllowlist = mock(FilesystemPathAllowlist.class);
     libraryRepository = mock(KnowledgeLibraryRepository.class);
     libraryAccessService = mock(LibraryAccessService.class);
+    capabilityService = mock(CapabilityService.class);
     currentUserId = UUID.randomUUID();
     organizationId = UUID.randomUUID();
     caller = CurrentUser.of(currentUserId, organizationId, SystemRole.USER, "Caller");
@@ -84,7 +95,8 @@ class SourceConnectionTestServiceTest {
             SourceRequestPolicy.defaults(),
             org.mockito.Mockito.mock(ConfluenceConnectionService.class),
             org.mockito.Mockito.mock(S3ConnectionService.class),
-            ProductionDocumentFormats.supportedFormats());
+            ProductionDocumentFormats.supportedFormats(),
+            capabilityService);
   }
 
   @AfterEach
@@ -540,7 +552,8 @@ class SourceConnectionTestServiceTest {
             SourceRequestPolicy.defaults(),
             org.mockito.Mockito.mock(ConfluenceConnectionService.class),
             org.mockito.Mockito.mock(S3ConnectionService.class),
-            ProductionDocumentFormats.supportedFormats());
+            ProductionDocumentFormats.supportedFormats(),
+            capabilityService);
     String html = "<table>" + "x".repeat(100) + "</table>";
     server.createContext(
         "/dir/",
@@ -682,7 +695,8 @@ class SourceConnectionTestServiceTest {
             SourceRequestPolicy.defaults(),
             org.mockito.Mockito.mock(ConfluenceConnectionService.class),
             org.mockito.Mockito.mock(S3ConnectionService.class),
-            ProductionDocumentFormats.supportedFormats());
+            ProductionDocumentFormats.supportedFormats(),
+            capabilityService);
     String rss =
         """
         <?xml version="1.0"?>
@@ -740,7 +754,8 @@ class SourceConnectionTestServiceTest {
             SourceRequestPolicy.defaults(),
             org.mockito.Mockito.mock(ConfluenceConnectionService.class),
             org.mockito.Mockito.mock(S3ConnectionService.class),
-            ProductionDocumentFormats.supportedFormats());
+            ProductionDocumentFormats.supportedFormats(),
+            capabilityService);
     String rss =
         "<?xml version=\"1.0\"?><rss version=\"2.0\"><channel>"
             + "x".repeat(50)
@@ -1143,5 +1158,41 @@ class SourceConnectionTestServiceTest {
   void missingSourceTypeIsRejectedWith400() {
     assertThatThrownBy(() -> service.test(sourceConnectionTest().build()))
         .isInstanceOf(ValidationException.class);
+  }
+
+  // --- Capability bar without libraryId (#1856) ---------------------------
+
+  /**
+   * A probe without {@code libraryId} needs the same connector capability {@code createLibrary}
+   * needs, checked before any per-quellentyp work runs - regression guard for #1856, where this
+   * endpoint answered 200 to any authenticated caller regardless of the capability.
+   */
+  @Test
+  void sourceTestWithoutLibraryIdIsRefusedWithoutTheConnectorCapability() {
+    org.mockito.Mockito.doThrow(
+            new AccessDeniedException("Ihnen fehlt das Anlegerecht", "CAPABILITY_REQUIRED"))
+        .when(capabilityService)
+        .requireCapability(caller, io.opaa.api.types.Capability.CREATE_CONNECTOR_LIBRARY);
+
+    assertThatThrownBy(
+            () ->
+                service.test(
+                    sourceConnectionTest().sourceType(DocumentSourceType.UPLOAD).build(), caller))
+        .isInstanceOf(AccessDeniedException.class);
+  }
+
+  /**
+   * The capability check runs for every object-less probe, even one the type switch later rejects.
+   */
+  @Test
+  void sourceTestWithoutLibraryIdChecksTheConnectorCapabilityBeforeTheTypeSwitch() {
+    assertThatThrownBy(
+            () ->
+                service.test(
+                    sourceConnectionTest().sourceType(DocumentSourceType.UPLOAD).build(), caller))
+        .isInstanceOf(ValidationException.class);
+
+    org.mockito.Mockito.verify(capabilityService)
+        .requireCapability(caller, io.opaa.api.types.Capability.CREATE_CONNECTOR_LIBRARY);
   }
 }

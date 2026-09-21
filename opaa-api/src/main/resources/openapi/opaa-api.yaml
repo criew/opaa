@@ -4180,12 +4180,13 @@ paths:
       tags: [library]
       summary: >
         Test a quellkonfiguration before a library is created, or an existing library's
-        quellkonfiguration while editing it (#514, #544). Without libraryId, any authenticated
-        user may probe: there is no library yet to hold a role on, and the guards that matter
-        here - the operator-configured path allowlist and the address validator - are independent
-        of any permission (ADR-0036, Entscheidung 5). The capability CREATE_CONNECTOR_LIBRARY is
-        therefore checked at creation, not here. With libraryId, the caller additionally needs
-        AssetRole.MANAGER on that library (see SourceConnectionTestRequest.libraryId).
+        quellkonfiguration while editing it (#514, #544). Without libraryId, there is no library
+        yet to hold a role on, so the caller instead needs the capability
+        CREATE_CONNECTOR_LIBRARY (ADR-0036, Entscheidung 5) - the same right creating that
+        connector library needs (#1856). The operator-configured path allowlist and the address
+        validator remain independent of any permission, as before. With libraryId, the caller
+        additionally needs AssetRole.MANAGER on that library (see
+        SourceConnectionTestRequest.libraryId).
       description: >
         Checks the given sourceType/sourcePath/sourceUrl/sourceProxy/sourceCredentials/
         sourceInsecureSsl combination the way the corresponding indexing run later would,
@@ -4245,9 +4246,10 @@ paths:
         token as HTTP Basic against /wiki/api/v2; Data Center: personal access token as Bearer
         against /rest/api) and returns every readable space, following the instance's own
         pagination to the end. A POST because the credentials travel in the body and no library
-        needs to exist yet. Permission bar like the connection test: any authenticated user
-        without libraryId, AssetRole.MANAGER on that library with it. Rate-limited like the
-        connection test (opaa.rate-limit.source-test) and subject to the same outbound target
+        needs to exist yet. Permission bar like the connection test: the capability
+        CREATE_CONNECTOR_LIBRARY without libraryId, AssetRole.MANAGER on that library with it
+        (#1856). Rate-limited like the connection test (opaa.rate-limit.source-test) and subject
+        to the same outbound target
         validation - a private on-premises address needs its allowlist entry and the error
         message says so. Credentials appear in no response and no error message.
       requestBody:
@@ -4285,10 +4287,11 @@ paths:
         listingPermitted false and a hint to enter the bucket name by hand, never with an error;
         refused credentials, a blocked or unreachable endpoint are a 400 with the same German
         message the connection test would give. A POST because the credentials travel in the
-        body and no library needs to exist yet. Permission bar like the connection test: any
-        authenticated user without libraryId, AssetRole.MANAGER on that library with it.
-        Rate-limited like the connection test (opaa.rate-limit.source-test) and subject to the
-        same outbound target validation. Credentials appear in no response and no error message.
+        body and no library needs to exist yet. Permission bar like the connection test: the
+        capability CREATE_CONNECTOR_LIBRARY without libraryId, AssetRole.MANAGER on that library
+        with it (#1856). Rate-limited like the connection test (opaa.rate-limit.source-test) and
+        subject to the same outbound target validation. Credentials appear in no response and no
+        error message.
       requestBody:
         required: true
         content:

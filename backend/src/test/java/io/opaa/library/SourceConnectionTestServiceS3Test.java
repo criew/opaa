@@ -26,6 +26,7 @@ import io.opaa.indexing.source.rss.RssFeedParser;
 import io.opaa.indexing.source.s3.S3Scope;
 import io.opaa.indexing.source.s3.S3SourceSettings;
 import io.opaa.indexing.source.web.AutoindexCrawlerService;
+import io.opaa.permission.CapabilityService;
 import io.opaa.sourceaccess.SourceRequestPolicy;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import io.opaa.test.ProductionDocumentFormats;
@@ -53,6 +54,7 @@ class SourceConnectionTestServiceS3Test {
   private KnowledgeLibraryRepository libraryRepository;
   private LibraryAccessService libraryAccessService;
   private S3ConnectionService s3ConnectionService;
+  private CapabilityService capabilityService;
   private SourceConnectionTestService service;
   private UUID currentUserId;
   private UUID organizationId;
@@ -63,6 +65,7 @@ class SourceConnectionTestServiceS3Test {
     libraryRepository = mock(KnowledgeLibraryRepository.class);
     libraryAccessService = mock(LibraryAccessService.class);
     s3ConnectionService = mock(S3ConnectionService.class);
+    capabilityService = mock(CapabilityService.class);
     currentUserId = UUID.randomUUID();
     organizationId = UUID.randomUUID();
     caller = CurrentUser.of(currentUserId, organizationId, SystemRole.USER, "Caller");
@@ -79,7 +82,8 @@ class SourceConnectionTestServiceS3Test {
             SourceRequestPolicy.defaults(),
             mock(ConfluenceConnectionService.class),
             s3ConnectionService,
-            ProductionDocumentFormats.supportedFormats());
+            ProductionDocumentFormats.supportedFormats(),
+            capabilityService);
   }
 
   private KnowledgeLibrary s3Library(UUID libraryId, String url) {
@@ -199,6 +203,30 @@ class SourceConnectionTestServiceS3Test {
 
     verify(s3ConnectionService)
         .probe("https://s3.other.example", null, null, false, STORED_SETTINGS);
+  }
+
+  /**
+   * #1856: the same connector capability {@code createLibrary} needs, checked ahead of validation.
+   */
+  @Test
+  void bucketListingWithoutLibraryIdRequiresTheConnectorCapability() {
+    Mockito.doThrow(new AccessDeniedException("Ihnen fehlt das Anlegerecht", "CAPABILITY_REQUIRED"))
+        .when(capabilityService)
+        .requireCapability(caller, io.opaa.api.types.Capability.CREATE_CONNECTOR_LIBRARY);
+
+    assertThatThrownBy(
+            () ->
+                service.listS3Buckets(
+                    new S3BucketListingRequest(
+                        URI.create("https://s3.example.org"),
+                        "ak:sk",
+                        null,
+                        null,
+                        null,
+                        true,
+                        null),
+                    caller))
+        .isInstanceOf(AccessDeniedException.class);
   }
 
   @Test

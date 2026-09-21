@@ -13,6 +13,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.AssetRole;
+import io.opaa.api.types.Capability;
 import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.LibraryVisibility;
@@ -26,6 +27,7 @@ import io.opaa.indexing.source.confluence.ConfluenceSpace;
 import io.opaa.indexing.source.filesystem.FilesystemPathAllowlist;
 import io.opaa.indexing.source.rss.RssFeedParser;
 import io.opaa.indexing.source.web.AutoindexCrawlerService;
+import io.opaa.permission.CapabilityService;
 import io.opaa.sourceaccess.SourceRequestPolicy;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import io.opaa.test.ProductionDocumentFormats;
@@ -48,6 +50,7 @@ class SourceConnectionTestServiceConfluenceTest {
   private KnowledgeLibraryRepository libraryRepository;
   private LibraryAccessService libraryAccessService;
   private ConfluenceConnectionService confluenceConnectionService;
+  private CapabilityService capabilityService;
   private SourceConnectionTestService service;
   private UUID currentUserId;
   private UUID organizationId;
@@ -58,6 +61,7 @@ class SourceConnectionTestServiceConfluenceTest {
     libraryRepository = mock(KnowledgeLibraryRepository.class);
     libraryAccessService = mock(LibraryAccessService.class);
     confluenceConnectionService = mock(ConfluenceConnectionService.class);
+    capabilityService = mock(CapabilityService.class);
     currentUserId = UUID.randomUUID();
     organizationId = UUID.randomUUID();
     caller = CurrentUser.of(currentUserId, organizationId, SystemRole.USER, "Caller");
@@ -74,7 +78,8 @@ class SourceConnectionTestServiceConfluenceTest {
             SourceRequestPolicy.defaults(),
             confluenceConnectionService,
             mock(S3ConnectionService.class),
-            ProductionDocumentFormats.supportedFormats());
+            ProductionDocumentFormats.supportedFormats(),
+            capabilityService);
   }
 
   private KnowledgeLibrary confluenceLibrary(UUID libraryId, String url) {
@@ -144,6 +149,30 @@ class SourceConnectionTestServiceConfluenceTest {
                     caller))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("sourcePath");
+  }
+
+  /**
+   * #1856: the same connector capability {@code createLibrary} needs, checked ahead of validation.
+   */
+  @Test
+  void spaceListingWithoutLibraryIdRequiresTheConnectorCapability() {
+    org.mockito.Mockito.doThrow(
+            new AccessDeniedException("Ihnen fehlt das Anlegerecht", "CAPABILITY_REQUIRED"))
+        .when(capabilityService)
+        .requireCapability(caller, Capability.CREATE_CONNECTOR_LIBRARY);
+
+    assertThatThrownBy(
+            () ->
+                service.listConfluenceSpaces(
+                    new ConfluenceSpaceListing(
+                        URI.create("https://wiki.example.org"),
+                        ConfluenceEdition.DATA_CENTER,
+                        "pat",
+                        null,
+                        null,
+                        null),
+                    caller))
+        .isInstanceOf(AccessDeniedException.class);
   }
 
   @Test

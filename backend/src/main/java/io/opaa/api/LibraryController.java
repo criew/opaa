@@ -112,14 +112,15 @@ public class LibraryController {
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 
-  // #514: without libraryId, any authenticated, known user may probe - there is no library yet for
-  // a role to be checked against, and what protects a probe is the path allowlist and the address
-  // validator, which ADR-0036 (Entscheidung 5) keeps independent of any permission. The capability
-  // CREATE_CONNECTOR_LIBRARY is therefore checked at creation, not here, so this bar is
-  // deliberately lower than createLibrary's. With libraryId set (#544), SourceConnectionTestService
-  // itself enforces the additional MANAGER bar on that library, passed the same systemAdmin flag
-  // updateLibrary below gets - a SYSTEM_ADMIN who can save the quellkonfiguration without a grant
-  // must not have "Verbindung testen" fail 404 right before it.
+  // #514/#1856: without libraryId, there is no library yet for a role to be checked against, so
+  // SourceConnectionTestService requires the capability CREATE_CONNECTOR_LIBRARY instead - the same
+  // right createLibrary needs for the library this probe is a step towards (ADR-0036, Entscheidung
+  // 5). The path allowlist and the address validator stay independent of any permission, as before.
+  // With libraryId set (#544), SourceConnectionTestService instead enforces the MANAGER bar on that
+  // library, passed the same systemAdmin flag updateLibrary below gets - a SYSTEM_ADMIN who can
+  // save
+  // the quellkonfiguration without a grant must not have "Verbindung testen" fail 404 right before
+  // it.
   @PostMapping("/source-test")
   public SourceConnectionTestResponse testLibrarySource(
       @Valid @RequestBody SourceConnectionTestRequest request, @Caller CurrentUser caller) {
@@ -129,8 +130,9 @@ public class LibraryController {
   }
 
   /**
-   * Space selection source for a CONFLUENCE library (ADR-0023, #1134) - same permission bar and
-   * rate limit as the connection test above; credentials travel in the body and never come back.
+   * Space selection source for a CONFLUENCE library (ADR-0023, #1134) - same permission bar (#1856)
+   * and rate limit as the connection test above; credentials travel in the body and never come
+   * back.
    */
   @PostMapping("/confluence/spaces")
   public ConfluenceSpaceListResponse listConfluenceSpaces(
@@ -142,9 +144,9 @@ public class LibraryController {
   }
 
   /**
-   * Bucket suggestion for an S3 library (ADR-0027, #1376) - same permission bar and rate limit as
-   * the connection test above; credentials travel in the body and never come back. A key that may
-   * not list buckets gets the fallback answer, not an error.
+   * Bucket suggestion for an S3 library (ADR-0027, #1376) - same permission bar (#1856) and rate
+   * limit as the connection test above; credentials travel in the body and never come back. A key
+   * that may not list buckets gets the fallback answer, not an error.
    */
   @PostMapping("/s3/buckets")
   public S3BucketListResponse listS3Buckets(

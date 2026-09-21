@@ -1,6 +1,7 @@
 package io.opaa.library;
 
 import io.opaa.api.types.AssetRole;
+import io.opaa.api.types.Capability;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.NotFoundException;
@@ -16,6 +17,7 @@ import io.opaa.indexing.source.rss.RssFeedParser;
 import io.opaa.indexing.source.s3.S3SourceSettings;
 import io.opaa.indexing.source.web.AutoindexCrawlerService;
 import io.opaa.indexing.source.web.UrlIndexingExecutor;
+import io.opaa.permission.CapabilityService;
 import io.opaa.sourceaccess.BoundedStreams;
 import io.opaa.sourceaccess.ProxyAndCredentials;
 import io.opaa.sourceaccess.RateLimitHandling;
@@ -68,19 +70,24 @@ import org.springframework.stereotype.Service;
  * finding 1); this test, having no entries or attachments to consider, always applies them for the
  * one address it was given.
  *
- * <p><b>Security (#514 acceptance criteria, PR #537 review finding 3).</b> This endpoint lets any
- * caller with the right to create a library probe arbitrary server-local paths (FILESYSTEM) and
- * arbitrary URLs (HTTP_DIRECTORY/RSS_FEED) - the same path-enumeration/SSRF surface {@code
- * validateConfigurationForType} already reasons about for creation itself, made cheaper to exploit
- * by being a single synchronous request instead of "create library, trigger indexing, read job
- * status". FILESYSTEM is therefore gated by the identical {@link FilesystemPathAllowlist} check
- * creation applies, before anything on disk is touched; every per-request HTTP timeout here is kept
- * well under {@code buildHttpClient}'s 30s connect timeout (the S3 probe's store likewise carries
- * {@link io.opaa.indexing.source.s3.S3ClientFactory#PROBE_TIMEOUT} and a single retry, and the
- * whole S3 test stops after {@link S3ConnectionService#PROBE_DEADLINE}) so a single caller cannot
- * tie up Tomcat's worker pool for long by requesting many tests against a filtered address at once
- * - {@code RateLimitConfiguration} additionally caps this endpoint per IP and globally, the same
- * way it already does for the indexing trigger. No response ever reveals more about a directory's
+ * <p><b>Security (#514 acceptance criteria, PR #537 review finding 3; capability bar #1856).</b>
+ * Without a {@code libraryId}, a probe or a selection ({@link #listConfluenceSpaces}, {@link
+ * #listS3Buckets}) needs {@link Capability#CREATE_CONNECTOR_LIBRARY} (ADR-0036, Entscheidung 5),
+ * the same right {@code KnowledgeLibraryService#createLibrary} requires for the connector library
+ * the probe is a step towards - before #1856, this endpoint let any authenticated caller probe
+ * arbitrary server-local paths (FILESYSTEM) and arbitrary URLs (HTTP_DIRECTORY/RSS_FEED) - the same
+ * path-enumeration/SSRF surface {@code validateConfigurationForType} already reasons about for
+ * creation itself, made cheaper to exploit by being a single synchronous request instead of "create
+ * library, trigger indexing, read job status" - regardless of whether that caller could ever create
+ * the library the probe served. FILESYSTEM is additionally gated by the identical {@link
+ * FilesystemPathAllowlist} check creation applies, before anything on disk is touched; every
+ * per-request HTTP timeout here is kept well under {@code buildHttpClient}'s 30s connect timeout
+ * (the S3 probe's store likewise carries {@link
+ * io.opaa.indexing.source.s3.S3ClientFactory#PROBE_TIMEOUT} and a single retry, and the whole S3
+ * test stops after {@link S3ConnectionService#PROBE_DEADLINE}) so a single caller cannot tie up
+ * Tomcat's worker pool for long by requesting many tests against a filtered address at once -
+ * {@code RateLimitConfiguration} additionally caps this endpoint per IP and globally, the same way
+ * it already does for the indexing trigger. No response ever reveals more about a directory's
  * contents than a count - never a file name, a listing, or an exception's raw text. Target
  * validation for the URL-based types' addresses themselves (blocking internal/private ranges,
  * {@code TargetAddressValidator}) applies to every fetch here exactly as to the indexing run - for
@@ -129,6 +136,7 @@ public class SourceConnectionTestService {
   private final ConfluenceConnectionService confluenceConnectionService;
   private final S3ConnectionService s3ConnectionService;
   private final SupportedDocumentFormats supportedFormats;
+  private final CapabilityService capabilityService;
 
   public SourceConnectionTestService(
       DocumentService documentService,
@@ -142,7 +150,8 @@ public class SourceConnectionTestService {
       SourceRequestPolicy requestPolicy,
       ConfluenceConnectionService confluenceConnectionService,
       S3ConnectionService s3ConnectionService,
-      SupportedDocumentFormats supportedFormats) {
+      SupportedDocumentFormats supportedFormats,
+      CapabilityService capabilityService) {
     this.documentService = documentService;
     this.crawlerService = crawlerService;
     this.rssFeedParser = rssFeedParser;
@@ -156,26 +165,38 @@ public class SourceConnectionTestService {
     this.targetAddressValidator = targetAddressValidator;
     this.confluenceConnectionService = confluenceConnectionService;
     this.s3ConnectionService = s3ConnectionService;
+    this.capabilityService = capabilityService;
     this.supportedFormats = supportedFormats;
   }
 
   /**
-   * Convenience overload for a standalone test carrying no {@code libraryId} (#514's original
-   * shape, before #544) - equivalent to {@link #test(SourceConnectionTest, CurrentUser)} with a
-   * {@code null} caller, which that overload only ever consults once {@code request.libraryId()} is
-   * set.
+   * Test-support overload exercising the per-quellentyp logic below without a caller (#514's
+   * original shape, before #544/#1856) - package-private because a {@code null} caller only works
+   * with a stubbed {@link CapabilityService} the way the unit tests here wire it; the real bean
+   * would throw a {@link NullPointerException} from {@link #test(SourceConnectionTest,
+   * CurrentUser)} below the moment it evaluates the caller's capabilities. Production code always
+   * goes through the two-argument overload via {@code LibraryController}, which never has a {@code
+   * null} caller.
    */
-  public SourceConnectionTestResult test(SourceConnectionTest request) {
+  SourceConnectionTestResult test(SourceConnectionTest request) {
     return test(request, null);
   }
 
   /**
-   * @param caller the caller, only consulted when {@code request.libraryId()} is set (#544) - a
-   *     standalone test (no libraryId) keeps #514's original permission bar, checked by the
-   *     controller before this method is even called, so {@code caller} may be {@code null} in that
-   *     case (see {@link #test(SourceConnectionTest)}).
+   * Without a {@code libraryId}, this is a step towards creating a connector library and needs
+   * {@link Capability#CREATE_CONNECTOR_LIBRARY} (ADR-0036, Entscheidung 5) - the same right {@code
+   * KnowledgeLibraryService#createLibrary} requires for the library the probe serves (#1856). With
+   * {@code libraryId} set (#544), the caller instead needs {@link AssetRole#MANAGER} on that
+   * library, checked by {@link #requireManagedLibrary} below - creating a connector library already
+   * required the capability, so re-demanding it here would only block a caller who already holds
+   * {@code MANAGER} without adding a boundary.
+   *
+   * @param caller the caller; only {@code null} through the test-support overload above.
    */
   public SourceConnectionTestResult test(SourceConnectionTest request, CurrentUser caller) {
+    if (request.libraryId() == null) {
+      capabilityService.requireCapability(caller, Capability.CREATE_CONNECTOR_LIBRARY);
+    }
     DocumentSourceType sourceType = request.sourceType();
     if (sourceType == null) {
       throw new ValidationException("sourceType ist erforderlich");
@@ -272,9 +293,13 @@ public class SourceConnectionTestService {
   /**
    * The buckets an S3 key may see (ADR-0027, #1376), for the wizard's scope entry - the same
    * permission bar, stored-credentials fallback and proxy/TLS forcing as {@link #test}, through the
-   * very same {@link #withStoredCredentialsIfOmitted}.
+   * very same {@link #withStoredCredentialsIfOmitted}. Without {@code libraryId}, the same {@link
+   * Capability#CREATE_CONNECTOR_LIBRARY} bar as {@link #test} applies (#1856).
    */
   public S3BucketListResult listS3Buckets(S3BucketListingRequest request, CurrentUser caller) {
+    if (request.libraryId() == null) {
+      capabilityService.requireCapability(caller, Capability.CREATE_CONNECTOR_LIBRARY);
+    }
     if (request.sourceUrl() == null) {
       throw new ValidationException("sourceUrl ist erforderlich");
     }
@@ -328,10 +353,15 @@ public class SourceConnectionTestService {
   /**
    * The spaces a Confluence token may read (ADR-0023), for the wizard's selection - the same
    * permission bar, stored-credentials fallback and proxy/TLS forcing as {@link #test}, through the
-   * very same {@link #withStoredCredentialsIfOmitted}, so the two paths cannot drift apart.
+   * very same {@link #withStoredCredentialsIfOmitted}, so the two paths cannot drift apart. Without
+   * {@code libraryId}, the same {@link Capability#CREATE_CONNECTOR_LIBRARY} bar as {@link #test}
+   * applies (#1856).
    */
   public List<ConfluenceSpace> listConfluenceSpaces(
       ConfluenceSpaceListing request, CurrentUser caller) {
+    if (request.libraryId() == null) {
+      capabilityService.requireCapability(caller, Capability.CREATE_CONNECTOR_LIBRARY);
+    }
     if (request.sourceUrl() == null) {
       throw new ValidationException("sourceUrl ist erforderlich");
     }
