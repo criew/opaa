@@ -279,7 +279,11 @@ Verantwortlichen interner Gruppen samt Reichweitenfeldern (`GROUP_STEWARD_APPOIN
 letzten mit Vorher/Nachher des Kennzeichens; die betroffene Person steht als Pseudonym im Subjekt,
 und keines der vier erzeugt eine Historienzeile) und — ebenfalls seit #1814 — der Abruf der
 Mitgliederliste einer Gruppe durch die Systemverwaltung, die diese Gruppe nicht selbst verantwortet
-(`GROUP_MEMBERS_READ` mit der Zahl der Mitglieder). Das ist das einzige **Leseereignis** dieser
+(`GROUP_MEMBERS_READ` mit der Zahl der Mitglieder) und — seit #1834 — die Übertragung der Rechte
+eines Subjekts auf ein anderes (`PERMISSION_TRANSFER_EXECUTED` mit Quelle, Ziel, Umfang und Zahl
+der Zeilen, und `PERMISSION_TRANSFER_PREVIEWED` für **jeden** Abruf der Vorschau, auch den
+abgebrochenen — die Vorschau liest alles, was ein Subjekt hält). Das sind, neben dem Abruf der
+Mitgliederliste, die einzigen **Leseereignisse** dieser
 Liste und die bewusste Ausnahme von „Abfragen werden nicht protokolliert": ADR-0036,
 Entscheidung 9, räumt der Verwaltung die volle Mitgliederliste ein — und hält dafür fest, dass sie
 sie abgerufen hat. Wer die Gruppe selbst verantwortet, erzeugt beim Lesen nichts; es ist die

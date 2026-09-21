@@ -379,6 +379,75 @@ ihrer eigenen Gruppe keinen Eintrag.
 keine Verantwortlichen, sondern Ansprechstellen, die die Systemverwaltung benennt; eine Oberfläche
 dafür entsteht mit Issue #1821.
 
+### 7.2 Rechte einer Gruppe auf eine andere übertragen
+
+Wird ein Referat aufgelöst, ein Identitätsanbieter abgelöst oder eine Person durch eine andere
+ersetzt, müssen die Rechte mitgehen. Dafür gibt es **eine** Handlung statt Objekt-für-Objekt-Arbeit:
+die Übertragung.
+
+**Was übertragen wird.** Der Umfang ist wählbar — alles oder nur ein Teil:
+
+| Umfang | Gruppe → Gruppe | Gruppe → Person | Person → Person |
+|---|---|---|---|
+| Berechtigungen an Bibliotheken | ja | — | — |
+| Mitgliedschaften in Räumen | ja | — | — |
+| Anlegerechte | ja | — | — |
+| Eigentum an Bibliotheken | ja | ja | ja |
+| Eigentum an Räumen | — | — | ja |
+| Verantwortung für interne Gruppen | — | — | ja |
+
+**Ein Raum gehört immer einer natürlichen Person.** Deshalb wechselt sein Eigentum nur zwischen
+Personen; eine Gruppe besitzt keinen Raum und wird auch keiner. Übernimmt eine Person einen Raum,
+wird sie dabei — falls sie es noch nicht ist — als Administratorin aufgenommen: Eine Verantwortliche,
+die in der Mitgliederliste nicht auftaucht, wäre genau der Zustand, den die Übertragung beenden
+soll.
+
+**Von einer Person gehen nur Eigentum und Verantwortung über.** Die Berechtigungen einer Person
+werden hier weder übertragen noch aufgezählt — sie enden mit ihrem Konto. Eine Vorschau „alles, was
+Frau Vogt darf" gibt es bewusst nicht.
+
+**Wer das darf.** Die Systemverwaltung für das ganze Haus. Ihre eigene Verantwortung und ihr eigenes
+Eigentum gibt jede Person selbst ab, aus „Meine Gruppen". Wer eine Bibliothek verwaltet, ändert deren
+Berechtigungen weiterhin einzeln.
+
+**Ablauf.** Zuerst die **Vorschau**: Sie nennt in einem Satz, was bewegt würde („12 Berechtigungen an
+7 Objekten, Mitglied in 2 Räumen, Eigentum an 3 Objekten"). Danach die ausdrückliche **Bestätigung**.
+Beides steht im Nachweisprotokoll — **auch eine Vorschau, die niemand ausführt**: Sie liest alles,
+was eine Gruppe oder eine Person hält.
+
+**Das Ziel muss wirksam sein** — nicht aufgelöst, sein Anbieter eingeschaltet. **Leer sein darf es:**
+Im Token-Betrieb entsteht die Gruppe eines neuen Anbieters erst mit der ersten Anmeldung. Die Quelle
+darf dagegen aufgelöst sein; das ist der Regelfall. Über die Grenze des Hauses hinweg gibt es keine
+Übertragung.
+
+**Hat das Ziel an einem Objekt schon eine Rolle, bleibt die stärkere stehen.** Eine Übertragung gibt
+Rechte weiter und nimmt dem Ziel nichts weg.
+
+**Danach steht am Objekt, was geschehen ist** („übertragen am 14.03.2026, Vorgang …") — bei einer
+Gruppe als Quelle mit deren Namen, bei einer Person **ohne** ihren Namen. Die Rechtehistorie zeigt
+für jedes betroffene Objekt an jedem Tag genau ein Subjekt: Das Intervall der Quelle endet genau
+dort, wo das des Ziels beginnt, und beide tragen dieselbe Vorgangsnummer.
+
+**Danach lässt sich ein Anbieter löschen, dessen Gruppen noch Rechte trugen.** Das ist der vorgesehene
+Weg aus der Ablehnung „Diese Gruppen wirken noch"; die Rechte werden umgezogen, nicht entfernt.
+
+**Mit dem Eigentum geht die Rolle mit.** Wer eine Bibliothek übernimmt, darf sie danach auch
+verwalten; die vorherige Eigentümerin verliert ihre Rolle an dieser Bibliothek. Bei einer Gruppe als
+neuer Eigentümerin ist es die Verwalterrolle, bei einer Person die Eigentümerrolle — dieselben
+Rollen, die beim Anlegen einer Bibliothek vergeben werden.
+
+**Es gibt eine Obergrenze.** Eine Übertragung bewegt höchstens 500 Zeilen. Darüber wird sie
+abgelehnt, mit der Zahl und dem Hinweis, in mehreren Schritten zu übertragen — etwa erst die
+Berechtigungen, dann das Eigentum.
+
+**Was die Übertragung nicht tut:** Sie läuft nie automatisch. Eine Reorganisation im Verzeichnis
+erzeugt eine aufgelöste Gruppe und einen Eintrag in der Betriebsliste — die Entscheidung, wohin ihre
+Rechte gehen, trifft ein Mensch.
+
+**Eine Oberfläche dafür entsteht mit Issue #1821.** Heute führt die Systemverwaltung die Übertragung
+über die Schnittstelle aus; die Arbeitsliste je Anbieter und die Abgabe aus „Meine Gruppen" kommen
+mit diesem Issue.
+
 ## 8. Löschen oder sperren
 
 **Löschen ist die Ausnahme.** Für das Ausscheiden einer Person ist die Sperre der vorgesehene Weg:

@@ -603,6 +603,19 @@ public class KnowledgeLibrary {
     return ownerType == LibraryOwnerType.GROUP && ownerGroupId.equals(groupId);
   }
 
+  /**
+   * Hands the library to another owner (#1834, ADR-0036 Entscheidung 10) - exactly the column
+   * matching {@code ownerType} stays set, the other is cleared, as {@code
+   * chk_knowledge_libraries_owner} demands. The owner's {@code OWNER} grant is a separate row and
+   * moves with the transfer's grant part, not with this call.
+   */
+  public void transferOwnershipTo(LibraryOwnerType ownerType, UUID ownerId) {
+    this.ownerType = ownerType;
+    this.ownerUserId = ownerType == LibraryOwnerType.USER ? ownerId : null;
+    this.ownerGroupId = ownerType == LibraryOwnerType.GROUP ? ownerId : null;
+    this.updatedAt = Instant.now();
+  }
+
   /** The owning user or group id, whichever {@link #ownerType} points at. */
   public UUID getOwnerId() {
     return switch (ownerType) {

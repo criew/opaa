@@ -1162,8 +1162,9 @@ Gruppenmitgliedschaft kann Zugriff auf ganze Bestände geben oder nehmen.
 - **Der Wechsel des Mechanismus entzieht nichts still.** Token-Gruppen und Verzeichnisgruppen sind
   verschiedene Objekte. Wird der Abgleich für einen Anbieter eingeschaltet, weist der
   Differenzbericht des ersten Laufs seine Token-Gruppen als **„werden nicht mehr gepflegt"** aus; sie
-  bleiben mit eingefrorener Mitgliedschaft stehen. Die Übertragung ihrer Berechtigungen auf die neuen
-  Gruppen ist eine eigene Handlung.
+  bleiben mit eingefrorener Mitgliedschaft stehen. Die
+  [Übertragung](#rechte-einer-gruppe-auf-eine-andere-übertragen-gebaut-1834) ihrer Berechtigungen
+  auf die neuen Gruppen ist eine eigene Handlung und wird nie automatisch ausgelöst.
 
 **Dieselbe Regel gilt für die Gruppen aus dem Token.** „Keine Auskunft" und „ausdrücklich keine
 Gruppen" sind zwei verschiedene Aussagen, und nur die zweite ist ein Entzug. Der Anmeldeweg
@@ -1213,8 +1214,10 @@ niemanden — und mit der Wiederaktivierung schlagartig für alle, ohne erneute 
 **Wird ein Anbieter gelöscht**, gehen seine Gruppen mit ihm — aber nur, solange keine von ihnen noch
 wirkt. Trägt eine seiner Gruppen noch eine Berechtigung oder ist sie Eigentümerin eines Objekts,
 wird das Löschen mit `409` abgelehnt; die Meldung nennt die Zahl der betroffenen Gruppen,
-Berechtigungen und Objekte. **Solange die Übertragungsoperation nicht gebaut ist, führt an dieser
-Ablehnung nur das Entfernen der Wirkungen vorbei** — Deaktivieren bleibt jederzeit möglich.
+Berechtigungen und Objekte. **Aus dieser Ablehnung führt seit #1834 die
+[Übertragung](#rechte-einer-gruppe-auf-eine-andere-übertragen-gebaut-1834) heraus:** Sind die
+Wirkungen der Gruppen auf die des neuen Anbieters übergegangen, fällt der `409` von selbst.
+Deaktivieren bleibt daneben jederzeit möglich.
 
 > Festgeschrieben in [ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md),
 > Entscheidungen 2 und 11.
@@ -1301,6 +1304,108 @@ erzeugt beim Lesen nichts.
 
 > Festgeschrieben in [ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md),
 > Entscheidungen 4 und 9.
+
+#### Rechte einer Gruppe auf eine andere übertragen (gebaut, #1834)
+
+Vier Anlässe brauchen dieselbe Mechanik, und ohne sie endet jeder in Handarbeit: die
+**Reorganisation** (Referat 50 wird zu Referat 52), die **Anbieterablösung**, der **Wechsel des
+Mechanismus** von Token auf Verzeichnisabgleich und die **Nachfolge**. Statt 200 Objekte einzeln
+umzuhängen — was erfahrungsgemäß in einem `UPDATE` auf der Datenbank endet und die Rechtehistorie ab
+dem Tag wertlos macht — gibt es **eine** protokollierte Operation.
+
+**Was sie bewegt.** Der Umfang ist wählbar; alles oder eine Teilmenge:
+
+| Umfang | Von Gruppe auf Gruppe | Von Gruppe auf Person | Von Person auf Person |
+|---|---|---|---|
+| Berechtigungen an Objekten | ja | — | — |
+| Mitgliedschaften in Spaces | ja | — | — |
+| Anlegerechte | ja | — | — |
+| Eigentum an Bibliotheken | ja | ja | ja |
+| Eigentum an Spaces | — | — | ja |
+| Verantwortung für interne Gruppen | — | — | ja |
+
+**Ein Space gehört immer einer natürlichen Person** (Entscheidung 6), sein Eigentum wechselt deshalb
+nur zwischen Personen; der neue Eigentümer wird dabei, falls nötig, als `ADMIN`-Mitglied aufgenommen.
+
+**Mit dem Eigentum geht die Rolle mit.** Eine Rolle an einer Bibliothek entsteht aus Grants, nicht
+aus der Eigentümerspalte — die Übertragung des Eigentums verschiebt deshalb auch den Grant, der zum
+Eigentum gehört: `OWNER` für eine Person, `MANAGER` für eine Gruppe, wie beim Anlegen. Ohne das hielte
+der Nachfolger nichts und die Quelle alles.
+
+**Bei einer Person als Quelle bleibt es bei Eigentum und Verantwortung.** Berechtigungen und
+Space-Mitgliedschaften einer Person sind hier weder übertragbar noch aufzählbar: Die Vorschau wäre
+sonst eine Abfrage „alle Wirkungen der Person X" für die Systemverwaltung — ohne Vollmacht und ohne
+Begründung, also genau die personenbezogene Rechteübersicht, die für die Vergangenheit unter einer
+Vier-Augen-Vollmacht steht. Fachlich wird sie nicht gebraucht: Eine Nachfolge betrifft Eigentum und
+Verantwortung, und die Berechtigungen einer ausgeschiedenen Person enden mit ihrem Konto.
+
+**Wer.** Die Systemverwaltung organisationsweit. Für „das Eigentum und die Verantwortung, die ich
+selbst trage" auch die Person selbst — die Abgabe aus „Meine Gruppen". Ein `MANAGER` ändert die
+Berechtigungen an seinem Objekt weiterhin einzeln; die Massenoperation bleibt ein Verwaltungsakt.
+
+**Ablauf.** Die **Vorschau ist Pflicht** und nennt in einem Satz, was bewegt würde („12
+Berechtigungen an 7 Objekten, Mitglied in 2 Spaces, Eigentum an 3 Objekten"). Sie ist **selbst ein
+Protokollereignis** (`PERMISSION_TRANSFER_PREVIEWED`) — auch wenn niemand sie ausführt: Sie liest
+alles, was ein Subjekt hält, und dass jemand gelesen hat, gehört ins Protokoll. **Die Pflicht ist
+durchgesetzt, nicht nur beschrieben:** Die Vorschau gibt eine Kennung zurück, die die Ausführung
+vorzeigen muss; sie gilt 30 Minuten, gehört dem Aufrufer, dem sie gezeigt wurde, und trägt einen
+**Abdruck der gezeigten Zeilen** — je Berechtigung die Rolle und die Befristung, je
+Space-Mitgliedschaft der Space, dazu Anlegerechte, Eigentum und Verantwortlichkeiten. Eine Rolle,
+die sich zwischen Vorschau und Bestätigung ändert, fällt damit auf, obwohl die Zahlen gleich
+bleiben. Weicht der Abdruck ab, wird nichts übertragen und die Vorschau neu vorgelegt (`409`, Code
+`TRANSFER_PREVIEW_REQUIRED`) — dieselbe Mechanik wie bei der Bestätigung eines Abgleichsplans. Die Ausführung verlangt darüber hinaus eine **ausdrückliche Bestätigung** und
+schreibt `PERMISSION_TRANSFER_EXECUTED` mit Quelle, Ziel, Umfang und Zahl der Zeilen.
+
+**Eine Obergrenze je Vorgang.** Höchstens 500 Zeilen; darüber wird abgelehnt, mit der Zahl und dem
+Weg über eine Teilmenge des Umfangs — **gezählt, bevor etwas geladen wird**, und schon in der
+Vorschau: Eine Gruppe mit hunderttausend Berechtigungen wird abgewiesen, ohne dass eine einzige
+Zeile in die Anwendung kommt. Eine Übertragung ist eine Schreibtransaktion über bis zu vier
+Historientabellen — unbegrenzt zu laufen ist für genau die Anlässe, für die sie gebaut ist, kein
+Betriebszustand.
+
+**Eine bereits abgelaufene Berechtigung der Quelle wird beendet, aber nicht neu vergeben** — sie
+verschafft nichts, und am Ziel entstünde eine tote Zeile. Ihre Zeile verschwindet trotzdem: Sie ist
+sonst weiterhin ein Grund, aus dem die Gruppe nicht gelöscht werden kann. In den Zahlen der Vorschau
+erscheint sie nicht.
+
+**Das Ziel muss wirksam sein** — nicht aufgelöst, sein Anbieter aktiviert —, **darf aber leer
+sein**: Im Token-Modus entsteht die Gruppe des neuen Anbieters erst mit der ersten Anmeldung, und
+eine Übertragung, die darauf wartete, wäre genau das, was die Anbieterablösung nicht leisten kann.
+Die Quelle unterliegt dieser Regel nicht; eine aufgelöste Gruppe ist hier der Regelfall. Über die
+Organisationsgrenze hinweg gibt es keine Übertragung.
+
+**Der Schnitt in der Rechtehistorie.** Je betroffener Zeile endet das Intervall der Quelle und
+beginnt das des Ziels — mit **demselben Zeitstempel** und einer **gemeinsamen Vorgangskennung**. Die
+Stichtagsauskunft zeigt damit an jedem Tag genau ein Subjekt, und zwei Intervalle zweier Subjekte
+sind als dieselbe Entscheidung erkennbar, statt nur zufällig gleich datiert zu sein.
+
+**Treffen beide Seiten am selben Objekt aufeinander, bleibt die stärkere Rolle stehen.** Eine
+Übertragung gibt Rechte weiter; sie nimmt dem Ziel nie etwas weg. Das Ziel bekommt in diesem Fall
+kein neues Intervall — sein Zustand hat sich nicht geändert.
+
+**Die betroffenen Objekte tragen den Vorgang** in ihrer Freigabeansicht („übertragen am 14.03.2026,
+Vorgang …"), bei einer Gruppe als Quelle mit deren Namen. **Bei einer Person als Quelle ohne ihren
+Namen:** Ein an vielen Objekten wiederholter Hinweis auf das Ausscheiden einer benannten Person,
+außerhalb jeder Protokollfrist, wäre sonst die Folge.
+
+**Wer den Namen der Quellgruppe zu sehen bekommt, entscheidet Entscheidung 9, nicht der Vermerk.**
+Eine **geschützte** Gruppe erscheint dort wie in jeder anderen fremden Liste als „geschützte Gruppe"
+ohne Namen; eine **nicht freigegebene** interne Gruppe wird gegenüber jemandem, der weder Mitglied
+noch verantwortlich noch Systemverwaltung ist, nicht benannt. Eine Quellgruppe, die es nicht mehr
+gibt, nennt der Vermerk nur der Systemverwaltung — ihre Sichtbarkeit kann niemand mehr prüfen.
+
+**Der Vorgang unterliegt der Aufbewahrungshöchstdauer der Rechtehistorie** (#1833): Er wird mit dem
+Löschlauf entfernt, sobald er älter ist als die eingestellte Frist. Die Objektliste geht mit ihm, die
+Historienintervalle bleiben und verlieren nur die Vorgangskennung. Ohne das stünden der
+Namensschnappschuss der Quellgruppe und der Vermerk an jedem Objekt unbefristet.
+
+**Nicht enthalten:** die Rücknahme von Mitgliedschaften nach einem Vorfall („alle Mitgliedschaften
+dieses Anbieters seit T") und jede automatische Auslösung durch den Verzeichnisabgleich. Eine
+Reorganisation im Verzeichnis erzeugt eine aufgelöste Gruppe und einen Eintrag in der Betriebsliste;
+die Übertragung bleibt eine Entscheidung.
+
+> Festgeschrieben in [ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md),
+> Entscheidung 10.
 
 Der Nachweis, worauf eine Person zu einem beliebigen Stichtag Zugriff hatte, entsteht aus der
 Historisierung dieser drei Quellen und ist in

@@ -75,4 +75,10 @@ public interface CapabilityGrantRepository extends JpaRepository<CapabilityGrant
   @Query(
       "select distinct g.subjectGroupId from CapabilityGrant g where g.subjectGroupId in :groupIds")
   List<UUID> findSubjectGroupIdsIn(@Param("groupIds") Collection<UUID> groupIds);
+
+  /** Every capability one group holds - what a transfer moves to the target group (#1834). */
+  List<CapabilityGrant> findBySubjectGroupId(UUID subjectGroupId);
+
+  /** The same figure without the rows, for a transfer's work limit. */
+  long countBySubjectGroupId(UUID subjectGroupId);
 }

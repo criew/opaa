@@ -25,6 +25,9 @@ public interface SpaceMembershipRepository extends JpaRepository<SpaceMembership
   /** How many spaces the account is a member of - part of what a handover moves (#1563). */
   long countByUserId(UUID userId);
 
+  /** The group counterpart - the count behind a transfer's work limit (#1834). */
+  long countByGroupId(UUID groupId);
+
   /**
    * The space memberships the given groups hold - the one query behind {@link
    * io.opaa.permission.GroupSpaceMembershipDirectory}. Never called with an empty set.

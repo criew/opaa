@@ -1,0 +1,86 @@
+databaseChangeLog:
+  - changeSet:
+      id: 060-create-permission-transfers
+      author: opaa
+      comment: >-
+        Der Vorgang der Uebertragung (#1834, ADR-0036 Entscheidung 10): eine Zeile je
+        durchgefuehrter Uebertragung, auf die jede betroffene Historienzeile und jedes betroffene
+        Objekt zeigt. Ohne sie waere "am 14.03.2026 von Referat 50 auf Referat 52 uebertragen"
+        allein ein Protokolleintrag und damit nach der Protokollfrist verschwunden - die
+        Rechtehistorie selbst braucht die gemeinsame Vorgangskennung laenger als das Protokoll.
+        .
+        SUBJEKTSPALTEN OHNE FREMDSCHLUESSEL, ABWEICHEND VON ADR-0016. Der Zweck dieser Operation
+        ist, dass die Quelle danach nichts mehr haelt und geloescht werden kann - bei einer
+        Anbieterabloesung faellt mit ihr genau der 409 aus #1812. Ein RESTRICT auf
+        source_group_id machte die Quellgruppe dauerhaft unloeschbar und damit die Operation
+        wirkungslos; ein SET NULL naehme dem Vorgang sein Subjekt. Stattdessen traegt die Zeile
+        bei einer Gruppe als Quelle einen Namensschnappschuss (source_label), der dieselbe
+        Aufbewahrungshoechstdauer hat wie die Rechtehistorie (#1833).
+        .
+        BEI EINER PERSON ALS QUELLE BLEIBT source_label NULL. Der Name der ausgeschiedenen Person
+        wird nicht gespeichert und an keinem Objekt angezeigt (ADR-0036 Entscheidung 10): Ein an
+        vielen Objekten wiederholter Hinweis auf das Ausscheiden einer benannten Person ausserhalb
+        jeder Protokollfrist waere sonst die Folge. Die Pruefbedingung
+        chk_permission_transfers_source_label haelt das strukturell fest.
+        .
+        scope ist die sortierte, kommagetrennte Liste der uebertragenen Wirkungsarten
+        (PermissionTransferScope). Eine eigene Tabelle je Umfangsteil braeuchte einen Join fuer
+        eine Angabe, die nur gelesen und nie gefiltert wird.
+        .
+        uk_permission_transfers_id_organization ist das Ziel jedes Fremdschluessels auf diese
+        Tabelle: Die Organisationsgrenzen-Regel der Baseline verlangt, dass ein Fremdschluessel
+        zwischen zwei organisationsbezogenen Tabellen zusammengesetzt ist - (transfer_id,
+        organization_id) -> (id, organization_id).
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE TABLE permission_transfers (
+                  id uuid NOT NULL,
+                  organization_id uuid NOT NULL,
+                  source_type character varying(20) NOT NULL,
+                  source_user_id uuid,
+                  source_group_id uuid,
+                  source_label text,
+                  target_type character varying(20) NOT NULL,
+                  target_user_id uuid,
+                  target_group_id uuid,
+                  target_label text,
+                  scope character varying(200) NOT NULL,
+                  grant_count integer DEFAULT 0 NOT NULL,
+                  space_membership_count integer DEFAULT 0 NOT NULL,
+                  capability_count integer DEFAULT 0 NOT NULL,
+                  ownership_count integer DEFAULT 0 NOT NULL,
+                  stewardship_count integer DEFAULT 0 NOT NULL,
+                  actor_user_id uuid,
+                  performed_at timestamp with time zone NOT NULL,
+                  created_at timestamp with time zone DEFAULT now() NOT NULL,
+                  CONSTRAINT chk_permission_transfers_source_type CHECK ((source_type IN ('USER', 'GROUP'))),
+                  CONSTRAINT chk_permission_transfers_target_type CHECK ((target_type IN ('USER', 'GROUP'))),
+                  CONSTRAINT chk_permission_transfers_source CHECK (((((source_type)::text = 'USER'::text) AND (source_user_id IS NOT NULL) AND (source_group_id IS NULL)) OR (((source_type)::text = 'GROUP'::text) AND (source_group_id IS NOT NULL) AND (source_user_id IS NULL)))),
+                  CONSTRAINT chk_permission_transfers_target CHECK (((((target_type)::text = 'USER'::text) AND (target_user_id IS NOT NULL) AND (target_group_id IS NULL)) OR (((target_type)::text = 'GROUP'::text) AND (target_group_id IS NOT NULL) AND (target_user_id IS NULL)))),
+                  CONSTRAINT chk_permission_transfers_source_label CHECK ((((source_type)::text = 'GROUP'::text) OR (source_label IS NULL))),
+                  CONSTRAINT chk_permission_transfers_target_label CHECK ((((target_type)::text = 'GROUP'::text) OR (target_label IS NULL))),
+                  CONSTRAINT chk_permission_transfers_scope CHECK ((scope ~ '^[A-Z][A-Z_]*(,[A-Z][A-Z_]*)*$'))
+              );
+
+              ALTER TABLE ONLY permission_transfers
+                  ADD CONSTRAINT permission_transfers_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY permission_transfers
+                  ADD CONSTRAINT uk_permission_transfers_id_organization UNIQUE (id, organization_id);
+
+              ALTER TABLE ONLY permission_transfers
+                  ADD CONSTRAINT fk_permission_transfers_organization FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY permission_transfers
+                  ADD CONSTRAINT fk_permission_transfers_actor_user_organization FOREIGN KEY (actor_user_id, organization_id) REFERENCES users(id, organization_id) ON DELETE SET NULL (actor_user_id);
+
+              CREATE INDEX idx_permission_transfers_organization_performed ON permission_transfers USING btree (organization_id, performed_at);
+
+              CREATE INDEX idx_permission_transfers_source_group ON permission_transfers USING btree (source_group_id) WHERE ((source_type)::text = 'GROUP'::text);
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              DROP TABLE permission_transfers;

@@ -70,6 +70,34 @@ public class AssetOwnershipHistoryService {
   }
 
   /**
+   * The transfer variant of {@link #recordTransferred} (#1834, ADR-0036 Entscheidung 10): the
+   * boundary is the one the whole transfer shares rather than a fresh one, and both the closed and
+   * the opened interval name the operation. An asset has one owner at a time, so unlike a grant
+   * there are no two sides here - one chain, one cause {@link
+   * AssetOwnershipHistoryCause#TRANSFERRED}.
+   */
+  public void recordTransferred(
+      AssetType assetType,
+      UUID assetId,
+      PermissionSubject newOwner,
+      UUID actorUserId,
+      UUID transferId,
+      Instant at) {
+    closeOpenInterval(assetType, assetId, at);
+    AssetOwnershipHistory opened =
+        new AssetOwnershipHistory(
+            assetType,
+            assetId,
+            newOwner.organizationId(),
+            newOwner,
+            AssetOwnershipHistoryCause.TRANSFERRED,
+            actorUserId,
+            at);
+    opened.belongsToTransfer(transferId);
+    repository.save(opened);
+  }
+
+  /**
    * Closes the open interval of a deleted asset and writes the zero-length marker that records the
    * deletion itself, with its actor. {@code asset_id} carries no foreign key (ADR-0016) - without
    * this call the deleted asset would keep reporting a current owner forever, and without the
