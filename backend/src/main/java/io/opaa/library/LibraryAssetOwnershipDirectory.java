@@ -144,7 +144,10 @@ class LibraryAssetOwnershipDirectory implements AssetOwnershipDirectory {
                       newOwner.id(),
                       ownerRole,
                       null,
-                      actorUserId)
+                      actorUserId,
+                      // Eigentum, keine Freigabe - das Zuwachssignal haengt an einer erteilten
+                      // Rolle (#1820, ADR-0036 Entscheidung 9).
+                      null)
                   : AssetGrant.forUser(
                       KnowledgeLibrary.ASSET_TYPE,
                       library.getId(),
