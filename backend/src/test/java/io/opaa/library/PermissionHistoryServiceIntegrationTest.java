@@ -11,6 +11,7 @@ import io.opaa.api.types.GroupKind;
 import io.opaa.api.types.LibraryOwnerType;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.PermissionSubjectType;
+import io.opaa.api.types.PermissionTransferScope;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.TokenGroups;
 import io.opaa.auth.User;
@@ -43,6 +44,8 @@ import io.opaa.permission.GroupMembershipSource;
 import io.opaa.permission.GroupSubjectDirectory;
 import io.opaa.permission.PermissionHistoryClock;
 import io.opaa.permission.PermissionHistoryService;
+import io.opaa.permission.PermissionTransferOrder;
+import io.opaa.permission.PermissionTransferService;
 import io.opaa.test.FakeDirectoryClient;
 import io.opaa.test.OpaaIntegrationTest;
 import java.lang.reflect.Field;
@@ -103,6 +106,7 @@ class PermissionHistoryServiceIntegrationTest {
   @Autowired private GroupMembershipRepository membershipRepository;
   @Autowired private LibraryVisibilityHistoryRepository visibilityHistoryRepository;
   @Autowired private PermissionHistoryService permissionHistoryService;
+  @Autowired private PermissionTransferService transferService;
   @Autowired private LibraryVisibilityHistoryService visibilityHistoryService;
   // Every Stichtag below is drawn from the same monotonic source the recorded boundaries come
   // from (#1497). Instant.now() would not do: its readings can be several milliseconds coarser
@@ -822,6 +826,8 @@ class PermissionHistoryServiceIntegrationTest {
     paths.put(
         "KnowledgeLibraryService#deleteLibrary (organization-wide library)",
         this::organizationWideLibraryDeleted);
+    paths.put(
+        "PermissionTransferService#transfer (group grant moved)", this::groupGrantTransferred);
     return paths;
   }
 
@@ -871,7 +877,8 @@ class PermissionHistoryServiceIntegrationTest {
                 LibraryExternalAccessService.class,
                 LibraryExternalAccessExpiryService.class,
                 DirectorySyncService.class,
-                TokenGroupSynchronizer.class)
+                TokenGroupSynchronizer.class,
+                PermissionTransferService.class)
             .flatMap(
                 type ->
                     Arrays.stream(type.getDeclaredMethods())
@@ -990,6 +997,7 @@ class PermissionHistoryServiceIntegrationTest {
           "KnowledgeLibraryService",
           "LibraryAccessService",
           "LocalHandoverAccountService",
+          "PermissionTransferService",
           "ProviderGroupDirectoryAdapter",
           "TokenGroupSynchronizer");
 
@@ -1018,6 +1026,10 @@ class PermissionHistoryServiceIntegrationTest {
           "GroupService#dismissSteward",
           "GroupService#setRelease",
           "GroupService#setProtection",
+          // #1834: the preview only counts and writes its own audit entry, and markOf reads the
+          // note an object carries - neither moves a library into or out of anybody's set.
+          "PermissionTransferService#preview",
+          "PermissionTransferService#markOf",
           "KnowledgeLibraryService#getLibrary",
           "KnowledgeLibraryService#listLibraries",
           "KnowledgeLibraryService#listDocuments",
@@ -1102,6 +1114,43 @@ class PermissionHistoryServiceIntegrationTest {
         currentUserOf(owner));
 
     return new ReadabilityChange(member, libraryId, true);
+  }
+
+  /**
+   * #1834: the grant of one group goes to another in one operation. The reconstruction has to
+   * follow it without a gap - the TRANSFERRED_OUT side closes the source's interval at the very
+   * instant the TRANSFERRED_IN side opens the target's.
+   */
+  private ReadabilityChange groupGrantTransferred() {
+    UUID owner = createUser();
+    UUID libraryId = createLibrary(owner);
+    UUID member = createUser();
+    Group source = createAdHocGroup("Referat 50", owner);
+    Group target = createAdHocGroup("Referat 52", owner);
+    groupService.addMember(target.getId(), member, currentUserOf(owner));
+    grantService.upsertGrant(
+        libraryId,
+        new AssetGrantUpsert(PermissionSubjectType.GROUP, source.getId(), AssetRole.VIEWER),
+        currentUserOf(owner));
+
+    transferService.transfer(
+        new PermissionTransferOrder(
+            PermissionSubjectType.GROUP,
+            source.getId(),
+            PermissionSubjectType.GROUP,
+            target.getId(),
+            java.util.EnumSet.of(PermissionTransferScope.ASSET_GRANTS)),
+        true,
+        currentUserOf(createSystemAdmin()));
+
+    return new ReadabilityChange(member, libraryId, true);
+  }
+
+  /** A transfer is an administrative act - the one caller this class needs with that role. */
+  private UUID createSystemAdmin() {
+    User admin = userRepository.findById(createUser()).orElseThrow();
+    admin.setSystemRole(io.opaa.api.types.SystemRole.SYSTEM_ADMIN);
+    return userRepository.save(admin).getId();
   }
 
   private ReadabilityChange directGrantRevoked() {

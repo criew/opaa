@@ -16,7 +16,10 @@ databaseChangeLog:
         genau einen Eigentuemer, die Uebertragung ist dort eine einzige Kette ohne zwei Seiten.
         .
         ON DELETE SET NULL, nicht CASCADE: Faellt der Vorgang einmal weg, bleibt die
-        Historienzeile mit transfer_id = NULL stehen. Die Intervalle selbst sind die Auskunft
+        Historienzeile mit transfer_id = NULL stehen. Der Schluessel ist zusammengesetzt
+        ((transfer_id, organization_id) -> (id, organization_id)) und setzt gezielt nur
+        transfer_id auf NULL - die Organisationsgrenzen-Regel der Baseline verlangt die
+        zusammengesetzte Form zwischen zwei organisationsbezogenen Tabellen. Die Intervalle selbst sind die Auskunft
         darueber, wer wann was durfte; sie duerfen nicht am Vermerk haengen, der sie gruppiert.
       changes:
         - sql:
@@ -26,7 +29,7 @@ databaseChangeLog:
                   ADD COLUMN transfer_id uuid;
 
               ALTER TABLE ONLY asset_grant_history
-                  ADD CONSTRAINT fk_asset_grant_history_transfer FOREIGN KEY (transfer_id) REFERENCES permission_transfers(id) ON DELETE SET NULL;
+                  ADD CONSTRAINT fk_asset_grant_history_transfer FOREIGN KEY (transfer_id, organization_id) REFERENCES permission_transfers(id, organization_id) ON DELETE SET NULL (transfer_id);
 
               CREATE INDEX idx_asset_grant_history_transfer ON asset_grant_history USING btree (transfer_id) WHERE (transfer_id IS NOT NULL);
 
@@ -40,7 +43,7 @@ databaseChangeLog:
                   ADD COLUMN transfer_id uuid;
 
               ALTER TABLE ONLY space_membership_history
-                  ADD CONSTRAINT fk_space_membership_history_transfer FOREIGN KEY (transfer_id) REFERENCES permission_transfers(id) ON DELETE SET NULL;
+                  ADD CONSTRAINT fk_space_membership_history_transfer FOREIGN KEY (transfer_id, organization_id) REFERENCES permission_transfers(id, organization_id) ON DELETE SET NULL (transfer_id);
 
               CREATE INDEX idx_space_membership_history_transfer ON space_membership_history USING btree (transfer_id) WHERE (transfer_id IS NOT NULL);
 
@@ -54,7 +57,7 @@ databaseChangeLog:
                   ADD COLUMN transfer_id uuid;
 
               ALTER TABLE ONLY capability_grant_history
-                  ADD CONSTRAINT fk_capability_grant_history_transfer FOREIGN KEY (transfer_id) REFERENCES permission_transfers(id) ON DELETE SET NULL;
+                  ADD CONSTRAINT fk_capability_grant_history_transfer FOREIGN KEY (transfer_id, organization_id) REFERENCES permission_transfers(id, organization_id) ON DELETE SET NULL (transfer_id);
 
               CREATE INDEX idx_capability_grant_history_transfer ON capability_grant_history USING btree (transfer_id) WHERE (transfer_id IS NOT NULL);
 
@@ -68,7 +71,7 @@ databaseChangeLog:
                   ADD COLUMN transfer_id uuid;
 
               ALTER TABLE ONLY asset_ownership_history
-                  ADD CONSTRAINT fk_asset_ownership_history_transfer FOREIGN KEY (transfer_id) REFERENCES permission_transfers(id) ON DELETE SET NULL;
+                  ADD CONSTRAINT fk_asset_ownership_history_transfer FOREIGN KEY (transfer_id, organization_id) REFERENCES permission_transfers(id, organization_id) ON DELETE SET NULL (transfer_id);
 
               CREATE INDEX idx_asset_ownership_history_transfer ON asset_ownership_history USING btree (transfer_id) WHERE (transfer_id IS NOT NULL);
       rollback:

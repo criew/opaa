@@ -26,6 +26,9 @@ class Migration062PermissionHistoryTransferTest extends AbstractMigrationTest {
       "db/changelog/changes/062-permission-history-transfer.yaml";
 
   private static final String[] PREREQUISITES = {
+    "db/changelog/changes/038-asset-grants-type-independent.yaml",
+    "db/changelog/changes/039-asset-grant-history-type-independent.yaml",
+    "db/changelog/changes/040-asset-grant-history-drop-user-role.yaml",
     "db/changelog/changes/041-groups-provider-origin.yaml",
     "db/changelog/changes/042-create-capability-grants.yaml",
     "db/changelog/changes/043-space-memberships-subject.yaml",

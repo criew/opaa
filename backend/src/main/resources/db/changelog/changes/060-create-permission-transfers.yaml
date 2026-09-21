@@ -26,6 +26,11 @@ databaseChangeLog:
         scope ist die sortierte, kommagetrennte Liste der uebertragenen Wirkungsarten
         (PermissionTransferScope). Eine eigene Tabelle je Umfangsteil braeuchte einen Join fuer
         eine Angabe, die nur gelesen und nie gefiltert wird.
+        .
+        uk_permission_transfers_id_organization ist das Ziel jedes Fremdschluessels auf diese
+        Tabelle: Die Organisationsgrenzen-Regel der Baseline verlangt, dass ein Fremdschluessel
+        zwischen zwei organisationsbezogenen Tabellen zusammengesetzt ist - (transfer_id,
+        organization_id) -> (id, organization_id).
       changes:
         - sql:
             splitStatements: false
@@ -61,6 +66,9 @@ databaseChangeLog:
 
               ALTER TABLE ONLY permission_transfers
                   ADD CONSTRAINT permission_transfers_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY permission_transfers
+                  ADD CONSTRAINT uk_permission_transfers_id_organization UNIQUE (id, organization_id);
 
               ALTER TABLE ONLY permission_transfers
                   ADD CONSTRAINT fk_permission_transfers_organization FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;

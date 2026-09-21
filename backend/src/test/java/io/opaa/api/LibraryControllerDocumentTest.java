@@ -29,6 +29,7 @@ import io.opaa.library.LibraryDocumentPage;
 import io.opaa.library.LibraryDocumentService;
 import io.opaa.library.LibraryFolderService;
 import io.opaa.library.SourceConnectionTestService;
+import io.opaa.permission.PermissionTransferService;
 import io.opaa.space.SpaceAssetAssociationService;
 import java.util.List;
 import java.util.UUID;
@@ -68,6 +69,7 @@ class LibraryControllerDocumentTest {
   @MockitoBean private UserService userService;
   @MockitoBean private SourceConnectionTestService sourceConnectionTestService;
   @MockitoBean private SpaceAssetAssociationService associationService;
+  @MockitoBean private PermissionTransferService transferService;
 
   private final UUID currentUserId = UUID.randomUUID();
   private CurrentUser caller;

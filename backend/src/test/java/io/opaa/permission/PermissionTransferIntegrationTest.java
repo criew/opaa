@@ -84,6 +84,13 @@ class PermissionTransferIntegrationTest {
     admin = user(organizationA, SystemRole.SYSTEM_ADMIN);
   }
 
+  /**
+   * Ordered so that every child goes before its parent, and every row referencing a group before
+   * the groups themselves: {@code knowledge_libraries.owner_group_id} and {@code
+   * asset_grants.subject_group_id} are RESTRICT, so the libraries this class owns through a group
+   * have to go here rather than in {@link OwnOrganizationFixtures}, which runs afterwards for the
+   * rest (spaces, accounts, protocol, the organizations themselves).
+   */
   @AfterEach
   void tearDown() {
     for (String table :
@@ -95,6 +102,10 @@ class PermissionTransferIntegrationTest {
             "space_memberships",
             "space_membership_history",
             "asset_ownership_history",
+            "asset_grants",
+            "asset_grant_history",
+            "library_visibility_history",
+            "knowledge_libraries",
             "group_membership_history",
             "group_memberships",
             "group_stewards",

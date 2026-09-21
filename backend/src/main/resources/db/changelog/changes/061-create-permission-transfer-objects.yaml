@@ -33,7 +33,7 @@ databaseChangeLog:
                   ADD CONSTRAINT permission_transfer_objects_pkey PRIMARY KEY (id);
 
               ALTER TABLE ONLY permission_transfer_objects
-                  ADD CONSTRAINT fk_permission_transfer_objects_transfer FOREIGN KEY (transfer_id) REFERENCES permission_transfers(id) ON DELETE CASCADE;
+                  ADD CONSTRAINT fk_permission_transfer_objects_transfer FOREIGN KEY (transfer_id, organization_id) REFERENCES permission_transfers(id, organization_id) ON DELETE CASCADE;
 
               ALTER TABLE ONLY permission_transfer_objects
                   ADD CONSTRAINT fk_permission_transfer_objects_organization FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
