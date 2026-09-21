@@ -169,6 +169,17 @@ ersten Stufe nicht geschrieben.
 - Aufnahme, Rollenänderung und Entfernen von Space-Mitgliedern; die Aufnahme **externer** Personen in
   einen Space mit geteilten Inhalten zusätzlich mit der ausdrücklichen Bestätigung im Eintrag
 - Aufnahme und Entfernen von Gruppenmitgliedern; Auflösung einer Gruppe
+- **Benennung und Entlassung einer verantwortlichen Person einer internen Gruppe** sowie die Abgabe
+  der Verantwortung — Protokoll, aber **keine** Rechtehistorie: Verantwortung trägt kein Leserecht
+  und ist für „wer konnte am Tag X was lesen" ohne Bedeutung
+  ([ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md), Entscheidungen 4
+  und 8)
+- **Freigabe einer internen Gruppe zur Verwendung** und deren Rücknahme — dieselbe Art
+  Reichweitenfeld wie `listed` bei einem Asset: sie entscheidet, wer die Gruppe überhaupt als
+  Empfänger benennen kann
+- **Setzen und Lösen des Schutzkennzeichens einer Gruppe** (Personalvertretung,
+  Schwerbehindertenvertretung, Gleichstellung, Personalvorgänge) — durch die zuständige Stelle
+  selbst, nie durch die Administration
 - Bereitstellung einer Bibliothek in einem Space, dessen Mitglieder nicht sämtlich Lesezugriff haben
 - Eigentümerwechsel, Übernahme von Assets ohne Zuständigkeit und der Übergang in „Nachfolge offen"
 
@@ -262,7 +273,11 @@ Anlass und der Angabe, ob die Person selbst oder die Systemverwaltung widerrufen
 Anbieteridentität — alle drei mit der
 Token-Kennung statt des frei formulierten Tokennamens, und die **Nutzung** eines Tokens erzeugt
 keinen Eintrag) und — seit #1833 — die Aufbewahrungshöchstdauer der Rechtehistorie
-(`PERMISSION_HISTORY_RETENTION_CHANGED` mit Vorher/Nachher der Monatszahl). Die Anfrage
+(`PERMISSION_HISTORY_RETENTION_CHANGED` mit Vorher/Nachher der Monatszahl) und — seit #1814 — die
+Verantwortlichen interner Gruppen samt Reichweitenfeldern (`GROUP_STEWARD_APPOINTED`,
+`GROUP_STEWARD_DISMISSED`, `GROUP_RELEASE_CHANGED` und `GROUP_PROTECTION_CHANGED`, die beiden
+letzten mit Vorher/Nachher des Kennzeichens; die betroffene Person steht als Pseudonym im Subjekt,
+und keines der vier erzeugt eine Historienzeile). Die Anfrage
 „Passwort vergessen" ändert keinen Zustand; die Bestätigung der eigenen Adresse ist eine Handlung
 der Person am eigenen Konto und nach ADR-0033, Entscheidung 13, kein Verwaltungsakt — beide
 erzeugen kein Ereignis. Noch **nicht** verdrahtet — weil

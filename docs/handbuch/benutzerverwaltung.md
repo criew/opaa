@@ -245,10 +245,10 @@ Identitätsanbieter, und werden an eine Person, eine Gruppe oder an **„Alle Ko
 | **Konnektorbibliotheken anlegen** | Alle Konten |
 | **Interne Gruppen anlegen** | niemanden — die Systemverwaltung hat es ohnehin |
 
-Das Anlegerecht **„Interne Gruppen anlegen"** lässt sich heute zwar vergeben, wirkt aber noch nicht:
-Interne Gruppen werden weiterhin ausschließlich unter „Administration" angelegt. Die Übersicht sagt
-das in ihrer Zeile mit; die Erteilung wird protokolliert und greift, sobald es einen Anlegepfad
-außerhalb der Systemverwaltung gibt (Issue #1814).
+Das Anlegerecht **„Interne Gruppen anlegen"** wirkt: Wer es hält, legt unter „Meine Gruppen" eine
+interne Gruppe an und wird deren erste verantwortliche Person (Abschnitt 7.1). Ausgeliefert wird es
+an niemanden — ob und an wen es vergeben wird, entscheidet das Haus. Die Empfehlung für den Einstieg:
+an eine Gruppe wie „Referatsleitungen", nicht an „Alle Konten".
 
 Vier Punkte dazu:
 
@@ -271,6 +271,57 @@ Vier Punkte dazu:
 Eine Oberfläche zur Vergabe gibt es noch nicht (Issues #1820, #1821); bis dahin werden Anlegerechte
 über die Verwaltungsschnittstelle vergeben und entzogen.
 
+### 7.1 Interne Gruppen und ihre Verantwortlichen
+
+Eine **interne Gruppe** ist eine Gruppe, die in OPAA selbst entsteht — anders als die Gruppen aus dem
+Verzeichnisdienst oder dem Anmeldetoken. Sie wird nicht von der Systemverwaltung gepflegt, sondern von
+benannten **Verantwortlichen**. Für lokale Konten ist das der einzige Weg zu einer Gruppe.
+
+**Wer sie anlegt, ist verantwortlich.** Das Anlegen verlangt das Anlegerecht „Interne Gruppen
+anlegen"; die anlegende Person wird im selben Schritt erste verantwortliche Person. Verantwortliche
+sind immer Personen, nie Gruppen, und sie sind nicht automatisch Mitglied.
+
+Verantwortliche dürfen:
+
+- Mitglieder aufnehmen und entfernen — nur Konten des eigenen Hauses
+- Name und Beschreibung ändern
+- weitere Verantwortliche benennen und entlassen
+- die Gruppe **zur Verwendung freigeben** und die Freigabe zurücknehmen
+- die Gruppe als **geschützt** kennzeichnen
+- die Gruppe löschen, solange sie keine Berechtigung, kein Anlegerecht und kein Eigentum mehr trägt
+
+**Wer nicht verantwortlich ist, sieht die Gruppe unter „Meine Gruppen" nicht** und bekommt auf jeden
+Pflegeversuch dieselbe Antwort wie für eine Gruppe, die es nicht gibt. Die Systemverwaltung darf jede
+Gruppe pflegen — sie muss eine Gruppe ohne Verantwortliche wieder besetzen können.
+
+**Verantwortung wird abgegeben, nicht abgelegt.** Die letzte verantwortliche Person kann sich nicht
+selbst entfernen: erst die Nachfolge benennen, dann zurücktreten. Wer die Aufgabe wechselt, gibt die
+Verantwortung ausdrücklich ab; „Meine Gruppen" führt dafür die Handlung **„Verantwortung abgeben an
+…"**. Scheidet jemand aus, kann die Systemverwaltung die letzte verantwortliche Person entlassen — die
+Gruppe steht dann ohne Verantwortliche da, bis eine neue benannt wird.
+
+**Freigabe zur Verwendung.** Eine neu angelegte interne Gruppe ist für andere zunächst **nicht**
+wählbar: Wer eine Bibliothek freigibt, findet sie weder in der Auswahl noch über ihre Kennung. Erst
+die Freigabe durch die Verantwortlichen macht sie zu einem möglichen Empfänger. Bei der Umstellung
+wurde jede interne Gruppe, die bereits eine Berechtigung, ein Anlegerecht oder Eigentum trug,
+automatisch als freigegeben übernommen — niemand verliert eine Möglichkeit, die er benutzt hat.
+
+**Geschützte Gruppen** sind die Gruppen der Personalvertretung, der Schwerbehindertenvertretung, der
+Gleichstellung und der Personalvorgänge. Eine geschützte Gruppe ist nicht über die Suche auffindbar,
+erscheint in fremden Listen ohne Namen, und wer ihr ein Recht einräumt, sieht statt der Mitglieder die
+Ansprechstelle. **Das Kennzeichen setzen und lösen die Verantwortlichen der Gruppe selbst — die
+Systemverwaltung kann es nicht**, auch nicht mit Systemrolle.
+
+**Was festgehalten wird.** Aufnahme und Entfernung eines Mitglieds werden der betroffenen Person in
+der Anwendung angezeigt (ohne E-Mail) und stehen mit der handelnden verantwortlichen Person im
+Nachweisprotokoll und in der Rechtehistorie. Benennung, Entlassung und Abgabe der Verantwortung sowie
+jede Änderung an Freigabe und Schutzkennzeichen stehen im Nachweisprotokoll; eine Rechtehistorie
+führen sie nicht — Verantwortung trägt kein Leserecht.
+
+**Gruppen aus dem Verzeichnis oder dem Anmeldetoken lassen sich hier nicht bearbeiten.** Sie haben
+keine Verantwortlichen, sondern Ansprechstellen, die die Systemverwaltung benennt; eine Oberfläche
+dafür entsteht mit Issue #1821.
+
 ## 8. Löschen oder sperren
 
 **Löschen ist die Ausnahme.** Für das Ausscheiden einer Person ist die Sperre der vorgesehene Weg:
@@ -278,9 +329,10 @@ Sie entzieht den Zugang sofort und lässt nachvollziehbar, dass es dieses Konto 
 
 Gelöscht werden kann ein lokales Konto nur, wenn **nichts mehr darauf verweist**. Das ist mehr als
 Besitz: Neben einer eigenen Bibliothek, einem Raum außer dem persönlichen und einem Chat sperren
-auch Rechtevergaben, Raumzuordnungen, Geltungsbereiche einer anlassbezogenen Klärung sowie
-**Nachweiseinträge** über Gruppenmitgliedschaften und Rechteänderungen. Sonst lehnt OPAA die
-Löschung ab und verweist auf die Sperre.
+auch Rechtevergaben, Raumzuordnungen, Geltungsbereiche einer anlassbezogenen Klärung, die
+**Verantwortung für eine interne Gruppe** sowie **Nachweiseinträge** über Gruppenmitgliedschaften und
+Rechteänderungen. Sonst lehnt OPAA die Löschung ab und verweist auf die Sperre. Eine noch getragene
+Verantwortung wird vorher abgegeben (Abschnitt 7.1).
 
 Eine Ausnahme ist die Befugnis „Sicht als" ([Suche](suche.md), Abschnitt 8.3): Sie hält keine
 Löschung auf. Hat das Konto solche Befugnisse erteilt, **entzieht OPAA jede noch gültige davon beim
