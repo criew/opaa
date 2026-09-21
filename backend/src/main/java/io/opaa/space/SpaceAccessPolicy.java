@@ -164,11 +164,13 @@ public class SpaceAccessPolicy {
    * forget to set or clear a flag.
    *
    * <p><b>Two limits, stated rather than hidden.</b> First, the person half is unconditional: an
-   * account state that would make a person incapable arrives with #1818, so until then every
-   * account counts. Second, the owner is reached through their own membership row, and every space
-   * created or transferred through the API has one - so "Nachfolge offen" is <em>not reachable</em>
-   * for a space today. What is decided here today is the group half: whether a group still counts
-   * as this space's {@code ADMIN}.
+   * {@code ADMIN} person counts whatever state their account is in, while the group half counts
+   * only active accounts (#1818, {@code GroupMembershipResolver#activeMemberCount}) - the asymmetry
+   * is the pre-existing one, and closing it is a decision about the person half, not about this
+   * count. Second, the owner is reached through their own membership row, and every space created
+   * or transferred through the API has one - so "Nachfolge offen" is <em>not reachable</em> for a
+   * space today. What is decided here today is the group half: whether a group still counts as this
+   * space's {@code ADMIN}.
    *
    * <p><b>What the state does not do yet:</b> ADR-0036, Entscheidung 6 freezes an object's reach
    * while its succession is open - no new grants, no higher release level, for a space no new

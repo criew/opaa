@@ -1287,9 +1287,15 @@ Personenkontext ohne dessen Schutzmechanik wäre, gelten alle:
    der Endpunkt `403` mit dem Hinweis, dass für diese Sicht der Personenkontext mit Vollmacht zu
    wählen ist — eine Gruppe, die im Space eine Person ist, ist eine Person.
 3. **Gezählt werden Konten, nicht Mitgliedschaftszeilen.** Die Zählung läuft über dieselbe Stelle wie
-   der handlungsfähige Verantwortliche (`GroupMembershipResolver`), die mit
-   [#1818](https://github.com/criew/opaa/issues/1818) auf aktive Konten verengt wird; bis dahin gibt
-   es keinen Kontozustand, den sie berücksichtigen könnte.
+   der handlungsfähige Verantwortliche (`GroupMembershipResolver#activeMemberCount`/`#activeMemberIds`)
+   und lässt seit [#1818](https://github.com/criew/opaa/issues/1818) alles aus, was nicht handeln
+   kann: **vom Verzeichnisabgleich gesperrte Konten** jeder Herkunft und, bei lokalen Konten, jedes,
+   das nach [ADR-0033](../decisions/0033-lokale-benutzerverwaltung.md) nicht `ACTIVE` ist (gesperrt,
+   abgelaufen, noch eingeladen). Maßgeblich ist dieselbe Definition, die die Anmeldung führt
+   (`AccountActivityService`); eine Projektgruppe mit 20 Mitgliedern, von denen 18 gesperrt sind,
+   ist ein Zwei-Personen-Kontext. **Die Verengung betrifft nur die Zählung**, nicht die
+   Rechteauflösung: Die Mitgliedschaft eines gesperrten Kontos bleibt stehen und wirkt an Grants
+   weiter — die Sperre greift an der Anfrage, nicht durch Umschreiben der Rechte.
 4. **Ein Lauf mit Space-Kontext wird protokolliert** (`SEARCH_DIAGNOSIS_PROFILE_RUN`): ausführende
    Person, Profil, Space, Zeitpunkt — **eine Zeile je Lauf, keine je Abfrage**. `target_ref` trägt
    weiterhin die **Gruppen-Id**, damit „kein Personenbezug im Protokoll" eine Struktureigenschaft

@@ -278,6 +278,42 @@ class SpaceGroupMembershipIntegrationTest {
         .isEqualTo(1);
   }
 
+  /**
+   * ADR-0036, Entscheidung 7, Schutzpunkt 3 (#1818): counted are active accounts, not membership
+   * rows. Six members with two of them locked by the directory synchronisation are a group of four
+   * - and four is below the Mindestgruppengröße, so both figures are withheld.
+   */
+  @Test
+  void accountsLockedByTheDirectorySynchronisationDoNotCount() {
+    UUID owner = createUser(organizationA);
+    UUID[] members = new UUID[6];
+    for (int i = 0; i < members.length; i++) {
+      members[i] = createUser(organizationA);
+    }
+    UUID group = createGroup(organizationA, "Referat 50", members);
+    Space space = createSpace(owner);
+    spaceService.addMember(
+        space.getId(), groupSubject(group), SpaceRole.MEMBER, currentUserOf(owner));
+    assertThat(groupRow(space.getId(), owner).groupSize().smallGroup())
+        .as("six active accounts are no small group")
+        .isFalse();
+
+    lockFromDirectory(members[0]);
+    lockFromDirectory(members[1]);
+
+    SpaceMemberView view = groupRow(space.getId(), owner);
+    assertThat(view.groupSize().smallGroup()).isTrue();
+    assertThat(view.groupSize().memberCountNow()).isNull();
+    assertThat(view.membership().getMemberCountAtGrant())
+        .as("the stored figure of the admission is untouched by a later lock")
+        .isEqualTo(6);
+    assertThat(groupMembershipResolver.activeMemberCount(group, organizationA)).isEqualTo(4);
+    assertThat(
+            groupMembershipResolver.resolveUserIds(PermissionSubject.group(group, organizationA)))
+        .as("the rights resolution is unchanged: a locked account keeps its membership")
+        .hasSize(6);
+  }
+
   // -------------------------------------------------------------------------------------------
   // Protection of the last capable ADMIN (ADR-0036, Entscheidung 6, Schutzregel 1)
   // -------------------------------------------------------------------------------------------
@@ -587,6 +623,13 @@ class SpaceGroupMembershipIntegrationTest {
   private void makeSteward(UUID groupId, UUID userId) {
     UUID organizationId = groupRepository.findById(groupId).orElseThrow().getOrganizationId();
     stewardRepository.save(new GroupSteward(groupId, userId, organizationId, userId));
+  }
+
+  /** Takes the access away the way the directory run does (#1818). */
+  private void lockFromDirectory(UUID userId) {
+    User user = userRepository.findById(userId).orElseThrow();
+    user.lockFromDirectory(java.time.Instant.now());
+    userRepository.save(user);
   }
 
   private UUID createUser(UUID organizationId) {

@@ -89,7 +89,9 @@ class SearchDiagnosisSpaceContextIntegrationTest {
         profileGroupId,
         spaceId,
         DEFAULT_ORGANIZATION_ID);
-    for (int i = 0; i < GroupSizeProperties.ENFORCED_MINIMUM; i++) {
+    // One above the minimum, so a test can take two accounts out and still tell the two reasons
+    // apart: too few members, or too few of them active.
+    for (int i = 0; i < GroupSizeProperties.ENFORCED_MINIMUM + 1; i++) {
       addGroupMember(insertUser("Mitglied " + i, SystemRole.USER));
     }
   }
@@ -149,10 +151,28 @@ class SearchDiagnosisSpaceContextIntegrationTest {
     diagnosisService.diagnose(admin(), profileQuery(spaceId));
 
     removeGroupMember(memberIds.get(0));
+    removeGroupMember(memberIds.get(1));
 
     assertThatThrownBy(() -> diagnosisService.diagnose(admin(), profileQuery(spaceId)))
         .isInstanceOf(AccessDeniedException.class)
         .hasMessageContaining("Person");
+  }
+
+  /**
+   * ADR-0036, Entscheidung 7, Schutzpunkt 3 (#1818): gezählt werden aktive Konten, nicht
+   * Mitgliedschaftszeilen. Six members, two of them locked by the directory synchronisation, are a
+   * four-person context - and that is below the Mindestgruppengröße.
+   */
+  @Test
+  void accountsLockedByTheDirectorySynchronisationDoNotCount() {
+    diagnosisService.diagnose(admin(), profileQuery(spaceId));
+
+    lockFromDirectory(memberIds.get(0));
+    lockFromDirectory(memberIds.get(1));
+
+    assertThatThrownBy(() -> diagnosisService.diagnose(admin(), profileQuery(spaceId)))
+        .isInstanceOf(AccessDeniedException.class)
+        .hasMessageContaining("aktive Konten");
   }
 
   /**
@@ -288,6 +308,11 @@ class SearchDiagnosisSpaceContextIntegrationTest {
         DEFAULT_ORGANIZATION_ID);
     membershipResolver.invalidateUser(userId);
     memberIds.add(userId);
+  }
+
+  /** Takes the access away the way the directory run does (#1818). */
+  private void lockFromDirectory(UUID userId) {
+    jdbcTemplate.update("UPDATE users SET directory_locked_at = now() WHERE id = ?", userId);
   }
 
   private void removeGroupMember(UUID userId) {
