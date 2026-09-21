@@ -982,7 +982,15 @@ export const handlers = [
       roleCounts: { MEMBER: 0, CURATOR: 0, ADMIN: 1 },
     }
     mockSpaceDetails[id] = detail
-    mockSpaceMembers[id] = [{ userId: 'mock-user-id', role: 'ADMIN' as const, createdAt: now }]
+    mockSpaceMembers[id] = [
+      {
+        id: `membership-${id}-mock-user-id`,
+        subjectType: 'USER' as const,
+        subjectId: 'mock-user-id',
+        role: 'ADMIN' as const,
+        createdAt: now,
+      },
+    ]
     return HttpResponse.json(detail, { status: 201 })
   }),
 
@@ -1042,46 +1050,71 @@ export const handlers = [
       return HttpResponse.json({ error: 'Space nicht gefunden' }, { status: 404 })
     }
 
-    const body = (await request.json()) as { userId: string; role?: 'MEMBER' | 'CURATOR' | 'ADMIN' }
-    if (!body.userId) {
-      return HttpResponse.json({ error: 'userId is required' }, { status: 400 })
+    const body = (await request.json()) as {
+      subjectType?: 'USER' | 'GROUP'
+      subjectId?: string
+      role?: 'MEMBER' | 'CURATOR' | 'ADMIN'
     }
-    if (members.some((member) => member.userId === body.userId)) {
+    const subjectType = body.subjectType ?? 'USER'
+    if (!body.subjectId) {
+      return HttpResponse.json({ error: 'subjectId is required' }, { status: 400 })
+    }
+    if (
+      members.some(
+        (member) => member.subjectType === subjectType && member.subjectId === body.subjectId,
+      )
+    ) {
       return HttpResponse.json(
-        { error: 'Der Benutzer ist bereits Mitglied dieses Space' },
+        {
+          error:
+            subjectType === 'GROUP'
+              ? 'Die Gruppe ist bereits Mitglied dieses Space'
+              : 'Der Benutzer ist bereits Mitglied dieses Space',
+        },
         { status: 409 },
       )
     }
 
     const role = body.role ?? 'MEMBER'
-    const member = { userId: body.userId, role, createdAt: new Date().toISOString() }
+    const group = mockGroups.find((candidate) => candidate.id === body.subjectId)
+    const member = {
+      id: `membership-${spaceId}-${body.subjectId}`,
+      subjectType,
+      subjectId: body.subjectId,
+      displayName: subjectType === 'GROUP' ? (group?.name ?? null) : null,
+      role,
+      ...(subjectType === 'GROUP'
+        ? { memberCountAtGrant: null, memberCountNow: null, smallGroup: true, emptyGroup: false }
+        : {}),
+      createdAt: new Date().toISOString(),
+    }
     members.push(member)
     recalculateRoleCounts(spaceId)
     return HttpResponse.json(member, { status: 201 })
   }),
 
-  http.delete('/api/v1/spaces/:spaceId/members/:userId', ({ params }) => {
+  http.delete('/api/v1/spaces/:spaceId/members/:membershipId', ({ params }) => {
     const spaceId = String(params.spaceId)
-    const userId = String(params.userId)
+    const membershipId = String(params.membershipId)
     const space = mockSpaceDetails[spaceId]
     const members = mockSpaceMembers[spaceId]
     if (!space || !members) {
       return HttpResponse.json({ error: 'Space nicht gefunden' }, { status: 404 })
     }
-    mockSpaceMembers[spaceId] = members.filter((member) => member.userId !== userId)
+    mockSpaceMembers[spaceId] = members.filter((member) => member.id !== membershipId)
     recalculateRoleCounts(spaceId)
     return new HttpResponse(null, { status: 204 })
   }),
 
-  http.put('/api/v1/spaces/:spaceId/members/:userId/role', async ({ params, request }) => {
+  http.put('/api/v1/spaces/:spaceId/members/:membershipId/role', async ({ params, request }) => {
     const spaceId = String(params.spaceId)
-    const userId = String(params.userId)
+    const membershipId = String(params.membershipId)
     const space = mockSpaceDetails[spaceId]
     const members = mockSpaceMembers[spaceId]
     if (!space || !members) {
       return HttpResponse.json({ error: 'Space nicht gefunden' }, { status: 404 })
     }
-    const target = members.find((member) => member.userId === userId)
+    const target = members.find((member) => member.id === membershipId)
     if (!target) {
       return HttpResponse.json({ error: 'Mitglied des Space nicht gefunden' }, { status: 404 })
     }
@@ -1099,7 +1132,9 @@ export const handlers = [
       return HttpResponse.json({ error: 'Space nicht gefunden' }, { status: 404 })
     }
     const body = (await request.json()) as { userId: string }
-    const newOwner = members.find((member) => member.userId === body.userId)
+    const newOwner = members.find(
+      (member) => member.subjectType === 'USER' && member.subjectId === body.userId,
+    )
     if (!newOwner) {
       return HttpResponse.json({ error: 'Mitglied des Space nicht gefunden' }, { status: 404 })
     }

@@ -434,8 +434,9 @@ class ChatNoteIntegrationTest {
         memberId,
         DEFAULT_ORGANIZATION_ID);
     jdbcTemplate.update(
-        "INSERT INTO space_memberships (id, user_id, space_id, role, organization_id, created_at)"
-            + " VALUES (?, ?, ?, 'ADMIN', ?, now())",
+        "INSERT INTO space_memberships"
+            + " (id, subject_type, user_id, space_id, role, organization_id, created_at)"
+            + " VALUES (?, 'USER', ?, ?, 'ADMIN', ?, now())",
         UUID.randomUUID(),
         memberId,
         id,

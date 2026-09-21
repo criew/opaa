@@ -38,6 +38,16 @@ class UserServiceMultiProviderIntegrationTest {
   void tearDown() {
     jdbcTemplate.update(
         "DELETE FROM spaces WHERE owner_id IN (SELECT id FROM users WHERE subject = ?)", subject);
+    // #1815: the rights history of a space outlives the space (ADR-0016) and holds its person
+    // columns with RESTRICT.
+    jdbcTemplate.update(
+        "DELETE FROM space_membership_history WHERE subject_user_id IN"
+            + " (SELECT id FROM users WHERE subject = ?)",
+        subject);
+    jdbcTemplate.update(
+        "DELETE FROM asset_ownership_history WHERE owner_user_id IN"
+            + " (SELECT id FROM users WHERE subject = ?)",
+        subject);
     jdbcTemplate.update("DELETE FROM users WHERE subject = ?", subject);
   }
 

@@ -705,6 +705,28 @@ ein Intervallbeginn von heute ließe die Auskunft für jeden früheren Stichtag 
 antworten. Für einen Prüfzeitraum, der vor die Migration zurückreicht und
 Rechte betrifft, die dort bereits beendet waren, bleibt die Rechtehistorie ohne Aussage.
 
+**Die Rückwirkung bis zur Entstehung gilt nur für drei der Tabellen** — `asset_grant_history`,
+`group_membership_history` und `capability_grant_history`. **Space-Mitgliedschaft und Eigentum
+beginnen am Migrationszeitpunkt**, nicht bei der Entstehung der Fachzeile: Deren `created_at` sagt,
+wann der Space oder die Mitgliedschaft angelegt wurde, nicht seit wann die heutige Rolle
+beziehungsweise der heutige Eigentümer gilt. Eine vor Jahren angelegte Mitgliedschaft, deren Rolle
+seither geändert wurde, und ein Space, dessen Verantwortung längst übertragen wurde, bekämen sonst
+ein Intervall, das den heutigen Zustand rückwirkend bis zur Anlage behauptet — eine Aussage, die
+falsch wäre und nicht nur unvollständig. Der Backfill setzt deshalb `valid_from` auf den
+Migrationszeitpunkt: Für die Zeit davor behauptet er nichts.
+
+**Zwei Bestände bleiben außerdem ganz ohne Historie**, und beide sind benannt statt verschwiegen:
+
+- **Der persönliche Space** (`isDefault`) und seine Eigentümer-Mitgliedschaft. Beide legt das System
+  bei der ersten Anmeldung an; niemand entscheidet sie, und kein Pfad schließt ihr Intervall je
+  wieder. Da die Personenspalten der Historie `ON DELETE RESTRICT` tragen, machte ein Intervall hier
+  jedes Konto, das sich je angemeldet hat, dauerhaft unlöschbar — dieselbe Grenze, die die
+  Löschprüfung schon immer mit „Spaces außer dem Standard-Space" zieht. **Folge:** Eine
+  Stichtagsauskunft nennt den persönlichen Space nicht. Jede Mitgliedschaft und jedes Eigentum, über
+  die ein Mensch entscheidet — auch in einem persönlichen Space —, sind dagegen vollständig
+  historisiert.
+- **Rechte, die vor der Migration bereits beendet waren**, wie im Absatz darüber beschrieben.
+
 ---
 
 ## Vollständigkeit nach DSGVO: Löschung und Export

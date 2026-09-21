@@ -5,7 +5,9 @@ import io.opaa.auth.UserRepository;
 import io.opaa.group.sync.DirectoryClient;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.permission.AssetGrantHistoryRepository;
+import io.opaa.permission.AssetOwnershipHistoryRepository;
 import io.opaa.permission.GroupMembershipHistoryRepository;
+import io.opaa.space.SpaceMembershipHistoryRepository;
 import io.opaa.space.SpaceRepository;
 import org.mockito.Mockito;
 import org.springframework.ai.chat.model.ChatModel;
@@ -82,7 +84,10 @@ class OpaaTestBeans {
       UserRepository users,
       SpaceRepository spaces,
       AssetGrantHistoryRepository grantHistory,
-      GroupMembershipHistoryRepository membershipHistory) {
-    return new OwnUserFixtures(users, spaces, grantHistory, membershipHistory);
+      GroupMembershipHistoryRepository membershipHistory,
+      SpaceMembershipHistoryRepository spaceMembershipHistory,
+      AssetOwnershipHistoryRepository ownershipHistory) {
+    return new OwnUserFixtures(
+        users, spaces, grantHistory, membershipHistory, spaceMembershipHistory, ownershipHistory);
   }
 }

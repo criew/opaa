@@ -545,6 +545,12 @@ public class LocalUserService {
     if (counts.getGroupStewardships() > 0) {
       blockers.add("group_stewards");
     }
+    if (counts.getSpaceMembershipHistory() > 0) {
+      blockers.add("space_membership_history");
+    }
+    if (counts.getAssetOwnershipHistory() > 0) {
+      blockers.add("asset_ownership_history");
+    }
     return blockers;
   }
 

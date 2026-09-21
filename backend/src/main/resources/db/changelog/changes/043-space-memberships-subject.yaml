@@ -1,0 +1,110 @@
+databaseChangeLog:
+  - changeSet:
+      id: 043-space-memberships-subject
+      author: opaa
+      comment: >-
+        Eine Space-Mitgliedschaft benennt ab hier ein Subjekt - Person ODER Gruppe - nach dem
+        Muster von asset_grants (#1815, ADR-0036 Entscheidung 6): zwei Subjektspalten mit echten
+        Fremdschluesseln, eine Pruefbedingung "genau eine gesetzt", zwei eindeutige Teilindexe.
+        Damit erhaelt jedes Mitglied einer Gruppe die Rolle der Gruppe, ohne eine eigene Zeile -
+        und verliert sie mit dem Austritt, ohne weiteren Schritt.
+        .
+        BESTANDSZEILEN WERDEN MIGRIERT, NICHT NEU ERZEUGT: jede vorhandene Zeile bekommt
+        subject_type = 'USER' und behaelt ihre user_id unveraendert. user_id verliert die
+        NOT-NULL-Bedingung, weil eine Gruppenzeile sie nicht traegt; die Pruefbedingung
+        chk_space_memberships_subject uebernimmt die Rolle, die NOT NULL bisher allein hatte, und
+        ist dabei strenger: Sie schliesst auch die Zeile aus, die beide Subjekte oder keines
+        traegt.
+        .
+        fk_space_memberships_group_organization ist ON DELETE RESTRICT, wie
+        fk_asset_grants_subject_group_organization: Eine Gruppe, die noch irgendwo ein Recht
+        haelt, verschwindet nicht still. Die Anwendung faengt den Fall vorher ab
+        (GroupService#deleteGroup und das Loeschen eines Identitaetsanbieters antworten 409 mit
+        Nennung der Space-Mitgliedschaften), damit aus dem Constraint kein nackter 500 wird. Der
+        zusammengesetzte Schluessel (group_id, organization_id) haelt zugleich die
+        Organisationsgrenze: Eine Gruppe einer anderen Organisation kann nicht Mitglied werden.
+        .
+        member_count_at_grant speichert die Zahl aktiver Konten der Gruppe zum Zeitpunkt der
+        Aufnahme (ADR-0036 Entscheidung 9) - das passive Zuwachssignal fuer den, der die Gruppe
+        aufgenommen hat. Nur an Gruppenzeilen; chk_space_memberships_member_count haelt das fest.
+        Die Spalte wird nie fortgeschrieben: Ihr ganzer Wert liegt im Vergleich mit der Zahl von
+        heute.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE space_memberships
+                  ADD COLUMN subject_type character varying(20);
+
+              ALTER TABLE space_memberships
+                  ADD COLUMN group_id uuid;
+
+              ALTER TABLE space_memberships
+                  ADD COLUMN member_count_at_grant integer;
+
+              UPDATE space_memberships SET subject_type = 'USER';
+
+              ALTER TABLE space_memberships
+                  ALTER COLUMN subject_type SET NOT NULL;
+
+              ALTER TABLE space_memberships
+                  ALTER COLUMN user_id DROP NOT NULL;
+
+              ALTER TABLE space_memberships
+                  ADD CONSTRAINT chk_space_memberships_subject_type CHECK ((subject_type IN ('USER', 'GROUP')));
+
+              ALTER TABLE space_memberships
+                  ADD CONSTRAINT chk_space_memberships_subject CHECK (((((subject_type)::text = 'USER'::text) AND (user_id IS NOT NULL) AND (group_id IS NULL)) OR (((subject_type)::text = 'GROUP'::text) AND (group_id IS NOT NULL) AND (user_id IS NULL))));
+
+              ALTER TABLE space_memberships
+                  ADD CONSTRAINT chk_space_memberships_member_count CHECK (((member_count_at_grant IS NULL) OR (((subject_type)::text = 'GROUP'::text) AND (member_count_at_grant >= 0))));
+
+              ALTER TABLE space_memberships
+                  DROP CONSTRAINT uk_space_memberships_user_space;
+
+              CREATE UNIQUE INDEX uk_space_memberships_user_subject ON space_memberships USING btree (space_id, user_id) WHERE ((subject_type)::text = 'USER'::text);
+
+              CREATE UNIQUE INDEX uk_space_memberships_group_subject ON space_memberships USING btree (space_id, group_id) WHERE ((subject_type)::text = 'GROUP'::text);
+
+              CREATE INDEX idx_space_memberships_group_organization ON space_memberships USING btree (group_id, organization_id) WHERE ((subject_type)::text = 'GROUP'::text);
+
+              ALTER TABLE space_memberships
+                  ADD CONSTRAINT fk_space_memberships_group_organization FOREIGN KEY (group_id, organization_id) REFERENCES groups(id, organization_id) ON DELETE RESTRICT;
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              DELETE FROM space_memberships WHERE (subject_type)::text <> 'USER'::text;
+
+              ALTER TABLE space_memberships
+                  DROP CONSTRAINT fk_space_memberships_group_organization;
+
+              DROP INDEX IF EXISTS idx_space_memberships_group_organization;
+
+              DROP INDEX IF EXISTS uk_space_memberships_group_subject;
+
+              DROP INDEX IF EXISTS uk_space_memberships_user_subject;
+
+              ALTER TABLE space_memberships
+                  ADD CONSTRAINT uk_space_memberships_user_space UNIQUE (user_id, space_id);
+
+              ALTER TABLE space_memberships
+                  DROP CONSTRAINT chk_space_memberships_member_count;
+
+              ALTER TABLE space_memberships
+                  DROP CONSTRAINT chk_space_memberships_subject;
+
+              ALTER TABLE space_memberships
+                  DROP CONSTRAINT chk_space_memberships_subject_type;
+
+              ALTER TABLE space_memberships
+                  ALTER COLUMN user_id SET NOT NULL;
+
+              ALTER TABLE space_memberships
+                  DROP COLUMN member_count_at_grant;
+
+              ALTER TABLE space_memberships
+                  DROP COLUMN group_id;
+
+              ALTER TABLE space_memberships
+                  DROP COLUMN subject_type;

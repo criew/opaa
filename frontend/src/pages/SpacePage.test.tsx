@@ -98,7 +98,9 @@ describe('SpacePage', () => {
       error: null,
       members: [
         {
-          userId: 'mock-user-id',
+          id: 'm-personal-mock-user',
+          subjectType: 'USER',
+          subjectId: 'mock-user-id',
           displayName: 'Admin',
           role: 'ADMIN',
           createdAt: '2026-03-01T10:00:00Z',
@@ -196,12 +198,21 @@ describe('SpacePage', () => {
   it('shows the full member list and the manage button for a non-ADMIN owner', async () => {
     mockListSpaceMembers.mockResolvedValueOnce([
       {
-        userId: 'owner-1',
+        id: 'm-owner-1',
+        subjectType: 'USER',
+        subjectId: 'owner-1',
         displayName: 'Owner',
         role: 'MEMBER',
         createdAt: '2026-03-01T10:00:00Z',
       },
-      { userId: 'admin-1', displayName: 'Admin', role: 'ADMIN', createdAt: '2026-03-01T10:00:00Z' },
+      {
+        id: 'm-admin-1',
+        subjectType: 'USER',
+        subjectId: 'admin-1',
+        displayName: 'Admin',
+        role: 'ADMIN',
+        createdAt: '2026-03-01T10:00:00Z',
+      },
     ])
     useAuthStore.setState({
       mode: 'dev',
@@ -229,13 +240,17 @@ describe('SpacePage', () => {
       },
       members: [
         {
-          userId: 'owner-1',
+          id: 'm-owner-1',
+          subjectType: 'USER',
+          subjectId: 'owner-1',
           displayName: 'Owner',
           role: 'MEMBER',
           createdAt: '2026-03-01T10:00:00Z',
         },
         {
-          userId: 'admin-1',
+          id: 'm-admin-1',
+          subjectType: 'USER',
+          subjectId: 'admin-1',
           displayName: 'Admin',
           role: 'ADMIN',
           createdAt: '2026-03-01T10:00:00Z',

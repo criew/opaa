@@ -38,9 +38,11 @@ import io.opaa.organization.OrganizationRepository;
 import io.opaa.permission.AssetGrant;
 import io.opaa.permission.AssetGrantHistoryRepository;
 import io.opaa.permission.AssetGrantRepository;
+import io.opaa.permission.AssetOwnershipHistoryRepository;
 import io.opaa.permission.GroupMembershipHistoryRepository;
 import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.space.SpaceCreation;
+import io.opaa.space.SpaceMembershipHistoryRepository;
 import io.opaa.space.SpaceRepository;
 import io.opaa.space.SpaceService;
 import io.opaa.test.OpaaIntegrationTest;
@@ -107,6 +109,8 @@ class KnowledgeLibraryServiceIntegrationTest {
   @Autowired private SpaceRepository spaceRepository;
   @Autowired private AssetGrantHistoryRepository grantHistoryRepository;
   @Autowired private GroupMembershipHistoryRepository membershipHistoryRepository;
+  @Autowired private SpaceMembershipHistoryRepository spaceMembershipHistoryRepository;
+  @Autowired private AssetOwnershipHistoryRepository assetOwnershipHistoryRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private EntityManagerFactory entityManagerFactory;
 
@@ -166,6 +170,10 @@ class KnowledgeLibraryServiceIntegrationTest {
     // but this test's own cleanup.
     grantHistoryRepository.deleteBySubjectUserIdIn(createdUserIds);
     membershipHistoryRepository.deleteByUserIdIn(createdUserIds);
+    // #1815: the same for the two rights-history tables of the space axis - they carry no foreign
+    // key to their space (ADR-0016), so the space deletions above left their intervals behind.
+    spaceMembershipHistoryRepository.deleteBySubjectUserIdIn(createdUserIds);
+    assetOwnershipHistoryRepository.deleteByOwnerUserIdIn(createdUserIds);
     for (UUID groupId : createdGroupIds) {
       groupRepository.deleteById(groupId);
     }

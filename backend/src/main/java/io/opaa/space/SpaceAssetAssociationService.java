@@ -21,6 +21,7 @@ import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.PermissionSubject;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -51,6 +52,7 @@ public class SpaceAssetAssociationService {
   private final LibraryAccessService libraryAccessService;
   private final UserRepository userRepository;
   private final GroupMembershipResolver groupMembershipResolver;
+  private final SpaceAccessPolicy accessPolicy;
   private final AuditEventRecorder auditEventRecorder;
   private final NotificationService notificationService;
 
@@ -61,6 +63,7 @@ public class SpaceAssetAssociationService {
       LibraryAccessService libraryAccessService,
       UserRepository userRepository,
       GroupMembershipResolver groupMembershipResolver,
+      SpaceAccessPolicy accessPolicy,
       AuditEventRecorder auditEventRecorder,
       NotificationService notificationService) {
     this.associationRepository = associationRepository;
@@ -69,6 +72,7 @@ public class SpaceAssetAssociationService {
     this.libraryAccessService = libraryAccessService;
     this.userRepository = userRepository;
     this.groupMembershipResolver = groupMembershipResolver;
+    this.accessPolicy = accessPolicy;
     this.auditEventRecorder = auditEventRecorder;
     this.notificationService = notificationService;
   }
@@ -104,7 +108,7 @@ public class SpaceAssetAssociationService {
             association -> {
               Space space = spacesById.get(association.getSpaceId());
               return caller.isSystemAdmin()
-                  || SpaceAccessPolicy.hasAtLeast(space, caller.id(), SpaceRole.CURATOR)
+                  || accessPolicy.hasAtLeast(space, caller.id(), SpaceRole.CURATOR)
                   || readable.contains(association.getLibraryId());
             })
         .collect(Collectors.groupingBy(SpaceAssetAssociation::getSpaceId, Collectors.counting()));
@@ -127,7 +131,7 @@ public class SpaceAssetAssociationService {
    */
   public SpaceLibraryLinks listForSpace(UUID spaceId, CurrentUser caller) {
     Space space = loadSpace(spaceId, caller);
-    SpaceAccessPolicy.requireMember(space, caller);
+    accessPolicy.requireMember(space, caller);
 
     List<SpaceAssetAssociation> associations =
         associationRepository.findBySpaceIdOrderByCreatedAtAsc(space.getId());
@@ -136,8 +140,7 @@ public class SpaceAssetAssociationService {
       return new SpaceLibraryLinks(hasAssociations, List.of());
     }
     boolean unfiltered =
-        SpaceAccessPolicy.hasAtLeast(space, caller.id(), SpaceRole.CURATOR)
-            || caller.isSystemAdmin();
+        accessPolicy.hasAtLeast(space, caller.id(), SpaceRole.CURATOR) || caller.isSystemAdmin();
     Set<UUID> readable =
         libraryAccessService.readableLibraryIds(caller.id(), space.getOrganizationId());
     Map<UUID, String> displayNames =
@@ -169,7 +172,7 @@ public class SpaceAssetAssociationService {
   @Transactional
   public SpaceLibraryLink associate(UUID spaceId, UUID libraryId, CurrentUser caller) {
     Space space = loadSpace(spaceId, caller);
-    SpaceAccessPolicy.requireCurator(space, caller);
+    accessPolicy.requireCurator(space, caller);
 
     KnowledgeLibrary library = requireLibrary(libraryId, space.getOrganizationId());
     // A CURATOR may only associate an asset they can themselves access - the same rule #203
@@ -223,8 +226,7 @@ public class SpaceAssetAssociationService {
     KnowledgeLibrary library = requireLibrary(libraryId, space.getOrganizationId());
 
     boolean spaceCurator =
-        SpaceAccessPolicy.hasAtLeast(space, caller.id(), SpaceRole.CURATOR)
-            || caller.isSystemAdmin();
+        accessPolicy.hasAtLeast(space, caller.id(), SpaceRole.CURATOR) || caller.isSystemAdmin();
     boolean libraryManager =
         libraryAccessService.canManage(library, caller.id(), caller.isSystemAdmin());
     if (!spaceCurator && !libraryManager) {
@@ -336,16 +338,39 @@ public class SpaceAssetAssociationService {
    * Whether every current member of {@code space} already has at least VIEWER on {@code library}.
    */
   private boolean allMembersCanRead(Space space, KnowledgeLibrary library) {
-    for (SpaceMembership membership : space.getMemberships()) {
+    // A space that reaches nobody - one empty group and no person - answers true, and that is the
+    // right answer rather than a gap: there is no member here who cannot read, so there is nobody
+    // the mixed-audience notification would be about. It becomes false again with the first
+    // account the group gains.
+    for (UUID memberId : personalMembersOf(space)) {
       // Deliberately not systemAdmin-bypassed: a system-admin member would trivially satisfy "can
       // read", masking whether ordinary members actually have a real grant - the exact signal
       // this check exists to surface. See LibraryAccessService#readableLibraryIds's own no-bypass
       // rule for the same reasoning applied to search.
-      if (!libraryAccessService.canRead(library, membership.getUserId(), false)) {
+      if (!libraryAccessService.canRead(library, memberId, false)) {
         return false;
       }
     }
     return true;
+  }
+
+  /**
+   * The people a space actually reaches: its own member rows plus the members of every group that
+   * is a member (#1815). Resolving the groups matters for the mixed-audience question - a space
+   * whose members are mostly reached through a group would otherwise look uniformly read-capable.
+   */
+  private Set<UUID> personalMembersOf(Space space) {
+    Set<UUID> members = new LinkedHashSet<>();
+    for (SpaceMembership membership : space.getMemberships()) {
+      if (membership.isUserSubject()) {
+        members.add(membership.getUserId());
+      } else {
+        members.addAll(
+            groupMembershipResolver.resolveUserIds(
+                PermissionSubject.group(membership.getGroupId(), membership.getOrganizationId())));
+      }
+    }
+    return members;
   }
 
   private Space loadSpace(UUID spaceId, CurrentUser caller) {

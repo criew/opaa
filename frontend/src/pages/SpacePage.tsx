@@ -180,12 +180,10 @@ export default function SpacePage() {
               ) : (
                 <Stack spacing={1}>
                   {members.map((member) => (
-                    <Box
-                      key={member.userId}
-                      sx={{ display: 'flex', justifyContent: 'space-between' }}
-                    >
+                    <Box key={member.id} sx={{ display: 'flex', justifyContent: 'space-between' }}>
                       <Typography sx={member.displayName ? undefined : { fontFamily: 'monospace' }}>
-                        {member.displayName ?? member.userId}
+                        {member.displayName ?? member.subjectId}
+                        {member.subjectType === 'GROUP' ? ' · Gruppe' : ''}
                       </Typography>
                       <Chip label={spaceRoleLabel(member.role)} size="small" />
                     </Box>

@@ -54,6 +54,16 @@ class UserProvisionedEventIntegrationTest {
     jdbcTemplate.update("DELETE FROM oidc_providers WHERE issuer_uri = ?", ISSUER);
     jdbcTemplate.update(
         "DELETE FROM spaces WHERE owner_id IN (SELECT id FROM users WHERE subject = ?)", subject);
+    // #1815: the two rights-history tables carry no foreign key to their space (ADR-0016), so the
+    // deletion above leaves their intervals behind - and their person columns are RESTRICT.
+    jdbcTemplate.update(
+        "DELETE FROM space_membership_history WHERE subject_user_id IN"
+            + " (SELECT id FROM users WHERE subject = ?)",
+        subject);
+    jdbcTemplate.update(
+        "DELETE FROM asset_ownership_history WHERE owner_user_id IN"
+            + " (SELECT id FROM users WHERE subject = ?)",
+        subject);
     jdbcTemplate.update("DELETE FROM users WHERE subject = ?", subject);
   }
 

@@ -35,4 +35,11 @@ public interface GroupMembershipRepository
           + "where m.group.id = :groupId and m.organizationId = :organizationId")
   Set<UUID> findUserIdsByGroupIdAndOrganizationId(
       @Param("groupId") UUID groupId, @Param("organizationId") UUID organizationId);
+
+  @Override
+  @Query(
+      "select count(m) from GroupMembership m "
+          + "where m.group.id = :groupId and m.organizationId = :organizationId")
+  long countUserIdsByGroupIdAndOrganizationId(
+      @Param("groupId") UUID groupId, @Param("organizationId") UUID organizationId);
 }

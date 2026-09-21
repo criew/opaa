@@ -131,7 +131,7 @@ export default function SpaceCreatePage() {
       const failed: string[] = []
       for (const member of pendingMembers) {
         try {
-          await addMember(spaceId, member.user.id, member.role)
+          await addMember(spaceId, 'USER', member.user.id, member.role)
         } catch {
           failed.push(member.user.displayName ?? member.user.email ?? member.user.id)
         }

@@ -967,11 +967,18 @@ class PermissionHistoryServiceIntegrationTest {
    * group only to decide whether it may receive an Anlegerecht; a capability opens a creation path
    * and never an existing content, which {@code
    * io.opaa.permission.CapabilityServiceIntegrationTest#noCapabilityWidensTheSetOfReadableLibraries}
-   * holds against this very formula.
+   * holds against this very formula. {@code SpaceAccessPolicy} and {@code SpaceService} (#1815)
+   * resolve a group to decide a space role - they write no grant and no group membership, and a
+   * space membership is not an input of the readable-library formula at all: a library associated
+   * to a space is shown to a member only if that member may already read it ({@code
+   * SpaceAssetAssociationService}), so admitting somebody to a space moves no library into
+   * anybody's readable set.
    */
   private static final Set<String> BEANS_REACHING_THE_RIGHTS_TABLES =
       Set.of(
           "AssetAccessService",
+          "SpaceAccessPolicy",
+          "SpaceService",
           "AssetGrantService",
           "CapabilityService",
           "DiagnosticImpersonationGrantService",

@@ -118,8 +118,20 @@ databaseChangeLog:
       file: db/changelog/changes/050-create-capability-grant-history.yaml
   - include:
       file: db/changelog/changes/051-seed-delivered-capability-grants.yaml
+  # Eine Space-Mitgliedschaft benennt ein Subjekt - Person oder Gruppe (#1815, ADR-0036
+  # Entscheidung 6).
+  - include:
+      file: db/changelog/changes/043-space-memberships-subject.yaml
+  # Rechtehistorie der Space-Mitgliedschaft (#1815, ADR-0036 Entscheidung 8).
+  - include:
+      file: db/changelog/changes/044-create-space-membership-history.yaml
+  # Rechtehistorie des Eigentums, zunächst für Spaces (#1815, ADR-0036 Entscheidung 8); der
+  # Bibliotheksteil kommt mit #1819.
+  - include:
+      file: db/changelog/changes/052-create-asset-ownership-history.yaml
   # Gruppenverantwortliche interner Gruppen, ihre Freigabe zur Verwendung samt Bestandsmigration
-  # und das Schutzkennzeichen (#1814, ADR-0036 Entscheidungen 4 und 9).
+  # und das Schutzkennzeichen (#1814, ADR-0036 Entscheidungen 4 und 9). 058 steht nach 043: seine
+  # Bestandsmigration liest space_memberships.group_id, die 043 anlegt.
   - include:
       file: db/changelog/changes/057-create-group-stewards.yaml
   - include:
