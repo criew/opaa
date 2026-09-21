@@ -85,8 +85,9 @@ final class DirectorySyncResponseMapper {
   }
 
   private static DirectorySyncGroupChange toGroupChange(GroupChange change) {
-    return new DirectorySyncGroupChange(change.externalId(), change.name())
-        .previousName(change.previousName());
+    return new DirectorySyncGroupChange(change.externalId(), change.name(), change.memberCount())
+        .previousName(change.previousName())
+        .sourcePath(change.sourcePath());
   }
 
   private static List<DirectorySyncGroupChange> toGroupChanges(List<GroupChange> changes) {

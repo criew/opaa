@@ -38,10 +38,10 @@ class DirectorySyncResponseMapperTest {
         new SyncReport(
             DirectorySyncOutcome.APPLIED,
             now,
-            List.of(new GroupChange("ext-created", "Neu", null)),
-            List.of(new GroupChange("ext-renamed", "Umbenannt", "Alt")),
-            List.of(new GroupChange("ext-dissolved", "Aufgelöst", null)),
-            List.of(new GroupChange("ext-token", "Token-Gruppe", null)),
+            List.of(new GroupChange("ext-created", "Neu", null, "/Haus/Neu", 7)),
+            List.of(new GroupChange("ext-renamed", "Umbenannt", "Alt", null, 0)),
+            List.of(new GroupChange("ext-dissolved", "Aufgelöst", null, null, 0)),
+            List.of(new GroupChange("ext-token", "Token-Gruppe", null, null, 0)),
             List.of(
                 new MembershipChange(
                     "ext-1",
@@ -62,6 +62,8 @@ class DirectorySyncResponseMapperTest {
     assertThat(response.getGroupsCreated()).hasSize(1);
     assertThat(response.getGroupsCreated().get(0).getExternalId()).isEqualTo("ext-created");
     assertThat(response.getGroupsCreated().get(0).getPreviousName()).isNull();
+    assertThat(response.getGroupsCreated().get(0).getSourcePath()).isEqualTo("/Haus/Neu");
+    assertThat(response.getGroupsCreated().get(0).getMemberCount()).isEqualTo(7);
     assertThat(response.getGroupsRenamed().get(0).getPreviousName()).isEqualTo("Alt");
     assertThat(response.getGroupsDissolved()).hasSize(1);
     assertThat(response.getUnmaintainedTokenGroups()).hasSize(1);
@@ -93,11 +95,27 @@ class DirectorySyncResponseMapperTest {
     assertThat(response.getMembershipChanges()).isEmpty();
   }
 
+  /**
+   * #1817: a department that only holds subgroups arrives as a zero here - the number an operator
+   * decides on before applying, not one the mapper may drop.
+   */
+  @Test
+  void toGroupChangeCarriesAMemberCountOfZero() {
+    DirectorySyncGroupChange change =
+        DirectorySyncResponseMapper.toReportResponse(
+                reportWithOneChange(new GroupChange("ext-1", "Abteilung", null, "/Abteilung", 0)))
+            .getGroupsCreated()
+            .get(0);
+
+    assertThat(change.getMemberCount()).isZero();
+    assertThat(change.getSourcePath()).isEqualTo("/Abteilung");
+  }
+
   @Test
   void toGroupChangePreservesTheDistinctionBetweenNoPreviousNameAndOne() {
     DirectorySyncGroupChange withoutPreviousName =
         DirectorySyncResponseMapper.toReportResponse(
-                reportWithOneChange(new GroupChange("ext-1", "Name", null)))
+                reportWithOneChange(new GroupChange("ext-1", "Name", null, null, 0)))
             .getGroupsCreated()
             .get(0);
     assertThat(withoutPreviousName.getPreviousName()).isNull();

@@ -129,6 +129,10 @@ databaseChangeLog:
   # Bibliotheksteil kommt mit #1819.
   - include:
       file: db/changelog/changes/052-create-asset-ownership-history.yaml
+  # Der Zugang, mit dem der Verzeichnisabgleich eines Anbieters sein Verzeichnis liest —
+  # erster Konnektor ist die Keycloak Admin REST API (#1817, ADR-0036 Entscheidung 3).
+  - include:
+      file: db/changelog/changes/053-create-directory-connectors.yaml
   # Gruppenverantwortliche interner Gruppen, ihre Freigabe zur Verwendung samt Bestandsmigration
   # und das Schutzkennzeichen (#1814, ADR-0036 Entscheidungen 4 und 9). 058 steht nach 043: seine
   # Bestandsmigration liest space_memberships.group_id, die 043 anlegt.

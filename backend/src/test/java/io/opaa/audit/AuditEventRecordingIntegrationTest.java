@@ -633,8 +633,8 @@ class AuditEventRecordingIntegrationTest {
   void
       aDirectorySyncRunWithEffectedChangesWritesOneEntryPerChangeSharingACorrelationRefPlusAHeader() {
     directoryClient.respondWith(
-        new DirectoryGroup("ext-1", "Team A", null, Set.of()),
-        new DirectoryGroup("ext-2", "Team B", null, Set.of()));
+        new DirectoryGroup("ext-1", "Team A", null, null, Set.of()),
+        new DirectoryGroup("ext-2", "Team B", null, null, Set.of()));
 
     directorySyncService.run(organizationId, syncProvider.getId());
 
@@ -672,7 +672,7 @@ class AuditEventRecordingIntegrationTest {
     // #392 code review, finding 1: planOnly (dryRun's transactional backend) was readOnly, so this
     // header insert either silently vanished or made the endpoint 500 - covered here by actually
     // calling dryRun, not run().
-    directoryClient.respondWith(new DirectoryGroup("ext-1", "Team A", null, Set.of()));
+    directoryClient.respondWith(new DirectoryGroup("ext-1", "Team A", null, null, Set.of()));
 
     directorySyncService.dryRun(organizationId, syncProvider.getId());
 

@@ -4,12 +4,11 @@ import java.util.UUID;
 
 /**
  * The single extension point between {@link DirectorySyncService}'s synchronisation policy and an
- * actual directory (LDAP, Entra ID, the Keycloak Admin API, ...). {@link DirectorySyncService} is
- * tested exhaustively against a test double of this interface; wiring a real directory is a
- * deployment-specific concern (protocol, credentials, network reachability) and arrives with #1817.
- * The codebase ships {@link NoOpDirectoryClient} as the default bean so the application boots and
- * behaves safely - permanently "unreachable", never a false "zero groups" - until an operator
- * provides a real implementation.
+ * actual directory (the Keycloak Admin API, later LDAP and Microsoft Graph). {@link
+ * DirectorySyncService} is tested exhaustively against a test double of this interface; the
+ * productive implementation is {@code io.opaa.group.sync.connector.ProviderDirectoryClient}, which
+ * dispatches to the connector of the access stored for that one provider and reports "unreachable"
+ * - never a false "zero groups" - while no access is stored.
  */
 public interface DirectoryClient {
 

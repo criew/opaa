@@ -110,7 +110,7 @@ class DirectorySyncServiceStatusFailureTest {
   void aStatusWriteFailureDoesNotSwallowAnAlreadyAppliedReport() {
     UUID member = createUser("member-1");
     directoryClient.respondWith(
-        new DirectoryGroup(DIRECTORY_GUID, "Referat 99", null, Set.of("member-1")));
+        new DirectoryGroup(DIRECTORY_GUID, "Referat 99", null, null, Set.of("member-1")));
 
     SyncReport report = directorySyncService.run(organizationId, syncProvider.getId());
 

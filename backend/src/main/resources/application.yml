@@ -548,6 +548,16 @@ opaa:
     # The minute tick that starts a due provider's run. The interval itself is a setting of the
     # provider row (ADR-0036, Entscheidung 2); this switch only decides whether the tick exists.
     schedule-enabled: ${OPAA_DIRECTORY_SYNC_SCHEDULE_ENABLED:true}
+    keycloak:
+      # Tuning of the Keycloak connector (#1817). No credentials here on purpose: those live
+      # encrypted in directory_connectors, one row per provider.
+      page-size: ${OPAA_DIRECTORY_SYNC_KEYCLOAK_PAGE_SIZE:100}
+      # A run that would exceed either ceiling fails as unreachable instead of applying a
+      # truncated list, which is indistinguishable from a reorganisation that dissolved the rest.
+      max-groups: ${OPAA_DIRECTORY_SYNC_KEYCLOAK_MAX_GROUPS:5000}
+      max-members-per-group: ${OPAA_DIRECTORY_SYNC_KEYCLOAK_MAX_MEMBERS_PER_GROUP:20000}
+      connect-timeout: ${OPAA_DIRECTORY_SYNC_KEYCLOAK_CONNECT_TIMEOUT:5s}
+      request-timeout: ${OPAA_DIRECTORY_SYNC_KEYCLOAK_REQUEST_TIMEOUT:30s}
   security:
     credentials:
       # AES-256 key (Base64, 32 raw bytes) for encrypting knowledge_libraries.source_credentials at

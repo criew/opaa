@@ -330,7 +330,7 @@ class PermissionHistoryServiceIntegrationTest {
     createdGroupIds.add(savedOrgUnit.getId());
 
     directoryClient.respondWith(
-        new DirectoryGroup("dir-guid-1", "Referat", null, Set.of(memberSubject(member))));
+        new DirectoryGroup("dir-guid-1", "Referat", null, null, Set.of(memberSubject(member))));
     directorySyncService.run(organizationId, syncProvider.getId());
 
     boolean recorded =
@@ -1260,7 +1260,7 @@ class PermissionHistoryServiceIntegrationTest {
 
     runDirectorySyncReporting(
         new DirectoryGroup(
-            "dir-guid-sync-added", "Referat Zugang", null, Set.of(memberSubject(member))));
+            "dir-guid-sync-added", "Referat Zugang", null, null, Set.of(memberSubject(member))));
 
     return new ReadabilityChange(member, libraryId, true);
   }
@@ -1278,7 +1278,7 @@ class PermissionHistoryServiceIntegrationTest {
 
     runDirectorySyncReporting(
         new DirectoryGroup(
-            "dir-guid-sync-created", "Referat Neu", null, Set.of(memberSubject(member))));
+            "dir-guid-sync-created", "Referat Neu", null, null, Set.of(memberSubject(member))));
 
     Group created = registerSyncedOrgUnit("dir-guid-sync-created");
     grantService.upsertGrant(
@@ -1322,10 +1322,10 @@ class PermissionHistoryServiceIntegrationTest {
     Set<String> everyone = new HashSet<>(staying);
     everyone.add(memberSubject(leaving));
     runDirectorySyncReporting(
-        new DirectoryGroup("dir-guid-sync-removed", "Referat Abgang", null, everyone));
+        new DirectoryGroup("dir-guid-sync-removed", "Referat Abgang", null, null, everyone));
 
     runDirectorySyncReporting(
-        new DirectoryGroup("dir-guid-sync-removed", "Referat Abgang", null, staying));
+        new DirectoryGroup("dir-guid-sync-removed", "Referat Abgang", null, null, staying));
 
     return new ReadabilityChange(leaving, libraryId, false);
   }
@@ -1376,13 +1376,13 @@ class PermissionHistoryServiceIntegrationTest {
     everyone.add(memberSubject(leaving));
     directoryClient.respondWithFor(
         provider.getId(),
-        new DirectoryGroup("dir-guid-sync-confirmed", "Referat Bestätigung", null, everyone));
+        new DirectoryGroup("dir-guid-sync-confirmed", "Referat Bestätigung", null, null, everyone));
     directorySyncService.run(organizationId, provider.getId());
 
     // One of two memberships is 50% - above the 30% threshold, so this run only leaves a plan.
     directoryClient.respondWithFor(
         provider.getId(),
-        new DirectoryGroup("dir-guid-sync-confirmed", "Referat Bestätigung", null, staying));
+        new DirectoryGroup("dir-guid-sync-confirmed", "Referat Bestätigung", null, null, staying));
     SyncReport pending = directorySyncService.run(organizationId, provider.getId());
     assertThat(pending.outcome()).isEqualTo(DirectorySyncOutcome.PENDING_CONFIRMATION);
     UUID planId =
@@ -1514,7 +1514,7 @@ class PermissionHistoryServiceIntegrationTest {
       }
       response.add(
           new DirectoryGroup(
-              group.getExternalId(), group.getName(), null, currentMemberSubjects(group)));
+              group.getExternalId(), group.getName(), null, null, currentMemberSubjects(group)));
     }
     directoryClient.respondWith(response.toArray(DirectoryGroup[]::new));
 

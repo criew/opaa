@@ -1,0 +1,57 @@
+name: Keycloak-Integration
+
+# Bewusst NICHT bei jedem Pull Request (#1817, ADR-0036 Entscheidung 3): der Lauf startet ein echtes
+# Keycloak in Docker - auf der Referenzmaschine gemessen rund 46 Sekunden bis zur ersten Antwort und
+# rund 880 MiB allein für den Container, dazu Postgres und die Test-JVM; das Vielfache des
+# MinIO-Fixtures, das innerhalb von `test` läuft. Das gemeinsame
+# Testdoppel des Konnektors (io.opaa.group.sync.keycloak.FakeKeycloakServer) läuft dagegen mit jedem
+# PR im regulären Backend-Job; diese Suite ist die zusätzliche Abnahme gegen die echte Admin-API.
+on:
+  schedule:
+    # Nach Confluence (4:25) und der E2E-Suite der lokalen Anmeldung (4:55 UTC), damit nicht
+    # mehrere speicherhungrige Container um denselben Runner konkurrieren.
+    - cron: '25 5 * * *'
+  workflow_dispatch: {}
+  # Kein branches-Filter: die Suite muss auch auf gestapelten PRs (Basis = anderer Feature-Branch)
+  # per Label startbar sein; das Opt-in regelt die if-Bedingung des Jobs.
+  pull_request:
+    types: [labeled]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: keycloak-integration-${{ github.event_name }}-${{ github.event.pull_request.number || 'none' }}-${{ github.event.label.name || 'none' }}
+  cancel-in-progress: false
+
+jobs:
+  keycloak:
+    name: Keycloak im Container
+    # Bei pull_request nur, wenn das Label "keycloak-suite" gesetzt wurde - ein Opt-in je PR für
+    # Änderungen am Verzeichnis-Konnektor, ohne jeden PR zu belasten.
+    if: github.event_name != 'pull_request' || github.event.label.name == 'keycloak-suite'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: backend/
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25.0.4+101.0.LTS'
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Keycloak-Integrationstests ausführen
+        run: ./gradlew keycloakIntegrationTest
+
+      - name: Testberichte hochladen
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: keycloak-integration-test-reports
+          path: backend/build/reports/tests/
+          retention-days: 14

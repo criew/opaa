@@ -8,6 +8,7 @@ import io.opaa.auth.oidc.OidcClaimMapping;
 import io.opaa.auth.oidc.OidcProvider;
 import io.opaa.auth.oidc.OidcProviderDraft;
 import io.opaa.auth.oidc.OidcProviderRegistry;
+import io.opaa.group.sync.connector.DirectoryConnectorView;
 
 /**
  * Maps between {@link OidcProvider} and the generated DTOs (ADR-0006): the domain never sees a DTO,
@@ -21,7 +22,9 @@ final class OidcProviderResponseMapper {
   private OidcProviderResponseMapper() {}
 
   static OidcProviderResponse toResponse(
-      OidcProvider provider, OidcProviderRegistry.Health health) {
+      OidcProvider provider,
+      OidcProviderRegistry.Health health,
+      DirectoryConnectorView directoryConnector) {
     OidcClaimMapping mapping = provider.getClaimMapping();
     OidcClaimMappingDto mappingDto =
         new OidcClaimMappingDto()
@@ -54,6 +57,7 @@ final class OidcProviderResponseMapper {
             provider.getUpdatedAt())
         .jwkSetUri(provider.getJwkSetUri())
         .directorySyncIntervalMinutes(provider.getDirectorySyncIntervalMinutes())
+        .directoryConnector(DirectoryConnectorResponseMapper.toResponse(directoryConnector))
         .registryMessage(provider.isEnabled() ? health.message() : null);
   }
 

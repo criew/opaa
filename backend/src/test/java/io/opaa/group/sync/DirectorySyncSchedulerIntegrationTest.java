@@ -74,7 +74,7 @@ class DirectorySyncSchedulerIntegrationTest {
   void aProviderThatHasNeverRunIsDueAtOnce() {
     OidcProvider provider = createProvider(true, true, 360);
     directoryClient.respondWithFor(
-        provider.getId(), new DirectoryGroup("dir-1", "Referat 50", null, Set.of()));
+        provider.getId(), new DirectoryGroup("dir-1", "Referat 50", null, null, Set.of()));
 
     scheduler.triggerDueProviders();
 
@@ -95,7 +95,7 @@ class DirectorySyncSchedulerIntegrationTest {
     status.recordRun(lastRun, DirectorySyncOutcome.APPLIED, "Voriger Lauf", 0.0);
     statusRepository.save(status);
     directoryClient.respondWithFor(
-        provider.getId(), new DirectoryGroup("dir-1", "Referat 50", null, Set.of()));
+        provider.getId(), new DirectoryGroup("dir-1", "Referat 50", null, null, Set.of()));
 
     scheduler.triggerDueProviders();
 
@@ -118,7 +118,7 @@ class DirectorySyncSchedulerIntegrationTest {
     status.recordRun(lastRun, DirectorySyncOutcome.APPLIED, "Voriger Lauf", 0.0);
     statusRepository.save(status);
     directoryClient.respondWithFor(
-        provider.getId(), new DirectoryGroup("dir-1", "Referat 50", null, Set.of()));
+        provider.getId(), new DirectoryGroup("dir-1", "Referat 50", null, null, Set.of()));
 
     scheduler.triggerDueProviders();
 
@@ -136,7 +136,7 @@ class DirectorySyncSchedulerIntegrationTest {
   void aDisabledProviderIsNeverTickedEvenWithItsRunSwitchedOn() {
     OidcProvider provider = createProvider(false, true, 5);
     directoryClient.respondWithFor(
-        provider.getId(), new DirectoryGroup("dir-1", "Referat 50", null, Set.of()));
+        provider.getId(), new DirectoryGroup("dir-1", "Referat 50", null, null, Set.of()));
 
     scheduler.triggerDueProviders();
 
@@ -150,7 +150,7 @@ class DirectorySyncSchedulerIntegrationTest {
   void aProviderWithoutTheRunSwitchedOnIsNeverTicked() {
     OidcProvider provider = createProvider(true, false, null);
     directoryClient.respondWithFor(
-        provider.getId(), new DirectoryGroup("dir-1", "Referat 50", null, Set.of()));
+        provider.getId(), new DirectoryGroup("dir-1", "Referat 50", null, null, Set.of()));
 
     scheduler.triggerDueProviders();
 
@@ -175,7 +175,7 @@ class DirectorySyncSchedulerIntegrationTest {
     providerRepository.save(healthy);
     directoryClient.breakFor(failing.getId());
     directoryClient.respondWithFor(
-        healthy.getId(), new DirectoryGroup("dir-1", "Referat 50", null, Set.of()));
+        healthy.getId(), new DirectoryGroup("dir-1", "Referat 50", null, null, Set.of()));
 
     scheduler.triggerDueProviders();
 

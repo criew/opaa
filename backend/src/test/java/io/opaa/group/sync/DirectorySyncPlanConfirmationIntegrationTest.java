@@ -167,7 +167,7 @@ class DirectorySyncPlanConfirmationIntegrationTest {
         directorySyncService.getPendingPlan(ORGANIZATION_ID, provider.getId()).orElseThrow().id();
 
     directoryClient.respondWithFor(
-        provider.getId(), new DirectoryGroup("dir-1", "Referat 50", null, Set.of()));
+        provider.getId(), new DirectoryGroup("dir-1", "Referat 50", null, null, Set.of()));
     directorySyncService.run(ORGANIZATION_ID, provider.getId());
 
     PendingPlanView current =
@@ -227,7 +227,7 @@ class DirectorySyncPlanConfirmationIntegrationTest {
 
     // The directory has moved on: now the group loses all three instead of two.
     directoryClient.respondWithFor(
-        provider.getId(), new DirectoryGroup("dir-1", "Referat 50", null, Set.of()));
+        provider.getId(), new DirectoryGroup("dir-1", "Referat 50", null, null, Set.of()));
 
     Throwable thrown =
         catchThrowable(
@@ -308,7 +308,7 @@ class DirectorySyncPlanConfirmationIntegrationTest {
     Group saved = groupRepository.save(group);
     createdGroupIds.add(saved.getId());
     directoryClient.respondWithFor(
-        provider.getId(), new DirectoryGroup("dir-1", "Referat 50", null, Set.of("keep")));
+        provider.getId(), new DirectoryGroup("dir-1", "Referat 50", null, null, Set.of("keep")));
     return saved;
   }
 

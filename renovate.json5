@@ -83,6 +83,18 @@
       ],
       versioningTemplate: 'regex:^RELEASE\\.(?<major>\\d{4})-(?<minor>\\d{2})-(?<patch>\\d{2})T(?<build>\\d{2}-\\d{2}-\\d{2}Z)$',
     },
+    // Das Keycloak-Testcontainer-Image (#1817) ist als Java-Konstante gepinnt, für den
+    // docker-Manager unsichtbar — der pflegt nur docker-compose.yml. Ohne diesen Eintrag liefen
+    // die beiden Pins desselben Images auseinander. Eigener matchString statt eines gemeinsamen
+    // mit MinIO: die Konstante ist package-private, und der Tag ("26.7") ist reguläre
+    // docker-Versionierung, braucht also kein eigenes Schema.
+    {
+      customType: 'regex',
+      managerFilePatterns: ['backend/src/test/java/io/opaa/integration/keycloak/KeycloakFixture.java'],
+      matchStrings: [
+        '// renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\s*\\n\\s*static final String IMAGE = "[^:"]+:(?<currentValue>[^"]+)"',
+      ],
+    },
     // Der cdxgen-Aufruf in sbom.yml läuft über "pnpm dlx" statt über eine Manifestdatei — für den
     // github-actions-Manager unsichtbar.
     {
