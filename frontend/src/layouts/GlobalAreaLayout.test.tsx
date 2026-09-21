@@ -119,5 +119,8 @@ describe('isGlobalAreaPath', () => {
     // Since #789 the library catalog is a global area as well (Schlussnotiz Abschnitt 2).
     expect(isGlobalAreaPath('/libraries')).toBe(true)
     expect(isGlobalAreaPath('/libraries/lib-1')).toBe(true)
+    // #1822: die Stichtagsauskunft der Revision rendert ebenfalls im globalen Rahmen.
+    expect(isGlobalAreaPath('/revision/rechtehistorie')).toBe(true)
+    expect(isGlobalAreaPath('/revisionen')).toBe(false)
   })
 })

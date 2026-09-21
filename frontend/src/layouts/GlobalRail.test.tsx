@@ -83,6 +83,28 @@ describe('GlobalRail', () => {
     expect(screen.getByRole('link', { name: 'Spaces' })).toHaveAttribute('aria-current', 'true')
   })
 
+  /** #1822: die Stichtagsauskunft haengt an der AUDITOR-Rolle und braucht einen eigenen Einstieg. */
+  it('zeigt der Revision ihren eigenen Einstieg und sonst niemandem', () => {
+    const { unmount } = renderRailAt('/spaces')
+    expect(screen.queryByRole('link', { name: 'Revision' })).not.toBeInTheDocument()
+    unmount()
+
+    useAuthStore.setState({
+      user: {
+        id: 'user-3',
+        email: 'revision@example.de',
+        displayName: 'Revision',
+        systemRole: 'AUDITOR',
+      },
+      isAuthenticated: true,
+    })
+    renderRailAt('/revision/rechtehistorie')
+    const link = screen.getByRole('link', { name: 'Revision' })
+    expect(link).toHaveAttribute('href', '/revision/rechtehistorie')
+    expect(link).toHaveAttribute('aria-current', 'page')
+    expect(screen.queryByRole('link', { name: 'Admin' })).not.toBeInTheDocument()
+  })
+
   it('hides the admin destination from regular users and shows it to system admins', () => {
     const { unmount } = renderRailAt('/spaces')
     expect(screen.queryByRole('link', { name: 'Admin' })).not.toBeInTheDocument()

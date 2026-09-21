@@ -621,6 +621,19 @@ beantwortbar. Sie ist jetzt eine Funktion der Rolle `AUDITOR`
   sind die abgeschlossenen Intervalle gelöscht, eine leere Antwort dort heißt „nicht mehr
   nachgewiesen" und nicht „kein Zugriff". Ohne diese Unterscheidung läse sich eine Lücke als
   Freispruch.
+- **Und sie nennt die Quellenlücke** (`sourcesNotCovered`). [ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md),
+  Entscheidung 8 führt acht Quellen; historisiert sind heute Asset-Grants, Gruppenmitgliedschaft,
+  Reichweite und Space-Mitgliedschaft. **Nicht** nachgewiesen sind **Systemrolle**, **Eigentum**
+  (#1819), **Fähigkeit** (#1813) und **Kontozustand** (#1818) — die Systemrolle wiegt dabei am
+  schwersten: `LibraryAccessService#effectiveRole` gibt einer Systemverwaltung auf jeder Bibliothek
+  ihrer Organisation `OWNER`, und kein Intervall hält das fest. Die Auskunft schreibt deshalb nie
+  „niemand hatte Zugriff", sondern nennt die Quellen, über die sie nichts sagen kann; die Ansicht
+  zeigt sie mit.
+- **Die Grenzen begrenzen die Arbeit, nicht nur die Ausgabe.** Trägt eine Quelle im gewählten
+  Fenster mehr als 2000 Intervalle bei, oder umfasste die zusammengesetzte Antwort mehr als 5000
+  Zugriffszeiträume, wird die Abfrage **abgelehnt** mit der Bitte, das Fenster enger zu fassen —
+  aus demselben Grund, aus dem ein zu weites Zeitfenster abgelehnt und nicht gekürzt wird: Eine
+  gekürzte Auskunft sähe vollständig aus.
 - **Der Personen-Einstieg** („worauf hatte Person X am 3. März Zugriff") ist **nicht** Teil dieses
   Endpunkts und bleibt bis #391/#395 geschlossen; er verlangt dann eine eigene, befristete,
   begründete Vier-Augen-Vollmacht nach dem Muster des Vorfallsbereichs.

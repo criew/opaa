@@ -1,7 +1,8 @@
-package io.opaa.audit;
+package io.opaa.revision;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 
 import io.opaa.api.types.AccessAsOfObjectType;
 import io.opaa.api.types.AccessBasis;
@@ -10,6 +11,7 @@ import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.api.types.GroupKind;
+import io.opaa.api.types.SpaceRole;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
@@ -142,6 +144,69 @@ class PointInTimeAccessIntegrationTest {
     assertThat(entry.validTo()).isNull();
   }
 
+  /**
+   * The organization boundary holds for every source of the answer, not only for the object's name:
+   * an organization-wide release of a foreign library must not reach it either - that would
+   * disclose the existence and the release periods of another organization's library.
+   */
+  @Test
+  void aLibraryOfAnotherOrganizationYieldsNothingAtAll() {
+    UUID foreignOrganizationId =
+        organizationRepository
+            .save(new Organization(UUID.randomUUID(), "Fremde Stelle " + UUID.randomUUID()))
+            .getId();
+    UUID foreignOwnerId = UUID.randomUUID();
+    jdbcTemplate.update(
+        "INSERT INTO users (id, subject, issuer, email, display_name, created_at, system_role,"
+            + " organization_id) VALUES (?, ?, 'test-issuer', ?, 'Fremde Person', now(), 'USER', ?)",
+        foreignOwnerId,
+        "stichtag-fremd-" + foreignOwnerId,
+        "stichtag-fremd-" + foreignOwnerId + "@example.com",
+        foreignOrganizationId);
+    UUID foreignLibraryId = UUID.randomUUID();
+    jdbcTemplate.update(
+        "INSERT INTO knowledge_libraries (id, organization_id, name, owner_type, owner_user_id,"
+            + " visibility, listed, source_type, created_at, updated_at)"
+            + " VALUES (?, ?, 'Fremde Bibliothek', 'USER', ?, 'ORGANIZATION', true, 'UPLOAD',"
+            + " now(), now())",
+        foreignLibraryId,
+        foreignOrganizationId,
+        foreignOwnerId);
+    jdbcTemplate.update(
+        "INSERT INTO library_visibility_history (id, library_id, organization_id, visibility,"
+            + " listed, cause, valid_from, created_at, external_access_state)"
+            + " VALUES (?, ?, ?, 'ORGANIZATION', true, 'CREATED', ?, now(), 'NEVER_SET')",
+        UUID.randomUUID(),
+        foreignLibraryId,
+        foreignOrganizationId,
+        java.sql.Timestamp.from(FROM));
+
+    try {
+      AccessAsOfResult result =
+          service.readersOf(
+              organizationId,
+              auditorId,
+              "Beschwerde 4711",
+              AccessAsOfObjectType.KNOWLEDGE_LIBRARY,
+              foreignLibraryId,
+              FROM,
+              TO,
+              0,
+              50);
+
+      assertThat(result.entries())
+          .as("a foreign object answers like an unknown one - no basis, no period")
+          .isEmpty();
+      assertThat(result.objectName()).isNull();
+    } finally {
+      jdbcTemplate.update(
+          "DELETE FROM library_visibility_history WHERE library_id = ?", foreignLibraryId);
+      jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE id = ?", foreignLibraryId);
+      jdbcTemplate.update("DELETE FROM users WHERE id = ?", foreignOwnerId);
+      organizationRepository.deleteById(foreignOrganizationId);
+    }
+  }
+
   /** A membership that ended inside the window bounds the access, not the grant alone. */
   @Test
   void anAccessEndsWithTheMembershipThatCarriedIt() {
@@ -255,6 +320,147 @@ class PointInTimeAccessIntegrationTest {
     Instant longAgo = inside.retentionCutoff().minus(Duration.ofDays(30));
     AccessAsOfResult outside = readers(longAgo, longAgo.plus(Duration.ofDays(1)));
     assertThat(outside.beyondRetention()).isTrue();
+  }
+
+  /**
+   * The space half of the answer: a person's own membership and a membership held through a group,
+   * the latter bounded by the group membership that carried it. Composed differently from the
+   * library half (membership x membership instead of grant x membership), so it needs its own case.
+   */
+  @Test
+  void aSpaceAnswersWhoWasAMemberThroughTheirOwnRowAndThroughAGroup() {
+    UUID spaceId = space();
+    UUID groupId = group("Projektgruppe Ost");
+    spaceMembershipHistory(spaceId, ordinaryUserId, null, SpaceRole.ADMIN, FROM, null);
+    spaceMembershipHistory(
+        spaceId, null, groupId, SpaceRole.MEMBER, FROM, FROM.plus(Duration.ofDays(20)));
+    membershipHistory(groupId, auditorId, FROM.plus(Duration.ofDays(5)), null);
+
+    AccessAsOfResult result =
+        service.readersOf(
+            organizationId,
+            auditorId,
+            "Beschwerde 4711",
+            AccessAsOfObjectType.SPACE,
+            spaceId,
+            FROM,
+            TO,
+            0,
+            50);
+
+    assertThat(result.objectName()).isEqualTo("Projekt Ost");
+    assertThat(result.entries())
+        .extracting(AccessAsOfEntry::basis, AccessAsOfEntry::userId, AccessAsOfEntry::spaceRole)
+        .containsExactlyInAnyOrder(
+            tuple(AccessBasis.DIRECT_MEMBERSHIP, ordinaryUserId, SpaceRole.ADMIN),
+            tuple(AccessBasis.GROUP_MEMBERSHIP, auditorId, SpaceRole.MEMBER));
+    AccessAsOfEntry throughGroup =
+        result.entries().stream()
+            .filter(entry -> entry.basis() == AccessBasis.GROUP_MEMBERSHIP)
+            .findFirst()
+            .orElseThrow();
+    assertThat(throughGroup.validFrom())
+        .as("the access starts with the later of the two intervals")
+        .isEqualTo(FROM.plus(Duration.ofDays(5)));
+    assertThat(throughGroup.validTo())
+        .as("and ends with the earlier one")
+        .isEqualTo(FROM.plus(Duration.ofDays(20)));
+    assertThat(throughGroup.groupName()).isEqualTo("Projektgruppe Ost");
+
+    jdbcTemplate.update("DELETE FROM space_membership_history WHERE space_id = ?", spaceId);
+    jdbcTemplate.update("DELETE FROM spaces WHERE id = ?", spaceId);
+  }
+
+  /** A retrieval about a space is recorded against that space, not against the log. */
+  @Test
+  void aSpaceRetrievalIsRecordedAgainstTheSpace() {
+    UUID spaceId = space();
+
+    service.readersOf(
+        organizationId,
+        auditorId,
+        "Beschwerde 4711",
+        AccessAsOfObjectType.SPACE,
+        spaceId,
+        FROM,
+        TO,
+        0,
+        50);
+
+    List<Map<String, Object>> events = retrievalEvents();
+    assertThat(events).hasSize(1);
+    assertThat(events.get(0).get("object_type")).isEqualTo(AuditObjectType.SPACE.name());
+    assertThat(events.get(0).get("object_id")).isEqualTo(spaceId.toString());
+
+    jdbcTemplate.update("DELETE FROM spaces WHERE id = ?", spaceId);
+  }
+
+  /**
+   * The bound is on the work, not on the page: a group whose membership intervals exceed the cap is
+   * refused outright, because composing them to hand out fifty rows is the cost the cap exists to
+   * prevent. Refused, not trimmed - a trimmed answer would look complete.
+   */
+  @Test
+  void aWindowWhoseSourceExceedsTheCapIsRefusedRatherThanTrimmed() {
+    UUID groupId = group("Grosses Referat");
+    grantHistory(groupId, AssetRole.VIEWER, FROM, null);
+    insertMembershipRows(groupId, PointInTimeAccessService.MAX_SOURCE_INTERVALS + 1);
+
+    assertThatThrownBy(() -> readers(FROM, TO))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("enger");
+
+    assertThat(retrievalEvents()).as("the refusal is itself an entry").hasSize(1);
+  }
+
+  private UUID space() {
+    UUID spaceId = UUID.randomUUID();
+    jdbcTemplate.update(
+        "INSERT INTO spaces (id, name, owner_id, created_at, updated_at, visibility,"
+            + " organization_id, is_default, archived)"
+            + " VALUES (?, 'Projekt Ost', ?, now(), now(), 'PRIVATE', ?, false, false)",
+        spaceId,
+        ordinaryUserId,
+        organizationId);
+    return spaceId;
+  }
+
+  /** Writes a space-membership interval with the boundaries the case needs - see grantHistory. */
+  private void spaceMembershipHistory(
+      UUID spaceId, UUID userId, UUID groupId, SpaceRole role, Instant validFrom, Instant validTo) {
+    jdbcTemplate.update(
+        "INSERT INTO space_membership_history (id, space_id, organization_id, subject_type,"
+            + " subject_user_id, subject_group_id, role, cause, valid_from, valid_to, created_at)"
+            + " VALUES (?, ?, ?, ?, ?, ?, ?, 'ADDED', ?, ?, now())",
+        UUID.randomUUID(),
+        spaceId,
+        organizationId,
+        userId != null ? "USER" : "GROUP",
+        userId,
+        groupId,
+        role.name(),
+        java.sql.Timestamp.from(validFrom),
+        validTo == null ? null : java.sql.Timestamp.from(validTo));
+  }
+
+  /** Enough membership intervals of one group to take the read over its cap. */
+  private void insertMembershipRows(UUID groupId, int count) {
+    List<Object[]> rows = new ArrayList<>();
+    for (int i = 0; i < count; i++) {
+      rows.add(
+          new Object[] {
+            UUID.randomUUID(),
+            groupId,
+            organizationId,
+            ordinaryUserId,
+            java.sql.Timestamp.from(FROM.plus(Duration.ofSeconds(i))),
+            java.sql.Timestamp.from(FROM.plus(Duration.ofSeconds(i + 1)))
+          });
+    }
+    jdbcTemplate.batchUpdate(
+        "INSERT INTO group_membership_history (id, group_id, organization_id, user_id, cause,"
+            + " valid_from, valid_to, created_at) VALUES (?, ?, ?, ?, 'ADDED', ?, ?, now())",
+        rows);
   }
 
   private AccessAsOfResult readers(Instant from, Instant to) {

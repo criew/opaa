@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -50,14 +51,24 @@ public interface LibraryVisibilityHistoryRepository
    * Every organization-wide <i>state</i> interval of one library overlapping {@code [from, to)} -
    * the third source of the Stichtagsauskunft about a library (#1822). Zero-length event markers
    * are excluded by {@code validTo > validFrom}.
+   *
+   * <p><b>Scoped to the organization like every other source of that answer.</b> Without it an
+   * organization-wide release would disclose the existence and the release periods of another
+   * organization's library - the one source that would have come through where every other one
+   * answers empty. {@code page} bounds what one call reads at all.
    */
   @Query(
       "select h from LibraryVisibilityHistory h where h.libraryId = :libraryId "
+          + "and h.organizationId = :organizationId "
           + "and h.visibility = io.opaa.api.types.LibraryVisibility.ORGANIZATION "
           + "and h.validFrom < :to and (h.validTo is null or h.validTo > :from) "
           + "and (h.validTo is null or h.validTo > h.validFrom)")
   List<LibraryVisibilityHistory> findOrganizationWideIntervalsOverlapping(
-      @Param("libraryId") UUID libraryId, @Param("from") Instant from, @Param("to") Instant to);
+      @Param("libraryId") UUID libraryId,
+      @Param("organizationId") UUID organizationId,
+      @Param("from") Instant from,
+      @Param("to") Instant to,
+      Pageable page);
 
   /**
    * The one state interval of {@code libraryId} covering {@code asOf}. Zero-length event markers

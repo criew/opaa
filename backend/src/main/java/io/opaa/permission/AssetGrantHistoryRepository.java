@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -98,7 +99,8 @@ public interface AssetGrantHistoryRepository
       @Param("assetId") UUID assetId,
       @Param("organizationId") UUID organizationId,
       @Param("from") Instant from,
-      @Param("to") Instant to);
+      @Param("to") Instant to,
+      Pageable page);
 
   /** The group-grant counterpart of {@link #findReadableAssetIdsByDirectGrantAsOf}. */
   @Query(

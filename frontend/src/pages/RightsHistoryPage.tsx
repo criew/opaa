@@ -15,7 +15,12 @@ import HistoryOutlinedIcon from '@mui/icons-material/HistoryOutlined'
 import AreaPageHeader from '../components/AreaPageHeader'
 import { useAuthStore } from '../stores/authStore'
 import { getAccessAsOf } from '../services/rightsHistoryApi'
-import type { AccessAsOfObjectType, AccessAsOfPage, AccessBasis } from '../types/api'
+import type {
+  AccessAsOfObjectType,
+  AccessAsOfPage,
+  AccessAsOfSource,
+  AccessBasis,
+} from '../types/api'
 import { contentWidth } from '../theme/tokens'
 
 const BASIS_LABELS: Record<AccessBasis, string> = {
@@ -26,6 +31,13 @@ const BASIS_LABELS: Record<AccessBasis, string> = {
   GROUP_MEMBERSHIP: 'Mitgliedschaft einer Gruppe',
   OWNERSHIP: 'Eigentum',
   SYSTEM_ADMINISTRATION: 'Systemverwaltung',
+}
+
+const SOURCE_LABELS: Record<AccessAsOfSource, string> = {
+  SYSTEM_ROLE: 'Systemrolle (eine Systemverwaltung erreicht jede Bibliothek ihrer Organisation)',
+  OWNERSHIP: 'Eigentum an Bibliothek oder Space',
+  CAPABILITY: 'Anlegerechte',
+  ACCOUNT_STATE: 'Kontozustand (aktiv oder gesperrt)',
 }
 
 function formatInstant(value: string | null | undefined, fallback: string): string {
@@ -57,7 +69,7 @@ export default function RightsHistoryPage() {
   const canSubmit =
     objectId.trim() !== '' && from !== '' && to !== '' && reason.trim() !== '' && !isLoading
 
-  async function submit(): Promise<void> {
+  async function submit(pageIndex = 0): Promise<void> {
     setIsLoading(true)
     try {
       const page = await getAccessAsOf({
@@ -66,6 +78,7 @@ export default function RightsHistoryPage() {
         from: toInstant(from),
         to: toInstant(to),
         reason: reason.trim(),
+        page: pageIndex,
       })
       setResult(page)
       setError(null)
@@ -130,7 +143,7 @@ export default function RightsHistoryPage() {
             helperText="Pflichtangabe. Der Anlass steht im Protokolleintrag dieses Abrufs."
           />
           <Box>
-            <Button variant="contained" disabled={!canSubmit} onClick={() => void submit()}>
+            <Button variant="contained" disabled={!canSubmit} onClick={() => void submit(0)}>
               Auskunft erstellen
             </Button>
           </Box>
@@ -155,9 +168,17 @@ export default function RightsHistoryPage() {
                 mehr nachgewiesen — es ist kein Beleg dafür, dass niemand Zugriff hatte.
               </Alert>
             )}
+            {result.sourcesNotCovered.length > 0 && (
+              <Alert severity="info" sx={{ mb: 2 }}>
+                Diese Auskunft deckt noch nicht jede Rechtequelle ab. Nicht nachgewiesen sind:{' '}
+                {result.sourcesNotCovered.map((source) => SOURCE_LABELS[source]).join('; ')}. Eine
+                leere oder kurze Liste ist deshalb kein Beleg dafür, dass niemand zugreifen konnte.
+              </Alert>
+            )}
             {result.entries.length === 0 ? (
               <Typography sx={{ color: 'text.secondary' }}>
-                In diesem Zeitraum hatte niemand über eine nachgewiesene Rechtequelle Zugriff.
+                Für diesen Zeitraum ist über die nachgewiesenen Rechtequellen kein Zugriff
+                verzeichnet. Die oben genannten Quellen sind dabei nicht berücksichtigt.
               </Typography>
             ) : (
               <Table size="small">
@@ -186,6 +207,25 @@ export default function RightsHistoryPage() {
                   ))}
                 </TableBody>
               </Table>
+            )}
+            {result.totalPages > 1 && (
+              <Stack direction="row" spacing={2} sx={{ mt: 2, alignItems: 'center' }}>
+                <Button
+                  disabled={result.page === 0 || isLoading}
+                  onClick={() => void submit(result.page - 1)}
+                >
+                  Zurück
+                </Button>
+                <Typography>
+                  Seite {result.page + 1} von {result.totalPages}
+                </Typography>
+                <Button
+                  disabled={result.page + 1 >= result.totalPages || isLoading}
+                  onClick={() => void submit(result.page + 1)}
+                >
+                  Weiter
+                </Button>
+              </Stack>
             )}
           </>
         )}

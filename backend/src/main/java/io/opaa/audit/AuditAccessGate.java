@@ -26,10 +26,10 @@ import org.springframework.stereotype.Component;
  * {@code audit_log}, the Stichtagsauskunft (#1822) against the queried object.
  */
 @Component
-class AuditAccessGate {
+public class AuditAccessGate {
 
   /** "Begrenzte Ergebnismenge" - a hard cap applied regardless of the requested page size. */
-  static final int MAX_PAGE_SIZE = 200;
+  public static final int MAX_PAGE_SIZE = 200;
 
   /**
    * Bounds how many pages a single query can page through, so {@link #MAX_PAGE_SIZE} bounds a
@@ -56,7 +56,7 @@ class AuditAccessGate {
 
   private final UserRepository userRepository;
 
-  AuditAccessGate(UserRepository userRepository) {
+  public AuditAccessGate(UserRepository userRepository) {
     this.userRepository = userRepository;
   }
 
@@ -66,7 +66,7 @@ class AuditAccessGate {
    * outcome {@link AuditAccessOutcome} derives from the exception. The original exception always
    * propagates unchanged; a failure of the entry itself never replaces it.
    */
-  <T> T loggedAccess(
+  public <T> T loggedAccess(
       UUID organizationId,
       UUID callerId,
       String reason,
@@ -133,7 +133,7 @@ class AuditAccessGate {
         : reason.substring(0, MAX_REASON_LENGTH);
   }
 
-  void validateTimeRange(Instant from, Instant to) {
+  public void validateTimeRange(Instant from, Instant to) {
     if (from == null || to == null) {
       throw new IllegalArgumentException("from und to sind Pflichtangaben");
     }
@@ -150,7 +150,7 @@ class AuditAccessGate {
   }
 
   /** The bounded page index and size every access path shares; {@code sort} is the path's own. */
-  Pageable pageable(int page, int size, Sort sort) {
+  public Pageable pageable(int page, int size, Sort sort) {
     if (page < 0) {
       throw new IllegalArgumentException("page darf nicht negativ sein");
     }

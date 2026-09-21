@@ -27,6 +27,7 @@ import io.opaa.permission.AssetOwnershipHistoryService;
 import io.opaa.permission.CapabilityService;
 import io.opaa.permission.GroupAttribution;
 import io.opaa.permission.GroupMembershipResolver;
+import io.opaa.permission.GroupSizeProperties;
 import io.opaa.permission.GroupSubject;
 import io.opaa.permission.GroupSubjectDirectory;
 import io.opaa.permission.PermissionSubject;
@@ -65,6 +66,7 @@ public class SpaceService {
   private final GroupMembershipResolver groupMemberships;
   private final GroupSubjectDirectory groupDirectory;
   private final CapabilityService capabilityService;
+  private final GroupSizeProperties groupSizeProperties;
   private final TransactionTemplate requiresNewTransactionTemplate;
 
   /**
@@ -87,6 +89,7 @@ public class SpaceService {
       GroupMembershipResolver groupMemberships,
       GroupSubjectDirectory groupDirectory,
       CapabilityService capabilityService,
+      GroupSizeProperties groupSizeProperties,
       PlatformTransactionManager transactionManager) {
     this.spaceRepository = spaceRepository;
     this.chatRepository = chatRepository;
@@ -99,6 +102,7 @@ public class SpaceService {
     this.groupMemberships = groupMemberships;
     this.groupDirectory = groupDirectory;
     this.capabilityService = capabilityService;
+    this.groupSizeProperties = groupSizeProperties;
     this.requiresNewTransactionTemplate = new TransactionTemplate(transactionManager);
     this.requiresNewTransactionTemplate.setPropagationBehavior(
         TransactionDefinition.PROPAGATION_REQUIRES_NEW);
@@ -407,8 +411,8 @@ public class SpaceService {
   private GroupSizeSignal groupSizeSignal(SpaceMembership membership) {
     return GroupSizeSignal.of(
         membership.getMemberCountAtGrant(),
-        groupMemberships.activeMemberCount(
-            membership.getGroupId(), membership.getOrganizationId()));
+        groupMemberships.activeMemberCount(membership.getGroupId(), membership.getOrganizationId()),
+        groupSizeProperties.minimumGroupSize());
   }
 
   /**

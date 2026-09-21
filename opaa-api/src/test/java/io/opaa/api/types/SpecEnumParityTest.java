@@ -70,6 +70,7 @@ class SpecEnumParityTest {
         Arguments.of("AssetRole", AssetRole.values()),
         Arguments.of("AccessBasis", AccessBasis.values()),
         Arguments.of("AccessAsOfObjectType", AccessAsOfObjectType.values()),
+        Arguments.of("AccessAsOfSource", AccessAsOfSource.values()),
         Arguments.of("PermissionSubjectType", PermissionSubjectType.values()),
         Arguments.of("Capability", Capability.values()),
         Arguments.of("CapabilitySubjectType", CapabilitySubjectType.values()),

@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -74,7 +75,8 @@ public interface SpaceMembershipHistoryRepository
       @Param("spaceId") UUID spaceId,
       @Param("organizationId") UUID organizationId,
       @Param("from") Instant from,
-      @Param("to") Instant to);
+      @Param("to") Instant to,
+      Pageable page);
 
   /**
    * Test-only cleanup helper - {@code subject_user_id} is {@code ON DELETE RESTRICT}; see {@code

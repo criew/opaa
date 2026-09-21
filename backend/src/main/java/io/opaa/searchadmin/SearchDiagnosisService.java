@@ -212,6 +212,21 @@ public class SearchDiagnosisService {
    * profile, the run shows nothing the executing administrator may not see anyway (Leitplanke (c)),
    * and the Diagnosesperre does not apply to those.
    */
+  private static void requireNoTargetUser(DiagnosisQuery query) {
+    if (query.targetUserId() != null) {
+      throw new ValidationException(
+          "Eine Zielperson nimmt nur eine Diagnose im Rechtekontext einer Person entgegen.");
+    }
+  }
+
+  /** A space context belongs to a profile run alone - see {@link #narrowToSpace}. */
+  private static void requireNoSpace(DiagnosisQuery query) {
+    if (query.spaceId() != null) {
+      throw new ValidationException(
+          "Ein Space-Kontext ist nur für eine Diagnose als Rechteprofil vorgesehen.");
+    }
+  }
+
   /**
    * The Suchbereich of a profile run in a space, and the protection that makes it admissible at all
    * (#1835, ADR-0036 Entscheidung 7): the intersection of the space's libraries with the ones the
@@ -258,20 +273,6 @@ public class SearchDiagnosisService {
             .after(payload)
             .outcome(AuditOutcome.SUCCESS)
             .build());
-  }
-
-  private static void requireNoSpace(DiagnosisQuery query) {
-    if (query.spaceId() != null) {
-      throw new ValidationException(
-          "Ein Space-Kontext ist nur für eine Diagnose als Rechteprofil vorgesehen.");
-    }
-  }
-
-  private static void requireNoTargetUser(DiagnosisQuery query) {
-    if (query.targetUserId() != null) {
-      throw new ValidationException(
-          "Eine Zielperson nimmt nur eine Diagnose im Rechtekontext einer Person entgegen.");
-    }
   }
 
   private ForeignDiagnosticFindings<SearchDiagnosis> findings(

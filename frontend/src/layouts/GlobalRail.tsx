@@ -8,6 +8,7 @@ import MenuItem from '@mui/material/MenuItem'
 import Typography from '@mui/material/Typography'
 import { ThemeProvider, useTheme } from '@mui/material/styles'
 import GridViewOutlinedIcon from '@mui/icons-material/GridViewOutlined'
+import HistoryOutlinedIcon from '@mui/icons-material/HistoryOutlined'
 import LogoutIcon from '@mui/icons-material/Logout'
 import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined'
 import SettingsIcon from '@mui/icons-material/Settings'
@@ -79,6 +80,18 @@ export default function GlobalRail() {
             to: '/admin/users',
             activePrefixes: ['/admin'],
             icon: SettingsOutlinedIcon,
+          },
+        ]
+      : []),
+    // Die Revision hat einen eigenen Einstieg: Die Stichtagsauskunft haengt an der AUDITOR-Rolle,
+    // nicht an der Systemverwaltung, und beide Rollen schliessen einander aus (#1822).
+    ...(user?.systemRole === 'AUDITOR'
+      ? [
+          {
+            label: 'Revision',
+            to: '/revision/rechtehistorie',
+            activePrefixes: ['/revision'],
+            icon: HistoryOutlinedIcon,
           },
         ]
       : []),

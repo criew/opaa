@@ -4,10 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.api.dto.AccessAsOfPage;
 import io.opaa.api.types.AccessAsOfObjectType;
+import io.opaa.api.types.AccessAsOfSource;
 import io.opaa.api.types.AccessBasis;
 import io.opaa.api.types.AssetRole;
-import io.opaa.audit.AccessAsOfEntry;
-import io.opaa.audit.AccessAsOfResult;
+import io.opaa.revision.AccessAsOfEntry;
+import io.opaa.revision.AccessAsOfResult;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -34,6 +35,7 @@ class PointInTimeAccessResponseMapperTest {
                 TO,
                 cutoff,
                 true,
+                List.of(AccessAsOfSource.SYSTEM_ROLE),
                 List.of(),
                 2,
                 50,
@@ -68,6 +70,7 @@ class PointInTimeAccessResponseMapperTest {
                 TO,
                 null,
                 false,
+                List.of(),
                 List.of(
                     new AccessAsOfEntry(
                         AccessBasis.GROUP_GRANT,

@@ -6539,11 +6539,15 @@ paths:
         until #391/#395.
 
         The time range is mandatory and bounded exactly as every other audit access path is (92
-        days, page index 49, page size 200); a wider request is rejected, never trimmed. The answer
-        carries retentionCutoff and beyondRetention so "no access" and "no longer on record" stay
-        distinguishable: closed intervals that ended before the maximum retention period are
-        deleted (#1833). Every call writes a PERMISSION_HISTORY_ACCESSED entry, the rejected
-        attempt included.
+        days, page index 49, page size 200); a wider request is rejected, never trimmed. The bounds
+        limit the work, not only the output: a window in which one source contributes more than
+        2000 intervals, or whose composed answer would exceed 5000 access periods, is refused with
+        400 and the advice to narrow the window - a trimmed answer would look complete.
+
+        The answer carries retentionCutoff/beyondRetention and sourcesNotCovered, so neither the
+        retention gap nor the sources without a history (system role, ownership, capability,
+        account state) read as "nobody had access". Every call writes a PERMISSION_HISTORY_ACCESSED
+        entry, the rejected attempt included.
       parameters:
         - name: objectType
           in: query
@@ -14975,6 +14979,17 @@ components:
       enum: [KNOWLEDGE_LIBRARY, SPACE]
       example: KNOWLEDGE_LIBRARY
 
+    AccessAsOfSource:
+      type: string
+      description: >
+        A rights source of the Stichtagsauskunft that carries no history yet (ADR-0036,
+        Entscheidung 8 lists eight sources; four are historised today). SYSTEM_ROLE matters most:
+        a system administrator reaches every library of their organization through effectiveRole,
+        and no interval records that - an empty answer is therefore never a proof that nobody had
+        access.
+      enum: [SYSTEM_ROLE, OWNERSHIP, CAPABILITY, ACCOUNT_STATE]
+      example: SYSTEM_ROLE
+
     AccessAsOfEntry:
       type: object
       required: [basis, validFrom]
@@ -15025,7 +15040,7 @@ components:
     AccessAsOfPage:
       type: object
       required:
-        [objectType, objectId, from, to, retentionCutoff, beyondRetention, entries, page, size, totalElements, totalPages]
+        [objectType, objectId, from, to, beyondRetention, sourcesNotCovered, entries, page, size, totalElements, totalPages]
       properties:
         objectType:
           $ref: "#/components/schemas/AccessAsOfObjectType"
@@ -15047,15 +15062,26 @@ components:
         retentionCutoff:
           type: string
           format: date-time
+          nullable: true
           description: >
             Closed intervals that ended before this instant are deleted (#1833). Everything the
-            answer says about a time before it is therefore incomplete by construction.
+            answer says about a time before it is therefore incomplete by construction. Null until
+            the first deletion pass has run at all, which is why beyondRetention and not this field
+            carries the statement.
         beyondRetention:
           type: boolean
           description: >
             True when "from" lies before retentionCutoff. The answer is then not a negative
             statement: "no access" and "no longer on record" are indistinguishable there, and the
             reader is told so rather than left to assume the first.
+        sourcesNotCovered:
+          type: array
+          description: >
+            The rights sources this answer cannot cover because they carry no history yet. A client
+            has to show them: without SYSTEM_ROLE named, "no entry" reads as "nobody had access",
+            although a system administrator could read every library of the organization all along.
+          items:
+            $ref: "#/components/schemas/AccessAsOfSource"
         entries:
           type: array
           items:

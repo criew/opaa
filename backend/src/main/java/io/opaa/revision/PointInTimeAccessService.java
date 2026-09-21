@@ -1,9 +1,13 @@
-package io.opaa.audit;
+package io.opaa.revision;
 
 import io.opaa.api.types.AccessAsOfObjectType;
+import io.opaa.api.types.AccessAsOfSource;
 import io.opaa.api.types.AccessBasis;
+import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.PermissionSubjectType;
+import io.opaa.audit.AuditAccessGate;
+import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.library.KnowledgeLibrary;
@@ -39,11 +43,40 @@ import org.springframework.stereotype.Service;
  * PERMISSION_HISTORY_ACCESSED} entry against the queried object, the rejected attempt included.
  *
  * <p>It reads the history, never today's rows: a group that has since been deleted still explains
- * an access, and a library deleted last week still gets an answer (ADR-0016). What lies before the
- * retention cutoff is gone, and the answer says so rather than reading as a denial (#1833).
+ * an access, and a library deleted last week still gets an answer (ADR-0016). Two gaps are named in
+ * the answer instead of being left to the reader - the retention cutoff (#1833) and the sources not
+ * yet historised ({@link AccessAsOfResult#sourcesNotCovered()}).
+ *
+ * <p><b>The bounds limit the work, not only the output</b> (see {@link #MAX_SOURCE_INTERVALS} and
+ * {@link #MAX_COMPOSED_ENTRIES}): a page of 50 must not cost the composition of a whole
+ * department's memberships, and a request that would is refused rather than trimmed - the same line
+ * the rest of the funnel takes.
  */
 @Service
 public class PointInTimeAccessService {
+
+  /**
+   * How many intervals one source may contribute before the request is refused. Bounds the read
+   * itself, not the page: the composition below multiplies grants by memberships, so an unbounded
+   * source is an unbounded answer regardless of {@code size}.
+   */
+  static final int MAX_SOURCE_INTERVALS = 2_000;
+
+  /** How large the composed answer may become before the request is refused. */
+  static final int MAX_COMPOSED_ENTRIES = 5_000;
+
+  /**
+   * The sources ADR-0036, Entscheidung 8 lists that carry no history yet - named in every answer so
+   * an empty result is not read as "nobody had access". The system role matters most: {@code
+   * LibraryAccessService#effectiveRole} hands a system administrator {@code OWNER} on every library
+   * of their organization, and no interval records that.
+   */
+  private static final List<AccessAsOfSource> SOURCES_NOT_COVERED =
+      List.of(
+          AccessAsOfSource.SYSTEM_ROLE,
+          AccessAsOfSource.OWNERSHIP,
+          AccessAsOfSource.CAPABILITY,
+          AccessAsOfSource.ACCOUNT_STATE);
 
   private final AuditAccessGate gate;
   private final AuditEventRecorder eventRecorder;
@@ -80,8 +113,9 @@ public class PointInTimeAccessService {
   }
 
   /**
-   * One page of "who reached this object between {@code from} and {@code to}". The window is
-   * mandatory and bounded; a request beyond the bounds is rejected, never trimmed (Personalrat D4).
+   * One page of "who reached this object between {@code from} and {@code to}". The window and the
+   * paging are mandatory and bounded; a request beyond the bounds is rejected, never trimmed
+   * (Personalrat D4).
    */
   public AccessAsOfResult readersOf(
       UUID organizationId,
@@ -129,27 +163,32 @@ public class PointInTimeAccessService {
    * grants naming a group (resolved through the membership intervals of that same period), and the
    * organization-wide release. The composition mirrors {@code
    * LibraryVisibilityHistoryService#readableLibraryIdsAsOf} so both directions of the question stay
-   * one formula.
+   * one formula, and every source is scoped to {@code organizationId} - a foreign object answers
+   * like an unknown one.
    */
   private List<AccessAsOfEntry> libraryReaders(
       UUID organizationId, UUID libraryId, Instant from, Instant to) {
     List<AssetGrantHistory> grants =
-        permissionHistory.assetGrantIntervalsBetween(
-            KnowledgeLibrary.ASSET_TYPE, libraryId, organizationId, from, to);
+        capped(
+            permissionHistory.assetGrantIntervalsBetween(
+                KnowledgeLibrary.ASSET_TYPE,
+                libraryId,
+                organizationId,
+                from,
+                to,
+                MAX_SOURCE_INTERVALS + 1),
+            "Freigaben");
     Set<UUID> groupIds = new HashSet<>();
-    Set<UUID> userIds = new HashSet<>();
     for (AssetGrantHistory grant : grants) {
       if (grant.getSubjectType() == PermissionSubjectType.GROUP) {
         groupIds.add(grant.getSubjectGroupId());
-      } else {
-        userIds.add(grant.getSubjectUserId());
       }
     }
     List<GroupMembershipHistory> memberships =
-        permissionHistory.groupMembershipIntervalsBetween(groupIds, organizationId, from, to);
-    memberships.forEach(membership -> userIds.add(membership.getUserId()));
-
-    Map<UUID, String> userNames = userNames(userIds);
+        capped(
+            permissionHistory.groupMembershipIntervalsBetween(
+                groupIds, organizationId, from, to, MAX_SOURCE_INTERVALS + 1),
+            "Gruppenmitgliedschaften");
     Map<UUID, String> groupNames =
         groupIds.isEmpty() ? Map.of() : groupDirectory.namesById(groupIds);
 
@@ -161,11 +200,12 @@ public class PointInTimeAccessService {
         continue;
       }
       if (grant.getSubjectType() == PermissionSubjectType.USER) {
-        entries.add(
+        add(
+            entries,
             new AccessAsOfEntry(
                 AccessBasis.DIRECT_GRANT,
                 grant.getSubjectUserId(),
-                userNames.get(grant.getSubjectUserId()),
+                null,
                 null,
                 null,
                 grant.getRole(),
@@ -183,11 +223,12 @@ public class PointInTimeAccessService {
         if (!start.isBefore(end)) {
           continue;
         }
-        entries.add(
+        add(
+            entries,
             new AccessAsOfEntry(
                 AccessBasis.GROUP_GRANT,
                 membership.getUserId(),
-                userNames.get(membership.getUserId()),
+                null,
                 grant.getSubjectGroupId(),
                 groupNames.get(grant.getSubjectGroupId()),
                 grant.getRole(),
@@ -198,18 +239,20 @@ public class PointInTimeAccessService {
     }
 
     for (LibraryVisibilityHistory interval :
-        visibilityHistory.organizationWideIntervalsBetween(libraryId, from, to)) {
+        visibilityHistory.organizationWideIntervalsBetween(
+            libraryId, organizationId, from, to, MAX_SOURCE_INTERVALS)) {
       Instant start = max(interval.getValidFrom(), from);
       Instant end = min(interval.getValidTo(), to);
       if (start.isBefore(end)) {
-        entries.add(
+        add(
+            entries,
             new AccessAsOfEntry(
                 AccessBasis.ORGANIZATION_WIDE,
                 null,
                 null,
                 null,
                 null,
-                io.opaa.api.types.AssetRole.VIEWER,
+                AssetRole.VIEWER,
                 null,
                 start,
                 openEnded(end, to)));
@@ -224,21 +267,21 @@ public class PointInTimeAccessService {
   private List<AccessAsOfEntry> spaceMembers(
       UUID organizationId, UUID spaceId, Instant from, Instant to) {
     List<SpaceMembershipHistory> memberships =
-        spaceMembershipHistory.membershipIntervalsBetween(spaceId, organizationId, from, to);
+        capped(
+            spaceMembershipHistory.membershipIntervalsBetween(
+                spaceId, organizationId, from, to, MAX_SOURCE_INTERVALS + 1),
+            "Space-Mitgliedschaften");
     Set<UUID> groupIds = new HashSet<>();
-    Set<UUID> userIds = new HashSet<>();
     for (SpaceMembershipHistory membership : memberships) {
       if (membership.getSubjectType() == PermissionSubjectType.GROUP) {
         groupIds.add(membership.getSubjectGroupId());
-      } else {
-        userIds.add(membership.getSubjectUserId());
       }
     }
     List<GroupMembershipHistory> groupMemberships =
-        permissionHistory.groupMembershipIntervalsBetween(groupIds, organizationId, from, to);
-    groupMemberships.forEach(membership -> userIds.add(membership.getUserId()));
-
-    Map<UUID, String> userNames = userNames(userIds);
+        capped(
+            permissionHistory.groupMembershipIntervalsBetween(
+                groupIds, organizationId, from, to, MAX_SOURCE_INTERVALS + 1),
+            "Gruppenmitgliedschaften");
     Map<UUID, String> groupNames =
         groupIds.isEmpty() ? Map.of() : groupDirectory.namesById(groupIds);
 
@@ -250,11 +293,12 @@ public class PointInTimeAccessService {
         continue;
       }
       if (membership.getSubjectType() == PermissionSubjectType.USER) {
-        entries.add(
+        add(
+            entries,
             new AccessAsOfEntry(
                 AccessBasis.DIRECT_MEMBERSHIP,
                 membership.getSubjectUserId(),
-                userNames.get(membership.getSubjectUserId()),
+                null,
                 null,
                 null,
                 null,
@@ -272,11 +316,12 @@ public class PointInTimeAccessService {
         if (!memberFrom.isBefore(memberTo)) {
           continue;
         }
-        entries.add(
+        add(
+            entries,
             new AccessAsOfEntry(
                 AccessBasis.GROUP_MEMBERSHIP,
                 groupMembership.getUserId(),
-                userNames.get(groupMembership.getUserId()),
+                null,
                 membership.getSubjectGroupId(),
                 groupNames.get(membership.getSubjectGroupId()),
                 null,
@@ -289,9 +334,10 @@ public class PointInTimeAccessService {
   }
 
   /**
-   * Sorts and cuts the composed intervals to one page. The paging happens here rather than in the
-   * query because one page is composed from several tables; the bounds are the audit funnel's own,
-   * so this path can return no more rows than any other revision access.
+   * Sorts and cuts the composed intervals to one page, and resolves the display names of that page
+   * alone - a name lookup for every person of a department is the same unbounded work the caps
+   * above prevent. The paging happens here rather than in the query because one page is composed
+   * from several tables; the bounds are the audit funnel's own.
    */
   private AccessAsOfResult page(
       UUID organizationId,
@@ -304,11 +350,12 @@ public class PointInTimeAccessService {
       int size) {
     entries.sort(
         Comparator.comparing(AccessAsOfEntry::validFrom)
-            .thenComparing(entry -> entry.userName() == null ? "" : entry.userName())
+            .thenComparing(entry -> entry.userId() == null ? "" : entry.userId().toString())
             .thenComparing(entry -> entry.basis().name()));
     int safeSize = Math.min(Math.max(size, 1), AuditAccessGate.MAX_PAGE_SIZE);
     int fromIndex = Math.min(page * safeSize, entries.size());
     int toIndex = Math.min(fromIndex + safeSize, entries.size());
+    List<AccessAsOfEntry> pageEntries = named(entries.subList(fromIndex, toIndex));
     Instant cutoff = retentionService.retentionCutoff().orElse(null);
     return new AccessAsOfResult(
         objectType,
@@ -318,16 +365,57 @@ public class PointInTimeAccessService {
         to,
         cutoff,
         cutoff != null && from.isBefore(cutoff),
-        List.copyOf(entries.subList(fromIndex, toIndex)),
+        SOURCES_NOT_COVERED,
+        pageEntries,
         page,
         safeSize,
         entries.size(),
         (int) Math.ceil((double) entries.size() / safeSize));
   }
 
+  /** Adds one entry, refusing rather than trimming once the answer would leave its bound. */
+  private static void add(List<AccessAsOfEntry> entries, AccessAsOfEntry entry) {
+    if (entries.size() >= MAX_COMPOSED_ENTRIES) {
+      throw new IllegalArgumentException(
+          "Die Auskunft umfasst mehr als "
+              + MAX_COMPOSED_ENTRIES
+              + " Zugriffszeiträume und wird deshalb nicht erstellt - bitte den Zeitraum enger"
+              + " fassen. Eine gekürzte Auskunft wird bewusst nicht ausgegeben, weil sie"
+              + " vollständig aussähe");
+    }
+    entries.add(entry);
+  }
+
+  /** Refuses a source that hit its read bound - one interval over the cap is already too many. */
+  private static <T> List<T> capped(List<T> intervals, String sourceLabel) {
+    if (intervals.size() > MAX_SOURCE_INTERVALS) {
+      throw new IllegalArgumentException(
+          "Der Zeitraum umfasst mehr als "
+              + MAX_SOURCE_INTERVALS
+              + " Einträge der Quelle \""
+              + sourceLabel
+              + "\" - bitte den Zeitraum enger fassen");
+    }
+    return intervals;
+  }
+
   /** The bounds {@link AuditAccessGate#pageable} applies, for a page this class cuts itself. */
   private void requirePagingBounds(int page, int size) {
     gate.pageable(page, size, org.springframework.data.domain.Sort.unsorted());
+  }
+
+  private List<AccessAsOfEntry> named(List<AccessAsOfEntry> pageEntries) {
+    Set<UUID> userIds = new HashSet<>();
+    pageEntries.forEach(
+        entry -> {
+          if (entry.userId() != null) {
+            userIds.add(entry.userId());
+          }
+        });
+    Map<UUID, String> names = userNames(userIds);
+    return pageEntries.stream()
+        .map(entry -> entry.withUserName(names.get(entry.userId())))
+        .toList();
   }
 
   /**

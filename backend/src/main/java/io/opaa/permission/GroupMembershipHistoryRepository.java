@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -45,6 +46,15 @@ public interface GroupMembershipHistoryRepository
    * the grant formula at a past instant, the same way {@link
    * io.opaa.permission.GroupMembershipResolver#groupIdsForUser} resolves it for "now".
    */
+  @Query(
+      "select h.groupId from GroupMembershipHistory h "
+          + "where h.userId = :userId and h.organizationId = :organizationId "
+          + "and h.validFrom <= :asOf and (h.validTo is null or h.validTo > :asOf)")
+  Set<UUID> findGroupIdsByUserIdAsOf(
+      @Param("userId") UUID userId,
+      @Param("organizationId") UUID organizationId,
+      @Param("asOf") Instant asOf);
+
   /**
    * Every <i>state</i> interval of the given groups overlapping {@code [from, to)} - the group half
    * of the Stichtagsauskunft (#1822). Zero-length event markers are excluded by {@code validTo >
@@ -59,14 +69,6 @@ public interface GroupMembershipHistoryRepository
       @Param("groupIds") Collection<UUID> groupIds,
       @Param("organizationId") UUID organizationId,
       @Param("from") Instant from,
-      @Param("to") Instant to);
-
-  @Query(
-      "select h.groupId from GroupMembershipHistory h "
-          + "where h.userId = :userId and h.organizationId = :organizationId "
-          + "and h.validFrom <= :asOf and (h.validTo is null or h.validTo > :asOf)")
-  Set<UUID> findGroupIdsByUserIdAsOf(
-      @Param("userId") UUID userId,
-      @Param("organizationId") UUID organizationId,
-      @Param("asOf") Instant asOf);
+      @Param("to") Instant to,
+      Pageable page);
 }

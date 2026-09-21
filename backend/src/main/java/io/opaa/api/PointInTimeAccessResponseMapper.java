@@ -2,7 +2,7 @@ package io.opaa.api;
 
 import io.opaa.api.dto.AccessAsOfEntry;
 import io.opaa.api.dto.AccessAsOfPage;
-import io.opaa.audit.AccessAsOfResult;
+import io.opaa.revision.AccessAsOfResult;
 import java.util.List;
 
 /** Maps the Stichtagsauskunft onto its generated response (#1822, ADR-0006). */
@@ -16,21 +16,22 @@ final class PointInTimeAccessResponseMapper {
             result.objectId(),
             result.from(),
             result.to(),
-            result.retentionCutoff(),
             result.beyondRetention(),
+            result.sourcesNotCovered(),
             toEntries(result.entries()),
             result.page(),
             result.size(),
             result.totalElements(),
             result.totalPages())
-        .objectName(result.objectName());
+        .objectName(result.objectName())
+        .retentionCutoff(result.retentionCutoff());
   }
 
-  private static List<AccessAsOfEntry> toEntries(List<io.opaa.audit.AccessAsOfEntry> entries) {
+  private static List<AccessAsOfEntry> toEntries(List<io.opaa.revision.AccessAsOfEntry> entries) {
     return entries.stream().map(PointInTimeAccessResponseMapper::toEntry).toList();
   }
 
-  private static AccessAsOfEntry toEntry(io.opaa.audit.AccessAsOfEntry entry) {
+  private static AccessAsOfEntry toEntry(io.opaa.revision.AccessAsOfEntry entry) {
     return new AccessAsOfEntry(entry.basis(), entry.validFrom())
         .userId(entry.userId())
         .userName(entry.userName())

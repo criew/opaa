@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -112,8 +113,9 @@ public class SpaceMembershipHistoryService {
    */
   @Transactional(readOnly = true)
   public List<SpaceMembershipHistory> membershipIntervalsBetween(
-      UUID spaceId, UUID organizationId, Instant from, Instant to) {
-    return repository.findSpaceIntervalsOverlapping(spaceId, organizationId, from, to);
+      UUID spaceId, UUID organizationId, Instant from, Instant to, int limit) {
+    return repository.findSpaceIntervalsOverlapping(
+        spaceId, organizationId, from, to, PageRequest.ofSize(limit));
   }
 
   private void recordEnd(

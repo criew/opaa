@@ -19,6 +19,7 @@ const answer: AccessAsOfPage = {
   to: '2026-03-31T00:00:00Z',
   retentionCutoff: '2023-04-01T00:00:00Z',
   beyondRetention: false,
+  sourcesNotCovered: ['SYSTEM_ROLE', 'OWNERSHIP', 'CAPABILITY', 'ACCOUNT_STATE'],
   entries: [
     {
       basis: 'GROUP_GRANT',
@@ -90,6 +91,33 @@ describe('RightsHistoryPage', () => {
     await fillAndSubmit()
 
     expect(await screen.findByText(/zu weit gefasst/)).toBeInTheDocument()
+  })
+
+  /** Sollte (7): eine leere Liste darf nicht als "niemand hatte Zugriff" gelesen werden. */
+  it('nennt die Rechtequellen, die die Auskunft noch nicht abdeckt', async () => {
+    signInAs('AUDITOR')
+    mockGetAccessAsOf.mockResolvedValue({ ...answer, entries: [], totalElements: 0 })
+
+    renderWithProviders(<RightsHistoryPage />)
+    await fillAndSubmit()
+
+    expect(await screen.findByText(/Systemrolle/)).toBeInTheDocument()
+    expect(screen.getByText(/kein Beleg dafür/)).toBeInTheDocument()
+  })
+
+  /** Sollte (8): Seite 2 muss erreichbar sein, sonst sieht eine gekürzte Liste vollständig aus. */
+  it('blättert zur nächsten Seite', async () => {
+    const user = userEvent.setup()
+    signInAs('AUDITOR')
+    mockGetAccessAsOf.mockResolvedValue({ ...answer, totalElements: 120, totalPages: 3 })
+
+    renderWithProviders(<RightsHistoryPage />)
+    await fillAndSubmit()
+
+    expect(await screen.findByText('Seite 1 von 3')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+
+    expect(mockGetAccessAsOf).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1 }))
   })
 
   it('ist für ein Konto ohne die Revisionsrolle nicht bedienbar', () => {

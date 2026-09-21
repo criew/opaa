@@ -12,8 +12,9 @@ export interface AccessAsOfQuery {
 }
 
 /**
- * Wer durfte dieses Objekt in diesem Zeitraum lesen. Das Backend weist ein zu weites Fenster ab,
- * statt es zu kürzen, und protokolliert jeden Abruf — auch den abgewiesenen.
+ * Wer durfte dieses Objekt in diesem Zeitraum lesen. Das Backend weist ein zu weites Fenster und
+ * eine zu große Antwort ab, statt zu kürzen, und protokolliert jeden Abruf — auch den abgewiesenen.
+ * Die Seitengröße ist serverseitig gesetzt; geblättert wird über `page` (höchstens Seite 49).
  */
 export async function getAccessAsOf(query: AccessAsOfQuery): Promise<AccessAsOfPage> {
   try {

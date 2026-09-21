@@ -8,6 +8,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -129,9 +130,9 @@ public class LibraryVisibilityHistoryService {
    */
   @Transactional(readOnly = true)
   public List<LibraryVisibilityHistory> organizationWideIntervalsBetween(
-      UUID libraryId, Instant from, Instant to) {
+      UUID libraryId, UUID organizationId, Instant from, Instant to, int limit) {
     return visibilityHistoryRepository.findOrganizationWideIntervalsOverlapping(
-        libraryId, from, to);
+        libraryId, organizationId, from, to, PageRequest.ofSize(limit));
   }
 
   /**

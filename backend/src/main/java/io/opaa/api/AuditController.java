@@ -12,9 +12,9 @@ import io.opaa.audit.AuditIncidentScopeGrant;
 import io.opaa.audit.AuditIncidentScopeService;
 import io.opaa.audit.AuditLogEntry;
 import io.opaa.audit.AuditQueryService;
-import io.opaa.audit.PointInTimeAccessService;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
+import io.opaa.revision.PointInTimeAccessService;
 import jakarta.validation.Valid;
 import java.time.Instant;
 import java.util.UUID;
@@ -37,7 +37,7 @@ import org.springframework.web.bind.annotation.RestController;
  * "search" endpoint and no {@code actor}/{@code sort} request parameter anywhere below - see {@link
  * AuditQueryService}'s own Javadoc for why.
  *
- * <p><b>#394:</b> none of the five read endpoints below declares {@code @PreAuthorize} any more -
+ * <p><b>#394:</b> none of the six read endpoints below declares {@code @PreAuthorize} any more -
  * both the AUDITOR role and the mandatory {@code reason} are enforced inside {@link
  * AuditQueryService} itself, the only place a rejected attempt can also be logged (see that class's
  * Javadoc). {@code reason} is bound {@code required = false} here even though the OpenAPI spec
@@ -80,7 +80,7 @@ public class AuditController {
     this.pointInTimeAccessService = pointInTimeAccessService;
   }
 
-  // #394: deliberately no @PreAuthorize on any of the five read endpoints below - the AUDITOR
+  // #394: deliberately no @PreAuthorize on any of the six read endpoints below - the AUDITOR
   // role check (and the mandatory reason check) happens inside AuditQueryService itself now, so a
   // denial can be logged there; see that class's Javadoc for why an annotation-only check would
   // make a role-based 403 invisible to the one class the specification requires to log it.
