@@ -87,6 +87,26 @@ class LibraryDef:
 
 
 @dataclass(frozen=True)
+class GroupDef:
+    """An internal group (ADR-0036, Entscheidung 4): created through POST /v1/groups, which
+    auto-appoints the caller (the admin account) as its first steward - ensure_group in seed.py
+    hands that stewardship over to steward_keys and withdraws the admin's own, so the demo shows
+    "benannte Verantwortliche" rather than the admin account itself."""
+
+    name: str
+    description: str
+    steward_keys: tuple[str, ...]
+    member_keys: tuple[str, ...] = field(default_factory=tuple)
+    released_for_use: bool = True
+    # Library names (LibraryDef.name) the group gets VIEWER on - deliberately never also listed in
+    # that library's own viewer_keys, so a member reads it *exclusively* through the group.
+    library_grants: tuple[str, ...] = field(default_factory=tuple)
+    # (SpaceDef.name, SpaceRole) - the group becomes a member of that space, carrying the role to
+    # every one of its own members without an individual space membership row of their own (#1815).
+    space_membership: tuple[str, str] | None = None
+
+
+@dataclass(frozen=True)
 class Profile:
     name: str
     auth_mode: str  # "keycloak" or "dev"
@@ -94,6 +114,7 @@ class Profile:
     users: tuple[UserDef, ...]
     spaces: tuple[SpaceDef, ...]
     libraries: tuple[LibraryDef, ...]
+    groups: tuple[GroupDef, ...] = field(default_factory=tuple)
 
     def all_users(self) -> tuple[UserDef, ...]:
         return (self.admin, *self.users)
@@ -261,6 +282,25 @@ DEMO_PROFILE = Profile(
             },
             viewer_keys=(),
             expected_documents_dir=DEMO_CORPUS_ROOT / "formate",
+        ),
+    ),
+    groups=(
+        # The internal-group scenario of ADR-0036, Entscheidung 4/9 and #1823's acceptance
+        # criteria: Maria is the named steward (not the admin account, see GroupDef's own
+        # docstring), Thomas is the only member, and both his library read and his space role in
+        # "Meldewesen & Ausweise" flow *exclusively* through this group - he is not also a member
+        # of the space and not also on "Interne Dienstanweisungen Meldewesen"'s own viewer_keys.
+        GroupDef(
+            name="Vertretung Meldewesen",
+            description=(
+                "Vertretungsfälle im Sachgebiet Meldewesen: Maria pflegt Mitglieder und Freigabe "
+                "der Gruppe selbst (ADR-0036)."
+            ),
+            steward_keys=("maria",),
+            member_keys=("thomas",),
+            released_for_use=True,
+            library_grants=("Interne Dienstanweisungen Meldewesen",),
+            space_membership=("Meldewesen & Ausweise", "MEMBER"),
         ),
     ),
 )

@@ -29,7 +29,7 @@ import requests
 
 from api_client import ApiError, Client
 from auth import AuthError, DevHeaderAuth, KeycloakPasswordAuth, LocalPasswordAuth
-from profiles import PROFILES, LibraryDef, Profile, SpaceDef, UserDef
+from profiles import PROFILES, GroupDef, LibraryDef, Profile, SpaceDef, UserDef
 
 INDEXING_POLL_INTERVAL_SECONDS = 3
 # Transient errors expected right after `docker compose ... up`: the backend/Keycloak container
@@ -248,12 +248,119 @@ def ensure_association(owner_client: Client, space_id: str, library_id: str) -> 
     )
 
 
-def ensure_grant(admin_client: Client, library_id: str, user_id: str, role: str = "VIEWER") -> None:
+def ensure_grant(
+    admin_client: Client,
+    library_id: str,
+    subject_id: str,
+    role: str = "VIEWER",
+    subject_type: str = "USER",
+) -> None:
     # upsertAssetGrant is idempotent per subject by design (see opaa-api.yaml) - always safe to call.
     admin_client.post_ok(
         f"/v1/libraries/{library_id}/grants",
-        json={"subjectType": "USER", "subjectId": user_id, "role": role},
+        json={"subjectType": subject_type, "subjectId": subject_id, "role": role},
         expected=(200,),
+    )
+
+
+def ensure_groups_claim(admin_client: Client, display_name: str = "Verzeichnisdienst") -> None:
+    """Sets the default provider's groups_claim to 'groups' (ADR-0036, Entscheidungen 2/3) -
+    matching the group-membership-mapper keycloak/realm-export.json's opaa-frontend and opaa-seed
+    clients both carry. Idempotent: a PUT that changes nothing still succeeds."""
+    providers = admin_client.get_ok("/v1/admin/oidc-providers")
+    provider = next((p for p in providers if p["displayName"] == display_name), None)
+    if provider is None:
+        raise SystemExit(
+            f"Anbieter '{display_name}' nicht gefunden - der Bootstrap aus OPAA_OIDC_* ist "
+            "offenbar noch nicht abgeschlossen."
+        )
+    claim_mapping = dict(provider.get("claimMapping") or {})
+    if claim_mapping.get("groupsClaim") == "groups":
+        print(f"  groups_claim bereits gesetzt: {display_name}")
+        return
+    claim_mapping["groupsClaim"] = "groups"
+    admin_client.put_ok(
+        f"/v1/admin/oidc-providers/{provider['id']}",
+        json={
+            "displayName": provider["displayName"],
+            "issuerUri": provider["issuerUri"],
+            "clientId": provider["clientId"],
+            "jwkSetUri": provider.get("jwkSetUri"),
+            "claimMapping": claim_mapping,
+        },
+    )
+    print(f"  groups_claim gesetzt: {display_name} -> 'groups'")
+
+
+def reprovision_all(clients: dict[str, Client], profile: Profile) -> None:
+    """Re-authenticates every profile account once groups_claim is set (ensure_groups_claim
+    above), so TokenGroupSynchronizer picks up each account's Keycloak group memberships:
+    UserProvisioningFilter re-provisions on *every* request, not only the first, but the very
+    first sign-in in step 1 ran before the provider carried a groups_claim and left every
+    membership unsynchronised."""
+    for user in profile.all_users():
+        clients[user.key].get_ok("/v1/auth/me")
+
+
+def ensure_group(admin_client: Client, user_ids: dict[str, str], group_def: GroupDef) -> str:
+    """Idempotency: every demo group is looked up by name via GET /v1/admin/groups, the one path
+    that lists every group of the organization regardless of who stewards it (AdminGroupController,
+    ADR-0036 Entscheidung 4)."""
+    existing = admin_client.get_ok("/v1/admin/groups")
+    group = next((g for g in existing if g["name"] == group_def.name), None)
+    if group is None:
+        created = admin_client.post_ok(
+            "/v1/groups",
+            json={"name": group_def.name, "description": group_def.description},
+            expected=(201,),
+        )
+        group_id = created["id"]
+        print(f"  Gruppe angelegt: {group_def.name} ({group_id})")
+    else:
+        group_id = group["id"]
+        print(f"  Gruppe bereits vorhanden: {group_def.name}")
+
+    steward_ids = {user_ids[key] for key in group_def.steward_keys}
+    current_stewards = {s["userId"] for s in admin_client.get_ok(f"/v1/groups/{group_id}/stewards")}
+    for steward_id in steward_ids - current_stewards:
+        admin_client.post_ok(
+            f"/v1/groups/{group_id}/stewards", json={"userId": steward_id}, expected=(201,)
+        )
+
+    # createGroup auto-appoints its caller (the admin account) as the group's first steward - the
+    # demo names the profile's own stewards, not the admin, so that auto-appointment is withdrawn
+    # once they are in place (ADR-0036, Entscheidung 4: "benannte Verantwortliche").
+    admin_id = user_ids["admin"]
+    if admin_id not in steward_ids:
+        current_stewards = {
+            s["userId"] for s in admin_client.get_ok(f"/v1/groups/{group_id}/stewards")
+        }
+        if admin_id in current_stewards:
+            admin_client.delete(f"/v1/groups/{group_id}/stewards/{admin_id}")
+
+    member_ids = {user_ids[key] for key in group_def.member_keys}
+    current_members = {m["userId"] for m in admin_client.get_ok(f"/v1/groups/{group_id}/members")}
+    for member_id in member_ids - current_members:
+        admin_client.post_ok(
+            f"/v1/groups/{group_id}/members", json={"userId": member_id}, expected=(201,)
+        )
+
+    admin_client.put_ok(
+        f"/v1/groups/{group_id}/release", json={"releasedForUse": group_def.released_for_use}
+    )
+    return group_id
+
+
+def ensure_group_space_membership(
+    owner_client: Client, space_id: str, group_id: str, role: str
+) -> None:
+    existing = owner_client.get_ok(f"/v1/spaces/{space_id}/members")
+    if any(m["subjectType"] == "GROUP" and m["subjectId"] == group_id for m in existing):
+        return
+    owner_client.post_ok(
+        f"/v1/spaces/{space_id}/members",
+        json={"subjectType": "GROUP", "subjectId": group_id, "role": role},
+        expected=(201,),
     )
 
 
@@ -424,20 +531,27 @@ def run(args: argparse.Namespace) -> None:
     print("Warte auf Backend/Keycloak …")
     wait_until_ready(admin_client, profile.auth_mode)
 
-    print("1/6 Nutzer bereitstellen (erste authentifizierte Anfrage je Nutzer) …")
+    print("1/8 Nutzer bereitstellen (erste authentifizierte Anfrage je Nutzer) …")
     user_ids = provision_users(clients, profile, bootstrap_admin)
 
-    print("2/6 Spaces einrichten …")
+    if profile.auth_mode == "keycloak":
+        print("2/8 Identitätsanbieter: groups_claim setzen (ADR-0036) …")
+        ensure_groups_claim(admin_client)
+        reprovision_all(clients, profile)
+    else:
+        print("2/8 Identitätsanbieter: übersprungen (kein OIDC-Anbieter im dev-Betriebsmodus) …")
+
+    print("3/8 Spaces einrichten …")
     space_ids: dict[str, str] = {}
     for space_def in profile.spaces:
         space_ids[space_def.name] = ensure_space(admin_client, clients, user_ids, space_def)
 
-    print("3/6 Wissensbibliotheken einrichten …")
+    print("4/8 Wissensbibliotheken einrichten …")
     library_ids: dict[str, str] = {}
     for library_def in profile.libraries:
         library_ids[library_def.name] = ensure_library(admin_client, library_def)
 
-    print("4/6 Leserechte (VIEWER) und Upload-Dokumente …")
+    print("5/8 Leserechte (VIEWER) und Upload-Dokumente …")
     for library_def in profile.libraries:
         library_id = library_ids[library_def.name]
         for viewer_key in library_def.viewer_keys:
@@ -456,7 +570,23 @@ def run(args: argparse.Namespace) -> None:
                 timeout_seconds=args.indexing_timeout_seconds,
             )
 
-    print("5/6 Space↔Bibliothek-Zuordnungen (Assoziation als Kuratierung, #706) …")
+    print("6/8 Gruppen einrichten (ADR-0036) …")
+    space_owner_by_name = {space_def.name: space_def.owner_key for space_def in profile.spaces}
+    for group_def in profile.groups:
+        group_id = ensure_group(admin_client, user_ids, group_def)
+        for library_name in group_def.library_grants:
+            ensure_grant(
+                admin_client, library_ids[library_name], group_id, subject_type="GROUP"
+            )
+            print(f"  Leserecht (Gruppe) vergeben: {group_def.name} → {library_name}")
+        if group_def.space_membership:
+            space_name, role = group_def.space_membership
+            ensure_group_space_membership(
+                clients[space_owner_by_name[space_name]], space_ids[space_name], group_id, role
+            )
+            print(f"  Space-Mitglied (Gruppe): {group_def.name} ∈ {space_name} ({role})")
+
+    print("7/8 Space↔Bibliothek-Zuordnungen (Assoziation als Kuratierung, #706) …")
     for space_def in profile.spaces:
         for library_name in space_def.library_names:
             if library_name not in library_ids:
@@ -464,7 +594,7 @@ def run(args: argparse.Namespace) -> None:
                     f"Space '{space_def.name}' referenziert eine unbekannte Bibliothek "
                     f"'{library_name}' - library_names muss auf eine LibraryDef des Profils zeigen."
                 )
-            # After step 4 the owner holds VIEWER on the library (grants) and is CURATOR or above
+            # After step 5 the owner holds VIEWER on the library (grants) and is CURATOR or above
             # on their own space - exactly what associateSpaceLibrary requires.
             ensure_association(
                 clients[space_def.owner_key],
@@ -473,7 +603,7 @@ def run(args: argparse.Namespace) -> None:
             )
             print(f"  zugeordnet: {space_def.name} ← {library_name}")
 
-    print("6/6 Indizierung je Bibliothek auslösen (ADR-0018) …")
+    print("8/8 Indizierung je Bibliothek auslösen (ADR-0018) …")
     for library_def in profile.libraries:
         if library_def.source_type == "UPLOAD":
             # UPLOAD has no run of its own (ADR-0018) - indexing happens per document on upload.
