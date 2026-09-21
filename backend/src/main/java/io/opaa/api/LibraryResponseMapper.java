@@ -228,8 +228,9 @@ final class LibraryResponseMapper {
         .externalAccess(
             managementDetail.externalAccess() == null
                 ? null
-                : LibraryExternalAccessResponseMapper.toResponse(
-                    managementDetail.externalAccess()));
+                : LibraryExternalAccessResponseMapper.toResponse(managementDetail.externalAccess()))
+        .visibilityCap(managementDetail.visibilityCap())
+        .listedCap(managementDetail.listedCap());
     LibraryScheduleDetail schedule = managementDetail.schedule();
     if (schedule != null) {
       response

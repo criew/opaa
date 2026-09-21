@@ -274,6 +274,45 @@ die berechtigten Personen, Gruppen und „Alle Konten" — jede mit der Handlung
 Feld, um es einer Person, einer Gruppe oder allen Konten zu erteilen. Der Entzug von „Alle Konten"
 verlangt eine Rückfrage: Er ändert die Arbeitsbedingungen aller Beschäftigten.
 
+### Freigabe-Obergrenze für Konnektorbibliotheken
+
+Wer eine Konnektorbibliothek anlegen darf, wählt auch ihre Verteilungsstufe (`visibility`) und ihre
+Katalog-Auffindbarkeit (`listed`) frei — bis zu einer **Obergrenze**, die ausschließlich die
+Systemverwaltung setzt. Ohne sie könnte, wer eine Bibliothek aus einem Dateiverzeichnis, einem
+Webverzeichnis, einem Feed, Confluence oder einem Objektspeicher anlegt, den eingespeisten Bestand
+im nächsten Schritt organisationsweit sichtbar machen — die Obergrenze ist die technische Sicherung
+gegen genau diesen einen Schritt. Bibliotheken für Uploads tragen keine Obergrenze: Dort kuratiert
+dieselbe Person ohnehin jedes Dokument einzeln.
+
+**Die Obergrenze gilt je Bibliothek und wird nicht automatisch gesetzt.** Neu angelegt ist jede
+Konnektorbibliothek zunächst offen (organisationsweit sichtbar, auffindbar) — die Systemverwaltung
+muss die Obergrenze für sie eigens setzen, damit sie wirkt. Ein Betrieb, der das systematisch
+verhindern will, prüft die Obergrenze deshalb **nach jeder Neuanlage** einer Konnektorbibliothek,
+oder schränkt das Anlegerecht „Konnektorbibliotheken anlegen" auf eine benannte Gruppe ein (siehe
+Abschnitt „Anlegerechte" oben) — dann entscheidet diese Gruppe, wer überhaupt anlegen darf, bevor
+die Obergrenze greifen müsste.
+
+Zu finden ist die Obergrenze auf der Detailseite der jeweiligen Bibliothek, Reiter „Verwaltung" —
+sichtbar und änderbar nur für die Systemverwaltung. Zwei Werte: die höchste zulässige
+Verteilungsstufe und ob die Bibliothek überhaupt im Katalog auffindbar sein darf.
+
+**Wird die Obergrenze gesenkt, wirkt das sofort — aber ausschließlich für Verteilungsstufe und
+Katalog-Auffindbarkeit.** Eine bereits weitergehende Verteilungsstufe oder Auffindbarkeit wird nicht
+nur für künftige Änderungen gesperrt, sondern **im selben Augenblick auf die neue Obergrenze
+zurückgenommen** — keine Übergangszeit, kein Zustand „noch zu weit, aber geduldet". **Unberührt
+bleiben dabei erteilte Rechte an einzelnen Personen und Gruppen sowie eine bestehende
+Fremdzugangsfreigabe** (Abschnitt „Die Freigabe der Bibliothek" im Kapitel Fremdzugänge) — beide
+müssen gesondert geprüft und, falls gewünscht, gesondert zurückgenommen werden. Beide Vorgänge
+stehen im Nachweisprotokoll: das Setzen der Obergrenze selbst und, falls ausgelöst, die dadurch
+bewirkte Rücknahme von Verteilungsstufe oder Auffindbarkeit.
+
+Versucht die Eigentümerin oder ein Verwalter der Bibliothek anschließend, die Verteilungsstufe über
+die Obergrenze hinaus anzuheben oder die Bibliothek trotz gesperrter Auffindbarkeit zu listen, weist
+die Anwendung das mit einer Meldung ab, die die geltende Obergrenze beim Namen nennt und auf die
+Systemverwaltung verweist — kein technischer Fehler, sondern eine erklärte Grenze. Im Formular selbst
+sind Stufen oberhalb der Obergrenze bereits gesperrt, mit demselben Hinweis, sodass die Grenze schon
+vor dem Speichern sichtbar ist.
+
 ### 7.1 Interne Gruppen und ihre Verantwortlichen
 
 Eine **interne Gruppe** ist eine Gruppe, die in OPAA selbst entsteht — anders als die Gruppen aus dem

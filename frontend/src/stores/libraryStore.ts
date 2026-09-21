@@ -3,6 +3,7 @@ import type {
   LibraryListResponse,
   LibraryRequest,
   LibraryResponse,
+  LibraryShareCapRequest,
   LibraryUpdateRequest,
 } from '../types/api'
 import {
@@ -12,6 +13,7 @@ import {
   getLibraries,
   updateLibrary,
   updateLibraryDiagnosticsLock,
+  updateLibraryShareCap,
 } from '../services/api'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
 
@@ -27,6 +29,7 @@ interface LibraryState {
   updateExistingLibrary: (libraryId: string, request: LibraryUpdateRequest) => Promise<void>
   deleteExistingLibrary: (libraryId: string) => Promise<void>
   setLibraryDiagnosticsLock: (libraryId: string, locked: boolean) => Promise<void>
+  setLibraryShareCap: (libraryId: string, request: LibraryShareCapRequest) => Promise<void>
 }
 
 function sortLibraries(list: LibraryListResponse[]): LibraryListResponse[] {
@@ -117,5 +120,13 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
         [libraryId]: { ...current, diagnosticsLocked: response.locked },
       },
     })
+  },
+
+  // #797: unlike setLibraryDiagnosticsLock's small response, PUT .../share-cap answers the full
+  // library (visibility/listed clamped already, if the new cap narrowed) - cached wholesale, no
+  // extra round trip, mirroring createNewLibrary's own full-response caching above.
+  setLibraryShareCap: async (libraryId, request) => {
+    const library = await updateLibraryShareCap(libraryId, request)
+    set({ libraryDetails: { ...get().libraryDetails, [libraryId]: library } })
   },
 }))

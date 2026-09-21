@@ -16,6 +16,7 @@ import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import FormControl from '@mui/material/FormControl'
 import FormControlLabel from '@mui/material/FormControlLabel'
+import FormHelperText from '@mui/material/FormHelperText'
 import IconButton from '@mui/material/IconButton'
 import InputAdornment from '@mui/material/InputAdornment'
 import LinearProgress from '@mui/material/LinearProgress'
@@ -121,6 +122,19 @@ export const ACCEPTED_FILE_EXTENSIONS =
   '.csv,.doc,.docx,.eml,.html,.md,.msg,.odp,.ods,.odt,.pdf,.pptx,.txt,.xlsx'
 
 const allVisibilities: LibraryVisibility[] = ['PRIVATE', 'SHARED', 'ORGANIZATION']
+
+/**
+ * Mirrors the backend's `LibraryVisibility#exceeds` (#797, #1870 review): whether `option` reaches
+ * further than the share cap - `false` while no cap is known (UPLOAD, or below MANAGER), matching
+ * the backend's own "nothing to check" default there.
+ */
+function exceedsVisibilityCap(
+  option: LibraryVisibility,
+  cap: LibraryVisibility | null | undefined,
+) {
+  if (!cap) return false
+  return allVisibilities.indexOf(option) > allVisibilities.indexOf(cap)
+}
 
 // #823: an upload entry carries an optional relativePath (the directory portion within a
 // dropped/selected folder tree, e.g. "Protokolle/2026") alongside each File - sequential upload,
@@ -276,6 +290,84 @@ function DiagnosticsLockControl({
   )
 }
 
+interface ShareCapControlProps {
+  visibilityCap: LibraryVisibility
+  listedCap: boolean
+  saving: boolean
+  error: string | null
+  onSave: (visibilityCap: LibraryVisibility, listedCap: boolean) => void
+  onDismissError: () => void
+}
+
+/**
+ * The system administration's own ceiling on a connector library's visibility/listed (#797) -
+ * visible and settable only here, never to the library's own owner: the owner already sees the
+ * effect (a save above the cap answers 409, shown verbatim by the surrounding form) but not the
+ * control that sets it, mirroring how DiagnosticsLockControl above splits "who sees the state"
+ * from "who may change it".
+ */
+function ShareCapControl({
+  visibilityCap,
+  listedCap,
+  saving,
+  error,
+  onSave,
+  onDismissError,
+}: ShareCapControlProps) {
+  const [draftVisibilityCap, setDraftVisibilityCap] = useState(visibilityCap)
+  const [draftListedCap, setDraftListedCap] = useState(listedCap)
+  const changed = draftVisibilityCap !== visibilityCap || draftListedCap !== listedCap
+
+  return (
+    <Box sx={{ pt: 1, borderTop: '1px solid', borderColor: 'divider' }}>
+      <Typography variant="subtitle2">Freigabe-Obergrenze (Systemverwaltung)</Typography>
+      <Typography variant="caption" component="p" sx={{ color: 'text.secondary', mb: 1 }}>
+        Weder die Verteilungsstufe noch die Katalog-Auffindbarkeit dieser Konnektorbibliothek dürfen
+        die hier gesetzte Obergrenze überschreiten. Wird sie gesenkt, klemmt eine bereits
+        weitergehende Freigabe sofort auf die neue Obergrenze zurück.
+      </Typography>
+      <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+        <FormControl size="small" sx={{ minWidth: 200 }}>
+          <FieldLabel id="library-detail-visibility-cap-label">Höchste Verteilungsstufe</FieldLabel>
+          <Select
+            labelId="library-detail-visibility-cap-label"
+            value={draftVisibilityCap}
+            onChange={(e) => setDraftVisibilityCap(e.target.value as LibraryVisibility)}
+          >
+            {allVisibilities.map((option) => (
+              <MenuItem key={option} value={option}>
+                {libraryVisibilityLabel(option)}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={draftListedCap}
+              onChange={(e) => setDraftListedCap(e.target.checked)}
+            />
+          }
+          label="Katalog-Auffindbarkeit erlaubt"
+        />
+        <Button
+          size="small"
+          variant="outlined"
+          disabled={saving || !changed}
+          onClick={() => onSave(draftVisibilityCap, draftListedCap)}
+        >
+          {saving ? 'Wird gespeichert …' : 'Obergrenze speichern'}
+        </Button>
+      </Stack>
+      {error && (
+        <Alert severity="error" sx={{ mt: 1 }} onClose={onDismissError}>
+          {error}
+        </Alert>
+      )}
+    </Box>
+  )
+}
+
 function statusChipColor(
   status: LibraryDocumentResponse['status'],
 ): 'success' | 'warning' | 'error' {
@@ -296,6 +388,7 @@ export default function LibraryDetailPage() {
   const updateExistingLibrary = useLibraryStore((s) => s.updateExistingLibrary)
   const deleteExistingLibrary = useLibraryStore((s) => s.deleteExistingLibrary)
   const setLibraryDiagnosticsLock = useLibraryStore((s) => s.setLibraryDiagnosticsLock)
+  const setLibraryShareCap = useLibraryStore((s) => s.setLibraryShareCap)
   const storeError = useLibraryStore((s) => s.error)
 
   const [grantsDialogOpen, setGrantsDialogOpen] = useState(false)
@@ -309,6 +402,8 @@ export default function LibraryDetailPage() {
   const [saving, setSaving] = useState(false)
   const [diagnosticsLockError, setDiagnosticsLockError] = useState<string | null>(null)
   const [diagnosticsLockSaving, setDiagnosticsLockSaving] = useState(false)
+  const [shareCapError, setShareCapError] = useState<string | null>(null)
+  const [shareCapSaving, setShareCapSaving] = useState(false)
   const [searchParams, setSearchParams] = useSearchParams()
 
   useEffect(() => {
@@ -464,6 +559,21 @@ export default function LibraryDetailPage() {
       )
     } finally {
       setDiagnosticsLockSaving(false)
+    }
+  }
+
+  async function handleSaveShareCap(visibilityCap: LibraryVisibility, listedCap: boolean) {
+    if (!libraryId) return
+    setShareCapError(null)
+    setShareCapSaving(true)
+    try {
+      await setLibraryShareCap(libraryId, { visibilityCap, listedCap })
+    } catch (err) {
+      setShareCapError(
+        err instanceof Error ? err.message : 'Freigabe-Obergrenze konnte nicht geändert werden',
+      )
+    } finally {
+      setShareCapSaving(false)
     }
   }
 
@@ -1064,16 +1174,30 @@ export default function LibraryDetailPage() {
                     }
                   >
                     {allVisibilities.map((option) => (
-                      <MenuItem key={option} value={option}>
+                      <MenuItem
+                        key={option}
+                        value={option}
+                        disabled={exceedsVisibilityCap(option, details?.visibilityCap)}
+                      >
                         {libraryVisibilityLabel(option)}
                       </MenuItem>
                     ))}
                   </Select>
+                  {/* #1870 review: explains the limit to the owner/MANAGER instead of only
+                      letting a save above it fail with 409 - the system administration's own
+                      control (ShareCapControl below) is where it is actually changed. */}
+                  {details?.visibilityCap && details.visibilityCap !== 'ORGANIZATION' && (
+                    <FormHelperText>
+                      Die Systemverwaltung hat die Freigabe dieser Bibliothek auf „
+                      {libraryVisibilityLabel(details.visibilityCap)}“ begrenzt.
+                    </FormHelperText>
+                  )}
                 </FormControl>
                 <FormControlLabel
                   control={
                     <Checkbox
                       checked={listed}
+                      disabled={details?.listedCap === false}
                       onChange={(e) =>
                         setDraft({ name, description, visibility, listed: e.target.checked })
                       }
@@ -1081,6 +1205,12 @@ export default function LibraryDetailPage() {
                   }
                   label="Im Katalog auffindbar"
                 />
+                {details?.listedCap === false && (
+                  <FormHelperText>
+                    Die Systemverwaltung hat die Auffindbarkeit dieser Bibliothek im Katalog
+                    gesperrt.
+                  </FormHelperText>
+                )}
                 <Stack direction="row" spacing={1}>
                   <Button
                     variant="contained"
@@ -1107,6 +1237,25 @@ export default function LibraryDetailPage() {
                     onDismissError={() => setDiagnosticsLockError(null)}
                   />
                 )}
+
+                {/* #797: only the system administration sets this - the owner only ever sees
+                    its consequence, the 409 above when a save would exceed it. */}
+                {isSystemAdmin &&
+                  details &&
+                  details.sourceType !== 'UPLOAD' &&
+                  details.visibilityCap != null &&
+                  details.listedCap != null && (
+                    <ShareCapControl
+                      visibilityCap={details.visibilityCap}
+                      listedCap={details.listedCap}
+                      saving={shareCapSaving}
+                      error={shareCapError}
+                      onSave={(visibilityCap, listedCap) =>
+                        void handleSaveShareCap(visibilityCap, listedCap)
+                      }
+                      onDismissError={() => setShareCapError(null)}
+                    />
+                  )}
               </Stack>
             </PageSection>
 

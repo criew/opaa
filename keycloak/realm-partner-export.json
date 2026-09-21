@@ -25,7 +25,28 @@
       ],
       "attributes": {
         "pkce.code.challenge.method": "S256"
-      }
+      },
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "consentRequired": false,
+          "config": {
+            "full.path": "false",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "claim.name": "groups"
+          }
+        }
+      ]
+    }
+  ],
+  "groups": [
+    {
+      "name": "Meldewesen",
+      "path": "/Meldewesen"
     }
   ],
   "users": [
@@ -42,7 +63,8 @@
           "value": "RheinfurtDemo!2026",
           "temporary": false
         }
-      ]
+      ],
+      "groups": ["/Meldewesen"]
     }
   ]
 }
