@@ -15,9 +15,18 @@ package io.opaa.api.types;
  * <p>Full grant-based access (asset roles {@code USER}/{@code VIEWER}/{@code EDITOR}/{@code
  * MANAGER}/{@code OWNER}) is introduced in #202; this issue (#201) only carries the field and
  * enforces it for the coarse cases above.
+ *
+ * <p><b>Declaration order is a deliberate reach order</b> (PRIVATE &lt; SHARED &lt; ORGANIZATION),
+ * relied on by {@link #exceeds}; a value inserted anywhere but the end would silently change what
+ * that method answers.
  */
 public enum LibraryVisibility {
   PRIVATE,
   SHARED,
-  ORGANIZATION
+  ORGANIZATION;
+
+  /** Whether this reach goes further than {@code other} - the ordering {@link #PRIVATE} names. */
+  public boolean exceeds(LibraryVisibility other) {
+    return ordinal() > other.ordinal();
+  }
 }

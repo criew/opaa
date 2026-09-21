@@ -156,7 +156,9 @@ class LibraryResponseMapperTest {
                 releaseSetAt,
                 "Erika Mustermann",
                 0L,
-                365));
+                365),
+            LibraryVisibility.SHARED,
+            false);
     LibraryDetail detail =
         new LibraryDetail(library, AssetRole.MANAGER, 3L, managementDetail, true);
 
@@ -188,6 +190,9 @@ class LibraryResponseMapperTest {
     assertThat(response.getExternalAccess().getSetByDisplayName()).isEqualTo("Erika Mustermann");
     assertThat(response.getExternalAccess().getTokenCount()).isZero();
     assertThat(response.getExternalAccess().getMaxReleaseDays()).isEqualTo(365);
+    // #797
+    assertThat(response.getVisibilityCap()).isEqualTo(LibraryVisibility.SHARED);
+    assertThat(response.getListedCap()).isFalse();
   }
 
   @Test
@@ -204,13 +209,17 @@ class LibraryResponseMapperTest {
             false);
     LibraryManagementDetail managementDetail =
         new LibraryManagementDetail(
-            null, null, null, false, false, null, null, null, null, null, null, 0L, 0L, null);
+            null, null, null, false, false, null, null, null, null, null, null, 0L, 0L, null, null,
+            null);
     LibraryDetail detail = new LibraryDetail(library, AssetRole.OWNER, 0L, managementDetail, true);
 
     LibraryResponse response = LibraryResponseMapper.toResponse(detail);
 
     assertThat(response.getSchedule()).isNull();
     assertThat(response.getLastScheduledRunsFailed()).isNull();
+    // #797: UPLOAD never carries a cap
+    assertThat(response.getVisibilityCap()).isNull();
+    assertThat(response.getListedCap()).isNull();
   }
 
   @Test

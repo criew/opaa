@@ -22,6 +22,7 @@ import io.opaa.api.dto.LibraryFolderResponse;
 import io.opaa.api.dto.LibraryListResponse;
 import io.opaa.api.dto.LibraryRequest;
 import io.opaa.api.dto.LibraryResponse;
+import io.opaa.api.dto.LibraryShareCapRequest;
 import io.opaa.api.dto.LibrarySpaceAssociationResponse;
 import io.opaa.api.dto.LibraryUpdateRequest;
 import io.opaa.api.dto.S3BucketListRequest;
@@ -200,6 +201,23 @@ public class LibraryController {
       @Caller CurrentUser caller) {
     return LibraryResponseMapper.toResponse(
         libraryService.updateLibrary(libraryId, LibraryResponseMapper.toUpdate(request), caller));
+  }
+
+  /**
+   * Sets a connector library's share cap (#797) - SYSTEM_ADMIN only, enforced in {@code
+   * KnowledgeLibraryService#updateShareCap}, not here.
+   */
+  @PutMapping("/{libraryId}/share-cap")
+  public LibraryResponse updateLibraryShareCap(
+      @PathVariable UUID libraryId,
+      @Valid @RequestBody LibraryShareCapRequest request,
+      @Caller CurrentUser caller) {
+    return LibraryResponseMapper.toResponse(
+        libraryService.updateShareCap(
+            libraryId,
+            request.getVisibilityCap(),
+            Boolean.TRUE.equals(request.getListedCap()),
+            caller));
   }
 
   /**
