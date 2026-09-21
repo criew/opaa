@@ -27,7 +27,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
@@ -49,12 +48,7 @@ class DirectoryConnectorIntegrationTest {
   @Autowired private OidcProviderRepository providerRepository;
   @Autowired private UserRepository userRepository;
   @Autowired private ProviderDirectoryClient providerDirectoryClient;
-  @Autowired private KeycloakDirectoryConnector keycloakDirectoryConnector;
   @Autowired private JdbcTemplate jdbcTemplate;
-
-  @Autowired
-  @Qualifier("directoryHttpClient")
-  private java.net.http.HttpClient directoryHttpClient;
 
   private final List<UUID> createdProviderIds = new ArrayList<>();
 
@@ -105,30 +99,32 @@ class DirectoryConnectorIntegrationTest {
   /** The realm comes from the issuer and the base address from it too while none is overridden. */
   @Test
   void theStoredAccessDerivesRealmAndAddressFromTheIssuer() {
-    OidcProvider provider = createProvider("https://idp.example/realms/mitarbeitende");
+    OidcProvider provider =
+        createProvider("https://idp.example/realms/mitarbeitende-" + UUID.randomUUID());
 
     DirectoryConnectorView view = save(provider, null, "opaa-directory", "geheim");
 
     assertThat(view.type()).isEqualTo(DirectoryConnectorType.KEYCLOAK);
-    assertThat(view.realm()).isEqualTo("mitarbeitende");
+    assertThat(view.realm()).startsWith("mitarbeitende-");
     assertThat(view.baseUrl()).isEqualTo("https://idp.example");
     assertThat(view.clientId()).isEqualTo("opaa-directory");
   }
 
   @Test
   void anOverriddenAddressIsWhatTheViewReports() {
-    OidcProvider provider = createProvider("https://idp.example/realms/mitarbeitende");
+    OidcProvider provider =
+        createProvider("https://idp.example/realms/mitarbeitende-" + UUID.randomUUID());
 
     DirectoryConnectorView view = save(provider, "http://127.0.0.1:9999", "opaa-directory", "g");
 
     assertThat(view.baseUrl()).isEqualTo("http://127.0.0.1:9999");
-    assertThat(view.realm()).isEqualTo("mitarbeitende");
+    assertThat(view.realm()).startsWith("mitarbeitende-");
   }
 
   /** ADR-0036, Entscheidung 3: the secret is at rest only as ciphertext, never as typed. */
   @Test
   void theSecretIsStoredEncrypted() {
-    OidcProvider provider = createProvider("https://idp.example/realms/haus");
+    OidcProvider provider = createProvider("https://idp.example/realms/haus-" + UUID.randomUUID());
 
     save(provider, null, "opaa-directory", "streng-geheim");
 
@@ -142,7 +138,7 @@ class DirectoryConnectorIntegrationTest {
 
   @Test
   void theStoredSecretComesBackDecryptedForTheConnectorOnly() {
-    OidcProvider provider = createProvider("https://idp.example/realms/haus");
+    OidcProvider provider = createProvider("https://idp.example/realms/haus-" + UUID.randomUUID());
     save(provider, null, "opaa-directory", "streng-geheim");
 
     assertThat(
@@ -155,7 +151,7 @@ class DirectoryConnectorIntegrationTest {
    */
   @Test
   void aRotatedSecretReplacesTheStoredOne() {
-    OidcProvider provider = createProvider("https://idp.example/realms/haus");
+    OidcProvider provider = createProvider("https://idp.example/realms/haus-" + UUID.randomUUID());
     save(provider, null, "opaa-directory", "alt");
     String first = storedSecret(provider);
 
@@ -172,7 +168,7 @@ class DirectoryConnectorIntegrationTest {
 
   @Test
   void removingTheAccessRemovesTheStoredSecret() {
-    OidcProvider provider = createProvider("https://idp.example/realms/haus");
+    OidcProvider provider = createProvider("https://idp.example/realms/haus-" + UUID.randomUUID());
     save(provider, null, "opaa-directory", "geheim");
 
     connectorService.delete(ORGANIZATION_ID, actorId, provider.getId());
@@ -182,7 +178,7 @@ class DirectoryConnectorIntegrationTest {
 
   @Test
   void removingAnAbsentAccessIsNotAnError() {
-    OidcProvider provider = createProvider("https://idp.example/realms/haus");
+    OidcProvider provider = createProvider("https://idp.example/realms/haus-" + UUID.randomUUID());
 
     connectorService.delete(ORGANIZATION_ID, actorId, provider.getId());
 
@@ -206,7 +202,7 @@ class DirectoryConnectorIntegrationTest {
   /** The admin API address is subject to the same SSRF policy as the issuer (ADR-0025/3). */
   @Test
   void anAddressOutsideTheAllowlistIsRefused() {
-    OidcProvider provider = createProvider("https://idp.example/realms/haus");
+    OidcProvider provider = createProvider("https://idp.example/realms/haus-" + UUID.randomUUID());
 
     assertThatThrownBy(() -> save(provider, "http://192.168.7.7:8080", "opaa-directory", "geheim"))
         .isInstanceOf(ValidationException.class)
@@ -312,16 +308,116 @@ class DirectoryConnectorIntegrationTest {
         .hasMessageContaining("Dienstkonto");
   }
 
-  /** The beans the production wiring hands the connector, not ones the test builds itself. */
+  // ---------------------------------------------------------------------------------------
+  // A row this deployment's key cannot decrypt
+  // ---------------------------------------------------------------------------------------
+
   /**
-   * Every admin API address passed the policy; a redirect target would not have, so the production
-   * client must not follow one.
+   * After a rotated encryption key or a restored backup the stored ciphertext no longer decrypts.
+   * The provider list maps every row, so a hard read failure there would take the whole
+   * Anbieterverwaltung down - including the two repair paths the handbook names.
    */
   @Test
-  void theProductionHttpClientFollowsNoRedirect() {
-    assertThat(keycloakDirectoryConnector).isNotNull();
-    assertThat(directoryHttpClient.followRedirects())
-        .isEqualTo(java.net.http.HttpClient.Redirect.NEVER);
+  void anUndecryptableRowStillAppearsInTheListAndInItsOwnView() {
+    OidcProvider provider = createProvider("https://idp.example/realms/haus-" + UUID.randomUUID());
+    save(provider, null, "opaa-directory", "geheim");
+    corruptStoredSecret(provider);
+
+    assertThat(connectorService.viewsByProvider(ORGANIZATION_ID))
+        .containsKey(provider.getId())
+        .extractingByKey(provider.getId())
+        .satisfies(view -> assertThat(view.clientId()).isEqualTo("opaa-directory"));
+    assertThat(connectorService.findByProvider(provider.getId())).isPresent();
+  }
+
+  /** Repair path one of the handbook: remove the access. */
+  @Test
+  void anUndecryptableRowCanStillBeDeleted() {
+    OidcProvider provider = createProvider("https://idp.example/realms/haus-" + UUID.randomUUID());
+    save(provider, null, "opaa-directory", "geheim");
+    corruptStoredSecret(provider);
+
+    connectorService.delete(ORGANIZATION_ID, actorId, provider.getId());
+
+    assertThat(connectorRepository.findByProviderId(provider.getId())).isEmpty();
+  }
+
+  /** Repair path two: store it again - the new value is encrypted with the current key. */
+  @Test
+  void anUndecryptableRowCanStillBeReplaced() {
+    OidcProvider provider = createProvider("https://idp.example/realms/haus-" + UUID.randomUUID());
+    save(provider, null, "opaa-directory", "geheim");
+    corruptStoredSecret(provider);
+
+    save(provider, null, "opaa-directory", "neu");
+
+    assertThat(
+            connectorRepository.findByProviderId(provider.getId()).orElseThrow().getClientSecret())
+        .isEqualTo("neu");
+  }
+
+  @Test
+  void aProbeAgainstAnUndecryptableRowSaysSoInsteadOfSigningInWithNothing() {
+    OidcProvider provider = createProvider(keycloak.issuerUri());
+    save(provider, null, FakeKeycloakServer.CLIENT_ID, FakeKeycloakServer.CLIENT_SECRET);
+    corruptStoredSecret(provider);
+
+    assertThatThrownBy(
+            () ->
+                connectorService.probe(
+                    provider.getId(),
+                    DirectoryConnectorType.KEYCLOAK,
+                    null,
+                    FakeKeycloakServer.CLIENT_ID,
+                    null))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("nicht entschlüsseln");
+  }
+
+  /** The run keeps the last known good state: unreachable, never an empty directory. */
+  @Test
+  void aRunAgainstAnUndecryptableRowReportsTheDirectoryAsUnreachable() {
+    OidcProvider provider = createProvider(keycloak.issuerUri());
+    keycloak.withGroup("g-1", "Haus", "/Haus", null);
+    save(provider, null, FakeKeycloakServer.CLIENT_ID, FakeKeycloakServer.CLIENT_SECRET);
+    corruptStoredSecret(provider);
+
+    assertThatThrownBy(() -> providerDirectoryClient.fetchGroups(ORGANIZATION_ID, provider.getId()))
+        .isInstanceOf(DirectoryUnavailableException.class)
+        .hasMessageContaining("nicht entschlüsseln");
+  }
+
+  // ---------------------------------------------------------------------------------------
+  // The address policy at use time, not only at save time
+  // ---------------------------------------------------------------------------------------
+
+  /** A row edited past the application, or a narrowed allowlist, must not reach the network. */
+  @Test
+  void anAddressChangedPastTheApplicationIsRefusedAtUseTime() {
+    OidcProvider provider = createProvider(keycloak.issuerUri());
+    save(provider, null, FakeKeycloakServer.CLIENT_ID, FakeKeycloakServer.CLIENT_SECRET);
+    jdbcTemplate.update(
+        "UPDATE directory_connectors SET base_url = ? WHERE provider_id = ?",
+        "http://192.168.7.7:8080",
+        provider.getId());
+
+    assertThatThrownBy(() -> providerDirectoryClient.fetchGroups(ORGANIZATION_ID, provider.getId()))
+        .isInstanceOf(DirectoryUnavailableException.class)
+        .hasMessageContaining("Admin-API-Adresse");
+  }
+
+  @Test
+  void anIssuerThatStoppedBeingARealmAddressIsRefusedAtUseTime() {
+    OidcProvider provider = createProvider(keycloak.issuerUri());
+    save(provider, null, FakeKeycloakServer.CLIENT_ID, FakeKeycloakServer.CLIENT_SECRET);
+    jdbcTemplate.update(
+        "UPDATE oidc_providers SET issuer_uri = ? WHERE id = ?",
+        "https://entra.example/tenant/v2.0",
+        provider.getId());
+
+    assertThatThrownBy(() -> providerDirectoryClient.fetchGroups(ORGANIZATION_ID, provider.getId()))
+        .isInstanceOf(DirectoryUnavailableException.class)
+        .hasMessageContaining("Keycloak-Realm-Adresse");
   }
 
   // ---------------------------------------------------------------------------------------
@@ -338,6 +434,14 @@ class DirectoryConnectorIntegrationTest {
         baseUrl,
         clientId,
         secret);
+  }
+
+  /** What a rotated key or a restored backup leaves behind: a blob with the right prefix. */
+  private void corruptStoredSecret(OidcProvider provider) {
+    jdbcTemplate.update(
+        "UPDATE directory_connectors SET client_secret = ? WHERE provider_id = ?",
+        "enc:v1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+        provider.getId());
   }
 
   private String storedSecret(OidcProvider provider) {

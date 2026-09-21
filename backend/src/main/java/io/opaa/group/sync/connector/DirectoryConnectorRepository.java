@@ -10,6 +10,4 @@ public interface DirectoryConnectorRepository extends JpaRepository<DirectoryCon
   Optional<DirectoryConnector> findByProviderId(UUID providerId);
 
   List<DirectoryConnector> findByOrganizationId(UUID organizationId);
-
-  void deleteByProviderId(UUID providerId);
 }

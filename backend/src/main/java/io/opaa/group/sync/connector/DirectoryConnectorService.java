@@ -33,6 +33,11 @@ import org.springframework.transaction.annotation.Transactional;
  * <p><b>The secret leaves this class only downwards.</b> {@link DirectoryConnectorView}, which
  * every response is built from, has no field for it; the entity's converter encrypts it before the
  * database sees it, and no audit entry carries it either.
+ *
+ * <p><b>A row whose secret cannot be decrypted stays manageable.</b> Reading it yields {@code null}
+ * rather than an exception ({@link DirectoryConnectorSecretConverter}), so the view, the list, the
+ * re-store and the delete all keep working - the last two are the repair paths the handbook names.
+ * Only {@link #probe} needs the value and refuses with a German message when it is absent.
  */
 @Service
 public class DirectoryConnectorService {
@@ -169,15 +174,23 @@ public class DirectoryConnectorService {
     KeycloakRealmAddress address = requireAllowedAddress(provider, baseUrl);
     String effectiveSecret = secret;
     if (effectiveSecret == null || effectiveSecret.isBlank()) {
-      effectiveSecret =
+      DirectoryConnector stored =
           repository
               .findByProviderId(providerId)
-              .map(DirectoryConnector::getClientSecret)
               .orElseThrow(
                   () ->
                       new ValidationException(
                           "Für diesen Anbieter ist kein Verzeichniszugang hinterlegt; das"
                               + " Geheimnis des Dienstkontos ist deshalb anzugeben."));
+      effectiveSecret = stored.getClientSecret();
+      if (effectiveSecret == null || effectiveSecret.isBlank()) {
+        // null exactly when the stored ciphertext could not be decrypted - see
+        // DirectoryConnectorSecretConverter. Probing with nothing would report a wrong credential
+        // instead of the real cause.
+        throw new ValidationException(
+            "Das hinterlegte Geheimnis des Dienstkontos lässt sich nicht entschlüsseln. Geben Sie"
+                + " es für die Probe an und hinterlegen Sie den Zugang neu.");
+      }
     }
     return keycloak.probe(address, clientId, effectiveSecret);
   }

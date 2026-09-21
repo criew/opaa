@@ -8,6 +8,7 @@ import java.net.InetSocketAddress;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -35,7 +36,8 @@ public final class FakeKeycloakServer implements AutoCloseable {
   private final HttpServer server;
   private final Map<String, Group> groups = new LinkedHashMap<>();
   private final AtomicInteger tokenRequests = new AtomicInteger();
-  private final List<String> requestedPaths = new ArrayList<>();
+  // The HttpServer answers on its own threads; a test reads this list from the test thread.
+  private final List<String> requestedPaths = Collections.synchronizedList(new ArrayList<>());
 
   /** {@code null} means "answer normally"; otherwise every admin call answers with this status. */
   private Integer adminStatus;

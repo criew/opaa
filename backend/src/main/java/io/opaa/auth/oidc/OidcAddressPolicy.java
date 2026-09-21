@@ -22,8 +22,11 @@ import java.util.Set;
  * {@code localhost} or a private address from locking everyone out.
  *
  * <p>Applied at save time ({@link OidcProviderService}), at use time ({@link OidcProviderRegistry},
- * so a narrowed allowlist or a row edited directly in the database cannot slip past) and before the
- * connection test sends anything ({@link OidcDiscoveryClient}).
+ * so a narrowed allowlist or a row edited directly in the database cannot slip past), before the
+ * connection test sends anything ({@link OidcDiscoveryClient}) - and, since #1817, to the admin API
+ * address of a provider's directory access, both when it is stored and every time a run uses it
+ * ({@code io.opaa.group.sync.connector.DirectoryConnectorService} and {@code
+ * ProviderDirectoryClient}).
  */
 public class OidcAddressPolicy {
 

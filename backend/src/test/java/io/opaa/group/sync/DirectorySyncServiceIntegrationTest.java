@@ -395,8 +395,7 @@ class DirectorySyncServiceIntegrationTest {
               assertThat(change.sourcePath()).isEqualTo("/Haus/Amt 9/Referat 99");
               assertThat(change.memberCount()).isEqualTo(1);
             });
-    assertThat(groupRepository.findByOrganizationId(organizationId).get(0).getSourcePath())
-        .isEqualTo("/Haus/Amt 9/Referat 99");
+    assertThat(sourcePathOf("dir-guid-9")).isEqualTo("/Haus/Amt 9/Referat 99");
   }
 
   /**
@@ -437,8 +436,15 @@ class DirectorySyncServiceIntegrationTest {
         new DirectoryGroup("dir-50", "Referat 50", null, "/Amt 5/Referat 50", Set.of()));
     directorySyncService.run(organizationId, providerId);
 
-    assertThat(groupRepository.findByOrganizationId(organizationId).get(0).getSourcePath())
-        .isEqualTo("/Amt 5/Referat 50");
+    assertThat(sourcePathOf("dir-50")).isEqualTo("/Amt 5/Referat 50");
+  }
+
+  private String sourcePathOf(String externalId) {
+    return groupRepository.findByOrganizationId(organizationId).stream()
+        .filter(group -> externalId.equals(group.getExternalId()))
+        .findFirst()
+        .orElseThrow(() -> new AssertionError("no group with external id " + externalId))
+        .getSourcePath();
   }
 
   // ---------------------------------------------------------------------------------------

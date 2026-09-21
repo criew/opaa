@@ -1954,10 +1954,14 @@ paths:
       summary: List the identity providers (system admin only)
       description: >
         ADR-0025 (#1329): every provider a deployment accepts sign-ins from, in sign-in page order.
-        Providers are public clients - there is no secret to carry or to hide. registryState says
-        whether the backend could build the provider's token decoder (READY), could not
-        (UNAVAILABLE - discovery unreachable, address blocked; registryMessage says why) or did
-        not try because the provider is disabled (DISABLED).
+        The provider itself is a public client and has no secret; the directory access some of them
+        carry (directoryConnector, #1817) does, and that one is never part of a response - only
+        which service account and which address. registryState says whether the backend could build
+        the provider's token decoder (READY), could not (UNAVAILABLE - discovery unreachable,
+        address blocked; registryMessage says why) or did not try because the provider is disabled
+        (DISABLED). A stored directory secret this deployment's key cannot decrypt does not fail
+        this read: it is reported as absent, so the list stays usable and the access can be
+        replaced or removed.
       responses:
         "200":
           description: List of identity providers
@@ -2902,6 +2906,8 @@ paths:
         address passes the same address policy as the issuer. The service account's secret is
         stored encrypted and is never part of any response. Refused with 409 for the LOCAL row,
         which has no directory, and with 400 when the issuer URI is not a Keycloak realm address.
+        Without OPAA_CREDENTIALS_ENCRYPTION_KEY nothing is stored and the answer is 503 naming the
+        missing key - a write never silently drops a credential.
       parameters:
         - name: providerId
           in: path
@@ -2930,6 +2936,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
     delete:
       operationId: deleteDirectoryConnector
       tags: [admin]
@@ -2962,7 +2970,9 @@ paths:
         Probes the access before it is saved, the same shape as POST /api/v1/admin/oidc-providers/
         test - a German outcome, never a stack trace. Omitting clientSecret probes the stored
         secret, so an existing connection can be re-tested without retyping it; without a stored
-        connection the secret is required. Never writes anything.
+        connection, and with a stored one this deployment's key cannot decrypt, the secret is
+        required and its absence is answered with 400. Refused with 409 for the LOCAL row, which
+        has no directory. Never writes anything, and therefore never needs the encryption key.
       parameters:
         - name: providerId
           in: path
@@ -2989,6 +2999,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
 
   /api/v1/admin/oidc-providers/{providerId}/directory-sync/dry-run:
     post:
@@ -13770,8 +13782,11 @@ components:
         clientSecret:
           type: string
           minLength: 1
-          maxLength: 500
-          description: Stored encrypted; no response ever carries it back.
+          maxLength: 256
+          description: >
+            Stored encrypted; no response ever carries it back. The bound is on characters and the
+            column on bytes (varchar(2000)), so it is set low enough that 256 four-byte characters
+            still fit the base64 of their AES-GCM ciphertext - far above any Keycloak client secret.
 
     DirectoryConnectorTestRequest:
       type: object
@@ -13793,13 +13808,15 @@ components:
         clientSecret:
           type: string
           nullable: true
-          maxLength: 500
+          maxLength: 256
 
     DirectoryConnectorResponse:
       type: object
       required: [type, baseUrl, realm, clientId, updatedAt]
       description: >
         A provider's stored directory access (#1817). Carries no secret - only that one is stored.
+        A secret this deployment's key can no longer decrypt does not change this answer; it shows
+        up when the access is used, as an unreachable directory, and on a probe.
       properties:
         type:
           $ref: "#/components/schemas/DirectoryConnectorType"

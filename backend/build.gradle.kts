@@ -403,8 +403,9 @@ tasks.register<Test>("confluenceIntegrationTest") {
 }
 
 // #1817: the Keycloak container suite (io.opaa.integration.keycloak.*) starts a real Keycloak in
-// Docker. Measured on the reference machine: ~46 s to answer and ~720 MiB - five times the MinIO
-// fixture that does run inside `test`, and paid by every `./gradlew build` and by each CI shard, so
+// Docker. Measured on the reference machine: ~46 s to answer and ~880 MiB for the container alone,
+// plus Postgres and the test JVM - many times the MinIO fixture that does run inside `test`, and
+// paid by every `./gradlew build` and by each CI shard, so
 // it gets its own task. Unlike the Confluence suite it needs no licence and no internet, therefore
 // no environment-variable gate either: Docker is the only precondition. CI runs it nightly and on
 // demand (.github/workflows/keycloak-integration.yml).

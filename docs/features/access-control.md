@@ -964,6 +964,16 @@ Eine Anleitung nennt die aus dem eigenen Origin zusammengesetzte Weiterleitungs-
 des Frontend-Containers) und die Adress-Allowlist des Backends. Im `dev`-Modus weist die Seite
 darauf hin, dass Anbieter erst im OIDC-Modus wirken.
 
+**Der Verzeichniszugang eines Anbieters** (#1817) wird an derselben Zeile hinterlegt, geprüft und
+entfernt (`PUT`/`POST …/test`/`DELETE …/directory-connector`) und bleibt `SYSTEM_ADMIN`-Sache.
+**Der Verbindungstest fällt nicht unter #1856** — die Abgrenzung, die dort für die Quellprobe der
+Bibliotheken gezogen wurde (eine Probe ohne Objektbezug braucht ein eigenes Recht, weil sie sonst
+jedem offenstünde, der irgendetwas anlegen darf), trägt hier nicht: Es gibt kein engeres Recht als
+die Systemverwaltung, das eine Verzeichnisanbindung einrichten dürfte, und die Probe erreicht
+ausschließlich eine Adresse, die dieselbe Allowlist passiert hat wie der Issuer. Das Geheimnis des
+Dienstkontos ist in keiner Antwort enthalten; lässt es sich nicht mehr entschlüsseln, bleibt die
+Anbieterverwaltung bedienbar und meldet den Zugang beim nächsten Lauf als nicht erreichbar.
+
 ---
 
 ## Verzeichnisdienst: Synchronisation und Kontenlebenszyklus

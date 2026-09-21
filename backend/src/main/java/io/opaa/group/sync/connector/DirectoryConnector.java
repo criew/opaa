@@ -119,7 +119,11 @@ public class DirectoryConnector {
     return clientId;
   }
 
-  /** The decrypted secret - only ever handed to the connector that signs in with it. */
+  /**
+   * The decrypted secret - only ever handed to the connector that signs in with it. {@code null}
+   * exactly when the stored ciphertext could not be decrypted with this deployment's key; the two
+   * callers that need it check for that and say so ({@link DirectoryConnectorSecretConverter}).
+   */
   public String getClientSecret() {
     return clientSecret;
   }

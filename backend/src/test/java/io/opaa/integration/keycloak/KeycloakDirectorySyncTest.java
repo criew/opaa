@@ -19,6 +19,7 @@ import io.opaa.group.sync.DirectorySnapshot;
 import io.opaa.group.sync.DirectorySyncPendingPlanRepository;
 import io.opaa.group.sync.DirectorySyncService;
 import io.opaa.group.sync.DirectorySyncStatusRepository;
+import io.opaa.group.sync.DirectoryUnavailableException;
 import io.opaa.group.sync.SyncReport;
 import io.opaa.group.sync.connector.DirectoryConnectorRepository;
 import io.opaa.group.sync.connector.DirectoryConnectorService;
@@ -34,6 +35,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * The acceptance criteria of #1817 end to end: against a real Keycloak, a run creates the
@@ -67,6 +69,7 @@ class KeycloakDirectorySyncTest {
   @Autowired private GroupMembershipHistoryRepository membershipHistoryRepository;
   @Autowired private DirectorySyncStatusRepository statusRepository;
   @Autowired private DirectorySyncPendingPlanRepository pendingPlanRepository;
+  @Autowired private JdbcTemplate jdbcTemplate;
 
   private KeycloakFixture keycloak;
   private UUID providerId;
@@ -138,7 +141,7 @@ class KeycloakDirectorySyncTest {
 
   /** Acceptance criterion 1: groups and memberships arise; a second, unchanged run does nothing. */
   @Test
-  void aRunAgainstARealKeycloakCreatesTheUnitsAndASecondRunChangesNothing() throws Exception {
+  void aRunAgainstARealKeycloakCreatesTheUnitsAndASecondRunChangesNothing() {
     SyncReport first = runAgainstKeycloak();
 
     assertThat(first.outcome()).isEqualTo(DirectorySyncOutcome.APPLIED);
@@ -173,7 +176,7 @@ class KeycloakDirectorySyncTest {
    * and the diff report of the first run names that count before anything is applied.
    */
   @Test
-  void aDepartmentWithoutDirectMembersBecomesAnEmptyGroupAndTheReportNamesIt() throws Exception {
+  void aDepartmentWithoutDirectMembersBecomesAnEmptyGroupAndTheReportNamesIt() {
     SyncReport report = runAgainstKeycloak();
 
     assertThat(report.groupsCreated())
@@ -194,7 +197,7 @@ class KeycloakDirectorySyncTest {
    * the OPAA group - and every grant pointing at it - in place.
    */
   @Test
-  void aGroupRenamedInTheDirectoryKeepsItsIdentity() throws Exception {
+  void aGroupRenamedInTheDirectoryKeepsItsIdentity() {
     runAgainstKeycloak();
     UUID idBeforeRename = groupByExternalId(keycloak.externGroupId()).getId();
 
@@ -219,9 +222,36 @@ class KeycloakDirectorySyncTest {
     }
   }
 
+  /**
+   * A stored secret this deployment's key cannot decrypt ends the run as {@code UNREACHABLE} with
+   * the connector's own message - not as an unchecked exception, which would skip the outcome, the
+   * audit entry and the status line and leave the scheduled run due again every minute.
+   */
+  @Test
+  void aRunWhoseStoredSecretCannotBeDecryptedEndsUnreachable() {
+    runAgainstKeycloak();
+    jdbcTemplate.update(
+        "UPDATE directory_connectors SET client_secret = ? WHERE provider_id = ?",
+        "enc:v1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+        providerId);
+
+    SyncReport report = runAgainstKeycloak();
+
+    assertThat(report.outcome()).isEqualTo(DirectorySyncOutcome.UNREACHABLE);
+    assertThat(
+            statusRepository
+                .findByOrganizationIdAndProviderId(ORGANIZATION_ID, providerId)
+                .orElseThrow()
+                .getLastOutcome())
+        .isEqualTo(DirectorySyncOutcome.UNREACHABLE);
+    assertThat(groupRepository.findByOrganizationId(ORGANIZATION_ID))
+        .filteredOn(group -> providerId.equals(group.getProviderId()))
+        .isNotEmpty();
+  }
+
   /** Acceptance criterion 5: every member of a provider group carries that provider's issuer. */
   @Test
-  void everyMemberOfAProviderGroupBelongsToThatProvidersIssuer() throws Exception {
+  void everyMemberOfAProviderGroupBelongsToThatProvidersIssuer() {
     runAgainstKeycloak();
 
     String issuer = providerRepository.findById(providerId).orElseThrow().getIssuerUri();
@@ -241,12 +271,17 @@ class KeycloakDirectorySyncTest {
   // ---------------------------------------------------------------------------------------
 
   /**
-   * Reads the directory through the productive client and lets the run work on exactly that
-   * snapshot - see the class Javadoc for why the pass-through exists.
+   * Reads the directory through the productive client and lets the run work on exactly that answer
+   * - the snapshot when there is one, the refusal when the productive client reports the directory
+   * as unreachable. See the class Javadoc for why the pass-through exists.
    */
-  private SyncReport runAgainstKeycloak() throws Exception {
-    DirectorySnapshot snapshot = providerDirectoryClient.fetchGroups(ORGANIZATION_ID, providerId);
-    directoryClient.respondWithFor(providerId, snapshot.groups().toArray(DirectoryGroup[]::new));
+  private SyncReport runAgainstKeycloak() {
+    try {
+      DirectorySnapshot snapshot = providerDirectoryClient.fetchGroups(ORGANIZATION_ID, providerId);
+      directoryClient.respondWithFor(providerId, snapshot.groups().toArray(DirectoryGroup[]::new));
+    } catch (DirectoryUnavailableException e) {
+      directoryClient.failWith(e.getMessage());
+    }
     return directorySyncService.run(ORGANIZATION_ID, providerId);
   }
 
