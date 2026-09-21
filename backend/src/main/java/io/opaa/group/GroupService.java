@@ -8,6 +8,7 @@ import io.opaa.api.types.AuditOutcome;
 import io.opaa.api.types.AuditSubjectKind;
 import io.opaa.api.types.Capability;
 import io.opaa.api.types.GroupKind;
+import io.opaa.api.types.GroupMechanism;
 import io.opaa.api.types.NotificationType;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
@@ -30,6 +31,7 @@ import io.opaa.permission.CapabilityGrantRepository;
 import io.opaa.permission.CapabilityService;
 import io.opaa.permission.GroupMembershipHistoryCause;
 import io.opaa.permission.GroupMembershipResolver;
+import io.opaa.permission.GroupSizeProperties;
 import io.opaa.permission.GroupSpaceMembershipDirectory;
 import io.opaa.permission.PermissionHistoryService;
 import java.time.Instant;
@@ -81,6 +83,11 @@ public class GroupService {
   private static final int MAX_NAME_LENGTH = 255;
   private static final int MAX_DESCRIPTION_LENGTH = 2000;
 
+  /** The same floor and ceiling the account search carries, for the same reasons (#778). */
+  private static final int MIN_SEARCH_QUERY_LENGTH = 2;
+
+  private static final int MAX_SEARCH_RESULTS = 20;
+
   /** The stable {@code code} of the {@code 403} a non-steward gets where a role does not help. */
   public static final String STEWARDSHIP_REQUIRED = "STEWARDSHIP_REQUIRED";
 
@@ -90,6 +97,7 @@ public class GroupService {
   private final OidcProviderRepository providerRepository;
   private final DirectorySyncStatusRepository directorySyncStatusRepository;
   private final GroupMembershipResolver membershipResolver;
+  private final GroupSizeProperties groupSizeProperties;
   private final GroupSpaceMembershipDirectory spaceMembershipDirectory;
   private final List<AssetOwnershipDirectory> assetOwnershipDirectories;
   private final AssetGrantRepository grantRepository;
@@ -106,6 +114,7 @@ public class GroupService {
       OidcProviderRepository providerRepository,
       DirectorySyncStatusRepository directorySyncStatusRepository,
       GroupMembershipResolver membershipResolver,
+      GroupSizeProperties groupSizeProperties,
       GroupSpaceMembershipDirectory spaceMembershipDirectory,
       List<AssetOwnershipDirectory> assetOwnershipDirectories,
       AssetGrantRepository grantRepository,
@@ -120,6 +129,7 @@ public class GroupService {
     this.providerRepository = providerRepository;
     this.directorySyncStatusRepository = directorySyncStatusRepository;
     this.membershipResolver = membershipResolver;
+    this.groupSizeProperties = groupSizeProperties;
     this.spaceMembershipDirectory = spaceMembershipDirectory;
     this.assetOwnershipDirectories = assetOwnershipDirectories;
     this.grantRepository = grantRepository;
@@ -196,6 +206,103 @@ public class GroupService {
             .filter(group -> !group.isDissolved())
             .filter(group -> group.getOrganizationId().equals(caller.organizationId()))
             .toList());
+  }
+
+  /**
+   * The groups the caller may name as a grant subject or a space member (#1820, ADR-0036
+   * Entscheidung 9). Every provider group of the organization is offered; an internal group only
+   * once its stewards released it for use - unless the caller is a member, a steward or a system
+   * administrator, for whom it was never invisible.
+   *
+   * <p>A protected group is not findable by a substring: it appears only when the query is its
+   * complete name, and then without any size. An ineffective group - dissolved, provider switched
+   * off, or a token group its provider no longer maintains - is returned as not selectable with the
+   * reason instead of being dropped, so the selection can say why.
+   *
+   * <p>This list applies the same rule the write paths apply ({@code
+   * GroupSubjectDirectory#isSelectableBy}); it is the convenience, never the enforcement.
+   */
+  public List<SelectableGroup> searchSelectableGroups(String query, CurrentUser caller) {
+    String text = query == null ? "" : query.trim();
+    if (text.length() < MIN_SEARCH_QUERY_LENGTH) {
+      return List.of();
+    }
+    Set<UUID> ownGroupIds = membershipResolver.groupIdsForUser(caller.id());
+    Set<UUID> stewardedGroupIds = stewardRepository.findGroupIdsByUserId(caller.id());
+    Map<UUID, GroupProviderView> providers = new HashMap<>();
+    List<SelectableGroup> found = new ArrayList<>();
+    for (Group group :
+        groupRepository.searchByOrganizationIdAndText(caller.organizationId(), text)) {
+      if (!isVisibleInSelection(group, text, caller, ownGroupIds, stewardedGroupIds)) {
+        continue;
+      }
+      GroupProviderView provider =
+          group.getProviderId() == null
+              ? null
+              : providers.computeIfAbsent(
+                  group.getProviderId(),
+                  id ->
+                      providerRepository
+                          .findById(id)
+                          .map(p -> toProviderView(p, group.getOrganizationId()))
+                          .orElse(null));
+      found.add(toSelectableGroup(group, provider));
+      if (found.size() == MAX_SEARCH_RESULTS) {
+        break;
+      }
+    }
+    return List.copyOf(found);
+  }
+
+  private boolean isVisibleInSelection(
+      Group group,
+      String text,
+      CurrentUser caller,
+      Set<UUID> ownGroupIds,
+      Set<UUID> stewardedGroupIds) {
+    boolean related =
+        caller.isSystemAdmin()
+            || ownGroupIds.contains(group.getId())
+            || stewardedGroupIds.contains(group.getId());
+    if (!group.isSelectableAsSubject() && !related) {
+      return false;
+    }
+    // ADR-0036, Entscheidung 9: a protected group is not findable by search. It stays choosable
+    // for whoever already knows its complete designation, which is what this comparison is.
+    return !group.isProtectedGroup() || group.getName().equalsIgnoreCase(text);
+  }
+
+  private SelectableGroup toSelectableGroup(Group group, GroupProviderView provider) {
+    boolean providerDisabled = provider != null && !provider.enabled();
+    boolean unmaintained =
+        provider != null
+            && group.getKind() == GroupKind.IDENTITY_PROVIDER
+            && provider.mechanism() == GroupMechanism.DIRECTORY;
+    boolean selectable = !group.isDissolved() && !providerDisabled && !unmaintained;
+    if (group.isProtectedGroup()) {
+      return new SelectableGroup(
+          group,
+          provider,
+          null,
+          false,
+          false,
+          selectable,
+          group.isDissolved(),
+          providerDisabled,
+          unmaintained);
+    }
+    int active = membershipResolver.activeMemberCount(group.getId(), group.getOrganizationId());
+    boolean small = active < groupSizeProperties.minimumGroupSize();
+    return new SelectableGroup(
+        group,
+        provider,
+        small ? null : Integer.valueOf(active),
+        small,
+        active == 0,
+        selectable,
+        group.isDissolved(),
+        providerDisabled,
+        unmaintained);
   }
 
   /**

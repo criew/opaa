@@ -199,7 +199,8 @@ class MetadataFilterOptionsServiceIntegrationTest {
             group.getId(),
             AssetRole.VIEWER,
             null,
-            admin.id()));
+            admin.id(),
+            null));
     accessService.invalidateLibrary(libraryB.getId());
     Set<UUID> scopeBefore = Set.of(libraryA.getId());
     optionsService.optionsFor(onlyA, null, true, List.of());

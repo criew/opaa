@@ -513,7 +513,8 @@ class PointInTimeAccessIntegrationTest {
                 groupId,
                 role,
                 null,
-                ordinaryUserId));
+                ordinaryUserId,
+                null));
     permissionHistory.recordGrantCreated(grant, ordinaryUserId);
     jdbcTemplate.update(
         "UPDATE asset_grant_history SET valid_from = ?, valid_to = ?"

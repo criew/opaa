@@ -9,6 +9,7 @@ import io.opaa.api.dto.GroupRequest;
 import io.opaa.api.dto.GroupResponse;
 import io.opaa.api.dto.GroupStewardResponse;
 import io.opaa.api.dto.GroupUpdateRequest;
+import io.opaa.api.dto.SelectableGroupResponse;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import io.opaa.group.GroupCreation;
@@ -29,6 +30,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -56,6 +58,17 @@ public class GroupController {
         groupService.createGroup(
             new GroupCreation(request.getName(), request.getDescription()), caller);
     return ResponseEntity.status(HttpStatus.CREATED).body(GroupResponseMapper.toResponse(created));
+  }
+
+  /**
+   * Mapped before {@code /{groupId}} by the literal-over-variable precedence of Spring's path
+   * matching, so "selectable" is never read as a group id.
+   */
+  @GetMapping("/selectable")
+  public List<SelectableGroupResponse> searchSelectableGroups(
+      @RequestParam(name = "query", required = false) String query, @Caller CurrentUser caller) {
+    return GroupResponseMapper.toSelectableResponses(
+        groupService.searchSelectableGroups(query, caller));
   }
 
   @GetMapping("/{groupId}")

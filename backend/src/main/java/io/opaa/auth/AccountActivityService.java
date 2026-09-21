@@ -53,6 +53,15 @@ public class AccountActivityService {
     this.clock = clock;
   }
 
+  /**
+   * The moment this definition is evaluated at. A caller that counts the same accounts in SQL
+   * ({@link ActiveAccountSql}) passes this instant in, so both halves judge expiry and lockout
+   * against the same clock.
+   */
+  public Instant now() {
+    return clock.instant();
+  }
+
   /** Of {@code userIds}, those that may exercise their rights; an empty input answers empty. */
   @Transactional(readOnly = true)
   public Set<UUID> activeAmong(Collection<UUID> userIds) {

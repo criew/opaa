@@ -28,6 +28,7 @@ import io.opaa.permission.CapabilityService;
 import io.opaa.permission.GroupAttribution;
 import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.GroupSizeProperties;
+import io.opaa.permission.GroupSizeSignal;
 import io.opaa.permission.GroupSubject;
 import io.opaa.permission.GroupSubjectDirectory;
 import io.opaa.permission.PermissionSubject;
@@ -283,17 +284,17 @@ public class SpaceService {
             .filter(SpaceMembership::isGroupSubject)
             .map(SpaceMembership::getGroupId)
             .toList();
-    Map<UUID, String> groupNames =
-        groupIds.isEmpty() ? Map.of() : groupDirectory.namesById(groupIds);
+    Map<UUID, GroupAttribution> groups =
+        groupIds.isEmpty() ? Map.of() : groupDirectory.attributionsById(groupIds);
 
     return space.getMemberships().stream()
         .map(
             membership ->
                 membership.isUserSubject()
                     ? SpaceMemberView.ofUser(membership, displayNames.get(membership.getUserId()))
-                    : new SpaceMemberView(
+                    : SpaceMemberView.ofGroup(
                         membership,
-                        groupNames.get(membership.getGroupId()),
+                        groups.get(membership.getGroupId()),
                         groupSizeSignal(membership)))
         .toList();
   }
@@ -1047,9 +1048,11 @@ public class SpaceService {
     if (membership.isUserSubject()) {
       return SpaceMemberView.ofUser(membership, resolveDisplayName(membership.getUserId()));
     }
-    return new SpaceMemberView(
+    return SpaceMemberView.ofGroup(
         membership,
-        groupDirectory.namesById(List.of(membership.getGroupId())).get(membership.getGroupId()),
+        groupDirectory
+            .attributionsById(List.of(membership.getGroupId()))
+            .get(membership.getGroupId()),
         groupSizeSignal(membership));
   }
 }

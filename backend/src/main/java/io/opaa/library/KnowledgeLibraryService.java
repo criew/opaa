@@ -333,7 +333,10 @@ public class KnowledgeLibraryService {
                   ownerGroup.id(),
                   AssetRole.MANAGER,
                   null,
-                  currentUserId));
+                  currentUserId,
+                  // Eigentum, keine Freigabe: Das Zuwachssignal (ADR-0036/9) gehoert an eine
+                  // erteilte Rolle, nicht an die Gruppe, der die Bibliothek ohnehin gehoert.
+                  null));
       // #392/#892: mirrors AssetGrantService#upsertGrant's own GrantChanged publish - this grant is
       // written directly here, not through that service, but is exactly the same kind of event.
       eventPublisher.publishEvent(

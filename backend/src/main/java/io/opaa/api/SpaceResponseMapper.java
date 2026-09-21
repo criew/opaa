@@ -4,7 +4,7 @@ import io.opaa.api.dto.SpaceListResponse;
 import io.opaa.api.dto.SpaceMemberResponse;
 import io.opaa.api.dto.SpaceResponse;
 import io.opaa.api.types.SpaceRole;
-import io.opaa.space.GroupSizeSignal;
+import io.opaa.permission.GroupSizeSignal;
 import io.opaa.space.Space;
 import io.opaa.space.SpaceDetail;
 import io.opaa.space.SpaceMemberView;
@@ -82,6 +82,9 @@ final class SpaceResponseMapper {
   static SpaceMemberResponse toMemberResponse(SpaceMemberView view) {
     SpaceMembership membership = view.membership();
     GroupSizeSignal size = view.groupSize();
+    // A protected group carries no signal at all, not even "not small, not empty" - every figure
+    // about it is withheld (ADR-0036, Entscheidung 9).
+    boolean signals = membership.isGroupSubject() && !view.protectedGroup();
     return new SpaceMemberResponse(
             membership.getId(),
             membership.getSubjectType(),
@@ -91,8 +94,9 @@ final class SpaceResponseMapper {
         .displayName(view.displayName())
         .memberCountAtGrant(size.memberCountAtGrant())
         .memberCountNow(size.memberCountNow())
-        .smallGroup(membership.isGroupSubject() ? size.smallGroup() : null)
-        .emptyGroup(membership.isGroupSubject() ? size.emptyGroup() : null);
+        .smallGroup(signals ? size.smallGroup() : null)
+        .emptyGroup(signals ? size.emptyGroup() : null)
+        .protectedGroup(membership.isGroupSubject() ? view.protectedGroup() : null);
   }
 
   static List<SpaceMemberResponse> toMemberResponses(List<SpaceMemberView> views) {

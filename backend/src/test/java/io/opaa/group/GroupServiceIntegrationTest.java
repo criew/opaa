@@ -290,7 +290,8 @@ class GroupServiceIntegrationTest {
             saved.getId(),
             AssetRole.VIEWER,
             null,
-            owner);
+            owner,
+            null);
     grantRepository.save(grant);
 
     assertThatThrownBy(() -> groupService.deleteGroup(saved.getId(), currentUserOf(admin)))

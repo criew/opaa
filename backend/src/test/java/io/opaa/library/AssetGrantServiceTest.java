@@ -25,6 +25,8 @@ import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.permission.AssetGrant;
 import io.opaa.permission.AssetGrantRepository;
+import io.opaa.permission.GroupMembershipResolver;
+import io.opaa.permission.GroupSizeProperties;
 import io.opaa.permission.GroupSubject;
 import io.opaa.permission.GroupSubjectDirectory;
 import java.time.Instant;
@@ -41,6 +43,7 @@ class AssetGrantServiceTest {
   private KnowledgeLibraryRepository libraryRepository;
   private UserRepository userRepository;
   private GroupSubjectDirectory groupDirectory;
+  private GroupMembershipResolver groupMemberships;
   private LibraryAccessService accessService;
   private AuditEventRecorder auditEventRecorder;
   private ApplicationEventPublisher eventPublisher;
@@ -59,6 +62,7 @@ class AssetGrantServiceTest {
     libraryRepository = mock(KnowledgeLibraryRepository.class);
     userRepository = mock(UserRepository.class);
     groupDirectory = mock(GroupSubjectDirectory.class);
+    groupMemberships = mock(GroupMembershipResolver.class);
     accessService = mock(LibraryAccessService.class);
     auditEventRecorder = mock(AuditEventRecorder.class);
     eventPublisher = mock(ApplicationEventPublisher.class);
@@ -68,6 +72,8 @@ class AssetGrantServiceTest {
             libraryRepository,
             userRepository,
             groupDirectory,
+            groupMemberships,
+            new GroupSizeProperties(null),
             accessService,
             auditEventRecorder,
             eventPublisher);
@@ -783,7 +789,8 @@ class AssetGrantServiceTest {
             groupId,
             AssetRole.VIEWER,
             null,
-            managerId);
+            managerId,
+            null);
     when(grantRepository.findByAssetTypeAndAssetId(KnowledgeLibrary.ASSET_TYPE, libraryId))
         .thenReturn(List.of(grant));
     when(groupDirectory.namesById(any())).thenReturn(java.util.Map.of(groupId, "Referat 50"));

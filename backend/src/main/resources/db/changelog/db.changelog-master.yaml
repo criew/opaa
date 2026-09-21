@@ -150,3 +150,7 @@ databaseChangeLog:
       file: db/changelog/changes/064-create-account-state-history.yaml
   - include:
       file: db/changelog/changes/065-directory-sync-pending-plans-accounts-locked.yaml
+  # Das Zuwachssignal an einer Freigabe (#1820, ADR-0036 Entscheidung 9) - das Gegenstueck zu
+  # space_memberships.member_count_at_grant aus 043.
+  - include:
+      file: db/changelog/changes/071-asset-grants-member-count-at-grant.yaml

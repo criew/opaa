@@ -1,12 +1,10 @@
-package io.opaa.space;
-
-import io.opaa.permission.GroupSizeProperties;
+package io.opaa.permission;
 
 /**
- * The passive growth signal a group membership carries (ADR-0036, Entscheidung 9): how many active
- * accounts the group reached when it was admitted, and how many it reaches now - "Referat 50: 23
- * bei Erteilung, heute 41". No mail, no workflow; one line somebody reads who answers for the
- * admission.
+ * The passive growth signal a group's grant or membership carries (ADR-0036, Entscheidung 9): how
+ * many active accounts the group reached when it was admitted, and how many it reaches now -
+ * "Referat 50: 23 bei Erteilung, heute 41". No mail, no workflow; one line somebody reads who
+ * answers for the admission.
  *
  * <p><b>The "kleine Gruppe" suppression applies to both figures at once</b>, and to the difference
  * with them: if either lies below the installation's Mindestgruppengröße, neither <em>figure</em>
@@ -19,8 +17,8 @@ import io.opaa.permission.GroupSizeProperties;
  * identifiable, of which an empty group has none.
  *
  * <p><b>Protected groups are not covered here.</b> For them the signal drops out entirely
- * (ADR-0036, Entscheidung 9) - the size is the actual disclosure there. The protection flag arrives
- * with #1814; until it exists this class cannot make that distinction, and does not pretend to.
+ * (ADR-0036, Entscheidung 9) - the size is the actual disclosure there; the caller hands out {@link
+ * #NONE} instead of asking for a signal at all.
  */
 public record GroupSizeSignal(
     Integer memberCountAtGrant, Integer memberCountNow, boolean smallGroup, boolean emptyGroup) {

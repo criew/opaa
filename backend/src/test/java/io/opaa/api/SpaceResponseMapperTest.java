@@ -8,7 +8,7 @@ import io.opaa.api.dto.SpaceResponse;
 import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.api.types.SpaceRole;
 import io.opaa.api.types.SpaceVisibility;
-import io.opaa.space.GroupSizeSignal;
+import io.opaa.permission.GroupSizeSignal;
 import io.opaa.space.Space;
 import io.opaa.space.SpaceDetail;
 import io.opaa.space.SpaceMemberView;
@@ -198,7 +198,7 @@ class SpaceResponseMapperTest {
     SpaceMembership membership =
         SpaceMembership.ofGroup(groupId, SpaceRole.CURATOR, 23, organization);
     SpaceMemberView view =
-        new SpaceMemberView(membership, "Referat 50", GroupSizeSignal.of(23, 41, 5));
+        new SpaceMemberView(membership, "Referat 50", GroupSizeSignal.of(23, 41, 5), false);
 
     SpaceMemberResponse response = SpaceResponseMapper.toMemberResponse(view);
 
@@ -220,7 +220,7 @@ class SpaceResponseMapperTest {
     SpaceMembership membership =
         SpaceMembership.ofGroup(UUID.randomUUID(), SpaceRole.MEMBER, 23, UUID.randomUUID());
     SpaceMemberView view =
-        new SpaceMemberView(membership, "Referat 50", GroupSizeSignal.of(23, 4, 5));
+        new SpaceMemberView(membership, "Referat 50", GroupSizeSignal.of(23, 4, 5), false);
 
     SpaceMemberResponse response = SpaceResponseMapper.toMemberResponse(view);
 
@@ -233,12 +233,36 @@ class SpaceResponseMapperTest {
   void toMemberResponseMarksAnEffectiveButEmptyGroup() {
     SpaceMembership membership =
         SpaceMembership.ofGroup(UUID.randomUUID(), SpaceRole.MEMBER, 0, UUID.randomUUID());
-    SpaceMemberView view = new SpaceMemberView(membership, "Neu", GroupSizeSignal.of(0, 0, 5));
+    SpaceMemberView view =
+        new SpaceMemberView(membership, "Neu", GroupSizeSignal.of(0, 0, 5), false);
 
     SpaceMemberResponse response = SpaceResponseMapper.toMemberResponse(view);
 
     assertThat(response.getEmptyGroup()).isTrue();
     assertThat(response.getSmallGroup()).isTrue();
+  }
+
+  /**
+   * ADR-0036/9 (#1820): a protected group is a nameless row in another person's list, and it
+   * carries no figure at all - not even "not small, not empty", which would already be a statement
+   * about its size. The row itself stays, so an ADMIN can end a membership they cannot see.
+   */
+  @Test
+  void toMemberResponseLeavesAProtectedGroupNamelessAndWithoutASignal() {
+    SpaceMembership membership =
+        SpaceMembership.ofGroup(UUID.randomUUID(), SpaceRole.MEMBER, 12, UUID.randomUUID());
+    SpaceMemberView view = new SpaceMemberView(membership, null, GroupSizeSignal.NONE, true);
+
+    SpaceMemberResponse response = SpaceResponseMapper.toMemberResponse(view);
+
+    assertThat(response.getDisplayName()).isNull();
+    assertThat(response.getProtectedGroup()).isTrue();
+    assertThat(response.getMemberCountAtGrant()).isNull();
+    assertThat(response.getMemberCountNow()).isNull();
+    assertThat(response.getSmallGroup()).isNull();
+    assertThat(response.getEmptyGroup()).isNull();
+    assertThat(response.getId()).isEqualTo(membership.getId());
+    assertThat(response.getRole()).isEqualTo(SpaceRole.MEMBER);
   }
 
   /** #1815: the derived state "Nachfolge offen" reaches both response shapes. */

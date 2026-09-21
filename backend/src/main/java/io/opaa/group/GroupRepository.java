@@ -70,6 +70,20 @@ public interface GroupRepository extends JpaRepository<Group, UUID> {
   List<Group> findByOrganizationIdAndProviderIdAndKind(
       UUID organizationId, UUID providerId, GroupKind kind);
 
+  /**
+   * The groups of one organization whose name or source path contains {@code text}, matched
+   * case-insensitively - what the Subjekt-Auswahl searches in (#1820). Deliberately without the
+   * memberships fetch-join the list queries carry: the selection shows the number of active
+   * accounts, which is counted in the database and never derived from loaded rows.
+   */
+  @Query(
+      "select g from Group g where g.organizationId = :organizationId"
+          + " and (lower(g.name) like lower(concat('%', :text, '%'))"
+          + " or lower(g.sourcePath) like lower(concat('%', :text, '%')))"
+          + " order by g.name asc")
+  List<Group> searchByOrganizationIdAndText(
+      @Param("organizationId") UUID organizationId, @Param("text") String text);
+
   /** Every group of one provider, regardless of organization - what its deletion decides on. */
   List<Group> findByProviderIdAndKind(UUID providerId, GroupKind kind);
 
