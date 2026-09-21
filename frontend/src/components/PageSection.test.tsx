@@ -50,6 +50,10 @@ const VERWALTUNGSDATEIEN = Object.keys(QUELLEN).filter((pfad) => {
     'GroupManagementPage',
     'LlmModelManagementPage',
     'OidcProviderManagementPage',
+    // #1821: die drei neuen Seiten der Verwaltung
+    'CapabilityManagementPage',
+    'DirectorySyncPage',
+    'ProviderGroupWorklistPage',
     'MailSettingsPage',
     'SearchIndexingAdminPage',
     // #1609: außerhalb der Administration

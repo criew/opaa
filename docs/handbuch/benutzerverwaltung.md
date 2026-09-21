@@ -268,8 +268,11 @@ Vier Punkte dazu:
   nennt die Anwendung es beim Namen und sagt, an wen man sich wendet — sie versteckt die Funktion
   nicht. Vergabe und Entzug stehen im Nachweisprotokoll und werden mit ihrem Zeitraum festgehalten.
 
-Eine Oberfläche zur Vergabe gibt es noch nicht (Issues #1820, #1821); bis dahin werden Anlegerechte
-über die Verwaltungsschnittstelle vergeben und entzogen.
+Vergeben und entzogen werden Anlegerechte unter **Administration → Anlegerechte**. Dort steht je
+Anlegerecht eine Zeile in Klartext („Alle Konten dürfen Konnektorbibliotheken anlegen."), darunter
+die berechtigten Personen, Gruppen und „Alle Konten" — jede mit der Handlung „Entziehen" — und ein
+Feld, um es einer Person, einer Gruppe oder allen Konten zu erteilen. Der Entzug von „Alle Konten"
+verlangt eine Rückfrage: Er ändert die Arbeitsbedingungen aller Beschäftigten.
 
 ### Freigabe-Obergrenze für Konnektorbibliotheken
 
@@ -376,8 +379,8 @@ Nachweisprotokoll — mit der Zahl der Mitglieder, ohne die Namen. Verantwortlic
 ihrer eigenen Gruppe keinen Eintrag.
 
 **Gruppen aus dem Verzeichnis oder dem Anmeldetoken lassen sich hier nicht bearbeiten.** Sie haben
-keine Verantwortlichen, sondern Ansprechstellen, die die Systemverwaltung benennt; eine Oberfläche
-dafür entsteht mit Issue #1821.
+keine Verantwortlichen, sondern Ansprechstellen, die die Systemverwaltung benennt; Ansprechstellen
+und die Oberfläche dafür entstehen mit Issue #1875.
 
 ### 7.2 Rechte einer Gruppe auf eine andere übertragen
 
@@ -444,9 +447,12 @@ Berechtigungen, dann das Eigentum.
 erzeugt eine aufgelöste Gruppe und einen Eintrag in der Betriebsliste — die Entscheidung, wohin ihre
 Rechte gehen, trifft ein Mensch.
 
-**Eine Oberfläche dafür entsteht mit Issue #1821.** Heute führt die Systemverwaltung die Übertragung
-über die Schnittstelle aus; die Arbeitsliste je Anbieter und die Abgabe aus „Meine Gruppen" kommen
-mit diesem Issue.
+**Wo sie steht.** In der Gruppenverwaltung (**Administration → Gruppen**) trägt jede Gruppe die
+Handlung „Wirkungen übertragen"; für die Gruppen eines Anbieters führt die **Arbeitsliste** desselben
+Anbieters dieselbe Handlung je Gruppe (**Administration → Identitätsanbieter → Zeilenmenü →
+Arbeitsliste der Gruppen**). Die eigene Abgabe steht unter **Meine Gruppen → „Verantwortung und
+Eigentum abgeben"**. In allen drei Fällen ist der Ablauf derselbe: Ziel wählen, Umfang wählen,
+Vorschau, Bestätigung.
 
 ### 7.3 Wenn niemand mehr zuständig ist: „Nachfolge offen"
 

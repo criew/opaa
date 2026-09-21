@@ -2234,6 +2234,55 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
+  /api/v1/admin/groups/effects:
+    get:
+      operationId: listGroupEffects
+      tags: [admin]
+      summary: Where the groups of the organization still take effect (system admin only)
+      description: >
+        "Wo wirkt diese Gruppe" per group (ADR-0036, Entscheidung 2): the grants it holds, the
+        spaces it is a member of, the assets it owns, the capabilities it was given and the
+        diagnostic authorisations scoped to it. Counted, not listed - the figures say how much
+        work an ablösung is, and each object is reached through its own page, which is where a
+        single effect is removed.
+
+        Filtered to one provider it is the work list a refused provider deletion points to: every
+        group of that provider with its effects, the entry point for transferring them or removing
+        them. Reading counts is no membership lookup and therefore no audit event.
+      parameters:
+        - name: providerId
+          in: query
+          required: false
+          description: >
+            Only the groups of this identity provider. Omitted, every group of the organization
+            answers, including the internal ones.
+          schema:
+            type: string
+            format: uuid
+        - name: groupId
+          in: query
+          required: false
+          description: >
+            Only these groups - what a list asks for the rows it actually shows, instead of for
+            every group of the organization. Repeatable; combined with providerId both narrowings
+            apply.
+          schema:
+            type: array
+            items:
+              type: string
+              format: uuid
+      responses:
+        "200":
+          description: One entry per group, groups without any effect included
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GroupEffectsResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
   /api/v1/admin/models:
     get:
       operationId: listLlmModels
@@ -10656,7 +10705,7 @@ components:
 
     GroupListResponse:
       type: object
-      required: [id, name, kind, origin, memberCount, createdAt, updatedAt, releasedForUse, protectedGroup, stewards]
+      required: [id, name, kind, origin, memberCount, createdAt, updatedAt, releasedForUse, protectedGroup, dissolved, stewards]
       properties:
         id:
           type: string
@@ -10694,6 +10743,15 @@ components:
         memberCount:
           type: integer
           example: 4
+        dissolved:
+          type: boolean
+          description: >
+            Whether the source no longer reports this group - a merge or a reorganisation, not a
+            deletion. Its membership stays frozen and its grants keep working, but it is no
+            effective group any more: no new grant target and no new space member, shown as not
+            selectable with that reason (ADR-0036, Entscheidung 2). Always false for an internal
+            group, which has no directory counterpart to disappear from.
+          example: false
         releasedForUse:
           type: boolean
           description: >
@@ -10722,7 +10780,7 @@ components:
 
     GroupResponse:
       type: object
-      required: [id, name, kind, origin, memberCount, members, createdAt, updatedAt, releasedForUse, protectedGroup, stewards]
+      required: [id, name, kind, origin, memberCount, members, createdAt, updatedAt, releasedForUse, protectedGroup, dissolved, stewards]
       properties:
         id:
           type: string
@@ -10764,6 +10822,13 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/GroupMemberResponse"
+        dissolved:
+          type: boolean
+          description: >
+            Whether the source no longer reports this group - a merge or a reorganisation, not a
+            deletion. Its membership stays frozen and its grants keep working, but it is no
+            effective group any more (ADR-0036, Entscheidung 2).
+          example: false
         releasedForUse:
           type: boolean
           description: >
@@ -10789,6 +10854,81 @@ components:
         updatedAt:
           type: string
           format: date-time
+
+    GroupEffectsResponse:
+      type: object
+      description: >
+        How far one group still reaches (ADR-0036, Entscheidung 2). Counts only: a figure says how
+        much work lies ahead without turning the overview into a membership or content listing.
+      required:
+        [
+          groupId,
+          name,
+          origin,
+          dissolved,
+          protectedGroup,
+          assetGrants,
+          grantedAssets,
+          spaceMemberships,
+          spaces,
+          ownedAssets,
+          capabilities,
+          scopedAuthorizations,
+          summary,
+        ]
+      properties:
+        groupId:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: Referat 50
+        origin:
+          $ref: "#/components/schemas/GroupOrigin"
+        providerId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Absent (null) exactly when origin is INTERNAL.
+        sourcePath:
+          type: string
+          nullable: true
+        dissolved:
+          type: boolean
+        protectedGroup:
+          type: boolean
+        assetGrants:
+          type: integer
+          example: 12
+        grantedAssets:
+          type: integer
+          description: Across how many distinct assets those grants run.
+          example: 7
+        spaceMemberships:
+          type: integer
+          example: 2
+        spaces:
+          type: integer
+          example: 2
+        ownedAssets:
+          type: integer
+          example: 3
+        capabilities:
+          type: integer
+          description: How many installation-wide creation rights ("Anlegerechte") this group holds.
+          example: 1
+        scopedAuthorizations:
+          type: integer
+          description: >
+            How many still-conferring diagnostic authorisations (ADR-0016) name this group as
+            their scope.
+          example: 0
+        summary:
+          type: string
+          description: >
+            The German sentence the work list shows - empty exactly when this group has no effect
+            at all, which is what makes it deletable with its provider.
+          example: 12 Berechtigungen an 7 Objekten, 2 Space-Mitgliedschaften in 2 Spaces
 
     GroupAddMemberRequest:
       type: object

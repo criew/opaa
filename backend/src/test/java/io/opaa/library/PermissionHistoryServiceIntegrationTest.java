@@ -1022,7 +1022,8 @@ class PermissionHistoryServiceIntegrationTest {
    * own. The four beans of #1819 - {@code GroupCapabilityService}, {@code GroupEffectReader},
    * {@code LibrarySuccessionSource} and {@code GroupSuccessionSource} - only read: they derive
    * whether anybody can still act for an object, and the one effect of that state, freezing the
-   * reach, takes rights away from nobody.
+   * reach, takes rights away from nobody. {@code GroupEffectsService} (#1821) only counts: it
+   * answers "wo wirkt diese Gruppe" with figures per group and writes nothing at all.
    */
   private static final Set<String> BEANS_REACHING_THE_RIGHTS_TABLES =
       Set.of(
@@ -1036,6 +1037,7 @@ class PermissionHistoryServiceIntegrationTest {
           "ForeignDiagnosticContextService",
           "GroupCapabilityService",
           "GroupEffectReader",
+          "GroupEffectsService",
           "GroupMembershipResolver",
           "GroupService",
           "GroupStewardshipDirectoryAdapter",

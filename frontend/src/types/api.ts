@@ -62,9 +62,46 @@ export type GroupListResponse = components['schemas']['GroupListResponse']
 export type GroupResponse = components['schemas']['GroupResponse']
 export type GroupAddMemberRequest = components['schemas']['GroupAddMemberRequest']
 export type GroupStewardResponse = components['schemas']['GroupStewardResponse']
+export type GroupOrigin = components['schemas']['GroupOrigin']
+export type GroupMechanism = components['schemas']['GroupMechanism']
+export type GroupProviderResponse = components['schemas']['GroupProviderResponse']
+export type GroupEffectsResponse = components['schemas']['GroupEffectsResponse']
 
 export type Capability = components['schemas']['Capability']
 export type MyCapabilitiesResponse = components['schemas']['MyCapabilitiesResponse']
+export type CapabilitySubjectType = components['schemas']['CapabilitySubjectType']
+export type CapabilityGrantRequest = components['schemas']['CapabilityGrantRequest']
+export type CapabilityGrantResponse = components['schemas']['CapabilityGrantResponse']
+export type CapabilityOverviewResponse = components['schemas']['CapabilityOverviewResponse']
+
+export type PermissionTransferScope = components['schemas']['PermissionTransferScope']
+export type PermissionTransferPreviewRequest =
+  components['schemas']['PermissionTransferPreviewRequest']
+export type PermissionTransferPreviewResponse =
+  components['schemas']['PermissionTransferPreviewResponse']
+export type PermissionTransferRequest = components['schemas']['PermissionTransferRequest']
+export type PermissionTransferResponse = components['schemas']['PermissionTransferResponse']
+export type PermissionTransferCountsResponse =
+  components['schemas']['PermissionTransferCountsResponse']
+
+export type DirectorySyncOutcome = components['schemas']['DirectorySyncOutcome']
+export type DirectorySyncStatusResponse = components['schemas']['DirectorySyncStatusResponse']
+export type DirectorySyncReportResponse = components['schemas']['DirectorySyncReportResponse']
+export type DirectorySyncGroupChange = components['schemas']['DirectorySyncGroupChange']
+export type DirectorySyncMembershipChange = components['schemas']['DirectorySyncMembershipChange']
+export type DirectorySyncUserRef = components['schemas']['DirectorySyncUserRef']
+export type DirectorySyncPendingPlanResponse =
+  components['schemas']['DirectorySyncPendingPlanResponse']
+export type DirectorySyncPendingPlanSummary =
+  components['schemas']['DirectorySyncPendingPlanSummary']
+export type DirectorySyncPlanDecisionRequest =
+  components['schemas']['DirectorySyncPlanDecisionRequest']
+export type OidcProviderDirectorySyncRequest =
+  components['schemas']['OidcProviderDirectorySyncRequest']
+export type DirectoryConnectorType = components['schemas']['DirectoryConnectorType']
+export type DirectoryConnectorRequest = components['schemas']['DirectoryConnectorRequest']
+export type DirectoryConnectorTestRequest = components['schemas']['DirectoryConnectorTestRequest']
+export type DirectoryConnectorResponse = components['schemas']['DirectoryConnectorResponse']
 
 export type AssetRole = components['schemas']['AssetRole']
 export type LibraryOwnerType = components['schemas']['LibraryOwnerType']

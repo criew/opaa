@@ -132,6 +132,7 @@ describe('authStore', () => {
           sourcePath: null,
           parentGroupId: null,
           memberCount: 1,
+          dissolved: false,
           releasedForUse: true,
           protectedGroup: false,
           stewards: [],

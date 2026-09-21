@@ -1259,7 +1259,7 @@ diesem Weg.
   Leserecht trägt und für „wer konnte am Tag X was lesen" ohne Bedeutung ist. Mitglieder**änderungen**
   stehen unverändert in der Rechtehistorie — mit dem Verantwortlichen als Akteur.
 - **Anbietergruppen bleiben schreibgeschützt.** Sie haben keine Verantwortlichen, sondern
-  Ansprechstellen, die die Systemverwaltung benennt (#1821).
+  Ansprechstellen, die die Systemverwaltung benennt (#1875).
 
 **Freigabe zur Verwendung.** Eine interne Gruppe ist erst dann für andere Rechtevergebende wählbar,
 wenn ihre Verantwortlichen sie **freigegeben** haben — das Gegenstück zu `listed` bei Assets:
