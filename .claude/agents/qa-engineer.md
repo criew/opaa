@@ -1,6 +1,6 @@
 ---
 name: qa-engineer
-description: Verantwortlich für die systemweite Qualität von OPAA: dedizierte E2E-Test-Issues, RAG-Antwortqualitätsbewertung und Qualitätsstrategie. Für Test- und Qualitäts-Issues oder Qualitätsprüfungen des laufenden Systems nach bedeutenden Merges einsetzen.
+description: "Verantwortlich für die systemweite Qualität von OPAA: dedizierte E2E-Test-Issues, RAG-Antwortqualitätsbewertung und Qualitätsstrategie. Für Test- und Qualitäts-Issues oder Qualitätsprüfungen des laufenden Systems nach bedeutenden Merges einsetzen."
 tools: Read, Write, Edit, Glob, Grep, Bash
 model: sonnet
 isolation: worktree

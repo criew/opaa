@@ -206,6 +206,8 @@ Anbindung an die elektronische Akte und an Dokumentenmanagement.
   Kollaborationsregeln
 - **[`../CONTRIBUTING.md`](../CONTRIBUTING.md)** — Leitfaden für Beitragende
 - **[`../AGENTS.md`](../AGENTS.md)** — Anweisungen für KI-Agenten
+- **[`../backend/AGENTS.md`](../backend/AGENTS.md)** — Backend-Regeln für KI-Agenten
+  (Abhängigkeitsverwaltung, API-/Mapper-Konvention, Spring-Testkontexte, Liquibase)
 
 ### Überholt
 
