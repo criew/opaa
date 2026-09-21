@@ -40,8 +40,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -87,6 +89,13 @@ public class GroupService {
   private static final int MIN_SEARCH_QUERY_LENGTH = 2;
 
   private static final int MAX_SEARCH_RESULTS = 20;
+
+  /**
+   * How many rows the substring search may read before the visibility rule thins them out. Five
+   * windows of the result cap: enough that a caller whose matches are mostly invisible still gets a
+   * full page, and still a hard bound - the database never hands out the whole organization.
+   */
+  private static final int MAX_SEARCH_SCAN = MAX_SEARCH_RESULTS * 5;
 
   /** The stable {@code code} of the {@code 403} a non-steward gets where a role does not help. */
   public static final String STEWARDSHIP_REQUIRED = "STEWARDSHIP_REQUIRED";
@@ -231,22 +240,21 @@ public class GroupService {
     Set<UUID> stewardedGroupIds = stewardRepository.findGroupIdsByUserId(caller.id());
     Map<UUID, GroupProviderView> providers = new HashMap<>();
     List<SelectableGroup> found = new ArrayList<>();
-    for (Group group :
-        groupRepository.searchByOrganizationIdAndText(caller.organizationId(), text)) {
-      if (!isVisibleInSelection(group, text, caller, ownGroupIds, stewardedGroupIds)) {
+    // The protected groups first, and from their own query: they are reached only by their
+    // complete name, and asking for them separately keeps the bounded window of the substring
+    // search from deciding whether that one hit appears (ADR-0036, Entscheidung 9).
+    List<Group> candidates =
+        new ArrayList<>(
+            groupRepository.findProtectedByOrganizationIdAndName(
+                caller.organizationId(), text, PageRequest.of(0, MAX_SEARCH_RESULTS)));
+    candidates.addAll(
+        groupRepository.searchByOrganizationIdAndText(
+            caller.organizationId(), likePattern(text), PageRequest.of(0, MAX_SEARCH_SCAN)));
+    for (Group group : candidates) {
+      if (!isVisibleInSelection(group, caller, ownGroupIds, stewardedGroupIds)) {
         continue;
       }
-      GroupProviderView provider =
-          group.getProviderId() == null
-              ? null
-              : providers.computeIfAbsent(
-                  group.getProviderId(),
-                  id ->
-                      providerRepository
-                          .findById(id)
-                          .map(p -> toProviderView(p, group.getOrganizationId()))
-                          .orElse(null));
-      found.add(toSelectableGroup(group, provider));
+      found.add(toSelectableGroup(group, providerOf(group, providers), group.getName()));
       if (found.size() == MAX_SEARCH_RESULTS) {
         break;
       }
@@ -254,25 +262,73 @@ public class GroupService {
     return List.copyOf(found);
   }
 
+  /**
+   * One group by its id, under the rule {@link #searchSelectableGroups} applies (#1820). The way in
+   * for the caller who types a designation by hand: the group is resolved <b>before</b> a right is
+   * granted, so origin and provider reach the interface on that path too - without them, the
+   * question back for a group of an external provider would be missing on exactly the path that
+   * shows the least (ADR-0036, Entscheidung 2).
+   *
+   * <p>A group this caller may not name answers like one that does not exist. A protected group
+   * comes back <b>without its name</b>: the caller did not name it here, and handing a name back
+   * for an id would undo the namelessness of Entscheidung 9.
+   */
+  public Optional<SelectableGroup> resolveSelectableGroup(UUID groupId, CurrentUser caller) {
+    Group group = groupRepository.findById(groupId).orElse(null);
+    if (group == null || !group.getOrganizationId().equals(caller.organizationId())) {
+      return Optional.empty();
+    }
+    Set<UUID> ownGroupIds = membershipResolver.groupIdsForUser(caller.id());
+    Set<UUID> stewardedGroupIds = stewardRepository.findGroupIdsByUserId(caller.id());
+    if (!isVisibleInSelection(group, caller, ownGroupIds, stewardedGroupIds)) {
+      return Optional.empty();
+    }
+    return Optional.of(
+        toSelectableGroup(
+            group,
+            providerOf(group, new HashMap<>()),
+            group.isProtectedGroup() ? null : group.getName()));
+  }
+
+  /**
+   * Whether this caller may name the group at all. The protection is <b>not</b> decided here: a
+   * protected group is invisible to the substring search by construction (its own query answers
+   * only the complete name), and by id it is answered without its name.
+   */
   private boolean isVisibleInSelection(
-      Group group,
-      String text,
-      CurrentUser caller,
-      Set<UUID> ownGroupIds,
-      Set<UUID> stewardedGroupIds) {
+      Group group, CurrentUser caller, Set<UUID> ownGroupIds, Set<UUID> stewardedGroupIds) {
     boolean related =
         caller.isSystemAdmin()
             || ownGroupIds.contains(group.getId())
             || stewardedGroupIds.contains(group.getId());
-    if (!group.isSelectableAsSubject() && !related) {
-      return false;
-    }
-    // ADR-0036, Entscheidung 9: a protected group is not findable by search. It stays choosable
-    // for whoever already knows its complete designation, which is what this comparison is.
-    return !group.isProtectedGroup() || group.getName().equalsIgnoreCase(text);
+    return group.isSelectableAsSubject() || related;
   }
 
-  private SelectableGroup toSelectableGroup(Group group, GroupProviderView provider) {
+  private GroupProviderView providerOf(Group group, Map<UUID, GroupProviderView> cache) {
+    if (group.getProviderId() == null) {
+      return null;
+    }
+    return cache.computeIfAbsent(
+        group.getProviderId(),
+        id ->
+            providerRepository
+                .findById(id)
+                .map(provider -> toProviderView(provider, group.getOrganizationId()))
+                .orElse(null));
+  }
+
+  /**
+   * The typed text as a LIKE pattern, with {@code %}, {@code _} and the escape character itself
+   * neutralised - otherwise a query of two percent signs would match every group of the
+   * organization, and a lone backslash would start an escape sequence instead of matching itself.
+   */
+  private static String likePattern(String text) {
+    String escaped = text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+    return "%" + escaped + "%";
+  }
+
+  private SelectableGroup toSelectableGroup(
+      Group group, GroupProviderView provider, String publishedName) {
     boolean providerDisabled = provider != null && !provider.enabled();
     boolean unmaintained =
         provider != null
@@ -282,6 +338,7 @@ public class GroupService {
     if (group.isProtectedGroup()) {
       return new SelectableGroup(
           group,
+          publishedName,
           provider,
           null,
           false,
@@ -295,6 +352,7 @@ public class GroupService {
     boolean small = active < groupSizeProperties.minimumGroupSize();
     return new SelectableGroup(
         group,
+        publishedName,
         provider,
         small ? null : Integer.valueOf(active),
         small,

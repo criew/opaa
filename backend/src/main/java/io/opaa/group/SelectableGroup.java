@@ -5,6 +5,8 @@ package io.opaa.group;
  * the number of active accounts - never the members. The "kleine Gruppe" suppression is already
  * applied here, so no caller can hand out a figure this record withheld.
  *
+ * @param name the name this answer may show: null for a protected group resolved by its id, where
+ *     the caller did not name it and a name handed back would undo its namelessness.
  * @param activeMemberCount null when {@code smallGroup} is true and null for a protected group,
  *     where the size is the actual disclosure.
  * @param selectable false for a group that may hold what it holds but must not become a new grant
@@ -13,6 +15,7 @@ package io.opaa.group;
  */
 public record SelectableGroup(
     Group group,
+    String name,
     GroupProviderView provider,
     Integer activeMemberCount,
     boolean smallGroup,

@@ -30,9 +30,14 @@ export function useGroupSearch(): UseGroupSearchResult {
   const [error, setError] = useState<string | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined)
   const requestIdRef = useRef(0)
+  // Nach dem Aushängen (etwa wenn der Dialog schließt, während eine Suche läuft) setzt die Antwort
+  // keinen Zustand mehr - die Anfragenummer allein unterscheidet nur alte von neuen Anfragen.
+  const mountedRef = useRef(true)
 
   useEffect(() => {
+    mountedRef.current = true
     return () => {
+      mountedRef.current = false
       if (debounceRef.current) clearTimeout(debounceRef.current)
     }
   }, [])
@@ -54,12 +59,12 @@ export function useGroupSearch(): UseGroupSearchResult {
     debounceRef.current = setTimeout(() => {
       void searchSelectableGroups(trimmed)
         .then((result) => {
-          if (requestIdRef.current !== requestId) return
+          if (!mountedRef.current || requestIdRef.current !== requestId) return
           setGroups(result)
           setIsLoading(false)
         })
         .catch((err) => {
-          if (requestIdRef.current !== requestId) return
+          if (!mountedRef.current || requestIdRef.current !== requestId) return
           setGroups([])
           setIsLoading(false)
           setError(err instanceof Error ? err.message : 'Die Gruppensuche ist fehlgeschlagen.')

@@ -28,10 +28,12 @@ import { useGrantStore } from '../stores/grantStore'
 import SubjectPicker from './permissions/SubjectPicker'
 import {
   confirmExternalSubject,
+  confirmResolvedGroupById,
   emptySubjectSelection,
   selectedSubjectId,
   type SubjectSelection,
 } from './permissions/subjectSelection'
+import { resolveSelectableGroup } from '../services/api'
 import {
   assetRoleDescription,
   assetRoleLabel,
@@ -197,7 +199,25 @@ export default function LibraryGrantsDialog({ open, library, onClose }: LibraryG
       setFormError('Das Ablaufdatum darf nicht in der Vergangenheit liegen')
       return
     }
-    if (!(await confirmExternalSubject(subject))) return
+    // #1820: Der Kennungsweg loest die Gruppe auf, bevor irgendetwas erteilt wird - sonst fehlte
+    // genau dort die Zwischenfrage fuer eine Gruppe eines externen Anbieters, wo Herkunft und
+    // Symbol ohnehin nicht zu sehen sind (ADR-0036, Entscheidung 2). Was sich fuer diesen
+    // Aufrufer nicht aufloesen laesst, wird nicht erteilt.
+    if (manualIdEntry && subject.type === 'GROUP') {
+      setSubmitting(true)
+      let resolved
+      try {
+        resolved = await resolveSelectableGroup(subjectId)
+      } catch (err) {
+        setSubmitting(false)
+        setFormError(err instanceof Error ? err.message : 'Gruppe nicht gefunden')
+        return
+      }
+      setSubmitting(false)
+      if (!(await confirmResolvedGroupById(resolved))) return
+    } else if (!(await confirmExternalSubject(subject))) {
+      return
+    }
     setSubmitting(true)
     try {
       await upsertExistingGrant(library.id, {
@@ -333,7 +353,12 @@ export default function LibraryGrantsDialog({ open, library, onClose }: LibraryG
             <SubjectPicker
               labelId="grant-subject-type-label"
               value={subject}
-              onChange={setSubject}
+              onChange={(next) => {
+                // Eine getippte Kennung gehört zu genau einer Art von Empfänger: Wer von Gruppe
+                // auf Person umstellt, hätte sonst dieselbe UUID unter „Nutzer-ID" stehen.
+                if (next.type !== subject.type) setManualId('')
+                setSubject(next)
+              }}
               hideSearch={manualIdEntry}
             />
 

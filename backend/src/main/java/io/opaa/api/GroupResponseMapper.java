@@ -55,7 +55,6 @@ final class GroupResponseMapper {
     Group group = selectable.group();
     return new SelectableGroupResponse(
             group.getId(),
-            group.getName(),
             originOf(selectable.provider()),
             selectable.smallGroup(),
             selectable.emptyGroup(),
@@ -64,6 +63,7 @@ final class GroupResponseMapper {
             selectable.dissolved(),
             selectable.providerDisabled(),
             selectable.unmaintained())
+        .name(selectable.name())
         .provider(toProviderResponse(selectable.provider()))
         .sourcePath(group.getSourcePath())
         .activeMemberCount(selectable.activeMemberCount());

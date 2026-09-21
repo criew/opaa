@@ -81,6 +81,11 @@ const dissolved: SelectableGroupResponse = {
   dissolved: true,
 }
 
+/** Die Entprellung der beiden Suchen liegt bei 300 ms; hier wird sicher darueber hinaus gewartet. */
+async function pastTheDebounce(): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 400))
+}
+
 function Harness({ initial = emptySubjectSelection }: { initial?: SubjectSelection }) {
   const [subject, setSubject] = useState<SubjectSelection>(initial)
   return (
@@ -183,6 +188,41 @@ describe('SubjectPicker (#1820, ADR-0036 Entscheidung 9)', () => {
     await waitFor(() => expect(mockGetUserSummaries).toHaveBeenCalledWith('al'))
     expect(await screen.findByRole('option', { name: /Alice/ })).toBeInTheDocument()
     expect(mockSearchSelectableGroups).not.toHaveBeenCalled()
+  })
+
+  /**
+   * #778: Nach der Auswahl setzt MUI den Eingabetext auf das Label der Option - als neue Eingabe
+   * weitergegeben loeste das eine zweite Suche nach nie getipptem Text aus.
+   */
+  it('runs no second search after a person was selected', async () => {
+    renderWithProviders(<Harness />)
+    const user = userEvent.setup()
+
+    await user.type(screen.getByLabelText('Person suchen'), 'al')
+    await user.click(await screen.findByRole('option', { name: /Alice/ }))
+
+    await waitFor(() =>
+      expect(screen.getByTestId('selection')).toHaveTextContent('USER:user-alice'),
+    )
+    // Ueber die Entprellung hinaus warten: Ohne den Schutz laeuft die zweite Suche erst danach an,
+    // und eine Behauptung davor bestuende auch auf dem fehlerhaften Stand.
+    await pastTheDebounce()
+    expect(mockGetUserSummaries).toHaveBeenCalledTimes(1)
+  })
+
+  it('runs no second search after a group was selected', async () => {
+    renderWithProviders(<Harness />)
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('radio', { name: 'Gruppe' }))
+    await user.type(screen.getByLabelText('Gruppe suchen'), 'Referat 5')
+    await user.click(await screen.findByRole('option', { name: /Referat 5 Projektteam/ }))
+
+    await waitFor(() =>
+      expect(screen.getByTestId('selection')).toHaveTextContent('GROUP:group-projektteam'),
+    )
+    await pastTheDebounce()
+    expect(mockSearchSelectableGroups).toHaveBeenCalledTimes(1)
   })
 
   it('names the rule that hides a protected group from the search', async () => {

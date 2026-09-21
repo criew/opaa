@@ -117,7 +117,8 @@ class GroupResponseMapperTest {
 
     SelectableGroupResponse response =
         GroupResponseMapper.toSelectableResponse(
-            new SelectableGroup(group, provider, 41, false, false, true, false, false, false));
+            new SelectableGroup(
+                group, "Referat 50", provider, 41, false, false, true, false, false, false));
 
     assertThat(response.getId()).isEqualTo(group.getId());
     assertThat(response.getName()).isEqualTo("Referat 50");
@@ -145,7 +146,8 @@ class GroupResponseMapperTest {
 
     SelectableGroupResponse response =
         GroupResponseMapper.toSelectableResponse(
-            new SelectableGroup(group, null, null, true, false, true, false, false, false));
+            new SelectableGroup(
+                group, "Kleine Runde", null, null, true, false, true, false, false, false));
 
     assertThat(response.getActiveMemberCount()).isNull();
     assertThat(response.getSmallGroup()).isTrue();
@@ -159,11 +161,27 @@ class GroupResponseMapperTest {
 
     SelectableGroupResponse response =
         GroupResponseMapper.toSelectableResponse(
-            new SelectableGroup(group, null, null, false, true, false, true, false, false));
+            new SelectableGroup(
+                group, "Aufgeloeste Runde", null, null, false, true, false, true, false, false));
 
     assertThat(response.getSelectable()).isFalse();
     assertThat(response.getDissolved()).isTrue();
     assertThat(response.getEmptyGroup()).isTrue();
+  }
+
+  /** ADR-0036/9 (#1820): Wo der Dienst den Namen zurueckhaelt, erfindet der Mapper keinen. */
+  @Test
+  void toSelectableResponseLeavesAWithheldNameWithheld() {
+    Group group = Group.internal(UUID.randomUUID(), "Personalrat", null, null);
+    group.markProtected(true);
+
+    SelectableGroupResponse response =
+        GroupResponseMapper.toSelectableResponse(
+            new SelectableGroup(group, null, null, null, false, false, true, false, false, false));
+
+    assertThat(response.getName()).isNull();
+    assertThat(response.getProtectedGroup()).isTrue();
+    assertThat(response.getActiveMemberCount()).isNull();
   }
 
   /** A group without a provider is INTERNAL and carries no provider block at all. */

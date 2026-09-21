@@ -7,7 +7,7 @@ import PublicIcon from '@mui/icons-material/Public'
 import GroupsIcon from '@mui/icons-material/Groups'
 import type { SelectableGroupResponse } from '../../types/api'
 import { useGroupSearch } from '../../hooks/useGroupSearch'
-import { groupDetailLine } from './subjectSelection'
+import { groupDetailLine, groupLabel } from './subjectSelection'
 
 interface GroupPickerProps {
   /** Der Screenreader-Name des Eingabefelds — deutsch wie jeder sichtbare Text. */
@@ -39,7 +39,7 @@ export default function GroupPicker({
     <Autocomplete
       options={options}
       filterOptions={(option) => option}
-      getOptionLabel={(option) => option.name}
+      getOptionLabel={(option) => groupLabel(option)}
       getOptionDisabled={(option) => !option.selectable}
       loading={isLoading}
       noOptionsText={
@@ -50,9 +50,12 @@ export default function GroupPicker({
       onChange={(_event, next) => onChange(next)}
       inputValue={query}
       onInputChange={(_event, next, reason) => {
-        // 'reset' feuert, wenn das Eingabefeld auf die gerade gewählte Option gesetzt wird - das
-        // als neue Eingabe weiterzugeben löste eine Suche nach nie getipptem Text aus.
-        if (reason !== 'reset') setQuery(next)
+        // Nur was getippt wurde, ist eine neue Anfrage (#778): Beim Auswählen setzt MUI den
+        // Eingabetext auf das Label der Option ('selectOption'), beim Verlassen springt er zurück
+        // ('reset') - beides als Eingabe weiterzugeben suchte nach nie getipptem Text. 'clear'
+        // leert das Feld, was unterhalb der Mindestlänge ohne Anfrage zurücksetzt.
+        if (reason === 'input') setQuery(next)
+        else if (reason === 'clear') setQuery('')
       }}
       isOptionEqualToValue={(option, selected) => option.id === selected.id}
       renderOption={(props, option) => {
@@ -71,7 +74,7 @@ export default function GroupPicker({
                 <GroupsIcon fontSize="small" color="disabled" sx={{ mt: 0.25 }} />
               )}
               <Stack spacing={0}>
-                <Typography sx={{ fontSize: 13.5 }}>{option.name}</Typography>
+                <Typography sx={{ fontSize: 13.5 }}>{groupLabel(option)}</Typography>
                 <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                   {groupDetailLine(option)}
                 </Typography>

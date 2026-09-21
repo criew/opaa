@@ -3466,11 +3466,21 @@ export const handlers = [
     }
     const matches = mockSelectableGroups.filter((group) =>
       group.protectedGroup
-        ? group.name.toLowerCase() === query
-        : group.name.toLowerCase().includes(query) ||
+        ? (group.name ?? '').toLowerCase() === query
+        : (group.name ?? '').toLowerCase().includes(query) ||
           (group.sourcePath ?? '').toLowerCase().includes(query),
     )
     return HttpResponse.json(matches.slice(0, 20))
+  }),
+
+  // #1820: Der Kennungsweg löst die Gruppe unter derselben Sichtbarkeitsregel auf; eine
+  // geschützte Gruppe kommt dabei ohne ihren Namen zurück.
+  http.get('/api/v1/groups/selectable/:groupId', ({ params }) => {
+    const group = mockSelectableGroups.find((candidate) => candidate.id === String(params.groupId))
+    if (!group) {
+      return HttpResponse.json({ error: 'Gruppe nicht gefunden' }, { status: 404 })
+    }
+    return HttpResponse.json(group.protectedGroup ? { ...group, name: null } : group)
   }),
 
   // #1822: die eigene Herleitung. Ohne userId geht es um die eigene Person.

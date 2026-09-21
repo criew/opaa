@@ -268,8 +268,9 @@ Vier Punkte dazu:
   nennt die Anwendung es beim Namen und sagt, an wen man sich wendet — sie versteckt die Funktion
   nicht. Vergabe und Entzug stehen im Nachweisprotokoll und werden mit ihrem Zeitraum festgehalten.
 
-Eine Oberfläche zur Vergabe gibt es noch nicht (Issues #1820, #1821); bis dahin werden Anlegerechte
-über die Verwaltungsschnittstelle vergeben und entzogen.
+Eine Oberfläche zur Vergabe entsteht mit Issue #1821; bis dahin werden Anlegerechte über die
+Verwaltungsschnittstelle vergeben und entzogen. Die Liste der Anlegerechte nennt eine geschützte
+Gruppe schon heute nicht beim Namen (Abschnitt 7.1).
 
 ### Freigabe-Obergrenze für Konnektorbibliotheken
 
@@ -358,13 +359,25 @@ Gruppe selbst — die Systemverwaltung kann es nicht**, auch nicht mit Systemrol
 die Freigabe zur Verwendung, sobald eine Gruppe geschützt ist: Wer die Gruppe in jede Auswahl stellen
 könnte, entschiede sonst über den Schutz, ohne das Kennzeichen anfassen zu dürfen.
 
-**Was das Kennzeichen heute bewirkt — und was noch nicht.** Gebaut sind das Kennzeichen selbst, sein
+**Was das Kennzeichen bewirkt — und was noch fehlt.** Gebaut sind das Kennzeichen selbst, sein
 Vorbehalt für die Verantwortlichen samt der Freigabe, und der Eintrag jeder Änderung im
-Nachweisprotokoll. Die drei Wirkungen nach außen — eine geschützte Gruppe ist nicht über die Suche
-auffindbar, erscheint in fremden Listen ohne Namen, und wer ihr ein Recht einräumt, sieht statt der
-Mitglieder die Ansprechstelle — sind **noch nicht gebaut**; sie kommen mit der gemeinsamen
-Subjekt-Auswahl (Issue #1820). Bis dahin verhält sich eine geschützte, freigegebene Gruppe gegenüber
-Dritten wie jede andere freigegebene Gruppe.
+Nachweisprotokoll. Zwei der drei Wirkungen nach außen sind es ebenfalls:
+
+- **Nicht über die Suche auffindbar.** In der Auswahl eines Empfängers erscheint eine geschützte
+  Gruppe nur, wenn ihre **vollständige Bezeichnung** eingegeben wird; ein Namensteil findet sie
+  nicht. Wer ihre Kennung eingibt, bekommt die Gruppe zwar zur Bestätigung angezeigt — aber ohne
+  ihren Namen.
+- **In fremden Listen ohne Namen.** In der Mitgliederliste eines Raums, in der Freigabeliste einer
+  Bibliothek, in der Eigentümerspalte der Bibliotheksübersicht und in der Liste der Anlegerechte
+  steht „Geschützte Gruppe" statt der Bezeichnung. Die Zeile bleibt, damit eine Mitgliedschaft
+  beendet werden kann, die niemand sieht; Mitgliederzahl und Zuwachssignal entfallen dort ganz.
+  Auch die Herleitung („Warum sehe ich das?") nennt Dritten — der Raumverwaltung eingeschlossen —
+  keine geschützte Gruppe, sondern allein die wirksame Rolle. Die eigene Herleitung der betroffenen
+  Person bleibt vollständig.
+
+**Noch nicht gebaut** ist die dritte Wirkung: Wer einer geschützten Gruppe ein Recht einräumt, sieht
+heute weder die Mitglieder noch eine **Ansprechstelle**. Die Benennung von Ansprechstellen an
+Anbietergruppen entsteht mit Issue #1875.
 
 **Was festgehalten wird.** Aufnahme und Entfernung eines Mitglieds werden der betroffenen Person in
 der Anwendung angezeigt (ohne E-Mail) und stehen mit der handelnden verantwortlichen Person im

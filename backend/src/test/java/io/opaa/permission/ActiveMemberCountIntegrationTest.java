@@ -63,8 +63,9 @@ class ActiveMemberCountIntegrationTest {
 
   /**
    * Every state the definition distinguishes, in one group: a provider account, one locked by the
-   * directory synchronisation, and the five local ones - active, invited, expired, locked, and a
-   * failed-login lockout that has run out and therefore counts again.
+   * directory synchronisation, and the local ones - active, invited, expired, locked, a
+   * failed-login lockout that has run out and therefore counts again, one that is still running,
+   * and an account with no credentials row at all.
    */
   @Test
   void theCountMatchesTheAccountsTheActivityServiceCallsActive() {
@@ -92,6 +93,18 @@ class ActiveMemberCountIntegrationTest {
               activate(credentials, now);
               credentials.recordLockoutUntil(now.minus(1, ChronoUnit.HOURS), now);
             });
+    // Der einzige Zweig, in dem beide Fassungen verschiedene Ausdruecke fahren: die
+    // CASE-Konstruktion
+    // in ActiveAccountSql gegen LocalCredentials#isLocked.
+    UUID lockoutRunning =
+        createLocalUser(
+            credentials -> {
+              activate(credentials, now);
+              credentials.recordLockoutUntil(now.plus(1, ChronoUnit.HOURS), now);
+            });
+    // Ein lokales Konto ohne Zugangsdatenzeile kann sich nicht anmelden - Java ueber credentials ==
+    // null, SQL ueber das nicht erfuellte EXISTS.
+    UUID localWithoutCredentials = createLocalUserWithoutCredentials();
 
     UUID group =
         createGroup(
@@ -101,7 +114,9 @@ class ActiveMemberCountIntegrationTest {
             localInvited,
             localExpired,
             localLocked,
-            lockoutElapsed);
+            lockoutElapsed,
+            lockoutRunning,
+            localWithoutCredentials);
 
     assertThat(resolver.activeMemberIds(group, organization))
         .containsExactlyInAnyOrder(providerAccount, localActive, lockoutElapsed);
@@ -171,6 +186,17 @@ class ActiveMemberCountIntegrationTest {
   private UUID createProviderUser() {
     User user =
         new User(UUID.randomUUID().toString(), "test-issuer", "user@example.com", "Test User");
+    user.setOrganizationId(organization);
+    return userRepository.save(user).getId();
+  }
+
+  private UUID createLocalUserWithoutCredentials() {
+    User user =
+        new User(
+            UUID.randomUUID().toString(),
+            LocalIssuer.URN,
+            UUID.randomUUID() + "@example.com",
+            "Ohne Zugangsdaten");
     user.setOrganizationId(organization);
     return userRepository.save(user).getId();
   }

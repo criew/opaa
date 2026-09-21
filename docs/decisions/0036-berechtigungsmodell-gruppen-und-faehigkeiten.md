@@ -711,6 +711,17 @@ für geschützte Gruppen entfällt das Signal ganz** (dort ist die Größe die e
 der Grant-Geber hat die Ansprechstelle. Die gespeicherten Zahlen sind Teil der Grant-Historie und
 unterliegen deren Höchstdauer.
 
+> **Nachtrag zur Ablage der Zahl (Koordinator, 22.09.2026, mit #1820/#1815 eingelöst).** Die Zahl
+> liegt **am wirksamen Recht**, nicht in der Rechtehistorie: `asset_grants.member_count_at_grant`
+> (#1820) und `space_memberships.member_count_at_grant` (#1815). Sie verschwindet damit mit dem
+> Grant beziehungsweise der Mitgliedschaft und überdauert sie nie — das ist datensparsamer als der
+> Satz oben, der sie in die Historie legt und dort bis zur Höchstdauer (12–120 Monate) führt. Der
+> Preis ist benannt: Ein Grant, der länger als die Höchstdauer besteht, trägt die Zahl vom Tag
+> seiner Erteilung unbefristet weiter. Vertretbar, weil es eine unterhalb der Mindestgruppengröße
+> unterdrückte Aggregatzahl ist, die niemanden benennt. Die Übertragung (Entscheidung 10) nimmt
+> sie mit; der Eigentümer-Grant einer gruppengehörenden Bibliothek trägt keine — Eigentum ist keine
+> Freigabe.
+
 ### 10. Die Übertragungsoperation
 
 **Eine allgemeine, protokollierte Operation auf der Gruppenachse** überträgt Grants,

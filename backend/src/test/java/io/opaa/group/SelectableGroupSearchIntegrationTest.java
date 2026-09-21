@@ -233,6 +233,105 @@ class SelectableGroupSearchIntegrationTest {
     assertThat(groupService.searchSelectableGroups("Referat", caller())).hasSize(1);
   }
 
+  /**
+   * #1820 review: Die Platzhalter der Eingabe bleiben Text. Ohne Escaping traefe eine Anfrage aus
+   * zwei Prozentzeichen jede Zeile der Organisation und laedt sie - die Mindestlaenge haelt sie
+   * nicht auf.
+   */
+  @Test
+  void likeMetacharactersInTheQueryMatchThemselvesAndNothingElse() {
+    createInternalGroup("Referat 50", true);
+    createInternalGroup("Prozent %% Runde", true);
+    createInternalGroup("Unterstrich _ Runde", true);
+
+    assertThat(groupService.searchSelectableGroups("%%", caller()))
+        .extracting(selectable -> selectable.group().getName())
+        .containsExactly("Prozent %% Runde");
+    assertThat(groupService.searchSelectableGroups("h _ R", caller()))
+        .extracting(selectable -> selectable.group().getName())
+        .containsExactly("Unterstrich _ Runde");
+    assertThat(groupService.searchSelectableGroups("50_", caller()))
+        .as("an underscore is a character here, not a single-character wildcard")
+        .isEmpty();
+  }
+
+  /** Der Deckel liegt in der Datenbank: Die Antwort bleibt bei zwanzig Zeilen. */
+  @Test
+  void theAnswerIsCappedAtTwentyRows() {
+    for (int index = 0; index < 25; index++) {
+      createInternalGroup("Referat " + (100 + index), true);
+    }
+
+    assertThat(groupService.searchSelectableGroups("Referat 1", caller())).hasSize(20);
+  }
+
+  /**
+   * #1820 review: Der Exakt-Treffer einer geschuetzten Gruppe haengt nicht davon ab, wie viele
+   * andere Gruppen dieselbe Zeichenfolge tragen - er kommt aus einer eigenen Abfrage.
+   */
+  @Test
+  void aProtectedGroupIsFoundByItsCompleteNameEvenBesideManyOtherMatches() {
+    UUID protectedGroup = createInternalGroup("Kommission", true);
+    Group group = groupRepository.findById(protectedGroup).orElseThrow();
+    group.markProtected(true);
+    groupRepository.save(group);
+    for (int index = 0; index < 25; index++) {
+      createInternalGroup("Kommission " + index, true);
+    }
+
+    assertThat(groupService.searchSelectableGroups("Kommission", caller()))
+        .extracting(selectable -> selectable.group().getId())
+        .contains(protectedGroup);
+  }
+
+  // -------------------------------------------------------------------------------------------
+  // Der Weg ueber die Kennung (#1820)
+  // -------------------------------------------------------------------------------------------
+
+  @Test
+  void aGroupIsResolvedByItsIdUnderTheSameRuleAsTheSearch() {
+    UUID released = createInternalGroup("Referat 50", true);
+
+    SelectableGroup found = groupService.resolveSelectableGroup(released, caller()).orElseThrow();
+
+    assertThat(found.name()).isEqualTo("Referat 50");
+    assertThat(found.selectable()).isTrue();
+  }
+
+  @Test
+  void anUnreleasedGroupDoesNotResolveForAStranger() {
+    UUID member = createUser();
+    UUID unreleased = createInternalGroup("Vertrauliche Runde", false, member);
+
+    assertThat(groupService.resolveSelectableGroup(unreleased, caller())).isEmpty();
+    assertThat(groupService.resolveSelectableGroup(unreleased, callerOf(member))).isPresent();
+  }
+
+  @Test
+  void anotherOrganizationsGroupAndAnUnknownIdBothResolveToNothing() {
+    UUID foreign =
+        groupRepository.save(Group.internal(otherOrganization, "Fremd", null, null)).getId();
+
+    assertThat(groupService.resolveSelectableGroup(foreign, caller())).isEmpty();
+    assertThat(groupService.resolveSelectableGroup(UUID.randomUUID(), caller())).isEmpty();
+  }
+
+  /** ADR-0036, Entscheidung 9: Eine Kennung darf keinen Namen zurueckbringen. */
+  @Test
+  void aProtectedGroupResolvesWithoutItsName() {
+    UUID protectedGroup = createInternalGroup("Personalrat", true);
+    Group group = groupRepository.findById(protectedGroup).orElseThrow();
+    group.markProtected(true);
+    groupRepository.save(group);
+
+    SelectableGroup found =
+        groupService.resolveSelectableGroup(protectedGroup, caller()).orElseThrow();
+
+    assertThat(found.name()).isNull();
+    assertThat(found.group().isProtectedGroup()).isTrue();
+    assertThat(found.activeMemberCount()).isNull();
+  }
+
   // -------------------------------------------------------------------------------------------
   // Fixture
   // -------------------------------------------------------------------------------------------

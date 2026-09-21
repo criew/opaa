@@ -493,7 +493,9 @@ public class KnowledgeLibraryService {
         ownerNames.put(user.getId(), user.getDisplayName());
       }
     }
-    ownerNames.putAll(groupDirectory.namesById(groupOwnerIds));
+    // #1820, ADR-0036 Entscheidung 9: Die Bibliotheksliste ist eine fremde Liste - eine
+    // geschuetzte Gruppe steht dort ohne ihren Namen.
+    ownerNames.putAll(groupDirectory.displayNamesById(groupOwnerIds));
     return ownerNames;
   }
 

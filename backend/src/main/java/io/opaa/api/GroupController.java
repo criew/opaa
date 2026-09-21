@@ -12,6 +12,7 @@ import io.opaa.api.dto.GroupUpdateRequest;
 import io.opaa.api.dto.SelectableGroupResponse;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
+import io.opaa.common.NotFoundException;
 import io.opaa.group.GroupCreation;
 import io.opaa.group.GroupDetail;
 import io.opaa.group.GroupMemberView;
@@ -69,6 +70,19 @@ public class GroupController {
       @RequestParam(name = "query", required = false) String query, @Caller CurrentUser caller) {
     return GroupResponseMapper.toSelectableResponses(
         groupService.searchSelectableGroups(query, caller));
+  }
+
+  /**
+   * The id path of the Subjekt-Auswahl: a group this caller may not name answers {@code 404}, never
+   * {@code 403} - the same answer the search gives by omitting it (#1820).
+   */
+  @GetMapping("/selectable/{groupId}")
+  public SelectableGroupResponse resolveSelectableGroup(
+      @PathVariable UUID groupId, @Caller CurrentUser caller) {
+    return groupService
+        .resolveSelectableGroup(groupId, caller)
+        .map(GroupResponseMapper::toSelectableResponse)
+        .orElseThrow(() -> new NotFoundException("Gruppe nicht gefunden"));
   }
 
   @GetMapping("/{groupId}")

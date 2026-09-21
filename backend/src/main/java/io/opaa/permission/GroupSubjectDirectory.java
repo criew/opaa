@@ -26,8 +26,22 @@ public interface GroupSubjectDirectory {
    */
   boolean isSelectableBy(UUID groupId, UUID userId, boolean systemAdmin);
 
-  /** The display names of the given groups; an id with no group is absent from the result. */
+  /**
+   * The display names of the given groups; an id with no group is absent from the result. The raw
+   * name, protection included - for the paths that are allowed to read it (the Stichtagsauskunft of
+   * the Aufsicht, an audit entry, the group's own administration).
+   */
   Map<UUID, String> namesById(Collection<UUID> groupIds);
+
+  /**
+   * The names for a list a third party reads: a protected group appears as {@link
+   * #PROTECTED_GROUP_LABEL}, never under its own name (ADR-0036, Entscheidung 9). Every other group
+   * answers exactly as {@link #namesById}.
+   */
+  Map<UUID, String> displayNamesById(Collection<UUID> groupIds);
+
+  /** What a protected group is called where its name is withheld. */
+  String PROTECTED_GROUP_LABEL = "Geschützte Gruppe";
 
   /**
    * The groups as the Herleitung names them (#1822) - name, origin, provider and mechanism in one

@@ -1071,6 +1071,41 @@ paths:
                 items:
                   $ref: "#/components/schemas/SelectableGroupResponse"
 
+  /api/v1/groups/selectable/{groupId}:
+    parameters:
+      - name: groupId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: resolveSelectableGroup
+      tags: [groups]
+      summary: >
+        One group by its id, under the same rule the Subjekt-Auswahl applies (#1820)
+      description: >
+        The way in for a caller who knows the designation of a group but not its name - typing the
+        id by hand. It resolves the group before anything is granted, so origin and provider reach
+        the interface on this path too: without them the selection's symbol and the question back
+        for a group of an external provider would be missing on exactly the path that shows the
+        least (ADR-0036, Entscheidung 2).
+
+        Answers with the same visibility rule as the search: a group this caller may not name is
+        "not found", never "forbidden". A protected group is returned without its name - the caller
+        did not name it here, and a name handed back for an id would undo the namelessness of
+        ADR-0036, Entscheidung 9.
+      responses:
+        "200":
+          description: The group, as the selection shows it
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SelectableGroupResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/groups/{groupId}/release:
     parameters:
       - name: groupId
@@ -10636,7 +10671,7 @@ components:
     SelectableGroupResponse:
       type: object
       required:
-        [id, name, origin, protectedGroup, selectable, dissolved, providerDisabled, unmaintained, smallGroup, emptyGroup]
+        [id, origin, protectedGroup, selectable, dissolved, providerDisabled, unmaintained, smallGroup, emptyGroup]
       description: >
         One group as the Subjekt-Auswahl shows it (#1820, ADR-0036 Entscheidung 9): name, origin
         and the number of active accounts - never the members themselves. Everything a selection
@@ -10648,6 +10683,12 @@ components:
           format: uuid
         name:
           type: string
+          nullable: true
+          description: >
+            Null for a protected group that was resolved by its id: the caller did not name it
+            there, and a name handed back for an id would undo the namelessness of ADR-0036,
+            Entscheidung 9. Present everywhere else, the search included - a protected group only
+            appears there when its complete name was typed.
           example: Referat 50
         origin:
           $ref: "#/components/schemas/GroupOrigin"

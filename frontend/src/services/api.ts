@@ -805,6 +805,20 @@ export async function searchSelectableGroups(query: string): Promise<SelectableG
 }
 
 /**
+ * Eine Gruppe über ihre Kennung, unter derselben Sichtbarkeitsregel wie die Suche (#1820). Der
+ * Kennungsweg löst damit auf, bevor ein Recht erteilt wird: Herkunft und Anbieter erreichen die
+ * Oberfläche auch dort. Was sich nicht auflösen lässt, antwortet „nicht gefunden".
+ */
+export async function resolveSelectableGroup(groupId: string): Promise<SelectableGroupResponse> {
+  try {
+    const { data } = await client.get<SelectableGroupResponse>(`/v1/groups/selectable/${groupId}`)
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/**
  * Die eigene Herleitung an einer Bibliothek (#1822): jeder eigene Weg zur wirksamen Rolle, ohne
  * Vollmacht, ohne Protokoll, ohne ein Mitglied einer Gruppe zu nennen.
  */
