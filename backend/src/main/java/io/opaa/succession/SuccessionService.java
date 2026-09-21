@@ -6,6 +6,7 @@ import io.opaa.auth.CurrentUser;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
+import io.opaa.permission.AssetType;
 import io.opaa.permission.SuccessionCaseCloser;
 import io.opaa.permission.SuccessionFinding;
 import io.opaa.permission.SuccessionFindingSource;
@@ -208,19 +209,51 @@ public class SuccessionService implements SuccessionReachGuard, SuccessionCaseCl
   }
 
   /**
-   * Ends every open case about one object and names who ended it - called by an operation that
-   * knows its actor, today the transfer of ownership and responsibility (#1834). Without it the
-   * detection run would close the case within the hour, correctly but anonymously.
+   * Ends the open succession of one asset and names who ended it - called by an operation that
+   * knows its actor, today the transfer of ownership and responsibility (#1834). An asset type no
+   * source answers for has no record to close (#1726), which is why this takes the open {@link
+   * AssetType} rather than a closed enum.
    */
   @Override
   @Transactional
-  public void closeFor(SuccessionObjectType objectType, UUID objectId, UUID endedByUserId) {
-    Instant now = clock.instant();
-    for (SuccessionCase open :
-        cases.findByObjectTypeAndObjectIdAndClosedAtIsNull(objectType, objectId)) {
-      open.close(now, endedByUserId);
-      cases.save(open);
+  public void closeForAsset(AssetType assetType, UUID assetId, UUID endedByUserId) {
+    objectTypeOf(assetType).ifPresent(type -> closeIfEnded(type, assetId, endedByUserId));
+  }
+
+  @Override
+  @Transactional
+  public void closeForGroup(UUID groupId, UUID endedByUserId) {
+    closeIfEnded(SuccessionObjectType.GROUP, groupId, endedByUserId);
+  }
+
+  /** The object type a succession source answers for, or empty for a type none knows (#1726). */
+  static Optional<SuccessionObjectType> objectTypeOf(AssetType assetType) {
+    for (SuccessionObjectType type : SuccessionObjectType.values()) {
+      if (type.name().equals(assetType.value())) {
+        return Optional.of(type);
+      }
     }
+    return Optional.empty();
+  }
+
+  /**
+   * Closes the one record of the tab "Offene Nachfolgen" - and only if the state has really ended.
+   * A transfer to an owner who cannot act either changes nothing: closing and reopening would set
+   * the age of the entry back to zero, and the other tabs are about a different question than the
+   * one this operation answered.
+   */
+  private void closeIfEnded(SuccessionObjectType objectType, UUID objectId, UUID endedByUserId) {
+    if (isOpen(objectType, objectId)) {
+      return;
+    }
+    cases
+        .findByKindAndObjectTypeAndObjectIdAndClosedAtIsNull(
+            SuccessionKind.OPEN_SUCCESSION, objectType, objectId)
+        .ifPresent(
+            open -> {
+              open.close(clock.instant(), endedByUserId);
+              cases.save(open);
+            });
   }
 
   private Map<UUID, SuccessionReview> newestReviews(Collection<SuccessionCase> openCases) {

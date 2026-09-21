@@ -106,16 +106,17 @@ public class LibraryExternalAccessService {
             .orElseThrow(() -> new NotFoundException("Bibliothek nicht gefunden"));
     accessService.requireRole(library, actor.id(), actor.isSystemAdmin(), AssetRole.MANAGER);
 
-    if (enabled) {
+    ExternalAccessState previousState = library.getExternalAccessState();
+    Instant previousExpiresAt = library.getExternalAccessExpiresAt();
+    if (enabled && widensExternalAccess(library, previousState, previousExpiresAt, expiresAt)) {
       // ADR-0036, Entscheidung 6: a release across the Hausgrenze is the largest reach there is -
-      // and reach is frozen while the succession is open. Taking one back stays possible.
+      // and reach is frozen while the succession is open. Taking one back, and shortening a
+      // running release, stay possible.
       successionGuard.requireReachNotFrozen(
           SuccessionObjectType.KNOWLEDGE_LIBRARY,
           library.getId(),
           "Eine Freigabe für Fremdzugänge");
     }
-    ExternalAccessState previousState = library.getExternalAccessState();
-    Instant previousExpiresAt = library.getExternalAccessExpiresAt();
     if (!enabled && previousState != ExternalAccessState.ACTIVE) {
       return describe(library);
     }
@@ -136,6 +137,25 @@ public class LibraryExternalAccessService {
             auditPayload(previousState, previousExpiresAt),
             auditPayload(newState, newExpiresAt)));
     return describe(saved);
+  }
+
+  /**
+   * Whether this call reaches further than the release that is running: a release where none was
+   * active, or one that now runs longer. A shortened expiry takes reach away and is no widening.
+   */
+  private boolean widensExternalAccess(
+      KnowledgeLibrary library,
+      ExternalAccessState previousState,
+      Instant previousExpiresAt,
+      Instant requestedExpiresAt) {
+    if (library.effectiveExternalAccessState(clock.instant()) != ExternalAccessState.ACTIVE
+        || previousState != ExternalAccessState.ACTIVE) {
+      return true;
+    }
+    if (previousExpiresAt == null) {
+      return false;
+    }
+    return requestedExpiresAt == null || requestedExpiresAt.isAfter(previousExpiresAt);
   }
 
   /**

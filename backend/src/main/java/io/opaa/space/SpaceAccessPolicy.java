@@ -7,7 +7,10 @@ import io.opaa.common.AccessDeniedException;
 import io.opaa.permission.GroupCapabilityService;
 import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.GroupSubjectDirectory;
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
@@ -179,6 +182,43 @@ public class SpaceAccessPolicy {
    */
   public boolean hasCapableAdmin(Space space) {
     return hasCapableAdminAfter(space, null, null);
+  }
+
+  /**
+   * The same question for a whole list of spaces, with <b>one</b> account query for all of them
+   * (#682: never one lookup per space). Returns the ids of the spaces that still have somebody.
+   */
+  public Set<UUID> spacesWithCapableAdmin(Collection<Space> spaces) {
+    List<UUID> candidates =
+        spaces.stream()
+            .flatMap(space -> space.getMemberships().stream().map(m -> personCandidate(space, m)))
+            .filter(Objects::nonNull)
+            .distinct()
+            .toList();
+    Set<UUID> active = accountActivity.activeAmong(candidates);
+    Set<UUID> capable = new HashSet<>();
+    for (Space space : spaces) {
+      boolean byPerson =
+          space.getMemberships().stream()
+              .map(membership -> personCandidate(space, membership))
+              .anyMatch(userId -> userId != null && active.contains(userId));
+      if (byPerson
+          || space.getMemberships().stream()
+              .anyMatch(
+                  membership ->
+                      membership.isGroupSubject()
+                          && qualifies(space, membership, null, null)
+                          && isCapableGroup(membership.getGroupId()))) {
+        capable.add(space.getId());
+      }
+    }
+    return capable;
+  }
+
+  private static UUID personCandidate(Space space, SpaceMembership membership) {
+    return membership.isUserSubject() && qualifies(space, membership, null, null)
+        ? membership.getUserId()
+        : null;
   }
 
   /**

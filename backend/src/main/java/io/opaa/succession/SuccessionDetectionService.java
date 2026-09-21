@@ -14,7 +14,8 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * The named, regular detection run of ADR-0036, Entscheidung 6. It compares what the sources report
@@ -25,8 +26,10 @@ import org.springframework.transaction.annotation.Transactional;
  * derives its entries on every read; it would only lose the age. And because a derived state has no
  * writing trigger, without the run "Alter" would mean "seit dem letzten Hinsehen".
  *
- * <p>One transaction per organization: a pass that dies halfway leaves the other organizations
- * finished and is simply redone. Single process by ADR-0021, so no lock beyond that.
+ * <p>One transaction per organization, opened by a {@link TransactionTemplate} rather than by
+ * {@code @Transactional}: the loop calls the pass on the same bean, where an annotation would never
+ * reach a proxy. An organization whose pass fails is logged and left untouched - the following ones
+ * still run. Single process by ADR-0021, so no lock beyond that.
  */
 @Service
 public class SuccessionDetectionService {
@@ -37,16 +40,19 @@ public class SuccessionDetectionService {
   private final SuccessionCaseRepository cases;
   private final OrganizationRepository organizations;
   private final Clock clock;
+  private final TransactionTemplate transactionTemplate;
 
   SuccessionDetectionService(
       List<SuccessionFindingSource> sources,
       SuccessionCaseRepository cases,
       OrganizationRepository organizations,
-      Clock clock) {
+      Clock clock,
+      PlatformTransactionManager transactionManager) {
     this.sources = sources;
     this.cases = cases;
     this.organizations = organizations;
     this.clock = clock;
+    this.transactionTemplate = new TransactionTemplate(transactionManager);
   }
 
   /** One pass over every organization; returns how many cases it opened and closed. */
@@ -54,9 +60,15 @@ public class SuccessionDetectionService {
     int opened = 0;
     int closed = 0;
     for (Organization organization : organizations.findAll()) {
-      SuccessionDetectionRun run = runFor(organization.getId());
-      opened += run.opened();
-      closed += run.closed();
+      try {
+        SuccessionDetectionRun run = runFor(organization.getId());
+        opened += run.opened();
+        closed += run.closed();
+      } catch (RuntimeException e) {
+        // One organization's pass is one transaction and one failure: it is rolled back whole and
+        // redone by the next run, while the organizations behind it still get their pass.
+        log.warn("Succession detection failed for organization {}", organization.getId(), e);
+      }
     }
     if (opened > 0 || closed > 0) {
       log.info("Succession detection: {} case(s) opened, {} closed", opened, closed);
@@ -64,9 +76,12 @@ public class SuccessionDetectionService {
     return new SuccessionDetectionRun(opened, closed);
   }
 
-  /** One organization's pass - its own transaction, see this class's Javadoc. */
-  @Transactional
+  /** One organization's pass, in its own transaction - see this class's Javadoc. */
   public SuccessionDetectionRun runFor(UUID organizationId) {
+    return transactionTemplate.execute(status -> detect(organizationId));
+  }
+
+  private SuccessionDetectionRun detect(UUID organizationId) {
     Instant now = clock.instant();
     Set<CaseKey> found = new HashSet<>();
     int opened = 0;

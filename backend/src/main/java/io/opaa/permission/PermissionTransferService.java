@@ -10,7 +10,6 @@ import io.opaa.api.types.AuditSubjectKind;
 import io.opaa.api.types.CapabilitySubjectType;
 import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.api.types.PermissionTransferScope;
-import io.opaa.api.types.SuccessionObjectType;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
@@ -287,11 +286,8 @@ public class PermissionTransferService {
     touched.forEach(
         (assetType, assetIds) ->
             assetIds.forEach(
-                assetId ->
-                    successionCases.closeFor(
-                        SuccessionObjectType.valueOf(assetType.value()), assetId, caller.id())));
-    stewarded.forEach(
-        groupId -> successionCases.closeFor(SuccessionObjectType.GROUP, groupId, caller.id()));
+                assetId -> successionCases.closeForAsset(assetType, assetId, caller.id())));
+    stewarded.forEach(groupId -> successionCases.closeForGroup(groupId, caller.id()));
 
     shownPreviews.invalidate(previewId);
     recordEvent(AuditEventType.PERMISSION_TRANSFER_EXECUTED, parties, transfer.counts(), caller);

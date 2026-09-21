@@ -50,6 +50,7 @@ import io.opaa.permission.GroupSubject;
 import io.opaa.permission.GroupSubjectDirectory;
 import io.opaa.permission.PermissionHistoryService;
 import io.opaa.permission.PermissionSubject;
+import io.opaa.permission.SuccessionFinding;
 import io.opaa.permission.SuccessionReachGuard;
 import io.opaa.sourceaccess.ProxyAndCredentials;
 import java.net.URI;
@@ -159,10 +160,12 @@ public class KnowledgeLibraryService {
   private final ConfluenceConnectionService confluenceConnectionService;
   private final S3ClientFactory s3ClientFactory;
   private final SuccessionReachGuard successionGuard;
+  private final LibrarySuccessionSource successionSource;
   private final AssetOwnershipHistoryService ownershipHistory;
 
   public KnowledgeLibraryService(
       SuccessionReachGuard successionGuard,
+      LibrarySuccessionSource successionSource,
       AssetOwnershipHistoryService ownershipHistory,
       KnowledgeLibraryRepository libraryRepository,
       UserRepository userRepository,
@@ -191,6 +194,7 @@ public class KnowledgeLibraryService {
       ConfluenceProperties confluenceProperties,
       S3ClientFactory s3ClientFactory) {
     this.successionGuard = successionGuard;
+    this.successionSource = successionSource;
     this.ownershipHistory = ownershipHistory;
     this.libraryRepository = libraryRepository;
     this.userRepository = userRepository;
@@ -463,6 +467,8 @@ public class KnowledgeLibraryService {
                     IndexingJobRepository.LibraryLastCompleted::getLibraryId,
                     IndexingJobRepository.LibraryLastCompleted::getLastCompletedAt));
 
+    Map<UUID, SuccessionFinding> succession = successionSource.findingsAmong(libraries, false);
+
     return libraries.stream()
         .map(
             library ->
@@ -471,7 +477,8 @@ public class KnowledgeLibraryService {
                     roles.get(library.getId()),
                     documentCounts.getOrDefault(library.getId(), 0L),
                     ownerNames.get(library.getOwnerId()),
-                    lastIndexedAt.get(library.getId())))
+                    lastIndexedAt.get(library.getId()),
+                    succession.get(library.getId())))
         .toList();
   }
 

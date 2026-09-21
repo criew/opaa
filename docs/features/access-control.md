@@ -1435,15 +1435,33 @@ Zuständigkeit in der Meldung (`409`, Code `SUCCESSION_OPEN`):
 - ein neues Mitglied im Space.
 
 Erlaubt bleibt alles, was die Reichweite **nicht** vergrößert: umbenennen, einschränken, Rechte
-entziehen, lesen, suchen, indexieren.
+entziehen, lesen, suchen, indexieren. Das ist keine Beschreibung, sondern die Schnittstelle: Der
+Wächter sitzt an jeder der fünf Stellen **hinter** der Fallunterscheidung und prüft genau die
+Erweiterung — eine höhere Rolle oder eine hinausgeschobene Befristung, eine erstmalige oder
+verlängerte Freigabe, eine erstmalige Bereitstellung, ein neues Mitglied. Die Herabstufung, die
+vorgezogene Befristung, die verkürzte oder zurückgenommene Freigabe und das entfernte Mitglied
+laufen unverändert durch; je Pfad hält das ein Test fest. Aus demselben Grund verweigert die
+Schutzregel des letzten handlungsfähigen `ADMIN` nur den **Verlust**: Ein Space, der ohnehin keinen
+mehr hat, verliert durch eine Entfernung keinen.
 
 **Ein benannter Feststellungslauf** (Vorgabe stündlich, `OPAA_SUCCESSION_DETECTION_CRON`) legt die
 **Vorgänge** an und schließt sie: Zeitpunkt der Erstfeststellung und Ende. Die Ableitung bleibt die
 Wahrheit — der Lauf schreibt nur den Zeitstempel, ohne den „Alter" in Wahrheit „seit dem letzten
 Hinsehen" hieße. Beendet eine Übertragung den Zustand, schließt sie den Vorgang selbst und nennt die
-handelnde Person; endet er von allein, schließt ihn der Lauf und nennt niemanden. Nachfolgevorgänge
-und Sichtungsvermerke unterliegen der **Protokollfrist**, nicht der Rechtehistorie: Sie sagen nichts
-über Leserechte aus.
+handelnde Person — aber **nur, wenn der Zustand wirklich endet** und nur für den Reiter, den sie
+betrifft: Geht ein Objekt an einen Empfänger, der ebenfalls nicht handeln kann, bliebe ein
+geschlossener und sogleich neu angelegter Vorgang ein Alter von null, und eine übertragene
+Verantwortlichkeit beendet keine „Gruppe ohne Wirkung". Endet der Zustand von allein, schließt ihn
+der Lauf und nennt niemanden. Der Lauf selbst fährt **eine Transaktion je Organisation** und fängt
+den Fehler einer Organisation ab: Ihre Teilarbeit wird ganz zurückgerollt, die übrigen
+Organisationen laufen weiter.
+
+Nachfolgevorgänge und Sichtungsvermerke unterliegen der **Protokollfrist**, nicht der
+Rechtehistorie: Sie sagen nichts über Leserechte aus — und die Frist wird auch vollzogen. Ein
+monatlicher Löschlauf entfernt **abgeschlossene** Vorgänge samt ihren Sichtungsvermerken, sobald ihr
+Ende länger als `OPAA_AUDIT_RETENTION_MONTHS` zurückliegt; ein offener Vorgang wird nie gelöscht,
+gleich wie alt er ist. Mit dem Vorgang verschwinden der Freitext des Vermerks und die beiden
+Personenspalten, die ohnehin `ON DELETE SET NULL` tragen.
 
 **Die Betriebsliste hat drei Reiter**, alle mit derselben Mechanik (Feststellungslauf, Alter,
 objektbezogener Einstieg, Sichtungsvermerk):
@@ -1477,8 +1495,14 @@ die Hervorhebung für eine weitere Periode auf. Keine Frist, keine Eskalation, k
 **Die Kennzeichnung am Objekt nennt Zustand und Adressat — sonst nichts.** Kein Datum, kein
 bisheriger Eigentümer, kein Grund: Der Zustand tritt bei einem personengehörenden Objekt mit der
 Kontosperre ein, und ein datierter Vermerk neben dem Eigentümernamen wäre eine Statusmeldung über
-eine Kollegin. **Suchtreffer und Quellenverweise in Antworten tragen die Kennzeichnung nicht** — der
-Zustand betrifft die Zuständigkeit, nicht die Richtigkeit des Inhalts.
+eine Kollegin. Sie steht an **Übersicht und Detailansicht** des Objekts, beide aus derselben
+Ableitung — auch das Kennzeichen `successionOpen` eines Space liest sie, damit eine Antwort nicht
+zwei Wahrheiten trägt. **Suchtreffer und Quellenverweise in Antworten tragen die Kennzeichnung
+nicht** — der Zustand betrifft die Zuständigkeit, nicht die Richtigkeit des Inhalts.
+
+„War Mitglied von Referat 50" steht **nur in der Betriebsliste**, gefüllt aus den Gruppen des
+bisherigen Eigentümers: ein Hinweis, wo eine Nachfolge zu suchen ist, keine Auswertung. Die
+Kennzeichnung am Objekt trägt ihn nicht.
 
 **Die Übernahme ist die [Übertragung](#rechte-einer-gruppe-auf-eine-andere-übertragen-gebaut-1834)**
 mit dem Umfang „Eigentum und Verantwortung". Dieses Issue liefert Zustand, Liste, Adressat und die

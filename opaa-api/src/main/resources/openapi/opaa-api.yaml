@@ -6037,6 +6037,11 @@ paths:
         Grant (or update the role of) a user or group on a library (MANAGER role or above
         required). Idempotent per subject: submitting again for the same subject replaces its role
         and expiry.
+      description: >
+        While the library's succession is open (ADR-0036, Entscheidung 6) its reach is frozen:
+        a new grant, a higher role and a postponed expiry are refused with 409 and the code
+        SUCCESSION_OPEN, whose message names who is responsible. Taking reach away stays
+        possible - a downgrade, an earlier expiry and a revocation are never refused for it.
       requestBody:
         required: true
         content:
@@ -6056,6 +6061,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
 
   /api/v1/libraries/{libraryId}/grants/{grantId}:
     parameters:
@@ -6103,6 +6110,9 @@ paths:
         renewal is a deliberate act. Whether the channel itself is open is a separate, installation-
         wide decision (#1717) this endpoint neither reads nor needs.
         See docs/features/external-access.md#die-freigabe-der-bibliothek.
+        While the library's succession is open (ADR-0036, Entscheidung 6) a new release and an
+        extended one are refused with 409 and the code SUCCESSION_OPEN; taking a release back and
+        shortening a running one stay possible.
       requestBody:
         required: true
         content:
@@ -6122,6 +6132,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
 
   /api/v1/admin/external-access/libraries:
     get:
@@ -6578,6 +6590,9 @@ paths:
         If the space has any member without read access to the library, the library owner is
         actively notified (#203, "Benachrichtigung statt Zustimmung") - no consent required, the
         association takes effect immediately regardless.
+        While the succession of either side is open (ADR-0036, Entscheidung 6) a new association
+        is refused with 409 and the code SUCCESSION_OPEN; an association that already exists is
+        returned unchanged, as it reaches nobody new.
       requestBody:
         required: true
         content:
@@ -6597,6 +6612,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
 
   /api/v1/spaces/{spaceId}/libraries/{libraryId}:
     parameters:
@@ -9775,8 +9792,9 @@ components:
         successionOpen:
           type: boolean
           description: >
-            Same derived state as on SpaceResponse (ADR-0036 Entscheidung 6) - the overview card
-            carries it too, so it is visible without opening the space.
+            Same derived state as on SpaceResponse, from the same derivation (ADR-0036
+            Entscheidung 6) - the overview card carries it too, so it is visible without opening
+            the space.
           example: false
         createdAt:
           type: string
@@ -9900,9 +9918,11 @@ components:
           type: boolean
           description: >
             True while the space has no capable ADMIN member that could act for it (ADR-0036
-            Entscheidung 6) - derived on every read, never stored. Carried for every reader, with
-            neither a date nor the previous owner: the operational list with those figures is
-            #1819's. The space stays fully usable; nothing is deleted.
+            Entscheidung 6) - derived on every read, never stored, and from the same derivation
+            the succession field below carries, so the two never disagree (the personal space has
+            no succession and therefore neither flag). Carried for every reader, with neither a
+            date nor the previous owner: the operational list with those figures is #1819's. The
+            space stays fully usable; nothing is deleted.
           example: false
         lastTransfer:
           $ref: "#/components/schemas/PermissionTransferMarkResponse"
@@ -11634,6 +11654,15 @@ components:
             wording base ("indiziert" vs. "abgerufen") follows the library's sourceType already
             present on this response, so no separate field carries it. Optional so older
             clients keep working.
+        succession:
+          description: >
+            Set while this library has no capable owner (#1819, ADR-0036 Entscheidung 6) - the
+            same marking the detail view carries, so the overview shows it without opening the
+            library. State and addressee only, deliberately without date, previous owner or
+            reason; search hits never carry it.
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/SuccessionStateResponse"
         createdAt:
           type: string
           format: date-time

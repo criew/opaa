@@ -19,6 +19,8 @@ import io.opaa.api.types.LibraryOwnerType;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.ScheduleFrequency;
 import io.opaa.api.types.ScheduleWeekday;
+import io.opaa.api.types.SuccessionAddressee;
+import io.opaa.api.types.SuccessionObjectType;
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.source.s3.S3Scope;
 import io.opaa.indexing.source.s3.S3SourceSettings;
@@ -31,6 +33,7 @@ import io.opaa.library.LibraryManagementDetail;
 import io.opaa.library.LibraryScheduleDetail;
 import io.opaa.library.LibrarySummary;
 import io.opaa.library.LibraryUpdate;
+import io.opaa.permission.SuccessionFinding;
 import java.net.URI;
 import java.time.Instant;
 import java.util.List;
@@ -230,7 +233,16 @@ class LibraryResponseMapperTest {
             UUID.randomUUID(), "Team-Bibliothek", null, owner, LibraryVisibility.SHARED, true);
     LibrarySummary summary =
         new LibrarySummary(
-            library, AssetRole.EDITOR, 4L, "Referat 50", Instant.parse("2026-08-18T06:00:00Z"));
+            library,
+            AssetRole.EDITOR,
+            4L,
+            "Referat 50",
+            Instant.parse("2026-08-18T06:00:00Z"),
+            SuccessionFinding.of(
+                SuccessionObjectType.KNOWLEDGE_LIBRARY,
+                library.getId(),
+                library.getName(),
+                SuccessionAddressee.GROUP_STEWARDS));
 
     var response = LibraryResponseMapper.toListResponse(summary);
 
@@ -239,6 +251,9 @@ class LibraryResponseMapperTest {
     assertThat(response.getMyRole()).isEqualTo(AssetRole.EDITOR);
     assertThat(response.getDocumentCount()).isEqualTo(4L);
     assertThat(response.getOwnerName()).isEqualTo("Referat 50");
+    assertThat(response.getSuccession().getAddressee())
+        .as("the overview carries the marking as the detail view does (#1819)")
+        .isEqualTo(SuccessionAddressee.GROUP_STEWARDS);
   }
 
   @Test
@@ -251,12 +266,15 @@ class LibraryResponseMapperTest {
             UUID.randomUUID(), "B", null, UUID.randomUUID(), LibraryVisibility.PRIVATE, false);
     List<LibrarySummary> summaries =
         List.of(
-            new LibrarySummary(first, AssetRole.VIEWER, 0L, null, null),
-            new LibrarySummary(second, AssetRole.OWNER, 1L, null, null));
+            new LibrarySummary(first, AssetRole.VIEWER, 0L, null, null, null),
+            new LibrarySummary(second, AssetRole.OWNER, 1L, null, null, null));
 
     var responses = LibraryResponseMapper.toListResponses(summaries);
 
     assertThat(responses).extracting(r -> r.getName()).containsExactly("A", "B");
+    assertThat(responses)
+        .as("a library with a capable owner carries no marking at all")
+        .allSatisfy(response -> assertThat(response.getSuccession()).isNull());
   }
 
   @Test

@@ -5,9 +5,12 @@ import io.opaa.api.types.SuccessionKind;
 import io.opaa.api.types.SuccessionObjectType;
 import io.opaa.permission.SuccessionFinding;
 import io.opaa.permission.SuccessionFindingSource;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
 
 /**
@@ -42,9 +45,10 @@ class SpaceSuccessionSource implements SuccessionFindingSource {
 
   @Override
   public List<SuccessionFinding> findingsOf(UUID organizationId) {
-    return spaces.findByOrganizationIdWithMemberships(organizationId).stream()
-        .filter(space -> !space.isDefault())
-        .filter(space -> !accessPolicy.hasCapableAdmin(space))
+    List<Space> candidates = spaces.findByOrganizationIdWithMemberships(organizationId);
+    Set<UUID> open = openAmong(candidates);
+    return candidates.stream()
+        .filter(space -> open.contains(space.getId()))
         .map(SpaceSuccessionSource::findingOf)
         .toList();
   }
@@ -53,9 +57,22 @@ class SpaceSuccessionSource implements SuccessionFindingSource {
   public Optional<SuccessionFinding> findingFor(UUID spaceId) {
     return spaces
         .findByIdWithMemberships(spaceId)
-        .filter(space -> !space.isDefault())
-        .filter(space -> !accessPolicy.hasCapableAdmin(space))
+        .filter(space -> openAmong(List.of(space)).contains(space.getId()))
         .map(SpaceSuccessionSource::findingOf);
+  }
+
+  /**
+   * The one derivation of "Nachfolge offen" for spaces - the response fields, the reach guard and
+   * the operational list all read it here, so no second definition can drift away from the {@code
+   * is_default} exception. One account query for the whole list.
+   */
+  Set<UUID> openAmong(Collection<Space> candidates) {
+    List<Space> relevant = candidates.stream().filter(space -> !space.isDefault()).toList();
+    Set<UUID> capable = accessPolicy.spacesWithCapableAdmin(relevant);
+    return relevant.stream()
+        .map(Space::getId)
+        .filter(id -> !capable.contains(id))
+        .collect(Collectors.toSet());
   }
 
   /**

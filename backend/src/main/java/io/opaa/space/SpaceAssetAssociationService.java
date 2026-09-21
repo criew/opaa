@@ -178,15 +178,8 @@ public class SpaceAssetAssociationService {
   public SpaceLibraryLink associate(UUID spaceId, UUID libraryId, CurrentUser caller) {
     Space space = loadSpace(spaceId, caller);
     accessPolicy.requireCurator(space, caller);
-    // ADR-0036, Entscheidung 6: neither side gains reach while its succession is open - a space
-    // without a capable ADMIN takes no new provisioning, and a library without a capable owner is
-    // not newly provided anywhere.
-    successionGuard.requireReachNotFrozen(
-        SuccessionObjectType.SPACE, space.getId(), "Eine neue Bereitstellung");
 
     KnowledgeLibrary library = requireLibrary(libraryId, space.getOrganizationId());
-    successionGuard.requireReachNotFrozen(
-        SuccessionObjectType.KNOWLEDGE_LIBRARY, library.getId(), "Eine neue Bereitstellung");
     // A CURATOR may only associate an asset they can themselves access - the same rule #203
     // states explicitly, checked through the caller's own real grants (never a system-admin
     // bypass, mirroring LibraryAccessService#readableLibraryIds's own no-bypass rule) so that
@@ -202,6 +195,15 @@ public class SpaceAssetAssociationService {
     if (existing.isPresent()) {
       return toSpaceLibraryLink(existing.get(), library);
     }
+
+    // ADR-0036, Entscheidung 6: neither side gains reach while its succession is open - a space
+    // without a capable ADMIN takes no new provisioning, and a library without a capable owner is
+    // not newly provided anywhere. An association that already exists gains nothing and is
+    // returned above, unchanged.
+    successionGuard.requireReachNotFrozen(
+        SuccessionObjectType.SPACE, space.getId(), "Eine neue Bereitstellung");
+    successionGuard.requireReachNotFrozen(
+        SuccessionObjectType.KNOWLEDGE_LIBRARY, library.getId(), "Eine neue Bereitstellung");
 
     SpaceAssetAssociation association =
         new SpaceAssetAssociation(

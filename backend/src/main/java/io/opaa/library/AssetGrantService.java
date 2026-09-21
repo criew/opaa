@@ -137,12 +137,6 @@ public class AssetGrantService {
     UUID currentUserId = caller.id();
     KnowledgeLibrary library = requireManageable(libraryId, caller);
 
-    // ADR-0036, Entscheidung 6: a library without a capable owner keeps every right it has and
-    // gains none - the reach is frozen while the succession is open.
-    successionGuard.requireReachNotFrozen(
-        SuccessionObjectType.KNOWLEDGE_LIBRARY,
-        library.getId(),
-        "Eine neue oder geänderte Berechtigung");
     if (request.subjectType() == null || request.subjectId() == null) {
       throw new ValidationException("Empfänger ist erforderlich");
     }
@@ -224,6 +218,7 @@ public class AssetGrantService {
                   request.subjectId())
               .orElse(null);
       isNewGrant = grant == null;
+      requireReachNotFrozenIfWidening(library, grant, request);
       if (grant == null) {
         grant =
             AssetGrant.forUser(
@@ -252,6 +247,7 @@ public class AssetGrantService {
                   request.subjectId())
               .orElse(null);
       isNewGrant = grant == null;
+      requireReachNotFrozenIfWidening(library, grant, request);
       if (grant == null) {
         grant =
             AssetGrant.forGroup(
@@ -299,6 +295,35 @@ public class AssetGrantService {
     }
     invalidateAfterCommit(library.getId());
     return toViews(List.of(saved)).get(0);
+  }
+
+  /**
+   * ADR-0036, Entscheidung 6: while a library's succession is open its reach is frozen - a new
+   * grant, a higher role or a postponed expiry are refused. Taking reach away is not: a downgrade,
+   * an expiry brought forward and a revocation stay open to whoever is still there.
+   */
+  private void requireReachNotFrozenIfWidening(
+      KnowledgeLibrary library, AssetGrant existing, AssetGrantUpsert request) {
+    if (existing != null && !widensReach(existing, request.role(), request.expiresAt())) {
+      return;
+    }
+    successionGuard.requireReachNotFrozen(
+        SuccessionObjectType.KNOWLEDGE_LIBRARY,
+        library.getId(),
+        existing == null ? "Eine neue Berechtigung" : "Eine größere Berechtigung");
+  }
+
+  private static boolean widensReach(
+      AssetGrant existing, AssetRole requestedRole, Instant requestedExpiresAt) {
+    if (requestedRole.atLeast(existing.getRole()) && requestedRole != existing.getRole()) {
+      return true;
+    }
+    Instant previousExpiry = existing.getExpiresAt();
+    if (previousExpiry == null) {
+      // Unlimited already: no expiry can reach further.
+      return false;
+    }
+    return requestedExpiresAt == null || requestedExpiresAt.isAfter(previousExpiry);
   }
 
   private Map<String, Object> grantAuditPayload(AssetRole role, Instant expiresAt) {

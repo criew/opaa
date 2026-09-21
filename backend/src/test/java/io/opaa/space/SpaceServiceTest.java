@@ -83,6 +83,7 @@ class SpaceServiceTest {
             capabilityService,
             new io.opaa.permission.GroupSizeProperties(null),
             successionGuard,
+            mock(SpaceSuccessionSource.class),
             transactionManager);
   }
 
@@ -105,12 +106,36 @@ class SpaceServiceTest {
     space.addMembership(adminRow);
     when(spaceRepository.findByIdWithMemberships(any(UUID.class))).thenReturn(Optional.of(space));
     when(accessPolicy.hasCapableAdminAfter(space, adminRow, null)).thenReturn(false);
+    when(accessPolicy.hasCapableAdmin(space)).thenReturn(true);
     CurrentUser caller = CurrentUser.of(owner, organizationId, SystemRole.USER, "Owner", null);
 
     assertThatThrownBy(() -> spaceService.removeMember(space.getId(), adminRow.getId(), caller))
         .isInstanceOf(ConflictException.class)
         .hasMessageContaining("letztes handlungsfähiges ADMIN-Mitglied");
     verify(membershipHistory, never()).recordRemoved(any(), any());
+  }
+
+  /**
+   * #1819: the rule refuses the <em>loss</em>, not the state. A space that already has no capable
+   * ADMIN loses none by removing somebody - and refusing there would freeze a change that takes
+   * reach away.
+   */
+  @Test
+  void aSpaceThatAlreadyHasNoCapableAdminStillLosesAMember() {
+    UUID organizationId = UUID.randomUUID();
+    UUID owner = UUID.randomUUID();
+    Space space = new Space("Team", null, false, SpaceVisibility.PRIVATE, owner, organizationId);
+    SpaceMembership memberRow =
+        SpaceMembership.ofUser(UUID.randomUUID(), SpaceRole.MEMBER, organizationId);
+    space.addMembership(memberRow);
+    when(spaceRepository.findByIdWithMemberships(any(UUID.class))).thenReturn(Optional.of(space));
+    when(accessPolicy.hasCapableAdminAfter(space, memberRow, null)).thenReturn(false);
+    when(accessPolicy.hasCapableAdmin(space)).thenReturn(false);
+    CurrentUser caller = CurrentUser.of(owner, organizationId, SystemRole.USER, "Owner", null);
+
+    spaceService.removeMember(space.getId(), memberRow.getId(), caller);
+
+    verify(membershipHistory).recordRemoved(any(), any());
   }
 
   /** The same call site must let the change through when a capable ADMIN does remain. */

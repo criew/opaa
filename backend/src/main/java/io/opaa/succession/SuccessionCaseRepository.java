@@ -2,10 +2,14 @@ package io.opaa.succession;
 
 import io.opaa.api.types.SuccessionKind;
 import io.opaa.api.types.SuccessionObjectType;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface SuccessionCaseRepository extends JpaRepository<SuccessionCase, UUID> {
 
@@ -24,4 +28,13 @@ public interface SuccessionCaseRepository extends JpaRepository<SuccessionCase, 
       SuccessionObjectType objectType, UUID objectId);
 
   Optional<SuccessionCase> findByIdAndOrganizationId(UUID id, UUID organizationId);
+
+  /**
+   * Deletes the records whose state ended before {@code cutoff}; their Sichtungsvermerke go with
+   * them through the foreign key's {@code ON DELETE CASCADE}. An open record is never touched,
+   * whatever its age - it still describes something that holds.
+   */
+  @Modifying
+  @Query("delete from SuccessionCase c where c.closedAt is not null and c.closedAt < :cutoff")
+  int deleteClosedBefore(@Param("cutoff") Instant cutoff);
 }

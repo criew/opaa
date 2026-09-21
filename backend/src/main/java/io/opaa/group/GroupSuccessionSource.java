@@ -7,7 +7,9 @@ import io.opaa.auth.AccountActivityService;
 import io.opaa.permission.SuccessionFinding;
 import io.opaa.permission.SuccessionFindingSource;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -47,11 +49,33 @@ class GroupSuccessionSource implements SuccessionFindingSource {
     return SuccessionObjectType.GROUP;
   }
 
+  /**
+   * Two queries for the whole organization - the stewards of every internal group at once and one
+   * account query over all of them - rather than that pair per group (#682's rule).
+   */
   @Override
   public List<SuccessionFinding> findingsOf(UUID organizationId) {
+    List<Group> internal =
+        groups.findByOrganizationId(organizationId).stream().filter(Group::isInternal).toList();
+    if (internal.isEmpty()) {
+      return List.of();
+    }
+    Map<UUID, List<UUID>> stewardsByGroup = new HashMap<>();
+    for (GroupSteward steward :
+        stewards.findByGroupIdIn(internal.stream().map(Group::getId).toList())) {
+      stewardsByGroup
+          .computeIfAbsent(steward.getGroupId(), key -> new ArrayList<>())
+          .add(steward.getUserId());
+    }
+    Set<UUID> active =
+        accountActivity.activeAmong(
+            stewardsByGroup.values().stream().flatMap(List::stream).distinct().toList());
     List<SuccessionFinding> findings = new ArrayList<>();
-    for (Group group : groups.findByOrganizationId(organizationId)) {
-      if (group.isInternal() && !hasActiveSteward(group.getId())) {
+    for (Group group : internal) {
+      boolean hasActiveSteward =
+          stewardsByGroup.getOrDefault(group.getId(), List.of()).stream()
+              .anyMatch(active::contains);
+      if (!hasActiveSteward) {
         findings.add(findingOf(group));
       }
     }

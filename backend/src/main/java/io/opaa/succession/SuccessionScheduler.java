@@ -12,13 +12,25 @@ import org.springframework.stereotype.Component;
 public class SuccessionScheduler {
 
   private final SuccessionDetectionService detectionService;
+  private final SuccessionRetentionService retentionService;
 
-  SuccessionScheduler(SuccessionDetectionService detectionService) {
+  SuccessionScheduler(
+      SuccessionDetectionService detectionService, SuccessionRetentionService retentionService) {
     this.detectionService = detectionService;
+    this.retentionService = retentionService;
   }
 
   @Scheduled(cron = "${opaa.succession.detection-cron:0 5 * * * *}")
   public void detectOpenSuccessions() {
     detectionService.runOnce();
+  }
+
+  /**
+   * The retention deletion of the records, monthly like the audit log's own (ADR-0036, Entscheidung
+   * 8) - half an hour after it, so the two passes never share a transaction window.
+   */
+  @Scheduled(cron = "0 30 3 1 * *")
+  public void deleteExpiredSuccessionCases() {
+    retentionService.runOnce();
   }
 }

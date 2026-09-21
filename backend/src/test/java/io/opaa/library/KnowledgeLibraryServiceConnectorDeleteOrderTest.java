@@ -126,6 +126,7 @@ class KnowledgeLibraryServiceConnectorDeleteOrderTest {
     libraryService =
         new KnowledgeLibraryService(
             mock(SuccessionReachGuard.class),
+            mock(LibrarySuccessionSource.class),
             mock(AssetOwnershipHistoryService.class),
             libraryRepository,
             userRepository,

@@ -263,7 +263,8 @@ final class LibraryResponseMapper {
             library.getUpdatedAt())
         .description(library.getDescription())
         .ownerName(summary.ownerName())
-        .lastIndexedAt(summary.lastIndexedAt());
+        .lastIndexedAt(summary.lastIndexedAt())
+        .succession(SuccessionResponseMapper.toStateResponse(summary.succession()));
   }
 
   static List<LibraryListResponse> toListResponses(List<LibrarySummary> summaries) {

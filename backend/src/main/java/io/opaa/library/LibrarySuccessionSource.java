@@ -8,12 +8,16 @@ import io.opaa.auth.AccountActivityService;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.permission.GroupCapabilityService;
+import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.GroupSubject;
 import io.opaa.permission.GroupSubjectDirectory;
 import io.opaa.permission.SuccessionFinding;
 import io.opaa.permission.SuccessionFindingSource;
-import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -33,6 +37,7 @@ class LibrarySuccessionSource implements SuccessionFindingSource {
   private final AccountActivityService accountActivity;
   private final GroupSubjectDirectory groupDirectory;
   private final GroupCapabilityService groupCapability;
+  private final GroupMembershipResolver membershipResolver;
   private final UserRepository users;
 
   LibrarySuccessionSource(
@@ -40,11 +45,13 @@ class LibrarySuccessionSource implements SuccessionFindingSource {
       AccountActivityService accountActivity,
       GroupSubjectDirectory groupDirectory,
       GroupCapabilityService groupCapability,
+      GroupMembershipResolver membershipResolver,
       UserRepository users) {
     this.libraries = libraries;
     this.accountActivity = accountActivity;
     this.groupDirectory = groupDirectory;
     this.groupCapability = groupCapability;
+    this.membershipResolver = membershipResolver;
     this.users = users;
   }
 
@@ -60,24 +67,37 @@ class LibrarySuccessionSource implements SuccessionFindingSource {
 
   @Override
   public List<SuccessionFinding> findingsOf(UUID organizationId) {
-    List<KnowledgeLibrary> all = libraries.findByOrganizationId(organizationId);
+    return List.copyOf(
+        findingsAmong(libraries.findByOrganizationId(organizationId), true).values());
+  }
+
+  /**
+   * The state of a whole list of libraries, with <b>one</b> account query for all their person
+   * owners - the overview carries the same marking as the detail view (ADR-0036, Entscheidung 6),
+   * and one lookup per row would put it on every page of every reader.
+   *
+   * @param withMembershipHints only the operational list shows them; the marking at an object is
+   *     state and addressee alone, so the reader's overview pays nothing for them
+   */
+  Map<UUID, SuccessionFinding> findingsAmong(
+      Collection<KnowledgeLibrary> candidates, boolean withMembershipHints) {
     Set<UUID> activeOwners =
         accountActivity.activeAmong(
-            all.stream()
+            candidates.stream()
                 .filter(library -> library.getOwnerType() == LibraryOwnerType.USER)
                 .map(KnowledgeLibrary::getOwnerUserId)
                 .toList());
-    List<SuccessionFinding> findings = new ArrayList<>();
-    for (KnowledgeLibrary library : all) {
+    Map<UUID, SuccessionFinding> findings = new LinkedHashMap<>();
+    for (KnowledgeLibrary library : candidates) {
       if (library.getOwnerType() == LibraryOwnerType.USER) {
         if (!activeOwners.contains(library.getOwnerUserId())) {
-          findings.add(findingFor(library, null));
+          findings.put(library.getId(), findingFor(library, null, withMembershipHints));
         }
         continue;
       }
       GroupSubject owner = groupDirectory.find(library.getOwnerGroupId()).orElse(null);
       if (owner == null || !groupCapability.isCapable(owner)) {
-        findings.add(findingFor(library, owner));
+        findings.put(library.getId(), findingFor(library, owner, withMembershipHints));
       }
     }
     return findings;
@@ -94,7 +114,8 @@ class LibrarySuccessionSource implements SuccessionFindingSource {
                     library,
                     library.getOwnerType() == LibraryOwnerType.GROUP
                         ? groupDirectory.find(library.getOwnerGroupId()).orElse(null)
-                        : null));
+                        : null,
+                    true));
   }
 
   private boolean withoutCapableOwner(KnowledgeLibrary library) {
@@ -108,7 +129,8 @@ class LibrarySuccessionSource implements SuccessionFindingSource {
    * The owner is named for the administration's orientation, never as a query axis - and a
    * protected group is named by its protection alone (ADR-0036, Entscheidung 9).
    */
-  private SuccessionFinding findingFor(KnowledgeLibrary library, GroupSubject ownerGroup) {
+  private SuccessionFinding findingFor(
+      KnowledgeLibrary library, GroupSubject ownerGroup, boolean withMembershipHints) {
     boolean internalGroupOwner = ownerGroup != null && ownerGroup.internal();
     SuccessionFinding finding =
         SuccessionFinding.of(
@@ -122,8 +144,30 @@ class LibrarySuccessionSource implements SuccessionFindingSource {
       return finding.withOwnerHint(
           ownerGroup.protectedGroup() ? "Geschützte Gruppe" : ownerGroup.name());
     }
-    return finding.withOwnerHint(
-        users.findById(library.getOwnerUserId()).map(LibrarySuccessionSource::nameOf).orElse(null));
+    return finding
+        .withOwnerHint(
+            users
+                .findById(library.getOwnerUserId())
+                .map(LibrarySuccessionSource::nameOf)
+                .orElse(null))
+        .withMembershipHints(
+            withMembershipHints ? membershipHints(library.getOwnerUserId()) : List.of());
+  }
+
+  /**
+   * "War Mitglied von Referat 50" (Personalrat E4): a suggestion where to look for a successor,
+   * Bestandsinformation and nothing else - it is never counted, sorted or queried, and a protected
+   * group appears by its protection alone (ADR-0036, Entscheidung 9).
+   */
+  private List<String> membershipHints(UUID ownerUserId) {
+    return membershipResolver.groupIdsForUser(ownerUserId).stream()
+        .map(groupDirectory::find)
+        .flatMap(Optional::stream)
+        .filter(group -> !group.dissolved())
+        .map(group -> group.protectedGroup() ? "Geschützte Gruppe" : group.name())
+        .filter(Objects::nonNull)
+        .sorted()
+        .toList();
   }
 
   private static String nameOf(User user) {
