@@ -165,6 +165,7 @@ class DirectorySyncControllerTest {
                     Instant.parse("2026-09-20T04:00:00Z"),
                     0.67,
                     12,
+                    3,
                     report(DirectorySyncOutcome.PENDING_CONFIRMATION))));
 
     mockMvc
@@ -283,6 +284,9 @@ class DirectorySyncControllerTest {
     return new SyncReport(
         outcome,
         Instant.parse("2026-09-20T04:00:00Z"),
+        List.of(),
+        List.of(),
+        List.of(),
         List.of(),
         List.of(),
         List.of(),

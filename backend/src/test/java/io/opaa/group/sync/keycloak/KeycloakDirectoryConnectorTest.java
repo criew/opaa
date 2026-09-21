@@ -3,6 +3,7 @@ package io.opaa.group.sync.keycloak;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.opaa.group.sync.DirectoryAccount;
 import io.opaa.group.sync.DirectoryGroup;
 import io.opaa.group.sync.DirectorySnapshot;
 import io.opaa.group.sync.DirectoryUnavailableException;
@@ -38,10 +39,20 @@ class KeycloakDirectoryConnectorTest {
   }
 
   private KeycloakDirectoryConnector connector(int pageSize, int maxGroups, int maxMembers) {
+    return connector(pageSize, maxGroups, maxMembers, 50000);
+  }
+
+  private KeycloakDirectoryConnector connector(
+      int pageSize, int maxGroups, int maxMembers, int maxAccounts) {
     return new KeycloakDirectoryConnector(
         HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NEVER).build(),
         new KeycloakDirectoryProperties(
-            pageSize, maxGroups, maxMembers, Duration.ofSeconds(5), Duration.ofSeconds(10)),
+            pageSize,
+            maxGroups,
+            maxMembers,
+            maxAccounts,
+            Duration.ofSeconds(5),
+            Duration.ofSeconds(10)),
         Clock.fixed(NOW, ZoneOffset.UTC));
   }
 
@@ -51,7 +62,7 @@ class KeycloakDirectoryConnectorTest {
 
   private DirectorySnapshot fetch(KeycloakDirectoryConnector connector)
       throws DirectoryUnavailableException {
-    return connector.fetchGroups(
+    return connector.fetchSnapshot(
         KeycloakRealmAddress.of(keycloak.issuerUri(), null),
         FakeKeycloakServer.CLIENT_ID,
         FakeKeycloakServer.CLIENT_SECRET);
@@ -98,6 +109,36 @@ class KeycloakDirectoryConnectorTest {
     DirectorySnapshot snapshot = fetch(connector());
 
     assertThat(groupOf(snapshot, "g-haus").memberSubjects()).isEmpty();
+  }
+
+  /**
+   * #1818: the same read carries the account status, keyed by the id that is also the {@code sub}.
+   */
+  @Test
+  void theAccountStatusArrivesWithTheSnapshot() throws Exception {
+    keycloak
+        .withGroup("g-50", "Referat 50", "/Referat 50", null, "u-1")
+        .withAccount("u-1", true)
+        .withAccount("u-2", false);
+
+    DirectorySnapshot snapshot = fetch(connector());
+
+    assertThat(snapshot.reportsAccounts()).isTrue();
+    assertThat(snapshot.accounts())
+        .containsExactlyInAnyOrder(
+            new DirectoryAccount("u-1", true), new DirectoryAccount("u-2", false));
+  }
+
+  /**
+   * A truncated account list looks like a mass departure; the run must fail instead of applying it.
+   */
+  @Test
+  void anAccountListBeyondItsCeilingFailsTheWholeRun() {
+    keycloak.withGroup("g-50", "Referat 50", "/Referat 50", null).withAccounts(12);
+
+    assertThatThrownBy(() -> fetch(connector(5, 5000, 20000, 10)))
+        .isInstanceOf(DirectoryUnavailableException.class)
+        .hasMessageContaining("Konten");
   }
 
   /** Three levels deep, so a single /children round is demonstrably not enough. */
@@ -172,7 +213,7 @@ class KeycloakDirectoryConnectorTest {
     assertThatThrownBy(
             () ->
                 connector()
-                    .fetchGroups(
+                    .fetchSnapshot(
                         KeycloakRealmAddress.of(keycloak.issuerUri(), null),
                         FakeKeycloakServer.CLIENT_ID,
                         "falsch"))
@@ -279,7 +320,7 @@ class KeycloakDirectoryConnectorTest {
 
     DirectorySnapshot snapshot =
         connector()
-            .fetchGroups(
+            .fetchSnapshot(
                 KeycloakRealmAddress.of(keycloak.issuerUri(), null),
                 FakeKeycloakServer.CLIENT_ID,
                 "a&b=c");

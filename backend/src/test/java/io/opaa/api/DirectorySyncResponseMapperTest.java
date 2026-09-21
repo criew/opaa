@@ -48,6 +48,9 @@ class DirectorySyncResponseMapperTest {
                     "Referat 1",
                     List.of(new UserRef(UUID.randomUUID(), "Ada Lovelace")),
                     List.of())),
+            List.of(),
+            List.of(),
+            List.of(),
             3,
             1,
             2,
@@ -148,7 +151,7 @@ class DirectorySyncResponseMapperTest {
     Instant planCreatedAt = runAt.minusSeconds(600);
     DirectorySyncPendingPlan plan =
         new DirectorySyncPendingPlan(
-            UUID.randomUUID(), PROVIDER_ID, planCreatedAt, "fingerprint", 0.67, 12, "{}");
+            UUID.randomUUID(), PROVIDER_ID, planCreatedAt, "fingerprint", 0.67, 12, 3, "{}");
 
     DirectorySyncStatusResponse response =
         DirectorySyncResponseMapper.toStatusResponse(
@@ -164,6 +167,7 @@ class DirectorySyncResponseMapperTest {
     assertThat(response.getPendingPlan().getCreatedAt()).isEqualTo(planCreatedAt);
     assertThat(response.getPendingPlan().getChangedFraction()).isEqualTo(0.67);
     assertThat(response.getPendingPlan().getMembershipsRemoved()).isEqualTo(12);
+    assertThat(response.getPendingPlan().getAccountsLocked()).isEqualTo(3);
   }
 
   @Test
@@ -190,7 +194,7 @@ class DirectorySyncResponseMapperTest {
 
     DirectorySyncPendingPlanResponse response =
         DirectorySyncResponseMapper.toPendingPlanResponse(
-            new PendingPlanView(planId, PROVIDER_ID, createdAt, 0.67, 12, report));
+            new PendingPlanView(planId, PROVIDER_ID, createdAt, 0.67, 12, 3, report));
 
     assertThat(response.getId()).isEqualTo(planId);
     assertThat(response.getProviderId()).isEqualTo(PROVIDER_ID);
@@ -209,6 +213,9 @@ class DirectorySyncResponseMapperTest {
         List.of(),
         List.of(),
         List.of(),
+        List.of(),
+        List.of(),
+        List.of(),
         0,
         0,
         0,
@@ -221,6 +228,9 @@ class DirectorySyncResponseMapperTest {
     return new SyncReport(
         outcome,
         Instant.now(),
+        List.of(),
+        List.of(),
+        List.of(),
         List.of(),
         List.of(),
         List.of(),

@@ -2,16 +2,20 @@ package io.opaa.auth;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import jakarta.servlet.FilterChain;
+import java.time.Instant;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -61,5 +65,35 @@ class UserProvisioningFilterTest {
                 provisioned.getSystemRole(),
                 provisioned.getDisplayName(),
                 provisioned.getEmail()));
+  }
+
+  /**
+   * #1818: an account the directory synchronisation locked reaches nothing, however valid its token
+   * still is - the refusal carries the marker the SPA turns into reason and contact instead of a
+   * silent redirect, and the chain is not continued.
+   */
+  @Test
+  void aDirectoryLockedAccountIsRefusedWithItsMarkerAndReachesNoHandler() throws Exception {
+    Jwt jwt =
+        Jwt.withTokenValue("token")
+            .header("alg", "HS256")
+            .claim("sub", "gone")
+            .claim("iss", "https://idp.example/realms/a")
+            .build();
+    SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt));
+    User locked = new User("gone", "https://idp.example/realms/a", null, "Gone");
+    locked.lockFromDirectory(Instant.now());
+    when(userService.provisionFromToken(jwt)).thenReturn(locked);
+
+    MockHttpServletRequest request = new MockHttpServletRequest();
+    MockHttpServletResponse response = new MockHttpServletResponse();
+    new UserProvisioningFilter(userService).doFilter(request, response, filterChain);
+
+    assertThat(response.getStatus()).isEqualTo(HttpStatus.UNAUTHORIZED.value());
+    assertThat(response.getHeader(HttpHeaders.WWW_AUTHENTICATE))
+        .contains(UserProvisioningFilter.ACCOUNT_LOCKED_BY_DIRECTORY);
+    assertThat(request.getAttribute(CurrentUserArgumentResolver.REQUEST_ATTRIBUTE)).isNull();
+    assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
+    verify(filterChain, never()).doFilter(any(), any());
   }
 }

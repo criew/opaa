@@ -1,0 +1,34 @@
+databaseChangeLog:
+  - changeSet:
+      id: 063-users-directory-locked
+      author: opaa
+      comment: >-
+        Der Kontozustand aus dem Verzeichnis (#1818, ADR-0036 Entscheidungen 3 und 6): Ein im
+        Verzeichnis gesperrtes oder ausgeschiedenes Konto verliert den Zugang beim naechsten
+        Abgleich, nicht erst wenn sein Token ablaeuft.
+        .
+        EINE SPALTE, KEIN ZUSTANDSFELD: directory_locked_at traegt den Zeitpunkt der Sperre, NULL
+        heisst "nicht gesperrt". Der Kontozustand bleibt im uebrigen abgeleitet (ADR-0033
+        Entscheidung 3) - fuer ein lokales Konto aus local_credentials, fuer ein Anbieterkonto aus
+        dieser Spalte und dem Anbieter. Die Spalte ist die einzige gespeicherte Tatsache, die aus
+        dem Verzeichnis kommt; alles andere leitet sich daraus ab.
+        .
+        Der Teilindex deckt die eine Abfrage, die sie auswertet: die gesperrten Konten eines
+        Anbieters. Die Pruefung auf dem heissen Pfad liest die Zeile ohnehin ueber den
+        Primaerschluessel.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE users
+                  ADD COLUMN directory_locked_at timestamp with time zone;
+
+              CREATE INDEX idx_users_directory_locked ON users USING btree (organization_id, issuer) WHERE (directory_locked_at IS NOT NULL);
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              DROP INDEX idx_users_directory_locked;
+
+              ALTER TABLE users
+                  DROP COLUMN directory_locked_at;

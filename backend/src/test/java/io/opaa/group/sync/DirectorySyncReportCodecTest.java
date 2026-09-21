@@ -34,6 +34,9 @@ class DirectorySyncReportCodecTest {
                     "Referat 1",
                     List.of(new UserRef(added, "Ada Lovelace")),
                     List.of(new UserRef(removed, "Grace Hopper")))),
+            List.of(),
+            List.of(),
+            List.of(),
             3,
             1,
             2,
@@ -60,6 +63,9 @@ class DirectorySyncReportCodecTest {
             List.of(),
             List.of(),
             List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
             0,
             0,
             0,
@@ -72,5 +78,30 @@ class DirectorySyncReportCodecTest {
     assertThat(restored.groupsCreated()).isEmpty();
     assertThat(restored.unmaintainedTokenGroups()).isEmpty();
     assertThat(restored.membershipChanges()).isEmpty();
+  }
+
+  /**
+   * A plan stored before #1818 knows no account fields. Read back, they must be empty lists, not
+   * {@code null}: {@code DirectorySyncResponseMapper} streams over every one of them, so a row that
+   * predates a field would otherwise answer the management with a 500.
+   */
+  @Test
+  void aPlanStoredBeforeTheAccountFieldsExistedStillReadsBack() {
+    String storedBefore1818 =
+        """
+        {"outcome":"PENDING_CONFIRMATION","generatedAt":"2026-09-20T04:00:00Z",\
+        "groupsCreated":[],"groupsRenamed":[],"groupsDissolved":[],\
+        "unmaintainedTokenGroups":[],"membershipChanges":[],\
+        "membershipsAdded":3,"membershipsRemoved":12,"unresolvedMemberCount":0,\
+        "changedFraction":0.67,"thresholdFraction":0.3,"message":"Bestätigung erforderlich."}\
+        """;
+
+    SyncReport restored = DirectorySyncReportCodec.read(storedBefore1818);
+
+    assertThat(restored.accountsLocked()).isEmpty();
+    assertThat(restored.accountsUnlocked()).isEmpty();
+    assertThat(restored.accountLocksWithheld()).isEmpty();
+    assertThat(restored.membershipsRemoved()).isEqualTo(12);
+    assertThat(restored.outcome()).isEqualTo(DirectorySyncOutcome.PENDING_CONFIRMATION);
   }
 }

@@ -36,6 +36,9 @@ final class DirectorySyncResponseMapper {
             toGroupChanges(report.groupsDissolved()),
             toGroupChanges(report.unmaintainedTokenGroups()),
             toMembershipChanges(report.membershipChanges()),
+            toUserRefs(report.accountsLocked()),
+            toUserRefs(report.accountsUnlocked()),
+            toUserRefs(report.accountLocksWithheld()),
             report.membershipsAdded(),
             report.membershipsRemoved(),
             report.changedFraction(),
@@ -81,7 +84,11 @@ final class DirectorySyncResponseMapper {
       return null;
     }
     return new DirectorySyncPendingPlanSummary(
-        plan.getId(), plan.getCreatedAt(), plan.getChangedFraction(), plan.getMembershipsRemoved());
+            plan.getId(),
+            plan.getCreatedAt(),
+            plan.getChangedFraction(),
+            plan.getMembershipsRemoved())
+        .accountsLocked(plan.getAccountsLocked());
   }
 
   private static DirectorySyncGroupChange toGroupChange(GroupChange change) {

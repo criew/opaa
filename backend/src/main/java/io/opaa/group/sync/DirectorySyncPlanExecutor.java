@@ -6,18 +6,24 @@ import io.opaa.api.types.AuditOutcome;
 import io.opaa.api.types.AuditSubjectKind;
 import io.opaa.api.types.DirectorySyncOutcome;
 import io.opaa.api.types.GroupKind;
+import io.opaa.api.types.SystemRole;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.auth.UserRepository.DirectoryAccountState;
+import io.opaa.auth.local.LocalAccountAccessEndedEvent;
+import io.opaa.auth.local.LocalAdminAvailabilityGuard;
 import io.opaa.group.Group;
 import io.opaa.group.GroupMembership;
 import io.opaa.group.GroupRepository;
+import io.opaa.permission.AccountStateHistoryService;
 import io.opaa.permission.GroupMembershipHistoryCause;
 import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.PermissionHistoryService;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -29,6 +35,7 @@ import java.util.Set;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -109,6 +116,12 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * single legitimate dissolution in a small organisation - the normal case for a pilot, not the
  * mass-outage case this measure targets - would otherwise abort every run indefinitely, with no
  * per-run override available (a second regression review of PR #297 found and measured).
+ *
+ * <p>A third measure covers the account locks (#1818): the fraction of this provider's active
+ * accounts the run would lock, against the same threshold but with a lower count floor ({@link
+ * #MIN_LOCKS_FOR_ACCOUNT_MEASURE}). A lock takes a person's access away, so it belongs under the
+ * same confirmation path as a membership withdrawal (ADR-0036, Entscheidung 3) - and an empty
+ * account list aborts the run outright, the way an empty group list does.
  */
 @Service
 class DirectorySyncPlanExecutor {
@@ -122,6 +135,19 @@ class DirectorySyncPlanExecutor {
   private static final int MIN_ACTIVE_GROUPS_FOR_GROUP_MEASURE = 10;
 
   private static final int MIN_DISSOLUTIONS_FOR_GROUP_MEASURE = 5;
+
+  /** The population floor of the account measure (#1818), the same as the group one. */
+  private static final int MIN_ACTIVE_ACCOUNTS_FOR_ACCOUNT_MEASURE = 10;
+
+  /**
+   * The count floor of the account measure, deliberately <b>lower</b> than {@link
+   * #MIN_DISSOLUTIONS_FOR_GROUP_MEASURE}: at five, a small authority whose four accounts all stop
+   * being reported would lock all four without a confirmation - four people before a locked access,
+   * which is exactly the case Personalrat C1 asks to slow down (ADR-0036, Entscheidung 3). At two,
+   * a single departure stays a routine, directly applied change in every house size, while two or
+   * more locks in one run are always measured against the threshold.
+   */
+  private static final int MIN_LOCKS_FOR_ACCOUNT_MEASURE = 2;
 
   /**
    * The fixed, non-pseudonymised actor label #392's audit entries for this class use - "a sync run
@@ -137,6 +163,9 @@ class DirectorySyncPlanExecutor {
   private final PermissionHistoryService permissionHistoryService;
   private final AuditEventRecorder auditEventRecorder;
   private final DirectorySyncPendingPlanRepository pendingPlanRepository;
+  private final AccountStateHistoryService accountStateHistoryService;
+  private final LocalAdminAvailabilityGuard adminGuard;
+  private final ApplicationEventPublisher eventPublisher;
 
   DirectorySyncPlanExecutor(
       GroupRepository groupRepository,
@@ -145,7 +174,10 @@ class DirectorySyncPlanExecutor {
       DirectorySyncProperties properties,
       PermissionHistoryService permissionHistoryService,
       AuditEventRecorder auditEventRecorder,
-      DirectorySyncPendingPlanRepository pendingPlanRepository) {
+      DirectorySyncPendingPlanRepository pendingPlanRepository,
+      AccountStateHistoryService accountStateHistoryService,
+      LocalAdminAvailabilityGuard adminGuard,
+      ApplicationEventPublisher eventPublisher) {
     this.groupRepository = groupRepository;
     this.userRepository = userRepository;
     this.membershipResolver = membershipResolver;
@@ -153,6 +185,9 @@ class DirectorySyncPlanExecutor {
     this.permissionHistoryService = permissionHistoryService;
     this.auditEventRecorder = auditEventRecorder;
     this.pendingPlanRepository = pendingPlanRepository;
+    this.accountStateHistoryService = accountStateHistoryService;
+    this.adminGuard = adminGuard;
+    this.eventPublisher = eventPublisher;
   }
 
   // #392 code review, finding 1: this can no longer be readOnly - handle() -> finish() now writes
@@ -248,6 +283,35 @@ class DirectorySyncPlanExecutor {
     List<Group> tokenGroups =
         groupRepository.findByOrganizationIdAndProviderIdAndKind(
             organizationId, target.providerId(), GroupKind.IDENTITY_PROVIDER);
+    List<DirectoryAccountState> providerAccounts =
+        userRepository.findAccountStatesOf(organizationId, target.issuer());
+
+    // #1818: the account half of the empty-result protection. A directory that reports account
+    // status but not a single account is the same finding as an empty group list - it must never
+    // lock everybody, and it is a hard abort with no plan to confirm (ADR-0036, Entscheidung 3).
+    if (snapshot.reportsAccounts()
+        && snapshot.accounts().isEmpty()
+        && !providerAccounts.isEmpty()) {
+      String message =
+          "Das Verzeichnis hat eine leere Kontenliste geliefert, obwohl "
+              + providerAccounts.size()
+              + " Konto/Konten dieses Anbieters bekannt sind. Der Lauf wurde ohne Änderungen"
+              + " abgebrochen.";
+      log.warn(
+          "Directory sync: directory returned an empty account list for provider {} while {}"
+              + " accounts exist - aborting without changes",
+          target.providerId(),
+          providerAccounts.size());
+      return finish(
+          target,
+          correlationRef,
+          now,
+          DirectorySyncOutcome.ABORTED_EMPTY_RESULT,
+          message,
+          emptyPlan(),
+          null,
+          null);
+    }
 
     if (snapshot.groups().isEmpty() && !existingOrgUnits.isEmpty()) {
       String message =
@@ -272,7 +336,13 @@ class DirectorySyncPlanExecutor {
     }
 
     SyncPlan plan =
-        buildPlan(organizationId, target.issuer(), snapshot, existingOrgUnits, tokenGroups);
+        buildPlan(
+            organizationId,
+            target.issuer(),
+            snapshot,
+            existingOrgUnits,
+            tokenGroups,
+            providerAccounts);
 
     if (mode != Mode.CONFIRM && plan.changedFraction() > properties.changeThresholdFraction()) {
       String changedPercent = formatPercent(plan.changedFraction());
@@ -280,19 +350,22 @@ class DirectorySyncPlanExecutor {
       String message =
           String.format(
               Locale.ROOT,
-              "Der Lauf würde %s der betroffenen Mitgliedschaften oder Gruppen entfernen bzw."
-                  + " einfrieren und damit die konfigurierte Schwelle von %s überschreiten."
-                  + " Abgebrochen ohne Änderungen.",
+              "Der Lauf würde %s der betroffenen Mitgliedschaften, Gruppen oder Konten entfernen,"
+                  + " einfrieren bzw. sperren und damit die konfigurierte Schwelle von %s"
+                  + " überschreiten. Abgebrochen ohne Änderungen.",
               changedPercent,
               thresholdPercent);
       log.warn(
-          "Directory sync: run for organization {} would put {} of {} memberships and {} of {}"
-              + " active groups at risk ({}, threshold {}) - aborting without changes",
+          "Directory sync: run for organization {} would put {} of {} memberships, {} of {}"
+              + " active groups and {} of {} active accounts at risk ({}, threshold {}) -"
+              + " aborting without changes",
           organizationId,
           plan.membershipsAtRisk(),
           plan.existingMembershipCount(),
           plan.dissolutions().size(),
           plan.activeGroupCount(),
+          plan.accountLocks().size(),
+          plan.activeAccountCount(),
           changedPercent,
           thresholdPercent);
       if (mode == Mode.DRY_RUN) {
@@ -387,6 +460,7 @@ class DirectorySyncPlanExecutor {
             fingerprintOf(report, plan),
             plan.changedFraction(),
             plan.membershipsRemoved(),
+            plan.accountLocks().size(),
             DirectorySyncReportCodec.write(report)));
   }
 
@@ -491,7 +565,8 @@ class DirectorySyncPlanExecutor {
       String issuer,
       DirectorySnapshot snapshot,
       List<Group> existingOrgUnits,
-      List<Group> tokenGroups) {
+      List<Group> tokenGroups,
+      List<DirectoryAccountState> providerAccounts) {
     Map<String, Group> existingByExternalId = new HashMap<>();
     for (Group group : existingOrgUnits) {
       if (group.getExternalId() != null) {
@@ -629,7 +704,22 @@ class DirectorySyncPlanExecutor {
         groupMeasureApplies && activeGroupCount > 0
             ? (double) dissolutions.size() / activeGroupCount
             : 0.0;
-    double changedFraction = Math.max(membershipChangedFraction, groupDissolutionFraction);
+
+    AccountPlan accounts = planAccounts(organizationId, snapshot, providerAccounts);
+    // The third measure (#1818), against the same threshold as the group one: a mass lock is the
+    // account-side equivalent of a mass dissolution, and a single departure must stay a routine,
+    // applicable change. Its count floor is lower - see MIN_LOCKS_FOR_ACCOUNT_MEASURE.
+    boolean accountMeasureApplies =
+        accounts.activeAccountCount() >= MIN_ACTIVE_ACCOUNTS_FOR_ACCOUNT_MEASURE
+            || accounts.locks().size() >= MIN_LOCKS_FOR_ACCOUNT_MEASURE;
+    double accountLockFraction =
+        accountMeasureApplies && accounts.activeAccountCount() > 0
+            ? (double) accounts.locks().size() / accounts.activeAccountCount()
+            : 0.0;
+
+    double changedFraction =
+        Math.max(
+            Math.max(membershipChangedFraction, groupDissolutionFraction), accountLockFraction);
 
     return new SyncPlan(
         existingOrgUnits,
@@ -640,6 +730,10 @@ class DirectorySyncPlanExecutor {
         reactivations,
         membershipChanges,
         dissolutions,
+        accounts.locks(),
+        accounts.unlocks(),
+        accounts.withheldLocks(),
+        accounts.activeAccountCount(),
         membershipsAdded,
         membershipsRemoved,
         membershipsAtRisk,
@@ -647,6 +741,74 @@ class DirectorySyncPlanExecutor {
         existingMembershipCount,
         activeGroupCount,
         changedFraction);
+  }
+
+  /**
+   * Which accounts of this provider the run would lock or unlock (#1818). Desired state per
+   * account: locked when the directory reports it disabled <em>or</em> stops reporting it at all -
+   * leaving the organization looks exactly like the latter from here - and active otherwise. A
+   * directory that reports no account status at all changes nothing.
+   *
+   * <p>The last login-capable system administrator is never locked by a run (ADR-0036, Entscheidung
+   * 6). That is decided here, over the whole planned set at once and through the one guard of
+   * ADR-0033 - asking once per account would let two departing administrators each count the other
+   * as remaining. The guard's advisory lock is taken inside this method's caller transaction and
+   * held until it commits, so the count cannot go stale between plan and apply.
+   */
+  private AccountPlan planAccounts(
+      UUID organizationId,
+      DirectorySnapshot snapshot,
+      List<DirectoryAccountState> providerAccounts) {
+    if (!snapshot.reportsAccounts()) {
+      return new AccountPlan(List.of(), List.of(), List.of(), 0);
+    }
+    Map<String, Boolean> enabledBySubject = new HashMap<>();
+    for (DirectoryAccount account : snapshot.accounts()) {
+      enabledBySubject.merge(account.subject(), account.enabled(), Boolean::logicalAnd);
+    }
+
+    List<DirectoryAccountState> candidates = new ArrayList<>();
+    List<DirectoryAccountState> unlocks = new ArrayList<>();
+    int activeAccountCount = 0;
+    for (DirectoryAccountState account : providerAccounts) {
+      boolean enabledInDirectory =
+          Boolean.TRUE.equals(enabledBySubject.getOrDefault(account.getSubject(), Boolean.FALSE));
+      if (!account.isDirectoryLocked()) {
+        activeAccountCount++;
+        if (!enabledInDirectory) {
+          candidates.add(account);
+        }
+      } else if (enabledInDirectory) {
+        unlocks.add(account);
+      }
+    }
+    candidates.sort(Comparator.comparing(DirectoryAccountState::getId));
+
+    List<DirectoryAccountState> locks = new ArrayList<>();
+    List<DirectoryAccountState> withheld = new ArrayList<>();
+    Set<UUID> plannedForLock = new HashSet<>();
+    for (DirectoryAccountState candidate : candidates) {
+      if (candidate.getSystemRole() == SystemRole.SYSTEM_ADMIN) {
+        Set<UUID> excluded = new HashSet<>(plannedForLock);
+        excluded.add(candidate.getId());
+        // The answering variant of the guard, never the throwing one: it takes part in this run's
+        // transaction, and a RuntimeException out of it would mark that transaction rollback-only -
+        // the withheld lock would then take the whole run down at its commit.
+        if (!adminGuard.hasLoginCapableAdminBesides(organizationId, excluded)) {
+          log.warn(
+              "Directory sync: account {} is not locked - it is the last login-capable system"
+                  + " administrator of organization {}",
+              candidate.getId(),
+              organizationId);
+          withheld.add(candidate);
+          continue;
+        }
+      }
+      plannedForLock.add(candidate.getId());
+      locks.add(candidate);
+    }
+    return new AccountPlan(
+        List.copyOf(locks), List.copyOf(unlocks), List.copyOf(withheld), activeAccountCount);
   }
 
   private ResolvedMembers resolveMembers(UUID organizationId, String issuer, Set<String> subjects) {
@@ -870,10 +1032,94 @@ class DirectorySyncPlanExecutor {
     }
 
     resolveAndApplyParentLinks(plan, createdGroups);
+    applyAccountStates(target, now, plan, correlationRef);
 
     if (!affectedUserIds.isEmpty()) {
       invalidateAfterCommit(() -> membershipResolver.invalidateUsers(affectedUserIds));
     }
+  }
+
+  /**
+   * Applies the account half of the plan (#1818): the lock takes the access away, the unlock gives
+   * it back, each with its interval in the account-state history and its own audit entry.
+   *
+   * <p>A lock is never refused for open ownership or responsibility questions (ADR-0036,
+   * Entscheidung 6) - it is the one act that may leave "Nachfolge offen" behind (#1819). What it
+   * does end is every other Merkmal of the account: {@code LocalAccountAccessEndedEvent} is what
+   * lapses the person's access tokens (ADR-0035), inside this transaction, so the lock and the end
+   * of the tokens commit together.
+   *
+   * <p>Only the accounts a run actually changes are loaded as entities - the plan itself is built
+   * from a projection (see {@code UserRepository#findAccountStatesOf}).
+   */
+  private void applyAccountStates(
+      SyncTarget target, Instant now, SyncPlan plan, UUID correlationRef) {
+    for (User account : entitiesOf(plan.accountLocks())) {
+      account.lockFromDirectory(now);
+      userRepository.save(account);
+      accountStateHistoryService.recordLocked(
+          account.getId(), account.getOrganizationId(), account.getCreatedAt());
+      recordAccountStateChange(
+          target, correlationRef, account, AuditEventType.DIRECTORY_ACCOUNT_LOCKED);
+      log.info(
+          "Directory sync: account {} locked - the directory reports it as disabled or no longer"
+              + " reports it",
+          account.getId());
+      eventPublisher.publishEvent(
+          LocalAccountAccessEndedEvent.bySystem(account, DIRECTORY_SYNC_ACTOR));
+    }
+    for (User account : entitiesOf(plan.accountUnlocks())) {
+      account.unlockFromDirectory();
+      userRepository.save(account);
+      accountStateHistoryService.recordUnlocked(account.getId(), account.getOrganizationId());
+      recordAccountStateChange(
+          target, correlationRef, account, AuditEventType.DIRECTORY_ACCOUNT_UNLOCKED);
+      log.info(
+          "Directory sync: account {} unlocked - the directory reports it as enabled again",
+          account.getId());
+    }
+  }
+
+  /** The entities behind a planned set of accounts, in the plan's own order. */
+  private List<User> entitiesOf(List<DirectoryAccountState> accounts) {
+    if (accounts.isEmpty()) {
+      return List.of();
+    }
+    Map<UUID, User> byId = new HashMap<>();
+    userRepository
+        .findAllById(accounts.stream().map(DirectoryAccountState::getId).toList())
+        .forEach(user -> byId.put(user.getId(), user));
+    List<User> ordered = new ArrayList<>(accounts.size());
+    for (DirectoryAccountState account : accounts) {
+      User user = byId.get(account.getId());
+      if (user != null) {
+        ordered.add(user);
+      }
+    }
+    return ordered;
+  }
+
+  /**
+   * One audit entry per account whose state the run changed. Object and subject are the same person
+   * here, so both carry the pseudonym and no label names the account - the same rule {@code
+   * UserService#updateRole} follows for a role change.
+   */
+  private void recordAccountStateChange(
+      SyncTarget target, UUID correlationRef, User account, AuditEventType type) {
+    UUID pseudonym = auditEventRecorder.pseudonymFor(account.getId(), account.getOrganizationId());
+    boolean locked = type == AuditEventType.DIRECTORY_ACCOUNT_LOCKED;
+    auditEventRecorder.recordSystemProcessAction(
+        AuditEvent.builder()
+            .organizationId(account.getOrganizationId())
+            .actorRef(DIRECTORY_SYNC_ACTOR)
+            .type(type)
+            .object(AuditObjectType.USER_ACCOUNT, pseudonym, null)
+            .subject(AuditSubjectKind.USER, account.getId())
+            .before(Map.of("directoryLocked", !locked))
+            .after(Map.of("directoryLocked", locked, "providerId", target.providerId().toString()))
+            .outcome(AuditOutcome.SUCCESS)
+            .correlationRef(correlationRef.toString())
+            .build());
   }
 
   /**
@@ -994,6 +1240,9 @@ class DirectorySyncPlanExecutor {
         toDissolutionChanges(plan.dissolutions()),
         toUnmaintainedChanges(plan.tokenGroups()),
         toMembershipChanges(plan),
+        toUserRefList(plan.accountLocks()),
+        toUserRefList(plan.accountUnlocks()),
+        toUserRefList(plan.withheldAccountLocks()),
         plan.membershipsAdded(),
         plan.membershipsRemoved(),
         plan.unresolvedMemberCount(),
@@ -1004,8 +1253,20 @@ class DirectorySyncPlanExecutor {
 
   static SyncPlan emptyPlan() {
     return new SyncPlan(
-        List.of(), List.of(), Map.of(), List.of(), List.of(), List.of(), List.of(), List.of(), 0, 0,
-        0, 0, 0, 0, 0.0);
+        List.of(), List.of(), Map.of(), List.of(), List.of(), List.of(), List.of(), List.of(),
+        List.of(), List.of(), List.of(), 0, 0, 0, 0, 0, 0, 0, 0.0);
+  }
+
+  private List<UserRef> toUserRefList(List<DirectoryAccountState> accounts) {
+    return accounts.stream()
+        .map(
+            account ->
+                new UserRef(
+                    account.getId(),
+                    account.getDisplayName() != null
+                        ? account.getDisplayName()
+                        : account.getEmail()))
+        .toList();
   }
 
   private List<GroupChange> toChanges(List<PlannedCreate> creates) {
@@ -1149,6 +1410,18 @@ class DirectorySyncPlanExecutor {
   /** {@code memberCount} captured at plan time, for the reason {@link PlannedRename} states. */
   private record PlannedDissolution(Group group, int memberCount) {}
 
+  /**
+   * The account half of a plan (#1818): whom the run would lock, whom it would unlock, and the
+   * administrator whose lock it withholds because no login-capable one would remain. {@code
+   * activeAccountCount} is the denominator of the account risk measure - every account of this
+   * provider that is not locked right now.
+   */
+  private record AccountPlan(
+      List<DirectoryAccountState> locks,
+      List<DirectoryAccountState> unlocks,
+      List<DirectoryAccountState> withheldLocks,
+      int activeAccountCount) {}
+
   private record SyncPlan(
       List<Group> existingOrgUnits,
       List<Group> tokenGroups,
@@ -1158,6 +1431,10 @@ class DirectorySyncPlanExecutor {
       List<PlannedReactivation> reactivations,
       List<PlannedMembershipChange> membershipChanges,
       List<PlannedDissolution> dissolutions,
+      List<DirectoryAccountState> accountLocks,
+      List<DirectoryAccountState> accountUnlocks,
+      List<DirectoryAccountState> withheldAccountLocks,
+      int activeAccountCount,
       int membershipsAdded,
       int membershipsRemoved,
       int membershipsAtRisk,

@@ -14,4 +14,5 @@ public record PendingPlanView(
     Instant createdAt,
     double changedFraction,
     int membershipsRemoved,
+    int accountsLocked,
     SyncReport report) {}
