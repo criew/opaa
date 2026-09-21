@@ -3,9 +3,11 @@ package io.opaa.permission;
 import io.opaa.api.types.PermissionSubjectType;
 import java.time.Instant;
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -78,6 +80,27 @@ public interface AssetGrantHistoryRepository
       @Param("userId") UUID userId,
       @Param("organizationId") UUID organizationId,
       @Param("asOf") Instant asOf);
+
+  /**
+   * Every <i>state</i> interval on one asset that overlaps {@code [from, to)} - the object-entry
+   * half of the Stichtagsauskunft (#1822). The zero-length event markers are excluded by {@code
+   * validTo > validFrom}: they record a revocation, and the state interval they belong to is in the
+   * result already. The grant's own {@code expiresAt} is <b>not</b> applied here; the caller cuts
+   * each interval to it, because an expiry ends a state without closing its row.
+   */
+  @Query(
+      "select h from AssetGrantHistory h "
+          + "where h.assetType = :assetType and h.assetId = :assetId "
+          + "and h.organizationId = :organizationId "
+          + "and h.validFrom < :to and (h.validTo is null or h.validTo > :from) "
+          + "and (h.validTo is null or h.validTo > h.validFrom)")
+  List<AssetGrantHistory> findAssetIntervalsOverlapping(
+      @Param("assetType") AssetType assetType,
+      @Param("assetId") UUID assetId,
+      @Param("organizationId") UUID organizationId,
+      @Param("from") Instant from,
+      @Param("to") Instant to,
+      Pageable page);
 
   /** The group-grant counterpart of {@link #findReadableAssetIdsByDirectGrantAsOf}. */
   @Query(

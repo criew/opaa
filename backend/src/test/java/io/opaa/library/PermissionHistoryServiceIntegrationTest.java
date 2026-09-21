@@ -981,12 +981,14 @@ class PermissionHistoryServiceIntegrationTest {
    * space membership is not an input of the readable-library formula at all: a library associated
    * to a space is shown to a member only if that member may already read it ({@code
    * SpaceAssetAssociationService}), so admitting somebody to a space moves no library into
-   * anybody's readable set. {@code GroupStewardshipDirectoryAdapter} (#1834) reads groups only to
-   * hand responsibility for them over - responsibility carries no read right at all, which is why
-   * it produces audit events and no history rows. {@code PermissionTransferService} (#1834) is a
-   * writer and is covered by {@link #readabilityWritePaths}; {@code LibraryAssetOwnershipDirectory}
-   * writes the grant that goes with a library's ownership and is reachable only through that one
-   * write path, never on its own.
+   * anybody's readable set. {@code PointInTimeAccessService} (#1822) resolves a group only to name
+   * it in the Stichtagsauskunft; it reads the history and writes nothing but its own audit entry.
+   * {@code GroupStewardshipDirectoryAdapter} (#1834) reads groups only to hand responsibility for
+   * them over - responsibility carries no read right at all, which is why it produces audit events
+   * and no history rows. {@code PermissionTransferService} (#1834) is a writer and is covered by
+   * {@link #readabilityWritePaths}; {@code LibraryAssetOwnershipDirectory} writes the grant that
+   * goes with a library's ownership and is reachable only through that one write path, never on
+   * its own.
    */
   private static final Set<String> BEANS_REACHING_THE_RIGHTS_TABLES =
       Set.of(
@@ -1007,6 +1009,7 @@ class PermissionHistoryServiceIntegrationTest {
           "LibraryAssetOwnershipDirectory",
           "LocalHandoverAccountService",
           "PermissionTransferService",
+          "PointInTimeAccessService",
           "ProviderGroupDirectoryAdapter",
           "TokenGroupSynchronizer");
 
@@ -1040,6 +1043,9 @@ class PermissionHistoryServiceIntegrationTest {
           "PermissionTransferService#preview",
           "PermissionTransferService#markOf",
           "KnowledgeLibraryService#getLibrary",
+          // #1822: the Herleitung reads the formula and states it - it moves no library into or
+          // out of anybody's readable set.
+          "KnowledgeLibraryService#getAccessDerivation",
           "KnowledgeLibraryService#listLibraries",
           "KnowledgeLibraryService#listDocuments",
           "KnowledgeLibraryService#generateConfluenceWebhookSecret",

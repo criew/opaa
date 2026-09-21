@@ -1,5 +1,7 @@
 package io.opaa.space;
 
+import io.opaa.permission.GroupSizeProperties;
+
 /**
  * The passive growth signal a group membership carries (ADR-0036, Entscheidung 9): how many active
  * accounts the group reached when it was admitted, and how many it reaches now - "Referat 50: 23
@@ -7,20 +9,14 @@ package io.opaa.space;
  * admission.
  *
  * <p><b>The "kleine Gruppe" suppression applies to both figures at once</b>, and to the difference
- * with them: if either lies below {@link #MINIMUM_GROUP_SIZE}, neither <em>figure</em> is
- * disclosed, because publishing one of them beside the difference reconstructs the other. A group
- * of four is, in a unit of that size, a person with a name.
+ * with them: if either lies below the installation's Mindestgruppengröße, neither <em>figure</em>
+ * is disclosed, because publishing one of them beside the difference reconstructs the other. A
+ * group of four is, in a unit of that size, a person with a name.
  *
  * <p><b>One size does stay visible, on purpose:</b> {@link #emptyGroup} says that the group reaches
  * nobody, and that is the number zero. ADR-0036, Entscheidung 6 requires the warning - an empty
  * effective group is admitted deliberately - and the suppression protects members from being
  * identifiable, of which an empty group has none.
- *
- * <p><b>The minimum is a constant here, not a setting yet.</b> ADR-0036 makes it a governance
- * setting with an enforced lower bound of 5 and a default of 5 - the two values coincide, so the
- * delivered behaviour is identical either way, and the setting itself (with its governance event
- * and its administration surface) belongs to #1821. Until then this is the single place the value
- * is read, so making it configurable touches this class and nothing else.
  *
  * <p><b>Protected groups are not covered here.</b> For them the signal drops out entirely
  * (ADR-0036, Entscheidung 9) - the size is the actual disclosure there. The protection flag arrives
@@ -29,14 +25,16 @@ package io.opaa.space;
 public record GroupSizeSignal(
     Integer memberCountAtGrant, Integer memberCountNow, boolean smallGroup, boolean emptyGroup) {
 
-  /** ADR-0036, "Zahlen, die dieser ADR setzt": enforced lower bound and delivered default. */
-  public static final int MINIMUM_GROUP_SIZE = 5;
-
   /** The signal for a person's membership - a person has no group size. */
   public static final GroupSizeSignal NONE = new GroupSizeSignal(null, null, false, false);
 
-  public static GroupSizeSignal of(Integer atGrant, int now) {
-    boolean small = now < MINIMUM_GROUP_SIZE || (atGrant != null && atGrant < MINIMUM_GROUP_SIZE);
+  /**
+   * @param minimumGroupSize the installation's Mindestgruppengröße ({@link
+   *     GroupSizeProperties#minimumGroupSize()}), never its enforced lower bound: a house that
+   *     raises the value raises the suppression with it (ADR-0036, Personalrat A2).
+   */
+  public static GroupSizeSignal of(Integer atGrant, int now, int minimumGroupSize) {
+    boolean small = now < minimumGroupSize || (atGrant != null && atGrant < minimumGroupSize);
     return new GroupSizeSignal(
         small ? null : atGrant, small ? null : Integer.valueOf(now), small, now == 0);
   }

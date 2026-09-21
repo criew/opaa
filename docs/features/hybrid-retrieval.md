@@ -1166,7 +1166,8 @@ die Seite erlaubt.
 
 Eine Testfrage wird eingegeben, in einem gewählten Berechtigungskontext ausgeführt, und die Seite zeigt
 **jede Pipeline-Stufe einzeln**. Der voreingestellte Berechtigungskontext ist ein **Rechteprofil** —
-eine Rolle mit der zugehörigen Bibliotheksmenge —, nicht eine Person:
+eine **Gruppe** samt der Bibliotheksmenge, die sie lesen darf (ADR-0036, Entscheidung 7; nicht eine
+„Rolle", wie es hier bis #1835 stand) —, nicht eine Person:
 
 ```
 Testfrage:  "Was gilt bei Gebührenbefreiung wegen Bedürftigkeit?"
@@ -1270,6 +1271,51 @@ deshalb keine Profile. Entschieden (Maintainer, 04.09.2026): **Es werden keine P
 Berechtigungsmustern abgeleitet**; stattdessen erklärt die Oberfläche die leere Liste und benennt den
 Zusammenhang zu Gruppen. Wählbar bleiben dort der eigene Rechtekontext und — mit Befugnis — der
 Personenkontext.
+
+**Space-Kontext eines Profil-Laufs** ([#1835](https://github.com/criew/opaa/issues/1835),
+[ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md), Entscheidung 7).
+`SearchDiagnosisRequest` nimmt optional eine **Space-Id** entgegen und beantwortet damit „was findet
+Gruppe G im Space S?". Der Suchbereich ist dann die **Schnittmenge** aus den im Space assoziierten
+Bibliotheken und den für die Gruppe lesbaren. Die fünf Punkte, ohne die der Space-Kontext ein
+Personenkontext ohne dessen Schutzmechanik wäre, gelten alle:
+
+1. **Mindestgruppengröße auf der Schnittmenge.** Gezählt wird, wie viele **aktive** Konten der
+   Gruppe den Space **auf irgendeinem Weg** erreichen — eigene Mitgliedschaft, diese Gruppe, eine
+   andere Gruppe, Eigentum. Gerechnet gegen „Mitglieder, die über G im Space sind", wäre die Zahl
+   bei einer Gruppe, die selbst nicht Space-Mitglied ist, strukturell null und die Regel wirkungslos.
+2. **Geprüft zum Zeitpunkt des Laufs**, nicht bei der Auswahl. Liegt die Zahl darunter, antwortet
+   der Endpunkt `403` mit dem Hinweis, dass für diese Sicht der Personenkontext mit Vollmacht zu
+   wählen ist — eine Gruppe, die im Space eine Person ist, ist eine Person.
+3. **Gezählt werden Konten, nicht Mitgliedschaftszeilen.** Die Zählung läuft über dieselbe Stelle wie
+   der handlungsfähige Verantwortliche (`GroupMembershipResolver#activeMemberCount`/`#activeMemberIds`)
+   und lässt seit [#1818](https://github.com/criew/opaa/issues/1818) alles aus, was nicht handeln
+   kann: **vom Verzeichnisabgleich gesperrte Konten** jeder Herkunft und, bei lokalen Konten, jedes,
+   das nach [ADR-0033](../decisions/0033-lokale-benutzerverwaltung.md) nicht `ACTIVE` ist (gesperrt,
+   abgelaufen, noch eingeladen). Maßgeblich ist dieselbe Definition, die die Anmeldung führt
+   (`AccountActivityService`); eine Projektgruppe mit 20 Mitgliedern, von denen 18 gesperrt sind,
+   ist ein Zwei-Personen-Kontext. **Die Verengung betrifft nur die Zählung**, nicht die
+   Rechteauflösung: Die Mitgliedschaft eines gesperrten Kontos bleibt stehen und wirkt an Grants
+   weiter — die Sperre greift an der Anfrage, nicht durch Umschreiben der Rechte.
+4. **Ein Lauf mit Space-Kontext wird protokolliert** (`SEARCH_DIAGNOSIS_PROFILE_RUN`): ausführende
+   Person, Profil, Space, Zeitpunkt — **eine Zeile je Lauf, keine je Abfrage**. `target_ref` trägt
+   weiterhin die **Gruppen-Id**, damit „kein Personenbezug im Protokoll" eine Struktureigenschaft
+   bleibt. Läufe **ohne** Space-Kontext bleiben unprotokolliert; die allgemeine Protokollpflicht für
+   sie bleibt offen (siehe die Klarstellung unter den Leitplanken).
+5. **Die Suchdiagnose bleibt `SYSTEM_ADMIN` vorbehalten; keine Fähigkeit öffnet sie.** Die
+   Begründung, mit der die Klarstellung zu (e) die Diagnosesperre bei Profil-Läufen nicht anwendet,
+   trägt nur, solange das gilt — **wird die Seite je geöffnet, schaltet dieselbe Änderung die Sperre
+   auch für Profil-Läufe scharf.** Ein Test hält das fest.
+
+**Die Mindestgruppengröße ist eine Konfiguration mit erzwungener Untergrenze**
+(`opaa.permission.minimum-group-size`): **5**, zugleich Voreinstellung und harte Grenze. Sie ist nur
+nach oben änderbar; ein Startversuch mit einem kleineren Wert scheitert mit klarer Meldung. Sie ist
+ein anderes Maß als die Mindestgruppengröße der Nutzungstransparenz in `spaces-and-assets.md` (dort
+zählt die Nutzung, hier der Rechtekontext).
+
+**Leitplanke (b) bleibt unverändert:** Die Diagnose ist kein Zugriffshistorien-Nachweis. Für die
+Vergangenheit gibt es die
+[Stichtagsauskunft](./security-and-compliance.md#der-lesepfad-stichtagsauskunft-1822), und beide
+bleiben getrennt.
 
 **Chunk-Vorschau und Dokument-Chunk-Ansicht** ([#1230](https://github.com/criew/opaa/issues/1230)).
 Die Stufentabellen und die Endauswahl nennen nicht nur, *welcher* Chunk betrachtet, verdrängt oder

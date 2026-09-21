@@ -151,6 +151,39 @@ Eine Rechteliste verweist auf **einen Nutzer oder eine Gruppe**. Gruppen sind ke
 
 In der ersten Ausbaustufe werden Gruppen im System gepflegt; die Übernahme aus dem Verzeichnisdienst folgt und ändert nichts am Rechtemodell, sondern nur an der Herkunft der Mitgliedschaften.
 
+### Die Herleitung: „warum sehe ich das"
+
+Flach zu **sein** und das flach zu **zeigen** sind zwei Zusagen
+([ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md), Entscheidung 9).
+Für jede Bibliothek und jeden Space, den eine Person sieht, nennt die Herleitung ihr den **eigenen
+Weg** zur wirksamen Rolle (`GET /api/v1/libraries/{id}/access-derivation`,
+`GET /api/v1/spaces/{id}/access-derivation`):
+
+- direkter Grant; Grant über eine Gruppe — mit **Name, Herkunft, Mechanismus** (Token oder
+  Verzeichnisabgleich) **und Zeitpunkt des Grants**; organisationsweite Freigabe; eigene
+  Mitgliedschaft; Mitgliedschaft einer Gruppe; Eigentum; und die Systemverwaltung, wo nur sie den
+  Zugang trägt. Der Mechanismus gehört dazu, weil die Genauigkeit der Rechtehistorie von ihm
+  abhängt: Im Token-Modus erscheint eine Verzeichnisänderung vom 3. März mit dem Tag der nächsten
+  Anmeldung.
+- Ein **Anlegerecht taucht nie** als Weg auf — es öffnet einen Anlegepfad, nie einen Inhalt.
+- **Ohne Vollmacht, ohne Protokolleintrag**, und **die Mitglieder der Gruppe werden nicht
+  offengelegt**.
+- Eine Bibliothek, die den Fragenden nicht erreicht, antwortet `404` wie eine unbekannte — eine
+  leere Herleitung bestätigte ihre Existenz.
+- **Gegenüber anderen** nennt die Herleitung den Gruppennamen nur dort, wo die fragende Person die
+  Mitgliedschaft verwaltet: in der Space-Mitgliederliste für `ADMIN` und Eigentümer, die diese
+  Liste ohnehin allein sehen. Für alle anderen ist die Frage nach einem fremden Weg `403`.
+- **Bei einer geschützten Gruppe** (Personalvertretung und vergleichbare Stellen) sieht ein Dritter
+  — auch `ADMIN` und Eigentümer — **keine Gruppenableitung**, sondern nur die wirksame Rolle; die
+  Antwort ist als unvollständig gekennzeichnet (`pathsWithheld`). Die **eigene** Herleitung der
+  betroffenen Person bleibt vollständig. Sonst wäre die Namenlosigkeit geschützter Gruppen wertlos:
+  Steht bei Frau S. „Rolle über eine geschützte Gruppe" und wirkt im Space genau eine solche
+  Gruppe, ist sie benannt.
+
+Die Herleitung beantwortet die Gegenwart. Die Vergangenheit beantwortet die
+[Stichtagsauskunft](./security-and-compliance.md#der-lesepfad-stichtagsauskunft-1822), und sie ist
+`AUDITOR`-Sache mit Anlass, Zeitfenster und Abrufprotokoll.
+
 ### Freigabestufen und Auffindbarkeit
 
 Die in der Produktvision beschriebene Verteilung „persönlich → Team → Fachbereich → organisationsweit" ist eine Eigenschaft **des Assets**, keine Topologie der Spaces. Es gibt keine Space-Hierarchie — und es gibt auch **kein Abteilungs- oder Amts-Objekt**.

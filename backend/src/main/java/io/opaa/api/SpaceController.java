@@ -1,5 +1,6 @@
 package io.opaa.api;
 
+import io.opaa.api.dto.SpaceAccessDerivationResponse;
 import io.opaa.api.dto.SpaceAddMemberRequest;
 import io.opaa.api.dto.SpaceLibraryAssociationListResponse;
 import io.opaa.api.dto.SpaceLibraryAssociationRequest;
@@ -35,6 +36,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -127,6 +129,20 @@ public class SpaceController {
   public SpaceResponse archiveSpace(@PathVariable UUID spaceId, @Caller CurrentUser caller) {
     Space archived = spaceService.archiveSpace(spaceId, caller);
     return SpaceResponseMapper.toResponse(spaceService.detailOf(archived, caller));
+  }
+
+  /**
+   * The Herleitung "warum bin ich in diesem Space" (#1822, ADR-0036 Entscheidung 9). Without {@code
+   * userId} it is about the caller; naming somebody else is reserved for those who manage the
+   * membership here, and hides every way through a protected group.
+   */
+  @GetMapping("/{spaceId}/access-derivation")
+  public SpaceAccessDerivationResponse getSpaceAccessDerivation(
+      @PathVariable UUID spaceId,
+      @RequestParam(name = "userId", required = false) UUID userId,
+      @Caller CurrentUser caller) {
+    return AccessDerivationResponseMapper.toResponse(
+        spaceService.accessDerivation(spaceId, userId, caller));
   }
 
   @GetMapping("/{spaceId}/members")

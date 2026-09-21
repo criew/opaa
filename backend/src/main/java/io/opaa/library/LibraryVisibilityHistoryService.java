@@ -5,8 +5,10 @@ import io.opaa.permission.PermissionHistoryClock;
 import io.opaa.permission.PermissionHistoryService;
 import java.time.Instant;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -118,6 +120,19 @@ public class LibraryVisibilityHistoryService {
     readable.addAll(
         visibilityHistoryRepository.findOrganizationWideLibraryIdsAsOf(organizationId, asOf));
     return readable;
+  }
+
+  /**
+   * Every organization-wide interval of one library overlapping {@code [from, to)} - the third
+   * source the Stichtagsauskunft about a library composes (#1822), next to the two grant tables. An
+   * organization-wide release reaches every account without naming one, which is why it stays one
+   * interval here instead of being expanded into a list of people.
+   */
+  @Transactional(readOnly = true)
+  public List<LibraryVisibilityHistory> organizationWideIntervalsBetween(
+      UUID libraryId, UUID organizationId, Instant from, Instant to, int limit) {
+    return visibilityHistoryRepository.findOrganizationWideIntervalsOverlapping(
+        libraryId, organizationId, from, to, PageRequest.ofSize(limit));
   }
 
   /**

@@ -2,21 +2,12 @@ package io.opaa.audit;
 
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
-import io.opaa.api.types.AuditOutcome;
-import io.opaa.api.types.SystemRole;
-import io.opaa.auth.User;
-import io.opaa.auth.UserRepository;
-import io.opaa.common.AccessDeniedException;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Supplier;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -26,16 +17,12 @@ import org.springframework.stereotype.Service;
  * allows (docs/features/security-and-compliance.md#zugriffswege-was-es-gibt-und-was-es-nicht-gibt),
  * plus the one personenbezogene exception ({@link #byIncidentScope}).
  *
- * <p><b>Self-logging.</b> Every method is wrapped by {@link #loggedAccess}: it enforces the AUDITOR
- * role and the mandatory {@code reason} itself, rather than relying on {@code @PreAuthorize} on the
- * controller - a role-based 403 thrown by a security interceptor would run before this class and so
- * be invisible to the self-log ("auch der abgewiesene Versuch erzeugt einen Eintrag"). {@link
- * io.opaa.api.AuditController} therefore declares no {@code @PreAuthorize} on these endpoints.
- * {@link #loggedAccess} logs exactly once per call - {@link AuditOutcome#SUCCESS} if the query
- * completes, otherwise the outcome {@link AuditAccessOutcome} derives from the exception (a
- * rejected attempt is {@code DENIED}, a query that broke after the checks passed is {@code
- * FAILURE}) - and always rethrows the original exception unchanged, even if writing the entry
- * itself fails.
+ * <p><b>Self-logging.</b> Every method is wrapped by {@link #loggedAccess}, which runs {@link
+ * AuditAccessGate}: role, Anlass and bounds are enforced there rather than by {@code @PreAuthorize}
+ * on the controller - a role-based 403 thrown by a security interceptor would run before this class
+ * and so be invisible to the self-log ("auch der abgewiesene Versuch erzeugt einen Eintrag").
+ * {@link io.opaa.api.AuditController} therefore declares no {@code @PreAuthorize} on these
+ * endpoints. Exactly one entry is written per call, whatever the outcome.
  *
  * <p><b>Transaction behaviour.</b> No method here opens or joins an ambient transaction; {@link
  * AuditEventRecorder#recordAuditLogAccess} carries its own {@code Propagation.NOT_SUPPORTED} so the
@@ -53,55 +40,47 @@ import org.springframework.stereotype.Service;
 @Service
 public class AuditQueryService {
 
-  /** "Begrenzte Ergebnismenge" - a hard cap applied regardless of the requested page size. */
-  static final int MAX_PAGE_SIZE = 200;
+  /**
+   * @see AuditAccessGate#MAX_PAGE_SIZE
+   */
+  static final int MAX_PAGE_SIZE = AuditAccessGate.MAX_PAGE_SIZE;
 
   /**
-   * Bounds how many pages a single query can page through, so {@link #MAX_PAGE_SIZE} bounds a
-   * single page but not the whole query. A request beyond it is rejected with 400, not silently
-   * clamped to the last usable page - clamping would let a caller re-reading the last page believe
-   * they are still making progress. Page indices are 0-based, so pages 0..49 are usable.
+   * @see AuditAccessGate#MAX_PAGE_INDEX
    */
-  static final int MAX_PAGE_INDEX = 49;
+  static final int MAX_PAGE_INDEX = AuditAccessGate.MAX_PAGE_INDEX;
 
   /**
-   * The mandatory time range's maximum width: 92 days, roughly one quarter. Revision works
-   * anlassbezogen against a bounded window, not as a bulk data pull; a genuinely multi-year review
-   * chains several bounded calls, each auditable on its own.
+   * @see AuditAccessGate#MAX_TIME_RANGE_DAYS
    */
-  static final long MAX_TIME_RANGE_DAYS = 92;
+  static final long MAX_TIME_RANGE_DAYS = AuditAccessGate.MAX_TIME_RANGE_DAYS;
 
   /**
    * Matches {@code audit_log.reason varchar(1000)} (migration 017) - the single source of this
    * bound; {@code DiagnosticContextLogQueryService} references this constant rather than copying
    * the number a third time.
    */
-  public static final int MAX_REASON_LENGTH = 1000;
-
-  private static final String NOT_AUDITOR_MESSAGE =
-      "Zugriff verweigert - der Zugriff auf Protokolldaten ist der AUDITOR-Rolle vorbehalten";
+  public static final int MAX_REASON_LENGTH = AuditAccessGate.MAX_REASON_LENGTH;
 
   private static final Sort RECORDED_AT_ASC = Sort.by(Sort.Direction.ASC, "recordedAt");
-
-  private static final Logger log = LoggerFactory.getLogger(AuditQueryService.class);
 
   private final AuditLogRepository auditLogRepository;
   private final AuditIncidentScopeService incidentScopeService;
   private final AuditActorPseudonymService pseudonymService;
   private final AuditEventRecorder eventRecorder;
-  private final UserRepository userRepository;
+  private final AuditAccessGate gate;
 
   public AuditQueryService(
       AuditLogRepository auditLogRepository,
       AuditIncidentScopeService incidentScopeService,
       AuditActorPseudonymService pseudonymService,
       AuditEventRecorder eventRecorder,
-      UserRepository userRepository) {
+      AuditAccessGate gate) {
     this.auditLogRepository = auditLogRepository;
     this.incidentScopeService = incidentScopeService;
     this.pseudonymService = pseudonymService;
     this.eventRecorder = eventRecorder;
-    this.userRepository = userRepository;
+    this.gate = gate;
   }
 
   /**
@@ -278,11 +257,9 @@ public class AuditQueryService {
   }
 
   /**
-   * Enforces the AUDITOR role and the mandatory {@code reason} (both here, not on the controller -
-   * see the class Javadoc), runs {@code query}, and writes exactly one self-log entry either way -
-   * {@link AuditOutcome#SUCCESS} if {@code query} returns normally, otherwise the outcome {@link
-   * AuditAccessOutcome} derives from the exception. The original exception always propagates
-   * unchanged after logging.
+   * The funnel's own entry: {@link AuditAccessGate} enforces role, Anlass and bounds, and this
+   * method says what the resulting entry is - one {@code AUDIT_LOG_ACCESSED} row per call against
+   * {@code audit_log} itself, whatever the outcome.
    */
   private <T> T loggedAccess(
       UUID organizationId,
@@ -290,105 +267,22 @@ public class AuditQueryService {
       String reason,
       Map<String, Object> scope,
       Supplier<T> query) {
-    try {
-      requireAuditor(organizationId, callerId);
-      requireReason(reason);
-      T result = query.get();
-      eventRecorder.recordAuditLogAccess(
-          organizationId, callerId, scope, AuditOutcome.SUCCESS, capReason(reason));
-      return result;
-    } catch (RuntimeException ex) {
-      // recordAuditLogAccess itself can throw; that must never replace the original exception
-      // (ex) - the entry is best-effort on top of it, never a precondition for reporting it
-      // correctly. A logging failure is attached via addSuppressed and logged here, since ex
-      // may propagate to a handler that never logs suppressed exceptions.
-      try {
-        eventRecorder.recordAuditLogAccess(
-            organizationId, callerId, scope, AuditAccessOutcome.of(ex), capReason(reason));
-      } catch (RuntimeException loggingFailure) {
-        log.error(
-            "Failed to write the self-log entry for a failed audit_log access - the failure is"
-                + " still reported correctly, but this attempt is missing its audit_log entry",
-            loggingFailure);
-        ex.addSuppressed(loggingFailure);
-      }
-      throw ex;
-    }
-  }
-
-  /**
-   * The role check {@code @PreAuthorize("hasRole('AUDITOR')")} would otherwise perform on the
-   * controller - moved here so a denial can be logged (see the class Javadoc). Looks the caller up
-   * by id scoped to {@code organizationId} rather than trusting a bare id.
-   */
-  private void requireAuditor(UUID organizationId, UUID callerId) {
-    User caller =
-        userRepository
-            .findByIdAndOrganizationId(callerId, organizationId)
-            .orElseThrow(() -> new AccessDeniedException(NOT_AUDITOR_MESSAGE));
-    if (caller.getSystemRole() != SystemRole.AUDITOR) {
-      throw new AccessDeniedException(NOT_AUDITOR_MESSAGE);
-    }
-  }
-
-  /**
-   * "Der Anlass ist bei diesen Einträgen ein Pflichtfeld; eine Abfrage ohne Anlass wird abgewiesen"
-   * (docs/features/security-and-compliance.md#zugriffswege-was-es-gibt-und-was-es-nicht-gibt).
-   */
-  private void requireReason(String reason) {
-    if (reason == null || reason.isBlank()) {
-      throw new IllegalArgumentException(
-          "reason ist ein Pflichtfeld für den Zugriff auf Protokolldaten - eine Abfrage ohne"
-              + " Anlass wird abgewiesen");
-    }
-    if (reason.length() > MAX_REASON_LENGTH) {
-      throw new IllegalArgumentException(
-          "reason ist zu lang - maximal " + MAX_REASON_LENGTH + " Zeichen");
-    }
-  }
-
-  /**
-   * Bounds what the self-log entry actually writes to {@code audit_log.reason varchar(1000)} -
-   * {@link #requireReason} rejects an over-length reason only once {@link #requireAuditor} has
-   * already passed, so a denied non-AUDITOR attempt reaches {@link #loggedAccess}'s {@code catch}
-   * with an unchecked, potentially over-length reason still to record.
-   */
-  private static String capReason(String reason) {
-    return reason == null || reason.length() <= MAX_REASON_LENGTH
-        ? reason
-        : reason.substring(0, MAX_REASON_LENGTH);
+    return gate.loggedAccess(
+        organizationId,
+        callerId,
+        reason,
+        (outcome, cappedReason) ->
+            eventRecorder.recordAuditLogAccess(
+                organizationId, callerId, scope, outcome, cappedReason),
+        query);
   }
 
   private void validateTimeRange(Instant from, Instant to) {
-    if (from == null || to == null) {
-      throw new IllegalArgumentException("from und to sind Pflichtangaben");
-    }
-    if (from.isAfter(to)) {
-      throw new IllegalArgumentException("from darf nicht nach to liegen");
-    }
-    if (Duration.between(from, to).toDays() > MAX_TIME_RANGE_DAYS) {
-      throw new IllegalArgumentException(
-          "Der Zeitraum ist zu weit gefasst - maximal "
-              + MAX_TIME_RANGE_DAYS
-              + " Tage je Abfrage; ein größerer Bedarf wird durch mehrere aufeinanderfolgende"
-              + " Abfragen abgedeckt, nicht durch eine einzelne unbegrenzte");
-    }
+    gate.validateTimeRange(from, to);
   }
 
   private Pageable pageable(int page, int size) {
-    if (page < 0) {
-      throw new IllegalArgumentException("page darf nicht negativ sein");
-    }
-    if (page > MAX_PAGE_INDEX) {
-      throw new IllegalArgumentException(
-          "page ist zu tief - maximal Seite "
-              + MAX_PAGE_INDEX
-              + " je Abfrage; ein größerer Bedarf wird durch mehrere aufeinanderfolgende"
-              + " Abfragen mit engerem Zeitraum abgedeckt, nicht durch eine einzelne Seite ohne"
-              + " Tiefenbegrenzung");
-    }
-    int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
-    return PageRequest.of(page, safeSize, RECORDED_AT_ASC);
+    return gate.pageable(page, size, RECORDED_AT_ASC);
   }
 
   /**

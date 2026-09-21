@@ -325,4 +325,34 @@ describe('S3SourceForm (#1377, ADR-0027)', () => {
     ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Verbindung testen' })).toBeDisabled()
   })
+
+  it('in edit mode still sends the libraryId testing a newly entered key - #1868 review: a MANAGER without CREATE_CONNECTOR_LIBRARY must not have this fail 403 right before a save updateLibrary would allow', async () => {
+    const user = userEvent.setup()
+    mockTestLibrarySource.mockResolvedValue({
+      reachable: true,
+      credentialsVerified: true,
+      message: 'Der Bereich ist erreichbar.',
+      s3Scopes: [],
+    })
+    renderWithProviders(
+      <Harness
+        mode="edit"
+        libraryId="lib-s3"
+        credentialsStored
+        originalSourceUrl="https://minio.intern.example:9000"
+        initial={keyed}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Verbindung testen' }))
+
+    await waitFor(() =>
+      expect(mockTestLibrarySource).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sourceCredentials: 'AKIAEXAMPLE:geheim',
+          libraryId: 'lib-s3',
+        }),
+      ),
+    )
+  })
 })

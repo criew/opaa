@@ -85,6 +85,7 @@ public class SearchAdminController {
                 request.getQuestion().trim(),
                 toContextType(request.getContextType()),
                 request.getPermissionProfileId(),
+                request.getSpaceId(),
                 request.getTargetUserId(),
                 request.getJustification(),
                 request.getTrackedDocumentId(),

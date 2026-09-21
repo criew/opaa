@@ -78,6 +78,7 @@ class SpaceServiceTest {
             mock(GroupMembershipResolver.class),
             mock(GroupSubjectDirectory.class),
             capabilityService,
+            new io.opaa.permission.GroupSizeProperties(null),
             transactionManager);
   }
 

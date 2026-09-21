@@ -1,8 +1,11 @@
 package io.opaa.group;
 
 import io.opaa.api.types.GroupKind;
+import io.opaa.api.types.GroupMechanism;
+import io.opaa.api.types.GroupOrigin;
 import io.opaa.auth.oidc.OidcProvider;
 import io.opaa.auth.oidc.OidcProviderRepository;
+import io.opaa.permission.GroupAttribution;
 import io.opaa.permission.GroupSubject;
 import io.opaa.permission.GroupSubjectDirectory;
 import java.util.Collection;
@@ -89,5 +92,28 @@ class GroupSubjectDirectoryAdapter implements GroupSubjectDirectory {
       names.put(group.getId(), group.getName());
     }
     return names;
+  }
+
+  @Override
+  public Map<UUID, GroupAttribution> attributionsById(Collection<UUID> groupIds) {
+    Map<UUID, GroupAttribution> attributions = new HashMap<>();
+    Map<UUID, OidcProvider> providers = new HashMap<>();
+    for (Group group : groupRepository.findAllById(groupIds)) {
+      OidcProvider provider =
+          group.getProviderId() == null
+              ? null
+              : providers.computeIfAbsent(
+                  group.getProviderId(), id -> providerRepository.findById(id).orElse(null));
+      attributions.put(
+          group.getId(),
+          new GroupAttribution(
+              group.getId(),
+              group.getName(),
+              provider == null ? GroupOrigin.INTERNAL : GroupOrigin.PROVIDER,
+              provider == null ? null : provider.getDisplayName(),
+              provider == null ? GroupMechanism.NONE : provider.groupMechanism(),
+              group.isProtectedGroup()));
+    }
+    return attributions;
   }
 }

@@ -192,7 +192,10 @@ export default function S3SourceForm({
       sourceProxy: values.sourceProxy.trim() || undefined,
       sourceInsecureSsl: values.sourceInsecureSsl,
       sourceCredentials: s3CredentialsOf(values),
-      libraryId: usesStoredCredentials ? libraryId : undefined,
+      // #1856 review: sent whenever this instance edits an existing library, not only while the
+      // stored-credentials fallback applies - without libraryId, the test/listing needs
+      // CREATE_CONNECTOR_LIBRARY (ADR-0036, Entscheidung 5), a right a MANAGER need not hold.
+      libraryId: mode === 'edit' ? libraryId : undefined,
     }
   }
 

@@ -198,7 +198,7 @@ class SpaceResponseMapperTest {
     SpaceMembership membership =
         SpaceMembership.ofGroup(groupId, SpaceRole.CURATOR, 23, organization);
     SpaceMemberView view =
-        new SpaceMemberView(membership, "Referat 50", GroupSizeSignal.of(23, 41));
+        new SpaceMemberView(membership, "Referat 50", GroupSizeSignal.of(23, 41, 5));
 
     SpaceMemberResponse response = SpaceResponseMapper.toMemberResponse(view);
 
@@ -219,7 +219,8 @@ class SpaceResponseMapperTest {
   void toMemberResponseWithholdsBothFiguresForASmallGroup() {
     SpaceMembership membership =
         SpaceMembership.ofGroup(UUID.randomUUID(), SpaceRole.MEMBER, 23, UUID.randomUUID());
-    SpaceMemberView view = new SpaceMemberView(membership, "Referat 50", GroupSizeSignal.of(23, 4));
+    SpaceMemberView view =
+        new SpaceMemberView(membership, "Referat 50", GroupSizeSignal.of(23, 4, 5));
 
     SpaceMemberResponse response = SpaceResponseMapper.toMemberResponse(view);
 
@@ -232,7 +233,7 @@ class SpaceResponseMapperTest {
   void toMemberResponseMarksAnEffectiveButEmptyGroup() {
     SpaceMembership membership =
         SpaceMembership.ofGroup(UUID.randomUUID(), SpaceRole.MEMBER, 0, UUID.randomUUID());
-    SpaceMemberView view = new SpaceMemberView(membership, "Neu", GroupSizeSignal.of(0, 0));
+    SpaceMemberView view = new SpaceMemberView(membership, "Neu", GroupSizeSignal.of(0, 0, 5));
 
     SpaceMemberResponse response = SpaceResponseMapper.toMemberResponse(view);
 
