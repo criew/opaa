@@ -17,10 +17,12 @@ public enum AuditEventType {
   ASSET_GRANT_REVOKED,
   /** A time-limited grant expiring is itself an event, the moment it takes effect. */
   ASSET_GRANT_EXPIRED,
-  /** Change of an asset's visibility or listedness (visibility, listed). */
+  /**
+   * Change of an asset's visibility or listedness (visibility, listed) - also the event a connector
+   * library's clamp to a newly lowered share cap fires under (#797), since the clamp is materially
+   * the same change an owner's own edit makes, just actor and cause differ.
+   */
   ASSET_VISIBILITY_CHANGED,
-  /** Grants suspended by a subsequently lowered connector share ceiling. */
-  ASSET_GRANT_SUSPENDED,
   /**
    * A library's Fremdzugangsfreigabe was set or taken back (docs/features/external-access.md#die-
    * freigabe-der-bibliothek) - the same kind of reach field as {@link #ASSET_VISIBILITY_CHANGED},
@@ -31,8 +33,10 @@ public enum AuditEventType {
   ASSET_EXTERNAL_ACCESS_CHANGED,
   /**
    * A library's Fremdzugangsfreigabe stopped taking effect without anyone acting - carrying the
-   * Anlass, today always the expiry of its mandatory Befristung ("gesenkte Freigabe-Obergrenze"
-   * follows with #797). Written under a system actor, like every other expiry event.
+   * Anlass, today always the expiry of its mandatory Befristung. #797 decided the connector share
+   * cap ({@link #CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED}) bounds only visibility and listed, not
+   * this field - a lowered cap therefore never writes this event. Written under a system actor,
+   * like every other expiry event.
    */
   ASSET_EXTERNAL_ACCESS_EXPIRED,
 
@@ -177,6 +181,12 @@ public enum AuditEventType {
   PERMISSION_HISTORY_RETENTION_CHANGED,
   /** Covers both model defaults and the approval of external models. */
   MODEL_POLICY_CHANGED,
+  /**
+   * A system administrator set or changed a connector library's share cap - the ceiling on {@code
+   * visibility}/{@code listed} #797 introduces. Distinct from {@link #ASSET_VISIBILITY_CHANGED},
+   * which the same call also writes whenever lowering the cap clamps the library's own, wider
+   * setting back down to it.
+   */
   CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED,
   /**
    * A capability was granted to an account, a group or to all accounts (ADR-0036, Entscheidung 5).

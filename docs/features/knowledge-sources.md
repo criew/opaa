@@ -782,17 +782,19 @@ Auslieferungszustand offen, aber auf eine benannte Gruppe einschränkbar. Was bl
 | Wer | Entscheidet |
 |---|---|
 | Wer die Bibliothek anlegt | Quellentyp und Konfiguration — jeder mit Anlageberechtigung; für `FILESYSTEM` sichert die Pfad-Allowlist ab (**gebaut**, #484), für `HTTP_DIRECTORY`/`RSS_FEED`/`CONFLUENCE` sichert die Zielprüfung ab (**gebaut**, #267) |
-| Eigentümer der Bibliothek | wer den Bestand lesen darf, bis zur **Obergrenze der Freigabe** bei lauf-basierten Bibliotheken |
+| Eigentümer der Bibliothek | wer den Bestand lesen darf, bis zur **Obergrenze der Freigabe** jeder Konnektorbibliothek (gebaut, #797) |
 
-Ohne die Obergrenze könnte ein Bibliothekseigentümer einen lauf-basierten Bestand organisationsweit
-öffnen. Sie ist die einzige technische Sicherung zwischen „von einem Konnektor eingespeist" und
-„hausweit lesbar" und deshalb kein Randthema. Ihre genaue Definition — was sie begrenzt und was beim
-nachträglichen Absenken mit bereits erteilten Freigaben geschieht — ist Gegenstand von **Issue #797**
-und wird dort entschieden; die Grundannahme, auf der sie beruhte — „die Systemverwaltung speist ein,
-der Eigentümer gibt frei" —, gilt mit der freien Anlageberechtigung nicht mehr uneingeschränkt, was die
-Entscheidung dort **dringlicher** macht, nicht überflüssig. Die frühere Frage nach der Obergrenze bei
-gemischt gespeisten Bibliotheken entfällt dagegen ersatzlos — diese Bibliotheken gibt es nicht mehr
-(siehe [Geklärte Fragen](#geklärte-fragen)).
+Ohne die Obergrenze könnte ein Bibliothekseigentümer einen konnektorgespeisten Bestand
+organisationsweit öffnen. Sie ist die einzige technische Sicherung zwischen „von einem Konnektor
+eingespeist" und „hausweit lesbar" und deshalb kein Randthema. **Issue #797** hat sie entschieden
+(Maintainer-Festlegung vom 21.09.2026, siehe [access-control.md](./access-control.md#dokumentenfluss-konnektoren-gegen-benutzer-uploads)):
+Sie deckelt `visibility` und `listed`, die Systemverwaltung setzt sie je Bibliothek, und ein
+nachträgliches Senken nimmt eine bereits weitergehende Freigabe sofort zurück. Die Grundannahme, auf
+der sie ursprünglich beruhte — „die Systemverwaltung speist ein, der Eigentümer gibt frei" —, gilt mit
+der freien Anlageberechtigung nicht mehr uneingeschränkt; die Obergrenze bleibt deshalb die tragende
+Sicherung, nicht eine überflüssige. Die frühere Frage nach der Obergrenze bei gemischt gespeisten
+Bibliotheken entfällt ersatzlos — diese Bibliotheken gibt es nicht mehr (siehe
+[Geklärte Fragen](#geklärte-fragen)).
 
 Der frühere Abschnitt „Wenn die Zielbibliothek fehlt" ist mit ADR-0018 **gegenstandslos**: Er
 beschrieb, was geschieht, wenn eine separat zugeordnete Zielbibliothek unter einer laufenden
@@ -1205,8 +1207,8 @@ Idee wieder aufgemacht werden.
 - **Die 1:1-Zuordnung von Quelle und Wissensbibliothek ist strukturell erzwungen.** Eine Bibliothek trägt
   höchstens eine Quelle, eine Quelle speist höchstens eine Bibliothek; Mehrfachverwendung geschieht über
   die Bereitstellung derselben Bibliothek, nicht über mehrere Zuflüsse. Mit ADR-0018 ist das kein
-  Policy-Beschluss mehr, sondern eine Eigenschaft des Datenmodells; offen bleibt in **Issue #797**
-  ausschließlich die Obergrenze der Freigabe.
+  Policy-Beschluss mehr, sondern eine Eigenschaft des Datenmodells; die Obergrenze der Freigabe ist mit
+  **Issue #797** ebenfalls entschieden (siehe [Zuständigkeit und Obergrenze der Freigabe](#zuständigkeit-und-obergrenze-der-freigabe) oben).
 - **Lesen ist der Normalfall, Schreiben die Ausnahme** mit ausdrücklicher Freischaltung je Integration
   und menschlichem Freigabeschritt im Einzelfall.
 - **Eine Bibliothek trägt genau einen Quellentyp und höchstens eine Quellkonfiguration — gewählt bei der
@@ -1227,11 +1229,6 @@ Idee wieder aufgemacht werden.
 
 ## Offene Fragen / Zukünftige Erweiterungen
 
-- Wie wird die Obergrenze der Freigabe genau definiert, und was geschieht mit bereits erteilten,
-  weiter reichenden Freigaben, wenn sie nachträglich abgesenkt wird? Für eine Prüfstelle ist das der
-  Unterschied zwischen „behoben" und „nicht behoben". Mit der zunächst freien Anlageberechtigung
-  (ADR-0018, Entscheidung 6) ist diese Frage dringlicher geworden, nicht weniger relevant. Entschieden
-  wird das in **Issue #797**.
 - Welche Quellsysteme geben Rechte belastbar genug heraus, dass Option 2 der Spiegelung sich lohnt?
 - **Der Rotationsweg für Zugangsdaten ist geklärt (gebaut, #516):** die Detailseite bearbeitet die
   Quellkonfiguration einer Bibliothek jederzeit, ohne einen Lauf zu unterbrechen (siehe oben, Abschnitt

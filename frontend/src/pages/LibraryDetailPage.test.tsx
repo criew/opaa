@@ -553,6 +553,120 @@ describe('LibraryDetailPage', () => {
     })
   })
 
+  // #797: the share cap control - visible only to a system administrator on a connector
+  // library, never to the library's own owner/manager, who only sees its consequence (the 409
+  // below).
+  describe('Freigabe-Obergrenze (#797)', () => {
+    it('is hidden for UPLOAD, even for a system-admin OWNER bypass', async () => {
+      setSystemAdmin()
+      const adminBypassLibrary = { ...managerLibrary, myRole: 'OWNER' as const }
+      setLibraryState(
+        adminBypassLibrary,
+        detailsOf(adminBypassLibrary, { visibilityCap: 'ORGANIZATION', listedCap: true }),
+      )
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+      await userEvent.setup().click(await screen.findByRole('tab', { name: 'Verwaltung' }))
+
+      expect(screen.queryByText(/Freigabe-Obergrenze \(Systemverwaltung\)/)).not.toBeInTheDocument()
+    })
+
+    it('is hidden from a MANAGER of a connector library, not being a system administrator', async () => {
+      const managerOfFilesystem = { ...managerLibrary, myRole: 'MANAGER' as const }
+      setLibraryState(
+        managerOfFilesystem,
+        detailsOf(managerOfFilesystem, {
+          sourceType: 'FILESYSTEM',
+          sourcePath: '/data/dokumente',
+          visibilityCap: 'ORGANIZATION',
+          listedCap: true,
+        }),
+      )
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+      await userEvent.setup().click(await screen.findByRole('tab', { name: 'Verwaltung' }))
+
+      expect(screen.queryByText(/Freigabe-Obergrenze \(Systemverwaltung\)/)).not.toBeInTheDocument()
+    })
+
+    it('lets a system administrator lower the cap on a connector library', async () => {
+      setSystemAdmin()
+      const adminBypassLibrary = { ...managerLibrary, myRole: 'OWNER' as const }
+      setLibraryState(
+        adminBypassLibrary,
+        detailsOf(adminBypassLibrary, {
+          sourceType: 'FILESYSTEM',
+          sourcePath: '/data/dokumente',
+          visibility: 'ORGANIZATION',
+          listed: true,
+          visibilityCap: 'ORGANIZATION',
+          listedCap: true,
+        }),
+      )
+      server.use(
+        http.put('/api/v1/libraries/:libraryId/share-cap', async ({ params, request }) => {
+          const body = (await request.json()) as {
+            visibilityCap: string
+            listedCap: boolean
+          }
+          return HttpResponse.json({
+            ...detailsOf(adminBypassLibrary, {
+              sourceType: 'FILESYSTEM',
+              sourcePath: '/data/dokumente',
+            }),
+            id: String(params.libraryId),
+            visibility: body.visibilityCap,
+            listed: body.listedCap,
+            visibilityCap: body.visibilityCap,
+            listedCap: body.listedCap,
+          })
+        }),
+      )
+      const user = userEvent.setup()
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+      await user.click(await screen.findByRole('tab', { name: 'Verwaltung' }))
+      await user.click(await screen.findByLabelText('Katalog-Auffindbarkeit erlaubt'))
+      await user.click(await screen.findByRole('button', { name: /obergrenze speichern/i }))
+
+      await waitFor(() => {
+        expect(screen.queryByRole('button', { name: /obergrenze speichern/i })).toBeDisabled()
+      })
+    })
+
+    it('shows the backend 409 message in German when an owner saves above the cap', async () => {
+      const ownerLibrary = { ...managerLibrary, myRole: 'OWNER' as const }
+      setLibraryState(
+        ownerLibrary,
+        detailsOf(ownerLibrary, {
+          sourceType: 'FILESYSTEM',
+          sourcePath: '/data/dokumente',
+          visibility: 'PRIVATE',
+          listed: false,
+          visibilityCap: 'PRIVATE',
+          listedCap: false,
+        }),
+      )
+      mockUpdateLibrary.mockRejectedValueOnce(
+        new Error(
+          'Die Sichtbarkeit dieser Bibliothek ist von der Systemverwaltung auf höchstens' +
+            ' "privat" begrenzt.',
+        ),
+      )
+      const user = userEvent.setup()
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+      await user.click(await screen.findByRole('tab', { name: 'Verwaltung' }))
+      await user.click(screen.getByRole('combobox', { name: /Verteilungsstufe/ }))
+      await user.click(await screen.findByRole('option', { name: /organisationsweit/i }))
+      await user.click(await screen.findByRole('button', { name: /^speichern$/i }))
+
+      expect(
+        await screen.findByText(/von der Systemverwaltung auf höchstens "privat" begrenzt/),
+      ).toBeInTheDocument()
+    })
+  })
+
   it('shows the upload zone and document list for an UPLOAD library', async () => {
     mockGetLibraryDocuments.mockResolvedValueOnce(
       pageOf([

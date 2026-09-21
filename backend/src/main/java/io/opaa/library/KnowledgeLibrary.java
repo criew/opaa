@@ -97,6 +97,24 @@ public class KnowledgeLibrary {
   private boolean listed;
 
   /**
+   * The ceiling {@link #visibility} may not exceed (#797) - {@code SYSTEM_ADMIN}-set, per library,
+   * meaningless for {@code UPLOAD} ({@code chk_knowledge_libraries_share_cap_upload_unrestricted}
+   * keeps it at its unrestricted default there). Delivered {@code ORGANIZATION}: the migration day
+   * changes nothing until a system administrator actually lowers it (migration 069).
+   */
+  @Enumerated(EnumType.STRING)
+  @Column(name = "visibility_cap", nullable = false, length = 20)
+  private LibraryVisibility visibilityCap = LibraryVisibility.ORGANIZATION;
+
+  /**
+   * The counterpart ceiling for {@link #listed} - {@code false} forbids listing this library
+   * regardless of {@link #visibility}. Delivered {@code true} (unrestricted), same reasoning as
+   * {@link #visibilityCap}.
+   */
+  @Column(name = "listed_cap", nullable = false)
+  private boolean listedCap = true;
+
+  /**
    * The third reach field beside {@link #visibility} and {@link #listed}: whether this library may
    * be used through a Fremdzugang, and where it may not, why not (#1731,
    * docs/features/external-access.md). {@code NEVER_SET} for every new and every pre-existing
@@ -626,6 +644,26 @@ public class KnowledgeLibrary {
 
   public boolean isListed() {
     return listed;
+  }
+
+  public LibraryVisibility getVisibilityCap() {
+    return visibilityCap;
+  }
+
+  public boolean isListedCap() {
+    return listedCap;
+  }
+
+  /**
+   * Sets the share cap alone (#797) - never the clamp its narrowing may require. {@code
+   * KnowledgeLibraryService#updateShareCap} validates {@code SYSTEM_ADMIN} and the {@code UPLOAD}
+   * exclusion before calling this, then separately calls {@link #updateDetails} in the same
+   * transaction to pull {@link #visibility}/{@link #listed} back down when the newly set cap is
+   * narrower than what the library currently carries.
+   */
+  void updateShareCap(LibraryVisibility visibilityCap, boolean listedCap) {
+    this.visibilityCap = Objects.requireNonNull(visibilityCap, "visibilityCap");
+    this.listedCap = listedCap;
   }
 
   public ExternalAccessState getExternalAccessState() {

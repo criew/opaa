@@ -276,6 +276,84 @@ function DiagnosticsLockControl({
   )
 }
 
+interface ShareCapControlProps {
+  visibilityCap: LibraryVisibility
+  listedCap: boolean
+  saving: boolean
+  error: string | null
+  onSave: (visibilityCap: LibraryVisibility, listedCap: boolean) => void
+  onDismissError: () => void
+}
+
+/**
+ * The system administration's own ceiling on a connector library's visibility/listed (#797) -
+ * visible and settable only here, never to the library's own owner: the owner already sees the
+ * effect (a save above the cap answers 409, shown verbatim by the surrounding form) but not the
+ * control that sets it, mirroring how DiagnosticsLockControl above splits "who sees the state"
+ * from "who may change it".
+ */
+function ShareCapControl({
+  visibilityCap,
+  listedCap,
+  saving,
+  error,
+  onSave,
+  onDismissError,
+}: ShareCapControlProps) {
+  const [draftVisibilityCap, setDraftVisibilityCap] = useState(visibilityCap)
+  const [draftListedCap, setDraftListedCap] = useState(listedCap)
+  const changed = draftVisibilityCap !== visibilityCap || draftListedCap !== listedCap
+
+  return (
+    <Box sx={{ pt: 1, borderTop: '1px solid', borderColor: 'divider' }}>
+      <Typography variant="subtitle2">Freigabe-Obergrenze (Systemverwaltung)</Typography>
+      <Typography variant="caption" component="p" sx={{ color: 'text.secondary', mb: 1 }}>
+        Weder die Verteilungsstufe noch die Katalog-Auffindbarkeit dieser Konnektorbibliothek dürfen
+        die hier gesetzte Obergrenze überschreiten. Wird sie gesenkt, klemmt eine bereits
+        weitergehende Freigabe sofort auf die neue Obergrenze zurück.
+      </Typography>
+      <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+        <FormControl size="small" sx={{ minWidth: 200 }}>
+          <FieldLabel id="library-detail-visibility-cap-label">Höchste Verteilungsstufe</FieldLabel>
+          <Select
+            labelId="library-detail-visibility-cap-label"
+            value={draftVisibilityCap}
+            onChange={(e) => setDraftVisibilityCap(e.target.value as LibraryVisibility)}
+          >
+            {allVisibilities.map((option) => (
+              <MenuItem key={option} value={option}>
+                {libraryVisibilityLabel(option)}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={draftListedCap}
+              onChange={(e) => setDraftListedCap(e.target.checked)}
+            />
+          }
+          label="Katalog-Auffindbarkeit erlaubt"
+        />
+        <Button
+          size="small"
+          variant="outlined"
+          disabled={saving || !changed}
+          onClick={() => onSave(draftVisibilityCap, draftListedCap)}
+        >
+          {saving ? 'Wird gespeichert …' : 'Obergrenze speichern'}
+        </Button>
+      </Stack>
+      {error && (
+        <Alert severity="error" sx={{ mt: 1 }} onClose={onDismissError}>
+          {error}
+        </Alert>
+      )}
+    </Box>
+  )
+}
+
 function statusChipColor(
   status: LibraryDocumentResponse['status'],
 ): 'success' | 'warning' | 'error' {
@@ -296,6 +374,7 @@ export default function LibraryDetailPage() {
   const updateExistingLibrary = useLibraryStore((s) => s.updateExistingLibrary)
   const deleteExistingLibrary = useLibraryStore((s) => s.deleteExistingLibrary)
   const setLibraryDiagnosticsLock = useLibraryStore((s) => s.setLibraryDiagnosticsLock)
+  const setLibraryShareCap = useLibraryStore((s) => s.setLibraryShareCap)
   const storeError = useLibraryStore((s) => s.error)
 
   const [grantsDialogOpen, setGrantsDialogOpen] = useState(false)
@@ -309,6 +388,8 @@ export default function LibraryDetailPage() {
   const [saving, setSaving] = useState(false)
   const [diagnosticsLockError, setDiagnosticsLockError] = useState<string | null>(null)
   const [diagnosticsLockSaving, setDiagnosticsLockSaving] = useState(false)
+  const [shareCapError, setShareCapError] = useState<string | null>(null)
+  const [shareCapSaving, setShareCapSaving] = useState(false)
   const [searchParams, setSearchParams] = useSearchParams()
 
   useEffect(() => {
@@ -464,6 +545,21 @@ export default function LibraryDetailPage() {
       )
     } finally {
       setDiagnosticsLockSaving(false)
+    }
+  }
+
+  async function handleSaveShareCap(visibilityCap: LibraryVisibility, listedCap: boolean) {
+    if (!libraryId) return
+    setShareCapError(null)
+    setShareCapSaving(true)
+    try {
+      await setLibraryShareCap(libraryId, { visibilityCap, listedCap })
+    } catch (err) {
+      setShareCapError(
+        err instanceof Error ? err.message : 'Freigabe-Obergrenze konnte nicht geändert werden',
+      )
+    } finally {
+      setShareCapSaving(false)
     }
   }
 
@@ -1107,6 +1203,25 @@ export default function LibraryDetailPage() {
                     onDismissError={() => setDiagnosticsLockError(null)}
                   />
                 )}
+
+                {/* #797: only the system administration sets this - the owner only ever sees
+                    its consequence, the 409 above when a save would exceed it. */}
+                {isSystemAdmin &&
+                  details &&
+                  details.sourceType !== 'UPLOAD' &&
+                  details.visibilityCap != null &&
+                  details.listedCap != null && (
+                    <ShareCapControl
+                      visibilityCap={details.visibilityCap}
+                      listedCap={details.listedCap}
+                      saving={shareCapSaving}
+                      error={shareCapError}
+                      onSave={(visibilityCap, listedCap) =>
+                        void handleSaveShareCap(visibilityCap, listedCap)
+                      }
+                      onDismissError={() => setShareCapError(null)}
+                    />
+                  )}
               </Stack>
             </PageSection>
 

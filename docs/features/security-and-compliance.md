@@ -661,9 +661,10 @@ trägt Protokoll und Historie nach, er ist nicht die Bedingung der Wirkung — b
 (ADR-0021) wäre er das sonst tagelang. Der Stichtag „war diese
 Bibliothek freigegeben?" wird aus der Historie allein beantwortet
 (`LibraryVisibilityHistoryService#externalAccessActiveAsOf`), also auch nach der monatsweisen Löschung des
-Protokollzeitraums. **Aussetzen** ist im Modell vorgesehen (Zustand `SUSPENDED`), wird heute aber von
-nichts gesetzt — es gehört zur Freigabe-Obergrenze und kommt mit
-[#797](https://github.com/criew/opaa/issues/797).
+Protokollzeitraums. **Aussetzen** ist im Modell vorgesehen (Zustand `SUSPENDED`), wird aber weiterhin
+von nichts gesetzt: [#797](https://github.com/criew/opaa/issues/797) hat die Freigabe-Obergrenze
+konnektor-gespeister Bibliotheken ausdrücklich auf `visibility`/`listed` begrenzt und lässt die
+Fremdzugangsfreigabe unberührt (siehe [external-access.md](./external-access.md#die-freigabe-ist-ein-reichweitenfeld-und-wird-wie-eines-behandelt)).
 
 **Auflösung der Intervallgrenzen (#1497, [ADR-0032](../decisions/0032-zeitquelle-rechtehistorie.md)):**
 Aufeinanderfolgende Zustandsintervalle desselben Objekts haben streng aufsteigende Grenzen — auch dann,

@@ -1,6 +1,7 @@
 package io.opaa.library;
 
 import io.opaa.api.types.AssetRole;
+import io.opaa.api.types.LibraryVisibility;
 
 /**
  * The management-only half of a {@link LibraryDetail} - source configuration, schedule and storage
@@ -17,6 +18,12 @@ import io.opaa.api.types.AssetRole;
  * @param externalAccess the library's Freigabe fuer Fremdzugaenge (#1731), MANAGER-gated like the
  *     rest: it is set at this bar, and the token count it carries is an input of the annual renewal
  *     decision, not something a VIEWER needs.
+ * @param visibilityCap the share cap (#797), {@code null} for an {@code UPLOAD} library (which
+ *     carries none - it is always delivered ORGANIZATION/unrestricted and never narrower) in
+ *     addition to staying {@code null} below the MANAGER threshold - the same reasoning as {@link
+ *     #schedule} lets a MANAGER of a capped connector library see why a wider visibility was
+ *     refused with 409, without exposing it to a mere VIEWER.
+ * @param listedCap the counterpart cap on {@code listed}, same gating as {@link #visibilityCap}.
  */
 public record LibraryManagementDetail(
     String sourcePath,
@@ -32,9 +39,12 @@ public record LibraryManagementDetail(
     Boolean lastScheduledRunsFailed,
     Long storageQuotaBytes,
     Long storageUsedBytes,
-    LibraryExternalAccess externalAccess) {
+    LibraryExternalAccess externalAccess,
+    LibraryVisibility visibilityCap,
+    Boolean listedCap) {
 
   public static final LibraryManagementDetail EMPTY =
       new LibraryManagementDetail(
-          null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+          null, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
+          null);
 }

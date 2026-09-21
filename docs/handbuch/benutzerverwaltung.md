@@ -271,6 +271,33 @@ Vier Punkte dazu:
 Eine Oberfläche zur Vergabe gibt es noch nicht (Issues #1820, #1821); bis dahin werden Anlegerechte
 über die Verwaltungsschnittstelle vergeben und entzogen.
 
+### Freigabe-Obergrenze für Konnektorbibliotheken
+
+Wer eine Konnektorbibliothek anlegen darf, wählt auch ihre Verteilungsstufe (`visibility`) und ihre
+Katalog-Auffindbarkeit (`listed`) frei — bis zu einer **Obergrenze**, die ausschließlich die
+Systemverwaltung setzt. Ohne sie könnte, wer eine Bibliothek aus einem Dateiverzeichnis, einem
+Webverzeichnis, einem Feed, Confluence oder einem Objektspeicher anlegt, den eingespeisten Bestand
+im nächsten Schritt organisationsweit freigeben — die Obergrenze ist die einzige technische Sicherung
+dagegen. Bibliotheken für Uploads tragen keine Obergrenze: Dort kuratiert dieselbe Person ohnehin
+jedes Dokument einzeln.
+
+Zu finden ist die Obergrenze auf der Detailseite der jeweiligen Bibliothek, Reiter „Verwaltung" —
+sichtbar und änderbar nur für die Systemverwaltung. Zwei Werte: die höchste zulässige
+Verteilungsstufe und ob die Bibliothek überhaupt im Katalog auffindbar sein darf. Ausgeliefert ist
+sie unverändert offen (organisationsweit, auffindbar) — nichts ändert sich, bis die Systemverwaltung
+sie tatsächlich senkt.
+
+**Wird die Obergrenze gesenkt, wirkt das sofort.** Eine bereits weitergehende Freigabe wird nicht nur
+für künftige Änderungen gesperrt, sondern **im selben Augenblick auf die neue Obergrenze
+zurückgenommen** — keine Übergangszeit, kein Zustand „noch zu weit, aber geduldet". Beide Vorgänge
+stehen im Nachweisprotokoll: das Setzen der Obergrenze selbst und, falls ausgelöst, die dadurch
+bewirkte Rücknahme der Freigabe.
+
+Versucht die Eigentümerin oder ein Verwalter der Bibliothek anschließend, die Verteilungsstufe über
+die Obergrenze hinaus anzuheben oder die Bibliothek trotz gesperrter Auffindbarkeit zu listen, weist
+die Anwendung das mit einer Meldung ab, die die geltende Obergrenze beim Namen nennt und auf die
+Systemverwaltung verweist — kein technischer Fehler, sondern eine erklärte Grenze.
+
 ### 7.1 Interne Gruppen und ihre Verantwortlichen
 
 Eine **interne Gruppe** ist eine Gruppe, die in OPAA selbst entsteht — anders als die Gruppen aus dem

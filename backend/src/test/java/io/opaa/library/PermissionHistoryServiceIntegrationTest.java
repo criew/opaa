@@ -11,6 +11,7 @@ import io.opaa.api.types.GroupKind;
 import io.opaa.api.types.LibraryOwnerType;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.PermissionSubjectType;
+import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.TokenGroups;
 import io.opaa.auth.User;
@@ -230,6 +231,19 @@ class PermissionHistoryServiceIntegrationTest {
     return response.library().getId();
   }
 
+  /** #797: a connector library, the only kind a share cap applies to. */
+  private UUID createFilesystemLibrary(UUID ownerId) {
+    LibraryDetail response =
+        libraryService.createLibrary(
+            libraryCreation("Bibliothek", DocumentSourceType.FILESYSTEM)
+                .ownerType(LibraryOwnerType.USER)
+                .ownerId(ownerId)
+                .sourcePath("/data/dokumente")
+                .build(),
+            currentUserOf(ownerId));
+    return response.library().getId();
+  }
+
   /**
    * {@link CurrentUser} snapshot for a user id this test already created via {@link #createUser}.
    */
@@ -241,6 +255,17 @@ class PermissionHistoryServiceIntegrationTest {
         user.getSystemRole(),
         user.getDisplayName(),
         user.getEmail());
+  }
+
+  /**
+   * #797: a real, persisted SYSTEM_ADMIN - the audit pseudonym write updateShareCap triggers needs
+   * a genuine {@code users} row for its actor, {@code fk_audit_actor_pseudonyms_user_organization}.
+   */
+  private CurrentUser systemAdminCaller() {
+    User admin = createUserEntity();
+    admin.setSystemRole(SystemRole.SYSTEM_ADMIN);
+    userRepository.save(admin);
+    return currentUserOf(admin.getId());
   }
 
   @Test
@@ -822,6 +847,9 @@ class PermissionHistoryServiceIntegrationTest {
     paths.put(
         "KnowledgeLibraryService#deleteLibrary (organization-wide library)",
         this::organizationWideLibraryDeleted);
+    paths.put(
+        "KnowledgeLibraryService#updateShareCap (visibility clamped)",
+        this::shareCapLoweredClampsVisibility);
     return paths;
   }
 
@@ -1428,6 +1456,25 @@ class PermissionHistoryServiceIntegrationTest {
         libraryId,
         libraryUpdate("Bibliothek").visibility(LibraryVisibility.PRIVATE).build(),
         currentUserOf(owner));
+
+    return new ReadabilityChange(otherUser, libraryId, false);
+  }
+
+  /**
+   * #797: the counterpart to {@link #visibilityNarrowed} for the share cap - a SYSTEM_ADMIN, not
+   * the owner, lowers the cap below the library's current (wider) visibility, which clamps it back
+   * down in the very same call.
+   */
+  private ReadabilityChange shareCapLoweredClampsVisibility() {
+    UUID owner = createUser();
+    UUID libraryId = createFilesystemLibrary(owner);
+    UUID otherUser = createUser();
+    libraryService.updateLibrary(
+        libraryId,
+        libraryUpdate("Bibliothek").visibility(LibraryVisibility.ORGANIZATION).build(),
+        currentUserOf(owner));
+
+    libraryService.updateShareCap(libraryId, LibraryVisibility.PRIVATE, false, systemAdminCaller());
 
     return new ReadabilityChange(otherUser, libraryId, false);
   }

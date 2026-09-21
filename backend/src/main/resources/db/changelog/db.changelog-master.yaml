@@ -150,3 +150,9 @@ databaseChangeLog:
       file: db/changelog/changes/064-create-account-state-history.yaml
   - include:
       file: db/changelog/changes/065-directory-sync-pending-plans-accounts-locked.yaml
+  # Freigabe-Obergrenze fuer Konnektorbibliotheken (#797): visibility_cap/listed_cap je Bibliothek,
+  # von der Systemverwaltung gesetzt; Upload-Bibliotheken bleiben unrestriktiv.
+  - include:
+      file: db/changelog/changes/069-knowledge-libraries-share-cap.yaml
+  - include:
+      file: db/changelog/changes/070-knowledge-libraries-share-cap-upload-unrestricted.yaml

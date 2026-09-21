@@ -156,8 +156,8 @@ Entscheidung 5, die damit ADR-0018, Entscheidung 6 samt Nachtrag ablöst.
   solange niemand `CREATE_INTERNAL_GROUP` hält. Wer einschränken will, entzieht „Alle Konten" und
   erteilt einer benannten Gruppe.
 - **`CREATE_CONNECTOR_LIBRARY` ist eine eigene Fähigkeit**, weil Konnektorbibliotheken Serverpfade und
-  Zugangsdaten erreichen und die Freigabe-Obergrenze für Fremdzugänge tragen — der erste Kandidat, den
-  ein Haus nach der Migration auf eine benannte Gruppe einschränkt.
+  Zugangsdaten erreichen und eine Freigabe-Obergrenze tragen (#797) — der erste Kandidat, den ein Haus
+  nach der Migration auf eine benannte Gruppe einschränkt.
 - **Die Auswertung** lautet: `SYSTEM_ADMIN` **oder** Erteilung an „Alle Konten" **oder** an das Konto
   **oder** an eine seiner Gruppen. `SYSTEM_ADMIN` besitzt damit jede Fähigkeit implizit; **die Rolle
   `AUDITOR` verleiht keine** — sie ist ein Lesepfad in das Protokoll und sonst nichts.
@@ -227,19 +227,34 @@ Wesentliche Verschiebung gegenüber dem alten Modell: Der System-Admin entscheid
 wird; der Bibliotheks-Eigentümer entscheidet, **wer es sieht**.
 
 **Die Freigabe-Obergrenze ist die einzige technische Sicherung zwischen „Fachverfahrensdaten eingespeist"
-und „organisationsweit lesbar" und deshalb genau zu bestimmen:**
+und „organisationsweit lesbar" (gebaut, #797, Maintainer-Festlegung vom 21.09.2026):**
 
-- Gedeckelt werden `visibility`, `listed`, die **Freigabe für Fremdzugänge**
-  ([external-access.md](./external-access.md#die-freigabe-der-bibliothek)) und Grants an Gruppen
-  oberhalb einer festgelegten Größe. Das Feld der Fremdzugangsfreigabe existiert seit #1731
-  (`knowledge_libraries.external_access_state`, Zustand `SUSPENDED` ist im Modell vorgesehen und
-  wird von nichts gesetzt); die Deckelung selbst gehört zu diesem Abschnitt und kommt mit #797.
-- Wird die Obergrenze **nachträglich gesenkt**, werden bereits erteilte weitergehende Grants
-  **ausgesetzt, nicht stillschweigend entzogen**: Sie stehen auf einer Liste des Bibliotheks-Eigentümers
-  und wirken nicht mehr, bis er sie anpasst. Für eine Prüfung ist das der Unterschied zwischen „behoben"
-  und „nicht behoben"; ein stilles Weiterwirken wäre das eine, ein stiller Entzug das andere Extrem.
-- Eine Bibliothek, die sowohl aus einem Konnektor als auch aus manuellem Upload gespeist wird, **trägt die
-  Obergrenze ebenfalls** — sonst wäre der manuelle Upload der Weg an ihr vorbei.
+- Gedeckelt werden **ausschließlich `visibility` und `listed`** der Konnektorbibliothek — keine
+  Gruppengrößen-Schwelle für Grants (eine frühere Fassung dieses Abschnitts sah eine solche Schwelle
+  vor; sie entfällt ersatzlos, mit derselben Begründung wie die gestrichene Größenschwelle bei Grants
+  im Allgemeinen, siehe [spaces-and-assets.md](./spaces-and-assets.md#freigabe-an-eine-gruppe-braucht-keine-zustimmung))
+  und ohne die Freigabe für Fremdzugänge ([external-access.md](./external-access.md#die-freigabe-der-bibliothek)
+  hält fest, warum diese trotz einer früheren, anderslautenden Absicht außen vor bleibt).
+- Die Systemverwaltung setzt die Obergrenze **je Bibliothek**, nicht installationsweit
+  (`PUT /api/v1/libraries/{libraryId}/share-cap`). Ein Bibliotheks-Eigentümer oder `MANAGER` kann
+  `visibility`/`listed` nicht über sie hinaus anheben — der Versuch scheitert mit `409`, weil die
+  eigene Berechtigung nicht in Frage steht, sondern die Anfrage mit der gesetzten Obergrenze
+  kollidiert.
+- Wird die Obergrenze **nachträglich gesenkt**, nimmt das System eine bereits weitergehende
+  Freigabe **sofort zurück** (auf die neue Obergrenze geklemmt) — mit Audit-Ereignis
+  (`CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED` für das Setzen der Obergrenze,
+  `ASSET_VISIBILITY_CHANGED` für die dadurch ausgelöste Klemmung) und einer Zeile in der
+  Sichtbarkeits-Historie, genauso wie bei einer Freigabeänderung durch den Eigentümer selbst. Es gibt
+  bewusst **keinen** Zustand „verletzt, aber geduldet" — eine frühere Fassung sah ein Aussetzen ohne
+  Entzug vor; das ist mit der Maintainer-Festlegung entschieden anders: Die Bibliothek liegt in der
+  Hand der Systemverwaltung, die die Obergrenze selbst setzt, sodass ein sofortiges Zurücknehmen
+  keine widersprüchliche Zuständigkeit erzeugt (anders als beim Strikt-Space, siehe
+  [spaces-and-assets.md](./spaces-and-assets.md#wenn-die-voraussetzung-eines-strikt-space-nachträglich-bricht)).
+- `UPLOAD`-Bibliotheken tragen keine Obergrenze (`400` beim Versuch, eine zu setzen): Dieselbe Person
+  kuratiert dort ohnehin jedes Dokument einzeln, es gibt nichts, wovor die Obergrenze schützen müsste.
+  Da ADR-0018 die gemischte Speisung einer Bibliothek aus Konnektor und manuellem Upload strukturell
+  ausschließt (eine Bibliothek trägt genau einen `sourceType`), stellt sich die Frage nach einer
+  „ebenfalls gedeckelten" gemischten Bibliothek nicht mehr.
 
 ### Löschung eines Space
 
@@ -1350,9 +1365,10 @@ Mail aus, weil sie sonst ein Belästigungskanal für jeden wäre, der eine Adres
 > unveränderlichen Bibliotheksauswahl und einem Kontingent je Token, hinter einem installationsweiten
 > Schalter (Standard aus), einer kanalweiten Netzbeschränkung (Vorgabe Hausnetz) und einer
 > **pflichtbefristeten** Freigabe je Bibliothek (Standard aus, höchstens ein Jahr). Diese Freigabe ist
-> ein Reichweitenfeld: Sie wird wie `visibility` und `listed` historisiert und fällt unter die
-> [Freigabe-Obergrenze](#dokumentenfluss-konnektoren-gegen-benutzer-uploads) konnektor-gespeister
-> Bibliotheken, sobald #797 sie definiert — die erste Stufe baut die Deckelung nicht mit. **Service-Accounts als eigene Identität ohne Person bleiben Zielbild** und sind in
+> ein Reichweitenfeld: Sie wird wie `visibility` und `listed` historisiert, fällt aber **nicht** unter
+> die [Freigabe-Obergrenze](#dokumentenfluss-konnektoren-gegen-benutzer-uploads) konnektor-gespeister
+> Bibliotheken — #797 hat deren Wirkung ausdrücklich auf `visibility`/`listed` begrenzt. **Service-Accounts
+> als eigene Identität ohne Person bleiben Zielbild** und sind in
 > dieser Stufe nicht enthalten. Einzelheiten: [external-access.md](./external-access.md).
 
 Das Zielbild, auf das die erste Stufe zuläuft:
