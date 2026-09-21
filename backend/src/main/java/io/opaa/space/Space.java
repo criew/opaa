@@ -1,6 +1,7 @@
 package io.opaa.space;
 
 import io.opaa.api.types.SpaceVisibility;
+import io.opaa.permission.AssetType;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -20,6 +21,15 @@ import java.util.UUID;
 @Entity
 @Table(name = "spaces")
 public class Space {
+
+  /**
+   * The value {@code asset_ownership_history.asset_type} carries for a space (#1815, ADR-0036
+   * Entscheidung 8). The constant lives here, with the asset, not in {@code io.opaa.permission}:
+   * the permission model never enumerates asset types. A space carries no {@code asset_grants} row
+   * - its rights axis is its membership - so this is deliberately not the same statement {@code
+   * KnowledgeLibrary#ASSET_TYPE} makes about grants.
+   */
+  public static final AssetType ASSET_TYPE = AssetType.of("SPACE");
 
   @Id private UUID id;
 

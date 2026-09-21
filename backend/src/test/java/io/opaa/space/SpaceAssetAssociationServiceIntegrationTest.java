@@ -76,13 +76,13 @@ class SpaceAssetAssociationServiceIntegrationTest {
   private UUID createSpace(UUID ownerId, SpaceRole ownerRole) {
     Space space =
         new Space("Fachbereich", null, false, SpaceVisibility.PRIVATE, ownerId, organizationA);
-    space.addMembership(new SpaceMembership(ownerId, ownerRole, organizationA));
+    space.addMembership(SpaceMembership.ofUser(ownerId, ownerRole, organizationA));
     return spaceRepository.save(space).getId();
   }
 
   private void addMember(UUID spaceId, UUID userId, SpaceRole role) {
     Space space = spaceRepository.findByIdWithMemberships(spaceId).orElseThrow();
-    space.addMembership(new SpaceMembership(userId, role, organizationA));
+    space.addMembership(SpaceMembership.ofUser(userId, role, organizationA));
     spaceRepository.save(space);
   }
 

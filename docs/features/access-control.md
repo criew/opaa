@@ -54,9 +54,11 @@ Sie ist eine systemweite Rolle und wird auf der Benutzer-Entität gespeichert.
 
 System-Admins können:
 
-- Gruppengebundene Spaces (`memberSource = GROUP`) anlegen — alle anderen Spaces legen Nutzer selbst an
+- Spaces im Namen einer anderen Person anlegen — alle übrigen Spaces legen Nutzer selbst an
   (der Standard-Space entsteht automatisch bei der ersten Anmeldung); Löschbefugnis regelt der
-  Space-Verantwortliche, siehe [Löschung eines Space](#löschung-eines-space)
+  Space-Verantwortliche, siehe [Löschung eines Space](#löschung-eines-space). Eine Gruppe als
+  Space-Mitglied aufzunehmen ist dagegen keine System-Admin-Befugnis, sondern eine Handlung der
+  `ADMIN`-Mitglieder des Space selbst
 - Konnektoren konfigurieren
 - Quell-Zuordnungen definieren — welche Quelle in welche Wissensbibliothek indiziert
 - Die Freigabe-Obergrenze konnektor-gespeister Bibliotheken setzen

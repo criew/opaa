@@ -146,6 +146,9 @@ public final class LocalAccountFixtures {
           jdbc.update("DELETE FROM local_refresh_tokens WHERE user_id = ?", userId);
           jdbc.update("DELETE FROM local_revoked_tokens WHERE user_id = ?", userId);
           jdbc.update("DELETE FROM spaces WHERE owner_id = ?", userId);
+          // #1815: see cleanUp() - the rights history of the space survives the space itself.
+          jdbc.update("DELETE FROM space_membership_history WHERE subject_user_id = ?", userId);
+          jdbc.update("DELETE FROM asset_ownership_history WHERE owner_user_id = ?", userId);
           credentials.deleteById(userId);
           users.findById(userId).ifPresent(users::delete);
         });
@@ -258,6 +261,14 @@ public final class LocalAccountFixtures {
               .forEach(
                   u -> {
                     jdbc.update("DELETE FROM spaces WHERE owner_id = ?", u.getId());
+                    // #1815: the two rights-history tables carry no foreign key to their space
+                    // (ADR-0016), so deleting the spaces above leaves their intervals behind -
+                    // and their person columns are ON DELETE RESTRICT.
+                    jdbc.update(
+                        "DELETE FROM space_membership_history WHERE subject_user_id = ?",
+                        u.getId());
+                    jdbc.update(
+                        "DELETE FROM asset_ownership_history WHERE owner_user_id = ?", u.getId());
                     credentials.deleteById(u.getId());
                     users.delete(u);
                   });

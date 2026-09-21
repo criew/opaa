@@ -5,7 +5,9 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
+import io.opaa.permission.AssetOwnershipHistoryRepository;
 import io.opaa.space.Space;
+import io.opaa.space.SpaceMembershipHistoryRepository;
 import io.opaa.space.SpaceRepository;
 import io.opaa.space.SpaceService;
 import io.opaa.test.OpaaIntegrationTest;
@@ -48,6 +50,8 @@ class UserServicePersonalSpaceIntegrationTest {
   @Autowired private SpaceRepository spaceRepository;
   @Autowired private UserRepository userRepository;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
+  @Autowired private SpaceMembershipHistoryRepository spaceMembershipHistoryRepository;
+  @Autowired private AssetOwnershipHistoryRepository ownershipHistoryRepository;
 
   @Autowired private OwnUserFixtures ownUserFixtures;
 
@@ -62,6 +66,31 @@ class UserServicePersonalSpaceIntegrationTest {
   @AfterEach
   void removeOwnUsers() {
     ownUserFixtures.removeUsersCreatedSince(foreignUserIds);
+  }
+
+  /**
+   * #1815, ADR-0036 Entscheidung 8: the personal space provisioned at first sign-in writes no
+   * rights-history interval. Both tables hold their person columns with {@code ON DELETE RESTRICT},
+   * so an interval here would make every account that ever signed in permanently undeletable - see
+   * {@code SpaceRepository#insertDefaultSpaceIfAbsent} for the rule and its named consequence, and
+   * {@code LocalUserAdminIntegrationTest#deletionRemovesAnAccountWithout
+   * ContentAndRefusesOwnersAndTheBootstrapAccount} for the deletion it keeps possible.
+   */
+  @Test
+  void theAutomaticPersonalSpaceWritesNoRightsHistoryInterval() {
+    String subject = UUID.randomUUID().toString();
+
+    userService.findOrCreateUser(subject, "test-issuer", "user@example.com", "Test");
+
+    User user = userRepository.findBySubjectAndIssuer(subject, "test-issuer").orElseThrow();
+    UUID personalSpaceId =
+        spaceRepository.findDistinctByMembershipsUserId(user.getId()).getFirst().getId();
+    assertThat(spaceMembershipHistoryRepository.findBySpaceIdAndValidToIsNull(personalSpaceId))
+        .isEmpty();
+    assertThat(
+            ownershipHistoryRepository.findByAssetTypeAndAssetIdAndValidToIsNull(
+                Space.ASSET_TYPE, personalSpaceId))
+        .isEmpty();
   }
 
   @Test

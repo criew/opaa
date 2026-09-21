@@ -28,21 +28,63 @@ const {
   mockArchiveSpace,
   mockListSpaceMembers,
   mockGetSpaceLibraryAssociations,
+  mockGetMyGroups,
   membersBySpaceId,
 } = vi.hoisted(() => {
   const membersBySpaceId: Record<
     string,
     Array<{
-      userId: string
+      id: string
+      subjectType: 'USER' | 'GROUP'
+      subjectId: string
       displayName?: string
       role: 'MEMBER' | 'CURATOR' | 'ADMIN'
+      memberCountAtGrant?: number | null
+      memberCountNow?: number | null
+      smallGroup?: boolean
+      emptyGroup?: boolean
       createdAt: string
     }>
   > = {
-    'space-personal': [{ userId: 'u1', role: 'ADMIN', createdAt: '2026-03-01T10:00:00Z' }],
+    'space-personal': [
+      {
+        id: 'm-personal-u1',
+        subjectType: 'USER',
+        subjectId: 'u1',
+        role: 'ADMIN',
+        createdAt: '2026-03-01T10:00:00Z',
+      },
+    ],
     'space-team': [
-      { userId: 'u1', displayName: 'Owner', role: 'ADMIN', createdAt: '2026-03-01T10:00:00Z' },
-      { userId: 'u2', displayName: 'Colleague', role: 'ADMIN', createdAt: '2026-03-01T10:00:00Z' },
+      {
+        id: 'm-team-u1',
+        subjectType: 'USER',
+        subjectId: 'u1',
+        displayName: 'Owner',
+        role: 'ADMIN',
+        createdAt: '2026-03-01T10:00:00Z',
+      },
+      {
+        id: 'm-team-u2',
+        subjectType: 'USER',
+        subjectId: 'u2',
+        displayName: 'Colleague',
+        role: 'ADMIN',
+        createdAt: '2026-03-01T10:00:00Z',
+      },
+      // #1815: a group as a member, with the growth signal of ADR-0036, Entscheidung 9.
+      {
+        id: 'm-team-referat-50',
+        subjectType: 'GROUP',
+        subjectId: 'g1',
+        displayName: 'Referat 50',
+        role: 'MEMBER',
+        memberCountAtGrant: 23,
+        memberCountNow: 41,
+        smallGroup: false,
+        emptyGroup: false,
+        createdAt: '2026-03-01T10:00:00Z',
+      },
     ],
   }
   return {
@@ -60,6 +102,16 @@ const {
         return { hasAssociations: false, items: [] }
       },
     ),
+    mockGetMyGroups: vi.fn(async () => [
+      {
+        id: 'group-phoenix',
+        name: 'Projektbeteiligte Phoenix',
+        kind: 'AD_HOC' as const,
+        memberCount: 6,
+        createdAt: '2026-03-01T10:00:00Z',
+        updatedAt: '2026-03-01T10:00:00Z',
+      },
+    ]),
     membersBySpaceId,
   }
 })
@@ -72,6 +124,8 @@ vi.mock('../services/api', async () => {
     getUserSummaries: vi.fn(async () => []),
     getSpaces: vi.fn(async () => []),
     getLibraries: vi.fn(async () => []),
+    // #1815: the group picker reads the caller's own groups.
+    getMyGroups: mockGetMyGroups,
     getSpace: vi.fn(
       async (spaceId: string) => useSpaceStore.getState().selectedSpace ?? { id: spaceId },
     ),
@@ -192,10 +246,115 @@ describe('SpaceManagementPage', () => {
     renderWithProviders(<SpaceManagementPage />, { withRouter: true })
 
     expect(await screen.findByText(/Owner · Eigentümer/)).toBeInTheDocument()
-    // The owner's own row must not offer "Entfernen" or "Zum Eigentümer machen" for themselves.
+    // The owner's own row must not offer "Entfernen" or "Zum Eigentümer machen" for themselves -
+    // the colleague's and the group's rows do offer "Entfernen", the group's does not offer the
+    // handover (a space owner is always a natural person, #1815).
     expect(screen.getByText('Colleague')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /entfernen/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /zum eigentümer machen/i })).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: /entfernen/i })).toHaveLength(2)
+    expect(screen.getAllByRole('button', { name: /zum eigentümer machen/i })).toHaveLength(1)
+  })
+
+  // #1815: a group row names the group, marks it as one, and carries the growth signal of
+  // ADR-0036, Entscheidung 9 - but never the handover, which only a natural person may receive.
+  it('renders a group member with its name, its marker and its growth signal', async () => {
+    setSpaceState(teamSpace)
+    renderWithProviders(<SpaceManagementPage />, { withRouter: true })
+
+    const groupRow = await screen.findByText(/Referat 50 · Gruppe · 23 bei Aufnahme, heute 41/)
+    const row = groupRow.closest('div')
+    expect(row).not.toBeNull()
+    expect(
+      within(row as HTMLElement).queryByRole('button', { name: /zum eigentümer machen/i }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('withholds both figures for a small group instead of showing one of them', async () => {
+    mockListSpaceMembers.mockResolvedValueOnce([
+      {
+        id: 'm-team-u1',
+        subjectType: 'USER',
+        subjectId: 'u1',
+        displayName: 'Owner',
+        role: 'ADMIN',
+        createdAt: '2026-03-01T10:00:00Z',
+      },
+      {
+        id: 'm-team-klein',
+        subjectType: 'GROUP',
+        subjectId: 'g2',
+        displayName: 'Kleine Runde',
+        role: 'MEMBER',
+        memberCountAtGrant: null,
+        memberCountNow: null,
+        smallGroup: true,
+        emptyGroup: false,
+        createdAt: '2026-03-01T10:00:00Z',
+      },
+    ])
+    setSpaceState(teamSpace)
+    renderWithProviders(<SpaceManagementPage />, { withRouter: true })
+
+    expect(await screen.findByText(/Kleine Runde · Gruppe · kleine Gruppe/)).toBeInTheDocument()
+  })
+
+  it('adds a group as a member through the group picker', async () => {
+    setSpaceState(teamSpace)
+    renderWithProviders(<SpaceManagementPage />, { withRouter: true })
+    const user = userEvent.setup()
+
+    const groupField = await screen.findByLabelText('Gruppe')
+    await user.click(groupField)
+    await user.click(await screen.findByRole('option', { name: 'Projektbeteiligte Phoenix' }))
+    await user.click(screen.getByRole('button', { name: /gruppe hinzufügen/i }))
+
+    await waitFor(() => {
+      expect(mockAddSpaceMember).toHaveBeenCalledWith(
+        'space-team',
+        'GROUP',
+        'group-phoenix',
+        'MEMBER',
+      )
+    })
+  })
+
+  /**
+   * #1815, ADR-0036 Entscheidung 6: the handover is no longer the owner's alone - every capable
+   * ADMIN member that is a natural person may perform it. Driven here with an ADMIN caller who is
+   * not the owner, which before this change saw no button at all.
+   */
+  it('offers the handover to an ADMIN member who is not the owner', async () => {
+    setSpaceState({ ...teamSpace, ownerId: 'someone-else', userRole: 'ADMIN' })
+    renderWithProviders(<SpaceManagementPage />, { withRouter: true })
+    const user = userEvent.setup()
+
+    await screen.findByText('Colleague')
+    const handoverButtons = screen.getAllByRole('button', { name: /zum eigentümer machen/i })
+    // Both person rows, never the group row - a space owner is always a natural person.
+    expect(handoverButtons).toHaveLength(2)
+
+    await user.click(handoverButtons[0])
+    await user.click(await screen.findByRole('button', { name: /übertragen/i }))
+
+    await waitFor(() => {
+      expect(mockTransferSpaceOwnership).toHaveBeenCalledWith('space-team', 'u1')
+    })
+  })
+
+  it('names a failed group load instead of showing an empty picker', async () => {
+    mockGetMyGroups.mockRejectedValueOnce(new Error('offline'))
+    setSpaceState(teamSpace)
+    renderWithProviders(<SpaceManagementPage />, { withRouter: true })
+
+    expect(await screen.findByText(/Ihre Gruppen konnten nicht geladen werden/)).toBeInTheDocument()
+  })
+
+  // #1815, ADR-0036 Entscheidung 6: state and addressee, without a date and without the previous
+  // owner - the space stays usable.
+  it('names the derived state "Nachfolge offen" without a date or a previous owner', () => {
+    setSpaceState({ ...teamSpace, successionOpen: true })
+    renderWithProviders(<SpaceManagementPage />, { withRouter: true })
+
+    expect(screen.getByText(/Nachfolge offen — zuständig: Systemverwaltung/)).toBeInTheDocument()
   })
 
   it('#777: renders the owner role as a static badge instead of an editable dropdown', async () => {

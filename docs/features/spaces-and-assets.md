@@ -445,9 +445,9 @@ An ihr hängen die Verwaisung, der Zustand von Strikt-Spaces und die Nachweisbar
 - **Verhalten bei nicht erreichbarem Verzeichnis: last-known-good.** Der letzte bekannte Stand bleibt in Kraft, es werden **keine** Rechte entzogen, und der Zustand wird gemeldet. Ein Entzug aufgrund fehlender Information wäre der schlechtere Fehler: Er legt die Arbeit still, ohne die Sicherheit zu erhöhen.
 - **Eine Protokollzeile je bewirkter Rechteänderung**, nicht je Lauf. Ohne sie ist im Nachhinein nicht feststellbar, warum jemand ab einem bestimmten Tag etwas nicht mehr sehen konnte.
 
-### Gruppengebundene Spaces sind mitbetroffen
+### Gruppen als Space-Mitglieder sind mitbetroffen
 
-Ein Space mit `memberSource = GROUP` leitet seine Mitgliederliste aus einer Verzeichnisgruppe ab (siehe [Gruppengebundene Spaces](#gruppengebundene-spaces)). Ein Synchronisationslauf ändert damit nicht nur Grants an Assets, sondern auch **den Leserkreis geteilter Inhalte**: Wer neu in ein Referat kommt, sieht ab dem nächsten Lauf alle dort geteilten Chats und Artefakte; wer es verlässt, verliert den Zugang.
+Eine Gruppe kann selbst Mitglied eines Space sein, mit einer Space-Rolle (siehe [Gruppen als Space-Mitglieder](#gruppen-als-space-mitglieder)). Ein Synchronisationslauf ändert damit nicht nur Grants an Assets, sondern auch **den Leserkreis geteilter Inhalte**: Wer neu in ein Referat kommt, sieht ab dem nächsten Lauf alle dort geteilten Chats und Artefakte; wer es verlässt, verliert den Zugang.
 
 Das ist fachlich richtig — er gehört dazu beziehungsweise nicht mehr —, aber es ist eine Rechteänderung ohne menschlichen Entscheidungspunkt, und sie trifft Inhalte, für die ein Beschäftigter persönlich die Weitergabe verantwortet hat. Deshalb gilt zusätzlich:
 
@@ -487,21 +487,30 @@ Ein Space ist ein thematischer Arbeitsraum — für ein Projekt, ein Team, einen
 | Attribut | Bedeutung |
 |---|---|
 | `isDefault` | Der beim ersten Login automatisch erzeugte Space. Genau einer je Nutzer, nicht löschbar. Ansonsten ein Space wie jeder andere |
-| `memberSource` | `MANUAL` — Mitglieder werden eingeladen; `GROUP` — die Mitgliedschaft folgt einer Gruppe aus dem Verzeichnis |
 
 Daraus folgt:
 
 - **Wer das Anlegerecht `CREATE_SPACE` hält, darf beliebig viele Spaces anlegen** — im Auslieferungszustand jedes Konto ([access-control.md](access-control.md#fähigkeiten-die-installationsweiten-anlegerechte)) —, auch mehrere, in denen er allein arbeitet. Fünf kleine Vorhaben dürfen fünf Räume haben; die frühere Regel „genau ein persönlicher Space je Nutzer" entfällt.
 - **„Persönlich" ist kein Typ, sondern ein Zustand:** ein Space, in dem niemand sonst Mitglied ist. Er braucht keine Sonderbehandlung, weil private Inhalte ohnehin nur ihrem Ersteller gehören (siehe [Die Grundregel](#die-grundregel-zunächst-privat-sichtbar-durch-teilen)).
-- **Gruppengebundene Spaces legt nur der System-Admin an.** Das ist eine Berechtigung, keine Space-Art.
+- **Eine Gruppe ist ein Mitglied, keine Space-Art.** Wer eine Gruppe aufnehmen darf, ist eine Rolle im Space (`ADMIN` oder Eigentümer), keine Eigenschaft des Raums.
 
 Space-Namen sind **nicht global eindeutig**. Zwei Nutzer dürfen beide einen Space „Phoenix" haben. Eindeutigkeit gilt höchstens je Organisation und Name.
 
-#### Gruppengebundene Spaces
+#### Gruppen als Space-Mitglieder
 
-Bei `memberSource = GROUP` wird die Mitgliederliste nicht gepflegt, sondern abgeleitet: Wer laut Verzeichnis der Gruppe angehört, ist Mitglied des Space. Das erspart die doppelte Pflege von Referatszugehörigkeit und Raumzugehörigkeit — macht einen Synchronisationslauf aber zu einem Ereignis, das Lesezugriff auf geteilte Inhalte erteilt und entzieht. Was daraus folgt, steht unter [Verzeichnissynchronisation als Rechteereignis](#verzeichnissynchronisation-als-rechteereignis).
+**Eine Gruppe ist selbst Mitglied**, mit einer Space-Rolle wie eine Person ([ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md), Entscheidung 6). Wer der Gruppe angehört, hält deren Rolle **ohne eigene Zeile** in der Mitgliederliste und verliert sie mit dem Austritt aus der Gruppe, ohne weiteren Schritt. Hat jemand zusätzlich eine eigene Mitgliedschaft, gilt die **höhere** der beiden Rollen.
 
-Ein Space wird **nicht automatisch für jede Organisationseinheit angelegt**. Vierzig Referate ergäben vierzig Räume, von denen die meisten leer blieben. Die Bindung ist eine bewusste Entscheidung beim Anlegen.
+Das frühere Konstrukt `memberSource = GROUP` — eine aus einer Verzeichnisgruppe *abgeleitete*, nicht pflegbare Mitgliederliste — ist damit abgelöst und entfällt ersatzlos ([#358](https://github.com/criew/opaa/issues/358) als nicht geplant geschlossen). Der Nutzen ist derselbe, die Mitgliederliste bleibt aber eine gepflegte Liste, in der eine Gruppe eine Zeile unter anderen ist: Ein Space kann mehrere Gruppen führen, daneben Personen, und jede Zeile ist einzeln entfernbar.
+
+Was daraus folgt, steht unter [Verzeichnissynchronisation als Rechteereignis](#verzeichnissynchronisation-als-rechteereignis). Dazu:
+
+- **Nur eine wirksame Gruppe wird neues Mitglied** — nicht aufgelöst und der Identitätsanbieter aktiviert. Eine **leere** wirksame Gruppe bleibt aufnehmbar, mit Warnung: Sonst wäre „Gruppe anlegen, aufnehmen, Mitglieder ergänzen" am ersten Schritt gescheitert.
+- **Eine handlungsfähige Gruppe zählt als `ADMIN`** — wirksam und mit mindestens einem aktiven Konto. Ein Space verliert sein letztes handlungsfähiges `ADMIN`-Mitglied nie durch eine Verwaltungshandlung; Entfernen, Herabstufen und Austritt werden dann abgelehnt.
+- **Der Eigentümer bleibt eine natürliche Person.** Eine Gruppe kommt dafür nicht in Betracht. Übertragen darf die Verantwortung jedes handlungsfähige `ADMIN`-Mitglied, das eine natürliche Person ist.
+- **Die Mitgliederliste bleibt `ADMIN`, Eigentümer und Systemverwaltung vorbehalten.** Eine Gruppenzeile wird damit nur dort genannt, wo die Mitgliedschaft auch verwaltet wird; alle anderen sehen weiterhin nur die Rollenzählung.
+- **Jede Gruppenmitgliedschaft speichert die Zahl aktiver Konten zum Zeitpunkt der Aufnahme** und zeigt sie neben der Zahl von heute („23 bei Aufnahme, heute 41"). Unterhalb der Mindestgruppengröße steht statt beider Zahlen „kleine Gruppe" — auch statt der Differenz, die eine der beiden sonst zurückrechnen ließe.
+
+Ein Space wird **nicht automatisch für jede Organisationseinheit angelegt**. Vierzig Referate ergäben vierzig Räume, von denen die meisten leer blieben. Die Aufnahme einer Gruppe ist eine bewusste Entscheidung.
 
 ### Space-Sichtbarkeit
 
@@ -984,7 +993,7 @@ Die bisherige Zusage lautete: *„Der Nutzer weiß nie, dass Dokumente existiere
 | Bestand | Behandlung |
 |---|---|
 | Persönliche Workspaces | werden der Standard-Space des Nutzers (`isDefault`). Bis #522 entstand zusätzlich je Nutzer automatisch eine persönliche Wissensbibliothek „Meine Dokumente" — diese Automatik entfiel ersatzlos; wer eine Bibliothek möchte, legt sie seither selbst an. Vor #522 automatisch angelegte Bibliotheken bestehen unverändert als gewöhnliche nutzereigene Bibliotheken fort |
-| Gemeinsame Workspaces | werden gewöhnliche Spaces mit `memberSource = MANUAL` |
+| Gemeinsame Workspaces | werden gewöhnliche Spaces mit gepflegter Mitgliederliste |
 | Mitgliedschaften | `VIEWER→MEMBER`, `EDITOR→CURATOR`, `ADMIN→ADMIN`, `OWNER→ADMIN`; die Verantwortlichkeit steckt bereits im `ownerId`-Attribut |
 | Bestehende Dokumente | hatten zuvor **keine** Workspace-Zuordnung. Sie wurden einer eigens angelegten System-Bibliothek zugewiesen, die zunächst **nur für System-Admins lesbar** war — eine organisationsweit lesbare Voreinstellung wäre in einer Verwaltungsumgebung nicht vertretbar gewesen. #521 hat diese System-Bibliothek samt Inhalt ersatzlos gelöscht |
 | Global eindeutige Namen | entfallen |
@@ -1106,7 +1115,7 @@ Das Modell weicht **von beiden Mustern ab**, aber nicht in derselben Sache — e
 
   Mit den Kuratoren entfallen auch die konfigurierbare Größenschwelle und die Sonderbehandlung des Umgehungswegs über `AD_HOC`-Gruppen: Ohne Zustimmungspflicht gibt es nichts zu umgehen. Die Aufbauorganisation bleibt als Herkunft der Gruppen und als Aggregationsachse erhalten. Wer die Annahmeseite später doch braucht, kann sie als Rolle *in* der Gruppe ergänzen — so löst es Langdock —, ohne das Rechtemodell anzufassen.
 - **Space-Hierarchie zur Abbildung der Verteilungsstufen.** Die Stufen „persönlich → Team → Fachbereich → organisationsweit" werden über das Rechtesubjekt abgebildet — persönlich, Team-Gruppe, Abteilungs-Gruppe, organisationsweit — kombiniert mit `visibility` und `listed`. Keine Topologie der Spaces, kein Abteilungs-Objekt.
-- **Drei Space-Arten (`PERSONAL`, `PROJECT`, `TEAM`).** Verworfen zugunsten eines einzigen Typs mit den Attributen `isDefault` und `memberSource`. `PERSONAL` war nichts anderes als „ein Space, in dem nur eine Person Mitglied ist", und alles, was daran hing, hängt in Wahrheit woanders: der unverengte Suchbereich an der Abwesenheit assoziierter Bibliotheken, die Zusage an die Personalvertretung am Privatstatus der Inhalte, die Aufbewahrungsfrist ebenso. `TEAM` unterschied sich von `PROJECT` nur darin, wer ihn anlegen darf — eine Berechtigung, keine Art. Entscheidend ist, dass die Grundregel die Arten überflüssig macht: Wenn private Inhalte ohnehin nur ihrem Ersteller gehören, ist jeder Space, in dem nichts geteilt wird, faktisch privat. Nebenwirkung der Streichung, ausdrücklich gewollt: Ein Nutzer darf beliebig viele Räume anlegen, in denen er allein arbeitet, statt genau einen.
+- **Drei Space-Arten (`PERSONAL`, `PROJECT`, `TEAM`).** Verworfen zugunsten eines einzigen Typs mit dem Attribut `isDefault` (damals noch samt `memberSource`, das mit [ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md) ebenfalls entfallen ist). `PERSONAL` war nichts anderes als „ein Space, in dem nur eine Person Mitglied ist", und alles, was daran hing, hängt in Wahrheit woanders: der unverengte Suchbereich an der Abwesenheit assoziierter Bibliotheken, die Zusage an die Personalvertretung am Privatstatus der Inhalte, die Aufbewahrungsfrist ebenso. `TEAM` unterschied sich von `PROJECT` nur darin, wer ihn anlegen darf — eine Berechtigung, keine Art. Entscheidend ist, dass die Grundregel die Arten überflüssig macht: Wenn private Inhalte ohnehin nur ihrem Ersteller gehören, ist jeder Space, in dem nichts geteilt wird, faktisch privat. Nebenwirkung der Streichung, ausdrücklich gewollt: Ein Nutzer darf beliebig viele Räume anlegen, in denen er allein arbeitet, statt genau einen.
 - **Die Statusnamen `DRAFT` und `PLACED`.** Ersetzt durch `PRIVATE` und `SHARED`. „Entwurf" und „ablegen" sind Aktenjargon für einen Vorgang, den jeder aus jedem Werkzeug kennt; die Sache wird davon nicht präziser, nur fremder. Bewusst in Kauf genommen wird, dass „teilen" nun zwei Vorgänge bezeichnet — ein Asset teilen heißt Rechte vergeben, einen Chat in den Space teilen heißt ihn sichtbar machen. Die Objekte sind verschieden genug, dass der jeweilige Satz eindeutig bleibt; wo es eng wird, heißt es „in den Space teilen".
 - **Chat und Artefakt als Asset-Typen.** Falsche Kardinalität (viele, wegwerfbar statt wenige, kuratiert), falsche Beziehung (Komposition statt Assoziation), falsche Rechtelogik (die Chats eines Space wären für seine Mitglieder unsichtbar) und ein abweichendes Sicherheitsprofil (Ergebnisse statt Fähigkeiten). Siehe [Warum Chats und Artefakte keine Assets sind](#warum-chats-und-artefakte-keine-assets-sind).
 

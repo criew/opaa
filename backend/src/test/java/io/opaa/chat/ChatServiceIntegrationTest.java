@@ -149,7 +149,7 @@ class ChatServiceIntegrationTest {
   private UUID createSpaceWithMember(UUID memberId) {
     Space space =
         new Space("Fachbereich", null, false, SpaceVisibility.PRIVATE, memberId, organizationA);
-    space.addMembership(new SpaceMembership(memberId, SpaceRole.MEMBER, organizationA));
+    space.addMembership(SpaceMembership.ofUser(memberId, SpaceRole.MEMBER, organizationA));
     return spaceRepository.save(space).getId();
   }
 
@@ -245,7 +245,7 @@ class ChatServiceIntegrationTest {
     UUID otherMember = createUser();
     UUID spaceId = createSpaceWithMember(author);
     Space space = spaceRepository.findByIdWithMemberships(spaceId).orElseThrow();
-    space.addMembership(new SpaceMembership(otherMember, SpaceRole.ADMIN, organizationA));
+    space.addMembership(SpaceMembership.ofUser(otherMember, SpaceRole.ADMIN, organizationA));
     spaceRepository.save(space);
 
     ChatConversation chat = chatService.createChat(spaceId, author, new ChatCreation());
@@ -262,7 +262,7 @@ class ChatServiceIntegrationTest {
     UUID otherMember = createUser();
     UUID spaceId = createSpaceWithMember(author);
     Space space = spaceRepository.findByIdWithMemberships(spaceId).orElseThrow();
-    space.addMembership(new SpaceMembership(otherMember, SpaceRole.MEMBER, organizationA));
+    space.addMembership(SpaceMembership.ofUser(otherMember, SpaceRole.MEMBER, organizationA));
     spaceRepository.save(space);
 
     chatService.createChat(spaceId, author, new ChatCreation().title("Meine Frage"));

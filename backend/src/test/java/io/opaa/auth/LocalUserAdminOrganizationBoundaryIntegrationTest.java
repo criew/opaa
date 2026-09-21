@@ -60,6 +60,10 @@ class LocalUserAdminOrganizationBoundaryIntegrationTest {
               + " CAST(p.pseudonym_id AS text) IN (a.actor_ref, a.object_id, a.subject_ref)",
           id);
       jdbc.update("DELETE FROM spaces WHERE owner_id = ?", id);
+      // #1815: the rights history of a space outlives the space (ADR-0016) and holds its person
+      // columns with RESTRICT.
+      jdbc.update("DELETE FROM space_membership_history WHERE subject_user_id = ?", id);
+      jdbc.update("DELETE FROM asset_ownership_history WHERE owner_user_id = ?", id);
       credentials.deleteById(id);
       users.deleteById(id);
     }

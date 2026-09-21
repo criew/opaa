@@ -1,5 +1,6 @@
 package io.opaa.space;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -10,10 +11,19 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.opaa.api.types.SpaceRole;
+import io.opaa.api.types.SpaceVisibility;
+import io.opaa.api.types.SystemRole;
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.auth.CurrentUser;
 import io.opaa.auth.UserRepository;
 import io.opaa.chat.ChatRepository;
+import io.opaa.common.ConflictException;
+import io.opaa.permission.AssetOwnershipHistoryService;
 import io.opaa.permission.CapabilityService;
+import io.opaa.permission.GroupMembershipResolver;
+import io.opaa.permission.GroupSubjectDirectory;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,6 +49,8 @@ class SpaceServiceTest {
 
   private SpaceRepository spaceRepository;
   private PlatformTransactionManager transactionManager;
+  private SpaceAccessPolicy accessPolicy;
+  private SpaceMembershipHistoryService membershipHistory;
   private SpaceService spaceService;
 
   @BeforeEach
@@ -50,6 +62,8 @@ class SpaceServiceTest {
     AuditEventRecorder auditEventRecorder = mock(AuditEventRecorder.class);
     ChatRepository chatRepository = mock(ChatRepository.class);
     SpaceAssetAssociationService associationService = mock(SpaceAssetAssociationService.class);
+    accessPolicy = mock(SpaceAccessPolicy.class);
+    membershipHistory = mock(SpaceMembershipHistoryService.class);
     CapabilityService capabilityService = mock(CapabilityService.class);
     spaceService =
         new SpaceService(
@@ -58,8 +72,59 @@ class SpaceServiceTest {
             auditEventRecorder,
             chatRepository,
             associationService,
+            accessPolicy,
+            membershipHistory,
+            mock(AssetOwnershipHistoryService.class),
+            mock(GroupMembershipResolver.class),
+            mock(GroupSubjectDirectory.class),
             capabilityService,
             transactionManager);
+  }
+
+  /**
+   * ADR-0036, Entscheidung 6, Schutzregel 1 - the half the integration test cannot reach: a space
+   * whose owner is not the membership being touched, so the owner rule does not apply and {@code
+   * SpaceService#requireCapableAdminRemains} is the only thing that can refuse. The decision itself
+   * lives in {@link SpaceAccessPolicy#hasCapableAdminAfter} (tested there against a real group);
+   * here it is driven through the mocked policy, which is what makes the guard's own call site
+   * observable at all - through the API it is subsumed by the owner protection until #1818 gives
+   * accounts a state.
+   */
+  @Test
+  void theLastCapableAdminIsProtectedEvenWhenTheOwnerRuleDoesNotApply() {
+    UUID organizationId = UUID.randomUUID();
+    UUID owner = UUID.randomUUID();
+    UUID admin = UUID.randomUUID();
+    Space space = new Space("Team", null, false, SpaceVisibility.PRIVATE, owner, organizationId);
+    SpaceMembership adminRow = SpaceMembership.ofUser(admin, SpaceRole.ADMIN, organizationId);
+    space.addMembership(adminRow);
+    when(spaceRepository.findByIdWithMemberships(any(UUID.class))).thenReturn(Optional.of(space));
+    when(accessPolicy.hasCapableAdminAfter(space, adminRow, null)).thenReturn(false);
+    CurrentUser caller = CurrentUser.of(owner, organizationId, SystemRole.USER, "Owner", null);
+
+    assertThatThrownBy(() -> spaceService.removeMember(space.getId(), adminRow.getId(), caller))
+        .isInstanceOf(ConflictException.class)
+        .hasMessageContaining("letztes handlungsfähiges ADMIN-Mitglied");
+    verify(membershipHistory, never()).recordRemoved(any(), any());
+  }
+
+  /** The same call site must let the change through when a capable ADMIN does remain. */
+  @Test
+  void aMemberIsRemovedWhenACapableAdminRemains() {
+    UUID organizationId = UUID.randomUUID();
+    UUID owner = UUID.randomUUID();
+    Space space = new Space("Team", null, false, SpaceVisibility.PRIVATE, owner, organizationId);
+    SpaceMembership memberRow =
+        SpaceMembership.ofUser(UUID.randomUUID(), SpaceRole.MEMBER, organizationId);
+    space.addMembership(memberRow);
+    when(spaceRepository.findByIdWithMemberships(any(UUID.class))).thenReturn(Optional.of(space));
+    when(accessPolicy.hasCapableAdminAfter(space, memberRow, null)).thenReturn(true);
+    CurrentUser caller = CurrentUser.of(owner, organizationId, SystemRole.USER, "Owner", null);
+
+    spaceService.removeMember(space.getId(), memberRow.getId(), caller);
+
+    verify(membershipHistory).recordRemoved(memberRow, owner);
+    assertThat(space.getMemberships()).doesNotContain(memberRow);
   }
 
   @Test
