@@ -979,7 +979,10 @@ class PermissionHistoryServiceIntegrationTest {
    * space membership is not an input of the readable-library formula at all: a library associated
    * to a space is shown to a member only if that member may already read it ({@code
    * SpaceAssetAssociationService}), so admitting somebody to a space moves no library into
-   * anybody's readable set.
+   * anybody's readable set. {@code GroupStewardshipDirectoryAdapter} (#1834) reads groups only to
+   * hand responsibility for them over - responsibility carries no read right at all, which is why
+   * it produces audit events and no history rows. {@code PermissionTransferService} (#1834) is a
+   * writer and is covered by {@link #readabilityWritePaths}.
    */
   private static final Set<String> BEANS_REACHING_THE_RIGHTS_TABLES =
       Set.of(
@@ -993,6 +996,7 @@ class PermissionHistoryServiceIntegrationTest {
           "ForeignDiagnosticContextService",
           "GroupMembershipResolver",
           "GroupService",
+          "GroupStewardshipDirectoryAdapter",
           "GroupSubjectDirectoryAdapter",
           "KnowledgeLibraryService",
           "LibraryAccessService",
