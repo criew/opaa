@@ -1015,7 +1015,8 @@ class PermissionHistoryServiceIntegrationTest {
    * and no history rows. {@code PermissionTransferService} (#1834) is a writer and is covered by
    * {@link #readabilityWritePaths}; {@code LibraryAssetOwnershipDirectory} writes the grant that
    * goes with a library's ownership and is reachable only through that one write path, never on its
-   * own.
+   * own. {@code GroupEffectsService} (#1821) only counts: it answers "wo wirkt diese Gruppe" with
+   * figures per group and writes nothing at all.
    */
   private static final Set<String> BEANS_REACHING_THE_RIGHTS_TABLES =
       Set.of(
@@ -1027,6 +1028,7 @@ class PermissionHistoryServiceIntegrationTest {
           "DiagnosticImpersonationGrantService",
           "DirectorySyncPlanExecutor",
           "ForeignDiagnosticContextService",
+          "GroupEffectsService",
           "GroupMembershipResolver",
           "GroupService",
           "GroupStewardshipDirectoryAdapter",
