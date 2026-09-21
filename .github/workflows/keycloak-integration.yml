@@ -7,9 +7,9 @@ name: Keycloak-Integration
 # PR im regulären Backend-Job; diese Suite ist die zusätzliche Abnahme gegen die echte Admin-API.
 on:
   schedule:
-    # Nach der Confluence-Suite (4:25 UTC), damit nicht mehrere speicherhungrige Container um
-    # denselben Runner konkurrieren.
-    - cron: '55 4 * * *'
+    # Nach Confluence (4:25) und der E2E-Suite der lokalen Anmeldung (4:55 UTC), damit nicht
+    # mehrere speicherhungrige Container um denselben Runner konkurrieren.
+    - cron: '25 5 * * *'
   workflow_dispatch: {}
   # Kein branches-Filter: die Suite muss auch auf gestapelten PRs (Basis = anderer Feature-Branch)
   # per Label startbar sein; das Opt-in regelt die if-Bedingung des Jobs.
