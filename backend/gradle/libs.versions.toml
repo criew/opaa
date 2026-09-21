@@ -9,7 +9,7 @@ spring-ai = "2.0.1"
 # (#1431).
 tomcat = "11.0.26"
 spotless = "8.10.2"
-caffeine = "3.2.4"
+caffeine = "3.3.0"
 openapi-generator = "7.25.0"
 cyclonedx-bom = "3.4.1"
 # Tokenizer used by Spring AI's TokenTextSplitter (CL100K_BASE). Referenced directly by
