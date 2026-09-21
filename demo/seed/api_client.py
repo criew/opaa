@@ -118,3 +118,8 @@ class Client:
         if response.status_code not in expected:
             raise ApiError(response)
         return response.json() if response.content else None
+
+    def delete_ok(self, path: str, expected: tuple[int, ...] = (204,), **kwargs) -> None:
+        response = self.delete(path, **kwargs)
+        if response.status_code not in expected:
+            raise ApiError(response)

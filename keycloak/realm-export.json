@@ -43,7 +43,7 @@
     },
     {
       "clientId": "opaa-seed",
-      "description": "ROPC-Client nur fuer demo/seed/seed.py (#712), nie fuer die Anmeldung im Frontend - ohne Redirect-URI, getrennt von opaa-frontend (directAccessGrantsEnabled bleibt dort false). Der Audience-Mapper traegt opaa-frontend in aud ein (ADR-0025, azp-Pruefung). Der Gruppen-Mapper ist derselbe wie bei opaa-frontend (#1823, ADR-0036 Entscheidung 2/3): Protokoll-Mapper gelten je Client, nicht je Realm, und seed.py meldet Demo-Nutzer ueber diesen Client an.",
+      "description": "ROPC-Client nur fuer demo/seed/seed.py (#712), nie fuer die Anmeldung im Frontend - ohne Redirect-URI, getrennt von opaa-frontend (directAccessGrantsEnabled bleibt dort false). Der Audience-Mapper traegt opaa-frontend in aud ein (ADR-0025, azp-Pruefung).",
       "enabled": true,
       "publicClient": true,
       "standardFlowEnabled": false,

@@ -336,7 +336,7 @@ def ensure_group(admin_client: Client, user_ids: dict[str, str], group_def: Grou
             s["userId"] for s in admin_client.get_ok(f"/v1/groups/{group_id}/stewards")
         }
         if admin_id in current_stewards:
-            admin_client.delete(f"/v1/groups/{group_id}/stewards/{admin_id}")
+            admin_client.delete_ok(f"/v1/groups/{group_id}/stewards/{admin_id}")
 
     member_ids = {user_ids[key] for key in group_def.member_keys}
     current_members = {m["userId"] for m in admin_client.get_ok(f"/v1/groups/{group_id}/members")}

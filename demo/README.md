@@ -392,6 +392,12 @@ Anbieter ist per Vorgabe **extern** gekennzeichnet, und `TokenGroupSynchronizer`
 das nicht auslösen, weil `opaa-partner` (anders als `opaa-seed`) bewusst kein
 `directAccessGrantsEnabled` trägt und nur den echten Authorization-Code-Ablauf im Browser zulässt.
 
+**`sourcePath` bleibt in der Demo bei jeder Gruppe leer** — das Feld füllt ausschließlich der
+Verzeichnisabgleich (ORG_UNIT-Gruppen), und der bleibt hier bewusst aus (Umfang von #1823, die Demo
+läuft im Token-Modus). Die beiden gleichnamigen „Meldewesen"-Gruppen sind stattdessen über ihre
+Herkunft (Anbieter/Realm) unterscheidbar, nicht über einen Quellpfad — wer ihn in der Demo sucht,
+wird ihn nicht finden.
+
 ---
 
 ## Demo weiterentwickeln
