@@ -54,7 +54,7 @@ class AuditQueryServiceOutcomeTest {
             incidentScopeService,
             pseudonymService,
             eventRecorder,
-            userRepository);
+            new AuditAccessGate(userRepository));
   }
 
   @Test

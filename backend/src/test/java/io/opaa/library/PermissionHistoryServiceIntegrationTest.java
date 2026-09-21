@@ -1000,7 +1000,8 @@ class PermissionHistoryServiceIntegrationTest {
    * space membership is not an input of the readable-library formula at all: a library associated
    * to a space is shown to a member only if that member may already read it ({@code
    * SpaceAssetAssociationService}), so admitting somebody to a space moves no library into
-   * anybody's readable set.
+   * anybody's readable set. {@code PointInTimeAccessService} (#1822) resolves a group only to name
+   * it in the Stichtagsauskunft; it reads the history and writes nothing but its own audit entry.
    */
   private static final Set<String> BEANS_REACHING_THE_RIGHTS_TABLES =
       Set.of(
@@ -1018,6 +1019,7 @@ class PermissionHistoryServiceIntegrationTest {
           "KnowledgeLibraryService",
           "LibraryAccessService",
           "LocalHandoverAccountService",
+          "PointInTimeAccessService",
           "ProviderGroupDirectoryAdapter",
           "TokenGroupSynchronizer");
 
@@ -1047,6 +1049,9 @@ class PermissionHistoryServiceIntegrationTest {
           "GroupService#setRelease",
           "GroupService#setProtection",
           "KnowledgeLibraryService#getLibrary",
+          // #1822: the Herleitung reads the formula and states it - it moves no library into or
+          // out of anybody's readable set.
+          "KnowledgeLibraryService#getAccessDerivation",
           "KnowledgeLibraryService#listLibraries",
           "KnowledgeLibraryService#listDocuments",
           "KnowledgeLibraryService#generateConfluenceWebhookSecret",

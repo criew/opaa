@@ -21,12 +21,4 @@ public interface GroupMembershipSource {
    * caller that skips the organization would reintroduce exactly the cross-tenant leak #199 closed.
    */
   Set<UUID> findUserIdsByGroupIdAndOrganizationId(UUID groupId, UUID organizationId);
-
-  /**
-   * How many members that same scope holds, without loading them. Separate from the method above
-   * because {@link GroupMembershipResolver#activeMemberCount} is on the list path of every space
-   * ({@code SpaceService#listSpaces}), where loading a whole department to learn its size is the
-   * difference between one indexed count and a row set per space.
-   */
-  long countUserIdsByGroupIdAndOrganizationId(UUID groupId, UUID organizationId);
 }

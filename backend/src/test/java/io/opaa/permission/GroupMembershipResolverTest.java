@@ -5,6 +5,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.opaa.auth.AccountActivityService;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import java.util.Optional;
@@ -21,6 +22,7 @@ class GroupMembershipResolverTest {
 
   @Mock private GroupMembershipSource membershipSource;
   @Mock private UserRepository userRepository;
+  @Mock private AccountActivityService accountActivity;
 
   private GroupMembershipResolver resolver;
 
@@ -30,6 +32,7 @@ class GroupMembershipResolverTest {
         new GroupMembershipResolver(
             membershipSource,
             userRepository,
+            accountActivity,
             new org.springframework.beans.factory.support.StaticListableBeanFactory()
                 .getBeanProvider(GroupMembershipChangeListener.class));
   }

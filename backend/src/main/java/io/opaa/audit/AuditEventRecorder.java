@@ -235,6 +235,39 @@ public class AuditEventRecorder {
   }
 
   /**
+   * The entry for one Stichtagsauskunft out of the Rechtehistorie (#1822), rejected attempts
+   * included - the counterpart of {@link #recordAuditLogAccess} for the second revision holding.
+   * Unlike that one, the object is the queried library or space, so the retrieval is found again
+   * through the object access path; {@code scope} carries the window and lands in {@code after}.
+   * Carries the same {@code Propagation.NOT_SUPPORTED} and for the same reason.
+   */
+  @Transactional(propagation = Propagation.NOT_SUPPORTED)
+  public void recordPermissionHistoryAccess(
+      UUID organizationId,
+      UUID actorUserId,
+      AuditObjectType objectType,
+      UUID objectId,
+      Map<String, Object> scope,
+      AuditOutcome outcome,
+      String reason) {
+    String actorRef = pseudonymService.pseudonymFor(actorUserId, organizationId).toString();
+    auditLogService.record(
+        AuditLogEntry.withoutSubject(
+            organizationId,
+            ActorKind.USER,
+            actorRef,
+            AuditEventType.PERMISSION_HISTORY_ACCESSED,
+            objectType,
+            objectId == null ? "unknown" : objectId.toString(),
+            null,
+            null,
+            toJson(scope),
+            outcome,
+            reason,
+            null));
+  }
+
+  /**
    * The pseudonym id for {@code userId} - exposed so a caller whose {@code object} <em>is</em> the
    * same person as the {@code subject} can pass that one pseudonym as both {@code objectId} and
    * {@code subjectId}, instead of the real {@code userId} as {@code objectId}. Using the real id

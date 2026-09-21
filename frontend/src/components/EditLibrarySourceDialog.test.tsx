@@ -387,7 +387,7 @@ describe('EditLibrarySourceDialog', () => {
       ).toBeInTheDocument()
     })
 
-    it('omits the libraryId once new credentials are entered, since they take precedence over the stored ones', async () => {
+    it('still sends the libraryId once new credentials are entered - #1868 review: a MANAGER without CREATE_CONNECTOR_LIBRARY must not have this fail 403 right before a save updateLibrary would allow', async () => {
       renderWithProviders(
         <EditLibrarySourceDialog
           open
@@ -403,17 +403,12 @@ describe('EditLibrarySourceDialog', () => {
 
       await waitFor(() => {
         expect(mockTestLibrarySource).toHaveBeenCalledWith(
-          expect.objectContaining({ sourceCredentials: 'admin:new-secret' }),
+          expect.objectContaining({
+            sourceCredentials: 'admin:new-secret',
+            libraryId: 'library-2',
+          }),
         )
       })
-      // #615 review, nit c: objectContaining({ libraryId: undefined }) alone does not prove the
-      // key is actually absent from the network payload - an explicitly assigned `libraryId:
-      // undefined` property still exists on the JS object itself (toHaveProperty would find it
-      // too), it is only JSON.stringify (the real serialization the HTTP client performs) that
-      // drops an undefined-valued key. Asserting on the serialized form is what actually proves
-      // the backend never sees the key.
-      const [requestBody] = mockTestLibrarySource.mock.calls[0]
-      expect(JSON.stringify(requestBody)).not.toContain('libraryId')
     })
 
     it('shows an unreachable result as a warning, not an error, since the test itself succeeded', async () => {
@@ -663,6 +658,28 @@ describe('EditLibrarySourceDialog', () => {
         screen.getByText(/Bitte die Zugangsdaten mit „Verbindung testen“ prüfen/),
       ).toBeInTheDocument()
       expect(mockUpdateLibrary).not.toHaveBeenCalled()
+    }, 10000)
+
+    it('still sends the libraryId testing a newly typed token - #1868 review: a MANAGER without CREATE_CONNECTOR_LIBRARY must not have this fail 403 right before a save updateLibrary would allow', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(
+        <EditLibrarySourceDialog
+          open
+          onClose={() => {}}
+          libraryId="lib-wiki"
+          library={confluenceLibrary}
+        />,
+      )
+      await screen.findByLabelText(/Spaces suchen und auswählen/)
+
+      await user.type(screen.getByLabelText(/Neues Personal Access Token/), 'neues-pat')
+      await user.click(screen.getByRole('button', { name: 'Verbindung testen' }))
+
+      await waitFor(() =>
+        expect(mockTestLibrarySource).toHaveBeenCalledWith(
+          expect.objectContaining({ sourceCredentials: 'neues-pat', libraryId: 'lib-wiki' }),
+        ),
+      )
     }, 10000)
 
     it('names the missing e-mail address when a new Cloud token is typed instead of silently disabling the test', async () => {

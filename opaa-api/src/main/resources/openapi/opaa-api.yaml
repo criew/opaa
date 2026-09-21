@@ -3572,6 +3572,51 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/spaces/{spaceId}/access-derivation:
+    parameters:
+      - name: spaceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: getSpaceAccessDerivation
+      tags: [spaces]
+      summary: >
+        Why one person reaches this space - the Herleitung of ADR-0036, Entscheidung 9 (#1822)
+      description: >
+        Without userId the answer is about the caller themselves: every own way to the effective
+        role - own membership, a membership of one of their groups (with the group's name, origin,
+        mechanism and the moment of the admission), ownership, and the administration. No Vollmacht
+        and no protocol entry: the answer names no member of any group and says nothing about
+        anybody else. With userId the answer is about that member and is reserved for those who
+        manage the membership here - space ADMIN, the owner and SYSTEM_ADMIN, the same bar the
+        member list carries; everybody else gets 403. A protected group (ADR-0036, Entscheidung 9)
+        is never named to a third party: the answer then carries the effective role with
+        pathsWithheld=true and no group path at all, while the person's own answer stays complete.
+      parameters:
+        - name: userId
+          in: query
+          required: false
+          description: >
+            The member whose way to ask about. Absent means the caller themselves. A person this
+            space does not reach at all yields 404, like an unknown space.
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: The ways this person reaches the space
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpaceAccessDerivationResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/spaces/{spaceId}/members:
     parameters:
       - name: spaceId
@@ -4180,12 +4225,13 @@ paths:
       tags: [library]
       summary: >
         Test a quellkonfiguration before a library is created, or an existing library's
-        quellkonfiguration while editing it (#514, #544). Without libraryId, any authenticated
-        user may probe: there is no library yet to hold a role on, and the guards that matter
-        here - the operator-configured path allowlist and the address validator - are independent
-        of any permission (ADR-0036, Entscheidung 5). The capability CREATE_CONNECTOR_LIBRARY is
-        therefore checked at creation, not here. With libraryId, the caller additionally needs
-        AssetRole.MANAGER on that library (see SourceConnectionTestRequest.libraryId).
+        quellkonfiguration while editing it (#514, #544). Without libraryId, there is no library
+        yet to hold a role on, so the caller instead needs the capability
+        CREATE_CONNECTOR_LIBRARY (ADR-0036, Entscheidung 5) - the same right creating that
+        connector library needs (#1856). The operator-configured path allowlist and the address
+        validator remain independent of any permission, as before. With libraryId, the caller
+        additionally needs AssetRole.MANAGER on that library (see
+        SourceConnectionTestRequest.libraryId).
       description: >
         Checks the given sourceType/sourcePath/sourceUrl/sourceProxy/sourceCredentials/
         sourceInsecureSsl combination the way the corresponding indexing run later would,
@@ -4245,9 +4291,10 @@ paths:
         token as HTTP Basic against /wiki/api/v2; Data Center: personal access token as Bearer
         against /rest/api) and returns every readable space, following the instance's own
         pagination to the end. A POST because the credentials travel in the body and no library
-        needs to exist yet. Permission bar like the connection test: any authenticated user
-        without libraryId, AssetRole.MANAGER on that library with it. Rate-limited like the
-        connection test (opaa.rate-limit.source-test) and subject to the same outbound target
+        needs to exist yet. Permission bar like the connection test: the capability
+        CREATE_CONNECTOR_LIBRARY without libraryId, AssetRole.MANAGER on that library with it
+        (#1856). Rate-limited like the connection test (opaa.rate-limit.source-test) and subject
+        to the same outbound target
         validation - a private on-premises address needs its allowlist entry and the error
         message says so. Credentials appear in no response and no error message.
       requestBody:
@@ -4285,10 +4332,11 @@ paths:
         listingPermitted false and a hint to enter the bucket name by hand, never with an error;
         refused credentials, a blocked or unreachable endpoint are a 400 with the same German
         message the connection test would give. A POST because the credentials travel in the
-        body and no library needs to exist yet. Permission bar like the connection test: any
-        authenticated user without libraryId, AssetRole.MANAGER on that library with it.
-        Rate-limited like the connection test (opaa.rate-limit.source-test) and subject to the
-        same outbound target validation. Credentials appear in no response and no error message.
+        body and no library needs to exist yet. Permission bar like the connection test: the
+        capability CREATE_CONNECTOR_LIBRARY without libraryId, AssetRole.MANAGER on that library
+        with it (#1856). Rate-limited like the connection test (opaa.rate-limit.source-test) and
+        subject to the same outbound target validation. Credentials appear in no response and no
+        error message.
       requestBody:
         required: true
         content:
@@ -4433,6 +4481,38 @@ paths:
           $ref: "#/components/responses/ValidationError"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/libraries/{libraryId}/access-derivation:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: getLibraryAccessDerivation
+      tags: [libraries]
+      summary: >
+        Why the caller reaches this library - the Herleitung of ADR-0036, Entscheidung 9 (#1822)
+      description: >
+        Every own way to the effective role: a grant naming the caller, a grant naming one of their
+        groups (with the group's name, origin, mechanism and the moment of the grant), the
+        organization-wide release, and the system administration. Always about the caller
+        themselves - there is no parameter naming somebody else; a question about another person's
+        reach is the Suchdiagnose with "Sicht als" or, for the past, the Stichtagsauskunft. No
+        Vollmacht and no protocol entry, and no member of any group is disclosed. A capability
+        never appears: it opens an Anlegepfad, never an Inhalt (ADR-0036, Entscheidung 5).
+      responses:
+        "200":
+          description: The ways the caller reaches the library
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LibraryAccessDerivationResponse"
         "404":
           $ref: "#/components/responses/NotFound"
 
@@ -6485,6 +6565,63 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AuditEventPage"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/audit/access-as-of:
+    get:
+      operationId: listAccessAsOf
+      tags: [audit]
+      summary: >
+        Stichtagsauskunft "wer durfte dieses Objekt lesen" (AUDITOR role required, #1822,
+        ADR-0036 Entscheidung 8)
+      description: >
+        The reading path of the Rechtehistorie, and the counterpart of the Suchdiagnose: the
+        diagnosis answers the present, this one the past, and neither replaces the other
+        (hybrid-retrieval.md, Berechtigungs-Leitplanke (b)).
+
+        Exactly one named object per query, by construction: objectType plus objectId, never a
+        space-wide, unit-wide or filtered query. Without that rule an AUDITOR would assemble the
+        rights profile of every person of one unit from thirty object queries, without a Vollmacht.
+        The person entry ("what could person X read") is not part of this endpoint and stays closed
+        until #391/#395.
+
+        The time range is mandatory and bounded exactly as every other audit access path is (92
+        days, page index 49, page size 200); a wider request is rejected, never trimmed. The bounds
+        limit the work, not only the output: a window in which one source contributes more than
+        2000 intervals, or whose composed answer would exceed 5000 access periods, is refused with
+        400 and the advice to narrow the window - a trimmed answer would look complete.
+
+        The answer carries retentionCutoff/beyondRetention and sourcesNotCovered, so neither the
+        retention gap nor the sources without a history (system role, ownership, capability,
+        account state) read as "nobody had access". Every call writes a PERMISSION_HISTORY_ACCESSED
+        entry, the rejected attempt included.
+      parameters:
+        - name: objectType
+          in: query
+          required: true
+          schema:
+            $ref: "#/components/schemas/AccessAsOfObjectType"
+        - name: objectId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/AuditFrom"
+        - $ref: "#/components/parameters/AuditTo"
+        - $ref: "#/components/parameters/AuditPage"
+        - $ref: "#/components/parameters/AuditSize"
+        - $ref: "#/components/parameters/AuditReason"
+      responses:
+        "200":
+          description: Bounded page of access intervals inside the requested window
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccessAsOfPage"
         "400":
           $ref: "#/components/responses/ValidationError"
         "403":
@@ -14738,7 +14875,9 @@ components:
           DIAGNOSTIC_IMPERSONATION_REVOKED,
           DIAGNOSTIC_CONTEXT_RETENTION_CHANGED,
           LIBRARY_DIAGNOSTICS_LOCK_CHANGED,
+          SEARCH_DIAGNOSIS_PROFILE_RUN,
           AUDIT_LOG_ACCESSED,
+          PERMISSION_HISTORY_ACCESSED,
           LOCAL_SESSION_REVOKED,
           LOCAL_PASSWORD_CHANGED,
           LOCAL_ADMIN_SEEDED,
@@ -14830,6 +14969,251 @@ components:
         correlationRef:
           type: string
           nullable: true
+
+    AccessBasis:
+      type: string
+      description: >
+        Why one person reaches one object (ADR-0036, Entscheidung 9). A capability is deliberately
+        no value of this list: it opens an Anlegepfad, never an Inhalt (ADR-0036, Entscheidung 5),
+        and therefore never explains a read access.
+      enum:
+        [
+          DIRECT_GRANT,
+          GROUP_GRANT,
+          ORGANIZATION_WIDE,
+          DIRECT_MEMBERSHIP,
+          GROUP_MEMBERSHIP,
+          OWNERSHIP,
+          SYSTEM_ADMINISTRATION,
+        ]
+      example: GROUP_GRANT
+
+    AccessPathResponse:
+      type: object
+      required: [basis]
+      properties:
+        basis:
+          $ref: "#/components/schemas/AccessBasis"
+        assetRole:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/AssetRole"
+          description: The role this way confers on an asset; null for a space.
+        spaceRole:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/SpaceRole"
+          description: The role this way confers in a space; null for an asset.
+        since:
+          type: string
+          format: date-time
+          nullable: true
+          description: >
+            When this way came into being - the moment of the grant or of the admission. Null where
+            the way has no own moment (the organization-wide release, the administration).
+        group:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/AccessPathGroup"
+          description: Set for GROUP_GRANT and GROUP_MEMBERSHIP, null otherwise.
+
+    AccessPathGroup:
+      type: object
+      required: [id, name, origin, mechanism]
+      description: >
+        The group a way runs through, as the Herleitung names it: name, origin and the mechanism
+        that maintains its membership. The accuracy of the Rechtehistorie depends on that mechanism
+        (ADR-0036, Entscheidung 3), which is why it is named here and not only in the
+        administration. The members of the group are never part of this answer.
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        origin:
+          $ref: "#/components/schemas/GroupOrigin"
+        mechanism:
+          $ref: "#/components/schemas/GroupMechanism"
+        providerName:
+          type: string
+          nullable: true
+          description: The identity provider's display name; null for an internal group.
+
+    LibraryAccessDerivationResponse:
+      type: object
+      required: [libraryId, effectiveRole, paths, pathsWithheld]
+      properties:
+        libraryId:
+          type: string
+          format: uuid
+        effectiveRole:
+          $ref: "#/components/schemas/AssetRole"
+        paths:
+          type: array
+          items:
+            $ref: "#/components/schemas/AccessPathResponse"
+        pathsWithheld:
+          type: boolean
+          description: >
+            Always false here - the library derivation is only ever about the caller themselves,
+            and an own derivation is never withheld (ADR-0036, Entscheidung 9, Personalrat Z2).
+
+    SpaceAccessDerivationResponse:
+      type: object
+      required: [spaceId, userId, paths, pathsWithheld]
+      properties:
+        spaceId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+          description: The person the answer is about - the caller, unless userId was given.
+        effectiveRole:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/SpaceRole"
+          description: >
+            Null for a system administrator who reaches the space through the administration alone
+            - that is no membership role, and naming one would be a wrong statement.
+        paths:
+          type: array
+          items:
+            $ref: "#/components/schemas/AccessPathResponse"
+        pathsWithheld:
+          type: boolean
+          description: >
+            True when a way runs through a protected group and the answer is about somebody else:
+            the effective role is then stated without the group path. Without this, a space with
+            exactly one protected group would name that group by elimination, and the namelessness
+            of ADR-0036, Entscheidung 9 would be worthless. The person's own answer never withholds.
+
+    AccessAsOfObjectType:
+      type: string
+      description: >
+        The kinds of object the Stichtagsauskunft answers about. A library answers "who could read
+        it", a space "who was a member". Exactly one named object per query (ADR-0036,
+        Entscheidung 8; Personalrat Z3).
+      enum: [KNOWLEDGE_LIBRARY, SPACE]
+      example: KNOWLEDGE_LIBRARY
+
+    AccessAsOfSource:
+      type: string
+      description: >
+        A rights source of the Stichtagsauskunft that carries no history yet (ADR-0036,
+        Entscheidung 8 lists eight sources; four are historised today). SYSTEM_ROLE matters most:
+        a system administrator reaches every library of their organization through effectiveRole,
+        and no interval records that - an empty answer is therefore never a proof that nobody had
+        access.
+      enum: [SYSTEM_ROLE, OWNERSHIP, CAPABILITY, ACCOUNT_STATE]
+      example: SYSTEM_ROLE
+
+    AccessAsOfEntry:
+      type: object
+      required: [basis, validFrom]
+      description: >
+        One interval inside the requested window during which one subject reached the object, cut
+        to the window. A person is named by id and display name; the answer is about an object, not
+        about a person, which is what keeps it free of a Vollmacht.
+      properties:
+        basis:
+          $ref: "#/components/schemas/AccessBasis"
+        userId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Null for ORGANIZATION_WIDE, which reaches every account without naming one.
+        userName:
+          type: string
+          nullable: true
+        groupId:
+          type: string
+          format: uuid
+          nullable: true
+          description: The group the way ran through; set for GROUP_GRANT and GROUP_MEMBERSHIP.
+        groupName:
+          type: string
+          nullable: true
+          description: >
+            The group's name as it is today, or null once the group is gone - the history keeps the
+            id, not a name snapshot (ADR-0036, Entscheidung 2: the snapshot follows the maximum
+            retention period, which is why an answer about a deleted group stays anonymous here).
+        assetRole:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/AssetRole"
+        spaceRole:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/SpaceRole"
+        validFrom:
+          type: string
+          format: date-time
+        validTo:
+          type: string
+          format: date-time
+          nullable: true
+          description: Null means the access was still in force at the end of the window.
+
+    AccessAsOfPage:
+      type: object
+      required:
+        [objectType, objectId, from, to, beyondRetention, sourcesNotCovered, entries, page, size, totalElements, totalPages]
+      properties:
+        objectType:
+          $ref: "#/components/schemas/AccessAsOfObjectType"
+        objectId:
+          type: string
+          format: uuid
+        objectName:
+          type: string
+          nullable: true
+          description: >
+            The object's name today, null once it is deleted. The answer is still given for a
+            deleted object: the history outlives it (ADR-0016).
+        from:
+          type: string
+          format: date-time
+        to:
+          type: string
+          format: date-time
+        retentionCutoff:
+          type: string
+          format: date-time
+          nullable: true
+          description: >
+            Closed intervals that ended before this instant are deleted (#1833). Everything the
+            answer says about a time before it is therefore incomplete by construction. Null until
+            the first deletion pass has run at all, which is why beyondRetention and not this field
+            carries the statement.
+        beyondRetention:
+          type: boolean
+          description: >
+            True when "from" lies before retentionCutoff. The answer is then not a negative
+            statement: "no access" and "no longer on record" are indistinguishable there, and the
+            reader is told so rather than left to assume the first.
+        sourcesNotCovered:
+          type: array
+          description: >
+            The rights sources this answer cannot cover because they carry no history yet. A client
+            has to show them: without SYSTEM_ROLE named, "no entry" reads as "nobody had access",
+            although a system administrator could read every library of the organization all along.
+          items:
+            $ref: "#/components/schemas/AccessAsOfSource"
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/AccessAsOfEntry"
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
 
     AuditEventPage:
       type: object
@@ -16029,6 +16413,26 @@ components:
           description: >
             Required for PERMISSION_PROFILE, rejected with 400 for SELF and USER. An unknown id
             yields 404.
+        spaceId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >
+            The space whose Suchbereich to run the profile in (#1835, ADR-0036 Entscheidung 7):
+            the searched set is the intersection of the libraries associated with that space and
+            the libraries the profile may read. Only for PERMISSION_PROFILE; rejected with 400 for
+            SELF and USER, 404 for an unknown space.
+
+            Answered with 403 when fewer than the configured Mindestgruppengroesse of active
+            accounts of that group reach that space on any path (own membership, this group,
+            another group, ownership) - a profile that names one person there would be a person
+            context without its Vollmacht, and the answer says that the person context with a
+            Vollmacht is the way to that question. The figure is read at the moment of the run,
+            not at selection.
+
+            A run with a space context writes exactly one protocol entry
+            (SEARCH_DIAGNOSIS_PROFILE_RUN, with the group id as its subject); a run without one
+            writes none.
         targetUserId:
           type: string
           format: uuid

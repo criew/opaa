@@ -501,6 +501,22 @@ public class KnowledgeLibraryService {
     return toLibraryDetail(library, role, caller.id());
   }
 
+  /**
+   * The Herleitung "warum sehe ich diese Bibliothek" for the caller themselves (#1822). Requires
+   * the same {@link AssetRole#VIEWER} {@link #getLibrary} requires, so a library the caller does
+   * not reach answers 404 rather than an empty derivation - an empty answer would tell an outsider
+   * that the library exists.
+   */
+  public LibraryAccessDerivation getAccessDerivation(UUID libraryId, CurrentUser caller) {
+    KnowledgeLibrary library = loadLibrary(libraryId, caller);
+    AssetRole role =
+        accessService.requireRole(library, caller.id(), caller.isSystemAdmin(), AssetRole.VIEWER);
+    return new LibraryAccessDerivation(
+        library.getId(),
+        role,
+        accessService.accessPaths(library, caller.id(), caller.isSystemAdmin()));
+  }
+
   @Transactional
   public LibraryDetail updateLibrary(UUID libraryId, LibraryUpdate request, CurrentUser caller) {
     UUID currentUserId = caller.id();

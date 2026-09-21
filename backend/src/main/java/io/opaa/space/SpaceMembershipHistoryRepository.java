@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -59,6 +60,23 @@ public interface SpaceMembershipHistoryRepository
       @Param("groupIds") Collection<UUID> groupIds,
       @Param("organizationId") UUID organizationId,
       @Param("asOf") Instant asOf);
+
+  /**
+   * Every <i>state</i> interval of one space overlapping {@code [from, to)} - the object entry of
+   * the Stichtagsauskunft about a space (#1822). Zero-length event markers are excluded by {@code
+   * validTo > validFrom}.
+   */
+  @Query(
+      "select h from SpaceMembershipHistory h where h.spaceId = :spaceId "
+          + "and h.organizationId = :organizationId "
+          + "and h.validFrom < :to and (h.validTo is null or h.validTo > :from) "
+          + "and (h.validTo is null or h.validTo > h.validFrom)")
+  List<SpaceMembershipHistory> findSpaceIntervalsOverlapping(
+      @Param("spaceId") UUID spaceId,
+      @Param("organizationId") UUID organizationId,
+      @Param("from") Instant from,
+      @Param("to") Instant to,
+      Pageable page);
 
   /**
    * Test-only cleanup helper - {@code subject_user_id} is {@code ON DELETE RESTRICT}; see {@code

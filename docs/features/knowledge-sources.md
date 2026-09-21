@@ -218,7 +218,12 @@ ersetzt weder die Ziel- noch die Formatprüfung des eigentlichen Laufs. Er nutzt
 und `RSS_FEED` dieselben ausgehenden Verbindungen wie ein Lauf und unterliegt deshalb **derselben
 Zielprüfung (gebaut, #267)** — konfigurierbar über `opaa.indexing.target-validation`, siehe
 [deployment.md](../handbuch/deployment.md). Er ist zusätzlich rate-limitiert (`opaa.rate-limit.source-test`),
-damit er nicht als schneller interner Portscanner missbraucht werden kann.
+damit er nicht als schneller interner Portscanner missbraucht werden kann. Ohne Bezug zu einer
+bestehenden Bibliothek verlangt die Quellprobe wie die beiden Auswahl-Endpunkte
+(`confluence/spaces`, `s3/buckets`) das Anlegerecht `CREATE_CONNECTOR_LIBRARY` (gebaut, #1856,
+[ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md) Entscheidung 5) —
+dasselbe Recht, das die Anlage der Bibliothek ohnehin verlangt. Mit `libraryId` bleibt es bei der
+bestehenden `MANAGER`-Schranke der Bibliothek.
 
 **Zugangsdaten-Fallback über `libraryId` (gebaut, #544/#617).** Testet der Dialog eine bereits
 gespeicherte, passwortgeschützte Quelle nach, muss der Aufrufer das Passwort nicht erneut eintippen —

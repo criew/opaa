@@ -21,6 +21,7 @@ import io.opaa.library.UploadProperties;
 import io.opaa.library.UploadS3Properties;
 import io.opaa.llm.RerankProperties;
 import io.opaa.mail.SmtpProperties;
+import io.opaa.permission.GroupSizeProperties;
 import io.opaa.security.CredentialsEncryptionProperties;
 import io.opaa.security.SettingsEncryptionProperties;
 import org.springframework.boot.SpringApplication;
@@ -52,7 +53,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
   OdfProperties.class,
   RerankProperties.class,
   SmtpProperties.class,
-  PublicBaseUrlProperties.class
+  PublicBaseUrlProperties.class,
+  GroupSizeProperties.class
 })
 // Enables io.opaa.audit.AuditRetentionScheduler's @Scheduled monthly retention deletion (#395).
 @EnableScheduling
