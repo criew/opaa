@@ -1,5 +1,6 @@
 package io.opaa.test;
 
+import io.opaa.group.sync.DirectoryAccount;
 import io.opaa.group.sync.DirectoryClient;
 import io.opaa.group.sync.DirectoryGroup;
 import io.opaa.group.sync.DirectorySnapshot;
@@ -45,6 +46,23 @@ public final class FakeDirectoryClient implements DirectoryClient {
     snapshotsByProvider.put(providerId, new DirectorySnapshot(Instant.now(), List.of(groups)));
   }
 
+  /**
+   * A directory that reports account status too (#1818). The two {@code respondWith} methods above
+   * script a connector that reports none, which is what every test predating #1818 exercises - and
+   * what leaves the account state untouched.
+   */
+  public void respondWith(List<DirectoryGroup> groups, List<DirectoryAccount> accounts) {
+    this.failure = null;
+    this.snapshot = new DirectorySnapshot(Instant.now(), groups, accounts);
+  }
+
+  /** The same for one provider, whatever {@link #respondWith} set. */
+  public void respondWithFor(
+      UUID providerId, List<DirectoryGroup> groups, List<DirectoryAccount> accounts) {
+    this.failure = null;
+    snapshotsByProvider.put(providerId, new DirectorySnapshot(Instant.now(), groups, accounts));
+  }
+
   public void failWith(String message) {
     this.failure = new DirectoryUnavailableException(message);
   }
@@ -60,8 +78,8 @@ public final class FakeDirectoryClient implements DirectoryClient {
 
   /**
    * Stands in for the one slow step of a real run: {@code gate} is invoked inside {@link
-   * #fetchGroups}, so a test can hold a run open at exactly the point a production fetch would take
-   * its time and observe what a second, concurrent caller sees.
+   * #fetchSnapshot}, so a test can hold a run open at exactly the point a production fetch would
+   * take its time and observe what a second, concurrent caller sees.
    */
   public void gateFetchWith(Consumer<UUID> gate) {
     this.fetchGate = gate;
@@ -77,7 +95,7 @@ public final class FakeDirectoryClient implements DirectoryClient {
   }
 
   @Override
-  public DirectorySnapshot fetchGroups(UUID organizationId, UUID providerId)
+  public DirectorySnapshot fetchSnapshot(UUID organizationId, UUID providerId)
       throws DirectoryUnavailableException {
     fetchGate.accept(organizationId);
     if (brokenProviders.contains(providerId)) {

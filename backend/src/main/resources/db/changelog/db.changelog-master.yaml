@@ -142,3 +142,11 @@ databaseChangeLog:
       file: db/changelog/changes/058-groups-released-for-use.yaml
   - include:
       file: db/changelog/changes/059-groups-protected.yaml
+  # Kontostatus aus dem Verzeichnis (#1818, ADR-0036 Entscheidungen 3, 6 und 8): die Sperre am
+  # Konto, ihre Historie und die Zahl der Sperren eines ausstehenden Plans.
+  - include:
+      file: db/changelog/changes/063-users-directory-locked.yaml
+  - include:
+      file: db/changelog/changes/064-create-account-state-history.yaml
+  - include:
+      file: db/changelog/changes/065-directory-sync-pending-plans-accounts-locked.yaml

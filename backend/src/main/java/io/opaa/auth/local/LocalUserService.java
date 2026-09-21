@@ -551,6 +551,9 @@ public class LocalUserService {
     if (counts.getAssetOwnershipHistory() > 0) {
       blockers.add("asset_ownership_history");
     }
+    if (counts.getAccountStateHistory() > 0) {
+      blockers.add("account_state_history");
+    }
     return blockers;
   }
 

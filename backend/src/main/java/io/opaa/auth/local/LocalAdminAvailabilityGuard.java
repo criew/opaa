@@ -14,6 +14,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -27,8 +28,8 @@ import org.springframework.transaction.annotation.Transactional;
  * {@link LocalAccountAccess#isLoginCapable} holds - the one rule the login, the rotation and the
  * token validator apply, not a second formulation - or an account of an <em>enabled</em> OIDC
  * provider (in the {@code dev} mode: of the dev issuer, the trusted provider of ADR-0005). An
- * administrator of a disabled provider, a locked, expired or still invited local account does not
- * count.
+ * administrator of a disabled provider, a locked, expired or still invited local account, and one
+ * the directory synchronisation locked (#1818) does not count.
  *
  * <p>Every path that could remove the last such administrator runs through here under the advisory
  * lock {@link UserRepository#lockRoleChanges} of the organization, so two concurrent changes never
@@ -81,7 +82,7 @@ public class LocalAdminAvailabilityGuard {
   @Transactional
   public int withdrawSystemAdminIfAnotherRemains(User user, SystemRole target) {
     users.lockRoleChanges(user.getOrganizationId());
-    if (countLoginCapable(user.getOrganizationId(), user.getId(), null) == 0) {
+    if (countLoginCapable(user.getOrganizationId(), Set.of(user.getId()), null) == 0) {
       return 0;
     }
     return users.changeRoleIfStill(user.getId(), SystemRole.SYSTEM_ADMIN, target);
@@ -94,8 +95,18 @@ public class LocalAdminAvailabilityGuard {
    */
   @Transactional(propagation = Propagation.MANDATORY)
   public void requireAnotherLoginCapableAdmin(UUID organizationId, UUID excludedUserId) {
+    requireLoginCapableAdminBesides(organizationId, Set.of(excludedUserId));
+  }
+
+  /**
+   * The same check for an act that would take several administrators at once - the directory
+   * synchronisation, which plans every lock of one run before applying any of them (#1818). Asking
+   * once per account would let two departing administrators each count the other as remaining.
+   */
+  @Transactional(propagation = Propagation.MANDATORY)
+  public void requireLoginCapableAdminBesides(UUID organizationId, Set<UUID> excludedUserIds) {
     users.lockRoleChanges(organizationId);
-    if (countLoginCapable(organizationId, excludedUserId, null) == 0) {
+    if (countLoginCapable(organizationId, excludedUserIds, null) == 0) {
       throw new ConflictException(LAST_ADMIN_MESSAGE, ERROR_CODE);
     }
   }
@@ -108,7 +119,7 @@ public class LocalAdminAvailabilityGuard {
   @Transactional(propagation = Propagation.MANDATORY)
   public void requireLoginCapableAdminWithoutProvider(UUID organizationId, UUID providerId) {
     users.lockRoleChanges(organizationId);
-    if (countLoginCapable(organizationId, null, providerId) == 0) {
+    if (countLoginCapable(organizationId, Set.of(), providerId) == 0) {
       throw new ConflictException(LOCAL_ADMIN_REQUIRED_MESSAGE, ERROR_CODE);
     }
   }
@@ -116,11 +127,11 @@ public class LocalAdminAvailabilityGuard {
   /** How many login-capable administrators the organization has right now (no lock). */
   @Transactional(readOnly = true)
   public long countLoginCapableSystemAdmins(UUID organizationId) {
-    return countLoginCapable(organizationId, null, null);
+    return countLoginCapable(organizationId, Set.of(), null);
   }
 
   private long countLoginCapable(
-      UUID organizationId, UUID excludedUserId, UUID excludedProviderId) {
+      UUID organizationId, Set<UUID> excludedUserIds, UUID excludedProviderId) {
     Instant now = clock.instant();
     List<OidcProvider> enabledProviders =
         providers.findAllByEnabledTrueOrderBySortOrderAscDisplayNameAsc().stream()
@@ -131,7 +142,7 @@ public class LocalAdminAvailabilityGuard {
         DEV_MODE.equals(authProperties.mode()) ? authProperties.dev().issuer() : null;
     List<User> admins =
         users.findByOrganizationIdAndSystemRole(organizationId, SystemRole.SYSTEM_ADMIN).stream()
-            .filter(admin -> !admin.getId().equals(excludedUserId))
+            .filter(admin -> !excludedUserIds.contains(admin.getId()))
             .toList();
     Map<UUID, LocalCredentials> localRows =
         credentials
@@ -153,6 +164,10 @@ public class LocalAdminAvailabilityGuard {
       List<OidcProvider> enabledProviders,
       String devIssuer,
       Instant now) {
+    // #1818: a lock from the directory takes the access away regardless of the issuer behind it.
+    if (admin.isDirectoryLocked()) {
+      return false;
+    }
     if (LocalIssuer.URN.equals(admin.getIssuer())) {
       LocalCredentials row = localRows.get(admin.getId());
       return row != null && LocalAccountAccess.isLoginCapable(row, now);

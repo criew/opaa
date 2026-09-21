@@ -13,15 +13,16 @@ import java.util.UUID;
 public interface DirectoryClient {
 
   /**
-   * Reads the current, complete group list of <b>one identity provider's</b> directory. Since #1816
-   * the run is bound to a provider row rather than to the organization alone, so an implementation
-   * is told which directory to read - an installation with two providers has two directories, and
-   * an organization-wide call could not tell them apart.
+   * Reads the current, complete state of <b>one identity provider's</b> directory: its group list
+   * and, if the connector reports it, the state of its accounts (#1818). Since #1816 the run is
+   * bound to a provider row rather than to the organization alone, so an implementation is told
+   * which directory to read - an installation with two providers has two directories, and an
+   * organization-wide call could not tell them apart.
    *
    * @throws DirectoryUnavailableException if the directory cannot be reached or answered with an
    *     error - never thrown for "the directory has no groups", which is a valid, empty {@link
    *     DirectorySnapshot}.
    */
-  DirectorySnapshot fetchGroups(UUID organizationId, UUID providerId)
+  DirectorySnapshot fetchSnapshot(UUID organizationId, UUID providerId)
       throws DirectoryUnavailableException;
 }

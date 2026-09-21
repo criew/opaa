@@ -16,6 +16,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     exactly like a reorganisation that dissolved everything beyond it, and that must never be
  *     applied (#237's empty-result reasoning, one step further).
  * @param maxMembersPerGroup the same ceiling per group's member list, for the same reason.
+ * @param maxAccounts the same ceiling for the realm's account list (#1818), for the same reason: a
+ *     truncated account list looks exactly like a mass departure, and the run would lock everyone
+ *     beyond it.
  * @param connectTimeout how long a single connection attempt may take
  * @param requestTimeout how long a single request may take
  */
@@ -24,6 +27,7 @@ public record KeycloakDirectoryProperties(
     int pageSize,
     int maxGroups,
     int maxMembersPerGroup,
+    int maxAccounts,
     Duration connectTimeout,
     Duration requestTimeout) {
 
@@ -40,6 +44,10 @@ public record KeycloakDirectoryProperties(
       throw new IllegalArgumentException(
           "opaa.directory-sync.keycloak.max-members-per-group must be at least 1, got "
               + maxMembersPerGroup);
+    }
+    if (maxAccounts < 1) {
+      throw new IllegalArgumentException(
+          "opaa.directory-sync.keycloak.max-accounts must be at least 1, got " + maxAccounts);
     }
   }
 }

@@ -12,6 +12,11 @@ import java.util.List;
  * <p>{@code unmaintainedTokenGroups} names the provider's token groups while its directory run is
  * on - "no longer maintained" (ADR-0036, Entscheidung 3). They keep their frozen membership and are
  * never touched by a run: a change of mechanism revokes nothing silently.
+ *
+ * <p>{@code accountsLocked}/{@code accountsUnlocked} are the accounts whose access this run takes
+ * away or gives back (#1818); {@code accountLocksWithheld} names the administrator a run did not
+ * lock because no login-capable one would have remained (ADR-0036, Entscheidung 6) - withheld, and
+ * said so, rather than silently left out.
  */
 public record SyncReport(
     DirectorySyncOutcome outcome,
@@ -21,6 +26,9 @@ public record SyncReport(
     List<GroupChange> groupsDissolved,
     List<GroupChange> unmaintainedTokenGroups,
     List<MembershipChange> membershipChanges,
+    List<UserRef> accountsLocked,
+    List<UserRef> accountsUnlocked,
+    List<UserRef> accountLocksWithheld,
     int membershipsAdded,
     int membershipsRemoved,
     int unresolvedMemberCount,

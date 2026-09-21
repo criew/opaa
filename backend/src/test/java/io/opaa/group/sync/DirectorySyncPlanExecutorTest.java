@@ -2,6 +2,7 @@ package io.opaa.group.sync;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -9,10 +10,15 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.DirectorySyncOutcome;
 import io.opaa.api.types.GroupKind;
+import io.opaa.api.types.SystemRole;
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.auth.local.LocalAdminAvailabilityGuard;
+import io.opaa.common.ConflictException;
 import io.opaa.group.Group;
 import io.opaa.group.GroupRepository;
+import io.opaa.permission.AccountStateHistoryService;
 import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.PermissionHistoryService;
 import java.time.Instant;
@@ -20,6 +26,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.ApplicationEventPublisher;
 
 /**
  * {@link DirectorySyncPlanExecutor}'s binding to one identity provider (#1816, ADR-0036
@@ -32,6 +39,8 @@ class DirectorySyncPlanExecutorTest {
   private final UserRepository userRepository = mock(UserRepository.class);
   private final DirectorySyncPendingPlanRepository pendingPlanRepository =
       mock(DirectorySyncPendingPlanRepository.class);
+  private final LocalAdminAvailabilityGuard adminGuard = mock(LocalAdminAvailabilityGuard.class);
+  private final AuditEventRecorder auditEventRecorder = mock(AuditEventRecorder.class);
   private final DirectorySyncPlanExecutor executor =
       new DirectorySyncPlanExecutor(
           groupRepository,
@@ -39,8 +48,11 @@ class DirectorySyncPlanExecutorTest {
           mock(GroupMembershipResolver.class),
           new DirectorySyncProperties(0.3, true),
           mock(PermissionHistoryService.class),
-          mock(AuditEventRecorder.class),
-          pendingPlanRepository);
+          auditEventRecorder,
+          pendingPlanRepository,
+          mock(AccountStateHistoryService.class),
+          adminGuard,
+          mock(ApplicationEventPublisher.class));
 
   private final UUID organizationId = UUID.randomUUID();
   private final UUID providerId = UUID.randomUUID();
@@ -118,5 +130,75 @@ class DirectorySyncPlanExecutorTest {
         .containsExactly("Referat 12");
     assertThat(report.groupsDissolved()).isEmpty();
     assertThat(tokenGroup.isDissolved()).isFalse();
+  }
+
+  /**
+   * ADR-0036, Entscheidung 6: a lock is never refused for open ownership questions, and the one
+   * exception is the last login-capable system administrator - decided by the guard of ADR-0033,
+   * not by a second rule here. The withheld lock is named in the report instead of silently
+   * dropped.
+   */
+  @Test
+  void theLockOfTheLastLoginCapableAdministratorIsWithheldAndNamed() {
+    User admin = account("subject-admin", SystemRole.SYSTEM_ADMIN);
+    when(groupRepository.findByOrganizationIdAndProviderIdAndKindOrgUnit(
+            organizationId, providerId))
+        .thenReturn(List.of());
+    when(groupRepository.findByOrganizationIdAndProviderIdAndKind(
+            organizationId, providerId, GroupKind.IDENTITY_PROVIDER))
+        .thenReturn(List.of());
+    when(userRepository.findByOrganizationIdAndIssuer(organizationId, target.issuer()))
+        .thenReturn(List.of(admin));
+    doThrow(new ConflictException("kein weiterer", LocalAdminAvailabilityGuard.ERROR_CODE))
+        .when(adminGuard)
+        .requireLoginCapableAdminBesides(any(), any());
+
+    SyncReport report =
+        executor.planAndApply(
+            target,
+            Instant.now(),
+            new DirectorySnapshot(
+                Instant.now(), List.of(), List.of(new DirectoryAccount("subject-admin", false))));
+
+    assertThat(report.outcome()).isEqualTo(DirectorySyncOutcome.APPLIED);
+    assertThat(report.accountsLocked()).isEmpty();
+    assertThat(report.accountLocksWithheld())
+        .extracting(UserRef::id)
+        .containsExactly(admin.getId());
+    assertThat(admin.isDirectoryLocked()).isFalse();
+  }
+
+  /** An ordinary account is locked without the guard being asked at all. */
+  @Test
+  void anOrdinaryAccountTheDirectoryDisabledIsLocked() {
+    User account = account("subject-gone", SystemRole.USER);
+    when(groupRepository.findByOrganizationIdAndProviderIdAndKindOrgUnit(
+            organizationId, providerId))
+        .thenReturn(List.of());
+    when(groupRepository.findByOrganizationIdAndProviderIdAndKind(
+            organizationId, providerId, GroupKind.IDENTITY_PROVIDER))
+        .thenReturn(List.of());
+    when(userRepository.findByOrganizationIdAndIssuer(organizationId, target.issuer()))
+        .thenReturn(List.of(account));
+    // The audit entry about an account names its pseudonym, never its id (#392).
+    when(auditEventRecorder.pseudonymFor(any(), any())).thenReturn(UUID.randomUUID());
+
+    SyncReport report =
+        executor.planAndApply(
+            target,
+            Instant.now(),
+            new DirectorySnapshot(
+                Instant.now(), List.of(), List.of(new DirectoryAccount("subject-gone", false))));
+
+    assertThat(report.accountsLocked()).extracting(UserRef::id).containsExactly(account.getId());
+    assertThat(account.isDirectoryLocked()).isTrue();
+    verify(adminGuard, never()).requireLoginCapableAdminBesides(any(), any());
+  }
+
+  private User account(String subject, SystemRole role) {
+    User user = new User(subject, target.issuer(), subject + "@example.com", "Konto");
+    user.setOrganizationId(organizationId);
+    user.setSystemRole(role);
+    return user;
   }
 }

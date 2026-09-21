@@ -1224,6 +1224,7 @@ Sinn; das ist jeweils vermerkt.
 | `OPAA_DIRECTORY_SYNC_KEYCLOAK_PAGE_SIZE` | `100` | nicht gesetzt (Anwendungs-Default gilt) | Seitengröße (`first`/`max`) jeder Anfrage an die Keycloak Admin API. Betrifft nur die Zahl der Aufrufe, nicht das Ergebnis |
 | `OPAA_DIRECTORY_SYNC_KEYCLOAK_MAX_GROUPS` | `5000` | nicht gesetzt (Anwendungs-Default gilt) | Obergrenze für die Zahl der Gruppen, die ein Lauf liest. Wird sie erreicht, **bricht der Lauf ab** (Ergebnis `UNREACHABLE`), statt eine abgeschnittene Liste anzuwenden — eine abgeschnittene Liste sieht aus wie eine Reorganisation, die alles Weitere aufgelöst hat |
 | `OPAA_DIRECTORY_SYNC_KEYCLOAK_MAX_MEMBERS_PER_GROUP` | `20000` | nicht gesetzt (Anwendungs-Default gilt) | Dieselbe Grenze je Gruppe, aus demselben Grund |
+| `OPAA_DIRECTORY_SYNC_KEYCLOAK_MAX_ACCOUNTS` | `50000` | nicht gesetzt (Anwendungs-Default gilt) | Dieselbe Grenze für die Kontenliste des Realms, die der Lauf für den Kontostatus liest — eine abgeschnittene Liste sähe aus wie ein Massenaustritt und würde jeden darüber hinaus gemeldeten Beschäftigten sperren |
 | `OPAA_DIRECTORY_SYNC_KEYCLOAK_CONNECT_TIMEOUT` | `5s` | nicht gesetzt (Anwendungs-Default gilt) | Verbindungszeitgrenze zur Admin API |
 | `OPAA_DIRECTORY_SYNC_KEYCLOAK_REQUEST_TIMEOUT` | `30s` | nicht gesetzt (Anwendungs-Default gilt) | Zeitgrenze je Einzelanfrage an die Admin API |
 | **Authentifizierung** | | | |
@@ -1719,6 +1720,15 @@ Geschaltet wird er je Anbieterzeile (`PUT /api/v1/admin/oidc-providers/{id}/dire
 - **Verworfen** wird er unter `…/pending-plan/{planId}/discard`, ebenfalls mit Anlass. Das entscheidet über diesen Plan, es unterdrückt den Befund nicht: Der nächste Lauf rechnet ihn neu und legt ihn gegebenenfalls erneut vor.
 - Bestätigung und Verwerfen sind **Protokollereignisse** mit der handelnden Person und ihrem Anlass (`DIRECTORY_SYNC_RUN_COMPLETED` bzw. `DIRECTORY_SYNC_PLAN_DISCARDED`).
 
+**Kontostatus aus dem Verzeichnis.** Derselbe Lauf übernimmt neben den Gruppen den **Kontostatus** der Konten dieses Anbieters. Ein Konto, das das Verzeichnis als gesperrt meldet **oder gar nicht mehr meldet**, verliert beim nächsten Lauf seinen Zugang — nicht erst, wenn sein Token abläuft:
+
+- **Gesperrt, nicht gelöscht.** Mitgliedschaften, Spaces, Rollen und Eigentum bleiben unverändert stehen. Die Sperre ist rückholbar: Meldet das Verzeichnis das Konto wieder als freigeschaltet, hebt der nächste Lauf sie auf. **Eine Entsperrung von Hand gibt es nicht** — OPAA schreibt nie ins Verzeichnis, und die Sperre käme beim nächsten Lauf zurück. Der Weg führt über das Verzeichnis.
+- **Sofort wirksam.** Jede weitere Anfrage des Kontos wird mit 401 abgewiesen, auch mit einem noch gültigen Token, und seine persönlichen Zugangstokens treten außer Kraft. Die Person sieht beim nächsten Aufruf den Grund und die Ansprechstelle, keine wortlose Abweisung.
+- **Dieselbe Schwelle, derselbe Bestätigungsweg.** Sperren zählen in die Plausibilitätsschwelle wie Mitgliedschaftsentzüge: Ein Lauf, der einen auffällig großen Teil der Konten eines Anbieters sperren würde, legt seinen Plan vor, statt ihn anzuwenden. Der Plan nennt die Zahl der Sperren neben den entzogenen Mitgliedschaften. Eine **leere Kontenliste** sperrt niemanden (`ABORTED_EMPTY_RESULT`) — wie eine leere Gruppenliste ein harter Abbruch ohne bestätigbaren Plan.
+- **Der letzte anmeldefähige Systemverwalter wird nie gesperrt.** Seine Sperre wird zurückgehalten und im Bericht des Laufs namentlich ausgewiesen, statt stillschweigend zu entfallen.
+- **Protokoll und Historie.** Jede Sperre und jede Entsperrung ist ein Protokollereignis (`DIRECTORY_ACCOUNT_LOCKED`, `DIRECTORY_ACCOUNT_UNLOCKED`), verbunden mit dem Kopfeintrag des Laufs. Zusätzlich hält die Rechtehistorie den Kontozustand mit Beginn und Ende fest und unterliegt der Aufbewahrungshöchstdauer der Rechtehistorie (12 bis 120 Monate, ausgeliefert 36). Einen „Verlauf" am Konto in der Benutzerverwaltung gibt es bewusst nicht.
+- **Ein Konto mit Beständen lässt sich sofort sperren.** Offene Eigentums- oder Zuständigkeitsfragen halten eine Sperre nie auf.
+
 **Wechsel des Mechanismus.** Token-Gruppen und Verzeichnisgruppen sind verschiedene Objekte. Schaltet ein Haus einen Anbieter vom Gruppen-Claim auf den Abgleich um, weist der Differenzbericht seine Token-Gruppen als **„werden nicht mehr gepflegt"** aus; sie bleiben mit eingefrorener Mitgliedschaft stehen. **Nichts wird stillschweigend entzogen** — die Übertragung ihrer Berechtigungen auf die neuen Verzeichnisgruppen ist eine eigene Handlung und noch nicht gebaut.
 
 **Im Betriebsmodus `dev` findet kein Verzeichnisabgleich statt.** Dort gibt es keine Anbieterzeile, und OPAA legt auch keine künstliche an: Jede Zeile der Anbietertabelle ist ein Vertrauensanker der Anmeldung, aus dem das Backend einen Token-Prüfer baut — eine Zeile, die niemanden anmeldet und nur zwei Einstellungsspalten hält, wäre der falsche Preis. Wer den Abgleich lokal ausprobieren will, legt im `dev`-Modus eine gewöhnliche Anbieterzeile an und schaltet den Abgleich dort ein; der Lauf liest Issuer und Herkunft aus der Zeile und hängt an keiner Stelle am Betriebsmodus. Verzeichnisgruppen, die vor dieser Umstellung im `dev`-Modus ohne Anbieterbezug entstanden sind, werden beim Update zu **internen Gruppen** (mit Herkunftsvermerk in der Beschreibung und einem Protokolleintrag je Gruppe); Berechtigungen und Mitgliedschaften bleiben unangetastet.
@@ -1727,7 +1737,7 @@ Geschaltet wird er je Anbieterzeile (`PUT /api/v1/admin/oidc-providers/{id}/dire
 
 #### Keycloak als Verzeichnis
 
-**Was OPAA liest.** Der Lauf meldet sich mit einem Dienstkonto an der Admin API an und liest den kompletten Gruppenbaum des Realms samt seiner Mitgliedschaften (`GET /admin/realms/{realm}/groups`, `…/groups/{id}/children`, `…/groups/{id}/members`, jeweils seitenweise). Jede Keycloak-Gruppe wird zu einer Organisationseinheit in OPAA:
+**Was OPAA liest.** Der Lauf meldet sich mit einem Dienstkonto an der Admin API an und liest den kompletten Gruppenbaum des Realms samt seiner Mitgliedschaften (`GET /admin/realms/{realm}/groups`, `…/groups/{id}/children`, `…/groups/{id}/members`, jeweils seitenweise) sowie die Konten des Realms mit ihrem Kennzeichen `enabled` (`…/users`, ebenfalls seitenweise und in der Kurzform ohne Attribute und Anmeldedaten). Jede Keycloak-Gruppe wird zu einer Organisationseinheit in OPAA:
 
 | Keycloak | OPAA |
 |---|---|
@@ -1736,6 +1746,7 @@ Geschaltet wird er je Anbieterzeile (`PUT /api/v1/admin/oidc-providers/{id}/dire
 | Gruppenpfad (`/Haus/Referat 50`) | Herkunftspfad; nur zur Anzeige, unterscheidet gleichnamige Untergruppen |
 | übergeordnete Gruppe | übergeordnete Einheit (nur Anzeige und Gliederung — **Mitgliedschaft vererbt nicht**) |
 | Benutzer-ID eines Mitglieds | `sub` des Kontos in OPAA, aufgelöst unter dem Issuer **dieses** Anbieters |
+| `enabled` eines Benutzers | Kontostatus in OPAA — ein Konto ohne dieses Kennzeichen, oder eines, das der Realm gar nicht mehr meldet, wird gesperrt (siehe [Kontostatus aus dem Verzeichnis](#verzeichnisabgleich-je-anbieter)) |
 
 **Warum Keycloak zuerst.** Die Keycloak-Benutzer-ID *ist* der `sub` der Tokens, die dieselbe Instanz ausstellt. Die Identität eines Mitglieds fällt damit ohne Abbildungsregel mit dem Konto in OPAA zusammen. Der Realm wird aus der **Issuer-URI der Anbieterzeile abgeleitet** (`https://kc.example/realms/haus` → Realm `haus`) und ist bewusst nicht getrennt einstellbar: So kann ein Lauf strukturell nur den Realm lesen, aus dem die Tokens dieses Anbieters stammen. Ist die Issuer-URI keine Keycloak-Realm-Adresse, lehnt OPAA das Hinterlegen mit 400 ab.
 
