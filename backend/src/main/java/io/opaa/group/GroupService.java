@@ -337,11 +337,21 @@ public class GroupService {
    * Releases an internal group for use by other people granting rights, or takes that back
    * (ADR-0036, Entscheidung 9). Taking it back removes the group from every selection; the grants
    * it already holds stay untouched, exactly as for a dissolved group.
+   *
+   * <p><b>A protected group is released by its stewards alone.</b> The mark exists to keep the
+   * group out of other people's sight; an administration that could put it into every selection
+   * would decide the protection after all, even though it may not set or release the mark itself.
    */
   @Transactional
   public GroupDetail setRelease(UUID groupId, boolean releasedForUse, CurrentUser caller) {
     Group group = requireMaintainable(groupId, caller);
     rejectOrgUnit(group);
+    if (group.isProtectedGroup()) {
+      requireStewardship(
+          group,
+          caller,
+          "Diese Gruppe ist geschützt. Ihre Freigabe entscheiden die Verantwortlichen selbst.");
+    }
     if (group.isReleasedForUse() != releasedForUse) {
       group.release(releasedForUse);
       groupRepository.save(group);
@@ -360,11 +370,10 @@ public class GroupService {
   public GroupDetail setProtection(UUID groupId, boolean protectedGroup, CurrentUser caller) {
     Group group = requireMaintainable(groupId, caller);
     rejectOrgUnit(group);
-    if (!stewardRepository.existsByGroupIdAndUserId(groupId, caller.id())) {
-      throw new AccessDeniedException(
-          "Das Schutzkennzeichen setzen und lösen die Verantwortlichen dieser Gruppe selbst.",
-          STEWARDSHIP_REQUIRED);
-    }
+    requireStewardship(
+        group,
+        caller,
+        "Das Schutzkennzeichen setzen und lösen die Verantwortlichen dieser Gruppe selbst.");
     if (group.isProtectedGroup() != protectedGroup) {
       group.markProtected(protectedGroup);
       groupRepository.save(group);
@@ -472,8 +481,29 @@ public class GroupService {
     invalidateAfterCommit(() -> membershipResolver.invalidateUsers(affectedUserIds));
   }
 
+  /**
+   * A group's members. For a system administrator who stewards none of it, reading this list is
+   * itself an event (ADR-0036, Entscheidung 9: "der Abruf ist ein Audit-Ereignis"; Personalrat
+   * A6) - the administration may see who is in a group, and that it looked is on the record. A
+   * steward reading the list they maintain writes nothing: it is their own group.
+   */
+  @Transactional
   public List<GroupMemberView> listMembers(UUID groupId, CurrentUser caller) {
-    return toGroupMemberViews(requireMaintainable(groupId, caller));
+    Group group = requireMaintainable(groupId, caller);
+    List<GroupMemberView> members = toGroupMemberViews(group);
+    if (caller.isSystemAdmin()
+        && !stewardRepository.existsByGroupIdAndUserId(groupId, caller.id())) {
+      auditEventRecorder.recordUserAction(
+          AuditEvent.builder()
+              .organizationId(group.getOrganizationId())
+              .actor(caller.id())
+              .type(AuditEventType.GROUP_MEMBERS_READ)
+              .object(AuditObjectType.GROUP, group.getId(), group.getName())
+              .after(Map.of("memberCount", members.size()))
+              .outcome(AuditOutcome.SUCCESS)
+              .build());
+    }
+    return members;
   }
 
   @Transactional
@@ -653,6 +683,19 @@ public class GroupService {
       return group;
     }
     throw new NotFoundException("Gruppe nicht gefunden");
+  }
+
+  /**
+   * Refuses a caller who is no steward of this group, whatever their system role - the two
+   * decisions a protected group keeps to itself (ADR-0036, Entscheidung 9). {@code 403} rather
+   * than {@code 404} here on purpose: the caller has already got past {@link
+   * #requireMaintainable}, so the group's existence is no longer a secret from them, and the
+   * refusal is meant to explain rather than hide.
+   */
+  private void requireStewardship(Group group, CurrentUser caller, String message) {
+    if (!stewardRepository.existsByGroupIdAndUserId(group.getId(), caller.id())) {
+      throw new AccessDeniedException(message, STEWARDSHIP_REQUIRED);
+    }
   }
 
   /** Writes the stewardship row and its audit event - the one path an appointment takes. */
