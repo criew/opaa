@@ -13,6 +13,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.AssetRole;
+import io.opaa.api.types.Capability;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.SystemRole;
@@ -212,7 +213,7 @@ class SourceConnectionTestServiceS3Test {
   void bucketListingWithoutLibraryIdRequiresTheConnectorCapability() {
     Mockito.doThrow(new AccessDeniedException("Ihnen fehlt das Anlegerecht", "CAPABILITY_REQUIRED"))
         .when(capabilityService)
-        .requireCapability(caller, io.opaa.api.types.Capability.CREATE_CONNECTOR_LIBRARY);
+        .requireCapability(caller, Capability.CREATE_CONNECTOR_LIBRARY);
 
     assertThatThrownBy(
             () ->

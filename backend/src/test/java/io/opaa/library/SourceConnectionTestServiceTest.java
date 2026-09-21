@@ -3,11 +3,15 @@ package io.opaa.library;
 import static io.opaa.library.SourceConnectionTestBuilder.sourceConnectionTest;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.sun.net.httpserver.HttpServer;
 import io.opaa.api.types.AssetRole;
+import io.opaa.api.types.Capability;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.SystemRole;
@@ -122,7 +126,8 @@ class SourceConnectionTestServiceTest {
             sourceConnectionTest()
                 .sourceType(DocumentSourceType.FILESYSTEM)
                 .sourcePath(dir.toString())
-                .build());
+                .build(),
+            caller);
 
     assertThat(response.reachable()).isTrue();
     assertThat(response.documentCount()).isEqualTo(2L);
@@ -140,7 +145,8 @@ class SourceConnectionTestServiceTest {
             sourceConnectionTest()
                 .sourceType(DocumentSourceType.FILESYSTEM)
                 .sourcePath(missing)
-                .build());
+                .build(),
+            caller);
 
     assertThat(response.reachable()).isFalse();
     assertThat(response.documentCount()).isNull();
@@ -158,7 +164,8 @@ class SourceConnectionTestServiceTest {
                     sourceConnectionTest()
                         .sourceType(DocumentSourceType.FILESYSTEM)
                         .sourcePath("/etc/shadow")
-                        .build()))
+                        .build(),
+                    caller))
         .isInstanceOf(ValidationException.class);
   }
 
@@ -172,7 +179,8 @@ class SourceConnectionTestServiceTest {
                     sourceConnectionTest()
                         .sourceType(DocumentSourceType.FILESYSTEM)
                         .sourcePath("/data/documents")
-                        .build()))
+                        .build(),
+                    caller))
         .isInstanceOf(ValidationException.class);
   }
 
@@ -184,7 +192,8 @@ class SourceConnectionTestServiceTest {
                     sourceConnectionTest()
                         .sourceType(DocumentSourceType.FILESYSTEM)
                         .sourcePath("relative/path")
-                        .build()))
+                        .build(),
+                    caller))
         .isInstanceOf(ValidationException.class);
   }
 
@@ -200,7 +209,8 @@ class SourceConnectionTestServiceTest {
                         .sourceType(DocumentSourceType.FILESYSTEM)
                         .sourcePath("/data/documents")
                         .sourceUrl(URI.create("https://files.example.com"))
-                        .build()))
+                        .build(),
+                    caller))
         .isInstanceOf(ValidationException.class);
   }
 
@@ -213,7 +223,8 @@ class SourceConnectionTestServiceTest {
                         .sourceType(DocumentSourceType.FILESYSTEM)
                         .sourcePath("/data/documents")
                         .sourceInsecureSsl(true)
-                        .build()))
+                        .build(),
+                    caller))
         .isInstanceOf(ValidationException.class);
   }
 
@@ -243,7 +254,8 @@ class SourceConnectionTestServiceTest {
             sourceConnectionTest()
                 .sourceType(DocumentSourceType.HTTP_DIRECTORY)
                 .sourceUrl(URI.create(baseUrl + "/dir/"))
-                .build());
+                .build(),
+            caller);
 
     assertThat(response.reachable()).isTrue();
     // 2 linked documents - the subdir entry is a directory, not a linked document.
@@ -279,7 +291,8 @@ class SourceConnectionTestServiceTest {
             sourceConnectionTest()
                 .sourceType(DocumentSourceType.HTTP_DIRECTORY)
                 .sourceUrl(URI.create(baseUrl + "/dir/"))
-                .build());
+                .build(),
+            caller);
 
     assertThat(response.reachable()).isTrue();
     assertThat(response.documentCount()).isEqualTo(2L);
@@ -310,7 +323,8 @@ class SourceConnectionTestServiceTest {
             sourceConnectionTest()
                 .sourceType(DocumentSourceType.HTTP_DIRECTORY)
                 .sourceUrl(URI.create(baseUrl + "/dir/"))
-                .build());
+                .build(),
+            caller);
 
     assertThat(response.reachable()).isTrue();
     assertThat(response.documentCount()).isEqualTo(2L);
@@ -340,7 +354,8 @@ class SourceConnectionTestServiceTest {
             sourceConnectionTest()
                 .sourceType(DocumentSourceType.HTTP_DIRECTORY)
                 .sourceUrl(URI.create(baseUrl + "/dir/"))
-                .build());
+                .build(),
+            caller);
 
     assertThat(response.reachable()).isFalse();
     assertThat(response.message()).contains("kein erkennbares Verzeichnislisting");
@@ -372,7 +387,8 @@ class SourceConnectionTestServiceTest {
                 .sourceType(DocumentSourceType.HTTP_DIRECTORY)
                 .sourceUrl(URI.create(baseUrl + "/dokumente/"))
                 .sourceCredentials("admin:secret")
-                .build());
+                .build(),
+            caller);
 
     assertThat(response.reachable()).isFalse();
     assertThat(observedAuth.get()).isNull();
@@ -406,7 +422,8 @@ class SourceConnectionTestServiceTest {
             sourceConnectionTest()
                 .sourceType(DocumentSourceType.HTTP_DIRECTORY)
                 .sourceUrl(URI.create(baseUrl + "/dokumente/"))
-                .build());
+                .build(),
+            caller);
 
     assertThat(response.reachable()).isFalse();
     assertThat(response.message())
@@ -451,7 +468,8 @@ class SourceConnectionTestServiceTest {
             sourceConnectionTest()
                 .sourceType(DocumentSourceType.HTTP_DIRECTORY)
                 .sourceUrl(URI.create(baseUrl + "/dir.v2"))
-                .build());
+                .build(),
+            caller);
 
     assertThat(response.reachable()).isTrue();
     assertThat(response.documentCount()).isEqualTo(1L);
@@ -483,7 +501,8 @@ class SourceConnectionTestServiceTest {
             sourceConnectionTest()
                 .sourceType(DocumentSourceType.HTTP_DIRECTORY)
                 .sourceUrl(URI.create(baseUrl + "/dir/"))
-                .build());
+                .build(),
+            caller);
 
     assertThat(response.reachable()).isTrue();
     assertThat(response.documentCount()).isEqualTo(1L);
@@ -520,7 +539,8 @@ class SourceConnectionTestServiceTest {
             sourceConnectionTest()
                 .sourceType(DocumentSourceType.HTTP_DIRECTORY)
                 .sourceUrl(URI.create(baseUrl + "/dir/index.html"))
-                .build());
+                .build(),
+            caller);
 
     assertThat(response.reachable()).isTrue();
     assertThat(response.documentCount()).isEqualTo(1L);
@@ -569,7 +589,8 @@ class SourceConnectionTestServiceTest {
             sourceConnectionTest()
                 .sourceType(DocumentSourceType.HTTP_DIRECTORY)
                 .sourceUrl(URI.create(baseUrl + "/dir/"))
-                .build());
+                .build(),
+            caller);
 
     assertThat(response.reachable()).isFalse();
     assertThat(response.message()).contains("Größe");
@@ -584,7 +605,8 @@ class SourceConnectionTestServiceTest {
                         .sourceType(DocumentSourceType.HTTP_DIRECTORY)
                         .sourceUrl(URI.create(baseUrl + "/dir/"))
                         .sourcePath("/data/documents")
-                        .build()))
+                        .build(),
+                    caller))
         .isInstanceOf(ValidationException.class);
   }
 
@@ -602,7 +624,8 @@ class SourceConnectionTestServiceTest {
             sourceConnectionTest()
                 .sourceType(DocumentSourceType.HTTP_DIRECTORY)
                 .sourceUrl(URI.create(baseUrl + "/dir/"))
-                .build());
+                .build(),
+            caller);
 
     assertThat(response.reachable()).isFalse();
     assertThat(response.documentCount()).isNull();
@@ -616,7 +639,8 @@ class SourceConnectionTestServiceTest {
             sourceConnectionTest()
                 .sourceType(DocumentSourceType.HTTP_DIRECTORY)
                 .sourceUrl(URI.create("http://127.0.0.1:1"))
-                .build());
+                .build(),
+            caller);
 
     assertThat(response.reachable()).isFalse();
     assertThat(response.message()).isNotBlank();
@@ -632,7 +656,8 @@ class SourceConnectionTestServiceTest {
                     sourceConnectionTest()
                         .sourceType(DocumentSourceType.HTTP_DIRECTORY)
                         .sourceUrl(URI.create("ftp://files.example.com"))
-                        .build()))
+                        .build(),
+                    caller))
         .isInstanceOf(ValidationException.class);
   }
 
@@ -663,7 +688,8 @@ class SourceConnectionTestServiceTest {
             sourceConnectionTest()
                 .sourceType(DocumentSourceType.RSS_FEED)
                 .sourceUrl(URI.create(baseUrl + "/feed.xml"))
-                .build());
+                .build(),
+            caller);
 
     assertThat(response.reachable()).isTrue();
     assertThat(response.documentCount()).isEqualTo(2L);
@@ -720,7 +746,8 @@ class SourceConnectionTestServiceTest {
             sourceConnectionTest()
                 .sourceType(DocumentSourceType.RSS_FEED)
                 .sourceUrl(URI.create(baseUrl + "/feed.xml"))
-                .build());
+                .build(),
+            caller);
 
     assertThat(response.reachable()).isTrue();
     assertThat(response.documentCount()).isEqualTo(1L);
@@ -774,7 +801,8 @@ class SourceConnectionTestServiceTest {
             sourceConnectionTest()
                 .sourceType(DocumentSourceType.RSS_FEED)
                 .sourceUrl(URI.create(baseUrl + "/feed.xml"))
-                .build());
+                .build(),
+            caller);
 
     assertThat(response.reachable()).isFalse();
     assertThat(response.message()).contains("Größe");
@@ -789,7 +817,8 @@ class SourceConnectionTestServiceTest {
                         .sourceType(DocumentSourceType.RSS_FEED)
                         .sourceUrl(URI.create(baseUrl + "/feed.xml"))
                         .sourcePath("/data/documents")
-                        .build()))
+                        .build(),
+                    caller))
         .isInstanceOf(ValidationException.class);
   }
 
@@ -809,7 +838,8 @@ class SourceConnectionTestServiceTest {
             sourceConnectionTest()
                 .sourceType(DocumentSourceType.RSS_FEED)
                 .sourceUrl(URI.create(baseUrl + "/feed.xml"))
-                .build());
+                .build(),
+            caller);
 
     assertThat(response.reachable()).isFalse();
     assertThat(response.message()).contains("RSS-Feed");
@@ -829,7 +859,8 @@ class SourceConnectionTestServiceTest {
             sourceConnectionTest()
                 .sourceType(DocumentSourceType.RSS_FEED)
                 .sourceUrl(URI.create(baseUrl + "/feed.xml"))
-                .build());
+                .build(),
+            caller);
 
     assertThat(response.reachable()).isFalse();
     assertThat(response.message()).contains("404");
@@ -1094,6 +1125,66 @@ class SourceConnectionTestServiceTest {
         .isInstanceOf(AccessDeniedException.class);
   }
 
+  /**
+   * PR #1868 review, finding 1: with {@code libraryId} set, the {@link AssetRole#MANAGER} bar fully
+   * replaces the capability check - a MANAGER granted on the library (not derived from having
+   * created it) succeeds with their own credentials even while {@code capabilityService} would
+   * refuse {@link Capability#CREATE_CONNECTOR_LIBRARY}. The edit dialog's "Verbindung testen" must
+   * not fail 403 right before a save that {@code updateLibrary} would have allowed.
+   */
+  @Test
+  void libraryIdWithManagerGrantSucceedsWithoutTheConnectorCapability() throws IOException {
+    UUID libraryId = UUID.randomUUID();
+    KnowledgeLibrary library =
+        KnowledgeLibrary.ownedByUser(
+            organizationId,
+            "Bibliothek",
+            null,
+            currentUserId,
+            LibraryVisibility.PRIVATE,
+            false,
+            DocumentSourceType.HTTP_DIRECTORY,
+            null,
+            baseUrl + "/manager-dir/",
+            null,
+            "admin:secret",
+            false);
+    when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
+    when(libraryAccessService.requireRole(library, currentUserId, false, AssetRole.MANAGER))
+        .thenReturn(AssetRole.MANAGER);
+    doThrow(new AccessDeniedException("Ihnen fehlt das Anlegerecht", "CAPABILITY_REQUIRED"))
+        .when(capabilityService)
+        .requireCapability(caller, Capability.CREATE_CONNECTOR_LIBRARY);
+    String html =
+        """
+        <table>
+        <tr><td><img alt="[TXT]"></td><td><a href="a.txt">a.txt</a></td><td>2025-01-01</td><td>10</td></tr>
+        </table>
+        """;
+    server.createContext(
+        "/manager-dir/",
+        exchange -> {
+          byte[] body = html.getBytes(StandardCharsets.UTF_8);
+          exchange.sendResponseHeaders(200, body.length);
+          exchange.getResponseBody().write(body);
+          exchange.close();
+        });
+
+    SourceConnectionTestResult response =
+        service.test(
+            sourceConnectionTest()
+                .sourceType(DocumentSourceType.HTTP_DIRECTORY)
+                .sourceUrl(URI.create(baseUrl + "/manager-dir/"))
+                .sourceCredentials("own:credentials")
+                .libraryId(libraryId)
+                .build(),
+            caller);
+
+    assertThat(response.reachable()).isTrue();
+    verify(capabilityService, never())
+        .requireCapability(caller, Capability.CREATE_CONNECTOR_LIBRARY);
+  }
+
   @Test
   void libraryIdOfUnknownLibraryIsRejectedWith404() {
     UUID libraryId = UUID.randomUUID();
@@ -1150,13 +1241,14 @@ class SourceConnectionTestServiceTest {
   void uploadIsRejectedWith400() {
     assertThatThrownBy(
             () ->
-                service.test(sourceConnectionTest().sourceType(DocumentSourceType.UPLOAD).build()))
+                service.test(
+                    sourceConnectionTest().sourceType(DocumentSourceType.UPLOAD).build(), caller))
         .isInstanceOf(ValidationException.class);
   }
 
   @Test
   void missingSourceTypeIsRejectedWith400() {
-    assertThatThrownBy(() -> service.test(sourceConnectionTest().build()))
+    assertThatThrownBy(() -> service.test(sourceConnectionTest().build(), caller))
         .isInstanceOf(ValidationException.class);
   }
 
@@ -1169,10 +1261,9 @@ class SourceConnectionTestServiceTest {
    */
   @Test
   void sourceTestWithoutLibraryIdIsRefusedWithoutTheConnectorCapability() {
-    org.mockito.Mockito.doThrow(
-            new AccessDeniedException("Ihnen fehlt das Anlegerecht", "CAPABILITY_REQUIRED"))
+    doThrow(new AccessDeniedException("Ihnen fehlt das Anlegerecht", "CAPABILITY_REQUIRED"))
         .when(capabilityService)
-        .requireCapability(caller, io.opaa.api.types.Capability.CREATE_CONNECTOR_LIBRARY);
+        .requireCapability(caller, Capability.CREATE_CONNECTOR_LIBRARY);
 
     assertThatThrownBy(
             () ->
@@ -1182,17 +1273,17 @@ class SourceConnectionTestServiceTest {
   }
 
   /**
-   * The capability check runs for every object-less probe, even one the type switch later rejects.
+   * The capability check runs ahead of the {@code sourceType UPLOAD} rejection specifically - not a
+   * claim about every validation, only about this one request shape reaching the switch below.
    */
   @Test
-  void sourceTestWithoutLibraryIdChecksTheConnectorCapabilityBeforeTheTypeSwitch() {
+  void sourceTestWithoutLibraryIdChecksTheConnectorCapabilityBeforeRejectingUpload() {
     assertThatThrownBy(
             () ->
                 service.test(
                     sourceConnectionTest().sourceType(DocumentSourceType.UPLOAD).build(), caller))
         .isInstanceOf(ValidationException.class);
 
-    org.mockito.Mockito.verify(capabilityService)
-        .requireCapability(caller, io.opaa.api.types.Capability.CREATE_CONNECTOR_LIBRARY);
+    verify(capabilityService).requireCapability(caller, Capability.CREATE_CONNECTOR_LIBRARY);
   }
 }

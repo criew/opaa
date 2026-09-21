@@ -170,19 +170,6 @@ public class SourceConnectionTestService {
   }
 
   /**
-   * Test-support overload exercising the per-quellentyp logic below without a caller (#514's
-   * original shape, before #544/#1856) - package-private because a {@code null} caller only works
-   * with a stubbed {@link CapabilityService} the way the unit tests here wire it; the real bean
-   * would throw a {@link NullPointerException} from {@link #test(SourceConnectionTest,
-   * CurrentUser)} below the moment it evaluates the caller's capabilities. Production code always
-   * goes through the two-argument overload via {@code LibraryController}, which never has a {@code
-   * null} caller.
-   */
-  SourceConnectionTestResult test(SourceConnectionTest request) {
-    return test(request, null);
-  }
-
-  /**
    * Without a {@code libraryId}, this is a step towards creating a connector library and needs
    * {@link Capability#CREATE_CONNECTOR_LIBRARY} (ADR-0036, Entscheidung 5) - the same right {@code
    * KnowledgeLibraryService#createLibrary} requires for the library the probe serves (#1856). With
@@ -190,8 +177,6 @@ public class SourceConnectionTestService {
    * library, checked by {@link #requireManagedLibrary} below - creating a connector library already
    * required the capability, so re-demanding it here would only block a caller who already holds
    * {@code MANAGER} without adding a boundary.
-   *
-   * @param caller the caller; only {@code null} through the test-support overload above.
    */
   public SourceConnectionTestResult test(SourceConnectionTest request, CurrentUser caller) {
     if (request.libraryId() == null) {

@@ -170,12 +170,14 @@ export default function EditLibrarySourceDialog({
           sourceCredentials,
           sourceInsecureSsl,
         }),
-        // #544: only sent when the credentials field is left blank - the backend then falls back
-        // to this library's own stored credentials (but only if sourceUrl still names the same
-        // origin as before, SourceConnectionTestService#withStoredCredentialsIfOmitted), so a
-        // password-protected source can be tested without forcing the caller to re-type it. A
-        // non-empty field always takes precedence, exactly like saving does.
-        libraryId: sourceCredentials.trim() === '' ? libraryId : undefined,
+        // #1856 review: always sent in this dialog, not only when the credentials field is left
+        // blank - without libraryId, the probe needs CREATE_CONNECTOR_LIBRARY (ADR-0036,
+        // Entscheidung 5), a right a MANAGER on this library need not hold. With libraryId, the
+        // backend falls back to the stored credentials only when the field is left blank and
+        // sourceUrl still names the same origin (SourceConnectionTestService#
+        // withStoredCredentialsIfOmitted); a non-empty field always takes precedence there too,
+        // exactly like saving does.
+        libraryId,
       })
       setTestResult(result)
     } catch (err) {

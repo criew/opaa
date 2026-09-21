@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -156,8 +157,7 @@ class SourceConnectionTestServiceConfluenceTest {
    */
   @Test
   void spaceListingWithoutLibraryIdRequiresTheConnectorCapability() {
-    org.mockito.Mockito.doThrow(
-            new AccessDeniedException("Ihnen fehlt das Anlegerecht", "CAPABILITY_REQUIRED"))
+    doThrow(new AccessDeniedException("Ihnen fehlt das Anlegerecht", "CAPABILITY_REQUIRED"))
         .when(capabilityService)
         .requireCapability(caller, Capability.CREATE_CONNECTOR_LIBRARY);
 
