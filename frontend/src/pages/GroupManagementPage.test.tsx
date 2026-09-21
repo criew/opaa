@@ -46,6 +46,7 @@ const adHocGroup: GroupListResponse = {
   sourcePath: null,
   parentGroupId: null,
   memberCount: 1,
+  dissolved: false,
   releasedForUse: false,
   protectedGroup: false,
   stewards: [{ userId: 'mock-user-id', displayName: 'Admin', appointedAt: '2026-03-01T10:00:00Z' }],
@@ -70,6 +71,7 @@ const orgUnitGroup: GroupListResponse = {
   sourcePath: '/Haus A/Referat 50',
   parentGroupId: null,
   memberCount: 1,
+  dissolved: false,
   releasedForUse: true,
   protectedGroup: false,
   stewards: [],
@@ -115,7 +117,7 @@ describe('GroupManagementPage', () => {
     setGroupState([], {})
     renderWithProviders(<GroupManagementPage />, { withRouter: true })
 
-    expect(await screen.findByText(/noch keine gruppen/i)).toBeInTheDocument()
+    expect(await screen.findByText(/keine gruppen dieser herkunft/i)).toBeInTheDocument()
   })
 
   it('expands an ad-hoc group and allows renaming and deleting', async () => {
@@ -125,6 +127,7 @@ describe('GroupManagementPage', () => {
 
     await user.click(await screen.findByText('Projektbeteiligte Phoenix'))
 
+    await user.click(await screen.findByRole('button', { name: /mitglieder anzeigen/i }))
     expect(await screen.findByText('Alice')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /speichern/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /gruppe löschen/i })).toBeInTheDocument()
@@ -162,6 +165,7 @@ describe('GroupManagementPage', () => {
     expect(await screen.findByText('Gruppe aus dem Identitätsanbieter')).toBeInTheDocument()
     await user.click(screen.getByText('Fachbereich 3'))
 
+    await user.click(await screen.findByRole('button', { name: /mitglieder anzeigen/i }))
     expect(await screen.findByText('Carla')).toBeInTheDocument()
     expect(screen.getByText(/stammt aus dem identitätsanbieter/i)).toBeInTheDocument()
     expect(screen.queryByText(/aus dem verzeichnis synchronisiert/i)).not.toBeInTheDocument()
@@ -176,6 +180,7 @@ describe('GroupManagementPage', () => {
 
     await user.click(await screen.findByText('Referat 50'))
 
+    await user.click(await screen.findByRole('button', { name: /mitglieder anzeigen/i }))
     expect(await screen.findByText('Bob')).toBeInTheDocument()
     expect(screen.getByText(/aus dem verzeichnis synchronisiert/i)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /gruppe löschen/i })).not.toBeInTheDocument()
@@ -208,5 +213,50 @@ describe('GroupManagementPage', () => {
     await waitFor(() => {
       expect(mockCreateGroup).toHaveBeenCalledWith('Neue Gruppe', '')
     })
+  })
+
+  // #1821: Die Herkunft steht ohne Aufklappen da, und der Filter trennt intern von Anbieter.
+  it('shows origin without expanding and filters by it', async () => {
+    setGroupState([adHocGroup, orgUnitGroup], {})
+    renderWithProviders(<GroupManagementPage />, { withRouter: true })
+    const user = userEvent.setup()
+
+    expect(await screen.findByText(/Herkunft: Verzeichnisdienst/)).toBeInTheDocument()
+    expect(screen.getByText(/\/Haus A\/Referat 50/)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('combobox', { name: /herkunft/i }))
+    await user.click(await screen.findByRole('option', { name: 'Intern' }))
+
+    await waitFor(() => expect(screen.queryByText('Referat 50')).not.toBeInTheDocument())
+    expect(screen.getByText('Projektbeteiligte Phoenix')).toBeInTheDocument()
+  })
+
+  // ADR-0036, Entscheidung 4/9: Der Abruf der Mitgliederliste ist ein Audit-Ereignis - die Seite
+  // lädt sie deshalb nicht beiläufig beim Aufklappen.
+  it('does not load the member list until it is asked for', async () => {
+    setGroupState([adHocGroup], { 'group-phoenix': adHocDetails })
+    renderWithProviders(<GroupManagementPage />, { withRouter: true })
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByText('Projektbeteiligte Phoenix'))
+
+    expect(await screen.findByText(/Audit-Ereignis/)).toBeInTheDocument()
+    expect(screen.queryByText('Alice')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /mitglieder anzeigen/i }))
+    expect(await screen.findByText('Alice')).toBeInTheDocument()
+  })
+
+  // #1821: Eine aufgelöste Gruppe ist gekennzeichnet und nennt den Grund, warum sie nicht mehr
+  // gewählt werden kann - ihre bestehenden Berechtigungen bleiben.
+  it('marks a dissolved group and names the reason', async () => {
+    const dissolved: GroupListResponse = { ...orgUnitGroup, dissolved: true }
+    setGroupState([dissolved], {})
+    renderWithProviders(<GroupManagementPage />, { withRouter: true })
+    const user = userEvent.setup()
+
+    expect(await screen.findByText('aufgelöst')).toBeInTheDocument()
+    await user.click(screen.getByText('Referat 50'))
+    expect(await screen.findByText(/Aufgelöst — die Quelle meldet/)).toBeInTheDocument()
   })
 })

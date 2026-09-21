@@ -7,6 +7,7 @@ import { accountHandlers } from './accountHandlers'
 import { localAuthHandlers } from './localAuthHandlers'
 import { externalAccessHandlers } from './externalAccessHandlers'
 import { externalAccessTokenHandlers } from './externalAccessTokenHandlers'
+import { groupAdminHandlers } from './groupAdminHandlers'
 
 /** Per-library countdown of the mock metadata backfill; see the handler below. */
 const mockMetadataBackfillRemaining = new Map<string, number>()
@@ -1217,6 +1218,7 @@ export const handlers = [
       memberCount: 0,
       // Wie im Dienst: nicht freigegeben, und die anlegende Person ist erste verantwortliche
       // Person (#1814, ADR-0036 Entscheidung 4 und 9).
+      dissolved: false,
       releasedForUse: false,
       protectedGroup: false,
       stewards: [{ userId: 'mock-user-id', displayName: 'Admin', appointedAt: now }],
@@ -3589,4 +3591,6 @@ export const handlers = [
   // Dito für die Kanaleinstellungen der Fremdzugänge (#1717) und die Zugangstokens (#1718/#1719).
   ...externalAccessHandlers,
   ...externalAccessTokenHandlers,
+  // Anlegerechte, Verzeichnisabgleich und Übertragung (#1821) - eigene Datei aus demselben Grund.
+  ...groupAdminHandlers,
 ]

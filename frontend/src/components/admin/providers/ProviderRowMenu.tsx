@@ -1,4 +1,5 @@
 import { useId, useState } from 'react'
+import { useNavigate } from 'react-router'
 import Box from '@mui/material/Box'
 import Divider from '@mui/material/Divider'
 import IconButton from '@mui/material/IconButton'
@@ -11,8 +12,9 @@ import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import MoreVertIcon from '@mui/icons-material/MoreVert'
 import PowerSettingsNewOutlinedIcon from '@mui/icons-material/PowerSettingsNewOutlined'
 import StarOutlineRoundedIcon from '@mui/icons-material/StarOutlineRounded'
+import ChecklistOutlinedIcon from '@mui/icons-material/ChecklistOutlined'
 import type { OidcProviderResponse } from '../../../types/api'
-import { apiErrorMessage } from '../../../services/apiErrorDetails'
+import { apiErrorCode, apiErrorMessage } from '../../../services/apiErrorDetails'
 import { confirmAction } from '../../../stores/confirmStore'
 import { notify } from '../../../stores/notificationStore'
 import { useOidcProviderStore } from '../../../stores/oidcProviderStore'
@@ -72,6 +74,7 @@ export default function ProviderRowMenu({
   const setProviderEnabled = useOidcProviderStore((s) => s.setProviderEnabled)
   const makeProviderDefault = useOidcProviderStore((s) => s.makeProviderDefault)
   const deleteExistingProvider = useOidcProviderStore((s) => s.deleteExistingProvider)
+  const navigate = useNavigate()
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
   const [busy, setBusy] = useState(false)
   const reasonId = useId()
@@ -152,11 +155,20 @@ export default function ProviderRowMenu({
     ) {
       return
     }
-    await run(
-      () => deleteExistingProvider(provider.id, isLastEnabled),
-      `„${provider.displayName}“ wurde gelöscht.`,
-      'Löschen fehlgeschlagen',
-    )
+    setBusy(true)
+    try {
+      await deleteExistingProvider(provider.id, isLastEnabled)
+      notify(`„${provider.displayName}“ wurde gelöscht.`, 'success')
+    } catch (err) {
+      notify(apiErrorMessage(err, PROVIDER_CONFLICT_MESSAGES, 'Löschen fehlgeschlagen'), 'error')
+      // Die Ablehnung wegen wirkender Gruppen ist kein Endpunkt, sondern ein Verweis: die
+      // Arbeitsliste des Anbieters führt jede Gruppe mit ihren Wirkungen (ADR-0036/2).
+      if (apiErrorCode(err) === 'PROVIDER_GROUPS_IN_EFFECT') {
+        void navigate(`/admin/identity-providers/${provider.id}/groups`)
+      }
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
@@ -205,6 +217,17 @@ export default function ProviderRowMenu({
             Zum Standard machen
           </MenuItem>
         )}
+        <MenuItem
+          onClick={() => {
+            close()
+            void navigate(`/admin/identity-providers/${provider.id}/groups`)
+          }}
+        >
+          <ListItemIcon>
+            <ChecklistOutlinedIcon fontSize="small" />
+          </ListItemIcon>
+          Arbeitsliste der Gruppen
+        </MenuItem>
         <Divider />
         <MenuItem
           onClick={() => void remove()}
