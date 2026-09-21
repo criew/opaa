@@ -101,6 +101,26 @@ public class Group {
   @Column(name = "dissolved_at")
   private Instant dissolvedAt;
 
+  /**
+   * Whether this internal group has been released for use by its stewards (ADR-0036, Entscheidung
+   * 9). Until then it is no grant subject for anybody who is neither its member, nor one of its
+   * stewards, nor a system administrator - the same answer the organization boundary gives, {@code
+   * 404}. Meaningless for a group with a provider: {@link #isSelectableAsSubject()} is what a grant
+   * path asks, and that one needs no release.
+   */
+  @Column(name = "released_for_use", nullable = false)
+  private boolean releasedForUse;
+
+  /**
+   * Whether this group carries the protection of the staff council and the comparable bodies
+   * (ADR-0036, Entscheidung 9): not findable by search, nameless in other people's lists, and its
+   * grant-giver sees the stewards instead of the members. Set and released by the body itself,
+   * never by the administration. Named {@code protectedGroup} because {@code protected}, the
+   * column's name, is a Java keyword.
+   */
+  @Column(name = "protected", nullable = false)
+  private boolean protectedGroup;
+
   @OneToMany(mappedBy = "group", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<GroupMembership> memberships = new ArrayList<>();
 
@@ -198,8 +218,32 @@ public class Group {
     this.parentGroupId = parentGroupId;
   }
 
+  /** Releases this group for use by other people granting rights, or takes that back. */
+  public void release(boolean releasedForUse) {
+    this.releasedForUse = releasedForUse;
+  }
+
+  /** Sets or releases the protection mark - see {@link #isProtectedGroup()}. */
+  public void markProtected(boolean protectedGroup) {
+    this.protectedGroup = protectedGroup;
+  }
+
   public boolean isOrgUnit() {
     return this.kind == GroupKind.ORG_UNIT;
+  }
+
+  /** An internal group: created in this system, maintained by its stewards, without a provider. */
+  public boolean isInternal() {
+    return this.kind == GroupKind.AD_HOC;
+  }
+
+  /**
+   * Whether this group may be named as a grant subject by someone who has no other relation to it
+   * (ADR-0036, Entscheidung 9). A provider group always may - its existence is not a decision of
+   * this house; an internal group only once its stewards released it.
+   */
+  public boolean isSelectableAsSubject() {
+    return !isInternal() || releasedForUse;
   }
 
   public boolean isDissolved() {
@@ -252,6 +296,14 @@ public class Group {
 
   public Instant getDissolvedAt() {
     return dissolvedAt;
+  }
+
+  public boolean isReleasedForUse() {
+    return releasedForUse;
+  }
+
+  public boolean isProtectedGroup() {
+    return protectedGroup;
   }
 
   public List<GroupMembership> getMemberships() {

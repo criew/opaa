@@ -16,6 +16,16 @@ public interface GroupSubjectDirectory {
   /** The group, or empty if no group carries that id - never filtered by organization here. */
   Optional<GroupSubject> find(UUID groupId);
 
+  /**
+   * Whether {@code userId} may name this group as a grant subject at all (ADR-0036, Entscheidung
+   * 9). An internal group that its stewards have not released for use is invisible to everyone but
+   * its own members, its stewards and a system administrator - for anybody else it answers like a
+   * group that does not exist. Asked on <b>every</b> path that accepts a group id, including the
+   * one where a caller types the id by hand: in the selection list alone the rule would be
+   * cosmetics.
+   */
+  boolean isSelectableBy(UUID groupId, UUID userId, boolean systemAdmin);
+
   /** The display names of the given groups; an id with no group is absent from the result. */
   Map<UUID, String> namesById(Collection<UUID> groupIds);
 }

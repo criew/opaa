@@ -1,0 +1,45 @@
+databaseChangeLog:
+  - changeSet:
+      id: 058-groups-released-for-use
+      author: opaa
+      comment: >-
+        Die Freigabe einer internen Gruppe zur Verwendung (#1814, ADR-0036 Entscheidung 9). Erst
+        wenn ihre Verantwortlichen sie freigeben, ist eine interne Gruppe fuer andere
+        Rechtevergebende ueberhaupt waehlbar - das Gegenstueck zu listed bei Assets: Auffindbarkeit
+        ist eine bewusste Handlung. Die Spalte gilt nur fuer interne Gruppen; eine Anbietergruppe
+        braucht keine Freigabe und wird in der Antwort unabhaengig von dieser Spalte als waehlbar
+        ausgewiesen.
+        .
+        BESTANDSMIGRATION, und sie ist der Grund, warum Spalte und UPDATE ein Changeset sind: Die
+        Vorgabe "nicht freigegeben" gilt nur prospektiv. Jede interne Gruppe, die am Migrationstag
+        eine Wirkung hat - einen Grant auf ein Asset traegt, ein Anlegerecht traegt oder ein Asset
+        besitzt -, wird als freigegeben uebernommen. Ein Bibliotheksverwalter verliert damit keine
+        Moeglichkeit, die er benutzt hat. Die vierte Wirkung, die ADR-0036 Entscheidung 9 nennt -
+        Mitgliedschaft in einem Space -, kann es zum Zeitpunkt dieses Changesets nicht geben:
+        space_memberships benennt bis #1815 ausschliesslich Personen. Waeren Spalte
+        und UPDATE zwei Changesets, gaebe es zwischen ihnen einen Stand, in dem jede Bestandsgruppe
+        aus jeder Auswahl verschwunden waere.
+        .
+        Die Bestandsaenderung wird ausgesprochen: Eine neu angelegte interne Gruppe ist fuer einen
+        fremden MANAGER erst nach der Freigabe waehlbar - auch bei Eingabe per ID, denn die
+        Durchsetzung liegt im Dienst (AssetGrantService#requireGrantableGroup), nicht in der Liste.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE groups
+                  ADD COLUMN released_for_use boolean DEFAULT false NOT NULL;
+
+              UPDATE groups g
+                 SET released_for_use = true,
+                     updated_at = now()
+               WHERE g.kind = 'AD_HOC'
+                 AND (EXISTS (SELECT 1 FROM asset_grants ag WHERE ag.subject_group_id = g.id)
+                      OR EXISTS (SELECT 1 FROM capability_grants cg WHERE cg.subject_group_id = g.id)
+                      OR EXISTS (SELECT 1 FROM knowledge_libraries kl WHERE kl.owner_group_id = g.id));
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE groups
+                  DROP COLUMN released_for_use;

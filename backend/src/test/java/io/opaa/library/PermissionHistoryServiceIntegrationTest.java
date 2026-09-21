@@ -22,6 +22,8 @@ import io.opaa.group.GroupMembership;
 import io.opaa.group.GroupMembershipRepository;
 import io.opaa.group.GroupRepository;
 import io.opaa.group.GroupService;
+import io.opaa.group.GroupSteward;
+import io.opaa.group.GroupStewardRepository;
 import io.opaa.group.TokenGroupSynchronizer;
 import io.opaa.group.sync.DirectoryGroup;
 import io.opaa.group.sync.DirectorySyncService;
@@ -96,6 +98,7 @@ class PermissionHistoryServiceIntegrationTest {
   @Autowired private AssetGrantHistoryRepository grantHistoryRepository;
   @Autowired private GroupService groupService;
   @Autowired private GroupRepository groupRepository;
+  @Autowired private GroupStewardRepository stewardRepository;
   @Autowired private GroupMembershipHistoryRepository membershipHistoryRepository;
   @Autowired private GroupMembershipRepository membershipRepository;
   @Autowired private LibraryVisibilityHistoryRepository visibilityHistoryRepository;
@@ -291,10 +294,7 @@ class PermissionHistoryServiceIntegrationTest {
     UUID owner = createUser();
     UUID libraryId = createLibrary(owner);
     UUID member = createUser();
-    Group group =
-        new Group(organizationId, GroupKind.AD_HOC, "Referat", null, null, null, null, null);
-    Group savedGroup = groupRepository.save(group);
-    createdGroupIds.add(savedGroup.getId());
+    Group savedGroup = createAdHocGroup("Referat", owner);
 
     grantService.upsertGrant(
         libraryId,
@@ -514,11 +514,8 @@ class PermissionHistoryServiceIntegrationTest {
         new AssetGrantUpsert(PermissionSubjectType.USER, user, AssetRole.VIEWER),
         currentUserOf(sharedOwner));
 
-    Group group =
-        new Group(organizationId, GroupKind.AD_HOC, "Referat", null, null, null, null, null);
-    Group savedGroup = groupRepository.save(group);
-    createdGroupIds.add(savedGroup.getId());
     UUID groupOwner = createUser();
+    Group savedGroup = createAdHocGroup("Referat", groupOwner);
     UUID groupLibraryId = createLibrary(groupOwner);
     grantService.upsertGrant(
         groupLibraryId,
@@ -594,10 +591,7 @@ class PermissionHistoryServiceIntegrationTest {
     // Code review of #427, nit 3 - the group-side counterpart of the library test above.
     UUID owner = createUser();
     UUID member = createUser();
-    Group group =
-        new Group(organizationId, GroupKind.AD_HOC, "Referat", null, null, null, null, null);
-    Group savedGroup = groupRepository.save(group);
-    createdGroupIds.add(savedGroup.getId());
+    Group savedGroup = createAdHocGroup("Referat", owner);
     groupService.addMember(savedGroup.getId(), member, currentUserOf(owner));
 
     groupService.deleteGroup(savedGroup.getId(), currentUserOf(owner));
@@ -1008,6 +1002,15 @@ class PermissionHistoryServiceIntegrationTest {
           "GroupService#listGroups",
           "GroupService#listMyGroups",
           "GroupService#listMembers",
+          "GroupService#listStewardedGroups",
+          "GroupService#listStewards",
+          // #1814: responsibility for a group carries no read right at all, and the release and
+          // the protection mark decide who may name the group and who sees its members - never
+          // which libraries anybody may read.
+          "GroupService#appointSteward",
+          "GroupService#dismissSteward",
+          "GroupService#setRelease",
+          "GroupService#setProtection",
           "KnowledgeLibraryService#getLibrary",
           "KnowledgeLibraryService#listLibraries",
           "KnowledgeLibraryService#listDocuments",
@@ -1083,7 +1086,7 @@ class PermissionHistoryServiceIntegrationTest {
     UUID owner = createUser();
     UUID libraryId = createLibrary(owner);
     UUID member = createUser();
-    Group group = createAdHocGroup("Referat");
+    Group group = createAdHocGroup("Referat", owner);
     groupService.addMember(group.getId(), member, currentUserOf(owner));
 
     grantService.upsertGrant(
@@ -1112,7 +1115,7 @@ class PermissionHistoryServiceIntegrationTest {
     UUID owner = createUser();
     UUID libraryId = createLibrary(owner);
     UUID member = createUser();
-    Group group = createAdHocGroup("Referat");
+    Group group = createAdHocGroup("Referat", owner);
     grantService.upsertGrant(
         libraryId,
         new AssetGrantUpsert(PermissionSubjectType.GROUP, group.getId(), AssetRole.VIEWER),
@@ -1127,7 +1130,7 @@ class PermissionHistoryServiceIntegrationTest {
     UUID owner = createUser();
     UUID libraryId = createLibrary(owner);
     UUID member = createUser();
-    Group group = createAdHocGroup("Referat");
+    Group group = createAdHocGroup("Referat", owner);
     grantService.upsertGrant(
         libraryId,
         new AssetGrantUpsert(PermissionSubjectType.GROUP, group.getId(), AssetRole.VIEWER),
@@ -1149,7 +1152,7 @@ class PermissionHistoryServiceIntegrationTest {
     UUID owner = createUser();
     UUID libraryId = createLibrary(owner);
     UUID member = createUser();
-    Group group = createAdHocGroup("Referat");
+    Group group = createAdHocGroup("Referat", owner);
     grantService.upsertGrant(
         libraryId,
         new AssetGrantUpsert(PermissionSubjectType.GROUP, group.getId(), AssetRole.VIEWER),
@@ -1455,10 +1458,16 @@ class PermissionHistoryServiceIntegrationTest {
     return new ReadabilityChange(otherUser, libraryId, false);
   }
 
-  private Group createAdHocGroup(String name) {
-    Group saved =
-        groupRepository.save(
-            new Group(organizationId, GroupKind.AD_HOC, name, null, null, null, null, null));
+  /**
+   * An internal group as it exists once somebody maintains it (#1814): released for use, so it is a
+   * possible grant subject for a caller who is no member of it, and with {@code steward} as its
+   * responsible person, so that person may take members in and out.
+   */
+  private Group createAdHocGroup(String name, UUID steward) {
+    Group group = new Group(organizationId, GroupKind.AD_HOC, name, null, null, null, null, null);
+    group.release(true);
+    Group saved = groupRepository.save(group);
+    stewardRepository.save(new GroupSteward(saved.getId(), steward, organizationId, steward));
     createdGroupIds.add(saved.getId());
     return saved;
   }

@@ -14,6 +14,8 @@ import io.opaa.group.GroupMemberView;
 import io.opaa.group.GroupMembership;
 import io.opaa.group.GroupOverview;
 import io.opaa.group.GroupProviderView;
+import io.opaa.group.GroupSteward;
+import io.opaa.group.GroupStewardView;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -47,6 +49,7 @@ class GroupResponseMapperTest {
         GroupResponseMapper.toListResponse(
             new GroupOverview(
                 group,
+                List.of(),
                 new GroupProviderView(
                     providerId,
                     "Verzeichnis Haus A",
@@ -83,7 +86,8 @@ class GroupResponseMapperTest {
   void aGroupWithoutAProviderIsMappedAsInternal() {
     Group group = Group.internal(UUID.randomUUID(), "Projektteam", null, null);
 
-    GroupListResponse response = GroupResponseMapper.toListResponse(new GroupOverview(group, null));
+    GroupListResponse response =
+        GroupResponseMapper.toListResponse(new GroupOverview(group, List.of(), null));
 
     assertThat(response.getOrigin()).isEqualTo(GroupOrigin.INTERNAL);
     assertThat(response.getProvider()).isNull();
@@ -100,7 +104,8 @@ class GroupResponseMapperTest {
     group.addMembership(new GroupMembership(UUID.randomUUID(), group.getOrganizationId()));
     group.addMembership(new GroupMembership(UUID.randomUUID(), group.getOrganizationId()));
 
-    GroupListResponse response = GroupResponseMapper.toListResponse(new GroupOverview(group, null));
+    GroupListResponse response =
+        GroupResponseMapper.toListResponse(new GroupOverview(group, List.of(), null));
 
     assertThat(response.getMemberCount()).isEqualTo(2);
   }
@@ -112,7 +117,9 @@ class GroupResponseMapperTest {
 
     List<GroupListResponse> responses =
         GroupResponseMapper.toListResponses(
-            List.of(new GroupOverview(first, null), new GroupOverview(second, null)));
+            List.of(
+                new GroupOverview(first, List.of(), null),
+                new GroupOverview(second, List.of(), null)));
 
     assertThat(responses).extracting(GroupListResponse::getName).containsExactly("A", "B");
   }
@@ -122,7 +129,7 @@ class GroupResponseMapperTest {
     Group group = Group.internal(UUID.randomUUID(), "Team", "Desc", null);
     GroupMembership membership = new GroupMembership(UUID.randomUUID(), group.getOrganizationId());
     GroupMemberView view = new GroupMemberView(membership, "Ada Lovelace");
-    GroupDetail detail = new GroupDetail(group, List.of(view), null);
+    GroupDetail detail = new GroupDetail(group, List.of(view), List.of(), null);
 
     GroupResponse response = GroupResponseMapper.toResponse(detail);
 
@@ -153,6 +160,7 @@ class GroupResponseMapperTest {
         new GroupDetail(
             group,
             List.of(),
+            List.of(),
             new GroupProviderView(
                 providerId, "Verzeichnis Haus A", true, false, GroupMechanism.TOKEN, null, null));
 
@@ -175,7 +183,7 @@ class GroupResponseMapperTest {
     Group group = Group.internal(UUID.randomUUID(), "Projektteam", null, null);
 
     GroupResponse response =
-        GroupResponseMapper.toResponse(new GroupDetail(group, List.of(), null));
+        GroupResponseMapper.toResponse(new GroupDetail(group, List.of(), List.of(), null));
 
     assertThat(response.getOrigin()).isEqualTo(GroupOrigin.INTERNAL);
     assertThat(response.getProvider()).isNull();
@@ -185,12 +193,94 @@ class GroupResponseMapperTest {
   @Test
   void toResponseReturnsAnEmptyMemberListInsteadOfNullForAGroupWithoutMembers() {
     Group group = Group.internal(UUID.randomUUID(), "Team", null, null);
-    GroupDetail detail = new GroupDetail(group, List.of(), null);
+    GroupDetail detail = new GroupDetail(group, List.of(), List.of(), null);
 
     GroupResponse response = GroupResponseMapper.toResponse(detail);
 
     assertThat(response.getMembers()).isEmpty();
     assertThat(response.getMemberCount()).isZero();
+  }
+
+  /**
+   * The three fields of #1814 on the list path: the release as the derived "may somebody else name
+   * this group", the protection mark, and the stewards a member sees by name.
+   */
+  @Test
+  void toListResponseCarriesReleaseProtectionAndStewards() {
+    Group group = Group.internal(UUID.randomUUID(), "Projektteam", null, null);
+    group.release(true);
+    group.markProtected(true);
+    GroupSteward steward =
+        new GroupSteward(group.getId(), UUID.randomUUID(), group.getOrganizationId(), null);
+
+    GroupListResponse response =
+        GroupResponseMapper.toListResponse(
+            new GroupOverview(group, List.of(new GroupStewardView(steward, "Ada Lovelace")), null));
+
+    assertThat(response.getReleasedForUse()).isTrue();
+    assertThat(response.getProtectedGroup()).isTrue();
+    assertThat(response.getStewards()).hasSize(1);
+    assertThat(response.getStewards().get(0).getUserId()).isEqualTo(steward.getUserId());
+    assertThat(response.getStewards().get(0).getDisplayName()).isEqualTo("Ada Lovelace");
+    assertThat(response.getStewards().get(0).getAppointedAt()).isEqualTo(steward.getCreatedAt());
+  }
+
+  @Test
+  void toResponseCarriesReleaseProtectionAndStewards() {
+    Group group = Group.internal(UUID.randomUUID(), "Projektteam", null, null);
+    GroupSteward steward =
+        new GroupSteward(group.getId(), UUID.randomUUID(), group.getOrganizationId(), null);
+
+    GroupResponse response =
+        GroupResponseMapper.toResponse(
+            new GroupDetail(
+                group, List.of(), List.of(new GroupStewardView(steward, "Ada Lovelace")), null));
+
+    assertThat(response.getReleasedForUse()).as("an internal group starts unreleased").isFalse();
+    assertThat(response.getProtectedGroup()).isFalse();
+    assertThat(response.getStewards()).hasSize(1);
+    assertThat(response.getStewards().get(0).getDisplayName()).isEqualTo("Ada Lovelace");
+  }
+
+  /**
+   * A provider group needs no release: its existence is not a decision of this house, so the
+   * response says "selectable" regardless of the column only an internal group's stewards set.
+   */
+  @Test
+  void aProviderGroupIsAlwaysReportedAsReleasedForUse() {
+    UUID providerId = UUID.randomUUID();
+    Group group =
+        new Group(
+            UUID.randomUUID(),
+            GroupKind.ORG_UNIT,
+            "Referat 5",
+            null,
+            providerId,
+            "ext-1",
+            null,
+            null);
+
+    GroupListResponse response =
+        GroupResponseMapper.toListResponse(
+            new GroupOverview(
+                group,
+                List.of(),
+                new GroupProviderView(
+                    providerId, "Haus A", false, true, GroupMechanism.DIRECTORY, 360, null)));
+
+    assertThat(response.getReleasedForUse()).isTrue();
+    assertThat(response.getStewards()).isEmpty();
+  }
+
+  @Test
+  void toStewardResponseAllowsANullDisplayName() {
+    GroupSteward steward =
+        new GroupSteward(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), null);
+
+    assertThat(
+            GroupResponseMapper.toStewardResponse(new GroupStewardView(steward, null))
+                .getDisplayName())
+        .isNull();
   }
 
   @Test

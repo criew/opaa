@@ -542,6 +542,9 @@ public class LocalUserService {
     if (counts.getCapabilityHistory() > 0) {
       blockers.add("capability_grant_history");
     }
+    if (counts.getGroupStewardships() > 0) {
+      blockers.add("group_stewards");
+    }
     return blockers;
   }
 

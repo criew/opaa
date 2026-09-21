@@ -252,7 +252,7 @@ public class KnowledgeLibraryService {
       // AssetGrantService#upsertGrant's own check for the exact same case - reused here rather
       // than duplicated so the two grant-writing paths can never disagree on which groups are
       // grantable.
-      grantService.requireGrantableGroup(ownerGroup.id(), caller.organizationId());
+      grantService.requireGrantableGroup(ownerGroup.id(), caller.organizationId(), caller);
       library =
           KnowledgeLibrary.ownedByGroup(
               caller.organizationId(),
