@@ -66,6 +66,11 @@ class SpaceAssetOwnershipDirectory implements AssetOwnershipDirectory {
   }
 
   @Override
+  public long countAssetsOwnedBy(PermissionSubject owner) {
+    return assetIdsOwnedBy(owner).size();
+  }
+
+  @Override
   public List<UUID> assetIdsOwnedBy(PermissionSubject owner) {
     if (owner.type() != PermissionSubjectType.USER) {
       return List.of();

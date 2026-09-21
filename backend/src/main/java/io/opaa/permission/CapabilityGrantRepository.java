@@ -78,4 +78,7 @@ public interface CapabilityGrantRepository extends JpaRepository<CapabilityGrant
 
   /** Every capability one group holds - what a transfer moves to the target group (#1834). */
   List<CapabilityGrant> findBySubjectGroupId(UUID subjectGroupId);
+
+  /** The same figure without the rows, for a transfer's work limit. */
+  long countBySubjectGroupId(UUID subjectGroupId);
 }

@@ -66,6 +66,13 @@ class LibraryAssetOwnershipDirectory implements AssetOwnershipDirectory {
   }
 
   @Override
+  public long countAssetsOwnedBy(PermissionSubject owner) {
+    return owner.type() == PermissionSubjectType.GROUP
+        ? libraryRepository.countByOwnerGroupIdAndOrganizationId(owner.id(), owner.organizationId())
+        : libraryRepository.countByOwnerUserIdAndOrganizationId(owner.id(), owner.organizationId());
+  }
+
+  @Override
   public List<UUID> assetIdsOwnedBy(PermissionSubject owner) {
     List<KnowledgeLibrary> owned =
         owner.type() == PermissionSubjectType.GROUP

@@ -34,6 +34,12 @@ public interface KnowledgeLibraryRepository extends JpaRepository<KnowledgeLibra
   /** The libraries one group owns - what a transfer of ownership moves (#1834). */
   List<KnowledgeLibrary> findByOwnerGroupId(UUID ownerGroupId);
 
+  /** The same figure without the rows, so a transfer can check its work limit before loading. */
+  long countByOwnerGroupIdAndOrganizationId(UUID ownerGroupId, UUID organizationId);
+
+  /** The person-owned counterpart of {@link #countByOwnerGroupIdAndOrganizationId}. */
+  long countByOwnerUserIdAndOrganizationId(UUID ownerUserId, UUID organizationId);
+
   /** The person-owned counterpart of {@link #findByOwnerGroupId}, for a succession. */
   List<KnowledgeLibrary> findByOwnerUserId(UUID ownerUserId);
 

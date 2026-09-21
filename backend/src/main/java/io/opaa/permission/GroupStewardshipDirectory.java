@@ -14,6 +14,9 @@ import java.util.UUID;
  */
 public interface GroupStewardshipDirectory {
 
+  /** How many groups the person is responsible for - the count behind a transfer's work limit. */
+  long countStewardedGroups(UUID userId, UUID organizationId);
+
   /** Every internal group the person is responsible for, in this organization. */
   List<UUID> stewardedGroupIds(UUID userId, UUID organizationId);
 

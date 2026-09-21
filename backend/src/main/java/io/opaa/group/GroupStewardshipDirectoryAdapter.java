@@ -39,6 +39,11 @@ class GroupStewardshipDirectoryAdapter implements GroupStewardshipDirectory {
   }
 
   @Override
+  public long countStewardedGroups(UUID userId, UUID organizationId) {
+    return stewardedGroupIds(userId, organizationId).size();
+  }
+
+  @Override
   public List<UUID> stewardedGroupIds(UUID userId, UUID organizationId) {
     return groupRepository.findAllById(stewardRepository.findGroupIdsByUserId(userId)).stream()
         .filter(group -> group.getOrganizationId().equals(organizationId))

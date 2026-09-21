@@ -14443,9 +14443,11 @@ components:
           format: uuid
           description: >
             What the execution has to show. The transfer runs only against a preview that was
-            taken, still describes the current state and belongs to the same caller; otherwise it
-            is refused with 409 and the caller previews again. Valid for 30 minutes and held in
-            the running process (ADR-0021), so a restart means one more preview.
+            taken, belongs to the same caller and still describes the same rows - compared by a
+            print over the affected rows, so a role changed in between is caught although the
+            figures stay the same. Otherwise it is refused with 409 and the caller previews again.
+            Valid for 30 minutes and held in the running process (ADR-0021), so a restart means one
+            more preview.
         sourceType:
           $ref: "#/components/schemas/PermissionSubjectType"
         sourceId:

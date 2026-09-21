@@ -26,6 +26,12 @@ public interface AssetOwnershipDirectory {
   String ownedAssetConflictMessage();
 
   /**
+   * How many assets of this type the subject owns - a plain count, so the work limit of a transfer
+   * can be decided before anything is loaded.
+   */
+  long countAssetsOwnedBy(PermissionSubject owner);
+
+  /**
    * Every asset of this type the subject owns. A type that cannot be owned by this kind of subject
    * answers with an empty list rather than refusing - a space owner is always a natural person, and
    * that is not an error the caller has to know about.

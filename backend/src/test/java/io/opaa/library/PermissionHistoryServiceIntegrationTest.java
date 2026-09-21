@@ -987,8 +987,8 @@ class PermissionHistoryServiceIntegrationTest {
    * them over - responsibility carries no read right at all, which is why it produces audit events
    * and no history rows. {@code PermissionTransferService} (#1834) is a writer and is covered by
    * {@link #readabilityWritePaths}; {@code LibraryAssetOwnershipDirectory} writes the grant that
-   * goes with a library's ownership and is reachable only through that one write path, never on
-   * its own.
+   * goes with a library's ownership and is reachable only through that one write path, never on its
+   * own.
    */
   private static final Set<String> BEANS_REACHING_THE_RIGHTS_TABLES =
       Set.of(

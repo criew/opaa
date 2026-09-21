@@ -21,6 +21,9 @@ public interface GroupSpaceMembershipDirectory {
   /** The asset type of a space - what a transfer records as the touched object. */
   AssetType spaceAssetType();
 
+  /** How many spaces one group is a member of - the count behind a transfer's work limit. */
+  long countSpaceMembershipsOf(UUID groupId);
+
   /** Every (group, space) pair among {@code groupIds}; an empty list for an empty input. */
   List<GroupSpaceMembershipRef> spaceMembershipsOf(Collection<UUID> groupIds);
 

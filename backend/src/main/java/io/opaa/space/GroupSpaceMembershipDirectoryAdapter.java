@@ -43,6 +43,11 @@ class GroupSpaceMembershipDirectoryAdapter implements GroupSpaceMembershipDirect
   }
 
   @Override
+  public long countSpaceMembershipsOf(UUID groupId) {
+    return membershipRepository.countByGroupId(groupId);
+  }
+
+  @Override
   public List<GroupSpaceMembershipRef> spaceMembershipsOf(Collection<UUID> groupIds) {
     if (groupIds.isEmpty()) {
       return List.of();

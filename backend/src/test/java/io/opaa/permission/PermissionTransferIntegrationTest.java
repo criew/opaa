@@ -4,6 +4,8 @@ import static io.opaa.library.LibraryCreationBuilder.libraryCreation;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.opaa.api.types.AccessAsOfObjectType;
+import io.opaa.api.types.AccessBasis;
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.Capability;
@@ -34,6 +36,8 @@ import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.library.LibraryAccessService;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
+import io.opaa.revision.AccessAsOfResult;
+import io.opaa.revision.PointInTimeAccessService;
 import io.opaa.space.Space;
 import io.opaa.space.SpaceCreation;
 import io.opaa.space.SpaceMembershipRepository;
@@ -63,6 +67,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 class PermissionTransferIntegrationTest {
 
   @Autowired private PermissionTransferService transferService;
+  @Autowired private PointInTimeAccessService pointInTimeAccess;
+  @Autowired private PermissionHistoryService permissionHistoryService;
   @Autowired private AssetGrantRepository grantRepository;
   @Autowired private AssetGrantHistoryRepository grantHistoryRepository;
   @Autowired private CapabilityGrantRepository capabilityGrantRepository;
@@ -244,6 +250,69 @@ class PermissionTransferIntegrationTest {
                 .map(AssetGrantHistory::getValidTo))
         .as("the source's state interval ends exactly where the target's begins")
         .containsOnly(transfer.getPerformedAt());
+  }
+
+  /**
+   * The reading path of #1822 against the cut: the Stichtagsauskunft names the source's people up
+   * to the transfer and the target's from it on - exactly one subject per instant - and the
+   * zero-length {@code TRANSFERRED_OUT} marker appears as no access at all. It is an event, not a
+   * state.
+   */
+  @Test
+  void showsTheCutInTheStichtagsauskunftWithoutTheZeroLengthMarker() {
+    CurrentUser auditor = user(organizationA, SystemRole.AUDITOR);
+    CurrentUser leaving = user(organizationA, SystemRole.USER);
+    CurrentUser arriving = user(organizationA, SystemRole.USER);
+    UUID source = group(organizationA, "Referat 50", leaving.id());
+    UUID target = group(organizationA, "Referat 52", arriving.id());
+    UUID library = libraryOwnedBy(organizationA, admin.id());
+    Instant windowStart = Instant.now().minusSeconds(3600);
+    AssetGrant grant = grantGroup(library, source, AssetRole.VIEWER, null);
+    grantHistoryRepository.save(
+        AssetGrantHistory.open(grant, AssetGrantHistoryCause.GRANTED, admin.id(), windowStart));
+    permissionHistoryService.recordMembershipAdded(
+        source, organizationA, leaving.id(), GroupMembershipHistoryCause.ADDED, admin.id());
+    permissionHistoryService.recordMembershipAdded(
+        target, organizationA, arriving.id(), GroupMembershipHistoryCause.ADDED, admin.id());
+
+    PermissionTransfer transfer =
+        execute(order(source, target, EnumSet.of(PermissionTransferScope.ASSET_GRANTS)), admin);
+
+    AccessAsOfResult result =
+        pointInTimeAccess.readersOf(
+            organizationA,
+            auditor.id(),
+            "Beschwerde 4711",
+            AccessAsOfObjectType.KNOWLEDGE_LIBRARY,
+            library,
+            windowStart.minusSeconds(60),
+            Instant.now().plusSeconds(3600),
+            0,
+            50);
+
+    assertThat(result.entries())
+        .as("the marker of the source side is an event and never an access period")
+        .noneMatch(entry -> entry.validTo() != null && entry.validTo().equals(entry.validFrom()));
+    assertThat(result.entries())
+        .filteredOn(entry -> leaving.id().equals(entry.userId()))
+        .singleElement()
+        .satisfies(
+            entry -> {
+              assertThat(entry.basis()).isEqualTo(AccessBasis.GROUP_GRANT);
+              assertThat(entry.validTo())
+                  .as("the source's period ends exactly at the transfer")
+                  .isEqualTo(transfer.getPerformedAt());
+            });
+    assertThat(result.entries())
+        .filteredOn(entry -> arriving.id().equals(entry.userId()))
+        .singleElement()
+        .satisfies(
+            entry -> {
+              assertThat(entry.validFrom())
+                  .as("and the target's begins there")
+                  .isEqualTo(transfer.getPerformedAt());
+              assertThat(entry.validTo()).isNull();
+            });
   }
 
   // -------------------------------------------------------------------------------------------
@@ -727,12 +796,14 @@ class PermissionTransferIntegrationTest {
         .isInstanceOf(AccessDeniedException.class);
   }
 
-  /** The operation exists for a few hundred objects, not for a transaction without an end. */
+  /**
+   * The operation exists for a few hundred objects, not for a transaction without an end - and the
+   * limit is decided by counting, before a single row is loaded, in the preview already.
+   */
   @Test
-  void refusesATransferAboveTheWorkLimit() {
+  void refusesATransferAboveTheWorkLimitBeforeLoadingAnything() {
     UUID source = group(organizationA, "Referat 50");
     UUID target = group(organizationA, "Referat 52");
-    UUID library = libraryOwnedBy(organizationA, admin.id());
     for (int i = 0; i <= PermissionTransferService.MAX_ROWS_PER_TRANSFER; i++) {
       grantRepository.save(
           AssetGrant.forGroup(
@@ -746,12 +817,82 @@ class PermissionTransferIntegrationTest {
     }
     PermissionTransferOrder order =
         order(source, target, EnumSet.of(PermissionTransferScope.ASSET_GRANTS));
-    UUID previewId = transferService.preview(order, admin).previewId();
 
-    assertThatThrownBy(() -> transferService.transfer(order, true, previewId, admin))
+    assertThatThrownBy(() -> transferService.preview(order, admin))
+        .as("the figure is named before anybody confirms anything")
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("über der Grenze");
-    assertThat(library).isNotNull();
+    assertThatThrownBy(() -> transferService.transfer(order, true, UUID.randomUUID(), admin))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("über der Grenze");
+  }
+
+  /**
+   * The drift check is a print of the rows, not a count of them: a role changed between preview and
+   * confirmation leaves the figures untouched and must still be caught.
+   */
+  @Test
+  void refusesAnExecutionWhenARoleChangedSinceThePreviewWithoutChangingTheCounts() {
+    UUID source = group(organizationA, "Referat 50");
+    UUID target = group(organizationA, "Referat 52");
+    UUID library = libraryOwnedBy(organizationA, admin.id());
+    AssetGrant grant = grantGroup(library, source, AssetRole.VIEWER, null);
+    PermissionTransferOrder order =
+        order(source, target, EnumSet.of(PermissionTransferScope.ASSET_GRANTS));
+    PermissionTransferPreview preview = transferService.preview(order, admin);
+
+    grant.updateRole(AssetRole.MANAGER, null, admin.id(), Instant.now());
+    grantRepository.save(grant);
+
+    assertThatThrownBy(() -> transferService.transfer(order, true, preview.previewId(), admin))
+        .as("one row, one grant - and a different right than the one that was shown")
+        .isInstanceOf(ConflictException.class)
+        .hasMessageContaining("Stand hat sich");
+  }
+
+  /**
+   * One transfer can touch the target's grant twice - the grant part moves the source's role over,
+   * the ownership part raises it to the role that goes with ownership. The second write must
+   * correct the interval it just wrote, not close it: a state interval of zero length never held.
+   */
+  @Test
+  void leavesNoZeroLengthStateIntervalWhenOneTransferRaisesTheSameGrantTwice() {
+    CurrentUser creator = user(organizationA, SystemRole.USER);
+    UUID source = group(organizationA, "Referat 50", creator.id());
+    UUID target = group(organizationA, "Referat 52");
+    UUID library = groupLibraryCreatedBy(creator, source);
+    // Downgraded at its own library: the ownership part has to raise the target to MANAGER after
+    // the grant part has already written VIEWER for it.
+    AssetGrant ownerGrant =
+        grantRepository
+            .findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectGroupId(
+                KnowledgeLibrary.ASSET_TYPE, library, PermissionSubjectType.GROUP, source)
+            .orElseThrow();
+    ownerGrant.updateRole(AssetRole.VIEWER, null, admin.id(), Instant.now());
+    grantRepository.save(ownerGrant);
+
+    PermissionTransfer transfer =
+        execute(
+            order(
+                source,
+                target,
+                EnumSet.of(
+                    PermissionTransferScope.ASSET_GRANTS, PermissionTransferScope.OWNERSHIP)),
+            admin);
+
+    assertThat(roleOfGroup(library, target)).isEqualTo(AssetRole.MANAGER);
+    AssetGrantHistory open = openIntervalOfGroup(library, target);
+    assertThat(open).isNotNull();
+    assertThat(open.getRole()).isEqualTo(AssetRole.MANAGER);
+    assertThat(open.getValidFrom()).isEqualTo(transfer.getPerformedAt());
+    assertThat(
+            grantHistoryRepository.findAll().stream()
+                .filter(row -> target.equals(row.getSubjectGroupId()))
+                .filter(row -> row.getValidTo() != null)
+                .filter(row -> row.getValidTo().equals(row.getValidFrom()))
+                .filter(row -> row.getCause() == AssetGrantHistoryCause.TRANSFERRED_IN))
+        .as("a state interval that never held is not written")
+        .isEmpty();
   }
 
   // -------------------------------------------------------------------------------------------

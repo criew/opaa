@@ -144,46 +144,68 @@ public class PermissionTransferService {
   @Transactional
   public PermissionTransferPreview preview(PermissionTransferOrder order, CurrentUser caller) {
     Parties parties = resolve(order, caller);
+    requireWithinTheWorkLimit(parties);
+    PermissionTransferSnapshot snapshot = snapshot(parties);
     UUID previewId = UUID.randomUUID();
-    PermissionTransferPreview preview = count(parties, previewId);
+    PermissionTransferPreview preview = describe(parties, snapshot, previewId);
     shownPreviews.put(
-        previewId, new ShownPreview(caller.id(), signatureOf(parties), preview.counts()));
+        previewId,
+        new ShownPreview(
+            caller.id(), signatureOf(parties), PermissionTransferFingerprint.of(snapshot)));
     recordEvent(AuditEventType.PERMISSION_TRANSFER_PREVIEWED, parties, preview.counts(), caller);
     return preview;
   }
 
-  private PermissionTransferPreview count(Parties parties, UUID previewId) {
-    List<AssetGrant> grants = effectiveSourceGrants(parties);
-    Set<UUID> grantedAssets = new HashSet<>();
-    grants.forEach(grant -> grantedAssets.add(grant.getAssetId()));
-
-    List<UUID> spaceIds =
-        parties.scope().contains(PermissionTransferScope.SPACE_MEMBERSHIPS)
-                && parties.source().type() == PermissionSubjectType.GROUP
-            ? spaceMembershipDirectory.spaceMembershipsOf(List.of(parties.source().id())).stream()
-                .map(GroupSpaceMembershipRef::spaceId)
-                .toList()
+  /**
+   * Everything the operation would move, read once. Called only after {@link
+   * #requireWithinTheWorkLimit} has decided on plain counts that the load is bounded.
+   */
+  private PermissionTransferSnapshot snapshot(Parties parties) {
+    boolean groupSource = parties.source().type() == PermissionSubjectType.GROUP;
+    List<AssetGrant> grants =
+        parties.scope().contains(PermissionTransferScope.ASSET_GRANTS) && groupSource
+            ? grantRepository.findBySubjectGroupIdIn(List.of(parties.source().id()))
             : List.of();
-
-    int capabilities =
-        parties.scope().contains(PermissionTransferScope.CAPABILITIES)
-                && parties.source().type() == PermissionSubjectType.GROUP
-            ? capabilityGrantRepository.findBySubjectGroupId(parties.source().id()).size()
-            : 0;
-
-    int owned =
-        parties.scope().contains(PermissionTransferScope.OWNERSHIP)
-            ? assetOwnershipDirectories.stream()
-                .mapToInt(directory -> directory.assetIdsOwnedBy(parties.source()).size())
-                .sum()
-            : 0;
-
-    int stewardships =
+    List<GroupSpaceMembershipRef> spaceMemberships =
+        parties.scope().contains(PermissionTransferScope.SPACE_MEMBERSHIPS) && groupSource
+            ? spaceMembershipDirectory.spaceMembershipsOf(List.of(parties.source().id()))
+            : List.of();
+    List<CapabilityGrant> capabilities =
+        parties.scope().contains(PermissionTransferScope.CAPABILITIES) && groupSource
+            ? capabilityGrantRepository.findBySubjectGroupId(parties.source().id())
+            : List.of();
+    Map<AssetType, List<UUID>> owned = new LinkedHashMap<>();
+    if (parties.scope().contains(PermissionTransferScope.OWNERSHIP)) {
+      for (AssetOwnershipDirectory directory : assetOwnershipDirectories) {
+        List<UUID> assetIds = directory.assetIdsOwnedBy(parties.source());
+        if (!assetIds.isEmpty()) {
+          owned.put(directory.assetType(), assetIds);
+        }
+      }
+    }
+    List<UUID> stewarded =
         parties.scope().contains(PermissionTransferScope.STEWARDSHIP)
-            ? stewardshipDirectory
-                .stewardedGroupIds(parties.source().id(), parties.organizationId())
-                .size()
-            : 0;
+            ? stewardshipDirectory.stewardedGroupIds(
+                parties.source().id(), parties.organizationId())
+            : List.of();
+    return new PermissionTransferSnapshot(grants, spaceMemberships, capabilities, owned, stewarded);
+  }
+
+  /**
+   * The figures a preview shows. Expired grants are left out of them: they are ended by the
+   * transfer but granted to nobody again, and a count that included them would promise more reach
+   * than the operation delivers.
+   */
+  private PermissionTransferPreview describe(
+      Parties parties, PermissionTransferSnapshot snapshot, UUID previewId) {
+    Instant now = Instant.now();
+    List<AssetGrant> effective =
+        snapshot.grants().stream().filter(grant -> !grant.isExpired(now)).toList();
+    Set<UUID> grantedAssets = new HashSet<>();
+    effective.forEach(grant -> grantedAssets.add(grant.getAssetId()));
+    Set<UUID> spaceIds = new HashSet<>();
+    snapshot.spaceMemberships().forEach(membership -> spaceIds.add(membership.spaceId()));
+    int owned = snapshot.ownedAssets().values().stream().mapToInt(List::size).sum();
 
     return new PermissionTransferPreview(
         previewId,
@@ -193,9 +215,13 @@ public class PermissionTransferService {
         parties.targetLabel(),
         parties.scope(),
         new PermissionTransferCounts(
-            grants.size(), spaceIds.size(), capabilities, owned, stewardships),
+            effective.size(),
+            snapshot.spaceMemberships().size(),
+            snapshot.capabilities().size(),
+            owned,
+            snapshot.stewardedGroups().size()),
         grantedAssets.size(),
-        Set.copyOf(spaceIds).size());
+        spaceIds.size());
   }
 
   // -------------------------------------------------------------------------------------------
@@ -216,8 +242,9 @@ public class PermissionTransferService {
       throw new ValidationException(
           "Die Übertragung muss ausdrücklich bestätigt werden; rufen Sie zuvor die Vorschau ab.");
     }
-    PermissionTransferCounts effective = requireUnchangedPreview(previewId, parties, caller);
-    requireWithinTheWorkLimit(parties, effective);
+    requireWithinTheWorkLimit(parties);
+    PermissionTransferSnapshot snapshot = snapshot(parties);
+    requireUnchangedPreview(previewId, parties, snapshot, caller);
 
     Instant at = clock.nextBoundary();
     PermissionTransfer transfer =
@@ -233,10 +260,10 @@ public class PermissionTransferService {
                 at));
 
     Map<AssetType, Set<UUID>> touched = new LinkedHashMap<>();
-    int grants = transferGrants(parties, transfer.getId(), at, caller, touched);
+    int grants = transferGrants(parties, snapshot, transfer.getId(), at, caller, touched);
     int spaces = transferSpaceMemberships(parties, transfer.getId(), at, caller, touched);
-    int capabilities = transferCapabilities(parties, transfer.getId(), at, caller);
-    int owned = transferOwnership(parties, transfer.getId(), at, caller, touched);
+    int capabilities = transferCapabilities(parties, snapshot, transfer.getId(), at, caller);
+    int owned = transferOwnership(parties, snapshot, transfer.getId(), at, caller, touched);
     int stewardships = transferStewardships(parties, transfer.getId(), caller);
 
     transfer.recordCounts(
@@ -266,8 +293,8 @@ public class PermissionTransferService {
    * {@link #PREVIEW_VALIDITY}. ADR-0021 (one process) carries that; after a restart the caller
    * previews again, which costs one request and one more protocol entry.
    */
-  private PermissionTransferCounts requireUnchangedPreview(
-      UUID previewId, Parties parties, CurrentUser caller) {
+  private void requireUnchangedPreview(
+      UUID previewId, Parties parties, PermissionTransferSnapshot snapshot, CurrentUser caller) {
     ShownPreview shown = previewId == null ? null : shownPreviews.getIfPresent(previewId);
     if (shown == null
         || !shown.callerUserId().equals(caller.id())
@@ -277,15 +304,13 @@ public class PermissionTransferService {
               + " ab und bestätigen Sie sie.",
           PREVIEW_REQUIRED);
     }
-    PermissionTransferCounts current = count(parties, previewId).counts();
-    if (!current.equals(shown.counts())) {
+    if (!shown.fingerprint().equals(PermissionTransferFingerprint.of(snapshot))) {
       shownPreviews.invalidate(previewId);
       throw new ConflictException(
           "Der Stand hat sich seit der Vorschau geändert. Die Übertragung wurde nicht ausgeführt;"
               + " rufen Sie die Vorschau erneut ab.",
           PREVIEW_REQUIRED);
     }
-    return current;
   }
 
   /**
@@ -295,8 +320,8 @@ public class PermissionTransferService {
    * the ones that can carry thousands. Above the limit the transfer is refused with the figure and
    * the way out: a smaller scope, one part at a time.
    */
-  private void requireWithinTheWorkLimit(Parties parties, PermissionTransferCounts effective) {
-    int workload = workloadOf(parties, effective);
+  private void requireWithinTheWorkLimit(Parties parties) {
+    long workload = workloadOf(parties);
     if (workload > MAX_ROWS_PER_TRANSFER) {
       throw new ValidationException(
           "Diese Übertragung bewegt "
@@ -309,16 +334,35 @@ public class PermissionTransferService {
   }
 
   /**
-   * What the transfer actually touches, expired grants included: they are removed from the source
-   * like any other row - an expired grant still blocks the RESTRICT key of a group deletion - and
-   * are only not granted to the target again.
+   * What the transfer would touch, counted rather than loaded - expired grants included: they are
+   * removed from the source like any other row (an expired grant still blocks the RESTRICT key of a
+   * group deletion) and are only not granted to the target again. Counting first is what keeps the
+   * load itself bounded: a group with a hundred thousand grants is refused before a single row
+   * reaches the application.
    */
-  private int workloadOf(Parties parties, PermissionTransferCounts effective) {
-    return sourceGrants(parties).size()
-        + effective.spaceMemberships()
-        + effective.capabilities()
-        + effective.ownedAssets()
-        + effective.stewardships();
+  private long workloadOf(Parties parties) {
+    boolean groupSource = parties.source().type() == PermissionSubjectType.GROUP;
+    long workload = 0;
+    if (parties.scope().contains(PermissionTransferScope.ASSET_GRANTS) && groupSource) {
+      workload += grantRepository.countBySubjectGroupId(parties.source().id());
+    }
+    if (parties.scope().contains(PermissionTransferScope.SPACE_MEMBERSHIPS) && groupSource) {
+      workload += spaceMembershipDirectory.countSpaceMembershipsOf(parties.source().id());
+    }
+    if (parties.scope().contains(PermissionTransferScope.CAPABILITIES) && groupSource) {
+      workload += capabilityGrantRepository.countBySubjectGroupId(parties.source().id());
+    }
+    if (parties.scope().contains(PermissionTransferScope.OWNERSHIP)) {
+      for (AssetOwnershipDirectory directory : assetOwnershipDirectories) {
+        workload += directory.countAssetsOwnedBy(parties.source());
+      }
+    }
+    if (parties.scope().contains(PermissionTransferScope.STEWARDSHIP)) {
+      workload +=
+          stewardshipDirectory.countStewardedGroups(
+              parties.source().id(), parties.organizationId());
+    }
+    return workload;
   }
 
   private PreviewSignature signatureOf(Parties parties) {
@@ -332,11 +376,12 @@ public class PermissionTransferService {
 
   private int transferGrants(
       Parties parties,
+      PermissionTransferSnapshot snapshot,
       UUID transferId,
       Instant at,
       CurrentUser caller,
       Map<AssetType, Set<UUID>> touched) {
-    List<AssetGrant> grants = sourceGrants(parties);
+    List<AssetGrant> grants = snapshot.grants();
     int transferred = 0;
     for (AssetGrant grant : grants) {
       permissionHistoryService.recordGrantTransferredOut(grant, caller.id(), transferId, at);
@@ -409,12 +454,12 @@ public class PermissionTransferService {
   }
 
   private int transferCapabilities(
-      Parties parties, UUID transferId, Instant at, CurrentUser caller) {
-    if (!parties.scope().contains(PermissionTransferScope.CAPABILITIES)) {
-      return 0;
-    }
-    List<CapabilityGrant> held =
-        capabilityGrantRepository.findBySubjectGroupId(parties.source().id());
+      Parties parties,
+      PermissionTransferSnapshot snapshot,
+      UUID transferId,
+      Instant at,
+      CurrentUser caller) {
+    List<CapabilityGrant> held = snapshot.capabilities();
     for (CapabilityGrant grant : held) {
       permissionHistoryService.recordCapabilityTransferredOut(grant, caller.id(), transferId, at);
       boolean targetHasIt =
@@ -442,16 +487,14 @@ public class PermissionTransferService {
 
   private int transferOwnership(
       Parties parties,
+      PermissionTransferSnapshot snapshot,
       UUID transferId,
       Instant at,
       CurrentUser caller,
       Map<AssetType, Set<UUID>> touched) {
-    if (!parties.scope().contains(PermissionTransferScope.OWNERSHIP)) {
-      return 0;
-    }
     int moved = 0;
     for (AssetOwnershipDirectory directory : assetOwnershipDirectories) {
-      for (UUID assetId : directory.assetIdsOwnedBy(parties.source())) {
+      for (UUID assetId : snapshot.ownedAssets().getOrDefault(directory.assetType(), List.of())) {
         directory.transferOwnership(assetId, parties.target(), caller.id(), transferId, at);
         touched.computeIfAbsent(directory.assetType(), key -> new LinkedHashSet<>()).add(assetId);
         moved++;
@@ -526,30 +569,6 @@ public class PermissionTransferService {
   // -------------------------------------------------------------------------------------------
   // Resolution and rules
   // -------------------------------------------------------------------------------------------
-
-  /**
-   * Every grant row the source holds, expired ones included - what the transfer has to move out of
-   * the way. Empty whenever grants are outside the scope; a person's grants are never listed here,
-   * whatever the scope says, which {@link #requireScopeFits} has already enforced.
-   */
-  private List<AssetGrant> sourceGrants(Parties parties) {
-    if (!parties.scope().contains(PermissionTransferScope.ASSET_GRANTS)
-        || parties.source().type() != PermissionSubjectType.GROUP) {
-      return List.of();
-    }
-    return grantRepository.findBySubjectGroupIdIn(List.of(parties.source().id()));
-  }
-
-  /**
-   * The subset of {@link #sourceGrants} that actually confers something right now. An expired grant
-   * is ended by the transfer like every other row of the source, but it is <b>not</b> granted to
-   * the target again - it would arrive dead - and it is not counted: the preview would otherwise
-   * promise more reach than the operation delivers.
-   */
-  private List<AssetGrant> effectiveSourceGrants(Parties parties) {
-    Instant now = Instant.now();
-    return sourceGrants(parties).stream().filter(grant -> !grant.isExpired(now)).toList();
-  }
 
   private Parties resolve(PermissionTransferOrder order, CurrentUser caller) {
     if (order.scope() == null || order.scope().isEmpty()) {
@@ -768,9 +787,8 @@ public class PermissionTransferService {
       UUID targetId,
       Set<PermissionTransferScope> scope) {}
 
-  /** One preview shown to one caller, with the figures it showed. */
-  private record ShownPreview(
-      UUID callerUserId, PreviewSignature signature, PermissionTransferCounts counts) {}
+  /** One preview shown to one caller, with the print of the rows it showed. */
+  private record ShownPreview(UUID callerUserId, PreviewSignature signature, String fingerprint) {}
 
   /** The validated, resolved form of a {@link PermissionTransferOrder}. */
   private record Parties(

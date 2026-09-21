@@ -151,6 +151,17 @@ public class AssetGrantHistory {
     this.createdAt = Instant.now();
   }
 
+  /**
+   * Corrects an interval that has not lasted an instant yet - the same transfer raising the role it
+   * has just written. Closing and reopening it at the same boundary would leave a state interval
+   * behind that never held ({@code validFrom == validTo}), which no reconstruction may select and
+   * no reader can make sense of.
+   */
+  void correctTo(AssetGrant grant) {
+    this.role = grant.getRole();
+    this.expiresAt = grant.getExpiresAt();
+  }
+
   void close(Instant validTo) {
     this.validTo = validTo;
   }

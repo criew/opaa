@@ -5,6 +5,7 @@ import java.time.Instant;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
@@ -153,9 +154,22 @@ public class PermissionHistoryService {
    * The target's side of {@link #recordGrantTransferredOut}: closes whatever interval the target
    * already had on the asset at the same instant and opens the one it holds from then on. {@code
    * grant} must already carry the values the target holds after the transfer.
+   *
+   * <p><b>Called twice for the same chain at the same boundary, it corrects rather than
+   * supersedes.</b> One transfer can touch a target's grant twice - the grant part moves the
+   * source's role over and the ownership part then raises it to the role that goes with ownership.
+   * Closing the interval just opened would leave a state interval of zero length behind that never
+   * held.
    */
   public void recordGrantTransferredIn(
       AssetGrant grant, UUID actorUserId, UUID transferId, Instant at) {
+    Optional<AssetGrantHistory> open = openGrantInterval(grant);
+    if (open.isPresent() && at.equals(open.get().getValidFrom())) {
+      AssetGrantHistory current = open.get();
+      current.correctTo(grant);
+      grantHistoryRepository.saveAndFlush(current);
+      return;
+    }
     closeOpenGrantInterval(grant, at);
     AssetGrantHistory opened =
         AssetGrantHistory.open(grant, AssetGrantHistoryCause.TRANSFERRED_IN, actorUserId, at);
@@ -173,6 +187,16 @@ public class PermissionHistoryService {
    * method's own call order.
    */
   private void closeOpenGrantInterval(AssetGrant grant, Instant now) {
+    openGrantInterval(grant)
+        .ifPresent(
+            interval -> {
+              interval.close(now);
+              grantHistoryRepository.saveAndFlush(interval);
+            });
+  }
+
+  /** The interval the subject currently holds on this asset, if any. */
+  private Optional<AssetGrantHistory> openGrantInterval(AssetGrant grant) {
     var open =
         grant.getSubjectType() == PermissionSubjectType.USER
             ? grantHistoryRepository
@@ -187,11 +211,7 @@ public class PermissionHistoryService {
                     grant.getAssetId(),
                     grant.getSubjectType(),
                     grant.getSubjectGroupId());
-    open.ifPresent(
-        interval -> {
-          interval.close(now);
-          grantHistoryRepository.saveAndFlush(interval);
-        });
+    return open;
   }
 
   // -------------------------------------------------------------------------------------------

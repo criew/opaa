@@ -1316,14 +1316,18 @@ Berechtigungen an 7 Objekten, Mitglied in 2 Spaces, Eigentum an 3 Objekten"). Si
 Protokollereignis** (`PERMISSION_TRANSFER_PREVIEWED`) — auch wenn niemand sie ausführt: Sie liest
 alles, was ein Subjekt hält, und dass jemand gelesen hat, gehört ins Protokoll. **Die Pflicht ist
 durchgesetzt, nicht nur beschrieben:** Die Vorschau gibt eine Kennung zurück, die die Ausführung
-vorzeigen muss; sie gilt 30 Minuten, gehört dem Aufrufer, dem sie gezeigt wurde, und trägt die
-Zahlen, die sie gezeigt hat. Weicht der Stand inzwischen ab, wird nichts übertragen und die Vorschau
-neu vorgelegt (`409`, Code `TRANSFER_PREVIEW_REQUIRED`) — dieselbe Mechanik wie bei der Bestätigung
-eines Abgleichsplans. Die Ausführung verlangt darüber hinaus eine **ausdrückliche Bestätigung** und
+vorzeigen muss; sie gilt 30 Minuten, gehört dem Aufrufer, dem sie gezeigt wurde, und trägt einen
+**Abdruck der gezeigten Zeilen** — je Berechtigung die Rolle und die Befristung, je
+Space-Mitgliedschaft der Space, dazu Anlegerechte, Eigentum und Verantwortlichkeiten. Eine Rolle,
+die sich zwischen Vorschau und Bestätigung ändert, fällt damit auf, obwohl die Zahlen gleich
+bleiben. Weicht der Abdruck ab, wird nichts übertragen und die Vorschau neu vorgelegt (`409`, Code
+`TRANSFER_PREVIEW_REQUIRED`) — dieselbe Mechanik wie bei der Bestätigung eines Abgleichsplans. Die Ausführung verlangt darüber hinaus eine **ausdrückliche Bestätigung** und
 schreibt `PERMISSION_TRANSFER_EXECUTED` mit Quelle, Ziel, Umfang und Zahl der Zeilen.
 
 **Eine Obergrenze je Vorgang.** Höchstens 500 Zeilen; darüber wird abgelehnt, mit der Zahl und dem
-Weg über eine Teilmenge des Umfangs. Eine Übertragung ist eine Schreibtransaktion über bis zu vier
+Weg über eine Teilmenge des Umfangs — **gezählt, bevor etwas geladen wird**, und schon in der
+Vorschau: Eine Gruppe mit hunderttausend Berechtigungen wird abgewiesen, ohne dass eine einzige
+Zeile in die Anwendung kommt. Eine Übertragung ist eine Schreibtransaktion über bis zu vier
 Historientabellen — unbegrenzt zu laufen ist für genau die Anlässe, für die sie gebaut ist, kein
 Betriebszustand.
 
