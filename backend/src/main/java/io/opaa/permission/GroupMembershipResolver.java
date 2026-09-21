@@ -93,6 +93,16 @@ public class GroupMembershipResolver {
    * path of every space a caller sees, and a department's whole membership is a large answer to a
    * question about its size.
    */
+  /**
+   * The active accounts of a group by id - {@link #activeMemberCount}'s sibling for a caller that
+   * has to intersect them with something else (#1835: the Mindestgruppengröße counts the members
+   * who also reach one space). It narrows together with that method when #1818 brings an account
+   * state, so no caller carries its own notion of "active".
+   */
+  public Set<UUID> activeMemberIds(UUID groupId, UUID organizationId) {
+    return membershipSource.findUserIdsByGroupIdAndOrganizationId(groupId, organizationId);
+  }
+
   public int activeMemberCount(UUID groupId, UUID organizationId) {
     return Math.toIntExact(
         membershipSource.countUserIdsByGroupIdAndOrganizationId(groupId, organizationId));

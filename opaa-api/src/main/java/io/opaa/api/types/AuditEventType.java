@@ -272,6 +272,14 @@ public enum AuditEventType {
    * all, and an auditor must be able to find that change by its own name.
    */
   LIBRARY_DIAGNOSTICS_LOCK_CHANGED,
+  /**
+   * A Suchdiagnose ran in the rights context of a group <em>and</em> of a space (#1835, ADR-0036
+   * Entscheidung 7): acting person, profile and space, one entry per run and none per query. A
+   * profile run without a space context writes nothing - it says what a group reaches across the
+   * organization, which is no statement about an individual. {@code target_ref} stays the group id,
+   * so "kein Personenbezug im Protokoll" remains a property of the structure.
+   */
+  SEARCH_DIAGNOSIS_PROFILE_RUN,
 
   // Zugriff auf die Protokolldaten selbst
   /** Any read, evaluation or export of audit data, including rejected attempts (see outcome). */

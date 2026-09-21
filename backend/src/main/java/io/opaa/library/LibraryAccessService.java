@@ -189,7 +189,7 @@ public class LibraryAccessService {
    * docs/features/hybrid-retrieval.md, "Das Diagnosewerkzeug").
    *
    * <p>Deliberately without the direct user grants that formula also considers: a profile is a
-   * role, not a person. Uncached for the same reason {@link #readableLibraryIds} is - this is a
+   * group, not a person. Uncached for the same reason {@link #readableLibraryIds} is - this is a
    * search-scope decision, where a stale cache would leak rather than merely delay.
    */
   public Set<UUID> readableLibraryIdsForGroup(UUID groupId, UUID organizationId) {

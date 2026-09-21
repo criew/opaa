@@ -1,6 +1,13 @@
 package io.opaa.searchadmin;
 
+import io.opaa.api.types.AuditEventType;
+import io.opaa.api.types.AuditObjectType;
+import io.opaa.api.types.AuditOutcome;
+import io.opaa.api.types.AuditSubjectKind;
+import io.opaa.audit.AuditEvent;
+import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
+import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ValidationException;
 import io.opaa.diagnosticaccess.DiagnosticImpersonationGrantService;
 import io.opaa.diagnosticaccess.ForeignDiagnosticContext;
@@ -15,6 +22,7 @@ import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
+import io.opaa.permission.GroupSizeProperties;
 import io.opaa.query.RetrievalContextFactory;
 import io.opaa.query.SearchedLibraryRef;
 import io.opaa.query.retrieval.CandidateOutcome;
@@ -22,11 +30,14 @@ import io.opaa.query.retrieval.CandidateVerdict;
 import io.opaa.query.retrieval.RetrievalPipeline;
 import io.opaa.query.retrieval.RetrievalPipelineResult;
 import io.opaa.query.retrieval.StageExplanation;
+import io.opaa.space.SpaceGroupContext;
+import io.opaa.space.SpaceService;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -72,6 +83,9 @@ public class SearchDiagnosisService {
   private final ForeignDiagnosticContextService foreignDiagnosticContextService;
   private final DiagnosticImpersonationGrantService grantService;
   private final LibraryDiagnosticsLockService lockService;
+  private final SpaceService spaceService;
+  private final AuditEventRecorder auditEventRecorder;
+  private final GroupSizeProperties groupSizeProperties;
   private final Clock clock;
 
   public SearchDiagnosisService(
@@ -84,6 +98,9 @@ public class SearchDiagnosisService {
       ForeignDiagnosticContextService foreignDiagnosticContextService,
       DiagnosticImpersonationGrantService grantService,
       LibraryDiagnosticsLockService lockService,
+      SpaceService spaceService,
+      AuditEventRecorder auditEventRecorder,
+      GroupSizeProperties groupSizeProperties,
       Clock clock) {
     this.retrievalPipeline = retrievalPipeline;
     this.retrievalContextFactory = retrievalContextFactory;
@@ -94,6 +111,9 @@ public class SearchDiagnosisService {
     this.foreignDiagnosticContextService = foreignDiagnosticContextService;
     this.grantService = grantService;
     this.lockService = lockService;
+    this.spaceService = spaceService;
+    this.auditEventRecorder = auditEventRecorder;
+    this.groupSizeProperties = groupSizeProperties;
     this.clock = clock;
   }
 
@@ -139,19 +159,20 @@ public class SearchDiagnosisService {
         }
         requireNoTargetUser(query);
         GroupDetail profile = groupService.getGroup(query.permissionProfileId(), caller);
-        yield run(
-            caller,
-            query,
+        Set<UUID> scope =
             libraryAccessService.readableLibraryIdsForGroup(
-                query.permissionProfileId(), caller.organizationId()),
-            profile.group().getName(),
-            false);
+                query.permissionProfileId(), caller.organizationId());
+        if (query.spaceId() != null) {
+          scope = narrowToSpace(caller, query, scope, profile);
+        }
+        yield run(caller, query, scope, profile.group().getName(), false);
       }
       case SELF -> {
         if (query.permissionProfileId() != null) {
           throw new ValidationException(
               "Eine Diagnose im eigenen Rechtekontext nimmt kein Rechteprofil entgegen.");
         }
+        requireNoSpace(query);
         requireNoTargetUser(query);
         yield run(
             caller,
@@ -176,6 +197,7 @@ public class SearchDiagnosisService {
       throw new ValidationException(
           "Eine Diagnose im Rechtekontext einer Person nimmt kein Rechteprofil entgegen.");
     }
+    requireNoSpace(query);
     return foreignDiagnosticContextService
         .execute(
             caller,
@@ -190,6 +212,61 @@ public class SearchDiagnosisService {
    * profile, the run shows nothing the executing administrator may not see anyway (Leitplanke (c)),
    * and the Diagnosesperre does not apply to those.
    */
+  /**
+   * The Suchbereich of a profile run in a space, and the protection that makes it admissible at all
+   * (#1835, ADR-0036 Entscheidung 7): the intersection of the space's libraries with the ones the
+   * profile may read, but only once the group reaches the space with at least {@link
+   * GroupSizeProperties#minimumGroupSize()} active accounts. The check runs <b>at the moment of the
+   * run</b>, not at selection: a group that was big enough yesterday may be a single person today,
+   * and a profile that names one person is a person context without its Vollmacht. Only a run that
+   * passes is protocolled - one entry, the group id as target, no person anywhere in it.
+   */
+  private Set<UUID> narrowToSpace(
+      CurrentUser caller, DiagnosisQuery query, Set<UUID> readable, GroupDetail profile) {
+    SpaceGroupContext context =
+        spaceService.spaceGroupContext(query.spaceId(), query.permissionProfileId(), caller);
+    if (context.activeMembersWithSpaceAccess() < groupSizeProperties.minimumGroupSize()) {
+      throw new AccessDeniedException(
+          "Aus diesem Rechteprofil erreichen zu wenige aktive Konten diesen Space, als dass die"
+              + " Sicht noch eine Gruppe wäre. Für diese Frage ist der Rechtekontext einer Person"
+              + " mit Vollmacht zu wählen.");
+    }
+    recordProfileRun(caller, query, profile, context);
+    Set<UUID> narrowed = new HashSet<>(readable);
+    narrowed.retainAll(context.libraryIds());
+    return narrowed;
+  }
+
+  /**
+   * One entry per run with a space context, never one per query, and never a person: {@code
+   * target_ref} carries the group id, so "kein Personenbezug im Protokoll" stays a property of the
+   * structure rather than of the payload (ADR-0036, Entscheidung 7).
+   */
+  private void recordProfileRun(
+      CurrentUser caller, DiagnosisQuery query, GroupDetail profile, SpaceGroupContext context) {
+    Map<String, Object> payload = new LinkedHashMap<>();
+    payload.put("profileGroupId", query.permissionProfileId().toString());
+    payload.put("profileName", profile.group().getName());
+    payload.put("spaceName", context.spaceName());
+    auditEventRecorder.recordUserActionOnSubject(
+        AuditEvent.builder()
+            .organizationId(caller.organizationId())
+            .actor(caller.id())
+            .type(AuditEventType.SEARCH_DIAGNOSIS_PROFILE_RUN)
+            .object(AuditObjectType.SPACE, context.spaceId(), context.spaceName())
+            .subject(AuditSubjectKind.GROUP, query.permissionProfileId())
+            .after(payload)
+            .outcome(AuditOutcome.SUCCESS)
+            .build());
+  }
+
+  private static void requireNoSpace(DiagnosisQuery query) {
+    if (query.spaceId() != null) {
+      throw new ValidationException(
+          "Ein Space-Kontext ist nur für eine Diagnose als Rechteprofil vorgesehen.");
+    }
+  }
+
   private static void requireNoTargetUser(DiagnosisQuery query) {
     if (query.targetUserId() != null) {
       throw new ValidationException(

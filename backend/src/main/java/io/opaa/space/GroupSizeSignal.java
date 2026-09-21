@@ -1,5 +1,7 @@
 package io.opaa.space;
 
+import io.opaa.permission.GroupSizeProperties;
+
 /**
  * The passive growth signal a group membership carries (ADR-0036, Entscheidung 9): how many active
  * accounts the group reached when it was admitted, and how many it reaches now - "Referat 50: 23
@@ -16,11 +18,10 @@ package io.opaa.space;
  * effective group is admitted deliberately - and the suppression protects members from being
  * identifiable, of which an empty group has none.
  *
- * <p><b>The minimum is a constant here, not a setting yet.</b> ADR-0036 makes it a governance
- * setting with an enforced lower bound of 5 and a default of 5 - the two values coincide, so the
- * delivered behaviour is identical either way, and the setting itself (with its governance event
- * and its administration surface) belongs to #1821. Until then this is the single place the value
- * is read, so making it configurable touches this class and nothing else.
+ * <p><b>This suppression always uses the enforced lower bound</b>, not the configured value: a
+ * house that raises the Mindestgruppengröße for the Diagnose (#1835, {@link GroupSizeProperties})
+ * decides about a rights context there, while this signal only decides whether a size figure is
+ * shown beside an admission. Its governance surface belongs to #1821.
  *
  * <p><b>Protected groups are not covered here.</b> For them the signal drops out entirely
  * (ADR-0036, Entscheidung 9) - the size is the actual disclosure there. The protection flag arrives
@@ -29,8 +30,12 @@ package io.opaa.space;
 public record GroupSizeSignal(
     Integer memberCountAtGrant, Integer memberCountNow, boolean smallGroup, boolean emptyGroup) {
 
-  /** ADR-0036, "Zahlen, die dieser ADR setzt": enforced lower bound and delivered default. */
-  public static final int MINIMUM_GROUP_SIZE = 5;
+  /**
+   * ADR-0036, "Zahlen, die dieser ADR setzt". The one place the number lives is {@link
+   * GroupSizeProperties#ENFORCED_MINIMUM} since #1835, which also holds the configurable value and
+   * refuses a start below the bound.
+   */
+  public static final int MINIMUM_GROUP_SIZE = GroupSizeProperties.ENFORCED_MINIMUM;
 
   /** The signal for a person's membership - a person has no group size. */
   public static final GroupSizeSignal NONE = new GroupSizeSignal(null, null, false, false);

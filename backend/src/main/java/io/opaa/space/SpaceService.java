@@ -295,6 +295,39 @@ public class SpaceService {
   }
 
   /**
+   * The space context of a Rechteprofil-Lauf (#1835, ADR-0036 Entscheidung 7) - the associated
+   * libraries and the size of the group's reach into this space, both read at the moment of the
+   * run. The caller decides what to do with the figure; this method takes no rights decision, which
+   * is why it is readable for the system administration alone through its one caller.
+   *
+   * <p>Reach is counted on <b>every</b> path: an own membership, a membership of any group the
+   * person belongs to, and ownership. Counted against "is in this group" it would be zero for a
+   * group that is itself no space member - structurally, not by configuration.
+   */
+  public SpaceGroupContext spaceGroupContext(UUID spaceId, UUID groupId, CurrentUser caller) {
+    Space space = loadSpace(spaceId, caller);
+    Set<UUID> groupMembers = groupMemberships.activeMemberIds(groupId, caller.organizationId());
+
+    Set<UUID> reaching = new java.util.HashSet<>();
+    reaching.add(space.getOwnerId());
+    for (SpaceMembership membership : space.getMemberships()) {
+      if (membership.isUserSubject()) {
+        reaching.add(membership.getUserId());
+      } else {
+        reaching.addAll(
+            groupMemberships.activeMemberIds(membership.getGroupId(), space.getOrganizationId()));
+      }
+    }
+    long reach = groupMembers.stream().filter(reaching::contains).count();
+
+    return new SpaceGroupContext(
+        space.getId(),
+        space.getName(),
+        associationService.libraryIdsInSpace(space.getId()),
+        Math.toIntExact(reach));
+  }
+
+  /**
    * The Herleitung "warum bin ich in diesem Space" (#1822, ADR-0036 Entscheidung 9). {@code
    * targetUserId} null asks about the caller; naming somebody else is reserved for those who manage
    * the membership here - the same bar {@link #listMembers} carries - and hides every way through a

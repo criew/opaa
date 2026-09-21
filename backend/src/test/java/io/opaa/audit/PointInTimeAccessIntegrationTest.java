@@ -105,6 +105,7 @@ class PointInTimeAccessIntegrationTest {
     jdbcTemplate.update(
         "DELETE FROM audit_actor_pseudonyms WHERE organization_id = ?", organizationId);
     userRepository.deleteAllById(createdUserIds);
+    providerRepository.deleteById(providerId);
     organizationRepository.deleteById(organizationId);
     createdUserIds.clear();
   }
@@ -118,6 +119,8 @@ class PointInTimeAccessIntegrationTest {
     UUID groupId = group("Referat 50");
     grantHistory(groupId, AssetRole.VIEWER, FROM.plus(Duration.ofDays(1)), null);
     membershipHistory(groupId, ordinaryUserId, FROM.plus(Duration.ofDays(2)), null);
+    // The live grant goes with the group; the history row is what has to answer afterwards.
+    jdbcTemplate.update("DELETE FROM asset_grants WHERE subject_group_id = ?", groupId);
     groupRepository.deleteById(groupId);
 
     AccessAsOfResult result = readers(FROM, TO);

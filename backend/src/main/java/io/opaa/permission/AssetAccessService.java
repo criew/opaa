@@ -145,8 +145,8 @@ public class AssetAccessService {
   /**
    * Every asset id of {@code assetType} a single group holds a non-expired grant on - the
    * group-shaped counterpart of {@link #readableAssetIds}, deliberately without the direct user
-   * grants that formula also considers: a permission profile is a role, not a person (#1053).
-   * Uncached for the same reason {@link #readableAssetIds} is.
+   * grants that formula also considers: a permission profile is a group, not a person (#1053,
+   * ADR-0036 Entscheidung 7). Uncached for the same reason {@link #readableAssetIds} is.
    */
   public Set<UUID> grantedAssetIdsForGroup(AssetType assetType, UUID groupId, UUID organizationId) {
     return new HashSet<>(

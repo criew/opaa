@@ -129,6 +129,15 @@ public class SpaceAssetAssociationService {
    * distinguish "no association at all" from "curated, but nothing the viewer may read" (#706
    * review, finding 2).
    */
+  /**
+   * Every library associated with the space, without a rights filter of its own - the Suchbereich a
+   * Rechteprofil-Lauf intersects with the libraries that profile may read (#1835). The intersection
+   * is the rights decision, and it happens at the caller.
+   */
+  public Set<UUID> libraryIdsInSpace(UUID spaceId) {
+    return associationRepository.findLibraryIdsBySpaceId(spaceId);
+  }
+
   public SpaceLibraryLinks listForSpace(UUID spaceId, CurrentUser caller) {
     Space space = loadSpace(spaceId, caller);
     accessPolicy.requireMember(space, caller);

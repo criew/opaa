@@ -93,6 +93,7 @@ class AccessDerivationIntegrationTest {
     jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organizationId);
     createdUserIds.forEach(id -> membershipResolver.invalidateUser(id));
     userRepository.deleteAllById(createdUserIds);
+    providerRepository.deleteById(providerId);
     organizationRepository.deleteById(organizationId);
     createdSpaceIds.clear();
     createdLibraryIds.clear();

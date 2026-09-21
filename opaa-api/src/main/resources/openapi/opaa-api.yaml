@@ -14752,6 +14752,7 @@ components:
           DIAGNOSTIC_IMPERSONATION_REVOKED,
           DIAGNOSTIC_CONTEXT_RETENTION_CHANGED,
           LIBRARY_DIAGNOSTICS_LOCK_CHANGED,
+          SEARCH_DIAGNOSIS_PROFILE_RUN,
           AUDIT_LOG_ACCESSED,
           PERMISSION_HISTORY_ACCESSED,
           LOCAL_SESSION_REVOKED,
@@ -16267,6 +16268,26 @@ components:
           description: >
             Required for PERMISSION_PROFILE, rejected with 400 for SELF and USER. An unknown id
             yields 404.
+        spaceId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >
+            The space whose Suchbereich to run the profile in (#1835, ADR-0036 Entscheidung 7):
+            the searched set is the intersection of the libraries associated with that space and
+            the libraries the profile may read. Only for PERMISSION_PROFILE; rejected with 400 for
+            SELF and USER, 404 for an unknown space.
+
+            Answered with 403 when fewer than the configured Mindestgruppengroesse of active
+            accounts of that group reach that space on any path (own membership, this group,
+            another group, ownership) - a profile that names one person there would be a person
+            context without its Vollmacht, and the answer says that the person context with a
+            Vollmacht is the way to that question. The figure is read at the moment of the run,
+            not at selection.
+
+            A run with a space context writes exactly one protocol entry
+            (SEARCH_DIAGNOSIS_PROFILE_RUN, with the group id as its subject); a run without one
+            writes none.
         targetUserId:
           type: string
           format: uuid
