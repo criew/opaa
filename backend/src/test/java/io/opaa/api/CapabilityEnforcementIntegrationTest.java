@@ -28,10 +28,11 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 /**
- * The three creation paths over HTTP (#1813, ADR-0036 Entscheidung 5): they behave exactly as
- * before while "Alle Konten" holds the delivered capabilities, and they answer {@code 403} with the
- * code {@code CAPABILITY_REQUIRED} as soon as the capability is withdrawn - on the next request, in
- * the same session.
+ * The three creation paths over HTTP (#1813, ADR-0036 Entscheidung 5) and the three object-less
+ * connector probe/selection endpoints (#1856): they behave exactly as before while "Alle Konten"
+ * holds the delivered capabilities, and they answer {@code 403} with the code {@code
+ * CAPABILITY_REQUIRED} as soon as the capability is withdrawn - on the next request, in the same
+ * session.
  *
  * <p>Withdrawals here run through the administration endpoint rather than the repository, so the
  * governance path is the one exercised; {@code SeededRowRestorer} puts the delivered rows back
@@ -191,6 +192,102 @@ class CapabilityEnforcementIntegrationTest {
                 .with(devUser())
                 .content("{\"name\":\"Eigene Ablage\",\"sourceType\":\"UPLOAD\"}"))
         .andExpect(status().isCreated());
+  }
+
+  /**
+   * The object-less probe and the two object-less selection endpoints (#1856): reachable while
+   * "Alle Konten" holds the capability, refused with 403 CAPABILITY_REQUIRED the instant it is
+   * withdrawn - the same connector right {@code createLibrary} itself needs, checked before any
+   * outbound connection is attempted.
+   */
+  @Test
+  void theSourceTestWithoutLibraryIdSucceedsWhileTheConnectorCapabilityIsDelivered()
+      throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/libraries/source-test")
+                .with(devUser())
+                .content(
+                    "{\"sourceType\":\"HTTP_DIRECTORY\",\"sourceUrl\":\"http://127.0.0.2:1/\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.reachable").value(false));
+  }
+
+  @Test
+  void theSourceTestWithoutLibraryIdIsRefusedOnceTheConnectorCapabilityIsWithdrawn()
+      throws Exception {
+    revokeFromAllAccounts(Capability.CREATE_CONNECTOR_LIBRARY);
+
+    mockMvc
+        .perform(
+            post("/api/v1/libraries/source-test")
+                .with(devUser())
+                .content(
+                    "{\"sourceType\":\"HTTP_DIRECTORY\",\"sourceUrl\":\"http://127.0.0.2:1/\"}"))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("CAPABILITY_REQUIRED"));
+  }
+
+  @Test
+  void theConfluenceSpaceListingWithoutLibraryIdSucceedsWhileTheConnectorCapabilityIsDelivered()
+      throws Exception {
+    // A loopback address outside the outbound target validation's allowlist - refused with 400,
+    // proof the request passed the capability gate rather than being blocked at it.
+    mockMvc
+        .perform(
+            post("/api/v1/libraries/confluence/spaces")
+                .with(devUser())
+                .content(
+                    "{\"sourceUrl\":\"http://127.0.0.2:9/confluence\","
+                        + "\"confluenceEdition\":\"DATA_CENTER\",\"sourceCredentials\":\"pat\"}"))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void theConfluenceSpaceListingWithoutLibraryIdIsRefusedOnceTheConnectorCapabilityIsWithdrawn()
+      throws Exception {
+    revokeFromAllAccounts(Capability.CREATE_CONNECTOR_LIBRARY);
+
+    mockMvc
+        .perform(
+            post("/api/v1/libraries/confluence/spaces")
+                .with(devUser())
+                .content(
+                    "{\"sourceUrl\":\"http://127.0.0.2:9/confluence\","
+                        + "\"confluenceEdition\":\"DATA_CENTER\",\"sourceCredentials\":\"pat\"}"))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("CAPABILITY_REQUIRED"));
+  }
+
+  @Test
+  void theS3BucketListingWithoutLibraryIdSucceedsWhileTheConnectorCapabilityIsDelivered()
+      throws Exception {
+    // A loopback endpoint outside the outbound target validation's allowlist - refused with 400,
+    // proof the request passed the capability gate rather than being blocked at it.
+    mockMvc
+        .perform(
+            post("/api/v1/libraries/s3/buckets")
+                .with(devUser())
+                .content(
+                    "{\"sourceUrl\":\"http://127.0.0.2:9000\","
+                        + "\"sourceCredentials\":\"AKIAEXAMPLE:secret\"}"))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void theS3BucketListingWithoutLibraryIdIsRefusedOnceTheConnectorCapabilityIsWithdrawn()
+      throws Exception {
+    revokeFromAllAccounts(Capability.CREATE_CONNECTOR_LIBRARY);
+
+    mockMvc
+        .perform(
+            post("/api/v1/libraries/s3/buckets")
+                .with(devUser())
+                .content(
+                    "{\"sourceUrl\":\"http://127.0.0.2:9000\","
+                        + "\"sourceCredentials\":\"AKIAEXAMPLE:secret\"}"))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("CAPABILITY_REQUIRED"));
   }
 
   @Test

@@ -158,6 +158,14 @@ Entscheidung 5, die damit ADR-0018, Entscheidung 6 samt Nachtrag ablöst.
 - **`CREATE_CONNECTOR_LIBRARY` ist eine eigene Fähigkeit**, weil Konnektorbibliotheken Serverpfade und
   Zugangsdaten erreichen und die Freigabe-Obergrenze für Fremdzugänge tragen — der erste Kandidat, den
   ein Haus nach der Migration auf eine benannte Gruppe einschränkt.
+- **Dieselbe Fähigkeit gilt auch objektlos, vor der Anlage** (#1856): `POST
+  /api/v1/libraries/source-test` ohne `libraryId` sowie die beiden Auswahl-Endpunkte
+  `POST /api/v1/libraries/confluence/spaces` und `POST /api/v1/libraries/s3/buckets` ohne
+  `libraryId` sondieren Serverpfade und Zugangsdaten, ohne dass schon eine Bibliothek existiert, an
+  der eine Rolle geprüft werden könnte — sie verlangen deshalb dasselbe Anlegerecht wie das Anlegen
+  selbst. Mit `libraryId` bleibt es bei der bestehenden `MANAGER`-Schranke der Bibliothek; die
+  Pfad-Allowlist und die Zielprüfung bleiben in beiden Fällen unverändert unabhängig von der
+  Berechtigung.
 - **Die Auswertung** lautet: `SYSTEM_ADMIN` **oder** Erteilung an „Alle Konten" **oder** an das Konto
   **oder** an eine seiner Gruppen. `SYSTEM_ADMIN` besitzt damit jede Fähigkeit implizit; **die Rolle
   `AUDITOR` verleiht keine** — sie ist ein Lesepfad in das Protokoll und sonst nichts.

@@ -116,7 +116,10 @@ export default function ConfluenceSourceForm({
         ...connectionPayload(),
         confluenceEdition: values.edition,
         sourceCredentials: confluenceCredentialsOf(values),
-        libraryId: usesStoredCredentials ? libraryId : undefined,
+        // #1856 review: sent whenever this instance edits an existing library, not only while the
+        // stored-credentials fallback applies - without libraryId, the listing needs
+        // CREATE_CONNECTOR_LIBRARY (ADR-0036, Entscheidung 5), a right a MANAGER need not hold.
+        libraryId: mode === 'edit' ? libraryId : undefined,
       })
       if (generation.current !== mine) return
       setAvailableSpaces(result.spaces)
@@ -127,7 +130,7 @@ export default function ConfluenceSourceForm({
     } finally {
       if (generation.current === mine) setLoadingSpaces(false)
     }
-  }, [connectionPayload, libraryId, usesStoredCredentials, values])
+  }, [connectionPayload, libraryId, mode, values])
 
   // Verified credentials without a listing yet - the stored ones in edit mode, or the wizard
   // remounting this step after "Zurück" - load the spaces right away, once.
@@ -206,7 +209,8 @@ export default function ConfluenceSourceForm({
         ...connectionPayload(),
         confluenceEdition: values.edition,
         sourceCredentials: confluenceCredentialsOf(values),
-        libraryId: usesStoredCredentials ? libraryId : undefined,
+        // #1856 review: same reasoning as loadSpaces above.
+        libraryId: mode === 'edit' ? libraryId : undefined,
       })
       if (generation.current !== mine) return
       if (result.credentialsVerified) {

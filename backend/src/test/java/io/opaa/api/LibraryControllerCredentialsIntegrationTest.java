@@ -368,7 +368,10 @@ class LibraryControllerCredentialsIntegrationTest {
   // --- POST /api/v1/libraries/source-test (#514) -------------------------------------------
   //
   // Wiring, authentication, and that a caller need not own or hold any role on an (as yet
-  // nonexistent) library - the same minimum bar POST /api/v1/libraries itself applies. {@link
+  // nonexistent) library - the same CREATE_CONNECTOR_LIBRARY capability bar POST /api/v1/libraries
+  // itself applies for a connector sourceType (#1856), delivered to "Alle Konten" and therefore
+  // held by dev-user in these tests; {@link CapabilityEnforcementIntegrationTest} covers its
+  // withdrawal for this endpoint and the two selection endpoints. {@link
   // io.opaa.library.SourceConnectionTestServiceTest} already covers the per-quellentyp behaviour
   // in depth; these only pin the HTTP layer around it. See this class's own Javadoc for why they
   // live here rather than in a dedicated test class.
