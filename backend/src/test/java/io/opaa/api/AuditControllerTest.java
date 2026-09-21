@@ -20,6 +20,7 @@ import io.opaa.audit.AuditQueryService;
 import io.opaa.auth.AdminTestSecurityConfig;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
+import io.opaa.revision.PointInTimeAccessService;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
@@ -76,6 +77,7 @@ class AuditControllerTest {
   @Autowired private MockMvc mockMvc;
   @MockitoBean private AuditQueryService queryService;
   @MockitoBean private AuditIncidentScopeService incidentScopeService;
+  @MockitoBean private PointInTimeAccessService pointInTimeAccessService;
   @MockitoBean private UserService userService;
 
   private final UUID organizationId = UUID.randomUUID();
@@ -349,16 +351,17 @@ class AuditControllerTest {
   /**
    * #393 code review, nit 4: the other half of the same finding - a hardcoded method-name list (as
    * the two tests above no longer use) would silently stop covering a newly added access path. This
-   * asserts the controller's public HTTP-handler surface still consists of exactly the seven #393
-   * endpoints; growing that list is a deliberate reminder to add the new method to the checks above
-   * as well, not an assertion this test is expected to keep failing forever.
+   * asserts the controller's public HTTP-handler surface still consists of exactly the known
+   * endpoints - the seven of #393 plus the Stichtagsauskunft of #1822; growing that list is a
+   * deliberate reminder to add the new method to the checks above as well, not an assertion this
+   * test is expected to keep failing forever.
    */
   @Test
   void forbiddenSubstringsCoverAllDeclaredParameterNames() {
     List<String> methodNames = httpHandlerMethods().stream().map(Method::getName).sorted().toList();
 
     failIf(
-        methodNames.size() != 7,
+        methodNames.size() != 8,
         "AuditController's public HTTP-handler method count changed to "
             + methodNames.size()
             + " ("
