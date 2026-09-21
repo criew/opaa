@@ -42,6 +42,7 @@ import { resolveThemeMode } from './theme/colorScheme'
 import BrandingSettingsPage from './pages/BrandingSettingsPage'
 import LlmModelManagementPage from './pages/LlmModelManagementPage'
 import OidcProviderManagementPage from './pages/OidcProviderManagementPage'
+import RightsHistoryPage from './pages/RightsHistoryPage'
 import SearchIndexingAdminPage from './pages/SearchIndexingAdminPage'
 import MailSettingsPage from './pages/MailSettingsPage'
 import ExternalAccessLibrariesPage from './pages/ExternalAccessLibrariesPage'
@@ -187,6 +188,11 @@ export default function App() {
               </Route>
               {/* Mockup 2c (#788): the user settings render in the bare global frame -
                   no space column, no secondary column. */}
+              {/* Die Stichtagsauskunft der Revision (#1822): eigener Bereich, nicht unter
+                  /admin - sie gehoert der AUDITOR-Rolle, nicht der Systemverwaltung. */}
+              <Route element={<GlobalAreaLayout />}>
+                <Route path="revision/rechtehistorie" element={<RightsHistoryPage />} />
+              </Route>
               <Route element={<GlobalAreaLayout />}>
                 <Route path="settings" element={<SettingsPage />} />
                 <Route path="settings/:tab" element={<SettingsPage />} />

@@ -2,6 +2,7 @@ package io.opaa.permission;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import io.opaa.auth.AccountActivityService;
 import io.opaa.auth.UserRepository;
 import java.time.Duration;
 import java.util.Collection;
@@ -35,15 +36,18 @@ public class GroupMembershipResolver {
 
   private final GroupMembershipSource membershipSource;
   private final UserRepository userRepository;
+  private final AccountActivityService accountActivity;
   private final ObjectProvider<GroupMembershipChangeListener> changeListeners;
   private final Cache<UUID, Set<UUID>> groupIdsByUser;
 
   public GroupMembershipResolver(
       GroupMembershipSource membershipSource,
       UserRepository userRepository,
+      AccountActivityService accountActivity,
       ObjectProvider<GroupMembershipChangeListener> changeListeners) {
     this.membershipSource = membershipSource;
     this.userRepository = userRepository;
+    this.accountActivity = accountActivity;
     this.changeListeners = changeListeners;
     // A stale entry only ever grants access a moment too long between a completed transaction's
     // invalidation and its next read, never too little - invalidateUser/invalidateUsers below,
@@ -81,21 +85,32 @@ public class GroupMembershipResolver {
   }
 
   /**
-   * How many active accounts a grant or a space membership to this group currently reaches - the
-   * figure ADR-0036, Entscheidung 9 stores at the moment of the grant and compares against "today".
+   * How many <b>active</b> accounts a grant or a space membership to this group currently reaches -
+   * the figure ADR-0036, Entscheidung 9 stores at the moment of the grant and compares against
+   * "today", and the one ADR-0036, Entscheidung 7 measures a Rechteprofil against.
    *
-   * <p><b>Today every member account counts as active.</b> A general account state (active/blocked)
-   * does not exist yet - {@code LocalAccountState} is the derived state of a <em>local</em>
-   * credential, not of the account - and #1818 introduces it. This method is the one place that has
-   * to narrow then, so no caller carries its own notion of "active".
+   * <p><b>Counted are accounts, not membership rows</b> (#1818): the membership of a locked account
+   * stays in force, and it is this count - not the rights resolution - that leaves it out. What
+   * counts as active is {@link AccountActivityService}, the one place that joins the directory lock
+   * with the derived state of a local credential; no caller carries a notion of its own.
    *
-   * <p>Counts in the database rather than sizing {@link #resolveUserIds}: this sits on the list
-   * path of every space a caller sees, and a department's whole membership is a large answer to a
-   * question about its size.
+   * <p>Since #1818 this sizes {@link #activeMemberIds} instead of counting rows in the database: a
+   * count over {@code group_memberships} cannot tell a locked account from an active one. The price
+   * is the member ids of the group plus their accounts, on the list path of every space.
    */
   public int activeMemberCount(UUID groupId, UUID organizationId) {
-    return Math.toIntExact(
-        membershipSource.countUserIdsByGroupIdAndOrganizationId(groupId, organizationId));
+    return activeMemberIds(groupId, organizationId).size();
+  }
+
+  /**
+   * The active accounts of a group by id - {@link #activeMemberCount}'s sibling for a caller that
+   * has to intersect them with something else (#1835: the Mindestgruppengröße counts the members
+   * who also reach one space). Same definition of "active", by construction: the count is this
+   * set's size.
+   */
+  public Set<UUID> activeMemberIds(UUID groupId, UUID organizationId) {
+    return accountActivity.activeAmong(
+        membershipSource.findUserIdsByGroupIdAndOrganizationId(groupId, organizationId));
   }
 
   private Set<UUID> resolveUserSubject(PermissionSubject subject) {

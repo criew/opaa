@@ -68,6 +68,9 @@ class SearchDiagnosisClockTest {
             mock(ForeignDiagnosticContextService.class),
             mock(DiagnosticImpersonationGrantService.class),
             mock(io.opaa.diagnosticaccess.LibraryDiagnosticsLockService.class),
+            mock(io.opaa.space.SpaceService.class),
+            mock(io.opaa.audit.AuditEventRecorder.class),
+            new io.opaa.permission.GroupSizeProperties(null),
             fixedClock);
 
     SearchDiagnosis diagnosis =

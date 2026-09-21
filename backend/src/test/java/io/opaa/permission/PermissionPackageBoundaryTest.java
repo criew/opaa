@@ -43,6 +43,7 @@ class PermissionPackageBoundaryTest {
   private static final String LIBRARY = "io.opaa.library";
   private static final String GROUP = "io.opaa.group";
   private static final String SPACE = "io.opaa.space";
+  private static final String AUDIT = "io.opaa.audit";
 
   /**
    * Deliberately the subpackage, not {@code io.opaa.auth}: {@code
@@ -53,26 +54,41 @@ class PermissionPackageBoundaryTest {
 
   /** Ordered pairs that must not exist, each with the reason a reviewer needs. */
   private static final Map<List<String>, String> FORBIDDEN_EDGES =
-      Map.of(
-          List.of(PERMISSION, LIBRARY),
+      Map.ofEntries(
+          Map.entry(
+              List.of(PERMISSION, LIBRARY),
               "the permission model must not know an asset type - a library reaches it through"
-                  + " AssetType plus id",
-          List.of(PERMISSION, GROUP),
-              "the permission model asks for memberships and group subjects through its own ports",
-          List.of(PERMISSION, SPACE),
-              "a space is the third consumer of the permission model, not part of it",
-          List.of(LIBRARY, GROUP), "one half of the cycle ADR-0036, Entscheidung 12 resolved",
-          List.of(GROUP, LIBRARY), "the other half of that cycle",
-          List.of(GROUP, SPACE), "a group must not learn where its members are organized",
-          List.of(SPACE, GROUP),
-              "a space reaches groups through the permission model, like every other consumer",
-          List.of(LIBRARY, SPACE),
+                  + " AssetType plus id"),
+          Map.entry(
+              List.of(PERMISSION, GROUP),
+              "the permission model asks for memberships and group subjects through its own ports"),
+          Map.entry(
+              List.of(PERMISSION, SPACE),
+              "a space is the third consumer of the permission model, not part of it"),
+          Map.entry(
+              List.of(LIBRARY, GROUP), "one half of the cycle ADR-0036, Entscheidung 12 resolved"),
+          Map.entry(List.of(GROUP, LIBRARY), "the other half of that cycle"),
+          Map.entry(
+              List.of(GROUP, SPACE), "a group must not learn where its members are organized"),
+          Map.entry(
+              List.of(SPACE, GROUP),
+              "a space reaches groups through the permission model, like every other consumer"),
+          Map.entry(
+              List.of(LIBRARY, SPACE),
               "space -> library is the one allowed direction between business packages; the"
-                  + " counter-direction would make it a cycle",
-          List.of(OIDC, GROUP),
+                  + " counter-direction would make it a cycle"),
+          Map.entry(
+              List.of(OIDC, GROUP),
               "the provider administration reaches groups through ProviderGroupDirectory, which"
                   + " io.opaa.group implements - the counter-direction (group -> auth.oidc, for"
-                  + " the provider a group originates from) is the one that exists");
+                  + " the provider a group originates from) is the one that exists"),
+          Map.entry(
+              List.of(AUDIT, PERMISSION),
+              "every fachpaket writes its events through io.opaa.audit, so a dependency out of it"
+                  + " is a cycle - a reading path that composes several of them lives in"
+                  + " io.opaa.revision, above all of them (#1822)"),
+          Map.entry(List.of(AUDIT, LIBRARY), "same direction, same reason"),
+          Map.entry(List.of(AUDIT, SPACE), "same direction, same reason"));
 
   private static List<Reference> references;
 

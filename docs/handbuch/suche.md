@@ -691,7 +691,11 @@ rekonstruiert.
 |---|---|---|
 | eigener Rechtekontext | Systemadministrator | die eigenen Leserechte |
 | Rechteprofil (eine Gruppe mit ihrer lesbaren Bibliotheksmenge) | Systemadministrator | Voreinstellung; Installationen, die Rechte nur einzeln statt über Gruppen vergeben, haben keine Profile, und die Seite sagt das |
+| Rechteprofil **in einem Space** | Systemadministrator | Sucht die Schnittmenge aus den Bibliotheken des Space und den für die Gruppe lesbaren. Nur zulässig, wenn mindestens `OPAA_MINIMUM_GROUP_SIZE` aktive Konten der Gruppe diesen Space auf irgendeinem Weg erreichen — geprüft beim Lauf, nicht bei der Auswahl; sonst `403` mit dem Hinweis auf den Personenkontext. Jeder solche Lauf erzeugt **einen** Protokolleintrag (Person, Profil, Space, Zeitpunkt) |
 | Person („Sicht als") | nur mit einzeln vergebener, befristeter Befugnis, die aus keiner Rolle folgt | Pflichtbegründung vor dem Lauf, Protokolleintrag, Abzug der diagnosegesperrten Bibliotheken; das Ergebnis wird nirgends gespeichert |
+
+Die Diagnose bleibt Systemadministratoren vorbehalten; keine Anlegerecht-Vergabe öffnet sie. Sie ist
+kein Nachweis über vergangene Zugriffe — dafür gibt es die Stichtagsauskunft der Revision.
 
 Die Oberfläche zeigt jede Stufe unter ihrer deutschen Bezeichnung. Referenz zwischen Handbuch,
 Spezifikation und dem API-Feld `stage` des Erklärprotokolls ist der technische Name

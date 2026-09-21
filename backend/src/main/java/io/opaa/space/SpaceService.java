@@ -2,6 +2,7 @@ package io.opaa.space;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import io.opaa.api.types.AccessBasis;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
@@ -21,9 +22,12 @@ import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.OrganizationScopedLoader;
 import io.opaa.common.ValidationException;
+import io.opaa.permission.AccessPath;
 import io.opaa.permission.AssetOwnershipHistoryService;
 import io.opaa.permission.CapabilityService;
+import io.opaa.permission.GroupAttribution;
 import io.opaa.permission.GroupMembershipResolver;
+import io.opaa.permission.GroupSizeProperties;
 import io.opaa.permission.GroupSubject;
 import io.opaa.permission.GroupSubjectDirectory;
 import io.opaa.permission.PermissionSubject;
@@ -62,6 +66,7 @@ public class SpaceService {
   private final GroupMembershipResolver groupMemberships;
   private final GroupSubjectDirectory groupDirectory;
   private final CapabilityService capabilityService;
+  private final GroupSizeProperties groupSizeProperties;
   private final TransactionTemplate requiresNewTransactionTemplate;
 
   /**
@@ -84,6 +89,7 @@ public class SpaceService {
       GroupMembershipResolver groupMemberships,
       GroupSubjectDirectory groupDirectory,
       CapabilityService capabilityService,
+      GroupSizeProperties groupSizeProperties,
       PlatformTransactionManager transactionManager) {
     this.spaceRepository = spaceRepository;
     this.chatRepository = chatRepository;
@@ -96,6 +102,7 @@ public class SpaceService {
     this.groupMemberships = groupMemberships;
     this.groupDirectory = groupDirectory;
     this.capabilityService = capabilityService;
+    this.groupSizeProperties = groupSizeProperties;
     this.requiresNewTransactionTemplate = new TransactionTemplate(transactionManager);
     this.requiresNewTransactionTemplate.setPropagationBehavior(
         TransactionDefinition.PROPAGATION_REQUIRES_NEW);
@@ -292,14 +299,120 @@ public class SpaceService {
   }
 
   /**
+   * The space context of a Rechteprofil-Lauf (#1835, ADR-0036 Entscheidung 7) - the associated
+   * libraries and the size of the group's reach into this space, both read at the moment of the
+   * run. The caller decides what to do with the figure; this method takes no rights decision, which
+   * is why it is readable for the system administration alone through its one caller.
+   *
+   * <p>Reach is counted on <b>every</b> path: an own membership, a membership of any group the
+   * person belongs to, and ownership. Counted against "is in this group" it would be zero for a
+   * group that is itself no space member - structurally, not by configuration.
+   */
+  public SpaceGroupContext spaceGroupContext(UUID spaceId, UUID groupId, CurrentUser caller) {
+    Space space = loadSpace(spaceId, caller);
+    Set<UUID> groupMembers = groupMemberships.activeMemberIds(groupId, caller.organizationId());
+
+    Set<UUID> reaching = new java.util.HashSet<>();
+    reaching.add(space.getOwnerId());
+    for (SpaceMembership membership : space.getMemberships()) {
+      if (membership.isUserSubject()) {
+        reaching.add(membership.getUserId());
+      } else {
+        reaching.addAll(
+            groupMemberships.activeMemberIds(membership.getGroupId(), space.getOrganizationId()));
+      }
+    }
+    long reach = groupMembers.stream().filter(reaching::contains).count();
+
+    return new SpaceGroupContext(
+        space.getId(),
+        space.getName(),
+        associationService.libraryIdsInSpace(space.getId()),
+        Math.toIntExact(reach));
+  }
+
+  /**
+   * The Herleitung "warum bin ich in diesem Space" (#1822, ADR-0036 Entscheidung 9). {@code
+   * targetUserId} null asks about the caller; naming somebody else is reserved for those who manage
+   * the membership here - the same bar {@link #listMembers} carries - and hides every way through a
+   * protected group. A person this space does not reach at all is 404, like an unknown space: an
+   * empty answer would confirm both the space and the absence.
+   */
+  public SpaceAccessDerivation accessDerivation(
+      UUID spaceId, UUID targetUserId, CurrentUser caller) {
+    Space space = loadSpace(spaceId, caller);
+    boolean thirdParty = targetUserId != null && !targetUserId.equals(caller.id());
+    if (thirdParty && !caller.isSystemAdmin()) {
+      accessPolicy.requireMemberListViewer(space, caller);
+    } else if (!thirdParty) {
+      accessPolicy.requireMember(space, caller);
+    }
+
+    UUID subjectId = targetUserId == null ? caller.id() : targetUserId;
+    Set<UUID> groupIds = groupMemberships.groupIdsForUser(subjectId);
+    SpaceRole effectiveRole = SpaceAccessPolicy.effectiveRole(space, subjectId, groupIds);
+
+    List<SpaceMembership> reaching =
+        space.getMemberships().stream()
+            .filter(
+                membership ->
+                    membership.isUserSubject()
+                        ? subjectId.equals(membership.getUserId())
+                        : groupIds.contains(membership.getGroupId()))
+            .toList();
+    Map<UUID, GroupAttribution> attributions =
+        groupDirectory.attributionsById(
+            reaching.stream()
+                .filter(SpaceMembership::isGroupSubject)
+                .map(SpaceMembership::getGroupId)
+                .toList());
+
+    List<AccessPath> paths = new ArrayList<>();
+    boolean withheld = false;
+    if (space.getOwnerId().equals(subjectId)) {
+      paths.add(AccessPath.ofSpace(AccessBasis.OWNERSHIP, SpaceRole.ADMIN, null, null));
+    }
+    for (SpaceMembership membership : reaching) {
+      if (membership.isUserSubject()) {
+        paths.add(
+            AccessPath.ofSpace(
+                AccessBasis.DIRECT_MEMBERSHIP,
+                membership.getRole(),
+                membership.getCreatedAt(),
+                null));
+        continue;
+      }
+      GroupAttribution group = attributions.get(membership.getGroupId());
+      if (thirdParty && group != null && group.protectedGroup()) {
+        withheld = true;
+        continue;
+      }
+      paths.add(
+          AccessPath.ofSpace(
+              AccessBasis.GROUP_MEMBERSHIP,
+              membership.getRole(),
+              membership.getCreatedAt(),
+              group));
+    }
+    if (paths.isEmpty() && !withheld) {
+      if (thirdParty || !caller.isSystemAdmin()) {
+        throw new NotFoundException("Space nicht gefunden");
+      }
+      paths.add(AccessPath.ofSpace(AccessBasis.SYSTEM_ADMINISTRATION, null, null, null));
+    }
+    return new SpaceAccessDerivation(
+        space.getId(), subjectId, effectiveRole, List.copyOf(paths), withheld);
+  }
+
+  /**
    * The growth signal of a group membership (ADR-0036, Entscheidung 9), with the "kleine Gruppe"
    * suppression applied - see {@link GroupSizeSignal}.
    */
   private GroupSizeSignal groupSizeSignal(SpaceMembership membership) {
     return GroupSizeSignal.of(
         membership.getMemberCountAtGrant(),
-        groupMemberships.activeMemberCount(
-            membership.getGroupId(), membership.getOrganizationId()));
+        groupMemberships.activeMemberCount(membership.getGroupId(), membership.getOrganizationId()),
+        groupSizeProperties.minimumGroupSize());
   }
 
   /**

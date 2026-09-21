@@ -142,6 +142,11 @@ spring:
         dimensions: ${OPAA_PGVECTOR_DIMENSIONS:1536}
 
 opaa:
+  permission:
+    # Mindestgruppengroesse eines Rechteprofil-Laufs mit Space-Kontext (ADR-0036, #1835). 5 ist
+    # zugleich Voreinstellung und erzwungene Untergrenze: GroupSizeProperties bricht den Start bei
+    # einem kleineren Wert ab.
+    minimum-group-size: ${OPAA_MINIMUM_GROUP_SIZE:5}
   database:
     # PostgreSQL schema that holds every table of OPAA (ADR-0034). It must exist and belong to the
     # database account before the first start; validated by io.opaa.config.DatabaseSchemaGuard.

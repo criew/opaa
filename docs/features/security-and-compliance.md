@@ -598,6 +598,54 @@ Pseudonymisierung ab Schreibzeitpunkt — ist damit **nicht** eingelöst:
 ihn auf und koppelt die Pseudonymisierung an den Personen-Einstieg und die Kontolöschung
 (#391/#395); der Satz selbst wird mit #1824 umgeschrieben.
 
+### Der Lesepfad: Stichtagsauskunft (#1822)
+
+Bis #1822 war die Rekonstruktion gebaut, aber ohne Endpunkt: Die Prüferfrage war nur per SQL
+beantwortbar. Sie ist jetzt eine Funktion der Rolle `AUDITOR`
+(`GET /api/v1/audit/access-as-of`) — mit dem **Objekt-Einstieg** und den Schutzregeln aus
+[ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md), Entscheidung 8:
+
+- **Genau ein benanntes Objekt je Abfrage** (`objectType` plus `objectId`; eine Wissensbibliothek
+  beantwortet „wer durfte lesen", ein Space „wer war Mitglied"). Keine Sammelabfrage über einen
+  Space, eine Organisationseinheit oder einen Bibliotheksfilter — sonst setzte ein `AUDITOR` aus
+  dreißig Objektabfragen desselben Referats das Rechteprofil jeder Person dieses Referats zusammen,
+  ohne Vollmacht.
+- **Pflichtzeitfenster und Seitenobergrenze**, dieselben wie bei jedem anderen Revisionsweg: 92
+  Tage, Seite 49, 200 Zeilen je Seite. Eine zu weite Anfrage wird **abgelehnt, nicht
+  zurechtgestutzt**.
+- **Pflichtanlass**, und **jeder Abruf ist selbst ein Protokollereignis** —
+  `PERMISSION_HISTORY_ACCESSED`, der abgewiesene Versuch eingeschlossen (`outcome = DENIED`).
+  Anders als beim Selbstprotokoll des Protokollzugriffs ist das Objekt des Eintrags **die abgefragte
+  Bibliothek oder der abgefragte Space**, damit der Abruf über den Objektweg wiederfindbar ist.
+- **Die Antwort nennt die Aufbewahrungsgrenze mit** (`retentionCutoff`, `beyondRetention`): Vor ihr
+  sind die abgeschlossenen Intervalle gelöscht, eine leere Antwort dort heißt „nicht mehr
+  nachgewiesen" und nicht „kein Zugriff". Ohne diese Unterscheidung läse sich eine Lücke als
+  Freispruch.
+- **Und sie nennt die Quellenlücke** (`sourcesNotCovered`). [ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md),
+  Entscheidung 8 führt acht Quellen; historisiert sind heute Asset-Grants, Gruppenmitgliedschaft,
+  Reichweite und Space-Mitgliedschaft. **Nicht** nachgewiesen sind **Systemrolle**, **Eigentum**
+  (#1819), **Fähigkeit** (#1813) und **Kontozustand** (#1818) — die Systemrolle wiegt dabei am
+  schwersten: `LibraryAccessService#effectiveRole` gibt einer Systemverwaltung auf jeder Bibliothek
+  ihrer Organisation `OWNER`, und kein Intervall hält das fest. Die Auskunft schreibt deshalb nie
+  „niemand hatte Zugriff", sondern nennt die Quellen, über die sie nichts sagen kann; die Ansicht
+  zeigt sie mit.
+- **Die Grenzen begrenzen die Arbeit, nicht nur die Ausgabe.** Trägt eine Quelle im gewählten
+  Fenster mehr als 2000 Intervalle bei, oder umfasste die zusammengesetzte Antwort mehr als 5000
+  Zugriffszeiträume, wird die Abfrage **abgelehnt** mit der Bitte, das Fenster enger zu fassen —
+  aus demselben Grund, aus dem ein zu weites Zeitfenster abgelehnt und nicht gekürzt wird: Eine
+  gekürzte Auskunft sähe vollständig aus.
+- **Der Personen-Einstieg** („worauf hatte Person X am 3. März Zugriff") ist **nicht** Teil dieses
+  Endpunkts und bleibt bis #391/#395 geschlossen; er verlangt dann eine eigene, befristete,
+  begründete Vier-Augen-Vollmacht nach dem Muster des Vorfallsbereichs.
+- **Getrennt von der Suchdiagnose:** Die Diagnose beantwortet den Jetzt-Zustand, die
+  Stichtagsauskunft die Vergangenheit; keines ersetzt das andere
+  ([hybrid-retrieval.md](./hybrid-retrieval.md), Berechtigungs-Leitplanke (b)).
+
+Die Auskunft liest die Historie, nie den heutigen Bestand: Eine seither gelöschte Gruppe erklärt
+einen Zugriff weiterhin — mit ihrer Kennung, aber **ohne Namen**, weil die Historie keinen
+Namensschnappschuss führt (ADR-0036, Entscheidung 2: der ist erst zusammen mit der
+Aufbewahrungshöchstdauer zulässig und kommt mit #1812/#1824).
+
 **Regressionsprüfung gegen Filterfehler:** Wendet eine Abfrage einen Suchbereich an, der eine nach der
 Historie zu diesem Zeitpunkt nicht lesbare Bibliothek enthält, ist das ein beweisbarer
 Durchsetzungsfehler. Der Nachweis führt über die **Rechtehistorie** und ihre Rekonstruktion zum
