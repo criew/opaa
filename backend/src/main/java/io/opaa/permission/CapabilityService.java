@@ -296,6 +296,12 @@ public class CapabilityService {
    * The same "wirksame Gruppe" rule {@code AssetGrantService#requireGrantableGroup} applies to an
    * asset grant (ADR-0036, Begriffe): a dissolved group, or one of a switched-off identity
    * provider, keeps the rights it has but receives no new one.
+   *
+   * <p>The release of ADR-0036, Entscheidung 9 is deliberately <b>not</b> asked here: every caller
+   * of {@link #grant} is {@code SYSTEM_ADMIN}-only ({@code CapabilityController}, held by {@code
+   * CapabilityEnforcementIntegrationTest#managingCapabilitiesIsReservedToTheSystemAdministration}),
+   * and {@code GroupSubjectDirectory#isSelectableBy} answers true for a system administrator
+   * whatever the release says. Opening this path to another role means adding the check.
    */
   private void requireEffectiveGroup(UUID groupId, UUID organizationId) {
     if (groupId == null) {

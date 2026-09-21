@@ -15,6 +15,8 @@ import io.opaa.group.Group;
 import io.opaa.group.GroupMembership;
 import io.opaa.group.GroupRepository;
 import io.opaa.group.GroupService;
+import io.opaa.group.GroupSteward;
+import io.opaa.group.GroupStewardRepository;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.permission.AssetOwnershipHistoryCause;
@@ -50,6 +52,7 @@ class SpaceGroupMembershipIntegrationTest {
   @Autowired private AssetOwnershipHistoryRepository ownershipHistoryRepository;
   @Autowired private GroupService groupService;
   @Autowired private GroupRepository groupRepository;
+  @Autowired private GroupStewardRepository stewardRepository;
   @Autowired private GroupMembershipResolver groupMembershipResolver;
   @Autowired private UserRepository userRepository;
   @Autowired private OrganizationRepository organizationRepository;
@@ -79,6 +82,7 @@ class SpaceGroupMembershipIntegrationTest {
             "asset_ownership_history",
             "group_membership_history",
             "group_memberships",
+            "group_stewards",
             "groups")) {
       jdbcTemplate.update(
           "DELETE FROM " + table + " WHERE organization_id IN (?, ?)",
@@ -116,6 +120,7 @@ class SpaceGroupMembershipIntegrationTest {
     UUID owner = createUser(organizationA);
     UUID person = createUser(organizationA);
     UUID group = createGroup(organizationA, "Referat 50", person);
+    makeSteward(group, owner);
     Space space = createSpace(owner);
     spaceService.addMember(
         space.getId(), groupSubject(group), SpaceRole.MEMBER, currentUserOf(owner));
@@ -240,6 +245,7 @@ class SpaceGroupMembershipIntegrationTest {
   void theMemberCountAtGrantIsStoredAndComparedAgainstTodaysFigure() {
     UUID owner = createUser(organizationA);
     UUID group = createGroup(organizationA, "Referat 50", fiveUsers(organizationA));
+    makeSteward(group, owner);
     Space space = createSpace(owner);
     spaceService.addMember(
         space.getId(), groupSubject(group), SpaceRole.MEMBER, currentUserOf(owner));
@@ -280,6 +286,7 @@ class SpaceGroupMembershipIntegrationTest {
   void aCapableGroupHoldsTheSpaceAsItsLastAdminMember() {
     UUID owner = createUser(organizationA);
     UUID group = createGroup(organizationA, "Referat 50", createUser(organizationA));
+    makeSteward(group, owner);
     Space space = createSpace(owner);
     spaceService.addMember(
         space.getId(), groupSubject(group), SpaceRole.ADMIN, currentUserOf(owner));
@@ -370,6 +377,7 @@ class SpaceGroupMembershipIntegrationTest {
     UUID owner = createUser(organizationA);
     UUID person = createUser(organizationA);
     UUID group = createGroup(organizationA, "Referat 50");
+    makeSteward(group, owner);
     Space space = createSpace(owner);
     // Through the service, not through the repository: the reconstruction resolves the group half
     // from group_membership_history, which only GroupService writes.
@@ -418,6 +426,47 @@ class SpaceGroupMembershipIntegrationTest {
   }
 
   // -------------------------------------------------------------------------------------------
+  // Freigabe zur Verwendung
+  // -------------------------------------------------------------------------------------------
+
+  /**
+   * An internal group its stewards have not released is no subject on this path either (#1814,
+   * ADR-0036 Entscheidung 9, Festlegung 2: the rule holds for every way, and the space member
+   * administration is named in it). The id typed by hand gets the same answer an unknown group gets
+   * - a 403 would confirm that a group with this id exists.
+   */
+  @Test
+  void anUnreleasedGroupCannotBeAdmittedToASpaceByAThirdParty() {
+    UUID owner = createUser(organizationA);
+    UUID person = createUser(organizationA);
+    UUID group = createUnreleasedGroup(organizationA, "Personalrat", person);
+    Space space = createSpace(owner);
+
+    assertThatThrownBy(
+            () ->
+                spaceService.addMember(
+                    space.getId(), groupSubject(group), SpaceRole.MEMBER, currentUserOf(owner)))
+        .isInstanceOf(NotFoundException.class)
+        .hasMessage("Gruppe nicht gefunden");
+    assertThat(membershipRepository.findBySpaceId(space.getId()))
+        .noneMatch(SpaceMembership::isGroupSubject);
+  }
+
+  /** Its own members keep seeing it - the rule hides it from third parties only. */
+  @Test
+  void aMemberOfAnUnreleasedGroupMayStillAdmitItToTheirOwnSpace() {
+    UUID owner = createUser(organizationA);
+    UUID group = createUnreleasedGroup(organizationA, "Personalrat", owner);
+    Space space = createSpace(owner);
+
+    SpaceMemberView view =
+        spaceService.addMember(
+            space.getId(), groupSubject(group), SpaceRole.MEMBER, currentUserOf(owner));
+
+    assertThat(view.membership().getGroupId()).isEqualTo(group);
+  }
+
+  // -------------------------------------------------------------------------------------------
   // Deletion guards
   // -------------------------------------------------------------------------------------------
 
@@ -425,6 +474,7 @@ class SpaceGroupMembershipIntegrationTest {
   void aGroupThatIsASpaceMemberCannotBeDeleted() {
     UUID owner = createUser(organizationA);
     UUID group = createGroup(organizationA, "Referat 50", createUser(organizationA));
+    makeSteward(group, owner);
     Space space = createSpace(owner);
     spaceService.addMember(
         space.getId(), groupSubject(group), SpaceRole.MEMBER, currentUserOf(owner));
@@ -503,7 +553,24 @@ class SpaceGroupMembershipIntegrationTest {
     return users;
   }
 
+  /**
+   * Released for use on purpose (#1814, ADR-0036 Entscheidung 9): every test here admits the group
+   * to a space through a third party, and an unreleased internal group answers such a caller like
+   * one that does not exist.
+   */
   private UUID createGroup(UUID organizationId, String name, UUID... memberIds) {
+    Group group = Group.internal(organizationId, name, null, null);
+    group.release(true);
+    for (UUID memberId : memberIds) {
+      group.addMembership(new GroupMembership(memberId, organizationId));
+    }
+    UUID groupId = groupRepository.save(group).getId();
+    groupMembershipResolver.invalidateUsers(List.of(memberIds));
+    return groupId;
+  }
+
+  /** The delivered state of a new internal group: nobody but its own people may name it. */
+  private UUID createUnreleasedGroup(UUID organizationId, String name, UUID... memberIds) {
     Group group = Group.internal(organizationId, name, null, null);
     for (UUID memberId : memberIds) {
       group.addMembership(new GroupMembership(memberId, organizationId));
@@ -511,6 +578,15 @@ class SpaceGroupMembershipIntegrationTest {
     UUID groupId = groupRepository.save(group).getId();
     groupMembershipResolver.invalidateUsers(List.of(memberIds));
     return groupId;
+  }
+
+  /**
+   * Makes the caller a steward of the group: since #1814 only a steward or a system administrator
+   * maintains an internal group's membership, and these tests change it through the service.
+   */
+  private void makeSteward(UUID groupId, UUID userId) {
+    UUID organizationId = groupRepository.findById(groupId).orElseThrow().getOrganizationId();
+    stewardRepository.save(new GroupSteward(groupId, userId, organizationId, userId));
   }
 
   private UUID createUser(UUID organizationId) {
