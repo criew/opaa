@@ -28,7 +28,7 @@ import { apiErrorCode } from '../../services/apiErrorDetails'
 import { notify } from '../../stores/notificationStore'
 import UserPicker from '../groups/UserPicker'
 import FieldLabel from '../wizard/FieldLabel'
-import { groupOriginLabel } from '../groups/groupOriginLabels'
+import { groupIneffectiveReason, groupOptionLabel } from '../groups/groupOriginLabels'
 
 const scopeLabels: Record<PermissionTransferScope, string> = {
   ASSET_GRANTS: 'Berechtigungen an Objekten',
@@ -81,12 +81,16 @@ export default function PermissionTransferDialog({
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
+  // Über den Wahrheitswert statt über `targetKinds`: Die Elternkomponente übergibt ein
+  // Array-Literal, und an ihm hinge der Effekt bei jedem Render der Eltern neu.
+  const needsGroups = targetKinds.includes('GROUP')
+
   useEffect(() => {
-    if (!open || !targetKinds.includes('GROUP')) return
+    if (!open || !needsGroups) return
     void getGroups()
       .then(setGroups)
       .catch(() => setGroups([]))
-  }, [open, targetKinds])
+  }, [open, needsGroups])
 
   const targetId = targetType === 'GROUP' ? targetGroupId : (targetUser?.id ?? '')
   const ready = targetId !== '' && selectedScopes.length > 0
@@ -207,11 +211,17 @@ export default function PermissionTransferDialog({
                 }}
                 slotProps={{ htmlInput: { 'aria-label': 'Zielgruppe' } }}
               >
+                {/* Nicht wählbare Gruppen bleiben sichtbar und nennen ihren Grund — dieselben
+                    drei, die das Backend abweist. Verstecken ließe die Person suchen. */}
                 {groups
-                  .filter((group) => group.id !== source.id && !group.dissolved)
+                  .filter((group) => group.id !== source.id)
                   .map((group) => (
-                    <MenuItem key={group.id} value={group.id}>
-                      {group.name} · {groupOriginLabel(group)}
+                    <MenuItem
+                      key={group.id}
+                      value={group.id}
+                      disabled={groupIneffectiveReason(group) !== null}
+                    >
+                      {groupOptionLabel(group)}
                     </MenuItem>
                   ))}
               </TextField>

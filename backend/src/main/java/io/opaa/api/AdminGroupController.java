@@ -48,8 +48,12 @@ public class AdminGroupController {
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @GetMapping("/effects")
   public List<GroupEffectsResponse> listGroupEffects(
-      @Caller CurrentUser caller, @RequestParam(required = false) UUID providerId) {
-    List<GroupEffectsView> effects = groupEffectsService.listEffects(caller, providerId);
+      @Caller CurrentUser caller,
+      @RequestParam(required = false) UUID providerId,
+      @RequestParam(name = "groupId", required = false) List<UUID> groupIds) {
+    List<GroupEffectsView> effects =
+        groupEffectsService.listEffects(
+            caller, providerId, groupIds == null ? List.of() : groupIds);
     return GroupEffectsResponseMapper.toResponses(effects);
   }
 }

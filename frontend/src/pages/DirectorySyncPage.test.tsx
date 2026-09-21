@@ -1,6 +1,9 @@
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { HttpResponse, http } from 'msw'
 import { beforeEach, describe, expect, it } from 'vitest'
+import { server } from '../mocks/server'
+import { mockPendingPlan } from '../mocks/groupAdminFixtures'
 import { renderWithProviders } from '../test/test-utils'
 import DirectorySyncPage from './DirectorySyncPage'
 import { useAuthStore } from '../stores/authStore'
@@ -68,6 +71,60 @@ describe('DirectorySyncPage', () => {
     await user.click(within(card).getByRole('button', { name: 'Plan bestätigen' }))
 
     expect(await within(card).findByText(/bestätigte Plan wurde angewendet/)).toBeInTheDocument()
+  })
+
+  // ADR-0036, Entscheidung 3: Eine abgewiesene Bestätigung hinterlässt einen NEUEN Plan. Ohne das
+  // Nachladen stünde weiter der alte Bericht da, und die nächste Bestätigung liefe mit der alten
+  // Kennung ins Leere.
+  it('presents the new plan after the shown one has drifted', async () => {
+    const confirmed: string[] = []
+    let planRequests = 0
+    server.use(
+      http.post(
+        '/api/v1/admin/oidc-providers/:providerId/directory-sync/pending-plan/:planId/confirm',
+        ({ params }) => {
+          confirmed.push(String(params.planId))
+          return HttpResponse.json(
+            { error: 'Der Plan hat sich geändert', code: 'DIRECTORY_SYNC_PLAN_CHANGED' },
+            { status: 409 },
+          )
+        },
+      ),
+      http.get('/api/v1/admin/oidc-providers/:providerId/directory-sync/pending-plan', () => {
+        planRequests += 1
+        return HttpResponse.json(
+          planRequests === 1
+            ? mockPendingPlan
+            : {
+                ...mockPendingPlan,
+                id: 'plan-2',
+                createdAt: '2026-09-21T06:00:00Z',
+                report: {
+                  ...mockPendingPlan.report,
+                  message: 'Neu gerechnet: 5 Mitgliedschaften würden entzogen.',
+                },
+              },
+        )
+      }),
+    )
+    renderWithProviders(<DirectorySyncPage />, { withRouter: true })
+    const user = userEvent.setup()
+
+    const card = await providerCard()
+    await within(card).findByRole('button', { name: 'Plan bestätigen' })
+    await user.type(within(card).getByLabelText(/grund/i), 'Reorganisation zum 01.10.')
+    await user.click(within(card).getByRole('button', { name: 'Plan bestätigen' }))
+
+    expect(
+      await within(card).findByText(/Verzeichnis hat sich seit der Vorlage geändert/),
+    ).toBeInTheDocument()
+    expect(await within(card).findByText(/Neu gerechnet/)).toBeInTheDocument()
+
+    await user.type(within(card).getByLabelText(/grund/i), 'Neuer Stand geprüft')
+    await user.click(within(card).getByRole('button', { name: 'Plan bestätigen' }))
+
+    // Die zweite Bestätigung trägt die Kennung des neu vorgelegten Plans, nicht die alte.
+    await waitFor(() => expect(confirmed).toEqual(['plan-1', 'plan-2']))
   })
 
   it('explains the page to an account without the system role', async () => {

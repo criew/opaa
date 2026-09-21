@@ -24,7 +24,7 @@ import {
   runDirectorySyncDryRun,
   setDirectorySync,
 } from '../../../services/directorySyncApi'
-import { apiErrorMessage } from '../../../services/apiErrorDetails'
+import { apiErrorCode, apiErrorMessage } from '../../../services/apiErrorDetails'
 import { notify } from '../../../stores/notificationStore'
 import MetaBadge from '../../MetaBadge'
 import SectionHead from '../../SectionHead'
@@ -73,6 +73,12 @@ export default function DirectorySyncProviderCard({
       .catch(() => setPlan(null))
   }, [pendingSummary, provider.id])
 
+  /**
+   * Eine abgewiesene Bestätigung hinterlässt serverseitig einen **neuen** Plan mit neuer Kennung
+   * (`DIRECTORY_SYNC_PLAN_CHANGED`). Der Fehlerweg lädt ihn deshalb nach: Sonst stünde neben der
+   * Meldung weiter der alte Bericht, und die nächste Bestätigung liefe mit der alten Kennung ins
+   * Leere (404).
+   */
   async function run(action: () => Promise<void>, fallback: string) {
     setBusy(true)
     setError(null)
@@ -80,6 +86,10 @@ export default function DirectorySyncProviderCard({
       await action()
     } catch (err) {
       setError(apiErrorMessage(err, DIRECTORY_SYNC_CONFLICT_MESSAGES, fallback))
+      if (apiErrorCode(err) === 'DIRECTORY_SYNC_PLAN_CHANGED') {
+        setPlan(await getPendingPlan(provider.id).catch(() => null))
+        await onChanged()
+      }
     } finally {
       setBusy(false)
     }

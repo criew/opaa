@@ -2147,6 +2147,18 @@ paths:
           schema:
             type: string
             format: uuid
+        - name: groupId
+          in: query
+          required: false
+          description: >
+            Only these groups - what a list asks for the rows it actually shows, instead of for
+            every group of the organization. Repeatable; combined with providerId both narrowings
+            apply.
+          schema:
+            type: array
+            items:
+              type: string
+              format: uuid
       responses:
         "200":
           description: One entry per group, groups without any effect included

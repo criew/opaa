@@ -4,10 +4,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.Capability;
+import io.opaa.api.types.GroupKind;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.auth.oidc.OidcProvider;
+import io.opaa.auth.oidc.OidcProviderRepository;
+import io.opaa.auth.oidc.ProviderGroupDirectory;
+import io.opaa.auth.oidc.ProviderGroupEffects;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
@@ -16,9 +21,12 @@ import io.opaa.permission.AssetGrantRepository;
 import io.opaa.permission.CapabilityGrant;
 import io.opaa.permission.CapabilityGrantRepository;
 import io.opaa.test.OpaaIntegrationTest;
+import jakarta.persistence.EntityManagerFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import org.hibernate.SessionFactory;
+import org.hibernate.stat.Statistics;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -40,14 +48,19 @@ class GroupEffectsServiceIntegrationTest {
   @Autowired private CapabilityGrantRepository capabilityGrantRepository;
   @Autowired private UserRepository userRepository;
   @Autowired private OrganizationRepository organizationRepository;
+  @Autowired private OidcProviderRepository providerRepository;
+  @Autowired private ProviderGroupDirectory providerGroupDirectory;
+  @Autowired private EntityManagerFactory entityManagerFactory;
   @Autowired private JdbcTemplate jdbcTemplate;
 
   private UUID organizationId;
   private final List<UUID> createdUserIds = new ArrayList<>();
+  private final List<UUID> createdProviderIds = new ArrayList<>();
 
   @BeforeEach
   void setUp() {
     createdUserIds.clear();
+    createdProviderIds.clear();
     organizationId =
         organizationRepository.save(new Organization(UUID.randomUUID(), "Org")).getId();
   }
@@ -72,6 +85,7 @@ class GroupEffectsServiceIntegrationTest {
         "DELETE FROM group_membership_history WHERE organization_id = ?", organizationId);
     userRepository.deleteAllById(createdUserIds);
     jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organizationId);
+    providerRepository.deleteAllById(createdProviderIds);
     organizationRepository.deleteById(organizationId);
   }
 
@@ -87,7 +101,7 @@ class GroupEffectsServiceIntegrationTest {
     capabilityGrantRepository.save(
         CapabilityGrant.forGroup(organizationId, Capability.CREATE_SPACE, reaching, admin.id()));
 
-    List<GroupEffectsView> effects = groupEffectsService.listEffects(admin, null);
+    List<GroupEffectsView> effects = groupEffectsService.listEffects(admin, null, List.of());
 
     GroupEffectsView reachingEffects = effectsOf(effects, reaching);
     assertThat(reachingEffects.assetGrants()).isEqualTo(2);
@@ -113,7 +127,7 @@ class GroupEffectsServiceIntegrationTest {
     grantRepository.save(grantFor(two, sharedLibrary));
     grantRepository.save(grantFor(two, UUID.randomUUID()));
 
-    List<GroupEffectsView> effects = groupEffectsService.listEffects(admin, null);
+    List<GroupEffectsView> effects = groupEffectsService.listEffects(admin, null, List.of());
 
     assertThat(effectsOf(effects, one).assetGrants()).isEqualTo(1);
     assertThat(effectsOf(effects, one).describe()).isEqualTo("1 Berechtigung an 1 Objekt");
@@ -126,7 +140,7 @@ class GroupEffectsServiceIntegrationTest {
     CurrentUser admin = createAdmin();
     createGroup("Nur intern", admin);
 
-    assertThat(groupEffectsService.listEffects(admin, UUID.randomUUID())).isEmpty();
+    assertThat(groupEffectsService.listEffects(admin, UUID.randomUUID(), List.of())).isEmpty();
   }
 
   private GroupEffectsView effectsOf(List<GroupEffectsView> effects, UUID groupId) {
@@ -160,5 +174,108 @@ class GroupEffectsServiceIntegrationTest {
     createdUserIds.add(saved.getId());
     return CurrentUser.of(
         saved.getId(), organizationId, SystemRole.SYSTEM_ADMIN, saved.getDisplayName());
+  }
+
+  /**
+   * The narrowing a list uses for the rows it actually shows, instead of asking for every group.
+   */
+  @Test
+  void onlyTheNamedGroupsAreAnsweredFor() {
+    CurrentUser admin = createAdmin();
+    UUID wanted = createGroup("Referat 54", admin);
+    createGroup("Referat 55", admin);
+
+    List<GroupEffectsView> effects = groupEffectsService.listEffects(admin, null, List.of(wanted));
+
+    assertThat(effects).extracting(GroupEffectsView::groupId).containsExactly(wanted);
+  }
+
+  /**
+   * The query count stays flat as the list grows - a count per group and effect kind would make an
+   * organization with a few hundred directory units a thousand-query page (#1821).
+   */
+  @Test
+  void theNumberOfQueriesDoesNotGrowWithTheNumberOfGroups() {
+    CurrentUser admin = createAdmin();
+    UUID one = createGroup("Referat 60", admin);
+    UUID two = createGroup("Referat 61", admin);
+    grantRepository.save(grantFor(one, UUID.randomUUID()));
+    grantRepository.save(grantFor(two, UUID.randomUUID()));
+
+    Statistics statistics = entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
+    boolean previouslyEnabled = statistics.isStatisticsEnabled();
+    statistics.setStatisticsEnabled(true);
+    try {
+      statistics.clear();
+      groupEffectsService.listEffects(admin, null, List.of());
+      long withTwoGroups = statistics.getPrepareStatementCount();
+
+      UUID three = createGroup("Referat 62", admin);
+      grantRepository.save(grantFor(three, UUID.randomUUID()));
+      capabilityGrantRepository.save(
+          CapabilityGrant.forGroup(organizationId, Capability.CREATE_SPACE, three, admin.id()));
+
+      statistics.clear();
+      groupEffectsService.listEffects(admin, null, List.of());
+      long withThreeGroups = statistics.getPrepareStatementCount();
+
+      assertThat(withThreeGroups).isEqualTo(withTwoGroups);
+    } finally {
+      statistics.setStatisticsEnabled(previouslyEnabled);
+    }
+  }
+
+  /**
+   * One definition of "wirkt", held by a test rather than by two hand-kept lists: the work list
+   * counts exactly the groups the refused provider deletion counts. An effect kind added to only
+   * one of the two sides makes this red.
+   */
+  @Test
+  void theWorkListAndTheRefusedProviderDeletionAgreeOnWhichGroupsAreEffective() {
+    CurrentUser admin = createAdmin();
+    UUID providerId = createProvider();
+    UUID withGrant = createProviderGroup(providerId, "Referat 70");
+    UUID withCapability = createProviderGroup(providerId, "Referat 71");
+    createProviderGroup(providerId, "Referat 72");
+    grantRepository.save(grantFor(withGrant, UUID.randomUUID()));
+    capabilityGrantRepository.save(
+        CapabilityGrant.forGroup(
+            organizationId, Capability.CREATE_SPACE, withCapability, admin.id()));
+
+    List<GroupEffectsView> effects = groupEffectsService.listEffects(admin, providerId, List.of());
+    ProviderGroupEffects refusal = providerGroupDirectory.effectsOf(providerId);
+
+    assertThat(effects).hasSize(3);
+    assertThat(effects.stream().filter(GroupEffectsView::any).count()).isEqualTo(refusal.groups());
+    assertThat(effects.stream().mapToLong(GroupEffectsView::assetGrants).sum())
+        .isEqualTo(refusal.grants());
+    assertThat(refusal.any()).isTrue();
+  }
+
+  private UUID createProvider() {
+    OidcProvider provider =
+        new OidcProvider(
+            "Verzeichnis " + UUID.randomUUID(),
+            "https://idp.example/realms/" + UUID.randomUUID(),
+            "opaa-frontend",
+            null,
+            null);
+    UUID id = providerRepository.save(provider).getId();
+    createdProviderIds.add(id);
+    return id;
+  }
+
+  private UUID createProviderGroup(UUID providerId, String name) {
+    Group group =
+        new Group(
+            organizationId,
+            GroupKind.ORG_UNIT,
+            name,
+            null,
+            providerId,
+            "ext-" + UUID.randomUUID(),
+            "/Haus/" + name,
+            null);
+    return groupRepository.save(group).getId();
   }
 }

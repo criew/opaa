@@ -13,6 +13,7 @@ import io.opaa.permission.AssetOwnershipHistoryService;
 import io.opaa.permission.AssetType;
 import io.opaa.permission.PermissionSubject;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -68,6 +69,12 @@ class SpaceAssetOwnershipDirectory implements AssetOwnershipDirectory {
   @Override
   public long countAssetsOwnedBy(PermissionSubject owner) {
     return assetIdsOwnedBy(owner).size();
+  }
+
+  /** A space is owned by a natural person, never by a group - there is nothing to count here. */
+  @Override
+  public Map<UUID, Long> countAssetsOwnedByGroups(Collection<UUID> groupIds, UUID organizationId) {
+    return Map.of();
   }
 
   @Override

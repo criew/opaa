@@ -21,7 +21,9 @@ export function groupMechanismLabel(mechanism: GroupMechanism | undefined): stri
 
 /**
  * Warum diese Gruppe nirgends mehr neu gewählt werden kann — `null`, solange sie wirksam ist. Die
- * bestehenden Berechtigungen bleiben in jedem Fall unangetastet (ADR-0036, Entscheidung 2).
+ * drei Gründe sind dieselben, die das Backend als Ziel einer Berechtigung oder einer Übertragung
+ * abweist (`GroupSubject`: aufgelöst, Anbieter deaktiviert, eingefrorene Token-Gruppe); bestehende
+ * Berechtigungen bleiben in jedem Fall unangetastet (ADR-0036, Entscheidungen 2 und 3).
  */
 export function groupIneffectiveReason(group: GroupListResponse): string | null {
   if (group.dissolved) {
@@ -30,7 +32,17 @@ export function groupIneffectiveReason(group: GroupListResponse): string | null 
   if (group.provider && !group.provider.enabled) {
     return `Anbieter „${group.provider.displayName}" ist deaktiviert — die Gruppe ist kein neues Ziel für Berechtigungen und keine neue Space-Mitgliedschaft. Bestehende Berechtigungen bleiben.`
   }
+  if (group.kind === 'IDENTITY_PROVIDER' && group.provider?.groupMechanism === 'DIRECTORY') {
+    return 'Wird nicht mehr gepflegt — ihr Anbieter liefert seine Gruppen inzwischen über den Verzeichnisabgleich. Ihre Mitgliedschaft ist eingefroren; wählen Sie die entsprechende Organisationseinheit.'
+  }
   return null
+}
+
+/** Der Eintragstext einer Gruppe in einer Auswahl: Name, Herkunft und — falls nötig — der Grund. */
+export function groupOptionLabel(group: GroupListResponse): string {
+  const reason = groupIneffectiveReason(group)
+  const base = `${group.name} · ${groupOriginLabel(group)}`
+  return reason ? `${base} — nicht wählbar: ${reason}` : base
 }
 
 /** Das Alter eines Zeitpunkts in Tagen bzw. Stunden — die Angabe der Betriebs- und Planzeilen. */

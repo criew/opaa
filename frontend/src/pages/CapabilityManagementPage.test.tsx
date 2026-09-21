@@ -1,7 +1,9 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { answerConfirm, renderWithProviders } from '../test/test-utils'
+import { HttpResponse, http } from 'msw'
+import { renderWithProviders } from '../test/test-utils'
+import { server } from '../mocks/server'
 import CapabilityManagementPage from './CapabilityManagementPage'
 import { useAuthStore } from '../stores/authStore'
 
@@ -35,18 +37,31 @@ describe('CapabilityManagementPage', () => {
     expect(screen.getAllByText('Alle Konten').length).toBeGreaterThan(0)
   })
 
-  it('withdraws a capability from all accounts after the confirmation', async () => {
+  // ADR-0036, Entscheidung 5: Der Entzug von „Alle Konten" ist ein Governance-Ereignis - die
+  // Rückfrage nennt deshalb eine andere Tragweite als die einer einzelnen Gruppe, und geprüft wird
+  // der abgesetzte Entzug, nicht die unveränderte Anzeige.
+  it('withdraws a capability from all accounts after a confirmation naming its reach', async () => {
+    const revoked: string[] = []
+    server.use(
+      http.delete('/api/v1/admin/capabilities/:capability/grants/:grantId', ({ params }) => {
+        revoked.push(`${String(params.capability)}/${String(params.grantId)}`)
+        return new HttpResponse(null, { status: 204 })
+      }),
+    )
     renderWithProviders(<CapabilityManagementPage />, { withRouter: true })
     const user = userEvent.setup()
 
     const card = await screen.findByRole('region', { name: 'Konnektorbibliotheken anlegen' })
     await user.click(within(card).getByRole('button', { name: /entziehen/i }))
-    await answerConfirm(user, '„Konnektorbibliotheken anlegen" entziehen?', 'Entziehen')
+
+    const dialog = await screen.findByRole('dialog', {
+      name: '„Konnektorbibliotheken anlegen" entziehen?',
+    })
+    expect(dialog).toHaveTextContent(/für jedes Konto der Organisation/)
+    await user.click(within(dialog).getByRole('button', { name: 'Entziehen' }))
 
     await waitFor(() =>
-      expect(
-        screen.getByText('Alle Konten dürfen Konnektorbibliotheken anlegen.'),
-      ).toBeInTheDocument(),
+      expect(revoked).toEqual(['CREATE_CONNECTOR_LIBRARY/capability-grant-connector-all']),
     )
   })
 

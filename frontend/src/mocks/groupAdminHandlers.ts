@@ -42,11 +42,13 @@ export const groupAdminHandlers = [
   ),
 
   http.get('/api/v1/admin/groups/effects', ({ request }) => {
-    const providerId = new URL(request.url).searchParams.get('providerId')
+    const params = new URL(request.url).searchParams
+    const providerId = params.get('providerId')
+    const groupIds = params.getAll('groupId')
     return HttpResponse.json(
-      providerId
-        ? mockGroupEffects.filter((entry) => entry.providerId === providerId)
-        : mockGroupEffects,
+      mockGroupEffects
+        .filter((entry) => !providerId || entry.providerId === providerId)
+        .filter((entry) => groupIds.length === 0 || groupIds.includes(entry.groupId)),
     )
   }),
 

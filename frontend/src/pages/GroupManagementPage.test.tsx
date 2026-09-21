@@ -7,12 +7,17 @@ import { useGroupStore } from '../stores/groupStore'
 import type { GroupListResponse, GroupResponse } from '../types/api'
 
 const {
+  mockGetGroup,
+  mockFetchedDetails,
   mockCreateGroup,
   mockUpdateGroup,
   mockDeleteGroup,
   mockAddGroupMember,
   mockRemoveGroupMember,
 } = vi.hoisted(() => ({
+  mockGetGroup: vi.fn(),
+  /** Was `getGroup` liefert, wenn der Store die Details noch nicht kennt. */
+  mockFetchedDetails: {} as Record<string, GroupResponse>,
   mockCreateGroup: vi.fn(async () => ({}) as GroupResponse),
   mockUpdateGroup: vi.fn(async () => ({}) as GroupResponse),
   mockDeleteGroup: vi.fn(async () => undefined),
@@ -26,7 +31,10 @@ vi.mock('../services/api', async () => {
     ...actual,
     getUsers: vi.fn(async () => []),
     getGroups: vi.fn(async () => useGroupStore.getState().groups),
-    getGroup: vi.fn(async (groupId: string) => useGroupStore.getState().groupDetails[groupId]),
+    getGroup: vi.fn(async (groupId: string) => {
+      mockGetGroup(groupId)
+      return useGroupStore.getState().groupDetails[groupId] ?? mockFetchedDetails[groupId]
+    }),
     createGroup: mockCreateGroup,
     updateGroup: mockUpdateGroup,
     deleteGroup: mockDeleteGroup,
@@ -231,19 +239,24 @@ describe('GroupManagementPage', () => {
     expect(screen.getByText('Projektbeteiligte Phoenix')).toBeInTheDocument()
   })
 
-  // ADR-0036, Entscheidung 4/9: Der Abruf der Mitgliederliste ist ein Audit-Ereignis - die Seite
-  // lädt sie deshalb nicht beiläufig beim Aufklappen.
+  // ADR-0036, Entscheidung 4/9: Der Abruf der Mitgliederliste ist das Audit-Ereignis - zugesichert
+  // ist deshalb die ausbleibende ANFRAGE, nicht nur die ausbleibende Anzeige. Die Details werden
+  // hier bewusst nicht vorbelegt: Sonst bliebe der Test auch dann grün, wenn jemand die Bedingung
+  // im Effekt zurücknähme.
   it('does not load the member list until it is asked for', async () => {
-    setGroupState([adHocGroup], { 'group-phoenix': adHocDetails })
+    setGroupState([adHocGroup], {})
     renderWithProviders(<GroupManagementPage />, { withRouter: true })
     const user = userEvent.setup()
 
     await user.click(await screen.findByText('Projektbeteiligte Phoenix'))
 
     expect(await screen.findByText(/Audit-Ereignis/)).toBeInTheDocument()
-    expect(screen.queryByText('Alice')).not.toBeInTheDocument()
+    expect(mockGetGroup).not.toHaveBeenCalled()
 
+    mockFetchedDetails['group-phoenix'] = adHocDetails
     await user.click(screen.getByRole('button', { name: /mitglieder anzeigen/i }))
+
+    await waitFor(() => expect(mockGetGroup).toHaveBeenCalledWith('group-phoenix'))
     expect(await screen.findByText('Alice')).toBeInTheDocument()
   })
 

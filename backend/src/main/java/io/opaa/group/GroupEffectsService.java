@@ -7,7 +7,7 @@ import io.opaa.permission.AssetOwnershipDirectory;
 import io.opaa.permission.CapabilityGrantRepository;
 import io.opaa.permission.GroupSpaceMembershipDirectory;
 import io.opaa.permission.GroupSpaceMembershipRef;
-import io.opaa.permission.PermissionSubject;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -52,18 +52,18 @@ public class GroupEffectsService {
   }
 
   /**
-   * Every group of the caller's organization with its effects, or only those of one provider - the
-   * work list a refused provider deletion points to. Groups without any effect are part of the
-   * answer: that they have none is the very information the work list needs.
+   * The effects of the named groups, of one provider's groups, or - with neither narrowing given -
+   * of every group of the caller's organization. Groups without any effect are part of the answer:
+   * that they have none is the very information the work list needs.
+   *
+   * <p><b>A fixed number of queries whatever the list's length.</b> Every one of the five effect
+   * kinds is read for the whole set at once; a count per group would make an organization with a
+   * few hundred directory units a thousand-query page (#1821).
    */
   @Transactional(readOnly = true)
-  public List<GroupEffectsView> listEffects(CurrentUser caller, UUID providerId) {
-    List<Group> groups =
-        providerId == null
-            ? groupRepository.findByOrganizationId(caller.organizationId())
-            : groupRepository.findByProviderId(providerId).stream()
-                .filter(group -> group.getOrganizationId().equals(caller.organizationId()))
-                .toList();
+  public List<GroupEffectsView> listEffects(
+      CurrentUser caller, UUID providerId, Collection<UUID> groupIdFilter) {
+    List<Group> groups = load(caller, providerId, groupIdFilter);
     if (groups.isEmpty()) {
       return List.of();
     }
@@ -93,6 +93,14 @@ public class GroupEffectsService {
       authorizationsByGroup.merge(groupId, 1L, Long::sum);
     }
 
+    Map<UUID, Long> capabilitiesByGroup = new HashMap<>();
+    for (CapabilityGrantRepository.SubjectGroupCapabilityCount count :
+        capabilityGrantRepository.countBySubjectGroupIdIn(groupIds)) {
+      capabilitiesByGroup.put(count.getSubjectGroupId(), count.getCapabilityCount());
+    }
+
+    Map<UUID, Long> ownedByGroup = ownedAssetsOf(groupIds, caller.organizationId());
+
     return groups.stream()
         .map(
             group ->
@@ -102,18 +110,36 @@ public class GroupEffectsService {
                     assetsByGroup.getOrDefault(group.getId(), Set.of()).size(),
                     membershipsByGroup.getOrDefault(group.getId(), 0L),
                     spacesByGroup.getOrDefault(group.getId(), Set.of()).size(),
-                    ownedAssetsOf(group),
-                    capabilityGrantRepository.countBySubjectGroupId(group.getId()),
+                    ownedByGroup.getOrDefault(group.getId(), 0L),
+                    capabilitiesByGroup.getOrDefault(group.getId(), 0L),
                     authorizationsByGroup.getOrDefault(group.getId(), 0L)))
         .sorted(Comparator.comparing(view -> view.group().getName(), String.CASE_INSENSITIVE_ORDER))
         .toList();
   }
 
-  private long ownedAssetsOf(Group group) {
-    PermissionSubject owner = PermissionSubject.group(group.getId(), group.getOrganizationId());
-    long owned = 0;
+  private List<Group> load(CurrentUser caller, UUID providerId, Collection<UUID> groupIdFilter) {
+    UUID organizationId = caller.organizationId();
+    List<Group> groups;
+    if (groupIdFilter != null && !groupIdFilter.isEmpty()) {
+      groups = groupRepository.findAllById(groupIdFilter);
+    } else if (providerId != null) {
+      groups = groupRepository.findByProviderId(providerId);
+    } else {
+      groups = groupRepository.findByOrganizationId(organizationId);
+    }
+    return groups.stream()
+        .filter(group -> group.getOrganizationId().equals(organizationId))
+        .filter(group -> providerId == null || providerId.equals(group.getProviderId()))
+        .toList();
+  }
+
+  /** One grouped query per asset type instead of one count per group and type. */
+  private Map<UUID, Long> ownedAssetsOf(List<UUID> groupIds, UUID organizationId) {
+    Map<UUID, Long> owned = new HashMap<>();
     for (AssetOwnershipDirectory directory : assetOwnershipDirectories) {
-      owned += directory.countAssetsOwnedBy(owner);
+      directory
+          .countAssetsOwnedByGroups(groupIds, organizationId)
+          .forEach((groupId, count) -> owned.merge(groupId, count, Long::sum));
     }
     return owned;
   }

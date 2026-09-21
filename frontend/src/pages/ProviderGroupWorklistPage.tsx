@@ -36,7 +36,7 @@ export default function ProviderGroupWorklistPage() {
   // setState von dort erzeugt eine Renderkaskade (react-hooks/set-state-in-effect).
   const reload = useCallback(
     () =>
-      getGroupEffects(providerId)
+      getGroupEffects({ providerId })
         .then((loaded) => {
           setEffects(loaded)
           setError(null)
@@ -76,7 +76,7 @@ export default function ProviderGroupWorklistPage() {
           icon={ChecklistOutlinedIcon}
           title={`Gruppen von „${provider?.displayName ?? 'Anbieter'}"`}
           meta={reaching.length === 1 ? '1 wirkende Gruppe' : `${reaching.length} wirkende Gruppen`}
-          description="Solange eine Gruppe dieses Anbieters wirkt, wird der Anbieter nicht gelöscht. Jede Zeile hat zwei Ausgänge: die Wirkungen an eine andere Gruppe übertragen oder sie am jeweiligen Objekt entfernen. Gruppen ohne Wirkung werden mit dem Anbieter gelöscht."
+          description="Solange eine Gruppe dieses Anbieters wirkt, wird der Anbieter nicht gelöscht. Jede Zeile hat zwei Ausgänge: die Wirkungen an eine andere Gruppe übertragen oder sie am jeweiligen Objekt entfernen. Gruppen ohne Wirkung werden mit dem Anbieter gelöscht. Abgelaufene Berechtigungen zählen hier mit — sie halten das Löschen auf; die Vorschau der Übertragung lässt sie aus und kann deshalb kleinere Zahlen nennen."
         />
 
         <Link component={RouterLink} to="/admin/identity-providers" sx={{ fontSize: 13 }}>

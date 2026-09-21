@@ -379,8 +379,8 @@ Nachweisprotokoll — mit der Zahl der Mitglieder, ohne die Namen. Verantwortlic
 ihrer eigenen Gruppe keinen Eintrag.
 
 **Gruppen aus dem Verzeichnis oder dem Anmeldetoken lassen sich hier nicht bearbeiten.** Sie haben
-keine Verantwortlichen, sondern Ansprechstellen, die die Systemverwaltung benennt; eine Oberfläche
-dafür entsteht mit Issue #1821.
+keine Verantwortlichen, sondern Ansprechstellen, die die Systemverwaltung benennt; Ansprechstellen
+und die Oberfläche dafür entstehen mit Issue #1875.
 
 ### 7.2 Rechte einer Gruppe auf eine andere übertragen
 

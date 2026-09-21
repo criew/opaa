@@ -413,17 +413,6 @@ export default function GroupManagementPage() {
   const [originFilter, setOriginFilter] = useState<OriginFilter>('ALL')
   const [effects, setEffects] = useState<GroupEffectsResponse[]>([])
 
-  const loadEffects = useCallback(() => {
-    void getGroupEffects()
-      .then(setEffects)
-      .catch(() => setEffects([]))
-  }, [])
-
-  useEffect(() => {
-    void loadGroups()
-    loadEffects()
-  }, [loadGroups, loadEffects])
-
   const providers = useMemo(() => {
     const byId = new Map<string, string>()
     groups.forEach((group) => {
@@ -437,6 +426,27 @@ export default function GroupManagementPage() {
     if (originFilter === 'INTERNAL') return groups.filter((group) => group.origin === 'INTERNAL')
     return groups.filter((group) => group.provider?.id === originFilter)
   }, [groups, originFilter])
+
+  // Die Wirkungen werden für die angezeigten Zeilen geholt, nicht für jede Gruppe der
+  // Organisation: Der Herkunftsfilter entscheidet mit, wonach überhaupt gefragt wird.
+  const visibleIds = useMemo(() => visible.map((group) => group.id).join(','), [visible])
+
+  // Ohne synchrones setState im Rumpf: Der Effekt unten ruft dieselbe Funktion (siehe
+  // react-hooks/set-state-in-effect); eine leere Auswahl wird deshalb als leere Antwort behandelt.
+  const loadEffects = useCallback(() => {
+    const groupIds = visibleIds === '' ? [] : visibleIds.split(',')
+    return (groupIds.length === 0 ? Promise.resolve([]) : getGroupEffects({ groupIds }))
+      .then(setEffects)
+      .catch(() => setEffects([]))
+  }, [visibleIds])
+
+  useEffect(() => {
+    void loadGroups()
+  }, [loadGroups])
+
+  useEffect(() => {
+    void loadEffects()
+  }, [loadEffects])
 
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>

@@ -28,7 +28,7 @@ import AreaPageHeader from '../components/AreaPageHeader'
 import PageHeading from '../components/a11y/PageHeading'
 import MetaBadge from '../components/MetaBadge'
 import UserPicker from '../components/groups/UserPicker'
-import { groupOriginLabel } from '../components/groups/groupOriginLabels'
+import { groupIneffectiveReason, groupOptionLabel } from '../components/groups/groupOriginLabels'
 import { contentWidth } from '../theme/tokens'
 
 function CapabilityCard({
@@ -157,13 +157,17 @@ function CapabilityCard({
             onChange={(e) => setGroupId(e.target.value)}
             sx={{ minWidth: 280 }}
           >
-            {groups
-              .filter((group) => !group.dissolved)
-              .map((group) => (
-                <MenuItem key={group.id} value={group.id}>
-                  {group.name} · {groupOriginLabel(group)}
-                </MenuItem>
-              ))}
+            {/* `CapabilityService#grant` weist dieselben drei Gründe ab; sie stehen hier am
+                gesperrten Eintrag, statt die Gruppe wortlos fehlen zu lassen. */}
+            {groups.map((group) => (
+              <MenuItem
+                key={group.id}
+                value={group.id}
+                disabled={groupIneffectiveReason(group) !== null}
+              >
+                {groupOptionLabel(group)}
+              </MenuItem>
+            ))}
           </TextField>
         )}
 

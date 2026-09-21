@@ -39,11 +39,23 @@ export async function executePermissionTransfer(
   }
 }
 
-/** „Wo wirkt diese Gruppe" — ohne `providerId` alle Gruppen, mit ihr die Arbeitsliste (#1821). */
-export async function getGroupEffects(providerId?: string): Promise<GroupEffectsResponse[]> {
+/**
+ * „Wo wirkt diese Gruppe" (#1821): mit `providerId` die Arbeitsliste eines Anbieters, mit
+ * `groupIds` genau die Zeilen, die eine Liste anzeigt — ohne beides jede Gruppe der Organisation.
+ */
+export async function getGroupEffects(options?: {
+  providerId?: string
+  groupIds?: string[]
+}): Promise<GroupEffectsResponse[]> {
   try {
     const { data } = await apiClient.get<GroupEffectsResponse[]>('/v1/admin/groups/effects', {
-      params: providerId ? { providerId } : undefined,
+      params: {
+        ...(options?.providerId ? { providerId: options.providerId } : {}),
+        ...(options?.groupIds?.length ? { groupId: options.groupIds } : {}),
+      },
+      // Wiederholter Parameter statt Komma- oder Klammerform: `groupId=a&groupId=b` ist, was
+      // Spring an eine Listen-Bindung übergibt.
+      paramsSerializer: { indexes: null },
     })
     return data
   } catch (err) {
