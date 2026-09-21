@@ -199,7 +199,8 @@ function GroupCard({ group }: { group: GroupListResponse }) {
             <Typography sx={{ fontSize: 13, color: 'text.secondary', mb: 2 }}>
               Erst freigegeben ist die Gruppe für andere Rechtevergebende wählbar. Das
               Schutzkennzeichen setzen und lösen die Verantwortlichen der Gruppe selbst — die
-              Systemverwaltung kann es nicht.
+              Systemverwaltung kann es nicht; bei einer geschützten Gruppe gilt das auch für die
+              Freigabe.
             </Typography>
 
             <Divider sx={{ mb: 2 }} />

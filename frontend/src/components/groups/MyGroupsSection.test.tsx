@@ -179,6 +179,63 @@ describe('MyGroupsSection', () => {
     )
   })
 
+  /**
+   * GroupService#dismissSteward erlaubt der Systemverwaltung genau das, was der letzten
+   * verantwortlichen Person selbst verwehrt ist: ein ausscheidendes Konto muss lösbar sein
+   * (group_stewards.user_id ist RESTRICT). Über die Oberfläche war dieser Ausgang unerreichbar.
+   */
+  it('lässt die Systemverwaltung die letzte verantwortliche Person entlassen', async () => {
+    withGroups([group], ['CREATE_INTERNAL_GROUP'])
+    useAuthStore.setState({
+      user: {
+        id: 'user-admin',
+        email: 'admin@opaa.local',
+        displayName: 'Systemverwaltung',
+        systemRole: 'SYSTEM_ADMIN',
+      },
+    })
+    renderWithProviders(<MyGroupsSection />, { withRouter: true })
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByText('Projektbeteiligte Phoenix'))
+
+    expect(await screen.findByRole('button', { name: /entlassen/i })).toBeEnabled()
+    expect(screen.getByText(/Als Systemverwaltung können Sie sie entlassen/)).toBeInTheDocument()
+  })
+
+  /**
+   * Nach der eigenen Abgabe darf die Person die Gruppe nicht mehr lesen; ein Nachladen der Details
+   * antwortet 404. Die gelungene Handlung darf dafür kein Fehlerband zeigen.
+   */
+  it('meldet keinen Fehler, wenn die Gruppe nach der eigenen Abgabe nicht mehr lesbar ist', async () => {
+    const withSuccessor: GroupListResponse = {
+      ...group,
+      stewards: [
+        ...group.stewards,
+        { userId: 'user-next', displayName: 'Nachfolge', appointedAt: '2026-03-02T10:00:00Z' },
+      ],
+    }
+    withGroups([withSuccessor], ['CREATE_INTERNAL_GROUP'])
+    mockGetGroup.mockResolvedValueOnce({ ...details, stewards: withSuccessor.stewards })
+    mockGetMyStewardedGroups.mockResolvedValueOnce([withSuccessor]).mockResolvedValue([])
+    mockDismissGroupSteward.mockResolvedValue(undefined)
+    mockGetGroup.mockRejectedValue(new Error('Gruppe nicht gefunden'))
+    renderWithProviders(<MyGroupsSection />, { withRouter: true })
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByText('Projektbeteiligte Phoenix'))
+    await user.click(await screen.findByRole('button', { name: /verantwortung abgeben/i }))
+    await answerConfirm(
+      user,
+      'Verantwortung für „Projektbeteiligte Phoenix“ abgeben?',
+      'Verantwortung abgeben',
+    )
+
+    expect(await screen.findByText(/für keine gruppe verantwortlich/i)).toBeInTheDocument()
+    expect(screen.queryByText('Gruppe nicht gefunden')).not.toBeInTheDocument()
+    expect(useGroupStore.getState().error).toBeNull()
+  })
+
   it('zeigt einen leeren Zustand, wenn man für keine Gruppe verantwortlich ist', async () => {
     withGroups([], ['CREATE_INTERNAL_GROUP'])
 

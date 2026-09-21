@@ -8,6 +8,7 @@ import SectionHead from '../SectionHead'
 import UserPicker from './UserPicker'
 import type { GroupStewardResponse, UserSummary } from '../../types/api'
 import { confirmAction } from '../../stores/confirmStore'
+import { useAuthStore } from '../../stores/authStore'
 import { useGroupStore } from '../../stores/groupStore'
 
 interface GroupStewardsSectionProps {
@@ -22,7 +23,9 @@ interface GroupStewardsSectionProps {
  * Die verantwortlichen Personen einer internen Gruppe (#1814, ADR-0036 Entscheidung 4): benennen,
  * entlassen und die Verantwortung abgeben. Die Abgabe ist bewusst zweischrittig — erst die
  * Nachfolge benennen, dann selbst zurücktreten; die letzte verantwortliche Person kann sich nicht
- * selbst entfernen, und der Dienst weist genau das ab.
+ * selbst entfernen, und der Dienst weist genau das ab. Die Systemverwaltung darf die letzte
+ * verantwortliche Person entlassen — ein ausscheidendes Konto muss lösbar sein —, deshalb hängt
+ * die Sperre der Schaltfläche an beidem.
  */
 export default function GroupStewardsSection({
   groupId,
@@ -36,8 +39,11 @@ export default function GroupStewardsSection({
   const [selected, setSelected] = useState<UserSummary | null>(null)
   const [error, setError] = useState<string | null>(null)
 
+  const isSystemAdmin = useAuthStore((s) => s.user?.systemRole === 'SYSTEM_ADMIN')
+
   const isOnlySteward = stewards.length === 1
   const amSteward = stewards.some((steward) => steward.userId === currentUserId)
+  const dismissalBlocked = isOnlySteward && !isSystemAdmin
 
   async function handleAppoint() {
     if (!selected) return
@@ -104,17 +110,25 @@ export default function GroupStewardsSection({
             <Button
               color="error"
               size="small"
-              disabled={isOnlySteward}
+              disabled={dismissalBlocked}
               onClick={() => void handleDismiss(steward)}
             >
               {steward.userId === currentUserId ? 'Verantwortung abgeben' : 'Entlassen'}
             </Button>
           </Box>
         ))}
-        {isOnlySteward && amSteward && (
+        {dismissalBlocked && (
           <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
-            Sie sind die letzte verantwortliche Person. Benennen Sie eine Nachfolge, um die
-            Verantwortung abgeben zu können.
+            {amSteward
+              ? 'Sie sind die letzte verantwortliche Person. Benennen Sie eine Nachfolge, um die Verantwortung abgeben zu können.'
+              : 'Dies ist die letzte verantwortliche Person. Sie kann erst entlassen werden, wenn eine Nachfolge benannt ist.'}
+          </Typography>
+        )}
+        {isOnlySteward && isSystemAdmin && (
+          <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+            Dies ist die letzte verantwortliche Person. Als Systemverwaltung können Sie sie
+            entlassen — etwa wenn ihr Konto das Haus verlässt. Die Gruppe steht danach ohne
+            Verantwortliche da, bis eine neue benannt wird.
           </Typography>
         )}
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={1} sx={{ pt: 1 }}>

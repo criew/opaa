@@ -127,9 +127,19 @@ export const useGroupStore = create<GroupState>((set, get) => ({
     await Promise.all([get().loadGroups(), get().loadGroupDetails(groupId)])
   },
 
+  /**
+   * Verwirft den Detailstand, statt ihn nachzuladen: Wer sich selbst entlassen hat, darf die Gruppe
+   * nicht mehr lesen, und das Nachladen meldete dann einen Fehler nach einer gelungenen Handlung.
+   * Die Karte lädt die Details von sich aus nach, solange sie sie noch sehen darf.
+   */
   dismissSteward: async (groupId, userId) => {
+    const sessionEpoch = currentSessionEpoch()
     await dismissGroupSteward(groupId, userId)
-    await Promise.all([get().loadGroups(), get().loadGroupDetails(groupId)])
+    if (isStaleSessionEpoch(sessionEpoch)) return
+    const rest = { ...get().groupDetails }
+    delete rest[groupId]
+    set({ groupDetails: rest })
+    await get().loadGroups()
   },
 
   changeRelease: async (groupId, releasedForUse) => {

@@ -870,15 +870,6 @@ export async function getMyStewardedGroups(): Promise<GroupListResponse[]> {
   }
 }
 
-export async function getGroupStewards(groupId: string): Promise<GroupStewardResponse[]> {
-  try {
-    const { data } = await client.get<GroupStewardResponse[]>(`/v1/groups/${groupId}/stewards`)
-    return data
-  } catch (err) {
-    normalizeError(err)
-  }
-}
-
 export async function appointGroupSteward(
   groupId: string,
   userId: string,

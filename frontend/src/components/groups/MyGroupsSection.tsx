@@ -180,8 +180,9 @@ function StewardedGroupCard({ group }: { group: GroupListResponse }) {
           />
           <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
             Für Personalvertretung, Schwerbehindertenvertretung, Gleichstellung und
-            Personalvorgänge: nicht über die Suche auffindbar, in fremden Listen ohne Namen, und
-            statt der Mitglieder sehen Rechtevergebende die Ansprechstelle.
+            Personalvorgänge. Das Kennzeichen setzen und lösen nur Sie als Verantwortliche, nicht
+            die Systemverwaltung — und solange es gesetzt ist, entscheiden nur Sie auch über die
+            Freigabe oben.
           </Typography>
         </Stack>
 
