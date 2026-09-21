@@ -71,7 +71,7 @@ class ChatSearchPrivacyIntegrationTest {
             person.getId(),
             person.getOrganizationId());
     space.addMembership(
-        new SpaceMembership(person.getId(), SpaceRole.ADMIN, person.getOrganizationId()));
+        SpaceMembership.ofUser(person.getId(), SpaceRole.ADMIN, person.getOrganizationId()));
     spaceId = spaceRepository.save(space).getId();
     // Letters only, so the German analysis keeps it as one lexeme that no other text contains.
     term =

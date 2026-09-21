@@ -172,14 +172,16 @@ dieser Arbeit liegen.
 - Standard-Suchbereich, Modell-Obergrenze und Zurechnung für Nutzung und Kosten
 
 **Flaches Modell:**
-Spaces sind **flach** — keine Hierarchie, keine Verschachtelung. Es gibt **eine** Art von Space; zwei
-Attribute unterscheiden ihn:
+Spaces sind **flach** — keine Hierarchie, keine Verschachtelung. Es gibt **eine** Art von Space; ein
+Attribut unterscheidet ihn:
 
 - `isDefault` — der beim ersten Login automatisch erzeugte, nicht löschbare Standard-Space je Nutzerin und
   Nutzer. „Persönlich" ist kein eigener Typ, sondern ein Zustand: ein Space, in dem niemand sonst Mitglied
   ist
-- `memberSource` — `MANUAL` (Mitglieder werden eingeladen) oder `GROUP` (die Mitgliedschaft folgt einer
-  Gruppe aus dem Verzeichnis)
+
+Ein **Mitglied** ist eine Person oder eine **Gruppe**, jeweils mit einer Space-Rolle. Wer einer Gruppe
+angehört, hält deren Rolle ohne eigene Zeile und verliert sie mit dem Austritt; bei einer zusätzlichen
+eigenen Mitgliedschaft gilt die höhere der beiden Rollen. Das frühere `memberSource` entfällt.
 
 **Wichtig:** Space-Mitgliedschaft gewährt **keinen** Zugriff auf die im Space assoziierten Assets — aber
 vollen Zugriff auf **geteilte** space-eigene Inhalte. Chats und Artefakte entstehen zunächst **privat** bei

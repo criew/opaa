@@ -28,6 +28,8 @@ public final class OwnOrganizationFixtures {
           "space_asset_associations",
           "notifications",
           "space_memberships",
+          "space_membership_history",
+          "asset_ownership_history",
           "spaces",
           "asset_grants",
           "asset_grant_history",

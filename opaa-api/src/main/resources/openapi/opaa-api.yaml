@@ -3235,7 +3235,11 @@ paths:
     get:
       operationId: listSpaceMembers
       tags: [space]
-      summary: List space members
+      summary: >
+        List space members - persons and groups (#144, #1815). Restricted to ADMIN, the owner and
+        system admins; MEMBER and CURATOR only ever see the aggregated roleCounts on
+        SpaceResponse. A group is therefore named only to those who manage its membership here
+        (ADR-0036 Entscheidung 9).
       responses:
         "200":
           description: List of members
@@ -3254,8 +3258,12 @@ paths:
       operationId: addSpaceMember
       tags: [space]
       summary: >
-        Add a member to a space (admin only). Rejected with 409 if the space is archived (#543) -
-        an archived space accepts no new members.
+        Add a member - a person or a group - to a space (admin only, #1815). A group's members
+        hold the role without a row of their own, and lose it the moment they leave the group.
+        409 when the space is archived (#543 - an archived space accepts no new members), when
+        the subject already holds a membership, or when the group is not effective (dissolved, or
+        belonging to a switched-off identity provider; ADR-0036 Entscheidung 6). An effective but
+        empty group is admitted on purpose and answers with emptyGroup = true.
       requestBody:
         required: true
         content:
@@ -3278,7 +3286,7 @@ paths:
         "409":
           $ref: "#/components/responses/Conflict"
 
-  /api/v1/spaces/{spaceId}/members/{userId}:
+  /api/v1/spaces/{spaceId}/members/{membershipId}:
     parameters:
       - name: spaceId
         in: path
@@ -3286,7 +3294,7 @@ paths:
         schema:
           type: string
           format: uuid
-      - name: userId
+      - name: membershipId
         in: path
         required: true
         schema:
@@ -3296,18 +3304,22 @@ paths:
     delete:
       operationId: removeSpaceMember
       tags: [space]
-      summary: Remove a member from a space (admin only)
+      summary: >
+        Remove a member - person or group - from a space (admin only). 409 when the membership is
+        the owner's, or when the space would lose its last capable ADMIN member (ADR-0036
+        Entscheidung 6, Schutzregel 1): a group counts as ADMIN while it is effective and reaches
+        at least one active account.
       responses:
         "204":
           description: Member removed
-        "400":
-          $ref: "#/components/responses/ValidationError"
         "403":
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
 
-  /api/v1/spaces/{spaceId}/members/{userId}/role:
+  /api/v1/spaces/{spaceId}/members/{membershipId}/role:
     parameters:
       - name: spaceId
         in: path
@@ -3315,7 +3327,7 @@ paths:
         schema:
           type: string
           format: uuid
-      - name: userId
+      - name: membershipId
         in: path
         required: true
         schema:
@@ -3325,7 +3337,10 @@ paths:
     put:
       operationId: updateSpaceMemberRole
       tags: [space]
-      summary: Update a member's role (admin only)
+      summary: >
+        Update a member's role (admin only). 409 when the membership is the owner's, or when the
+        downgrade would take the space's last capable ADMIN member (ADR-0036 Entscheidung 6,
+        Schutzregel 1).
       requestBody:
         required: true
         content:
@@ -3345,6 +3360,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
 
   /api/v1/spaces/{spaceId}/transfer-ownership:
     parameters:
@@ -3358,7 +3375,11 @@ paths:
     post:
       operationId: transferSpaceOwnership
       tags: [space]
-      summary: Transfer space ownership to another member (owner or system admin only)
+      summary: >
+        Transfer space ownership to a member who is a natural person. Every capable ADMIN member
+        that is a natural person may do this, to themselves or to another such member (ADR-0036
+        Entscheidung 6) - a group never becomes owner. 404 when the target is not a member of the
+        space or not a person.
       requestBody:
         required: true
         content:
@@ -8952,6 +8973,11 @@ components:
           $ref: "#/components/schemas/SpaceVisibility"
         memberCount:
           type: integer
+          description: >
+            Number of membership rows, not of people (#1815): one row may be a group standing for
+            any number of members. Resolving it to persons would disclose group sizes to every
+            member of the space - the figure ADR-0036, Entscheidung 9 withholds below the minimum
+            group size. Clients name it accordingly ("Mitgliedschaften").
           example: 5
         libraryCount:
           type: integer
@@ -8970,6 +8996,12 @@ components:
           example: 12
         userRole:
           $ref: "#/components/schemas/SpaceRole"
+        successionOpen:
+          type: boolean
+          description: >
+            Same derived state as on SpaceResponse (ADR-0036 Entscheidung 6) - the overview card
+            carries it too, so it is visible without opening the space.
+          example: false
         createdAt:
           type: string
           format: date-time
@@ -8979,16 +9011,62 @@ components:
 
     SpaceMemberResponse:
       type: object
-      required: [userId, role, createdAt]
+      required: [id, subjectType, subjectId, role, createdAt]
+      description: >
+        One membership of a space - a person or a group (#1815, ADR-0036 Entscheidung 6). A group
+        row carries the role every member of that group holds in the space without a row of their
+        own; a person who also holds a direct membership keeps both rows and reaches the space
+        with the better of the two roles.
       properties:
-        userId:
+        id:
           type: string
           format: uuid
+          description: >
+            The membership itself, the way an asset grant is addressed by its own id. Path
+            parameter of the remove and role-change operations, so a person and a group carrying
+            the same id can never be confused.
+        subjectType:
+          $ref: "#/components/schemas/PermissionSubjectType"
+        subjectId:
+          type: string
+          format: uuid
+          description: The user or group id, depending on subjectType.
         displayName:
           type: string
           nullable: true
+          description: >
+            The member's display name (person, falling back to email) or the group's name,
+            resolved server-side. Null only if the referenced row itself is gone.
         role:
           $ref: "#/components/schemas/SpaceRole"
+        memberCountAtGrant:
+          type: integer
+          nullable: true
+          description: >
+            Group rows only: how many active accounts the group had when it became a member
+            (ADR-0036 Entscheidung 9) - the passive growth signal for whoever admitted it. Null
+            for a person, and null whenever smallGroup is true.
+        memberCountNow:
+          type: integer
+          nullable: true
+          description: >
+            Group rows only: how many active accounts the group has right now, for the comparison
+            "23 bei Erteilung, heute 41". Null for a person, and null whenever smallGroup is true.
+        smallGroup:
+          type: boolean
+          nullable: true
+          description: >
+            Group rows only: true when either figure lies below the enforced minimum group size,
+            in which case both are withheld - the difference alone would reconstruct the withheld
+            one (ADR-0036 Entscheidung 9, "einschliesslich der Werte, die sich aus dem Vergleich
+            errechnen liessen").
+        emptyGroup:
+          type: boolean
+          nullable: true
+          description: >
+            Group rows only: true when the group currently reaches no account at all. An effective
+            but empty group may be admitted on purpose (ADR-0036 Entscheidung 6) - this is the
+            warning that goes with it.
         createdAt:
           type: string
           format: date-time
@@ -9027,6 +9105,9 @@ components:
           format: uuid
         memberCount:
           type: integer
+          description: >
+            Number of membership rows, not of people - see SpaceListResponse.memberCount. The same
+            holds for roleCounts, which counts rows per role.
           example: 5
         userRole:
           $ref: "#/components/schemas/SpaceRole"
@@ -9039,6 +9120,14 @@ components:
             MEMBER: 2
             CURATOR: 1
             ADMIN: 1
+        successionOpen:
+          type: boolean
+          description: >
+            True while the space has no capable ADMIN member that could act for it (ADR-0036
+            Entscheidung 6) - derived on every read, never stored. Carried for every reader, with
+            neither a date nor the previous owner: the operational list with those figures is
+            #1819's. The space stays fully usable; nothing is deleted.
+          example: false
         createdAt:
           type: string
           format: date-time
@@ -9048,11 +9137,17 @@ components:
 
     SpaceAddMemberRequest:
       type: object
-      required: [userId]
+      required: [subjectType, subjectId]
+      description: >
+        Admits a person or a group to the space (#1815). Same subject shape as
+        AssetGrantRequest, so both rights axes are addressed the same way.
       properties:
-        userId:
+        subjectType:
+          $ref: "#/components/schemas/PermissionSubjectType"
+        subjectId:
           type: string
           format: uuid
+          description: The user or group id, depending on subjectType.
         role:
           $ref: "#/components/schemas/SpaceRole"
 

@@ -28,10 +28,18 @@ const SIDEBAR_WIDTH = 248
 
 export { SIDEBAR_WIDTH }
 
-/** Mockup 1a's space subtitle: the space's kind plus what the list API can already count. */
+/**
+ * Mockup 1a's space subtitle: the space's kind plus what the list API can already count.
+ *
+ * <p>"Mitgliedschaften", not "Mitglieder" (#1815): memberCount counts rows, and a row may be a
+ * group standing for any number of people. Counting the people behind the groups instead would
+ * disclose group sizes to everybody who sees the space - the very figure ADR-0036, Entscheidung 9
+ * withholds below the minimum group size.
+ */
 function spaceSubtitle(space: { isDefault: boolean; memberCount: number }): string {
   const kind = space.isDefault ? 'Persönlich' : 'Team'
-  const members = space.memberCount === 1 ? '1 Mitglied' : `${space.memberCount} Mitglieder`
+  const members =
+    space.memberCount === 1 ? '1 Mitgliedschaft' : `${space.memberCount} Mitgliedschaften`
   return `${kind} · ${members}`
 }
 

@@ -175,8 +175,8 @@ describe('Sidebar', () => {
 
     expect(screen.getByText('Ihre Spaces')).toBeInTheDocument()
     expect(screen.getByRole('menuitem', { name: /Engineering/ })).toBeInTheDocument()
-    expect(screen.getByText('Team · 3 Mitglieder')).toBeInTheDocument()
-    expect(screen.getByText('Persönlich · 1 Mitglied')).toBeInTheDocument()
+    expect(screen.getByText('Team · 3 Mitgliedschaften')).toBeInTheDocument()
+    expect(screen.getByText('Persönlich · 1 Mitgliedschaft')).toBeInTheDocument()
   })
 
   it('opens an empty chat in a space chosen in the switcher', async () => {

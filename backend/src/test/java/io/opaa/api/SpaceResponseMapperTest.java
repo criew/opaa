@@ -5,9 +5,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.opaa.api.dto.SpaceListResponse;
 import io.opaa.api.dto.SpaceMemberResponse;
 import io.opaa.api.dto.SpaceResponse;
+import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.api.types.SpaceRole;
 import io.opaa.api.types.SpaceVisibility;
+import io.opaa.space.GroupSizeSignal;
 import io.opaa.space.Space;
+import io.opaa.space.SpaceDetail;
 import io.opaa.space.SpaceMemberView;
 import io.opaa.space.SpaceMembership;
 import io.opaa.space.SpaceOverview;
@@ -29,10 +32,11 @@ class SpaceResponseMapperTest {
     UUID organization = UUID.randomUUID();
     UUID member = UUID.randomUUID();
     Space space = new Space("Team", "Docs", false, SpaceVisibility.PRIVATE, owner, organization);
-    space.addMembership(new SpaceMembership(owner, SpaceRole.ADMIN, organization));
-    space.addMembership(new SpaceMembership(member, SpaceRole.MEMBER, organization));
+    space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organization));
+    space.addMembership(SpaceMembership.ofUser(member, SpaceRole.MEMBER, organization));
 
-    SpaceResponse response = SpaceResponseMapper.toResponse(space, owner);
+    SpaceResponse response =
+        SpaceResponseMapper.toResponse(new SpaceDetail(space, SpaceRole.ADMIN, false));
 
     assertThat(response.getId()).isEqualTo(space.getId());
     assertThat(response.getName()).isEqualTo("Team");
@@ -61,9 +65,9 @@ class SpaceResponseMapperTest {
     UUID organization = UUID.randomUUID();
     UUID systemAdmin = UUID.randomUUID();
     Space space = new Space("Team", null, false, SpaceVisibility.PRIVATE, owner, organization);
-    space.addMembership(new SpaceMembership(owner, SpaceRole.ADMIN, organization));
+    space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organization));
 
-    SpaceResponse response = SpaceResponseMapper.toResponse(space, systemAdmin);
+    SpaceResponse response = SpaceResponseMapper.toResponse(new SpaceDetail(space, null, false));
 
     assertThat(response.getUserRole()).isNull();
   }
@@ -79,9 +83,10 @@ class SpaceResponseMapperTest {
     UUID owner = UUID.randomUUID();
     UUID organization = UUID.randomUUID();
     Space space = new Space("Team", null, false, SpaceVisibility.PRIVATE, owner, organization);
-    space.addMembership(new SpaceMembership(owner, SpaceRole.MEMBER, organization));
+    space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.MEMBER, organization));
 
-    SpaceResponse response = SpaceResponseMapper.toResponse(space, owner);
+    SpaceResponse response =
+        SpaceResponseMapper.toResponse(new SpaceDetail(space, SpaceRole.ADMIN, false));
 
     assertThat(response.getUserRole()).isEqualTo(SpaceRole.ADMIN);
     // roleCounts keeps showing the raw membership role, including the owner's own row - only
@@ -94,10 +99,10 @@ class SpaceResponseMapperTest {
     UUID owner = UUID.randomUUID();
     UUID organization = UUID.randomUUID();
     Space space = new Space("Team", null, false, SpaceVisibility.PRIVATE, owner, organization);
-    space.addMembership(new SpaceMembership(owner, SpaceRole.CURATOR, organization));
-    SpaceOverview overview = new SpaceOverview(space, 0, 0);
+    space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.CURATOR, organization));
+    SpaceOverview overview = new SpaceOverview(space, 0, 0, SpaceRole.ADMIN, false);
 
-    SpaceListResponse response = SpaceResponseMapper.toListResponse(overview, owner);
+    SpaceListResponse response = SpaceResponseMapper.toListResponse(overview);
 
     assertThat(response.getUserRole()).isEqualTo(SpaceRole.ADMIN);
   }
@@ -107,10 +112,10 @@ class SpaceResponseMapperTest {
     UUID owner = UUID.randomUUID();
     UUID organization = UUID.randomUUID();
     Space space = new Space("Team", "Docs", false, SpaceVisibility.OPEN, owner, organization);
-    space.addMembership(new SpaceMembership(owner, SpaceRole.ADMIN, organization));
-    SpaceOverview overview = new SpaceOverview(space, 3, 5);
+    space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organization));
+    SpaceOverview overview = new SpaceOverview(space, 3, 5, SpaceRole.ADMIN, false);
 
-    SpaceListResponse response = SpaceResponseMapper.toListResponse(overview, owner);
+    SpaceListResponse response = SpaceResponseMapper.toListResponse(overview);
 
     assertThat(response.getId()).isEqualTo(space.getId());
     assertThat(response.getName()).isEqualTo("Team");
@@ -129,9 +134,11 @@ class SpaceResponseMapperTest {
     Space first = new Space("A", null, false, SpaceVisibility.PRIVATE, owner, organization);
     Space second = new Space("B", null, false, SpaceVisibility.PRIVATE, owner, organization);
     List<SpaceOverview> overviews =
-        List.of(new SpaceOverview(first, 0, 0), new SpaceOverview(second, 1, 2));
+        List.of(
+            new SpaceOverview(first, 0, 0, SpaceRole.ADMIN, false),
+            new SpaceOverview(second, 1, 2, SpaceRole.ADMIN, false));
 
-    List<SpaceListResponse> responses = SpaceResponseMapper.toListResponses(overviews, owner);
+    List<SpaceListResponse> responses = SpaceResponseMapper.toListResponses(overviews);
 
     assertThat(responses).extracting(SpaceListResponse::getName).containsExactly("A", "B");
   }
@@ -140,13 +147,19 @@ class SpaceResponseMapperTest {
   void toMemberResponseCarriesTheResolvedDisplayName() {
     UUID userId = UUID.randomUUID();
     UUID organization = UUID.randomUUID();
-    SpaceMembership membership = new SpaceMembership(userId, SpaceRole.CURATOR, organization);
-    SpaceMemberView view = new SpaceMemberView(membership, "Ada Lovelace");
+    SpaceMembership membership = SpaceMembership.ofUser(userId, SpaceRole.CURATOR, organization);
+    SpaceMemberView view = SpaceMemberView.ofUser(membership, "Ada Lovelace");
 
     SpaceMemberResponse response = SpaceResponseMapper.toMemberResponse(view);
 
-    assertThat(response.getUserId()).isEqualTo(userId);
+    assertThat(response.getId()).isEqualTo(membership.getId());
+    assertThat(response.getSubjectType()).isEqualTo(PermissionSubjectType.USER);
+    assertThat(response.getSubjectId()).isEqualTo(userId);
     assertThat(response.getRole()).isEqualTo(SpaceRole.CURATOR);
+    assertThat(response.getMemberCountAtGrant()).isNull();
+    assertThat(response.getMemberCountNow()).isNull();
+    assertThat(response.getSmallGroup()).as("a person is never a small group").isNull();
+    assertThat(response.getEmptyGroup()).isNull();
     assertThat(response.getDisplayName()).isEqualTo("Ada Lovelace");
     assertThat(response.getCreatedAt()).isEqualTo(membership.getCreatedAt());
   }
@@ -154,8 +167,8 @@ class SpaceResponseMapperTest {
   @Test
   void toMemberResponseAllowsANullDisplayName() {
     SpaceMembership membership =
-        new SpaceMembership(UUID.randomUUID(), SpaceRole.MEMBER, UUID.randomUUID());
-    SpaceMemberView view = new SpaceMemberView(membership, null);
+        SpaceMembership.ofUser(UUID.randomUUID(), SpaceRole.MEMBER, UUID.randomUUID());
+    SpaceMemberView view = SpaceMemberView.ofUser(membership, null);
 
     assertThat(SpaceResponseMapper.toMemberResponse(view).getDisplayName()).isNull();
   }
@@ -163,16 +176,87 @@ class SpaceResponseMapperTest {
   @Test
   void toMemberResponsesMapsEveryViewInOrder() {
     UUID organization = UUID.randomUUID();
-    SpaceMembership first = new SpaceMembership(UUID.randomUUID(), SpaceRole.MEMBER, organization);
-    SpaceMembership second = new SpaceMembership(UUID.randomUUID(), SpaceRole.ADMIN, organization);
+    SpaceMembership first =
+        SpaceMembership.ofUser(UUID.randomUUID(), SpaceRole.MEMBER, organization);
+    SpaceMembership second =
+        SpaceMembership.ofUser(UUID.randomUUID(), SpaceRole.ADMIN, organization);
     List<SpaceMemberView> views =
-        List.of(new SpaceMemberView(first, "First"), new SpaceMemberView(second, "Second"));
+        List.of(SpaceMemberView.ofUser(first, "First"), SpaceMemberView.ofUser(second, "Second"));
 
     List<SpaceMemberResponse> responses = SpaceResponseMapper.toMemberResponses(views);
 
     assertThat(responses)
         .extracting(SpaceMemberResponse::getDisplayName)
         .containsExactly("First", "Second");
+  }
+
+  /** #1815: a group row names the group and carries the growth signal of ADR-0036/9. */
+  @Test
+  void toMemberResponseCarriesTheGroupSubjectAndItsSizeSignal() {
+    UUID groupId = UUID.randomUUID();
+    UUID organization = UUID.randomUUID();
+    SpaceMembership membership =
+        SpaceMembership.ofGroup(groupId, SpaceRole.CURATOR, 23, organization);
+    SpaceMemberView view =
+        new SpaceMemberView(membership, "Referat 50", GroupSizeSignal.of(23, 41));
+
+    SpaceMemberResponse response = SpaceResponseMapper.toMemberResponse(view);
+
+    assertThat(response.getSubjectType()).isEqualTo(PermissionSubjectType.GROUP);
+    assertThat(response.getSubjectId()).isEqualTo(groupId);
+    assertThat(response.getDisplayName()).isEqualTo("Referat 50");
+    assertThat(response.getMemberCountAtGrant()).isEqualTo(23);
+    assertThat(response.getMemberCountNow()).isEqualTo(41);
+    assertThat(response.getSmallGroup()).isFalse();
+    assertThat(response.getEmptyGroup()).isFalse();
+  }
+
+  /**
+   * ADR-0036/9: below the enforced minimum group size both figures are withheld - publishing one of
+   * them beside the difference would reconstruct the other.
+   */
+  @Test
+  void toMemberResponseWithholdsBothFiguresForASmallGroup() {
+    SpaceMembership membership =
+        SpaceMembership.ofGroup(UUID.randomUUID(), SpaceRole.MEMBER, 23, UUID.randomUUID());
+    SpaceMemberView view = new SpaceMemberView(membership, "Referat 50", GroupSizeSignal.of(23, 4));
+
+    SpaceMemberResponse response = SpaceResponseMapper.toMemberResponse(view);
+
+    assertThat(response.getSmallGroup()).isTrue();
+    assertThat(response.getMemberCountAtGrant()).isNull();
+    assertThat(response.getMemberCountNow()).isNull();
+  }
+
+  @Test
+  void toMemberResponseMarksAnEffectiveButEmptyGroup() {
+    SpaceMembership membership =
+        SpaceMembership.ofGroup(UUID.randomUUID(), SpaceRole.MEMBER, 0, UUID.randomUUID());
+    SpaceMemberView view = new SpaceMemberView(membership, "Neu", GroupSizeSignal.of(0, 0));
+
+    SpaceMemberResponse response = SpaceResponseMapper.toMemberResponse(view);
+
+    assertThat(response.getEmptyGroup()).isTrue();
+    assertThat(response.getSmallGroup()).isTrue();
+  }
+
+  /** #1815: the derived state "Nachfolge offen" reaches both response shapes. */
+  @Test
+  void bothResponsesCarryTheDerivedSuccessionState() {
+    UUID owner = UUID.randomUUID();
+    UUID organization = UUID.randomUUID();
+    Space space = new Space("Team", null, false, SpaceVisibility.PRIVATE, owner, organization);
+    space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organization));
+
+    assertThat(
+            SpaceResponseMapper.toResponse(new SpaceDetail(space, SpaceRole.ADMIN, true))
+                .getSuccessionOpen())
+        .isTrue();
+    assertThat(
+            SpaceResponseMapper.toListResponse(
+                    new SpaceOverview(space, 0, 0, SpaceRole.ADMIN, true))
+                .getSuccessionOpen())
+        .isTrue();
   }
 
   @Test

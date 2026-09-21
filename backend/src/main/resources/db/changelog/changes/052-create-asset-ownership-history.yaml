@@ -1,0 +1,93 @@
+databaseChangeLog:
+  - changeSet:
+      id: 052-create-asset-ownership-history
+      author: opaa
+      comment: >-
+        Die Rechtehistorie des Eigentums (#1815, ADR-0036 Entscheidung 8): halboffene Intervalle
+        je Objekt und Eigentuemer. Dieses Issue aendert den Eigentuemerwechsel selbst - kuenftig
+        darf jedes handlungsfaehige ADMIN-Mitglied, das eine natuerliche Person ist, die
+        Verantwortung uebertragen - und ohne diese Tabelle waere der Wechsel nur im
+        Nachweisprotokoll belegt, das nach seiner Frist verfaellt.
+        .
+        TYPUNABHAENGIG WIE asset_grants (Changeset 038): asset_type plus asset_id statt einer
+        Spalte je Objekttabelle. DIESES CHANGESET FUELLT UND SCHREIBT NUR DEN TYP 'SPACE' -
+        io.opaa.space ist der einzige Schreiber, und der Bestandseintrag unten deckt nur die
+        Spaces. Das Eigentum an Bibliotheken bringt seinen Schreiber und seinen Bestandseintrag
+        mit #1819 mit; die Tabelle ist dafuer gebaut und braucht dann keine zweite Migration.
+        Deshalb traegt asset_type auch hier keine Werteliste, sondern nur die Formpruefung, die
+        AssetType zulaesst - dieselbe Begruendung wie in 038.
+        .
+        ADR-0016: Personenspalte RESTRICT (owner_user_id; der Akteur SET NULL), Objektspalte ohne
+        Fremdschluessel. Ein Fremdschluessel waere hier ohnehin nicht moeglich - asset_id benennt
+        ein Objekt beliebigen Typs -, aber die Zusage ist dieselbe wie in 039: Die Historie
+        ueberlebt das Objekt, und das offene Intervall wird beim Loeschen von der Anwendung
+        geschlossen. Daneben schreibt sie eine nulllange Markierung mit dem Grund ASSET_DELETED
+        und dem Akteur: Das geschlossene Intervall behaelt den Grund, mit dem es eroeffnet wurde,
+        und das ist die Handlung einer anderen Person - ohne die Markierung waere die Loeschung
+        das eine Eigentumsereignis ohne Verantwortlichen. Die nulllange Zeile verletzt
+        uk_asset_ownership_history_open nicht (der Teilindex greift nur bei valid_to IS NULL) und
+        wird von keiner Rekonstruktion ausgewaehlt, die valid_from <= asOf < valid_to verlangt.
+        .
+        owner_group_id steht von Anfang an in der Tabelle, obwohl ein Space-Eigentuemer immer
+        eine natuerliche Person ist (ADR-0036 Entscheidung 6): Eine Bibliothek kann einer Gruppe
+        gehoeren (LibraryOwnerType), und die Spalte spaeter nachzuziehen hiesse, die
+        Pruefbedingung und die Teilindexe ein zweites Mal zu bauen.
+        .
+        BESTAND: Jeder am Migrationstag vorhandene Space bekommt ein offenes Intervall ab jetzt
+        mit dem Grund BACKFILL - wie in 044 und aus demselben Grund: Ein rueckwirkend aus
+        created_at erfundenes Intervall behauptete eine Eigentumshistorie, die es nie gab.
+        .
+        AUSGENOMMEN IST DER PERSOENLICHE SPACE (NOT s.is_default), wie in 044 und aus demselben
+        Grund: Sein Eigentum entscheidet niemand, kein Pfad schliesst das Intervall je wieder, und
+        owner_user_id ist ON DELETE RESTRICT - ein Intervall hier machte jedes Bestandskonto
+        dauerhaft unloeschbar.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE TABLE asset_ownership_history (
+                  id uuid NOT NULL,
+                  asset_type character varying(30) NOT NULL,
+                  asset_id uuid NOT NULL,
+                  organization_id uuid NOT NULL,
+                  owner_type character varying(20) NOT NULL,
+                  owner_user_id uuid,
+                  owner_group_id uuid,
+                  cause character varying(30) NOT NULL,
+                  actor_user_id uuid,
+                  valid_from timestamp with time zone NOT NULL,
+                  valid_to timestamp with time zone,
+                  created_at timestamp with time zone DEFAULT now() NOT NULL,
+                  CONSTRAINT chk_asset_ownership_history_asset_type_format CHECK ((asset_type ~ '^[A-Z][A-Z0-9_]*$')),
+                  CONSTRAINT chk_asset_ownership_history_cause CHECK ((cause IN ('CREATED', 'TRANSFERRED', 'BACKFILL', 'ASSET_DELETED'))),
+                  CONSTRAINT chk_asset_ownership_history_owner CHECK (((((owner_type)::text = 'USER'::text) AND (owner_user_id IS NOT NULL) AND (owner_group_id IS NULL)) OR (((owner_type)::text = 'GROUP'::text) AND (owner_group_id IS NOT NULL) AND (owner_user_id IS NULL)))),
+                  CONSTRAINT chk_asset_ownership_history_owner_type CHECK ((owner_type IN ('USER', 'GROUP')))
+              );
+
+              ALTER TABLE ONLY asset_ownership_history
+                  ADD CONSTRAINT asset_ownership_history_pkey PRIMARY KEY (id);
+
+              CREATE INDEX idx_asset_ownership_history_asset ON asset_ownership_history USING btree (asset_type, asset_id);
+
+              CREATE INDEX idx_asset_ownership_history_owner_user_organization ON asset_ownership_history USING btree (owner_user_id, organization_id, valid_from) WHERE ((owner_type)::text = 'USER'::text);
+
+              CREATE INDEX idx_asset_ownership_history_owner_group_organization ON asset_ownership_history USING btree (owner_group_id, organization_id, valid_from) WHERE ((owner_type)::text = 'GROUP'::text);
+
+              CREATE UNIQUE INDEX uk_asset_ownership_history_open ON asset_ownership_history USING btree (asset_type, asset_id) WHERE (valid_to IS NULL);
+
+              ALTER TABLE ONLY asset_ownership_history
+                  ADD CONSTRAINT fk_asset_ownership_history_owner_user_organization FOREIGN KEY (owner_user_id, organization_id) REFERENCES users(id, organization_id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY asset_ownership_history
+                  ADD CONSTRAINT fk_asset_ownership_history_actor_user_organization FOREIGN KEY (actor_user_id, organization_id) REFERENCES users(id, organization_id) ON DELETE SET NULL (actor_user_id);
+
+              INSERT INTO asset_ownership_history
+                  (id, asset_type, asset_id, organization_id, owner_type, owner_user_id, cause, actor_user_id, valid_from, created_at)
+              SELECT gen_random_uuid(), 'SPACE', s.id, s.organization_id, 'USER', s.owner_id, 'BACKFILL', NULL, now(), now()
+                FROM spaces s
+               WHERE NOT s.is_default;
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              DROP TABLE asset_ownership_history;

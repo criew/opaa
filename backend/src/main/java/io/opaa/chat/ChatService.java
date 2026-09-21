@@ -10,8 +10,8 @@ import io.opaa.indexing.metadata.MetadataFilterValidator;
 import io.opaa.library.LibraryAccessService;
 import io.opaa.observability.ChatMetrics;
 import io.opaa.space.Space;
+import io.opaa.space.SpaceAccessPolicy;
 import io.opaa.space.SpaceAssetAssociationRepository;
-import io.opaa.space.SpaceMembershipRepository;
 import io.opaa.space.SpaceRepository;
 import java.time.Instant;
 import java.util.Collection;
@@ -92,7 +92,7 @@ public class ChatService {
   private final ChatRepository chatRepository;
   private final ChatMessageRepository chatMessageRepository;
   private final SpaceRepository spaceRepository;
-  private final SpaceMembershipRepository spaceMembershipRepository;
+  private final SpaceAccessPolicy spaceAccessPolicy;
   private final SpaceAssetAssociationRepository spaceAssetAssociationRepository;
   private final LibraryAccessService libraryAccessService;
   private final ObjectMapper objectMapper;
@@ -108,7 +108,7 @@ public class ChatService {
       ChatRepository chatRepository,
       ChatMessageRepository chatMessageRepository,
       SpaceRepository spaceRepository,
-      SpaceMembershipRepository spaceMembershipRepository,
+      SpaceAccessPolicy spaceAccessPolicy,
       SpaceAssetAssociationRepository spaceAssetAssociationRepository,
       LibraryAccessService libraryAccessService,
       ObjectMapper objectMapper,
@@ -127,7 +127,7 @@ public class ChatService {
     this.chatRepository = chatRepository;
     this.chatMessageRepository = chatMessageRepository;
     this.spaceRepository = spaceRepository;
-    this.spaceMembershipRepository = spaceMembershipRepository;
+    this.spaceAccessPolicy = spaceAccessPolicy;
     this.spaceAssetAssociationRepository = spaceAssetAssociationRepository;
     this.libraryAccessService = libraryAccessService;
     this.objectMapper = objectMapper;
@@ -411,11 +411,7 @@ public class ChatService {
    */
   @Transactional(readOnly = true)
   public void requireStillSpaceMember(Chat chat) {
-    boolean member =
-        spaceMembershipRepository
-            .findByUserIdAndSpaceId(chat.getAuthorId(), chat.getSpaceId())
-            .isPresent();
-    if (!member) {
+    if (!spaceAccessPolicy.isMember(chat.getSpaceId(), chat.getAuthorId())) {
       throw new AccessDeniedException("Sie sind kein Mitglied dieses Space mehr");
     }
   }
@@ -654,8 +650,7 @@ public class ChatService {
         spaceRepository
             .findById(spaceId)
             .orElseThrow(() -> new NotFoundException("Space nicht gefunden"));
-    boolean member = spaceMembershipRepository.findByUserIdAndSpaceId(userId, spaceId).isPresent();
-    if (!member) {
+    if (!spaceAccessPolicy.isMember(spaceId, userId)) {
       throw new AccessDeniedException("Sie sind kein Mitglied dieses Space");
     }
     return space;

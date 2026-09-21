@@ -63,7 +63,7 @@ describe('SpacesOverviewPage (#593, Mockup 1c)', () => {
     // space overview rather than to a draft whose first message would fail.
     expect(teamCard).toHaveAttribute('href', '/spaces/space-team')
     expect(teamCard).toHaveTextContent('Team')
-    expect(teamCard).toHaveTextContent('1 Quelle · 1 Chat · 9 Mitglieder')
+    expect(teamCard).toHaveTextContent('1 Quelle · 1 Chat · 9 Mitgliedschaften')
     expect(teamCard).toHaveTextContent('Archiviert')
   })
 
@@ -73,7 +73,7 @@ describe('SpacesOverviewPage (#593, Mockup 1c)', () => {
     renderWithProviders(<SpacesOverviewPage />, { withRouter: true })
 
     const teamCard = screen.getByRole('link', { name: /Widerspruchsstelle/ })
-    expect(teamCard).toHaveTextContent('9 Mitglieder')
+    expect(teamCard).toHaveTextContent('9 Mitgliedschaften')
     expect(teamCard).not.toHaveTextContent('Quelle')
   })
 

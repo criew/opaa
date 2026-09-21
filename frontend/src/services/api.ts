@@ -62,6 +62,7 @@ import type {
   MailTemplateSummaryResponse,
   MailTemplateUpdateRequest,
   NotificationResponse,
+  PermissionSubjectType,
   QueryRequest,
   QueryResponse,
   SourceConnectionTestRequest,
@@ -462,14 +463,18 @@ export async function listSpaceMembers(spaceId: string): Promise<SpaceMemberResp
   }
 }
 
+// #1815: a space member is a person or a group, and every membership is addressed by its own id -
+// so a person and a group carrying the same id can never be confused on the remove/role paths.
 export async function addSpaceMember(
   spaceId: string,
-  userId: string,
+  subjectType: PermissionSubjectType,
+  subjectId: string,
   role?: SpaceRole,
 ): Promise<SpaceMemberResponse> {
   try {
     const { data } = await client.post<SpaceMemberResponse>(`/v1/spaces/${spaceId}/members`, {
-      userId,
+      subjectType,
+      subjectId,
       role,
     })
     return data
@@ -478,9 +483,9 @@ export async function addSpaceMember(
   }
 }
 
-export async function removeSpaceMember(spaceId: string, userId: string): Promise<void> {
+export async function removeSpaceMember(spaceId: string, membershipId: string): Promise<void> {
   try {
-    await client.delete(`/v1/spaces/${spaceId}/members/${userId}`)
+    await client.delete(`/v1/spaces/${spaceId}/members/${membershipId}`)
   } catch (err) {
     normalizeError(err)
   }
@@ -488,12 +493,12 @@ export async function removeSpaceMember(spaceId: string, userId: string): Promis
 
 export async function updateSpaceMemberRole(
   spaceId: string,
-  userId: string,
+  membershipId: string,
   role: SpaceRole,
 ): Promise<SpaceMemberResponse> {
   try {
     const { data } = await client.put<SpaceMemberResponse>(
-      `/v1/spaces/${spaceId}/members/${userId}/role`,
+      `/v1/spaces/${spaceId}/members/${membershipId}/role`,
       { role },
     )
     return data
