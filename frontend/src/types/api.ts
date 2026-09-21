@@ -61,6 +61,7 @@ export type GroupMemberResponse = components['schemas']['GroupMemberResponse']
 export type GroupListResponse = components['schemas']['GroupListResponse']
 export type GroupResponse = components['schemas']['GroupResponse']
 export type GroupAddMemberRequest = components['schemas']['GroupAddMemberRequest']
+export type GroupStewardResponse = components['schemas']['GroupStewardResponse']
 
 export type Capability = components['schemas']['Capability']
 export type MyCapabilitiesResponse = components['schemas']['MyCapabilitiesResponse']

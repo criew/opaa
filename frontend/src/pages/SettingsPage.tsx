@@ -24,16 +24,18 @@ import SectionHead from '../components/SectionHead'
 import { contentWidth } from '../theme/tokens'
 import AreaTabs from '../components/AreaTabs'
 import OwnExternalAccessTokensSection from '../components/externalaccess/OwnExternalAccessTokensSection'
+import MyGroupsSection from '../components/groups/MyGroupsSection'
 
-export type SettingsTab = 'general' | 'tokens'
+export type SettingsTab = 'general' | 'groups' | 'tokens'
 
 const tabs: Array<{ value: SettingsTab; label: string }> = [
   { value: 'general', label: 'Allgemein' },
+  { value: 'groups', label: 'Meine Gruppen' },
   { value: 'tokens', label: 'Zugangstokens' },
 ]
 
 function isSettingsTab(value: string | undefined): value is SettingsTab {
-  return value === 'general' || value === 'tokens'
+  return value === 'general' || value === 'groups' || value === 'tokens'
 }
 
 /** Mockup 2c: how the account signed in, next to the address - never a technical mode name. */
@@ -44,7 +46,8 @@ function signInMethodLabel(mode: AuthMode | null): string | null {
 }
 
 /**
- * Die persönlichen Einstellungen (#788) mit den eigenen Zugangstokens als zweitem Bereich (#1719).
+ * Die persönlichen Einstellungen (#788) mit den eigenen Zugangstokens (#1719) und den Gruppen, für
+ * die das Konto verantwortlich ist (#1814), als weiteren Bereichen.
  *
  * Die Bereiche sind Routen, damit ein Verweis auf die Tokenverwaltung dort landet und ein
  * Neuladen ihn behält. `/settings` ohne Bereich bleibt der Einstieg und zeigt „Allgemein“; ein
@@ -83,7 +86,7 @@ export default function SettingsPage() {
 
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
-      <Box sx={{ maxWidth: activeTab === 'tokens' ? contentWidth.areaContent : 640 }}>
+      <Box sx={{ maxWidth: activeTab === 'general' ? 640 : contentWidth.areaContent }}>
         <AreaPageHeader
           icon={TuneOutlinedIcon}
           title="Ihre Einstellungen"
@@ -101,6 +104,8 @@ export default function SettingsPage() {
           {(value) =>
             value === 'tokens' ? (
               <OwnExternalAccessTokensSection />
+            ) : value === 'groups' ? (
+              <MyGroupsSection />
             ) : (
               <>
                 {/* Mockup 2c: the profile block - display only; editing name, language or picture
