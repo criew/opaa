@@ -46,6 +46,9 @@ const adHocGroup: GroupListResponse = {
   sourcePath: null,
   parentGroupId: null,
   memberCount: 1,
+  releasedForUse: false,
+  protectedGroup: false,
+  stewards: [{ userId: 'mock-user-id', displayName: 'Admin', appointedAt: '2026-03-01T10:00:00Z' }],
   createdAt: '2026-03-01T10:00:00Z',
   updatedAt: '2026-03-01T10:00:00Z',
 }
@@ -67,6 +70,9 @@ const orgUnitGroup: GroupListResponse = {
   sourcePath: '/Haus A/Referat 50',
   parentGroupId: null,
   memberCount: 1,
+  releasedForUse: true,
+  protectedGroup: false,
+  stewards: [],
   createdAt: '2026-03-01T10:00:00Z',
   updatedAt: '2026-03-01T10:00:00Z',
 }

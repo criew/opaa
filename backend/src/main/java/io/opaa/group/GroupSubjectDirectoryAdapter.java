@@ -22,11 +22,18 @@ class GroupSubjectDirectoryAdapter implements GroupSubjectDirectory {
 
   private final GroupRepository groupRepository;
   private final OidcProviderRepository providerRepository;
+  private final GroupStewardRepository stewardRepository;
+  private final GroupMembershipRepository membershipRepository;
 
   GroupSubjectDirectoryAdapter(
-      GroupRepository groupRepository, OidcProviderRepository providerRepository) {
+      GroupRepository groupRepository,
+      OidcProviderRepository providerRepository,
+      GroupStewardRepository stewardRepository,
+      GroupMembershipRepository membershipRepository) {
     this.groupRepository = groupRepository;
     this.providerRepository = providerRepository;
+    this.stewardRepository = stewardRepository;
+    this.membershipRepository = membershipRepository;
   }
 
   @Override
@@ -59,6 +66,19 @@ class GroupSubjectDirectoryAdapter implements GroupSubjectDirectory {
     return provider != null
         && group.getKind() == GroupKind.IDENTITY_PROVIDER
         && provider.isDirectorySyncEnabled();
+  }
+
+  @Override
+  public boolean isSelectableBy(UUID groupId, UUID userId, boolean systemAdmin) {
+    Group group = groupRepository.findById(groupId).orElse(null);
+    if (group == null) {
+      return false;
+    }
+    if (group.isSelectableAsSubject() || systemAdmin) {
+      return true;
+    }
+    return stewardRepository.existsByGroupIdAndUserId(groupId, userId)
+        || membershipRepository.findByGroupIdAndUserId(groupId, userId).isPresent();
   }
 
   @Override

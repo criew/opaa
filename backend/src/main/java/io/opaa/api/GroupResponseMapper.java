@@ -4,18 +4,22 @@ import io.opaa.api.dto.GroupListResponse;
 import io.opaa.api.dto.GroupMemberResponse;
 import io.opaa.api.dto.GroupProviderResponse;
 import io.opaa.api.dto.GroupResponse;
+import io.opaa.api.dto.GroupStewardResponse;
 import io.opaa.api.types.GroupOrigin;
 import io.opaa.group.Group;
 import io.opaa.group.GroupDetail;
 import io.opaa.group.GroupMemberView;
 import io.opaa.group.GroupOverview;
 import io.opaa.group.GroupProviderView;
+import io.opaa.group.GroupStewardView;
 import java.util.List;
 
 /**
- * Maps the group domain records onto the generated responses. The origin is derived rather than
- * read from a column (ADR-0036, Entscheidung 2): a group with a provider is a PROVIDER group, one
- * without is INTERNAL.
+ * Maps the group domain records onto the generated responses. Two fields are derived rather than
+ * read from a column: the origin (ADR-0036, Entscheidung 2 - a group with a provider is a PROVIDER
+ * group, one without is INTERNAL) and {@code releasedForUse}, which answers "may somebody else name
+ * this group as a grant subject" and is therefore true for every provider group regardless of the
+ * column, which only an internal group's stewards ever set (ADR-0036, Entscheidung 9).
  */
 final class GroupResponseMapper {
 
@@ -29,6 +33,9 @@ final class GroupResponseMapper {
             group.getKind(),
             originOf(overview.provider()),
             group.getMemberships().size(),
+            group.isSelectableAsSubject(),
+            group.isProtectedGroup(),
+            toStewardResponses(overview.stewards()),
             group.getCreatedAt(),
             group.getUpdatedAt())
         .description(group.getDescription())
@@ -52,6 +59,9 @@ final class GroupResponseMapper {
             originOf(detail.provider()),
             members.size(),
             members,
+            group.isSelectableAsSubject(),
+            group.isProtectedGroup(),
+            toStewardResponses(detail.stewards()),
             group.getCreatedAt(),
             group.getUpdatedAt())
         .description(group.getDescription())
@@ -68,6 +78,15 @@ final class GroupResponseMapper {
 
   static List<GroupMemberResponse> toMemberResponses(List<GroupMemberView> views) {
     return views.stream().map(GroupResponseMapper::toMemberResponse).toList();
+  }
+
+  static GroupStewardResponse toStewardResponse(GroupStewardView view) {
+    return new GroupStewardResponse(view.steward().getUserId(), view.steward().getCreatedAt())
+        .displayName(view.displayName());
+  }
+
+  static List<GroupStewardResponse> toStewardResponses(List<GroupStewardView> views) {
+    return views.stream().map(GroupResponseMapper::toStewardResponse).toList();
   }
 
   private static GroupOrigin originOf(GroupProviderView provider) {

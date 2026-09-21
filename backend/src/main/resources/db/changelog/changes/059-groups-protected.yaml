@@ -1,0 +1,29 @@
+databaseChangeLog:
+  - changeSet:
+      id: 059-groups-protected
+      author: opaa
+      comment: >-
+        Das Schutzkennzeichen einer Gruppe (#1814, ADR-0036 Entscheidung 9) fuer die
+        Personalvertretung, die Schwerbehindertenvertretung, die Gleichstellung und fuer
+        Personalvorgaenge - dieselben Stellen, die hybrid-retrieval.md, Leitplanke (e), fuer
+        Bibliotheken benennt.
+        .
+        Gesetzt und geloest wird es von der zustaendigen Stelle selbst, nie von der Administration:
+        bei einer internen Gruppe von ihren Verantwortlichen, bei einer Anbietergruppe von den
+        Ansprechstellen, die die Systemverwaltung benennt (#1821). Deshalb keine Vorgabe und kein
+        Bestandsschritt: Der Bestand kennt niemanden, der diese Entscheidung haette treffen koennen.
+        .
+        Spaltenname protected wie in SQL lesbar; die Entitaet nennt das Feld protectedGroup, weil
+        protected ein Java-Schluesselwort ist.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE groups
+                  ADD COLUMN protected boolean DEFAULT false NOT NULL;
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE groups
+                  DROP COLUMN protected;

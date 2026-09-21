@@ -24,6 +24,8 @@ import io.opaa.group.Group;
 import io.opaa.group.GroupMembership;
 import io.opaa.group.GroupRepository;
 import io.opaa.group.GroupService;
+import io.opaa.group.GroupSteward;
+import io.opaa.group.GroupStewardRepository;
 import io.opaa.indexing.document.Document;
 import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.indexing.job.IndexingJob;
@@ -97,6 +99,7 @@ class KnowledgeLibraryServiceIntegrationTest {
   @Autowired private LibraryAccessService accessService;
   @Autowired private GroupService groupService;
   @Autowired private GroupRepository groupRepository;
+  @Autowired private GroupStewardRepository stewardRepository;
   @Autowired private UserRepository userRepository;
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private DocumentRepository documentRepository;
@@ -233,10 +236,15 @@ class KnowledgeLibraryServiceIntegrationTest {
     return URI.create(detail.managementDetail().sourceUrl());
   }
 
+  /**
+   * An internal group as it exists once its stewards released it for use (#1814) - otherwise it is
+   * no grant subject for a caller who is neither member nor steward of it.
+   */
   private Group createGroup(UUID organizationId, UUID... memberIds) {
     Group group =
         new Group(
             organizationId, GroupKind.AD_HOC, "Referat", "Ad-hoc-Gruppe", null, null, null, null);
+    group.release(true);
     for (UUID memberId : memberIds) {
       group.addMembership(new GroupMembership(memberId, organizationId));
     }
@@ -1666,6 +1674,9 @@ class KnowledgeLibraryServiceIntegrationTest {
     // reaches it - a raw repository update bypassing GroupService would leave the resolver's
     // cache stale and make this assertion pass for the wrong reason (a cache that was never
     // populated) or fail where it should not.
+    // Through the group's own steward (#1814): maintaining an internal group is a right decided
+    // per group, and the library owner is not automatically one of its stewards.
+    stewardRepository.save(new GroupSteward(group.getId(), owner, organizationA, owner));
     groupService.removeMember(group.getId(), member, currentUserOf(owner));
 
     // No grant left at all reaches the (private, ORGANIZATION-less-by-default) library, so this

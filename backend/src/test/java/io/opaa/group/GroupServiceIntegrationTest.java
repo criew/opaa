@@ -150,8 +150,10 @@ class GroupServiceIntegrationTest {
   }
 
   /**
-   * Creating an internal group needs CREATE_INTERNAL_GROUP, which is delivered to nobody and held
-   * implicitly by SYSTEM_ADMIN - the only role the endpoint lets through anyway (#1813).
+   * A system administrator, which is what every maintenance call below needs: the right to maintain
+   * a group is decided per group since #1814, and these fixtures create their groups through the
+   * repository, so none of them has a steward. Creating an internal group needs
+   * CREATE_INTERNAL_GROUP on top, which a SYSTEM_ADMIN holds implicitly (#1813).
    */
   private UUID createAdmin(UUID organizationId) {
     User user =
@@ -190,7 +192,7 @@ class GroupServiceIntegrationTest {
 
   @Test
   void renamesAGroup() {
-    UUID admin = createUser(organizationA);
+    UUID admin = createAdmin(organizationA);
     Group group =
         new Group(organizationA, GroupKind.AD_HOC, "Old name", null, null, null, null, null);
     Group saved = groupRepository.save(group);
@@ -204,7 +206,7 @@ class GroupServiceIntegrationTest {
 
   @Test
   void cannotRenameAnOrgUnitGroup() {
-    UUID admin = createUser(organizationA);
+    UUID admin = createAdmin(organizationA);
     Group group =
         new Group(
             organizationA,
@@ -224,7 +226,7 @@ class GroupServiceIntegrationTest {
 
   @Test
   void deletesAGroupAndRemovesMemberships() {
-    UUID admin = createUser(organizationA);
+    UUID admin = createAdmin(organizationA);
     UUID member = createUser(organizationA);
     Group group = new Group(organizationA, GroupKind.AD_HOC, "Team", null, null, null, null, null);
     group.addMembership(new GroupMembership(member, organizationA));
@@ -244,7 +246,7 @@ class GroupServiceIntegrationTest {
     // #200's acceptance criteria describe. Proving it requires the real, versioned Liquibase
     // schema - see the class Javadoc for why the previous Hibernate-generated schema could not
     // exercise this at all (#308).
-    UUID admin = createUser(organizationA);
+    UUID admin = createAdmin(organizationA);
     Group group = new Group(organizationA, GroupKind.AD_HOC, "Team", null, null, null, null, null);
     Group saved = groupRepository.save(group);
     KnowledgeLibrary library =
@@ -271,7 +273,7 @@ class GroupServiceIntegrationTest {
     // 013) is RESTRICT exactly like fk_knowledge_libraries_owner_group_organization, so without
     // GroupService#deleteGroup's second, independent check, this must fail with an unhandled
     // DataIntegrityViolationException (500) instead of a clean 409.
-    UUID admin = createUser(organizationA);
+    UUID admin = createAdmin(organizationA);
     UUID owner = createUser(organizationA);
     Group group =
         new Group(organizationA, GroupKind.AD_HOC, "Abteilung 5", null, null, null, null, null);
@@ -304,7 +306,7 @@ class GroupServiceIntegrationTest {
 
   @Test
   void cannotDeleteAnOrgUnitGroup() {
-    UUID admin = createUser(organizationA);
+    UUID admin = createAdmin(organizationA);
     Group group =
         new Group(
             organizationA,
@@ -324,7 +326,7 @@ class GroupServiceIntegrationTest {
 
   @Test
   void addsAndRemovesAMember() {
-    UUID admin = createUser(organizationA);
+    UUID admin = createAdmin(organizationA);
     UUID member = createUser(organizationA);
     Group group = new Group(organizationA, GroupKind.AD_HOC, "Team", null, null, null, null, null);
     Group saved = groupRepository.save(group);
@@ -340,7 +342,7 @@ class GroupServiceIntegrationTest {
 
   @Test
   void addingTheSameMemberTwiceIsRejectedWithConflict() {
-    UUID admin = createUser(organizationA);
+    UUID admin = createAdmin(organizationA);
     UUID member = createUser(organizationA);
     Group group = new Group(organizationA, GroupKind.AD_HOC, "Team", null, null, null, null, null);
     Group saved = groupRepository.save(group);
@@ -352,7 +354,7 @@ class GroupServiceIntegrationTest {
 
   @Test
   void addMemberRejectsAUserFromAnotherOrganization() {
-    UUID admin = createUser(organizationA);
+    UUID admin = createAdmin(organizationA);
     UUID outsider = createUser(organizationB);
     Group group = new Group(organizationA, GroupKind.AD_HOC, "Team", null, null, null, null, null);
     Group saved = groupRepository.save(group);
@@ -365,7 +367,7 @@ class GroupServiceIntegrationTest {
   @Test
   void groupsNeverCrossAnOrganizationBoundaryEvenForTheAdminOfAnotherOrganization() {
     UUID owner = createUser(organizationA);
-    UUID adminOfOtherOrganization = createUser(organizationB);
+    UUID adminOfOtherOrganization = createAdmin(organizationB);
     Group group = new Group(organizationA, GroupKind.AD_HOC, "Team", null, null, null, null, null);
     Group saved = groupRepository.save(group);
 
@@ -378,7 +380,7 @@ class GroupServiceIntegrationTest {
 
   @Test
   void listGroupsReturnsOnlyGroupsOfTheCallersOrganization() {
-    UUID adminA = createUser(organizationA);
+    UUID adminA = createAdmin(organizationA);
     createUser(organizationB);
     groupRepository.save(
         new Group(organizationA, GroupKind.AD_HOC, "Team A", null, null, null, null, null));
@@ -463,7 +465,7 @@ class GroupServiceIntegrationTest {
 
   @Test
   void resolvingTheGroupsOfAUserIsCachedAndInvalidatedOnMembershipChange() {
-    UUID admin = createUser(organizationA);
+    UUID admin = createAdmin(organizationA);
     UUID member = createUser(organizationA);
     Group group = new Group(organizationA, GroupKind.AD_HOC, "Team", null, null, null, null, null);
     Group saved = groupRepository.save(group);
@@ -481,7 +483,7 @@ class GroupServiceIntegrationTest {
 
   @Test
   void deletingAGroupInvalidatesTheCacheForItsFormerMembers() {
-    UUID admin = createUser(organizationA);
+    UUID admin = createAdmin(organizationA);
     UUID member = createUser(organizationA);
     Group group = new Group(organizationA, GroupKind.AD_HOC, "Team", null, null, null, null, null);
     group.addMembership(new GroupMembership(member, organizationA));
@@ -512,7 +514,7 @@ class GroupServiceIntegrationTest {
   @Test
   void removingAMemberDoesNotLeaveAStaleCacheEntryFromAReaderDuringTheOpenTransaction()
       throws InterruptedException {
-    UUID admin = createUser(organizationA);
+    UUID admin = createAdmin(organizationA);
     UUID member = createUser(organizationA);
     Group group = new Group(organizationA, GroupKind.AD_HOC, "Team", null, null, null, null, null);
     group.addMembership(new GroupMembership(member, organizationA));

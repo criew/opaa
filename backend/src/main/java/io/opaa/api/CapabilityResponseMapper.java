@@ -21,16 +21,6 @@ import java.util.Set;
  */
 final class CapabilityResponseMapper {
 
-  /**
-   * The reservation {@link #statement} appends for {@link Capability#CREATE_INTERNAL_GROUP} as long
-   * as no creation path outside the system administration exists: the endpoint behind it is {@code
-   * SYSTEM_ADMIN}-only, so a grant to anybody else is recorded and has no effect yet. Active
-   * restriction, removed with the creation path of #1814.
-   */
-  private static final String WITHOUT_A_CREATION_PATH_YET =
-      " Wirksam wird das Anlegerecht, sobald interne Gruppen außerhalb der Systemverwaltung"
-          + " angelegt werden können (#1814).";
-
   private CapabilityResponseMapper() {}
 
   static MyCapabilitiesResponse toMyCapabilities(Set<Capability> capabilities) {
@@ -72,13 +62,9 @@ final class CapabilityResponseMapper {
     if (grants.isEmpty()) {
       return "Nur die Systemverwaltung darf " + what + " anlegen.";
     }
-    String reservation =
-        overview.capability() == Capability.CREATE_INTERNAL_GROUP
-            ? WITHOUT_A_CREATION_PATH_YET
-            : "";
     if (grants.stream()
         .anyMatch(view -> view.grant().getSubjectType() == CapabilitySubjectType.ALL_ACCOUNTS)) {
-      return "Alle Konten dürfen " + what + " anlegen." + reservation;
+      return "Alle Konten dürfen " + what + " anlegen.";
     }
     List<String> named =
         grants.stream().map(CapabilityResponseMapper::subjectLabel).sorted().limit(3).toList();
@@ -86,7 +72,7 @@ final class CapabilityResponseMapper {
     if (grants.size() > named.size()) {
       subjects += " und " + (grants.size() - named.size()) + " weitere";
     }
-    return subjects + " sowie die Systemverwaltung dürfen " + what + " anlegen." + reservation;
+    return subjects + " sowie die Systemverwaltung dürfen " + what + " anlegen.";
   }
 
   private static String subjectLabel(CapabilityGrantView view) {

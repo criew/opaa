@@ -1,0 +1,63 @@
+databaseChangeLog:
+  - changeSet:
+      id: 057-create-group-stewards
+      author: opaa
+      comment: >-
+        Gruppenverantwortliche interner Gruppen (#1814, ADR-0036 Entscheidung 4). Eine Zeile sagt:
+        diese Person pflegt diese Gruppe. Ausschliesslich natuerliche Personen - eine Gruppe als
+        Verantwortliche waere Schachtelung durch die Hintertuer, und genau deshalb gibt es hier
+        keine subject_type-Spalte wie in asset_grants, sondern nur user_id.
+        .
+        KEINE HISTORIENTABELLE, und das ist eine Entscheidung, keine Auslassung (ADR-0036
+        Entscheidungen 4 und 8; Betrieb-Auflage 4.2 ausdruecklich zurueckgewiesen):
+        Verantwortlichkeit traegt kein Leserecht und ist fuer die Frage "wer konnte am Tag X was
+        lesen" ohne Bedeutung. Ernennung, Entlassung und Abgabe erzeugen Audit-Ereignisse unter der
+        Protokollfrist. Die Mitgliedsaenderungen, die ein Verantwortlicher vornimmt, stehen
+        unveraendert in group_membership_history - dort mit ihm als Akteur.
+        .
+        organization_id traegt CASCADE (Konfiguration des Mandanten, wie in capability_grants), die
+        Gruppenbeziehung ebenfalls: faellt die Gruppe, ist die Verantwortung fuer sie
+        gegenstandslos - sie ist Betriebsrecht der Gegenwart und kein Nachweisbestand, der die
+        Gruppe ueberleben muesste. Die beiden Personenspalten sind RESTRICT nach ADR-0016; jede von
+        ihnen braucht ihre Unterabfrage in UserRepository#countDeletionBlockers, sonst scheitert die
+        Kontoloeschung an der Bedingung, ohne ihren Grund im Log zu nennen.
+        .
+        uk_group_stewards_group_user haelt eine Person je Gruppe genau einmal fest;
+        idx_group_stewards_user traegt die Gegenrichtung ("meine Gruppen", GET
+        /api/v1/me/stewarded-groups), die sonst ueber die ganze Tabelle liefe.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE TABLE group_stewards (
+                  id uuid NOT NULL,
+                  group_id uuid NOT NULL,
+                  user_id uuid NOT NULL,
+                  organization_id uuid NOT NULL,
+                  appointed_by_user_id uuid,
+                  created_at timestamp with time zone DEFAULT now() NOT NULL
+              );
+
+              ALTER TABLE ONLY group_stewards
+                  ADD CONSTRAINT group_stewards_pkey PRIMARY KEY (id);
+
+              CREATE UNIQUE INDEX uk_group_stewards_group_user ON group_stewards USING btree (group_id, user_id);
+
+              CREATE INDEX idx_group_stewards_user ON group_stewards USING btree (user_id);
+
+              ALTER TABLE ONLY group_stewards
+                  ADD CONSTRAINT fk_group_stewards_organization FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY group_stewards
+                  ADD CONSTRAINT fk_group_stewards_group_organization FOREIGN KEY (group_id, organization_id) REFERENCES groups(id, organization_id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY group_stewards
+                  ADD CONSTRAINT fk_group_stewards_user_organization FOREIGN KEY (user_id, organization_id) REFERENCES users(id, organization_id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY group_stewards
+                  ADD CONSTRAINT fk_group_stewards_appointed_by_organization FOREIGN KEY (appointed_by_user_id, organization_id) REFERENCES users(id, organization_id) ON DELETE RESTRICT;
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              DROP TABLE group_stewards;

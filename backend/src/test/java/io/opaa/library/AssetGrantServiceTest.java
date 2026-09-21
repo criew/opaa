@@ -85,6 +85,36 @@ class AssetGrantServiceTest {
     User manager = new User("manager", "issuer", "manager@example.com", "Manager");
     manager.setOrganizationId(organizationId);
     when(userRepository.findById(managerId)).thenReturn(Optional.of(manager));
+
+    // The default for every test that is not about the visibility rule of ADR-0036,
+    // Entscheidung 9: the group is one the caller may name at all, so the assertions below are
+    // about the reason the service actually refuses.
+    when(groupDirectory.isSelectableBy(any(), any(), anyBoolean())).thenReturn(true);
+  }
+
+  /**
+   * ADR-0036, Entscheidung 9 (#1814): an internal group its stewards have not released for use is
+   * "not found" for a manager with no other relation to it - and on this path, the one where the id
+   * is typed by hand rather than picked from a list, exactly as much as in the list.
+   */
+  @Test
+  void upsertGrantAnswersNotFoundForAGroupTheCallerMayNotSelect() {
+    when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
+        .thenReturn(AssetRole.OWNER);
+    when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
+        .thenReturn(AssetRole.OWNER);
+    GroupSubject group =
+        new GroupSubject(UUID.randomUUID(), organizationId, "Projektteam", false, false, false);
+    when(groupDirectory.find(group.id())).thenReturn(Optional.of(group));
+    when(groupDirectory.isSelectableBy(group.id(), managerId, false)).thenReturn(false);
+
+    AssetGrantUpsert request =
+        new AssetGrantUpsert(PermissionSubjectType.GROUP, group.id(), AssetRole.VIEWER);
+
+    assertThatThrownBy(() -> grantService.upsertGrant(libraryId, request, managerCaller))
+        .isInstanceOf(NotFoundException.class)
+        .hasMessage("Gruppe nicht gefunden");
+    verify(grantRepository, never()).save(any());
   }
 
   @Test

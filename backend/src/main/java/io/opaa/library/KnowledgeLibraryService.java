@@ -251,8 +251,10 @@ public class KnowledgeLibraryService {
       // #441: a dissolved group must not receive the group MANAGER grant below, mirroring
       // AssetGrantService#upsertGrant's own check for the exact same case - reused here rather
       // than duplicated so the two grant-writing paths can never disagree on which groups are
-      // grantable.
-      grantService.requireGrantableGroup(ownerGroup.id(), caller.organizationId());
+      // grantable. Its release check (ADR-0036, Entscheidung 9) can never change the outcome on
+      // this path: the membership check above already restricts the owner to a group the caller
+      // belongs to, and a member always sees their own group.
+      grantService.requireGrantableGroup(ownerGroup.id(), caller.organizationId(), caller);
       library =
           KnowledgeLibrary.ownedByGroup(
               caller.organizationId(),

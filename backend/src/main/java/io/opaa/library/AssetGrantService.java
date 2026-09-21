@@ -157,7 +157,7 @@ public class AssetGrantService {
     if (request.subjectType() == PermissionSubjectType.USER) {
       requireUserInOrganization(request.subjectId(), library.getOrganizationId());
     } else {
-      requireGrantableGroup(request.subjectId(), library.getOrganizationId());
+      requireGrantableGroup(request.subjectId(), library.getOrganizationId(), caller);
     }
 
     // Escalation guard, half 1: a caller may never grant a role higher than the one they
@@ -476,13 +476,21 @@ public class AssetGrantService {
    * <p>Package-private (not {@code private}) so {@link KnowledgeLibraryService#createLibrary} can
    * reuse the same check for the initial owner-group grant of a group-owned library, instead of
    * duplicating the dissolved check outside this service (#441).
+   *
+   * <p>Takes the caller because the visibility of an internal group depends on them (#1814,
+   * ADR-0036 Entscheidung 9): one that its stewards have not released for use is "not found" for
+   * anybody who is neither its member, nor one of its stewards, nor a system administrator - on
+   * every path, including the one where the id is typed by hand.
    */
-  void requireGrantableGroup(UUID groupId, UUID organizationId) {
+  void requireGrantableGroup(UUID groupId, UUID organizationId, CurrentUser caller) {
     GroupSubject group =
         groupDirectory
             .find(groupId)
             .orElseThrow(() -> new NotFoundException("Gruppe nicht gefunden"));
     if (!group.organizationId().equals(organizationId)) {
+      throw new NotFoundException("Gruppe nicht gefunden");
+    }
+    if (!groupDirectory.isSelectableBy(groupId, caller.id(), caller.isSystemAdmin())) {
       throw new NotFoundException("Gruppe nicht gefunden");
     }
     if (group.dissolved()) {

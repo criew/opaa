@@ -325,9 +325,12 @@ class DiagnosticAccessIntegrationTest {
     CurrentUser owner = CurrentUser.of(holderId, organizationId, SystemRole.USER, "Zustaendige");
     lockService.setLocked(owner, library.getId(), false);
     Group profile =
-        groupRepository.save(
-            new Group(
-                organizationId, GroupKind.AD_HOC, "Sachbearbeitung", null, null, null, null, null));
+        new Group(
+            organizationId, GroupKind.AD_HOC, "Sachbearbeitung", null, null, null, null, null);
+    // Released for use (#1814): an internal group its stewards have not released is no grant
+    // subject for an owner who is neither member nor steward of it.
+    profile.release(true);
+    groupRepository.save(profile);
     assetGrantService.upsertGrant(
         library.getId(),
         new AssetGrantUpsert(PermissionSubjectType.GROUP, profile.getId(), AssetRole.VIEWER),
