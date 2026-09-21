@@ -110,6 +110,11 @@ public class ExternalAccessTokenAuthenticator {
     if (user == null) {
       return new Result.Refused(ExternalAccessTokenRejection.INVALID_TOKEN);
     }
+    if (user.isDirectoryLocked()) {
+      // #1818: the same rule for an account of an identity provider - the directory reports it as
+      // gone, and a token of it must stop working with the next call, not with the next sign-in.
+      return new Result.Refused(ExternalAccessTokenRejection.ACCOUNT_NOT_ACTIVE);
+    }
     LocalCredentials row = credentials.findById(user.getId()).orElse(null);
     if (row != null && !row.isLoginCapable(now)) {
       // A token that outlives a lock or an expiry would be the most convenient way around the

@@ -553,7 +553,7 @@ Historienzeile sagt, *in welchem Zeitraum* ein Recht galt, und trägt die Sticht
 | **Eigentum** an Asset und Space | **neu** (`asset_ownership_history`), #1819 | `RESTRICT` | ja |
 | **Fähigkeit** | **neu** (`capability_grant_history`), #1813 | `RESTRICT` | ja, Governance-Ereignis |
 | **Systemrolle** | **neu** — weil `effectiveRole` `SYSTEM_ADMIN` als `OWNER` führt | `RESTRICT` | ja |
-| **Kontozustand** (aktiv/gesperrt) | **neu**, #1818 — Beleg der Kontenmenge zum Stichtag | `RESTRICT` | ja |
+| **Kontozustand** (aktiv/gesperrt) | **neu**, #1818 — Beleg der Kontenmenge zum Stichtag, zusammen mit `users` (siehe Nachtrag unten) | `RESTRICT` | ja |
 | Verantwortliche interner Gruppen | **keine** — Betriebsrecht der Gegenwart | — | ja |
 | Vollmachten | keine (ADR-0016, Nachtrag) | — | ja |
 | Nachfolgevorgänge, Sichtungsvermerke | keine | — | ja |
@@ -577,6 +577,17 @@ angelegt, nicht von vornherein pseudonymisiert** — der vorhandene Pseudonym-Me
 
 **Die Kontozustandshistorie bekommt keinen zweiten Lesepfad** („Verlauf" am Konto in der
 Benutzerverwaltung) neben der Stichtagsauskunft.
+
+> **Nachtrag mit der Umsetzung (#1818, PR #1866): Die Kontozustandstabelle ist der Beleg der
+> Kontenmenge nur *zusammen mit* `users`.** Die Kette eines Kontos beginnt dort mit seiner **ersten
+> Zustandsänderung** und reicht von da lückenlos bis `users.created_at` zurück; ein nie gesperrtes
+> Konto hat **keine Zeile**. Grund: Ein offenes Intervall je Konto ab der Anlage machte über die
+> `RESTRICT`-Personenspalte jedes Konto dauerhaft unlöschbar und höbe damit die Kontolöschung aus
+> #1537 aus — dieselbe Überlegung, aus der die Bestandseinträge in den Changesets 044 und 052 den
+> persönlichen Space aussparen. Für die Stichtagsauskunft heißt das: Die Kontenmenge zum Stichtag
+> ist `users` (angelegt vor dem Stichtag), korrigiert um die Intervalle dieser Tabelle. **#1813 muss
+> diese Regel kennen** — eine leere Tabelle heißt „niemand war je gesperrt", nicht „niemand war
+> aktiv".
 
 **Der Lesepfad, den es heute nicht gibt.** `readableLibraryIdsAsOf` ist gebaut, aber ohne Endpunkt.
 Die Stichtagsauskunft ist eine Funktion der Rolle `AUDITOR` mit zwei Einstiegen:

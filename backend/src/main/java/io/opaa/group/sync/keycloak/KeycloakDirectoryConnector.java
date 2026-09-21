@@ -1,5 +1,6 @@
 package io.opaa.group.sync.keycloak;
 
+import io.opaa.group.sync.DirectoryAccount;
 import io.opaa.group.sync.DirectoryGroup;
 import io.opaa.group.sync.DirectorySnapshot;
 import io.opaa.group.sync.DirectoryUnavailableException;
@@ -35,10 +36,15 @@ import tools.jackson.databind.JsonNode;
  * children come from {@code /groups/{id}/children}. Only groups that report children are asked for
  * them.
  *
- * <p><b>A truncated read is a failure, not a smaller directory.</b> Both ceilings of {@link
- * KeycloakDirectoryProperties} raise {@link DirectoryUnavailableException} instead of returning
+ * <p><b>The account status comes from the same read</b> (#1818): {@code /users} reports every
+ * account of the realm with its {@code enabled} flag, and the id it carries is the same {@code sub}
+ * a membership names - so the account status needs no mapping rule either.
+ *
+ * <p><b>A truncated read is a failure, not a smaller directory.</b> Every ceiling of {@link
+ * KeycloakDirectoryProperties} raises {@link DirectoryUnavailableException} instead of returning
  * what was read so far: a truncated group list is indistinguishable from a reorganisation that
- * dissolved everything beyond it, and the run would apply the latter.
+ * dissolved everything beyond it, a truncated account list from a mass departure, and the run would
+ * apply the latter.
  */
 public class KeycloakDirectoryConnector {
 
@@ -62,9 +68,9 @@ public class KeycloakDirectoryConnector {
 
   /**
    * Signs in with the service account and reads the realm's complete group tree with its direct
-   * memberships.
+   * memberships, plus every account with its {@code enabled} flag (#1818).
    */
-  public DirectorySnapshot fetchGroups(
+  public DirectorySnapshot fetchSnapshot(
       KeycloakRealmAddress address, String clientId, String clientSecret)
       throws DirectoryUnavailableException {
     KeycloakAdminApi api = api(address, clientId, clientSecret);
@@ -87,12 +93,37 @@ public class KeycloakDirectoryConnector {
         collect(api, node, parentId, groups, pending);
       }
     }
+    List<DirectoryAccount> accounts = accounts(api);
     log.info(
-        "Keycloak directory: read {} group(s) of realm {} at {}",
+        "Keycloak directory: read {} group(s) and {} account(s) of realm {} at {}",
         groups.size(),
+        accounts.size(),
         address.realm(),
         address.baseUrl());
-    return new DirectorySnapshot(clock.instant(), groups);
+    return new DirectorySnapshot(clock.instant(), groups, accounts);
+  }
+
+  /**
+   * The realm's accounts with their state (#1818). A user without an id is skipped the way a group
+   * without one is - it identifies nobody; {@code enabled} absent is read as enabled, so a Keycloak
+   * version that omits the field for an enabled account never locks anyone.
+   */
+  private List<DirectoryAccount> accounts(KeycloakAdminApi api)
+      throws DirectoryUnavailableException {
+    List<DirectoryAccount> accounts = new ArrayList<>();
+    for (JsonNode node :
+        pages(
+            first -> api.users(first, properties.pageSize()),
+            properties.maxAccounts(),
+            accountCeilingMessage())) {
+      String id = node.path("id").asString(null);
+      if (id == null || id.isBlank()) {
+        log.warn("Keycloak directory: skipping an account the directory reported without id");
+        continue;
+      }
+      accounts.add(new DirectoryAccount(id, node.path("enabled").asBoolean(true)));
+    }
+    return accounts;
   }
 
   /**
@@ -171,6 +202,12 @@ public class KeycloakDirectoryConnector {
     return "Das Verzeichnis meldet mehr als "
         + properties.maxGroups()
         + " Gruppen. Der Lauf bricht ab, statt eine abgeschnittene Liste anzuwenden.";
+  }
+
+  private String accountCeilingMessage() {
+    return "Das Verzeichnis meldet mehr als "
+        + properties.maxAccounts()
+        + " Konten. Der Lauf bricht ab, statt eine abgeschnittene Kontenliste anzuwenden.";
   }
 
   private String memberCeilingMessage() {

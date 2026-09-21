@@ -1,0 +1,27 @@
+databaseChangeLog:
+  - changeSet:
+      id: 065-directory-sync-pending-plans-accounts-locked
+      author: opaa
+      comment: >-
+        Wie viele Konten ein ausstehender Plan sperren wuerde (#1818, ADR-0036 Entscheidung 3).
+        Kontosperren unterliegen derselben Schwelle und demselben Bestaetigungsweg wie
+        Mitgliedschaftsentzuege, und ein ausstehender Plan ist ein lauter Zustand: Die
+        Verwaltungsuebersicht nennt neben den entzogenen Mitgliedschaften die Zahl der Konten,
+        die der Lauf sperren wuerde, ohne den gespeicherten Bericht zu lesen - dieselbe Rolle,
+        die memberships_removed seit 049 hat.
+        .
+        DEFAULT 0 NOT NULL: Ein am Migrationstag ausstehender Plan ist vor diesem Changeset
+        entstanden und sperrt deshalb niemanden. Der Wert ist fuer jede neu geschriebene Zeile
+        gesetzt, der Default bleibt nur fuer den Bestand wirksam.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE directory_sync_pending_plans
+                  ADD COLUMN accounts_locked integer DEFAULT 0 NOT NULL;
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE directory_sync_pending_plans
+                  DROP COLUMN accounts_locked;

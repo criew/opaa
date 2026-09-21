@@ -33,6 +33,7 @@ final class AccountResponseMapper {
             account.local() == null
                 ? account.user().getCreatedAt()
                 : account.local().credentials().getCreatedAt());
+    response.setDirectoryLocked(account.user().isDirectoryLocked());
     OidcProvider provider = account.provider();
     if (provider != null) {
       response.setProvider(

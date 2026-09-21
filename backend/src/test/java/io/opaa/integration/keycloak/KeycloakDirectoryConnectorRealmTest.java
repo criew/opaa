@@ -36,13 +36,13 @@ class KeycloakDirectoryConnectorRealmTest {
     return new KeycloakDirectoryConnector(
         HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NEVER).build(),
         new KeycloakDirectoryProperties(
-            pageSize, 5000, 20000, Duration.ofSeconds(5), Duration.ofSeconds(30)),
+            pageSize, 5000, 20000, 50000, Duration.ofSeconds(5), Duration.ofSeconds(30)),
         Clock.systemUTC());
   }
 
   private static DirectorySnapshot fetch(int pageSize) throws DirectoryUnavailableException {
     return connector(pageSize)
-        .fetchGroups(
+        .fetchSnapshot(
             KeycloakRealmAddress.of(keycloak.issuerUri(), null),
             KeycloakFixture.DIRECTORY_CLIENT_ID,
             KeycloakFixture.DIRECTORY_CLIENT_SECRET);
@@ -123,7 +123,7 @@ class KeycloakDirectoryConnectorRealmTest {
     assertThatThrownBy(
             () ->
                 connector(100)
-                    .fetchGroups(
+                    .fetchSnapshot(
                         KeycloakRealmAddress.of(keycloak.issuerUri(), null),
                         KeycloakFixture.DIRECTORY_CLIENT_ID,
                         "falsch"))
@@ -137,7 +137,7 @@ class KeycloakDirectoryConnectorRealmTest {
     assertThatThrownBy(
             () ->
                 connector(100)
-                    .fetchGroups(
+                    .fetchSnapshot(
                         KeycloakRealmAddress.of(keycloak.issuerUri(), null),
                         KeycloakFixture.POWERLESS_CLIENT_ID,
                         KeycloakFixture.POWERLESS_CLIENT_SECRET))
@@ -164,7 +164,7 @@ class KeycloakDirectoryConnectorRealmTest {
     assertThatThrownBy(
             () ->
                 connector(100)
-                    .fetchGroups(
+                    .fetchSnapshot(
                         KeycloakRealmAddress.of(keycloak.baseUrl() + "/realms/gibt-es-nicht", null),
                         KeycloakFixture.DIRECTORY_CLIENT_ID,
                         KeycloakFixture.DIRECTORY_CLIENT_SECRET))

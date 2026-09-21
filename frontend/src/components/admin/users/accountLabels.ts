@@ -29,12 +29,18 @@ export function accountOriginLabel(account: AccountResponse): string {
  * any more. Deliberately not the origin's word again: the two cells carry two statements.
  */
 export function providerStateText(account: AccountResponse): string {
+  // #1818: the one state of a provider account OPAA itself holds - it outranks the two below,
+  // because it is what stops this account right now, whatever the provider row says.
+  if (account.directoryLocked) return 'Im Verzeichnis gesperrt'
   if (!account.provider) return 'Anmeldung nicht möglich'
   return account.provider.enabled ? 'Beim Anbieter' : 'Anbieter deaktiviert'
 }
 
 /** Why a provider account cannot sign in - the tooltip of the two unusual states above. */
 export function providerStateHint(account: AccountResponse): string | null {
+  if (account.directoryLocked) {
+    return 'Das Verzeichnis meldet dieses Konto als gesperrt oder gar nicht mehr; der Abgleich hat es deshalb gesperrt. Mitgliedschaften und Inhalte bleiben bestehen. Aufgehoben wird die Sperre im Verzeichnis — der nächste Abgleich nimmt sie dann zurück.'
+  }
   if (!account.provider) {
     return `Zum Issuer ${account.issuer} gibt es keine Anbieterzeile mehr; Tokens dieses Anbieters werden abgewiesen. Das Konto bleibt mit seinen Inhalten bestehen.`
   }

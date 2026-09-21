@@ -1,0 +1,59 @@
+databaseChangeLog:
+  - changeSet:
+      id: 064-create-account-state-history
+      author: opaa
+      comment: >-
+        Die Rechtehistorie des Kontozustands (#1818, ADR-0036 Entscheidung 8): halboffene
+        Intervalle je Konto mit dem Zustand aktiv oder gesperrt. Sie macht die Sperre aus dem
+        Abgleich rueckholbar, ohne einen Bruch in der Historie zu hinterlassen, und sie ist der
+        Beleg dafuer, welche Konten zum Stichtag ueberhaupt zugriffsfaehig waren - ohne den ergibt
+        "Alle Konten durften es" (#1813) keine Stichtagsauskunft.
+        .
+        ADR-0016: Personenspalte RESTRICT. Einen Akteur traegt die Tabelle nicht - jede Zeile
+        entsteht aus einem Verzeichnisabgleich, und der hat keine handelnde Person; wer einen
+        Lauf bestaetigt hat, steht im Nachweisprotokoll.
+        .
+        KEINE ZEILE BEI DER KONTOANLAGE, und das ist eine bewusste Entscheidung: Ein offenes
+        Intervall ab der Anlage fuer jedes Konto machte wegen RESTRICT jedes Konto dauerhaft
+        unloeschbar (dieselbe Ueberlegung wie in 044 und 052 fuer den persoenlichen Space). Die
+        Kette eines Kontos beginnt deshalb erst mit seiner ersten Zustandsaenderung, und zwar
+        lueckenlos: Der erste Schreibvorgang legt das abgeschlossene Intervall ACTIVE ab
+        users.created_at mit dem Grund ACCOUNT_CREATED zusammen mit dem Intervall LOCKED an. Ein
+        nie gesperrtes Konto war seit seiner Anlage aktiv - das steht in users, nicht hier.
+        .
+        uk_account_state_history_open haelt "hoechstens ein offenes Intervall je Konto" im Schema,
+        nicht in der Anwendung - zwei nebenlaeufige Laeufe koennten sonst eine verschraenkte Kette
+        hinterlassen.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE TABLE account_state_history (
+                  id uuid NOT NULL,
+                  user_id uuid NOT NULL,
+                  organization_id uuid NOT NULL,
+                  state character varying(20) NOT NULL,
+                  cause character varying(30) NOT NULL,
+                  valid_from timestamp with time zone NOT NULL,
+                  valid_to timestamp with time zone,
+                  created_at timestamp with time zone DEFAULT now() NOT NULL,
+                  CONSTRAINT chk_account_state_history_state CHECK ((state IN ('ACTIVE', 'LOCKED'))),
+                  CONSTRAINT chk_account_state_history_cause CHECK ((cause IN ('ACCOUNT_CREATED', 'DIRECTORY_LOCKED', 'DIRECTORY_UNLOCKED')))
+              );
+
+              ALTER TABLE ONLY account_state_history
+                  ADD CONSTRAINT account_state_history_pkey PRIMARY KEY (id);
+
+              CREATE INDEX idx_account_state_history_user ON account_state_history USING btree (user_id, organization_id, valid_from);
+
+              CREATE INDEX idx_account_state_history_valid_to ON account_state_history USING btree (valid_to) WHERE (valid_to IS NOT NULL);
+
+              CREATE UNIQUE INDEX uk_account_state_history_open ON account_state_history USING btree (user_id) WHERE (valid_to IS NULL);
+
+              ALTER TABLE ONLY account_state_history
+                  ADD CONSTRAINT fk_account_state_history_user_organization FOREIGN KEY (user_id, organization_id) REFERENCES users(id, organization_id) ON DELETE RESTRICT;
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              DROP TABLE account_state_history;
