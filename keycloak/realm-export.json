@@ -24,7 +24,22 @@
       ],
       "attributes": {
         "pkce.code.challenge.method": "S256"
-      }
+      },
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "consentRequired": false,
+          "config": {
+            "full.path": "false",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "claim.name": "groups"
+          }
+        }
+      ]
     },
     {
       "clientId": "opaa-seed",
@@ -46,8 +61,35 @@
             "access.token.claim": "true",
             "introspection.token.claim": "true"
           }
+        },
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "consentRequired": false,
+          "config": {
+            "full.path": "false",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "claim.name": "groups"
+          }
         }
       ]
+    }
+  ],
+  "groups": [
+    {
+      "name": "Bürgerbüro Rheinfurt",
+      "path": "/Bürgerbüro Rheinfurt"
+    },
+    {
+      "name": "Meldewesen",
+      "path": "/Meldewesen"
+    },
+    {
+      "name": "Kfz-Zulassung",
+      "path": "/Kfz-Zulassung"
     }
   ],
   "users": [
@@ -79,7 +121,8 @@
           "value": "RheinfurtDemo!2026",
           "temporary": false
         }
-      ]
+      ],
+      "groups": ["/Bürgerbüro Rheinfurt"]
     },
     {
       "id": "00000000-0000-4000-8000-000000000003",
@@ -94,7 +137,8 @@
           "value": "RheinfurtDemo!2026",
           "temporary": false
         }
-      ]
+      ],
+      "groups": ["/Bürgerbüro Rheinfurt", "/Meldewesen"]
     },
     {
       "id": "00000000-0000-4000-8000-000000000004",
@@ -109,7 +153,8 @@
           "value": "RheinfurtDemo!2026",
           "temporary": false
         }
-      ]
+      ],
+      "groups": ["/Bürgerbüro Rheinfurt", "/Meldewesen"]
     },
     {
       "id": "00000000-0000-4000-8000-000000000005",
@@ -124,7 +169,8 @@
           "value": "RheinfurtDemo!2026",
           "temporary": false
         }
-      ]
+      ],
+      "groups": ["/Bürgerbüro Rheinfurt", "/Kfz-Zulassung"]
     },
     {
       "id": "00000000-0000-4000-8000-000000000006",
@@ -139,7 +185,8 @@
           "value": "RheinfurtDemo!2026",
           "temporary": false
         }
-      ]
+      ],
+      "groups": ["/Bürgerbüro Rheinfurt"]
     }
   ]
 }

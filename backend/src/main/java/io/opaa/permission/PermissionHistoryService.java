@@ -5,6 +5,7 @@ import java.time.Instant;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
@@ -134,6 +135,49 @@ public class PermissionHistoryService {
   }
 
   /**
+   * The source's side of a transfer (#1834, ADR-0036 Entscheidung 10): closes the open interval at
+   * {@code at} and writes the {@link AssetGrantHistoryCause#TRANSFERRED_OUT} marker carrying {@code
+   * transferId}. Call before the source grant row is deleted, with the boundary the whole transfer
+   * shares - both sides must name the same instant, so the Stichtagsauskunft shows exactly one
+   * subject on every day.
+   */
+  public void recordGrantTransferredOut(
+      AssetGrant grant, UUID actorUserId, UUID transferId, Instant at) {
+    closeOpenGrantInterval(grant, at);
+    AssetGrantHistory marker =
+        AssetGrantHistory.terminal(grant, AssetGrantHistoryCause.TRANSFERRED_OUT, actorUserId, at);
+    marker.belongsToTransfer(transferId);
+    grantHistoryRepository.save(marker);
+  }
+
+  /**
+   * The target's side of {@link #recordGrantTransferredOut}: closes whatever interval the target
+   * already had on the asset at the same instant and opens the one it holds from then on. {@code
+   * grant} must already carry the values the target holds after the transfer.
+   *
+   * <p><b>Called twice for the same chain at the same boundary, it corrects rather than
+   * supersedes.</b> One transfer can touch a target's grant twice - the grant part moves the
+   * source's role over and the ownership part then raises it to the role that goes with ownership.
+   * Closing the interval just opened would leave a state interval of zero length behind that never
+   * held.
+   */
+  public void recordGrantTransferredIn(
+      AssetGrant grant, UUID actorUserId, UUID transferId, Instant at) {
+    Optional<AssetGrantHistory> open = openGrantInterval(grant);
+    if (open.isPresent() && at.equals(open.get().getValidFrom())) {
+      AssetGrantHistory current = open.get();
+      current.correctTo(grant);
+      grantHistoryRepository.saveAndFlush(current);
+      return;
+    }
+    closeOpenGrantInterval(grant, at);
+    AssetGrantHistory opened =
+        AssetGrantHistory.open(grant, AssetGrantHistoryCause.TRANSFERRED_IN, actorUserId, at);
+    opened.belongsToTransfer(transferId);
+    grantHistoryRepository.save(opened);
+  }
+
+  /**
    * Closes the open interval, if any, and flushes immediately - not left to the transaction's
    * normal flush at commit. Hibernate's default flush order runs every queued insert before every
    * queued update, so without this explicit {@code saveAndFlush}, closing the old interval and
@@ -143,6 +187,16 @@ public class PermissionHistoryService {
    * method's own call order.
    */
   private void closeOpenGrantInterval(AssetGrant grant, Instant now) {
+    openGrantInterval(grant)
+        .ifPresent(
+            interval -> {
+              interval.close(now);
+              grantHistoryRepository.saveAndFlush(interval);
+            });
+  }
+
+  /** The interval the subject currently holds on this asset, if any. */
+  private Optional<AssetGrantHistory> openGrantInterval(AssetGrant grant) {
     var open =
         grant.getSubjectType() == PermissionSubjectType.USER
             ? grantHistoryRepository
@@ -157,11 +211,7 @@ public class PermissionHistoryService {
                     grant.getAssetId(),
                     grant.getSubjectType(),
                     grant.getSubjectGroupId());
-    open.ifPresent(
-        interval -> {
-          interval.close(now);
-          grantHistoryRepository.saveAndFlush(interval);
-        });
+    return open;
   }
 
   // -------------------------------------------------------------------------------------------
@@ -227,6 +277,31 @@ public class PermissionHistoryService {
     capabilityHistoryRepository.save(
         CapabilityGrantHistory.terminal(
             grant, CapabilityGrantHistoryCause.REVOKED, actorUserId, now));
+  }
+
+  /**
+   * The capability counterpart of {@link #recordGrantTransferredOut} - same contract, same shared
+   * boundary. Call before the source's grant row is deleted.
+   */
+  public void recordCapabilityTransferredOut(
+      CapabilityGrant grant, UUID actorUserId, UUID transferId, Instant at) {
+    closeOpenCapabilityInterval(grant, at);
+    CapabilityGrantHistory marker =
+        CapabilityGrantHistory.terminal(
+            grant, CapabilityGrantHistoryCause.TRANSFERRED_OUT, actorUserId, at);
+    marker.belongsToTransfer(transferId);
+    capabilityHistoryRepository.save(marker);
+  }
+
+  /** The capability counterpart of {@link #recordGrantTransferredIn}. */
+  public void recordCapabilityTransferredIn(
+      CapabilityGrant grant, UUID actorUserId, UUID transferId, Instant at) {
+    closeOpenCapabilityInterval(grant, at);
+    CapabilityGrantHistory opened =
+        CapabilityGrantHistory.open(
+            grant, CapabilityGrantHistoryCause.TRANSFERRED_IN, actorUserId, at);
+    opened.belongsToTransfer(transferId);
+    capabilityHistoryRepository.save(opened);
   }
 
   /** Flushes for the same reason {@link #closeOpenGrantInterval} does. */

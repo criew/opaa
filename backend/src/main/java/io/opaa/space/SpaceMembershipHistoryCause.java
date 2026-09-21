@@ -14,5 +14,11 @@ public enum SpaceMembershipHistoryCause {
    * The space itself was deleted. {@code space_id} carries no foreign key (ADR-0016), so nothing
    * but the application closes the intervals a deleted space leaves behind.
    */
-  SPACE_DELETED
+  SPACE_DELETED,
+
+  /** The membership was handed to another subject by a transfer (#1834) - closes the source. */
+  TRANSFERRED_OUT,
+
+  /** The counterpart of {@link #TRANSFERRED_OUT}: the interval the target holds from then on. */
+  TRANSFERRED_IN
 }

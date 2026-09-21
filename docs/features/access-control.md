@@ -156,8 +156,8 @@ Entscheidung 5, die damit ADR-0018, Entscheidung 6 samt Nachtrag ablöst.
   solange niemand `CREATE_INTERNAL_GROUP` hält. Wer einschränken will, entzieht „Alle Konten" und
   erteilt einer benannten Gruppe.
 - **`CREATE_CONNECTOR_LIBRARY` ist eine eigene Fähigkeit**, weil Konnektorbibliotheken Serverpfade und
-  Zugangsdaten erreichen und die Freigabe-Obergrenze für Fremdzugänge tragen — der erste Kandidat, den
-  ein Haus nach der Migration auf eine benannte Gruppe einschränkt.
+  Zugangsdaten erreichen und eine Freigabe-Obergrenze tragen (#797) — der erste Kandidat, den ein Haus
+  nach der Migration auf eine benannte Gruppe einschränkt.
 - **Dieselbe Fähigkeit gilt auch objektlos, vor der Anlage** (#1856): `POST
   /api/v1/libraries/source-test` ohne `libraryId` sowie die beiden Auswahl-Endpunkte
   `POST /api/v1/libraries/confluence/spaces` und `POST /api/v1/libraries/s3/buckets` ohne
@@ -234,20 +234,52 @@ Die zwei Wege, auf denen Dokumente in OPAA gelangen, haben unterschiedliche Auto
 Wesentliche Verschiebung gegenüber dem alten Modell: Der System-Admin entscheidet, **wohin** indiziert
 wird; der Bibliotheks-Eigentümer entscheidet, **wer es sieht**.
 
-**Die Freigabe-Obergrenze ist die einzige technische Sicherung zwischen „Fachverfahrensdaten eingespeist"
-und „organisationsweit lesbar" und deshalb genau zu bestimmen:**
+**Die Freigabe-Obergrenze deckelt, wo sie gesetzt ist, `visibility` und `listed` einer
+Konnektorbibliothek — die einzige technische Sicherung dieser beiden Felder gegen eine zu weite
+Freigabe durch den Bibliotheks-Eigentümer (gebaut, #797, Maintainer-Festlegung vom 21.09.2026).**
+Sie wirkt aber erst, **nachdem** sie gesetzt wurde:
 
-- Gedeckelt werden `visibility`, `listed`, die **Freigabe für Fremdzugänge**
-  ([external-access.md](./external-access.md#die-freigabe-der-bibliothek)) und Grants an Gruppen
-  oberhalb einer festgelegten Größe. Das Feld der Fremdzugangsfreigabe existiert seit #1731
-  (`knowledge_libraries.external_access_state`, Zustand `SUSPENDED` ist im Modell vorgesehen und
-  wird von nichts gesetzt); die Deckelung selbst gehört zu diesem Abschnitt und kommt mit #797.
-- Wird die Obergrenze **nachträglich gesenkt**, werden bereits erteilte weitergehende Grants
-  **ausgesetzt, nicht stillschweigend entzogen**: Sie stehen auf einer Liste des Bibliotheks-Eigentümers
-  und wirken nicht mehr, bis er sie anpasst. Für eine Prüfung ist das der Unterschied zwischen „behoben"
-  und „nicht behoben"; ein stilles Weiterwirken wäre das eine, ein stiller Entzug das andere Extrem.
-- Eine Bibliothek, die sowohl aus einem Konnektor als auch aus manuellem Upload gespeist wird, **trägt die
-  Obergrenze ebenfalls** — sonst wäre der manuelle Upload der Weg an ihr vorbei.
+- Gedeckelt werden **ausschließlich `visibility` und `listed`** der Konnektorbibliothek — keine
+  Gruppengrößen-Schwelle für Grants (eine frühere Fassung dieses Abschnitts sah eine solche Schwelle
+  vor; sie entfällt ersatzlos, mit derselben Begründung wie die gestrichene Größenschwelle bei Grants
+  im Allgemeinen, siehe [spaces-and-assets.md](./spaces-and-assets.md#freigabe-an-eine-gruppe-braucht-keine-zustimmung)),
+  ohne die Freigabe für Fremdzugänge ([external-access.md](./external-access.md#die-freigabe-der-bibliothek)
+  hält fest, warum diese trotz einer früheren, anderslautenden Absicht außen vor bleibt), und ohne
+  erteilte Rechte an Personen und Gruppen (`asset_grants`) — ein bestehender Grant bleibt auch nach
+  dem Senken der Obergrenze bestehen und muss gesondert zurückgenommen werden.
+- Die Systemverwaltung setzt die Obergrenze **je Bibliothek**, nicht installationsweit
+  (`PUT /api/v1/libraries/{libraryId}/share-cap`). **Ausgeliefert ist jede Bibliothek offen**
+  (`visibility_cap = ORGANIZATION`, `listed_cap = true`, Migration 069) — eine neu angelegte
+  Konnektorbibliothek unterliegt deshalb **keiner** Einschränkung, bis die Systemverwaltung die
+  Obergrenze für sie eigens setzt. Da `CREATE_CONNECTOR_LIBRARY` an „Alle Konten" ausgeliefert ist
+  (siehe oben), kann zwischen Anlage und Setzen der Obergrenze eine Lücke liegen, in der die
+  Bibliothek bereits organisationsweit sichtbar ist. Zwei Wege dagegen, beide betrieblich statt
+  technisch: die Obergrenze nach jeder Neuanlage einer Konnektorbibliothek prüfen, oder
+  `CREATE_CONNECTOR_LIBRARY` auf eine benannte Gruppe einschränken, sodass nur noch diese Gruppe
+  überhaupt anlegen kann. **Ob ein installationsweiter Vorgabewert gebaut wird, auf den `createLibrary`
+  jede neue Konnektorbibliothek setzt, ist eine offene Maintainer-Frage** — die Festlegung vom
+  21.09.2026 regelt nur, *was* gedeckelt wird und *was beim Senken geschieht*, nicht *je Bibliothek
+  vs. installationsweiter Vorgabewert*; dieser PR baut keinen Vorgabewert.
+  Ein Bibliotheks-Eigentümer oder `MANAGER` kann `visibility`/`listed` nicht über eine gesetzte
+  Obergrenze hinaus anheben — der Versuch scheitert mit `409`, weil die eigene Berechtigung nicht in
+  Frage steht, sondern die Anfrage mit der gesetzten Obergrenze kollidiert.
+- Wird eine gesetzte Obergrenze **nachträglich gesenkt**, nimmt das System eine bereits
+  weitergehende `visibility`/`listed`-Einstellung **sofort zurück** (auf die neue Obergrenze
+  geklemmt) — mit Audit-Ereignis (`CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED` für das Setzen der
+  Obergrenze, `ASSET_VISIBILITY_CHANGED` für die dadurch ausgelöste Klemmung) und einer Zeile in der
+  Sichtbarkeits-Historie, genauso wie bei einer Änderung durch den Eigentümer selbst. Erteilte
+  Rechte an Personen und Gruppen sowie eine bestehende Fremdzugangsfreigabe bleiben unberührt (siehe
+  oben) und sind gesondert zu prüfen. Es gibt bewusst **keinen** Zustand „verletzt, aber geduldet" —
+  eine frühere Fassung sah ein Aussetzen ohne Entzug vor; das ist mit der Maintainer-Festlegung
+  entschieden anders: Die Bibliothek liegt in der Hand der Systemverwaltung, die die Obergrenze
+  selbst setzt, sodass ein sofortiges Zurücknehmen keine widersprüchliche Zuständigkeit erzeugt
+  (anders als beim Strikt-Space, siehe
+  [spaces-and-assets.md](./spaces-and-assets.md#wenn-die-voraussetzung-eines-strikt-space-nachträglich-bricht)).
+- `UPLOAD`-Bibliotheken tragen keine Obergrenze (`400` beim Versuch, eine zu setzen): Dieselbe Person
+  kuratiert dort ohnehin jedes Dokument einzeln, es gibt nichts, wovor die Obergrenze schützen müsste.
+  Da ADR-0018 die gemischte Speisung einer Bibliothek aus Konnektor und manuellem Upload strukturell
+  ausschließt (eine Bibliothek trägt genau einen `sourceType`), stellt sich die Frage nach einer
+  „ebenfalls gedeckelten" gemischten Bibliothek nicht mehr.
 
 ### Löschung eines Space
 
@@ -1130,8 +1162,9 @@ Gruppenmitgliedschaft kann Zugriff auf ganze Bestände geben oder nehmen.
 - **Der Wechsel des Mechanismus entzieht nichts still.** Token-Gruppen und Verzeichnisgruppen sind
   verschiedene Objekte. Wird der Abgleich für einen Anbieter eingeschaltet, weist der
   Differenzbericht des ersten Laufs seine Token-Gruppen als **„werden nicht mehr gepflegt"** aus; sie
-  bleiben mit eingefrorener Mitgliedschaft stehen. Die Übertragung ihrer Berechtigungen auf die neuen
-  Gruppen ist eine eigene Handlung.
+  bleiben mit eingefrorener Mitgliedschaft stehen. Die
+  [Übertragung](#rechte-einer-gruppe-auf-eine-andere-übertragen-gebaut-1834) ihrer Berechtigungen
+  auf die neuen Gruppen ist eine eigene Handlung und wird nie automatisch ausgelöst.
 
 **Dieselbe Regel gilt für die Gruppen aus dem Token.** „Keine Auskunft" und „ausdrücklich keine
 Gruppen" sind zwei verschiedene Aussagen, und nur die zweite ist ein Entzug. Der Anmeldeweg
@@ -1181,8 +1214,10 @@ niemanden — und mit der Wiederaktivierung schlagartig für alle, ohne erneute 
 **Wird ein Anbieter gelöscht**, gehen seine Gruppen mit ihm — aber nur, solange keine von ihnen noch
 wirkt. Trägt eine seiner Gruppen noch eine Berechtigung oder ist sie Eigentümerin eines Objekts,
 wird das Löschen mit `409` abgelehnt; die Meldung nennt die Zahl der betroffenen Gruppen,
-Berechtigungen und Objekte. **Solange die Übertragungsoperation nicht gebaut ist, führt an dieser
-Ablehnung nur das Entfernen der Wirkungen vorbei** — Deaktivieren bleibt jederzeit möglich.
+Berechtigungen und Objekte. **Aus dieser Ablehnung führt seit #1834 die
+[Übertragung](#rechte-einer-gruppe-auf-eine-andere-übertragen-gebaut-1834) heraus:** Sind die
+Wirkungen der Gruppen auf die des neuen Anbieters übergegangen, fällt der `409` von selbst.
+Deaktivieren bleibt daneben jederzeit möglich.
 
 > Festgeschrieben in [ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md),
 > Entscheidungen 2 und 11.
@@ -1269,6 +1304,108 @@ erzeugt beim Lesen nichts.
 
 > Festgeschrieben in [ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md),
 > Entscheidungen 4 und 9.
+
+#### Rechte einer Gruppe auf eine andere übertragen (gebaut, #1834)
+
+Vier Anlässe brauchen dieselbe Mechanik, und ohne sie endet jeder in Handarbeit: die
+**Reorganisation** (Referat 50 wird zu Referat 52), die **Anbieterablösung**, der **Wechsel des
+Mechanismus** von Token auf Verzeichnisabgleich und die **Nachfolge**. Statt 200 Objekte einzeln
+umzuhängen — was erfahrungsgemäß in einem `UPDATE` auf der Datenbank endet und die Rechtehistorie ab
+dem Tag wertlos macht — gibt es **eine** protokollierte Operation.
+
+**Was sie bewegt.** Der Umfang ist wählbar; alles oder eine Teilmenge:
+
+| Umfang | Von Gruppe auf Gruppe | Von Gruppe auf Person | Von Person auf Person |
+|---|---|---|---|
+| Berechtigungen an Objekten | ja | — | — |
+| Mitgliedschaften in Spaces | ja | — | — |
+| Anlegerechte | ja | — | — |
+| Eigentum an Bibliotheken | ja | ja | ja |
+| Eigentum an Spaces | — | — | ja |
+| Verantwortung für interne Gruppen | — | — | ja |
+
+**Ein Space gehört immer einer natürlichen Person** (Entscheidung 6), sein Eigentum wechselt deshalb
+nur zwischen Personen; der neue Eigentümer wird dabei, falls nötig, als `ADMIN`-Mitglied aufgenommen.
+
+**Mit dem Eigentum geht die Rolle mit.** Eine Rolle an einer Bibliothek entsteht aus Grants, nicht
+aus der Eigentümerspalte — die Übertragung des Eigentums verschiebt deshalb auch den Grant, der zum
+Eigentum gehört: `OWNER` für eine Person, `MANAGER` für eine Gruppe, wie beim Anlegen. Ohne das hielte
+der Nachfolger nichts und die Quelle alles.
+
+**Bei einer Person als Quelle bleibt es bei Eigentum und Verantwortung.** Berechtigungen und
+Space-Mitgliedschaften einer Person sind hier weder übertragbar noch aufzählbar: Die Vorschau wäre
+sonst eine Abfrage „alle Wirkungen der Person X" für die Systemverwaltung — ohne Vollmacht und ohne
+Begründung, also genau die personenbezogene Rechteübersicht, die für die Vergangenheit unter einer
+Vier-Augen-Vollmacht steht. Fachlich wird sie nicht gebraucht: Eine Nachfolge betrifft Eigentum und
+Verantwortung, und die Berechtigungen einer ausgeschiedenen Person enden mit ihrem Konto.
+
+**Wer.** Die Systemverwaltung organisationsweit. Für „das Eigentum und die Verantwortung, die ich
+selbst trage" auch die Person selbst — die Abgabe aus „Meine Gruppen". Ein `MANAGER` ändert die
+Berechtigungen an seinem Objekt weiterhin einzeln; die Massenoperation bleibt ein Verwaltungsakt.
+
+**Ablauf.** Die **Vorschau ist Pflicht** und nennt in einem Satz, was bewegt würde („12
+Berechtigungen an 7 Objekten, Mitglied in 2 Spaces, Eigentum an 3 Objekten"). Sie ist **selbst ein
+Protokollereignis** (`PERMISSION_TRANSFER_PREVIEWED`) — auch wenn niemand sie ausführt: Sie liest
+alles, was ein Subjekt hält, und dass jemand gelesen hat, gehört ins Protokoll. **Die Pflicht ist
+durchgesetzt, nicht nur beschrieben:** Die Vorschau gibt eine Kennung zurück, die die Ausführung
+vorzeigen muss; sie gilt 30 Minuten, gehört dem Aufrufer, dem sie gezeigt wurde, und trägt einen
+**Abdruck der gezeigten Zeilen** — je Berechtigung die Rolle und die Befristung, je
+Space-Mitgliedschaft der Space, dazu Anlegerechte, Eigentum und Verantwortlichkeiten. Eine Rolle,
+die sich zwischen Vorschau und Bestätigung ändert, fällt damit auf, obwohl die Zahlen gleich
+bleiben. Weicht der Abdruck ab, wird nichts übertragen und die Vorschau neu vorgelegt (`409`, Code
+`TRANSFER_PREVIEW_REQUIRED`) — dieselbe Mechanik wie bei der Bestätigung eines Abgleichsplans. Die Ausführung verlangt darüber hinaus eine **ausdrückliche Bestätigung** und
+schreibt `PERMISSION_TRANSFER_EXECUTED` mit Quelle, Ziel, Umfang und Zahl der Zeilen.
+
+**Eine Obergrenze je Vorgang.** Höchstens 500 Zeilen; darüber wird abgelehnt, mit der Zahl und dem
+Weg über eine Teilmenge des Umfangs — **gezählt, bevor etwas geladen wird**, und schon in der
+Vorschau: Eine Gruppe mit hunderttausend Berechtigungen wird abgewiesen, ohne dass eine einzige
+Zeile in die Anwendung kommt. Eine Übertragung ist eine Schreibtransaktion über bis zu vier
+Historientabellen — unbegrenzt zu laufen ist für genau die Anlässe, für die sie gebaut ist, kein
+Betriebszustand.
+
+**Eine bereits abgelaufene Berechtigung der Quelle wird beendet, aber nicht neu vergeben** — sie
+verschafft nichts, und am Ziel entstünde eine tote Zeile. Ihre Zeile verschwindet trotzdem: Sie ist
+sonst weiterhin ein Grund, aus dem die Gruppe nicht gelöscht werden kann. In den Zahlen der Vorschau
+erscheint sie nicht.
+
+**Das Ziel muss wirksam sein** — nicht aufgelöst, sein Anbieter aktiviert —, **darf aber leer
+sein**: Im Token-Modus entsteht die Gruppe des neuen Anbieters erst mit der ersten Anmeldung, und
+eine Übertragung, die darauf wartete, wäre genau das, was die Anbieterablösung nicht leisten kann.
+Die Quelle unterliegt dieser Regel nicht; eine aufgelöste Gruppe ist hier der Regelfall. Über die
+Organisationsgrenze hinweg gibt es keine Übertragung.
+
+**Der Schnitt in der Rechtehistorie.** Je betroffener Zeile endet das Intervall der Quelle und
+beginnt das des Ziels — mit **demselben Zeitstempel** und einer **gemeinsamen Vorgangskennung**. Die
+Stichtagsauskunft zeigt damit an jedem Tag genau ein Subjekt, und zwei Intervalle zweier Subjekte
+sind als dieselbe Entscheidung erkennbar, statt nur zufällig gleich datiert zu sein.
+
+**Treffen beide Seiten am selben Objekt aufeinander, bleibt die stärkere Rolle stehen.** Eine
+Übertragung gibt Rechte weiter; sie nimmt dem Ziel nie etwas weg. Das Ziel bekommt in diesem Fall
+kein neues Intervall — sein Zustand hat sich nicht geändert.
+
+**Die betroffenen Objekte tragen den Vorgang** in ihrer Freigabeansicht („übertragen am 14.03.2026,
+Vorgang …"), bei einer Gruppe als Quelle mit deren Namen. **Bei einer Person als Quelle ohne ihren
+Namen:** Ein an vielen Objekten wiederholter Hinweis auf das Ausscheiden einer benannten Person,
+außerhalb jeder Protokollfrist, wäre sonst die Folge.
+
+**Wer den Namen der Quellgruppe zu sehen bekommt, entscheidet Entscheidung 9, nicht der Vermerk.**
+Eine **geschützte** Gruppe erscheint dort wie in jeder anderen fremden Liste als „geschützte Gruppe"
+ohne Namen; eine **nicht freigegebene** interne Gruppe wird gegenüber jemandem, der weder Mitglied
+noch verantwortlich noch Systemverwaltung ist, nicht benannt. Eine Quellgruppe, die es nicht mehr
+gibt, nennt der Vermerk nur der Systemverwaltung — ihre Sichtbarkeit kann niemand mehr prüfen.
+
+**Der Vorgang unterliegt der Aufbewahrungshöchstdauer der Rechtehistorie** (#1833): Er wird mit dem
+Löschlauf entfernt, sobald er älter ist als die eingestellte Frist. Die Objektliste geht mit ihm, die
+Historienintervalle bleiben und verlieren nur die Vorgangskennung. Ohne das stünden der
+Namensschnappschuss der Quellgruppe und der Vermerk an jedem Objekt unbefristet.
+
+**Nicht enthalten:** die Rücknahme von Mitgliedschaften nach einem Vorfall („alle Mitgliedschaften
+dieses Anbieters seit T") und jede automatische Auslösung durch den Verzeichnisabgleich. Eine
+Reorganisation im Verzeichnis erzeugt eine aufgelöste Gruppe und einen Eintrag in der Betriebsliste;
+die Übertragung bleibt eine Entscheidung.
+
+> Festgeschrieben in [ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md),
+> Entscheidung 10.
 
 Der Nachweis, worauf eine Person zu einem beliebigen Stichtag Zugriff hatte, entsteht aus der
 Historisierung dieser drei Quellen und ist in
@@ -1358,9 +1495,10 @@ Mail aus, weil sie sonst ein Belästigungskanal für jeden wäre, der eine Adres
 > unveränderlichen Bibliotheksauswahl und einem Kontingent je Token, hinter einem installationsweiten
 > Schalter (Standard aus), einer kanalweiten Netzbeschränkung (Vorgabe Hausnetz) und einer
 > **pflichtbefristeten** Freigabe je Bibliothek (Standard aus, höchstens ein Jahr). Diese Freigabe ist
-> ein Reichweitenfeld: Sie wird wie `visibility` und `listed` historisiert und fällt unter die
-> [Freigabe-Obergrenze](#dokumentenfluss-konnektoren-gegen-benutzer-uploads) konnektor-gespeister
-> Bibliotheken, sobald #797 sie definiert — die erste Stufe baut die Deckelung nicht mit. **Service-Accounts als eigene Identität ohne Person bleiben Zielbild** und sind in
+> ein Reichweitenfeld: Sie wird wie `visibility` und `listed` historisiert, fällt aber **nicht** unter
+> die [Freigabe-Obergrenze](#dokumentenfluss-konnektoren-gegen-benutzer-uploads) konnektor-gespeister
+> Bibliotheken — #797 hat deren Wirkung ausdrücklich auf `visibility`/`listed` begrenzt. **Service-Accounts
+> als eigene Identität ohne Person bleiben Zielbild** und sind in
 > dieser Stufe nicht enthalten. Einzelheiten: [external-access.md](./external-access.md).
 
 Das Zielbild, auf das die erste Stufe zuläuft:

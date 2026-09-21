@@ -1273,6 +1273,31 @@ export const mockGroups: GroupListResponse[] = [
     createdAt: '2026-03-01T10:00:00Z',
     updatedAt: '2026-03-01T10:00:00Z',
   },
+  // #1823: a group of an external provider (ADR-0036, Entscheidung 2) - below the search
+  // diagnosis's Mindestgruppengroesse (5), so it also stands in for "kleine Gruppe".
+  {
+    id: 'group-partnerbehoerde',
+    name: 'Meldewesen',
+    description: null,
+    kind: 'IDENTITY_PROVIDER',
+    externalId: 'Meldewesen',
+    origin: 'PROVIDER',
+    provider: {
+      id: 'oidc-provider-partner',
+      displayName: 'Partnerbehoerde',
+      external: true,
+      enabled: true,
+      groupMechanism: 'TOKEN',
+    },
+    sourcePath: null,
+    parentGroupId: null,
+    memberCount: 1,
+    releasedForUse: true,
+    protectedGroup: false,
+    stewards: [],
+    createdAt: '2026-09-01T10:00:00Z',
+    updatedAt: '2026-09-01T10:00:00Z',
+  },
 ]
 
 /**
@@ -1458,6 +1483,36 @@ export const mockGroupDetails: Record<string, GroupResponse> = {
     members: [],
     createdAt: '2026-03-01T10:00:00Z',
     updatedAt: '2026-03-01T10:00:00Z',
+  },
+  'group-partnerbehoerde': {
+    id: 'group-partnerbehoerde',
+    name: 'Meldewesen',
+    description: null,
+    kind: 'IDENTITY_PROVIDER',
+    externalId: 'Meldewesen',
+    origin: 'PROVIDER',
+    provider: {
+      id: 'oidc-provider-partner',
+      displayName: 'Partnerbehoerde',
+      external: true,
+      enabled: true,
+      groupMechanism: 'TOKEN',
+    },
+    sourcePath: null,
+    parentGroupId: null,
+    memberCount: 1,
+    releasedForUse: true,
+    protectedGroup: false,
+    stewards: [],
+    members: [
+      {
+        userId: 'owner-2',
+        displayName: 'Chris',
+        createdAt: '2026-09-01T10:00:00Z',
+      },
+    ],
+    createdAt: '2026-09-01T10:00:00Z',
+    updatedAt: '2026-09-01T10:00:00Z',
   },
 }
 

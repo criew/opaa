@@ -160,6 +160,9 @@ public interface AssetGrantRepository extends JpaRepository<AssetGrant, UUID> {
    */
   boolean existsBySubjectGroupId(UUID subjectGroupId);
 
+  /** How many grants one group holds - the count a transfer checks before it loads them (#1834). */
+  long countBySubjectGroupId(UUID subjectGroupId);
+
   /**
    * Every grant the given groups hold, expired ones included - what deleting an identity provider
    * counts to decide whether its groups still have an effect (ADR-0036, Entscheidung 2). An expired

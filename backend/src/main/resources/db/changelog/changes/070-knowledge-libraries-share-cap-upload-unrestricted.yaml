@@ -1,0 +1,27 @@
+databaseChangeLog:
+  - changeSet:
+      id: 070-knowledge-libraries-share-cap-upload-unrestricted
+      author: opaa
+      comment: >-
+        Upload-Bibliotheken sind von der Freigabe-Obergrenze nicht betroffen (#797,
+        Maintainer-Festlegung vom 21.09.2026): Die Obergrenze sichert konnektorgespeiste
+        Bestaende gegen eine zu weite Freigabe durch den Bibliotheks-Eigentuemer ab - bei einer
+        Upload-Bibliothek waehlt derselbe Eigentuemer ohnehin jedes einzelne Dokument, sodass es
+        nichts gibt, wovor die Obergrenze schuetzen muesste. Der Anwendungsdienst
+        (KnowledgeLibraryService#updateShareCap) weist das Setzen einer Obergrenze fuer eine
+        Upload-Bibliothek bereits mit 400 ab; dieser Constraint sichert dieselbe Regel zusaetzlich
+        auf Datenbankebene ab, unabhaengig vom Schreibpfad.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE knowledge_libraries
+                  ADD CONSTRAINT chk_knowledge_libraries_share_cap_upload_unrestricted
+                      CHECK (source_type <> 'UPLOAD'
+                          OR (visibility_cap = 'ORGANIZATION' AND listed_cap = true));
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE knowledge_libraries
+                  DROP CONSTRAINT chk_knowledge_libraries_share_cap_upload_unrestricted;

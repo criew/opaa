@@ -11,6 +11,8 @@ import io.opaa.api.types.GroupKind;
 import io.opaa.api.types.LibraryOwnerType;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.PermissionSubjectType;
+import io.opaa.api.types.PermissionTransferScope;
+import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.TokenGroups;
 import io.opaa.auth.User;
@@ -43,6 +45,8 @@ import io.opaa.permission.GroupMembershipSource;
 import io.opaa.permission.GroupSubjectDirectory;
 import io.opaa.permission.PermissionHistoryClock;
 import io.opaa.permission.PermissionHistoryService;
+import io.opaa.permission.PermissionTransferOrder;
+import io.opaa.permission.PermissionTransferService;
 import io.opaa.test.FakeDirectoryClient;
 import io.opaa.test.OpaaIntegrationTest;
 import java.lang.reflect.Field;
@@ -52,6 +56,7 @@ import java.time.InstantSource;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -103,6 +108,7 @@ class PermissionHistoryServiceIntegrationTest {
   @Autowired private GroupMembershipRepository membershipRepository;
   @Autowired private LibraryVisibilityHistoryRepository visibilityHistoryRepository;
   @Autowired private PermissionHistoryService permissionHistoryService;
+  @Autowired private PermissionTransferService transferService;
   @Autowired private LibraryVisibilityHistoryService visibilityHistoryService;
   // Every Stichtag below is drawn from the same monotonic source the recorded boundaries come
   // from (#1497). Instant.now() would not do: its readings can be several milliseconds coarser
@@ -230,6 +236,19 @@ class PermissionHistoryServiceIntegrationTest {
     return response.library().getId();
   }
 
+  /** #797: a connector library, the only kind a share cap applies to. */
+  private UUID createFilesystemLibrary(UUID ownerId) {
+    LibraryDetail response =
+        libraryService.createLibrary(
+            libraryCreation("Bibliothek", DocumentSourceType.FILESYSTEM)
+                .ownerType(LibraryOwnerType.USER)
+                .ownerId(ownerId)
+                .sourcePath("/data/dokumente")
+                .build(),
+            currentUserOf(ownerId));
+    return response.library().getId();
+  }
+
   /**
    * {@link CurrentUser} snapshot for a user id this test already created via {@link #createUser}.
    */
@@ -241,6 +260,17 @@ class PermissionHistoryServiceIntegrationTest {
         user.getSystemRole(),
         user.getDisplayName(),
         user.getEmail());
+  }
+
+  /**
+   * #797: a real, persisted SYSTEM_ADMIN - the audit pseudonym write updateShareCap triggers needs
+   * a genuine {@code users} row for its actor, {@code fk_audit_actor_pseudonyms_user_organization}.
+   */
+  private CurrentUser systemAdminCaller() {
+    User admin = createUserEntity();
+    admin.setSystemRole(SystemRole.SYSTEM_ADMIN);
+    userRepository.save(admin);
+    return currentUserOf(admin.getId());
   }
 
   @Test
@@ -822,6 +852,11 @@ class PermissionHistoryServiceIntegrationTest {
     paths.put(
         "KnowledgeLibraryService#deleteLibrary (organization-wide library)",
         this::organizationWideLibraryDeleted);
+    paths.put(
+        "KnowledgeLibraryService#updateShareCap (visibility clamped)",
+        this::shareCapLoweredClampsVisibility);
+    paths.put(
+        "PermissionTransferService#transfer (group grant moved)", this::groupGrantTransferred);
     return paths;
   }
 
@@ -871,7 +906,8 @@ class PermissionHistoryServiceIntegrationTest {
                 LibraryExternalAccessService.class,
                 LibraryExternalAccessExpiryService.class,
                 DirectorySyncService.class,
-                TokenGroupSynchronizer.class)
+                TokenGroupSynchronizer.class,
+                PermissionTransferService.class)
             .flatMap(
                 type ->
                     Arrays.stream(type.getDeclaredMethods())
@@ -974,6 +1010,12 @@ class PermissionHistoryServiceIntegrationTest {
    * SpaceAssetAssociationService}), so admitting somebody to a space moves no library into
    * anybody's readable set. {@code PointInTimeAccessService} (#1822) resolves a group only to name
    * it in the Stichtagsauskunft; it reads the history and writes nothing but its own audit entry.
+   * {@code GroupStewardshipDirectoryAdapter} (#1834) reads groups only to hand responsibility for
+   * them over - responsibility carries no read right at all, which is why it produces audit events
+   * and no history rows. {@code PermissionTransferService} (#1834) is a writer and is covered by
+   * {@link #readabilityWritePaths}; {@code LibraryAssetOwnershipDirectory} writes the grant that
+   * goes with a library's ownership and is reachable only through that one write path, never on its
+   * own.
    */
   private static final Set<String> BEANS_REACHING_THE_RIGHTS_TABLES =
       Set.of(
@@ -987,10 +1029,13 @@ class PermissionHistoryServiceIntegrationTest {
           "ForeignDiagnosticContextService",
           "GroupMembershipResolver",
           "GroupService",
+          "GroupStewardshipDirectoryAdapter",
           "GroupSubjectDirectoryAdapter",
           "KnowledgeLibraryService",
           "LibraryAccessService",
+          "LibraryAssetOwnershipDirectory",
           "LocalHandoverAccountService",
+          "PermissionTransferService",
           "PointInTimeAccessService",
           "ProviderGroupDirectoryAdapter",
           "TokenGroupSynchronizer");
@@ -1020,6 +1065,10 @@ class PermissionHistoryServiceIntegrationTest {
           "GroupService#dismissSteward",
           "GroupService#setRelease",
           "GroupService#setProtection",
+          // #1834: the preview only counts and writes its own audit entry, and markOf reads the
+          // note an object carries - neither moves a library into or out of anybody's set.
+          "PermissionTransferService#preview",
+          "PermissionTransferService#markOf",
           "KnowledgeLibraryService#getLibrary",
           // #1822: the Herleitung reads the formula and states it - it moves no library into or
           // out of anybody's readable set.
@@ -1107,6 +1156,43 @@ class PermissionHistoryServiceIntegrationTest {
         currentUserOf(owner));
 
     return new ReadabilityChange(member, libraryId, true);
+  }
+
+  /**
+   * #1834: the grant of one group goes to another in one operation. The reconstruction has to
+   * follow it without a gap - the TRANSFERRED_OUT side closes the source's interval at the very
+   * instant the TRANSFERRED_IN side opens the target's.
+   */
+  private ReadabilityChange groupGrantTransferred() {
+    UUID owner = createUser();
+    UUID libraryId = createLibrary(owner);
+    UUID member = createUser();
+    Group source = createAdHocGroup("Referat 50", owner);
+    Group target = createAdHocGroup("Referat 52", owner);
+    groupService.addMember(target.getId(), member, currentUserOf(owner));
+    grantService.upsertGrant(
+        libraryId,
+        new AssetGrantUpsert(PermissionSubjectType.GROUP, source.getId(), AssetRole.VIEWER),
+        currentUserOf(owner));
+
+    PermissionTransferOrder order =
+        new PermissionTransferOrder(
+            PermissionSubjectType.GROUP,
+            source.getId(),
+            PermissionSubjectType.GROUP,
+            target.getId(),
+            EnumSet.of(PermissionTransferScope.ASSET_GRANTS));
+    CurrentUser admin = currentUserOf(createSystemAdmin());
+    transferService.transfer(order, true, transferService.preview(order, admin).previewId(), admin);
+
+    return new ReadabilityChange(member, libraryId, true);
+  }
+
+  /** A transfer is an administrative act - the one caller this class needs with that role. */
+  private UUID createSystemAdmin() {
+    User admin = userRepository.findById(createUser()).orElseThrow();
+    admin.setSystemRole(SystemRole.SYSTEM_ADMIN);
+    return userRepository.save(admin).getId();
   }
 
   private ReadabilityChange directGrantRevoked() {
@@ -1433,6 +1519,25 @@ class PermissionHistoryServiceIntegrationTest {
         libraryId,
         libraryUpdate("Bibliothek").visibility(LibraryVisibility.PRIVATE).build(),
         currentUserOf(owner));
+
+    return new ReadabilityChange(otherUser, libraryId, false);
+  }
+
+  /**
+   * #797: the counterpart to {@link #visibilityNarrowed} for the share cap - a SYSTEM_ADMIN, not
+   * the owner, lowers the cap below the library's current (wider) visibility, which clamps it back
+   * down in the very same call.
+   */
+  private ReadabilityChange shareCapLoweredClampsVisibility() {
+    UUID owner = createUser();
+    UUID libraryId = createFilesystemLibrary(owner);
+    UUID otherUser = createUser();
+    libraryService.updateLibrary(
+        libraryId,
+        libraryUpdate("Bibliothek").visibility(LibraryVisibility.ORGANIZATION).build(),
+        currentUserOf(owner));
+
+    libraryService.updateShareCap(libraryId, LibraryVisibility.PRIVATE, false, systemAdminCaller());
 
     return new ReadabilityChange(otherUser, libraryId, false);
   }

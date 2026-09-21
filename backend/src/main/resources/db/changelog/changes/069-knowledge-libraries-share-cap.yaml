@@ -1,0 +1,30 @@
+databaseChangeLog:
+  - changeSet:
+      id: 069-knowledge-libraries-share-cap
+      author: opaa
+      comment: >-
+        Die Freigabe-Obergrenze fuer Konnektorbibliotheken (#797, Maintainer-Festlegung vom
+        21.09.2026): visibility_cap deckelt visibility, listed_cap deckelt listed - je Bibliothek,
+        von der Systemverwaltung gesetzt. Ausgeliefert ORGANIZATION/true, also unrestriktiv: die
+        Migration aendert am Auslieferungszustand nichts, bis eine Systemverwaltung die Obergrenze
+        tatsaechlich senkt.
+        .
+        Keine BESTANDSMIGRATION im Sinne von 058: Es gibt keinen Bestand, aus dem sich am
+        Migrationstag eine engere Obergrenze ableiten liesse - jede Bibliothek war bislang
+        unbegrenzt, und das bleibt mit dem ausgelieferten Wert so.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE knowledge_libraries
+                  ADD COLUMN visibility_cap varchar(20) DEFAULT 'ORGANIZATION' NOT NULL
+                      CONSTRAINT chk_knowledge_libraries_visibility_cap
+                          CHECK (visibility_cap IN ('PRIVATE', 'SHARED', 'ORGANIZATION')),
+                  ADD COLUMN listed_cap boolean DEFAULT true NOT NULL;
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE knowledge_libraries
+                  DROP COLUMN visibility_cap,
+                  DROP COLUMN listed_cap;

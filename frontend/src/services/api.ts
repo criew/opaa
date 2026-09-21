@@ -52,6 +52,7 @@ import type {
   LibraryRequest,
   LibraryResponse,
   LibrarySpaceAssociationResponse,
+  LibraryShareCapRequest,
   LibraryUpdateRequest,
   LlmModelRequest,
   LlmModelResponse,
@@ -1062,6 +1063,26 @@ export async function updateLibraryDiagnosticsLock(
     const { data } = await client.put<LibraryDiagnosticsLockResponse>(
       `/v1/libraries/${libraryId}/diagnostics-lock`,
       { locked },
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/**
+ * Setzt die Freigabe-Obergrenze einer Konnektorbibliothek (#797) - Systemverwaltung, gesamt
+ * ersetzt (kein Teil-Update). Senkt sie eine bestehende, weitere Freigabe, klemmt das Backend sie
+ * im selben Aufruf sofort auf die neue Obergrenze zurück.
+ */
+export async function updateLibraryShareCap(
+  libraryId: string,
+  request: LibraryShareCapRequest,
+): Promise<LibraryResponse> {
+  try {
+    const { data } = await client.put<LibraryResponse>(
+      `/v1/libraries/${libraryId}/share-cap`,
+      request,
     )
     return data
   } catch (err) {

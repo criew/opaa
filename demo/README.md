@@ -291,14 +291,16 @@ pip install -r requirements.txt
 python seed.py --profile demo
 ```
 
-Der Seed richtet über die öffentliche API alle vier Demo-Nutzer plus das Admin-Konto ein, legt die
-vier Spaces und sieben Wissensbibliotheken an, vergibt die Leserechte, ordnet den drei Sachgebiets- und
-Amtsleitungs-Spaces ihre Bibliotheken als Datenquellen zu (Assoziation als reine Kuratierung, #706 —
-Marias persönlicher Space bleibt bewusst ohne Zuordnung), lädt die 26 Dokumente der internen
-Upload-Bibliothek hoch und stößt die Indizierung der sechs konnektorgespeisten Bibliotheken an —
-darunter die beiden `S3`-Bibliotheken, deren Läufe die Buckets `rheinfurt-archiv` und `formattest` des
-`minio`-Containers lesen (der Einmal-Schritt `minio-seed` muss dafür durchgelaufen sein, siehe
-Schritt 2). Vollständiger Ablauf, Idempotenz und Fehlerfälle: „Seed-Mechanismus (#712)" unten.
+Der Seed richtet über die öffentliche API alle vier Demo-Nutzer plus das Admin-Konto ein, setzt den
+`groups_claim` des Anbieters „Verzeichnisdienst" (ADR-0036, siehe „Gruppen" unten), legt die vier
+Spaces und sieben Wissensbibliotheken an, vergibt die Leserechte, richtet eine interne Gruppe mit
+benannter Verantwortung ein, ordnet den drei Sachgebiets- und Amtsleitungs-Spaces ihre Bibliotheken
+als Datenquellen zu (Assoziation als reine Kuratierung, #706 — Marias persönlicher Space bleibt
+bewusst ohne Zuordnung), lädt die 26 Dokumente der internen Upload-Bibliothek hoch und stößt die
+Indizierung der sechs konnektorgespeisten Bibliotheken an — darunter die beiden `S3`-Bibliotheken,
+deren Läufe die Buckets `rheinfurt-archiv` und `formattest` des `minio`-Containers lesen (der
+Einmal-Schritt `minio-seed` muss dafür durchgelaufen sein, siehe Schritt 2). Vollständiger Ablauf,
+Idempotenz und Fehlerfälle: „Seed-Mechanismus (#712)" unten.
 
 **Wie lange dauert die Erstindizierung, und wie erkennt man, dass sie fertig ist?** Der Seed selbst
 wartet auf jede Indizierung und jeden Upload (Polling gegen `GET
@@ -356,6 +358,45 @@ Berechtigungen"](../docs/features/demo-instance.md#nutzer-spaces-und-berechtigun
 nachgeschalteter Filter, ist ein für einen Nutzer unzugänglicher Treffer nicht nur unterdrückt,
 sondern nie geladen — Thomas' Anfrage nach einer internen Meldewesen-Dienstanweisung durchsucht diese
 Bibliothek gar nicht erst, unabhängig davon, wie thematisch treffend ein Chunk daraus wäre.
+
+### Gruppen (ADR-0036, #1823)
+
+`keycloak/realm-export.json` trägt seit #1823 drei Keycloak-Gruppen und einen
+Gruppen-Mapper (Claim `groups`, kurzer Name statt vollem Pfad) auf den Clients `opaa-frontend` und
+`opaa-seed`: „Bürgerbüro Rheinfurt" (alle fünf Demo-Konten, `demo-admin` eingeschlossen — genau die
+Mindestgruppengröße der Suchdiagnose), „Meldewesen" (Maria, Selin) und „Kfz-Zulassung" (Thomas). Der
+Seed setzt zusätzlich `groups_claim=groups` am Anbieter „Verzeichnisdienst" (Schritt 2 unten) und
+meldet jeden Demo-Nutzer danach erneut an — erst dann übernimmt `TokenGroupSynchronizer`
+(ADR-0036, Entscheidung 3) die Mitgliedschaft aus dem Token; ohne diesen zweiten Umlauf blieben die
+Gruppen der ersten Anmeldung (Schritt 1) leer. Die beiden kleineren Gruppen liegen unter der
+Mindestgruppengröße (Vorgabe 5) und zeigen deshalb in der Suchdiagnose „kleine Gruppe" statt einer
+Zahl; „Bürgerbüro Rheinfurt" ist das eine wählbare Rechteprofil oberhalb der Schwelle.
+
+Zusätzlich richtet der Seed (Schritt 6) die interne Gruppe **„Vertretung Meldewesen"** ein
+(`demo/seed/profiles.py`, `GroupDef`): Maria ist ihre alleinige, benannte Verantwortliche (nicht das
+Admin-Konto — `GroupService#createGroup` ernennt zunächst den Erstellenden, der Seed übergibt die
+Verantwortung anschließend), Thomas ihr einziges Mitglied, und die Gruppe ist **zur Verwendung
+freigegeben**. Über sie liest Thomas die Bibliothek „Interne Dienstanweisungen Meldewesen"
+**ausschließlich** (kein eigenes `VIEWER`-Recht) und ist **ausschließlich** darüber Mitglied des
+Space „Meldewesen & Ausweise" (`MEMBER`, keine eigene Mitgliedschaft) — beides zusammen die
+Abnahmekriterien „ausschließlich über die Gruppe lesbar" bzw. „Space-Mitglied nur über die Gruppe".
+Geschützte Gruppen liefert die Demo bewusst nicht (Umfang von #1823).
+
+Die gleichnamige Gruppe „Meldewesen" im zweiten Realm `partner`
+(`keycloak/realm-partner-export.json`, mit demselben Gruppen-Mapper auf `opaa-partner`) demonstriert
+Herkunft statt Namen als Unterscheidungsmerkmal (ADR-0036, Entscheidung 2) und ist — wie die zweite
+`maria.weber` oben — erst sichtbar, sobald die Systemverwaltung den Realm als weiteren Anbieter
+angelegt hat und sich ein Konto darüber einmal anmeldet (der Demo-Smoke-Lauf tut beides): Ein neuer
+Anbieter ist per Vorgabe **extern** gekennzeichnet, und `TokenGroupSynchronizer` legt eine
+`IDENTITY_PROVIDER`-Gruppe erst beim ersten tatsächlichen Anmeldevorgang an — der Seed selbst kann
+das nicht auslösen, weil `opaa-partner` (anders als `opaa-seed`) bewusst kein
+`directAccessGrantsEnabled` trägt und nur den echten Authorization-Code-Ablauf im Browser zulässt.
+
+**`sourcePath` bleibt in der Demo bei jeder Gruppe leer** — das Feld füllt ausschließlich der
+Verzeichnisabgleich (ORG_UNIT-Gruppen), und der bleibt hier bewusst aus (Umfang von #1823, die Demo
+läuft im Token-Modus). Die beiden gleichnamigen „Meldewesen"-Gruppen sind stattdessen über ihre
+Herkunft (Anbieter/Realm) unterscheidbar, nicht über einen Quellpfad — wer ihn in der Demo sucht,
+wird ihn nicht finden.
 
 ---
 
@@ -419,36 +460,49 @@ Der Lauf richtet über die API ein:
    Notanker-Konto an (`POST /api/v1/auth/local/login`) und vergibt die Rolle über
    `POST /api/v1/admin/users/{id}/role`; gelingt das nicht, bricht der Lauf ab (siehe oben,
    `OPAA_INITIAL_ADMIN_EMAIL`/`OPAA_INITIAL_ADMIN_PASSWORD`).
-2. **Spaces** gemäß `docs/features/demo-instance.md` — „Meldewesen & Ausweise" (Maria Weber, Selin
+2. **Identitätsanbieter: `groups_claim` setzen** (nur im `demo`-Profil, ADR-0036) — der Seed setzt
+   `claimMapping.groupsClaim=groups` am Anbieter „Verzeichnisdienst"
+   (`PUT /api/v1/admin/oidc-providers/{id}`) und meldet danach jedes Konto aus Schritt 1 erneut an
+   (`GET /api/v1/auth/me`): `UserProvisioningFilter` provisioniert bei **jeder** Anfrage neu, aber
+   die erste Anmeldung aus Schritt 1 lief noch ohne `groups_claim` und synchronisierte deshalb keine
+   Gruppe. Das `e2e`-Profil überspringt den Schritt — der dev-Betriebsmodus kennt keine
+   Anbieterzeile (ADR-0036, Entscheidung 3).
+3. **Spaces** gemäß `docs/features/demo-instance.md` — „Meldewesen & Ausweise" (Maria Weber, Selin
    Kaya), Marias eigener Space ohne weiteres Mitglied, „Kfz-Zulassung" (Thomas Klein), „Amtsleitung
    Bürgerbüro" (Andrea Vogt).
-3. **Sieben Wissensbibliotheken** im Besitz des Admin-Kontos, je mit eigener Quellkonfiguration
+4. **Sieben Wissensbibliotheken** im Besitz des Admin-Kontos, je mit eigener Quellkonfiguration
    (ADR-0018): drei `HTTP_DIRECTORY` gegen `demo-corpus`, ein `RSS_FEED` gegen
    `presse.stadt-rheinfurt.example`, ein `UPLOAD`, zwei `S3` gegen `minio` (Bucket
    `rheinfurt-archiv` mit Präfix `ratsinformationen/` sowie Bucket `formattest` ohne Präfix,
    Zugangsdaten und typisierte `s3Settings` direkt aus `profiles.py`,
    [ADR-0027](../docs/decisions/0027-s3-konnektor.md)). „Formattest auf S3" ist die einzige
    Bibliothek ohne `viewer_keys` und ohne Space-Zuordnung — sie bleibt beim anlegenden Admin-Konto.
-4. **VIEWER-Rechte** exakt nach der Matrix aus `docs/features/demo-instance.md` sowie die 26
+5. **VIEWER-Rechte** exakt nach der Matrix aus `docs/features/demo-instance.md` sowie die 26
    Upload-Dokumente aus `demo/corpus/interne-dienstanweisungen-meldewesen/` — der Seed wartet nach
    dem Hochladen, bis kein Dokument mehr `PENDING` ist (Tika-Parsing und Embedding laufen asynchron,
    #434), und bricht bei `FAILED` mit der jeweiligen `errorMessage` ab.
-5. **Space↔Bibliothek-Zuordnungen** (Assoziation als reine Kuratierung, #706) gemäß den
+6. **Gruppen** (ADR-0036, `profiles.py`s `GroupDef`, siehe „Gruppen" oben) — je Gruppendefinition:
+   anlegen oder per Namenssuche über `GET /api/v1/admin/groups` finden, die benannten
+   Verantwortlichen ernennen und die automatische Erstverantwortung des Admin-Kontos wieder
+   abgeben, Mitglieder aufnehmen, zur Verwendung freigeben, ihr `VIEWER`-Recht auf die
+   konfigurierten Bibliotheken vergeben (`subjectType=GROUP`) und sie den konfigurierten Spaces als
+   Mitglied hinzufügen (`subjectType=GROUP`, #1815).
+7. **Space↔Bibliothek-Zuordnungen** (Assoziation als reine Kuratierung, #706) gemäß den
    `library_names` der Space-Definitionen in `profiles.py`: „Meldewesen & Ausweise" bekommt die fünf
    für das Sachgebiet lesbaren Bibliotheken zugeordnet, „Kfz-Zulassung" vier, „Amtsleitung Bürgerbüro"
-   alle sechs fachlichen („Formattest auf S3" ist keinem Space zugeordnet, siehe Schritt 3);
+   alle sechs fachlichen („Formattest auf S3" ist keinem Space zugeordnet, siehe Schritt 4);
    Marias persönlicher Space bleibt bewusst ohne Zuordnung (@Alles-Wissen greift dort
    weiter auf alle lesbaren Bibliotheken zurück). Die Zuordnung legt die Session des jeweiligen
    Space-Eigentümers an, denn `associateSpaceLibrary` verlangt CURATOR oder höher im Space plus
-   mindestens VIEWER auf der Bibliothek — beides hat der Eigentümer nach Schritt 4.
-6. **Indizierung je Bibliothek** über deren eigene Quellkonfiguration (nicht für die `UPLOAD`-Bibliothek
-   — die hat keinen eigenen Lauf, ADR-0018, siehe Schritt 4) — der Seed wartet auf `COMPLETED` und
+   mindestens VIEWER auf der Bibliothek — beides hat der Eigentümer nach Schritt 5.
+8. **Indizierung je Bibliothek** über deren eigene Quellkonfiguration (nicht für die `UPLOAD`-Bibliothek
+   — die hat keinen eigenen Lauf, ADR-0018, siehe Schritt 5) — der Seed wartet auf `COMPLETED` und
    bricht bei `documentsFailed > 0` ab. Für die beiden `S3`-Bibliotheken prüft er zusätzlich eine
    **Mindestzahl**: Ihr Bucket ist eine exakte Spiegelung eines Korpusverzeichnisses
    (`expected_documents_dir` in `profiles.py`), also muss der Lauf mindestens so viele Dokumente
    verarbeitet haben, wie dort Dateien liegen. Ohne diese Prüfung meldete ein Lauf gegen einen noch
    nicht fertig befüllten Bucket „abgeschlossen" über eine leere Bibliothek — der Einmal-Schritt
-   `minio-seed` muss vorher durch sein (Schritt 2).
+   `minio-seed` muss vorher durch sein (Schritt 2 von „Demo nutzen" oben).
 
 Für das minimale, eingefrorene `e2e`-Profil (dev-Auth, keine Keycloak-Anmeldung nötig) braucht es den
 separaten E2E-Stack (`e2e/docker-compose.e2e.yml`), nicht den `demo`-Stack — nur dieser provisioniert

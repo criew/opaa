@@ -142,6 +142,15 @@ databaseChangeLog:
       file: db/changelog/changes/058-groups-released-for-use.yaml
   - include:
       file: db/changelog/changes/059-groups-protected.yaml
+  # Die Übertragung der Rechte einer Gruppe auf eine andere (#1834, ADR-0036 Entscheidung 10):
+  # der Vorgang, die von ihm berührten Objekte und der Schnitt in der Rechtehistorie. 062 steht
+  # nach 050 und 044 — es ergänzt deren Tabellen um die Vorgangskennung.
+  - include:
+      file: db/changelog/changes/060-create-permission-transfers.yaml
+  - include:
+      file: db/changelog/changes/061-create-permission-transfer-objects.yaml
+  - include:
+      file: db/changelog/changes/062-permission-history-transfer.yaml
   # Kontostatus aus dem Verzeichnis (#1818, ADR-0036 Entscheidungen 3, 6 und 8): die Sperre am
   # Konto, ihre Historie und die Zahl der Sperren eines ausstehenden Plans.
   - include:
@@ -150,6 +159,12 @@ databaseChangeLog:
       file: db/changelog/changes/064-create-account-state-history.yaml
   - include:
       file: db/changelog/changes/065-directory-sync-pending-plans-accounts-locked.yaml
+  # Freigabe-Obergrenze fuer Konnektorbibliotheken (#797): visibility_cap/listed_cap je Bibliothek,
+  # von der Systemverwaltung gesetzt; Upload-Bibliotheken bleiben unrestriktiv.
+  - include:
+      file: db/changelog/changes/069-knowledge-libraries-share-cap.yaml
+  - include:
+      file: db/changelog/changes/070-knowledge-libraries-share-cap-upload-unrestricted.yaml
   # Das Zuwachssignal an einer Freigabe (#1820, ADR-0036 Entscheidung 9) - das Gegenstueck zu
   # space_memberships.member_count_at_grant aus 043.
   - include:

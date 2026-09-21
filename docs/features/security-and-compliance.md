@@ -279,7 +279,11 @@ Verantwortlichen interner Gruppen samt Reichweitenfeldern (`GROUP_STEWARD_APPOIN
 letzten mit Vorher/Nachher des Kennzeichens; die betroffene Person steht als Pseudonym im Subjekt,
 und keines der vier erzeugt eine Historienzeile) und — ebenfalls seit #1814 — der Abruf der
 Mitgliederliste einer Gruppe durch die Systemverwaltung, die diese Gruppe nicht selbst verantwortet
-(`GROUP_MEMBERS_READ` mit der Zahl der Mitglieder). Das ist das einzige **Leseereignis** dieser
+(`GROUP_MEMBERS_READ` mit der Zahl der Mitglieder) und — seit #1834 — die Übertragung der Rechte
+eines Subjekts auf ein anderes (`PERMISSION_TRANSFER_EXECUTED` mit Quelle, Ziel, Umfang und Zahl
+der Zeilen, und `PERMISSION_TRANSFER_PREVIEWED` für **jeden** Abruf der Vorschau, auch den
+abgebrochenen — die Vorschau liest alles, was ein Subjekt hält). Das sind, neben dem Abruf der
+Mitgliederliste, die einzigen **Leseereignisse** dieser
 Liste und die bewusste Ausnahme von „Abfragen werden nicht protokolliert": ADR-0036,
 Entscheidung 9, räumt der Verwaltung die volle Mitgliederliste ein — und hält dafür fest, dass sie
 sie abgerufen hat. Wer die Gruppe selbst verantwortet, erzeugt beim Lesen nichts; es ist die
@@ -709,9 +713,10 @@ trägt Protokoll und Historie nach, er ist nicht die Bedingung der Wirkung — b
 (ADR-0021) wäre er das sonst tagelang. Der Stichtag „war diese
 Bibliothek freigegeben?" wird aus der Historie allein beantwortet
 (`LibraryVisibilityHistoryService#externalAccessActiveAsOf`), also auch nach der monatsweisen Löschung des
-Protokollzeitraums. **Aussetzen** ist im Modell vorgesehen (Zustand `SUSPENDED`), wird heute aber von
-nichts gesetzt — es gehört zur Freigabe-Obergrenze und kommt mit
-[#797](https://github.com/criew/opaa/issues/797).
+Protokollzeitraums. **Aussetzen** ist im Modell vorgesehen (Zustand `SUSPENDED`), wird aber weiterhin
+von nichts gesetzt: [#797](https://github.com/criew/opaa/issues/797) hat die Freigabe-Obergrenze
+konnektor-gespeister Bibliotheken ausdrücklich auf `visibility`/`listed` begrenzt und lässt die
+Fremdzugangsfreigabe unberührt (siehe [external-access.md](./external-access.md#die-freigabe-ist-ein-reichweitenfeld-und-wird-wie-eines-behandelt)).
 
 **Auflösung der Intervallgrenzen (#1497, [ADR-0032](../decisions/0032-zeitquelle-rechtehistorie.md)):**
 Aufeinanderfolgende Zustandsintervalle desselben Objekts haben streng aufsteigende Grenzen — auch dann,

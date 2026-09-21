@@ -600,6 +600,9 @@ public class KnowledgeLibraryService {
     List<String> previousConfluenceSpaceKeys =
         library.getConfluenceSpaces().stream().map(ConfluenceSpaceSelection::getSpaceKey).toList();
     String previousS3Settings = S3SourceSettingsJson.write(library.getS3Settings());
+    LibraryVisibility effectiveVisibility =
+        request.visibility() != null ? request.visibility() : previousVisibility;
+    requireWithinShareCap(library, effectiveVisibility, listed);
     library.updateDetails(normalizedName, request.description(), request.visibility(), listed);
     if (replacesSchedule) {
       library.updateSchedule(validatedSchedule.enabled(), validatedSchedule.cron());
@@ -758,6 +761,99 @@ public class KnowledgeLibraryService {
     }
     return toLibraryDetail(
         updated, accessService.effectiveRole(updated, currentUserId, systemAdmin), currentUserId);
+  }
+
+  /**
+   * Refuses {@code visibility}/{@code listed} above {@code library}'s own share cap (#797,
+   * Maintainer-Festlegung vom 21.09.2026) - a {@code 409}, not a {@code 403}: the caller's {@code
+   * MANAGER}/{@code OWNER} role is not in question, the requested state conflicts with a ceiling
+   * the system administration set on this specific library. A no-op for {@code UPLOAD}, which never
+   * carries a narrower cap ({@code chk_knowledge_libraries_share_cap_upload_unrestricted}).
+   */
+  private void requireWithinShareCap(
+      KnowledgeLibrary library, LibraryVisibility visibility, boolean listed) {
+    if (library.getSourceType() == DocumentSourceType.UPLOAD) {
+      return;
+    }
+    if (visibility.exceeds(library.getVisibilityCap())) {
+      throw new ConflictException(
+          "Die Sichtbarkeit dieser Bibliothek ist von der Systemverwaltung auf höchstens \""
+              + visibilityLabel(library.getVisibilityCap())
+              + "\" begrenzt.");
+    }
+    if (listed && !library.isListedCap()) {
+      throw new ConflictException(
+          "Diese Bibliothek darf laut Systemverwaltung nicht im Katalog gelistet werden.");
+    }
+  }
+
+  private static String visibilityLabel(LibraryVisibility visibility) {
+    return switch (visibility) {
+      case PRIVATE -> "privat";
+      case SHARED -> "geteilt";
+      case ORGANIZATION -> "organisationsweit";
+    };
+  }
+
+  /**
+   * Sets a connector library's share cap (#797) - {@code SYSTEM_ADMIN} only, rejected for {@code
+   * UPLOAD}. Narrowing the cap below what the library currently carries clamps {@code
+   * visibility}/{@code listed} back down to it in the same transaction; the clamp publishes {@link
+   * LibraryChanged}, recorded separately from the cap change itself ({@code
+   * CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED}).
+   */
+  @Transactional
+  public LibraryDetail updateShareCap(
+      UUID libraryId, LibraryVisibility visibilityCap, boolean listedCap, CurrentUser caller) {
+    if (!caller.isSystemAdmin()) {
+      throw new AccessDeniedException(
+          "Nur die Systemverwaltung darf die Freigabe-Obergrenze einer Bibliothek setzen");
+    }
+    Objects.requireNonNull(visibilityCap, "visibilityCap");
+    KnowledgeLibrary library = loadLibrary(libraryId, caller);
+    if (library.getSourceType() == DocumentSourceType.UPLOAD) {
+      throw new ValidationException(
+          "Upload-Bibliotheken tragen keine Freigabe-Obergrenze - jedes Dokument wird ohnehin"
+              + " einzeln von der Eigentümerin kuratiert");
+    }
+    LibraryVisibility previousCap = library.getVisibilityCap();
+    boolean previousListedCap = library.isListedCap();
+    LibraryVisibility previousVisibility = library.getVisibility();
+    boolean previousListed = library.isListed();
+    library.updateShareCap(visibilityCap, listedCap);
+    boolean visibilityClamped = previousVisibility.exceeds(visibilityCap);
+    boolean listedClamped = previousListed && !listedCap;
+    if (visibilityClamped || listedClamped) {
+      library.updateDetails(
+          library.getName(),
+          library.getDescription(),
+          visibilityClamped ? visibilityCap : previousVisibility,
+          listedClamped ? false : previousListed);
+    }
+    KnowledgeLibrary saved = libraryRepository.save(library);
+    auditEventRecorder.recordUserAction(
+        AuditEvent.builder()
+            .organizationId(saved.getOrganizationId())
+            .actor(caller.id())
+            .type(AuditEventType.CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED)
+            .object(AuditObjectType.KNOWLEDGE_LIBRARY, saved.getId(), saved.getName())
+            .before(Map.of("visibilityCap", previousCap.name(), "listedCap", previousListedCap))
+            .after(Map.of("visibilityCap", visibilityCap.name(), "listedCap", listedCap))
+            .outcome(AuditOutcome.SUCCESS)
+            .build());
+    if (visibilityClamped || listedClamped) {
+      // #238/#892: the clamp is the same kind of change updateLibrary's own
+      // ASSET_VISIBILITY_CHANGED publish covers above - one history interval, one audit entry,
+      // published through the identical event so the two write paths cannot drift apart.
+      eventPublisher.publishEvent(
+          new LibraryChanged(
+              saved,
+              LibraryChanged.Cause.VISIBILITY_CHANGED,
+              caller.id(),
+              Map.of("visibility", previousVisibility.name(), "listed", previousListed),
+              Map.of("visibility", saved.getVisibility().name(), "listed", saved.isListed())));
+    }
+    return toLibraryDetail(saved, AssetRole.OWNER, caller.id());
   }
 
   @Transactional
@@ -1897,7 +1993,13 @@ public class KnowledgeLibraryService {
         lastScheduledRunsFailed,
         storageQuotaService.quotaBytes(),
         storageQuotaService.usedBytes(library.getId()),
-        externalAccessService.describe(library));
+        externalAccessService.describe(library),
+        // #797: UPLOAD never carries a cap narrower than the unrestricted default
+        // (chk_knowledge_libraries_share_cap_upload_unrestricted) - null here rather than the
+        // always-ORGANIZATION/true value keeps a MANAGER from reading a ceiling into an UPLOAD
+        // library that in fact has none.
+        library.getSourceType() == DocumentSourceType.UPLOAD ? null : library.getVisibilityCap(),
+        library.getSourceType() == DocumentSourceType.UPLOAD ? null : library.isListedCap());
   }
 
   private LibraryDocumentEntry toLibraryDocumentEntry(

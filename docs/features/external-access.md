@@ -61,8 +61,8 @@ freigegeben sein, und die Person muss ihn für ein benanntes Werkzeug bewusst er
    [security-and-compliance.md](./security-and-compliance.md#was-ausdrücklich-nicht-protokolliert-wird)
    bleibt unverändert; auch eine Nutzungszählung je Token gibt es nicht.
 7. **Die Freigabe einer Bibliothek ist ein Reichweitenfeld.** Sie wird wie `visibility` und `listed`
-   historisiert und ist **pflichtbefristet**; unter die Freigabe-Obergrenze konnektor-gespeister
-   Bibliotheken fällt sie, sobald diese definiert ist (#797).
+   historisiert und ist **pflichtbefristet**; die Freigabe-Obergrenze konnektor-gespeister Bibliotheken
+   (#797) deckelt sie **nicht** — deren Wirkung ist ausdrücklich auf `visibility`/`listed` begrenzt.
 8. **OPAA wird dafür nicht öffentlich erreichbar.** Der ganze Kanal liegt zusätzlich hinter einer
    installationsweiten Netzbeschränkung, Vorgabe Hausnetz. Zielclients sind Werkzeuge, die auf dem
    Arbeitsplatz oder im Hausnetz laufen. Ein Betrieb als OAuth-Autorisierungsserver für fremde
@@ -214,10 +214,11 @@ der Systemverwaltung.
 
 > **Gebaut (#1731).** Das Merkmal, seine Pflichtbefristung, die Historisierung, der Ablauflauf, die
 > Wiedervorlage per Mail, die beiden Protokollereignisse, der Schalter im Zugriffsbereich der
-> Bibliothek und die Liste der Systemverwaltung stehen. Nicht gebaut und hier ausdrücklich nicht
-> vorweggenommen: die Deckelung durch die Freigabe-Obergrenze (#797, Punkt 2 unten), die Sperre bei
-> „Nachfolge offen" (Punkt 4 unten) und die Tokenzählung, die bis zu den Zugangstokens (#1718) als
-> `0` ausgewiesen wird.
+> Bibliothek und die Liste der Systemverwaltung stehen. #797 hat entschieden, dass die
+> Freigabe-Obergrenze konnektor-gespeister Bibliotheken dieses Merkmal **nicht** deckelt (Punkt 2
+> unten) — hier bleibt also nichts offen nachzuziehen. Nicht gebaut und hier ausdrücklich nicht
+> vorweggenommen: die Sperre bei „Nachfolge offen" (Punkt 4 unten) und die Tokenzählung, die bis zu
+> den Zugangstokens (#1718) als `0` ausgewiesen wird.
 
 ### Die Freigabe ist ein Reichweitenfeld und wird wie eines behandelt
 
@@ -235,18 +236,17 @@ sie sind deshalb als Bedingung formuliert und nicht als Abnahmekriterium dieser 
    wird nach Frist monatsweise vollständig gelöscht — die Frage „war die Bibliothek ‚Vergabeakten
    2026' im Jahr 2026 aus dem Haus erreichbar?" wäre 2030 sonst mit „ich weiß es nicht" zu
    beantworten, bei einem Feld, das über Hausgrenzen entscheidet.
-2. **Unter der Freigabe-Obergrenze — sobald es sie gibt.** Eine Bibliothek, die aus einem Konnektor
-   gespeist wird, trägt die Obergrenze aus
-   [access-control.md](./access-control.md#dokumentenfluss-konnektoren-gegen-benutzer-uploads) — die
-   dort als „einzige technische Sicherung zwischen ‚Fachverfahrensdaten eingespeist' und
-   ‚organisationsweit lesbar'" bezeichnet wird. Sie deckelt deshalb auch dieses Merkmal; andernfalls
-   wäre der Fremdzugang der Weg an ihr vorbei. Wird die Obergrenze nachträglich gesenkt, wird eine
-   bereits gesetzte Freigabe **ausgesetzt, nicht stillschweigend entzogen**: Sie steht auf der Liste
-   des Bibliotheks-Eigentümers und wirkt nicht mehr, bis er sie anpasst. **Die Obergrenze ist heute
-   weder definiert noch gebaut** — ihre genaue Wirkung entscheidet
-   [#797](https://github.com/criew/opaa/issues/797). Das Merkmal fällt unter sie, **sobald #797 sie
-   liefert**; diese Stufe nimmt die Entscheidung nicht vorweg und baut die Deckelung nicht mit. Wer
-   #797 umsetzt, findet das Merkmal in der Aufzählung der gedeckelten Felder.
+2. **Nicht unter der Freigabe-Obergrenze — entschieden (#797, Maintainer-Festlegung vom 21.09.2026).**
+   Eine Bibliothek, die aus einem Konnektor gespeist wird, trägt eine Freigabe-Obergrenze
+   ([access-control.md](./access-control.md#dokumentenfluss-konnektoren-gegen-benutzer-uploads)) —
+   eine frühere Fassung dieses Kapitels ging davon aus, dass sie auch dieses Merkmal deckeln würde,
+   um den Fremdzugang nicht zum Weg an ihr vorbei zu machen. #797 hat das Feld der Obergrenze
+   **ausdrücklich auf `visibility` und `listed`** begrenzt; die Fremdzugangsfreigabe bleibt außen vor.
+   Der Fremdzugang bleibt damit unabhängig von der Freigabe-Obergrenze zu setzen und zurückzunehmen —
+   der Schutz gegen „Fachverfahrensdaten eingespeist, dann über den Fremdzugang organisationsweit
+   erreichbar" liegt stattdessen ausschließlich in Punkt 3 (Pflichtbefristung) und darin, dass Setzen
+   und Zurücknehmen an dieselbe MANAGER-Schranke gebunden bleiben wie jede andere Reichweitenänderung
+   der Bibliothek.
 3. **Pflichtbefristet, höchstens ein Jahr.** Eine Freigabe ohne Ablauf ist eine Ratsche: Jede Anfrage
    „ich brauche X in meinem Werkzeug" erzeugt eine, und nichts erzeugt je eine Rücknahme. Nach
    spätestens einem Jahr **erlischt** sie; erneuern kann nur, wer den Bestand verantwortet. Der
@@ -724,7 +724,7 @@ unehrlich. Die drei Ergänzungen sind im selben Zug dort eingetragen:
 | Zugangstoken widerrufen oder gesperrt | dazu, ob durch die Person selbst oder durch die Systemverwaltung |
 | Zugangstoken außer Kraft getreten | Anlass: abgelaufen oder Kontenlebenszyklus (Konto gesperrt, deaktiviert, gelöscht) |
 | Bibliotheksfreigabe gesetzt oder zurückgenommen | handelnde Person, Bibliothek, Richtung, Ablaufdatum der Freigabe |
-| Bibliotheksfreigabe erloschen oder ausgesetzt | Bibliothek, Anlass: Fristablauf — oder gesenkte Freigabe-Obergrenze, sobald #797 sie liefert |
+| Bibliotheksfreigabe erloschen | Bibliothek, Anlass: Fristablauf (#797: die Freigabe-Obergrenze deckelt dieses Feld nicht, siehe „Die Freigabe der Bibliothek" oben) |
 | Schalter oder Grenzwerte des Kanals geändert | handelnde Person, Richtung bzw. Vorher/Nachher |
 
 **Der Abflussalarm steht bewusst nicht in dieser Tabelle.** Er ist ein Sicherheitsereignis und gehört

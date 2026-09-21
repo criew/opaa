@@ -22,6 +22,7 @@ import io.opaa.library.LibraryScheduleDetail;
 import io.opaa.library.LibraryScheduleUpdate;
 import io.opaa.library.LibrarySummary;
 import io.opaa.library.LibraryUpdate;
+import io.opaa.permission.PermissionTransferMark;
 import java.net.URI;
 import java.util.List;
 import org.slf4j.Logger;
@@ -159,6 +160,14 @@ final class LibraryResponseMapper {
   }
 
   static LibraryResponse toResponse(LibraryDetail detail) {
+    return toResponse(detail, null);
+  }
+
+  /**
+   * The detail view additionally names the transfer that last touched this library (#1834, ADR-0036
+   * Entscheidung 10), or nothing if none ever did.
+   */
+  static LibraryResponse toResponse(LibraryDetail detail, PermissionTransferMark lastTransfer) {
     KnowledgeLibrary library = detail.library();
     LibraryResponse response =
         new LibraryResponse(
@@ -175,7 +184,8 @@ final class LibraryResponseMapper {
             .description(library.getDescription())
             .documentCount(detail.documentCount())
             .diagnosticsLocked(library.isDiagnosticsLocked())
-            .diagnosticsLockToggleable(detail.diagnosticsLockToggleable());
+            .diagnosticsLockToggleable(detail.diagnosticsLockToggleable())
+            .lastTransfer(PermissionTransferResponseMapper.toResponse(lastTransfer));
     if (library.getSourceType() == DocumentSourceType.CONFLUENCE) {
       // ADR-0023: edition and selection are visible to every reader - the selection is exactly
       // the scope every reader of this library can see, so naming it is not configuration detail
@@ -218,8 +228,9 @@ final class LibraryResponseMapper {
         .externalAccess(
             managementDetail.externalAccess() == null
                 ? null
-                : LibraryExternalAccessResponseMapper.toResponse(
-                    managementDetail.externalAccess()));
+                : LibraryExternalAccessResponseMapper.toResponse(managementDetail.externalAccess()))
+        .visibilityCap(managementDetail.visibilityCap())
+        .listedCap(managementDetail.listedCap());
     LibraryScheduleDetail schedule = managementDetail.schedule();
     if (schedule != null) {
       response

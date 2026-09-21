@@ -271,6 +271,45 @@ Vier Punkte dazu:
 Eine Oberfläche zur Vergabe gibt es noch nicht (Issues #1820, #1821); bis dahin werden Anlegerechte
 über die Verwaltungsschnittstelle vergeben und entzogen.
 
+### Freigabe-Obergrenze für Konnektorbibliotheken
+
+Wer eine Konnektorbibliothek anlegen darf, wählt auch ihre Verteilungsstufe (`visibility`) und ihre
+Katalog-Auffindbarkeit (`listed`) frei — bis zu einer **Obergrenze**, die ausschließlich die
+Systemverwaltung setzt. Ohne sie könnte, wer eine Bibliothek aus einem Dateiverzeichnis, einem
+Webverzeichnis, einem Feed, Confluence oder einem Objektspeicher anlegt, den eingespeisten Bestand
+im nächsten Schritt organisationsweit sichtbar machen — die Obergrenze ist die technische Sicherung
+gegen genau diesen einen Schritt. Bibliotheken für Uploads tragen keine Obergrenze: Dort kuratiert
+dieselbe Person ohnehin jedes Dokument einzeln.
+
+**Die Obergrenze gilt je Bibliothek und wird nicht automatisch gesetzt.** Neu angelegt ist jede
+Konnektorbibliothek zunächst offen (organisationsweit sichtbar, auffindbar) — die Systemverwaltung
+muss die Obergrenze für sie eigens setzen, damit sie wirkt. Ein Betrieb, der das systematisch
+verhindern will, prüft die Obergrenze deshalb **nach jeder Neuanlage** einer Konnektorbibliothek,
+oder schränkt das Anlegerecht „Konnektorbibliotheken anlegen" auf eine benannte Gruppe ein (siehe
+Abschnitt „Anlegerechte" oben) — dann entscheidet diese Gruppe, wer überhaupt anlegen darf, bevor
+die Obergrenze greifen müsste.
+
+Zu finden ist die Obergrenze auf der Detailseite der jeweiligen Bibliothek, Reiter „Verwaltung" —
+sichtbar und änderbar nur für die Systemverwaltung. Zwei Werte: die höchste zulässige
+Verteilungsstufe und ob die Bibliothek überhaupt im Katalog auffindbar sein darf.
+
+**Wird die Obergrenze gesenkt, wirkt das sofort — aber ausschließlich für Verteilungsstufe und
+Katalog-Auffindbarkeit.** Eine bereits weitergehende Verteilungsstufe oder Auffindbarkeit wird nicht
+nur für künftige Änderungen gesperrt, sondern **im selben Augenblick auf die neue Obergrenze
+zurückgenommen** — keine Übergangszeit, kein Zustand „noch zu weit, aber geduldet". **Unberührt
+bleiben dabei erteilte Rechte an einzelnen Personen und Gruppen sowie eine bestehende
+Fremdzugangsfreigabe** (Abschnitt „Die Freigabe der Bibliothek" im Kapitel Fremdzugänge) — beide
+müssen gesondert geprüft und, falls gewünscht, gesondert zurückgenommen werden. Beide Vorgänge
+stehen im Nachweisprotokoll: das Setzen der Obergrenze selbst und, falls ausgelöst, die dadurch
+bewirkte Rücknahme von Verteilungsstufe oder Auffindbarkeit.
+
+Versucht die Eigentümerin oder ein Verwalter der Bibliothek anschließend, die Verteilungsstufe über
+die Obergrenze hinaus anzuheben oder die Bibliothek trotz gesperrter Auffindbarkeit zu listen, weist
+die Anwendung das mit einer Meldung ab, die die geltende Obergrenze beim Namen nennt und auf die
+Systemverwaltung verweist — kein technischer Fehler, sondern eine erklärte Grenze. Im Formular selbst
+sind Stufen oberhalb der Obergrenze bereits gesperrt, mit demselben Hinweis, sodass die Grenze schon
+vor dem Speichern sichtbar ist.
+
 ### 7.1 Interne Gruppen und ihre Verantwortlichen
 
 Eine **interne Gruppe** ist eine Gruppe, die in OPAA selbst entsteht — anders als die Gruppen aus dem
@@ -339,6 +378,75 @@ ihrer eigenen Gruppe keinen Eintrag.
 **Gruppen aus dem Verzeichnis oder dem Anmeldetoken lassen sich hier nicht bearbeiten.** Sie haben
 keine Verantwortlichen, sondern Ansprechstellen, die die Systemverwaltung benennt; eine Oberfläche
 dafür entsteht mit Issue #1821.
+
+### 7.2 Rechte einer Gruppe auf eine andere übertragen
+
+Wird ein Referat aufgelöst, ein Identitätsanbieter abgelöst oder eine Person durch eine andere
+ersetzt, müssen die Rechte mitgehen. Dafür gibt es **eine** Handlung statt Objekt-für-Objekt-Arbeit:
+die Übertragung.
+
+**Was übertragen wird.** Der Umfang ist wählbar — alles oder nur ein Teil:
+
+| Umfang | Gruppe → Gruppe | Gruppe → Person | Person → Person |
+|---|---|---|---|
+| Berechtigungen an Bibliotheken | ja | — | — |
+| Mitgliedschaften in Räumen | ja | — | — |
+| Anlegerechte | ja | — | — |
+| Eigentum an Bibliotheken | ja | ja | ja |
+| Eigentum an Räumen | — | — | ja |
+| Verantwortung für interne Gruppen | — | — | ja |
+
+**Ein Raum gehört immer einer natürlichen Person.** Deshalb wechselt sein Eigentum nur zwischen
+Personen; eine Gruppe besitzt keinen Raum und wird auch keiner. Übernimmt eine Person einen Raum,
+wird sie dabei — falls sie es noch nicht ist — als Administratorin aufgenommen: Eine Verantwortliche,
+die in der Mitgliederliste nicht auftaucht, wäre genau der Zustand, den die Übertragung beenden
+soll.
+
+**Von einer Person gehen nur Eigentum und Verantwortung über.** Die Berechtigungen einer Person
+werden hier weder übertragen noch aufgezählt — sie enden mit ihrem Konto. Eine Vorschau „alles, was
+Frau Vogt darf" gibt es bewusst nicht.
+
+**Wer das darf.** Die Systemverwaltung für das ganze Haus. Ihre eigene Verantwortung und ihr eigenes
+Eigentum gibt jede Person selbst ab, aus „Meine Gruppen". Wer eine Bibliothek verwaltet, ändert deren
+Berechtigungen weiterhin einzeln.
+
+**Ablauf.** Zuerst die **Vorschau**: Sie nennt in einem Satz, was bewegt würde („12 Berechtigungen an
+7 Objekten, Mitglied in 2 Räumen, Eigentum an 3 Objekten"). Danach die ausdrückliche **Bestätigung**.
+Beides steht im Nachweisprotokoll — **auch eine Vorschau, die niemand ausführt**: Sie liest alles,
+was eine Gruppe oder eine Person hält.
+
+**Das Ziel muss wirksam sein** — nicht aufgelöst, sein Anbieter eingeschaltet. **Leer sein darf es:**
+Im Token-Betrieb entsteht die Gruppe eines neuen Anbieters erst mit der ersten Anmeldung. Die Quelle
+darf dagegen aufgelöst sein; das ist der Regelfall. Über die Grenze des Hauses hinweg gibt es keine
+Übertragung.
+
+**Hat das Ziel an einem Objekt schon eine Rolle, bleibt die stärkere stehen.** Eine Übertragung gibt
+Rechte weiter und nimmt dem Ziel nichts weg.
+
+**Danach steht am Objekt, was geschehen ist** („übertragen am 14.03.2026, Vorgang …") — bei einer
+Gruppe als Quelle mit deren Namen, bei einer Person **ohne** ihren Namen. Die Rechtehistorie zeigt
+für jedes betroffene Objekt an jedem Tag genau ein Subjekt: Das Intervall der Quelle endet genau
+dort, wo das des Ziels beginnt, und beide tragen dieselbe Vorgangsnummer.
+
+**Danach lässt sich ein Anbieter löschen, dessen Gruppen noch Rechte trugen.** Das ist der vorgesehene
+Weg aus der Ablehnung „Diese Gruppen wirken noch"; die Rechte werden umgezogen, nicht entfernt.
+
+**Mit dem Eigentum geht die Rolle mit.** Wer eine Bibliothek übernimmt, darf sie danach auch
+verwalten; die vorherige Eigentümerin verliert ihre Rolle an dieser Bibliothek. Bei einer Gruppe als
+neuer Eigentümerin ist es die Verwalterrolle, bei einer Person die Eigentümerrolle — dieselben
+Rollen, die beim Anlegen einer Bibliothek vergeben werden.
+
+**Es gibt eine Obergrenze.** Eine Übertragung bewegt höchstens 500 Zeilen. Darüber wird sie
+abgelehnt, mit der Zahl und dem Hinweis, in mehreren Schritten zu übertragen — etwa erst die
+Berechtigungen, dann das Eigentum.
+
+**Was die Übertragung nicht tut:** Sie läuft nie automatisch. Eine Reorganisation im Verzeichnis
+erzeugt eine aufgelöste Gruppe und einen Eintrag in der Betriebsliste — die Entscheidung, wohin ihre
+Rechte gehen, trifft ein Mensch.
+
+**Eine Oberfläche dafür entsteht mit Issue #1821.** Heute führt die Systemverwaltung die Übertragung
+über die Schnittstelle aus; die Arbeitsliste je Anbieter und die Abgabe aus „Meine Gruppen" kommen
+mit diesem Issue.
 
 ## 8. Löschen oder sperren
 
