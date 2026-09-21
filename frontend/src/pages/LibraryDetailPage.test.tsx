@@ -603,22 +603,23 @@ describe('LibraryDetailPage', () => {
           listedCap: true,
         }),
       )
+      // #1870 review, "hält eine Bedingung, die vor wie nach dem Speichern gilt": the button is
+      // disabled whether or not a PUT ever went out, so the request itself is captured and
+      // asserted on, not just the button state afterwards.
+      let putRequestBody: { visibilityCap: string; listedCap: boolean } | null = null
       server.use(
         http.put('/api/v1/libraries/:libraryId/share-cap', async ({ params, request }) => {
-          const body = (await request.json()) as {
-            visibilityCap: string
-            listedCap: boolean
-          }
+          putRequestBody = (await request.json()) as { visibilityCap: string; listedCap: boolean }
           return HttpResponse.json({
             ...detailsOf(adminBypassLibrary, {
               sourceType: 'FILESYSTEM',
               sourcePath: '/data/dokumente',
             }),
             id: String(params.libraryId),
-            visibility: body.visibilityCap,
-            listed: body.listedCap,
-            visibilityCap: body.visibilityCap,
-            listedCap: body.listedCap,
+            visibility: putRequestBody.visibilityCap,
+            listed: putRequestBody.listedCap,
+            visibilityCap: putRequestBody.visibilityCap,
+            listedCap: putRequestBody.listedCap,
           })
         }),
       )
@@ -630,11 +631,13 @@ describe('LibraryDetailPage', () => {
       await user.click(await screen.findByRole('button', { name: /obergrenze speichern/i }))
 
       await waitFor(() => {
-        expect(screen.queryByRole('button', { name: /obergrenze speichern/i })).toBeDisabled()
+        expect(putRequestBody).toEqual({ visibilityCap: 'ORGANIZATION', listedCap: false })
       })
+      // the response replaces the cached detail - the owner-facing checkbox below reflects it
+      expect(await screen.findByLabelText('Im Katalog auffindbar')).toBeDisabled()
     })
 
-    it('shows the backend 409 message in German when an owner saves above the cap', async () => {
+    it('disables options above the cap in the Verteilungsstufe select and explains why', async () => {
       const ownerLibrary = { ...managerLibrary, myRole: 'OWNER' as const }
       setLibraryState(
         ownerLibrary,
@@ -642,6 +645,48 @@ describe('LibraryDetailPage', () => {
           sourceType: 'FILESYSTEM',
           sourcePath: '/data/dokumente',
           visibility: 'PRIVATE',
+          listed: false,
+          visibilityCap: 'PRIVATE',
+          listedCap: false,
+        }),
+      )
+      const user = userEvent.setup()
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+      await user.click(await screen.findByRole('tab', { name: 'Verwaltung' }))
+      expect(
+        await screen.findByText(
+          'Die Systemverwaltung hat die Freigabe dieser Bibliothek auf „privat“ begrenzt.',
+        ),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByText(
+          'Die Systemverwaltung hat die Auffindbarkeit dieser Bibliothek im' + ' Katalog gesperrt.',
+        ),
+      ).toBeInTheDocument()
+      await user.click(screen.getByRole('combobox', { name: /Verteilungsstufe/ }))
+      expect(screen.getByRole('option', { name: 'privat' })).not.toHaveAttribute(
+        'aria-disabled',
+        'true',
+      )
+      expect(screen.getByRole('option', { name: /organisationsweit/i })).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      )
+      expect(screen.getByLabelText('Im Katalog auffindbar')).toBeDisabled()
+    })
+
+    it('shows the backend 409 message in German when an already-wide value is re-saved above the cap', async () => {
+      // #1870 review: with the option disabled, a caller cannot pick it through the select - this
+      // covers the remaining path, a value that was already above the cap before this page loaded
+      // (the cap tightened elsewhere) and is resubmitted unchanged.
+      const ownerLibrary = { ...managerLibrary, myRole: 'OWNER' as const }
+      setLibraryState(
+        ownerLibrary,
+        detailsOf(ownerLibrary, {
+          sourceType: 'FILESYSTEM',
+          sourcePath: '/data/dokumente',
+          visibility: 'ORGANIZATION',
           listed: false,
           visibilityCap: 'PRIVATE',
           listedCap: false,
@@ -657,8 +702,6 @@ describe('LibraryDetailPage', () => {
       renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
       await user.click(await screen.findByRole('tab', { name: 'Verwaltung' }))
-      await user.click(screen.getByRole('combobox', { name: /Verteilungsstufe/ }))
-      await user.click(await screen.findByRole('option', { name: /organisationsweit/i }))
       await user.click(await screen.findByRole('button', { name: /^speichern$/i }))
 
       expect(

@@ -1,5 +1,6 @@
 package io.opaa.api;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -12,6 +13,7 @@ import io.opaa.test.OwnLibraryFixtures;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -25,11 +27,8 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 /**
  * HTTP-layer coverage of {@code PUT /api/v1/libraries/{libraryId}/share-cap} (#797): SYSTEM_ADMIN
  * only, rejected for UPLOAD, and the immediate clamp of a wider visibility/listed once the cap
- * narrows. The per-source-type/clamp behaviour itself is pinned at the service level by {@code
- * io.opaa.library.KnowledgeLibraryServiceShareCapTest}; this class only pins the wiring around it -
- * same shape as {@code LibraryControllerCredentialsIntegrationTest}, which explains why HTTP-layer
- * coverage for this controller lives in small dedicated classes on the shared {@link
- * OpaaIntegrationTest} context rather than one large one.
+ * narrows - through the real {@link io.opaa.audit.AuditListener}, unlike the mocked-event-publisher
+ * unit coverage in {@code io.opaa.library.KnowledgeLibraryServiceShareCapTest}.
  */
 @OpaaIntegrationTest
 class LibraryShareCapControllerIntegrationTest {
@@ -114,6 +113,30 @@ class LibraryShareCapControllerIntegrationTest {
         // the library carried ORGANIZATION/listed=true - the new cap clamps it down at once
         .andExpect(jsonPath("$.visibility").value("PRIVATE"))
         .andExpect(jsonPath("$.listed").value(false));
+
+    // #1870 review, finding 3: the real AuditListener (no mocked eventPublisher here, unlike the
+    // service-level unit test) must write both entries - the governance act and the clamp it
+    // triggered are two entries, not one, and both carry the acting system administrator.
+    List<Map<String, Object>> events = auditEventsFor(libraryId);
+    assertThat(events)
+        .extracting(row -> row.get("event_type"))
+        .containsExactlyInAnyOrder(
+            "CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED", "ASSET_VISIBILITY_CHANGED");
+    assertThat(events).extracting(row -> row.get("actor_ref")).doesNotContainNull();
+    assertThat(events.stream().map(row -> row.get("actor_ref")).distinct().count())
+        .as("both entries carry the same actor")
+        .isEqualTo(1);
+  }
+
+  /**
+   * Only the two share-cap events - {@code LIBRARY_CREATED}/{@code ASSET_GRANT_GRANTED} fire too.
+   */
+  private List<Map<String, Object>> auditEventsFor(String libraryId) {
+    return jdbcTemplate.queryForList(
+        "SELECT event_type, actor_ref FROM audit_log WHERE object_type = 'KNOWLEDGE_LIBRARY' AND"
+            + " object_id = ? AND event_type IN ('CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED',"
+            + " 'ASSET_VISIBILITY_CHANGED')",
+        libraryId);
   }
 
   @Test
@@ -136,9 +159,14 @@ class LibraryShareCapControllerIntegrationTest {
         .andExpect(status().isBadRequest());
   }
 
+  /**
+   * #1870 review, finding "Testname behauptet mehr als er prüft": creates and updates as the actual
+   * owner ({@code dev-user}, no system role) rather than {@code devAdmin()} - only the cap itself
+   * is set by the system administration, matching what the name promises.
+   */
   @Test
-  void thenRefusesAnOwnerRaisingVisibilityAboveTheNewCapWith409() throws Exception {
-    String libraryId = createFilesystemLibrary(devAdmin());
+  void refusesTheRealOwnerRaisingVisibilityAboveTheNewCapWith409() throws Exception {
+    String libraryId = createFilesystemLibrary(devUser());
     mockMvc
         .perform(
             put("/api/v1/libraries/" + libraryId + "/share-cap")
@@ -149,7 +177,7 @@ class LibraryShareCapControllerIntegrationTest {
     mockMvc
         .perform(
             put("/api/v1/libraries/" + libraryId)
-                .with(devAdmin())
+                .with(devUser())
                 .content("{\"name\":\"Freigabe-Obergrenze Test\",\"visibility\":\"ORGANIZATION\"}"))
         .andExpect(status().isConflict());
   }

@@ -772,7 +772,7 @@ public class KnowledgeLibraryService {
     if (library.getSourceType() == DocumentSourceType.UPLOAD) {
       return;
     }
-    if (visibility.ordinal() > library.getVisibilityCap().ordinal()) {
+    if (visibility.exceeds(library.getVisibilityCap())) {
       throw new ConflictException(
           "Die Sichtbarkeit dieser Bibliothek ist von der Systemverwaltung auf höchstens \""
               + visibilityLabel(library.getVisibilityCap())
@@ -793,16 +793,11 @@ public class KnowledgeLibraryService {
   }
 
   /**
-   * Sets a connector library's share cap (#797, Maintainer-Festlegung vom 21.09.2026) - {@code
-   * SYSTEM_ADMIN} only, rejected for {@code UPLOAD} (400: nothing for the cap to protect, since the
-   * same person who uploads already curates every document individually). Narrowing the cap below
-   * what the library currently carries clamps {@code visibility}/{@code listed} back down to it in
-   * the same transaction, immediately - never a state the specification calls "verletzt, aber
-   * geduldet": {@link LibraryChanged} publishes the clamp as an ordinary {@code
-   * ASSET_VISIBILITY_CHANGED} event (the same history interval and audit entry an owner's own edit
-   * would write), and the cap change itself is recorded separately under {@code
-   * CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED} - the governance act and its consequence are two
-   * entries, not one.
+   * Sets a connector library's share cap (#797) - {@code SYSTEM_ADMIN} only, rejected for {@code
+   * UPLOAD}. Narrowing the cap below what the library currently carries clamps {@code
+   * visibility}/{@code listed} back down to it in the same transaction; the clamp publishes {@link
+   * LibraryChanged}, recorded separately from the cap change itself ({@code
+   * CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED}).
    */
   @Transactional
   public LibraryDetail updateShareCap(
@@ -823,7 +818,7 @@ public class KnowledgeLibraryService {
     LibraryVisibility previousVisibility = library.getVisibility();
     boolean previousListed = library.isListed();
     library.updateShareCap(visibilityCap, listedCap);
-    boolean visibilityClamped = previousVisibility.ordinal() > visibilityCap.ordinal();
+    boolean visibilityClamped = previousVisibility.exceeds(visibilityCap);
     boolean listedClamped = previousListed && !listedCap;
     if (visibilityClamped || listedClamped) {
       library.updateDetails(

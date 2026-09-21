@@ -16,6 +16,7 @@ import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import FormControl from '@mui/material/FormControl'
 import FormControlLabel from '@mui/material/FormControlLabel'
+import FormHelperText from '@mui/material/FormHelperText'
 import IconButton from '@mui/material/IconButton'
 import InputAdornment from '@mui/material/InputAdornment'
 import LinearProgress from '@mui/material/LinearProgress'
@@ -121,6 +122,19 @@ export const ACCEPTED_FILE_EXTENSIONS =
   '.csv,.doc,.docx,.eml,.html,.md,.msg,.odp,.ods,.odt,.pdf,.pptx,.txt,.xlsx'
 
 const allVisibilities: LibraryVisibility[] = ['PRIVATE', 'SHARED', 'ORGANIZATION']
+
+/**
+ * Mirrors the backend's `LibraryVisibility#exceeds` (#797, #1870 review): whether `option` reaches
+ * further than the share cap - `false` while no cap is known (UPLOAD, or below MANAGER), matching
+ * the backend's own "nothing to check" default there.
+ */
+function exceedsVisibilityCap(
+  option: LibraryVisibility,
+  cap: LibraryVisibility | null | undefined,
+) {
+  if (!cap) return false
+  return allVisibilities.indexOf(option) > allVisibilities.indexOf(cap)
+}
 
 // #823: an upload entry carries an optional relativePath (the directory portion within a
 // dropped/selected folder tree, e.g. "Protokolle/2026") alongside each File - sequential upload,
@@ -1160,16 +1174,30 @@ export default function LibraryDetailPage() {
                     }
                   >
                     {allVisibilities.map((option) => (
-                      <MenuItem key={option} value={option}>
+                      <MenuItem
+                        key={option}
+                        value={option}
+                        disabled={exceedsVisibilityCap(option, details?.visibilityCap)}
+                      >
                         {libraryVisibilityLabel(option)}
                       </MenuItem>
                     ))}
                   </Select>
+                  {/* #1870 review: explains the limit to the owner/MANAGER instead of only
+                      letting a save above it fail with 409 - the system administration's own
+                      control (ShareCapControl below) is where it is actually changed. */}
+                  {details?.visibilityCap && details.visibilityCap !== 'ORGANIZATION' && (
+                    <FormHelperText>
+                      Die Systemverwaltung hat die Freigabe dieser Bibliothek auf „
+                      {libraryVisibilityLabel(details.visibilityCap)}“ begrenzt.
+                    </FormHelperText>
+                  )}
                 </FormControl>
                 <FormControlLabel
                   control={
                     <Checkbox
                       checked={listed}
+                      disabled={details?.listedCap === false}
                       onChange={(e) =>
                         setDraft({ name, description, visibility, listed: e.target.checked })
                       }
@@ -1177,6 +1205,12 @@ export default function LibraryDetailPage() {
                   }
                   label="Im Katalog auffindbar"
                 />
+                {details?.listedCap === false && (
+                  <FormHelperText>
+                    Die Systemverwaltung hat die Auffindbarkeit dieser Bibliothek im Katalog
+                    gesperrt.
+                  </FormHelperText>
+                )}
                 <Stack direction="row" spacing={1}>
                   <Button
                     variant="contained"

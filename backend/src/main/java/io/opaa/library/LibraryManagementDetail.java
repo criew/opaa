@@ -18,11 +18,8 @@ import io.opaa.api.types.LibraryVisibility;
  * @param externalAccess the library's Freigabe fuer Fremdzugaenge (#1731), MANAGER-gated like the
  *     rest: it is set at this bar, and the token count it carries is an input of the annual renewal
  *     decision, not something a VIEWER needs.
- * @param visibilityCap the share cap (#797), {@code null} for an {@code UPLOAD} library (which
- *     carries none - it is always delivered ORGANIZATION/unrestricted and never narrower) in
- *     addition to staying {@code null} below the MANAGER threshold - the same reasoning as {@link
- *     #schedule} lets a MANAGER of a capped connector library see why a wider visibility was
- *     refused with 409, without exposing it to a mere VIEWER.
+ * @param visibilityCap the share cap (#797); {@code null} for {@code UPLOAD} (which carries none)
+ *     and below the MANAGER threshold, same gating as {@link #schedule}.
  * @param listedCap the counterpart cap on {@code listed}, same gating as {@link #visibilityCap}.
  */
 public record LibraryManagementDetail(

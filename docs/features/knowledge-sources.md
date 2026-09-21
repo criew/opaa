@@ -790,13 +790,16 @@ Auslieferungszustand offen, aber auf eine benannte Gruppe einschränkbar. Was bl
 | Eigentümer der Bibliothek | wer den Bestand lesen darf, bis zur **Obergrenze der Freigabe** jeder Konnektorbibliothek (gebaut, #797) |
 
 Ohne die Obergrenze könnte ein Bibliothekseigentümer einen konnektorgespeisten Bestand
-organisationsweit öffnen. Sie ist die einzige technische Sicherung zwischen „von einem Konnektor
-eingespeist" und „hausweit lesbar" und deshalb kein Randthema. **Issue #797** hat sie entschieden
-(Maintainer-Festlegung vom 21.09.2026, siehe [access-control.md](./access-control.md#dokumentenfluss-konnektoren-gegen-benutzer-uploads)):
-Sie deckelt `visibility` und `listed`, die Systemverwaltung setzt sie je Bibliothek, und ein
-nachträgliches Senken nimmt eine bereits weitergehende Freigabe sofort zurück. Die Grundannahme, auf
-der sie ursprünglich beruhte — „die Systemverwaltung speist ein, der Eigentümer gibt frei" —, gilt mit
-der freien Anlageberechtigung nicht mehr uneingeschränkt; die Obergrenze bleibt deshalb die tragende
+organisationsweit öffnen. Sie deckelt, wo gesetzt, `visibility`/`listed` und ist deshalb kein
+Randthema. **Issue #797** hat sie entschieden (Maintainer-Festlegung vom 21.09.2026, siehe
+[access-control.md](./access-control.md#dokumentenfluss-konnektoren-gegen-benutzer-uploads)):
+Die Systemverwaltung setzt sie je Bibliothek — ausgeliefert ist jede Bibliothek offen, wirksam erst,
+sobald die Systemverwaltung sie für diese Bibliothek eigens senkt —, und ein nachträgliches Senken
+nimmt eine bereits weitergehende `visibility`/`listed`-Einstellung sofort zurück; erteilte Rechte an
+Personen und Gruppen sowie eine bestehende Fremdzugangsfreigabe bleiben davon unberührt. Die
+Grundannahme, auf der sie ursprünglich beruhte — „die Systemverwaltung speist ein, der Eigentümer
+gibt frei" —, gilt mit der freien Anlageberechtigung nicht mehr uneingeschränkt; die Obergrenze
+bleibt deshalb die tragende
 Sicherung, nicht eine überflüssige. Die frühere Frage nach der Obergrenze bei gemischt gespeisten
 Bibliotheken entfällt ersatzlos — diese Bibliotheken gibt es nicht mehr (siehe
 [Geklärte Fragen](#geklärte-fragen)).

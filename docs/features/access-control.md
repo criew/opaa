@@ -234,29 +234,46 @@ Die zwei Wege, auf denen Dokumente in OPAA gelangen, haben unterschiedliche Auto
 Wesentliche Verschiebung gegenüber dem alten Modell: Der System-Admin entscheidet, **wohin** indiziert
 wird; der Bibliotheks-Eigentümer entscheidet, **wer es sieht**.
 
-**Die Freigabe-Obergrenze ist die einzige technische Sicherung zwischen „Fachverfahrensdaten eingespeist"
-und „organisationsweit lesbar" (gebaut, #797, Maintainer-Festlegung vom 21.09.2026):**
+**Die Freigabe-Obergrenze deckelt, wo sie gesetzt ist, `visibility` und `listed` einer
+Konnektorbibliothek — die einzige technische Sicherung dieser beiden Felder gegen eine zu weite
+Freigabe durch den Bibliotheks-Eigentümer (gebaut, #797, Maintainer-Festlegung vom 21.09.2026).**
+Sie wirkt aber erst, **nachdem** sie gesetzt wurde:
 
 - Gedeckelt werden **ausschließlich `visibility` und `listed`** der Konnektorbibliothek — keine
   Gruppengrößen-Schwelle für Grants (eine frühere Fassung dieses Abschnitts sah eine solche Schwelle
   vor; sie entfällt ersatzlos, mit derselben Begründung wie die gestrichene Größenschwelle bei Grants
-  im Allgemeinen, siehe [spaces-and-assets.md](./spaces-and-assets.md#freigabe-an-eine-gruppe-braucht-keine-zustimmung))
-  und ohne die Freigabe für Fremdzugänge ([external-access.md](./external-access.md#die-freigabe-der-bibliothek)
-  hält fest, warum diese trotz einer früheren, anderslautenden Absicht außen vor bleibt).
+  im Allgemeinen, siehe [spaces-and-assets.md](./spaces-and-assets.md#freigabe-an-eine-gruppe-braucht-keine-zustimmung)),
+  ohne die Freigabe für Fremdzugänge ([external-access.md](./external-access.md#die-freigabe-der-bibliothek)
+  hält fest, warum diese trotz einer früheren, anderslautenden Absicht außen vor bleibt), und ohne
+  erteilte Rechte an Personen und Gruppen (`asset_grants`) — ein bestehender Grant bleibt auch nach
+  dem Senken der Obergrenze bestehen und muss gesondert zurückgenommen werden.
 - Die Systemverwaltung setzt die Obergrenze **je Bibliothek**, nicht installationsweit
-  (`PUT /api/v1/libraries/{libraryId}/share-cap`). Ein Bibliotheks-Eigentümer oder `MANAGER` kann
-  `visibility`/`listed` nicht über sie hinaus anheben — der Versuch scheitert mit `409`, weil die
-  eigene Berechtigung nicht in Frage steht, sondern die Anfrage mit der gesetzten Obergrenze
-  kollidiert.
-- Wird die Obergrenze **nachträglich gesenkt**, nimmt das System eine bereits weitergehende
-  Freigabe **sofort zurück** (auf die neue Obergrenze geklemmt) — mit Audit-Ereignis
-  (`CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED` für das Setzen der Obergrenze,
-  `ASSET_VISIBILITY_CHANGED` für die dadurch ausgelöste Klemmung) und einer Zeile in der
-  Sichtbarkeits-Historie, genauso wie bei einer Freigabeänderung durch den Eigentümer selbst. Es gibt
-  bewusst **keinen** Zustand „verletzt, aber geduldet" — eine frühere Fassung sah ein Aussetzen ohne
-  Entzug vor; das ist mit der Maintainer-Festlegung entschieden anders: Die Bibliothek liegt in der
-  Hand der Systemverwaltung, die die Obergrenze selbst setzt, sodass ein sofortiges Zurücknehmen
-  keine widersprüchliche Zuständigkeit erzeugt (anders als beim Strikt-Space, siehe
+  (`PUT /api/v1/libraries/{libraryId}/share-cap`). **Ausgeliefert ist jede Bibliothek offen**
+  (`visibility_cap = ORGANIZATION`, `listed_cap = true`, Migration 069) — eine neu angelegte
+  Konnektorbibliothek unterliegt deshalb **keiner** Einschränkung, bis die Systemverwaltung die
+  Obergrenze für sie eigens setzt. Da `CREATE_CONNECTOR_LIBRARY` an „Alle Konten" ausgeliefert ist
+  (siehe oben), kann zwischen Anlage und Setzen der Obergrenze eine Lücke liegen, in der die
+  Bibliothek bereits organisationsweit sichtbar ist. Zwei Wege dagegen, beide betrieblich statt
+  technisch: die Obergrenze nach jeder Neuanlage einer Konnektorbibliothek prüfen, oder
+  `CREATE_CONNECTOR_LIBRARY` auf eine benannte Gruppe einschränken, sodass nur noch diese Gruppe
+  überhaupt anlegen kann. **Ob ein installationsweiter Vorgabewert gebaut wird, auf den `createLibrary`
+  jede neue Konnektorbibliothek setzt, ist eine offene Maintainer-Frage** — die Festlegung vom
+  21.09.2026 regelt nur, *was* gedeckelt wird und *was beim Senken geschieht*, nicht *je Bibliothek
+  vs. installationsweiter Vorgabewert*; dieser PR baut keinen Vorgabewert.
+  Ein Bibliotheks-Eigentümer oder `MANAGER` kann `visibility`/`listed` nicht über eine gesetzte
+  Obergrenze hinaus anheben — der Versuch scheitert mit `409`, weil die eigene Berechtigung nicht in
+  Frage steht, sondern die Anfrage mit der gesetzten Obergrenze kollidiert.
+- Wird eine gesetzte Obergrenze **nachträglich gesenkt**, nimmt das System eine bereits
+  weitergehende `visibility`/`listed`-Einstellung **sofort zurück** (auf die neue Obergrenze
+  geklemmt) — mit Audit-Ereignis (`CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED` für das Setzen der
+  Obergrenze, `ASSET_VISIBILITY_CHANGED` für die dadurch ausgelöste Klemmung) und einer Zeile in der
+  Sichtbarkeits-Historie, genauso wie bei einer Änderung durch den Eigentümer selbst. Erteilte
+  Rechte an Personen und Gruppen sowie eine bestehende Fremdzugangsfreigabe bleiben unberührt (siehe
+  oben) und sind gesondert zu prüfen. Es gibt bewusst **keinen** Zustand „verletzt, aber geduldet" —
+  eine frühere Fassung sah ein Aussetzen ohne Entzug vor; das ist mit der Maintainer-Festlegung
+  entschieden anders: Die Bibliothek liegt in der Hand der Systemverwaltung, die die Obergrenze
+  selbst setzt, sodass ein sofortiges Zurücknehmen keine widersprüchliche Zuständigkeit erzeugt
+  (anders als beim Strikt-Space, siehe
   [spaces-and-assets.md](./spaces-and-assets.md#wenn-die-voraussetzung-eines-strikt-space-nachträglich-bricht)).
 - `UPLOAD`-Bibliotheken tragen keine Obergrenze (`400` beim Versuch, eine zu setzen): Dieselbe Person
   kuratiert dort ohnehin jedes Dokument einzeln, es gibt nichts, wovor die Obergrenze schützen müsste.

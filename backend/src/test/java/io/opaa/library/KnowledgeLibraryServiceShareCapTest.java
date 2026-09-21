@@ -282,6 +282,25 @@ class KnowledgeLibraryServiceShareCapTest {
         .isEqualTo(AuditEventType.CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED);
   }
 
+  /**
+   * #1870 review, "Zweig ohne Test": every other clamp test above lowers both fields together -
+   * this one lowers only {@code listedCap}, {@code visibilityCap} stays at its wide default, so
+   * only {@code listedClamped} (not {@code visibilityClamped}) is true in {@code updateShareCap}.
+   */
+  @Test
+  void loweringOnlyTheListedCapClampsListedAloneAndLeavesVisibilityUntouched() {
+    KnowledgeLibrary library = filesystemLibrary(LibraryVisibility.ORGANIZATION, true);
+
+    LibraryDetail result =
+        libraryService.updateShareCap(
+            library.getId(), LibraryVisibility.ORGANIZATION, false, systemAdminCaller);
+
+    assertThat(result.library().getVisibility()).isEqualTo(LibraryVisibility.ORGANIZATION);
+    assertThat(result.library().isListed()).isFalse();
+    assertThat(result.library().isListedCap()).isFalse();
+    verify(eventPublisher).publishEvent(org.mockito.ArgumentMatchers.any(LibraryChanged.class));
+  }
+
   @Test
   void raisingTheShareCapNeverClampsAndPublishesNoVisibilityChangedEvent() {
     KnowledgeLibrary library = filesystemLibrary(LibraryVisibility.PRIVATE, false);

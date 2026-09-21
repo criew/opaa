@@ -489,8 +489,9 @@ public class KnowledgeLibrary {
    * Package-private by contract: {@link #visibility} is an input of {@link
    * LibraryAccessService#readableLibraryIds}, and it shares one history interval with {@link
    * #listed} ({@link PermissionHistoryService#recordVisibilityChanged}), so whoever changes either
-   * field must publish {@link LibraryChanged} - in production code today only {@link
-   * KnowledgeLibraryService#updateLibrary} does. Package scope keeps that obligation reachable, it
+   * field must publish {@link LibraryChanged} - in production code today {@link
+   * KnowledgeLibraryService#updateLibrary} and {@link KnowledgeLibraryService#updateShareCap}
+   * (clamping onto a newly lowered share cap) do. Package scope keeps that obligation reachable, it
    * does not enforce it: a further class in this package would have to honour it too, and a test in
    * this package may record the history interval itself instead.
    */
