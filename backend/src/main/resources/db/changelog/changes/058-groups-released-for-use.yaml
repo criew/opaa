@@ -12,13 +12,16 @@ databaseChangeLog:
         .
         BESTANDSMIGRATION, und sie ist der Grund, warum Spalte und UPDATE ein Changeset sind: Die
         Vorgabe "nicht freigegeben" gilt nur prospektiv. Jede interne Gruppe, die am Migrationstag
-        eine Wirkung hat - einen Grant auf ein Asset traegt, ein Anlegerecht traegt oder ein Asset
-        besitzt -, wird als freigegeben uebernommen. Ein Bibliotheksverwalter verliert damit keine
-        Moeglichkeit, die er benutzt hat. Die vierte Wirkung, die ADR-0036 Entscheidung 9 nennt -
-        Mitgliedschaft in einem Space -, kann es zum Zeitpunkt dieses Changesets nicht geben:
-        space_memberships benennt bis #1815 ausschliesslich Personen. Waeren Spalte
-        und UPDATE zwei Changesets, gaebe es zwischen ihnen einen Stand, in dem jede Bestandsgruppe
-        aus jeder Auswahl verschwunden waere.
+        eine der vier Wirkungen aus ADR-0036 Entscheidung 9 hat - einen Grant auf ein Asset, ein
+        Anlegerecht, Eigentum an einem Asset oder eine Mitgliedschaft in einem Space -, wird als
+        freigegeben uebernommen. Niemand verliert damit eine Moeglichkeit, die er benutzt hat.
+        Waeren Spalte und UPDATE zwei Changesets, gaebe es zwischen ihnen einen Stand, in dem jede
+        Bestandsgruppe aus jeder Auswahl verschwunden waere.
+        .
+        Die Space-Mitgliedschaft setzt voraus, dass 043 vorher gelaufen ist - erst dort traegt
+        space_memberships eine group_id. Die Reihenfolge steht im Master-Changelog, nicht in den
+        Dateinamen. Auf sm.subject_type = 'GROUP' wird bewusst verzichtet:
+        chk_space_memberships_subject erzwingt group_id IS NULL fuer jede USER-Zeile.
         .
         Die Bestandsaenderung wird ausgesprochen: Eine neu angelegte interne Gruppe ist fuer einen
         fremden MANAGER erst nach der Freigabe waehlbar - auch bei Eingabe per ID, denn die
@@ -36,7 +39,8 @@ databaseChangeLog:
                WHERE g.kind = 'AD_HOC'
                  AND (EXISTS (SELECT 1 FROM asset_grants ag WHERE ag.subject_group_id = g.id)
                       OR EXISTS (SELECT 1 FROM capability_grants cg WHERE cg.subject_group_id = g.id)
-                      OR EXISTS (SELECT 1 FROM knowledge_libraries kl WHERE kl.owner_group_id = g.id));
+                      OR EXISTS (SELECT 1 FROM knowledge_libraries kl WHERE kl.owner_group_id = g.id)
+                      OR EXISTS (SELECT 1 FROM space_memberships sm WHERE sm.group_id = g.id));
       rollback:
         - sql:
             splitStatements: false

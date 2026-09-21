@@ -19,9 +19,12 @@ import org.junit.jupiter.api.Test;
  * "Vorgabe nicht freigegeben" applies prospectively, and no library manager loses a possibility
  * they were already using.
  *
- * <p>The fixture chain runs 041 (the provider column an internal group is told apart by) and 042
- * (the capability grants the backfill reads) on top of the baseline - the backfill names both
- * tables.
+ * <p>The fixture chain runs 041 (the provider column an internal group is told apart by), 042 (the
+ * capability grants the backfill reads) and 043 (the {@code group_id} a space membership names
+ * since #1815) on top of the baseline - the backfill reads all three. 043 runs before this
+ * changeset in the master changelog too, which {@link
+ * #theChangelogIsReferencedByTheMasterChangelog} holds on to: without it the backfill would
+ * silently stop marking a group whose only effect is a space membership.
  */
 class Migration058GroupsReleasedForUseTest extends AbstractMigrationTest {
 
@@ -30,6 +33,9 @@ class Migration058GroupsReleasedForUseTest extends AbstractMigrationTest {
 
   private static final String CAPABILITY_GRANTS_PATH =
       "db/changelog/changes/042-create-capability-grants.yaml";
+
+  private static final String SPACE_MEMBERSHIP_SUBJECT_PATH =
+      "db/changelog/changes/043-space-memberships-subject.yaml";
 
   private static final String CHANGELOG_PATH =
       "db/changelog/changes/058-groups-released-for-use.yaml";
@@ -50,6 +56,7 @@ class Migration058GroupsReleasedForUseTest extends AbstractMigrationTest {
     connection.setAutoCommit(true);
     applyChangelog(connection, PROVIDER_ORIGIN_PATH);
     applyChangelog(connection, CAPABILITY_GRANTS_PATH);
+    applyChangelog(connection, SPACE_MEMBERSHIP_SUBJECT_PATH);
   }
 
   @AfterEach
@@ -104,6 +111,21 @@ class Migration058GroupsReleasedForUseTest extends AbstractMigrationTest {
         UUID.randomUUID(),
         DEFAULT_ORGANIZATION,
         group);
+
+    applyChangelog(connection, CHANGELOG_PATH);
+
+    assertThat(released(group)).isTrue();
+  }
+
+  /**
+   * The fourth effect of ADR-0036, Entscheidung 9: a group whose only reach is a space membership
+   * (#1815) is in use as much as one holding a grant, and losing the release would take its members
+   * out of the space they work in.
+   */
+  @Test
+  void anInternalGroupThatIsOnlyASpaceMemberIsReleased() throws Exception {
+    UUID group = seedInternalGroup("Nur im Space");
+    seedGroupSpaceMembership(group);
 
     applyChangelog(connection, CHANGELOG_PATH);
 
@@ -177,6 +199,9 @@ class Migration058GroupsReleasedForUseTest extends AbstractMigrationTest {
             StandardCharsets.UTF_8);
 
     assertThat(master).contains(CHANGELOG_PATH);
+    assertThat(master.indexOf(SPACE_MEMBERSHIP_SUBJECT_PATH))
+        .as("the backfill reads space_memberships.group_id, which 043 adds")
+        .isLessThan(master.indexOf(CHANGELOG_PATH));
   }
 
   // -----------------------------------------------------------------------------------------
@@ -241,6 +266,26 @@ class Migration058GroupsReleasedForUseTest extends AbstractMigrationTest {
         "Bibliothek " + library,
         groupId);
     return library;
+  }
+
+  private UUID seedGroupSpaceMembership(UUID groupId) throws SQLException {
+    UUID owner = seedUser();
+    UUID space = UUID.randomUUID();
+    execute(
+        "INSERT INTO spaces (id, organization_id, name, owner_id) VALUES (?, ?, ?, ?)",
+        space,
+        DEFAULT_ORGANIZATION,
+        "Space " + space,
+        owner);
+    UUID membership = UUID.randomUUID();
+    execute(
+        "INSERT INTO space_memberships (id, space_id, organization_id, role, subject_type,"
+            + " group_id, member_count_at_grant) VALUES (?, ?, ?, 'MEMBER', 'GROUP', ?, 0)",
+        membership,
+        space,
+        DEFAULT_ORGANIZATION,
+        groupId);
+    return membership;
   }
 
   private UUID seedGroupGrant(UUID groupId) throws SQLException {
