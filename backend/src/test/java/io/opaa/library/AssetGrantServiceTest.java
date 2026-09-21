@@ -793,12 +793,95 @@ class AssetGrantServiceTest {
             null);
     when(grantRepository.findByAssetTypeAndAssetId(KnowledgeLibrary.ASSET_TYPE, libraryId))
         .thenReturn(List.of(grant));
-    when(groupDirectory.namesById(any())).thenReturn(java.util.Map.of(groupId, "Referat 50"));
+    // #1820: Die Liste liest die Gruppe jetzt als Attribution - Name und Schutzkennzeichen in
+    // einem Zug, weil eine geschuetzte Gruppe hier namenlos bleibt.
+    when(groupDirectory.attributionsById(any()))
+        .thenReturn(
+            java.util.Map.of(
+                groupId,
+                new io.opaa.permission.GroupAttribution(
+                    groupId,
+                    "Referat 50",
+                    io.opaa.api.types.GroupOrigin.INTERNAL,
+                    null,
+                    io.opaa.api.types.GroupMechanism.NONE,
+                    false)));
 
     var responses = grantService.listGrants(libraryId, managerCaller);
 
     assertThat(responses).hasSize(1);
     assertThat(responses.get(0).subjectDisplayName()).isEqualTo("Referat 50");
+    assertThat(responses.get(0).protectedGroup()).isFalse();
+  }
+
+  /** ADR-0036, Entscheidung 9 (#1820): eine geschuetzte Gruppe ist hier namenlos und ohne Zahl. */
+  @Test
+  void listGrantsLeavesAProtectedGroupNamelessAndWithoutASignal() {
+    when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
+        .thenReturn(AssetRole.OWNER);
+    UUID groupId = UUID.randomUUID();
+    AssetGrant grant =
+        AssetGrant.forGroup(
+            KnowledgeLibrary.ASSET_TYPE,
+            libraryId,
+            organizationId,
+            groupId,
+            AssetRole.VIEWER,
+            null,
+            managerId,
+            23);
+    when(grantRepository.findByAssetTypeAndAssetId(KnowledgeLibrary.ASSET_TYPE, libraryId))
+        .thenReturn(List.of(grant));
+    when(groupDirectory.attributionsById(any()))
+        .thenReturn(
+            java.util.Map.of(
+                groupId,
+                new io.opaa.permission.GroupAttribution(
+                    groupId,
+                    "Personalrat",
+                    io.opaa.api.types.GroupOrigin.INTERNAL,
+                    null,
+                    io.opaa.api.types.GroupMechanism.NONE,
+                    true)));
+
+    var responses = grantService.listGrants(libraryId, managerCaller);
+
+    assertThat(responses).hasSize(1);
+    assertThat(responses.get(0).subjectDisplayName()).isNull();
+    assertThat(responses.get(0).protectedGroup()).isTrue();
+    assertThat(responses.get(0).groupSize().memberCountAtGrant()).isNull();
+    assertThat(responses.get(0).groupSize().memberCountNow()).isNull();
+  }
+
+  /**
+   * ADR-0036, Entscheidung 9 (#1820): Eine neue Freigabe an eine Gruppe haelt fest, wie viele
+   * aktive Konten sie im Augenblick der Erteilung erreichte - die eine Zahl, gegen die "heute"
+   * spaeter verglichen wird.
+   */
+  @Test
+  void upsertGrantRecordsTheGroupsActiveMemberCountAtTheMomentOfTheGrant() {
+    when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
+        .thenReturn(AssetRole.OWNER);
+    when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
+        .thenReturn(AssetRole.OWNER);
+    UUID groupId = UUID.randomUUID();
+    when(groupDirectory.find(groupId))
+        .thenReturn(
+            Optional.of(
+                new GroupSubject(groupId, organizationId, "Referat 50", false, false, false)));
+    when(groupMemberships.activeMemberCount(groupId, organizationId)).thenReturn(23);
+    when(grantRepository.save(any(AssetGrant.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    grantService.upsertGrant(
+        libraryId,
+        new AssetGrantUpsert(PermissionSubjectType.GROUP, groupId, AssetRole.VIEWER, null),
+        managerCaller);
+
+    org.mockito.ArgumentCaptor<AssetGrant> saved =
+        org.mockito.ArgumentCaptor.forClass(AssetGrant.class);
+    verify(grantRepository).save(saved.capture());
+    assertThat(saved.getValue().getMemberCountAtGrant()).isEqualTo(23);
   }
 
   @Test
