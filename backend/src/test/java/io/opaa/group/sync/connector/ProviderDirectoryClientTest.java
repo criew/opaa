@@ -66,7 +66,7 @@ class ProviderDirectoryClientTest {
                 new RuntimeException(
                     new CredentialsEncryptionKeyMissingException("Schlüssel fehlt"))));
 
-    assertThatThrownBy(() -> client.fetchGroups(ORGANIZATION_ID, PROVIDER_ID))
+    assertThatThrownBy(() -> client.fetchSnapshot(ORGANIZATION_ID, PROVIDER_ID))
         .isInstanceOf(DirectoryUnavailableException.class)
         .hasMessageContaining("Schlüssel fehlt");
   }
@@ -77,7 +77,7 @@ class ProviderDirectoryClientTest {
     when(providers.findById(PROVIDER_ID))
         .thenThrow(new JpaSystemException(new RuntimeException("Verbindung weg")));
 
-    assertThatThrownBy(() -> client.fetchGroups(ORGANIZATION_ID, PROVIDER_ID))
+    assertThatThrownBy(() -> client.fetchSnapshot(ORGANIZATION_ID, PROVIDER_ID))
         .isInstanceOf(DirectoryUnavailableException.class)
         .hasMessageContaining("Verbindung weg");
   }
@@ -86,7 +86,7 @@ class ProviderDirectoryClientTest {
   void anAbsentAccessIsReportedAsUnreachable() {
     when(connectors.findByProviderId(PROVIDER_ID)).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> client.fetchGroups(ORGANIZATION_ID, PROVIDER_ID))
+    assertThatThrownBy(() -> client.fetchSnapshot(ORGANIZATION_ID, PROVIDER_ID))
         .isInstanceOf(DirectoryUnavailableException.class)
         .hasMessageContaining("kein Verzeichniszugang");
   }
@@ -97,10 +97,10 @@ class ProviderDirectoryClientTest {
     when(connectors.findByProviderId(PROVIDER_ID)).thenReturn(Optional.of(connector(null)));
     when(providers.findById(PROVIDER_ID)).thenReturn(Optional.of(provider()));
 
-    assertThatThrownBy(() -> client.fetchGroups(ORGANIZATION_ID, PROVIDER_ID))
+    assertThatThrownBy(() -> client.fetchSnapshot(ORGANIZATION_ID, PROVIDER_ID))
         .isInstanceOf(DirectoryUnavailableException.class)
         .hasMessageContaining("nicht entschlüsseln");
-    verify(keycloak, never()).fetchGroups(any(), any(), any());
+    verify(keycloak, never()).fetchSnapshot(any(), any(), any());
   }
 
   @Test
@@ -109,7 +109,7 @@ class ProviderDirectoryClientTest {
     when(providers.findById(PROVIDER_ID))
         .thenReturn(Optional.of(provider("https://entra.example/tenant/v2.0")));
 
-    assertThatThrownBy(() -> client.fetchGroups(ORGANIZATION_ID, PROVIDER_ID))
+    assertThatThrownBy(() -> client.fetchSnapshot(ORGANIZATION_ID, PROVIDER_ID))
         .isInstanceOf(DirectoryUnavailableException.class)
         .hasMessageContaining("Keycloak-Realm-Adresse");
   }
@@ -121,10 +121,10 @@ class ProviderDirectoryClientTest {
         .thenReturn(Optional.of(connector("geheim", "http://192.168.7.7:8080")));
     when(providers.findById(PROVIDER_ID)).thenReturn(Optional.of(provider()));
 
-    assertThatThrownBy(() -> client.fetchGroups(ORGANIZATION_ID, PROVIDER_ID))
+    assertThatThrownBy(() -> client.fetchSnapshot(ORGANIZATION_ID, PROVIDER_ID))
         .isInstanceOf(DirectoryUnavailableException.class)
         .hasMessageContaining("Admin-API-Adresse");
-    verify(keycloak, never()).fetchGroups(any(), any(), any());
+    verify(keycloak, never()).fetchSnapshot(any(), any(), any());
   }
 
   @Test
@@ -132,10 +132,10 @@ class ProviderDirectoryClientTest {
     when(connectors.findByProviderId(PROVIDER_ID)).thenReturn(Optional.of(connector("geheim")));
     when(providers.findById(PROVIDER_ID)).thenReturn(Optional.of(provider()));
 
-    client.fetchGroups(ORGANIZATION_ID, PROVIDER_ID);
+    client.fetchSnapshot(ORGANIZATION_ID, PROVIDER_ID);
 
     verify(keycloak)
-        .fetchGroups(
+        .fetchSnapshot(
             org.mockito.ArgumentMatchers.argThat(
                 address ->
                     address.realm().equals("haus")

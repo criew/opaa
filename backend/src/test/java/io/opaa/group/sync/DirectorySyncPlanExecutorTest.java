@@ -9,10 +9,15 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.DirectorySyncOutcome;
 import io.opaa.api.types.GroupKind;
+import io.opaa.api.types.SystemRole;
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.auth.UserRepository.DirectoryAccountState;
+import io.opaa.auth.local.LocalAdminAvailabilityGuard;
 import io.opaa.group.Group;
 import io.opaa.group.GroupRepository;
+import io.opaa.permission.AccountStateHistoryService;
 import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.PermissionHistoryService;
 import java.time.Instant;
@@ -20,6 +25,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.ApplicationEventPublisher;
 
 /**
  * {@link DirectorySyncPlanExecutor}'s binding to one identity provider (#1816, ADR-0036
@@ -32,6 +38,8 @@ class DirectorySyncPlanExecutorTest {
   private final UserRepository userRepository = mock(UserRepository.class);
   private final DirectorySyncPendingPlanRepository pendingPlanRepository =
       mock(DirectorySyncPendingPlanRepository.class);
+  private final LocalAdminAvailabilityGuard adminGuard = mock(LocalAdminAvailabilityGuard.class);
+  private final AuditEventRecorder auditEventRecorder = mock(AuditEventRecorder.class);
   private final DirectorySyncPlanExecutor executor =
       new DirectorySyncPlanExecutor(
           groupRepository,
@@ -39,8 +47,11 @@ class DirectorySyncPlanExecutorTest {
           mock(GroupMembershipResolver.class),
           new DirectorySyncProperties(0.3, true),
           mock(PermissionHistoryService.class),
-          mock(AuditEventRecorder.class),
-          pendingPlanRepository);
+          auditEventRecorder,
+          pendingPlanRepository,
+          mock(AccountStateHistoryService.class),
+          adminGuard,
+          mock(ApplicationEventPublisher.class));
 
   private final UUID organizationId = UUID.randomUUID();
   private final UUID providerId = UUID.randomUUID();
@@ -118,5 +129,81 @@ class DirectorySyncPlanExecutorTest {
         .containsExactly("Referat 12");
     assertThat(report.groupsDissolved()).isEmpty();
     assertThat(tokenGroup.isDissolved()).isFalse();
+  }
+
+  /**
+   * An ordinary account is locked without the guard being asked at all - only a {@code
+   * SYSTEM_ADMIN} reaches it. That the guard withholds the lock of the <b>last</b> login-capable
+   * administrator is exercised in {@code DirectoryAccountLockIntegrationTest} against the real
+   * guard: it takes part in the run's transaction, so a mock cannot show what its refusal does to
+   * the run.
+   */
+  @Test
+  void anOrdinaryAccountTheDirectoryDisabledIsLocked() {
+    User account = account("subject-gone", SystemRole.USER);
+    when(groupRepository.findByOrganizationIdAndProviderIdAndKindOrgUnit(
+            organizationId, providerId))
+        .thenReturn(List.of());
+    when(groupRepository.findByOrganizationIdAndProviderIdAndKind(
+            organizationId, providerId, GroupKind.IDENTITY_PROVIDER))
+        .thenReturn(List.of());
+    when(userRepository.findAccountStatesOf(organizationId, target.issuer()))
+        .thenReturn(List.of(stateOf(account)));
+    when(userRepository.findAllById(List.of(account.getId()))).thenReturn(List.of(account));
+    // The audit entry about an account names its pseudonym, never its id (#392).
+    when(auditEventRecorder.pseudonymFor(any(), any())).thenReturn(UUID.randomUUID());
+
+    SyncReport report =
+        executor.planAndApply(
+            target,
+            Instant.now(),
+            new DirectorySnapshot(
+                Instant.now(), List.of(), List.of(new DirectoryAccount("subject-gone", false))));
+
+    assertThat(report.accountsLocked()).extracting(UserRef::id).containsExactly(account.getId());
+    assertThat(account.isDirectoryLocked()).isTrue();
+    verify(adminGuard, never()).hasLoginCapableAdminBesides(any(), any());
+  }
+
+  private User account(String subject, SystemRole role) {
+    User user = new User(subject, target.issuer(), subject + "@example.com", "Konto");
+    user.setOrganizationId(organizationId);
+    user.setSystemRole(role);
+    return user;
+  }
+
+  /** The projection the run plans from, filled from an entity the test already has. */
+  private static DirectoryAccountState stateOf(User user) {
+    return new DirectoryAccountState() {
+      @Override
+      public UUID getId() {
+        return user.getId();
+      }
+
+      @Override
+      public String getSubject() {
+        return user.getSubject();
+      }
+
+      @Override
+      public SystemRole getSystemRole() {
+        return user.getSystemRole();
+      }
+
+      @Override
+      public Instant getDirectoryLockedAt() {
+        return user.getDirectoryLockedAt();
+      }
+
+      @Override
+      public String getDisplayName() {
+        return user.getDisplayName();
+      }
+
+      @Override
+      public String getEmail() {
+        return user.getEmail();
+      }
+    };
   }
 }

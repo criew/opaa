@@ -1063,6 +1063,35 @@ ein Konto ohne Besitz, praktisch also ein nie benutztes.
 die Nachfolge für dutzende Assets zu klären, wird am Freitagnachmittag umgangen und schützt dann gerade
 nicht. Was mit den Assets geschieht, steht unter [Offboarding](#offboarding).
 
+#### Wie der Entzug gebaut ist (#1818)
+
+Der Abgleich liest den Kontostatus aus derselben Quelle wie die Gruppen — beim Keycloak-Konnektor das
+Kennzeichen `enabled` je Konto des Realms. Ein Konto, das das Verzeichnis als gesperrt meldet **oder
+gar nicht mehr meldet**, wird beim nächsten Lauf gesperrt. Dabei gilt:
+
+- **Gesperrt, nicht gelöscht.** Mitgliedschaften, Spaces, Rollen und Eigentum bleiben unberührt; die
+  Sperre ist rückholbar, und der nächste Lauf nimmt sie zurück, sobald das Verzeichnis das Konto
+  wieder als freigeschaltet meldet. OPAA schreibt nie ins Verzeichnis, und eine Entsperrung von Hand
+  gibt es deshalb nicht — sie wäre beim nächsten Lauf wieder weg.
+- **Sofort wirksam, auch gegen ein laufendes Token.** Jede Anfrage eines gesperrten Kontos wird mit
+  `401` abgewiesen, und seine Zugangstokens ([ADR-0035](../decisions/0035-fremdzugaenge-mcp-server-und-zugangstokens.md))
+  treten mit der Sperre außer Kraft. Die betroffene Person erhält dabei **Grund und Ansprechstelle**,
+  nicht nur eine Abweisung.
+- **Dieselbe Schwelle, derselbe Bestätigungsweg** wie bei Mitgliedschaftsentzügen: Ein Lauf, der einen
+  auffällig großen Teil der Konten eines Anbieters sperren würde, legt seinen Plan zur Bestätigung vor,
+  statt ihn anzuwenden; die Zahl der Sperren steht neben den entzogenen Mitgliedschaften in der
+  Verwaltungsübersicht. Eine **leere Kontenliste** sperrt niemanden — sie ist ein harter Abbruch ohne
+  bestätigbaren Plan, genau wie eine leere Gruppenliste.
+- **Der letzte anmeldefähige Systemverwalter wird nie gesperrt** — über denselben Wächter wie jeder
+  andere Entzug der Systemverwalterrolle. Die zurückgehaltene Sperre steht im Bericht des Laufs, statt
+  stillschweigend zu entfallen.
+- **Jede Sperre und jede Entsperrung ist ein Protokollereignis**, verbunden mit dem Kopfeintrag des
+  Laufs. Zusätzlich wird der **Kontozustand historisiert** (aktiv/gesperrt mit `valid_from`/`valid_to`):
+  Sie belegt beide Zeitpunkte lückenlos und trägt die Stichtagsauskunft, wenn die Protokollfrist
+  abgelaufen ist. Die Kette eines Kontos beginnt mit seiner ersten Zustandsänderung und reicht ab da
+  bis zu seiner Anlage zurück; ein nie gesperrtes Konto war seit seiner Anlage aktiv. Einen zweiten
+  Lesepfad — einen „Verlauf" am Konto in der Benutzerverwaltung — gibt es bewusst nicht.
+
 ### Gruppensynchronisation ist ein Rechteereignis
 
 Die übernommenen **Gruppen sind Rechtesubjekt**: Rechte an Assets werden an Nutzer oder an Gruppen

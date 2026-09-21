@@ -46,6 +46,10 @@ public class DirectorySyncPendingPlan {
   @Column(name = "memberships_removed", nullable = false)
   private int membershipsRemoved;
 
+  /** How many accounts this plan would lock (#1818) - the second number that makes it loud. */
+  @Column(name = "accounts_locked", nullable = false)
+  private int accountsLocked;
+
   @Column(name = "report", nullable = false)
   private String report;
 
@@ -58,6 +62,7 @@ public class DirectorySyncPendingPlan {
       String fingerprint,
       double changedFraction,
       int membershipsRemoved,
+      int accountsLocked,
       String report) {
     this.id = UUID.randomUUID();
     this.organizationId = organizationId;
@@ -66,6 +71,7 @@ public class DirectorySyncPendingPlan {
     this.fingerprint = fingerprint;
     this.changedFraction = changedFraction;
     this.membershipsRemoved = membershipsRemoved;
+    this.accountsLocked = accountsLocked;
     this.report = report;
   }
 
@@ -95,6 +101,10 @@ public class DirectorySyncPendingPlan {
 
   public int getMembershipsRemoved() {
     return membershipsRemoved;
+  }
+
+  public int getAccountsLocked() {
+    return accountsLocked;
   }
 
   public String getReport() {

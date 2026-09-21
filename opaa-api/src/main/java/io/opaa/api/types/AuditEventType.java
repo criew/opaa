@@ -154,6 +154,14 @@ public enum AuditEventType {
    * decision that leaves no trace is no decision.
    */
   DIRECTORY_SYNC_PLAN_DISCARDED,
+  /**
+   * An account lost its access because the directory reports it as disabled or no longer reports it
+   * at all (#1818, ADR-0036 Entscheidung 3). One entry per account, linked to the run's header
+   * entry via {@code correlationRef}.
+   */
+  DIRECTORY_ACCOUNT_LOCKED,
+  /** The directory reports the account as enabled again; the lock is taken back (#1818). */
+  DIRECTORY_ACCOUNT_UNLOCKED,
 
   // Systemeinstellungen
   GOVERNANCE_SETTINGS_CHANGED,

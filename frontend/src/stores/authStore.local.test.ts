@@ -616,6 +616,7 @@ describe('authStore - local session', () => {
     ['local_accounts_disabled', /abgeschaltet/],
     ['account_locked:failed_logins', /mehreren Fehlversuchen/],
     ['account_locked:admin', /von der Systemverwaltung gesperrt/],
+    ['account_locked:directory', /im Verzeichnis Ihrer Organisation nicht mehr freigeschaltet/],
     ['account_expired', /abgelaufen/],
     ['session_revoked:password_changed', /Passwort geändert/],
     ['session_revoked:admin_reset', /Passwort zurückgesetzt/],

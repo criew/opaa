@@ -277,7 +277,8 @@ class KeycloakDirectorySyncTest {
    */
   private SyncReport runAgainstKeycloak() {
     try {
-      DirectorySnapshot snapshot = providerDirectoryClient.fetchGroups(ORGANIZATION_ID, providerId);
+      DirectorySnapshot snapshot =
+          providerDirectoryClient.fetchSnapshot(ORGANIZATION_ID, providerId);
       directoryClient.respondWithFor(providerId, snapshot.groups().toArray(DirectoryGroup[]::new));
     } catch (DirectoryUnavailableException e) {
       directoryClient.failWith(e.getMessage());

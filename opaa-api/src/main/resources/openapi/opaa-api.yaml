@@ -7883,6 +7883,14 @@ components:
         createdAt:
           type: string
           format: date-time
+        directoryLocked:
+          type: boolean
+          description: >
+            True when the directory synchronisation locked this account because the directory
+            reports it as disabled or no longer reports it at all (#1818). The account keeps its
+            memberships and its content; the lock is taken back by the next run once the
+            directory reports the account as enabled again - never here, since OPAA never writes
+            to the directory.
         provider:
           $ref: "#/components/schemas/AccountProviderResponse"
         local:
@@ -14665,6 +14673,9 @@ components:
         - groupsDissolved
         - unmaintainedTokenGroups
         - membershipChanges
+        - accountsLocked
+        - accountsUnlocked
+        - accountLocksWithheld
         - membershipsAdded
         - membershipsRemoved
         - changedFraction
@@ -14702,6 +14713,29 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/DirectorySyncMembershipChange"
+        accountsLocked:
+          type: array
+          description: >
+            The accounts this run takes the access away from: the directory reports them as
+            disabled, or it no longer reports them at all - which is what leaving the organization
+            looks like from here (#1818, ADR-0036 Entscheidung 3). A lock is reversible and
+            revokes no membership; the next run gives the access back once the directory reports
+            the account as enabled again.
+          items:
+            $ref: "#/components/schemas/DirectorySyncUserRef"
+        accountsUnlocked:
+          type: array
+          description: The accounts this run gives the access back to.
+          items:
+            $ref: "#/components/schemas/DirectorySyncUserRef"
+        accountLocksWithheld:
+          type: array
+          description: >
+            Accounts the run would have locked but did not: locking them would have left the
+            installation without a login-capable system administrator (ADR-0036, Entscheidung 6).
+            Named rather than silently left out, so the systems administration can act.
+          items:
+            $ref: "#/components/schemas/DirectorySyncUserRef"
         membershipsAdded:
           type: integer
           example: 4
@@ -14809,6 +14843,12 @@ components:
         membershipsRemoved:
           type: integer
           example: 12
+        accountsLocked:
+          type: integer
+          description: >
+            How many accounts this plan would lock (#1818) - the second number that makes a
+            pending plan loud on the management overview, next to the withdrawn memberships.
+          example: 40
 
     DirectorySyncPendingPlanResponse:
       type: object
@@ -14956,6 +14996,8 @@ components:
           DIRECTORY_SYNC_CHANGE_APPLIED,
           DIRECTORY_SYNC_RUN_COMPLETED,
           DIRECTORY_SYNC_PLAN_DISCARDED,
+          DIRECTORY_ACCOUNT_LOCKED,
+          DIRECTORY_ACCOUNT_UNLOCKED,
           GOVERNANCE_SETTINGS_CHANGED,
           AUDIT_LOG_CONFIGURATION_CHANGED,
           PERMISSION_HISTORY_RETENTION_CHANGED,

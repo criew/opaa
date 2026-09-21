@@ -270,7 +270,8 @@ class DirectoryConnectorIntegrationTest {
   void aProviderWithoutAStoredAccessReportsTheDirectoryAsUnreachable() {
     OidcProvider provider = createProvider(keycloak.issuerUri());
 
-    assertThatThrownBy(() -> providerDirectoryClient.fetchGroups(ORGANIZATION_ID, provider.getId()))
+    assertThatThrownBy(
+            () -> providerDirectoryClient.fetchSnapshot(ORGANIZATION_ID, provider.getId()))
         .isInstanceOf(DirectoryUnavailableException.class)
         .hasMessageContaining("kein Verzeichniszugang");
   }
@@ -284,7 +285,7 @@ class DirectoryConnectorIntegrationTest {
     save(provider, null, FakeKeycloakServer.CLIENT_ID, FakeKeycloakServer.CLIENT_SECRET);
 
     DirectorySnapshot snapshot =
-        providerDirectoryClient.fetchGroups(ORGANIZATION_ID, provider.getId());
+        providerDirectoryClient.fetchSnapshot(ORGANIZATION_ID, provider.getId());
 
     assertThat(snapshot.groups()).hasSize(2);
     assertThat(snapshot.groups())
@@ -303,7 +304,8 @@ class DirectoryConnectorIntegrationTest {
     keycloak.withGroup("g-1", "Haus", "/Haus", null);
     save(provider, null, FakeKeycloakServer.CLIENT_ID, "falsch");
 
-    assertThatThrownBy(() -> providerDirectoryClient.fetchGroups(ORGANIZATION_ID, provider.getId()))
+    assertThatThrownBy(
+            () -> providerDirectoryClient.fetchSnapshot(ORGANIZATION_ID, provider.getId()))
         .isInstanceOf(DirectoryUnavailableException.class)
         .hasMessageContaining("Dienstkonto");
   }
@@ -382,7 +384,8 @@ class DirectoryConnectorIntegrationTest {
     save(provider, null, FakeKeycloakServer.CLIENT_ID, FakeKeycloakServer.CLIENT_SECRET);
     corruptStoredSecret(provider);
 
-    assertThatThrownBy(() -> providerDirectoryClient.fetchGroups(ORGANIZATION_ID, provider.getId()))
+    assertThatThrownBy(
+            () -> providerDirectoryClient.fetchSnapshot(ORGANIZATION_ID, provider.getId()))
         .isInstanceOf(DirectoryUnavailableException.class)
         .hasMessageContaining("nicht entschlüsseln");
   }
@@ -401,7 +404,8 @@ class DirectoryConnectorIntegrationTest {
         "http://192.168.7.7:8080",
         provider.getId());
 
-    assertThatThrownBy(() -> providerDirectoryClient.fetchGroups(ORGANIZATION_ID, provider.getId()))
+    assertThatThrownBy(
+            () -> providerDirectoryClient.fetchSnapshot(ORGANIZATION_ID, provider.getId()))
         .isInstanceOf(DirectoryUnavailableException.class)
         .hasMessageContaining("Admin-API-Adresse");
   }
@@ -415,7 +419,8 @@ class DirectoryConnectorIntegrationTest {
         "https://entra.example/tenant/v2.0",
         provider.getId());
 
-    assertThatThrownBy(() -> providerDirectoryClient.fetchGroups(ORGANIZATION_ID, provider.getId()))
+    assertThatThrownBy(
+            () -> providerDirectoryClient.fetchSnapshot(ORGANIZATION_ID, provider.getId()))
         .isInstanceOf(DirectoryUnavailableException.class)
         .hasMessageContaining("Keycloak-Realm-Adresse");
   }

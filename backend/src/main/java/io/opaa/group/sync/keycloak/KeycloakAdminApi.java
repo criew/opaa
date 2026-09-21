@@ -94,6 +94,15 @@ class KeycloakAdminApi {
                 + "&briefRepresentation=true"));
   }
 
+  /**
+   * One page of the realm's accounts with their {@code enabled} flag (#1818). {@code
+   * briefRepresentation} keeps id and {@code enabled} and drops the attributes, credentials and
+   * role mappings a run has no business reading.
+   */
+  List<JsonNode> users(int first, int max) throws DirectoryUnavailableException {
+    return array(adminGet("/users?first=" + first + "&max=" + max + "&briefRepresentation=true"));
+  }
+
   /** The realm's total number of groups, subgroups included - the connection test's evidence. */
   int groupCount() throws DirectoryUnavailableException {
     JsonNode node = adminGet("/groups/count");
