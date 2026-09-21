@@ -123,7 +123,8 @@ class DirectorySyncProviderBindingIntegrationTest {
         persistOrgUnit(untouched.getId(), "dir-2", "Referat 60", memberOfUntouched);
 
     directoryClient.respondWithFor(
-        synchronised.getId(), new DirectoryGroup("dir-1", "Referat 50", null, Set.of("member-1")));
+        synchronised.getId(),
+        new DirectoryGroup("dir-1", "Referat 50", null, null, Set.of("member-1")));
 
     SyncReport report = directorySyncService.run(ORGANIZATION_ID, synchronised.getId());
 
@@ -254,7 +255,8 @@ class DirectorySyncProviderBindingIntegrationTest {
     createdGroupIds.add(tokenGroup.getId());
 
     directoryClient.respondWithFor(
-        provider.getId(), new DirectoryGroup("dir-1", "Referat 50", null, Set.of("member-1")));
+        provider.getId(),
+        new DirectoryGroup("dir-1", "Referat 50", null, null, Set.of("member-1")));
 
     SyncReport report = directorySyncService.run(ORGANIZATION_ID, provider.getId());
 
@@ -334,7 +336,8 @@ class DirectorySyncProviderBindingIntegrationTest {
     UUID member = createUser("member-1", provider.getIssuerUri());
     Group unit = persistOrgUnit(provider.getId(), "dir-1", "Referat 50", member);
     directoryClient.respondWithFor(
-        provider.getId(), new DirectoryGroup("dir-1", "Referat 50", null, Set.of("member-1")));
+        provider.getId(),
+        new DirectoryGroup("dir-1", "Referat 50", null, null, Set.of("member-1")));
     directorySyncService.run(ORGANIZATION_ID, provider.getId());
     Instant lastRunAt =
         statusRepository

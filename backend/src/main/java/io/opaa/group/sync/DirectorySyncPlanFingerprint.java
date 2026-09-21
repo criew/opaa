@@ -14,13 +14,13 @@ import java.util.Map;
  * compares (ADR-0036, Entscheidung 3, #1816).
  *
  * <p>It covers exactly the changes a plan proposes, each in a canonical, order-independent form:
- * groups created, renamed, dissolved and reactivated, the parent unit the directory reports for
- * each of them, and per group which user is added or removed. Reactivation and hierarchy change no
- * membership and are therefore not in the report, but a run applies them - a print blind to them
- * would let a confirmation write something nobody was shown. It deliberately covers neither the
- * moment the plan was computed nor its message or outcome - two runs minutes apart that would do
- * the identical thing are the same plan, and re-presenting them for a differing timestamp would
- * make confirmation impossible in practice.
+ * groups created, renamed, dissolved and reactivated, the parent unit and the path the directory
+ * reports for each of them, and per group which user is added or removed. Reactivation, hierarchy
+ * and path change no membership and are therefore not in the report, but a run applies them - a
+ * print blind to them would let a confirmation write something nobody was shown. It deliberately
+ * covers neither the moment the plan was computed nor its message or outcome - two runs minutes
+ * apart that would do the identical thing are the same plan, and re-presenting them for a differing
+ * timestamp would make confirmation impossible in practice.
  */
 final class DirectorySyncPlanFingerprint {
 
@@ -32,7 +32,8 @@ final class DirectorySyncPlanFingerprint {
   static String of(
       SyncReport report,
       Collection<String> reactivatedExternalIds,
-      Map<String, String> parentExternalIdByExternalId) {
+      Map<String, String> parentExternalIdByExternalId,
+      Map<String, String> sourcePathByExternalId) {
     List<String> lines = new ArrayList<>();
     for (String externalId : reactivatedExternalIds) {
       lines.add(line("reactivate", externalId));
@@ -40,6 +41,9 @@ final class DirectorySyncPlanFingerprint {
     parentExternalIdByExternalId.forEach(
         (externalId, parentExternalId) ->
             lines.add(line("parent", externalId, String.valueOf(parentExternalId))));
+    sourcePathByExternalId.forEach(
+        (externalId, sourcePath) ->
+            lines.add(line("path", externalId, String.valueOf(sourcePath))));
     for (GroupChange change : report.groupsCreated()) {
       lines.add(line("create", change.externalId(), change.name()));
     }

@@ -24,10 +24,10 @@ class DirectorySyncReportCodecTest {
         new SyncReport(
             DirectorySyncOutcome.PENDING_CONFIRMATION,
             generatedAt,
-            List.of(new GroupChange("ext-created", "Neu", null)),
-            List.of(new GroupChange("ext-renamed", "Umbenannt", "Alt")),
-            List.of(new GroupChange("ext-dissolved", "Aufgelöst", null)),
-            List.of(new GroupChange("ext-token", "Token-Gruppe", null)),
+            List.of(new GroupChange("ext-created", "Neu", null, null, 0)),
+            List.of(new GroupChange("ext-renamed", "Umbenannt", "Alt", null, 0)),
+            List.of(new GroupChange("ext-dissolved", "Aufgelöst", null, null, 0)),
+            List.of(new GroupChange("ext-token", "Token-Gruppe", null, null, 0)),
             List.of(
                 new MembershipChange(
                     "ext-1",

@@ -198,6 +198,15 @@ public class Group {
     this.parentGroupId = parentGroupId;
   }
 
+  /**
+   * Updates the path the directory reports for this group (#1817). Display-only, so it is refreshed
+   * silently in the same second pass as the parent link: a path changes without the group itself
+   * changing - renaming a parent moves every descendant's path.
+   */
+  public void updateSourcePath(String sourcePath) {
+    this.sourcePath = sourcePath;
+  }
+
   public boolean isOrgUnit() {
     return this.kind == GroupKind.ORG_UNIT;
   }

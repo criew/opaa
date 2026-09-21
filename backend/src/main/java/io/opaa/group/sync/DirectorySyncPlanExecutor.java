@@ -399,9 +399,14 @@ class DirectorySyncPlanExecutor {
     List<String> reactivated =
         plan.reactivations().stream().map(r -> r.group().getExternalId()).toList();
     Map<String, String> parents = new LinkedHashMap<>();
+    Map<String, String> paths = new LinkedHashMap<>();
     plan.incomingByExternalId()
-        .forEach((externalId, incoming) -> parents.put(externalId, incoming.parentExternalId()));
-    return DirectorySyncPlanFingerprint.of(report, reactivated, parents);
+        .forEach(
+            (externalId, incoming) -> {
+              parents.put(externalId, incoming.parentExternalId());
+              paths.put(externalId, incoming.sourcePath());
+            });
+    return DirectorySyncPlanFingerprint.of(report, reactivated, parents, paths);
   }
 
   /**
@@ -532,7 +537,9 @@ class DirectorySyncPlanExecutor {
       }
 
       if (!existing.getName().equals(incoming.name())) {
-        renames.add(new PlannedRename(existing, incoming.name()));
+        renames.add(
+            new PlannedRename(
+                existing, existing.getName(), incoming.name(), existing.getMemberships().size()));
       }
 
       Set<UUID> currentMemberIds = new HashSet<>();
@@ -570,7 +577,7 @@ class DirectorySyncPlanExecutor {
       if (!existing.isDissolved()
           && existing.getExternalId() != null
           && !incomingExternalIds.contains(existing.getExternalId())) {
-        dissolutions.add(new PlannedDissolution(existing));
+        dissolutions.add(new PlannedDissolution(existing, existing.getMemberships().size()));
       }
     }
 
@@ -701,7 +708,7 @@ class DirectorySyncPlanExecutor {
               null,
               providerId,
               incoming.externalId(),
-              null,
+              incoming.sourcePath(),
               null);
       for (ResolvedUserRef member : create.members()) {
         group.addMembership(new GroupMembership(member.id(), organizationId));
@@ -913,12 +920,16 @@ class DirectorySyncPlanExecutor {
   }
 
   /**
-   * Resolves every group's parent link in a second pass, after every group touched this run - new
-   * or existing - has a persisted id. Fixes two defects review of PR #297 found in the original
-   * single-pass version: it no longer depends on the order the directory reported groups in (a
-   * child reported before its parent used to resolve to a permanent {@code null}), and it applies
-   * to existing groups too, not only newly created ones (a reorganisation that reassigns an
-   * existing unit under a different parent used to be silently ignored).
+   * Resolves every group's parent link - and its reported path - in a second pass, after every
+   * group touched this run, new or existing, has a persisted id. Fixes two defects review of PR
+   * #297 found in the original single-pass version: it no longer depends on the order the directory
+   * reported groups in (a child reported before its parent used to resolve to a permanent {@code
+   * null}), and it applies to existing groups too, not only newly created ones (a reorganisation
+   * that reassigns an existing unit under a different parent used to be silently ignored).
+   *
+   * <p>The path is refreshed here rather than reported as a change of its own: it is display-only
+   * (#1812) and changes without the group itself changing - renaming a parent moves every
+   * descendant's path.
    */
   private void resolveAndApplyParentLinks(SyncPlan plan, List<Group> createdGroups) {
     Map<String, UUID> groupIdByExternalId = new HashMap<>();
@@ -931,25 +942,33 @@ class DirectorySyncPlanExecutor {
       groupIdByExternalId.put(created.getExternalId(), created.getId());
     }
 
-    List<Group> parentChanged = new ArrayList<>();
+    List<Group> changed = new ArrayList<>();
     for (Group group : concat(plan.existingOrgUnits(), createdGroups)) {
       DirectoryGroup incoming = plan.incomingByExternalId().get(group.getExternalId());
       if (incoming == null) {
-        // Not reported this run (dissolved, or externalId null) - its parent link is left as the
-        // last-known-good value, consistent with the rest of the frozen state.
+        // Not reported this run (dissolved, or externalId null) - its parent link and path are
+        // left as the last-known-good values, consistent with the rest of the frozen state.
         continue;
       }
       UUID desiredParentId =
           incoming.parentExternalId() == null || incoming.parentExternalId().isBlank()
               ? null
               : groupIdByExternalId.get(incoming.parentExternalId());
+      boolean touched = false;
       if (!Objects.equals(group.getParentGroupId(), desiredParentId)) {
         group.updateParentGroup(desiredParentId);
-        parentChanged.add(group);
+        touched = true;
+      }
+      if (!Objects.equals(group.getSourcePath(), incoming.sourcePath())) {
+        group.updateSourcePath(incoming.sourcePath());
+        touched = true;
+      }
+      if (touched) {
+        changed.add(group);
       }
     }
-    if (!parentChanged.isEmpty()) {
-      groupRepository.saveAll(parentChanged);
+    if (!changed.isEmpty()) {
+      groupRepository.saveAll(changed);
     }
   }
 
@@ -992,9 +1011,14 @@ class DirectorySyncPlanExecutor {
   private List<GroupChange> toChanges(List<PlannedCreate> creates) {
     List<GroupChange> result = new ArrayList<>();
     for (PlannedCreate create : creates) {
+      DirectoryGroup incoming = create.directoryGroup();
       result.add(
           new GroupChange(
-              create.directoryGroup().externalId(), create.directoryGroup().name(), null));
+              incoming.externalId(),
+              incoming.name(),
+              null,
+              incoming.sourcePath(),
+              incoming.memberSubjects().size()));
     }
     return result;
   }
@@ -1004,7 +1028,11 @@ class DirectorySyncPlanExecutor {
     for (PlannedRename rename : renames) {
       result.add(
           new GroupChange(
-              rename.group().getExternalId(), rename.newName(), rename.group().getName()));
+              rename.group().getExternalId(),
+              rename.newName(),
+              rename.previousName(),
+              rename.group().getSourcePath(),
+              rename.memberCount()));
     }
     return result;
   }
@@ -1014,7 +1042,11 @@ class DirectorySyncPlanExecutor {
     for (PlannedDissolution dissolution : dissolutions) {
       result.add(
           new GroupChange(
-              dissolution.group().getExternalId(), dissolution.group().getName(), null));
+              dissolution.group().getExternalId(),
+              dissolution.group().getName(),
+              null,
+              dissolution.group().getSourcePath(),
+              dissolution.memberCount()));
     }
     return result;
   }
@@ -1028,7 +1060,13 @@ class DirectorySyncPlanExecutor {
   private List<GroupChange> toUnmaintainedChanges(List<Group> tokenGroups) {
     List<GroupChange> result = new ArrayList<>();
     for (Group group : tokenGroups) {
-      result.add(new GroupChange(group.getExternalId(), group.getName(), null));
+      result.add(
+          new GroupChange(
+              group.getExternalId(),
+              group.getName(),
+              null,
+              group.getSourcePath(),
+              group.getMemberships().size()));
     }
     return result;
   }
@@ -1094,14 +1132,22 @@ class DirectorySyncPlanExecutor {
 
   private record PlannedCreate(DirectoryGroup directoryGroup, Set<ResolvedUserRef> members) {}
 
-  private record PlannedRename(Group group, String newName) {}
+  /**
+   * {@code previousName} and {@code memberCount} are captured while the plan is built, not read off
+   * the entity when the report is assembled: {@code planAndApply} applies the plan first and builds
+   * the report afterwards, so the entity already carries the new name and the new membership by
+   * then, and the report of an applied run would otherwise differ in meaning from the dry run that
+   * showed it.
+   */
+  private record PlannedRename(Group group, String previousName, String newName, int memberCount) {}
 
   private record PlannedReactivation(Group group) {}
 
   private record PlannedMembershipChange(
       Group group, Set<ResolvedUserRef> toAdd, Set<ResolvedUserRef> toRemove) {}
 
-  private record PlannedDissolution(Group group) {}
+  /** {@code memberCount} captured at plan time, for the reason {@link PlannedRename} states. */
+  private record PlannedDissolution(Group group, int memberCount) {}
 
   private record SyncPlan(
       List<Group> existingOrgUnits,

@@ -28,13 +28,17 @@ class DirectorySyncPlanFingerprintTest {
             List.of(
                 new MembershipChange(
                     "ext-1", "Referat 1", List.of(ref(ADA), ref(GRACE)), List.of())),
-            List.of(new GroupChange("ext-a", "A", null), new GroupChange("ext-b", "B", null)));
+            List.of(
+                new GroupChange("ext-a", "A", null, null, 0),
+                new GroupChange("ext-b", "B", null, null, 0)));
     SyncReport reordered =
         report(
             List.of(
                 new MembershipChange(
                     "ext-1", "Referat 1", List.of(ref(GRACE), ref(ADA)), List.of())),
-            List.of(new GroupChange("ext-b", "B", null), new GroupChange("ext-a", "A", null)));
+            List.of(
+                new GroupChange("ext-b", "B", null, null, 0),
+                new GroupChange("ext-a", "A", null, null, 0)));
 
     assertThat(printOf(first)).isEqualTo(printOf(reordered));
   }
@@ -86,7 +90,7 @@ class DirectorySyncPlanFingerprintTest {
             Instant.now(),
             List.of(),
             List.of(),
-            List.of(new GroupChange("ext-gone", "Weg", null)),
+            List.of(new GroupChange("ext-gone", "Weg", null, null, 0)),
             List.of(),
             List.of(),
             0,
@@ -100,15 +104,16 @@ class DirectorySyncPlanFingerprintTest {
   }
 
   /**
-   * Reactivation and hierarchy are the two facts the print carries beyond the report; the cases
-   * above vary the report, the two below vary these.
+   * Reactivation, hierarchy and the reported path are the three facts the print carries beyond the
+   * report; the cases above vary the report, the three below vary these.
    */
   @Test
   void aReactivatedGroupChangesThePrint() {
     SyncReport shown = report(List.of(), List.of());
 
     assertThat(printOf(shown))
-        .isNotEqualTo(DirectorySyncPlanFingerprint.of(shown, List.of("ext-back"), Map.of()));
+        .isNotEqualTo(
+            DirectorySyncPlanFingerprint.of(shown, List.of("ext-back"), Map.of(), Map.of()));
   }
 
   @Test
@@ -116,14 +121,32 @@ class DirectorySyncPlanFingerprintTest {
     SyncReport shown = report(List.of(), List.of());
 
     assertThat(
-            DirectorySyncPlanFingerprint.of(shown, List.of(), Map.of("ext-child", "ext-parent-a")))
+            DirectorySyncPlanFingerprint.of(
+                shown, List.of(), Map.of("ext-child", "ext-parent-a"), Map.of()))
         .isNotEqualTo(
-            DirectorySyncPlanFingerprint.of(shown, List.of(), Map.of("ext-child", "ext-parent-b")));
+            DirectorySyncPlanFingerprint.of(
+                shown, List.of(), Map.of("ext-child", "ext-parent-b"), Map.of()));
   }
 
-  /** The print of a plan that changes neither of the two - what the cases above compare. */
+  /**
+   * A path moves when a parent is renamed, without the group itself changing - the run writes it,
+   * so a confirmation must not apply it unseen (#1817).
+   */
+  @Test
+  void aChangedSourcePathChangesThePrint() {
+    SyncReport shown = report(List.of(), List.of());
+
+    assertThat(
+            DirectorySyncPlanFingerprint.of(
+                shown, List.of(), Map.of(), Map.of("ext-child", "/Haus/Referat 50")))
+        .isNotEqualTo(
+            DirectorySyncPlanFingerprint.of(
+                shown, List.of(), Map.of(), Map.of("ext-child", "/Amt/Referat 50")));
+  }
+
+  /** The print of a plan that changes none of the three - what the cases above compare. */
   private static String printOf(SyncReport report) {
-    return DirectorySyncPlanFingerprint.of(report, List.of(), Map.of());
+    return DirectorySyncPlanFingerprint.of(report, List.of(), Map.of(), Map.of());
   }
 
   private static UserRef ref(UUID id) {

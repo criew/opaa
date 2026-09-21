@@ -1221,6 +1221,11 @@ Sinn; das ist jeweils vermerkt.
 | **Verzeichnis-Synchronisation (Gruppen)** | | | |
 | `OPAA_DIRECTORY_SYNC_SCHEDULE_ENABLED` | `true` | nicht gesetzt (Anwendungs-Default gilt) | Ob der Minutentakt existiert, der einen fälligen Anbieter abgleicht. Das Intervall selbst ist eine Einstellung der Anbieterzeile; dieser Schalter entscheidet nur, ob überhaupt getaktet wird. Auf `false` gehen Läufe ausschließlich von Hand |
 | `OPAA_DIRECTORY_SYNC_CHANGE_THRESHOLD_FRACTION` | `0.3` | nicht gesetzt (Anwendungs-Default gilt) | Plausibilitätsschwelle: Würde ein Synchronisationslauf mehr als diesen Anteil der bestehenden Gruppenmitgliedschaften entfernen, wird er **nicht angewendet, sondern der Systemverwaltung zur Bestätigung vorgelegt** (Ergebnis `PENDING_CONFIRMATION`, siehe [Verzeichnisabgleich je Anbieter](#verzeichnisabgleich-je-anbieter)) — Schutz vor einer fehlkonfigurierten Verzeichnisquelle, die scheinbar fast alle Mitgliedschaften löscht, ohne eine echte Reorganisation dauerhaft zu blockieren. Gemessen ausschließlich an Entfernungen, nicht an Hinzufügungen. Muss echt größer als `0` und höchstens `1` sein — ein ungültiger Wert lässt den Start fehlschlagen, statt sich stillschweigend zu lockern |
+| `OPAA_DIRECTORY_SYNC_KEYCLOAK_PAGE_SIZE` | `100` | nicht gesetzt (Anwendungs-Default gilt) | Seitengröße (`first`/`max`) jeder Anfrage an die Keycloak Admin API. Betrifft nur die Zahl der Aufrufe, nicht das Ergebnis |
+| `OPAA_DIRECTORY_SYNC_KEYCLOAK_MAX_GROUPS` | `5000` | nicht gesetzt (Anwendungs-Default gilt) | Obergrenze für die Zahl der Gruppen, die ein Lauf liest. Wird sie erreicht, **bricht der Lauf ab** (Ergebnis `UNREACHABLE`), statt eine abgeschnittene Liste anzuwenden — eine abgeschnittene Liste sieht aus wie eine Reorganisation, die alles Weitere aufgelöst hat |
+| `OPAA_DIRECTORY_SYNC_KEYCLOAK_MAX_MEMBERS_PER_GROUP` | `20000` | nicht gesetzt (Anwendungs-Default gilt) | Dieselbe Grenze je Gruppe, aus demselben Grund |
+| `OPAA_DIRECTORY_SYNC_KEYCLOAK_CONNECT_TIMEOUT` | `5s` | nicht gesetzt (Anwendungs-Default gilt) | Verbindungszeitgrenze zur Admin API |
+| `OPAA_DIRECTORY_SYNC_KEYCLOAK_REQUEST_TIMEOUT` | `30s` | nicht gesetzt (Anwendungs-Default gilt) | Zeitgrenze je Einzelanfrage an die Admin API |
 | **Authentifizierung** | | | |
 | `SPRING_PROFILES_ACTIVE` | ohne Angabe ist das Spring-Profil `local` aktiv (`spring.profiles.default: local` in `application.yml`) — das enthält aber weder `oidc` noch `dev`, sodass `io.opaa.auth.AuthProfileGuard` den Start trotzdem mit einer Fehlermeldung abbricht | `docker,dev` | Muss `oidc` (Betrieb) oder `dev` (Entwicklung/Tests) enthalten; ohne eines der beiden startet das Backend nicht — das gilt für den Auth-Modus, nicht für das Spring-Profil an sich, das auch ohne Angabe einen Wert (`local`) hat. Für Betrieb mit dem gebündelten Keycloak stattdessen `docker,oidc` setzen (siehe [„OIDC (Keycloak)"](#oidc-keycloak) unten) |
 | `OPAA_INITIAL_ADMIN_EMAIL` | `admin@opaa.local` — im Profil `oidc` **abgelehnt** (kein Postfach), im Profil `dev` die Adresse von `dev-admin` | nicht gesetzt (auskommentiert — ein leerer Wert würde im Profil `dev` den Vorgabewert überschreiben und `dev-admin` die Rolle nehmen) | E-Mail-Adresse des **lokalen Notanker-Kontos der Systemverwaltung**, das OPAA beim allerersten Start im Profil `oidc` anlegt (Anzeigename „Systemverwaltung", `SYSTEM_ADMIN`). Ein zustellbares Postfach eintragen, am besten ein Funktionspostfach der IT; ohne Wert oder mit dem Vorgabewert legt der Start kein Konto an, protokolliert einen Fehler und holt die Anlage beim nächsten Start nach. Neuinstallation: Konto scharf, Einmalpasswort einmalig als markierter Block im Anwendungslog (Zeile `Passwort:`), Wechsel bei der ersten Anmeldung erzwungen; Bestandsinstallation: Konto ohne Passwort, Aktivierung mit `OPAA_LOCAL_ADMIN_RESET=force`. Konten eines Identitätsanbieters werden nicht mehr automatisch Systemverwalter (im `dev`-Modus bleibt `dev-admin` Systemverwalter) |
@@ -1718,7 +1723,59 @@ Geschaltet wird er je Anbieterzeile (`PUT /api/v1/admin/oidc-providers/{id}/dire
 
 **Im Betriebsmodus `dev` findet kein Verzeichnisabgleich statt.** Dort gibt es keine Anbieterzeile, und OPAA legt auch keine künstliche an: Jede Zeile der Anbietertabelle ist ein Vertrauensanker der Anmeldung, aus dem das Backend einen Token-Prüfer baut — eine Zeile, die niemanden anmeldet und nur zwei Einstellungsspalten hält, wäre der falsche Preis. Wer den Abgleich lokal ausprobieren will, legt im `dev`-Modus eine gewöhnliche Anbieterzeile an und schaltet den Abgleich dort ein; der Lauf liest Issuer und Herkunft aus der Zeile und hängt an keiner Stelle am Betriebsmodus. Verzeichnisgruppen, die vor dieser Umstellung im `dev`-Modus ohne Anbieterbezug entstanden sind, werden beim Update zu **internen Gruppen** (mit Herkunftsvermerk in der Beschreibung und einem Protokolleintrag je Gruppe); Berechtigungen und Mitgliedschaften bleiben unangetastet.
 
-**Ein echter Verzeichnis-Konnektor ist noch nicht gebaut.** Ohne ihn meldet jeder Lauf das Verzeichnis als unerreichbar — die sichere Richtung: Es wird nichts entzogen. Der erste Konnektor (Keycloak Admin API) kommt mit einem eigenen Schritt.
+**Ohne hinterlegten Verzeichniszugang meldet jeder Lauf das Verzeichnis als unerreichbar** — die sichere Richtung: Es wird nichts entzogen. Der Zugang wird je Anbieter hinterlegt; der erste (und bisher einzige) Konnektor ist die Keycloak Admin REST API.
+
+#### Keycloak als Verzeichnis
+
+**Was OPAA liest.** Der Lauf meldet sich mit einem Dienstkonto an der Admin API an und liest den kompletten Gruppenbaum des Realms samt seiner Mitgliedschaften (`GET /admin/realms/{realm}/groups`, `…/groups/{id}/children`, `…/groups/{id}/members`, jeweils seitenweise). Jede Keycloak-Gruppe wird zu einer Organisationseinheit in OPAA:
+
+| Keycloak | OPAA |
+|---|---|
+| Gruppen-ID (UUID) | stabile Kennung der Gruppe — **danach wird abgeglichen** |
+| Gruppenname | Anzeigename; eine Umbenennung im Verzeichnis ändert keine Berechtigung |
+| Gruppenpfad (`/Haus/Referat 50`) | Herkunftspfad; nur zur Anzeige, unterscheidet gleichnamige Untergruppen |
+| übergeordnete Gruppe | übergeordnete Einheit (nur Anzeige und Gliederung — **Mitgliedschaft vererbt nicht**) |
+| Benutzer-ID eines Mitglieds | `sub` des Kontos in OPAA, aufgelöst unter dem Issuer **dieses** Anbieters |
+
+**Warum Keycloak zuerst.** Die Keycloak-Benutzer-ID *ist* der `sub` der Tokens, die dieselbe Instanz ausstellt. Die Identität eines Mitglieds fällt damit ohne Abbildungsregel mit dem Konto in OPAA zusammen. Der Realm wird aus der **Issuer-URI der Anbieterzeile abgeleitet** (`https://kc.example/realms/haus` → Realm `haus`) und ist bewusst nicht getrennt einstellbar: So kann ein Lauf strukturell nur den Realm lesen, aus dem die Tokens dieses Anbieters stammen. Ist die Issuer-URI keine Keycloak-Realm-Adresse, lehnt OPAA das Hinterlegen mit 400 ab.
+
+**Nur direkte Mitglieder.** `…/groups/{id}/members` liefert die Personen, die unmittelbar in dieser Gruppe stehen — nicht die ihrer Untergruppen. Eine **Abteilung, die nur Untergruppen hat, ist in OPAA eine leere Gruppe**: Eine Freigabe an sie erreicht niemanden. Das ist Absicht (Mitgliedschaft vererbt in OPAA nirgends), und der Differenzbericht nennt deshalb **je Gruppe die Mitgliederzahl**, damit das vor dem Anwenden sichtbar ist. Wer eine ganze Abteilung erreichen will, hinterlegt ihre Mitglieder auch in der Abteilungsgruppe selbst oder vergibt die Freigabe an die Referatsgruppen.
+
+**Das Dienstkonto einrichten.** In Keycloak, im **selben Realm**, den OPAA liest:
+
+1. **Clients → Create client**: Client-ID z. B. `opaa-directory`, *Client authentication* **an** (vertraulicher Client), *Standard flow* und *Direct access grants* **aus**, **Service accounts roles** **an**.
+2. **Credentials**: das Client-Geheimnis notieren (es wird gleich in OPAA hinterlegt und danach nie wieder angezeigt).
+3. **Service accounts roles → Assign role → Filter by clients → `realm-management`**: genau die beiden Rollen **`view-users`** und **`query-groups`** zuweisen. Mehr braucht der Abgleich nicht — und mehr sollte das Konto auch nicht haben; es liest nur.
+
+In OPAA hinterlegen (nur `SYSTEM_ADMIN`):
+
+```bash
+# Zugang speichern (Realm kommt aus der Issuer-URI des Anbieters)
+PUT /api/v1/admin/oidc-providers/{providerId}/directory-connector
+{ "type": "KEYCLOAK", "clientId": "opaa-directory", "clientSecret": "…" }
+
+# Verbindung prüfen, ohne etwas zu speichern; ohne clientSecret wird das hinterlegte benutzt
+POST /api/v1/admin/oidc-providers/{providerId}/directory-connector/test
+{ "type": "KEYCLOAK", "clientId": "opaa-directory" }
+
+# Zugang samt Geheimnis wieder entfernen
+DELETE /api/v1/admin/oidc-providers/{providerId}/directory-connector
+```
+
+Ein erfolgreicher Test antwortet z. B. „Verzeichnis erreichbar: Realm „haus" mit 14 Gruppen."; ein abgewiesenes Dienstkonto nennt die beiden fehlenden Rollen.
+
+**`baseUrl` (optional).** Erreicht das Backend Keycloak unter einer anderen Adresse als der Browser — im Compose-Stapel `http://keycloak:8180` gegenüber `http://localhost:8180` —, gehört die backendseitige Adresse in `baseUrl`. Ohne Angabe leitet OPAA sie aus der Issuer-URI ab. Die Adresse durchläuft **dieselbe Adressprüfung** wie Issuer- und JWK-Set-Adresse (siehe [Adressprüfung](#bestandsübernahme-aus-opaa_oidc_)); eine hausinterne Adresse gehört in `OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST`. Weiterleitungen folgt das Backend nicht.
+
+**Das Geheimnis liegt verschlüsselt.** Das Client-Geheimnis wird mit `OPAA_CREDENTIALS_ENCRYPTION_KEY` verschlüsselt gespeichert (AES-256-GCM, Präfix `enc:v1:`, siehe [Zugangsdaten-Verschlüsselung](#zugangsdaten-verschlüsselung)) — **ohne gesetzten Schlüssel lässt sich kein Verzeichniszugang speichern**. Keine API-Antwort gibt es zurück; angezeigt werden nur Typ, Adresse, Realm und Client-ID.
+
+> **Vorbehalt zur Schlüsselrotation.** Das **Passwort des Dienstkontos** lässt sich jederzeit wechseln: In Keycloak neu erzeugen, in OPAA erneut hinterlegen — der Wert wird dabei mit dem aktuellen Schlüssel neu verschlüsselt. **Nicht vorgesehen ist dagegen der Wechsel von `OPAA_CREDENTIALS_ENCRYPTION_KEY` selbst im Bestand**: Es gibt heute keinen Weg, bestehende Chiffretexte umzuschlüsseln (ein Wechsel des Verfahrens soll ein Format `enc:v2:` bringen). Wer den Schlüssel dennoch wechselt, muss jeden betroffenen Wert danach neu eingeben — für den Verzeichniszugang heißt das: Zugang erneut hinterlegen. **Die Anbieterverwaltung bleibt dabei bedienbar:** Ein nicht mehr entschlüsselbares Geheimnis wird beim Lesen als „nicht vorhanden" behandelt (mit Warnung im Anwendungslog), die Anbieterliste antwortet weiter, und beide Auswege — erneut hinterlegen und entfernen — funktionieren. Bis dahin meldet jeder Lauf dieses Anbieters das Verzeichnis als **nicht erreichbar** und entzieht nichts; der Verbindungstest verlangt das Geheimnis ausdrücklich, statt mit einem leeren Wert anzuklopfen. Ob aus den Vorgaben eines Hauses eine harte Anforderung an eine regelmäßige Schlüsselrotation folgt (BSI IT-Grundschutz ORP.4 ist der naheliegende Baustein, **zu prüfen**), entscheidet der Informationssicherheitsbeauftragte des Hauses; dieses Handbuch hält nur die Lage fest.
+
+**Grenzen des Konnektors.**
+
+- **Ein Realm je Anbieter** — der aus der Issuer-URI. Zwei Realms sind zwei Anbieterzeilen.
+- **Nur Gruppen und Mitgliedschaften.** Kontosperren aus dem Verzeichnis sind ein eigener Schritt.
+- **Obergrenzen.** Mehr als `OPAA_DIRECTORY_SYNC_KEYCLOAK_MAX_GROUPS` Gruppen oder `…_MAX_MEMBERS_PER_GROUP` direkte Mitglieder je Gruppe lassen den Lauf abbrechen (`UNREACHABLE`), statt eine abgeschnittene Liste anzuwenden. Die Werte sind für Verwaltungsrealms reichlich bemessen; wer sie erreicht, hebt sie bewusst an.
+- **Keine anderen Verzeichnistypen.** LDAP und Microsoft Graph folgen als eigene Konnektoren. In vielen Häusern ist Keycloak ohnehin die Vermittlungsschicht vor Active Directory: Seine LDAP-Mapper importieren die AD-Gruppen, und OPAA liest sie dann aus Keycloak.
 
 #### Vor dem Update auf die Gruppenherkunft (einmalig)
 
@@ -1762,7 +1819,7 @@ Die Variablen `OPAA_OIDC_ISSUER_URI`, `OPAA_OIDC_CLIENT_ID` und `OPAA_OIDC_JWK_S
 
 - **Keine Kontenzusammenführung:** Zwei Anbieter, dieselbe E-Mail — zwei Konten mit getrennten Rechten. Wer eine Person von einem Anbieter zum anderen umzieht, vergibt ihre Rechte neu.
 - **Kein SAML, kein reines OAuth2:** Ausschließlich OpenID Connect mit Discovery-Dokument und Authorization Code Flow (PKCE, öffentlicher Client).
-- **Kein Verzeichnis-Konnektor:** Der Abgleich ist je Anbieter einschaltbar, zeitgesteuert und mit Bestätigungsweg gebaut, es fehlt aber noch die Anbindung an ein echtes Verzeichnis; bis dahin meldet jeder Lauf „nicht erreichbar“ und entzieht nichts. Im Betriebsmodus `dev` findet gar kein Abgleich statt — dort gibt es keine Anbieterzeile, an die er gebunden wäre.
+- **Nur Keycloak als Verzeichnis:** Der Abgleich ist je Anbieter einschaltbar, zeitgesteuert und mit Bestätigungsweg gebaut; angebunden ist bisher ausschließlich die Keycloak Admin REST API (siehe [Keycloak als Verzeichnis](#keycloak-als-verzeichnis)). Ohne hinterlegten Zugang meldet jeder Lauf „nicht erreichbar“ und entzieht nichts. Im Betriebsmodus `dev` findet gar kein Abgleich statt — dort gibt es keine Anbieterzeile, an die er gebunden wäre.
 - **Keine Übertragung von Berechtigungen zwischen Gruppen:** Ein Anbieter, dessen Gruppen noch Berechtigungen tragen, ist nicht löschbar; die Berechtigungen müssen einzeln entfernt werden. Deaktivieren bleibt jederzeit möglich.
 - **`AUDITOR` ist nicht geschützt:** Ein durch einen benannten Rollen-Claim entzogener letzter Prüfer ist nur im Anbieter wiederherstellbar (ein fehlender oder unbrauchbarer Claim entzieht die Rolle nicht).
 - **Eine Organisation:** Alle Anbieter provisionieren in dieselbe Organisation.

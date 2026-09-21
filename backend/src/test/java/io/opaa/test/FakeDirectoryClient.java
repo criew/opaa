@@ -16,7 +16,7 @@ import java.util.function.Consumer;
 /**
  * The one seam between {@code DirectorySyncService} and an actual directory (see {@link
  * DirectoryClient}'s own Javadoc): a scriptable response instead of the production {@code
- * NoOpDirectoryClient}, published for the whole suite by {@code OpaaTestBeans}.
+ * ProviderDirectoryClient}, published for the whole suite by {@code OpaaTestBeans}.
  *
  * <p>Since #1816 a run names the provider whose directory it reads, so a response can be scripted
  * per provider ({@link #respondWithFor}) - what a test of "two providers, only one of them

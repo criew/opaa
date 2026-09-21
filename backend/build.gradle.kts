@@ -402,6 +402,31 @@ tasks.register<Test>("confluenceIntegrationTest") {
     outputs.cacheIf { false }
 }
 
+// #1817: the Keycloak container suite (io.opaa.integration.keycloak.*) starts a real Keycloak in
+// Docker. Measured on the reference machine: ~46 s to answer and ~880 MiB for the container alone,
+// plus Postgres and the test JVM - many times the MinIO fixture that does run inside `test`, and
+// paid by every `./gradlew build` and by each CI shard, so
+// it gets its own task. Unlike the Confluence suite it needs no licence and no internet, therefore
+// no environment-variable gate either: Docker is the only precondition. CI runs it nightly and on
+// demand (.github/workflows/keycloak-integration.yml).
+tasks.register<Test>("keycloakIntegrationTest") {
+    description = "Integration tests against a real Keycloak in Docker " +
+        "(io.opaa.integration.keycloak.*). Needs Docker; not part of build/check."
+    group = "verification"
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    useJUnitPlatform()
+    filter {
+        includeTestsMatching("io.opaa.integration.keycloak.*")
+    }
+    testLogging {
+        events("passed", "skipped", "failed")
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+    }
+    outputs.upToDateWhen { false }
+    outputs.cacheIf { false }
+}
+
 tasks.register<Test>("openAiIntegrationTest") {
     description = "End-to-end tests against the real OpenAI API (io.opaa.integration.*). " +
         "Needs OPAA_OPENAI_API_KEY and Docker; not part of build/check."
@@ -412,6 +437,7 @@ tasks.register<Test>("openAiIntegrationTest") {
     filter {
         includeTestsMatching("io.opaa.integration.*")
         excludeTestsMatching("io.opaa.integration.confluence.*")
+        excludeTestsMatching("io.opaa.integration.keycloak.*")
     }
     // Never cache or skip: whether the tests actually run depends on OPAA_OPENAI_API_KEY (a
     // JUnit @EnabledIfEnvironmentVariable condition, invisible to Gradle's input tracking) and

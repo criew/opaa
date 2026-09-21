@@ -1954,10 +1954,14 @@ paths:
       summary: List the identity providers (system admin only)
       description: >
         ADR-0025 (#1329): every provider a deployment accepts sign-ins from, in sign-in page order.
-        Providers are public clients - there is no secret to carry or to hide. registryState says
-        whether the backend could build the provider's token decoder (READY), could not
-        (UNAVAILABLE - discovery unreachable, address blocked; registryMessage says why) or did
-        not try because the provider is disabled (DISABLED).
+        The provider itself is a public client and has no secret; the directory access some of them
+        carry (directoryConnector, #1817) does, and that one is never part of a response - only
+        which service account and which address. registryState says whether the backend could build
+        the provider's token decoder (READY), could not (UNAVAILABLE - discovery unreachable,
+        address blocked; registryMessage says why) or did not try because the provider is disabled
+        (DISABLED). A stored directory secret this deployment's key cannot decrypt does not fail
+        this read: it is reported as absent, so the list stays usable and the access can be
+        replaced or removed.
       responses:
         "200":
           description: List of identity providers
@@ -2881,6 +2885,114 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/OidcProviderResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/admin/oidc-providers/{providerId}/directory-connector:
+    put:
+      operationId: setDirectoryConnector
+      tags: [admin]
+      summary: Store a provider's directory connection (system admin only)
+      description: >
+        The access this provider's directory run uses (#1817, ADR-0036 Entscheidung 3). The realm
+        is never configured here: it is derived from the provider's own issuer URI, so the run can
+        only ever read the realm the tokens of this provider come from (ADR-0025). The admin API
+        address passes the same address policy as the issuer. The service account's secret is
+        stored encrypted and is never part of any response. Refused with 409 for the LOCAL row,
+        which has no directory, and with 400 when the issuer URI is not a Keycloak realm address.
+        Without OPAA_CREDENTIALS_ENCRYPTION_KEY nothing is stored and the answer is 503 naming the
+        missing key - a write never silently drops a credential.
+      parameters:
+        - name: providerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DirectoryConnectorRequest"
+      responses:
+        "200":
+          description: Connection stored
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DirectoryConnectorResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+    delete:
+      operationId: deleteDirectoryConnector
+      tags: [admin]
+      summary: Remove a provider's directory connection (system admin only)
+      description: >
+        Deletes the stored access, its secret included. The directory run itself stays switched on
+        if it was: without a connection it reports the directory as unreachable, which revokes
+        nothing (#237). Removing an absent connection is not an error.
+      parameters:
+        - name: providerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Connection removed, or there was none
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/admin/oidc-providers/{providerId}/directory-connector/test:
+    post:
+      operationId: testDirectoryConnector
+      tags: [admin]
+      summary: Probe a provider's directory connection (system admin only)
+      description: >
+        Probes the access before it is saved, the same shape as POST /api/v1/admin/oidc-providers/
+        test - a German outcome, never a stack trace. Omitting clientSecret probes the stored
+        secret, so an existing connection can be re-tested without retyping it; without a stored
+        connection, and with a stored one this deployment's key cannot decrypt, the secret is
+        required and its absence is answered with 400. Refused with 409 for the LOCAL row, which
+        has no directory. Never writes anything, and therefore never needs the encryption key.
+      parameters:
+        - name: providerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DirectoryConnectorTestRequest"
+      responses:
+        "200":
+          description: The outcome of the probe, successful or not
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OidcProviderTestResponse"
         "400":
           $ref: "#/components/responses/ValidationError"
         "403":
@@ -13698,7 +13810,7 @@ components:
 
     DirectorySyncGroupChange:
       type: object
-      required: [externalId, name]
+      required: [externalId, name, memberCount]
       properties:
         externalId:
           type: string
@@ -13710,6 +13822,117 @@ components:
           type: string
           nullable: true
           description: Only set for a renamed group
+        sourcePath:
+          type: string
+          nullable: true
+          description: >
+            The path the directory reports for this group ("/Haus/Referat 50"), null when it
+            reports none. Tells the same-named subgroups of one directory apart.
+          example: /Haus/Referat 50
+        memberCount:
+          type: integer
+          description: >
+            How many direct members the group has (ADR-0036, Entscheidung 3). For a group the run
+            would create, the number the directory reports - a Keycloak department that only has
+            subgroups is an empty group in OPAA, and this is where the operator sees it before
+            applying. For a renamed, dissolved or no-longer-maintained group, the number of
+            memberships it currently holds.
+          example: 12
+
+    DirectoryConnectorType:
+      type: string
+      description: >
+        Which kind of directory a provider's group synchronisation reads (ADR-0036, Entscheidung
+        3). Keycloak is the first connector: its user id is the token's sub, so a member's
+        identity coincides with the OPAA account without a mapping rule. LDAP and Microsoft Graph
+        follow as their own connectors.
+      enum: [KEYCLOAK]
+      example: KEYCLOAK
+
+    DirectoryConnectorRequest:
+      type: object
+      required: [type, clientId, clientSecret]
+      description: >
+        The service account a directory run signs in with. For KEYCLOAK this is a confidential
+        client with service accounts enabled, holding the realm-management roles view-users and
+        query-groups.
+      properties:
+        type:
+          $ref: "#/components/schemas/DirectoryConnectorType"
+        baseUrl:
+          type: string
+          nullable: true
+          maxLength: 500
+          description: >
+            Backend-side address of the admin API when it differs from the issuer's own origin -
+            the same split as jwkSetUri (browser reaches the provider under the issuer, the
+            backend under this address). Null derives it from the issuer URI by dropping its
+            /realms/{realm} suffix.
+          example: http://keycloak:8180
+        clientId:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: opaa-directory
+        clientSecret:
+          type: string
+          minLength: 1
+          maxLength: 256
+          description: >
+            Stored encrypted; no response ever carries it back. The bound is on characters and the
+            column on bytes (varchar(2000)), so it is set low enough that 256 four-byte characters
+            still fit the base64 of their AES-GCM ciphertext - far above any Keycloak client secret.
+
+    DirectoryConnectorTestRequest:
+      type: object
+      required: [type, clientId]
+      description: >
+        Like DirectoryConnectorRequest, but clientSecret may be omitted to probe with the stored
+        one.
+      properties:
+        type:
+          $ref: "#/components/schemas/DirectoryConnectorType"
+        baseUrl:
+          type: string
+          nullable: true
+          maxLength: 500
+        clientId:
+          type: string
+          minLength: 1
+          maxLength: 255
+        clientSecret:
+          type: string
+          nullable: true
+          maxLength: 256
+
+    DirectoryConnectorResponse:
+      type: object
+      required: [type, baseUrl, realm, clientId, updatedAt]
+      description: >
+        A provider's stored directory access (#1817). Carries no secret - only that one is stored.
+        A secret this deployment's key can no longer decrypt does not change this answer; it shows
+        up when the access is used, as an unreachable directory, and on a probe.
+      properties:
+        type:
+          $ref: "#/components/schemas/DirectoryConnectorType"
+        baseUrl:
+          type: string
+          description: >
+            The admin API address the backend actually uses - the stored override, or the one
+            derived from the issuer URI.
+          example: http://keycloak:8180
+        realm:
+          type: string
+          description: >
+            Derived from the provider's issuer URI, never configured separately: a run reads the
+            realm this provider's tokens come from and no other.
+          example: opaa
+        clientId:
+          type: string
+          example: opaa-directory
+        updatedAt:
+          type: string
+          format: date-time
 
     DirectorySyncUserRef:
       type: object
@@ -14986,6 +15209,13 @@ components:
           nullable: true
           description: How often the directory run is due; null while it is switched off.
           example: 360
+        directoryConnector:
+          allOf:
+            - $ref: "#/components/schemas/DirectoryConnectorResponse"
+          nullable: true
+          description: >
+            The stored directory access of this provider (#1817), or null while none is stored -
+            in which case every run reports the directory as unreachable and revokes nothing.
         registryState:
           $ref: "#/components/schemas/OidcProviderRegistryState"
         registryMessage:

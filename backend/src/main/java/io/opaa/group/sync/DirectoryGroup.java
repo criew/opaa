@@ -17,6 +17,11 @@ import java.util.Set;
  *     exactly what the directory reports as direct members of that group. Nested-group membership
  *     inheritance is an open point in the feature spec and is intentionally out of scope here
  *     rather than left unresolved silently.
+ * @param sourcePath the path the directory reports for this group ("/Haus/Referat 50"), or {@code
+ *     null} when it reports none. Recorded on {@code Group.sourcePath} as reported and used for
+ *     display only - it tells the same-named subgroups of one directory apart, which neither the
+ *     name nor the provider does (#1812). Never matched on: {@link #externalId} is what a rename or
+ *     a move must not disturb.
  * @param memberSubjects the OIDC {@code subject} (not the directory's own member identifier) of
  *     every direct member, matched against {@code User.subject} scoped to the organization (see
  *     {@code UserRepository#findByOrganizationIdAndSubjectIn}). A subject with no matching user
@@ -24,7 +29,11 @@ import java.util.Set;
  *     as an error - SCIM user provisioning is out of scope for #237.
  */
 public record DirectoryGroup(
-    String externalId, String name, String parentExternalId, Set<String> memberSubjects) {
+    String externalId,
+    String name,
+    String parentExternalId,
+    String sourcePath,
+    Set<String> memberSubjects) {
 
   public DirectoryGroup {
     Objects.requireNonNull(externalId, "externalId must not be null");

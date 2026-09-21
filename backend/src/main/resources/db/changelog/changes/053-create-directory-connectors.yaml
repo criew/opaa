@@ -1,0 +1,80 @@
+databaseChangeLog:
+  - changeSet:
+      id: 053-create-directory-connectors
+      author: opaa
+      comment: >-
+        Der Zugang, mit dem der Verzeichnisabgleich eines Anbieters sein Verzeichnis liest
+        (#1817, ADR-0036 Entscheidung 3). Bis hierher war NoOpDirectoryClient die einzige
+        Implementierung: Jeder Lauf meldete "nicht erreichbar", und ORG_UNIT-Gruppen konnten
+        auf keiner Installation entstehen. Der erste Konnektor ist die Keycloak Admin REST
+        API.
+        .
+        EINE ZEILE JE ANBIETER (uk_directory_connectors_provider). Ein Anbieter hat genau
+        ein Verzeichnis - das seines eigenen Issuers. Der Fremdschluessel kaskadiert wie
+        Statuszeile (048) und ausstehender Plan (049): Ohne den Anbieter hat der Zugang
+        keine Aussage mehr, und seine Zugangsdaten haben erst recht keinen Grund,
+        stehenzubleiben.
+        .
+        KEINE REALM-SPALTE. Der Realm wird aus der Issuer-URI der Anbieterzeile abgeleitet
+        ("https://kc.example/realms/haus" -> "haus") und nicht getrennt gespeichert. Damit
+        kann ein Lauf strukturell nur den Realm lesen, aus dem die Tokens dieses Anbieters
+        stammen (ADR-0025): Eine zweite Spalte koennte davon abweichen, und dann truege eine
+        Anbietergruppe Mitglieder eines fremden Issuers. base_url ist der
+        backendseitige Ueberschreibwert der Admin-API-Adresse - dieselbe Trennung wie
+        jwk_set_uri fuer das JWK-Set; NULL heisst "aus der Issuer-URI ableiten".
+        .
+        client_secret HAELT DEN CHIFFRETEXT, nicht das Geheimnis. Die Anwendung
+        verschluesselt den Wert mit io.opaa.security.CredentialsEncryptor (AES-256-GCM,
+        Praefix "enc:v1:", Schluessel aus OPAA_CREDENTIALS_ENCRYPTION_KEY) - deshalb ist die
+        Spalte deutlich breiter als das Geheimnis selbst. Liquibase laeuft vor der Anwendung
+        und haelt den Schluessel nicht; hier steht darum nie ein Klartextwert, auch nicht
+        vorruebergehend.
+        .
+        connector_type ist der Diskriminator fuer die naechsten Konnektoren (LDAP,
+        Microsoft Graph - ADR-0036 Entscheidung 3). Die Pruefbedingung nennt heute nur
+        'KEYCLOAK': Ein Wert, den keine Implementierung kennt, ist ein Abgleich, der nicht
+        laufen kann, und das gehoert beim Schreiben abgewiesen statt beim Lesen.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE TABLE directory_connectors (
+                  id uuid NOT NULL,
+                  organization_id uuid NOT NULL,
+                  provider_id uuid NOT NULL,
+                  connector_type character varying(20) NOT NULL,
+                  base_url character varying(500),
+                  client_id character varying(255) NOT NULL,
+                  client_secret character varying(2000) NOT NULL,
+                  created_at timestamp with time zone NOT NULL,
+                  updated_at timestamp with time zone NOT NULL
+              );
+
+              ALTER TABLE directory_connectors
+                  ADD CONSTRAINT directory_connectors_pkey PRIMARY KEY (id);
+
+              ALTER TABLE directory_connectors
+                  ADD CONSTRAINT uk_directory_connectors_provider UNIQUE (provider_id);
+
+              ALTER TABLE directory_connectors
+                  ADD CONSTRAINT fk_directory_connectors_organization
+                      FOREIGN KEY (organization_id) REFERENCES organizations(id)
+                      ON DELETE RESTRICT;
+
+              ALTER TABLE directory_connectors
+                  ADD CONSTRAINT fk_directory_connectors_provider
+                      FOREIGN KEY (provider_id) REFERENCES oidc_providers(id)
+                      ON DELETE CASCADE;
+
+              ALTER TABLE directory_connectors
+                  ADD CONSTRAINT chk_directory_connectors_type
+                      CHECK (connector_type IN ('KEYCLOAK'));
+
+              ALTER TABLE directory_connectors
+                  ADD CONSTRAINT chk_directory_connectors_secret_encrypted
+                      CHECK (client_secret LIKE 'enc:%');
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              DROP TABLE directory_connectors;

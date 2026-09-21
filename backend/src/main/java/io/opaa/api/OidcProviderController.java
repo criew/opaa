@@ -1,5 +1,8 @@
 package io.opaa.api;
 
+import io.opaa.api.dto.DirectoryConnectorRequest;
+import io.opaa.api.dto.DirectoryConnectorResponse;
+import io.opaa.api.dto.DirectoryConnectorTestRequest;
 import io.opaa.api.dto.OidcProviderDirectorySyncRequest;
 import io.opaa.api.dto.OidcProviderExternalRequest;
 import io.opaa.api.dto.OidcProviderOrderRequest;
@@ -13,8 +16,12 @@ import io.opaa.auth.oidc.OidcProvider;
 import io.opaa.auth.oidc.OidcProviderConnectionTester;
 import io.opaa.auth.oidc.OidcProviderRegistry;
 import io.opaa.auth.oidc.OidcProviderService;
+import io.opaa.group.sync.connector.DirectoryConnectorService;
+import io.opaa.group.sync.connector.DirectoryConnectorView;
+import io.opaa.group.sync.keycloak.KeycloakDirectoryConnector;
 import jakarta.validation.Valid;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -45,24 +52,40 @@ public class OidcProviderController {
   private final OidcProviderService providerService;
   private final OidcProviderConnectionTester connectionTester;
   private final OidcProviderRegistry registry;
+  private final DirectoryConnectorService connectorService;
 
   public OidcProviderController(
       OidcProviderService providerService,
       OidcProviderConnectionTester connectionTester,
-      OidcProviderRegistry registry) {
+      OidcProviderRegistry registry,
+      DirectoryConnectorService connectorService) {
     this.providerService = providerService;
     this.connectionTester = connectionTester;
     this.registry = registry;
+    this.connectorService = connectorService;
   }
 
   private OidcProviderResponse toResponse(OidcProvider provider) {
-    return OidcProviderResponseMapper.toResponse(provider, registry.healthOf(provider.getId()));
+    return OidcProviderResponseMapper.toResponse(
+        provider,
+        registry.healthOf(provider.getId()),
+        connectorService.findByProvider(provider.getId()).orElse(null));
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @GetMapping
-  public List<OidcProviderResponse> listProviders() {
-    return providerService.listProviders().stream().map(this::toResponse).toList();
+  public List<OidcProviderResponse> listProviders(@Caller CurrentUser caller) {
+    // One lookup for the whole list rather than one per row.
+    Map<UUID, DirectoryConnectorView> connectors =
+        connectorService.viewsByProvider(caller.organizationId());
+    return providerService.listProviders().stream()
+        .map(
+            provider ->
+                OidcProviderResponseMapper.toResponse(
+                    provider,
+                    registry.healthOf(provider.getId()),
+                    connectors.get(provider.getId())))
+        .toList();
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
@@ -149,6 +172,45 @@ public class OidcProviderController {
             providerId,
             Boolean.TRUE.equals(request.getEnabled()),
             request.getIntervalMinutes()));
+  }
+
+  @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+  @PutMapping("/{providerId}/directory-connector")
+  public DirectoryConnectorResponse setDirectoryConnector(
+      @PathVariable UUID providerId,
+      @Valid @RequestBody DirectoryConnectorRequest request,
+      @Caller CurrentUser caller) {
+    return DirectoryConnectorResponseMapper.toResponse(
+        connectorService.save(
+            caller.organizationId(),
+            caller.id(),
+            providerId,
+            request.getType(),
+            request.getBaseUrl(),
+            request.getClientId(),
+            request.getClientSecret()));
+  }
+
+  @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+  @DeleteMapping("/{providerId}/directory-connector")
+  public ResponseEntity<Void> deleteDirectoryConnector(
+      @PathVariable UUID providerId, @Caller CurrentUser caller) {
+    connectorService.delete(caller.organizationId(), caller.id(), providerId);
+    return ResponseEntity.noContent().build();
+  }
+
+  @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+  @PostMapping("/{providerId}/directory-connector/test")
+  public OidcProviderTestResponse testDirectoryConnector(
+      @PathVariable UUID providerId, @Valid @RequestBody DirectoryConnectorTestRequest request) {
+    KeycloakDirectoryConnector.ProbeOutcome outcome =
+        connectorService.probe(
+            providerId,
+            request.getType(),
+            request.getBaseUrl(),
+            request.getClientId(),
+            request.getClientSecret());
+    return new OidcProviderTestResponse(outcome.success(), outcome.message());
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
