@@ -2,6 +2,7 @@ package io.opaa.space;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import io.opaa.api.types.AccessBasis;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
@@ -21,8 +22,10 @@ import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.OrganizationScopedLoader;
 import io.opaa.common.ValidationException;
+import io.opaa.permission.AccessPath;
 import io.opaa.permission.AssetOwnershipHistoryService;
 import io.opaa.permission.CapabilityService;
+import io.opaa.permission.GroupAttribution;
 import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.GroupSubject;
 import io.opaa.permission.GroupSubjectDirectory;
@@ -289,6 +292,79 @@ public class SpaceService {
                         groupNames.get(membership.getGroupId()),
                         groupSizeSignal(membership)))
         .toList();
+  }
+
+  /**
+   * The Herleitung "warum bin ich in diesem Space" (#1822, ADR-0036 Entscheidung 9). {@code
+   * targetUserId} null asks about the caller; naming somebody else is reserved for those who manage
+   * the membership here - the same bar {@link #listMembers} carries - and hides every way through a
+   * protected group. A person this space does not reach at all is 404, like an unknown space: an
+   * empty answer would confirm both the space and the absence.
+   */
+  public SpaceAccessDerivation accessDerivation(
+      UUID spaceId, UUID targetUserId, CurrentUser caller) {
+    Space space = loadSpace(spaceId, caller);
+    boolean thirdParty = targetUserId != null && !targetUserId.equals(caller.id());
+    if (thirdParty && !caller.isSystemAdmin()) {
+      accessPolicy.requireMemberListViewer(space, caller);
+    } else if (!thirdParty) {
+      accessPolicy.requireMember(space, caller);
+    }
+
+    UUID subjectId = targetUserId == null ? caller.id() : targetUserId;
+    Set<UUID> groupIds = groupMemberships.groupIdsForUser(subjectId);
+    SpaceRole effectiveRole = SpaceAccessPolicy.effectiveRole(space, subjectId, groupIds);
+
+    List<SpaceMembership> reaching =
+        space.getMemberships().stream()
+            .filter(
+                membership ->
+                    membership.isUserSubject()
+                        ? subjectId.equals(membership.getUserId())
+                        : groupIds.contains(membership.getGroupId()))
+            .toList();
+    Map<UUID, GroupAttribution> attributions =
+        groupDirectory.attributionsById(
+            reaching.stream()
+                .filter(SpaceMembership::isGroupSubject)
+                .map(SpaceMembership::getGroupId)
+                .toList());
+
+    List<AccessPath> paths = new ArrayList<>();
+    boolean withheld = false;
+    if (space.getOwnerId().equals(subjectId)) {
+      paths.add(AccessPath.ofSpace(AccessBasis.OWNERSHIP, SpaceRole.ADMIN, null, null));
+    }
+    for (SpaceMembership membership : reaching) {
+      if (membership.isUserSubject()) {
+        paths.add(
+            AccessPath.ofSpace(
+                AccessBasis.DIRECT_MEMBERSHIP,
+                membership.getRole(),
+                membership.getCreatedAt(),
+                null));
+        continue;
+      }
+      GroupAttribution group = attributions.get(membership.getGroupId());
+      if (thirdParty && group != null && group.protectedGroup()) {
+        withheld = true;
+        continue;
+      }
+      paths.add(
+          AccessPath.ofSpace(
+              AccessBasis.GROUP_MEMBERSHIP,
+              membership.getRole(),
+              membership.getCreatedAt(),
+              group));
+    }
+    if (paths.isEmpty() && !withheld) {
+      if (thirdParty || !caller.isSystemAdmin()) {
+        throw new NotFoundException("Space nicht gefunden");
+      }
+      paths.add(AccessPath.ofSpace(AccessBasis.SYSTEM_ADMINISTRATION, null, null, null));
+    }
+    return new SpaceAccessDerivation(
+        space.getId(), subjectId, effectiveRole, List.copyOf(paths), withheld);
   }
 
   /**

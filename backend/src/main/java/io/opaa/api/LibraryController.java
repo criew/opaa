@@ -13,6 +13,7 @@ import io.opaa.api.dto.IndexingRunResponse;
 import io.opaa.api.dto.IndexingStatus;
 import io.opaa.api.dto.IndexingStatusResponse;
 import io.opaa.api.dto.IndexingTriggerSource;
+import io.opaa.api.dto.LibraryAccessDerivationResponse;
 import io.opaa.api.dto.LibraryDocumentPageResponse;
 import io.opaa.api.dto.LibraryDocumentResponse;
 import io.opaa.api.dto.LibraryFolderRenameRequest;
@@ -162,6 +163,17 @@ public class LibraryController {
   @GetMapping("/{libraryId}")
   public LibraryResponse getLibrary(@PathVariable UUID libraryId, @Caller CurrentUser caller) {
     return LibraryResponseMapper.toResponse(libraryService.getLibrary(libraryId, caller));
+  }
+
+  /**
+   * The Herleitung "warum sehe ich diese Bibliothek" for the caller themselves (#1822, ADR-0036
+   * Entscheidung 9) - no Vollmacht, no protocol entry, and no member of any group disclosed.
+   */
+  @GetMapping("/{libraryId}/access-derivation")
+  public LibraryAccessDerivationResponse getLibraryAccessDerivation(
+      @PathVariable UUID libraryId, @Caller CurrentUser caller) {
+    return AccessDerivationResponseMapper.toResponse(
+        libraryService.getAccessDerivation(libraryId, caller));
   }
 
   @PutMapping("/{libraryId}")

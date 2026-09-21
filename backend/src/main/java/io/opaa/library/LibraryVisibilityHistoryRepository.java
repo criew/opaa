@@ -2,6 +2,7 @@ package io.opaa.library;
 
 import io.opaa.permission.PermissionHistorySweeper;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -44,6 +45,19 @@ public interface LibraryVisibilityHistoryRepository
           + "and h.validFrom <= :asOf and (h.validTo is null or h.validTo > :asOf)")
   Set<UUID> findOrganizationWideLibraryIdsAsOf(
       @Param("organizationId") UUID organizationId, @Param("asOf") Instant asOf);
+
+  /**
+   * Every organization-wide <i>state</i> interval of one library overlapping {@code [from, to)} -
+   * the third source of the Stichtagsauskunft about a library (#1822). Zero-length event markers
+   * are excluded by {@code validTo > validFrom}.
+   */
+  @Query(
+      "select h from LibraryVisibilityHistory h where h.libraryId = :libraryId "
+          + "and h.visibility = io.opaa.api.types.LibraryVisibility.ORGANIZATION "
+          + "and h.validFrom < :to and (h.validTo is null or h.validTo > :from) "
+          + "and (h.validTo is null or h.validTo > h.validFrom)")
+  List<LibraryVisibilityHistory> findOrganizationWideIntervalsOverlapping(
+      @Param("libraryId") UUID libraryId, @Param("from") Instant from, @Param("to") Instant to);
 
   /**
    * The one state interval of {@code libraryId} covering {@code asOf}. Zero-length event markers

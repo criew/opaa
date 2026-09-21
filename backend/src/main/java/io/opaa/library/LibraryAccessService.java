@@ -1,9 +1,11 @@
 package io.opaa.library;
 
+import io.opaa.api.types.AccessBasis;
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.NotFoundException;
+import io.opaa.permission.AccessPath;
 import io.opaa.permission.AssetAccessService;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -112,6 +114,26 @@ public class LibraryAccessService {
     }
     return assetAccessService.effectiveRole(
         KnowledgeLibrary.ASSET_TYPE, library.getId(), userId, organizationWideFloor(library));
+  }
+
+  /**
+   * Why {@code userId} reaches {@code library} - the same formula {@link #effectiveRole} evaluates,
+   * but listing each way instead of folding them into one role (#1822, ADR-0036 Entscheidung 9).
+   * The grant ways come from {@link AssetAccessService#grantPaths}, the two library-only ways are
+   * added here, exactly as this class composes the formula itself. The list is empty for a person
+   * the library does not reach; a capability never appears, it opens no content.
+   */
+  public List<AccessPath> accessPaths(KnowledgeLibrary library, UUID userId, boolean systemAdmin) {
+    List<AccessPath> paths =
+        new java.util.ArrayList<>(
+            assetAccessService.grantPaths(KnowledgeLibrary.ASSET_TYPE, library.getId(), userId));
+    if (organizationWideFloor(library) != null) {
+      paths.add(AccessPath.ofAsset(AccessBasis.ORGANIZATION_WIDE, AssetRole.VIEWER, null, null));
+    }
+    if (systemAdmin) {
+      paths.add(AccessPath.ofAsset(AccessBasis.SYSTEM_ADMINISTRATION, AssetRole.OWNER, null, null));
+    }
+    return List.copyOf(paths);
   }
 
   /**

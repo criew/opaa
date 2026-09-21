@@ -5,6 +5,7 @@ import io.opaa.permission.GroupMembershipHistoryRepository;
 import io.opaa.permission.PermissionHistoryClock;
 import java.time.Instant;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -101,6 +102,18 @@ public class SpaceMembershipHistoryService {
       spaceIds.addAll(repository.findSpaceIdsByGroupMembershipAsOf(groupIds, organizationId, asOf));
     }
     return spaceIds;
+  }
+
+  /**
+   * Every membership interval of one space overlapping {@code [from, to)} - the object entry of the
+   * Stichtagsauskunft (#1822), and the inverse of {@link #spaceIdsAsOf}: that one asks "which
+   * spaces did this person reach", this one "who was a member of this space". Without an own person
+   * filter, which is what keeps it free of a Vollmacht.
+   */
+  @Transactional(readOnly = true)
+  public List<SpaceMembershipHistory> membershipIntervalsBetween(
+      UUID spaceId, UUID organizationId, Instant from, Instant to) {
+    return repository.findSpaceIntervalsOverlapping(spaceId, organizationId, from, to);
   }
 
   private void recordEnd(

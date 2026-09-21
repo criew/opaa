@@ -61,6 +61,22 @@ public interface SpaceMembershipHistoryRepository
       @Param("asOf") Instant asOf);
 
   /**
+   * Every <i>state</i> interval of one space overlapping {@code [from, to)} - the object entry of
+   * the Stichtagsauskunft about a space (#1822). Zero-length event markers are excluded by {@code
+   * validTo > validFrom}.
+   */
+  @Query(
+      "select h from SpaceMembershipHistory h where h.spaceId = :spaceId "
+          + "and h.organizationId = :organizationId "
+          + "and h.validFrom < :to and (h.validTo is null or h.validTo > :from) "
+          + "and (h.validTo is null or h.validTo > h.validFrom)")
+  List<SpaceMembershipHistory> findSpaceIntervalsOverlapping(
+      @Param("spaceId") UUID spaceId,
+      @Param("organizationId") UUID organizationId,
+      @Param("from") Instant from,
+      @Param("to") Instant to);
+
+  /**
    * Test-only cleanup helper - {@code subject_user_id} is {@code ON DELETE RESTRICT}; see {@code
    * io.opaa.permission.AssetGrantHistoryRepository#deleteBySubjectUserIdIn} for the full reasoning
    * and for why {@code @Transactional} is required on a derived delete declared here.

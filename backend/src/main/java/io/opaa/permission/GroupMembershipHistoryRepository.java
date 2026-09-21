@@ -2,6 +2,7 @@ package io.opaa.permission;
 
 import java.time.Instant;
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -44,6 +45,22 @@ public interface GroupMembershipHistoryRepository
    * the grant formula at a past instant, the same way {@link
    * io.opaa.permission.GroupMembershipResolver#groupIdsForUser} resolves it for "now".
    */
+  /**
+   * Every <i>state</i> interval of the given groups overlapping {@code [from, to)} - the group half
+   * of the Stichtagsauskunft (#1822). Zero-length event markers are excluded by {@code validTo >
+   * validFrom}; never called with an empty set.
+   */
+  @Query(
+      "select h from GroupMembershipHistory h "
+          + "where h.groupId in :groupIds and h.organizationId = :organizationId "
+          + "and h.validFrom < :to and (h.validTo is null or h.validTo > :from) "
+          + "and (h.validTo is null or h.validTo > h.validFrom)")
+  List<GroupMembershipHistory> findGroupIntervalsOverlapping(
+      @Param("groupIds") Collection<UUID> groupIds,
+      @Param("organizationId") UUID organizationId,
+      @Param("from") Instant from,
+      @Param("to") Instant to);
+
   @Query(
       "select h.groupId from GroupMembershipHistory h "
           + "where h.userId = :userId and h.organizationId = :organizationId "

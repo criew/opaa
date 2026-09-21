@@ -276,6 +276,14 @@ public enum AuditEventType {
   // Zugriff auf die Protokolldaten selbst
   /** Any read, evaluation or export of audit data, including rejected attempts (see outcome). */
   AUDIT_LOG_ACCESSED,
+  /**
+   * One Stichtagsauskunft out of the Rechtehistorie, rejected attempts included (ADR-0036,
+   * Entscheidung 8; Personalrat D3). Its own type rather than an {@link #AUDIT_LOG_ACCESSED}
+   * payload: the two holdings are separate - the protocol says <em>that</em> something happened,
+   * the history <em>for which span</em> a right was in force - and the object named here is the
+   * queried library or space, not the log itself.
+   */
+  PERMISSION_HISTORY_ACCESSED,
 
   // Lokale Konten (ADR-0033, Entscheidung 13)
   /**

@@ -2,6 +2,7 @@ package io.opaa.permission;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import io.opaa.api.types.AccessBasis;
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.PermissionSubjectType;
 import java.time.Duration;
@@ -47,12 +48,16 @@ public class AssetAccessService {
 
   private final AssetGrantRepository grantRepository;
   private final GroupMembershipResolver membershipResolver;
+  private final GroupSubjectDirectory groupDirectory;
   private final Cache<AssetKey, List<AssetGrant>> grantsByAsset;
 
   public AssetAccessService(
-      AssetGrantRepository grantRepository, GroupMembershipResolver membershipResolver) {
+      AssetGrantRepository grantRepository,
+      GroupMembershipResolver membershipResolver,
+      GroupSubjectDirectory groupDirectory) {
     this.grantRepository = grantRepository;
     this.membershipResolver = membershipResolver;
+    this.groupDirectory = groupDirectory;
     // Same reasoning as GroupMembershipResolver#groupIdsByUser: a stale entry only ever grants
     // access a moment too long between a completed transaction's invalidation and the next read,
     // never too little - invalidateAsset below, called post-commit, is the primary correctness
@@ -191,6 +196,41 @@ public class AssetAccessService {
         .filter(grant -> grant.getRole() == AssetRole.OWNER)
         .filter(grant -> reaches(grant, userId, groupIds))
         .anyMatch(grant -> namedOwner || !userId.equals(grant.getGrantedByUserId()));
+  }
+
+  /**
+   * Every grant of {@code assetType}/{@code assetId} that reaches {@code userId} right now, as one
+   * {@link AccessPath} each - the grant half of the Herleitung (#1822, ADR-0036 Entscheidung 9). A
+   * group grant carries the group's attribution, so the answer names the group, its origin and the
+   * mechanism that maintains it; it never names a member. Whatever an asset type reaches without a
+   * grant is added by that type's own service, the same way {@link #readableAssetIds} is composed.
+   */
+  public List<AccessPath> grantPaths(AssetType assetType, UUID assetId, UUID userId) {
+    Instant now = Instant.now();
+    Set<UUID> groupIds = membershipResolver.groupIdsForUser(userId);
+    List<AssetGrant> reaching =
+        cachedGrants(assetType, assetId).stream()
+            .filter(grant -> !grant.isExpired(now))
+            .filter(grant -> reaches(grant, userId, groupIds))
+            .toList();
+    Map<UUID, GroupAttribution> attributions =
+        groupDirectory.attributionsById(
+            reaching.stream()
+                .map(AssetGrant::getSubjectGroupId)
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet()));
+
+    List<AccessPath> paths = new java.util.ArrayList<>(reaching.size());
+    for (AssetGrant grant : reaching) {
+      boolean groupGrant = grant.getSubjectType() == PermissionSubjectType.GROUP;
+      paths.add(
+          AccessPath.ofAsset(
+              groupGrant ? AccessBasis.GROUP_GRANT : AccessBasis.DIRECT_GRANT,
+              grant.getRole(),
+              grant.getCreatedAt(),
+              groupGrant ? attributions.get(grant.getSubjectGroupId()) : null));
+    }
+    return List.copyOf(paths);
   }
 
   /**

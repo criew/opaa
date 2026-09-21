@@ -2,7 +2,9 @@ package io.opaa.permission;
 
 import io.opaa.api.types.PermissionSubjectType;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -274,6 +276,30 @@ public class PermissionHistoryService {
    * this into an Auskunft has to compare its {@code asOf} against the cutoff first and say which of
    * the two it is - the reading path #1822 builds is the one that owes this.
    */
+  /**
+   * Every grant state interval on one asset overlapping {@code [from, to)} - the object entry of
+   * the Stichtagsauskunft (#1822, ADR-0036 Entscheidung 8), and the inverse of {@link
+   * #readableAssetIdsAsOf}: that one asks "what did this person reach", this one "who reached this
+   * object". Deliberately without an own person filter, which is what keeps it free of a Vollmacht.
+   * The same retention caveat holds: what is no longer on record is simply absent.
+   */
+  @Transactional(readOnly = true)
+  public List<AssetGrantHistory> assetGrantIntervalsBetween(
+      AssetType assetType, UUID assetId, UUID organizationId, Instant from, Instant to) {
+    return grantHistoryRepository.findAssetIntervalsOverlapping(
+        assetType, assetId, organizationId, from, to);
+  }
+
+  /** The group-membership intervals overlapping {@code [from, to)}; empty input, empty answer. */
+  @Transactional(readOnly = true)
+  public List<GroupMembershipHistory> groupMembershipIntervalsBetween(
+      Collection<UUID> groupIds, UUID organizationId, Instant from, Instant to) {
+    return groupIds.isEmpty()
+        ? List.of()
+        : membershipHistoryRepository.findGroupIntervalsOverlapping(
+            groupIds, organizationId, from, to);
+  }
+
   @Transactional(readOnly = true)
   public Set<UUID> readableAssetIdsAsOf(
       AssetType assetType, UUID userId, UUID organizationId, Instant asOf) {
