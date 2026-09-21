@@ -180,6 +180,19 @@ public enum AuditEventType {
   /** The reverse of {@link #CAPABILITY_GRANTED} - a capability grant withdrawn. */
   CAPABILITY_REVOKED,
   /**
+   * Somebody looked at what a transfer of rights would move (#1834, ADR-0036 Entscheidung 10).
+   * Written on every preview, including the ones nobody carries out: the preview is a reading of
+   * everything one subject holds, and that it was read is the record - exactly as for a retrieved
+   * Stichtagsauskunft.
+   */
+  PERMISSION_TRANSFER_PREVIEWED,
+  /**
+   * The rights of one subject were transferred to another (#1834). Carries source, target, scope
+   * and the number of rows moved; the interval rows themselves carry the same transfer id and
+   * outlive this entry.
+   */
+  PERMISSION_TRANSFER_EXECUTED,
+  /**
    * A selective re-index of the chunk bestand by ingestion pipeline version was triggered
    * (docs/features/ingestion-pipelines.md, cross-cutting rule (d)). Recorded per triggering call,
    * not per document: the call is the administrative decision, the documents are its effect.

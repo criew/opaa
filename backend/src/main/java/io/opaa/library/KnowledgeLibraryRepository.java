@@ -31,6 +31,12 @@ public interface KnowledgeLibraryRepository extends JpaRepository<KnowledgeLibra
    */
   boolean existsByOwnerGroupId(UUID ownerGroupId);
 
+  /** The libraries one group owns - what a transfer of ownership moves (#1834). */
+  List<KnowledgeLibrary> findByOwnerGroupId(UUID ownerGroupId);
+
+  /** The person-owned counterpart of {@link #findByOwnerGroupId}, for a succession. */
+  List<KnowledgeLibrary> findByOwnerUserId(UUID ownerUserId);
+
   /**
    * Used by tests to locate a user's own libraries directly - {@link
    * KnowledgeLibraryService#listLibraries} itself no longer calls this since #418 (it now lists via

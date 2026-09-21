@@ -340,6 +340,55 @@ ihrer eigenen Gruppe keinen Eintrag.
 keine Verantwortlichen, sondern Ansprechstellen, die die Systemverwaltung benennt; eine Oberfläche
 dafür entsteht mit Issue #1821.
 
+### 7.2 Rechte einer Gruppe auf eine andere übertragen
+
+Wird ein Referat aufgelöst, ein Identitätsanbieter abgelöst oder eine Person durch eine andere
+ersetzt, müssen die Rechte mitgehen. Dafür gibt es **eine** Handlung statt Objekt-für-Objekt-Arbeit:
+die Übertragung.
+
+**Was übertragen wird.** Der Umfang ist wählbar — alles oder nur ein Teil:
+
+| Umfang | Gruppe → Gruppe | Gruppe → Person | Person → Person |
+|---|---|---|---|
+| Berechtigungen an Bibliotheken | ja | — | — |
+| Mitgliedschaften in Räumen | ja | — | — |
+| Anlegerechte | ja | — | — |
+| Eigentum an Bibliotheken und Räumen | ja | ja | ja |
+| Verantwortung für interne Gruppen | — | — | ja |
+
+**Von einer Person gehen nur Eigentum und Verantwortung über.** Die Berechtigungen einer Person
+werden hier weder übertragen noch aufgezählt — sie enden mit ihrem Konto. Eine Vorschau „alles, was
+Frau Vogt darf" gibt es bewusst nicht.
+
+**Wer das darf.** Die Systemverwaltung für das ganze Haus. Ihre eigene Verantwortung und ihr eigenes
+Eigentum gibt jede Person selbst ab, aus „Meine Gruppen". Wer eine Bibliothek verwaltet, ändert deren
+Berechtigungen weiterhin einzeln.
+
+**Ablauf.** Zuerst die **Vorschau**: Sie nennt in einem Satz, was bewegt würde („12 Berechtigungen an
+7 Objekten, Mitglied in 2 Räumen, Eigentum an 3 Objekten"). Danach die ausdrückliche **Bestätigung**.
+Beides steht im Nachweisprotokoll — **auch eine Vorschau, die niemand ausführt**: Sie liest alles,
+was eine Gruppe oder eine Person hält.
+
+**Das Ziel muss wirksam sein** — nicht aufgelöst, sein Anbieter eingeschaltet. **Leer sein darf es:**
+Im Token-Betrieb entsteht die Gruppe eines neuen Anbieters erst mit der ersten Anmeldung. Die Quelle
+darf dagegen aufgelöst sein; das ist der Regelfall. Über die Grenze des Hauses hinweg gibt es keine
+Übertragung.
+
+**Hat das Ziel an einem Objekt schon eine Rolle, bleibt die stärkere stehen.** Eine Übertragung gibt
+Rechte weiter und nimmt dem Ziel nichts weg.
+
+**Danach steht am Objekt, was geschehen ist** („übertragen am 14.03.2026, Vorgang …") — bei einer
+Gruppe als Quelle mit deren Namen, bei einer Person **ohne** ihren Namen. Die Rechtehistorie zeigt
+für jedes betroffene Objekt an jedem Tag genau ein Subjekt: Das Intervall der Quelle endet genau
+dort, wo das des Ziels beginnt, und beide tragen dieselbe Vorgangsnummer.
+
+**Danach lässt sich ein Anbieter löschen, dessen Gruppen noch Rechte trugen.** Das ist der vorgesehene
+Weg aus der Ablehnung „Diese Gruppen wirken noch"; die Rechte werden umgezogen, nicht entfernt.
+
+**Was die Übertragung nicht tut:** Sie läuft nie automatisch. Eine Reorganisation im Verzeichnis
+erzeugt eine aufgelöste Gruppe und einen Eintrag in der Betriebsliste — die Entscheidung, wohin ihre
+Rechte gehen, trifft ein Mensch.
+
 ## 8. Löschen oder sperren
 
 **Löschen ist die Ausnahme.** Für das Ausscheiden einer Person ist die Sperre der vorgesehene Weg:

@@ -1,0 +1,90 @@
+databaseChangeLog:
+  - changeSet:
+      id: 062-permission-history-transfer
+      author: opaa
+      comment: >-
+        Der saubere Schnitt in der Rechtehistorie (#1834, ADR-0036 Entscheidung 10): je betroffener
+        Zeile ein valid_to fuer die Quelle und ein valid_from fuer das Ziel mit demselben
+        Zeitstempel und derselben Vorgangskennung. transfer_id ist diese Kennung; ohne sie waere
+        an der Stichtagsauskunft nicht erkennbar, dass zwei Intervalle zweier Subjekte dieselbe
+        Entscheidung sind, und die Zuordnung haenge allein am Zeitstempel.
+        .
+        Zwei neue Gruende je Tabelle: TRANSFERRED_OUT schliesst die Seite der Quelle,
+        TRANSFERRED_IN eroeffnet die des Ziels. Ein gemeinsamer Grund TRANSFERRED waere an der
+        Zeile nicht mehr unterscheidbar - beide Seiten tragen dieselbe Kennung und denselben
+        Zeitstempel. asset_ownership_history behaelt ihr vorhandenes TRANSFERRED: Ein Objekt hat
+        genau einen Eigentuemer, die Uebertragung ist dort eine einzige Kette ohne zwei Seiten.
+        .
+        ON DELETE SET NULL, nicht CASCADE: Faellt der Vorgang einmal weg, bleibt die
+        Historienzeile mit transfer_id = NULL stehen. Die Intervalle selbst sind die Auskunft
+        darueber, wer wann was durfte; sie duerfen nicht am Vermerk haengen, der sie gruppiert.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE asset_grant_history
+                  ADD COLUMN transfer_id uuid;
+
+              ALTER TABLE ONLY asset_grant_history
+                  ADD CONSTRAINT fk_asset_grant_history_transfer FOREIGN KEY (transfer_id) REFERENCES permission_transfers(id) ON DELETE SET NULL;
+
+              CREATE INDEX idx_asset_grant_history_transfer ON asset_grant_history USING btree (transfer_id) WHERE (transfer_id IS NOT NULL);
+
+              ALTER TABLE asset_grant_history
+                  DROP CONSTRAINT chk_asset_grant_history_cause;
+
+              ALTER TABLE asset_grant_history
+                  ADD CONSTRAINT chk_asset_grant_history_cause CHECK ((cause IN ('GRANTED', 'ROLE_CHANGED', 'REVOKED', 'BACKFILL', 'LIBRARY_DELETED', 'TRANSFERRED_IN', 'TRANSFERRED_OUT')));
+
+              ALTER TABLE space_membership_history
+                  ADD COLUMN transfer_id uuid;
+
+              ALTER TABLE ONLY space_membership_history
+                  ADD CONSTRAINT fk_space_membership_history_transfer FOREIGN KEY (transfer_id) REFERENCES permission_transfers(id) ON DELETE SET NULL;
+
+              CREATE INDEX idx_space_membership_history_transfer ON space_membership_history USING btree (transfer_id) WHERE (transfer_id IS NOT NULL);
+
+              ALTER TABLE space_membership_history
+                  DROP CONSTRAINT chk_space_membership_history_cause;
+
+              ALTER TABLE space_membership_history
+                  ADD CONSTRAINT chk_space_membership_history_cause CHECK ((cause IN ('ADDED', 'ROLE_CHANGED', 'REMOVED', 'BACKFILL', 'SPACE_DELETED', 'TRANSFERRED_IN', 'TRANSFERRED_OUT')));
+
+              ALTER TABLE capability_grant_history
+                  ADD COLUMN transfer_id uuid;
+
+              ALTER TABLE ONLY capability_grant_history
+                  ADD CONSTRAINT fk_capability_grant_history_transfer FOREIGN KEY (transfer_id) REFERENCES permission_transfers(id) ON DELETE SET NULL;
+
+              CREATE INDEX idx_capability_grant_history_transfer ON capability_grant_history USING btree (transfer_id) WHERE (transfer_id IS NOT NULL);
+
+              ALTER TABLE capability_grant_history
+                  DROP CONSTRAINT chk_capability_grant_history_cause;
+
+              ALTER TABLE capability_grant_history
+                  ADD CONSTRAINT chk_capability_grant_history_cause CHECK ((cause IN ('DELIVERED', 'GRANTED', 'REVOKED', 'TRANSFERRED_IN', 'TRANSFERRED_OUT')));
+
+              ALTER TABLE asset_ownership_history
+                  ADD COLUMN transfer_id uuid;
+
+              ALTER TABLE ONLY asset_ownership_history
+                  ADD CONSTRAINT fk_asset_ownership_history_transfer FOREIGN KEY (transfer_id) REFERENCES permission_transfers(id) ON DELETE SET NULL;
+
+              CREATE INDEX idx_asset_ownership_history_transfer ON asset_ownership_history USING btree (transfer_id) WHERE (transfer_id IS NOT NULL);
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE asset_ownership_history DROP COLUMN transfer_id;
+              ALTER TABLE capability_grant_history DROP COLUMN transfer_id;
+              ALTER TABLE space_membership_history DROP COLUMN transfer_id;
+              ALTER TABLE asset_grant_history DROP COLUMN transfer_id;
+
+              ALTER TABLE capability_grant_history DROP CONSTRAINT chk_capability_grant_history_cause;
+              ALTER TABLE capability_grant_history ADD CONSTRAINT chk_capability_grant_history_cause CHECK ((cause IN ('DELIVERED', 'GRANTED', 'REVOKED')));
+
+              ALTER TABLE space_membership_history DROP CONSTRAINT chk_space_membership_history_cause;
+              ALTER TABLE space_membership_history ADD CONSTRAINT chk_space_membership_history_cause CHECK ((cause IN ('ADDED', 'ROLE_CHANGED', 'REMOVED', 'BACKFILL', 'SPACE_DELETED')));
+
+              ALTER TABLE asset_grant_history DROP CONSTRAINT chk_asset_grant_history_cause;
+              ALTER TABLE asset_grant_history ADD CONSTRAINT chk_asset_grant_history_cause CHECK ((cause IN ('GRANTED', 'ROLE_CHANGED', 'REVOKED', 'BACKFILL', 'LIBRARY_DELETED')));

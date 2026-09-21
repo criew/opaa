@@ -14,6 +14,7 @@ import io.opaa.api.dto.SpaceUpdateRequest;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import io.opaa.permission.PermissionSubject;
+import io.opaa.permission.PermissionTransferService;
 import io.opaa.space.Space;
 import io.opaa.space.SpaceAssetAssociationService;
 import io.opaa.space.SpaceCreation;
@@ -42,11 +43,15 @@ public class SpaceController {
 
   private final SpaceService spaceService;
   private final SpaceAssetAssociationService associationService;
+  private final PermissionTransferService transferService;
 
   public SpaceController(
-      SpaceService spaceService, SpaceAssetAssociationService associationService) {
+      SpaceService spaceService,
+      SpaceAssetAssociationService associationService,
+      PermissionTransferService transferService) {
     this.spaceService = spaceService;
     this.associationService = associationService;
+    this.transferService = transferService;
   }
 
   @PostMapping
@@ -94,7 +99,9 @@ public class SpaceController {
   @GetMapping("/{spaceId}")
   public SpaceResponse getSpace(@PathVariable UUID spaceId, @Caller CurrentUser caller) {
     Space space = spaceService.getSpace(spaceId, caller);
-    return SpaceResponseMapper.toResponse(spaceService.detailOf(space, caller));
+    return SpaceResponseMapper.toResponse(
+        spaceService.detailOf(space, caller),
+        transferService.markOf(Space.ASSET_TYPE, space.getId()).orElse(null));
   }
 
   @PutMapping("/{spaceId}")

@@ -142,3 +142,12 @@ databaseChangeLog:
       file: db/changelog/changes/058-groups-released-for-use.yaml
   - include:
       file: db/changelog/changes/059-groups-protected.yaml
+  # Die Übertragung der Rechte einer Gruppe auf eine andere (#1834, ADR-0036 Entscheidung 10):
+  # der Vorgang, die von ihm berührten Objekte und der Schnitt in der Rechtehistorie. 062 steht
+  # nach 050 und 044 — es ergänzt deren Tabellen um die Vorgangskennung.
+  - include:
+      file: db/changelog/changes/060-create-permission-transfers.yaml
+  - include:
+      file: db/changelog/changes/061-create-permission-transfer-objects.yaml
+  - include:
+      file: db/changelog/changes/062-permission-history-transfer.yaml

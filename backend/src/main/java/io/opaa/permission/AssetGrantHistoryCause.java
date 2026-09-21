@@ -39,5 +39,15 @@ public enum AssetGrantHistoryCause {
    * time the only asset type was a knowledge library; it means "the asset was deleted" for every
    * type. Renaming it would be a data migration over the whole history without a functional gain.
    */
-  LIBRARY_DELETED
+  LIBRARY_DELETED,
+
+  /**
+   * The grant was handed to another subject by a transfer (#1834, ADR-0036 Entscheidung 10) -
+   * closes the source's side, exactly like {@link #REVOKED}, but names the operation that did it.
+   * The row carries the transfer id the target's {@link #TRANSFERRED_IN} interval carries too.
+   */
+  TRANSFERRED_OUT,
+
+  /** The counterpart of {@link #TRANSFERRED_OUT}: the interval the target holds from then on. */
+  TRANSFERRED_IN
 }

@@ -1093,8 +1093,9 @@ Gruppenmitgliedschaft kann Zugriff auf ganze Bestände geben oder nehmen.
 - **Der Wechsel des Mechanismus entzieht nichts still.** Token-Gruppen und Verzeichnisgruppen sind
   verschiedene Objekte. Wird der Abgleich für einen Anbieter eingeschaltet, weist der
   Differenzbericht des ersten Laufs seine Token-Gruppen als **„werden nicht mehr gepflegt"** aus; sie
-  bleiben mit eingefrorener Mitgliedschaft stehen. Die Übertragung ihrer Berechtigungen auf die neuen
-  Gruppen ist eine eigene Handlung.
+  bleiben mit eingefrorener Mitgliedschaft stehen. Die
+  [Übertragung](#rechte-einer-gruppe-auf-eine-andere-übertragen-gebaut-1834) ihrer Berechtigungen
+  auf die neuen Gruppen ist eine eigene Handlung und wird nie automatisch ausgelöst.
 
 **Dieselbe Regel gilt für die Gruppen aus dem Token.** „Keine Auskunft" und „ausdrücklich keine
 Gruppen" sind zwei verschiedene Aussagen, und nur die zweite ist ein Entzug. Der Anmeldeweg
@@ -1144,8 +1145,10 @@ niemanden — und mit der Wiederaktivierung schlagartig für alle, ohne erneute 
 **Wird ein Anbieter gelöscht**, gehen seine Gruppen mit ihm — aber nur, solange keine von ihnen noch
 wirkt. Trägt eine seiner Gruppen noch eine Berechtigung oder ist sie Eigentümerin eines Objekts,
 wird das Löschen mit `409` abgelehnt; die Meldung nennt die Zahl der betroffenen Gruppen,
-Berechtigungen und Objekte. **Solange die Übertragungsoperation nicht gebaut ist, führt an dieser
-Ablehnung nur das Entfernen der Wirkungen vorbei** — Deaktivieren bleibt jederzeit möglich.
+Berechtigungen und Objekte. **Aus dieser Ablehnung führt seit #1834 die
+[Übertragung](#rechte-einer-gruppe-auf-eine-andere-übertragen-gebaut-1834) heraus:** Sind die
+Wirkungen der Gruppen auf die des neuen Anbieters übergegangen, fällt der `409` von selbst.
+Deaktivieren bleibt daneben jederzeit möglich.
 
 > Festgeschrieben in [ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md),
 > Entscheidungen 2 und 11.
@@ -1232,6 +1235,70 @@ erzeugt beim Lesen nichts.
 
 > Festgeschrieben in [ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md),
 > Entscheidungen 4 und 9.
+
+#### Rechte einer Gruppe auf eine andere übertragen (gebaut, #1834)
+
+Vier Anlässe brauchen dieselbe Mechanik, und ohne sie endet jeder in Handarbeit: die
+**Reorganisation** (Referat 50 wird zu Referat 52), die **Anbieterablösung**, der **Wechsel des
+Mechanismus** von Token auf Verzeichnisabgleich und die **Nachfolge**. Statt 200 Objekte einzeln
+umzuhängen — was erfahrungsgemäß in einem `UPDATE` auf der Datenbank endet und die Rechtehistorie ab
+dem Tag wertlos macht — gibt es **eine** protokollierte Operation.
+
+**Was sie bewegt.** Der Umfang ist wählbar; alles oder eine Teilmenge:
+
+| Umfang | Von Gruppe auf Gruppe | Von Gruppe auf Person | Von Person auf Person |
+|---|---|---|---|
+| Berechtigungen an Objekten | ja | — | — |
+| Mitgliedschaften in Spaces | ja | — | — |
+| Anlegerechte | ja | — | — |
+| Eigentum an Objekten | ja | ja | ja |
+| Verantwortung für interne Gruppen | — | — | ja |
+
+**Bei einer Person als Quelle bleibt es bei Eigentum und Verantwortung.** Berechtigungen und
+Space-Mitgliedschaften einer Person sind hier weder übertragbar noch aufzählbar: Die Vorschau wäre
+sonst eine Abfrage „alle Wirkungen der Person X" für die Systemverwaltung — ohne Vollmacht und ohne
+Begründung, also genau die personenbezogene Rechteübersicht, die für die Vergangenheit unter einer
+Vier-Augen-Vollmacht steht. Fachlich wird sie nicht gebraucht: Eine Nachfolge betrifft Eigentum und
+Verantwortung, und die Berechtigungen einer ausgeschiedenen Person enden mit ihrem Konto.
+
+**Wer.** Die Systemverwaltung organisationsweit. Für „das Eigentum und die Verantwortung, die ich
+selbst trage" auch die Person selbst — die Abgabe aus „Meine Gruppen". Ein `MANAGER` ändert die
+Berechtigungen an seinem Objekt weiterhin einzeln; die Massenoperation bleibt ein Verwaltungsakt.
+
+**Ablauf.** Die **Vorschau ist Pflicht** und nennt in einem Satz, was bewegt würde („12
+Berechtigungen an 7 Objekten, Mitglied in 2 Spaces, Eigentum an 3 Objekten"). Sie ist **selbst ein
+Protokollereignis** (`PERMISSION_TRANSFER_PREVIEWED`) — auch wenn niemand sie ausführt: Sie liest
+alles, was ein Subjekt hält, und dass jemand gelesen hat, gehört ins Protokoll. Die Ausführung
+verlangt eine **ausdrückliche Bestätigung** und schreibt `PERMISSION_TRANSFER_EXECUTED` mit Quelle,
+Ziel, Umfang und Zahl der Zeilen.
+
+**Das Ziel muss wirksam sein** — nicht aufgelöst, sein Anbieter aktiviert —, **darf aber leer
+sein**: Im Token-Modus entsteht die Gruppe des neuen Anbieters erst mit der ersten Anmeldung, und
+eine Übertragung, die darauf wartete, wäre genau das, was die Anbieterablösung nicht leisten kann.
+Die Quelle unterliegt dieser Regel nicht; eine aufgelöste Gruppe ist hier der Regelfall. Über die
+Organisationsgrenze hinweg gibt es keine Übertragung.
+
+**Der Schnitt in der Rechtehistorie.** Je betroffener Zeile endet das Intervall der Quelle und
+beginnt das des Ziels — mit **demselben Zeitstempel** und einer **gemeinsamen Vorgangskennung**. Die
+Stichtagsauskunft zeigt damit an jedem Tag genau ein Subjekt, und zwei Intervalle zweier Subjekte
+sind als dieselbe Entscheidung erkennbar, statt nur zufällig gleich datiert zu sein.
+
+**Treffen beide Seiten am selben Objekt aufeinander, bleibt die stärkere Rolle stehen.** Eine
+Übertragung gibt Rechte weiter; sie nimmt dem Ziel nie etwas weg. Das Ziel bekommt in diesem Fall
+kein neues Intervall — sein Zustand hat sich nicht geändert.
+
+**Die betroffenen Objekte tragen den Vorgang** in ihrer Freigabeansicht („übertragen am 14.03.2026,
+Vorgang …"), bei einer Gruppe als Quelle mit deren Namen. **Bei einer Person als Quelle ohne ihren
+Namen:** Ein an vielen Objekten wiederholter Hinweis auf das Ausscheiden einer benannten Person,
+außerhalb jeder Protokollfrist, wäre sonst die Folge.
+
+**Nicht enthalten:** die Rücknahme von Mitgliedschaften nach einem Vorfall („alle Mitgliedschaften
+dieses Anbieters seit T") und jede automatische Auslösung durch den Verzeichnisabgleich. Eine
+Reorganisation im Verzeichnis erzeugt eine aufgelöste Gruppe und einen Eintrag in der Betriebsliste;
+die Übertragung bleibt eine Entscheidung.
+
+> Festgeschrieben in [ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md),
+> Entscheidung 10.
 
 Der Nachweis, worauf eine Person zu einem beliebigen Stichtag Zugriff hatte, entsteht aus der
 Historisierung dieser drei Quellen und ist in

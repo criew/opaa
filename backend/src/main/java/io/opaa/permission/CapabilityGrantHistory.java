@@ -56,6 +56,12 @@ public class CapabilityGrantHistory {
   @Column(name = "valid_to")
   private Instant validTo;
 
+  /**
+   * The transfer this interval belongs to (#1834) - see {@code AssetGrantHistory#getTransferId}.
+   */
+  @Column(name = "transfer_id")
+  private UUID transferId;
+
   @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt;
 
@@ -104,6 +110,15 @@ public class CapabilityGrantHistory {
 
   public void close(Instant validTo) {
     this.validTo = validTo;
+  }
+
+  /** Marks this interval as one side of a transfer - see {@link #transferId}. */
+  void belongsToTransfer(UUID transferId) {
+    this.transferId = transferId;
+  }
+
+  public UUID getTransferId() {
+    return transferId;
   }
 
   public UUID getId() {

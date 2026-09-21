@@ -1,0 +1,48 @@
+databaseChangeLog:
+  - changeSet:
+      id: 061-create-permission-transfer-objects
+      author: opaa
+      comment: >-
+        Welche Objekte ein Vorgang beruehrt hat (#1834, ADR-0036 Entscheidung 10). Die
+        Freigabeansicht eines Objekts traegt den Vorgang ("uebertragen am 14.03.2026, Vorgang
+        ..."), und die Frage lautet dort "welcher Vorgang hat dieses Objekt zuletzt beruehrt" -
+        ueber die Historientabellen waere das eine Vereinigung ueber vier Tabellen je Seitenaufruf.
+        .
+        TYPUNABHAENGIG WIE asset_grants (Changeset 038): asset_type plus asset_id, deshalb hier
+        wie dort nur die Formpruefung statt einer Werteliste. Objektspalte ohne Fremdschluessel
+        (ADR-0016) - das Objekt kann spaeter geloescht werden, der Vorgang bleibt.
+        .
+        ON DELETE CASCADE auf den Vorgang: Diese Zeilen sind seine Bestandteile, nicht eigene
+        Vorgaenge. Faellt der Vorgang mit der Aufbewahrungshoechstdauer weg, faellt der Vermerk am
+        Objekt mit ihm.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE TABLE permission_transfer_objects (
+                  id uuid NOT NULL,
+                  transfer_id uuid NOT NULL,
+                  organization_id uuid NOT NULL,
+                  asset_type character varying(30) NOT NULL,
+                  asset_id uuid NOT NULL,
+                  created_at timestamp with time zone DEFAULT now() NOT NULL,
+                  CONSTRAINT chk_permission_transfer_objects_asset_type_format CHECK ((asset_type ~ '^[A-Z][A-Z0-9_]*$'))
+              );
+
+              ALTER TABLE ONLY permission_transfer_objects
+                  ADD CONSTRAINT permission_transfer_objects_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY permission_transfer_objects
+                  ADD CONSTRAINT fk_permission_transfer_objects_transfer FOREIGN KEY (transfer_id) REFERENCES permission_transfers(id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY permission_transfer_objects
+                  ADD CONSTRAINT fk_permission_transfer_objects_organization FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+
+              CREATE UNIQUE INDEX uk_permission_transfer_objects ON permission_transfer_objects USING btree (transfer_id, asset_type, asset_id);
+
+              CREATE INDEX idx_permission_transfer_objects_asset ON permission_transfer_objects USING btree (asset_type, asset_id);
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              DROP TABLE permission_transfer_objects;
