@@ -29,6 +29,7 @@ import io.opaa.library.LibraryFolderService;
 import io.opaa.library.SourceConnectionTestService;
 import io.opaa.permission.PermissionTransferService;
 import io.opaa.space.SpaceAssetAssociationService;
+import io.opaa.succession.SuccessionService;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -71,6 +72,7 @@ class LibraryControllerFolderTest {
   @MockitoBean private SourceConnectionTestService sourceConnectionTestService;
   @MockitoBean private SpaceAssetAssociationService associationService;
   @MockitoBean private PermissionTransferService transferService;
+  @MockitoBean private SuccessionService successionService;
 
   private final UUID currentUserId = UUID.randomUUID();
   private CurrentUser caller;

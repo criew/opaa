@@ -1,20 +1,21 @@
 package io.opaa.space;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.SpaceRole;
 import io.opaa.api.types.SpaceVisibility;
+import io.opaa.auth.AccountActivityService;
+import io.opaa.permission.GroupCapabilityService;
 import io.opaa.permission.GroupMembershipResolver;
-import io.opaa.permission.GroupSubject;
 import io.opaa.permission.GroupSubjectDirectory;
-import java.util.Optional;
+import java.util.Collection;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -34,9 +35,25 @@ class SpaceAccessPolicyTest {
 
   private final GroupMembershipResolver groupMemberships = mock(GroupMembershipResolver.class);
   private final GroupSubjectDirectory groupDirectory = mock(GroupSubjectDirectory.class);
+  private final GroupCapabilityService groupCapability = mock(GroupCapabilityService.class);
+  private final AccountActivityService accountActivity = mock(AccountActivityService.class);
   private final SpaceAccessPolicy policy =
       new SpaceAccessPolicy(
-          groupMemberships, groupDirectory, mock(SpaceMembershipRepository.class));
+          groupMemberships,
+          groupDirectory,
+          groupCapability,
+          accountActivity,
+          mock(SpaceMembershipRepository.class));
+
+  /**
+   * Every account is active unless a test says otherwise - the activity of a person is decided in
+   * {@code AccountActivityService} and tested there; here it must not silently answer "nobody".
+   */
+  @BeforeEach
+  void everyAccountIsActive() {
+    when(accountActivity.activeAmong(anyCollection()))
+        .thenAnswer(invocation -> Set.copyOf(invocation.getArgument(0, Collection.class)));
+  }
 
   private Space spaceWithOwner(UUID ownerId) {
     return new Space("Team", null, false, SpaceVisibility.PRIVATE, ownerId, ORGANIZATION);
@@ -165,46 +182,39 @@ class SpaceAccessPolicyTest {
   }
 
   /**
-   * ADR-0036, Entscheidung 6: an effective group with at least one active account counts as the
-   * space's ADMIN; one that has lost its last account, is dissolved, or belongs to a switched-off
-   * provider does not - it stays a member and simply holds the space for nobody.
+   * ADR-0036, Entscheidung 6: a group counts as the space's ADMIN exactly while it can act. What
+   * "can act" means is decided in {@code GroupCapabilityService} and tested there; what is decided
+   * here is that the policy asks it and believes the answer.
    */
   @ParameterizedTest
-  @MethodSource("groupCapability")
-  void aGroupCountsAsAdminOnlyWhileItCanAct(
-      boolean dissolved,
-      boolean providerDisabled,
-      boolean unmaintained,
-      int activeMembers,
-      boolean expected) {
+  @org.junit.jupiter.params.provider.ValueSource(booleans = {true, false})
+  void aGroupCountsAsAdminOnlyWhileItCanAct(boolean capable) {
     UUID owner = UUID.randomUUID();
     UUID group = UUID.randomUUID();
     Space space = spaceWithOwner(owner);
     SpaceMembership ownerRow = SpaceMembership.ofUser(owner, SpaceRole.MEMBER, ORGANIZATION);
     space.addMembership(ownerRow);
     space.addMembership(SpaceMembership.ofGroup(group, SpaceRole.ADMIN, 7, ORGANIZATION));
-    when(groupDirectory.find(group))
-        .thenReturn(
-            Optional.of(
-                new GroupSubject(
-                    group,
-                    ORGANIZATION,
-                    "Referat 50",
-                    dissolved,
-                    providerDisabled,
-                    unmaintained,
-                    false)));
-    when(groupMemberships.activeMemberCount(eq(group), any())).thenReturn(activeMembers);
+    when(groupCapability.isCapable(group)).thenReturn(capable);
 
     // The owner's row is removed in the hypothetical, so only the group can still hold the space.
-    assertThat(policy.hasCapableAdminAfter(space, ownerRow, null)).isEqualTo(expected);
+    assertThat(policy.hasCapableAdminAfter(space, ownerRow, null)).isEqualTo(capable);
   }
 
-  /**
-   * The owner's own row always counts, whatever role it carries - which is why "Nachfolge offen" is
-   * not reachable for a space through the API today (see {@link
-   * SpaceAccessPolicy#hasCapableAdmin}).
-   */
+  /** A person counts only while their account can be used - the other half of the same measure. */
+  @Test
+  void aPersonCountsAsAdminOnlyWhileTheirAccountIsActive() {
+    UUID owner = UUID.randomUUID();
+    Space space = spaceWithOwner(owner);
+    space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, ORGANIZATION));
+    when(accountActivity.activeAmong(anyCollection())).thenReturn(Set.of());
+
+    assertThat(policy.hasCapableAdmin(space))
+        .as("a locked owner holds the space for nobody - that is what makes a succession open")
+        .isFalse();
+  }
+
+  /** The owner's own row always counts, whatever role it carries - as long as it can act. */
   @Test
   void theOwnersOwnRowCountsAsAdminWhateverRoleItCarries() {
     UUID owner = UUID.randomUUID();
@@ -229,20 +239,6 @@ class SpaceAccessPolicyTest {
 
   private static Stream<SpaceRole> allRoles() {
     return Stream.of(SpaceRole.values());
-  }
-
-  /**
-   * (dissolved, provider disabled, unmaintained, active accounts, counts as the space's ADMIN) -
-   * the three reasons a group is not effective (ADR-0036 Entscheidung 6, the third added by #1816)
-   * plus the account requirement.
-   */
-  private static Stream<Arguments> groupCapability() {
-    return Stream.of(
-        Arguments.of(false, false, false, 3, true),
-        Arguments.of(false, false, false, 0, false),
-        Arguments.of(true, false, false, 3, false),
-        Arguments.of(false, true, false, 3, false),
-        Arguments.of(false, false, true, 3, false));
   }
 
   /**

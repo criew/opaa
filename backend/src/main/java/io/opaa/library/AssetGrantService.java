@@ -6,6 +6,7 @@ import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.api.types.AuditSubjectKind;
 import io.opaa.api.types.PermissionSubjectType;
+import io.opaa.api.types.SuccessionObjectType;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
@@ -19,6 +20,7 @@ import io.opaa.permission.AssetGrant;
 import io.opaa.permission.AssetGrantRepository;
 import io.opaa.permission.GroupSubject;
 import io.opaa.permission.GroupSubjectDirectory;
+import io.opaa.permission.SuccessionReachGuard;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -93,6 +95,7 @@ public class AssetGrantService {
   private final LibraryAccessService accessService;
   private final AuditEventRecorder auditEventRecorder;
   private final ApplicationEventPublisher eventPublisher;
+  private final SuccessionReachGuard successionGuard;
 
   public AssetGrantService(
       AssetGrantRepository grantRepository,
@@ -101,7 +104,8 @@ public class AssetGrantService {
       GroupSubjectDirectory groupDirectory,
       LibraryAccessService accessService,
       AuditEventRecorder auditEventRecorder,
-      ApplicationEventPublisher eventPublisher) {
+      ApplicationEventPublisher eventPublisher,
+      SuccessionReachGuard successionGuard) {
     this.grantRepository = grantRepository;
     this.libraryRepository = libraryRepository;
     this.userRepository = userRepository;
@@ -109,6 +113,7 @@ public class AssetGrantService {
     this.accessService = accessService;
     this.auditEventRecorder = auditEventRecorder;
     this.eventPublisher = eventPublisher;
+    this.successionGuard = successionGuard;
   }
 
   public List<AssetGrantView> listGrants(UUID libraryId, CurrentUser caller) {
@@ -132,6 +137,12 @@ public class AssetGrantService {
     UUID currentUserId = caller.id();
     KnowledgeLibrary library = requireManageable(libraryId, caller);
 
+    // ADR-0036, Entscheidung 6: a library without a capable owner keeps every right it has and
+    // gains none - the reach is frozen while the succession is open.
+    successionGuard.requireReachNotFrozen(
+        SuccessionObjectType.KNOWLEDGE_LIBRARY,
+        library.getId(),
+        "Eine neue oder geänderte Berechtigung");
     if (request.subjectType() == null || request.subjectId() == null) {
       throw new ValidationException("Empfänger ist erforderlich");
     }

@@ -24,6 +24,7 @@ import io.opaa.mail.SmtpProperties;
 import io.opaa.permission.GroupSizeProperties;
 import io.opaa.security.CredentialsEncryptionProperties;
 import io.opaa.security.SettingsEncryptionProperties;
+import io.opaa.succession.SuccessionProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -54,7 +55,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
   RerankProperties.class,
   SmtpProperties.class,
   PublicBaseUrlProperties.class,
-  GroupSizeProperties.class
+  GroupSizeProperties.class,
+  SuccessionProperties.class
 })
 // Enables io.opaa.audit.AuditRetentionScheduler's @Scheduled monthly retention deletion (#395).
 @EnableScheduling

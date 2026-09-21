@@ -30,6 +30,7 @@ import io.opaa.api.dto.S3EventsTokenResponse;
 import io.opaa.api.dto.SourceConnectionTestRequest;
 import io.opaa.api.dto.SourceConnectionTestResponse;
 import io.opaa.api.types.IndexingRunMode;
+import io.opaa.api.types.SuccessionObjectType;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import io.opaa.indexing.job.DocumentIndexingService;
@@ -47,6 +48,7 @@ import io.opaa.library.LibraryFolderService;
 import io.opaa.library.SourceConnectionTestService;
 import io.opaa.permission.PermissionTransferService;
 import io.opaa.space.SpaceAssetAssociationService;
+import io.opaa.succession.SuccessionService;
 import jakarta.validation.Valid;
 import java.time.Instant;
 import java.util.List;
@@ -82,6 +84,7 @@ public class LibraryController {
   private final SourceConnectionTestService sourceConnectionTestService;
   private final SpaceAssetAssociationService associationService;
   private final PermissionTransferService transferService;
+  private final SuccessionService successionService;
 
   public LibraryController(
       KnowledgeLibraryService libraryService,
@@ -91,7 +94,8 @@ public class LibraryController {
       DocumentIndexingService indexingService,
       SourceConnectionTestService sourceConnectionTestService,
       SpaceAssetAssociationService associationService,
-      PermissionTransferService transferService) {
+      PermissionTransferService transferService,
+      SuccessionService successionService) {
     this.libraryService = libraryService;
     this.grantService = grantService;
     this.documentService = documentService;
@@ -100,6 +104,7 @@ public class LibraryController {
     this.sourceConnectionTestService = sourceConnectionTestService;
     this.associationService = associationService;
     this.transferService = transferService;
+    this.successionService = successionService;
   }
 
   @GetMapping("/{libraryId}/spaces")
@@ -171,7 +176,10 @@ public class LibraryController {
   public LibraryResponse getLibrary(@PathVariable UUID libraryId, @Caller CurrentUser caller) {
     return LibraryResponseMapper.toResponse(
         libraryService.getLibrary(libraryId, caller),
-        transferService.markOf(KnowledgeLibrary.ASSET_TYPE, libraryId, caller).orElse(null));
+        transferService.markOf(KnowledgeLibrary.ASSET_TYPE, libraryId, caller).orElse(null),
+        successionService
+            .findingFor(SuccessionObjectType.KNOWLEDGE_LIBRARY, libraryId)
+            .orElse(null));
   }
 
   /**

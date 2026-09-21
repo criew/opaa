@@ -6,6 +6,7 @@ import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.api.types.NotificationType;
 import io.opaa.api.types.SpaceRole;
+import io.opaa.api.types.SuccessionObjectType;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
@@ -19,6 +20,7 @@ import io.opaa.library.LibraryAccessService;
 import io.opaa.notification.NotificationService;
 import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.PermissionSubject;
+import io.opaa.permission.SuccessionReachGuard;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -55,8 +57,10 @@ public class SpaceAssetAssociationService {
   private final SpaceAccessPolicy accessPolicy;
   private final AuditEventRecorder auditEventRecorder;
   private final NotificationService notificationService;
+  private final SuccessionReachGuard successionGuard;
 
   public SpaceAssetAssociationService(
+      SuccessionReachGuard successionGuard,
       SpaceAssetAssociationRepository associationRepository,
       SpaceRepository spaceRepository,
       KnowledgeLibraryRepository libraryRepository,
@@ -66,6 +70,7 @@ public class SpaceAssetAssociationService {
       SpaceAccessPolicy accessPolicy,
       AuditEventRecorder auditEventRecorder,
       NotificationService notificationService) {
+    this.successionGuard = successionGuard;
     this.associationRepository = associationRepository;
     this.spaceRepository = spaceRepository;
     this.libraryRepository = libraryRepository;
@@ -173,8 +178,15 @@ public class SpaceAssetAssociationService {
   public SpaceLibraryLink associate(UUID spaceId, UUID libraryId, CurrentUser caller) {
     Space space = loadSpace(spaceId, caller);
     accessPolicy.requireCurator(space, caller);
+    // ADR-0036, Entscheidung 6: neither side gains reach while its succession is open - a space
+    // without a capable ADMIN takes no new provisioning, and a library without a capable owner is
+    // not newly provided anywhere.
+    successionGuard.requireReachNotFrozen(
+        SuccessionObjectType.SPACE, space.getId(), "Eine neue Bereitstellung");
 
     KnowledgeLibrary library = requireLibrary(libraryId, space.getOrganizationId());
+    successionGuard.requireReachNotFrozen(
+        SuccessionObjectType.KNOWLEDGE_LIBRARY, library.getId(), "Eine neue Bereitstellung");
     // A CURATOR may only associate an asset they can themselves access - the same rule #203
     // states explicitly, checked through the caller's own real grants (never a system-admin
     // bypass, mirroring LibraryAccessService#readableLibraryIds's own no-bypass rule) so that

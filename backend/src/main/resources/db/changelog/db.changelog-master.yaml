@@ -159,3 +159,12 @@ databaseChangeLog:
       file: db/changelog/changes/064-create-account-state-history.yaml
   - include:
       file: db/changelog/changes/065-directory-sync-pending-plans-accounts-locked.yaml
+  # Lebenszyklus von Eigentum und Zuständigkeit (#1819, ADR-0036 Entscheidungen 6 und 8): der
+  # Vorgang hinter einem Eintrag der Betriebsliste, sein Sichtungsvermerk und der Bestandseintrag
+  # der Eigentumshistorie für Bibliotheken, den 052 ausdrücklich diesem Issue überlassen hat.
+  - include:
+      file: db/changelog/changes/074-create-succession-cases.yaml
+  - include:
+      file: db/changelog/changes/075-create-succession-reviews.yaml
+  - include:
+      file: db/changelog/changes/076-backfill-library-ownership-history.yaml

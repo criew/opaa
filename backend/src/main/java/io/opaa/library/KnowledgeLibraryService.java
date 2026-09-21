@@ -11,6 +11,7 @@ import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.LibraryOwnerType;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.ScheduleFrequency;
+import io.opaa.api.types.SuccessionObjectType;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
@@ -42,11 +43,14 @@ import io.opaa.indexing.source.s3.S3SourceSettings;
 import io.opaa.indexing.source.s3.S3SourceSettingsJson;
 import io.opaa.permission.AssetGrant;
 import io.opaa.permission.AssetGrantRepository;
+import io.opaa.permission.AssetOwnershipHistoryService;
 import io.opaa.permission.CapabilityService;
 import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.GroupSubject;
 import io.opaa.permission.GroupSubjectDirectory;
 import io.opaa.permission.PermissionHistoryService;
+import io.opaa.permission.PermissionSubject;
+import io.opaa.permission.SuccessionReachGuard;
 import io.opaa.sourceaccess.ProxyAndCredentials;
 import java.net.URI;
 import java.security.SecureRandom;
@@ -154,8 +158,12 @@ public class KnowledgeLibraryService {
   private final ApplicationEventPublisher eventPublisher;
   private final ConfluenceConnectionService confluenceConnectionService;
   private final S3ClientFactory s3ClientFactory;
+  private final SuccessionReachGuard successionGuard;
+  private final AssetOwnershipHistoryService ownershipHistory;
 
   public KnowledgeLibraryService(
+      SuccessionReachGuard successionGuard,
+      AssetOwnershipHistoryService ownershipHistory,
       KnowledgeLibraryRepository libraryRepository,
       UserRepository userRepository,
       GroupSubjectDirectory groupDirectory,
@@ -182,6 +190,8 @@ public class KnowledgeLibraryService {
       ConfluenceConnectionService confluenceConnectionService,
       ConfluenceProperties confluenceProperties,
       S3ClientFactory s3ClientFactory) {
+    this.successionGuard = successionGuard;
+    this.ownershipHistory = ownershipHistory;
     this.libraryRepository = libraryRepository;
     this.userRepository = userRepository;
     this.groupDirectory = groupDirectory;
@@ -345,6 +355,10 @@ public class KnowledgeLibraryService {
               null,
               Map.of("role", AssetRole.MANAGER.name())));
     }
+    // #1819, ADR-0036 Entscheidung 8: the ownership of a library is historised from its first
+    // instant - changeset 052 built the table type-independently and left this writer to us.
+    ownershipHistory.recordCreated(
+        KnowledgeLibrary.ASSET_TYPE, saved.getId(), ownerSubjectOf(saved), currentUserId);
     AssetGrant ownerGrant =
         grantRepository.save(
             AssetGrant.forUser(
@@ -585,6 +599,15 @@ public class KnowledgeLibraryService {
     String normalizedName = validateName(request.name());
     validateDescription(request.description());
     boolean listed = Boolean.TRUE.equals(request.listed());
+    // ADR-0036, Entscheidung 6: while the succession is open the reach is frozen - renaming and
+    // narrowing stay possible, widening does not. Only an actual widening is refused, so a request
+    // that merely echoes the current values still goes through.
+    if (widensReach(library, request.visibility(), listed)) {
+      successionGuard.requireReachNotFrozen(
+          SuccessionObjectType.KNOWLEDGE_LIBRARY,
+          library.getId(),
+          "Eine größere Reichweite (Sichtbarkeit oder Auffindbarkeit)");
+    }
     String previousName = library.getName();
     String previousDescription = library.getDescription();
     LibraryVisibility previousVisibility = library.getVisibility();
@@ -858,6 +881,10 @@ public class KnowledgeLibraryService {
       permissionHistoryService.recordGrantClosedByAssetDeletion(grant, currentUserId);
     }
     visibilityHistoryService.recordVisibilityClosedByLibraryDeletion(library, currentUserId);
+    // asset_id carries no foreign key (ADR-0016), so the deletion closes no ownership interval on
+    // its own - without this the library would keep reporting a current owner for ever.
+    ownershipHistory.recordAssetDeleted(
+        KnowledgeLibrary.ASSET_TYPE, libraryId, ownerSubjectOf(library), currentUserId);
 
     // #392: recorded before the row is gone, same reasoning as the history calls above. For a
     // connector library whose bestand was just taken with it (ADR-0018, Entscheidung 5), the
@@ -1815,6 +1842,27 @@ public class KnowledgeLibraryService {
    * organization as not found - mirrors {@code SpaceService#loadSpace}. Applies to system admins as
    * well; the boundary is not overstepped even to reveal existence.
    */
+  /** The library's owner as the permission model names a subject - person or group. */
+  private static PermissionSubject ownerSubjectOf(KnowledgeLibrary library) {
+    return library.getOwnerType() == LibraryOwnerType.GROUP
+        ? PermissionSubject.group(library.getOwnerId(), library.getOrganizationId())
+        : PermissionSubject.user(library.getOwnerId(), library.getOrganizationId());
+  }
+
+  /**
+   * Whether the requested state reaches further than the current one - a visibility beyond PRIVATE
+   * where it was PRIVATE, or a library becoming listed. Narrowing is always allowed, also while the
+   * succession is open: it takes reach away, which is never what the freeze protects against.
+   */
+  private static boolean widensReach(
+      KnowledgeLibrary library, LibraryVisibility requested, boolean listed) {
+    boolean widerVisibility =
+        requested != null
+            && requested != library.getVisibility()
+            && requested == LibraryVisibility.ORGANIZATION;
+    return widerVisibility || (listed && !library.isListed());
+  }
+
   private KnowledgeLibrary loadLibrary(UUID libraryId, CurrentUser caller) {
     KnowledgeLibrary library =
         libraryRepository

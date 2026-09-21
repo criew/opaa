@@ -2100,6 +2100,118 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /api/v1/admin/succession:
+    get:
+      operationId: listSuccessionEntries
+      tags: [admin]
+      summary: >
+        The operational list of the lifecycle (#1819, ADR-0036 Entscheidung 6) - one of its three
+        tabs, chosen by kind.
+      description: >
+        Complete from day one, whoever the addressee is: the staging is a statement of
+        responsibility, never a restriction of access to the list - without that, a case of the
+        second stage would never reach the third.
+
+        Object-bound in both directions (Personalrat E1 and Z7): the entry point is the object, the
+        owner is named per line, and there is deliberately no parameter, no sort and no count by
+        previous owner or by acting person. The order is fixed - oldest first.
+
+        The entries are derived on every call, never stored: an object that has a capable
+        responsible party again is gone from the list at once. Only the age and the Sichtungsvermerk
+        come from the record the hourly detection run keeps; an entry the run has not seen yet is
+        listed with firstSeenAt absent.
+      parameters:
+        - name: kind
+          in: query
+          required: true
+          schema:
+            $ref: "#/components/schemas/SuccessionKind"
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: size
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+      responses:
+        "200":
+          description: One page of the chosen tab
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessionListResponse"
+        "400":
+          description: >
+            The list would exceed the bound this answer is composed within. It is refused rather
+            than trimmed - a shortened list would look complete.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: The operational list is reserved to SYSTEM_ADMIN.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/admin/succession/{caseId}/reviews:
+    parameters:
+      - name: caseId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      operationId: reviewSuccessionCase
+      tags: [admin]
+      summary: Write a Sichtungsvermerk on one entry ("geprüft am …, weiterhin offen, Grund")
+      description: >
+        Lifts the highlight of an aged entry for one more period and triggers nothing else - no
+        deadline, no escalation, no mail. Who wrote it is readable at the entry and is no
+        evaluation axis.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SuccessionReviewRequest"
+      responses:
+        "201":
+          description: Sichtungsvermerk recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessionReviewResponse"
+        "400":
+          description: The reason is missing, or the entry is already closed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: The operational list is reserved to SYSTEM_ADMIN.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: No such entry in the caller's organization.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /api/v1/admin/groups:
     get:
       operationId: listGroups
@@ -9747,6 +9859,14 @@ components:
           example: false
         lastTransfer:
           $ref: "#/components/schemas/PermissionTransferMarkResponse"
+        succession:
+          description: >
+            Set while this object has no capable responsible party (#1819, ADR-0036 Entscheidung
+            6) - state and addressee, deliberately without date, previous owner or reason. The
+            object stays usable and keeps every right it has; only its reach is frozen.
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/SuccessionStateResponse"
         createdAt:
           type: string
           format: date-time
@@ -11681,6 +11801,14 @@ components:
           nullable: true
           allOf:
             - $ref: "#/components/schemas/PermissionTransferMarkResponse"
+        succession:
+          description: >
+            Set while this object has no capable responsible party (#1819, ADR-0036 Entscheidung
+            6) - state and addressee, deliberately without date, previous owner or reason. The
+            object stays usable and keeps every right it has; only its reach is frozen.
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/SuccessionStateResponse"
         createdAt:
           type: string
           format: date-time
@@ -14556,6 +14684,147 @@ components:
             True when the source was a protected group (staff council and the comparable bodies).
             The interface then shows "geschützte Gruppe" instead of a name, as in every other list.
           example: false
+
+    SuccessionKind:
+      type: string
+      description: >
+        The three tabs of the operational list, one mechanic each (ADR-0036, Entscheidung 6):
+        objects without a capable responsible party; effective groups whose releases reach nobody
+        because no active account is left; internal groups that hold nothing and reach nobody.
+      enum: [OPEN_SUCCESSION, GRANTS_WITHOUT_RECIPIENT, GROUP_WITHOUT_EFFECT]
+      example: OPEN_SUCCESSION
+
+    SuccessionObjectType:
+      type: string
+      description: What an entry is about - a group is no asset, and the list carries all three.
+      enum: [KNOWLEDGE_LIBRARY, SPACE, GROUP]
+      example: KNOWLEDGE_LIBRARY
+
+    SuccessionAddressee:
+      type: string
+      description: >
+        Who is meant to act - a statement of responsibility, never a restriction of access to the
+        list: a space goes to its remaining capable ADMIN members, an asset of an internal group to
+        that group's stewards, everything else to the system administration.
+      enum: [SPACE_ADMINS, GROUP_STEWARDS, SYSTEM_ADMINISTRATION]
+      example: SYSTEM_ADMINISTRATION
+
+    SuccessionEntryResponse:
+      type: object
+      required: [objectType, objectId, objectName, addressee, highlighted, affectedObjects]
+      properties:
+        caseId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >
+            What a Sichtungsvermerk is written against - absent until the hourly detection run has
+            seen the finding. The list is complete from day one; the record follows within the hour.
+        objectType:
+          $ref: "#/components/schemas/SuccessionObjectType"
+        objectId:
+          type: string
+          format: uuid
+        objectName:
+          type: string
+          description: A protected group appears by its protection alone, never by its name.
+        addressee:
+          $ref: "#/components/schemas/SuccessionAddressee"
+        addresseeLabel:
+          type: string
+          description: The German wording of the addressee, as the object's own view uses it.
+        ownerHint:
+          type: string
+          nullable: true
+          description: >
+            Who holds the object today - readable here for the administration's orientation, and
+            deliberately no query parameter, no sort key and no count (Personalrat E1).
+        membershipHints:
+          type: array
+          description: >
+            "war Mitglied von Referat 50" - Bestandsinformation as a suggestion where to look, never
+            an activity evaluation (Personalrat E4).
+          items:
+            type: string
+        affectedObjects:
+          type: integer
+          description: >
+            How many objects hang on this finding - the figure the tab "Freigaben ohne Empfänger"
+            names; zero where the finding is the object itself.
+        firstSeenAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the detection run first saw this state - the age of the entry.
+        highlighted:
+          type: boolean
+          description: >
+            Older than the configured threshold (12 months by default) without a Sichtungsvermerk
+            since. A highlight, never a deadline: nothing follows from it.
+        lastReviewedAt:
+          type: string
+          format: date-time
+          nullable: true
+        lastReviewReason:
+          type: string
+          nullable: true
+
+    SuccessionListResponse:
+      type: object
+      required: [entries, page, size, totalElements, totalPages]
+      properties:
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/SuccessionEntryResponse"
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+        totalPages:
+          type: integer
+
+    SuccessionReviewRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          description: Why the entry is still open - "geprüft am …, weiterhin offen, Grund".
+
+    SuccessionReviewResponse:
+      type: object
+      required: [id, caseId, reviewedAt, reason]
+      properties:
+        id:
+          type: string
+          format: uuid
+        caseId:
+          type: string
+          format: uuid
+        reviewedAt:
+          type: string
+          format: date-time
+        reason:
+          type: string
+
+    SuccessionStateResponse:
+      type: object
+      required: [addressee, addresseeLabel]
+      description: >
+        The marking an object carries for every reader (ADR-0036, Entscheidung 6; Personalrat Z5):
+        state and addressee - and deliberately no date, no previous owner and no reason. The object
+        stays fully usable; nothing is deleted.
+      properties:
+        addressee:
+          $ref: "#/components/schemas/SuccessionAddressee"
+        addresseeLabel:
+          type: string
+          example: die Systemverwaltung
 
     AssetGrantResponse:
       type: object

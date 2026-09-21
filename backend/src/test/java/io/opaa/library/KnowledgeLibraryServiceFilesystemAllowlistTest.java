@@ -27,10 +27,12 @@ import io.opaa.indexing.source.rss.RssFeedStateRepository;
 import io.opaa.indexing.source.s3.S3ClientFactory;
 import io.opaa.indexing.source.s3.S3Properties;
 import io.opaa.permission.AssetGrantRepository;
+import io.opaa.permission.AssetOwnershipHistoryService;
 import io.opaa.permission.CapabilityService;
 import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.GroupSubjectDirectory;
 import io.opaa.permission.PermissionHistoryService;
+import io.opaa.permission.SuccessionReachGuard;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import java.time.Clock;
 import java.util.Optional;
@@ -92,6 +94,8 @@ class KnowledgeLibraryServiceFilesystemAllowlistTest {
         new ConfluenceProperties(0, null, null, 0, null, 0, 0, 0, null, null, 0);
     libraryService =
         new KnowledgeLibraryService(
+            mock(SuccessionReachGuard.class),
+            mock(AssetOwnershipHistoryService.class),
             libraryRepository,
             userRepository,
             groupDirectory,

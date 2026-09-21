@@ -2,12 +2,14 @@ package io.opaa.library;
 
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.ExternalAccessState;
+import io.opaa.api.types.SuccessionObjectType;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
+import io.opaa.permission.SuccessionReachGuard;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.InstantSource;
@@ -48,6 +50,7 @@ public class LibraryExternalAccessService {
   private final ExternalAccessProperties properties;
   private final LibraryExternalAccessTokenCounter tokenCounter;
   private final InstantSource clock;
+  private final SuccessionReachGuard successionGuard;
 
   @Autowired
   public LibraryExternalAccessService(
@@ -56,7 +59,8 @@ public class LibraryExternalAccessService {
       UserRepository userRepository,
       ApplicationEventPublisher eventPublisher,
       ExternalAccessProperties properties,
-      LibraryExternalAccessTokenCounter tokenCounter) {
+      LibraryExternalAccessTokenCounter tokenCounter,
+      SuccessionReachGuard successionGuard) {
     this(
         libraryRepository,
         accessService,
@@ -64,6 +68,7 @@ public class LibraryExternalAccessService {
         eventPublisher,
         properties,
         tokenCounter,
+        successionGuard,
         InstantSource.system());
   }
 
@@ -74,7 +79,9 @@ public class LibraryExternalAccessService {
       ApplicationEventPublisher eventPublisher,
       ExternalAccessProperties properties,
       LibraryExternalAccessTokenCounter tokenCounter,
+      SuccessionReachGuard successionGuard,
       InstantSource clock) {
+    this.successionGuard = successionGuard;
     this.libraryRepository = libraryRepository;
     this.accessService = accessService;
     this.userRepository = userRepository;
@@ -99,6 +106,14 @@ public class LibraryExternalAccessService {
             .orElseThrow(() -> new NotFoundException("Bibliothek nicht gefunden"));
     accessService.requireRole(library, actor.id(), actor.isSystemAdmin(), AssetRole.MANAGER);
 
+    if (enabled) {
+      // ADR-0036, Entscheidung 6: a release across the Hausgrenze is the largest reach there is -
+      // and reach is frozen while the succession is open. Taking one back stays possible.
+      successionGuard.requireReachNotFrozen(
+          SuccessionObjectType.KNOWLEDGE_LIBRARY,
+          library.getId(),
+          "Eine Freigabe für Fremdzugänge");
+    }
     ExternalAccessState previousState = library.getExternalAccessState();
     Instant previousExpiresAt = library.getExternalAccessExpiresAt();
     if (!enabled && previousState != ExternalAccessState.ACTIVE) {

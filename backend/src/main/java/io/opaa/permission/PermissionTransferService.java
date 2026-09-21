@@ -10,6 +10,7 @@ import io.opaa.api.types.AuditSubjectKind;
 import io.opaa.api.types.CapabilitySubjectType;
 import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.api.types.PermissionTransferScope;
+import io.opaa.api.types.SuccessionObjectType;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
@@ -94,6 +95,7 @@ public class PermissionTransferService {
   private final AssetAccessService assetAccessService;
   private final UserRepository userRepository;
   private final AuditEventRecorder auditEventRecorder;
+  private final SuccessionCaseCloser successionCases;
 
   /**
    * The previews shown but not yet acted upon, keyed by the id the caller gets back. Bounded by
@@ -116,7 +118,8 @@ public class PermissionTransferService {
       PermissionHistoryClock clock,
       AssetAccessService assetAccessService,
       UserRepository userRepository,
-      AuditEventRecorder auditEventRecorder) {
+      AuditEventRecorder auditEventRecorder,
+      SuccessionCaseCloser successionCases) {
     this.transferRepository = transferRepository;
     this.transferObjectRepository = transferObjectRepository;
     this.grantRepository = grantRepository;
@@ -130,6 +133,7 @@ public class PermissionTransferService {
     this.assetAccessService = assetAccessService;
     this.userRepository = userRepository;
     this.auditEventRecorder = auditEventRecorder;
+    this.successionCases = successionCases;
   }
 
   // -------------------------------------------------------------------------------------------
@@ -264,7 +268,8 @@ public class PermissionTransferService {
     int spaces = transferSpaceMemberships(parties, transfer.getId(), at, caller, touched);
     int capabilities = transferCapabilities(parties, snapshot, transfer.getId(), at, caller);
     int owned = transferOwnership(parties, snapshot, transfer.getId(), at, caller, touched);
-    int stewardships = transferStewardships(parties, transfer.getId(), caller);
+    List<UUID> stewarded = transferStewardships(parties, transfer.getId(), caller);
+    int stewardships = stewarded.size();
 
     transfer.recordCounts(
         new PermissionTransferCounts(grants, spaces, capabilities, owned, stewardships));
@@ -276,6 +281,17 @@ public class PermissionTransferService {
                     transferObjectRepository.save(
                         new PermissionTransferObject(
                             transfer.getId(), parties.organizationId(), assetType, assetId))));
+
+    // #1819: the Übernahme is this operation - so it ends the succession record of every object it
+    // touched and names the person who did it, instead of leaving the run to close it anonymously.
+    touched.forEach(
+        (assetType, assetIds) ->
+            assetIds.forEach(
+                assetId ->
+                    successionCases.closeFor(
+                        SuccessionObjectType.valueOf(assetType.value()), assetId, caller.id())));
+    stewarded.forEach(
+        groupId -> successionCases.closeFor(SuccessionObjectType.GROUP, groupId, caller.id()));
 
     shownPreviews.invalidate(previewId);
     recordEvent(AuditEventType.PERMISSION_TRANSFER_EXECUTED, parties, transfer.counts(), caller);
@@ -503,18 +519,20 @@ public class PermissionTransferService {
     return moved;
   }
 
-  private int transferStewardships(Parties parties, UUID transferId, CurrentUser caller) {
+  /**
+   * The groups whose responsibility moved - returned rather than counted, so the caller can end
+   * their succession records by name.
+   */
+  private List<UUID> transferStewardships(Parties parties, UUID transferId, CurrentUser caller) {
     if (!parties.scope().contains(PermissionTransferScope.STEWARDSHIP)) {
-      return 0;
+      return List.of();
     }
-    return stewardshipDirectory
-        .transferStewardships(
-            parties.source().id(),
-            parties.target().id(),
-            parties.organizationId(),
-            caller.id(),
-            transferId)
-        .size();
+    return stewardshipDirectory.transferStewardships(
+        parties.source().id(),
+        parties.target().id(),
+        parties.organizationId(),
+        caller.id(),
+        transferId);
   }
 
   // -------------------------------------------------------------------------------------------

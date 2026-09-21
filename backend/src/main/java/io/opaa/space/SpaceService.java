@@ -11,6 +11,7 @@ import io.opaa.api.types.Capability;
 import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.api.types.SpaceRole;
 import io.opaa.api.types.SpaceVisibility;
+import io.opaa.api.types.SuccessionObjectType;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
@@ -31,6 +32,7 @@ import io.opaa.permission.GroupSizeProperties;
 import io.opaa.permission.GroupSubject;
 import io.opaa.permission.GroupSubjectDirectory;
 import io.opaa.permission.PermissionSubject;
+import io.opaa.permission.SuccessionReachGuard;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -67,6 +69,7 @@ public class SpaceService {
   private final GroupSubjectDirectory groupDirectory;
   private final CapabilityService capabilityService;
   private final GroupSizeProperties groupSizeProperties;
+  private final SuccessionReachGuard successionGuard;
   private final TransactionTemplate requiresNewTransactionTemplate;
 
   /**
@@ -90,8 +93,10 @@ public class SpaceService {
       GroupSubjectDirectory groupDirectory,
       CapabilityService capabilityService,
       GroupSizeProperties groupSizeProperties,
+      SuccessionReachGuard successionGuard,
       PlatformTransactionManager transactionManager) {
     this.spaceRepository = spaceRepository;
+    this.successionGuard = successionGuard;
     this.chatRepository = chatRepository;
     this.userRepository = userRepository;
     this.auditEventRecorder = auditEventRecorder;
@@ -424,6 +429,10 @@ public class SpaceService {
   public SpaceMemberView addMember(
       UUID spaceId, PermissionSubject subject, SpaceRole requestedRole, CurrentUser caller) {
     Space space = loadSpace(spaceId, caller);
+    // ADR-0036, Entscheidung 6: a space without a capable ADMIN takes no new members while its
+    // succession is open - everything else about it keeps working.
+    successionGuard.requireReachNotFrozen(
+        SuccessionObjectType.SPACE, space.getId(), "Die Aufnahme eines neuen Mitglieds");
     accessPolicy.requireManager(space, caller);
     // #613 review, finding 2: an archived space accepts no new content, and a new member is new
     // content in the sense the specification means - see docs/features/spaces-and-assets.md#einen-

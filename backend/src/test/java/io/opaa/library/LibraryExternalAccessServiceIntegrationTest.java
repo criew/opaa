@@ -20,6 +20,7 @@ import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.permission.AssetGrantHistoryRepository;
 import io.opaa.permission.AssetGrantRepository;
+import io.opaa.permission.SuccessionReachGuard;
 import io.opaa.test.OpaaIntegrationTest;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -46,6 +47,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 class LibraryExternalAccessServiceIntegrationTest {
 
   @Autowired private LibraryExternalAccessService externalAccessService;
+  @Autowired private SuccessionReachGuard successionGuard;
   @Autowired private KnowledgeLibraryService libraryService;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private AssetGrantService grantService;
@@ -79,6 +81,10 @@ class LibraryExternalAccessServiceIntegrationTest {
             .toList();
     libraryRepository.deleteAll(ownLibraries);
     grantHistoryRepository.deleteBySubjectUserIdIn(createdUserIds);
+    // Since #1819 a library carries ownership intervals; their owner column is RESTRICT, so
+    // they have to go before the accounts that hold them.
+    jdbcTemplate.update(
+        "DELETE FROM asset_ownership_history WHERE organization_id = ?", organizationId);
     for (UUID userId : createdUserIds) {
       userRepository.deleteById(userId);
     }
@@ -339,6 +345,7 @@ class LibraryExternalAccessServiceIntegrationTest {
         eventPublisher,
         externalAccessProperties,
         tokenCounter,
+        successionGuard,
         () -> now);
   }
 

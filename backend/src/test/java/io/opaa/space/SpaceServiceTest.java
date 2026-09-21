@@ -23,6 +23,7 @@ import io.opaa.permission.AssetOwnershipHistoryService;
 import io.opaa.permission.CapabilityService;
 import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.GroupSubjectDirectory;
+import io.opaa.permission.SuccessionReachGuard;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -53,6 +54,8 @@ class SpaceServiceTest {
   private SpaceMembershipHistoryService membershipHistory;
   private SpaceService spaceService;
 
+  private final SuccessionReachGuard successionGuard = mock(SuccessionReachGuard.class);
+
   @BeforeEach
   void setUp() {
     spaceRepository = mock(SpaceRepository.class);
@@ -79,6 +82,7 @@ class SpaceServiceTest {
             mock(GroupSubjectDirectory.class),
             capabilityService,
             new io.opaa.permission.GroupSizeProperties(null),
+            successionGuard,
             transactionManager);
   }
 
