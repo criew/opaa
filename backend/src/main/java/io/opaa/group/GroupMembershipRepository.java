@@ -55,4 +55,25 @@ public interface GroupMembershipRepository
       @Param("groupId") UUID groupId,
       @Param("organizationId") UUID organizationId,
       @Param("now") Instant now);
+
+  /**
+   * The same condition one page at a time, ordered by the name the answer shows (#1880) - {@code
+   * lower(...)} so the order does not depend on the database's collation for capital letters, and
+   * the id as the tie-breaker so two accounts of the same name keep a stable position across pages.
+   */
+  @Override
+  @Query(
+      value =
+          "SELECT m.user_id FROM group_memberships m JOIN users u ON u.id = m.user_id"
+              + " WHERE m.group_id = :groupId AND m.organization_id = :organizationId AND "
+              + ActiveAccountSql.PREDICATE
+              + " ORDER BY lower(coalesce(u.display_name, u.email)), m.user_id"
+              + " LIMIT :limit OFFSET :offset",
+      nativeQuery = true)
+  List<UUID> findActiveMemberIdsPage(
+      @Param("groupId") UUID groupId,
+      @Param("organizationId") UUID organizationId,
+      @Param("now") Instant now,
+      @Param("limit") int limit,
+      @Param("offset") int offset);
 }

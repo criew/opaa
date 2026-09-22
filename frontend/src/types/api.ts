@@ -67,6 +67,8 @@ export type GroupOrigin = components['schemas']['GroupOrigin']
 export type GroupMechanism = components['schemas']['GroupMechanism']
 export type GroupProviderResponse = components['schemas']['GroupProviderResponse']
 export type SelectableGroupResponse = components['schemas']['SelectableGroupResponse']
+export type GroupMemberDisclosureResponse = components['schemas']['GroupMemberDisclosureResponse']
+export type DisclosedGroupMemberResponse = components['schemas']['DisclosedGroupMemberResponse']
 export type GroupEffectsResponse = components['schemas']['GroupEffectsResponse']
 
 export type AccessPathGroup = components['schemas']['AccessPathGroup']

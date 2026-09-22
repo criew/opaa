@@ -1225,7 +1225,7 @@ Deaktivieren bleibt daneben jederzeit möglich.
 > Festgeschrieben in [ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md),
 > Entscheidungen 2 und 11.
 
-#### Interne Gruppen: Verantwortliche, Freigabe und Schutzkennzeichen (gebaut, #1814 — ohne die Schutzwirkungen nach außen, #1820)
+#### Interne Gruppen: Verantwortliche, Freigabe und Schutzkennzeichen (gebaut, #1814, #1872, #1880)
 
 Eine **interne Gruppe** wird nicht von der Systemverwaltung gepflegt, sondern von benannten
 **Verantwortlichen**. Die Vorentscheidung „Wer eine Querschnittsgruppe braucht, legt sie explizit
@@ -1334,10 +1334,42 @@ Mitgliederliste die Verantwortlichen bzw. die Ansprechstelle für den, der ihr e
 (#1875). Bei einer ungeschützten Gruppe steht dort niemand — da ist die Mitgliederzahl die
 Antwort.
 
+**Die Mitgliederliste für Rechtevergebende (gebaut, #1880).** Wer einer Gruppe an einem Objekt ein
+Recht einräumt oder es verwaltet — `MANAGER`/`OWNER` einer Bibliothek, `ADMIN`/Eigentümer eines
+Space — sieht **an diesem Objekt** ihre Mitglieder: `GET
+/api/v1/libraries/{libraryId}/grants/groups/{groupId}/members` und `GET
+/api/v1/spaces/{spaceId}/members/groups/{groupId}/members`. Der Objektbezug ist Pflicht; eine
+objektlose Abfrage „wer ist in dieser Gruppe" gibt es nicht. Durchgesetzt werden die vier Grenzen
+von ADR-0036, Entscheidung 9 **im Dienst**, jede einzelne mit `404` wie für eine unbekannte Gruppe:
+
+(a) nur **solange die Gruppe dort ein Recht hält** — eine entzogene oder abgelaufene Berechtigung
+und eine beendete Raummitgliedschaft halten nichts; (b) nur für Gruppen, die **zur Verwendung
+freigegeben** sind, was Anbietergruppen immer sind; (c) die **Vorgabe ist nicht freigegeben**;
+(d) **nicht bei geschützten Gruppen** — dort nennt die Antwort weder Namen noch Größe noch
+Mitglieder, sondern die Verantwortlichen bzw. die Ansprechstelle (`responsible`).
+
+**Eine fünfte Grenze kommt aus Auflage A2, und sie ist eine vorläufige Festlegung des Koordinators
+(22.09.2026, #1882): Unterhalb der Mindestgruppengröße gibt es keine Liste** — keine Namen, keine
+Zahl, nur das Kennzeichen „kleine Gruppe" (`smallGroup`), dieselbe Unterdrückung, die das
+Zuwachssignal derselben Zeile trägt. Sonst hätte dieselbe Person in derselben Zeile links „kleine
+Gruppe" und rechts vier Klarnamen, und die Unterdrückung wäre Kosmetik. Die Alternative — A2 für den
+Objektinhaber durch Entscheidung 9 aufgehoben — steht dem Maintainer offen; ausgeliefert wird die
+datensparsame Auslegung.
+
+Gelistet werden **aktive Konten** (Definition `io.opaa.auth.AccountActivityService`); die Antwort
+trägt die Gesamtzahl und eine Seite, deren Deckel (200) die `LIMIT`-Klausel der Abfrage selbst ist —
+eine Gruppe von fünftausend wird nie zu fünftausend Zeilen im Speicher. Die Oberfläche lädt die
+Liste **erst auf ausdrücklichen Wunsch** („Mitglieder anzeigen" an der Gruppenzeile der
+Freigabeansicht und der Raum-Mitgliederliste).
+
 **Der Abruf der Mitgliederliste durch die Systemverwaltung ist ein Audit-Ereignis**
 (`GROUP_MEMBERS_READ` mit der Zahl der Mitglieder) — ADR-0036, Entscheidung 9 räumt ihr die volle
-Liste ein und hält dafür fest, dass sie sie abgerufen hat. Wer die Gruppe selbst verantwortet,
-erzeugt beim Lesen nichts.
+Liste ein und hält dafür fest, dass sie sie abgerufen hat. **Das Ereignis hängt am Aufrufer, nicht
+am Endpunkt** (#1880): Auch über die beiden objektbezogenen Lesepfade oben wird es geschrieben,
+sobald die Systemrolle den Zugang trägt — ein Systemverwalter passiert deren Schwelle an jeder
+Bibliothek und in jedem Space. Wer die Gruppe selbst verantwortet, erzeugt beim Lesen nichts, **und
+der Rechtevergebende ohne Systemrolle ebenfalls nicht**: Er liest, wen er selbst an sein Objekt
+geholt hat, und das steht mit Zeitpunkt an der Berechtigung.
 
 > Festgeschrieben in [ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md),
 > Entscheidungen 4 und 9.

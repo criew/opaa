@@ -4159,6 +4159,46 @@ paths:
         "409":
           $ref: "#/components/responses/Conflict"
 
+  /api/v1/spaces/{spaceId}/members/groups/{groupId}/members:
+    parameters:
+      - name: spaceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: groupId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: "#/components/parameters/GroupMemberDisclosureOffset"
+      - $ref: "#/components/parameters/GroupMemberDisclosureLimit"
+
+    get:
+      operationId: listSpaceGroupMembers
+      tags: [space]
+      summary: >
+        The members of a group that is a member of this space - "wer ein Recht gibt, sieht, an
+        wen" (#1880, ADR-0036 Entscheidung 9)
+      description: >
+        Requires ADMIN, the owner or a system administrator - the same bar the member list itself
+        carries - and only while the group is still a member of this space. What the answer
+        withholds and why is described once, at GroupMemberDisclosureResponse; anything the rule
+        refuses answers 404, like an unknown group. There is no object-free variant of this read.
+      responses:
+        "200":
+          description: The group's active members, capped at the requested page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroupMemberDisclosureResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/spaces/{spaceId}/members/{membershipId}:
     parameters:
       - name: spaceId
@@ -6329,6 +6369,49 @@ paths:
       responses:
         "204":
           description: Grant revoked
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/libraries/{libraryId}/grants/groups/{groupId}/members:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: groupId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: "#/components/parameters/GroupMemberDisclosureOffset"
+      - $ref: "#/components/parameters/GroupMemberDisclosureLimit"
+
+    get:
+      operationId: listGrantedGroupMembers
+      tags: [library]
+      summary: >
+        The members of a group that holds a grant on this library - "wer ein Recht gibt, sieht, an
+        wen" (#1880, ADR-0036 Entscheidung 9)
+      description: >
+        Requires MANAGER or above on the library, exactly like the grant list itself, and only
+        while the group still holds an unexpired grant here. What the answer withholds and why is
+        described once, at GroupMemberDisclosureResponse; anything the rule refuses answers 404,
+        like an unknown group.
+
+        There is no object-free variant of this read on purpose: the right to see the members
+        comes from the object, so the object is part of the path.
+      responses:
+        "200":
+          description: The group's active members, capped at the requested page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroupMemberDisclosureResponse"
         "403":
           $ref: "#/components/responses/Forbidden"
         "404":
@@ -10868,6 +10951,86 @@ components:
         createdAt:
           type: string
           format: date-time
+
+    GroupMemberDisclosureResponse:
+      type: object
+      description: >
+        The members of a group as the person who granted it a right on an object sees them (#1880,
+        ADR-0036 Entscheidung 9) - only active accounts, capped and paged, with the cap as the
+        query's own LIMIT. The five limits of the rule, enforced in the service and nowhere else:
+
+        (a) only while the group holds a right at the object named in the path - an expired grant
+        and an ended space membership hold nothing; (b) only for a group released for use, which a
+        provider group always is; (c) the delivered default is "not released"; (d) never for a
+        protected group - no name, no count, no members, and responsible instead, whom to ask;
+        (e) never below the enforced minimum group size - no members and no figure either, only
+        smallGroup, the same suppression the growth signal of that very row carries (Auflage A2).
+
+        A retrieval carried by the system role is an audit event (GROUP_MEMBERS_READ) on both
+        paths, because a system administrator passes the threshold of every library and every
+        space; a grant giver without that role writes nothing - the grant already names who gave
+        it and when.
+      required: [groupId, protectedGroup, smallGroup, members, responsible]
+      properties:
+        groupId:
+          type: string
+          format: uuid
+        name:
+          type: string
+          nullable: true
+          description: >
+            Null for a protected group: naming it here would undo the namelessness of ADR-0036,
+            Entscheidung 9, which the grant list and the space member list already keep.
+        protectedGroup:
+          type: boolean
+          description: >
+            True for a group of the staff council and the comparable bodies. The member list is
+            then empty on purpose - responsible names whom to ask.
+        smallGroup:
+          type: boolean
+          description: >
+            True below the enforced minimum group size - the list and both figures are then
+            withheld, and this is what the interface says instead ("kleine Gruppe").
+        activeMemberCount:
+          type: integer
+          nullable: true
+          description: >
+            How many active accounts the group reaches in total - the figure the page is a window
+            into. Null for a protected group, where the size is itself the disclosure, and null
+            for a small group.
+        members:
+          type: array
+          description: >
+            The requested page of active accounts, ordered by name so paging is stable. Empty
+            wherever the rule withholds the list.
+          items:
+            $ref: "#/components/schemas/DisclosedGroupMemberResponse"
+        responsible:
+          type: array
+          description: >
+            Whom to ask about a protected group instead of reading its member list (ADR-0036,
+            Entscheidung 9): its stewards where it is internal, its contact points where it comes
+            from a provider (#1875). Empty for every unprotected group - there the member list is
+            the answer, and naming people here would be a disclosure nobody asked for.
+          items:
+            type: string
+
+    DisclosedGroupMemberResponse:
+      type: object
+      description: >
+        One member of a group, as much as the person granting the group a right needs to know:
+        who. No account state, no addresses, no membership dates (#1880).
+      required: [userId]
+      properties:
+        userId:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+          nullable: true
+          description: >
+            The account's display name, its mail address where it carries none. Null only where
+            neither is resolvable.
 
     GroupStewardResponse:
       type: object
@@ -18556,6 +18719,27 @@ components:
       schema:
         type: string
         maxLength: 1000
+    GroupMemberDisclosureOffset:
+      name: offset
+      in: query
+      required: false
+      description: How many members to skip - the paging of a long list (#1880).
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+    GroupMemberDisclosureLimit:
+      name: limit
+      in: query
+      required: false
+      description: >
+        How many members one page carries. Capped server-side at 200 regardless of the requested
+        value, and the cap is the LIMIT of the query itself: a group of 5000 never becomes 5000
+        rows in memory (#1880).
+      schema:
+        type: integer
+        minimum: 1
+        default: 50
 
   responses:
     ValidationError:

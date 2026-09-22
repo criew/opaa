@@ -19,6 +19,8 @@ import io.opaa.common.ValidationException;
 import io.opaa.permission.AssetGrant;
 import io.opaa.permission.AssetGrantRepository;
 import io.opaa.permission.GroupAttribution;
+import io.opaa.permission.GroupMemberDisclosure;
+import io.opaa.permission.GroupMemberDisclosureDirectory;
 import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.GroupSizeProperties;
 import io.opaa.permission.GroupSizeSignal;
@@ -96,6 +98,7 @@ public class AssetGrantService {
   private final KnowledgeLibraryRepository libraryRepository;
   private final UserRepository userRepository;
   private final GroupSubjectDirectory groupDirectory;
+  private final GroupMemberDisclosureDirectory disclosureDirectory;
   private final GroupMembershipResolver groupMemberships;
   private final GroupSizeProperties groupSizeProperties;
   private final LibraryAccessService accessService;
@@ -108,6 +111,7 @@ public class AssetGrantService {
       KnowledgeLibraryRepository libraryRepository,
       UserRepository userRepository,
       GroupSubjectDirectory groupDirectory,
+      GroupMemberDisclosureDirectory disclosureDirectory,
       GroupMembershipResolver groupMemberships,
       GroupSizeProperties groupSizeProperties,
       LibraryAccessService accessService,
@@ -118,6 +122,7 @@ public class AssetGrantService {
     this.libraryRepository = libraryRepository;
     this.userRepository = userRepository;
     this.groupDirectory = groupDirectory;
+    this.disclosureDirectory = disclosureDirectory;
     this.groupMemberships = groupMemberships;
     this.groupSizeProperties = groupSizeProperties;
     this.accessService = accessService;
@@ -130,6 +135,28 @@ public class AssetGrantService {
     KnowledgeLibrary library = requireManageable(libraryId, caller);
     return toViews(
         grantRepository.findByAssetTypeAndAssetId(KnowledgeLibrary.ASSET_TYPE, library.getId()));
+  }
+
+  /**
+   * The members of a group that holds a grant on this library, under the rule of {@link
+   * GroupMemberDisclosureDirectory} (#1880). This method carries what is its own: the {@code
+   * MANAGER} bar of {@link #requireManageable} and limit (a) - only while the group holds an
+   * <b>unexpired</b> grant here. Write-transactional because a retrieval carried by the system role
+   * writes an audit event.
+   */
+  @Transactional
+  public GroupMemberDisclosure listGroupMembers(
+      UUID libraryId, UUID groupId, int offset, int limit, CurrentUser caller) {
+    KnowledgeLibrary library = requireManageable(libraryId, caller);
+    AssetGrant grant =
+        grantRepository
+            .findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectGroupId(
+                KnowledgeLibrary.ASSET_TYPE, library.getId(), PermissionSubjectType.GROUP, groupId)
+            .filter(found -> !found.isExpired(Instant.now()))
+            .orElseThrow(() -> new NotFoundException("Gruppe nicht gefunden"));
+    return disclosureDirectory
+        .disclose(grant.getSubjectId(), library.getOrganizationId(), caller, offset, limit)
+        .orElseThrow(() -> new NotFoundException("Gruppe nicht gefunden"));
   }
 
   // #392: noRollbackFor(AccessDeniedException) - without it, the DENIED audit entry the

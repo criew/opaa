@@ -80,6 +80,7 @@ class SpaceServiceTest {
             mock(AssetOwnershipHistoryService.class),
             mock(GroupMembershipResolver.class),
             mock(GroupSubjectDirectory.class),
+            mock(io.opaa.permission.GroupMemberDisclosureDirectory.class),
             capabilityService,
             new io.opaa.permission.GroupSizeProperties(null),
             successionGuard,

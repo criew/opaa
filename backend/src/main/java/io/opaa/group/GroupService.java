@@ -1054,12 +1054,7 @@ public class GroupService {
   }
 
   private Map<UUID, String> resolveDisplayNames(List<UUID> userIds) {
-    Map<UUID, String> result = new HashMap<>();
-    for (User user : userRepository.findAllById(userIds)) {
-      result.put(
-          user.getId(), user.getDisplayName() != null ? user.getDisplayName() : user.getEmail());
-    }
-    return result;
+    return userRepository.displayNamesById(userIds);
   }
 
   private List<GroupMemberView> toGroupMemberViews(Group group) {

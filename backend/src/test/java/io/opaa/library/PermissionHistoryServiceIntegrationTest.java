@@ -1027,6 +1027,9 @@ class PermissionHistoryServiceIntegrationTest {
    * no grant and no membership, and the one act it entitles to - the protection mark - takes a
    * group out of other people's sight rather than into it. {@code GroupEffectsService} (#1821) only
    * counts: it answers "wo wirkt diese Gruppe" with figures per group and writes nothing at all.
+   * {@code GroupMemberDisclosureAdapter} (#1880) reads a group and one page of its active members
+   * for the person who granted it a right at an object; it writes nothing but its own audit entry
+   * for a system administrator's retrieval.
    */
   private static final Set<String> BEANS_REACHING_THE_RIGHTS_TABLES =
       Set.of(
@@ -1042,6 +1045,7 @@ class PermissionHistoryServiceIntegrationTest {
           "GroupEffectReader",
           "GroupContactService",
           "GroupEffectsService",
+          "GroupMemberDisclosureAdapter",
           "GroupMembershipResolver",
           "GroupService",
           "GroupStewardshipDirectoryAdapter",
@@ -1067,6 +1071,9 @@ class PermissionHistoryServiceIntegrationTest {
   private static final Set<String> CANNOT_CHANGE_READABILITY =
       Set.of(
           "AssetGrantService#listGrants",
+          // #1880: Wer ein Recht gibt, sieht, an wen - der Lesepfad nennt Mitglieder einer
+          // Gruppe, die hier schon ein Recht haelt, und erteilt selbst keines.
+          "AssetGrantService#listGroupMembers",
           "GroupService#createGroup",
           "GroupService#updateGroup",
           "GroupService#getGroup",
