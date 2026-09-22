@@ -10,6 +10,7 @@ import io.opaa.auth.CurrentUser;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ValidationException;
 import io.opaa.diagnosticaccess.DiagnosticImpersonationGrantService;
+import io.opaa.diagnosticaccess.DiagnosticImpersonationGrantService.ImpersonationAvailability;
 import io.opaa.diagnosticaccess.ForeignDiagnosticContext;
 import io.opaa.diagnosticaccess.ForeignDiagnosticContextService;
 import io.opaa.diagnosticaccess.ForeignDiagnosticFindings;
@@ -141,7 +142,7 @@ public class SearchDiagnosisService {
    */
   public DiagnosisContextOptions diagnosisContext(CurrentUser caller) {
     return new DiagnosisContextOptions(
-        permissionProfiles(caller), grantService.holdsImpersonationPermission(caller));
+        permissionProfiles(caller), grantService.impersonationAvailability(caller));
   }
 
   /**
@@ -536,9 +537,16 @@ public class SearchDiagnosisService {
   public record PermissionProfile(UUID id, String name, int libraryCount) {}
 
   /**
-   * What one caller may choose as a diagnosis context: the organization's profiles, and that
-   * caller's own "Sicht als" befugnis - which follows from no role.
+   * What one caller may choose as a diagnosis context: the organization's profiles, and the state
+   * of that caller's own "Sicht als" befugnis - which follows from no role. Holding one whose scope
+   * is currently too small is its own state (#1879): the interface has to say that rather than "Sie
+   * halten keine".
    */
   public record DiagnosisContextOptions(
-      List<PermissionProfile> profiles, boolean personContextAvailable) {}
+      List<PermissionProfile> profiles, ImpersonationAvailability personContext) {
+
+    public boolean personContextAvailable() {
+      return personContext == ImpersonationAvailability.USABLE;
+    }
+  }
 }

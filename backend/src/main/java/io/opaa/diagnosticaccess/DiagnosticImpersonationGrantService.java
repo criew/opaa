@@ -194,40 +194,79 @@ public class DiagnosticImpersonationGrantService {
           "Für „Sicht als“ ist eine eigene, befristete Befugnis nötig; Sie halten keine.");
     }
     java.util.Set<UUID> targetGroupIds = membershipResolver.groupIdsForUser(targetUserId);
-    DiagnosticImpersonationGrant grant =
+    List<DiagnosticImpersonationGrant> forThisPerson =
         active.stream()
             .filter(candidate -> targetGroupIds.contains(candidate.getScopeGroupId()))
-            .findFirst()
-            .orElseThrow(
-                () ->
-                    new AccessDeniedException(
-                        "Ihre Befugnis „Sicht als“ gilt nicht für die Organisationseinheit dieser"
-                            + " Person."));
-    requireUsableScope(
-        grant.getScopeGroupId(),
-        actor.organizationId(),
-        message -> new AccessDeniedException(message, SCOPE_NO_LONGER_USABLE));
-    return grant;
+            .toList();
+    if (forThisPerson.isEmpty()) {
+      throw new AccessDeniedException(
+          "Ihre Befugnis „Sicht als“ gilt nicht für die Organisationseinheit dieser Person.");
+    }
+    // A holder may legitimately hold several; the usable one decides, not the first one the query
+    // happens to return - otherwise an unusable scope would hide a usable one, and the interface's
+    // own answer (personContextAvailable) and this path would disagree.
+    return forThisPerson.stream()
+        .filter(
+            candidate -> scopeRefusal(candidate.getScopeGroupId(), actor.organizationId()) == null)
+        .findFirst()
+        .orElseThrow(
+            () ->
+                new AccessDeniedException(
+                    scopeRefusal(forThisPerson.get(0).getScopeGroupId(), actor.organizationId()),
+                    SCOPE_NO_LONGER_USABLE));
   }
 
   /**
-   * Whether {@code actor} holds any valid, unrevoked befugnis at all right now - what a user
-   * interface needs in order to say whether the person context is selectable. Deliberately weaker
-   * than {@link #requireImpersonationPermission}, which additionally binds a grant to the target
-   * person's Organisationseinheit: a caller can hold a befugnis and still be refused for a
-   * particular person.
+   * Whether {@code actor} holds a valid, unrevoked befugnis with a <b>usable</b> scope right now -
+   * what a user interface needs in order to say whether the person context is selectable. The only
+   * difference to {@link #requireImpersonationPermission} is the target person: a caller can hold a
+   * usable befugnis and still be refused for somebody outside its scope.
    */
   @Transactional(readOnly = true)
   public boolean holdsImpersonationPermission(CurrentUser actor) {
-    return grantRepository.findActive(actor.organizationId(), actor.id(), clock.instant()).stream()
-        .anyMatch(grant -> scopeRefusal(grant.getScopeGroupId(), actor.organizationId()) == null);
+    return impersonationAvailability(actor) == ImpersonationAvailability.USABLE;
   }
 
   /**
-   * Whether the scope is one right now, or why it is not: a provider group of this organization,
-   * its provider switched on, and at least {@link GroupSizeProperties#minimumGroupSize()} active
-   * accounts. Asked at the granting and at every use, so both answers come from one place and the
-   * refusal reads the same in both.
+   * The three states an interface has to tell apart (#1879): no befugnis at all, one whose scope is
+   * currently too small, or a usable one. Without the middle state the interface would say "Sie
+   * halten keine" to somebody who holds one.
+   */
+  @Transactional(readOnly = true)
+  public ImpersonationAvailability impersonationAvailability(CurrentUser actor) {
+    List<DiagnosticImpersonationGrant> active =
+        grantRepository.findActive(actor.organizationId(), actor.id(), clock.instant());
+    if (active.isEmpty()) {
+      return ImpersonationAvailability.NONE;
+    }
+    return active.stream()
+            .anyMatch(
+                grant -> scopeRefusal(grant.getScopeGroupId(), actor.organizationId()) == null)
+        ? ImpersonationAvailability.USABLE
+        : ImpersonationAvailability.SCOPE_TOO_SMALL;
+  }
+
+  /**
+   * @see #impersonationAvailability
+   */
+  public enum ImpersonationAvailability {
+    NONE,
+    SCOPE_TOO_SMALL,
+    USABLE
+  }
+
+  /**
+   * Whether the scope is one right now, or why it is not: a provider group of this organization
+   * that is effective - not dissolved, its provider switched on, not a token group its provider no
+   * longer maintains (ADR-0036, Entscheidung 3: a frozen membership is no picture of the present) -
+   * and reaching at least {@link GroupSizeProperties#minimumGroupSize()} active accounts. Asked at
+   * the granting and at every use, so both answers come from one place and the refusal reads the
+   * same in both.
+   *
+   * <p><b>The refusal never carries the size.</b> Below the Mindestgruppengröße a house withholds
+   * the figure (ADR-0036, Entscheidung 9; {@code GroupSizeSignal}, {@code
+   * GroupMemberDisclosureAdapter}), and "reaches one active account" about a named person's unit
+   * would be the disclosure the mark exists to prevent.
    */
   private void requireUsableScope(
       UUID scopeGroupId, UUID organizationId, Function<String, RuntimeException> refusal) {
@@ -246,17 +285,21 @@ public class DiagnosticImpersonationGrantService {
       return "Der Geltungsbereich muss eine Anbietergruppe sein - eine interne Gruppe dieses"
           + " Hauses ist keine Organisationseinheit";
     }
+    if (scope.dissolved()) {
+      return "Der Geltungsbereich ist aufgelöst und kann keine neue Vollmacht mehr tragen";
+    }
     if (scope.providerDisabled()) {
       return "Der Identitätsanbieter dieser Gruppe ist abgeschaltet; sie erreicht niemanden";
     }
-    int minimum = groupSizeProperties.minimumGroupSize();
-    int active = membershipResolver.activeMemberCount(scopeGroupId, organizationId);
-    if (active < minimum) {
-      return "Der Geltungsbereich erreicht derzeit "
-          + active
-          + " aktive Konten und liegt damit unter der Mindestgruppengröße von "
-          + minimum
-          + "; ein Gruppenkontext dieser Größe gibt eine einzelne Person preis";
+    if (scope.unmaintained()) {
+      return "Diese Token-Gruppe wird von ihrem Anbieter nicht mehr gepflegt; ihre Mitgliedschaft"
+          + " ist eingefroren und bildet die Gegenwart nicht mehr ab";
+    }
+    if (membershipResolver.activeMemberCount(scopeGroupId, organizationId)
+        < groupSizeProperties.minimumGroupSize()) {
+      return "Der Geltungsbereich ist derzeit eine kleine Gruppe - er liegt unter der"
+          + " Mindestgruppengröße, und ein Gruppenkontext dieser Größe gibt eine einzelne Person"
+          + " preis";
     }
     return null;
   }

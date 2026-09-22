@@ -120,10 +120,14 @@ Im Einzelnen:
 - **Mindestgruppengröße bei jeder Nutzung (#1879).** Der Geltungsbereich der Vollmacht „Sicht als"
   ist jede Anbietergruppe, solange sie die Mindestgruppengröße an **aktiven Konten** einhält — und
   das wird bei jeder Nutzung erneut gemessen, nicht nur bei der Erteilung. Darunter antwortet die
-  Nutzung mit `403` (`IMPERSONATION_SCOPE_NOT_USABLE`) und nennt die aktuelle Zahl; die Vollmacht
-  bleibt gültig und unentzogen, ist nur nicht nutzbar, und die Diagnoseoberfläche meldet den
-  Personenkontext folgerichtig als nicht wählbar. Eine interne Gruppe ist kein Bereich, eine Gruppe
-  eines abgeschalteten Anbieters auch nicht.
+  Nutzung mit `403` (`IMPERSONATION_SCOPE_NOT_USABLE`) — **ohne die Zahl zu nennen**, denn unterhalb
+  der Mindestgruppengröße hält das Haus sie zurück („kleine Gruppe" statt Zahl, Entscheidung 9), und
+  an einer benannten Zielperson wäre sie die Auskunft, wer dort noch übrig ist. Die Vollmacht bleibt
+  gültig und unentzogen, ist nur nicht nutzbar, und die Diagnoseoberfläche sagt genau das: Sie
+  meldet den Personenkontext als nicht wählbar und nennt als Grund die zu kleine Gruppe, nicht
+  „Sie halten keine". Hält jemand mehrere Vollmachten, entscheidet die brauchbare. Kein Bereich sind
+  eine interne Gruppe und jede Gruppe, die nicht mehr wirksam ist: aufgelöst, Anbieter abgeschaltet,
+  oder Token-Gruppe mit eingefrorener Mitgliedschaft nach einem Mechanismuswechsel.
 - **„Sicht als":** Die Systemverwaltung *erteilt* die Befugnis, hält sie dadurch aber nicht. Die Prüfung
   beim Ausführen sieht ausschließlich die Zeilen der Vollmachtstabelle an und kennt keinen Rollenzweig —
   für keine Rolle. Ein Administrator ohne eigene Vollmacht wird abgewiesen wie jeder andere. Die
