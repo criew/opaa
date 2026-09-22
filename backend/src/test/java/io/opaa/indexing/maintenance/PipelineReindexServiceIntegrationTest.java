@@ -11,7 +11,9 @@ import io.opaa.indexing.chunk.FullTextChunkStore;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.document.ChecksumService;
 import io.opaa.indexing.document.Document;
+import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.document.DocumentRepository;
+import io.opaa.indexing.document.StoredDocumentSourceAccess;
 import io.opaa.indexing.format.ChunkFormatMetadata;
 import io.opaa.indexing.format.DocumentFormat;
 import io.opaa.indexing.format.DocumentFormatRegistry;
@@ -24,6 +26,7 @@ import io.opaa.indexing.source.IndexingRun;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.UploadProperties;
+import io.opaa.library.UploadStoreUnavailableException;
 import io.opaa.organization.Organization;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OpaaTestDirectory;
@@ -50,8 +53,11 @@ import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentMatchers;
+import org.mockito.Mockito;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
@@ -76,6 +82,15 @@ class PipelineReindexServiceIntegrationTest {
   @Autowired private OwnLibraryFixtures ownLibraryFixtures;
   @Autowired private UploadProperties uploadProperties;
   @Autowired private DocumentFormatRegistry pipelineRegistry;
+  @Autowired private DocumentIngestService documentIngestService;
+  @Autowired private VectorChunkStore vectorChunkStore;
+  @Autowired private StoredDocumentSourceAccess sourceAccess;
+
+  @Value("${opaa.database.schema}")
+  private String schemaName;
+
+  @Value("${spring.ai.vectorstore.pgvector.table-name:vector_store}")
+  private String vectorStoreTableName;
 
   private UUID userId;
   private KnowledgeLibrary library;
@@ -720,6 +735,66 @@ class PipelineReindexServiceIntegrationTest {
                     Organization.DEFAULT_ID, TikaFallbackFormat.ID, TikaFallbackFormat.VERSION, 10)
                 .isEmpty())
         .isTrue();
+  }
+
+  @Test
+  void anUnavailableUploadStoreEndsTheBatchAfterReportingTheFirstDocument() throws IOException {
+    // Two uploaded documents whose originals lie in the managed storage, so the real UPLOAD branch
+    // of the source access runs. A store that does not answer refuses every one of them alike
+    // (ADR-0030, Entscheidung 9): the first is reported like any other failure and the call ends
+    // there instead of waiting for the store once per candidate - the batch answers with what it
+    // has, and the untouched candidates come back in the next call.
+    Document first = uploadedDocumentInManagedStorage("erster-vermerk.txt");
+    seedChunk(first.getId(), uploadLibrary.getId(), "alter chunk A", null, null);
+    Document second = uploadedDocumentInManagedStorage("zweiter-vermerk.txt");
+    seedChunk(second.getId(), uploadLibrary.getId(), "alter chunk B", null, null);
+    StoredDocumentSourceAccess unavailableStore = Mockito.spy(sourceAccess);
+    Mockito.doThrow(new UploadStoreUnavailableException())
+        .when(unavailableStore)
+        .withLocalSourceFile(
+            ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any());
+
+    PipelineReindexResult result =
+        reindexServiceReading(unavailableStore)
+            .reindexBatch(
+                Organization.DEFAULT_ID, TikaFallbackFormat.ID, TikaFallbackFormat.VERSION, 10);
+
+    assertThat(result.skippedDocuments()).isEqualTo(1);
+    assertThat(result.reindexedDocuments()).isZero();
+    Mockito.verify(unavailableStore, Mockito.times(1))
+        .withLocalSourceFile(
+            ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any());
+    // Both keep their chunks - the reported one because it could not be read, the other one
+    // because it was never touched.
+    assertThat(chunkTextsOf(first.getId())).containsExactly("alter chunk A");
+    assertThat(chunkTextsOf(second.getId())).containsExactly("alter chunk B");
+  }
+
+  /** An {@code UPLOAD} document whose original lies where this library's storage area is. */
+  private Document uploadedDocumentInManagedStorage(String fileName) throws IOException {
+    Path managedDirectory =
+        Path.of(uploadProperties.storagePath())
+            .resolve(Organization.DEFAULT_ID.toString())
+            .resolve(uploadLibrary.getId().toString());
+    Files.createDirectories(managedDirectory);
+    Path file = managedDirectory.resolve(UUID.randomUUID() + "-" + fileName);
+    Files.writeString(file, "Ein hochgeladener Vermerk über Verwaltungsgebühren. ".repeat(20));
+    return persistedDocumentPointingAt(
+        fileName, file, DocumentSourceType.UPLOAD, uploadLibrary.getId());
+  }
+
+  /** The production service with one collaborator replaced, without touching the bean itself. */
+  private PipelineReindexService reindexServiceReading(StoredDocumentSourceAccess access) {
+    return new PipelineReindexService(
+        jdbcTemplate,
+        pipelineRegistry,
+        documentRepository,
+        libraryRepository,
+        documentIngestService,
+        vectorChunkStore,
+        access,
+        schemaName,
+        vectorStoreTableName);
   }
 
   @Test

@@ -17,7 +17,8 @@ import java.util.function.Function;
  * advance right now stays in the candidate set on purpose - nothing about it is falsified in the
  * database to hide it - so the loop scans past it with an offset instead of reselecting it forever,
  * and gives up for this call after {@link #MAX_SKIP_SCAN_FACTOR} times the batch size. The next
- * call starts over and reaches further only if earlier candidates became advanceable meanwhile.
+ * call starts over and reaches further only if earlier candidates became advanceable meanwhile. A
+ * unit may also end the call outright by reporting the stop outcome of the overload below.
  *
  * <p>The loop holds no transaction: whether one unit, one batch or the whole run commits together
  * is the caller's decision. Every caller today commits per document, which is what makes an
@@ -50,6 +51,22 @@ public final class DocumentBatchLoop {
       T skipOutcome,
       Selection selection,
       Function<UUID, T> unit) {
+    return run(batchSize, outcomes, skipOutcome, null, selection, unit);
+  }
+
+  /**
+   * With a {@code stopOutcome} ({@code null} for none): an outcome that ends this call the moment
+   * it occurs. It is counted like every other one, but the candidates behind it are left untouched
+   * instead of being scanned past - for a unit that has just learned of a condition every remaining
+   * candidate would run into as well, which would only cost time.
+   */
+  public static <T extends Enum<T>> Map<T, Integer> run(
+      int batchSize,
+      Class<T> outcomes,
+      T skipOutcome,
+      T stopOutcome,
+      Selection selection,
+      Function<UUID, T> unit) {
     Map<T, Integer> counts = new EnumMap<>(outcomes);
     for (T outcome : outcomes.getEnumConstants()) {
       counts.put(outcome, 0);
@@ -74,6 +91,9 @@ public final class DocumentBatchLoop {
         }
         T outcome = unit.apply(documentId);
         counts.merge(outcome, 1, Integer::sum);
+        if (outcome == stopOutcome) {
+          return counts;
+        }
         if (outcome == skipOutcome) {
           skipped++;
         } else {

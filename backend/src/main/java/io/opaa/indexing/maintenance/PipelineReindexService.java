@@ -16,6 +16,7 @@ import io.opaa.indexing.source.attachment.AttachmentAccess;
 import io.opaa.indexing.source.attachment.StandaloneAttachmentAccess;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
+import io.opaa.library.UploadStoreUnavailableException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -193,6 +194,10 @@ public class PipelineReindexService {
    * A source that passes {@link StoredDocumentSourceAccess#withLocalSourceFile} is rewritten under
    * its own id, a remote one marked for its next run, anything else skipped. Deliberately not
    * {@code @Transactional}: one transaction would pin a connection for every embedding call.
+   *
+   * <p>An unavailable upload store ends the call early: that document is reported as skipped like
+   * any other failure, the candidates behind it are left untouched, and what the call had already
+   * done is returned as its ordinary result.
    */
   public PipelineReindexResult reindexBatch(
       UUID organizationId, String pipelineId, int belowVersion, int batchSize) {
@@ -206,13 +211,16 @@ public class PipelineReindexService {
             batchSize,
             Advance.class,
             Advance.SKIPPED,
+            Advance.STORE_UNAVAILABLE,
             (limit, offset) ->
                 selectStaleDocuments(organizationId, pipelineId, belowVersion, limit, offset),
             documentId -> advance(documentId, pipelineId));
     return new PipelineReindexResult(
         counts.get(Advance.REINDEXED),
         counts.get(Advance.MARKED_FOR_NEXT_RUN),
-        counts.get(Advance.SKIPPED),
+        // The document the store failed on is reported like every other failure; only the end of
+        // the call is different.
+        counts.get(Advance.SKIPPED) + counts.get(Advance.STORE_UNAVAILABLE),
         counts.get(Advance.ORPHAN_REMOVED));
   }
 
@@ -220,7 +228,9 @@ public class PipelineReindexService {
     REINDEXED,
     MARKED_FOR_NEXT_RUN,
     ORPHAN_REMOVED,
-    SKIPPED
+    SKIPPED,
+    /** Reported like a skip, but ends the batch: the store, not the document, is the reason. */
+    STORE_UNAVAILABLE
   }
 
   private Advance advance(UUID documentId, String pipelineId) {
@@ -247,15 +257,27 @@ public class PipelineReindexService {
     // counted below - a document selected for its stale lexical index was genuinely repaired.
     boolean hadFullTextGap = !fullTextRowsCurrent(documentId);
     boolean advanced;
-    if (document.getParentDocumentId() != null) {
-      // Re-runs the current pipeline over an attachment re-extracted from its root ancestor, so a
-      // raised sub-pipeline version (e.g. PDF) reaches an attachment inside a Mail without waiting
-      // for the Mail file itself to change.
-      advanced = sourceAccess.withReextractedAttachment(document, file -> reindex(document, file));
-    } else {
-      advanced =
-          sourceAccess.withLocalSourceFile(
-              document, "pipeline re-index", file -> reindex(document, file));
+    try {
+      if (document.getParentDocumentId() != null) {
+        // Re-runs the current pipeline over an attachment re-extracted from its root ancestor, so a
+        // raised sub-pipeline version (e.g. PDF) reaches an attachment inside a Mail without
+        // waiting for the Mail file itself to change.
+        advanced =
+            sourceAccess.withReextractedAttachment(document, file -> reindex(document, file));
+      } else {
+        advanced =
+            sourceAccess.withLocalSourceFile(
+                document, "pipeline re-index", file -> reindex(document, file));
+      }
+    } catch (UploadStoreUnavailableException e) {
+      // The store, not this document: every further candidate stored there would run into the same
+      // wait, so the batch ends here instead of asking once per candidate (ADR-0030,
+      // Entscheidung 9). The document keeps its chunks and is selected again by the next call.
+      log.warn(
+          "Ending the pipeline re-index batch at document {}: the upload store is not available",
+          documentId,
+          e);
+      return Advance.STORE_UNAVAILABLE;
     }
     if (!advanced) {
       return Advance.SKIPPED;

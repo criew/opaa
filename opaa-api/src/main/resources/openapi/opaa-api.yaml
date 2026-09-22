@@ -3111,10 +3111,13 @@ paths:
         an explicit operator decision - nothing triggers this automatically.
 
 
-        A document whose re-index itself fails costs only that candidate and is counted as
-        skipped. Fetching its source file is not part of that: with opaa.upload.store=s3, a store
-        that cannot be reached ends the whole batch with 503 rather than skipping the document.
-        Nothing written so far is lost - the next call re-derives the remaining work.
+        A document that cannot be advanced costs only that candidate and is counted as skipped,
+        fetching its source file included. One condition ends the call early instead: with
+        opaa.upload.store=s3, an upload store that does not answer would make every remaining
+        candidate wait for the same timeout, so that document is counted as skipped and the batch
+        returns 200 with what it has done so far. Nothing written is lost and nothing behind it is
+        touched - the next call re-derives the remaining work and picks those documents up once the
+        store answers again.
       requestBody:
         required: true
         content:
@@ -3132,8 +3135,6 @@ paths:
           $ref: "#/components/responses/ValidationError"
         "403":
           $ref: "#/components/responses/Forbidden"
-        "503":
-          $ref: "#/components/responses/ServiceUnavailable"
 
   /api/v1/admin/indexing/metadata-backfill:
     post:
