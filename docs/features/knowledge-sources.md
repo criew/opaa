@@ -793,8 +793,10 @@ Ohne die Obergrenze könnte ein Bibliothekseigentümer einen konnektorgespeisten
 organisationsweit öffnen. Sie deckelt, wo gesetzt, `visibility`/`listed` und ist deshalb kein
 Randthema. **Issue #797** hat sie entschieden (Maintainer-Festlegung vom 21.09.2026, siehe
 [access-control.md](./access-control.md#dokumentenfluss-konnektoren-gegen-benutzer-uploads)):
-Die Systemverwaltung setzt sie je Bibliothek — ausgeliefert ist jede Bibliothek offen, wirksam erst,
-sobald die Systemverwaltung sie für diese Bibliothek eigens senkt —, und ein nachträgliches Senken
+Die Systemverwaltung setzt sie je Bibliothek — ausgeliefert ist die **Obergrenze** unrestriktiv
+(`ORGANIZATION`/`true`), wirksam wird sie erst, sobald die Systemverwaltung sie für diese Bibliothek
+eigens senkt; die Bibliothek selbst startet bei `PRIVATE` und `listed = false` —, und ein
+nachträgliches Senken
 nimmt eine bereits weitergehende `visibility`/`listed`-Einstellung sofort zurück; erteilte Rechte an
 Personen und Gruppen sowie eine bestehende Fremdzugangsfreigabe bleiben davon unberührt. Die
 Grundannahme, auf der sie ursprünglich beruhte — „die Systemverwaltung speist ein, der Eigentümer

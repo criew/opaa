@@ -130,9 +130,13 @@ einen Schritt. Bibliotheken für Uploads tragen keine Obergrenze: Dort kuratiert
 ohnehin jedes Dokument einzeln.
 
 **Die Obergrenze gilt je Bibliothek und wird nicht automatisch gesetzt.** Neu angelegt ist jede
-Konnektorbibliothek zunächst offen (organisationsweit sichtbar, auffindbar) — die Systemverwaltung
-muss die Obergrenze für sie eigens setzen, damit sie wirkt. Ein Betrieb, der das systematisch
-verhindern will, prüft die Obergrenze deshalb **nach jeder Neuanlage** einer Konnektorbibliothek,
+Konnektorbibliothek zunächst **ungedeckelt**: Die Obergrenze steht auf der weitesten Stufe
+(organisationsweit, auffindbar), und die Systemverwaltung muss sie eigens senken, damit sie wirkt.
+Die Bibliothek selbst startet damit nicht weit offen — sie trägt die Reichweite, die der Anlegende
+wählt, und deren Vorgabe ist die engste (persönlich, nicht auffindbar). Wer die Obergrenze nicht
+senkt, lässt dem Anlegenden also die Wahl bis zur organisationsweiten Stufe. Ein Betrieb, der das
+systematisch verhindern will, prüft die Obergrenze deshalb **nach jeder Neuanlage** einer
+Konnektorbibliothek,
 oder schränkt das Anlegerecht „Konnektorbibliotheken anlegen" auf eine benannte Gruppe ein
 (Abschnitt 9) — dann entscheidet diese Gruppe, wer überhaupt anlegen darf, bevor die Obergrenze
 greifen müsste.
@@ -146,7 +150,7 @@ Katalog-Auffindbarkeit.** Eine bereits weitergehende Verteilungsstufe oder Auffi
 nur für künftige Änderungen gesperrt, sondern **im selben Augenblick auf die neue Obergrenze
 zurückgenommen** — keine Übergangszeit, kein Zustand „noch zu weit, aber geduldet". **Unberührt
 bleiben dabei erteilte Rechte an einzelnen Personen und Gruppen sowie eine bestehende
-Fremdzugangsfreigabe** (Abschnitt „Die Freigabe der Bibliothek" im Kapitel
+Fremdzugangsfreigabe** (Abschnitt „Die Freigabe einer Wissensbibliothek" im Kapitel
 [Fremdzugänge](fremdzugaenge.md)) — beide müssen gesondert geprüft und, falls gewünscht, gesondert
 zurückgenommen werden. Beide Vorgänge stehen im Nachweisprotokoll: das Setzen der Obergrenze selbst
 und, falls ausgelöst, die dadurch bewirkte Rücknahme von Verteilungsstufe oder Auffindbarkeit.
@@ -356,8 +360,8 @@ Vier Eigenschaften gehören dazu:
 - **Das Zuwachssignal.** Jede Freigabe und jede Raummitgliedschaft einer Gruppe hält die Zahl
   aktiver Mitglieder **zum Zeitpunkt der Erteilung** fest. Die Freigabeliste zeigt beide Zahlen —
   „23 bei Erteilung, heute 41". Keine Nachricht, kein Vorgang: eine Zeile für die Person, die für
-  die Freigabe geradesteht. Für beide Zahlen gilt die Unterdrückung kleiner Gruppen, und mit der
-  Freigabe verschwindet die Zahl.
+  die Freigabe geradesteht. Für beide Zahlen gilt die Unterdrückung kleiner Gruppen, und mit dem
+  **Ende** der Freigabe verschwindet die Zahl — sie liegt am wirksamen Recht und überdauert es nie.
 - **Geschützte Gruppen sind über die Suche nicht auffindbar.** In der Auswahl erscheinen sie nur bei
   Eingabe ihrer **vollständigen** Bezeichnung; wer ihre Kennung eingibt, erhält sie zur Bestätigung
   **ohne** Namen. In fremden Listen — Mitgliederliste eines Raums, Freigabeliste einer Bibliothek,
@@ -536,7 +540,9 @@ die Übertragung.
 | Verantwortung für interne Gruppen | — | — | ja |
 
 **Ein Raum gehört immer einer natürlichen Person.** Deshalb wechselt sein Eigentum nur zwischen
-Personen; eine Gruppe besitzt keinen Raum und wird auch keiner. Übernimmt eine Person einen Raum,
+Personen; eine Gruppe besitzt keinen Raum und wird auch keiner. **Der persönliche Raum ist von der
+Übertragung ausgenommen** — über sein Eigentum entscheidet niemand, er erscheint auch in keiner
+Vorschau. Übernimmt eine Person einen Raum,
 wird sie dabei — falls sie es noch nicht ist — als Administratorin aufgenommen: Eine Verantwortliche,
 die in der Mitgliederliste nicht auftaucht, wäre genau der Zustand, den die Übertragung beenden
 soll.
@@ -611,9 +617,12 @@ Berechtigung herabstufen oder entziehen, eine Befristung vorziehen, eine Freigab
 zurücknehmen, ein Raummitglied entfernen, das Objekt umbenennen, einschränken, lesen, durchsuchen
 und indexieren.
 
-**Am Objekt steht Zustand und Zuständigkeit** — „Nachfolge offen — zuständig: die Systemverwaltung".
-Bewusst ohne Datum, ohne den bisherigen Eigentümer und ohne Grund. **Suchtreffer tragen den Hinweis
-nicht:** Der Zustand betrifft die Zuständigkeit, nicht die Richtigkeit des Inhalts.
+**Jedes betroffene Objekt führt Zustand und Zuständigkeit mit** — „Nachfolge offen — zuständig: die
+Systemverwaltung" —, und zwar für jeden, der das Objekt sehen darf: bewusst ohne Datum, ohne den
+bisherigen Eigentümer und ohne Grund. Das Datum steht allein in der Betriebsliste. **Suchtreffer und
+Quellenverweise tragen den Hinweis nicht:** Der Zustand betrifft die Zuständigkeit, nicht die
+Richtigkeit des Inhalts, und eine Kennzeichnung dort machte jede Antwort zu einer
+Zustandsauswertung.
 
 **Die Betriebsliste der Systemverwaltung hat drei Reiter:**
 
@@ -636,12 +645,16 @@ Vorgang beendet oder einen Sichtungsvermerk gesetzt hat.
 **Der Ausgang ist die Übertragung** (Abschnitt 13.2) mit dem Umfang „Eigentum und Verantwortung".
 Endet der Zustand damit wirklich, wird der Vorgang geschlossen und die handelnde Person am Vorgang
 vermerkt; geht das Objekt an jemanden, der ebenfalls nicht handeln kann, bleibt der Vorgang offen —
-sonst begänne sein Alter von vorn. **Eine Oberfläche dafür entsteht mit Issue #1821**; heute führt
-die Systemverwaltung Liste und Übernahme über die Schnittstelle.
+sonst begänne sein Alter von vorn.
 
-**Vorgänge und Sichtungsvermerke sind Protokoll**, kein Rechtenachweis: Abgeschlossene Vorgänge
-werden samt ihren Vermerken nach Ablauf der Protokollfrist automatisch gelöscht (dieselbe Frist wie
-das Protokoll, `OPAA_AUDIT_RETENTION_MONTHS`); ein offener Vorgang wird nie gelöscht.
+**Die Oberfläche der Betriebsliste entsteht mit Issue #1821.** Solange sie nicht ausgeliefert ist,
+führt die Systemverwaltung Liste, Sichtungsvermerk und Übernahme über die Schnittstelle; der Zustand
+selbst wirkt unabhängig davon, und seine Kennzeichnung am Objekt gehört zu derselben Oberfläche.
+
+**Vorgänge und Sichtungsvermerke sind Protokoll**, kein Rechtenachweis: Ein monatlicher Lauf löscht
+abgeschlossene Vorgänge samt ihren Vermerken, sobald ihr Ende länger zurückliegt als die
+Aufbewahrungsfrist des Nachweisprotokolls — dieselbe Frist, eine Verwaltungseinstellung und keine
+Umgebungsvariable (Abschnitt 15). Ein offener Vorgang wird nie gelöscht, gleich wie alt er ist.
 
 ## 14. Diagnose im Gruppenkontext
 
@@ -662,17 +675,18 @@ Kapitel [Suche](suche.md), Abschnitt 8.
 
 Vier der Größen sind Umgebungsvariablen und stehen mit ihrer vollständigen Beschreibung in der
 Variablenliste des Kapitels [Deployment](deployment.md); das Abgleichintervall ist eine Einstellung
-der Anbieterzeile, die Aufbewahrungshöchstdauer eine Verwaltungseinstellung, und die beiden letzten
-Werte sind fest eingebaut.
+der Anbieterzeile, zwei sind Verwaltungseinstellungen, und die beiden letzten Werte sind fest
+eingebaut.
 
 | Größe | Vorgabe | Grenzen | Wirkung |
 |---|---|---|---|
 | `OPAA_MINIMUM_GROUP_SIZE` | **5** | **erzwungene Untergrenze 5**, nur nach oben änderbar | Mindestgruppengröße: ab wann eine Gruppengröße als Zahl erscheint statt als „kleine Gruppe" (Abschnitt 8), und wie viele aktive Konten ein Rechteprofil mit Raumkontext braucht (Abschnitt 14). Ein Start mit einem kleineren Wert bricht ab — abschalten kann den Schutz niemand |
 | Abgleichintervall je Anbieter | **360 Minuten** (6 Stunden) | 5 Minuten bis 1 Woche | Wie oft der Verzeichnisabgleich eines Anbieters fällig ist; Einstellung der Anbieterzeile, nicht der Umgebung |
 | `OPAA_DIRECTORY_SYNC_CHANGE_THRESHOLD_FRACTION` | **0,3** (30 %) | größer als 0, höchstens 1 | Plausibilitätsschwelle: Ein Lauf, der mehr als diesen Anteil der Mitgliedschaften entziehen oder Konten sperren würde, schreibt nichts und legt seinen Plan zur Bestätigung vor |
-| `OPAA_SUCCESSION_AGING_THRESHOLD_MONTHS` | **12 Monate** | frei | Ab welchem Alter ein Eintrag der Betriebsliste hervorgehoben wird — und wie lange ein Sichtungsvermerk die Hervorhebung aufhebt. Hebt hervor, löst nichts aus |
+| `OPAA_SUCCESSION_AGING_THRESHOLD_MONTHS` | **12 Monate** | frei nach oben; ein Wert **≤ 0 fällt still auf 12 zurück** (kein Startabbruch, anders als bei der Mindestgruppengröße) | Ab welchem Alter ein Eintrag der Betriebsliste hervorgehoben wird — und wie lange ein Sichtungsvermerk die Hervorhebung aufhebt. Hebt hervor, löst nichts aus |
 | `OPAA_SUCCESSION_DETECTION_CRON` | **stündlich** (`0 5 * * * *`) | Spring-Cron, sechs Felder | Wann der Feststellungslauf hinsieht. Er schreibt nur Erstfeststellung und Ende eines Vorgangs; der Zustand selbst ist abgeleitet und gilt auch ohne ihn — ohne den Lauf fehlt den Einträgen nur das Alter |
-| Aufbewahrungshöchstdauer der Rechtehistorie | **36 Monate** | 12 bis 120 Monate | Wie lange ein beendeter Zeitraum nach seinem Ende liegen bleibt; eine Verwaltungseinstellung, keine Umgebungsvariable ([Suche](suche.md), Abschnitt 8.4) |
+| Aufbewahrungshöchstdauer der Rechtehistorie | **36 Monate** | 12 bis 120 Monate | Wie lange ein beendeter Zeitraum nach seinem Ende liegen bleibt; eine Verwaltungseinstellung, keine Umgebungsvariable ([Suche](suche.md), Abschnitt 8.4). Jede Änderung ist ein Protokollereignis |
+| Aufbewahrungsfrist des Nachweisprotokolls | **36 Monate** | 12 bis 120 Monate | Verwaltungseinstellung; ihr folgen auch die abgeschlossenen Nachfolgevorgänge samt Sichtungsvermerken (Abschnitt 13.3) |
 | Obergrenze einer Übertragung | **500 Zeilen** | fest | Mehr bewegt eine Übertragung nicht; darüber wird sie abgelehnt und in mehreren Schritten gefahren (Abschnitt 13.2) |
 | Gültigkeit einer Übertragungsvorschau | **30 Minuten** | fest | Danach wird gegen einen frischen Stand neu gerechnet, statt eine alte Vorschau anzuwenden |
 
@@ -683,9 +697,14 @@ Drei Dinge gehören vor die Inbetriebnahme, nicht danach:
 - **Die Auskunft über die Datenerhebung** — einschließlich der Bestände, die dieses Kapitel
   beschreibt: Rechtehistorie, Kontozustandshistorie, Nachfolgevorgänge und Sichtungsvermerke. Die
   Personalvertretung erhält einen **Testzugang**, um die Zusagen dieses Kapitels nachzuvollziehen.
-- **Änderungen an Mindestgruppengröße, Abgleichintervall, Plausibilitätsschwelle und
-  Aufbewahrungsfristen sind Governance-Ereignisse**: Sie stehen im Nachweisprotokoll und sind der
-  Personalvertretung zugänglich.
+- **Änderungen an den vier Größen, die den Schutz tragen, sind Governance-Ereignisse** — mit einem
+  Unterschied im Nachweis, den dieses Kapitel ausspricht: Die **Aufbewahrungsfristen** und das
+  **Abgleichintervall eines Anbieters** sind Verwaltungseinstellungen und stehen mit jeder Änderung
+  im Nachweisprotokoll, für die Personalvertretung nachlesbar. **Mindestgruppengröße und
+  Plausibilitätsschwelle** sind dagegen Umgebungsvariablen: Sie werden beim Start gelesen, eine
+  Änderung wirkt erst mit dem Neustart und **erzeugt keinen Protokolleintrag**. Für sie trägt der
+  organisatorische Weg — die Änderung wird wie ein Governance-Ereignis behandelt und dokumentiert,
+  nachweisbar ist sie nur über die Konfiguration der Installation.
 - **Der ausgelieferte Zustand der Anlegerechte wird bewusst bestätigt oder geändert** (Abschnitt 9).
   Die Klartextzeile unter Administration → Anlegerechte ist dafür gedacht.
 
