@@ -247,15 +247,28 @@ public class PipelineReindexService {
     // counted below - a document selected for its stale lexical index was genuinely repaired.
     boolean hadFullTextGap = !fullTextRowsCurrent(documentId);
     boolean advanced;
-    if (document.getParentDocumentId() != null) {
-      // Re-runs the current pipeline over an attachment re-extracted from its root ancestor, so a
-      // raised sub-pipeline version (e.g. PDF) reaches an attachment inside a Mail without waiting
-      // for the Mail file itself to change.
-      advanced = sourceAccess.withReextractedAttachment(document, file -> reindex(document, file));
-    } else {
-      advanced =
-          sourceAccess.withLocalSourceFile(
-              document, "pipeline re-index", file -> reindex(document, file));
+    try {
+      if (document.getParentDocumentId() != null) {
+        // Re-runs the current pipeline over an attachment re-extracted from its root ancestor, so a
+        // raised sub-pipeline version (e.g. PDF) reaches an attachment inside a Mail without
+        // waiting for the Mail file itself to change.
+        advanced =
+            sourceAccess.withReextractedAttachment(document, file -> reindex(document, file));
+      } else {
+        advanced =
+            sourceAccess.withLocalSourceFile(
+                document, "pipeline re-index", file -> reindex(document, file));
+      }
+    } catch (RuntimeException e) {
+      // Fetching the source file is part of this candidate, not of the batch: an upload storage on
+      // an object store can refuse it on its own (UploadStoreUnavailableException, ADR-0030,
+      // Entscheidung 9), and the per-document resilience of this class covers that failure like
+      // every other one - the document keeps its chunks and the batch goes on.
+      log.warn(
+          "Skipping document {} in the pipeline re-index: its source file could not be read",
+          documentId,
+          e);
+      return Advance.SKIPPED;
     }
     if (!advanced) {
       return Advance.SKIPPED;
