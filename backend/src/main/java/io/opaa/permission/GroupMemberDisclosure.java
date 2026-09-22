@@ -5,21 +5,23 @@ import java.util.Objects;
 import java.util.UUID;
 
 /**
- * One group's membership as a grant giver may read it (#1880, ADR-0036 Entscheidung 9): the active
- * accounts of one page, and the total they are a window into.
+ * One group's membership as a grant giver may read it - the answer of {@link
+ * GroupMemberDisclosureDirectory}, whose Javadoc carries the rule behind every withheld field
+ * (#1880).
  *
- * @param name null for a protected group - a name handed out here would undo the namelessness the
- *     grant list and the space member list keep.
- * @param activeMemberCount null for a protected group, where the size is itself the disclosure.
- * @param members the requested page, ordered by name so paging is stable; empty for a protected
- *     group.
- * @param responsible whom to ask about a protected group instead of reading its members; empty for
- *     every unprotected group, where the list is the answer.
+ * @param name null for a protected group.
+ * @param activeMemberCount null for a protected group and for a small one.
+ * @param members the requested page, ordered by name so paging is stable; empty wherever the rule
+ *     withholds the list.
+ * @param smallGroup true below the Mindestgruppengröße - then the list and both figures are gone,
+ *     and this is what the interface says instead.
+ * @param responsible whom to ask about a protected group; empty for every other group.
  */
 public record GroupMemberDisclosure(
     UUID groupId,
     String name,
     boolean protectedGroup,
+    boolean smallGroup,
     Integer activeMemberCount,
     List<DisclosedGroupMember> members,
     List<String> responsible) {

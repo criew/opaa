@@ -34,6 +34,7 @@ import type {
   GroupMemberDisclosureResponse,
   GroupMemberResponse,
   GroupResponse,
+  GroupContactResponse,
   GroupStewardResponse,
   LibraryAccessDerivationResponse,
   SelectableGroupResponse,
@@ -820,10 +821,9 @@ export async function resolveSelectableGroup(groupId: string): Promise<Selectabl
 }
 
 /**
- * Die Mitglieder einer Gruppe, der man an dieser Bibliothek ein Recht eingeräumt hat (#1880,
- * ADR-0036 Entscheidung 9). Der Objektbezug ist Pflicht: Das Leserecht auf die Namen kommt von der
- * Bibliothek. Eine Gruppe, die hier kein Recht mehr hält, nicht zur Verwendung freigegeben oder
- * geschützt ist, antwortet „nicht gefunden".
+ * Die Mitglieder einer Gruppe, der man an dieser Bibliothek ein Recht eingeräumt hat (#1880). Was
+ * die Antwort zurückhält und warum, steht am Schema `GroupMemberDisclosureResponse`; was die Regel
+ * verweigert, antwortet „nicht gefunden".
  */
 export async function getGrantedGroupMembers(
   libraryId: string,
@@ -844,7 +844,7 @@ export async function getGrantedGroupMembers(
 
 /**
  * Dasselbe für eine Gruppe, die Mitglied dieses Raums ist (#1880) — hinter derselben Schwelle wie
- * die Mitgliederliste selbst: Administrator, Eigentümer, Systemverwaltung.
+ * die Mitgliederliste selbst.
  */
 export async function getSpaceGroupMembers(
   spaceId: string,
@@ -1003,6 +1003,38 @@ export async function appointGroupSteward(
 export async function dismissGroupSteward(groupId: string, userId: string): Promise<void> {
   try {
     await client.delete(`/v1/groups/${groupId}/stewards/${userId}`)
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function getMyContactedGroups(): Promise<GroupListResponse[]> {
+  try {
+    const { data } = await client.get<GroupListResponse[]>('/v1/me/contacted-groups')
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function appointGroupContact(
+  groupId: string,
+  userId: string,
+): Promise<GroupContactResponse> {
+  try {
+    const { data } = await client.post<GroupContactResponse>(
+      `/v1/admin/groups/${groupId}/contacts`,
+      { userId },
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function dismissGroupContact(groupId: string, userId: string): Promise<void> {
+  try {
+    await client.delete(`/v1/admin/groups/${groupId}/contacts/${userId}`)
   } catch (err) {
     normalizeError(err)
   }

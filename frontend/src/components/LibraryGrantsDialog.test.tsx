@@ -33,6 +33,7 @@ const {
     groupId: 'group-referat-50',
     name: 'Referat 50',
     protectedGroup: false,
+    smallGroup: false,
     activeMemberCount: 1,
     members: [{ userId: 'user-anna', displayName: 'Anna Bauer' }],
     responsible: [] as string[],
@@ -712,7 +713,7 @@ describe('LibraryGrantsDialog', () => {
     ])
     renderWithProviders(<LibraryGrantsDialog open library={library} onClose={vi.fn()} />)
     const trigger = await screen.findByRole('button', {
-      name: 'Mitglieder von Referat 50 anzeigen',
+      name: 'Mitglieder der Gruppe „Referat 50“ anzeigen',
     })
     expect(mockGetGrantedGroupMembers).not.toHaveBeenCalled()
 

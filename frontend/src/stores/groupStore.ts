@@ -10,6 +10,8 @@ import {
   getGroups,
   getMyStewardedGroups,
   removeGroupMember,
+  appointGroupContact,
+  dismissGroupContact,
   setGroupProtection,
   setGroupRelease,
   updateGroup,
@@ -41,6 +43,8 @@ interface GroupState {
   dismissSteward: (groupId: string, userId: string) => Promise<void>
   changeRelease: (groupId: string, releasedForUse: boolean) => Promise<void>
   changeProtection: (groupId: string, protectedGroup: boolean) => Promise<void>
+  appointContact: (groupId: string, userId: string) => Promise<void>
+  dismissContact: (groupId: string, userId: string) => Promise<void>
 }
 
 function sortGroups(list: GroupListResponse[]): GroupListResponse[] {
@@ -149,6 +153,16 @@ export const useGroupStore = create<GroupState>((set, get) => ({
 
   changeProtection: async (groupId, protectedGroup) => {
     await setGroupProtection(groupId, protectedGroup)
+    await Promise.all([get().loadGroups(), get().loadGroupDetails(groupId)])
+  },
+
+  appointContact: async (groupId, userId) => {
+    await appointGroupContact(groupId, userId)
+    await Promise.all([get().loadGroups(), get().loadGroupDetails(groupId)])
+  },
+
+  dismissContact: async (groupId, userId) => {
+    await dismissGroupContact(groupId, userId)
     await Promise.all([get().loadGroups(), get().loadGroupDetails(groupId)])
   },
 }))

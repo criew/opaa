@@ -79,6 +79,7 @@ import {
 } from './fixtures'
 import type { MockLibraryFolder } from './fixtures'
 import type {
+  GroupContactResponse,
   OidcProviderOrderRequest,
   OidcProviderRequest,
   OidcProviderResponse,
@@ -1337,6 +1338,55 @@ export const handlers = [
         group.stewards.some((steward) => steward.userId === 'mock-user-id'),
       ),
     )
+  }),
+
+  http.get('/api/v1/me/contacted-groups', () => {
+    return HttpResponse.json(
+      mockGroups.filter((group) =>
+        (group.contacts ?? []).some((contact) => contact.userId === 'mock-user-id'),
+      ),
+    )
+  }),
+
+  // #1875: Benennen und Entlassen einer Ansprechstelle - der Verwaltungsakt aendert an der Gruppe
+  // nichts, deshalb fasst der Handler nur die contacts-Liste an.
+  http.post('/api/v1/admin/groups/:groupId/contacts', async ({ params, request }) => {
+    const listEntry = mockGroups.find((group) => group.id === String(params.groupId))
+    const detail = mockGroupDetails[String(params.groupId)]
+    if (!listEntry) {
+      return new HttpResponse(null, { status: 404 })
+    }
+    const body = (await request.json()) as { userId: string }
+    if (!detail?.members.some((member) => member.userId === body.userId)) {
+      return HttpResponse.json(
+        { error: 'Nur ein Mitglied dieser Gruppe kann ihre Ansprechstelle sein' },
+        { status: 400 },
+      )
+    }
+    const appointed = {
+      userId: body.userId,
+      displayName:
+        detail.members.find((member) => member.userId === body.userId)?.displayName ?? null,
+      appointedAt: new Date().toISOString(),
+    }
+    listEntry.contacts = [...(listEntry.contacts ?? []), appointed]
+    detail.contacts = [...(detail.contacts ?? []), appointed]
+    return HttpResponse.json(appointed, { status: 201 })
+  }),
+
+  http.delete('/api/v1/admin/groups/:groupId/contacts/:userId', ({ params }) => {
+    const listEntry = mockGroups.find((group) => group.id === String(params.groupId))
+    const detail = mockGroupDetails[String(params.groupId)]
+    if (!listEntry) {
+      return new HttpResponse(null, { status: 404 })
+    }
+    const remaining = (contacts: GroupContactResponse[] | undefined) =>
+      (contacts ?? []).filter((contact) => contact.userId !== String(params.userId))
+    listEntry.contacts = remaining(listEntry.contacts)
+    if (detail) {
+      detail.contacts = remaining(detail.contacts)
+    }
+    return new HttpResponse(null, { status: 204 })
   }),
 
   http.get('/api/v1/groups/:groupId/stewards', ({ params }) => {

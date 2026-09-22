@@ -3,7 +3,9 @@ package io.opaa.auth;
 import io.opaa.api.types.SystemRole;
 import java.time.Instant;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Pageable;
@@ -22,6 +24,21 @@ public interface UserRepository extends JpaRepository<User, UUID> {
   int TOKEN_ROLE_CHANGE_LOCK_NAMESPACE = 203;
 
   Optional<User> findBySubjectAndIssuer(String subject, String issuer);
+
+  /**
+   * How the given accounts are named to a human: the display name, the mail address where an
+   * account carries none (a token without a name claim leaves it unset). An id with no account is
+   * absent from the result rather than mapped to itself - the one encoding of this fallback, which
+   * four callers had each written out before (#1882 review).
+   */
+  default Map<UUID, String> displayNamesById(Collection<UUID> userIds) {
+    Map<UUID, String> byId = new HashMap<>();
+    for (User user : findAllById(userIds)) {
+      byId.put(
+          user.getId(), user.getDisplayName() != null ? user.getDisplayName() : user.getEmail());
+    }
+    return byId;
+  }
 
   /**
    * The local sign-in's lookup (ADR-0033, Entscheidung 1): the address compared without regard to
@@ -153,6 +170,8 @@ public interface UserRepository extends JpaRepository<User, UUID> {
               + "   AS capability_history,"
               + " (SELECT count(*) FROM group_stewards WHERE user_id = :id"
               + "   OR appointed_by_user_id = :id) AS group_stewardships,"
+              + " (SELECT count(*) FROM group_contacts WHERE user_id = :id"
+              + "   OR appointed_by_user_id = :id) AS group_contacts,"
               + " (SELECT count(*) FROM space_membership_history WHERE subject_user_id = :id)"
               + "   AS space_membership_history,"
               + " (SELECT count(*) FROM asset_ownership_history WHERE owner_user_id = :id)"
@@ -185,6 +204,8 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     long getCapabilityHistory();
 
     long getGroupStewardships();
+
+    long getGroupContacts();
 
     long getSpaceMembershipHistory();
 

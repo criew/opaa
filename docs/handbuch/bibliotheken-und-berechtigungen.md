@@ -331,8 +331,32 @@ Nachweisprotokoll — mit der Zahl der Mitglieder, ohne die Namen. Verantwortlic
 ihrer eigenen Gruppe keinen Eintrag.
 
 **Gruppen aus dem Verzeichnis oder dem Anmeldetoken lassen sich hier nicht bearbeiten.** Sie haben
-keine Verantwortlichen, sondern Ansprechstellen, die die Systemverwaltung benennt; Ansprechstellen
-und die Oberfläche dafür entstehen mit Issue #1875.
+keine Verantwortlichen, sondern **Ansprechstellen**.
+
+### 7.1 Ansprechstellen an Anbietergruppen
+
+Eine Anbietergruppe wird beim Anbieter gepflegt — es gibt hier niemanden, der ihr Schutzkennzeichen
+setzen könnte. Deshalb benennt die **Systemverwaltung Ansprechstellen**: eine oder mehrere Personen,
+die **Mitglied der Gruppe** sind. In der Gruppenverwaltung steht dafür an jeder Anbietergruppe der
+Abschnitt „Ansprechstelle"; zur Auswahl stehen dort genau die Mitglieder dieser Gruppe.
+
+**Die Benennung ist ein Verwaltungsakt und kein Pflegerecht.** Sie ändert an der Gruppe nichts, gibt
+keine Möglichkeit, Namen oder Mitglieder zu ändern, und berechtigt zu genau einer Handlung: das
+**Schutzkennzeichen** dieser Gruppe zu setzen und zu lösen. Die Systemverwaltung kann das Kennzeichen
+an einer Anbietergruppe **nicht** setzen und nicht lösen — der Versuch wird mit einer Begründung
+abgelehnt, so wie bei einer internen Gruppe, deren Kennzeichen nur die Verantwortlichen bedienen. Wer
+Ansprechstelle ist, findet seine Anbietergruppen unter „Meine Gruppen" und bedient das Kennzeichen
+dort; mehr gibt es dort nicht zu tun.
+
+**Die Benennung endet mit ihrer Grundlage.** Verlässt die Person die Gruppe — im Verzeichnisabgleich
+oder beim nächsten Anmeldetoken —, endet sie von selbst, mit einem Eintrag im Nachweisprotokoll und
+ohne handelnde Person. Wird ihr Konto gesperrt, bleibt die Benennung stehen und zählt nicht mehr:
+Eine **geschützte** Anbietergruppe ohne handlungsfähige Ansprechstelle erscheint dann in der
+Betriebsliste unter „Offene Nachfolgen" (Abschnitt 13.3), denn ihr Kennzeichen kann niemand mehr
+lösen. Eine ungeschützte Anbietergruppe braucht keine Ansprechstelle und steht dort nicht.
+
+Benennung und Entlassung stehen im **Nachweisprotokoll**; eine Rechtehistorie führen sie nicht — die
+Benennung trägt kein Leserecht, genau wie die Verantwortlichkeit an einer internen Gruppe.
 
 ## 8. Wer welche Gruppe sieht — und wie groß sie ist
 
@@ -345,7 +369,7 @@ eingibt.
 |---|---|---|---|
 | **Verantwortliche** einer internen Gruppe | ja | ja | ja |
 | **Systemverwaltung** | ja | ja | ja — **der Abruf ist ein Nachweiseintrag** |
-| **Wer ein Recht erteilt** (Verwalter einer Bibliothek, Administrator eines Raums) | ja, bei internen Gruppen nur nach Freigabe zur Verwendung | Zahl **aktiver Konten**, unterhalb der Mindestgruppengröße „kleine Gruppe" statt einer Zahl | ja, solange die Gruppe an **seinem** Objekt ein Recht hält — bei geschützten Gruppen die Ansprechstelle statt der Liste |
+| **Wer ein Recht erteilt** (Verwalter einer Bibliothek, Administrator eines Raums) | ja, bei internen Gruppen nur nach Freigabe zur Verwendung | Zahl **aktiver Konten**, unterhalb der Mindestgruppengröße „kleine Gruppe" statt einer Zahl | ja, solange die Gruppe an **seinem** Objekt ein Recht hält — **nicht** unterhalb der Mindestgruppengröße und **nicht** bei geschützten Gruppen; dort tritt an ihre Stelle, wen man fragen kann |
 | **Mitglied** der Gruppe | seine eigenen Gruppen | ja | nein |
 | **Alle übrigen** | nichts | — | — |
 
@@ -372,7 +396,7 @@ Vier Eigenschaften gehören dazu:
 **Wer ein Recht gibt, sieht, an wen.** An der Zeile einer Gruppe — in der Freigabeliste einer
 Bibliothek und in der Mitgliederliste eines Raums — steht „Mitglieder anzeigen". Die Liste wird
 **erst auf ausdrücklichen Wunsch** geladen, zeigt die **aktiven Konten** mit Namen und sagt dazu,
-wie viele es insgesamt sind; bei langen Listen wird seitenweise nachgeladen. Vier Grenzen gelten:
+wie viele es insgesamt sind; bei langen Listen wird seitenweise nachgeladen. Fünf Grenzen gelten:
 
 - **Nur am eigenen Objekt, und nur solange die Gruppe dort ein Recht hält.** Wer die Freigabe
   entzieht oder die Mitgliedschaft im Raum beendet, sieht die Mitglieder nicht mehr; eine
@@ -382,14 +406,18 @@ wie viele es insgesamt sind; bei langen Listen wird seitenweise nachgeladen. Vie
   die Verantwortlichen die Freigabe zurück, endet auch diese Auskunft.
 - **Die Vorgabe ist „nicht freigegeben".**
 - **Bei einer geschützten Gruppe gibt es keine Liste**, keinen Namen und keine Größe: An ihre Stelle
-  tritt die **Ansprechstelle** — bei internen Gruppen die Verantwortlichen, bei Anbietergruppen die
-  von der Systemverwaltung benannten Ansprechstellen (Issue #1875).
+  tritt, **wen man fragen kann** — die Verantwortlichen einer internen Gruppe, die
+  **Ansprechstellen** einer Anbietergruppe (Abschnitt 7.1).
+- **Unterhalb der Mindestgruppengröße gibt es keine Liste** und keine Zahl, sondern „kleine Gruppe"
+  — dieselbe Unterdrückung wie beim Zuwachssignal derselben Zeile. Eine Gruppe von vier ist in einem
+  Referat eine Person mit Namen.
 
-**Dieser Abruf steht nicht im Nachweisprotokoll.** Protokolliert wird der Abruf durch die
-**Systemverwaltung** (Abschnitt 7) — sie sieht Gruppen, mit denen sie nichts zu tun hat. Wer die
-Gruppe an seinem eigenen Objekt berechtigt hat, liest, wen er selbst hereingeholt hat; wer das war
-und wann, steht ohnehin an der Freigabe.
-
+**Der Abruf durch die Systemverwaltung steht im Nachweisprotokoll, auch hier.** Wer über seine
+Systemrolle an die Liste kommt — und eine Systemrolle trägt an jeder Bibliothek und in jedem Raum —,
+hinterlässt denselben Eintrag wie beim Abruf über die Gruppenverwaltung (Abschnitt 7), mit der Zahl
+der Mitglieder und ohne die Namen. Wer die Gruppe an seinem eigenen Objekt berechtigt hat und keine
+Systemrolle trägt, erzeugt keinen Eintrag: Er liest, wen er selbst hereingeholt hat; wer das war und
+wann, steht ohnehin an der Freigabe.
 ## 9. Anlegerechte
 
 **Anlegerechte** entscheiden installationsweit, wer etwas anlegen darf. Sie gelten für alle Konten,
@@ -746,12 +774,8 @@ Abschnitt „Vor dem Update auf die Gruppenherkunft".
 - **Keine Gruppe als Verantwortliche einer Gruppe** und keine Gruppe als Raumeigentümerin.
 - **Keine freien Rollen.** Die vier Bibliotheks- und die drei Raumrollen sind fest; wer ein Bündel
   braucht, nimmt eine Gruppe.
-- **Keine Ansprechstellen an Anbietergruppen** — sie entstehen mit Issue #1875 (Abschnitte 7 und 8).
-  Bis dahin bleibt die Auskunft zu einer geschützten **Anbietergruppe** ohne benannte Stelle; bei
-  einer geschützten internen Gruppe nennt sie ihre Verantwortlichen.
 - **Keine Mitgliederliste ohne Objekt.** Wer wissen will, wer in einer Gruppe ist, fragt an einem
-  Objekt, an dem er selbst das Recht vergibt (Abschnitt 8), oder verantwortet die Gruppe.
-- **Keinen Personen-Einstieg in die Stichtagsauskunft** (Abschnitt 12) und **keine Vorschau
+  Objekt, an dem er selbst das Recht vergibt (Abschnitt 8), oder verantwortet die Gruppe.- **Keinen Personen-Einstieg in die Stichtagsauskunft** (Abschnitt 12) und **keine Vorschau
   „alles, was diese Person darf"** (Abschnitt 13.2).
 - **Keine Historie der Systemrollen.** Was mit einer Systemrolle geschah, steht im
   Nachweisprotokoll und unterliegt dessen Frist.

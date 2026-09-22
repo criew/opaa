@@ -38,7 +38,6 @@ import io.opaa.permission.PermissionSubject;
 import io.opaa.permission.SuccessionFinding;
 import io.opaa.permission.SuccessionReachGuard;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -322,20 +321,12 @@ public class SpaceService {
   }
 
   /**
-   * The members of a group that is a member of this space - "wer ein Recht gibt, sieht, an wen"
-   * (#1880, ADR-0036 Entscheidung 9), behind the same bar as {@link #listMembers}. The object is
-   * part of the question: the right to read these names comes from the space, so there is no
-   * object-free variant of it.
-   *
-   * <p>Limit (a) of the ADR's four is enforced here - only <b>while</b> the group is a member of
-   * this space. Limits (b) to (d) belong to the group and are answered by {@link
-   * GroupMemberDisclosureDirectory}. A group that fails any of them gets the answer an unknown
-   * group gets, {@code 404}.
-   *
-   * <p>No audit event, unlike the {@code SYSTEM_ADMIN} retrieval of {@code
-   * GroupService#listMembers} (#1821): the ADR records that one alone, and this caller admitted the
-   * group here themselves.
+   * The members of a group that is a member of this space, under the rule of {@link
+   * GroupMemberDisclosureDirectory} (#1880). This method carries what is its own: the bar of {@link
+   * #listMembers} and limit (a) - only while the group is a member here. Write-transactional
+   * because a retrieval carried by the system role writes an audit event.
    */
+  @Transactional
   public GroupMemberDisclosure listGroupMembers(
       UUID spaceId, UUID groupId, int offset, int limit, CurrentUser caller) {
     Space space = loadSpace(spaceId, caller);
@@ -350,7 +341,7 @@ public class SpaceService {
       throw new NotFoundException("Gruppe nicht gefunden");
     }
     return disclosureDirectory
-        .disclose(groupId, space.getOrganizationId(), offset, limit)
+        .disclose(groupId, space.getOrganizationId(), caller, offset, limit)
         .orElseThrow(() -> new NotFoundException("Gruppe nicht gefunden"));
   }
 
@@ -1031,12 +1022,7 @@ public class SpaceService {
   }
 
   private Map<UUID, String> resolveDisplayNames(List<UUID> userIds) {
-    Map<UUID, String> result = new HashMap<>();
-    for (User user : userRepository.findAllById(userIds)) {
-      result.put(
-          user.getId(), user.getDisplayName() != null ? user.getDisplayName() : user.getEmail());
-    }
-    return result;
+    return userRepository.displayNamesById(userIds);
   }
 
   private void appendInitialMemberships(

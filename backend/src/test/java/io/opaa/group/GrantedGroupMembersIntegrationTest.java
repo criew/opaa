@@ -6,13 +6,16 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.DocumentSourceType;
+import io.opaa.api.types.GroupKind;
 import io.opaa.api.types.LibraryOwnerType;
 import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.api.types.SpaceRole;
 import io.opaa.api.types.SpaceVisibility;
+import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.auth.oidc.OidcProviderRepository;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.NotFoundException;
 import io.opaa.library.AssetGrantService;
@@ -28,6 +31,8 @@ import io.opaa.space.Space;
 import io.opaa.space.SpaceCreation;
 import io.opaa.space.SpaceService;
 import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.OwnOrganizationFixtures;
+import io.opaa.test.ProviderFixtures;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -42,9 +47,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 /**
  * "Wer ein Recht gibt, sieht, an wen" (#1880, ADR-0036 Entscheidung 9) against the real schema, on
  * both objects that can carry a group: the grant on a library and the membership in a space. Every
- * one of the ADR's four limits is exercised here - the right held at the object (a), the release
- * for use (b) with "not released" as the delivered default (c), and the protected group (d), where
- * the answer is the people to ask instead of the members.
+ * limit of {@code GroupMemberDisclosureDirectory}'s rule is exercised here, as is the audit event a
+ * retrieval by the system role leaves behind (Auflage A6).
  */
 @OpaaIntegrationTest
 class GrantedGroupMembersIntegrationTest {
@@ -54,40 +58,43 @@ class GrantedGroupMembersIntegrationTest {
   @Autowired private SpaceService spaceService;
   @Autowired private GroupRepository groupRepository;
   @Autowired private GroupStewardRepository stewardRepository;
+  @Autowired private GroupContactRepository contactRepository;
   @Autowired private GroupMembershipResolver membershipResolver;
   @Autowired private UserRepository userRepository;
+  @Autowired private OidcProviderRepository providerRepository;
   @Autowired private OrganizationRepository organizationRepository;
+  @Autowired private OwnOrganizationFixtures ownOrganizationFixtures;
   @Autowired private JdbcTemplate jdbcTemplate;
 
   private UUID organization;
-  private final List<UUID> createdUserIds = new ArrayList<>();
+  private final List<UUID> createdProviderIds = new ArrayList<>();
 
   @BeforeEach
   void setUp() {
-    createdUserIds.clear();
+    createdProviderIds.clear();
     organization = organizationRepository.save(new Organization(UUID.randomUUID(), "Org")).getId();
   }
 
   @AfterEach
   void tearDown() {
-    jdbcTemplate.update("DELETE FROM asset_grant_history WHERE organization_id = ?", organization);
-    jdbcTemplate.update("DELETE FROM asset_grants WHERE organization_id = ?", organization);
-    jdbcTemplate.update(
-        "DELETE FROM asset_ownership_history WHERE organization_id = ?", organization);
-    jdbcTemplate.update(
-        "DELETE FROM library_visibility_history WHERE organization_id = ?", organization);
-    jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE organization_id = ?", organization);
-    jdbcTemplate.update(
-        "DELETE FROM space_membership_history WHERE organization_id = ?", organization);
-    jdbcTemplate.update("DELETE FROM space_memberships WHERE organization_id = ?", organization);
-    jdbcTemplate.update("DELETE FROM spaces WHERE organization_id = ?", organization);
+    // Groups are deliberately not the shared helper's business (see its Javadoc), and they are held
+    // by what references them with RESTRICT - so those two tables go first, the group tables next,
+    // and the helper does everything else including the organization itself.
     for (String table :
-        List.of("group_membership_history", "group_memberships", "group_stewards", "groups")) {
+        List.of(
+            "asset_grants",
+            "space_memberships",
+            "group_contacts",
+            "group_memberships",
+            "group_stewards",
+            "groups")) {
       jdbcTemplate.update("DELETE FROM " + table + " WHERE organization_id = ?", organization);
     }
-    jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organization);
-    userRepository.deleteAllById(createdUserIds);
-    organizationRepository.deleteById(organization);
+    ownOrganizationFixtures.removeOrganizations(organization);
+    // fk_groups_provider is RESTRICT: the provider can only go once its groups are gone.
+    for (UUID providerId : createdProviderIds) {
+      providerRepository.deleteById(providerId);
+    }
   }
 
   // -------------------------------------------------------------------------------------------
@@ -97,9 +104,7 @@ class GrantedGroupMembersIntegrationTest {
   @Test
   void theManagerOfALibrarySeesTheMembersOfAGroupItGrantedARightTo() {
     UUID manager = createUser();
-    UUID anna = createUser("Anna Bauer");
-    UUID bert = createUser("Bert Conrad");
-    UUID group = createReleasedGroup("Referat 50", anna, bert);
+    UUID group = createReleasedGroup("Referat 50", fiveNamedMembers());
     UUID library = createLibrary(manager);
     grantTo(library, group, manager);
 
@@ -108,11 +113,12 @@ class GrantedGroupMembersIntegrationTest {
 
     assertThat(disclosure.name()).isEqualTo("Referat 50");
     assertThat(disclosure.protectedGroup()).isFalse();
-    assertThat(disclosure.activeMemberCount()).isEqualTo(2);
+    assertThat(disclosure.smallGroup()).isFalse();
+    assertThat(disclosure.activeMemberCount()).isEqualTo(5);
     assertThat(disclosure.members())
         .extracting(DisclosedGroupMember::displayName)
-        .containsExactly("Anna Bauer", "Bert Conrad");
-    assertThat(disclosure.members()).extracting(DisclosedGroupMember::userId).contains(anna, bert);
+        .containsExactly("Anna Bauer", "Bert Conrad", "Clara Dorn", "Dora Erle", "Emil Fried");
+    assertThat(disclosure.members()).extracting(DisclosedGroupMember::userId).doesNotContainNull();
     assertThat(disclosure.responsible())
         .as("an unprotected group answers with its members, not with people to ask")
         .isEmpty();
@@ -122,7 +128,7 @@ class GrantedGroupMembersIntegrationTest {
   @Test
   void afterTheGrantIsRevokedTheMembersAreOutOfReachAgain() {
     UUID manager = createUser();
-    UUID group = createReleasedGroup("Referat 50", createUser());
+    UUID group = createReleasedGroup("Referat 50", fiveNamedMembers());
     UUID library = createLibrary(manager);
     grantTo(library, group, manager);
     UUID grantId =
@@ -144,7 +150,7 @@ class GrantedGroupMembersIntegrationTest {
   @Test
   void anExpiredGrantDisclosesNothing() {
     UUID manager = createUser();
-    UUID group = createReleasedGroup("Referat 50", createUser());
+    UUID group = createReleasedGroup("Referat 50", fiveNamedMembers());
     UUID library = createLibrary(manager);
     grantService.upsertGrant(
         library,
@@ -168,11 +174,11 @@ class GrantedGroupMembersIntegrationTest {
   @Test
   void aGroupWhoseReleaseWasTakenBackDisclosesNothing() {
     UUID manager = createUser();
-    UUID group = createReleasedGroup("Referat 50", createUser());
+    UUID group = createReleasedGroup("Referat 50", fiveNamedMembers());
     UUID library = createLibrary(manager);
     grantTo(library, group, manager);
     assertThat(grantService.listGroupMembers(library, group, 0, 50, callerOf(manager)).members())
-        .hasSize(1);
+        .hasSize(5);
 
     Group loaded = groupRepository.findById(group).orElseThrow();
     loaded.release(false);
@@ -188,11 +194,9 @@ class GrantedGroupMembersIntegrationTest {
   void aProtectedGroupAnswersWithItsStewardsInsteadOfItsMembers() {
     UUID manager = createUser();
     UUID steward = createUser("Andrea Vogt");
-    UUID group = createReleasedGroup("Personalrat", createUser(), createUser());
+    UUID group = createReleasedGroup("Personalrat", fiveNamedMembers());
     stewardRepository.save(new GroupSteward(group, steward, organization, steward));
-    Group loaded = groupRepository.findById(group).orElseThrow();
-    loaded.markProtected(true);
-    groupRepository.save(loaded);
+    markProtected(group);
     UUID library = createLibrary(manager);
     grantTo(library, group, manager);
 
@@ -206,11 +210,66 @@ class GrantedGroupMembersIntegrationTest {
     assertThat(disclosure.responsible()).containsExactly("Andrea Vogt");
   }
 
+  /**
+   * Limit (d) for a provider group, which has no stewards: there the contact points the system
+   * administration named take their place (#1875).
+   */
+  @Test
+  void aProtectedProviderGroupAnswersWithItsContactPoints() {
+    UUID manager = createUser();
+    UUID contact = createUser("Ansprechstelle Nord");
+    UUID group = createProviderGroup("Personalvertretung", contact);
+    markProtected(group);
+    contactRepository.save(new GroupContact(group, contact, organization, manager));
+    UUID library = createLibrary(manager);
+    grantTo(library, group, manager);
+
+    GroupMemberDisclosure disclosure =
+        grantService.listGroupMembers(library, group, 0, 50, callerOf(manager));
+
+    assertThat(disclosure.protectedGroup()).isTrue();
+    assertThat(disclosure.name()).isNull();
+    assertThat(disclosure.members()).isEmpty();
+    assertThat(disclosure.responsible()).containsExactly("Ansprechstelle Nord");
+  }
+
+  /**
+   * Limit (e), Auflage A2: below the Mindestgruppengröße neither the names nor the figure are
+   * handed out - otherwise the same row would say "kleine Gruppe" beside its growth signal and name
+   * four people right next to it.
+   */
+  @Test
+  void agroupBelowTheMinimumSizeDisclosesNeitherNamesNorFigure() {
+    UUID manager = createUser();
+    UUID[] members = fiveNamedMembers();
+    UUID ofFourId =
+        createReleasedGroup("Kleine Runde", members[0], members[1], members[2], members[3]);
+    UUID ofFiveId = createReleasedGroup("Referat 50", fiveNamedMembers());
+    UUID library = createLibrary(manager);
+    grantTo(library, ofFourId, manager);
+    grantTo(library, ofFiveId, manager);
+
+    GroupMemberDisclosure ofFour =
+        grantService.listGroupMembers(library, ofFourId, 0, 50, callerOf(manager));
+
+    assertThat(ofFour.smallGroup()).isTrue();
+    assertThat(ofFour.activeMemberCount()).isNull();
+    assertThat(ofFour.members()).isEmpty();
+    assertThat(ofFour.name()).as("the group is named in the grant list anyway").isNotNull();
+
+    GroupMemberDisclosure ofFive =
+        grantService.listGroupMembers(library, ofFiveId, 0, 50, callerOf(manager));
+
+    assertThat(ofFive.smallGroup()).isFalse();
+    assertThat(ofFive.activeMemberCount()).isEqualTo(5);
+    assertThat(ofFive.members()).hasSize(5);
+  }
+
   @Test
   void aCallerBelowManagerAndAnUnknownGroupBothGetNothing() {
     UUID manager = createUser();
     UUID viewer = createUser();
-    UUID group = createReleasedGroup("Referat 50", createUser());
+    UUID group = createReleasedGroup("Referat 50", fiveNamedMembers());
     UUID library = createLibrary(manager);
     grantTo(library, group, manager);
     grantService.upsertGrant(
@@ -233,10 +292,7 @@ class GrantedGroupMembersIntegrationTest {
   @Test
   void theListIsPagedWhileTheCountNamesTheWhole() {
     UUID manager = createUser();
-    UUID anna = createUser("Anna Bauer");
-    UUID bert = createUser("Bert Conrad");
-    UUID clara = createUser("Clara Dorn");
-    UUID group = createReleasedGroup("Referat 50", clara, anna, bert);
+    UUID group = createReleasedGroup("Referat 50", fiveNamedMembers());
     UUID library = createLibrary(manager);
     grantTo(library, group, manager);
 
@@ -245,13 +301,13 @@ class GrantedGroupMembersIntegrationTest {
     GroupMemberDisclosure second =
         grantService.listGroupMembers(library, group, 2, 2, callerOf(manager));
 
-    assertThat(first.activeMemberCount()).isEqualTo(3);
+    assertThat(first.activeMemberCount()).isEqualTo(5);
     assertThat(first.members())
         .extracting(DisclosedGroupMember::displayName)
         .containsExactly("Anna Bauer", "Bert Conrad");
     assertThat(second.members())
         .extracting(DisclosedGroupMember::displayName)
-        .containsExactly("Clara Dorn");
+        .containsExactly("Clara Dorn", "Dora Erle");
     // A nonsensical window is clamped rather than refused: a limit below one would otherwise turn
     // into a query that can never answer anything, a negative offset into a database error.
     assertThat(grantService.listGroupMembers(library, group, -5, 0, callerOf(manager)).members())
@@ -262,10 +318,12 @@ class GrantedGroupMembersIntegrationTest {
   @Test
   void aLockedAccountIsNoPartOfTheReachAndNoPartOfTheList() {
     UUID manager = createUser();
-    UUID active = createUser("Anna Bauer");
-    UUID locked = createUser("Bert Conrad");
-    UUID group = createReleasedGroup("Referat 50", active, locked);
-    User lockedUser = userRepository.findById(locked).orElseThrow();
+    UUID[] members = fiveNamedMembers();
+    UUID sixth = createUser("Frida Gast");
+    UUID group =
+        createReleasedGroup(
+            "Referat 50", members[0], members[1], members[2], members[3], members[4], sixth);
+    User lockedUser = userRepository.findById(sixth).orElseThrow();
     lockedUser.lockFromDirectory(Instant.now());
     userRepository.save(lockedUser);
     UUID library = createLibrary(manager);
@@ -274,33 +332,69 @@ class GrantedGroupMembersIntegrationTest {
     GroupMemberDisclosure disclosure =
         grantService.listGroupMembers(library, group, 0, 50, callerOf(manager));
 
-    assertThat(disclosure.activeMemberCount()).isEqualTo(1);
+    assertThat(disclosure.activeMemberCount()).isEqualTo(5);
     assertThat(disclosure.members())
         .extracting(DisclosedGroupMember::displayName)
-        .containsExactly("Anna Bauer");
+        .doesNotContain("Frida Gast");
   }
 
+  // -------------------------------------------------------------------------------------------
+  // Der Nachweiseintrag der Systemverwaltung (Auflage A6)
+  // -------------------------------------------------------------------------------------------
+
   /**
-   * ADR-0036, Entscheidung 9 records the retrieval for the system administration alone (#1821). The
-   * grant giver reads the group they brought into their own object; who did that and when is
-   * already on the grant.
+   * The event hangs on the caller, not on the endpoint: a system administrator passes the MANAGER
+   * bar at every library through their role alone, and ADR-0036, Entscheidung 9 records that they
+   * looked.
    */
   @Test
-  void theRetrievalByAGrantGiverIsNoAuditEvent() {
+  void theRetrievalOverALibraryIsAnAuditEventForASystemAdministratorAndNoneForAGrantGiver() {
     UUID manager = createUser();
-    UUID group = createReleasedGroup("Referat 50", createUser());
+    UUID systemAdmin = createSystemAdmin();
+    UUID group = createReleasedGroup("Referat 50", fiveNamedMembers());
     UUID library = createLibrary(manager);
     grantTo(library, group, manager);
 
     grantService.listGroupMembers(library, group, 0, 50, callerOf(manager));
 
-    Integer events =
-        jdbcTemplate.queryForObject(
-            "SELECT count(*) FROM audit_log WHERE organization_id = ?"
-                + " AND event_type = 'GROUP_MEMBERS_READ'",
-            Integer.class,
-            organization);
-    assertThat(events).isZero();
+    assertThat(memberReadEvents(group)).as("the grant giver writes nothing").isZero();
+
+    grantService.listGroupMembers(library, group, 0, 50, callerOf(systemAdmin));
+
+    assertThat(memberReadEvents(group)).isOne();
+  }
+
+  @Test
+  void theRetrievalOverASpaceIsAnAuditEventForASystemAdministratorAndNoneForTheOwner() {
+    UUID owner = createUser();
+    UUID systemAdmin = createSystemAdmin();
+    UUID group = createReleasedGroup("Referat 50", fiveNamedMembers());
+    Space space = createSpace(owner);
+    admitGroup(space, group, owner);
+
+    spaceService.listGroupMembers(space.getId(), group, 0, 50, callerOf(owner));
+
+    assertThat(memberReadEvents(group))
+        .as("the owner who admitted the group writes nothing")
+        .isZero();
+
+    spaceService.listGroupMembers(space.getId(), group, 0, 50, callerOf(systemAdmin));
+
+    assertThat(memberReadEvents(group)).isOne();
+  }
+
+  /** A steward reading their own group leaves no record, whichever way in they took. */
+  @Test
+  void aStewardWithASystemRoleReadingTheirOwnGroupWritesNothing() {
+    UUID systemAdmin = createSystemAdmin();
+    UUID group = createReleasedGroup("Referat 50", fiveNamedMembers());
+    stewardRepository.save(new GroupSteward(group, systemAdmin, organization, systemAdmin));
+    UUID library = createLibrary(systemAdmin);
+    grantTo(library, group, systemAdmin);
+
+    grantService.listGroupMembers(library, group, 0, 50, callerOf(systemAdmin));
+
+    assertThat(memberReadEvents(group)).isZero();
   }
 
   // -------------------------------------------------------------------------------------------
@@ -310,14 +404,9 @@ class GrantedGroupMembersIntegrationTest {
   @Test
   void theOwnerOfASpaceSeesTheMembersOfAGroupItAdmitted() {
     UUID owner = createUser();
-    UUID anna = createUser("Anna Bauer");
-    UUID group = createReleasedGroup("Referat 50", anna);
+    UUID group = createReleasedGroup("Referat 50", fiveNamedMembers());
     Space space = createSpace(owner);
-    spaceService.addMember(
-        space.getId(),
-        PermissionSubject.group(group, organization),
-        SpaceRole.MEMBER,
-        callerOf(owner));
+    admitGroup(space, group, owner);
 
     GroupMemberDisclosure disclosure =
         spaceService.listGroupMembers(space.getId(), group, 0, 50, callerOf(owner));
@@ -325,13 +414,13 @@ class GrantedGroupMembersIntegrationTest {
     assertThat(disclosure.name()).isEqualTo("Referat 50");
     assertThat(disclosure.members())
         .extracting(DisclosedGroupMember::displayName)
-        .containsExactly("Anna Bauer");
+        .contains("Anna Bauer", "Emil Fried");
   }
 
   @Test
   void aGroupThatIsNoMemberOfThisSpaceDisclosesNothing() {
     UUID owner = createUser();
-    UUID group = createReleasedGroup("Referat 50", createUser());
+    UUID group = createReleasedGroup("Referat 50", fiveNamedMembers());
     Space space = createSpace(owner);
 
     assertThatThrownBy(
@@ -345,13 +434,9 @@ class GrantedGroupMembersIntegrationTest {
   void aPlainMemberOfTheSpaceGetsNothing() {
     UUID owner = createUser();
     UUID person = createUser();
-    UUID group = createReleasedGroup("Referat 50", createUser());
+    UUID group = createReleasedGroup("Referat 50", fiveNamedMembers());
     Space space = createSpace(owner);
-    spaceService.addMember(
-        space.getId(),
-        PermissionSubject.group(group, organization),
-        SpaceRole.MEMBER,
-        callerOf(owner));
+    admitGroup(space, group, owner);
     spaceService.addMember(
         space.getId(),
         PermissionSubject.user(person, organization),
@@ -367,17 +452,11 @@ class GrantedGroupMembersIntegrationTest {
   void aProtectedGroupInASpaceAnswersWithItsStewardsThereToo() {
     UUID owner = createUser();
     UUID steward = createUser("Andrea Vogt");
-    UUID group = createReleasedGroup("Personalrat", createUser());
+    UUID group = createReleasedGroup("Personalrat", fiveNamedMembers());
     Space space = createSpace(owner);
-    spaceService.addMember(
-        space.getId(),
-        PermissionSubject.group(group, organization),
-        SpaceRole.MEMBER,
-        callerOf(owner));
+    admitGroup(space, group, owner);
     stewardRepository.save(new GroupSteward(group, steward, organization, steward));
-    Group loaded = groupRepository.findById(group).orElseThrow();
-    loaded.markProtected(true);
-    groupRepository.save(loaded);
+    markProtected(group);
 
     GroupMemberDisclosure disclosure =
         spaceService.listGroupMembers(space.getId(), group, 0, 50, callerOf(owner));
@@ -391,6 +470,17 @@ class GrantedGroupMembersIntegrationTest {
   // Fixture
   // -------------------------------------------------------------------------------------------
 
+  /** Five accounts whose names sort in this order - the order the paged list must keep. */
+  private UUID[] fiveNamedMembers() {
+    return new UUID[] {
+      createUser("Anna Bauer"),
+      createUser("Bert Conrad"),
+      createUser("Clara Dorn"),
+      createUser("Dora Erle"),
+      createUser("Emil Fried")
+    };
+  }
+
   private UUID createReleasedGroup(String name, UUID... memberIds) {
     Group group = Group.internal(organization, name, null, null);
     group.release(true);
@@ -400,6 +490,33 @@ class GrantedGroupMembersIntegrationTest {
     UUID id = groupRepository.save(group).getId();
     membershipResolver.invalidateUsers(List.of(memberIds));
     return id;
+  }
+
+  private UUID createProviderGroup(String name, UUID... memberIds) {
+    UUID provider = ProviderFixtures.tokenProvider(providerRepository).getId();
+    createdProviderIds.add(provider);
+    Group group =
+        new Group(
+            organization,
+            GroupKind.ORG_UNIT,
+            name,
+            null,
+            provider,
+            UUID.randomUUID().toString(),
+            null,
+            null);
+    for (UUID memberId : memberIds) {
+      group.addMembership(new GroupMembership(memberId, organization));
+    }
+    UUID id = groupRepository.save(group).getId();
+    membershipResolver.invalidateUsers(List.of(memberIds));
+    return id;
+  }
+
+  private void markProtected(UUID groupId) {
+    Group group = groupRepository.findById(groupId).orElseThrow();
+    group.markProtected(true);
+    groupRepository.save(group);
   }
 
   private UUID createLibrary(UUID ownerId) {
@@ -427,6 +544,25 @@ class GrantedGroupMembersIntegrationTest {
         callerOf(owner));
   }
 
+  private void admitGroup(Space space, UUID groupId, UUID caller) {
+    spaceService.addMember(
+        space.getId(),
+        PermissionSubject.group(groupId, organization),
+        SpaceRole.MEMBER,
+        callerOf(caller));
+  }
+
+  private int memberReadEvents(UUID groupId) {
+    Integer count =
+        jdbcTemplate.queryForObject(
+            "SELECT count(*) FROM audit_log WHERE organization_id = ?"
+                + " AND event_type = 'GROUP_MEMBERS_READ' AND object_id = ?",
+            Integer.class,
+            organization,
+            groupId.toString());
+    return count == null ? 0 : count;
+  }
+
   private UUID createUser() {
     return createUser("Test User");
   }
@@ -435,8 +571,14 @@ class GrantedGroupMembersIntegrationTest {
     User user =
         new User(UUID.randomUUID().toString(), "test-issuer", "user@example.com", displayName);
     user.setOrganizationId(organization);
-    UUID id = userRepository.save(user).getId();
-    createdUserIds.add(id);
+    return userRepository.save(user).getId();
+  }
+
+  private UUID createSystemAdmin() {
+    UUID id = createUser("System Verwaltung");
+    User user = userRepository.findById(id).orElseThrow();
+    user.setSystemRole(SystemRole.SYSTEM_ADMIN);
+    userRepository.save(user);
     return id;
   }
 

@@ -708,6 +708,25 @@ paths:
                 items:
                   $ref: "#/components/schemas/GroupListResponse"
 
+  /api/v1/me/contacted-groups:
+    get:
+      operationId: listMyContactedGroups
+      tags: [auth]
+      summary: >
+        The provider groups the caller is the contact point of (#1875, ADR-0036 Entscheidung 9) -
+        the counterpart of the stewarded groups above, and the place the protection mark of such a
+        group is set and released from. Being a contact point is no maintenance right: the group
+        itself stays read-only.
+      responses:
+        "200":
+          description: Groups the caller is a contact point of
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GroupListResponse"
+
   /api/v1/me/capabilities:
     get:
       operationId: listMyCapabilities
@@ -1158,12 +1177,17 @@ paths:
     put:
       operationId: setGroupProtection
       tags: [groups]
-      summary: Mark an internal group as protected, or take the mark back
+      summary: Mark a group as protected, or take the mark back
       description: >
         For the groups of the staff council, the representation of severely disabled employees,
         the equality office and for personnel matters. The mark is set and released by the body
-        concerned itself, never by the administration (ADR-0036, Entscheidung 9) - a SYSTEM_ADMIN
-        who is no steward of this group is refused with 403.
+        concerned itself, never by the administration (ADR-0036, Entscheidung 9) - and who the body
+        is follows the origin of the group: an internal group's stewards, a provider group's
+        contact points (#1875). A SYSTEM_ADMIN who is neither is refused with 403, with the code
+        naming which of the two is missing.
+
+        This is the one write path a provider group has: everything else about it is maintained
+        where it comes from.
       requestBody:
         required: true
         content:
@@ -1177,16 +1201,11 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/GroupResponse"
-        "400":
-          description: The group comes from a provider; its contact points set the mark there (#1821).
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
         "403":
           description: >
-            The caller is a system administrator but no steward of this group (code
-            STEWARDSHIP_REQUIRED).
+            The caller is no steward of this internal group (code STEWARDSHIP_REQUIRED) or no
+            contact point of this provider group (code CONTACT_REQUIRED) - a system administrator
+            included: the administration decides the protection of neither.
           content:
             application/json:
               schema:
@@ -2314,6 +2333,100 @@ paths:
                   $ref: "#/components/schemas/GroupListResponse"
         "403":
           $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/groups/{groupId}/contacts:
+    parameters:
+      - name: groupId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      operationId: appointGroupContact
+      tags: [admin]
+      summary: Name a further contact point of a provider group (system admin only)
+      description: >
+        The Verwaltungsakt of ADR-0036, Entscheidung 9 (#1875): naming somebody who speaks for a
+        provider group. It changes nothing about the group - a provider group stays read-only - and
+        grants no maintenance right; it entitles the person to exactly one act, setting and
+        releasing that group's protection mark, which the administration itself must not perform.
+
+        Only a natural person who is already a member of the group, and only a provider group: an
+        internal group has stewards, who decide its protection themselves. Recorded as an audit
+        event (GROUP_CONTACT_APPOINTED), deliberately without a history row - the appointment
+        carries no read access.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GroupAppointContactRequest"
+      responses:
+        "201":
+          description: Contact point named
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroupContactResponse"
+        "400":
+          description: >
+            The account is no member of the group, or the group is an internal one and has
+            stewards rather than contact points.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: The account is already a contact point of this group.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/admin/groups/{groupId}/contacts/{userId}:
+    parameters:
+      - name: groupId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    delete:
+      operationId: dismissGroupContact
+      tags: [admin]
+      summary: Dismiss a contact point of a provider group (system admin only)
+      description: >
+        The last contact point may go - an account leaving the house has to be releasable. A
+        protected group without one then appears in the operational list of #1819: its mark can no
+        longer be released by anybody, which is exactly what that list is for. Recorded as an audit
+        event (GROUP_CONTACT_DISMISSED); the same event, without an acting person, ends the
+        appointment when the person leaves the group.
+      responses:
+        "204":
+          description: Contact point dismissed
+        "400":
+          description: The group is an internal one and has stewards rather than contact points.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   /api/v1/admin/groups/effects:
     get:
@@ -4071,14 +4184,9 @@ paths:
         wen" (#1880, ADR-0036 Entscheidung 9)
       description: >
         Requires ADMIN, the owner or a system administrator - the same bar the member list itself
-        carries. The four limits of ADR-0036, Entscheidung 9 are enforced in the service:
-        (a) only while the group is still a member of this space; (b) only for a group released
-        for use, which a provider group always is; (c) the default is not released; (d) never for
-        a protected group - there the answer names whom to ask, and not even the group's name
-        (responsible). A request that fails any of them answers 404, like an unknown group.
-
-        There is no object-free variant of this read, and it is deliberately no audit event - see
-        GET /api/v1/libraries/{libraryId}/grants/groups/{groupId}/members for both reasons.
+        carries - and only while the group is still a member of this space. What the answer
+        withholds and why is described once, at GroupMemberDisclosureResponse; anything the rule
+        refuses answers 404, like an unknown group. There is no object-free variant of this read.
       responses:
         "200":
           description: The group's active members, capped at the requested page
@@ -6290,21 +6398,13 @@ paths:
         The members of a group that holds a grant on this library - "wer ein Recht gibt, sieht, an
         wen" (#1880, ADR-0036 Entscheidung 9)
       description: >
-        Requires MANAGER or above on the library, exactly like the grant list itself. The four
-        limits of ADR-0036, Entscheidung 9 are enforced in the service, not in the interface:
-        (a) only while the group still holds a grant here - an expired grant holds nothing;
-        (b) only for a group released for use, which a provider group always is; (c) the default
-        is not released; (d) never for a protected group - there the answer names whom to ask
-        instead of the members, and not even the group's name (responsible). A request that fails
-        any of them answers 404, like an unknown group.
+        Requires MANAGER or above on the library, exactly like the grant list itself, and only
+        while the group still holds an unexpired grant here. What the answer withholds and why is
+        described once, at GroupMemberDisclosureResponse; anything the rule refuses answers 404,
+        like an unknown group.
 
         There is no object-free variant of this read on purpose: the right to see the members
         comes from the object, so the object is part of the path.
-
-        The read is deliberately no audit event. ADR-0036, Entscheidung 9 records the retrieval
-        for SYSTEM_ADMIN alone (GROUP_MEMBERS_READ, #1821): the administration may see a group it
-        has nothing to do with, and that it looked is on the record. A grant giver reads the group
-        they themselves brought into this object - the grant already carries who gave it and when.
       responses:
         "200":
           description: The group's active members, capped at the requested page
@@ -10856,12 +10956,21 @@ components:
       type: object
       description: >
         The members of a group as the person who granted it a right on an object sees them (#1880,
-        ADR-0036 Entscheidung 9). Only active accounts, capped and paged; the page is read with
-        the cap as the query's own LIMIT.
+        ADR-0036 Entscheidung 9) - only active accounts, capped and paged, with the cap as the
+        query's own LIMIT. The five limits of the rule, enforced in the service and nowhere else:
 
-        For a protected group the answer is the other one the ADR gives: no name, no count, no
-        members - and responsible instead, whom to ask about it.
-      required: [groupId, protectedGroup, members, responsible]
+        (a) only while the group holds a right at the object named in the path - an expired grant
+        and an ended space membership hold nothing; (b) only for a group released for use, which a
+        provider group always is; (c) the delivered default is "not released"; (d) never for a
+        protected group - no name, no count, no members, and responsible instead, whom to ask;
+        (e) never below the enforced minimum group size - no members and no figure either, only
+        smallGroup, the same suppression the growth signal of that very row carries (Auflage A2).
+
+        A retrieval carried by the system role is an audit event (GROUP_MEMBERS_READ) on both
+        paths, because a system administrator passes the threshold of every library and every
+        space; a grant giver without that role writes nothing - the grant already names who gave
+        it and when.
+      required: [groupId, protectedGroup, smallGroup, members, responsible]
       properties:
         groupId:
           type: string
@@ -10877,17 +10986,23 @@ components:
           description: >
             True for a group of the staff council and the comparable bodies. The member list is
             then empty on purpose - responsible names whom to ask.
+        smallGroup:
+          type: boolean
+          description: >
+            True below the enforced minimum group size - the list and both figures are then
+            withheld, and this is what the interface says instead ("kleine Gruppe").
         activeMemberCount:
           type: integer
           nullable: true
           description: >
             How many active accounts the group reaches in total - the figure the page is a window
-            into. Null for a protected group, where the size is itself the disclosure.
+            into. Null for a protected group, where the size is itself the disclosure, and null
+            for a small group.
         members:
           type: array
           description: >
-            The requested page of active accounts, ordered by name so paging is stable. Empty for
-            a protected group.
+            The requested page of active accounts, ordered by name so paging is stable. Empty
+            wherever the rule withholds the list.
           items:
             $ref: "#/components/schemas/DisclosedGroupMemberResponse"
         responsible:
@@ -10941,6 +11056,35 @@ components:
         userId:
           type: string
           format: uuid
+
+    GroupContactResponse:
+      type: object
+      description: >
+        A contact point of a provider group (#1875, ADR-0036 Entscheidung 9): a person the system
+        administration named, who is a member of the group and holds no maintenance right over it.
+        They - and only they - set and release that group's protection mark.
+      required: [userId, appointedAt]
+      properties:
+        userId:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+          nullable: true
+        appointedAt:
+          type: string
+          format: date-time
+
+    GroupAppointContactRequest:
+      type: object
+      required: [userId]
+      properties:
+        userId:
+          type: string
+          format: uuid
+          description: >
+            Must be a member of the group and a natural person: the contact point speaks for the
+            body concerned, and somebody outside it would speak for a body they do not belong to.
 
     GroupReleaseRequest:
       type: object
@@ -11024,6 +11168,13 @@ components:
             Whether this group carries the protection of the staff council and the comparable
             bodies: not findable by search, shown namelessly in other people's lists, and its
             grant-giver sees the stewards instead of the members (ADR-0036, Entscheidung 9).
+        contacts:
+          type: array
+          description: >
+            The contact points of a provider group (#1875, ADR-0036 Entscheidung 9) - empty for an
+            internal group, which has stewards instead.
+          items:
+            $ref: "#/components/schemas/GroupContactResponse"
         stewards:
           type: array
           description: >
@@ -11073,6 +11224,15 @@ components:
           description: >
             The path the source reports ("/Haus/Abteilung 5/Referat 50") - what tells two
             same-named groups of one directory apart.
+        responsible:
+          type: array
+          description: >
+            Whom to ask about a protected group instead of reading its member list (ADR-0036,
+            Entscheidung 9): its stewards where it is internal, its contact points where it comes
+            from a provider (#1875). Empty for every unprotected group - there the member list is
+            the answer.
+          items:
+            type: string
         activeMemberCount:
           type: integer
           nullable: true
@@ -11175,6 +11335,13 @@ components:
             Whether this group carries the protection of the staff council and the comparable
             bodies: not findable by search, shown namelessly in other people's lists, and its
             grant-giver sees the stewards instead of the members (ADR-0036, Entscheidung 9).
+        contacts:
+          type: array
+          description: >
+            The contact points of a provider group (#1875, ADR-0036 Entscheidung 9) - empty for an
+            internal group, which has stewards instead.
+          items:
+            $ref: "#/components/schemas/GroupContactResponse"
         stewards:
           type: array
           description: >
@@ -15996,6 +16163,8 @@ components:
           GROUP_MEMBER_REMOVED,
           GROUP_STEWARD_APPOINTED,
           GROUP_STEWARD_DISMISSED,
+          GROUP_CONTACT_APPOINTED,
+          GROUP_CONTACT_DISMISSED,
           GROUP_RELEASE_CHANGED,
           GROUP_PROTECTION_CHANGED,
           GROUP_MEMBERS_READ,

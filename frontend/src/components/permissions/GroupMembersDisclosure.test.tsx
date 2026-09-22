@@ -9,6 +9,7 @@ const twoOfThree: GroupMemberDisclosureResponse = {
   groupId: 'group-referat-50',
   name: 'Referat 50',
   protectedGroup: false,
+  smallGroup: false,
   activeMemberCount: 3,
   members: [
     { userId: 'user-anna', displayName: 'Anna Bauer' },
@@ -29,7 +30,9 @@ describe('GroupMembersDisclosure', () => {
     renderWithProviders(<GroupMembersDisclosure groupLabel="Referat 50" load={load} />)
 
     expect(load).not.toHaveBeenCalled()
-    expect(screen.getByRole('button', { name: 'Mitglieder von Referat 50 anzeigen' })).toBeVisible()
+    expect(
+      screen.getByRole('button', { name: 'Mitglieder der Gruppe „Referat 50“ anzeigen' }),
+    ).toBeVisible()
   })
 
   it('zeigt die Mitglieder erst nach dem Klick, mit der Zahl des Ganzen', async () => {
@@ -37,7 +40,7 @@ describe('GroupMembersDisclosure', () => {
     renderWithProviders(<GroupMembersDisclosure groupLabel="Referat 50" load={load} />)
 
     await userEvent.click(
-      screen.getByRole('button', { name: 'Mitglieder von Referat 50 anzeigen' }),
+      screen.getByRole('button', { name: 'Mitglieder der Gruppe „Referat 50“ anzeigen' }),
     )
 
     await waitFor(() => expect(screen.getByText('Anna Bauer')).toBeVisible())
@@ -57,19 +60,19 @@ describe('GroupMembersDisclosure', () => {
     )
     renderWithProviders(<GroupMembersDisclosure groupLabel="Referat 50" load={load} />)
     await userEvent.click(
-      screen.getByRole('button', { name: 'Mitglieder von Referat 50 anzeigen' }),
+      screen.getByRole('button', { name: 'Mitglieder der Gruppe „Referat 50“ anzeigen' }),
     )
     await waitFor(() => expect(screen.getByText('Anna Bauer')).toBeVisible())
 
     await userEvent.click(
-      screen.getByRole('button', { name: 'Weitere Mitglieder von Referat 50 anzeigen' }),
+      screen.getByRole('button', { name: 'Weitere Mitglieder der Gruppe „Referat 50“ anzeigen' }),
     )
 
     await waitFor(() => expect(screen.getByText('Clara Dorn')).toBeVisible())
     expect(load).toHaveBeenLastCalledWith(2, 50)
     expect(screen.getByText('3 von 3 aktiven Konten')).toBeVisible()
     expect(
-      screen.queryByRole('button', { name: 'Weitere Mitglieder von Referat 50 anzeigen' }),
+      screen.queryByRole('button', { name: 'Weitere Mitglieder der Gruppe „Referat 50“ anzeigen' }),
     ).toBeNull()
   })
 
@@ -79,6 +82,7 @@ describe('GroupMembersDisclosure', () => {
       groupId: 'group-personalrat',
       name: null,
       protectedGroup: true,
+      smallGroup: false,
       activeMemberCount: null,
       members: [],
       responsible: ['Andrea Vogt'],
@@ -86,7 +90,7 @@ describe('GroupMembersDisclosure', () => {
     renderWithProviders(<GroupMembersDisclosure groupLabel="Geschützte Gruppe" load={load} />)
 
     await userEvent.click(
-      screen.getByRole('button', { name: 'Mitglieder von Geschützte Gruppe anzeigen' }),
+      screen.getByRole('button', { name: 'Mitglieder der Gruppe „Geschützte Gruppe“ anzeigen' }),
     )
 
     await waitFor(() => expect(screen.getByText(/Ansprechstelle: Andrea Vogt/)).toBeVisible())
@@ -100,9 +104,60 @@ describe('GroupMembersDisclosure', () => {
     renderWithProviders(<GroupMembersDisclosure groupLabel="Referat 50" load={load} />)
 
     await userEvent.click(
-      screen.getByRole('button', { name: 'Mitglieder von Referat 50 anzeigen' }),
+      screen.getByRole('button', { name: 'Mitglieder der Gruppe „Referat 50“ anzeigen' }),
     )
 
     await waitFor(() => expect(screen.getByText('Gruppe nicht gefunden')).toBeVisible())
+  })
+
+  /** Begrenzung (e), Auflage A2: unterhalb der Mindestgruppengröße gibt es weder Namen noch Zahl. */
+  it('sagt bei einer kleinen Gruppe, dass weder Namen noch Zahl genannt werden', async () => {
+    const load = vi.fn(async () => ({
+      groupId: 'group-kleine-runde',
+      name: 'Kleine Runde',
+      protectedGroup: false,
+      smallGroup: true,
+      activeMemberCount: null,
+      members: [],
+      responsible: [] as string[],
+    }))
+    renderWithProviders(<GroupMembersDisclosure groupLabel="Kleine Runde" load={load} />)
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Mitglieder der Gruppe „Kleine Runde“ anzeigen' }),
+    )
+
+    await waitFor(() => expect(screen.getByText(/Kleine Gruppe/)).toBeVisible())
+    expect(screen.queryByText(/aktiven Konten/)).toBeNull()
+  })
+
+  /**
+   * Schrumpft die Gruppe zwischen zwei Klicks, liefert die Folgeseite nichts mehr - der Auslöser
+   * verschwindet dann, statt klickbar zu bleiben und nichts zu tun.
+   */
+  it('nimmt „Weitere anzeigen" nach einer leeren Folgeseite zurück', async () => {
+    const load = vi.fn(async (offset: number) =>
+      offset === 0 ? twoOfThree : { ...twoOfThree, members: [] },
+    )
+    renderWithProviders(<GroupMembersDisclosure groupLabel="Referat 50" load={load} />)
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Mitglieder der Gruppe „Referat 50“ anzeigen' }),
+    )
+    await waitFor(() => expect(screen.getByText('Anna Bauer')).toBeVisible())
+
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: 'Weitere Mitglieder der Gruppe „Referat 50“ anzeigen',
+      }),
+    )
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', {
+          name: 'Weitere Mitglieder der Gruppe „Referat 50“ anzeigen',
+        }),
+      ).toBeNull(),
+    )
+    expect(screen.getByText('Anna Bauer')).toBeVisible()
   })
 })

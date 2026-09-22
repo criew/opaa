@@ -81,7 +81,7 @@ class MeControllerTest {
   void myGroupsSucceedsForARegularUserWithoutTheSystemAdminRole() throws Exception {
     Group group = Group.internal(UUID.randomUUID(), "Team A", null, null);
     when(groupService.listMyGroups(eq(expectedCaller)))
-        .thenReturn(List.of(new GroupOverview(group, List.of(), null)));
+        .thenReturn(List.of(new GroupOverview(group, List.of(), List.of(), null)));
 
     mockMvc
         .perform(get("/api/v1/me/groups").with(asRegularUser()))

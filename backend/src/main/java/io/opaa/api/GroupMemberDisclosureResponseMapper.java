@@ -17,6 +17,7 @@ final class GroupMemberDisclosureResponseMapper {
     return new GroupMemberDisclosureResponse(
             disclosure.groupId(),
             disclosure.protectedGroup(),
+            disclosure.smallGroup(),
             disclosure.members().stream()
                 .map(GroupMemberDisclosureResponseMapper::toMemberResponse)
                 .toList(),

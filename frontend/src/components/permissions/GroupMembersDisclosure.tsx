@@ -9,7 +9,10 @@ import type { GroupMemberDisclosureResponse } from '../../types/api'
 const PAGE_SIZE = 50
 
 interface GroupMembersDisclosureProps {
-  /** Wie die Zeile heißt, um die es geht — steht in Beschriftung und aria-label. */
+  /**
+   * Wie die Gruppe in den aria-labels genannt wird. Der Aufrufer wählt ihn so, dass er für
+   * eine namenlose Zeile nicht die rohe Kennung vorliest.
+   */
   groupLabel: string
   /** Lädt eine Seite; erst auf ausdrücklichen Wunsch aufgerufen, nie beim Rendern. */
   load: (offset: number, limit: number) => Promise<GroupMemberDisclosureResponse>
@@ -21,19 +24,24 @@ interface GroupMembersDisclosureProps {
  * Wunsch** — eine Mitgliederliste ist eine Aussage über Personen und entsteht nicht als Beiwerk
  * einer Übersicht.
  *
- * <p>Bei einer geschützten Gruppe kommt keine Liste, sondern die Ansprechstelle; die Antwort des
- * Dienstes trägt dafür keine Namen der Mitglieder und keine Größe.
+ * <p>Was die Antwort zurückhält — geschützte Gruppe, kleine Gruppe — entscheidet der Dienst; hier
+ * steht nur, wie es erklärt wird.
  */
 export default function GroupMembersDisclosure({ groupLabel, load }: GroupMembersDisclosureProps) {
   const [disclosure, setDisclosure] = useState<GroupMemberDisclosureResponse | null>(null)
   const [isLoading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Eine leere Folgeseite ist das Ende, auch wenn die Gesamtzahl noch hoeher steht: Zwischen zwei
+  // Klicks kann die Gruppe schrumpfen, und sonst bliebe der Ausloeser dauerhaft klickbar, ohne je
+  // etwas nachzuladen.
+  const [reachedEnd, setReachedEnd] = useState(false)
 
   async function loadPage(offset: number) {
     setLoading(true)
     setError(null)
     try {
       const next = await load(offset, PAGE_SIZE)
+      if (offset > 0 && next.members.length === 0) setReachedEnd(true)
       setDisclosure((current) =>
         current && offset > 0 ? { ...next, members: [...current.members, ...next.members] } : next,
       )
@@ -50,7 +58,7 @@ export default function GroupMembersDisclosure({ groupLabel, load }: GroupMember
         component="button"
         type="button"
         sx={{ alignSelf: 'flex-start', fontSize: 12 }}
-        aria-label={`Mitglieder von ${groupLabel} anzeigen`}
+        aria-label={`Mitglieder der Gruppe „${groupLabel}“ anzeigen`}
         onClick={() => void loadPage(0)}
       >
         Mitglieder anzeigen
@@ -60,7 +68,7 @@ export default function GroupMembersDisclosure({ groupLabel, load }: GroupMember
 
   const total = disclosure?.activeMemberCount ?? null
   const shown = disclosure?.members.length ?? 0
-  const hasMore = total !== null && shown < total
+  const hasMore = total !== null && shown < total && !reachedEnd
 
   return (
     <Stack spacing={0.25} sx={{ mt: 0.5 }}>
@@ -75,6 +83,11 @@ export default function GroupMembersDisclosure({ groupLabel, load }: GroupMember
           {disclosure.responsible.length > 0
             ? `Geschützte Gruppe — die Mitglieder werden nicht genannt. Ansprechstelle: ${disclosure.responsible.join(', ')}`
             : 'Geschützte Gruppe — die Mitglieder werden nicht genannt. Eine Ansprechstelle ist noch nicht benannt.'}
+        </Typography>
+      ) : disclosure?.smallGroup ? (
+        <Typography sx={{ fontSize: 12.5 }}>
+          Kleine Gruppe — weder die Mitglieder noch ihre Zahl werden genannt. In einem Referat wäre
+          eine Gruppe dieser Größe eine Person mit Namen.
         </Typography>
       ) : (
         disclosure && (
@@ -96,7 +109,7 @@ export default function GroupMembersDisclosure({ groupLabel, load }: GroupMember
                 component="button"
                 type="button"
                 sx={{ alignSelf: 'flex-start', fontSize: 12 }}
-                aria-label={`Weitere Mitglieder von ${groupLabel} anzeigen`}
+                aria-label={`Weitere Mitglieder der Gruppe „${groupLabel}“ anzeigen`}
                 onClick={() => void loadPage(shown)}
               >
                 {isLoading ? 'Wird geladen …' : 'Weitere anzeigen'}
@@ -110,10 +123,11 @@ export default function GroupMembersDisclosure({ groupLabel, load }: GroupMember
           component="button"
           type="button"
           sx={{ alignSelf: 'flex-start', fontSize: 12 }}
-          aria-label={`Mitglieder von ${groupLabel} ausblenden`}
+          aria-label={`Mitglieder der Gruppe „${groupLabel}“ ausblenden`}
           onClick={() => {
             setDisclosure(null)
             setError(null)
+            setReachedEnd(false)
           }}
         >
           Mitglieder ausblenden

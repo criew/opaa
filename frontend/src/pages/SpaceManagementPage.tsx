@@ -477,7 +477,11 @@ export default function SpaceManagementPage() {
                           Namen. */}
                       {isGroup && (canManage || isOwner) && (
                         <GroupMembersDisclosure
-                          groupLabel={memberLabel}
+                          groupLabel={
+                            member.protectedGroup
+                              ? 'Geschützte Gruppe'
+                              : (member.displayName ?? 'ohne Namen')
+                          }
                           load={(offset, limit) =>
                             getSpaceGroupMembers(spaceId, member.subjectId, offset, limit)
                           }

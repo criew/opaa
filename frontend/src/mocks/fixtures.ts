@@ -1302,6 +1302,37 @@ export const mockGroups: GroupListResponse[] = [
     createdAt: '2026-03-01T10:00:00Z',
     updatedAt: '2026-03-01T10:00:00Z',
   },
+  // #1875: eine Anbietergruppe mit Ansprechstelle - das Gegenstueck zu den verantworteten
+  // internen Gruppen. Sie ist geschuetzt, denn genau dort entscheidet die Ansprechstelle.
+  {
+    id: 'group-schwerbehindertenvertretung',
+    name: 'Schwerbehindertenvertretung',
+    description: 'Aus dem Verzeichnis, geschuetzt',
+    kind: 'ORG_UNIT',
+    externalId: 'directory-guid-sbv',
+    origin: 'PROVIDER',
+    provider: {
+      id: 'oidc-provider-beschaeftigte',
+      displayName: 'Verzeichnisdienst',
+      external: false,
+      enabled: true,
+      groupMechanism: 'DIRECTORY',
+      directorySyncIntervalMinutes: 360,
+      lastDirectorySyncAt: '2026-09-18T06:00:00Z',
+    },
+    sourcePath: '/Haus A/Schwerbehindertenvertretung',
+    parentGroupId: null,
+    memberCount: 1,
+    dissolved: false,
+    releasedForUse: true,
+    protectedGroup: true,
+    stewards: [],
+    contacts: [
+      { userId: 'mock-user-id', displayName: 'Admin', appointedAt: '2026-09-01T10:00:00Z' },
+    ],
+    createdAt: '2026-09-01T10:00:00Z',
+    updatedAt: '2026-09-01T10:00:00Z',
+  },
   // #1823: a group of an external provider (ADR-0036, Entscheidung 2) - below the search
   // diagnosis's Mindestgruppengroesse (5), so it also stands in for "kleine Gruppe".
   {
@@ -1495,6 +1526,47 @@ export const mockGroupDetails: Record<string, GroupResponse> = {
     ],
     createdAt: '2026-03-01T10:00:00Z',
     updatedAt: '2026-03-01T10:00:00Z',
+  },
+  'group-schwerbehindertenvertretung': {
+    id: 'group-schwerbehindertenvertretung',
+    name: 'Schwerbehindertenvertretung',
+    description: 'Aus dem Verzeichnis, geschuetzt',
+    kind: 'ORG_UNIT',
+    externalId: 'directory-guid-sbv',
+    origin: 'PROVIDER',
+    provider: {
+      id: 'oidc-provider-beschaeftigte',
+      displayName: 'Verzeichnisdienst',
+      external: false,
+      enabled: true,
+      groupMechanism: 'DIRECTORY',
+      directorySyncIntervalMinutes: 360,
+      lastDirectorySyncAt: '2026-09-18T06:00:00Z',
+    },
+    sourcePath: '/Haus A/Schwerbehindertenvertretung',
+    parentGroupId: null,
+    memberCount: 1,
+    dissolved: false,
+    releasedForUse: true,
+    protectedGroup: true,
+    stewards: [],
+    contacts: [
+      { userId: 'mock-user-id', displayName: 'Admin', appointedAt: '2026-09-01T10:00:00Z' },
+    ],
+    members: [
+      {
+        userId: 'mock-user-id',
+        displayName: 'Admin',
+        createdAt: '2026-09-01T10:00:00Z',
+      },
+      {
+        userId: 'curator-1',
+        displayName: 'Bob',
+        createdAt: '2026-09-01T10:00:00Z',
+      },
+    ],
+    createdAt: '2026-09-01T10:00:00Z',
+    updatedAt: '2026-09-01T10:00:00Z',
   },
   'group-personalrat': {
     id: 'group-personalrat',
@@ -1789,6 +1861,15 @@ export const mockMyGroups: GroupListResponse[] = mockGroups.filter((group) =>
  */
 export const mockMyStewardedGroups: GroupListResponse[] = mockGroups.filter((group) =>
   group.stewards.some((steward) => steward.userId === 'mock-user-id'),
+)
+
+/**
+ * Anbietergruppen, fuer die der Mock-Nutzer Ansprechstelle ist - was GET
+ * /api/v1/me/contacted-groups liefert (#1875). Wieder eine andere Menge: Ansprechstelle zu sein
+ * ist kein Pflegerecht, sondern berechtigt allein zum Schutzkennzeichen.
+ */
+export const mockMyContactedGroups: GroupListResponse[] = mockGroups.filter((group) =>
+  (group.contacts ?? []).some((contact) => contact.userId === 'mock-user-id'),
 )
 
 /**

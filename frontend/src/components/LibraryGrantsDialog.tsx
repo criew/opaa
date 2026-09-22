@@ -306,7 +306,7 @@ export default function LibraryGrantsDialog({ open, library, onClose }: LibraryG
                     {grant.subjectType === 'GROUP' && !expired && (
                       <GroupMembersDisclosure
                         key={grant.subjectId}
-                        groupLabel={subjectName}
+                        groupLabel={grant.subjectDisplayName ?? subjectName}
                         load={(offset, limit) =>
                           getGrantedGroupMembers(library.id, grant.subjectId, offset, limit)
                         }
