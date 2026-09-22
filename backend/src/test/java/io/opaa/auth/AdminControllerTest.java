@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
@@ -30,6 +31,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
+import org.springframework.web.servlet.mvc.method.annotation.ExceptionHandlerExceptionResolver;
 
 @WebMvcTest(AdminController.class)
 @ActiveProfiles("dev")
@@ -197,11 +199,12 @@ class AdminControllerTest {
   }
 
   /**
-   * #1799: the controller-local branch attached its body unconditionally, so an {@code Accept} that
-   * excludes JSON made the writer raise a second exception, the response was discarded and the
-   * caller got the container's 500 instead of this 404. The tap is on the ROOT logger - the
-   * stacktrace comes from a Spring logger, a tap on the handler's own would not see it (the pattern
-   * of {@code GlobalExceptionHandlerUnwritableAcceptTest}).
+   * An {@code Accept} that excludes JSON makes an unconditionally attached error body unwritable:
+   * the writer raises a second exception, the response is discarded and the caller gets the
+   * container's 500 instead of this 404. The tap is on the ROOT logger - the stacktrace comes from
+   * a Spring logger, a tap on the advice's own would not see it (the pattern of {@code
+   * GlobalExceptionHandlerUnwritableAcceptTest}). The resolver is raised to {@code DEBUG} so that
+   * "nothing was logged with a stacktrace" and "the advice never ran" cannot look the same.
    */
   @Test
   void changeRoleForNonexistentUserWithAnUnwritableAcceptKeepsIts404AndLogsNoStacktrace()
@@ -211,6 +214,10 @@ class AdminControllerTest {
         .thenThrow(new UserNotFoundException("Benutzer nicht gefunden: " + userId));
 
     Logger rootLogger = (Logger) LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
+    Logger resolverLogger =
+        (Logger) LoggerFactory.getLogger(ExceptionHandlerExceptionResolver.class);
+    Level previousResolverLevel = resolverLogger.getLevel();
+    resolverLogger.setLevel(Level.DEBUG);
     ListAppender<ILoggingEvent> logAppender = new ListAppender<>();
     logAppender.start();
     rootLogger.addAppender(logAppender);
@@ -226,10 +233,20 @@ class AdminControllerTest {
           .andExpect(content().string(""));
 
       assertThat(logAppender.list)
+          .as("the advice's branch has to be the one that answered")
+          .anySatisfy(
+              event -> {
+                assertThat(event.getLoggerName())
+                    .isEqualTo(ExceptionHandlerExceptionResolver.class.getName());
+                assertThat(event.getFormattedMessage())
+                    .contains("GlobalExceptionHandler#handleNotFoundException");
+              });
+      assertThat(logAppender.list)
           .as("a caller error must not put a stacktrace into the log, whoever logs it")
           .allSatisfy(event -> assertThat(event.getThrowableProxy()).isNull());
     } finally {
       rootLogger.detachAppender(logAppender);
+      resolverLogger.setLevel(previousResolverLevel);
     }
   }
 }

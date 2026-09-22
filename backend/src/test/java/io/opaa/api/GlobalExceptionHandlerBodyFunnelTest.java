@@ -15,12 +15,13 @@ import org.junit.jupiter.api.Test;
 
 /**
  * #1780 reduced thirty-odd decisions to one rule: an error body is attached only where {@code
- * GlobalExceptionHandler#respond} decides it may be written. Since #1799 the rule holds for the
- * whole codebase - no production class outside the guarded one carries a {@code @ExceptionHandler}
- * either. A rule that only a Javadoc holds is the pattern this project gave up on for test contexts
- * (AGENTS.md on the context signature guard: a comment as justification is no longer enough), so
- * this guard holds it mechanically - the same "closed set rather than an enumeration" shape as
- * {@code AuditFunnelStructureTest} and {@code
+ * GlobalExceptionHandler#respond} decides it may be written. The rule holds for all of {@code
+ * backend/src/main/java} - no class there outside the guarded one carries a
+ * {@code @ExceptionHandler} either; the only other production module, {@code opaa-api}, holds
+ * generated DTOs and enums and no web code at all. A rule that only a Javadoc holds is the pattern
+ * this project gave up on for test contexts (AGENTS.md on the context signature guard: a comment as
+ * justification is no longer enough), so this guard holds it mechanically - the same "closed set
+ * rather than an enumeration" shape as {@code AuditFunnelStructureTest} and {@code
  * SearchDiagnosisRerankParityTest#onlyTheFactoryConstructsARetrievalContextInProductionCode}.
  *
  * <p>It reads the production source instead of instantiating branches: the alternative - invoking
@@ -178,8 +179,16 @@ class GlobalExceptionHandlerBodyFunnelTest {
         .isEmpty();
   }
 
+  /** The fully qualified form counts too - this codebase writes annotations both ways. */
   private boolean declaresAnExceptionHandler(String source) {
-    return source.lines().anyMatch(line -> line.strip().startsWith("@ExceptionHandler"));
+    return source
+        .lines()
+        .map(String::strip)
+        .anyMatch(
+            line ->
+                line.startsWith("@ExceptionHandler")
+                    || line.startsWith(
+                        "@org.springframework.web.bind.annotation.ExceptionHandler"));
   }
 
   /** Each {@code @ExceptionHandler} as one string, the lines google-java-format wrapped joined. */
