@@ -738,37 +738,49 @@ class PipelineReindexServiceIntegrationTest {
   }
 
   @Test
-  void aDocumentWhoseSourceFileCannotBeFetchedIsSkippedAndTheRestOfTheBatchRunsOn()
-      throws IOException {
-    // #1804: fetching the source file belongs to the candidate, not to the batch. An upload
-    // storage on an object store refuses it with UploadStoreUnavailableException (ADR-0030,
-    // Entscheidung 9), and the per-document resilience of this class has to cover that failure
-    // like every other one - otherwise one unreadable original ends the whole run.
-    Document unreadable = persistedFilesystemDocument("nicht-lesbar.txt", "Inhalt A. ");
-    seedChunk(unreadable.getId(), "alter chunk A", null, null);
-    Document readable = persistedFilesystemDocument("lesbar.txt", "Inhalt B. ");
-    seedChunk(readable.getId(), "alter chunk B", null, null);
-    StoredDocumentSourceAccess unavailableForOne = Mockito.spy(sourceAccess);
+  void anUnavailableUploadStoreEndsTheBatchAfterReportingTheFirstDocument() throws IOException {
+    // Two uploaded documents whose originals lie in the managed storage, so the real UPLOAD branch
+    // of the source access runs. A store that does not answer refuses every one of them alike
+    // (ADR-0030, Entscheidung 9): the first is reported like any other failure and the call ends
+    // there instead of waiting for the store once per candidate - the batch answers with what it
+    // has, and the untouched candidates come back in the next call.
+    Document first = uploadedDocumentInManagedStorage("erster-vermerk.txt");
+    seedChunk(first.getId(), uploadLibrary.getId(), "alter chunk A", null, null);
+    Document second = uploadedDocumentInManagedStorage("zweiter-vermerk.txt");
+    seedChunk(second.getId(), uploadLibrary.getId(), "alter chunk B", null, null);
+    StoredDocumentSourceAccess unavailableStore = Mockito.spy(sourceAccess);
     Mockito.doThrow(new UploadStoreUnavailableException())
-        .when(unavailableForOne)
+        .when(unavailableStore)
         .withLocalSourceFile(
-            ArgumentMatchers.argThat(
-                candidate -> candidate != null && unreadable.getId().equals(candidate.getId())),
-            ArgumentMatchers.any(),
-            ArgumentMatchers.any());
+            ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any());
 
     PipelineReindexResult result =
-        reindexServiceReading(unavailableForOne)
+        reindexServiceReading(unavailableStore)
             .reindexBatch(
                 Organization.DEFAULT_ID, TikaFallbackFormat.ID, TikaFallbackFormat.VERSION, 10);
 
     assertThat(result.skippedDocuments()).isEqualTo(1);
-    assertThat(result.reindexedDocuments()).isEqualTo(1);
-    // The document that could not be read keeps its chunks; the other one was rewritten.
-    assertThat(chunkTextsOf(unreadable.getId())).containsExactly("alter chunk A");
-    assertThat(chunkTextsOf(readable.getId()))
-        .noneMatch(text -> text.equals("alter chunk B"))
-        .isNotEmpty();
+    assertThat(result.reindexedDocuments()).isZero();
+    Mockito.verify(unavailableStore, Mockito.times(1))
+        .withLocalSourceFile(
+            ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any());
+    // Both keep their chunks - the reported one because it could not be read, the other one
+    // because it was never touched.
+    assertThat(chunkTextsOf(first.getId())).containsExactly("alter chunk A");
+    assertThat(chunkTextsOf(second.getId())).containsExactly("alter chunk B");
+  }
+
+  /** An {@code UPLOAD} document whose original lies where this library's storage area is. */
+  private Document uploadedDocumentInManagedStorage(String fileName) throws IOException {
+    Path managedDirectory =
+        Path.of(uploadProperties.storagePath())
+            .resolve(Organization.DEFAULT_ID.toString())
+            .resolve(uploadLibrary.getId().toString());
+    Files.createDirectories(managedDirectory);
+    Path file = managedDirectory.resolve(UUID.randomUUID() + "-" + fileName);
+    Files.writeString(file, "Ein hochgeladener Vermerk über Verwaltungsgebühren. ".repeat(20));
+    return persistedDocumentPointingAt(
+        fileName, file, DocumentSourceType.UPLOAD, uploadLibrary.getId());
   }
 
   /** The production service with one collaborator replaced, without touching the bean itself. */

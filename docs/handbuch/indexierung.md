@@ -616,10 +616,15 @@ gelöscht, wenn die neuen vorliegen. Verwaiste Chunks ohne Dokumentzeile werden 
 aufgeräumt.
 
 **Ein Fehlschlag kostet nur das betroffene Dokument**, nicht das Paket — auch wenn schon seine
-Quelldatei nicht zu beschaffen ist, etwa weil der Objektspeicher der Originale gerade nicht
-antwortet. Das Dokument wird als übersprungen gezählt, behält seine bisherigen Chunks, und die
-übrigen Dokumente des Pakets werden weiter verarbeitet. Beim nächsten Aufruf steht es wieder in
-der Restmenge.
+Quelldatei nicht zu beschaffen ist. Das Dokument wird als übersprungen gezählt, behält seine
+bisherigen Chunks, die übrigen Dokumente des Pakets werden weiter verarbeitet, und beim nächsten
+Aufruf steht es wieder in der Restmenge.
+
+**Eine Ausnahme:** Antwortet der Objektspeicher der hochgeladenen Originale gar nicht, endet das
+Paket nach diesem einen Dokument. Jeder weitere Kandidat aus derselben Ablage liefe in dieselbe
+Wartezeit; der Aufruf meldet deshalb das eine übersprungene Dokument und die bis dahin erledigte
+Arbeit ganz regulär zurück, statt den Speicher reihum zu befragen. Die dahinter liegenden
+Dokumente bleiben unberührt und kommen im nächsten Aufruf an die Reihe.
 
 Für Anhänge, die nur remote erreichbar sind, wird die ganze Elternkette vorgemerkt, weil der
 Anhang nur aus der Elterndatei heraus neu extrahiert werden kann.

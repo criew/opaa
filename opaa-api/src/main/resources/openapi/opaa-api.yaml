@@ -3111,11 +3111,13 @@ paths:
         an explicit operator decision - nothing triggers this automatically.
 
 
-        A document that cannot be advanced costs only that candidate and is counted as skipped -
-        fetching its source file included: with opaa.upload.store=s3, a store that cannot be
-        reached skips the document and the batch goes on. Nothing written so far is lost - the next
-        call re-derives the remaining work, so a document skipped for that reason is picked up
-        again once the store answers.
+        A document that cannot be advanced costs only that candidate and is counted as skipped,
+        fetching its source file included. One condition ends the call early instead: with
+        opaa.upload.store=s3, an upload store that does not answer would make every remaining
+        candidate wait for the same timeout, so that document is counted as skipped and the batch
+        returns 200 with what it has done so far. Nothing written is lost and nothing behind it is
+        touched - the next call re-derives the remaining work and picks those documents up once the
+        store answers again.
       requestBody:
         required: true
         content:
