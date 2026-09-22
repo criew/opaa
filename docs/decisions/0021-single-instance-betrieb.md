@@ -213,7 +213,8 @@ Nachtrags, jeweils mit dem Grund:
   im Betrieb gibt es hier kein DDL-Rennen zwischen Instanzen.
 - **Mehrere Stellen koordinieren bereits über die Datenbank und tragen deshalb schon heute:** die
   Advisory-Locks in `UserRepository.lockRoleChanges`, `GroupRepository` und `AssetGrantRepository`
-  (und damit `LocalAdminAvailabilityGuard`), der Forward-only-Cap beider Aufbewahrungsläufe, die
+  (und damit `LocalAdminAvailabilityGuard`), die Sperre der Einstellungszeile (`SELECT … FOR
+  UPDATE`) in beiden Aufbewahrungsläufen, die
   Sequenzvergabe in `ChatService.appendTurn` gegen `uk_chat_messages_chat_sequence`, die
   Prüfsummen-Deduplizierung gegen `uk_documents_library_checksum`, die adressbasierte
   Erstadministrator-Regel (`InitialAdminPolicy`, kein „erster Nutzer"-Zähler) sowie alle drei

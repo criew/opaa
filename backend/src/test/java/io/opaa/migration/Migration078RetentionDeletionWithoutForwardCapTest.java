@@ -156,7 +156,7 @@ class Migration078RetentionDeletionWithoutForwardCapTest extends AbstractMigrati
             "opaa_diagnostic_context_delete_expired_partitions")) {
       try (PreparedStatement statement =
           connection.prepareStatement(
-              "SELECT prosecdef, proowner::regrole::text AS owner,"
+              "SELECT prosecdef, proowner::regrole::text AS owner, proacl IS NOT NULL AS has_acl,"
                   + " EXISTS (SELECT 1 FROM unnest(proacl) entry WHERE entry::text LIKE '=%')"
                   + "   AS execute_for_public,"
                   + " EXISTS (SELECT 1 FROM unnest(proacl) entry"
@@ -168,6 +168,11 @@ class Migration078RetentionDeletionWithoutForwardCapTest extends AbstractMigrati
           assertThat(rows.next()).as(function + " exists").isTrue();
           assertThat(rows.getBoolean("prosecdef")).as(function + " is SECURITY DEFINER").isTrue();
           assertThat(rows.getString("owner")).isEqualTo(OWNER_ROLE);
+          // A NULL proacl means "default rights", which include EXECUTE for PUBLIC - and would let
+          // both assertions below pass while saying nothing.
+          assertThat(rows.getBoolean("has_acl"))
+              .as(function + " carries an explicit ACL, not the default one")
+              .isTrue();
           assertThat(rows.getBoolean("execute_for_public"))
               .as(function + " is not executable by PUBLIC")
               .isFalse();
