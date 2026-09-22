@@ -140,12 +140,14 @@ class Migration078RetentionDeletionWithoutForwardCapTest extends AbstractMigrati
 
   /**
    * The privilege model of both functions survives the replacement (ADR-0015): {@code CREATE OR
-   * REPLACE} keeps owner and rights, and the replacement re-declares {@code SECURITY DEFINER} -
-   * without it the {@code DROP TABLE} would run as the calling application account, which owns
-   * nothing and may drop nothing.
+   * REPLACE} keeps owner and EXECUTE rights, and the replacement re-declares {@code SECURITY
+   * DEFINER} - without it the {@code DROP TABLE} would run as the calling application account,
+   * which owns nothing and may drop nothing. The ACL is asserted rather than assumed: a later
+   * rewrite as {@code DROP FUNCTION} + {@code CREATE} would silently reset it and fail with
+   * "permission denied" only in production.
    */
   @Test
-  void theReplacedFunctionsStayOwnedByTheAuditOwnerAndSecurityDefiner() throws Exception {
+  void theReplacedFunctionsKeepOwnerSecurityDefinerAndTheirExecuteGrants() throws Exception {
     applyChangelog(connection, CHANGELOG_PATH);
 
     for (String function :
@@ -154,13 +156,24 @@ class Migration078RetentionDeletionWithoutForwardCapTest extends AbstractMigrati
             "opaa_diagnostic_context_delete_expired_partitions")) {
       try (PreparedStatement statement =
           connection.prepareStatement(
-              "SELECT prosecdef, proowner::regrole::text AS owner FROM pg_catalog.pg_proc"
+              "SELECT prosecdef, proowner::regrole::text AS owner,"
+                  + " EXISTS (SELECT 1 FROM unnest(proacl) entry WHERE entry::text LIKE '=%')"
+                  + "   AS execute_for_public,"
+                  + " EXISTS (SELECT 1 FROM unnest(proacl) entry"
+                  + "   WHERE entry::text LIKE current_user || '=X%') AS execute_for_caller"
+                  + " FROM pg_catalog.pg_proc"
                   + " WHERE proname = ? AND pronamespace = current_schema()::regnamespace")) {
         statement.setString(1, function);
         try (ResultSet rows = statement.executeQuery()) {
           assertThat(rows.next()).as(function + " exists").isTrue();
           assertThat(rows.getBoolean("prosecdef")).as(function + " is SECURITY DEFINER").isTrue();
           assertThat(rows.getString("owner")).isEqualTo(OWNER_ROLE);
+          assertThat(rows.getBoolean("execute_for_public"))
+              .as(function + " is not executable by PUBLIC")
+              .isFalse();
+          assertThat(rows.getBoolean("execute_for_caller"))
+              .as(function + " stays executable by the account the baseline granted it to")
+              .isTrue();
         }
       }
     }

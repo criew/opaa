@@ -60,7 +60,7 @@ class Migration045PermissionHistoryRetentionSettingsTest extends AbstractMigrati
           .as("the delivered value is three years, not the ceiling")
           .isEqualTo(36);
       assertThat(rows.getTimestamp("last_cutoff"))
-          .as("the deletion starts where the installation does - see the forward-only cap")
+          .as("the deletion progress starts where the installation does, not at NULL")
           .isNotNull();
       assertThat(rows.getTimestamp("updated_at")).isNotNull();
       assertThat(rows.next()).as("exactly one row").isFalse();

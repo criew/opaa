@@ -471,8 +471,12 @@ nicht in die Auslegung des Einzelfalls.
   gelesen hat. Das Produkt warnt bei einer inkonsistenten Einstellung. Die konkrete Dauer folgt aus
   Fachrecht und Aktenordnung der einführenden Stelle.
 - Eine **Verkürzung** der Frist wirkt mit dem nächsten Monatslauf und ist selbst protokollpflichtig;
-  sie darf nicht das Werkzeug sein, mit dem ein unbequemer Zeitraum verschwindet. Was bereits
-  gelöscht ist, holt eine spätere **Verlängerung** nicht zurück.
+  sie darf nicht das Werkzeug sein, mit dem ein unbequemer Zeitraum verschwindet. Was diesen Satz
+  technisch trägt, ist nicht eine Bremse an der Löschung, sondern die Nachvollziehbarkeit der
+  Anordnung: Die Friständerung ist ein Verwaltungsakt, der mit altem und neuem Wert im Protokoll
+  steht, gelöscht wird erst mit dem nächsten Monatslauf, und das Anwendungskonto kann den
+  erreichten Löschstand (`last_cutoff`) nicht selbst schreiben. Was bereits gelöscht ist, holt eine
+  spätere **Verlängerung** nicht zurück.
 
 **Stand #395, technisch umgesetzt:** Die Frist ist eine **einzige, systemweite** Einstellung, keine je
 Organisation — die Partitionierung der Ablage (`audit_log`, #391) läuft ausschließlich über die Zeit

@@ -197,9 +197,9 @@ class AuditPrivilegeModelTest extends AbstractMigrationTest {
   /**
    * The application account's grant on {@code audit_retention_settings} is narrowed to {@code
    * (retention_months, updated_at)} (baseline group (j)) - {@code last_cutoff} is written
-   * exclusively by {@code opaa_audit_delete_expired_partitions()}, which is what makes that
-   * function's own forward-only cap an actual guarantee rather than a convention the application
-   * could bypass by writing the column directly.
+   * exclusively by {@code opaa_audit_delete_expired_partitions()}, so the recorded deletion
+   * progress is a guarantee rather than a convention the application could bypass by writing the
+   * column directly.
    */
   @Test
   void applicationAccountCanUpdateRetentionMonthsButNotLastCutoffDirectly() throws Exception {

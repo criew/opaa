@@ -1,9 +1,10 @@
 databaseChangeLog:
   - changeSet:
-      id: 078-retention-deletion-without-forward-cap
+      id: 078-retention-deletion-without-forward-cap-audit
       author: opaa
       comment: >-
-        Der Loeschlauf beider Protokolle loescht nach der eingestellten Frist, ohne Deckel (#1851).
+        Der Loeschlauf des Nachweisprotokolls loescht nach der eingestellten Frist, ohne Deckel
+        (#1851).
         .
         Die Baseline deckelte den Schnitt mit LEAST(candidate_cutoff, last_cutoff + vergangene
         Monate) - hoechstens ein Kalendermonat Fortschritt je vergangenem Kalendermonat. Dieser
@@ -22,11 +23,11 @@ databaseChangeLog:
         Unbedingt auf den Schnitt zu setzen, wie die Baseline es tat, haette bei jeder Verlaengerung
         behauptet, das Protokoll antworte wieder fuer Monate, deren Partitionen laengst weg sind.
         .
-        Beide Funktionen behalten Eigentuemer (opaa_audit_owner) und SECURITY DEFINER; CREATE OR
-        REPLACE laesst Eigentum und EXECUTE-Rechte unberuehrt. Die Mitgliedschaft in der
-        Eigentuemerrolle wird nur fuer die Dauer dieses Changesets genommen, wie in der Baseline.
-        Das Loeschen ganzer Monatspartitionen bleibt unveraendert - ein Aufruf, der einzelne Saetze
-        entfernen wuerde, entsteht hier nicht.
+        Die Funktion behaelt Eigentuemer (opaa_audit_owner) und SECURITY DEFINER; CREATE OR REPLACE
+        laesst Eigentum und EXECUTE-Rechte unberuehrt. Die Mitgliedschaft in der Eigentuemerrolle
+        wird nur fuer die Dauer dieses Changesets genommen, wie in der Baseline. Das Loeschen ganzer
+        Monatspartitionen bleibt unveraendert - ein Aufruf, der einzelne Saetze entfernen wuerde,
+        entsteht hier nicht.
       changes:
         - sql:
             splitStatements: false
@@ -79,6 +80,35 @@ databaseChangeLog:
                 RETURN;
               END; $_$;
 
+              ALTER FUNCTION opaa_audit_delete_expired_partitions() OWNER TO opaa_audit_owner;
+
+              DO $$
+              BEGIN
+                EXECUTE format('REVOKE opaa_audit_owner FROM %I', current_user);
+              END $$;
+      # Kein Rollback: Die zurueckgenommene Fassung ist die fehlerhafte - ein Rollback stellte den
+      # Deckel wieder her, der die eingestellte Frist nie erreicht.
+
+  - changeSet:
+      id: 078-retention-deletion-without-forward-cap-diagnostic-context
+      author: opaa
+      comment: >-
+        Dieselbe Korrektur fuer das Protokoll der Diagnose im Personenkontext (#1851, ADR-0015,
+        Leitplanke (i)). Die Baseline-Fassung trug denselben LEAST-Deckel und dasselbe unbedingte
+        last_cutoff := neuer Schnitt, Zeile fuer Zeile - Begruendung siehe Changeset
+        078-retention-deletion-without-forward-cap-audit.
+        .
+        Eigenes Changeset, weil es eine eigene Datenbankaenderung ist; die Klammer aus GRANT und
+        REVOKE der Eigentuemerrolle steht deshalb hier noch einmal.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              DO $$
+              BEGIN
+                EXECUTE format('GRANT opaa_audit_owner TO %I WITH SET TRUE', current_user);
+              END $$;
+
               CREATE OR REPLACE FUNCTION opaa_diagnostic_context_delete_expired_partitions() RETURNS SETOF text
                   LANGUAGE plpgsql SECURITY DEFINER
                   SET search_path TO 'pg_catalog', '${database.defaultSchemaName}', 'pg_temp'
@@ -122,12 +152,10 @@ databaseChangeLog:
                 RETURN;
               END; $_$;
 
-              ALTER FUNCTION opaa_audit_delete_expired_partitions() OWNER TO opaa_audit_owner;
               ALTER FUNCTION opaa_diagnostic_context_delete_expired_partitions() OWNER TO opaa_audit_owner;
 
               DO $$
               BEGIN
                 EXECUTE format('REVOKE opaa_audit_owner FROM %I', current_user);
               END $$;
-      # Kein Rollback: Die zurueckgenommene Fassung ist die fehlerhafte - ein Rollback stellte den
-      # Deckel wieder her, der die eingestellte Frist nie erreicht.
+      # Kein Rollback, aus demselben Grund wie beim Changeset darueber.
