@@ -615,6 +615,12 @@ Die Restmenge wird jedes Mal aus den Chunk-Metadaten neu abgeleitet. Alte Chunks
 gelöscht, wenn die neuen vorliegen. Verwaiste Chunks ohne Dokumentzeile werden dabei mit
 aufgeräumt.
 
+**Ein Fehlschlag kostet nur das betroffene Dokument**, nicht das Paket — auch wenn schon seine
+Quelldatei nicht zu beschaffen ist, etwa weil der Objektspeicher der Originale gerade nicht
+antwortet. Das Dokument wird als übersprungen gezählt, behält seine bisherigen Chunks, und die
+übrigen Dokumente des Pakets werden weiter verarbeitet. Beim nächsten Aufruf steht es wieder in
+der Restmenge.
+
 Für Anhänge, die nur remote erreichbar sind, wird die ganze Elternkette vorgemerkt, weil der
 Anhang nur aus der Elterndatei heraus neu extrahiert werden kann.
 
