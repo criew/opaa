@@ -2,6 +2,8 @@ package io.opaa.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -12,8 +14,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import io.opaa.auth.AdminTestSecurityConfig;
+import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
+import io.opaa.common.AccessDeniedException;
 import io.opaa.common.NotFoundException;
 import io.opaa.diagnosticaccess.DiagnosticImpersonationGrantService.ImpersonationAvailability;
 import io.opaa.indexing.maintenance.ContextPrefixRerunProgress;
@@ -80,6 +84,15 @@ class SearchAdminControllerTest {
     return jwt()
         .jwt(builder -> builder.subject(TEST_SUBJECT).claim("iss", TEST_ISSUER))
         .authorities(new SimpleGrantedAuthority("ROLE_SYSTEM_ADMIN"));
+  }
+
+  /** Matches the caller the provisioning filter builds for {@link #asAdmin()}. */
+  private CurrentUser actingAdmin() {
+    return argThat(
+        caller ->
+            caller != null
+                && actingAdminId.equals(caller.id())
+                && actingAdminOrganizationId.equals(caller.organizationId()));
   }
 
   private RequestPostProcessor asRegularUser() {
@@ -371,7 +384,7 @@ class SearchAdminControllerTest {
   void chunkIsReadInTheCallersOrganizationAndCarriesNoEmbedding() throws Exception {
     UUID documentId = UUID.randomUUID();
     UUID libraryId = UUID.randomUUID();
-    when(chunkInspectionService.findChunk(actingAdminOrganizationId, "chunk-1"))
+    when(chunkInspectionService.inspectChunk(actingAdmin(), eq("chunk-1")))
         .thenReturn(
             Optional.of(
                 new ChunkInspection(
@@ -397,12 +410,12 @@ class SearchAdminControllerTest {
         .andExpect(jsonPath("$.embedding").doesNotExist())
         .andExpect(jsonPath("$.metadata.embedding").doesNotExist());
 
-    verify(chunkInspectionService).findChunk(actingAdminOrganizationId, "chunk-1");
+    verify(chunkInspectionService).inspectChunk(actingAdmin(), eq("chunk-1"));
   }
 
   @Test
   void anUnknownOrForeignChunkIs404() throws Exception {
-    when(chunkInspectionService.findChunk(any(), any())).thenReturn(Optional.empty());
+    when(chunkInspectionService.inspectChunk(any(), any())).thenReturn(Optional.empty());
 
     mockMvc
         .perform(get("/api/v1/admin/search/chunks/fremd").with(asAdmin()))
@@ -413,7 +426,7 @@ class SearchAdminControllerTest {
   void documentChunksAreListedInOrderWithTheEntitysChunkCount() throws Exception {
     UUID documentId = UUID.randomUUID();
     UUID libraryId = UUID.randomUUID();
-    when(chunkInspectionService.listDocumentChunks(actingAdminOrganizationId, documentId))
+    when(chunkInspectionService.inspectDocumentChunks(actingAdmin(), eq(documentId)))
         .thenReturn(
             new DocumentChunks(
                 documentId,
@@ -454,12 +467,37 @@ class SearchAdminControllerTest {
 
   @Test
   void anUnknownOrForeignDocumentIs404() throws Exception {
-    when(chunkInspectionService.listDocumentChunks(any(), any()))
+    when(chunkInspectionService.inspectDocumentChunks(any(), any()))
         .thenThrow(new NotFoundException("Das Dokument wurde nicht gefunden."));
 
     mockMvc
         .perform(
             get("/api/v1/admin/search/documents/" + UUID.randomUUID() + "/chunks").with(asAdmin()))
         .andExpect(status().isNotFound());
+  }
+
+  @Test
+  void aChunkOfALibraryTheAdminMayNotReadIs403() throws Exception {
+    // regression guard for #1828: the SYSTEM_ADMIN bar is not a reading permission - a chunk
+    // carries the document's text, so the refusal must reach the caller as 403, not as a 500.
+    when(chunkInspectionService.inspectChunk(any(), any()))
+        .thenThrow(
+            new AccessDeniedException("Für diese Bibliothek liegt keine Leseberechtigung vor"));
+
+    mockMvc
+        .perform(get("/api/v1/admin/search/chunks/chunk-1").with(asAdmin()))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  void documentChunksOfALibraryTheAdminMayNotReadAre403() throws Exception {
+    when(chunkInspectionService.inspectDocumentChunks(any(), any()))
+        .thenThrow(
+            new AccessDeniedException("Für diese Bibliothek liegt keine Leseberechtigung vor"));
+
+    mockMvc
+        .perform(
+            get("/api/v1/admin/search/documents/" + UUID.randomUUID() + "/chunks").with(asAdmin()))
+        .andExpect(status().isForbidden());
   }
 }

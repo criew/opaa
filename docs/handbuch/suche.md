@@ -730,7 +730,10 @@ lesen dürfte.
 **„Chunk anzeigen"** öffnet jeden Kandidaten mit Text, Kontextpräfix und Metadaten; der Abschnitt
 „Chunks eines Dokuments" zeigt alle Chunks eines Dokuments in Reihenfolge und stellt ihre Zahl der
 am Dokument vermerkten gegenüber. Weichen beide ab, ist das selbst der Befund. Vektoren werden dabei
-nie ausgeliefert.
+nie ausgeliefert. **Beides braucht ein Leserecht auf die Bibliothek des Dokuments** — ein Chunk ist
+der Text des Dokuments, und die Systemrolle allein öffnet ihn nicht; ohne Leserecht nennt die
+Ansicht den Grund, statt den Text zu zeigen ([Bibliotheken und
+Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 10).
 
 ### 8.3 Diagnosesperre und Nachweis
 

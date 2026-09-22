@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -1013,8 +1014,7 @@ class LibraryDocumentServiceTest {
     // exists separately from KnowledgeLibraryServiceIntegrationTest: that suite's shared context
     // has
     // a fixed allowlist for the whole run.
-    when(accessService.requireRole(any(), eq(currentUserId), eq(false), eq(AssetRole.VIEWER)))
-        .thenReturn(AssetRole.VIEWER);
+    grantViewerOnUploadLibrary();
     when(filesystemAllowlist.isAllowed("/data/documents")).thenReturn(false);
 
     KnowledgeLibrary filesystemLibrary = mock(KnowledgeLibrary.class);
@@ -1144,8 +1144,7 @@ class LibraryDocumentServiceTest {
           exchange.getResponseBody().write(bytes);
           exchange.close();
         });
-    when(accessService.requireRole(any(), eq(currentUserId), eq(false), eq(AssetRole.VIEWER)))
-        .thenReturn(AssetRole.VIEWER);
+    grantViewerOnUploadLibrary();
     KnowledgeLibrary library = remoteLibrary(null);
     when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
 
@@ -1417,9 +1416,12 @@ class LibraryDocumentServiceTest {
     return attachment.getId();
   }
 
+  /**
+   * The content-read check every {@code loadContent} test below has to clear (#1828) - a permissive
+   * stub rather than the mock's own default, so a test that relies on it says so.
+   */
   private void grantViewerOnUploadLibrary() {
-    when(accessService.requireRole(any(), eq(currentUserId), eq(false), eq(AssetRole.VIEWER)))
-        .thenReturn(AssetRole.VIEWER);
+    doNothing().when(accessService).requireContentRead(any(), eq(currentUserId), eq(false));
   }
 
   private KnowledgeLibrary remoteLibrary(String sourceCredentials) {
@@ -1450,8 +1452,7 @@ class LibraryDocumentServiceTest {
           exchange.getResponseBody().write(bytes);
           exchange.close();
         });
-    when(accessService.requireRole(any(), eq(currentUserId), eq(false), eq(AssetRole.VIEWER)))
-        .thenReturn(AssetRole.VIEWER);
+    grantViewerOnUploadLibrary();
     KnowledgeLibrary library = remoteLibrary(null);
     when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
     Document document =
@@ -1486,8 +1487,7 @@ class LibraryDocumentServiceTest {
           exchange.getResponseBody().write(bytes);
           exchange.close();
         });
-    when(accessService.requireRole(any(), eq(currentUserId), eq(false), eq(AssetRole.VIEWER)))
-        .thenReturn(AssetRole.VIEWER);
+    grantViewerOnUploadLibrary();
     KnowledgeLibrary library = remoteLibrary("libuser:libpass");
     when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
     Document document =
@@ -1517,8 +1517,7 @@ class LibraryDocumentServiceTest {
 
   @Test
   void loadContentAnswers404WithAGermanMessageWhenTheRemoteSourceIsUnreachable() {
-    when(accessService.requireRole(any(), eq(currentUserId), eq(false), eq(AssetRole.VIEWER)))
-        .thenReturn(AssetRole.VIEWER);
+    grantViewerOnUploadLibrary();
     KnowledgeLibrary library = remoteLibrary(null);
     when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
     // Port 1 is a privileged port nothing in this test listens on - the connection is refused
@@ -1580,8 +1579,7 @@ class LibraryDocumentServiceTest {
             new AttachmentExtractionLimiter(new AttachmentExtractionProperties(0, null)),
             ProductionDocumentFormats.supportedFormats(),
             s3OriginalAccess);
-    when(accessService.requireRole(any(), eq(currentUserId), eq(false), eq(AssetRole.VIEWER)))
-        .thenReturn(AssetRole.VIEWER);
+    grantViewerOnUploadLibrary();
     KnowledgeLibrary library = remoteLibrary(null);
     when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
     Document document =
@@ -1950,8 +1948,9 @@ class LibraryDocumentServiceTest {
 
   @Test
   void loadContentNeverReachesTheObjectStoreWithoutViewerOnTheLibrary() {
-    when(accessService.requireRole(any(), eq(currentUserId), eq(false), eq(AssetRole.VIEWER)))
-        .thenThrow(new NotFoundException("Bibliothek nicht gefunden"));
+    doThrow(new NotFoundException("Bibliothek nicht gefunden"))
+        .when(accessService)
+        .requireContentRead(any(), eq(currentUserId), eq(false));
     Document document = s3Document("2025/protokoll.pdf", "application/pdf");
     when(documentRepository.findById(document.getId())).thenReturn(Optional.of(document));
 

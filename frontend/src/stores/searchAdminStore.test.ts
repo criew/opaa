@@ -126,6 +126,30 @@ describe('searchAdminStore', () => {
     expect(isLoadingDocumentChunks).toBe(false)
   })
 
+  // #1828: without a grant on the library the endpoint answers 403 - the reason has to reach the
+  // section's Alert verbatim, an empty view would look like "this document has no chunks".
+  it('shows the German reason when the library may be administered but not read', async () => {
+    server.use(
+      http.get('/api/v1/admin/search/documents/:documentId/chunks', () =>
+        HttpResponse.json(
+          {
+            error:
+              'Für diese Bibliothek liegt keine Leseberechtigung vor; Verwaltungsrechte genügen dafür nicht.',
+          },
+          { status: 403 },
+        ),
+      ),
+    )
+
+    await useSearchAdminStore.getState().loadDocumentChunks('33333333-3333-4333-8333-333333333333')
+
+    const { documentChunks, documentChunksError } = useSearchAdminStore.getState()
+    expect(documentChunks).toBeNull()
+    expect(documentChunksError).toBe(
+      'Für diese Bibliothek liegt keine Leseberechtigung vor; Verwaltungsrechte genügen dafür nicht.',
+    )
+  })
+
   it('reports a not-found document as an error rather than an empty list', async () => {
     await useSearchAdminStore.getState().loadDocumentChunks('99999999-9999-4999-8999-999999999999')
 

@@ -2605,7 +2605,9 @@ solche Reste erkannt und entfernt werden, steht unter
 
 Danach das Backend starten und ein Original in der Oberfläche herunterladen — am besten eine E-Mail
 mit Anhang und den Anhang gleich mit, weil daran sichtbar wird, dass auch die zusammengesetzten
-Verweise noch stimmen. Bleibt ein Paar **ganz** unbearbeitet, ist das der harmlose Fall: Der Bericht
+Verweise noch stimmen. Dieser Prüfschritt braucht ein Konto mit **Leserecht auf die betroffene
+Bibliothek**: Die Systemrolle allein öffnet kein Original, sie verwaltet nur
+([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 10). Bleibt ein Paar **ganz** unbearbeitet, ist das der harmlose Fall: Der Bericht
 über verwaiste Originale meldet für diese Bibliothek nichts und jedes ihrer Originale antwortet mit
 „nicht gefunden"; das Nachholen beider Befehle für dieses Paar behebt es. Der riskante Fall ist die
 halb ausgeführte Bibliothek aus dem Kasten oben.

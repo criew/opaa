@@ -1,10 +1,13 @@
 package io.opaa.searchadmin;
 
+import io.opaa.auth.CurrentUser;
 import io.opaa.common.NotFoundException;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.document.Document;
 import io.opaa.indexing.document.DocumentRepository;
+import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
+import io.opaa.library.LibraryAccessService;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -26,6 +29,11 @@ import tools.jackson.databind.ObjectMapper;
  * document no longer exists is treated as absent. Schema/table name come from the same {@code
  * spring.ai.vectorstore.pgvector.*} properties {@code PgVectorStore} binds, as in {@code
  * ChunkEmbeddingLookup}.
+ *
+ * <p>Organization membership is not a reading permission. The two administration entries ({@link
+ * #inspectChunk}, {@link #inspectDocumentChunks}) therefore also require the caller to be able to
+ * read the document's library, with no system-administration floor (#1828) - a chunk carries the
+ * document's text. The reading path passes its own scope in and keeps deciding for itself.
  */
 @Service
 public class ChunkInspectionService {
@@ -36,6 +44,7 @@ public class ChunkInspectionService {
   private final JdbcTemplate jdbcTemplate;
   private final DocumentRepository documentRepository;
   private final KnowledgeLibraryRepository libraryRepository;
+  private final LibraryAccessService libraryAccessService;
   private final ObjectMapper objectMapper;
   private final String selectSql;
 
@@ -43,14 +52,53 @@ public class ChunkInspectionService {
       JdbcTemplate jdbcTemplate,
       DocumentRepository documentRepository,
       KnowledgeLibraryRepository libraryRepository,
+      LibraryAccessService libraryAccessService,
       ObjectMapper objectMapper,
       @Value("${opaa.database.schema}") String schemaName,
       @Value("${spring.ai.vectorstore.pgvector.table-name:vector_store}") String tableName) {
     this.jdbcTemplate = jdbcTemplate;
     this.documentRepository = documentRepository;
     this.libraryRepository = libraryRepository;
+    this.libraryAccessService = libraryAccessService;
     this.objectMapper = objectMapper;
     this.selectSql = "SELECT id, content, metadata FROM " + schemaName + "." + tableName;
+  }
+
+  /**
+   * The chunk {@code chunkId} names, for the administration page - {@link #findChunk} plus the
+   * reading permission on its library (#1828). Empty for an id the organization boundary already
+   * hides; {@link io.opaa.common.AccessDeniedException} when the caller may administer that library
+   * but not read it.
+   */
+  public Optional<ChunkInspection> inspectChunk(CurrentUser caller, String chunkId) {
+    Optional<ChunkInspection> chunk = findChunk(caller.organizationId(), chunkId);
+    chunk.ifPresent(found -> requireReadableLibrary(caller, found.libraryId()));
+    return chunk;
+  }
+
+  /**
+   * Every stored chunk of the document, for the administration page - {@link #listDocumentChunks}
+   * plus the reading permission on its library (#1828), checked before a single chunk is read.
+   */
+  public DocumentChunks inspectDocumentChunks(CurrentUser caller, UUID documentId) {
+    Document document = requireDocument(caller.organizationId(), documentId);
+    requireReadableLibrary(caller, document.getLibraryId());
+    return listDocumentChunks(caller.organizationId(), documentId);
+  }
+
+  /**
+   * The reading permission a chunk's text needs: the same check the original's download runs, so
+   * administering a library never opens its content. A document without a library, or one whose
+   * library is gone, is treated as unknown.
+   */
+  private void requireReadableLibrary(CurrentUser caller, UUID libraryId) {
+    KnowledgeLibrary library =
+        (libraryId == null
+                ? Optional.<KnowledgeLibrary>empty()
+                : libraryRepository.findById(libraryId))
+            .filter(candidate -> caller.organizationId().equals(candidate.getOrganizationId()))
+            .orElseThrow(() -> new NotFoundException("Das Dokument wurde nicht gefunden."));
+    libraryAccessService.requireContentRead(library, caller.id(), caller.isSystemAdmin());
   }
 
   /**

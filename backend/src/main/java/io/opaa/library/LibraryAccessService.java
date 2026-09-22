@@ -157,6 +157,21 @@ public class LibraryAccessService {
   }
 
   /**
+   * Requires the permission a library's <b>content</b> needs (#1828): {@link #requireRole} first,
+   * so a person the library does not reach keeps its {@code 404}, then {@link #readableLibraryIds},
+   * which knows no system-administration floor. A system admin without a grant therefore gets
+   * {@code 403} - administering a library is not reading it.
+   */
+  public void requireContentRead(KnowledgeLibrary library, UUID userId, boolean systemAdmin) {
+    requireRole(library, userId, systemAdmin, AssetRole.VIEWER);
+    if (!readableLibraryIds(userId, library.getOrganizationId()).contains(library.getId())) {
+      throw new AccessDeniedException(
+          "Für diese Bibliothek liegt keine Leseberechtigung vor; Verwaltungsrechte genügen dafür"
+              + " nicht.");
+    }
+  }
+
+  /**
    * Whether {@code userId} holds {@link AssetRole#OWNER} on {@code library} on a basis they did not
    * create for themselves - see {@link AssetAccessService#holdsIndependentOwnerRole} for the rule
    * itself. Used by {@code LibraryDiagnosticsLockService} for the one rule that must hold against
