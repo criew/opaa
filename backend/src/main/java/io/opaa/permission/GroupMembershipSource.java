@@ -1,6 +1,7 @@
 package io.opaa.permission;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -29,4 +30,14 @@ public interface GroupMembershipSource {
    * definition of "active" as {@code AccountActivityService}, which the parity test holds to.
    */
   int countActiveMembers(UUID groupId, UUID organizationId, Instant now);
+
+  /**
+   * One page of those active accounts, ordered by name (#1880). The cap is the {@code LIMIT} of the
+   * query itself rather than a filter applied afterwards: the one caller that reads members by name
+   * - the grant giver of ADR-0036, Entscheidung 9 - must not be able to pull a group of five
+   * thousand into memory. Same organization scoping and same definition of "active" as {@link
+   * #countActiveMembers}, whose figure says how far the paging reaches.
+   */
+  List<UUID> findActiveMemberIdsPage(
+      UUID groupId, UUID organizationId, Instant now, int limit, int offset);
 }

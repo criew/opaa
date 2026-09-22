@@ -19,6 +19,7 @@ const {
   mockSearchSelectableGroups,
   mockResolveSelectableGroup,
   mockGetUserSummaries,
+  mockGetGrantedGroupMembers,
 } = vi.hoisted(() => ({
   mockGetLibraryGrants: vi.fn(async (libraryId: string) => {
     return useGrantStore.getState().grantsByLibrary[libraryId] ?? []
@@ -28,6 +29,15 @@ const {
   mockSearchSelectableGroups: vi.fn(async () => [] as SelectableGroupResponse[]),
   mockResolveSelectableGroup: vi.fn(),
   mockGetUserSummaries: vi.fn(async () => [] as UserSummary[]),
+  mockGetGrantedGroupMembers: vi.fn(async () => ({
+    groupId: 'group-referat-50',
+    name: 'Referat 50',
+    protectedGroup: false,
+    smallGroup: false,
+    activeMemberCount: 1,
+    members: [{ userId: 'user-anna', displayName: 'Anna Bauer' }],
+    responsible: [] as string[],
+  })),
 }))
 
 vi.mock('../services/api', async () => {
@@ -40,6 +50,7 @@ vi.mock('../services/api', async () => {
     searchSelectableGroups: mockSearchSelectableGroups,
     resolveSelectableGroup: mockResolveSelectableGroup,
     getUserSummaries: mockGetUserSummaries,
+    getGrantedGroupMembers: mockGetGrantedGroupMembers,
   }
 })
 
@@ -673,6 +684,43 @@ describe('LibraryGrantsDialog', () => {
     renderWithProviders(<LibraryGrantsDialog open library={library} onClose={vi.fn()} />)
 
     expect(await screen.findByText(/23 bei Erteilung, heute 41/)).toBeInTheDocument()
+  })
+
+  /**
+   * #1880, ADR-0036 Entscheidung 9: Wer der Gruppe hier ein Recht eingeräumt hat, sieht, an wen —
+   * und die Liste entsteht erst auf ausdrücklichen Wunsch, nicht beim Öffnen des Dialogs.
+   */
+  it('offers the member list of a granted group and loads it only on request', async () => {
+    setManager()
+    setGrants(library.id, [
+      {
+        id: 'grant-group',
+        subjectType: 'GROUP',
+        subjectId: group.id,
+        subjectDisplayName: 'Referat 50',
+        protectedGroup: false,
+        memberCountAtGrant: 23,
+        memberCountNow: 41,
+        smallGroup: false,
+        emptyGroup: false,
+        role: 'VIEWER',
+        expiresAt: null,
+        grantedByUserId: 'manager-1',
+        grantedByDisplayName: 'Manager',
+        createdAt: '2026-03-01T10:00:00Z',
+        updatedAt: '2026-03-01T10:00:00Z',
+      },
+    ])
+    renderWithProviders(<LibraryGrantsDialog open library={library} onClose={vi.fn()} />)
+    const trigger = await screen.findByRole('button', {
+      name: 'Mitglieder der Gruppe „Referat 50“ anzeigen',
+    })
+    expect(mockGetGrantedGroupMembers).not.toHaveBeenCalled()
+
+    await userEvent.click(trigger)
+
+    expect(await screen.findByText('Anna Bauer')).toBeInTheDocument()
+    expect(mockGetGrantedGroupMembers).toHaveBeenCalledWith(library.id, group.id, 0, 50)
   })
 
   it('withholds both figures of a small group and says so', async () => {

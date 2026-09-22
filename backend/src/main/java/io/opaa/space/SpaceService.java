@@ -27,6 +27,8 @@ import io.opaa.permission.AccessPath;
 import io.opaa.permission.AssetOwnershipHistoryService;
 import io.opaa.permission.CapabilityService;
 import io.opaa.permission.GroupAttribution;
+import io.opaa.permission.GroupMemberDisclosure;
+import io.opaa.permission.GroupMemberDisclosureDirectory;
 import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.GroupSizeProperties;
 import io.opaa.permission.GroupSizeSignal;
@@ -36,7 +38,6 @@ import io.opaa.permission.PermissionSubject;
 import io.opaa.permission.SuccessionFinding;
 import io.opaa.permission.SuccessionReachGuard;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -69,6 +70,7 @@ public class SpaceService {
   private final AssetOwnershipHistoryService ownershipHistory;
   private final GroupMembershipResolver groupMemberships;
   private final GroupSubjectDirectory groupDirectory;
+  private final GroupMemberDisclosureDirectory disclosureDirectory;
   private final CapabilityService capabilityService;
   private final GroupSizeProperties groupSizeProperties;
   private final SuccessionReachGuard successionGuard;
@@ -94,6 +96,7 @@ public class SpaceService {
       AssetOwnershipHistoryService ownershipHistory,
       GroupMembershipResolver groupMemberships,
       GroupSubjectDirectory groupDirectory,
+      GroupMemberDisclosureDirectory disclosureDirectory,
       CapabilityService capabilityService,
       GroupSizeProperties groupSizeProperties,
       SuccessionReachGuard successionGuard,
@@ -111,6 +114,7 @@ public class SpaceService {
     this.ownershipHistory = ownershipHistory;
     this.groupMemberships = groupMemberships;
     this.groupDirectory = groupDirectory;
+    this.disclosureDirectory = disclosureDirectory;
     this.capabilityService = capabilityService;
     this.groupSizeProperties = groupSizeProperties;
     this.requiresNewTransactionTemplate = new TransactionTemplate(transactionManager);
@@ -314,6 +318,31 @@ public class SpaceService {
                         groups.get(membership.getGroupId()),
                         groupSizeSignal(membership)))
         .toList();
+  }
+
+  /**
+   * The members of a group that is a member of this space, under the rule of {@link
+   * GroupMemberDisclosureDirectory} (#1880). This method carries what is its own: the bar of {@link
+   * #listMembers} and limit (a) - only while the group is a member here. Write-transactional
+   * because a retrieval carried by the system role writes an audit event.
+   */
+  @Transactional
+  public GroupMemberDisclosure listGroupMembers(
+      UUID spaceId, UUID groupId, int offset, int limit, CurrentUser caller) {
+    Space space = loadSpace(spaceId, caller);
+    if (!caller.isSystemAdmin()) {
+      accessPolicy.requireMemberListViewer(space, caller);
+    }
+    boolean isMember =
+        space.getMemberships().stream()
+            .filter(SpaceMembership::isGroupSubject)
+            .anyMatch(membership -> membership.getGroupId().equals(groupId));
+    if (!isMember) {
+      throw new NotFoundException("Gruppe nicht gefunden");
+    }
+    return disclosureDirectory
+        .disclose(groupId, space.getOrganizationId(), caller, offset, limit)
+        .orElseThrow(() -> new NotFoundException("Gruppe nicht gefunden"));
   }
 
   /**
@@ -993,12 +1022,7 @@ public class SpaceService {
   }
 
   private Map<UUID, String> resolveDisplayNames(List<UUID> userIds) {
-    Map<UUID, String> result = new HashMap<>();
-    for (User user : userRepository.findAllById(userIds)) {
-      result.put(
-          user.getId(), user.getDisplayName() != null ? user.getDisplayName() : user.getEmail());
-    }
-    return result;
+    return userRepository.displayNamesById(userIds);
   }
 
   private void appendInitialMemberships(

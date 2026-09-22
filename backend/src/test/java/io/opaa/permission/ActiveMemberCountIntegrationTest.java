@@ -124,6 +124,11 @@ class ActiveMemberCountIntegrationTest {
         .as("the counting query and the loading one answer the same number")
         .isEqualTo(resolver.activeMemberIds(group, organization).size())
         .isEqualTo(3);
+    // #1880: the paging query hands out names, so it carries the same definition - the third
+    // encoding would otherwise be the one nobody holds against the other two.
+    assertThat(resolver.activeMemberIdsPage(group, organization, 50, 0))
+        .as("the paging query answers the same accounts as the loading one")
+        .containsExactlyInAnyOrderElementsOf(resolver.activeMemberIds(group, organization));
   }
 
   @Test
