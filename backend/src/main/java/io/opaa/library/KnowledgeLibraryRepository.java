@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -137,4 +138,29 @@ public interface KnowledgeLibraryRepository extends JpaRepository<KnowledgeLibra
   List<KnowledgeLibrary>
       findByExternalAccessStateAndExternalAccessReminderSentAtIsNullAndExternalAccessExpiresAtBetween(
           ExternalAccessState state, Instant after, Instant until);
+
+  /**
+   * Erases the stored credential ciphertext, independent of what the entity attribute currently
+   * holds (#1806): while the encryption key is missing, {@code sourceCredentials} reads as {@code
+   * null} for a value that is very much there, so the dirty check of a {@code @DynamicUpdate}
+   * entity would find nothing to write and the discard would not happen. The condition is on the
+   * column itself and therefore unaffected by the converter.
+   *
+   * <p>Deliberately without {@code clearAutomatically}: the callers keep working with the same
+   * managed entity afterwards, and detaching it here would drop their pending changes.
+   *
+   * @return whether a stored value was actually erased
+   */
+  @Modifying(flushAutomatically = true)
+  @Query(
+      "update KnowledgeLibrary l set l.sourceCredentials = null"
+          + " where l.id = :id and l.sourceCredentials is not null")
+  int eraseSourceCredentials(@Param("id") UUID id);
+
+  /** The push secret's counterpart of {@link #eraseSourceCredentials} - same reasoning (#1806). */
+  @Modifying(flushAutomatically = true)
+  @Query(
+      "update KnowledgeLibrary l set l.webhookSecret = null"
+          + " where l.id = :id and l.webhookSecret is not null")
+  int eraseWebhookSecret(@Param("id") UUID id);
 }

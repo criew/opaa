@@ -1520,6 +1520,24 @@ Bibliothek als nicht gesetzt; `GET /api/v1/libraries` liefert die übrige Liste 
 einzelne Bibliothek betroffen ist. Ein **Schreibvorgang** (Anlegen oder Ändern von Zugangsdaten)
 scheitert dagegen weiterhin hart mit `503`, statt Zugangsdaten stillschweigend zu verlieren.
 
+**Eine Änderung an der Bibliothek lässt den Geheimtext unangetastet:** Solange der Schlüssel fehlt,
+liest die Anwendung die Zugangsdaten und das Push-Geheimnis (`source_credentials`,
+`source_webhook_secret`) als nicht gesetzt — ein Schreibvorgang auf die Bibliothek speichert diesen
+gelesenen Leerwert aber nicht zurück. Name, Beschreibung, Metadaten-Einstellungen, Zeitplan und jede
+andere Änderung schreiben nur die Spalten, die sie selbst geändert haben; der gespeicherte Geheimtext
+bleibt stehen und ist mit dem wiedergefundenen Schlüssel unverändert lesbar. Die Oberfläche zeigt die
+Zugangsdaten in diesem Zustand allerdings als „nicht gesetzt“ an, obwohl sie gespeichert sind — das
+Ja/Nein wird aus dem gelesenen Wert abgeleitet. Zusätzlich hinterlässt jeder solche Lesevorgang eine
+Warnung im Protokoll (`io.opaa.library.SourceCredentialsConverter`, ohne den Wert und ohne die
+Bibliotheks-ID).
+
+**Zwei Vorgänge löschen den Geheimtext auch ohne Schlüssel — absichtlich:** ein Wechsel des Hosts in
+`sourceUrl`, ohne neue Zugangsdaten mitzusenden (die gespeicherten Zugangsdaten gelten nur für den
+bisherigen Host und werden bei einem Wechsel verworfen — sonst ließen sie sich an einen fremden Host
+umleiten), und der ausdrückliche Widerruf des Webhook-Geheimnisses bzw. Ereignis-Tokens. Beide wirken
+auf die gespeicherte Spalte, nicht auf den gelesenen Wert; ein Widerruf ist damit auch in diesem
+Zustand endgültig.
+
 **Bei Schlüsselverlust:** Bereits verschlüsselte `sourceCredentials`-Werte sind ohne den
 ursprünglichen Schlüssel nicht wiederherstellbar — es gibt keinen Wiederherstellungsweg außerhalb des
 Schlüssels selbst. Betroffen sind ausschließlich die Zugangsdaten selbst, nicht die übrige
