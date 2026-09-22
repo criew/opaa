@@ -248,12 +248,15 @@ Sie wirkt aber erst, **nachdem** sie gesetzt wurde:
   erteilte Rechte an Personen und Gruppen (`asset_grants`) — ein bestehender Grant bleibt auch nach
   dem Senken der Obergrenze bestehen und muss gesondert zurückgenommen werden.
 - Die Systemverwaltung setzt die Obergrenze **je Bibliothek**, nicht installationsweit
-  (`PUT /api/v1/libraries/{libraryId}/share-cap`). **Ausgeliefert ist jede Bibliothek offen**
+  (`PUT /api/v1/libraries/{libraryId}/share-cap`). **Ausgeliefert ist die Obergrenze unrestriktiv**
   (`visibility_cap = ORGANIZATION`, `listed_cap = true`, Migration 069) — eine neu angelegte
   Konnektorbibliothek unterliegt deshalb **keiner** Einschränkung, bis die Systemverwaltung die
-  Obergrenze für sie eigens setzt. Da `CREATE_CONNECTOR_LIBRARY` an „Alle Konten" ausgeliefert ist
-  (siehe oben), kann zwischen Anlage und Setzen der Obergrenze eine Lücke liegen, in der die
-  Bibliothek bereits organisationsweit sichtbar ist. Zwei Wege dagegen, beide betrieblich statt
+  Obergrenze für sie eigens senkt. Die Bibliothek selbst startet dagegen bei der engsten Reichweite
+  (`PRIVATE`, `listed = false` als Vorgaben von Formular und Spezifikation); ungedeckelt ist nicht
+  die Bibliothek, sondern die **Wahl** des Anlegenden. Da `CREATE_CONNECTOR_LIBRARY` an „Alle
+  Konten" ausgeliefert ist (siehe oben), kann zwischen Anlage und Setzen der Obergrenze eine Lücke
+  liegen, in der der Anlegende den eingespeisten Bestand bis zur organisationsweiten Stufe heben
+  kann. Zwei Wege dagegen, beide betrieblich statt
   technisch: die Obergrenze nach jeder Neuanlage einer Konnektorbibliothek prüfen, oder
   `CREATE_CONNECTOR_LIBRARY` auf eine benannte Gruppe einschränken, sodass nur noch diese Gruppe
   überhaupt anlegen kann. **Ob ein installationsweiter Vorgabewert gebaut wird, auf den `createLibrary`
@@ -1459,7 +1462,9 @@ Organisationen laufen weiter.
 Nachfolgevorgänge und Sichtungsvermerke unterliegen der **Protokollfrist**, nicht der
 Rechtehistorie: Sie sagen nichts über Leserechte aus — und die Frist wird auch vollzogen. Ein
 monatlicher Löschlauf entfernt **abgeschlossene** Vorgänge samt ihren Sichtungsvermerken, sobald ihr
-Ende länger als `OPAA_AUDIT_RETENTION_MONTHS` zurückliegt; ein offener Vorgang wird nie gelöscht,
+Ende länger zurückliegt als die Protokollfrist aus `audit_retention_settings` (Vorgabe 36 Monate,
+`AuditRetentionSettingsService.DEFAULT_RETENTION_MONTHS`) — eine Verwaltungseinstellung, keine
+Umgebungsvariable; ein offener Vorgang wird nie gelöscht,
 gleich wie alt er ist. Mit dem Vorgang verschwinden der Freitext des Vermerks und die beiden
 Personenspalten, die ohnehin `ON DELETE SET NULL` tragen.
 

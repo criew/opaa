@@ -580,12 +580,19 @@ Wäre nur protokolliert statt historisiert, ruhte ein Drittel der Rekonstruktion
 lückenanfälligen Quelle, die dieses Kapitel verwirft — und die Antwort auf die Prüferfrage fiele falsch
 aus, und zwar in die gefährliche Richtung. Es sind drei Felder an wenigen hundert Objekten.
 
-**Aufbewahrung und Löschschicksal der Historie** folgen derselben Logik wie das Protokoll: Sie unterliegt
-einer Höchstdauer, und der Personenbezug ist ab dem Schreibzeitpunkt pseudonymisiert. Beim Löschen eines
-Kontos entfällt die Zuordnung; die Historie selbst bleibt unverändert bestehen. Ohne diese Festlegung
-entstünden zwei unvereinbare Aussagen — entweder wäre die Zusage „danach nicht mehr auf eine Person
-zurückführbar" nicht haltbar, oder für ausgeschiedene Personen wäre nichts mehr belegbar, obwohl
-Prüfungen gerade sie häufig betreffen.
+**Die Aufbewahrung der Historie folgt derselben Logik wie das Protokoll: Sie unterliegt einer
+Höchstdauer mit erzwungenen Grenzen.** Der **Personenbezug** folgt dieser Logik dagegen **nicht**:
+Die Subjekt- und Akteursspalten der Historientabellen verweisen mit `RESTRICT` auf `users` und sind
+**nicht** ab dem Schreibzeitpunkt pseudonymisiert
+([ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md), Entscheidung 8).
+Begrenzt wird der Auswertungspfad stattdessen an der Leseseite — Höchstdauer, Vier-Augen-Vollmacht
+für den Personen-Einstieg, Abrufprotokoll, Zeitfenster mit Seitenobergrenze und die Ein-Objekt-Regel
+(siehe „Der Lesepfad" unten) —, und die Pseudonymisierung ist an den Personen-Einstieg und die
+Kontolöschung gekoppelt (#391/#395). Praktische Folge, die dieses Kapitel ausspricht: Solange die
+Pseudonymisierung fehlt, **hält eine Historienzeile die Löschung eines Kontos auf** (die
+Löschschuld, die ADR-0036 in Zahlen führt), und für ausgeschiedene Personen bleibt innerhalb der
+Höchstdauer alles belegbar — was Prüfungen gerade brauchen. Die Löschung des **Objekts**, auf das
+sich eine Zeile bezieht, lässt die Historie unverändert bestehen ([ADR-0016](../decisions/0016-loeschschicksal-rechtehistorie.md)).
 
 **Stand #1833, technisch umgesetzt — die Höchstdauer, nicht die Pseudonymisierung.** Die Höchstdauer
 ist eine einzige, systemweite Einstellung (`permission_history_retention_settings`) mit denselben
@@ -596,11 +603,7 @@ deren Ende älter ist als die Frist; **offene Intervalle bleiben unberührt**, w
 geltendes Recht beschreiben und ihr Beginn beliebig weit zurückliegen darf. Für jeden Stichtag
 innerhalb der Frist bleibt die Rekonstruktion damit lückenlos. Eine **Verkürzung wirkt auch hier nur
 nach vorn** (höchstens ein Kalendermonat Fortschritt je Kalendermonat), und jede Änderung ist ein
-Governance-Ereignis (`PERMISSION_HISTORY_RETENTION_CHANGED`). Der zweite Halbsatz der Zusage oben —
-Pseudonymisierung ab Schreibzeitpunkt — ist damit **nicht** eingelöst:
-[ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md), Entscheidung 8, hebt
-ihn auf und koppelt die Pseudonymisierung an den Personen-Einstieg und die Kontolöschung
-(#391/#395); der Satz selbst wird mit #1824 umgeschrieben.
+Governance-Ereignis (`PERMISSION_HISTORY_RETENTION_CHANGED`).
 
 ### Der Lesepfad: Stichtagsauskunft (#1822)
 
@@ -735,8 +738,8 @@ halten den auslösenden Vorgang fest und werden von der Rekonstruktion nie als Z
 
 **Noch offen, bewusst nicht Teil dieser Ausbaustufe:**
 
-- **Pseudonymisierung der Historie selbst.** Die oben zugesagte
-  Pseudonymisierung ab Schreibzeitpunkt ist nicht umgesetzt und wird es nach ADR-0036,
+- **Pseudonymisierung der Historie selbst.** Eine Pseudonymisierung ab Schreibzeitpunkt — wie sie
+  das Protokoll kennt — ist nicht umgesetzt und wird es nach ADR-0036,
   Entscheidung 8, auch nicht in dieser Form; die Subjektspalten der
   Rechtehistorie sind stattdessen `ON DELETE RESTRICT` gegen die Nutzertabelle — eine Kontolöschung
   ist damit blockiert, solange Rechtehistorie zu diesem Konto existiert, bis #391/#395 die
