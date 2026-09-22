@@ -3454,6 +3454,15 @@ paths:
         returned once and stored nowhere (Leitplanke (j)).
 
 
+        The scope of the befugnis is measured at the time of the use (ADR-0036, Entscheidung 3,
+        #1879): a group of seven active accounts at the time of granting can have one half a year
+        later. Below the Mindestgruppengröße the answer is 403 with the code
+        IMPERSONATION_SCOPE_NOT_USABLE and the current figure in the message. The befugnis stays
+        valid and unrevoked - it is not usable, which is why neither the protocol nor the
+        administration's overview shows a break; getSearchDiagnosisContext answers
+        canUsePersonContext = false for the same reason.
+
+
         The run goes through the same retrieval pipeline as POST /api/v1/query and POST
         /api/v1/search and therefore answers for the configured AI provider the same way: 503
         while it is unreachable, overloaded or rate-limiting, 502 once it answered but not
@@ -7235,9 +7244,20 @@ paths:
       operationId: grantDiagnosticImpersonation
       tags: [admin]
       summary: >
-        Grants the "Sicht als" befugnis (system admin only). Scope (an ORG_UNIT group) and validity
-        window are mandatory and the window may not exceed twelve months - an unbounded, scopeless
-        permanent right is not representable, at the database level as well.
+        Grants the "Sicht als" befugnis (system admin only). Scope and validity window are
+        mandatory and the window may not exceed twelve months - an unbounded, scopeless permanent
+        right is not representable, at the database level as well.
+      description: >
+        The scope is any group of an identity provider - ORG_UNIT or IDENTITY_PROVIDER (ADR-0036,
+        Entscheidung 3, #1879): a house that stays in token mode never gets an ORG_UNIT group, and
+        the befugnis would be ungrantable there for good. Refused with 400 are an internal group of
+        this house, a group whose provider is switched off, and a group below the configured
+        Mindestgruppengröße counted in active accounts - in a unit of that size a group context
+        discloses an individual without the Schutzmechanik of the person context.
+
+        The size is a condition of the use, not only of the granting: it is measured again on every
+        use, and the befugnis then answers 403 without being revoked. See POST
+        /api/v1/admin/search/diagnosis.
       requestBody:
         required: true
         content:
@@ -16432,7 +16452,10 @@ components:
         scopeGroupId:
           type: string
           format: uuid
-          description: The Organisationseinheit the befugnis applies to - a group of kind ORG_UNIT.
+          description: >
+            The Organisationseinheit the befugnis applies to: any group of an identity provider
+            (ORG_UNIT or IDENTITY_PROVIDER) that is above the Mindestgruppengröße and whose
+            provider is switched on. An internal group of this house is no scope (#1879).
         validFrom:
           type: string
           format: date-time
@@ -17564,7 +17587,9 @@ components:
         personContextAvailable:
           type: boolean
           description: >
-            Whether the caller currently holds a valid, unrevoked "Sicht als" befugnis. False makes
+            Whether the caller currently holds a valid, unrevoked and <b>usable</b> "Sicht als"
+            befugnis - usable meaning its scope is still above the Mindestgruppengröße (#1879).
+            False makes
             the person context unselectable in the user interface; the endpoint enforces the same
             rule again and answers 403 regardless of what a client sends.
         personContextHint:

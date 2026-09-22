@@ -1465,8 +1465,19 @@ gilt:
 
 - Die Befugnis MUSS **benannt und einzeln vergeben** werden; sie wird nicht aus „ist Administrator"
   abgeleitet.
-- Die Befugnis MUSS einen **Geltungsbereich** (Organisationseinheit) und eine **Gültigkeitsdauer**
-  tragen. Ein unbefristetes, bereichsloses Dauerrecht ist nicht zulässig.
+- Die Befugnis MUSS einen **Geltungsbereich** und eine **Gültigkeitsdauer** tragen. Ein
+  unbefristetes, bereichsloses Dauerrecht ist nicht zulässig. Geltungsbereich ist **jede
+  Anbietergruppe** — eine Organisationseinheit aus dem Verzeichnis oder eine Token-Gruppe (ADR-0036,
+  Entscheidung 3, #1879); ein Haus im Token-Modus hätte sonst nie einen wählbaren Bereich. Eine
+  interne Gruppe dieses Hauses ist keiner, und eine Gruppe eines abgeschalteten Anbieters erreicht
+  niemanden.
+- Der Geltungsbereich MUSS die **Mindestgruppengröße** (aktive Konten) einhalten — **bei der
+  Erteilung und bei jeder Nutzung**. Eine Gruppe mit sieben aktiven Mitgliedern bei der Erteilung
+  kann ein halbes Jahr später eines haben; die Vollmacht wäre dann ein Personenkontext ohne dessen
+  Schutzmechanik. Unterschreitet der Bereich die Größe, ist die Vollmacht **nicht nutzbar** (`403`,
+  Code `IMPERSONATION_SCOPE_NOT_USABLE`, mit der aktuellen Zahl in der Meldung) — sie bleibt aber
+  gültig und unentzogen, damit weder das Protokoll noch die Übersicht der Verwaltung einen Bruch
+  bekommt, den niemand veranlasst hat.
 - Die Befugnis „Sicht als" und die Befugnis zur **Auswertung des Protokolls** MÜSSEN getrennt vergeben
   werden. Wer diagnostiziert, kontrolliert nicht sich selbst.
 - Eine Diagnose im **eigenen** Rechtekontext ist von alldem nicht betroffen; sie zeigt nichts, was die

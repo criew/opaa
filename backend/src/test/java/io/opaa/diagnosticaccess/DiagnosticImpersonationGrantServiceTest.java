@@ -21,6 +21,9 @@ import io.opaa.common.ValidationException;
 import io.opaa.group.Group;
 import io.opaa.group.GroupRepository;
 import io.opaa.permission.GroupMembershipResolver;
+import io.opaa.permission.GroupSizeProperties;
+import io.opaa.permission.GroupSubject;
+import io.opaa.permission.GroupSubjectDirectory;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -54,6 +57,7 @@ class DiagnosticImpersonationGrantServiceTest {
   @Mock private UserRepository userRepository;
   @Mock private GroupRepository groupRepository;
   @Mock private GroupMembershipResolver membershipResolver;
+  @Mock private GroupSubjectDirectory groupDirectory;
   @Mock private AuditEventRecorder auditEventRecorder;
 
   private DiagnosticImpersonationGrantService service;
@@ -71,6 +75,8 @@ class DiagnosticImpersonationGrantServiceTest {
             userRepository,
             groupRepository,
             membershipResolver,
+            groupDirectory,
+            new GroupSizeProperties(null),
             auditEventRecorder,
             Clock.fixed(NOW, ZoneOffset.UTC));
     when(grantRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
@@ -78,6 +84,10 @@ class DiagnosticImpersonationGrantServiceTest {
     when(userRepository.findByIdAndOrganizationId(any(), any()))
         .thenReturn(Optional.of(new User("s", "i", null, "Holder")));
     when(groupRepository.findById(scopeGroupId)).thenReturn(Optional.of(group(GroupKind.ORG_UNIT)));
+    // The scope as the write and the read path see it: a provider group above the
+    // Mindestgruppengröße (#1879). Each test that is about the scope replaces one of the two.
+    when(groupDirectory.find(scopeGroupId)).thenReturn(Optional.of(providerScope()));
+    when(membershipResolver.activeMemberCount(scopeGroupId, ORGANIZATION_ID)).thenReturn(7);
   }
 
   @Test
@@ -103,9 +113,36 @@ class DiagnosticImpersonationGrantServiceTest {
   @Test
   void refusesAnAdHocGroupAsGeltungsbereich() {
     when(groupRepository.findById(scopeGroupId)).thenReturn(Optional.of(group(GroupKind.AD_HOC)));
+    when(groupDirectory.find(scopeGroupId)).thenReturn(Optional.of(internalScope()));
 
     assertThatThrownBy(() -> service.grant(admin(), creation(NOW, NOW.plus(1, ChronoUnit.DAYS))))
-        .isInstanceOf(ValidationException.class);
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("Anbietergruppe");
+  }
+
+  /**
+   * #1879, ADR-0036 Entscheidung 3: the size is a condition of the use, not only of the granting -
+   * so the same refusal exists twice, once as a {@code 400} and once as a {@code 403}.
+   */
+  @Test
+  void refusesAScopeBelowTheMinimumGroupSizeAtGrantingAndAtUse() {
+    when(membershipResolver.activeMemberCount(scopeGroupId, ORGANIZATION_ID)).thenReturn(4);
+
+    assertThatThrownBy(() -> service.grant(admin(), creation(NOW, NOW.plus(1, ChronoUnit.DAYS))))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("Mindestgruppengröße");
+
+    when(grantRepository.findActive(ORGANIZATION_ID, holderId, NOW))
+        .thenReturn(List.of(activeGrant()));
+    when(membershipResolver.groupIdsForUser(targetId)).thenReturn(Set.of(scopeGroupId));
+
+    assertThatThrownBy(
+            () -> service.requireImpersonationPermission(ordinaryUser(holderId), targetId))
+        .isInstanceOf(AccessDeniedException.class)
+        .hasMessageContaining("Mindestgruppengröße");
+    assertThat(service.holdsImpersonationPermission(ordinaryUser(holderId)))
+        .as("a befugnis that cannot be used is no selectable person context either")
+        .isFalse();
   }
 
   @Test
@@ -215,6 +252,16 @@ class DiagnosticImpersonationGrantServiceTest {
 
   private Group group(GroupKind kind) {
     return new Group(ORGANIZATION_ID, kind, "Amt für Personal", null, null, null, null, null);
+  }
+
+  private GroupSubject providerScope() {
+    return new GroupSubject(
+        scopeGroupId, ORGANIZATION_ID, "Amt für Personal", false, false, false, false, false);
+  }
+
+  private GroupSubject internalScope() {
+    return new GroupSubject(
+        scopeGroupId, ORGANIZATION_ID, "Projektteam", false, false, false, false, true);
   }
 
   private CurrentUser admin() {

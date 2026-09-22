@@ -12,15 +12,18 @@ import io.opaa.auth.UserRepository;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
-import io.opaa.group.Group;
 import io.opaa.group.GroupRepository;
 import io.opaa.permission.GroupMembershipResolver;
+import io.opaa.permission.GroupSizeProperties;
+import io.opaa.permission.GroupSubject;
+import io.opaa.permission.GroupSubjectDirectory;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,10 +43,15 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class DiagnosticImpersonationGrantService {
 
+  /** The stable {@code code} of the {@code 403} a scope below the Mindestgruppengröße produces. */
+  public static final String SCOPE_NO_LONGER_USABLE = "IMPERSONATION_SCOPE_NOT_USABLE";
+
   private final DiagnosticImpersonationGrantRepository grantRepository;
   private final UserRepository userRepository;
   private final GroupRepository groupRepository;
   private final GroupMembershipResolver membershipResolver;
+  private final GroupSubjectDirectory groupDirectory;
+  private final GroupSizeProperties groupSizeProperties;
   private final AuditEventRecorder auditEventRecorder;
   private final Clock clock;
 
@@ -52,12 +60,16 @@ public class DiagnosticImpersonationGrantService {
       UserRepository userRepository,
       GroupRepository groupRepository,
       GroupMembershipResolver membershipResolver,
+      GroupSubjectDirectory groupDirectory,
+      GroupSizeProperties groupSizeProperties,
       AuditEventRecorder auditEventRecorder,
       Clock clock) {
     this.grantRepository = grantRepository;
     this.userRepository = userRepository;
     this.groupRepository = groupRepository;
     this.membershipResolver = membershipResolver;
+    this.groupDirectory = groupDirectory;
+    this.groupSizeProperties = groupSizeProperties;
     this.auditEventRecorder = auditEventRecorder;
     this.clock = clock;
   }
@@ -65,8 +77,14 @@ public class DiagnosticImpersonationGrantService {
   /**
    * Grants the befugnis. Only a {@code SYSTEM_ADMIN} may do so - granting a right and holding it
    * are separate acts, and this method is the granting one. Rejects a window that is empty, ends in
-   * the past, or is longer than {@link DiagnosticImpersonationGrant#MAX_VALIDITY_MONTHS} months;
-   * rejects a scope that is not an {@link GroupKind#ORG_UNIT} group of the same organization.
+   * the past, or is longer than {@link DiagnosticImpersonationGrant#MAX_VALIDITY_MONTHS} months.
+   *
+   * <p><b>The scope is any provider group of the same organization</b> - {@link GroupKind#ORG_UNIT}
+   * or {@link GroupKind#IDENTITY_PROVIDER} (ADR-0036, Entscheidung 3): a house that stays in token
+   * mode never gets an {@code ORG_UNIT} group, and the befugnis would be ungrantable there for
+   * good. An internal group is no Organisationseinheit and stays out, a group of a switched-off
+   * provider reaches nobody, and a group below the Mindestgruppengröße is a person with a name
+   * rather than a group - {@link #requireUsableScope} is asked here and again on every use.
    */
   @Transactional
   public DiagnosticImpersonationGrant grant(
@@ -81,16 +99,11 @@ public class DiagnosticImpersonationGrantService {
     userRepository
         .findByIdAndOrganizationId(creation.holderUserId(), organizationId)
         .orElseThrow(() -> new NotFoundException("Nutzer nicht gefunden"));
-    Group scope =
-        groupRepository
-            .findById(creation.scopeGroupId())
-            .filter(group -> organizationId.equals(group.getOrganizationId()))
-            .orElseThrow(() -> new NotFoundException("Organisationseinheit nicht gefunden"));
-    if (scope.getKind() != GroupKind.ORG_UNIT) {
-      throw new ValidationException(
-          "Der Geltungsbereich muss eine Organisationseinheit sein - keine Ad-hoc-Gruppe und"
-              + " keine Gruppe aus dem Identitätsanbieter");
-    }
+    groupRepository
+        .findById(creation.scopeGroupId())
+        .filter(group -> organizationId.equals(group.getOrganizationId()))
+        .orElseThrow(() -> new NotFoundException("Gruppe nicht gefunden"));
+    requireUsableScope(creation.scopeGroupId(), organizationId, ValidationException::new);
 
     DiagnosticImpersonationGrant saved =
         grantRepository.save(
@@ -163,6 +176,12 @@ public class DiagnosticImpersonationGrantService {
    * {@link AccessDeniedException}. Requires an unrevoked, currently valid grant whose
    * Organisationseinheit the target person is a member of - a valid grant for a different unit is
    * no permission for this person.
+   *
+   * <p><b>The scope is measured again here</b> (ADR-0036, Entscheidung 3): a group of seven active
+   * accounts at the time of granting can have one half a year later, and the befugnis would then be
+   * a person context without the Schutzmechanik of one. The grant itself is left alone - it stays
+   * valid and unrevoked, it is only not usable - so neither the protocol nor the administration's
+   * overview gets a break out of a group that shrank.
    */
   @Transactional(readOnly = true)
   public DiagnosticImpersonationGrant requireImpersonationPermission(
@@ -175,14 +194,20 @@ public class DiagnosticImpersonationGrantService {
           "Für „Sicht als“ ist eine eigene, befristete Befugnis nötig; Sie halten keine.");
     }
     java.util.Set<UUID> targetGroupIds = membershipResolver.groupIdsForUser(targetUserId);
-    return active.stream()
-        .filter(grant -> targetGroupIds.contains(grant.getScopeGroupId()))
-        .findFirst()
-        .orElseThrow(
-            () ->
-                new AccessDeniedException(
-                    "Ihre Befugnis „Sicht als“ gilt nicht für die Organisationseinheit dieser"
-                        + " Person."));
+    DiagnosticImpersonationGrant grant =
+        active.stream()
+            .filter(candidate -> targetGroupIds.contains(candidate.getScopeGroupId()))
+            .findFirst()
+            .orElseThrow(
+                () ->
+                    new AccessDeniedException(
+                        "Ihre Befugnis „Sicht als“ gilt nicht für die Organisationseinheit dieser"
+                            + " Person."));
+    requireUsableScope(
+        grant.getScopeGroupId(),
+        actor.organizationId(),
+        message -> new AccessDeniedException(message, SCOPE_NO_LONGER_USABLE));
+    return grant;
   }
 
   /**
@@ -194,9 +219,46 @@ public class DiagnosticImpersonationGrantService {
    */
   @Transactional(readOnly = true)
   public boolean holdsImpersonationPermission(CurrentUser actor) {
-    return !grantRepository
-        .findActive(actor.organizationId(), actor.id(), clock.instant())
-        .isEmpty();
+    return grantRepository.findActive(actor.organizationId(), actor.id(), clock.instant()).stream()
+        .anyMatch(grant -> scopeRefusal(grant.getScopeGroupId(), actor.organizationId()) == null);
+  }
+
+  /**
+   * Whether the scope is one right now, or why it is not: a provider group of this organization,
+   * its provider switched on, and at least {@link GroupSizeProperties#minimumGroupSize()} active
+   * accounts. Asked at the granting and at every use, so both answers come from one place and the
+   * refusal reads the same in both.
+   */
+  private void requireUsableScope(
+      UUID scopeGroupId, UUID organizationId, Function<String, RuntimeException> refusal) {
+    String reason = scopeRefusal(scopeGroupId, organizationId);
+    if (reason != null) {
+      throw refusal.apply(reason);
+    }
+  }
+
+  private String scopeRefusal(UUID scopeGroupId, UUID organizationId) {
+    GroupSubject scope = groupDirectory.find(scopeGroupId).orElse(null);
+    if (scope == null || !organizationId.equals(scope.organizationId())) {
+      return "Der Geltungsbereich ist keine Gruppe dieser Organisation";
+    }
+    if (scope.internal()) {
+      return "Der Geltungsbereich muss eine Anbietergruppe sein - eine interne Gruppe dieses"
+          + " Hauses ist keine Organisationseinheit";
+    }
+    if (scope.providerDisabled()) {
+      return "Der Identitätsanbieter dieser Gruppe ist abgeschaltet; sie erreicht niemanden";
+    }
+    int minimum = groupSizeProperties.minimumGroupSize();
+    int active = membershipResolver.activeMemberCount(scopeGroupId, organizationId);
+    if (active < minimum) {
+      return "Der Geltungsbereich erreicht derzeit "
+          + active
+          + " aktive Konten und liegt damit unter der Mindestgruppengröße von "
+          + minimum
+          + "; ein Gruppenkontext dieser Größe gibt eine einzelne Person preis";
+    }
+    return null;
   }
 
   private void validateWindow(DiagnosticImpersonationGrantCreation creation, Instant now) {
