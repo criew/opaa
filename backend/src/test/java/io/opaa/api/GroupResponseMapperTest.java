@@ -10,6 +10,8 @@ import io.opaa.api.types.GroupKind;
 import io.opaa.api.types.GroupMechanism;
 import io.opaa.api.types.GroupOrigin;
 import io.opaa.group.Group;
+import io.opaa.group.GroupContact;
+import io.opaa.group.GroupContactView;
 import io.opaa.group.GroupDetail;
 import io.opaa.group.GroupMemberView;
 import io.opaa.group.GroupMembership;
@@ -66,6 +68,7 @@ class GroupResponseMapperTest {
             new GroupOverview(
                 group,
                 List.of(),
+                List.of(),
                 new GroupProviderView(
                     providerId,
                     "Verzeichnis Haus A",
@@ -118,7 +121,17 @@ class GroupResponseMapperTest {
     SelectableGroupResponse response =
         GroupResponseMapper.toSelectableResponse(
             new SelectableGroup(
-                group, "Referat 50", provider, 41, false, false, true, false, false, false));
+                group,
+                "Referat 50",
+                List.of(),
+                provider,
+                41,
+                false,
+                false,
+                true,
+                false,
+                false,
+                false));
 
     assertThat(response.getId()).isEqualTo(group.getId());
     assertThat(response.getName()).isEqualTo("Referat 50");
@@ -147,7 +160,17 @@ class GroupResponseMapperTest {
     SelectableGroupResponse response =
         GroupResponseMapper.toSelectableResponse(
             new SelectableGroup(
-                group, "Kleine Runde", null, null, true, false, true, false, false, false));
+                group,
+                "Kleine Runde",
+                List.of(),
+                null,
+                null,
+                true,
+                false,
+                true,
+                false,
+                false,
+                false));
 
     assertThat(response.getActiveMemberCount()).isNull();
     assertThat(response.getSmallGroup()).isTrue();
@@ -162,7 +185,17 @@ class GroupResponseMapperTest {
     SelectableGroupResponse response =
         GroupResponseMapper.toSelectableResponse(
             new SelectableGroup(
-                group, "Aufgeloeste Runde", null, null, false, true, false, true, false, false));
+                group,
+                "Aufgeloeste Runde",
+                List.of(),
+                null,
+                null,
+                false,
+                true,
+                false,
+                true,
+                false,
+                false));
 
     assertThat(response.getSelectable()).isFalse();
     assertThat(response.getDissolved()).isTrue();
@@ -177,7 +210,8 @@ class GroupResponseMapperTest {
 
     SelectableGroupResponse response =
         GroupResponseMapper.toSelectableResponse(
-            new SelectableGroup(group, null, null, null, false, false, true, false, false, false));
+            new SelectableGroup(
+                group, null, List.of(), null, null, false, false, true, false, false, false));
 
     assertThat(response.getName()).isNull();
     assertThat(response.getProtectedGroup()).isTrue();
@@ -190,7 +224,7 @@ class GroupResponseMapperTest {
     Group group = Group.internal(UUID.randomUUID(), "Projektteam", null, null);
 
     GroupListResponse response =
-        GroupResponseMapper.toListResponse(new GroupOverview(group, List.of(), null));
+        GroupResponseMapper.toListResponse(new GroupOverview(group, List.of(), List.of(), null));
 
     assertThat(response.getOrigin()).isEqualTo(GroupOrigin.INTERNAL);
     assertThat(response.getProvider()).isNull();
@@ -208,7 +242,7 @@ class GroupResponseMapperTest {
     group.addMembership(new GroupMembership(UUID.randomUUID(), group.getOrganizationId()));
 
     GroupListResponse response =
-        GroupResponseMapper.toListResponse(new GroupOverview(group, List.of(), null));
+        GroupResponseMapper.toListResponse(new GroupOverview(group, List.of(), List.of(), null));
 
     assertThat(response.getMemberCount()).isEqualTo(2);
   }
@@ -221,8 +255,8 @@ class GroupResponseMapperTest {
     List<GroupListResponse> responses =
         GroupResponseMapper.toListResponses(
             List.of(
-                new GroupOverview(first, List.of(), null),
-                new GroupOverview(second, List.of(), null)));
+                new GroupOverview(first, List.of(), List.of(), null),
+                new GroupOverview(second, List.of(), List.of(), null)));
 
     assertThat(responses).extracting(GroupListResponse::getName).containsExactly("A", "B");
   }
@@ -232,7 +266,7 @@ class GroupResponseMapperTest {
     Group group = Group.internal(UUID.randomUUID(), "Team", "Desc", null);
     GroupMembership membership = new GroupMembership(UUID.randomUUID(), group.getOrganizationId());
     GroupMemberView view = new GroupMemberView(membership, "Ada Lovelace");
-    GroupDetail detail = new GroupDetail(group, List.of(view), List.of(), null);
+    GroupDetail detail = new GroupDetail(group, List.of(view), List.of(), List.of(), null);
 
     GroupResponse response = GroupResponseMapper.toResponse(detail);
 
@@ -264,6 +298,7 @@ class GroupResponseMapperTest {
             group,
             List.of(),
             List.of(),
+            List.of(),
             new GroupProviderView(
                 providerId, "Verzeichnis Haus A", true, false, GroupMechanism.TOKEN, null, null));
 
@@ -286,7 +321,8 @@ class GroupResponseMapperTest {
     Group group = Group.internal(UUID.randomUUID(), "Projektteam", null, null);
 
     GroupResponse response =
-        GroupResponseMapper.toResponse(new GroupDetail(group, List.of(), List.of(), null));
+        GroupResponseMapper.toResponse(
+            new GroupDetail(group, List.of(), List.of(), List.of(), null));
 
     assertThat(response.getOrigin()).isEqualTo(GroupOrigin.INTERNAL);
     assertThat(response.getProvider()).isNull();
@@ -296,7 +332,7 @@ class GroupResponseMapperTest {
   @Test
   void toResponseReturnsAnEmptyMemberListInsteadOfNullForAGroupWithoutMembers() {
     Group group = Group.internal(UUID.randomUUID(), "Team", null, null);
-    GroupDetail detail = new GroupDetail(group, List.of(), List.of(), null);
+    GroupDetail detail = new GroupDetail(group, List.of(), List.of(), List.of(), null);
 
     GroupResponse response = GroupResponseMapper.toResponse(detail);
 
@@ -321,7 +357,8 @@ class GroupResponseMapperTest {
 
     GroupListResponse response =
         GroupResponseMapper.toListResponse(
-            new GroupOverview(group, List.of(new GroupStewardView(steward, "Ada Lovelace")), null));
+            new GroupOverview(
+                group, List.of(new GroupStewardView(steward, "Ada Lovelace")), List.of(), null));
 
     assertThat(response.getReleasedForUse()).isTrue();
     assertThat(response.getProtectedGroup()).isTrue();
@@ -340,7 +377,11 @@ class GroupResponseMapperTest {
     GroupResponse response =
         GroupResponseMapper.toResponse(
             new GroupDetail(
-                group, List.of(), List.of(new GroupStewardView(steward, "Ada Lovelace")), null));
+                group,
+                List.of(),
+                List.of(new GroupStewardView(steward, "Ada Lovelace")),
+                List.of(),
+                null));
 
     assertThat(response.getReleasedForUse()).as("an internal group starts unreleased").isFalse();
     assertThat(response.getProtectedGroup()).isFalse();
@@ -370,6 +411,7 @@ class GroupResponseMapperTest {
         GroupResponseMapper.toListResponse(
             new GroupOverview(
                 group,
+                List.of(),
                 List.of(),
                 new GroupProviderView(
                     providerId, "Haus A", false, true, GroupMechanism.DIRECTORY, 360, null)));
@@ -432,5 +474,98 @@ class GroupResponseMapperTest {
   @Test
   void toMemberResponsesReturnsAnEmptyListForNoViewsInsteadOfNull() {
     assertThat(GroupResponseMapper.toMemberResponses(List.of())).isEmpty();
+  }
+
+  /**
+   * The contact points of a provider group reach both group responses (#1875, ADR-0036 Entscheidung
+   * 9) - the counterpart of the stewards, which stay empty there.
+   */
+  @Test
+  void bothGroupResponsesCarryTheContactPointsOfAProviderGroup() {
+    UUID organizationId = UUID.randomUUID();
+    UUID providerId = UUID.randomUUID();
+    Group group =
+        new Group(
+            organizationId,
+            GroupKind.IDENTITY_PROVIDER,
+            "Referat 50",
+            null,
+            providerId,
+            "Referat 50",
+            null,
+            null);
+    UUID contactUserId = UUID.randomUUID();
+    GroupContact contact = new GroupContact(group.getId(), contactUserId, organizationId, null);
+    withTimestamp(contact, "createdAt", Instant.parse("2026-09-01T08:00:00Z"));
+    List<GroupContactView> contacts = List.of(new GroupContactView(contact, "Andrea Vogt"));
+    GroupProviderView provider =
+        new GroupProviderView(
+            providerId, "Verzeichnis Haus A", true, true, GroupMechanism.TOKEN, null, null);
+
+    GroupListResponse listResponse =
+        GroupResponseMapper.toListResponse(new GroupOverview(group, List.of(), contacts, provider));
+    GroupResponse detailResponse =
+        GroupResponseMapper.toResponse(
+            new GroupDetail(group, List.of(), List.of(), contacts, provider));
+
+    assertThat(listResponse.getContacts()).hasSize(1);
+    assertThat(listResponse.getContacts().get(0).getUserId()).isEqualTo(contactUserId);
+    assertThat(listResponse.getContacts().get(0).getDisplayName()).isEqualTo("Andrea Vogt");
+    assertThat(listResponse.getContacts().get(0).getAppointedAt())
+        .isEqualTo(Instant.parse("2026-09-01T08:00:00Z"));
+    assertThat(listResponse.getStewards()).isEmpty();
+    assertThat(detailResponse.getContacts()).hasSize(1);
+    assertThat(detailResponse.getContacts().get(0).getUserId()).isEqualTo(contactUserId);
+  }
+
+  @Test
+  void anInternalGroupCarriesNoContactPoints() {
+    Group group = Group.internal(UUID.randomUUID(), "Projektteam", null, null);
+
+    GroupResponse response =
+        GroupResponseMapper.toResponse(
+            new GroupDetail(group, List.of(), List.of(), List.of(), null));
+
+    assertThat(response.getContacts()).isEmpty();
+  }
+
+  /** At a protected group the grant giver is handed the responsible people, never the members. */
+  @Test
+  void theSelectableResponseCarriesWhoIsResponsibleForAProtectedGroup() {
+    Group group = Group.internal(UUID.randomUUID(), "Personalrat", null, null);
+    group.markProtected(true);
+
+    SelectableGroupResponse response =
+        GroupResponseMapper.toSelectableResponse(
+            new SelectableGroup(
+                group,
+                null,
+                List.of("Andrea Vogt", "Bernd Sommer"),
+                null,
+                null,
+                false,
+                false,
+                true,
+                false,
+                false,
+                false));
+
+    assertThat(response.getProtectedGroup()).isTrue();
+    assertThat(response.getName()).as("resolved by its id, it keeps its namelessness").isNull();
+    assertThat(response.getActiveMemberCount()).isNull();
+    assertThat(response.getResponsible()).containsExactly("Andrea Vogt", "Bernd Sommer");
+  }
+
+  @Test
+  void anUnprotectedGroupNamesNobodyAsResponsible() {
+    Group group = Group.internal(UUID.randomUUID(), "Projektteam", null, null);
+
+    SelectableGroupResponse response =
+        GroupResponseMapper.toSelectableResponse(
+            new SelectableGroup(
+                group, "Projektteam", List.of(), null, 7, false, false, true, false, false, false));
+
+    assertThat(response.getResponsible()).isEmpty();
+    assertThat(response.getActiveMemberCount()).isEqualTo(7);
   }
 }

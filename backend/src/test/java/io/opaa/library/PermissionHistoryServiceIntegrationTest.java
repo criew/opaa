@@ -1022,8 +1022,11 @@ class PermissionHistoryServiceIntegrationTest {
    * own. The four beans of #1819 - {@code GroupCapabilityService}, {@code GroupEffectReader},
    * {@code LibrarySuccessionSource} and {@code GroupSuccessionSource} - only read: they derive
    * whether anybody can still act for an object, and the one effect of that state, freezing the
-   * reach, takes rights away from nobody. {@code GroupEffectsService} (#1821) only counts: it
-   * answers "wo wirkt diese Gruppe" with figures per group and writes nothing at all.
+   * reach, takes rights away from nobody. {@code GroupContactService} (#1875) reads a group's
+   * memberships to decide whether somebody may be its contact point; the appointment it writes is
+   * no grant and no membership, and the one act it entitles to - the protection mark - takes a
+   * group out of other people's sight rather than into it. {@code GroupEffectsService} (#1821) only
+   * counts: it answers "wo wirkt diese Gruppe" with figures per group and writes nothing at all.
    */
   private static final Set<String> BEANS_REACHING_THE_RIGHTS_TABLES =
       Set.of(
@@ -1037,6 +1040,7 @@ class PermissionHistoryServiceIntegrationTest {
           "ForeignDiagnosticContextService",
           "GroupCapabilityService",
           "GroupEffectReader",
+          "GroupContactService",
           "GroupEffectsService",
           "GroupMembershipResolver",
           "GroupService",
@@ -1069,6 +1073,7 @@ class PermissionHistoryServiceIntegrationTest {
           "GroupService#listGroups",
           "GroupService#listMyGroups",
           "GroupService#listMembers",
+          "GroupService#listContactedGroups",
           "GroupService#listStewardedGroups",
           "GroupService#listStewards",
           // #1820: Die Subjekt-Auswahl sucht und zaehlt, sie erteilt nichts - wer welche

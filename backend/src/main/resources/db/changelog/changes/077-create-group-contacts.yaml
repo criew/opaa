@@ -1,0 +1,65 @@
+databaseChangeLog:
+  - changeSet:
+      id: 077-create-group-contacts
+      author: opaa
+      comment: >-
+        Ansprechstellen an Anbietergruppen (#1875, ADR-0036 Entscheidung 9). Eine Zeile sagt: diese
+        Person ist fuer diese Anbietergruppe die Ansprechstelle. Sie ist KEIN Pflegerecht - die
+        Gruppe bleibt schreibgeschuetzt, weil sie aus dem Verzeichnis oder dem Token kommt; die
+        Zeile berechtigt zu genau einer Handlung, dem Setzen und Loesen des Schutzkennzeichens,
+        das die Systemverwaltung ihrerseits NICHT setzen darf.
+        .
+        Ausschliesslich natuerliche Personen, mit derselben Begruendung wie group_stewards: eine
+        Gruppe als Ansprechstelle waere Schachtelung durch die Hintertuer. Deshalb auch hier keine
+        subject_type-Spalte, nur user_id.
+        .
+        KEINE HISTORIENTABELLE, wie bei den Verantwortlichen und aus demselben Grund (ADR-0036
+        Entscheidungen 4 und 8): Die Benennung traegt kein Leserecht und ist fuer die Frage "wer
+        konnte am Tag X was lesen" ohne Bedeutung. Benennung und Entlassung erzeugen
+        Audit-Ereignisse unter der Protokollfrist.
+        .
+        organization_id und die Gruppenbeziehung tragen CASCADE (Betriebsrecht der Gegenwart, kein
+        Nachweisbestand, der die Gruppe ueberleben muesste); die beiden Personenspalten sind
+        RESTRICT nach ADR-0016 und brauchen ihre Unterabfrage in
+        UserRepository#countDeletionBlockers, sonst scheitert die Kontoloeschung an der Bedingung,
+        ohne ihren Grund zu nennen.
+        .
+        uk_group_contacts_group_user haelt eine Person je Gruppe genau einmal fest;
+        idx_group_contacts_user traegt die Gegenrichtung ("meine Gruppen", GET
+        /api/v1/me/contacted-groups), die sonst ueber die ganze Tabelle liefe.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE TABLE group_contacts (
+                  id uuid NOT NULL,
+                  group_id uuid NOT NULL,
+                  user_id uuid NOT NULL,
+                  organization_id uuid NOT NULL,
+                  appointed_by_user_id uuid,
+                  created_at timestamp with time zone DEFAULT now() NOT NULL
+              );
+
+              ALTER TABLE ONLY group_contacts
+                  ADD CONSTRAINT group_contacts_pkey PRIMARY KEY (id);
+
+              CREATE UNIQUE INDEX uk_group_contacts_group_user ON group_contacts USING btree (group_id, user_id);
+
+              CREATE INDEX idx_group_contacts_user ON group_contacts USING btree (user_id);
+
+              ALTER TABLE ONLY group_contacts
+                  ADD CONSTRAINT fk_group_contacts_organization FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY group_contacts
+                  ADD CONSTRAINT fk_group_contacts_group_organization FOREIGN KEY (group_id, organization_id) REFERENCES groups(id, organization_id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY group_contacts
+                  ADD CONSTRAINT fk_group_contacts_user_organization FOREIGN KEY (user_id, organization_id) REFERENCES users(id, organization_id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY group_contacts
+                  ADD CONSTRAINT fk_group_contacts_appointed_by_organization FOREIGN KEY (appointed_by_user_id, organization_id) REFERENCES users(id, organization_id) ON DELETE RESTRICT;
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              DROP TABLE group_contacts;

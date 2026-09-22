@@ -472,8 +472,11 @@ class GroupStewardshipIntegrationTest {
         .isInstanceOf(ValidationException.class);
     assertThatThrownBy(() -> groupService.setRelease(providerGroup.getId(), true, steward))
         .isInstanceOf(ValidationException.class);
+    // #1875: the mark of a provider group is the one thing decided there - by its contact points,
+    // never by a steward and never by the administration.
     assertThatThrownBy(() -> groupService.setProtection(providerGroup.getId(), true, steward))
-        .isInstanceOf(ValidationException.class);
+        .isInstanceOf(AccessDeniedException.class)
+        .hasMessageContaining("Ansprechstellen");
     assertThatThrownBy(() -> groupService.appointSteward(providerGroup.getId(), someone, steward))
         .isInstanceOf(ValidationException.class);
   }

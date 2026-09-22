@@ -23,6 +23,7 @@ import { useAuthStore } from '../stores/authStore'
 import { useGroupStore } from '../stores/groupStore'
 import { groupKindLabel } from '../utils/labels'
 import CreateGroupDialog from '../components/CreateGroupDialog'
+import GroupContactsSection from '../components/groups/GroupContactsSection'
 import GroupStewardsSection from '../components/groups/GroupStewardsSection'
 import PermissionTransferDialog from '../components/permissions/PermissionTransferDialog'
 import FieldLabel from '../components/wizard/FieldLabel'
@@ -221,6 +222,18 @@ function GroupCard({
             </Button>
           </Stack>
         </Stack>
+
+        {!isAdHoc && (
+          <>
+            <Divider sx={{ mb: 2 }} />
+            <GroupContactsSection
+              groupId={group.id}
+              contacts={details?.contacts ?? group.contacts ?? []}
+              members={details?.members}
+              currentUserId={currentUserId}
+            />
+          </>
+        )}
 
         {isAdHoc && (
           <>

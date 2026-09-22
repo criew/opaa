@@ -14,6 +14,8 @@ const {
   mockDeleteGroup,
   mockAddGroupMember,
   mockRemoveGroupMember,
+  mockAppointGroupContact,
+  mockDismissGroupContact,
 } = vi.hoisted(() => ({
   mockGetGroup: vi.fn(),
   /** Was `getGroup` liefert, wenn der Store die Details noch nicht kennt. */
@@ -23,6 +25,12 @@ const {
   mockDeleteGroup: vi.fn(async () => undefined),
   mockAddGroupMember: vi.fn(async () => ({})),
   mockRemoveGroupMember: vi.fn(async () => undefined),
+  mockAppointGroupContact: vi.fn(async () => ({
+    userId: 'u2',
+    displayName: 'Bob',
+    appointedAt: '2026-09-01T10:00:00Z',
+  })),
+  mockDismissGroupContact: vi.fn(async () => undefined),
 }))
 
 vi.mock('../services/api', async () => {
@@ -40,6 +48,8 @@ vi.mock('../services/api', async () => {
     deleteGroup: mockDeleteGroup,
     addGroupMember: mockAddGroupMember,
     removeGroupMember: mockRemoveGroupMember,
+    appointGroupContact: mockAppointGroupContact,
+    dismissGroupContact: mockDismissGroupContact,
   }
 })
 
@@ -271,5 +281,58 @@ describe('GroupManagementPage', () => {
     expect(await screen.findByText('aufgelöst')).toBeInTheDocument()
     await user.click(screen.getByText('Referat 50'))
     expect(await screen.findByText(/Aufgelöst — die Quelle meldet/)).toBeInTheDocument()
+  })
+
+  // #1875: Die Ansprechstelle einer Anbietergruppe benennen - benennbar ist nur ein Mitglied,
+  // deshalb hängt die Auswahl am Abruf der Mitgliederliste.
+  it('benennt ein Mitglied einer Anbietergruppe als Ansprechstelle', async () => {
+    setGroupState([orgUnitGroup], { 'group-referat-50': orgUnitDetails })
+    renderWithProviders(<GroupManagementPage />, { withRouter: true })
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByText('Referat 50'))
+    expect(
+      await screen.findByText(/Für diese Gruppe ist keine Ansprechstelle benannt/),
+    ).toBeInTheDocument()
+
+    await user.click(screen.getByRole('combobox', { name: /ansprechstelle/i }))
+    await user.click(await screen.findByRole('option', { name: 'Bob' }))
+    await user.click(screen.getByRole('button', { name: /als ansprechstelle benennen/i }))
+
+    await waitFor(() =>
+      expect(mockAppointGroupContact).toHaveBeenCalledWith('group-referat-50', 'u2'),
+    )
+  })
+
+  it('entlässt eine Ansprechstelle nach Rückfrage', async () => {
+    const withContact: GroupListResponse = {
+      ...orgUnitGroup,
+      contacts: [{ userId: 'u2', displayName: 'Bob', appointedAt: '2026-09-01T10:00:00Z' }],
+    }
+    setGroupState([withContact], {
+      'group-referat-50': { ...orgUnitDetails, contacts: withContact.contacts },
+    })
+    renderWithProviders(<GroupManagementPage />, { withRouter: true })
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByText('Referat 50'))
+    await user.click(await screen.findByRole('button', { name: /entlassen/i }))
+    await answerConfirm(user, 'Bob als Ansprechstelle entlassen?', 'Entlassen')
+
+    await waitFor(() =>
+      expect(mockDismissGroupContact).toHaveBeenCalledWith('group-referat-50', 'u2'),
+    )
+  })
+
+  /** Eine interne Gruppe hat Verantwortliche - dort steht der Abschnitt nicht. */
+  it('zeigt an einer internen Gruppe keine Ansprechstelle', async () => {
+    setGroupState([adHocGroup], { 'group-phoenix': adHocDetails })
+    renderWithProviders(<GroupManagementPage />, { withRouter: true })
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByText('Projektbeteiligte Phoenix'))
+
+    expect(await screen.findByText('Verantwortlich')).toBeInTheDocument()
+    expect(screen.queryByText(/Ansprechstellen sprechen für diese Gruppe/)).not.toBeInTheDocument()
   })
 })

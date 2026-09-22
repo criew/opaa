@@ -1,5 +1,6 @@
 package io.opaa.api;
 
+import io.opaa.api.dto.GroupContactResponse;
 import io.opaa.api.dto.GroupListResponse;
 import io.opaa.api.dto.GroupMemberResponse;
 import io.opaa.api.dto.GroupProviderResponse;
@@ -8,6 +9,7 @@ import io.opaa.api.dto.GroupStewardResponse;
 import io.opaa.api.dto.SelectableGroupResponse;
 import io.opaa.api.types.GroupOrigin;
 import io.opaa.group.Group;
+import io.opaa.group.GroupContactView;
 import io.opaa.group.GroupDetail;
 import io.opaa.group.GroupMemberView;
 import io.opaa.group.GroupOverview;
@@ -45,7 +47,8 @@ final class GroupResponseMapper {
         .externalId(group.getExternalId())
         .provider(toProviderResponse(overview.provider()))
         .sourcePath(group.getSourcePath())
-        .parentGroupId(group.getParentGroupId());
+        .parentGroupId(group.getParentGroupId())
+        .contacts(toContactResponses(overview.contacts()));
   }
 
   static List<GroupListResponse> toListResponses(List<GroupOverview> overviews) {
@@ -67,7 +70,8 @@ final class GroupResponseMapper {
         .name(selectable.name())
         .provider(toProviderResponse(selectable.provider()))
         .sourcePath(group.getSourcePath())
-        .activeMemberCount(selectable.activeMemberCount());
+        .activeMemberCount(selectable.activeMemberCount())
+        .responsible(selectable.responsible());
   }
 
   static List<SelectableGroupResponse> toSelectableResponses(List<SelectableGroup> groups) {
@@ -94,7 +98,8 @@ final class GroupResponseMapper {
         .externalId(group.getExternalId())
         .provider(toProviderResponse(detail.provider()))
         .sourcePath(group.getSourcePath())
-        .parentGroupId(group.getParentGroupId());
+        .parentGroupId(group.getParentGroupId())
+        .contacts(toContactResponses(detail.contacts()));
   }
 
   static GroupMemberResponse toMemberResponse(GroupMemberView view) {
@@ -113,6 +118,15 @@ final class GroupResponseMapper {
 
   static List<GroupStewardResponse> toStewardResponses(List<GroupStewardView> views) {
     return views.stream().map(GroupResponseMapper::toStewardResponse).toList();
+  }
+
+  static GroupContactResponse toContactResponse(GroupContactView view) {
+    return new GroupContactResponse(view.contact().getUserId(), view.contact().getCreatedAt())
+        .displayName(view.displayName());
+  }
+
+  static List<GroupContactResponse> toContactResponses(List<GroupContactView> views) {
+    return views.stream().map(GroupResponseMapper::toContactResponse).toList();
   }
 
   private static GroupOrigin originOf(GroupProviderView provider) {

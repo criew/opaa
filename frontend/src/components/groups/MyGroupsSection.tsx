@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Accordion from '@mui/material/Accordion'
 import AccordionDetails from '@mui/material/AccordionDetails'
 import AccordionSummary from '@mui/material/AccordionSummary'
@@ -20,6 +20,7 @@ import GroupStewardsSection from './GroupStewardsSection'
 import PermissionTransferDialog from '../permissions/PermissionTransferDialog'
 import UserPicker from './UserPicker'
 import type { GroupListResponse, UserSummary } from '../../types/api'
+import { getMyContactedGroups } from '../../services/api'
 import { confirmAction } from '../../stores/confirmStore'
 import { useAuthStore } from '../../stores/authStore'
 import { useGroupStore } from '../../stores/groupStore'
@@ -266,6 +267,71 @@ function StewardedGroupCard({ group }: { group: GroupListResponse }) {
 }
 
 /**
+ * Eine Anbietergruppe, für die das eigene Konto Ansprechstelle ist (#1875, ADR-0036 Entscheidung 9).
+ * Gepflegt wird die Gruppe beim Anbieter — hier steht deshalb nur die eine Handlung, zu der die
+ * Benennung berechtigt: das Schutzkennzeichen setzen und lösen.
+ */
+function ContactedGroupCard({
+  group,
+  onChanged,
+}: {
+  group: GroupListResponse
+  onChanged: () => void
+}) {
+  const changeProtection = useGroupStore((s) => s.changeProtection)
+  const [error, setError] = useState<string | null>(null)
+
+  return (
+    <Box
+      sx={{
+        border: '1px solid',
+        borderColor: 'divider',
+        borderRadius: 1,
+        px: 2,
+        py: 1.5,
+      }}
+    >
+      {error && (
+        <Alert severity="error" sx={{ mb: 1.5 }} onClose={() => setError(null)}>
+          {error}
+        </Alert>
+      )}
+      <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', mb: 0.5 }}>
+        <Typography sx={{ fontSize: 14.5, fontWeight: 600 }}>{group.name}</Typography>
+        {group.protectedGroup && <MetaBadge>geschützt</MetaBadge>}
+        {group.provider?.external && <MetaBadge accent>extern</MetaBadge>}
+      </Stack>
+      <FormControlLabel
+        control={
+          <Switch
+            checked={group.protectedGroup}
+            onChange={async (e) => {
+              setError(null)
+              try {
+                await changeProtection(group.id, e.target.checked)
+                onChanged()
+              } catch (err) {
+                setError(
+                  err instanceof Error
+                    ? err.message
+                    : 'Das Schutzkennzeichen konnte nicht geändert werden',
+                )
+              }
+            }}
+          />
+        }
+        label="Als geschützte Gruppe kennzeichnen"
+      />
+      <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+        Für Personalvertretung, Schwerbehindertenvertretung, Gleichstellung und Personalvorgänge.
+        Das Kennzeichen setzen und lösen nur Sie als Ansprechstelle, nicht die Systemverwaltung. Die
+        Mitglieder dieser Gruppe pflegt der Anbieter; hier ändert sich daran nichts.
+      </Typography>
+    </Box>
+  )
+}
+
+/**
  * „Meine Gruppen" (#1814, ADR-0036 Entscheidung 4): die internen Gruppen, für die das eigene Konto
  * verantwortlich ist — mit dem sichtbaren Ausgang „Verantwortung abgeben". Anlegen setzt das
  * Anlegerecht „Interne Gruppen anlegen" voraus; fehlt es, erklärt die Seite das, statt die
@@ -280,12 +346,25 @@ export default function MyGroupsSection() {
   const { isMissing } = useMyCapabilities()
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [handoverOpen, setHandoverOpen] = useState(false)
+  const [contactedGroups, setContactedGroups] = useState<GroupListResponse[]>([])
 
   const missingCapability = isMissing('CREATE_INTERNAL_GROUP')
 
   useEffect(() => {
     void loadGroups('STEWARDED')
   }, [loadGroups])
+
+  // Eigener Abruf statt einer zweiten Quelle im Store: die Liste steht neben den verantworteten
+  // Gruppen und teilt mit ihnen nichts außer dem Platz (#1875).
+  const loadContacted = useCallback(() => {
+    void getMyContactedGroups()
+      .then(setContactedGroups)
+      .catch(() => setContactedGroups([]))
+  }, [])
+
+  useEffect(() => {
+    loadContacted()
+  }, [loadContacted])
 
   return (
     <Box>
@@ -338,6 +417,21 @@ export default function MyGroupsSection() {
             <StewardedGroupCard key={group.id} group={group} />
           ))}
         </Stack>
+      )}
+
+      {contactedGroups.length > 0 && (
+        <Box sx={{ mt: 3 }}>
+          <SectionHead>Ansprechstelle</SectionHead>
+          <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mb: 1.5 }}>
+            Anbietergruppen, für die Sie Ansprechstelle sind. Gepflegt werden sie beim Anbieter —
+            über ihr Schutzkennzeichen entscheiden Sie.
+          </Typography>
+          <Stack spacing={1}>
+            {contactedGroups.map((group) => (
+              <ContactedGroupCard key={group.id} group={group} onChanged={loadContacted} />
+            ))}
+          </Stack>
+        </Box>
       )}
 
       <CreateGroupDialog
