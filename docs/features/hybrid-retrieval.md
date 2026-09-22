@@ -1335,9 +1335,15 @@ liefern nie ein Embedding — die Spalte wird gar nicht erst gelesen.
 **Die Systemrolle öffnet diesen Weg nicht** ([#1828](https://github.com/criew/opaa/issues/1828)): Ein
 Chunk trägt den Text des Dokuments, deshalb prüfen beide Endpunkte zusätzlich die Lesbarkeit der
 Bibliothek nach derselben Formel wie die Suche — ohne Systemverwaltungszweig. Ohne Leseberechtigung
-antworten sie mit `403`, und zwar bevor ein einziger Chunk gelesen wird. Damit bleibt Leitplanke (c)
-auch hier ganz: Inhalte fremder Bestände werden nur über „Sicht als" sichtbar — benannt, befristet,
-begründungs- und protokollpflichtig —, nicht über die Rolle und nicht über den Chunk-Inspektor.
+antworten sie mit `403`. Beim Dokument-Listing fällt diese Entscheidung, bevor ein einziger Chunk
+gelesen wird; beim Einzelchunk wird die Zeile zuerst gelesen, um Dokument und Bibliothek überhaupt
+aufzulösen, aber nie ausgeliefert.
+
+**Der Inspektor folgt dabei den Rechten der aufrufenden Person, nicht dem Diagnosekontext.** Er kennt
+den Kontext eines „Sicht als"-Laufs nicht: Wer einen Chunk aus einem fremden Bestand im Inspektor
+öffnen will, braucht ein eigenes Leserecht auf die Bibliothek — auch dann, wenn derselbe Chunk in
+einer befugten Diagnose als Treffer erschienen ist. Ob der Inspektor dem Diagnosekontext folgen
+sollte, ist nicht entschieden und hier nicht zugesagt.
 
 ### Berechtigungs-Leitplanken
 
