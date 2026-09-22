@@ -34,6 +34,11 @@ const QUELLEN = {
     import: 'default',
     eager: true,
   }) as Record<string, string>),
+  ...(import.meta.glob('./succession/*.tsx', {
+    query: '?raw',
+    import: 'default',
+    eager: true,
+  }) as Record<string, string>),
 }
 
 /**
@@ -44,6 +49,8 @@ const QUELLEN = {
 const VERWALTUNGSDATEIEN = Object.keys(QUELLEN).filter((pfad) => {
   if (pfad.startsWith('./admin/') || pfad.includes('/searchadmin/')) return true
   if (pfad.startsWith('./chat/') || pfad.startsWith('./metadata/')) return true
+  // #1821: die Betriebsliste entsteht in einer eigenen Komponente, nicht auf der Seite.
+  if (pfad.startsWith('./succession/')) return true
   return [
     'BrandingSettingsPage',
     'UserManagementPage',
@@ -54,6 +61,7 @@ const VERWALTUNGSDATEIEN = Object.keys(QUELLEN).filter((pfad) => {
     'CapabilityManagementPage',
     'DirectorySyncPage',
     'ProviderGroupWorklistPage',
+    'SuccessionPage',
     'MailSettingsPage',
     'SearchIndexingAdminPage',
     // #1609: außerhalb der Administration

@@ -22,6 +22,7 @@ import { assetRoleLabel, documentSourceTypeLabel, libraryVisibilityLabel } from 
 import GlobalBadge from '../components/GlobalBadge'
 import PageHeading from '../components/a11y/PageHeading'
 import MetaBadge from '../components/MetaBadge'
+import SuccessionStateNote from '../components/succession/SuccessionStateNote'
 
 function ownerTypeSummary(library: LibraryListResponse): string {
   if (library.ownerName) return library.ownerName
@@ -126,6 +127,9 @@ function LibraryTable({ libraries }: { libraries: LibraryListResponse[] }) {
                 <Typography component="div" sx={{ fontSize: 11.5, color: 'text.disabled' }}>
                   {[library.description, ownerTypeSummary(library)].filter(Boolean).join(' · ')}
                 </Typography>
+                {/* ADR-0036, Entscheidung 6: Zustand und Adressat, ohne Datum, früheren Eigentümer
+                    oder Grund - die Übersicht zeigt ihn, ohne die Bibliothek zu öffnen. */}
+                <SuccessionStateNote succession={library.succession} variant="badge" />
               </TableCell>
               <TableCell>{documentSourceTypeLabel(library.sourceType)}</TableCell>
               <TableCell sx={{ fontFamily: fontFamily.mono, fontSize: '12.5px !important' }}>

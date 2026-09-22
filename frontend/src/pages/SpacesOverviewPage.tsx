@@ -7,6 +7,7 @@ import Chip from '@mui/material/Chip'
 import CircularProgress from '@mui/material/CircularProgress'
 import Typography from '@mui/material/Typography'
 import MetaBadge from '../components/MetaBadge'
+import SuccessionStateNote from '../components/succession/SuccessionStateNote'
 import { Link as RouterLink, useNavigate } from 'react-router'
 import PageHeading from '../components/a11y/PageHeading'
 import { useSpaceStore } from '../stores/spaceStore'
@@ -157,6 +158,9 @@ export default function SpacesOverviewPage() {
               <Typography component="span" sx={{ fontSize: 11.5, color: 'text.secondary' }}>
                 {spaceFigures(space)}
               </Typography>
+              {/* ADR-0036, Entscheidung 6 verlangt die Kennzeichnung in Übersicht *und*
+                  Detailansicht - Zustand und Adressat, ohne Datum, Eigentümer oder Grund. */}
+              <SuccessionStateNote succession={space.succession} variant="badge" />
               <Box sx={{ display: 'flex', gap: 0.75 }}>
                 {/* #957: MetaBadge instead of a hand-rolled twin - same optics, and its accent
                     colour is scheme-aware (blue[700] only reached 3.8:1 on the dark card). */}

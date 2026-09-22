@@ -1,6 +1,7 @@
 package io.opaa.space;
 
 import io.opaa.api.types.SpaceRole;
+import io.opaa.permission.SuccessionFinding;
 
 /**
  * A space enriched with the overview card's figures (#682) - how many libraries and how many of the
@@ -10,4 +11,9 @@ import io.opaa.api.types.SpaceRole;
  * SpaceListResponse}, mapped by {@code io.opaa.api.SpaceResponseMapper}.
  */
 public record SpaceOverview(
-    Space space, int libraryCount, int chatCount, SpaceRole userRole, boolean successionOpen) {}
+    Space space,
+    int libraryCount,
+    int chatCount,
+    SpaceRole userRole,
+    boolean successionOpen,
+    SuccessionFinding succession) {}

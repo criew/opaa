@@ -5,7 +5,7 @@ import RadioGroup from '@mui/material/RadioGroup'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import type { PermissionSubjectType } from '../../types/api'
-import type { SubjectSelection } from './subjectSelection'
+import { PROTECTED_GROUP_SEARCH_HINT, type SubjectSelection } from './subjectSelection'
 import UserPicker from '../groups/UserPicker'
 import GroupPicker from './GroupPicker'
 
@@ -76,7 +76,7 @@ export default function SubjectPicker({
       )}
       {value.type === 'GROUP' && !hideSearch && (
         <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-          Eine geschützte Gruppe erscheint nur, wenn Sie ihre vollständige Bezeichnung eingeben.
+          {PROTECTED_GROUP_SEARCH_HINT}
         </Typography>
       )}
     </Stack>

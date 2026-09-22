@@ -619,12 +619,16 @@ und indexieren.
 
 **Jedes betroffene Objekt führt Zustand und Zuständigkeit mit** — „Nachfolge offen — zuständig: die
 Systemverwaltung" —, und zwar für jeden, der das Objekt sehen darf: bewusst ohne Datum, ohne den
-bisherigen Eigentümer und ohne Grund. Das Datum steht allein in der Betriebsliste. **Suchtreffer und
-Quellenverweise tragen den Hinweis nicht:** Der Zustand betrifft die Zuständigkeit, nicht die
-Richtigkeit des Inhalts, und eine Kennzeichnung dort machte jede Antwort zu einer
-Zustandsauswertung.
+bisherigen Eigentümer und ohne Grund, dazu der Satz, dass das Objekt nutzbar bleibt und nichts
+gelöscht wird. Zu sehen ist die Kennzeichnung in der **Bibliotheksübersicht** und in der
+**Detailansicht** einer Bibliothek sowie in der **Space-Übersicht** und am **Space** selbst. Das
+Datum steht allein in der Betriebsliste. **Suchtreffer und Quellenverweise tragen den Hinweis
+nicht:** Der Zustand betrifft die Zuständigkeit, nicht die Richtigkeit des Inhalts, und eine
+Kennzeichnung dort machte jede Antwort zu einer Zustandsauswertung.
 
-**Die Betriebsliste der Systemverwaltung hat drei Reiter:**
+**Die Betriebsliste der Systemverwaltung** steht unter **Administration → Lebenszyklus** und **hat
+drei Reiter** — jeder mit eigener Adresse, damit ein Verweis im richtigen Reiter landet und ein
+Neuladen ihn behält (`/admin/succession/open`, `…/grants`, `…/groups`):
 
 | Reiter | Was darin steht |
 |---|---|
@@ -647,9 +651,16 @@ Endet der Zustand damit wirklich, wird der Vorgang geschlossen und die handelnde
 vermerkt; geht das Objekt an jemanden, der ebenfalls nicht handeln kann, bleibt der Vorgang offen —
 sonst begänne sein Alter von vorn.
 
-**Die Oberfläche der Betriebsliste entsteht mit Issue #1821.** Solange sie nicht ausgeliefert ist,
-führt die Systemverwaltung Liste, Sichtungsvermerk und Übernahme über die Schnittstelle; der Zustand
-selbst wirkt unabhängig davon, und seine Kennzeichnung am Objekt gehört zu derselben Oberfläche.
+**Was eine Zeile zeigt und anbietet.** Objekt, zuständige Stelle und Alter; der Name des Objekts
+führt in die Bibliothek beziehungsweise in den Raum. Eine gealterte Zeile ist als solche
+gekennzeichnet, und der **Sichtungsvermerk** wird an ihr mit seinem Grund eingetragen. Jede Zeile hat
+ihren Ausgang: bei einer Gruppe die **Übernahme** an eine andere Gruppe, bei einem Objekt einer
+Person die **Nachfolge** von Person zu Person (Umfang Eigentum und Verantwortung; wessen Bestand
+übergeben wird, wählt die Systemverwaltung dabei selbst — die Liste nennt die Person nur als Text),
+und bei einem Objekt einer Gruppe der Weg in die Gruppenverwaltung. In jedem Fall ist es derselbe
+Übertragungsdialog wie in Abschnitt 13.2, mit Vorschau und ausdrücklicher Bestätigung. Eine Zeile,
+die der Feststellungslauf noch nicht gesehen hat, steht bereits in der Liste — einen Vermerk nimmt
+sie erst an, wenn ihr Vorgang angelegt ist; wann der Lauf hinsieht, steht in Abschnitt 15.
 
 **Vorgänge und Sichtungsvermerke sind Protokoll**, kein Rechtenachweis: Ein monatlicher Lauf löscht
 abgeschlossene Vorgänge samt ihren Vermerken, sobald ihr Ende länger zurückliegt als die
