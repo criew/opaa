@@ -68,6 +68,21 @@
   dependencyDashboardTitle: 'Abhängigkeits-Übersicht (Renovate)',
   dependencyDashboardLabels: ['ci'],
 
+  // Bewusst die Vorgabeliste aus config:recommended (:ignoreModulesAndTests) OHNE "**/test/**"
+  // und "**/tests/**" (#1861): Die Ausschlussliste wirkt VOR jedem Manager auf die Dateiliste —
+  // mit ihr waren backend/src/test/**/MinioFixture.java und KeycloakFixture.java für die
+  // customManagers unten unsichtbar, ihr Pin damit eingefroren. Hier sind Testverzeichnisse keine
+  // Fremdfixtures, sondern die einzige Stelle, an der die Container-Images der Integrationssuiten
+  // stehen. Die übrigen Einträge bleiben: Fremdcode und Beispiele sollen weiter unbeachtet bleiben.
+  ignorePaths: [
+    '**/node_modules/**',
+    '**/bower_components/**',
+    '**/vendor/**',
+    '**/examples/**',
+    '**/__tests__/**',
+    '**/__fixtures__/**',
+  ],
+
   // Regex-Manager für Pins, die kein regulärer Manager sieht; jeder liest Datasource und Paket
   // aus einem "renovate:"-Kommentar direkt über der gepinnten Zeile (übliches Renovate-Muster).
   customManagers: [

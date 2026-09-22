@@ -22,6 +22,7 @@ jederzeit auch lokal ausführen (unten).
 | Docker-Basisimages (`Dockerfile`s, `docker-compose*.yml`) | `dockerfile`, `docker-compose` | `ci` |
 | Demo-Seed-/Generator-Requirements (`demo/*/requirements.txt`) | `pip_requirements` | `demo` |
 | Node-Version für die lokale Entwicklung (`frontend/.nvmrc`) | `nvm` | `frontend` |
+| Pins, die kein regulärer Manager sieht: die Image-Konstanten in `MinioFixture.java` und `KeycloakFixture.java`, der `pnpm dlx`-Aufruf in `sbom.yml` | `custom.regex` | — |
 
 **Rein transitive Sicherheits-Pins brauchen einen `[libraries]`-Eintrag.** Wird eine Bibliothek
 angehoben, die kein Build-Skript direkt deklariert (eingebetteter Tomcat, Bouncy Castle, junrar —
@@ -92,6 +93,57 @@ Lese-Lauf.
 
 Am Log-Ende fasst `packageFiles with updates` je Manager zusammen, was erkannt wurde und
 welche neuen Versionen anstehen.
+
+## CustomManager belegt prüfen
+
+Ein `customManagers`-Eintrag ist die einzige Konfiguration hier, die **still** wirkungslos sein
+kann: `renovate-config-validator` prüft nur die Form, und ein Eintrag, der keine Datei trifft,
+erzeugt weder Fehler noch Warnung — er fehlt einfach im Log. Ein Pin kann so jahrelang
+einfrieren, ohne dass es auffällt (so geschehen mit dem MinIO-Image, #1861). Ein neuer oder
+geänderter Eintrag wird deshalb **belegt**, nicht angenommen:
+
+```bash
+docker run --rm -v "$(pwd)":/usr/src/app -w /usr/src/app \
+  -e RENOVATE_PLATFORM=local -e LOG_LEVEL=debug \
+  renovate/renovate:latest > renovate-debug.log 2>&1
+
+grep 'Matched .* file(s) for manager regex' renovate-debug.log
+```
+
+Die `regex`-Zeilen erscheinen in der Reihenfolge der `customManagers` (den ersten beiden geht
+`config:recommended` mit seinen zwei tsconfig-Managern voraus). **Ein Eintrag, der keine Datei
+trifft, hat gar keine Zeile** — das ist der Befund. Erwartet:
+
+```
+DEBUG: Matched 1 file(s) for manager regex: backend/src/test/java/io/opaa/indexing/source/s3/MinioFixture.java
+DEBUG: Matched 1 file(s) for manager regex: backend/src/test/java/io/opaa/integration/keycloak/KeycloakFixture.java
+DEBUG: Matched 1 file(s) for manager regex: .github/workflows/sbom.yml
+```
+
+Dass die Datei getroffen wurde, heißt noch nicht, dass der `matchStrings`-Ausdruck greift; dafür
+gibt es zwei weitere Belege im selben Log:
+
+- `No dependencies found in file for custom regex manager (packageFile=…)` — Datei getroffen,
+  Regex daneben.
+- Der Block `packageFiles with updates` am Log-Ende führt unter `"regex"` je Eintrag den
+  `packageFile` mit `depName`, `currentValue` und `currentVersion`. Steht dort die erwartete
+  Version, ist die Kette vollständig belegt.
+
+Zwei Stolpersteine, die beide schon zugeschlagen haben:
+
+- **`ignorePaths` wirkt vor jedem Manager.** `config:recommended` bringt über
+  `:ignoreModulesAndTests` unter anderem `**/test/**`, `**/tests/**`, `**/examples/**` und
+  `**/__fixtures__/**` mit. Eine Datei unter `backend/src/test/…` ist damit für **alle** Manager
+  unsichtbar, egal wie genau `managerFilePatterns` sie benennt. Deshalb überschreibt
+  `renovate.json5` die Liste gezielt (Kommentar dort), statt sie zu leeren.
+- **`managerFilePatterns` sind Globs**, solange sie nicht in Schrägstriche gefasst sind
+  (`/…regex…/`). Ein voller Pfad ohne Platzhalter ist ein gültiges Glob und trifft genau diese
+  eine Datei — erkennbar an der `Using file pattern: … for manager regex`-Zeile kurz oberhalb.
+
+Der lokale Lauf genügt als Beleg: Er liest dieselbe `renovate.json5` und durchläuft dieselbe
+Extraktionsstufe wie der Lauf gegen GitHub. Wer den echten Lauf sehen will, stößt
+`.github/workflows/renovate.yml` per *Run workflow* an — der schreibt allerdings (Branches, PRs)
+und liefert nur `LOG_LEVEL=info`.
 
 ## Automatischer täglicher Lauf
 
@@ -191,6 +243,11 @@ docker run --rm -v "$(pwd)":/usr/src/app -w /usr/src/app \
   `changes` in `ci.yml`, Selbstprobe in `test_check_package_manager_hash.py`). Heilung:
   `corepack use pnpm@<version>` im betroffenen Verzeichnis ausführen, sobald die Lockfile
   aktuell ist, und `package.json` committen.
+- **Ein `customManagers`-Eintrag erzeugt nie einen PR, obwohl die Konfiguration validiert:** Die
+  Datei liegt unter einem Pfad, den `ignorePaths` ausschließt (Vorgabe aus `config:recommended`,
+  darunter `**/test/**`), oder `managerFilePatterns`/`matchStrings` treffen nicht. Der Nachweis
+  steht oben unter „CustomManager belegt prüfen"; ohne Debug-Lauf ist dieser Fall unsichtbar, weil
+  ein leerer Manager keine Warnung erzeugt (#1861).
 - **Docker-Hub-Rate-Limit im Dry-Run:** kurz warten und wiederholen; der Lauf cached nichts
   zwischen Containern.
 - **Major-Update eines Basisimages bricht einen Build, obwohl der Update-PR grün war:** Der
