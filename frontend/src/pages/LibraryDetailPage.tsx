@@ -114,6 +114,7 @@ import PageSection from '../components/PageSection'
 import FieldLabel from '../components/wizard/FieldLabel'
 import MetaBadge from '../components/MetaBadge'
 import SuccessionStateNote from '../components/succession/SuccessionStateNote'
+import { successionAwareMessage } from '../components/succession/successionConflict'
 
 // Mirrors what the registered DocumentFormats admit (DocumentFormat#admittedFormats,
 // backend/src/main/java/io/opaa/indexing/format) - only a client-side hint for the file picker;
@@ -517,7 +518,9 @@ export default function LibraryDetailPage() {
       })
       setDraft(null)
     } catch (err) {
-      setLocalError(err instanceof Error ? err.message : 'Aktualisierung fehlgeschlagen')
+      // Die Reichweite ist der eine Weg, den eine offene Nachfolge sperrt (ADR-0036/6): Die
+      // Ablehnung nennt deshalb auch den Ausgang.
+      setLocalError(successionAwareMessage(err, 'Aktualisierung fehlgeschlagen'))
     } finally {
       setSaving(false)
     }

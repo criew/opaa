@@ -38,13 +38,6 @@ export function groupIneffectiveReason(group: GroupListResponse): string | null 
   return null
 }
 
-/** Der Eintragstext einer Gruppe in einer Auswahl: Name, Herkunft und — falls nötig — der Grund. */
-export function groupOptionLabel(group: GroupListResponse): string {
-  const reason = groupIneffectiveReason(group)
-  const base = `${group.name} · ${groupOriginLabel(group)}`
-  return reason ? `${base} — nicht wählbar: ${reason}` : base
-}
-
 /** Das Alter eines Zeitpunkts in Tagen bzw. Stunden — die Angabe der Betriebs- und Planzeilen. */
 export function ageLabel(iso: string, now: Date = new Date()): string {
   const millis = now.getTime() - new Date(iso).getTime()

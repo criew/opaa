@@ -6,7 +6,9 @@ import io.opaa.api.types.SuccessionObjectType;
 import io.opaa.permission.SuccessionFinding;
 import io.opaa.permission.SuccessionFindingSource;
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -66,6 +68,22 @@ class SpaceSuccessionSource implements SuccessionFindingSource {
    * the operational list all read it here, so no second definition can drift away from the {@code
    * is_default} exception. One account query for the whole list.
    */
+  /**
+   * The marking of a whole list of spaces, from the same derivation as {@link #openAmong} - the
+   * overview carries state <b>and</b> addressee, not only the bare flag (ADR-0036, Entscheidung 6).
+   * Spaces in order; a space in order is absent from the map.
+   */
+  Map<UUID, SuccessionFinding> findingsAmong(Collection<Space> candidates) {
+    Set<UUID> open = openAmong(candidates);
+    Map<UUID, SuccessionFinding> findings = new LinkedHashMap<>();
+    for (Space space : candidates) {
+      if (open.contains(space.getId())) {
+        findings.put(space.getId(), findingOf(space));
+      }
+    }
+    return findings;
+  }
+
   Set<UUID> openAmong(Collection<Space> candidates) {
     List<Space> relevant = candidates.stream().filter(space -> !space.isDefault()).toList();
     Set<UUID> capable = accessPolicy.spacesWithCapableAdmin(relevant);

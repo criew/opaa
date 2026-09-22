@@ -63,6 +63,41 @@ class SuccessionControllerIntegrationTest {
         .andExpect(status().isBadRequest());
   }
 
+  /**
+   * The declared bounds are refused, never silently corrected: an answer for page 0 to a request
+   * for page -1, or 200 entries to a request for 500, would look like the answer that was asked for
+   * - the same reasoning the 5000-entry bound carries.
+   */
+  @Test
+  void aPageOutsideTheDeclaredBoundsIsRefusedInsteadOfCorrected() throws Exception {
+    mockMvc
+        .perform(
+            get("/api/v1/admin/succession")
+                .param("kind", "OPEN_SUCCESSION")
+                .param("size", "500")
+                .with(devAdmin()))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.error").value(org.hamcrest.Matchers.containsString("Seitengröße")));
+
+    mockMvc
+        .perform(
+            get("/api/v1/admin/succession")
+                .param("kind", "OPEN_SUCCESSION")
+                .param("page", "-1")
+                .with(devAdmin()))
+        .andExpect(status().isBadRequest());
+
+    // Die Grenze selbst bleibt erlaubt.
+    mockMvc
+        .perform(
+            get("/api/v1/admin/succession")
+                .param("kind", "OPEN_SUCCESSION")
+                .param("size", "200")
+                .with(devAdmin()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.size").value(200));
+  }
+
   @Test
   void aSichtungsvermerkIsWrittenAgainstAnOpenCase() throws Exception {
     caseId = openCase();

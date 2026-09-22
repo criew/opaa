@@ -28,7 +28,10 @@ import PageHeading from '../components/a11y/PageHeading'
 import MetaBadge from '../components/MetaBadge'
 import UserPicker from '../components/groups/UserPicker'
 import GroupPicker from '../components/permissions/GroupPicker'
-import { confirmGroupSubject } from '../components/permissions/subjectSelection'
+import {
+  confirmGroupSubject,
+  PROTECTED_GROUP_SEARCH_HINT,
+} from '../components/permissions/subjectSelection'
 import { contentWidth } from '../theme/tokens'
 
 function CapabilityCard({
@@ -149,12 +152,17 @@ function CapabilityCard({
         {subjectType === 'GROUP' && (
           /* Die gemeinsame Gruppensuche (#1820): Herkunft, Kennzeichen „extern" und die
              Wählbarkeitsregeln bringt sie mit - dieselben, die `CapabilityService#grant` abweist. */
-          <GroupPicker
-            ariaLabel="Gruppe"
-            placeholder="Gruppe suchen …"
-            value={group}
-            onChange={setGroup}
-          />
+          <Stack spacing={0.5} sx={{ minWidth: 280, flex: 1 }}>
+            <GroupPicker
+              ariaLabel="Gruppe"
+              placeholder="Gruppe suchen …"
+              value={group}
+              onChange={setGroup}
+            />
+            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+              {PROTECTED_GROUP_SEARCH_HINT}
+            </Typography>
+          </Stack>
         )}
 
         {subjectType === 'USER' && (

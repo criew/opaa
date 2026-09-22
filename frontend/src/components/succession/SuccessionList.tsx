@@ -45,8 +45,8 @@ function objectTypeLabel(entry: SuccessionEntryResponse): string {
   }
 }
 
-/** Die Übernahme: Ein Objekt einer Gruppe geht an eine Gruppe, alles andere an eine Person. */
-function transferSourceOf(entry: SuccessionEntryResponse): TransferSubject | null {
+/** Die Gruppe selbst ist als Quelle bekannt; bei jedem anderen Objekt wird sie nicht genannt. */
+function groupSourceOf(entry: SuccessionEntryResponse): TransferSubject | null {
   return entry.objectType === 'GROUP'
     ? { type: 'GROUP', id: entry.objectId, name: entry.objectName }
     : null
@@ -62,8 +62,13 @@ function SuccessionRow({
   const [reason, setReason] = useState('')
   const [open, setOpen] = useState(false)
   const [transferOpen, setTransferOpen] = useState(false)
+  const [handoverOpen, setHandoverOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const source = transferSourceOf(entry)
+  const groupSource = groupSourceOf(entry)
+  // Gehört das Objekt einer Person, nennt die Zeile sie nur als Text (`ownerHint`) - die Quelle
+  // wählt die Systemverwaltung deshalb selbst. Das ist die Nachfolgeübernahme aus ADR-0036,
+  // Entscheidung 10: Person → Person, Umfang Eigentum und Verantwortung.
+  const offersHandover = groupSource === null && entry.addressee !== 'GROUP_STEWARDS'
   const href = objectHref(entry)
 
   return (
@@ -118,10 +123,24 @@ function SuccessionRow({
       )}
 
       <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
-        {source && (
+        {groupSource && (
           <Button size="small" variant="outlined" onClick={() => setTransferOpen(true)}>
             Übernahme vorbereiten
           </Button>
+        )}
+        {offersHandover && (
+          <Button size="small" variant="outlined" onClick={() => setHandoverOpen(true)}>
+            Nachfolge übertragen
+          </Button>
+        )}
+        {entry.addressee === 'GROUP_STEWARDS' && (
+          <Link
+            component={RouterLink}
+            to="/admin/groups"
+            sx={{ fontSize: 13, alignSelf: 'center' }}
+          >
+            Zur besitzenden Gruppe
+          </Link>
         )}
         {entry.caseId && (
           <Button size="small" onClick={() => setOpen((current) => !current)}>
@@ -165,14 +184,26 @@ function SuccessionRow({
         </Stack>
       )}
 
-      {transferOpen && source && (
+      {transferOpen && groupSource && (
         <PermissionTransferDialog
           open
           onClose={() => setTransferOpen(false)}
-          source={source}
+          source={groupSource}
           targetKinds={['GROUP']}
           scopes={['OWNERSHIP', 'ASSET_GRANTS', 'SPACE_MEMBERSHIPS', 'CAPABILITIES']}
           intro={`Eigentum und Wirkungen von „${entry.objectName}" gehen an die gewählte Gruppe. Endet der Zustand damit, schließt der nächste Feststellungslauf den Vorgang.`}
+          onTransferred={onReviewed}
+        />
+      )}
+
+      {handoverOpen && (
+        <PermissionTransferDialog
+          open
+          onClose={() => setHandoverOpen(false)}
+          sourceKinds={['USER']}
+          targetKinds={['USER']}
+          scopes={['OWNERSHIP', 'STEWARDSHIP']}
+          intro={`Eigentum und Verantwortung der ausgeschiedenen Person gehen an ihre Nachfolge — darunter „${entry.objectName}". Wählen Sie zuerst, wessen Bestand übergeben wird; Berechtigungen einer Person sind weder übertragbar noch aufzählbar.`}
           onTransferred={onReviewed}
         />
       )}
@@ -222,7 +253,7 @@ export default function SuccessionList({
   if (isLoading && !data) {
     return <Typography sx={{ color: 'text.secondary' }}>Die Liste wird geladen …</Typography>
   }
-  if (!data || data.entries.length === 0) {
+  if (!data || data.totalElements === 0) {
     return <Typography sx={{ color: 'text.secondary' }}>{emptyText}</Typography>
   }
 
@@ -234,18 +265,26 @@ export default function SuccessionList({
         weitere Periode zurück. Es gibt keine Frist und keine Erinnerung.
       </Typography>
 
-      {data.entries.map((entry) => (
-        <SuccessionRow
-          key={`${entry.objectType}-${entry.objectId}`}
-          entry={entry}
-          onReviewed={() => void load()}
-        />
-      ))}
+      {/* Eine leere Folgeseite ist kein „alles in Ordnung": Zwischen zwei Läufen kann eine Seite
+          leer werden, und die Blätterung bleibt der Weg zurück. */}
+      {data.entries.length === 0 ? (
+        <Typography sx={{ color: 'text.secondary' }}>
+          Diese Seite ist inzwischen leer — die Liste hat {data.totalElements} Einträge.
+        </Typography>
+      ) : (
+        data.entries.map((entry) => (
+          <SuccessionRow
+            key={`${entry.objectType}-${entry.objectId}`}
+            entry={entry}
+            onReviewed={() => void load()}
+          />
+        ))
+      )}
 
-      {data.totalPages > 1 && (
+      {(data.totalPages > 1 || data.page > 0) && (
         <Pagination
           sx={{ mt: 2 }}
-          count={data.totalPages}
+          count={Math.max(data.totalPages, data.page + 1)}
           page={data.page + 1}
           onChange={(_event, next) => setPage(next - 1)}
           aria-label="Seiten der Betriebsliste"

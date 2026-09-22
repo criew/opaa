@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { Route, Routes } from 'react-router'
 import { renderWithProviders } from '../test/test-utils'
 import { server } from '../mocks/server'
+import { mockSuccessionEntries } from '../mocks/successionFixtures'
 import SuccessionPage from './SuccessionPage'
 import { useAuthStore } from '../stores/authStore'
 
@@ -115,6 +116,41 @@ describe('SuccessionPage', () => {
 
     const dialog = await screen.findByRole('dialog')
     expect(within(dialog).getByRole('button', { name: /vorschau erstellen/i })).toBeInTheDocument()
+  })
+
+  // Zwischen zwei Läufen kann eine Folgeseite leer werden - das ist kein „alles in Ordnung",
+  // und der Weg zurück auf Seite 1 muss bleiben.
+  it('does not claim everything is in order on an empty follow-up page', async () => {
+    server.use(
+      http.get('/api/v1/admin/succession', ({ request }) => {
+        const page = Number(new URL(request.url).searchParams.get('page') ?? 0)
+        return HttpResponse.json({
+          entries: page === 0 ? mockSuccessionEntries.OPEN_SUCCESSION : [],
+          page,
+          size: 50,
+          totalElements: 2,
+          totalPages: 2,
+        })
+      }),
+    )
+    renderPage()
+    const user = userEvent.setup()
+
+    await screen.findByText('Bauakten Referat 50')
+    const pagination = screen.getByRole('navigation', { name: 'Seiten der Betriebsliste' })
+    await user.click(within(pagination).getByRole('button', { name: /2/ }))
+
+    expect(await screen.findByText(/Diese Seite ist inzwischen leer/)).toBeInTheDocument()
+    expect(
+      screen.queryByText('Für jedes Objekt gibt es eine handlungsfähige zuständige Stelle.'),
+    ).toBeNull()
+    // Die Blätterung bleibt der Weg zurück.
+    expect(
+      within(screen.getByRole('navigation', { name: 'Seiten der Betriebsliste' })).getByRole(
+        'button',
+        { name: /1/ },
+      ),
+    ).toBeInTheDocument()
   })
 
   it('explains the page to an account without the system role', async () => {

@@ -708,6 +708,36 @@ describe('LibraryDetailPage', () => {
         await screen.findByText(/von der Systemverwaltung auf höchstens "privat" begrenzt/),
       ).toBeInTheDocument()
     })
+
+    // ADR-0036, Entscheidung 6: Die eingefrorene Reichweite ist eine erklärte Grenze - die
+    // Ablehnung nennt neben dem Grund den Ausgang, die Übernahme.
+    it('names the takeover when an open succession freezes the reach', async () => {
+      setLibraryState(managerLibrary, detailsOf(managerLibrary))
+      const refusal = new Error(
+        'Für dieses Objekt ist die Nachfolge offen: eine größere Reichweite (Sichtbarkeit oder' +
+          ' Auffindbarkeit) ist deshalb nicht möglich. Bestehende Rechte bleiben unverändert, und' +
+          ' nichts wird gelöscht. Zuständig: die Systemverwaltung',
+      )
+      // Ein echter AxiosError als Ursache: `apiErrorCode` liest den Code nur aus ihm.
+      const axiosError = new AxiosError('Request failed')
+      axiosError.response = {
+        status: 409,
+        statusText: 'Conflict',
+        headers: {},
+        config: { headers: {} } as never,
+        data: { error: refusal.message, code: 'SUCCESSION_OPEN' },
+      }
+      Object.defineProperty(refusal, 'cause', { value: axiosError })
+      mockUpdateLibrary.mockRejectedValueOnce(refusal)
+      const user = userEvent.setup()
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+      await user.click(await screen.findByRole('tab', { name: 'Verwaltung' }))
+      await user.click(await screen.findByRole('button', { name: /^speichern$/i }))
+
+      expect(await screen.findByText(/Nachfolge offen/)).toBeInTheDocument()
+      expect(screen.getByText(/Übernahme/)).toBeInTheDocument()
+    })
   })
 
   it('shows the upload zone and document list for an UPLOAD library', async () => {

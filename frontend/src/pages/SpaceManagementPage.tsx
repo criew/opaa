@@ -718,7 +718,7 @@ export default function SpaceManagementPage() {
                     setSelectedLibrary(null)
                     setSuccessMessage('Bibliothek zugeordnet')
                   } catch (err) {
-                    setLocalError(err instanceof Error ? err.message : 'Zuordnung fehlgeschlagen')
+                    setLocalError(successionAwareMessage(err, 'Zuordnung fehlgeschlagen'))
                   }
                 }}
               >

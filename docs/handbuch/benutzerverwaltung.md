@@ -523,10 +523,15 @@ sonst begänne sein Alter von vorn.
 Adressen (`/admin/succession/open`, `…/grants`, `…/groups`). Jede Zeile nennt Objekt, zuständige
 Stelle und Alter; der Name des Objekts führt in die Bibliothek beziehungsweise in den Space. Eine
 gealterte Zeile ist als solche gekennzeichnet, der **Sichtungsvermerk** wird an ihr mit seinem Grund
-eingetragen, und bei einer Gruppe steht dort die **Übernahme**: derselbe Übertragungsdialog wie in
-der Gruppenverwaltung, mit Vorschau und ausdrücklicher Bestätigung. Eine Zeile, die der
+eingetragen, und jede Zeile hat ihren Ausgang: bei einer Gruppe die **Übernahme** an eine andere
+Gruppe, bei einem Objekt einer Person die **Nachfolge** von Person zu Person (Umfang Eigentum und
+Verantwortung; wessen Bestand übergeben wird, wählt die Systemverwaltung dabei selbst — die Liste
+nennt die Person nur als Text), und bei einem Objekt einer Gruppe der Weg in die Gruppenverwaltung.
+In jedem Fall derselbe Übertragungsdialog mit Vorschau und ausdrücklicher Bestätigung. Eine Zeile, die der
 Feststellungslauf noch nicht gesehen hat, steht bereits in der Liste — einen Vermerk nimmt sie erst
-an, wenn ihr Vorgang angelegt ist (spätestens nach einer Stunde).
+an, wenn ihr Vorgang angelegt ist; wann der Feststellungslauf hinsieht, steht als
+`OPAA_SUCCESSION_DETECTION_CRON` in der Konfigurationstabelle des
+[Deployment-Handbuchs](deployment.md).
 
 **Vorgänge und Sichtungsvermerke sind Protokoll**, kein Rechtenachweis: Abgeschlossene Vorgänge
 werden samt ihren Vermerken nach Ablauf der Protokollfrist automatisch gelöscht (dieselbe Frist wie

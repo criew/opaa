@@ -84,6 +84,7 @@ final class SpaceResponseMapper {
         .visibility(space.getVisibility())
         .userRole(overview.userRole())
         .successionOpen(overview.successionOpen())
+        .succession(SuccessionResponseMapper.toStateResponse(overview.succession()))
         .libraryCount(overview.libraryCount())
         .chatCount(overview.chatCount());
   }

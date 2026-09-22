@@ -28,7 +28,7 @@ import { notify } from '../../stores/notificationStore'
 import UserPicker from '../groups/UserPicker'
 import FieldLabel from '../wizard/FieldLabel'
 import GroupPicker from './GroupPicker'
-import { confirmGroupSubject } from './subjectSelection'
+import { confirmGroupSubject, PROTECTED_GROUP_SEARCH_HINT } from './subjectSelection'
 
 const scopeLabels: Record<PermissionTransferScope, string> = {
   ASSET_GRANTS: 'Berechtigungen an Objekten',
@@ -48,7 +48,14 @@ export interface TransferSubject {
 interface PermissionTransferDialogProps {
   open: boolean
   onClose: () => void
-  source: TransferSubject
+  /** Die feste Quelle, wenn der Aufrufer sie kennt (Gruppe, eigenes Konto). */
+  source?: TransferSubject
+  /**
+   * Statt einer festen Quelle: Die Quelle wird hier gewählt. Die Betriebsliste braucht das, weil
+   * eine Zeile den früheren Eigentümer nur als Text nennt — eine Kennung gibt die API bewusst
+   * nicht heraus (ADR-0036, Entscheidung 6).
+   */
+  sourceKinds?: PermissionSubjectType[]
   /** Welche Zielarten in Frage kommen — eine Person als Quelle gibt nur an eine Person ab. */
   targetKinds: PermissionSubjectType[]
   /** Welcher Umfang wählbar ist; die Vorauswahl ist der ganze angebotene Umfang. */
@@ -67,6 +74,7 @@ export default function PermissionTransferDialog({
   open,
   onClose,
   source,
+  sourceKinds,
   targetKinds,
   scopes,
   intro,
@@ -75,13 +83,17 @@ export default function PermissionTransferDialog({
   const [targetType, setTargetType] = useState<PermissionSubjectType>(targetKinds[0])
   const [targetGroup, setTargetGroup] = useState<SelectableGroupResponse | null>(null)
   const [targetUser, setTargetUser] = useState<UserSummary | null>(null)
+  const [sourceUser, setSourceUser] = useState<UserSummary | null>(null)
   const [selectedScopes, setSelectedScopes] = useState<PermissionTransferScope[]>(scopes)
   const [preview, setPreview] = useState<PermissionTransferPreviewResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
+  const choosesSource = source === undefined
+  const sourceType: PermissionSubjectType = source?.type ?? sourceKinds?.[0] ?? 'USER'
+  const sourceId = source?.id ?? sourceUser?.id ?? ''
   const targetId = targetType === 'GROUP' ? (targetGroup?.id ?? '') : (targetUser?.id ?? '')
-  const ready = targetId !== '' && selectedScopes.length > 0
+  const ready = sourceId !== '' && targetId !== '' && selectedScopes.length > 0
 
   function toggleScope(scope: PermissionTransferScope) {
     setPreview(null)
@@ -101,8 +113,8 @@ export default function PermissionTransferDialog({
     try {
       setPreview(
         await previewPermissionTransfer({
-          sourceType: source.type,
-          sourceId: source.id,
+          sourceType,
+          sourceId,
           targetType,
           targetId,
           scope: selectedScopes,
@@ -123,8 +135,8 @@ export default function PermissionTransferDialog({
     try {
       const result = await executePermissionTransfer({
         previewId: preview.previewId,
-        sourceType: source.type,
-        sourceId: source.id,
+        sourceType,
+        sourceId,
         targetType,
         targetId,
         scope: selectedScopes,
@@ -163,7 +175,21 @@ export default function PermissionTransferDialog({
         <Stack spacing={2}>
           <Box>
             <FieldLabel htmlFor="transfer-source">Quelle</FieldLabel>
-            <TextField id="transfer-source" fullWidth size="small" value={source.name} disabled />
+            {choosesSource ? (
+              <UserPicker
+                inputId="transfer-source"
+                ariaLabel="Quelle"
+                placeholder="Person suchen …"
+                value={sourceUser}
+                onChange={(next) => {
+                  setPreview(null)
+                  setSourceUser(next)
+                }}
+                excludedUserIds={targetUser ? [targetUser.id] : []}
+              />
+            ) : (
+              <TextField id="transfer-source" fullWidth size="small" value={source.name} disabled />
+            )}
           </Box>
 
           {targetKinds.length > 1 && (
@@ -196,6 +222,7 @@ export default function PermissionTransferDialog({
                   Kennzeichen „extern" und den Wählbarkeitsregeln - statt der vollen
                   Verwaltungsliste in einem Auswahlfeld. */}
               <GroupPicker
+                inputId="transfer-target-group"
                 ariaLabel="Zielgruppe"
                 placeholder="Zielgruppe suchen …"
                 value={targetGroup}
@@ -203,13 +230,17 @@ export default function PermissionTransferDialog({
                   setPreview(null)
                   setTargetGroup(group)
                 }}
-                excludedGroupIds={source.type === 'GROUP' ? [source.id] : []}
+                excludedGroupIds={sourceType === 'GROUP' && sourceId !== '' ? [sourceId] : []}
               />
+              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                {PROTECTED_GROUP_SEARCH_HINT}
+              </Typography>
             </Box>
           ) : (
             <Box>
               <FieldLabel htmlFor="transfer-target-user">Zielperson</FieldLabel>
               <UserPicker
+                inputId="transfer-target-user"
                 ariaLabel="Zielperson"
                 placeholder="Person suchen …"
                 value={targetUser}
@@ -217,7 +248,7 @@ export default function PermissionTransferDialog({
                   setPreview(null)
                   setTargetUser(next)
                 }}
-                excludedUserIds={source.type === 'USER' ? [source.id] : []}
+                excludedUserIds={sourceId !== '' && sourceType === 'USER' ? [sourceId] : []}
               />
             </Box>
           )}
