@@ -14,6 +14,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts'
 import { useNavigate, useParams } from 'react-router'
 import ChatList from '../components/chat/ChatList'
+import AccessDerivation from '../components/permissions/AccessDerivation'
 import { useAuthStore } from '../stores/authStore'
 import { useSpaceStore } from '../stores/spaceStore'
 import { spaceRoleLabel } from '../utils/labels'
@@ -50,6 +51,9 @@ export default function SpacePage() {
   const [membersExpanded, setMembersExpanded] = useState(true)
   const [chatsExpanded, setChatsExpanded] = useState(true)
   const [librariesExpanded, setLibrariesExpanded] = useState(true)
+  // Zugeklappt: Die Herleitung ist eine Nachfrage, keine Dauerinformation - und sie kostet eine
+  // eigene Anfrage, die nur stellt, wer sie aufklappt.
+  const [derivationExpanded, setDerivationExpanded] = useState(false)
   // #203 acceptance criterion "die UI erklärt einmal, sichtbar, warum die Liste je Mitglied
   // unterschiedlich sein kann" - a dismissible hint, shown once per browser rather than every
   // visit, since a permanent warning banner on something that is by design (not an error) would
@@ -185,9 +189,23 @@ export default function SpacePage() {
                 <Stack spacing={1}>
                   {members.map((member) => (
                     <Box key={member.id} sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <Typography sx={member.displayName ? undefined : { fontFamily: 'monospace' }}>
-                        {member.displayName ?? member.subjectId}
-                        {member.subjectType === 'GROUP' ? ' · Gruppe' : ''}
+                      {/* #1820: Eine geschützte Gruppe erscheint namenlos - der Dienst liefert
+                          keinen Namen (ADR-0036, Entscheidung 9). */}
+                      <Typography
+                        sx={
+                          member.protectedGroup
+                            ? { fontStyle: 'italic' }
+                            : member.displayName
+                              ? undefined
+                              : { fontFamily: 'monospace' }
+                        }
+                      >
+                        {member.protectedGroup
+                          ? 'Geschützte Gruppe'
+                          : (member.displayName ?? member.subjectId)}
+                        {member.subjectType === 'GROUP' && !member.protectedGroup
+                          ? ' · Gruppe'
+                          : ''}
                       </Typography>
                       <Chip label={spaceRoleLabel(member.role)} size="small" />
                     </Box>
@@ -204,6 +222,25 @@ export default function SpacePage() {
                     <Chip key={role} label={`${spaceRoleLabel(role)}: ${count}`} size="small" />
                   ))}
               </Stack>
+            )}
+          </AccordionDetails>
+        </Accordion>
+
+        {/* #1822, ADR-0036 Entscheidung 9: der eigene Weg in diesen Space - für jede Person, nicht
+            nur für die Verwaltung. Die Mitglieder einer Gruppe werden dabei nicht genannt. */}
+        <Accordion
+          expanded={derivationExpanded}
+          onChange={(_, expanded) => setDerivationExpanded(expanded)}
+        >
+          <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 2.5 }}>
+            <Typography component="h2" variant="h6">
+              Warum sehe ich diesen Space?
+            </Typography>
+          </AccordionSummary>
+          <AccordionDetails sx={{ px: 2.5, pb: 2.5, pt: 0 }}>
+            <Divider sx={{ mb: 2 }} />
+            {derivationExpanded && (
+              <AccessDerivation target={{ kind: 'space', spaceId: space.id }} />
             )}
           </AccordionDetails>
         </Accordion>

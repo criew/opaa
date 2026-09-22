@@ -1,6 +1,10 @@
 import type {
+  AccessBasis,
   AssetRole,
   Capability,
+  GroupMechanism,
+  GroupOrigin,
+  GroupProviderResponse,
   DatePrecision,
   DocumentSourceType,
   DocumentStatus,
@@ -412,4 +416,107 @@ export function capabilityMissingMessage(capability: Capability): string {
     `Ihnen fehlt das Anlegerecht „${capabilityLabels[capability]}“. ` +
     'Wenden Sie sich an die Systemverwaltung, wenn Sie es benötigen.'
   )
+}
+
+/**
+ * Die Größe einer Gruppe, wie sie gezeigt werden darf: unterhalb der Mindestgruppengröße hält der
+ * Dienst beide Zahlen zurück und die Oberfläche sagt „kleine Gruppe“ statt einer Zahl. Eine leere
+ * Gruppe bleibt benannt — sie hat niemanden, den die Unterdrückung schützen müsste; für eine
+ * geschützte Gruppe entfällt jede Angabe (ADR-0036, Entscheidung 9).
+ */
+export function groupSizeLabel(group: {
+  activeMemberCount?: number | null
+  smallGroup?: boolean | null
+  emptyGroup?: boolean | null
+  protectedGroup?: boolean | null
+}): string | null {
+  if (group.protectedGroup) return null
+  if (group.emptyGroup) return 'erreicht derzeit niemanden'
+  if (group.smallGroup) return 'kleine Gruppe'
+  if (group.activeMemberCount == null) return null
+  return `${group.activeMemberCount} Mitglieder`
+}
+
+/**
+ * Die Herkunft als Zusatz zum Namen („Verzeichnis Haus A · /Haus/Abteilung 5“), nie als Präfix im
+ * Namen selbst (ADR-0036, Entscheidung 2).
+ */
+export function groupOriginLabel(group: {
+  origin?: GroupOrigin
+  provider?: GroupProviderResponse | null
+  sourcePath?: string | null
+}): string {
+  const parts: string[] = [group.provider ? group.provider.displayName : 'intern']
+  if (group.provider?.external) parts.push('extern')
+  if (group.sourcePath) parts.push(group.sourcePath)
+  return parts.join(' · ')
+}
+
+/**
+ * Warum eine Gruppe nicht mehr als Empfänger gewählt werden kann. Dass bestehende Rechte bleiben,
+ * steht im Satz — sonst wird „nicht wählbar“ als Rechteverlust gelesen.
+ */
+export function groupNotSelectableReason(group: {
+  selectable: boolean
+  dissolved: boolean
+  providerDisabled: boolean
+  unmaintained: boolean
+}): string | null {
+  if (group.selectable) return null
+  if (group.dissolved) return 'aufgelöst — bestehende Rechte bleiben'
+  if (group.providerDisabled) return 'Anbieter deaktiviert — bestehende Rechte bleiben'
+  if (group.unmaintained) return 'Mitgliedschaft eingefroren — bestehende Rechte bleiben'
+  return 'derzeit nicht wählbar'
+}
+
+const accessBasisLabels: Record<AccessBasis, string> = {
+  DIRECT_GRANT: 'Freigabe an Sie',
+  GROUP_GRANT: 'Freigabe an eine Gruppe',
+  DIRECT_MEMBERSHIP: 'Eigene Mitgliedschaft',
+  GROUP_MEMBERSHIP: 'Mitgliedschaft über eine Gruppe',
+  ORGANIZATION_WIDE: 'Organisationsweite Freigabe',
+  OWNERSHIP: 'Eigentum',
+  SYSTEM_ADMINISTRATION: 'Systemverwaltung',
+}
+
+/** Der Weg, über den jemand ein Objekt erreicht (ADR-0036, Entscheidung 9). */
+export function accessBasisLabel(basis: AccessBasis | string | undefined): string {
+  return accessBasisLabels[basis as AccessBasis] ?? String(basis ?? '')
+}
+
+const groupMechanismLabels: Record<GroupMechanism, string> = {
+  TOKEN: 'Token',
+  DIRECTORY: 'Verzeichnisabgleich',
+  NONE: 'ohne Anbieter',
+}
+
+/**
+ * Wodurch die Mitgliedschaft einer Gruppe gepflegt wird — Teil der Herleitung, weil die
+ * Genauigkeit der Rechteauskunft daran hängt (ADR-0036, Entscheidung 3).
+ */
+export function groupMechanismLabel(mechanism: GroupMechanism | string | undefined): string {
+  return groupMechanismLabels[mechanism as GroupMechanism] ?? String(mechanism ?? '')
+}
+
+/**
+ * Das Zuwachssignal an einer Freigabe oder Mitgliedschaft: „23 bei Erteilung, heute 41“. Beide
+ * Zahlen unterliegen der „kleine Gruppe“-Unterdrückung; für eine geschützte Gruppe entfällt das
+ * Signal ganz (ADR-0036, Entscheidung 9).
+ */
+export function groupGrowthLabel(
+  signal: {
+    memberCountAtGrant?: number | null
+    memberCountNow?: number | null
+    smallGroup?: boolean | null
+    emptyGroup?: boolean | null
+    protectedGroup?: boolean | null
+  },
+  grantWord: string,
+): string | null {
+  if (signal.protectedGroup) return null
+  if (signal.emptyGroup) return 'erreicht derzeit niemanden'
+  if (signal.smallGroup) return 'kleine Gruppe'
+  if (signal.memberCountNow == null) return null
+  if (signal.memberCountAtGrant == null) return `heute ${signal.memberCountNow} Mitglieder`
+  return `${signal.memberCountAtGrant} bei ${grantWord}, heute ${signal.memberCountNow}`
 }

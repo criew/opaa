@@ -45,7 +45,14 @@ export default function UserPicker({
       value={value}
       onChange={(_event, next) => onChange(next)}
       inputValue={query}
-      onInputChange={(_event, next) => setQuery(next)}
+      onInputChange={(_event, next, reason) => {
+        // Nur was getippt wurde, ist eine neue Anfrage (#778): Beim Auswählen setzt MUI den
+        // Eingabetext auf das Label der Option ('selectOption'), beim Verlassen springt er zurück
+        // ('reset') - beides als Eingabe weiterzugeben suchte nach nie getipptem Text. 'clear'
+        // leert das Feld, was unterhalb der Mindestlänge ohne Anfrage zurücksetzt.
+        if (reason === 'input') setQuery(next)
+        else if (reason === 'clear') setQuery('')
+      }}
       isOptionEqualToValue={(option, selected) => option.id === selected.id}
       renderInput={(params) => (
         <TextField

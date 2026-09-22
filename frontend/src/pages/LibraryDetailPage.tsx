@@ -97,6 +97,7 @@ import {
   resolveDroppedItems,
 } from '../utils/directoryEntries'
 import LibraryGrantsDialog from '../components/LibraryGrantsDialog'
+import AccessDerivation from '../components/permissions/AccessDerivation'
 import EditLibrarySourceDialog from '../components/EditLibrarySourceDialog'
 import EditLibraryScheduleDialog from '../components/EditLibraryScheduleDialog'
 import ConfluenceWebhookSection from '../components/library/ConfluenceWebhookSection'
@@ -393,6 +394,7 @@ export default function LibraryDetailPage() {
   const storeError = useLibraryStore((s) => s.error)
 
   const [grantsDialogOpen, setGrantsDialogOpen] = useState(false)
+  const [derivationShown, setDerivationShown] = useState(false)
   const [draft, setDraft] = useState<{
     name: string
     description: string
@@ -1280,6 +1282,23 @@ export default function LibraryDetailPage() {
               }
             >
               <LibrarySpacesSection key={`spaces-${libraryId}`} libraryId={libraryId} />
+            </PageSection>
+
+            {/* #1822, ADR-0036 Entscheidung 9: Flach zu sein und das flach zu zeigen sind zwei
+                Zusagen - jede Person sieht ihren eigenen Weg zu dieser Bibliothek. */}
+            <PageSection
+              title="Warum sehe ich diese Bibliothek?"
+              description="Ihr eigener Weg zur wirksamen Rolle. Ohne Vollmacht, ohne Protokoll."
+            >
+              {/* Auf Nachfrage, wie im Space: die Herleitung kostet eine eigene Anfrage, die nur
+                  stellt, wer sie sehen will. */}
+              {derivationShown ? (
+                <AccessDerivation target={{ kind: 'library', libraryId }} />
+              ) : (
+                <Button size="small" onClick={() => setDerivationShown(true)}>
+                  Herleitung anzeigen
+                </Button>
+              )}
             </PageSection>
 
             {canDelete && (

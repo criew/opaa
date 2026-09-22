@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.opaa.api.dto.GroupListResponse;
 import io.opaa.api.dto.GroupMemberResponse;
 import io.opaa.api.dto.GroupResponse;
+import io.opaa.api.dto.SelectableGroupResponse;
 import io.opaa.api.types.GroupKind;
 import io.opaa.api.types.GroupMechanism;
 import io.opaa.api.types.GroupOrigin;
@@ -16,6 +17,7 @@ import io.opaa.group.GroupOverview;
 import io.opaa.group.GroupProviderView;
 import io.opaa.group.GroupSteward;
 import io.opaa.group.GroupStewardView;
+import io.opaa.group.SelectableGroup;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -93,6 +95,93 @@ class GroupResponseMapperTest {
     assertThat(response.getMemberCount()).isZero();
     assertThat(response.getCreatedAt()).isEqualTo(group.getCreatedAt());
     assertThat(response.getUpdatedAt()).isEqualTo(group.getUpdatedAt());
+  }
+
+  /** #1820: what the Subjekt-Auswahl shows - origin, source path, size, and every reason. */
+  @Test
+  void toSelectableResponseCopiesEveryFieldOfTheSelection() {
+    UUID providerId = UUID.randomUUID();
+    Group group =
+        new Group(
+            UUID.randomUUID(),
+            GroupKind.ORG_UNIT,
+            "Referat 50",
+            null,
+            providerId,
+            "ext-1",
+            "/Haus/Abteilung 5/Referat 50",
+            null);
+    GroupProviderView provider =
+        new GroupProviderView(
+            providerId, "Verzeichnis Partner", true, true, GroupMechanism.DIRECTORY, 360, null);
+
+    SelectableGroupResponse response =
+        GroupResponseMapper.toSelectableResponse(
+            new SelectableGroup(
+                group, "Referat 50", provider, 41, false, false, true, false, false, false));
+
+    assertThat(response.getId()).isEqualTo(group.getId());
+    assertThat(response.getName()).isEqualTo("Referat 50");
+    assertThat(response.getOrigin()).isEqualTo(GroupOrigin.PROVIDER);
+    assertThat(response.getProvider().getDisplayName()).isEqualTo("Verzeichnis Partner");
+    assertThat(response.getProvider().getExternal()).isTrue();
+    assertThat(response.getSourcePath()).isEqualTo("/Haus/Abteilung 5/Referat 50");
+    assertThat(response.getActiveMemberCount()).isEqualTo(41);
+    assertThat(response.getSmallGroup()).isFalse();
+    assertThat(response.getEmptyGroup()).isFalse();
+    assertThat(response.getProtectedGroup()).isFalse();
+    assertThat(response.getSelectable()).isTrue();
+    assertThat(response.getDissolved()).isFalse();
+    assertThat(response.getProviderDisabled()).isFalse();
+    assertThat(response.getUnmaintained()).isFalse();
+  }
+
+  /**
+   * The suppression happens in the service; the mapper must not invent a figure where the domain
+   * record withheld one.
+   */
+  @Test
+  void toSelectableResponsePassesAWithheldFigureOnAsWithheld() {
+    Group group = Group.internal(UUID.randomUUID(), "Kleine Runde", null, null);
+
+    SelectableGroupResponse response =
+        GroupResponseMapper.toSelectableResponse(
+            new SelectableGroup(
+                group, "Kleine Runde", null, null, true, false, true, false, false, false));
+
+    assertThat(response.getActiveMemberCount()).isNull();
+    assertThat(response.getSmallGroup()).isTrue();
+    assertThat(response.getOrigin()).isEqualTo(GroupOrigin.INTERNAL);
+    assertThat(response.getProvider()).isNull();
+  }
+
+  @Test
+  void toSelectableResponseCarriesTheReasonAGroupIsNotChoosable() {
+    Group group = Group.internal(UUID.randomUUID(), "Aufgeloeste Runde", null, null);
+
+    SelectableGroupResponse response =
+        GroupResponseMapper.toSelectableResponse(
+            new SelectableGroup(
+                group, "Aufgeloeste Runde", null, null, false, true, false, true, false, false));
+
+    assertThat(response.getSelectable()).isFalse();
+    assertThat(response.getDissolved()).isTrue();
+    assertThat(response.getEmptyGroup()).isTrue();
+  }
+
+  /** ADR-0036/9 (#1820): Wo der Dienst den Namen zurueckhaelt, erfindet der Mapper keinen. */
+  @Test
+  void toSelectableResponseLeavesAWithheldNameWithheld() {
+    Group group = Group.internal(UUID.randomUUID(), "Personalrat", null, null);
+    group.markProtected(true);
+
+    SelectableGroupResponse response =
+        GroupResponseMapper.toSelectableResponse(
+            new SelectableGroup(group, null, null, null, false, false, true, false, false, false));
+
+    assertThat(response.getName()).isNull();
+    assertThat(response.getProtectedGroup()).isTrue();
+    assertThat(response.getActiveMemberCount()).isNull();
   }
 
   /** A group without a provider is INTERNAL and carries no provider block at all. */

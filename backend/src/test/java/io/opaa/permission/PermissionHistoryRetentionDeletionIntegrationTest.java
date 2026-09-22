@@ -358,6 +358,7 @@ class PermissionHistoryRetentionDeletionIntegrationTest {
             UUID.randomUUID(),
             AssetRole.VIEWER,
             null,
+            null,
             null);
     return AssetGrantHistory.open(grant, AssetGrantHistoryCause.GRANTED, null, from);
   }

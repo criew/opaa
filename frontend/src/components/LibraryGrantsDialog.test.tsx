@@ -8,7 +8,7 @@ import { useGrantStore } from '../stores/grantStore'
 import type {
   AssetGrantRequest,
   AssetGrantResponse,
-  GroupListResponse,
+  SelectableGroupResponse,
   UserSummary,
 } from '../types/api'
 
@@ -16,8 +16,8 @@ const {
   mockGetLibraryGrants,
   mockUpsertLibraryGrant,
   mockRevokeLibraryGrant,
-  mockGetGroups,
-  mockGetMyGroups,
+  mockSearchSelectableGroups,
+  mockResolveSelectableGroup,
   mockGetUserSummaries,
 } = vi.hoisted(() => ({
   mockGetLibraryGrants: vi.fn(async (libraryId: string) => {
@@ -25,8 +25,8 @@ const {
   }),
   mockUpsertLibraryGrant: vi.fn(),
   mockRevokeLibraryGrant: vi.fn(async () => undefined),
-  mockGetGroups: vi.fn(async () => [] as GroupListResponse[]),
-  mockGetMyGroups: vi.fn(async () => [] as GroupListResponse[]),
+  mockSearchSelectableGroups: vi.fn(async () => [] as SelectableGroupResponse[]),
+  mockResolveSelectableGroup: vi.fn(),
   mockGetUserSummaries: vi.fn(async () => [] as UserSummary[]),
 }))
 
@@ -37,37 +37,34 @@ vi.mock('../services/api', async () => {
     getLibraryGrants: mockGetLibraryGrants,
     upsertLibraryGrant: mockUpsertLibraryGrant,
     revokeLibraryGrant: mockRevokeLibraryGrant,
-    getGroups: mockGetGroups,
-    getMyGroups: mockGetMyGroups,
+    searchSelectableGroups: mockSearchSelectableGroups,
+    resolveSelectableGroup: mockResolveSelectableGroup,
     getUserSummaries: mockGetUserSummaries,
   }
 })
 
 const library = { id: 'library-team', name: 'Rechtsquellen Soziales' }
 
-const group: GroupListResponse = {
+const group: SelectableGroupResponse = {
   id: 'group-referat-50',
   name: 'Referat 50',
-  description: null,
-  kind: 'ORG_UNIT',
-  externalId: 'directory-guid',
   origin: 'PROVIDER',
   provider: {
     id: 'oidc-provider-beschaeftigte',
-    displayName: 'Verzeichnisdienst',
+    displayName: 'Verzeichnis Haus A',
     external: false,
     enabled: true,
-    groupMechanism: 'TOKEN',
+    groupMechanism: 'DIRECTORY',
   },
-  sourcePath: null,
-  parentGroupId: null,
-  memberCount: 3,
-  dissolved: false,
-  releasedForUse: true,
+  sourcePath: '/Haus/Abteilung 5/Referat 50',
+  activeMemberCount: 23,
+  smallGroup: false,
+  emptyGroup: false,
   protectedGroup: false,
-  stewards: [],
-  createdAt: '2026-03-01T10:00:00Z',
-  updatedAt: '2026-03-01T10:00:00Z',
+  selectable: true,
+  dissolved: false,
+  providerDisabled: false,
+  unmaintained: false,
 }
 
 const user: UserSummary = {
@@ -121,8 +118,7 @@ function setSystemAdmin() {
 describe('LibraryGrantsDialog', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockGetGroups.mockResolvedValue([group])
-    mockGetMyGroups.mockResolvedValue([group])
+    mockSearchSelectableGroups.mockResolvedValue([group])
     mockGetUserSummaries.mockResolvedValue([user])
     useGrantStore.setState({ grantsByLibrary: {}, isLoading: false, error: null })
   })
@@ -223,7 +219,7 @@ describe('LibraryGrantsDialog', () => {
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
     // #778 review, finding 4: the picker no longer preloads the whole organization - a query
     // (min. 2 characters) has to be typed before GET /v1/users is even attempted.
-    await userEventInstance.type(await screen.findByLabelText(/^person auswählen$/i), 'al')
+    await userEventInstance.type(await screen.findByLabelText(/^person suchen$/i), 'al')
     await userEventInstance.click(await screen.findByRole('option', { name: /Alice/ }))
     await userEventInstance.click(
       screen.getAllByRole('button', { name: /^freigeben$/i })[
@@ -259,8 +255,8 @@ describe('LibraryGrantsDialog', () => {
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
     await userEventInstance.click(await screen.findByRole('radio', { name: /gruppe/i }))
-    await userEventInstance.click(await screen.findByLabelText(/^gruppe auswählen$/i))
-    await userEventInstance.click(await screen.findByRole('option', { name: 'Referat 50' }))
+    await userEventInstance.type(await screen.findByLabelText(/^gruppe suchen$/i), 'Referat')
+    await userEventInstance.click(await screen.findByRole('option', { name: /Referat 50/ }))
     const submitButtons = screen.getAllByRole('button', { name: /^freigeben$/i })
     await userEventInstance.click(submitButtons[submitButtons.length - 1])
 
@@ -280,7 +276,7 @@ describe('LibraryGrantsDialog', () => {
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
-    await userEventInstance.type(await screen.findByLabelText(/^person auswählen$/i), 'al')
+    await userEventInstance.type(await screen.findByLabelText(/^person suchen$/i), 'al')
     await userEventInstance.click(await screen.findByRole('option', { name: /Alice/ }))
     const dateField = screen.getByLabelText(/befristung/i)
     fireEvent.change(dateField, { target: { value: '2020-01-01' } })
@@ -375,7 +371,7 @@ describe('LibraryGrantsDialog', () => {
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
-    await userEventInstance.type(await screen.findByLabelText(/^person auswählen$/i), 'al')
+    await userEventInstance.type(await screen.findByLabelText(/^person suchen$/i), 'al')
     await userEventInstance.click(await screen.findByRole('option', { name: /Alice/ }))
     const submitButtons = screen.getAllByRole('button', { name: /^freigeben$/i })
     await userEventInstance.click(submitButtons[submitButtons.length - 1])
@@ -383,25 +379,27 @@ describe('LibraryGrantsDialog', () => {
     expect(await screen.findByText('Kein Zugriff auf diese Bibliothek')).toBeInTheDocument()
   })
 
-  it('falls back to a free-text user id field when the user search fails', async () => {
+  it('names a failed person search and offers the id field as the way out', async () => {
     // #777: GET /v1/users is reachable for every authenticated caller now, not just SYSTEM_ADMIN.
-    // #778 review, finding 1/4: the fallback only appears once a search has actually failed - it
-    // no longer preloads on mount, so a query has to be typed first to even attempt one.
+    // #1820: Der Rueckfall auf die Kennung wird ausdruecklich gewaehlt, statt sich selbst
+    // einzuschalten - ein gescheiterter Suchlauf sagt das im Feld, und der Weg daneben ist
+    // derselbe wie fuer eine Gruppe.
     setManager()
     mockGetUserSummaries.mockRejectedValueOnce(new Error('Netzwerkfehler'))
     renderWithProviders(<LibraryGrantsDialog open library={library} onClose={vi.fn()} />)
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
-    await userEventInstance.type(await screen.findByLabelText(/^person auswählen$/i), 'al')
+    await userEventInstance.type(await screen.findByLabelText(/^person suchen$/i), 'al')
 
+    expect(await screen.findByText(/Netzwerkfehler/)).toBeInTheDocument()
+    await userEventInstance.click(screen.getByRole('button', { name: /nutzer-id eingeben/i }))
     expect(await screen.findByLabelText(/nutzer-id/i)).toBeInTheDocument()
     expect(mockGetUserSummaries).toHaveBeenCalledWith('al')
   })
 
-  it('submits a manually entered, valid user id when the user search fails', async () => {
+  it('submits a manually entered, valid user id', async () => {
     setManager()
-    mockGetUserSummaries.mockRejectedValueOnce(new Error('Netzwerkfehler'))
     mockUpsertLibraryGrant.mockResolvedValueOnce({
       id: 'grant-manual',
       subjectType: 'USER',
@@ -418,7 +416,9 @@ describe('LibraryGrantsDialog', () => {
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
-    await userEventInstance.type(await screen.findByLabelText(/^person auswählen$/i), 'al')
+    await userEventInstance.click(
+      await screen.findByRole('button', { name: /nutzer-id eingeben/i }),
+    )
     await userEventInstance.type(
       await screen.findByLabelText(/nutzer-id/i),
       '11111111-2222-4333-8444-555555555555',
@@ -438,12 +438,13 @@ describe('LibraryGrantsDialog', () => {
 
   it('rejects a manually entered user id that is not a valid UUID before calling the API', async () => {
     setManager()
-    mockGetUserSummaries.mockRejectedValueOnce(new Error('Netzwerkfehler'))
     renderWithProviders(<LibraryGrantsDialog open library={library} onClose={vi.fn()} />)
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
-    await userEventInstance.type(await screen.findByLabelText(/^person auswählen$/i), 'al')
+    await userEventInstance.click(
+      await screen.findByRole('button', { name: /nutzer-id eingeben/i }),
+    )
     await userEventInstance.type(await screen.findByLabelText(/nutzer-id/i), 'anna.beispiel')
     const submitButtons = screen.getAllByRole('button', { name: /^freigeben$/i })
     await userEventInstance.click(submitButtons[submitButtons.length - 1])
@@ -525,8 +526,8 @@ describe('LibraryGrantsDialog', () => {
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
 
-    const personField = await screen.findByLabelText(/^person auswählen$/i)
-    expect(screen.queryByLabelText(/nutzer-id/i)).not.toBeInTheDocument()
+    const personField = await screen.findByLabelText(/^person suchen$/i)
+    expect(screen.queryByLabelText(/^nutzer-id$/i)).not.toBeInTheDocument()
 
     // #778 review, finding 4: no preload on mount - the search only runs once queried.
     await userEventInstance.type(personField, 'al')
@@ -534,9 +535,13 @@ describe('LibraryGrantsDialog', () => {
     expect(await screen.findByRole('option', { name: /Alice/ })).toBeInTheDocument()
   })
 
-  it('offers a manual group id as an alternative to the member-only group list', async () => {
-    // #423 code review, finding 3: GET /v1/me/groups only returns the caller's own memberships,
-    // but AssetGrantService#requireGrantableGroup accepts any group in the organization.
+  it('offers a manual group id as an alternative to the search', async () => {
+    mockResolveSelectableGroup.mockResolvedValue({
+      ...group,
+      id: '22222222-3333-4444-8555-666666666666',
+    })
+    // #1820: Die Eingabe per Kennung unterliegt derselben Durchsetzung wie die Suche - der Dienst
+    // antwortet auch dort mit nicht gefunden, wenn die Gruppe nicht freigegeben ist.
     setManager()
     mockUpsertLibraryGrant.mockResolvedValueOnce({
       id: 'grant-other-group',
@@ -556,7 +561,7 @@ describe('LibraryGrantsDialog', () => {
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
     await userEventInstance.click(await screen.findByRole('radio', { name: /gruppe/i }))
     await userEventInstance.click(
-      await screen.findByRole('button', { name: /andere gruppen-id eingeben/i }),
+      await screen.findByRole('button', { name: /gruppen-id eingeben/i }),
     )
     await userEventInstance.type(
       await screen.findByLabelText(/gruppen-id/i),
@@ -564,6 +569,7 @@ describe('LibraryGrantsDialog', () => {
     )
     const submitButtons = screen.getAllByRole('button', { name: /^freigeben$/i })
     await userEventInstance.click(submitButtons[submitButtons.length - 1])
+    await answerConfirm(userEventInstance, /Recht an .Referat 50. erteilen\?/, 'Weiter')
 
     await waitFor(() => {
       expect(mockUpsertLibraryGrant).toHaveBeenCalledWith(library.id, {
@@ -604,6 +610,215 @@ describe('LibraryGrantsDialog', () => {
     await answerConfirm(userEventInstance, question, 'Abbrechen')
 
     expect(mockRevokeLibraryGrant).not.toHaveBeenCalled()
+  })
+
+  /** ADR-0036, Entscheidung 2: Das Erteilen an eine externe Gruppe verlangt eine Zwischenfrage. */
+  it('asks back before granting to a group of an external provider', async () => {
+    setSystemAdmin()
+    mockSearchSelectableGroups.mockResolvedValue([
+      {
+        ...group,
+        id: 'group-referat-50-partner',
+        provider: {
+          id: 'oidc-provider-partner',
+          displayName: 'Verzeichnis Partner',
+          external: true,
+          enabled: true,
+          groupMechanism: 'TOKEN',
+        },
+        sourcePath: null,
+      },
+    ])
+    renderWithProviders(<LibraryGrantsDialog open library={library} onClose={vi.fn()} />)
+    const userEventInstance = userEvent.setup()
+
+    await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
+    await userEventInstance.click(await screen.findByRole('radio', { name: /gruppe/i }))
+    await userEventInstance.type(await screen.findByLabelText(/^gruppe suchen$/i), 'Referat')
+    await userEventInstance.click(await screen.findByRole('option', { name: /Referat 50/ }))
+    const submitButtons = screen.getAllByRole('button', { name: /^freigeben$/i })
+    await userEventInstance.click(submitButtons[submitButtons.length - 1])
+
+    const question = 'Sie geben für eine Gruppe eines externen Anbieters frei — fortfahren?'
+    expect(await screen.findByRole('dialog', { name: question })).toHaveTextContent(
+      /Verzeichnis Partner/,
+    )
+    await answerConfirm(userEventInstance, question, 'Abbrechen')
+
+    expect(mockUpsertLibraryGrant).not.toHaveBeenCalled()
+  })
+
+  /** ADR-0036, Entscheidung 9: „23 bei Erteilung, heute 41" - eine Zeile, kein Vorgang. */
+  it('shows the growth signal of a group grant', async () => {
+    setManager()
+    setGrants(library.id, [
+      {
+        id: 'grant-group',
+        subjectType: 'GROUP',
+        subjectId: group.id,
+        subjectDisplayName: 'Referat 50',
+        protectedGroup: false,
+        memberCountAtGrant: 23,
+        memberCountNow: 41,
+        smallGroup: false,
+        emptyGroup: false,
+        role: 'VIEWER',
+        expiresAt: null,
+        grantedByUserId: 'manager-1',
+        grantedByDisplayName: 'Manager',
+        createdAt: '2026-03-01T10:00:00Z',
+        updatedAt: '2026-03-01T10:00:00Z',
+      },
+    ])
+    renderWithProviders(<LibraryGrantsDialog open library={library} onClose={vi.fn()} />)
+
+    expect(await screen.findByText(/23 bei Erteilung, heute 41/)).toBeInTheDocument()
+  })
+
+  it('withholds both figures of a small group and says so', async () => {
+    setManager()
+    setGrants(library.id, [
+      {
+        id: 'grant-small',
+        subjectType: 'GROUP',
+        subjectId: group.id,
+        subjectDisplayName: 'Referat 50',
+        protectedGroup: false,
+        memberCountAtGrant: null,
+        memberCountNow: null,
+        smallGroup: true,
+        emptyGroup: false,
+        role: 'VIEWER',
+        expiresAt: null,
+        grantedByUserId: 'manager-1',
+        grantedByDisplayName: 'Manager',
+        createdAt: '2026-03-01T10:00:00Z',
+        updatedAt: '2026-03-01T10:00:00Z',
+      },
+    ])
+    renderWithProviders(<LibraryGrantsDialog open library={library} onClose={vi.fn()} />)
+
+    expect(await screen.findByText(/kleine Gruppe/)).toBeInTheDocument()
+  })
+
+  /** ADR-0036, Entscheidung 9: namenlose Zeile, kein Signal - und trotzdem entziehbar. */
+  it('shows a protected group as a nameless row without any figure', async () => {
+    setManager()
+    setGrants(library.id, [
+      {
+        id: 'grant-protected',
+        subjectType: 'GROUP',
+        subjectId: 'group-personalrat',
+        subjectDisplayName: null,
+        protectedGroup: true,
+        memberCountAtGrant: null,
+        memberCountNow: null,
+        smallGroup: null,
+        emptyGroup: null,
+        role: 'VIEWER',
+        expiresAt: null,
+        grantedByUserId: 'manager-1',
+        grantedByDisplayName: 'Manager',
+        createdAt: '2026-03-01T10:00:00Z',
+        updatedAt: '2026-03-01T10:00:00Z',
+      },
+    ])
+    renderWithProviders(<LibraryGrantsDialog open library={library} onClose={vi.fn()} />)
+
+    expect(await screen.findByText('Geschützte Gruppe')).toBeInTheDocument()
+    expect(screen.queryByText('group-personalrat')).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /Freigabe für Geschützte Gruppe entziehen/ }),
+    ).toBeInTheDocument()
+  })
+
+  /**
+   * ADR-0036, Entscheidung 2 (#1820): Der Kennungsweg zeigt weder Herkunft noch Symbol - deshalb
+   * loest er die Gruppe vor dem Erteilen auf und stellt dieselbe Zwischenfrage. Ohne das waere die
+   * Zwischenfrage fuer externe Anbieter durch Eintippen der Kennung umgehbar.
+   */
+  it('asks back on the id path before granting to a group of an external provider', async () => {
+    setManager()
+    mockResolveSelectableGroup.mockResolvedValue({
+      ...group,
+      id: '22222222-3333-4444-8555-666666666666',
+      provider: {
+        id: 'oidc-provider-partner',
+        displayName: 'Verzeichnis Partner',
+        external: true,
+        enabled: true,
+        groupMechanism: 'TOKEN',
+      },
+      sourcePath: null,
+    })
+    renderWithProviders(<LibraryGrantsDialog open library={library} onClose={vi.fn()} />)
+    const userEventInstance = userEvent.setup()
+
+    await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
+    await userEventInstance.click(await screen.findByRole('radio', { name: /gruppe/i }))
+    await userEventInstance.click(
+      await screen.findByRole('button', { name: /gruppen-id eingeben/i }),
+    )
+    await userEventInstance.type(
+      await screen.findByLabelText(/gruppen-id/i),
+      '22222222-3333-4444-8555-666666666666',
+    )
+    const submitButtons = screen.getAllByRole('button', { name: /^freigeben$/i })
+    await userEventInstance.click(submitButtons[submitButtons.length - 1])
+
+    // Erst die aufgeloeste Herkunft, dann die Zwischenfrage des externen Anbieters.
+    await answerConfirm(userEventInstance, /Recht an .Referat 50. erteilen\?/, 'Weiter')
+    const question = 'Sie geben für eine Gruppe eines externen Anbieters frei — fortfahren?'
+    expect(await screen.findByRole('dialog', { name: question })).toHaveTextContent(
+      /Verzeichnis Partner/,
+    )
+    await answerConfirm(userEventInstance, question, 'Abbrechen')
+
+    expect(mockResolveSelectableGroup).toHaveBeenCalledWith('22222222-3333-4444-8555-666666666666')
+    expect(mockUpsertLibraryGrant).not.toHaveBeenCalled()
+  })
+
+  /** Was sich fuer diesen Aufrufer nicht aufloesen laesst, wird nicht erteilt. */
+  it('grants nothing when the typed id does not resolve for this caller', async () => {
+    setManager()
+    mockResolveSelectableGroup.mockRejectedValue(new Error('Gruppe nicht gefunden'))
+    renderWithProviders(<LibraryGrantsDialog open library={library} onClose={vi.fn()} />)
+    const userEventInstance = userEvent.setup()
+
+    await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
+    await userEventInstance.click(await screen.findByRole('radio', { name: /gruppe/i }))
+    await userEventInstance.click(
+      await screen.findByRole('button', { name: /gruppen-id eingeben/i }),
+    )
+    await userEventInstance.type(
+      await screen.findByLabelText(/gruppen-id/i),
+      '22222222-3333-4444-8555-666666666666',
+    )
+    const submitButtons = screen.getAllByRole('button', { name: /^freigeben$/i })
+    await userEventInstance.click(submitButtons[submitButtons.length - 1])
+
+    expect(await screen.findByText('Gruppe nicht gefunden')).toBeInTheDocument()
+    expect(mockUpsertLibraryGrant).not.toHaveBeenCalled()
+  })
+
+  /** Eine Kennung gehoert zu genau einer Art von Empfaenger. */
+  it('clears a typed id when the subject type changes', async () => {
+    setManager()
+    renderWithProviders(<LibraryGrantsDialog open library={library} onClose={vi.fn()} />)
+    const userEventInstance = userEvent.setup()
+
+    await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
+    await userEventInstance.click(await screen.findByRole('radio', { name: /gruppe/i }))
+    await userEventInstance.click(
+      await screen.findByRole('button', { name: /gruppen-id eingeben/i }),
+    )
+    await userEventInstance.type(
+      await screen.findByLabelText(/gruppen-id/i),
+      '22222222-3333-4444-8555-666666666666',
+    )
+    await userEventInstance.click(screen.getByRole('radio', { name: 'Person' }))
+
+    expect(await screen.findByLabelText(/nutzer-id/i)).toHaveValue('')
   })
 
   it('explains every grantable role', async () => {

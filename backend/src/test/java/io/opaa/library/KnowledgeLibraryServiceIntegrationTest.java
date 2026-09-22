@@ -2383,6 +2383,33 @@ class KnowledgeLibraryServiceIntegrationTest {
         .containsExactly(group.getName());
   }
 
+  /**
+   * ADR-0036, Entscheidung 9 (#1820): Die Bibliotheksliste ist eine fremde Liste - gehoert eine
+   * Bibliothek einer geschuetzten Gruppe, steht dort nicht deren Name.
+   */
+  @Test
+  void listLibrariesNamesNoProtectedOwnerGroup() {
+    UUID owner = createUser(organizationA, "Erika Musterfrau");
+    Group group = createGroup(organizationA, owner);
+    group.markProtected(true);
+    groupRepository.save(group);
+    LibraryDetail groupOwned =
+        libraryService.createLibrary(
+            libraryCreation("Mango", DocumentSourceType.UPLOAD)
+                .ownerType(LibraryOwnerType.GROUP)
+                .ownerId(group.getId())
+                .build(),
+            currentUserOf(owner));
+
+    List<LibrarySummary> listed = libraryService.listLibraries(currentUserOf(owner, false));
+
+    assertThat(listed)
+        .filteredOn(entry -> entry.library().getId().equals(groupOwned.library().getId()))
+        .extracting(LibrarySummary::ownerName)
+        .containsExactly("Geschützte Gruppe");
+    assertThat(listed).extracting(LibrarySummary::ownerName).doesNotContain(group.getName());
+  }
+
   @Test
   void listLibrariesNeverFallsBackToTheOwnersEmailAddress() {
     // PR #601 review, finding 1: unlike AssetGrantService#toResponses (audience limited to a

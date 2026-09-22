@@ -65,7 +65,14 @@ export type GroupStewardResponse = components['schemas']['GroupStewardResponse']
 export type GroupOrigin = components['schemas']['GroupOrigin']
 export type GroupMechanism = components['schemas']['GroupMechanism']
 export type GroupProviderResponse = components['schemas']['GroupProviderResponse']
+export type SelectableGroupResponse = components['schemas']['SelectableGroupResponse']
 export type GroupEffectsResponse = components['schemas']['GroupEffectsResponse']
+
+export type AccessPathGroup = components['schemas']['AccessPathGroup']
+export type AccessPathResponse = components['schemas']['AccessPathResponse']
+export type LibraryAccessDerivationResponse =
+  components['schemas']['LibraryAccessDerivationResponse']
+export type SpaceAccessDerivationResponse = components['schemas']['SpaceAccessDerivationResponse']
 
 export type Capability = components['schemas']['Capability']
 export type MyCapabilitiesResponse = components['schemas']['MyCapabilitiesResponse']

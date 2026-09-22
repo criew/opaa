@@ -18,6 +18,10 @@ import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.permission.AssetGrant;
 import io.opaa.permission.AssetGrantRepository;
+import io.opaa.permission.GroupAttribution;
+import io.opaa.permission.GroupMembershipResolver;
+import io.opaa.permission.GroupSizeProperties;
+import io.opaa.permission.GroupSizeSignal;
 import io.opaa.permission.GroupSubject;
 import io.opaa.permission.GroupSubjectDirectory;
 import io.opaa.permission.SuccessionReachGuard;
@@ -92,6 +96,8 @@ public class AssetGrantService {
   private final KnowledgeLibraryRepository libraryRepository;
   private final UserRepository userRepository;
   private final GroupSubjectDirectory groupDirectory;
+  private final GroupMembershipResolver groupMemberships;
+  private final GroupSizeProperties groupSizeProperties;
   private final LibraryAccessService accessService;
   private final AuditEventRecorder auditEventRecorder;
   private final ApplicationEventPublisher eventPublisher;
@@ -102,6 +108,8 @@ public class AssetGrantService {
       KnowledgeLibraryRepository libraryRepository,
       UserRepository userRepository,
       GroupSubjectDirectory groupDirectory,
+      GroupMembershipResolver groupMemberships,
+      GroupSizeProperties groupSizeProperties,
       LibraryAccessService accessService,
       AuditEventRecorder auditEventRecorder,
       ApplicationEventPublisher eventPublisher,
@@ -110,6 +118,8 @@ public class AssetGrantService {
     this.libraryRepository = libraryRepository;
     this.userRepository = userRepository;
     this.groupDirectory = groupDirectory;
+    this.groupMemberships = groupMemberships;
+    this.groupSizeProperties = groupSizeProperties;
     this.accessService = accessService;
     this.auditEventRecorder = auditEventRecorder;
     this.eventPublisher = eventPublisher;
@@ -257,7 +267,9 @@ public class AssetGrantService {
                 request.subjectId(),
                 request.role(),
                 request.expiresAt(),
-                currentUserId);
+                currentUserId,
+                groupMemberships.activeMemberCount(
+                    request.subjectId(), library.getOrganizationId()));
       } else {
         requireCallerCanTouchExistingGrant(callerRole, grant, "ändern");
         requireNotDowngradingTheLastActiveOwnerGrant(
@@ -606,21 +618,39 @@ public class AssetGrantService {
       String name = user.getDisplayName() != null ? user.getDisplayName() : user.getEmail();
       userNames.put(user.getId(), name);
     }
-    Map<UUID, String> groupNames = groupDirectory.namesById(groupIds);
+    Map<UUID, GroupAttribution> groups = groupDirectory.attributionsById(groupIds);
 
     return grants.stream()
         .map(
             grant -> {
-              String subjectName =
-                  grant.getSubjectType() == PermissionSubjectType.USER
-                      ? userNames.get(grant.getSubjectId())
-                      : groupNames.get(grant.getSubjectId());
               String grantedByName =
                   grant.getGrantedByUserId() == null
                       ? null
                       : userNames.get(grant.getGrantedByUserId());
-              return new AssetGrantView(grant, subjectName, grantedByName);
+              if (grant.getSubjectType() == PermissionSubjectType.USER) {
+                return AssetGrantView.ofUser(
+                    grant, userNames.get(grant.getSubjectId()), grantedByName);
+              }
+              GroupAttribution group = groups.get(grant.getSubjectId());
+              boolean protectedGroup = group != null && group.protectedGroup();
+              return AssetGrantView.ofGroup(
+                  grant,
+                  group == null ? null : group.name(),
+                  grantedByName,
+                  protectedGroup,
+                  protectedGroup ? GroupSizeSignal.NONE : groupSizeSignal(grant));
             })
         .toList();
+  }
+
+  /**
+   * The growth signal of a group grant (ADR-0036, Entscheidung 9), with the "kleine Gruppe"
+   * suppression applied - see {@link GroupSizeSignal}.
+   */
+  private GroupSizeSignal groupSizeSignal(AssetGrant grant) {
+    return GroupSizeSignal.of(
+        grant.getMemberCountAtGrant(),
+        groupMemberships.activeMemberCount(grant.getSubjectId(), grant.getOrganizationId()),
+        groupSizeProperties.minimumGroupSize());
   }
 }
