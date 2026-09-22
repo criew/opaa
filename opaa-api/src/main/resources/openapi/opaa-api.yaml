@@ -6274,9 +6274,13 @@ paths:
         UPLOAD original in an S3 upload storage (ADR-0030, Entscheidung 9) and an S3 document's own
         object (ADR-0027) answer 503 when the store cannot be reached or refuses the application -
         a temporary condition a caller must not read as "this original does not exist". Its message
-        names no detail of the stored configuration. There is no 403: VIEWER is the lowest
-        AssetRole, so any grant at all already satisfies this floor - a caller either clears it or
-        has no grant, which is the 404 case above. 429 is answered when this endpoint is under
+        names no detail of the stored configuration. 403 is answered in exactly one case (#1828):
+        a SYSTEM_ADMIN without a grant on the library. Administering a library is not reading its
+        originals - this endpoint checks the same formula the search does, which knows no
+        administrative floor, and taking a library over runs through ownership transfer instead.
+        For every other caller VIEWER is the lowest AssetRole, so any grant at all already
+        satisfies this floor - they either clear it or have no grant, which is the 404 case above.
+        429 is answered when this endpoint is under
         load: either by its own rate limit, or - for an attachment document, whose bytes are
         re-extracted from its parent original on every read (ADR-0022, #1243) - when too many such
         re-extractions are already running. Both carry a German message and may be retried.
@@ -6288,6 +6292,8 @@ paths:
               schema:
                 type: string
                 format: binary
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
         "429":

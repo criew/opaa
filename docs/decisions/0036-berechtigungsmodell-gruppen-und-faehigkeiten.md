@@ -409,6 +409,11 @@ oder zu einem protokollierten, begründeten Verwaltungsakt wird, entscheidet **#
 hält nur fest, dass die Variante „wie heute, Spezifikation zurücknehmen" der Grundlinie aus
 Entscheidung 1 widerspräche.
 
+> **Nachtrag (22.09.2026, #1828):** entschieden als Option (a) — der Weg ist geschlossen.
+> `loadContent` prüft dieselbe Formel wie die Suche; die Systemverwaltung erhält ohne Grant `403`.
+> Kein neues Audit-Ereignis, keine Begründungspflicht; die Übernahme läuft über den bestehenden,
+> protokollierten Weg (Eigentum übertragen, dann lesen).
+
 ### 6. Lebenszyklus: „Nachfolge offen" als abgeleiteter Zustand
 
 **„Nachfolge offen" ist die Abwesenheit eines handlungsfähigen Verantwortlichen** — für ein Asset der
@@ -948,6 +953,7 @@ weil es die Oberflächen aus #1820 und #1821 beschreibt.
 
 - **Der Verwaltungszugriff auf Originale ohne Grant und ohne Protokolleintrag** — #1828 entscheidet;
   dieser ADR hält nur fest, dass „wie heute, Spezifikation zurücknehmen" der Grundlinie widerspräche.
+  (Inzwischen entschieden: Option (a), siehe Nachtrag bei Entscheidung 5.)
 - **Der Rollen-Claim als Entzugspfad für Systemrollen** — #1830; dieselbe Klasse von Lücke wie
   #1807 für Gruppen, aber ein eigener Pfad mit eigener Wirkung.
 - **Der `dev`-Modus ohne Anbieterzeile:** ob der Verzeichnisabgleich dort über eine synthetische

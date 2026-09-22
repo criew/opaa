@@ -147,13 +147,36 @@ public class LibraryAccessService {
    * {@link #effectiveRole}, which fail-opens system admins for library administration. That
    * asymmetry is intentional and points the safe way: an admin may administer every library but
    * retrieves only from those the formula grants them, so nothing an admin reads in a chat can come
-   * from a library they were not granted.
+   * from a library they were not granted. Since #1828 the download of an original runs through this
+   * same formula (see {@link #requireContentRead}) - administration reaches a library's
+   * configuration, never its content.
    */
   public Set<UUID> readableLibraryIds(UUID userId, UUID organizationId) {
     Set<UUID> readable =
         assetAccessService.readableAssetIds(KnowledgeLibrary.ASSET_TYPE, userId, organizationId);
     readable.addAll(organizationWideLibraryIds(organizationId));
     return readable;
+  }
+
+  /**
+   * Requires the caller to actually be allowed to read {@code library}'s content - the check behind
+   * {@code LibraryDocumentService#loadContent} (#1828). Two steps, deliberately: {@link
+   * #requireRole} first, so a person the library does not reach at all keeps the same {@code 404}
+   * every other library-scoped endpoint answers and no response reveals that the library exists;
+   * then the search-facing {@link #readableLibraryIds} formula, which knows no
+   * system-administration floor. A system admin without a grant therefore gets {@code 403}:
+   * administering a library is not reading its originals
+   * (docs/features/access-control.md#verwalten-ist-nicht-lesen-die-asymmetrie-bei-wissensbibliotheken),
+   * and the library's existence is no secret to them anyway. For everyone else the second step
+   * cannot change the outcome - both steps evaluate the same formula.
+   */
+  public void requireContentRead(KnowledgeLibrary library, UUID userId, boolean systemAdmin) {
+    requireRole(library, userId, systemAdmin, AssetRole.VIEWER);
+    if (!readableLibraryIds(userId, library.getOrganizationId()).contains(library.getId())) {
+      throw new AccessDeniedException(
+          "Verwaltungsrechte erlauben kein Öffnen der Originale. Dafür ist eine Leseberechtigung"
+              + " auf diese Bibliothek nötig.");
+    }
   }
 
   /**

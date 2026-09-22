@@ -646,6 +646,50 @@ class LibraryDocumentServiceIntegrationTest {
   }
 
   @Test
+  void loadContentRefusesASystemAdminWithoutAGrantAndServesTheSameAdminOnceGranted() {
+    // regression guard for #1828: administering a library is not reading its originals - the
+    // content endpoint evaluates the search formula, which knows no system-administration floor.
+    // 403 rather than the stranger's 404 above: an administrator sees the library in its
+    // administration anyway, so there is no existence to hide from them.
+    LibraryDocumentEntry uploaded =
+        documentService.uploadDocument(
+            libraryId, textFile("verschlusssache.txt", "content"), null, currentUserOf(editor));
+    awaitDocumentStatus(uploaded.document().getId(), DocumentStatus.INDEXED);
+
+    User admin = new User("content-admin-subject", "issuer", "admin2@example.com", "A");
+    admin.setOrganizationId(organizationId);
+    admin = userRepository.save(admin);
+    var adminId = admin.getId();
+    var documentId = uploaded.document().getId();
+    AssetGrant adminGrant = null;
+    try {
+      assertThatThrownBy(
+              () -> documentService.loadContent(documentId, currentUserOf(adminId, true)))
+          .isInstanceOf(AccessDeniedException.class)
+          .hasMessageContaining("Leseberechtigung");
+
+      adminGrant =
+          assetGrantRepository.save(
+              AssetGrant.forUser(
+                  KnowledgeLibrary.ASSET_TYPE,
+                  libraryId,
+                  organizationId,
+                  adminId,
+                  AssetRole.VIEWER,
+                  null,
+                  editor.getId()));
+      DocumentContent granted =
+          documentService.loadContent(documentId, currentUserOf(adminId, true));
+      assertThat(granted.fileName()).isEqualTo("verschlusssache.txt");
+    } finally {
+      if (adminGrant != null) {
+        assetGrantRepository.delete(adminGrant);
+      }
+      userRepository.deleteById(adminId);
+    }
+  }
+
+  @Test
   void loadContentAnswers404WithAGermanMessageWhenARemoteSourcedDocumentHasNoStoredSourceUrl() {
     // #747: HTTP_DIRECTORY/RSS_FEED content is now proxied from the document's own stored source
     // URL (see the proxy tests further down) - a document somehow persisted without one (file_path

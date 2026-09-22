@@ -474,7 +474,11 @@ public class LibraryDocumentService {
    *
    * <p>Requires only {@link AssetRole#VIEWER} (#736 acceptance criteria) - the same floor {@link
    * LibraryAccessService#canRead} already uses for a library's configuration and document list;
-   * opening a document's own content is not more sensitive than seeing it listed.
+   * opening a document's own content is not more sensitive than seeing it listed. The one
+   * difference is the system administration (#1828): it is checked through {@link
+   * LibraryAccessService#requireContentRead}, whose second half knows no administrative floor, so
+   * an admin without a grant gets {@code 403} here while still administering the library. Taking a
+   * library over stays the documented, recorded way - transfer ownership, then read.
    *
    * <p>Path traversal is closed the same way deletion closes it: the file must actually resolve
    * underneath the one directory this {@code sourceType} is allowed to serve from - this library's
@@ -506,7 +510,7 @@ public class LibraryDocumentService {
             .findById(document.getLibraryId())
             .filter(lib -> lib.getOrganizationId().equals(caller.organizationId()))
             .orElseThrow(() -> new NotFoundException("Dokument nicht gefunden"));
-    accessService.requireRole(library, caller.id(), caller.isSystemAdmin(), AssetRole.VIEWER);
+    accessService.requireContentRead(library, caller.id(), caller.isSystemAdmin());
 
     if (isReExtractableAttachment(document)) {
       return loadAttachmentContent(document, library);

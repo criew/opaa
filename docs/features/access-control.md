@@ -74,7 +74,8 @@ Inhalt zu lesen**. Der Zugriff auf Wissensbibliotheken folgt der Rechteliste des
 nötig ist (offene Nachfolge, Offboarding), ist sie ein protokollierter Verwaltungsakt und keine
 stillschweigende Leseberechtigung. Private Inhalte bleiben auch dabei unlesbar — in jedem Space.
 
-Wie weit diese Abgrenzung im gebauten Stand trägt und wo sie es heute **nicht** tut, steht unten unter
+Wie diese Abgrenzung im gebauten Stand umgesetzt ist — verwalten überall, lesen nur mit Grant —, steht
+unten unter
 [Verwalten ist nicht Lesen](#verwalten-ist-nicht-lesen-die-asymmetrie-bei-wissensbibliotheken).
 
 ### Die Revisionsrolle `AUDITOR`
@@ -210,13 +211,15 @@ Asymmetrie zwischen zwei Prüfwegen umgesetzt, und die wird ohne Erklärung leic
 gelesen.
 
 Auf dem Weg der **einzelnen Bibliothek** gilt die Systemverwaltung als `OWNER`: Sie kann jede Bibliothek
-ansehen, umbenennen, ihre Sichtbarkeit ändern, Rechte darauf vergeben — und auch ihre Dokumente öffnen
-und herunterladen, wobei dieser Zugriff heute **keinen Protokolleintrag** erzeugt: Die Auslieferung der
-Originaldatei schreibt kein Ereignis, und eine Ereignisart für das Lesen eines Dokuments gibt es nicht,
-während [Verwaltungsaktionen](./security-and-compliance.md#verwaltungsaktionen-und-agentenaktionen) dort
-als protokollpflichtig zugesagt sind (offen in
-[#1828](https://github.com/criew/opaa/issues/1828)). Die Abgrenzung oben ist an dieser Stelle also enger
-formuliert, als der gebaute Stand sie hält; die Fassung des Rechtemodells ist Gegenstand von Epic #1295.
+ansehen, umbenennen, ihre Sichtbarkeit ändern, Rechte darauf vergeben — und die Dokumentenliste
+einsehen. **Das Original eines Dokuments öffnet sie damit nicht.** Der Abruf des Originals prüft
+dieselbe Formel wie die Suche, die keine Ausnahme für die Systemverwaltung kennt: Ohne Grant auf die
+Bibliothek wird er abgewiesen (#1828). Wer als Systemverwaltung an einen Inhalt muss, geht den
+vorgesehenen, protokollierten Weg — Eigentum übertragen und dann lesen —, statt ihn im Vorbeigehen
+mitzunehmen. Ein eigenes Protokollereignis für das Lesen eines Dokuments gibt es deshalb nicht und
+braucht es nicht: Es gibt keinen Lesezugriff mehr, der nur aus der Systemrolle folgt, und die
+[geschlossene Ereignisliste der ersten Stufe](./security-and-compliance.md#die-ereignisse-der-ersten-stufe)
+bleibt unverändert.
 
 Auf dem Weg der **Suche** gilt das nicht. Die Menge der lesbaren Bibliotheken wird allein aus Grants,
 Gruppenmitgliedschaften und organisationsweiter Sichtbarkeit gebildet — ohne Ausnahme für die
@@ -226,9 +229,9 @@ Ein Administrator darf also jede Bibliothek verwalten, ruft in einem Chat aber n
 tatsächlich zugestanden wurden (die Formel steht unter
 [Rechte an einem Asset erhalten](./spaces-and-assets.md#rechte-an-einem-asset-erhalten)). Die Asymmetrie
 zeigt damit dort in die sichere Richtung, wo es auf die Antwort ankommt: Nichts, was ein Administrator in
-einer Antwort zu lesen bekommt, kann aus einer Bibliothek stammen, auf die er keinen Grant hat. Ein
-Zugriff über den Verwaltungsweg bleibt dagegen ein einzelner, gezielter Aufruf und reichert seine
-Suchtreffer nicht stillschweigend an.
+einer Antwort zu lesen bekommt, kann aus einer Bibliothek stammen, auf die er keinen Grant hat — und
+seit #1828 gilt derselbe Satz für das einzelne Original: Der Verwaltungsweg reicht an die
+Konfiguration einer Bibliothek, nicht an ihren Inhalt.
 
 Die **Bibliotheksliste** folgt dabei der Suchformel, nicht dem Verwaltungsweg: Ein Administrator sieht
 dort nur, was ihm zugestanden wurde. Einzeln aufrufen und verwalten kann er trotzdem jede Bibliothek.

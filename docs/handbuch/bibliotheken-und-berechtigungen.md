@@ -465,7 +465,14 @@ Rechtehistorie festgehalten.
 jede Bibliothek.** Beide Sätze gelten gleichzeitig, und sie widersprechen sich nicht: Der
 Rechtefilter der Suche kennt keine Ausnahme für die Systemrolle, die Bibliotheksverwaltung dagegen
 führt sie an jeder Bibliothek als Eigentümerin. Kein Anlegerecht und keine Vollmacht ändert das
-Erste. Wer eine Störung nachstellen muss („die Suche liefert ein Dokument, das ich nicht sehen
+Erste.
+
+**Auch das einzelne Original bleibt zu.** Die Systemverwaltung sieht die Dokumentenliste jeder
+Bibliothek, das Öffnen eines Originals prüft aber dieselbe Formel wie die Suche: Ohne Leserecht auf
+die Bibliothek antwortet die Anwendung mit einer Meldung, die den Grund benennt, statt die Datei
+auszuliefern. Wer den Inhalt tatsächlich braucht — offene Nachfolge, Offboarding —, übernimmt die
+Bibliothek erst („Eigentum abgeben", Abschnitt 13). Diese Übernahme steht im Nachweisprotokoll, das
+Lesen danach geschieht mit einem sichtbaren Recht. Wer eine Störung nachstellen muss („die Suche liefert ein Dokument, das ich nicht sehen
 dürfte"), tut das über die Suchdiagnose mit Rechteprofil ([Suche](suche.md), Abschnitt 8) — das ist
 der vorgesehene Weg, nicht der Umweg über eine Rolle.
 
