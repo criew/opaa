@@ -439,11 +439,11 @@ Zwei Kategorien, die über die gewöhnliche Nutzerhandlung hinausgehen und desha
   System-Admins nicht automatisch leseberechtigt sind, muss jeder Übernahme- und Verwaltungsakt sichtbar
   sein. Ein Admin, der ein Asset einer neuen Zuständigkeit zuweist, hinterlässt eine Spur, die er selbst
   nicht entfernen kann. **Ein Lesen ohne Verwaltungsakt gibt es dabei nicht:** Die Systemverwaltung
-  erreicht das Original eines Dokuments nur über einen Grant — der Abruf ohne Grant wird abgewiesen
-  (#1828,
+  erreicht den Inhalt eines Dokuments — Original wie gespeicherten Chunk in der Suchdiagnose — nur
+  über einen Grant, und der Abruf ohne Grant wird abgewiesen (#1828,
   [Verwalten ist nicht Lesen](./access-control.md#verwalten-ist-nicht-lesen-die-asymmetrie-bei-wissensbibliotheken)).
   Deshalb braucht es hier auch keine Ereignisart für das Lesen eines Dokuments: Protokollpflichtig ist
-  die Übernahme, und die steht bereits in der
+  das Recht — seine Vergabe an sich selbst ebenso wie die Übernahme —, und beides steht bereits in der
   [geschlossenen Liste der ersten Stufe](#die-ereignisse-der-ersten-stufe).
 - **Agentenaktionen** — Teil einer späteren Stufe, weil es heute keine Agenten gibt; die Festlegung
   steht hier, damit sie nicht später neu verhandelt wird. Ein Agent handelt **immer mit den Rechten der

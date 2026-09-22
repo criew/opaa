@@ -38,7 +38,9 @@ import org.springframework.web.bind.annotation.RestController;
  * skip: nothing here resolves a person's search scope on its own (#1150). The chunk endpoints
  * (#1230) show what the index actually stores - text and metadata, never the embedding - and answer
  * a foreign or unknown id with 404 rather than 403, so they never confirm an id outside the
- * caller's organization.
+ * caller's organization. The role is not a reading permission there either: a chunk carries the
+ * document's text, so both chunk endpoints additionally require the reading permission on its
+ * library and answer 403 without it (#1828).
  */
 @RestController
 @RequestMapping("/api/v1/admin/search")
@@ -97,7 +99,7 @@ public class SearchAdminController {
   public ChunkInspectionResponse getChunk(
       @PathVariable String chunkId, @Caller CurrentUser caller) {
     return chunkInspectionService
-        .findChunk(caller.organizationId(), chunkId)
+        .inspectChunk(caller, chunkId)
         .map(SearchAdminResponseMapper::toChunkResponse)
         .orElseThrow(() -> new NotFoundException("Der Chunk wurde nicht gefunden."));
   }
@@ -107,7 +109,7 @@ public class SearchAdminController {
   public DocumentChunksResponse listDocumentChunks(
       @PathVariable UUID documentId, @Caller CurrentUser caller) {
     return SearchAdminResponseMapper.toDocumentChunksResponse(
-        chunkInspectionService.listDocumentChunks(caller.organizationId(), documentId));
+        chunkInspectionService.inspectDocumentChunks(caller, documentId));
   }
 
   private static DiagnosisContextType toContextType(

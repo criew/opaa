@@ -212,11 +212,13 @@ gelesen.
 
 Auf dem Weg der **einzelnen Bibliothek** gilt die Systemverwaltung als `OWNER`: Sie kann jede Bibliothek
 ansehen, umbenennen, ihre Sichtbarkeit ändern, Rechte darauf vergeben — und die Dokumentenliste
-einsehen. **Das Original eines Dokuments öffnet sie damit nicht.** Der Abruf des Originals prüft
-dieselbe Formel wie die Suche, die keine Ausnahme für die Systemverwaltung kennt: Ohne Grant auf die
-Bibliothek wird er abgewiesen (#1828). Wer als Systemverwaltung an einen Inhalt muss, geht den
-vorgesehenen, protokollierten Weg — Eigentum übertragen und dann lesen —, statt ihn im Vorbeigehen
-mitzunehmen. Ein eigenes Protokollereignis für das Lesen eines Dokuments gibt es deshalb nicht und
+einsehen. **Den Inhalt eines Dokuments öffnet sie damit nicht** — weder das Original noch den
+gespeicherten Text im Chunk-Inspektor der Suchdiagnose. Beide Wege prüfen dieselbe Formel wie die
+Suche, die keine Ausnahme für die Systemverwaltung kennt: Ohne Grant auf die Bibliothek werden sie
+abgewiesen (#1828). Wer als Systemverwaltung an einen Inhalt muss, holt sich das Recht sichtbar —
+sich selbst einen `VIEWER`-Grant auf die Bibliothek geben (der kleinste Schritt, er steht mit Beginn
+und Ende in der Rechtehistorie) oder, wenn die Zuständigkeit ohnehin übergeht, das Eigentum
+übertragen. Ein eigenes Protokollereignis für das Lesen eines Dokuments gibt es deshalb nicht und
 braucht es nicht: Es gibt keinen Lesezugriff mehr, der nur aus der Systemrolle folgt, und die
 [geschlossene Ereignisliste der ersten Stufe](./security-and-compliance.md#die-ereignisse-der-ersten-stufe)
 bleibt unverändert.
@@ -230,8 +232,8 @@ tatsächlich zugestanden wurden (die Formel steht unter
 [Rechte an einem Asset erhalten](./spaces-and-assets.md#rechte-an-einem-asset-erhalten)). Die Asymmetrie
 zeigt damit dort in die sichere Richtung, wo es auf die Antwort ankommt: Nichts, was ein Administrator in
 einer Antwort zu lesen bekommt, kann aus einer Bibliothek stammen, auf die er keinen Grant hat — und
-seit #1828 gilt derselbe Satz für das einzelne Original: Der Verwaltungsweg reicht an die
-Konfiguration einer Bibliothek, nicht an ihren Inhalt.
+seit #1828 gilt derselbe Satz für den einzelnen Inhalt, Original wie gespeicherter Chunk: Der
+Verwaltungsweg reicht an die Konfiguration einer Bibliothek, nicht an ihren Inhalt.
 
 Die **Bibliotheksliste** folgt dabei der Suchformel, nicht dem Verwaltungsweg: Ein Administrator sieht
 dort nur, was ihm zugestanden wurde. Einzeln aufrufen und verwalten kann er trotzdem jede Bibliothek.

@@ -3,6 +3,9 @@ package io.opaa.searchadmin;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.opaa.api.types.SystemRole;
+import io.opaa.auth.CurrentUser;
+import io.opaa.common.AccessDeniedException;
 import io.opaa.common.NotFoundException;
 import io.opaa.test.OpaaIntegrationTest;
 import java.util.List;
@@ -86,6 +89,8 @@ class ChunkInspectionServiceIntegrationTest {
     for (UUID chunkId : allChunkIds) {
       jdbcTemplate.update("DELETE FROM vector_store WHERE id = ?", chunkId);
     }
+    jdbcTemplate.update(
+        "DELETE FROM asset_grants WHERE asset_id in (?, ?)", libraryId, foreignLibraryId);
     jdbcTemplate.update("DELETE FROM documents WHERE id in (?, ?)", documentId, foreignDocumentId);
     jdbcTemplate.update(
         "DELETE FROM knowledge_libraries WHERE id in (?, ?)", libraryId, foreignLibraryId);
@@ -167,6 +172,38 @@ class ChunkInspectionServiceIntegrationTest {
         .isInstanceOf(NotFoundException.class);
     assertThatThrownBy(() -> service.listDocumentChunks(DEFAULT_ORGANIZATION_ID, UUID.randomUUID()))
         .isInstanceOf(NotFoundException.class);
+  }
+
+  @Test
+  void theAdministrationEntriesRefuseALibraryTheAdminHoldsNoGrantOnAndServeItOnceGranted() {
+    // regression guard for #1828: a chunk carries the document's text, so the SYSTEM_ADMIN role
+    // alone must not open it - readability is decided by the same formula the search evaluates.
+    CurrentUser admin =
+        CurrentUser.of(
+            userId, DEFAULT_ORGANIZATION_ID, SystemRole.SYSTEM_ADMIN, "Chunk-Admin", "a@b.de");
+    String chunkId = chunkIds.get(1).toString();
+
+    assertThatThrownBy(() -> service.inspectChunk(admin, chunkId))
+        .isInstanceOf(AccessDeniedException.class);
+    assertThatThrownBy(() -> service.inspectDocumentChunks(admin, documentId))
+        .isInstanceOf(AccessDeniedException.class);
+
+    grantViewer(libraryId, userId);
+
+    assertThat(service.inspectChunk(admin, chunkId)).isPresent();
+    assertThat(service.inspectDocumentChunks(admin, documentId).chunks()).hasSize(5);
+  }
+
+  private void grantViewer(UUID grantedLibraryId, UUID subjectUserId) {
+    jdbcTemplate.update(
+        "INSERT INTO asset_grants (id, asset_type, asset_id, organization_id, subject_type,"
+            + " subject_user_id, role, granted_by_user_id) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, ?,"
+            + " 'USER', ?, 'VIEWER', ?)",
+        UUID.randomUUID(),
+        grantedLibraryId,
+        DEFAULT_ORGANIZATION_ID,
+        subjectUserId,
+        subjectUserId);
   }
 
   private void insertUser(UUID id, UUID organizationId) {

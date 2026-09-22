@@ -1332,6 +1332,13 @@ Metadaten der Indexierungs-Pipeline ohne Datenbankzugriff prüfen. Die beiden En
 (`GET /api/v1/admin/search/chunks/{chunkId}`, `GET /api/v1/admin/search/documents/{documentId}/chunks`)
 liefern nie ein Embedding — die Spalte wird gar nicht erst gelesen.
 
+**Die Systemrolle öffnet diesen Weg nicht** ([#1828](https://github.com/criew/opaa/issues/1828)): Ein
+Chunk trägt den Text des Dokuments, deshalb prüfen beide Endpunkte zusätzlich die Lesbarkeit der
+Bibliothek nach derselben Formel wie die Suche — ohne Systemverwaltungszweig. Ohne Leseberechtigung
+antworten sie mit `403`, und zwar bevor ein einziger Chunk gelesen wird. Damit bleibt Leitplanke (c)
+auch hier ganz: Inhalte fremder Bestände werden nur über „Sicht als" sichtbar — benannt, befristet,
+begründungs- und protokollpflichtig —, nicht über die Rolle und nicht über den Chunk-Inspektor.
+
 ### Berechtigungs-Leitplanken
 
 > **Stand: gebaut** ([#1052](https://github.com/criew/opaa/issues/1052)). Das Befugnis- und

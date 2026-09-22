@@ -3507,7 +3507,10 @@ paths:
         actually persisted. Scoped to the caller's own organization via the documents table, not
         via the chunk's own organization_id metadatum (older chunks may lack it); a chunk of another
         organization, a chunk whose document no longer exists, and an unknown id are all 404. The
-        embedding is never part of this response.
+        embedding is never part of this response. The role alone does not open the text: a chunk
+        carries the document's own content, so the caller additionally has to be able to read the
+        document's library - the same formula the search evaluates, with no system-administration
+        floor. Without it, 403 (#1828).
       parameters:
         - name: chunkId
           in: path
@@ -3537,7 +3540,10 @@ paths:
         The document must exist and belong to the caller's own organization, otherwise 404. The
         list is what the vector store holds right now, ordered by chunk_index; chunkCount is the
         number the document entity recorded at indexing time, so a gap between the two is itself a
-        finding. Embeddings are never part of this response.
+        finding. Embeddings are never part of this response. The role alone does not open the text:
+        the chunks carry the document's own content, so the caller additionally has to be able to
+        read its library - the same formula the search evaluates, with no system-administration
+        floor. Without it, 403 (#1828), decided before a single chunk is read.
       parameters:
         - name: documentId
           in: path
@@ -6274,12 +6280,13 @@ paths:
         UPLOAD original in an S3 upload storage (ADR-0030, Entscheidung 9) and an S3 document's own
         object (ADR-0027) answer 503 when the store cannot be reached or refuses the application -
         a temporary condition a caller must not read as "this original does not exist". Its message
-        names no detail of the stored configuration. 403 is answered in exactly one case (#1828):
-        a SYSTEM_ADMIN without a grant on the library. Administering a library is not reading its
-        originals - this endpoint checks the same formula the search does, which knows no
-        administrative floor, and taking a library over runs through ownership transfer instead.
-        For every other caller VIEWER is the lowest AssetRole, so any grant at all already
-        satisfies this floor - they either clear it or have no grant, which is the 404 case above.
+        names no detail of the stored configuration. 403 means the library is reachable for the
+        caller but not readable (#1828): this endpoint checks the same formula the search does,
+        which knows no system-administration floor, so a SYSTEM_ADMIN without a grant is refused
+        here while still administering the library - a grant on it is the way in, not the role. For
+        an ordinary caller VIEWER is the lowest AssetRole, so any grant already satisfies the
+        floor; they reach a 403 only in the moment between a revoked grant and the invalidation of
+        the role cache the first check reads. Without any access at all it stays the 404 above.
         429 is answered when this endpoint is under
         load: either by its own rate limit, or - for an attachment document, whose bytes are
         re-extracted from its parent original on every read (ADR-0022, #1243) - when too many such
