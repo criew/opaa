@@ -1,8 +1,5 @@
 package io.opaa.audit;
 
-import java.time.Instant;
-import java.time.YearMonth;
-import java.time.ZoneOffset;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,9 +30,11 @@ public class AuditRetentionDeletionService {
 
   /**
    * Runs one deletion pass. Idempotent and safe to call more often than the schedule requires - a
-   * run with nothing expired yet simply returns an empty list, since the underlying function's own
-   * forward-only cap ({@code last_cutoff}) is what actually governs how much a single call can ever
-   * remove, not how often this method is invoked.
+   * second call in the same calendar month reaches the same cutoff and finds nothing left.
+   *
+   * <p>A shortening of the period takes effect with the next pass, in full (changeset 078, #1851);
+   * a lengthening takes effect at once and takes nothing back, since {@code last_cutoff} is a
+   * high-water mark that never moves backwards.
    */
   @Transactional
   public List<String> runOnce() {
@@ -43,39 +42,6 @@ public class AuditRetentionDeletionService {
     if (!droppedPartitions.isEmpty()) {
       log.info("Audit retention: dropped partitions: {}", droppedPartitions);
     }
-    logForwardOnlyCapGapIfAny();
     return droppedPartitions;
-  }
-
-  /**
-   * The forward-only cap on {@code opaa_audit_delete_expired_partitions()} means a drastic
-   * shortening only reaches its configured target gradually, one calendar month per run. Compares
-   * the configured retention's target cutoff against the actually reached {@code last_cutoff} after
-   * this run and logs at INFO when they still differ, so operations can see "configured for 36
-   * months, only effective from X for now" instead of assuming the just-changed value already
-   * applies in full.
-   */
-  private void logForwardOnlyCapGapIfAny() {
-    repository
-        .findSingleton()
-        .ifPresent(
-            settings -> {
-              Instant lastCutoff = settings.getLastCutoff();
-              if (lastCutoff == null) {
-                return;
-              }
-              YearMonth targetMonth =
-                  YearMonth.now(ZoneOffset.UTC).minusMonths(settings.getRetentionMonths());
-              YearMonth reachedMonth = YearMonth.from(lastCutoff.atZone(ZoneOffset.UTC));
-              if (reachedMonth.isBefore(targetMonth)) {
-                log.info(
-                    "Audit retention: configured window ({} months, target cutoff {}) is not"
-                        + " fully effective yet - the forward-only deletion progress currently"
-                        + " stands at {} and advances at most one calendar month per run",
-                    settings.getRetentionMonths(),
-                    targetMonth,
-                    reachedMonth);
-              }
-            });
   }
 }

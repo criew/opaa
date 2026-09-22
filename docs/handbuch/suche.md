@@ -741,6 +741,8 @@ Bibliotheksdetailseite; ein Systemadministrator, der sich die Eigentümerrolle s
 kann das nicht. Jede Diagnose im Personenkontext hinterlässt einen Protokolleintrag mit Begründung
 und Rechte-Abbild; die betroffene Person sieht die Einträge zu sich selbst, die Rolle AUDITOR das
 Gesamtprotokoll. Die Aufbewahrungsfrist ist einstellbar; abschalten lässt sich die Löschung nicht.
+Eine Verkürzung wirkt mit dem nächsten Monatslauf, und zwar vollständig; eine Verlängerung wirkt
+sofort, holt aber nicht zurück, was bereits gelöscht ist.
 
 Eine Befugnis endet mit ihrer Frist, mit dem Entzug von Hand — oder mit der Löschung des Kontos, das
 sie erteilt hat: Dann entzieht OPAA die noch gültigen Befugnisse dieses Kontos, jede mit eigenem

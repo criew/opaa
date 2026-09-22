@@ -13,8 +13,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * #395: {@link AuditRetentionDeletionService} calling the real {@code
  * opaa_audit_delete_expired_partitions()} database function (baseline group (j)) through the
  * ordinary application datasource - proves the wiring end to end (repository -> native query ->
- * database function), not the SQL function's own forward-only-cutoff behaviour or its restricted,
- * non-superuser role, which is {@code io.opaa.migration.AuditPrivilegeModelTest}'s concern.
+ * database function), not which cutoff the function deletes by (that is {@code
+ * io.opaa.migration.Migration078RetentionDeletionWithoutForwardCapTest}'s concern) nor its
+ * restricted, non-superuser role ({@code io.opaa.migration.AuditPrivilegeModelTest}).
  */
 @OpaaIntegrationTest
 class AuditRetentionDeletionServiceIntegrationTest {

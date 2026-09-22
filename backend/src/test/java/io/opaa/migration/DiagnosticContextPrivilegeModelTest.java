@@ -291,33 +291,17 @@ class DiagnosticContextPrivilegeModelTest extends AbstractMigrationTest {
     createOwnedPartitionMonthsAgo(6);
     insertEntryMonthsAgo(6);
     assertThat(countAs(connection)).isEqualTo(1);
-    // retention 1 month, and the last run was a month ago: the forward cap allows exactly one
-    // month of progress, from the sixth-last month to the fifth-last - enough to expire the
-    // partition seeded above.
+    // Retention 1 month, last run a month ago - a state the baseline's own capped function moves
+    // exactly one month for, from the sixth-last month to the fifth-last, which expires the
+    // partition seeded above. How far a run may go at all is changeset 078's subject (#1851), not
+    // this class's: the cap is gone from the shipped function, and this class deliberately stops
+    // at the baseline.
     setRetentionState(1, 6, 1);
 
     assertThat(runDeletion()).containsExactly(partitionNameMonthsAgo(6));
 
     assertThat(countAs(connection)).isZero();
     assertThat(cutoffMonthsAgo()).isEqualTo(5);
-  }
-
-  /**
-   * The forward cap of the same function: a drastically shortened Frist takes effect one calendar
-   * month per run instead of erasing years in a single call.
-   */
-  @Test
-  void neverAdvancesFurtherThanOneMonthPerRun() throws Exception {
-    createOwnedPartitionMonthsAgo(6);
-    insertEntryMonthsAgo(6);
-    // Same shortened Frist, but this month's run has already happened: no month has elapsed, so
-    // the cutoff must not move at all and nothing may be dropped.
-    setRetentionState(1, 6, 0);
-
-    assertThat(runDeletion()).isEmpty();
-
-    assertThat(countAs(connection)).isEqualTo(1);
-    assertThat(cutoffMonthsAgo()).isEqualTo(6);
   }
 
   private void setRetentionState(int retentionMonths, int cutoffMonthsAgo, int lastRunMonthsAgo)

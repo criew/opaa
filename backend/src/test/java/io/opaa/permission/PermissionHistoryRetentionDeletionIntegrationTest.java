@@ -229,7 +229,7 @@ class PermissionHistoryRetentionDeletionIntegrationTest {
   }
 
   /**
-   * The progress is recorded even when nothing was removed - otherwise the forward-only cap would
+   * The progress is recorded even when nothing was removed - otherwise the high-water mark would
    * never advance on an installation whose history is younger than its period.
    */
   @Test

@@ -1,0 +1,161 @@
+databaseChangeLog:
+  - changeSet:
+      id: 078-retention-deletion-without-forward-cap-audit
+      author: opaa
+      comment: >-
+        Der Loeschlauf des Nachweisprotokolls loescht nach der eingestellten Frist, ohne Deckel
+        (#1851).
+        .
+        Die Baseline deckelte den Schnitt mit LEAST(candidate_cutoff, last_cutoff + vergangene
+        Monate) - hoechstens ein Kalendermonat Fortschritt je vergangenem Kalendermonat. Dieser
+        Deckel konvergiert nie: candidate_cutoff (aktueller Monat minus Frist) und der Deckel
+        wachsen beide um genau einen Monat je Kalendermonat, ein einmal entstandener Rueckstand
+        bleibt also dauerhaft. Eine Verkuerzung von 36 auf 12 Monate haette die faktische
+        Aufbewahrung fuer immer bei 36 Monaten gelassen - genau das Gegenteil dessen, wozu die
+        Einstellung da ist (Datensparsamkeit, Zusage gegenueber der Personalvertretung).
+        .
+        Der Schnitt ist deshalb der der eingestellten Frist, ohne Deckel. Eine Verkuerzung wirkt mit
+        dem naechsten Monatslauf, und zwar vollstaendig.
+        .
+        last_cutoff ist ab hier eine Hochwassermarke: GREATEST(last_cutoff, neuer Schnitt), geht nie
+        zurueck. Bei einer Verlaengerung liegt der Schnitt der laengeren Frist vor der Marke - der
+        Lauf loescht dann nichts, und die Marke bleibt stehen, wo ein frueherer Lauf schon war.
+        Unbedingt auf den Schnitt zu setzen, wie die Baseline es tat, haette bei jeder Verlaengerung
+        behauptet, das Protokoll antworte wieder fuer Monate, deren Partitionen laengst weg sind.
+        .
+        Die Funktion behaelt Eigentuemer (opaa_audit_owner) und SECURITY DEFINER; CREATE OR REPLACE
+        laesst Eigentum und EXECUTE-Rechte unberuehrt. Die Mitgliedschaft in der Eigentuemerrolle
+        wird nur fuer die Dauer dieses Changesets genommen, wie in der Baseline. Das Loeschen ganzer
+        Monatspartitionen bleibt unveraendert - ein Aufruf, der einzelne Saetze entfernen wuerde,
+        entsteht hier nicht.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              DO $$
+              BEGIN
+                EXECUTE format('GRANT opaa_audit_owner TO %I WITH SET TRUE', current_user);
+              END $$;
+
+              CREATE OR REPLACE FUNCTION opaa_audit_delete_expired_partitions() RETURNS SETOF text
+                  LANGUAGE plpgsql SECURITY DEFINER
+                  SET search_path TO 'pg_catalog', '${database.defaultSchemaName}', 'pg_temp'
+                  AS $_$ DECLARE
+                cfg RECORD;
+                current_month date := date_trunc('month', now())::date;
+                new_cutoff timestamptz;
+                rec RECORD;
+                partition_month date;
+              BEGIN
+                SELECT retention_months, last_cutoff INTO cfg
+                FROM audit_retention_settings WHERE id = 1 FOR UPDATE;
+
+                IF NOT FOUND THEN
+                  RAISE EXCEPTION 'audit_retention_settings has no row with id=1 - the baseline should have seeded it; refusing to silently skip retention deletion';
+                END IF;
+
+                new_cutoff := current_month
+                  - (cfg.retention_months::text || ' months')::interval;
+
+                FOR rec IN
+                  SELECT inhrelid::regclass AS partition_rel,
+                         inhrelid::regclass::text AS partition_name
+                  FROM pg_catalog.pg_inherits
+                  WHERE inhparent = 'audit_log'::regclass
+                LOOP
+                  partition_month := to_date(
+                    substring(rec.partition_name from 'audit_log_(\d{4}_\d{2})$'), 'YYYY_MM');
+                  IF partition_month IS NOT NULL
+                     AND (partition_month + interval '1 month') <= new_cutoff THEN
+                    EXECUTE format('DROP TABLE %s', rec.partition_rel);
+                    RETURN NEXT rec.partition_name;
+                  END IF;
+                END LOOP;
+
+                UPDATE audit_retention_settings
+                SET last_cutoff = GREATEST(cfg.last_cutoff, new_cutoff),
+                    last_run_month = current_month
+                WHERE id = 1;
+
+                RETURN;
+              END; $_$;
+
+              ALTER FUNCTION opaa_audit_delete_expired_partitions() OWNER TO opaa_audit_owner;
+
+              DO $$
+              BEGIN
+                EXECUTE format('REVOKE opaa_audit_owner FROM %I', current_user);
+              END $$;
+      # Kein Rollback: Die zurueckgenommene Fassung ist die fehlerhafte - ein Rollback stellte den
+      # Deckel wieder her, der die eingestellte Frist nie erreicht.
+
+  - changeSet:
+      id: 078-retention-deletion-without-forward-cap-diagnostic-context
+      author: opaa
+      comment: >-
+        Dieselbe Korrektur fuer das Protokoll der Diagnose im Personenkontext (#1851, ADR-0015,
+        Leitplanke (i)). Die Baseline-Fassung trug denselben LEAST-Deckel und dasselbe unbedingte
+        last_cutoff := neuer Schnitt, Zeile fuer Zeile - Begruendung siehe Changeset
+        078-retention-deletion-without-forward-cap-audit.
+        .
+        Eigenes Changeset, weil es eine eigene Datenbankaenderung ist; die Klammer aus GRANT und
+        REVOKE der Eigentuemerrolle steht deshalb hier noch einmal.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              DO $$
+              BEGIN
+                EXECUTE format('GRANT opaa_audit_owner TO %I WITH SET TRUE', current_user);
+              END $$;
+
+              CREATE OR REPLACE FUNCTION opaa_diagnostic_context_delete_expired_partitions() RETURNS SETOF text
+                  LANGUAGE plpgsql SECURITY DEFINER
+                  SET search_path TO 'pg_catalog', '${database.defaultSchemaName}', 'pg_temp'
+                  AS $_$ DECLARE
+                cfg RECORD;
+                current_month date := date_trunc('month', now())::date;
+                new_cutoff timestamptz;
+                rec RECORD;
+                partition_month date;
+              BEGIN
+                SELECT retention_months, last_cutoff INTO cfg
+                FROM diagnostic_context_retention_settings WHERE id = 1 FOR UPDATE;
+
+                IF NOT FOUND THEN
+                  RAISE EXCEPTION 'diagnostic_context_retention_settings has no row with id=1 - the baseline should have seeded it; refusing to silently skip retention deletion';
+                END IF;
+
+                new_cutoff := current_month
+                  - (cfg.retention_months::text || ' months')::interval;
+
+                FOR rec IN
+                  SELECT inhrelid::regclass AS partition_rel,
+                         inhrelid::regclass::text AS partition_name
+                  FROM pg_catalog.pg_inherits
+                  WHERE inhparent = 'diagnostic_context_log'::regclass
+                LOOP
+                  partition_month := to_date(
+                    substring(rec.partition_name from 'diagnostic_context_log_(\d{4}_\d{2})$'), 'YYYY_MM');
+                  IF partition_month IS NOT NULL
+                     AND (partition_month + interval '1 month') <= new_cutoff THEN
+                    EXECUTE format('DROP TABLE %s', rec.partition_rel);
+                    RETURN NEXT rec.partition_name;
+                  END IF;
+                END LOOP;
+
+                UPDATE diagnostic_context_retention_settings
+                SET last_cutoff = GREATEST(cfg.last_cutoff, new_cutoff),
+                    last_run_month = current_month
+                WHERE id = 1;
+
+                RETURN;
+              END; $_$;
+
+              ALTER FUNCTION opaa_diagnostic_context_delete_expired_partitions() OWNER TO opaa_audit_owner;
+
+              DO $$
+              BEGIN
+                EXECUTE format('REVOKE opaa_audit_owner FROM %I', current_user);
+              END $$;
+      # Kein Rollback, aus demselben Grund wie beim Changeset darueber.

@@ -470,8 +470,13 @@ nicht in die Auslegung des Einzelfalls.
   sie sich bezieht. Sonst existiert ein Chatverlauf noch, aber es ist nicht mehr belegbar, wer ihn wann
   gelesen hat. Das Produkt warnt bei einer inkonsistenten Einstellung. Die konkrete Dauer folgt aus
   Fachrecht und Aktenordnung der einführenden Stelle.
-- Eine **Verkürzung** der Frist wirkt nur nach vorn und ist selbst protokollpflichtig; sie darf nicht das
-  Werkzeug sein, mit dem ein unbequemer Zeitraum verschwindet.
+- Eine **Verkürzung** der Frist wirkt mit dem nächsten Monatslauf und ist selbst protokollpflichtig;
+  sie darf nicht das Werkzeug sein, mit dem ein unbequemer Zeitraum verschwindet. Was diesen Satz
+  technisch trägt, ist nicht eine Bremse an der Löschung, sondern die Nachvollziehbarkeit der
+  Anordnung: Die Friständerung ist ein Verwaltungsakt, der mit altem und neuem Wert im Protokoll
+  steht, gelöscht wird erst mit dem nächsten Monatslauf, und das Anwendungskonto kann den
+  erreichten Löschstand (`last_cutoff`) nicht selbst schreiben. Was bereits gelöscht ist, holt eine
+  spätere **Verlängerung** nicht zurück.
 
 **Stand #395, technisch umgesetzt:** Die Frist ist eine **einzige, systemweite** Einstellung, keine je
 Organisation — die Partitionierung der Ablage (`audit_log`, #391) läuft ausschließlich über die Zeit
@@ -491,13 +496,19 @@ entfernen. Ein Scheduler im Anwendungskonto ruft sie monatlich auf — „läuft
 Anwendungskonto" heißt hier konkret: Die eigentliche `DROP TABLE`-Anweisung führt technisch immer
 `opaa_audit_owner` aus, unabhängig davon, wer den Aufruf ausgelöst hat.
 
-„Wirkt nur nach vorn" ist technisch erzwungen, nicht nur Konvention: Die Funktion merkt sich, bis zu
-welchem Zeitpunkt sie zuletzt gelöscht hat, und lässt diesen Zeitpunkt pro tatsächlich vergangenem
-Kalendermonat um höchstens einen Monat weiterrücken — unabhängig davon, wie oft die Funktion
-aufgerufen wird oder wie stark die Frist verkürzt wurde. Eine drastische Verkürzung löscht damit nicht
-rückwirkend einen großen, bereits „überfälligen" Bestand in einem einzigen Aufruf; das Anwendungskonto
-kann diesen Fortschritt auch nicht direkt manipulieren, da es auf die dafür genutzten Spalten keinen
-Schreibzugriff hat. Jede Friständerung erzeugt über `AuditEventRecorder` einen eigenen Eintrag vom Typ
+**Eine Verkürzung wirkt mit dem nächsten Monatslauf, und zwar vollständig** (#1851, Changeset 078).
+Was ein Lauf entfernt, folgt allein aus der eingestellten Frist: Wer von drei Jahren auf ein Jahr
+geht, hat nach dem nächsten Lauf keine Partition mehr, die älter als ein Jahr ist. Die ursprüngliche
+Fassung deckelte den Fortschritt auf höchstens einen Kalendermonat je vergangenem Kalendermonat —
+ein Deckel, der nie aufschließt, weil der Schnitt der eingestellten Frist selbst um einen Monat je
+Monat weiterwandert. Eine Verkürzung wäre damit nie wirksam geworden; sie ist ersatzlos entfallen.
+
+Die Funktion merkt sich in `last_cutoff` weiterhin, bis zu welchem Zeitpunkt sie zuletzt gelöscht
+hat — jetzt als **Hochwassermarke**, die nie zurückgeht. Eine **Verlängerung** der Frist schützt
+deshalb sofort und nimmt nichts zurück: Der Lauf löscht dann nichts, und die Marke bleibt stehen, wo
+ein früherer Lauf schon war — sie ist die Grenze dessen, wofür das Protokoll noch antwortet. Das
+Anwendungskonto kann diesen Fortschritt nicht manipulieren, da es auf die dafür genutzten Spalten
+keinen Schreibzugriff hat. Jede Friständerung erzeugt über `AuditEventRecorder` einen eigenen Eintrag vom Typ
 `AUDIT_LOG_CONFIGURATION_CHANGED` (kein neuer Ereignistyp nötig — dieser deckt „die
 Protokollkonfiguration selbst" bereits seit #391 ab).
 
@@ -601,9 +612,9 @@ nicht nur in der Validierung, **ausgeliefert mit 36 Monaten** — dieselbe Zahl 
 Begründung wie beim Protokoll. Ein monatlicher Lauf entfernt **abgeschlossene** Historienintervalle,
 deren Ende älter ist als die Frist; **offene Intervalle bleiben unberührt**, weil sie ein gerade
 geltendes Recht beschreiben und ihr Beginn beliebig weit zurückliegen darf. Für jeden Stichtag
-innerhalb der Frist bleibt die Rekonstruktion damit lückenlos. Eine **Verkürzung wirkt auch hier nur
-nach vorn** (höchstens ein Kalendermonat Fortschritt je Kalendermonat), und jede Änderung ist ein
-Governance-Ereignis (`PERMISSION_HISTORY_RETENTION_CHANGED`).
+innerhalb der Frist bleibt die Rekonstruktion damit lückenlos. Eine **Verkürzung wirkt auch hier mit
+dem nächsten Monatslauf**, und zwar vollständig; eine Verlängerung wirkt sofort und nimmt nichts
+zurück. Jede Änderung ist ein Governance-Ereignis (`PERMISSION_HISTORY_RETENTION_CHANGED`).
 
 ### Der Lesepfad: Stichtagsauskunft (#1822)
 

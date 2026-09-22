@@ -6,9 +6,8 @@ import org.springframework.stereotype.Component;
 /**
  * Runs the audit retention deletion automatically, monthly and without operator action
  * ("Automatische Löschung nach Ablauf, monatsweise und ohne Zutun"). The schedule only decides
- * *when* {@link AuditRetentionDeletionService#runOnce()} is called; how much a single call is
- * allowed to remove is entirely governed by the database function's own forward-only cap, not by
- * this class.
+ * *when* {@link AuditRetentionDeletionService#runOnce()} is called; what a single call removes
+ * follows from the configured period alone, not from this class and not from how often it fires.
  *
  * <p>Runs on the 1st of every month at 03:00 server time - comfortably off business hours, and
  * aligned with the monthly partition boundary the deletion itself operates on, so a partition is

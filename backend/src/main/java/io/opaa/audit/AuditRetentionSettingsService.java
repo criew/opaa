@@ -57,10 +57,9 @@ public class AuditRetentionSettingsService {
    * AuditEventType#AUDIT_LOG_CONFIGURATION_CHANGED} ("Eine Friständerung erzeugt selbst einen
    * Protokolleintrag").
    *
-   * <p>Does not itself implement "Verkürzung wirkt nur nach vorn" - that guarantee lives entirely
-   * in the {@code opaa_audit_delete_expired_partitions()} database function, which is the only
-   * writer of {@code last_cutoff} and the only place deletion actually happens; this method only
-   * ever changes the configured target value, never triggers deletion itself.
+   * <p>Changes the configured target value and nothing else: deletion happens exclusively in {@code
+   * opaa_audit_delete_expired_partitions()}, the only writer of {@code last_cutoff}. A shortening
+   * therefore takes effect with the next monthly pass, not with this call.
    */
   @Transactional
   public AuditRetentionUpdateResult updateRetention(
