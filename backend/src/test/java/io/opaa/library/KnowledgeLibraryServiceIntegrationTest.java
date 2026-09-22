@@ -708,9 +708,19 @@ class KnowledgeLibraryServiceIntegrationTest {
 
     libraryService.updateLibrary(
         libraryId, libraryUpdate("Umbenannt ohne Schluessel").build(), currentUserOf(owner, false));
+    // The second change assigns the field explicitly: it carries a source configuration, and the
+    // same-origin fallback (#516) hands the unreadable null straight back into
+    // updateSourceConfiguration.
+    libraryService.updateLibrary(
+        libraryId,
+        libraryUpdate("Umbenannt ohne Schluessel")
+            .sourceUrl(URI.create("https://files.example.com/andere-ablage/"))
+            .build(),
+        currentUserOf(owner, false));
 
-    assertThat(libraryRepository.findById(libraryId).orElseThrow().getName())
-        .isEqualTo("Umbenannt ohne Schluessel");
+    KnowledgeLibrary changed = libraryRepository.findById(libraryId).orElseThrow();
+    assertThat(changed.getName()).isEqualTo("Umbenannt ohne Schluessel");
+    assertThat(changed.getSourceUrl()).contains("andere-ablage");
     // The key returns: both values are readable again, because the rename never touched them.
     assertThat(
             keyOfTheOperator.decrypt(
@@ -726,6 +736,45 @@ class KnowledgeLibraryServiceIntegrationTest {
                     String.class,
                     libraryId)))
         .isEqualTo("push-geheimnis");
+  }
+
+  @Test
+  void aHostChangeErasesTheStoredCredentialEvenWhenItCannotBeDecrypted() {
+    // #1806 review: the discard on a host change (#516) is a security invariant - without it the
+    // returning key would hand the old credential to the new host, which
+    // AutoindexCrawlerService sends preemptively. With the key missing the attribute already reads
+    // null, so the dirty check of the @DynamicUpdate entity has nothing to write; the erasure has
+    // to reach the column itself.
+    CredentialsEncryptor keyOfTheOperator = encryptorWithSeparateKey();
+    UUID owner = createUser(organizationA);
+    LibraryDetail response =
+        libraryService.createLibrary(
+            libraryCreation("Fremder Host", DocumentSourceType.HTTP_DIRECTORY)
+                .sourceUrl(URI.create("https://files.example.com/documents/"))
+                .sourceCredentials("admin:super-secret-password")
+                .build(),
+            currentUserOf(owner));
+    UUID libraryId = response.library().getId();
+    jdbcTemplate.update(
+        "UPDATE knowledge_libraries SET source_credentials = ? WHERE id = ?",
+        keyOfTheOperator.encrypt("admin:super-secret-password"),
+        libraryId);
+    assertThat(libraryRepository.findById(libraryId).orElseThrow().getSourceCredentials()).isNull();
+
+    libraryService.updateLibrary(
+        libraryId,
+        libraryUpdate("Fremder Host")
+            .sourceUrl(URI.create("https://andere.example.com/documents/"))
+            .build(),
+        currentUserOf(owner, false));
+
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT source_credentials FROM knowledge_libraries WHERE id = ?",
+                String.class,
+                libraryId))
+        .as("nothing the returning key could send to the new host")
+        .isNull();
   }
 
   /** Stands for the key the running instance does not have - never the configured one. */

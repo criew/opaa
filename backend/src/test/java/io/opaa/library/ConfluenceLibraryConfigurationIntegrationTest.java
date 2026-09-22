@@ -555,6 +555,32 @@ class ConfluenceLibraryConfigurationIntegrationTest {
   }
 
   @Test
+  void removingTheWebhookSecretErasesTheStoredValueEvenWhenItCannotBeDecrypted() {
+    // #1806 review: with the encryption key missing the secret reads as null, so the revocation
+    // used to be a silent no-op - and the supposedly revoked token authenticated again as soon as
+    // the key came back. What is stored decides, not what the entity attribute presents.
+    UUID owner = user();
+    UUID libraryId =
+        create(currentUser(owner), "Wiki", dataCenter.baseUrl(), "pat", List.of("ENG"));
+    libraryService.generateConfluenceWebhookSecret(libraryId, currentUser(owner));
+    jdbcTemplate.update(
+        "UPDATE knowledge_libraries SET source_webhook_secret = ? WHERE id = ?",
+        "enc:v1:not-decryptable-with-any-key",
+        libraryId);
+    assertThat(libraryRepository.findById(libraryId).orElseThrow().getWebhookSecret()).isNull();
+
+    libraryService.removeConfluenceWebhookSecret(libraryId, currentUser(owner));
+
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT source_webhook_secret FROM knowledge_libraries WHERE id = ?",
+                String.class,
+                libraryId))
+        .as("nothing that could authenticate once the key returns")
+        .isNull();
+  }
+
+  @Test
   void theWebhookSecretTakesManagerAndOnlyExistsForConfluence() {
     UUID owner = user();
     UUID editor = user();

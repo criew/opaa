@@ -646,6 +646,17 @@ public class KnowledgeLibraryService {
           sourceConfiguration.sourceProxy(),
           sourceConfiguration.sourceCredentials(),
           sourceConfiguration.sourceInsecureSsl());
+      // The discard a host change performs (see validateSourceConfigurationForUpdate's Javadoc) is
+      // a security invariant and must not depend on the dirty check: with the key missing the
+      // attribute already reads null, so only an erasure on the column itself removes the
+      // ciphertext the returning key would otherwise send to the new host (#1806). A change that
+      // keeps the origin is deliberately not erased - there the same null means "unreadable, leave
+      // it alone".
+      if (sourceConfiguration.sourceCredentials() == null
+          && previousSourceUrl != null
+          && !SourceOriginMatcher.sameOrigin(previousSourceUrl, sourceConfiguration.sourceUrl())) {
+        libraryRepository.eraseSourceCredentials(library.getId());
+      }
     }
     if (replacesConfluenceSpaces) {
       library.updateConfluenceSpaces(confluenceSpaces);
@@ -1905,7 +1916,11 @@ public class KnowledgeLibraryService {
   private void removePushSecret(
       UUID libraryId, CurrentUser caller, DocumentSourceType expectedType) {
     KnowledgeLibrary library = requireLibraryWithPushIntake(libraryId, caller, expectedType);
-    if (library.getWebhookSecret() == null) {
+    // Whether there is a secret to revoke is decided by the stored ciphertext, not by the entity
+    // attribute: with the key missing the attribute reads null for a secret that still
+    // authenticates once the key returns (#1806). The erasure carries the revocation; the entity
+    // assignment below only keeps the loaded instance consistent with it.
+    if (libraryRepository.eraseWebhookSecret(libraryId) == 0) {
       return;
     }
     library.setWebhookSecret(null);
