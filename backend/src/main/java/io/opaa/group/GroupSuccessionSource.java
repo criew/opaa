@@ -7,12 +7,14 @@ import io.opaa.auth.AccountActivityService;
 import io.opaa.permission.SuccessionFinding;
 import io.opaa.permission.SuccessionFindingSource;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.springframework.stereotype.Component;
 
 /**
@@ -61,30 +63,55 @@ class GroupSuccessionSource implements SuccessionFindingSource {
    */
   @Override
   public List<SuccessionFinding> findingsOf(UUID organizationId) {
-    List<Group> candidates =
-        groups.findByOrganizationId(organizationId).stream()
-            .filter(GroupSuccessionSource::needsSomebodyResponsible)
-            .toList();
-    if (candidates.isEmpty()) {
+    return openAmong(groups.findByOrganizationId(organizationId));
+  }
+
+  @Override
+  public Optional<SuccessionFinding> findingFor(UUID groupId) {
+    return groups
+        .findById(groupId)
+        .map(group -> openAmong(List.of(group)))
+        .orElse(List.of())
+        .stream()
+        .findFirst();
+  }
+
+  /**
+   * The one derivation both entry points read: who may act for a group follows its <b>origin</b> -
+   * an internal group's stewards, a provider group's contact points - and a steward of a provider
+   * group (which only the stock of #1814 has) can no longer touch its mark, so counting them would
+   * hide exactly the frozen group this list exists for.
+   */
+  private List<SuccessionFinding> openAmong(Collection<Group> candidates) {
+    List<Group> relevant =
+        candidates.stream().filter(GroupSuccessionSource::needsSomebodyResponsible).toList();
+    if (relevant.isEmpty()) {
       return List.of();
     }
-    List<UUID> groupIds = candidates.stream().map(Group::getId).toList();
-    Map<UUID, List<UUID>> responsibleByGroup = new HashMap<>();
+    List<UUID> groupIds = relevant.stream().map(Group::getId).toList();
+    Map<UUID, List<UUID>> stewardsByGroup = new HashMap<>();
     for (GroupSteward steward : stewards.findByGroupIdIn(groupIds)) {
-      responsibleByGroup
+      stewardsByGroup
           .computeIfAbsent(steward.getGroupId(), key -> new ArrayList<>())
           .add(steward.getUserId());
     }
+    Map<UUID, List<UUID>> contactsByGroup = new HashMap<>();
     for (GroupContact contact : contacts.findByGroupIdIn(groupIds)) {
-      responsibleByGroup
+      contactsByGroup
           .computeIfAbsent(contact.getGroupId(), key -> new ArrayList<>())
           .add(contact.getUserId());
     }
     Set<UUID> active =
         accountActivity.activeAmong(
-            responsibleByGroup.values().stream().flatMap(List::stream).distinct().toList());
+            Stream.concat(
+                    stewardsByGroup.values().stream().flatMap(List::stream),
+                    contactsByGroup.values().stream().flatMap(List::stream))
+                .distinct()
+                .toList());
     List<SuccessionFinding> findings = new ArrayList<>();
-    for (Group group : candidates) {
+    for (Group group : relevant) {
+      Map<UUID, List<UUID>> responsibleByGroup =
+          group.isInternal() ? stewardsByGroup : contactsByGroup;
       boolean somebodyCanAct =
           responsibleByGroup.getOrDefault(group.getId(), List.of()).stream()
               .anyMatch(active::contains);
@@ -95,15 +122,6 @@ class GroupSuccessionSource implements SuccessionFindingSource {
     return findings;
   }
 
-  @Override
-  public Optional<SuccessionFinding> findingFor(UUID groupId) {
-    return groups
-        .findById(groupId)
-        .filter(GroupSuccessionSource::needsSomebodyResponsible)
-        .filter(group -> !hasSomebodyWhoCanAct(group))
-        .map(GroupSuccessionSource::findingOf);
-  }
-
   /**
    * Whether the group has a body of its own to lose: an internal group always does (its stewards
    * maintain it), a provider group only while it is protected - there the contact points decide
@@ -111,18 +129,6 @@ class GroupSuccessionSource implements SuccessionFindingSource {
    */
   private static boolean needsSomebodyResponsible(Group group) {
     return group.isInternal() || group.isProtectedGroup();
-  }
-
-  private boolean hasSomebodyWhoCanAct(Group group) {
-    List<UUID> responsible =
-        group.isInternal()
-            ? stewards.findByGroupIdOrderByCreatedAtAsc(group.getId()).stream()
-                .map(GroupSteward::getUserId)
-                .toList()
-            : contacts.findByGroupIdOrderByCreatedAtAsc(group.getId()).stream()
-                .map(GroupContact::getUserId)
-                .toList();
-    return !accountActivity.activeAmong(responsible).isEmpty();
   }
 
   /** A protected group is named by its protection alone (ADR-0036, Entscheidung 9). */

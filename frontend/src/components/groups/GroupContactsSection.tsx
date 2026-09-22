@@ -1,12 +1,13 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import Alert from '@mui/material/Alert'
+import Autocomplete from '@mui/material/Autocomplete'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
+import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import SectionHead from '../SectionHead'
-import UserPicker from './UserPicker'
-import type { GroupContactResponse, GroupMemberResponse, UserSummary } from '../../types/api'
+import type { GroupContactResponse, GroupMemberResponse } from '../../types/api'
 import { confirmAction } from '../../stores/confirmStore'
 import { useGroupStore } from '../../stores/groupStore'
 
@@ -33,14 +34,24 @@ export default function GroupContactsSection({
   const appointContact = useGroupStore((s) => s.appointContact)
   const dismissContact = useGroupStore((s) => s.dismissContact)
 
-  const [selected, setSelected] = useState<UserSummary | null>(null)
+  const [selected, setSelected] = useState<GroupMemberResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  // Benennbar ist nur ein Mitglied dieser Gruppe - die Auswahl bietet deshalb genau die
+  // Mitglieder an, nicht die Kontensuche der Organisation (#1875).
+  const candidates = useMemo(
+    () =>
+      (members ?? []).filter(
+        (member) => !contacts.some((contact) => contact.userId === member.userId),
+      ),
+    [members, contacts],
+  )
 
   async function handleAppoint() {
     if (!selected) return
     setError(null)
     try {
-      await appointContact(groupId, selected.id)
+      await appointContact(groupId, selected.userId)
       setSelected(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Die Person konnte nicht benannt werden')
@@ -102,27 +113,43 @@ export default function GroupContactsSection({
             </Button>
           </Box>
         ))}
-        <Stack direction={{ xs: 'column', md: 'row' }} spacing={1} sx={{ pt: 1 }}>
-          <UserPicker
-            ariaLabel="Ansprechstelle"
-            placeholder="Mitglied suchen …"
-            value={selected}
-            onChange={setSelected}
-            excludedUserIds={contacts.map((contact) => contact.userId)}
-          />
-          <Button
-            variant="outlined"
-            size="small"
-            disabled={!selected}
-            onClick={() => void handleAppoint()}
-          >
-            Als Ansprechstelle benennen
-          </Button>
-        </Stack>
-        {members !== undefined && members.length === 0 && (
-          <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+        {members === undefined ? (
+          <Typography sx={{ fontSize: 13, color: 'text.secondary', pt: 1 }}>
+            Benennbar ist nur ein Mitglied dieser Gruppe. Rufen Sie unten die Mitgliederliste ab, um
+            eine Ansprechstelle zu benennen — der Abruf ist ein Audit-Ereignis.
+          </Typography>
+        ) : members.length === 0 ? (
+          <Typography sx={{ fontSize: 13, color: 'text.secondary', pt: 1 }}>
             Diese Gruppe hat kein Mitglied, das benannt werden könnte.
           </Typography>
+        ) : (
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={1} sx={{ pt: 1 }}>
+            <Autocomplete
+              sx={{ minWidth: 260 }}
+              options={candidates}
+              value={selected}
+              onChange={(_event, next) => setSelected(next)}
+              getOptionLabel={(member) => member.displayName ?? member.userId}
+              isOptionEqualToValue={(option, current) => option.userId === current.userId}
+              noOptionsText="Alle Mitglieder sind bereits Ansprechstelle"
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  size="small"
+                  label="Ansprechstelle"
+                  placeholder="Mitglied wählen …"
+                />
+              )}
+            />
+            <Button
+              variant="outlined"
+              size="small"
+              disabled={!selected}
+              onClick={() => void handleAppoint()}
+            >
+              Als Ansprechstelle benennen
+            </Button>
+          </Stack>
         )}
       </Stack>
     </Box>

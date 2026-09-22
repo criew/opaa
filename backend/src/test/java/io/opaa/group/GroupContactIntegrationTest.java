@@ -3,12 +3,16 @@ package io.opaa.group;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import io.opaa.api.types.GroupKind;
 import io.opaa.api.types.SuccessionKind;
 import io.opaa.api.types.SuccessionObjectType;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
+import io.opaa.auth.DevAuthFilter;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.auth.oidc.OidcProviderRepository;
@@ -30,7 +34,10 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 /**
  * The contact points of provider groups against the real schema (#1875, ADR-0036 Entscheidung 9):
@@ -44,12 +51,14 @@ class GroupContactIntegrationTest {
   @Autowired private GroupService groupService;
   @Autowired private GroupRepository groupRepository;
   @Autowired private GroupContactRepository contactRepository;
+  @Autowired private GroupStewardRepository stewardRepository;
   @Autowired private GroupSuccessionSource successionSource;
   @Autowired private GroupMembershipResolver membershipResolver;
   @Autowired private UserRepository userRepository;
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private OidcProviderRepository providerRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private MockMvc mockMvc;
 
   private UUID organizationId;
   private UUID providerId;
@@ -68,6 +77,7 @@ class GroupContactIntegrationTest {
   @AfterEach
   void tearDown() {
     jdbcTemplate.update("DELETE FROM group_contacts WHERE organization_id = ?", organizationId);
+    jdbcTemplate.update("DELETE FROM group_stewards WHERE organization_id = ?", organizationId);
     jdbcTemplate.update(
         "DELETE FROM group_membership_history WHERE organization_id = ?", organizationId);
     groupRepository.deleteAll(
@@ -96,7 +106,7 @@ class GroupContactIntegrationTest {
 
     assertThat(appointed.contact().getUserId()).isEqualTo(member);
     assertThat(appointed.contact().getAppointedByUserId()).isEqualTo(admin.id());
-    assertThat(contactService.listContacts(group.getId(), admin))
+    assertThat(contactService.contactsOf(group.getId()))
         .extracting(view -> view.contact().getUserId())
         .containsExactly(member);
     assertThat(auditEvents("GROUP_CONTACT_APPOINTED")).isEqualTo(1);
@@ -148,6 +158,35 @@ class GroupContactIntegrationTest {
     assertThat(auditEvents("GROUP_CONTACT_DISMISSED")).isEqualTo(1);
     assertThatThrownBy(() -> contactService.dismissContact(group.getId(), member, admin))
         .isInstanceOf(NotFoundException.class);
+  }
+
+  /**
+   * Naming is an administrative act, so the two paths carry the role barrier at the door - and the
+   * administration gets past it into the service's own answer, not merely past a {@code 403}.
+   */
+  @Test
+  void theTwoAdminPathsAreClosedToEverybodyButTheAdministration() throws Exception {
+    String unknownGroup = UUID.randomUUID().toString();
+    String body = "{\"userId\":\"" + UUID.randomUUID() + "\"}";
+
+    mockMvc
+        .perform(
+            post("/api/v1/admin/groups/" + unknownGroup + "/contacts")
+                .with(devUser())
+                .content(body))
+        .andExpect(status().isForbidden());
+    mockMvc
+        .perform(
+            delete("/api/v1/admin/groups/" + unknownGroup + "/contacts/" + UUID.randomUUID())
+                .with(devUser()))
+        .andExpect(status().isForbidden());
+
+    mockMvc
+        .perform(
+            post("/api/v1/admin/groups/" + unknownGroup + "/contacts")
+                .with(devAdmin())
+                .content(body))
+        .andExpect(status().isNotFound());
   }
 
   // -------------------------------------------------------------------------------------------
@@ -284,6 +323,31 @@ class GroupContactIntegrationTest {
         .contains(group.getId());
   }
 
+  /**
+   * Who may act follows the origin, at <b>both</b> entry points of the source: a steward of a
+   * provider group - which only the stock of #1814 has - can no longer touch its mark, so their
+   * being active must not hide the frozen group from the list.
+   */
+  @Test
+  void anActiveStewardOfAProviderGroupHidesNothingFromTheList() {
+    UUID contactId = account(SystemRole.USER);
+    UUID stewardId = account(SystemRole.USER);
+    Group group = providerGroupWith(contactId);
+    stewardRepository.save(new GroupSteward(group.getId(), stewardId, organizationId, admin.id()));
+    contactService.appointContact(group.getId(), contactId, admin);
+    groupService.setProtection(group.getId(), true, currentUserOf(contactId));
+
+    jdbcTemplate.update("UPDATE users SET directory_locked_at = now() WHERE id = ?", contactId);
+
+    assertThat(successionSource.findingFor(group.getId()))
+        .as("the single derivation already counted the contact points alone")
+        .isPresent();
+    assertThat(successionSource.findingsOf(organizationId))
+        .as("and the list path must agree - the steward cannot lift this mark")
+        .extracting(SuccessionFinding::objectId)
+        .contains(group.getId());
+  }
+
   /** An unprotected provider group needs no contact point and is no entry of that list. */
   @Test
   void anUnprotectedProviderGroupWithoutAContactPointIsNoEntry() {
@@ -314,6 +378,21 @@ class GroupContactIntegrationTest {
     Group saved = groupRepository.save(group);
     membershipResolver.invalidateUser(memberId);
     return saved;
+  }
+
+  private RequestPostProcessor devUser() {
+    return request -> {
+      request.addHeader(DevAuthFilter.DEV_USER_HEADER, "dev-user");
+      request.setContentType(MediaType.APPLICATION_JSON_VALUE);
+      return request;
+    };
+  }
+
+  private RequestPostProcessor devAdmin() {
+    return request -> {
+      request.setContentType(MediaType.APPLICATION_JSON_VALUE);
+      return request;
+    };
   }
 
   private long auditEvents(String type) {

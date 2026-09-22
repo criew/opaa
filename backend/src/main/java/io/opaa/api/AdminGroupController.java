@@ -7,7 +7,6 @@ import io.opaa.api.dto.GroupListResponse;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import io.opaa.group.GroupContactService;
-import io.opaa.group.GroupContactView;
 import io.opaa.group.GroupEffectsService;
 import io.opaa.group.GroupEffectsView;
 import io.opaa.group.GroupOverview;
@@ -79,14 +78,6 @@ public class AdminGroupController {
    * - while the act they entitle to, the protection mark, lives in {@link GroupController} and is
    * closed to the administration itself.
    */
-  @PreAuthorize("hasRole('SYSTEM_ADMIN')")
-  @GetMapping("/{groupId}/contacts")
-  public List<GroupContactResponse> listGroupContacts(
-      @PathVariable UUID groupId, @Caller CurrentUser caller) {
-    List<GroupContactView> contacts = groupContactService.listContacts(groupId, caller);
-    return GroupResponseMapper.toContactResponses(contacts);
-  }
-
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @PostMapping("/{groupId}/contacts")
   public ResponseEntity<GroupContactResponse> appointGroupContact(

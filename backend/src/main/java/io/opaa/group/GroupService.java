@@ -102,7 +102,7 @@ public class GroupService {
 
   private final GroupRepository groupRepository;
   private final GroupStewardRepository stewardRepository;
-  private final GroupContactRepository contactRepository;
+  private final GroupContactService contactService;
   private final UserRepository userRepository;
   private final OidcProviderRepository providerRepository;
   private final DirectorySyncStatusRepository directorySyncStatusRepository;
@@ -120,7 +120,7 @@ public class GroupService {
   public GroupService(
       GroupRepository groupRepository,
       GroupStewardRepository stewardRepository,
-      GroupContactRepository contactRepository,
+      GroupContactService contactService,
       UserRepository userRepository,
       OidcProviderRepository providerRepository,
       DirectorySyncStatusRepository directorySyncStatusRepository,
@@ -136,7 +136,7 @@ public class GroupService {
       AuditEventRecorder auditEventRecorder) {
     this.groupRepository = groupRepository;
     this.stewardRepository = stewardRepository;
-    this.contactRepository = contactRepository;
+    this.contactService = contactService;
     this.userRepository = userRepository;
     this.providerRepository = providerRepository;
     this.directorySyncStatusRepository = directorySyncStatusRepository;
@@ -371,16 +371,16 @@ public class GroupService {
   }
 
   /**
-   * The people a grant giver may ask about a protected group - never its members. Resolved only for
-   * a protected group, which is reached by its complete name alone and is therefore no per-row cost
-   * of the search.
+   * The people a grant giver may ask about a protected group - never its members. Only a protected
+   * group pays for it, and only by its own query: the substring search never returns one, so a
+   * result page carries at most the handful the caller named by their complete designation.
    */
   private List<String> responsibleNamesOf(Group group) {
     List<UUID> userIds =
         group.isInternal()
             ? stewardsOf(group.getId()).stream().map(GroupSteward::getUserId).toList()
-            : contactRepository.findByGroupIdOrderByCreatedAtAsc(group.getId()).stream()
-                .map(GroupContact::getUserId)
+            : contactService.contactsOf(group.getId()).stream()
+                .map(view -> view.contact().getUserId())
                 .toList();
     Map<UUID, String> displayNames = resolveDisplayNames(userIds);
     return userIds.stream().map(displayNames::get).filter(Objects::nonNull).toList();
@@ -405,7 +405,7 @@ public class GroupService {
               provider -> byId.put(provider.getId(), toProviderView(provider, organizationId)));
     }
     Map<UUID, List<GroupStewardView>> stewardsByGroup = stewardsOf(groups);
-    Map<UUID, List<GroupContactView>> contactsByGroup = contactsOf(groups);
+    Map<UUID, List<GroupContactView>> contactsByGroup = contactService.contactsOf(groups);
     return groups.stream()
         .map(
             group ->
@@ -474,7 +474,7 @@ public class GroupService {
   public GroupDetail getGroup(UUID groupId, CurrentUser caller) {
     if (!caller.isSystemAdmin()
         && !stewardRepository.existsByGroupIdAndUserId(groupId, caller.id())
-        && contactRepository.existsByGroupIdAndUserId(groupId, caller.id())) {
+        && contactService.isContact(groupId, caller.id())) {
       return toGroupDetail(loadGroup(groupId, caller));
     }
     return toGroupDetail(requireMaintainable(groupId, caller));
@@ -482,7 +482,7 @@ public class GroupService {
 
   /** The provider groups the caller is the contact point of - their half of "Meine Gruppen". */
   public List<GroupOverview> listContactedGroups(CurrentUser caller) {
-    Set<UUID> groupIds = contactRepository.findGroupIdsByUserId(caller.id());
+    Set<UUID> groupIds = contactService.contactedGroupIds(caller.id());
     if (groupIds.isEmpty()) {
       return List.of();
     }
@@ -589,7 +589,7 @@ public class GroupService {
    */
   @Transactional
   public GroupDetail setProtection(UUID groupId, boolean protectedGroup, CurrentUser caller) {
-    Group group = group(groupId, caller, protectedGroup);
+    Group group = requireProtectionAuthority(groupId, caller);
     if (group.isProtectedGroup() != protectedGroup) {
       group.markProtected(protectedGroup);
       groupRepository.save(group);
@@ -604,7 +604,7 @@ public class GroupService {
    * know the group exists - a system administrator always does - and the answer of an unknown group
    * otherwise, so the existence of a protected group stays a secret from everybody else.
    */
-  private Group group(UUID groupId, CurrentUser caller, boolean protectedGroup) {
+  private Group requireProtectionAuthority(UUID groupId, CurrentUser caller) {
     Group group = loadGroup(groupId, caller);
     if (group.isInternal()) {
       if (!caller.isSystemAdmin()
@@ -617,7 +617,7 @@ public class GroupService {
           "Das Schutzkennzeichen setzen und lösen die Verantwortlichen dieser Gruppe selbst.");
       return group;
     }
-    if (contactRepository.existsByGroupIdAndUserId(groupId, caller.id())) {
+    if (contactService.isContact(groupId, caller.id())) {
       return group;
     }
     // Whoever may already read the group is told why, not sent away: an administrator, a member,
@@ -1018,28 +1018,6 @@ public class GroupService {
     return stewardRepository.findByGroupIdOrderByCreatedAtAsc(groupId);
   }
 
-  /**
-   * The contact points of a whole list in one read of {@code group_contacts} - the counterpart of
-   * {@link #stewardsOf(List)} for provider groups (#1875).
-   */
-  private Map<UUID, List<GroupContactView>> contactsOf(List<Group> groups) {
-    List<GroupContact> contacts =
-        contactRepository.findByGroupIdIn(groups.stream().map(Group::getId).toList());
-    Map<UUID, List<GroupContactView>> byGroup = new HashMap<>();
-    for (GroupContactView view : toContactViews(contacts)) {
-      byGroup.computeIfAbsent(view.contact().getGroupId(), key -> new ArrayList<>()).add(view);
-    }
-    return byGroup;
-  }
-
-  private List<GroupContactView> toContactViews(List<GroupContact> contacts) {
-    Map<UUID, String> displayNames =
-        resolveDisplayNames(contacts.stream().map(GroupContact::getUserId).toList());
-    return contacts.stream()
-        .map(contact -> new GroupContactView(contact, displayNames.get(contact.getUserId())))
-        .toList();
-  }
-
   private List<GroupStewardView> toStewardViews(List<GroupSteward> stewards) {
     Map<UUID, String> displayNames =
         resolveDisplayNames(stewards.stream().map(GroupSteward::getUserId).toList());
@@ -1098,7 +1076,7 @@ public class GroupService {
         group,
         toGroupMemberViews(group),
         toStewardViews(stewardsOf(group.getId())),
-        toContactViews(contactRepository.findByGroupIdOrderByCreatedAtAsc(group.getId())),
+        contactService.contactsOf(group.getId()),
         providerOf(group));
   }
 }

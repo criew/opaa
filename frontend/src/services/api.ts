@@ -973,17 +973,6 @@ export async function getMyContactedGroups(): Promise<GroupListResponse[]> {
   }
 }
 
-export async function getGroupContacts(groupId: string): Promise<GroupContactResponse[]> {
-  try {
-    const { data } = await client.get<GroupContactResponse[]>(
-      `/v1/admin/groups/${groupId}/contacts`,
-    )
-    return data
-  } catch (err) {
-    normalizeError(err)
-  }
-}
-
 export async function appointGroupContact(
   groupId: string,
   userId: string,

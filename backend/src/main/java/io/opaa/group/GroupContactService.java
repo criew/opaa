@@ -6,7 +6,6 @@ import io.opaa.api.types.AuditOutcome;
 import io.opaa.api.types.AuditSubjectKind;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
-import io.opaa.auth.AccountActivityService;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
@@ -58,26 +57,17 @@ public class GroupContactService implements GroupMembershipChangeListener {
   private final GroupContactRepository contacts;
   private final GroupRepository groups;
   private final UserRepository users;
-  private final AccountActivityService accountActivity;
   private final AuditEventRecorder auditEventRecorder;
 
   public GroupContactService(
       GroupContactRepository contacts,
       GroupRepository groups,
       UserRepository users,
-      AccountActivityService accountActivity,
       AuditEventRecorder auditEventRecorder) {
     this.contacts = contacts;
     this.groups = groups;
     this.users = users;
-    this.accountActivity = accountActivity;
     this.auditEventRecorder = auditEventRecorder;
-  }
-
-  /** The contact points of one group, for the administration and for a contact point themselves. */
-  public List<GroupContactView> listContacts(UUID groupId, CurrentUser caller) {
-    Group group = loadGroup(groupId, caller);
-    return toViews(contacts.findByGroupIdOrderByCreatedAtAsc(group.getId()));
   }
 
   /**
@@ -126,17 +116,9 @@ public class GroupContactService implements GroupMembershipChangeListener {
   }
 
   /**
-   * The contact points that can actually act - the appointment plus a usable account. The question
-   * the operational list of #1819 asks about a protected provider group.
+   * The contact points of a whole list of groups in one read - the one resolution of a contact
+   * point's display name, which {@code GroupService} reads for both group responses.
    */
-  public Set<UUID> activeContactUserIds(UUID groupId) {
-    return accountActivity.activeAmong(
-        contacts.findByGroupIdOrderByCreatedAtAsc(groupId).stream()
-            .map(GroupContact::getUserId)
-            .toList());
-  }
-
-  /** The contact points of a whole list of groups in one read, for the list responses. */
   public Map<UUID, List<GroupContactView>> contactsOf(Collection<Group> candidates) {
     if (candidates.isEmpty()) {
       return Map.of();
@@ -148,6 +130,11 @@ public class GroupContactService implements GroupMembershipChangeListener {
       byGroup.computeIfAbsent(view.contact().getGroupId(), key -> new ArrayList<>()).add(view);
     }
     return byGroup;
+  }
+
+  /** The contact points of one group, in the order they were named. */
+  public List<GroupContactView> contactsOf(UUID groupId) {
+    return toViews(contacts.findByGroupIdOrderByCreatedAtAsc(groupId));
   }
 
   /** The groups the caller is the contact point of - the counterpart of "meine Gruppen". */
