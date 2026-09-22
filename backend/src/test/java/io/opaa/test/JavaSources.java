@@ -137,7 +137,7 @@ public final class JavaSources {
     }
     StringBuilder text = new StringBuilder(first.strip());
     int last = index;
-    while (mayContinueOntoTheNextLine(first, text, lines, last)) {
+    while (mayContinueOntoTheNextLine(text, lines, last)) {
       last++;
       text.append(' ').append(lines.get(last).strip());
     }
@@ -147,16 +147,18 @@ public final class JavaSources {
 
   /**
    * A return type long enough to wrap leaves the member's name on the continuation indentation, so
-   * the first line carries no parenthesis yet. Only such a line is joined: a line already carrying
-   * one is complete, and an assignment belongs to a field whose initialiser may well open a
-   * parenthesis of its own.
+   * the first line carries no parenthesis yet. Only such a line is joined, and every stop condition
+   * weighs what has been accumulated so far rather than the first line alone: an assignment belongs
+   * to a field whose initialiser may well open a parenthesis of its own, and a field wrapped before
+   * its own {@code =} would otherwise be joined on into a member that is none.
    */
   private static boolean mayContinueOntoTheNextLine(
-      String first, StringBuilder text, List<String> lines, int last) {
-    return text.indexOf("(") < 0
-        && !first.endsWith("{")
-        && !first.endsWith(";")
-        && !first.contains("=")
+      StringBuilder text, List<String> lines, int last) {
+    String accumulated = text.toString();
+    return !accumulated.contains("(")
+        && !accumulated.endsWith("{")
+        && !accumulated.endsWith(";")
+        && !accumulated.contains("=")
         && last + 1 < lines.size()
         && lines.get(last + 1).startsWith("    ");
   }

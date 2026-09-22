@@ -10,6 +10,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
@@ -196,33 +197,12 @@ class GlobalExceptionHandlerBodyFunnelTest {
                         "@org.springframework.web.bind.annotation.ExceptionHandler"));
   }
 
-  /** Each {@code @ExceptionHandler} as one string, the lines google-java-format wrapped joined. */
+  /** Each branch's {@code @ExceptionHandler}, reassembled by the shared parser. */
   private List<String> exceptionHandlerAnnotations() throws IOException {
-    List<String> lines = Files.readAllLines(SOURCE);
-    List<String> annotations = new ArrayList<>();
-
-    for (int index = 0; index < lines.size(); index++) {
-      if (!lines.get(index).startsWith("  @ExceptionHandler")) {
-        continue;
-      }
-      StringBuilder annotation = new StringBuilder();
-      int depth = 0;
-      for (int cursor = index; cursor < lines.size(); cursor++) {
-        String line = lines.get(cursor);
-        annotation.append(line.strip());
-        depth += occurrences(line, '(') - occurrences(line, ')');
-        index = cursor;
-        if (depth == 0) {
-          break;
-        }
-      }
-      annotations.add(annotation.toString());
-    }
-    return annotations;
-  }
-
-  private long occurrences(String line, char character) {
-    return line.chars().filter(candidate -> candidate == character).count();
+    return JavaSources.parseMembers(SOURCE).stream()
+        .map(member -> member.annotationOfAnyOf(List.of("ExceptionHandler")))
+        .filter(Objects::nonNull)
+        .toList();
   }
 
   private boolean declaresControllerAdvice(String source) {

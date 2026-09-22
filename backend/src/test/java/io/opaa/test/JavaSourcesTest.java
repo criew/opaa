@@ -128,6 +128,31 @@ class JavaSourcesTest {
     assertThat(members).extracting(Member::name).containsExactly("handle");
   }
 
+  /**
+   * A field whose type wraps carries its {@code =} on the continuation line, so the first line
+   * looks exactly like the wrapped signature above. Weighing the stop conditions against what has
+   * been accumulated rather than against the first line keeps the initialiser's parenthesis from
+   * turning the field into a member.
+   */
+  @Test
+  void aFieldWrappedBeforeItsAssignmentIsNoMember() {
+    List<Member> members =
+        parse(
+            "class Example {",
+            "",
+            "  private static final Map<RetrievalStageName, StageExplanation>",
+            "      EMPTY =",
+            "          Map.of(",
+            "              RetrievalStageName.RERANK, StageExplanation.disabled());",
+            "",
+            "  void handle() {",
+            "    return;",
+            "  }",
+            "}");
+
+    assertThat(members).extracting(Member::name).containsExactly("handle");
+  }
+
   /** A comment naming a guarded call must not count as one. */
   @Test
   void commentLinesAreNoCode() {
