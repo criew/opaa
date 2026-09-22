@@ -41,6 +41,8 @@ import io.opaa.permission.AssetGrantRepository;
 import io.opaa.permission.AssetOwnershipHistoryRepository;
 import io.opaa.permission.GroupMembershipHistoryRepository;
 import io.opaa.permission.GroupMembershipResolver;
+import io.opaa.security.CredentialsEncryptionProperties;
+import io.opaa.security.CredentialsEncryptor;
 import io.opaa.space.SpaceCreation;
 import io.opaa.space.SpaceMembershipHistoryRepository;
 import io.opaa.space.SpaceRepository;
@@ -50,6 +52,7 @@ import jakarta.persistence.EntityManagerFactory;
 import java.net.URI;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -673,6 +676,66 @@ class KnowledgeLibraryServiceIntegrationTest {
     KnowledgeLibrary repaired =
         libraryRepository.findById(response.library().getId()).orElseThrow();
     assertThat(repaired.getSourceCredentials()).isEqualTo("admin:repaired-password");
+  }
+
+  @Test
+  void aChangeToALibraryWhoseSecretsCannotBeDecryptedLeavesTheStoredCiphertextUntouched() {
+    // Regression guard for #1806: while the key is missing both encrypted fields read as null (the
+    // soft read failure of the test above), so an UPDATE covering every column would write that
+    // null over a ciphertext the returning key can still decrypt - KnowledgeLibrary therefore
+    // carries @DynamicUpdate.
+    CredentialsEncryptor keyOfTheOperator = encryptorWithSeparateKey();
+    UUID owner = createUser(organizationA);
+    LibraryDetail response =
+        libraryService.createLibrary(
+            libraryCreation("Verlorener Schluessel", DocumentSourceType.HTTP_DIRECTORY)
+                .sourceUrl(URI.create("https://files.example.com/documents/"))
+                .sourceCredentials("admin:super-secret-password")
+                .build(),
+            currentUserOf(owner));
+    UUID libraryId = response.library().getId();
+    // Both columns as a key this instance does not hold wrote them, set directly: neither the API
+    // nor the entity takes a ciphertext, and the push secret has no write path on HTTP_DIRECTORY.
+    jdbcTemplate.update(
+        "UPDATE knowledge_libraries SET source_credentials = ?, source_webhook_secret = ?"
+            + " WHERE id = ?",
+        keyOfTheOperator.encrypt("admin:super-secret-password"),
+        keyOfTheOperator.encrypt("push-geheimnis"),
+        libraryId);
+    KnowledgeLibrary withoutKey = libraryRepository.findById(libraryId).orElseThrow();
+    assertThat(withoutKey.getSourceCredentials()).isNull();
+    assertThat(withoutKey.getWebhookSecret()).isNull();
+
+    libraryService.updateLibrary(
+        libraryId, libraryUpdate("Umbenannt ohne Schluessel").build(), currentUserOf(owner, false));
+
+    assertThat(libraryRepository.findById(libraryId).orElseThrow().getName())
+        .isEqualTo("Umbenannt ohne Schluessel");
+    // The key returns: both values are readable again, because the rename never touched them.
+    assertThat(
+            keyOfTheOperator.decrypt(
+                jdbcTemplate.queryForObject(
+                    "SELECT source_credentials FROM knowledge_libraries WHERE id = ?",
+                    String.class,
+                    libraryId)))
+        .isEqualTo("admin:super-secret-password");
+    assertThat(
+            keyOfTheOperator.decrypt(
+                jdbcTemplate.queryForObject(
+                    "SELECT source_webhook_secret FROM knowledge_libraries WHERE id = ?",
+                    String.class,
+                    libraryId)))
+        .isEqualTo("push-geheimnis");
+  }
+
+  /** Stands for the key the running instance does not have - never the configured one. */
+  private static CredentialsEncryptor encryptorWithSeparateKey() {
+    byte[] key = new byte[32];
+    for (int i = 0; i < key.length; i++) {
+      key[i] = (byte) (7 * i + 3);
+    }
+    return new CredentialsEncryptor(
+        new CredentialsEncryptionProperties(Base64.getEncoder().encodeToString(key)));
   }
 
   @Test

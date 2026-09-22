@@ -3,11 +3,17 @@ package io.opaa.library;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import io.opaa.security.CredentialsEncryptionKeyMissingException;
 import io.opaa.security.CredentialsEncryptionProperties;
 import io.opaa.security.CredentialsEncryptor;
 import java.util.Base64;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 
 /**
  * Unit tests for {@link SourceCredentialsConverter} (PR #504 review, finding 1) - no Spring
@@ -16,6 +22,20 @@ import org.junit.jupiter.api.Test;
  * KnowledgeLibraryServiceIntegrationTest} cover that).
  */
 class SourceCredentialsConverterTest {
+
+  private ListAppender<ILoggingEvent> logs;
+
+  @BeforeEach
+  void captureLogs() {
+    logs = new ListAppender<>();
+    logs.start();
+    ((Logger) LoggerFactory.getLogger(SourceCredentialsConverter.class)).addAppender(logs);
+  }
+
+  @AfterEach
+  void releaseLogs() {
+    ((Logger) LoggerFactory.getLogger(SourceCredentialsConverter.class)).detachAppender(logs);
+  }
 
   private static String validBase64Key() {
     byte[] key = new byte[32];
@@ -80,6 +100,28 @@ class SourceCredentialsConverterTest {
 
     assertThat(converter.convertToEntityAttribute("admin:legacy-plaintext-secret"))
         .isEqualTo("admin:legacy-plaintext-secret");
+  }
+
+  @Test
+  void readingWithoutAConfiguredKeyIsNotSilentAndTheWarningCarriesNoSecret() {
+    // #1806: the soft read failure is the one moment an operator can notice that a key is missing -
+    // it warns, and the warning never carries the stored or decrypted value.
+    SourceCredentialsConverter writer = converterWithKey(validBase64Key());
+    String encrypted = writer.convertToDatabaseColumn("admin:super-secret-password");
+    logs.list.clear();
+
+    assertThat(converterWithKey(null).convertToEntityAttribute(encrypted)).isNull();
+
+    assertThat(logs.list)
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.getLevel().levelStr).isEqualTo("WARN");
+              assertThat(event.getFormattedMessage())
+                  .contains("OPAA_CREDENTIALS_ENCRYPTION_KEY")
+                  .doesNotContain("admin:super-secret-password")
+                  .doesNotContain(encrypted);
+            });
   }
 
   @Test

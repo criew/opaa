@@ -30,6 +30,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import org.hibernate.annotations.DynamicUpdate;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
@@ -55,8 +56,15 @@ import org.hibernate.type.SqlTypes;
  * source, replacing the per-request configuration {@code IndexingTriggerRequest} used to carry
  * (ADR-0017, Entscheidung 4, now superseded). See {@link #sourceType}'s own Javadoc for which
  * columns each type carries.
+ *
+ * <p><b>{@code @DynamicUpdate} is part of the contract, not a tuning knob</b> (#1806): {@link
+ * #sourceCredentials} and {@link #webhookSecret} read as {@code null} while their key is missing
+ * (see {@link SourceCredentialsConverter}), so an UPDATE covering every column would write that
+ * {@code null} over a ciphertext the returning key could still decrypt. Only columns whose value
+ * actually changed are written, which leaves both untouched for any change that does not set them.
  */
 @Entity
+@DynamicUpdate
 @Table(name = "knowledge_libraries")
 public class KnowledgeLibrary {
 

@@ -36,6 +36,10 @@ import org.slf4j.LoggerFactory;
  * warning with no library id - the converter is not given the owning entity's identity - and,
  * deliberately, no part of the stored or decrypted value). {@link #convertToDatabaseColumn} keeps
  * failing hard: silently dropping credentials on write would be far worse than a clear {@code 503}.
+ *
+ * <p>That the field reads as absent must not make it absent: {@code KnowledgeLibrary} carries
+ * {@code @DynamicUpdate} (#1806) so an unrelated change to the library writes only the columns it
+ * changed, leaving the stored ciphertext readable again once the key returns.
  */
 @Converter(autoApply = false)
 public class SourceCredentialsConverter implements AttributeConverter<String, String> {
@@ -60,7 +64,8 @@ public class SourceCredentialsConverter implements AttributeConverter<String, St
     } catch (CredentialsEncryptionKeyMissingException e) {
       log.warn(
           "Zugangsdaten einer Wissensbibliothek konnten beim Lesen nicht entschluesselt werden -"
-              + " Feld wird als nicht gesetzt behandelt. Ursache: {}",
+              + " Feld wird als nicht gesetzt behandelt, der gespeicherte Geheimtext bleibt"
+              + " erhalten. Ursache: {}",
           e.getMessage());
       return null;
     }
