@@ -25,6 +25,10 @@ import org.junit.jupiter.api.Test;
  *       their deletion - it declares as {@code ProviderGroupDirectory} and lets that package
  *       implement (#1812). The counter-direction is the one that exists: a group names the provider
  *       it originates from.
+ *   <li><b>Nothing below depends on {@code io.opaa.succession}.</b> The lifecycle composes library,
+ *       space and group (#1819) and therefore sits above them, like {@code io.opaa.revision}; what
+ *       the three of them need from it - the frozen reach and the closing of a record - they reach
+ *       through ports of {@code io.opaa.permission}.
  *   <li><b>The business packages do not depend on each other</b>, with one declared exception:
  *       {@code io.opaa.space} reaches {@code io.opaa.library} because a space association names a
  *       library, and nothing in {@code io.opaa.library} names a space. Every other pair is
@@ -44,6 +48,7 @@ class PermissionPackageBoundaryTest {
   private static final String GROUP = "io.opaa.group";
   private static final String SPACE = "io.opaa.space";
   private static final String AUDIT = "io.opaa.audit";
+  private static final String SUCCESSION = "io.opaa.succession";
 
   /**
    * Deliberately the subpackage, not {@code io.opaa.auth}: {@code
@@ -87,6 +92,17 @@ class PermissionPackageBoundaryTest {
               "every fachpaket writes its events through io.opaa.audit, so a dependency out of it"
                   + " is a cycle - a reading path that composes several of them lives in"
                   + " io.opaa.revision, above all of them (#1822)"),
+          Map.entry(
+              List.of(PERMISSION, SUCCESSION),
+              "the lifecycle composes the three fachpakete and therefore sits above them (#1819);"
+                  + " what the permission model needs from it - the reach guard and the closing of"
+                  + " a record - it declares as SuccessionReachGuard and SuccessionCaseCloser"),
+          Map.entry(
+              List.of(LIBRARY, SUCCESSION),
+              "a library contributes a SuccessionFindingSource and asks the guard, both declared"
+                  + " in io.opaa.permission - the counter-direction would be a cycle"),
+          Map.entry(List.of(GROUP, SUCCESSION), "same direction, same reason"),
+          Map.entry(List.of(SPACE, SUCCESSION), "same direction, same reason"),
           Map.entry(List.of(AUDIT, LIBRARY), "same direction, same reason"),
           Map.entry(List.of(AUDIT, SPACE), "same direction, same reason"));
 

@@ -17,6 +17,10 @@ import java.util.UUID;
  * mechanism deliberately revokes nothing - but frozen membership is exactly why it must not become
  * a new grant target: nobody would ever join or leave it again.
  *
+ * <p>{@code internal} separates a group of this installation from one of a provider - the one
+ * property that decides who is responsible for it: an internal group has stewards, a provider group
+ * has contact points named by the system administration.
+ *
  * <p>{@code protectedGroup} is the mark of ADR-0036, Entscheidung 9. It decides no grant - a
  * protected group receives rights like any other - but it decides how the group is <b>named</b> to
  * somebody who is not part of it: in other people's lists it appears as "geschützte Gruppe" without
@@ -29,7 +33,8 @@ public record GroupSubject(
     boolean dissolved,
     boolean providerDisabled,
     boolean unmaintained,
-    boolean protectedGroup) {
+    boolean protectedGroup,
+    boolean internal) {
 
   public GroupSubject {
     Objects.requireNonNull(id, "id must not be null");

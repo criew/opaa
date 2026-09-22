@@ -34,6 +34,16 @@ public interface SpaceRepository extends JpaRepository<Space, UUID> {
   @Query("select distinct s from Space s left join fetch s.memberships where s.id = :spaceId")
   Optional<Space> findByIdWithMemberships(@Param("spaceId") UUID spaceId);
 
+  /**
+   * Every space of one organization with its memberships - what the operational list of #1819 asks
+   * after a capable ADMIN of. The fetch join is the point: deciding that question per space without
+   * it is one query per row.
+   */
+  @Query(
+      "select distinct s from Space s left join fetch s.memberships "
+          + "where s.organizationId = :organizationId")
+  List<Space> findByOrganizationIdWithMemberships(@Param("organizationId") UUID organizationId);
+
   boolean existsByOwnerIdAndIsDefaultTrue(UUID ownerId);
 
   /** Every space the user owns - what deleting a local account has to be clear of (#1537). */

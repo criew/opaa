@@ -4,6 +4,7 @@ import io.opaa.TestcontainersConfiguration;
 import io.opaa.auth.UserRepository;
 import io.opaa.chat.ChatMessageRepository;
 import io.opaa.group.sync.DirectorySyncStatusRecorder;
+import io.opaa.succession.SuccessionCaseRepository;
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -93,7 +94,12 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 // production behaviour. Declared here rather than per class because a class-local declaration would
 // split the context; Spring resets them after every test method.
 @MockitoSpyBean(
-    types = {UserRepository.class, ChatMessageRepository.class, DirectorySyncStatusRecorder.class})
+    types = {
+      UserRepository.class,
+      ChatMessageRepository.class,
+      DirectorySyncStatusRecorder.class,
+      SuccessionCaseRepository.class
+    })
 // A derived signature must not declare @TestExecutionListeners of its own: like
 // @ContextConfiguration, it is resolved by nearest declaration, so the listeners below would
 // silently disappear there.

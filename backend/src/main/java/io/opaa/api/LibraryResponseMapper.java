@@ -23,6 +23,7 @@ import io.opaa.library.LibraryScheduleUpdate;
 import io.opaa.library.LibrarySummary;
 import io.opaa.library.LibraryUpdate;
 import io.opaa.permission.PermissionTransferMark;
+import io.opaa.permission.SuccessionFinding;
 import java.net.URI;
 import java.util.List;
 import org.slf4j.Logger;
@@ -160,14 +161,15 @@ final class LibraryResponseMapper {
   }
 
   static LibraryResponse toResponse(LibraryDetail detail) {
-    return toResponse(detail, null);
+    return toResponse(detail, null, null);
   }
 
   /**
    * The detail view additionally names the transfer that last touched this library (#1834, ADR-0036
    * Entscheidung 10), or nothing if none ever did.
    */
-  static LibraryResponse toResponse(LibraryDetail detail, PermissionTransferMark lastTransfer) {
+  static LibraryResponse toResponse(
+      LibraryDetail detail, PermissionTransferMark lastTransfer, SuccessionFinding succession) {
     KnowledgeLibrary library = detail.library();
     LibraryResponse response =
         new LibraryResponse(
@@ -185,7 +187,8 @@ final class LibraryResponseMapper {
             .documentCount(detail.documentCount())
             .diagnosticsLocked(library.isDiagnosticsLocked())
             .diagnosticsLockToggleable(detail.diagnosticsLockToggleable())
-            .lastTransfer(PermissionTransferResponseMapper.toResponse(lastTransfer));
+            .lastTransfer(PermissionTransferResponseMapper.toResponse(lastTransfer))
+            .succession(SuccessionResponseMapper.toStateResponse(succession));
     if (library.getSourceType() == DocumentSourceType.CONFLUENCE) {
       // ADR-0023: edition and selection are visible to every reader - the selection is exactly
       // the scope every reader of this library can see, so naming it is not configuration detail
@@ -260,7 +263,8 @@ final class LibraryResponseMapper {
             library.getUpdatedAt())
         .description(library.getDescription())
         .ownerName(summary.ownerName())
-        .lastIndexedAt(summary.lastIndexedAt());
+        .lastIndexedAt(summary.lastIndexedAt())
+        .succession(SuccessionResponseMapper.toStateResponse(summary.succession()));
   }
 
   static List<LibraryListResponse> toListResponses(List<LibrarySummary> summaries) {

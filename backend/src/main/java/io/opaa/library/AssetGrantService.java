@@ -6,6 +6,7 @@ import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.api.types.AuditSubjectKind;
 import io.opaa.api.types.PermissionSubjectType;
+import io.opaa.api.types.SuccessionObjectType;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
@@ -19,6 +20,7 @@ import io.opaa.permission.AssetGrant;
 import io.opaa.permission.AssetGrantRepository;
 import io.opaa.permission.GroupSubject;
 import io.opaa.permission.GroupSubjectDirectory;
+import io.opaa.permission.SuccessionReachGuard;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -93,6 +95,7 @@ public class AssetGrantService {
   private final LibraryAccessService accessService;
   private final AuditEventRecorder auditEventRecorder;
   private final ApplicationEventPublisher eventPublisher;
+  private final SuccessionReachGuard successionGuard;
 
   public AssetGrantService(
       AssetGrantRepository grantRepository,
@@ -101,7 +104,8 @@ public class AssetGrantService {
       GroupSubjectDirectory groupDirectory,
       LibraryAccessService accessService,
       AuditEventRecorder auditEventRecorder,
-      ApplicationEventPublisher eventPublisher) {
+      ApplicationEventPublisher eventPublisher,
+      SuccessionReachGuard successionGuard) {
     this.grantRepository = grantRepository;
     this.libraryRepository = libraryRepository;
     this.userRepository = userRepository;
@@ -109,6 +113,7 @@ public class AssetGrantService {
     this.accessService = accessService;
     this.auditEventRecorder = auditEventRecorder;
     this.eventPublisher = eventPublisher;
+    this.successionGuard = successionGuard;
   }
 
   public List<AssetGrantView> listGrants(UUID libraryId, CurrentUser caller) {
@@ -213,6 +218,7 @@ public class AssetGrantService {
                   request.subjectId())
               .orElse(null);
       isNewGrant = grant == null;
+      requireReachNotFrozenIfWidening(library, grant, request);
       if (grant == null) {
         grant =
             AssetGrant.forUser(
@@ -241,6 +247,7 @@ public class AssetGrantService {
                   request.subjectId())
               .orElse(null);
       isNewGrant = grant == null;
+      requireReachNotFrozenIfWidening(library, grant, request);
       if (grant == null) {
         grant =
             AssetGrant.forGroup(
@@ -288,6 +295,35 @@ public class AssetGrantService {
     }
     invalidateAfterCommit(library.getId());
     return toViews(List.of(saved)).get(0);
+  }
+
+  /**
+   * ADR-0036, Entscheidung 6: while a library's succession is open its reach is frozen - a new
+   * grant, a higher role or a postponed expiry are refused. Taking reach away is not: a downgrade,
+   * an expiry brought forward and a revocation stay open to whoever is still there.
+   */
+  private void requireReachNotFrozenIfWidening(
+      KnowledgeLibrary library, AssetGrant existing, AssetGrantUpsert request) {
+    if (existing != null && !widensReach(existing, request.role(), request.expiresAt())) {
+      return;
+    }
+    successionGuard.requireReachNotFrozen(
+        SuccessionObjectType.KNOWLEDGE_LIBRARY,
+        library.getId(),
+        existing == null ? "Eine neue Berechtigung" : "Eine größere Berechtigung");
+  }
+
+  private static boolean widensReach(
+      AssetGrant existing, AssetRole requestedRole, Instant requestedExpiresAt) {
+    if (requestedRole.atLeast(existing.getRole()) && requestedRole != existing.getRole()) {
+      return true;
+    }
+    Instant previousExpiry = existing.getExpiresAt();
+    if (previousExpiry == null) {
+      // Unlimited already: no expiry can reach further.
+      return false;
+    }
+    return requestedExpiresAt == null || requestedExpiresAt.isAfter(previousExpiry);
   }
 
   private Map<String, Object> grantAuditPayload(AssetRole role, Instant expiresAt) {

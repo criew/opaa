@@ -454,6 +454,60 @@ Arbeitsliste der Gruppen**). Die eigene Abgabe steht unter **Meine Gruppen → �
 Eigentum abgeben"**. In allen drei Fällen ist der Ablauf derselbe: Ziel wählen, Umfang wählen,
 Vorschau, Bestätigung.
 
+### 7.3 Wenn niemand mehr zuständig ist: „Nachfolge offen"
+
+Wird ein Konto gesperrt oder verliert eine Gruppe ihr letztes aktives Mitglied, steht das, was daran
+hängt, ohne Verantwortliche da. OPAA nennt diesen Zustand **„Nachfolge offen"** und leitet ihn ab —
+er wird nirgends gesetzt und muss nirgends zurückgenommen werden. Sobald wieder jemand handlungsfähig
+ist, ist er vorbei.
+
+**Eine Kontosperre wird nie deswegen abgelehnt.** Wer das Haus verlässt, wird sofort gesperrt; was
+ihm gehörte, geht in diesen Zustand. Die einzige Ausnahme bleibt die letzte anmeldefähige
+Systemverwaltung.
+
+**Was der Zustand bedeutet — und was nicht.** Das Objekt bleibt nutzbar, alle bestehenden Rechte
+bleiben, **nichts wird gelöscht**. Eingefroren ist allein die **Reichweite**: keine neuen oder
+größeren Berechtigungen, keine größere Sichtbarkeit, keine neue oder verlängerte Freigabe für
+Fremdzugänge, keine neue Bereitstellung in einem Raum, keine neuen Raummitglieder. Der Versuch wird
+mit einer Meldung abgelehnt, die auch sagt, wer zuständig ist.
+
+**Alles, was Reichweite wegnimmt, bleibt möglich** — und zwar dieselben Wege wie sonst: eine
+Berechtigung herabstufen oder entziehen, eine Befristung vorziehen, eine Freigabe verkürzen oder
+zurücknehmen, ein Raummitglied entfernen, das Objekt umbenennen, einschränken, lesen, durchsuchen
+und indexieren.
+
+**Am Objekt steht Zustand und Zuständigkeit** — „Nachfolge offen — zuständig: die Systemverwaltung".
+Bewusst ohne Datum, ohne den bisherigen Eigentümer und ohne Grund. **Suchtreffer tragen den Hinweis
+nicht:** Der Zustand betrifft die Zuständigkeit, nicht die Richtigkeit des Inhalts.
+
+**Die Betriebsliste der Systemverwaltung hat drei Reiter:**
+
+| Reiter | Was darin steht |
+|---|---|
+| Offene Nachfolgen | Bibliotheken, Räume und interne Gruppen ohne handlungsfähige Verantwortliche — mit Zuständigkeit und Alter |
+| Freigaben ohne Empfänger | Gruppen, die Rechte tragen, aber kein aktives Mitglied mehr haben — die Freigaben laufen ins Leere |
+| Gruppen ohne Wirkung | interne Gruppen, die nichts halten und niemanden erreichen |
+
+Die Liste ist **vollständig ab dem ersten Tag**, gleich wer zuständig ist. Gealterte Einträge werden
+hervorgehoben — ab welchem Alter, steht als `OPAA_SUCCESSION_AGING_THRESHOLD_MONTHS` in der
+Konfigurationstabelle des [Deployment-Handbuchs](deployment.md); ein **Sichtungsvermerk** („geprüft
+am …, weiterhin offen, Grund") nimmt die Hervorhebung für eine weitere Periode zurück. Es gibt keine
+Frist, keine Erinnerung und keine E-Mail — die Liste zeigt, sie treibt nicht.
+
+**Es gibt keine Abfrage „was gehörte Frau Vogt".** Die Liste geht vom Objekt aus; wem es gehört,
+steht in der Zeile, ist aber weder sortierbar noch zählbar. Dasselbe gilt für die Person, die einen
+Vorgang beendet oder einen Sichtungsvermerk gesetzt hat.
+
+**Der Ausgang ist die Übertragung** (Abschnitt 7.2) mit dem Umfang „Eigentum und Verantwortung".
+Endet der Zustand damit wirklich, wird der Vorgang geschlossen und die handelnde Person am Vorgang
+vermerkt; geht das Objekt an jemanden, der ebenfalls nicht handeln kann, bleibt der Vorgang offen —
+sonst begänne sein Alter von vorn. **Eine Oberfläche dafür entsteht mit Issue #1821**; heute führt
+die Systemverwaltung Liste und Übernahme über die Schnittstelle.
+
+**Vorgänge und Sichtungsvermerke sind Protokoll**, kein Rechtenachweis: Abgeschlossene Vorgänge
+werden samt ihren Vermerken nach Ablauf der Protokollfrist automatisch gelöscht (dieselbe Frist wie
+das Protokoll, `OPAA_AUDIT_RETENTION_MONTHS`); ein offener Vorgang wird nie gelöscht.
+
 ## 8. Löschen oder sperren
 
 **Löschen ist die Ausnahme.** Für das Ausscheiden einer Person ist die Sperre der vorgesehene Weg:

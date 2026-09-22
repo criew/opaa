@@ -11,6 +11,7 @@ import io.opaa.api.types.Capability;
 import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.api.types.SpaceRole;
 import io.opaa.api.types.SpaceVisibility;
+import io.opaa.api.types.SuccessionObjectType;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
@@ -31,6 +32,7 @@ import io.opaa.permission.GroupSizeProperties;
 import io.opaa.permission.GroupSubject;
 import io.opaa.permission.GroupSubjectDirectory;
 import io.opaa.permission.PermissionSubject;
+import io.opaa.permission.SuccessionReachGuard;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -67,6 +69,8 @@ public class SpaceService {
   private final GroupSubjectDirectory groupDirectory;
   private final CapabilityService capabilityService;
   private final GroupSizeProperties groupSizeProperties;
+  private final SuccessionReachGuard successionGuard;
+  private final SpaceSuccessionSource successionSource;
   private final TransactionTemplate requiresNewTransactionTemplate;
 
   /**
@@ -90,8 +94,12 @@ public class SpaceService {
       GroupSubjectDirectory groupDirectory,
       CapabilityService capabilityService,
       GroupSizeProperties groupSizeProperties,
+      SuccessionReachGuard successionGuard,
+      SpaceSuccessionSource successionSource,
       PlatformTransactionManager transactionManager) {
     this.spaceRepository = spaceRepository;
+    this.successionGuard = successionGuard;
+    this.successionSource = successionSource;
     this.chatRepository = chatRepository;
     this.userRepository = userRepository;
     this.auditEventRecorder = auditEventRecorder;
@@ -209,6 +217,7 @@ public class SpaceService {
     // the #543 archived-space rule below asks, so it answers that too.
     Map<UUID, Long> chatCounts = ownChatCounts(spaceIds, caller.id());
     Map<UUID, Long> libraryCounts = associationService.countVisibleBySpace(memberSpaces, caller);
+    Set<UUID> successionOpen = successionSource.openAmong(memberSpaces);
     return memberSpaces.stream()
         // #543: an archived space is left out of this list unless the caller has a chat of their
         // own in it, is the space's owner, or is a system admin - otherwise, in the typical #543
@@ -228,7 +237,7 @@ public class SpaceService {
                     libraryCounts.getOrDefault(space.getId(), 0L).intValue(),
                     chatCounts.getOrDefault(space.getId(), 0L).intValue(),
                     SpaceAccessPolicy.effectiveRole(space, caller.id(), callerGroupIds),
-                    !accessPolicy.hasCapableAdmin(space)))
+                    successionOpen.contains(space.getId())))
         .toList();
   }
 
@@ -247,10 +256,16 @@ public class SpaceService {
    * The space with the two derived values a response shows: the caller's effective role and
    * "Nachfolge offen" (ADR-0036, Entscheidung 6). Kept in this package rather than computed in the
    * controller, so the mapper stays a pure entity-to-response step (AGENTS.md, API-Konvention).
+   *
+   * <p>The state comes from {@link SpaceSuccessionSource} - the same derivation the operational
+   * list, the object's marking and the reach guard use, so no second definition can drift away from
+   * it (the personal space in particular has no succession).
    */
   public SpaceDetail detailOf(Space space, CurrentUser caller) {
     return new SpaceDetail(
-        space, accessPolicy.effectiveRole(space, caller), !accessPolicy.hasCapableAdmin(space));
+        space,
+        accessPolicy.effectiveRole(space, caller),
+        successionSource.openAmong(List.of(space)).contains(space.getId()));
   }
 
   public Space getSpace(UUID spaceId, CurrentUser caller) {
@@ -424,6 +439,10 @@ public class SpaceService {
   public SpaceMemberView addMember(
       UUID spaceId, PermissionSubject subject, SpaceRole requestedRole, CurrentUser caller) {
     Space space = loadSpace(spaceId, caller);
+    // ADR-0036, Entscheidung 6: a space without a capable ADMIN takes no new members while its
+    // succession is open - everything else about it keeps working.
+    successionGuard.requireReachNotFrozen(
+        SuccessionObjectType.SPACE, space.getId(), "Die Aufnahme eines neuen Mitglieds");
     accessPolicy.requireManager(space, caller);
     // #613 review, finding 2: an archived space accepts no new content, and a new member is new
     // content in the sense the specification means - see docs/features/spaces-and-assets.md#einen-
@@ -589,17 +608,14 @@ public class SpaceService {
    * the 400 the pre-#1815 owner protection used. A group counts as {@code ADMIN} while it is
    * capable of acting.
    *
-   * <p><b>Today this check never fires</b>, and the reason belongs here rather than in a review
-   * thread: a space always has an owner, the owner is always a member, and until #1818 gives
-   * accounts a state every person is capable - so the owner's own row is always a capable {@code
-   * ADMIN}, and the only reachable instance of the rule is the owner's own removal or downgrade,
-   * which the two explicit guards above refuse first (with the same 409 the ADR's nit asks for).
-   * The check is nevertheless the structural home of the rule: ADR-0036, Schutzregel 2 names the
-   * account lock as the one action allowed to create the state, so #1818 activates it without
-   * touching this call site. Its group half is exercised directly in {@code SpaceAccessPolicyTest}.
+   * <p><b>It refuses the loss, not the state</b> (#1819): a space that already has no capable
+   * {@code ADMIN} - its succession is open - loses none through this change, and refusing here
+   * would freeze even the removal of an unrelated member, which takes reach away rather than adding
+   * it. Its group half is exercised directly in {@code SpaceAccessPolicyTest}.
    */
   private void requireCapableAdminRemains(Space space, SpaceMembership changed, SpaceRole newRole) {
-    if (!accessPolicy.hasCapableAdminAfter(space, changed, newRole)) {
+    if (!accessPolicy.hasCapableAdminAfter(space, changed, newRole)
+        && accessPolicy.hasCapableAdmin(space)) {
       throw new ConflictException(
           "Der Space verlöre damit sein letztes handlungsfähiges ADMIN-Mitglied. Bestimmen Sie"
               + " zuerst eine Nachfolge.");

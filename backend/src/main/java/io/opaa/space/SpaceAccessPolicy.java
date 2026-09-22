@@ -1,11 +1,16 @@
 package io.opaa.space;
 
 import io.opaa.api.types.SpaceRole;
+import io.opaa.auth.AccountActivityService;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.AccessDeniedException;
+import io.opaa.permission.GroupCapabilityService;
 import io.opaa.permission.GroupMembershipResolver;
-import io.opaa.permission.GroupSubject;
 import io.opaa.permission.GroupSubjectDirectory;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
@@ -38,14 +43,20 @@ public class SpaceAccessPolicy {
 
   private final GroupMembershipResolver groupMemberships;
   private final GroupSubjectDirectory groupDirectory;
+  private final GroupCapabilityService groupCapability;
+  private final AccountActivityService accountActivity;
   private final SpaceMembershipRepository membershipRepository;
 
   SpaceAccessPolicy(
       GroupMembershipResolver groupMemberships,
       GroupSubjectDirectory groupDirectory,
+      GroupCapabilityService groupCapability,
+      AccountActivityService accountActivity,
       SpaceMembershipRepository membershipRepository) {
     this.groupMemberships = groupMemberships;
     this.groupDirectory = groupDirectory;
+    this.groupCapability = groupCapability;
+    this.accountActivity = accountActivity;
     this.membershipRepository = membershipRepository;
   }
 
@@ -163,22 +174,51 @@ public class SpaceAccessPolicy {
    * offen" (ADR-0036, Entscheidung 6) - derived on every read, never stored, so no write path can
    * forget to set or clear a flag.
    *
-   * <p><b>Two limits, stated rather than hidden.</b> First, the person half is unconditional: an
-   * {@code ADMIN} person counts whatever state their account is in, while the group half counts
-   * only active accounts (#1818, {@code GroupMembershipResolver#activeMemberCount}) - the asymmetry
-   * is the pre-existing one, and closing it is a decision about the person half, not about this
-   * count. Second, the owner is reached through their own membership row, and every space created
-   * or transferred through the API has one - so "Nachfolge offen" is <em>not reachable</em> for a
-   * space today. What is decided here today is the group half: whether a group still counts as this
-   * space's {@code ADMIN}.
-   *
-   * <p><b>What the state does not do yet:</b> ADR-0036, Entscheidung 6 freezes an object's reach
-   * while its succession is open - no new grants, no higher release level, for a space no new
-   * members. Nothing here enforces that; the state is derived and shown, and the enforcement
-   * belongs to the lifecycle work (#1819) together with the run that records the Vorgänge.
+   * <p><b>Both halves count active accounts</b> (#1819): a person ranks as {@code ADMIN} only while
+   * their account can actually be used - the same measure {@code AccountActivityService} applies to
+   * every other question of "who can act", and the same one the group half has applied since #1818.
+   * The asymmetry #1815 had to leave open (account state arrived with #1818) is closed here; with
+   * it "Nachfolge offen" becomes reachable for a space at all, which is what the lifecycle needs.
    */
   public boolean hasCapableAdmin(Space space) {
     return hasCapableAdminAfter(space, null, null);
+  }
+
+  /**
+   * The same question for a whole list of spaces, with <b>one</b> account query for all of them
+   * (#682: never one lookup per space). Returns the ids of the spaces that still have somebody.
+   */
+  public Set<UUID> spacesWithCapableAdmin(Collection<Space> spaces) {
+    List<UUID> candidates =
+        spaces.stream()
+            .flatMap(space -> space.getMemberships().stream().map(m -> personCandidate(space, m)))
+            .filter(Objects::nonNull)
+            .distinct()
+            .toList();
+    Set<UUID> active = accountActivity.activeAmong(candidates);
+    Set<UUID> capable = new HashSet<>();
+    for (Space space : spaces) {
+      boolean byPerson =
+          space.getMemberships().stream()
+              .map(membership -> personCandidate(space, membership))
+              .anyMatch(userId -> userId != null && active.contains(userId));
+      if (byPerson
+          || space.getMemberships().stream()
+              .anyMatch(
+                  membership ->
+                      membership.isGroupSubject()
+                          && qualifies(space, membership, null, null)
+                          && isCapableGroup(membership.getGroupId()))) {
+        capable.add(space.getId());
+      }
+    }
+    return capable;
+  }
+
+  private static UUID personCandidate(Space space, SpaceMembership membership) {
+    return membership.isUserSubject() && qualifies(space, membership, null, null)
+        ? membership.getUserId()
+        : null;
   }
 
   /**
@@ -189,13 +229,17 @@ public class SpaceAccessPolicy {
    * management action.
    */
   public boolean hasCapableAdminAfter(Space space, SpaceMembership changed, SpaceRole newRole) {
-    // Person rows first, and deliberately in two passes: deciding a person costs nothing, deciding
-    // a group costs a directory lookup and a count. On the list path of every space
-    // (SpaceService#listSpaces) the first pass answers almost every case.
-    for (SpaceMembership membership : space.getMemberships()) {
-      if (membership.isUserSubject() && qualifies(space, membership, changed, newRole)) {
-        return true;
-      }
+    // Person rows first, and deliberately in two passes: deciding the people costs one query for
+    // all of them, deciding a group costs a directory lookup and a count per group. On the list
+    // path of every space (SpaceService#listSpaces) the first pass answers almost every case.
+    List<UUID> personCandidates =
+        space.getMemberships().stream()
+            .filter(SpaceMembership::isUserSubject)
+            .filter(membership -> qualifies(space, membership, changed, newRole))
+            .map(SpaceMembership::getUserId)
+            .toList();
+    if (!personCandidates.isEmpty() && !accountActivity.activeAmong(personCandidates).isEmpty()) {
+      return true;
     }
     for (SpaceMembership membership : space.getMemberships()) {
       if (membership.isGroupSubject()
@@ -230,11 +274,7 @@ public class SpaceAccessPolicy {
    * simply no longer counts as the space's {@code ADMIN}.
    */
   public boolean isCapableGroup(UUID groupId) {
-    GroupSubject group = groupDirectory.find(groupId).orElse(null);
-    if (group == null || group.dissolved() || group.providerDisabled() || group.unmaintained()) {
-      return false;
-    }
-    return groupMemberships.activeMemberCount(groupId, group.organizationId()) > 0;
+    return groupCapability.isCapable(groupId);
   }
 
   private void requireAtLeast(Space space, CurrentUser caller, String message) {
