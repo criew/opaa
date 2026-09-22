@@ -345,7 +345,7 @@ eingibt.
 |---|---|---|---|
 | **Verantwortliche** einer internen Gruppe | ja | ja | ja |
 | **Systemverwaltung** | ja | ja | ja — **der Abruf ist ein Nachweiseintrag** |
-| **Wer ein Recht erteilt** (Verwalter einer Bibliothek, Administrator eines Raums) | ja, bei internen Gruppen nur nach Freigabe zur Verwendung | Zahl **aktiver Konten**, unterhalb der Mindestgruppengröße „kleine Gruppe" statt einer Zahl | nein |
+| **Wer ein Recht erteilt** (Verwalter einer Bibliothek, Administrator eines Raums) | ja, bei internen Gruppen nur nach Freigabe zur Verwendung | Zahl **aktiver Konten**, unterhalb der Mindestgruppengröße „kleine Gruppe" statt einer Zahl | ja, solange die Gruppe an **seinem** Objekt ein Recht hält — bei geschützten Gruppen die Ansprechstelle statt der Liste |
 | **Mitglied** der Gruppe | seine eigenen Gruppen | ja | nein |
 | **Alle übrigen** | nichts | — | — |
 
@@ -369,10 +369,26 @@ Vier Eigenschaften gehören dazu:
   statt der Bezeichnung. Die Zeile bleibt, damit eine Mitgliedschaft beendet werden kann, die
   niemand sieht; Größe und Zuwachssignal entfallen dort ganz.
 
-**Wer ein Recht gibt, sieht heute Name, Herkunft und Größe — nicht die Mitglieder.** Die
-Mitgliederliste bleibt den Verantwortlichen und der Systemverwaltung vorbehalten. Bei einer
-geschützten Gruppe sieht der Freigebende auch die Größe nicht; die **Ansprechstelle**, die dort an
-ihre Stelle tritt, entsteht mit Issue #1875.
+**Wer ein Recht gibt, sieht, an wen.** An der Zeile einer Gruppe — in der Freigabeliste einer
+Bibliothek und in der Mitgliederliste eines Raums — steht „Mitglieder anzeigen". Die Liste wird
+**erst auf ausdrücklichen Wunsch** geladen, zeigt die **aktiven Konten** mit Namen und sagt dazu,
+wie viele es insgesamt sind; bei langen Listen wird seitenweise nachgeladen. Vier Grenzen gelten:
+
+- **Nur am eigenen Objekt, und nur solange die Gruppe dort ein Recht hält.** Wer die Freigabe
+  entzieht oder die Mitgliedschaft im Raum beendet, sieht die Mitglieder nicht mehr; eine
+  abgelaufene Freigabe hält nichts. Eine Abfrage „wer ist in dieser Gruppe" ohne Objekt gibt es
+  nicht.
+- **Nur bei Gruppen, die zur Verwendung freigegeben sind** — Anbietergruppen sind es immer. Nehmen
+  die Verantwortlichen die Freigabe zurück, endet auch diese Auskunft.
+- **Die Vorgabe ist „nicht freigegeben".**
+- **Bei einer geschützten Gruppe gibt es keine Liste**, keinen Namen und keine Größe: An ihre Stelle
+  tritt die **Ansprechstelle** — bei internen Gruppen die Verantwortlichen, bei Anbietergruppen die
+  von der Systemverwaltung benannten Ansprechstellen (Issue #1875).
+
+**Dieser Abruf steht nicht im Nachweisprotokoll.** Protokolliert wird der Abruf durch die
+**Systemverwaltung** (Abschnitt 7) — sie sieht Gruppen, mit denen sie nichts zu tun hat. Wer die
+Gruppe an seinem eigenen Objekt berechtigt hat, liest, wen er selbst hereingeholt hat; wer das war
+und wann, steht ohnehin an der Freigabe.
 
 ## 9. Anlegerechte
 
@@ -720,6 +736,10 @@ Abschnitt „Vor dem Update auf die Gruppenherkunft".
 - **Keine freien Rollen.** Die vier Bibliotheks- und die drei Raumrollen sind fest; wer ein Bündel
   braucht, nimmt eine Gruppe.
 - **Keine Ansprechstellen an Anbietergruppen** — sie entstehen mit Issue #1875 (Abschnitte 7 und 8).
+  Bis dahin bleibt die Auskunft zu einer geschützten **Anbietergruppe** ohne benannte Stelle; bei
+  einer geschützten internen Gruppe nennt sie ihre Verantwortlichen.
+- **Keine Mitgliederliste ohne Objekt.** Wer wissen will, wer in einer Gruppe ist, fragt an einem
+  Objekt, an dem er selbst das Recht vergibt (Abschnitt 8), oder verantwortet die Gruppe.
 - **Keinen Personen-Einstieg in die Stichtagsauskunft** (Abschnitt 12) und **keine Vorschau
   „alles, was diese Person darf"** (Abschnitt 13.2).
 - **Keine Historie der Systemrollen.** Was mit einer Systemrolle geschah, steht im

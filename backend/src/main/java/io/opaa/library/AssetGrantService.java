@@ -19,6 +19,8 @@ import io.opaa.common.ValidationException;
 import io.opaa.permission.AssetGrant;
 import io.opaa.permission.AssetGrantRepository;
 import io.opaa.permission.GroupAttribution;
+import io.opaa.permission.GroupMemberDisclosure;
+import io.opaa.permission.GroupMemberDisclosureDirectory;
 import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.GroupSizeProperties;
 import io.opaa.permission.GroupSizeSignal;
@@ -96,6 +98,7 @@ public class AssetGrantService {
   private final KnowledgeLibraryRepository libraryRepository;
   private final UserRepository userRepository;
   private final GroupSubjectDirectory groupDirectory;
+  private final GroupMemberDisclosureDirectory disclosureDirectory;
   private final GroupMembershipResolver groupMemberships;
   private final GroupSizeProperties groupSizeProperties;
   private final LibraryAccessService accessService;
@@ -108,6 +111,7 @@ public class AssetGrantService {
       KnowledgeLibraryRepository libraryRepository,
       UserRepository userRepository,
       GroupSubjectDirectory groupDirectory,
+      GroupMemberDisclosureDirectory disclosureDirectory,
       GroupMembershipResolver groupMemberships,
       GroupSizeProperties groupSizeProperties,
       LibraryAccessService accessService,
@@ -118,6 +122,7 @@ public class AssetGrantService {
     this.libraryRepository = libraryRepository;
     this.userRepository = userRepository;
     this.groupDirectory = groupDirectory;
+    this.disclosureDirectory = disclosureDirectory;
     this.groupMemberships = groupMemberships;
     this.groupSizeProperties = groupSizeProperties;
     this.accessService = accessService;
@@ -130,6 +135,35 @@ public class AssetGrantService {
     KnowledgeLibrary library = requireManageable(libraryId, caller);
     return toViews(
         grantRepository.findByAssetTypeAndAssetId(KnowledgeLibrary.ASSET_TYPE, library.getId()));
+  }
+
+  /**
+   * The members of a group that holds a grant on this library - "wer ein Recht gibt, sieht, an wen"
+   * (#1880, ADR-0036 Entscheidung 9). The object is part of the question: the right to read these
+   * names comes from the library, so there is no object-free variant of it.
+   *
+   * <p>Limit (a) of the ADR's four is enforced here - only <b>while</b> the group holds an active
+   * grant on this library; an expired grant holds nothing, and a revoked one is gone. Limits (b) to
+   * (d) belong to the group and are answered by {@link GroupMemberDisclosureDirectory}. A group
+   * that fails any of them gets the answer an unknown group gets, {@code 404}, so the refusal
+   * reveals no more than the id already carried.
+   *
+   * <p>No audit event, unlike the {@code SYSTEM_ADMIN} retrieval of {@code
+   * GroupService#listMembers} (#1821): the ADR records that one alone, and the grant this caller
+   * reads through already names who gave it and when.
+   */
+  public GroupMemberDisclosure listGroupMembers(
+      UUID libraryId, UUID groupId, int offset, int limit, CurrentUser caller) {
+    KnowledgeLibrary library = requireManageable(libraryId, caller);
+    AssetGrant grant =
+        grantRepository
+            .findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectGroupId(
+                KnowledgeLibrary.ASSET_TYPE, library.getId(), PermissionSubjectType.GROUP, groupId)
+            .filter(found -> !found.isExpired(Instant.now()))
+            .orElseThrow(() -> new NotFoundException("Gruppe nicht gefunden"));
+    return disclosureDirectory
+        .disclose(grant.getSubjectId(), library.getOrganizationId(), offset, limit)
+        .orElseThrow(() -> new NotFoundException("Gruppe nicht gefunden"));
   }
 
   // #392: noRollbackFor(AccessDeniedException) - without it, the DENIED audit entry the

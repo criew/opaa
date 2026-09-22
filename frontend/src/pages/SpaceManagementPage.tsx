@@ -18,7 +18,7 @@ import type {
   SpaceRole,
   SpaceVisibility,
 } from '../types/api'
-import { getLibraries } from '../services/api'
+import { getLibraries, getSpaceGroupMembers } from '../services/api'
 import { useAuthStore } from '../stores/authStore'
 import { confirmAction } from '../stores/confirmStore'
 import { useSpaceStore } from '../stores/spaceStore'
@@ -30,6 +30,7 @@ import {
   spaceVisibilityLabel,
 } from '../utils/labels'
 import AccessDerivation from '../components/permissions/AccessDerivation'
+import GroupMembersDisclosure from '../components/permissions/GroupMembersDisclosure'
 import SubjectPicker from '../components/permissions/SubjectPicker'
 import {
   confirmExternalSubject,
@@ -467,6 +468,18 @@ export default function SpaceManagementPage() {
                       {derivationFor === member.subjectId && (
                         <AccessDerivation
                           target={{ kind: 'space', spaceId, userId: member.subjectId }}
+                        />
+                      )}
+                      {/* #1880, ADR-0036 Entscheidung 9: Wer die Gruppe hier aufgenommen hat,
+                          sieht ihre Mitglieder — erst auf ausdrücklichen Wunsch. Bei einer
+                          geschützten Gruppe nennt die Antwort die Ansprechstelle statt der
+                          Namen. */}
+                      {isGroup && (canManage || isOwner) && (
+                        <GroupMembersDisclosure
+                          groupLabel={memberLabel}
+                          load={(offset, limit) =>
+                            getSpaceGroupMembers(spaceId, member.subjectId, offset, limit)
+                          }
                         />
                       )}
                     </Stack>

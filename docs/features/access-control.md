@@ -1225,7 +1225,7 @@ Deaktivieren bleibt daneben jederzeit möglich.
 > Festgeschrieben in [ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md),
 > Entscheidungen 2 und 11.
 
-#### Interne Gruppen: Verantwortliche, Freigabe und Schutzkennzeichen (gebaut, #1814 — ohne die Schutzwirkungen nach außen, #1820)
+#### Interne Gruppen: Verantwortliche, Freigabe und Schutzkennzeichen (gebaut, #1814, #1872, #1880)
 
 Eine **interne Gruppe** wird nicht von der Systemverwaltung gepflegt, sondern von benannten
 **Verantwortlichen**. Die Vorentscheidung „Wer eine Querschnittsgruppe braucht, legt sie explizit
@@ -1294,16 +1294,39 @@ Wer die Gruppe in jede Auswahl stellen kann, entscheidet sonst über den Schutz,
 anfassen zu dürfen.
 
 **Was vom Schutz gebaut ist.** Gebaut sind das Kennzeichen, sein Vorbehalt für die Verantwortlichen
-samt der Freigabe, und das Audit-Ereignis jeder Änderung. **Noch nicht gebaut** sind die drei
-Wirkungen nach außen: nicht über die Suche auffindbar, in fremden Listen namenlos als „geschützte
-Gruppe", und statt der Mitgliederliste die Ansprechstelle für den, der ihr ein Recht einräumt. Sie
-kommen mit der gemeinsamen Subjekt-Auswahl (#1820); bis dahin verhält sich eine geschützte,
-freigegebene Gruppe gegenüber Dritten wie jede andere freigegebene Gruppe.
+samt der Freigabe, das Audit-Ereignis jeder Änderung und die drei Wirkungen nach außen (#1872,
+#1880): nicht über die Suche auffindbar (nur die vollständige Bezeichnung trifft sie), in fremden
+Listen namenlos als „geschützte Gruppe", und statt der Mitgliederliste die Ansprechstelle für den,
+der ihr ein Recht einräumt. Die Ansprechstellen einer **Anbieter**gruppe entstehen mit #1875; bis
+dahin bleibt die Auskunft dort ohne benannte Stelle, während eine geschützte interne Gruppe ihre
+Verantwortlichen nennt.
+
+**Die Mitgliederliste für Rechtevergebende (gebaut, #1880).** Wer einer Gruppe an einem Objekt ein
+Recht einräumt oder es verwaltet — `MANAGER`/`OWNER` einer Bibliothek, `ADMIN`/Eigentümer eines
+Space — sieht **an diesem Objekt** ihre Mitglieder: `GET
+/api/v1/libraries/{libraryId}/grants/groups/{groupId}/members` und `GET
+/api/v1/spaces/{spaceId}/members/groups/{groupId}/members`. Der Objektbezug ist Pflicht; eine
+objektlose Abfrage „wer ist in dieser Gruppe" gibt es nicht. Durchgesetzt werden die vier Grenzen
+von ADR-0036, Entscheidung 9 **im Dienst**, jede einzelne mit `404` wie für eine unbekannte Gruppe:
+
+(a) nur **solange die Gruppe dort ein Recht hält** — eine entzogene oder abgelaufene Berechtigung
+und eine beendete Raummitgliedschaft halten nichts; (b) nur für Gruppen, die **zur Verwendung
+freigegeben** sind, was Anbietergruppen immer sind; (c) die **Vorgabe ist nicht freigegeben**;
+(d) **nicht bei geschützten Gruppen** — dort nennt die Antwort weder Namen noch Größe noch
+Mitglieder, sondern die **Ansprechstelle** (`responsible`).
+
+Gelistet werden **aktive Konten** (Definition `io.opaa.auth.AccountActivityService`); die Antwort
+trägt die Gesamtzahl und eine Seite, deren Deckel (200) die `LIMIT`-Klausel der Abfrage selbst ist —
+eine Gruppe von fünftausend wird nie zu fünftausend Zeilen im Speicher. Die Oberfläche lädt die
+Liste **erst auf ausdrücklichen Wunsch** („Mitglieder anzeigen" an der Gruppenzeile der
+Freigabeansicht und der Raum-Mitgliederliste).
 
 **Der Abruf der Mitgliederliste durch die Systemverwaltung ist ein Audit-Ereignis**
 (`GROUP_MEMBERS_READ` mit der Zahl der Mitglieder) — ADR-0036, Entscheidung 9 räumt ihr die volle
 Liste ein und hält dafür fest, dass sie sie abgerufen hat. Wer die Gruppe selbst verantwortet,
-erzeugt beim Lesen nichts.
+erzeugt beim Lesen nichts, **und der Rechtevergebende ebenfalls nicht**: Der ADR nennt das Ereignis
+allein für die Systemverwaltung, die Gruppen sieht, mit denen sie nichts zu tun hat; wer die Gruppe
+an sein eigenes Objekt geholt hat, steht mit Zeitpunkt an der Berechtigung.
 
 > Festgeschrieben in [ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md),
 > Entscheidungen 4 und 9.

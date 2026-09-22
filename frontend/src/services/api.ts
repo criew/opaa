@@ -31,6 +31,7 @@ import type {
   DocumentChunksResponse,
   Capability,
   GroupListResponse,
+  GroupMemberDisclosureResponse,
   GroupMemberResponse,
   GroupResponse,
   GroupStewardResponse,
@@ -812,6 +813,50 @@ export async function searchSelectableGroups(query: string): Promise<SelectableG
 export async function resolveSelectableGroup(groupId: string): Promise<SelectableGroupResponse> {
   try {
     const { data } = await client.get<SelectableGroupResponse>(`/v1/groups/selectable/${groupId}`)
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/**
+ * Die Mitglieder einer Gruppe, der man an dieser Bibliothek ein Recht eingeräumt hat (#1880,
+ * ADR-0036 Entscheidung 9). Der Objektbezug ist Pflicht: Das Leserecht auf die Namen kommt von der
+ * Bibliothek. Eine Gruppe, die hier kein Recht mehr hält, nicht zur Verwendung freigegeben oder
+ * geschützt ist, antwortet „nicht gefunden".
+ */
+export async function getGrantedGroupMembers(
+  libraryId: string,
+  groupId: string,
+  offset = 0,
+  limit = 50,
+): Promise<GroupMemberDisclosureResponse> {
+  try {
+    const { data } = await client.get<GroupMemberDisclosureResponse>(
+      `/v1/libraries/${libraryId}/grants/groups/${groupId}/members`,
+      { params: { offset, limit } },
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/**
+ * Dasselbe für eine Gruppe, die Mitglied dieses Raums ist (#1880) — hinter derselben Schwelle wie
+ * die Mitgliederliste selbst: Administrator, Eigentümer, Systemverwaltung.
+ */
+export async function getSpaceGroupMembers(
+  spaceId: string,
+  groupId: string,
+  offset = 0,
+  limit = 50,
+): Promise<GroupMemberDisclosureResponse> {
+  try {
+    const { data } = await client.get<GroupMemberDisclosureResponse>(
+      `/v1/spaces/${spaceId}/members/groups/${groupId}/members`,
+      { params: { offset, limit } },
+    )
     return data
   } catch (err) {
     normalizeError(err)

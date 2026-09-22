@@ -25,6 +25,7 @@ import type { AssetGrantResponse, AssetRole } from '../types/api'
 import { useAuthStore } from '../stores/authStore'
 import { confirmAction } from '../stores/confirmStore'
 import { useGrantStore } from '../stores/grantStore'
+import GroupMembersDisclosure from './permissions/GroupMembersDisclosure'
 import SubjectPicker from './permissions/SubjectPicker'
 import {
   confirmExternalSubject,
@@ -33,7 +34,7 @@ import {
   selectedSubjectId,
   type SubjectSelection,
 } from './permissions/subjectSelection'
-import { resolveSelectableGroup } from '../services/api'
+import { getGrantedGroupMembers, resolveSelectableGroup } from '../services/api'
 import {
   assetRoleDescription,
   assetRoleLabel,
@@ -297,6 +298,19 @@ export default function LibraryGrantsDialog({ open, library, onClose }: LibraryG
                       {new Date(grant.updatedAt).toLocaleDateString('de-DE')}
                       {growthHint ? ` · ${growthHint}` : ''}
                     </Typography>
+                    {/* #1880, ADR-0036 Entscheidung 9: Wer einer Gruppe hier ein Recht eingeräumt
+                        hat, sieht, an wen — erst auf ausdrücklichen Wunsch, nie als Beiwerk dieser
+                        Liste. Eine abgelaufene Freigabe hält nichts mehr; der Dienst antwortet
+                        dann wie auf eine unbekannte Gruppe. */}
+                    {grant.subjectType === 'GROUP' && !expired && (
+                      <GroupMembersDisclosure
+                        key={grant.subjectId}
+                        groupLabel={subjectName}
+                        load={(offset, limit) =>
+                          getGrantedGroupMembers(library.id, grant.subjectId, offset, limit)
+                        }
+                      />
+                    )}
                   </Stack>
                   <FormControl size="small" sx={{ minWidth: 160 }}>
                     <InputLabel id={roleSelectId}>Rolle</InputLabel>

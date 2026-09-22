@@ -5,6 +5,7 @@ import io.opaa.api.dto.AssetGrantResponse;
 import io.opaa.api.dto.ConfluenceSpaceListRequest;
 import io.opaa.api.dto.ConfluenceSpaceListResponse;
 import io.opaa.api.dto.ConfluenceWebhookSecretResponse;
+import io.opaa.api.dto.GroupMemberDisclosureResponse;
 import io.opaa.api.dto.IndexingRunEvent;
 import io.opaa.api.dto.IndexingRunEventCategory;
 import io.opaa.api.dto.IndexingRunListResponse;
@@ -372,6 +373,17 @@ public class LibraryController {
       @PathVariable UUID libraryId, @PathVariable UUID grantId, @Caller CurrentUser caller) {
     grantService.revokeGrant(libraryId, grantId, caller);
     return ResponseEntity.noContent().build();
+  }
+
+  @GetMapping("/{libraryId}/grants/groups/{groupId}/members")
+  public GroupMemberDisclosureResponse listGrantedGroupMembers(
+      @PathVariable UUID libraryId,
+      @PathVariable UUID groupId,
+      @RequestParam(name = "offset", defaultValue = "0") int offset,
+      @RequestParam(name = "limit", defaultValue = "50") int limit,
+      @Caller CurrentUser caller) {
+    return GroupMemberDisclosureResponseMapper.toResponse(
+        grantService.listGroupMembers(libraryId, groupId, offset, limit, caller));
   }
 
   @PostMapping("/{libraryId}/indexing")

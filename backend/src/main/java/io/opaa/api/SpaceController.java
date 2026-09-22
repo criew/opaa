@@ -1,5 +1,6 @@
 package io.opaa.api;
 
+import io.opaa.api.dto.GroupMemberDisclosureResponse;
 import io.opaa.api.dto.SpaceAccessDerivationResponse;
 import io.opaa.api.dto.SpaceAddMemberRequest;
 import io.opaa.api.dto.SpaceLibraryAssociationListResponse;
@@ -156,6 +157,21 @@ public class SpaceController {
       @PathVariable UUID spaceId, @Caller CurrentUser caller) {
     List<SpaceMemberView> members = spaceService.listMembers(spaceId, caller);
     return SpaceResponseMapper.toMemberResponses(members);
+  }
+
+  /**
+   * The members of a group that is a member of this space (#1880, ADR-0036 Entscheidung 9) - "wer
+   * ein Recht gibt, sieht, an wen", behind the same bar as the member list itself.
+   */
+  @GetMapping("/{spaceId}/members/groups/{groupId}/members")
+  public GroupMemberDisclosureResponse listSpaceGroupMembers(
+      @PathVariable UUID spaceId,
+      @PathVariable UUID groupId,
+      @RequestParam(name = "offset", defaultValue = "0") int offset,
+      @RequestParam(name = "limit", defaultValue = "50") int limit,
+      @Caller CurrentUser caller) {
+    return GroupMemberDisclosureResponseMapper.toResponse(
+        spaceService.listGroupMembers(spaceId, groupId, offset, limit, caller));
   }
 
   @PostMapping("/{spaceId}/members")

@@ -6,6 +6,7 @@ import io.opaa.auth.AccountActivityService;
 import io.opaa.auth.UserRepository;
 import java.time.Duration;
 import java.util.Collection;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.beans.factory.ObjectProvider;
@@ -112,6 +113,17 @@ public class GroupMembershipResolver {
   public Set<UUID> activeMemberIds(UUID groupId, UUID organizationId) {
     return accountActivity.activeAmong(
         membershipSource.findUserIdsByGroupIdAndOrganizationId(groupId, organizationId));
+  }
+
+  /**
+   * One page of those active accounts, ordered by name - the read the grant giver of ADR-0036,
+   * Entscheidung 9 gets (#1880). Paged and capped in the database rather than in the caller, so the
+   * one path that hands out names never loads a whole group; {@link #activeMemberCount} says how
+   * far the paging reaches. Same definition of "active" as its siblings above.
+   */
+  public List<UUID> activeMemberIdsPage(UUID groupId, UUID organizationId, int limit, int offset) {
+    return membershipSource.findActiveMemberIdsPage(
+        groupId, organizationId, accountActivity.now(), limit, offset);
   }
 
   private Set<UUID> resolveUserSubject(PermissionSubject subject) {

@@ -1023,7 +1023,9 @@ class PermissionHistoryServiceIntegrationTest {
    * {@code LibrarySuccessionSource} and {@code GroupSuccessionSource} - only read: they derive
    * whether anybody can still act for an object, and the one effect of that state, freezing the
    * reach, takes rights away from nobody. {@code GroupEffectsService} (#1821) only counts: it
-   * answers "wo wirkt diese Gruppe" with figures per group and writes nothing at all.
+   * answers "wo wirkt diese Gruppe" with figures per group and writes nothing at all. {@code
+   * GroupMemberDisclosureAdapter} (#1880) reads a group and one page of its active members for the
+   * person who granted it a right at an object; it writes nothing.
    */
   private static final Set<String> BEANS_REACHING_THE_RIGHTS_TABLES =
       Set.of(
@@ -1038,6 +1040,7 @@ class PermissionHistoryServiceIntegrationTest {
           "GroupCapabilityService",
           "GroupEffectReader",
           "GroupEffectsService",
+          "GroupMemberDisclosureAdapter",
           "GroupMembershipResolver",
           "GroupService",
           "GroupStewardshipDirectoryAdapter",
@@ -1063,6 +1066,9 @@ class PermissionHistoryServiceIntegrationTest {
   private static final Set<String> CANNOT_CHANGE_READABILITY =
       Set.of(
           "AssetGrantService#listGrants",
+          // #1880: Wer ein Recht gibt, sieht, an wen - der Lesepfad nennt Mitglieder einer
+          // Gruppe, die hier schon ein Recht haelt, und erteilt selbst keines.
+          "AssetGrantService#listGroupMembers",
           "GroupService#createGroup",
           "GroupService#updateGroup",
           "GroupService#getGroup",

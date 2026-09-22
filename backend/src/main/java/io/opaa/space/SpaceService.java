@@ -27,6 +27,8 @@ import io.opaa.permission.AccessPath;
 import io.opaa.permission.AssetOwnershipHistoryService;
 import io.opaa.permission.CapabilityService;
 import io.opaa.permission.GroupAttribution;
+import io.opaa.permission.GroupMemberDisclosure;
+import io.opaa.permission.GroupMemberDisclosureDirectory;
 import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.GroupSizeProperties;
 import io.opaa.permission.GroupSizeSignal;
@@ -68,6 +70,7 @@ public class SpaceService {
   private final AssetOwnershipHistoryService ownershipHistory;
   private final GroupMembershipResolver groupMemberships;
   private final GroupSubjectDirectory groupDirectory;
+  private final GroupMemberDisclosureDirectory disclosureDirectory;
   private final CapabilityService capabilityService;
   private final GroupSizeProperties groupSizeProperties;
   private final SuccessionReachGuard successionGuard;
@@ -93,6 +96,7 @@ public class SpaceService {
       AssetOwnershipHistoryService ownershipHistory,
       GroupMembershipResolver groupMemberships,
       GroupSubjectDirectory groupDirectory,
+      GroupMemberDisclosureDirectory disclosureDirectory,
       CapabilityService capabilityService,
       GroupSizeProperties groupSizeProperties,
       SuccessionReachGuard successionGuard,
@@ -110,6 +114,7 @@ public class SpaceService {
     this.ownershipHistory = ownershipHistory;
     this.groupMemberships = groupMemberships;
     this.groupDirectory = groupDirectory;
+    this.disclosureDirectory = disclosureDirectory;
     this.capabilityService = capabilityService;
     this.groupSizeProperties = groupSizeProperties;
     this.requiresNewTransactionTemplate = new TransactionTemplate(transactionManager);
@@ -312,6 +317,39 @@ public class SpaceService {
                         groups.get(membership.getGroupId()),
                         groupSizeSignal(membership)))
         .toList();
+  }
+
+  /**
+   * The members of a group that is a member of this space - "wer ein Recht gibt, sieht, an wen"
+   * (#1880, ADR-0036 Entscheidung 9), behind the same bar as {@link #listMembers}. The object is
+   * part of the question: the right to read these names comes from the space, so there is no
+   * object-free variant of it.
+   *
+   * <p>Limit (a) of the ADR's four is enforced here - only <b>while</b> the group is a member of
+   * this space. Limits (b) to (d) belong to the group and are answered by {@link
+   * GroupMemberDisclosureDirectory}. A group that fails any of them gets the answer an unknown
+   * group gets, {@code 404}.
+   *
+   * <p>No audit event, unlike the {@code SYSTEM_ADMIN} retrieval of {@code
+   * GroupService#listMembers} (#1821): the ADR records that one alone, and this caller admitted the
+   * group here themselves.
+   */
+  public GroupMemberDisclosure listGroupMembers(
+      UUID spaceId, UUID groupId, int offset, int limit, CurrentUser caller) {
+    Space space = loadSpace(spaceId, caller);
+    if (!caller.isSystemAdmin()) {
+      accessPolicy.requireMemberListViewer(space, caller);
+    }
+    boolean isMember =
+        space.getMemberships().stream()
+            .filter(SpaceMembership::isGroupSubject)
+            .anyMatch(membership -> membership.getGroupId().equals(groupId));
+    if (!isMember) {
+      throw new NotFoundException("Gruppe nicht gefunden");
+    }
+    return disclosureDirectory
+        .disclose(groupId, space.getOrganizationId(), offset, limit)
+        .orElseThrow(() -> new NotFoundException("Gruppe nicht gefunden"));
   }
 
   /**

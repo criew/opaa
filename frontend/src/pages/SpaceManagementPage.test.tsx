@@ -30,6 +30,7 @@ const {
   mockGetSpaceLibraryAssociations,
   mockSearchSelectableGroups,
   mockGetSpaceAccessDerivation,
+  mockGetSpaceGroupMembers,
   membersBySpaceId,
 } = vi.hoisted(() => {
   const membersBySpaceId: Record<
@@ -154,6 +155,14 @@ const {
         },
       ],
     })),
+    mockGetSpaceGroupMembers: vi.fn(async () => ({
+      groupId: 'g1',
+      name: 'Referat 50',
+      protectedGroup: false,
+      activeMemberCount: 1,
+      members: [{ userId: 'user-anna', displayName: 'Anna Bauer' }],
+      responsible: [] as string[],
+    })),
     membersBySpaceId,
   }
 })
@@ -169,6 +178,7 @@ vi.mock('../services/api', async () => {
     // #1820: the subject picker searches groups server-side.
     searchSelectableGroups: mockSearchSelectableGroups,
     getSpaceAccessDerivation: mockGetSpaceAccessDerivation,
+    getSpaceGroupMembers: mockGetSpaceGroupMembers,
     getSpace: vi.fn(
       async (spaceId: string) => useSpaceStore.getState().selectedSpace ?? { id: spaceId },
     ),
@@ -339,6 +349,24 @@ describe('SpaceManagementPage', () => {
     renderWithProviders(<SpaceManagementPage />, { withRouter: true })
 
     expect(await screen.findByText(/Kleine Runde · Gruppe · kleine Gruppe/)).toBeInTheDocument()
+  })
+
+  /**
+   * #1880, ADR-0036 Entscheidung 9: Wer die Gruppe hier aufgenommen hat, sieht ihre Mitglieder —
+   * und erst, wenn er danach fragt.
+   */
+  it('offers the member list of a group member and loads it only on request', async () => {
+    setSpaceState(teamSpace)
+    renderWithProviders(<SpaceManagementPage />, { withRouter: true })
+    const trigger = await screen.findByRole('button', {
+      name: 'Mitglieder von Referat 50 anzeigen',
+    })
+    expect(mockGetSpaceGroupMembers).not.toHaveBeenCalled()
+
+    await userEvent.click(trigger)
+
+    expect(await screen.findByText('Anna Bauer')).toBeInTheDocument()
+    expect(mockGetSpaceGroupMembers).toHaveBeenCalledWith('space-team', 'g1', 0, 50)
   })
 
   it('adds a group as a member through the group search', async () => {

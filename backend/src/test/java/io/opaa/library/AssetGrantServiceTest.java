@@ -25,6 +25,7 @@ import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.permission.AssetGrant;
 import io.opaa.permission.AssetGrantRepository;
+import io.opaa.permission.GroupMemberDisclosureDirectory;
 import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.GroupSizeProperties;
 import io.opaa.permission.GroupSubject;
@@ -44,6 +45,7 @@ class AssetGrantServiceTest {
   private KnowledgeLibraryRepository libraryRepository;
   private UserRepository userRepository;
   private GroupSubjectDirectory groupDirectory;
+  private GroupMemberDisclosureDirectory disclosureDirectory;
   private GroupMembershipResolver groupMemberships;
   private LibraryAccessService accessService;
   private AuditEventRecorder auditEventRecorder;
@@ -65,6 +67,7 @@ class AssetGrantServiceTest {
     libraryRepository = mock(KnowledgeLibraryRepository.class);
     userRepository = mock(UserRepository.class);
     groupDirectory = mock(GroupSubjectDirectory.class);
+    disclosureDirectory = mock(GroupMemberDisclosureDirectory.class);
     groupMemberships = mock(GroupMembershipResolver.class);
     accessService = mock(LibraryAccessService.class);
     auditEventRecorder = mock(AuditEventRecorder.class);
@@ -75,6 +78,7 @@ class AssetGrantServiceTest {
             libraryRepository,
             userRepository,
             groupDirectory,
+            disclosureDirectory,
             groupMemberships,
             new GroupSizeProperties(null),
             accessService,
