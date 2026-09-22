@@ -71,6 +71,7 @@ Drei Eigenschaften prägen alles Weitere:
 | Modelle | Chat-, Embedding- und Rerank-Rolle, Endpunkte, Zugangsdaten | [Deployment](deployment.md), Abschnitte „LLM-Anbieter" und „Reranking einschalten" |
 | Authentifizierung | Entwicklungsmodus, OIDC mit einem oder mehreren Anbietern, lokale Konten mit Passwort | [Deployment](deployment.md), Abschnitt „Authentifizierung" |
 | Konten verwalten | Lokale Konten anlegen, einladen, sperren, zurücksetzen, befristen; Rollen und Anlegerechte; Selbstregistrierung | [Benutzerverwaltung](benutzerverwaltung.md) |
+| Rechte vergeben und nachweisen | Rollen an Bibliotheken und Räumen, Gruppen als Empfänger, Anlegerechte, Vollmachten, Herleitung „warum sehe ich das", Rechtehistorie und Stichtagsauskunft, Übertragung, „Nachfolge offen" | [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md) |
 | Fremdzugänge | Freigegebene Bibliotheken für fremde KI-Werkzeuge erreichbar machen: Schalter, Freigabe je Bibliothek, persönliche Zugangstokens, MCP-Server, Kontingent und Abflussalarm | [Fremdzugänge](fremdzugaenge.md) |
 | E-Mail-Versand | SMTP als Verwaltungseinstellung, öffentliche Basis-URL aus der Umgebung, zwölf überschreibbare Vorlagen, Testversand | [Deployment](deployment.md), Abschnitt „E-Mail-Versand (SMTP)" |
 | Installation und Update | Docker Compose, Umgebungsvariablen, Härtung, Update-Verhalten des Index | [Deployment](deployment.md) |
@@ -82,7 +83,8 @@ Drei Eigenschaften prägen alles Weitere:
 | Kapitel | Inhalt |
 |---|---|
 | [Deployment](deployment.md) | Installation aus Images, Update-Ablauf und Folgen für den Index, alle Umgebungsvariablen, Härtung, Modellanbieter, Authentifizierung samt Erststart und Notfallprozedur, E-Mail-Versand, Originalablage der Uploads, Fehlerbehebung |
-| [Benutzerverwaltung](benutzerverwaltung.md) | Lokale Konten: anlegen und einladen, Link-Übergabe ohne Mailserver, Sperren und Entsperren, Zurücksetzen, Anlagegrund und Ablaufdatum, Auflagenprüfung, Rollen und Anlegerechte, Freigabe-Obergrenze für Konnektorbibliotheken, interne Gruppen und ihre Verantwortlichen, Löschen gegen Sperren, Selbstregistrierung, Selbstbedienung, Regeln und Fristen |
+| [Benutzerverwaltung](benutzerverwaltung.md) | Lokale Konten: anlegen und einladen, Link-Übergabe ohne Mailserver, Sperren und Entsperren, Zurücksetzen, Anlagegrund und Ablaufdatum, Auflagenprüfung, Rollen und Anlegerechte, Löschen gegen Sperren, Übergabe an einen Identitätsanbieter, Selbstregistrierung, Selbstbedienung, Regeln und Fristen |
+| [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md) | Das Berechtigungsmodell an einer Stelle: Subjekte, die Begriffe Rolle / Anlegerecht / Vollmacht / Systemrolle, Rollen an Bibliothek und Raum, Verteilungsstufe und Auffindbarkeit, Freigabe-Obergrenze für Konnektorbibliotheken, Gruppenherkunft und -mechanismus, interne Gruppen und ihre Verantwortlichen, was wer sieht, die Herleitung „warum sehe ich das", Anlegerechte, Systemrollen und Vollmachten, Rechtehistorie und Stichtagsauskunft, Kontosperre aus dem Verzeichnis, Übertragung, „Nachfolge offen", Diagnose im Gruppenkontext, Konfiguration |
 | [Indexierung](indexierung.md) | Aufnahmestrecke: Bibliothek, Quelle, Lauf, Dokument; Zeitplan; Dokumentstrecke Schritt für Schritt; Anhänge; Löscherkennung; Protokoll; Pipeline-Versionen und Nachzug; Formatübersicht |
 | [Suche](suche.md) | Abfragestrecke: Suchbereich, Filter, Teilfragen, zwei Suchpfade, Fusion, Reranking, Vervollständigung, Antwort, Belegprüfung, Diagnose, Aufbewahrung der Rechtehistorie, Konfiguration |
 | [Metadaten](metadaten.md) | Kernfelder, Format- und Bibliotheksfelder, Vokabular, Ermittlung, Bestandslauf, Pflege, Wirkung in Filter, Kontextpräfix und Beleg |
@@ -97,7 +99,6 @@ Diese Kapitel sind im Epic #1282 vorgesehen; bis dahin steht der jeweilige Inhal
 
 | Kapitel | Vorgesehener Inhalt |
 |---|---|
-| Bibliotheken und Berechtigungen | Organisationen, Räume, Bibliotheken, Rollen, Freigaben, Ordner in Upload-Bibliotheken, Speicherkontingent, Löschen und Ausschluss von Dokumenten |
 | Modelle | Chat-, Embedding- und Rerank-Modellrolle, verwaltete Modelle, Endpunkte, Fehlerbilder |
 | Authentifizierung | Auth-Modi, Keycloak-Anbindung und Härtung des Realms an einer Stelle; heute im Deployment-Kapitel, die lokalen Konten in [Benutzerverwaltung](benutzerverwaltung.md) |
 | Betrieb | Backup und Wiederherstellung, Update-Ablauf, Log- und Metrik-Übersicht, Single-Instance-Annahme, Grenzwerte auf einer Seite |
@@ -108,6 +109,9 @@ Diese Kapitel sind im Epic #1282 vorgesehen; bis dahin steht der jeweilige Inhal
 |---|---|
 | Erste Installation | [Deployment](deployment.md) Schnellstart und Konfiguration → [Deployment](deployment.md) „Erststart und Systemverwalter-Konto" → [Deployment](deployment.md) Härtung → [Indexierung](indexierung.md) Abschnitt 2 |
 | Konten anlegen oder entziehen | [Benutzerverwaltung](benutzerverwaltung.md) → [Deployment](deployment.md) „E-Mail-Versand (SMTP)", falls Einladungen per Mail gehen sollen |
+| Rechte einer Bibliothek oder eines Raums vergeben | [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md) Abschnitte 2 bis 5 → Abschnitte 6 bis 8 (Gruppen) |
+| Eine Person scheidet aus, ein Referat wird aufgelöst | [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md) Abschnitt 13 → [Benutzerverwaltung](benutzerverwaltung.md) Abschnitte 4 und 8 |
+| „Wer durfte das am 3. März lesen?" | [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md) Abschnitt 12 → [Suche](suche.md) Abschnitt 8.4 (Aufbewahrung) |
 | Niemand kommt mehr herein | [Deployment](deployment.md) „Notfallprozedur: wieder hereinkommen" → [Benutzerverwaltung](benutzerverwaltung.md) Abschnitt 4 |
 | Neue Quelle anschließen | das Konnektor-Kapitel des Quellentyps → [Indexierung](indexierung.md) Abschnitte 3 und 7 (Zeitplan, Löscherkennung) |
 | Dokumente fehlen oder sind veraltet | [Indexierung](indexierung.md) Abschnitte 7 bis 9 → Laufprotokoll der Bibliothek → Format-Kapitel des Dokuments |
@@ -145,7 +149,14 @@ Begriffe, die in allen Kapiteln in genau dieser Bedeutung verwendet werden.
 | **Diagnosesperre** | Grundzustand jeder Bibliothek, der sie aus einer Diagnose im Rechtekontext einer benannten Person heraushält |
 | **Lokales Konto** | Ein Konto, das OPAA selbst führt: Anmeldung mit E-Mail-Adresse und Passwort, verwaltet unter Administration → Benutzer; Gegenstück zu einem Konto aus einem Identitätsanbieter |
 | **Notanker-Konto** | Das eine lokale Systemverwalterkonto, das OPAA beim Erststart anlegt; Notfallzugangsmittel, kein Arbeitskonto |
+| **Rolle** | Gestufte Berechtigung an genau einem Objekt — an einer Bibliothek Leser, Bearbeiter, Verwalter, Eigentümer; in einem Raum Mitglied, Kurator, Administrator. Für eine Person oder eine Gruppe, unbefristet oder mit Ablaufdatum |
 | **Anlegerecht** | Ein installationsweites Recht, etwas anzulegen (Spaces, Bibliotheken für Uploads, Konnektorbibliotheken, interne Gruppen); vergeben an eine Person, eine Gruppe oder „Alle Konten", ohne Gegenstand und ohne Lesewirkung |
+| **Vollmacht** | Eine befristete, begründungspflichtige Erlaubnis mit Gegenstand, an genau eine Person gebunden und an keine Gruppe vergebbar: „Sicht als" in der Suchdiagnose und der Geltungsbereich einer anlassbezogenen Klärung im Nachweisprotokoll |
+| **Interne Gruppe** | Eine Gruppe, die in OPAA selbst entsteht und von benannten Verantwortlichen gepflegt wird; für andere erst wählbar, nachdem diese sie zur Verwendung freigegeben haben |
+| **Geschützte Gruppe** | Eine Gruppe der Personalvertretung, der Schwerbehindertenvertretung, der Gleichstellung oder der Personalvorgänge: über die Suche nicht auffindbar, in fremden Listen ohne Namen, ohne Größenangabe. Das Kennzeichen setzt die zuständige Stelle selbst, nicht die Administration |
+| **Wirksame Gruppe** | Eine Gruppe, der ein Recht erteilt werden darf: nicht aufgelöst, ihr Anbieter eingeschaltet, ihre Mitgliedschaft noch gepflegt. Sie darf leer sein; ist sie es nicht, ist sie zusätzlich **handlungsfähig** und kann Eigentümerin oder Raumadministratorin sein |
+| **Nachfolge offen** | Der abgeleitete Zustand eines Objekts ohne handlungsfähige Verantwortliche: nutzbar wie bisher, alle Rechte bleiben, allein die Reichweite ist eingefroren |
+| **Rechtehistorie** | Die Zeiträume, in denen ein Recht galt — die Grundlage der Stichtagsauskunft; getrennt vom Nachweisprotokoll, das Handlungen festhält |
 | **Anlagegrund** | Pflichtangabe zu jedem lokalen Konto: der dienstliche Anlass und der Grund seiner Befristung; die betroffene Person kann ihn lesen |
 | **Aktivitätsklasse** | Die einzige Angabe zur Nutzung eines lokalen Kontos in der Kontenliste („nie", „länger nicht genutzt", „aktiv") — kein Zeitstempel, nicht sortierbar |
 | **Fremdzugang** | Der lesende Kanal, über den ein KI-Werkzeug außerhalb von OPAA in freigegebenen Bibliotheken sucht; installationsweit schaltbar und standardmäßig aus |
