@@ -182,3 +182,7 @@ databaseChangeLog:
   # Schutzkennzeichen einer Anbietergruppe setzen und lösen — ohne Pflegerechte an der Gruppe.
   - include:
       file: db/changelog/changes/077-create-group-contacts.yaml
+  # Der Löschlauf beider Protokolle löscht nach der eingestellten Frist (#1851): der Deckel der
+  # Baseline konvergierte nie, eine Verkürzung wurde damit nie wirksam.
+  - include:
+      file: db/changelog/changes/078-retention-deletion-without-forward-cap.yaml
