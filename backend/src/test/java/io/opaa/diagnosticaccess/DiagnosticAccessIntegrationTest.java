@@ -41,6 +41,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.IllegalTransactionStateException;
 import org.springframework.transaction.support.TransactionTemplate;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * The leitplanken against the real, Liquibase-built schema rather than a mock: the database itself
@@ -53,6 +54,7 @@ class DiagnosticAccessIntegrationTest {
   @Autowired private DiagnosticImpersonationGrantService grantService;
   @Autowired private DiagnosticImpersonationGrantRepository grantRepository;
   @Autowired private DiagnosticContextRetentionSettingsRepository retentionRepository;
+  @Autowired private DiagnosticContextRetentionService retentionService;
   @Autowired private DiagnosticContextLogRepository logRepository;
   @Autowired private DiagnosticContextLogQueryService logQueryService;
   @Autowired private ForeignDiagnosticContextService foreignDiagnosticContextService;
@@ -462,6 +464,47 @@ class DiagnosticAccessIntegrationTest {
         .isEqualTo(12);
 
     assertThat(deletionService.runOnce()).isEmpty();
+  }
+
+  /**
+   * A change answers with what it wrote. The Vorher-Wert for the protocol entry is read into the
+   * same persistence context the native update bypasses, so without clearing it the caller is
+   * handed the value the change just replaced - while the row already carries the new one.
+   */
+  @Test
+  void changingTheRetentionAnswersWithTheNewValueAndProtocolsBothValues() {
+    int before = retentionRepository.findSingleton().orElseThrow().getRetentionMonths();
+    int changed = before == 7 ? 9 : 7;
+
+    DiagnosticContextRetentionSettings answered =
+        retentionService.updateRetentionMonths(admin, changed);
+
+    assertThat(answered.getRetentionMonths())
+        .as("PUT must answer with the new value")
+        .isEqualTo(changed);
+    assertThat(retentionService.read(admin).getRetentionMonths())
+        .as("a fresh read must see the new value")
+        .isEqualTo(changed);
+    Map<String, Object> protocolled =
+        jdbcTemplate.queryForMap(
+            "SELECT before, after FROM audit_log WHERE organization_id = ?"
+                + " AND event_type = 'DIAGNOSTIC_CONTEXT_RETENTION_CHANGED'"
+                + " ORDER BY recorded_at DESC LIMIT 1",
+            organizationId);
+    assertThat(retentionMonthsIn(protocolled.get("before"))).isEqualTo(before);
+    assertThat(retentionMonthsIn(protocolled.get("after"))).isEqualTo(changed);
+  }
+
+  /**
+   * The protocolled value as a number, read out of the entry's JSON rather than compared as raw
+   * text: the invariant is the field, not the serializer's spacing or field order.
+   */
+  private int retentionMonthsIn(Object protocolledJson) {
+    return JsonMapper.builder()
+        .build()
+        .readTree(String.valueOf(protocolledJson))
+        .get("retentionMonths")
+        .asInt();
   }
 
   /**

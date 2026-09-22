@@ -23,8 +23,11 @@ public interface DiagnosticContextRetentionSettingsRepository
   /**
    * Narrow native update touching exactly the two columns the application account holds {@code
    * UPDATE} on - same reasoning as {@code AuditRetentionSettingsRepository#updateRetentionMonths}.
+   * {@code clearAutomatically} is what lets a re-read after this call see the written row: a native
+   * update never reaches the settings entity a caller read for the Vorher-Wert, so without clearing
+   * the persistence context that stale instance is what the re-read returns.
    */
-  @Modifying
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
   @Query(
       value =
           "UPDATE diagnostic_context_retention_settings SET retention_months = :retentionMonths,"
