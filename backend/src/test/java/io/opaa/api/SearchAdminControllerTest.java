@@ -15,6 +15,7 @@ import io.opaa.auth.AdminTestSecurityConfig;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
 import io.opaa.common.NotFoundException;
+import io.opaa.diagnosticaccess.DiagnosticImpersonationGrantService.ImpersonationAvailability;
 import io.opaa.indexing.maintenance.ContextPrefixRerunProgress;
 import io.opaa.indexing.metadata.CoreMetadataField;
 import io.opaa.indexing.metadata.LibraryMetadataSchemaChangeProgress;
@@ -259,7 +260,7 @@ class SearchAdminControllerTest {
         .thenReturn(
             new SearchDiagnosisService.DiagnosisContextOptions(
                 List.of(new SearchDiagnosisService.PermissionProfile(profileId, "Bürgerbüro", 4)),
-                false));
+                ImpersonationAvailability.NONE));
 
     mockMvc
         .perform(get("/api/v1/admin/search/diagnosis-context").with(asAdmin()))

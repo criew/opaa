@@ -19,10 +19,13 @@ import io.opaa.diagnosticaccess.DiagnosticImpersonationGrant;
 import io.opaa.diagnosticaccess.DiagnosticImpersonationGrantRepository;
 import io.opaa.group.Group;
 import io.opaa.group.GroupRepository;
+import io.opaa.permission.GroupMembershipResolver;
+import io.opaa.permission.GroupSizeProperties;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.ProviderFixtures;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -59,6 +62,8 @@ class SearchDiagnosisPersonContextHttpIntegrationTest {
   @Autowired private DiagnosticContextLogRepository logRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private io.opaa.auth.oidc.OidcProviderRepository providerRepository;
+  @Autowired private GroupMembershipResolver membershipResolver;
+  @Autowired private GroupSizeProperties groupSizeProperties;
 
   private User devAdmin;
   private UUID organizationId;
@@ -70,6 +75,9 @@ class SearchDiagnosisPersonContextHttpIntegrationTest {
   private UUID lockedLibraryId;
   private UUID ungrantedLockedLibraryId;
   private Instant startedAt;
+
+  /** The accounts that only exist so the scope reaches the Mindestgruppengröße (#1879). */
+  private final List<UUID> extraMemberIds = new ArrayList<>();
 
   private RequestPostProcessor devAdmin() {
     return request -> {
@@ -132,6 +140,24 @@ class SearchDiagnosisPersonContextHttpIntegrationTest {
         targetWithoutLockedRightId,
         orgUnitId,
         organizationId);
+    // #1879: the scope of the befugnis has to reach at least the Mindestgruppengröße in active
+    // accounts, at the time of every use - otherwise a group context discloses an individual. The
+    // two target persons above are two of them; the rest are extras of this fixture.
+    for (int index = 0; index < groupSizeProperties.minimumGroupSize() - 2; index++) {
+      User extra =
+          new User("colleague-" + index, "test-issuer", "colleague-" + index + "@example.com", "K");
+      extra.setOrganizationId(organizationId);
+      UUID extraId = userRepository.save(extra).getId();
+      extraMemberIds.add(extraId);
+      jdbcTemplate.update(
+          "INSERT INTO group_memberships (id, user_id, group_id, organization_id, created_at)"
+              + " VALUES (?, ?, ?, ?, now())",
+          UUID.randomUUID(),
+          extraId,
+          orgUnitId,
+          organizationId);
+    }
+    membershipResolver.invalidateUsers(extraMemberIds);
 
     openLibraryId = insertLibrary("Satzungen & Gebührenordnungen");
     lockedLibraryId = insertLibrary("Personalvorgänge");
@@ -170,9 +196,45 @@ class SearchDiagnosisPersonContextHttpIntegrationTest {
     jdbcTemplate.update("DELETE FROM groups WHERE id = ?", orgUnitId);
     jdbcTemplate.update("DELETE FROM users WHERE id = ?", targetUserId);
     jdbcTemplate.update("DELETE FROM users WHERE id = ?", targetWithoutLockedRightId);
+    extraMemberIds.forEach(userId -> jdbcTemplate.update("DELETE FROM users WHERE id = ?", userId));
+    extraMemberIds.clear();
     // fk_groups_provider is RESTRICT, so the provider goes after the unit above. A provider row
     // left behind would make the next class's first provider not the default one.
     jdbcTemplate.update("DELETE FROM oidc_providers WHERE id = ?", providerId);
+  }
+
+  /**
+   * #1879: the scope is measured at the time of the use. The body carries the stable code, so an
+   * interface can tell this refusal from "you hold no befugnis at all" - and the message names no
+   * figure, because below the Mindestgruppengröße the house withholds it (ADR-0036, Entscheidung
+   * 9).
+   */
+  @Test
+  void aScopeThatShrankBelowTheMinimumRefusesTheRunWithItsOwnCode() throws Exception {
+    grantBefugnis();
+    jdbcTemplate.update(
+        "UPDATE users SET directory_locked_at = now() WHERE id = ANY(CAST(? AS uuid[]))",
+        extraMemberIds.stream()
+            .map(UUID::toString)
+            .collect(java.util.stream.Collectors.joining(",", "{", "}")));
+    membershipResolver.invalidateUsers(extraMemberIds);
+
+    mockMvc
+        .perform(personContextRequest(JUSTIFICATION))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("IMPERSONATION_SCOPE_NOT_USABLE"))
+        .andExpect(jsonPath("$.error").value(org.hamcrest.Matchers.containsString("kleine Gruppe")))
+        .andExpect(
+            jsonPath("$.error")
+                .value(org.hamcrest.Matchers.not(org.hamcrest.Matchers.matchesRegex(".*\\d.*"))));
+
+    mockMvc
+        .perform(get("/api/v1/admin/search/diagnosis-context").with(devAdmin()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.personContextAvailable").value(false))
+        .andExpect(
+            jsonPath("$.personContextHint")
+                .value(org.hamcrest.Matchers.containsString("Sie halten eine Befugnis")));
   }
 
   @Test

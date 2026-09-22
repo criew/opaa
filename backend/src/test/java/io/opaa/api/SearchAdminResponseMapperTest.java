@@ -20,6 +20,7 @@ import io.opaa.api.dto.SearchPath;
 import io.opaa.api.dto.SearchPathState;
 import io.opaa.api.dto.SearchStatusResponse;
 import io.opaa.api.dto.TrackedDocumentOutcome;
+import io.opaa.diagnosticaccess.DiagnosticImpersonationGrantService.ImpersonationAvailability;
 import io.opaa.indexing.maintenance.ContextPrefixRerunProgress;
 import io.opaa.indexing.metadata.CoreMetadataExtractor;
 import io.opaa.indexing.metadata.CoreMetadataField;
@@ -271,7 +272,7 @@ class SearchAdminResponseMapperTest {
         SearchAdminResponseMapper.toDiagnosisContextResponse(
             new SearchDiagnosisService.DiagnosisContextOptions(
                 List.of(new SearchDiagnosisService.PermissionProfile(LIBRARY_ID, "Bürgerbüro", 4)),
-                true));
+                ImpersonationAvailability.USABLE));
 
     assertThat(response.getPermissionProfiles())
         .singleElement()
@@ -283,17 +284,31 @@ class SearchAdminResponseMapperTest {
             });
   }
 
+  /**
+   * Three states, three sentences (#1879): holding no befugnis and holding one whose scope is
+   * currently too small are different things, and only one of them is "Sie halten keine".
+   */
   @Test
-  void theDiagnosisContextExplainsBothStatesOfThePersonContextPermission() {
+  void theDiagnosisContextExplainsEveryStateOfThePersonContextPermission() {
     var withBefugnis =
         SearchAdminResponseMapper.toDiagnosisContextResponse(
-            new SearchDiagnosisService.DiagnosisContextOptions(List.of(), true));
+            new SearchDiagnosisService.DiagnosisContextOptions(
+                List.of(), ImpersonationAvailability.USABLE));
+    var scopeTooSmall =
+        SearchAdminResponseMapper.toDiagnosisContextResponse(
+            new SearchDiagnosisService.DiagnosisContextOptions(
+                List.of(), ImpersonationAvailability.SCOPE_TOO_SMALL));
     var withoutBefugnis =
         SearchAdminResponseMapper.toDiagnosisContextResponse(
-            new SearchDiagnosisService.DiagnosisContextOptions(List.of(), false));
+            new SearchDiagnosisService.DiagnosisContextOptions(
+                List.of(), ImpersonationAvailability.NONE));
 
     assertThat(withBefugnis.getPersonContextAvailable()).isTrue();
     assertThat(withBefugnis.getPersonContextHint()).contains("Begründung", "protokolliert");
+    assertThat(scopeTooSmall.getPersonContextAvailable()).isFalse();
+    assertThat(scopeTooSmall.getPersonContextHint())
+        .contains("Sie halten eine Befugnis", "Geltungsbereich derzeit zu klein")
+        .doesNotContain("Sie halten keine");
     assertThat(withoutBefugnis.getPersonContextAvailable()).isFalse();
     assertThat(withoutBefugnis.getPersonContextHint())
         .contains("Sie halten keine", "Administratorrolle");

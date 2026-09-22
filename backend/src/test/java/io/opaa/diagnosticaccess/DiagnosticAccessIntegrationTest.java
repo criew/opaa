@@ -15,6 +15,7 @@ import io.opaa.auth.UserRepository;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ValidationException;
 import io.opaa.group.Group;
+import io.opaa.group.GroupMembership;
 import io.opaa.group.GroupRepository;
 import io.opaa.library.AssetGrantService;
 import io.opaa.library.AssetGrantUpsert;
@@ -24,6 +25,7 @@ import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.permission.AssetGrant;
 import io.opaa.permission.AssetGrantRepository;
+import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.ProviderFixtures;
 import java.time.Instant;
@@ -63,6 +65,7 @@ class DiagnosticAccessIntegrationTest {
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private UserRepository userRepository;
   @Autowired private GroupRepository groupRepository;
+  @Autowired private GroupMembershipResolver membershipResolver;
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private io.opaa.auth.oidc.OidcProviderRepository providerRepository;
 
@@ -83,19 +86,23 @@ class DiagnosticAccessIntegrationTest {
     admin = CurrentUser.of(adminId, organizationId, SystemRole.SYSTEM_ADMIN, "Admin");
     // Every ORG_UNIT group carries its provider since #1816 (chk_groups_provider_kind).
     scopeProviderId = ProviderFixtures.tokenProvider(providerRepository).getId();
-    scopeGroupId =
-        groupRepository
-            .save(
-                new Group(
-                    organizationId,
-                    GroupKind.ORG_UNIT,
-                    "Amt für Personal",
-                    null,
-                    scopeProviderId,
-                    null,
-                    null,
-                    null))
-            .getId();
+    scopeGroupId = providerGroup(GroupKind.ORG_UNIT, "Amt für Personal", 7).getId();
+  }
+
+  /**
+   * A provider group with {@code activeMembers} usable accounts - a scope of the befugnis has to
+   * carry at least the Mindestgruppengröße (#1879, ADR-0036 Entscheidung 3).
+   */
+  private Group providerGroup(GroupKind kind, String name, int activeMembers) {
+    Group group = new Group(organizationId, kind, name, null, scopeProviderId, null, null, null);
+    for (int index = 0; index < activeMembers; index++) {
+      group.addMembership(
+          new GroupMembership(persistUser("member-" + index).getId(), organizationId));
+    }
+    Group saved = groupRepository.save(group);
+    membershipResolver.invalidateUsers(
+        saved.getMemberships().stream().map(GroupMembership::getUserId).toList());
+    return saved;
   }
 
   /**
@@ -115,6 +122,9 @@ class DiagnosticAccessIntegrationTest {
     jdbcTemplate.update("DELETE FROM asset_grants WHERE organization_id = ?", organizationId);
     jdbcTemplate.update(
         "DELETE FROM knowledge_libraries WHERE organization_id = ?", organizationId);
+    jdbcTemplate.update("DELETE FROM group_memberships WHERE organization_id = ?", organizationId);
+    jdbcTemplate.update(
+        "DELETE FROM group_membership_history WHERE organization_id = ?", organizationId);
     jdbcTemplate.update("DELETE FROM users WHERE organization_id = ?", organizationId);
     jdbcTemplate.update("DELETE FROM groups WHERE organization_id = ?", organizationId);
     // fk_groups_provider is RESTRICT, so the provider goes after its groups.
@@ -182,6 +192,245 @@ class DiagnosticAccessIntegrationTest {
         transactionTemplate.execute(
             status -> grantService.revokeGrantsIssuedBy(admin, deletedAccountId));
     assertThat(insideATransaction).isEmpty();
+  }
+
+  /**
+   * ADR-0036, Entscheidung 3: In a house that stays in token mode no {@code ORG_UNIT} group ever
+   * comes into being - so a token group is a scope too, or the befugnis is never grantable there.
+   */
+  @Test
+  void aTokenGroupOfAProviderIsAScope() {
+    Group tokenGroup = providerGroup(GroupKind.IDENTITY_PROVIDER, "Meldewesen", 7);
+    Instant from = Instant.now();
+
+    DiagnosticImpersonationGrant granted =
+        grantService.grant(
+            admin,
+            new DiagnosticImpersonationGrantCreation(
+                holderId, tokenGroup.getId(), from, from.plus(30, ChronoUnit.DAYS)));
+
+    assertThat(granted.getScopeGroupId()).isEqualTo(tokenGroup.getId());
+  }
+
+  /** An internal group stays out: it is nobody's Organisationseinheit, it is a house's own list. */
+  @Test
+  void anInternalGroupIsNoScope() {
+    Group internal =
+        groupRepository.save(Group.internal(organizationId, "Projektteam", null, null));
+    Instant from = Instant.now();
+
+    assertThatThrownBy(
+            () ->
+                grantService.grant(
+                    admin,
+                    new DiagnosticImpersonationGrantCreation(
+                        holderId, internal.getId(), from, from.plus(30, ChronoUnit.DAYS))))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("Anbietergruppe");
+  }
+
+  /** A group whose provider is switched off reaches nobody, so it is no scope either. */
+  @Test
+  void aGroupOfASwitchedOffProviderIsNoScope() {
+    Group scope = providerGroup(GroupKind.IDENTITY_PROVIDER, "Abgeschaltet", 7);
+    providerRepository
+        .findById(scopeProviderId)
+        .ifPresent(
+            provider -> {
+              provider.disable();
+              providerRepository.save(provider);
+            });
+    Instant from = Instant.now();
+
+    assertThatThrownBy(
+            () ->
+                grantService.grant(
+                    admin,
+                    new DiagnosticImpersonationGrantCreation(
+                        holderId, scope.getId(), from, from.plus(30, ChronoUnit.DAYS))))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("Identitätsanbieter");
+  }
+
+  /** Below the Mindestgruppengröße a group context discloses an individual - no scope at all. */
+  @Test
+  void aGroupBelowTheMinimumGroupSizeIsNoScope() {
+    Group tooSmall = providerGroup(GroupKind.ORG_UNIT, "Kleine Einheit", 3);
+    Instant from = Instant.now();
+
+    assertThatThrownBy(
+            () ->
+                grantService.grant(
+                    admin,
+                    new DiagnosticImpersonationGrantCreation(
+                        holderId, tooSmall.getId(), from, from.plus(30, ChronoUnit.DAYS))))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("Mindestgruppengröße");
+  }
+
+  /**
+   * The acceptance criterion of #1879: seven active accounts at the time of granting, one at the
+   * time of use. The size is therefore checked <b>on every use</b> - a grant that stays valid on
+   * paper is no person context without the Schutzmechanik of one. The row itself is untouched: the
+   * befugnis is not usable, not revoked, so neither the protocol nor the overview gets a break.
+   */
+  @Test
+  void aBefugnisWhoseScopeShrankBelowTheMinimumIsNoLongerUsable() {
+    Group scope = providerGroup(GroupKind.ORG_UNIT, "Referat 50", 7);
+    UUID targetId = scope.getMemberships().iterator().next().getUserId();
+    Instant from = Instant.now().minus(1, ChronoUnit.DAYS);
+    DiagnosticImpersonationGrant granted =
+        grantService.grant(
+            admin,
+            new DiagnosticImpersonationGrantCreation(
+                holderId, scope.getId(), from, from.plus(30, ChronoUnit.DAYS)));
+    CurrentUser holder = CurrentUser.of(holderId, organizationId, SystemRole.USER, "Holder");
+    assertThat(grantService.requireImpersonationPermission(holder, targetId).getId())
+        .isEqualTo(granted.getId());
+
+    // Six of the seven accounts are locked; the target person is the one that remains.
+    scope.getMemberships().stream()
+        .map(GroupMembership::getUserId)
+        .filter(userId -> !userId.equals(targetId))
+        .forEach(
+            userId ->
+                jdbcTemplate.update(
+                    "UPDATE users SET directory_locked_at = now() WHERE id = ?", userId));
+    membershipResolver.invalidateUsers(
+        scope.getMemberships().stream().map(GroupMembership::getUserId).toList());
+
+    assertThatThrownBy(() -> grantService.requireImpersonationPermission(holder, targetId))
+        .isInstanceOf(AccessDeniedException.class)
+        .hasMessageContaining("kleine Gruppe")
+        .satisfies(
+            refusal ->
+                assertThat(refusal.getMessage())
+                    .as("no figure below the Mindestgruppengröße leaves the house (ADR-0036/9)")
+                    .doesNotContainPattern("\\d"));
+    assertThat(grantService.holdsImpersonationPermission(holder))
+        .as("an unusable befugnis is no selectable person context either")
+        .isFalse();
+    assertThat(grantRepository.findByIdAndOrganizationId(granted.getId(), organizationId))
+        .get()
+        .satisfies(
+            stored -> {
+              assertThat(stored.getRevokedAt())
+                  .as("nothing was revoked - it is only unusable")
+                  .isNull();
+              assertThat(stored.isActiveAt(Instant.now())).isTrue();
+            });
+  }
+
+  /**
+   * A holder may legitimately hold several befugnisse, and the target person may be a member of two
+   * scopes. The <b>usable</b> one decides - otherwise an unusable one hides it, and the interface's
+   * own answer would disagree with the run.
+   */
+  @Test
+  void aShrunkScopeDoesNotHideASecondUsableBefugnis() {
+    Group shrinking = providerGroup(GroupKind.ORG_UNIT, "Referat 50", 7);
+    Group intact = providerGroup(GroupKind.IDENTITY_PROVIDER, "Meldewesen", 7);
+    UUID targetId = shrinking.getMemberships().iterator().next().getUserId();
+    // The target person belongs to both scopes; the second one keeps its size.
+    Group withTarget = groupRepository.findByIdWithMemberships(intact.getId()).orElseThrow();
+    withTarget.addMembership(new GroupMembership(targetId, organizationId));
+    groupRepository.save(withTarget);
+    membershipResolver.invalidateUser(targetId);
+    Instant from = Instant.now().minus(1, ChronoUnit.DAYS);
+    grantService.grant(
+        admin,
+        new DiagnosticImpersonationGrantCreation(
+            holderId, shrinking.getId(), from, from.plus(30, ChronoUnit.DAYS)));
+    DiagnosticImpersonationGrant usable =
+        grantService.grant(
+            admin,
+            new DiagnosticImpersonationGrantCreation(
+                holderId, intact.getId(), from, from.plus(30, ChronoUnit.DAYS)));
+    CurrentUser holder = CurrentUser.of(holderId, organizationId, SystemRole.USER, "Holder");
+
+    shrinking.getMemberships().stream()
+        .map(GroupMembership::getUserId)
+        .filter(userId -> !userId.equals(targetId))
+        .forEach(
+            userId ->
+                jdbcTemplate.update(
+                    "UPDATE users SET directory_locked_at = now() WHERE id = ?", userId));
+    membershipResolver.invalidateUsers(
+        shrinking.getMemberships().stream().map(GroupMembership::getUserId).toList());
+
+    assertThat(grantService.requireImpersonationPermission(holder, targetId).getId())
+        .as("the usable befugnis decides, whatever order the query returns")
+        .isEqualTo(usable.getId());
+    assertThat(grantService.holdsImpersonationPermission(holder)).isTrue();
+  }
+
+  /** The three states the diagnosis interface has to tell apart (#1879). */
+  @Test
+  void aHolderOfAnUnusableBefugnisIsNotAHolderOfNone() {
+    Group scope = providerGroup(GroupKind.ORG_UNIT, "Referat 50", 7);
+    CurrentUser holder = CurrentUser.of(holderId, organizationId, SystemRole.USER, "Holder");
+    assertThat(grantService.impersonationAvailability(holder))
+        .isEqualTo(DiagnosticImpersonationGrantService.ImpersonationAvailability.NONE);
+
+    Instant from = Instant.now().minus(1, ChronoUnit.DAYS);
+    grantService.grant(
+        admin,
+        new DiagnosticImpersonationGrantCreation(
+            holderId, scope.getId(), from, from.plus(30, ChronoUnit.DAYS)));
+    assertThat(grantService.impersonationAvailability(holder))
+        .isEqualTo(DiagnosticImpersonationGrantService.ImpersonationAvailability.USABLE);
+
+    scope.getMemberships().stream()
+        .map(GroupMembership::getUserId)
+        .forEach(
+            userId ->
+                jdbcTemplate.update(
+                    "UPDATE users SET directory_locked_at = now() WHERE id = ?", userId));
+    membershipResolver.invalidateUsers(
+        scope.getMemberships().stream().map(GroupMembership::getUserId).toList());
+
+    assertThat(grantService.impersonationAvailability(holder))
+        .isEqualTo(DiagnosticImpersonationGrantService.ImpersonationAvailability.SCOPE_TOO_SMALL);
+  }
+
+  /**
+   * ADR-0036, Entscheidung 3: a token group its provider no longer maintains has a frozen
+   * membership - no picture of the present, and therefore no scope. Same for a dissolved group,
+   * which every other granting path refuses as well.
+   */
+  @Test
+  void aFrozenOrDissolvedGroupIsNoScope() {
+    Group frozen = providerGroup(GroupKind.IDENTITY_PROVIDER, "Eingefroren", 7);
+    providerRepository
+        .findById(scopeProviderId)
+        .ifPresent(
+            provider -> {
+              provider.configureDirectorySync(true, 360);
+              providerRepository.save(provider);
+            });
+    Instant from = Instant.now();
+
+    assertThatThrownBy(
+            () ->
+                grantService.grant(
+                    admin,
+                    new DiagnosticImpersonationGrantCreation(
+                        holderId, frozen.getId(), from, from.plus(30, ChronoUnit.DAYS))))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("eingefroren");
+
+    Group dissolved = providerGroup(GroupKind.ORG_UNIT, "Aufgelöst", 7);
+    dissolved.dissolve(Instant.now());
+    groupRepository.save(dissolved);
+
+    assertThatThrownBy(
+            () ->
+                grantService.grant(
+                    admin,
+                    new DiagnosticImpersonationGrantCreation(
+                        holderId, dissolved.getId(), from, from.plus(30, ChronoUnit.DAYS))))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("aufgelöst");
   }
 
   @Test

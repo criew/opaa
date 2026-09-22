@@ -1338,10 +1338,11 @@ liefern nie ein Embedding — die Spalte wird gar nicht erst gelesen.
 > Protokollmodell liegt im Backend-Paket `io.opaa.diagnosticaccess`; die Regeln unten bleiben die
 > maßgebliche Fassung. Drei Festlegungen der Umsetzung, die dieser Abschnitt offenließ:
 >
-> - **Geltungsbereich** ist eine Gruppe der Art `ORG_UNIT` (die Organisationseinheit aus dem
->   Verzeichnisabgleich); **Gültigkeitsdauer** ist auf zwölf Monate je Vergabe begrenzt. Beides sind
->   `NOT NULL`-Spalten mit zusätzlicher `CHECK`-Bedingung — ein unbefristetes, bereichsloses
->   Dauerrecht ist nicht speicherbar, nicht nur nicht anlegbar.
+> - **Geltungsbereich** ist eine **Anbietergruppe** — eine Organisationseinheit aus dem
+>   Verzeichnisabgleich oder eine Gruppe aus dem Anmeldetoken (#1879) —, die wirksam ist und die
+>   Mindestgruppengröße an aktiven Konten erreicht; **Gültigkeitsdauer** ist auf zwölf Monate je
+>   Vergabe begrenzt. Beides sind `NOT NULL`-Spalten mit zusätzlicher `CHECK`-Bedingung — ein
+>   unbefristetes, bereichsloses Dauerrecht ist nicht speicherbar, nicht nur nicht anlegbar.
 > - **Die Befugnis zur Protokollauswertung** ist die vorhandene Rolle `AUDITOR` (die „benannten
 >   Stellen" aus (h)); sie und „Sicht als" haben keinerlei Ableitungsbeziehung, und `SYSTEM_ADMIN`
 >   trägt keine von beiden.
@@ -1465,8 +1466,24 @@ gilt:
 
 - Die Befugnis MUSS **benannt und einzeln vergeben** werden; sie wird nicht aus „ist Administrator"
   abgeleitet.
-- Die Befugnis MUSS einen **Geltungsbereich** (Organisationseinheit) und eine **Gültigkeitsdauer**
-  tragen. Ein unbefristetes, bereichsloses Dauerrecht ist nicht zulässig.
+- Die Befugnis MUSS einen **Geltungsbereich** und eine **Gültigkeitsdauer** tragen. Ein
+  unbefristetes, bereichsloses Dauerrecht ist nicht zulässig. Geltungsbereich ist **jede
+  Anbietergruppe** — eine Organisationseinheit aus dem Verzeichnis oder eine Token-Gruppe (ADR-0036,
+  Entscheidung 3, #1879); ein Haus im Token-Modus hätte sonst nie einen wählbaren Bereich. Eine
+  interne Gruppe dieses Hauses ist keiner. Ebenso wenig eine Gruppe, die nicht mehr wirksam ist:
+  aufgelöst, Anbieter abgeschaltet, oder eine Token-Gruppe, deren Anbieter inzwischen auf den
+  Verzeichnisabgleich umgestellt hat — deren Mitgliedschaft ist eingefroren und bildet die Gegenwart
+  nicht mehr ab, dieselbe Bedingung, die auch für ein neues Grant-Ziel gilt.
+- Der Geltungsbereich MUSS die **Mindestgruppengröße** (aktive Konten) einhalten — **bei der
+  Erteilung und bei jeder Nutzung**. Eine Gruppe mit sieben aktiven Mitgliedern bei der Erteilung
+  kann ein halbes Jahr später eines haben; die Vollmacht wäre dann ein Personenkontext ohne dessen
+  Schutzmechanik. Unterschreitet der Bereich die Größe, ist die Vollmacht **nicht nutzbar** (`403`,
+  Code `IMPERSONATION_SCOPE_NOT_USABLE`) — sie bleibt aber gültig und unentzogen, damit weder das
+  Protokoll noch die Übersicht der Verwaltung einen Bruch bekommt, den niemand veranlasst hat. Die
+  Meldung **nennt die Zahl nicht**: Unterhalb der Mindestgruppengröße hält das Haus sie ohnehin
+  zurück („kleine Gruppe" statt Zahl), und an einer benannten Zielperson wäre sie die Auskunft, wer
+  dort noch übrig ist. Hält jemand mehrere Vollmachten, entscheidet die **brauchbare**; eine
+  geschrumpfte verdeckt keine intakte.
 - Die Befugnis „Sicht als" und die Befugnis zur **Auswertung des Protokolls** MÜSSEN getrennt vergeben
   werden. Wer diagnostiziert, kontrolliert nicht sich selbst.
 - Eine Diagnose im **eigenen** Rechtekontext ist von alldem nicht betroffen; sie zeigt nichts, was die

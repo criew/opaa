@@ -25,6 +25,7 @@ import io.opaa.api.dto.SearchStatusResponse;
 import io.opaa.api.dto.SearchedLibrary;
 import io.opaa.api.dto.TrackedDocumentOutcome;
 import io.opaa.api.dto.TrackedDocumentResponse;
+import io.opaa.diagnosticaccess.DiagnosticImpersonationGrantService.ImpersonationAvailability;
 import io.opaa.query.SearchedLibraryRef;
 import io.opaa.query.retrieval.CandidateOutcome;
 import io.opaa.query.retrieval.CandidateVerdict;
@@ -73,20 +74,28 @@ final class SearchAdminResponseMapper {
                         profile.id(), profile.name(), profile.libraryCount()))
             .toList(),
         options.personContextAvailable(),
-        personContextHint(options.personContextAvailable()));
+        personContextHint(options.personContext()));
   }
 
   /**
-   * Names which of the two states the caller is in and why, rather than only that a control is
-   * disabled: the befugnis follows from no role, so "you are an administrator" is no answer.
+   * Names which of the three states the caller is in and why, rather than only that a control is
+   * disabled: the befugnis follows from no role, so "you are an administrator" is no answer - and
+   * "Sie halten keine" would be wrong for somebody who holds one whose scope shrank (#1879).
    */
-  private static String personContextHint(boolean available) {
-    return available
-        ? "Sie halten eine gültige Befugnis „Sicht als“. Der Rechtekontext einer Person verlangt"
-            + " eine Begründung und wird protokolliert."
-        : "Für den Rechtekontext einer Person ist die eigene, befristete Befugnis „Sicht als“"
-            + " nötig; Sie halten keine. Sie wird einzeln vergeben und folgt nicht aus der"
-            + " Administratorrolle.";
+  private static String personContextHint(ImpersonationAvailability availability) {
+    return switch (availability) {
+      case USABLE ->
+          "Sie halten eine gültige Befugnis „Sicht als“. Der Rechtekontext einer Person verlangt"
+              + " eine Begründung und wird protokolliert.";
+      case SCOPE_TOO_SMALL ->
+          "Sie halten eine Befugnis „Sicht als“, deren Geltungsbereich derzeit zu klein ist: Er"
+              + " liegt unter der Mindestgruppengröße, und ein Gruppenkontext dieser Größe gäbe"
+              + " eine einzelne Person preis.";
+      case NONE ->
+          "Für den Rechtekontext einer Person ist die eigene, befristete Befugnis „Sicht als“"
+              + " nötig; Sie halten keine. Sie wird einzeln vergeben und folgt nicht aus der"
+              + " Administratorrolle.";
+    };
   }
 
   static SearchDiagnosisResponse toDiagnosisResponse(SearchDiagnosis diagnosis) {

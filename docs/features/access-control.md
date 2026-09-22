@@ -110,13 +110,24 @@ sind eigene Tabellenzeilen, keine Rolleneigenschaft:
 
 | Befugnis | Ablage | Wer vergibt | Technische Grenze |
 |---|---|---|---|
-| **„Sicht als"** — eine Suchdiagnose im Rechtekontext einer anderen Person ausführen | `diagnostic_impersonation_grants` | die Systemverwaltung | Geltungsbereich ist genau eine Gruppe, die der Dienst auf `ORG_UNIT` einschränkt; Laufzeit höchstens zwölf Monate je Vergabe, als `CHECK` in der Datenbank |
+| **„Sicht als"** — eine Suchdiagnose im Rechtekontext einer anderen Person ausführen | `diagnostic_impersonation_grants` | die Systemverwaltung | Geltungsbereich ist genau eine **Anbietergruppe** (`ORG_UNIT` oder `IDENTITY_PROVIDER`) oberhalb der Mindestgruppengröße, geprüft bei Erteilung **und** bei jeder Nutzung (#1879); Laufzeit höchstens zwölf Monate je Vergabe, als `CHECK` in der Datenbank |
 | **Vorfallsbereich** — die anlassbezogene Klärung mit Personenfilter | `audit_incident_scope_grants` | zwei verschiedene `AUDITOR`-Konten, eines beantragt, ein anderes gibt frei | Vier-Augen-Prinzip als `CHECK` in der Datenbank; Person, Zeitraum und Zweck vorab festgelegt; die Freigabe ist 30 Tage nutzbar |
 
 > **`SYSTEM_ADMIN` schließt keine von beiden ein**, und die beiden schließen einander nicht ein.
 
 Im Einzelnen:
 
+- **Mindestgruppengröße bei jeder Nutzung (#1879).** Der Geltungsbereich der Vollmacht „Sicht als"
+  ist jede Anbietergruppe, solange sie die Mindestgruppengröße an **aktiven Konten** einhält — und
+  das wird bei jeder Nutzung erneut gemessen, nicht nur bei der Erteilung. Darunter antwortet die
+  Nutzung mit `403` (`IMPERSONATION_SCOPE_NOT_USABLE`) — **ohne die Zahl zu nennen**, denn unterhalb
+  der Mindestgruppengröße hält das Haus sie zurück („kleine Gruppe" statt Zahl, Entscheidung 9), und
+  an einer benannten Zielperson wäre sie die Auskunft, wer dort noch übrig ist. Die Vollmacht bleibt
+  gültig und unentzogen, ist nur nicht nutzbar, und die Diagnoseoberfläche sagt genau das: Sie
+  meldet den Personenkontext als nicht wählbar und nennt als Grund die zu kleine Gruppe, nicht
+  „Sie halten keine". Hält jemand mehrere Vollmachten, entscheidet die brauchbare. Kein Bereich sind
+  eine interne Gruppe und jede Gruppe, die nicht mehr wirksam ist: aufgelöst, Anbieter abgeschaltet,
+  oder Token-Gruppe mit eingefrorener Mitgliedschaft nach einem Mechanismuswechsel.
 - **„Sicht als":** Die Systemverwaltung *erteilt* die Befugnis, hält sie dadurch aber nicht. Die Prüfung
   beim Ausführen sieht ausschließlich die Zeilen der Vollmachtstabelle an und kennt keinen Rollenzweig —
   für keine Rolle. Ein Administrator ohne eigene Vollmacht wird abgewiesen wie jeder andere. Die
@@ -945,8 +956,8 @@ Jede solche Gruppe benennt ihren Anbieter als Fremdschlüssel (`groups.provider_
 Gruppen zweier Anbieter sind zwei Gruppen, ein Anbieter erreicht nie die Gruppen eines anderen;
 Mitgliedschaften folgen dem Token (Historie `IDENTITY_PROVIDER_ADDED`/`_REMOVED`, Audit unter
 `identity-provider`), die Gruppen selbst bleiben bestehen und sind in der Gruppenverwaltung
-schreibgeschützt; sie sind weder Gegenstand des Verzeichnisabgleichs noch als „Sicht als"-Bereich
-wählbar. Der **Verzeichnisabgleich** ist seit #1816 an die **Anbieterzeile selbst** gebunden, nicht
+schreibgeschützt; Gegenstand des Verzeichnisabgleichs sind sie nicht, als „Sicht als"-Bereich
+dagegen seit #1879 wählbar — sonst hätte ein Haus im Token-Modus nie einen. Der **Verzeichnisabgleich** ist seit #1816 an die **Anbieterzeile selbst** gebunden, nicht
 mehr an den Standardanbieter: Er ist je Anbieter einschaltbar, löst die Subjects des Verzeichnisses
 nur unter den Konten **dieses** Anbieters auf (ein gleichnamiges Subject eines zweiten Anbieters
 erbt keine Mitgliedschaft) und verwaltet ausschließlich dessen Organisationseinheiten. Ohne
