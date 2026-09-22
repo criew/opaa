@@ -624,7 +624,9 @@ Aufruf steht es wieder in der Restmenge.
 Paket nach diesem einen Dokument. Jeder weitere Kandidat aus derselben Ablage liefe in dieselbe
 Wartezeit; der Aufruf meldet deshalb das eine übersprungene Dokument und die bis dahin erledigte
 Arbeit ganz regulär zurück, statt den Speicher reihum zu befragen. Die dahinter liegenden
-Dokumente bleiben unberührt und kommen im nächsten Aufruf an die Reihe.
+Dokumente bleiben unberührt und kommen an die Reihe, sobald der Speicher wieder antwortet — bis
+dahin endet jeder Aufruf an demselben Dokument, und auch die dahinter liegenden Dokumente aus
+anderen Quellen (etwa `FILESYSTEM`) werden nicht erreicht.
 
 Für Anhänge, die nur remote erreichbar sind, wird die ganze Elternkette vorgemerkt, weil der
 Anhang nur aus der Elterndatei heraus neu extrahiert werden kann.
