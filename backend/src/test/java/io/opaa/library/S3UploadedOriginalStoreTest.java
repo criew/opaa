@@ -4,6 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import io.opaa.indexing.source.s3.S3AccessException;
 import io.opaa.indexing.source.s3.StubS3Server;
 import java.io.ByteArrayInputStream;
@@ -22,6 +25,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.health.contributor.Health;
 import org.springframework.boot.health.contributor.Status;
 
@@ -36,6 +40,8 @@ import org.springframework.boot.health.contributor.Status;
 class S3UploadedOriginalStoreTest {
 
   private static final String BUCKET = "ablage";
+
+  private final ListAppender<ILoggingEvent> appender = new ListAppender<>();
 
   @TempDir Path tempDir;
 
@@ -68,8 +74,19 @@ class S3UploadedOriginalStoreTest {
 
   @AfterEach
   void stop() {
+    ((Logger) LoggerFactory.getLogger(S3UploadedOriginalStore.class)).detachAppender(appender);
     store.close();
     server.close();
+  }
+
+  /** Records what the adapter logs from here on; {@link #loggedLines} reads it back. */
+  private void captureAdapterLog() {
+    appender.start();
+    ((Logger) LoggerFactory.getLogger(S3UploadedOriginalStore.class)).addAppender(appender);
+  }
+
+  private List<String> loggedLines() {
+    return appender.list.stream().map(ILoggingEvent::getFormattedMessage).toList();
   }
 
   private UploadS3Properties properties(String keyPrefix) {
@@ -166,18 +183,29 @@ class S3UploadedOriginalStoreTest {
   }
 
   @Test
-  void aRefusedPutIsUnavailableAndLeavesNoObject() throws IOException {
-    // A store that refuses the write is the same temporary condition a refused read reports, and
-    // its own sentence - which names the operation and the configuration - stays in the log.
+  void aRefusedPutIsUnavailableAndNamesTheMissingPermissionInTheLog() throws IOException {
+    // The probe knows nothing of the write direction (HeadBucket + HeadObject), so a key without
+    // s3:PutObject leaves the health group UP while every upload answers 503. The log line is
+    // therefore the only place that reason exists, and it has to name bucket and permission.
     UploadedOriginalStore.AcceptedUpload accepted =
         store.accept(organizationId, libraryId, ".pdf", bytes("inhalt"));
     server.failNextMatching("PUT", "/" + BUCKET + "/", 403, "AccessDenied");
+    captureAdapterLog();
 
     assertThatThrownBy(accepted::store)
         .isInstanceOf(UploadStoreUnavailableException.class)
         .hasMessageContaining("nicht erreichbar")
         .satisfies(e -> assertThat(e.getMessage()).doesNotContain("s3:PutObject"))
         .satisfies(e -> assertThat(e.getMessage()).doesNotContain("geheim"));
+
+    assertThat(loggedLines())
+        .as("the only place the refused write is diagnosable")
+        .anySatisfy(
+            line ->
+                assertThat(line)
+                    .contains(BUCKET)
+                    .contains("s3:PutObject")
+                    .doesNotContain("geheim"));
 
     accepted.discard();
     assertThat(server.keys(BUCKET)).isEmpty();

@@ -616,9 +616,10 @@ public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoClose
     }
 
     /**
-     * A store that cannot take the object raises {@link UploadStoreUnavailableException}, exactly
-     * as every read above does (ADR-0030, Entscheidung 9): the same failure of the same store must
-     * not be a {@code 503} when it is read and a {@code 500} when it is written (#1805).
+     * A store that cannot take the object raises {@link UploadStoreUnavailableException}, the same
+     * answer a read gives when the store cannot be reached (ADR-0030, Entscheidung 9). The reason -
+     * a refused write included - stays in the log, which names the bucket and the missing
+     * permission; the health group does not see a write-only rights gap.
      */
     @Override
     public UploadedOriginalRef store() throws IOException {

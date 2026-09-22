@@ -5195,8 +5195,10 @@ paths:
         may be unreachable or refuse the application, and taking the original into it is this
         operation's own dependency. It is then answered with 503 and a German message naming no
         detail of the stored configuration - the same temporary condition, and the same answer,
-        that GET on this document's content reports for the same store. Nothing of the attempt
-        survives it: neither the working file nor a document row.
+        that GET on this document's content reports for the same store. Nothing of this attempt
+        survives it: neither the working file nor a new document row. The reason - a store that
+        refuses the write for a missing permission included - is named in the application log; the
+        upload-store health group only covers what its probe reaches, which is the read direction.
       requestBody:
         required: true
         content:
