@@ -24,15 +24,13 @@ import io.opaa.query.retrieval.RetrievalPipelineTestSupport;
 import io.opaa.query.retrieval.RetrievalStageName;
 import io.opaa.query.retrieval.StageExplanation;
 import io.opaa.query.retrieval.StageStatus;
+import io.opaa.test.JavaSources;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.IntStream;
-import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.SearchRequest;
@@ -153,28 +151,15 @@ class SearchDiagnosisRerankParityTest {
    */
   @Test
   void onlyTheFactoryConstructsARetrievalContextInProductionCode() throws IOException {
-    Path mainSources = Path.of("src", "main", "java");
-    List<String> constructingFiles;
-    try (Stream<Path> files = Files.walk(mainSources)) {
-      constructingFiles =
-          files
-              .filter(path -> path.toString().endsWith(".java"))
-              .filter(path -> readFile(path).contains("new RetrievalContext("))
-              .map(path -> path.getFileName().toString())
-              .sorted()
-              .toList();
-    }
+    List<String> constructingFiles =
+        JavaSources.mainSources().stream()
+            .filter(path -> JavaSources.readFile(path).contains("new RetrievalContext("))
+            .map(path -> path.getFileName().toString())
+            .sorted()
+            .toList();
 
     assertThat(constructingFiles)
         .containsExactly("RetrievalContext.java", "RetrievalContextFactory.java");
-  }
-
-  private static String readFile(Path path) {
-    try {
-      return Files.readString(path);
-    } catch (IOException e) {
-      throw new java.io.UncheckedIOException(e);
-    }
   }
 
   /** Switched on but broken is a Störung in the protocol, never an "aus". */

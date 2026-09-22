@@ -14,6 +14,7 @@ import io.opaa.auth.local.LocalSelfServiceAvailability;
 import io.opaa.common.PayloadTooLargeException;
 import io.opaa.observability.RateLimitMetrics;
 import io.opaa.security.TrustedProxyClientIpResolver;
+import io.opaa.test.JavaSources;
 import jakarta.servlet.Filter;
 import java.io.IOException;
 import java.io.InputStream;
@@ -28,7 +29,6 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.ObjectProvider;
@@ -90,8 +90,6 @@ class TransportStatusCodeSpecificationTest {
 
   private static final Set<String> HTTP_METHODS =
       Set.of("get", "put", "post", "delete", "patch", "head", "options", "trace");
-
-  private static final Path MAIN_SOURCES = Path.of("src", "main", "java");
 
   /**
    * The shared raw-body bound, matched at its call sites: qualified from any other class,
@@ -208,7 +206,7 @@ class TransportStatusCodeSpecificationTest {
    */
   @Test
   void everyHandlerReadingThroughTheSharedBoundDeclaresItsSizeLimit() throws IOException {
-    List<Member> members = parseMainSources();
+    List<Handler> members = parseMainSources();
 
     assertThat(filesWhereAMappingAnnotationHasNoMember(members))
         .as(
@@ -217,13 +215,13 @@ class TransportStatusCodeSpecificationTest {
                 + " and a handler it walks past is a handler it passes")
         .isEmpty();
 
-    List<Member> intakes =
-        members.stream().filter(Member::callsTheSharedBound).filter(Member::isMapped).toList();
+    List<Handler> intakes =
+        members.stream().filter(Handler::callsTheSharedBound).filter(Handler::isMapped).toList();
     assertThat(describedRoutesOf(intakes))
         .as("the routes bounded today have to be among what the scan found")
         .containsAll(KNOWN_INTAKES);
 
-    for (Member intake : intakes) {
+    for (Handler intake : intakes) {
       assertThat(intake.httpMethod())
           .as(
               "%s#%s: a @RequestMapping on an intake has to name the method it answers, otherwise"
@@ -253,7 +251,8 @@ class TransportStatusCodeSpecificationTest {
    */
   @Test
   void theSharedBoundIsCalledOnlyFromAMappedHandler() throws IOException {
-    List<Member> callers = parseMainSources().stream().filter(Member::callsTheSharedBound).toList();
+    List<Handler> callers =
+        parseMainSources().stream().filter(Handler::callsTheSharedBound).toList();
 
     assertThat(callers)
         .as("a scan that finds no caller at all would let this assertion pass empty-handed")
@@ -413,12 +412,10 @@ class TransportStatusCodeSpecificationTest {
   }
 
   /**
-   * A top-level member of a production class: its file, keyed by the path under the source root so
-   * that two classes of the same name cannot balance each other out in the parity; its name;
-   * whether it carries a mapping annotation; the method and routes that annotation resolves to,
-   * each null when the annotation does not spell it out; and its body without comments.
+   * A member of a production class with the route it answers at: the method and routes its mapping
+   * annotation resolves to, each null when the annotation does not spell them out.
    */
-  private record Member(
+  private record Handler(
       String source,
       String name,
       boolean isMapped,
@@ -437,7 +434,7 @@ class TransportStatusCodeSpecificationTest {
     }
   }
 
-  private static List<String> describedRoutesOf(List<Member> members) {
+  private static List<String> describedRoutesOf(List<Handler> members) {
     return members.stream()
         .filter(member -> member.routes() != null)
         .flatMap(member -> member.routes().stream().map(route -> member.httpMethod() + " " + route))
@@ -448,11 +445,11 @@ class TransportStatusCodeSpecificationTest {
    * Which files hold a mapping annotation without a member the scan parsed, counted both ways. The
    * parity holds the scan to the sources themselves instead of to a number that ages.
    */
-  private static Set<String> filesWhereAMappingAnnotationHasNoMember(List<Member> members)
+  private static Set<String> filesWhereAMappingAnnotationHasNoMember(List<Handler> members)
       throws IOException {
     Map<String, Long> parsed = new HashMap<>();
     members.stream()
-        .filter(Member::isMapped)
+        .filter(Handler::isMapped)
         .forEach(member -> parsed.merge(member.source(), 1L, Long::sum));
     Map<String, Long> annotated = mappingAnnotationsPerFile();
 
@@ -473,7 +470,7 @@ class TransportStatusCodeSpecificationTest {
   /** Counted off the raw lines, deliberately without the member parsing this is meant to check. */
   private static Map<String, Long> mappingAnnotationsPerFile() throws IOException {
     Map<String, Long> perFile = new HashMap<>();
-    for (Path source : mainSources()) {
+    for (Path source : JavaSources.mainSources()) {
       long count =
           Files.readAllLines(source).stream()
               .filter(
@@ -481,143 +478,43 @@ class TransportStatusCodeSpecificationTest {
                       MAPPING_ANNOTATIONS.stream().anyMatch(name -> line.startsWith("  @" + name)))
               .count();
       if (count > 0) {
-        perFile.put(MAIN_SOURCES.relativize(source).toString(), count);
+        perFile.put(JavaSources.MAIN_SOURCES.relativize(source).toString(), count);
       }
     }
     return perFile;
   }
 
-  private static List<Member> parseMainSources() throws IOException {
-    List<Member> members = new ArrayList<>();
-    for (Path source : mainSources()) {
-      members.addAll(parseMembers(source));
-    }
-    return members;
-  }
-
-  private static List<Path> mainSources() throws IOException {
-    try (Stream<Path> files = Files.walk(MAIN_SOURCES)) {
-      return files.filter(path -> path.toString().endsWith(".java")).toList();
-    }
-  }
-
   /**
-   * Splits a file at the indentation google-java-format guarantees: a member starts at two spaces
-   * and ends at the line holding nothing but its closing brace at that same indentation.
+   * The members of every production class, each paired with the route its mapping annotation
+   * resolves to. The class-level prefix is read per file, so it cannot be carried in the shared
+   * {@link JavaSources.Member}.
    */
-  private static List<Member> parseMembers(Path source) throws IOException {
-    List<String> lines = Files.readAllLines(source);
-    List<String> classPaths = classLevelPaths(lines);
-    List<Member> members = new ArrayList<>();
-
-    for (int index = 0; index < lines.size(); index++) {
-      if (!isMemberDeclaration(lines.get(index))) {
-        continue;
-      }
-      List<String> code = new ArrayList<>();
-      int cursor = index + 1;
-      while (cursor < lines.size() && !endsAMember(lines.get(cursor))) {
-        if (isCode(lines.get(cursor))) {
-          code.add(lines.get(cursor));
-        }
-        cursor++;
-      }
-      String mapping = mappingAnnotation(lines, index);
-      members.add(
-          new Member(
-              MAIN_SOURCES.relativize(source).toString(),
-              memberName(lines.get(index)),
-              mapping != null,
-              mapping == null ? null : httpMethodOf(mapping),
-              mapping == null ? null : routesOf(classPaths, mapping),
-              List.copyOf(code)));
-      index = cursor < lines.size() && isMemberDeclaration(lines.get(cursor)) ? cursor - 1 : cursor;
-    }
-    return members;
-  }
-
-  /**
-   * A body ends at its own closing brace, at the end of the class, or at the next declaration - the
-   * last of the three because a wrapped member without a body at all (an interface method over two
-   * lines) would otherwise swallow the rest of its file.
-   */
-  private static boolean endsAMember(String line) {
-    return line.equals("  }") || line.equals("}") || isMemberDeclaration(line);
-  }
-
-  /**
-   * Recognised by what a member is <em>not</em>: a positive list of modifiers would miss a
-   * package-private handler, which Spring maps just the same, and demanding a line end in a brace
-   * or bracket would miss a signature wrapped before its {@code throws} clause. Only the semicolon
-   * is decisive - a declaration never ends in one, a field or an abstract method always does.
-   */
-  private static boolean isMemberDeclaration(String line) {
-    if (line.length() < 3 || !line.startsWith("  ") || line.charAt(2) == ' ') {
-      return false;
-    }
-    String declaration = line.substring(2);
-    boolean isAnnotationOrComment =
-        declaration.startsWith("@")
-            || declaration.startsWith("//")
-            || declaration.startsWith("/*")
-            || declaration.startsWith("*")
-            || declaration.startsWith("}");
-    return !isAnnotationOrComment && line.contains("(") && !line.endsWith(";");
-  }
-
-  /**
-   * Walks back from the declaration rather than accumulating forwards: an annotation that
-   * google-java-format broke across lines would otherwise end the accumulation on its own
-   * continuation line.
-   */
-  private static String mappingAnnotation(List<String> lines, int declarationIndex) {
-    for (int index = declarationIndex - 1; index >= 0; index--) {
-      String line = lines.get(index);
-      if (isMappingAnnotation(line)) {
-        return joinedWithItsContinuations(lines, index);
-      }
-      if (!isAnnotationOrJavadocLine(line)) {
-        return null;
+  private static List<Handler> parseMainSources() throws IOException {
+    List<Handler> handlers = new ArrayList<>();
+    for (Path source : JavaSources.mainSources()) {
+      List<String> lines = Files.readAllLines(source);
+      List<String> classPaths = classLevelPaths(lines);
+      String path = JavaSources.MAIN_SOURCES.relativize(source).toString();
+      for (JavaSources.Member member : JavaSources.parseMembers(path, lines)) {
+        String mapping = member.annotationOfAnyOf(MAPPING_ANNOTATIONS);
+        handlers.add(
+            new Handler(
+                member.source(),
+                member.name(),
+                mapping != null,
+                mapping == null ? null : httpMethodOf(mapping),
+                mapping == null ? null : routesOf(classPaths, mapping),
+                member.code()));
       }
     }
-    return null;
-  }
-
-  private static boolean isMappingAnnotation(String line) {
-    String stripped = line.strip();
-    return MAPPING_ANNOTATIONS.stream().anyMatch(name -> stripped.startsWith("@" + name));
-  }
-
-  private static boolean isAnnotationOrJavadocLine(String line) {
-    return line.startsWith("  @")
-        || line.startsWith("    ")
-        || line.startsWith("  })")
-        || line.startsWith("  /*")
-        || line.startsWith("   *");
-  }
-
-  /** Comment lines are dropped so that a mention of the bound cannot satisfy a guard. */
-  private static boolean isCode(String line) {
-    String content = line.strip();
-    return !content.startsWith("//") && !content.startsWith("*") && !content.startsWith("/*");
-  }
-
-  /** Reassembles a wrapped annotation; every continuation is indented deeper than its own line. */
-  private static String joinedWithItsContinuations(List<String> lines, int index) {
-    StringBuilder joined = new StringBuilder(lines.get(index).strip());
-    for (int cursor = index + 1;
-        cursor < lines.size() && lines.get(cursor).startsWith("   ");
-        cursor++) {
-      joined.append(' ').append(lines.get(cursor).strip());
-    }
-    return joined.toString();
+    return handlers;
   }
 
   /** The class-level prefixes: empty when there are none, null when they are not literals. */
   private static List<String> classLevelPaths(List<String> lines) {
     for (int index = 0; index < lines.size(); index++) {
       if (lines.get(index).startsWith("@RequestMapping")) {
-        return pathsOf(joinedWithItsContinuations(lines, index));
+        return pathsOf(JavaSources.joinedWithItsContinuations(lines, index));
       }
     }
     return List.of();

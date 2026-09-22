@@ -2,8 +2,9 @@ package io.opaa.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.opaa.test.JavaSources;
+import io.opaa.test.JavaSources.Member;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -37,10 +38,8 @@ import org.junit.jupiter.api.Test;
  */
 class GlobalExceptionHandlerBodyFunnelTest {
 
-  private static final Path MAIN_SOURCES = Path.of("src", "main", "java");
-
   private static final Path SOURCE =
-      MAIN_SOURCES.resolve(Path.of("io", "opaa", "api", "GlobalExceptionHandler.java"));
+      JavaSources.MAIN_SOURCES.resolve(Path.of("io", "opaa", "api", "GlobalExceptionHandler.java"));
 
   private static final String FUNNEL = "respond";
 
@@ -50,7 +49,7 @@ class GlobalExceptionHandlerBodyFunnelTest {
   @Test
   void anErrorBodyIsAttachedNowhereButInTheFunnel() throws IOException {
     Set<String> attachingMembers = new LinkedHashSet<>();
-    for (Member member : parseMembers()) {
+    for (Member member : JavaSources.parseMembers(SOURCE)) {
       if (member.code().stream().anyMatch(line -> line.contains(".body("))) {
         attachingMembers.add(member.name());
       }
@@ -67,7 +66,10 @@ class GlobalExceptionHandlerBodyFunnelTest {
 
   @Test
   void everyBranchAnswersThroughTheFunnel() throws IOException {
-    List<Member> handlers = parseMembers().stream().filter(Member::isExceptionHandler).toList();
+    List<Member> handlers =
+        JavaSources.parseMembers(SOURCE).stream()
+            .filter(member -> member.carries("ExceptionHandler"))
+            .toList();
     List<String> handlerNames = handlers.stream().map(Member::name).toList();
 
     // A list, not a set: handleValidationException exists twice as an overload, and a set would
@@ -105,13 +107,13 @@ class GlobalExceptionHandlerBodyFunnelTest {
   void theGuardedClassIsTheOnlyAdviceInProductionCode() throws IOException {
     List<String> adviceFiles = new ArrayList<>();
     List<String> filesWithABranch = new ArrayList<>();
-    try (Stream<Path> files = Files.walk(MAIN_SOURCES)) {
+    try (Stream<Path> files = Files.walk(JavaSources.MAIN_SOURCES)) {
       files
           .filter(path -> path.toString().endsWith(".java"))
           .sorted()
           .forEach(
               path -> {
-                String source = readFile(path);
+                String source = JavaSources.readFile(path);
                 if (declaresControllerAdvice(source)) {
                   adviceFiles.add(path.getFileName().toString());
                 }
@@ -146,7 +148,10 @@ class GlobalExceptionHandlerBodyFunnelTest {
   @Test
   void theAdviceIsDeclaredWithoutASelector() throws IOException {
     List<String> declarations =
-        readFile(SOURCE).lines().filter(line -> line.startsWith("@RestControllerAdvice")).toList();
+        JavaSources.readFile(SOURCE)
+            .lines()
+            .filter(line -> line.startsWith("@RestControllerAdvice"))
+            .toList();
 
     assertThat(declarations)
         .as("narrowing the advice silently drops every branch reached without a handler method")
@@ -220,112 +225,11 @@ class GlobalExceptionHandlerBodyFunnelTest {
     return line.chars().filter(candidate -> candidate == character).count();
   }
 
-  /** A member of the guarded class: its name, its code lines, and whether it is a branch. */
-  private record Member(String name, boolean isExceptionHandler, List<String> code) {}
-
-  /**
-   * Splits the source at the indentation google-java-format guarantees: a member starts at two
-   * spaces and ends at the line holding nothing but its closing brace at that same indentation.
-   */
-  private List<Member> parseMembers() throws IOException {
-    List<String> lines = Files.readAllLines(SOURCE);
-    List<Member> members = new ArrayList<>();
-
-    for (int index = 0; index < lines.size(); index++) {
-      if (!isMemberDeclaration(lines.get(index))) {
-        continue;
-      }
-      List<String> code = new ArrayList<>();
-      int cursor = index + 1;
-      while (cursor < lines.size() && !lines.get(cursor).equals("  }")) {
-        if (isCode(lines.get(cursor))) {
-          code.add(lines.get(cursor));
-        }
-        cursor++;
-      }
-      members.add(
-          new Member(
-              memberName(lines.get(index)),
-              precededByExceptionHandler(lines, index),
-              List.copyOf(code)));
-      index = cursor;
-    }
-    return members;
-  }
-
-  /**
-   * Recognised by what a member is <em>not</em>: a positive list of modifiers would miss a
-   * package-private branch, which Spring calls just the same via {@code
-   * ReflectionUtils#makeAccessible}.
-   */
-  private boolean isMemberDeclaration(String line) {
-    if (line.length() < 3 || !line.startsWith("  ") || line.charAt(2) == ' ') {
-      return false;
-    }
-    String declaration = line.substring(2);
-    boolean isAnnotationOrComment =
-        declaration.startsWith("@")
-            || declaration.startsWith("//")
-            || declaration.startsWith("/*")
-            || declaration.startsWith("*")
-            || declaration.startsWith("}");
-    return !isAnnotationOrComment
-        && line.contains("(")
-        && (line.endsWith("{") || line.endsWith("("));
-  }
-
-  /**
-   * Walks back from the declaration rather than accumulating forwards: an annotation that
-   * google-java-format broke across lines - anything past 100 characters, two fully qualified
-   * exception types for instance - would otherwise end the accumulation on its own continuation
-   * line.
-   */
-  private boolean precededByExceptionHandler(List<String> lines, int declarationIndex) {
-    for (int index = declarationIndex - 1; index >= 0; index--) {
-      String line = lines.get(index);
-      if (line.startsWith("  @ExceptionHandler")) {
-        return true;
-      }
-      if (!isAnnotationOrJavadocLine(line)) {
-        return false;
-      }
-    }
-    return false;
-  }
-
-  private boolean isAnnotationOrJavadocLine(String line) {
-    return line.startsWith("  @")
-        || line.startsWith("    ")
-        || line.startsWith("  })")
-        || line.startsWith("  /*")
-        || line.startsWith("   *");
-  }
-
-  /** Comment lines are dropped so that a mention of {@code respond(} cannot satisfy a guard. */
-  private boolean isCode(String line) {
-    String content = line.strip();
-    return !content.startsWith("//") && !content.startsWith("*") && !content.startsWith("/*");
-  }
-
   private boolean declaresControllerAdvice(String source) {
     return source
         .lines()
         .anyMatch(
             line ->
                 line.startsWith("@ControllerAdvice") || line.startsWith("@RestControllerAdvice"));
-  }
-
-  private String memberName(String line) {
-    String beforeParameters = line.substring(0, line.indexOf('('));
-    String[] tokens = beforeParameters.split("[^A-Za-z0-9_$]+");
-    return tokens[tokens.length - 1];
-  }
-
-  private String readFile(Path path) {
-    try {
-      return Files.readString(path);
-    } catch (IOException e) {
-      throw new UncheckedIOException(e);
-    }
   }
 }
