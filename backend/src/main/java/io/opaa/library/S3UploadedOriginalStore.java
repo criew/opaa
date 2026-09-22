@@ -8,7 +8,6 @@ import io.opaa.indexing.source.s3.S3RequestGuard;
 import io.opaa.indexing.source.s3.S3SdkClient;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InterruptedIOException;
 import java.io.OutputStream;
 import java.lang.management.ManagementFactory;
 import java.nio.file.Files;
@@ -58,7 +57,7 @@ import software.amazon.awssdk.services.s3.model.S3Object;
  * <p>Resolving a locator is the key prefix of the organization and library plus {@code HeadObject}:
  * a locator in another bucket, under another organization's or another library's prefix, or one
  * naming no object - an attachment row's synthetic one included - resolves to "not there" without
- * an error. A store that cannot be reached is the other case: reads raise {@link
+ * an error. A store that cannot be reached is the other case: reads and the one write raise {@link
  * UploadStoreUnavailableException}, a deletion logs and leaves the object for the orphan cleanup
  * (Entscheidung 9).
  */
@@ -616,6 +615,12 @@ public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoClose
       return workingFile;
     }
 
+    /**
+     * A store that cannot take the object raises {@link UploadStoreUnavailableException}, the same
+     * answer a read gives when the store cannot be reached (ADR-0030, Entscheidung 9). The reason -
+     * a refused write included - stays in the log, which names the bucket and the missing
+     * permission; the health group does not see a write-only rights gap.
+     */
     @Override
     public UploadedOriginalRef store() throws IOException {
       // Marked before the call: a PutObject that succeeds on the wire but times out on the way
@@ -631,9 +636,10 @@ public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoClose
                 s3.putObject(
                     PutObjectRequest.builder().bucket(bucket).key(key).build(),
                     RequestBody.fromFile(workingFile)));
+      } catch (S3AccessException e) {
+        throw unavailable("store", key, e);
       } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        throw new InterruptedIOException("interrupted while storing " + key);
+        throw interrupted();
       }
       return new UploadedOriginalRef(organizationId, libraryId, locator(key));
     }

@@ -138,7 +138,7 @@ class S3UploadedOriginalStoreLogLeakTest {
               ".pdf",
               new ByteArrayInputStream("y".getBytes(StandardCharsets.UTF_8)));
       server.failNextMatching("PUT", "/ablage/", 403, "AccessDenied");
-      assertThatThrownBy(refused::store).isInstanceOf(java.io.IOException.class);
+      assertThatThrownBy(refused::store).isInstanceOf(UploadStoreUnavailableException.class);
       refused.discard();
       server.close();
       store.recoverAfterRestart();

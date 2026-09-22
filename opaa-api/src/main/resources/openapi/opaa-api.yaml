@@ -5190,6 +5190,15 @@ paths:
         folder name (trimmed, length limit, no path separator, no ".."); an invalid segment or a
         depth overrun is rejected with 400 before any byte of this file is stored. Only accepted
         for UPLOAD libraries, like folderId itself.
+
+        **503 (ADR-0030, Entscheidung 9, #1805):** an upload storage that runs on an object store
+        may be unreachable or refuse the application, and taking the original into it is this
+        operation's own dependency. It is then answered with 503 and a German message naming no
+        detail of the stored configuration - the same temporary condition, and the same answer,
+        that GET on this document's content reports for the same store. Nothing of this attempt
+        survives it: neither the working file nor a new document row. The reason - a store that
+        refuses the write for a missing permission included - is named in the application log; the
+        upload-store health group only covers what its probe reaches, which is the read direction.
       requestBody:
         required: true
         content:
@@ -5233,6 +5242,8 @@ paths:
           $ref: "#/components/responses/Conflict"
         "413":
           $ref: "#/components/responses/PayloadTooLarge"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
 
   /api/v1/libraries/{libraryId}/documents/{documentId}:
     parameters:
