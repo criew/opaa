@@ -39,6 +39,7 @@ import {
   type SubjectSelection,
 } from '../components/permissions/subjectSelection'
 import PageHeading from '../components/a11y/PageHeading'
+import { successionAwareMessage } from '../components/succession/successionConflict'
 import FieldLabel from '../components/wizard/FieldLabel'
 import MetaBadge from '../components/MetaBadge'
 import SectionHead from '../components/SectionHead'
@@ -629,9 +630,10 @@ export default function SpaceManagementPage() {
                           )
                         } catch (err) {
                           setLocalError(
-                            err instanceof Error
-                              ? err.message
-                              : 'Das Mitglied konnte nicht hinzugefügt werden',
+                            successionAwareMessage(
+                              err,
+                              'Das Mitglied konnte nicht hinzugefügt werden',
+                            ),
                           )
                         }
                       }}
@@ -729,7 +731,7 @@ export default function SpaceManagementPage() {
                     setSelectedLibrary(null)
                     setSuccessMessage('Bibliothek zugeordnet')
                   } catch (err) {
-                    setLocalError(err instanceof Error ? err.message : 'Zuordnung fehlgeschlagen')
+                    setLocalError(successionAwareMessage(err, 'Zuordnung fehlgeschlagen'))
                   }
                 }}
               >

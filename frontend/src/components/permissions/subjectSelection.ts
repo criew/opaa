@@ -2,6 +2,14 @@ import type { PermissionSubjectType, SelectableGroupResponse, UserSummary } from
 import { confirmAction } from '../../stores/confirmStore'
 import { groupNotSelectableReason, groupOriginLabel, groupSizeLabel } from '../../utils/labels'
 
+/**
+ * Warum die Suche nach einer geschützten Gruppe wie ein leeres Ergebnis aussieht (ADR-0036,
+ * Entscheidung 9) - derselbe Satz an jeder Gruppensuche, ob über {@code SubjectPicker} oder direkt
+ * über {@code GroupPicker}.
+ */
+export const PROTECTED_GROUP_SEARCH_HINT =
+  'Eine geschützte Gruppe erscheint nur, wenn Sie ihre vollständige Bezeichnung eingeben.'
+
 /** Wer ein Recht bekommen soll: genau eine Person oder genau eine Gruppe (#1820). */
 export interface SubjectSelection {
   type: PermissionSubjectType

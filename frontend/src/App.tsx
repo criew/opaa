@@ -27,6 +27,7 @@ import GroupManagementPage from './pages/GroupManagementPage'
 import CapabilityManagementPage from './pages/CapabilityManagementPage'
 import DirectorySyncPage from './pages/DirectorySyncPage'
 import ProviderGroupWorklistPage from './pages/ProviderGroupWorklistPage'
+import SuccessionPage from './pages/SuccessionPage'
 import UserManagementPage from './pages/UserManagementPage'
 import LibraryManagementPage from './pages/LibraryManagementPage'
 import LibraryCreatePage from './pages/LibraryCreatePage'
@@ -59,6 +60,7 @@ const ADMIN_SECTIONS = [
   { label: 'Benutzer', to: '/admin/users' },
   { label: 'Gruppen', to: '/admin/groups' },
   { label: 'Anlegerechte', to: '/admin/capabilities' },
+  { label: 'Lebenszyklus', to: '/admin/succession' },
   { label: 'Modelle', to: '/admin/models' },
   { label: 'Identitätsanbieter', to: '/admin/identity-providers' },
   { label: 'Verzeichnisabgleich', to: '/admin/directory-sync' },
@@ -184,6 +186,11 @@ export default function App() {
                 />
                 <Route path="admin/directory-sync" element={<DirectorySyncPage />} />
                 <Route path="admin/capabilities" element={<CapabilityManagementPage />} />
+                <Route
+                  path="admin/succession"
+                  element={<Navigate to="/admin/succession/open" replace />}
+                />
+                <Route path="admin/succession/:tab" element={<SuccessionPage />} />
                 <Route path="admin/library-releases" element={<ExternalAccessLibrariesPage />} />
                 {/* Die beiden Bereiche der E-Mail-Seite sind Routen, damit ein Verweis auf die
                     Vorlagenverwaltung dort landet (#1542). */}

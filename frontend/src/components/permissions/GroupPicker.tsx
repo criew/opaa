@@ -17,6 +17,8 @@ interface GroupPickerProps {
   onChange: (value: SelectableGroupResponse | null) => void
   /** Gruppen, die hier nicht mehr in Frage kommen (bereits Mitglied bzw. bereits berechtigt). */
   excludedGroupIds?: string[]
+  /** Kennung des Eingabefelds, damit eine eigene Beschriftung (`htmlFor`) ein Ziel hat. */
+  inputId?: string
 }
 
 /**
@@ -31,6 +33,7 @@ export default function GroupPicker({
   value,
   onChange,
   excludedGroupIds = [],
+  inputId,
 }: GroupPickerProps) {
   const { query, setQuery, groups, isLoading, error } = useGroupSearch()
   const options = groups.filter((group) => !excludedGroupIds.includes(group.id))
@@ -86,6 +89,7 @@ export default function GroupPicker({
       renderInput={(params) => (
         <TextField
           {...params}
+          id={inputId ?? params.id}
           placeholder={placeholder}
           slotProps={{
             ...params.slotProps,

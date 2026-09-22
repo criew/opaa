@@ -35,6 +35,7 @@ import io.opaa.permission.GroupSizeSignal;
 import io.opaa.permission.GroupSubject;
 import io.opaa.permission.GroupSubjectDirectory;
 import io.opaa.permission.PermissionSubject;
+import io.opaa.permission.SuccessionFinding;
 import io.opaa.permission.SuccessionReachGuard;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -223,7 +224,7 @@ public class SpaceService {
     // the #543 archived-space rule below asks, so it answers that too.
     Map<UUID, Long> chatCounts = ownChatCounts(spaceIds, caller.id());
     Map<UUID, Long> libraryCounts = associationService.countVisibleBySpace(memberSpaces, caller);
-    Set<UUID> successionOpen = successionSource.openAmong(memberSpaces);
+    Map<UUID, SuccessionFinding> succession = successionSource.findingsAmong(memberSpaces);
     return memberSpaces.stream()
         // #543: an archived space is left out of this list unless the caller has a chat of their
         // own in it, is the space's owner, or is a system admin - otherwise, in the typical #543
@@ -243,7 +244,8 @@ public class SpaceService {
                     libraryCounts.getOrDefault(space.getId(), 0L).intValue(),
                     chatCounts.getOrDefault(space.getId(), 0L).intValue(),
                     SpaceAccessPolicy.effectiveRole(space, caller.id(), callerGroupIds),
-                    successionOpen.contains(space.getId())))
+                    succession.containsKey(space.getId()),
+                    succession.get(space.getId())))
         .toList();
   }
 

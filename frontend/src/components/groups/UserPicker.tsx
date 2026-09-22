@@ -11,6 +11,8 @@ interface UserPickerProps {
   onChange: (value: UserSummary | null) => void
   /** Konten, die hier nicht mehr in Frage kommen (bereits Mitglied bzw. bereits verantwortlich). */
   excludedUserIds: string[]
+  /** Kennung des Eingabefelds, damit eine eigene Beschriftung (`htmlFor`) ein Ziel hat. */
+  inputId?: string
 }
 
 function optionLabel(user: UserSummary): string {
@@ -29,6 +31,7 @@ export default function UserPicker({
   value,
   onChange,
   excludedUserIds,
+  inputId,
 }: UserPickerProps) {
   const { query, setQuery, users, isLoading, error } = useUserSearch()
   const options = users.filter((user) => !excludedUserIds.includes(user.id))
@@ -57,6 +60,7 @@ export default function UserPicker({
       renderInput={(params) => (
         <TextField
           {...params}
+          id={inputId ?? params.id}
           placeholder={placeholder}
           slotProps={{
             ...params.slotProps,

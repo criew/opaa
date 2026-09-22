@@ -1,5 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { HttpResponse, http } from 'msw'
+import { server } from '../mocks/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { answerConfirm, renderWithProviders } from '../test/test-utils'
 import SpaceManagementPage from './SpaceManagementPage'
@@ -28,6 +30,7 @@ const {
   mockArchiveSpace,
   mockListSpaceMembers,
   mockGetSpaceLibraryAssociations,
+  mockGetLibraries,
   mockSearchSelectableGroups,
   mockGetSpaceAccessDerivation,
   mockGetSpaceGroupMembers,
@@ -110,6 +113,7 @@ const {
     mockDeleteSpace: vi.fn(async () => undefined),
     mockArchiveSpace: vi.fn(async () => ({}) as SpaceResponse),
     mockListSpaceMembers: vi.fn(async (spaceId: string) => membersBySpaceId[spaceId] ?? []),
+    mockGetLibraries: vi.fn(async () => [] as unknown[]),
     mockGetSpaceLibraryAssociations: vi.fn(
       async (spaceId: string): Promise<SpaceLibraryAssociationListResponse> => {
         void spaceId
@@ -174,7 +178,7 @@ vi.mock('../services/api', async () => {
     getUsers: vi.fn(async () => []),
     getUserSummaries: vi.fn(async () => []),
     getSpaces: vi.fn(async () => []),
-    getLibraries: vi.fn(async () => []),
+    getLibraries: mockGetLibraries,
     // #1820: the subject picker searches groups server-side.
     searchSelectableGroups: mockSearchSelectableGroups,
     getSpaceAccessDerivation: mockGetSpaceAccessDerivation,
@@ -621,6 +625,49 @@ describe('SpaceManagementPage', () => {
 
     expect(await screen.findByText('Bibliothek ohne eigenen Zugriff')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^lösen$/i })).toBeInTheDocument()
+  })
+
+  it('names the takeover when an open succession refuses a new association', async () => {
+    mockGetLibraries.mockResolvedValueOnce([
+      {
+        id: 'lib-frei',
+        name: 'Freie Bibliothek',
+        ownerType: 'USER',
+        ownerId: 'u1',
+        visibility: 'PRIVATE',
+        listed: false,
+        myRole: 'OWNER',
+        documentCount: 0,
+        sourceType: 'UPLOAD',
+        createdAt: '2026-03-01T10:00:00Z',
+        updatedAt: '2026-03-01T10:00:00Z',
+      },
+    ])
+    server.use(
+      http.post('/api/v1/spaces/:spaceId/libraries', () =>
+        HttpResponse.json(
+          {
+            error:
+              'Für dieses Objekt ist die Nachfolge offen: eine neue Bereitstellung ist deshalb' +
+              ' nicht möglich. Bestehende Rechte bleiben unverändert, und nichts wird gelöscht.' +
+              ' Zuständig: die Systemverwaltung',
+            code: 'SUCCESSION_OPEN',
+          },
+          { status: 409 },
+        ),
+      ),
+    )
+    setSpaceState(teamSpace)
+    renderWithProviders(<SpaceManagementPage />, { withRouter: true })
+    const user = userEvent.setup()
+
+    const field = await screen.findByPlaceholderText('Bibliothek suchen …')
+    await user.click(field)
+    await user.click(await screen.findByRole('option', { name: 'Freie Bibliothek' }))
+    await user.click(screen.getByRole('button', { name: 'Zuordnen' }))
+
+    expect(await screen.findByText(/Nachfolge offen/)).toBeInTheDocument()
+    expect(screen.getByText(/Übernahme/)).toBeInTheDocument()
   })
 
   // #784: without an explicit noOptionsText, MUI's Autocomplete falls back to the English

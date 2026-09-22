@@ -23,6 +23,7 @@ import SectionHead from './SectionHead'
 import LibraryExternalAccessSection from './library/LibraryExternalAccessSection'
 import type { AssetGrantResponse, AssetRole } from '../types/api'
 import { useAuthStore } from '../stores/authStore'
+import { successionAwareMessage } from './succession/successionConflict'
 import { confirmAction } from '../stores/confirmStore'
 import { useGrantStore } from '../stores/grantStore'
 import GroupMembersDisclosure from './permissions/GroupMembersDisclosure'
@@ -151,7 +152,7 @@ export default function LibraryGrantsDialog({ open, library, onClose }: LibraryG
         expiresAt: grant.expiresAt ?? null,
       })
     } catch (err) {
-      setRowError(err instanceof Error ? err.message : 'Rolle konnte nicht geändert werden')
+      setRowError(successionAwareMessage(err, 'Rolle konnte nicht geändert werden'))
     }
   }
 
@@ -229,7 +230,7 @@ export default function LibraryGrantsDialog({ open, library, onClose }: LibraryG
       })
       resetForm()
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Freigabe konnte nicht erteilt werden')
+      setFormError(successionAwareMessage(err, 'Freigabe konnte nicht erteilt werden'))
     } finally {
       setSubmitting(false)
     }

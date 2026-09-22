@@ -45,6 +45,9 @@ public class SuccessionService implements SuccessionReachGuard, SuccessionCaseCl
   /** How many entries one tab composes before the answer is refused rather than trimmed. */
   static final int MAX_ENTRIES = 5_000;
 
+  /** The page size bound the specification declares; a request above it is refused, not clamped. */
+  static final int MAX_PAGE_SIZE = 200;
+
   /** The stable {@code code} of the {@code 409} a frozen reach produces. */
   public static final String SUCCESSION_OPEN = "SUCCESSION_OPEN";
 
@@ -67,7 +70,10 @@ public class SuccessionService implements SuccessionReachGuard, SuccessionCaseCl
     this.clock = clock;
   }
 
-  /** One tab of the list, oldest first; a page beyond the end is empty, never an error. */
+  /**
+   * One tab of the list, oldest first; a page beyond the end is empty, never an error - a page or
+   * size outside the declared bounds is refused rather than silently corrected.
+   */
   @Transactional(readOnly = true)
   public SuccessionPage list(UUID organizationId, SuccessionKind kind, int page, int size) {
     List<SuccessionFinding> findings = new ArrayList<>();
@@ -117,15 +123,23 @@ public class SuccessionService implements SuccessionReachGuard, SuccessionCaseCl
                 SuccessionEntry::firstSeenAt, Comparator.nullsLast(Comparator.naturalOrder()))
             .thenComparing(entry -> entry.finding().objectId().toString()));
 
-    int safeSize = Math.min(Math.max(size, 1), 200);
-    int fromIndex = Math.min(Math.max(page, 0) * safeSize, entries.size());
-    int toIndex = Math.min(fromIndex + safeSize, entries.size());
+    // Refused, never clamped: answering page 0 to a request for page 7, or 200 entries to a
+    // request for 500, looks like the answer that was asked for. Same reasoning as the bound above.
+    if (page < 0) {
+      throw new ValidationException("Die Seitennummer darf nicht negativ sein");
+    }
+    if (size < 1 || size > MAX_PAGE_SIZE) {
+      throw new ValidationException(
+          "Die Seitengröße muss zwischen 1 und " + MAX_PAGE_SIZE + " liegen");
+    }
+    int fromIndex = Math.min(page * size, entries.size());
+    int toIndex = Math.min(fromIndex + size, entries.size());
     return new SuccessionPage(
         entries.subList(fromIndex, toIndex),
-        Math.max(page, 0),
-        safeSize,
+        page,
+        size,
         entries.size(),
-        (int) Math.ceil((double) entries.size() / safeSize));
+        (int) Math.ceil((double) entries.size() / size));
   }
 
   /**

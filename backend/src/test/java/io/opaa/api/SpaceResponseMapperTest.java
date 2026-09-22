@@ -8,7 +8,10 @@ import io.opaa.api.dto.SpaceResponse;
 import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.api.types.SpaceRole;
 import io.opaa.api.types.SpaceVisibility;
+import io.opaa.api.types.SuccessionAddressee;
+import io.opaa.api.types.SuccessionObjectType;
 import io.opaa.permission.GroupSizeSignal;
+import io.opaa.permission.SuccessionFinding;
 import io.opaa.space.Space;
 import io.opaa.space.SpaceDetail;
 import io.opaa.space.SpaceMemberView;
@@ -100,7 +103,7 @@ class SpaceResponseMapperTest {
     UUID organization = UUID.randomUUID();
     Space space = new Space("Team", null, false, SpaceVisibility.PRIVATE, owner, organization);
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.CURATOR, organization));
-    SpaceOverview overview = new SpaceOverview(space, 0, 0, SpaceRole.ADMIN, false);
+    SpaceOverview overview = new SpaceOverview(space, 0, 0, SpaceRole.ADMIN, false, null);
 
     SpaceListResponse response = SpaceResponseMapper.toListResponse(overview);
 
@@ -113,7 +116,7 @@ class SpaceResponseMapperTest {
     UUID organization = UUID.randomUUID();
     Space space = new Space("Team", "Docs", false, SpaceVisibility.OPEN, owner, organization);
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organization));
-    SpaceOverview overview = new SpaceOverview(space, 3, 5, SpaceRole.ADMIN, false);
+    SpaceOverview overview = new SpaceOverview(space, 3, 5, SpaceRole.ADMIN, false, null);
 
     SpaceListResponse response = SpaceResponseMapper.toListResponse(overview);
 
@@ -135,8 +138,8 @@ class SpaceResponseMapperTest {
     Space second = new Space("B", null, false, SpaceVisibility.PRIVATE, owner, organization);
     List<SpaceOverview> overviews =
         List.of(
-            new SpaceOverview(first, 0, 0, SpaceRole.ADMIN, false),
-            new SpaceOverview(second, 1, 2, SpaceRole.ADMIN, false));
+            new SpaceOverview(first, 0, 0, SpaceRole.ADMIN, false, null),
+            new SpaceOverview(second, 1, 2, SpaceRole.ADMIN, false, null));
 
     List<SpaceListResponse> responses = SpaceResponseMapper.toListResponses(overviews);
 
@@ -277,11 +280,35 @@ class SpaceResponseMapperTest {
             SpaceResponseMapper.toResponse(new SpaceDetail(space, SpaceRole.ADMIN, true))
                 .getSuccessionOpen())
         .isTrue();
-    assertThat(
-            SpaceResponseMapper.toListResponse(
-                    new SpaceOverview(space, 0, 0, SpaceRole.ADMIN, true))
-                .getSuccessionOpen())
-        .isTrue();
+    SuccessionFinding finding =
+        SuccessionFinding.of(
+            SuccessionObjectType.SPACE, space.getId(), "Team", SuccessionAddressee.SPACE_ADMINS);
+    SpaceListResponse listResponse =
+        SpaceResponseMapper.toListResponse(
+            new SpaceOverview(space, 0, 0, SpaceRole.ADMIN, true, finding));
+    assertThat(listResponse.getSuccessionOpen()).isTrue();
+    // ADR-0036, Entscheidung 6: Die Übersicht trägt Zustand *und* Adressat, nicht nur das
+    // Kennzeichen.
+    assertThat(listResponse.getSuccession()).isNotNull();
+    assertThat(listResponse.getSuccession().getAddressee())
+        .isEqualTo(SuccessionAddressee.SPACE_ADMINS);
+    assertThat(listResponse.getSuccession().getAddresseeLabel())
+        .isEqualTo("die übrigen handlungsfähigen ADMIN-Mitglieder des Space");
+  }
+
+  /** Ein Space in Ordnung trägt kein Kennzeichen - weder das Flag noch den Adressaten. */
+  @Test
+  void theOverviewOfASpaceInOrderCarriesNoSuccessionState() {
+    UUID owner = UUID.randomUUID();
+    UUID organization = UUID.randomUUID();
+    Space space = new Space("Team", null, false, SpaceVisibility.PRIVATE, owner, organization);
+
+    SpaceListResponse response =
+        SpaceResponseMapper.toListResponse(
+            new SpaceOverview(space, 0, 0, SpaceRole.ADMIN, false, null));
+
+    assertThat(response.getSuccessionOpen()).isFalse();
+    assertThat(response.getSuccession()).isNull();
   }
 
   @Test

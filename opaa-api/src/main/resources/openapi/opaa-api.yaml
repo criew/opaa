@@ -2230,7 +2230,9 @@ paths:
         "400":
           description: >
             The list would exceed the bound this answer is composed within. It is refused rather
-            than trimmed - a shortened list would look complete.
+            than trimmed - a shortened list would look complete. A page or size outside the bounds
+            declared above is refused for the same reason: silently answering a different page than
+            the one asked for would look like the asked-for one.
           content:
             application/json:
               schema:
@@ -10020,6 +10022,15 @@ components:
             Entscheidung 6) - the overview card carries it too, so it is visible without opening
             the space.
           example: false
+        succession:
+          description: >
+            The marking the overview shows, from the same derivation as SpaceResponse.succession:
+            state and addressee, deliberately without date, previous owner or reason. ADR-0036,
+            Entscheidung 6 asks for it in "Übersicht und Detailansicht"; without it here the
+            overview card could only show the bare flag and not who is meant to act.
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/SuccessionStateResponse"
         createdAt:
           type: string
           format: date-time

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -13,13 +13,12 @@ import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import type {
-  GroupListResponse,
   PermissionSubjectType,
   PermissionTransferPreviewResponse,
   PermissionTransferScope,
+  SelectableGroupResponse,
   UserSummary,
 } from '../../types/api'
-import { getGroups } from '../../services/api'
 import {
   executePermissionTransfer,
   previewPermissionTransfer,
@@ -28,7 +27,8 @@ import { apiErrorCode } from '../../services/apiErrorDetails'
 import { notify } from '../../stores/notificationStore'
 import UserPicker from '../groups/UserPicker'
 import FieldLabel from '../wizard/FieldLabel'
-import { groupIneffectiveReason, groupOptionLabel } from '../groups/groupOriginLabels'
+import GroupPicker from './GroupPicker'
+import { confirmGroupSubject, PROTECTED_GROUP_SEARCH_HINT } from './subjectSelection'
 
 const scopeLabels: Record<PermissionTransferScope, string> = {
   ASSET_GRANTS: 'Berechtigungen an Objekten',
@@ -48,7 +48,14 @@ export interface TransferSubject {
 interface PermissionTransferDialogProps {
   open: boolean
   onClose: () => void
-  source: TransferSubject
+  /** Die feste Quelle, wenn der Aufrufer sie kennt (Gruppe, eigenes Konto). */
+  source?: TransferSubject
+  /**
+   * Statt einer festen Quelle: Die Quelle wird hier gewählt. Die Betriebsliste braucht das, weil
+   * eine Zeile den früheren Eigentümer nur als Text nennt — eine Kennung gibt die API bewusst
+   * nicht heraus (ADR-0036, Entscheidung 6).
+   */
+  sourceKinds?: PermissionSubjectType[]
   /** Welche Zielarten in Frage kommen — eine Person als Quelle gibt nur an eine Person ab. */
   targetKinds: PermissionSubjectType[]
   /** Welcher Umfang wählbar ist; die Vorauswahl ist der ganze angebotene Umfang. */
@@ -67,33 +74,26 @@ export default function PermissionTransferDialog({
   open,
   onClose,
   source,
+  sourceKinds,
   targetKinds,
   scopes,
   intro,
   onTransferred,
 }: PermissionTransferDialogProps) {
   const [targetType, setTargetType] = useState<PermissionSubjectType>(targetKinds[0])
-  const [targetGroupId, setTargetGroupId] = useState('')
+  const [targetGroup, setTargetGroup] = useState<SelectableGroupResponse | null>(null)
   const [targetUser, setTargetUser] = useState<UserSummary | null>(null)
+  const [sourceUser, setSourceUser] = useState<UserSummary | null>(null)
   const [selectedScopes, setSelectedScopes] = useState<PermissionTransferScope[]>(scopes)
-  const [groups, setGroups] = useState<GroupListResponse[]>([])
   const [preview, setPreview] = useState<PermissionTransferPreviewResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
-  // Über den Wahrheitswert statt über `targetKinds`: Die Elternkomponente übergibt ein
-  // Array-Literal, und an ihm hinge der Effekt bei jedem Render der Eltern neu.
-  const needsGroups = targetKinds.includes('GROUP')
-
-  useEffect(() => {
-    if (!open || !needsGroups) return
-    void getGroups()
-      .then(setGroups)
-      .catch(() => setGroups([]))
-  }, [open, needsGroups])
-
-  const targetId = targetType === 'GROUP' ? targetGroupId : (targetUser?.id ?? '')
-  const ready = targetId !== '' && selectedScopes.length > 0
+  const choosesSource = source === undefined
+  const sourceType: PermissionSubjectType = source?.type ?? sourceKinds?.[0] ?? 'USER'
+  const sourceId = source?.id ?? sourceUser?.id ?? ''
+  const targetId = targetType === 'GROUP' ? (targetGroup?.id ?? '') : (targetUser?.id ?? '')
+  const ready = sourceId !== '' && targetId !== '' && selectedScopes.length > 0
 
   function toggleScope(scope: PermissionTransferScope) {
     setPreview(null)
@@ -103,13 +103,18 @@ export default function PermissionTransferDialog({
   }
 
   async function createPreview() {
+    // Dieselbe Zwischenfrage wie im Freigabedialog (ADR-0036, Entscheidung 2): Wer an eine Gruppe
+    // eines externen Anbieters überträgt, bestätigt das ausdrücklich.
+    if (targetType === 'GROUP' && targetGroup && !(await confirmGroupSubject(targetGroup))) {
+      return
+    }
     setBusy(true)
     setError(null)
     try {
       setPreview(
         await previewPermissionTransfer({
-          sourceType: source.type,
-          sourceId: source.id,
+          sourceType,
+          sourceId,
           targetType,
           targetId,
           scope: selectedScopes,
@@ -130,8 +135,8 @@ export default function PermissionTransferDialog({
     try {
       const result = await executePermissionTransfer({
         previewId: preview.previewId,
-        sourceType: source.type,
-        sourceId: source.id,
+        sourceType,
+        sourceId,
         targetType,
         targetId,
         scope: selectedScopes,
@@ -170,7 +175,21 @@ export default function PermissionTransferDialog({
         <Stack spacing={2}>
           <Box>
             <FieldLabel htmlFor="transfer-source">Quelle</FieldLabel>
-            <TextField id="transfer-source" fullWidth size="small" value={source.name} disabled />
+            {choosesSource ? (
+              <UserPicker
+                inputId="transfer-source"
+                ariaLabel="Quelle"
+                placeholder="Person suchen …"
+                value={sourceUser}
+                onChange={(next) => {
+                  setPreview(null)
+                  setSourceUser(next)
+                }}
+                excludedUserIds={targetUser ? [targetUser.id] : []}
+              />
+            ) : (
+              <TextField id="transfer-source" fullWidth size="small" value={source.name} disabled />
+            )}
           </Box>
 
           {targetKinds.length > 1 && (
@@ -199,37 +218,29 @@ export default function PermissionTransferDialog({
           {targetType === 'GROUP' ? (
             <Box>
               <FieldLabel htmlFor="transfer-target-group">Zielgruppe</FieldLabel>
-              <TextField
-                id="transfer-target-group"
-                select
-                fullWidth
-                size="small"
-                value={targetGroupId}
-                onChange={(e) => {
+              {/* Die gemeinsame Gruppensuche (#1820): serverseitige Auswahl mit Herkunft,
+                  Kennzeichen „extern" und den Wählbarkeitsregeln - statt der vollen
+                  Verwaltungsliste in einem Auswahlfeld. */}
+              <GroupPicker
+                inputId="transfer-target-group"
+                ariaLabel="Zielgruppe"
+                placeholder="Zielgruppe suchen …"
+                value={targetGroup}
+                onChange={(group) => {
                   setPreview(null)
-                  setTargetGroupId(e.target.value)
+                  setTargetGroup(group)
                 }}
-                slotProps={{ htmlInput: { 'aria-label': 'Zielgruppe' } }}
-              >
-                {/* Nicht wählbare Gruppen bleiben sichtbar und nennen ihren Grund — dieselben
-                    drei, die das Backend abweist. Verstecken ließe die Person suchen. */}
-                {groups
-                  .filter((group) => group.id !== source.id)
-                  .map((group) => (
-                    <MenuItem
-                      key={group.id}
-                      value={group.id}
-                      disabled={groupIneffectiveReason(group) !== null}
-                    >
-                      {groupOptionLabel(group)}
-                    </MenuItem>
-                  ))}
-              </TextField>
+                excludedGroupIds={sourceType === 'GROUP' && sourceId !== '' ? [sourceId] : []}
+              />
+              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                {PROTECTED_GROUP_SEARCH_HINT}
+              </Typography>
             </Box>
           ) : (
             <Box>
               <FieldLabel htmlFor="transfer-target-user">Zielperson</FieldLabel>
               <UserPicker
+                inputId="transfer-target-user"
                 ariaLabel="Zielperson"
                 placeholder="Person suchen …"
                 value={targetUser}
@@ -237,7 +248,7 @@ export default function PermissionTransferDialog({
                   setPreview(null)
                   setTargetUser(next)
                 }}
-                excludedUserIds={source.type === 'USER' ? [source.id] : []}
+                excludedUserIds={sourceId !== '' && sourceType === 'USER' ? [sourceId] : []}
               />
             </Box>
           )}
