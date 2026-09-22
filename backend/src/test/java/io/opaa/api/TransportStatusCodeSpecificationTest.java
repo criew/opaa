@@ -26,6 +26,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -217,8 +218,7 @@ class TransportStatusCodeSpecificationTest {
                 + " and a handler it walks past is a handler it passes")
         .isEmpty();
 
-    List<Member> intakes =
-        members.stream().filter(Member::callsTheSharedBound).filter(Member::isMapped).toList();
+    List<Member> intakes = mappedIntakes(members);
     assertThat(describedRoutesOf(intakes))
         .as("the routes bounded today have to be among what the scan found")
         .containsAll(KNOWN_INTAKES);
@@ -270,6 +270,44 @@ class TransportStatusCodeSpecificationTest {
             "a caller without a mapping annotation has no route to demand 413 at - read the body in"
                 + " the handler itself and hand the bytes on")
         .isEmpty();
+  }
+
+  /**
+   * The counter-direction of the two halves above, and what makes {@code 413} symmetric to its two
+   * neighbours: the code stands at the multipart uploads and at the raw-body intakes, and nowhere
+   * else. Both halves of the expectation come from the same derivations the positive direction
+   * rests on - the specification's own {@code multipart/form-data} bodies and the call sites of the
+   * shared bound - so a declaration at an operation without a size limit of its own fails here.
+   */
+  @Test
+  void a413IsDeclaredOnlyWhereTheOperationBoundsItsOwnBody() throws IOException {
+    Set<String> withASizeLimit = new TreeSet<>();
+    forEachOperation(
+        (path, method, operation) -> {
+          if (consumesMultipart(operation)) {
+            withASizeLimit.add((String) operation.get("operationId"));
+          }
+        });
+    for (Member intake : mappedIntakes(parseMainSources())) {
+      if (intake.httpMethod() == null || intake.routes() == null) {
+        continue;
+      }
+      intake
+          .routes()
+          .forEach(route -> withASizeLimit.addAll(operationIdsAt(intake.httpMethod(), route)));
+    }
+
+    assertThat(withASizeLimit)
+        .as(
+            "neither derivation found a single operation, which would let the comparison pass empty")
+        .isNotEmpty();
+    assertThat(operationsDeclaring("413"))
+        .as(
+            "413 is derived from two mechanisms: a multipart body, and the shared raw-body bound."
+                + " An operation that bounds its body a third way belongs into the derivation - do"
+                + " not drop a declaration this comparison calls excess before checking which of"
+                + " the two premises fails to see it.")
+        .isEqualTo(withASizeLimit);
   }
 
   /**
@@ -389,19 +427,38 @@ class TransportStatusCodeSpecificationTest {
     return statuses;
   }
 
+  /** The operation ids the specification answers at a route Spring resolved. */
+  private static Set<String> operationIdsAt(String httpMethod, String path) {
+    Set<String> ids = new TreeSet<>();
+    forEachOperationAt(
+        httpMethod, path, operation -> ids.add((String) operation.get("operationId")));
+    return ids;
+  }
+
   private static Set<String> declaredStatusesAt(String httpMethod, String path) {
-    if (httpMethod == null || path == null) {
-      return Set.of();
-    }
     Set<String> statuses = new TreeSet<>();
+    forEachOperationAt(
+        httpMethod, path, operation -> statuses.addAll(map(operation, "responses").keySet()));
+    return statuses;
+  }
+
+  /**
+   * The operations at one route, usually exactly one. Both readers above go through here so that
+   * they resolve a route identically; an unresolvable method or path answers with nothing, which
+   * lets the assertion of the caller fail rather than this lookup.
+   */
+  private static void forEachOperationAt(
+      String httpMethod, String path, Consumer<Map<String, Object>> visitor) {
+    if (httpMethod == null || path == null) {
+      return;
+    }
     forEachOperation(
         (specPath, specMethod, operation) -> {
           if (specMethod.equals(httpMethod)
               && withoutVariableNames(specPath).equals(withoutVariableNames(path))) {
-            statuses.addAll(map(operation, "responses").keySet());
+            visitor.accept(operation);
           }
         });
-    return statuses;
   }
 
   /**
@@ -435,6 +492,11 @@ class TransportStatusCodeSpecificationTest {
                   line.contains(BOUND_OWNER + "." + SHARED_BOUND)
                       || (inTheDeclaringClass && line.contains(SHARED_BOUND)));
     }
+  }
+
+  /** The intakes of the shared bound that carry a route of their own to demand {@code 413} at. */
+  private static List<Member> mappedIntakes(List<Member> members) {
+    return members.stream().filter(Member::callsTheSharedBound).filter(Member::isMapped).toList();
   }
 
   private static List<String> describedRoutesOf(List<Member> members) {
