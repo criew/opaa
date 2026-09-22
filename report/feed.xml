@@ -5,8 +5,23 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-09-21T05:15:40Z</updated>
+  <updated>2026-09-22T05:14:30Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Montag, 21. September 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-09-21.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-09-21.html</id>
+    <updated>2026-09-22T05:14:30Z</updated>
+    <summary type="text">feat: Gruppen, Rollen und Berechtigungen: Subjekte, Herkunft und Folgen für Freigaben:
+— Gruppen als Space-Mitglieder mit Rolle eingeführt
+— Verzeichnisabgleich je Anbieter einschaltbar und zeitgesteuert
+— Keycloak-Konnektor für Gruppenabgleich produktiv
+— Rechte zwischen Gruppen und Personen übertragbar
+Sonstiges:
+— E2E- und Retrieval-Regressionstests fehlgeschlagen
+— AGENTS.md entschlackt, Backend-Regeln ausgelagert
+— Abhängigkeiten aktualisiert</summary>
+  </entry>
   <entry>
     <title>Tagesreport Sonntag, 20. September 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-09-20.html"/>

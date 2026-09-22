@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tagesreport 2026-09-21</title>
+<link rel="alternate" type="application/atom+xml" title="OPAA Tagesreport" href="../feed.xml">
+<style>:root {
+  color-scheme: light dark;
+  --bg: #ffffff;
+  --fg: #1a1a1a;
+  --muted: #5c6370;
+  --line: #e2e5e9;
+  --accent: #2f6feb;
+  --card: #f7f8fa;
+  --green: #1a7f37;
+  --red: #cf222e;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14161a;
+    --fg: #e6e8eb;
+    --muted: #9aa1ab;
+    --line: #2a2e35;
+    --accent: #6ea0ff;
+    --card: #1b1e24;
+    --green: #3fb950;
+    --red: #f85149;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 2rem 1.25rem 4rem;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+main { max-width: 46rem; margin: 0 auto; }
+a { color: var(--accent); }
+header { border-bottom: 1px solid var(--line); padding-bottom: 1.25rem; margin-bottom: 2rem; }
+h1 { font-size: 1.6rem; margin: 0 0 .35rem; letter-spacing: -.01em; }
+h2 { font-size: 1.1rem; margin: 2.25rem 0 .85rem; letter-spacing: -.01em; }
+.sub { color: var(--muted); font-size: .9rem; margin: 0; }
+.num { font-variant-numeric: tabular-nums; color: var(--muted); margin-right: .4rem; }
+.empty { color: var(--muted); font-style: italic; }
+
+.blaettern { color: var(--muted); font-size: .9rem; }
+.blaettern a { text-decoration: none; }
+.blaettern a:hover { text-decoration: underline; }
+
+.linkbar { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .85rem; }
+.linkbar a {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  font-size: .85rem;
+  padding: .3rem .7rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  text-decoration: none;
+}
+.linkbar a:hover { border-color: var(--accent); }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.dot.green { background: var(--green); }
+.dot.red { background: var(--red); }
+
+.kpi-row { display: flex; gap: .75rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.kpi {
+  flex: 1;
+  min-width: 7rem;
+  padding: .75rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  text-align: center;
+}
+.kpi-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+.kpi-value.green { color: var(--green); }
+.kpi-label {
+  font-size: .78rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.epic-section {
+  margin-bottom: 1.25rem;
+  padding: .85rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+}
+.epic-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  margin-bottom: .5rem;
+}
+.epic-title { font-weight: 600; font-size: .95rem; }
+.epic-progress {
+  font-size: .8rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.progress-bar {
+  height: 4px;
+  background: var(--line);
+  border-radius: 2px;
+  margin-bottom: .6rem;
+  overflow: hidden;
+}
+.progress-fill { height: 100%; background: var(--accent); border-radius: 2px; }
+.epic-section ul { margin: 0; padding-left: 1.25rem; font-size: .9rem; }
+.epic-section li { margin-bottom: .25rem; }
+
+.merged-summary {
+  margin-top: .5rem;
+  padding-top: .5rem;
+  border-top: 1px dashed var(--line);
+  font-size: .85rem;
+  color: var(--muted);
+}
+.merged-summary ul { margin: .25rem 0 0; padding-left: 1.25rem; }
+.merged-summary li { margin-bottom: .2rem; }
+
+ul.items { list-style: none; margin: 0; padding: 0; }
+ul.items li {
+  padding: .7rem .9rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-bottom: .5rem;
+  background: var(--card);
+}
+.meta { display: block; color: var(--muted); font-size: .82rem; margin-top: .25rem; }
+
+footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; }
+.status.bad { color: var(--red); font-weight: 600; }
+</style>
+</head>
+<body>
+<main>
+<header>
+<h1>Tagesreport Montag, 21. September 2026</h1>
+<nav class="blaettern"><a href="2026-09-20.html" rel="prev" title="Sonntag, 20. September 2026">← Vorheriger Tag</a> · <a href="../index.html">Alle Reports</a></nav>
+<div class="linkbar"><a href="https://opaa.ewerlin.com/chat">Testumgebung</a><a href="https://github.com/criew/opaa">Repository</a><a href="https://github.com/criew/opaa/issues">Issues</a><a href="https://github.com/criew/opaa/pulls">Pull Requests</a><a href="https://github.com/criew/opaa/actions/runs/35688955310" title="Letzter CI-Lauf auf dem Hauptbranch: erfolgreich">CI <span class="dot green"></span></a></div>
+</header>
+
+<div class="kpi-row"><div class="kpi"><div class="kpi-value">51</div><div class="kpi-label">Issues offen</div></div><div class="kpi"><div class="kpi-value green">+4</div><div class="kpi-label">Neu angelegt</div></div><div class="kpi"><div class="kpi-value">20</div><div class="kpi-label">Abgeschlossen</div></div><div class="kpi"><div class="kpi-value">14</div><div class="kpi-label">PRs gemergt</div></div></div>
+
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/1295">#1295</a> feat: Gruppen, Rollen und Berechtigungen: Subjekte, Herkunft und Folgen für Freigaben</span>
+<span class="epic-progress">30 / 30 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 100%"></div></div>
+<ul><li>Gruppen als Space-Mitglieder mit Rolle eingeführt</li><li>Verzeichnisabgleich je Anbieter einschaltbar und zeitgesteuert</li><li>Keycloak-Konnektor für Gruppenabgleich produktiv</li><li>Rechte zwischen Gruppen und Personen übertragbar</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/1871">#1871</a></span>chore(demo): Gruppen in Demo- und Entwicklungsdaten nach ADR-0036 (+394/−35, 7 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1870">#1870</a></span>feat(library): Freigabe-Obergrenze für Konnektorbibliotheken einführen (+1700/−80, 30 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1868">#1868</a></span>fix(library): Quellprobe und Auswahl-Endpunkte an CREATE_CONNECTOR_LIBRARY binden (+506/−117, 15 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1867">#1867</a></span>feat(permission): Herleitung, Stichtagsauskunft und Space-Kontext der Suchdiagnose (+4288/−226, 81 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1866">#1866</a></span>feat(auth): Kontostatus aus dem Verzeichnis übernehmen — ausgeschiedene Konten verlieren den Zugang beim Abgleich (+2413/−91, 60 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1864">#1864</a></span>feat(permission): Rechte einer Gruppe auf eine andere übertragen (+5364/−42, 67 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1859">#1859</a></span>feat(group): Interne Gruppen ohne Systemverwalter pflegen — Gruppenverantwortliche (+4432/−362, 61 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1858">#1858</a></span>feat(group): Keycloak als erster Verzeichnis-Konnektor des Gruppenabgleichs (+4803/−168, 61 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1857">#1857</a></span>feat(space): Gruppen als Space-Mitglieder mit Rolle, Rechte- und Eigentumshistorie (+4961/−463, 83 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1855">#1855</a></span>feat(group): Verzeichnisabgleich je Anbieter — einschaltbar, zeitgesteuert und mit Bestätigungsweg (+5411/−740, 89 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1854">#1854</a></span>feat(permission): Anlegerechte als installationsweite Fähigkeiten (+3847/−123, 73 Dateien)</li></ul></div>
+</div>
+<div class="epic-section">
+<div class="epic-header"><span class="epic-title">Sonstiges</span></div>
+<ul><li>E2E- und Retrieval-Regressionstests fehlgeschlagen</li><li>AGENTS.md entschlackt, Backend-Regeln ausgelagert</li><li>Abhängigkeiten aktualisiert</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/1865">#1865</a></span>docs(agents): Backend-Regeln nach backend/AGENTS.md auslagern (+179/−171, 6 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1862">#1862</a></span>chore(deps): com.github.ben-manes.caffeine:caffeine auf v3.3.0 aktualisieren (+1/−1, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1848">#1848</a></span>chore(deps): com.icegreen:greenmail auf v2.1.14 aktualisieren (+1/−1, 1 Datei)</li></ul></div>
+</div>
+
+<footer>
+Erzeugt am 2026-09-22 um 07:14 Uhr ·
+<a href="../feed.xml">Feed abonnieren</a>
+<br><span class="empty">Berichtszeitraum: 2026-09-21T00:00:00 bis 2026-09-21T23:59:59 (Europe/Berlin)</span>
+</footer>
+</main>
+</body>
+</html>
