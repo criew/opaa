@@ -1,13 +1,19 @@
 package io.opaa.auth;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.local.LocalAdminAvailabilityGuard;
 import io.opaa.common.ConflictException;
@@ -15,6 +21,7 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
@@ -24,6 +31,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
+import org.springframework.web.servlet.mvc.method.annotation.ExceptionHandlerExceptionResolver;
 
 @WebMvcTest(AdminController.class)
 @ActiveProfiles("dev")
@@ -184,6 +192,61 @@ class AdminControllerTest {
                 .with(asAdmin())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"role\": \"SYSTEM_ADMIN\"}"))
-        .andExpect(status().isNotFound());
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.status").value(404))
+        .andExpect(jsonPath("$.error").value("Benutzer nicht gefunden: " + userId))
+        .andExpect(jsonPath("$.timestamp").exists());
+  }
+
+  /**
+   * An {@code Accept} that excludes JSON makes an unconditionally attached error body unwritable:
+   * the writer raises a second exception, the response is discarded and the caller gets the
+   * container's 500 instead of this 404. The tap is on the ROOT logger - the stacktrace comes from
+   * a Spring logger, a tap on the advice's own would not see it (the pattern of {@code
+   * GlobalExceptionHandlerUnwritableAcceptTest}). The resolver is raised to {@code DEBUG} so that
+   * "nothing was logged with a stacktrace" and "the advice never ran" cannot look the same.
+   */
+  @Test
+  void changeRoleForNonexistentUserWithAnUnwritableAcceptKeepsIts404AndLogsNoStacktrace()
+      throws Exception {
+    UUID userId = UUID.randomUUID();
+    when(userService.updateRole(any(), any(), any()))
+        .thenThrow(new UserNotFoundException("Benutzer nicht gefunden: " + userId));
+
+    Logger rootLogger = (Logger) LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
+    Logger resolverLogger =
+        (Logger) LoggerFactory.getLogger(ExceptionHandlerExceptionResolver.class);
+    Level previousResolverLevel = resolverLogger.getLevel();
+    resolverLogger.setLevel(Level.DEBUG);
+    ListAppender<ILoggingEvent> logAppender = new ListAppender<>();
+    logAppender.start();
+    rootLogger.addAppender(logAppender);
+    try {
+      mockMvc
+          .perform(
+              post("/api/v1/admin/users/" + userId + "/role")
+                  .with(asAdmin())
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content("{\"role\": \"SYSTEM_ADMIN\"}")
+                  .accept(MediaType.APPLICATION_XML))
+          .andExpect(status().isNotFound())
+          .andExpect(content().string(""));
+
+      assertThat(logAppender.list)
+          .as("the advice's branch has to be the one that answered")
+          .anySatisfy(
+              event -> {
+                assertThat(event.getLoggerName())
+                    .isEqualTo(ExceptionHandlerExceptionResolver.class.getName());
+                assertThat(event.getFormattedMessage())
+                    .contains("GlobalExceptionHandler#handleNotFoundException");
+              });
+      assertThat(logAppender.list)
+          .as("a caller error must not put a stacktrace into the log, whoever logs it")
+          .allSatisfy(event -> assertThat(event.getThrowableProxy()).isNull());
+    } finally {
+      rootLogger.detachAppender(logAppender);
+      resolverLogger.setLevel(previousResolverLevel);
+    }
   }
 }
