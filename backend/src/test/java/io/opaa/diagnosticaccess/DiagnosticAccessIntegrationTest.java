@@ -41,6 +41,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.IllegalTransactionStateException;
 import org.springframework.transaction.support.TransactionTemplate;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * The leitplanken against the real, Liquibase-built schema rather than a mock: the database itself
@@ -484,14 +485,26 @@ class DiagnosticAccessIntegrationTest {
     assertThat(retentionService.read(admin).getRetentionMonths())
         .as("a fresh read must see the new value")
         .isEqualTo(changed);
-    assertThat(
-            jdbcTemplate.queryForMap(
-                "SELECT before, after FROM audit_log WHERE organization_id = ?"
-                    + " AND event_type = 'DIAGNOSTIC_CONTEXT_RETENTION_CHANGED'"
-                    + " ORDER BY recorded_at DESC LIMIT 1",
-                organizationId))
-        .containsEntry("before", "{\"retentionMonths\":" + before + "}")
-        .containsEntry("after", "{\"retentionMonths\":" + changed + "}");
+    Map<String, Object> protocolled =
+        jdbcTemplate.queryForMap(
+            "SELECT before, after FROM audit_log WHERE organization_id = ?"
+                + " AND event_type = 'DIAGNOSTIC_CONTEXT_RETENTION_CHANGED'"
+                + " ORDER BY recorded_at DESC LIMIT 1",
+            organizationId);
+    assertThat(retentionMonthsIn(protocolled.get("before"))).isEqualTo(before);
+    assertThat(retentionMonthsIn(protocolled.get("after"))).isEqualTo(changed);
+  }
+
+  /**
+   * The protocolled value as a number, read out of the entry's JSON rather than compared as raw
+   * text: the invariant is the field, not the serializer's spacing or field order.
+   */
+  private int retentionMonthsIn(Object protocolledJson) {
+    return JsonMapper.builder()
+        .build()
+        .readTree(String.valueOf(protocolledJson))
+        .get("retentionMonths")
+        .asInt();
   }
 
   /**

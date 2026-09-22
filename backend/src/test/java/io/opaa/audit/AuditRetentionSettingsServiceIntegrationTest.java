@@ -90,11 +90,14 @@ class AuditRetentionSettingsServiceIntegrationTest {
   /**
    * Within one transaction a read after the change sees the changed row: the native update never
    * reaches the settings entity read for the Vorher-Wert, so the persistence context has to be
-   * cleared with it. Regression guard for the same Bauform on the diagnostic context protocol's
-   * settings path (#1850), which answered a change with the value it had just replaced.
+   * cleared with it.
+   *
+   * <p>No endpoint reaches {@code updateRetention} today - this test is its only caller. It holds
+   * the Bauform rather than an endpoint, so that a future controller for the protocol period does
+   * not inherit the defect the diagnostic context protocol's identical path shipped with (#1850).
    */
   @Test
-  void aReadAfterTheChangeInTheSameTransactionSeesTheNewValue() {
+  void aReadAfterTheChangeInTheSameTransactionSeesTheNewValueWhenAnEndpointArrives() {
     AtomicInteger target = new AtomicInteger();
 
     Integer seenAfterTheChange =
