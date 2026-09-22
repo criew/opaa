@@ -68,12 +68,10 @@
   dependencyDashboardTitle: 'Abhängigkeits-Übersicht (Renovate)',
   dependencyDashboardLabels: ['ci'],
 
-  // Bewusst die Vorgabeliste aus config:recommended (:ignoreModulesAndTests) OHNE "**/test/**"
-  // und "**/tests/**" (#1861): Die Ausschlussliste wirkt VOR jedem Manager auf die Dateiliste —
-  // mit ihr waren backend/src/test/**/MinioFixture.java und KeycloakFixture.java für die
-  // customManagers unten unsichtbar, ihr Pin damit eingefroren. Hier sind Testverzeichnisse keine
-  // Fremdfixtures, sondern die einzige Stelle, an der die Container-Images der Integrationssuiten
-  // stehen. Die übrigen Einträge bleiben: Fremdcode und Beispiele sollen weiter unbeachtet bleiben.
+  // Vorgabeliste aus :ignoreModulesAndTests (via config:recommended) ohne "**/test/**" und
+  // "**/tests/**": ignorePaths filtert die Dateiliste VOR jedem Manager, und die Image-Pins der
+  // Integrationssuiten liegen unter backend/src/test/. Die Liste ist eine Kopie — bei einem
+  // Renovate-Major gegen das Preset abgleichen (docs/renovate.md).
   ignorePaths: [
     '**/node_modules/**',
     '**/bower_components/**',
@@ -178,6 +176,12 @@
       matchManagers: ['github-actions', 'dockerfile', 'docker-compose'],
       addLabels: ['ci'],
     },
+    // Die customManagers oben firmieren als "custom.regex"; ohne diese Regel trügen ihre PRs nur
+    // das Basislabel. Alle drei pflegen Werkzeug- und Container-Pins des Baus, nicht Anwendungscode.
+    {
+      matchManagers: ['custom.regex'],
+      addLabels: ['ci'],
+    },
     // Nebenfunde der Erkennung: die Seed-/Generator-Requirements der Demo und frontend/.nvmrc
     {
       matchManagers: ['pip_requirements'],
@@ -239,6 +243,14 @@
       // docker-compose-Zeilen des Demo-Stacks (#1383) tragen diesen Tag, den die docker-
       // Versionierung sonst still überspringt.
       versioning: 'regex:^RELEASE\\.(?<major>\\d{4})-(?<minor>\\d{2})-(?<patch>\\d{2})T(?<build>\\d{2}-\\d{2}-\\d{2}Z)$',
+    },
+    // Das Keycloak-Image wird nie automatisch gemergt: Der Tag steckt in KeycloakFixture.IMAGE und
+    // im Compose-Stack, geprüft wird er aber nur von keycloakIntegrationTest — einer Suite, die
+    // nightly und per Label läuft und kein Required Check ist. Auto-Merge würde ein inkompatibles
+    // Image also unbeaufsichtigt auf main lassen; ein Vorschlag bleibt als PR zur Entscheidung.
+    {
+      matchPackageNames: ['quay.io/keycloak/keycloak'],
+      automerge: false,
     },
     // Temurin-Major bleibt aus, bis die Projekt-Toolchain nachzieht (#1001): build.gradle.kts
     // pinnt die Java-Toolchain auf 21, und im 25-jdk-Image findet Gradle kein JDK 21

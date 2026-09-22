@@ -22,7 +22,7 @@ jederzeit auch lokal ausführen (unten).
 | Docker-Basisimages (`Dockerfile`s, `docker-compose*.yml`) | `dockerfile`, `docker-compose` | `ci` |
 | Demo-Seed-/Generator-Requirements (`demo/*/requirements.txt`) | `pip_requirements` | `demo` |
 | Node-Version für die lokale Entwicklung (`frontend/.nvmrc`) | `nvm` | `frontend` |
-| Pins, die kein regulärer Manager sieht: die Image-Konstanten in `MinioFixture.java` und `KeycloakFixture.java`, der `pnpm dlx`-Aufruf in `sbom.yml` | `custom.regex` | — |
+| Pins, die kein regulärer Manager sieht: die Image-Konstanten in `MinioFixture.java` und `KeycloakFixture.java`, der `pnpm dlx`-Aufruf in `sbom.yml` | `custom.regex` | `ci` |
 
 **Rein transitive Sicherheits-Pins brauchen einen `[libraries]`-Eintrag.** Wird eine Bibliothek
 angehoben, die kein Build-Skript direkt deklariert (eingebetteter Tomcat, Bouncy Castle, junrar —
@@ -135,7 +135,11 @@ Zwei Stolpersteine, die beide schon zugeschlagen haben:
   `:ignoreModulesAndTests` unter anderem `**/test/**`, `**/tests/**`, `**/examples/**` und
   `**/__fixtures__/**` mit. Eine Datei unter `backend/src/test/…` ist damit für **alle** Manager
   unsichtbar, egal wie genau `managerFilePatterns` sie benennt. Deshalb überschreibt
-  `renovate.json5` die Liste gezielt (Kommentar dort), statt sie zu leeren.
+  `renovate.json5` die Liste gezielt (Kommentar dort), statt sie zu leeren. Ein Negativ-Eintrag ist
+  in `ignorePaths` nicht möglich, die Liste dort ist also eine **Kopie der Preset-Vorgabe** und
+  friert deren heutigen Stand ein: Ergänzt Renovate `:ignoreModulesAndTests` später um einen
+  Eintrag, greift der hier nicht mehr. Bei einem Renovate-Major deshalb abgleichen — der Workflow
+  läuft auf `renovate/renovate:latest`, ein solcher Wechsel passiert von selbst und still.
 - **`managerFilePatterns` sind Globs**, solange sie nicht in Schrägstriche gefasst sind
   (`/…regex…/`). Ein voller Pfad ohne Platzhalter ist ein gültiges Glob und trifft genau diese
   eine Datei — erkennbar an der `Using file pattern: … for manager regex`-Zeile kurz oberhalb.
