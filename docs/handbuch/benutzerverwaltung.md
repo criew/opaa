@@ -234,308 +234,26 @@ gedacht ist und welche Auflagen dafür gelten, steht im Kapitel [Deployment](dep
 
 ### Anlegerechte
 
-Neben der Rolle steht eine zweite installationsweite Entscheidung: **wer etwas anlegen darf**. Diese
-**Anlegerechte** gelten für alle Konten der Installation, gleich ob lokal oder aus einem
-Identitätsanbieter, und werden an eine Person, eine Gruppe oder an **„Alle Konten"** vergeben.
+Neben der Rolle steht eine zweite installationsweite Entscheidung: **wer etwas anlegen darf** —
+Räume, Bibliotheken für Uploads, Konnektorbibliotheken, interne Gruppen. Diese **Anlegerechte**
+gelten für alle Konten der Installation, gleich ob lokal oder aus einem Identitätsanbieter, und
+werden an eine Person, eine Gruppe oder an **„Alle Konten"** vergeben; die Systemverwaltung hat
+jedes ohnehin, die Rolle **Revision** verleiht keines.
 
-| Anlegerecht | Ausgeliefert an |
+Der ausgelieferte Zustand, die Empfehlung für den Einstieg und die Verwaltung unter
+**Administration → Anlegerechte** stehen im Kapitel
+[Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 9.
+
+### Gruppen, Freigaben und Zuständigkeiten
+
+Drei Gegenstände, die an dieser Verwaltung angrenzen, aber nicht auf lokale Konten begrenzt sind,
+stehen im Kapitel [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md):
+
+| Gegenstand | Wo es steht |
 |---|---|
-| **Spaces anlegen** | Alle Konten |
-| **Bibliotheken für Uploads anlegen** | Alle Konten |
-| **Konnektorbibliotheken anlegen** | Alle Konten |
-| **Interne Gruppen anlegen** | niemanden — die Systemverwaltung hat es ohnehin |
-
-Das Anlegerecht **„Interne Gruppen anlegen"** wirkt: Wer es hält, legt unter „Meine Gruppen" eine
-interne Gruppe an und wird deren erste verantwortliche Person (Abschnitt 7.1). Ausgeliefert wird es
-an niemanden — ob und an wen es vergeben wird, entscheidet das Haus. Die Empfehlung für den Einstieg:
-an eine Gruppe wie „Referatsleitungen", nicht an „Alle Konten".
-
-Vier Punkte dazu:
-
-- **Der ausgelieferte Zustand ändert nichts.** Wer bisher Spaces und Bibliotheken anlegen konnte, kann
-  es weiterhin. Einschränken heißt: „Alle Konten" das Recht entziehen und es einer benannten Gruppe
-  geben.
-- **Konnektorbibliotheken sind der erste Kandidat für eine Einschränkung.** Sie erreichen Serverpfade
-  und hinterlegte Zugangsdaten und tragen die Freigabe für [Fremdzugänge](fremdzugaenge.md). Wer das
-  Anlegen dieser Bibliotheken auf eine benannte Gruppe begrenzt, begrenzt zugleich, wer serverseitige
-  Quellen anschließen kann.
-- **Ein Anlegerecht öffnet nie einen Inhalt.** Es erlaubt das Anlegen und sonst nichts; an der Menge
-  der lesbaren Bibliotheken ändert es nichts.
-- **Die Rolle entscheidet nicht mit.** Die Systemverwaltung hat jedes Anlegerecht ohnehin; die
-  Rolle **Revision** verleiht keines — sie ist ein Lesezugang zum Nachweisprotokoll und sonst nichts.
-  Ein Revisionskonto hat genau das, was „Alle Konten" oder seine Gruppen ihm geben.
-- **Ein Entzug wirkt sofort**, ohne dass sich die betroffene Person neu anmelden muss. Fehlt das Recht,
-  nennt die Anwendung es beim Namen und sagt, an wen man sich wendet — sie versteckt die Funktion
-  nicht. Vergabe und Entzug stehen im Nachweisprotokoll und werden mit ihrem Zeitraum festgehalten.
-
-Vergeben und entzogen werden Anlegerechte unter **Administration → Anlegerechte**. Dort steht je
-Anlegerecht eine Zeile in Klartext („Alle Konten dürfen Konnektorbibliotheken anlegen."), darunter
-die berechtigten Personen, Gruppen und „Alle Konten" — jede mit der Handlung „Entziehen" — und ein
-Feld, um es einer Person, einer Gruppe oder allen Konten zu erteilen. Der Entzug von „Alle Konten"
-verlangt eine Rückfrage: Er ändert die Arbeitsbedingungen aller Beschäftigten. Eine geschützte
-Gruppe steht in dieser Liste ohne ihren Namen (Abschnitt 7.1).
-
-### Freigabe-Obergrenze für Konnektorbibliotheken
-
-Wer eine Konnektorbibliothek anlegen darf, wählt auch ihre Verteilungsstufe (`visibility`) und ihre
-Katalog-Auffindbarkeit (`listed`) frei — bis zu einer **Obergrenze**, die ausschließlich die
-Systemverwaltung setzt. Ohne sie könnte, wer eine Bibliothek aus einem Dateiverzeichnis, einem
-Webverzeichnis, einem Feed, Confluence oder einem Objektspeicher anlegt, den eingespeisten Bestand
-im nächsten Schritt organisationsweit sichtbar machen — die Obergrenze ist die technische Sicherung
-gegen genau diesen einen Schritt. Bibliotheken für Uploads tragen keine Obergrenze: Dort kuratiert
-dieselbe Person ohnehin jedes Dokument einzeln.
-
-**Die Obergrenze gilt je Bibliothek und wird nicht automatisch gesetzt.** Neu angelegt ist jede
-Konnektorbibliothek zunächst offen (organisationsweit sichtbar, auffindbar) — die Systemverwaltung
-muss die Obergrenze für sie eigens setzen, damit sie wirkt. Ein Betrieb, der das systematisch
-verhindern will, prüft die Obergrenze deshalb **nach jeder Neuanlage** einer Konnektorbibliothek,
-oder schränkt das Anlegerecht „Konnektorbibliotheken anlegen" auf eine benannte Gruppe ein (siehe
-Abschnitt „Anlegerechte" oben) — dann entscheidet diese Gruppe, wer überhaupt anlegen darf, bevor
-die Obergrenze greifen müsste.
-
-Zu finden ist die Obergrenze auf der Detailseite der jeweiligen Bibliothek, Reiter „Verwaltung" —
-sichtbar und änderbar nur für die Systemverwaltung. Zwei Werte: die höchste zulässige
-Verteilungsstufe und ob die Bibliothek überhaupt im Katalog auffindbar sein darf.
-
-**Wird die Obergrenze gesenkt, wirkt das sofort — aber ausschließlich für Verteilungsstufe und
-Katalog-Auffindbarkeit.** Eine bereits weitergehende Verteilungsstufe oder Auffindbarkeit wird nicht
-nur für künftige Änderungen gesperrt, sondern **im selben Augenblick auf die neue Obergrenze
-zurückgenommen** — keine Übergangszeit, kein Zustand „noch zu weit, aber geduldet". **Unberührt
-bleiben dabei erteilte Rechte an einzelnen Personen und Gruppen sowie eine bestehende
-Fremdzugangsfreigabe** (Abschnitt „Die Freigabe der Bibliothek" im Kapitel Fremdzugänge) — beide
-müssen gesondert geprüft und, falls gewünscht, gesondert zurückgenommen werden. Beide Vorgänge
-stehen im Nachweisprotokoll: das Setzen der Obergrenze selbst und, falls ausgelöst, die dadurch
-bewirkte Rücknahme von Verteilungsstufe oder Auffindbarkeit.
-
-Versucht die Eigentümerin oder ein Verwalter der Bibliothek anschließend, die Verteilungsstufe über
-die Obergrenze hinaus anzuheben oder die Bibliothek trotz gesperrter Auffindbarkeit zu listen, weist
-die Anwendung das mit einer Meldung ab, die die geltende Obergrenze beim Namen nennt und auf die
-Systemverwaltung verweist — kein technischer Fehler, sondern eine erklärte Grenze. Im Formular selbst
-sind Stufen oberhalb der Obergrenze bereits gesperrt, mit demselben Hinweis, sodass die Grenze schon
-vor dem Speichern sichtbar ist.
-
-### 7.1 Interne Gruppen und ihre Verantwortlichen
-
-Eine **interne Gruppe** ist eine Gruppe, die in OPAA selbst entsteht — anders als die Gruppen aus dem
-Verzeichnisdienst oder dem Anmeldetoken. Sie wird nicht von der Systemverwaltung gepflegt, sondern von
-benannten **Verantwortlichen**. Für lokale Konten ist das der einzige Weg zu einer Gruppe.
-
-Dieser Abschnitt ist der einzige des Kapitels, der **nicht** auf lokale Konten begrenzt ist: Mitglied
-und verantwortlich sein können Konten jeder Herkunft. Er steht hier, weil die Verwaltung von Rollen
-und Anlegerechten daneben steht; sein endgültiger Platz ist das vorgesehene Kapitel „Bibliotheken und
-Berechtigungen".
-
-**Wer sie anlegt, ist verantwortlich.** Das Anlegen verlangt das Anlegerecht „Interne Gruppen
-anlegen"; die anlegende Person wird im selben Schritt erste verantwortliche Person. Verantwortliche
-sind immer Personen, nie Gruppen, und sie sind nicht automatisch Mitglied.
-
-Verantwortliche dürfen:
-
-- Mitglieder aufnehmen und entfernen — nur Konten des eigenen Hauses
-- Name und Beschreibung ändern
-- weitere Verantwortliche benennen und entlassen
-- die Gruppe **zur Verwendung freigeben** und die Freigabe zurücknehmen
-- die Gruppe als **geschützt** kennzeichnen
-- die Gruppe löschen, solange sie keine Berechtigung, kein Anlegerecht und kein Eigentum mehr trägt
-
-**Wer nicht verantwortlich ist, sieht die Gruppe unter „Meine Gruppen" nicht** und bekommt auf jeden
-Pflegeversuch dieselbe Antwort wie für eine Gruppe, die es nicht gibt. Die Systemverwaltung darf jede
-Gruppe pflegen — sie muss eine Gruppe ohne Verantwortliche wieder besetzen können.
-
-**Verantwortung wird abgegeben, nicht abgelegt.** Die letzte verantwortliche Person kann sich nicht
-selbst entfernen: erst die Nachfolge benennen, dann zurücktreten. Wer die Aufgabe wechselt, gibt die
-Verantwortung ausdrücklich ab; „Meine Gruppen" führt dafür die Handlung **„Verantwortung abgeben an
-…"**. Scheidet jemand aus, kann die Systemverwaltung die letzte verantwortliche Person entlassen — die
-Gruppe steht dann ohne Verantwortliche da, bis eine neue benannt wird.
-
-**Freigabe zur Verwendung.** Eine neu angelegte interne Gruppe ist für andere zunächst **nicht**
-wählbar: Wer eine Bibliothek freigibt, findet sie weder in der Auswahl noch über ihre Kennung. Erst
-die Freigabe durch die Verantwortlichen macht sie zu einem möglichen Empfänger. Das gilt für jeden
-Weg, auf dem eine Gruppe zum Zuge kommt: Berechtigung auf eine Bibliothek, Anlegerecht, Eigentum und
-Aufnahme als Mitglied eines Raums. Bei der Umstellung wurde jede interne Gruppe, die bereits eines
-davon trug, automatisch als freigegeben übernommen — niemand verliert eine Möglichkeit, die er
-benutzt hat.
-
-**Geschützte Gruppen** sind die Gruppen der Personalvertretung, der Schwerbehindertenvertretung, der
-Gleichstellung und der Personalvorgänge. **Das Kennzeichen setzen und lösen die Verantwortlichen der
-Gruppe selbst — die Systemverwaltung kann es nicht**, auch nicht mit Systemrolle. Dasselbe gilt für
-die Freigabe zur Verwendung, sobald eine Gruppe geschützt ist: Wer die Gruppe in jede Auswahl stellen
-könnte, entschiede sonst über den Schutz, ohne das Kennzeichen anfassen zu dürfen.
-
-**Was das Kennzeichen bewirkt — und was noch fehlt.** Gebaut sind das Kennzeichen selbst, sein
-Vorbehalt für die Verantwortlichen samt der Freigabe, und der Eintrag jeder Änderung im
-Nachweisprotokoll. Zwei der drei Wirkungen nach außen sind es ebenfalls:
-
-- **Nicht über die Suche auffindbar.** In der Auswahl eines Empfängers erscheint eine geschützte
-  Gruppe nur, wenn ihre **vollständige Bezeichnung** eingegeben wird; ein Namensteil findet sie
-  nicht. Wer ihre Kennung eingibt, bekommt die Gruppe zwar zur Bestätigung angezeigt — aber ohne
-  ihren Namen.
-- **In fremden Listen ohne Namen.** In der Mitgliederliste eines Raums, in der Freigabeliste einer
-  Bibliothek, in der Eigentümerspalte der Bibliotheksübersicht und in der Liste der Anlegerechte
-  steht „Geschützte Gruppe" statt der Bezeichnung. Die Zeile bleibt, damit eine Mitgliedschaft
-  beendet werden kann, die niemand sieht; Mitgliederzahl und Zuwachssignal entfallen dort ganz.
-  Auch die Herleitung („Warum sehe ich das?") nennt Dritten — der Raumverwaltung eingeschlossen —
-  keine geschützte Gruppe, sondern allein die wirksame Rolle. Die eigene Herleitung der betroffenen
-  Person bleibt vollständig.
-
-**Noch nicht gebaut** ist die dritte Wirkung: Wer einer geschützten Gruppe ein Recht einräumt, sieht
-heute weder die Mitglieder noch eine **Ansprechstelle**. Die Benennung von Ansprechstellen an
-Anbietergruppen entsteht mit Issue #1875.
-
-**Was festgehalten wird.** Aufnahme und Entfernung eines Mitglieds werden der betroffenen Person in
-der Anwendung angezeigt (ohne E-Mail) und stehen mit der handelnden verantwortlichen Person im
-Nachweisprotokoll und in der Rechtehistorie. Benennung, Entlassung und Abgabe der Verantwortung sowie
-jede Änderung an Freigabe und Schutzkennzeichen stehen im Nachweisprotokoll; eine Rechtehistorie
-führen sie nicht — Verantwortung trägt kein Leserecht. Ruft die **Systemverwaltung** die
-Mitgliederliste einer Gruppe ab, die sie nicht selbst verantwortet, steht auch dieser Abruf im
-Nachweisprotokoll — mit der Zahl der Mitglieder, ohne die Namen. Verantwortliche erzeugen beim Lesen
-ihrer eigenen Gruppe keinen Eintrag.
-
-**Gruppen aus dem Verzeichnis oder dem Anmeldetoken lassen sich hier nicht bearbeiten.** Sie haben
-keine Verantwortlichen, sondern Ansprechstellen, die die Systemverwaltung benennt; Ansprechstellen
-und die Oberfläche dafür entstehen mit Issue #1875.
-
-### 7.2 Rechte einer Gruppe auf eine andere übertragen
-
-Wird ein Referat aufgelöst, ein Identitätsanbieter abgelöst oder eine Person durch eine andere
-ersetzt, müssen die Rechte mitgehen. Dafür gibt es **eine** Handlung statt Objekt-für-Objekt-Arbeit:
-die Übertragung.
-
-**Was übertragen wird.** Der Umfang ist wählbar — alles oder nur ein Teil:
-
-| Umfang | Gruppe → Gruppe | Gruppe → Person | Person → Person |
-|---|---|---|---|
-| Berechtigungen an Bibliotheken | ja | — | — |
-| Mitgliedschaften in Räumen | ja | — | — |
-| Anlegerechte | ja | — | — |
-| Eigentum an Bibliotheken | ja | ja | ja |
-| Eigentum an Räumen | — | — | ja |
-| Verantwortung für interne Gruppen | — | — | ja |
-
-**Ein Raum gehört immer einer natürlichen Person.** Deshalb wechselt sein Eigentum nur zwischen
-Personen; eine Gruppe besitzt keinen Raum und wird auch keiner. Übernimmt eine Person einen Raum,
-wird sie dabei — falls sie es noch nicht ist — als Administratorin aufgenommen: Eine Verantwortliche,
-die in der Mitgliederliste nicht auftaucht, wäre genau der Zustand, den die Übertragung beenden
-soll.
-
-**Von einer Person gehen nur Eigentum und Verantwortung über.** Die Berechtigungen einer Person
-werden hier weder übertragen noch aufgezählt — sie enden mit ihrem Konto. Eine Vorschau „alles, was
-Frau Vogt darf" gibt es bewusst nicht.
-
-**Wer das darf.** Die Systemverwaltung für das ganze Haus. Ihre eigene Verantwortung und ihr eigenes
-Eigentum gibt jede Person selbst ab, aus „Meine Gruppen". Wer eine Bibliothek verwaltet, ändert deren
-Berechtigungen weiterhin einzeln.
-
-**Ablauf.** Zuerst die **Vorschau**: Sie nennt in einem Satz, was bewegt würde („12 Berechtigungen an
-7 Objekten, Mitglied in 2 Räumen, Eigentum an 3 Objekten"). Danach die ausdrückliche **Bestätigung**.
-Beides steht im Nachweisprotokoll — **auch eine Vorschau, die niemand ausführt**: Sie liest alles,
-was eine Gruppe oder eine Person hält.
-
-**Das Ziel muss wirksam sein** — nicht aufgelöst, sein Anbieter eingeschaltet. **Leer sein darf es:**
-Im Token-Betrieb entsteht die Gruppe eines neuen Anbieters erst mit der ersten Anmeldung. Die Quelle
-darf dagegen aufgelöst sein; das ist der Regelfall. Über die Grenze des Hauses hinweg gibt es keine
-Übertragung.
-
-**Hat das Ziel an einem Objekt schon eine Rolle, bleibt die stärkere stehen.** Eine Übertragung gibt
-Rechte weiter und nimmt dem Ziel nichts weg.
-
-**Danach steht am Objekt, was geschehen ist** („übertragen am 14.03.2026, Vorgang …") — bei einer
-Gruppe als Quelle mit deren Namen, bei einer Person **ohne** ihren Namen. Die Rechtehistorie zeigt
-für jedes betroffene Objekt an jedem Tag genau ein Subjekt: Das Intervall der Quelle endet genau
-dort, wo das des Ziels beginnt, und beide tragen dieselbe Vorgangsnummer.
-
-**Danach lässt sich ein Anbieter löschen, dessen Gruppen noch Rechte trugen.** Das ist der vorgesehene
-Weg aus der Ablehnung „Diese Gruppen wirken noch"; die Rechte werden umgezogen, nicht entfernt.
-
-**Mit dem Eigentum geht die Rolle mit.** Wer eine Bibliothek übernimmt, darf sie danach auch
-verwalten; die vorherige Eigentümerin verliert ihre Rolle an dieser Bibliothek. Bei einer Gruppe als
-neuer Eigentümerin ist es die Verwalterrolle, bei einer Person die Eigentümerrolle — dieselben
-Rollen, die beim Anlegen einer Bibliothek vergeben werden.
-
-**Es gibt eine Obergrenze.** Eine Übertragung bewegt höchstens 500 Zeilen. Darüber wird sie
-abgelehnt, mit der Zahl und dem Hinweis, in mehreren Schritten zu übertragen — etwa erst die
-Berechtigungen, dann das Eigentum.
-
-**Was die Übertragung nicht tut:** Sie läuft nie automatisch. Eine Reorganisation im Verzeichnis
-erzeugt eine aufgelöste Gruppe und einen Eintrag in der Betriebsliste — die Entscheidung, wohin ihre
-Rechte gehen, trifft ein Mensch.
-
-**Wo sie steht.** In der Gruppenverwaltung (**Administration → Gruppen**) trägt jede Gruppe die
-Handlung „Wirkungen übertragen"; für die Gruppen eines Anbieters führt die **Arbeitsliste** desselben
-Anbieters dieselbe Handlung je Gruppe (**Administration → Identitätsanbieter → Zeilenmenü →
-Arbeitsliste der Gruppen**). Die eigene Abgabe steht unter **Meine Gruppen → „Verantwortung und
-Eigentum abgeben"**. In allen drei Fällen ist der Ablauf derselbe: Ziel wählen, Umfang wählen,
-Vorschau, Bestätigung.
-
-### 7.3 Wenn niemand mehr zuständig ist: „Nachfolge offen"
-
-Wird ein Konto gesperrt oder verliert eine Gruppe ihr letztes aktives Mitglied, steht das, was daran
-hängt, ohne Verantwortliche da. OPAA nennt diesen Zustand **„Nachfolge offen"** und leitet ihn ab —
-er wird nirgends gesetzt und muss nirgends zurückgenommen werden. Sobald wieder jemand handlungsfähig
-ist, ist er vorbei.
-
-**Eine Kontosperre wird nie deswegen abgelehnt.** Wer das Haus verlässt, wird sofort gesperrt; was
-ihm gehörte, geht in diesen Zustand. Die einzige Ausnahme bleibt die letzte anmeldefähige
-Systemverwaltung.
-
-**Was der Zustand bedeutet — und was nicht.** Das Objekt bleibt nutzbar, alle bestehenden Rechte
-bleiben, **nichts wird gelöscht**. Eingefroren ist allein die **Reichweite**: keine neuen oder
-größeren Berechtigungen, keine größere Sichtbarkeit, keine neue oder verlängerte Freigabe für
-Fremdzugänge, keine neue Bereitstellung in einem Raum, keine neuen Raummitglieder. Der Versuch wird
-mit einer Meldung abgelehnt, die auch sagt, wer zuständig ist.
-
-**Alles, was Reichweite wegnimmt, bleibt möglich** — und zwar dieselben Wege wie sonst: eine
-Berechtigung herabstufen oder entziehen, eine Befristung vorziehen, eine Freigabe verkürzen oder
-zurücknehmen, ein Raummitglied entfernen, das Objekt umbenennen, einschränken, lesen, durchsuchen
-und indexieren.
-
-**Am Objekt steht Zustand und Zuständigkeit** — „Nachfolge offen — zuständig: die Systemverwaltung".
-Bewusst ohne Datum, ohne den bisherigen Eigentümer und ohne Grund; daneben der Satz, dass das Objekt
-nutzbar bleibt und nichts gelöscht wird. Die Kennzeichnung steht in der **Bibliotheksübersicht** und
-in der **Detailansicht** einer Bibliothek sowie am **Space** — für jeden, der das Objekt sehen darf.
-**Suchtreffer und Quellenverweise tragen den Hinweis nicht:** Der Zustand betrifft die
-Zuständigkeit, nicht die Richtigkeit des Inhalts.
-
-**Die Betriebsliste der Systemverwaltung hat drei Reiter:**
-
-| Reiter | Was darin steht |
-|---|---|
-| Offene Nachfolgen | Bibliotheken, Räume und interne Gruppen ohne handlungsfähige Verantwortliche — mit Zuständigkeit und Alter |
-| Freigaben ohne Empfänger | Gruppen, die Rechte tragen, aber kein aktives Mitglied mehr haben — die Freigaben laufen ins Leere |
-| Gruppen ohne Wirkung | interne Gruppen, die nichts halten und niemanden erreichen |
-
-Die Liste ist **vollständig ab dem ersten Tag**, gleich wer zuständig ist. Gealterte Einträge werden
-hervorgehoben — ab welchem Alter, steht als `OPAA_SUCCESSION_AGING_THRESHOLD_MONTHS` in der
-Konfigurationstabelle des [Deployment-Handbuchs](deployment.md); ein **Sichtungsvermerk** („geprüft
-am …, weiterhin offen, Grund") nimmt die Hervorhebung für eine weitere Periode zurück. Es gibt keine
-Frist, keine Erinnerung und keine E-Mail — die Liste zeigt, sie treibt nicht.
-
-**Es gibt keine Abfrage „was gehörte Frau Vogt".** Die Liste geht vom Objekt aus; wem es gehört,
-steht in der Zeile, ist aber weder sortierbar noch zählbar. Dasselbe gilt für die Person, die einen
-Vorgang beendet oder einen Sichtungsvermerk gesetzt hat.
-
-**Der Ausgang ist die Übertragung** (Abschnitt 7.2) mit dem Umfang „Eigentum und Verantwortung".
-Endet der Zustand damit wirklich, wird der Vorgang geschlossen und die handelnde Person am Vorgang
-vermerkt; geht das Objekt an jemanden, der ebenfalls nicht handeln kann, bleibt der Vorgang offen —
-sonst begänne sein Alter von vorn.
-
-**Wo die Liste steht.** Unter **Administration → Lebenszyklus**, mit den drei Reitern als eigenen
-Adressen (`/admin/succession/open`, `…/grants`, `…/groups`). Jede Zeile nennt Objekt, zuständige
-Stelle und Alter; der Name des Objekts führt in die Bibliothek beziehungsweise in den Space. Eine
-gealterte Zeile ist als solche gekennzeichnet, der **Sichtungsvermerk** wird an ihr mit seinem Grund
-eingetragen, und jede Zeile hat ihren Ausgang: bei einer Gruppe die **Übernahme** an eine andere
-Gruppe, bei einem Objekt einer Person die **Nachfolge** von Person zu Person (Umfang Eigentum und
-Verantwortung; wessen Bestand übergeben wird, wählt die Systemverwaltung dabei selbst — die Liste
-nennt die Person nur als Text), und bei einem Objekt einer Gruppe der Weg in die Gruppenverwaltung.
-In jedem Fall derselbe Übertragungsdialog mit Vorschau und ausdrücklicher Bestätigung. Eine Zeile, die der
-Feststellungslauf noch nicht gesehen hat, steht bereits in der Liste — einen Vermerk nimmt sie erst
-an, wenn ihr Vorgang angelegt ist; wann der Feststellungslauf hinsieht, steht als
-`OPAA_SUCCESSION_DETECTION_CRON` in der Konfigurationstabelle des
-[Deployment-Handbuchs](deployment.md).
-
-**Vorgänge und Sichtungsvermerke sind Protokoll**, kein Rechtenachweis: Abgeschlossene Vorgänge
-werden samt ihren Vermerken nach Ablauf der Protokollfrist automatisch gelöscht (dieselbe Frist wie
-das Protokoll, `OPAA_AUDIT_RETENTION_MONTHS`); ein offener Vorgang wird nie gelöscht.
+| **Freigabe-Obergrenze für Konnektorbibliotheken** — der Deckel, den nur die Systemverwaltung setzt | Abschnitt 4 |
+| **Interne Gruppen und ihre Verantwortlichen** — anlegen, Mitglieder pflegen, zur Verwendung freigeben, als geschützt kennzeichnen, Verantwortung abgeben. Für lokale Konten der einzige Weg zu einer Gruppe | Abschnitt 7 |
+| **Übertragung von Rechten und „Nachfolge offen"** — was mit Berechtigungen, Eigentum und Verantwortung geschieht, wenn eine Person ausscheidet oder eine Gruppe aufgelöst wird | Abschnitt 13 |
 
 ## 8. Löschen oder sperren
 
@@ -547,7 +265,8 @@ Besitz: Neben einer eigenen Bibliothek, einem Raum außer dem persönlichen und 
 auch Rechtevergaben, Raumzuordnungen, Geltungsbereiche einer anlassbezogenen Klärung, die
 **Verantwortung für eine interne Gruppe** sowie **Nachweiseinträge** über Gruppenmitgliedschaften und
 Rechteänderungen. Sonst lehnt OPAA die Löschung ab und verweist auf die Sperre. Eine noch getragene
-Verantwortung wird vorher abgegeben (Abschnitt 7.1).
+Verantwortung wird vorher abgegeben
+([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 7).
 
 Eine Ausnahme ist die Befugnis „Sicht als" ([Suche](suche.md), Abschnitt 8.3): Sie hält keine
 Löschung auf. Hat das Konto solche Befugnisse erteilt, **entzieht OPAA jede noch gültige davon beim

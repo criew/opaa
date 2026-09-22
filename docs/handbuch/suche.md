@@ -695,7 +695,8 @@ rekonstruiert.
 | Person („Sicht als") | nur mit einzeln vergebener, befristeter Befugnis, die aus keiner Rolle folgt | Pflichtbegründung vor dem Lauf, Protokolleintrag, Abzug der diagnosegesperrten Bibliotheken; das Ergebnis wird nirgends gespeichert |
 
 Die Diagnose bleibt Systemadministratoren vorbehalten; keine Anlegerecht-Vergabe öffnet sie. Sie ist
-kein Nachweis über vergangene Zugriffe — dafür gibt es die Stichtagsauskunft der Revision.
+kein Nachweis über vergangene Zugriffe — dafür gibt es die Stichtagsauskunft der Revision
+([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 12).
 
 Die Oberfläche zeigt jede Stufe unter ihrer deutschen Bezeichnung. Referenz zwischen Handbuch,
 Spezifikation und dem API-Feld `stage` des Erklärprotokolls ist der technische Name
@@ -778,7 +779,9 @@ Nachweisprotokoll festgehalten.
 > mittendrin macht nichts kaputt: Der nächste Lauf holt es nach.
 
 Gesetzt wird die Frist über `GET`/`PUT /api/v1/admin/permission-history/retention`; eine
-Bedienoberfläche dafür gibt es noch nicht.
+Bedienoberfläche dafür gibt es noch nicht. Wer die Zeiträume liest und unter welchen Schutzregeln,
+steht im Kapitel [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md),
+Abschnitt 12.
 
 ## 9. Typische Befunde
 
