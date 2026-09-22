@@ -178,3 +178,7 @@ databaseChangeLog:
       file: db/changelog/changes/075-create-succession-reviews.yaml
   - include:
       file: db/changelog/changes/076-backfill-library-ownership-history.yaml
+  # Ansprechstellen an Anbietergruppen (#1875, ADR-0036 Entscheidung 9): die Personen, die das
+  # Schutzkennzeichen einer Anbietergruppe setzen und lösen — ohne Pflegerechte an der Gruppe.
+  - include:
+      file: db/changelog/changes/077-create-group-contacts.yaml

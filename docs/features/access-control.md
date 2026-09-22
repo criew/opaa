@@ -1259,7 +1259,8 @@ diesem Weg.
   Leserecht trägt und für „wer konnte am Tag X was lesen" ohne Bedeutung ist. Mitglieder**änderungen**
   stehen unverändert in der Rechtehistorie — mit dem Verantwortlichen als Akteur.
 - **Anbietergruppen bleiben schreibgeschützt.** Sie haben keine Verantwortlichen, sondern
-  Ansprechstellen, die die Systemverwaltung benennt (#1875).
+  **Ansprechstellen**, die die Systemverwaltung benennt (#1875) — siehe „Geschützte Gruppen"
+  unten.
 
 **Freigabe zur Verwendung.** Eine interne Gruppe ist erst dann für andere Rechtevergebende wählbar,
 wenn ihre Verantwortlichen sie **freigegeben** haben — das Gegenstück zu `listed` bei Assets:
@@ -1290,12 +1291,42 @@ könnte, machte den Schutz zu ihrem; die Antwort auf ihren Versuch ist `403` mit
 Wer die Gruppe in jede Auswahl stellen kann, entscheidet sonst über den Schutz, ohne das Kennzeichen
 anfassen zu dürfen.
 
-**Was vom Schutz gebaut ist.** Gebaut sind das Kennzeichen, sein Vorbehalt für die Verantwortlichen
-samt der Freigabe, und das Audit-Ereignis jeder Änderung. **Noch nicht gebaut** sind die drei
-Wirkungen nach außen: nicht über die Suche auffindbar, in fremden Listen namenlos als „geschützte
-Gruppe", und statt der Mitgliederliste die Ansprechstelle für den, der ihr ein Recht einräumt. Sie
-kommen mit der gemeinsamen Subjekt-Auswahl (#1820); bis dahin verhält sich eine geschützte,
-freigegebene Gruppe gegenüber Dritten wie jede andere freigegebene Gruppe.
+**Ansprechstellen an Anbietergruppen (gebaut, #1875).** Bei einer Anbietergruppe gibt es keine
+Verantwortlichen, die das Kennzeichen setzen könnten — sie wird beim Anbieter gepflegt. Deshalb
+benennt die **Systemverwaltung Ansprechstellen**: eine oder mehrere Personen, die **Mitglied der
+Gruppe** sind. Vier Festlegungen, jede mit einem Test:
+
+1. **Der Verwaltungsakt verändert die Gruppe nicht und verleiht keine Pflegerechte.** Die Benennung
+   schreibt eine Zeile in `group_contacts` und ein Audit-Ereignis (`GROUP_CONTACT_APPOINTED`), sonst
+   nichts; die Gruppe bleibt schreibgeschützt, und eine Ansprechstelle kann sie weder umbenennen
+   noch ihre Mitglieder ändern. Sie **liest** ihre Gruppe — sie entscheidet über das Kennzeichen und
+   muss es sehen.
+2. **Benennbar ist nur ein Mitglied der Gruppe** und nur eine natürliche Person. Wer außerhalb
+   steht, spräche für ein Gremium, dem er nicht angehört; eine Gruppe als Ansprechstelle wäre
+   Schachtelung durch die Hintertür (dieselbe Begründung wie bei den Verantwortlichen).
+3. **Nur Ansprechstellen setzen und lösen das Kennzeichen.** Die Systemverwaltung bekommt dort
+   `403` mit dem Code `CONTACT_REQUIRED` und der Begründung — spiegelbildlich zum
+   `STEWARDSHIP_REQUIRED` der internen Gruppen. Das ist der **einzige** Schreibweg, den eine
+   Anbietergruppe überhaupt hat.
+4. **Die Benennung endet mit ihrer Grundlage.** Verlässt die Person die Gruppe, fällt die Zeile mit
+   der Mitgliedschaft — an der einen Stelle, die jede Mitgliedsänderung passiert, also auch beim
+   Verzeichnisabgleich und beim Token-Abgleich; das Ende ist ein Audit-Ereignis **ohne** handelnde
+   Person, weil niemand es entschieden hat. Ist ihr Konto gesperrt, bleibt die Zeile und zählt
+   nicht: Eine **geschützte** Anbietergruppe ohne handlungsfähige Ansprechstelle steht in der
+   Betriebsliste „Offene Nachfolgen" (#1819) — ihr Kennzeichen kann dann niemand mehr lösen, und die
+   Verwaltung darf es nicht an ihrer Stelle tun. Eine **ungeschützte** Anbietergruppe braucht keine
+   Ansprechstelle und erscheint dort nicht; das ist die schmale Auslegung der im ADR offenen Frage.
+
+Ansprechstellen tragen, wie die Verantwortlichen, **keine Historientabelle** (Entscheidungen 4
+und 8): Die Benennung trägt kein Leserecht und sagt über „wer konnte am Tag X was lesen" nichts.
+
+**Was vom Schutz gebaut ist.** Gebaut sind das Kennzeichen samt seinem Vorbehalt — Verantwortliche
+bei einer internen, Ansprechstellen bei einer Anbietergruppe —, die Freigabe unter demselben
+Vorbehalt, das Audit-Ereignis jeder Änderung und alle drei Wirkungen nach außen: nicht über die
+Suche auffindbar, in fremden Listen namenlos als „geschützte Gruppe" (#1820), und statt der
+Mitgliederliste die Verantwortlichen bzw. die Ansprechstelle für den, der ihr ein Recht einräumt
+(#1875). Bei einer ungeschützten Gruppe steht dort niemand — da ist die Mitgliederzahl die
+Antwort.
 
 **Der Abruf der Mitgliederliste durch die Systemverwaltung ist ein Audit-Ereignis**
 (`GROUP_MEMBERS_READ` mit der Zahl der Mitglieder) — ADR-0036, Entscheidung 9 räumt ihr die volle

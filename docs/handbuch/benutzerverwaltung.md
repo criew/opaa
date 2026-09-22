@@ -378,9 +378,10 @@ Nachweisprotokoll. Zwei der drei Wirkungen nach außen sind es ebenfalls:
   keine geschützte Gruppe, sondern allein die wirksame Rolle. Die eigene Herleitung der betroffenen
   Person bleibt vollständig.
 
-**Noch nicht gebaut** ist die dritte Wirkung: Wer einer geschützten Gruppe ein Recht einräumt, sieht
-heute weder die Mitglieder noch eine **Ansprechstelle**. Die Benennung von Ansprechstellen an
-Anbietergruppen entsteht mit Issue #1875.
+**Die dritte Wirkung: die Ansprechstelle statt der Mitgliederliste.** Wer einer geschützten Gruppe
+ein Recht einräumt, sieht nie ihre Mitglieder — sondern, wen er fragen kann: bei einer internen
+Gruppe ihre Verantwortlichen, bei einer Anbietergruppe ihre **Ansprechstellen**. Bei einer
+ungeschützten Gruppe steht dort niemand; da ist die Mitgliederzahl die Antwort.
 
 **Was festgehalten wird.** Aufnahme und Entfernung eines Mitglieds werden der betroffenen Person in
 der Anwendung angezeigt (ohne E-Mail) und stehen mit der handelnden verantwortlichen Person im
@@ -392,8 +393,23 @@ Nachweisprotokoll — mit der Zahl der Mitglieder, ohne die Namen. Verantwortlic
 ihrer eigenen Gruppe keinen Eintrag.
 
 **Gruppen aus dem Verzeichnis oder dem Anmeldetoken lassen sich hier nicht bearbeiten.** Sie haben
-keine Verantwortlichen, sondern Ansprechstellen, die die Systemverwaltung benennt; Ansprechstellen
-und die Oberfläche dafür entstehen mit Issue #1875.
+keine Verantwortlichen, sondern **Ansprechstellen**.
+
+**Ansprechstellen an Anbietergruppen.** Die Systemverwaltung benennt eine oder mehrere Personen, die
+**Mitglied der Gruppe** sind — in der Gruppenverwaltung, im Abschnitt „Ansprechstelle". Die
+Benennung ist ein Verwaltungsakt: Sie ändert an der Gruppe nichts, verleiht **keine Pflegerechte**
+(gepflegt wird die Gruppe weiter beim Anbieter) und berechtigt zu genau einer Handlung — das
+**Schutzkennzeichen** dieser Gruppe zu setzen und zu lösen. Die Systemverwaltung kann das
+Kennzeichen an einer Anbietergruppe selbst **nicht** setzen und nicht lösen; der Versuch wird mit
+einer Begründung abgelehnt. Wer Ansprechstelle ist, findet seine Gruppen unter „Meine Gruppen" und
+bedient das Kennzeichen dort.
+
+Verlässt eine Ansprechstelle die Gruppe — im Verzeichnisabgleich oder beim nächsten Anmeldetoken —,
+**endet ihre Benennung von selbst**, mit einem Eintrag im Nachweisprotokoll und ohne handelnde
+Person. Wird ihr Konto gesperrt, bleibt die Benennung bestehen, zählt aber nicht mehr: Eine
+**geschützte** Anbietergruppe ohne handlungsfähige Ansprechstelle erscheint in der Betriebsliste
+unter „Offene Nachfolgen" (Abschnitt 7.3), denn ihr Kennzeichen kann dann niemand mehr lösen. Eine
+ungeschützte Anbietergruppe braucht keine Ansprechstelle und steht dort nicht.
 
 ### 7.2 Rechte einer Gruppe auf eine andere übertragen
 

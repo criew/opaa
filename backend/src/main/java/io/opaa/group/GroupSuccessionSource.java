@@ -20,22 +20,27 @@ import org.springframework.stereotype.Component;
  * groups the migration of #1812 turned into internal ones <b>without</b> stewards: exactly the
  * state that changeset 041 left behind on purpose, to be picked up here.
  *
- * <p>Only internal groups: a provider group has no stewards but contact points, and those are named
- * by the system administration (#1821), not derived from anything.
+ * <p><b>A provider group counts too, but only while it is protected</b> (#1875): its mark can be
+ * set and released by its contact points alone, so a protected provider group without a usable one
+ * is frozen - nobody can lift the protection, and no administration may do it for them. An
+ * unprotected provider group needs no contact point and appears here for nothing.
  */
 @Component
 class GroupSuccessionSource implements SuccessionFindingSource {
 
   private final GroupRepository groups;
   private final GroupStewardRepository stewards;
+  private final GroupContactRepository contacts;
   private final AccountActivityService accountActivity;
 
   GroupSuccessionSource(
       GroupRepository groups,
       GroupStewardRepository stewards,
+      GroupContactRepository contacts,
       AccountActivityService accountActivity) {
     this.groups = groups;
     this.stewards = stewards;
+    this.contacts = contacts;
     this.accountActivity = accountActivity;
   }
 
@@ -50,32 +55,40 @@ class GroupSuccessionSource implements SuccessionFindingSource {
   }
 
   /**
-   * Two queries for the whole organization - the stewards of every internal group at once and one
-   * account query over all of them - rather than that pair per group (#682's rule).
+   * Four queries for the whole organization - the stewards and the contact points of every group it
+   * asks about, and one account query over all of them - rather than that pair per group (#682's
+   * rule).
    */
   @Override
   public List<SuccessionFinding> findingsOf(UUID organizationId) {
-    List<Group> internal =
-        groups.findByOrganizationId(organizationId).stream().filter(Group::isInternal).toList();
-    if (internal.isEmpty()) {
+    List<Group> candidates =
+        groups.findByOrganizationId(organizationId).stream()
+            .filter(GroupSuccessionSource::needsSomebodyResponsible)
+            .toList();
+    if (candidates.isEmpty()) {
       return List.of();
     }
-    Map<UUID, List<UUID>> stewardsByGroup = new HashMap<>();
-    for (GroupSteward steward :
-        stewards.findByGroupIdIn(internal.stream().map(Group::getId).toList())) {
-      stewardsByGroup
+    List<UUID> groupIds = candidates.stream().map(Group::getId).toList();
+    Map<UUID, List<UUID>> responsibleByGroup = new HashMap<>();
+    for (GroupSteward steward : stewards.findByGroupIdIn(groupIds)) {
+      responsibleByGroup
           .computeIfAbsent(steward.getGroupId(), key -> new ArrayList<>())
           .add(steward.getUserId());
     }
+    for (GroupContact contact : contacts.findByGroupIdIn(groupIds)) {
+      responsibleByGroup
+          .computeIfAbsent(contact.getGroupId(), key -> new ArrayList<>())
+          .add(contact.getUserId());
+    }
     Set<UUID> active =
         accountActivity.activeAmong(
-            stewardsByGroup.values().stream().flatMap(List::stream).distinct().toList());
+            responsibleByGroup.values().stream().flatMap(List::stream).distinct().toList());
     List<SuccessionFinding> findings = new ArrayList<>();
-    for (Group group : internal) {
-      boolean hasActiveSteward =
-          stewardsByGroup.getOrDefault(group.getId(), List.of()).stream()
+    for (Group group : candidates) {
+      boolean somebodyCanAct =
+          responsibleByGroup.getOrDefault(group.getId(), List.of()).stream()
               .anyMatch(active::contains);
-      if (!hasActiveSteward) {
+      if (!somebodyCanAct) {
         findings.add(findingOf(group));
       }
     }
@@ -86,18 +99,30 @@ class GroupSuccessionSource implements SuccessionFindingSource {
   public Optional<SuccessionFinding> findingFor(UUID groupId) {
     return groups
         .findById(groupId)
-        .filter(Group::isInternal)
-        .filter(group -> !hasActiveSteward(group.getId()))
+        .filter(GroupSuccessionSource::needsSomebodyResponsible)
+        .filter(group -> !hasSomebodyWhoCanAct(group))
         .map(GroupSuccessionSource::findingOf);
   }
 
-  private boolean hasActiveSteward(UUID groupId) {
-    Set<UUID> stewardIds =
-        Set.copyOf(
-            stewards.findByGroupIdOrderByCreatedAtAsc(groupId).stream()
+  /**
+   * Whether the group has a body of its own to lose: an internal group always does (its stewards
+   * maintain it), a provider group only while it is protected - there the contact points decide
+   * that one mark and nothing else.
+   */
+  private static boolean needsSomebodyResponsible(Group group) {
+    return group.isInternal() || group.isProtectedGroup();
+  }
+
+  private boolean hasSomebodyWhoCanAct(Group group) {
+    List<UUID> responsible =
+        group.isInternal()
+            ? stewards.findByGroupIdOrderByCreatedAtAsc(group.getId()).stream()
                 .map(GroupSteward::getUserId)
-                .toList());
-    return !accountActivity.activeAmong(stewardIds).isEmpty();
+                .toList()
+            : contacts.findByGroupIdOrderByCreatedAtAsc(group.getId()).stream()
+                .map(GroupContact::getUserId)
+                .toList();
+    return !accountActivity.activeAmong(responsible).isEmpty();
   }
 
   /** A protected group is named by its protection alone (ADR-0036, Entscheidung 9). */

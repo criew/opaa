@@ -153,6 +153,8 @@ public interface UserRepository extends JpaRepository<User, UUID> {
               + "   AS capability_history,"
               + " (SELECT count(*) FROM group_stewards WHERE user_id = :id"
               + "   OR appointed_by_user_id = :id) AS group_stewardships,"
+              + " (SELECT count(*) FROM group_contacts WHERE user_id = :id"
+              + "   OR appointed_by_user_id = :id) AS group_contacts,"
               + " (SELECT count(*) FROM space_membership_history WHERE subject_user_id = :id)"
               + "   AS space_membership_history,"
               + " (SELECT count(*) FROM asset_ownership_history WHERE owner_user_id = :id)"
@@ -185,6 +187,8 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     long getCapabilityHistory();
 
     long getGroupStewardships();
+
+    long getGroupContacts();
 
     long getSpaceMembershipHistory();
 

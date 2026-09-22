@@ -708,6 +708,25 @@ paths:
                 items:
                   $ref: "#/components/schemas/GroupListResponse"
 
+  /api/v1/me/contacted-groups:
+    get:
+      operationId: listMyContactedGroups
+      tags: [auth]
+      summary: >
+        The provider groups the caller is the contact point of (#1875, ADR-0036 Entscheidung 9) -
+        the counterpart of the stewarded groups above, and the place the protection mark of such a
+        group is set and released from. Being a contact point is no maintenance right: the group
+        itself stays read-only.
+      responses:
+        "200":
+          description: Groups the caller is a contact point of
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GroupListResponse"
+
   /api/v1/me/capabilities:
     get:
       operationId: listMyCapabilities
@@ -1158,12 +1177,17 @@ paths:
     put:
       operationId: setGroupProtection
       tags: [groups]
-      summary: Mark an internal group as protected, or take the mark back
+      summary: Mark a group as protected, or take the mark back
       description: >
         For the groups of the staff council, the representation of severely disabled employees,
         the equality office and for personnel matters. The mark is set and released by the body
-        concerned itself, never by the administration (ADR-0036, Entscheidung 9) - a SYSTEM_ADMIN
-        who is no steward of this group is refused with 403.
+        concerned itself, never by the administration (ADR-0036, Entscheidung 9) - and who the body
+        is follows the origin of the group: an internal group's stewards, a provider group's
+        contact points (#1875). A SYSTEM_ADMIN who is neither is refused with 403, with the code
+        naming which of the two is missing.
+
+        This is the one write path a provider group has: everything else about it is maintained
+        where it comes from.
       requestBody:
         required: true
         content:
@@ -1177,16 +1201,11 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/GroupResponse"
-        "400":
-          description: The group comes from a provider; its contact points set the mark there (#1821).
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
         "403":
           description: >
-            The caller is a system administrator but no steward of this group (code
-            STEWARDSHIP_REQUIRED).
+            The caller is no steward of this internal group (code STEWARDSHIP_REQUIRED) or no
+            contact point of this provider group (code CONTACT_REQUIRED) - a system administrator
+            included: the administration decides the protection of neither.
           content:
             application/json:
               schema:
@@ -2312,6 +2331,118 @@ paths:
                   $ref: "#/components/schemas/GroupListResponse"
         "403":
           $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/groups/{groupId}/contacts:
+    parameters:
+      - name: groupId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: listGroupContacts
+      tags: [admin]
+      summary: The contact points of a provider group (system admin only)
+      responses:
+        "200":
+          description: The group's contact points
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GroupContactResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    post:
+      operationId: appointGroupContact
+      tags: [admin]
+      summary: Name a further contact point of a provider group (system admin only)
+      description: >
+        The Verwaltungsakt of ADR-0036, Entscheidung 9 (#1875): naming somebody who speaks for a
+        provider group. It changes nothing about the group - a provider group stays read-only - and
+        grants no maintenance right; it entitles the person to exactly one act, setting and
+        releasing that group's protection mark, which the administration itself must not perform.
+
+        Only a natural person who is already a member of the group, and only a provider group: an
+        internal group has stewards, who decide its protection themselves. Recorded as an audit
+        event (GROUP_CONTACT_APPOINTED), deliberately without a history row - the appointment
+        carries no read access.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GroupAppointContactRequest"
+      responses:
+        "201":
+          description: Contact point named
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroupContactResponse"
+        "400":
+          description: >
+            The account is no member of the group, or the group is an internal one and has
+            stewards rather than contact points.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: The account is already a contact point of this group.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/admin/groups/{groupId}/contacts/{userId}:
+    parameters:
+      - name: groupId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    delete:
+      operationId: dismissGroupContact
+      tags: [admin]
+      summary: Dismiss a contact point of a provider group (system admin only)
+      description: >
+        The last contact point may go - an account leaving the house has to be releasable. A
+        protected group without one then appears in the operational list of #1819: its mark can no
+        longer be released by anybody, which is exactly what that list is for. Recorded as an audit
+        event (GROUP_CONTACT_DISMISSED); the same event, without an acting person, ends the
+        appointment when the person leaves the group.
+      responses:
+        "204":
+          description: Contact point dismissed
+        "400":
+          description: The group is an internal one and has stewards rather than contact points.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   /api/v1/admin/groups/effects:
     get:
@@ -10770,6 +10901,35 @@ components:
           type: string
           format: uuid
 
+    GroupContactResponse:
+      type: object
+      description: >
+        A contact point of a provider group (#1875, ADR-0036 Entscheidung 9): a person the system
+        administration named, who is a member of the group and holds no maintenance right over it.
+        They - and only they - set and release that group's protection mark.
+      required: [userId, appointedAt]
+      properties:
+        userId:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+          nullable: true
+        appointedAt:
+          type: string
+          format: date-time
+
+    GroupAppointContactRequest:
+      type: object
+      required: [userId]
+      properties:
+        userId:
+          type: string
+          format: uuid
+          description: >
+            Must be a member of the group and a natural person: the contact point speaks for the
+            body concerned, and somebody outside it would speak for a body they do not belong to.
+
     GroupReleaseRequest:
       type: object
       required: [releasedForUse]
@@ -10852,6 +11012,13 @@ components:
             Whether this group carries the protection of the staff council and the comparable
             bodies: not findable by search, shown namelessly in other people's lists, and its
             grant-giver sees the stewards instead of the members (ADR-0036, Entscheidung 9).
+        contacts:
+          type: array
+          description: >
+            The contact points of a provider group (#1875, ADR-0036 Entscheidung 9) - empty for an
+            internal group, which has stewards instead.
+          items:
+            $ref: "#/components/schemas/GroupContactResponse"
         stewards:
           type: array
           description: >
@@ -10901,6 +11068,15 @@ components:
           description: >
             The path the source reports ("/Haus/Abteilung 5/Referat 50") - what tells two
             same-named groups of one directory apart.
+        responsible:
+          type: array
+          description: >
+            Whom to ask about a protected group instead of reading its member list (ADR-0036,
+            Entscheidung 9): its stewards where it is internal, its contact points where it comes
+            from a provider (#1875). Empty for every unprotected group - there the member list is
+            the answer.
+          items:
+            type: string
         activeMemberCount:
           type: integer
           nullable: true
@@ -11003,6 +11179,13 @@ components:
             Whether this group carries the protection of the staff council and the comparable
             bodies: not findable by search, shown namelessly in other people's lists, and its
             grant-giver sees the stewards instead of the members (ADR-0036, Entscheidung 9).
+        contacts:
+          type: array
+          description: >
+            The contact points of a provider group (#1875, ADR-0036 Entscheidung 9) - empty for an
+            internal group, which has stewards instead.
+          items:
+            $ref: "#/components/schemas/GroupContactResponse"
         stewards:
           type: array
           description: >
@@ -15824,6 +16007,8 @@ components:
           GROUP_MEMBER_REMOVED,
           GROUP_STEWARD_APPOINTED,
           GROUP_STEWARD_DISMISSED,
+          GROUP_CONTACT_APPOINTED,
+          GROUP_CONTACT_DISMISSED,
           GROUP_RELEASE_CHANGED,
           GROUP_PROTECTION_CHANGED,
           GROUP_MEMBERS_READ,
