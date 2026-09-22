@@ -10,6 +10,7 @@ import io.opaa.library.AssetGrantUpsert;
 import io.opaa.library.AssetGrantView;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.permission.AssetGrant;
+import io.opaa.permission.GroupSizeSignal;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -38,7 +39,7 @@ class AssetGrantResponseMapperTest {
             AssetRole.MANAGER,
             expiresAt,
             grantedByUserId);
-    AssetGrantView view = new AssetGrantView(grant, "Subjekt Person", "Erteilende Person");
+    AssetGrantView view = AssetGrantView.ofUser(grant, "Subjekt Person", "Erteilende Person");
 
     AssetGrantResponse response = AssetGrantResponseMapper.toResponse(view);
 
@@ -64,8 +65,9 @@ class AssetGrantResponseMapperTest {
             UUID.randomUUID(),
             AssetRole.VIEWER,
             null,
+            null,
             null);
-    AssetGrantView view = new AssetGrantView(grant, null, null);
+    AssetGrantView view = AssetGrantView.ofGroup(grant, null, null, false, GroupSizeSignal.NONE);
 
     AssetGrantResponse response = AssetGrantResponseMapper.toResponse(view);
 
@@ -97,13 +99,90 @@ class AssetGrantResponseMapperTest {
             null);
     List<AssetGrantView> views =
         List.of(
-            new AssetGrantView(first, "First", null), new AssetGrantView(second, "Second", null));
+            AssetGrantView.ofUser(first, "First", null),
+            AssetGrantView.ofUser(second, "Second", null));
 
     List<AssetGrantResponse> responses = AssetGrantResponseMapper.toResponses(views);
 
     assertThat(responses)
         .extracting(AssetGrantResponse::getSubjectDisplayName)
         .containsExactly("First", "Second");
+  }
+
+  /** #1820: the growth signal of ADR-0036, Entscheidung 9 beside a group's release. */
+  @Test
+  void toResponseCarriesTheGrowthSignalOfAGroupGrant() {
+    AssetGrant grant =
+        AssetGrant.forGroup(
+            KnowledgeLibrary.ASSET_TYPE,
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            AssetRole.VIEWER,
+            null,
+            UUID.randomUUID(),
+            23);
+    AssetGrantView view =
+        AssetGrantView.ofGroup(
+            grant, "Referat 50", "Erteilende Person", false, GroupSizeSignal.of(23, 41, 5));
+
+    AssetGrantResponse response = AssetGrantResponseMapper.toResponse(view);
+
+    assertThat(response.getSubjectDisplayName()).isEqualTo("Referat 50");
+    assertThat(response.getMemberCountAtGrant()).isEqualTo(23);
+    assertThat(response.getMemberCountNow()).isEqualTo(41);
+    assertThat(response.getSmallGroup()).isFalse();
+    assertThat(response.getEmptyGroup()).isFalse();
+    assertThat(response.getProtectedGroup()).isFalse();
+  }
+
+  /** A person's grant carries no group figures at all. */
+  @Test
+  void toResponseLeavesEveryGroupFigureUnsetForAPerson() {
+    AssetGrant grant =
+        AssetGrant.forUser(
+            KnowledgeLibrary.ASSET_TYPE,
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            AssetRole.VIEWER,
+            null,
+            null);
+
+    AssetGrantResponse response =
+        AssetGrantResponseMapper.toResponse(AssetGrantView.ofUser(grant, "Person", null));
+
+    assertThat(response.getProtectedGroup()).isNull();
+    assertThat(response.getSmallGroup()).isNull();
+    assertThat(response.getEmptyGroup()).isNull();
+    assertThat(response.getMemberCountAtGrant()).isNull();
+    assertThat(response.getMemberCountNow()).isNull();
+  }
+
+  /** ADR-0036/9: a protected group is nameless here too, and carries no figure at all. */
+  @Test
+  void toResponseLeavesAProtectedGroupNamelessAndWithoutASignal() {
+    AssetGrant grant =
+        AssetGrant.forGroup(
+            KnowledgeLibrary.ASSET_TYPE,
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            AssetRole.VIEWER,
+            null,
+            null,
+            12);
+    AssetGrantView view =
+        AssetGrantView.ofGroup(grant, "Personalrat", null, true, GroupSizeSignal.NONE);
+
+    AssetGrantResponse response = AssetGrantResponseMapper.toResponse(view);
+
+    assertThat(response.getSubjectDisplayName()).isNull();
+    assertThat(response.getProtectedGroup()).isTrue();
+    assertThat(response.getSmallGroup()).isNull();
+    assertThat(response.getEmptyGroup()).isNull();
+    assertThat(response.getMemberCountAtGrant()).isNull();
+    assertThat(response.getMemberCountNow()).isNull();
   }
 
   @Test

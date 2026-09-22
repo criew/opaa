@@ -96,6 +96,17 @@ class GroupSubjectDirectoryAdapter implements GroupSubjectDirectory {
   }
 
   @Override
+  public Map<UUID, String> displayNamesById(Collection<UUID> groupIds) {
+    Map<UUID, String> names = new HashMap<>();
+    for (Group group : groupRepository.findAllById(groupIds)) {
+      names.put(
+          group.getId(),
+          group.isProtectedGroup() ? GroupSubjectDirectory.PROTECTED_GROUP_LABEL : group.getName());
+    }
+    return names;
+  }
+
+  @Override
   public Map<UUID, GroupAttribution> attributionsById(Collection<UUID> groupIds) {
     Map<UUID, GroupAttribution> attributions = new HashMap<>();
     Map<UUID, OidcProvider> providers = new HashMap<>();

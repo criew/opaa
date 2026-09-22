@@ -1,6 +1,8 @@
 package io.opaa.group;
 
+import io.opaa.auth.ActiveAccountSql;
 import io.opaa.permission.GroupMembershipSource;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -35,4 +37,22 @@ public interface GroupMembershipRepository
           + "where m.group.id = :groupId and m.organizationId = :organizationId")
   Set<UUID> findUserIdsByGroupIdAndOrganizationId(
       @Param("groupId") UUID groupId, @Param("organizationId") UUID organizationId);
+
+  /**
+   * One counting query instead of the member ids plus their accounts (#1820): the figure sits on
+   * the list path of every space and every selection. The active-account half of the condition is
+   * {@link ActiveAccountSql#PREDICATE}, so this query and {@code AccountActivityService} state the
+   * same definition in one place each.
+   */
+  @Override
+  @Query(
+      value =
+          "SELECT count(*) FROM group_memberships m JOIN users u ON u.id = m.user_id"
+              + " WHERE m.group_id = :groupId AND m.organization_id = :organizationId AND "
+              + ActiveAccountSql.PREDICATE,
+      nativeQuery = true)
+  int countActiveMembers(
+      @Param("groupId") UUID groupId,
+      @Param("organizationId") UUID organizationId,
+      @Param("now") Instant now);
 }

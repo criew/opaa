@@ -68,6 +68,15 @@ public class AssetGrant {
   @Column(name = "granted_by_user_id")
   private UUID grantedByUserId;
 
+  /**
+   * How many active accounts the group reached when this grant was written - the growth signal of
+   * ADR-0036, Entscheidung 9, compared against "today" in the Freigabeansicht. Null for a person,
+   * and null for a grant from before the figure was recorded. A later role change leaves it as it
+   * is: the signal answers how far the reach has grown since this group was let in.
+   */
+  @Column(name = "member_count_at_grant")
+  private Integer memberCountAtGrant;
+
   @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt;
 
@@ -85,7 +94,8 @@ public class AssetGrant {
       UUID subjectGroupId,
       AssetRole role,
       Instant expiresAt,
-      UUID grantedByUserId) {
+      UUID grantedByUserId,
+      Integer memberCountAtGrant) {
     this.id = UUID.randomUUID();
     this.assetType = assetType;
     this.assetId = assetId;
@@ -96,6 +106,7 @@ public class AssetGrant {
     this.role = role;
     this.expiresAt = expiresAt;
     this.grantedByUserId = grantedByUserId;
+    this.memberCountAtGrant = memberCountAtGrant;
   }
 
   public static AssetGrant forUser(
@@ -115,9 +126,15 @@ public class AssetGrant {
         null,
         role,
         expiresAt,
-        grantedByUserId);
+        grantedByUserId,
+        null);
   }
 
+  /**
+   * @param memberCountAtGrant the group's active accounts at this moment, or null where the grant
+   *     is not a Freigabe somebody answers for - the owner grant a group-owned library is created
+   *     with carries ownership, not a released reach.
+   */
   public static AssetGrant forGroup(
       AssetType assetType,
       UUID assetId,
@@ -125,7 +142,8 @@ public class AssetGrant {
       UUID subjectGroupId,
       AssetRole role,
       Instant expiresAt,
-      UUID grantedByUserId) {
+      UUID grantedByUserId,
+      Integer memberCountAtGrant) {
     return new AssetGrant(
         assetType,
         assetId,
@@ -135,7 +153,8 @@ public class AssetGrant {
         subjectGroupId,
         role,
         expiresAt,
-        grantedByUserId);
+        grantedByUserId,
+        memberCountAtGrant);
   }
 
   @PrePersist
@@ -184,6 +203,10 @@ public class AssetGrant {
   public PermissionSubject subject() {
     UUID subjectId = subjectType == PermissionSubjectType.USER ? subjectUserId : subjectGroupId;
     return new PermissionSubject(subjectType, subjectId, organizationId);
+  }
+
+  public Integer getMemberCountAtGrant() {
+    return memberCountAtGrant;
   }
 
   public UUID getId() {

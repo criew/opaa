@@ -257,7 +257,8 @@ class AccessDerivationIntegrationTest {
             groupId,
             role,
             null,
-            spaceAdmin.id()));
+            spaceAdmin.id(),
+            null));
   }
 
   private UUID space(UUID ownerId, UUID groupId, SpaceRole role) {

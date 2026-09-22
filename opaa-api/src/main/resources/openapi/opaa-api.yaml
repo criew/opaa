@@ -1027,6 +1027,85 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /api/v1/groups/selectable:
+    get:
+      operationId: searchSelectableGroups
+      tags: [groups]
+      summary: >
+        Search the groups the caller may name as a grant subject or a space member - the
+        Subjekt-Auswahl of ADR-0036, Entscheidung 9 (#1820)
+      description: >
+        Answers the "Rechtevergebende in der Subjekt-Auswahl" row of ADR-0036, Entscheidung 9:
+        every provider group of the caller's organization, and an internal group only once its
+        stewards have released it for use - unless the caller is a member, a steward or a
+        SYSTEM_ADMIN. Name and origin are named, the member count is the number of active
+        accounts, and the member list never is.
+
+        A protected group is not findable by search: it matches only when the query is its
+        complete name (ADR-0036, Entscheidung 9), and it then carries no member count at all.
+        An ineffective group - dissolved, provider switched off, or a token group its provider no
+        longer maintains - is returned with selectable = false and the flag naming the reason, so
+        the selection can show it as not choosable instead of silently dropping it.
+
+        Requires query (min. 2 characters, matched case-insensitively against the name and the
+        source path) and caps the result at 20 rows, the same shape as GET /api/v1/users. The
+        rule this endpoint applies is the visibility rule of the service, not of the list: the
+        same rule answers 404 on every path that accepts a group id, including the one where the
+        id is typed by hand.
+      parameters:
+        - name: query
+          in: query
+          required: false
+          schema:
+            type: string
+          description: >
+            Case-insensitive substring match against name and sourcePath. Fewer than 2 characters
+            (after trimming) yields an empty result.
+      responses:
+        "200":
+          description: Selectable groups matching the query, capped at 20 rows
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SelectableGroupResponse"
+
+  /api/v1/groups/selectable/{groupId}:
+    parameters:
+      - name: groupId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: resolveSelectableGroup
+      tags: [groups]
+      summary: >
+        One group by its id, under the same rule the Subjekt-Auswahl applies (#1820)
+      description: >
+        The way in for a caller who knows the designation of a group but not its name - typing the
+        id by hand. It resolves the group before anything is granted, so origin and provider reach
+        the interface on this path too: without them the selection's symbol and the question back
+        for a group of an external provider would be missing on exactly the path that shows the
+        least (ADR-0036, Entscheidung 2).
+
+        Answers with the same visibility rule as the search: a group this caller may not name is
+        "not found", never "forbidden". A protected group is returned without its name - the caller
+        did not name it here, and a name handed back for an id would undo the namelessness of
+        ADR-0036, Entscheidung 9.
+      responses:
+        "200":
+          description: The group, as the selection shows it
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SelectableGroupResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/groups/{groupId}/release:
     parameters:
       - name: groupId
@@ -9879,7 +9958,16 @@ components:
           nullable: true
           description: >
             The member's display name (person, falling back to email) or the group's name,
-            resolved server-side. Null only if the referenced row itself is gone.
+            resolved server-side. Null if the referenced row itself is gone - and null for a
+            protected group, which appears in another person's list as a nameless row
+            (ADR-0036, Entscheidung 9); protectedGroup says which of the two it is.
+        protectedGroup:
+          type: boolean
+          nullable: true
+          description: >
+            Group rows only: true for a group of the staff council and the comparable bodies. Its
+            name is withheld here and it carries no growth signal - there the size is the actual
+            disclosure. The row itself stays, so an ADMIN can end a membership they cannot see.
         role:
           $ref: "#/components/schemas/SpaceRole"
         memberCountAtGrant:
@@ -10777,6 +10865,80 @@ components:
         updatedAt:
           type: string
           format: date-time
+
+    SelectableGroupResponse:
+      type: object
+      required:
+        [id, origin, protectedGroup, selectable, dissolved, providerDisabled, unmaintained, smallGroup, emptyGroup]
+      description: >
+        One group as the Subjekt-Auswahl shows it (#1820, ADR-0036 Entscheidung 9): name, origin
+        and the number of active accounts - never the members themselves. Everything a selection
+        decides on is a field of its own, so the interface names the reason instead of guessing
+        it from a missing row.
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          nullable: true
+          description: >
+            Null for a protected group that was resolved by its id: the caller did not name it
+            there, and a name handed back for an id would undo the namelessness of ADR-0036,
+            Entscheidung 9. Present everywhere else, the search included - a protected group only
+            appears there when its complete name was typed.
+          example: Referat 50
+        origin:
+          $ref: "#/components/schemas/GroupOrigin"
+        provider:
+          allOf:
+            - $ref: "#/components/schemas/GroupProviderResponse"
+          nullable: true
+          description: Absent (null) exactly when origin is INTERNAL.
+        sourcePath:
+          type: string
+          nullable: true
+          description: >
+            The path the source reports ("/Haus/Abteilung 5/Referat 50") - what tells two
+            same-named groups of one directory apart.
+        activeMemberCount:
+          type: integer
+          nullable: true
+          description: >
+            How many active accounts this group reaches. Null whenever smallGroup is true, and
+            null for a protected group: there the size is the actual disclosure (ADR-0036,
+            Entscheidung 9).
+        smallGroup:
+          type: boolean
+          description: >
+            True below the enforced minimum group size - the selection then says "kleine Gruppe"
+            instead of a number, and no figure it could be reconstructed from is sent.
+        emptyGroup:
+          type: boolean
+          description: >
+            True when the group currently reaches no account at all. Such a group stays selectable
+            on purpose (ADR-0036, Entscheidung 6) - this is the warning that goes with it.
+        protectedGroup:
+          type: boolean
+          description: >
+            True for a group of the staff council and the comparable bodies. It is never found by
+            a substring; only the complete name matches it.
+        selectable:
+          type: boolean
+          description: >
+            False for a group that is no effective group - it may not become a new grant target or
+            a new space member, while the grants it already holds stay untouched. The three flags
+            below name which of the reasons applies.
+        dissolved:
+          type: boolean
+        providerDisabled:
+          type: boolean
+          description: The group comes from an identity provider that is switched off.
+        unmaintained:
+          type: boolean
+          description: >
+            A token group whose provider has since switched to the directory run: its membership
+            is frozen, so it must not become a new grant target (ADR-0036, Entscheidung 3).
 
     GroupResponse:
       type: object
@@ -15092,7 +15254,44 @@ components:
             see who a grant targets instead of a raw UUID. Null only if the subject row itself no
             longer exists (a deleted user, or a group id from before dissolution tracking) - a
             user's display name being unset does not produce null here, since email is always
-            present.
+            present. Null as well for a protected group, which appears in another person's list as
+            a nameless row (ADR-0036, Entscheidung 9) - protectedGroup says which of the cases it
+            is.
+        protectedGroup:
+          type: boolean
+          nullable: true
+          description: >
+            Group grants only: true for a group of the staff council and the comparable bodies.
+            Its name is withheld here and it carries no growth signal; the grant stays visible and
+            revocable.
+        memberCountAtGrant:
+          type: integer
+          nullable: true
+          description: >
+            Group grants only: how many active accounts the group had when the grant was given
+            (ADR-0036 Entscheidung 9) - the passive growth signal for whoever released to it. Null
+            for a person, for a protected group, whenever smallGroup is true, and for a grant from
+            before this figure was recorded.
+        memberCountNow:
+          type: integer
+          nullable: true
+          description: >
+            Group grants only: how many active accounts the group reaches right now, for the
+            comparison "23 bei Erteilung, heute 41". Null in the same cases as memberCountAtGrant,
+            except that it is present for a grant from before the figure was recorded.
+        smallGroup:
+          type: boolean
+          nullable: true
+          description: >
+            Group grants only: true when either figure lies below the enforced minimum group size,
+            in which case both are withheld - the difference alone would reconstruct the withheld
+            one.
+        emptyGroup:
+          type: boolean
+          nullable: true
+          description: >
+            Group grants only: true when the group currently reaches no account at all - the
+            "Freigabe ohne Empfänger" of ADR-0036, Entscheidung 6.
         role:
           $ref: "#/components/schemas/AssetRole"
         expiresAt:

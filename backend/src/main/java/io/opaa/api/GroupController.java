@@ -9,8 +9,10 @@ import io.opaa.api.dto.GroupRequest;
 import io.opaa.api.dto.GroupResponse;
 import io.opaa.api.dto.GroupStewardResponse;
 import io.opaa.api.dto.GroupUpdateRequest;
+import io.opaa.api.dto.SelectableGroupResponse;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
+import io.opaa.common.NotFoundException;
 import io.opaa.group.GroupCreation;
 import io.opaa.group.GroupDetail;
 import io.opaa.group.GroupMemberView;
@@ -29,6 +31,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -56,6 +59,30 @@ public class GroupController {
         groupService.createGroup(
             new GroupCreation(request.getName(), request.getDescription()), caller);
     return ResponseEntity.status(HttpStatus.CREATED).body(GroupResponseMapper.toResponse(created));
+  }
+
+  /**
+   * Mapped before {@code /{groupId}} by the literal-over-variable precedence of Spring's path
+   * matching, so "selectable" is never read as a group id.
+   */
+  @GetMapping("/selectable")
+  public List<SelectableGroupResponse> searchSelectableGroups(
+      @RequestParam(name = "query", required = false) String query, @Caller CurrentUser caller) {
+    return GroupResponseMapper.toSelectableResponses(
+        groupService.searchSelectableGroups(query, caller));
+  }
+
+  /**
+   * The id path of the Subjekt-Auswahl: a group this caller may not name answers {@code 404}, never
+   * {@code 403} - the same answer the search gives by omitting it (#1820).
+   */
+  @GetMapping("/selectable/{groupId}")
+  public SelectableGroupResponse resolveSelectableGroup(
+      @PathVariable UUID groupId, @Caller CurrentUser caller) {
+    return groupService
+        .resolveSelectableGroup(groupId, caller)
+        .map(GroupResponseMapper::toSelectableResponse)
+        .orElseThrow(() -> new NotFoundException("Gruppe nicht gefunden"));
   }
 
   @GetMapping("/{groupId}")

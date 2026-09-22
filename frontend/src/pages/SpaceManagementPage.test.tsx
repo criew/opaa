@@ -28,7 +28,8 @@ const {
   mockArchiveSpace,
   mockListSpaceMembers,
   mockGetSpaceLibraryAssociations,
-  mockGetMyGroups,
+  mockSearchSelectableGroups,
+  mockGetSpaceAccessDerivation,
   membersBySpaceId,
 } = vi.hoisted(() => {
   const membersBySpaceId: Record<
@@ -43,6 +44,7 @@ const {
       memberCountNow?: number | null
       smallGroup?: boolean
       emptyGroup?: boolean
+      protectedGroup?: boolean
       createdAt: string
     }>
   > = {
@@ -85,6 +87,17 @@ const {
         emptyGroup: false,
         createdAt: '2026-03-01T10:00:00Z',
       },
+      // #1820: eine geschuetzte Gruppe - ohne Namen und ohne jede Zahl, aber mit ihrer Zeile.
+      {
+        id: 'm-team-personalrat',
+        subjectType: 'GROUP',
+        subjectId: 'g2',
+        role: 'MEMBER',
+        protectedGroup: true,
+        memberCountAtGrant: null,
+        memberCountNow: null,
+        createdAt: '2026-03-01T10:00:00Z',
+      },
     ],
   }
   return {
@@ -102,16 +115,45 @@ const {
         return { hasAssociations: false, items: [] }
       },
     ),
-    mockGetMyGroups: vi.fn(async () => [
+    // #1820: die Subjekt-Auswahl sucht serverseitig; welche Gruppen erscheinen, entscheidet der
+    // Dienst.
+    mockSearchSelectableGroups: vi.fn(async () => [
       {
         id: 'group-phoenix',
         name: 'Projektbeteiligte Phoenix',
-        kind: 'AD_HOC' as const,
-        memberCount: 6,
-        createdAt: '2026-03-01T10:00:00Z',
-        updatedAt: '2026-03-01T10:00:00Z',
+        origin: 'INTERNAL' as const,
+        provider: null,
+        sourcePath: null,
+        activeMemberCount: 6,
+        smallGroup: false,
+        emptyGroup: false,
+        protectedGroup: false,
+        selectable: true,
+        dissolved: false,
+        providerDisabled: false,
+        unmaintained: false,
       },
     ]),
+    mockGetSpaceAccessDerivation: vi.fn(async (spaceId: string, userId?: string) => ({
+      spaceId,
+      userId: userId ?? 'u1',
+      effectiveRole: 'MEMBER' as const,
+      pathsWithheld: false,
+      paths: [
+        {
+          basis: 'GROUP_MEMBERSHIP' as const,
+          spaceRole: 'MEMBER' as const,
+          since: '2026-03-01T10:00:00Z',
+          group: {
+            id: 'g1',
+            name: 'Referat 50',
+            origin: 'PROVIDER' as const,
+            mechanism: 'DIRECTORY' as const,
+            providerName: 'Verzeichnis Haus A',
+          },
+        },
+      ],
+    })),
     membersBySpaceId,
   }
 })
@@ -124,8 +166,9 @@ vi.mock('../services/api', async () => {
     getUserSummaries: vi.fn(async () => []),
     getSpaces: vi.fn(async () => []),
     getLibraries: vi.fn(async () => []),
-    // #1815: the group picker reads the caller's own groups.
-    getMyGroups: mockGetMyGroups,
+    // #1820: the subject picker searches groups server-side.
+    searchSelectableGroups: mockSearchSelectableGroups,
+    getSpaceAccessDerivation: mockGetSpaceAccessDerivation,
     getSpace: vi.fn(
       async (spaceId: string) => useSpaceStore.getState().selectedSpace ?? { id: spaceId },
     ),
@@ -234,8 +277,8 @@ describe('SpaceManagementPage', () => {
     renderWithProviders(<SpaceManagementPage />, { withRouter: true })
 
     expect(screen.getByText(/standard-space/i)).toBeInTheDocument()
-    expect(await screen.findByPlaceholderText('Benutzer suchen …')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /mitglied hinzufügen/i })).toBeInTheDocument()
+    expect(await screen.findByPlaceholderText('Person suchen …')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^hinzufügen$/i })).toBeInTheDocument()
   })
 
   it('marks the owner and hides remove/transfer actions for their own row', async () => {
@@ -247,10 +290,11 @@ describe('SpaceManagementPage', () => {
 
     expect(await screen.findByText(/Owner · Eigentümer/)).toBeInTheDocument()
     // The owner's own row must not offer "Entfernen" or "Zum Eigentümer machen" for themselves -
-    // the colleague's and the group's rows do offer "Entfernen", the group's does not offer the
-    // handover (a space owner is always a natural person, #1815).
+    // the colleague's and both group rows do offer "Entfernen", neither group offers the handover
+    // (a space owner is always a natural person, #1815); the protected group's row exists for
+    // exactly this reason (#1820).
     expect(screen.getByText('Colleague')).toBeInTheDocument()
-    expect(screen.getAllByRole('button', { name: /entfernen/i })).toHaveLength(2)
+    expect(screen.getAllByRole('button', { name: /entfernen/i })).toHaveLength(3)
     expect(screen.getAllByRole('button', { name: /zum eigentümer machen/i })).toHaveLength(1)
   })
 
@@ -297,15 +341,15 @@ describe('SpaceManagementPage', () => {
     expect(await screen.findByText(/Kleine Runde · Gruppe · kleine Gruppe/)).toBeInTheDocument()
   })
 
-  it('adds a group as a member through the group picker', async () => {
+  it('adds a group as a member through the group search', async () => {
     setSpaceState(teamSpace)
     renderWithProviders(<SpaceManagementPage />, { withRouter: true })
     const user = userEvent.setup()
 
-    const groupField = await screen.findByLabelText('Gruppe')
-    await user.click(groupField)
-    await user.click(await screen.findByRole('option', { name: 'Projektbeteiligte Phoenix' }))
-    await user.click(screen.getByRole('button', { name: /gruppe hinzufügen/i }))
+    await user.click(await screen.findByRole('radio', { name: 'Gruppe' }))
+    await user.type(screen.getByLabelText('Gruppe suchen'), 'Projekt')
+    await user.click(await screen.findByRole('option', { name: /Projektbeteiligte Phoenix/ }))
+    await user.click(screen.getByRole('button', { name: /^hinzufügen$/i }))
 
     await waitFor(() => {
       expect(mockAddSpaceMember).toHaveBeenCalledWith(
@@ -340,12 +384,16 @@ describe('SpaceManagementPage', () => {
     })
   })
 
-  it('names a failed group load instead of showing an empty picker', async () => {
-    mockGetMyGroups.mockRejectedValueOnce(new Error('offline'))
+  it('names a failed group search instead of showing an empty picker', async () => {
+    mockSearchSelectableGroups.mockRejectedValueOnce(new Error('offline'))
     setSpaceState(teamSpace)
     renderWithProviders(<SpaceManagementPage />, { withRouter: true })
+    const user = userEvent.setup()
 
-    expect(await screen.findByText(/Ihre Gruppen konnten nicht geladen werden/)).toBeInTheDocument()
+    await user.click(await screen.findByRole('radio', { name: 'Gruppe' }))
+    await user.type(screen.getByLabelText('Gruppe suchen'), 'Projekt')
+
+    expect(await screen.findByText(/offline/)).toBeInTheDocument()
   })
 
   // #1815, ADR-0036 Entscheidung 6: state and addressee, without a date and without the previous
@@ -365,16 +413,50 @@ describe('SpaceManagementPage', () => {
     renderWithProviders(<SpaceManagementPage />, { withRouter: true })
 
     const ownerName = await screen.findByText(/Owner · Eigentümer/)
-    const ownerRow = ownerName.closest('div')
+    // Seit #1820 trägt die Zeile unter dem Namen noch den Aufruf der Herleitung - die Rolle liegt
+    // eine Ebene höher, im Zeilencontainer.
+    const ownerRow = ownerName.closest('div')?.parentElement
     expect(ownerRow).not.toBeNull()
     expect(within(ownerRow as HTMLElement).queryByRole('combobox')).not.toBeInTheDocument()
     expect(within(ownerRow as HTMLElement).getByText('Administrator')).toBeInTheDocument()
 
     // The (non-owner) colleague's row keeps its editable role Select.
     const colleagueName = screen.getByText('Colleague')
-    const colleagueRow = colleagueName.closest('div')
+    const colleagueRow = colleagueName.closest('div')?.parentElement
     expect(colleagueRow).not.toBeNull()
     expect(within(colleagueRow as HTMLElement).getByRole('combobox')).toBeInTheDocument()
+  })
+
+  /**
+   * #1820, ADR-0036 Entscheidung 9: Eine geschuetzte Gruppe erscheint namenlos und ohne Zahl - die
+   * Zeile bleibt, sonst koennte ein ADMIN eine Mitgliedschaft nicht beenden, die er nicht sieht.
+   */
+  it('renders a protected group as a nameless row that can still be removed', async () => {
+    setSpaceState(teamSpace)
+    renderWithProviders(<SpaceManagementPage />, { withRouter: true })
+
+    const protectedRow = await screen.findByText(/Geschützte Gruppe/)
+    expect(screen.queryByText(/g2/)).not.toBeInTheDocument()
+    expect(protectedRow.textContent).not.toMatch(/bei Aufnahme/)
+    const row = protectedRow.closest('div')?.parentElement
+    expect(
+      within(row as HTMLElement).getByRole('button', { name: /entfernen/i }),
+    ).toBeInTheDocument()
+  })
+
+  /** #1822: ob eine Rolle direkt oder ueber eine Gruppe kommt, beantwortet die Herleitung. */
+  it('opens the derivation of a person on request and never for a group row', async () => {
+    setSpaceState(teamSpace)
+    renderWithProviders(<SpaceManagementPage />, { withRouter: true })
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByRole('button', { name: 'Herleitung für Colleague' }))
+
+    expect(await screen.findByText(/Wirksame Rolle/)).toBeInTheDocument()
+    expect(mockGetSpaceAccessDerivation).toHaveBeenCalledWith('space-team', 'u2')
+    expect(
+      screen.queryByRole('button', { name: /Herleitung für Geschützte Gruppe/ }),
+    ).not.toBeInTheDocument()
   })
 
   it('explains the empty member list instead of showing nothing for a non-admin, non-owner viewer', async () => {

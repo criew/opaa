@@ -94,12 +94,13 @@ public class GroupMembershipResolver {
    * counts as active is {@link AccountActivityService}, the one place that joins the directory lock
    * with the derived state of a local credential; no caller carries a notion of its own.
    *
-   * <p>Since #1818 this sizes {@link #activeMemberIds} instead of counting rows in the database: a
-   * count over {@code group_memberships} cannot tell a locked account from an active one. The price
-   * is the member ids of the group plus their accounts, on the list path of every space.
+   * <p>Counted in the database (#1820): a join of {@code group_memberships} with the accounts,
+   * carrying the same condition as {@link #activeMemberIds} - the figure sits on the list path of
+   * every space and every subject selection, where the member ids plus their accounts were paid for
+   * a single number. A parity test holds the two encodings of "active" together.
    */
   public int activeMemberCount(UUID groupId, UUID organizationId) {
-    return activeMemberIds(groupId, organizationId).size();
+    return membershipSource.countActiveMembers(groupId, organizationId, accountActivity.now());
   }
 
   /**

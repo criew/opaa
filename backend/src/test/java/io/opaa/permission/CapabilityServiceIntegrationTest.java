@@ -233,6 +233,32 @@ class CapabilityServiceIntegrationTest {
         .isInstanceOf(ConflictException.class);
   }
 
+  /**
+   * ADR-0036, Entscheidung 9 (#1820): Die Liste der Anlegerechte ist eine fremde Liste - eine
+   * geschuetzte Gruppe steht dort ohne ihren Namen.
+   */
+  @Test
+  void namesNoProtectedGroupInTheOverview() {
+    Group group = Group.internal(Organization.DEFAULT_ID, "Personalrat", null, null);
+    group.markProtected(true);
+    UUID groupId = groupRepository.save(group).getId();
+    CapabilityGrant granted =
+        capabilityService.grant(
+            Capability.CREATE_INTERNAL_GROUP, CapabilitySubjectType.GROUP, groupId, admin);
+
+    List<CapabilityGrantView> grants =
+        capabilityService.overview(Organization.DEFAULT_ID).stream()
+            .filter(entry -> entry.capability() == Capability.CREATE_INTERNAL_GROUP)
+            .flatMap(entry -> entry.grants().stream())
+            .toList();
+
+    assertThat(grants)
+        .extracting(CapabilityGrantView::subjectName)
+        .containsExactly("Geschützte Gruppe");
+    capabilityService.revoke(Capability.CREATE_INTERNAL_GROUP, granted.getId(), admin);
+    groupRepository.deleteById(groupId);
+  }
+
   @Test
   void listsEveryCapabilityIncludingTheOnesNobodyHolds() {
     assertThat(capabilityService.overview(Organization.DEFAULT_ID))

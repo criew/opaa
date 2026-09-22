@@ -191,7 +191,9 @@ public class CapabilityService {
             .map(CapabilityGrant::getSubjectGroupId)
             .toList();
     if (!groupIds.isEmpty()) {
-      names.putAll(groupDirectory.namesById(groupIds));
+      // #1820, ADR-0036 Entscheidung 9: Die Liste der Anlegerechte ist eine fremde Liste - eine
+      // geschuetzte Gruppe steht dort ohne ihren Namen.
+      names.putAll(groupDirectory.displayNamesById(groupIds));
     }
     return names;
   }

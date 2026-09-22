@@ -61,6 +61,7 @@ import {
   resetMockDocumentMetadata,
   mockLibraryGrants,
   mockMyGroups,
+  mockSelectableGroups,
   mockMyCapabilities,
   mockChatDetails,
   mockChatPins,
@@ -3455,6 +3456,103 @@ export const handlers = [
 
   http.get('/api/v1/me/groups', () => {
     return HttpResponse.json(mockMyGroups)
+  }),
+
+  // #1820, ADR-0036 Entscheidung 9: Die Subjekt-Auswahl sucht serverseitig. Zwei Regeln bildet der
+  // Mock nach, weil die Oberfläche auf ihnen aufbaut: unter zwei Zeichen antwortet nichts, und
+  // eine geschützte Gruppe erscheint nur auf ihre vollständige Bezeichnung hin.
+  http.get('/api/v1/groups/selectable', ({ request }) => {
+    const query = (new URL(request.url).searchParams.get('query') ?? '').trim().toLowerCase()
+    if (query.length < 2) {
+      return HttpResponse.json([])
+    }
+    const matches = mockSelectableGroups.filter((group) =>
+      group.protectedGroup
+        ? (group.name ?? '').toLowerCase() === query
+        : (group.name ?? '').toLowerCase().includes(query) ||
+          (group.sourcePath ?? '').toLowerCase().includes(query),
+    )
+    return HttpResponse.json(matches.slice(0, 20))
+  }),
+
+  // #1820: Der Kennungsweg löst die Gruppe unter derselben Sichtbarkeitsregel auf; eine
+  // geschützte Gruppe kommt dabei ohne ihren Namen zurück.
+  http.get('/api/v1/groups/selectable/:groupId', ({ params }) => {
+    const group = mockSelectableGroups.find((candidate) => candidate.id === String(params.groupId))
+    if (!group) {
+      return HttpResponse.json({ error: 'Gruppe nicht gefunden' }, { status: 404 })
+    }
+    return HttpResponse.json(group.protectedGroup ? { ...group, name: null } : group)
+  }),
+
+  // #1822: die eigene Herleitung. Ohne userId geht es um die eigene Person.
+  http.get('/api/v1/libraries/:libraryId/access-derivation', ({ params }) => {
+    const libraryId = String(params.libraryId)
+    if (!mockLibraryDetails[libraryId]) {
+      return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
+    }
+    return HttpResponse.json({
+      libraryId,
+      effectiveRole: mockLibraryDetails[libraryId].myRole ?? 'VIEWER',
+      pathsWithheld: false,
+      paths: [
+        {
+          basis: 'GROUP_GRANT',
+          assetRole: 'VIEWER',
+          spaceRole: null,
+          since: '2026-03-01T10:00:00Z',
+          group: {
+            id: 'group-referat-50',
+            name: 'Referat 50',
+            origin: 'PROVIDER',
+            mechanism: 'DIRECTORY',
+            providerName: 'Verzeichnis Haus A',
+          },
+        },
+        {
+          basis: 'DIRECT_GRANT',
+          assetRole: mockLibraryDetails[libraryId].myRole ?? 'VIEWER',
+          spaceRole: null,
+          since: '2026-03-02T10:00:00Z',
+          group: null,
+        },
+      ],
+    })
+  }),
+
+  http.get('/api/v1/spaces/:spaceId/access-derivation', ({ params, request }) => {
+    const spaceId = String(params.spaceId)
+    const space = mockSpaceDetails[spaceId]
+    if (!space) {
+      return HttpResponse.json({ error: 'Space nicht gefunden' }, { status: 404 })
+    }
+    const userId = new URL(request.url).searchParams.get('userId')
+    // Die Auskunft über eine andere Person nennt keine geschützte Gruppe, sondern nur die
+    // wirksame Rolle (ADR-0036, Entscheidung 9).
+    if (userId && userId !== 'mock-user-id') {
+      return HttpResponse.json({
+        spaceId,
+        userId,
+        effectiveRole: 'MEMBER',
+        pathsWithheld: true,
+        paths: [],
+      })
+    }
+    return HttpResponse.json({
+      spaceId,
+      userId: userId ?? 'mock-user-id',
+      effectiveRole: space.userRole ?? 'MEMBER',
+      pathsWithheld: false,
+      paths: [
+        {
+          basis: 'DIRECT_MEMBERSHIP',
+          assetRole: null,
+          spaceRole: space.userRole ?? 'MEMBER',
+          since: '2026-03-01T10:00:00Z',
+          group: null,
+        },
+      ],
+    })
   }),
 
   // The delivered state of ADR-0036, Entscheidung 5: all three creation capabilities, no group one.

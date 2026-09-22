@@ -5,6 +5,7 @@ import io.opaa.api.dto.GroupMemberResponse;
 import io.opaa.api.dto.GroupProviderResponse;
 import io.opaa.api.dto.GroupResponse;
 import io.opaa.api.dto.GroupStewardResponse;
+import io.opaa.api.dto.SelectableGroupResponse;
 import io.opaa.api.types.GroupOrigin;
 import io.opaa.group.Group;
 import io.opaa.group.GroupDetail;
@@ -12,6 +13,7 @@ import io.opaa.group.GroupMemberView;
 import io.opaa.group.GroupOverview;
 import io.opaa.group.GroupProviderView;
 import io.opaa.group.GroupStewardView;
+import io.opaa.group.SelectableGroup;
 import java.util.List;
 
 /**
@@ -48,6 +50,28 @@ final class GroupResponseMapper {
 
   static List<GroupListResponse> toListResponses(List<GroupOverview> overviews) {
     return overviews.stream().map(GroupResponseMapper::toListResponse).toList();
+  }
+
+  static SelectableGroupResponse toSelectableResponse(SelectableGroup selectable) {
+    Group group = selectable.group();
+    return new SelectableGroupResponse(
+            group.getId(),
+            originOf(selectable.provider()),
+            selectable.smallGroup(),
+            selectable.emptyGroup(),
+            group.isProtectedGroup(),
+            selectable.selectable(),
+            selectable.dissolved(),
+            selectable.providerDisabled(),
+            selectable.unmaintained())
+        .name(selectable.name())
+        .provider(toProviderResponse(selectable.provider()))
+        .sourcePath(group.getSourcePath())
+        .activeMemberCount(selectable.activeMemberCount());
+  }
+
+  static List<SelectableGroupResponse> toSelectableResponses(List<SelectableGroup> groups) {
+    return groups.stream().map(GroupResponseMapper::toSelectableResponse).toList();
   }
 
   static GroupResponse toResponse(GroupDetail detail) {

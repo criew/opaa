@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -69,6 +70,45 @@ public interface GroupRepository extends JpaRepository<Group, UUID> {
    */
   List<Group> findByOrganizationIdAndProviderIdAndKind(
       UUID organizationId, UUID providerId, GroupKind kind);
+
+  /**
+   * The groups of one organization whose name or source path contains {@code pattern}, matched
+   * case-insensitively - what the Subjekt-Auswahl searches in (#1820). Deliberately without the
+   * memberships fetch-join the list queries carry: the selection shows the number of active
+   * accounts, which is counted in the database and never derived from loaded rows.
+   *
+   * <p><b>The database caps the rows</b>, not the caller: this endpoint is open to every
+   * authenticated member of the organization, so it is never allowed to load the whole organization
+   * - the same deliberate bound {@code UserRepository#searchByOrganizationId} carries. {@code
+   * pattern} arrives ready to bind, with {@code %}, {@code _} and the escape character itself
+   * already neutralised by {@code GroupService#likePattern}; without that, a query of two percent
+   * signs would match every row of the organization.
+   */
+  @Query(
+      "select g from Group g where g.organizationId = :organizationId"
+          + " and g.protectedGroup = false"
+          + " and (lower(g.name) like lower(:pattern) escape '\\'"
+          + " or lower(g.sourcePath) like lower(:pattern) escape '\\')"
+          + " order by g.name asc, g.id asc")
+  List<Group> searchByOrganizationIdAndText(
+      @Param("organizationId") UUID organizationId,
+      @Param("pattern") String pattern,
+      Pageable pageable);
+
+  /**
+   * The protected groups of one organization carrying exactly this name, matched
+   * case-insensitively. Their own query on purpose (#1820): a protected group is not findable by a
+   * substring (ADR-0036, Entscheidung 9), and asking for it separately keeps it out of the bounded
+   * window the substring search reads - otherwise a house with many same-prefixed groups could push
+   * the one exact hit out of the window, and the selection's answer would depend on how many other
+   * groups happen to match.
+   */
+  @Query(
+      "select g from Group g where g.organizationId = :organizationId"
+          + " and g.protectedGroup = true and lower(g.name) = lower(:name)"
+          + " order by g.id asc")
+  List<Group> findProtectedByOrganizationIdAndName(
+      @Param("organizationId") UUID organizationId, @Param("name") String name, Pageable pageable);
 
   /** Every group of one provider, regardless of organization - what its deletion decides on. */
   List<Group> findByProviderIdAndKind(UUID providerId, GroupKind kind);

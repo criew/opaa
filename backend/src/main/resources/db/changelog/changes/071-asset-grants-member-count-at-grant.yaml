@@ -1,0 +1,35 @@
+databaseChangeLog:
+  - changeSet:
+      id: 071-asset-grants-member-count-at-grant
+      author: opaa
+      comment: >-
+        Das Zuwachssignal an einer Freigabe (#1820, ADR-0036 Entscheidung 9). member_count_at_grant
+        speichert die Zahl aktiver Konten der Gruppe zum Zeitpunkt der Erteilung; die
+        Freigabeansicht stellt sie der heutigen Zahl gegenueber ("Referat 50: 23 bei Erteilung,
+        heute 41"). Keine Mail, kein Vorgang - eine Zeile, die jemand liest, der fuer die Freigabe
+        geradesteht. Das Gegenstueck an der Space-Mitgliedschaft legt 043 an.
+        .
+        Nullbar und ohne Bestandsnachzug: Fuer eine Freigabe aus der Zeit davor gibt es keine
+        richtige Zahl, und eine erfundene waere schlechter als keine. Die Ansicht zeigt dann allein
+        die heutige Zahl. Die Pruefregel haelt fest, dass nur eine Gruppen-Freigabe eine solche
+        Zahl tragen kann - eine Person hat keine Gruppengroesse.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE asset_grants
+                  ADD COLUMN member_count_at_grant integer;
+
+              ALTER TABLE asset_grants
+                  ADD CONSTRAINT chk_asset_grants_member_count
+                  CHECK ((member_count_at_grant IS NULL)
+                         OR ((subject_type)::text = 'GROUP'::text AND member_count_at_grant >= 0));
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE asset_grants
+                  DROP CONSTRAINT chk_asset_grants_member_count;
+
+              ALTER TABLE asset_grants
+                  DROP COLUMN member_count_at_grant;

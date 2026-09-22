@@ -165,6 +165,10 @@ databaseChangeLog:
       file: db/changelog/changes/069-knowledge-libraries-share-cap.yaml
   - include:
       file: db/changelog/changes/070-knowledge-libraries-share-cap-upload-unrestricted.yaml
+  # Das Zuwachssignal an einer Freigabe (#1820, ADR-0036 Entscheidung 9) - das Gegenstueck zu
+  # space_memberships.member_count_at_grant aus 043.
+  - include:
+      file: db/changelog/changes/071-asset-grants-member-count-at-grant.yaml
   # Lebenszyklus von Eigentum und Zuständigkeit (#1819, ADR-0036 Entscheidungen 6 und 8): der
   # Vorgang hinter einem Eintrag der Betriebsliste, sein Sichtungsvermerk und der Bestandseintrag
   # der Eigentumshistorie für Bibliotheken, den 052 ausdrücklich diesem Issue überlassen hat.
