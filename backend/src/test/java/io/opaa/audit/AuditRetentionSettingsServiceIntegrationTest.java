@@ -10,11 +10,13 @@ import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.test.OpaaIntegrationTest;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * #395: {@link AuditRetentionSettingsService} against a real Postgres database with the real,
@@ -33,6 +35,7 @@ class AuditRetentionSettingsServiceIntegrationTest {
   @Autowired private UserRepository userRepository;
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private TransactionTemplate transactionTemplate;
 
   private UUID organizationId;
   private UUID userId;
@@ -82,6 +85,30 @@ class AuditRetentionSettingsServiceIntegrationTest {
             .filter(entry -> "Testumstellung".equals(entry.getReason()))
             .count();
     assertThat(changeEntries).isEqualTo(1);
+  }
+
+  /**
+   * Within one transaction a read after the change sees the changed row: the native update never
+   * reaches the settings entity read for the Vorher-Wert, so the persistence context has to be
+   * cleared with it. Regression guard for the same Bauform on the diagnostic context protocol's
+   * settings path (#1850), which answered a change with the value it had just replaced.
+   */
+  @Test
+  void aReadAfterTheChangeInTheSameTransactionSeesTheNewValue() {
+    AtomicInteger target = new AtomicInteger();
+
+    Integer seenAfterTheChange =
+        transactionTemplate.execute(
+            status -> {
+              int before =
+                  retentionSettingsRepository.findSingleton().orElseThrow().getRetentionMonths();
+              target.set(before == 60 ? 72 : 60);
+              retentionSettingsService.updateRetention(
+                  organizationId, userId, target.get(), "Testumstellung");
+              return retentionSettingsRepository.findSingleton().orElseThrow().getRetentionMonths();
+            });
+
+    assertThat(seenAfterTheChange).isEqualTo(target.get());
   }
 
   @Test

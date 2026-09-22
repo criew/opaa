@@ -53,6 +53,7 @@ class DiagnosticAccessIntegrationTest {
   @Autowired private DiagnosticImpersonationGrantService grantService;
   @Autowired private DiagnosticImpersonationGrantRepository grantRepository;
   @Autowired private DiagnosticContextRetentionSettingsRepository retentionRepository;
+  @Autowired private DiagnosticContextRetentionService retentionService;
   @Autowired private DiagnosticContextLogRepository logRepository;
   @Autowired private DiagnosticContextLogQueryService logQueryService;
   @Autowired private ForeignDiagnosticContextService foreignDiagnosticContextService;
@@ -462,6 +463,35 @@ class DiagnosticAccessIntegrationTest {
         .isEqualTo(12);
 
     assertThat(deletionService.runOnce()).isEmpty();
+  }
+
+  /**
+   * A change answers with what it wrote. The Vorher-Wert for the protocol entry is read into the
+   * same persistence context the native update bypasses, so without clearing it the caller is
+   * handed the value the change just replaced - while the row already carries the new one.
+   */
+  @Test
+  void changingTheRetentionAnswersWithTheNewValueAndProtocolsBothValues() {
+    int before = retentionRepository.findSingleton().orElseThrow().getRetentionMonths();
+    int changed = before == 7 ? 9 : 7;
+
+    DiagnosticContextRetentionSettings answered =
+        retentionService.updateRetentionMonths(admin, changed);
+
+    assertThat(answered.getRetentionMonths())
+        .as("PUT must answer with the new value")
+        .isEqualTo(changed);
+    assertThat(retentionService.read(admin).getRetentionMonths())
+        .as("a fresh read must see the new value")
+        .isEqualTo(changed);
+    assertThat(
+            jdbcTemplate.queryForMap(
+                "SELECT before, after FROM audit_log WHERE organization_id = ?"
+                    + " AND event_type = 'DIAGNOSTIC_CONTEXT_RETENTION_CHANGED'"
+                    + " ORDER BY recorded_at DESC LIMIT 1",
+                organizationId))
+        .containsEntry("before", "{\"retentionMonths\":" + before + "}")
+        .containsEntry("after", "{\"retentionMonths\":" + changed + "}");
   }
 
   /**

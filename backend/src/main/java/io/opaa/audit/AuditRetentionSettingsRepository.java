@@ -29,8 +29,12 @@ public interface AuditRetentionSettingsRepository
    * UPDATE} writes every mapped column regardless of which one logically changed, which would
    * include {@code last_cutoff}/{@code last_run_month} - columns the application account cannot
    * write - and fail with "permission denied for table" against the real, restricted grant.
+   *
+   * <p>{@code clearAutomatically} is what lets a re-read after this call see the written row: a
+   * native update never reaches the settings entity a caller read for the Vorher-Wert, so without
+   * clearing the persistence context that stale instance is what the re-read returns.
    */
-  @Modifying
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
   @Query(
       value =
           "UPDATE audit_retention_settings SET retention_months = :retentionMonths,"
