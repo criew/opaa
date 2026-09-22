@@ -175,6 +175,10 @@ class LibraryDocumentServiceIntegrationTest {
     // purged before this teardown's own user deletion below (not a real account deletion).
     grantHistoryRepository.deleteBySubjectUserIdIn(List.of(editor.getId(), viewer.getId()));
     membershipHistoryRepository.deleteByUserIdIn(List.of(editor.getId(), viewer.getId()));
+    // Since #1819 a library carries ownership intervals; their owner column is RESTRICT, so
+    // they have to go before the accounts that hold them.
+    jdbcTemplate.update(
+        "DELETE FROM asset_ownership_history WHERE organization_id = ?", organizationId);
     userRepository.deleteById(editor.getId());
     userRepository.deleteById(viewer.getId());
     // #392: setUp's library/grant creation now also writes audit_log rows

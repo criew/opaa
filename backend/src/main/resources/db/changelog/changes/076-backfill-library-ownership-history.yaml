@@ -1,0 +1,50 @@
+databaseChangeLog:
+  - changeSet:
+      id: 076-backfill-library-ownership-history
+      author: opaa
+      comment: >-
+        Das Eigentum an Bibliotheken kommt in die Eigentumshistorie (#1819, ADR-0036 Entscheidung
+        8). Changeset 052 hat die Tabelle typunabhaengig gebaut und ausdruecklich nur 'SPACE'
+        gefuellt - "das Eigentum an Bibliotheken bringt seinen Schreiber und seinen
+        Bestandseintrag mit #1819 mit". Beides passiert hier: der Schreiber in
+        KnowledgeLibraryService (Anlage und Loeschung) und der Bestand in diesem Changeset.
+        .
+        BESTAND WIE IN 044 UND 052: ein offenes Intervall ab jetzt mit dem Grund BACKFILL, nicht
+        rueckwirkend aus created_at. Ein erfundenes Intervall behauptete eine Eigentumshistorie,
+        die es nie gab.
+        .
+        Bibliotheken einer Gruppe bekommen owner_group_id, Bibliotheken einer Person
+        owner_user_id - die Pruefbedingung chk_asset_ownership_history_owner verlangt genau eine
+        der beiden. Ein Bestandseintrag wird nur geschrieben, wo noch keiner steht: Das Changeset
+        bleibt wiederholbar, falls eine Installation zwischen 052 und hier bereits eine
+        Uebertragung gefahren hat (#1834).
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              INSERT INTO asset_ownership_history
+                  (id, asset_type, asset_id, organization_id, owner_type, owner_user_id, owner_group_id, cause, actor_user_id, valid_from, created_at)
+              SELECT gen_random_uuid(),
+                     'KNOWLEDGE_LIBRARY',
+                     l.id,
+                     l.organization_id,
+                     l.owner_type,
+                     l.owner_user_id,
+                     l.owner_group_id,
+                     'BACKFILL',
+                     NULL,
+                     now(),
+                     now()
+                FROM knowledge_libraries l
+               WHERE NOT EXISTS (
+                         SELECT 1
+                           FROM asset_ownership_history h
+                          WHERE h.asset_type = 'KNOWLEDGE_LIBRARY'
+                            AND h.asset_id = l.id
+                            AND h.valid_to IS NULL);
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              DELETE FROM asset_ownership_history
+               WHERE asset_type = 'KNOWLEDGE_LIBRARY' AND cause = 'BACKFILL';

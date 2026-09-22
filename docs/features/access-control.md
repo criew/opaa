@@ -1259,7 +1259,7 @@ diesem Weg.
   Leserecht trägt und für „wer konnte am Tag X was lesen" ohne Bedeutung ist. Mitglieder**änderungen**
   stehen unverändert in der Rechtehistorie — mit dem Verantwortlichen als Akteur.
 - **Anbietergruppen bleiben schreibgeschützt.** Sie haben keine Verantwortlichen, sondern
-  Ansprechstellen, die die Systemverwaltung benennt (#1821).
+  Ansprechstellen, die die Systemverwaltung benennt (#1875).
 
 **Freigabe zur Verwendung.** Eine interne Gruppe ist erst dann für andere Rechtevergebende wählbar,
 wenn ihre Verantwortlichen sie **freigegeben** haben — das Gegenstück zu `listed` bei Assets:
@@ -1406,6 +1406,115 @@ die Übertragung bleibt eine Entscheidung.
 
 > Festgeschrieben in [ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md),
 > Entscheidung 10.
+
+#### Nachfolge offen: Lebenszyklus von Eigentum und Zuständigkeit (gebaut, #1819 — ohne Oberfläche, #1821)
+
+**„Nachfolge offen" ist ein abgeleiteter Zustand, kein gespeichertes Kennzeichen.** Er bedeutet: Es
+gibt keinen handlungsfähigen Verantwortlichen mehr.
+
+| Gegenstand | Handlungsfähig heißt |
+|---|---|
+| Bibliothek einer Person | Das Konto ist nutzbar (weder im Verzeichnis gesperrt noch als lokales Konto ausgesetzt) |
+| Bibliothek einer Gruppe | Die Gruppe ist wirksam **und** erreicht mindestens ein aktives Konto |
+| Space | Der Eigentümer oder ein `ADMIN`-Mitglied ist handlungsfähig — eine Gruppe zählt, solange sie es ist |
+| Interne Gruppe | Mindestens eine verantwortliche Person mit nutzbarem Konto |
+
+Ein Kennzeichen müsste an jedem Auslöser gesetzt und zurückgenommen werden und triebe beim ersten
+vergessenen Pfad auseinander; die Ableitung ist an jeder Stelle dieselbe Abfrage (Muster
+„abgeleiteter Kontozustand statt `status`-Spalte", ADR-0033/3). **Der Zustand endet von selbst**,
+sobald wieder jemand handlungsfähig ist.
+
+**Was der Zustand bewirkt: die Reichweite ist eingefroren — mehr nicht.** Das Objekt bleibt nutzbar,
+bestehende Rechte bleiben, **nichts wird gelöscht**. Abgelehnt werden, mit Grund und mit der
+Zuständigkeit in der Meldung (`409`, Code `SUCCESSION_OPEN`):
+
+- eine neue oder geänderte Berechtigung an der Bibliothek,
+- eine größere Sichtbarkeit oder Auffindbarkeit,
+- eine Freigabe für Fremdzugänge,
+- eine neue Bereitstellung in einem Space (beide Seiten),
+- ein neues Mitglied im Space.
+
+Erlaubt bleibt alles, was die Reichweite **nicht** vergrößert: umbenennen, einschränken, Rechte
+entziehen, lesen, suchen, indexieren. Das ist keine Beschreibung, sondern die Schnittstelle: Der
+Wächter sitzt an jeder der fünf Stellen **hinter** der Fallunterscheidung und prüft genau die
+Erweiterung — eine höhere Rolle oder eine hinausgeschobene Befristung, eine erstmalige oder
+verlängerte Freigabe, eine erstmalige Bereitstellung, ein neues Mitglied. Die Herabstufung, die
+vorgezogene Befristung, die verkürzte oder zurückgenommene Freigabe und das entfernte Mitglied
+laufen unverändert durch; je Pfad hält das ein Test fest. Aus demselben Grund verweigert die
+Schutzregel des letzten handlungsfähigen `ADMIN` nur den **Verlust**: Ein Space, der ohnehin keinen
+mehr hat, verliert durch eine Entfernung keinen.
+
+**Ein benannter Feststellungslauf** (Vorgabe stündlich, `OPAA_SUCCESSION_DETECTION_CRON`) legt die
+**Vorgänge** an und schließt sie: Zeitpunkt der Erstfeststellung und Ende. Die Ableitung bleibt die
+Wahrheit — der Lauf schreibt nur den Zeitstempel, ohne den „Alter" in Wahrheit „seit dem letzten
+Hinsehen" hieße. Beendet eine Übertragung den Zustand, schließt sie den Vorgang selbst und nennt die
+handelnde Person — aber **nur, wenn der Zustand wirklich endet** und nur für den Reiter, den sie
+betrifft: Geht ein Objekt an einen Empfänger, der ebenfalls nicht handeln kann, bliebe ein
+geschlossener und sogleich neu angelegter Vorgang ein Alter von null, und eine übertragene
+Verantwortlichkeit beendet keine „Gruppe ohne Wirkung". Endet der Zustand von allein, schließt ihn
+der Lauf und nennt niemanden. Der Lauf selbst fährt **eine Transaktion je Organisation** und fängt
+den Fehler einer Organisation ab: Ihre Teilarbeit wird ganz zurückgerollt, die übrigen
+Organisationen laufen weiter.
+
+Nachfolgevorgänge und Sichtungsvermerke unterliegen der **Protokollfrist**, nicht der
+Rechtehistorie: Sie sagen nichts über Leserechte aus — und die Frist wird auch vollzogen. Ein
+monatlicher Löschlauf entfernt **abgeschlossene** Vorgänge samt ihren Sichtungsvermerken, sobald ihr
+Ende länger als `OPAA_AUDIT_RETENTION_MONTHS` zurückliegt; ein offener Vorgang wird nie gelöscht,
+gleich wie alt er ist. Mit dem Vorgang verschwinden der Freitext des Vermerks und die beiden
+Personenspalten, die ohnehin `ON DELETE SET NULL` tragen.
+
+**Die Betriebsliste hat drei Reiter**, alle mit derselben Mechanik (Feststellungslauf, Alter,
+objektbezogener Einstieg, Sichtungsvermerk):
+
+| Reiter | Inhalt |
+|---|---|
+| **Offene Nachfolgen** | Bibliotheken, Spaces und interne Gruppen ohne handlungsfähigen Verantwortlichen, mit Adressat und Alter |
+| **Freigaben ohne Empfänger** | wirksame Gruppen, die Berechtigungen tragen oder Space-Mitglied sind und kein aktives Konto mehr erreichen, mit der Zahl der betroffenen Objekte |
+| **Gruppen ohne Wirkung** | interne Gruppen ohne Berechtigung, ohne Anlegerecht, ohne Space-Mitgliedschaft, ohne Eigentum und ohne aktives Mitglied |
+
+„Freigaben ohne Empfänger" ist das sichtbare Signal für den ungeschützten Token-Pfad: Nach einer
+Umbenennung des Gruppen-Claims sind 40 Freigaben tot, und sonst zeigt es nichts an.
+
+**Die Liste ist vollständig ab dem ersten Tag**, unabhängig vom Adressaten — die Stufung ist eine
+Zuständigkeits*angabe*, keine Zugangsbeschränkung: Space → die übrigen handlungsfähigen
+`ADMIN`-Mitglieder; Bibliothek einer internen Gruppe → deren Verantwortliche; alles andere → die
+Systemverwaltung. Ohne die vollständige Liste erreichte ein Fall der zweiten Stufe die dritte nie.
+
+**Objektbezogen in beide Richtungen.** Einstieg über das Objekt; der Eigentümer wird je Zeile
+genannt, aber es gibt **keine** Abfrage, keine Sortierung und keinen Parameter nach ihm — und ebenso
+wenig nach der handelnden Person. Wer einen Vorgang beendet oder einen Sichtungsvermerk gesetzt hat,
+steht am Vorgang und ist dort lesbar, ist aber keine Auswertungsachse. Ein
+Spezifikationstest hält das fest: Die Liste nimmt genau `kind`, `page` und `size` entgegen und keinen
+Sortierparameter.
+
+**Alterungsschwelle mit Sichtungsvermerk, ohne Zwang.** Einträge älter als
+`OPAA_SUCCESSION_AGING_THRESHOLD_MONTHS` (Vorgabe 12 Monate, orientiert an der Höchstfrist der
+Vollmacht) werden hervorgehoben; ein Sichtungsvermerk („geprüft am …, weiterhin offen, Grund") hebt
+die Hervorhebung für eine weitere Periode auf. Keine Frist, keine Eskalation, keine Mail.
+
+**Die Kennzeichnung am Objekt nennt Zustand und Adressat — sonst nichts.** Kein Datum, kein
+bisheriger Eigentümer, kein Grund: Der Zustand tritt bei einem personengehörenden Objekt mit der
+Kontosperre ein, und ein datierter Vermerk neben dem Eigentümernamen wäre eine Statusmeldung über
+eine Kollegin. Sie steht an **Übersicht und Detailansicht** des Objekts, beide aus derselben
+Ableitung — auch das Kennzeichen `successionOpen` eines Space liest sie, damit eine Antwort nicht
+zwei Wahrheiten trägt. **Suchtreffer und Quellenverweise in Antworten tragen die Kennzeichnung
+nicht** — der Zustand betrifft die Zuständigkeit, nicht die Richtigkeit des Inhalts.
+
+„War Mitglied von Referat 50" steht **nur in der Betriebsliste**, gefüllt aus den Gruppen des
+bisherigen Eigentümers: ein Hinweis, wo eine Nachfolge zu suchen ist, keine Auswertung. Die
+Kennzeichnung am Objekt trägt ihn nicht.
+
+**Die Übernahme ist die [Übertragung](#rechte-einer-gruppe-auf-eine-andere-übertragen-gebaut-1834)**
+mit dem Umfang „Eigentum und Verantwortung". Dieses Issue liefert Zustand, Liste, Adressat und die
+Stelle, an der die Operation ansetzt; die Oberfläche der Liste und der Übertragungsdialog kommen mit
+#1821.
+
+**Eine Kontosperre wird nie wegen offener Eigentums- oder Zuständigkeitsfragen abgelehnt** — sie ist
+die eine Handlung, die den Zustand erzeugen darf. Die einzige Ausnahme bleibt der Schutz des letzten
+anmeldefähigen Systemverwalters.
+
+> Festgeschrieben in [ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md),
+> Entscheidungen 6 und 8.
 
 Der Nachweis, worauf eine Person zu einem beliebigen Stichtag Zugriff hatte, entsteht aus der
 Historisierung dieser drei Quellen und ist in

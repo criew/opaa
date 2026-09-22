@@ -102,6 +102,10 @@ class LibraryExternalAccessReminderServiceIntegrationTest {
     for (UUID groupId : createdGroupIds) {
       groupRepository.deleteById(groupId);
     }
+    // Since #1819 a library carries ownership intervals; their owner column is RESTRICT, so
+    // they have to go before the accounts that hold them.
+    jdbcTemplate.update(
+        "DELETE FROM asset_ownership_history WHERE organization_id = ?", organizationId);
     for (UUID userId : createdUserIds) {
       userRepository.deleteById(userId);
     }

@@ -12,6 +12,7 @@ import io.opaa.api.dto.SpaceResponse;
 import io.opaa.api.dto.SpaceRoleUpdateRequest;
 import io.opaa.api.dto.SpaceTransferOwnershipRequest;
 import io.opaa.api.dto.SpaceUpdateRequest;
+import io.opaa.api.types.SuccessionObjectType;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import io.opaa.permission.PermissionSubject;
@@ -24,6 +25,7 @@ import io.opaa.space.SpaceMemberView;
 import io.opaa.space.SpaceOverview;
 import io.opaa.space.SpaceService;
 import io.opaa.space.SpaceUpdate;
+import io.opaa.succession.SuccessionService;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
@@ -46,14 +48,17 @@ public class SpaceController {
   private final SpaceService spaceService;
   private final SpaceAssetAssociationService associationService;
   private final PermissionTransferService transferService;
+  private final SuccessionService successionService;
 
   public SpaceController(
       SpaceService spaceService,
       SpaceAssetAssociationService associationService,
-      PermissionTransferService transferService) {
+      PermissionTransferService transferService,
+      SuccessionService successionService) {
     this.spaceService = spaceService;
     this.associationService = associationService;
     this.transferService = transferService;
+    this.successionService = successionService;
   }
 
   @PostMapping
@@ -103,7 +108,8 @@ public class SpaceController {
     Space space = spaceService.getSpace(spaceId, caller);
     return SpaceResponseMapper.toResponse(
         spaceService.detailOf(space, caller),
-        transferService.markOf(Space.ASSET_TYPE, space.getId(), caller).orElse(null));
+        transferService.markOf(Space.ASSET_TYPE, space.getId(), caller).orElse(null),
+        successionService.findingFor(SuccessionObjectType.SPACE, space.getId()).orElse(null));
   }
 
   @PutMapping("/{spaceId}")

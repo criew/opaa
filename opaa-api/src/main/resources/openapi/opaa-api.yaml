@@ -2179,6 +2179,118 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /api/v1/admin/succession:
+    get:
+      operationId: listSuccessionEntries
+      tags: [admin]
+      summary: >
+        The operational list of the lifecycle (#1819, ADR-0036 Entscheidung 6) - one of its three
+        tabs, chosen by kind.
+      description: >
+        Complete from day one, whoever the addressee is: the staging is a statement of
+        responsibility, never a restriction of access to the list - without that, a case of the
+        second stage would never reach the third.
+
+        Object-bound in both directions (Personalrat E1 and Z7): the entry point is the object, the
+        owner is named per line, and there is deliberately no parameter, no sort and no count by
+        previous owner or by acting person. The order is fixed - oldest first.
+
+        The entries are derived on every call, never stored: an object that has a capable
+        responsible party again is gone from the list at once. Only the age and the Sichtungsvermerk
+        come from the record the hourly detection run keeps; an entry the run has not seen yet is
+        listed with firstSeenAt absent.
+      parameters:
+        - name: kind
+          in: query
+          required: true
+          schema:
+            $ref: "#/components/schemas/SuccessionKind"
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: size
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+      responses:
+        "200":
+          description: One page of the chosen tab
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessionListResponse"
+        "400":
+          description: >
+            The list would exceed the bound this answer is composed within. It is refused rather
+            than trimmed - a shortened list would look complete.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: The operational list is reserved to SYSTEM_ADMIN.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/admin/succession/{caseId}/reviews:
+    parameters:
+      - name: caseId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      operationId: reviewSuccessionCase
+      tags: [admin]
+      summary: Write a Sichtungsvermerk on one entry ("geprüft am …, weiterhin offen, Grund")
+      description: >
+        Lifts the highlight of an aged entry for one more period and triggers nothing else - no
+        deadline, no escalation, no mail. Who wrote it is readable at the entry and is no
+        evaluation axis.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SuccessionReviewRequest"
+      responses:
+        "201":
+          description: Sichtungsvermerk recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessionReviewResponse"
+        "400":
+          description: The reason is missing, or the entry is already closed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: The operational list is reserved to SYSTEM_ADMIN.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: No such entry in the caller's organization.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /api/v1/admin/groups:
     get:
       operationId: listGroups
@@ -2198,6 +2310,55 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/GroupListResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/groups/effects:
+    get:
+      operationId: listGroupEffects
+      tags: [admin]
+      summary: Where the groups of the organization still take effect (system admin only)
+      description: >
+        "Wo wirkt diese Gruppe" per group (ADR-0036, Entscheidung 2): the grants it holds, the
+        spaces it is a member of, the assets it owns, the capabilities it was given and the
+        diagnostic authorisations scoped to it. Counted, not listed - the figures say how much
+        work an ablösung is, and each object is reached through its own page, which is where a
+        single effect is removed.
+
+        Filtered to one provider it is the work list a refused provider deletion points to: every
+        group of that provider with its effects, the entry point for transferring them or removing
+        them. Reading counts is no membership lookup and therefore no audit event.
+      parameters:
+        - name: providerId
+          in: query
+          required: false
+          description: >
+            Only the groups of this identity provider. Omitted, every group of the organization
+            answers, including the internal ones.
+          schema:
+            type: string
+            format: uuid
+        - name: groupId
+          in: query
+          required: false
+          description: >
+            Only these groups - what a list asks for the rows it actually shows, instead of for
+            every group of the organization. Repeatable; combined with providerId both narrowings
+            apply.
+          schema:
+            type: array
+            items:
+              type: string
+              format: uuid
+      responses:
+        "200":
+          description: One entry per group, groups without any effect included
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GroupEffectsResponse"
         "403":
           $ref: "#/components/responses/Forbidden"
 
@@ -6004,6 +6165,11 @@ paths:
         Grant (or update the role of) a user or group on a library (MANAGER role or above
         required). Idempotent per subject: submitting again for the same subject replaces its role
         and expiry.
+      description: >
+        While the library's succession is open (ADR-0036, Entscheidung 6) its reach is frozen:
+        a new grant, a higher role and a postponed expiry are refused with 409 and the code
+        SUCCESSION_OPEN, whose message names who is responsible. Taking reach away stays
+        possible - a downgrade, an earlier expiry and a revocation are never refused for it.
       requestBody:
         required: true
         content:
@@ -6023,6 +6189,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
 
   /api/v1/libraries/{libraryId}/grants/{grantId}:
     parameters:
@@ -6070,6 +6238,9 @@ paths:
         renewal is a deliberate act. Whether the channel itself is open is a separate, installation-
         wide decision (#1717) this endpoint neither reads nor needs.
         See docs/features/external-access.md#die-freigabe-der-bibliothek.
+        While the library's succession is open (ADR-0036, Entscheidung 6) a new release and an
+        extended one are refused with 409 and the code SUCCESSION_OPEN; taking a release back and
+        shortening a running one stay possible.
       requestBody:
         required: true
         content:
@@ -6089,6 +6260,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
 
   /api/v1/admin/external-access/libraries:
     get:
@@ -6545,6 +6718,9 @@ paths:
         If the space has any member without read access to the library, the library owner is
         actively notified (#203, "Benachrichtigung statt Zustimmung") - no consent required, the
         association takes effect immediately regardless.
+        While the succession of either side is open (ADR-0036, Entscheidung 6) a new association
+        is refused with 409 and the code SUCCESSION_OPEN; an association that already exists is
+        returned unchanged, as it reaches nobody new.
       requestBody:
         required: true
         content:
@@ -6564,6 +6740,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
 
   /api/v1/spaces/{spaceId}/libraries/{libraryId}:
     parameters:
@@ -9742,8 +9920,9 @@ components:
         successionOpen:
           type: boolean
           description: >
-            Same derived state as on SpaceResponse (ADR-0036 Entscheidung 6) - the overview card
-            carries it too, so it is visible without opening the space.
+            Same derived state as on SpaceResponse, from the same derivation (ADR-0036
+            Entscheidung 6) - the overview card carries it too, so it is visible without opening
+            the space.
           example: false
         createdAt:
           type: string
@@ -9876,12 +10055,22 @@ components:
           type: boolean
           description: >
             True while the space has no capable ADMIN member that could act for it (ADR-0036
-            Entscheidung 6) - derived on every read, never stored. Carried for every reader, with
-            neither a date nor the previous owner: the operational list with those figures is
-            #1819's. The space stays fully usable; nothing is deleted.
+            Entscheidung 6) - derived on every read, never stored, and from the same derivation
+            the succession field below carries, so the two never disagree (the personal space has
+            no succession and therefore neither flag). Carried for every reader, with neither a
+            date nor the previous owner: the operational list with those figures is #1819's. The
+            space stays fully usable; nothing is deleted.
           example: false
         lastTransfer:
           $ref: "#/components/schemas/PermissionTransferMarkResponse"
+        succession:
+          description: >
+            Set while this object has no capable responsible party (#1819, ADR-0036 Entscheidung
+            6) - state and addressee, deliberately without date, previous owner or reason. The
+            object stays usable and keeps every right it has; only its reach is frozen.
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/SuccessionStateResponse"
         createdAt:
           type: string
           format: date-time
@@ -10604,7 +10793,7 @@ components:
 
     GroupListResponse:
       type: object
-      required: [id, name, kind, origin, memberCount, createdAt, updatedAt, releasedForUse, protectedGroup, stewards]
+      required: [id, name, kind, origin, memberCount, createdAt, updatedAt, releasedForUse, protectedGroup, dissolved, stewards]
       properties:
         id:
           type: string
@@ -10642,6 +10831,15 @@ components:
         memberCount:
           type: integer
           example: 4
+        dissolved:
+          type: boolean
+          description: >
+            Whether the source no longer reports this group - a merge or a reorganisation, not a
+            deletion. Its membership stays frozen and its grants keep working, but it is no
+            effective group any more: no new grant target and no new space member, shown as not
+            selectable with that reason (ADR-0036, Entscheidung 2). Always false for an internal
+            group, which has no directory counterpart to disappear from.
+          example: false
         releasedForUse:
           type: boolean
           description: >
@@ -10744,7 +10942,7 @@ components:
 
     GroupResponse:
       type: object
-      required: [id, name, kind, origin, memberCount, members, createdAt, updatedAt, releasedForUse, protectedGroup, stewards]
+      required: [id, name, kind, origin, memberCount, members, createdAt, updatedAt, releasedForUse, protectedGroup, dissolved, stewards]
       properties:
         id:
           type: string
@@ -10786,6 +10984,13 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/GroupMemberResponse"
+        dissolved:
+          type: boolean
+          description: >
+            Whether the source no longer reports this group - a merge or a reorganisation, not a
+            deletion. Its membership stays frozen and its grants keep working, but it is no
+            effective group any more (ADR-0036, Entscheidung 2).
+          example: false
         releasedForUse:
           type: boolean
           description: >
@@ -10811,6 +11016,81 @@ components:
         updatedAt:
           type: string
           format: date-time
+
+    GroupEffectsResponse:
+      type: object
+      description: >
+        How far one group still reaches (ADR-0036, Entscheidung 2). Counts only: a figure says how
+        much work lies ahead without turning the overview into a membership or content listing.
+      required:
+        [
+          groupId,
+          name,
+          origin,
+          dissolved,
+          protectedGroup,
+          assetGrants,
+          grantedAssets,
+          spaceMemberships,
+          spaces,
+          ownedAssets,
+          capabilities,
+          scopedAuthorizations,
+          summary,
+        ]
+      properties:
+        groupId:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: Referat 50
+        origin:
+          $ref: "#/components/schemas/GroupOrigin"
+        providerId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Absent (null) exactly when origin is INTERNAL.
+        sourcePath:
+          type: string
+          nullable: true
+        dissolved:
+          type: boolean
+        protectedGroup:
+          type: boolean
+        assetGrants:
+          type: integer
+          example: 12
+        grantedAssets:
+          type: integer
+          description: Across how many distinct assets those grants run.
+          example: 7
+        spaceMemberships:
+          type: integer
+          example: 2
+        spaces:
+          type: integer
+          example: 2
+        ownedAssets:
+          type: integer
+          example: 3
+        capabilities:
+          type: integer
+          description: How many installation-wide creation rights ("Anlegerechte") this group holds.
+          example: 1
+        scopedAuthorizations:
+          type: integer
+          description: >
+            How many still-conferring diagnostic authorisations (ADR-0016) name this group as
+            their scope.
+          example: 0
+        summary:
+          type: string
+          description: >
+            The German sentence the work list shows - empty exactly when this group has no effect
+            at all, which is what makes it deletable with its provider.
+          example: 12 Berechtigungen an 7 Objekten, 2 Space-Mitgliedschaften in 2 Spaces
 
     GroupAddMemberRequest:
       type: object
@@ -11676,6 +11956,15 @@ components:
             wording base ("indiziert" vs. "abgerufen") follows the library's sourceType already
             present on this response, so no separate field carries it. Optional so older
             clients keep working.
+        succession:
+          description: >
+            Set while this library has no capable owner (#1819, ADR-0036 Entscheidung 6) - the
+            same marking the detail view carries, so the overview shows it without opening the
+            library. State and addressee only, deliberately without date, previous owner or
+            reason; search hits never carry it.
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/SuccessionStateResponse"
         createdAt:
           type: string
           format: date-time
@@ -11918,6 +12207,14 @@ components:
           nullable: true
           allOf:
             - $ref: "#/components/schemas/PermissionTransferMarkResponse"
+        succession:
+          description: >
+            Set while this object has no capable responsible party (#1819, ADR-0036 Entscheidung
+            6) - state and addressee, deliberately without date, previous owner or reason. The
+            object stays usable and keeps every right it has; only its reach is frozen.
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/SuccessionStateResponse"
         createdAt:
           type: string
           format: date-time
@@ -14793,6 +15090,147 @@ components:
             True when the source was a protected group (staff council and the comparable bodies).
             The interface then shows "geschützte Gruppe" instead of a name, as in every other list.
           example: false
+
+    SuccessionKind:
+      type: string
+      description: >
+        The three tabs of the operational list, one mechanic each (ADR-0036, Entscheidung 6):
+        objects without a capable responsible party; effective groups whose releases reach nobody
+        because no active account is left; internal groups that hold nothing and reach nobody.
+      enum: [OPEN_SUCCESSION, GRANTS_WITHOUT_RECIPIENT, GROUP_WITHOUT_EFFECT]
+      example: OPEN_SUCCESSION
+
+    SuccessionObjectType:
+      type: string
+      description: What an entry is about - a group is no asset, and the list carries all three.
+      enum: [KNOWLEDGE_LIBRARY, SPACE, GROUP]
+      example: KNOWLEDGE_LIBRARY
+
+    SuccessionAddressee:
+      type: string
+      description: >
+        Who is meant to act - a statement of responsibility, never a restriction of access to the
+        list: a space goes to its remaining capable ADMIN members, an asset of an internal group to
+        that group's stewards, everything else to the system administration.
+      enum: [SPACE_ADMINS, GROUP_STEWARDS, SYSTEM_ADMINISTRATION]
+      example: SYSTEM_ADMINISTRATION
+
+    SuccessionEntryResponse:
+      type: object
+      required: [objectType, objectId, objectName, addressee, highlighted, affectedObjects]
+      properties:
+        caseId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >
+            What a Sichtungsvermerk is written against - absent until the hourly detection run has
+            seen the finding. The list is complete from day one; the record follows within the hour.
+        objectType:
+          $ref: "#/components/schemas/SuccessionObjectType"
+        objectId:
+          type: string
+          format: uuid
+        objectName:
+          type: string
+          description: A protected group appears by its protection alone, never by its name.
+        addressee:
+          $ref: "#/components/schemas/SuccessionAddressee"
+        addresseeLabel:
+          type: string
+          description: The German wording of the addressee, as the object's own view uses it.
+        ownerHint:
+          type: string
+          nullable: true
+          description: >
+            Who holds the object today - readable here for the administration's orientation, and
+            deliberately no query parameter, no sort key and no count (Personalrat E1).
+        membershipHints:
+          type: array
+          description: >
+            "war Mitglied von Referat 50" - Bestandsinformation as a suggestion where to look, never
+            an activity evaluation (Personalrat E4).
+          items:
+            type: string
+        affectedObjects:
+          type: integer
+          description: >
+            How many objects hang on this finding - the figure the tab "Freigaben ohne Empfänger"
+            names; zero where the finding is the object itself.
+        firstSeenAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the detection run first saw this state - the age of the entry.
+        highlighted:
+          type: boolean
+          description: >
+            Older than the configured threshold (12 months by default) without a Sichtungsvermerk
+            since. A highlight, never a deadline: nothing follows from it.
+        lastReviewedAt:
+          type: string
+          format: date-time
+          nullable: true
+        lastReviewReason:
+          type: string
+          nullable: true
+
+    SuccessionListResponse:
+      type: object
+      required: [entries, page, size, totalElements, totalPages]
+      properties:
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/SuccessionEntryResponse"
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+        totalPages:
+          type: integer
+
+    SuccessionReviewRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          description: Why the entry is still open - "geprüft am …, weiterhin offen, Grund".
+
+    SuccessionReviewResponse:
+      type: object
+      required: [id, caseId, reviewedAt, reason]
+      properties:
+        id:
+          type: string
+          format: uuid
+        caseId:
+          type: string
+          format: uuid
+        reviewedAt:
+          type: string
+          format: date-time
+        reason:
+          type: string
+
+    SuccessionStateResponse:
+      type: object
+      required: [addressee, addresseeLabel]
+      description: >
+        The marking an object carries for every reader (ADR-0036, Entscheidung 6; Personalrat Z5):
+        state and addressee - and deliberately no date, no previous owner and no reason. The object
+        stays fully usable; nothing is deleted.
+      properties:
+        addressee:
+          $ref: "#/components/schemas/SuccessionAddressee"
+        addresseeLabel:
+          type: string
+          example: die Systemverwaltung
 
     AssetGrantResponse:
       type: object

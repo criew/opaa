@@ -24,6 +24,9 @@ import SpacesOverviewPage from './pages/SpacesOverviewPage'
 import SpaceCreatePage from './pages/SpaceCreatePage'
 import SpaceManagementPage from './pages/SpaceManagementPage'
 import GroupManagementPage from './pages/GroupManagementPage'
+import CapabilityManagementPage from './pages/CapabilityManagementPage'
+import DirectorySyncPage from './pages/DirectorySyncPage'
+import ProviderGroupWorklistPage from './pages/ProviderGroupWorklistPage'
 import UserManagementPage from './pages/UserManagementPage'
 import LibraryManagementPage from './pages/LibraryManagementPage'
 import LibraryCreatePage from './pages/LibraryCreatePage'
@@ -55,8 +58,10 @@ const ADMIN_SECTIONS = [
   // Navigation für dieselbe Entscheidung. Jedes Ziel bleibt so direkt verlinkbar.
   { label: 'Benutzer', to: '/admin/users' },
   { label: 'Gruppen', to: '/admin/groups' },
+  { label: 'Anlegerechte', to: '/admin/capabilities' },
   { label: 'Modelle', to: '/admin/models' },
   { label: 'Identitätsanbieter', to: '/admin/identity-providers' },
+  { label: 'Verzeichnisabgleich', to: '/admin/directory-sync' },
   { label: 'E-Mail', to: '/admin/mail' },
   { label: 'Fremdzugänge', to: '/admin/external-access' },
   { label: 'Fremdzugangsfreigaben', to: '/admin/library-releases' },
@@ -173,6 +178,12 @@ export default function App() {
                 <Route path="admin/models" element={<Navigate to="/admin/models/chat" replace />} />
                 <Route path="admin/models/:tab" element={<LlmModelManagementPage />} />
                 <Route path="admin/identity-providers" element={<OidcProviderManagementPage />} />
+                <Route
+                  path="admin/identity-providers/:providerId/groups"
+                  element={<ProviderGroupWorklistPage />}
+                />
+                <Route path="admin/directory-sync" element={<DirectorySyncPage />} />
+                <Route path="admin/capabilities" element={<CapabilityManagementPage />} />
                 <Route path="admin/library-releases" element={<ExternalAccessLibrariesPage />} />
                 {/* Die beiden Bereiche der E-Mail-Seite sind Routen, damit ein Verweis auf die
                     Vorlagenverwaltung dort landet (#1542). */}

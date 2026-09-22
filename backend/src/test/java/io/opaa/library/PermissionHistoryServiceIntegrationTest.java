@@ -177,6 +177,10 @@ class PermissionHistoryServiceIntegrationTest {
     // KnowledgeLibraryServiceIntegrationTest#tearDown's identical comment.
     grantHistoryRepository.deleteBySubjectUserIdIn(createdUserIds);
     membershipHistoryRepository.deleteByUserIdIn(createdUserIds);
+    // Same reasoning one table further since #1819: a library's ownership interval holds its owner
+    // through fk_asset_ownership_history_owner_user_organization (RESTRICT).
+    jdbcTemplate.update(
+        "DELETE FROM asset_ownership_history WHERE organization_id = ?", organizationId);
     for (UUID groupId : createdGroupIds) {
       // Some tests delete their own group as part of the scenario under test - guard against a
       // second, now-empty deleteById throwing EmptyResultDataAccessException.
@@ -1015,7 +1019,11 @@ class PermissionHistoryServiceIntegrationTest {
    * and no history rows. {@code PermissionTransferService} (#1834) is a writer and is covered by
    * {@link #readabilityWritePaths}; {@code LibraryAssetOwnershipDirectory} writes the grant that
    * goes with a library's ownership and is reachable only through that one write path, never on its
-   * own.
+   * own. The four beans of #1819 - {@code GroupCapabilityService}, {@code GroupEffectReader},
+   * {@code LibrarySuccessionSource} and {@code GroupSuccessionSource} - only read: they derive
+   * whether anybody can still act for an object, and the one effect of that state, freezing the
+   * reach, takes rights away from nobody. {@code GroupEffectsService} (#1821) only counts: it
+   * answers "wo wirkt diese Gruppe" with figures per group and writes nothing at all.
    */
   private static final Set<String> BEANS_REACHING_THE_RIGHTS_TABLES =
       Set.of(
@@ -1027,13 +1035,18 @@ class PermissionHistoryServiceIntegrationTest {
           "DiagnosticImpersonationGrantService",
           "DirectorySyncPlanExecutor",
           "ForeignDiagnosticContextService",
+          "GroupCapabilityService",
+          "GroupEffectReader",
+          "GroupEffectsService",
           "GroupMembershipResolver",
           "GroupService",
           "GroupStewardshipDirectoryAdapter",
           "GroupSubjectDirectoryAdapter",
+          "GroupSuccessionSource",
           "KnowledgeLibraryService",
           "LibraryAccessService",
           "LibraryAssetOwnershipDirectory",
+          "LibrarySuccessionSource",
           "LocalHandoverAccountService",
           "PermissionTransferService",
           "PointInTimeAccessService",

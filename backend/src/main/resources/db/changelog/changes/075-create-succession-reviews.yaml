@@ -1,0 +1,51 @@
+databaseChangeLog:
+  - changeSet:
+      id: 075-create-succession-reviews
+      author: opaa
+      comment: >-
+        Der Sichtungsvermerk (#1819, ADR-0036 Entscheidung 6): "geprueft am ..., weiterhin offen,
+        Grund". Er hebt die Hervorhebung eines gealterten Eintrags fuer eine weitere Periode auf -
+        ohne Frist, ohne Zwang, ohne Eskalation. Er verhindert, dass eine Zeile zehn Jahre
+        unberuehrt bleibt, und ersetzt keine fachliche Zustaendigkeit.
+        .
+        WER GESICHTET HAT, STEHT AM VORGANG UND IST DORT LESBAR - er ist aber keine
+        Auswertungsachse: Es gibt keine Abfrage, keine Sortierung und keinen Parameter nach der
+        handelnden Person (Personalrat Z7). Deshalb auch kein Index auf reviewed_by_user_id; die
+        Spalte wird gelesen, nie gesucht.
+        .
+        PROTOKOLLFRIST WIE DER VORGANG SELBST (Entscheidung 8), deshalb ON DELETE SET NULL auf das
+        Konto statt RESTRICT: Ein Sichtungsvermerk sagt nichts ueber Leserechte aus und darf kein
+        Konto dauerhaft unloeschbar machen. CASCADE auf den Vorgang - der Vermerk ist sein
+        Bestandteil, kein eigener Vorgang.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE TABLE succession_reviews (
+                  id uuid NOT NULL,
+                  case_id uuid NOT NULL,
+                  organization_id uuid NOT NULL,
+                  reviewed_at timestamp with time zone NOT NULL,
+                  reviewed_by_user_id uuid,
+                  reason character varying(1000) NOT NULL,
+                  created_at timestamp with time zone DEFAULT now() NOT NULL
+              );
+
+              ALTER TABLE ONLY succession_reviews
+                  ADD CONSTRAINT succession_reviews_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY succession_reviews
+                  ADD CONSTRAINT fk_succession_reviews_case FOREIGN KEY (case_id, organization_id) REFERENCES succession_cases(id, organization_id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY succession_reviews
+                  ADD CONSTRAINT fk_succession_reviews_organization FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY succession_reviews
+                  ADD CONSTRAINT fk_succession_reviews_reviewed_by_user_organization FOREIGN KEY (reviewed_by_user_id, organization_id) REFERENCES users(id, organization_id) ON DELETE SET NULL (reviewed_by_user_id);
+
+              CREATE INDEX idx_succession_reviews_case ON succession_reviews USING btree (case_id, reviewed_at);
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              DROP TABLE succession_reviews;

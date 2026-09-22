@@ -1,7 +1,9 @@
 package io.opaa.permission;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -30,6 +32,13 @@ public interface AssetOwnershipDirectory {
    * can be decided before anything is loaded.
    */
   long countAssetsOwnedBy(PermissionSubject owner);
+
+  /**
+   * The same figure for a whole list of groups in one query - what an overview over every group of
+   * an organization needs instead of a count per group. Groups owning nothing of this type are
+   * absent from the map; a type that cannot be group-owned answers with an empty one.
+   */
+  Map<UUID, Long> countAssetsOwnedByGroups(Collection<UUID> groupIds, UUID organizationId);
 
   /**
    * Every asset of this type the subject owns. A type that cannot be owned by this kind of subject

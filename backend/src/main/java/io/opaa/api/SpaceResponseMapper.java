@@ -6,6 +6,7 @@ import io.opaa.api.dto.SpaceResponse;
 import io.opaa.api.types.SpaceRole;
 import io.opaa.permission.GroupSizeSignal;
 import io.opaa.permission.PermissionTransferMark;
+import io.opaa.permission.SuccessionFinding;
 import io.opaa.space.Space;
 import io.opaa.space.SpaceDetail;
 import io.opaa.space.SpaceMemberView;
@@ -27,14 +28,15 @@ final class SpaceResponseMapper {
   private SpaceResponseMapper() {}
 
   static SpaceResponse toResponse(SpaceDetail detail) {
-    return toResponse(detail, null);
+    return toResponse(detail, null, null);
   }
 
   /**
    * The detail view additionally names the transfer that last touched this space (#1834, ADR-0036
    * Entscheidung 10), or nothing if none ever did.
    */
-  static SpaceResponse toResponse(SpaceDetail detail, PermissionTransferMark lastTransfer) {
+  static SpaceResponse toResponse(
+      SpaceDetail detail, PermissionTransferMark lastTransfer, SuccessionFinding succession) {
     Space space = detail.space();
     Map<String, Long> roleCounts = new HashMap<>();
     for (SpaceRole role : SpaceRole.values()) {
@@ -64,7 +66,8 @@ final class SpaceResponseMapper {
         .visibility(space.getVisibility())
         .userRole(detail.userRole())
         .successionOpen(detail.successionOpen())
-        .lastTransfer(PermissionTransferResponseMapper.toResponse(lastTransfer));
+        .lastTransfer(PermissionTransferResponseMapper.toResponse(lastTransfer))
+        .succession(SuccessionResponseMapper.toStateResponse(succession));
   }
 
   static SpaceListResponse toListResponse(SpaceOverview overview) {

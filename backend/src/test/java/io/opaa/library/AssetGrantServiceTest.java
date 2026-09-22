@@ -29,6 +29,7 @@ import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.GroupSizeProperties;
 import io.opaa.permission.GroupSubject;
 import io.opaa.permission.GroupSubjectDirectory;
+import io.opaa.permission.SuccessionReachGuard;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -56,6 +57,8 @@ class AssetGrantServiceTest {
   private UUID libraryId;
   private KnowledgeLibrary library;
 
+  private final SuccessionReachGuard successionGuard = mock(SuccessionReachGuard.class);
+
   @BeforeEach
   void setUp() {
     grantRepository = mock(AssetGrantRepository.class);
@@ -76,7 +79,8 @@ class AssetGrantServiceTest {
             new GroupSizeProperties(null),
             accessService,
             auditEventRecorder,
-            eventPublisher);
+            eventPublisher,
+            successionGuard);
 
     // KnowledgeLibrary.ownedByUser always assigns its own random id (like every other factory
     // method on that entity) - libraryId is read back from the constructed instance rather than
@@ -111,7 +115,7 @@ class AssetGrantServiceTest {
         .thenReturn(AssetRole.OWNER);
     GroupSubject group =
         new GroupSubject(
-            UUID.randomUUID(), organizationId, "Projektteam", false, false, false, false);
+            UUID.randomUUID(), organizationId, "Projektteam", false, false, false, false, true);
     when(groupDirectory.find(group.id())).thenReturn(Optional.of(group));
     when(groupDirectory.isSelectableBy(group.id(), managerId, false)).thenReturn(false);
 
@@ -244,7 +248,8 @@ class AssetGrantServiceTest {
         .thenReturn(AssetRole.OWNER);
     UUID foreignGroupId = UUID.randomUUID();
     GroupSubject foreignGroup =
-        new GroupSubject(foreignGroupId, UUID.randomUUID(), "Fremd", false, false, false, false);
+        new GroupSubject(
+            foreignGroupId, UUID.randomUUID(), "Fremd", false, false, false, false, true);
     when(groupDirectory.find(foreignGroupId)).thenReturn(Optional.of(foreignGroup));
 
     AssetGrantUpsert request =
@@ -397,7 +402,7 @@ class AssetGrantServiceTest {
         .thenReturn(AssetRole.OWNER);
     GroupSubject dissolvedGroup =
         new GroupSubject(
-            UUID.randomUUID(), organizationId, "Aufgeloest", true, false, false, false);
+            UUID.randomUUID(), organizationId, "Aufgeloest", true, false, false, false, true);
     when(groupDirectory.find(dissolvedGroup.id())).thenReturn(Optional.of(dissolvedGroup));
 
     AssetGrantUpsert request =
@@ -429,7 +434,7 @@ class AssetGrantServiceTest {
         .thenReturn(AssetRole.OWNER);
     GroupSubject group =
         new GroupSubject(
-            UUID.randomUUID(), organizationId, "Referat 12", false, false, true, false);
+            UUID.randomUUID(), organizationId, "Referat 12", false, false, true, false, true);
     when(groupDirectory.find(group.id())).thenReturn(Optional.of(group));
 
     AssetGrantUpsert request =
@@ -454,7 +459,7 @@ class AssetGrantServiceTest {
         .thenReturn(AssetRole.OWNER);
     GroupSubject group =
         new GroupSubject(
-            UUID.randomUUID(), organizationId, "Fachbereich 3", false, true, false, false);
+            UUID.randomUUID(), organizationId, "Fachbereich 3", false, true, false, false, true);
     when(groupDirectory.find(group.id())).thenReturn(Optional.of(group));
 
     AssetGrantUpsert request =

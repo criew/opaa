@@ -52,6 +52,7 @@ const group: GroupListResponse = {
   sourcePath: null,
   parentGroupId: null,
   memberCount: 1,
+  dissolved: false,
   releasedForUse: false,
   protectedGroup: false,
   stewards: [

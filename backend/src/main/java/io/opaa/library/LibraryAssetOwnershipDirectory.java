@@ -16,9 +16,11 @@ import io.opaa.permission.AssetType;
 import io.opaa.permission.PermissionHistoryService;
 import io.opaa.permission.PermissionSubject;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
 
 /**
@@ -70,6 +72,18 @@ class LibraryAssetOwnershipDirectory implements AssetOwnershipDirectory {
     return owner.type() == PermissionSubjectType.GROUP
         ? libraryRepository.countByOwnerGroupIdAndOrganizationId(owner.id(), owner.organizationId())
         : libraryRepository.countByOwnerUserIdAndOrganizationId(owner.id(), owner.organizationId());
+  }
+
+  @Override
+  public Map<UUID, Long> countAssetsOwnedByGroups(Collection<UUID> groupIds, UUID organizationId) {
+    if (groupIds.isEmpty()) {
+      return Map.of();
+    }
+    return libraryRepository.countByOwnerGroupIdIn(groupIds, organizationId).stream()
+        .collect(
+            Collectors.toMap(
+                KnowledgeLibraryRepository.OwnerGroupCount::getOwnerGroupId,
+                KnowledgeLibraryRepository.OwnerGroupCount::getLibraryCount));
   }
 
   @Override

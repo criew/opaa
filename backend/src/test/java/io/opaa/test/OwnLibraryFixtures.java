@@ -23,6 +23,9 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
  * with a {@code NULL library_id} instead of failing) and the visibility history (no foreign key on
  * the library, so a row would only accumulate).
  *
+ * <p>Also removed since #1819: the library's ownership intervals - {@code
+ * asset_ownership_history.owner_user_id} is RESTRICT, so they hold the owner's account.
+ *
  * <p>Not covered: {@code asset_grant_history} - its rows are held by their subject user ({@code
  * fk_asset_grant_history_subject_user_organization} is RESTRICT) and go with the caller's user
  * teardown.
@@ -67,6 +70,13 @@ public final class OwnLibraryFixtures {
     for (UUID libraryId : libraryIds) {
       removeContentOf(libraryId);
       jdbcTemplate.update("DELETE FROM library_visibility_history WHERE library_id = ?", libraryId);
+      // Since #1819 a library also carries ownership intervals, held by their owner through
+      // fk_asset_ownership_history_owner_user_organization (RESTRICT) - without this the caller's
+      // own user teardown fails on a library it has already removed.
+      jdbcTemplate.update(
+          "DELETE FROM asset_ownership_history WHERE asset_type = 'KNOWLEDGE_LIBRARY'"
+              + " AND asset_id = ?",
+          libraryId);
       jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE id = ?", libraryId);
     }
   }

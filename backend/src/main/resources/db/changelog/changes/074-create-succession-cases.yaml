@@ -1,0 +1,66 @@
+databaseChangeLog:
+  - changeSet:
+      id: 074-create-succession-cases
+      author: opaa
+      comment: >-
+        Der Vorgang hinter einem Eintrag der Betriebsliste (#1819, ADR-0036 Entscheidung 6): wann
+        der Zustand zuerst festgestellt wurde und wann er endete.
+        .
+        DER ZUSTAND SELBST STEHT NICHT HIER. "Nachfolge offen" ist abgeleitet und bleibt es - ein
+        Flag muesste an jedem Ausloeser gesetzt und zurueckgenommen werden und triebe beim ersten
+        vergessenen Pfad auseinander (Muster "abgeleiteter Kontozustand statt status-Spalte",
+        ADR-0033/3). Gespeichert wird nur, was sich nicht ableiten laesst: der Zeitpunkt der
+        Erstfeststellung, aus dem die Liste das Alter nimmt, und das Ende. Ohne diese Zeile hiesse
+        "Alter" in Wahrheit "seit dem letzten Hinsehen".
+        .
+        EINE TABELLE FUER ALLE DREI REITER (kind): offene Nachfolgen, Freigaben ohne Empfaenger,
+        Gruppen ohne Wirkung teilen sich Feststellungslauf, Alter, objektbezogenen Einstieg und
+        Sichtungsvermerk - der ADR nennt sie "drei Reiter mit derselben Mechanik".
+        .
+        PROTOKOLLFRIST, NICHT RECHTEHISTORIE (Entscheidung 8): Ein Nachfolgevorgang sagt nichts
+        darueber aus, wer wann was lesen durfte. Deshalb keine Personenspalte mit RESTRICT - wer
+        einen Vorgang beendet hat, steht als ON DELETE SET NULL daran und haelt kein Konto fest.
+        .
+        OBJEKTSPALTE OHNE FREMDSCHLUESSEL (ADR-0016): object_id benennt je nach object_type eine
+        Bibliothek, einen Space oder eine Gruppe; der Vorgang ueberlebt das Objekt, und der Lauf
+        schliesst ihn beim naechsten Durchgang.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE TABLE succession_cases (
+                  id uuid NOT NULL,
+                  organization_id uuid NOT NULL,
+                  kind character varying(40) NOT NULL,
+                  object_type character varying(30) NOT NULL,
+                  object_id uuid NOT NULL,
+                  first_seen_at timestamp with time zone NOT NULL,
+                  last_seen_at timestamp with time zone NOT NULL,
+                  closed_at timestamp with time zone,
+                  closed_by_user_id uuid,
+                  created_at timestamp with time zone DEFAULT now() NOT NULL,
+                  CONSTRAINT chk_succession_cases_kind CHECK ((kind IN ('OPEN_SUCCESSION', 'GRANTS_WITHOUT_RECIPIENT', 'GROUP_WITHOUT_EFFECT'))),
+                  CONSTRAINT chk_succession_cases_object_type CHECK ((object_type IN ('KNOWLEDGE_LIBRARY', 'SPACE', 'GROUP'))),
+                  CONSTRAINT chk_succession_cases_closed CHECK (((closed_at IS NOT NULL) OR (closed_by_user_id IS NULL)))
+              );
+
+              ALTER TABLE ONLY succession_cases
+                  ADD CONSTRAINT succession_cases_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY succession_cases
+                  ADD CONSTRAINT uk_succession_cases_id_organization UNIQUE (id, organization_id);
+
+              ALTER TABLE ONLY succession_cases
+                  ADD CONSTRAINT fk_succession_cases_organization FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY succession_cases
+                  ADD CONSTRAINT fk_succession_cases_closed_by_user_organization FOREIGN KEY (closed_by_user_id, organization_id) REFERENCES users(id, organization_id) ON DELETE SET NULL (closed_by_user_id);
+
+              CREATE UNIQUE INDEX uk_succession_cases_open ON succession_cases USING btree (kind, object_type, object_id) WHERE (closed_at IS NULL);
+
+              CREATE INDEX idx_succession_cases_organization_open ON succession_cases USING btree (organization_id, kind, first_seen_at) WHERE (closed_at IS NULL);
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              DROP TABLE succession_cases;

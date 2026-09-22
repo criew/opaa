@@ -1,6 +1,7 @@
 package io.opaa.library;
 
 import io.opaa.api.types.AssetRole;
+import io.opaa.permission.SuccessionFinding;
 import java.time.Instant;
 
 /**
@@ -13,10 +14,14 @@ import java.time.Instant;
  *     display name.
  * @param lastIndexedAt {@code null} when the library has never completed an indexing run; failed or
  *     still-running runs never set it.
+ * @param succession the derived state "Nachfolge offen" (ADR-0036, Entscheidung 6), {@code null}
+ *     while the library has a capable owner - the overview carries the marking as the detail view
+ *     does, reduced to state and addressee by the mapper.
  */
 public record LibrarySummary(
     KnowledgeLibrary library,
     AssetRole myRole,
     long documentCount,
     String ownerName,
-    Instant lastIndexedAt) {}
+    Instant lastIndexedAt,
+    SuccessionFinding succession) {}

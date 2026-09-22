@@ -2,12 +2,14 @@ package io.opaa.library;
 
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.ExternalAccessState;
+import io.opaa.api.types.SuccessionObjectType;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
+import io.opaa.permission.SuccessionReachGuard;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.InstantSource;
@@ -48,6 +50,7 @@ public class LibraryExternalAccessService {
   private final ExternalAccessProperties properties;
   private final LibraryExternalAccessTokenCounter tokenCounter;
   private final InstantSource clock;
+  private final SuccessionReachGuard successionGuard;
 
   @Autowired
   public LibraryExternalAccessService(
@@ -56,7 +59,8 @@ public class LibraryExternalAccessService {
       UserRepository userRepository,
       ApplicationEventPublisher eventPublisher,
       ExternalAccessProperties properties,
-      LibraryExternalAccessTokenCounter tokenCounter) {
+      LibraryExternalAccessTokenCounter tokenCounter,
+      SuccessionReachGuard successionGuard) {
     this(
         libraryRepository,
         accessService,
@@ -64,6 +68,7 @@ public class LibraryExternalAccessService {
         eventPublisher,
         properties,
         tokenCounter,
+        successionGuard,
         InstantSource.system());
   }
 
@@ -74,7 +79,9 @@ public class LibraryExternalAccessService {
       ApplicationEventPublisher eventPublisher,
       ExternalAccessProperties properties,
       LibraryExternalAccessTokenCounter tokenCounter,
+      SuccessionReachGuard successionGuard,
       InstantSource clock) {
+    this.successionGuard = successionGuard;
     this.libraryRepository = libraryRepository;
     this.accessService = accessService;
     this.userRepository = userRepository;
@@ -101,6 +108,15 @@ public class LibraryExternalAccessService {
 
     ExternalAccessState previousState = library.getExternalAccessState();
     Instant previousExpiresAt = library.getExternalAccessExpiresAt();
+    if (enabled && widensExternalAccess(library, previousState, previousExpiresAt, expiresAt)) {
+      // ADR-0036, Entscheidung 6: a release across the Hausgrenze is the largest reach there is -
+      // and reach is frozen while the succession is open. Taking one back, and shortening a
+      // running release, stay possible.
+      successionGuard.requireReachNotFrozen(
+          SuccessionObjectType.KNOWLEDGE_LIBRARY,
+          library.getId(),
+          "Eine Freigabe für Fremdzugänge");
+    }
     if (!enabled && previousState != ExternalAccessState.ACTIVE) {
       return describe(library);
     }
@@ -121,6 +137,25 @@ public class LibraryExternalAccessService {
             auditPayload(previousState, previousExpiresAt),
             auditPayload(newState, newExpiresAt)));
     return describe(saved);
+  }
+
+  /**
+   * Whether this call reaches further than the release that is running: a release where none was
+   * active, or one that now runs longer. A shortened expiry takes reach away and is no widening.
+   */
+  private boolean widensExternalAccess(
+      KnowledgeLibrary library,
+      ExternalAccessState previousState,
+      Instant previousExpiresAt,
+      Instant requestedExpiresAt) {
+    if (library.effectiveExternalAccessState(clock.instant()) != ExternalAccessState.ACTIVE
+        || previousState != ExternalAccessState.ACTIVE) {
+      return true;
+    }
+    if (previousExpiresAt == null) {
+      return false;
+    }
+    return requestedExpiresAt == null || requestedExpiresAt.isAfter(previousExpiresAt);
   }
 
   /**

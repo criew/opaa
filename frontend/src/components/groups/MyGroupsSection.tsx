@@ -17,6 +17,7 @@ import FieldLabel from '../wizard/FieldLabel'
 import MetaBadge from '../MetaBadge'
 import SectionHead from '../SectionHead'
 import GroupStewardsSection from './GroupStewardsSection'
+import PermissionTransferDialog from '../permissions/PermissionTransferDialog'
 import UserPicker from './UserPicker'
 import type { GroupListResponse, UserSummary } from '../../types/api'
 import { confirmAction } from '../../stores/confirmStore'
@@ -275,8 +276,10 @@ export default function MyGroupsSection() {
   const isLoading = useGroupStore((s) => s.isLoading)
   const error = useGroupStore((s) => s.error)
   const loadGroups = useGroupStore((s) => s.loadGroups)
+  const currentUser = useAuthStore((s) => s.user)
   const { isMissing } = useMyCapabilities()
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
+  const [handoverOpen, setHandoverOpen] = useState(false)
 
   const missingCapability = isMissing('CREATE_INTERNAL_GROUP')
 
@@ -295,13 +298,20 @@ export default function MyGroupsSection() {
           Gruppen, für die Sie verantwortlich sind. Sie pflegen deren Mitglieder, geben sie zur
           Verwendung frei und geben die Verantwortung ab, wenn Sie die Aufgabe wechseln.
         </Typography>
-        <Button
-          variant="contained"
-          disabled={missingCapability}
-          onClick={() => setCreateDialogOpen(true)}
-        >
-          Neue Gruppe
-        </Button>
+        <Stack direction="row" spacing={1}>
+          {/* Verantwortung abgeben ist ein eigener Schritt (ADR-0036, Entscheidung 4/10): kein
+              Automatismus, sondern ein sichtbarer Ausgang beim Aufgabenwechsel. */}
+          <Button variant="outlined" disabled={!currentUser} onClick={() => setHandoverOpen(true)}>
+            Verantwortung und Eigentum abgeben
+          </Button>
+          <Button
+            variant="contained"
+            disabled={missingCapability}
+            onClick={() => setCreateDialogOpen(true)}
+          >
+            Neue Gruppe
+          </Button>
+        </Stack>
       </Stack>
 
       {missingCapability && (
@@ -335,6 +345,22 @@ export default function MyGroupsSection() {
         onClose={() => setCreateDialogOpen(false)}
         onCreated={() => setCreateDialogOpen(false)}
       />
+
+      {handoverOpen && currentUser && (
+        <PermissionTransferDialog
+          open
+          onClose={() => setHandoverOpen(false)}
+          source={{
+            type: 'USER',
+            id: currentUser.id,
+            name: currentUser.displayName ?? 'Ihr Konto',
+          }}
+          targetKinds={['USER']}
+          scopes={['STEWARDSHIP', 'OWNERSHIP']}
+          intro="Die Verantwortung für Ihre internen Gruppen und Ihr Eigentum an Objekten gehen an die gewählte Person. Ihre eigenen Berechtigungen und Space-Mitgliedschaften bleiben unberührt — sie sind weder übertragbar noch Teil der Vorschau."
+          onTransferred={() => void loadGroups('STEWARDED')}
+        />
+      )}
     </Box>
   )
 }

@@ -87,6 +87,10 @@ class ConfluenceLibraryConfigurationIntegrationTest {
         "DELETE FROM asset_grant_history WHERE subject_user_id IN (SELECT id FROM users WHERE"
             + " organization_id = ?)",
         organizationId);
+    // Since #1819 a library carries ownership intervals; their owner column is RESTRICT, so
+    // they have to go before the accounts that hold them.
+    jdbcTemplate.update(
+        "DELETE FROM asset_ownership_history WHERE organization_id = ?", organizationId);
     for (UUID userId : userIds) {
       userRepository.deleteById(userId);
     }

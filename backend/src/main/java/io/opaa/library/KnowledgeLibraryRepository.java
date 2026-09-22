@@ -3,6 +3,7 @@ package io.opaa.library;
 import io.opaa.api.types.ExternalAccessState;
 import io.opaa.api.types.LibraryVisibility;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.EntityGraph;
@@ -36,6 +37,24 @@ public interface KnowledgeLibraryRepository extends JpaRepository<KnowledgeLibra
 
   /** The same figure without the rows, so a transfer can check its work limit before loading. */
   long countByOwnerGroupIdAndOrganizationId(UUID ownerGroupId, UUID organizationId);
+
+  /**
+   * The same figure for a whole list of groups in one grouped query - the overview "wo wirkt diese
+   * Gruppe" (#1821) asks it for every group at once. A group owning no library is absent.
+   */
+  @Query(
+      "select l.ownerGroupId as ownerGroupId, count(l) as libraryCount from KnowledgeLibrary l"
+          + " where l.ownerGroupId in :ownerGroupIds and l.organizationId = :organizationId"
+          + " group by l.ownerGroupId")
+  List<OwnerGroupCount> countByOwnerGroupIdIn(
+      @Param("ownerGroupIds") Collection<UUID> ownerGroupIds,
+      @Param("organizationId") UUID organizationId);
+
+  interface OwnerGroupCount {
+    UUID getOwnerGroupId();
+
+    long getLibraryCount();
+  }
 
   /** The person-owned counterpart of {@link #countByOwnerGroupIdAndOrganizationId}. */
   long countByOwnerUserIdAndOrganizationId(UUID ownerUserId, UUID organizationId);
