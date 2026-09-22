@@ -878,7 +878,7 @@ class AssetGrantServiceTest {
         .thenReturn(
             Optional.of(
                 new GroupSubject(
-                    groupId, organizationId, "Referat 50", false, false, false, false)));
+                    groupId, organizationId, "Referat 50", false, false, false, false, true)));
     when(groupMemberships.activeMemberCount(groupId, organizationId)).thenReturn(23);
     when(grantRepository.save(any(AssetGrant.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
