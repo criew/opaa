@@ -26,6 +26,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -300,7 +301,13 @@ class TransportStatusCodeSpecificationTest {
         .as(
             "neither derivation found a single operation, which would let the comparison pass empty")
         .isNotEmpty();
-    assertThat(operationsDeclaring("413")).isEqualTo(withASizeLimit);
+    assertThat(operationsDeclaring("413"))
+        .as(
+            "413 is derived from two mechanisms: a multipart body, and the shared raw-body bound."
+                + " An operation that bounds its body a third way belongs into the derivation - do"
+                + " not drop a declaration this comparison calls excess before checking which of"
+                + " the two premises fails to see it.")
+        .isEqualTo(withASizeLimit);
   }
 
   /**
@@ -420,32 +427,38 @@ class TransportStatusCodeSpecificationTest {
     return statuses;
   }
 
-  /** The operations the specification answers at a route Spring resolved, usually exactly one. */
+  /** The operation ids the specification answers at a route Spring resolved. */
   private static Set<String> operationIdsAt(String httpMethod, String path) {
     Set<String> ids = new TreeSet<>();
-    forEachOperation(
-        (specPath, specMethod, operation) -> {
-          if (specMethod.equals(httpMethod)
-              && withoutVariableNames(specPath).equals(withoutVariableNames(path))) {
-            ids.add((String) operation.get("operationId"));
-          }
-        });
+    forEachOperationAt(
+        httpMethod, path, operation -> ids.add((String) operation.get("operationId")));
     return ids;
   }
 
   private static Set<String> declaredStatusesAt(String httpMethod, String path) {
-    if (httpMethod == null || path == null) {
-      return Set.of();
-    }
     Set<String> statuses = new TreeSet<>();
+    forEachOperationAt(
+        httpMethod, path, operation -> statuses.addAll(map(operation, "responses").keySet()));
+    return statuses;
+  }
+
+  /**
+   * The operations at one route, usually exactly one. Both readers above go through here so that
+   * they resolve a route identically; an unresolvable method or path answers with nothing, which
+   * lets the assertion of the caller fail rather than this lookup.
+   */
+  private static void forEachOperationAt(
+      String httpMethod, String path, Consumer<Map<String, Object>> visitor) {
+    if (httpMethod == null || path == null) {
+      return;
+    }
     forEachOperation(
         (specPath, specMethod, operation) -> {
           if (specMethod.equals(httpMethod)
               && withoutVariableNames(specPath).equals(withoutVariableNames(path))) {
-            statuses.addAll(map(operation, "responses").keySet());
+            visitor.accept(operation);
           }
         });
-    return statuses;
   }
 
   /**
