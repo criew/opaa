@@ -1232,6 +1232,33 @@ export const handlers = [
     return HttpResponse.json(mockGroupDetails[id], { status: 201 })
   }),
 
+  // Vor '/api/v1/groups/:groupId': MSW waehlt den ersten passenden Handler, und der
+  // Einzelgruppen-Pfad faengt sonst 'selectable' als Gruppen-ID ab (im Backend entscheidet
+  // Springs Pfad-Spezifitaet, hier die Reihenfolge).
+  http.get('/api/v1/groups/selectable', ({ request }) => {
+    const query = (new URL(request.url).searchParams.get('query') ?? '').trim().toLowerCase()
+    if (query.length < 2) {
+      return HttpResponse.json([])
+    }
+    const matches = mockSelectableGroups.filter((group) =>
+      group.protectedGroup
+        ? (group.name ?? '').toLowerCase() === query
+        : (group.name ?? '').toLowerCase().includes(query) ||
+          (group.sourcePath ?? '').toLowerCase().includes(query),
+    )
+    return HttpResponse.json(matches.slice(0, 20))
+  }),
+
+  // #1820: Der Kennungsweg löst die Gruppe unter derselben Sichtbarkeitsregel auf; eine
+  // geschützte Gruppe kommt dabei ohne ihren Namen zurück.
+  http.get('/api/v1/groups/selectable/:groupId', ({ params }) => {
+    const group = mockSelectableGroups.find((candidate) => candidate.id === String(params.groupId))
+    if (!group) {
+      return HttpResponse.json({ error: 'Gruppe nicht gefunden' }, { status: 404 })
+    }
+    return HttpResponse.json(group.protectedGroup ? { ...group, name: null } : group)
+  }),
+
   http.get('/api/v1/groups/:groupId', ({ params }) => {
     const groupId = String(params.groupId)
     const group = mockGroupDetails[groupId]
@@ -3462,29 +3489,6 @@ export const handlers = [
   // #1820, ADR-0036 Entscheidung 9: Die Subjekt-Auswahl sucht serverseitig. Zwei Regeln bildet der
   // Mock nach, weil die Oberfläche auf ihnen aufbaut: unter zwei Zeichen antwortet nichts, und
   // eine geschützte Gruppe erscheint nur auf ihre vollständige Bezeichnung hin.
-  http.get('/api/v1/groups/selectable', ({ request }) => {
-    const query = (new URL(request.url).searchParams.get('query') ?? '').trim().toLowerCase()
-    if (query.length < 2) {
-      return HttpResponse.json([])
-    }
-    const matches = mockSelectableGroups.filter((group) =>
-      group.protectedGroup
-        ? (group.name ?? '').toLowerCase() === query
-        : (group.name ?? '').toLowerCase().includes(query) ||
-          (group.sourcePath ?? '').toLowerCase().includes(query),
-    )
-    return HttpResponse.json(matches.slice(0, 20))
-  }),
-
-  // #1820: Der Kennungsweg löst die Gruppe unter derselben Sichtbarkeitsregel auf; eine
-  // geschützte Gruppe kommt dabei ohne ihren Namen zurück.
-  http.get('/api/v1/groups/selectable/:groupId', ({ params }) => {
-    const group = mockSelectableGroups.find((candidate) => candidate.id === String(params.groupId))
-    if (!group) {
-      return HttpResponse.json({ error: 'Gruppe nicht gefunden' }, { status: 404 })
-    }
-    return HttpResponse.json(group.protectedGroup ? { ...group, name: null } : group)
-  }),
 
   // #1822: die eigene Herleitung. Ohne userId geht es um die eigene Person.
   http.get('/api/v1/libraries/:libraryId/access-derivation', ({ params }) => {

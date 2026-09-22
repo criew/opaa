@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -13,13 +13,12 @@ import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import type {
-  GroupListResponse,
   PermissionSubjectType,
   PermissionTransferPreviewResponse,
   PermissionTransferScope,
+  SelectableGroupResponse,
   UserSummary,
 } from '../../types/api'
-import { getGroups } from '../../services/api'
 import {
   executePermissionTransfer,
   previewPermissionTransfer,
@@ -28,7 +27,8 @@ import { apiErrorCode } from '../../services/apiErrorDetails'
 import { notify } from '../../stores/notificationStore'
 import UserPicker from '../groups/UserPicker'
 import FieldLabel from '../wizard/FieldLabel'
-import { groupIneffectiveReason, groupOptionLabel } from '../groups/groupOriginLabels'
+import GroupPicker from './GroupPicker'
+import { confirmGroupSubject } from './subjectSelection'
 
 const scopeLabels: Record<PermissionTransferScope, string> = {
   ASSET_GRANTS: 'Berechtigungen an Objekten',
@@ -73,26 +73,14 @@ export default function PermissionTransferDialog({
   onTransferred,
 }: PermissionTransferDialogProps) {
   const [targetType, setTargetType] = useState<PermissionSubjectType>(targetKinds[0])
-  const [targetGroupId, setTargetGroupId] = useState('')
+  const [targetGroup, setTargetGroup] = useState<SelectableGroupResponse | null>(null)
   const [targetUser, setTargetUser] = useState<UserSummary | null>(null)
   const [selectedScopes, setSelectedScopes] = useState<PermissionTransferScope[]>(scopes)
-  const [groups, setGroups] = useState<GroupListResponse[]>([])
   const [preview, setPreview] = useState<PermissionTransferPreviewResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
-  // Über den Wahrheitswert statt über `targetKinds`: Die Elternkomponente übergibt ein
-  // Array-Literal, und an ihm hinge der Effekt bei jedem Render der Eltern neu.
-  const needsGroups = targetKinds.includes('GROUP')
-
-  useEffect(() => {
-    if (!open || !needsGroups) return
-    void getGroups()
-      .then(setGroups)
-      .catch(() => setGroups([]))
-  }, [open, needsGroups])
-
-  const targetId = targetType === 'GROUP' ? targetGroupId : (targetUser?.id ?? '')
+  const targetId = targetType === 'GROUP' ? (targetGroup?.id ?? '') : (targetUser?.id ?? '')
   const ready = targetId !== '' && selectedScopes.length > 0
 
   function toggleScope(scope: PermissionTransferScope) {
@@ -103,6 +91,11 @@ export default function PermissionTransferDialog({
   }
 
   async function createPreview() {
+    // Dieselbe Zwischenfrage wie im Freigabedialog (ADR-0036, Entscheidung 2): Wer an eine Gruppe
+    // eines externen Anbieters überträgt, bestätigt das ausdrücklich.
+    if (targetType === 'GROUP' && targetGroup && !(await confirmGroupSubject(targetGroup))) {
+      return
+    }
     setBusy(true)
     setError(null)
     try {
@@ -199,32 +192,19 @@ export default function PermissionTransferDialog({
           {targetType === 'GROUP' ? (
             <Box>
               <FieldLabel htmlFor="transfer-target-group">Zielgruppe</FieldLabel>
-              <TextField
-                id="transfer-target-group"
-                select
-                fullWidth
-                size="small"
-                value={targetGroupId}
-                onChange={(e) => {
+              {/* Die gemeinsame Gruppensuche (#1820): serverseitige Auswahl mit Herkunft,
+                  Kennzeichen „extern" und den Wählbarkeitsregeln - statt der vollen
+                  Verwaltungsliste in einem Auswahlfeld. */}
+              <GroupPicker
+                ariaLabel="Zielgruppe"
+                placeholder="Zielgruppe suchen …"
+                value={targetGroup}
+                onChange={(group) => {
                   setPreview(null)
-                  setTargetGroupId(e.target.value)
+                  setTargetGroup(group)
                 }}
-                slotProps={{ htmlInput: { 'aria-label': 'Zielgruppe' } }}
-              >
-                {/* Nicht wählbare Gruppen bleiben sichtbar und nennen ihren Grund — dieselben
-                    drei, die das Backend abweist. Verstecken ließe die Person suchen. */}
-                {groups
-                  .filter((group) => group.id !== source.id)
-                  .map((group) => (
-                    <MenuItem
-                      key={group.id}
-                      value={group.id}
-                      disabled={groupIneffectiveReason(group) !== null}
-                    >
-                      {groupOptionLabel(group)}
-                    </MenuItem>
-                  ))}
-              </TextField>
+                excludedGroupIds={source.type === 'GROUP' ? [source.id] : []}
+              />
             </Box>
           ) : (
             <Box>

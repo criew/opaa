@@ -22,9 +22,19 @@ function renderDialog() {
   return { onClose }
 }
 
+/**
+ * Die Zielgruppe kommt aus der gemeinsamen Gruppensuche (#1820): serverseitig, ab zwei Zeichen und
+ * hinter einer Entprellung von 300 ms.
+ */
 async function chooseTarget(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(await screen.findByRole('combobox', { name: 'Zielgruppe' }))
-  await user.click(await screen.findByRole('option', { name: /Projektbeteiligte Phoenix/ }))
+  await user.type(screen.getByLabelText('Zielgruppe'), 'Referat 5')
+  // „Referat 50" ist hier die Quelle und deshalb ausgeschlossen - gewählt wird das Projektteam.
+  const option = await screen.findByRole(
+    'option',
+    { name: /Referat 5 Projektteam/ },
+    { timeout: 3000 },
+  )
+  await user.click(option)
 }
 
 describe('PermissionTransferDialog', () => {

@@ -12,10 +12,9 @@ import type {
   Capability,
   CapabilityOverviewResponse,
   CapabilitySubjectType,
-  GroupListResponse,
+  SelectableGroupResponse,
   UserSummary,
 } from '../types/api'
-import { getGroups } from '../services/api'
 import {
   getCapabilityOverview,
   grantCapability,
@@ -28,26 +27,25 @@ import AreaPageHeader from '../components/AreaPageHeader'
 import PageHeading from '../components/a11y/PageHeading'
 import MetaBadge from '../components/MetaBadge'
 import UserPicker from '../components/groups/UserPicker'
-import { groupIneffectiveReason, groupOptionLabel } from '../components/groups/groupOriginLabels'
+import GroupPicker from '../components/permissions/GroupPicker'
+import { confirmGroupSubject } from '../components/permissions/subjectSelection'
 import { contentWidth } from '../theme/tokens'
 
 function CapabilityCard({
   overview,
-  groups,
   onChanged,
 }: {
   overview: CapabilityOverviewResponse
-  groups: GroupListResponse[]
   onChanged: () => Promise<void>
 }) {
   const [subjectType, setSubjectType] = useState<CapabilitySubjectType>('GROUP')
-  const [groupId, setGroupId] = useState('')
+  const [group, setGroup] = useState<SelectableGroupResponse | null>(null)
   const [user, setUser] = useState<UserSummary | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const capability: Capability = overview.capability
   const subjectId =
-    subjectType === 'GROUP' ? groupId : subjectType === 'USER' ? user?.id : undefined
+    subjectType === 'GROUP' ? group?.id : subjectType === 'USER' ? user?.id : undefined
   const ready = subjectType === 'ALL_ACCOUNTS' || Boolean(subjectId)
 
   async function run(action: () => Promise<void>, fallback: string) {
@@ -149,26 +147,14 @@ function CapabilityCard({
         </TextField>
 
         {subjectType === 'GROUP' && (
-          <TextField
-            select
-            size="small"
-            label="Gruppe"
-            value={groupId}
-            onChange={(e) => setGroupId(e.target.value)}
-            sx={{ minWidth: 280 }}
-          >
-            {/* `CapabilityService#grant` weist dieselben drei Gründe ab; sie stehen hier am
-                gesperrten Eintrag, statt die Gruppe wortlos fehlen zu lassen. */}
-            {groups.map((group) => (
-              <MenuItem
-                key={group.id}
-                value={group.id}
-                disabled={groupIneffectiveReason(group) !== null}
-              >
-                {groupOptionLabel(group)}
-              </MenuItem>
-            ))}
-          </TextField>
+          /* Die gemeinsame Gruppensuche (#1820): Herkunft, Kennzeichen „extern" und die
+             Wählbarkeitsregeln bringt sie mit - dieselben, die `CapabilityService#grant` abweist. */
+          <GroupPicker
+            ariaLabel="Gruppe"
+            placeholder="Gruppe suchen …"
+            value={group}
+            onChange={setGroup}
+          />
         )}
 
         {subjectType === 'USER' && (
@@ -185,14 +171,16 @@ function CapabilityCard({
           variant="contained"
           size="small"
           disabled={!ready}
-          onClick={() =>
-            void run(async () => {
+          onClick={async () => {
+            // Zwischenfrage vor einem Recht an eine Gruppe eines externen Anbieters (ADR-0036/2).
+            if (subjectType === 'GROUP' && group && !(await confirmGroupSubject(group))) return
+            await run(async () => {
               await grantCapability(capability, { subjectType, subjectId })
               setUser(null)
-              setGroupId('')
+              setGroup(null)
               notify(`„${overview.label}" wurde erteilt.`, 'success')
             }, 'Das Anlegerecht konnte nicht erteilt werden.')
-          }
+          }}
         >
           Erteilen
         </Button>
@@ -208,7 +196,6 @@ function CapabilityCard({
 export default function CapabilityManagementPage() {
   const isSystemAdmin = useAuthStore((s) => s.user?.systemRole === 'SYSTEM_ADMIN')
   const [overviews, setOverviews] = useState<CapabilityOverviewResponse[]>([])
-  const [groups, setGroups] = useState<GroupListResponse[]>([])
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(isSystemAdmin)
 
@@ -233,9 +220,6 @@ export default function CapabilityManagementPage() {
   useEffect(() => {
     if (!isSystemAdmin) return
     void load()
-    void getGroups()
-      .then(setGroups)
-      .catch(() => setGroups([]))
   }, [isSystemAdmin, load])
 
   if (!isSystemAdmin) {
@@ -271,12 +255,7 @@ export default function CapabilityManagementPage() {
         ) : (
           <Stack spacing={2}>
             {overviews.map((overview) => (
-              <CapabilityCard
-                key={overview.capability}
-                overview={overview}
-                groups={groups}
-                onChanged={load}
-              />
+              <CapabilityCard key={overview.capability} overview={overview} onChanged={load} />
             ))}
           </Stack>
         )}
