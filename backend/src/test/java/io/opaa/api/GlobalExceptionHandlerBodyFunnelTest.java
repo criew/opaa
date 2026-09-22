@@ -14,26 +14,26 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 
 /**
- * #1780 reduced thirty-odd decisions <em>of {@link GlobalExceptionHandler}</em> to one rule: an
- * error body is attached only where {@code GlobalExceptionHandler#respond} decides it may be
- * written. The rule reaches that class and no further for now - {@code AdminController} answers a
- * branch of its own past the funnel, which is #1799 and which the last assertion here keeps
- * visible. A rule that only a Javadoc holds is the pattern this project gave up on for test
- * contexts (AGENTS.md on the context signature guard: a comment as justification is no longer
- * enough), so this guard holds it mechanically - the same "closed set rather than an enumeration"
- * shape as {@code AuditFunnelStructureTest} and {@code
+ * #1780 reduced thirty-odd decisions to one rule: an error body is attached only where {@code
+ * GlobalExceptionHandler#respond} decides it may be written. The rule holds for all of {@code
+ * backend/src/main/java} - no class there outside the guarded one carries a
+ * {@code @ExceptionHandler} either; the only other production module, {@code opaa-api}, holds
+ * generated DTOs and enums and no web code at all. A rule that only a Javadoc holds is the pattern
+ * this project gave up on for test contexts (AGENTS.md on the context signature guard: a comment as
+ * justification is no longer enough), so this guard holds it mechanically - the same "closed set
+ * rather than an enumeration" shape as {@code AuditFunnelStructureTest} and {@code
  * SearchDiagnosisRerankParityTest#onlyTheFactoryConstructsARetrievalContextInProductionCode}.
  *
  * <p>It reads the production source instead of instantiating branches: the alternative - invoking
  * every {@code @ExceptionHandler} reflectively - would need a usable instance of some two dozen
  * exception types, the Kotlin types of the OpenAI SDK among them.
  *
- * <p><b>Six assertions, because each alone leaves a gap</b> (measured, not assumed - the reviews of
- * PR #1783 and PR #1798): a branch calling {@code .body(...)} itself is caught by the first only,
- * one assembling a {@code ResponseEntity} another way by the second only, a second advice class by
- * neither, then the two ways the funnel's own decision can be made wrong without touching a branch
- * - a selector on the advice, and a {@code produces=} on a branch - and last the branches that
- * never enter the funnel because they sit outside the advice entirely.
+ * <p><b>Five assertions, because each alone leaves a gap</b> (measured, not assumed - the reviews
+ * of PR #1783 and PR #1798): a branch calling {@code .body(...)} itself is caught by the first
+ * only, one assembling a {@code ResponseEntity} another way by the second only, a second advice
+ * class or a branch outside any advice by neither, then the two ways the funnel's own decision can
+ * be made wrong without touching a branch - a selector on the advice, and a {@code produces=} on a
+ * branch.
  */
 class GlobalExceptionHandlerBodyFunnelTest {
 
@@ -94,18 +94,31 @@ class GlobalExceptionHandlerBodyFunnelTest {
         .isEmpty();
   }
 
-  /** The two assertions above cover one class; a second advice would answer entirely unguarded. */
+  /**
+   * The two assertions above cover one class; a second advice would answer entirely unguarded - and
+   * so would a {@code @ExceptionHandler} on a controller, which the resolver consults
+   * <em>before</em> any advice and which therefore never reaches the funnel at all ({@code
+   * AdminController#handleUserNotFound} was that case until #1799). Both are read from the same
+   * walk: a file may declare either only if it is the guarded class.
+   */
   @Test
   void theGuardedClassIsTheOnlyAdviceInProductionCode() throws IOException {
-    List<String> adviceFiles;
+    List<String> adviceFiles = new ArrayList<>();
+    List<String> filesWithABranch = new ArrayList<>();
     try (Stream<Path> files = Files.walk(MAIN_SOURCES)) {
-      adviceFiles =
-          files
-              .filter(path -> path.toString().endsWith(".java"))
-              .filter(path -> declaresControllerAdvice(readFile(path)))
-              .map(path -> path.getFileName().toString())
-              .sorted()
-              .toList();
+      files
+          .filter(path -> path.toString().endsWith(".java"))
+          .sorted()
+          .forEach(
+              path -> {
+                String source = readFile(path);
+                if (declaresControllerAdvice(source)) {
+                  adviceFiles.add(path.getFileName().toString());
+                }
+                if (declaresAnExceptionHandler(source)) {
+                  filesWithABranch.add(path.getFileName().toString());
+                }
+              });
     }
 
     assertThat(adviceFiles)
@@ -113,6 +126,12 @@ class GlobalExceptionHandlerBodyFunnelTest {
             "a new @ControllerAdvice would answer past %s() - extend this guard to it rather than"
                 + " widening this list",
             FUNNEL)
+        .containsExactly(SOURCE.getFileName().toString());
+    assertThat(filesWithABranch)
+        .as(
+            "a @ExceptionHandler outside %s is consulted before the advice and answers past %s() -"
+                + " throw an exception the advice already maps instead of widening this list",
+            SOURCE.getFileName(), FUNNEL)
         .containsExactly(SOURCE.getFileName().toString());
   }
 
@@ -160,37 +179,16 @@ class GlobalExceptionHandlerBodyFunnelTest {
         .isEmpty();
   }
 
-  /**
-   * The four assertions above end where the advice does: a {@code @ExceptionHandler} on a
-   * controller answers that controller's exceptions before the advice is ever consulted, and
-   * neither the funnel nor the file this guard reads can see it. {@code
-   * AdminController#handleUserNotFound} is that case today - it attaches its body unconditionally
-   * and carries the open end of #1780 with it. Named here until #1799 widens the guard, so that a
-   * second one is a red test rather than an invisible one.
-   */
-  @Test
-  void theOnlyBranchOutsideTheAdviceIsTheOneKnownToBeOpen() throws IOException {
-    List<String> filesWithABranch;
-    try (Stream<Path> files = Files.walk(MAIN_SOURCES)) {
-      filesWithABranch =
-          files
-              .filter(path -> path.toString().endsWith(".java"))
-              .filter(path -> declaresAnExceptionHandler(readFile(path)))
-              .map(path -> path.getFileName().toString())
-              .sorted()
-              .toList();
-    }
-
-    assertThat(filesWithABranch)
-        .as(
-            "a new @ExceptionHandler outside %s answers past %s() - route it through the advice, or"
-                + " widen this guard with #1799 rather than this list",
-            SOURCE.getFileName(), FUNNEL)
-        .containsExactly("AdminController.java", SOURCE.getFileName().toString());
-  }
-
+  /** The fully qualified form counts too - this codebase writes annotations both ways. */
   private boolean declaresAnExceptionHandler(String source) {
-    return source.lines().anyMatch(line -> line.strip().startsWith("@ExceptionHandler"));
+    return source
+        .lines()
+        .map(String::strip)
+        .anyMatch(
+            line ->
+                line.startsWith("@ExceptionHandler")
+                    || line.startsWith(
+                        "@org.springframework.web.bind.annotation.ExceptionHandler"));
   }
 
   /** Each {@code @ExceptionHandler} as one string, the lines google-java-format wrapped joined. */
