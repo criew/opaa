@@ -8,6 +8,7 @@ import { localAuthHandlers } from './localAuthHandlers'
 import { externalAccessHandlers } from './externalAccessHandlers'
 import { externalAccessTokenHandlers } from './externalAccessTokenHandlers'
 import { groupAdminHandlers } from './groupAdminHandlers'
+import { successionHandlers } from './successionHandlers'
 
 /** Per-library countdown of the mock metadata backfill; see the handler below. */
 const mockMetadataBackfillRemaining = new Map<string, number>()
@@ -3593,4 +3594,6 @@ export const handlers = [
   ...externalAccessTokenHandlers,
   // Anlegerechte, Verzeichnisabgleich und Übertragung (#1821) - eigene Datei aus demselben Grund.
   ...groupAdminHandlers,
+  // Die Betriebsliste des Lebenszyklus (#1819/#1821) - eigene Datei aus demselben Grund.
+  ...successionHandlers,
 ]

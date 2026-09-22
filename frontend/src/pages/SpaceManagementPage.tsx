@@ -31,6 +31,7 @@ import {
   spaceVisibilityLabel,
 } from '../utils/labels'
 import PageHeading from '../components/a11y/PageHeading'
+import { successionAwareMessage } from '../components/succession/successionConflict'
 import FieldLabel from '../components/wizard/FieldLabel'
 import MetaBadge from '../components/MetaBadge'
 import SectionHead from '../components/SectionHead'
@@ -638,9 +639,7 @@ export default function SpaceManagementPage() {
                           setSuccessMessage('Mitglied hinzugefügt')
                         } catch (err) {
                           setLocalError(
-                            err instanceof Error
-                              ? err.message
-                              : 'Mitglied konnte nicht hinzugefügt werden',
+                            successionAwareMessage(err, 'Mitglied konnte nicht hinzugefügt werden'),
                           )
                         }
                       }}

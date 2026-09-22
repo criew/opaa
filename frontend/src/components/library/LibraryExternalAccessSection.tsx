@@ -7,6 +7,7 @@ import Stack from '@mui/material/Stack'
 import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
+import { successionAwareMessage } from '../succession/successionConflict'
 import SectionHead from '../SectionHead'
 import type { LibraryExternalAccessResponse } from '../../types/api'
 import { getLibrary, updateLibraryExternalAccess } from '../../services/api'
@@ -111,7 +112,7 @@ export default function LibraryExternalAccessSection({
         updated.expiresAt && updated.state === 'ACTIVE' ? toDateInput(updated.expiresAt) : '',
       )
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Die Freigabe konnte nicht geändert werden')
+      setError(successionAwareMessage(err, 'Die Freigabe konnte nicht geändert werden'))
     } finally {
       setSaving(false)
     }

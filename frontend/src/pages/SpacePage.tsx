@@ -18,6 +18,7 @@ import { useAuthStore } from '../stores/authStore'
 import { useSpaceStore } from '../stores/spaceStore'
 import { spaceRoleLabel } from '../utils/labels'
 import PageHeading from '../components/a11y/PageHeading'
+import SuccessionStateNote from '../components/succession/SuccessionStateNote'
 
 // #674 review: the owner is not always ADMIN - transferOwnership only reassigns Space.ownerId and
 // never touches the new owner's own SpaceMembership role (see SpaceService#requireMemberListViewer,
@@ -136,6 +137,9 @@ export default function SpacePage() {
               <Typography sx={{ color: 'text.secondary' }}>
                 {space.description || 'Keine Beschreibung hinterlegt.'}
               </Typography>
+              {/* ADR-0036, Entscheidung 6: Zustand und Adressat für jeden Leseberechtigten -
+                  ohne Datum, früheren Eigentümer oder Grund. */}
+              <SuccessionStateNote succession={space.succession} />
             </Box>
             <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
               {canManage(space.userRole, isOwner) && (

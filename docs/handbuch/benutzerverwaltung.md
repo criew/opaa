@@ -477,8 +477,11 @@ zurücknehmen, ein Raummitglied entfernen, das Objekt umbenennen, einschränken,
 und indexieren.
 
 **Am Objekt steht Zustand und Zuständigkeit** — „Nachfolge offen — zuständig: die Systemverwaltung".
-Bewusst ohne Datum, ohne den bisherigen Eigentümer und ohne Grund. **Suchtreffer tragen den Hinweis
-nicht:** Der Zustand betrifft die Zuständigkeit, nicht die Richtigkeit des Inhalts.
+Bewusst ohne Datum, ohne den bisherigen Eigentümer und ohne Grund; daneben der Satz, dass das Objekt
+nutzbar bleibt und nichts gelöscht wird. Die Kennzeichnung steht in der **Bibliotheksübersicht** und
+in der **Detailansicht** einer Bibliothek sowie am **Space** — für jeden, der das Objekt sehen darf.
+**Suchtreffer und Quellenverweise tragen den Hinweis nicht:** Der Zustand betrifft die
+Zuständigkeit, nicht die Richtigkeit des Inhalts.
 
 **Die Betriebsliste der Systemverwaltung hat drei Reiter:**
 
@@ -501,8 +504,16 @@ Vorgang beendet oder einen Sichtungsvermerk gesetzt hat.
 **Der Ausgang ist die Übertragung** (Abschnitt 7.2) mit dem Umfang „Eigentum und Verantwortung".
 Endet der Zustand damit wirklich, wird der Vorgang geschlossen und die handelnde Person am Vorgang
 vermerkt; geht das Objekt an jemanden, der ebenfalls nicht handeln kann, bleibt der Vorgang offen —
-sonst begänne sein Alter von vorn. **Eine Oberfläche dafür entsteht mit Issue #1821**; heute führt
-die Systemverwaltung Liste und Übernahme über die Schnittstelle.
+sonst begänne sein Alter von vorn.
+
+**Wo die Liste steht.** Unter **Administration → Lebenszyklus**, mit den drei Reitern als eigenen
+Adressen (`/admin/succession/open`, `…/grants`, `…/groups`). Jede Zeile nennt Objekt, zuständige
+Stelle und Alter; der Name des Objekts führt in die Bibliothek beziehungsweise in den Space. Eine
+gealterte Zeile ist als solche gekennzeichnet, der **Sichtungsvermerk** wird an ihr mit seinem Grund
+eingetragen, und bei einer Gruppe steht dort die **Übernahme**: derselbe Übertragungsdialog wie in
+der Gruppenverwaltung, mit Vorschau und ausdrücklicher Bestätigung. Eine Zeile, die der
+Feststellungslauf noch nicht gesehen hat, steht bereits in der Liste — einen Vermerk nimmt sie erst
+an, wenn ihr Vorgang angelegt ist (spätestens nach einer Stunde).
 
 **Vorgänge und Sichtungsvermerke sind Protokoll**, kein Rechtenachweis: Abgeschlossene Vorgänge
 werden samt ihren Vermerken nach Ablauf der Protokollfrist automatisch gelöscht (dieselbe Frist wie

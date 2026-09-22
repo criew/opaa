@@ -84,6 +84,15 @@ export type PermissionTransferResponse = components['schemas']['PermissionTransf
 export type PermissionTransferCountsResponse =
   components['schemas']['PermissionTransferCountsResponse']
 
+export type SuccessionKind = components['schemas']['SuccessionKind']
+export type SuccessionObjectType = components['schemas']['SuccessionObjectType']
+export type SuccessionAddressee = components['schemas']['SuccessionAddressee']
+export type SuccessionEntryResponse = components['schemas']['SuccessionEntryResponse']
+export type SuccessionListResponse = components['schemas']['SuccessionListResponse']
+export type SuccessionReviewRequest = components['schemas']['SuccessionReviewRequest']
+export type SuccessionReviewResponse = components['schemas']['SuccessionReviewResponse']
+export type SuccessionStateResponse = components['schemas']['SuccessionStateResponse']
+
 export type DirectorySyncOutcome = components['schemas']['DirectorySyncOutcome']
 export type DirectorySyncStatusResponse = components['schemas']['DirectorySyncStatusResponse']
 export type DirectorySyncReportResponse = components['schemas']['DirectorySyncReportResponse']

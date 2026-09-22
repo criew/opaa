@@ -54,6 +54,7 @@ const VERWALTUNGSDATEIEN = Object.keys(QUELLEN).filter((pfad) => {
     'CapabilityManagementPage',
     'DirectorySyncPage',
     'ProviderGroupWorklistPage',
+    'SuccessionPage',
     'MailSettingsPage',
     'SearchIndexingAdminPage',
     // #1609: außerhalb der Administration
