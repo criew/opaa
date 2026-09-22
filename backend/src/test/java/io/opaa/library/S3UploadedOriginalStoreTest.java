@@ -166,14 +166,17 @@ class S3UploadedOriginalStoreTest {
   }
 
   @Test
-  void aRefusedPutIsAnIOExceptionAndLeavesNoObject() throws IOException {
+  void aRefusedPutIsUnavailableAndLeavesNoObject() throws IOException {
+    // A store that refuses the write is the same temporary condition a refused read reports, and
+    // its own sentence - which names the operation and the configuration - stays in the log.
     UploadedOriginalStore.AcceptedUpload accepted =
         store.accept(organizationId, libraryId, ".pdf", bytes("inhalt"));
     server.failNextMatching("PUT", "/" + BUCKET + "/", 403, "AccessDenied");
 
     assertThatThrownBy(accepted::store)
-        .isInstanceOf(S3AccessException.WriteForbidden.class)
-        .hasMessageContaining("s3:PutObject")
+        .isInstanceOf(UploadStoreUnavailableException.class)
+        .hasMessageContaining("nicht erreichbar")
+        .satisfies(e -> assertThat(e.getMessage()).doesNotContain("s3:PutObject"))
         .satisfies(e -> assertThat(e.getMessage()).doesNotContain("geheim"));
 
     accepted.discard();
@@ -317,6 +320,8 @@ class S3UploadedOriginalStoreTest {
   @Test
   void aStoreThatCannotBeReachedIsUnavailableNotMissing() throws IOException {
     UploadedOriginalRef ref = storedOriginal("inhalt");
+    UploadedOriginalStore.AcceptedUpload pending =
+        store.accept(organizationId, libraryId, ".pdf", bytes("noch nicht abgelegt"));
     server.close();
 
     assertThatThrownBy(() -> store.openForDownload(ref, "x.pdf", "application/pdf"))
@@ -326,8 +331,14 @@ class S3UploadedOriginalStoreTest {
         .isInstanceOf(UploadStoreUnavailableException.class);
     assertThatThrownBy(() -> store.belongsToLibrary(ref))
         .isInstanceOf(UploadStoreUnavailableException.class);
+    // #1805: the write direction of the same outage answers the same way - not as a failure of
+    // the application itself, which is what an IOException out of here would become.
+    assertThatThrownBy(pending::store)
+        .isInstanceOf(UploadStoreUnavailableException.class)
+        .hasMessageContaining("nicht erreichbar");
     // deletion runs after the row's commit and must not throw; the object stays for the cleanup
     assertThatCode(() -> store.delete(ref)).doesNotThrowAnyException();
+    pending.discard();
     assertThat(ownTempFiles()).isEmpty();
   }
 

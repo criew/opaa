@@ -142,7 +142,13 @@ public interface UploadedOriginalStore {
     /** The local file this upload's processing reads, valid until it is released or discarded. */
     Path workingFile();
 
-    /** Makes the accepted file the library's original and returns the reference to it. */
+    /**
+     * Makes the accepted file the library's original and returns the reference to it.
+     *
+     * @throws UploadStoreUnavailableException when the store cannot take it right now - the same
+     *     temporary condition every read above reports, and never a failure of the application
+     *     itself (ADR-0030, Entscheidung 9)
+     */
     UploadedOriginalRef store() throws IOException;
 
     /** The processing is done: the working file is no longer needed, the original stays. */

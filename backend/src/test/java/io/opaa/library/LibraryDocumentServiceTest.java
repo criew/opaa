@@ -1825,6 +1825,130 @@ class LibraryDocumentServiceTest {
   }
 
   @Test
+  void anUnreachableUploadStoreIs503OnTheWritePathJustAsOnTheReadPath() throws IOException {
+    // #1805: the same outage of the same upload storage (ADR-0030, Entscheidung 9) must answer
+    // alike in both directions - a 500 on the write path would tell the caller the application
+    // itself is broken and not to retry, while the read path tells it to come back later.
+    grantEditor();
+    grantViewerOnUploadLibrary();
+    when(checksumService.computeSha256(any(Path.class))).thenReturn("checksum-ausfall");
+    when(documentRepository.findByLibraryIdAndChecksumAndParentDocumentIdIsNull(
+            libraryId, "checksum-ausfall"))
+        .thenReturn(Optional.empty());
+    uploadedOriginalStore = new UnreachableUploadStore(uploadedOriginalStore);
+    LibraryDocumentService serviceOnAnUnreachableStore =
+        serviceWith(new AttachmentExtractionProperties(0, null));
+    Document alreadyUploaded = rowOfAnUploadedOriginal("bescheid.pdf");
+    when(documentRepository.findById(alreadyUploaded.getId()))
+        .thenReturn(Optional.of(alreadyUploaded));
+
+    assertThatThrownBy(
+            () ->
+                serviceOnAnUnreachableStore.uploadDocument(
+                    libraryId, pdfFile("bescheid.pdf", "Inhalt"), null, caller))
+        .isInstanceOf(ServiceUnavailableException.class)
+        .hasMessage(UploadStoreUnavailableException.MESSAGE);
+    assertThatThrownBy(
+            () -> serviceOnAnUnreachableStore.loadContent(alreadyUploaded.getId(), caller))
+        .isInstanceOf(ServiceUnavailableException.class)
+        .hasMessage(UploadStoreUnavailableException.MESSAGE);
+
+    verify(documentIngestService, never()).processUploadedFileAsync(any(), any(), any());
+    verify(documentRepository, never()).save(any(Document.class));
+    assertNoFilesWereStored();
+  }
+
+  /** An UPLOAD row whose locator lies in this library's own storage area. */
+  private Document rowOfAnUploadedOriginal(String fileName) {
+    Document document =
+        new Document(
+            fileName,
+            storageDir
+                .resolve(organizationId.toString())
+                .resolve(libraryId.toString())
+                .resolve(fileName)
+                .toString(),
+            "application/pdf",
+            9L,
+            DocumentSourceType.UPLOAD);
+    document.setLibraryId(libraryId);
+    document.setOrganizationId(organizationId);
+    return document;
+  }
+
+  /**
+   * The upload storage while the store behind it cannot be reached: accepting still writes the
+   * working file - that happens before the store is ever talked to (ADR-0030, Entscheidung 2) - and
+   * everything that does talk to it reports the one temporary condition.
+   */
+  private record UnreachableUploadStore(UploadedOriginalStore delegate)
+      implements UploadedOriginalStore {
+
+    @Override
+    public AcceptedUpload accept(
+        UUID organizationId, UUID libraryId, String extension, InputStream bytes)
+        throws IOException {
+      AcceptedUpload accepted = delegate.accept(organizationId, libraryId, extension, bytes);
+      return new AcceptedUpload() {
+
+        @Override
+        public Path workingFile() {
+          return accepted.workingFile();
+        }
+
+        @Override
+        public UploadedOriginalRef store() {
+          throw new UploadStoreUnavailableException();
+        }
+
+        @Override
+        public void release() {
+          accepted.release();
+        }
+
+        @Override
+        public void discard() {
+          accepted.discard();
+        }
+      };
+    }
+
+    @Override
+    public Optional<DocumentContent> openForDownload(
+        UploadedOriginalRef ref, String fileName, String declaredContentType) {
+      throw new UploadStoreUnavailableException();
+    }
+
+    @Override
+    public <T> Optional<T> withLocalFile(
+        UploadedOriginalRef ref, java.util.function.Function<Path, T> action) {
+      throw new UploadStoreUnavailableException();
+    }
+
+    @Override
+    public void delete(UploadedOriginalRef ref) {
+      throw new UploadStoreUnavailableException();
+    }
+
+    @Override
+    public boolean belongsToLibrary(UploadedOriginalRef ref) {
+      throw new UploadStoreUnavailableException();
+    }
+
+    @Override
+    public void forEachStoredOriginal(
+        UUID organizationId, UUID libraryId, java.util.function.Consumer<StoredOriginal> visitor) {
+      throw new UploadStoreUnavailableException();
+    }
+
+    @Override
+    public void forEachStoredLibrary(
+        UUID organizationId, java.util.function.Consumer<UUID> visitor) {
+      throw new UploadStoreUnavailableException();
+    }
+  }
+
+  @Test
   void loadContentNeverReachesTheObjectStoreWithoutViewerOnTheLibrary() {
     when(accessService.requireRole(any(), eq(currentUserId), eq(false), eq(AssetRole.VIEWER)))
         .thenThrow(new NotFoundException("Bibliothek nicht gefunden"));
