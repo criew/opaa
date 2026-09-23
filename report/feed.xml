@@ -5,8 +5,24 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-09-22T05:14:30Z</updated>
+  <updated>2026-09-23T04:58:51Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Dienstag, 22. September 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-09-22.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-09-22.html</id>
+    <updated>2026-09-23T04:58:51Z</updated>
+    <summary type="text">feat: Gruppen, Rollen und Berechtigungen: Subjekte, Herkunft und Folgen für Freigaben:
+— feat(group): Mitgliederliste für Rechtevergebende — wer einer Gruppe ein Recht einräumt, sieht ihre Mitglieder (mit den vier Begrenzungen aus ADR-0036)
+— feat(auth): Geltungsbereich der Vollmacht „Sicht als“ auf jede Anbietergruppe erweitern — Mindestgruppengröße bei jeder Nutzung prüfen
+— feat(group): Ansprechstellen an Anbietergruppen — Schutzkennzeichen ohne Pflegerechte setzen und lösen
+— docs(handbuch): Kapitel Bibliotheken und Berechtigungen
+Sonstiges:
+— fix(ci): Renovate-CustomManager für Container-Image-Pins in Testfixtures feuert nicht
+— fix(audit): Löschlauf des Nachweisprotokolls — Verkürzung der Frist wird nie wirksam, Verlängerung setzt den Fortschritt zurück
+— fix(diagnostic): PUT der Diagnosekontext-Aufbewahrungsfrist antwortet mit dem alten Wert
+— fix(library): Systemverwaltung lädt Originale ohne Grant und ohne Protokolleintrag herunter</summary>
+  </entry>
   <entry>
     <title>Tagesreport Montag, 21. September 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-09-21.html"/>
