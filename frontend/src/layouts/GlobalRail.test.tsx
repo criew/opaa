@@ -56,6 +56,15 @@ describe('GlobalRail', () => {
     expect(screen.getByRole('link', { name: 'Wissen' })).toHaveAttribute('href', '/libraries')
   })
 
+  it('lists prompt libraries as an asset type of their own, after knowledge', () => {
+    renderRailAt('/prompts/prompt-library-1/settings')
+
+    const labels = screen.getAllByRole('link').map((link) => link.textContent)
+    expect(labels.indexOf('Prompts')).toBe(labels.indexOf('Wissen') + 1)
+    expect(screen.getByRole('link', { name: 'Prompts' })).toHaveAttribute('href', '/prompts')
+    expect(screen.getByRole('link', { name: 'Prompts' })).toHaveAttribute('aria-current', 'true')
+  })
+
   it('shows the brand emblem without the product name - the rail has no room for text', () => {
     renderRailAt('/spaces')
 

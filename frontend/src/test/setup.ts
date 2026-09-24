@@ -17,7 +17,13 @@ import {
 // times out. Verified by adding a bare `import '../services/api'` here and watching
 // SpaceCreatePage.test.tsx go red on its own. Store state that has to be reset between tests
 // belongs in that test file's own beforeEach.
-import { resetMockAuthConfig, resetMockBranding, resetMockOidcProviders } from '../mocks/fixtures'
+import {
+  resetMockAuthConfig,
+  resetMockBranding,
+  resetMockOidcProviders,
+  resetMockSpaceAssetAssociations,
+} from '../mocks/fixtures'
+import { resetMockPromptLibraries } from '../mocks/promptLibraryFixtures'
 import { resetMockMailSettings, resetMockMailTemplates } from '../mocks/mailFixtures'
 import { resetMockLocalAuthSettings, resetMockLocalUsers } from '../mocks/localUserFixtures'
 import { resetMockSelfServiceTokens } from '../mocks/localAuthFixtures'
@@ -64,6 +70,9 @@ afterEach(() => {
   // veränderlich, damit ein Speichern, ein Anlegen oder eine Sperre im nächsten GET sichtbar ist.
   resetMockExternalAccessSettings()
   resetMockExternalAccessTokens()
+  // Prompt libraries, their prompts and the space associations are mutable in the mocks as well.
+  resetMockPromptLibraries()
+  resetMockSpaceAssetAssociations()
   clearCookies()
 })
 afterAll(() => server.close())

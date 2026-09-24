@@ -1703,7 +1703,7 @@ export const mockLibraries: LibraryListResponse[] = [
 // with exactly one association, readable by the mock user - the "Gewerbeamt" scenario from #782's
 // bug report (one associated, several more readable overall via mockLibraries). Every other space id
 // falls back to hasAssociations: false in the handler below, i.e. uncurated.
-export const mockSpaceAssetAssociations: Record<string, SpaceAssetAssociationListResponse> = {
+const INITIAL_SPACE_ASSET_ASSOCIATIONS: Record<string, SpaceAssetAssociationListResponse> = {
   'space-phoenix': {
     hasAssociations: true,
     narrowsSearch: true,
@@ -1718,6 +1718,15 @@ export const mockSpaceAssetAssociations: Record<string, SpaceAssetAssociationLis
       },
     ],
   },
+}
+
+// Mutable: associating and detaching in the mocks write here; the test setup resets it.
+export const mockSpaceAssetAssociations: Record<string, SpaceAssetAssociationListResponse> =
+  structuredClone(INITIAL_SPACE_ASSET_ASSOCIATIONS)
+
+export function resetMockSpaceAssetAssociations() {
+  for (const key of Object.keys(mockSpaceAssetAssociations)) delete mockSpaceAssetAssociations[key]
+  Object.assign(mockSpaceAssetAssociations, structuredClone(INITIAL_SPACE_ASSET_ASSOCIATIONS))
 }
 
 export const mockLibraryDetails: Record<string, LibraryResponse> = {

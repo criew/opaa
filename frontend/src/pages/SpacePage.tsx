@@ -18,7 +18,8 @@ import ChatList from '../components/chat/ChatList'
 import AccessDerivation from '../components/permissions/AccessDerivation'
 import { useAuthStore } from '../stores/authStore'
 import { useSpaceStore } from '../stores/spaceStore'
-import { spaceRoleLabel } from '../utils/labels'
+import { assetTypeTitle, spaceRoleLabel } from '../utils/labels'
+import MetaBadge from '../components/MetaBadge'
 import PageHeading from '../components/a11y/PageHeading'
 import SuccessionStateNote from '../components/succession/SuccessionStateNote'
 
@@ -46,6 +47,7 @@ export default function SpacePage() {
   const isOwner = Boolean(currentUserId) && space?.ownerId === currentUserId
   const assetAssociations = useSpaceStore((s) => s.assetAssociations)
   const hasAssetAssociations = useSpaceStore((s) => s.hasAssetAssociations)
+  const narrowsSearch = useSpaceStore((s) => s.assetAssociationsNarrowSearch)
   const isLoadingAssetAssociations = useSpaceStore((s) => s.isLoadingAssetAssociations)
   const loadAssetAssociations = useSpaceStore((s) => s.loadAssetAssociations)
 
@@ -286,15 +288,31 @@ export default function SpacePage() {
               </Typography>
             ) : (
               <Stack spacing={1}>
+                {/* Mixed types in one list: each entry names its type, so a prompt library
+                    does not read as a knowledge source the search would use. */}
                 {assetAssociations.map((association) => (
                   <Box
                     key={association.assetId}
-                    sx={{ display: 'flex', justifyContent: 'space-between' }}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 1.5,
+                    }}
                   >
                     <Typography>{association.name}</Typography>
+                    <MetaBadge>{assetTypeTitle(association.assetType)}</MetaBadge>
                   </Box>
                 ))}
               </Stack>
+            )}
+            {!isLoadingAssetAssociations && hasAssetAssociations && !narrowsSearch && (
+              // Only a knowledge library narrows the search; a space with other types alone keeps
+              // the fallback to every readable library.
+              <Typography sx={{ color: 'text.secondary', fontSize: 13, mt: 1.5 }}>
+                Diesem Space ist keine Wissensbibliothek zugeordnet — die Suche greift auf alle für
+                Sie lesbaren Bibliotheken zurück.
+              </Typography>
             )}
           </AccordionDetails>
         </Accordion>

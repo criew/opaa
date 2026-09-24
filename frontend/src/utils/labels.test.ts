@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { capabilityMissingMessage, documentCountLabel } from './labels'
+import { assetRoleDescription, capabilityMissingMessage, documentCountLabel } from './labels'
 import type { Capability } from '../types/api'
 
 /**
@@ -51,5 +51,16 @@ describe('documentCountLabel (#1916)', () => {
     // Das Runden trägt nie über die nächste Größenordnung hinweg - sonst stünde hier „1.000 K".
     expect(documentCountLabel(999_999)).toBe('1 Mio.')
     expect(documentCountLabel(1_234_567)).toBe('1,2 Mio.')
+  })
+})
+
+describe('assetRoleDescription', () => {
+  it('describes a role in the words of the asset type', () => {
+    expect(assetRoleDescription('EDITOR', 'KNOWLEDGE_LIBRARY')).toBe(
+      'Darf zusätzlich Dokumente ändern, hochladen und entfernen.',
+    )
+    expect(assetRoleDescription('EDITOR', 'PROMPT_LIBRARY')).toBe(
+      'Darf zusätzlich Prompts anlegen, ändern und löschen.',
+    )
   })
 })

@@ -72,6 +72,7 @@ Drei Eigenschaften prägen alles Weitere:
 | Authentifizierung | Entwicklungsmodus, OIDC mit einem oder mehreren Anbietern, lokale Konten mit Passwort | [Deployment](deployment.md), Abschnitt „Authentifizierung" |
 | Konten verwalten | Lokale Konten anlegen, einladen, sperren, zurücksetzen, befristen; Rollen und Anlegerechte; Selbstregistrierung | [Benutzerverwaltung](benutzerverwaltung.md) |
 | Rechte vergeben und nachweisen | Rollen an Bibliotheken und Räumen, Gruppen als Empfänger, Anlegerechte, Vollmachten, Herleitung „warum sehe ich das", Rechtehistorie und Stichtagsauskunft, Übertragung, „Nachfolge offen" | [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md) |
+| Prompt-Bibliotheken | Wiederkehrende Formulierungshilfen als benannte Prompts mit Variablen anlegen, pflegen, an Personen und Gruppen freigeben und Räumen zuordnen | [Prompt-Bibliotheken](prompt-bibliotheken.md) |
 | Fremdzugänge | Freigegebene Bibliotheken für fremde KI-Werkzeuge erreichbar machen: Schalter, Freigabe je Bibliothek, persönliche Zugangstokens, MCP-Server, Kontingent und Abflussalarm | [Fremdzugänge](fremdzugaenge.md) |
 | E-Mail-Versand | SMTP als Verwaltungseinstellung, öffentliche Basis-URL aus der Umgebung, zwölf überschreibbare Vorlagen, Testversand | [Deployment](deployment.md), Abschnitt „E-Mail-Versand (SMTP)" |
 | Installation und Update | Docker Compose, Umgebungsvariablen, Härtung, Update-Verhalten des Index | [Deployment](deployment.md) |
@@ -85,6 +86,7 @@ Drei Eigenschaften prägen alles Weitere:
 | [Deployment](deployment.md) | Installation aus Images, Update-Ablauf und Folgen für den Index, alle Umgebungsvariablen, Härtung, Modellanbieter, Authentifizierung samt Erststart und Notfallprozedur, E-Mail-Versand, Originalablage der Uploads, Fehlerbehebung |
 | [Benutzerverwaltung](benutzerverwaltung.md) | Lokale Konten: anlegen und einladen, Link-Übergabe ohne Mailserver, Sperren und Entsperren, Zurücksetzen, Anlagegrund und Ablaufdatum, Auflagenprüfung, Rollen und Anlegerechte, Löschen gegen Sperren, Übergabe an einen Identitätsanbieter, Selbstregistrierung, Selbstbedienung, Regeln und Fristen |
 | [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md) | Das Berechtigungsmodell an einer Stelle: Subjekte, die Begriffe Rolle / Anlegerecht / Vollmacht / Systemrolle, Rollen an Bibliothek und Raum, Verteilungsstufe und Auffindbarkeit, Freigabe-Obergrenze für Konnektorbibliotheken, Gruppenherkunft und -mechanismus, interne Gruppen und ihre Verantwortlichen, was wer sieht, die Herleitung „warum sehe ich das", Anlegerechte, Systemrollen und Vollmachten, Rechtehistorie und Stichtagsauskunft, Kontosperre aus dem Verzeichnis, Übertragung, „Nachfolge offen", Diagnose im Gruppenkontext, Konfiguration |
+| [Prompt-Bibliotheken](prompt-bibliotheken.md) | Prompt-Bibliothek und Prompt, Befehl und Variablen, Rollen, Anlegen mit Gruppeneigentum, Detailseite mit dem gemeinsamen Freigabeabschnitt, Zuordnung zu Räumen, Prompts pflegen mit Prüfung und Vorschau, „Nachfolge offen", Protokoll |
 | [Indexierung](indexierung.md) | Aufnahmestrecke: Bibliothek, Quelle, Lauf, Dokument; Zeitplan; Dokumentstrecke Schritt für Schritt; Anhänge; Löscherkennung; Protokoll; Pipeline-Versionen und Nachzug; Formatübersicht |
 | [Suche](suche.md) | Abfragestrecke: Suchbereich, Filter, Teilfragen, zwei Suchpfade, Fusion, Reranking, Vervollständigung, Antwort, Belegprüfung, Diagnose, Aufbewahrung der Rechtehistorie, Konfiguration |
 | [Metadaten](metadaten.md) | Kernfelder, Format- und Bibliotheksfelder, Vokabular, Ermittlung, Bestandslauf, Pflege, Wirkung in Filter, Kontextpräfix und Beleg |
@@ -119,6 +121,7 @@ Diese Kapitel sind im Epic #1282 vorgesehen; bis dahin steht der jeweilige Inhal
 | Filter oder Beleg zeigen falsche Werte | [Metadaten](metadaten.md) Abschnitte 4, 7 und 8 |
 | Update steht an | [Deployment](deployment.md) „Aktualisierung" und „Was ein Update mit dem Index macht" → [Indexierung](indexierung.md) Abschnitt 9 (Nachzug) |
 | Reranking einschalten | [Deployment](deployment.md) „Reranking einschalten" → [Suche](suche.md) Stufe 8 |
+| Formulierungshilfen für ein Referat bereitstellen | [Prompt-Bibliotheken](prompt-bibliotheken.md) Abschnitt 4 (anlegen mit Gruppeneigentum, freigeben, einem Raum zuordnen) → Abschnitt 5 (Prompts pflegen) → [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md) Abschnitte 6 bis 8 (Gruppen) |
 | Ein fremdes KI-Werkzeug anschließen | [Fremdzugänge](fremdzugaenge.md) Abschnitte 2 bis 5 (einschalten, freigeben, Token) → Abschnitt 9 (Einrichtung im Client) → bei Störungen Abschnitt 13 |
 | Originalablage wählen, sichern oder umstellen | [Deployment](deployment.md) „Originalablage" → Variablenliste desselben Kapitels |
 
@@ -129,6 +132,9 @@ Begriffe, die in allen Kapiteln in genau dieser Bedeutung verwendet werden.
 | Begriff | Bedeutung |
 |---|---|
 | **Wissensbibliothek** (Bibliothek) | Verwaltungseinheit für Dokumente: gehört zu einer Organisation, trägt Berechtigungen und genau eine Quelle |
+| **Prompt-Bibliothek** | Verwaltungseinheit für Prompts: gehört zu einer Organisation, trägt Berechtigungen, Verteilungsstufe und Auffindbarkeit wie eine Wissensbibliothek, bindet aber kein Wissen und verengt keinen Suchbereich |
+| **Prompt** | Eine benannte, wiederverwendbare Anweisung in genau einer Prompt-Bibliothek, mit Titel, Befehl (`/name`), Text und Variablen |
+| **Variable** | Eine Stelle im Text eines Prompts, geschrieben als `{{name}}`, die beim Einsetzen gefüllt wird; `{{CURRENT_DATE}}` und `{{USER_NAME}}` füllt OPAA selbst |
 | **Quelle** | Woher eine Bibliothek ihre Dokumente bezieht: Upload oder ein Quellentyp mit Konnektor (Dateisystem, Webverzeichnis, Feed, Confluence, S3) |
 | **Konnektor** | Der Teil der Indexierung, der die Eigenheiten eines Quellentyps kennt: Aufzählen, Abrufen, Betriebsarten |
 | **Indexierungslauf** (Lauf) | Ein Durchgang über die Quelle einer Bibliothek mit Status, Zählern und Protokoll |

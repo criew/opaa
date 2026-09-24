@@ -12,16 +12,18 @@ import MetaBadge from '../components/MetaBadge'
 import SpaceGeneralSection from '../components/space/SpaceGeneralSection'
 import SpaceKnowledgeSection from '../components/space/SpaceKnowledgeSection'
 import SpaceMembersSection from '../components/space/SpaceMembersSection'
+import SpacePromptsSection from '../components/space/SpacePromptsSection'
 import { SPACE_SETTINGS_TABS, spaceSettingsRoute, type SpaceSettingsTab } from '../routes'
 
 /**
- * Die Reiter in der Reihenfolge der Leiste. Ein weiterer Asset-Typ („Prompts") ist eine weitere
- * Zeile hier, ein weiterer Wert in {@link SPACE_SETTINGS_TABS} und ein weiterer Zweig unten.
+ * Die Reiter in der Reihenfolge der Leiste. Ein weiterer Asset-Typ ist eine weitere Zeile hier,
+ * ein weiterer Wert in {@link SPACE_SETTINGS_TABS} und ein weiterer Zweig unten.
  */
 const tabs: Array<{ value: SpaceSettingsTab; label: string }> = [
   { value: 'general', label: 'Stammdaten' },
   { value: 'members', label: 'Mitglieder' },
   { value: 'knowledge', label: 'Wissen' },
+  { value: 'prompts', label: 'Prompts' },
 ]
 
 function isSpaceSettingsTab(value: string | undefined): value is SpaceSettingsTab {
@@ -32,10 +34,10 @@ function canManageMembers(role: SpaceRole | undefined): boolean {
   return role === 'ADMIN'
 }
 
-// #203: a CURATOR may associate and detach libraries, one level below ADMIN's member management -
+// #203: a CURATOR may associate and detach assets, one level below ADMIN's member management -
 // docs/features/spaces-and-assets.md#space-rollen ("CURATOR: zusätzlich Assets assoziieren und
 // lösen").
-function canManageLibraries(role: SpaceRole | undefined, isOwner: boolean): boolean {
+function canManageAssets(role: SpaceRole | undefined, isOwner: boolean): boolean {
   return role === 'CURATOR' || role === 'ADMIN' || isOwner
 }
 
@@ -135,7 +137,14 @@ export default function SpaceSettingsPage() {
                 return (
                   <SpaceKnowledgeSection
                     spaceId={spaceId}
-                    canManage={canManageLibraries(space.userRole, isOwner)}
+                    canManage={canManageAssets(space.userRole, isOwner)}
+                  />
+                )
+              case 'prompts':
+                return (
+                  <SpacePromptsSection
+                    spaceId={spaceId}
+                    canManage={canManageAssets(space.userRole, isOwner)}
                   />
                 )
               // Jeder Reiter hat seinen eigenen Zweig: Ein Wert in SPACE_SETTINGS_TABS ohne Zweig

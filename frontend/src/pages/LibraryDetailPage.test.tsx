@@ -350,7 +350,7 @@ describe('LibraryDetailPage', () => {
 
     const user = userEvent.setup()
     await user.click(await screen.findByRole('tab', { name: 'Verwaltung' }))
-    expect(await screen.findByRole('button', { name: /speichern/i })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /^speichern$/i })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /bibliothek löschen/i })).not.toBeInTheDocument()
   })
 
@@ -378,15 +378,15 @@ describe('LibraryDetailPage', () => {
 
     const user = userEvent.setup()
     await user.click(await screen.findByRole('tab', { name: 'Verwaltung' }))
-    expect(await screen.findByRole('button', { name: /speichern/i })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /^speichern$/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /bibliothek löschen/i })).toBeInTheDocument()
     expect(screen.getByText('administrativ')).toBeInTheDocument()
   })
 
-  // Two clear+type sequences plus a MUI Select interaction genuinely take longer than the
-  // default 5s under full-suite CPU contention (this mirrors the equivalent, previously
-  // passing test in the pre-#481 LibraryManagementPage.test.tsx).
-  it('saves changed name, description and visibility together', async () => {
+  // Two clear+type sequences genuinely take longer than the default 5s under full-suite CPU
+  // contention (this mirrors the equivalent, previously passing test in the pre-#481
+  // LibraryManagementPage.test.tsx).
+  it('saves changed name and description without touching the reach', async () => {
     setLibraryState(managerLibrary, detailsOf(managerLibrary))
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
     const user = userEvent.setup()
@@ -395,19 +395,41 @@ describe('LibraryDetailPage', () => {
     const nameField = await screen.findByLabelText(/name der bibliothek/i)
     await user.clear(nameField)
     await user.type(nameField, 'Rechtsquellen Soziales (neu)')
-    const descriptionField = screen.getByLabelText(/beschreibung/i)
+    const descriptionField = screen.getByLabelText(/^beschreibung$/i)
     await user.clear(descriptionField)
     await user.type(descriptionField, 'Aktualisierte Beschreibung')
-    await user.click(screen.getByRole('combobox', { name: /verteilungsstufe/i }))
-    await user.click(await screen.findByRole('option', { name: 'privat' }))
-    await user.click(screen.getByRole('button', { name: /speichern/i }))
+    await user.click(screen.getByRole('button', { name: /^speichern$/i }))
 
     await waitFor(() => {
       expect(mockUpdateLibrary).toHaveBeenCalledWith('library-team', {
         name: 'Rechtsquellen Soziales (neu)',
         description: 'Aktualisierte Beschreibung',
-        visibility: 'PRIVATE',
+        visibility: 'SHARED',
         listed: true,
+        sourceInsecureSsl: null,
+      } satisfies LibraryUpdateRequest)
+    })
+  }, 15000)
+
+  // Verteilungsstufe und Auffindbarkeit stehen im gemeinsamen Freigabeabschnitt und werden
+  // dort gespeichert - mit den gespeicherten Stammdaten, nicht mit einem Entwurf daneben.
+  it('saves distribution level and findability from the shared release section', async () => {
+    setLibraryState(managerLibrary, detailsOf(managerLibrary))
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByRole('tab', { name: 'Verwaltung' }))
+    await user.click(await screen.findByRole('combobox', { name: /verteilungsstufe/i }))
+    await user.click(await screen.findByRole('option', { name: 'privat' }))
+    await user.click(screen.getByLabelText('Im Katalog auffindbar'))
+    await user.click(screen.getByRole('button', { name: 'Freigabe speichern' }))
+
+    await waitFor(() => {
+      expect(mockUpdateLibrary).toHaveBeenCalledWith('library-team', {
+        name: 'Rechtsquellen Soziales',
+        description: 'SGB II, SGB XII',
+        visibility: 'PRIVATE',
+        listed: false,
         sourceInsecureSsl: null,
       } satisfies LibraryUpdateRequest)
     })
@@ -733,7 +755,10 @@ describe('LibraryDetailPage', () => {
       renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
       await user.click(await screen.findByRole('tab', { name: 'Verwaltung' }))
-      await user.click(await screen.findByRole('button', { name: /^speichern$/i }))
+      // Nur eine größere Reichweite läuft in die Sperre: Verteilungsstufe erweitern, dann speichern.
+      await user.click(await screen.findByRole('combobox', { name: /verteilungsstufe/i }))
+      await user.click(await screen.findByRole('option', { name: /organisationsweit/i }))
+      await user.click(screen.getByRole('button', { name: 'Freigabe speichern' }))
 
       expect(await screen.findByText(/Nachfolge offen/)).toBeInTheDocument()
       expect(screen.getByText(/Übernahme/)).toBeInTheDocument()
