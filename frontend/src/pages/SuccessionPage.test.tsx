@@ -48,6 +48,35 @@ describe('SuccessionPage', () => {
     expect(screen.getByText(/war Mitglied von Referat 50/)).toBeInTheDocument()
   })
 
+  it('links a prompt library to its own page', async () => {
+    const [template] = mockSuccessionEntries.OPEN_SUCCESSION
+    server.use(
+      http.get('/api/v1/admin/succession', () =>
+        HttpResponse.json({
+          entries: [
+            {
+              ...template,
+              assetType: 'PROMPT_LIBRARY',
+              objectId: 'prompt-library-1',
+              objectName: 'Formulierungshilfen',
+            },
+          ],
+          page: 0,
+          size: 50,
+          totalElements: 1,
+          totalPages: 1,
+        }),
+      ),
+    )
+    renderPage()
+
+    expect(await screen.findByText('Formulierungshilfen')).toHaveAttribute(
+      'href',
+      '/prompts/prompt-library-1',
+    )
+    expect(screen.getByText('Prompt-Bibliothek')).toBeInTheDocument()
+  })
+
   // Personalrat E1/Z7: keine Auswertungsachse Person - weder als Filterfeld noch als Sortierung.
   it('offers no filter or sort by previous owner or acting person', async () => {
     renderPage()

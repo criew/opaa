@@ -17,7 +17,7 @@ export const SETTINGS_ROUTE = '/settings'
  * und ein weiterer Eintrag in SpaceSettingsPage; die Reihenfolge ist die der Reiterleiste, der
  * erste Wert das Ziel eines Verweises ohne eigenen Reiter.
  */
-export const SPACE_SETTINGS_TABS = ['general', 'members', 'knowledge'] as const
+export const SPACE_SETTINGS_TABS = ['general', 'members', 'knowledge', 'prompts'] as const
 export type SpaceSettingsTab = (typeof SPACE_SETTINGS_TABS)[number]
 
 export function spaceSettingsRoute(
@@ -26,5 +26,18 @@ export function spaceSettingsRoute(
 ): string {
   return `/spaces/${spaceId}/settings/${tab}`
 }
+/** The areas of a prompt library's detail page; the first one is where `/prompts/:id` lands. */
+export const PROMPT_LIBRARY_TABS = ['prompts', 'settings'] as const
+export type PromptLibraryTab = (typeof PROMPT_LIBRARY_TABS)[number]
+
+export function promptLibraryRoute(
+  promptLibraryId: string,
+  tab: PromptLibraryTab = PROMPT_LIBRARY_TABS[0],
+): string {
+  return tab === PROMPT_LIBRARY_TABS[0]
+    ? `/prompts/${promptLibraryId}`
+    : `/prompts/${promptLibraryId}/${tab}`
+}
+
 /** Where a sign-in lands when it carries no target of its own. */
 export const AFTER_SIGN_IN_ROUTE = '/chat'

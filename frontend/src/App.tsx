@@ -32,6 +32,9 @@ import UserManagementPage from './pages/UserManagementPage'
 import LibraryManagementPage from './pages/LibraryManagementPage'
 import LibraryCreatePage from './pages/LibraryCreatePage'
 import LibraryDetailPage from './pages/LibraryDetailPage'
+import PromptLibrariesPage from './pages/PromptLibrariesPage'
+import PromptLibraryCreatePage from './pages/PromptLibraryCreatePage'
+import PromptLibraryDetailPage from './pages/PromptLibraryDetailPage'
 import {
   FORGOT_PASSWORD_ROUTE,
   HANDOVER_ROUTE,
@@ -168,12 +171,16 @@ export default function App() {
                 <Route path="spaces" element={<SpacesOverviewPage />} />
                 <Route path="spaces/new" element={<SpaceCreatePage />} />
               </Route>
-              {/* The library catalog is a global area too (#789, Schlussnotiz von
+              {/* Every asset type's pages are a global area too (#789, Schlussnotiz von
                   Mockup-Abschnitt 2): bare global frame, no secondary column. */}
               <Route element={<GlobalAreaLayout />}>
                 <Route path="libraries" element={<LibraryManagementPage />} />
                 <Route path="libraries/new" element={<LibraryCreatePage />} />
                 <Route path="libraries/:libraryId" element={<LibraryDetailPage />} />
+                <Route path="prompts" element={<PromptLibrariesPage />} />
+                <Route path="prompts/new" element={<PromptLibraryCreatePage />} />
+                <Route path="prompts/:promptLibraryId" element={<PromptLibraryDetailPage />} />
+                <Route path="prompts/:promptLibraryId/:tab" element={<PromptLibraryDetailPage />} />
               </Route>
               {/* Global areas render inside the frame from mockup 2b (#787): no space
                   column, a light secondary column with the area navigation instead. */}

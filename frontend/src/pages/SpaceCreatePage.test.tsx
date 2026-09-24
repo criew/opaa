@@ -140,6 +140,27 @@ describe('SpaceCreatePage (#594, Mockup 1b)', () => {
     expect(await screen.findByRole('option', { name: /Alice/ })).toBeInTheDocument()
   })
 
+  // The space exists once createNewSpace resolved: a refused member must not leave the wizard
+  // open with an active "Space anlegen", which would create a second space.
+  it('leaves the wizard when a noted member cannot be added, and names the member', async () => {
+    mockAddMember.mockRejectedValueOnce(new Error('abgelehnt'))
+    const user = userEvent.setup()
+    renderWithProviders(<SpaceCreatePage />, { withRouter: true })
+
+    await user.type(screen.getByLabelText(/Name/), 'Widerspruchsstelle')
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    await user.type(screen.getByLabelText('Benutzer'), 'al')
+    await user.click(await screen.findByRole('option', { name: /Alice/ }))
+    await user.click(screen.getByRole('button', { name: 'Vormerken' }))
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    await user.click(screen.getByRole('button', { name: 'Space anlegen' }))
+
+    expect(mockCreateNewSpace).toHaveBeenCalledTimes(1)
+    expect(mockNavigate).toHaveBeenCalledWith('/spaces/space-neu')
+    expect(await screen.findByText(/nicht hinzugefügt werden: Alice/)).toBeInTheDocument()
+  }, 15000)
+
   it('asks before cancelling once something was entered', async () => {
     const user = userEvent.setup()
     renderWithProviders(<SpaceCreatePage />, { withRouter: true })

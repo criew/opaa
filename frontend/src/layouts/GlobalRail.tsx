@@ -14,6 +14,7 @@ import LogoutIcon from '@mui/icons-material/Logout'
 import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined'
 import SettingsIcon from '@mui/icons-material/Settings'
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined'
+import TextSnippetOutlinedIcon from '@mui/icons-material/TextSnippetOutlined'
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router'
 import AboutDialog from './AboutDialog'
 import BrandMark from '../components/BrandMark'
@@ -48,6 +49,12 @@ const ASSET_DESTINATIONS: RailDestination[] = [
     to: '/libraries',
     activePrefixes: ['/libraries'],
     icon: MenuBookOutlinedIcon,
+  },
+  {
+    label: 'Prompts',
+    to: '/prompts',
+    activePrefixes: ['/prompts'],
+    icon: TextSnippetOutlinedIcon,
   },
 ]
 
@@ -85,9 +92,8 @@ export default function GlobalRail() {
       activePrefixes: ['/spaces', '/chat'],
       icon: GridViewOutlinedIcon,
     },
-    // Je Asset-Typ ein eigener Punkt (#1915): „Wissen" führt auf die eigenen Wissens-
-    // bibliotheken; weitere Typen (Prompts, später Agenten) reihen sich hier als weitere
-    // Einträge ein. Der organisationsweite Katalog ist davon getrennt.
+    // Je Asset-Typ ein eigener Punkt (#1915): „Wissen" und „Prompts" führen auf die lesbaren
+    // Bestände ihres Typs. Der organisationsweite Katalog ist davon getrennt.
     ...ASSET_DESTINATIONS,
     ...(user?.systemRole === 'SYSTEM_ADMIN'
       ? [

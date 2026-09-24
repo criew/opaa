@@ -85,7 +85,12 @@ OPAA eine **leere** Gruppe — eine Freigabe an sie erreicht niemanden.
 ## 4. Rollen an einer Wissensbibliothek
 
 Die Bibliotheken, die eine Person lesen darf, stehen in der Hauptnavigation unter **„Wissen"**. Jede
-Art von Bestand hat dort einen eigenen Punkt; der Menüpunkt und die Seite dahinter heißen gleich.
+Art von Bestand hat dort einen eigenen Punkt; der Menüpunkt und die Seite dahinter heißen gleich —
+die [Prompt-Bibliotheken](prompt-bibliotheken.md) stehen unter **„Prompts"**. Rollen, Verteilungsstufe,
+Auffindbarkeit, Herleitung und „Nachfolge offen" gelten für beide Arten gleich; im Reiter
+„Verwaltung" steht dafür bei beiden derselbe Abschnitt **„Freigabe"** mit Verteilungsstufe,
+Auffindbarkeit, „Rechte verwalten", den Räumen, in denen der Bestand bereitsteht, und darunter
+„Warum sehe ich das?".
 
 | Rolle | Darf |
 |---|---|
@@ -226,19 +231,20 @@ Mitglieder, im Verzeichnis sichtbar mit Beitritt auf Antrag, oder im Verzeichnis
 Selbstbeitritt.
 
 **In der Oberfläche liegt all das auf einer Seite je Raum:** dem Zahnrad „Einstellungen" am Fuß der
-Seitenleiste. Es sehen nur Administratoren und Kuratoren des Raums. Die Seite hat drei Reiter:
+Seitenleiste. Es sehen nur Administratoren und Kuratoren des Raums. Die Seite hat vier Reiter:
 
 | Reiter | Inhalt |
 |---|---|
 | **Stammdaten** | Name, Beschreibung, Sichtbarkeit — und am Ende der abgesetzte **Gefahrenbereich** mit „Space archivieren" und „Space löschen" |
 | **Mitglieder** | Die Mitgliederliste mit Rollen, das Aufnehmen von Personen und Gruppen, die Übertragung der Verantwortung und die Herleitung je Zeile |
-| **Wissen** | Die dem Raum zugeordneten Bibliotheken; Zuordnen und Lösen ab der Kuratorenrolle |
+| **Wissen** | Die dem Raum zugeordneten Wissensbibliotheken; Zuordnen und Lösen ab der Kuratorenrolle |
+| **Prompts** | Die dem Raum zugeordneten [Prompt-Bibliotheken](prompt-bibliotheken.md); Zuordnen und Lösen ab der Kuratorenrolle |
 
 **Die ersten beiden Reiter gehören den Administratoren.** Ein Kurator öffnet dieselbe Seite, sieht
 die Stammdaten aber nur lesend, und im Reiter „Mitglieder" steht für ihn der Hinweis, dass die
-Liste seiner Rolle nicht offensteht — seine Arbeit liegt im Reiter „Wissen". Den Gefahrenbereich
-sieht nur der Eigentümer, und nicht im eigenen Standard-Raum: Der lässt sich weder archivieren noch
-löschen.
+Liste seiner Rolle nicht offensteht — seine Arbeit liegt in den Reitern „Wissen" und „Prompts". Den
+Gefahrenbereich sieht nur der Eigentümer, und nicht im eigenen Standard-Raum: Der lässt sich weder
+archivieren noch löschen.
 
 ### Die Space-Übersicht
 
@@ -729,10 +735,10 @@ und indexieren.
 **Jedes betroffene Objekt führt Zustand und Zuständigkeit mit** — „Nachfolge offen — zuständig: die
 Systemverwaltung" —, und zwar für jeden, der das Objekt sehen darf: bewusst ohne Datum, ohne den
 bisherigen Eigentümer und ohne Grund, dazu der Satz, dass das Objekt nutzbar bleibt und nichts
-gelöscht wird. Zu sehen ist die Kennzeichnung in der **Bibliotheksübersicht** und in der
-**Detailansicht** einer Bibliothek sowie in der **Space-Übersicht** und am **Space** selbst. Das
-Datum steht allein in der Betriebsliste. **Suchtreffer und Quellenverweise tragen den Hinweis
-nicht:** Der Zustand betrifft die Zuständigkeit, nicht die Richtigkeit des Inhalts, und eine
+gelöscht wird. Zu sehen ist die Kennzeichnung in der **Übersicht** und in der **Detailansicht**
+einer Bibliothek — einer Wissens- wie einer Prompt-Bibliothek — sowie in der **Space-Übersicht**
+und am **Space** selbst. Das Datum steht allein in der Betriebsliste. **Suchtreffer und
+Quellenverweise tragen den Hinweis nicht:** Der Zustand betrifft die Zuständigkeit, nicht die Richtigkeit des Inhalts, und eine
 Kennzeichnung dort machte jede Antwort zu einer Zustandsauswertung.
 
 **Die Betriebsliste der Systemverwaltung** steht unter **Administration → Lebenszyklus** und **hat

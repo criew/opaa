@@ -256,13 +256,13 @@ Ein Prompt kann Stellen offenlassen, die beim Einsetzen gefüllt werden: `Entwir
 - **Systemvariablen** `{{CURRENT_DATE}}` und `{{USER_NAME}}` werden beim Einsetzen aufgelöst — das Datum des Tages, der Name der einsetzenden Person. Sie werden in jeder Schreibweise erkannt (`{{current_date}}`, die Schreibweise von LibreChat) und in Großbuchstaben gespeichert. Sie werden nicht definiert; eine Definition dieses Namens, gleich in welcher Schreibweise, wird mit dem Hinweis abgelehnt, dass die Systemvariable ohne Definition im Text stehen darf.
 - **Text und Definitionen müssen in beide Richtungen übereinstimmen.** Der Server lehnt einen Platzhalter ohne Definition ebenso ab wie eine Definition, die der Text nicht verwendet. Geprüft wird der normalisierte Text, und ein Prompt wird nur gespeichert, wie diese Prüfung ihn angenommen hat; derselbe Text in anderer Schreibweise gilt nicht als Änderung.
 
-Das Einsetzen selbst — Formular für die Variablen, aufgelöster Text im Eingabefeld, Senden als eigene Handlung — ist Gegenstand von [#1903](https://github.com/criew/opaa/issues/1903); die Oberfläche zum Anlegen und Pflegen kommt mit [#1902](https://github.com/criew/opaa/issues/1902).
+Das Einsetzen selbst — Formular für die Variablen, aufgelöster Text im Eingabefeld, Senden als eigene Handlung — ist Gegenstand von [#1903](https://github.com/criew/opaa/issues/1903). Angelegt und gepflegt werden Prompts in der Oberfläche ([#1902](https://github.com/criew/opaa/issues/1902)): Der Editor leitet die Variablentabelle aus den Platzhaltern des Textes ab, prüft vor dem Senden dieselben Regeln wie der Server und zeigt eine Vorschau mit Beispielwerten.
 
 **Variablen sind keine Parameter.** Ein [Parameter](#anpassen-ohne-fork-parameter) stellt ein geteiltes Asset für Empfangende dauerhaft ein, ohne es zu verändern. Eine Variable dagegen gehört zu dem, was der Prompt ist, und wird bei jedem Einsetzen von der einsetzenden Person gefüllt.
 
 #### Rechte, Anlegen und Nachfolge
 
-Die Prompt-Bibliothek bringt keine eigene Rechtelogik mit. Rechte, Herleitung und Space-Assoziation laufen ausschließlich über die Endpunkte der Schale (`/api/v1/assets/PROMPT_LIBRARY/{assetId}/grants`, `…/access-derivation`, `…/spaces`); Freigabestufe, Auffindbarkeit, Eigentum und „Nachfolge offen" wirken wie bei jedem Asset.
+Die Prompt-Bibliothek bringt keine eigene Rechtelogik mit. Rechte, Herleitung und Space-Assoziation laufen ausschließlich über die Endpunkte der Schale (`/api/v1/assets/PROMPT_LIBRARY/{assetId}/grants`, `…/access-derivation`, `…/spaces`); Freigabestufe, Auffindbarkeit, Eigentum und „Nachfolge offen" wirken wie bei jedem Asset. Dasselbe gilt in der Oberfläche: Wissens- und Prompt-Bibliothek teilen den Freigabeabschnitt (`AssetDistributionSection` — Verteilungsstufe, Auffindbarkeit, Rechte, bereitgestellt in, Herleitung), den einen Rechtedialog samt Grant-Store und die Schritte des Anlage-Assistenten; Typeigenes wie die Freigabe-Obergrenze einer Konnektorbibliothek oder ihre Fremdzugangsfreigabe kommt als Einschub des Aufrufers hinzu ([#1902](https://github.com/criew/opaa/issues/1902)).
 
 | Rolle | an einer Prompt-Bibliothek |
 |---|---|
