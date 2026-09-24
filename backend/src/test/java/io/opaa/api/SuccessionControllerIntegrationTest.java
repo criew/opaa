@@ -154,9 +154,9 @@ class SuccessionControllerIntegrationTest {
         jdbcTemplate.queryForObject(
             "SELECT organization_id FROM users WHERE subject = 'dev-admin'", UUID.class);
     jdbcTemplate.update(
-        "INSERT INTO succession_cases (id, organization_id, kind, object_type, object_id,"
-            + " first_seen_at, last_seen_at, created_at) VALUES (?, ?, 'OPEN_SUCCESSION',"
-            + " 'KNOWLEDGE_LIBRARY', ?, now(), now(), now())",
+        "INSERT INTO succession_cases (id, organization_id, kind, object_type, asset_type,"
+            + " object_id, first_seen_at, last_seen_at, created_at) VALUES (?, ?,"
+            + " 'OPEN_SUCCESSION', 'ASSET', 'KNOWLEDGE_LIBRARY', ?, now(), now(), now())",
         id,
         organizationId,
         UUID.randomUUID());
