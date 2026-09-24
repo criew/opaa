@@ -13,7 +13,7 @@ import org.junit.jupiter.api.Test;
 
 /**
  * The dependency direction ADR-0036, Entscheidung 12 establishes, held by a test rather than by
- * discipline. Two rules:
+ * discipline:
  *
  * <ol>
  *   <li><b>{@code io.opaa.permission} depends on no business package.</b> What it needs from one it
@@ -38,6 +38,9 @@ import org.junit.jupiter.api.Test;
  *       and nothing in {@code io.opaa.library} names a space. Every other pair is forbidden in both
  *       directions - {@code library} &harr; {@code group} was a real cycle (12 class edges one way,
  *       4 the other) until this package took the permission model out of both.
+ *   <li><b>A second asset type stands beside the first, never on it.</b> {@code io.opaa.prompt}
+ *       builds on the shell and asks the permission model for roles and capabilities only; neither
+ *       it nor {@code io.opaa.library} knows the other (#1901).
  * </ol>
  *
  * <p>The scan is source-based; see {@link PackageDependencyScanner} for what that catches that a
@@ -54,6 +57,7 @@ class PermissionPackageBoundaryTest {
   private static final String AUDIT = "io.opaa.audit";
   private static final String SUCCESSION = "io.opaa.succession";
   private static final String ASSET = "io.opaa.asset";
+  private static final String PROMPT = "io.opaa.prompt";
 
   /**
    * Deliberately the subpackage, not {@code io.opaa.auth}: {@code
@@ -127,7 +131,30 @@ class PermissionPackageBoundaryTest {
           Map.entry(
               List.of(ASSET, SUCCESSION),
               "the shell contributes a SuccessionFindingSource and asks the guard, both declared"
-                  + " in io.opaa.permission"));
+                  + " in io.opaa.permission"),
+          Map.entry(
+              List.of(PROMPT, LIBRARY),
+              "two asset types stand side by side on the shell; what both need belongs to"
+                  + " io.opaa.asset"),
+          Map.entry(List.of(LIBRARY, PROMPT), "the other direction of the same rule"),
+          Map.entry(
+              List.of(ASSET, PROMPT),
+              "the shell serves every asset type and names none; a type declares itself through"
+                  + " an AssetTypeDefinition bean"),
+          Map.entry(
+              List.of(PERMISSION, PROMPT), "the permission model must not know an asset type"),
+          Map.entry(
+              List.of(PROMPT, SPACE),
+              "a prompt library is associated through the shell, and knows no space"),
+          Map.entry(
+              List.of(SPACE, PROMPT),
+              "a space associates assets through the shell; only the searched type is named"),
+          Map.entry(
+              List.of(PROMPT, GROUP),
+              "a prompt library reaches groups through the shell and the permission model"),
+          Map.entry(
+              List.of(PROMPT, SUCCESSION),
+              "the shell's succession source covers every type; the guard is asked by the shell"));
 
   private static List<Reference> references;
 
@@ -162,6 +189,17 @@ class PermissionPackageBoundaryTest {
     assertThat(references)
         .as("io.opaa.permission must be part of the scanned tree")
         .anyMatch(reference -> reference.fromPackage().equals(PERMISSION));
+  }
+
+  /** The second asset type stands on the shell - the edge the rules above leave it. */
+  @Test
+  void thePromptLibraryIsBuiltOnTheAssetShell() {
+    assertThat(references)
+        .as("io.opaa.prompt must reach io.opaa.asset")
+        .anyMatch(
+            reference ->
+                isWithin(reference.fromPackage(), PROMPT)
+                    && isWithin(reference.toPackage(), ASSET));
   }
 
   private static String reasonFor(Reference reference) {

@@ -1071,12 +1071,18 @@ class PermissionHistoryServiceIntegrationTest {
    * GroupEffectsService} (#1821) only counts: it answers "wo wirkt diese Gruppe" with figures per
    * group and writes nothing at all. {@code GroupMemberDisclosureAdapter} (#1880) reads a group and
    * one page of its active members for the person who granted it a right at an object; it writes
-   * nothing but its own audit entry for a system administrator's retrieval.
+   * nothing but its own audit entry for a system administrator's retrieval. {@code
+   * PromptLibraryService} (#1901) reads the formula to list prompt libraries; the grants, reach and
+   * history of a prompt library's creation, reach change and deletion it leaves to {@code
+   * AssetShellService}, covered above. {@code AssetOwnerNames} only reads the display names of
+   * owning groups; {@code KnowledgeLibraryService} reaches groups only through it and through
+   * {@code AssetGrantService}, and its write paths are covered above.
    */
   private static final Set<String> BEANS_REACHING_THE_RIGHTS_TABLES =
       Set.of(
           "AssetAccessService",
           "AssetAuthorization",
+          "AssetOwnerNames",
           "AssetShellService",
           "SpaceAccessPolicy",
           "SpaceAssetAssociationService",
@@ -1096,13 +1102,13 @@ class PermissionHistoryServiceIntegrationTest {
           "GroupStewardshipDirectoryAdapter",
           "GroupSubjectDirectoryAdapter",
           "GroupSuccessionSource",
-          "KnowledgeLibraryService",
           "LibraryAccessService",
           "AssetShellOwnershipDirectory",
           "AssetSuccessionSource",
           "LocalHandoverAccountService",
           "PermissionTransferService",
           "PointInTimeAccessService",
+          "PromptLibraryService",
           "ProviderGroupDirectoryAdapter",
           "TokenGroupSynchronizer");
 
@@ -1119,8 +1125,10 @@ class PermissionHistoryServiceIntegrationTest {
           // #1880: Wer ein Recht gibt, sieht, an wen - der Lesepfad nennt Mitglieder einer
           // Gruppe, die hier schon ein Recht haelt, und erteilt selbst keines.
           "AssetGrantService#listGroupMembers",
-          // The check a grant target has to pass - it refuses, it grants nothing itself.
+          // The checks a grant target and an owning group have to pass - they refuse, they grant
+          // nothing themselves.
           "AssetGrantService#requireGrantableGroup",
+          "AssetGrantService#requireOwnableGroup",
           "GroupService#createGroup",
           "GroupService#updateGroup",
           "GroupService#getGroup",

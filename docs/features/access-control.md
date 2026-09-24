@@ -157,6 +157,7 @@ Entscheidung 5, die damit ADR-0018, Entscheidung 6 samt Nachtrag ablöst.
 | `CREATE_LIBRARY` | eine Bibliothek für Uploads anlegen | Alle Konten |
 | `CREATE_CONNECTOR_LIBRARY` | eine Bibliothek mit Konnektor anlegen (Dateisystem, Webverzeichnis, Feed, Confluence, S3) | Alle Konten |
 | `CREATE_INTERNAL_GROUP` | eine interne Gruppe anlegen | niemanden |
+| `CREATE_PROMPT_LIBRARY` | eine [Prompt-Bibliothek](./spaces-and-assets.md#prompt-bibliothek) anlegen (#1901) | Alle Konten |
 
 > **`CREATE_INTERNAL_GROUP` wirkt seit #1814.** Wer sie hält, legt eine interne Gruppe an und wird
 > deren erster Verantwortlicher — ohne Systemrolle und ohne Ticket. Die Verwaltungsübersicht nennt
@@ -167,6 +168,9 @@ Entscheidung 5, die damit ADR-0018, Entscheidung 6 samt Nachtrag ablöst.
   Bibliotheken genau wie vorher an; interne Gruppen bleiben der Systemverwaltung vorbehalten,
   solange niemand `CREATE_INTERNAL_GROUP` hält. Wer einschränken will, entzieht „Alle Konten" und
   erteilt einer benannten Gruppe.
+- **`CREATE_PROMPT_LIBRARY` kam nach der Migration hinzu** (Changeset 087): Sie gilt ab ihrer
+  Einführung für alle Konten; die Stichtagsauskunft nennt für frühere Stichtage niemanden, weil es
+  das Recht vorher nicht gab. Ein Prompt bindet kein Wissen, deshalb ist die Vorgabe offen.
 - **`CREATE_CONNECTOR_LIBRARY` ist eine eigene Fähigkeit**, weil Konnektorbibliotheken Serverpfade und
   Zugangsdaten erreichen und eine Freigabe-Obergrenze tragen (#797) — der erste Kandidat, den ein Haus
   nach der Migration auf eine benannte Gruppe einschränkt.

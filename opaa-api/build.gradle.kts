@@ -135,6 +135,7 @@ val typeMappingsConfig = mapOf(
     "LocalAccountActivity" to "LocalAccountActivity",
     "MailDeliveryPath" to "MailDeliveryPath",
     "ExternalAccessTokenStatus" to "ExternalAccessTokenStatus",
+    "PromptVariableType" to "PromptVariableType",
 )
 
 tasks.withType<Test> {
@@ -234,6 +235,7 @@ tasks.named<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>("openAp
         "LocalAccountActivity" to "io.opaa.api.types.LocalAccountActivity",
         "MailDeliveryPath" to "io.opaa.api.types.MailDeliveryPath",
         "ExternalAccessTokenStatus" to "io.opaa.api.types.ExternalAccessTokenStatus",
+        "PromptVariableType" to "io.opaa.api.types.PromptVariableType",
     ))
 }
 

@@ -2,7 +2,6 @@ package io.opaa.library;
 
 import io.opaa.api.types.AssetRole;
 import io.opaa.asset.AssetAuthorization;
-import io.opaa.common.AccessDeniedException;
 import io.opaa.permission.AssetAccessService;
 import java.util.Collection;
 import java.util.List;
@@ -16,8 +15,9 @@ import org.springframework.stereotype.Component;
  * The library-shaped surface of the asset rights: every library endpoint asks here, and this class
  * answers from the asset shell - {@link AssetAccessService} for the formula (grants and the
  * organization-wide release), {@link AssetAuthorization} for administration, where a system
- * administrator counts as {@link AssetRole#OWNER}. The one rule of its own is {@link
- * #requireContentRead}: reading a library's content needs the formula, not the administration.
+ * administrator counts as {@link AssetRole#OWNER}. Reading a library's content ({@link
+ * #requireContentRead}) needs the formula, not the administration - the shell's rule for every
+ * type.
  *
  * <p>Two access paths, deliberately not unified: {@link #effectiveRole} is cached per library for
  * the CRUD hot path, {@link #readableLibraryIds} backs the search filter and is never cached - see
@@ -73,18 +73,13 @@ public class LibraryAccessService {
   }
 
   /**
-   * Requires the permission a library's <b>content</b> needs (#1828): {@link #requireRole} first,
-   * so a person the library does not reach keeps its {@code 404}, then {@link #readableLibraryIds},
-   * which knows no system-administration floor. A system admin without a grant therefore gets
-   * {@code 403} - administering a library is not reading it.
+   * Requires the permission a library's <b>content</b> needs (#1828), the shell's rule for every
+   * asset type ({@link AssetAuthorization#requireContentRole}): a person the library does not reach
+   * keeps its {@code 404}, a system admin without a grant gets {@code 403} - administering a
+   * library is not reading it.
    */
   public void requireContentRead(KnowledgeLibrary library, UUID userId, boolean systemAdmin) {
-    requireRole(library, userId, systemAdmin, AssetRole.VIEWER);
-    if (!readableLibraryIds(userId, library.getOrganizationId()).contains(library.getId())) {
-      throw new AccessDeniedException(
-          "Für diese Bibliothek liegt keine Leseberechtigung vor; Verwaltungsrechte genügen dafür"
-              + " nicht.");
-    }
+    authorization.requireContentRole(library, userId, systemAdmin, AssetRole.VIEWER);
   }
 
   /**
