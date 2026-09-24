@@ -94,6 +94,7 @@ import type {
   ConfluenceWebhookSecretResponse,
   S3EventsTokenResponse,
   BulkMetadataValueRequest,
+  BulkDocumentDeleteResponse,
   BulkMetadataValueResponse,
   DocumentMetadataFieldResponse,
   DocumentMetadataResponse,
@@ -1443,6 +1444,25 @@ export async function getDocumentContent(documentId: string): Promise<DocumentCo
 export async function deleteLibraryDocument(libraryId: string, documentId: string): Promise<void> {
   try {
     await client.delete(`/v1/libraries/${libraryId}/documents/${documentId}`)
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/**
+ * #1943: the chosen documents of an upload library in one call - the answer names every id that
+ * stayed and why, so a partial success can be reported instead of a bare failure.
+ */
+export async function bulkDeleteLibraryDocuments(
+  libraryId: string,
+  documentIds: string[],
+): Promise<BulkDocumentDeleteResponse> {
+  try {
+    const { data } = await client.post<BulkDocumentDeleteResponse>(
+      `/v1/libraries/${libraryId}/documents/bulk-delete`,
+      { documentIds },
+    )
+    return data
   } catch (err) {
     normalizeError(err)
   }

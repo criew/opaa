@@ -28,6 +28,23 @@ export interface LibrarySourceFieldValues {
 }
 
 /**
+ * The five generic fields alone - what the Pfad- and URL-Formulare edit (#1940). Confluence and S3
+ * carry their own value shapes ({@link ConfluenceSourceValues}, {@link S3SourceValues}).
+ */
+export type GenericSourceValues = Pick<
+  LibrarySourceFieldValues,
+  'sourcePath' | 'sourceUrl' | 'sourceProxy' | 'sourceCredentials' | 'sourceInsecureSsl'
+>
+
+export const EMPTY_GENERIC_SOURCE_VALUES: GenericSourceValues = {
+  sourcePath: '',
+  sourceUrl: '',
+  sourceProxy: '',
+  sourceCredentials: '',
+  sourceInsecureSsl: false,
+}
+
+/**
  * The source configuration fields shared by LibraryRequest and LibraryUpdateRequest: the five
  * generic ones plus the two Confluence-only ones (ADR-0023), which stay undefined for every other
  * source type.

@@ -2,6 +2,7 @@ package io.opaa.api;
 
 import io.opaa.api.dto.AssetReachResponse;
 import io.opaa.api.dto.ConfluenceSpaceRef;
+import io.opaa.api.dto.IndexingStatus;
 import io.opaa.api.dto.LibraryListResponse;
 import io.opaa.api.dto.LibraryRequest;
 import io.opaa.api.dto.LibraryResponse;
@@ -12,6 +13,7 @@ import io.opaa.api.dto.S3ScopeRef;
 import io.opaa.api.dto.S3Settings;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.common.ValidationException;
+import io.opaa.indexing.job.JobStatus;
 import io.opaa.indexing.source.s3.S3Scope;
 import io.opaa.indexing.source.s3.S3SourceSettings;
 import io.opaa.library.ConfluenceSpaceSelection;
@@ -264,7 +266,23 @@ final class LibraryResponseMapper {
         .description(library.getDescription())
         .ownerName(summary.ownerName())
         .lastIndexedAt(summary.lastIndexedAt())
+        .lastRunStatus(toIndexingStatus(summary.lastRunStatus()))
         .succession(SuccessionResponseMapper.toStateResponse(summary.succession()));
+  }
+
+  /**
+   * #1940: {@code null} stays {@code null} - the absence of the field is what says "never indexed".
+   * {@link IndexingStatus#IDLE} is therefore never produced here.
+   */
+  private static IndexingStatus toIndexingStatus(JobStatus status) {
+    if (status == null) {
+      return null;
+    }
+    return switch (status) {
+      case RUNNING -> IndexingStatus.RUNNING;
+      case COMPLETED -> IndexingStatus.COMPLETED;
+      case FAILED -> IndexingStatus.FAILED;
+    };
   }
 
   static List<LibraryListResponse> toListResponses(List<LibrarySummary> summaries) {

@@ -357,6 +357,17 @@ public class KnowledgeLibraryService {
                 Collectors.toMap(
                     IndexingJobRepository.LibraryLastCompleted::getLibraryId,
                     IndexingJobRepository.LibraryLastCompleted::getLastCompletedAt));
+    // #1940: the newest run's own status, whatever it was - a failed last run is invisible in
+    // lastIndexedAt above, which only ever moves on a success. Same one-query-per-page shape.
+    Map<UUID, JobStatus> lastRunStatus =
+        indexingJobRepository
+            .findLastRunStatusByLibraryIdIn(
+                libraries.stream().map(KnowledgeLibrary::getId).toList())
+            .stream()
+            .collect(
+                Collectors.toMap(
+                    IndexingJobRepository.LibraryLastRunStatus::getLibraryId,
+                    status -> JobStatus.valueOf(status.getStatus())));
 
     Map<UUID, SuccessionFinding> succession = successionSource.findingsAmong(libraries, false);
     // #1931: the reach badge, one grouped query for the whole page like the counts above.
@@ -371,6 +382,7 @@ public class KnowledgeLibraryService {
                     documentCounts.getOrDefault(library.getId(), 0L),
                     ownerNames.get(library.getOwnerId()),
                     lastIndexedAt.get(library.getId()),
+                    lastRunStatus.get(library.getId()),
                     succession.get(library.getId()),
                     reach.getOrDefault(library.getId(), AssetReach.NONE)))
         .toList();

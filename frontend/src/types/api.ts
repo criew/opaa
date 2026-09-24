@@ -178,6 +178,7 @@ export type DocumentMetadataFieldResponse = components['schemas']['DocumentMetad
 export type DocumentMetadataResponse = components['schemas']['DocumentMetadataResponse']
 export type BulkMetadataValueRequest = components['schemas']['BulkMetadataValueRequest']
 export type BulkMetadataValueResponse = components['schemas']['BulkMetadataValueResponse']
+export type BulkDocumentDeleteResponse = components['schemas']['BulkDocumentDeleteResponse']
 export type DocumentTypeVocabularyEntryResponse =
   components['schemas']['DocumentTypeVocabularyEntryResponse']
 export type DocumentTypeVocabularyResponse = components['schemas']['DocumentTypeVocabularyResponse']

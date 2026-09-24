@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 
 import io.opaa.api.dto.ConfluenceSpaceRef;
+import io.opaa.api.dto.IndexingStatus;
 import io.opaa.api.dto.LibraryRequest;
 import io.opaa.api.dto.LibraryResponse;
 import io.opaa.api.dto.LibraryScheduleRequest;
@@ -20,6 +21,7 @@ import io.opaa.api.types.ScheduleFrequency;
 import io.opaa.api.types.ScheduleWeekday;
 import io.opaa.api.types.SuccessionAddressee;
 import io.opaa.common.ValidationException;
+import io.opaa.indexing.job.JobStatus;
 import io.opaa.indexing.source.s3.S3Scope;
 import io.opaa.indexing.source.s3.S3SourceSettings;
 import io.opaa.library.ConfluenceSpaceSelection;
@@ -226,6 +228,7 @@ class LibraryResponseMapperTest {
             4L,
             "Referat 50",
             Instant.parse("2026-08-18T06:00:00Z"),
+            JobStatus.COMPLETED,
             SuccessionFinding.ofAsset(
                 AssetType.of("KNOWLEDGE_LIBRARY"),
                 library.getId(),
@@ -240,6 +243,7 @@ class LibraryResponseMapperTest {
     assertThat(response.getMyRole()).isEqualTo(AssetRole.EDITOR);
     assertThat(response.getDocumentCount()).isEqualTo(4L);
     assertThat(response.getOwnerName()).isEqualTo("Referat 50");
+    assertThat(response.getLastRunStatus()).isEqualTo(IndexingStatus.COMPLETED);
     assertThat(response.getSuccession().getAddressee())
         .as("the overview carries the marking as the detail view does (#1819)")
         .isEqualTo(SuccessionAddressee.GROUP_STEWARDS);
@@ -253,8 +257,10 @@ class LibraryResponseMapperTest {
         KnowledgeLibrary.ownedByUser(UUID.randomUUID(), "B", null, UUID.randomUUID(), false);
     List<LibrarySummary> summaries =
         List.of(
-            new LibrarySummary(first, AssetRole.VIEWER, 0L, null, null, null, AssetReach.NONE),
-            new LibrarySummary(second, AssetRole.OWNER, 1L, null, null, null, AssetReach.NONE));
+            new LibrarySummary(
+                first, AssetRole.VIEWER, 0L, null, null, null, null, AssetReach.NONE),
+            new LibrarySummary(
+                second, AssetRole.OWNER, 1L, null, null, null, null, AssetReach.NONE));
 
     var responses = LibraryResponseMapper.toListResponses(summaries);
 
@@ -262,6 +268,44 @@ class LibraryResponseMapperTest {
     assertThat(responses)
         .as("a library with a capable owner carries no marking at all")
         .allSatisfy(response -> assertThat(response.getSuccession()).isNull());
+    assertThat(responses)
+        .as("#1940: no run at all stays absent - the field never claims IDLE")
+        .allSatisfy(response -> assertThat(response.getLastRunStatus()).isNull());
+  }
+
+  @Test
+  void toListResponseNamesAFailedLastRunEvenWhenAnEarlierOneSucceeded() {
+    KnowledgeLibrary library =
+        KnowledgeLibrary.ownedByUser(UUID.randomUUID(), "Konnektor", null, UUID.randomUUID(), true);
+    // #1940: exactly the picture the overview could not show before - lastIndexedAt still stands
+    // at the last success while the newest run failed.
+    LibrarySummary summary =
+        new LibrarySummary(
+            library,
+            AssetRole.MANAGER,
+            7L,
+            null,
+            Instant.parse("2026-09-20T04:00:00Z"),
+            JobStatus.FAILED,
+            null,
+            AssetReach.NONE);
+
+    var response = LibraryResponseMapper.toListResponse(summary);
+
+    assertThat(response.getLastIndexedAt()).isEqualTo(Instant.parse("2026-09-20T04:00:00Z"));
+    assertThat(response.getLastRunStatus()).isEqualTo(IndexingStatus.FAILED);
+  }
+
+  @Test
+  void toListResponseCarriesARunningRun() {
+    KnowledgeLibrary library =
+        KnowledgeLibrary.ownedByUser(UUID.randomUUID(), "Laeuft", null, UUID.randomUUID(), true);
+    LibrarySummary summary =
+        new LibrarySummary(
+            library, AssetRole.MANAGER, 0L, null, null, JobStatus.RUNNING, null, AssetReach.NONE);
+
+    assertThat(LibraryResponseMapper.toListResponse(summary).getLastRunStatus())
+        .isEqualTo(IndexingStatus.RUNNING);
   }
 
   @Test

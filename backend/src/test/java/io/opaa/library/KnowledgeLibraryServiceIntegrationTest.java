@@ -4,6 +4,7 @@ import static io.opaa.library.LibraryCreationBuilder.libraryCreation;
 import static io.opaa.library.LibraryUpdateBuilder.libraryUpdate;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 
 import io.opaa.api.types.AssetGrantSubjectType;
 import io.opaa.api.types.AssetOwnerType;
@@ -2385,6 +2386,36 @@ class KnowledgeLibraryServiceIntegrationTest {
         .filteredOn(entry -> entry.library().getId().equals(untouched.library().getId()))
         .extracting(LibrarySummary::lastIndexedAt)
         .containsExactly((Instant) null);
+  }
+
+  @Test
+  void listLibrariesReportsTheNewestRunsOwnStatus() {
+    // #1940: lastIndexedAt above only ever moves on a success, so a failed last run is invisible
+    // there - this field is what makes it readable in the overview. Exercises the native
+    // DISTINCT ON query against real PostgreSQL; a unit test could not tell a wrong alias apart
+    // from a right one.
+    UUID owner = createUser(organizationA);
+    LibraryDetail failing =
+        libraryService.createLibrary(
+            libraryCreation("Failing", DocumentSourceType.UPLOAD).build(), currentUserOf(owner));
+    LibraryDetail untouched =
+        libraryService.createLibrary(
+            libraryCreation("Untouched", DocumentSourceType.UPLOAD).build(), currentUserOf(owner));
+
+    saveJob(failing.library().getId(), JobStatus.COMPLETED, Instant.parse("2026-08-18T06:00:00Z"));
+    saveJob(failing.library().getId(), JobStatus.FAILED, Instant.parse("2026-08-19T06:00:00Z"));
+
+    List<LibrarySummary> listed = libraryService.listLibraries(currentUserOf(owner, false));
+
+    assertThat(listed)
+        .filteredOn(entry -> entry.library().getId().equals(failing.library().getId()))
+        .extracting(LibrarySummary::lastRunStatus, LibrarySummary::lastIndexedAt)
+        .containsExactly(tuple(JobStatus.FAILED, Instant.parse("2026-08-18T06:00:00Z")));
+    assertThat(listed)
+        .filteredOn(entry -> entry.library().getId().equals(untouched.library().getId()))
+        .extracting(LibrarySummary::lastRunStatus)
+        .as("never indexed stays null - the field never claims IDLE")
+        .containsExactly((JobStatus) null);
   }
 
   private void saveJob(UUID libraryId, JobStatus status, Instant completedAt) {

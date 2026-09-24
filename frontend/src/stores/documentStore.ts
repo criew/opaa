@@ -1,11 +1,13 @@
 import { AxiosError } from 'axios'
 import { create } from 'zustand'
 import type {
+  BulkDocumentDeleteResponse,
   LibraryDocumentResponse,
   LibraryFolderBreadcrumbItem,
   LibraryFolderListItem,
 } from '../types/api'
 import {
+  bulkDeleteLibraryDocuments,
   createLibraryFolder,
   deleteLibraryDocument,
   deleteLibraryFolder,
@@ -32,7 +34,7 @@ export const DEFAULT_PAGE_SIZE = 20
 // the loaded page itself so a poll tick (see startPolling) and a post-upload/-delete refresh (see
 // LibraryDetailPage's onDocumentsChanged) both re-fetch the same page/query the user is currently
 // looking at, instead of silently resetting them to page 0 with no search term.
-interface DocumentPageState {
+export interface DocumentPageState {
   page: number
   size: number
   q: string
@@ -92,6 +94,14 @@ interface DocumentState {
   ) => Promise<void>
   uploadNewDocument: (libraryId: string, file: File, folderPath?: string) => Promise<void>
   removeDocument: (libraryId: string, documentId: string) => Promise<void>
+  /**
+   * #1943: the chosen documents in one call - resolves to the per-id outcome, or undefined when
+   * the session turned over while the call was in flight.
+   */
+  removeDocuments: (
+    libraryId: string,
+    documentIds: string[],
+  ) => Promise<BulkDocumentDeleteResponse | undefined>
   createFolder: (libraryId: string, name: string, parentFolderId?: string | null) => Promise<void>
   renameFolder: (libraryId: string, folderId: string, name: string) => Promise<void>
   removeFolder: (libraryId: string, folderId: string) => Promise<void>
@@ -262,6 +272,30 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
     if (stillEmpty && pageState && pageState.page > 0) {
       await get().loadDocuments(libraryId, { page: pageState.page - 1 })
     }
+  },
+
+  removeDocuments: async (libraryId: string, documentIds: string[]) => {
+    const sessionEpoch = currentSessionEpoch()
+    let result
+    try {
+      result = await bulkDeleteLibraryDocuments(libraryId, documentIds)
+    } catch (err) {
+      if (isStaleSessionEpoch(sessionEpoch)) throw err
+      const message = err instanceof Error ? err.message : 'Dokumente konnten nicht gelöscht werden'
+      set({ deleteError: message })
+      throw err
+    }
+    if (isStaleSessionEpoch(sessionEpoch)) return result
+    set({ deleteError: null })
+    // Same reasoning as removeDocument above: totalElements and the neighbouring pages are stale
+    // after a delete, and a page emptied by it must fall back to one that still has content.
+    await reloadCurrentPage(libraryId, get)
+    const pageState = get().pageStateByLibrary[libraryId]
+    const stillEmpty = (get().documentsByLibrary[libraryId] ?? []).length === 0
+    if (stillEmpty && pageState && pageState.page > 0) {
+      await get().loadDocuments(libraryId, { page: pageState.page - 1 })
+    }
+    return result
   },
 
   clearUploadErrors: () => set({ uploadErrors: [] }),

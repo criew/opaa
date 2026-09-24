@@ -1,26 +1,22 @@
 import { useState } from 'react'
 import Alert from '@mui/material/Alert'
-import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Dialog from '@mui/material/Dialog'
 import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
-import FormControlLabel from '@mui/material/FormControlLabel'
 import Stack from '@mui/material/Stack'
-import Switch from '@mui/material/Switch'
-import TextField from '@mui/material/TextField'
 import type {
   ConfluenceEdition,
   ConfluenceSpaceRef,
   DocumentSourceType,
   S3Settings,
-  SourceConnectionTestResponse,
 } from '../types/api'
-import { testLibrarySource } from '../services/api'
-import FieldLabel from './wizard/FieldLabel'
 import ConfluenceSourceForm from './library/ConfluenceSourceForm'
+import PathSourceForm from './library/PathSourceForm'
 import S3SourceForm from './library/S3SourceForm'
+import SourceConnectionTest from './library/SourceConnectionTest'
+import UrlSourceForm from './library/UrlSourceForm'
 import { s3ValuesFromSettings, type S3SourceValues } from '../utils/s3Source'
 import { EMPTY_CONFLUENCE_VALUES, type ConfluenceSourceValues } from '../utils/confluenceSource'
 import { useLibraryStore } from '../stores/libraryStore'
@@ -29,6 +25,7 @@ import {
   deriveLibrarySourceConfigPayload,
   sameLibrarySourceOrigin,
   validateLibrarySourceFields,
+  type GenericSourceValues,
 } from '../utils/librarySourceConfig'
 
 /**
@@ -79,11 +76,13 @@ export default function EditLibrarySourceDialog({
   // field values for free every time the dialog opens. sourceCredentials is deliberately left
   // blank (write-only, never returned by any API response, ADR-0018) - there is nothing to
   // prefill it with.
-  const [sourcePath, setSourcePath] = useState(library.sourcePath ?? '')
-  const [sourceUrl, setSourceUrl] = useState(library.sourceUrl ?? '')
-  const [sourceProxy, setSourceProxy] = useState(library.sourceProxy ?? '')
-  const [sourceCredentials, setSourceCredentials] = useState('')
-  const [sourceInsecureSsl, setSourceInsecureSsl] = useState(Boolean(library.sourceInsecureSsl))
+  const [generic, setGeneric] = useState<GenericSourceValues>(() => ({
+    sourcePath: library.sourcePath ?? '',
+    sourceUrl: library.sourceUrl ?? '',
+    sourceProxy: library.sourceProxy ?? '',
+    sourceCredentials: '',
+    sourceInsecureSsl: Boolean(library.sourceInsecureSsl),
+  }))
   // ADR-0023: the edition is fixed, the stored credentials stand until new ones are typed, and the
   // current selection is the starting point.
   const [confluence, setConfluence] = useState<ConfluenceSourceValues>(() => ({
@@ -107,90 +106,15 @@ export default function EditLibrarySourceDialog({
   )
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
-  // #544: mirrors LibraryCreatePage's connection test - the result belongs to the currently
-  // entered configuration only, so any edit to a field the test itself depends on invalidates a
-  // previous result rather than leaving a stale "erreichbar" on screen for a since-changed
-  // address.
-  const [testResult, setTestResult] = useState<SourceConnectionTestResponse | null>(null)
-  const [testErrorMessage, setTestErrorMessage] = useState<string | null>(null)
-  const [testing, setTesting] = useState(false)
-
-  // #542 review finding 1: KnowledgeLibraryService only carries a stored credential forward when
-  // the new sourceUrl still names the same origin as the stored one - a host change drops it,
-  // requiring re-entry, so a caller without the credential cannot redirect it to a server they
-  // control. This mirrors that check purely to phrase an accurate hint; the backend re-derives it
-  // from the persisted value and remains the only authoritative check.
-  const originChanged =
-    credentialsStored &&
-    configKind === 'url' &&
-    sourceUrl.trim() !== '' &&
-    !sameLibrarySourceOrigin(library.sourceUrl, sourceUrl)
 
   function handleClose() {
     if (submitting) return
     onClose()
   }
 
-  // Shared by every onChange handler below (#544, mirroring LibraryCreatePage's identical
-  // helper) - the functional updater form bails out of re-rendering on every keystroke before a
-  // test has ever run, by far the common case, rather than triggering an extra state update no
-  // one can see.
-  function clearTestResult() {
-    setTestResult((prev) => (prev === null ? prev : null))
-    setTestErrorMessage((prev) => (prev === null ? prev : null))
-  }
-
-  async function handleTest() {
-    const validationError = validateLibrarySourceFields(library.sourceType, {
-      sourcePath,
-      sourceUrl,
-      confluence,
-      s3,
-      // the stored key survives only on the same origin (KnowledgeLibraryService, #516/#542)
-      s3CredentialsStored:
-        credentialsStored && sameLibrarySourceOrigin(library.sourceUrl, s3.sourceUrl),
-    })
-    if (validationError) {
-      setError(validationError)
-      return
-    }
-    setError(null)
-    setTestResult(null)
-    setTestErrorMessage(null)
-    setTesting(true)
-    try {
-      const result = await testLibrarySource({
-        sourceType: library.sourceType,
-        ...deriveLibrarySourceConfigPayload(library.sourceType, {
-          sourcePath,
-          sourceUrl,
-          sourceProxy,
-          sourceCredentials,
-          sourceInsecureSsl,
-        }),
-        // #1856 review: always sent in this dialog, not only when the credentials field is left
-        // blank - without libraryId, the probe needs CREATE_CONNECTOR_LIBRARY (ADR-0036,
-        // Entscheidung 5), a right a MANAGER on this library need not hold. With libraryId, the
-        // backend falls back to the stored credentials only when the field is left blank and
-        // sourceUrl still names the same origin (SourceConnectionTestService#
-        // withStoredCredentialsIfOmitted); a non-empty field always takes precedence there too,
-        // exactly like saving does.
-        libraryId,
-      })
-      setTestResult(result)
-    } catch (err) {
-      setTestErrorMessage(
-        err instanceof Error ? err.message : 'Verbindung konnte nicht getestet werden',
-      )
-    } finally {
-      setTesting(false)
-    }
-  }
-
   async function handleSave() {
     const validationError = validateLibrarySourceFields(library.sourceType, {
-      sourcePath,
-      sourceUrl,
+      ...generic,
       confluence,
       s3,
       // the stored key survives only on the same origin (KnowledgeLibraryService, #516/#542)
@@ -217,11 +141,7 @@ export default function EditLibrarySourceDialog({
         // (KnowledgeLibraryService#validateSourceConfigurationForUpdate, issue #516/#542 finding
         // 1). Only a non-empty value here ever replaces them outright.
         ...deriveLibrarySourceConfigPayload(library.sourceType, {
-          sourcePath,
-          sourceUrl,
-          sourceProxy,
-          sourceCredentials,
-          sourceInsecureSsl,
+          ...generic,
           confluence,
           s3,
         }),
@@ -236,16 +156,6 @@ export default function EditLibrarySourceDialog({
     }
   }
 
-  // #542 review, nit 3: must not claim a credential exists (or would be discarded by a host
-  // change) when none is actually stored - blankToNull/hasSourceConfigurationFields do not
-  // support removing a stored credential through this request, so credentialsStored can only
-  // ever be widened here, never narrowed by anything the user types into this dialog.
-  const credentialsHelperText = !credentialsStored
-    ? 'Für diese Quelle sind aktuell keine Zugangsdaten hinterlegt. Nur ausfüllen, wenn die Quelle eine Anmeldung verlangt.'
-    : originChanged
-      ? 'Die Adresse zeigt auf einen anderen Server - die bestehenden Zugangsdaten werden dabei verworfen. Bitte bei Bedarf neu eingeben.'
-      : 'Leer lassen, um die bestehenden Zugangsdaten beizubehalten. Wird nie in einer API-Antwort ausgegeben.'
-
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
       <DialogTitle>Quellkonfiguration bearbeiten</DialogTitle>
@@ -257,89 +167,24 @@ export default function EditLibrarySourceDialog({
           {error && <Alert severity="error">{error}</Alert>}
 
           {configKind === 'path' && (
-            <Box>
-              <FieldLabel htmlFor="edit-source-path">Verzeichnispfad</FieldLabel>
-              <TextField
-                id="edit-source-path"
-                size="small"
-                fullWidth
-                value={sourcePath}
-                onChange={(e) => {
-                  setSourcePath(e.target.value)
-                  clearTestResult()
-                }}
-                placeholder="/data/dokumente"
-                helperText="Absoluter Pfad auf dem Server, den OPAA regelmäßig einliest."
-                slotProps={{ htmlInput: { maxLength: 2000, sx: { fontFamily: 'monospace' } } }}
-              />
-            </Box>
+            <PathSourceForm
+              mode="edit"
+              idPrefix="edit-source"
+              values={generic}
+              onChange={(patch) => setGeneric((prev) => ({ ...prev, ...patch }))}
+            />
           )}
 
           {configKind === 'url' && (
-            <>
-              <Box>
-                <FieldLabel htmlFor="edit-source-url">Adresse (URL)</FieldLabel>
-                <TextField
-                  id="edit-source-url"
-                  size="small"
-                  fullWidth
-                  value={sourceUrl}
-                  onChange={(e) => {
-                    setSourceUrl(e.target.value)
-                    clearTestResult()
-                  }}
-                  placeholder="https://files.example.com/dokumente/"
-                  helperText="http oder https."
-                  slotProps={{ htmlInput: { maxLength: 2000, sx: { fontFamily: 'monospace' } } }}
-                />
-              </Box>
-              <Box>
-                <FieldLabel htmlFor="edit-source-proxy">Proxy (optional)</FieldLabel>
-                <TextField
-                  id="edit-source-proxy"
-                  size="small"
-                  fullWidth
-                  value={sourceProxy}
-                  onChange={(e) => {
-                    setSourceProxy(e.target.value)
-                    clearTestResult()
-                  }}
-                  placeholder="proxy.example.com:8080"
-                  autoComplete="off"
-                  slotProps={{ htmlInput: { maxLength: 255 } }}
-                />
-              </Box>
-              <Box>
-                <FieldLabel htmlFor="edit-source-credentials">Neue Zugangsdaten</FieldLabel>
-                <TextField
-                  id="edit-source-credentials"
-                  size="small"
-                  type="password"
-                  fullWidth
-                  value={sourceCredentials}
-                  onChange={(e) => {
-                    setSourceCredentials(e.target.value)
-                    clearTestResult()
-                  }}
-                  placeholder="benutzer:passwort"
-                  helperText={credentialsHelperText}
-                  autoComplete="new-password"
-                  slotProps={{ htmlInput: { maxLength: 500 } }}
-                />
-              </Box>
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={sourceInsecureSsl}
-                    onChange={(e) => {
-                      setSourceInsecureSsl(e.target.checked)
-                      clearTestResult()
-                    }}
-                  />
-                }
-                label="Zertifikatsprüfung aussetzen"
-              />
-            </>
+            <UrlSourceForm
+              mode="edit"
+              sourceType={library.sourceType}
+              idPrefix="edit-source"
+              values={generic}
+              onChange={(patch) => setGeneric((prev) => ({ ...prev, ...patch }))}
+              credentialsStored={credentialsStored}
+              originalSourceUrl={library.sourceUrl}
+            />
           )}
 
           {configKind === 'confluence' && (
@@ -373,26 +218,16 @@ export default function EditLibrarySourceDialog({
           )}
 
           {(configKind === 'path' || configKind === 'url') && (
-            <Box>
-              <Button
-                onClick={() => void handleTest()}
-                disabled={testing}
-                variant="outlined"
-                size="small"
-              >
-                {testing ? 'Verbindung wird getestet …' : 'Verbindung testen'}
-              </Button>
-              {testErrorMessage && (
-                <Alert severity="error" sx={{ mt: 1 }}>
-                  {testErrorMessage}
-                </Alert>
-              )}
-              {testResult && (
-                <Alert severity={testResult.reachable ? 'success' : 'warning'} sx={{ mt: 1 }}>
-                  {testResult.message}
-                </Alert>
-              )}
-            </Box>
+            // #1856 review: libraryId is always sent from here - without it the probe needs
+            // CREATE_CONNECTOR_LIBRARY (ADR-0036, Entscheidung 5), a right a MANAGER on this
+            // library need not hold. With it, the backend falls back to the stored credentials
+            // only when the field is left blank and sourceUrl still names the same origin.
+            <SourceConnectionTest
+              sourceType={library.sourceType}
+              values={generic}
+              libraryId={libraryId}
+              size="small"
+            />
           )}
         </Stack>
       </DialogContent>

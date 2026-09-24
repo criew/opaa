@@ -72,6 +72,33 @@ public interface IndexingJobRepository extends JpaRepository<IndexingJob, UUID> 
   }
 
   /**
+   * The status of the newest run per library in one grouped query - the overview's "Letzte
+   * Aktualisierung" needs it because {@link #findLastCompletedByLibraryIdIn} above only ever sees
+   * successful runs, leaving a failed last run indistinguishable from none at all (#1940). Native
+   * because {@code DISTINCT ON} picks the newest row per library in one pass; JPQL has no
+   * equivalent that avoids a correlated subquery per row. Deliberately not schema-qualified
+   * (ADR-0034) - the search_path of the connection resolves {@code indexing_jobs}. A library
+   * without any run simply has no row here.
+   */
+  @Query(
+      value =
+          // Quoted aliases: PostgreSQL folds an unquoted one to lower case, and the projection
+          // below is resolved by the alias exactly as the driver reports it.
+          "select distinct on (library_id) library_id as \"libraryId\", status as \"status\""
+              + " from indexing_jobs where library_id in (:libraryIds)"
+              + " order by library_id, started_at desc",
+      nativeQuery = true)
+  List<LibraryLastRunStatus> findLastRunStatusByLibraryIdIn(
+      @Param("libraryIds") Collection<UUID> libraryIds);
+
+  interface LibraryLastRunStatus {
+    UUID getLibraryId();
+
+    /** The stored enum name - {@link JobStatus#valueOf} turns it back into the enum. */
+    String getStatus();
+  }
+
+  /**
    * The last {@value IndexingJobService#MAX_RETAINED_RUNS_PER_LIBRARY} runs for {@code libraryId}
    * within {@code organizationId}, newest first - bounded at the query itself rather than by
    * truncating an unbounded list in Java. {@code organizationId} is the same second guard {@link

@@ -5,7 +5,7 @@ import {
   isSystemFile,
   resolveDroppedItems,
 } from './directoryEntries'
-import { ACCEPTED_FILE_EXTENSIONS } from '../pages/LibraryDetailPage'
+import { ACCEPTED_FILE_EXTENSIONS } from '../components/library/LibraryDocumentsSection'
 
 // #823: fake DataTransferItem/FileSystemEntry stand-ins - jsdom does not implement
 // webkitGetAsEntry()/FileSystemDirectoryEntry at all, so these tests build the minimal shape

@@ -2,6 +2,7 @@ package io.opaa.library;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -81,6 +82,10 @@ import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
 import org.springframework.core.task.TaskRejectedException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.SimpleTransactionStatus;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
@@ -127,6 +132,25 @@ class LibraryDocumentServiceTest {
   // io.opaa.indexing.source.s3.S3OriginalAccessMinioTest.
   private S3OriginalAccess s3OriginalAccess;
   private LibraryDocumentService service;
+
+  /**
+   * A transaction manager that starts and commits nothing but still runs the callback - what {@link
+   * LibraryDocumentService#deleteDocuments} needs from it here is the per-document boundary, and a
+   * Mockito mock would never invoke the action at all (AGENTS.md, "Er mockt genau die Stelle weg").
+   */
+  private static final PlatformTransactionManager NO_OP_TRANSACTION_MANAGER =
+      new PlatformTransactionManager() {
+        @Override
+        public TransactionStatus getTransaction(TransactionDefinition definition) {
+          return new SimpleTransactionStatus();
+        }
+
+        @Override
+        public void commit(TransactionStatus status) {}
+
+        @Override
+        public void rollback(TransactionStatus status) {}
+      };
 
   private final UUID currentUserId = UUID.randomUUID();
   private final UUID organizationId = UUID.randomUUID();
@@ -249,7 +273,8 @@ class LibraryDocumentServiceTest {
         new AttachmentProperties(0, 0, 0),
         new AttachmentExtractionLimiter(limits),
         ProductionDocumentFormats.supportedFormats(),
-        s3OriginalAccess);
+        s3OriginalAccess,
+        NO_OP_TRANSACTION_MANAGER);
   }
 
   @Test
@@ -850,6 +875,69 @@ class LibraryDocumentServiceTest {
     verify(vectorStore).delete(documentIdFilter(doc.getId()));
     verify(documentRepository).delete(doc);
     assertThat(Files.exists(storedFile)).isFalse();
+  }
+
+  @Test
+  void bulkDeleteRemovesEveryValidIdAndNamesTheOnesItCouldNot() throws IOException {
+    // #1943: a stale id in the selection (deleted meanwhile, or from another library) must cost
+    // only its own line - the documents around it are still gone when the call returns.
+    grantEditor();
+    Path libraryDir =
+        Files.createDirectories(
+            storageDir.resolve(organizationId.toString()).resolve(libraryId.toString()));
+    UUID firstId = UUID.randomUUID();
+    Document first = new Document("a.pdf", libraryDir.resolve("a.pdf").toString(), "pdf", 1L);
+    first.setLibraryId(libraryId);
+    first.setOrganizationId(organizationId);
+    first.setSourceType(DocumentSourceType.UPLOAD);
+    when(documentRepository.findById(firstId)).thenReturn(Optional.of(first));
+
+    UUID goneId = UUID.randomUUID();
+    when(documentRepository.findById(goneId)).thenReturn(Optional.empty());
+
+    UUID secondId = UUID.randomUUID();
+    Document second = new Document("b.pdf", libraryDir.resolve("b.pdf").toString(), "pdf", 1L);
+    second.setLibraryId(libraryId);
+    second.setOrganizationId(organizationId);
+    second.setSourceType(DocumentSourceType.UPLOAD);
+    when(documentRepository.findById(secondId)).thenReturn(Optional.of(second));
+
+    BulkDocumentDeletion result =
+        service.deleteDocuments(libraryId, List.of(firstId, goneId, secondId, firstId), caller);
+
+    assertThat(result.deletedDocumentIds())
+        .as("a duplicate id is deleted once and reported once")
+        .containsExactly(firstId, secondId);
+    assertThat(result.failures())
+        .extracting(BulkDocumentDeletion.Failure::documentId, BulkDocumentDeletion.Failure::message)
+        .containsExactly(tuple(goneId, "Dokument nicht gefunden"));
+    verify(documentRepository).delete(first);
+    verify(documentRepository).delete(second);
+  }
+
+  @Test
+  void bulkDeleteIsRefusedForAConnectorLibrary() {
+    // ADR-0018, Entscheidung 1: a document removed from a connector library returns with its next
+    // run - the bulk action is refused outright rather than silently undone.
+    grantEditor();
+    KnowledgeLibrary connector = mock(KnowledgeLibrary.class);
+    when(connector.getId()).thenReturn(libraryId);
+    when(connector.getOrganizationId()).thenReturn(organizationId);
+    when(connector.getSourceType()).thenReturn(DocumentSourceType.CONFLUENCE);
+    when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(connector));
+
+    assertThatThrownBy(() -> service.deleteDocuments(libraryId, List.of(UUID.randomUUID()), caller))
+        .isInstanceOf(ConflictException.class);
+    verify(documentRepository, never()).delete(any());
+  }
+
+  @Test
+  void bulkDeleteRequiresTheSameRightAsTheSingleDelete() {
+    grantViewerOnly();
+
+    assertThatThrownBy(() -> service.deleteDocuments(libraryId, List.of(UUID.randomUUID()), caller))
+        .isInstanceOf(AccessDeniedException.class);
+    verify(documentRepository, never()).delete(any());
   }
 
   @Test
@@ -1578,7 +1666,8 @@ class LibraryDocumentServiceTest {
             new AttachmentProperties(0, 0, 0),
             new AttachmentExtractionLimiter(new AttachmentExtractionProperties(0, null)),
             ProductionDocumentFormats.supportedFormats(),
-            s3OriginalAccess);
+            s3OriginalAccess,
+            NO_OP_TRANSACTION_MANAGER);
     grantViewerOnUploadLibrary();
     KnowledgeLibrary library = remoteLibrary(null);
     when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));

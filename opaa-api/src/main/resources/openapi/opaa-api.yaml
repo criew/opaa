@@ -5252,6 +5252,52 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/libraries/{libraryId}/documents/bulk-delete:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      operationId: bulkDeleteLibraryDocuments
+      tags: [library]
+      summary: >
+        Remove a chosen set of an upload library's documents in one call (#1943) - the counterpart
+        of POST .../documents/metadata/bulk for the delete action the list offers per row.
+      description: >
+        Same right as the single delete (EDITOR or above) and the same per-document effect: the
+        row and its attachment rows, their chunks in the vector store, and the stored original.
+        Only an UPLOAD library is accepted; a connector library answers 409, because a document
+        removed here would come back with its next indexing run (ADR-0018, Entscheidung 1). Each
+        id is deleted in its own transaction and reported on its own: an id that is not a document
+        of this library (deleted meanwhile, or belonging to another one) appears in failures with
+        a German reason while the remaining ids are still deleted, so a stale selection never
+        costs the whole call. POST rather than DELETE because the chosen ids travel in the body.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BulkDocumentDeleteRequest"
+      responses:
+        "200":
+          description: Outcome per requested id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BulkDocumentDeleteResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
   /api/v1/libraries/{libraryId}/metadata/maintenance:
     parameters:
       - name: libraryId
@@ -12686,6 +12732,15 @@ components:
             wording base ("indiziert" vs. "abgerufen") follows the library's sourceType already
             present on this response, so no separate field carries it. Optional so older
             clients keep working.
+        lastRunStatus:
+          description: >
+            #1940: the status of this library's most recent indexing run, whatever its outcome -
+            what lastIndexedAt above cannot express, since only a COMPLETED run ever moves it and
+            a failed last run is therefore invisible in the overview without this field. Absent
+            when the library has never been indexed at all (an UPLOAD library always). IDLE is
+            never sent; the absence of the field carries that meaning.
+          allOf:
+            - $ref: "#/components/schemas/IndexingStatus"
         succession:
           description: >
             Set while this library has no capable owner (#1819, ADR-0036 Entscheidung 6) - the
@@ -13515,6 +13570,54 @@ components:
           description: >-
             The correlationRef every audit event of this call carries, so the whole bulk
             assignment can be read back from the audit log as one operation.
+
+    BulkDocumentDeleteRequest:
+      type: object
+      required: [documentIds]
+      properties:
+        documentIds:
+          type: array
+          minItems: 1
+          maxItems: 200
+          description: >-
+            The chosen documents - ids taken from this library's own document list. Duplicates are
+            deleted once and reported once. The ceiling is lower than the metadata bulk's 1000: a
+            delete carries a vector store removal and a file removal per document, and the list
+            never offers more than one page (100) at a time.
+          items:
+            type: string
+            format: uuid
+
+    BulkDocumentDeleteResponse:
+      type: object
+      required: [deletedDocumentIds, failures]
+      description: >-
+        The outcome per requested id. Every id of the request appears in exactly one of the two
+        lists, so a partial success is readable without comparing against the request.
+      properties:
+        deletedDocumentIds:
+          type: array
+          description: Documents that are gone, including their attachments.
+          items:
+            type: string
+            format: uuid
+        failures:
+          type: array
+          description: Ids that were not deleted, each with the German reason.
+          items:
+            $ref: "#/components/schemas/BulkDocumentDeleteFailure"
+
+    BulkDocumentDeleteFailure:
+      type: object
+      required: [documentId, message]
+      properties:
+        documentId:
+          type: string
+          format: uuid
+        message:
+          type: string
+          description: German, user-facing reason this one id was not deleted.
+          example: Dokument nicht gefunden
 
     MetadataFieldMaintenanceResponse:
       type: object

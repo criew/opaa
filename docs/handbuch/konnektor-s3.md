@@ -196,7 +196,7 @@ nennt Abschnitt 14: Nextcloud und ownCloud als S3-Primärspeicher.
   Leserkreis, doppelte Indizierung als Preis); zwei Bereiche **einer** Bibliothek dürfen sich nicht
   überschneiden.
 - **Schlüssel je Bibliothek.** OPAA kennt keine geteilte Verbindung; wer einen Schlüssel rotiert,
-  der in fünf Bibliotheken steht, rotiert ihn fünfmal (Bibliothek, Quellkonfiguration,
+  der in fünf Bibliotheken steht, rotiert ihn fünfmal (Bibliothek, Reiter „Quelle", Anbindung,
   Bearbeiten). Ein Wechsel von Schema, Host oder Port des Endpoints verwirft die gespeicherten
   Zugangsdaten; sie müssen neu eingegeben werden.
 - **Ereignis-Token** ebenfalls je Bibliothek (Abschnitt 8); es ist ein zweites Geheimnis, kein
@@ -479,7 +479,8 @@ nichts falsch, nur später**, und ein verlorenes Ereignis holt der nächste gepl
 
 ### 8.1 Token in OPAA erzeugen
 
-Bibliothek, Quellkonfiguration (Verwaltende), Zeile **Ereignisbenachrichtigung**, **„Benachrichtigung
+Bibliothek, Reiter „Quelle", Abschnitt **Anbindung** (Verwaltende), Zeile
+**Ereignisbenachrichtigung**, **„Benachrichtigung
 einrichten"**. OPAA zeigt das Token **genau einmal** zusammen mit der Adresse des Eingangs
 (`https://<opaa-host>/api/v1/libraries/<Bibliotheks-ID>/s3-events`) und den Einrichtungsbefehlen je
 Anbieter (unten). Beides jetzt im Objektspeicher hinterlegen; danach ist das Token nur noch als

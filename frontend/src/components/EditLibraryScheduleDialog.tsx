@@ -5,52 +5,27 @@ import Dialog from '@mui/material/Dialog'
 import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
-import FormControl from '@mui/material/FormControl'
-import InputLabel from '@mui/material/InputLabel'
-import MenuItem from '@mui/material/MenuItem'
-import Select from '@mui/material/Select'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
-import type { LibrarySchedule, ScheduleFrequency, ScheduleWeekday } from '../types/api'
+import type { LibrarySchedule } from '../types/api'
 import { useLibraryStore } from '../stores/libraryStore'
+import LibraryScheduleForm from './library/LibraryScheduleForm'
 import {
-  scheduleFrequencies,
-  scheduleFrequencyLabel,
-  scheduleWeekdays,
-  scheduleWeekdayLabel,
-} from '../utils/labels'
-
-const DEFAULT_TIME = '03:00'
-
-function timeStringToParts(time: string): { hour: number; minute: number } | null {
-  const match = /^(\d{2}):(\d{2})$/.exec(time)
-  if (!match) return null
-  return { hour: Number(match[1]), minute: Number(match[2]) }
-}
-
-function partsToTimeString(
-  hour: number | null | undefined,
-  minute: number | null | undefined,
-): string {
-  if (hour == null || minute == null) return DEFAULT_TIME
-  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
-}
+  scheduleUpdateFrom,
+  scheduleValuesFrom,
+  validateScheduleValues,
+  type ConfluenceFullSyncRhythm,
+} from '../utils/librarySchedule'
 
 interface EditLibraryScheduleDialogProps {
   open: boolean
   onClose: () => void
   libraryId: string
   schedule: LibrarySchedule | null | undefined
-  // #1200: present only for a CONFLUENCE library - the dialog then offers the library's own
-  // full-sync rhythm. intervalDays null means "follows the instance-wide default" (defaultDays).
-  confluence?: {
-    intervalDays: number | null
-    defaultDays: number | null
-  }
-  // KnowledgeLibraryService#updateLibrary overwrites name/description/visibility/listed
-  // unconditionally when present in the request (see EditLibrarySourceDialog's identical
-  // reasoning) - this dialog only touches the schedule, so the current values must be resent
-  // unchanged rather than omitted.
+  /** Present only for a CONFLUENCE library - the dialog then offers the full-sync rhythm (#1200). */
+  confluence?: ConfluenceFullSyncRhythm
+  // KnowledgeLibraryService#updateLibrary overwrites name/description/listed unconditionally when
+  // present in the request (see EditLibrarySourceDialog's identical reasoning) - this dialog only
+  // touches the schedule, so the current values must be resent unchanged rather than omitted.
   library: {
     name: string
     description?: string | null
@@ -58,9 +33,11 @@ interface EditLibraryScheduleDialogProps {
   }
 }
 
-// #485: Zeitplan-Bearbeitung für Konnektorbibliotheken - feste Intervallstufen (aus/stündlich/
-// täglich/wöchentlich), intern vom Backend als Cron-Ausdruck gespeichert (LibraryScheduleCodec).
-// Freie Cron-Eingabe ist bewusst nicht Teil dieser Oberfläche.
+/**
+ * The Bearbeiten-Weg of the Zeitplan (#485). The fields themselves live in {@link
+ * LibraryScheduleForm}, which the Anlage-Assistent uses in its own Betriebsart; this dialog only
+ * adds the save.
+ */
 export default function EditLibraryScheduleDialog({
   open,
   onClose,
@@ -71,12 +48,7 @@ export default function EditLibraryScheduleDialog({
 }: EditLibraryScheduleDialogProps) {
   const updateExistingLibrary = useLibraryStore((s) => s.updateExistingLibrary)
 
-  const [frequency, setFrequency] = useState<ScheduleFrequency>(schedule?.frequency ?? 'DISABLED')
-  const [time, setTime] = useState(partsToTimeString(schedule?.hour, schedule?.minute))
-  const [weekday, setWeekday] = useState<ScheduleWeekday>(schedule?.weekday ?? 'MONDAY')
-  const [fullSyncDays, setFullSyncDays] = useState(
-    confluence?.intervalDays != null ? String(confluence.intervalDays) : '',
-  )
+  const [values, setValues] = useState(() => scheduleValuesFrom(schedule, confluence))
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -86,28 +58,12 @@ export default function EditLibraryScheduleDialog({
   }
 
   async function handleSave() {
-    setError(null)
-    const parts = frequency === 'DAILY' || frequency === 'WEEKLY' ? timeStringToParts(time) : null
-    if ((frequency === 'DAILY' || frequency === 'WEEKLY') && !parts) {
-      setError('Bitte eine gültige Uhrzeit angeben.')
+    const validationError = validateScheduleValues(values, confluence)
+    if (validationError) {
+      setError(validationError)
       return
     }
-    // #1200: an empty field returns the library to the instance-wide default (sent as 0); a value
-    // is 1-365 days - the rhythm is lengthenable, never switchable off.
-    let fullSyncIntervalDays: number | undefined
-    if (confluence) {
-      const trimmed = fullSyncDays.trim()
-      if (trimmed === '') {
-        fullSyncIntervalDays = 0
-      } else {
-        const parsed = Number(trimmed)
-        if (!Number.isInteger(parsed) || parsed < 1 || parsed > 365) {
-          setError('Der Vollabgleich-Rhythmus muss zwischen 1 und 365 Tagen liegen.')
-          return
-        }
-        fullSyncIntervalDays = parsed
-      }
-    }
+    setError(null)
     setSubmitting(true)
     try {
       await updateExistingLibrary(libraryId, {
@@ -115,17 +71,10 @@ export default function EditLibraryScheduleDialog({
         description: library.description ?? undefined,
         listed: library.listed,
         // Bewusst kein Quellkonfigurationsfeld gesetzt - mirrors LibraryDetailPage's own
-        // Stammdaten-Formular: das Backend lässt die gespeicherte Quellkonfiguration
-        // unverändert, solange keines ihrer Felder in der Anfrage vorhanden ist. Dieser Dialog
-        // rührt nur den Zeitplan an.
+        // Stammdaten-Formular: das Backend lässt die gespeicherte Quellkonfiguration unverändert,
+        // solange keines ihrer Felder in der Anfrage vorhanden ist.
         sourceInsecureSsl: null,
-        ...(confluence ? { confluenceFullSyncIntervalDays: fullSyncIntervalDays } : {}),
-        schedule: {
-          frequency,
-          hour: parts?.hour ?? null,
-          minute: parts?.minute ?? null,
-          weekday: frequency === 'WEEKLY' ? weekday : undefined,
-        },
+        ...scheduleUpdateFrom(values, confluence),
       })
       onClose()
     } catch (err) {
@@ -141,64 +90,12 @@ export default function EditLibraryScheduleDialog({
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
           {error && <Alert severity="error">{error}</Alert>}
-
-          <FormControl size="small" fullWidth>
-            <InputLabel id="library-schedule-frequency-label">Zeitplan</InputLabel>
-            <Select
-              labelId="library-schedule-frequency-label"
-              label="Zeitplan"
-              value={frequency}
-              onChange={(e) => setFrequency(e.target.value as ScheduleFrequency)}
-            >
-              {scheduleFrequencies.map((option) => (
-                <MenuItem key={option} value={option}>
-                  {scheduleFrequencyLabel(option)}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          {(frequency === 'DAILY' || frequency === 'WEEKLY') && (
-            <TextField
-              label="Uhrzeit"
-              type="time"
-              value={time}
-              onChange={(e) => setTime(e.target.value)}
-              slotProps={{ inputLabel: { shrink: true } }}
-              size="small"
-            />
-          )}
-
-          {confluence && (
-            <TextField
-              label="Vollabgleich alle … Tage"
-              type="number"
-              value={fullSyncDays}
-              onChange={(e) => setFullSyncDays(e.target.value)}
-              placeholder={confluence.defaultDays != null ? String(confluence.defaultDays) : '7'}
-              helperText={`Leer = Vorgabe der Instanz (alle ${confluence.defaultDays ?? 7} Tage). Der Vollabgleich ist verlängerbar, aber nicht abschaltbar — nur er erkennt Löschungen in Confluence.`}
-              slotProps={{ htmlInput: { min: 1, max: 365 } }}
-              size="small"
-            />
-          )}
-
-          {frequency === 'WEEKLY' && (
-            <FormControl size="small" fullWidth>
-              <InputLabel id="library-schedule-weekday-label">Wochentag</InputLabel>
-              <Select
-                labelId="library-schedule-weekday-label"
-                label="Wochentag"
-                value={weekday}
-                onChange={(e) => setWeekday(e.target.value as ScheduleWeekday)}
-              >
-                {scheduleWeekdays.map((option) => (
-                  <MenuItem key={option} value={option}>
-                    {scheduleWeekdayLabel(option)}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          )}
+          <LibraryScheduleForm
+            idPrefix="library-schedule"
+            values={values}
+            onChange={(patch) => setValues((prev) => ({ ...prev, ...patch }))}
+            confluence={confluence}
+          />
         </Stack>
       </DialogContent>
       <DialogActions>
