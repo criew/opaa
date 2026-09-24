@@ -332,6 +332,49 @@ describe('AssetGrantsSection', () => {
     expect(await screen.findByText('Alle Konten')).toBeInTheDocument()
   })
 
+  // Die Rückfrage hängt an der Reichweite, nicht am Formular: Auch ein Rollenwechsel an der
+  // bestehenden Zeile „Alle Konten" vergrößert sie und wird deshalb genauso gefragt.
+  it('asks back before raising the role of an existing all-accounts grant, and drops it on no', async () => {
+    setSystemAdmin()
+    setGrants(library.id, [
+      {
+        id: 'grant-all',
+        subjectType: 'ALL_ACCOUNTS',
+        role: 'VIEWER',
+        expiresAt: null,
+        grantedByUserId: 'admin-1',
+        grantedByDisplayName: 'Admin',
+        createdAt: '2026-03-01T10:00:00Z',
+        updatedAt: '2026-03-01T10:00:00Z',
+      },
+    ])
+    renderWithProviders(<AssetGrantsSection assetType="KNOWLEDGE_LIBRARY" assetId={library.id} />)
+    const userEventInstance = userEvent.setup()
+
+    await userEventInstance.click(
+      await screen.findByRole('combobox', { name: /^rolle für alle konten$/i }),
+    )
+    await userEventInstance.click(await screen.findByRole('option', { name: 'Bearbeiter' }))
+    await answerConfirm(userEventInstance, 'An alle Konten freigeben?', 'Abbrechen')
+
+    await waitFor(() => expect(mockUpsertAssetGrant).not.toHaveBeenCalled())
+
+    await userEventInstance.click(
+      await screen.findByRole('combobox', { name: /^rolle für alle konten$/i }),
+    )
+    await userEventInstance.click(await screen.findByRole('option', { name: 'Bearbeiter' }))
+    await answerConfirm(userEventInstance, 'An alle Konten freigeben?', 'An alle freigeben')
+
+    await waitFor(() =>
+      expect(mockUpsertAssetGrant).toHaveBeenCalledWith('KNOWLEDGE_LIBRARY', library.id, {
+        subjectType: 'ALL_ACCOUNTS',
+        subjectId: undefined,
+        role: 'EDITOR',
+        expiresAt: null,
+      }),
+    )
+  }, 15000)
+
   it('grants nothing when the confirmation for all accounts is declined', async () => {
     setSystemAdmin()
     renderWithProviders(<AssetGrantsSection assetType="KNOWLEDGE_LIBRARY" assetId={library.id} />)

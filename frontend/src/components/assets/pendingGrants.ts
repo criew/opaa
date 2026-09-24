@@ -50,7 +50,7 @@ export async function applyPendingGrantsAfterCreation(
   if (failed.length === 0) return
   const noun = assetTypeLabel(assetType)
   notify(
-    `Die ${noun} wurde angelegt, aber diese Freigaben konnten nicht gespeichert werden: ${failed.join(', ')}. Ergänzen Sie sie unter „Verwaltung“ → „Rechte verwalten“.`,
+    `Die ${noun} wurde angelegt, aber diese Freigaben konnten nicht gespeichert werden: ${failed.join(', ')}. Ergänzen Sie sie im Reiter „Freigaben“ unter „Berechtigungen“.`,
     'warning',
   )
 }

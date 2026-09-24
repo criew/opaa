@@ -97,7 +97,7 @@ Der Reiter **„Freigaben"** einer Wissensbibliothek führt sie in dieser Reihen
 
 | Abschnitt | Inhalt |
 |---|---|
-| **Eigentümer** | die zuständige Stelle mit Namen; der Eigentümer selbst kann sie über „Eigentum übergeben" an eine Person oder eine Gruppe weiterreichen — mit Rückfrage, und die Eigentümerrolle geht mit |
+| **Eigentümer** | die zuständige Stelle mit Namen; über „Eigentum übergeben" reicht der Eigentümer sie an eine Person oder eine Gruppe weiter — mit Rückfrage, und die Eigentümerrolle geht mit. Auch die **Systemverwaltung** kann übergeben: So bekommt eine Bibliothek mit offener Nachfolge wieder eine handlungsfähige Stelle, ohne das Konto der ausgeschiedenen Person. Jede Übergabe steht mit Namen im Nachweisprotokoll |
 | **Berechtigungen** | Personen, Gruppen und „Alle Konten" mit Rolle, Befristung und Entzug, dazu das Formular „Freigeben"; für die Systemverwaltung darunter die Obergrenze „Freigabe an Alle erlaubt" |
 | **Im Katalog auffindbar** | der Schalter mit eigenem „Auffindbarkeit speichern"; für die Systemverwaltung darunter die Obergrenze „Auffindbarkeit im Katalog erlaubt" |
 | **Externer Zugang** | die Freigabe für Fremdzugänge |
@@ -166,6 +166,33 @@ Beides wird **historisiert** wie eine erteilte Rolle: Zu jedem Stichtag innerhal
 Aufbewahrungsfrist ist belegbar, wie weit eine Bibliothek gereicht hat (Abschnitt 12) — die
 Freigabe an alle Konten in der Rechtehistorie, die Auffindbarkeit in ihrer eigenen. Die
 Freigabe für [Fremdzugänge](fremdzugaenge.md) ist ein weiteres Reichweitenfeld derselben Art.
+
+### Der Katalog
+
+Der **Katalog** ist ein eigener Punkt der Hauptnavigation neben „Wissen" und „Prompts". Er zeigt
+Wissens- und Prompt-Bibliotheken gemischt: alle, die die Person lesen darf — über eine eigene Rolle,
+eine Rolle über eine Gruppe oder die Freigabe an „Alle Konten" —, und dazu alle, die im Katalog
+auffindbar sind. Die Übersichten unter „Wissen" und „Prompts" bleiben daneben die Orte, an
+denen Bibliotheken angelegt und verwaltet werden.
+
+| Element | Inhalt |
+|---|---|
+| **Suche** | Über Name und Beschreibung, ohne Rücksicht auf Groß- und Kleinschreibung; der Suchtext ist begrenzt |
+| **Filter** | „Alle", „Wissen" oder „Prompts" |
+| **Eintrag** | Art (Wissens- oder Prompt-Bibliothek), Name, Beschreibung, Umfang (Dokumente bzw. Prompts), in wie vielen Räumen sie bereitsteht, zuständige Stelle; in der Tabelle zusätzlich die Herkunft |
+| **Seiten** | Die Einträge kommen seitenweise; „Weitere laden" hängt die nächste Seite an |
+
+**Auffindbar ist nicht zugänglich.** Eine auffindbare Bibliothek, die die Person nicht lesen darf,
+steht im Katalog mit dem Hinweis **„Auffindbar ohne Berechtigung — zuständig: …"** und führt nirgendwohin;
+ihre Adresse antwortet „nicht gefunden" wie bei einer unbekannten Bibliothek. Zuständig ist der
+Eigentümer — bei einer Gruppe ihr Name, bei einer Person ihr Anzeigename. Eine geschützte Gruppe und
+eine Person ohne Anzeigenamen bleiben unbenannt, eine E-Mail-Adresse erscheint nie. Ist die
+Nachfolge offen (Abschnitt 13.3), nennt der Hinweis deren Adressaten.
+
+Die Systemverwaltung sieht im Katalog nicht mehr als andere: **Verwalten ist nicht Lesen.** Eine
+Bibliothek, die sie nur verwaltet, erscheint dort nur, wenn sie auffindbar ist, und dann als Eintrag
+ohne Zugriff. Der Katalog zeigt nie etwas aus einer anderen Organisation, und ein Eintrag enthält
+Beschreibungen, nie Inhalte: keine Dokumente, keine Prompts.
 
 ### Freigabe-Obergrenze für Konnektorbibliotheken
 
@@ -811,6 +838,12 @@ und bei einem Objekt einer Gruppe der Weg in die Gruppenverwaltung. In jedem Fal
 die der Feststellungslauf noch nicht gesehen hat, steht bereits in der Liste — einen Vermerk nimmt
 sie erst an, wenn ihr Vorgang angelegt ist; wann der Lauf hinsieht, steht in Abschnitt 15.
 
+**Der kleine Weg für ein einzelnes Objekt.** Geht es nur um eine Bibliothek und nicht um den ganzen
+Bestand einer Person, genügt im Reiter „Freigaben" der Abschnitt „Eigentümer" mit „Eigentum
+übergeben" (Abschnitt 4). Auch das beendet den Zustand „Nachfolge offen" dieses Objekts und wird am
+Vorgang vermerkt; auch das darf die Systemverwaltung. Der Unterschied zum Übertragungsdialog ist
+allein der Umfang: ein Objekt statt aller Wirkungen eines Subjekts.
+
 **Vorgänge und Sichtungsvermerke sind Protokoll**, kein Rechtenachweis: Ein monatlicher Lauf löscht
 abgeschlossene Vorgänge samt ihren Vermerken, sobald ihr Ende länger zurückliegt als die
 Aufbewahrungsfrist des Nachweisprotokolls — dieselbe Frist, eine Verwaltungseinstellung und keine
@@ -880,7 +913,8 @@ Abschnitt „Vor dem Update auf die Gruppenherkunft".
 - **Keine freien Rollen.** Die vier Bibliotheks- und die drei Raumrollen sind fest; wer ein Bündel
   braucht, nimmt eine Gruppe.
 - **Keine Mitgliederliste ohne Objekt.** Wer wissen will, wer in einer Gruppe ist, fragt an einem
-  Objekt, an dem er selbst das Recht vergibt (Abschnitt 8), oder verantwortet die Gruppe.- **Keinen Personen-Einstieg in die Stichtagsauskunft** (Abschnitt 12) und **keine Vorschau
+  Objekt, an dem er selbst das Recht vergibt (Abschnitt 8), oder verantwortet die Gruppe.
+- **Keinen Personen-Einstieg in die Stichtagsauskunft** (Abschnitt 12) und **keine Vorschau
   „alles, was diese Person darf"** (Abschnitt 13.2).
 - **Keine Historie der Systemrollen.** Was mit einer Systemrolle geschah, steht im
   Nachweisprotokoll und unterliegt dessen Frist.
@@ -888,6 +922,8 @@ Abschnitt „Vor dem Update auf die Gruppenherkunft".
   was bleibt, ist das passive Zuwachssignal (Abschnitt 8).
 - **Keine Rezertifizierung.** Ein Recht kann befristet werden, aber niemand wird zur Wiedervorlage
   gezwungen.
+- **Keinen Freigabestand, keine Versionen und keine Nutzungsangaben im Katalog** (Abschnitt 4,
+  „Der Katalog"). Ein Eintrag sagt, was es gibt und wer zuständig ist.
 - **Kein Schreiben ins Verzeichnis.** OPAA liest, und zwar nur.
 
 ## 18. Weiterführende Kapitel

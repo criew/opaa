@@ -69,12 +69,17 @@ export function validateScheduleValues(
 
 /**
  * The schedule fields of a LibraryUpdateRequest/LibraryRequest. Call {@link validateScheduleValues}
- * first - this does not itself reject anything. #1200: an empty full-sync field returns the library
- * to the instance-wide default, sent as 0; the rhythm is lengthenable, never switchable off.
+ * first - this does not itself reject anything.
+ *
+ * <p>#1200: an empty full-sync field means "instance-wide default", and the two request kinds spell
+ * that differently. `LibraryUpdateRequest` needs the explicit 0, because an absent field there
+ * means "leave the stored value alone". `LibraryRequest` accepts only 1 to 365 and rejects 0 with
+ * 400 - a library being created has no stored value to return to, so the field simply stays away.
  */
 export function scheduleUpdateFrom(
   values: LibraryScheduleValues,
   confluence?: ConfluenceFullSyncRhythm,
+  mode: 'create' | 'edit' = 'edit',
 ): {
   schedule: {
     frequency: ScheduleFrequency
@@ -87,6 +92,7 @@ export function scheduleUpdateFrom(
   const needsTime = values.frequency === 'DAILY' || values.frequency === 'WEEKLY'
   const parts = needsTime ? timeStringToParts(values.time) : null
   const trimmed = values.fullSyncDays.trim()
+  const rhythmOmitted = !confluence || (trimmed === '' && mode === 'create')
   return {
     schedule: {
       frequency: values.frequency,
@@ -94,6 +100,8 @@ export function scheduleUpdateFrom(
       minute: parts?.minute ?? null,
       weekday: values.frequency === 'WEEKLY' ? values.weekday : undefined,
     },
-    ...(confluence ? { confluenceFullSyncIntervalDays: trimmed === '' ? 0 : Number(trimmed) } : {}),
+    ...(rhythmOmitted
+      ? {}
+      : { confluenceFullSyncIntervalDays: trimmed === '' ? 0 : Number(trimmed) }),
   }
 }

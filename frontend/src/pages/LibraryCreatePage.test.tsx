@@ -150,7 +150,61 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       await user.click(screen.getByRole('radio', { name: /Dateisystem/ }))
       expect(screen.getByRole('radio', { name: /Upload/ })).toBeChecked()
     })
+
+    // Die Anlegerechte kommen erst nach dem ersten Rendern an: Was dann gesperrt ist, darf nicht
+    // ausgewählt stehen bleiben - sonst führte „Weiter" in einen Pfad, der nie anlegen kann.
+    it('moves the selection off a tile that turns out to be locked', async () => {
+      mockGetMyCapabilities.mockResolvedValue(['CREATE_CONNECTOR_LIBRARY'])
+      renderPage()
+
+      // Die erste erlaubte Kachel rückt nach; die Schrittleiste führt damit wieder „Quelle".
+      await waitFor(() =>
+        expect(screen.getByRole('radio', { name: /Dateisystem/ })).toHaveAttribute(
+          'aria-checked',
+          'true',
+        ),
+      )
+      expect(screen.getByRole('radio', { name: /Upload/ })).toBeDisabled()
+      expect(screen.getByRole('radio', { name: /Upload/ })).toHaveAttribute('aria-checked', 'false')
+      expect(screen.getByText('2 · Quelle')).toBeInTheDocument()
+      // Die Begründung steht weiter auf der gesperrten Kachel, aber nicht mehr als Hinweis über
+      // dem Assistenten: Der gälte der gewählten Art, und die ist jetzt eine erlaubte.
+      expect(document.getElementById('library-create-capability-hint')).toBeNull()
+    })
   })
+
+  // WAI-ARIA „radio group": ein Halt in der Tabulatorreihenfolge, die Pfeiltasten wählen innerhalb.
+  it('moves through the tiles with the arrow keys and skips a locked one', async () => {
+    mockGetMyCapabilities.mockResolvedValue(['CREATE_CONNECTOR_LIBRARY'])
+    const user = userEvent.setup()
+    renderPage()
+
+    await waitFor(() => expect(screen.getByRole('radio', { name: /Upload/ })).toBeDisabled())
+    const filesystem = screen.getByRole('radio', { name: /Dateisystem/ })
+    expect(filesystem).toHaveAttribute('tabindex', '0')
+    expect(screen.getByRole('radio', { name: /Confluence/ })).toHaveAttribute('tabindex', '-1')
+
+    filesystem.focus()
+    await user.keyboard('{ArrowRight}')
+    expect(screen.getByRole('radio', { name: /Webverzeichnis/ })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    )
+    expect(screen.getByRole('radio', { name: /Webverzeichnis/ })).toHaveFocus()
+
+    // Rückwärts über den Anfang hinaus landet am Ende - und die gesperrte Upload-Kachel wird
+    // übersprungen, statt den Fokus zu verschlucken.
+    await user.keyboard('{ArrowLeft}{ArrowLeft}')
+    expect(screen.getByRole('radio', { name: /S3-Objektspeicher/ })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    )
+    await user.keyboard('{Home}')
+    expect(screen.getByRole('radio', { name: /Dateisystem/ })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    )
+  }, 15000)
 
   it('notes a person with the shared subject picker and grants on the asset after creation', async () => {
     mockGetUserSummaries.mockResolvedValue([
@@ -555,22 +609,69 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       await nameItAndContinue(user, 'Wiki Bauamt')
       await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
 
-      await waitFor(() =>
-        expect(mockCreateNewLibrary).toHaveBeenCalledWith(
-          expect.objectContaining({
-            name: 'Wiki Bauamt',
-            sourceType: 'CONFLUENCE',
-            sourceUrl: 'https://wiki.behoerde.example/confluence',
-            sourceCredentials: 'pat-geheim',
-            confluenceEdition: 'DATA_CENTER',
-            confluenceSpaces: [{ key: 'BAU', name: 'Bauamt' }],
-          }),
-        ),
-      )
+      // Die ganze Anfrage, nicht nur ein Ausschnitt: Ein Feld, das der Anlege-Endpunkt gar nicht
+      // annimmt, fällt nur auf, wenn der Vergleich auch das Zuviel sieht. Ohne eigenen
+      // Vollabgleich-Rhythmus darf `confluenceFullSyncIntervalDays` deshalb gar nicht mitgehen -
+      // die 0 („zurück zur Vorgabe der Instanz") kennt nur der Bearbeiten-Weg, das Anlegen weist
+      // sie mit 400 ab (KnowledgeLibraryService: 1 bis 365).
+      await waitFor(() => expect(mockCreateNewLibrary).toHaveBeenCalled())
+      expect(mockCreateNewLibrary).toHaveBeenCalledWith({
+        name: 'Wiki Bauamt',
+        description: undefined,
+        ownerType: 'USER',
+        ownerId: undefined,
+        listed: false,
+        sourceType: 'CONFLUENCE',
+        sourceUrl: 'https://wiki.behoerde.example/confluence',
+        sourceProxy: undefined,
+        sourceCredentials: 'pat-geheim',
+        sourceInsecureSsl: false,
+        confluenceEdition: 'DATA_CENTER',
+        confluenceSpaces: [{ key: 'BAU', name: 'Bauamt' }],
+        schedule: { frequency: 'DISABLED', hour: null, minute: null, weekday: undefined },
+      })
       // The "Erste Indizierung sofort ..." switch defaults to on - the first run starts right
       // after creation, before the navigation to the detail page.
       expect(mockTriggerIndexing).toHaveBeenCalledWith('lib-neu', 'CONFLUENCE')
       expect(mockNavigate).toHaveBeenCalledWith('/libraries/lib-neu')
+    }, 25000)
+
+    // #1942: Ein eingetragener Rhythmus geht mit; nur das leere Feld bedeutet beim Anlegen
+    // „kein eigener Rhythmus" und darf das Feld nicht als 0 senden.
+    it('sends an entered full-sync rhythm as the number, not as the update path’s zero', async () => {
+      mockTestLibrarySource
+        .mockResolvedValueOnce({
+          reachable: true,
+          confluenceEdition: 'DATA_CENTER',
+          credentialsVerified: false,
+          message: 'Confluence Data Center erkannt.',
+        })
+        .mockResolvedValueOnce({
+          reachable: true,
+          confluenceEdition: 'DATA_CENTER',
+          credentialsVerified: true,
+          message: 'Zugangsdaten gültig.',
+        })
+      const user = await openConfluenceStep()
+      await user.type(
+        screen.getByLabelText(/Adresse der Confluence-Instanz/),
+        'https://wiki.behoerde.example/confluence',
+      )
+      await user.click(screen.getByRole('button', { name: 'Edition erkennen' }))
+      await user.type(await screen.findByLabelText(/^Personal Access Token/), 'pat-geheim')
+      await user.click(screen.getByRole('button', { name: 'Verbindung testen' }))
+      const picker = await screen.findByLabelText(/Spaces suchen und auswählen/)
+      await user.click(picker)
+      await user.click(await screen.findByRole('option', { name: /Bauamt \(BAU\)/ }))
+      await user.type(screen.getByLabelText(/Vollabgleich alle/), '14')
+      await next(user)
+      await nameItAndContinue(user, 'Wiki Bauamt')
+      await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
+
+      await waitFor(() => expect(mockCreateNewLibrary).toHaveBeenCalled())
+      expect(mockCreateNewLibrary.mock.calls[0][0]).toMatchObject({
+        confluenceFullSyncIntervalDays: 14,
+      })
     }, 25000)
 
     it('skips the first run when the immediate-indexing switch is turned off', async () => {

@@ -159,6 +159,15 @@ export default function AssetGrantsSection({
 
   async function handleRoleChange(grant: AssetGrantResponse, newRole: AssetRole) {
     setRowError(null)
+    // #1931, ADR-0037 Entscheidung 9: Die Rückfrage hängt an der Reichweite, nicht am Formular.
+    // Wer die bestehende Zeile „Alle Konten" von „Lesen" auf „Bearbeiten" zieht, vergrößert sie
+    // genauso wie beim Erteilen - und wird genauso gefragt.
+    if (
+      grant.subjectType === 'ALL_ACCOUNTS' &&
+      !(await confirmAllAccountsSubject(assetRoleLabel(newRole)))
+    ) {
+      return
+    }
     try {
       await upsertExistingGrant(assetType, assetId, {
         subjectType: grant.subjectType,

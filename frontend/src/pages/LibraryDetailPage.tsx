@@ -216,10 +216,7 @@ interface ShareCapSwitchProps {
   label: string
   description: string
   checked: boolean
-  saving: boolean
-  error: string | null
-  onSave: (checked: boolean) => void
-  onDismissError: () => void
+  onSave: (checked: boolean) => Promise<void>
 }
 
 /**
@@ -227,19 +224,29 @@ interface ShareCapSwitchProps {
  * der Gestalt aus #1931) - sichtbar und setzbar nur hier, nie für den Eigentümer der Bibliothek:
  * Der sieht die Wirkung (eine Freigabe über der Grenze antwortet 409), nicht den Schalter. Die
  * beiden Hälften stehen in den Abschnitten, auf die sie wirken - „Freigabe an Alle erlaubt" bei den
- * Berechtigungen, „Auffindbarkeit im Katalog erlaubt" beim Katalog -, und jede speichert für sich.
+ * Berechtigungen, „Auffindbarkeit im Katalog erlaubt" beim Katalog. Jede führt ihren eigenen
+ * Speicher- und Fehlerzustand: Eine abgewiesene Hälfte darf die andere weder sperren noch mit
+ * einer Meldung behängen, die ihr nicht gilt.
  */
-function ShareCapSwitch({
-  label,
-  description,
-  checked,
-  saving,
-  error,
-  onSave,
-  onDismissError,
-}: ShareCapSwitchProps) {
+function ShareCapSwitch({ label, description, checked, onSave }: ShareCapSwitchProps) {
   const [draft, setDraft] = useState(checked)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const changed = draft !== checked
+
+  async function handleSave() {
+    setError(null)
+    setSaving(true)
+    try {
+      await onSave(draft)
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Freigabe-Obergrenze konnte nicht geändert werden',
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
     <Box sx={{ pt: 1, borderTop: '1px solid', borderColor: 'divider' }}>
@@ -261,13 +268,13 @@ function ShareCapSwitch({
           // Beide Hälften der Obergrenze stehen auf derselben Seite; der sichtbare Text ist
           // derselbe, der zugängliche Name nennt deshalb, welche Hälfte gespeichert wird.
           aria-label={`Obergrenze „${label}“ speichern`}
-          onClick={() => onSave(draft)}
+          onClick={() => void handleSave()}
         >
           {saving ? 'Wird gespeichert …' : 'Obergrenze speichern'}
         </Button>
       </Stack>
       {error && (
-        <Alert severity="error" sx={{ mt: 1 }} onClose={onDismissError}>
+        <Alert severity="error" sx={{ mt: 1 }} onClose={() => setError(null)}>
           {error}
         </Alert>
       )}
@@ -294,8 +301,6 @@ export default function LibraryDetailPage() {
   const [actionMenuAnchor, setActionMenuAnchor] = useState<HTMLElement | null>(null)
   const [diagnosticsLockError, setDiagnosticsLockError] = useState<string | null>(null)
   const [diagnosticsLockSaving, setDiagnosticsLockSaving] = useState(false)
-  const [shareCapError, setShareCapError] = useState<string | null>(null)
-  const [shareCapSaving, setShareCapSaving] = useState(false)
   const [searchParams] = useSearchParams()
 
   useEffect(() => {
@@ -476,19 +481,14 @@ export default function LibraryDetailPage() {
     }
   }
 
+  /**
+   * Beide Hälften der Obergrenze gehen als Paar an denselben Endpunkt; die nicht angefasste geht
+   * unverändert mit. Eine Ablehnung wird weitergereicht - sie gehört in den Schalter, der sie
+   * ausgelöst hat.
+   */
   async function handleSaveShareCap(allAccountsGrantAllowed: boolean, listedCap: boolean) {
     if (!libraryId) return
-    setShareCapError(null)
-    setShareCapSaving(true)
-    try {
-      await setLibraryShareCap(libraryId, { allAccountsGrantAllowed, listedCap })
-    } catch (err) {
-      setShareCapError(
-        err instanceof Error ? err.message : 'Freigabe-Obergrenze konnte nicht geändert werden',
-      )
-    } finally {
-      setShareCapSaving(false)
-    }
+    await setLibraryShareCap(libraryId, { allAccountsGrantAllowed, listedCap })
   }
 
   if (!libraryId) {
@@ -1052,12 +1052,7 @@ export default function LibraryDetailPage() {
                       label="Freigabe an Alle erlaubt"
                       description="Legt fest, ob diese Konnektorbibliothek überhaupt an alle Konten freigegeben werden darf. Wird die Erlaubnis entzogen, wird eine bereits bestehende Freigabe sofort zurückgenommen."
                       checked={details?.allAccountsGrantAllowed ?? true}
-                      saving={shareCapSaving}
-                      error={shareCapError}
-                      onSave={(allowed) =>
-                        void handleSaveShareCap(allowed, details?.listedCap ?? true)
-                      }
-                      onDismissError={() => setShareCapError(null)}
+                      onSave={(allowed) => handleSaveShareCap(allowed, details?.listedCap ?? true)}
                     />
                   ) : null
                 }
@@ -1076,12 +1071,9 @@ export default function LibraryDetailPage() {
                       label="Auffindbarkeit im Katalog erlaubt"
                       description="Legt fest, ob diese Konnektorbibliothek überhaupt im Katalog auffindbar sein darf. Wird die Erlaubnis entzogen, verschwindet ein bereits gesetzter Eintrag sofort."
                       checked={details?.listedCap ?? true}
-                      saving={shareCapSaving}
-                      error={shareCapError}
                       onSave={(allowed) =>
-                        void handleSaveShareCap(details?.allAccountsGrantAllowed ?? true, allowed)
+                        handleSaveShareCap(details?.allAccountsGrantAllowed ?? true, allowed)
                       }
-                      onDismissError={() => setShareCapError(null)}
                     />
                   ) : null
                 }

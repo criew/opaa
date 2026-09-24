@@ -823,6 +823,45 @@ describe('LibraryDetailPage', () => {
       ).toBeDisabled()
     })
 
+    // #1941: Die beiden Hälften stehen in verschiedenen Abschnitten und speichern einzeln. Eine
+    // abgewiesene Hälfte darf die andere weder sperren noch mit einer Meldung behängen, die ihr
+    // nicht gilt.
+    it('keeps a refused half from spilling its error onto the other', async () => {
+      setSystemAdmin()
+      const adminBypassLibrary = { ...managerLibrary, myRole: 'OWNER' as const }
+      setLibraryState(
+        adminBypassLibrary,
+        detailsOf(adminBypassLibrary, {
+          sourceType: 'FILESYSTEM',
+          sourcePath: '/data/dokumente',
+          allAccountsGrantAllowed: true,
+          listedCap: true,
+        }),
+      )
+      server.use(
+        http.put('/api/v1/libraries/:libraryId/share-cap', () =>
+          HttpResponse.json({ error: 'Obergrenze abgelehnt' }, { status: 409 }),
+        ),
+      )
+      const user = userEvent.setup()
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+      await user.click(await screen.findByRole('tab', { name: 'Freigaben' }))
+      await user.click(await screen.findByLabelText('Freigabe an Alle erlaubt'))
+      await user.click(
+        screen.getByRole('button', { name: 'Obergrenze „Freigabe an Alle erlaubt“ speichern' }),
+      )
+
+      expect(await screen.findByText('Obergrenze abgelehnt')).toBeInTheDocument()
+      // Genau eine Meldung, und der Knopf der anderen Hälfte ist weder gesperrt noch beschriftet
+      // wie ein laufender Speichervorgang.
+      expect(screen.getAllByText('Obergrenze abgelehnt')).toHaveLength(1)
+      const other = screen.getByRole('button', {
+        name: 'Obergrenze „Auffindbarkeit im Katalog erlaubt“ speichern',
+      })
+      expect(other).toHaveTextContent('Obergrenze speichern')
+    }, 15000)
+
     it('locks the findability under a lowered cap and explains why', async () => {
       const ownerLibrary = { ...managerLibrary, myRole: 'OWNER' as const }
       setLibraryState(

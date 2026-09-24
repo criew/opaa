@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import type { KeyboardEvent as ReactKeyboardEvent } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -148,7 +149,7 @@ export default function LibraryCreatePage() {
   const [selectedGroup, setSelectedGroup] = useState<GroupListResponse | null>(null)
   const myGroups = useMyGroups()
 
-  const [sourceType, setSourceType] = useState<DocumentSourceType>('UPLOAD')
+  const [chosenType, setSourceType] = useState<DocumentSourceType>('UPLOAD')
   const [generic, setGeneric] = useState<GenericSourceValues>(EMPTY_GENERIC_SOURCE_VALUES)
   const [confluence, setConfluence] = useState<ConfluenceSourceValues>(EMPTY_CONFLUENCE_VALUES)
   const [s3, setS3] = useState<S3SourceValues>(EMPTY_S3_VALUES)
@@ -160,6 +161,24 @@ export default function LibraryCreatePage() {
   const [listed, setListed] = useState(false)
   const [pendingGrants, setPendingGrants] = useState<PendingGrant[]>([])
 
+  /** Die Begründung, warum diese Art hier nicht zu wählen ist - oder `null`, wenn sie es ist. */
+  function missingFor(type: DocumentSourceType): string | null {
+    const capability: Capability = type === 'UPLOAD' ? 'CREATE_LIBRARY' : 'CREATE_CONNECTOR_LIBRARY'
+    return isMissing(capability) ? capabilityMissingMessage(capability) : null
+  }
+
+  const selectableTypes = allDocumentSourceTypes.filter((type) => missingFor(type) === null)
+
+  /**
+   * Die tatsächlich gewählte Art. Die Anlegerechte kommen erst nach dem ersten Rendern an; was
+   * dann gesperrt ist, darf nicht ausgewählt stehen bleiben, sonst führte „Weiter" in einen Pfad,
+   * der nie anlegen kann. Die Wahl rückt auf die erste erlaubte Kachel - abgeleitet, nicht in
+   * einem Effekt nachgezogen. Ist gar keine erlaubt, bleibt sie stehen, und der Hinweis über der
+   * Schrittleiste erklärt, warum am Ende nichts angelegt wird.
+   */
+  const sourceType =
+    missingFor(chosenType) !== null && selectableTypes.length > 0 ? selectableTypes[0] : chosenType
+
   const steps = stepsFor(sourceType)
   const currentStep = steps[Math.min(activeStep, steps.length - 1)]
   const configKind = documentSourceTypeConfigKind[sourceType]
@@ -170,6 +189,33 @@ export default function LibraryCreatePage() {
   const missingCapability = isMissing(requiredCapability)
     ? capabilityMissingMessage(requiredCapability)
     : null
+
+  /**
+   * Pfeiltasten wählen innerhalb der Kachelgruppe die nächste bzw. vorherige *wählbare* Kachel und
+   * ziehen den Fokus mit (WAI-ARIA „radio group"); Pos1/Ende springen an die Enden. Eine gesperrte
+   * Kachel wird dabei übersprungen, statt den Fokus zu verschlucken.
+   */
+  function handleTileKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    const forward = event.key === 'ArrowRight' || event.key === 'ArrowDown'
+    const backward = event.key === 'ArrowLeft' || event.key === 'ArrowUp'
+    const home = event.key === 'Home'
+    const end = event.key === 'End'
+    if (!forward && !backward && !home && !end) return
+    if (selectableTypes.length === 0) return
+    event.preventDefault()
+    const current = selectableTypes.indexOf(sourceType)
+    const next = home
+      ? selectableTypes[0]
+      : end
+        ? selectableTypes[selectableTypes.length - 1]
+        : selectableTypes[
+            (current + (forward ? 1 : selectableTypes.length - 1) + selectableTypes.length) %
+              selectableTypes.length
+          ]
+    setSourceType(next)
+    setError(null)
+    event.currentTarget.querySelector<HTMLButtonElement>(`[data-source-type="${next}"]`)?.focus()
+  }
 
   // Der Fokus folgt dem Schritt (WCAG 2.4.3): Nach „Weiter" steht er auf der Überschrift des neuen
   // Schritts, nicht auf dem Knopf, der gerade verschwunden ist.
@@ -270,7 +316,9 @@ export default function LibraryCreatePage() {
         }),
         // #1942: Anlage und Zeitplan werden atomar gesetzt; eine Upload-Bibliothek bekommt gar
         // keinen (das Backend wiese alles außer DISABLED mit 400 ab).
-        ...(sourceType !== 'UPLOAD' ? scheduleUpdateFrom(schedule, confluenceRhythm) : {}),
+        ...(sourceType !== 'UPLOAD'
+          ? scheduleUpdateFrom(schedule, confluenceRhythm, 'create')
+          : {}),
       })
       await applyPendingGrantsAfterCreation('KNOWLEDGE_LIBRARY', libraryId, pendingGrants)
       if (sourceType !== 'UPLOAD' && startFirstRun) {
@@ -329,6 +377,7 @@ export default function LibraryCreatePage() {
           <Box
             role="radiogroup"
             aria-label="Art des Wissens wählen"
+            onKeyDown={handleTileKeyDown}
             sx={{
               display: 'grid',
               gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
@@ -337,22 +386,20 @@ export default function LibraryCreatePage() {
           >
             {allDocumentSourceTypes.map((type) => {
               const selected = type === sourceType
-              const missing = isMissing(
-                type === 'UPLOAD' ? 'CREATE_LIBRARY' : 'CREATE_CONNECTOR_LIBRARY',
-              )
-                ? capabilityMissingMessage(
-                    type === 'UPLOAD' ? 'CREATE_LIBRARY' : 'CREATE_CONNECTOR_LIBRARY',
-                  )
-                : null
+              const missing = missingFor(type)
               return (
                 <Box
                   key={type}
                   component="button"
                   type="button"
                   role="radio"
+                  data-source-type={type}
                   aria-checked={selected}
                   aria-disabled={missing != null}
                   disabled={missing != null}
+                  // Eine Radiogruppe hat genau einen Halt in der Tabulatorreihenfolge (WAI-ARIA
+                  // „radio group", roving tabindex); zwischen den Kacheln führen die Pfeiltasten.
+                  tabIndex={selected ? 0 : -1}
                   onClick={() => {
                     if (missing) return
                     setSourceType(type)
