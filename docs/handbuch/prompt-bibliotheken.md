@@ -80,9 +80,11 @@ der Zugriff fehlt.
 
 ### Anlegen
 
-„Neue Prompt-Bibliothek" öffnet einen Assistenten mit drei Schritten; es sind dieselben Bausteine
-wie beim Anlegen einer Wissensbibliothek, nur ohne deren Schritte „Art des Wissens" und „Quelle" —
-eine Prompt-Bibliothek bindet kein Wissen und hat keine Quelle:
+„Neue Prompt-Bibliothek" öffnet einen Assistenten mit drei Schritten. Er verwendet dieselben
+Formularbausteine wie der Assistent einer Wissensbibliothek, schneidet sie aber anders zu: Es gibt
+keine Schritte „Art des Wissens" und „Quelle" — eine Prompt-Bibliothek bindet kein Wissen und hat
+keine Quelle —, und Eigentümer und Rechte stehen in zwei eigenen Schritten statt zusammen in einem
+Schritt „Freigaben":
 
 1. **Stammdaten** — Name und, optional, Beschreibung.
 2. **Eigentümer** — „Mein Konto" oder „Eine Gruppe". Angeboten werden nur Gruppen, in denen die
@@ -90,9 +92,11 @@ eine Prompt-Bibliothek bindet kein Wissen und hat keine Quelle:
    Eigentümerrolle, bei einer Gruppe als Eigentümerin erhält die Gruppe die Verwalterrolle.
    **Gruppeneigentum ist die haltbarere Wahl** für Prompts, die ein Referat gemeinsam pflegt.
 3. **Rechte** — „Im Katalog auffindbar, auch ohne Berechtigung" und optional vorgemerkte Rollen für
-   Personen, Gruppen und „Alle Konten", die gleich nach dem Anlegen erteilt werden. **„Im Katalog auffindbar" ist
-   aus**, bis jemand es ausdrücklich setzt; eingeschaltet macht es die Bibliothek im Katalog für die
-   ganze Organisation sichtbar, auch für alle ohne Leserecht.
+   **Personen und Gruppen**, die gleich nach dem Anlegen erteilt werden. Den Empfänger „Alle
+   Konten" bietet der Assistent **nicht** an; diese Freigabe wird erst an der fertigen Bibliothek
+   erteilt, im Reiter „Verwaltung" unter „Berechtigungen". **„Im Katalog auffindbar" ist aus**, bis
+   jemand es ausdrücklich setzt; eingeschaltet macht es die Bibliothek im Katalog für die ganze
+   Organisation sichtbar, auch für alle ohne Leserecht.
 
 Anlegen darf, wer das Anlegerecht **„Prompt-Bibliotheken anlegen"** hat; ausgeliefert ist es an
 „Alle Konten" ([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 9).
@@ -109,16 +113,21 @@ Die Detailseite hat zwei Reiter, jeder mit eigener Adresse:
 | Reiter | Inhalt | Sichtbar für |
 |---|---|---|
 | **Prompts** | Die Prompts der Bibliothek, aufklappbar mit Text und Variablen; ab der Bearbeiterrolle „Neuer Prompt", „Bearbeiten" und „Löschen" | alle Leser |
-| **Verwaltung** | Name und Beschreibung, dann dieselben Freigabeabschnitte wie bei einer Wissensbibliothek und für den Eigentümer „Prompt-Bibliothek löschen" | ab der Verwalterrolle |
+| **Verwaltung** | „Stammdaten", dann vier der Freigabeabschnitte einer Wissensbibliothek und für den Eigentümer „Prompt-Bibliothek löschen" | ab der Verwalterrolle |
 
-Der Reiter **„Verwaltung"** führt in dieser Reihenfolge: Name und Beschreibung mit eigenem
-„Speichern", **„Berechtigungen"** als Liste auf der Seite — Personen, Gruppen und „Alle Konten" mit
-Rolle, Befristung und Entzug, dazu das Formular „Freigeben" —, **„Im Katalog auffindbar"** mit
-eigenem „Auffindbarkeit speichern", **„Zuordnungen"** mit den Räumen, denen die Bibliothek
-zugeordnet ist (jede einzeln lösbar), und **„Warum sehe ich diese Prompt-Bibliothek?"**. Es sind
-dieselben Abschnitte wie im Reiter „Freigaben" einer Wissensbibliothek; jeder speichert für sich,
-einen gemeinsamen Knopf über Abschnitte hinweg gibt es nicht. Ein Abschnitt „Eigentümer" fehlt
-hier: Die Antwort einer Prompt-Bibliothek trägt den Namen ihrer zuständigen Stelle nicht.
+Der Reiter **„Verwaltung"** führt in dieser Reihenfolge: **„Stammdaten"** — Name und Beschreibung
+mit eigenem „Speichern" —, **„Berechtigungen"** als Liste auf der Seite (Personen, Gruppen und
+„Alle Konten" mit Rolle, Befristung und Entzug, dazu das Formular „Freigeben"; für „Alle Konten"
+auch hier nur Leser und Bearbeiter), **„Im Katalog auffindbar"** mit eigenem „Auffindbarkeit
+speichern", **„Zuordnungen"** mit den Räumen, denen die Bibliothek zugeordnet ist (jede einzeln
+lösbar), und **„Warum sehe ich diese Prompt-Bibliothek?"**. Die letzten vier sind dieselben
+Bausteine wie im Reiter „Freigaben" einer Wissensbibliothek, und jeder speichert für sich; einen
+gemeinsamen Knopf über Abschnitte hinweg gibt es nicht.
+
+Drei Abschnitte der Wissensbibliothek fehlen hier: **„Eigentümer"**, weil die Antwort einer
+Prompt-Bibliothek den Namen ihrer zuständigen Stelle nicht trägt, sowie **„Externer Zugang"** und
+**„Diagnosesperre"** — beides sind Eigenschaften eines durchsuchbaren Bestands, den eine
+Prompt-Bibliothek nicht hat.
 
 Die **Herleitung** „Warum sehe ich das?" zeigt den eigenen Weg zur wirksamen Rolle, genau wie bei
 der Wissensbibliothek ([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md),

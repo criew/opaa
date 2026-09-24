@@ -1,46 +1,34 @@
 import { expect, test } from '../fixtures/auth'
 import { gotoLibraries } from '../fixtures/chat'
-import type { APIRequestContext, Page } from '@playwright/test'
+import { cleanupLibraries, libraryIdFromCurrentUrl } from '../fixtures/libraries'
+import type { Page } from '@playwright/test'
 
-// Der durchgehende Pfad aus Epic #1927 (#1944): Anlegen über den Assistenten → Detailansicht →
-// Reiter „Freigaben", einmal für eine Upload- und einmal für eine Konnektorbibliothek
-// (Webverzeichnis gegen den suite-eigenen „rss-feed"-Dienst, wie in
-// knowledge-library-nacharbeiten.spec.ts). Geprüft wird die Struktur, die #1939/#1940/#1941/#1942
-// hergestellt haben - dass jeder Schritt des Assistenten denselben Namen trägt wie der Reiter, den
-// er in der fertigen Bibliothek bekommt, und dass die drei Freigabewege des Reiters
-// (Person, „Alle Konten", Katalog) tatsächlich an der Bibliothek ankommen.
+// The end-to-end path of Epic #1927 (#1944): creation wizard -> detail page -> tab "Freigaben",
+// once for an UPLOAD and once for a connector library (HTTP_DIRECTORY against this suite's own
+// "rss-feed" service, the same fixture #514/#547 use). What it pins down is the structure
+// #1939/#1940/#1941/#1942 built: every wizard step carries the name of the tab it becomes, and the
+// three sharing paths of that tab (person, "Alle Konten", catalog) actually reach the library.
 //
-// Die übrigen Wissensbibliotheks-Szenarien der Suite (#424, #547) decken Upload, Suche und
-// Quellkonfiguration ab; hier geht es ausschließlich um den Weg durch Assistent und Reiter.
+// The other knowledge-library scenarios (#424, #547) cover upload, search and source
+// configuration; this file covers only the way through wizard and tabs.
 const runId = Date.now()
-
-// Spiegelt frontend/src/services/devAuth.ts's DEV_USER_HEADER - e2e/ ist ein eigenes Paket ohne
-// Abhängigkeit auf frontend/src (dasselbe Muster wie in knowledge-library-nacharbeiten.spec.ts).
-const DEV_USER_HEADER = 'X-OPAA-Dev-User'
 
 const UPLOAD_LIBRARY = `E2E Assistent Upload ${runId}`
 const CONNECTOR_LIBRARY = `E2E Assistent Webverzeichnis ${runId}`
 
-/** Die Adresse des statischen Webverzeichnis-Fixtures im Stack dieser Suite (#514, #547). */
+/** The static web-directory fixture served inside this suite's stack (#514, #547). */
 const DIRECTORY_URL = 'http://rss-feed/webverzeichnis/'
 
-/** Liest die Bibliotheks-ID, auf die der Assistent nach dem Anlegen navigiert hat. */
-function libraryIdFromCurrentUrl(page: Page): string {
-  const match = page.url().match(/\/libraries\/([^/]+)$/)
-  if (!match) throw new Error(`Unerwartete Adresse nach dem Anlegen: ${page.url()}`)
-  return match[1]
-}
-
 /**
- * Ein Abschnitt des Reiters: seit #1608 ein `section` mit `aria-labelledby` auf seine Überschrift
- * (PageSection.tsx), also eine benannte `region`. Grenzt jede Zusicherung auf den Abschnitt ein,
- * um den es geht - „Dev User" steht sonst auch in der Herleitung darunter.
+ * One section of a tab: since #1608 PageSection renders a `section` with `aria-labelledby` on its
+ * heading, i.e. a named `region`. Scopes every assertion to the section it is about - "Dev User"
+ * also appears in the access derivation further down the same tab.
  */
 function section(page: Page, title: string) {
   return page.getByRole('region', { name: title })
 }
 
-/** Der Schritt, auf dem der Assistent gerade steht - seine Überschrift trägt den Fokus (#1942). */
+/** The step the wizard currently stands on - its heading is the focus target (#1942). */
 async function expectWizardStep(page: Page, heading: string): Promise<void> {
   await expect(page.getByRole('heading', { level: 2, name: heading })).toBeVisible()
 }
@@ -49,7 +37,7 @@ async function nextStep(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Weiter', exact: true }).click()
 }
 
-/** Die vier Reiter der Detailansicht; eine Upload-Bibliothek hat keinen Reiter „Quelle" (#1939). */
+/** The four tabs of the detail page; an UPLOAD library has no tab "Quelle" (#1939). */
 async function expectTabs(page: Page, withSource: boolean): Promise<void> {
   await expect(page.getByRole('tab', { name: 'Dokumente' })).toBeVisible()
   await expect(page.getByRole('tab', { name: 'Quelle' })).toHaveCount(withSource ? 1 : 0)
@@ -58,18 +46,18 @@ async function expectTabs(page: Page, withSource: boolean): Promise<void> {
 }
 
 /**
- * Die drei Freigabewege des Reiters an genau einer Bibliothek: eine Person, „Alle Konten" mit
- * ihrer Rückfrage und der Katalog-Schalter. Der Eigentümer-Abschnitt steht darüber (#1941).
+ * The three sharing paths of the tab on one library: a person, "Alle Konten" with its
+ * confirmation, and the catalog switch. The owner section sits above them (#1941).
  */
 async function walkThroughSharingTab(page: Page): Promise<void> {
   await page.getByRole('tab', { name: 'Freigaben' }).click()
 
-  // 1. Eigentümer - neu in der Detailansicht, mit der Übergabe für den Eigentümer selbst.
+  // 1. Owner - new on the detail page, with the transfer for the owner themselves.
   const owner = section(page, 'Eigentümer')
   await expect(owner).toBeVisible()
   await expect(owner.getByRole('button', { name: 'Eigentum übergeben' })).toBeVisible()
 
-  // 2. Berechtigungen - als Liste auf der Seite, nicht mehr hinter „Rechte verwalten".
+  // 2. Grants - a list on the page, no longer behind a "Rechte verwalten" dialog.
   const grants = section(page, 'Berechtigungen')
   await grants.getByRole('button', { name: 'Freigeben' }).click()
   const personInput = grants.getByRole('combobox', { name: 'Person suchen' })
@@ -77,13 +65,13 @@ async function walkThroughSharingTab(page: Page): Promise<void> {
   await personInput.fill('Dev User')
   await page.getByRole('option', { name: /Dev User/ }).click()
   await grants.getByRole('button', { name: 'Freigeben' }).last().click()
-  // Der Entzugsknopf der Zeile, nicht ihr Name: Der Name steht auch in der Empfängerauswahl des
-  // Formulars, das im Moment der Zusicherung noch offen sein kann - eine Mehrdeutigkeit, die
-  // Playwright hart abweist statt sie auszuwarten.
+  // The row's revoke button, not its subject name: the name also sits in the recipient picker of
+  // the form, which can still be open at the moment of the assertion - an ambiguity Playwright
+  // rejects outright instead of waiting it out.
   await expect(grants.getByRole('button', { name: 'Freigabe für Dev User entziehen' })).toBeVisible()
 
-  // 3. „Alle Konten" ist ein Empfänger wie jeder andere (#1931) - mit einer Rückfrage davor, die
-  //    die Reichweite ausspricht (ADR-0037).
+  // 3. "Alle Konten" is a recipient like any other (#1931) - with a confirmation in front of it
+  //    that spells out the reach (ADR-0037).
   await grants.getByRole('button', { name: 'Freigeben' }).click()
   await grants.getByRole('radio', { name: 'Alle Konten' }).click()
   await grants.getByRole('button', { name: 'Freigeben' }).last().click()
@@ -95,8 +83,8 @@ async function walkThroughSharingTab(page: Page): Promise<void> {
     grants.getByRole('button', { name: 'Freigabe für Alle Konten entziehen' }),
   ).toBeVisible()
 
-  // 4. Der Katalog-Schalter steht in einem eigenen Abschnitt mit eigenem Speichern - im
-  //    Assistenten war er gesetzt, hier wird er zurückgenommen.
+  // 4. The catalog switch is a section of its own with its own save button - set in the wizard,
+  //    taken back here.
   const listed = section(page, 'Im Katalog auffindbar')
   const listedBox = listed.getByRole('checkbox', {
     name: 'Im Katalog auffindbar, auch ohne Berechtigung',
@@ -113,7 +101,7 @@ async function walkThroughSharingTab(page: Page): Promise<void> {
     listed.getByRole('button', { name: 'Auffindbarkeit speichern' }).click(),
   ])
 
-  // Der gespeicherte Zustand, nicht der Entwurf im Formular: nach dem Neuladen steht er immer noch.
+  // The saved state, not the draft in the form: after a reload it still stands.
   await page.reload()
   await page.getByRole('tab', { name: 'Freigaben' }).click()
   await expect(
@@ -123,21 +111,8 @@ async function walkThroughSharingTab(page: Page): Promise<void> {
   ).not.toBeChecked()
 }
 
-async function deleteLibrary(request: APIRequestContext, libraryId: string): Promise<void> {
-  const response = await request.delete(`/api/v1/libraries/${libraryId}`, {
-    headers: { [DEV_USER_HEADER]: 'dev-admin' },
-  })
-  expect(response.ok()).toBe(true)
-}
-
 test.describe('Anlage-Assistent und Reiter „Freigaben" (#1944)', () => {
-  const createdLibraryIds: string[] = []
-
-  test.afterAll(async ({ request }) => {
-    for (const libraryId of createdLibraryIds) {
-      await deleteLibrary(request, libraryId)
-    }
-  })
+  const createdLibraryIds = cleanupLibraries()
 
   test('Upload-Bibliothek: drei Schritte, Detailansicht ohne Reiter „Quelle", Freigaben', async ({
     authenticatedPage: page,
@@ -145,27 +120,29 @@ test.describe('Anlage-Assistent und Reiter „Freigaben" (#1944)', () => {
     await gotoLibraries(page)
     await page.getByRole('button', { name: 'Neue Bibliothek' }).click()
 
-    // Schritt 1: Art des Wissens - Kacheln je Quellentyp, „Upload" ist vorausgewählt.
+    // Step 1: kind of knowledge - one tile per source type, "Upload" preselected.
     await expectWizardStep(page, 'Welche Art von Wissen soll hier stehen?')
     const uploadTile = page.getByRole('radio', { name: /^Upload/ })
     await expect(uploadTile).toHaveAttribute('aria-checked', 'true')
     await nextStep(page)
 
-    // Eine Upload-Bibliothek hat keine Quelle: der nächste Schritt ist schon „Name & Beschreibung".
+    // An UPLOAD library has no source, so the next step is already "Name & Beschreibung".
     await expectWizardStep(page, 'Name & Beschreibung')
     await page.getByLabel('Name', { exact: true }).fill(UPLOAD_LIBRARY)
     await page.getByLabel('Beschreibung (optional)').fill('Handakte des Assistenten-Durchlaufs')
     await nextStep(page)
 
     await expectWizardStep(page, 'Freigaben')
-    await page.getByRole('checkbox', { name: 'Im Katalog auffindbar, auch ohne Berechtigung' }).check()
+    await page
+      .getByRole('checkbox', { name: 'Im Katalog auffindbar, auch ohne Berechtigung' })
+      .check()
     await Promise.all([
       page.waitForURL(/\/libraries\/(?!new$)[^/]+$/),
       page.getByRole('button', { name: 'Bibliothek anlegen' }).click(),
     ])
     createdLibraryIds.push(libraryIdFromCurrentUrl(page))
 
-    // Der Kopf: Name, Beschreibung und der Quellentyp genau einmal, als Abzeichen (#1939).
+    // The header: name, description, and the source type exactly once, as a badge (#1939).
     await expect(page.getByRole('heading', { level: 1, name: UPLOAD_LIBRARY })).toBeVisible()
     await expect(page.getByText('Handakte des Assistenten-Durchlaufs')).toBeVisible()
     await expect(page.getByRole('button', { name: 'Weitere Aktionen' })).toBeVisible()
@@ -184,19 +161,19 @@ test.describe('Anlage-Assistent und Reiter „Freigaben" (#1944)', () => {
     await page.getByRole('radio', { name: /^Webverzeichnis/ }).click()
     await nextStep(page)
 
-    // Schritt 2: Quelle - Anbindung, Verbindungstest, Zeitplan und der Sofortstart, seit #1942 für
-    // jeden Konnektortyp. Der Sofortstart bleibt hier aus: geprüft wird der Weg, nicht ein Lauf.
+    // Step 2: source - connection, connection test, schedule and the immediate first run, which
+    // since #1942 exists for every connector type. It stays off here: this is about the path, not
+    // about a run.
     await expectWizardStep(page, 'Woher kommen die Dokumente?')
     await page.getByLabel('Adresse (URL)').fill(DIRECTORY_URL)
     await expect(page.getByRole('button', { name: 'Verbindung testen' })).toBeVisible()
     await expect(page.getByRole('heading', { level: 3, name: 'Zeitplan' })).toBeVisible()
-    const startFirstRun = page.getByRole('switch', {
-      name: 'Erste Indizierung sofort nach dem Anlegen starten',
-    })
-    await startFirstRun.uncheck()
+    await page
+      .getByRole('switch', { name: 'Erste Indizierung sofort nach dem Anlegen starten' })
+      .uncheck()
     await nextStep(page)
 
-    // Schritt 3: Der Name kommt aus der Quelle - hier ihr Hostname - und bleibt überschreibbar.
+    // Step 3: the name comes prefilled from the source - here its hostname - and stays editable.
     await expectWizardStep(page, 'Name & Beschreibung')
     const nameField = page.getByLabel('Name', { exact: true })
     await expect(nameField).toHaveValue('rss-feed')
@@ -204,7 +181,9 @@ test.describe('Anlage-Assistent und Reiter „Freigaben" (#1944)', () => {
     await nextStep(page)
 
     await expectWizardStep(page, 'Freigaben')
-    await page.getByRole('checkbox', { name: 'Im Katalog auffindbar, auch ohne Berechtigung' }).check()
+    await page
+      .getByRole('checkbox', { name: 'Im Katalog auffindbar, auch ohne Berechtigung' })
+      .check()
     await Promise.all([
       page.waitForURL(/\/libraries\/(?!new$)[^/]+$/),
       page.getByRole('button', { name: 'Bibliothek anlegen' }).click(),
@@ -214,8 +193,8 @@ test.describe('Anlage-Assistent und Reiter „Freigaben" (#1944)', () => {
     await expect(page.getByRole('heading', { level: 1, name: CONNECTOR_LIBRARY })).toBeVisible()
     await expectTabs(page, true)
 
-    // Der Reiter „Quelle" führt die vier Abschnitte des Zielentwurfs (#1940); „Umfang" entfällt
-    // bei diesem Konnektortyp, die Anbindung trägt die gespeicherte Adresse.
+    // The tab "Quelle" carries the four sections of the target design (#1940); "Umfang" is absent
+    // for this source type, and "Anbindung" shows the stored address.
     await page.getByRole('tab', { name: 'Quelle' }).click()
     await expect(section(page, 'Anbindung')).toContainText(DIRECTORY_URL)
     await expect(section(page, 'Zeitplan')).toBeVisible()
