@@ -1,0 +1,64 @@
+databaseChangeLog:
+  - changeSet:
+      id: 087-capability-create-prompt-library
+      author: opaa
+      comment: >-
+        Das Anlegerecht fuer Prompt-Bibliotheken (#1901, ADR-0036 Entscheidung 5): eine fuenfte
+        Faehigkeit CREATE_PROMPT_LIBRARY, ausgeliefert an "Alle Konten" wie CREATE_LIBRARY. Ein
+        Prompt bindet kein Wissen und erreicht keine Quelle; wer einschraenken will, entzieht
+        "Alle Konten".
+        .
+        Je Organisation eine Zeile an ALL_ACCOUNTS mit einem offenen Historienintervall
+        DELIVERED. valid_from ist der Migrationszeitpunkt, nicht der Erstellungszeitpunkt der
+        Organisation wie in 051: Das Recht gab es vorher nicht, die Stichtagsauskunft darf fuer
+        einen frueheren Stichtag nicht behaupten, jemand haette Prompt-Bibliotheken anlegen
+        duerfen.
+        .
+        Der Trigger aus 051 traegt den Auslieferungszustand fuer jede kuenftige Organisation nach
+        und kennt die neue Faehigkeit mit.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE capability_grants DROP CONSTRAINT chk_capability_grants_capability;
+
+              ALTER TABLE capability_grants
+                  ADD CONSTRAINT chk_capability_grants_capability CHECK ((capability IN ('CREATE_SPACE', 'CREATE_LIBRARY', 'CREATE_CONNECTOR_LIBRARY', 'CREATE_INTERNAL_GROUP', 'CREATE_PROMPT_LIBRARY')));
+
+              ALTER TABLE capability_grant_history DROP CONSTRAINT chk_capability_grant_history_capability;
+
+              ALTER TABLE capability_grant_history
+                  ADD CONSTRAINT chk_capability_grant_history_capability CHECK ((capability IN ('CREATE_SPACE', 'CREATE_LIBRARY', 'CREATE_CONNECTOR_LIBRARY', 'CREATE_INTERNAL_GROUP', 'CREATE_PROMPT_LIBRARY')));
+
+              INSERT INTO capability_grants (id, organization_id, capability, subject_type, created_at)
+              SELECT gen_random_uuid(), organizations.id, 'CREATE_PROMPT_LIBRARY', 'ALL_ACCOUNTS', now()
+                FROM organizations;
+
+              INSERT INTO capability_grant_history
+                (id, organization_id, capability, subject_type, cause, valid_from, created_at)
+              SELECT gen_random_uuid(), capability_grants.organization_id, capability_grants.capability,
+                     'ALL_ACCOUNTS', 'DELIVERED', capability_grants.created_at, now()
+                FROM capability_grants
+               WHERE capability_grants.capability = 'CREATE_PROMPT_LIBRARY'
+                 AND capability_grants.subject_type = 'ALL_ACCOUNTS';
+
+              CREATE OR REPLACE FUNCTION organizations_seed_capability_grants() RETURNS trigger
+                  LANGUAGE plpgsql
+                  SET search_path TO 'pg_catalog', '${database.defaultSchemaName}', 'pg_temp'
+                  AS $$
+              DECLARE
+                delivered_capability text;
+                granted_at timestamp with time zone := now();
+              BEGIN
+                FOREACH delivered_capability IN ARRAY ARRAY['CREATE_SPACE', 'CREATE_LIBRARY', 'CREATE_CONNECTOR_LIBRARY', 'CREATE_PROMPT_LIBRARY'] LOOP
+                  INSERT INTO capability_grants (id, organization_id, capability, subject_type, created_at)
+                  VALUES (gen_random_uuid(), NEW.id, delivered_capability, 'ALL_ACCOUNTS', granted_at);
+
+                  INSERT INTO capability_grant_history
+                    (id, organization_id, capability, subject_type, cause, valid_from, created_at)
+                  VALUES (gen_random_uuid(), NEW.id, delivered_capability, 'ALL_ACCOUNTS', 'DELIVERED', granted_at, granted_at);
+                END LOOP;
+                RETURN NEW;
+              END; $$;
+      # Kein Rollback: Bereits vergebene oder entzogene Anlegerechte fuer Prompt-Bibliotheken sind
+      # Rechtehistorie; eine engere Pruefung scheiterte an ihnen.

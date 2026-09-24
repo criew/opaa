@@ -1,0 +1,72 @@
+databaseChangeLog:
+  - changeSet:
+      id: 085-create-prompt-libraries
+      author: opaa
+      comment: >-
+        Die Prompt-Bibliothek als zweiter Asset-Typ auf der Schale (#1901, Epic #1726): eine
+        Typtabelle prompt_libraries und die Prompts darin.
+        .
+        prompt_libraries traegt vorerst nichts Eigenes; sie haelt den Typ. Ihre Kennung zeigt
+        zusammen mit Typ und Organisation auf die Schale (uk_assets_id_type_organization), sodass
+        eine Typzeile nur neben einer Schale ihres Typs stehen kann; asset_type ist hier fest
+        PROMPT_LIBRARY. ON DELETE CASCADE: das Loeschen des Assets nimmt die Typzeile mit, und mit
+        ihr die Prompts.
+        .
+        Ein Prompt gehoert zu genau einer Bibliothek und derselben Organisation (zusammengesetzter
+        Fremdschluessel). name ist je Bibliothek eindeutig und Grundlage des Slash-Befehls:
+        Kleinbuchstaben, Ziffern und einzelne Bindestriche. text hat hoechstens 8000 Zeichen.
+        variables ist die Liste der Variablen-Definitionen als JSON-Array; ihre Pruefung gegen den
+        Text leistet die Anwendung.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE TABLE prompt_libraries (
+                  id uuid NOT NULL,
+                  asset_type character varying(30) DEFAULT 'PROMPT_LIBRARY' NOT NULL,
+                  organization_id uuid NOT NULL,
+                  CONSTRAINT chk_prompt_libraries_asset_type CHECK (((asset_type)::text = 'PROMPT_LIBRARY'::text))
+              );
+
+              ALTER TABLE ONLY prompt_libraries
+                  ADD CONSTRAINT prompt_libraries_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY prompt_libraries
+                  ADD CONSTRAINT uk_prompt_libraries_id_organization UNIQUE (id, organization_id);
+
+              ALTER TABLE ONLY prompt_libraries
+                  ADD CONSTRAINT fk_prompt_libraries_asset FOREIGN KEY (id, asset_type, organization_id) REFERENCES assets(id, asset_type, organization_id) ON DELETE CASCADE;
+
+              CREATE TABLE prompts (
+                  id uuid NOT NULL,
+                  library_id uuid NOT NULL,
+                  organization_id uuid NOT NULL,
+                  name character varying(64) NOT NULL,
+                  title character varying(255) NOT NULL,
+                  description character varying(2000),
+                  text text NOT NULL,
+                  variables jsonb DEFAULT '[]'::jsonb NOT NULL,
+                  sort_order integer DEFAULT 0 NOT NULL,
+                  created_at timestamp with time zone DEFAULT now() NOT NULL,
+                  updated_at timestamp with time zone DEFAULT now() NOT NULL,
+                  CONSTRAINT chk_prompts_name_format CHECK (((name)::text ~ '^[a-z0-9]+(-[a-z0-9]+)*$'::text)),
+                  CONSTRAINT chk_prompts_title_not_blank CHECK ((btrim((title)::text) <> ''::text)),
+                  CONSTRAINT chk_prompts_text_length CHECK (((char_length(text) >= 1) AND (char_length(text) <= 8000))),
+                  CONSTRAINT chk_prompts_variables_array CHECK ((jsonb_typeof(variables) = 'array'::text))
+              );
+
+              ALTER TABLE ONLY prompts
+                  ADD CONSTRAINT prompts_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY prompts
+                  ADD CONSTRAINT uk_prompts_library_name UNIQUE (library_id, name);
+
+              ALTER TABLE ONLY prompts
+                  ADD CONSTRAINT fk_prompts_library_organization FOREIGN KEY (library_id, organization_id) REFERENCES prompt_libraries(id, organization_id) ON DELETE CASCADE;
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              DROP TABLE prompts;
+
+              DROP TABLE prompt_libraries;
