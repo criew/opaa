@@ -70,6 +70,11 @@ public interface AssetGrantRepository extends JpaRepository<AssetGrant, UUID> {
    * that method's Javadoc for why a plain scalar read is safe to rely on once the advisory lock is
    * held.
    *
+   * <p><b>A grant to all accounts never counts (#1931):</b> it cannot hold {@code OWNER} in the
+   * first place - {@code AssetGrantService} refuses roles above {@code EDITOR} for that recipient -
+   * and the guard exists to keep a <em>named</em> owner on every asset. The condition is repeated
+   * here so the invariant holds at the query, not only at the service that writes.
+   *
    * <p><b>Scalar aggregate, not an entity list:</b> {@code AssetGrantService}'s caller resolves the
    * effective role first, which populates {@link AssetAccessService}'s cache via {@link
    * #findByAssetTypeAndAssetId} inside the same transaction - an entity-list read here would hit
@@ -84,6 +89,7 @@ public interface AssetGrantRepository extends JpaRepository<AssetGrant, UUID> {
               + " WHERE asset_type = :assetType"
               + "   AND asset_id = :assetId"
               + "   AND role = 'OWNER'"
+              + "   AND subject_type <> 'ALL_ACCOUNTS'"
               + "   AND (expires_at IS NULL OR expires_at > :now)"
               + "   AND id <> :excludingGrantId",
       nativeQuery = true)
