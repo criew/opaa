@@ -500,6 +500,19 @@ lassen.
   nachdem, wie der Schalter der Installation gerade steht —, nie mit der Auslieferung der
   Anwendung. Ohne Browser, ohne Anmeldung und ohne eigenen Bestand; verändert nichts und ist
   deshalb gegenüber den übrigen Szenarien reihenfolgeunabhängig.
+- `tests/prompt-libraries.spec.ts` (#1904, Nachweis von Epic #1726) — Prompt-Bibliothek und Katalog
+  über den vollen Stack: `dev-user` legt ohne Systemrolle eine Prompt-Bibliothek mit einem Prompt
+  und einer Pflicht-Variable an und gibt sie an eine Person (`dev-admin`), an eine Gruppe (Mitglied
+  `dev-format-pipelines`) und an die Organisation frei. Vor der organisationsweiten Freigabe findet
+  `dev-outsider` sie weder in der Liste noch im Katalog noch unter ihrer Adresse (Negativfall).
+  Eine zweite Prompt-Bibliothek und eine Wissensbibliothek erscheinen erst nach der Listung im
+  Katalog — als Eintrag ohne Zugriff, ohne Link, mit zuständiger Stelle; der Typfilter trennt sie.
+  Zuletzt setzt `dev-outsider` den Prompt im Chat per Befehl ein, füllt das Variablenformular und
+  sieht den Hinweis „Prompt: <Titel>" im Verlauf, auch nach einem Neuladen. Eine zweite Organisation
+  ist im `dev`-Auth-Modus nicht erreichbar; die Organisationsgrenze prüft das Backend
+  (`AssetCatalogServiceIntegrationTest`). Vorbedingungen (Gruppe, zweite Bibliothek) legt
+  `fixtures/promptLibraries.ts` über die API an; `dev-format-pipelines` stellt nie eine Frage und
+  bekommt keinen durchsuchbaren Bestand, bleibt also für seinen eigentlichen Zweck unberührt.
 
 ## Demo-Smoke (#232)
 

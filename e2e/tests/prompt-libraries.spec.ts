@@ -261,7 +261,16 @@ test.describe.serial('Prompt-Bibliotheken: Verteilungsstufen und Katalog (#1904)
     // Inserting is not sending: the resolved text waits in the input.
     await expect(input).toHaveValue(RESOLVED_TEXT)
 
-    await outsider.getByRole('button', { name: 'Senden' }).click()
+    // The answer is what persists the turn; a reload before it would find no chat yet.
+    const [answer] = await Promise.all([
+      outsider.waitForResponse(
+        (response) =>
+          response.request().method() === 'POST' &&
+          new URL(response.url()).pathname === '/api/v1/query',
+      ),
+      outsider.getByRole('button', { name: 'Senden' }).click(),
+    ])
+    expect(answer.status()).toBe(200)
     await outsider.waitForURL(/\/spaces\/[^/]+\/chats\/(?!new$)[^/]+$/)
     await expect(outsider.getByTestId('used-prompt')).toContainText(`Prompt: ${PROMPT_TITLE}`)
 
