@@ -1875,9 +1875,8 @@ export const mockMyContactedGroups: GroupListResponse[] = mockGroups.filter((gro
 )
 
 /**
- * The capabilities of the mock account. The three delivered ones of ADR-0036, Entscheidung 5, plus
- * CREATE_INTERNAL_GROUP - which is delivered to nobody, but the mock account is a system
- * administrator and holds every capability implicitly (#1814).
+ * The capabilities of the mock account: every one, as for a system administrator - the four
+ * delivered to all accounts plus CREATE_INTERNAL_GROUP, which is delivered to nobody (#1814).
  */
 export const mockMyCapabilities: MyCapabilitiesResponse = {
   capabilities: [
@@ -1885,6 +1884,7 @@ export const mockMyCapabilities: MyCapabilitiesResponse = {
     'CREATE_LIBRARY',
     'CREATE_CONNECTOR_LIBRARY',
     'CREATE_INTERNAL_GROUP',
+    'CREATE_PROMPT_LIBRARY',
   ],
 }
 

@@ -62,12 +62,12 @@ class OpaaTestBeans {
   }
 
   /**
-   * The test-defined second asset type: registered in every context so a test can serve it through
-   * the one grant service, derivation and association without a context of its own.
+   * The test-defined asset type: registered in every context so a test can serve it through the one
+   * grant service, derivation and association without a context of its own.
    */
   @Bean
-  AssetTypeDefinition testPromptLibraryAssetType() {
-    return new TestPromptLibraryAssetType();
+  AssetTypeDefinition testAssetType() {
+    return new TestAssetType();
   }
 
   @Bean

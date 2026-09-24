@@ -166,6 +166,9 @@ ersten Stufe nicht geschrieben.
 **Spaces, Bibliotheken und Gruppen**
 
 - Anlegen, Ändern und Löschen von Spaces, Wissensbibliotheken und Gruppen
+- Anlegen, Ändern und Löschen von **Prompt-Bibliotheken und Prompts** — beim Prompt nur die
+  Namen der geänderten Felder, nie Titel oder Text; die **Verwendung** eines Prompts erzeugt keinen
+  Eintrag ([spaces-and-assets.md](./spaces-and-assets.md#protokoll))
 - Aufnahme, Rollenänderung und Entfernen von Space-Mitgliedern; die Aufnahme **externer** Personen in
   einen Space mit geteilten Inhalten zusätzlich mit der ausdrücklichen Bestätigung im Eintrag
 - Aufnahme und Entfernen von Gruppenmitgliedern; Auflösung einer Gruppe
@@ -239,7 +242,9 @@ ersten Stufe nicht geschrieben.
 Die Liste oben beschreibt das **Zielverhalten**; welche Arten heute tatsächlich einen Eintrag
 schreiben, hängt davon ab, ob die zugrunde liegende Funktion im Code schon existiert. Verdrahtet
 sind: Rechte an Assets (Vergabe/Änderung/Entzug von Grants, Änderung von `visibility`/`listed`),
-Anlegen/Ändern/Löschen von Bibliotheken, Spaces und Gruppen, Aufnahme/Rollenänderung/Entfernen von
+Anlegen/Ändern/Löschen von Bibliotheken, Spaces und Gruppen — seit #1901 auch von Prompt-Bibliotheken
+und Prompts (`PROMPT_LIBRARY_CREATED`/`_CHANGED`/`_DELETED`, `PROMPT_CREATED`/`_CHANGED`/`_DELETED`,
+Objekte `PROMPT_LIBRARY` und `PROMPT`) —, Aufnahme/Rollenänderung/Entfernen von
 Mitgliedern, Eigentümerübergang eines Space, jede bewirkte Änderung eines Verzeichnisabgleichs samt
 Kopfeintrag, die Erteilung/der Entzug der System-Admin-Rolle sowie — seit #1533 — der
 fremdveranlasste Widerruf lokaler Sitzungen (`LOCAL_SESSION_REVOKED`, zunächst nur bei

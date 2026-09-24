@@ -414,6 +414,12 @@ Entscheidung 1 widerspräche.
 > Kein neues Audit-Ereignis, keine Begründungspflicht; die Übernahme läuft über den bestehenden,
 > protokollierten Weg (Eigentum übertragen, dann lesen).
 
+> **Nachtrag (24.09.2026, #1901):** fünfte Fähigkeit `CREATE_PROMPT_LIBRARY`, ausgeliefert an „Alle
+> Konten" (Changeset 087). Ein Prompt bindet kein Wissen und erreicht keine Quelle; die Vorgabe
+> „offen" hat der Koordinator gesetzt, die Bestätigung durch den Maintainer steht im Ticket aus. Das
+> Historienintervall beginnt mit der Migration, nicht mit der Organisation: Das Recht gab es vorher
+> nicht.
+
 ### 6. Lebenszyklus: „Nachfolge offen" als abgeleiteter Zustand
 
 **„Nachfolge offen" ist die Abwesenheit eines handlungsfähigen Verantwortlichen** — für ein Asset der
@@ -840,6 +846,15 @@ das ist der Grund, warum #1813 von #1811 abhängt.
 > bleiben nach ADR-0016 ohne Fremdschlüssel auf `assets`, weil sie das Löschen überdauern. Die
 > Paketrichtung wird erweitert: `io.opaa.asset` hängt von `io.opaa.permission` ab, nicht umgekehrt,
 > und kennt weder `library` noch `space`, `group` oder `succession`; `library` darf `asset` nutzen.
+>
+> **Mit #1901 eingelöst.** Die Prompt-Bibliothek (`io.opaa.prompt`) ist eine Tabelle, eine Entität und
+> eine `AssetTypeDefinition`. Drei Regeln, die noch in `library` lagen, sind dabei in die Schale
+> gewandert, statt für den zweiten Typ kopiert zu werden: das Inhaltsrecht nach der Formel
+> (`AssetAuthorization#requireContentRole`), die Eigentümergruppe beim Anlegen
+> (`AssetGrantService#requireOwnableGroup`) und die Eigentümernamen einer Liste (`AssetOwnerNames`).
+> Über „eine Tabelle und eine Entität" hinaus braucht ein Typ seinen Protokoll-Objekttyp in der
+> geschlossenen Prüfbedingung `chk_audit_log_object_type` (Changeset 086) — die Liste ist geschlossen
+> und soll es bleiben.
 
 ### 13. Randbedingungen
 

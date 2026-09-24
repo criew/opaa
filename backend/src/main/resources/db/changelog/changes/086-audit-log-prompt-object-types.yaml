@@ -1,0 +1,37 @@
+databaseChangeLog:
+  - changeSet:
+      id: 086-audit-log-prompt-object-types
+      author: opaa
+      comment: >-
+        Das Nachweisprotokoll kennt Prompt-Bibliothek und Prompt als Objekt (#1901): Anlegen,
+        Aendern und Loeschen beider stehen in der geschlossenen Ereignisliste
+        (security-and-compliance.md), und ein Eintrag benennt sein Objekt aus der geschlossenen
+        Liste chk_audit_log_object_type.
+        .
+        Die Pruefung gehoert opaa_audit_owner (ADR-0015); die Mitgliedschaft in der Rolle wird nur
+        fuer die Dauer dieses Changesets genommen, wie in der Baseline und in 078. Die Pruefung
+        gilt fuer alle Monatspartitionen, bestehende Zeilen erfuellen sie unveraendert.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              DO $$
+              BEGIN
+                EXECUTE format('GRANT opaa_audit_owner TO %I WITH SET TRUE', current_user);
+              END $$;
+
+              SET ROLE opaa_audit_owner;
+
+              ALTER TABLE audit_log DROP CONSTRAINT chk_audit_log_object_type;
+
+              ALTER TABLE audit_log
+                  ADD CONSTRAINT chk_audit_log_object_type CHECK ((object_type IN ('KNOWLEDGE_LIBRARY', 'SPACE', 'GROUP', 'ASSET_GRANT', 'USER_ACCOUNT', 'API_TOKEN', 'SYSTEM_SETTING', 'AUDIT_LOG', 'DIRECTORY_SYNC_RUN', 'PROMPT_LIBRARY', 'PROMPT')));
+
+              RESET ROLE;
+
+              DO $$
+              BEGIN
+                EXECUTE format('REVOKE opaa_audit_owner FROM %I', current_user);
+              END $$;
+      # Kein Rollback: Eintraege ueber Prompts bleiben Nachweis, auch wenn die Funktion
+      # zurueckgenommen wird - eine engere Pruefung scheiterte an ihnen.

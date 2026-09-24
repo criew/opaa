@@ -53,6 +53,17 @@ public enum AuditEventType {
   LIBRARY_CREATED,
   LIBRARY_CHANGED,
   LIBRARY_DELETED,
+  /** A prompt library was created, renamed or re-described, or deleted with its prompts. */
+  PROMPT_LIBRARY_CREATED,
+  PROMPT_LIBRARY_CHANGED,
+  PROMPT_LIBRARY_DELETED,
+  /**
+   * A prompt was added to, changed in or removed from its library. The object is the prompt, the
+   * payload names its library; the prompt text never appears.
+   */
+  PROMPT_CREATED,
+  PROMPT_CHANGED,
+  PROMPT_DELETED,
   /**
    * A library's source configuration (sourcePath/sourceUrl/sourceProxy/sourceCredentials/
    * sourceInsecureSsl) changed - distinct from {@link #LIBRARY_CHANGED} (name/description) and

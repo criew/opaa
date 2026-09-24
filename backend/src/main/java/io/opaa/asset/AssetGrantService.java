@@ -447,6 +447,27 @@ public class AssetGrantService {
   }
 
   /**
+   * Requires that a new asset of {@code assetType} may be created in the name of {@code groupId}:
+   * the group is in the caller's organization ({@code 404} otherwise), the caller is one of its
+   * members ({@code 403}), and it may receive the owning group's {@code MANAGER} grant ({@link
+   * #requireGrantableGroup}).
+   */
+  public void requireOwnableGroup(UUID groupId, AssetType assetType, CurrentUser caller) {
+    GroupSubject group =
+        groupDirectory
+            .find(groupId)
+            .filter(found -> found.organizationId().equals(caller.organizationId()))
+            .orElseThrow(() -> new NotFoundException("Gruppe nicht gefunden"));
+    if (!groupMemberships.groupIdsForUser(caller.id()).contains(group.id())) {
+      throw new AccessDeniedException(
+          "Nur Mitglieder der Gruppe können eine "
+              + assetTypes.require(assetType).singular()
+              + " in ihrem Namen anlegen");
+    }
+    requireGrantableGroup(group.id(), caller.organizationId(), caller);
+  }
+
+  /**
    * Resolves a group, enforces the organization boundary, and rejects a group that is no effective
    * grant target - dissolved, belonging to a disabled identity provider (ADR-0036, Entscheidung 2),
    * or a token group its provider no longer maintains (Entscheidung 3). Existing grants to such a

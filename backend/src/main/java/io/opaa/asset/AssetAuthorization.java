@@ -9,6 +9,7 @@ import io.opaa.permission.AssetAccessService;
 import io.opaa.permission.AssetType;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
 
@@ -68,6 +69,39 @@ public class AssetAuthorization {
     AssetRole role = effectiveRole(asset, userId, systemAdmin);
     if (role == null) {
       throw new NotFoundException(AssetTypes.notFoundMessage(definition));
+    }
+    if (!role.atLeast(required)) {
+      throw new AccessDeniedException("Kein Zugriff auf diese " + definition.singular());
+    }
+    return role;
+  }
+
+  /**
+   * Requires at least {@code required} on the asset's <b>content</b>, which the formula alone
+   * grants: a person the asset does not reach at all gets the {@code 404} of {@link #requireRole},
+   * one it reaches only through the administration or too weakly a {@code 403}. Reads the grants
+   * uncached, like {@link AssetAccessService#readableAssetIds}, so a revoked right stops on the
+   * next request.
+   *
+   * @return the caller's role by the formula, at least {@code required}.
+   */
+  public AssetRole requireContentRole(
+      Asset asset, UUID userId, boolean systemAdmin, AssetRole required) {
+    AssetTypeDefinition definition = assetTypes.require(asset.getAssetType());
+    requireRole(asset, userId, systemAdmin, AssetRole.VIEWER);
+    AssetRole role =
+        accessService
+            .effectiveRoles(
+                asset.getAssetType(),
+                Set.of(asset.getId()),
+                userId,
+                asset.isOrganizationWide() ? Set.of(asset.getId()) : Set.of())
+            .get(asset.getId());
+    if (role == null) {
+      throw new AccessDeniedException(
+          "Für diese "
+              + definition.singular()
+              + " liegt keine Leseberechtigung vor; Verwaltungsrechte genügen dafür nicht.");
     }
     if (!role.atLeast(required)) {
       throw new AccessDeniedException("Kein Zugriff auf diese " + definition.singular());

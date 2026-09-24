@@ -54,7 +54,8 @@ public class CapabilityService {
           Capability.CREATE_SPACE, "Spaces anlegen",
           Capability.CREATE_LIBRARY, "Bibliotheken für Uploads anlegen",
           Capability.CREATE_CONNECTOR_LIBRARY, "Konnektorbibliotheken anlegen",
-          Capability.CREATE_INTERNAL_GROUP, "Interne Gruppen anlegen");
+          Capability.CREATE_INTERNAL_GROUP, "Interne Gruppen anlegen",
+          Capability.CREATE_PROMPT_LIBRARY, "Prompt-Bibliotheken anlegen");
 
   /**
    * What each capability creates, as the object of a sentence - the piece the overview's plain-text
@@ -66,7 +67,8 @@ public class CapabilityService {
           Capability.CREATE_SPACE, "Spaces",
           Capability.CREATE_LIBRARY, "Bibliotheken für Uploads",
           Capability.CREATE_CONNECTOR_LIBRARY, "Konnektorbibliotheken",
-          Capability.CREATE_INTERNAL_GROUP, "interne Gruppen");
+          Capability.CREATE_INTERNAL_GROUP, "interne Gruppen",
+          Capability.CREATE_PROMPT_LIBRARY, "Prompt-Bibliotheken");
 
   private final CapabilityGrantRepository grantRepository;
   private final GroupMembershipResolver membershipResolver;

@@ -12,13 +12,12 @@ import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.ScheduleFrequency;
 import io.opaa.asset.AssetGrantService;
+import io.opaa.asset.AssetOwnerNames;
 import io.opaa.asset.AssetShellService;
 import io.opaa.asset.AssetSuccessionSource;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
-import io.opaa.auth.User;
-import io.opaa.auth.UserRepository;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
@@ -44,9 +43,6 @@ import io.opaa.indexing.source.s3.S3Credentials;
 import io.opaa.indexing.source.s3.S3SourceSettings;
 import io.opaa.indexing.source.s3.S3SourceSettingsJson;
 import io.opaa.permission.CapabilityService;
-import io.opaa.permission.GroupMembershipResolver;
-import io.opaa.permission.GroupSubject;
-import io.opaa.permission.GroupSubjectDirectory;
 import io.opaa.permission.SuccessionFinding;
 import io.opaa.sourceaccess.ProxyAndCredentials;
 import java.net.URI;
@@ -131,9 +127,7 @@ public class KnowledgeLibraryService {
   private static final int MAX_DESCRIPTION_LENGTH = 2000;
 
   private final KnowledgeLibraryRepository libraryRepository;
-  private final UserRepository userRepository;
-  private final GroupSubjectDirectory groupDirectory;
-  private final GroupMembershipResolver membershipResolver;
+  private final AssetOwnerNames assetOwnerNames;
   private final CapabilityService capabilityService;
   private final DocumentRepository documentRepository;
   private final AssetGrantService grantService;
@@ -159,9 +153,7 @@ public class KnowledgeLibraryService {
   public KnowledgeLibraryService(
       AssetSuccessionSource successionSource,
       KnowledgeLibraryRepository libraryRepository,
-      UserRepository userRepository,
-      GroupSubjectDirectory groupDirectory,
-      GroupMembershipResolver membershipResolver,
+      AssetOwnerNames assetOwnerNames,
       CapabilityService capabilityService,
       DocumentRepository documentRepository,
       AssetGrantService grantService,
@@ -184,9 +176,7 @@ public class KnowledgeLibraryService {
       S3ClientFactory s3ClientFactory) {
     this.successionSource = successionSource;
     this.libraryRepository = libraryRepository;
-    this.userRepository = userRepository;
-    this.groupDirectory = groupDirectory;
-    this.membershipResolver = membershipResolver;
+    this.assetOwnerNames = assetOwnerNames;
     this.capabilityService = capabilityService;
     this.documentRepository = documentRepository;
     this.grantService = grantService;
@@ -237,29 +227,19 @@ public class KnowledgeLibraryService {
     SourceConfiguration sourceConfiguration = validateSourceConfiguration(request);
 
     KnowledgeLibrary library;
-    GroupSubject ownerGroup = null;
     if (ownerType == AssetOwnerType.GROUP) {
       if (request.ownerId() == null) {
         throw new ValidationException("ownerId ist erforderlich, wenn ownerType GROUP ist");
       }
-      ownerGroup = requireGroupInOrganization(request.ownerId(), caller.organizationId());
-      if (!membershipResolver.groupIdsForUser(currentUserId).contains(ownerGroup.id())) {
-        throw new AccessDeniedException(
-            "Nur Mitglieder der Gruppe können eine Bibliothek in ihrem Namen anlegen");
-      }
-      // #441: a dissolved group must not receive the group MANAGER grant below, mirroring
-      // AssetGrantService#upsertGrant's own check for the exact same case - reused here rather
-      // than duplicated so the two grant-writing paths can never disagree on which groups are
-      // grantable. Its release check (ADR-0036, Entscheidung 9) can never change the outcome on
-      // this path: the membership check above already restricts the owner to a group the caller
-      // belongs to, and a member always sees their own group.
-      grantService.requireGrantableGroup(ownerGroup.id(), caller.organizationId(), caller);
+      // The shell's rule for every asset type: a group of the caller's organization, the caller
+      // among its members, and a group that may still receive the owning group's MANAGER grant.
+      grantService.requireOwnableGroup(request.ownerId(), KnowledgeLibrary.ASSET_TYPE, caller);
       library =
           KnowledgeLibrary.ownedByGroup(
               caller.organizationId(),
               normalizedName,
               request.description(),
-              ownerGroup.id(),
+              request.ownerId(),
               visibility,
               listed,
               sourceConfiguration.sourceType(),
@@ -370,7 +350,7 @@ public class KnowledgeLibraryService {
                 Collectors.toMap(
                     DocumentRepository.LibraryDocumentCount::getLibraryId,
                     DocumentRepository.LibraryDocumentCount::getDocumentCount));
-    Map<UUID, String> ownerNames = resolveOwnerNames(libraries);
+    Map<UUID, String> ownerNames = assetOwnerNames.of(libraries);
     // #684: the "Stand" column's last successful run, one grouped query for the whole page
     // (same shape as documentCounts above) - a library without any completed run stays null.
     Map<UUID, Instant> lastIndexedAt =
@@ -396,41 +376,6 @@ public class KnowledgeLibraryService {
                     lastIndexedAt.get(library.getId()),
                     succession.get(library.getId())))
         .toList();
-  }
-
-  /**
-   * Resolves each library's owner display name in two batched queries (one per owner kind) instead
-   * of one lookup per library (#438) - the same pattern {@link AssetGrantService#toViews} already
-   * uses for grant subject names. A missing entry (owner deleted) simply leaves {@code ownerName}
-   * {@code null} on the response, matching {@link LibrarySummary#ownerName()}'s optional nature.
-   *
-   * <p>Unlike {@link AssetGrantService#toViews}, a {@code USER} owner with no {@code displayName}
-   * resolves to {@code null} here rather than falling back to their email address (PR #601 review,
-   * finding 1): that method's audience is limited to a library's own {@code MANAGER}s, but this
-   * list reaches every reader of an organization-wide or shared library - potentially the whole
-   * organization - so leaking an email address here has a materially larger blast radius. The
-   * frontend already falls back to a generic label when {@code ownerName} is absent.
-   */
-  private Map<UUID, String> resolveOwnerNames(List<KnowledgeLibrary> libraries) {
-    Set<UUID> userOwnerIds = new HashSet<>();
-    Set<UUID> groupOwnerIds = new HashSet<>();
-    for (KnowledgeLibrary library : libraries) {
-      if (library.getOwnerType() == AssetOwnerType.USER) {
-        userOwnerIds.add(library.getOwnerId());
-      } else {
-        groupOwnerIds.add(library.getOwnerId());
-      }
-    }
-    Map<UUID, String> ownerNames = new HashMap<>();
-    for (User user : userRepository.findAllById(userOwnerIds)) {
-      if (user.getDisplayName() != null) {
-        ownerNames.put(user.getId(), user.getDisplayName());
-      }
-    }
-    // #1820, ADR-0036 Entscheidung 9: Die Bibliotheksliste ist eine fremde Liste - eine
-    // geschuetzte Gruppe steht dort ohne ihren Namen.
-    ownerNames.putAll(groupDirectory.displayNamesById(groupOwnerIds));
-    return ownerNames;
   }
 
   public LibraryDetail getLibrary(UUID libraryId, CurrentUser caller) {
@@ -1655,24 +1600,6 @@ public class KnowledgeLibraryService {
       List<ConfluenceSpaceSelection> confluenceSpaces,
       Integer confluenceFullSyncIntervalDays,
       S3SourceSettings s3Settings) {}
-
-  /**
-   * Resolves a group and enforces the organization boundary, treating a group from another
-   * organization as not found - mirrors {@code SpaceService#requireUserInOrganization} and {@code
-   * GroupService#loadGroup}. Returns 404 rather than 403 so a caller cannot distinguish "no such
-   * group" from "group in another organization" - the same lesson #199's review drew for foreign
-   * ids in a request body.
-   */
-  private GroupSubject requireGroupInOrganization(UUID groupId, UUID organizationId) {
-    GroupSubject group =
-        groupDirectory
-            .find(groupId)
-            .orElseThrow(() -> new NotFoundException("Gruppe nicht gefunden"));
-    if (!group.organizationId().equals(organizationId)) {
-      throw new NotFoundException("Gruppe nicht gefunden");
-    }
-    return group;
-  }
 
   /**
    * Generates a fresh webhook secret for a CONFLUENCE library (#1140) - MANAGER or above, like
