@@ -47,14 +47,14 @@ import org.springframework.jdbc.core.JdbcTemplate;
 /**
  * The full sync against a real object store over the real, Spring-wired document path (ADR-0027,
  * #1382): what a fake cannot prove - pagination, path-style signing, ETag semantics of a real store
- * - is exercised here end to end, with MinIO in a container ({@link MinioFixture}) and the executor
- * hand-built over the real access layer (mirrors {@code S3FolderMappingIntegrationTest}). Every
- * test names the assurance it guards. Skipped without Docker; the CI runs it. Budget: one shared
- * MinIO container per JVM (~3 s start), a handful of small objects per test, well under a minute in
- * total.
+ * - is exercised here end to end, with the object store in a container ({@link S3TestFixture}) and
+ * the executor hand-built over the real access layer (mirrors {@code
+ * S3FolderMappingIntegrationTest}). Every test names the assurance it guards. Skipped without
+ * Docker; the CI runs it. Budget: one shared store container per JVM (~3 s start), a handful of
+ * small objects per test, well under a minute in total.
  */
 @OpaaIntegrationTest
-class S3FullSyncMinioIntegrationTest {
+class S3FullSyncIntegrationTest {
 
   private static final String FIRST_TEXT = "Erste Fassung.";
   private static final String SECOND_TEXT = "Zweite Fassung mit mehr Text.";
@@ -75,7 +75,7 @@ class S3FullSyncMinioIntegrationTest {
   @Autowired private SourceSyncStateRepository syncStateRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
 
-  private static MinioFixture minio;
+  private static S3TestFixture store;
 
   private final List<KnowledgeLibrary> createdLibraries = new ArrayList<>();
   private UUID userId;
@@ -83,7 +83,7 @@ class S3FullSyncMinioIntegrationTest {
 
   @BeforeAll
   static void start() {
-    minio = MinioFixture.get();
+    store = S3TestFixture.get();
   }
 
   @BeforeEach
@@ -91,13 +91,13 @@ class S3FullSyncMinioIntegrationTest {
     userId = UUID.randomUUID();
     jdbcTemplate.update(
         "INSERT INTO users (id, subject, issuer, email, display_name, created_at, system_role,"
-            + " organization_id) VALUES (?, ?, 'test-issuer', ?, 'S3 MinIO IT', now(), ?, ?)",
+            + " organization_id) VALUES (?, ?, 'test-issuer', ?, 'S3 Sync IT', now(), ?, ?)",
         userId,
-        "s3-minio-it-" + userId,
-        "s3-minio-it-" + userId + "@example.com",
+        "s3-sync-it-" + userId,
+        "s3-sync-it-" + userId + "@example.com",
         SystemRole.SYSTEM_ADMIN.name(),
         Organization.DEFAULT_ID);
-    bucket = minio.createBucket("opaa-sync");
+    bucket = store.createBucket("opaa-sync");
   }
 
   @AfterEach
@@ -144,25 +144,25 @@ class S3FullSyncMinioIntegrationTest {
     KnowledgeLibrary fresh =
         KnowledgeLibrary.ownedByUser(
             Organization.DEFAULT_ID,
-            "MinIO",
+            "Objektspeicher",
             null,
             userId,
             false,
             DocumentSourceType.S3,
             null,
-            minio.endpoint().toString(),
+            store.endpoint().toString(),
             null,
             credentials.accessKey() + ":" + credentials.secretKey(),
             false);
     fresh.updateS3Settings(
-        new S3SourceSettings(MinioFixture.REGION, true, scopes, include, exclude));
+        new S3SourceSettings(S3TestFixture.REGION, true, scopes, include, exclude));
     KnowledgeLibrary saved = libraryRepository.save(fresh);
     createdLibraries.add(saved);
     return saved;
   }
 
   private KnowledgeLibrary library(List<S3Scope> scopes) {
-    return library(minio.rootCredentials(), scopes, null, null);
+    return library(store.rootCredentials(), scopes, null, null);
   }
 
   /** The production defaults (request budget included) with only the size bound replaced. */
@@ -243,9 +243,9 @@ class S3FullSyncMinioIntegrationTest {
   void firstRunIndexesEveryAdmittedObjectAndSkipsFolderMarkersAndUnsupportedFormats() {
     // Assurance: the first run takes up every supported object of the scope with the real store's
     // ETag as change feature; a folder marker and an unsupported format never become documents.
-    minio.putObject(bucket, "2025/protokolle/", new byte[0], "application/x-directory");
-    minio.putObject(bucket, "2025/protokolle/sitzung.txt", SESSION_TEXT, "text/plain");
-    minio.putObject(bucket, "2025/protokolle/foto.png", new byte[64], "image/png");
+    store.putObject(bucket, "2025/protokolle/", new byte[0], "application/x-directory");
+    store.putObject(bucket, "2025/protokolle/sitzung.txt", SESSION_TEXT, "text/plain");
+    store.putObject(bucket, "2025/protokolle/foto.png", new byte[64], "image/png");
     KnowledgeLibrary library = library(List.of(S3Scope.of(bucket, "2025/")));
 
     IndexingJob job = run(library);
@@ -272,7 +272,7 @@ class S3FullSyncMinioIntegrationTest {
   void anUnchangedObjectCostsNoDownloadAndAChangedOneKeepsItsDocumentId() {
     // Assurance: the ETag the real store reports is stable across runs, so the second run lists
     // only (one request, nothing downloaded); a changed object is re-indexed under the same id.
-    minio.putObject(bucket, "a.txt", FIRST_TEXT, "text/plain");
+    store.putObject(bucket, "a.txt", FIRST_TEXT, "text/plain");
     KnowledgeLibrary library = library(List.of(S3Scope.of(bucket, "")));
     run(library);
     Document first = documentAt(library, bucket, "a.txt").orElseThrow();
@@ -283,7 +283,7 @@ class S3FullSyncMinioIntegrationTest {
     assertThat(unchanged.getMetrics().requestsSent()).as("the listing only").isEqualTo(1);
     assertThat(unchanged.getMetrics().bytesDownloaded()).isZero();
 
-    minio.putObject(bucket, "a.txt", SECOND_TEXT, "text/plain");
+    store.putObject(bucket, "a.txt", SECOND_TEXT, "text/plain");
     IndexingJob changed = run(library);
     Document second = documentAt(library, bucket, "a.txt").orElseThrow();
     assertThat(changed.getDocumentsProcessed()).isEqualTo(1);
@@ -297,13 +297,13 @@ class S3FullSyncMinioIntegrationTest {
   void aRemovedObjectDisappearsAfterACompleteRunButNotAfterAnUnlistableScope() {
     // Assurance: deletion needs a complete listing; a scope the credentials cannot list (a real
     // 403 from the store) keeps the whole document set and is named in the assessment.
-    minio.putObject(bucket, "bleibt.txt", "Bleibt.", "text/plain");
-    minio.putObject(bucket, "geht.txt", "Geht.", "text/plain");
-    String geheim = minio.createBucket("opaa-geheim");
-    minio.putObject(geheim, "vertrag.txt", "Vertrag.", "text/plain");
+    store.putObject(bucket, "bleibt.txt", "Bleibt.", "text/plain");
+    store.putObject(bucket, "geht.txt", "Geht.", "text/plain");
+    String geheim = store.createBucket("opaa-geheim");
+    store.putObject(geheim, "vertrag.txt", "Vertrag.", "text/plain");
     S3Credentials ownOnly =
-        minio.createUser(
-            MinioFixture.policyAllowing(
+        store.createUser(
+            S3TestFixture.policyAllowing(
                 bucket, "s3:ListBucket", "s3:GetObject", "s3:GetBucketLocation"));
     KnowledgeLibrary library =
         library(ownOnly, List.of(S3Scope.of(bucket, ""), S3Scope.of(geheim, "")), null, null);
@@ -314,7 +314,7 @@ class S3FullSyncMinioIntegrationTest {
     assertThat(documentAt(library, bucket, "bleibt.txt")).isPresent();
     assertThat(documentAt(library, bucket, "geht.txt")).isPresent();
 
-    minio.deleteObject(bucket, "geht.txt");
+    store.deleteObject(bucket, "geht.txt");
     IndexingJob stillIncomplete = run(library);
     assertThat(documentAt(library, bucket, "geht.txt"))
         .as("no reconciliation while one scope is unlistable")
@@ -322,11 +322,11 @@ class S3FullSyncMinioIntegrationTest {
     assertThat(stillIncomplete.getListingComplete()).isFalse();
 
     KnowledgeLibrary complete =
-        library(minio.rootCredentials(), List.of(S3Scope.of(bucket, "")), null, null);
+        library(store.rootCredentials(), List.of(S3Scope.of(bucket, "")), null, null);
     run(complete);
-    minio.putObject(bucket, "spaeter.txt", "Später.", "text/plain");
+    store.putObject(bucket, "spaeter.txt", "Später.", "text/plain");
     run(complete);
-    minio.deleteObject(bucket, "spaeter.txt");
+    store.deleteObject(bucket, "spaeter.txt");
     IndexingJob reconciled = run(complete);
     assertThat(documentAt(complete, bucket, "spaeter.txt")).isEmpty();
     assertThat(documentAt(complete, bucket, "bleibt.txt")).isPresent();
@@ -340,15 +340,15 @@ class S3FullSyncMinioIntegrationTest {
   void patternsPrefixesAndSeveralScopesShapeTheDocumentSetAndTheFolderTree() {
     // Assurance: include/exclude globs apply to the full key; with one scope its prefix is the
     // root, with two scopes each has its own root chain of bucket and prefix segments.
-    minio.putObject(bucket, "2025/q1/a.txt", "A.", "text/plain");
-    minio.putObject(bucket, "2025/q1/entwurf-b.txt", "B.", "text/plain");
-    minio.putObject(bucket, "2025/notiz.md", "# Notiz", "text/markdown");
-    String satzungen = minio.createBucket("opaa-satzungen");
-    minio.putObject(satzungen, "haupt.txt", "Hauptsatzung.", "text/plain");
+    store.putObject(bucket, "2025/q1/a.txt", "A.", "text/plain");
+    store.putObject(bucket, "2025/q1/entwurf-b.txt", "B.", "text/plain");
+    store.putObject(bucket, "2025/notiz.md", "# Notiz", "text/markdown");
+    String satzungen = store.createBucket("opaa-satzungen");
+    store.putObject(satzungen, "haupt.txt", "Hauptsatzung.", "text/plain");
 
     KnowledgeLibrary single =
         library(
-            minio.rootCredentials(),
+            store.rootCredentials(),
             List.of(S3Scope.of(bucket, "2025/")),
             List.of("**/*.txt"),
             List.of("**/entwurf-*"));
@@ -376,8 +376,8 @@ class S3FullSyncMinioIntegrationTest {
   void anObjectOverTheSizeBoundIsRefusedBeforeItsDownloadAndStaysPresent() {
     // Assurance: the listed size is checked against the bound before any transfer; the object is
     // named in the protocol, stays part of the document set and never becomes a document.
-    minio.putObject(bucket, "klein.txt", SMALL_TEXT, "text/plain");
-    minio.putObject(bucket, "riesig.txt", new byte[4096], "text/plain");
+    store.putObject(bucket, "klein.txt", SMALL_TEXT, "text/plain");
+    store.putObject(bucket, "riesig.txt", new byte[4096], "text/plain");
     KnowledgeLibrary library = library(List.of(S3Scope.of(bucket, "")));
 
     IndexingJob job = run(library, 1024);

@@ -84,22 +84,20 @@
   // Regex-Manager für Pins, die kein regulärer Manager sieht; jeder liest Datasource und Paket
   // aus einem "renovate:"-Kommentar direkt über der gepinnten Zeile (übliches Renovate-Muster).
   customManagers: [
-    // Das MinIO-Testcontainer-Image (ADR-0027, #1382) ist als Java-Konstante gepinnt, für den
-    // docker-Manager unsichtbar. MinIO-Tags ("RELEASE.2025-09-07T16-13-09Z") sind für die
-    // docker-Versionierung ungültig und würden ohne eigenes Schema still übersprungen — das
-    // Regex-Schema ordnet Jahr/Monat/Tag als major/minor/patch, die Uhrzeit als build.
+    // Das S3-Testcontainer-Image (ADR-0027, #1382/#1949) ist als Java-Konstante gepinnt, für den
+    // docker-Manager unsichtbar — der pflegt nur docker-compose.yml, wo dasselbe Image steht.
+    // Der Tag ("1.0.0") ist reguläre docker-Versionierung und braucht kein eigenes Schema.
     {
       customType: 'regex',
-      managerFilePatterns: ['backend/src/test/java/io/opaa/indexing/source/s3/MinioFixture.java'],
+      managerFilePatterns: ['backend/src/test/java/io/opaa/indexing/source/s3/S3TestFixture.java'],
       matchStrings: [
         '// renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\s*\\n\\s*public static final String IMAGE = "[^:"]+:(?<currentValue>[^"]+)"',
       ],
-      versioningTemplate: 'regex:^RELEASE\\.(?<major>\\d{4})-(?<minor>\\d{2})-(?<patch>\\d{2})T(?<build>\\d{2}-\\d{2}-\\d{2}Z)$',
     },
     // Das Keycloak-Testcontainer-Image (#1817) ist als Java-Konstante gepinnt, für den
     // docker-Manager unsichtbar — der pflegt nur docker-compose.yml. Ohne diesen Eintrag liefen
     // die beiden Pins desselben Images auseinander. Eigener matchString statt eines gemeinsamen
-    // mit MinIO: die Konstante ist package-private, und der Tag ("26.7") ist reguläre
+    // mit dem S3-Testimage: die Konstante ist package-private, und der Tag ("26.7") ist reguläre
     // docker-Versionierung, braucht also kein eigenes Schema.
     {
       customType: 'regex',
@@ -230,19 +228,14 @@
       matchUpdateTypes: ['major'],
       automerge: false,
     },
-    // Das MinIO-Testimage (MinioFixture.IMAGE) wird nie automatisch gemergt: Die Fixture und der
-    // Ereignisweg-Test brauchen das im Image mitgelieferte "mc", und die Community-Linie ist mit
-    // dem gepinnten Release ausgelaufen — ein neuer Tag kann in die lizenzierte Linie wechseln
-    // oder mc verlieren. Ein Vorschlag bleibt als PR zur Entscheidung. Quelle ist der eigene
-    // GHCR-Spiegel ghcr.io/criew/minio, seit Docker Hub (#1578) und quay.io (#1948) das Repository
-    // nicht mehr führen — dort erscheint nie ein neuer Tag; die Ablösung des Images ist #1949.
+    // Die beiden Images des Objektspeichers (#1949) werden nie automatisch gemergt, weil ihr
+    // Nachweis erst nach dem Merge läuft: S3TestFixture.IMAGE spricht neben der S3-API auch die
+    // Admin-API von rustfs an, die kein Standard ist, und amazon/aws-cli führt die Seed-Schritte
+    // des Demo-Stacks aus, die allein die nightly demo-smoke prüft. Ein Vorschlag bleibt als PR
+    // zur Entscheidung.
     {
-      matchPackageNames: ['ghcr.io/criew/minio'],
+      matchPackageNames: ['rustfs/rustfs', 'amazon/aws-cli'],
       automerge: false,
-      // Dasselbe Versionsschema wie im Regex-Manager oben, hier managerübergreifend: auch die
-      // docker-compose-Zeilen des Demo-Stacks (#1383) tragen diesen Tag, den die docker-
-      // Versionierung sonst still überspringt.
-      versioning: 'regex:^RELEASE\\.(?<major>\\d{4})-(?<minor>\\d{2})-(?<patch>\\d{2})T(?<build>\\d{2}-\\d{2}-\\d{2}Z)$',
     },
     // Das Keycloak-Image wird nie automatisch gemergt: Der Tag steckt in KeycloakFixture.IMAGE und
     // im Compose-Stack, geprüft wird er aber nur von keycloakIntegrationTest — einer Suite, die

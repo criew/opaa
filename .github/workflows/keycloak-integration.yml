@@ -3,7 +3,7 @@ name: Keycloak-Integration
 # Bewusst NICHT bei jedem Pull Request (#1817, ADR-0036 Entscheidung 3): der Lauf startet ein echtes
 # Keycloak in Docker - auf der Referenzmaschine gemessen rund 46 Sekunden bis zur ersten Antwort und
 # rund 880 MiB allein für den Container, dazu Postgres und die Test-JVM; das Vielfache des
-# MinIO-Fixtures, das innerhalb von `test` läuft. Das gemeinsame
+# S3-Speicher-Fixtures, das innerhalb von `test` läuft. Das gemeinsame
 # Testdoppel des Konnektors (io.opaa.group.sync.keycloak.FakeKeycloakServer) läuft dagegen mit jedem
 # PR im regulären Backend-Job; diese Suite ist die zusätzliche Abnahme gegen die echte Admin-API.
 on:

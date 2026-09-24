@@ -46,17 +46,17 @@ import org.mockito.ArgumentCaptor;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
- * The full sync against a real object store (MinIO in a container, ADR-0027, Entscheidung 9): a
- * scope beyond one listing page is taken up completely, a second run over the same bestand
- * downloads nothing and removes what vanished, and a scope the credentials cannot list leaves the
- * bestand alone. Skipped without Docker; the CI runs it.
+ * The full sync against a real object store (an S3-compatible store in a container, ADR-0027,
+ * Entscheidung 9): a scope beyond one listing page is taken up completely, a second run over the
+ * same bestand downloads nothing and removes what vanished, and a scope the credentials cannot list
+ * leaves the bestand alone. Skipped without Docker; the CI runs it.
  */
 @Testcontainers(disabledWithoutDocker = true)
-class S3IndexingExecutorMinioTest {
+class S3IndexingExecutorIntegrationTest {
 
   private static final int MANY = 1005;
 
-  private static MinioFixture minio;
+  private static S3TestFixture store;
   private static String bucket;
 
   private final List<DocumentIngest> ingests = new CopyOnWriteArrayList<>();
@@ -71,12 +71,12 @@ class S3IndexingExecutorMinioTest {
 
   @BeforeAll
   static void seed() throws Exception {
-    minio = MinioFixture.get();
-    bucket = minio.createBucket("opaa-vollabgleich");
-    minio.putMany(bucket, "viele/", MANY, null);
-    minio.putObject(bucket, "viele/", new byte[0], "application/x-directory");
-    minio.putObject(bucket, "viele/sitzung.pdf", "%PDF-1.4 sitzung", "application/pdf");
-    minio.putObject(bucket, "andere/nicht-im-bereich.txt", "x", "text/plain");
+    store = S3TestFixture.get();
+    bucket = store.createBucket("opaa-vollabgleich");
+    store.putMany(bucket, "viele/", MANY, null);
+    store.putObject(bucket, "viele/", new byte[0], "application/x-directory");
+    store.putObject(bucket, "viele/sitzung.pdf", "%PDF-1.4 sitzung", "application/pdf");
+    store.putObject(bucket, "andere/nicht-im-bereich.txt", "x", "text/plain");
   }
 
   @BeforeEach
@@ -137,11 +137,11 @@ class S3IndexingExecutorMinioTest {
             false,
             DocumentSourceType.S3,
             null,
-            minio.endpoint().toString(),
+            store.endpoint().toString(),
             null,
             credentials.accessKey() + ":" + credentials.secretKey(),
             false);
-    library.updateS3Settings(new S3SourceSettings(MinioFixture.REGION, true, scopes, null, null));
+    library.updateS3Settings(new S3SourceSettings(S3TestFixture.REGION, true, scopes, null, null));
     return library;
   }
 
@@ -176,7 +176,7 @@ class S3IndexingExecutorMinioTest {
   void takesUpAScopeBeyondOneListingPageAndSkipsItOnTheNextRunWhileRemovingWhatVanished()
       throws Exception {
     KnowledgeLibrary library =
-        library(minio.rootCredentials(), List.of(S3Scope.of(bucket, "viele/")));
+        library(store.rootCredentials(), List.of(S3Scope.of(bucket, "viele/")));
     S3IndexingExecutor executor = executor();
     UUID firstJob = UUID.randomUUID();
 
@@ -202,7 +202,7 @@ class S3IndexingExecutorMinioTest {
     rememberAsStored(List.copyOf(ingests));
     ingests.clear();
     String vanished = "viele/00007.txt";
-    minio.deleteObject(bucket, vanished);
+    store.deleteObject(bucket, vanished);
     Document vanishedRow =
         new Document(
             "weg.txt",
@@ -237,11 +237,11 @@ class S3IndexingExecutorMinioTest {
 
   @Test
   void aScopeTheCredentialsCannotListLeavesTheBestandAloneAndTheRestIsProcessed() throws Exception {
-    String own = minio.createBucket("opaa-eigen");
-    minio.putObject(own, "satzung.txt", "satzung", "text/plain");
+    String own = store.createBucket("opaa-eigen");
+    store.putObject(own, "satzung.txt", "satzung", "text/plain");
     S3Credentials ownOnly =
-        minio.createUser(
-            MinioFixture.policyAllowing(
+        store.createUser(
+            S3TestFixture.policyAllowing(
                 own, "s3:ListBucket", "s3:GetObject", "s3:GetBucketLocation"));
     KnowledgeLibrary library =
         library(ownOnly, List.of(S3Scope.of(bucket, "viele/"), S3Scope.of(own, "")));

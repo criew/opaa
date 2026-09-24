@@ -25,14 +25,21 @@ Die beiden Kernregeln — DTOs nie von Hand, Änderungen beginnen in der Spec �
 
 > Vollständige Begründung: [ADR-0006](../docs/decisions/0006-openapi-dto-generation.md)
 
-## MinIO-Suite des S3-Konnektors
+## Objektspeicher-Suite des S3-Konnektors
 
-Die MinIO-Suite des S3-Konnektors (io.opaa.indexing.source.s3.*Minio*, ADR-0027, #1382)
-läuft innerhalb von test/build, sobald Docker erreichbar ist (sonst übersprungen). Fußabdruck:
-ein geteilter MinIO je Test-JVM (MinioFixture) plus je Methode des Ereignisweg-Tests ein
-eigener MinIO samt sshd-Sidecar für die Portweiterleitung; die Spring-Klassen teilen sich den
-@OpaaIntegrationTest-Kontext (kein zusätzlicher Postgres). Bei maxParallelForks = 2 in
-der CI verdoppelt sich das. Alle drei Klassen zusammen unter zwei Minuten.
+Die Objektspeicher-Suite des S3-Konnektors (ADR-0027, #1382, #1949) läuft innerhalb von
+test/build, sobald Docker erreichbar ist (sonst übersprungen). Fußabdruck: **ein** geteilter
+S3-Speicher je Test-JVM (`S3TestFixture`, Image `rustfs/rustfs`, ~1 s Start) — auch der
+Ereignisweg-Test benutzt ihn, seit er die Benachrichtigung selbst zustellt (ADR-0027, Nachtrag zu
+Entscheidung 9); weder ein zweiter Container noch ein sshd-Sidecar. Die Spring-Klassen teilen sich
+den `@OpaaIntegrationTest`-Kontext (kein zusätzlicher Postgres). Bei `maxParallelForks = 2` in der
+CI verdoppelt sich das.
+
+Eingeschränkte Schlüssel legt `S3TestFixture.createUser(policyJson)` über die MinIO-kompatible
+Admin-API des Images an (SigV4, Klartext-Nutzlast) — kein `mc`, kein `execInContainer`. Wer die
+Fixture auf ein anderes Image umstellt, prüft zuerst diese drei Aufrufe und die beiden Fehlerformen,
+an denen die Kandidatenbewertung in #1949 gescheitert ist: „darf auflisten, aber nicht lesen" und
+die gefilterte Bucket-Liste.
 
 ## Spring-Testkontexte
 

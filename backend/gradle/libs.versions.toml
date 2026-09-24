@@ -177,8 +177,6 @@ spring-boot-starter-security-test = { module = "org.springframework.boot:spring-
 testcontainers-junit-jupiter = { module = "org.testcontainers:testcontainers-junit-jupiter" }
 testcontainers-ollama = { module = "org.testcontainers:testcontainers-ollama" }
 testcontainers-postgresql = { module = "org.testcontainers:testcontainers-postgresql" }
-# MinIO in a container as the S3 connector's test double (ADR-0027), in the regular test task
-testcontainers-minio = { module = "org.testcontainers:testcontainers-minio" }
 junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
 awaitility = { module = "org.awaitility:awaitility" }
 greenmail = { module = "com.icegreen:greenmail", version.ref = "greenmail" }
@@ -226,7 +224,6 @@ test-deps = [
     "testcontainers-junit-jupiter",
     "testcontainers-ollama",
     "testcontainers-postgresql",
-    "testcontainers-minio",
     "awaitility",
     "greenmail",
 ]

@@ -537,8 +537,8 @@ pnpm run test:demo-smoke
 Lebenszyklus wie `pnpm test` oben, mit denselben Bausteinen, aber anderem Ziel:
 
 - Compose-Profil `demo` (`docker compose --profile demo`) statt der festen Servicenamen der
-  `e2e`-Suite — startet zusätzlich `keycloak`, `demo-corpus`, `demo-presse` sowie `minio` und
-  den Befüll-Schritt `minio-seed` (S3-Quelle der beiden S3-Bibliotheken und, seit #1520, Ablage der
+  `e2e`-Suite — startet zusätzlich `keycloak`, `demo-corpus`, `demo-presse` sowie `objectstore` und
+  den Befüll-Schritt `objectstore-seed` (S3-Quelle der beiden S3-Bibliotheken und, seit #1520, Ablage der
   hochgeladenen Originale der Demo; #1383, #1520)
   ([`../demo/README.md`](../demo/README.md), „Compose-Stack starten (#229)").
 - `ai-stub` (dasselbe Skript, `ai-stub/server.mjs`) tritt über

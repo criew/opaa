@@ -481,7 +481,7 @@ def trigger_indexing(
             f"Indizierung für '{name}' nicht sauber abgeschlossen: status={status['status']}, "
             f"documentsFailed={status['documentsFailed']}, message={status.get('message')}"
         )
-    # A run that saw nothing also ends COMPLETED. Against a bucket the "minio-seed" step has not
+    # A run that saw nothing also ends COMPLETED. Against a bucket the "objectstore-seed" step has not
     # finished filling, that would report success over a half-filled - or empty - library.
     # Unchanged documents count as skipped on a repeat run, so both numbers belong in the total.
     processed = status["documentsIndexedTotal"] + status["documentsSkipped"]
@@ -490,8 +490,8 @@ def trigger_indexing(
             f"Indizierung für '{name}' hat nur {processed} von erwarteten {expected_documents} "
             f"Dokumenten verarbeitet (indiziert: {status['documentsIndexedTotal']}, übersprungen: "
             f"{status['documentsSkipped']}). Bei einer S3-Bibliothek heißt das meist: Der "
-            "Einmal-Schritt 'minio-seed' war beim Auslösen noch nicht fertig - "
-            "'docker compose logs minio-seed' prüfen und den Seed erneut laufen lassen."
+            "Einmal-Schritt 'objectstore-seed' war beim Auslösen noch nicht fertig - "
+            "'docker compose logs objectstore-seed' prüfen und den Seed erneut laufen lassen."
         )
     print(
         f"  Indizierung für '{name}' abgeschlossen: "
