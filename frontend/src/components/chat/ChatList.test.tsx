@@ -489,4 +489,28 @@ describe('ChatList "Zuletzt verwendet"', () => {
     await user.click(screen.getByRole('button', { name: 'weniger anzeigen' }))
     expect(shownTitles()).toHaveLength(15)
   })
+
+  // The button that reveals the last page unmounts with that click - without this, focus would
+  // fall to <body> and a keyboard user would stand at the end of the list without a position.
+  it('moves focus to the first revealed chat and announces how many came in', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<ChatList spaceId="space-personal" />)
+
+    await user.click(screen.getByRole('button', { name: '15 weitere anzeigen' }))
+
+    // Chat 16 is the first row of the second page (chats are ordered newest first).
+    const firstRevealed = within(screen.getByRole('list', { name: 'Zuletzt verwendet' }))
+      .getAllByRole('button')
+      .find((element) => element.textContent === 'Chat 16')
+    expect(firstRevealed).toHaveFocus()
+    expect(screen.getByRole('status')).toHaveTextContent('15 weitere Chats angezeigt')
+
+    await user.click(screen.getByRole('button', { name: '8 weitere anzeigen' }))
+
+    expect(document.body).not.toHaveFocus()
+    expect(screen.getByRole('status')).toHaveTextContent('8 weitere Chats angezeigt')
+
+    await user.click(screen.getByRole('button', { name: 'weniger anzeigen' }))
+    expect(screen.getByRole('status')).toHaveTextContent('Wieder 15 Chats angezeigt')
+  })
 })

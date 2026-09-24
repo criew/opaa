@@ -243,8 +243,8 @@ aus dem privaten Arbeitsbereich.
 
 ### Bedienung
 
-- Suchfeld auf der Seite „Chats", vorbelegt, wenn man über „In Inhalten suchen" aus der Seitenleiste
-  kommt.
+- Suchfeld auf der Seite „Chats"; der Suchknopf der Chatliste öffnet sie mit leerem Feld und setzt
+  den Cursor hinein.
 - Treffer ab einer Mindestlänge des Begriffs, nach einer kurzen Tipp-Pause; Enter sucht sofort.
 - **Ein Treffer je Chat**, mit Titel, Auszug der besten Stelle (Begriff hervorgehoben, nicht allein durch
   Farbe), Angabe „Frage" oder „Antwort", Datum der Nachricht und dem Kennzeichen „Archiviert".
@@ -285,7 +285,7 @@ Person und Chat:
   Zulässig sind nur Betriebsmetriken ohne Begriff und ohne Person (Anzahl, Dauer).
 - **Der Suchbegriff steht in keiner URL.** Der Such-Endpunkt nimmt ihn im Request-Body entgegen wie die
   Wissenssuche (`POST /api/v1/search`) — als Query-Parameter landete er im Zugriffslog des
-  Reverse-Proxys. Ebenso trägt die Seite „Chats" den vorbelegten Begriff nicht in ihrer Adresse, sonst
+  Reverse-Proxys. Ebenso trägt die Seite „Chats" den eingegebenen Begriff nicht in ihrer Adresse, sonst
   stünde er im Browserverlauf; und er wird nicht im Browser-Speicher abgelegt.
 - **Ordnungsmerkmale** (angeheftet, archiviert) sind für niemanden sonst sichtbar, werden nicht
   protokolliert, nicht exportiert außer in der Selbstauskunft der Person und nicht ausgewertet. Es gibt

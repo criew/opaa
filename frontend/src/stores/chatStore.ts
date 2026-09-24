@@ -231,6 +231,7 @@ export function dropChatSettingsCache(chatId: string): void {
   // confirmed - and nothing would ever filter against them either.
   removedNoteItemIdsByChatId.delete(chatId)
   persistedUserTurnsByChatId.delete(chatId)
+  manuallyRenamedChatIds.delete(chatId)
   if (pendingChain) {
     void pendingChain.finally(() => confirmedSettingsByChatId.delete(chatId))
     return
@@ -282,6 +283,22 @@ export type SearchScope = 'all' | 'libraries' | 'none'
 // shown (from QueryResponse#chatTitle) simply stays.
 const TITLE_RELOAD_DELAY_MS = 2500
 
+// #1919: the server never overwrites a manually set title (ChatTitleGenerationService writes only
+// while titleSource is GENERATED), but the delayed reload below would still *display* the
+// generated one if the rename happened inside its window - and its PATCH was still in flight when
+// the reload read the chat. A chat renamed by hand is therefore excluded from that reload for the
+// rest of the session; every rename path goes through chatListStore#renameChat, which marks it.
+const manuallyRenamedChatIds = new Set<string>()
+
+export function markChatManuallyRenamed(chatId: string): void {
+  manuallyRenamedChatIds.add(chatId)
+}
+
+/** Test seam: the marks are module state and would otherwise leak between test cases. */
+export function clearManualRenameMarks(): void {
+  manuallyRenamedChatIds.clear()
+}
+
 function scheduleTitleReload(
   get: () => ChatState,
   set: (partial: Partial<ChatState>) => void,
@@ -291,10 +308,10 @@ function scheduleTitleReload(
   setTimeout(() => {
     // The user may have navigated to a different chat by the time this fires - applying a reload
     // for a chat that is no longer active would silently resurrect stale state.
-    if (get().chatId !== chatId) return
+    if (get().chatId !== chatId || manuallyRenamedChatIds.has(chatId)) return
     getChat(chatId)
       .then((detail) => {
-        if (get().chatId !== chatId) return
+        if (get().chatId !== chatId || manuallyRenamedChatIds.has(chatId)) return
         set({ title: detail.title ?? null })
         if (spaceId) {
           useChatListStore.getState().updateChatTitle(spaceId, chatId, detail.title ?? null)

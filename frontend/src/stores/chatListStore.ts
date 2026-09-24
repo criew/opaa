@@ -12,7 +12,7 @@ import {
   unpinChat,
   updateChat,
 } from '../services/api'
-import { dropChatSettingsCache, useChatStore } from './chatStore'
+import { dropChatSettingsCache, markChatManuallyRenamed, useChatStore } from './chatStore'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
 
 /** Page size of the chat archive and of the active table on the "Chats" page. */
@@ -185,6 +185,10 @@ export const useChatListStore = create<ChatListState>((set, get) => ({
 
   renameChat: async (spaceId: string, chatId: string, title: string) => {
     const sessionEpoch = currentSessionEpoch()
+    // Marked before the request, not after it: the delayed title reload (#557) must already skip
+    // this chat while the PATCH is still on the wire, otherwise it reads the server's still
+    // generated title and puts it back on screen (#1919).
+    markChatManuallyRenamed(chatId)
     try {
       await updateChat(chatId, { title })
       if (isStaleSessionEpoch(sessionEpoch)) return false

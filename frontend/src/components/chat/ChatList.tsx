@@ -26,6 +26,7 @@ import MoreVertIcon from '@mui/icons-material/MoreVert'
 import PushPinIcon from '@mui/icons-material/PushPin'
 import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined'
 import SearchIcon from '@mui/icons-material/Search'
+import visuallyHidden from '@mui/utils/visuallyHidden'
 import { useLocation, useNavigate } from 'react-router'
 import type { ChatSummary } from '../../types/api'
 import type { ChatSearchHandover } from '../../hooks/useChatSearch'
@@ -80,6 +81,11 @@ export default function ChatList({ spaceId, header }: ChatListProps) {
   // While its pin request is in flight, a row the rollback moves back takes lost focus along.
   const pinFocusChatIdRef = useRef<string | null>(null)
   const searchButtonRef = useRef<HTMLButtonElement>(null)
+  // Revealing the last page unmounts the "… weitere anzeigen" button under the pointer, so focus
+  // moves to the first row that just appeared - and the live region says how many did.
+  const [revealStatus, setRevealStatus] = useState('')
+  const refocusRevealedChatIdRef = useRef<string | null>(null)
+  const rowButtonRefs = useRef<Map<string, HTMLElement> | null>(null)
   // A row's actions button is unmounted while the row is in rename mode, so focus can only
   // return to it after the re-render that brings it back - hence the pending id is stashed in
   // a ref and consumed once rename mode ends. Blur commits deliberately don't refocus: the
@@ -91,6 +97,18 @@ export default function ChatList({ spaceId, header }: ChatListProps) {
     actionButtonRefs.current ??= new Map()
     return actionButtonRefs.current
   }
+
+  function getRowButtonRefs() {
+    rowButtonRefs.current ??= new Map()
+    return rowButtonRefs.current
+  }
+
+  useEffect(() => {
+    const chatId = refocusRevealedChatIdRef.current
+    if (chatId === null) return
+    refocusRevealedChatIdRef.current = null
+    rowButtonRefs.current?.get(chatId)?.focus()
+  }, [recentShown])
 
   useEffect(() => {
     if (renamingChatId !== null) return
@@ -148,6 +166,27 @@ export default function ChatList({ spaceId, header }: ChatListProps) {
         if (pinFocusChatIdRef.current === chat.id) pinFocusChatIdRef.current = null
       }, 0)
     })
+  }
+
+  /**
+   * Reveals the next page of "Zuletzt verwendet". Focus goes to the first row that appears: the
+   * click that reveals the last page unmounts the button it came from, and focus would otherwise
+   * fall to the page body.
+   */
+  function revealMore() {
+    const recent = splitChats(chats ?? []).recent
+    const shown = Math.max(recentShown, RECENT_PAGE_SIZE)
+    const next = Math.min(recent.length, shown + RECENT_PAGE_SIZE)
+    const added = next - shown
+    if (added <= 0) return
+    refocusRevealedChatIdRef.current = recent[shown]?.id ?? null
+    setRecentShown(next)
+    setRevealStatus(added === 1 ? '1 weiterer Chat angezeigt' : `${added} weitere Chats angezeigt`)
+  }
+
+  function showFewer() {
+    setRecentShown(RECENT_PAGE_SIZE)
+    setRevealStatus(`Wieder ${RECENT_PAGE_SIZE} Chats angezeigt`)
   }
 
   /** The chats the list currently renders, in visual order. */
@@ -233,6 +272,10 @@ export default function ChatList({ spaceId, header }: ChatListProps) {
       >
         <ListItemButton
           selected={active}
+          ref={(el: HTMLElement | null) => {
+            if (el) getRowButtonRefs().set(chat.id, el)
+            else getRowButtonRefs().delete(chat.id)
+          }}
           onClick={isRenaming ? undefined : () => navigate(`/spaces/${spaceId}/chats/${chat.id}`)}
           sx={{ borderRadius: '6px', mb: 0.25, pr: 5.5, py: 0.5 }}
         >
@@ -333,13 +376,16 @@ export default function ChatList({ spaceId, header }: ChatListProps) {
             </ButtonBase>,
           )}
         {recent.length > 0 && renderSection('recent', 'Zuletzt verwendet', recent.slice(0, shown))}
+        <Box role="status" sx={visuallyHidden}>
+          {revealStatus}
+        </Box>
         {(remaining > 0 || shown > RECENT_PAGE_SIZE) && (
           <Box sx={{ display: 'flex', gap: 1, px: 1, mt: 0.5 }}>
             {remaining > 0 && (
               <Button
                 variant="text"
                 size="small"
-                onClick={() => setRecentShown(shown + RECENT_PAGE_SIZE)}
+                onClick={revealMore}
                 sx={{ minHeight: 0, px: 0.75, py: 0.25, fontSize: 11.5 }}
               >
                 {Math.min(remaining, RECENT_PAGE_SIZE)} weitere anzeigen
@@ -349,7 +395,7 @@ export default function ChatList({ spaceId, header }: ChatListProps) {
               <Button
                 variant="text"
                 size="small"
-                onClick={() => setRecentShown(RECENT_PAGE_SIZE)}
+                onClick={showFewer}
                 sx={{ minHeight: 0, px: 0.75, py: 0.25, fontSize: 11.5 }}
               >
                 weniger anzeigen

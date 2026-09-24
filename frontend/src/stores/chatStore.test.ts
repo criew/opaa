@@ -8,6 +8,7 @@ import { server } from '../mocks/server'
 // dropChatSettingsCache) has resolved by the time this file's imports run.
 import { resetAllStores } from './resettableStores'
 import {
+  clearManualRenameMarks,
   clearRemovedNoteItemCache,
   clearSettingsPersistenceCache,
   dropChatSettingsCache,
@@ -58,8 +59,10 @@ describe('chatStore', () => {
     // settingsUpdateChains/confirmedSettingsByChatId are module state, not store state (#573) -
     // they survive resetChatStore() above and would otherwise leak between test cases.
     clearSettingsPersistenceCache()
-    // Same reasoning for the not-yet-confirmed note removals (#1488) - module state too.
+    // Same reasoning for the not-yet-confirmed note removals (#1488) and the manual-rename
+    // marks that keep the delayed title reload off a renamed chat (#1919) - module state too.
     clearRemovedNoteItemCache()
+    clearManualRenameMarks()
     useChatListStore.setState({ chatsBySpaceId: {}, isLoading: false, error: null })
   })
 
@@ -1187,6 +1190,43 @@ describe('chatStore', () => {
       await vi.advanceTimersByTimeAsync(3000)
 
       expect(useChatStore.getState().title).toBe('LLM-generierter Titel')
+    })
+
+    // #1919: renaming inside the 2.5-second window must not be undone on screen. The server never
+    // overwrites a manual title (ChatTitleGenerationService writes only while titleSource is
+    // GENERATED); the delayed reload would still display the generated one, because it may read
+    // the chat while the rename's own PATCH is still on the wire.
+    it('does not put the generated title back after a manual rename', async () => {
+      vi.useFakeTimers()
+      server.use(
+        http.get('/api/v1/chats/:chatId', () =>
+          HttpResponse.json({
+            id: EMPTY_CHAT_ID,
+            spaceId: 'space-engineering',
+            authorId: 'mock-user-id',
+            title: 'LLM-generierter Titel',
+            useKnowledge: true,
+            referencedLibraryIds: [],
+            status: 'PRIVATE',
+            messages: [],
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-01T00:00:00Z',
+          }),
+        ),
+        // The rename's PATCH stays outstanding for the whole test - exactly the race in question.
+        http.patch('/api/v1/chats/:chatId', () => new Promise(() => {})),
+      )
+      useChatStore.setState({ chatId: EMPTY_CHAT_ID, spaceId: 'space-engineering', messages: [] })
+
+      await useChatStore.getState().sendMessage('Erste Frage')
+      void useChatListStore
+        .getState()
+        .renameChat('space-engineering', EMPTY_CHAT_ID, 'Von Hand benannt')
+      useChatStore.getState().applyTitle(EMPTY_CHAT_ID, 'Von Hand benannt')
+
+      await vi.advanceTimersByTimeAsync(3000)
+
+      expect(useChatStore.getState().title).toBe('Von Hand benannt')
     })
 
     it('does not schedule a reload for a follow-up turn', async () => {
