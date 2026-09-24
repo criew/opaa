@@ -42,7 +42,10 @@ e2e/
 ```
 
 Neue Szenarien kommen als weitere `*.spec.ts`-Dateien unter `tests/`; neue wiederverwendbare
-Bausteine (z. B. Seiten-Interaktionen) gehören nach `fixtures/`. `e2e/fixtures/` enthält seit #233
+Bausteine (z. B. Seiten-Interaktionen) gehören nach `fixtures/`. `fixtures/libraries.ts` hält seit
+#1944 die Bausteine, die jedes Szenario mit einer wegwerfbaren Wissensbibliothek braucht —
+`DEV_USER_HEADER`, `libraryIdFromCurrentUrl` und das Aufräumen über die API (`cleanupLibraries`,
+`deleteLibraryCompletely`); vorher lagen sie in zwei Spec-Dateien parallel. `e2e/fixtures/` enthält seit #233
 nur noch echte Playwright-Fixtures (Anmeldung, Chat-Bausteine, Barrierefreiheit) — die frühere
 eigene Testdatenbereitstellung dieser Suite (`e2e/fixtures/rss-feed/`, `e2e/fixtures/test-documents/`)
 ist abgelöst: Beide leben jetzt unter [`demo/seed/e2e-data/`](../demo/seed/), Teil des gemeinsamen
@@ -347,6 +350,22 @@ lassen.
 
   Bewusst nicht abgedeckt (siehe Issue #547): der Negativtest zur Erstanmeldung (#522) und die
   RSS-Lauf-Abschlussmeldung (#518, bräuchte einen eigenen Feed-Fixture-Container).
+
+- `tests/library-wizard-and-sharing.spec.ts` (#1944, Abschluss von Epic #1927) — der
+  durchgehende Pfad **Anlegen über den Assistenten → Detailansicht → Reiter „Freigaben"**, je
+  einmal für eine Upload- und eine Konnektorbibliothek (Webverzeichnis gegen den suite-eigenen
+  `rss-feed`-Dienst, ohne Sofortstart — geprüft wird der Weg, nicht ein Lauf). Der Assistent führt
+  durch **Art des Wissens · Quelle · Name & Beschreibung · Freigaben**; eine Upload-Bibliothek hat
+  drei Schritte, und der Name einer Konnektorbibliothek kommt vorbelegt aus der Quelle (hier ihr
+  Hostname). Die fertige Bibliothek zeigt die vier Reiter (ohne „Quelle" beim Upload), und im
+  Reiter „Freigaben" laufen die drei Freigabewege durch: eine Person, „Alle Konten" mit der
+  Rückfrage aus ADR-0037, und der Katalog-Schalter mit eigenem „Auffindbarkeit speichern" —
+  gesetzt im Assistenten, hier zurückgenommen und über ein Neuladen nachgeprüft. Beide
+  Bibliotheken räumt `cleanupLibraries()` über die API wieder ab.
+
+  Die Abschnitte des Reiters werden über `getByRole('region', { name: … })` angesteuert:
+  `PageSection` rendert seit #1608 ein `section` mit `aria-labelledby` auf seine Überschrift, was
+  genau die Eingrenzung ersetzt, die vor #1941 der Rechte-Dialog leistete.
 
 - `tests/llm-model-management.spec.ts` (#760, Teil von Epic #755) — die Modellverwaltung über den
   vollen Stack: ein Systemadministrator legt ein Chat-Modell ohne API-Schlüssel an, testet die

@@ -45,6 +45,17 @@ async function openManagement(page: Page, libraryName: string): Promise<void> {
   await page.getByRole('tab', { name: 'Verwaltung' }).click()
 }
 
+/**
+ * Der Abschnitt „Berechtigungen" des Reiters — seit #1941 ein `section` mit `aria-labelledby` auf
+ * seine Überschrift (PageSection.tsx), also eine `region` mit Namen. Er grenzt die Zusicherungen
+ * auf die Freigabeliste ein, wo früher der Dialog das tat. Eine erteilte Freigabe wird über den
+ * Entzugsknopf ihrer Zeile geprüft, nicht über ihren Namen: Der steht auch im Einleitungssatz des
+ * Abschnitts und in der Empfängerauswahl des Formulars.
+ */
+function grantsSection(page: Page) {
+  return page.getByRole('region', { name: 'Berechtigungen' })
+}
+
 async function saveRelease(page: Page): Promise<void> {
   await Promise.all([
     page.waitForResponse(
@@ -53,7 +64,9 @@ async function saveRelease(page: Page): Promise<void> {
         /\/api\/v1\/prompt-libraries\/[^/]+$/.test(new URL(response.url()).pathname) &&
         response.ok(),
     ),
-    page.getByRole('button', { name: 'Freigabe speichern' }).click(),
+    // #1941: Die Auffindbarkeit ist ein eigener Abschnitt mit eigenem Speichern-Knopf; den
+    // gemeinsamen „Freigabe speichern" über mehrere Abschnitte hinweg gibt es nicht mehr.
+    page.getByRole('button', { name: 'Auffindbarkeit speichern' }).click(),
   ])
 }
 
@@ -120,16 +133,18 @@ test.describe.serial('Prompt-Bibliotheken: Freigabewege und Katalog (#1904)', ()
     // Administering is not reading: without a grant the system administration does not list it.
     await expectNotInPromptList(admin, LIBRARY_NAME)
 
+    // Seit #1941 stehen die Berechtigungen als Abschnitt auf der Seite, nicht mehr hinter dem
+    // Knopf „Rechte verwalten" in einem Dialog.
     await openManagement(owner, LIBRARY_NAME)
-    await owner.getByRole('button', { name: 'Rechte verwalten' }).click()
     await owner.getByRole('button', { name: 'Freigeben' }).click()
     const personInput = owner.getByRole('combobox', { name: 'Person suchen' })
     await personInput.click()
     await personInput.fill('Dev Admin')
     await owner.getByRole('option', { name: /Dev Admin/ }).click()
     await owner.getByRole('button', { name: 'Freigeben' }).last().click()
-    await expect(owner.getByRole('dialog').getByText(/Dev Admin/)).toBeVisible()
-    await owner.getByRole('dialog').getByRole('button', { name: 'Schließen' }).click()
+    await expect(
+      grantsSection(owner).getByRole('button', { name: 'Freigabe für Dev Admin entziehen' }),
+    ).toBeVisible()
 
     await expectInPromptList(admin, LIBRARY_NAME)
     await gotoPromptLibraryDetail(admin, LIBRARY_NAME)
@@ -144,7 +159,6 @@ test.describe.serial('Prompt-Bibliotheken: Freigabewege und Katalog (#1904)', ()
     await expectNotInPromptList(member, LIBRARY_NAME)
 
     await openManagement(owner, LIBRARY_NAME)
-    await owner.getByRole('button', { name: 'Rechte verwalten' }).click()
     await owner.getByRole('button', { name: 'Freigeben' }).click()
     await owner.getByRole('radio', { name: 'Gruppe' }).click()
     const groupInput = owner.getByRole('combobox', { name: 'Gruppe suchen' })
@@ -152,8 +166,9 @@ test.describe.serial('Prompt-Bibliotheken: Freigabewege und Katalog (#1904)', ()
     await groupInput.fill(GROUP_NAME)
     await owner.getByRole('option', { name: GROUP_NAME }).click()
     await owner.getByRole('button', { name: 'Freigeben' }).last().click()
-    await expect(owner.getByRole('dialog').getByText(GROUP_NAME)).toBeVisible()
-    await owner.getByRole('dialog').getByRole('button', { name: 'Schließen' }).click()
+    await expect(
+      grantsSection(owner).getByRole('button', { name: `Freigabe für ${GROUP_NAME} entziehen` }),
+    ).toBeVisible()
 
     await expectInPromptList(member, LIBRARY_NAME)
   })
@@ -181,7 +196,6 @@ test.describe.serial('Prompt-Bibliotheken: Freigabewege und Katalog (#1904)', ()
   }) => {
     // The organization-wide reach is a grant to the recipient "Alle Konten", asked back once.
     await openManagement(owner, LIBRARY_NAME)
-    await owner.getByRole('button', { name: 'Rechte verwalten' }).click()
     await owner.getByRole('button', { name: 'Freigeben' }).click()
     await owner.getByRole('radio', { name: 'Alle Konten' }).click()
     await owner.getByRole('button', { name: 'Freigeben' }).last().click()
@@ -190,8 +204,9 @@ test.describe.serial('Prompt-Bibliotheken: Freigabewege und Katalog (#1904)', ()
       .filter({ has: owner.locator('#confirm-question') })
     await confirmAllAccounts.locator('#confirm-accept').click()
     await expect(confirmAllAccounts).toHaveCount(0)
-    await expect(owner.getByRole('dialog').getByText('Alle Konten')).toBeVisible()
-    await owner.getByRole('dialog').getByRole('button', { name: 'Schließen' }).click()
+    await expect(
+      grantsSection(owner).getByRole('button', { name: 'Freigabe für Alle Konten entziehen' }),
+    ).toBeVisible()
 
     await expectInPromptList(outsider, LIBRARY_NAME)
     await searchCatalog(outsider, LIBRARY_NAME)
@@ -218,7 +233,11 @@ test.describe.serial('Prompt-Bibliotheken: Freigabewege und Katalog (#1904)', ()
     await expect(listedCatalogEntry(outsider, LISTED_LIBRARY_NAME)).toHaveCount(0)
 
     await openManagement(owner, LISTED_LIBRARY_NAME)
-    await owner.getByLabel('Im Katalog auffindbar').check()
+    // Nicht getByLabel: Seit #1941 ist „Im Katalog auffindbar" auch der Name des Abschnitts, und
+    // ein `section` mit `aria-labelledby` trägt damit dasselbe Label wie das Kästchen darin.
+    await owner
+      .getByRole('checkbox', { name: 'Im Katalog auffindbar, auch ohne Berechtigung' })
+      .check()
     await saveRelease(owner)
 
     await searchCatalog(outsider, LISTED_LIBRARY_NAME)

@@ -98,7 +98,7 @@ Der Reiter **„Freigaben"** einer Wissensbibliothek führt sie in dieser Reihen
 | Abschnitt | Inhalt |
 |---|---|
 | **Eigentümer** | die zuständige Stelle mit Namen; über „Eigentum übergeben" reicht der Eigentümer sie an eine Person oder eine Gruppe weiter — mit Rückfrage, und die Eigentümerrolle geht mit. Auch die **Systemverwaltung** kann übergeben: So bekommt eine Bibliothek mit offener Nachfolge wieder eine handlungsfähige Stelle, ohne das Konto der ausgeschiedenen Person. Jede Übergabe steht mit Namen im Nachweisprotokoll |
-| **Berechtigungen** | Personen, Gruppen und „Alle Konten" mit Rolle, Befristung und Entzug, dazu das Formular „Freigeben"; für die Systemverwaltung darunter die Obergrenze „Freigabe an Alle erlaubt" |
+| **Berechtigungen** | Personen, Gruppen und „Alle Konten" mit Rolle, Befristung und Entzug, dazu das Formular „Freigeben". Für „Alle Konten" stehen dabei nur **Leser** und **Bearbeiter** zur Wahl — in der Liste wie im Formular; für die Systemverwaltung darunter die Obergrenze „Freigabe an Alle erlaubt" |
 | **Im Katalog auffindbar** | der Schalter mit eigenem „Auffindbarkeit speichern"; für die Systemverwaltung darunter die Obergrenze „Auffindbarkeit im Katalog erlaubt" |
 | **Externer Zugang** | die Freigabe für Fremdzugänge |
 | **Zuordnungen** | die Spaces, in denen die Bibliothek als Datenquelle bereitsteht |
@@ -139,18 +139,23 @@ als Eigentümerin erhält die Gruppe die Verwalterrolle — die anlegende Person
 Gruppe sein. **Gruppeneigentum ist die haltbarere Wahl**: Es übersteht den Weggang einzelner
 Personen, und genau dafür ist Abschnitt 13 sonst zuständig.
 
-Weitere Rollen lassen sich schon beim Anlegen vergeben. Das Formular wählt Person oder Gruppe mit
-derselben Auswahl wie der Dialog „Rechte" an einer bestehenden Bibliothek — mit denselben Regeln für
-geschützte Gruppen (Abschnitt 8) und derselben Rückfrage vor einer Freigabe an die Gruppe eines
-externen Anbieters.
+Weitere Rollen lassen sich schon beim Anlegen vergeben. Der Schritt „Freigaben" des Assistenten
+wählt Person oder Gruppe mit derselben Auswahl wie der Abschnitt „Berechtigungen" an einer
+bestehenden Bibliothek — mit denselben Regeln für geschützte Gruppen (Abschnitt 8) und derselben
+Rückfrage vor einer Freigabe an die Gruppe eines externen Anbieters. Den Empfänger **„Alle Konten"**
+bietet der Assistent nicht an: Ein Bestand, den es noch nicht gibt, hat keine Reichweite zu weiten,
+und die Obergrenze, die über eine solche Freigabe entscheidet, gehört der angelegten Bibliothek.
 
 ### Reichweite: „Alle Konten" und Auffindbarkeit
 
 **Es gibt keine getrennte Verteilungsstufe mehr.** Wie weit eine Bibliothek reicht, ergibt sich
 allein aus ihrer Rechteliste. Wer sie dem ganzen Haus öffnen will, erteilt ein Recht an den
-Empfänger **„Alle Konten"** — im selben Dialog, mit derselben Rollenauswahl und demselben
-Ablaufdatum wie bei einer Person oder einer Gruppe. Vor dem Erteilen fragt die Anwendung eigens
-zurück und spricht die Reichweite aus; zurücknehmen lässt sich die Freigabe wie jede andere.
+Empfänger **„Alle Konten"** — im selben Abschnitt „Berechtigungen" und mit demselben Ablaufdatum
+wie bei einer Person oder einer Gruppe, aber **höchstens mit der Rolle „Bearbeiter"**: Verwaltung
+und Eigentum sind Zuständigkeiten und bleiben an eine benannte Stelle gebunden; mehr steht gar
+nicht erst zur Wahl und würde auch abgewiesen. Vor dem Erteilen fragt die Anwendung eigens zurück
+und spricht die Reichweite aus; zurücknehmen lässt sich die Freigabe wie jede andere — auch ein
+späterer Rollenwechsel an dieser Zeile fragt zurück.
 
 In den Übersichten steht die Reichweite als **abgeleitete Kennzeichnung**: „Alle", „3 Gruppen, 2
 Personen" oder „nur Sie". Sie ist keine Einstellung, sondern die Zusammenfassung dessen, was in der

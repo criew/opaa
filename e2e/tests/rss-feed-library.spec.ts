@@ -1,4 +1,5 @@
 import { expect, test } from '../fixtures/auth'
+import { DEV_USER_HEADER } from '../fixtures/libraries'
 import type { Page, Response } from '@playwright/test'
 
 // Deterministic, generic, fully invented RSS-2.0 fixtures for a fictional "Beispielbehörde" -
@@ -26,14 +27,12 @@ const runId = Date.now()
 const LIBRARY_NAME_OK = `E2E RSS-Bibliothek ${runId}`
 const LIBRARY_NAME_ERROR = `E2E RSS-Bibliothek Fehlerfall ${runId}`
 
-// Mirrors frontend/src/services/devAuth.ts's DEV_USER_HEADER - not imported from there since e2e/
-// is its own npm package with no dependency on frontend/src (see e2e/package.json). Used below to
-// call the library documents API directly as dev-admin, bypassing the UI entirely (PR #510
-// review, finding 2): GET /api/v1/libraries/{id}/documents still exists and still returns each
-// document's fileName (LibraryController#listDocuments) even though #481 removed the connector
-// library's own document list from the UI - this is the one place this suite can still assert on
-// individual RSS/attachment documents by name, not just by aggregate count.
-const DEV_USER_HEADER = 'X-OPAA-Dev-User'
+// DEV_USER_HEADER (fixtures/libraries.ts) calls the library documents API directly as dev-admin,
+// bypassing the UI entirely (PR #510 review, finding 2): GET /api/v1/libraries/{id}/documents
+// still exists and still returns each document's fileName (LibraryController#listDocuments) even
+// though #481 removed the connector library's own document list from the UI - this is the one
+// place this suite can still assert on individual RSS/attachment documents by name, not just by
+// aggregate count.
 
 interface IndexingStatusResponse {
   status: 'IDLE' | 'RUNNING' | 'COMPLETED' | 'FAILED'

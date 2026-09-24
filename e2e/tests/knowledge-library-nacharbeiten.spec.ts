@@ -2,7 +2,12 @@ import { crc32, deflateSync } from 'node:zlib'
 import { randomBytes } from 'node:crypto'
 import { PDFDocument, StandardFonts } from 'pdf-lib'
 import { expect, test } from '../fixtures/auth'
-import type { APIRequestContext, Page } from '@playwright/test'
+import {
+  DEV_USER_HEADER,
+  cleanupLibraries,
+  libraryIdFromCurrentUrl,
+} from '../fixtures/libraries'
+import type { Page } from '@playwright/test'
 
 // Nacharbeiten-Serie aus Epic #458 (#514, #516, #517, #519, siehe Issue #547): vier
 // nutzersichtbare Verhaltensweisen, die die Suite bislang nicht abdeckte. Eigene Datei statt
@@ -13,15 +18,10 @@ import type { APIRequestContext, Page } from '@playwright/test'
 // knowledge-libraries.spec.ts (siehe dort OWN_DOCUMENT_PATH's Kommentar), nur ohne den
 // Freigabe-Aspekt, den dieses Issue ausdrücklich nicht abdeckt.
 //
-// Jede Bibliothek dieser Datei räumt sich über test.afterAll selbst wieder ab (siehe
-// cleanupLibraries unten) - kein anderes Szenario der Suite sieht ihre admin-lesbaren
-// Wegwerfdokumente also über das eigene test.describe-Ende hinaus.
+// Jede Bibliothek dieser Datei räumt sich über test.afterAll selbst wieder ab
+// (fixtures/libraries.ts, cleanupLibraries) - kein anderes Szenario der Suite sieht ihre
+// admin-lesbaren Wegwerfdokumente also über das eigene test.describe-Ende hinaus.
 const runId = Date.now()
-
-// Mirrors frontend/src/services/devAuth.ts's DEV_USER_HEADER - not imported from there since e2e/
-// is its own npm package with no dependency on frontend/src (see rss-feed-library.spec.ts's
-// identical comment on the same constant).
-const DEV_USER_HEADER = 'X-OPAA-Dev-User'
 
 // Same waiting pattern as knowledge-libraries.spec.ts's gotoLibraries (kept module-local there,
 // duplicated here rather than shared - see rss-feed-library.spec.ts's identical comment).
@@ -33,58 +33,6 @@ async function gotoLibraries(page: Page) {
     ),
     page.goto('/libraries'),
   ])
-}
-
-/** Reads the library id LibraryCreatePage navigated to after a successful "Bibliothek anlegen". */
-function libraryIdFromCurrentUrl(page: Page): string {
-  const match = page.url().match(/\/libraries\/([^/]+)$/)
-  if (!match) {
-    throw new Error(`Unexpected library detail URL after creation: ${page.url()}`)
-  }
-  return match[1]
-}
-
-/**
- * Deletes a library this file created for a scenario, together with any documents it holds -
- * registered per test.describe block (see cleanupLibraries below) rather than relying solely on
- * the filename-ordering trick above to keep other specs' shared, admin-readable corpus from
- * growing without bound across repeated local runs. Works for both library kinds this file
- * creates: an UPLOAD library rejects DELETE while it still holds documents (ADR-0018), so those
- * are removed first; a connector (HTTP_DIRECTORY) library never has any (no indexing run was ever
- * triggered against it here), so the listing call below simply returns nothing to delete.
- */
-async function deleteLibraryCompletely(request: APIRequestContext, libraryId: string) {
-  const documentsResponse = await request.get(`/api/v1/libraries/${libraryId}/documents?size=100`, {
-    headers: { [DEV_USER_HEADER]: 'dev-admin' },
-  })
-  if (documentsResponse.ok()) {
-    const body = (await documentsResponse.json()) as { items: Array<{ id: string }> }
-    for (const document of body.items) {
-      await request.delete(`/api/v1/libraries/${libraryId}/documents/${document.id}`, {
-        headers: { [DEV_USER_HEADER]: 'dev-admin' },
-      })
-    }
-  }
-  const libraryResponse = await request.delete(`/api/v1/libraries/${libraryId}`, {
-    headers: { [DEV_USER_HEADER]: 'dev-admin' },
-  })
-  expect(libraryResponse.ok()).toBe(true)
-}
-
-/**
- * Registers a test.describe-scoped cleanup: tests push the id of every library they create onto
- * the returned array, and test.afterAll deletes all of them (see deleteLibraryCompletely) once the
- * block's tests have finished - regardless of whether any of them failed, so a failed assertion
- * never leaves that scenario's own library behind for the next local run.
- */
-function cleanupLibraries(): string[] {
-  const createdLibraryIds: string[] = []
-  test.afterAll(async ({ request }) => {
-    for (const libraryId of createdLibraryIds) {
-      await deleteLibraryCompletely(request, libraryId)
-    }
-  })
-  return createdLibraryIds
 }
 
 /**
@@ -241,7 +189,7 @@ test.describe('Upload > 1 MB durch den echten nginx (#519)', () => {
   })
 })
 
-// #514: the connection test in CreateLibraryDialog, both directions.
+// #514: the connection test in the creation wizard's step "Quelle", both directions.
 //
 // Happy path: HTTP_DIRECTORY against the suite's own "rss-feed" httpd service
 // (docker-compose.e2e.yml, also used by #471), reachable from the backend container under the
@@ -321,9 +269,9 @@ test.describe('Verbindungstest im Anlage-Assistenten (#514)', () => {
 test.describe('Dokumentliste mit Paging und Suche (#517)', () => {
   const createdLibraryIds = cleanupLibraries()
 
-  // DEFAULT_PAGE_SIZE in frontend/src/stores/documentStore.ts - not imported from there (e2e/ has
-  // no dependency on frontend/src, see DEV_USER_HEADER's comment above for the same reasoning),
-  // duplicated as a plain constant instead.
+  // DEFAULT_PAGE_SIZE in frontend/src/stores/documentStore.ts - not imported from there (e2e/ is
+  // its own npm package with no dependency on frontend/src, see fixtures/libraries.ts for the same
+  // reasoning about DEV_USER_HEADER), duplicated as a plain constant instead.
   const PAGE_SIZE = 20
 
   test('Mehrseitige Liste laesst sich blaettern und durchsuchen', async ({
@@ -410,6 +358,12 @@ test.describe('Dokumentliste mit Paging und Suche (#517)', () => {
     await page.getByRole('radio', { name: /Webverzeichnis/ }).click()
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
     await page.getByLabel('Adresse (URL)').fill('http://rss-feed/anlagen/')
+    // #1942: Der Sofortstart gilt seit dem neuen Assistenten für jeden Konnektortyp und ist
+    // vorbelegt. Dieses Szenario braucht eine Bibliothek ohne einen einzigen Lauf - sonst prüft es
+    // statt des Leerzustands den Bestand des ersten Laufs.
+    await page
+      .getByRole('switch', { name: 'Erste Indizierung sofort nach dem Anlegen starten' })
+      .uncheck()
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
     await page.getByLabel('Name').fill(libraryName)
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
@@ -420,9 +374,8 @@ test.describe('Dokumentliste mit Paging und Suche (#517)', () => {
     await expect(page.getByRole('heading', { name: libraryName })).toBeVisible()
     createdLibraryIds.push(libraryIdFromCurrentUrl(page))
 
-    // No indexing run was triggered - the documents area (the default tab since the tab layout)
-    // must still render, with its empty state and without an upload widget, since this library
-    // was never given upload rights at all.
+    // Kein Lauf ausgelöst - der Dokumentbereich (der vorgewählte Reiter) muss trotzdem erscheinen,
+    // mit seinem Leerzustand und ohne Upload-Fläche, weil diese Bibliothek nie eine hatte.
     await expect(page.getByRole('tab', { name: 'Dokumente' })).toBeVisible()
     await expect(page.getByText('Es sind noch keine Dokumente vorhanden.')).toBeVisible()
     await expect(page.getByRole('button', { name: 'Dateien hochladen' })).toHaveCount(0)
@@ -490,6 +443,11 @@ test.describe('Quellkonfiguration bearbeiten (#516)', () => {
     // Credentials are set on creation so this test can prove they survive an edit that leaves the
     // field blank - a library created without any has nothing to preserve in the first place.
     await page.getByLabel('Anmeldedaten').fill('testuser:testpass')
+    // #1942: Der vorbelegte Sofortstart würde hier das Anlagen-Fixture in den gemeinsamen Bestand
+    // der Suite indizieren, obwohl dieses Szenario nie einen Lauf braucht.
+    await page
+      .getByRole('switch', { name: 'Erste Indizierung sofort nach dem Anlegen starten' })
+      .uncheck()
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
     await page.getByLabel('Name').fill(libraryName)
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()

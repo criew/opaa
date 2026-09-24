@@ -69,6 +69,11 @@ flowchart LR
 
 ## 2. Quellkonfiguration
 
+Wo diese Felder stehen: Detailansicht der Bibliothek, Reiter **„Quelle"**, Abschnitt
+**„Anbindung"**; beim Anlegen im gleichnamigen Schritt des Assistenten. Die Geltungsbereiche stehen
+darüber im Abschnitt **„Umfang"** und sind dort für jeden Leseberechtigten sichtbar; im selben
+Reiter folgen der **„Zeitplan"** und, als **„Läufe"**, das Laufprotokoll.
+
 | Feld der Bibliothek | Regel |
 |---|---|
 | Endpoint (`sourceUrl`) | Pflicht. `http(s)://host[:port]` **ohne Pfad**, Abfrage oder Zugangsdaten; wird normalisiert gespeichert (Schema und Host kleingeschrieben). Bucket und Präfix gehören in die Geltungsbereiche, nicht in den Endpoint. |
@@ -81,8 +86,9 @@ flowchart LR
 | Zertifikatsprüfung aussetzen (`sourceInsecureSsl`) | optional, nur für ein bekanntes, selbstsigniertes Zertifikat im Hausnetz — die Oberfläche warnt, dass sich dann jeder Server als der Objektspeicher ausgeben und den Schlüssel mitlesen kann. Ein eigenes Zertifikat der Behörden-CA gehört in den Truststore des Backend-Containers (siehe [Deployment](deployment.md)). |
 | Ereignis-Token | optional, in OPAA erzeugt (Abschnitt 8). |
 
-**Anlagedialog.** Die Stufen sind: **Anbieter** wählen (die Vorlage belegt Endpoint-Form, Region
-und Adressstil vor; jede Vorbelegung bleibt änderbar), **Zugangsdaten** eingeben, der Hinweis auf
+**Das gestufte Quellformular** — im Schritt „Quelle" des Assistenten wie hinter „Bearbeiten" im
+Abschnitt „Anbindung". Die Stufen sind: **Anbieter** wählen (die Vorlage belegt Endpoint-Form,
+Region und Adressstil vor; jede Vorbelegung bleibt änderbar), **Zugangsdaten** eingeben, der Hinweis auf
 die Freigabefolge („Wer diese Bibliothek lesen darf, sieht alles aus allen Geltungsbereichen"),
 **Geltungsbereiche** eintragen — „Buckets laden" bietet die Buckets an, die der Schlüssel sehen
 darf, und ist ein Komfort, kein Muss —, unter „Erweitert" Ein-/Ausschlussmuster, Proxy und TLS,
@@ -106,7 +112,7 @@ Der Schlüssel braucht auf jedem Bucket eines Geltungsbereichs:
 |---|---|---|
 | `s3:ListBucket` | Auflistung (`ListObjectsV2`), `HeadBucket` — und die Unterscheidung von „fehlt" und „verboten": Ein `HeadObject` auf einen fehlenden Schlüssel antwortet nur mit diesem Recht `404`, sonst `403`. Ohne es kann OPAA eine Löschung nie bestätigen. | ja |
 | `s3:GetObject` | `HeadObject` und Download | ja |
-| `s3:ListAllMyBuckets` | „Buckets laden" im Anlagedialog | nein; ohne das Recht zeigt der Dialog den Hinweis, den Bucket-Namen von Hand einzutragen |
+| `s3:ListAllMyBuckets` | „Buckets laden" im Quellformular — im Assistenten wie im Bearbeitungsdialog | nein; ohne das Recht zeigt das Formular den Hinweis, den Bucket-Namen von Hand einzutragen |
 | `s3:GetBucketLocation` | bei AWS von manchen Werkzeugen für die Regionsauflösung verlangt; OPAA signiert immer mit der konfigurierten Region und ruft es selbst nicht auf | nein |
 
 Eine minimale IAM-Policy (AWS; MinIO und Ceph verstehen dieselbe Form) für den Bucket `dokumente`:
@@ -152,7 +158,7 @@ schreibt nie in den Speicher.
   Werte frei wählbar — ohne Doppelpunkt.
 - **Bucket-Liste:** MinIO **filtert** `ListBuckets` auf die Buckets, die die Policy erlaubt, statt
   mit `403` zu antworten; ein Schlüssel ohne bucketweite Rechte sieht dann eine leere Liste, und
-  der Dialog sagt „Der Schlüssel sieht keine Buckets - der Bucket-Name kann von Hand eingetragen
+  das Formular sagt „Der Schlüssel sieht keine Buckets - der Bucket-Name kann von Hand eingetragen
   werden."
 - **Benachrichtigungen:** eingebauter Webhook (Abschnitt 8.3).
 - **Zieladressprüfung:** Ein MinIO im privaten Adressbereich braucht den Allowlist-Eintrag

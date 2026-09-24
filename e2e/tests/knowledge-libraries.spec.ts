@@ -157,9 +157,9 @@ test.describe.serial('Wissensbibliotheken: Upload, Freigabe, rechtebewusste Such
     await gotoLibraryDetail(adminPage, LIBRARY_NAME)
     await adminPage.getByRole('tab', { name: 'Freigaben' }).click()
     await adminPage.getByRole('button', { name: 'Freigabe für Dev User entziehen' }).click()
-    // The confirmation is the app's own overlay (#1610) and opens on top of the still-open "Rechte
-    // verwalten" dialog, so two elements carry role="dialog" while it stands. Hence the id the
-    // overlay gives every confirmation, rather than the role: its own button says "Entziehen".
+    // The confirmation is the app's own overlay (#1610). Addressed through the id every
+    // confirmation carries rather than through role="dialog" alone: its own button says
+    // "Entziehen", and the id stays unambiguous should a second overlay ever stand.
     const confirmRevoke = adminPage
       .getByRole('dialog')
       .filter({ has: adminPage.locator('#confirm-question') })
@@ -171,9 +171,6 @@ test.describe.serial('Wissensbibliotheken: Upload, Freigabe, rechtebewusste Such
     // outlives every other grant, so the list is never actually empty here - only "Dev User"'s row
     // is gone.
     await expect(adminPage.getByText('Dev User')).toHaveCount(0)
-    // Scoped to the dialog: the deDE MUI locale also names an error Alert's own close button
-    // "Schließen" (#784), so an unscoped lookup could resolve to two elements on the error path.
-    await adminPage.getByRole('dialog').getByRole('button', { name: 'Schließen' }).click()
 
     await uploadOwnDocument(bPage, OWN_LIBRARY_NAME_REGULAR)
 
@@ -203,9 +200,6 @@ test.describe.serial('Wissensbibliotheken: Upload, Freigabe, rechtebewusste Such
     await adminPage.getByRole('option', { name: GROUP_NAME }).click()
     await adminPage.getByRole('button', { name: 'Freigeben' }).last().click()
     await expect(adminPage.getByText(GROUP_NAME)).toBeVisible()
-    // Scoped to the dialog: the deDE MUI locale also names an error Alert's own close button
-    // "Schließen" (#784), so an unscoped lookup could resolve to two elements on the error path.
-    await adminPage.getByRole('dialog').getByRole('button', { name: 'Schließen' }).click()
 
     await gotoLibraries(cPage)
     await expect(cPage.getByText(LIBRARY_NAME, { exact: true })).toBeVisible()

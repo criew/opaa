@@ -32,6 +32,11 @@ flowchart LR
 
 ## 2. Quellkonfiguration
 
+Wo diese Felder stehen: Detailansicht der Bibliothek, Reiter **„Quelle"**, Abschnitt
+**„Anbindung"** — dort liegt auch „Verbindung testen" gegen die gespeicherte Konfiguration; beim
+Anlegen im gleichnamigen Schritt des Assistenten. Im selben Reiter stehen der **„Zeitplan"** und,
+als **„Läufe"**, das Laufprotokoll.
+
 Die Felder sind dieselben wie beim Webverzeichnis:
 
 | Feld der Bibliothek | Regel |
