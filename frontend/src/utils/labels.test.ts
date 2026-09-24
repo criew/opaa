@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { capabilityMissingMessage } from './labels'
+import { capabilityMissingMessage, documentCountLabel } from './labels'
 import type { Capability } from '../types/api'
 
 /**
@@ -39,5 +39,17 @@ describe('capabilityMissingMessage', () => {
     for (const capability of everyCapability) {
       expect(capabilityMissingMessage(capability)).not.toContain('undefined')
     }
+  })
+})
+
+describe('documentCountLabel (#1916)', () => {
+  it('writes small counts in full and shortens from five digits on', () => {
+    expect(documentCountLabel(0)).toBe('0')
+    expect(documentCountLabel(431)).toBe('431')
+    expect(documentCountLabel(9_999)).toBe('9.999')
+    expect(documentCountLabel(120_000)).toBe('120 K')
+    // Das Runden trägt nie über die nächste Größenordnung hinweg - sonst stünde hier „1.000 K".
+    expect(documentCountLabel(999_999)).toBe('1 Mio.')
+    expect(documentCountLabel(1_234_567)).toBe('1,2 Mio.')
   })
 })
