@@ -5,10 +5,10 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.AssetRole;
+import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DatePrecision;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.LibraryMetadataFieldType;
-import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.MetadataFilterMatch;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
@@ -87,8 +87,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 @OpaaMockedChatModelIntegrationTest
 class MetadataFilterSearchIntegrationTest {
 
-  private static final String OWN_LIBRARIES =
-      "(SELECT id FROM knowledge_libraries WHERE name LIKE 'Filter-%')";
+  private static final String OWN_LIBRARIES = "(SELECT id FROM assets WHERE name LIKE 'Filter-%')";
 
   private static final Path classTempDir = OpaaTestDirectory.subdirectory("metadata-filter-search");
 
@@ -568,7 +567,7 @@ class MetadataFilterSearchIntegrationTest {
     jdbcTemplate.update(
         "DELETE FROM group_membership_history WHERE user_id IN (SELECT id FROM users WHERE subject"
             + " LIKE 'metadata-filter-%')");
-    jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE name LIKE 'Filter-%'");
+    jdbcTemplate.update("DELETE FROM assets WHERE name LIKE 'Filter-%'");
     jdbcTemplate.update("DELETE FROM users WHERE subject LIKE 'metadata-filter-%'");
   }
 
@@ -593,7 +592,7 @@ class MetadataFilterSearchIntegrationTest {
             name,
             null,
             owner.id(),
-            LibraryVisibility.PRIVATE,
+            AssetVisibility.PRIVATE,
             false,
             DocumentSourceType.FILESYSTEM,
             sourcePath.toString(),

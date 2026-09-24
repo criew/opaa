@@ -10,9 +10,9 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.opaa.api.types.AssetOwnerType;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.GroupKind;
-import io.opaa.api.types.LibraryOwnerType;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
@@ -280,7 +280,7 @@ class LibraryExternalAccessReminderServiceIntegrationTest {
     return libraryService
         .createLibrary(
             libraryCreation("Bibliothek", DocumentSourceType.UPLOAD)
-                .ownerType(LibraryOwnerType.USER)
+                .ownerType(AssetOwnerType.USER)
                 .ownerId(ownerId)
                 .build(),
             currentUserOf(ownerId))
@@ -309,7 +309,7 @@ class LibraryExternalAccessReminderServiceIntegrationTest {
     return libraryService
         .createLibrary(
             libraryCreation("Bibliothek", DocumentSourceType.UPLOAD)
-                .ownerType(LibraryOwnerType.GROUP)
+                .ownerType(AssetOwnerType.GROUP)
                 .ownerId(group.getId())
                 .build(),
             currentUserOf(creator, true))

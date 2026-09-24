@@ -7,10 +7,10 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * One object type's own answer to one of the three findings (#1819, ADR-0036 Entscheidung 6). The
- * package that owns the objects owns the rule: a library asks after its owner, a space after a
- * capable {@code ADMIN} member, a group after an active steward. A further asset type (#1726) adds
- * a bean, not a branch.
+ * One package's own answer to one of the three findings (#1819, ADR-0036 Entscheidung 6). The
+ * package that owns the objects owns the rule: an asset asks after its owner, a space after a
+ * capable {@code ADMIN} member, a group after an active steward. The asset shell answers for every
+ * asset type at once, so a further asset type (#1726) adds neither a bean nor a branch.
  *
  * <p><b>Every implementation derives, none stores.</b> Whoever answers here reads the current state
  * - so an object that regains a capable responsible party leaves the list on the next read, without
@@ -21,8 +21,8 @@ public interface SuccessionFindingSource {
   /** Which tab of the operational list this source fills. */
   SuccessionKind kind();
 
-  /** The kind of object it reports. */
-  SuccessionObjectType objectType();
+  /** Whether it reports objects of {@code objectType}. */
+  boolean answersFor(SuccessionObjectType objectType);
 
   /** Everything of this kind currently found in one organization. */
   List<SuccessionFinding> findingsOf(UUID organizationId);

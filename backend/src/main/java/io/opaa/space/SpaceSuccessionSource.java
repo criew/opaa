@@ -41,8 +41,8 @@ class SpaceSuccessionSource implements SuccessionFindingSource {
   }
 
   @Override
-  public SuccessionObjectType objectType() {
-    return SuccessionObjectType.SPACE;
+  public boolean answersFor(SuccessionObjectType objectType) {
+    return objectType == SuccessionObjectType.SPACE;
   }
 
   @Override

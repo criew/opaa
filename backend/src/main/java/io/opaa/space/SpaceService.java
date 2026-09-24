@@ -23,6 +23,7 @@ import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.OrganizationScopedLoader;
 import io.opaa.common.ValidationException;
+import io.opaa.library.KnowledgeLibrary;
 import io.opaa.permission.AccessPath;
 import io.opaa.permission.AssetOwnershipHistoryService;
 import io.opaa.permission.CapabilityService;
@@ -182,7 +183,7 @@ public class SpaceService {
     // both the space row and every association already inserted for it.
     if (creation.libraryIds() != null) {
       for (UUID libraryId : creation.libraryIds()) {
-        associationService.associate(saved.getId(), libraryId, caller);
+        associationService.associate(saved.getId(), KnowledgeLibrary.ASSET_TYPE, libraryId, caller);
       }
     }
 

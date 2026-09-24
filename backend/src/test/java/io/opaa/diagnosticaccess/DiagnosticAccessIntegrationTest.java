@@ -4,11 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.api.types.AssetRole;
+import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DiagnosticTargetKind;
 import io.opaa.api.types.GroupKind;
-import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.api.types.SystemRole;
+import io.opaa.asset.AssetGrantService;
+import io.opaa.asset.AssetGrantUpsert;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
@@ -17,8 +19,6 @@ import io.opaa.common.ValidationException;
 import io.opaa.group.Group;
 import io.opaa.group.GroupMembership;
 import io.opaa.group.GroupRepository;
-import io.opaa.library.AssetGrantService;
-import io.opaa.library.AssetGrantUpsert;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
@@ -122,8 +122,7 @@ class DiagnosticAccessIntegrationTest {
     jdbcTemplate.update(
         "DELETE FROM asset_grant_history WHERE organization_id = ?", organizationId);
     jdbcTemplate.update("DELETE FROM asset_grants WHERE organization_id = ?", organizationId);
-    jdbcTemplate.update(
-        "DELETE FROM knowledge_libraries WHERE organization_id = ?", organizationId);
+    jdbcTemplate.update("DELETE FROM assets WHERE organization_id = ?", organizationId);
     jdbcTemplate.update("DELETE FROM group_memberships WHERE organization_id = ?", organizationId);
     jdbcTemplate.update(
         "DELETE FROM group_membership_history WHERE organization_id = ?", organizationId);
@@ -444,7 +443,7 @@ class DiagnosticAccessIntegrationTest {
                 "Personalvorgänge",
                 null,
                 holderId,
-                LibraryVisibility.PRIVATE,
+                AssetVisibility.PRIVATE,
                 false));
 
     assertThat(
@@ -624,6 +623,7 @@ class DiagnosticAccessIntegrationTest {
     profile.release(true);
     groupRepository.save(profile);
     assetGrantService.upsertGrant(
+        KnowledgeLibrary.ASSET_TYPE,
         library.getId(),
         new AssetGrantUpsert(PermissionSubjectType.GROUP, profile.getId(), AssetRole.VIEWER),
         owner);
@@ -648,6 +648,7 @@ class DiagnosticAccessIntegrationTest {
     KnowledgeLibrary library = persistLibraryOwnedBy(holderId);
 
     assetGrantService.upsertGrant(
+        KnowledgeLibrary.ASSET_TYPE,
         library.getId(),
         new AssetGrantUpsert(PermissionSubjectType.USER, admin.id(), AssetRole.OWNER),
         admin);
@@ -676,10 +677,12 @@ class DiagnosticAccessIntegrationTest {
     CurrentUser owner = CurrentUser.of(holderId, organizationId, SystemRole.USER, "Zustaendige");
 
     assetGrantService.upsertGrant(
+        KnowledgeLibrary.ASSET_TYPE,
         library.getId(),
         new AssetGrantUpsert(PermissionSubjectType.USER, admin.id(), AssetRole.VIEWER),
         owner);
     assetGrantService.upsertGrant(
+        KnowledgeLibrary.ASSET_TYPE,
         library.getId(),
         new AssetGrantUpsert(PermissionSubjectType.USER, admin.id(), AssetRole.OWNER),
         admin);
@@ -725,6 +728,7 @@ class DiagnosticAccessIntegrationTest {
             holderId));
 
     assetGrantService.upsertGrant(
+        KnowledgeLibrary.ASSET_TYPE,
         library.getId(),
         new AssetGrantUpsert(
             PermissionSubjectType.USER,
@@ -771,7 +775,7 @@ class DiagnosticAccessIntegrationTest {
                 "Personalvorgaenge " + UUID.randomUUID(),
                 null,
                 ownerUserId,
-                LibraryVisibility.PRIVATE,
+                AssetVisibility.PRIVATE,
                 false));
     assetGrantRepository.save(
         AssetGrant.forUser(

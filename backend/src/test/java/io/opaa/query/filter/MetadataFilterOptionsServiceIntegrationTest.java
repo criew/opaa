@@ -3,10 +3,11 @@ package io.opaa.query.filter;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.api.types.AssetRole;
+import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.GroupKind;
-import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.SystemRole;
+import io.opaa.asset.AssetGrantService;
 import io.opaa.auth.CurrentUser;
 import io.opaa.group.Group;
 import io.opaa.group.GroupRepository;
@@ -19,7 +20,6 @@ import io.opaa.indexing.metadata.CoreMetadataField;
 import io.opaa.indexing.metadata.DocumentMetadataCorrectionService;
 import io.opaa.indexing.metadata.FormatMetadataField;
 import io.opaa.indexing.metadata.MetadataValueInput;
-import io.opaa.library.AssetGrantService;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
@@ -57,7 +57,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 class MetadataFilterOptionsServiceIntegrationTest {
 
   private static final String OWN_LIBRARIES =
-      "(SELECT id FROM knowledge_libraries WHERE name LIKE 'Optionen-%')";
+      "(SELECT id FROM assets WHERE name LIKE 'Optionen-%')";
 
   private static final Path classTempDir =
       OpaaTestDirectory.subdirectory("metadata-filter-options");
@@ -168,7 +168,8 @@ class MetadataFilterOptionsServiceIntegrationTest {
             .filter(grant -> both.id().equals(grant.getSubjectUserId()))
             .findFirst()
             .orElseThrow();
-    grantService.revokeGrant(libraryB.getId(), grantOnB.getId(), admin);
+    grantService.revokeGrant(
+        KnowledgeLibrary.ASSET_TYPE, libraryB.getId(), grantOnB.getId(), admin);
 
     assertThat(cache.contains(both.id(), scopeBefore)).isFalse();
     MetadataFilterOptions after = optionsService.optionsFor(both, null, true, List.of());
@@ -271,7 +272,7 @@ class MetadataFilterOptionsServiceIntegrationTest {
     jdbcTemplate.update(
         "DELETE FROM group_membership_history WHERE user_id IN (SELECT id FROM users WHERE subject"
             + " LIKE 'metadata-options-%')");
-    jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE name LIKE 'Optionen-%'");
+    jdbcTemplate.update("DELETE FROM assets WHERE name LIKE 'Optionen-%'");
     jdbcTemplate.update("DELETE FROM users WHERE subject LIKE 'metadata-options-%'");
   }
 
@@ -296,7 +297,7 @@ class MetadataFilterOptionsServiceIntegrationTest {
             name,
             null,
             admin.id(),
-            LibraryVisibility.PRIVATE,
+            AssetVisibility.PRIVATE,
             false,
             DocumentSourceType.FILESYSTEM,
             sourcePath.toString(),

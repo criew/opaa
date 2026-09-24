@@ -9,16 +9,14 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * A pure-curation association between a {@link Space} and a knowledge library (#203/#686, see
- * docs/features/spaces-and-assets.md#assets-in-einen-space-assoziieren). The name stays generic
- * ("asset", not "library") so a future asset type (agent, prompt library) does not force a rename -
- * but only knowledge libraries exist as an asset type today (#201), so this entity carries {@code
- * libraryId} directly rather than a polymorphic (type, id) pair.
+ * A pure-curation association between a {@link Space} and an asset of any type (#203/#686, #1900,
+ * see docs/features/spaces-and-assets.md#assets-in-einen-space-assoziieren). It names the asset by
+ * its id on the asset shell ({@code fk_space_asset_associations_asset_organization}); the type is
+ * the asset's own and stands in {@code assets} alone.
  *
- * <p><b>The association grants nothing.</b> It only records that a library is curated into a space,
- * by whom and when - see {@code LibraryAccessService#readableLibraryIds}, which never consults this
- * table. Effective read access to the library is entirely unaffected by whether it is associated
- * with any space at all.
+ * <p><b>The association grants nothing.</b> It only records that an asset is curated into a space,
+ * by whom and when - see {@code AssetAccessService#readableAssetIds}, which never consults this
+ * table.
  */
 @Entity
 @Table(name = "space_asset_associations")
@@ -29,8 +27,8 @@ public class SpaceAssetAssociation {
   @Column(name = "space_id", nullable = false)
   private UUID spaceId;
 
-  @Column(name = "library_id", nullable = false)
-  private UUID libraryId;
+  @Column(name = "asset_id", nullable = false)
+  private UUID assetId;
 
   @Column(name = "organization_id", nullable = false)
   private UUID organizationId;
@@ -44,10 +42,10 @@ public class SpaceAssetAssociation {
   protected SpaceAssetAssociation() {}
 
   public SpaceAssetAssociation(
-      UUID spaceId, UUID libraryId, UUID organizationId, UUID createdByUserId) {
+      UUID spaceId, UUID assetId, UUID organizationId, UUID createdByUserId) {
     this.id = UUID.randomUUID();
     this.spaceId = spaceId;
-    this.libraryId = libraryId;
+    this.assetId = assetId;
     this.organizationId = organizationId;
     this.createdByUserId = createdByUserId;
   }
@@ -65,8 +63,8 @@ public class SpaceAssetAssociation {
     return spaceId;
   }
 
-  public UUID getLibraryId() {
-    return libraryId;
+  public UUID getAssetId() {
+    return assetId;
   }
 
   public UUID getOrganizationId() {

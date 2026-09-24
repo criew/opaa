@@ -119,10 +119,10 @@ class ChatServiceIntegrationTest {
   private UUID createLibrary(UUID readerId) {
     UUID id = UUID.randomUUID();
     jdbcTemplate.update(
-        "INSERT INTO knowledge_libraries (id, organization_id, name, owner_type, owner_user_id,"
-            + " visibility, listed, source_type, created_at, updated_at)"
-            + " VALUES (?, ?, 'Testbibliothek', 'USER', ?, 'PRIVATE', false, 'UPLOAD',"
-            + " now(), now())",
+        "WITH shell AS (INSERT INTO assets (id, asset_type, organization_id, name, owner_type,"
+            + " owner_user_id, visibility, listed) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, 'Testbibliothek', 'USER', ?, 'PRIVATE', false)"
+            + " RETURNING id, organization_id) INSERT INTO knowledge_libraries (id,"
+            + " organization_id, source_type) SELECT id, organization_id, 'UPLOAD' FROM shell",
         id,
         organizationA,
         readerId);
@@ -888,7 +888,7 @@ class ChatServiceIntegrationTest {
   private void associateLibrary(UUID spaceId, UUID libraryId, UUID createdByUserId) {
     jdbcTemplate.update(
         "INSERT INTO space_asset_associations"
-            + " (id, space_id, library_id, organization_id, created_by_user_id, created_at)"
+            + " (id, space_id, asset_id, organization_id, created_by_user_id, created_at)"
             + " VALUES (?, ?, ?, ?, ?, now())",
         UUID.randomUUID(),
         spaceId,

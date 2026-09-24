@@ -1,6 +1,8 @@
 package io.opaa.library;
 
+import io.opaa.api.types.AssetOwnerType;
 import io.opaa.api.types.AssetRole;
+import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
@@ -8,10 +10,10 @@ import io.opaa.api.types.Capability;
 import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
-import io.opaa.api.types.LibraryOwnerType;
-import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.ScheduleFrequency;
-import io.opaa.api.types.SuccessionObjectType;
+import io.opaa.asset.AssetGrantService;
+import io.opaa.asset.AssetShellService;
+import io.opaa.asset.AssetSuccessionSource;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
@@ -41,17 +43,11 @@ import io.opaa.indexing.source.s3.S3Connection;
 import io.opaa.indexing.source.s3.S3Credentials;
 import io.opaa.indexing.source.s3.S3SourceSettings;
 import io.opaa.indexing.source.s3.S3SourceSettingsJson;
-import io.opaa.permission.AssetGrant;
-import io.opaa.permission.AssetGrantRepository;
-import io.opaa.permission.AssetOwnershipHistoryService;
 import io.opaa.permission.CapabilityService;
 import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.GroupSubject;
 import io.opaa.permission.GroupSubjectDirectory;
-import io.opaa.permission.PermissionHistoryService;
-import io.opaa.permission.PermissionSubject;
 import io.opaa.permission.SuccessionFinding;
-import io.opaa.permission.SuccessionReachGuard;
 import io.opaa.sourceaccess.ProxyAndCredentials;
 import java.net.URI;
 import java.security.SecureRandom;
@@ -90,14 +86,15 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * alone no longer implies management rights.
  *
  * <p>{@link #createLibrary} always grants the creator {@link AssetRole#OWNER} explicitly via an
- * {@link AssetGrant} - the right to delete the library and transfer ownership always sits on a
- * named person, never on group membership alone. For a {@link LibraryOwnerType#GROUP} library the
- * owning group additionally gets {@link AssetRole#MANAGER} (sharing and granting roles to others),
- * <em>not</em> {@code OWNER}: every member automatically holding {@code OWNER} would grow without a
- * human decision point as a directory-synchronised group's membership grows (#237) and could never
- * be downgraded once it became the library's only {@code OWNER} grant (#202 code review round 2).
- * The accepted price is that the personal {@code OWNER} grant is lost when its holder leaves - #240
- * (succession instead of blocking) is what regulates that case, not this class.
+ * {@link io.opaa.permission.AssetGrant} - the right to delete the library and transfer ownership
+ * always sits on a named person, never on group membership alone. For a {@link
+ * AssetOwnerType#GROUP} library the owning group additionally gets {@link AssetRole#MANAGER}
+ * (sharing and granting roles to others), <em>not</em> {@code OWNER}: every member automatically
+ * holding {@code OWNER} would grow without a human decision point as a directory-synchronised
+ * group's membership grows (#237) and could never be downgraded once it became the library's only
+ * {@code OWNER} grant (#202 code review round 2). The accepted price is that the personal {@code
+ * OWNER} grant is lost when its holder leaves - #240 (succession instead of blocking) is what
+ * regulates that case, not this class.
  *
  * <p>A third owner kind, {@code SYSTEM}, existed from #201 until #521: exactly one library per
  * organization, seeded {@code PRIVATE} with no grants and reachable only to a system administrator.
@@ -139,11 +136,9 @@ public class KnowledgeLibraryService {
   private final GroupMembershipResolver membershipResolver;
   private final CapabilityService capabilityService;
   private final DocumentRepository documentRepository;
-  private final AssetGrantRepository grantRepository;
   private final AssetGrantService grantService;
+  private final AssetShellService shellService;
   private final LibraryAccessService accessService;
-  private final PermissionHistoryService permissionHistoryService;
-  private final LibraryVisibilityHistoryService visibilityHistoryService;
   private final AuditEventRecorder auditEventRecorder;
   private final VectorChunkStore vectorChunkStore;
   private final FilesystemPathAllowlist filesystemAllowlist;
@@ -159,25 +154,19 @@ public class KnowledgeLibraryService {
   private final ApplicationEventPublisher eventPublisher;
   private final ConfluenceConnectionService confluenceConnectionService;
   private final S3ClientFactory s3ClientFactory;
-  private final SuccessionReachGuard successionGuard;
-  private final LibrarySuccessionSource successionSource;
-  private final AssetOwnershipHistoryService ownershipHistory;
+  private final AssetSuccessionSource successionSource;
 
   public KnowledgeLibraryService(
-      SuccessionReachGuard successionGuard,
-      LibrarySuccessionSource successionSource,
-      AssetOwnershipHistoryService ownershipHistory,
+      AssetSuccessionSource successionSource,
       KnowledgeLibraryRepository libraryRepository,
       UserRepository userRepository,
       GroupSubjectDirectory groupDirectory,
       GroupMembershipResolver membershipResolver,
       CapabilityService capabilityService,
       DocumentRepository documentRepository,
-      AssetGrantRepository grantRepository,
       AssetGrantService grantService,
+      AssetShellService shellService,
       LibraryAccessService accessService,
-      PermissionHistoryService permissionHistoryService,
-      LibraryVisibilityHistoryService visibilityHistoryService,
       AuditEventRecorder auditEventRecorder,
       VectorChunkStore vectorChunkStore,
       FilesystemPathAllowlist filesystemAllowlist,
@@ -193,20 +182,16 @@ public class KnowledgeLibraryService {
       ConfluenceConnectionService confluenceConnectionService,
       ConfluenceProperties confluenceProperties,
       S3ClientFactory s3ClientFactory) {
-    this.successionGuard = successionGuard;
     this.successionSource = successionSource;
-    this.ownershipHistory = ownershipHistory;
     this.libraryRepository = libraryRepository;
     this.userRepository = userRepository;
     this.groupDirectory = groupDirectory;
     this.membershipResolver = membershipResolver;
     this.capabilityService = capabilityService;
     this.documentRepository = documentRepository;
-    this.grantRepository = grantRepository;
     this.grantService = grantService;
+    this.shellService = shellService;
     this.accessService = accessService;
-    this.permissionHistoryService = permissionHistoryService;
-    this.visibilityHistoryService = visibilityHistoryService;
     this.auditEventRecorder = auditEventRecorder;
     this.vectorChunkStore = vectorChunkStore;
     this.filesystemAllowlist = filesystemAllowlist;
@@ -243,17 +228,17 @@ public class KnowledgeLibraryService {
     String normalizedName = validateName(request.name());
     validateDescription(request.description());
 
-    LibraryOwnerType ownerType =
-        request.ownerType() != null ? request.ownerType() : LibraryOwnerType.USER;
+    AssetOwnerType ownerType =
+        request.ownerType() != null ? request.ownerType() : AssetOwnerType.USER;
 
-    LibraryVisibility visibility =
-        request.visibility() != null ? request.visibility() : LibraryVisibility.PRIVATE;
+    AssetVisibility visibility =
+        request.visibility() != null ? request.visibility() : AssetVisibility.PRIVATE;
     boolean listed = Boolean.TRUE.equals(request.listed());
     SourceConfiguration sourceConfiguration = validateSourceConfiguration(request);
 
     KnowledgeLibrary library;
     GroupSubject ownerGroup = null;
-    if (ownerType == LibraryOwnerType.GROUP) {
+    if (ownerType == AssetOwnerType.GROUP) {
       if (request.ownerId() == null) {
         throw new ValidationException("ownerId ist erforderlich, wenn ownerType GROUP ist");
       }
@@ -317,81 +302,9 @@ public class KnowledgeLibraryService {
     }
 
     KnowledgeLibrary saved = libraryRepository.save(library);
-    // #202 code review round 2 (Befund 2): a GROUP-owned library grants the *group* MANAGER, not
-    // OWNER, and grants the *creator* (a person) OWNER separately - the round-1 fix (group gets
-    // OWNER) went a step too far. Every current and future member of the owning group is
-    // automatically OWNER under that rule - able to delete the library and transfer ownership -
-    // and grows without a human decision point as a directory-synchronised group's membership
-    // grows (#237), which is structurally the same defect #201 had, one level up. It is also not
-    // demotable: the round-1 group grant is the library's only OWNER grant, so both
-    // requireCallerCanTouchExistingGrant and the last-active-OWNER guard permanently protect it -
-    // measured as a 409 on both the downgrade and the revoke path.
-    //
-    // Splitting the two roles keeps the group's real benefit (a centrally maintained library like
-    // the feature spec's leitbeispiel "Rechtsquellen Soziales", owner "Referat 50 * Grundsatz",
-    // survives its creator's departure - MANAGER already covers sharing and granting roles to
-    // others) while keeping the two highest-stakes rights, delete and ownership transfer, on a
-    // named person who can be held accountable for them. The accepted price - that OWNER hangs on
-    // a person and is lost when they leave - is exactly the case #240 (succession instead of
-    // blocking) exists to regulate: the library does not lock, it goes to "Nachfolge offen",
-    // usable and frozen against growing reach until a curator is assigned. No other member of the
-    // group inherits rights beyond what the group's MANAGER grant itself carries (see the class
-    // Javadoc on why mere membership must never imply management on its own).
-    if (ownerGroup != null) {
-      AssetGrant groupGrant =
-          grantRepository.save(
-              AssetGrant.forGroup(
-                  KnowledgeLibrary.ASSET_TYPE,
-                  saved.getId(),
-                  saved.getOrganizationId(),
-                  ownerGroup.id(),
-                  AssetRole.MANAGER,
-                  null,
-                  currentUserId,
-                  // Eigentum, keine Freigabe: Das Zuwachssignal (ADR-0036/9) gehoert an eine
-                  // erteilte Rolle, nicht an die Gruppe, der die Bibliothek ohnehin gehoert.
-                  null));
-      // #392/#892: mirrors AssetGrantService#upsertGrant's own GrantChanged publish - this grant is
-      // written directly here, not through that service, but is exactly the same kind of event.
-      eventPublisher.publishEvent(
-          new GrantChanged(
-              saved,
-              groupGrant,
-              GrantChanged.Cause.GRANTED,
-              currentUserId,
-              null,
-              Map.of("role", AssetRole.MANAGER.name())));
-    }
-    // #1819, ADR-0036 Entscheidung 8: the ownership of a library is historised from its first
-    // instant - changeset 052 built the table type-independently and left this writer to us.
-    ownershipHistory.recordCreated(
-        KnowledgeLibrary.ASSET_TYPE, saved.getId(), ownerSubjectOf(saved), currentUserId);
-    AssetGrant ownerGrant =
-        grantRepository.save(
-            AssetGrant.forUser(
-                KnowledgeLibrary.ASSET_TYPE,
-                saved.getId(),
-                saved.getOrganizationId(),
-                currentUserId,
-                AssetRole.OWNER,
-                null,
-                currentUserId));
-    eventPublisher.publishEvent(
-        new GrantChanged(
-            saved,
-            ownerGrant,
-            GrantChanged.Cause.GRANTED,
-            currentUserId,
-            null,
-            Map.of("role", AssetRole.OWNER.name())));
-    // #238/#892: the library's initial visibility/listed state is also historised, the third
-    // source the readable-library formula depends on besides direct and group grants - one
-    // LibraryChanged publish, distinct from the grant events above, covers both the history
-    // interval and the LIBRARY_CREATED audit entry ("Anlegen ... von Wissensbibliotheken",
-    // docs/features/security-and-compliance.md).
-    eventPublisher.publishEvent(
-        new LibraryChanged(
-            saved, LibraryChanged.Cause.CREATED, currentUserId, null, libraryAuditPayload(saved)));
+    // The creator holds OWNER, an owning group MANAGER - never OWNER, see AssetShellService. The
+    // shell also opens the ownership and reach intervals and writes LIBRARY_CREATED.
+    shellService.registerCreated(saved, currentUserId, libraryAuditPayload(saved));
     return toLibraryDetail(saved, AssetRole.OWNER, currentUserId);
   }
 
@@ -403,7 +316,7 @@ public class KnowledgeLibraryService {
     // sourceType only, deliberately never sourcePath/sourceUrl/sourceCredentials - the audit log
     // is append-only and never purged the way the library row itself can be (ADR-0018,
     // Entscheidung 4: credentials must appear in no log, and path/url are not "rechtlich
-    // erheblich" the way LibraryChanged's changedFields comment already reasons for description).
+    // erheblich" - the same reasoning updateLibrary applies to the description).
     payload.put("sourceType", library.getSourceType().name());
     return payload;
   }
@@ -502,7 +415,7 @@ public class KnowledgeLibraryService {
     Set<UUID> userOwnerIds = new HashSet<>();
     Set<UUID> groupOwnerIds = new HashSet<>();
     for (KnowledgeLibrary library : libraries) {
-      if (library.getOwnerType() == LibraryOwnerType.USER) {
+      if (library.getOwnerType() == AssetOwnerType.USER) {
         userOwnerIds.add(library.getOwnerId());
       } else {
         groupOwnerIds.add(library.getOwnerId());
@@ -525,22 +438,6 @@ public class KnowledgeLibraryService {
     AssetRole role =
         accessService.requireRole(library, caller.id(), caller.isSystemAdmin(), AssetRole.VIEWER);
     return toLibraryDetail(library, role, caller.id());
-  }
-
-  /**
-   * The Herleitung "warum sehe ich diese Bibliothek" for the caller themselves (#1822). Requires
-   * the same {@link AssetRole#VIEWER} {@link #getLibrary} requires, so a library the caller does
-   * not reach answers 404 rather than an empty derivation - an empty answer would tell an outsider
-   * that the library exists.
-   */
-  public LibraryAccessDerivation getAccessDerivation(UUID libraryId, CurrentUser caller) {
-    KnowledgeLibrary library = loadLibrary(libraryId, caller);
-    AssetRole role =
-        accessService.requireRole(library, caller.id(), caller.isSystemAdmin(), AssetRole.VIEWER);
-    return new LibraryAccessDerivation(
-        library.getId(),
-        role,
-        accessService.accessPaths(library, caller.id(), caller.isSystemAdmin()));
   }
 
   @Transactional
@@ -611,19 +508,8 @@ public class KnowledgeLibraryService {
     String normalizedName = validateName(request.name());
     validateDescription(request.description());
     boolean listed = Boolean.TRUE.equals(request.listed());
-    // ADR-0036, Entscheidung 6: while the succession is open the reach is frozen - renaming and
-    // narrowing stay possible, widening does not. Only an actual widening is refused, so a request
-    // that merely echoes the current values still goes through.
-    if (widensReach(library, request.visibility(), listed)) {
-      successionGuard.requireReachNotFrozen(
-          SuccessionObjectType.KNOWLEDGE_LIBRARY,
-          library.getId(),
-          "Eine größere Reichweite (Sichtbarkeit oder Auffindbarkeit)");
-    }
     String previousName = library.getName();
     String previousDescription = library.getDescription();
-    LibraryVisibility previousVisibility = library.getVisibility();
-    boolean previousListed = library.isListed();
     String previousSourcePath = library.getSourcePath();
     String previousSourceUrl = library.getSourceUrl();
     String previousSourceProxy = library.getSourceProxy();
@@ -632,10 +518,10 @@ public class KnowledgeLibraryService {
     List<String> previousConfluenceSpaceKeys =
         library.getConfluenceSpaces().stream().map(ConfluenceSpaceSelection::getSpaceKey).toList();
     String previousS3Settings = S3SourceSettingsJson.write(library.getS3Settings());
-    LibraryVisibility effectiveVisibility =
-        request.visibility() != null ? request.visibility() : previousVisibility;
-    requireWithinShareCap(library, effectiveVisibility, listed);
-    library.updateDetails(normalizedName, request.description(), request.visibility(), listed);
+    // The shell refuses a widening while the succession is open and asks the share cap; a change
+    // of visibility or listed writes its history interval and ASSET_VISIBILITY_CHANGED there.
+    library.rename(normalizedName, request.description());
+    shellService.changeReach(library, request.visibility(), listed, currentUserId);
     if (replacesSchedule) {
       library.updateSchedule(validatedSchedule.enabled(), validatedSchedule.cron());
     }
@@ -679,22 +565,6 @@ public class KnowledgeLibraryService {
                   library.getSourceType(), request.confluenceFullSyncIntervalDays()));
     }
     KnowledgeLibrary updated = libraryRepository.save(library);
-    boolean visibilityOrListedChanged =
-        updated.getVisibility() != previousVisibility || updated.isListed() != previousListed;
-    // #238/#892: visibility feeds the readable-library formula and shares one history interval
-    // with listed, so a change to either opens a new interval - a rename alone is not. One
-    // LibraryChanged publish covers both the history interval and the ASSET_VISIBILITY_CHANGED
-    // audit entry (#392 code review, nit 4: independent of LIBRARY_CHANGED below - a call that
-    // renames the library and widens its visibility in the same request writes both).
-    if (visibilityOrListedChanged) {
-      eventPublisher.publishEvent(
-          new LibraryChanged(
-              updated,
-              LibraryChanged.Cause.VISIBILITY_CHANGED,
-              currentUserId,
-              Map.of("visibility", previousVisibility.name(), "listed", previousListed),
-              Map.of("visibility", updated.getVisibility().name(), "listed", updated.isListed())));
-    }
     boolean nameChanged = !Objects.equals(previousName, updated.getName());
     boolean descriptionChanged = !Objects.equals(previousDescription, updated.getDescription());
     if (nameChanged || descriptionChanged) {
@@ -807,47 +677,14 @@ public class KnowledgeLibraryService {
   }
 
   /**
-   * Refuses {@code visibility}/{@code listed} above {@code library}'s own share cap (#797,
-   * Maintainer-Festlegung vom 21.09.2026) - a {@code 409}, not a {@code 403}: the caller's {@code
-   * MANAGER}/{@code OWNER} role is not in question, the requested state conflicts with a ceiling
-   * the system administration set on this specific library. A no-op for {@code UPLOAD}, which never
-   * carries a narrower cap ({@code chk_knowledge_libraries_share_cap_upload_unrestricted}).
-   */
-  private void requireWithinShareCap(
-      KnowledgeLibrary library, LibraryVisibility visibility, boolean listed) {
-    if (library.getSourceType() == DocumentSourceType.UPLOAD) {
-      return;
-    }
-    if (visibility.exceeds(library.getVisibilityCap())) {
-      throw new ConflictException(
-          "Die Sichtbarkeit dieser Bibliothek ist von der Systemverwaltung auf höchstens \""
-              + visibilityLabel(library.getVisibilityCap())
-              + "\" begrenzt.");
-    }
-    if (listed && !library.isListedCap()) {
-      throw new ConflictException(
-          "Diese Bibliothek darf laut Systemverwaltung nicht im Katalog gelistet werden.");
-    }
-  }
-
-  private static String visibilityLabel(LibraryVisibility visibility) {
-    return switch (visibility) {
-      case PRIVATE -> "privat";
-      case SHARED -> "geteilt";
-      case ORGANIZATION -> "organisationsweit";
-    };
-  }
-
-  /**
    * Sets a connector library's share cap (#797) - {@code SYSTEM_ADMIN} only, rejected for {@code
    * UPLOAD}. Narrowing the cap below what the library currently carries clamps {@code
-   * visibility}/{@code listed} back down to it in the same transaction; the clamp publishes {@link
-   * LibraryChanged}, recorded separately from the cap change itself ({@code
-   * CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED}).
+   * visibility}/{@code listed} back down to it in the same transaction, through the asset shell and
+   * recorded separately from the cap change itself ({@code CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED}).
    */
   @Transactional
   public LibraryDetail updateShareCap(
-      UUID libraryId, LibraryVisibility visibilityCap, boolean listedCap, CurrentUser caller) {
+      UUID libraryId, AssetVisibility visibilityCap, boolean listedCap, CurrentUser caller) {
     if (!caller.isSystemAdmin()) {
       throw new AccessDeniedException(
           "Nur die Systemverwaltung darf die Freigabe-Obergrenze einer Bibliothek setzen");
@@ -859,20 +696,9 @@ public class KnowledgeLibraryService {
           "Upload-Bibliotheken tragen keine Freigabe-Obergrenze - jedes Dokument wird ohnehin"
               + " einzeln von der Eigentümerin kuratiert");
     }
-    LibraryVisibility previousCap = library.getVisibilityCap();
+    AssetVisibility previousCap = library.getVisibilityCap();
     boolean previousListedCap = library.isListedCap();
-    LibraryVisibility previousVisibility = library.getVisibility();
-    boolean previousListed = library.isListed();
     library.updateShareCap(visibilityCap, listedCap);
-    boolean visibilityClamped = previousVisibility.exceeds(visibilityCap);
-    boolean listedClamped = previousListed && !listedCap;
-    if (visibilityClamped || listedClamped) {
-      library.updateDetails(
-          library.getName(),
-          library.getDescription(),
-          visibilityClamped ? visibilityCap : previousVisibility,
-          listedClamped ? false : previousListed);
-    }
     KnowledgeLibrary saved = libraryRepository.save(library);
     auditEventRecorder.recordUserAction(
         AuditEvent.builder()
@@ -884,18 +710,9 @@ public class KnowledgeLibraryService {
             .after(Map.of("visibilityCap", visibilityCap.name(), "listedCap", listedCap))
             .outcome(AuditOutcome.SUCCESS)
             .build());
-    if (visibilityClamped || listedClamped) {
-      // #238/#892: the clamp is the same kind of change updateLibrary's own
-      // ASSET_VISIBILITY_CHANGED publish covers above - one history interval, one audit entry,
-      // published through the identical event so the two write paths cannot drift apart.
-      eventPublisher.publishEvent(
-          new LibraryChanged(
-              saved,
-              LibraryChanged.Cause.VISIBILITY_CHANGED,
-              caller.id(),
-              Map.of("visibility", previousVisibility.name(), "listed", previousListed),
-              Map.of("visibility", saved.getVisibility().name(), "listed", saved.isListed())));
-    }
+    // The clamp is the same kind of change updateLibrary's own: one history interval, one
+    // ASSET_VISIBILITY_CHANGED entry, written by the shell after the cap entry above.
+    shellService.narrowReachTo(saved, visibilityCap, listedCap, caller.id());
     return toLibraryDetail(saved, AssetRole.OWNER, caller.id());
   }
 
@@ -990,20 +807,9 @@ public class KnowledgeLibraryService {
           });
     }
 
-    // asset_id/library_id carry no foreign key on the history tables (deliberately - see
-    // PermissionHistoryService's class Javadoc), so the grant deletion below never closes these
-    // intervals on its own. Without this, a deleted library's still-open grant/visibility
-    // intervals kept reporting "currently readable"/"currently visible" for a library that no
-    // longer exists. Read the live grants before they are deleted.
-    for (AssetGrant grant :
-        grantRepository.findByAssetTypeAndAssetId(KnowledgeLibrary.ASSET_TYPE, libraryId)) {
-      permissionHistoryService.recordGrantClosedByAssetDeletion(grant, currentUserId);
-    }
-    visibilityHistoryService.recordVisibilityClosedByLibraryDeletion(library, currentUserId);
-    // asset_id carries no foreign key (ADR-0016), so the deletion closes no ownership interval on
-    // its own - without this the library would keep reporting a current owner for ever.
-    ownershipHistory.recordAssetDeleted(
-        KnowledgeLibrary.ASSET_TYPE, libraryId, ownerSubjectOf(library), currentUserId);
+    // The history tables carry no foreign key on the asset (ADR-0016): the shell closes the open
+    // grant, reach and ownership intervals before the row is gone.
+    shellService.registerDeleted(library, currentUserId);
 
     // #392: recorded before the row is gone, same reasoning as the history calls above. For a
     // connector library whose bestand was just taken with it (ADR-0018, Entscheidung 5), the
@@ -1966,26 +1772,6 @@ public class KnowledgeLibraryService {
    * well; the boundary is not overstepped even to reveal existence.
    */
   /** The library's owner as the permission model names a subject - person or group. */
-  private static PermissionSubject ownerSubjectOf(KnowledgeLibrary library) {
-    return library.getOwnerType() == LibraryOwnerType.GROUP
-        ? PermissionSubject.group(library.getOwnerId(), library.getOrganizationId())
-        : PermissionSubject.user(library.getOwnerId(), library.getOrganizationId());
-  }
-
-  /**
-   * Whether the requested state reaches further than the current one - a visibility beyond PRIVATE
-   * where it was PRIVATE, or a library becoming listed. Narrowing is always allowed, also while the
-   * succession is open: it takes reach away, which is never what the freeze protects against.
-   */
-  private static boolean widensReach(
-      KnowledgeLibrary library, LibraryVisibility requested, boolean listed) {
-    boolean widerVisibility =
-        requested != null
-            && requested != library.getVisibility()
-            && requested == LibraryVisibility.ORGANIZATION;
-    return widerVisibility || (listed && !library.isListed());
-  }
-
   private KnowledgeLibrary loadLibrary(UUID libraryId, CurrentUser caller) {
     KnowledgeLibrary library =
         libraryRepository

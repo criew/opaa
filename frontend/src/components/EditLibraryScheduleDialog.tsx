@@ -13,7 +13,7 @@ import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import type {
   LibrarySchedule,
-  LibraryVisibility,
+  AssetVisibility,
   ScheduleFrequency,
   ScheduleWeekday,
 } from '../types/api'
@@ -59,7 +59,7 @@ interface EditLibraryScheduleDialogProps {
   library: {
     name: string
     description?: string | null
-    visibility: LibraryVisibility
+    visibility: AssetVisibility
     listed: boolean
   }
 }

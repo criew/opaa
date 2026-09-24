@@ -2,6 +2,7 @@ package io.opaa.succession;
 
 import io.opaa.api.types.SuccessionKind;
 import io.opaa.api.types.SuccessionObjectType;
+import io.opaa.permission.AssetType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -34,6 +35,10 @@ public class SuccessionCase {
   @Column(name = "object_type", nullable = false, length = 30)
   private SuccessionObjectType objectType;
 
+  /** Set exactly for {@link SuccessionObjectType#ASSET}: the record outlives the asset it names. */
+  @Column(name = "asset_type", length = 30)
+  private String assetType;
+
   @Column(name = "object_id", nullable = false)
   private UUID objectId;
 
@@ -58,12 +63,14 @@ public class SuccessionCase {
       UUID organizationId,
       SuccessionKind kind,
       SuccessionObjectType objectType,
+      AssetType assetType,
       UUID objectId,
       Instant firstSeenAt) {
     this.id = UUID.randomUUID();
     this.organizationId = organizationId;
     this.kind = kind;
     this.objectType = objectType;
+    this.assetType = assetType == null ? null : assetType.value();
     this.objectId = objectId;
     this.firstSeenAt = firstSeenAt;
     this.lastSeenAt = firstSeenAt;
@@ -103,6 +110,10 @@ public class SuccessionCase {
 
   public SuccessionObjectType getObjectType() {
     return objectType;
+  }
+
+  public AssetType getAssetType() {
+    return assetType == null ? null : AssetType.of(assetType);
   }
 
   public UUID getObjectId() {

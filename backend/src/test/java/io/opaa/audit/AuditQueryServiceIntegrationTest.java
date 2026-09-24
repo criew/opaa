@@ -158,6 +158,33 @@ class AuditQueryServiceIntegrationTest {
     assertThat(result.getContent()).allSatisfy(e -> assertThat(e.getObjectId()).isEqualTo("lib-1"));
   }
 
+  /** audit_log is append-only: rows under a renamed event type must still load. */
+  @Test
+  void rowsRecordedUnderTheFormerAssociationEventNamesStayReadable() {
+    AuditLogEntry shared = writeEntry("lib-1", AuditEventType.LIBRARY_CREATED, null, base);
+    AuditLogEntry detached = writeEntry("lib-1", AuditEventType.LIBRARY_CREATED, null, base);
+    jdbcTemplate.update(
+        "UPDATE audit_log SET event_type = 'LIBRARY_SHARED_TO_SPACE' WHERE event_id = ?",
+        shared.getEventId());
+    jdbcTemplate.update(
+        "UPDATE audit_log SET event_type = 'LIBRARY_DETACHED_FROM_SPACE' WHERE event_id = ?",
+        detached.getEventId());
+
+    Page<AuditLogEntry> result =
+        queryService.byTimeRange(
+            organizationId,
+            auditorId,
+            REASON,
+            base.minus(1, ChronoUnit.HOURS),
+            base.plus(1, ChronoUnit.HOURS),
+            0,
+            50);
+
+    assertThat(result.getContent())
+        .extracting(e -> e.getEventType().name())
+        .containsExactlyInAnyOrder("LIBRARY_SHARED_TO_SPACE", "LIBRARY_DETACHED_FROM_SPACE");
+  }
+
   @Test
   void byTimeRangeIgnoresObjectAndReturnsEverythingInWindow() {
     writeEntry("lib-1", AuditEventType.LIBRARY_CREATED, null, base);

@@ -11,9 +11,9 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
-import io.opaa.api.types.LibraryVisibility;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.document.Document;
 import io.opaa.indexing.document.DocumentRepository;
@@ -55,7 +55,7 @@ class StaleDocumentCleanupServiceTest {
           "Bibliothek",
           null,
           UUID.randomUUID(),
-          LibraryVisibility.PRIVATE,
+          AssetVisibility.PRIVATE,
           false,
           DocumentSourceType.RSS_FEED,
           null,

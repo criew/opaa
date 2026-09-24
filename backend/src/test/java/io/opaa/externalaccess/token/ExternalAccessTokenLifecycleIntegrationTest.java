@@ -4,10 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import io.opaa.api.types.AssetOwnerType;
+import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.DocumentSourceType;
-import io.opaa.api.types.LibraryOwnerType;
-import io.opaa.api.types.LibraryVisibility;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.audit.AuditRetentionSettingsService;
 import io.opaa.auth.CurrentUser;
@@ -129,9 +129,9 @@ class ExternalAccessTokenLifecycleIntegrationTest {
             new LibraryCreation(
                 "Lebenszyklus-Bibliothek",
                 null,
-                LibraryOwnerType.USER,
+                AssetOwnerType.USER,
                 owner.getId(),
-                LibraryVisibility.PRIVATE,
+                AssetVisibility.PRIVATE,
                 false,
                 DocumentSourceType.UPLOAD,
                 null,

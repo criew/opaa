@@ -1219,9 +1219,8 @@ paths:
       tags: [auth]
       summary: >
         List users in the caller's own organization for member/grant selection - deliberately not
-        admin-restricted, unlike GET /api/v1/admin/users (#777). The member/grant pickers on
-        SpaceManagementPage, SpaceCreatePage, LibraryCreatePage and LibraryGrantsDialog need to
-        search for a user to add, but GET /api/v1/admin/users requires SYSTEM_ADMIN (#199) - a
+        admin-restricted, unlike GET /api/v1/admin/users (#777). The member/grant pickers
+        (UserPicker, SubjectPicker, SpaceCreatePage) need to search for a user to add, but GET /api/v1/admin/users requires SYSTEM_ADMIN (#199) - a
         403 that the frontend silently swallowed into an empty, dead-looking search field for
         every non-admin, making "Mitglied hinzufügen" unusable for anyone but a system admin.
         Same precedent as GET /api/v1/me/groups (any authenticated user needs their own group
@@ -5021,38 +5020,6 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /api/v1/libraries/{libraryId}/access-derivation:
-    parameters:
-      - name: libraryId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-
-    get:
-      operationId: getLibraryAccessDerivation
-      tags: [libraries]
-      summary: >
-        Why the caller reaches this library - the Herleitung of ADR-0036, Entscheidung 9 (#1822)
-      description: >
-        Every own way to the effective role: a grant naming the caller, a grant naming one of their
-        groups (with the group's name, origin, mechanism and the moment of the grant), the
-        organization-wide release, and the system administration. Always about the caller
-        themselves - there is no parameter naming somebody else; a question about another person's
-        reach is the Suchdiagnose with "Sicht als" or, for the past, the Stichtagsauskunft. No
-        Vollmacht and no protocol entry, and no member of any group is disclosed. A capability
-        never appears: it opens an Anlegepfad, never an Inhalt (ADR-0036, Entscheidung 5).
-      responses:
-        "200":
-          description: The ways the caller reaches the library
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/LibraryAccessDerivationResponse"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
   /api/v1/libraries/{libraryId}/documents:
     parameters:
       - name: libraryId
@@ -6320,20 +6287,16 @@ paths:
         "503":
           $ref: "#/components/responses/ServiceUnavailable"
 
-  /api/v1/libraries/{libraryId}/grants:
+  /api/v1/assets/{assetType}/{assetId}/grants:
     parameters:
-      - name: libraryId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
+      - $ref: "#/components/parameters/AssetTypePath"
+      - $ref: "#/components/parameters/AssetIdPath"
 
     get:
       operationId: listAssetGrants
-      tags: [library]
+      tags: [asset]
       summary: >
-        List the grants on a library (MANAGER role or above required). See
+        List the grants on an asset of any type (MANAGER role or above required). See
         docs/features/spaces-and-assets.md#asset-rollen.
       responses:
         "200":
@@ -6351,16 +6314,16 @@ paths:
 
     post:
       operationId: upsertAssetGrant
-      tags: [library]
+      tags: [asset]
       summary: >
-        Grant (or update the role of) a user or group on a library (MANAGER role or above
+        Grant (or update the role of) a user or group on an asset (MANAGER role or above
         required). Idempotent per subject: submitting again for the same subject replaces its role
         and expiry.
       description: >
-        While the library's succession is open (ADR-0036, Entscheidung 6) its reach is frozen:
-        a new grant, a higher role and a postponed expiry are refused with 409 and the code
-        SUCCESSION_OPEN, whose message names who is responsible. Taking reach away stays
-        possible - a downgrade, an earlier expiry and a revocation are never refused for it.
+        While the asset's succession is open (ADR-0036, Entscheidung 6) its reach is frozen: a new
+        grant, a higher role and a postponed expiry are refused with 409 and the code
+        SUCCESSION_OPEN, whose message names who is responsible. Taking reach away stays possible -
+        a downgrade, an earlier expiry and a revocation are never refused for it.
       requestBody:
         required: true
         content:
@@ -6383,14 +6346,10 @@ paths:
         "409":
           $ref: "#/components/responses/Conflict"
 
-  /api/v1/libraries/{libraryId}/grants/{grantId}:
+  /api/v1/assets/{assetType}/{assetId}/grants/{grantId}:
     parameters:
-      - name: libraryId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
+      - $ref: "#/components/parameters/AssetTypePath"
+      - $ref: "#/components/parameters/AssetIdPath"
       - name: grantId
         in: path
         required: true
@@ -6400,7 +6359,7 @@ paths:
 
     delete:
       operationId: revokeAssetGrant
-      tags: [library]
+      tags: [asset]
       summary: Revoke a grant (MANAGER role or above required). Takes effect on the next query.
       responses:
         "204":
@@ -6409,15 +6368,13 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
 
-  /api/v1/libraries/{libraryId}/grants/groups/{groupId}/members:
+  /api/v1/assets/{assetType}/{assetId}/grants/groups/{groupId}/members:
     parameters:
-      - name: libraryId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
+      - $ref: "#/components/parameters/AssetTypePath"
+      - $ref: "#/components/parameters/AssetIdPath"
       - name: groupId
         in: path
         required: true
@@ -6429,13 +6386,13 @@ paths:
 
     get:
       operationId: listGrantedGroupMembers
-      tags: [library]
+      tags: [asset]
       summary: >
-        The members of a group that holds a grant on this library - "wer ein Recht gibt, sieht, an
+        The members of a group that holds a grant on this asset - "wer ein Recht gibt, sieht, an
         wen" (#1880, ADR-0036 Entscheidung 9)
       description: >
-        Requires MANAGER or above on the library, exactly like the grant list itself, and only
-        while the group still holds an unexpired grant here. What the answer withholds and why is
+        Requires MANAGER or above on the asset, exactly like the grant list itself, and only while
+        the group still holds an unexpired grant here. What the answer withholds and why is
         described once, at GroupMemberDisclosureResponse; anything the rule refuses answers 404,
         like an unknown group.
 
@@ -6448,6 +6405,169 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/GroupMemberDisclosureResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/assets/{assetType}/{assetId}/access-derivation:
+    parameters:
+      - $ref: "#/components/parameters/AssetTypePath"
+      - $ref: "#/components/parameters/AssetIdPath"
+
+    get:
+      operationId: getAssetAccessDerivation
+      tags: [asset]
+      summary: >
+        Why the caller reaches this asset - the Herleitung of ADR-0036, Entscheidung 9 (#1822)
+      description: >
+        Every own way to the effective role: a grant naming the caller, a grant naming one of their
+        groups (with the group's name, origin, mechanism and the moment of the grant), the
+        organization-wide release, and the system administration. Always about the caller
+        themselves - there is no parameter naming somebody else; a question about another person's
+        reach is the Suchdiagnose with "Sicht als" or, for the past, the Stichtagsauskunft. No
+        Vollmacht and no protocol entry, and no member of any group is disclosed. A capability
+        never appears: it opens an Anlegepfad, never an Inhalt (ADR-0036, Entscheidung 5).
+      responses:
+        "200":
+          description: The ways the caller reaches the asset
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssetAccessDerivationResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/assets/{assetType}/{assetId}/spaces:
+    parameters:
+      - $ref: "#/components/parameters/AssetTypePath"
+      - $ref: "#/components/parameters/AssetIdPath"
+
+    get:
+      operationId: listAssetSpaceAssociations
+      tags: [asset, space]
+      summary: >
+        Every space this asset is associated with (MANAGER role or above on the asset required) -
+        the owner-facing "bereitgestellt in" view (#203). Unlike GET /v1/spaces/{spaceId}/assets,
+        this is never filtered - the owner sees every association, regardless of whether they
+        themselves are a member of the space.
+      description: >
+        docs/features/spaces-and-assets.md#assets-in-einen-space-assoziieren: "Der Eigentümer des
+        Assets sieht alle Assoziationen und kann jede davon jederzeit einseitig lösen."
+        narrowerReaderCircle on each entry is the same "not every member can already read this"
+        signal that triggers the owner notification when the association was created (#203) -
+        recomputed live here, not stored, since space membership and asset grants both change
+        independently afterwards.
+      responses:
+        "200":
+          description: Every association of this asset, across all spaces
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AssetSpaceAssociationResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/spaces/{spaceId}/assets:
+    parameters:
+      - name: spaceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: listSpaceAssetAssociations
+      tags: [space, asset]
+      summary: >
+        The assets associated with this space, of every type. For a plain MEMBER, filtered to what
+        they may themselves read (#203 acceptance criterion "two members with different grants see
+        different asset lists"). For a CURATOR, ADMIN or the space owner, unfiltered - every
+        association is listed so they can also detach one they cannot themselves read. Requires
+        space membership.
+      description: >
+        docs/features/spaces-and-assets.md#assets-in-einen-space-assoziieren. An association
+        grants no access by itself - for a plain MEMBER, an asset is listed only if they already
+        have at least VIEWER on it through their own grants, a group grant, or organization-wide
+        visibility. An entry the caller cannot read carries readableByCaller=false and neither name
+        nor description.
+      responses:
+        "200":
+          description: Associated assets
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpaceAssetAssociationListResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    post:
+      operationId: associateSpaceAsset
+      tags: [space, asset]
+      summary: >
+        Associates an asset with this space (CURATOR role or above on the space required). The
+        caller must themselves have at least VIEWER on the asset - a CURATOR may only associate an
+        asset they can already access themselves
+        (docs/features/spaces-and-assets.md#assets-in-einen-space-assoziieren). Idempotent: an
+        already-associated asset returns its existing association unchanged.
+      description: >
+        If the space has any member without read access to the asset, the asset's owner is
+        actively notified (#203, "Benachrichtigung statt Zustimmung") - no consent required, the
+        association takes effect immediately regardless.
+        While the succession of either side is open (ADR-0036, Entscheidung 6) a new association
+        is refused with 409 and the code SUCCESSION_OPEN; an association that already exists is
+        returned unchanged, as it reaches nobody new.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SpaceAssetAssociationRequest"
+      responses:
+        "201":
+          description: Association created (or already existed)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpaceAssetAssociationResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/spaces/{spaceId}/assets/{assetId}:
+    parameters:
+      - name: spaceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: "#/components/parameters/AssetIdPath"
+
+    delete:
+      operationId: detachSpaceAsset
+      tags: [space, asset]
+      summary: >
+        Removes the association (not the asset itself). Allowed for a CURATOR or above on the
+        space, or - unilaterally, regardless of their own space membership - for a MANAGER or
+        above on the asset itself
+        (docs/features/spaces-and-assets.md#assets-in-einen-space-assoziieren: "Der Eigentümer des
+        Assets ... kann jede davon jederzeit einseitig lösen").
+      responses:
+        "204":
+          description: Association removed (or did not exist)
         "403":
           $ref: "#/components/responses/Forbidden"
         "404":
@@ -6859,151 +6979,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/IndexingRunListResponse"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-  /api/v1/libraries/{libraryId}/spaces:
-    parameters:
-      - name: libraryId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-
-    get:
-      operationId: listLibrarySpaceAssociations
-      tags: [library, space]
-      summary: >
-        Every space this library is associated with (MANAGER role or above on the library
-        required) - the owner-facing "bereitgestellt in" view (#203). Unlike GET
-        /v1/spaces/{spaceId}/libraries, this is never filtered - the owner sees every association,
-        regardless of whether they themselves are a member of the space.
-      description: >
-        docs/features/spaces-and-assets.md#assets-in-einen-space-assoziieren: "Der Eigentümer des
-        Assets sieht alle Assoziationen und kann jede davon jederzeit einseitig lösen."
-        narrowerReaderCircle on each entry is the same "not every member can already read this"
-        signal that triggers the owner notification when the association was created (#203) -
-        recomputed live here, not stored, since space membership and library grants both change
-        independently afterwards.
-      responses:
-        "200":
-          description: Every association of this library, across all spaces
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/LibrarySpaceAssociationResponse"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-  /api/v1/spaces/{spaceId}/libraries:
-    parameters:
-      - name: spaceId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-
-    get:
-      operationId: listSpaceLibraryAssociations
-      tags: [space, library]
-      summary: >
-        The libraries associated with this space. For a plain MEMBER, filtered to what they may
-        themselves read (#203 acceptance criterion "two members with different grants see
-        different asset lists"). For a CURATOR, ADMIN or the space owner, unfiltered - every
-        association is listed so they can also detach one they cannot themselves read (review
-        finding on #706: a manager must be able to see and undo an over-broad association even
-        without a personal grant on the library). Requires space membership.
-      description: >
-        docs/features/spaces-and-assets.md#assets-in-einen-space-assoziieren. An association
-        grants no access by itself - for a plain MEMBER, a library is listed only if they already
-        have at least VIEWER on it through their own grants, a group grant, or organization-wide
-        visibility. An entry the caller cannot read carries readableByCaller=false and no
-        libraryName.
-      responses:
-        "200":
-          description: Associated libraries
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SpaceLibraryAssociationListResponse"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-    post:
-      operationId: associateSpaceLibrary
-      tags: [space, library]
-      summary: >
-        Associates a library with this space (CURATOR role or above on the space required). The
-        caller must themselves have at least VIEWER on the library - a CURATOR may only associate
-        an asset they can already access themselves
-        (docs/features/spaces-and-assets.md#assets-in-einen-space-assoziieren). Idempotent: an
-        already-associated library returns its existing association unchanged.
-      description: >
-        If the space has any member without read access to the library, the library owner is
-        actively notified (#203, "Benachrichtigung statt Zustimmung") - no consent required, the
-        association takes effect immediately regardless.
-        While the succession of either side is open (ADR-0036, Entscheidung 6) a new association
-        is refused with 409 and the code SUCCESSION_OPEN; an association that already exists is
-        returned unchanged, as it reaches nobody new.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/SpaceLibraryAssociationRequest"
-      responses:
-        "201":
-          description: Association created (or already existed)
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SpaceLibraryAssociationResponse"
-        "400":
-          $ref: "#/components/responses/ValidationError"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "409":
-          $ref: "#/components/responses/Conflict"
-
-  /api/v1/spaces/{spaceId}/libraries/{libraryId}:
-    parameters:
-      - name: spaceId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: libraryId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-
-    delete:
-      operationId: detachSpaceLibrary
-      tags: [space, library]
-      summary: >
-        Removes the association (not the library itself). Allowed for a CURATOR or above on the
-        space, or - unilaterally, regardless of their own space membership - for a MANAGER or
-        above on the library itself
-        (docs/features/spaces-and-assets.md#assets-in-einen-space-assoziieren: "Der Eigentümer des
-        Assets ... kann jede davon jederzeit einseitig lösen").
-      responses:
-        "204":
-          description: Association removed (or did not exist)
         "403":
           $ref: "#/components/responses/Forbidden"
         "404":
@@ -10072,7 +10047,7 @@ components:
           description: >
             Libraries to associate with the space on creation (#203/#686) - each must be at least
             readable (VIEWER or above) by the creator, exactly the same rule the dedicated POST
-            /v1/spaces/{spaceId}/libraries endpoint enforces afterwards. Optional: a space created
+            /v1/spaces/{spaceId}/assets endpoint enforces afterwards. Optional: a space created
             without this is not narrower for search, it simply has no associations yet (the
             permanent transition rule in docs/features/spaces-and-assets.md#suchbereich-je-chatart
             - "ein Space ohne Assoziationen verengt nie"). Associated atomically with the space
@@ -10367,38 +10342,54 @@ components:
           type: string
           format: uuid
 
-    SpaceLibraryAssociationRequest:
+    AssetType:
+      type: string
+      description: >
+        The type of an asset on the asset shell (#1899, docs/features/spaces-and-assets.md#assets).
+        Grants, the Herleitung and the space association name an asset by its type plus id; a type
+        without a registered definition answers 404 like an unknown asset.
+      enum: [KNOWLEDGE_LIBRARY]
+
+    SpaceAssetAssociationRequest:
       type: object
-      required: [libraryId]
+      required: [assetType, assetId]
       properties:
-        libraryId:
+        assetType:
+          $ref: "#/components/schemas/AssetType"
+        assetId:
           type: string
           format: uuid
 
-    SpaceLibraryAssociationResponse:
+    SpaceAssetAssociationResponse:
       type: object
-      required: [libraryId, createdByUserId, createdAt, readableByCaller]
+      required: [assetType, assetId, createdByUserId, createdAt, readableByCaller]
       description: >
-        One space's view of one associated library - see
+        One space's view of one associated asset - see
         docs/features/spaces-and-assets.md#assets-in-einen-space-assoziieren. For a plain MEMBER,
-        only returned for a library they may themselves read (#203 acceptance criterion "two
+        only returned for an asset they may themselves read (#203 acceptance criterion "two
         members with different grants see different asset lists"). For a CURATOR, ADMIN or the
         space owner, every association is returned, including one they cannot themselves read -
-        readableByCaller distinguishes the two and libraryName is only present when it is true, so
-        an unreadable entry never leaks the library's name to a manager without a grant on it.
+        readableByCaller distinguishes the two, and name and description are only present when it
+        is true, so an unreadable entry never leaks them to a manager without a grant on the asset.
       properties:
-        libraryId:
+        assetType:
+          $ref: "#/components/schemas/AssetType"
+        assetId:
           type: string
           format: uuid
-        libraryName:
+        name:
           type: string
           nullable: true
           example: Rechtsquellen Soziales
           description: Present only when readableByCaller is true.
+        description:
+          type: string
+          nullable: true
+          description: Present only when readableByCaller is true.
         readableByCaller:
           type: boolean
           description: >
-            Whether the calling user may themselves read this library. Always true in a plain
+            Whether the calling user may themselves read this asset. Always true in a plain
             MEMBER's filtered list; may be false in a CURATOR/ADMIN/owner's unfiltered list.
         createdByUserId:
           type: string
@@ -10410,36 +10401,42 @@ components:
           type: string
           format: date-time
 
-    SpaceLibraryAssociationListResponse:
+    SpaceAssetAssociationListResponse:
       type: object
-      required: [hasAssociations, items]
+      required: [hasAssociations, narrowsSearch, items]
       description: >
-        The wrapper around GET /v1/spaces/{spaceId}/libraries's list, carrying one count-free state
+        The wrapper around GET /v1/spaces/{spaceId}/assets's list, carrying one count-free state
         field alongside it (#203 review finding on #706). hasAssociations distinguishes two
         outwardly identical empty-items cases that need different frontend messages: a space with
         no association at all (search falls back to every readable library, per the permanent
         transition rule) versus a space that is curated but happens to have nothing the caller may
         read (docs/features/spaces-and-assets.md#suchbereich-je-chatart, "In diesem Space ist für
         dich derzeit kein Wissen verfügbar" - a valid state, not an error, and deliberately without
-        a count of the unreadable libraries).
+        a count of the unreadable assets).
       properties:
         hasAssociations:
           type: boolean
           description: >
             Whether the space has at least one association at all, regardless of whether the
             caller may read it - computed unfiltered, independently of items.
+        narrowsSearch:
+          type: boolean
+          description: >
+            Whether the space narrows a chat's search scope: at least one associated knowledge
+            library, readable or not - the rule the search itself applies. An asset of another type
+            carries no documents and narrows nothing.
         items:
           type: array
           items:
-            $ref: "#/components/schemas/SpaceLibraryAssociationResponse"
+            $ref: "#/components/schemas/SpaceAssetAssociationResponse"
 
-    LibrarySpaceAssociationResponse:
+    AssetSpaceAssociationResponse:
       type: object
       required: [spaceId, spaceName, createdByUserId, createdAt, narrowerReaderCircle]
       description: >
-        One library's view of one space it is associated with - the owner-facing "bereitgestellt
-        in" list (GET /v1/libraries/{libraryId}/spaces), never filtered by the caller's own space
-        membership.
+        One asset's view of one space it is associated with - the owner-facing "bereitgestellt
+        in" list (GET /v1/assets/{assetType}/{assetId}/spaces), never filtered by the caller's own
+        space membership.
       properties:
         spaceId:
           type: string
@@ -10459,10 +10456,10 @@ components:
         narrowerReaderCircle:
           type: boolean
           description: >
-            True if at least one member of this space cannot themselves read the library - the
-            same condition that triggered the owner notification when the association was
-            created. Recomputed at read time, not stored, since both space membership and library
-            grants change independently afterwards.
+            True if at least one member of this space cannot themselves read the asset - the same
+            condition that triggered the owner notification when the association was created.
+            Recomputed at read time, not stored, since both space membership and asset grants
+            change independently afterwards.
 
     NotificationType:
       type: string
@@ -11490,13 +11487,13 @@ components:
           type: string
           format: uuid
 
-    LibraryOwnerType:
+    AssetOwnerType:
       type: string
       description: Who owns a library - a single person or a group.
       enum: [USER, GROUP]
       example: USER
 
-    LibraryVisibility:
+    AssetVisibility:
       type: string
       description: >
         PRIVATE reaches only the owner (and, for a group owner, its members). SHARED follows the
@@ -11620,7 +11617,7 @@ components:
           nullable: true
           example: SGB II, SGB XII, VwVfG, Dienstanweisungen
         ownerType:
-          $ref: "#/components/schemas/LibraryOwnerType"
+          $ref: "#/components/schemas/AssetOwnerType"
           description: Defaults to USER (the creator) when omitted
         ownerId:
           type: string
@@ -11630,7 +11627,7 @@ components:
             Required when ownerType is GROUP (the caller must be a member of that group).
             Ignored for ownerType USER, which always owns as the creator.
         visibility:
-          $ref: "#/components/schemas/LibraryVisibility"
+          $ref: "#/components/schemas/AssetVisibility"
         listed:
           type: boolean
           nullable: true
@@ -12164,7 +12161,7 @@ components:
           nullable: true
           example: SGB II, SGB XII, VwVfG, Dienstanweisungen
         visibility:
-          $ref: "#/components/schemas/LibraryVisibility"
+          $ref: "#/components/schemas/AssetVisibility"
         listed:
           type: boolean
           nullable: true
@@ -12271,7 +12268,7 @@ components:
         LibraryUpdateRequest.s3Settings already follows for its own all-or-nothing replacement.
       properties:
         visibilityCap:
-          $ref: "#/components/schemas/LibraryVisibility"
+          $ref: "#/components/schemas/AssetVisibility"
         listedCap:
           type: boolean
 
@@ -12301,7 +12298,7 @@ components:
           type: string
           nullable: true
         ownerType:
-          $ref: "#/components/schemas/LibraryOwnerType"
+          $ref: "#/components/schemas/AssetOwnerType"
         ownerName:
           type: string
           nullable: true
@@ -12311,7 +12308,7 @@ components:
             (e.g. the group or user was deleted).
           example: Referat 50
         visibility:
-          $ref: "#/components/schemas/LibraryVisibility"
+          $ref: "#/components/schemas/AssetVisibility"
         listed:
           type: boolean
         myRole:
@@ -12386,13 +12383,13 @@ components:
           type: string
           nullable: true
         ownerType:
-          $ref: "#/components/schemas/LibraryOwnerType"
+          $ref: "#/components/schemas/AssetOwnerType"
         ownerId:
           type: string
           format: uuid
           description: The owning user or group, whichever ownerType names.
         visibility:
-          $ref: "#/components/schemas/LibraryVisibility"
+          $ref: "#/components/schemas/AssetVisibility"
         listed:
           type: boolean
         myRole:
@@ -12583,7 +12580,7 @@ components:
             answers 409 when visibility would exceed it.
           nullable: true
           allOf:
-            - $ref: "#/components/schemas/LibraryVisibility"
+            - $ref: "#/components/schemas/AssetVisibility"
         listedCap:
           type: boolean
           nullable: true
@@ -15492,9 +15489,11 @@ components:
 
     SuccessionObjectType:
       type: string
-      description: What an entry is about - a group is no asset, and the list carries all three.
-      enum: [KNOWLEDGE_LIBRARY, SPACE, GROUP]
-      example: KNOWLEDGE_LIBRARY
+      description: >
+        What an entry is about - an asset of any type (its type in assetType), a space or a group.
+        A group is no asset, and the list carries all three.
+      enum: [ASSET, SPACE, GROUP]
+      example: ASSET
 
     SuccessionAddressee:
       type: string
@@ -15518,6 +15517,11 @@ components:
             seen the finding. The list is complete from day one; the record follows within the hour.
         objectType:
           $ref: "#/components/schemas/SuccessionObjectType"
+        assetType:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/AssetType"
+          description: The type of the asset - set exactly when objectType is ASSET.
         objectId:
           type: string
           format: uuid
@@ -16219,6 +16223,8 @@ components:
           GROUP_RELEASE_CHANGED,
           GROUP_PROTECTION_CHANGED,
           GROUP_MEMBERS_READ,
+          ASSET_SHARED_TO_SPACE,
+          ASSET_DETACHED_FROM_SPACE,
           LIBRARY_SHARED_TO_SPACE,
           LIBRARY_DETACHED_FROM_SPACE,
           ASSET_OWNER_CHANGED,
@@ -16433,11 +16439,13 @@ components:
           nullable: true
           description: The identity provider's display name; null for an internal group.
 
-    LibraryAccessDerivationResponse:
+    AssetAccessDerivationResponse:
       type: object
-      required: [libraryId, effectiveRole, paths, pathsWithheld]
+      required: [assetType, assetId, effectiveRole, paths, pathsWithheld]
       properties:
-        libraryId:
+        assetType:
+          $ref: "#/components/schemas/AssetType"
+        assetId:
           type: string
           format: uuid
         effectiveRole:
@@ -16449,7 +16457,7 @@ components:
         pathsWithheld:
           type: boolean
           description: >
-            Always false here - the library derivation is only ever about the caller themselves,
+            Always false here - the asset derivation is only ever about the caller themselves,
             and an own derivation is never withheld (ADR-0036, Entscheidung 9, Personalrat Z2).
 
     SpaceAccessDerivationResponse:
@@ -18779,6 +18787,20 @@ components:
       schema:
         type: string
         maxLength: 1000
+    AssetTypePath:
+      name: assetType
+      in: path
+      required: true
+      description: The type of the asset - an unknown or malformed type answers 404.
+      schema:
+        $ref: "#/components/schemas/AssetType"
+    AssetIdPath:
+      name: assetId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
     GroupMemberDisclosureOffset:
       name: offset
       in: query

@@ -3,10 +3,10 @@ package io.opaa.indexing.source.web;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.sun.net.httpserver.HttpServer;
+import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.IndexingRunMode;
-import io.opaa.api.types.LibraryVisibility;
 import io.opaa.indexing.document.Document;
 import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.document.DocumentRepository;
@@ -125,7 +125,7 @@ class UrlAttachmentIndexingIntegrationTest {
                 "Webverzeichnis",
                 null,
                 userId,
-                LibraryVisibility.PRIVATE,
+                AssetVisibility.PRIVATE,
                 false,
                 DocumentSourceType.HTTP_DIRECTORY,
                 null,

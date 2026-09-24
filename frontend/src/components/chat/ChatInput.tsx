@@ -123,23 +123,23 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
   // SpaceManagementPage/SpacePage use (their routes never render at the same time as this one, so
   // there is no simultaneous-consumer conflict) - but #783 review finding 1: that store write-back
   // is asynchronous and per-space, so this component must not simply trust whatever is currently in
-  // libraryAssociations/hasLibraryAssociations. libraryAssociationsSpaceId names which space that
-  // data actually describes; isLibraryAssociationsCurrent below is false while it does not match
+  // assetAssociations/hasAssetAssociations. assetAssociationsSpaceId names which space that
+  // data actually describes; isAssetAssociationsCurrent below is false while it does not match
   // chatSpaceId - covering the load still being in flight, a load that failed (spaceStore leaves it
   // null rather than defaulting to "no associations", #783 review nit 1), and the moment right after
   // switching to a chat in a different space, before its own load has even started.
   const chatSpaceId = useChatStore((s) => s.spaceId)
-  const hasLibraryAssociations = useSpaceStore((s) => s.hasLibraryAssociations)
-  const libraryAssociations = useSpaceStore((s) => s.libraryAssociations)
-  const libraryAssociationsSpaceId = useSpaceStore((s) => s.libraryAssociationsSpaceId)
-  const loadLibraryAssociations = useSpaceStore((s) => s.loadLibraryAssociations)
-  const isLibraryAssociationsCurrent = libraryAssociationsSpaceId === chatSpaceId
+  const narrowsSearch = useSpaceStore((s) => s.assetAssociationsNarrowSearch)
+  const assetAssociations = useSpaceStore((s) => s.assetAssociations)
+  const assetAssociationsSpaceId = useSpaceStore((s) => s.assetAssociationsSpaceId)
+  const loadAssetAssociations = useSpaceStore((s) => s.loadAssetAssociations)
+  const isAssetAssociationsCurrent = assetAssociationsSpaceId === chatSpaceId
 
   useEffect(() => {
     if (chatSpaceId) {
-      void loadLibraryAssociations(chatSpaceId)
+      void loadAssetAssociations(chatSpaceId)
     }
-  }, [chatSpaceId, loadLibraryAssociations])
+  }, [chatSpaceId, loadAssetAssociations])
 
   useEffect(() => {
     if (wasDisabled.current && !disabled) {
@@ -195,11 +195,14 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
         text: count === 1 ? '1 gewählter Bestand' : `${count} gewählte Bestände`,
       }
     }
-    if (!isLibraryAssociationsCurrent) {
+    if (!isAssetAssociationsCurrent) {
       return { kind: 'notice', text: 'Suchbereich wird ermittelt …' }
     }
-    if (hasLibraryAssociations) {
-      const count = libraryAssociations.filter((a) => a.readableByCaller).length
+    if (narrowsSearch) {
+      // The search reads knowledge libraries only; an associated asset of another type is no Bestand.
+      const count = assetAssociations.filter(
+        (a) => a.readableByCaller && a.assetType === 'KNOWLEDGE_LIBRARY',
+      ).length
       if (count === 0) {
         return {
           kind: 'notice',
@@ -218,10 +221,10 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
     }
     return { kind: 'summary', text: 'alle lesbaren Bestände' }
   }, [
-    hasLibraryAssociations,
-    isLibraryAssociationsCurrent,
+    narrowsSearch,
+    isAssetAssociationsCurrent,
     libraries,
-    libraryAssociations,
+    assetAssociations,
     referencedLibraryIds,
     scope,
   ])

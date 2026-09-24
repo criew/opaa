@@ -10,11 +10,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.jayway.jsonpath.JsonPath;
+import io.opaa.api.types.AssetOwnerType;
 import io.opaa.api.types.AssetRole;
+import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.DocumentSourceType;
-import io.opaa.api.types.LibraryOwnerType;
-import io.opaa.api.types.LibraryVisibility;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.DevAuthFilter;
@@ -157,9 +157,9 @@ class ExternalAccessTokenIntegrationTest {
             new LibraryCreation(
                 name,
                 null,
-                LibraryOwnerType.USER,
+                AssetOwnerType.USER,
                 user.getId(),
-                LibraryVisibility.PRIVATE,
+                AssetVisibility.PRIVATE,
                 false,
                 DocumentSourceType.UPLOAD,
                 null,

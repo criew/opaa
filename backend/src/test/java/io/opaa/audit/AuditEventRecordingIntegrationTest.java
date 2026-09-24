@@ -6,19 +6,22 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.api.types.ActorKind;
+import io.opaa.api.types.AssetOwnerType;
 import io.opaa.api.types.AssetRole;
+import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.api.types.AuditSubjectKind;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.GroupKind;
-import io.opaa.api.types.LibraryOwnerType;
-import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.api.types.SpaceRole;
 import io.opaa.api.types.SpaceVisibility;
 import io.opaa.api.types.SystemRole;
+import io.opaa.asset.AssetGrantService;
+import io.opaa.asset.AssetGrantUpsert;
+import io.opaa.asset.AssetVisibilityHistoryRepository;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
@@ -33,13 +36,10 @@ import io.opaa.group.GroupUpdate;
 import io.opaa.group.sync.DirectoryGroup;
 import io.opaa.group.sync.DirectorySyncService;
 import io.opaa.group.sync.DirectorySyncStatusRepository;
-import io.opaa.library.AssetGrantService;
-import io.opaa.library.AssetGrantUpsert;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.library.LibraryDetail;
-import io.opaa.library.LibraryVisibilityHistoryRepository;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.permission.AssetGrantHistoryRepository;
@@ -93,7 +93,7 @@ class AuditEventRecordingIntegrationTest {
   @Autowired private AssetGrantHistoryRepository grantHistoryRepository;
   @Autowired private KnowledgeLibraryService libraryService;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
-  @Autowired private LibraryVisibilityHistoryRepository visibilityHistoryRepository;
+  @Autowired private AssetVisibilityHistoryRepository visibilityHistoryRepository;
   @Autowired private GroupService groupService;
   @Autowired private GroupRepository groupRepository;
   @Autowired private GroupMembershipHistoryRepository membershipHistoryRepository;
@@ -167,7 +167,7 @@ class AuditEventRecordingIntegrationTest {
     grantHistoryRepository.deleteBySubjectUserIdIn(createdUserIds);
     visibilityHistoryRepository.deleteAll(
         visibilityHistoryRepository.findAll().stream()
-            .filter(v -> ownLibraryIds.contains(v.getLibraryId()))
+            .filter(v -> ownLibraryIds.contains(v.getAssetId()))
             .toList());
     libraryRepository.deleteAll(
         libraryRepository.findAll().stream()
@@ -257,7 +257,7 @@ class AuditEventRecordingIntegrationTest {
     LibraryDetail detail =
         libraryService.createLibrary(
             libraryCreation("Bibliothek", DocumentSourceType.UPLOAD)
-                .ownerType(LibraryOwnerType.USER)
+                .ownerType(AssetOwnerType.USER)
                 .ownerId(ownerId)
                 .build(),
             currentUserOf(ownerId));
@@ -281,6 +281,7 @@ class AuditEventRecordingIntegrationTest {
     UUID reader = createUser();
 
     grantService.upsertGrant(
+        KnowledgeLibrary.ASSET_TYPE,
         libraryId,
         new AssetGrantUpsert(PermissionSubjectType.USER, reader, AssetRole.VIEWER),
         currentUserOf(owner, false));
@@ -312,7 +313,8 @@ class AuditEventRecordingIntegrationTest {
                 KnowledgeLibrary.ASSET_TYPE, libraryId, PermissionSubjectType.USER, reader)
             .orElseThrow()
             .getId();
-    grantService.revokeGrant(libraryId, grantId, currentUserOf(owner, false));
+    grantService.revokeGrant(
+        KnowledgeLibrary.ASSET_TYPE, libraryId, grantId, currentUserOf(owner, false));
 
     List<AuditLogEntry> revoked =
         entriesFor(AuditObjectType.KNOWLEDGE_LIBRARY, libraryId).stream()
@@ -330,6 +332,7 @@ class AuditEventRecordingIntegrationTest {
     UUID libraryId = createLibrary(owner);
     UUID manager = createUser();
     grantService.upsertGrant(
+        KnowledgeLibrary.ASSET_TYPE,
         libraryId,
         new AssetGrantUpsert(PermissionSubjectType.USER, manager, AssetRole.MANAGER),
         currentUserOf(owner, false));
@@ -339,6 +342,7 @@ class AuditEventRecordingIntegrationTest {
     assertThatThrownBy(
             () ->
                 grantService.upsertGrant(
+                    KnowledgeLibrary.ASSET_TYPE,
                     libraryId,
                     new AssetGrantUpsert(PermissionSubjectType.USER, targetUser, AssetRole.OWNER),
                     currentUserOf(manager, false)))
@@ -374,6 +378,7 @@ class AuditEventRecordingIntegrationTest {
     assertThatThrownBy(
             () ->
                 grantService.upsertGrant(
+                    KnowledgeLibrary.ASSET_TYPE,
                     libraryId,
                     new AssetGrantUpsert(
                         PermissionSubjectType.USER, unknownSubject, AssetRole.VIEWER),
@@ -403,6 +408,7 @@ class AuditEventRecordingIntegrationTest {
       assertThatThrownBy(
               () ->
                   grantService.upsertGrant(
+                      KnowledgeLibrary.ASSET_TYPE,
                       libraryId,
                       new AssetGrantUpsert(
                           PermissionSubjectType.USER, foreignUserId, AssetRole.VIEWER),
@@ -438,7 +444,7 @@ class AuditEventRecordingIntegrationTest {
 
     libraryService.updateLibrary(
         libraryId,
-        libraryUpdate("Bibliothek").visibility(LibraryVisibility.ORGANIZATION).build(),
+        libraryUpdate("Bibliothek").visibility(AssetVisibility.ORGANIZATION).build(),
         currentUserOf(owner, false));
     List<AuditLogEntry> visibilityChanged =
         entriesFor(AuditObjectType.KNOWLEDGE_LIBRARY, libraryId).stream()
@@ -458,8 +464,8 @@ class AuditEventRecordingIntegrationTest {
 
   /**
    * #892 review: the GROUP-owned branch of {@code createLibrary} runs {@link
-   * io.opaa.library.GrantChanged}'s subject resolution through the group id, never a pseudonym -
-   * {@link #grantingAndRevokingAGrantEachProduceExactlyOneAuditEntry} only ever exercises a USER
+   * io.opaa.library.AssetGrantChanged}'s subject resolution through the group id, never a pseudonym
+   * - {@link #grantingAndRevokingAGrantEachProduceExactlyOneAuditEntry} only ever exercises a USER
    * subject, so this path was otherwise untested against the real schema.
    */
   @Test
@@ -477,7 +483,7 @@ class AuditEventRecordingIntegrationTest {
     LibraryDetail detail =
         libraryService.createLibrary(
             libraryCreation("Rechtsquellen Soziales", DocumentSourceType.UPLOAD)
-                .ownerType(LibraryOwnerType.GROUP)
+                .ownerType(AssetOwnerType.GROUP)
                 .ownerId(groupId)
                 .build(),
             currentUserOf(admin));
@@ -842,7 +848,7 @@ class AuditEventRecordingIntegrationTest {
     libraryService.getLibrary(libraryId, currentUserOf(owner, false));
     libraryService.listDocuments(
         libraryId, currentUserOf(owner), null, null, null, PageRequest.of(0, 20));
-    grantService.listGrants(libraryId, currentUserOf(owner, false));
+    grantService.listGrants(KnowledgeLibrary.ASSET_TYPE, libraryId, currentUserOf(owner, false));
 
     long after = auditLogRepository.count();
     assertThat(after).isEqualTo(before);
@@ -866,6 +872,7 @@ class AuditEventRecordingIntegrationTest {
                       @Override
                       protected void doInTransactionWithoutResult(TransactionStatus status) {
                         grantService.upsertGrant(
+                            KnowledgeLibrary.ASSET_TYPE,
                             libraryId,
                             new AssetGrantUpsert(
                                 PermissionSubjectType.USER, reader, AssetRole.VIEWER),

@@ -4,17 +4,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.api.types.AssetRole;
+import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.AuditEventType;
-import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.PermissionSubjectType;
+import io.opaa.asset.AssetChanged;
+import io.opaa.asset.AssetGrantChanged;
+import io.opaa.asset.AssetGrantService;
+import io.opaa.asset.AssetVisibilityHistoryRepository;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
-import io.opaa.library.AssetGrantService;
-import io.opaa.library.GrantChanged;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryService;
-import io.opaa.library.LibraryChanged;
-import io.opaa.library.LibraryVisibilityHistoryRepository;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.permission.AssetGrant;
@@ -37,16 +37,16 @@ import org.springframework.transaction.support.TransactionCallbackWithoutResult;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * Proves {@link GrantChanged}/{@link LibraryChanged}'s core structural guarantee (#892): publishing
- * ONE event produces BOTH the {@link PermissionHistoryService} interval and the audit entry - the
- * double bookkeeping the two hand-paired calls these events replace used to require callers to
- * remember - and a rollback of the publishing transaction removes both together, exactly like a
- * single write would. Runs against a real Postgres database with the real, versioned Liquibase
- * schema applied ({@code spring.liquibase.enabled=true}, {@code ddl-auto=none}) and the real Spring
- * {@link ApplicationEventPublisher}/{@code @EventListener} wiring - {@code AuditListener} and
- * {@code PermissionHistoryListener} (both package-private in {@code io.opaa.library}) are real
- * beans here, not mocked away, since the whole point is to exercise both listeners actually
- * running.
+ * Proves {@link AssetGrantChanged}/{@link AssetChanged}'s core structural guarantee (#892):
+ * publishing ONE event produces BOTH the {@link PermissionHistoryService} interval and the audit
+ * entry - the double bookkeeping the two hand-paired calls these events replace used to require
+ * callers to remember - and a rollback of the publishing transaction removes both together, exactly
+ * like a single write would. Runs against a real Postgres database with the real, versioned
+ * Liquibase schema applied ({@code spring.liquibase.enabled=true}, {@code ddl-auto=none}) and the
+ * real Spring {@link ApplicationEventPublisher}/{@code @EventListener} wiring - {@code
+ * AssetAuditListener} and {@code AssetHistoryListener} (both package-private in {@code
+ * io.opaa.asset}) are real beans here, not mocked away, since the whole point is to exercise both
+ * listeners actually running.
  *
  * <p>Publishes the events directly rather than through {@link AssetGrantService}/{@link
  * KnowledgeLibraryService} - those services' own field-identical behaviour is already pinned by
@@ -58,7 +58,7 @@ class GrantLibraryChangedEventIntegrationTest {
 
   @Autowired private ApplicationEventPublisher eventPublisher;
   @Autowired private AssetGrantHistoryRepository grantHistoryRepository;
-  @Autowired private LibraryVisibilityHistoryRepository visibilityHistoryRepository;
+  @Autowired private AssetVisibilityHistoryRepository visibilityHistoryRepository;
   @Autowired private AuditLogRepository auditLogRepository;
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private UserRepository userRepository;
@@ -99,7 +99,7 @@ class GrantLibraryChangedEventIntegrationTest {
             .toList());
     visibilityHistoryRepository.deleteAll(
         visibilityHistoryRepository.findAll().stream()
-            .filter(v -> createdLibraryIds.contains(v.getLibraryId()))
+            .filter(v -> createdLibraryIds.contains(v.getAssetId()))
             .toList());
     // audit_log is insert-only at the application layer (see AuditLogServiceIntegrationTest's
     // teardown), so it needs the same JdbcTemplate cleanup before fk_audit_log_organization (ON
@@ -112,7 +112,7 @@ class GrantLibraryChangedEventIntegrationTest {
   private KnowledgeLibrary newLibrary() {
     KnowledgeLibrary library =
         KnowledgeLibrary.ownedByUser(
-            organizationId, "Bibliothek", null, actorUserId, LibraryVisibility.PRIVATE, false);
+            organizationId, "Bibliothek", null, actorUserId, AssetVisibility.PRIVATE, false);
     createdLibraryIds.add(library.getId());
     return library;
   }
@@ -136,10 +136,10 @@ class GrantLibraryChangedEventIntegrationTest {
     AssetGrant grant = newGrant(library, subjectGroupId);
 
     eventPublisher.publishEvent(
-        new GrantChanged(
+        new AssetGrantChanged(
             library,
             grant,
-            GrantChanged.Cause.GRANTED,
+            AssetGrantChanged.Cause.GRANTED,
             actorUserId,
             null,
             Map.of("role", "MANAGER")));
@@ -173,10 +173,10 @@ class GrantLibraryChangedEventIntegrationTest {
                       @Override
                       protected void doInTransactionWithoutResult(TransactionStatus status) {
                         eventPublisher.publishEvent(
-                            new GrantChanged(
+                            new AssetGrantChanged(
                                 library,
                                 grant,
-                                GrantChanged.Cause.GRANTED,
+                                AssetGrantChanged.Cause.GRANTED,
                                 actorUserId,
                                 null,
                                 Map.of("role", "MANAGER")));
@@ -202,18 +202,20 @@ class GrantLibraryChangedEventIntegrationTest {
   }
 
   @Test
-  void publishingALibraryChangedEventWritesBothTheHistoryIntervalAndTheAuditEntry() {
+  void publishingAnAssetChangedEventWritesBothTheHistoryIntervalAndTheAuditEntry() {
     KnowledgeLibrary library = newLibrary();
 
     eventPublisher.publishEvent(
-        new LibraryChanged(
+        new AssetChanged(
             library,
-            LibraryChanged.Cause.CREATED,
+            AssetChanged.Cause.CREATED,
             actorUserId,
             null,
             Map.of("name", library.getName())));
 
-    assertThat(visibilityHistoryRepository.findByLibraryIdAndValidToIsNull(library.getId()))
+    assertThat(
+            visibilityHistoryRepository.findByAssetTypeAndAssetIdAndValidToIsNull(
+                KnowledgeLibrary.ASSET_TYPE, library.getId()))
         .isPresent();
     assertThat(
             auditLogRepository.findAll().stream()
@@ -224,7 +226,7 @@ class GrantLibraryChangedEventIntegrationTest {
   }
 
   @Test
-  void rollingBackALibraryChangedEventRemovesBothTheHistoryIntervalAndTheAuditEntry() {
+  void rollingBackAnAssetChangedEventRemovesBothTheHistoryIntervalAndTheAuditEntry() {
     KnowledgeLibrary library = newLibrary();
 
     assertThatThrownBy(
@@ -234,9 +236,9 @@ class GrantLibraryChangedEventIntegrationTest {
                       @Override
                       protected void doInTransactionWithoutResult(TransactionStatus status) {
                         eventPublisher.publishEvent(
-                            new LibraryChanged(
+                            new AssetChanged(
                                 library,
-                                LibraryChanged.Cause.CREATED,
+                                AssetChanged.Cause.CREATED,
                                 actorUserId,
                                 null,
                                 Map.of("name", library.getName())));
@@ -246,7 +248,9 @@ class GrantLibraryChangedEventIntegrationTest {
                     }))
         .isInstanceOf(RuntimeException.class);
 
-    assertThat(visibilityHistoryRepository.findByLibraryIdAndValidToIsNull(library.getId()))
+    assertThat(
+            visibilityHistoryRepository.findByAssetTypeAndAssetIdAndValidToIsNull(
+                KnowledgeLibrary.ASSET_TYPE, library.getId()))
         .isEmpty();
     assertThat(
             auditLogRepository.findAll().stream()

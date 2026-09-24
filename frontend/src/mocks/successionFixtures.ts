@@ -9,7 +9,8 @@ export const mockSuccessionEntries: Record<SuccessionKind, SuccessionEntryRespon
   OPEN_SUCCESSION: [
     {
       caseId: 'case-1',
-      objectType: 'KNOWLEDGE_LIBRARY',
+      objectType: 'ASSET',
+      assetType: 'KNOWLEDGE_LIBRARY',
       objectId: 'lib-1',
       objectName: 'Bauakten Referat 50',
       addressee: 'SYSTEM_ADMINISTRATION',

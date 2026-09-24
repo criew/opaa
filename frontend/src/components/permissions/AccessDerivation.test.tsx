@@ -3,8 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithProviders } from '../../test/test-utils'
 import AccessDerivation from './AccessDerivation'
 
-const { mockGetLibraryAccessDerivation, mockGetSpaceAccessDerivation } = vi.hoisted(() => ({
-  mockGetLibraryAccessDerivation: vi.fn(),
+const { mockGetAssetAccessDerivation, mockGetSpaceAccessDerivation } = vi.hoisted(() => ({
+  mockGetAssetAccessDerivation: vi.fn(),
   mockGetSpaceAccessDerivation: vi.fn(),
 }))
 
@@ -12,7 +12,7 @@ vi.mock('../../services/api', async () => {
   const actual = await vi.importActual<typeof import('../../services/api')>('../../services/api')
   return {
     ...actual,
-    getLibraryAccessDerivation: mockGetLibraryAccessDerivation,
+    getAssetAccessDerivation: mockGetAssetAccessDerivation,
     getSpaceAccessDerivation: mockGetSpaceAccessDerivation,
   }
 })
@@ -23,8 +23,9 @@ describe('AccessDerivation (#1822, ADR-0036 Entscheidung 9)', () => {
   })
 
   it('names every own way, with the group, its origin and the mechanism behind it', async () => {
-    mockGetLibraryAccessDerivation.mockResolvedValue({
-      libraryId: 'library-1',
+    mockGetAssetAccessDerivation.mockResolvedValue({
+      assetType: 'KNOWLEDGE_LIBRARY',
+      assetId: 'library-1',
       effectiveRole: 'EDITOR',
       pathsWithheld: false,
       paths: [
@@ -51,7 +52,11 @@ describe('AccessDerivation (#1822, ADR-0036 Entscheidung 9)', () => {
       ],
     })
 
-    renderWithProviders(<AccessDerivation target={{ kind: 'library', libraryId: 'library-1' }} />)
+    renderWithProviders(
+      <AccessDerivation
+        target={{ kind: 'asset', assetType: 'KNOWLEDGE_LIBRARY', assetId: 'library-1' }}
+      />,
+    )
 
     expect(await screen.findByText(/Wirksame Rolle: Bearbeiter/)).toBeInTheDocument()
     const groupPath = await screen.findByText(/Freigabe an eine Gruppe/)
@@ -85,9 +90,13 @@ describe('AccessDerivation (#1822, ADR-0036 Entscheidung 9)', () => {
   })
 
   it('names a failed request instead of showing an empty derivation', async () => {
-    mockGetLibraryAccessDerivation.mockRejectedValue(new Error('Bibliothek nicht gefunden'))
+    mockGetAssetAccessDerivation.mockRejectedValue(new Error('Bibliothek nicht gefunden'))
 
-    renderWithProviders(<AccessDerivation target={{ kind: 'library', libraryId: 'library-1' }} />)
+    renderWithProviders(
+      <AccessDerivation
+        target={{ kind: 'asset', assetType: 'KNOWLEDGE_LIBRARY', assetId: 'library-1' }}
+      />,
+    )
 
     expect(await screen.findByText('Bibliothek nicht gefunden')).toBeInTheDocument()
   })

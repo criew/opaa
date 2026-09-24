@@ -103,7 +103,7 @@ class SearchDiagnosisSpaceContextIntegrationTest {
     jdbcTemplate.update("DELETE FROM spaces WHERE id = ?", spaceId);
     jdbcTemplate.update("DELETE FROM asset_grants WHERE subject_group_id = ?", profileGroupId);
     jdbcTemplate.update(
-        "DELETE FROM knowledge_libraries WHERE id in (?, ?, ?)",
+        "DELETE FROM assets WHERE id in (?, ?, ?)",
         libraryInSpaceAndProfile,
         libraryInProfileOnly,
         libraryInSpaceOnly);
@@ -266,9 +266,10 @@ class SearchDiagnosisSpaceContextIntegrationTest {
   private UUID insertLibrary(String name) {
     UUID id = UUID.randomUUID();
     jdbcTemplate.update(
-        "INSERT INTO knowledge_libraries (id, organization_id, name, owner_type, owner_user_id,"
-            + " visibility, listed, source_type, created_at, updated_at)"
-            + " VALUES (?, ?, ?, 'USER', ?, 'PRIVATE', false, 'UPLOAD', now(), now())",
+        "WITH shell AS (INSERT INTO assets (id, asset_type, organization_id, name, owner_type,"
+            + " owner_user_id, visibility, listed) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, ?, 'USER', ?, 'PRIVATE', false)"
+            + " RETURNING id, organization_id) INSERT INTO knowledge_libraries (id,"
+            + " organization_id, source_type) SELECT id, organization_id, 'UPLOAD' FROM shell",
         id,
         DEFAULT_ORGANIZATION_ID,
         name,
@@ -289,7 +290,7 @@ class SearchDiagnosisSpaceContextIntegrationTest {
 
   private void associate(UUID libraryId) {
     jdbcTemplate.update(
-        "INSERT INTO space_asset_associations (id, space_id, library_id, organization_id,"
+        "INSERT INTO space_asset_associations (id, space_id, asset_id, organization_id,"
             + " created_by_user_id, created_at) VALUES (?, ?, ?, ?, ?, now())",
         UUID.randomUUID(),
         spaceId,

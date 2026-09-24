@@ -102,9 +102,6 @@ class SchemaPortabilityMigrationTest extends AbstractMigrationTest {
                 + ", pg_temp",
             "chat_note_items_set_organization search_path=pg_catalog, " + SCHEMA + ", pg_temp",
             "chat_personal_marks_set_organization search_path=pg_catalog, " + SCHEMA + ", pg_temp",
-            "knowledge_libraries_delete_asset_grants search_path=pg_catalog, "
-                + SCHEMA
-                + ", pg_temp",
             "opaa_audit_delete_expired_partitions search_path=pg_catalog, " + SCHEMA + ", pg_temp",
             "opaa_diagnostic_context_delete_expired_partitions search_path=pg_catalog, "
                 + SCHEMA

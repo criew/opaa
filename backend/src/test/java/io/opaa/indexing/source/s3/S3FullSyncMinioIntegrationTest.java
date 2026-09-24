@@ -2,10 +2,10 @@ package io.opaa.indexing.source.s3;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.IndexingRunMode;
-import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.SystemRole;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.document.Document;
@@ -148,7 +148,7 @@ class S3FullSyncMinioIntegrationTest {
             "MinIO",
             null,
             userId,
-            LibraryVisibility.PRIVATE,
+            AssetVisibility.PRIVATE,
             false,
             DocumentSourceType.S3,
             null,

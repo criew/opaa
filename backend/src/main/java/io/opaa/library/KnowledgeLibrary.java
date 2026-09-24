@@ -1,14 +1,14 @@
 package io.opaa.library;
 
+import io.opaa.api.types.AssetOwnerType;
+import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.ExternalAccessState;
-import io.opaa.api.types.LibraryOwnerType;
-import io.opaa.api.types.LibraryVisibility;
+import io.opaa.asset.Asset;
 import io.opaa.indexing.source.s3.S3SourceSettings;
 import io.opaa.indexing.source.s3.S3SourceSettingsJson;
 import io.opaa.permission.AssetType;
-import io.opaa.permission.PermissionHistoryService;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
@@ -17,11 +17,9 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
-import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OrderBy;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreUpdate;
+import jakarta.persistence.PrimaryKeyJoinColumn;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -36,26 +34,12 @@ import org.hibernate.type.SqlTypes;
 
 /**
  * The first asset type (#201, see docs/features/spaces-and-assets.md#assets): a document container
- * with its own owner, independent of any space. A document belongs to exactly one library; a
- * library can be associated with any number of spaces (#203, not yet implemented) without that
+ * on the asset shell. Name, owner, release level and findability are the shell's ({@link Asset},
+ * table {@code assets}); this entity and its table {@code knowledge_libraries} carry only what a
+ * library alone has - its single quellentyp and quellkonfiguration (ADR-0018), the share cap, the
+ * release for Fremdzugaenge, the schedule and the index and metadata switches. A document belongs
+ * to exactly one library; a library can be associated with any number of spaces without that
  * association granting any access.
- *
- * <p>Ownership uses two separate columns, {@code ownerUserId} and {@code ownerGroupId}, instead of
- * one polymorphic id - each carries a real foreign key to its own target table ({@code
- * fk_knowledge_libraries_owner_user}, {@code fk_knowledge_libraries_owner_group_organization},
- * migration 012), which a single polymorphic column could not. The check constraint {@code
- * chk_knowledge_libraries_owner} enforces that exactly the column matching {@link #ownerType} is
- * non-null: {@code USER} carries {@code ownerUserId} only, {@code GROUP} carries {@code
- * ownerGroupId} only. {@link #getOwnerId()} exposes whichever one is set as a single id, for
- * callers (the API response, access checks) that only care "who owns this", not which column backs
- * it. A third kind, {@code SYSTEM}, carrying neither column, existed from #201 until #521 (see
- * {@link LibraryOwnerType}'s own Javadoc) - every library now has a real owner.
- *
- * <p><b>Since ADR-0018, a library also carries the single quellentyp and quellkonfiguration its
- * content comes from</b> ({@link #sourceType} and its associated columns) - it <em>is</em> the
- * source, replacing the per-request configuration {@code IndexingTriggerRequest} used to carry
- * (ADR-0017, Entscheidung 4, now superseded). See {@link #sourceType}'s own Javadoc for which
- * columns each type carries.
  *
  * <p><b>{@code @DynamicUpdate} is part of the contract, not a tuning knob</b> (#1806): {@link
  * #sourceCredentials} and {@link #webhookSecret} read as {@code null} while their key is missing
@@ -66,7 +50,8 @@ import org.hibernate.type.SqlTypes;
 @Entity
 @DynamicUpdate
 @Table(name = "knowledge_libraries")
-public class KnowledgeLibrary {
+@PrimaryKeyJoinColumn(name = "id")
+public class KnowledgeLibrary extends Asset {
 
   /**
    * The value {@code asset_grants.asset_type} carries for a knowledge library - the first asset
@@ -76,55 +61,35 @@ public class KnowledgeLibrary {
    */
   public static final AssetType ASSET_TYPE = AssetType.of("KNOWLEDGE_LIBRARY");
 
-  @Id private UUID id;
-
-  @Column(name = "organization_id", nullable = false)
-  private UUID organizationId;
-
-  @Column(name = "name", nullable = false, length = 255)
-  private String name;
-
-  @Column(name = "description", length = 2000)
-  private String description;
-
-  @Enumerated(EnumType.STRING)
-  @Column(name = "owner_type", nullable = false, length = 20)
-  private LibraryOwnerType ownerType;
-
-  @Column(name = "owner_user_id")
-  private UUID ownerUserId;
-
-  @Column(name = "owner_group_id")
-  private UUID ownerGroupId;
-
-  @Enumerated(EnumType.STRING)
-  @Column(name = "visibility", nullable = false, length = 20)
-  private LibraryVisibility visibility;
-
-  @Column(name = "listed", nullable = false)
-  private boolean listed;
+  /**
+   * The organization repeated on the type row: documents, folders, runs and chat references point
+   * at {@code (id, organization_id)} of this table. Always the shell's organization.
+   */
+  @Column(name = "organization_id", nullable = false, updatable = false)
+  private UUID libraryOrganizationId;
 
   /**
-   * The ceiling {@link #visibility} may not exceed (#797) - {@code SYSTEM_ADMIN}-set, per library,
-   * meaningless for {@code UPLOAD} ({@code chk_knowledge_libraries_share_cap_upload_unrestricted}
-   * keeps it at its unrestricted default there). Delivered {@code ORGANIZATION}: the migration day
-   * changes nothing until a system administrator actually lowers it (migration 069).
+   * The ceiling the shell's visibility may not exceed (#797) - {@code SYSTEM_ADMIN}-set, per
+   * library, meaningless for {@code UPLOAD} ({@code
+   * chk_knowledge_libraries_share_cap_upload_unrestricted} keeps it at its unrestricted default
+   * there). Delivered {@code ORGANIZATION}: the migration day changes nothing until a system
+   * administrator actually lowers it (migration 069).
    */
   @Enumerated(EnumType.STRING)
   @Column(name = "visibility_cap", nullable = false, length = 20)
-  private LibraryVisibility visibilityCap = LibraryVisibility.ORGANIZATION;
+  private AssetVisibility visibilityCap = AssetVisibility.ORGANIZATION;
 
   /**
-   * The counterpart ceiling for {@link #listed} - {@code false} forbids listing this library
-   * regardless of {@link #visibility}. Delivered {@code true} (unrestricted), same reasoning as
+   * The counterpart ceiling for the shell's {@code listed} - {@code false} forbids listing this
+   * library regardless of its visibility. Delivered {@code true} (unrestricted), same reasoning as
    * {@link #visibilityCap}.
    */
   @Column(name = "listed_cap", nullable = false)
   private boolean listedCap = true;
 
   /**
-   * The third reach field beside {@link #visibility} and {@link #listed}: whether this library may
-   * be used through a Fremdzugang, and where it may not, why not (#1731,
+   * The third reach field beside the shell's visibility and listed: whether this library may be
+   * used through a Fremdzugang, and where it may not, why not (#1731,
    * docs/features/external-access.md). {@code NEVER_SET} for every new and every pre-existing
    * library - a Bestand never leaves the house because nobody decided it should.
    */
@@ -327,22 +292,16 @@ public class KnowledgeLibrary {
   @Column(name = "core_context_prefix_document_date", nullable = false)
   private boolean coreContextPrefixDocumentDate;
 
-  @Column(name = "created_at", nullable = false, updatable = false)
-  private Instant createdAt;
-
-  @Column(name = "updated_at", nullable = false)
-  private Instant updatedAt;
-
   protected KnowledgeLibrary() {}
 
   private KnowledgeLibrary(
       UUID organizationId,
       String name,
       String description,
-      LibraryOwnerType ownerType,
+      AssetOwnerType ownerType,
       UUID ownerUserId,
       UUID ownerGroupId,
-      LibraryVisibility visibility,
+      AssetVisibility visibility,
       boolean listed,
       DocumentSourceType sourceType,
       String sourcePath,
@@ -350,15 +309,16 @@ public class KnowledgeLibrary {
       String sourceProxy,
       String sourceCredentials,
       boolean sourceInsecureSsl) {
-    this.id = UUID.randomUUID();
-    this.organizationId = organizationId;
-    this.name = name;
-    this.description = description;
-    this.ownerType = ownerType;
-    this.ownerUserId = ownerUserId;
-    this.ownerGroupId = ownerGroupId;
-    this.visibility = visibility;
-    this.listed = listed;
+    super(
+        ASSET_TYPE,
+        organizationId,
+        name,
+        description,
+        ownerType,
+        ownerType == AssetOwnerType.USER ? ownerUserId : ownerGroupId,
+        visibility,
+        listed);
+    this.libraryOrganizationId = organizationId;
     this.sourceType = sourceType;
     this.sourcePath = sourcePath;
     this.sourceUrl = sourceUrl;
@@ -377,7 +337,7 @@ public class KnowledgeLibrary {
       String name,
       String description,
       UUID ownerUserId,
-      LibraryVisibility visibility,
+      AssetVisibility visibility,
       boolean listed) {
     return ownedByUser(
         organizationId,
@@ -399,7 +359,7 @@ public class KnowledgeLibrary {
       String name,
       String description,
       UUID ownerUserId,
-      LibraryVisibility visibility,
+      AssetVisibility visibility,
       boolean listed,
       DocumentSourceType sourceType,
       String sourcePath,
@@ -411,7 +371,7 @@ public class KnowledgeLibrary {
         organizationId,
         name,
         description,
-        LibraryOwnerType.USER,
+        AssetOwnerType.USER,
         ownerUserId,
         null,
         visibility,
@@ -427,14 +387,14 @@ public class KnowledgeLibrary {
   /**
    * Convenience overload for callers that do not care about the quellentyp - defaults to {@link
    * DocumentSourceType#UPLOAD} with no configuration, mirroring the no-config overload of {@link
-   * #ownedByUser(UUID, String, String, UUID, LibraryVisibility, boolean)}.
+   * #ownedByUser(UUID, String, String, UUID, AssetVisibility, boolean)}.
    */
   public static KnowledgeLibrary ownedByGroup(
       UUID organizationId,
       String name,
       String description,
       UUID ownerGroupId,
-      LibraryVisibility visibility,
+      AssetVisibility visibility,
       boolean listed) {
     return ownedByGroup(
         organizationId,
@@ -456,7 +416,7 @@ public class KnowledgeLibrary {
       String name,
       String description,
       UUID ownerGroupId,
-      LibraryVisibility visibility,
+      AssetVisibility visibility,
       boolean listed,
       DocumentSourceType sourceType,
       String sourcePath,
@@ -468,7 +428,7 @@ public class KnowledgeLibrary {
         organizationId,
         name,
         description,
-        LibraryOwnerType.GROUP,
+        AssetOwnerType.GROUP,
         null,
         ownerGroupId,
         visibility,
@@ -479,38 +439,6 @@ public class KnowledgeLibrary {
         sourceProxy,
         sourceCredentials,
         sourceInsecureSsl);
-  }
-
-  @PrePersist
-  void onCreate() {
-    Instant now = Instant.now();
-    this.createdAt = now;
-    this.updatedAt = now;
-  }
-
-  @PreUpdate
-  void onUpdate() {
-    this.updatedAt = Instant.now();
-  }
-
-  /**
-   * Package-private by contract: {@link #visibility} is an input of {@link
-   * LibraryAccessService#readableLibraryIds}, and it shares one history interval with {@link
-   * #listed} ({@link PermissionHistoryService#recordVisibilityChanged}), so whoever changes either
-   * field must publish {@link LibraryChanged} - in production code today {@link
-   * KnowledgeLibraryService#updateLibrary} and {@link KnowledgeLibraryService#updateShareCap}
-   * (clamping onto a newly lowered share cap) do. Package scope keeps that obligation reachable, it
-   * does not enforce it: a further class in this package would have to honour it too, and a test in
-   * this package may record the history interval itself instead.
-   */
-  void updateDetails(
-      String name, String description, LibraryVisibility visibility, boolean listed) {
-    this.name = name;
-    this.description = description;
-    if (visibility != null) {
-      this.visibility = visibility;
-    }
-    this.listed = listed;
   }
 
   /**
@@ -570,7 +498,7 @@ public class KnowledgeLibrary {
       throw new IllegalStateException("only an S3 library carries S3 settings");
     }
     this.sourceSettings = S3SourceSettingsJson.write(Objects.requireNonNull(settings, "settings"));
-    this.updatedAt = Instant.now();
+    touch();
   }
 
   /** The typed configuration of an {@code S3} library, {@code null} for every other type. */
@@ -585,7 +513,7 @@ public class KnowledgeLibrary {
    */
   public void updateConfluenceFullSyncIntervalDays(Integer days) {
     this.confluenceFullSyncIntervalDays = days;
-    this.updatedAt = Instant.now();
+    touch();
   }
 
   public Integer getConfluenceFullSyncIntervalDays() {
@@ -600,75 +528,10 @@ public class KnowledgeLibrary {
     selection.stream()
         .sorted(Comparator.comparing(ConfluenceSpaceSelection::getSpaceKey))
         .forEach(this.confluenceSpaces::add);
-    this.updatedAt = Instant.now();
+    touch();
   }
 
-  public boolean isOwnedByUser(UUID userId) {
-    return ownerType == LibraryOwnerType.USER && ownerUserId.equals(userId);
-  }
-
-  public boolean isOwnedByGroup(UUID groupId) {
-    return ownerType == LibraryOwnerType.GROUP && ownerGroupId.equals(groupId);
-  }
-
-  /**
-   * Hands the library to another owner (#1834, ADR-0036 Entscheidung 10) - exactly the column
-   * matching {@code ownerType} stays set, the other is cleared, as {@code
-   * chk_knowledge_libraries_owner} demands. The owner's {@code OWNER} grant is a separate row and
-   * moves with the transfer's grant part, not with this call.
-   */
-  public void transferOwnershipTo(LibraryOwnerType ownerType, UUID ownerId) {
-    this.ownerType = ownerType;
-    this.ownerUserId = ownerType == LibraryOwnerType.USER ? ownerId : null;
-    this.ownerGroupId = ownerType == LibraryOwnerType.GROUP ? ownerId : null;
-    this.updatedAt = Instant.now();
-  }
-
-  /** The owning user or group id, whichever {@link #ownerType} points at. */
-  public UUID getOwnerId() {
-    return switch (ownerType) {
-      case USER -> ownerUserId;
-      case GROUP -> ownerGroupId;
-    };
-  }
-
-  public UUID getId() {
-    return id;
-  }
-
-  public UUID getOrganizationId() {
-    return organizationId;
-  }
-
-  public String getName() {
-    return name;
-  }
-
-  public String getDescription() {
-    return description;
-  }
-
-  public LibraryOwnerType getOwnerType() {
-    return ownerType;
-  }
-
-  public UUID getOwnerUserId() {
-    return ownerUserId;
-  }
-
-  public UUID getOwnerGroupId() {
-    return ownerGroupId;
-  }
-
-  public LibraryVisibility getVisibility() {
-    return visibility;
-  }
-
-  public boolean isListed() {
-    return listed;
-  }
-
-  public LibraryVisibility getVisibilityCap() {
+  public AssetVisibility getVisibilityCap() {
     return visibilityCap;
   }
 
@@ -679,11 +542,10 @@ public class KnowledgeLibrary {
   /**
    * Sets the share cap alone (#797) - never the clamp its narrowing may require. {@code
    * KnowledgeLibraryService#updateShareCap} validates {@code SYSTEM_ADMIN} and the {@code UPLOAD}
-   * exclusion before calling this, then separately calls {@link #updateDetails} in the same
-   * transaction to pull {@link #visibility}/{@link #listed} back down when the newly set cap is
-   * narrower than what the library currently carries.
+   * exclusion before calling this, then has the asset shell narrow visibility and listed in the
+   * same transaction when the newly set cap is narrower than what the library currently carries.
    */
-  void updateShareCap(LibraryVisibility visibilityCap, boolean listedCap) {
+  void updateShareCap(AssetVisibility visibilityCap, boolean listedCap) {
     this.visibilityCap = Objects.requireNonNull(visibilityCap, "visibilityCap");
     this.listedCap = listedCap;
   }
@@ -739,11 +601,11 @@ public class KnowledgeLibrary {
   }
 
   /**
-   * Package-private by contract, for the same reason as {@link #updateDetails}: the release is a
-   * reach field sharing one history interval with {@code visibility}/{@code listed} ({@link
-   * PermissionHistoryService#recordExternalAccessChanged}), so whoever changes it must write that
-   * interval - in production code today only {@link LibraryExternalAccessService} does. Package
-   * scope keeps that obligation reachable; it does not enforce it.
+   * Package-private by contract: the release is a reach field sharing one history interval with the
+   * shell's visibility and listed ({@code
+   * AssetVisibilityHistoryService#recordExternalAccessChanged}), so whoever changes it must write
+   * that interval - in production code today only {@link LibraryExternalAccessService} does.
+   * Package scope keeps that obligation reachable; it does not enforce it.
    *
    * <p>{@code expiresAt} is required for {@link ExternalAccessState#ACTIVE} and kept as the date
    * the release ran to for every other state except {@link ExternalAccessState#NEVER_SET}, which
@@ -818,7 +680,7 @@ public class KnowledgeLibrary {
       throw new IllegalStateException("only a CONFLUENCE or S3 library carries a push secret");
     }
     this.webhookSecret = secret;
-    this.updatedAt = Instant.now();
+    touch();
   }
 
   /** The selected spaces, ordered by key; empty for every type but {@code CONFLUENCE}. */
@@ -859,16 +721,8 @@ public class KnowledgeLibrary {
     }
     this.coreContextPrefixDocumentType = documentType;
     this.coreContextPrefixDocumentDate = documentDate;
-    this.updatedAt = Instant.now();
+    touch();
     return true;
-  }
-
-  public Instant getCreatedAt() {
-    return createdAt;
-  }
-
-  public Instant getUpdatedAt() {
-    return updatedAt;
   }
 
   public boolean isDiagnosticsLocked() {
@@ -892,6 +746,6 @@ public class KnowledgeLibrary {
   public void setModelExtractionSwitches(boolean modelExtractionEnabled, boolean keywordsEnabled) {
     this.modelExtractionEnabled = modelExtractionEnabled;
     this.keywordsEnabled = keywordsEnabled;
-    this.updatedAt = Instant.now();
+    touch();
   }
 }

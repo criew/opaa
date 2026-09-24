@@ -1,0 +1,1014 @@
+package io.opaa.asset;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import io.opaa.api.types.AssetRole;
+import io.opaa.api.types.AssetVisibility;
+import io.opaa.api.types.AuditObjectType;
+import io.opaa.api.types.PermissionSubjectType;
+import io.opaa.api.types.SystemRole;
+import io.opaa.audit.AuditEventRecorder;
+import io.opaa.auth.CurrentUser;
+import io.opaa.auth.User;
+import io.opaa.auth.UserRepository;
+import io.opaa.common.AccessDeniedException;
+import io.opaa.common.ConflictException;
+import io.opaa.common.NotFoundException;
+import io.opaa.common.ValidationException;
+import io.opaa.library.KnowledgeLibrary;
+import io.opaa.permission.AssetAccessService;
+import io.opaa.permission.AssetGrant;
+import io.opaa.permission.AssetGrantRepository;
+import io.opaa.permission.GroupMemberDisclosureDirectory;
+import io.opaa.permission.GroupMembershipResolver;
+import io.opaa.permission.GroupSizeProperties;
+import io.opaa.permission.GroupSubject;
+import io.opaa.permission.GroupSubjectDirectory;
+import io.opaa.permission.SuccessionReachGuard;
+import java.time.Instant;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.context.ApplicationEventPublisher;
+
+class AssetGrantServiceTest {
+
+  private AssetGrantRepository grantRepository;
+  private UserRepository userRepository;
+  private GroupSubjectDirectory groupDirectory;
+  private GroupMemberDisclosureDirectory disclosureDirectory;
+  private GroupMembershipResolver groupMemberships;
+  private AssetAuthorization accessService;
+  private AssetAccessService assetAccessService;
+  private AuditEventRecorder auditEventRecorder;
+  private ApplicationEventPublisher eventPublisher;
+  private AssetGrantService grantService;
+
+  private final UUID organizationId = UUID.randomUUID();
+  private final UUID managerId = UUID.randomUUID();
+  private final CurrentUser managerCaller =
+      CurrentUser.of(managerId, organizationId, SystemRole.USER, "Manager");
+  private UUID libraryId;
+  private KnowledgeLibrary library;
+
+  private final SuccessionReachGuard successionGuard = mock(SuccessionReachGuard.class);
+
+  @BeforeEach
+  void setUp() {
+    grantRepository = mock(AssetGrantRepository.class);
+    assetAccessService = mock(AssetAccessService.class);
+    userRepository = mock(UserRepository.class);
+    groupDirectory = mock(GroupSubjectDirectory.class);
+    disclosureDirectory = mock(GroupMemberDisclosureDirectory.class);
+    groupMemberships = mock(GroupMembershipResolver.class);
+    accessService = mock(AssetAuthorization.class);
+    AssetTypeDefinition libraryType = mock(AssetTypeDefinition.class);
+    when(libraryType.assetType()).thenReturn(KnowledgeLibrary.ASSET_TYPE);
+    when(libraryType.singular()).thenReturn("Bibliothek");
+    when(libraryType.auditObjectType()).thenReturn(AuditObjectType.KNOWLEDGE_LIBRARY);
+    auditEventRecorder = mock(AuditEventRecorder.class);
+    eventPublisher = mock(ApplicationEventPublisher.class);
+    grantService =
+        new AssetGrantService(
+            grantRepository,
+            userRepository,
+            groupDirectory,
+            disclosureDirectory,
+            groupMemberships,
+            new GroupSizeProperties(null),
+            accessService,
+            assetAccessService,
+            new AssetTypes(List.of(libraryType)),
+            auditEventRecorder,
+            eventPublisher,
+            successionGuard);
+
+    // KnowledgeLibrary.ownedByUser always assigns its own random id (like every other factory
+    // method on that entity) - libraryId is read back from the constructed instance rather than
+    // generated independently, so every stub keyed on "this library's id" below actually matches
+    // what AssetGrantService reads via library.getId().
+    library =
+        KnowledgeLibrary.ownedByUser(
+            organizationId, "Bibliothek", null, managerId, AssetVisibility.PRIVATE, false);
+    libraryId = library.getId();
+    when(accessService.load(KnowledgeLibrary.ASSET_TYPE, libraryId, organizationId))
+        .thenReturn(library);
+
+    User manager = new User("manager", "issuer", "manager@example.com", "Manager");
+    manager.setOrganizationId(organizationId);
+    when(userRepository.findById(managerId)).thenReturn(Optional.of(manager));
+
+    // The default for every test that is not about the visibility rule of ADR-0036,
+    // Entscheidung 9: the group is one the caller may name at all, so the assertions below are
+    // about the reason the service actually refuses.
+    when(groupDirectory.isSelectableBy(any(), any(), anyBoolean())).thenReturn(true);
+  }
+
+  /**
+   * ADR-0036, Entscheidung 9 (#1814): an internal group its stewards have not released for use is
+   * "not found" for a manager with no other relation to it - and on this path, the one where the id
+   * is typed by hand rather than picked from a list, exactly as much as in the list.
+   */
+  @Test
+  void upsertGrantAnswersNotFoundForAGroupTheCallerMayNotSelect() {
+    when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
+        .thenReturn(AssetRole.OWNER);
+    when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
+        .thenReturn(AssetRole.OWNER);
+    GroupSubject group =
+        new GroupSubject(
+            UUID.randomUUID(), organizationId, "Projektteam", false, false, false, false, true);
+    when(groupDirectory.find(group.id())).thenReturn(Optional.of(group));
+    when(groupDirectory.isSelectableBy(group.id(), managerId, false)).thenReturn(false);
+
+    AssetGrantUpsert request =
+        new AssetGrantUpsert(PermissionSubjectType.GROUP, group.id(), AssetRole.VIEWER);
+
+    assertThatThrownBy(
+            () ->
+                grantService.upsertGrant(
+                    KnowledgeLibrary.ASSET_TYPE, libraryId, request, managerCaller))
+        .isInstanceOf(NotFoundException.class)
+        .hasMessage("Gruppe nicht gefunden");
+    verify(grantRepository, never()).save(any());
+  }
+
+  @Test
+  void upsertGrantRejectsACallerWithoutManagerRole() {
+    when(accessService.requireRole(any(), any(), anyBoolean(), eq(AssetRole.MANAGER)))
+        .thenThrow(new AccessDeniedException("Kein Zugriff auf diese Bibliothek"));
+    AssetGrantUpsert request =
+        new AssetGrantUpsert(PermissionSubjectType.USER, UUID.randomUUID(), AssetRole.VIEWER);
+
+    assertThatThrownBy(
+            () ->
+                grantService.upsertGrant(
+                    KnowledgeLibrary.ASSET_TYPE, libraryId, request, managerCaller))
+        .isInstanceOf(AccessDeniedException.class);
+    verify(grantRepository, never()).save(any());
+  }
+
+  @Test
+  void upsertGrantCreatesADirectUserGrantAndInvalidatesTheLibraryCache() {
+    when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
+        .thenReturn(AssetRole.OWNER);
+    when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
+        .thenReturn(AssetRole.OWNER);
+    UUID subjectId = UUID.randomUUID();
+    User subjectUser = new User("subject", "issuer", "subject@example.com", "Subject");
+    subjectUser.setOrganizationId(organizationId);
+    when(userRepository.findById(subjectId)).thenReturn(Optional.of(subjectUser));
+    when(grantRepository.findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectUserId(
+            KnowledgeLibrary.ASSET_TYPE, libraryId, PermissionSubjectType.USER, subjectId))
+        .thenReturn(Optional.empty());
+    when(grantRepository.save(any(AssetGrant.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    AssetGrantUpsert request =
+        new AssetGrantUpsert(PermissionSubjectType.USER, subjectId, AssetRole.VIEWER);
+    var response =
+        grantService.upsertGrant(KnowledgeLibrary.ASSET_TYPE, libraryId, request, managerCaller);
+
+    assertThat(response.grant().getSubjectId()).isEqualTo(subjectId);
+    assertThat(response.grant().getRole()).isEqualTo(AssetRole.VIEWER);
+    // No active transaction synchronization in this unit test, so invalidation runs immediately -
+    // see AssetGrantService#invalidateAfterCommit's fallback branch.
+    verify(assetAccessService).invalidateAsset(KnowledgeLibrary.ASSET_TYPE, libraryId);
+  }
+
+  /**
+   * One of the two application-side checks replacing {@code fk_asset_grants_library_organization}
+   * (#1811, see {@code changes/038-asset-grants-type-independent.yaml}): the grant takes its asset
+   * reference and its organization from the loaded library, never from the request, so a grant can
+   * still not name an asset of another organization.
+   */
+  @Test
+  void aNewGrantTakesAssetTypeAssetIdAndOrganizationFromTheLoadedLibrary() {
+    when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
+        .thenReturn(AssetRole.OWNER);
+    when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
+        .thenReturn(AssetRole.OWNER);
+    UUID subjectId = UUID.randomUUID();
+    User subjectUser = new User("subject", "issuer", "subject@example.com", "Subject");
+    subjectUser.setOrganizationId(organizationId);
+    when(userRepository.findById(subjectId)).thenReturn(Optional.of(subjectUser));
+    when(grantRepository.findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectUserId(
+            KnowledgeLibrary.ASSET_TYPE, libraryId, PermissionSubjectType.USER, subjectId))
+        .thenReturn(Optional.empty());
+    when(grantRepository.save(any(AssetGrant.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    AssetGrant saved =
+        grantService
+            .upsertGrant(
+                KnowledgeLibrary.ASSET_TYPE,
+                libraryId,
+                new AssetGrantUpsert(PermissionSubjectType.USER, subjectId, AssetRole.VIEWER),
+                managerCaller)
+            .grant();
+
+    assertThat(saved.getAssetType()).isEqualTo(KnowledgeLibrary.ASSET_TYPE);
+    assertThat(saved.getAssetId()).isEqualTo(libraryId);
+    assertThat(saved.getOrganizationId()).isEqualTo(library.getOrganizationId());
+  }
+
+  /**
+   * The other one: a grant is never written for an asset id nobody could load, so the dropped
+   * foreign key's existence guarantee holds on every write path that exists.
+   */
+  @Test
+  void upsertGrantOnAnUnknownLibraryIsNotFoundAndWritesNothing() {
+    UUID unknownLibraryId = UUID.randomUUID();
+    when(accessService.load(KnowledgeLibrary.ASSET_TYPE, unknownLibraryId, organizationId))
+        .thenThrow(new NotFoundException("Bibliothek nicht gefunden"));
+
+    assertThatThrownBy(
+            () ->
+                grantService.upsertGrant(
+                    KnowledgeLibrary.ASSET_TYPE,
+                    unknownLibraryId,
+                    new AssetGrantUpsert(
+                        PermissionSubjectType.USER, UUID.randomUUID(), AssetRole.VIEWER),
+                    managerCaller))
+        .isInstanceOf(NotFoundException.class);
+    verify(grantRepository, never()).save(any());
+  }
+
+  @Test
+  void upsertGrantRejectsASubjectUserFromAnotherOrganizationAsNotFound() {
+    when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
+        .thenReturn(AssetRole.OWNER);
+    when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
+        .thenReturn(AssetRole.OWNER);
+    UUID foreignUserId = UUID.randomUUID();
+    User foreignUser = new User("foreign", "issuer", "foreign@example.com", "Foreign");
+    foreignUser.setOrganizationId(UUID.randomUUID());
+    when(userRepository.findById(foreignUserId)).thenReturn(Optional.of(foreignUser));
+
+    AssetGrantUpsert request =
+        new AssetGrantUpsert(PermissionSubjectType.USER, foreignUserId, AssetRole.VIEWER);
+
+    assertThatThrownBy(
+            () ->
+                grantService.upsertGrant(
+                    KnowledgeLibrary.ASSET_TYPE, libraryId, request, managerCaller))
+        .isInstanceOf(NotFoundException.class);
+  }
+
+  @Test
+  void upsertGrantRejectsASubjectGroupFromAnotherOrganizationAsNotFound() {
+    when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
+        .thenReturn(AssetRole.OWNER);
+    when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
+        .thenReturn(AssetRole.OWNER);
+    UUID foreignGroupId = UUID.randomUUID();
+    GroupSubject foreignGroup =
+        new GroupSubject(
+            foreignGroupId, UUID.randomUUID(), "Fremd", false, false, false, false, true);
+    when(groupDirectory.find(foreignGroupId)).thenReturn(Optional.of(foreignGroup));
+
+    AssetGrantUpsert request =
+        new AssetGrantUpsert(PermissionSubjectType.GROUP, foreignGroupId, AssetRole.VIEWER);
+
+    assertThatThrownBy(
+            () ->
+                grantService.upsertGrant(
+                    KnowledgeLibrary.ASSET_TYPE, libraryId, request, managerCaller))
+        .isInstanceOf(NotFoundException.class);
+  }
+
+  @Test
+  void upsertGrantUpdatesAnExistingGrantsRoleInsteadOfCreatingADuplicate() {
+    when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
+        .thenReturn(AssetRole.OWNER);
+    when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
+        .thenReturn(AssetRole.OWNER);
+    UUID subjectId = UUID.randomUUID();
+    User subjectUser = new User("subject", "issuer", "subject@example.com", "Subject");
+    subjectUser.setOrganizationId(organizationId);
+    when(userRepository.findById(subjectId)).thenReturn(Optional.of(subjectUser));
+    AssetGrant existing =
+        AssetGrant.forUser(
+            KnowledgeLibrary.ASSET_TYPE,
+            libraryId,
+            organizationId,
+            subjectId,
+            AssetRole.VIEWER,
+            null,
+            managerId);
+    when(grantRepository.findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectUserId(
+            KnowledgeLibrary.ASSET_TYPE, libraryId, PermissionSubjectType.USER, subjectId))
+        .thenReturn(Optional.of(existing));
+    when(grantRepository.save(any(AssetGrant.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    AssetGrantUpsert request =
+        new AssetGrantUpsert(PermissionSubjectType.USER, subjectId, AssetRole.MANAGER);
+    var response =
+        grantService.upsertGrant(KnowledgeLibrary.ASSET_TYPE, libraryId, request, managerCaller);
+
+    assertThat(response.grant().getRole()).isEqualTo(AssetRole.MANAGER);
+    verify(grantRepository, never()).save(argThat((AssetGrant g) -> g != existing));
+  }
+
+  @Test
+  void revokeGrantRemovesTheGrantAndInvalidatesTheLibraryCache() {
+    when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
+        .thenReturn(AssetRole.OWNER);
+    when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
+        .thenReturn(AssetRole.OWNER);
+    UUID grantId = UUID.randomUUID();
+    AssetGrant grant =
+        AssetGrant.forUser(
+            KnowledgeLibrary.ASSET_TYPE,
+            libraryId,
+            organizationId,
+            UUID.randomUUID(),
+            AssetRole.VIEWER,
+            null,
+            managerId);
+    when(grantRepository.findById(grantId)).thenReturn(Optional.of(grant));
+
+    grantService.revokeGrant(KnowledgeLibrary.ASSET_TYPE, libraryId, grantId, managerCaller);
+
+    verify(grantRepository).delete(grant);
+    verify(assetAccessService).invalidateAsset(KnowledgeLibrary.ASSET_TYPE, libraryId);
+  }
+
+  @Test
+  void revokeGrantTreatsAGrantFromAnotherLibraryAsNotFound() {
+    when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
+        .thenReturn(AssetRole.OWNER);
+    when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
+        .thenReturn(AssetRole.OWNER);
+    UUID grantId = UUID.randomUUID();
+    AssetGrant grantOnAnotherLibrary =
+        AssetGrant.forUser(
+            KnowledgeLibrary.ASSET_TYPE,
+            UUID.randomUUID(),
+            organizationId,
+            UUID.randomUUID(),
+            AssetRole.VIEWER,
+            null,
+            managerId);
+    when(grantRepository.findById(grantId)).thenReturn(Optional.of(grantOnAnotherLibrary));
+
+    assertThatThrownBy(
+            () ->
+                grantService.revokeGrant(
+                    KnowledgeLibrary.ASSET_TYPE, libraryId, grantId, managerCaller))
+        .isInstanceOf(NotFoundException.class);
+    verify(grantRepository, never()).delete(any());
+  }
+
+  @Test
+  void upsertGrantRejectsGrantingARoleHigherThanTheCallersOwnRole() {
+    // #202 code review (blocker 3): being a MANAGER is enough to grant *some* role, not enough to
+    // grant OWNER - only an OWNER may hand out OWNER, or a MANAGER could grant itself OWNER and
+    // then delete the library or transfer ownership, rights the spec reserves for OWNER alone.
+    when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
+        .thenReturn(AssetRole.OWNER);
+    when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
+        .thenReturn(AssetRole.MANAGER);
+    // #392 code review, finding 2: the subject must resolve (existence + organization boundary)
+    // before the escalation guard even runs - see AssetGrantService#upsertGrant. A subject id with
+    // no stubbed userRepository.findById would now fail with 404 before the guard is ever reached,
+    // testing the wrong thing; a real, resolvable subject in the same organization keeps this test
+    // exercising the escalation guard specifically.
+    UUID subjectId = UUID.randomUUID();
+    User subjectUser = new User("subject", "issuer", "subject@example.com", "Subject");
+    subjectUser.setOrganizationId(organizationId);
+    when(userRepository.findById(subjectId)).thenReturn(Optional.of(subjectUser));
+    AssetGrantUpsert request =
+        new AssetGrantUpsert(PermissionSubjectType.USER, subjectId, AssetRole.OWNER);
+
+    assertThatThrownBy(
+            () ->
+                grantService.upsertGrant(
+                    KnowledgeLibrary.ASSET_TYPE, libraryId, request, managerCaller))
+        .isInstanceOf(AccessDeniedException.class)
+        .satisfies(
+            ex -> {
+              // #448: the message names the role in German ("Eigentümer"), not the raw enum
+              // constant ("OWNER") - the escalation guard's whole point is a message an end user
+              // (not just a developer reading logs) can act on.
+              assertThat(ex.getMessage())
+                  .isEqualTo(
+                      "Die eigene Rolle reicht nicht aus, um die Rolle Eigentümer zu vergeben");
+            });
+    verify(grantRepository, never()).save(any());
+  }
+
+  @Test
+  void upsertGrantAllowsGrantingExactlyTheCallersOwnRole() {
+    when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
+        .thenReturn(AssetRole.OWNER);
+    when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
+        .thenReturn(AssetRole.MANAGER);
+    UUID subjectId = UUID.randomUUID();
+    User subjectUser = new User("subject", "issuer", "subject@example.com", "Subject");
+    subjectUser.setOrganizationId(organizationId);
+    when(userRepository.findById(subjectId)).thenReturn(Optional.of(subjectUser));
+    when(grantRepository.save(any(AssetGrant.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    AssetGrantUpsert request =
+        new AssetGrantUpsert(PermissionSubjectType.USER, subjectId, AssetRole.MANAGER);
+    var response =
+        grantService.upsertGrant(KnowledgeLibrary.ASSET_TYPE, libraryId, request, managerCaller);
+
+    assertThat(response.grant().getRole()).isEqualTo(AssetRole.MANAGER);
+  }
+
+  @Test
+  void upsertGrantRejectsTargetingADissolvedGroup() {
+    when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
+        .thenReturn(AssetRole.OWNER);
+    when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
+        .thenReturn(AssetRole.OWNER);
+    GroupSubject dissolvedGroup =
+        new GroupSubject(
+            UUID.randomUUID(), organizationId, "Aufgeloest", true, false, false, false, true);
+    when(groupDirectory.find(dissolvedGroup.id())).thenReturn(Optional.of(dissolvedGroup));
+
+    AssetGrantUpsert request =
+        new AssetGrantUpsert(PermissionSubjectType.GROUP, dissolvedGroup.id(), AssetRole.VIEWER);
+
+    assertThatThrownBy(
+            () ->
+                grantService.upsertGrant(
+                    KnowledgeLibrary.ASSET_TYPE, libraryId, request, managerCaller))
+        .isInstanceOf(ValidationException.class)
+        .satisfies(
+            ex -> {
+              // #448: correct German umlaut ("aufgelöst"), not the umlaut-free "aufgeloest".
+              assertThat(ex.getMessage())
+                  .isEqualTo(
+                      "Die Gruppe ist aufgelöst und kann keine neuen Berechtigungen mehr"
+                          + " erhalten");
+            });
+    verify(grantRepository, never()).save(any());
+  }
+
+  /**
+   * ADR-0036, Entscheidung 3 (#1816): a token group its provider no longer maintains keeps what it
+   * holds - its membership is frozen, not cleared - but exactly that is why it may not become a new
+   * grant target: nobody would ever join or leave it again.
+   */
+  @Test
+  void upsertGrantRejectsTargetingAGroupTheProviderNoLongerMaintains() {
+    when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
+        .thenReturn(AssetRole.OWNER);
+    when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
+        .thenReturn(AssetRole.OWNER);
+    GroupSubject group =
+        new GroupSubject(
+            UUID.randomUUID(), organizationId, "Referat 12", false, false, true, false, true);
+    when(groupDirectory.find(group.id())).thenReturn(Optional.of(group));
+
+    AssetGrantUpsert request =
+        new AssetGrantUpsert(PermissionSubjectType.GROUP, group.id(), AssetRole.VIEWER);
+
+    assertThatThrownBy(
+            () ->
+                grantService.upsertGrant(
+                    KnowledgeLibrary.ASSET_TYPE, libraryId, request, managerCaller))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("Verzeichnisabgleich");
+    verify(grantRepository, never()).save(any());
+  }
+
+  /**
+   * ADR-0036, Entscheidung 2: the groups of a disabled provider are no effective groups. Without
+   * this a release to them would reach nobody and then, with the provider switched back on, reach
+   * everybody at once without a second decision.
+   */
+  @Test
+  void upsertGrantRejectsTargetingAGroupOfADisabledProvider() {
+    when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
+        .thenReturn(AssetRole.OWNER);
+    when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
+        .thenReturn(AssetRole.OWNER);
+    GroupSubject group =
+        new GroupSubject(
+            UUID.randomUUID(), organizationId, "Fachbereich 3", false, true, false, false, true);
+    when(groupDirectory.find(group.id())).thenReturn(Optional.of(group));
+
+    AssetGrantUpsert request =
+        new AssetGrantUpsert(PermissionSubjectType.GROUP, group.id(), AssetRole.VIEWER);
+
+    assertThatThrownBy(
+            () ->
+                grantService.upsertGrant(
+                    KnowledgeLibrary.ASSET_TYPE, libraryId, request, managerCaller))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("Identitätsanbieter dieser Gruppe ist deaktiviert");
+    verify(grantRepository, never()).save(any());
+  }
+
+  @Test
+  void upsertGrantRejectsDowngradingTheLastActiveOwnerGrant() {
+    // #202 code review (blocker 3, extended to the update path): downgrading the sole active
+    // OWNER grant is exactly as dangerous as revoking it outright - both leave nobody able to
+    // manage the library.
+    when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
+        .thenReturn(AssetRole.OWNER);
+    when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
+        .thenReturn(AssetRole.OWNER);
+    UUID subjectId = UUID.randomUUID();
+    User subjectUser = new User("subject", "issuer", "subject@example.com", "Subject");
+    subjectUser.setOrganizationId(organizationId);
+    when(userRepository.findById(subjectId)).thenReturn(Optional.of(subjectUser));
+    AssetGrant onlyOwnerGrant =
+        AssetGrant.forUser(
+            KnowledgeLibrary.ASSET_TYPE,
+            libraryId,
+            organizationId,
+            subjectId,
+            AssetRole.OWNER,
+            null,
+            managerId);
+    when(grantRepository.findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectUserId(
+            KnowledgeLibrary.ASSET_TYPE, libraryId, PermissionSubjectType.USER, subjectId))
+        .thenReturn(Optional.of(onlyOwnerGrant));
+    when(grantRepository.countOtherActiveOwnerGrants(
+            eq(KnowledgeLibrary.ASSET_TYPE.value()),
+            eq(libraryId),
+            eq(onlyOwnerGrant.getId()),
+            any()))
+        .thenReturn(0L);
+
+    AssetGrantUpsert request =
+        new AssetGrantUpsert(PermissionSubjectType.USER, subjectId, AssetRole.VIEWER);
+
+    assertThatThrownBy(
+            () ->
+                grantService.upsertGrant(
+                    KnowledgeLibrary.ASSET_TYPE, libraryId, request, managerCaller))
+        .isInstanceOf(ConflictException.class)
+        .satisfies(
+            ex -> {
+              // #448 code review: "Eigentümer", nicht die rohe Enum-Konstante "OWNER".
+              assertThat(ex.getMessage())
+                  .isEqualTo(
+                      "Die letzte Eigentümer-Berechtigung einer Bibliothek kann nicht"
+                          + " herabgestuft werden");
+            });
+    verify(grantRepository, never()).save(any());
+  }
+
+  @Test
+  void revokeGrantRejectsRemovingTheLastActiveOwnerGrant() {
+    when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
+        .thenReturn(AssetRole.OWNER);
+    when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
+        .thenReturn(AssetRole.OWNER);
+    UUID grantId = UUID.randomUUID();
+    AssetGrant onlyOwnerGrant =
+        AssetGrant.forUser(
+            KnowledgeLibrary.ASSET_TYPE,
+            libraryId,
+            organizationId,
+            managerId,
+            AssetRole.OWNER,
+            null,
+            managerId);
+    when(grantRepository.findById(grantId)).thenReturn(Optional.of(onlyOwnerGrant));
+    when(grantRepository.countOtherActiveOwnerGrants(
+            eq(KnowledgeLibrary.ASSET_TYPE.value()),
+            eq(libraryId),
+            eq(onlyOwnerGrant.getId()),
+            any()))
+        .thenReturn(0L);
+
+    assertThatThrownBy(
+            () ->
+                grantService.revokeGrant(
+                    KnowledgeLibrary.ASSET_TYPE, libraryId, grantId, managerCaller))
+        .isInstanceOf(ConflictException.class)
+        .satisfies(
+            ex -> {
+              // #448 code review: "Eigentümer", nicht die rohe Enum-Konstante "OWNER".
+              assertThat(ex.getMessage())
+                  .isEqualTo(
+                      "Die letzte Eigentümer-Berechtigung einer Bibliothek kann nicht entfernt"
+                          + " werden");
+            });
+    verify(grantRepository, never()).delete(any());
+  }
+
+  @Test
+  void revokeGrantAllowsRemovingAnOwnerGrantWhenAnotherActiveOwnerGrantRemains() {
+    when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
+        .thenReturn(AssetRole.OWNER);
+    when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
+        .thenReturn(AssetRole.OWNER);
+    UUID grantId = UUID.randomUUID();
+    AssetGrant grantToRemove =
+        AssetGrant.forUser(
+            KnowledgeLibrary.ASSET_TYPE,
+            libraryId,
+            organizationId,
+            managerId,
+            AssetRole.OWNER,
+            null,
+            managerId);
+    when(grantRepository.findById(grantId)).thenReturn(Optional.of(grantToRemove));
+    // Keyed on grantToRemove's own id (not the lookup id grantId) - AssetGrantService passes
+    // grant.getId() to the guard, and AssetGrant.forUser mints its own random id independent of
+    // grantId.
+    when(grantRepository.countOtherActiveOwnerGrants(
+            eq(KnowledgeLibrary.ASSET_TYPE.value()),
+            eq(libraryId),
+            eq(grantToRemove.getId()),
+            any()))
+        .thenReturn(1L);
+
+    grantService.revokeGrant(KnowledgeLibrary.ASSET_TYPE, libraryId, grantId, managerCaller);
+
+    verify(grantRepository).delete(grantToRemove);
+  }
+
+  @Test
+  void revokeGrantRejectsRemovingAGrantWithARoleHigherThanTheCallersOwnRoleEvenIfNotTheLastOwner() {
+    // #202 code review round 2 (Befund 1): the escalation guard on the *existing* grant's role
+    // must fire independently of the last-active-OWNER guard, before it - even when another active
+    // OWNER grant remains (so the last-owner guard alone would allow the removal), a caller who
+    // only holds MANAGER may still never remove a grant that already carries OWNER. Previously
+    // revokeGrant never called effectiveRole at all, so this scenario passed with a 200 instead of
+    // this 403.
+    when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
+        .thenReturn(AssetRole.OWNER);
+    when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
+        .thenReturn(AssetRole.MANAGER);
+    UUID grantId = UUID.randomUUID();
+    AssetGrant ownerGrantToRemove =
+        AssetGrant.forUser(
+            KnowledgeLibrary.ASSET_TYPE,
+            libraryId,
+            organizationId,
+            UUID.randomUUID(),
+            AssetRole.OWNER,
+            null,
+            managerId);
+    when(grantRepository.findById(grantId)).thenReturn(Optional.of(ownerGrantToRemove));
+    // Deliberately stubbed even though the test asserts it is never called: proves the rejection
+    // below is not an accidental side effect of an unstubbed count defaulting to 0 and the
+    // last-active-OWNER guard firing for the wrong reason - a second active OWNER grant genuinely
+    // exists, so that guard alone would allow the removal.
+    when(grantRepository.countOtherActiveOwnerGrants(
+            eq(KnowledgeLibrary.ASSET_TYPE.value()),
+            eq(libraryId),
+            eq(ownerGrantToRemove.getId()),
+            any()))
+        .thenReturn(1L);
+
+    assertThatThrownBy(
+            () ->
+                grantService.revokeGrant(
+                    KnowledgeLibrary.ASSET_TYPE, libraryId, grantId, managerCaller))
+        .isInstanceOf(AccessDeniedException.class)
+        .satisfies(
+            ex -> {
+              // #448: the existing grant's role is named as "Eigentümer", not the raw "OWNER".
+              assertThat(ex.getMessage())
+                  .isEqualTo(
+                      "Die eigene Rolle reicht nicht aus, um eine bestehende"
+                          + " Eigentümer-Berechtigung zu entfernen");
+            });
+    verify(grantRepository, never()).delete(any());
+    // The role-escalation guard must short-circuit before the last-active-OWNER count is even
+    // read - a MANAGER is refused for the more fundamental reason regardless of how many other
+    // OWNER grants exist.
+    verify(grantRepository, never()).countOtherActiveOwnerGrants(any(), any(), any(), any());
+  }
+
+  @Test
+  void upsertGrantRejectsDowngradingAnExistingGrantWithARoleHigherThanTheCallersOwnRole() {
+    // The update-path counterpart of the revoke test above: a MANAGER downgrading an existing
+    // OWNER grant to something lower is exactly as much an escalation as revoking it outright, and
+    // must be rejected the same way, independent of the last-active-OWNER guard.
+    when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
+        .thenReturn(AssetRole.OWNER);
+    when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
+        .thenReturn(AssetRole.MANAGER);
+    UUID subjectId = UUID.randomUUID();
+    User subjectUser = new User("subject", "issuer", "subject@example.com", "Subject");
+    subjectUser.setOrganizationId(organizationId);
+    when(userRepository.findById(subjectId)).thenReturn(Optional.of(subjectUser));
+    AssetGrant existingOwnerGrant =
+        AssetGrant.forUser(
+            KnowledgeLibrary.ASSET_TYPE,
+            libraryId,
+            organizationId,
+            subjectId,
+            AssetRole.OWNER,
+            null,
+            managerId);
+    when(grantRepository.findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectUserId(
+            KnowledgeLibrary.ASSET_TYPE, libraryId, PermissionSubjectType.USER, subjectId))
+        .thenReturn(Optional.of(existingOwnerGrant));
+
+    AssetGrantUpsert request =
+        new AssetGrantUpsert(PermissionSubjectType.USER, subjectId, AssetRole.VIEWER);
+
+    assertThatThrownBy(
+            () ->
+                grantService.upsertGrant(
+                    KnowledgeLibrary.ASSET_TYPE, libraryId, request, managerCaller))
+        .isInstanceOf(AccessDeniedException.class)
+        .satisfies(
+            ex -> {
+              // #448: "ändern" with the correct umlaut, not the umlaut-free "aendern".
+              assertThat(ex.getMessage())
+                  .isEqualTo(
+                      "Die eigene Rolle reicht nicht aus, um eine bestehende"
+                          + " Eigentümer-Berechtigung zu ändern");
+            });
+    verify(grantRepository, never()).save(any());
+  }
+
+  @Test
+  void upsertGrantRejectsSettingTheLastActiveOwnerGrantsExpiryIntoThePast() {
+    // #202 code review round 2 (nit 1): "newRole == OWNER is always allowed" was too coarse - an
+    // OWNER renewing their own sole grant with role = OWNER but expiresAt in the past expires it
+    // immediately, leaving the library without any active OWNER. The count the guard protects must
+    // be taken after the intended change, including the new expiresAt, not just the new role.
+    when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
+        .thenReturn(AssetRole.OWNER);
+    when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
+        .thenReturn(AssetRole.OWNER);
+    AssetGrant onlyOwnerGrant =
+        AssetGrant.forUser(
+            KnowledgeLibrary.ASSET_TYPE,
+            libraryId,
+            organizationId,
+            managerId,
+            AssetRole.OWNER,
+            null,
+            managerId);
+    when(grantRepository.findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectUserId(
+            KnowledgeLibrary.ASSET_TYPE, libraryId, PermissionSubjectType.USER, managerId))
+        .thenReturn(Optional.of(onlyOwnerGrant));
+    when(grantRepository.countOtherActiveOwnerGrants(
+            eq(KnowledgeLibrary.ASSET_TYPE.value()),
+            eq(libraryId),
+            eq(onlyOwnerGrant.getId()),
+            any()))
+        .thenReturn(0L);
+
+    AssetGrantUpsert request =
+        new AssetGrantUpsert(PermissionSubjectType.USER, managerId, AssetRole.OWNER)
+            .expiresAt(Instant.now().minusSeconds(60));
+
+    assertThatThrownBy(
+            () ->
+                grantService.upsertGrant(
+                    KnowledgeLibrary.ASSET_TYPE, libraryId, request, managerCaller))
+        .isInstanceOf(ConflictException.class);
+    verify(grantRepository, never()).save(any());
+  }
+
+  @Test
+  void upsertGrantAllowsRenewingTheLastActiveOwnerGrantWithAFutureOrNoExpiry() {
+    // The positive counterpart of the test above: role = OWNER with either no expiry or a
+    // still-future one genuinely keeps the grant active, so the guard must not fire.
+    when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
+        .thenReturn(AssetRole.OWNER);
+    when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
+        .thenReturn(AssetRole.OWNER);
+    AssetGrant onlyOwnerGrant =
+        AssetGrant.forUser(
+            KnowledgeLibrary.ASSET_TYPE,
+            libraryId,
+            organizationId,
+            managerId,
+            AssetRole.OWNER,
+            null,
+            managerId);
+    when(grantRepository.findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectUserId(
+            KnowledgeLibrary.ASSET_TYPE, libraryId, PermissionSubjectType.USER, managerId))
+        .thenReturn(Optional.of(onlyOwnerGrant));
+    when(grantRepository.save(any(AssetGrant.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    AssetGrantUpsert request =
+        new AssetGrantUpsert(PermissionSubjectType.USER, managerId, AssetRole.OWNER);
+    var response =
+        grantService.upsertGrant(KnowledgeLibrary.ASSET_TYPE, libraryId, request, managerCaller);
+
+    assertThat(response.grant().getRole()).isEqualTo(AssetRole.OWNER);
+    verify(grantRepository, never()).countOtherActiveOwnerGrants(any(), any(), any(), any());
+  }
+
+  // #423 code review, finding 1: subjectDisplayName/grantedByDisplayName must be resolved by the
+  // backend so a caller without SYSTEM_ADMIN - the threshold GET /v1/admin/users and
+  // /v1/admin/groups both require - still sees names instead of raw UUIDs. Every test in this class
+  // already calls listGrants/upsertGrant/revokeGrant with systemAdmin = false, so these tests below
+  // deliberately do the same: resolution must not depend on that flag.
+  @Test
+  void listGrantsResolvesUserSubjectAndGranterDisplayNames() {
+    when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
+        .thenReturn(AssetRole.OWNER);
+    User subjectUser = new User("subject", "issuer", "subject@example.com", "Subjekt Person");
+    subjectUser.setOrganizationId(organizationId);
+    User granter = new User("granter", "issuer", "granter@example.com", "Erteilende Person");
+    granter.setOrganizationId(organizationId);
+    // subjectUser.getId()/granter.getId() (not an independently generated UUID) - findAllById's
+    // stub below matches entities by their own id, same as the real JpaRepository would.
+    AssetGrant grant =
+        AssetGrant.forUser(
+            KnowledgeLibrary.ASSET_TYPE,
+            libraryId,
+            organizationId,
+            subjectUser.getId(),
+            AssetRole.VIEWER,
+            null,
+            granter.getId());
+    when(grantRepository.findByAssetTypeAndAssetId(KnowledgeLibrary.ASSET_TYPE, libraryId))
+        .thenReturn(List.of(grant));
+    when(userRepository.findAllById(any())).thenReturn(List.of(subjectUser, granter));
+
+    var responses = grantService.listGrants(KnowledgeLibrary.ASSET_TYPE, libraryId, managerCaller);
+
+    assertThat(responses).hasSize(1);
+    assertThat(responses.get(0).subjectDisplayName()).isEqualTo("Subjekt Person");
+    assertThat(responses.get(0).grantedByDisplayName()).isEqualTo("Erteilende Person");
+  }
+
+  @Test
+  void listGrantsResolvesGroupSubjectDisplayName() {
+    when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
+        .thenReturn(AssetRole.OWNER);
+    UUID groupId = UUID.randomUUID();
+    AssetGrant grant =
+        AssetGrant.forGroup(
+            KnowledgeLibrary.ASSET_TYPE,
+            libraryId,
+            organizationId,
+            groupId,
+            AssetRole.VIEWER,
+            null,
+            managerId,
+            null);
+    when(grantRepository.findByAssetTypeAndAssetId(KnowledgeLibrary.ASSET_TYPE, libraryId))
+        .thenReturn(List.of(grant));
+    // #1820: Die Liste liest die Gruppe jetzt als Attribution - Name und Schutzkennzeichen in
+    // einem Zug, weil eine geschuetzte Gruppe hier namenlos bleibt.
+    when(groupDirectory.attributionsById(any()))
+        .thenReturn(
+            java.util.Map.of(
+                groupId,
+                new io.opaa.permission.GroupAttribution(
+                    groupId,
+                    "Referat 50",
+                    io.opaa.api.types.GroupOrigin.INTERNAL,
+                    null,
+                    io.opaa.api.types.GroupMechanism.NONE,
+                    false)));
+
+    var responses = grantService.listGrants(KnowledgeLibrary.ASSET_TYPE, libraryId, managerCaller);
+
+    assertThat(responses).hasSize(1);
+    assertThat(responses.get(0).subjectDisplayName()).isEqualTo("Referat 50");
+    assertThat(responses.get(0).protectedGroup()).isFalse();
+  }
+
+  /** ADR-0036, Entscheidung 9 (#1820): eine geschuetzte Gruppe ist hier namenlos und ohne Zahl. */
+  @Test
+  void listGrantsLeavesAProtectedGroupNamelessAndWithoutASignal() {
+    when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
+        .thenReturn(AssetRole.OWNER);
+    UUID groupId = UUID.randomUUID();
+    AssetGrant grant =
+        AssetGrant.forGroup(
+            KnowledgeLibrary.ASSET_TYPE,
+            libraryId,
+            organizationId,
+            groupId,
+            AssetRole.VIEWER,
+            null,
+            managerId,
+            23);
+    when(grantRepository.findByAssetTypeAndAssetId(KnowledgeLibrary.ASSET_TYPE, libraryId))
+        .thenReturn(List.of(grant));
+    when(groupDirectory.attributionsById(any()))
+        .thenReturn(
+            java.util.Map.of(
+                groupId,
+                new io.opaa.permission.GroupAttribution(
+                    groupId,
+                    "Personalrat",
+                    io.opaa.api.types.GroupOrigin.INTERNAL,
+                    null,
+                    io.opaa.api.types.GroupMechanism.NONE,
+                    true)));
+
+    var responses = grantService.listGrants(KnowledgeLibrary.ASSET_TYPE, libraryId, managerCaller);
+
+    assertThat(responses).hasSize(1);
+    assertThat(responses.get(0).subjectDisplayName()).isNull();
+    assertThat(responses.get(0).protectedGroup()).isTrue();
+    assertThat(responses.get(0).groupSize().memberCountAtGrant()).isNull();
+    assertThat(responses.get(0).groupSize().memberCountNow()).isNull();
+  }
+
+  /**
+   * ADR-0036, Entscheidung 9 (#1820): Eine neue Freigabe an eine Gruppe haelt fest, wie viele
+   * aktive Konten sie im Augenblick der Erteilung erreichte - die eine Zahl, gegen die "heute"
+   * spaeter verglichen wird.
+   */
+  @Test
+  void upsertGrantRecordsTheGroupsActiveMemberCountAtTheMomentOfTheGrant() {
+    when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
+        .thenReturn(AssetRole.OWNER);
+    when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
+        .thenReturn(AssetRole.OWNER);
+    UUID groupId = UUID.randomUUID();
+    when(groupDirectory.find(groupId))
+        .thenReturn(
+            Optional.of(
+                new GroupSubject(
+                    groupId, organizationId, "Referat 50", false, false, false, false, true)));
+    when(groupMemberships.activeMemberCount(groupId, organizationId)).thenReturn(23);
+    when(grantRepository.save(any(AssetGrant.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    grantService.upsertGrant(
+        KnowledgeLibrary.ASSET_TYPE,
+        libraryId,
+        new AssetGrantUpsert(PermissionSubjectType.GROUP, groupId, AssetRole.VIEWER, null),
+        managerCaller);
+
+    org.mockito.ArgumentCaptor<AssetGrant> saved =
+        org.mockito.ArgumentCaptor.forClass(AssetGrant.class);
+    verify(grantRepository).save(saved.capture());
+    assertThat(saved.getValue().getMemberCountAtGrant()).isEqualTo(23);
+  }
+
+  @Test
+  void listGrantsFallsBackToEmailWhenTheSubjectsDisplayNameIsUnset() {
+    // #446 code review round 2: a User whose token never carried a name/preferred_username claim
+    // has displayName == null (UserService#findOrCreateUser only overwrites it when the incoming
+    // claim is non-null). Falling back to the raw subject id there would reopen the same
+    // "MANAGER sees a UUID" gap this whole resolution mechanism exists to close - email is
+    // required and always present, so it is the fallback instead.
+    when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
+        .thenReturn(AssetRole.OWNER);
+    User subjectUser = new User("subject", "issuer", "subject@example.com", null);
+    subjectUser.setOrganizationId(organizationId);
+    AssetGrant grant =
+        AssetGrant.forUser(
+            KnowledgeLibrary.ASSET_TYPE,
+            libraryId,
+            organizationId,
+            subjectUser.getId(),
+            AssetRole.VIEWER,
+            null,
+            null);
+    when(grantRepository.findByAssetTypeAndAssetId(KnowledgeLibrary.ASSET_TYPE, libraryId))
+        .thenReturn(List.of(grant));
+    when(userRepository.findAllById(any())).thenReturn(List.of(subjectUser));
+
+    var responses = grantService.listGrants(KnowledgeLibrary.ASSET_TYPE, libraryId, managerCaller);
+
+    assertThat(responses).hasSize(1);
+    assertThat(responses.get(0).subjectDisplayName()).isEqualTo("subject@example.com");
+  }
+
+  @Test
+  void listGrantsLeavesDisplayNameNullWhenTheSubjectNoLongerExists() {
+    when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
+        .thenReturn(AssetRole.OWNER);
+    AssetGrant grant =
+        AssetGrant.forUser(
+            KnowledgeLibrary.ASSET_TYPE,
+            libraryId,
+            organizationId,
+            UUID.randomUUID(),
+            AssetRole.VIEWER,
+            null,
+            null);
+    when(grantRepository.findByAssetTypeAndAssetId(KnowledgeLibrary.ASSET_TYPE, libraryId))
+        .thenReturn(List.of(grant));
+    // Deliberately not stubbing userRepository.findAllById - a Mockito mock's default answer for
+    // an unstubbed List-returning method is an empty list, exercising the "subject deleted" branch.
+
+    var responses = grantService.listGrants(KnowledgeLibrary.ASSET_TYPE, libraryId, managerCaller);
+
+    assertThat(responses).hasSize(1);
+    assertThat(responses.get(0).subjectDisplayName()).isNull();
+    assertThat(responses.get(0).grantedByDisplayName()).isNull();
+  }
+}

@@ -1,0 +1,57 @@
+databaseChangeLog:
+  - changeSet:
+      id: 081-asset-grants-asset-foreign-key
+      author: opaa
+      comment: >-
+        Der Fremdschluessel, den 038 fuer die Typunabhaengigkeit aufgeben musste, kommt zurueck
+        (#1899): asset_grants zeigt mit (asset_id, asset_type, organization_id) auf die
+        Asset-Schale aus 079. Damit gelten die drei Zusagen, die 038 durch einen Trigger je Typ
+        und durch die Anwendung ersetzt hatte, wieder in der Datenbank selbst - fuer jeden
+        Asset-Typ zugleich:
+        .
+        (1) "Keine Freigabe ueberlebt ihr Asset" - ON DELETE CASCADE. Der Trigger
+        trg_knowledge_libraries_delete_asset_grants samt Funktion entfaellt; ein neuer
+        Asset-Typ bringt keinen eigenen mehr mit.
+        (2) "Das Asset existiert" und (3) "die Freigabe liegt in der Organisation des Assets" -
+        der zusammengesetzte Schluessel macht eine Zeile, die gegen eine der beiden verstoesst,
+        nicht anlegbar. asset_type ist Teil des Schluessels, damit eine Freigabe nur auf ein
+        Asset des Typs zeigen kann, den sie selbst nennt.
+        .
+        Eine Freigabe ohne passendes Asset kann es seit 038 nicht geben (der Trigger nahm sie mit
+        der Bibliothek). Sollte eine per SQL vorbei eingespielte Zeile dennoch existieren, wird sie
+        entfernt: Sie gewaehrt auf nichts Erreichbares ein Recht, und der Schluessel liesse sich
+        mit ihr nicht anlegen.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              DROP TRIGGER trg_knowledge_libraries_delete_asset_grants ON knowledge_libraries;
+
+              DROP FUNCTION knowledge_libraries_delete_asset_grants();
+
+              DELETE FROM asset_grants g
+               WHERE NOT EXISTS (
+                     SELECT 1 FROM assets a
+                      WHERE a.id = g.asset_id
+                        AND a.asset_type = g.asset_type
+                        AND a.organization_id = g.organization_id);
+
+              ALTER TABLE ONLY asset_grants
+                  ADD CONSTRAINT fk_asset_grants_asset_organization FOREIGN KEY (asset_id, asset_type, organization_id) REFERENCES assets(id, asset_type, organization_id) ON DELETE CASCADE;
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE asset_grants DROP CONSTRAINT fk_asset_grants_asset_organization;
+
+              CREATE FUNCTION knowledge_libraries_delete_asset_grants() RETURNS trigger
+                  LANGUAGE plpgsql
+                  SET search_path TO 'pg_catalog', '${database.defaultSchemaName}', 'pg_temp'
+                  AS $$ BEGIN
+                DELETE FROM asset_grants
+                 WHERE asset_type = 'KNOWLEDGE_LIBRARY'
+                   AND asset_id = OLD.id;
+                RETURN OLD;
+              END; $$;
+
+              CREATE TRIGGER trg_knowledge_libraries_delete_asset_grants BEFORE DELETE ON knowledge_libraries FOR EACH ROW EXECUTE FUNCTION knowledge_libraries_delete_asset_grants();

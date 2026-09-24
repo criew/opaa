@@ -4,9 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.api.types.AssetRole;
+import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
-import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.MetadataOrigin;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
@@ -64,7 +64,7 @@ class LibraryMetadataExtractionServiceIntegrationTest {
                 "Güte",
                 null,
                 owner.id(),
-                LibraryVisibility.PRIVATE,
+                AssetVisibility.PRIVATE,
                 false,
                 DocumentSourceType.UPLOAD,
                 null,
@@ -214,7 +214,7 @@ class LibraryMetadataExtractionServiceIntegrationTest {
   private void removeOwnRows() {
     List<UUID> ownLibraryIds =
         jdbcTemplate.queryForList(
-            "SELECT id FROM knowledge_libraries WHERE owner_user_id IN (SELECT id FROM users"
+            "SELECT id FROM assets WHERE owner_user_id IN (SELECT id FROM users"
                 + " WHERE email LIKE 'metadata-quality-%')",
             UUID.class);
     ownLibraryFixtures.removeLibraries(ownLibraryIds.toArray(new UUID[0]));

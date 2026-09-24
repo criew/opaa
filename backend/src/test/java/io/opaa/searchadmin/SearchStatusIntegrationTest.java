@@ -49,10 +49,10 @@ class SearchStatusIntegrationTest {
         "status-it-" + ownerId + "@example.com",
         DEFAULT_ORGANIZATION_ID);
     jdbcTemplate.update(
-        "INSERT INTO knowledge_libraries (id, organization_id, name, owner_type, owner_user_id,"
-            + " visibility, listed, source_type, created_at, updated_at)"
-            + " VALUES (?, ?, 'Statusbibliothek', 'USER', ?, 'PRIVATE', false, 'UPLOAD', now(),"
-            + " now())",
+        "WITH shell AS (INSERT INTO assets (id, asset_type, organization_id, name, owner_type,"
+            + " owner_user_id, visibility, listed) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, 'Statusbibliothek', 'USER', ?, 'PRIVATE', false)"
+            + " RETURNING id, organization_id) INSERT INTO knowledge_libraries (id,"
+            + " organization_id, source_type) SELECT id, organization_id, 'UPLOAD' FROM shell",
         libraryId,
         DEFAULT_ORGANIZATION_ID,
         ownerId);
@@ -62,7 +62,7 @@ class SearchStatusIntegrationTest {
   void tearDown() {
     vectorChunkStore.deleteByLibraryId(libraryId);
     jdbcTemplate.update("DELETE FROM documents WHERE library_id = ?", libraryId);
-    jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE id = ?", libraryId);
+    jdbcTemplate.update("DELETE FROM assets WHERE id = ?", libraryId);
     jdbcTemplate.update("DELETE FROM users WHERE id = ?", ownerId);
   }
 

@@ -109,7 +109,7 @@ class OrphanedOriginalCleanupIntegrationTest {
     grantHistoryRepository.deleteBySubjectUserIdIn(List.of(editor.getId()));
     membershipHistoryRepository.deleteByUserIdIn(List.of(editor.getId()));
     jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organizationId);
-    jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE id = ?", libraryId);
+    jdbcTemplate.update("DELETE FROM assets WHERE id = ?", libraryId);
     // Since #1819 a library carries ownership intervals; their owner column is RESTRICT, so
     // they have to go before the accounts that hold them.
     jdbcTemplate.update(

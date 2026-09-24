@@ -8,10 +8,10 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.IndexingRunMode;
-import io.opaa.api.types.LibraryVisibility;
 import io.opaa.indexing.document.Document;
 import io.opaa.indexing.document.DocumentIngestOutcomes;
 import io.opaa.indexing.document.DocumentIngestResult;
@@ -43,7 +43,7 @@ class IndexingRunTest {
           "Bibliothek",
           null,
           UUID.randomUUID(),
-          LibraryVisibility.PRIVATE,
+          AssetVisibility.PRIVATE,
           false,
           DocumentSourceType.HTTP_DIRECTORY,
           null,

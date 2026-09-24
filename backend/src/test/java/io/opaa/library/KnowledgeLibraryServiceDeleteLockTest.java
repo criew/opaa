@@ -8,9 +8,14 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.AssetRole;
+import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DocumentSourceType;
-import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.SystemRole;
+import io.opaa.asset.AssetGrantService;
+import io.opaa.asset.AssetShellService;
+import io.opaa.asset.AssetSuccessionSource;
+import io.opaa.asset.AssetTypes;
+import io.opaa.asset.AssetVisibilityHistoryService;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
@@ -77,8 +82,8 @@ class KnowledgeLibraryServiceDeleteLockTest {
         .thenReturn(List.of());
     accessService = mock(LibraryAccessService.class);
     PermissionHistoryService permissionHistoryService = mock(PermissionHistoryService.class);
-    LibraryVisibilityHistoryService visibilityHistoryService =
-        mock(LibraryVisibilityHistoryService.class);
+    AssetVisibilityHistoryService visibilityHistoryService =
+        mock(AssetVisibilityHistoryService.class);
     AuditEventRecorder auditEventRecorder = mock(AuditEventRecorder.class);
     VectorChunkStore vectorChunkStore =
         new VectorChunkStore(
@@ -101,20 +106,25 @@ class KnowledgeLibraryServiceDeleteLockTest {
         new ConfluenceProperties(0, null, null, 0, null, 0, 0, 0, null, null, 0);
     libraryService =
         new KnowledgeLibraryService(
-            mock(SuccessionReachGuard.class),
-            mock(LibrarySuccessionSource.class),
-            mock(AssetOwnershipHistoryService.class),
+            mock(AssetSuccessionSource.class),
             libraryRepository,
             userRepository,
             groupDirectory,
             membershipResolver,
             mock(CapabilityService.class),
             documentRepository,
-            grantRepository,
             grantService,
+            new AssetShellService(
+                new AssetTypes(List.of(new KnowledgeLibraryAssetType())),
+                grantService,
+                grantRepository,
+                mock(AssetOwnershipHistoryService.class),
+                permissionHistoryService,
+                visibilityHistoryService,
+                auditEventRecorder,
+                eventPublisher,
+                mock(SuccessionReachGuard.class)),
             accessService,
-            permissionHistoryService,
-            visibilityHistoryService,
             auditEventRecorder,
             vectorChunkStore,
             filesystemAllowlist,
@@ -144,7 +154,7 @@ class KnowledgeLibraryServiceDeleteLockTest {
             "Laufende Indizierung",
             null,
             ownerId,
-            LibraryVisibility.PRIVATE,
+            AssetVisibility.PRIVATE,
             false,
             DocumentSourceType.UPLOAD,
             null,

@@ -19,9 +19,9 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
-import io.opaa.api.types.LibraryVisibility;
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.chunk.ChunkingService;
 import io.opaa.indexing.chunk.EmbeddingRateEstimator;
@@ -163,7 +163,7 @@ class DocumentIngestServiceTest {
 
   private KnowledgeLibrary library() {
     return KnowledgeLibrary.ownedByUser(
-        UUID.randomUUID(), "Bibliothek", null, UUID.randomUUID(), LibraryVisibility.PRIVATE, false);
+        UUID.randomUUID(), "Bibliothek", null, UUID.randomUUID(), AssetVisibility.PRIVATE, false);
   }
 
   // embeddingConcurrency=1: every test in this class exercises the sequential storeChunks path (a

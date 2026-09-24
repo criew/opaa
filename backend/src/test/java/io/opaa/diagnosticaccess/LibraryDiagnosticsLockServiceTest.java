@@ -7,8 +7,8 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.AuditEventType;
-import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.SystemRole;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
@@ -57,7 +57,7 @@ class LibraryDiagnosticsLockServiceTest {
         new LibraryDiagnosticsLockService(libraryRepository, accessService, auditEventRecorder);
     library =
         KnowledgeLibrary.ownedByUser(
-            ORGANIZATION_ID, "Personalvorgänge", null, ownerId, LibraryVisibility.PRIVATE, false);
+            ORGANIZATION_ID, "Personalvorgänge", null, ownerId, AssetVisibility.PRIVATE, false);
     when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
     when(libraryRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
   }

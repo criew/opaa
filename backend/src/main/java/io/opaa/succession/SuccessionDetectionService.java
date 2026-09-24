@@ -100,7 +100,12 @@ public class SuccessionDetectionService {
         if (open == null) {
           cases.save(
               new SuccessionCase(
-                  organizationId, source.kind(), finding.objectType(), finding.objectId(), now));
+                  organizationId,
+                  source.kind(),
+                  finding.objectType(),
+                  finding.assetType(),
+                  finding.objectId(),
+                  now));
           opened++;
         } else {
           open.seenAt(now);

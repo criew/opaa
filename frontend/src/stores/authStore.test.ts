@@ -180,7 +180,7 @@ describe('authStore', () => {
       },
     })
     useGrantStore.setState({
-      grantsByLibrary: {
+      grantsByAsset: {
         'library-1': [
           {
             id: 'grant-1',
@@ -230,7 +230,7 @@ describe('authStore', () => {
     expect(useChatStore.getState().chatId).toBeNull()
     expect(useChatListStore.getState().chatsBySpaceId).toEqual({})
     expect(useDocumentStore.getState().documentsByLibrary).toEqual({})
-    expect(useGrantStore.getState().grantsByLibrary).toEqual({})
+    expect(useGrantStore.getState().grantsByAsset).toEqual({})
     expect(useIndexingStore.getState().runsByLibrary).toEqual({})
   })
 

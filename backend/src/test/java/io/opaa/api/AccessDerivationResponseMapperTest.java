@@ -2,14 +2,15 @@ package io.opaa.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.api.dto.LibraryAccessDerivationResponse;
+import io.opaa.api.dto.AssetAccessDerivationResponse;
 import io.opaa.api.dto.SpaceAccessDerivationResponse;
 import io.opaa.api.types.AccessBasis;
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.GroupMechanism;
 import io.opaa.api.types.GroupOrigin;
 import io.opaa.api.types.SpaceRole;
-import io.opaa.library.LibraryAccessDerivation;
+import io.opaa.asset.AssetAccessDerivation;
+import io.opaa.library.KnowledgeLibrary;
 import io.opaa.permission.AccessPath;
 import io.opaa.permission.GroupAttribution;
 import io.opaa.space.SpaceAccessDerivation;
@@ -36,15 +37,17 @@ class AccessDerivationResponseMapperTest {
             GroupMechanism.DIRECTORY,
             false);
 
-    LibraryAccessDerivationResponse response =
+    AssetAccessDerivationResponse response =
         AccessDerivationResponseMapper.toResponse(
-            new LibraryAccessDerivation(
+            new AssetAccessDerivation(
+                KnowledgeLibrary.ASSET_TYPE,
                 libraryId,
                 AssetRole.EDITOR,
                 List.of(
                     AccessPath.ofAsset(AccessBasis.GROUP_GRANT, AssetRole.EDITOR, SINCE, group))));
 
-    assertThat(response.getLibraryId()).isEqualTo(libraryId);
+    assertThat(response.getAssetType()).isEqualTo(io.opaa.api.dto.AssetType.KNOWLEDGE_LIBRARY);
+    assertThat(response.getAssetId()).isEqualTo(libraryId);
     assertThat(response.getEffectiveRole()).isEqualTo(AssetRole.EDITOR);
     assertThat(response.getPathsWithheld()).isFalse();
     assertThat(response.getPaths()).hasSize(1);
@@ -62,9 +65,10 @@ class AccessDerivationResponseMapperTest {
 
   @Test
   void aWayWithoutAGroupCarriesNoGroupAtAll() {
-    LibraryAccessDerivationResponse response =
+    AssetAccessDerivationResponse response =
         AccessDerivationResponseMapper.toResponse(
-            new LibraryAccessDerivation(
+            new AssetAccessDerivation(
+                KnowledgeLibrary.ASSET_TYPE,
                 UUID.randomUUID(),
                 AssetRole.VIEWER,
                 List.of(

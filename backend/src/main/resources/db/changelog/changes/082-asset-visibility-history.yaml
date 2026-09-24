@@ -1,0 +1,127 @@
+databaseChangeLog:
+  - changeSet:
+      id: 082-asset-visibility-history
+      author: opaa
+      comment: >-
+        Die Sichtbarkeitshistorie gehoert zur Asset-Schale (#1899): library_visibility_history
+        wird zu asset_visibility_history, library_id zu asset_id, und jede Zeile nennt ihren
+        asset_type - wie asset_grant_history (039) und asset_ownership_history (052). Alle
+        Bestandszeilen gehoeren zu Bibliotheken. Die Fremdzugangs-Spalten (033) bleiben: Ein Typ
+        ohne Fremdzugang fuehrt dort NEVER_SET, so wie jede Bibliothek, die nie freigegeben
+        wurde.
+        .
+        Der Grund der Loeschmarkierung heisst in beiden Historien ab hier ASSET_DELETED statt
+        LIBRARY_DELETED - in asset_visibility_history und in asset_grant_history, wie in
+        asset_ownership_history seit 052. Die Zeilen werden umgeschrieben, nicht neu erzeugt.
+        .
+        BEWUSST OHNE FREMDSCHLUESSEL auf assets (ADR-0016, Objektspalten ohne FK): Die Historie
+        ueberlebt das Asset, das offene Intervall schliesst die Anwendung beim Loeschen und
+        schreibt die Markierung ASSET_DELETED daneben. Ein ON DELETE CASCADE naehme genau den
+        Nachweis mit, fuer den die Tabelle existiert; ein RESTRICT machte jedes Asset
+        unloeschbar.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE library_visibility_history RENAME TO asset_visibility_history;
+
+              ALTER TABLE asset_visibility_history RENAME COLUMN library_id TO asset_id;
+
+              ALTER TABLE asset_visibility_history
+                  ADD COLUMN asset_type character varying(30);
+
+              UPDATE asset_visibility_history SET asset_type = 'KNOWLEDGE_LIBRARY';
+
+              ALTER TABLE asset_visibility_history
+                  ALTER COLUMN asset_type SET NOT NULL;
+
+              ALTER TABLE asset_visibility_history
+                  ADD CONSTRAINT chk_asset_visibility_history_asset_type_format CHECK ((asset_type ~ '^[A-Z][A-Z0-9_]*$'));
+
+              ALTER TABLE asset_visibility_history
+                  DROP CONSTRAINT chk_library_visibility_history_cause;
+
+              UPDATE asset_visibility_history SET cause = 'ASSET_DELETED' WHERE cause = 'LIBRARY_DELETED';
+
+              ALTER TABLE asset_visibility_history
+                  ADD CONSTRAINT chk_asset_visibility_history_cause
+                  CHECK ((cause IN ('CREATED', 'VISIBILITY_CHANGED', 'BACKFILL', 'ASSET_DELETED', 'EXTERNAL_ACCESS_CHANGED', 'EXTERNAL_ACCESS_EXPIRED')));
+
+              ALTER TABLE asset_visibility_history
+                  RENAME CONSTRAINT chk_library_visibility_history_visibility TO chk_asset_visibility_history_visibility;
+
+              ALTER TABLE asset_visibility_history
+                  RENAME CONSTRAINT chk_library_visibility_history_external_access_state TO chk_asset_visibility_history_external_access_state;
+
+              ALTER TABLE asset_visibility_history
+                  RENAME CONSTRAINT library_visibility_history_pkey TO asset_visibility_history_pkey;
+
+              ALTER TABLE asset_visibility_history
+                  RENAME CONSTRAINT fk_library_visibility_history_actor_user_organization TO fk_asset_visibility_history_actor_user_organization;
+
+              ALTER INDEX idx_library_visibility_history_organization RENAME TO idx_asset_visibility_history_organization;
+
+              DROP INDEX uk_library_visibility_history_open;
+
+              CREATE UNIQUE INDEX uk_asset_visibility_history_open ON asset_visibility_history USING btree (asset_type, asset_id) WHERE (valid_to IS NULL);
+
+              CREATE INDEX idx_asset_visibility_history_asset ON asset_visibility_history USING btree (asset_type, asset_id);
+
+              ALTER TABLE asset_grant_history
+                  DROP CONSTRAINT chk_asset_grant_history_cause;
+
+              UPDATE asset_grant_history SET cause = 'ASSET_DELETED' WHERE cause = 'LIBRARY_DELETED';
+
+              ALTER TABLE asset_grant_history
+                  ADD CONSTRAINT chk_asset_grant_history_cause CHECK ((cause IN ('GRANTED', 'ROLE_CHANGED', 'REVOKED', 'BACKFILL', 'ASSET_DELETED', 'TRANSFERRED_IN', 'TRANSFERRED_OUT')));
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE asset_grant_history
+                  DROP CONSTRAINT chk_asset_grant_history_cause;
+
+              UPDATE asset_grant_history SET cause = 'LIBRARY_DELETED' WHERE cause = 'ASSET_DELETED';
+
+              ALTER TABLE asset_grant_history
+                  ADD CONSTRAINT chk_asset_grant_history_cause CHECK ((cause IN ('GRANTED', 'ROLE_CHANGED', 'REVOKED', 'BACKFILL', 'LIBRARY_DELETED', 'TRANSFERRED_IN', 'TRANSFERRED_OUT')));
+
+              DELETE FROM asset_visibility_history WHERE asset_type <> 'KNOWLEDGE_LIBRARY';
+
+              DROP INDEX idx_asset_visibility_history_asset;
+
+              DROP INDEX uk_asset_visibility_history_open;
+
+              CREATE UNIQUE INDEX uk_library_visibility_history_open ON asset_visibility_history USING btree (asset_id) WHERE (valid_to IS NULL);
+
+              ALTER INDEX idx_asset_visibility_history_organization RENAME TO idx_library_visibility_history_organization;
+
+              ALTER TABLE asset_visibility_history
+                  RENAME CONSTRAINT fk_asset_visibility_history_actor_user_organization TO fk_library_visibility_history_actor_user_organization;
+
+              ALTER TABLE asset_visibility_history
+                  RENAME CONSTRAINT asset_visibility_history_pkey TO library_visibility_history_pkey;
+
+              ALTER TABLE asset_visibility_history
+                  RENAME CONSTRAINT chk_asset_visibility_history_external_access_state TO chk_library_visibility_history_external_access_state;
+
+              ALTER TABLE asset_visibility_history
+                  RENAME CONSTRAINT chk_asset_visibility_history_visibility TO chk_library_visibility_history_visibility;
+
+              ALTER TABLE asset_visibility_history
+                  DROP CONSTRAINT chk_asset_visibility_history_cause;
+
+              UPDATE asset_visibility_history SET cause = 'LIBRARY_DELETED' WHERE cause = 'ASSET_DELETED';
+
+              ALTER TABLE asset_visibility_history
+                  ADD CONSTRAINT chk_library_visibility_history_cause
+                  CHECK ((cause IN ('CREATED', 'VISIBILITY_CHANGED', 'BACKFILL', 'LIBRARY_DELETED', 'EXTERNAL_ACCESS_CHANGED', 'EXTERNAL_ACCESS_EXPIRED')));
+
+              ALTER TABLE asset_visibility_history
+                  DROP CONSTRAINT chk_asset_visibility_history_asset_type_format;
+
+              ALTER TABLE asset_visibility_history DROP COLUMN asset_type;
+
+              ALTER TABLE asset_visibility_history RENAME COLUMN asset_id TO library_id;
+
+              ALTER TABLE asset_visibility_history RENAME TO library_visibility_history;

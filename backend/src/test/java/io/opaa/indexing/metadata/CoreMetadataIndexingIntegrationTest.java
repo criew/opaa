@@ -4,8 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 
+import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DatePrecision;
-import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.MetadataOrigin;
 import io.opaa.api.types.SystemRole;
 import io.opaa.indexing.chunk.EmbeddingRateEstimator;
@@ -105,7 +105,7 @@ class CoreMetadataIndexingIntegrationTest {
                 "Kernfelder",
                 null,
                 userId,
-                LibraryVisibility.PRIVATE,
+                AssetVisibility.PRIVATE,
                 false));
   }
 

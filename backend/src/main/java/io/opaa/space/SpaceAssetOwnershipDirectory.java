@@ -52,8 +52,8 @@ class SpaceAssetOwnershipDirectory implements AssetOwnershipDirectory {
   }
 
   @Override
-  public AssetType assetType() {
-    return Space.ASSET_TYPE;
+  public boolean answersFor(AssetType assetType) {
+    return Space.ASSET_TYPE.equals(assetType);
   }
 
   @Override
@@ -62,13 +62,13 @@ class SpaceAssetOwnershipDirectory implements AssetOwnershipDirectory {
   }
 
   @Override
-  public String ownedAssetConflictMessage() {
+  public String ownedAssetConflictMessage(UUID groupId) {
     return "Die Gruppe besitzt noch Spaces und kann nicht gelöscht werden";
   }
 
   @Override
   public long countAssetsOwnedBy(PermissionSubject owner) {
-    return assetIdsOwnedBy(owner).size();
+    return ownedSpaceIds(owner).size();
   }
 
   /** A space is owned by a natural person, never by a group - there is nothing to count here. */
@@ -78,7 +78,12 @@ class SpaceAssetOwnershipDirectory implements AssetOwnershipDirectory {
   }
 
   @Override
-  public List<UUID> assetIdsOwnedBy(PermissionSubject owner) {
+  public Map<AssetType, List<UUID>> assetIdsOwnedBy(PermissionSubject owner) {
+    List<UUID> owned = ownedSpaceIds(owner);
+    return owned.isEmpty() ? Map.of() : Map.of(Space.ASSET_TYPE, owned);
+  }
+
+  private List<UUID> ownedSpaceIds(PermissionSubject owner) {
     if (owner.type() != PermissionSubjectType.USER) {
       return List.of();
     }
@@ -98,7 +103,12 @@ class SpaceAssetOwnershipDirectory implements AssetOwnershipDirectory {
    */
   @Override
   public void transferOwnership(
-      UUID assetId, PermissionSubject newOwner, UUID actorUserId, UUID transferId, Instant at) {
+      AssetType assetType,
+      UUID assetId,
+      PermissionSubject newOwner,
+      UUID actorUserId,
+      UUID transferId,
+      Instant at) {
     if (newOwner.type() != PermissionSubjectType.USER) {
       throw new ValidationException("Ein Space gehört immer einer natürlichen Person");
     }

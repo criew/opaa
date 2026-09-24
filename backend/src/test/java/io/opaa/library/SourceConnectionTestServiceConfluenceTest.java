@@ -14,10 +14,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.AssetRole;
+import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.Capability;
 import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.api.types.DocumentSourceType;
-import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.AccessDeniedException;
@@ -90,7 +90,7 @@ class SourceConnectionTestServiceConfluenceTest {
             "Wiki",
             null,
             currentUserId,
-            LibraryVisibility.PRIVATE,
+            AssetVisibility.PRIVATE,
             false,
             DocumentSourceType.CONFLUENCE,
             null,
@@ -275,7 +275,7 @@ class SourceConnectionTestServiceConfluenceTest {
             "Feed",
             null,
             currentUserId,
-            LibraryVisibility.PRIVATE,
+            AssetVisibility.PRIVATE,
             false,
             DocumentSourceType.RSS_FEED,
             null,

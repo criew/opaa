@@ -113,14 +113,22 @@ public enum AuditEventType {
    */
   GROUP_MEMBERS_READ,
   /**
-   * A library associated with (made available in) a space - recorded for every association, not
-   * only the mixed-audience case the name might suggest; whether the audience was mixed is a
-   * separate fact (the owner notification), not part of this event's own condition. See {@link
-   * #LIBRARY_DETACHED_FROM_SPACE} for the reverse operation - the two are always distinguishable by
+   * An asset of any type associated with (made available in) a space - recorded for every
+   * association, not only the mixed-audience case; whether the audience was mixed is a separate
+   * fact (the owner notification), not part of this event's own condition. See {@link
+   * #ASSET_DETACHED_FROM_SPACE} for the reverse operation - the two are always distinguishable by
    * type, never inferred from before/after payload shape.
    */
+  ASSET_SHARED_TO_SPACE,
+  /** The reverse of {@link #ASSET_SHARED_TO_SPACE} - an asset detached from a space. */
+  ASSET_DETACHED_FROM_SPACE,
+  /**
+   * {@link #ASSET_SHARED_TO_SPACE} as recorded while only libraries could be associated. Never
+   * written; it stays so those protocol rows remain readable, since {@code audit_log} cannot be
+   * rewritten.
+   */
   LIBRARY_SHARED_TO_SPACE,
-  /** The reverse of {@link #LIBRARY_SHARED_TO_SPACE} - a library detached from a space. */
+  /** {@link #ASSET_DETACHED_FROM_SPACE} under its former name - read-only like the one above. */
   LIBRARY_DETACHED_FROM_SPACE,
   ASSET_OWNER_CHANGED,
   /** Taking over an asset left without a responsible owner. */

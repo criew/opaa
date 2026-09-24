@@ -2,9 +2,9 @@ package io.opaa.indexing.document;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
-import io.opaa.api.types.LibraryVisibility;
 import io.opaa.indexing.chunk.ChunkingService;
 import io.opaa.indexing.format.ChunkFormatMetadata;
 import io.opaa.indexing.format.stream.confluencestorage.ConfluenceStorageFormat;
@@ -66,7 +66,7 @@ class ConfluencePageIndexingIntegrationTest {
             "Wiki Bauamt " + owner,
             null,
             owner,
-            LibraryVisibility.PRIVATE,
+            AssetVisibility.PRIVATE,
             false,
             DocumentSourceType.CONFLUENCE,
             null,

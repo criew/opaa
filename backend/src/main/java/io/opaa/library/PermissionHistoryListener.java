@@ -1,53 +1,32 @@
 package io.opaa.library;
 
-import io.opaa.permission.PermissionHistoryService;
+import io.opaa.asset.AssetVisibilityHistoryCause;
+import io.opaa.asset.AssetVisibilityHistoryService;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 /**
- * The permission-history half of {@link GrantChanged}/{@link LibraryChanged}'s double bookkeeping -
- * see their Javadoc for the transaction contract shared with {@link AuditListener}. A default
- * {@code @EventListener} (not {@code @TransactionalEventListener}) for the same reason as {@link
- * AuditListener}: it must run in the publisher's own transaction, not after commit, so it rolls
- * back with the triggering operation exactly like the direct {@link PermissionHistoryService} calls
- * it replaces.
+ * The history half of {@link LibraryChanged}'s double bookkeeping. A plain {@code @EventListener}:
+ * it runs in the publisher's transaction and rolls back with it.
  */
 @Component
 class PermissionHistoryListener {
 
-  private final PermissionHistoryService permissionHistoryService;
-  private final LibraryVisibilityHistoryService visibilityHistoryService;
+  private final AssetVisibilityHistoryService visibilityHistoryService;
 
-  PermissionHistoryListener(
-      PermissionHistoryService permissionHistoryService,
-      LibraryVisibilityHistoryService visibilityHistoryService) {
-    this.permissionHistoryService = permissionHistoryService;
+  PermissionHistoryListener(AssetVisibilityHistoryService visibilityHistoryService) {
     this.visibilityHistoryService = visibilityHistoryService;
-  }
-
-  @EventListener
-  void onGrantChanged(GrantChanged event) {
-    switch (event.cause()) {
-      case GRANTED ->
-          permissionHistoryService.recordGrantCreated(event.grant(), event.actorUserId());
-      case ROLE_CHANGED ->
-          permissionHistoryService.recordGrantRoleChanged(event.grant(), event.actorUserId());
-      case REVOKED ->
-          permissionHistoryService.recordGrantRevoked(event.grant(), event.actorUserId());
-    }
   }
 
   @EventListener
   void onLibraryChanged(LibraryChanged event) {
     switch (event.cause()) {
-      case CREATED ->
-          visibilityHistoryService.recordLibraryCreated(event.library(), event.actorUserId());
-      case VISIBILITY_CHANGED ->
-          visibilityHistoryService.recordVisibilityChanged(event.library(), event.actorUserId());
       case EXTERNAL_ACCESS_CHANGED ->
           visibilityHistoryService.recordExternalAccessChanged(
               event.library(),
-              LibraryVisibilityHistoryCause.EXTERNAL_ACCESS_CHANGED,
+              event.library().getExternalAccessState(),
+              event.library().getExternalAccessExpiresAt(),
+              AssetVisibilityHistoryCause.EXTERNAL_ACCESS_CHANGED,
               event.actorUserId());
     }
   }

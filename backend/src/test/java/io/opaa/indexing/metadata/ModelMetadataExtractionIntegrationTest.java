@@ -7,9 +7,9 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
-import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.MetadataOrigin;
 import io.opaa.api.types.SystemRole;
 import io.opaa.common.ValidationException;
@@ -105,7 +105,7 @@ class ModelMetadataExtractionIntegrationTest {
                 "Modellextraktion",
                 null,
                 userId,
-                LibraryVisibility.PRIVATE,
+                AssetVisibility.PRIVATE,
                 false,
                 DocumentSourceType.FILESYSTEM,
                 classTempDir.toString(),
@@ -567,7 +567,7 @@ class ModelMetadataExtractionIntegrationTest {
   private void removeOwnRows() {
     List<UUID> ownLibraryIds =
         jdbcTemplate.queryForList(
-            "SELECT id FROM knowledge_libraries WHERE owner_user_id IN (SELECT id FROM users"
+            "SELECT id FROM assets WHERE owner_user_id IN (SELECT id FROM users"
                 + " WHERE email = 'model-extraction-it@example.com')",
             UUID.class);
     for (UUID libraryId : ownLibraryIds) {
@@ -577,7 +577,7 @@ class ModelMetadataExtractionIntegrationTest {
       jdbcTemplate.update("DELETE FROM documents WHERE library_id = ?", libraryId);
     }
     jdbcTemplate.update(
-        "DELETE FROM knowledge_libraries WHERE owner_user_id IN (SELECT id FROM users WHERE"
+        "DELETE FROM assets WHERE owner_user_id IN (SELECT id FROM users WHERE"
             + " email = 'model-extraction-it@example.com')");
     jdbcTemplate.update("DELETE FROM users WHERE email = 'model-extraction-it@example.com'");
   }

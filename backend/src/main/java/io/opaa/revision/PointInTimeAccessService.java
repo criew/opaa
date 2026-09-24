@@ -6,14 +6,14 @@ import io.opaa.api.types.AccessBasis;
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.PermissionSubjectType;
+import io.opaa.asset.AssetVisibilityHistory;
+import io.opaa.asset.AssetVisibilityHistoryService;
 import io.opaa.audit.AuditAccessGate;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
-import io.opaa.library.LibraryVisibilityHistory;
-import io.opaa.library.LibraryVisibilityHistoryService;
 import io.opaa.permission.AssetGrantHistory;
 import io.opaa.permission.GroupMembershipHistory;
 import io.opaa.permission.GroupSubjectDirectory;
@@ -81,7 +81,7 @@ public class PointInTimeAccessService {
   private final AuditAccessGate gate;
   private final AuditEventRecorder eventRecorder;
   private final PermissionHistoryService permissionHistory;
-  private final LibraryVisibilityHistoryService visibilityHistory;
+  private final AssetVisibilityHistoryService visibilityHistory;
   private final SpaceMembershipHistoryService spaceMembershipHistory;
   private final PermissionHistoryRetentionService retentionService;
   private final GroupSubjectDirectory groupDirectory;
@@ -93,7 +93,7 @@ public class PointInTimeAccessService {
       AuditAccessGate gate,
       AuditEventRecorder eventRecorder,
       PermissionHistoryService permissionHistory,
-      LibraryVisibilityHistoryService visibilityHistory,
+      AssetVisibilityHistoryService visibilityHistory,
       SpaceMembershipHistoryService spaceMembershipHistory,
       PermissionHistoryRetentionService retentionService,
       GroupSubjectDirectory groupDirectory,
@@ -162,9 +162,9 @@ public class PointInTimeAccessService {
    * The three sources of the readable-library formula, evaluated backwards: grants naming a person,
    * grants naming a group (resolved through the membership intervals of that same period), and the
    * organization-wide release. The composition mirrors {@code
-   * LibraryVisibilityHistoryService#readableLibraryIdsAsOf} so both directions of the question stay
-   * one formula, and every source is scoped to {@code organizationId} - a foreign object answers
-   * like an unknown one.
+   * AssetVisibilityHistoryService#readableAssetIdsAsOf} so both directions of the question stay one
+   * formula, and every source is scoped to {@code organizationId} - a foreign object answers like
+   * an unknown one.
    */
   private List<AccessAsOfEntry> libraryReaders(
       UUID organizationId, UUID libraryId, Instant from, Instant to) {
@@ -238,9 +238,14 @@ public class PointInTimeAccessService {
       }
     }
 
-    for (LibraryVisibilityHistory interval :
+    for (AssetVisibilityHistory interval :
         visibilityHistory.organizationWideIntervalsBetween(
-            libraryId, organizationId, from, to, MAX_SOURCE_INTERVALS)) {
+            KnowledgeLibrary.ASSET_TYPE,
+            libraryId,
+            organizationId,
+            from,
+            to,
+            MAX_SOURCE_INTERVALS)) {
       Instant start = max(interval.getValidFrom(), from);
       Instant end = min(interval.getValidTo(), to);
       if (start.isBefore(end)) {

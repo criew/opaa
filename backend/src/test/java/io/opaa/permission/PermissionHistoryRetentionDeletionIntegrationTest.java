@@ -3,14 +3,15 @@ package io.opaa.permission;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.api.types.AssetRole;
+import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.ExternalAccessState;
-import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.PermissionTransferScope;
+import io.opaa.asset.AssetVisibilityHistory;
+import io.opaa.asset.AssetVisibilityHistoryCause;
+import io.opaa.asset.AssetVisibilityHistoryRepository;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
-import io.opaa.library.LibraryVisibilityHistory;
-import io.opaa.library.LibraryVisibilityHistoryCause;
-import io.opaa.library.LibraryVisibilityHistoryRepository;
+import io.opaa.library.KnowledgeLibrary;
 import io.opaa.organization.Organization;
 import io.opaa.test.OpaaIntegrationTest;
 import java.time.Instant;
@@ -47,7 +48,7 @@ class PermissionHistoryRetentionDeletionIntegrationTest {
   @Autowired private PermissionHistoryRetentionSettingsRepository settingsRepository;
   @Autowired private AssetGrantHistoryRepository grantHistoryRepository;
   @Autowired private GroupMembershipHistoryRepository membershipHistoryRepository;
-  @Autowired private LibraryVisibilityHistoryRepository visibilityHistoryRepository;
+  @Autowired private AssetVisibilityHistoryRepository visibilityHistoryRepository;
   @Autowired private UserRepository userRepository;
   @Autowired private TransactionTemplate transactionTemplate;
   @Autowired private PermissionHistoryService permissionHistoryService;
@@ -390,7 +391,7 @@ class PermissionHistoryRetentionDeletionIntegrationTest {
   }
 
   private UUID closedVisibilityInterval(Instant from, Instant to) {
-    LibraryVisibilityHistory interval = visibilityInterval(from);
+    AssetVisibilityHistory interval = visibilityInterval(from);
     interval.close(to);
     return saveVisibilityInterval(interval);
   }
@@ -399,21 +400,22 @@ class PermissionHistoryRetentionDeletionIntegrationTest {
     return saveVisibilityInterval(visibilityInterval(from));
   }
 
-  private UUID saveVisibilityInterval(LibraryVisibilityHistory interval) {
+  private UUID saveVisibilityInterval(AssetVisibilityHistory interval) {
     UUID id = visibilityHistoryRepository.save(interval).getId();
     visibilityRowIds.add(id);
     return id;
   }
 
-  private LibraryVisibilityHistory visibilityInterval(Instant from) {
-    return new LibraryVisibilityHistory(
+  private AssetVisibilityHistory visibilityInterval(Instant from) {
+    return new AssetVisibilityHistory(
+        KnowledgeLibrary.ASSET_TYPE,
         UUID.randomUUID(),
         Organization.DEFAULT_ID,
-        LibraryVisibility.PRIVATE,
+        AssetVisibility.PRIVATE,
         false,
         ExternalAccessState.NEVER_SET,
         null,
-        LibraryVisibilityHistoryCause.CREATED,
+        AssetVisibilityHistoryCause.CREATED,
         null,
         from);
   }

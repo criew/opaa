@@ -25,12 +25,19 @@ import S3SourceForm from '../components/library/S3SourceForm'
 import { EMPTY_CONFLUENCE_VALUES, type ConfluenceSourceValues } from '../utils/confluenceSource'
 import { EMPTY_S3_VALUES, type S3SourceValues } from '../utils/s3Source'
 import WizardStepBar from '../components/wizard/WizardStepBar'
-import { getMyGroups, testLibrarySource, upsertLibraryGrant } from '../services/api'
+import { getMyGroups, testLibrarySource, upsertAssetGrant } from '../services/api'
 import { confirmAction } from '../stores/confirmStore'
 import { useLibraryStore } from '../stores/libraryStore'
 import { useIndexingStore } from '../stores/indexingStore'
 import { useMyCapabilities } from '../hooks/useMyCapabilities'
-import { useUserSearch } from '../hooks/useUserSearch'
+import SubjectPicker from '../components/permissions/SubjectPicker'
+import {
+  confirmExternalSubject,
+  emptySubjectSelection,
+  groupLabel,
+  selectedSubjectId,
+  type SubjectSelection,
+} from '../components/permissions/subjectSelection'
 import {
   allDocumentSourceTypes,
   assetRoleLabel,
@@ -52,11 +59,10 @@ import type {
   Capability,
   DocumentSourceType,
   GroupListResponse,
-  LibraryOwnerType,
-  LibraryVisibility,
+  AssetOwnerType,
+  AssetVisibility,
   PermissionSubjectType,
   SourceConnectionTestResponse,
-  UserSummary,
 } from '../types/api'
 
 const STEPS = ['Stammdaten', 'Herkunft', 'Rechte'] as const
@@ -91,7 +97,7 @@ export default function LibraryCreatePage() {
 
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
-  const [ownerType, setOwnerType] = useState<LibraryOwnerType>('USER')
+  const [ownerType, setOwnerType] = useState<AssetOwnerType>('USER')
   const [selectedGroup, setSelectedGroup] = useState<GroupListResponse | null>(null)
   const [groups, setGroups] = useState<GroupListResponse[]>([])
   const [groupsError, setGroupsError] = useState<string | null>(null)
@@ -118,19 +124,10 @@ export default function LibraryCreatePage() {
     ? capabilityMissingMessage(requiredCapability)
     : null
 
-  const [visibility, setVisibility] = useState<LibraryVisibility>('PRIVATE')
+  const [visibility, setVisibility] = useState<AssetVisibility>('PRIVATE')
   const [pendingGrants, setPendingGrants] = useState<PendingGrant[]>([])
-  const [grantSubjectType, setGrantSubjectType] = useState<PermissionSubjectType>('USER')
+  const [grantSubject, setGrantSubject] = useState<SubjectSelection>(emptySubjectSelection)
   const [grantRole, setGrantRole] = useState<AssetRole>('VIEWER')
-  const [selectedUser, setSelectedUser] = useState<UserSummary | null>(null)
-  const [selectedGrantGroup, setSelectedGrantGroup] = useState<GroupListResponse | null>(null)
-  const {
-    query: userQuery,
-    setQuery: setUserQuery,
-    users,
-    isLoading: isSearchingUsers,
-    error: userSearchError,
-  } = useUserSearch()
 
   useEffect(() => {
     let cancelled = false
@@ -161,19 +158,14 @@ export default function LibraryCreatePage() {
     setTestErrorMessage((prev) => (prev === null ? prev : null))
   }
 
-  const availableUsers = useMemo(() => {
-    const pending = new Set(
-      pendingGrants.filter((g) => g.subjectType === 'USER').map((g) => g.subjectId),
-    )
-    return users.filter((u) => !pending.has(u.id))
-  }, [users, pendingGrants])
-
-  const availableGrantGroups = useMemo(() => {
-    const pending = new Set(
-      pendingGrants.filter((g) => g.subjectType === 'GROUP').map((g) => g.subjectId),
-    )
-    return groups.filter((g) => !pending.has(g.id))
-  }, [groups, pendingGrants])
+  const pendingUserIds = useMemo(
+    () => pendingGrants.filter((g) => g.subjectType === 'USER').map((g) => g.subjectId),
+    [pendingGrants],
+  )
+  const pendingGroupIds = useMemo(
+    () => pendingGrants.filter((g) => g.subjectType === 'GROUP').map((g) => g.subjectId),
+    [pendingGrants],
+  )
 
   const isDirty =
     name.trim() !== '' ||
@@ -259,32 +251,21 @@ export default function LibraryCreatePage() {
     }
   }
 
-  const handleAddGrant = () => {
-    if (grantSubjectType === 'USER' && selectedUser) {
-      setPendingGrants((prev) => [
-        ...prev,
-        {
-          subjectType: 'USER',
-          subjectId: selectedUser.id,
-          label: selectedUser.displayName ?? selectedUser.email ?? selectedUser.id,
-          role: grantRole,
-        },
-      ])
-      setSelectedUser(null)
-      setUserQuery('')
-    }
-    if (grantSubjectType === 'GROUP' && selectedGrantGroup) {
-      setPendingGrants((prev) => [
-        ...prev,
-        {
-          subjectType: 'GROUP',
-          subjectId: selectedGrantGroup.id,
-          label: selectedGrantGroup.name,
-          role: grantRole,
-        },
-      ])
-      setSelectedGrantGroup(null)
-    }
+  const handleAddGrant = async () => {
+    const subjectId = selectedSubjectId(grantSubject)
+    if (!subjectId) return
+    if (!(await confirmExternalSubject(grantSubject))) return
+    const label =
+      grantSubject.type === 'USER'
+        ? (grantSubject.user?.displayName ?? grantSubject.user?.email ?? subjectId)
+        : grantSubject.group
+          ? groupLabel(grantSubject.group)
+          : subjectId
+    setPendingGrants((prev) => [
+      ...prev,
+      { subjectType: grantSubject.type, subjectId, label, role: grantRole },
+    ])
+    setGrantSubject({ type: grantSubject.type, user: null, group: null })
   }
 
   const handleCreate = async () => {
@@ -311,7 +292,7 @@ export default function LibraryCreatePage() {
       const failed: string[] = []
       for (const grant of pendingGrants) {
         try {
-          await upsertLibraryGrant(libraryId, {
+          await upsertAssetGrant('KNOWLEDGE_LIBRARY', libraryId, {
             subjectType: grant.subjectType,
             subjectId: grant.subjectId,
             role: grant.role,
@@ -397,7 +378,7 @@ export default function LibraryCreatePage() {
                 row
                 aria-labelledby="library-create-owner-label"
                 value={ownerType}
-                onChange={(e) => setOwnerType(e.target.value as LibraryOwnerType)}
+                onChange={(e) => setOwnerType(e.target.value as AssetOwnerType)}
               >
                 <FormControlLabel value="USER" control={<Radio />} label="Mein Konto" />
                 <FormControlLabel value="GROUP" control={<Radio />} label="Eine Gruppe" />
@@ -699,7 +680,7 @@ export default function LibraryCreatePage() {
                 labelId="library-create-visibility-label"
                 size="small"
                 value={visibility}
-                onChange={(e) => setVisibility(e.target.value as LibraryVisibility)}
+                onChange={(e) => setVisibility(e.target.value as AssetVisibility)}
                 aria-describedby="library-create-visibility-helper"
               >
                 {libraryVisibilities.map((option) => (
@@ -718,87 +699,14 @@ export default function LibraryCreatePage() {
                 Freigaben lassen sich auch später jederzeit auf der Detailseite ergänzen — dieser
                 Schritt ist optional.
               </Typography>
-              {userSearchError && (
-                // #778 review, finding 3: a failed search must not just read as "no matches" - the
-                // field looks identically empty either way otherwise.
-                <Alert severity="error" sx={{ mb: 1.5 }}>
-                  {userSearchError}
-                </Alert>
-              )}
-              <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
-                <Select
-                  size="small"
-                  value={grantSubjectType}
-                  onChange={(e) => setGrantSubjectType(e.target.value as PermissionSubjectType)}
-                  aria-label="Art des Freigabeempfängers"
-                  sx={{ width: 130 }}
-                >
-                  {(['USER', 'GROUP'] as const).map((type) => (
-                    <MenuItem key={type} value={type}>
-                      {permissionSubjectTypeLabel(type)}
-                    </MenuItem>
-                  ))}
-                </Select>
-                {grantSubjectType === 'USER' ? (
-                  <Autocomplete
-                    options={availableUsers}
-                    size="small"
-                    loading={isSearchingUsers}
-                    filterOptions={(x) => x}
-                    inputValue={userQuery}
-                    onInputChange={(_e, value, reason) => {
-                      // 'reset' fires when the input text is set to match a just-selected
-                      // option's label (or reverted on blur) - propagating that as a fresh query
-                      // would re-fire a search for text the caller never typed.
-                      if (reason !== 'reset') setUserQuery(value)
-                    }}
-                    noOptionsText={
-                      userQuery.trim().length < 2
-                        ? 'Mindestens 2 Zeichen eingeben'
-                        : 'Keine Treffer'
-                    }
-                    getOptionLabel={(option) =>
-                      option.displayName
-                        ? `${option.displayName} (${option.email ?? option.id})`
-                        : (option.email ?? option.id)
-                    }
-                    value={selectedUser}
-                    onChange={(_e, value) => setSelectedUser(value)}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        placeholder="Person suchen …"
-                        slotProps={{
-                          ...params.slotProps,
-                          htmlInput: { ...params.slotProps.htmlInput, 'aria-label': 'Person' },
-                        }}
-                      />
-                    )}
-                    isOptionEqualToValue={(option, value) => option.id === value.id}
-                    sx={{ minWidth: 200, flex: 1 }}
-                  />
-                ) : (
-                  <Autocomplete
-                    options={availableGrantGroups}
-                    size="small"
-                    getOptionLabel={(option) => option.name}
-                    noOptionsText="Keine Treffer"
-                    value={selectedGrantGroup}
-                    onChange={(_e, value) => setSelectedGrantGroup(value)}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        placeholder="Gruppe suchen …"
-                        slotProps={{
-                          ...params.slotProps,
-                          htmlInput: { ...params.slotProps.htmlInput, 'aria-label': 'Gruppe' },
-                        }}
-                      />
-                    )}
-                    isOptionEqualToValue={(option, value) => option.id === value.id}
-                    sx={{ minWidth: 200, flex: 1 }}
-                  />
-                )}
+              <SubjectPicker
+                labelId="library-create-grant-subject-label"
+                value={grantSubject}
+                onChange={setGrantSubject}
+                excludedUserIds={pendingUserIds}
+                excludedGroupIds={pendingGroupIds}
+              />
+              <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', mt: 1.5 }}>
                 <Select
                   size="small"
                   value={grantRole}
@@ -814,8 +722,8 @@ export default function LibraryCreatePage() {
                 </Select>
                 <Button
                   variant="outlined"
-                  disabled={grantSubjectType === 'USER' ? !selectedUser : !selectedGrantGroup}
-                  onClick={handleAddGrant}
+                  disabled={!selectedSubjectId(grantSubject)}
+                  onClick={() => void handleAddGrant()}
                 >
                   Vormerken
                 </Button>

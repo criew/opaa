@@ -2,8 +2,8 @@ package io.opaa.indexing.source.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DocumentSourceType;
-import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.SystemRole;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
@@ -44,8 +44,7 @@ class UrlIndexingExecutorCredentialsTest {
   @BeforeEach
   void setUp() {
     jdbcTemplate.update(
-        "DELETE FROM knowledge_libraries WHERE owner_user_id IN (SELECT id FROM users WHERE"
-            + " email = ?)",
+        "DELETE FROM assets WHERE owner_user_id IN (SELECT id FROM users WHERE" + " email = ?)",
         OWNER_EMAIL);
     jdbcTemplate.update("DELETE FROM users WHERE email = ?", OWNER_EMAIL);
     userId = UUID.randomUUID();
@@ -63,8 +62,7 @@ class UrlIndexingExecutorCredentialsTest {
   @AfterEach
   void tearDown() {
     jdbcTemplate.update(
-        "DELETE FROM knowledge_libraries WHERE owner_user_id IN (SELECT id FROM users WHERE"
-            + " email = ?)",
+        "DELETE FROM assets WHERE owner_user_id IN (SELECT id FROM users WHERE" + " email = ?)",
         OWNER_EMAIL);
     jdbcTemplate.update("DELETE FROM users WHERE email = ?", OWNER_EMAIL);
   }
@@ -78,7 +76,7 @@ class UrlIndexingExecutorCredentialsTest {
                 "Web-Verzeichnis mit Zugangsdaten",
                 null,
                 userId,
-                LibraryVisibility.PRIVATE,
+                AssetVisibility.PRIVATE,
                 false,
                 DocumentSourceType.HTTP_DIRECTORY,
                 null,

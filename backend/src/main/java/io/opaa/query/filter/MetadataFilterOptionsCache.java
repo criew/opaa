@@ -3,8 +3,9 @@ package io.opaa.query.filter;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import io.opaa.api.types.PermissionSubjectType;
+import io.opaa.asset.AssetChanged;
+import io.opaa.asset.AssetGrantChanged;
 import io.opaa.indexing.metadata.LibraryMetadataSchemaChanged;
-import io.opaa.library.GrantChanged;
 import io.opaa.library.LibraryChanged;
 import io.opaa.permission.GroupMembershipChangeListener;
 import java.util.Collection;
@@ -70,7 +71,7 @@ public class MetadataFilterOptionsCache implements GroupMembershipChangeListener
    * before commit could be repopulated by a concurrent reader with the pre-commit rights.
    */
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMPLETION, fallbackExecution = true)
-  public void onGrantChanged(GrantChanged event) {
+  public void onGrantChanged(AssetGrantChanged event) {
     if (event.grant().getSubjectType() == PermissionSubjectType.USER) {
       invalidateUser(event.grant().getSubjectUserId());
     } else {
@@ -89,7 +90,13 @@ public class MetadataFilterOptionsCache implements GroupMembershipChangeListener
     invalidateAll();
   }
 
-  /** A library's visibility (or existence) changed: that reaches every person's scope. */
+  /** An asset was created or its visibility changed: that reaches every person's scope. */
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMPLETION, fallbackExecution = true)
+  public void onAssetChanged(AssetChanged event) {
+    invalidateAll();
+  }
+
+  /** A library's release for Fremdzugaenge changed. */
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMPLETION, fallbackExecution = true)
   public void onLibraryChanged(LibraryChanged event) {
     invalidateAll();

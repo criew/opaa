@@ -7,11 +7,11 @@ import { useChatStore } from '../../stores/chatStore'
 import { useLibraryStore } from '../../stores/libraryStore'
 import { useSpaceStore } from '../../stores/spaceStore'
 import { server } from '../../mocks/server'
-import type { LibraryListResponse, SpaceLibraryAssociationResponse } from '../../types/api'
+import type { LibraryListResponse, SpaceAssetAssociationResponse } from '../../types/api'
 
 /**
  * #783 review: the earlier version of these tests spied on useSpaceStore.getState() and swapped in
- * a mocked loadLibraryAssociations - but zustand's set() shallow-merges by spreading the *current*
+ * a mocked loadAssetAssociations - but zustand's set() shallow-merges by spreading the *current*
  * state object into a new one (Object.assign({}, state, partial)), so a spied property value, once
  * set, gets copied forward into every subsequent state object regardless of vi.restoreAllMocks() -
  * that call only restores the descriptor on the specific (by then stale) object it was originally
@@ -25,10 +25,11 @@ function mockAssociations(
   spaceId: string,
   response: {
     hasAssociations: boolean
-    items: SpaceLibraryAssociationResponse[]
+    narrowsSearch: boolean
+    items: SpaceAssetAssociationResponse[]
   },
 ) {
-  server.use(http.get(`/api/v1/spaces/${spaceId}/libraries`, () => HttpResponse.json(response)))
+  server.use(http.get(`/api/v1/spaces/${spaceId}/assets`, () => HttpResponse.json(response)))
 }
 
 const rechtsquellen: LibraryListResponse = {
@@ -75,10 +76,11 @@ describe('ChatInput', () => {
       error: null,
     })
     useSpaceStore.setState({
-      libraryAssociations: [],
-      hasLibraryAssociations: false,
-      isLoadingLibraryAssociations: false,
-      libraryAssociationsSpaceId: null,
+      assetAssociations: [],
+      hasAssetAssociations: false,
+      assetAssociationsNarrowSearch: false,
+      isLoadingAssetAssociations: false,
+      assetAssociationsSpaceId: null,
     })
   })
 
@@ -86,16 +88,18 @@ describe('ChatInput', () => {
   // scope line to the intersection of associated and readable libraries, not show every readable
   // library the user happens to have - the backend (ChatService#effectiveLibraryScope) already
   // narrows the actual search, so a wider count here is a pure display lie about what gets
-  // searched. Each test below drives the real spaceStore#loadLibraryAssociations action through an
+  // searched. Each test below drives the real spaceStore#loadAssetAssociations action through an
   // MSW override for its own space id (see mockAssociations above).
   describe('scope line for a space with library associations (#782)', () => {
     it('counts only the associated-and-readable intersection, not every readable library', async () => {
       mockAssociations('space-gewerbeamt', {
         hasAssociations: true,
+        narrowsSearch: true,
         items: [
           {
-            libraryId: rechtsquellen.id,
-            libraryName: rechtsquellen.name,
+            assetType: 'KNOWLEDGE_LIBRARY',
+            assetId: rechtsquellen.id,
+            name: rechtsquellen.name,
             readableByCaller: true,
             createdByUserId: 'user-1',
             createdAt: '2026-03-01T10:00:00Z',
@@ -114,17 +118,20 @@ describe('ChatInput', () => {
     it('shows the plural form for more than one associated-and-readable library', async () => {
       mockAssociations('space-gewerbeamt', {
         hasAssociations: true,
+        narrowsSearch: true,
         items: [
           {
-            libraryId: rechtsquellen.id,
-            libraryName: rechtsquellen.name,
+            assetType: 'KNOWLEDGE_LIBRARY',
+            assetId: rechtsquellen.id,
+            name: rechtsquellen.name,
             readableByCaller: true,
             createdByUserId: 'user-1',
             createdAt: '2026-03-01T10:00:00Z',
           },
           {
-            libraryId: dienstanweisungen.id,
-            libraryName: dienstanweisungen.name,
+            assetType: 'KNOWLEDGE_LIBRARY',
+            assetId: dienstanweisungen.id,
+            name: dienstanweisungen.name,
             readableByCaller: true,
             createdByUserId: 'user-1',
             createdAt: '2026-03-01T10:00:00Z',
@@ -141,7 +148,11 @@ describe('ChatInput', () => {
     // #783 review nit 3: "curated, but nothing the caller may read" must read like MessageBubble's
     // and SpacePage's own wording for the identical state, not a bare "0 zugeordnete Bestände".
     it('shows the established "kein Wissen verfügbar" notice when nothing associated is readable', async () => {
-      mockAssociations('space-gewerbeamt', { hasAssociations: true, items: [] })
+      mockAssociations('space-gewerbeamt', {
+        hasAssociations: true,
+        narrowsSearch: true,
+        items: [],
+      })
       useChatStore.setState({ scope: 'all', spaceId: 'space-gewerbeamt' })
 
       render(<ChatInput onSend={vi.fn()} />)
@@ -152,8 +163,28 @@ describe('ChatInput', () => {
       expect(screen.queryByText(/zugeordnete/)).not.toBeInTheDocument()
     })
 
+    it('does not narrow for a space whose only associations are no knowledge libraries', async () => {
+      mockAssociations('space-gewerbeamt', {
+        hasAssociations: true,
+        narrowsSearch: false,
+        items: [],
+      })
+      useChatStore.setState({ scope: 'all', spaceId: 'space-gewerbeamt' })
+
+      render(<ChatInput onSend={vi.fn()} />)
+
+      expect(await screen.findByText(/2 lesbare Bestände/)).toBeInTheDocument()
+      expect(
+        screen.queryByText('In diesem Space ist für Sie derzeit kein Wissen verfügbar.'),
+      ).not.toBeInTheDocument()
+    })
+
     it('keeps the previous "all readable" wording for a space without any association', async () => {
-      mockAssociations('space-gewerbeamt', { hasAssociations: false, items: [] })
+      mockAssociations('space-gewerbeamt', {
+        hasAssociations: false,
+        narrowsSearch: false,
+        items: [],
+      })
       useChatStore.setState({ scope: 'all', spaceId: 'space-gewerbeamt' })
 
       render(<ChatInput onSend={vi.fn()} />)
@@ -170,20 +201,22 @@ describe('ChatInput', () => {
       // Space A's associations already resolved and are sitting in the store - exactly the state
       // ChatInput would be in right after chatting in a curated space A.
       useSpaceStore.setState({
-        hasLibraryAssociations: true,
-        libraryAssociations: [
+        hasAssetAssociations: true,
+        assetAssociationsNarrowSearch: true,
+        assetAssociations: [
           {
-            libraryId: rechtsquellen.id,
-            libraryName: rechtsquellen.name,
+            assetType: 'KNOWLEDGE_LIBRARY',
+            assetId: rechtsquellen.id,
+            name: rechtsquellen.name,
             readableByCaller: true,
             createdByUserId: 'user-1',
             createdAt: '2026-03-01T10:00:00Z',
           },
         ],
-        libraryAssociationsSpaceId: 'space-a',
+        assetAssociationsSpaceId: 'space-a',
       })
       // Space B's own load never resolves within this test.
-      server.use(http.get('/api/v1/spaces/space-b/libraries', () => new Promise(() => {})))
+      server.use(http.get('/api/v1/spaces/space-b/assets', () => new Promise(() => {})))
       useChatStore.setState({ scope: 'all', spaceId: 'space-b' })
 
       render(<ChatInput onSend={vi.fn()} />)
@@ -196,7 +229,7 @@ describe('ChatInput', () => {
     // - that renders as "every readable library", the exact false claim #782 fixed.
     it('does not fall back to "every readable library" when the association load fails', async () => {
       server.use(
-        http.get('/api/v1/spaces/space-gewerbeamt/libraries', () =>
+        http.get('/api/v1/spaces/space-gewerbeamt/assets', () =>
           HttpResponse.json({ error: 'Netzwerkfehler' }, { status: 500 }),
         ),
       )
@@ -210,7 +243,7 @@ describe('ChatInput', () => {
   })
 
   // #782/#783: exercises the real api -> spaceStore -> ChatInput chain through the MSW handler
-  // (mocks/handlers.ts) and its curated fixture (mockSpaceLibraryAssociations['space-phoenix']),
+  // (mocks/handlers.ts) and its curated fixture (mockSpaceAssetAssociations['space-phoenix']),
   // rather than mocking the store action away - the earlier mocked tests above cover the display
   // logic in isolation, this one covers that readableByCaller actually survives the wire.
   it('resolves the associated-and-readable count through the real api/store chain (#783 review nit 2)', async () => {

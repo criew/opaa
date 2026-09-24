@@ -3,10 +3,10 @@ package io.opaa.indexing.maintenance;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.api.types.AssetRole;
+import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DatePrecision;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.LibraryMetadataFieldType;
-import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.indexing.document.Document;
@@ -103,7 +103,7 @@ class ContextPrefixRerunIntegrationTest {
   void removeOwnFixtures() {
     List<UUID> ownLibraryIds =
         jdbcTemplate.queryForList(
-            "SELECT id FROM knowledge_libraries WHERE name LIKE 'Kontextpräfix%'", UUID.class);
+            "SELECT id FROM assets WHERE name LIKE 'Kontextpräfix%'", UUID.class);
     ownLibraryFixtures.removeLibraries(ownLibraryIds.toArray(new UUID[0]));
     jdbcTemplate.update("DELETE FROM users WHERE email LIKE 'context-prefix-%'");
   }
@@ -596,7 +596,7 @@ class ContextPrefixRerunIntegrationTest {
             "Kontextpräfix",
             null,
             owner.id(),
-            LibraryVisibility.PRIVATE,
+            AssetVisibility.PRIVATE,
             false,
             DocumentSourceType.FILESYSTEM,
             classTempDir.toString(),

@@ -260,7 +260,7 @@ export default function UserFormDialog({
               size="small"
               // Ein <label for> benennt nur echte Formularelemente; MUIs Auswahl rendert eine
               // Anzeige mit role="combobox", die ihren Namen über aria-labelledby braucht (axe
-              // aria-input-field-name, serious). Muster wie in LibraryGrantsDialog.
+              // aria-input-field-name, serious). Muster wie in AssetGrantsDialog.
               slotProps={{
                 select: { SelectDisplayProps: { 'aria-labelledby': 'user-form-role-label' } },
               }}

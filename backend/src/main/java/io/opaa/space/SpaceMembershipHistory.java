@@ -18,8 +18,8 @@ import java.util.UUID;
  * the interval is open, i.e. the membership exists right now. Written and closed exclusively by
  * {@link SpaceMembershipHistoryService}.
  *
- * <p>Lives in this package for the same reason {@code io.opaa.library.LibraryVisibilityHistory}
- * lives in its own: a space membership is space state. It shares the interval contract and the
+ * <p>Lives in this package for the same reason {@code io.opaa.asset.AssetVisibilityHistory} lives
+ * in the asset shell: a space membership is space state. It shares the interval contract and the
  * {@code PermissionHistoryClock} of {@code io.opaa.permission.PermissionHistoryService}, so the
  * guarantee "successive intervals of the same object have strictly increasing boundaries" holds
  * across all history tables.

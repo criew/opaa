@@ -4,10 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.api.types.AssetRole;
+import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DatePrecision;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
-import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.MetadataOrigin;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
@@ -361,8 +361,7 @@ class LibraryMetadataMaintenanceServiceIntegrationTest {
   @AfterEach
   void removeOwnFixtures() {
     List<UUID> ownLibraryIds =
-        jdbcTemplate.queryForList(
-            "SELECT id FROM knowledge_libraries WHERE name LIKE 'Anker%'", UUID.class);
+        jdbcTemplate.queryForList("SELECT id FROM assets WHERE name LIKE 'Anker%'", UUID.class);
     ownLibraryFixtures.removeLibraries(ownLibraryIds.toArray(new UUID[0]));
     jdbcTemplate.update("DELETE FROM users WHERE email LIKE 'metadata-anchor-%'");
   }
@@ -388,7 +387,7 @@ class LibraryMetadataMaintenanceServiceIntegrationTest {
             name,
             null,
             owner.id(),
-            LibraryVisibility.PRIVATE,
+            AssetVisibility.PRIVATE,
             false,
             DocumentSourceType.FILESYSTEM,
             sourcePath.toString(),

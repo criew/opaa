@@ -11,10 +11,10 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
-import io.opaa.api.types.LibraryVisibility;
 import io.opaa.indexing.document.DocumentIngestResult;
 import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.document.DocumentIngests;
@@ -121,7 +121,7 @@ class ConfluenceDataCenterFullSyncTest {
             "Wiki " + UUID.randomUUID(),
             null,
             UUID.randomUUID(),
-            LibraryVisibility.PRIVATE,
+            AssetVisibility.PRIVATE,
             false,
             DocumentSourceType.CONFLUENCE,
             null,

@@ -180,10 +180,14 @@ public class PermissionTransferService {
     Map<AssetType, List<UUID>> owned = new LinkedHashMap<>();
     if (parties.scope().contains(PermissionTransferScope.OWNERSHIP)) {
       for (AssetOwnershipDirectory directory : assetOwnershipDirectories) {
-        List<UUID> assetIds = directory.assetIdsOwnedBy(parties.source());
-        if (!assetIds.isEmpty()) {
-          owned.put(directory.assetType(), assetIds);
-        }
+        directory
+            .assetIdsOwnedBy(parties.source())
+            .forEach(
+                (assetType, assetIds) -> {
+                  if (!assetIds.isEmpty()) {
+                    owned.computeIfAbsent(assetType, key -> new ArrayList<>()).addAll(assetIds);
+                  }
+                });
       }
     }
     List<UUID> stewarded =
@@ -508,10 +512,18 @@ public class PermissionTransferService {
       CurrentUser caller,
       Map<AssetType, Set<UUID>> touched) {
     int moved = 0;
-    for (AssetOwnershipDirectory directory : assetOwnershipDirectories) {
-      for (UUID assetId : snapshot.ownedAssets().getOrDefault(directory.assetType(), List.of())) {
-        directory.transferOwnership(assetId, parties.target(), caller.id(), transferId, at);
-        touched.computeIfAbsent(directory.assetType(), key -> new LinkedHashSet<>()).add(assetId);
+    for (Map.Entry<AssetType, List<UUID>> owned : snapshot.ownedAssets().entrySet()) {
+      AssetType assetType = owned.getKey();
+      AssetOwnershipDirectory directory =
+          assetOwnershipDirectories.stream()
+              .filter(candidate -> candidate.answersFor(assetType))
+              .findFirst()
+              .orElseThrow(
+                  () -> new IllegalStateException("no ownership directory for " + assetType));
+      for (UUID assetId : owned.getValue()) {
+        directory.transferOwnership(
+            assetType, assetId, parties.target(), caller.id(), transferId, at);
+        touched.computeIfAbsent(assetType, key -> new LinkedHashSet<>()).add(assetId);
         moved++;
       }
     }

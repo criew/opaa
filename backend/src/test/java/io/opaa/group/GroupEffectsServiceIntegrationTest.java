@@ -81,6 +81,7 @@ class GroupEffectsServiceIntegrationTest {
           "DELETE FROM asset_grant_history WHERE organization_id = ?", organizationId);
       groupRepository.deleteAllById(groupIds);
     }
+    jdbcTemplate.update("DELETE FROM assets WHERE organization_id = ?", organizationId);
     jdbcTemplate.update(
         "DELETE FROM group_membership_history WHERE organization_id = ?", organizationId);
     userRepository.deleteAllById(createdUserIds);
@@ -150,7 +151,15 @@ class GroupEffectsServiceIntegrationTest {
         .orElseThrow();
   }
 
+  /** A grant names an existing asset: its shell row is written here, once per id. */
   private AssetGrant grantFor(UUID groupId, UUID assetId) {
+    jdbcTemplate.update(
+        "INSERT INTO assets (id, asset_type, organization_id, name, owner_type, owner_user_id,"
+            + " visibility) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, 'Bibliothek', 'USER', ?,"
+            + " 'PRIVATE') ON CONFLICT (id) DO NOTHING",
+        assetId,
+        organizationId,
+        createdUserIds.getFirst());
     return AssetGrant.forGroup(
         KnowledgeLibrary.ASSET_TYPE,
         assetId,

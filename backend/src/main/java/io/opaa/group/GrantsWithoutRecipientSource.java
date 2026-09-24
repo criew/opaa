@@ -28,8 +28,8 @@ class GrantsWithoutRecipientSource implements SuccessionFindingSource {
   }
 
   @Override
-  public SuccessionObjectType objectType() {
-    return SuccessionObjectType.GROUP;
+  public boolean answersFor(SuccessionObjectType objectType) {
+    return objectType == SuccessionObjectType.GROUP;
   }
 
   @Override

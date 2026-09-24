@@ -7,7 +7,7 @@ import { answerConfirm, renderWithProviders } from '../test/test-utils'
 import SpaceManagementPage from './SpaceManagementPage'
 import { useAuthStore } from '../stores/authStore'
 import { useSpaceStore } from '../stores/spaceStore'
-import type { SpaceLibraryAssociationListResponse, SpaceResponse } from '../types/api'
+import type { SpaceAssetAssociationListResponse, SpaceResponse } from '../types/api'
 
 vi.mock('react-router', async () => {
   const actual = await vi.importActual<typeof import('react-router')>('react-router')
@@ -29,7 +29,7 @@ const {
   mockDeleteSpace,
   mockArchiveSpace,
   mockListSpaceMembers,
-  mockGetSpaceLibraryAssociations,
+  mockGetSpaceAssetAssociations,
   mockGetLibraries,
   mockSearchSelectableGroups,
   mockGetSpaceAccessDerivation,
@@ -114,10 +114,10 @@ const {
     mockArchiveSpace: vi.fn(async () => ({}) as SpaceResponse),
     mockListSpaceMembers: vi.fn(async (spaceId: string) => membersBySpaceId[spaceId] ?? []),
     mockGetLibraries: vi.fn(async () => [] as unknown[]),
-    mockGetSpaceLibraryAssociations: vi.fn(
-      async (spaceId: string): Promise<SpaceLibraryAssociationListResponse> => {
+    mockGetSpaceAssetAssociations: vi.fn(
+      async (spaceId: string): Promise<SpaceAssetAssociationListResponse> => {
         void spaceId
-        return { hasAssociations: false, items: [] }
+        return { hasAssociations: false, narrowsSearch: false, items: [] }
       },
     ),
     // #1820: die Subjekt-Auswahl sucht serverseitig; welche Gruppen erscheinen, entscheidet der
@@ -188,7 +188,7 @@ vi.mock('../services/api', async () => {
       async (spaceId: string) => useSpaceStore.getState().selectedSpace ?? { id: spaceId },
     ),
     listSpaceMembers: mockListSpaceMembers,
-    getSpaceLibraryAssociations: mockGetSpaceLibraryAssociations,
+    getSpaceAssetAssociations: mockGetSpaceAssetAssociations,
     updateSpaceDetails: mockUpdateSpaceDetails,
     updateSpaceMemberRole: mockUpdateSpaceMemberRole,
     removeSpaceMember: mockRemoveSpaceMember,
@@ -265,7 +265,11 @@ function setSpaceState(space: SpaceResponse) {
 describe('SpaceManagementPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockGetSpaceLibraryAssociations.mockResolvedValue({ hasAssociations: false, items: [] })
+    mockGetSpaceAssetAssociations.mockResolvedValue({
+      hasAssociations: false,
+      narrowsSearch: false,
+      items: [],
+    })
     useAuthStore.setState({
       mode: 'dev',
       isAuthenticated: true,
@@ -609,11 +613,13 @@ describe('SpaceManagementPage', () => {
   // themselves read - the store's unfiltered items list carries readableByCaller=false and no
   // libraryName for such an entry.
   it('shows an unreadable association without its name and still offers to detach it', async () => {
-    mockGetSpaceLibraryAssociations.mockResolvedValue({
+    mockGetSpaceAssetAssociations.mockResolvedValue({
       hasAssociations: true,
+      narrowsSearch: true,
       items: [
         {
-          libraryId: 'lib-hidden',
+          assetType: 'KNOWLEDGE_LIBRARY',
+          assetId: 'lib-hidden',
           readableByCaller: false,
           createdByUserId: 'u2',
           createdAt: '2026-03-01T10:00:00Z',
@@ -645,7 +651,7 @@ describe('SpaceManagementPage', () => {
       },
     ])
     server.use(
-      http.post('/api/v1/spaces/:spaceId/libraries', () =>
+      http.post('/api/v1/spaces/:spaceId/assets', () =>
         HttpResponse.json(
           {
             error:

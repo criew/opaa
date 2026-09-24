@@ -1,11 +1,8 @@
 package io.opaa.api;
 
-import io.opaa.api.dto.AssetGrantRequest;
-import io.opaa.api.dto.AssetGrantResponse;
 import io.opaa.api.dto.ConfluenceSpaceListRequest;
 import io.opaa.api.dto.ConfluenceSpaceListResponse;
 import io.opaa.api.dto.ConfluenceWebhookSecretResponse;
-import io.opaa.api.dto.GroupMemberDisclosureResponse;
 import io.opaa.api.dto.IndexingRunEvent;
 import io.opaa.api.dto.IndexingRunEventCategory;
 import io.opaa.api.dto.IndexingRunListResponse;
@@ -14,7 +11,6 @@ import io.opaa.api.dto.IndexingRunResponse;
 import io.opaa.api.dto.IndexingStatus;
 import io.opaa.api.dto.IndexingStatusResponse;
 import io.opaa.api.dto.IndexingTriggerSource;
-import io.opaa.api.dto.LibraryAccessDerivationResponse;
 import io.opaa.api.dto.LibraryDocumentPageResponse;
 import io.opaa.api.dto.LibraryDocumentResponse;
 import io.opaa.api.dto.LibraryFolderRenameRequest;
@@ -24,7 +20,6 @@ import io.opaa.api.dto.LibraryListResponse;
 import io.opaa.api.dto.LibraryRequest;
 import io.opaa.api.dto.LibraryResponse;
 import io.opaa.api.dto.LibraryShareCapRequest;
-import io.opaa.api.dto.LibrarySpaceAssociationResponse;
 import io.opaa.api.dto.LibraryUpdateRequest;
 import io.opaa.api.dto.S3BucketListRequest;
 import io.opaa.api.dto.S3BucketListResponse;
@@ -32,7 +27,6 @@ import io.opaa.api.dto.S3EventsTokenResponse;
 import io.opaa.api.dto.SourceConnectionTestRequest;
 import io.opaa.api.dto.SourceConnectionTestResponse;
 import io.opaa.api.types.IndexingRunMode;
-import io.opaa.api.types.SuccessionObjectType;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import io.opaa.indexing.job.DocumentIndexingService;
@@ -42,14 +36,12 @@ import io.opaa.indexing.job.IndexingRunCost;
 import io.opaa.indexing.job.IndexingRunDetail;
 import io.opaa.indexing.job.IndexingStatusView;
 import io.opaa.indexing.job.JobStatus;
-import io.opaa.library.AssetGrantService;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.library.LibraryDocumentService;
 import io.opaa.library.LibraryFolderService;
 import io.opaa.library.SourceConnectionTestService;
 import io.opaa.permission.PermissionTransferService;
-import io.opaa.space.SpaceAssetAssociationService;
 import io.opaa.succession.SuccessionService;
 import jakarta.validation.Valid;
 import java.time.Instant;
@@ -79,41 +71,28 @@ import org.springframework.web.server.ResponseStatusException;
 public class LibraryController {
 
   private final KnowledgeLibraryService libraryService;
-  private final AssetGrantService grantService;
   private final LibraryDocumentService documentService;
   private final LibraryFolderService folderService;
   private final DocumentIndexingService indexingService;
   private final SourceConnectionTestService sourceConnectionTestService;
-  private final SpaceAssetAssociationService associationService;
   private final PermissionTransferService transferService;
   private final SuccessionService successionService;
 
   public LibraryController(
       KnowledgeLibraryService libraryService,
-      AssetGrantService grantService,
       LibraryDocumentService documentService,
       LibraryFolderService folderService,
       DocumentIndexingService indexingService,
       SourceConnectionTestService sourceConnectionTestService,
-      SpaceAssetAssociationService associationService,
       PermissionTransferService transferService,
       SuccessionService successionService) {
     this.libraryService = libraryService;
-    this.grantService = grantService;
     this.documentService = documentService;
     this.folderService = folderService;
     this.indexingService = indexingService;
     this.sourceConnectionTestService = sourceConnectionTestService;
-    this.associationService = associationService;
     this.transferService = transferService;
     this.successionService = successionService;
-  }
-
-  @GetMapping("/{libraryId}/spaces")
-  public List<LibrarySpaceAssociationResponse> listSpaceAssociations(
-      @PathVariable UUID libraryId, @Caller CurrentUser caller) {
-    return SpaceLibraryAssociationResponseMapper.toLibrarySpaceResponses(
-        associationService.listForLibrary(libraryId, caller));
   }
 
   @PostMapping
@@ -179,20 +158,7 @@ public class LibraryController {
     return LibraryResponseMapper.toResponse(
         libraryService.getLibrary(libraryId, caller),
         transferService.markOf(KnowledgeLibrary.ASSET_TYPE, libraryId, caller).orElse(null),
-        successionService
-            .findingFor(SuccessionObjectType.KNOWLEDGE_LIBRARY, libraryId)
-            .orElse(null));
-  }
-
-  /**
-   * The Herleitung "warum sehe ich diese Bibliothek" for the caller themselves (#1822, ADR-0036
-   * Entscheidung 9) - no Vollmacht, no protocol entry, and no member of any group disclosed.
-   */
-  @GetMapping("/{libraryId}/access-derivation")
-  public LibraryAccessDerivationResponse getLibraryAccessDerivation(
-      @PathVariable UUID libraryId, @Caller CurrentUser caller) {
-    return AccessDerivationResponseMapper.toResponse(
-        libraryService.getAccessDerivation(libraryId, caller));
+        successionService.findingForAsset(KnowledgeLibrary.ASSET_TYPE, libraryId).orElse(null));
   }
 
   @PutMapping("/{libraryId}")
@@ -351,39 +317,6 @@ public class LibraryController {
       @PathVariable UUID libraryId, @PathVariable UUID folderId, @Caller CurrentUser caller) {
     folderService.deleteFolder(libraryId, folderId, caller);
     return ResponseEntity.noContent().build();
-  }
-
-  @GetMapping("/{libraryId}/grants")
-  public List<AssetGrantResponse> listAssetGrants(
-      @PathVariable UUID libraryId, @Caller CurrentUser caller) {
-    return AssetGrantResponseMapper.toResponses(grantService.listGrants(libraryId, caller));
-  }
-
-  @PostMapping("/{libraryId}/grants")
-  public AssetGrantResponse upsertAssetGrant(
-      @PathVariable UUID libraryId,
-      @Valid @RequestBody AssetGrantRequest request,
-      @Caller CurrentUser caller) {
-    return AssetGrantResponseMapper.toResponse(
-        grantService.upsertGrant(libraryId, AssetGrantResponseMapper.toUpsert(request), caller));
-  }
-
-  @DeleteMapping("/{libraryId}/grants/{grantId}")
-  public ResponseEntity<Void> revokeAssetGrant(
-      @PathVariable UUID libraryId, @PathVariable UUID grantId, @Caller CurrentUser caller) {
-    grantService.revokeGrant(libraryId, grantId, caller);
-    return ResponseEntity.noContent().build();
-  }
-
-  @GetMapping("/{libraryId}/grants/groups/{groupId}/members")
-  public GroupMemberDisclosureResponse listGrantedGroupMembers(
-      @PathVariable UUID libraryId,
-      @PathVariable UUID groupId,
-      @RequestParam(name = "offset", defaultValue = "0") int offset,
-      @RequestParam(name = "limit", defaultValue = "50") int limit,
-      @Caller CurrentUser caller) {
-    return GroupMemberDisclosureResponseMapper.toResponse(
-        grantService.listGroupMembers(libraryId, groupId, offset, limit, caller));
   }
 
   @PostMapping("/{libraryId}/indexing")

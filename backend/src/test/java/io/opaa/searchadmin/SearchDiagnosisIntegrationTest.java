@@ -119,7 +119,7 @@ class SearchDiagnosisIntegrationTest {
     jdbcTemplate.update(
         "DELETE FROM asset_grants WHERE asset_id in (?, ?)", grantedLibraryId, ungrantedLibraryId);
     jdbcTemplate.update(
-        "DELETE FROM knowledge_libraries WHERE id in (?, ?)", grantedLibraryId, ungrantedLibraryId);
+        "DELETE FROM assets WHERE id in (?, ?)", grantedLibraryId, ungrantedLibraryId);
     jdbcTemplate.update("DELETE FROM groups WHERE id = ?", profileGroupId);
     jdbcTemplate.update("DELETE FROM users WHERE id = ?", adminId);
   }
@@ -327,9 +327,10 @@ class SearchDiagnosisIntegrationTest {
 
   private void insertLibrary(UUID libraryId, String name) {
     jdbcTemplate.update(
-        "INSERT INTO knowledge_libraries (id, organization_id, name, owner_type, owner_user_id,"
-            + " visibility, listed, source_type, created_at, updated_at)"
-            + " VALUES (?, ?, ?, 'USER', ?, 'PRIVATE', false, 'UPLOAD', now(), now())",
+        "WITH shell AS (INSERT INTO assets (id, asset_type, organization_id, name, owner_type,"
+            + " owner_user_id, visibility, listed) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, ?, 'USER', ?, 'PRIVATE', false)"
+            + " RETURNING id, organization_id) INSERT INTO knowledge_libraries (id,"
+            + " organization_id, source_type) SELECT id, organization_id, 'UPLOAD' FROM shell",
         libraryId,
         DEFAULT_ORGANIZATION_ID,
         name,

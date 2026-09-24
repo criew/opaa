@@ -43,10 +43,10 @@ export default function SpacePage() {
   const isLoadingDetails = useSpaceStore((s) => s.isLoadingDetails)
   const error = useSpaceStore((s) => s.error)
   const isOwner = Boolean(currentUserId) && space?.ownerId === currentUserId
-  const libraryAssociations = useSpaceStore((s) => s.libraryAssociations)
-  const hasLibraryAssociations = useSpaceStore((s) => s.hasLibraryAssociations)
-  const isLoadingLibraryAssociations = useSpaceStore((s) => s.isLoadingLibraryAssociations)
-  const loadLibraryAssociations = useSpaceStore((s) => s.loadLibraryAssociations)
+  const assetAssociations = useSpaceStore((s) => s.assetAssociations)
+  const hasAssetAssociations = useSpaceStore((s) => s.hasAssetAssociations)
+  const isLoadingAssetAssociations = useSpaceStore((s) => s.isLoadingAssetAssociations)
+  const loadAssetAssociations = useSpaceStore((s) => s.loadAssetAssociations)
 
   const [membersExpanded, setMembersExpanded] = useState(true)
   const [chatsExpanded, setChatsExpanded] = useState(true)
@@ -95,9 +95,9 @@ export default function SpacePage() {
 
   useEffect(() => {
     if (space) {
-      void loadLibraryAssociations(space.id)
+      void loadAssetAssociations(space.id)
     }
-  }, [loadLibraryAssociations, space])
+  }, [loadAssetAssociations, space])
 
   if (isLoadingDetails && !space) {
     return (
@@ -263,17 +263,17 @@ export default function SpacePage() {
                 eine andere Liste sehen als Sie.
               </Alert>
             )}
-            {isLoadingLibraryAssociations ? (
+            {isLoadingAssetAssociations ? (
               <Typography sx={{ color: 'text.secondary' }}>
                 Datenquellen werden geladen …
               </Typography>
-            ) : !hasLibraryAssociations ? (
+            ) : !hasAssetAssociations ? (
               <Typography sx={{ color: 'text.secondary' }}>
                 Diesem Space sind keine Bibliotheken zugeordnet — die Suche greift auf alle für Sie
                 lesbaren Bibliotheken zurück.
               </Typography>
-            ) : libraryAssociations.length === 0 ? (
-              // #706 review, finding 2: hasLibraryAssociations is true here, but the (rechtege-
+            ) : assetAssociations.length === 0 ? (
+              // #706 review, finding 2: hasAssetAssociations is true here, but the (rechtege-
               // filterte) items list is empty - the space IS curated, just with libraries the
               // viewer cannot read. Spec (docs/features/spaces-and-assets.md#suchbereich-je-
               // chatart): a valid state, not an error, and deliberately without a count of the
@@ -283,12 +283,12 @@ export default function SpacePage() {
               </Typography>
             ) : (
               <Stack spacing={1}>
-                {libraryAssociations.map((association) => (
+                {assetAssociations.map((association) => (
                   <Box
-                    key={association.libraryId}
+                    key={association.assetId}
                     sx={{ display: 'flex', justifyContent: 'space-between' }}
                   >
-                    <Typography>{association.libraryName}</Typography>
+                    <Typography>{association.name}</Typography>
                   </Box>
                 ))}
               </Stack>

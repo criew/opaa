@@ -11,9 +11,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
-import io.opaa.api.types.LibraryVisibility;
 import io.opaa.common.UnauthorizedException;
 import io.opaa.indexing.source.SourceEventIntake;
 import io.opaa.indexing.source.SourceEventTarget;
@@ -60,7 +60,7 @@ class S3EventServiceTest {
             "Protokolle",
             null,
             UUID.randomUUID(),
-            LibraryVisibility.PRIVATE,
+            AssetVisibility.PRIVATE,
             false,
             DocumentSourceType.S3,
             null,
@@ -129,7 +129,7 @@ class S3EventServiceTest {
             "Wiki",
             null,
             UUID.randomUUID(),
-            LibraryVisibility.PRIVATE,
+            AssetVisibility.PRIVATE,
             false,
             DocumentSourceType.CONFLUENCE,
             null,
@@ -181,7 +181,7 @@ class S3EventServiceTest {
             "Leer",
             null,
             UUID.randomUUID(),
-            LibraryVisibility.PRIVATE,
+            AssetVisibility.PRIVATE,
             false,
             DocumentSourceType.S3,
             null,

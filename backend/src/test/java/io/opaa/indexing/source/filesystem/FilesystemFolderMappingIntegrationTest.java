@@ -4,8 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
+import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DocumentSourceType;
-import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.indexing.document.ChecksumService;
@@ -102,7 +102,7 @@ class FilesystemFolderMappingIntegrationTest {
                 "Zielbibliothek",
                 null,
                 userId,
-                LibraryVisibility.PRIVATE,
+                AssetVisibility.PRIVATE,
                 false,
                 DocumentSourceType.FILESYSTEM,
                 classTempDir.toAbsolutePath().toString(),

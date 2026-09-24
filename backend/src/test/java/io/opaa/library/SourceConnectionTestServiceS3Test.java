@@ -13,9 +13,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.AssetRole;
+import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.Capability;
 import io.opaa.api.types.DocumentSourceType;
-import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.AccessDeniedException;
@@ -94,7 +94,7 @@ class SourceConnectionTestServiceS3Test {
             "Protokolle",
             null,
             currentUserId,
-            LibraryVisibility.PRIVATE,
+            AssetVisibility.PRIVATE,
             false,
             DocumentSourceType.S3,
             null,
@@ -342,7 +342,7 @@ class SourceConnectionTestServiceS3Test {
             "Feed",
             null,
             currentUserId,
-            LibraryVisibility.PRIVATE,
+            AssetVisibility.PRIVATE,
             false,
             DocumentSourceType.RSS_FEED,
             null,

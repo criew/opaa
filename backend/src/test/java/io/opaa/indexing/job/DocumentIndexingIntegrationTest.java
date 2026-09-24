@@ -6,10 +6,10 @@ import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
+import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.IndexingRunMode;
-import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.NotFoundException;
@@ -141,7 +141,7 @@ class DocumentIndexingIntegrationTest {
                 "Zielbibliothek",
                 null,
                 userId,
-                LibraryVisibility.PRIVATE,
+                AssetVisibility.PRIVATE,
                 false,
                 DocumentSourceType.FILESYSTEM,
                 classTempDir.toAbsolutePath().toString(),
@@ -172,7 +172,7 @@ class DocumentIndexingIntegrationTest {
 
   private List<UUID> ownLibraryIds() {
     return jdbcTemplate.queryForList(
-        "SELECT id FROM knowledge_libraries WHERE owner_user_id IN (SELECT id FROM users"
+        "SELECT id FROM assets WHERE owner_user_id IN (SELECT id FROM users"
             + " WHERE email = 'indexing-it@example.com')",
         UUID.class);
   }
@@ -331,7 +331,7 @@ class DocumentIndexingIntegrationTest {
                 "Andere Bibliothek (Retention)",
                 null,
                 userId,
-                LibraryVisibility.PRIVATE,
+                AssetVisibility.PRIVATE,
                 false,
                 DocumentSourceType.FILESYSTEM,
                 classTempDir.toAbsolutePath().toString(),
@@ -375,7 +375,7 @@ class DocumentIndexingIntegrationTest {
     assertThat(indexingJobRepository.findById(otherLibraryJob.getId())).isPresent();
 
     jdbcTemplate.update("DELETE FROM asset_grants WHERE asset_id = ?", otherLibraryId);
-    jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE id = ?", otherLibraryId);
+    jdbcTemplate.update("DELETE FROM assets WHERE id = ?", otherLibraryId);
   }
 
   @Test
@@ -761,7 +761,7 @@ class DocumentIndexingIntegrationTest {
                 "Andere Bibliothek",
                 null,
                 userId,
-                LibraryVisibility.PRIVATE,
+                AssetVisibility.PRIVATE,
                 false,
                 DocumentSourceType.FILESYSTEM,
                 classTempDir.toAbsolutePath().toString(),
@@ -900,7 +900,7 @@ class DocumentIndexingIntegrationTest {
                 "Bibliothek des Fremden",
                 null,
                 strangerId,
-                LibraryVisibility.PRIVATE,
+                AssetVisibility.PRIVATE,
                 false));
     grantOwner(strangerLibrary.getId(), strangerId);
 
@@ -916,7 +916,7 @@ class DocumentIndexingIntegrationTest {
         .noneMatch(source -> "findable.txt".equals(source.getFileName()));
 
     jdbcTemplate.update("DELETE FROM asset_grants WHERE asset_id = ?", strangerLibrary.getId());
-    jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE id = ?", strangerLibrary.getId());
+    jdbcTemplate.update("DELETE FROM assets WHERE id = ?", strangerLibrary.getId());
     jdbcTemplate.update("DELETE FROM users WHERE id = ?", strangerId);
   }
 
@@ -967,7 +967,7 @@ class DocumentIndexingIntegrationTest {
                 "Ausserhalb der Allowlist",
                 null,
                 userId,
-                LibraryVisibility.PRIVATE,
+                AssetVisibility.PRIVATE,
                 false,
                 DocumentSourceType.FILESYSTEM,
                 OpaaTestDirectory.OUTSIDE_ALLOWLIST_DIR
@@ -1132,7 +1132,7 @@ class DocumentIndexingIntegrationTest {
                 "Bibliothek " + subdirectoryName,
                 null,
                 ownerId,
-                LibraryVisibility.PRIVATE,
+                AssetVisibility.PRIVATE,
                 false,
                 DocumentSourceType.FILESYSTEM,
                 libraryDir.toAbsolutePath().toString(),

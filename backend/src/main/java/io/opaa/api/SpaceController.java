@@ -3,9 +3,9 @@ package io.opaa.api;
 import io.opaa.api.dto.GroupMemberDisclosureResponse;
 import io.opaa.api.dto.SpaceAccessDerivationResponse;
 import io.opaa.api.dto.SpaceAddMemberRequest;
-import io.opaa.api.dto.SpaceLibraryAssociationListResponse;
-import io.opaa.api.dto.SpaceLibraryAssociationRequest;
-import io.opaa.api.dto.SpaceLibraryAssociationResponse;
+import io.opaa.api.dto.SpaceAssetAssociationListResponse;
+import io.opaa.api.dto.SpaceAssetAssociationRequest;
+import io.opaa.api.dto.SpaceAssetAssociationResponse;
 import io.opaa.api.dto.SpaceListResponse;
 import io.opaa.api.dto.SpaceMemberResponse;
 import io.opaa.api.dto.SpaceRequest;
@@ -73,28 +73,32 @@ public class SpaceController {
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 
-  @GetMapping("/{spaceId}/libraries")
-  public SpaceLibraryAssociationListResponse listLibraryAssociations(
+  @GetMapping("/{spaceId}/assets")
+  public SpaceAssetAssociationListResponse listAssetAssociations(
       @PathVariable UUID spaceId, @Caller CurrentUser caller) {
-    return SpaceLibraryAssociationResponseMapper.toListResponse(
+    return SpaceAssetAssociationResponseMapper.toListResponse(
         associationService.listForSpace(spaceId, caller));
   }
 
-  @PostMapping("/{spaceId}/libraries")
-  public ResponseEntity<SpaceLibraryAssociationResponse> associateLibrary(
+  @PostMapping("/{spaceId}/assets")
+  public ResponseEntity<SpaceAssetAssociationResponse> associateAsset(
       @PathVariable UUID spaceId,
-      @Valid @RequestBody SpaceLibraryAssociationRequest request,
+      @Valid @RequestBody SpaceAssetAssociationRequest request,
       @Caller CurrentUser caller) {
-    SpaceLibraryAssociationResponse response =
-        SpaceLibraryAssociationResponseMapper.toResponse(
-            associationService.associate(spaceId, request.getLibraryId(), caller));
+    SpaceAssetAssociationResponse response =
+        SpaceAssetAssociationResponseMapper.toResponse(
+            associationService.associate(
+                spaceId,
+                io.opaa.permission.AssetType.of(request.getAssetType().getValue()),
+                request.getAssetId(),
+                caller));
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 
-  @DeleteMapping("/{spaceId}/libraries/{libraryId}")
-  public ResponseEntity<Void> detachLibrary(
-      @PathVariable UUID spaceId, @PathVariable UUID libraryId, @Caller CurrentUser caller) {
-    associationService.detach(spaceId, libraryId, caller);
+  @DeleteMapping("/{spaceId}/assets/{assetId}")
+  public ResponseEntity<Void> detachAsset(
+      @PathVariable UUID spaceId, @PathVariable UUID assetId, @Caller CurrentUser caller) {
+    associationService.detach(spaceId, assetId, caller);
     return ResponseEntity.noContent().build();
   }
 

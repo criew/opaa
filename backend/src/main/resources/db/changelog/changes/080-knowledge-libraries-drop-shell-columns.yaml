@@ -1,0 +1,77 @@
+databaseChangeLog:
+  - changeSet:
+      id: 080-knowledge-libraries-drop-shell-columns
+      author: opaa
+      comment: >-
+        knowledge_libraries behaelt nur noch das Typische (#1899): Quelle und Konnektor,
+        Fremdzugang, Freigabe-Obergrenze (visibility_cap/listed_cap), Index- und
+        Metadaten-Einstellungen. Name, Beschreibung, Eigentuemer, Freigabestufe, Auffindbarkeit
+        und die Zeitstempel stehen seit 079 in assets und werden hier entfernt - mit ihnen
+        chk_knowledge_libraries_owner, chk_knowledge_libraries_owner_type,
+        chk_knowledge_libraries_visibility und die beiden Eigentuemer-Fremdschluessel, deren
+        Zusagen fk_assets_owner_user_organization und fk_assets_owner_group_organization
+        unveraendert weitertragen (RESTRICT: ein Konto oder eine Gruppe, der noch ein Asset
+        gehoert, ist nicht loeschbar).
+        .
+        organization_id bleibt: Dokumente, Ordner, Indexlaeufe und Chat-Verweise zeigen mit
+        zusammengesetzten Fremdschluesseln auf (id, organization_id) der Typtabelle.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE knowledge_libraries
+                  DROP CONSTRAINT fk_knowledge_libraries_owner_user_organization,
+                  DROP CONSTRAINT fk_knowledge_libraries_owner_group_organization,
+                  DROP CONSTRAINT chk_knowledge_libraries_owner,
+                  DROP CONSTRAINT chk_knowledge_libraries_owner_type,
+                  DROP CONSTRAINT chk_knowledge_libraries_visibility;
+
+              ALTER TABLE knowledge_libraries
+                  DROP COLUMN name,
+                  DROP COLUMN description,
+                  DROP COLUMN owner_type,
+                  DROP COLUMN owner_user_id,
+                  DROP COLUMN owner_group_id,
+                  DROP COLUMN visibility,
+                  DROP COLUMN listed,
+                  DROP COLUMN created_at,
+                  DROP COLUMN updated_at;
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE knowledge_libraries
+                  ADD COLUMN name character varying(255),
+                  ADD COLUMN description character varying(2000),
+                  ADD COLUMN owner_type character varying(20),
+                  ADD COLUMN owner_user_id uuid,
+                  ADD COLUMN owner_group_id uuid,
+                  ADD COLUMN visibility character varying(20),
+                  ADD COLUMN listed boolean DEFAULT false NOT NULL,
+                  ADD COLUMN created_at timestamp with time zone DEFAULT now() NOT NULL,
+                  ADD COLUMN updated_at timestamp with time zone DEFAULT now() NOT NULL;
+
+              UPDATE knowledge_libraries kl
+                 SET name = a.name,
+                     description = a.description,
+                     owner_type = a.owner_type,
+                     owner_user_id = a.owner_user_id,
+                     owner_group_id = a.owner_group_id,
+                     visibility = a.visibility,
+                     listed = a.listed,
+                     created_at = a.created_at,
+                     updated_at = a.updated_at
+                FROM assets a
+               WHERE a.id = kl.id;
+
+              ALTER TABLE knowledge_libraries
+                  ALTER COLUMN name SET NOT NULL,
+                  ALTER COLUMN owner_type SET NOT NULL,
+                  ALTER COLUMN visibility SET NOT NULL;
+
+              ALTER TABLE knowledge_libraries
+                  ADD CONSTRAINT chk_knowledge_libraries_owner CHECK (((((owner_type)::text = 'USER'::text) AND (owner_user_id IS NOT NULL) AND (owner_group_id IS NULL)) OR (((owner_type)::text = 'GROUP'::text) AND (owner_group_id IS NOT NULL) AND (owner_user_id IS NULL)))),
+                  ADD CONSTRAINT chk_knowledge_libraries_owner_type CHECK ((owner_type IN ('USER', 'GROUP'))),
+                  ADD CONSTRAINT chk_knowledge_libraries_visibility CHECK ((visibility IN ('PRIVATE', 'SHARED', 'ORGANIZATION'))),
+                  ADD CONSTRAINT fk_knowledge_libraries_owner_group_organization FOREIGN KEY (owner_group_id, organization_id) REFERENCES groups(id, organization_id) ON DELETE RESTRICT,
+                  ADD CONSTRAINT fk_knowledge_libraries_owner_user_organization FOREIGN KEY (owner_user_id, organization_id) REFERENCES users(id, organization_id) ON DELETE RESTRICT;

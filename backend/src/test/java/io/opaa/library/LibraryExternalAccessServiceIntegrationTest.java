@@ -4,12 +4,15 @@ import static io.opaa.library.LibraryCreationBuilder.libraryCreation;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.opaa.api.types.AssetOwnerType;
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.ExternalAccessState;
-import io.opaa.api.types.LibraryOwnerType;
 import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.api.types.SystemRole;
+import io.opaa.asset.AssetGrantService;
+import io.opaa.asset.AssetGrantUpsert;
+import io.opaa.asset.AssetVisibilityHistoryService;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
@@ -53,7 +56,7 @@ class LibraryExternalAccessServiceIntegrationTest {
   @Autowired private AssetGrantService grantService;
   @Autowired private AssetGrantRepository grantRepository;
   @Autowired private AssetGrantHistoryRepository grantHistoryRepository;
-  @Autowired private LibraryVisibilityHistoryService visibilityHistoryService;
+  @Autowired private AssetVisibilityHistoryService visibilityHistoryService;
   @Autowired private AuditEventRecorder auditEventRecorder;
   @Autowired private LibraryAccessService accessService;
   @Autowired private ExternalAccessProperties externalAccessProperties;
@@ -139,6 +142,7 @@ class LibraryExternalAccessServiceIntegrationTest {
     UUID reader = createUser();
     UUID libraryId = createLibrary(owner);
     grantService.upsertGrant(
+        KnowledgeLibrary.ASSET_TYPE,
         libraryId,
         new AssetGrantUpsert(PermissionSubjectType.USER, reader, AssetRole.VIEWER),
         currentUserOf(owner));
@@ -380,7 +384,7 @@ class LibraryExternalAccessServiceIntegrationTest {
     return libraryService
         .createLibrary(
             libraryCreation("Bibliothek", DocumentSourceType.UPLOAD)
-                .ownerType(LibraryOwnerType.USER)
+                .ownerType(AssetOwnerType.USER)
                 .ownerId(ownerId)
                 .build(),
             currentUserOf(ownerId))

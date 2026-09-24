@@ -6,11 +6,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.api.types.AssetRole;
+import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.api.types.DocumentSourceType;
-import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.api.types.SystemRole;
+import io.opaa.asset.AssetGrantService;
+import io.opaa.asset.AssetGrantUpsert;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
@@ -587,6 +589,7 @@ class ConfluenceLibraryConfigurationIntegrationTest {
     UUID libraryId =
         create(currentUser(owner), "Wiki", dataCenter.baseUrl(), "pat", List.of("ENG"));
     grantService.upsertGrant(
+        KnowledgeLibrary.ASSET_TYPE,
         libraryId,
         new AssetGrantUpsert(PermissionSubjectType.USER, editor, AssetRole.EDITOR),
         currentUser(owner));
@@ -632,7 +635,7 @@ class ConfluenceLibraryConfigurationIntegrationTest {
         .sourceCredentials(edition == ConfluenceEdition.CLOUD ? "a@b.example:token" : "pat-token")
         .confluenceEdition(edition)
         .confluenceSpaces(List.of(new ConfluenceSpaceSelection("ENG", "Engineering")))
-        .visibility(LibraryVisibility.PRIVATE);
+        .visibility(AssetVisibility.PRIVATE);
   }
 
   private UUID user() {

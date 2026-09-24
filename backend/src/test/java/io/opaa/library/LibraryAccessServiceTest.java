@@ -10,7 +10,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.AssetRole;
-import io.opaa.api.types.LibraryVisibility;
+import io.opaa.api.types.AssetVisibility;
+import io.opaa.asset.Asset;
+import io.opaa.asset.AssetAuthorization;
+import io.opaa.asset.AssetRepository;
+import io.opaa.asset.AssetTypes;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.NotFoundException;
 import io.opaa.permission.AssetAccessService;
@@ -28,7 +32,6 @@ import org.junit.jupiter.api.Test;
 class LibraryAccessServiceTest {
 
   private AssetGrantRepository grantRepository;
-  private KnowledgeLibraryRepository libraryRepository;
   private GroupMembershipResolver membershipResolver;
   private LibraryAccessService accessService;
 
@@ -38,25 +41,24 @@ class LibraryAccessServiceTest {
   @BeforeEach
   void setUp() {
     grantRepository = mock(AssetGrantRepository.class);
-    libraryRepository = mock(KnowledgeLibraryRepository.class);
     membershipResolver = mock(GroupMembershipResolver.class);
+    AssetAccessService assetAccessService =
+        new AssetAccessService(
+            grantRepository, membershipResolver, mock(GroupSubjectDirectory.class));
     accessService =
         new LibraryAccessService(
-            new AssetAccessService(
-                grantRepository, membershipResolver, mock(GroupSubjectDirectory.class)),
-            libraryRepository);
+            assetAccessService,
+            new AssetAuthorization(
+                mock(AssetRepository.class),
+                assetAccessService,
+                new AssetTypes(List.of(new KnowledgeLibraryAssetType()))));
     when(membershipResolver.groupIdsForUser(userId)).thenReturn(Set.of());
   }
 
   private KnowledgeLibrary privateUserOwnedLibrary(UUID libraryId) {
     KnowledgeLibrary library =
         KnowledgeLibrary.ownedByUser(
-            organizationId,
-            "Bibliothek",
-            null,
-            UUID.randomUUID(),
-            LibraryVisibility.PRIVATE,
-            false);
+            organizationId, "Bibliothek", null, UUID.randomUUID(), AssetVisibility.PRIVATE, false);
     setId(library, libraryId);
     return library;
   }
@@ -66,7 +68,7 @@ class LibraryAccessServiceTest {
    * exercise the fail-closed/opened-by-visibility/opened-by-grant formula independent of ownership
    * (#406, formerly exercised via the now-removed {@code SYSTEM} owner kind - see #521).
    */
-  private KnowledgeLibrary libraryWithVisibility(UUID libraryId, LibraryVisibility visibility) {
+  private KnowledgeLibrary libraryWithVisibility(UUID libraryId, AssetVisibility visibility) {
     KnowledgeLibrary library =
         KnowledgeLibrary.ownedByUser(
             organizationId, "Bibliothek", null, UUID.randomUUID(), visibility, false);
@@ -87,7 +89,7 @@ class LibraryAccessServiceTest {
 
   private void setId(KnowledgeLibrary library, UUID id) {
     try {
-      var field = KnowledgeLibrary.class.getDeclaredField("id");
+      var field = Asset.class.getDeclaredField("id");
       field.setAccessible(true);
       field.set(library, id);
     } catch (ReflectiveOperationException e) {
@@ -98,7 +100,7 @@ class LibraryAccessServiceTest {
   @Test
   void aPrivateLibraryWithNoGrantsIsClosedToOrdinaryUsersButOpenToASystemAdmin() {
     UUID libraryId = UUID.randomUUID();
-    KnowledgeLibrary library = libraryWithVisibility(libraryId, LibraryVisibility.PRIVATE);
+    KnowledgeLibrary library = libraryWithVisibility(libraryId, AssetVisibility.PRIVATE);
     when(grantRepository.findByAssetTypeAndAssetId(KnowledgeLibrary.ASSET_TYPE, libraryId))
         .thenReturn(List.of());
 
@@ -112,7 +114,7 @@ class LibraryAccessServiceTest {
   @Test
   void anOrganizationVisibleLibraryIsReadableByAnyoneInTheOrganization() {
     UUID libraryId = UUID.randomUUID();
-    KnowledgeLibrary library = libraryWithVisibility(libraryId, LibraryVisibility.ORGANIZATION);
+    KnowledgeLibrary library = libraryWithVisibility(libraryId, AssetVisibility.ORGANIZATION);
     when(grantRepository.findByAssetTypeAndAssetId(KnowledgeLibrary.ASSET_TYPE, libraryId))
         .thenReturn(List.of());
 
@@ -122,7 +124,7 @@ class LibraryAccessServiceTest {
   @Test
   void aGrantOnAPrivateLibraryCounts() {
     UUID libraryId = UUID.randomUUID();
-    KnowledgeLibrary library = libraryWithVisibility(libraryId, LibraryVisibility.PRIVATE);
+    KnowledgeLibrary library = libraryWithVisibility(libraryId, AssetVisibility.PRIVATE);
     when(grantRepository.findByAssetTypeAndAssetId(KnowledgeLibrary.ASSET_TYPE, libraryId))
         .thenReturn(List.of(userGrant(libraryId, userId, AssetRole.VIEWER)));
 
@@ -380,7 +382,7 @@ class LibraryAccessServiceTest {
             "Bibliothek",
             null,
             UUID.randomUUID(),
-            LibraryVisibility.ORGANIZATION,
+            AssetVisibility.ORGANIZATION,
             false);
     setId(library, libraryId);
     when(grantRepository.findByAssetTypeAndAssetId(KnowledgeLibrary.ASSET_TYPE, libraryId))
@@ -409,11 +411,11 @@ class LibraryAccessServiceTest {
             "Organisationsweit",
             null,
             UUID.randomUUID(),
-            LibraryVisibility.ORGANIZATION,
+            AssetVisibility.ORGANIZATION,
             false);
     setId(orgWide, orgLibrary);
-    when(libraryRepository.findIdsByOrganizationIdAndVisibility(
-            organizationId, LibraryVisibility.ORGANIZATION))
+    when(grantRepository.findOrganizationWideAssetIds(
+            KnowledgeLibrary.ASSET_TYPE.value(), organizationId))
         .thenReturn(List.of(orgWide.getId()));
 
     Set<UUID> readable = accessService.readableLibraryIds(userId, organizationId);
@@ -426,8 +428,8 @@ class LibraryAccessServiceTest {
     when(grantRepository.findReadableAssetIdsByDirectGrant(
             eq(KnowledgeLibrary.ASSET_TYPE), eq(userId), eq(organizationId), any()))
         .thenReturn(Set.of());
-    when(libraryRepository.findIdsByOrganizationIdAndVisibility(
-            organizationId, LibraryVisibility.ORGANIZATION))
+    when(grantRepository.findOrganizationWideAssetIds(
+            KnowledgeLibrary.ASSET_TYPE.value(), organizationId))
         .thenReturn(List.of());
 
     assertThat(accessService.readableLibraryIds(userId, organizationId)).isEmpty();

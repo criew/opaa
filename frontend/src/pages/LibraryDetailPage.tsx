@@ -66,12 +66,12 @@ import type {
   LibraryFolderListItem,
   LibrarySchedule,
   S3Settings,
-  LibrarySpaceAssociationResponse,
-  LibraryVisibility,
+  AssetSpaceAssociationResponse,
+  AssetVisibility,
   ConfluenceEdition,
   ConfluenceSpaceRef,
 } from '../types/api'
-import { detachSpaceLibrary, getLibraryFolder, getLibrarySpaceAssociations } from '../services/api'
+import { detachSpaceAsset, getAssetSpaceAssociations, getLibraryFolder } from '../services/api'
 import { confluenceEditionLabel } from '../utils/labels'
 import { useAuthStore } from '../stores/authStore'
 import { confirmAction } from '../stores/confirmStore'
@@ -96,7 +96,8 @@ import {
   filterAcceptedFiles,
   resolveDroppedItems,
 } from '../utils/directoryEntries'
-import LibraryGrantsDialog from '../components/LibraryGrantsDialog'
+import AssetGrantsDialog from '../components/permissions/AssetGrantsDialog'
+import LibraryExternalAccessSection from '../components/library/LibraryExternalAccessSection'
 import AccessDerivation from '../components/permissions/AccessDerivation'
 import EditLibrarySourceDialog from '../components/EditLibrarySourceDialog'
 import EditLibraryScheduleDialog from '../components/EditLibraryScheduleDialog'
@@ -124,17 +125,14 @@ import { successionAwareMessage } from '../components/succession/successionConfl
 export const ACCEPTED_FILE_EXTENSIONS =
   '.csv,.doc,.docx,.eml,.html,.md,.msg,.odp,.ods,.odt,.pdf,.pptx,.txt,.xlsx'
 
-const allVisibilities: LibraryVisibility[] = ['PRIVATE', 'SHARED', 'ORGANIZATION']
+const allVisibilities: AssetVisibility[] = ['PRIVATE', 'SHARED', 'ORGANIZATION']
 
 /**
- * Mirrors the backend's `LibraryVisibility#exceeds` (#797, #1870 review): whether `option` reaches
+ * Mirrors the backend's `AssetVisibility#exceeds` (#797, #1870 review): whether `option` reaches
  * further than the share cap - `false` while no cap is known (UPLOAD, or below MANAGER), matching
  * the backend's own "nothing to check" default there.
  */
-function exceedsVisibilityCap(
-  option: LibraryVisibility,
-  cap: LibraryVisibility | null | undefined,
-) {
+function exceedsVisibilityCap(option: AssetVisibility, cap: AssetVisibility | null | undefined) {
   if (!cap) return false
   return allVisibilities.indexOf(option) > allVisibilities.indexOf(cap)
 }
@@ -294,11 +292,11 @@ function DiagnosticsLockControl({
 }
 
 interface ShareCapControlProps {
-  visibilityCap: LibraryVisibility
+  visibilityCap: AssetVisibility
   listedCap: boolean
   saving: boolean
   error: string | null
-  onSave: (visibilityCap: LibraryVisibility, listedCap: boolean) => void
+  onSave: (visibilityCap: AssetVisibility, listedCap: boolean) => void
   onDismissError: () => void
 }
 
@@ -335,7 +333,7 @@ function ShareCapControl({
           <Select
             labelId="library-detail-visibility-cap-label"
             value={draftVisibilityCap}
-            onChange={(e) => setDraftVisibilityCap(e.target.value as LibraryVisibility)}
+            onChange={(e) => setDraftVisibilityCap(e.target.value as AssetVisibility)}
           >
             {allVisibilities.map((option) => (
               <MenuItem key={option} value={option}>
@@ -399,7 +397,7 @@ export default function LibraryDetailPage() {
   const [draft, setDraft] = useState<{
     name: string
     description: string
-    visibility: LibraryVisibility
+    visibility: AssetVisibility
     listed: boolean
   } | null>(null)
   const [localError, setLocalError] = useState<string | null>(null)
@@ -568,7 +566,7 @@ export default function LibraryDetailPage() {
     }
   }
 
-  async function handleSaveShareCap(visibilityCap: LibraryVisibility, listedCap: boolean) {
+  async function handleSaveShareCap(visibilityCap: AssetVisibility, listedCap: boolean) {
     if (!libraryId) return
     setShareCapError(null)
     setShareCapSaving(true)
@@ -1179,7 +1177,7 @@ export default function LibraryDetailPage() {
                       setDraft({
                         name,
                         description,
-                        visibility: e.target.value as LibraryVisibility,
+                        visibility: e.target.value as AssetVisibility,
                         listed,
                       })
                     }
@@ -1296,7 +1294,9 @@ export default function LibraryDetailPage() {
               {/* Auf Nachfrage, wie im Space: die Herleitung kostet eine eigene Anfrage, die nur
                   stellt, wer sie sehen will. */}
               {derivationShown ? (
-                <AccessDerivation target={{ kind: 'library', libraryId }} />
+                <AccessDerivation
+                  target={{ kind: 'asset', assetType: 'KNOWLEDGE_LIBRARY', assetId: libraryId }}
+                />
               ) : (
                 <Button size="small" onClick={() => setDerivationShown(true)}>
                   Herleitung anzeigen
@@ -1328,10 +1328,13 @@ export default function LibraryDetailPage() {
       )}
 
       {canEdit && (
-        <LibraryGrantsDialog
+        <AssetGrantsDialog
           open={grantsDialogOpen}
-          library={{ id: libraryId, name: library.name }}
+          assetType="KNOWLEDGE_LIBRARY"
+          assetId={libraryId}
+          assetName={library.name}
           onClose={() => setGrantsDialogOpen(false)}
+          typeSection={<LibraryExternalAccessSection libraryId={libraryId} />}
         />
       )}
     </Box>
@@ -2709,14 +2712,14 @@ interface LibrarySpacesSectionProps {
 // never filtered by the caller's own space membership (docs/features/spaces-and-assets.md#assets-
 // in-einen-space-assoziieren: "Der Eigentümer des Assets sieht alle Assoziationen und kann jede
 // davon jederzeit einseitig lösen"). Only rendered for MANAGER/OWNER (see canEdit above), the same
-// threshold GET /v1/libraries/{libraryId}/spaces itself requires.
+// threshold GET /v1/assets/{assetType}/{assetId}/spaces itself requires.
 function LibrarySpacesSection({ libraryId }: LibrarySpacesSectionProps) {
-  const [associations, setAssociations] = useState<LibrarySpaceAssociationResponse[] | null>(null)
+  const [associations, setAssociations] = useState<AssetSpaceAssociationResponse[] | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
-    getLibrarySpaceAssociations(libraryId)
+    getAssetSpaceAssociations('KNOWLEDGE_LIBRARY', libraryId)
       .then((data) => {
         if (!cancelled) setAssociations(data)
       })
@@ -2737,7 +2740,7 @@ function LibrarySpacesSection({ libraryId }: LibrarySpacesSectionProps) {
     if (!confirmed) return
     setError(null)
     try {
-      await detachSpaceLibrary(spaceId, libraryId)
+      await detachSpaceAsset(spaceId, libraryId)
       setAssociations((prev) => prev?.filter((a) => a.spaceId !== spaceId) ?? null)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Lösen fehlgeschlagen')
@@ -2801,7 +2804,7 @@ interface LibraryIndexingSectionProps {
   library: {
     name: string
     description?: string | null
-    visibility: LibraryVisibility
+    visibility: AssetVisibility
     listed: boolean
     sourceType: DocumentSourceType
     sourcePath?: string | null

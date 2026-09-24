@@ -5,23 +5,14 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Domain event for the {@link KnowledgeLibrary} permission-history/audit double bookkeeping
- * (#238/#392, #892), the library-visibility counterpart of {@link GrantChanged}: creating a library
- * or changing its visibility/listed state writes one {@link LibraryVisibilityHistoryService}
- * interval ({@link LibraryVisibilityHistoryService#recordLibraryCreated}/{@link
- * LibraryVisibilityHistoryService#recordVisibilityChanged}) and one audit entry, side by side.
- * {@link KnowledgeLibraryService} publishes exactly one of these per operation; {@link
- * AuditListener} and {@link PermissionHistoryListener} each react with their own half, in an
- * intentionally unspecified order - see {@link GrantChanged}'s Javadoc for why. Scoped to {@code
- * CREATED}, {@code VISIBILITY_CHANGED} and {@code EXTERNAL_ACCESS_CHANGED} only - a plain
- * rename/description edit ({@code LIBRARY_CHANGED}) and a source-configuration edit ({@code
- * LIBRARY_SOURCE_UPDATED}) write an audit entry with no permission-history counterpart, so they
- * stay direct {@code AuditEventRecorder} calls; library deletion closes a variable number of
- * grant/visibility intervals in a loop, a different shape than this event's
- * one-history-write-per-publish, so it also stays direct.
+ * Domain event for the library's own double bookkeeping (#238/#892, #1731): a change of the release
+ * for Fremdzugaenge writes one reach interval through {@code
+ * AssetVisibilityHistoryService#recordExternalAccessChanged} and one audit entry, side by side -
+ * {@link PermissionHistoryListener} and {@link AuditListener} each write their half. Creation and
+ * visibility/listed are the asset shell's ({@code io.opaa.asset.AssetChanged}).
  *
- * <p>Same {@link Cause}-carries-its-{@link AuditEventType} and transaction/publishing contract as
- * {@link GrantChanged} - see its Javadoc.
+ * <p>Published synchronously from within the publisher's transaction, so both writes roll back with
+ * it; {@link Cause} carries its {@link AuditEventType}, so the two can never disagree.
  */
 public record LibraryChanged(
     KnowledgeLibrary library,
@@ -30,13 +21,7 @@ public record LibraryChanged(
     Map<String, Object> auditBefore,
     Map<String, Object> auditAfter) {
 
-  /**
-   * Which {@link LibraryVisibilityHistoryService} writer {@link PermissionHistoryListener} calls,
-   * paired 1:1 with the {@link AuditEventType} {@link AuditListener} writes for it.
-   */
   public enum Cause {
-    CREATED(AuditEventType.LIBRARY_CREATED),
-    VISIBILITY_CHANGED(AuditEventType.ASSET_VISIBILITY_CHANGED),
     EXTERNAL_ACCESS_CHANGED(AuditEventType.ASSET_EXTERNAL_ACCESS_CHANGED);
 
     private final AuditEventType auditEventType;

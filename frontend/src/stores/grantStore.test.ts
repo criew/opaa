@@ -1,17 +1,19 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { useGrantStore } from './grantStore'
+import { assetKey, useGrantStore } from './grantStore'
 import { resetAllStores } from './resettableStores'
-import { getLibraryGrants } from '../services/api'
+import { getAssetGrants } from '../services/api'
 import type { AssetGrantResponse } from '../types/api'
 
-const mockUpsertLibraryGrant = vi.fn()
-const mockRevokeLibraryGrant = vi.fn()
+const mockUpsertAssetGrant = vi.fn()
+const mockRevokeAssetGrant = vi.fn()
 
 vi.mock('../services/api', () => ({
-  getLibraryGrants: vi.fn(async () => []),
-  upsertLibraryGrant: (...args: unknown[]) => mockUpsertLibraryGrant(...args),
-  revokeLibraryGrant: (...args: unknown[]) => mockRevokeLibraryGrant(...args),
+  getAssetGrants: vi.fn(async () => []),
+  upsertAssetGrant: (...args: unknown[]) => mockUpsertAssetGrant(...args),
+  revokeAssetGrant: (...args: unknown[]) => mockRevokeAssetGrant(...args),
 }))
+
+const LIBRARY = assetKey('KNOWLEDGE_LIBRARY', 'library-1')
 
 function grant(overrides: Partial<AssetGrantResponse> = {}): AssetGrantResponse {
   return {
@@ -31,45 +33,46 @@ function grant(overrides: Partial<AssetGrantResponse> = {}): AssetGrantResponse 
 
 describe('grantStore', () => {
   beforeEach(() => {
-    useGrantStore.setState({ grantsByLibrary: {}, isLoading: false, error: null })
-    mockUpsertLibraryGrant.mockReset()
-    mockRevokeLibraryGrant.mockReset()
+    useGrantStore.setState({ grantsByAsset: {}, isLoading: false, error: null })
+    mockUpsertAssetGrant.mockReset()
+    mockRevokeAssetGrant.mockReset()
   })
 
-  it('loads grants for a library', async () => {
-    vi.mocked(getLibraryGrants).mockResolvedValueOnce([grant()])
+  it('loads grants for an asset under its type and id', async () => {
+    vi.mocked(getAssetGrants).mockResolvedValueOnce([grant()])
 
-    await useGrantStore.getState().loadGrants('library-1')
+    await useGrantStore.getState().loadGrants('KNOWLEDGE_LIBRARY', 'library-1')
 
-    expect(useGrantStore.getState().grantsByLibrary['library-1']).toHaveLength(1)
+    expect(getAssetGrants).toHaveBeenCalledWith('KNOWLEDGE_LIBRARY', 'library-1')
+    expect(useGrantStore.getState().grantsByAsset[LIBRARY]).toHaveLength(1)
   })
 
   // #575: found while systematically checking the resettableStores registry for further
   // unguarded async set() paths beyond the ones the issue named explicitly.
   it('a loadGrants response arriving after a session reset does not resurrect grants', async () => {
-    vi.mocked(getLibraryGrants).mockImplementationOnce(async () => {
+    vi.mocked(getAssetGrants).mockImplementationOnce(async () => {
       resetAllStores()
       return [grant()]
     })
 
-    await useGrantStore.getState().loadGrants('library-1')
+    await useGrantStore.getState().loadGrants('KNOWLEDGE_LIBRARY', 'library-1')
 
-    expect(useGrantStore.getState().grantsByLibrary['library-1']).toBeUndefined()
+    expect(useGrantStore.getState().grantsByAsset[LIBRARY]).toBeUndefined()
     expect(useGrantStore.getState().isLoading).toBe(false)
   })
 
   it('an upsertExistingGrant response arriving after a session reset does not resurrect grants', async () => {
-    mockUpsertLibraryGrant.mockImplementationOnce(async () => {
+    mockUpsertAssetGrant.mockImplementationOnce(async () => {
       resetAllStores()
       return grant()
     })
 
-    await useGrantStore.getState().upsertExistingGrant('library-1', {
+    await useGrantStore.getState().upsertExistingGrant('KNOWLEDGE_LIBRARY', 'library-1', {
       subjectType: 'USER',
       subjectId: 'user-1',
       role: 'VIEWER',
     })
 
-    expect(useGrantStore.getState().grantsByLibrary['library-1']).toBeUndefined()
+    expect(useGrantStore.getState().grantsByAsset[LIBRARY]).toBeUndefined()
   })
 })

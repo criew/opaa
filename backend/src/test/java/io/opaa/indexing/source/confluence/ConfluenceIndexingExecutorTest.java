@@ -18,11 +18,11 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.IndexingRunMode;
-import io.opaa.api.types.LibraryVisibility;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.document.Document;
 import io.opaa.indexing.document.DocumentIngest;
@@ -229,7 +229,7 @@ class ConfluenceIndexingExecutorTest {
             "Wiki",
             null,
             UUID.randomUUID(),
-            LibraryVisibility.PRIVATE,
+            AssetVisibility.PRIVATE,
             false,
             DocumentSourceType.CONFLUENCE,
             null,
@@ -538,7 +538,7 @@ class ConfluenceIndexingExecutorTest {
             "Wiki",
             null,
             UUID.randomUUID(),
-            LibraryVisibility.PRIVATE,
+            AssetVisibility.PRIVATE,
             false,
             DocumentSourceType.CONFLUENCE,
             null,
@@ -719,7 +719,7 @@ class ConfluenceIndexingExecutorTest {
             "Wiki",
             null,
             UUID.randomUUID(),
-            LibraryVisibility.PRIVATE,
+            AssetVisibility.PRIVATE,
             false,
             DocumentSourceType.CONFLUENCE,
             null,
@@ -1170,7 +1170,7 @@ class ConfluenceIndexingExecutorTest {
             "Wiki",
             null,
             UUID.randomUUID(),
-            LibraryVisibility.PRIVATE,
+            AssetVisibility.PRIVATE,
             false,
             DocumentSourceType.CONFLUENCE,
             null,

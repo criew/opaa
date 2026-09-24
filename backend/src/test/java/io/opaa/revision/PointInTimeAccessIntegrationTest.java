@@ -86,7 +86,7 @@ class PointInTimeAccessIntegrationTest {
                     "Vorgangsablage",
                     null,
                     ordinaryUserId,
-                    io.opaa.api.types.LibraryVisibility.PRIVATE,
+                    io.opaa.api.types.AssetVisibility.PRIVATE,
                     false))
             .getId();
     jdbcTemplate.update(
@@ -165,17 +165,18 @@ class PointInTimeAccessIntegrationTest {
         foreignOrganizationId);
     UUID foreignLibraryId = UUID.randomUUID();
     jdbcTemplate.update(
-        "INSERT INTO knowledge_libraries (id, organization_id, name, owner_type, owner_user_id,"
-            + " visibility, listed, source_type, created_at, updated_at)"
-            + " VALUES (?, ?, 'Fremde Bibliothek', 'USER', ?, 'ORGANIZATION', true, 'UPLOAD',"
-            + " now(), now())",
+        "WITH shell AS (INSERT INTO assets (id, asset_type, organization_id, name, owner_type,"
+            + " owner_user_id, visibility, listed) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, 'Fremde Bibliothek', 'USER', ?, 'ORGANIZATION', true)"
+            + " RETURNING id, organization_id) INSERT INTO knowledge_libraries (id,"
+            + " organization_id, source_type) SELECT id, organization_id, 'UPLOAD' FROM shell",
         foreignLibraryId,
         foreignOrganizationId,
         foreignOwnerId);
     jdbcTemplate.update(
-        "INSERT INTO library_visibility_history (id, library_id, organization_id, visibility,"
-            + " listed, cause, valid_from, created_at, external_access_state)"
-            + " VALUES (?, ?, ?, 'ORGANIZATION', true, 'CREATED', ?, now(), 'NEVER_SET')",
+        "INSERT INTO asset_visibility_history (id, asset_type, asset_id, organization_id,"
+            + " visibility, listed, cause, valid_from, created_at, external_access_state)"
+            + " VALUES (?, 'KNOWLEDGE_LIBRARY', ?, ?, 'ORGANIZATION', true, 'CREATED', ?, now(),"
+            + " 'NEVER_SET')",
         UUID.randomUUID(),
         foreignLibraryId,
         foreignOrganizationId,
@@ -200,8 +201,8 @@ class PointInTimeAccessIntegrationTest {
       assertThat(result.objectName()).isNull();
     } finally {
       jdbcTemplate.update(
-          "DELETE FROM library_visibility_history WHERE library_id = ?", foreignLibraryId);
-      jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE id = ?", foreignLibraryId);
+          "DELETE FROM asset_visibility_history WHERE asset_id = ?", foreignLibraryId);
+      jdbcTemplate.update("DELETE FROM assets WHERE id = ?", foreignLibraryId);
       jdbcTemplate.update("DELETE FROM users WHERE id = ?", foreignOwnerId);
       organizationRepository.deleteById(foreignOrganizationId);
     }

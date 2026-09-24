@@ -816,6 +816,31 @@ mit #330 entfernt) wird im selben Zug geprüft und entfernt, sofern keine Zeile 
 **Die Fähigkeitstabellen (Entscheidung 5) leben im selben Paket**, tragen aber eine eigene Tabelle —
 das ist der Grund, warum #1813 von #1811 abhängt.
 
+> **Nachtrag (24.09.2026, #1899/#1900): Asset-Schale als gemeinsame Tabelle.** Die Typunabhängigkeit
+> wird nicht mehr über „Typ plus ID ohne Fremdschlüssel" gehalten, sondern über eine gemeinsame Tabelle
+> `assets` (Kennung, Typ, Organisation, Name, Beschreibung, Eigentümer, Freigabestufe, Herkunft,
+> Anleger, Zeitstempel), auf die jede Typtabelle mit derselben Kennung zeigt (`knowledge_libraries`
+> als erste; im Code `KnowledgeLibrary extends Asset`, Paket `io.opaa.asset`). Gründe:
+>
+> - **Die Fremdschlüssel kommen zurück.** `asset_grants` und `space_asset_associations` verweisen
+>   zusammengesetzt mit Organisation (bei den Grants auch mit Typ) auf `assets`, `ON DELETE CASCADE`.
+>   Der Kaskaden-Trigger aus Migration 038 entfällt, ebenso die Zusage, jede Asset-Art bringe ihren
+>   eigenen Trigger mit — ein fehlender Trigger wäre im Betrieb unauffällig geblieben.
+> - **Katalog, Nachfolge und Reichweiten-Floor sind eine Abfrage** über `assets` statt eine je Typ;
+>   Grants, Herleitung, Freigabestufe samt Historie (`asset_visibility_history`), Eigentum und
+>   Space-Assoziation arbeiten auf der Schale, ohne den Typ zu kennen.
+> - **Ein neuer Typ ist eine Tabelle und eine Entität** (dazu eine `AssetTypeDefinition` mit
+>   Bezeichnung, Protokoll-Objekttyp und optionaler Reichweitenobergrenze und sein Wert im Enum
+>   `AssetType` der Spezifikation) — keine weitere Stelle in Rechten, Katalog oder Nachfolge. Die
+>   Nachfolge führt ein Asset deshalb als `ASSET` mit seinem Typ (`succession_cases.asset_type`,
+>   Changeset 084) statt als eigenen Wert von `SuccessionObjectType`; die Reichweitensperre gilt so
+>   für jeden Typ der Schale, auch einen, den kein geschlossener Katalog nennt.
+>
+> Die Historientabellen (`asset_grant_history`, `asset_visibility_history`, `asset_ownership_history`)
+> bleiben nach ADR-0016 ohne Fremdschlüssel auf `assets`, weil sie das Löschen überdauern. Die
+> Paketrichtung wird erweitert: `io.opaa.asset` hängt von `io.opaa.permission` ab, nicht umgekehrt,
+> und kennt weder `library` noch `space`, `group` oder `succession`; `library` darf `asset` nutzen.
+
 ### 13. Randbedingungen
 
 **Alles je Organisation (#1442).** `groups.organization_id`, `capability_grants.organization_id`, die

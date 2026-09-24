@@ -11,9 +11,9 @@ import static org.mockito.Mockito.when;
 
 import com.sun.net.httpserver.HttpServer;
 import io.opaa.api.types.AssetRole;
+import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.Capability;
 import io.opaa.api.types.DocumentSourceType;
-import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.AccessDeniedException;
@@ -880,7 +880,7 @@ class SourceConnectionTestServiceTest {
             "Bibliothek",
             null,
             currentUserId,
-            LibraryVisibility.PRIVATE,
+            AssetVisibility.PRIVATE,
             false,
             DocumentSourceType.HTTP_DIRECTORY,
             null,
@@ -944,7 +944,7 @@ class SourceConnectionTestServiceTest {
               "Bibliothek",
               null,
               currentUserId,
-              LibraryVisibility.PRIVATE,
+              AssetVisibility.PRIVATE,
               false,
               DocumentSourceType.HTTP_DIRECTORY,
               null,
@@ -1005,7 +1005,7 @@ class SourceConnectionTestServiceTest {
             "Bibliothek",
             null,
             currentUserId,
-            LibraryVisibility.PRIVATE,
+            AssetVisibility.PRIVATE,
             false,
             DocumentSourceType.HTTP_DIRECTORY,
             null,
@@ -1060,7 +1060,7 @@ class SourceConnectionTestServiceTest {
             "Bibliothek",
             null,
             UUID.randomUUID(),
-            LibraryVisibility.PRIVATE,
+            AssetVisibility.PRIVATE,
             false,
             DocumentSourceType.FILESYSTEM,
             "/data/documents",
@@ -1101,7 +1101,7 @@ class SourceConnectionTestServiceTest {
             "Bibliothek",
             null,
             currentUserId,
-            LibraryVisibility.PRIVATE,
+            AssetVisibility.PRIVATE,
             false,
             DocumentSourceType.HTTP_DIRECTORY,
             null,
@@ -1141,7 +1141,7 @@ class SourceConnectionTestServiceTest {
             "Bibliothek",
             null,
             currentUserId,
-            LibraryVisibility.PRIVATE,
+            AssetVisibility.PRIVATE,
             false,
             DocumentSourceType.HTTP_DIRECTORY,
             null,
@@ -1211,7 +1211,7 @@ class SourceConnectionTestServiceTest {
             "Bibliothek",
             null,
             currentUserId,
-            LibraryVisibility.PRIVATE,
+            AssetVisibility.PRIVATE,
             false,
             DocumentSourceType.RSS_FEED,
             null,
