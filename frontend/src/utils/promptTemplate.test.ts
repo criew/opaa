@@ -18,11 +18,11 @@ const validDraft: PromptDraft = {
 
 describe('promptTemplate', () => {
   it('splits text, own variables, system variables and invalid placeholders apart', () => {
-    expect(splitPromptText('A {{x}} B {{USER_NAME}} C {{kein name}} D {{')).toEqual([
+    expect(splitPromptText('A {{ x }} B {{user_name}} C {{kein name}} D {{')).toEqual([
       { kind: 'text', value: 'A ' },
-      { kind: 'variable', value: '{{x}}', name: 'x' },
+      { kind: 'variable', value: '{{ x }}', name: 'x' },
       { kind: 'text', value: ' B ' },
-      { kind: 'system', value: '{{USER_NAME}}', name: 'USER_NAME' },
+      { kind: 'system', value: '{{user_name}}', name: 'USER_NAME' },
       { kind: 'text', value: ' C ' },
       { kind: 'invalid', value: '{{kein name}}' },
       { kind: 'text', value: ' D {{' },
@@ -52,9 +52,8 @@ describe('promptTemplate', () => {
       name: 'Anhörung',
       title: ' ',
       description: '',
-      text: '{{kein name}} {{current_date}} {{wahl}} {{tag}}',
+      text: '{{ kein name }} {{current_date}} {{wahl}} {{tag}}',
       variables: [
-        { name: 'current_date', label: 'x', type: 'TEXT', required: false },
         { name: 'wahl', label: '', type: 'SELECT', required: true, options: [] },
         { name: 'tag', label: 'Tag', type: 'DATE', required: false, defaultValue: '24.09.2026' },
       ],
@@ -62,8 +61,7 @@ describe('promptTemplate', () => {
     expect(errors).toEqual([
       'Der Name eines Prompts besteht aus Kleinbuchstaben, Ziffern und einzelnen Bindestrichen, höchstens 64 Zeichen.',
       'Der Titel ist erforderlich und hat höchstens 255 Zeichen.',
-      'Ungültiger Platzhalter „{{kein name}}“: Ein Variablenname beginnt mit einem Buchstaben und enthält nur Buchstaben, Ziffern und Unterstriche, ohne Leerzeichen.',
-      '„current_date“ ist eine Systemvariable und wird beim Einsetzen aufgelöst; sie kann nicht definiert werden. Schreiben Sie {{CURRENT_DATE}}.',
+      'Ungültiger Platzhalter „{{kein name}}“: Ein Variablenname beginnt mit einem Buchstaben und enthält nur Buchstaben, Ziffern und Unterstriche.',
       'Die Variable „wahl“ braucht eine Beschriftung mit höchstens 255 Zeichen.',
       'Die Auswahl „wahl“ braucht zwischen 1 und 50 Auswahlwerte.',
       'Die Vorbelegung der Datumsvariable „tag“ ist kein Datum im Format JJJJ-MM-TT.',

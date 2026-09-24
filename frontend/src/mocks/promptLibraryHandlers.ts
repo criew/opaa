@@ -32,10 +32,12 @@ function validatePrompt(body: PromptRequest): string | null {
   if (!body.text?.trim()) return 'Der Text ist erforderlich und hat höchstens 8000 Zeichen.'
   const used = new Set<string>()
   for (const match of body.text.matchAll(/\{\{([\s\S]*?)\}\}/g)) {
-    if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(match[1])) {
-      return `Ungültiger Platzhalter „{{${match[1]}}}“: Ein Variablenname beginnt mit einem Buchstaben und enthält nur Buchstaben, Ziffern und Unterstriche, ohne Leerzeichen.`
+    const name = match[1].trim()
+    if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(name)) {
+      return `Ungültiger Platzhalter „{{${name}}}“: Ein Variablenname beginnt mit einem Buchstaben und enthält nur Buchstaben, Ziffern und Unterstriche.`
     }
-    used.add(match[1])
+    const upper = name.toUpperCase()
+    used.add(upper === 'CURRENT_DATE' || upper === 'USER_NAME' ? upper : name)
   }
   const defined = new Set((body.variables ?? []).map((variable) => variable.name))
   for (const name of used) {

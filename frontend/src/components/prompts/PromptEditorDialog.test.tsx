@@ -51,17 +51,18 @@ describe('PromptEditorDialog', () => {
     renderEditor()
 
     await user.click(screen.getByLabelText('Text'))
-    await user.paste('Frist {{frist}} für {{USER_NAME}}, dazu {{ falsch }}')
+    // Blanks inside the braces and a system variable in any case are what the server normalises.
+    await user.paste('Frist {{ frist }} für {{user_name}}, dazu {{fal sch}}')
 
     const table = screen.getByRole('table', { name: 'Variablen' })
     expect(within(table).getByText('{{frist}}')).toBeInTheDocument()
     // System variables are resolved on insertion and never get a row of their own.
-    expect(within(table).queryByText('{{USER_NAME}}')).not.toBeInTheDocument()
+    expect(within(table).queryByText(/USER_NAME/i)).not.toBeInTheDocument()
 
     const highlight = screen.getByRole('region', { name: 'Text mit hervorgehobenen Platzhaltern' })
-    expect(within(highlight).getByTitle('Variable')).toHaveTextContent('{{frist}}')
-    expect(within(highlight).getByTitle('Systemvariable')).toHaveTextContent('{{USER_NAME}}')
-    expect(within(highlight).getByTitle('Ungültiger Platzhalter')).toHaveTextContent('{{ falsch }}')
+    expect(within(highlight).getByTitle('Variable')).toHaveTextContent('{{ frist }}')
+    expect(within(highlight).getByTitle('Systemvariable')).toHaveTextContent('{{user_name}}')
+    expect(within(highlight).getByTitle('Ungültiger Platzhalter')).toHaveTextContent('{{fal sch}}')
   })
 
   // Several typing sequences take longer than the default 5s under full-suite CPU contention.
@@ -79,7 +80,7 @@ describe('PromptEditorDialog', () => {
 
     const alert = await screen.findByRole('alert')
     expect(alert).toHaveTextContent('Der Name eines Prompts besteht aus Kleinbuchstaben')
-    expect(alert).toHaveTextContent('Ungültiger Platzhalter „{{ kein name }}“')
+    expect(alert).toHaveTextContent('Ungültiger Platzhalter „{{kein name}}“')
     expect(posts).toHaveLength(0)
   }, 15000)
 

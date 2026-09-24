@@ -44,6 +44,11 @@ flowchart LR
 | **Variable** | Eine Stelle im Text, die beim Einsetzen gefüllt wird, geschrieben als `{{name}}`, etwa `{{aktenzeichen}}` |
 | **Systemvariable** | `{{CURRENT_DATE}}` und `{{USER_NAME}}`: das Datum des Tages und der Name der einsetzenden Person. OPAA füllt sie selbst; sie werden nicht definiert |
 
+**Schreibweise.** Leerzeichen innerhalb der Klammern (`{{ aktenzeichen }}`) und Systemvariablen in
+beliebiger Groß- und Kleinschreibung (`{{current_date}}`) sind erlaubt; OPAA speichert sie als
+`{{aktenzeichen}}` und `{{CURRENT_DATE}}`. Jede andere Folge in doppelten geschweiften Klammern,
+etwa `{{akten zeichen}}`, lehnt OPAA als ungültigen Platzhalter ab.
+
 **Variablen sind keine Einstellungen der Bibliothek.** Eine Variable gehört zu dem, was ein Prompt
 ist, und wird bei jedem Einsetzen neu gefüllt — von der Person, die ihn einsetzt.
 
@@ -145,10 +150,10 @@ ein neuer Platzhalter fügt sie hinzu, ein gelöschter entfernt sie. Je Variable
 | **Auswahlwerte** | Nur bei einer Auswahl: ein Wert je Zeile |
 
 **Vor dem Speichern prüft der Dialog**, was der Server ablehnen würde — ungültiger Befehl, fehlender
-Titel oder Text, ungültige Platzhalter, eine Systemvariable in falscher Schreibweise, fehlende
-Beschriftung, eine Auswahl ohne Werte, eine Vorbelegung, die nicht passt — und nennt alle Befunde
-auf einmal. Was der Server danach noch ablehnt, etwa ein Befehl, den es in der Bibliothek schon
-gibt, steht mit seinem Wortlaut im selben Hinweisfeld.
+Titel oder Text, ungültige Platzhalter, fehlende Beschriftung, eine Auswahl ohne Werte, eine
+Vorbelegung, die nicht passt — und nennt alle Befunde auf einmal. Was der Server danach noch
+ablehnt, etwa ein Befehl, den es in der Bibliothek schon gibt, steht mit seinem Wortlaut im selben
+Hinweisfeld.
 
 Die **Vorschau mit Beispielwerten** zeigt den Text, wie er beim Einsetzen herauskäme: mit den
 eingegebenen Beispielwerten, sonst der Vorbelegung, sonst der Beschriftung in eckigen Klammern; die

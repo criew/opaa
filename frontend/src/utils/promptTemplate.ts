@@ -2,9 +2,10 @@ import type { PromptVariable, PromptVariableType } from '../types/api'
 
 /**
  * The variable syntax of a prompt text, mirroring the backend's `PromptTemplate`
- * (docs/features/spaces-and-assets.md#prompt-bibliothek): a placeholder is exactly `{{name}}` - a
- * letter first, then letters, digits and underscores, no blanks. Any other `{{…}}` is invalid
- * rather than text. The client checks are a courtesy before saving; the server decides.
+ * (docs/features/spaces-and-assets.md#prompt-bibliothek): a placeholder is `{{name}}` - a letter
+ * first, then letters, digits and underscores; blanks inside the braces are tolerated and a system
+ * variable is recognised in any case, both normalised by the server on saving. Any other `{{…}}`
+ * is invalid rather than text. The client checks are a courtesy before saving; the server decides.
  */
 export const SYSTEM_VARIABLES = ['CURRENT_DATE', 'USER_NAME'] as const
 
@@ -41,11 +42,11 @@ export function splitPromptText(text: string): PromptTextSegment[] {
   let last = 0
   for (let match = pattern.exec(text); match !== null; match = pattern.exec(text)) {
     if (match.index > last) segments.push({ kind: 'text', value: text.slice(last, match.index) })
-    const name = match[1]
+    const name = match[1].trim()
     if (!isValidVariableName(name)) {
       segments.push({ kind: 'invalid', value: match[0] })
-    } else if (isSystemVariable(name)) {
-      segments.push({ kind: 'system', value: match[0], name })
+    } else if (isSystemVariable(name.toUpperCase())) {
+      segments.push({ kind: 'system', value: match[0], name: name.toUpperCase() })
     } else {
       segments.push({ kind: 'variable', value: match[0], name })
     }
@@ -90,7 +91,7 @@ export function suggestPromptName(title: string): string {
     .replace(/ü/g, 'ue')
     .replace(/ß/g, 'ss')
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/\p{Diacritic}/gu, '')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, PROMPT_NAME_MAX_LENGTH)
@@ -107,11 +108,6 @@ export interface PromptDraft {
 
 function validateVariable(variable: PromptVariable, errors: string[]) {
   const { name } = variable
-  if (isSystemVariable(name.toUpperCase())) {
-    errors.push(
-      `„${name}“ ist eine Systemvariable und wird beim Einsetzen aufgelöst; sie kann nicht definiert werden. Schreiben Sie {{${name.toUpperCase()}}}.`,
-    )
-  }
   if (!variable.label.trim() || variable.label.length > LABEL_MAX_LENGTH) {
     errors.push(`Die Variable „${name}“ braucht eine Beschriftung mit höchstens 255 Zeichen.`)
   }
@@ -160,7 +156,7 @@ export function validatePromptDraft(draft: PromptDraft): string[] {
   for (const segment of splitPromptText(draft.text)) {
     if (segment.kind === 'invalid') {
       errors.push(
-        `Ungültiger Platzhalter „${segment.value}“: Ein Variablenname beginnt mit einem Buchstaben und enthält nur Buchstaben, Ziffern und Unterstriche, ohne Leerzeichen.`,
+        `Ungültiger Platzhalter „{{${segment.value.slice(2, -2).trim()}}}“: Ein Variablenname beginnt mit einem Buchstaben und enthält nur Buchstaben, Ziffern und Unterstriche.`,
       )
     }
   }
