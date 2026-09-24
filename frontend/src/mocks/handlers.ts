@@ -9,6 +9,7 @@ import { externalAccessHandlers } from './externalAccessHandlers'
 import { externalAccessTokenHandlers } from './externalAccessTokenHandlers'
 import { groupAdminHandlers } from './groupAdminHandlers'
 import { successionHandlers } from './successionHandlers'
+import { promptChatHandlers } from './promptChatHandlers'
 
 /** Per-library countdown of the mock metadata backfill; see the handler below. */
 const mockMetadataBackfillRemaining = new Map<string, number>()
@@ -3750,4 +3751,5 @@ export const handlers = [
   ...groupAdminHandlers,
   // Die Betriebsliste des Lebenszyklus (#1819/#1821) - eigene Datei aus demselben Grund.
   ...successionHandlers,
+  ...promptChatHandlers,
 ]

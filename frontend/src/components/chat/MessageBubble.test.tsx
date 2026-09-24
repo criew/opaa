@@ -40,6 +40,33 @@ const uncitedSource = {
 }
 
 describe('MessageBubble', () => {
+  it('names the prompt a question was built from, as plain text without a link (#1903)', () => {
+    render(
+      <MessageBubble
+        message={{
+          id: '1',
+          role: 'user',
+          content: 'Fasse den Stand zum 24.09.2026 zusammen.',
+          usedPromptTitle: 'Zusammenfassung',
+          timestamp: new Date(),
+        }}
+      />,
+    )
+
+    expect(screen.getByTestId('used-prompt')).toHaveTextContent('Prompt: Zusammenfassung')
+    expect(screen.queryByRole('link')).not.toBeInTheDocument()
+  })
+
+  it('shows no prompt hint at a question without one', () => {
+    render(
+      <MessageBubble
+        message={{ id: '1', role: 'user', content: 'Frage', timestamp: new Date() }}
+      />,
+    )
+
+    expect(screen.queryByTestId('used-prompt')).not.toBeInTheDocument()
+  })
+
   it('renders user message content', () => {
     const msg: ChatMessage = {
       id: '1',

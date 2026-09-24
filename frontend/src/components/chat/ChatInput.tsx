@@ -1,5 +1,5 @@
 import type { ChangeEvent, KeyboardEvent } from 'react'
-import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import Box from '@mui/material/Box'
 import Chip from '@mui/material/Chip'
 import List from '@mui/material/List'
@@ -15,7 +15,9 @@ import Typography from '@mui/material/Typography'
 import AllInclusiveIcon from '@mui/icons-material/AllInclusive'
 import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined'
 import SendIcon from '@mui/icons-material/Send'
+import TextSnippetOutlinedIcon from '@mui/icons-material/TextSnippetOutlined'
 import { CHAT_MAX_WIDTH } from '../../theme/theme'
+import { useAuthStore } from '../../stores/authStore'
 import { useChatStore } from '../../stores/chatStore'
 import { useLibraryStore } from '../../stores/libraryStore'
 import {
@@ -25,6 +27,11 @@ import {
 import { useSpaceStore } from '../../stores/spaceStore'
 import type { LibraryListResponse } from '../../types/api'
 import MetadataFilterPopover from './MetadataFilterPopover'
+import PromptCommandMenu from './PromptCommandMenu'
+import { promptOptionId } from './promptTemplate'
+import PromptVariablesDialog from './PromptVariablesDialog'
+import { usePromptCommand } from './usePromptCommand'
+import type { SelectedPrompt } from './usePromptCommand'
 import {
   dateChipLabel,
   formatFieldChipLabel,
@@ -38,7 +45,8 @@ import {
 } from './metadataFilterText'
 
 interface ChatInputProps {
-  onSend: (message: string) => void
+  /** `usedPrompt` is the prompt the message was built from, absent when none is marked. */
+  onSend: (message: string, usedPrompt?: SelectedPrompt) => void
   disabled?: boolean
 }
 
@@ -92,6 +100,7 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
   const [inputBoxEl, setInputBoxEl] = useState<HTMLDivElement | null>(null)
   const wasDisabled = useRef(false)
   const mentionListboxId = useId()
+  const promptListboxId = useId()
 
   // The chip bar is the only search-scope control (#560): "Durchsucht wird, was in der Leiste
   // steht." scope 'all' -> the special @Alles-Wissen chip, 'libraries' -> concrete chips,
@@ -108,6 +117,24 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
   const metadataFilter = useChatStore((s) => s.metadataFilter)
   const setMetadataFilter = useChatStore((s) => s.setMetadataFilter)
   const filterOptions = useMetadataFilterOptionsStore((s) => s.options)
+
+  // '/' at the start of a line inserts a prompt (#1903): its text lands in the input, marked by a
+  // removable chip; sending stays a separate action.
+  const userName = useAuthStore((s) => s.user?.displayName ?? s.user?.email ?? '')
+  const insertPromptText = useCallback((range: { start: number; end: number }, text: string) => {
+    setValue((current) => `${current.slice(0, range.start)}${text}${current.slice(range.end)}`)
+    const caret = range.start + text.length
+    requestAnimationFrame(() => {
+      inputRef.current?.focus()
+      inputRef.current?.setSelectionRange(caret, caret)
+    })
+  }, [])
+  const promptSpaceId = useChatStore((s) => s.spaceId)
+  const promptCommand = usePromptCommand({
+    spaceId: promptSpaceId,
+    userName,
+    insertText: insertPromptText,
+  })
 
   const libraries = useLibraryStore((s) => s.libraries)
   const librariesLoading = useLibraryStore((s) => s.isLoading)
@@ -273,6 +300,7 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
     const nextValue = e.target.value
     setValue(nextValue)
     const cursor = e.target.selectionStart ?? nextValue.length
+    promptCommand.track(nextValue, cursor)
     const detected = findActiveMention(nextValue, cursor)
     if (detected === null) {
       // Left the fragment entirely (space, deleted past '@', ...) - any earlier dismissal no
@@ -293,13 +321,48 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
   const handleSend = () => {
     const trimmed = value.trim()
     if (!trimmed) return
-    onSend(trimmed)
+    if (promptCommand.selected) {
+      onSend(trimmed, promptCommand.selected)
+    } else {
+      onSend(trimmed)
+    }
     setValue('')
     setDismissedMentionStart(null)
     closeMention()
+    promptCommand.close()
+    promptCommand.clearSelected()
+  }
+
+  const choosePrompt = (index: number) => {
+    const entry = promptCommand.matches[index]
+    if (!entry) return
+    void promptCommand.choose(entry, inputRef.current?.selectionStart ?? value.length)
   }
 
   const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (promptCommand.isOpen) {
+      const count = promptCommand.matches.length
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        promptCommand.dismiss()
+        return
+      }
+      if (count > 0 && e.key === 'ArrowDown') {
+        e.preventDefault()
+        promptCommand.setHighlightedIndex((i) => (i + 1 >= count ? 0 : i + 1))
+        return
+      }
+      if (count > 0 && e.key === 'ArrowUp') {
+        e.preventDefault()
+        promptCommand.setHighlightedIndex((i) => (i - 1 < 0 ? count - 1 : i - 1))
+        return
+      }
+      if (count > 0 && e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault()
+        choosePrompt(promptCommand.highlightedIndex)
+        return
+      }
+    }
     if (mention !== null) {
       if (e.key === 'Escape') {
         e.preventDefault()
@@ -340,6 +403,21 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
   const mentionListOpen = mentionOpen && suggestions.length > 0
   const highlightedOptionId =
     highlightedIndex >= 0 ? `${mentionListboxId}-option-${highlightedIndex}` : undefined
+  // The '/' listbox is rendered only while it has options and no load error - the same honesty
+  // rule as the '@' listbox above.
+  const promptListOpen =
+    promptCommand.isOpen && promptCommand.error === null && promptCommand.matches.length > 0
+  const comboboxExpanded = mentionListOpen || promptListOpen
+  const comboboxControls = promptListOpen
+    ? promptListboxId
+    : mentionListOpen
+      ? mentionListboxId
+      : undefined
+  const activeDescendant = promptListOpen
+    ? promptOptionId(promptListboxId, promptCommand.highlightedIndex)
+    : mentionListOpen
+      ? highlightedOptionId
+      : undefined
 
   return (
     <Box sx={{ flexShrink: 0, p: 2, bgcolor: 'background.default' }}>
@@ -354,6 +432,17 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
           gap: 0.75,
         }}
       >
+        {promptCommand.selected && (
+          <Chip
+            icon={<TextSnippetOutlinedIcon />}
+            label={`Prompt: ${promptCommand.selected.title}`}
+            size="small"
+            variant="outlined"
+            onDelete={disabled ? undefined : promptCommand.clearSelected}
+            aria-label={`Kennzeichnung Prompt: ${promptCommand.selected.title} entfernen`}
+            data-testid="used-prompt-chip"
+          />
+        )}
         {scope === 'all' && (
           <Chip
             icon={<AllInclusiveIcon />}
@@ -530,11 +619,11 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
           slotProps={{
             htmlInput: {
               role: 'combobox',
-              'aria-expanded': mentionListOpen,
+              'aria-expanded': comboboxExpanded,
               'aria-haspopup': 'listbox',
-              'aria-controls': mentionListOpen ? mentionListboxId : undefined,
+              'aria-controls': comboboxControls,
               'aria-autocomplete': 'list',
-              'aria-activedescendant': mentionListOpen ? highlightedOptionId : undefined,
+              'aria-activedescendant': activeDescendant,
             },
           }}
           sx={{
@@ -678,6 +767,27 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
           </Paper>
         </ClickAwayListener>
       </Popper>
+
+      <PromptCommandMenu
+        open={promptCommand.isOpen}
+        anchorEl={inputBoxEl}
+        listboxId={promptListboxId}
+        prompts={promptCommand.matches}
+        highlightedIndex={promptCommand.highlightedIndex}
+        isLoading={promptCommand.isLoading}
+        error={promptCommand.error}
+        onHighlight={promptCommand.setHighlightedIndex}
+        onSelect={(entry) => choosePrompt(promptCommand.matches.indexOf(entry))}
+        onClose={promptCommand.close}
+      />
+      {promptCommand.pendingForm && (
+        <PromptVariablesDialog
+          prompt={promptCommand.pendingForm}
+          userName={userName}
+          onCancel={promptCommand.cancelForm}
+          onInsert={promptCommand.completeForm}
+        />
+      )}
 
       {/* Mockup 1a (#591): the quiet line under the input, neutral since #1920. */}
       <Box sx={{ maxWidth: CHAT_MAX_WIDTH, mx: 'auto', mt: 0.875 }}>

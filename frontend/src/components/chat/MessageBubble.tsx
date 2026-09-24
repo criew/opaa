@@ -3,6 +3,7 @@ import Alert from '@mui/material/Alert'
 import { alpha } from '@mui/material/styles'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
+import TextSnippetOutlinedIcon from '@mui/icons-material/TextSnippetOutlined'
 import type { ChatMessage } from '../../types/chat'
 import { blue } from '../../theme/tokens'
 import { buildCitationIndex } from './citations'
@@ -74,6 +75,26 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
         }}
       >
         <Box sx={{ minWidth: 0, flexGrow: isUser ? undefined : 1 }}>
+          {/* #1903: the prompt a question was built from - a snapshot of its title, deliberately no
+              link, since the person may no longer be allowed to read the prompt. */}
+          {isUser && message.usedPromptTitle && (
+            <Typography
+              component="div"
+              data-testid="used-prompt"
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'flex-end',
+                gap: 0.5,
+                mb: 0.5,
+                fontSize: 12,
+                color: 'text.secondary',
+              }}
+            >
+              <TextSnippetOutlinedIcon aria-hidden sx={{ fontSize: 14 }} />
+              Prompt: {message.usedPromptTitle}
+            </Typography>
+          )}
           {/* Mockup 1a (#658): questions sit in a quiet blue-50 bubble with navy text; answers
               are plain running text without an avatar or a bubble around them. */}
           {isUser ? (

@@ -36,6 +36,7 @@ function toChatMessage(message: ChatMessageResponse): ChatMessage {
       ...source,
       indexedAt: source.indexedAt ?? null,
     })),
+    ...(message.usedPromptTitle ? { usedPromptTitle: message.usedPromptTitle } : {}),
     timestamp: new Date(message.createdAt),
   }
 }
@@ -389,7 +390,8 @@ interface ChatState {
   pendingSettingsUpdate: Promise<void> | null
   loadChat: (chatId: string) => Promise<void>
   startNewChat: (spaceId: string) => void
-  sendMessage: (question: string) => Promise<void>
+  /** `usedPrompt` names the prompt the question was built from (#1903). */
+  sendMessage: (question: string, usedPrompt?: { id: string; title: string }) => Promise<void>
   /** Sets the chip bar back to the special @Alles-Wissen chip, replacing any concrete chips. */
   setScopeAll: () => void
   /** Adds a concrete library chip. The first concrete chip replaces @Alles-Wissen (scope 'all' ->
@@ -562,7 +564,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     })
   },
 
-  sendMessage: async (question: string) => {
+  sendMessage: async (question: string, usedPrompt?: { id: string; title: string }) => {
     // #575: this call's token in the session epoch, captured before any await below. Checked
     // again before every set() that follows an await - a logout (resetAllStores) in the meantime
     // bumps the epoch, so a response arriving afterwards is recognized as stale and its write-back
@@ -587,7 +589,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const send: InFlightSend = {
       chatId: sendingChatId,
       loadSequence: chatLoadSequence,
-      userMessage: { id: generateId(), role: 'user', content: question, timestamp: new Date() },
+      userMessage: {
+        id: generateId(),
+        role: 'user',
+        content: question,
+        ...(usedPrompt ? { usedPromptTitle: usedPrompt.title } : {}),
+        timestamp: new Date(),
+      },
       persistedUserTurnsBefore: sendingChatId
         ? (persistedUserTurnsByChatId.get(sendingChatId) ?? 0)
         : 0,
@@ -668,7 +676,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
         await pendingChainForChat
       }
 
-      const response = await sendQuery(question, chatId, useKnowledge, libraryIds, metadataFilter)
+      const response = await sendQuery(
+        question,
+        chatId,
+        useKnowledge,
+        libraryIds,
+        metadataFilter,
+        usedPrompt?.id,
+      )
       // #575: the query answer arriving after a logout must not resurrect messages/chatId into the
       // now-emptied store - this is the second of the two write-back paths the #618 review flagged.
       if (isStaleSessionEpoch(sessionEpoch)) return
