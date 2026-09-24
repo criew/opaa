@@ -25,6 +25,15 @@ public record AssetGrantView(
     boolean protectedGroup,
     GroupSizeSignal groupSize) {
 
+  /** The label "Alle Konten" carries wherever a grant names its recipient. */
+  public static final String ALL_ACCOUNTS_LABEL = "Alle Konten";
+
+  /** A grant to every account - a fixed label, no group size, no protection. */
+  public static AssetGrantView ofAllAccounts(AssetGrant grant, String grantedByDisplayName) {
+    return new AssetGrantView(
+        grant, ALL_ACCOUNTS_LABEL, grantedByDisplayName, false, GroupSizeSignal.NONE);
+  }
+
   /** A person's grant - no group size, no protection. */
   public static AssetGrantView ofUser(
       AssetGrant grant, String subjectDisplayName, String grantedByDisplayName) {

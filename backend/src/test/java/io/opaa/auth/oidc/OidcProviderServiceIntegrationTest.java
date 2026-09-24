@@ -186,9 +186,8 @@ class OidcProviderServiceIntegrationTest {
   private void grantOnSomeAsset(Group group) {
     UUID assetId = UUID.randomUUID();
     jdbcTemplate.update(
-        "INSERT INTO assets (id, asset_type, organization_id, name, owner_type, owner_user_id,"
-            + " visibility) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, 'Bibliothek', 'USER', ?,"
-            + " 'PRIVATE')",
+        "INSERT INTO assets (id, asset_type, organization_id, name, owner_type, owner_user_id)"
+            + " VALUES (?, 'KNOWLEDGE_LIBRARY', ?, 'Bibliothek', 'USER', ?)",
         assetId,
         organizationId,
         userId);

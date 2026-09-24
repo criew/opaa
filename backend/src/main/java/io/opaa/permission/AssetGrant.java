@@ -1,7 +1,7 @@
 package io.opaa.permission;
 
+import io.opaa.api.types.AssetGrantSubjectType;
 import io.opaa.api.types.AssetRole;
-import io.opaa.api.types.PermissionSubjectType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
@@ -29,7 +29,8 @@ import java.util.UUID;
  * <p>The subject uses two nullable columns rather than one polymorphic id, so each column keeps a
  * real foreign key to its own target table instead of an unenforced UUID. {@code
  * chk_asset_grants_subject} enforces that exactly the column matching {@link #subjectType} is
- * non-null.
+ * non-null - and that both stay empty for {@link AssetGrantSubjectType#ALL_ACCOUNTS}, which names
+ * no row at all (#1931, ADR-0037).
  */
 @Entity
 @Table(name = "asset_grants")
@@ -49,7 +50,7 @@ public class AssetGrant {
 
   @Enumerated(EnumType.STRING)
   @Column(name = "subject_type", nullable = false, length = 20)
-  private PermissionSubjectType subjectType;
+  private AssetGrantSubjectType subjectType;
 
   @Column(name = "subject_user_id")
   private UUID subjectUserId;
@@ -89,7 +90,7 @@ public class AssetGrant {
       AssetType assetType,
       UUID assetId,
       UUID organizationId,
-      PermissionSubjectType subjectType,
+      AssetGrantSubjectType subjectType,
       UUID subjectUserId,
       UUID subjectGroupId,
       AssetRole role,
@@ -121,7 +122,7 @@ public class AssetGrant {
         assetType,
         assetId,
         organizationId,
-        PermissionSubjectType.USER,
+        AssetGrantSubjectType.USER,
         subjectUserId,
         null,
         role,
@@ -148,13 +149,38 @@ public class AssetGrant {
         assetType,
         assetId,
         organizationId,
-        PermissionSubjectType.GROUP,
+        AssetGrantSubjectType.GROUP,
         null,
         subjectGroupId,
         role,
         expiresAt,
         grantedByUserId,
         memberCountAtGrant);
+  }
+
+  /**
+   * A grant to every account of the organization - "Alle Konten". Both subject columns stay empty,
+   * and no growth signal is recorded: the reach is the organization itself, and a figure would only
+   * invite a comparison that says nothing.
+   */
+  public static AssetGrant forAllAccounts(
+      AssetType assetType,
+      UUID assetId,
+      UUID organizationId,
+      AssetRole role,
+      Instant expiresAt,
+      UUID grantedByUserId) {
+    return new AssetGrant(
+        assetType,
+        assetId,
+        organizationId,
+        AssetGrantSubjectType.ALL_ACCOUNTS,
+        null,
+        null,
+        role,
+        expiresAt,
+        grantedByUserId,
+        null);
   }
 
   @PrePersist
@@ -199,12 +225,6 @@ public class AssetGrant {
     return expiresAt != null && expiresAt.isBefore(now);
   }
 
-  /** The subject this grant reaches, for {@link GroupMembershipResolver}. */
-  public PermissionSubject subject() {
-    UUID subjectId = subjectType == PermissionSubjectType.USER ? subjectUserId : subjectGroupId;
-    return new PermissionSubject(subjectType, subjectId, organizationId);
-  }
-
   public Integer getMemberCountAtGrant() {
     return memberCountAtGrant;
   }
@@ -225,7 +245,7 @@ public class AssetGrant {
     return organizationId;
   }
 
-  public PermissionSubjectType getSubjectType() {
+  public AssetGrantSubjectType getSubjectType() {
     return subjectType;
   }
 
@@ -237,9 +257,16 @@ public class AssetGrant {
     return subjectGroupId;
   }
 
-  /** The subject id regardless of {@link #subjectType}, for callers that only need "who". */
+  /**
+   * The subject id regardless of {@link #subjectType}, for callers that only need "who" - {@code
+   * null} for {@link AssetGrantSubjectType#ALL_ACCOUNTS}, which names no row.
+   */
   public UUID getSubjectId() {
-    return subjectType == PermissionSubjectType.USER ? subjectUserId : subjectGroupId;
+    return switch (subjectType) {
+      case USER -> subjectUserId;
+      case GROUP -> subjectGroupId;
+      case ALL_ACCOUNTS -> null;
+    };
   }
 
   public AssetRole getRole() {

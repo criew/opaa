@@ -1,5 +1,6 @@
 package io.opaa.api;
 
+import io.opaa.api.dto.AssetReachResponse;
 import io.opaa.api.dto.ConfluenceSpaceRef;
 import io.opaa.api.dto.LibraryListResponse;
 import io.opaa.api.dto.LibraryRequest;
@@ -22,6 +23,7 @@ import io.opaa.library.LibraryScheduleDetail;
 import io.opaa.library.LibraryScheduleUpdate;
 import io.opaa.library.LibrarySummary;
 import io.opaa.library.LibraryUpdate;
+import io.opaa.permission.AssetReach;
 import io.opaa.permission.PermissionTransferMark;
 import io.opaa.permission.SuccessionFinding;
 import java.net.URI;
@@ -47,7 +49,6 @@ final class LibraryResponseMapper {
         request.getDescription(),
         request.getOwnerType(),
         request.getOwnerId(),
-        request.getVisibility(),
         request.getListed(),
         request.getSourceType(),
         request.getSourcePath(),
@@ -65,7 +66,6 @@ final class LibraryResponseMapper {
     return new LibraryUpdate(
         request.getName(),
         request.getDescription(),
-        request.getVisibility(),
         request.getListed(),
         request.getSourceType(),
         request.getSourcePath(),
@@ -177,7 +177,7 @@ final class LibraryResponseMapper {
                 library.getName(),
                 library.getOwnerType(),
                 library.getOwnerId(),
-                library.getVisibility(),
+                toReachResponse(detail.reach()),
                 library.isListed(),
                 detail.myRole(),
                 library.getSourceType(),
@@ -232,7 +232,7 @@ final class LibraryResponseMapper {
             managementDetail.externalAccess() == null
                 ? null
                 : LibraryExternalAccessResponseMapper.toResponse(managementDetail.externalAccess()))
-        .visibilityCap(managementDetail.visibilityCap())
+        .allAccountsGrantAllowed(managementDetail.allAccountsGrantAllowed())
         .listedCap(managementDetail.listedCap());
     LibraryScheduleDetail schedule = managementDetail.schedule();
     if (schedule != null) {
@@ -254,7 +254,7 @@ final class LibraryResponseMapper {
             library.getId(),
             library.getName(),
             library.getOwnerType(),
-            library.getVisibility(),
+            toReachResponse(summary.reach()),
             library.isListed(),
             summary.myRole(),
             library.getSourceType(),
@@ -269,5 +269,10 @@ final class LibraryResponseMapper {
 
   static List<LibraryListResponse> toListResponses(List<LibrarySummary> summaries) {
     return summaries.stream().map(LibraryResponseMapper::toListResponse).toList();
+  }
+
+  /** The derived reach (#1931) - three figures, no stored level. */
+  private static AssetReachResponse toReachResponse(AssetReach reach) {
+    return new AssetReachResponse(reach.allAccounts(), reach.groupCount(), reach.userCount());
   }
 }

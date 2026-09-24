@@ -5,10 +5,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.doThrow;
 
+import io.opaa.api.types.AssetGrantSubjectType;
 import io.opaa.api.types.AssetRole;
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.ExternalAccessState;
-import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.api.types.SpaceRole;
 import io.opaa.api.types.SpaceVisibility;
 import io.opaa.api.types.SuccessionAddressee;
@@ -225,7 +224,7 @@ class SuccessionLifecycleIntegrationTest {
                 grantService.upsertGrant(
                     KnowledgeLibrary.ASSET_TYPE,
                     library,
-                    new AssetGrantUpsert(PermissionSubjectType.USER, reader.id(), AssetRole.VIEWER),
+                    new AssetGrantUpsert(AssetGrantSubjectType.USER, reader.id(), AssetRole.VIEWER),
                     admin))
         .isInstanceOf(ConflictException.class)
         .hasMessageContaining("Nachfolge offen")
@@ -320,7 +319,7 @@ class SuccessionLifecycleIntegrationTest {
     grantService.upsertGrant(
         KnowledgeLibrary.ASSET_TYPE,
         library,
-        new AssetGrantUpsert(PermissionSubjectType.GROUP, group, AssetRole.VIEWER),
+        new AssetGrantUpsert(AssetGrantSubjectType.GROUP, group, AssetRole.VIEWER),
         admin);
     lock(member.id());
     membershipResolver.invalidateUser(member.id());
@@ -406,7 +405,7 @@ class SuccessionLifecycleIntegrationTest {
     grantService.upsertGrant(
         KnowledgeLibrary.ASSET_TYPE,
         library,
-        new AssetGrantUpsert(PermissionSubjectType.USER, holder.id(), AssetRole.MANAGER),
+        new AssetGrantUpsert(AssetGrantSubjectType.USER, holder.id(), AssetRole.MANAGER),
         admin);
     lock(owner.id());
 
@@ -415,7 +414,7 @@ class SuccessionLifecycleIntegrationTest {
                 .upsertGrant(
                     KnowledgeLibrary.ASSET_TYPE,
                     library,
-                    new AssetGrantUpsert(PermissionSubjectType.USER, holder.id(), AssetRole.VIEWER),
+                    new AssetGrantUpsert(AssetGrantSubjectType.USER, holder.id(), AssetRole.VIEWER),
                     admin)
                 .grant()
                 .getRole())
@@ -428,7 +427,7 @@ class SuccessionLifecycleIntegrationTest {
                     KnowledgeLibrary.ASSET_TYPE,
                     library,
                     new AssetGrantUpsert(
-                        PermissionSubjectType.USER, holder.id(), AssetRole.MANAGER),
+                        AssetGrantSubjectType.USER, holder.id(), AssetRole.MANAGER),
                     admin))
         .as("raising the same grant again is a widening and stays refused")
         .isInstanceOf(ConflictException.class)
@@ -514,7 +513,7 @@ class SuccessionLifecycleIntegrationTest {
     grantService.upsertGrant(
         KnowledgeLibrary.ASSET_TYPE,
         library,
-        new AssetGrantUpsert(PermissionSubjectType.USER, admin.id(), AssetRole.VIEWER),
+        new AssetGrantUpsert(AssetGrantSubjectType.USER, admin.id(), AssetRole.VIEWER),
         admin);
     lock(owner.id());
 
@@ -737,12 +736,7 @@ class SuccessionLifecycleIntegrationTest {
     UUID ownerId = users.save(owner).getId();
     libraries.save(
         KnowledgeLibrary.ownedByUser(
-            foreignId,
-            "Bibliothek " + UUID.randomUUID(),
-            null,
-            ownerId,
-            AssetVisibility.PRIVATE,
-            false));
+            foreignId, "Bibliothek " + UUID.randomUUID(), null, ownerId, false));
     lock(ownerId);
     return foreignId;
   }
@@ -759,12 +753,7 @@ class SuccessionLifecycleIntegrationTest {
     return libraries
         .save(
             KnowledgeLibrary.ownedByUser(
-                organizationId,
-                "Bibliothek " + UUID.randomUUID(),
-                null,
-                ownerId,
-                AssetVisibility.PRIVATE,
-                false))
+                organizationId, "Bibliothek " + UUID.randomUUID(), null, ownerId, false))
         .getId();
   }
 
@@ -772,12 +761,7 @@ class SuccessionLifecycleIntegrationTest {
     return libraries
         .save(
             KnowledgeLibrary.ownedByGroup(
-                organizationId,
-                "Referatsbibliothek " + UUID.randomUUID(),
-                null,
-                groupId,
-                AssetVisibility.PRIVATE,
-                false))
+                organizationId, "Referatsbibliothek " + UUID.randomUUID(), null, groupId, false))
         .getId();
   }
 

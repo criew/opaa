@@ -2,7 +2,6 @@ package io.opaa.indexing.source.s3;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.IndexingRunMode;
@@ -148,7 +147,6 @@ class S3FullSyncMinioIntegrationTest {
             "MinIO",
             null,
             userId,
-            AssetVisibility.PRIVATE,
             false,
             DocumentSourceType.S3,
             null,

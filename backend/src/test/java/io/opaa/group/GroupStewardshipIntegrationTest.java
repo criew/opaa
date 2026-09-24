@@ -3,13 +3,12 @@ package io.opaa.group;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.opaa.api.types.AssetGrantSubjectType;
 import io.opaa.api.types.AssetRole;
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.Capability;
 import io.opaa.api.types.GroupKind;
 import io.opaa.api.types.NotificationType;
-import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.api.types.SystemRole;
 import io.opaa.asset.AssetGrantService;
 import io.opaa.asset.AssetGrantUpsert;
@@ -299,7 +298,7 @@ class GroupStewardshipIntegrationTest {
     CurrentUser manager = currentUserOf(regularUser());
     UUID libraryId = libraryManagedBy(manager);
     AssetGrantUpsert request =
-        new AssetGrantUpsert(PermissionSubjectType.GROUP, groupId, AssetRole.VIEWER);
+        new AssetGrantUpsert(AssetGrantSubjectType.GROUP, groupId, AssetRole.VIEWER);
 
     assertThatThrownBy(
             () ->
@@ -327,7 +326,7 @@ class GroupStewardshipIntegrationTest {
     CurrentUser member = currentUserOf(regularUser());
     groupService.addMember(groupId, member.id(), steward);
     AssetGrantUpsert request =
-        new AssetGrantUpsert(PermissionSubjectType.GROUP, groupId, AssetRole.VIEWER);
+        new AssetGrantUpsert(AssetGrantSubjectType.GROUP, groupId, AssetRole.VIEWER);
 
     assertThat(
             assetGrantService
@@ -595,12 +594,7 @@ class GroupStewardshipIntegrationTest {
     KnowledgeLibrary library =
         libraryRepository.save(
             KnowledgeLibrary.ownedByUser(
-                organizationId,
-                "Bibliothek " + UUID.randomUUID(),
-                null,
-                caller.id(),
-                AssetVisibility.PRIVATE,
-                false));
+                organizationId, "Bibliothek " + UUID.randomUUID(), null, caller.id(), false));
     assetGrantRepository.save(
         AssetGrant.forUser(
             KnowledgeLibrary.ASSET_TYPE,

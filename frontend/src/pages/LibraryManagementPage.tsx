@@ -3,12 +3,16 @@ import { useNavigate } from 'react-router'
 import Box from '@mui/material/Box'
 import TableCell from '@mui/material/TableCell'
 import Typography from '@mui/material/Typography'
-import CheckIcon from '@mui/icons-material/Check'
 import type { LibraryListResponse } from '../types/api'
 import { IDLE_RUN_STATE, useIndexingStore } from '../stores/indexingStore'
 import { useLibraryStore } from '../stores/libraryStore'
 import { fontFamily } from '../theme/tokens'
-import { assetRoleLabel, documentCountLabel, documentSourceTypeLabel } from '../utils/labels'
+import {
+  assetReachLabel,
+  assetRoleLabel,
+  documentCountLabel,
+  documentSourceTypeLabel,
+} from '../utils/labels'
 import MetaBadge from '../components/MetaBadge'
 import OverviewPage, { OverviewCard, OverviewRowLink } from '../components/overview/OverviewPage'
 import SuccessionStateNote from '../components/succession/SuccessionStateNote'
@@ -17,17 +21,6 @@ function ownerTypeSummary(library: LibraryListResponse): string {
   if (library.ownerName) return library.ownerName
   if (library.ownerType === 'GROUP') return 'Gruppen-Bibliothek'
   return 'eigene'
-}
-
-/** A library is shared with the whole organization exactly at the ORGANIZATION distribution
- *  level; the levels themselves stay in the data model and in the detail view. */
-function isSharedWithOrganization(library: LibraryListResponse): boolean {
-  return library.visibility === 'ORGANIZATION'
-}
-
-function OrganizationShareMark({ library }: { library: LibraryListResponse }) {
-  if (!isSharedWithOrganization(library)) return null
-  return <CheckIcon titleAccess="ja" sx={{ fontSize: 18, color: 'text.secondary' }} />
 }
 
 function lastUpdateDate(library: LibraryListResponse): string {
@@ -118,7 +111,8 @@ function LibraryCard({ library }: { library: LibraryListResponse }) {
       <SuccessionStateNote succession={library.succession} variant="badge" />
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
         <MetaBadge accent>{assetRoleLabel(library.myRole)}</MetaBadge>
-        {isSharedWithOrganization(library) && <MetaBadge>In der Organisation geteilt</MetaBadge>}
+        {/* #1931: die Reichweite ist abgeleitet, keine gespeicherte Stufe. */}
+        <MetaBadge>{assetReachLabel(library.reach)}</MetaBadge>
       </Box>
     </OverviewCard>
   )
@@ -140,8 +134,8 @@ function LibraryRow({ library }: { library: LibraryListResponse }) {
       <TableCell sx={{ fontFamily: fontFamily.mono, fontSize: '12.5px !important' }}>
         {documentCountLabel(library.documentCount)}
       </TableCell>
-      <TableCell>
-        <OrganizationShareMark library={library} />
+      <TableCell sx={{ fontSize: '12px !important', color: 'text.secondary' }}>
+        {assetReachLabel(library.reach)}
       </TableCell>
       <TableCell>
         <MetaBadge accent>{assetRoleLabel(library.myRole)}</MetaBadge>
@@ -157,7 +151,7 @@ const columns = [
   { key: 'name', label: 'Name' },
   { key: 'source', label: 'Herkunft' },
   { key: 'documents', label: 'Dokumente' },
-  { key: 'shared', label: 'In der Organisation geteilt' },
+  { key: 'reach', label: 'Reichweite' },
   { key: 'role', label: 'Ihre Rolle' },
   { key: 'lastUpdate', label: 'Letzte Aktualisierung' },
 ]

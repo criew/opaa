@@ -1,6 +1,5 @@
 package io.opaa.eval;
 
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.indexing.chunk.ChunkContextPrefix;
 import io.opaa.indexing.chunk.ChunkingService;
@@ -195,8 +194,7 @@ final class ContextPrefixFingerprint {
 
   static String productionEmbeddingInput(Sample sample) {
     KnowledgeLibrary library =
-        KnowledgeLibrary.ownedByUser(
-            ORGANIZATION, "Eval-Zielbibliothek", null, OWNER, AssetVisibility.PRIVATE, false);
+        KnowledgeLibrary.ownedByUser(ORGANIZATION, "Eval-Zielbibliothek", null, OWNER, false);
     if (sample.coreFieldsInPrefix()) {
       library.applyCoreContextPrefix(true, true);
     }

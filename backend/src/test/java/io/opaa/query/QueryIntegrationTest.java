@@ -89,7 +89,7 @@ class QueryIntegrationTest {
         DEFAULT_ORGANIZATION_ID);
     jdbcTemplate.update(
         "WITH shell AS (INSERT INTO assets (id, asset_type, organization_id, name, owner_type,"
-            + " owner_user_id, visibility, listed) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, 'IT-Bibliothek', 'USER', ?, 'PRIVATE', false)"
+            + " owner_user_id, listed) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, 'IT-Bibliothek', 'USER', ?, false)"
             + " RETURNING id, organization_id) INSERT INTO knowledge_libraries (id,"
             + " organization_id, source_type) SELECT id, organization_id, 'UPLOAD' FROM shell",
         libraryId,
@@ -247,8 +247,8 @@ class QueryIntegrationTest {
   }
 
   @Test
-  void indexedContentBecomesReachableOnceItsLibraryIsOpenedToTheOrganization() {
-    // #406: widening a library's visibility must actually widen the search, not just the library
+  void indexedContentBecomesReachableOnceItsLibraryIsGrantedToAllAccounts() {
+    // #406: widening a library's reach must actually widen the search, not just the library
     // API - the case that made a fully indexed corpus useless on the test instance before #406,
     // then demonstrated on the well-known system library that existed until #521 (see that issue).
     // This test walks the whole query chain for an ordinary library the querying user has no grant
@@ -268,7 +268,7 @@ class QueryIntegrationTest {
         DEFAULT_ORGANIZATION_ID);
     jdbcTemplate.update(
         "WITH shell AS (INSERT INTO assets (id, asset_type, organization_id, name, owner_type,"
-            + " owner_user_id, visibility, listed) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, 'Verschlossene Bibliothek', 'USER', ?, 'PRIVATE', false)"
+            + " owner_user_id, listed) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, 'Verschlossene Bibliothek', 'USER', ?, false)"
             + " RETURNING id, organization_id) INSERT INTO knowledge_libraries (id,"
             + " organization_id, source_type) SELECT id, organization_id, 'UPLOAD' FROM shell",
         closedLibraryId,
@@ -300,8 +300,14 @@ class QueryIntegrationTest {
               "Wie gross ist Batman?", null, asCaller(userId), true, java.util.List.of());
       assertThat(closed.sources()).isEmpty();
 
+      // #1931: Die Reichweite ist eine Freigabe - geoeffnet wird sie, indem die Bibliothek an
+      // alle Konten freigegeben wird.
       jdbcTemplate.update(
-          "UPDATE assets SET visibility = 'ORGANIZATION' WHERE id = ?", closedLibraryId);
+          "INSERT INTO asset_grants (id, asset_type, asset_id, organization_id, subject_type,"
+              + " role) VALUES (gen_random_uuid(), 'KNOWLEDGE_LIBRARY', ?, ?, 'ALL_ACCOUNTS',"
+              + " 'VIEWER')",
+          closedLibraryId,
+          DEFAULT_ORGANIZATION_ID);
 
       var answer =
           new AssistantMessage("Batman ist 188 cm gross. 【source: doc-batman#0 | batman.md】");
@@ -316,6 +322,7 @@ class QueryIntegrationTest {
       assertThat(opened.sources().getFirst().getFileName()).isEqualTo("batman.md");
     } finally {
       vectorChunkStore.deleteByLibraryId(closedLibraryId);
+      jdbcTemplate.update("DELETE FROM asset_grants WHERE asset_id = ?", closedLibraryId);
       jdbcTemplate.update("DELETE FROM assets WHERE id = ?", closedLibraryId);
       jdbcTemplate.update("DELETE FROM users WHERE id = ?", otherOwnerId);
     }
@@ -348,7 +355,7 @@ class QueryIntegrationTest {
     UUID ungrantedLibraryId = UUID.randomUUID();
     jdbcTemplate.update(
         "WITH shell AS (INSERT INTO assets (id, asset_type, organization_id, name, owner_type,"
-            + " owner_user_id, visibility, listed) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, 'Fremde Bibliothek', 'USER', ?, 'PRIVATE', false)"
+            + " owner_user_id, listed) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, 'Fremde Bibliothek', 'USER', ?, false)"
             + " RETURNING id, organization_id) INSERT INTO knowledge_libraries (id,"
             + " organization_id, source_type) SELECT id, organization_id, 'UPLOAD' FROM shell",
         ungrantedLibraryId,
@@ -493,7 +500,7 @@ class QueryIntegrationTest {
     UUID ungrantedLibraryId = UUID.randomUUID();
     jdbcTemplate.update(
         "WITH shell AS (INSERT INTO assets (id, asset_type, organization_id, name, owner_type,"
-            + " owner_user_id, visibility, listed) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, 'Fremde Bibliothek', 'USER', ?, 'PRIVATE', false)"
+            + " owner_user_id, listed) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, 'Fremde Bibliothek', 'USER', ?, false)"
             + " RETURNING id, organization_id) INSERT INTO knowledge_libraries (id,"
             + " organization_id, source_type) SELECT id, organization_id, 'UPLOAD' FROM shell",
         ungrantedLibraryId,

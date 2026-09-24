@@ -57,7 +57,6 @@ vi.mock('../services/api', async () => {
 const filesystemLibrary = {
   name: 'Serververzeichnis',
   description: 'Interne Dokumente',
-  visibility: 'SHARED' as const,
   listed: true,
   sourceType: 'FILESYSTEM' as const,
   sourcePath: '/data/dokumente',
@@ -69,7 +68,6 @@ const filesystemLibrary = {
 const httpDirectoryLibrary = {
   name: 'Webverzeichnis',
   description: null,
-  visibility: 'ORGANIZATION' as const,
   listed: false,
   sourceType: 'HTTP_DIRECTORY' as const,
   sourcePath: null,
@@ -163,7 +161,6 @@ describe('EditLibrarySourceDialog', () => {
       expect(mockUpdateLibrary).toHaveBeenCalledWith('library-1', {
         name: 'Serververzeichnis',
         description: 'Interne Dokumente',
-        visibility: 'SHARED',
         listed: true,
         sourcePath: '/data/neu',
         sourceUrl: undefined,
@@ -501,7 +498,6 @@ describe('EditLibrarySourceDialog', () => {
     const s3Library = {
       name: 'Protokolle',
       description: null,
-      visibility: 'SHARED' as const,
       listed: false,
       sourceType: 'S3' as const,
       sourcePath: null,
@@ -589,7 +585,6 @@ describe('EditLibrarySourceDialog', () => {
     const confluenceLibrary = {
       name: 'Wiki Bauamt',
       description: null,
-      visibility: 'SHARED' as const,
       listed: false,
       sourceType: 'CONFLUENCE' as const,
       sourcePath: null,

@@ -6,7 +6,6 @@ import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.IndexingRunMode;
@@ -141,7 +140,6 @@ class DocumentIndexingIntegrationTest {
                 "Zielbibliothek",
                 null,
                 userId,
-                AssetVisibility.PRIVATE,
                 false,
                 DocumentSourceType.FILESYSTEM,
                 classTempDir.toAbsolutePath().toString(),
@@ -331,7 +329,6 @@ class DocumentIndexingIntegrationTest {
                 "Andere Bibliothek (Retention)",
                 null,
                 userId,
-                AssetVisibility.PRIVATE,
                 false,
                 DocumentSourceType.FILESYSTEM,
                 classTempDir.toAbsolutePath().toString(),
@@ -761,7 +758,6 @@ class DocumentIndexingIntegrationTest {
                 "Andere Bibliothek",
                 null,
                 userId,
-                AssetVisibility.PRIVATE,
                 false,
                 DocumentSourceType.FILESYSTEM,
                 classTempDir.toAbsolutePath().toString(),
@@ -896,12 +892,7 @@ class DocumentIndexingIntegrationTest {
     KnowledgeLibrary strangerLibrary =
         libraryRepository.save(
             KnowledgeLibrary.ownedByUser(
-                Organization.DEFAULT_ID,
-                "Bibliothek des Fremden",
-                null,
-                strangerId,
-                AssetVisibility.PRIVATE,
-                false));
+                Organization.DEFAULT_ID, "Bibliothek des Fremden", null, strangerId, false));
     grantOwner(strangerLibrary.getId(), strangerId);
 
     QueryResult withoutGrant =
@@ -967,7 +958,6 @@ class DocumentIndexingIntegrationTest {
                 "Ausserhalb der Allowlist",
                 null,
                 userId,
-                AssetVisibility.PRIVATE,
                 false,
                 DocumentSourceType.FILESYSTEM,
                 OpaaTestDirectory.OUTSIDE_ALLOWLIST_DIR
@@ -1132,7 +1122,6 @@ class DocumentIndexingIntegrationTest {
                 "Bibliothek " + subdirectoryName,
                 null,
                 ownerId,
-                AssetVisibility.PRIVATE,
                 false,
                 DocumentSourceType.FILESYSTEM,
                 libraryDir.toAbsolutePath().toString(),
