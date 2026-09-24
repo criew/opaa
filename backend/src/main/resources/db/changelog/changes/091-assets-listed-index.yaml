@@ -1,0 +1,20 @@
+databaseChangeLog:
+  - changeSet:
+      id: 091-assets-listed-index
+      author: opaa
+      comment: >-
+        Der Katalog (#1904) liest die Assets einer Organisation, die gelistet oder fuer die
+        anfragende Person lesbar sind, in einer Abfrage. Der lesbare Teil kommt als Kennungen
+        ueber den Primaerschluessel; der gelistete Teil bekommt hier einen Teilindex ueber
+        Organisation und Typ, damit die Abfrage nicht alle Assets der Organisation lesen muss, um
+        die wenigen gelisteten zu finden.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE INDEX idx_assets_organization_listed ON assets USING btree (organization_id, asset_type) WHERE listed;
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              DROP INDEX idx_assets_organization_listed;

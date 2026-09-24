@@ -223,3 +223,6 @@ databaseChangeLog:
   # Sichtbarkeitsintervalle in Freigaben und Freigabe-Intervalle ueber.
   - include:
       file: db/changelog/changes/090-asset-reach-as-all-accounts-grant.yaml
+  # Der gelistete Teil des Katalogs.
+  - include:
+      file: db/changelog/changes/091-assets-listed-index.yaml

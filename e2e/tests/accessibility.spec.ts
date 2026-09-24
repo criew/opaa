@@ -171,6 +171,27 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     await expectNoSeriousA11yViolations(page, "Wissen (dunkles Farbschema)");
   });
 
+  // #1904: Typfilter als Umschaltgruppe, Einträge ohne Zugriff als gestrichelte Karte ohne Link.
+  test("Katalog in beiden Farbschemata", async ({ authenticatedPage: page }) => {
+    await Promise.all([
+      page.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          new URL(response.url()).pathname === "/api/v1/catalog",
+      ),
+      page.goto("/catalog"),
+    ]);
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Katalog" }),
+    ).toBeVisible();
+    await expect(page.getByRole("group", { name: "Typ" })).toBeVisible();
+
+    await page.emulateMedia({ colorScheme: "light" });
+    await expectNoSeriousA11yViolations(page, "Katalog (helles Farbschema)");
+    await page.emulateMedia({ colorScheme: "dark" });
+    await expectNoSeriousA11yViolations(page, "Katalog (dunkles Farbschema)");
+  });
+
   // #1541/#1601: die Benutzerverwaltung führt die dichteste Kombination des Bereichs — eine
   // Tab-Leiste, Zustandspunkt plus Text und Herkunft mit Symbol plus Wort in der Tabelle, ein
   // Zeilenmenü aus Nur-Icon-Schaltern und die Schalterkarte mit Konsequenz. Beide Bereiche und

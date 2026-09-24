@@ -14,6 +14,7 @@ import LogoutIcon from '@mui/icons-material/Logout'
 import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined'
 import SettingsIcon from '@mui/icons-material/Settings'
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined'
+import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined'
 import TextSnippetOutlinedIcon from '@mui/icons-material/TextSnippetOutlined'
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router'
 import AboutDialog from './AboutDialog'
@@ -93,8 +94,15 @@ export default function GlobalRail() {
       icon: GridViewOutlinedIcon,
     },
     // Je Asset-Typ ein eigener Punkt (#1915): „Wissen" und „Prompts" führen auf die lesbaren
-    // Bestände ihres Typs. Der organisationsweite Katalog ist davon getrennt.
+    // Bestände ihres Typs. Der Katalog ist die gemischte Sicht über alle Typen, einschließlich
+    // der auffindbaren Assets ohne Zugriff.
     ...ASSET_DESTINATIONS,
+    {
+      label: 'Katalog',
+      to: '/catalog',
+      activePrefixes: ['/catalog'],
+      icon: StorefrontOutlinedIcon,
+    },
     ...(user?.systemRole === 'SYSTEM_ADMIN'
       ? [
           {

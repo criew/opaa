@@ -2,6 +2,7 @@ import { useSpaceStore } from './spaceStore'
 import { useGroupStore } from './groupStore'
 import { useLibraryStore } from './libraryStore'
 import { usePromptLibraryStore } from './promptLibraryStore'
+import { useCatalogStore } from './catalogStore'
 import { useChatStore } from './chatStore'
 import { useChatListStore } from './chatListStore'
 import { useDocumentStore } from './documentStore'
@@ -45,6 +46,7 @@ function resettableStores() {
     useGroupStore,
     useLibraryStore,
     usePromptLibraryStore,
+    useCatalogStore,
     useChatStore,
     useChatListStore,
     useDocumentStore,

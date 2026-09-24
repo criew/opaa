@@ -6588,6 +6588,66 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/catalog:
+    get:
+      operationId: listCatalog
+      tags: [asset]
+      summary: >
+        The catalog across every asset type (docs/features/spaces-and-assets.md#der-katalog): the
+        assets the caller may read - direct grant, grant to one of their groups, organization-wide
+        release - united with the listed ones, always within the caller's organization. An entry
+        describes an asset and never carries its content.
+      description: >
+        A listed asset the caller may not read is an entry with accessible = false; its detail
+        view still answers 404 or 403 - being findable is not being accessible. accessible follows
+        the rights formula alone, so a system administrator without a grant sees the listed assets
+        like everybody else and no more. Ordered by name; the search matches name and
+        description, case-insensitive, every character literally.
+      parameters:
+        - name: type
+          in: query
+          required: false
+          description: Only entries of this asset type; all types when absent.
+          schema:
+            $ref: "#/components/schemas/AssetType"
+        - name: q
+          in: query
+          required: false
+          description: Part of the name or the description.
+          schema:
+            type: string
+            maxLength: 200
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: size
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+      responses:
+        "200":
+          description: One page of the catalog
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CatalogPageResponse"
+        "400":
+          description: >
+            A page, size or search text outside the bounds declared above - refused rather than
+            silently answering a different page than the one asked for.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /api/v1/prompt-libraries:
     get:
       operationId: listPromptLibraries
@@ -10792,6 +10852,85 @@ components:
         Grants, the Herleitung and the space association name an asset by its type plus id; a type
         without a registered definition answers 404 like an unknown asset.
       enum: [KNOWLEDGE_LIBRARY, PROMPT_LIBRARY]
+
+    AssetOrigin:
+      type: string
+      description: >
+        Where an asset comes from: created in this installation (LOCAL) or delivered with it
+        (BUILT_IN, docs/features/spaces-and-assets.md#mitgelieferte-assets).
+      enum: [LOCAL, BUILT_IN]
+
+    CatalogEntryResponse:
+      type: object
+      required: [assetType, assetId, name, ownerType, origin, accessible, listed, itemCount, spaceCount]
+      description: >
+        One asset in the catalog - a description, never a content
+        (docs/features/spaces-and-assets.md#der-katalog).
+      properties:
+        assetType:
+          $ref: "#/components/schemas/AssetType"
+        assetId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        ownerType:
+          $ref: "#/components/schemas/AssetOwnerType"
+        ownerLabel:
+          type: string
+          nullable: true
+          description: >
+            The responsible party - the owning group's or person's display name. Null when it
+            cannot be resolved, when the person has no display name or when the group is protected
+            (ADR-0036, Entscheidung 9); never an e-mail address.
+          example: Referat 50
+        origin:
+          $ref: "#/components/schemas/AssetOrigin"
+        accessible:
+          type: boolean
+          description: >
+            Whether the caller may read the asset by the rights formula. False for an entry that is
+            only listed - its detail view answers 404 or 403.
+        listed:
+          type: boolean
+        itemCount:
+          type: integer
+          format: int64
+          description: >
+            The extent: what the asset holds by its type - top-level documents of a knowledge
+            library, prompts of a prompt library.
+        spaceCount:
+          type: integer
+          format: int64
+          description: The spread - in how many spaces of the organization the asset is associated.
+        succession:
+          description: >
+            Set while the asset has no capable owner (ADR-0036, Entscheidung 6) - state and
+            addressee only, as on the asset's own view.
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/SuccessionStateResponse"
+
+    CatalogPageResponse:
+      type: object
+      required: [entries, page, size, totalElements, totalPages]
+      properties:
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/CatalogEntryResponse"
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
 
     SpaceAssetAssociationRequest:
       type: object

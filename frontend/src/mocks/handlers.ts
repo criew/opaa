@@ -10,6 +10,7 @@ import { externalAccessTokenHandlers } from './externalAccessTokenHandlers'
 import { groupAdminHandlers } from './groupAdminHandlers'
 import { successionHandlers } from './successionHandlers'
 import { promptLibraryHandlers } from './promptLibraryHandlers'
+import { catalogHandlers } from './catalogHandlers'
 import { mockPromptLibraries } from './promptLibraryFixtures'
 
 /** Per-library countdown of the mock metadata backfill; see the handler below. */
@@ -3874,4 +3875,5 @@ export const handlers = [
   // Die Betriebsliste des Lebenszyklus (#1819/#1821) - eigene Datei aus demselben Grund.
   ...successionHandlers,
   ...promptLibraryHandlers,
+  ...catalogHandlers,
 ]

@@ -81,15 +81,15 @@ public class AssetSuccessionSource implements SuccessionFindingSource {
    *     state and addressee alone, so the reader's overview pays nothing for them
    */
   public Map<UUID, SuccessionFinding> findingsAmong(
-      Collection<? extends Asset> candidates, boolean withMembershipHints) {
+      Collection<? extends OwnedAsset> candidates, boolean withMembershipHints) {
     Set<UUID> activeOwners =
         accountActivity.activeAmong(
             candidates.stream()
                 .filter(asset -> asset.getOwnerType() == AssetOwnerType.USER)
-                .map(Asset::getOwnerUserId)
+                .map(OwnedAsset::getOwnerUserId)
                 .toList());
     Map<UUID, SuccessionFinding> findings = new LinkedHashMap<>();
-    for (Asset asset : candidates) {
+    for (OwnedAsset asset : candidates) {
       if (asset.getOwnerType() == AssetOwnerType.USER) {
         if (!activeOwners.contains(asset.getOwnerUserId())) {
           findings.put(asset.getId(), findingFor(asset, null, withMembershipHints));
@@ -131,7 +131,7 @@ public class AssetSuccessionSource implements SuccessionFindingSource {
    * protected group is named by its protection alone (ADR-0036, Entscheidung 9).
    */
   private SuccessionFinding findingFor(
-      Asset asset, GroupSubject ownerGroup, boolean withMembershipHints) {
+      OwnedAsset asset, GroupSubject ownerGroup, boolean withMembershipHints) {
     boolean internalGroupOwner = ownerGroup != null && ownerGroup.internal();
     SuccessionFinding finding =
         SuccessionFinding.ofAsset(
