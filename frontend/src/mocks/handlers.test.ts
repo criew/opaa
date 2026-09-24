@@ -377,14 +377,14 @@ describe('MSW Handlers', () => {
     })
   })
 
-  describe('/api/v1/libraries/:libraryId/grants', () => {
+  describe('/api/v1/assets/:assetType/:assetId/grants', () => {
     // MANAGER on this fixture (fixtures.ts) - the minimum role the grants endpoints require.
     const managerLibraryId = 'library-referat-50'
     // VIEWER on this fixture - below the MANAGER threshold the grants endpoints require.
     const viewerLibraryId = 'library-dienstanweisungen'
 
     it('lists the grants of a library the caller manages', async () => {
-      const response = await fetch(`/api/v1/libraries/${managerLibraryId}/grants`)
+      const response = await fetch(`/api/v1/assets/KNOWLEDGE_LIBRARY/${managerLibraryId}/grants`)
       expect(response.status).toBe(200)
       const data = await response.json()
       expect(Array.isArray(data)).toBe(true)
@@ -392,14 +392,14 @@ describe('MSW Handlers', () => {
     })
 
     it('returns 403 when listing grants with only VIEWER on the library', async () => {
-      const response = await fetch(`/api/v1/libraries/${viewerLibraryId}/grants`)
+      const response = await fetch(`/api/v1/assets/KNOWLEDGE_LIBRARY/${viewerLibraryId}/grants`)
       expect(response.status).toBe(403)
       const data = await response.json()
       expect(data.error).toMatch(/kein zugriff/i)
     })
 
     it('returns 404 for an unknown library', async () => {
-      const response = await fetch('/api/v1/libraries/does-not-exist/grants')
+      const response = await fetch('/api/v1/assets/KNOWLEDGE_LIBRARY/does-not-exist/grants')
       expect(response.status).toBe(404)
     })
 
@@ -410,26 +410,34 @@ describe('MSW Handlers', () => {
         role: 'VIEWER',
         expiresAt: null,
       }
-      const createResponse = await fetch(`/api/v1/libraries/${managerLibraryId}/grants`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody),
-      })
+      const createResponse = await fetch(
+        `/api/v1/assets/KNOWLEDGE_LIBRARY/${managerLibraryId}/grants`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestBody),
+        },
+      )
       expect(createResponse.status).toBe(200)
       const created = await createResponse.json()
       expect(created.role).toBe('VIEWER')
 
-      const updateResponse = await fetch(`/api/v1/libraries/${managerLibraryId}/grants`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...requestBody, role: 'EDITOR' }),
-      })
+      const updateResponse = await fetch(
+        `/api/v1/assets/KNOWLEDGE_LIBRARY/${managerLibraryId}/grants`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...requestBody, role: 'EDITOR' }),
+        },
+      )
       expect(updateResponse.status).toBe(200)
       const updated = await updateResponse.json()
       expect(updated.id).toBe(created.id)
       expect(updated.role).toBe('EDITOR')
 
-      const listResponse = await fetch(`/api/v1/libraries/${managerLibraryId}/grants`)
+      const listResponse = await fetch(
+        `/api/v1/assets/KNOWLEDGE_LIBRARY/${managerLibraryId}/grants`,
+      )
       const list = (await listResponse.json()) as { id: string; subjectId: string }[]
       expect(list.filter((grant) => grant.subjectId === 'owner-2')).toHaveLength(1)
     })
@@ -437,7 +445,7 @@ describe('MSW Handlers', () => {
     it('rejects granting a role higher than the caller holds', async () => {
       // The caller only has MANAGER on this fixture - requesting OWNER must be capped, mirroring
       // AssetGrantService's escalation guard.
-      const response = await fetch(`/api/v1/libraries/${managerLibraryId}/grants`, {
+      const response = await fetch(`/api/v1/assets/KNOWLEDGE_LIBRARY/${managerLibraryId}/grants`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ subjectType: 'USER', subjectId: 'owner-1', role: 'OWNER' }),
@@ -446,24 +454,31 @@ describe('MSW Handlers', () => {
     })
 
     it('revokes a grant', async () => {
-      const listResponse = await fetch(`/api/v1/libraries/${managerLibraryId}/grants`)
+      const listResponse = await fetch(
+        `/api/v1/assets/KNOWLEDGE_LIBRARY/${managerLibraryId}/grants`,
+      )
       const [firstGrant] = (await listResponse.json()) as { id: string }[]
 
       const deleteResponse = await fetch(
-        `/api/v1/libraries/${managerLibraryId}/grants/${firstGrant.id}`,
+        `/api/v1/assets/KNOWLEDGE_LIBRARY/${managerLibraryId}/grants/${firstGrant.id}`,
         { method: 'DELETE' },
       )
       expect(deleteResponse.status).toBe(204)
 
-      const afterResponse = await fetch(`/api/v1/libraries/${managerLibraryId}/grants`)
+      const afterResponse = await fetch(
+        `/api/v1/assets/KNOWLEDGE_LIBRARY/${managerLibraryId}/grants`,
+      )
       const after = (await afterResponse.json()) as { id: string }[]
       expect(after.some((grant) => grant.id === firstGrant.id)).toBe(false)
     })
 
     it('returns 404 when revoking an unknown grant', async () => {
-      const response = await fetch(`/api/v1/libraries/${managerLibraryId}/grants/does-not-exist`, {
-        method: 'DELETE',
-      })
+      const response = await fetch(
+        `/api/v1/assets/KNOWLEDGE_LIBRARY/${managerLibraryId}/grants/does-not-exist`,
+        {
+          method: 'DELETE',
+        },
+      )
       expect(response.status).toBe(404)
     })
 
@@ -471,7 +486,9 @@ describe('MSW Handlers', () => {
     // the escalation guard's other half - the caller may also never touch a grant that already
     // carries a role higher than their own, independent of whether they could have granted it.
     it('rejects changing the role of an existing grant that already carries a role higher than the caller holds', async () => {
-      const listResponse = await fetch(`/api/v1/libraries/${managerLibraryId}/grants`)
+      const listResponse = await fetch(
+        `/api/v1/assets/KNOWLEDGE_LIBRARY/${managerLibraryId}/grants`,
+      )
       const grants = (await listResponse.json()) as {
         id: string
         subjectId: string
@@ -480,7 +497,7 @@ describe('MSW Handlers', () => {
       const ownerGrant = grants.find((grant) => grant.role === 'OWNER')
       expect(ownerGrant).toBeDefined()
 
-      const response = await fetch(`/api/v1/libraries/${managerLibraryId}/grants`, {
+      const response = await fetch(`/api/v1/assets/KNOWLEDGE_LIBRARY/${managerLibraryId}/grants`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -493,13 +510,15 @@ describe('MSW Handlers', () => {
     })
 
     it('rejects revoking an existing grant that already carries a role higher than the caller holds', async () => {
-      const listResponse = await fetch(`/api/v1/libraries/${managerLibraryId}/grants`)
+      const listResponse = await fetch(
+        `/api/v1/assets/KNOWLEDGE_LIBRARY/${managerLibraryId}/grants`,
+      )
       const grants = (await listResponse.json()) as { id: string; role: string }[]
       const ownerGrant = grants.find((grant) => grant.role === 'OWNER')
       expect(ownerGrant).toBeDefined()
 
       const response = await fetch(
-        `/api/v1/libraries/${managerLibraryId}/grants/${ownerGrant!.id}`,
+        `/api/v1/assets/KNOWLEDGE_LIBRARY/${managerLibraryId}/grants/${ownerGrant!.id}`,
         { method: 'DELETE' },
       )
       expect(response.status).toBe(403)
@@ -510,27 +529,34 @@ describe('MSW Handlers', () => {
     const soloOwnerLibraryId = 'library-solo-owner'
 
     it("rejects downgrading the library's last active OWNER grant", async () => {
-      const listResponse = await fetch(`/api/v1/libraries/${soloOwnerLibraryId}/grants`)
+      const listResponse = await fetch(
+        `/api/v1/assets/KNOWLEDGE_LIBRARY/${soloOwnerLibraryId}/grants`,
+      )
       const [onlyGrant] = (await listResponse.json()) as { subjectId: string }[]
 
-      const response = await fetch(`/api/v1/libraries/${soloOwnerLibraryId}/grants`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          subjectType: 'USER',
-          subjectId: onlyGrant.subjectId,
-          role: 'VIEWER',
-        }),
-      })
+      const response = await fetch(
+        `/api/v1/assets/KNOWLEDGE_LIBRARY/${soloOwnerLibraryId}/grants`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            subjectType: 'USER',
+            subjectId: onlyGrant.subjectId,
+            role: 'VIEWER',
+          }),
+        },
+      )
       expect(response.status).toBe(409)
     })
 
     it("rejects revoking the library's last active OWNER grant", async () => {
-      const listResponse = await fetch(`/api/v1/libraries/${soloOwnerLibraryId}/grants`)
+      const listResponse = await fetch(
+        `/api/v1/assets/KNOWLEDGE_LIBRARY/${soloOwnerLibraryId}/grants`,
+      )
       const [onlyGrant] = (await listResponse.json()) as { id: string }[]
 
       const response = await fetch(
-        `/api/v1/libraries/${soloOwnerLibraryId}/grants/${onlyGrant.id}`,
+        `/api/v1/assets/KNOWLEDGE_LIBRARY/${soloOwnerLibraryId}/grants/${onlyGrant.id}`,
         { method: 'DELETE' },
       )
       expect(response.status).toBe(409)

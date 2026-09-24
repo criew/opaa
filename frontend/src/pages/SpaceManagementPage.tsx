@@ -23,6 +23,7 @@ import { useAuthStore } from '../stores/authStore'
 import { confirmAction } from '../stores/confirmStore'
 import { useSpaceStore } from '../stores/spaceStore'
 import {
+  assetTypeLabel,
   groupGrowthLabel,
   spaceRoleLabel,
   spaceVisibilities,
@@ -93,11 +94,11 @@ export default function SpaceManagementPage() {
   const updateDetails = useSpaceStore((s) => s.updateDetails)
   const deleteSelectedSpace = useSpaceStore((s) => s.deleteSelectedSpace)
   const archiveSelectedSpace = useSpaceStore((s) => s.archiveSelectedSpace)
-  const libraryAssociations = useSpaceStore((s) => s.libraryAssociations)
-  const isLoadingLibraryAssociations = useSpaceStore((s) => s.isLoadingLibraryAssociations)
-  const loadLibraryAssociations = useSpaceStore((s) => s.loadLibraryAssociations)
-  const associateLibrary = useSpaceStore((s) => s.associateLibrary)
-  const detachLibrary = useSpaceStore((s) => s.detachLibrary)
+  const assetAssociations = useSpaceStore((s) => s.assetAssociations)
+  const isLoadingAssetAssociations = useSpaceStore((s) => s.isLoadingAssetAssociations)
+  const loadAssetAssociations = useSpaceStore((s) => s.loadAssetAssociations)
+  const associateAsset = useSpaceStore((s) => s.associateAsset)
+  const detachAsset = useSpaceStore((s) => s.detachAsset)
   const [draft, setDraft] = useState<{
     spaceId: string | null
     name: string
@@ -140,9 +141,9 @@ export default function SpaceManagementPage() {
 
   useEffect(() => {
     if (spaceId) {
-      void loadLibraryAssociations(spaceId)
+      void loadAssetAssociations(spaceId)
     }
-  }, [loadLibraryAssociations, spaceId])
+  }, [loadAssetAssociations, spaceId])
 
   useEffect(() => {
     // #203: a CURATOR may only associate a library they themselves can read - GET /v1/libraries
@@ -156,9 +157,9 @@ export default function SpaceManagementPage() {
   const isOwner = Boolean(currentUserId) && space?.ownerId === currentUserId
   const canManageAssociations = canManageLibraries(space?.userRole, isOwner)
   const associableLibraries = useMemo(() => {
-    const associatedIds = new Set(libraryAssociations.map((a) => a.libraryId))
+    const associatedIds = new Set(assetAssociations.map((a) => a.assetId))
     return readableLibraries.filter((l) => !associatedIds.has(l.id))
-  }, [readableLibraries, libraryAssociations])
+  }, [readableLibraries, assetAssociations])
   const activeSpaceId = space?.id ?? null
   const name = draft.spaceId === activeSpaceId ? draft.name : (space?.name ?? '')
   const description =
@@ -658,17 +659,17 @@ export default function SpaceManagementPage() {
             zusätzlichen Zugriff — nur Mitglieder mit eigenem Leserecht auf die Bibliothek sehen
             ihre Treffer.
           </Typography>
-          {isLoadingLibraryAssociations ? (
+          {isLoadingAssetAssociations ? (
             <Typography sx={{ color: 'text.secondary' }}>Datenquellen werden geladen …</Typography>
-          ) : libraryAssociations.length === 0 ? (
+          ) : assetAssociations.length === 0 ? (
             <Typography sx={{ color: 'text.secondary', mb: 2 }}>
               Diesem Space sind keine Bibliotheken zugeordnet.
             </Typography>
           ) : (
             <Stack spacing={0} sx={{ mb: 2 }}>
-              {libraryAssociations.map((association) => (
+              {assetAssociations.map((association) => (
                 <Box
-                  key={association.libraryId}
+                  key={association.assetId}
                   sx={{
                     display: 'flex',
                     alignItems: 'center',
@@ -686,8 +687,8 @@ export default function SpaceManagementPage() {
                       }
                     >
                       {association.readableByCaller
-                        ? association.libraryName
-                        : 'Bibliothek ohne eigenen Zugriff'}
+                        ? association.name
+                        : `${assetTypeLabel(association.assetType)} ohne eigenen Zugriff`}
                     </Typography>
                   </Stack>
                   {canManageAssociations && (
@@ -697,7 +698,7 @@ export default function SpaceManagementPage() {
                       onClick={async () => {
                         setLocalError(null)
                         try {
-                          await detachLibrary(spaceId, association.libraryId)
+                          await detachAsset(spaceId, association.assetId)
                         } catch (err) {
                           setLocalError(err instanceof Error ? err.message : 'Lösen fehlgeschlagen')
                         }
@@ -731,7 +732,7 @@ export default function SpaceManagementPage() {
                   if (!selectedLibrary) return
                   setLocalError(null)
                   try {
-                    await associateLibrary(spaceId, selectedLibrary.id)
+                    await associateAsset(spaceId, 'KNOWLEDGE_LIBRARY', selectedLibrary.id)
                     setSelectedLibrary(null)
                     setSuccessMessage('Bibliothek zugeordnet')
                   } catch (err) {

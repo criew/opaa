@@ -13,7 +13,7 @@ interface MetadataFilterOptionsState {
   /** The options of the scope they were last loaded for, null before the first load. */
   options: MetadataFilterOptionsResponse | null
   /** The scope `options` describes - a component compares it with the current scope before
-   * trusting the numbers, exactly like spaceStore's libraryAssociationsSpaceId (#783). */
+   * trusting the numbers, exactly like spaceStore's assetAssociationsSpaceId (#783). */
   optionsScopeKey: string | null
   isLoading: boolean
   error: string | null

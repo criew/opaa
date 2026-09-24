@@ -20,12 +20,16 @@ const {
   mockTestLibrarySource,
   mockListConfluenceSpaces,
   mockListS3Buckets,
+  mockGetUserSummaries,
+  mockUpsertAssetGrant,
 } = vi.hoisted(() => ({
   mockGetMyGroups: vi.fn().mockResolvedValue([]),
   mockGetMyCapabilities: vi.fn(),
   mockTestLibrarySource: vi.fn(),
   mockListConfluenceSpaces: vi.fn(),
   mockListS3Buckets: vi.fn(),
+  mockGetUserSummaries: vi.fn().mockResolvedValue([]),
+  mockUpsertAssetGrant: vi.fn(),
 }))
 
 vi.mock('../services/api', async () => {
@@ -34,7 +38,8 @@ vi.mock('../services/api', async () => {
     ...actual,
     getMyGroups: mockGetMyGroups,
     getMyCapabilities: mockGetMyCapabilities,
-    getUserSummaries: vi.fn().mockResolvedValue([]),
+    getUserSummaries: mockGetUserSummaries,
+    upsertAssetGrant: mockUpsertAssetGrant,
     testLibrarySource: mockTestLibrarySource,
     listConfluenceSpaces: mockListConfluenceSpaces,
     listS3Buckets: mockListS3Buckets,
@@ -105,6 +110,31 @@ describe('LibraryCreatePage (#596, Mockup 1e)', () => {
         await screen.findByText(capabilityMissingMessage('CREATE_CONNECTOR_LIBRARY')),
       ).toBeInTheDocument()
     })
+  })
+
+  it('notes a person with the shared subject picker and grants on the asset after creation', async () => {
+    mockGetUserSummaries.mockResolvedValue([
+      { id: 'user-alice', email: 'alice@example.com', displayName: 'Alice' },
+    ])
+    mockUpsertAssetGrant.mockResolvedValue({})
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.type(screen.getByLabelText(/^Name/), 'Rechtsquellen Soziales')
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    await user.click(screen.getByRole('button', { name: 'Weiter zu Rechten' }))
+    await user.type(screen.getByRole('combobox', { name: 'Person suchen' }), 'al')
+    await user.click(await screen.findByRole('option', { name: /Alice/ }))
+    await user.click(screen.getByRole('button', { name: 'Vormerken' }))
+    await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
+
+    await waitFor(() =>
+      expect(mockUpsertAssetGrant).toHaveBeenCalledWith('KNOWLEDGE_LIBRARY', 'lib-neu', {
+        subjectType: 'USER',
+        subjectId: 'user-alice',
+        role: 'VIEWER',
+      }),
+    )
   })
 
   describe('S3 origin (#1377, ADR-0027)', () => {

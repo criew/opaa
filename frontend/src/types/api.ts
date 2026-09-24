@@ -27,13 +27,12 @@ export type SpaceResponse = components['schemas']['SpaceResponse']
 export type SpaceAddMemberRequest = components['schemas']['SpaceAddMemberRequest']
 export type SpaceRoleUpdateRequest = components['schemas']['SpaceRoleUpdateRequest']
 export type SpaceTransferOwnershipRequest = components['schemas']['SpaceTransferOwnershipRequest']
-export type SpaceLibraryAssociationRequest = components['schemas']['SpaceLibraryAssociationRequest']
-export type SpaceLibraryAssociationResponse =
-  components['schemas']['SpaceLibraryAssociationResponse']
-export type SpaceLibraryAssociationListResponse =
-  components['schemas']['SpaceLibraryAssociationListResponse']
-export type LibrarySpaceAssociationResponse =
-  components['schemas']['LibrarySpaceAssociationResponse']
+export type AssetType = components['schemas']['AssetType']
+export type SpaceAssetAssociationRequest = components['schemas']['SpaceAssetAssociationRequest']
+export type SpaceAssetAssociationResponse = components['schemas']['SpaceAssetAssociationResponse']
+export type SpaceAssetAssociationListResponse =
+  components['schemas']['SpaceAssetAssociationListResponse']
+export type AssetSpaceAssociationResponse = components['schemas']['AssetSpaceAssociationResponse']
 
 export type NotificationType = components['schemas']['NotificationType']
 export type NotificationResponse = components['schemas']['NotificationResponse']
@@ -73,8 +72,7 @@ export type GroupEffectsResponse = components['schemas']['GroupEffectsResponse']
 
 export type AccessPathGroup = components['schemas']['AccessPathGroup']
 export type AccessPathResponse = components['schemas']['AccessPathResponse']
-export type LibraryAccessDerivationResponse =
-  components['schemas']['LibraryAccessDerivationResponse']
+export type AssetAccessDerivationResponse = components['schemas']['AssetAccessDerivationResponse']
 export type SpaceAccessDerivationResponse = components['schemas']['SpaceAccessDerivationResponse']
 
 export type Capability = components['schemas']['Capability']
@@ -123,8 +121,8 @@ export type DirectoryConnectorTestRequest = components['schemas']['DirectoryConn
 export type DirectoryConnectorResponse = components['schemas']['DirectoryConnectorResponse']
 
 export type AssetRole = components['schemas']['AssetRole']
-export type LibraryOwnerType = components['schemas']['LibraryOwnerType']
-export type LibraryVisibility = components['schemas']['LibraryVisibility']
+export type AssetOwnerType = components['schemas']['AssetOwnerType']
+export type AssetVisibility = components['schemas']['AssetVisibility']
 export type LibraryRequest = components['schemas']['LibraryRequest']
 export type LibraryUpdateRequest = components['schemas']['LibraryUpdateRequest']
 export type LibraryShareCapRequest = components['schemas']['LibraryShareCapRequest']

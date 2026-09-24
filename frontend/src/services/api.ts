@@ -36,7 +36,7 @@ import type {
   GroupResponse,
   GroupContactResponse,
   GroupStewardResponse,
-  LibraryAccessDerivationResponse,
+  AssetAccessDerivationResponse,
   SelectableGroupResponse,
   SpaceAccessDerivationResponse,
   HealthResponse,
@@ -53,7 +53,8 @@ import type {
   LibraryListResponse,
   LibraryRequest,
   LibraryResponse,
-  LibrarySpaceAssociationResponse,
+  AssetSpaceAssociationResponse,
+  AssetType,
   LibraryShareCapRequest,
   LibraryUpdateRequest,
   LlmModelRequest,
@@ -74,8 +75,8 @@ import type {
   QueryResponse,
   SourceConnectionTestRequest,
   SourceConnectionTestResponse,
-  SpaceLibraryAssociationListResponse,
-  SpaceLibraryAssociationResponse,
+  SpaceAssetAssociationListResponse,
+  SpaceAssetAssociationResponse,
   SpaceListResponse,
   SpaceMemberResponse,
   SpaceRequest,
@@ -564,17 +565,17 @@ export async function createSpace(
   }
 }
 
-// the space's own view of its associated libraries. For a plain MEMBER, filtered
+// the space's own view of its associated assets, of every type. For a plain MEMBER, filtered
 // server-side to what they may themselves read - two members of the same space can see different
-// lists. For a CURATOR/ADMIN/owner, unfiltered - see SpaceLibraryAssociationListResponse's own
+// lists. For a CURATOR/ADMIN/owner, unfiltered - see SpaceAssetAssociationListResponse's own
 // description. hasAssociations is a count-free state field, independent of items, that
 // distinguishes "no curation at all" from "curated, but nothing the caller may read".
-export async function getSpaceLibraryAssociations(
+export async function getSpaceAssetAssociations(
   spaceId: string,
-): Promise<SpaceLibraryAssociationListResponse> {
+): Promise<SpaceAssetAssociationListResponse> {
   try {
-    const { data } = await client.get<SpaceLibraryAssociationListResponse>(
-      `/v1/spaces/${spaceId}/libraries`,
+    const { data } = await client.get<SpaceAssetAssociationListResponse>(
+      `/v1/spaces/${spaceId}/assets`,
     )
     return data
   } catch (err) {
@@ -582,14 +583,15 @@ export async function getSpaceLibraryAssociations(
   }
 }
 
-export async function associateSpaceLibrary(
+export async function associateSpaceAsset(
   spaceId: string,
-  libraryId: string,
-): Promise<SpaceLibraryAssociationResponse> {
+  assetType: AssetType,
+  assetId: string,
+): Promise<SpaceAssetAssociationResponse> {
   try {
-    const { data } = await client.post<SpaceLibraryAssociationResponse>(
-      `/v1/spaces/${spaceId}/libraries`,
-      { libraryId },
+    const { data } = await client.post<SpaceAssetAssociationResponse>(
+      `/v1/spaces/${spaceId}/assets`,
+      { assetType, assetId },
     )
     return data
   } catch (err) {
@@ -597,22 +599,23 @@ export async function associateSpaceLibrary(
   }
 }
 
-export async function detachSpaceLibrary(spaceId: string, libraryId: string): Promise<void> {
+export async function detachSpaceAsset(spaceId: string, assetId: string): Promise<void> {
   try {
-    await client.delete(`/v1/spaces/${spaceId}/libraries/${libraryId}`)
+    await client.delete(`/v1/spaces/${spaceId}/assets/${assetId}`)
   } catch (err) {
     normalizeError(err)
   }
 }
 
-// the library owner's view - every space this library is associated with, never filtered by
-// the caller's own space membership (requires MANAGER role or above on the library).
-export async function getLibrarySpaceAssociations(
-  libraryId: string,
-): Promise<LibrarySpaceAssociationResponse[]> {
+// the asset owner's view - every space this asset is associated with, never filtered by the
+// caller's own space membership (requires MANAGER role or above on the asset).
+export async function getAssetSpaceAssociations(
+  assetType: AssetType,
+  assetId: string,
+): Promise<AssetSpaceAssociationResponse[]> {
   try {
-    const { data } = await client.get<LibrarySpaceAssociationResponse[]>(
-      `/v1/libraries/${libraryId}/spaces`,
+    const { data } = await client.get<AssetSpaceAssociationResponse[]>(
+      `/v1/assets/${assetType}/${assetId}/spaces`,
     )
     return data
   } catch (err) {
@@ -826,14 +829,15 @@ export async function resolveSelectableGroup(groupId: string): Promise<Selectabl
  * verweigert, antwortet „nicht gefunden".
  */
 export async function getGrantedGroupMembers(
-  libraryId: string,
+  assetType: AssetType,
+  assetId: string,
   groupId: string,
   offset = 0,
   limit = 50,
 ): Promise<GroupMemberDisclosureResponse> {
   try {
     const { data } = await client.get<GroupMemberDisclosureResponse>(
-      `/v1/libraries/${libraryId}/grants/groups/${groupId}/members`,
+      `/v1/assets/${assetType}/${assetId}/grants/groups/${groupId}/members`,
       { params: { offset, limit } },
     )
     return data
@@ -864,15 +868,16 @@ export async function getSpaceGroupMembers(
 }
 
 /**
- * Die eigene Herleitung an einer Bibliothek (#1822): jeder eigene Weg zur wirksamen Rolle, ohne
+ * Die eigene Herleitung an einem Asset (#1822): jeder eigene Weg zur wirksamen Rolle, ohne
  * Vollmacht, ohne Protokoll, ohne ein Mitglied einer Gruppe zu nennen.
  */
-export async function getLibraryAccessDerivation(
-  libraryId: string,
-): Promise<LibraryAccessDerivationResponse> {
+export async function getAssetAccessDerivation(
+  assetType: AssetType,
+  assetId: string,
+): Promise<AssetAccessDerivationResponse> {
   try {
-    const { data } = await client.get<LibraryAccessDerivationResponse>(
-      `/v1/libraries/${libraryId}/access-derivation`,
+    const { data } = await client.get<AssetAccessDerivationResponse>(
+      `/v1/assets/${assetType}/${assetId}/access-derivation`,
     )
     return data
   } catch (err) {
@@ -1790,22 +1795,28 @@ export async function getDocumentTypeVocabulary(): Promise<DocumentTypeVocabular
   }
 }
 
-export async function getLibraryGrants(libraryId: string): Promise<AssetGrantResponse[]> {
+export async function getAssetGrants(
+  assetType: AssetType,
+  assetId: string,
+): Promise<AssetGrantResponse[]> {
   try {
-    const { data } = await client.get<AssetGrantResponse[]>(`/v1/libraries/${libraryId}/grants`)
+    const { data } = await client.get<AssetGrantResponse[]>(
+      `/v1/assets/${assetType}/${assetId}/grants`,
+    )
     return data
   } catch (err) {
     normalizeError(err)
   }
 }
 
-export async function upsertLibraryGrant(
-  libraryId: string,
+export async function upsertAssetGrant(
+  assetType: AssetType,
+  assetId: string,
   request: AssetGrantRequest,
 ): Promise<AssetGrantResponse> {
   try {
     const { data } = await client.post<AssetGrantResponse>(
-      `/v1/libraries/${libraryId}/grants`,
+      `/v1/assets/${assetType}/${assetId}/grants`,
       request,
     )
     return data
@@ -1814,9 +1825,13 @@ export async function upsertLibraryGrant(
   }
 }
 
-export async function revokeLibraryGrant(libraryId: string, grantId: string): Promise<void> {
+export async function revokeAssetGrant(
+  assetType: AssetType,
+  assetId: string,
+  grantId: string,
+): Promise<void> {
   try {
-    await client.delete(`/v1/libraries/${libraryId}/grants/${grantId}`)
+    await client.delete(`/v1/assets/${assetType}/${assetId}/grants/${grantId}`)
   } catch (err) {
     normalizeError(err)
   }

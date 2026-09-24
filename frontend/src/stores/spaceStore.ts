@@ -1,7 +1,8 @@
 import { create } from 'zustand'
 import type {
+  AssetType,
   PermissionSubjectType,
-  SpaceLibraryAssociationResponse,
+  SpaceAssetAssociationResponse,
   SpaceListResponse,
   SpaceMemberResponse,
   SpaceRole,
@@ -11,12 +12,12 @@ import type {
 import {
   addSpaceMember,
   archiveSpace,
-  associateSpaceLibrary,
+  associateSpaceAsset,
   createSpace,
   deleteSpace,
-  detachSpaceLibrary,
+  detachSpaceAsset,
   getSpace,
-  getSpaceLibraryAssociations,
+  getSpaceAssetAssociations,
   getSpaces,
   listSpaceMembers,
   removeSpaceMember,
@@ -26,12 +27,12 @@ import {
 } from '../services/api'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
 
-// #783 review: module-level, mirroring chatStore's chatLoadSequence - guards loadLibraryAssociations
+// #783 review: module-level, mirroring chatStore's chatLoadSequence - guards loadAssetAssociations
 // against a *newer* call for a different space, not just against a session reset. Without it, a
 // quick space switch (e.g. ChatInput reacting to the chat's spaceId) could let an in-flight
 // response for the space just left overwrite state a later call already started clearing, so the
 // wrong space's association count would render (#783 review finding 1).
-let libraryAssociationsRequestSeq = 0
+let assetAssociationsRequestSeq = 0
 
 interface SpaceState {
   spaces: SpaceListResponse[]
@@ -44,21 +45,21 @@ interface SpaceState {
   // reachable for ADMIN, owner and system admins (a 403 for anyone else leaves members empty).
   members: SpaceMemberResponse[]
   isLoadingMembers: boolean
-  // #203: the space's associated libraries - for a plain MEMBER, filtered server-side to what the
+  // #203: the space's associated assets, of every type - for a plain MEMBER, filtered server-side to what the
   // caller may themselves read (two members of the same space can legitimately see different
   // lists here); for a CURATOR/ADMIN/owner, unfiltered (#706 review, finding 5). hasAssociations
   // is a count-free state field independent of the (possibly filtered) items list - it is what
   // distinguishes "this space has no curation at all" from "curated, but nothing the caller may
   // read" (#706 review, finding 2), two cases that look identical if only items is inspected.
-  libraryAssociations: SpaceLibraryAssociationResponse[]
-  hasLibraryAssociations: boolean
-  isLoadingLibraryAssociations: boolean
-  // #783 review: the space id that libraryAssociations/hasLibraryAssociations actually describe -
+  assetAssociations: SpaceAssetAssociationResponse[]
+  hasAssetAssociations: boolean
+  isLoadingAssetAssociations: boolean
+  // #783 review: the space id that assetAssociations/hasAssetAssociations actually describe -
   // null while nothing has successfully loaded yet, or after a failed load. A caller reading
-  // libraryAssociations/hasLibraryAssociations must compare this against the space it cares about
+  // assetAssociations/hasAssetAssociations must compare this against the space it cares about
   // before trusting the count for anything - otherwise a stale value from a previously loaded
   // space (or a failed load silently read as "no associations") renders as if it were current.
-  libraryAssociationsSpaceId: string | null
+  assetAssociationsSpaceId: string | null
   reset: () => void
   loadSpaces: () => Promise<void>
   selectSpace: (spaceId: string) => Promise<void>
@@ -87,9 +88,9 @@ interface SpaceState {
     visibility?: SpaceVisibility,
     libraryIds?: string[],
   ) => Promise<string>
-  loadLibraryAssociations: (spaceId: string) => Promise<void>
-  associateLibrary: (spaceId: string, libraryId: string) => Promise<void>
-  detachLibrary: (spaceId: string, libraryId: string) => Promise<void>
+  loadAssetAssociations: (spaceId: string) => Promise<void>
+  associateAsset: (spaceId: string, assetType: AssetType, assetId: string) => Promise<void>
+  detachAsset: (spaceId: string, assetId: string) => Promise<void>
 }
 
 function sortSpaces(list: SpaceListResponse[]): SpaceListResponse[] {
@@ -109,10 +110,10 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
   error: null,
   members: [],
   isLoadingMembers: false,
-  libraryAssociations: [],
-  hasLibraryAssociations: false,
-  isLoadingLibraryAssociations: false,
-  libraryAssociationsSpaceId: null,
+  assetAssociations: [],
+  hasAssetAssociations: false,
+  isLoadingAssetAssociations: false,
+  assetAssociationsSpaceId: null,
 
   reset: () =>
     set({
@@ -124,10 +125,10 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
       error: null,
       members: [],
       isLoadingMembers: false,
-      libraryAssociations: [],
-      hasLibraryAssociations: false,
-      isLoadingLibraryAssociations: false,
-      libraryAssociationsSpaceId: null,
+      assetAssociations: [],
+      hasAssetAssociations: false,
+      isLoadingAssetAssociations: false,
+      assetAssociationsSpaceId: null,
     }),
 
   loadSpaces: async () => {
@@ -158,7 +159,7 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
 
   selectSpace: async (spaceId: string) => {
     const sessionEpoch = currentSessionEpoch()
-    // #144/#203: members and libraryAssociations belong to whichever space was selected before -
+    // #144/#203: members and assetAssociations belong to whichever space was selected before -
     // clearing them here prevents either from briefly appearing to belong to the newly selected
     // space while the new lists (or a 403 for a non-admin) are still in flight.
     set({
@@ -166,9 +167,9 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
       isLoadingDetails: true,
       error: null,
       members: [],
-      libraryAssociations: [],
-      hasLibraryAssociations: false,
-      libraryAssociationsSpaceId: null,
+      assetAssociations: [],
+      hasAssetAssociations: false,
+      assetAssociationsSpaceId: null,
     })
     try {
       const space = await getSpace(spaceId)
@@ -268,50 +269,50 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
   // only writes a response back if this is still the most recently requested call - otherwise a
   // quick space switch (e.g. ChatInput reacting to the chat's spaceId) could let an in-flight
   // response for the space just left land after a later call already started for the next space,
-  // making the wrong space's association count render. On failure, libraryAssociationsSpaceId stays
+  // making the wrong space's association count render. On failure, assetAssociationsSpaceId stays
   // null rather than becoming "this space has no associations" - #783 review nit 1: an unresolved
   // load must render as unknown, not silently as the exact false claim #782 fixed (every readable
   // library treated as searched).
-  loadLibraryAssociations: async (spaceId) => {
+  loadAssetAssociations: async (spaceId) => {
     const sessionEpoch = currentSessionEpoch()
-    const requestId = ++libraryAssociationsRequestSeq
+    const requestId = ++assetAssociationsRequestSeq
     set({
-      isLoadingLibraryAssociations: true,
+      isLoadingAssetAssociations: true,
       error: null,
-      libraryAssociations: [],
-      hasLibraryAssociations: false,
-      libraryAssociationsSpaceId: null,
+      assetAssociations: [],
+      hasAssetAssociations: false,
+      assetAssociationsSpaceId: null,
     })
     try {
-      const response = await getSpaceLibraryAssociations(spaceId)
-      if (isStaleSessionEpoch(sessionEpoch) || requestId !== libraryAssociationsRequestSeq) return
+      const response = await getSpaceAssetAssociations(spaceId)
+      if (isStaleSessionEpoch(sessionEpoch) || requestId !== assetAssociationsRequestSeq) return
       set({
-        libraryAssociations: response.items,
-        hasLibraryAssociations: response.hasAssociations,
-        libraryAssociationsSpaceId: spaceId,
-        isLoadingLibraryAssociations: false,
+        assetAssociations: response.items,
+        hasAssetAssociations: response.hasAssociations,
+        assetAssociationsSpaceId: spaceId,
+        isLoadingAssetAssociations: false,
       })
     } catch (err) {
-      if (isStaleSessionEpoch(sessionEpoch) || requestId !== libraryAssociationsRequestSeq) return
+      if (isStaleSessionEpoch(sessionEpoch) || requestId !== assetAssociationsRequestSeq) return
       const message =
         err instanceof Error ? err.message : 'Zugeordnete Bibliotheken konnten nicht geladen werden'
       set({
         error: message,
-        libraryAssociations: [],
-        hasLibraryAssociations: false,
-        libraryAssociationsSpaceId: null,
-        isLoadingLibraryAssociations: false,
+        assetAssociations: [],
+        hasAssetAssociations: false,
+        assetAssociationsSpaceId: null,
+        isLoadingAssetAssociations: false,
       })
     }
   },
 
-  associateLibrary: async (spaceId, libraryId) => {
-    await associateSpaceLibrary(spaceId, libraryId)
-    await get().loadLibraryAssociations(spaceId)
+  associateAsset: async (spaceId, assetType, assetId) => {
+    await associateSpaceAsset(spaceId, assetType, assetId)
+    await get().loadAssetAssociations(spaceId)
   },
 
-  detachLibrary: async (spaceId, libraryId) => {
-    await detachSpaceLibrary(spaceId, libraryId)
-    await get().loadLibraryAssociations(spaceId)
+  detachAsset: async (spaceId, assetId) => {
+    await detachSpaceAsset(spaceId, assetId)
+    await get().loadAssetAssociations(spaceId)
   },
 }))

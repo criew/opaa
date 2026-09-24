@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
-import type { AccessPathResponse } from '../../types/api'
-import { getLibraryAccessDerivation, getSpaceAccessDerivation } from '../../services/api'
+import type { AccessPathResponse, AssetType } from '../../types/api'
+import { getAssetAccessDerivation, getSpaceAccessDerivation } from '../../services/api'
 import {
   accessBasisLabel,
   assetRoleLabel,
@@ -15,7 +15,8 @@ import {
 interface AccessDerivationProps {
   /** Welches Objekt die Frage betrifft. */
   target:
-    { kind: 'library'; libraryId: string } | { kind: 'space'; spaceId: string; userId?: string }
+    | { kind: 'asset'; assetType: AssetType; assetId: string }
+    | { kind: 'space'; spaceId: string; userId?: string }
 }
 
 /** Ein Weg als Satz: Grundlage, Rolle, Gruppe mit Herkunft und Mechanismus, Zeitpunkt. */
@@ -55,8 +56,8 @@ function accessPathLine(path: AccessPathResponse): string {
  */
 export default function AccessDerivation({ target }: AccessDerivationProps) {
   const key =
-    target.kind === 'library'
-      ? `library:${target.libraryId}`
+    target.kind === 'asset'
+      ? `asset:${target.assetType}:${target.assetId}`
       : `space:${target.spaceId}:${target.userId ?? 'self'}`
   // Ein Zustand statt vier: Solange die Antwort nicht zum angefragten Objekt gehört, lädt die
   // Ansicht noch - so kommt der Ladezustand ohne ein setState im Effektrumpf aus.
@@ -71,8 +72,8 @@ export default function AccessDerivation({ target }: AccessDerivationProps) {
   useEffect(() => {
     let active = true
     const request =
-      target.kind === 'library'
-        ? getLibraryAccessDerivation(target.libraryId).then((response) => ({
+      target.kind === 'asset'
+        ? getAssetAccessDerivation(target.assetType, target.assetId).then((response) => ({
             paths: response.paths,
             role: response.effectiveRole ? assetRoleLabel(response.effectiveRole) : null,
             withheld: response.pathsWithheld,

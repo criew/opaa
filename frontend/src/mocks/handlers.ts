@@ -53,7 +53,7 @@ import {
   mockGroupDetails,
   mockLibraries,
   mockLibraryDetails,
-  mockSpaceLibraryAssociations,
+  mockSpaceAssetAssociations,
   mockLibraryDocuments,
   mockLibraryFolders,
   mockDocumentMetadata,
@@ -103,9 +103,9 @@ import type {
   LibraryFolderListItem,
   LibraryFolderRenameRequest,
   LibraryFolderRequest,
-  LibraryOwnerType,
+  AssetOwnerType,
   LibraryScheduleRequest,
-  LibraryVisibility,
+  AssetVisibility,
   S3Settings,
   LlmModelRequest,
   LlmModelTestRequest,
@@ -1030,16 +1030,16 @@ export const handlers = [
     return HttpResponse.json(members)
   }),
 
-  // mockSpaceLibraryAssociations has an entry only for curated spaces - every other
+  // mockSpaceAssetAssociations has an entry only for curated spaces - every other
   // space id (uncurated, per the  "no association at all" transition rule) falls back to an
   // empty, hasAssociations: false response rather than a 404, mirroring the real endpoint's
   // behaviour for any space the caller may see (it never 404s just for lacking curation).
-  http.get('/api/v1/spaces/:spaceId/libraries', ({ params }) => {
+  http.get('/api/v1/spaces/:spaceId/assets', ({ params }) => {
     const spaceId = String(params.spaceId)
     if (!mockSpaceDetails[spaceId]) {
       return HttpResponse.json({ error: 'Space nicht gefunden' }, { status: 404 })
     }
-    const associations = mockSpaceLibraryAssociations[spaceId] ?? {
+    const associations = mockSpaceAssetAssociations[spaceId] ?? {
       hasAssociations: false,
       items: [],
     }
@@ -1922,9 +1922,9 @@ export const handlers = [
     const body = (await request.json()) as {
       name: string
       description?: string
-      ownerType?: LibraryOwnerType
+      ownerType?: AssetOwnerType
       ownerId?: string
-      visibility?: LibraryVisibility
+      visibility?: AssetVisibility
       listed?: boolean
       sourceType: DocumentSourceType
       sourcePath?: string | null
@@ -2327,7 +2327,7 @@ export const handlers = [
     const body = (await request.json()) as {
       name: string
       description?: string
-      visibility?: LibraryVisibility
+      visibility?: AssetVisibility
       listed?: boolean
       schedule?: LibraryScheduleRequest
       sourceUrl?: string | null
@@ -3386,7 +3386,7 @@ export const handlers = [
     })
   }),
 
-  http.get('/api/v1/libraries/:libraryId/grants', ({ params }) => {
+  http.get('/api/v1/assets/:assetType/:libraryId/grants', ({ params }) => {
     const libraryId = String(params.libraryId)
     if (!mockLibraryDetails[libraryId]) {
       return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
@@ -3397,7 +3397,7 @@ export const handlers = [
     return HttpResponse.json(mockLibraryGrants[libraryId] ?? [])
   }),
 
-  http.post('/api/v1/libraries/:libraryId/grants', async ({ params, request }) => {
+  http.post('/api/v1/assets/:assetType/:libraryId/grants', async ({ params, request }) => {
     const libraryId = String(params.libraryId)
     const library = mockLibraryDetails[libraryId]
     if (!library) {
@@ -3487,7 +3487,7 @@ export const handlers = [
     return HttpResponse.json(created)
   }),
 
-  http.delete('/api/v1/libraries/:libraryId/grants/:grantId', ({ params }) => {
+  http.delete('/api/v1/assets/:assetType/:libraryId/grants/:grantId', ({ params }) => {
     const libraryId = String(params.libraryId)
     const grantId = String(params.grantId)
     const library = mockLibraryDetails[libraryId]
@@ -3541,13 +3541,14 @@ export const handlers = [
   // eine geschützte Gruppe erscheint nur auf ihre vollständige Bezeichnung hin.
 
   // #1822: die eigene Herleitung. Ohne userId geht es um die eigene Person.
-  http.get('/api/v1/libraries/:libraryId/access-derivation', ({ params }) => {
+  http.get('/api/v1/assets/:assetType/:libraryId/access-derivation', ({ params }) => {
     const libraryId = String(params.libraryId)
     if (!mockLibraryDetails[libraryId]) {
       return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
     }
     return HttpResponse.json({
-      libraryId,
+      assetType: 'KNOWLEDGE_LIBRARY',
+      assetId: libraryId,
       effectiveRole: mockLibraryDetails[libraryId].myRole ?? 'VIEWER',
       pathsWithheld: false,
       paths: [

@@ -83,21 +83,21 @@ vi.mock('../services/api', () => ({
   ]),
   createSpace: (...args: unknown[]) => mockCreateSpace(...args),
   archiveSpace: (...args: [string]) => mockArchiveSpace(...args),
-  getSpaceLibraryAssociations: (spaceId: string) => mockGetSpaceLibraryAssociations(spaceId),
-  associateSpaceLibrary: (spaceId: string, libraryId: string) =>
-    mockAssociateSpaceLibrary(spaceId, libraryId),
-  detachSpaceLibrary: (spaceId: string, libraryId: string) =>
-    mockDetachSpaceLibrary(spaceId, libraryId),
+  getSpaceAssetAssociations: (spaceId: string) => mockGetSpaceAssetAssociations(spaceId),
+  associateSpaceAsset: (spaceId: string, assetType: string, assetId: string) =>
+    mockAssociateSpaceAsset(spaceId, assetType, assetId),
+  detachSpaceAsset: (spaceId: string, assetId: string) => mockDetachSpaceAsset(spaceId, assetId),
 }))
 
-const mockGetSpaceLibraryAssociations = vi.fn(async (spaceId: string) => {
+const mockGetSpaceAssetAssociations = vi.fn(async (spaceId: string) => {
   void spaceId
   return {
     hasAssociations: true,
     items: [
       {
-        libraryId: 'lib-1',
-        libraryName: 'Rechtsquellen',
+        assetType: 'KNOWLEDGE_LIBRARY',
+        assetId: 'lib-1',
+        name: 'Rechtsquellen',
         readableByCaller: true,
         createdByUserId: 'u1',
         createdAt: '2026-03-01T10:00:00Z',
@@ -105,14 +105,17 @@ const mockGetSpaceLibraryAssociations = vi.fn(async (spaceId: string) => {
     ],
   }
 })
-const mockAssociateSpaceLibrary = vi.fn(async (spaceId: string, libraryId: string) => {
+const mockAssociateSpaceAsset = vi.fn(
+  async (spaceId: string, assetType: string, assetId: string) => {
+    void spaceId
+    void assetType
+    void assetId
+    return {}
+  },
+)
+const mockDetachSpaceAsset = vi.fn(async (spaceId: string, assetId: string) => {
   void spaceId
-  void libraryId
-  return {}
-})
-const mockDetachSpaceLibrary = vi.fn(async (spaceId: string, libraryId: string) => {
-  void spaceId
-  void libraryId
+  void assetId
 })
 
 describe('spaceStore', () => {
@@ -185,22 +188,23 @@ describe('spaceStore', () => {
   // #203: library associations - loaded on demand, not part of selectSpace, since only pages that
   // actually show them (SpacePage, SpaceManagementPage) need the extra request.
   it('loads library associations for a space', async () => {
-    await useSpaceStore.getState().loadLibraryAssociations('space-project')
+    await useSpaceStore.getState().loadAssetAssociations('space-project')
 
-    expect(mockGetSpaceLibraryAssociations).toHaveBeenCalledWith('space-project')
-    expect(useSpaceStore.getState().libraryAssociations).toEqual([
+    expect(mockGetSpaceAssetAssociations).toHaveBeenCalledWith('space-project')
+    expect(useSpaceStore.getState().assetAssociations).toEqual([
       {
-        libraryId: 'lib-1',
-        libraryName: 'Rechtsquellen',
+        assetType: 'KNOWLEDGE_LIBRARY',
+        assetId: 'lib-1',
+        name: 'Rechtsquellen',
         readableByCaller: true,
         createdByUserId: 'u1',
         createdAt: '2026-03-01T10:00:00Z',
       },
     ])
-    expect(useSpaceStore.getState().hasLibraryAssociations).toBe(true)
+    expect(useSpaceStore.getState().hasAssetAssociations).toBe(true)
     // #783 review finding 1: callers must be able to tell which space this data actually
     // describes before trusting it.
-    expect(useSpaceStore.getState().libraryAssociationsSpaceId).toBe('space-project')
+    expect(useSpaceStore.getState().assetAssociationsSpaceId).toBe('space-project')
   })
 
   // #783 review finding 1 (🔴): a response for a space call already superseded by a newer one
@@ -210,30 +214,32 @@ describe('spaceStore', () => {
     const first = deferred<{
       hasAssociations: boolean
       items: {
-        libraryId: string
-        libraryName: string
+        assetType: string
+        assetId: string
+        name: string
         readableByCaller: boolean
         createdByUserId: string
         createdAt: string
       }[]
     }>()
-    mockGetSpaceLibraryAssociations.mockImplementationOnce(() => first.promise)
+    mockGetSpaceAssetAssociations.mockImplementationOnce(() => first.promise)
 
     // Started first (space left behind), but resolves last - the real-world case a plain
     // .mockResolvedValueOnce ordering can't reproduce, since here the *second* call's own request
     // settles before the *first* call's deferred response ever arrives.
-    const firstCall = useSpaceStore.getState().loadLibraryAssociations('space-a')
-    const secondCall = useSpaceStore.getState().loadLibraryAssociations('space-project')
+    const firstCall = useSpaceStore.getState().loadAssetAssociations('space-a')
+    const secondCall = useSpaceStore.getState().loadAssetAssociations('space-project')
     await secondCall
 
-    expect(useSpaceStore.getState().libraryAssociationsSpaceId).toBe('space-project')
+    expect(useSpaceStore.getState().assetAssociationsSpaceId).toBe('space-project')
 
     first.resolve({
       hasAssociations: true,
       items: [
         {
-          libraryId: 'lib-a',
-          libraryName: 'A',
+          assetType: 'KNOWLEDGE_LIBRARY',
+          assetId: 'lib-a',
+          name: 'A',
           readableByCaller: true,
           createdByUserId: 'u1',
           createdAt: '2026-03-01T10:00:00Z',
@@ -244,11 +250,12 @@ describe('spaceStore', () => {
 
     // The now-stale space-a response must not have overwritten space-project's already-current
     // state.
-    expect(useSpaceStore.getState().libraryAssociationsSpaceId).toBe('space-project')
-    expect(useSpaceStore.getState().libraryAssociations).toEqual([
+    expect(useSpaceStore.getState().assetAssociationsSpaceId).toBe('space-project')
+    expect(useSpaceStore.getState().assetAssociations).toEqual([
       {
-        libraryId: 'lib-1',
-        libraryName: 'Rechtsquellen',
+        assetType: 'KNOWLEDGE_LIBRARY',
+        assetId: 'lib-1',
+        name: 'Rechtsquellen',
         readableByCaller: true,
         createdByUserId: 'u1',
         createdAt: '2026-03-01T10:00:00Z',
@@ -256,30 +263,34 @@ describe('spaceStore', () => {
     ])
   })
 
-  // #783 review nit 1: a failed load must leave libraryAssociationsSpaceId null, not silently
+  // #783 review nit 1: a failed load must leave assetAssociationsSpaceId null, not silently
   // read as "this space has no associations" (which callers would otherwise render as "every
   // readable library" - the exact false claim #782 fixed).
-  it('leaves libraryAssociationsSpaceId null when the load fails', async () => {
-    mockGetSpaceLibraryAssociations.mockRejectedValueOnce(new Error('Netzwerkfehler'))
+  it('leaves assetAssociationsSpaceId null when the load fails', async () => {
+    mockGetSpaceAssetAssociations.mockRejectedValueOnce(new Error('Netzwerkfehler'))
 
-    await useSpaceStore.getState().loadLibraryAssociations('space-project')
+    await useSpaceStore.getState().loadAssetAssociations('space-project')
 
-    expect(useSpaceStore.getState().libraryAssociationsSpaceId).toBeNull()
-    expect(useSpaceStore.getState().hasLibraryAssociations).toBe(false)
+    expect(useSpaceStore.getState().assetAssociationsSpaceId).toBeNull()
+    expect(useSpaceStore.getState().hasAssetAssociations).toBe(false)
   })
 
   it('associates a library and reloads the association list', async () => {
-    await useSpaceStore.getState().associateLibrary('space-project', 'lib-2')
+    await useSpaceStore.getState().associateAsset('space-project', 'KNOWLEDGE_LIBRARY', 'lib-2')
 
-    expect(mockAssociateSpaceLibrary).toHaveBeenCalledWith('space-project', 'lib-2')
-    expect(mockGetSpaceLibraryAssociations).toHaveBeenCalledWith('space-project')
+    expect(mockAssociateSpaceAsset).toHaveBeenCalledWith(
+      'space-project',
+      'KNOWLEDGE_LIBRARY',
+      'lib-2',
+    )
+    expect(mockGetSpaceAssetAssociations).toHaveBeenCalledWith('space-project')
   })
 
   it('detaches a library and reloads the association list', async () => {
-    await useSpaceStore.getState().detachLibrary('space-project', 'lib-1')
+    await useSpaceStore.getState().detachAsset('space-project', 'lib-1')
 
-    expect(mockDetachSpaceLibrary).toHaveBeenCalledWith('space-project', 'lib-1')
-    expect(mockGetSpaceLibraryAssociations).toHaveBeenCalledWith('space-project')
+    expect(mockDetachSpaceAsset).toHaveBeenCalledWith('space-project', 'lib-1')
+    expect(mockGetSpaceAssetAssociations).toHaveBeenCalledWith('space-project')
   })
 
   // #543: archiveSelectedSpace is the way out of a space fk_chats_space makes permanently

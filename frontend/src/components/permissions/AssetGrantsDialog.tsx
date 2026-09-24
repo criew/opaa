@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -19,29 +19,30 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import AddIcon from '@mui/icons-material/Add'
 import DeleteIcon from '@mui/icons-material/Delete'
-import SectionHead from './SectionHead'
-import LibraryExternalAccessSection from './library/LibraryExternalAccessSection'
-import type { AssetGrantResponse, AssetRole } from '../types/api'
-import { useAuthStore } from '../stores/authStore'
-import { successionAwareMessage } from './succession/successionConflict'
-import { confirmAction } from '../stores/confirmStore'
-import { useGrantStore } from '../stores/grantStore'
-import GroupMembersDisclosure from './permissions/GroupMembersDisclosure'
-import SubjectPicker from './permissions/SubjectPicker'
+import SectionHead from '../SectionHead'
+import type { AssetGrantResponse, AssetRole, AssetType } from '../../types/api'
+import { useAuthStore } from '../../stores/authStore'
+import { successionAwareMessage } from '../succession/successionConflict'
+import { confirmAction } from '../../stores/confirmStore'
+import { assetKey, useGrantStore } from '../../stores/grantStore'
+import GroupMembersDisclosure from './GroupMembersDisclosure'
+import SubjectPicker from './SubjectPicker'
 import {
   confirmExternalSubject,
   confirmResolvedGroupById,
   emptySubjectSelection,
   selectedSubjectId,
   type SubjectSelection,
-} from './permissions/subjectSelection'
-import { getGrantedGroupMembers, resolveSelectableGroup } from '../services/api'
+} from './subjectSelection'
+import { getGrantedGroupMembers, resolveSelectableGroup } from '../../services/api'
 import {
+  assetGrantScopeHint,
   assetRoleDescription,
   assetRoleLabel,
+  assetTypeLabel,
   groupGrowthLabel,
   permissionSubjectTypeLabel,
-} from '../utils/labels'
+} from '../../utils/labels'
 
 const grantableRoles: AssetRole[] = ['VIEWER', 'EDITOR', 'MANAGER', 'OWNER']
 
@@ -54,10 +55,14 @@ function isValidUuid(value: string): boolean {
   return UUID_PATTERN.test(value.trim())
 }
 
-interface LibraryGrantsDialogProps {
+interface AssetGrantsDialogProps {
   open: boolean
-  library: { id: string; name: string }
+  assetType: AssetType
+  assetId: string
+  assetName: string
   onClose: () => void
+  /** What only this asset type has next to its grants - a library's release for Fremdzugänge. */
+  typeSection?: ReactNode
 }
 
 function formatExpiry(expiresAt: string | null | undefined): string {
@@ -98,9 +103,20 @@ function grantedByDisplayName(grant: AssetGrantResponse): string {
   return grant.grantedByDisplayName ?? grant.grantedByUserId
 }
 
-export default function LibraryGrantsDialog({ open, library, onClose }: LibraryGrantsDialogProps) {
+/**
+ * The one rights dialog for an asset of any type: its grants, the form to give one, and the role
+ * overview. Whatever a type has beyond that comes in as `typeSection`.
+ */
+export default function AssetGrantsDialog({
+  open,
+  assetType,
+  assetId,
+  assetName,
+  onClose,
+  typeSection,
+}: AssetGrantsDialogProps) {
   const currentUserId = useAuthStore((s) => s.user?.id)
-  const grants = useGrantStore((s) => s.grantsByLibrary[library.id]) ?? []
+  const grants = useGrantStore((s) => s.grantsByAsset[assetKey(assetType, assetId)]) ?? []
   const isLoading = useGrantStore((s) => s.isLoading)
   const loadError = useGrantStore((s) => s.error)
   const loadGrants = useGrantStore((s) => s.loadGrants)
@@ -122,8 +138,8 @@ export default function LibraryGrantsDialog({ open, library, onClose }: LibraryG
 
   useEffect(() => {
     if (!open) return
-    void loadGrants(library.id)
-  }, [open, library.id, loadGrants])
+    void loadGrants(assetType, assetId)
+  }, [open, assetType, assetId, loadGrants])
 
   function resetForm() {
     setShowForm(false)
@@ -145,7 +161,7 @@ export default function LibraryGrantsDialog({ open, library, onClose }: LibraryG
   async function handleRoleChange(grant: AssetGrantResponse, newRole: AssetRole) {
     setRowError(null)
     try {
-      await upsertExistingGrant(library.id, {
+      await upsertExistingGrant(assetType, assetId, {
         subjectType: grant.subjectType,
         subjectId: grant.subjectId,
         role: newRole,
@@ -174,7 +190,7 @@ export default function LibraryGrantsDialog({ open, library, onClose }: LibraryG
     }
     setRowError(null)
     try {
-      await revokeExistingGrant(library.id, grant.id)
+      await revokeExistingGrant(assetType, assetId, grant.id)
     } catch (err) {
       setRowError(err instanceof Error ? err.message : 'Freigabe konnte nicht entzogen werden')
     }
@@ -222,7 +238,7 @@ export default function LibraryGrantsDialog({ open, library, onClose }: LibraryG
     }
     setSubmitting(true)
     try {
-      await upsertExistingGrant(library.id, {
+      await upsertExistingGrant(assetType, assetId, {
         subjectType: subject.type,
         subjectId,
         role,
@@ -238,11 +254,10 @@ export default function LibraryGrantsDialog({ open, library, onClose }: LibraryG
 
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
-      <DialogTitle>Rechte · {library.name}</DialogTitle>
+      <DialogTitle>Rechte · {assetName}</DialogTitle>
       <DialogContent>
         <Alert severity="info" sx={{ mb: 2 }}>
-          Eine Freigabe gewährt Zugriff auf alle Dokumente dieser Bibliothek, nicht auf eine
-          Auswahl. Der Empfänger muss ihr nicht zustimmen.
+          {assetGrantScopeHint(assetType)} Der Empfänger muss ihr nicht zustimmen.
         </Alert>
 
         {loadError && (
@@ -260,7 +275,7 @@ export default function LibraryGrantsDialog({ open, library, onClose }: LibraryG
           <Typography sx={{ color: 'text.secondary' }}>Berechtigungen werden geladen …</Typography>
         ) : grants.length === 0 ? (
           <Typography sx={{ color: 'text.secondary' }}>
-            Es sind noch keine Freigaben für diese Bibliothek erteilt.
+            Es sind noch keine Freigaben für diese {assetTypeLabel(assetType)} erteilt.
           </Typography>
         ) : (
           <Stack spacing={1} sx={{ mb: 2 }}>
@@ -308,7 +323,7 @@ export default function LibraryGrantsDialog({ open, library, onClose }: LibraryG
                         key={grant.subjectId}
                         groupLabel={grant.subjectDisplayName ?? subjectName}
                         load={(offset, limit) =>
-                          getGrantedGroupMembers(library.id, grant.subjectId, offset, limit)
+                          getGrantedGroupMembers(assetType, assetId, grant.subjectId, offset, limit)
                         }
                       />
                     )}
@@ -450,7 +465,7 @@ export default function LibraryGrantsDialog({ open, library, onClose }: LibraryG
           </Stack>
         )}
 
-        <LibraryExternalAccessSection libraryId={library.id} />
+        {typeSection}
 
         <Divider sx={{ my: 2 }} />
         <SectionHead component="h3">Rollen</SectionHead>

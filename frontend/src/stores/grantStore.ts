@@ -1,16 +1,25 @@
 import { create } from 'zustand'
-import type { AssetGrantRequest, AssetGrantResponse } from '../types/api'
-import { getLibraryGrants, revokeLibraryGrant, upsertLibraryGrant } from '../services/api'
+import type { AssetGrantRequest, AssetGrantResponse, AssetType } from '../types/api'
+import { getAssetGrants, revokeAssetGrant, upsertAssetGrant } from '../services/api'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
 
+/** The key of one asset's grant list: an asset id alone is not unique across asset types. */
+export function assetKey(assetType: AssetType, assetId: string): string {
+  return `${assetType}:${assetId}`
+}
+
 interface GrantState {
-  grantsByLibrary: Record<string, AssetGrantResponse[]>
+  grantsByAsset: Record<string, AssetGrantResponse[]>
   isLoading: boolean
   error: string | null
   reset: () => void
-  loadGrants: (libraryId: string) => Promise<void>
-  upsertExistingGrant: (libraryId: string, request: AssetGrantRequest) => Promise<void>
-  revokeExistingGrant: (libraryId: string, grantId: string) => Promise<void>
+  loadGrants: (assetType: AssetType, assetId: string) => Promise<void>
+  upsertExistingGrant: (
+    assetType: AssetType,
+    assetId: string,
+    request: AssetGrantRequest,
+  ) => Promise<void>
+  revokeExistingGrant: (assetType: AssetType, assetId: string, grantId: string) => Promise<void>
 }
 
 // AssetGrantService#upsertGrant is idempotent per subject (see the OpenAPI operation summary): the
@@ -31,23 +40,22 @@ function mergeGrant(
 }
 
 export const useGrantStore = create<GrantState>((set, get) => ({
-  grantsByLibrary: {},
+  grantsByAsset: {},
   isLoading: false,
   error: null,
 
-  reset: () => set({ grantsByLibrary: {}, isLoading: false, error: null }),
+  reset: () => set({ grantsByAsset: {}, isLoading: false, error: null }),
 
-  loadGrants: async (libraryId: string) => {
-    // #575: captured before the await below - checked again once it resolves, so a response
-    // arriving after a logout (resetAllStores) skips its write-back instead of resurrecting the
-    // previous user's grants into the now-emptied store.
+  loadGrants: async (assetType: AssetType, assetId: string) => {
+    // Captured before the await: a response arriving after a logout (resetAllStores) skips its
+    // write-back instead of resurrecting the previous user's grants into the emptied store.
     const sessionEpoch = currentSessionEpoch()
     set({ isLoading: true, error: null })
     try {
-      const grants = await getLibraryGrants(libraryId)
+      const grants = await getAssetGrants(assetType, assetId)
       if (isStaleSessionEpoch(sessionEpoch)) return
       set({
-        grantsByLibrary: { ...get().grantsByLibrary, [libraryId]: grants },
+        grantsByAsset: { ...get().grantsByAsset, [assetKey(assetType, assetId)]: grants },
         isLoading: false,
       })
     } catch (err) {
@@ -58,25 +66,29 @@ export const useGrantStore = create<GrantState>((set, get) => ({
     }
   },
 
-  upsertExistingGrant: async (libraryId: string, request: AssetGrantRequest) => {
+  upsertExistingGrant: async (
+    assetType: AssetType,
+    assetId: string,
+    request: AssetGrantRequest,
+  ) => {
     const sessionEpoch = currentSessionEpoch()
-    const updated = await upsertLibraryGrant(libraryId, request)
+    const updated = await upsertAssetGrant(assetType, assetId, request)
     if (isStaleSessionEpoch(sessionEpoch)) return
-    const existing = get().grantsByLibrary[libraryId] ?? []
-    set({
-      grantsByLibrary: { ...get().grantsByLibrary, [libraryId]: mergeGrant(existing, updated) },
-    })
+    const key = assetKey(assetType, assetId)
+    const existing = get().grantsByAsset[key] ?? []
+    set({ grantsByAsset: { ...get().grantsByAsset, [key]: mergeGrant(existing, updated) } })
   },
 
-  revokeExistingGrant: async (libraryId: string, grantId: string) => {
+  revokeExistingGrant: async (assetType: AssetType, assetId: string, grantId: string) => {
     const sessionEpoch = currentSessionEpoch()
-    await revokeLibraryGrant(libraryId, grantId)
+    await revokeAssetGrant(assetType, assetId, grantId)
     if (isStaleSessionEpoch(sessionEpoch)) return
-    const existing = get().grantsByLibrary[libraryId] ?? []
+    const key = assetKey(assetType, assetId)
+    const existing = get().grantsByAsset[key] ?? []
     set({
-      grantsByLibrary: {
-        ...get().grantsByLibrary,
-        [libraryId]: existing.filter((grant) => grant.id !== grantId),
+      grantsByAsset: {
+        ...get().grantsByAsset,
+        [key]: existing.filter((grant) => grant.id !== grantId),
       },
     })
   },

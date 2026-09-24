@@ -1,6 +1,7 @@
 import type {
   AccessBasis,
   AssetRole,
+  AssetType,
   Capability,
   GroupMechanism,
   GroupOrigin,
@@ -10,7 +11,7 @@ import type {
   DocumentStatus,
   GroupKind,
   IndexingRunEventCategory,
-  LibraryVisibility,
+  AssetVisibility,
   MetadataOrigin,
   PermissionSubjectType,
   ScheduleFrequency,
@@ -91,33 +92,33 @@ export function accessLevelLabel(level: AccessLevel): string {
   return accessLevelLabels[level]
 }
 
-const libraryVisibilityLabels: Record<LibraryVisibility, string> = {
+const libraryVisibilityLabels: Record<AssetVisibility, string> = {
   PRIVATE: 'privat',
   SHARED: 'geteilt',
   ORGANIZATION: 'organisationsweit',
 }
 
-export function libraryVisibilityLabel(visibility: LibraryVisibility | string | undefined): string {
+export function libraryVisibilityLabel(visibility: AssetVisibility | string | undefined): string {
   if (!visibility) return ''
-  return libraryVisibilityLabels[visibility as LibraryVisibility] ?? visibility
+  return libraryVisibilityLabels[visibility as AssetVisibility] ?? visibility
 }
 
 /** Render order of the distribution levels in LibraryCreatePage and LibraryDetailPage. */
-export const libraryVisibilities = Object.keys(libraryVisibilityLabels) as LibraryVisibility[]
+export const libraryVisibilities = Object.keys(libraryVisibilityLabels) as AssetVisibility[]
 
 // One sentence per distribution level, following the semantics documented on the
-// LibraryVisibility schema in opaa-api.yaml and docs/features/spaces-and-assets.md.
-const libraryVisibilityDescriptions: Record<LibraryVisibility, string> = {
+// AssetVisibility schema in opaa-api.yaml and docs/features/spaces-and-assets.md.
+const libraryVisibilityDescriptions: Record<AssetVisibility, string> = {
   PRIVATE: 'Nur der Eigentümer nutzt den Bestand — bei Gruppen-Eigentum die Mitglieder der Gruppe.',
   SHARED: 'Die Reichweite bestimmen die Freigaben an Personen und Gruppen.',
   ORGANIZATION: 'Lesbar für alle Nutzer der Organisation.',
 }
 
 export function libraryVisibilityDescription(
-  visibility: LibraryVisibility | string | undefined,
+  visibility: AssetVisibility | string | undefined,
 ): string {
   if (!visibility) return ''
-  return libraryVisibilityDescriptions[visibility as LibraryVisibility] ?? ''
+  return libraryVisibilityDescriptions[visibility as AssetVisibility] ?? ''
 }
 
 const assetRoleLabels: Record<AssetRole, string> = {
@@ -146,6 +147,26 @@ const assetRoleDescriptions: Record<AssetRole, string> = {
 export function assetRoleDescription(role: AssetRole | string | undefined): string {
   if (!role) return ''
   return assetRoleDescriptions[role as AssetRole] ?? ''
+}
+
+const assetTypeLabels: Record<AssetType, string> = {
+  KNOWLEDGE_LIBRARY: 'Bibliothek',
+}
+
+/** The singular noun of an asset type, as a sentence names it ("diese Bibliothek"). */
+export function assetTypeLabel(assetType: AssetType | string | undefined): string {
+  if (!assetType) return ''
+  return assetTypeLabels[assetType as AssetType] ?? assetType
+}
+
+const assetGrantScopeHints: Record<AssetType, string> = {
+  KNOWLEDGE_LIBRARY:
+    'Eine Freigabe gewährt Zugriff auf alle Dokumente dieser Bibliothek, nicht auf eine Auswahl.',
+}
+
+/** What one grant opens on an asset of this type - the first sentence of the rights dialog. */
+export function assetGrantScopeHint(assetType: AssetType): string {
+  return assetGrantScopeHints[assetType] ?? ''
 }
 
 const permissionSubjectTypeLabels: Record<PermissionSubjectType, string> = {

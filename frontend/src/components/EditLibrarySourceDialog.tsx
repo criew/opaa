@@ -14,7 +14,7 @@ import type {
   ConfluenceEdition,
   ConfluenceSpaceRef,
   DocumentSourceType,
-  LibraryVisibility,
+  AssetVisibility,
   S3Settings,
   SourceConnectionTestResponse,
 } from '../types/api'
@@ -42,7 +42,7 @@ import {
 export interface EditableLibrarySource {
   name: string
   description?: string | null
-  visibility: LibraryVisibility
+  visibility: AssetVisibility
   listed: boolean
   sourceType: DocumentSourceType
   sourcePath?: string | null

@@ -1,31 +1,31 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { answerConfirm, renderWithProviders } from '../test/test-utils'
-import LibraryGrantsDialog from './LibraryGrantsDialog'
-import { useAuthStore } from '../stores/authStore'
-import { useGrantStore } from '../stores/grantStore'
+import { answerConfirm, renderWithProviders } from '../../test/test-utils'
+import AssetGrantsDialog from './AssetGrantsDialog'
+import { useAuthStore } from '../../stores/authStore'
+import { assetKey, useGrantStore } from '../../stores/grantStore'
 import type {
   AssetGrantRequest,
   AssetGrantResponse,
   SelectableGroupResponse,
   UserSummary,
-} from '../types/api'
+} from '../../types/api'
 
 const {
-  mockGetLibraryGrants,
-  mockUpsertLibraryGrant,
-  mockRevokeLibraryGrant,
+  mockGetAssetGrants,
+  mockUpsertAssetGrant,
+  mockRevokeAssetGrant,
   mockSearchSelectableGroups,
   mockResolveSelectableGroup,
   mockGetUserSummaries,
   mockGetGrantedGroupMembers,
 } = vi.hoisted(() => ({
-  mockGetLibraryGrants: vi.fn(async (libraryId: string) => {
-    return useGrantStore.getState().grantsByLibrary[libraryId] ?? []
+  mockGetAssetGrants: vi.fn(async (assetType: string, assetId: string) => {
+    return useGrantStore.getState().grantsByAsset[`${assetType}:${assetId}`] ?? []
   }),
-  mockUpsertLibraryGrant: vi.fn(),
-  mockRevokeLibraryGrant: vi.fn(async () => undefined),
+  mockUpsertAssetGrant: vi.fn(),
+  mockRevokeAssetGrant: vi.fn(async () => undefined),
   mockSearchSelectableGroups: vi.fn(async () => [] as SelectableGroupResponse[]),
   mockResolveSelectableGroup: vi.fn(),
   mockGetUserSummaries: vi.fn(async () => [] as UserSummary[]),
@@ -40,13 +40,13 @@ const {
   })),
 }))
 
-vi.mock('../services/api', async () => {
-  const actual = await vi.importActual<typeof import('../services/api')>('../services/api')
+vi.mock('../../services/api', async () => {
+  const actual = await vi.importActual<typeof import('../../services/api')>('../../services/api')
   return {
     ...actual,
-    getLibraryGrants: mockGetLibraryGrants,
-    upsertLibraryGrant: mockUpsertLibraryGrant,
-    revokeLibraryGrant: mockRevokeLibraryGrant,
+    getAssetGrants: mockGetAssetGrants,
+    upsertAssetGrant: mockUpsertAssetGrant,
+    revokeAssetGrant: mockRevokeAssetGrant,
     searchSelectableGroups: mockSearchSelectableGroups,
     resolveSelectableGroup: mockResolveSelectableGroup,
     getUserSummaries: mockGetUserSummaries,
@@ -86,7 +86,7 @@ const user: UserSummary = {
 
 function setGrants(libraryId: string, grants: AssetGrantResponse[]) {
   useGrantStore.setState({
-    grantsByLibrary: { [libraryId]: grants },
+    grantsByAsset: { [assetKey('KNOWLEDGE_LIBRARY', libraryId)]: grants },
     isLoading: false,
     error: null,
   })
@@ -126,12 +126,12 @@ function setSystemAdmin() {
   })
 }
 
-describe('LibraryGrantsDialog', () => {
+describe('AssetGrantsDialog', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockSearchSelectableGroups.mockResolvedValue([group])
     mockGetUserSummaries.mockResolvedValue([user])
-    useGrantStore.setState({ grantsByLibrary: {}, isLoading: false, error: null })
+    useGrantStore.setState({ grantsByAsset: {}, isLoading: false, error: null })
   })
 
   afterEach(() => {
@@ -154,10 +154,39 @@ describe('LibraryGrantsDialog', () => {
         updatedAt: '2026-03-01T10:00:00Z',
       },
     ])
-    renderWithProviders(<LibraryGrantsDialog open library={library} onClose={vi.fn()} />)
+    renderWithProviders(
+      <AssetGrantsDialog
+        open
+        assetType="KNOWLEDGE_LIBRARY"
+        assetId={library.id}
+        assetName={library.name}
+        onClose={vi.fn()}
+      />,
+    )
 
     expect(await screen.findByText('Alice')).toBeInTheDocument()
     expect(screen.queryByText('user-alice')).not.toBeInTheDocument()
+  })
+
+  it('shows what only the asset type has in the slot the caller passes, and names the type', async () => {
+    setSystemAdmin()
+    setGrants(library.id, [])
+    renderWithProviders(
+      <AssetGrantsDialog
+        open
+        assetType="KNOWLEDGE_LIBRARY"
+        assetId={library.id}
+        assetName={library.name}
+        onClose={vi.fn()}
+        typeSection={<p>Typeigener Bereich</p>}
+      />,
+    )
+
+    expect(await screen.findByText('Typeigener Bereich')).toBeInTheDocument()
+    expect(
+      screen.getByText('Es sind noch keine Freigaben für diese Bibliothek erteilt.'),
+    ).toBeInTheDocument()
+    expect(mockGetAssetGrants).toHaveBeenCalledWith('KNOWLEDGE_LIBRARY', library.id)
   })
 
   it('marks an expired grant as expired instead of hiding it', async () => {
@@ -176,7 +205,15 @@ describe('LibraryGrantsDialog', () => {
         updatedAt: '2019-01-01T10:00:00Z',
       },
     ])
-    renderWithProviders(<LibraryGrantsDialog open library={library} onClose={vi.fn()} />)
+    renderWithProviders(
+      <AssetGrantsDialog
+        open
+        assetType="KNOWLEDGE_LIBRARY"
+        assetId={library.id}
+        assetName={library.name}
+        onClose={vi.fn()}
+      />,
+    )
 
     expect(await screen.findByText('Alice')).toBeInTheDocument()
     expect(screen.getByText('abgelaufen')).toBeInTheDocument()
@@ -198,14 +235,22 @@ describe('LibraryGrantsDialog', () => {
         updatedAt: '2026-03-01T10:00:00Z',
       },
     ])
-    renderWithProviders(<LibraryGrantsDialog open library={library} onClose={vi.fn()} />)
+    renderWithProviders(
+      <AssetGrantsDialog
+        open
+        assetType="KNOWLEDGE_LIBRARY"
+        assetId={library.id}
+        assetName={library.name}
+        onClose={vi.fn()}
+      />,
+    )
 
     expect(await screen.findByText(/bis 31\.12\.2099/)).toBeInTheDocument()
   })
 
   it('grants a person VIEWER access and shows it without a reload', async () => {
     setSystemAdmin()
-    mockUpsertLibraryGrant.mockImplementationOnce(
+    mockUpsertAssetGrant.mockImplementationOnce(
       async (_libraryId: string, request: AssetGrantRequest) => {
         const created: AssetGrantResponse = {
           id: 'grant-new',
@@ -224,7 +269,15 @@ describe('LibraryGrantsDialog', () => {
         return created
       },
     )
-    renderWithProviders(<LibraryGrantsDialog open library={library} onClose={vi.fn()} />)
+    renderWithProviders(
+      <AssetGrantsDialog
+        open
+        assetType="KNOWLEDGE_LIBRARY"
+        assetId={library.id}
+        assetName={library.name}
+        onClose={vi.fn()}
+      />,
+    )
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
@@ -239,7 +292,7 @@ describe('LibraryGrantsDialog', () => {
     )
 
     await waitFor(() => {
-      expect(mockUpsertLibraryGrant).toHaveBeenCalledWith(library.id, {
+      expect(mockUpsertAssetGrant).toHaveBeenCalledWith('KNOWLEDGE_LIBRARY', library.id, {
         subjectType: 'USER',
         subjectId: 'user-alice',
         role: 'VIEWER',
@@ -251,7 +304,7 @@ describe('LibraryGrantsDialog', () => {
 
   it('grants a group access', async () => {
     setSystemAdmin()
-    mockUpsertLibraryGrant.mockResolvedValueOnce({
+    mockUpsertAssetGrant.mockResolvedValueOnce({
       id: 'grant-group',
       subjectType: 'GROUP',
       subjectId: group.id,
@@ -261,7 +314,15 @@ describe('LibraryGrantsDialog', () => {
       createdAt: '2026-03-05T10:00:00Z',
       updatedAt: '2026-03-05T10:00:00Z',
     } satisfies AssetGrantResponse)
-    renderWithProviders(<LibraryGrantsDialog open library={library} onClose={vi.fn()} />)
+    renderWithProviders(
+      <AssetGrantsDialog
+        open
+        assetType="KNOWLEDGE_LIBRARY"
+        assetId={library.id}
+        assetName={library.name}
+        onClose={vi.fn()}
+      />,
+    )
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
@@ -272,7 +333,7 @@ describe('LibraryGrantsDialog', () => {
     await userEventInstance.click(submitButtons[submitButtons.length - 1])
 
     await waitFor(() => {
-      expect(mockUpsertLibraryGrant).toHaveBeenCalledWith(library.id, {
+      expect(mockUpsertAssetGrant).toHaveBeenCalledWith('KNOWLEDGE_LIBRARY', library.id, {
         subjectType: 'GROUP',
         subjectId: group.id,
         role: 'VIEWER',
@@ -283,7 +344,15 @@ describe('LibraryGrantsDialog', () => {
 
   it('rejects an expiry date in the past before calling the API', async () => {
     setSystemAdmin()
-    renderWithProviders(<LibraryGrantsDialog open library={library} onClose={vi.fn()} />)
+    renderWithProviders(
+      <AssetGrantsDialog
+        open
+        assetType="KNOWLEDGE_LIBRARY"
+        assetId={library.id}
+        assetName={library.name}
+        onClose={vi.fn()}
+      />,
+    )
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
@@ -297,7 +366,7 @@ describe('LibraryGrantsDialog', () => {
     expect(
       await screen.findByText(/ablaufdatum darf nicht in der vergangenheit liegen/i),
     ).toBeInTheDocument()
-    expect(mockUpsertLibraryGrant).not.toHaveBeenCalled()
+    expect(mockUpsertAssetGrant).not.toHaveBeenCalled()
   })
 
   it('changes the role of an existing grant without creating a second entry', async () => {
@@ -316,7 +385,7 @@ describe('LibraryGrantsDialog', () => {
         updatedAt: '2026-03-01T10:00:00Z',
       },
     ])
-    mockUpsertLibraryGrant.mockResolvedValueOnce({
+    mockUpsertAssetGrant.mockResolvedValueOnce({
       id: 'grant-1',
       subjectType: 'USER',
       subjectId: 'user-alice',
@@ -326,7 +395,15 @@ describe('LibraryGrantsDialog', () => {
       createdAt: '2026-03-01T10:00:00Z',
       updatedAt: '2026-03-06T10:00:00Z',
     } satisfies AssetGrantResponse)
-    renderWithProviders(<LibraryGrantsDialog open library={library} onClose={vi.fn()} />)
+    renderWithProviders(
+      <AssetGrantsDialog
+        open
+        assetType="KNOWLEDGE_LIBRARY"
+        assetId={library.id}
+        assetName={library.name}
+        onClose={vi.fn()}
+      />,
+    )
     const userEventInstance = userEvent.setup()
 
     // #423 code review, nit 5: the row-level role select's accessible name now names its subject
@@ -337,14 +414,16 @@ describe('LibraryGrantsDialog', () => {
     await userEventInstance.click(await screen.findByRole('option', { name: 'Bearbeiter' }))
 
     await waitFor(() => {
-      expect(mockUpsertLibraryGrant).toHaveBeenCalledWith(library.id, {
+      expect(mockUpsertAssetGrant).toHaveBeenCalledWith('KNOWLEDGE_LIBRARY', library.id, {
         subjectType: 'USER',
         subjectId: 'user-alice',
         role: 'EDITOR',
         expiresAt: null,
       })
     })
-    expect(useGrantStore.getState().grantsByLibrary[library.id]).toHaveLength(1)
+    expect(
+      useGrantStore.getState().grantsByAsset[assetKey('KNOWLEDGE_LIBRARY', library.id)],
+    ).toHaveLength(1)
   })
 
   it('revokes a grant after confirmation and removes it from the list', async () => {
@@ -363,22 +442,38 @@ describe('LibraryGrantsDialog', () => {
         updatedAt: '2026-03-01T10:00:00Z',
       },
     ])
-    renderWithProviders(<LibraryGrantsDialog open library={library} onClose={vi.fn()} />)
+    renderWithProviders(
+      <AssetGrantsDialog
+        open
+        assetType="KNOWLEDGE_LIBRARY"
+        assetId={library.id}
+        assetName={library.name}
+        onClose={vi.fn()}
+      />,
+    )
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /entziehen/i }))
     await answerConfirm(userEventInstance, 'Freigabe für "Alice" entziehen?', 'Entziehen')
 
     await waitFor(() => {
-      expect(mockRevokeLibraryGrant).toHaveBeenCalledWith(library.id, 'grant-1')
+      expect(mockRevokeAssetGrant).toHaveBeenCalledWith('KNOWLEDGE_LIBRARY', library.id, 'grant-1')
     })
     expect(screen.queryByText('Alice')).not.toBeInTheDocument()
   })
 
   it('shows a German 403 message instead of failing silently', async () => {
     setSystemAdmin()
-    mockUpsertLibraryGrant.mockRejectedValueOnce(new Error('Kein Zugriff auf diese Bibliothek'))
-    renderWithProviders(<LibraryGrantsDialog open library={library} onClose={vi.fn()} />)
+    mockUpsertAssetGrant.mockRejectedValueOnce(new Error('Kein Zugriff auf diese Bibliothek'))
+    renderWithProviders(
+      <AssetGrantsDialog
+        open
+        assetType="KNOWLEDGE_LIBRARY"
+        assetId={library.id}
+        assetName={library.name}
+        onClose={vi.fn()}
+      />,
+    )
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
@@ -397,7 +492,15 @@ describe('LibraryGrantsDialog', () => {
     // derselbe wie fuer eine Gruppe.
     setManager()
     mockGetUserSummaries.mockRejectedValueOnce(new Error('Netzwerkfehler'))
-    renderWithProviders(<LibraryGrantsDialog open library={library} onClose={vi.fn()} />)
+    renderWithProviders(
+      <AssetGrantsDialog
+        open
+        assetType="KNOWLEDGE_LIBRARY"
+        assetId={library.id}
+        assetName={library.name}
+        onClose={vi.fn()}
+      />,
+    )
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
@@ -411,7 +514,7 @@ describe('LibraryGrantsDialog', () => {
 
   it('submits a manually entered, valid user id', async () => {
     setManager()
-    mockUpsertLibraryGrant.mockResolvedValueOnce({
+    mockUpsertAssetGrant.mockResolvedValueOnce({
       id: 'grant-manual',
       subjectType: 'USER',
       subjectId: '11111111-2222-4333-8444-555555555555',
@@ -423,7 +526,15 @@ describe('LibraryGrantsDialog', () => {
       createdAt: '2026-03-05T10:00:00Z',
       updatedAt: '2026-03-05T10:00:00Z',
     } satisfies AssetGrantResponse)
-    renderWithProviders(<LibraryGrantsDialog open library={library} onClose={vi.fn()} />)
+    renderWithProviders(
+      <AssetGrantsDialog
+        open
+        assetType="KNOWLEDGE_LIBRARY"
+        assetId={library.id}
+        assetName={library.name}
+        onClose={vi.fn()}
+      />,
+    )
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
@@ -438,7 +549,7 @@ describe('LibraryGrantsDialog', () => {
     await userEventInstance.click(submitButtons[submitButtons.length - 1])
 
     await waitFor(() => {
-      expect(mockUpsertLibraryGrant).toHaveBeenCalledWith(library.id, {
+      expect(mockUpsertAssetGrant).toHaveBeenCalledWith('KNOWLEDGE_LIBRARY', library.id, {
         subjectType: 'USER',
         subjectId: '11111111-2222-4333-8444-555555555555',
         role: 'VIEWER',
@@ -449,7 +560,15 @@ describe('LibraryGrantsDialog', () => {
 
   it('rejects a manually entered user id that is not a valid UUID before calling the API', async () => {
     setManager()
-    renderWithProviders(<LibraryGrantsDialog open library={library} onClose={vi.fn()} />)
+    renderWithProviders(
+      <AssetGrantsDialog
+        open
+        assetType="KNOWLEDGE_LIBRARY"
+        assetId={library.id}
+        assetName={library.name}
+        onClose={vi.fn()}
+      />,
+    )
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
@@ -461,7 +580,7 @@ describe('LibraryGrantsDialog', () => {
     await userEventInstance.click(submitButtons[submitButtons.length - 1])
 
     expect(await screen.findByText(/nutzer-id muss eine gültige uuid sein/i)).toBeInTheDocument()
-    expect(mockUpsertLibraryGrant).not.toHaveBeenCalled()
+    expect(mockUpsertAssetGrant).not.toHaveBeenCalled()
   })
 
   it('shows resolved subject and granter names for a MANAGER without a system role', async () => {
@@ -494,7 +613,15 @@ describe('LibraryGrantsDialog', () => {
         updatedAt: '2026-03-01T10:00:00Z',
       },
     ])
-    renderWithProviders(<LibraryGrantsDialog open library={library} onClose={vi.fn()} />)
+    renderWithProviders(
+      <AssetGrantsDialog
+        open
+        assetType="KNOWLEDGE_LIBRARY"
+        assetId={library.id}
+        assetName={library.name}
+        onClose={vi.fn()}
+      />,
+    )
 
     expect(await screen.findByText('Alice')).toBeInTheDocument()
     expect(screen.getByText('Referat 50')).toBeInTheDocument()
@@ -521,7 +648,15 @@ describe('LibraryGrantsDialog', () => {
         updatedAt: '2026-08-20T10:00:00Z',
       },
     ])
-    renderWithProviders(<LibraryGrantsDialog open library={library} onClose={vi.fn()} />)
+    renderWithProviders(
+      <AssetGrantsDialog
+        open
+        assetType="KNOWLEDGE_LIBRARY"
+        assetId={library.id}
+        assetName={library.name}
+        onClose={vi.fn()}
+      />,
+    )
 
     expect(await screen.findByText(/Rolle vergeben von Admin B/i)).toHaveTextContent('20.8.2026')
     expect(screen.queryByText(/1\.3\.2026/)).not.toBeInTheDocument()
@@ -532,7 +667,15 @@ describe('LibraryGrantsDialog', () => {
     // /v1/admin/users) - every other MANAGER went straight to the free-text UUID field, even
     // though the user list loaded successfully via GET /v1/users.
     setManager()
-    renderWithProviders(<LibraryGrantsDialog open library={library} onClose={vi.fn()} />)
+    renderWithProviders(
+      <AssetGrantsDialog
+        open
+        assetType="KNOWLEDGE_LIBRARY"
+        assetId={library.id}
+        assetName={library.name}
+        onClose={vi.fn()}
+      />,
+    )
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
@@ -554,7 +697,7 @@ describe('LibraryGrantsDialog', () => {
     // #1820: Die Eingabe per Kennung unterliegt derselben Durchsetzung wie die Suche - der Dienst
     // antwortet auch dort mit nicht gefunden, wenn die Gruppe nicht freigegeben ist.
     setManager()
-    mockUpsertLibraryGrant.mockResolvedValueOnce({
+    mockUpsertAssetGrant.mockResolvedValueOnce({
       id: 'grant-other-group',
       subjectType: 'GROUP',
       subjectId: '22222222-3333-4444-8555-666666666666',
@@ -566,7 +709,15 @@ describe('LibraryGrantsDialog', () => {
       createdAt: '2026-03-05T10:00:00Z',
       updatedAt: '2026-03-05T10:00:00Z',
     } satisfies AssetGrantResponse)
-    renderWithProviders(<LibraryGrantsDialog open library={library} onClose={vi.fn()} />)
+    renderWithProviders(
+      <AssetGrantsDialog
+        open
+        assetType="KNOWLEDGE_LIBRARY"
+        assetId={library.id}
+        assetName={library.name}
+        onClose={vi.fn()}
+      />,
+    )
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
@@ -583,7 +734,7 @@ describe('LibraryGrantsDialog', () => {
     await answerConfirm(userEventInstance, /Recht an .Referat 50. erteilen\?/, 'Weiter')
 
     await waitFor(() => {
-      expect(mockUpsertLibraryGrant).toHaveBeenCalledWith(library.id, {
+      expect(mockUpsertAssetGrant).toHaveBeenCalledWith('KNOWLEDGE_LIBRARY', library.id, {
         subjectType: 'GROUP',
         subjectId: '22222222-3333-4444-8555-666666666666',
         role: 'VIEWER',
@@ -608,7 +759,15 @@ describe('LibraryGrantsDialog', () => {
         updatedAt: '2026-03-01T10:00:00Z',
       },
     ])
-    renderWithProviders(<LibraryGrantsDialog open library={library} onClose={vi.fn()} />)
+    renderWithProviders(
+      <AssetGrantsDialog
+        open
+        assetType="KNOWLEDGE_LIBRARY"
+        assetId={library.id}
+        assetName={library.name}
+        onClose={vi.fn()}
+      />,
+    )
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /entziehen/i }))
@@ -620,7 +779,7 @@ describe('LibraryGrantsDialog', () => {
     )
     await answerConfirm(userEventInstance, question, 'Abbrechen')
 
-    expect(mockRevokeLibraryGrant).not.toHaveBeenCalled()
+    expect(mockRevokeAssetGrant).not.toHaveBeenCalled()
   })
 
   /** ADR-0036, Entscheidung 2: Das Erteilen an eine externe Gruppe verlangt eine Zwischenfrage. */
@@ -640,7 +799,15 @@ describe('LibraryGrantsDialog', () => {
         sourcePath: null,
       },
     ])
-    renderWithProviders(<LibraryGrantsDialog open library={library} onClose={vi.fn()} />)
+    renderWithProviders(
+      <AssetGrantsDialog
+        open
+        assetType="KNOWLEDGE_LIBRARY"
+        assetId={library.id}
+        assetName={library.name}
+        onClose={vi.fn()}
+      />,
+    )
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
@@ -656,7 +823,7 @@ describe('LibraryGrantsDialog', () => {
     )
     await answerConfirm(userEventInstance, question, 'Abbrechen')
 
-    expect(mockUpsertLibraryGrant).not.toHaveBeenCalled()
+    expect(mockUpsertAssetGrant).not.toHaveBeenCalled()
   })
 
   /** ADR-0036, Entscheidung 9: „23 bei Erteilung, heute 41" - eine Zeile, kein Vorgang. */
@@ -681,7 +848,15 @@ describe('LibraryGrantsDialog', () => {
         updatedAt: '2026-03-01T10:00:00Z',
       },
     ])
-    renderWithProviders(<LibraryGrantsDialog open library={library} onClose={vi.fn()} />)
+    renderWithProviders(
+      <AssetGrantsDialog
+        open
+        assetType="KNOWLEDGE_LIBRARY"
+        assetId={library.id}
+        assetName={library.name}
+        onClose={vi.fn()}
+      />,
+    )
 
     expect(await screen.findByText(/23 bei Erteilung, heute 41/)).toBeInTheDocument()
   })
@@ -711,7 +886,15 @@ describe('LibraryGrantsDialog', () => {
         updatedAt: '2026-03-01T10:00:00Z',
       },
     ])
-    renderWithProviders(<LibraryGrantsDialog open library={library} onClose={vi.fn()} />)
+    renderWithProviders(
+      <AssetGrantsDialog
+        open
+        assetType="KNOWLEDGE_LIBRARY"
+        assetId={library.id}
+        assetName={library.name}
+        onClose={vi.fn()}
+      />,
+    )
     const trigger = await screen.findByRole('button', {
       name: 'Mitglieder der Gruppe „Referat 50“ anzeigen',
     })
@@ -720,7 +903,13 @@ describe('LibraryGrantsDialog', () => {
     await userEvent.click(trigger)
 
     expect(await screen.findByText('Anna Bauer')).toBeInTheDocument()
-    expect(mockGetGrantedGroupMembers).toHaveBeenCalledWith(library.id, group.id, 0, 50)
+    expect(mockGetGrantedGroupMembers).toHaveBeenCalledWith(
+      'KNOWLEDGE_LIBRARY',
+      library.id,
+      group.id,
+      0,
+      50,
+    )
   })
 
   it('withholds both figures of a small group and says so', async () => {
@@ -744,7 +933,15 @@ describe('LibraryGrantsDialog', () => {
         updatedAt: '2026-03-01T10:00:00Z',
       },
     ])
-    renderWithProviders(<LibraryGrantsDialog open library={library} onClose={vi.fn()} />)
+    renderWithProviders(
+      <AssetGrantsDialog
+        open
+        assetType="KNOWLEDGE_LIBRARY"
+        assetId={library.id}
+        assetName={library.name}
+        onClose={vi.fn()}
+      />,
+    )
 
     expect(await screen.findByText(/kleine Gruppe/)).toBeInTheDocument()
   })
@@ -771,7 +968,15 @@ describe('LibraryGrantsDialog', () => {
         updatedAt: '2026-03-01T10:00:00Z',
       },
     ])
-    renderWithProviders(<LibraryGrantsDialog open library={library} onClose={vi.fn()} />)
+    renderWithProviders(
+      <AssetGrantsDialog
+        open
+        assetType="KNOWLEDGE_LIBRARY"
+        assetId={library.id}
+        assetName={library.name}
+        onClose={vi.fn()}
+      />,
+    )
 
     expect(await screen.findByText('Geschützte Gruppe')).toBeInTheDocument()
     expect(screen.queryByText('group-personalrat')).not.toBeInTheDocument()
@@ -799,7 +1004,15 @@ describe('LibraryGrantsDialog', () => {
       },
       sourcePath: null,
     })
-    renderWithProviders(<LibraryGrantsDialog open library={library} onClose={vi.fn()} />)
+    renderWithProviders(
+      <AssetGrantsDialog
+        open
+        assetType="KNOWLEDGE_LIBRARY"
+        assetId={library.id}
+        assetName={library.name}
+        onClose={vi.fn()}
+      />,
+    )
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
@@ -823,14 +1036,22 @@ describe('LibraryGrantsDialog', () => {
     await answerConfirm(userEventInstance, question, 'Abbrechen')
 
     expect(mockResolveSelectableGroup).toHaveBeenCalledWith('22222222-3333-4444-8555-666666666666')
-    expect(mockUpsertLibraryGrant).not.toHaveBeenCalled()
+    expect(mockUpsertAssetGrant).not.toHaveBeenCalled()
   })
 
   /** Was sich fuer diesen Aufrufer nicht aufloesen laesst, wird nicht erteilt. */
   it('grants nothing when the typed id does not resolve for this caller', async () => {
     setManager()
     mockResolveSelectableGroup.mockRejectedValue(new Error('Gruppe nicht gefunden'))
-    renderWithProviders(<LibraryGrantsDialog open library={library} onClose={vi.fn()} />)
+    renderWithProviders(
+      <AssetGrantsDialog
+        open
+        assetType="KNOWLEDGE_LIBRARY"
+        assetId={library.id}
+        assetName={library.name}
+        onClose={vi.fn()}
+      />,
+    )
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
@@ -846,13 +1067,21 @@ describe('LibraryGrantsDialog', () => {
     await userEventInstance.click(submitButtons[submitButtons.length - 1])
 
     expect(await screen.findByText('Gruppe nicht gefunden')).toBeInTheDocument()
-    expect(mockUpsertLibraryGrant).not.toHaveBeenCalled()
+    expect(mockUpsertAssetGrant).not.toHaveBeenCalled()
   })
 
   /** Eine Kennung gehoert zu genau einer Art von Empfaenger. */
   it('clears a typed id when the subject type changes', async () => {
     setManager()
-    renderWithProviders(<LibraryGrantsDialog open library={library} onClose={vi.fn()} />)
+    renderWithProviders(
+      <AssetGrantsDialog
+        open
+        assetType="KNOWLEDGE_LIBRARY"
+        assetId={library.id}
+        assetName={library.name}
+        onClose={vi.fn()}
+      />,
+    )
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
@@ -871,7 +1100,15 @@ describe('LibraryGrantsDialog', () => {
 
   it('explains every grantable role', async () => {
     setSystemAdmin()
-    renderWithProviders(<LibraryGrantsDialog open library={library} onClose={vi.fn()} />)
+    renderWithProviders(
+      <AssetGrantsDialog
+        open
+        assetType="KNOWLEDGE_LIBRARY"
+        assetId={library.id}
+        assetName={library.name}
+        onClose={vi.fn()}
+      />,
+    )
 
     expect(
       await screen.findByText(/darf die bibliothek benutzen und ihren inhalt einsehen/i),
