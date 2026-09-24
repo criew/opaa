@@ -1,4 +1,4 @@
-import type { PermissionSubjectType, SelectableGroupResponse, UserSummary } from '../../types/api'
+import type { AssetGrantSubjectType, SelectableGroupResponse, UserSummary } from '../../types/api'
 import { confirmAction } from '../../stores/confirmStore'
 import { groupNotSelectableReason, groupOriginLabel, groupSizeLabel } from '../../utils/labels'
 
@@ -10,18 +10,43 @@ import { groupNotSelectableReason, groupOriginLabel, groupSizeLabel } from '../.
 export const PROTECTED_GROUP_SEARCH_HINT =
   'Eine geschützte Gruppe erscheint nur, wenn Sie ihre vollständige Bezeichnung eingeben.'
 
-/** Wer ein Recht bekommen soll: genau eine Person oder genau eine Gruppe (#1820). */
+/**
+ * Wer ein Recht bekommen soll: genau eine Person, genau eine Gruppe — oder alle Konten der
+ * Organisation (#1820, #1931). Die dritte Art benennt niemanden; sie erscheint nur dort, wo der
+ * Aufrufer sie ausdrücklich zulässt (Freigaben ja, Space-Mitgliedschaften nein).
+ */
 export interface SubjectSelection {
-  type: PermissionSubjectType
+  type: AssetGrantSubjectType
   user: UserSummary | null
   group: SelectableGroupResponse | null
 }
 
 export const emptySubjectSelection: SubjectSelection = { type: 'USER', user: null, group: null }
 
-/** Die gewählte Kennung, oder null, solange nichts gewählt ist. */
+/**
+ * Die gewählte Kennung, oder null, solange nichts gewählt ist — und immer null für „Alle
+ * Beschäftigten", die keine Zeile benennen.
+ */
 export function selectedSubjectId(selection: SubjectSelection): string | null {
+  if (selection.type === 'ALL_ACCOUNTS') return null
   return selection.type === 'USER' ? (selection.user?.id ?? null) : (selection.group?.id ?? null)
+}
+
+/**
+ * Die Rückfrage vor einer Freigabe an alle Konten (#1931, ADR-0037 Entscheidung 9). Sie
+ * spricht die Reichweite aus, statt sie nur zu beschriften: Seit die organisationsweite Reichweite
+ * eine Freigabe wie jede andere ist, liegt sie einen Klick neben „Team Recht" — dieser Schritt ist
+ * die Gegenmaßnahme dagegen.
+ */
+export async function confirmAllAccountsSubject(roleLabel: string): Promise<boolean> {
+  return confirmAction({
+    question: 'An alle Konten freigeben?',
+    consequence:
+      `Jede Person Ihrer Organisation erhält damit die Rolle „${roleLabel}" — ohne eine weitere ` +
+      'Freigabe und ohne Zutun der Empfänger. Sie können die Freigabe jederzeit zurücknehmen.',
+    confirmLabel: 'An alle freigeben',
+    tone: 'caution',
+  })
 }
 
 /** Die Zusatzzeile unter dem Namen: Herkunft, Quellpfad, Größe — und der Grund, falls gesperrt. */

@@ -82,12 +82,7 @@ class PointInTimeAccessIntegrationTest {
         libraryRepository
             .save(
                 KnowledgeLibrary.ownedByUser(
-                    organizationId,
-                    "Vorgangsablage",
-                    null,
-                    ordinaryUserId,
-                    io.opaa.api.types.AssetVisibility.PRIVATE,
-                    false))
+                    organizationId, "Vorgangsablage", null, ordinaryUserId, false))
             .getId();
     jdbcTemplate.update(
         "UPDATE users SET system_role = ? WHERE id = ?", SystemRole.AUDITOR.name(), auditorId);
@@ -166,17 +161,19 @@ class PointInTimeAccessIntegrationTest {
     UUID foreignLibraryId = UUID.randomUUID();
     jdbcTemplate.update(
         "WITH shell AS (INSERT INTO assets (id, asset_type, organization_id, name, owner_type,"
-            + " owner_user_id, visibility, listed) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, 'Fremde Bibliothek', 'USER', ?, 'ORGANIZATION', true)"
+            + " owner_user_id, listed) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, 'Fremde Bibliothek', 'USER', ?, true)"
             + " RETURNING id, organization_id) INSERT INTO knowledge_libraries (id,"
             + " organization_id, source_type) SELECT id, organization_id, 'UPLOAD' FROM shell",
         foreignLibraryId,
         foreignOrganizationId,
         foreignOwnerId);
+    // #1931: Die Reichweite ist eine Freigabe - die fremde Bibliothek ist an alle Konten
+    // ihrer Organisation freigegeben, und genau das darf hier nicht sichtbar werden.
     jdbcTemplate.update(
-        "INSERT INTO asset_visibility_history (id, asset_type, asset_id, organization_id,"
-            + " visibility, listed, cause, valid_from, created_at, external_access_state)"
-            + " VALUES (?, 'KNOWLEDGE_LIBRARY', ?, ?, 'ORGANIZATION', true, 'CREATED', ?, now(),"
-            + " 'NEVER_SET')",
+        "INSERT INTO asset_grant_history (id, asset_type, asset_id, organization_id, subject_type,"
+            + " role, cause, valid_from, created_at)"
+            + " VALUES (?, 'KNOWLEDGE_LIBRARY', ?, ?, 'ALL_ACCOUNTS', 'VIEWER', 'GRANTED', ?,"
+            + " now())",
         UUID.randomUUID(),
         foreignLibraryId,
         foreignOrganizationId,
@@ -200,8 +197,7 @@ class PointInTimeAccessIntegrationTest {
           .isEmpty();
       assertThat(result.objectName()).isNull();
     } finally {
-      jdbcTemplate.update(
-          "DELETE FROM asset_visibility_history WHERE asset_id = ?", foreignLibraryId);
+      jdbcTemplate.update("DELETE FROM asset_grant_history WHERE asset_id = ?", foreignLibraryId);
       jdbcTemplate.update("DELETE FROM assets WHERE id = ?", foreignLibraryId);
       jdbcTemplate.update("DELETE FROM users WHERE id = ?", foreignOwnerId);
       organizationRepository.deleteById(foreignOrganizationId);
@@ -464,6 +460,67 @@ class PointInTimeAccessIntegrationTest {
         rows);
   }
 
+  /**
+   * #1931 regression guard: a library that was PRIVATE, then organization-wide, then PRIVATE again
+   * has to answer the same for every Stichtag of the three windows after the migration turned that
+   * middle window into a grant interval to ALL_ACCOUNTS. Both directions of the question are
+   * checked - "what could this person read" and "who could read this object" - because they read
+   * different queries and a regression in either is a wrong Negativantwort.
+   */
+  @Test
+  void anOrganizationWideWindowFromTheMigratedHistoryAnswersInBothDirections() {
+    Instant openedAt = FROM.plus(Duration.ofDays(5));
+    Instant closedAt = FROM.plus(Duration.ofDays(20));
+    allAccountsGrantHistory(openedAt, closedAt);
+    UUID outsider = user("Ohne eigenes Recht");
+
+    // "What could this person read?" - inside the window yes, before and after no.
+    assertThat(readableAsOf(outsider, openedAt.plus(Duration.ofDays(1))))
+        .as("inside the window the grant to all accounts reaches an outsider")
+        .contains(libraryId);
+    assertThat(readableAsOf(outsider, openedAt.minus(Duration.ofDays(1))))
+        .as("before it was opened nothing reached them")
+        .doesNotContain(libraryId);
+    assertThat(readableAsOf(outsider, closedAt.plus(Duration.ofDays(1))))
+        .as("after it was taken back nothing reaches them again")
+        .doesNotContain(libraryId);
+
+    // "Who could read this object?" - one entry naming nobody, bounded by the window.
+    assertThat(readers(FROM, TO).entries())
+        .filteredOn(entry -> entry.basis() == AccessBasis.ORGANIZATION_WIDE)
+        .singleElement()
+        .satisfies(
+            entry -> {
+              assertThat(entry.userId())
+                  .as("the way reaches everybody without naming one")
+                  .isNull();
+              assertThat(entry.groupId()).isNull();
+              assertThat(entry.assetRole()).isEqualTo(AssetRole.VIEWER);
+              assertThat(entry.validFrom()).isEqualTo(openedAt);
+              assertThat(entry.validTo()).isEqualTo(closedAt);
+            });
+  }
+
+  /**
+   * The counterpart: a window still open at the end of the requested period is reported as open
+   * ({@code validTo == null}), exactly as an open group grant is - the answer distinguishes "ended
+   * inside the window" from "still running".
+   */
+  @Test
+  void anOpenOrganizationWideWindowIsReportedAsStillOpen() {
+    Instant openedAt = FROM.plus(Duration.ofDays(5));
+    allAccountsGrantHistory(openedAt, null);
+
+    assertThat(readers(FROM, TO).entries())
+        .filteredOn(entry -> entry.basis() == AccessBasis.ORGANIZATION_WIDE)
+        .singleElement()
+        .satisfies(
+            entry -> {
+              assertThat(entry.validFrom()).isEqualTo(openedAt);
+              assertThat(entry.validTo()).isNull();
+            });
+  }
+
   private AccessAsOfResult readers(Instant from, Instant to) {
     return service.readersOf(
         organizationId,
@@ -524,6 +581,28 @@ class PointInTimeAccessIntegrationTest {
         validTo == null ? null : java.sql.Timestamp.from(validTo),
         libraryId,
         groupId);
+  }
+
+  /**
+   * The shape migration 090 leaves behind for a period the library was organization-wide: a grant
+   * interval to ALL_ACCOUNTS with cause BACKFILL, written directly because {@link
+   * PermissionHistoryService} always stamps "now" and a Stichtag question is about the past.
+   */
+  private void allAccountsGrantHistory(Instant validFrom, Instant validTo) {
+    jdbcTemplate.update(
+        "INSERT INTO asset_grant_history (id, asset_type, asset_id, organization_id, subject_type,"
+            + " role, cause, valid_from, valid_to, created_at) VALUES (?, 'KNOWLEDGE_LIBRARY', ?,"
+            + " ?, 'ALL_ACCOUNTS', 'VIEWER', 'BACKFILL', ?, ?, now())",
+        UUID.randomUUID(),
+        libraryId,
+        organizationId,
+        java.sql.Timestamp.from(validFrom),
+        validTo == null ? null : java.sql.Timestamp.from(validTo));
+  }
+
+  private java.util.Set<UUID> readableAsOf(UUID userId, Instant asOf) {
+    return permissionHistory.readableAssetIdsAsOf(
+        KnowledgeLibrary.ASSET_TYPE, userId, organizationId, asOf);
   }
 
   private void membershipHistory(UUID groupId, UUID userId, Instant validFrom, Instant validTo) {

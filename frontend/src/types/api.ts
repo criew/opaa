@@ -122,7 +122,7 @@ export type DirectoryConnectorResponse = components['schemas']['DirectoryConnect
 
 export type AssetRole = components['schemas']['AssetRole']
 export type AssetOwnerType = components['schemas']['AssetOwnerType']
-export type AssetVisibility = components['schemas']['AssetVisibility']
+export type AssetReach = components['schemas']['AssetReachResponse']
 export type LibraryRequest = components['schemas']['LibraryRequest']
 export type LibraryUpdateRequest = components['schemas']['LibraryUpdateRequest']
 export type LibraryShareCapRequest = components['schemas']['LibraryShareCapRequest']
@@ -241,6 +241,7 @@ export type LibraryFolderRenameRequest = components['schemas']['LibraryFolderRen
 export type LibraryFolderResponse = components['schemas']['LibraryFolderResponse']
 
 export type PermissionSubjectType = components['schemas']['PermissionSubjectType']
+export type AssetGrantSubjectType = components['schemas']['AssetGrantSubjectType']
 export type AssetGrantRequest = components['schemas']['AssetGrantRequest']
 export type AssetGrantResponse = components['schemas']['AssetGrantResponse']
 

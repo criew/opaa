@@ -83,14 +83,14 @@ async function expectInPromptList(page: Page, name: string): Promise<void> {
  * prompt library with a prompt and a required variable, gives it to a person, to a group and to the
  * whole organization - and a person it was never given to finds nothing of it, not in the list, not
  * in the catalog, not at its address. The catalog finds a listed asset of either type without
- * opening it, and a person the organization-wide release reaches inserts the prompt in the chat.
+ * opening it, and a person the grant to "Alle Konten" reaches inserts the prompt in the chat.
  *
  * dev-user owns everything here. dev-admin receives the person grant and dev-format-pipelines is
- * the one member of the group: dev-outsider must stay unrelated until the organization-wide
- * release. A second organization is not reachable in the dev auth mode of this suite - the
+ * the one member of the group: dev-outsider must stay unrelated until the grant to "Alle
+ * Konten". A second organization is not reachable in the dev auth mode of this suite - the
  * organization boundary is covered by the backend's AssetCatalogServiceIntegrationTest.
  */
-test.describe.serial('Prompt-Bibliotheken: Verteilungsstufen und Katalog (#1904)', () => {
+test.describe.serial('Prompt-Bibliotheken: Freigabewege und Katalog (#1904)', () => {
   test('1. Prompt-Bibliothek mit einem Prompt und einer Pflicht-Variable anlegen', async ({
     regularUserPage: owner,
   }) => {
@@ -175,14 +175,23 @@ test.describe.serial('Prompt-Bibliotheken: Verteilungsstufen und Katalog (#1904)
     await expect(outsider.getByText(`/${PROMPT_COMMAND}`)).toHaveCount(0)
   })
 
-  test('5. Organisationsweit freigeben', async ({
+  test('5. An „Alle Konten" freigeben', async ({
     regularUserPage: owner,
     outsiderPage: outsider,
   }) => {
+    // The organization-wide reach is a grant to the recipient "Alle Konten", asked back once.
     await openManagement(owner, LIBRARY_NAME)
-    await owner.getByRole('combobox', { name: 'Verteilungsstufe' }).click()
-    await owner.getByRole('option', { name: 'organisationsweit' }).click()
-    await saveRelease(owner)
+    await owner.getByRole('button', { name: 'Rechte verwalten' }).click()
+    await owner.getByRole('button', { name: 'Freigeben' }).click()
+    await owner.getByRole('radio', { name: 'Alle Konten' }).click()
+    await owner.getByRole('button', { name: 'Freigeben' }).last().click()
+    const confirmAllAccounts = owner
+      .getByRole('dialog')
+      .filter({ has: owner.locator('#confirm-question') })
+    await confirmAllAccounts.locator('#confirm-accept').click()
+    await expect(confirmAllAccounts).toHaveCount(0)
+    await expect(owner.getByRole('dialog').getByText('Alle Konten')).toBeVisible()
+    await owner.getByRole('dialog').getByRole('button', { name: 'Schließen' }).click()
 
     await expectInPromptList(outsider, LIBRARY_NAME)
     await searchCatalog(outsider, LIBRARY_NAME)

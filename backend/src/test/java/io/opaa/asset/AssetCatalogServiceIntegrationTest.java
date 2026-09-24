@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.api.types.AssetOrigin;
 import io.opaa.api.types.AssetRole;
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.GroupKind;
 import io.opaa.api.types.SpaceRole;
 import io.opaa.api.types.SpaceVisibility;
@@ -53,6 +52,11 @@ import org.springframework.jdbc.core.JdbcTemplate;
  */
 @OpaaIntegrationTest
 class AssetCatalogServiceIntegrationTest {
+
+  /** Released to "Alle Konten" - the organization-wide reach, a grant like any other. */
+  private static final boolean ALL_ACCOUNTS = true;
+
+  private static final boolean OWNER_ONLY = false;
 
   private static final List<AssetType> TYPES =
       List.of(KnowledgeLibrary.ASSET_TYPE, PromptLibrary.ASSET_TYPE);
@@ -149,14 +153,9 @@ class AssetCatalogServiceIntegrationTest {
   void theCatalogNeverCrossesTheOrganizationBoundary() {
     createTheFourStagesOfBothTypes();
     UUID foreignOwner = createUser(foreignOrganization, "Fremde Eigentümerin");
-    promptLibrary(
-        foreignOrganization, "Fremd gelistet", foreignOwner, AssetVisibility.PRIVATE, true);
+    promptLibrary(foreignOrganization, "Fremd gelistet", foreignOwner, OWNER_ONLY, true);
     knowledgeLibrary(
-        foreignOrganization,
-        "Fremd organisationsweit",
-        foreignOwner,
-        AssetVisibility.ORGANIZATION,
-        false);
+        foreignOrganization, "Fremd organisationsweit", foreignOwner, ALL_ACCOUNTS, false);
 
     assertThat(accessibleByName(callerOf(owner)))
         .doesNotContainKeys("Fremd gelistet", "Fremd organisationsweit");
@@ -173,15 +172,9 @@ class AssetCatalogServiceIntegrationTest {
         promptLibraryRepository
             .save(
                 PromptLibrary.ownedByGroup(
-                    organization,
-                    "Referatsvorlagen",
-                    "Hausstandard",
-                    group,
-                    AssetVisibility.PRIVATE,
-                    true))
+                    organization, "Referatsvorlagen", "Hausstandard", group, true))
             .getId();
-    UUID personOwned =
-        knowledgeLibrary(organization, "Rechtsquellen", owner, AssetVisibility.ORGANIZATION, false);
+    UUID personOwned = knowledgeLibrary(organization, "Rechtsquellen", owner, ALL_ACCOUNTS, false);
 
     List<AssetCatalogEntry> entries =
         catalogService.list(callerOf(outsider), null, null, 0, 50).entries();
@@ -203,10 +196,8 @@ class AssetCatalogServiceIntegrationTest {
 
   @Test
   void anEntryCarriesItsExtentAndItsSpreadOverSpaces() {
-    UUID prompts =
-        promptLibrary(organization, "Vorlagen", owner, AssetVisibility.ORGANIZATION, false);
-    UUID knowledge =
-        knowledgeLibrary(organization, "Leer", owner, AssetVisibility.ORGANIZATION, false);
+    UUID prompts = promptLibrary(organization, "Vorlagen", owner, ALL_ACCOUNTS, false);
+    UUID knowledge = knowledgeLibrary(organization, "Leer", owner, ALL_ACCOUNTS, false);
     for (String name : List.of("anhoerung", "vermerk")) {
       promptService.create(
           prompts,
@@ -229,7 +220,7 @@ class AssetCatalogServiceIntegrationTest {
 
   @Test
   void anAssetWhoseOwnerLeftCarriesItsOpenSuccessionInTheCatalog() {
-    UUID id = promptLibrary(organization, "Verwaist", owner, AssetVisibility.PRIVATE, true);
+    UUID id = promptLibrary(organization, "Verwaist", owner, OWNER_ONLY, true);
     jdbcTemplate.update("UPDATE users SET directory_locked_at = now() WHERE id = ?", owner);
 
     AssetCatalogEntry entry =
@@ -242,16 +233,15 @@ class AssetCatalogServiceIntegrationTest {
   @Test
   void theTypeFilterAndTheSearchNarrowTheCatalogInTheQuery() {
     createTheFourStagesOfBothTypes();
-    promptLibrary(organization, "Rabatt 100%", owner, AssetVisibility.ORGANIZATION, false);
-    promptLibrary(organization, "Rabatt 1000", owner, AssetVisibility.ORGANIZATION, false);
-    promptLibraryRepository.save(
-        PromptLibrary.ownedByUser(
-            organization,
-            "Vermerke",
-            "Formulierungen für die ANHÖRUNG",
-            owner,
-            AssetVisibility.ORGANIZATION,
-            false));
+    promptLibrary(organization, "Rabatt 100%", owner, ALL_ACCOUNTS, false);
+    promptLibrary(organization, "Rabatt 1000", owner, ALL_ACCOUNTS, false);
+    UUID described =
+        promptLibraryRepository
+            .save(
+                PromptLibrary.ownedByUser(
+                    organization, "Vermerke", "Formulierungen für die ANHÖRUNG", owner, false))
+            .getId();
+    releaseToAllAccounts(PromptLibrary.ASSET_TYPE, described, organization, owner, ALL_ACCOUNTS);
 
     assertThat(
             names(catalogService.list(callerOf(outsider), PromptLibrary.ASSET_TYPE, null, 0, 50)))
@@ -310,34 +300,31 @@ class AssetCatalogServiceIntegrationTest {
     Map<String, UUID> assets = new LinkedHashMap<>();
     for (AssetType type : TYPES) {
       String suffix = type.equals(KnowledgeLibrary.ASSET_TYPE) ? " Wissen" : " Prompts";
-      assets.put("Privat" + suffix, asset(type, "Privat" + suffix, AssetVisibility.PRIVATE, false));
-      UUID shared = asset(type, "Gruppe" + suffix, AssetVisibility.SHARED, false);
+      assets.put("Privat" + suffix, asset(type, "Privat" + suffix, OWNER_ONLY, false));
+      UUID shared = asset(type, "Gruppe" + suffix, OWNER_ONLY, false);
       grantRepository.save(
           AssetGrant.forGroup(type, shared, organization, group, AssetRole.VIEWER, null, owner, 1));
       assets.put("Gruppe" + suffix, shared);
       assets.put(
-          "Organisation" + suffix,
-          asset(type, "Organisation" + suffix, AssetVisibility.ORGANIZATION, false));
-      assets.put(
-          "Gelistet" + suffix, asset(type, "Gelistet" + suffix, AssetVisibility.PRIVATE, true));
+          "Organisation" + suffix, asset(type, "Organisation" + suffix, ALL_ACCOUNTS, false));
+      assets.put("Gelistet" + suffix, asset(type, "Gelistet" + suffix, OWNER_ONLY, true));
     }
     return assets;
   }
 
-  private UUID asset(AssetType type, String name, AssetVisibility visibility, boolean listed) {
+  private UUID asset(AssetType type, String name, boolean allAccounts, boolean listed) {
     return type.equals(KnowledgeLibrary.ASSET_TYPE)
-        ? knowledgeLibrary(organization, name, owner, visibility, listed)
-        : promptLibrary(organization, name, owner, visibility, listed);
+        ? knowledgeLibrary(organization, name, owner, allAccounts, listed)
+        : promptLibrary(organization, name, owner, allAccounts, listed);
   }
 
   private UUID knowledgeLibrary(
-      UUID organizationId, String name, UUID ownerId, AssetVisibility visibility, boolean listed) {
+      UUID organizationId, String name, UUID ownerId, boolean allAccounts, boolean listed) {
     UUID id =
         knowledgeLibraryRepository
-            .save(
-                KnowledgeLibrary.ownedByUser(
-                    organizationId, name, null, ownerId, visibility, listed))
+            .save(KnowledgeLibrary.ownedByUser(organizationId, name, null, ownerId, listed))
             .getId();
+    releaseToAllAccounts(KnowledgeLibrary.ASSET_TYPE, id, organizationId, ownerId, allAccounts);
     grantRepository.save(
         AssetGrant.forUser(
             KnowledgeLibrary.ASSET_TYPE,
@@ -351,16 +338,24 @@ class AssetCatalogServiceIntegrationTest {
   }
 
   private UUID promptLibrary(
-      UUID organizationId, String name, UUID ownerId, AssetVisibility visibility, boolean listed) {
+      UUID organizationId, String name, UUID ownerId, boolean allAccounts, boolean listed) {
     UUID id =
         promptLibraryRepository
-            .save(
-                PromptLibrary.ownedByUser(organizationId, name, null, ownerId, visibility, listed))
+            .save(PromptLibrary.ownedByUser(organizationId, name, null, ownerId, listed))
             .getId();
+    releaseToAllAccounts(PromptLibrary.ASSET_TYPE, id, organizationId, ownerId, allAccounts);
     grantRepository.save(
         AssetGrant.forUser(
             PromptLibrary.ASSET_TYPE, id, organizationId, ownerId, AssetRole.OWNER, null, ownerId));
     return id;
+  }
+
+  private void releaseToAllAccounts(
+      AssetType type, UUID id, UUID organizationId, UUID grantedBy, boolean allAccounts) {
+    if (allAccounts) {
+      grantRepository.save(
+          AssetGrant.forAllAccounts(type, id, organizationId, AssetRole.VIEWER, null, grantedBy));
+    }
   }
 
   private Map<String, Boolean> accessibleByName(CurrentUser caller) {

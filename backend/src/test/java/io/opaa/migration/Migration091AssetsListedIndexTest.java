@@ -10,8 +10,8 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Delta tests for {@code changes/091-assets-listed-index.yaml} (#1904): the listed part of the
- * catalog query gets a partial index built like {@code idx_assets_organization_wide}, over the
- * organization and the type, restricted to listed assets.
+ * catalog query gets a partial index over the organization and the type, restricted to listed
+ * assets.
  */
 class Migration091AssetsListedIndexTest extends AbstractMigrationTest {
 

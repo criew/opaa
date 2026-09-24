@@ -4,12 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.opaa.api.types.AssetGrantSubjectType;
 import io.opaa.api.types.AssetOrigin;
 import io.opaa.api.types.AssetOwnerType;
 import io.opaa.api.types.AssetRole;
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.GroupKind;
-import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.api.types.PromptVariableType;
 import io.opaa.api.types.SpaceRole;
 import io.opaa.api.types.SpaceVisibility;
@@ -118,7 +117,6 @@ class PromptLibraryServiceIntegrationTest {
     PromptLibrary library = created.library();
     assertThat(library.getOwnerType()).isEqualTo(AssetOwnerType.USER);
     assertThat(library.getOwnerId()).isEqualTo(owner);
-    assertThat(library.getVisibility()).isEqualTo(AssetVisibility.PRIVATE);
     assertThat(library.isListed()).as("listing is a deliberate act").isFalse();
     assertThat(library.getOrigin()).isEqualTo(AssetOrigin.LOCAL);
     assertThat(library.getAssetType()).isEqualTo(PromptLibrary.ASSET_TYPE);
@@ -163,12 +161,12 @@ class PromptLibraryServiceIntegrationTest {
     grantService.upsertGrant(
         PromptLibrary.ASSET_TYPE,
         id,
-        new AssetGrantUpsert(PermissionSubjectType.USER, reader, AssetRole.VIEWER),
+        new AssetGrantUpsert(AssetGrantSubjectType.USER, reader, AssetRole.VIEWER),
         callerOf(owner));
     grantService.upsertGrant(
         PromptLibrary.ASSET_TYPE,
         id,
-        new AssetGrantUpsert(PermissionSubjectType.GROUP, group, AssetRole.EDITOR),
+        new AssetGrantUpsert(AssetGrantSubjectType.GROUP, group, AssetRole.EDITOR),
         callerOf(owner));
 
     assertThat(promptService.list(id, callerOf(reader)))
@@ -184,9 +182,12 @@ class PromptLibraryServiceIntegrationTest {
         .doesNotThrowAnyException();
     assertThat(readableBy(outsider)).doesNotContain(id);
 
-    libraryService.update(
+    // #1931: Die organisationsweite Reichweite ist eine Freigabe an "Alle Konten" - derselbe Weg
+    // wie fuer Person und Gruppe, nur ohne benannten Empfaenger.
+    grantService.upsertGrant(
+        PromptLibrary.ASSET_TYPE,
         id,
-        new PromptLibraryUpdate("Vorlagen", null, AssetVisibility.ORGANIZATION, false),
+        AssetGrantUpsert.forAllAccounts(AssetRole.VIEWER),
         callerOf(owner));
 
     assertThat(readableBy(outsider)).contains(id);
@@ -196,7 +197,7 @@ class PromptLibraryServiceIntegrationTest {
             "PROMPT_LIBRARY_CREATED",
             "ASSET_GRANT_GRANTED",
             "ASSET_GRANT_GRANTED",
-            "ASSET_VISIBILITY_CHANGED");
+            "ASSET_GRANT_GRANTED");
   }
 
   /** Regression class #406: the single view never judges a library differently than the list. */
@@ -207,18 +208,18 @@ class PromptLibraryServiceIntegrationTest {
     grantService.upsertGrant(
         PromptLibrary.ASSET_TYPE,
         direct,
-        new AssetGrantUpsert(PermissionSubjectType.USER, reader, AssetRole.VIEWER),
+        new AssetGrantUpsert(AssetGrantSubjectType.USER, reader, AssetRole.VIEWER),
         callerOf(owner));
     UUID viaGroup = libraryOf(owner, "Gruppe");
     grantService.upsertGrant(
         PromptLibrary.ASSET_TYPE,
         viaGroup,
-        new AssetGrantUpsert(PermissionSubjectType.GROUP, group, AssetRole.VIEWER),
+        new AssetGrantUpsert(AssetGrantSubjectType.GROUP, group, AssetRole.VIEWER),
         callerOf(owner));
     UUID organizationWide = libraryOf(owner, "Organisationsweit");
     libraryService.update(
         organizationWide,
-        new PromptLibraryUpdate("Organisationsweit", null, AssetVisibility.ORGANIZATION, false),
+        new PromptLibraryUpdate("Organisationsweit", null, false),
         callerOf(owner));
     UUID groupOwned =
         libraryService
@@ -246,10 +247,7 @@ class PromptLibraryServiceIntegrationTest {
   @Test
   void theOrganizationBoundaryHoldsOnEveryWay() {
     UUID id = libraryOf(owner, "Hausintern");
-    libraryService.update(
-        id,
-        new PromptLibraryUpdate("Hausintern", null, AssetVisibility.ORGANIZATION, false),
-        callerOf(owner));
+    libraryService.update(id, new PromptLibraryUpdate("Hausintern", null, false), callerOf(owner));
 
     assertThat(readableBy(foreigner)).as("the list").doesNotContain(id);
     assertThatThrownBy(() -> libraryService.get(id, callerOf(foreigner)))
@@ -262,7 +260,7 @@ class PromptLibraryServiceIntegrationTest {
                 grantService.upsertGrant(
                     PromptLibrary.ASSET_TYPE,
                     id,
-                    new AssetGrantUpsert(PermissionSubjectType.USER, foreigner, AssetRole.VIEWER),
+                    new AssetGrantUpsert(AssetGrantSubjectType.USER, foreigner, AssetRole.VIEWER),
                     callerOf(owner)))
         .as("a grant to a person of another organization")
         .isInstanceOf(NotFoundException.class);
@@ -271,7 +269,7 @@ class PromptLibraryServiceIntegrationTest {
                 grantService.upsertGrant(
                     PromptLibrary.ASSET_TYPE,
                     id,
-                    new AssetGrantUpsert(PermissionSubjectType.USER, foreigner, AssetRole.VIEWER),
+                    new AssetGrantUpsert(AssetGrantSubjectType.USER, foreigner, AssetRole.VIEWER),
                     callerOf(foreigner)))
         .as("a grant by a person of another organization")
         .isInstanceOf(NotFoundException.class);
@@ -307,7 +305,7 @@ class PromptLibraryServiceIntegrationTest {
                 grantService.upsertGrant(
                     PromptLibrary.ASSET_TYPE,
                     id,
-                    new AssetGrantUpsert(PermissionSubjectType.USER, reader, AssetRole.VIEWER),
+                    new AssetGrantUpsert(AssetGrantSubjectType.USER, reader, AssetRole.VIEWER),
                     callerOf(administrator, true)))
         .isInstanceOf(ConflictException.class)
         .hasMessageStartingWith("Für dieses Objekt ist die Nachfolge offen")
@@ -316,7 +314,7 @@ class PromptLibraryServiceIntegrationTest {
             () ->
                 libraryService.update(
                     id,
-                    new PromptLibraryUpdate("Verwaist", null, AssetVisibility.ORGANIZATION, false),
+                    new PromptLibraryUpdate("Verwaist", null, true),
                     callerOf(administrator, true)))
         .isInstanceOf(ConflictException.class);
   }
@@ -398,9 +396,7 @@ class PromptLibraryServiceIntegrationTest {
     promptService.update(
         id, prompt.getId(), content("vermerk", "Vermerk neu", List.of()), callerOf(owner));
     libraryService.update(
-        id,
-        new PromptLibraryUpdate("Protokoll neu", "Beschreibung", AssetVisibility.PRIVATE, false),
-        callerOf(owner));
+        id, new PromptLibraryUpdate("Protokoll neu", "Beschreibung", false), callerOf(owner));
     promptService.delete(id, prompt.getId(), callerOf(owner));
 
     assertThat(auditEvents(prompt.getId()))
@@ -427,7 +423,7 @@ class PromptLibraryServiceIntegrationTest {
     grantService.upsertGrant(
         PromptLibrary.ASSET_TYPE,
         id,
-        new AssetGrantUpsert(PermissionSubjectType.USER, reader, AssetRole.MANAGER),
+        new AssetGrantUpsert(AssetGrantSubjectType.USER, reader, AssetRole.MANAGER),
         callerOf(owner));
     UUID space = createSpace(owner, organization);
     associationService.associate(space, PromptLibrary.ASSET_TYPE, id, callerOf(owner));
@@ -527,7 +523,7 @@ class PromptLibraryServiceIntegrationTest {
 
   private static PromptLibraryCreation creation(
       String name, AssetOwnerType ownerType, UUID ownerId) {
-    return new PromptLibraryCreation(name, null, ownerType, ownerId, null, null);
+    return new PromptLibraryCreation(name, null, ownerType, ownerId, null);
   }
 
   private static PromptContent content(String name, String title, List<PromptVariable> variables) {

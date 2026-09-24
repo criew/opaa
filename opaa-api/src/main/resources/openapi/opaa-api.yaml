@@ -4708,7 +4708,7 @@ paths:
     get:
       operationId: listLibraries
       tags: [library]
-      summary: List knowledge libraries the current user holds rights on - direct grant, grant to one of their groups, or organization-wide visibility (ownership is included, since creating a library grants the creator OWNER)
+      summary: List knowledge libraries the current user holds rights on - direct grant, grant to one of their groups, or a grant to ALL_ACCOUNTS (ownership is included, since creating a library grants the creator OWNER)
       responses:
         "200":
           description: List of libraries
@@ -4926,16 +4926,16 @@ paths:
     put:
       operationId: updateLibrary
       tags: [library]
-      summary: Update library name, description, visibility and listed flag (owner only)
+      summary: Update library name, description and listed flag (owner only)
       description: >
         A sourceCredentials given here is stored encrypted, so this operation needs the
         credentials encryption key (OPAA_CREDENTIALS_ENCRYPTION_KEY). Without a usable key
         nothing is changed and the answer is 503 naming the missing key - a write never silently
         drops a credential. A request that carries no new credential keeps the stored one and is
-        unaffected. For a connector library, visibility/listed above the share cap the system
-        administration set (#797, PUT /api/v1/libraries/{libraryId}/share-cap) is refused with
-        409 - the caller's own MANAGER/OWNER role is not in question, the requested state
-        conflicts with that ceiling.
+        unaffected. For a connector library, listed is refused with 409 while the share cap the
+        system administration set forbids it (#797, PUT /api/v1/libraries/{libraryId}/share-cap)
+        - the caller's own MANAGER/OWNER role is not in question, the requested state conflicts
+        with that ceiling.
       requestBody:
         required: true
         content:
@@ -4994,15 +4994,16 @@ paths:
     put:
       operationId: updateLibraryShareCap
       tags: [library]
-      summary: Set a connector library's share cap - the ceiling visibility/listed may not exceed (#797)
+      summary: Set a connector library's share cap - whether it may be granted to ALL_ACCOUNTS and listed at all (#797)
       description: >
         SYSTEM_ADMIN only (403 otherwise). Rejected with 400 for an UPLOAD library, which is never
         capped - the same person who uploads already curates every document individually, so there
         is nothing the cap would protect. Narrowing the cap below what the library currently
-        carries clamps visibility/listed back down to it immediately, in the same request - never
-        a state left "verletzt, aber geduldet": the clamp writes the same history interval and
-        audit entry (ASSET_VISIBILITY_CHANGED) an owner's own edit would, and the cap change
-        itself is recorded separately (CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED).
+        carries takes it back immediately, in the same request - never a state left "verletzt, aber
+        geduldet": forbidding ALL_ACCOUNTS revokes an existing such grant through the ordinary
+        grant path (ASSET_GRANT_REVOKED, one grant-history interval), forbidding listed clears
+        listed with the same ASSET_VISIBILITY_CHANGED entry an owner's own edit would write, and
+        the cap change itself is recorded separately (CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED).
       requestBody:
         required: true
         content:
@@ -6319,10 +6320,18 @@ paths:
       operationId: upsertAssetGrant
       tags: [asset]
       summary: >
-        Grant (or update the role of) a user or group on an asset (MANAGER role or above
-        required). Idempotent per subject: submitting again for the same subject replaces its role
-        and expiry.
+        Grant (or update the role of) a user, a group or every account of the organization
+        ("Alle Konten") on an asset (MANAGER role or above required). Idempotent per
+        subject: submitting again for the same subject replaces its role and expiry.
       description: >
+        Subject ALL_ACCOUNTS reaches every account of the asset's organization and names no
+        subjectId (#1931, ADR-0037). Its role is capped at EDITOR: MANAGER and OWNER are
+        responsibilities - granting rights, ownership, succession - and are refused with 400 for
+        this subject, because a responsibility is borne by a named person or group. It replaces the
+        former release level AssetVisibility, so a connector library's share cap (#797) is enforced
+        here: while the system administration forbids it, such a grant is refused with 409 - the
+        caller's own role is not in question.
+        .
         While the asset's succession is open (ADR-0036, Entscheidung 6) its reach is frozen: a new
         grant, a higher role and a postponed expiry are refused with 409 and the code
         SUCCESSION_OPEN, whose message names who is responsible. Taking reach away stays possible -
@@ -6712,7 +6721,7 @@ paths:
       operationId: updatePromptLibrary
       tags: [prompt]
       summary: >
-        Replace name, description, visibility and listed (MANAGER or above). A wider reach is
+        Replace name, description and listed (MANAGER or above). A wider reach is
         refused with 409 while the library's succession is open (ADR-0036, Entscheidung 6).
       requestBody:
         required: true
@@ -11929,14 +11938,25 @@ components:
       enum: [USER, GROUP]
       example: USER
 
-    AssetVisibility:
-      type: string
+    AssetReachResponse:
+      type: object
+      required: [allAccounts, groupCount, userCount]
       description: >
-        PRIVATE reaches only the owner (and, for a group owner, its members). SHARED follows the
-        owning group's membership. ORGANIZATION is readable by every user in the same
-        organization. See docs/features/spaces-and-assets.md#freigabestufen-und-auffindbarkeit.
-      enum: [PRIVATE, SHARED, ORGANIZATION]
-      example: PRIVATE
+        How far an asset reaches right now, derived from its grants rather than stored (#1931,
+        ADR-0037) - the figures an overview turns into a badge ("Alle", "3 Gruppen, 2 Personen",
+        "nur Sie"). Counted are the unexpired grants; the owner's own grant is among userCount.
+      properties:
+        allAccounts:
+          type: boolean
+          description: >
+            Whether a grant to ALL_ACCOUNTS reaches every account of the organization. Outranks
+            the two counts in any wording.
+        groupCount:
+          type: integer
+          description: Unexpired grants to a group.
+        userCount:
+          type: integer
+          description: Unexpired grants to a single person.
 
     ExternalAccessState:
       type: string
@@ -12062,8 +12082,6 @@ components:
           description: >
             Required when ownerType is GROUP (the caller must be a member of that group).
             Ignored for ownerType USER, which always owns as the creator.
-        visibility:
-          $ref: "#/components/schemas/AssetVisibility"
         listed:
           type: boolean
           nullable: true
@@ -12203,7 +12221,7 @@ components:
       description: >
         Carries the same typed configuration fields as LibraryRequest (#514) - deliberately a
         separate schema rather than reusing LibraryRequest itself, since name/ownerType/
-        visibility/... have no meaning before a library exists and would only invite a client
+        listed/... have no meaning before a library exists and would only invite a client
         to pass a half-filled LibraryRequest by mistake. Which fields are accepted depends on
         sourceType exactly like LibraryRequest; UPLOAD accepts none and is rejected outright
         (there is nothing to test). CONFLUENCE (ADR-0023) works in two stages with the same
@@ -12596,8 +12614,6 @@ components:
           maxLength: 2000
           nullable: true
           example: SGB II, SGB XII, VwVfG, Dienstanweisungen
-        visibility:
-          $ref: "#/components/schemas/AssetVisibility"
         listed:
           type: boolean
           nullable: true
@@ -12697,14 +12713,18 @@ components:
 
     LibraryShareCapRequest:
       type: object
-      required: [visibilityCap, listedCap]
+      required: [allAccountsGrantAllowed, listedCap]
       description: >
         Body for PUT /api/v1/libraries/{libraryId}/share-cap (#797). Both fields are required and
         replace the cap as a whole - there is no partial update, the same reasoning
         LibraryUpdateRequest.s3Settings already follows for its own all-or-nothing replacement.
       properties:
-        visibilityCap:
-          $ref: "#/components/schemas/AssetVisibility"
+        allAccountsGrantAllowed:
+          type: boolean
+          description: >
+            Whether this library may be granted to ALL_ACCOUNTS ("Alle Konten"). Lowering
+            it to false revokes an existing such grant in the same transaction (#1931, ADR-0037
+            Entscheidung 5) - there is no state "over the ceiling but tolerated".
         listedCap:
           type: boolean
 
@@ -12715,7 +12735,7 @@ components:
           id,
           name,
           ownerType,
-          visibility,
+          reach,
           listed,
           myRole,
           sourceType,
@@ -12743,8 +12763,8 @@ components:
             a generic "Gruppen-Bibliothek" label. Null if the owner could not be resolved
             (e.g. the group or user was deleted).
           example: Referat 50
-        visibility:
-          $ref: "#/components/schemas/AssetVisibility"
+        reach:
+          $ref: "#/components/schemas/AssetReachResponse"
         listed:
           type: boolean
         myRole:
@@ -12802,7 +12822,7 @@ components:
         - name
         - ownerType
         - ownerId
-        - visibility
+        - reach
         - listed
         - myRole
         - sourceType
@@ -12824,8 +12844,8 @@ components:
           type: string
           format: uuid
           description: The owning user or group, whichever ownerType names.
-        visibility:
-          $ref: "#/components/schemas/AssetVisibility"
+        reach:
+          $ref: "#/components/schemas/AssetReachResponse"
         listed:
           type: boolean
         myRole:
@@ -13008,21 +13028,21 @@ components:
           nullable: true
           allOf:
             - $ref: "#/components/schemas/LibraryExternalAccessResponse"
-        visibilityCap:
-          description: >
-            The ceiling visibility may not exceed (#797), set by the system administration per
-            connector library - null for UPLOAD (which is never capped) and, like sourcePath
-            above, absent (not merely null) below MANAGER. PUT /api/v1/libraries/{libraryId}
-            answers 409 when visibility would exceed it.
+        allAccountsGrantAllowed:
+          type: boolean
           nullable: true
-          allOf:
-            - $ref: "#/components/schemas/AssetVisibility"
+          description: >
+            Whether this library may be granted to ALL_ACCOUNTS (#797, #1931), set by the system
+            administration per connector library - null for UPLOAD (which is never capped) and,
+            like sourcePath above, absent (not merely null) below MANAGER. POST
+            /api/v1/assets/{assetType}/{assetId}/grants answers 409 for such a grant while it is
+            false.
         listedCap:
           type: boolean
           nullable: true
           description: >
-            The counterpart cap on listed - false forbids listing regardless of visibility. Same
-            gating as visibilityCap.
+            The counterpart cap on listed - false forbids listing this library at all. Same
+            gating as allAccountsGrantAllowed.
         lastTransfer:
           description: >
             The transfer that last touched this library (#1834, ADR-0036 Entscheidung 10), or
@@ -15550,7 +15570,7 @@ components:
       description: >
         The graded asset role a grant carries - a ranking deliberately separate from SpaceRole; no
         role name occurs in both. VIEWER uses the asset and sees its configuration, EDITOR
-        additionally changes it, MANAGER additionally shares/grants and sets visibility, OWNER
+        additionally changes it, MANAGER additionally shares/grants and sets findability, OWNER
         additionally deletes and transfers ownership. See
         docs/features/spaces-and-assets.md#asset-rollen. Exception for a knowledge library: its
         source connection detail (LibraryResponse's sourcePath/sourceUrl/sourceProxy/
@@ -15562,8 +15582,24 @@ components:
 
     PermissionSubjectType:
       type: string
-      description: Whether a grant targets a single user or a group.
+      description: >
+        Whether a space membership or an ownership targets a single user or a group. Deliberately
+        without ALL_ACCOUNTS: a space whose member is "everyone" and an asset owned by "everyone"
+        are states the model does not know (ADR-0037, Entscheidung 3).
       enum: [USER, GROUP]
+      example: USER
+
+    AssetGrantSubjectType:
+      type: string
+      description: >
+        Who an asset grant targets - a single user, a group, or every account of the organization
+        (ALL_ACCOUNTS, "Alle Konten"). ALL_ACCOUNTS replaces the former release level
+        AssetVisibility.ORGANIZATION: organization-wide reach is a grant like any other, kept in
+        the same list and the same grant history (#1931, ADR-0037). It is deliberately no
+        synthetic group object - such an object would appear in every group picker and would have
+        to be kept out of the directory sync, the stewardship and the transfer one by one. See
+        docs/features/spaces-and-assets.md#rechte-an-einem-asset-erhalten.
+      enum: [USER, GROUP, ALL_ACCOUNTS]
       example: USER
 
     Capability:
@@ -15668,14 +15704,17 @@ components:
 
     AssetGrantRequest:
       type: object
-      required: [subjectType, subjectId, role]
+      required: [subjectType, role]
       properties:
         subjectType:
-          $ref: "#/components/schemas/PermissionSubjectType"
+          $ref: "#/components/schemas/AssetGrantSubjectType"
         subjectId:
           type: string
           format: uuid
-          description: The user or group id, depending on subjectType.
+          nullable: true
+          description: >
+            The user or group id, depending on subjectType. Absent for ALL_ACCOUNTS, which names
+            no row; a value sent with it is rejected with 400.
         role:
           $ref: "#/components/schemas/AssetRole"
         expiresAt:
@@ -16224,8 +16263,6 @@ components:
           description: >
             Required when ownerType is GROUP (the caller must be a member of that group). Ignored
             for ownerType USER, which always owns as the creator.
-        visibility:
-          $ref: "#/components/schemas/AssetVisibility"
         listed:
           type: boolean
           nullable: true
@@ -16233,8 +16270,8 @@ components:
 
     PromptLibraryUpdateRequest:
       type: object
-      required: [name, visibility, listed]
-      description: Replaces name, description, release level and findability as a whole.
+      required: [name, listed]
+      description: Replaces name, description and findability as a whole.
       properties:
         name:
           type: string
@@ -16244,15 +16281,13 @@ components:
           type: string
           nullable: true
           maxLength: 2000
-        visibility:
-          $ref: "#/components/schemas/AssetVisibility"
         listed:
           type: boolean
 
     PromptLibraryResponse:
       type: object
       required:
-        [id, name, ownerType, ownerId, visibility, listed, myRole, promptCount, createdAt, updatedAt]
+        [id, name, ownerType, ownerId, reach, listed, myRole, promptCount, createdAt, updatedAt]
       properties:
         id:
           type: string
@@ -16274,8 +16309,8 @@ components:
           description: >
             Display name of the owning person or group; null when it cannot be resolved or the
             group is protected and the caller may not see its name (ADR-0036, Entscheidung 9).
-        visibility:
-          $ref: "#/components/schemas/AssetVisibility"
+        reach:
+          $ref: "#/components/schemas/AssetReachResponse"
         listed:
           type: boolean
         myRole:
@@ -16317,16 +16352,18 @@ components:
 
     AssetGrantResponse:
       type: object
-      required: [id, subjectType, subjectId, role, createdAt, updatedAt]
+      required: [id, subjectType, role, createdAt, updatedAt]
       properties:
         id:
           type: string
           format: uuid
         subjectType:
-          $ref: "#/components/schemas/PermissionSubjectType"
+          $ref: "#/components/schemas/AssetGrantSubjectType"
         subjectId:
           type: string
           format: uuid
+          nullable: true
+          description: Null for ALL_ACCOUNTS, which names no row.
         subjectDisplayName:
           type: string
           nullable: true
@@ -16339,7 +16376,7 @@ components:
             user's display name being unset does not produce null here, since email is always
             present. Null as well for a protected group, which appears in another person's list as
             a nameless row (ADR-0036, Entscheidung 9) - protectedGroup says which of the cases it
-            is.
+            is. For ALL_ACCOUNTS it carries the fixed label "Alle Konten".
         protectedGroup:
           type: boolean
           nullable: true
@@ -17105,8 +17142,9 @@ components:
           format: date-time
           nullable: true
           description: >
-            When this way came into being - the moment of the grant or of the admission. Null where
-            the way has no own moment (the organization-wide release, the administration).
+            When this way came into being - the moment of the grant or of the admission. Since
+            #1931 ORGANIZATION_WIDE carries one too: it is a grant to ALL_ACCOUNTS and was written
+            at a knowable instant. Null only where the way has no own moment - the administration.
         group:
           nullable: true
           allOf:

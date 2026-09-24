@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.api.dto.ExternalAccessLibraryResponse;
 import io.opaa.api.dto.LibraryExternalAccessResponse;
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.ExternalAccessState;
 import io.opaa.library.ExternalAccessLibrary;
 import io.opaa.library.KnowledgeLibrary;
@@ -68,12 +67,7 @@ class LibraryExternalAccessResponseMapperTest {
   void toListResponseNamesTheLibraryBesideItsRelease() {
     KnowledgeLibrary library =
         KnowledgeLibrary.ownedByUser(
-            UUID.randomUUID(),
-            "Baugenehmigungen 2024",
-            null,
-            UUID.randomUUID(),
-            AssetVisibility.PRIVATE,
-            false);
+            UUID.randomUUID(), "Baugenehmigungen 2024", null, UUID.randomUUID(), false);
     LibraryExternalAccess access =
         new LibraryExternalAccess(
             library.getId(),

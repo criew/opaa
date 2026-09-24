@@ -503,7 +503,7 @@ lassen.
 - `tests/prompt-libraries.spec.ts` (#1904, Nachweis von Epic #1726) — Prompt-Bibliothek und Katalog
   über den vollen Stack: `dev-user` legt ohne Systemrolle eine Prompt-Bibliothek mit einem Prompt
   und einer Pflicht-Variable an und gibt sie an eine Person (`dev-admin`), an eine Gruppe (Mitglied
-  `dev-format-pipelines`) und an die Organisation frei. Vor der organisationsweiten Freigabe findet
+  `dev-format-pipelines`) und an „Alle Konten" frei. Vor der Freigabe an „Alle Konten" findet
   `dev-outsider` sie weder in der Liste noch im Katalog noch unter ihrer Adresse (Negativfall).
   Eine zweite Prompt-Bibliothek und eine Wissensbibliothek erscheinen erst nach der Listung im
   Katalog — als Eintrag ohne Zugriff, ohne Link, mit zuständiger Stelle; der Typfilter trennt sie.

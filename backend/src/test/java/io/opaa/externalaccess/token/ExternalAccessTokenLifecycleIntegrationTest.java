@@ -5,7 +5,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import io.opaa.api.types.AssetOwnerType;
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.audit.AuditEventRecorder;
@@ -131,7 +130,6 @@ class ExternalAccessTokenLifecycleIntegrationTest {
                 null,
                 AssetOwnerType.USER,
                 owner.getId(),
-                AssetVisibility.PRIVATE,
                 false,
                 DocumentSourceType.UPLOAD,
                 null,

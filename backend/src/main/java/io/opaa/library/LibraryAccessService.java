@@ -3,6 +3,7 @@ package io.opaa.library;
 import io.opaa.api.types.AssetRole;
 import io.opaa.asset.AssetAuthorization;
 import io.opaa.permission.AssetAccessService;
+import io.opaa.permission.AssetReach;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -133,16 +134,20 @@ public class LibraryAccessService {
       List<KnowledgeLibrary> libraries, UUID userId) {
     Set<UUID> libraryIds =
         libraries.stream().map(KnowledgeLibrary::getId).collect(Collectors.toSet());
-    Set<UUID> organizationWide =
-        libraries.stream()
-            .filter(KnowledgeLibrary::isOrganizationWide)
-            .map(KnowledgeLibrary::getId)
-            .collect(Collectors.toSet());
     Map<UUID, AssetRole> roles =
-        assetAccessService.effectiveRoles(
-            KnowledgeLibrary.ASSET_TYPE, libraryIds, userId, organizationWide);
+        assetAccessService.effectiveRoles(KnowledgeLibrary.ASSET_TYPE, libraryIds, userId);
     roles.replaceAll((id, role) -> role != null ? role : AssetRole.VIEWER);
     return roles;
+  }
+
+  /**
+   * How far each of {@code libraries} reaches right now - the figures the overview turns into its
+   * reach badge (#1931). One grouped read for the whole page.
+   */
+  public Map<UUID, AssetReach> reachOf(List<KnowledgeLibrary> libraries) {
+    return assetAccessService.reachByAsset(
+        KnowledgeLibrary.ASSET_TYPE,
+        libraries.stream().map(KnowledgeLibrary::getId).collect(Collectors.toSet()));
   }
 
   /** Evicts the cached grant list for a library, after its grants changed. */

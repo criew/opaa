@@ -2,7 +2,6 @@ package io.opaa.library;
 
 import io.opaa.api.types.AssetOwnerType;
 import io.opaa.api.types.AssetRole;
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
@@ -42,6 +41,7 @@ import io.opaa.indexing.source.s3.S3Connection;
 import io.opaa.indexing.source.s3.S3Credentials;
 import io.opaa.indexing.source.s3.S3SourceSettings;
 import io.opaa.indexing.source.s3.S3SourceSettingsJson;
+import io.opaa.permission.AssetReach;
 import io.opaa.permission.CapabilityService;
 import io.opaa.permission.SuccessionFinding;
 import io.opaa.sourceaccess.ProxyAndCredentials;
@@ -221,8 +221,6 @@ public class KnowledgeLibraryService {
     AssetOwnerType ownerType =
         request.ownerType() != null ? request.ownerType() : AssetOwnerType.USER;
 
-    AssetVisibility visibility =
-        request.visibility() != null ? request.visibility() : AssetVisibility.PRIVATE;
     boolean listed = Boolean.TRUE.equals(request.listed());
     SourceConfiguration sourceConfiguration = validateSourceConfiguration(request);
 
@@ -240,7 +238,6 @@ public class KnowledgeLibraryService {
               normalizedName,
               request.description(),
               request.ownerId(),
-              visibility,
               listed,
               sourceConfiguration.sourceType(),
               sourceConfiguration.sourcePath(),
@@ -255,7 +252,6 @@ public class KnowledgeLibraryService {
               normalizedName,
               request.description(),
               currentUserId,
-              visibility,
               listed,
               sourceConfiguration.sourceType(),
               sourceConfiguration.sourcePath(),
@@ -291,7 +287,6 @@ public class KnowledgeLibraryService {
   private Map<String, Object> libraryAuditPayload(KnowledgeLibrary library) {
     Map<String, Object> payload = new LinkedHashMap<>();
     payload.put("name", library.getName());
-    payload.put("visibility", library.getVisibility().name());
     payload.put("listed", library.isListed());
     // sourceType only, deliberately never sourcePath/sourceUrl/sourceCredentials - the audit log
     // is append-only and never purged the way the library row itself can be (ADR-0018,
@@ -304,9 +299,9 @@ public class KnowledgeLibraryService {
   /**
    * Lists every library {@code currentUserId} holds a right on, per {@link
    * LibraryAccessService#readableLibraryIds} - direct grant, grant to one of the caller's groups,
-   * or organization-wide visibility. Ownership is included because {@link #createLibrary} always
-   * grants the creator {@link AssetRole#OWNER} explicitly (see that method), not because ownership
-   * is a fourth access path of its own - deliberately the same formula {@link
+   * or a grant to "Alle Konten". Ownership is included because {@link #createLibrary} always grants
+   * the creator {@link AssetRole#OWNER} explicitly (see that method), not because ownership is a
+   * fourth access path of its own - deliberately the same formula {@link
    * LibraryAccessService#readableLibraryIds} uses for the permission-aware vector search filter, so
    * the two paths can never disagree on which libraries a user may see (#418, closing the
    * divergence #406 already closed for {@code effectiveRole} vs. {@code readableLibraryIds}).
@@ -364,6 +359,8 @@ public class KnowledgeLibraryService {
                     IndexingJobRepository.LibraryLastCompleted::getLastCompletedAt));
 
     Map<UUID, SuccessionFinding> succession = successionSource.findingsAmong(libraries, false);
+    // #1931: the reach badge, one grouped query for the whole page like the counts above.
+    Map<UUID, AssetReach> reach = accessService.reachOf(libraries);
 
     return libraries.stream()
         .map(
@@ -374,7 +371,8 @@ public class KnowledgeLibraryService {
                     documentCounts.getOrDefault(library.getId(), 0L),
                     ownerNames.get(library.getOwnerId()),
                     lastIndexedAt.get(library.getId()),
-                    succession.get(library.getId())))
+                    succession.get(library.getId()),
+                    reach.getOrDefault(library.getId(), AssetReach.NONE)))
         .toList();
   }
 
@@ -463,10 +461,10 @@ public class KnowledgeLibraryService {
     List<String> previousConfluenceSpaceKeys =
         library.getConfluenceSpaces().stream().map(ConfluenceSpaceSelection::getSpaceKey).toList();
     String previousS3Settings = S3SourceSettingsJson.write(library.getS3Settings());
-    // The shell refuses a widening while the succession is open and asks the share cap; a change
-    // of visibility or listed writes its history interval and ASSET_VISIBILITY_CHANGED there.
+    // The shell refuses listing while the succession is open and asks the share cap; a change of
+    // listed writes its history interval and ASSET_VISIBILITY_CHANGED there.
     library.rename(normalizedName, request.description());
-    shellService.changeReach(library, request.visibility(), listed, currentUserId);
+    shellService.changeListed(library, listed, currentUserId);
     if (replacesSchedule) {
       library.updateSchedule(validatedSchedule.enabled(), validatedSchedule.cron());
     }
@@ -537,8 +535,8 @@ public class KnowledgeLibraryService {
     }
     // #545: a pure source-configuration change (e.g. rotating sourceCredentials or moving a
     // FILESYSTEM/HTTP_DIRECTORY/RSS_FEED crawl target) previously left no trace at all - neither
-    // LIBRARY_CHANGED (name/description) nor ASSET_VISIBILITY_CHANGED (visibility/listed) fires
-    // for it, since the edit dialog (#516) resends name/description/visibility/listed unchanged.
+    // LIBRARY_CHANGED (name/description) nor ASSET_VISIBILITY_CHANGED (listed) fires for it,
+    // since the edit dialog (#516) resends name/description/listed unchanged.
     // Only the set of changed fields is recorded, never their values - sourceCredentials in
     // particular must never appear in the log (ADR-0018, Entscheidung 4), so unlike
     // LIBRARY_CHANGED's before/after this event carries no value at all, not even a redacted one.
@@ -623,27 +621,28 @@ public class KnowledgeLibraryService {
 
   /**
    * Sets a connector library's share cap (#797) - {@code SYSTEM_ADMIN} only, rejected for {@code
-   * UPLOAD}. Narrowing the cap below what the library currently carries clamps {@code
-   * visibility}/{@code listed} back down to it in the same transaction, through the asset shell and
-   * recorded separately from the cap change itself ({@code CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED}).
+   * UPLOAD}. A cap that now forbids what the library currently carries takes it back in the same
+   * transaction (#1931, ADR-0037 Entscheidung 5): the grant to "Alle Konten" is revoked through the
+   * ordinary grant path, {@code listed} is cleared through the asset shell. Both are recorded
+   * separately from the cap change itself ({@code CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED}), so
+   * nothing is ever left "verletzt, aber geduldet".
    */
   @Transactional
   public LibraryDetail updateShareCap(
-      UUID libraryId, AssetVisibility visibilityCap, boolean listedCap, CurrentUser caller) {
+      UUID libraryId, boolean allAccountsGrantAllowed, boolean listedCap, CurrentUser caller) {
     if (!caller.isSystemAdmin()) {
       throw new AccessDeniedException(
           "Nur die Systemverwaltung darf die Freigabe-Obergrenze einer Bibliothek setzen");
     }
-    Objects.requireNonNull(visibilityCap, "visibilityCap");
     KnowledgeLibrary library = loadLibrary(libraryId, caller);
     if (library.getSourceType() == DocumentSourceType.UPLOAD) {
       throw new ValidationException(
           "Upload-Bibliotheken tragen keine Freigabe-Obergrenze - jedes Dokument wird ohnehin"
               + " einzeln von der Eigentümerin kuratiert");
     }
-    AssetVisibility previousCap = library.getVisibilityCap();
+    boolean previousCap = library.isAllAccountsGrantAllowed();
     boolean previousListedCap = library.isListedCap();
-    library.updateShareCap(visibilityCap, listedCap);
+    library.updateShareCap(allAccountsGrantAllowed, listedCap);
     KnowledgeLibrary saved = libraryRepository.save(library);
     auditEventRecorder.recordUserAction(
         AuditEvent.builder()
@@ -651,13 +650,17 @@ public class KnowledgeLibraryService {
             .actor(caller.id())
             .type(AuditEventType.CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED)
             .object(AuditObjectType.KNOWLEDGE_LIBRARY, saved.getId(), saved.getName())
-            .before(Map.of("visibilityCap", previousCap.name(), "listedCap", previousListedCap))
-            .after(Map.of("visibilityCap", visibilityCap.name(), "listedCap", listedCap))
+            .before(Map.of("allAccountsGrantAllowed", previousCap, "listedCap", previousListedCap))
+            .after(
+                Map.of("allAccountsGrantAllowed", allAccountsGrantAllowed, "listedCap", listedCap))
             .outcome(AuditOutcome.SUCCESS)
             .build());
-    // The clamp is the same kind of change updateLibrary's own: one history interval, one
-    // ASSET_VISIBILITY_CHANGED entry, written by the shell after the cap entry above.
-    shellService.narrowReachTo(saved, visibilityCap, listedCap, caller.id());
+    if (!allAccountsGrantAllowed) {
+      grantService.revokeAllAccountsGrantForLoweredCap(saved, caller.id());
+    }
+    if (!listedCap) {
+      shellService.clearListedForLoweredCap(saved, caller.id());
+    }
     return toLibraryDetail(saved, AssetRole.OWNER, caller.id());
   }
 
@@ -1729,7 +1732,12 @@ public class KnowledgeLibraryService {
     // succeed - it bypasses to OWNER for a system admin, holdsIndependentOwnerRole never does.
     boolean diagnosticsLockToggleable = accessService.holdsIndependentOwnerRole(library, userId);
     return new LibraryDetail(
-        library, myRole, documentCount, managementDetail, diagnosticsLockToggleable);
+        library,
+        myRole,
+        documentCount,
+        managementDetail,
+        diagnosticsLockToggleable,
+        accessService.reachOf(List.of(library)).get(library.getId()));
   }
 
   private LibraryManagementDetail toManagementDetail(KnowledgeLibrary library) {
@@ -1781,9 +1789,11 @@ public class KnowledgeLibraryService {
         externalAccessService.describe(library),
         // #797: UPLOAD never carries a cap narrower than the unrestricted default
         // (chk_knowledge_libraries_share_cap_upload_unrestricted) - null here rather than the
-        // always-ORGANIZATION/true value keeps a MANAGER from reading a ceiling into an UPLOAD
-        // library that in fact has none.
-        library.getSourceType() == DocumentSourceType.UPLOAD ? null : library.getVisibilityCap(),
+        // always-true value keeps a MANAGER from reading a ceiling into an UPLOAD library that in
+        // fact has none.
+        library.getSourceType() == DocumentSourceType.UPLOAD
+            ? null
+            : library.isAllAccountsGrantAllowed(),
         library.getSourceType() == DocumentSourceType.UPLOAD ? null : library.isListedCap());
   }
 

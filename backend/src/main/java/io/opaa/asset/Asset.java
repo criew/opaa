@@ -2,7 +2,6 @@ package io.opaa.asset;
 
 import io.opaa.api.types.AssetOrigin;
 import io.opaa.api.types.AssetOwnerType;
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.permission.AssetType;
 import io.opaa.permission.AssetTypeConverter;
 import io.opaa.permission.PermissionSubject;
@@ -24,16 +23,19 @@ import org.hibernate.annotations.DynamicUpdate;
 
 /**
  * The asset shell (#1899, docs/features/spaces-and-assets.md#assets): everything an asset has
- * regardless of its type - name, description, one owner, release level ({@link #visibility}),
- * findability ({@link #listed}), origin and creator. A type adds its own table and entity by
- * extending this class ({@code JOINED}: the type row shares the shell's id); an asset whose type
- * maps no entity of its own loads as a plain {@code Asset}.
+ * regardless of its type - name, description, one owner, findability ({@link #listed}), origin and
+ * creator. A type adds its own table and entity by extending this class ({@code JOINED}: the type
+ * row shares the shell's id); an asset whose type maps no entity of its own loads as a plain {@code
+ * Asset}.
+ *
+ * <p><b>How far the asset reaches is not a field here</b> (#1931, ADR-0037): it follows from the
+ * grants alone, "Alle Konten" included. The shell carries only findability, which is a statement
+ * about the catalogue and not about access.
  *
  * <p>Exactly the owner column matching {@link #ownerType} is set ({@code chk_assets_owner}); each
- * carries a real foreign key, which a single polymorphic column could not. Whoever changes owner,
- * visibility or listed goes through {@link AssetShellService}, which writes the audit entry, the
- * history interval and applies the frozen-reach rule - the setters are package-private for that
- * reason.
+ * carries a real foreign key, which a single polymorphic column could not. Whoever changes owner or
+ * listed goes through {@link AssetShellService}, which writes the audit entry, the history interval
+ * and applies the frozen-reach rule - the setters are package-private for that reason.
  */
 @Entity
 @DynamicUpdate
@@ -66,10 +68,6 @@ public class Asset implements OwnedAsset {
   @Column(name = "owner_group_id")
   private UUID ownerGroupId;
 
-  @Enumerated(EnumType.STRING)
-  @Column(name = "visibility", nullable = false, length = 20)
-  private AssetVisibility visibility;
-
   @Column(name = "listed", nullable = false)
   private boolean listed;
 
@@ -100,7 +98,6 @@ public class Asset implements OwnedAsset {
       String description,
       AssetOwnerType ownerType,
       UUID ownerId,
-      AssetVisibility visibility,
       boolean listed) {
     this.id = UUID.randomUUID();
     this.assetType = Objects.requireNonNull(assetType, "assetType");
@@ -110,7 +107,6 @@ public class Asset implements OwnedAsset {
     this.ownerType = Objects.requireNonNull(ownerType, "ownerType");
     this.ownerUserId = ownerType == AssetOwnerType.USER ? ownerId : null;
     this.ownerGroupId = ownerType == AssetOwnerType.GROUP ? ownerId : null;
-    this.visibility = visibility;
     this.listed = listed;
   }
 
@@ -136,15 +132,14 @@ public class Asset implements OwnedAsset {
     this.createdByUserId = userId;
   }
 
-  /** Name and description - no reach field, so no history and no guard. */
+  /** Name and description - neither is a reach field, so no history and no guard. */
   public void rename(String name, String description) {
     this.name = name;
     this.description = description;
   }
 
-  /** Package-private by contract: only {@link AssetShellService} changes the reach. */
-  void applyReach(AssetVisibility visibility, boolean listed) {
-    this.visibility = Objects.requireNonNull(visibility, "visibility");
+  /** Package-private by contract: only {@link AssetShellService} changes findability. */
+  void applyListed(boolean listed) {
     this.listed = listed;
   }
 
@@ -182,11 +177,6 @@ public class Asset implements OwnedAsset {
         : PermissionSubject.user(ownerUserId, organizationId);
   }
 
-  /** Whether the asset is released organization-wide - the third way of the rights formula. */
-  public boolean isOrganizationWide() {
-    return visibility == AssetVisibility.ORGANIZATION;
-  }
-
   public UUID getId() {
     return id;
   }
@@ -217,10 +207,6 @@ public class Asset implements OwnedAsset {
 
   public UUID getOwnerGroupId() {
     return ownerGroupId;
-  }
-
-  public AssetVisibility getVisibility() {
-    return visibility;
   }
 
   public boolean isListed() {

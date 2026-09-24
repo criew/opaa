@@ -26,8 +26,6 @@ function notFound() {
   return HttpResponse.json({ error: 'Prompt-Bibliothek nicht gefunden' }, { status: 404 })
 }
 
-const VISIBILITY_ORDER = ['PRIVATE', 'SHARED', 'ORGANIZATION'] as const
-
 /** The server's text form: blanks inside the braces removed, system variables upper case. */
 function normalizeText(text: string): string {
   return text.replace(/\{\{\s*([A-Za-z][A-Za-z0-9_]*)\s*\}\}/g, (_match, name: string) => {
@@ -131,7 +129,7 @@ export const promptLibraryHandlers = [
       ownerType: body.ownerType ?? 'USER',
       ownerId: group?.id ?? 'mock-user-id',
       ownerName: group?.name ?? 'Mock User',
-      visibility: body.visibility ?? 'PRIVATE',
+      reach: { allAccounts: false, groupCount: 0, userCount: 1 },
       listed: body.listed ?? false,
       // The creator owns a personal library; a group owner holds MANAGER and so does its member.
       myRole: body.ownerType === 'GROUP' ? 'MANAGER' : 'OWNER',
@@ -155,13 +153,13 @@ export const promptLibraryHandlers = [
     if (!library) return notFound()
     if (!holds(library, 'MANAGER')) return forbidden()
     const body = (await request.json()) as PromptLibraryUpdateRequest
-    const widens =
-      VISIBILITY_ORDER.indexOf(body.visibility) > VISIBILITY_ORDER.indexOf(library.visibility) ||
-      (body.listed && !library.listed)
+    // #1931: Die Reichweite ist eine Freigabe - am Aktualisieren waechst nur noch die
+    // Auffindbarkeit.
+    const widens = body.listed && !library.listed
     if (library.succession && widens) {
       return HttpResponse.json(
         {
-          error: `Für dieses Objekt ist die Nachfolge offen: eine größere Reichweite (Sichtbarkeit oder Auffindbarkeit) ist deshalb nicht möglich. Bestehende Rechte bleiben unverändert, und nichts wird gelöscht. Zuständig: ${library.succession.addresseeLabel}`,
+          error: `Für dieses Objekt ist die Nachfolge offen: eine größere Reichweite (Auffindbarkeit) ist deshalb nicht möglich. Bestehende Rechte bleiben unverändert, und nichts wird gelöscht. Zuständig: ${library.succession.addresseeLabel}`,
           code: 'SUCCESSION_OPEN',
         },
         { status: 409 },
@@ -170,7 +168,6 @@ export const promptLibraryHandlers = [
     Object.assign(library, {
       name: body.name,
       description: body.description ?? null,
-      visibility: body.visibility,
       listed: body.listed,
       updatedAt: new Date().toISOString(),
     })

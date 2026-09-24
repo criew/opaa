@@ -718,7 +718,9 @@ describe('LibraryCreatePage (#596, Mockup 1e)', () => {
     )
   })
 
-  it('creates the library with the chosen visibility and navigates to its detail page', async () => {
+  // #1931: a library is created with no reach of its own - the wizard no longer picks a release
+  // level, because there is none to pick.
+  it('creates the library and navigates to its detail page', async () => {
     const user = userEvent.setup()
     renderPage()
 
@@ -726,17 +728,13 @@ describe('LibraryCreatePage (#596, Mockup 1e)', () => {
     await user.click(screen.getByRole('button', { name: 'Weiter' }))
     await user.click(screen.getByRole('button', { name: 'Weiter zu Rechten' }))
 
-    await user.click(screen.getByRole('combobox', { name: /Verteilungsstufe/ }))
-    await user.click(screen.getByRole('option', { name: /organisationsweit/ }))
+    expect(screen.queryByRole('combobox', { name: /Verteilungsstufe/ })).not.toBeInTheDocument()
+
     await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
 
     await waitFor(() => {
       expect(mockCreateNewLibrary).toHaveBeenCalledWith(
-        expect.objectContaining({
-          name: 'Rechtsquellen Soziales',
-          sourceType: 'UPLOAD',
-          visibility: 'ORGANIZATION',
-        }),
+        expect.objectContaining({ name: 'Rechtsquellen Soziales', sourceType: 'UPLOAD' }),
       )
     })
     expect(mockNavigate).toHaveBeenCalledWith('/libraries/lib-neu')

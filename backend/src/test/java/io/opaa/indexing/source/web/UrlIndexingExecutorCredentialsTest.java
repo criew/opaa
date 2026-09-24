@@ -2,7 +2,6 @@ package io.opaa.indexing.source.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.SystemRole;
 import io.opaa.library.KnowledgeLibrary;
@@ -76,7 +75,6 @@ class UrlIndexingExecutorCredentialsTest {
                 "Web-Verzeichnis mit Zugangsdaten",
                 null,
                 userId,
-                AssetVisibility.PRIVATE,
                 false,
                 DocumentSourceType.HTTP_DIRECTORY,
                 null,

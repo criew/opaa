@@ -9,14 +9,13 @@ public enum AssetVisibilityHistoryCause {
   CREATED,
 
   /**
-   * {@code visibility} or {@code listed} changed - closes the previous interval and opens a new one
-   * with the new values.
+   * {@code listed} changed - closes the previous interval and opens a new one with the new value.
    */
   VISIBILITY_CHANGED,
 
   /**
    * The release for Fremdzugaenge was set or taken back - closes the previous interval and opens a
-   * new one, exactly like {@link #VISIBILITY_CHANGED} does for its own two fields (#1731).
+   * new one, exactly like {@link #VISIBILITY_CHANGED} does for its own field (#1731).
    */
   EXTERNAL_ACCESS_CHANGED,
 

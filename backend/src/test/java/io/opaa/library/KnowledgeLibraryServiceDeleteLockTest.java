@@ -8,7 +8,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.AssetRole;
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.SystemRole;
 import io.opaa.asset.AssetGrantService;
@@ -153,7 +152,6 @@ class KnowledgeLibraryServiceDeleteLockTest {
             "Laufende Indizierung",
             null,
             ownerId,
-            AssetVisibility.PRIVATE,
             false,
             DocumentSourceType.UPLOAD,
             null,

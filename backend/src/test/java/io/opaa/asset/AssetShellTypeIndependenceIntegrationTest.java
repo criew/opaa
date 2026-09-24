@@ -5,9 +5,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.api.types.AccessBasis;
+import io.opaa.api.types.AssetGrantSubjectType;
 import io.opaa.api.types.AssetRole;
-import io.opaa.api.types.AssetVisibility;
-import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.api.types.SpaceRole;
 import io.opaa.api.types.SpaceVisibility;
 import io.opaa.api.types.SuccessionKind;
@@ -24,6 +23,8 @@ import io.opaa.organization.OrganizationRepository;
 import io.opaa.permission.AccessPath;
 import io.opaa.permission.AssetAccessService;
 import io.opaa.permission.AssetGrant;
+import io.opaa.permission.AssetGrantHistoryCause;
+import io.opaa.permission.AssetGrantHistoryRepository;
 import io.opaa.permission.AssetGrantRepository;
 import io.opaa.permission.SuccessionFinding;
 import io.opaa.space.Space;
@@ -60,7 +61,7 @@ class AssetShellTypeIndependenceIntegrationTest {
   @Autowired private AssetAccessDerivationService derivationService;
   @Autowired private AssetShellService shellService;
   @Autowired private AssetRepository assetRepository;
-  @Autowired private AssetVisibilityHistoryRepository visibilityHistoryRepository;
+  @Autowired private AssetGrantHistoryRepository grantHistoryRepository;
   @Autowired private AssetGrantRepository grantRepository;
   @Autowired private SpaceAssetAssociationService associationService;
   @Autowired private SpaceAssetAssociationRepository associationRepository;
@@ -96,13 +97,13 @@ class AssetShellTypeIndependenceIntegrationTest {
 
   @Test
   void aGrantOnATestDefinedTypeIsWrittenListedEvaluatedAndRevokedByTheOneGrantService() {
-    UUID asset = createTestAsset(AssetVisibility.PRIVATE);
+    UUID asset = createTestAsset();
 
     var view =
         grantService.upsertGrant(
             TEST_ASSET,
             asset,
-            new AssetGrantUpsert(PermissionSubjectType.USER, reader, AssetRole.EDITOR),
+            new AssetGrantUpsert(AssetGrantSubjectType.USER, reader, AssetRole.EDITOR),
             callerOf(owner));
 
     assertThat(view.grant().getAssetType()).isEqualTo(TEST_ASSET);
@@ -111,28 +112,31 @@ class AssetShellTypeIndependenceIntegrationTest {
         .containsExactlyInAnyOrder(owner, reader);
     assertThat(accessService.readableAssetIds(TEST_ASSET, reader, organizationId))
         .containsExactly(asset);
-    assertThat(accessService.effectiveRole(TEST_ASSET, asset, reader, false))
-        .isEqualTo(AssetRole.EDITOR);
+    assertThat(accessService.effectiveRole(TEST_ASSET, asset, reader)).isEqualTo(AssetRole.EDITOR);
 
     grantService.revokeGrant(TEST_ASSET, asset, view.grant().getId(), callerOf(owner));
 
     assertThat(accessService.readableAssetIds(TEST_ASSET, reader, organizationId)).isEmpty();
   }
 
+  /**
+   * #1931: organization-wide reach of a type no enum names is a grant to "Alle Konten" - written
+   * through the one grant service, resolved by the one formula, derived as ORGANIZATION_WIDE.
+   */
   @Test
-  void anOrganizationWideReleaseOfATestDefinedTypeReachesEverybodyAndIsHistorised() {
-    UUID asset = createTestAsset(AssetVisibility.PRIVATE);
+  void aGrantToAllAccountsOfATestDefinedTypeReachesEverybodyAndIsHistorised() {
+    UUID asset = createTestAsset();
     assertThat(accessService.readableAssetIds(TEST_ASSET, reader, organizationId)).isEmpty();
+    assertThat(assetRepository.findById(asset).orElseThrow())
+        .as("a type without an entity loads as the shell")
+        .isExactlyInstanceOf(Asset.class);
 
-    transactionTemplate.executeWithoutResult(
-        status -> {
-          Asset loaded = assetRepository.findById(asset).orElseThrow();
-          assertThat(loaded)
-              .as("a type without an entity loads as the shell")
-              .isExactlyInstanceOf(Asset.class);
-          shellService.changeReach(loaded, AssetVisibility.ORGANIZATION, false, owner);
-        });
+    var view =
+        grantService.upsertGrant(
+            TEST_ASSET, asset, AssetGrantUpsert.forAllAccounts(AssetRole.VIEWER), callerOf(owner));
 
+    assertThat(view.subjectDisplayName()).isEqualTo("Alle Konten");
+    assertThat(view.grant().getSubjectId()).isNull();
     assertThat(accessService.readableAssetIds(TEST_ASSET, reader, organizationId))
         .containsExactly(asset);
     assertThat(accessService.readableAssetIds(KnowledgeLibrary.ASSET_TYPE, reader, organizationId))
@@ -144,25 +148,22 @@ class AssetShellTypeIndependenceIntegrationTest {
         .extracting(AccessPath::basis)
         .containsExactly(AccessBasis.ORGANIZATION_WIDE);
     assertThat(
-            visibilityHistoryRepository.findByAssetTypeAndAssetIdAndValidToIsNull(
-                TEST_ASSET, asset))
+            grantHistoryRepository.findByAssetTypeAndAssetIdAndSubjectTypeAndValidToIsNull(
+                TEST_ASSET, asset, AssetGrantSubjectType.ALL_ACCOUNTS))
         .get()
         .satisfies(
             interval -> {
-              assertThat(interval.getVisibility()).isEqualTo(AssetVisibility.ORGANIZATION);
-              assertThat(interval.getCause())
-                  .isEqualTo(AssetVisibilityHistoryCause.VISIBILITY_CHANGED);
+              assertThat(interval.getRole()).isEqualTo(AssetRole.VIEWER);
+              assertThat(interval.getCause()).isEqualTo(AssetGrantHistoryCause.GRANTED);
             });
   }
 
   @Test
   void aTestDefinedTypeIsAssociatedAndDetachedButTheSearchReadsLibrariesOnly() {
-    UUID asset = createTestAsset(AssetVisibility.PRIVATE);
+    UUID asset = createTestAsset();
     UUID library =
         libraryRepository
-            .save(
-                KnowledgeLibrary.ownedByUser(
-                    organizationId, "Bibliothek", null, owner, AssetVisibility.PRIVATE, false))
+            .save(KnowledgeLibrary.ownedByUser(organizationId, "Bibliothek", null, owner, false))
             .getId();
     grantRepository.save(
         AssetGrant.forUser(
@@ -202,7 +203,7 @@ class AssetShellTypeIndependenceIntegrationTest {
    */
   @Test
   void aTestDefinedTypeWithoutACapableOwnerIsListedRecordedAndFrozen() {
-    UUID asset = createTestAsset(AssetVisibility.PRIVATE);
+    UUID asset = createTestAsset();
     grantRepository.save(
         AssetGrant.forUser(
             TEST_ASSET, asset, organizationId, reader, AssetRole.VIEWER, null, owner));
@@ -238,18 +239,23 @@ class AssetShellTypeIndependenceIntegrationTest {
                     TEST_ASSET,
                     asset,
                     new AssetGrantUpsert(
-                        PermissionSubjectType.USER, administrator, AssetRole.VIEWER),
+                        AssetGrantSubjectType.USER, administrator, AssetRole.VIEWER),
+                    systemAdmin))
+        .isInstanceOf(ConflictException.class);
+    assertThatThrownBy(
+            () ->
+                grantService.upsertGrant(
+                    TEST_ASSET,
+                    asset,
+                    AssetGrantUpsert.forAllAccounts(AssetRole.VIEWER),
                     systemAdmin))
         .isInstanceOf(ConflictException.class);
     assertThatThrownBy(
             () ->
                 transactionTemplate.executeWithoutResult(
                     status ->
-                        shellService.changeReach(
-                            assetRepository.findById(asset).orElseThrow(),
-                            AssetVisibility.ORGANIZATION,
-                            false,
-                            administrator)))
+                        shellService.changeListed(
+                            assetRepository.findById(asset).orElseThrow(), true, administrator)))
         .isInstanceOf(ConflictException.class);
     assertThatThrownBy(
             () -> associationService.associate(space, TEST_ASSET, asset, callerOf(reader)))
@@ -259,7 +265,7 @@ class AssetShellTypeIndependenceIntegrationTest {
   /** The grants and associations of any type go with their asset - the foreign keys of #1899. */
   @Test
   void deletingTheShellTakesGrantsAndAssociationsOfEveryTypeWithIt() {
-    UUID asset = createTestAsset(AssetVisibility.PRIVATE);
+    UUID asset = createTestAsset();
     UUID space = createSpace(owner);
     associationService.associate(space, TEST_ASSET, asset, callerOf(owner));
 
@@ -270,16 +276,15 @@ class AssetShellTypeIndependenceIntegrationTest {
   }
 
   /** An asset of the test type: a shell row and its owner's grant, nothing else. */
-  private UUID createTestAsset(AssetVisibility visibility) {
+  private UUID createTestAsset() {
     UUID id = UUID.randomUUID();
     jdbcTemplate.update(
         "INSERT INTO assets (id, asset_type, organization_id, name, owner_type, owner_user_id,"
-            + " visibility, created_by_user_id) VALUES (?, ?, ?, 'Testobjekt', 'USER', ?, ?, ?)",
+            + " created_by_user_id) VALUES (?, ?, ?, 'Testobjekt', 'USER', ?, ?)",
         id,
         TEST_ASSET.value(),
         organizationId,
         owner,
-        visibility.name(),
         owner);
     grantRepository.save(
         AssetGrant.forUser(TEST_ASSET, id, organizationId, owner, AssetRole.OWNER, null, owner));

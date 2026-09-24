@@ -156,7 +156,9 @@ ersten Stufe nicht geschrieben.
   einschließlich Mitfreigaben aus der Freigabekette
 - Ablauf einer Befristung, sobald sie wirkt — ein Recht, das ohne Eintrag endet, ist im Nachweis eine
   Lücke wie eines, das ohne Eintrag beginnt
-- Änderung von Freigabestufe oder Auffindbarkeit eines Assets (`visibility`, `listed`)
+- Änderung der Auffindbarkeit eines Assets (`listed`) — die Reichweite selbst ist seit
+  [ADR-0037](../decisions/0037-reichweite-als-freigabe-an-alle.md) ein Grant und wird als solcher
+  protokolliert
 - Setzen, Zurücknehmen, Erlöschen und Aussetzen der **Freigabe einer Wissensbibliothek für
   Fremdzugänge** ([external-access.md](./external-access.md#die-freigabe-der-bibliothek)) — sie ist
   dieselbe Art Reichweitenfeld wie die beiden oben und entscheidet zusätzlich über die Hausgrenze;
@@ -241,7 +243,8 @@ ersten Stufe nicht geschrieben.
 
 Die Liste oben beschreibt das **Zielverhalten**; welche Arten heute tatsächlich einen Eintrag
 schreiben, hängt davon ab, ob die zugrunde liegende Funktion im Code schon existiert. Verdrahtet
-sind: Rechte an Assets (Vergabe/Änderung/Entzug von Grants, Änderung von `visibility`/`listed`),
+sind: Rechte an Assets (Vergabe/Änderung/Entzug von Grants — Empfänger „Alle Konten"
+eingeschlossen —, Änderung von `listed`),
 Anlegen/Ändern/Löschen von Bibliotheken, Spaces und Gruppen — seit #1901 auch von Prompt-Bibliotheken
 und Prompts (`PROMPT_LIBRARY_CREATED`/`_CHANGED`/`_DELETED`, `PROMPT_CREATED`/`_CHANGED`/`_DELETED`,
 Objekte `PROMPT_LIBRARY` und `PROMPT`) —, Aufnahme/Rollenänderung/Entfernen von
@@ -590,16 +593,19 @@ Die Prüferfrage lautet nicht „was hat Frau K. getan", sondern: *„Worauf hat
 und belegen Sie, dass die Bibliothek `Personalvorgänge` nicht dazugehörte."* Die **Negativfrage** ist die
 schwierigere, und ein Ereignisprotokoll kann sie nicht beantworten, solange es Lücken haben kann.
 
-Deshalb werden **alle drei Quellen historisiert**: Grants, Gruppenmitgliedschaften **und die
-Reichweitenfelder am Asset** (`visibility`, `listed` sowie die Freigabe einer Wissensbibliothek für
-Fremdzugänge, siehe [external-access.md](./external-access.md#die-freigabe-der-bibliothek)). Zu jedem
-Zeitpunkt ist rekonstruierbar, wer welche Rechte hatte, seit wann und aufgrund welchen Vorgangs.
+Deshalb werden **alle Quellen historisiert**: Grants — Empfänger Person, Gruppe **und „Alle
+Beschäftigten"** —, Gruppenmitgliedschaften und die verbleibenden Reichweitenfelder am Asset (`listed`
+sowie die Freigabe einer Wissensbibliothek für Fremdzugänge, siehe
+[external-access.md](./external-access.md#die-freigabe-der-bibliothek)). Zu jedem Zeitpunkt ist
+rekonstruierbar, wer welche Rechte hatte, seit wann und aufgrund welchen Vorgangs.
 
-Die dritte Quelle mitzunehmen ist nicht optional: Eine Bibliothek, die vom 1. bis zum 10. März
-organisationsweit freigegeben war, verschaffte in dieser Zeit Zugriff, ohne dass je ein Grant existierte.
-Wäre nur protokolliert statt historisiert, ruhte ein Drittel der Rekonstruktion auf genau der
-lückenanfälligen Quelle, die dieses Kapitel verwirft — und die Antwort auf die Prüferfrage fiele falsch
-aus, und zwar in die gefährliche Richtung. Es sind drei Felder an wenigen hundert Objekten.
+Eine Bibliothek, die vom 1. bis zum 10. März dem ganzen Haus offenstand, verschaffte in dieser Zeit
+Zugriff — und das muss für den 3. März belegbar sein, auch wenn die Freigabe längst zurückgenommen ist.
+Seit [ADR-0037](../decisions/0037-reichweite-als-freigabe-an-alle.md) ist das ein gewöhnliches
+Grant-Intervall wie jedes andere; zuvor war es ein eigenes Feld mit eigener Historie. Der Umstieg hat
+**jedes bestehende organisationsweite Intervall in ein Grant-Intervall überführt** (Migration 085): Wäre
+nur der lebende Zustand übernommen worden, fiele die Antwort für abgeschlossene Zeiträume falsch aus,
+und zwar in die gefährliche Richtung.
 
 **Die Aufbewahrung der Historie folgt derselben Logik wie das Protokoll: Sie unterliegt einer
 Höchstdauer mit erzwungenen Grenzen.** Der **Personenbezug** folgt dieser Logik dagegen **nicht**:
@@ -694,7 +700,7 @@ schreiben, fällt dort auf, bevor er in Betrieb geht. Welche Klassen dabei über
 derselbe Test gegen den Anwendungskontext, damit eine neue Klasse an den Rechtetabellen nicht unbemerkt
 hinzukommt.
 
-Für die **Reichweitenfelder** (`visibility`, `listed` und die Fremdzugangsfreigabe) trägt diese
+Für die **Reichweitenfelder** (`listed` und die Fremdzugangsfreigabe) trägt diese
 Einschränkung zusätzlich der Compiler:
 Über die Bibliothek selbst sind sie nur aus dem Paket heraus veränderbar, das die Historienzeile schreibt
 — ein Schreibpfad außerhalb dieses Pakets lässt sich gar nicht erst übersetzen. Am Compiler vorbei ginge
@@ -717,7 +723,8 @@ der Vektorsuche ist, existiert kein abgelehnter Zugriff, den man protokollieren 
 Chunks werden nie geladen. Was es gibt, ist der Nachweis über die **Rechtehistorie** — und er ist der
 stärkere, weil er den Zustand belegt und nicht das Ausbleiben eines Ereignisses.
 
-**Umsetzungsstand (#238, #1813):** Grants, Gruppenmitgliedschaften, die Reichweitenfelder einer
+**Umsetzungsstand (#238, #1813, #1931):** Grants — den an „Alle Konten" eingeschlossen —,
+Gruppenmitgliedschaften, die Reichweitenfelder einer
 Bibliothek und die installationsweiten Fähigkeiten (ADR-0036, Entscheidung 5) sind als Intervalle mit
 auslösendem Vorgang historisiert, einschließlich eines Backfills für den
 Altbestand (Ursache `BACKFILL`, `valid_from` aus dem jeweiligen Erstellungszeitpunkt der Fachzeile) —
@@ -726,8 +733,8 @@ Recht falsch, nicht bloß lückenhaft. Die Historie überlebt die Löschung eine
 (siehe [ADR-0016](../decisions/0016-loeschschicksal-rechtehistorie.md)): Die Fachobjekt-Spalten tragen
 bewusst keinen Fremdschlüssel, damit eine reguläre Lösch-Operation die Beweislage nicht mit sich reißt.
 
-**Umsetzungsstand der Fremdzugangsfreigabe (#1731):** Das dritte Reichweitenfeld — die Freigabe einer
-Wissensbibliothek für Fremdzugänge — ist gebaut und liegt im selben Intervall wie `visibility` und
+**Umsetzungsstand der Fremdzugangsfreigabe (#1731):** Die Freigabe einer
+Wissensbibliothek für Fremdzugänge ist gebaut und liegt im selben Intervall wie
 `listed`, mit demselben Schreibpfadschutz (`KnowledgeLibrary#updateExternalAccess` ist
 paketprivat). Setzen, Zurücknehmen und Erlöschen erzeugen je einen Protokolleintrag
 (`ASSET_EXTERNAL_ACCESS_CHANGED`, `ASSET_EXTERNAL_ACCESS_EXPIRED`) und öffnen je ein neues Intervall;
@@ -739,7 +746,8 @@ Bibliothek freigegeben?" wird aus der Historie allein beantwortet
 (`AssetVisibilityHistoryService#externalAccessActiveAsOf`), also auch nach der monatsweisen Löschung des
 Protokollzeitraums. **Aussetzen** ist im Modell vorgesehen (Zustand `SUSPENDED`), wird aber weiterhin
 von nichts gesetzt: [#797](https://github.com/criew/opaa/issues/797) hat die Freigabe-Obergrenze
-konnektor-gespeister Bibliotheken ausdrücklich auf `visibility`/`listed` begrenzt und lässt die
+konnektor-gespeister Bibliotheken ausdrücklich auf die Freigabe an „Alle Konten" und auf
+`listed` begrenzt und lässt die
 Fremdzugangsfreigabe unberührt (siehe [external-access.md](./external-access.md#die-freigabe-ist-ein-reichweitenfeld-und-wird-wie-eines-behandelt)).
 
 **Auflösung der Intervallgrenzen (#1497, [ADR-0032](../decisions/0032-zeitquelle-rechtehistorie.md)):**

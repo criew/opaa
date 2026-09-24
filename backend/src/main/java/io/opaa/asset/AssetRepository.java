@@ -55,7 +55,7 @@ public interface AssetRepository extends JpaRepository<Asset, UUID> {
   /** The shell fields of the given assets, in one query. */
   @Query(
       "select new io.opaa.asset.AssetHeader(a.id, a.assetType, a.organizationId, a.name,"
-          + " a.description, a.visibility) from Asset a where a.id in :ids")
+          + " a.description) from Asset a where a.id in :ids")
   List<AssetHeader> findHeadersByIdIn(@Param("ids") Collection<UUID> ids);
 
   /**

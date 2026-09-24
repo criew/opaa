@@ -9,7 +9,6 @@ import io.opaa.api.dto.DiagnosticContextRetentionResponse;
 import io.opaa.api.dto.DiagnosticImpersonationGrantResponse;
 import io.opaa.api.dto.LibraryDiagnosticsLockResponse;
 import io.opaa.api.dto.OwnDiagnosticContextEventPage;
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DiagnosticTargetKind;
 import io.opaa.diagnosticaccess.DiagnosticContextLogEntry;
 import io.opaa.diagnosticaccess.DiagnosticContextRetentionSettings;
@@ -244,12 +243,7 @@ class DiagnosticAccessResponseMapperTest {
   void mapsTheDiagnosticsLock() {
     KnowledgeLibrary library =
         KnowledgeLibrary.ownedByUser(
-            ORGANIZATION_ID,
-            "Personalvorgänge",
-            null,
-            UUID.randomUUID(),
-            AssetVisibility.PRIVATE,
-            false);
+            ORGANIZATION_ID, "Personalvorgänge", null, UUID.randomUUID(), false);
 
     LibraryDiagnosticsLockResponse response = DiagnosticAccessResponseMapper.toResponse(library);
 

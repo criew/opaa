@@ -342,6 +342,70 @@ describe('AssetGrantsDialog', () => {
     })
   })
 
+  // #1931: the third recipient - it names nobody, and it is the one that asks back.
+  it('grants every account of the organization after an explicit confirmation', async () => {
+    setSystemAdmin()
+    mockUpsertAssetGrant.mockResolvedValueOnce({
+      id: 'grant-all',
+      subjectType: 'ALL_ACCOUNTS',
+      subjectDisplayName: 'Alle Konten',
+      role: 'VIEWER',
+      expiresAt: null,
+      grantedByUserId: 'admin-1',
+      createdAt: '2026-03-05T10:00:00Z',
+      updatedAt: '2026-03-05T10:00:00Z',
+    } satisfies AssetGrantResponse)
+    renderWithProviders(
+      <AssetGrantsDialog
+        open
+        assetType="KNOWLEDGE_LIBRARY"
+        assetId={library.id}
+        assetName={library.name}
+        onClose={vi.fn()}
+      />,
+    )
+    const userEventInstance = userEvent.setup()
+
+    await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
+    await userEventInstance.click(await screen.findByRole('radio', { name: /alle konten/i }))
+    const submitButtons = screen.getAllByRole('button', { name: /^freigeben$/i })
+    await userEventInstance.click(submitButtons[submitButtons.length - 1])
+
+    await answerConfirm(userEventInstance, 'An alle Konten freigeben?', 'An alle freigeben')
+
+    await waitFor(() => {
+      expect(mockUpsertAssetGrant).toHaveBeenCalledWith('KNOWLEDGE_LIBRARY', library.id, {
+        subjectType: 'ALL_ACCOUNTS',
+        role: 'VIEWER',
+        expiresAt: null,
+      })
+    })
+    expect(await screen.findByText('Alle Konten')).toBeInTheDocument()
+  })
+
+  it('grants nothing when the confirmation for all accounts is declined', async () => {
+    setSystemAdmin()
+    renderWithProviders(
+      <AssetGrantsDialog
+        open
+        assetType="KNOWLEDGE_LIBRARY"
+        assetId={library.id}
+        assetName={library.name}
+        onClose={vi.fn()}
+      />,
+    )
+    const userEventInstance = userEvent.setup()
+
+    await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
+    await userEventInstance.click(await screen.findByRole('radio', { name: /alle konten/i }))
+    const submitButtons = screen.getAllByRole('button', { name: /^freigeben$/i })
+    await userEventInstance.click(submitButtons[submitButtons.length - 1])
+
+    await answerConfirm(userEventInstance, 'An alle Konten freigeben?', 'Abbrechen')
+
+    expect(mockUpsertAssetGrant).not.toHaveBeenCalled()
+  })
+
   it('rejects an expiry date in the past before calling the API', async () => {
     setSystemAdmin()
     renderWithProviders(

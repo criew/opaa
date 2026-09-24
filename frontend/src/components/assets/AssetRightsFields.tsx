@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Checkbox from '@mui/material/Checkbox'
-import FormControl from '@mui/material/FormControl'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import FormHelperText from '@mui/material/FormHelperText'
 import IconButton from '@mui/material/IconButton'
@@ -10,7 +9,6 @@ import MenuItem from '@mui/material/MenuItem'
 import Select from '@mui/material/Select'
 import Typography from '@mui/material/Typography'
 import DeleteIcon from '@mui/icons-material/Delete'
-import FieldLabel from '../wizard/FieldLabel'
 import SubjectPicker from '../permissions/SubjectPicker'
 import {
   confirmExternalSubject,
@@ -19,22 +17,14 @@ import {
   selectedSubjectId,
   type SubjectSelection,
 } from '../permissions/subjectSelection'
-import type { AssetRole, AssetVisibility } from '../../types/api'
-import {
-  assetRoleLabel,
-  libraryVisibilities,
-  libraryVisibilityDescription,
-  libraryVisibilityLabel,
-  permissionSubjectTypeLabel,
-} from '../../utils/labels'
+import type { AssetRole } from '../../types/api'
+import { assetRoleLabel, permissionSubjectTypeLabel } from '../../utils/labels'
 import type { PendingGrant } from './pendingGrants'
 
 const GRANT_ROLES: AssetRole[] = ['VIEWER', 'EDITOR', 'MANAGER']
 
 interface AssetRightsFieldsProps {
   idPrefix: string
-  visibility: AssetVisibility
-  onVisibilityChange: (visibility: AssetVisibility) => void
   /**
    * Findability in the catalog. Omitted where the wizard does not offer it; when offered it starts
    * unchecked, because listing is a deliberate act (docs/features/spaces-and-assets.md).
@@ -45,14 +35,14 @@ interface AssetRightsFieldsProps {
 }
 
 /**
- * The rights step of a creation wizard: distribution level, optionally findability, and grants
- * noted for after the creation - chosen with the same subject picker and the same confirmation
- * for an external provider's group as the rights dialog of an existing asset.
+ * The rights step of a creation wizard: optionally findability, and grants noted for after the
+ * creation - chosen with the same subject picker and the same confirmation for an external
+ * provider's group as the rights dialog of an existing asset. "Alle Konten" is deliberately not
+ * offered here (#1931): an asset that does not exist yet has no reach to widen, and the ceiling
+ * that governs such a grant is a property of the created asset.
  */
 export default function AssetRightsFields({
   idPrefix,
-  visibility,
-  onVisibilityChange,
   listed,
   pendingGrants,
   onPendingGrantsChange,
@@ -71,43 +61,21 @@ export default function AssetRightsFields({
 
   const handleAddGrant = async () => {
     const subjectId = selectedSubjectId(grantSubject)
-    if (!subjectId) return
+    if (!subjectId || grantSubject.type === 'ALL_ACCOUNTS') return
+    const subjectType = grantSubject.type
     if (!(await confirmExternalSubject(grantSubject))) return
     const label =
-      grantSubject.type === 'USER'
+      subjectType === 'USER'
         ? (grantSubject.user?.displayName ?? grantSubject.user?.email ?? subjectId)
         : grantSubject.group
           ? groupLabel(grantSubject.group)
           : subjectId
-    onPendingGrantsChange([
-      ...pendingGrants,
-      { subjectType: grantSubject.type, subjectId, label, role: grantRole },
-    ])
+    onPendingGrantsChange([...pendingGrants, { subjectType, subjectId, label, role: grantRole }])
     setGrantSubject({ type: grantSubject.type, user: null, group: null })
   }
 
   return (
     <>
-      <FormControl fullWidth>
-        <FieldLabel id={`${idPrefix}-visibility-label`}>Verteilungsstufe</FieldLabel>
-        <Select
-          labelId={`${idPrefix}-visibility-label`}
-          size="small"
-          value={visibility}
-          onChange={(e) => onVisibilityChange(e.target.value as AssetVisibility)}
-          aria-describedby={`${idPrefix}-visibility-helper`}
-        >
-          {libraryVisibilities.map((option) => (
-            <MenuItem key={option} value={option}>
-              {libraryVisibilityLabel(option)}
-            </MenuItem>
-          ))}
-        </Select>
-        <FormHelperText id={`${idPrefix}-visibility-helper`}>
-          {libraryVisibilityDescription(visibility)}
-        </FormHelperText>
-      </FormControl>
-
       {listed && (
         <Box>
           <FormControlLabel
@@ -117,11 +85,11 @@ export default function AssetRightsFields({
                 onChange={(e) => listed.onChange(e.target.checked)}
               />
             }
-            label="Im Katalog auffindbar"
+            label="Im Katalog auffindbar, auch ohne Berechtigung"
           />
           <FormHelperText sx={{ mt: 0 }}>
-            Standardmäßig aus. Auffindbar heißt nicht lesbar: Die Auffindbarkeit gewährt niemandem
-            Zugriff.
+            Standardmäßig aus. Auffindbar heißt nicht lesbar: Sichtbar wird der Eintrag, nicht der
+            Inhalt.
           </FormHelperText>
         </Box>
       )}

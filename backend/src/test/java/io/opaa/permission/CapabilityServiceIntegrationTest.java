@@ -3,7 +3,6 @@ package io.opaa.permission;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.Capability;
 import io.opaa.api.types.CapabilitySubjectType;
@@ -305,7 +304,6 @@ class CapabilityServiceIntegrationTest {
             "Fremde Bibliothek " + UUID.randomUUID(),
             null,
             ownerId,
-            AssetVisibility.PRIVATE,
             false);
     UUID libraryId = libraryRepository.save(library).getId();
     libraryIds.add(libraryId);

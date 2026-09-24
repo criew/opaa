@@ -1,5 +1,8 @@
-# Fixture chain for the delta test of changeset 088 (#1903): the delivered master changelog up to
-# and including 087, in master order. Keep this include list identical to the master prefix.
+# Fixture chain for the delta tests of changesets 088 (#1903) and 090 (#1931): the delivered
+# master changelog up to and including 087, in master order. 090 rewrites what 079-082 built -
+# the shell's visibility column, the visibility history and the two grant tables - and the prompt
+# library (085-087) is a second asset type sitting on the same shell, so its rows must exist
+# before 090 runs. Keep this include list identical to the master prefix.
 databaseChangeLog:
   - include:
       file: db/changelog/changes/001-baseline.yaml

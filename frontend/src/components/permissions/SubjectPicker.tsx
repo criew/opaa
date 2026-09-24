@@ -4,7 +4,7 @@ import Radio from '@mui/material/Radio'
 import RadioGroup from '@mui/material/RadioGroup'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
-import type { PermissionSubjectType } from '../../types/api'
+import type { AssetGrantSubjectType } from '../../types/api'
 import { PROTECTED_GROUP_SEARCH_HINT, type SubjectSelection } from './subjectSelection'
 import UserPicker from '../groups/UserPicker'
 import GroupPicker from './GroupPicker'
@@ -20,6 +20,11 @@ interface SubjectPickerProps {
   excludedGroupIds?: string[]
   /** Blendet das Suchfeld aus, wenn der Aufrufer stattdessen eine Kennung eingeben lässt. */
   hideSearch?: boolean
+  /**
+   * Bietet „Alle Konten" als dritte Art an (#1931). Standardmäßig aus: Eine
+   * Space-Mitgliedschaft und ein Eigentum kennen diesen Empfänger nicht.
+   */
+  allowAllAccounts?: boolean
 }
 
 /**
@@ -34,6 +39,7 @@ export default function SubjectPicker({
   excludedUserIds = [],
   excludedGroupIds = [],
   hideSearch = false,
+  allowAllAccounts = false,
 }: SubjectPickerProps) {
   return (
     <Stack spacing={1}>
@@ -47,7 +53,7 @@ export default function SubjectPicker({
           value={value.type}
           onChange={(event) =>
             onChange({
-              type: event.target.value as PermissionSubjectType,
+              type: event.target.value as AssetGrantSubjectType,
               user: null,
               group: null,
             })
@@ -55,9 +61,17 @@ export default function SubjectPicker({
         >
           <FormControlLabel value="USER" control={<Radio />} label="Person" />
           <FormControlLabel value="GROUP" control={<Radio />} label="Gruppe" />
+          {allowAllAccounts && (
+            <FormControlLabel value="ALL_ACCOUNTS" control={<Radio />} label="Alle Konten" />
+          )}
         </RadioGroup>
       </FormControl>
-      {hideSearch ? null : value.type === 'USER' ? (
+      {value.type === 'ALL_ACCOUNTS' ? (
+        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+          Jede Person Ihrer Organisation erhält die gewählte Rolle. Vor dem Erteilen wird noch
+          einmal nachgefragt.
+        </Typography>
+      ) : hideSearch ? null : value.type === 'USER' ? (
         <UserPicker
           ariaLabel="Person suchen"
           placeholder="Person suchen …"

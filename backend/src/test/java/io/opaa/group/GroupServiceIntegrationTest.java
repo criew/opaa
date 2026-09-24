@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.api.types.AssetRole;
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.GroupKind;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
@@ -250,8 +249,7 @@ class GroupServiceIntegrationTest {
     Group group = new Group(organizationA, GroupKind.AD_HOC, "Team", null, null, null, null, null);
     Group saved = groupRepository.save(group);
     KnowledgeLibrary library =
-        KnowledgeLibrary.ownedByGroup(
-            organizationA, "Rechtsquellen", null, saved.getId(), AssetVisibility.PRIVATE, false);
+        KnowledgeLibrary.ownedByGroup(organizationA, "Rechtsquellen", null, saved.getId(), false);
     libraryRepository.save(library);
 
     assertThatThrownBy(() -> groupService.deleteGroup(saved.getId(), currentUserOf(admin)))
@@ -279,8 +277,7 @@ class GroupServiceIntegrationTest {
         new Group(organizationA, GroupKind.AD_HOC, "Abteilung 5", null, null, null, null, null);
     Group saved = groupRepository.save(group);
     KnowledgeLibrary library =
-        KnowledgeLibrary.ownedByUser(
-            organizationA, "Rechtsquellen", null, owner, AssetVisibility.PRIVATE, false);
+        KnowledgeLibrary.ownedByUser(organizationA, "Rechtsquellen", null, owner, false);
     KnowledgeLibrary savedLibrary = libraryRepository.save(library);
     AssetGrant grant =
         AssetGrant.forGroup(

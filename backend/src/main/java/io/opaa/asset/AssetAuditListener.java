@@ -1,9 +1,9 @@
 package io.opaa.asset;
 
+import io.opaa.api.types.AssetGrantSubjectType;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.api.types.AuditSubjectKind;
-import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.permission.AssetGrant;
@@ -25,11 +25,17 @@ class AssetAuditListener {
     this.assetTypes = assetTypes;
   }
 
+  /**
+   * A grant to "Alle Konten" carries <b>no</b> audit subject: it names neither a person nor a
+   * group, and {@code chk_audit_log_subject} knows only those two. The recipient is in the payload
+   * instead, written by {@code AssetGrantService} (#1931, ADR-0037 Entscheidung 7) - and a grant to
+   * everyone has nothing to do in the pseudonym table.
+   */
   @EventListener
   void onGrantChanged(AssetGrantChanged event) {
     AssetGrant grant = event.grant();
     Asset asset = event.asset();
-    auditEventRecorder.recordUserActionOnSubject(
+    AuditEvent.Builder builder =
         AuditEvent.builder()
             .organizationId(asset.getOrganizationId())
             .actor(event.actorUserId())
@@ -38,14 +44,20 @@ class AssetAuditListener {
                 assetTypes.require(asset.getAssetType()).auditObjectType(),
                 asset.getId(),
                 asset.getName())
+            .before(event.auditBefore())
+            .after(event.auditAfter())
+            .outcome(AuditOutcome.SUCCESS);
+    if (grant.getSubjectType() == AssetGrantSubjectType.ALL_ACCOUNTS) {
+      auditEventRecorder.recordUserAction(builder.build());
+      return;
+    }
+    auditEventRecorder.recordUserActionOnSubject(
+        builder
             .subject(
-                grant.getSubjectType() == PermissionSubjectType.USER
+                grant.getSubjectType() == AssetGrantSubjectType.USER
                     ? AuditSubjectKind.USER
                     : AuditSubjectKind.GROUP,
                 grant.getSubjectId())
-            .before(event.auditBefore())
-            .after(event.auditAfter())
-            .outcome(AuditOutcome.SUCCESS)
             .build());
   }
 

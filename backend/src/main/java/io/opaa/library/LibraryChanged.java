@@ -9,7 +9,7 @@ import java.util.UUID;
  * for Fremdzugaenge writes one reach interval through {@code
  * AssetVisibilityHistoryService#recordExternalAccessChanged} and one audit entry, side by side -
  * {@link PermissionHistoryListener} and {@link AuditListener} each write their half. Creation and
- * visibility/listed are the asset shell's ({@code io.opaa.asset.AssetChanged}).
+ * findability is the asset shell's ({@code io.opaa.asset.AssetChanged}).
  *
  * <p>Published synchronously from within the publisher's transaction, so both writes roll back with
  * it; {@link Cause} carries its {@link AuditEventType}, so the two can never disagree.

@@ -8,8 +8,6 @@ import { apiAs } from './externalAccess'
  * Katalog), über die API im Namen eines Dev-Nutzers, wie in external-access.spec.ts.
  */
 
-export type AssetVisibility = 'PRIVATE' | 'SHARED' | 'ORGANIZATION'
-
 async function created<T>(response: Awaited<ReturnType<APIRequestContext['post']>>): Promise<T> {
   expect(response.status(), await response.text()).toBe(201)
   return (await response.json()) as T
@@ -18,7 +16,7 @@ async function created<T>(response: Awaited<ReturnType<APIRequestContext['post']
 /** Legt eine Prompt-Bibliothek im Namen von `devUser` an und gibt ihre Kennung zurück. */
 export async function createPromptLibraryViaApi(
   devUser: string,
-  library: { name: string; description?: string; visibility?: AssetVisibility; listed?: boolean },
+  library: { name: string; description?: string; listed?: boolean },
 ): Promise<string> {
   const api = await apiAs(devUser)
   try {
@@ -34,7 +32,7 @@ export async function createPromptLibraryViaApi(
 /** Legt eine Upload-Wissensbibliothek im Namen von `devUser` an und gibt ihre Kennung zurück. */
 export async function createKnowledgeLibraryViaApi(
   devUser: string,
-  library: { name: string; description?: string; visibility?: AssetVisibility; listed?: boolean },
+  library: { name: string; description?: string; listed?: boolean },
 ): Promise<string> {
   const api = await apiAs(devUser)
   try {
