@@ -51,7 +51,7 @@ aufgezählt.
 
 | Name     | Wert      | Verwendung                                          |
 | -------- | --------- | --------------------------------------------------- |
-| Navy     | `#012142` | Primärtext (hell), Seitenleiste, dunkle Grundfläche |
+| Navy     | `#012142` | Primärtext (hell), dunkle Grundfläche               |
 | Navy-900 | `#00152D` | Überlagerungen, tiefste Fläche                      |
 | Navy-700 | `#02305E` | erhöhte Fläche im dunklen Schema                    |
 | Navy-600 | `#034079` | gedämpfte Fläche im dunklen Schema                  |
@@ -64,8 +64,8 @@ aufgezählt.
 (gedämpfte Fläche, Trennlinien).
 
 **Carbon** — neutrale Dunkel-Skala des dunklen Schemas (#654, angelehnt an das dunkle Schema
-der Claude-Docs-Website, erhoben am 20.08.2026). Navy bleibt der Seitenleisten-Block des
-hellen Schemas:
+der Claude-Docs-Website, erhoben am 20.08.2026). Navy bleibt der Block der globalen Leiste und
+der Anmeldeseite im hellen Schema:
 
 | Name       | Wert      | Verwendung                      |
 | ---------- | --------- | ------------------------------- |
@@ -102,46 +102,42 @@ der Wissensbibliotheken-Tabelle (Spaltenkopf, Metadaten) sichtbar unter der Schw
 erreicht 6,08:1 gegen Weiß und bleibt auch gegen `bg-2`/`bg-3` klar über 4,5:1; die Grau-Skala
 selbst (2.1) bleibt dabei unverändert.
 
-Die Seitenleiste im hellen Schema verwendet ein eigenes Rollenset auf Navy-Basis
-(`navyRoles`: Flächen Navy-800/700/600, Text Weiß/`#B9C6D4`/`#7A8BA0`, Ränder
-`rgba(255,255,255,0.08/0.14)`) — die Werte des früheren dunklen Schemas, jetzt auf diese eine
-Fläche begrenzt (#654).
+Das Rollenset auf Navy-Basis (`navyRoles`: Flächen Navy-800/700/600, Text
+Weiß/`#B9C6D4`/`#7A8BA0`) trägt seit #1922 nur noch **den Markenblock der Anmeldeseite**
+(`AuthLayout.tsx`) — die Werte des früheren dunklen Schemas, auf diese eine Fläche begrenzt
+(#654). Die Seitenleiste des Space nutzt es nicht mehr (siehe 2.3).
 
-Die globale Leiste (Rail, #786, Mockup 2a) verwendet im hellen Schema das Rollenset `railRoles`,
-eine Stufe dunkler als die Seitenleiste (Grund Navy-900, Hover Navy-800, Aktivkachel Navy-700
-mit Navy-600-Rahmen, Text Weiß/`#99A1AB`/`#7A8BA0`) — so lesen sich globale und Space-Ebene auf
-einen Blick auseinander. Im dunklen Schema folgt die Rail wie die Seitenleiste dem Carbon-Schema;
-Carbon hat keine dunklere Stufe, die Trennung übernimmt der Standardrahmen.
+Die globale Leiste (Rail, #786, Mockup 2a) verwendet im hellen Schema das Rollenset `railRoles`
+(Grund Navy-900, Hover Navy-800, Aktivkachel Navy-700 mit Navy-600-Rahmen, Text
+Weiß/`#99A1AB`/`#7A8BA0`) — sie ist damit die einzige dunkle Navigationsebene und hebt sich von
+allem rechts davon ab. Im dunklen Schema folgt die Rail dem Carbon-Schema; Carbon hat keine
+dunklere Stufe, die Trennung übernimmt der Standardrahmen.
 
 `fg-3` (`#7A8BA0`) erreicht in `navyRoles` gegen `bg-1` 4,65:1, gegen `bg-2` 3,80:1 und gegen
 `bg-3` 2,99:1; in `railRoles` (eine Stufe dunklere Flächen) gegen `bg-1` 5,26:1, gegen `bg-2`
 4,65:1 und gegen `bg-3` 3,80:1 — je Rollenset unterschreitet nur `bg-3` (und im Navy-Set
 zusätzlich `bg-2`) die 4,5:1-Schwelle (#853). Das ist folgenlos, weil `fg-3` dort nie als Text
 auf Hover- oder Aktivflächen landet: Rail-Kacheln zeigen im Hover `fg-2` (inaktiv, 6,20:1 gegen
-`bg-2`) bzw. `fg-1` (aktiv, Weiß) — nie `fg-3`. In der Seitenleiste nutzt der einzige `fg-3`-Text
-außerhalb der Rail (`MuiOutlinedInput`-Hover-Rahmen im Umbenennen-Feld von `ChatList.tsx`) nur
-die Rahmenfarbe, für die die 3:1-UI-Schwelle gilt — dort erfüllt (3,80:1 auf `bg-2`). Die
-Space-Navigation-Einträge der Seitenleiste bleiben bei 72 % Weiß, nicht `fg-3`. Eine künftige
-Komponente, die `fg-3` als Text auf `bg-2`/`bg-3` dieser Rollensets einsetzt, verletzt 2.4 und
-braucht einen dunkleren Ton oder eine andere Rolle.
+`bg-2`) bzw. `fg-1` (aktiv, Weiß) — nie `fg-3`. Eine künftige Komponente, die `fg-3` als Text auf
+`bg-2`/`bg-3` dieser Rollensets einsetzt, verletzt 2.4 und braucht einen dunkleren Ton oder eine
+andere Rolle.
 
 ### 2.3 Regeln
 
 - **Nur Rollen in Komponenten.** Kein Hex-Wert und kein Skalenwert in Komponenten-Code; alles
-  läuft über die Rollen aus 2.2. Zulässige Ausnahmen: der Markenblock der Anmeldeseite, die
-  Seitenleiste und die globale Leiste (siehe nächste Punkte), Diagramm-Farbreihen,
-  Hover-/Aktiv-Stufen von Blau in Schaltflächen-Definitionen.
-- **Die Seitenleiste ist im hellen Schema Navy, im dunklen folgt sie dem dunklen Schema**
-  (#654). Hell ist sie der bewusste Kontrastblock der App (Rollenset `navyRoles`); dunkel
-  verschmilzt sie wie bei den Claude-Docs mit der Carbon-Grundfläche, getrennt durch den
-  Standardrahmen. Zwei Textstellen weichen hart codiert von den Rollen ab (#853, Ausnahme laut
-  vorigem Punkt): Die Space-Navigation-Einträge nutzen `rgba(255,255,255,0.72)` — auf allen drei
-  Navy-Flächen AA-konform (6,20–8,88:1). Die Overline-Beschriftungen ("Chats") nutzen
-  `rgba(255,255,255,0.55)`, aber ausschließlich auf `bg-1` (5,70:1); auf `bg-2`/`bg-3` würde der
-  Wert auf 5,03:1 bzw. 4,28:1 fallen — eine künftige Verwendung auf diesen Flächen bräuchte einen
-  höheren Alpha-Wert.
-- **Die globale Leiste folgt derselben Regel eine Stufe dunkler** (Rollenset `railRoles`,
-  #786). Ihre Aktivkachel (Navy-700 auf Navy-900, Rahmen Navy-600) liegt als Flächenkontrast
+  läuft über die Rollen aus 2.2. Zulässige Ausnahmen: der Markenblock der Anmeldeseite und die
+  globale Leiste (siehe nächste Punkte), Diagramm-Farbreihen, Hover-/Aktiv-Stufen von Blau in
+  Schaltflächen-Definitionen.
+- **Untermenüleisten sind hell und überall gleich** (#1922). Die Seitenleiste des Space und die
+  Sekundärspalte der globalen Bereiche tragen dieselben Rollen des Anwendungsschemas: Fläche
+  `bg-2`, Kante `border-strong`, angehobene Karte (Space-Umschalter, Aktiveintrag) auf `bg-1`.
+  Text läuft über `text.secondary` (= `fg-2`), nicht über hart codierte Weißtöne. Bis #1922 war
+  die Seitenleiste im hellen Schema ein Navy-Block mit eigenem Rollenset (`navyRoles`) und zwei
+  hart codierten Alpha-Weißtönen; beides ist ersatzlos entfallen — ein Navy-Block neben einer
+  hellen Bereichsspalte las sich als zwei verschiedene Anwendungen.
+- **Die globale Leiste ist die einzige dunkle Navigationsebene** (Rollenset `railRoles`, #786;
+  seit #1922 ohne den Navy-Block der Seitenleiste daneben, der bis dahin die Zwischenstufe
+  bildete). Ihre Aktivkachel (Navy-700 auf Navy-900, Rahmen Navy-600) liegt als Flächenkontrast
   unter 3:1 — zulässig, weil der Zustand nicht allein über die Fläche getragen wird: die
   Textfarbe wechselt auf Weiß und `aria-current` zeichnet den Eintrag programmatisch aus
   (siehe 2.4).

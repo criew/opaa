@@ -19,13 +19,9 @@ const LHM_CORPUS_LICENSE_URL =
  * flag is on (see runtimeConfig.ts) - this notice belongs on the demo instance, not on every
  * OPAA installation.
  *
- * Sits in AppFooter, which stays visible without scrolling (AppShell.tsx renders the footer in a
- * `height: '100vh'` flex column, and AppFooter's outer Box sets `flexShrink: 0` so it never gets
- * squeezed out by scrollable content above it). The demo-character hint itself is always-visible
- * text, satisfying the "sichtbar" acceptance criterion directly; the source/licensing details
- * (dataset origin, MIT license, provenance URL) sit behind the "Quellen & Lizenz" link so the
- * footer stays short - the link itself is reachable without scrolling, satisfying "ohne Scrollen
- * erreichbar".
+ * Sits in {@link AboutDialog}, reachable from every page through "Info zu …" in the profile menu
+ * (#1921). The demo-character hint is the dialog's own text; the source and licensing details
+ * (dataset origin, MIT license, provenance URL) sit behind the "Quellen & Lizenz" link.
  */
 export default function DemoNotice() {
   const [open, setOpen] = useState(false)

@@ -115,16 +115,19 @@ test.describe('Demo-Smoke (#232)', () => {
   }) => {
     await loginViaKeycloak(page, { providerName: 'Verzeichnisdienst', realm: 'opaa', username: DEMO_USERNAME })
 
-    // #230: the demo/source notice in the footer (frontend/src/layouts/DemoNotice.tsx), shown
-    // only when the frontend container's OPAA_DEMO_MODE flag is on (e2e/demo-smoke.env) - a real
-    // demo deployment always sets it, so this run's own stack must match that, not just the
-    // belegte-Antwort scenario below.
+    // #230: the demo/source notice (frontend/src/layouts/DemoNotice.tsx), shown only when the
+    // frontend container's OPAA_DEMO_MODE flag is on (e2e/demo-smoke.env) - a real demo deployment
+    // always sets it, so this run's own stack must match that, not just the belegte-Antwort
+    // scenario below. Since #1921 it lives behind "Info zu OPAA" in the profile menu.
+    await page.getByRole('button', { name: 'Profil und Einstellungen' }).click()
+    await page.getByRole('menuitem', { name: /^Info zu / }).click()
     await expect(
       page.getByText(
         'Demo-Instanz mit synthetischen Inhalten der fiktiven Stadt Rheinfurt',
         { exact: false },
       ),
     ).toBeVisible()
+    await page.getByRole('button', { name: 'Schließen' }).click()
 
     await startFreshChat(page)
     // "Gebührenfrage" from docs/market/demo-drehbuch.md, question 1 (#713) - guaranteed to have an
@@ -314,7 +317,7 @@ test.describe('Demo-Smoke (#232)', () => {
     // Mirrors ChatInput.tsx's findActiveMention: the fragment after '@' must not contain
     // whitespace, so the first word narrows the suggestions and the option is picked by its
     // full name (see space-chats.spec.ts's referenceLibrary for the single-word variant).
-    const input = page.getByPlaceholder('Frage stellen … mit @ auf eine Quelle eingrenzen')
+    const input = page.getByPlaceholder('Nachricht eingeben …')
     await input.fill('@Ratsinformationen')
     await page.getByRole('option', { name: S3_LIBRARY_NAME }).click()
     await expect(page.getByLabel(`Bibliotheksreferenz ${S3_LIBRARY_NAME} entfernen`)).toBeVisible()

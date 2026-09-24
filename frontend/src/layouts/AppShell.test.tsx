@@ -86,13 +86,15 @@ describe('AppShell', () => {
     expect(screen.getAllByText('OPAA').length).toBeGreaterThan(0)
   })
 
-  it('exposes the landmarks: global rail, chats navigation, main and contentinfo', () => {
+  // #1921: Die Fußzeile ist weg - Produktname und Version stehen im Profilmenü unter
+  // „Info zu …". Ein contentinfo-Landmark gibt es deshalb nicht mehr.
+  it('exposes the landmarks: global rail, chats navigation, main - and no footer', () => {
     renderShell()
     expect(screen.getByRole('navigation', { name: 'Globale Navigation' })).toBeInTheDocument()
     expect(screen.getByRole('navigation', { name: 'Chats' })).toBeInTheDocument()
     expect(screen.getByRole('complementary', { name: 'Space-Bereich' })).toBeInTheDocument()
     expect(screen.getByRole('main')).toBeInTheDocument()
-    expect(screen.getByRole('contentinfo')).toHaveTextContent('OPAA v0.1.0')
+    expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument()
   })
 
   it('offers the skip link as the first focusable element', async () => {

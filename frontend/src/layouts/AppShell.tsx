@@ -8,7 +8,6 @@ import GlobalRail, { RAIL_WIDTH } from './GlobalRail'
 import { isGlobalAreaPath } from './globalArea'
 import Sidebar, { SIDEBAR_WIDTH } from './Sidebar'
 import MobileHeader from './MobileHeader'
-import AppFooter from './AppFooter'
 import SkipLink from '../components/a11y/SkipLink'
 import { MAIN_CONTENT_ID } from '../components/a11y/PageHeading'
 import IndexingSnackbar from '../components/admin/IndexingSnackbar'
@@ -97,7 +96,6 @@ export default function AppShell() {
         >
           <Outlet />
         </Box>
-        <AppFooter />
       </Box>
 
       <IndexingSnackbar />
