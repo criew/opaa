@@ -4,19 +4,30 @@ import { HttpResponse, http } from 'msw'
 import { server } from '../mocks/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { answerConfirm, renderWithProviders } from '../test/test-utils'
-import SpaceManagementPage from './SpaceManagementPage'
+import SpaceSettingsPage from './SpaceSettingsPage'
 import { useAuthStore } from '../stores/authStore'
 import { useSpaceStore } from '../stores/spaceStore'
 import type { SpaceAssetAssociationListResponse, SpaceResponse } from '../types/api'
+
+// Der sichtbare Reiter ist eine Route (#1917); der Test setzt ihn wie die Adresszeile.
+const { routeParams } = vi.hoisted(() => ({
+  routeParams: { spaceId: 'space-team', tab: 'general' as string },
+}))
 
 vi.mock('react-router', async () => {
   const actual = await vi.importActual<typeof import('react-router')>('react-router')
   return {
     ...actual,
-    useParams: () => ({ spaceId: 'space-team' }),
+    useParams: () => routeParams,
     useNavigate: () => vi.fn(),
   }
 })
+
+/** Rendert die Einstellungsseite auf einem bestimmten Reiter. */
+function renderTab(tab: 'general' | 'members' | 'knowledge') {
+  routeParams.tab = tab
+  return renderWithProviders(<SpaceSettingsPage />, { withRouter: true })
+}
 
 // #144: membersBySpaceId lives here too - vi.hoisted's factory runs before the imports below, so
 // mockListSpaceMembers cannot close over a module-level const declared after it.
@@ -262,7 +273,7 @@ function setSpaceState(space: SpaceResponse) {
   })
 }
 
-describe('SpaceManagementPage', () => {
+describe('SpaceSettingsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockGetSpaceAssetAssociations.mockResolvedValue({
@@ -281,11 +292,80 @@ describe('SpaceManagementPage', () => {
     })
   })
 
+  /**
+   * #1917: eine Einstellungsseite je Space, gegliedert in Reiter. Die Leiste ist die Stelle, an
+   * der ein weiterer Asset-Typ („Prompts") einen Reiter bekommt.
+   */
+  it('gliedert die Einstellungen in Stammdaten, Mitglieder und Wissen', () => {
+    setSpaceState(teamSpace)
+    renderTab('general')
+
+    const tablist = screen.getByRole('tablist', { name: 'Bereiche der Space-Einstellungen' })
+    expect(
+      within(tablist)
+        .getAllByRole('tab')
+        .map((tab) => tab.textContent),
+    ).toEqual(['Stammdaten', 'Mitglieder', 'Wissen'])
+    expect(screen.getByRole('heading', { level: 1, name: 'Einstellungen' })).toBeInTheDocument()
+    // Die Reiterleiste trägt keine Überschrift: Ohne die h2 des Panels spränge die Gliederung von
+    // h1 auf die h3 des Gefahrenbereichs (docs/design/accessibility.md 2.3).
+    expect(screen.getByRole('heading', { level: 2, name: 'Stammdaten' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 3, name: 'Gefahrenbereich' })).toBeInTheDocument()
+    expect(within(tablist).getByRole('tab', { name: 'Mitglieder' })).toHaveAttribute(
+      'href',
+      '/spaces/space-team/settings/members',
+    )
+  })
+
+  /**
+   * #1917: Jeder Abschnitt lädt in seinem eigenen Effekt, und `AreaTabs` rendert nur das aktive
+   * Panel — die Mitgliederliste wird also erst auf ihrem Reiter geholt. Ein Rückbau auf
+   * Seitenebene würde das unbemerkt wieder einsammeln.
+   */
+  it('lädt nur, was der sichtbare Reiter braucht', async () => {
+    setSpaceState(teamSpace)
+    renderTab('general')
+
+    await screen.findByRole('button', { name: /einstellungen speichern/i })
+    expect(mockListSpaceMembers).not.toHaveBeenCalled()
+    expect(mockGetSpaceAssetAssociations).not.toHaveBeenCalled()
+  })
+
+  // #1917: Die Einstellungen führen keine Chatliste mehr - sie war der Grund, warum die alte
+  // Datenquellen-Seite wie eine zweite Chat-Übersicht wirkte.
+  it('zeigt in den Einstellungen weder Chatliste noch „Neuer Chat“', () => {
+    setSpaceState(teamSpace)
+    renderTab('general')
+
+    expect(screen.queryByRole('button', { name: /neuer chat/i })).not.toBeInTheDocument()
+    expect(screen.queryByText('Chats')).not.toBeInTheDocument()
+  })
+
+  /** #1917, Muster GitLab: die beiden folgenreichen Handlungen stehen abgesetzt und benannt. */
+  it('stellt Archivieren und Löschen in einen eigenen Gefahrenbereich der Stammdaten', () => {
+    setSpaceState(teamSpace)
+    renderTab('general')
+
+    const dangerZone = screen.getByRole('heading', { name: 'Gefahrenbereich' })
+      .parentElement as HTMLElement
+    expect(
+      within(dangerZone).getByRole('button', { name: /space archivieren/i }),
+    ).toBeInTheDocument()
+    expect(within(dangerZone).getByRole('button', { name: /^space löschen$/i })).toBeInTheDocument()
+  })
+
+  it('zeigt den Gefahrenbereich niemandem, der den Space nicht löschen darf', () => {
+    setSpaceState({ ...teamSpace, ownerId: 'someone-else' })
+    renderTab('general')
+
+    expect(screen.queryByText('Gefahrenbereich')).not.toBeInTheDocument()
+  })
+
   it('hints that the default space is worked in alone, without blocking member management', () => {
     // #333: the default space is an ordinary space. The hint explains the empty member list; it
     // no longer means members are forbidden.
     setSpaceState(personalSpace)
-    renderWithProviders(<SpaceManagementPage />, { withRouter: true })
+    renderTab('members')
     expect(screen.getByText(/standard-space/i)).toBeInTheDocument()
   })
 
@@ -293,7 +373,7 @@ describe('SpaceManagementPage', () => {
     // The hint used to replace the whole members section, including "Mitglied hinzufügen" - the
     // default space is "ein Space wie jeder andere", so adding members must still work here.
     setSpaceState(personalSpace)
-    renderWithProviders(<SpaceManagementPage />, { withRouter: true })
+    renderTab('members')
 
     expect(screen.getByText(/standard-space/i)).toBeInTheDocument()
     expect(await screen.findByPlaceholderText('Person suchen …')).toBeInTheDocument()
@@ -305,7 +385,7 @@ describe('SpaceManagementPage', () => {
     // the mocked listSpaceMembers response repopulates it - findByText waits for that repopulation
     // instead of racing it, matching the real (also async) endpoint this now goes through.
     setSpaceState(teamSpace)
-    renderWithProviders(<SpaceManagementPage />, { withRouter: true })
+    renderTab('members')
 
     expect(await screen.findByText(/Owner · Eigentümer/)).toBeInTheDocument()
     // The owner's own row must not offer "Entfernen" or "Zum Eigentümer machen" for themselves -
@@ -321,7 +401,7 @@ describe('SpaceManagementPage', () => {
   // ADR-0036, Entscheidung 9 - but never the handover, which only a natural person may receive.
   it('renders a group member with its name, its marker and its growth signal', async () => {
     setSpaceState(teamSpace)
-    renderWithProviders(<SpaceManagementPage />, { withRouter: true })
+    renderTab('members')
 
     const groupRow = await screen.findByText(/Referat 50 · Gruppe · 23 bei Aufnahme, heute 41/)
     const row = groupRow.closest('div')
@@ -355,7 +435,7 @@ describe('SpaceManagementPage', () => {
       },
     ])
     setSpaceState(teamSpace)
-    renderWithProviders(<SpaceManagementPage />, { withRouter: true })
+    renderTab('members')
 
     expect(await screen.findByText(/Kleine Runde · Gruppe · kleine Gruppe/)).toBeInTheDocument()
   })
@@ -366,7 +446,7 @@ describe('SpaceManagementPage', () => {
    */
   it('offers the member list of a group member and loads it only on request', async () => {
     setSpaceState(teamSpace)
-    renderWithProviders(<SpaceManagementPage />, { withRouter: true })
+    renderTab('members')
     const trigger = await screen.findByRole('button', {
       name: 'Mitglieder der Gruppe „Referat 50“ anzeigen',
     })
@@ -380,7 +460,7 @@ describe('SpaceManagementPage', () => {
 
   it('adds a group as a member through the group search', async () => {
     setSpaceState(teamSpace)
-    renderWithProviders(<SpaceManagementPage />, { withRouter: true })
+    renderTab('members')
     const user = userEvent.setup()
 
     await user.click(await screen.findByRole('radio', { name: 'Gruppe' }))
@@ -405,7 +485,7 @@ describe('SpaceManagementPage', () => {
    */
   it('offers the handover to an ADMIN member who is not the owner', async () => {
     setSpaceState({ ...teamSpace, ownerId: 'someone-else', userRole: 'ADMIN' })
-    renderWithProviders(<SpaceManagementPage />, { withRouter: true })
+    renderTab('members')
     const user = userEvent.setup()
 
     await screen.findByText('Colleague')
@@ -424,7 +504,7 @@ describe('SpaceManagementPage', () => {
   it('names a failed group search instead of showing an empty picker', async () => {
     mockSearchSelectableGroups.mockRejectedValueOnce(new Error('offline'))
     setSpaceState(teamSpace)
-    renderWithProviders(<SpaceManagementPage />, { withRouter: true })
+    renderTab('members')
     const user = userEvent.setup()
 
     await user.click(await screen.findByRole('radio', { name: 'Gruppe' }))
@@ -437,7 +517,7 @@ describe('SpaceManagementPage', () => {
   // owner - the space stays usable.
   it('names the derived state "Nachfolge offen" without a date or a previous owner', () => {
     setSpaceState({ ...teamSpace, successionOpen: true })
-    renderWithProviders(<SpaceManagementPage />, { withRouter: true })
+    renderTab('general')
 
     expect(screen.getByText(/Nachfolge offen — zuständig: Systemverwaltung/)).toBeInTheDocument()
   })
@@ -447,7 +527,7 @@ describe('SpaceManagementPage', () => {
     // member - changing it always failed against the backend's "Die Rolle des Eigentümers kann
     // nicht geändert werden" rejection.
     setSpaceState(teamSpace)
-    renderWithProviders(<SpaceManagementPage />, { withRouter: true })
+    renderTab('members')
 
     const ownerName = await screen.findByText(/Owner · Eigentümer/)
     // Seit #1820 trägt die Zeile unter dem Namen noch den Aufruf der Herleitung - die Rolle liegt
@@ -470,7 +550,7 @@ describe('SpaceManagementPage', () => {
    */
   it('renders a protected group as a nameless row that can still be removed', async () => {
     setSpaceState(teamSpace)
-    renderWithProviders(<SpaceManagementPage />, { withRouter: true })
+    renderTab('members')
 
     const protectedRow = await screen.findByText(/Geschützte Gruppe/)
     expect(screen.queryByText(/g2/)).not.toBeInTheDocument()
@@ -484,7 +564,7 @@ describe('SpaceManagementPage', () => {
   /** #1822: ob eine Rolle direkt oder ueber eine Gruppe kommt, beantwortet die Herleitung. */
   it('opens the derivation of a person on request and never for a group row', async () => {
     setSpaceState(teamSpace)
-    renderWithProviders(<SpaceManagementPage />, { withRouter: true })
+    renderTab('members')
     const user = userEvent.setup()
 
     await user.click(await screen.findByRole('button', { name: 'Herleitung für Colleague' }))
@@ -499,7 +579,7 @@ describe('SpaceManagementPage', () => {
   it('explains the empty member list instead of showing nothing for a non-admin, non-owner viewer', async () => {
     mockListSpaceMembers.mockResolvedValueOnce([])
     setSpaceState(nonAdminSpace)
-    renderWithProviders(<SpaceManagementPage />, { withRouter: true })
+    renderTab('members')
 
     expect(await screen.findByText(/nicht die erforderliche rolle/i)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /entfernen/i })).not.toBeInTheDocument()
@@ -507,13 +587,13 @@ describe('SpaceManagementPage', () => {
 
   it('shows the delete button only for the owner of a non-personal space', () => {
     setSpaceState(teamSpace)
-    renderWithProviders(<SpaceManagementPage />, { withRouter: true })
+    renderTab('general')
     expect(screen.getByRole('button', { name: /space löschen/i })).toBeInTheDocument()
   })
 
   it('hides the delete button for a non-owner admin', () => {
     setSpaceState({ ...teamSpace, ownerId: 'someone-else' })
-    renderWithProviders(<SpaceManagementPage />, { withRouter: true })
+    renderTab('general')
     expect(screen.queryByRole('button', { name: /space löschen/i })).not.toBeInTheDocument()
   })
 
@@ -523,7 +603,7 @@ describe('SpaceManagementPage', () => {
     // that fails to read the space's own visibility and silently sends PRIVATE instead, which
     // would downgrade an OPEN space on a plain rename.
     setSpaceState({ ...teamSpace, visibility: 'OPEN' })
-    renderWithProviders(<SpaceManagementPage />, { withRouter: true })
+    renderTab('general')
     const user = userEvent.setup()
 
     await user.clear(screen.getByLabelText(/name des space/i))
@@ -544,7 +624,7 @@ describe('SpaceManagementPage', () => {
   // changeable in space management, not just at creation time.
   it('saves the chosen visibility when it is changed', async () => {
     setSpaceState(teamSpace)
-    renderWithProviders(<SpaceManagementPage />, { withRouter: true })
+    renderTab('general')
     const user = userEvent.setup()
 
     await user.click(screen.getByRole('combobox', { name: /sichtbarkeit/i }))
@@ -560,20 +640,20 @@ describe('SpaceManagementPage', () => {
 
   it('shows the archive button for the owner of a non-personal, non-archived space', () => {
     setSpaceState(teamSpace)
-    renderWithProviders(<SpaceManagementPage />, { withRouter: true })
+    renderTab('general')
     expect(screen.getByRole('button', { name: /space archivieren/i })).toBeInTheDocument()
   })
 
   it('hides the archive button once the space is already archived and shows the badge', () => {
     setSpaceState({ ...teamSpace, archived: true })
-    renderWithProviders(<SpaceManagementPage />, { withRouter: true })
+    renderTab('general')
     expect(screen.queryByRole('button', { name: /space archivieren/i })).not.toBeInTheDocument()
     expect(screen.getByText('Archiviert')).toBeInTheDocument()
   })
 
   it('archives the space via the store when the owner confirms', async () => {
     setSpaceState(teamSpace)
-    renderWithProviders(<SpaceManagementPage />, { withRouter: true })
+    renderTab('general')
     const user = userEvent.setup()
 
     await user.click(screen.getByRole('button', { name: /space archivieren/i }))
@@ -593,7 +673,7 @@ describe('SpaceManagementPage', () => {
       ),
     )
     setSpaceState(teamSpace)
-    renderWithProviders(<SpaceManagementPage />, { withRouter: true })
+    renderTab('general')
     const user = userEvent.setup()
 
     await user.click(screen.getByRole('button', { name: /^space löschen$/i }))
@@ -628,7 +708,7 @@ describe('SpaceManagementPage', () => {
     })
     setSpaceState(teamSpace)
 
-    renderWithProviders(<SpaceManagementPage />, { withRouter: true })
+    renderTab('knowledge')
 
     expect(await screen.findByText('Bibliothek ohne eigenen Zugriff')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^lösen$/i })).toBeInTheDocument()
@@ -665,7 +745,7 @@ describe('SpaceManagementPage', () => {
       ),
     )
     setSpaceState(teamSpace)
-    renderWithProviders(<SpaceManagementPage />, { withRouter: true })
+    renderTab('knowledge')
     const user = userEvent.setup()
 
     const field = await screen.findByPlaceholderText('Bibliothek suchen …')
@@ -681,7 +761,7 @@ describe('SpaceManagementPage', () => {
   // default "No options" - the project language requires German for every visible UI text.
   it('shows a German text when the library autocomplete has no options to offer', async () => {
     setSpaceState(teamSpace)
-    renderWithProviders(<SpaceManagementPage />, { withRouter: true })
+    renderTab('knowledge')
     const user = userEvent.setup()
 
     const field = await screen.findByPlaceholderText('Bibliothek suchen …')

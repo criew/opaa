@@ -37,7 +37,7 @@ export function spaceRoleLabel(role: SpaceRole | string | undefined): string {
 
 // #272: mirrors the three-row table in docs/features/spaces-and-assets.md#space-sichtbarkeit -
 // PRIVATE is the default for every newly created space. The order here is also the order both
-// SpaceCreatePage and SpaceManagementPage render their Select options in - a single source
+// SpaceCreatePage and SpaceSettingsPage render their Select options in - a single source
 // keeps the two menus from drifting apart if a future enum value is added.
 export const spaceVisibilities: SpaceVisibility[] = ['PRIVATE', 'DISCOVERABLE', 'OPEN']
 
@@ -90,6 +90,18 @@ const accessLevelLabels: Record<AccessLevel, string> = {
 
 export function accessLevelLabel(level: AccessLevel): string {
   return accessLevelLabels[level]
+}
+
+/**
+ * The document figure of an overview: the plain number, shortened from five digits on - "9.999",
+ * "120 K", "1,2 Mio." - so the column stays readable at a glance. Rounding never carries a value
+ * across the next order of magnitude: 999.999 reads "1 Mio.", never "1.000 K".
+ */
+export function documentCountLabel(count: number): string {
+  if (count < 10_000) return count.toLocaleString('de-DE')
+  if (Math.round(count / 1_000) < 1_000) return `${Math.round(count / 1_000)} K`
+  const millions = (count / 1_000_000).toFixed(1)
+  return `${(millions.endsWith('.0') ? millions.slice(0, -2) : millions).replace('.', ',')} Mio.`
 }
 
 const libraryVisibilityLabels: Record<AssetVisibility, string> = {

@@ -7,6 +7,7 @@ import Divider from '@mui/material/Divider'
 import List from '@mui/material/List'
 import ListItem from '@mui/material/ListItem'
 import ListItemButton from '@mui/material/ListItemButton'
+import ListItemIcon from '@mui/material/ListItemIcon'
 import ListItemText from '@mui/material/ListItemText'
 import ListSubheader from '@mui/material/ListSubheader'
 import Menu from '@mui/material/Menu'
@@ -16,7 +17,9 @@ import { useTheme } from '@mui/material/styles'
 import AddIcon from '@mui/icons-material/Add'
 import CheckIcon from '@mui/icons-material/Check'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
-import { NavLink, useLocation, useNavigate, useParams } from 'react-router'
+import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined'
+import { Link as RouterLink, useLocation, useNavigate, useParams } from 'react-router'
+import { spaceSettingsRoute } from '../routes'
 import ChatList from '../components/chat/ChatList'
 import { useChatStore } from '../stores/chatStore'
 import { useSpaceStore } from '../stores/spaceStore'
@@ -82,6 +85,13 @@ export default function Sidebar() {
   const defaultSpace = spaces.find((space) => space.isDefault) ?? spaces[0]
   const activeChatSpaceId = routeSpaceId ?? chatSpaceId ?? defaultSpace?.id ?? null
   const activeSpace = spaces.find((space) => space.id === activeChatSpaceId)
+
+  // #1917: Den Einstieg sieht, wer an diesem Space etwas zu verwalten hat - ein Administrator
+  // (Stammdaten, Mitglieder) oder ein Kurator (zugeordnetes Wissen). Für alle anderen sind die
+  // Einstellungen leer, und der Dienst weist ihre Schreibzugriffe ohnehin ab.
+  const mayOpenSettings = activeSpace?.userRole === 'ADMIN' || activeSpace?.userRole === 'CURATOR'
+  const settingsRoute = activeChatSpaceId ? spaceSettingsRoute(activeChatSpaceId) : ''
+  const inSettings = location.pathname.startsWith(`/spaces/${activeChatSpaceId}/settings`)
 
   const closeSpaceMenu = () => setSpaceMenuAnchor(null)
 
@@ -180,9 +190,9 @@ export default function Sidebar() {
               onClick={() => {
                 closeSpaceMenu()
                 // Picking a space lands on an empty chat in it, not on its overview page -
-                // the overview stays reachable via "Datenquellen dieses Space" below. An
-                // archived space accepts no new chats (ChatService rejects the create), so it
-                // keeps landing on its overview.
+                // the overview stays reachable from the spaces list. An archived space accepts
+                // no new chats (ChatService rejects the create), so it keeps landing on its
+                // overview.
                 navigate(space.archived ? `/spaces/${space.id}` : `/spaces/${space.id}/chats/new`)
               }}
             >
@@ -254,35 +264,41 @@ export default function Sidebar() {
         )}
       </Box>
 
-      {activeChatSpaceId && (
+      {activeChatSpaceId && mayOpenSettings && (
         <>
           <Divider />
           {/* Mockup 2a: the foot of the column stays space-scoped - quiet text-only links,
-                12.5px (#658); everything global moved onto the rail (#786). Its
+                12.5px on muted white (#658); everything global moved onto the rail (#786). Its
                 own nav landmark, so landmark navigation still reaches these links (review
                 #791, finding 5) - as a container AROUND the list, not instead of its <ul>:
                 List component="nav" replaced the <ul> and left the <li>s without a list
                 parent, an axe "serious" violation (#792). */}
           <Box component="nav" aria-label="Space-Navigation">
             <List sx={{ px: '14px', py: '10px' }}>
-              {[
-                { label: 'Space-Einstellungen', to: `/spaces/${activeChatSpaceId}/manage` },
-                { label: 'Datenquellen dieses Space', to: `/spaces/${activeChatSpaceId}` },
-              ].map((item) => (
-                <ListItem key={item.to} disablePadding>
-                  <ListItemButton
-                    component={NavLink}
-                    to={item.to}
-                    selected={location.pathname === item.to}
-                    sx={{ borderRadius: '6px', px: '10px', py: '5px' }}
-                  >
-                    <ListItemText
-                      primary={item.label}
-                      slotProps={{ primary: { sx: { fontSize: 12.5, color: 'text.secondary' } } }}
-                    />
-                  </ListItemButton>
-                </ListItem>
-              ))}
+              {/* #1917: ein Einstiegspunkt statt zweier - alles Verwaltende dieses Space liegt
+                    hinter dem Zahnrad. Wer den Space nicht verwalten darf, sieht ihn nicht. */}
+              <ListItem disablePadding>
+                <ListItemButton
+                  component={RouterLink}
+                  to={settingsRoute}
+                  selected={inSettings}
+                  // Wie auf der globalen Leiste: „page" nur für das eigene Ziel, „true" für
+                  // jeden anderen Reiter der Einstellungen - sonst wäre der Eintrag auf
+                  // .../settings/members hervorgehoben, ohne es anzusagen.
+                  aria-current={
+                    inSettings ? (location.pathname === settingsRoute ? 'page' : 'true') : undefined
+                  }
+                  sx={{ borderRadius: '6px', px: '10px', py: '5px' }}
+                >
+                  <ListItemIcon sx={{ minWidth: 26 }}>
+                    <SettingsOutlinedIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="Einstellungen"
+                    slotProps={{ primary: { sx: { fontSize: 12.5, color: 'text.secondary' } } }}
+                  />
+                </ListItemButton>
+              </ListItem>
             </List>
           </Box>
         </>

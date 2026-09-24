@@ -84,6 +84,9 @@ OPAA eine **leere** Gruppe — eine Freigabe an sie erreicht niemanden.
 
 ## 4. Rollen an einer Wissensbibliothek
 
+Die Bibliotheken, die eine Person lesen darf, stehen in der Hauptnavigation unter **„Wissen"**. Jede
+Art von Bestand hat dort einen eigenen Punkt; der Menüpunkt und die Seite dahinter heißen gleich.
+
 | Rolle | Darf |
 |---|---|
 | **Leser** (`VIEWER`) | Die Bibliothek durchsuchen, Treffer und Dokumentenliste sehen |
@@ -221,6 +224,34 @@ Systemverwaltung. Mitglieder und Kuratoren sehen ausschließlich, wie viele Mitg
 gibt. Wieweit ein Raum überhaupt auffindbar ist, entscheidet seine Sichtbarkeit: nur für
 Mitglieder, im Verzeichnis sichtbar mit Beitritt auf Antrag, oder im Verzeichnis sichtbar mit
 Selbstbeitritt.
+
+**In der Oberfläche liegt all das auf einer Seite je Raum:** dem Zahnrad „Einstellungen" am Fuß der
+Seitenleiste. Es sehen nur Administratoren und Kuratoren des Raums. Die Seite hat drei Reiter:
+
+| Reiter | Inhalt |
+|---|---|
+| **Stammdaten** | Name, Beschreibung, Sichtbarkeit — und am Ende der abgesetzte **Gefahrenbereich** mit „Space archivieren" und „Space löschen" |
+| **Mitglieder** | Die Mitgliederliste mit Rollen, das Aufnehmen von Personen und Gruppen, die Übertragung der Verantwortung und die Herleitung je Zeile |
+| **Wissen** | Die dem Raum zugeordneten Bibliotheken; Zuordnen und Lösen ab der Kuratorenrolle |
+
+**Die ersten beiden Reiter gehören den Administratoren.** Ein Kurator öffnet dieselbe Seite, sieht
+die Stammdaten aber nur lesend, und im Reiter „Mitglieder" steht für ihn der Hinweis, dass die
+Liste seiner Rolle nicht offensteht — seine Arbeit liegt im Reiter „Wissen". Den Gefahrenbereich
+sieht nur der Eigentümer, und nicht im eigenen Standard-Raum: Der lässt sich weder archivieren noch
+löschen.
+
+### Die Space-Übersicht
+
+Die Übersicht führt alle Räume auf, in denen Sie Mitglied sind — in der Oberfläche heißen sie
+„Spaces". Die Überschrift nennt ihre Anzahl, oben rechts steht „Neuer Space". Ein Suchfeld filtert
+über Name und Beschreibung, ein Umschalter wechselt zwischen Kacheln und Tabelle; die gewählte
+Ansicht bleibt gemerkt.
+
+Eine Kachel zeigt Name, Beschreibung, die Anzahl der Chats, die Zahl der Mitgliedschaften und Ihre
+eigene Rolle als Badge. Gezählt werden Mitgliedschaftszeilen, nicht Personen — eine Zeile kann eine
+Gruppe beliebiger Größe sein; nur im eigenen Standard-Raum steht statt der Zahl „nur Sie". Ein
+archivierter Space ist als solcher gekennzeichnet und führt auf seine Übersicht statt in einen
+neuen Chat. Die Tabellenansicht zeigt dieselben Angaben spaltenweise.
 
 ## 6. Woher Gruppen kommen
 

@@ -156,18 +156,19 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     await expectNoSeriousA11yViolations(page, "Spaces-Übersicht (dunkles Farbschema)");
   });
 
-  test("Wissensbibliotheken", async ({ authenticatedPage: page }) => {
+  test("Wissen", async ({ authenticatedPage: page }) => {
     await gotoLibraries(page);
+    // #1915: Die Seite heißt wie ihr Menüpunkt.
     await expect(
-      page.getByRole("heading", { level: 1, name: "Wissensbibliotheken" }),
+      page.getByRole("heading", { level: 1, name: "Wissen" }),
     ).toBeVisible();
 
     await page.emulateMedia({ colorScheme: "light" });
-    await expectNoSeriousA11yViolations(page, "Wissensbibliotheken (helles Farbschema)");
+    await expectNoSeriousA11yViolations(page, "Wissen (helles Farbschema)");
 
     // #957: der „Eigentümer"-Chip fiel nur im Dunkelschema durch.
     await page.emulateMedia({ colorScheme: "dark" });
-    await expectNoSeriousA11yViolations(page, "Wissensbibliotheken (dunkles Farbschema)");
+    await expectNoSeriousA11yViolations(page, "Wissen (dunkles Farbschema)");
   });
 
   // #1541/#1601: die Benutzerverwaltung führt die dichteste Kombination des Bereichs — eine
