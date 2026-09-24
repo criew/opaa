@@ -8,6 +8,7 @@ import io.opaa.asset.Asset;
 import io.opaa.asset.AssetTypeDefinition;
 import io.opaa.common.ConflictException;
 import io.opaa.permission.AssetType;
+import org.hibernate.Hibernate;
 import org.springframework.stereotype.Component;
 
 /**
@@ -45,10 +46,17 @@ class KnowledgeLibraryAssetType implements AssetTypeDefinition {
     return "Bibliotheken";
   }
 
+  /**
+   * Resolves a proxy of the shell to the library behind it; an asset of this type that is no
+   * library is refused rather than let past the cap.
+   */
   @Override
   public void requireReachWithinLimits(Asset asset, AssetVisibility visibility, boolean listed) {
-    if (!(asset instanceof KnowledgeLibrary library)
-        || library.getSourceType() == DocumentSourceType.UPLOAD) {
+    if (!(Hibernate.unproxy(asset) instanceof KnowledgeLibrary library)) {
+      throw new IllegalStateException(
+          "asset " + asset.getId() + " of type " + asset.getAssetType() + " is no library");
+    }
+    if (library.getSourceType() == DocumentSourceType.UPLOAD) {
       return;
     }
     if (visibility.exceeds(library.getVisibilityCap())) {
