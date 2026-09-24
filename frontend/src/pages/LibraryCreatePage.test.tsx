@@ -22,6 +22,7 @@ const {
   mockListS3Buckets,
   mockGetUserSummaries,
   mockUpsertAssetGrant,
+  mockSearchSelectableGroups,
 } = vi.hoisted(() => ({
   mockGetMyGroups: vi.fn().mockResolvedValue([]),
   mockGetMyCapabilities: vi.fn(),
@@ -30,6 +31,7 @@ const {
   mockListS3Buckets: vi.fn(),
   mockGetUserSummaries: vi.fn().mockResolvedValue([]),
   mockUpsertAssetGrant: vi.fn(),
+  mockSearchSelectableGroups: vi.fn(),
 }))
 
 vi.mock('../services/api', async () => {
@@ -40,6 +42,7 @@ vi.mock('../services/api', async () => {
     getMyCapabilities: mockGetMyCapabilities,
     getUserSummaries: mockGetUserSummaries,
     upsertAssetGrant: mockUpsertAssetGrant,
+    searchSelectableGroups: mockSearchSelectableGroups,
     testLibrarySource: mockTestLibrarySource,
     listConfluenceSpaces: mockListConfluenceSpaces,
     listS3Buckets: mockListS3Buckets,
@@ -135,6 +138,53 @@ describe('LibraryCreatePage (#596, Mockup 1e)', () => {
         role: 'VIEWER',
       }),
     )
+  })
+
+  /** ADR-0036, Entscheidung 2: dieselbe Zwischenfrage wie im Dialog „Rechte". */
+  it('asks before noting a group of an external provider and notes nothing on cancel', async () => {
+    mockSearchSelectableGroups.mockResolvedValue([
+      {
+        id: 'group-partner',
+        name: 'Referat 50',
+        origin: 'PROVIDER',
+        provider: {
+          id: 'oidc-provider-partner',
+          displayName: 'Verzeichnis Partner',
+          external: true,
+          enabled: true,
+          groupMechanism: 'TOKEN',
+        },
+        sourcePath: null,
+        activeMemberCount: 23,
+        smallGroup: false,
+        emptyGroup: false,
+        protectedGroup: false,
+        selectable: true,
+        dissolved: false,
+        providerDisabled: false,
+        unmaintained: false,
+      },
+    ])
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.type(screen.getByLabelText(/^Name/), 'Rechtsquellen Soziales')
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    await user.click(screen.getByRole('button', { name: 'Weiter zu Rechten' }))
+    await user.click(await screen.findByRole('radio', { name: /gruppe/i }))
+    await user.type(await screen.findByLabelText(/^gruppe suchen$/i), 'Referat')
+    await user.click(await screen.findByRole('option', { name: /Referat 50/ }))
+    await user.click(screen.getByRole('button', { name: 'Vormerken' }))
+
+    const question = 'Sie geben für eine Gruppe eines externen Anbieters frei — fortfahren?'
+    expect(await screen.findByRole('dialog', { name: question })).toHaveTextContent(
+      /Verzeichnis Partner/,
+    )
+    await answerConfirm(user, question, 'Abbrechen')
+
+    await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
+    await waitFor(() => expect(mockCreateNewLibrary).toHaveBeenCalled())
+    expect(mockUpsertAssetGrant).not.toHaveBeenCalled()
   })
 
   describe('S3 origin (#1377, ADR-0027)', () => {
