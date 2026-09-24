@@ -200,16 +200,17 @@ services:
   # Root credentials are documented demo values (demo/README.md, "Nutzerkonten"), never secrets;
   # the seed hands them to the two source libraries as accessKey:secretKey, while the upload store
   # gets its own bucket-scoped key from "minio-seed" below. Same pinned image line as the
-  # backend's MinIO test fixture (MinioFixture.IMAGE), and from quay.io for the same reason: the
-  # Docker Hub repository "minio/minio" is gone (#1578). The community line ended with this
-  # release, and the "mc" client the seed step below needs still ships in it.
+  # backend's MinIO test fixture (MinioFixture.IMAGE), from the project's GHCR mirror: both public
+  # sources are gone - Docker Hub "minio/minio" (#1578) and quay.io/minio/minio (#1948). The
+  # community line ended with this release, the "mc" client the seed step below needs still ships
+  # in it, and the image is being replaced (#1949).
   #
   # The volume exists for "opaa-uploads" alone: the demo's database survives a restart, and a
   # document row whose object is gone is exactly the broken picture the orphan sweep (#1478) then
   # reports. The two source buckets are unaffected by it - "mc mirror --overwrite --remove" forces
   # them back to the committed corpus on every start, whatever the volume held before.
   minio:
-    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
+    image: ghcr.io/criew/minio:RELEASE.2025-09-07T16-13-09Z
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: rheinfurt-archiv
@@ -246,7 +247,7 @@ services:
   # "mc admin policy attach" is the one non-idempotent step (it fails once the mapping exists), so
   # its failure is tolerated deliberately - and only its failure.
   minio-seed:
-    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
+    image: ghcr.io/criew/minio:RELEASE.2025-09-07T16-13-09Z
     volumes:
       - ./demo/corpus/ratsinformationen:/corpus/ratsinformationen:ro
       - ./demo/corpus/formate:/corpus/formate:ro
@@ -286,7 +287,7 @@ services:
   # "Originalablage" block - whoever changes them changes them on both sides, here (process
   # environment or .env) and for the backend (.env.docker).
   upload-store:
-    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
+    image: ghcr.io/criew/minio:RELEASE.2025-09-07T16-13-09Z
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${OPAA_UPLOAD_STORE_ROOT_USER:-opaa-uploads}
@@ -312,7 +313,7 @@ services:
   # ("mc mb --ignore-existing"), runs to completion and exits. It never writes objects: the content
   # of this bucket belongs to the application alone.
   upload-store-init:
-    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
+    image: ghcr.io/criew/minio:RELEASE.2025-09-07T16-13-09Z
     entrypoint: ["/bin/sh", "-c"]
     command: >-
       "mc alias set store http://upload-store:9000
