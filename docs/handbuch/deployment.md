@@ -2071,9 +2071,9 @@ Drei Punkte dazu, die regelmäßig Rückfragen auslösen:
   hat.
 - **Über dem Hintergrundbild liegt ein fester dunkler Schleier.** Welches Bild eine Installation
   hochlädt, weiß OPAA vorher nicht — der Schleier sorgt dafür, dass Produktname und Claim darüber
-  den Kontrast aus `docs/design/accessibility.md` auch über einem rein weißen Bild erreichen. Das
-  Bild wirkt damit als Atmosphäre, nicht als Motiv in voller Leuchtkraft. Wer ein ruhiges, eher
-  dunkles Motiv wählt, bekommt das bessere Ergebnis.
+  auch über einem rein weißen Bild lesbar bleiben (mindestens 4,5:1 Kontrast). Das Bild wirkt damit
+  als Atmosphäre, nicht als Motiv in voller Leuchtkraft. Wer ein ruhiges, eher dunkles Motiv wählt,
+  bekommt das bessere Ergebnis.
 
 Ohne hinterlegtes Hintergrundbild bleibt die Anmeldeseite bei ihrer bisherigen Fläche. Ohne eigenes
 Anmeldelogo greift sie auf das Logo der Anwendung zurück, und ohne beides auf die OPAA-Marke.

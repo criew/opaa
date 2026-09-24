@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { LOGIN_BACKDROP_SCRIM_OPACITY } from './AuthLayout'
+import { LOGIN_BACKDROP_SCRIM_OPACITY, LOGIN_CLAIM_OPACITY } from './AuthLayout'
 import { TEXT_CONTRAST_MINIMUM, compositeOver, contrastRatio } from '../../utils/contrast'
 import { navyRoles } from '../../theme/tokens'
 
@@ -11,9 +11,6 @@ import { navyRoles } from '../../theme/tokens'
  */
 describe('Schleier über dem Hintergrundbild der Anmeldeseite', () => {
   const extremes = { 'ein rein weißes Bild': '#FFFFFF', 'ein rein schwarzes Bild': '#000000' }
-
-  /** Deckkraft des Claims in `AuthLayout`s `BrandPanel` — der schwächere der beiden Texte. */
-  const CLAIM_OPACITY = 0.78
 
   function ground(image: string): string {
     const composited = compositeOver(navyRoles.bg1, image, LOGIN_BACKDROP_SCRIM_OPACITY)
@@ -35,7 +32,7 @@ describe('Schleier über dem Hintergrundbild der Anmeldeseite', () => {
     it(`trägt den Claim über ${name}`, () => {
       // Die Deckkraft des Claims wirkt auf dem schon zusammengerechneten Grund.
       const grundfarbe = ground(image)
-      const claim = compositeOver(navyRoles.fg1, grundfarbe, CLAIM_OPACITY) as string
+      const claim = compositeOver(navyRoles.fg1, grundfarbe, LOGIN_CLAIM_OPACITY) as string
 
       expect(ratio(claim, grundfarbe)).toBeGreaterThanOrEqual(TEXT_CONTRAST_MINIMUM)
     })

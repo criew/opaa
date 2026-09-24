@@ -23,7 +23,7 @@ import { spaceSettingsRoute } from '../routes'
 import ChatList from '../components/chat/ChatList'
 import { useChatStore } from '../stores/chatStore'
 import { useSpaceStore } from '../stores/spaceStore'
-import { rememberSpaceUse, spacesByRecentUse } from '../utils/recentSpaces'
+import { rememberSpaceUse, spacesByRecentUse, useRecentSpaceIds } from '../utils/recentSpaces'
 import { darkRoles, fontFamily, lightRoles, shadow } from '../theme/tokens'
 
 const SIDEBAR_WIDTH = 248
@@ -94,10 +94,17 @@ export default function Sidebar() {
     if (routeSpaceId) rememberSpaceUse(routeSpaceId)
   }, [routeSpaceId])
 
+  const recentSpaceIds = useRecentSpaceIds()
+
   // #1912: Das Menü bleibt kurz - die zuletzt genutzten Spaces, damit „Alle Spaces anzeigen" und
   // „Neuen Space anlegen" darunter sichtbar bleiben, auch wenn jemand in dreißig Spaces Mitglied
-  // ist. Der ganze Bestand steht in der Übersicht.
-  const menuSpaces = useMemo(() => spacesByRecentUse(spaces), [spaces])
+  // ist. Der ganze Bestand steht in der Übersicht. Die Reihenfolge kommt als Zustand herein, nicht
+  // als Lesezugriff: Sonst rechnete dieser Wert vor dem Effekt oben, und ein über „Alle Spaces"
+  // geöffneter Space stünde erst nach einem Neuladen im Menü.
+  const menuSpaces = useMemo(
+    () => spacesByRecentUse(spaces, recentSpaceIds),
+    [spaces, recentSpaceIds],
+  )
 
   // #1917: Den Einstieg sieht, wer an diesem Space etwas zu verwalten hat - ein Administrator
   // (Stammdaten, Mitglieder) oder ein Kurator (zugeordnetes Wissen). Für alle anderen sind die

@@ -8,20 +8,48 @@ import org.springframework.stereotype.Repository;
 /**
  * Persistence for the singleton {@link BrandingSettings} row (#582).
  *
- * <p>{@link #findSettingsWithoutImages()} exists because {@code GET /api/v1/branding} is on the
- * render path of every page and runs for every signed-in user, while the three image {@code bytea}
- * columns together are up to three megabytes: a plain {@code findById} would pull those bytes into
- * memory on every one of those requests only to throw them away. The projection selects the
- * metadata columns alone; {@link #findSingleton()} - which does load the bytes - is reserved for
- * the endpoints that actually serve them and for writes.
+ * <p><b>No read path loads a {@code bytea} column it does not serve.</b> The three image columns
+ * together are up to three megabytes, and both read paths are reachable without a session and
+ * without a rate limit (see {@code BrandingController}), so a request must never pull bytes it
+ * throws away: {@link #findSettingsWithoutImages()} - on the render path of every page - selects
+ * the metadata columns alone, and each of the three {@code find*Image} projections loads exactly
+ * the one image its endpoint is about to write out. {@link #findSingleton()} loads everything and
+ * is reserved for the {@code SYSTEM_ADMIN} write paths, which have to read the row anyway.
  */
 @Repository
 public interface BrandingSettingsRepository extends JpaRepository<BrandingSettings, Integer> {
 
-  /** The full row including every image's bytes. For the image-serving endpoints and for writes. */
+  /** The full row including every image's bytes. For the {@code SYSTEM_ADMIN} write paths. */
   default Optional<BrandingSettings> findSingleton() {
     return findById(BrandingSettings.SINGLETON_ID);
   }
+
+  /** One image's bytes and the two fields served with them - never the other two images'. */
+  default Optional<BrandingImage> findImage(BrandingImageKind kind) {
+    return switch (kind) {
+      case LOGO -> findLogoImage();
+      case LOGIN_LOGO -> findLoginLogoImage();
+      case LOGIN_BACKGROUND -> findLoginBackgroundImage();
+    };
+  }
+
+  @Query(
+      "SELECT new io.opaa.branding.BrandingImage("
+          + "b.logoContent, b.logoContentType, b.logoVersion)"
+          + " FROM BrandingSettings b WHERE b.id = 1 AND b.logoContent IS NOT NULL")
+  Optional<BrandingImage> findLogoImage();
+
+  @Query(
+      "SELECT new io.opaa.branding.BrandingImage("
+          + "b.loginLogoContent, b.loginLogoContentType, b.loginLogoVersion)"
+          + " FROM BrandingSettings b WHERE b.id = 1 AND b.loginLogoContent IS NOT NULL")
+  Optional<BrandingImage> findLoginLogoImage();
+
+  @Query(
+      "SELECT new io.opaa.branding.BrandingImage("
+          + "b.loginBackgroundContent, b.loginBackgroundContentType, b.loginBackgroundVersion)"
+          + " FROM BrandingSettings b WHERE b.id = 1 AND b.loginBackgroundContent IS NOT NULL")
+  Optional<BrandingImage> findLoginBackgroundImage();
 
   /** Everything except the image bytes - see the interface Javadoc for why that matters. */
   @Query(

@@ -214,4 +214,4 @@ databaseChangeLog:
   # Eigenes Logo und optionales Hintergrundbild der Anmeldeseite, im selben Branding-Singleton
   # wie das Logo der Anwendung (#1910).
   - include:
-      file: db/changelog/changes/088-branding-login-images.yaml
+      file: db/changelog/changes/089-branding-login-images.yaml

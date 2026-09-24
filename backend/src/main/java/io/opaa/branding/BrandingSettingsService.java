@@ -32,7 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p><b>Writing is validated here, before the database sees it</b> (#582: "Validierung an der
  * Systemgrenze"), with German-language messages: the database's own {@code chk_branding_settings_*}
- * constraints of the baseline and of migration 088 are the backstop that catches a future direct
+ * constraints of the baseline and of migration 089 are the backstop that catches a future direct
  * write, not the primary defense that a caller is expected to hit. The images' own rules live in
  * {@link BrandingImageValidator}.
  *
@@ -89,19 +89,14 @@ public class BrandingSettingsService {
   }
 
   /**
-   * One configured image's bytes, or empty while none is configured for that kind. The only read
-   * path that loads a {@code bytea} column.
+   * One configured image's bytes, or empty while none is configured for that kind. Loads that one
+   * image's {@code bytea} column and no other - the serving endpoint is reachable without a session
+   * and without a rate limit, so pulling all three per request would hand anyone a three-megabyte
+   * read for a few hundred kilobytes of response.
    */
   @Transactional(readOnly = true)
   public Optional<BrandingImage> currentImage(BrandingImageKind kind) {
-    BrandingSettings settings =
-        repository.findSingleton().orElseThrow(BrandingSettingsService::missingRow);
-    byte[] content = settings.imageContent(kind);
-    if (content == null) {
-      return Optional.empty();
-    }
-    BrandingSettingsView.StoredImage metadata = settings.imageMetadata(kind);
-    return Optional.of(new BrandingImage(content, metadata.contentType(), metadata.version()));
+    return repository.findImage(kind);
   }
 
   /**

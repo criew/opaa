@@ -26,6 +26,12 @@ const formReveal = keyframes`
  */
 export const LOGIN_BACKDROP_SCRIM_OPACITY = 0.82
 
+/**
+ * Deckkraft des Claims auf der Markenfläche — der schwächere der beiden Texte dort und damit der
+ * maßgebliche Wert für den Kontrastnachweis über einem Hintergrundbild.
+ */
+export const LOGIN_CLAIM_OPACITY = 0.78
+
 /** Die Marke der Installation, groß — der Inhalt der Fläche, die vorher leer war. */
 function BrandPanel() {
   const claim = useBrandingStore((s) => s.branding.claim)
@@ -40,7 +46,7 @@ function BrandPanel() {
             mt: 2,
             fontSize: { md: 17, lg: 19 },
             lineHeight: 1.5,
-            color: alpha(navyRoles.fg1, 0.78),
+            color: alpha(navyRoles.fg1, LOGIN_CLAIM_OPACITY),
             maxWidth: '28ch',
           }}
         >

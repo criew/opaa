@@ -25,6 +25,22 @@ vi.mock('react-router', async () => {
 
 const theme = createAppTheme('dark')
 
+/** Acht Spaces - mehr als das Menü zeigt, und damit die Grenze überhaupt prüfbar. */
+function manySpaces() {
+  return Array.from({ length: 8 }, (_, index) => ({
+    id: `space-${index}`,
+    name: `Space ${index}`,
+    description: '',
+    isDefault: index === 0,
+    archived: false,
+    visibility: 'PRIVATE' as const,
+    memberCount: 1,
+    userRole: 'ADMIN' as const,
+    createdAt: '2026-03-01T10:00:00Z',
+    updatedAt: '2026-03-01T10:00:00Z',
+  }))
+}
+
 /**
  * Renders Sidebar as the element of a real, pathless layout route nested under a matched child
  * route - mirroring how it sits inside AppShell in production (a sibling of the routed page, not
@@ -191,21 +207,7 @@ describe('Sidebar', () => {
    * beginnt mit dem zuletzt genutzten Space.
    */
   it('shows at most five spaces, most recently used first', async () => {
-    useSpaceStore.setState({
-      spaces: Array.from({ length: 8 }, (_, index) => ({
-        id: `space-${index}`,
-        name: `Space ${index}`,
-        description: '',
-        isDefault: index === 0,
-        archived: false,
-        visibility: 'PRIVATE' as const,
-        memberCount: 1,
-        userRole: 'ADMIN' as const,
-        createdAt: '2026-03-01T10:00:00Z',
-        updatedAt: '2026-03-01T10:00:00Z',
-      })),
-      isLoadingList: false,
-    })
+    useSpaceStore.setState({ spaces: manySpaces(), isLoadingList: false })
     window.localStorage.setItem('opaa.spaces.recent', JSON.stringify(['space-6', 'space-3']))
 
     const user = userEvent.setup()
@@ -223,6 +225,26 @@ describe('Sidebar', () => {
     // Die beiden Aktionen stehen unabhängig davon immer im Menü.
     expect(screen.getByRole('menuitem', { name: 'Alle Spaces anzeigen' })).toBeInTheDocument()
     expect(screen.getByRole('menuitem', { name: /Neuen Space anlegen/ })).toBeInTheDocument()
+  })
+
+  /**
+   * #1912: Ein Space, der über „Alle Spaces" geöffnet wird, steht sofort im Menü - ohne Neuladen.
+   * Die Nutzungsreihenfolge wird beim Betreten der Route geschrieben; läse das Menü sie nur beim
+   * Aufbau, zeigte es weiter die alten fünf.
+   */
+  it('shows a space opened outside the menu immediately, without a reload', async () => {
+    useSpaceStore.setState({ spaces: manySpaces(), isLoadingList: false })
+
+    const user = userEvent.setup()
+    renderSidebarAtRoute('/spaces/space-7')
+    await user.click(screen.getByRole('button', { name: /Space 7/ }))
+
+    const first = screen
+      .getAllByRole('menuitem')
+      .find((item) => (item.textContent ?? '').startsWith('Space '))
+    expect(first).toHaveTextContent('Space 7')
+    // Der Haken am aktiven Eintrag - ein MUI-Icon ohne eigene Rolle, deshalb über das Markup.
+    expect(first?.querySelector('svg[data-testid="CheckIcon"]')).not.toBeNull()
   })
 
   /** #1911/#1912: Gemerkt wird der Space der Route, nicht der Rückfall auf den persönlichen. */

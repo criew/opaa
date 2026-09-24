@@ -1,6 +1,6 @@
 databaseChangeLog:
   - changeSet:
-      id: 088-branding-login-images
+      id: 089-branding-login-images
       author: opaa
       comment: "Two further branding images in the same singleton row (#1910): the sign-in page's own logo and its optional background image. Same shape as the logo columns of the baseline - content, detected content type, content-derived version, timestamp - with the same all-or-nothing and content-type constraints. The background carries its own, larger size ceiling: it is a photograph covering half a screen, not a piece of chrome."
       changes:

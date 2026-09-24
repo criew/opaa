@@ -254,7 +254,7 @@ class BrandingSettingsServiceIntegrationTest {
         .hasMessageContaining("chk_branding_settings_logo_complete");
   }
 
-  /** The same backstop for the two slots migration 088 added - one constraint each, not shared. */
+  /** The same backstop for the two slots migration 089 added - one constraint each, not shared. */
   @Test
   void theDatabaseRejectsPartialSignInImagesToo() {
     assertThatThrownBy(

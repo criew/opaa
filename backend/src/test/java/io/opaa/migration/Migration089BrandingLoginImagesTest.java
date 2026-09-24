@@ -14,7 +14,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Delta tests for {@code changes/088-branding-login-images.yaml} (#1910): the sign-in page's own
+ * Delta tests for {@code changes/089-branding-login-images.yaml} (#1910): the sign-in page's own
  * logo and its background image as two further slots of the branding singleton, each with the
  * all-or-nothing, content-type and size constraints the baseline's logo columns already carry.
  *
@@ -22,10 +22,10 @@ import org.junit.jupiter.api.Test;
  * every page render reads is exactly the kind of change that can quietly break the one column
  * already in use.
  */
-class Migration088BrandingLoginImagesTest extends AbstractMigrationTest {
+class Migration089BrandingLoginImagesTest extends AbstractMigrationTest {
 
   private static final String CHANGELOG_PATH =
-      "db/changelog/changes/088-branding-login-images.yaml";
+      "db/changelog/changes/089-branding-login-images.yaml";
 
   /** A minimal PNG signature - enough for a constraint test; nothing here decodes an image. */
   private static final String PNG_BYTES = "decode('89504e470d0a1a0a', 'hex')";

@@ -266,9 +266,11 @@ anlegen". Wer in vielen Spaces Mitglied ist, findet den vollständigen Bestand s
 Übersicht — das Menü ist der schnelle Weg zurück, nicht das Verzeichnis.
 
 Die Nutzungsreihenfolge merkt sich der Browser, nicht der Server: Sie gilt je Gerät und je Browser
-und wandert nicht mit. Ein Konto, das an einem fremden Rechner arbeitet, erbt daraus nichts — die
-Liste wird bei jedem Öffnen gegen die Spaces abgeglichen, die der Dienst dem angemeldeten Konto
-ausliefert.
+und wandert nicht mit. Gemerkt werden nur Space-Kennungen, und die Liste wird bei jedem Öffnen gegen
+die Spaces abgeglichen, die der Dienst dem angemeldeten Konto ausliefert. Melden sich zwei Personen
+nacheinander am selben Rechner an, wirkt die Reihenfolge deshalb genau in den Spaces weiter, in
+denen beide Mitglied sind — alles andere fällt heraus. Wer das nicht möchte, meldet sich in einem
+privaten Fenster an oder löscht die Browserdaten; ein Recht verschafft die Liste ohnehin nicht.
 
 ## 6. Woher Gruppen kommen
 
