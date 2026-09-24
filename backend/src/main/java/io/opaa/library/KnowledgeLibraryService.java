@@ -86,20 +86,21 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * alone no longer implies management rights.
  *
  * <p>{@link #createLibrary} always grants the creator {@link AssetRole#OWNER} explicitly via an
- * {@link AssetGrant} - the right to delete the library and transfer ownership always sits on a
- * named person, never on group membership alone. For a {@link AssetOwnerType#GROUP} library the
- * owning group additionally gets {@link AssetRole#MANAGER} (sharing and granting roles to others),
- * <em>not</em> {@code OWNER}: every member automatically holding {@code OWNER} would grow without a
- * human decision point as a directory-synchronised group's membership grows (#237) and could never
- * be downgraded once it became the library's only {@code OWNER} grant (#202 code review round 2).
- * The accepted price is that the personal {@code OWNER} grant is lost when its holder leaves - #240
- * (succession instead of blocking) is what regulates that case, not this class.
+ * {@link io.opaa.permission.AssetGrant} - the right to delete the library and transfer ownership
+ * always sits on a named person, never on group membership alone. For a {@link
+ * AssetOwnerType#GROUP} library the owning group additionally gets {@link AssetRole#MANAGER}
+ * (sharing and granting roles to others), <em>not</em> {@code OWNER}: every member automatically
+ * holding {@code OWNER} would grow without a human decision point as a directory-synchronised
+ * group's membership grows (#237) and could never be downgraded once it became the library's only
+ * {@code OWNER} grant (#202 code review round 2). The accepted price is that the personal {@code
+ * OWNER} grant is lost when its holder leaves - #240 (succession instead of blocking) is what
+ * regulates that case, not this class.
  *
  * <p>A third owner kind, {@code SYSTEM}, existed from #201 until #521: exactly one library per
  * organization, seeded {@code PRIVATE} with no grants and reachable only to a system administrator.
  * #521 deleted that library and its content outright (migration {@code
  * 031-delete-system-library.yaml}) rather than keep carrying the special case - see the issue and
- * the deleted {@code AssetOwnerType.SYSTEM} for the history. Every library now has a real owner,
+ * the deleted {@code LibraryOwnerType.SYSTEM} for the history. Every library now has a real owner,
  * and {@link #createLibrary}/{@link #deleteLibrary} carry no owner-kind-specific exception.
  *
  * <p>An automatically provisioned personal library (the {@code personal} flag, {@code

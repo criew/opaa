@@ -10,8 +10,8 @@ import java.util.UUID;
  * Domain event for the {@link AssetGrant} permission-history/audit double bookkeeping (#238/#392,
  * #892): every grant lifecycle change writes one {@link PermissionHistoryService} interval and one
  * audit entry side by side, never one without the other. Every writer of a grant publishes exactly
- * one of these per change; {@link AssetGrantAuditListener} and {@link AssetGrantHistoryListener}
- * each write their half, in an unspecified order - the two writes touch disjoint tables.
+ * one of these per change; {@link AssetAuditListener} and {@link AssetHistoryListener} each write
+ * their half, in an unspecified order - the two writes touch disjoint tables.
  *
  * <p>{@link Cause} carries its {@link AuditEventType}, so a cause and an event type can never
  * disagree.
