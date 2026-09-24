@@ -11,7 +11,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.chunk.ChunkingService;
 import io.opaa.indexing.chunk.EmbeddingRateEstimator;
@@ -88,12 +87,7 @@ class DocumentIngestServiceEmbeddingConcurrencyTest {
     meterRegistry = new SimpleMeterRegistry();
     targetLibrary =
         KnowledgeLibrary.ownedByUser(
-            UUID.randomUUID(),
-            "Bibliothek",
-            null,
-            UUID.randomUUID(),
-            AssetVisibility.PRIVATE,
-            false);
+            UUID.randomUUID(), "Bibliothek", null, UUID.randomUUID(), false);
     lenient()
         .when(storageQuotaService.wouldExceedQuota(any(), org.mockito.ArgumentMatchers.anyLong()))
         .thenReturn(false);

@@ -11,8 +11,9 @@ import type {
   DocumentStatus,
   GroupKind,
   IndexingRunEventCategory,
-  AssetVisibility,
+  AssetReach,
   MetadataOrigin,
+  AssetGrantSubjectType,
   PermissionSubjectType,
   PromptVariableType,
   ScheduleFrequency,
@@ -105,33 +106,29 @@ export function documentCountLabel(count: number): string {
   return `${(millions.endsWith('.0') ? millions.slice(0, -2) : millions).replace('.', ',')} Mio.`
 }
 
-const libraryVisibilityLabels: Record<AssetVisibility, string> = {
-  PRIVATE: 'privat',
-  SHARED: 'geteilt',
-  ORGANIZATION: 'organisationsweit',
-}
+/** What "Alle Konten" is called wherever a grant names its recipient (#1931). */
+export const allAccountsLabel = 'Alle Konten'
 
-export function libraryVisibilityLabel(visibility: AssetVisibility | string | undefined): string {
-  if (!visibility) return ''
-  return libraryVisibilityLabels[visibility as AssetVisibility] ?? visibility
-}
-
-/** Render order of the distribution levels in LibraryCreatePage and LibraryDetailPage. */
-export const libraryVisibilities = Object.keys(libraryVisibilityLabels) as AssetVisibility[]
-
-// One sentence per distribution level, following the semantics documented on the
-// AssetVisibility schema in opaa-api.yaml and docs/features/spaces-and-assets.md.
-const libraryVisibilityDescriptions: Record<AssetVisibility, string> = {
-  PRIVATE: 'Nur der Eigentümer nutzt den Bestand — bei Gruppen-Eigentum die Mitglieder der Gruppe.',
-  SHARED: 'Die Reichweite bestimmen die Freigaben an Personen und Gruppen.',
-  ORGANIZATION: 'Lesbar für alle Nutzer der Organisation.',
-}
-
-export function libraryVisibilityDescription(
-  visibility: AssetVisibility | string | undefined,
-): string {
-  if (!visibility) return ''
-  return libraryVisibilityDescriptions[visibility as AssetVisibility] ?? ''
+/**
+ * The reach of an asset as one short phrase, derived from its grants rather than from a stored
+ * level (#1931, ADR-0037): "Alle" outranks the counts, and an asset that only its owner reaches
+ * reads "nur Sie".
+ */
+export function assetReachLabel(reach: AssetReach | undefined): string {
+  if (!reach) return ''
+  if (reach.allAccounts) return 'Alle'
+  // Exactly one person holds a grant and the caller reads the asset, so that person is the caller
+  // - no other way in exists. Every other case is counted plainly, the caller included:
+  // subtracting "the one owner" would miscount a foreign asset the caller merely reads.
+  if (reach.groupCount === 0 && reach.userCount <= 1) return 'nur Sie'
+  const parts: string[] = []
+  if (reach.groupCount > 0) {
+    parts.push(reach.groupCount === 1 ? '1 Gruppe' : `${reach.groupCount} Gruppen`)
+  }
+  if (reach.userCount > 0) {
+    parts.push(reach.userCount === 1 ? '1 Person' : `${reach.userCount} Personen`)
+  }
+  return parts.join(', ')
 }
 
 const assetRoleLabels: Record<AssetRole, string> = {
@@ -222,16 +219,17 @@ export function assetGrantScopeHint(assetType: AssetType): string {
   return assetGrantScopeHints[assetType] ?? ''
 }
 
-const permissionSubjectTypeLabels: Record<PermissionSubjectType, string> = {
+const permissionSubjectTypeLabels: Record<AssetGrantSubjectType, string> = {
   USER: 'Person',
   GROUP: 'Gruppe',
+  ALL_ACCOUNTS: allAccountsLabel,
 }
 
 export function permissionSubjectTypeLabel(
-  subjectType: PermissionSubjectType | string | undefined,
+  subjectType: AssetGrantSubjectType | PermissionSubjectType | string | undefined,
 ): string {
   if (!subjectType) return ''
-  return permissionSubjectTypeLabels[subjectType as PermissionSubjectType] ?? subjectType
+  return permissionSubjectTypeLabels[subjectType as AssetGrantSubjectType] ?? subjectType
 }
 
 const documentStatusLabels: Record<DocumentStatus, string> = {

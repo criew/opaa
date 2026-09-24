@@ -11,10 +11,9 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.opaa.api.types.AssetGrantSubjectType;
 import io.opaa.api.types.AssetRole;
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.AuditObjectType;
-import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.api.types.SystemRole;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
@@ -54,6 +53,7 @@ class AssetGrantServiceTest {
   private AuditEventRecorder auditEventRecorder;
   private ApplicationEventPublisher eventPublisher;
   private AssetGrantService grantService;
+  private AssetTypeDefinition libraryType;
 
   private final UUID organizationId = UUID.randomUUID();
   private final UUID managerId = UUID.randomUUID();
@@ -73,7 +73,7 @@ class AssetGrantServiceTest {
     disclosureDirectory = mock(GroupMemberDisclosureDirectory.class);
     groupMemberships = mock(GroupMembershipResolver.class);
     accessService = mock(AssetAuthorization.class);
-    AssetTypeDefinition libraryType = mock(AssetTypeDefinition.class);
+    libraryType = mock(AssetTypeDefinition.class);
     when(libraryType.assetType()).thenReturn(KnowledgeLibrary.ASSET_TYPE);
     when(libraryType.singular()).thenReturn("Bibliothek");
     when(libraryType.auditObjectType()).thenReturn(AuditObjectType.KNOWLEDGE_LIBRARY);
@@ -98,9 +98,7 @@ class AssetGrantServiceTest {
     // method on that entity) - libraryId is read back from the constructed instance rather than
     // generated independently, so every stub keyed on "this library's id" below actually matches
     // what AssetGrantService reads via library.getId().
-    library =
-        KnowledgeLibrary.ownedByUser(
-            organizationId, "Bibliothek", null, managerId, AssetVisibility.PRIVATE, false);
+    library = KnowledgeLibrary.ownedByUser(organizationId, "Bibliothek", null, managerId, false);
     libraryId = library.getId();
     when(accessService.load(KnowledgeLibrary.ASSET_TYPE, libraryId, organizationId))
         .thenReturn(library);
@@ -133,7 +131,7 @@ class AssetGrantServiceTest {
     when(groupDirectory.isSelectableBy(group.id(), managerId, false)).thenReturn(false);
 
     AssetGrantUpsert request =
-        new AssetGrantUpsert(PermissionSubjectType.GROUP, group.id(), AssetRole.VIEWER);
+        new AssetGrantUpsert(AssetGrantSubjectType.GROUP, group.id(), AssetRole.VIEWER);
 
     assertThatThrownBy(
             () ->
@@ -149,7 +147,7 @@ class AssetGrantServiceTest {
     when(accessService.requireRole(any(), any(), anyBoolean(), eq(AssetRole.MANAGER)))
         .thenThrow(new AccessDeniedException("Kein Zugriff auf diese Bibliothek"));
     AssetGrantUpsert request =
-        new AssetGrantUpsert(PermissionSubjectType.USER, UUID.randomUUID(), AssetRole.VIEWER);
+        new AssetGrantUpsert(AssetGrantSubjectType.USER, UUID.randomUUID(), AssetRole.VIEWER);
 
     assertThatThrownBy(
             () ->
@@ -170,13 +168,13 @@ class AssetGrantServiceTest {
     subjectUser.setOrganizationId(organizationId);
     when(userRepository.findById(subjectId)).thenReturn(Optional.of(subjectUser));
     when(grantRepository.findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectUserId(
-            KnowledgeLibrary.ASSET_TYPE, libraryId, PermissionSubjectType.USER, subjectId))
+            KnowledgeLibrary.ASSET_TYPE, libraryId, AssetGrantSubjectType.USER, subjectId))
         .thenReturn(Optional.empty());
     when(grantRepository.save(any(AssetGrant.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
 
     AssetGrantUpsert request =
-        new AssetGrantUpsert(PermissionSubjectType.USER, subjectId, AssetRole.VIEWER);
+        new AssetGrantUpsert(AssetGrantSubjectType.USER, subjectId, AssetRole.VIEWER);
     var response =
         grantService.upsertGrant(KnowledgeLibrary.ASSET_TYPE, libraryId, request, managerCaller);
 
@@ -204,7 +202,7 @@ class AssetGrantServiceTest {
     subjectUser.setOrganizationId(organizationId);
     when(userRepository.findById(subjectId)).thenReturn(Optional.of(subjectUser));
     when(grantRepository.findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectUserId(
-            KnowledgeLibrary.ASSET_TYPE, libraryId, PermissionSubjectType.USER, subjectId))
+            KnowledgeLibrary.ASSET_TYPE, libraryId, AssetGrantSubjectType.USER, subjectId))
         .thenReturn(Optional.empty());
     when(grantRepository.save(any(AssetGrant.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
@@ -214,7 +212,7 @@ class AssetGrantServiceTest {
             .upsertGrant(
                 KnowledgeLibrary.ASSET_TYPE,
                 libraryId,
-                new AssetGrantUpsert(PermissionSubjectType.USER, subjectId, AssetRole.VIEWER),
+                new AssetGrantUpsert(AssetGrantSubjectType.USER, subjectId, AssetRole.VIEWER),
                 managerCaller)
             .grant();
 
@@ -239,7 +237,7 @@ class AssetGrantServiceTest {
                     KnowledgeLibrary.ASSET_TYPE,
                     unknownLibraryId,
                     new AssetGrantUpsert(
-                        PermissionSubjectType.USER, UUID.randomUUID(), AssetRole.VIEWER),
+                        AssetGrantSubjectType.USER, UUID.randomUUID(), AssetRole.VIEWER),
                     managerCaller))
         .isInstanceOf(NotFoundException.class);
     verify(grantRepository, never()).save(any());
@@ -257,7 +255,7 @@ class AssetGrantServiceTest {
     when(userRepository.findById(foreignUserId)).thenReturn(Optional.of(foreignUser));
 
     AssetGrantUpsert request =
-        new AssetGrantUpsert(PermissionSubjectType.USER, foreignUserId, AssetRole.VIEWER);
+        new AssetGrantUpsert(AssetGrantSubjectType.USER, foreignUserId, AssetRole.VIEWER);
 
     assertThatThrownBy(
             () ->
@@ -279,7 +277,7 @@ class AssetGrantServiceTest {
     when(groupDirectory.find(foreignGroupId)).thenReturn(Optional.of(foreignGroup));
 
     AssetGrantUpsert request =
-        new AssetGrantUpsert(PermissionSubjectType.GROUP, foreignGroupId, AssetRole.VIEWER);
+        new AssetGrantUpsert(AssetGrantSubjectType.GROUP, foreignGroupId, AssetRole.VIEWER);
 
     assertThatThrownBy(
             () ->
@@ -308,13 +306,13 @@ class AssetGrantServiceTest {
             null,
             managerId);
     when(grantRepository.findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectUserId(
-            KnowledgeLibrary.ASSET_TYPE, libraryId, PermissionSubjectType.USER, subjectId))
+            KnowledgeLibrary.ASSET_TYPE, libraryId, AssetGrantSubjectType.USER, subjectId))
         .thenReturn(Optional.of(existing));
     when(grantRepository.save(any(AssetGrant.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
 
     AssetGrantUpsert request =
-        new AssetGrantUpsert(PermissionSubjectType.USER, subjectId, AssetRole.MANAGER);
+        new AssetGrantUpsert(AssetGrantSubjectType.USER, subjectId, AssetRole.MANAGER);
     var response =
         grantService.upsertGrant(KnowledgeLibrary.ASSET_TYPE, libraryId, request, managerCaller);
 
@@ -391,7 +389,7 @@ class AssetGrantServiceTest {
     subjectUser.setOrganizationId(organizationId);
     when(userRepository.findById(subjectId)).thenReturn(Optional.of(subjectUser));
     AssetGrantUpsert request =
-        new AssetGrantUpsert(PermissionSubjectType.USER, subjectId, AssetRole.OWNER);
+        new AssetGrantUpsert(AssetGrantSubjectType.USER, subjectId, AssetRole.OWNER);
 
     assertThatThrownBy(
             () ->
@@ -424,7 +422,7 @@ class AssetGrantServiceTest {
         .thenAnswer(invocation -> invocation.getArgument(0));
 
     AssetGrantUpsert request =
-        new AssetGrantUpsert(PermissionSubjectType.USER, subjectId, AssetRole.MANAGER);
+        new AssetGrantUpsert(AssetGrantSubjectType.USER, subjectId, AssetRole.MANAGER);
     var response =
         grantService.upsertGrant(KnowledgeLibrary.ASSET_TYPE, libraryId, request, managerCaller);
 
@@ -443,7 +441,7 @@ class AssetGrantServiceTest {
     when(groupDirectory.find(dissolvedGroup.id())).thenReturn(Optional.of(dissolvedGroup));
 
     AssetGrantUpsert request =
-        new AssetGrantUpsert(PermissionSubjectType.GROUP, dissolvedGroup.id(), AssetRole.VIEWER);
+        new AssetGrantUpsert(AssetGrantSubjectType.GROUP, dissolvedGroup.id(), AssetRole.VIEWER);
 
     assertThatThrownBy(
             () ->
@@ -478,7 +476,7 @@ class AssetGrantServiceTest {
     when(groupDirectory.find(group.id())).thenReturn(Optional.of(group));
 
     AssetGrantUpsert request =
-        new AssetGrantUpsert(PermissionSubjectType.GROUP, group.id(), AssetRole.VIEWER);
+        new AssetGrantUpsert(AssetGrantSubjectType.GROUP, group.id(), AssetRole.VIEWER);
 
     assertThatThrownBy(
             () ->
@@ -506,7 +504,7 @@ class AssetGrantServiceTest {
     when(groupDirectory.find(group.id())).thenReturn(Optional.of(group));
 
     AssetGrantUpsert request =
-        new AssetGrantUpsert(PermissionSubjectType.GROUP, group.id(), AssetRole.VIEWER);
+        new AssetGrantUpsert(AssetGrantSubjectType.GROUP, group.id(), AssetRole.VIEWER);
 
     assertThatThrownBy(
             () ->
@@ -540,7 +538,7 @@ class AssetGrantServiceTest {
             null,
             managerId);
     when(grantRepository.findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectUserId(
-            KnowledgeLibrary.ASSET_TYPE, libraryId, PermissionSubjectType.USER, subjectId))
+            KnowledgeLibrary.ASSET_TYPE, libraryId, AssetGrantSubjectType.USER, subjectId))
         .thenReturn(Optional.of(onlyOwnerGrant));
     when(grantRepository.countOtherActiveOwnerGrants(
             eq(KnowledgeLibrary.ASSET_TYPE.value()),
@@ -550,7 +548,7 @@ class AssetGrantServiceTest {
         .thenReturn(0L);
 
     AssetGrantUpsert request =
-        new AssetGrantUpsert(PermissionSubjectType.USER, subjectId, AssetRole.VIEWER);
+        new AssetGrantUpsert(AssetGrantSubjectType.USER, subjectId, AssetRole.VIEWER);
 
     assertThatThrownBy(
             () ->
@@ -717,11 +715,11 @@ class AssetGrantServiceTest {
             null,
             managerId);
     when(grantRepository.findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectUserId(
-            KnowledgeLibrary.ASSET_TYPE, libraryId, PermissionSubjectType.USER, subjectId))
+            KnowledgeLibrary.ASSET_TYPE, libraryId, AssetGrantSubjectType.USER, subjectId))
         .thenReturn(Optional.of(existingOwnerGrant));
 
     AssetGrantUpsert request =
-        new AssetGrantUpsert(PermissionSubjectType.USER, subjectId, AssetRole.VIEWER);
+        new AssetGrantUpsert(AssetGrantSubjectType.USER, subjectId, AssetRole.VIEWER);
 
     assertThatThrownBy(
             () ->
@@ -759,7 +757,7 @@ class AssetGrantServiceTest {
             null,
             managerId);
     when(grantRepository.findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectUserId(
-            KnowledgeLibrary.ASSET_TYPE, libraryId, PermissionSubjectType.USER, managerId))
+            KnowledgeLibrary.ASSET_TYPE, libraryId, AssetGrantSubjectType.USER, managerId))
         .thenReturn(Optional.of(onlyOwnerGrant));
     when(grantRepository.countOtherActiveOwnerGrants(
             eq(KnowledgeLibrary.ASSET_TYPE.value()),
@@ -769,7 +767,7 @@ class AssetGrantServiceTest {
         .thenReturn(0L);
 
     AssetGrantUpsert request =
-        new AssetGrantUpsert(PermissionSubjectType.USER, managerId, AssetRole.OWNER)
+        new AssetGrantUpsert(AssetGrantSubjectType.USER, managerId, AssetRole.OWNER)
             .expiresAt(Instant.now().minusSeconds(60));
 
     assertThatThrownBy(
@@ -798,13 +796,13 @@ class AssetGrantServiceTest {
             null,
             managerId);
     when(grantRepository.findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectUserId(
-            KnowledgeLibrary.ASSET_TYPE, libraryId, PermissionSubjectType.USER, managerId))
+            KnowledgeLibrary.ASSET_TYPE, libraryId, AssetGrantSubjectType.USER, managerId))
         .thenReturn(Optional.of(onlyOwnerGrant));
     when(grantRepository.save(any(AssetGrant.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
 
     AssetGrantUpsert request =
-        new AssetGrantUpsert(PermissionSubjectType.USER, managerId, AssetRole.OWNER);
+        new AssetGrantUpsert(AssetGrantSubjectType.USER, managerId, AssetRole.OWNER);
     var response =
         grantService.upsertGrant(KnowledgeLibrary.ASSET_TYPE, libraryId, request, managerCaller);
 
@@ -948,7 +946,7 @@ class AssetGrantServiceTest {
     grantService.upsertGrant(
         KnowledgeLibrary.ASSET_TYPE,
         libraryId,
-        new AssetGrantUpsert(PermissionSubjectType.GROUP, groupId, AssetRole.VIEWER, null),
+        new AssetGrantUpsert(AssetGrantSubjectType.GROUP, groupId, AssetRole.VIEWER, null),
         managerCaller);
 
     org.mockito.ArgumentCaptor<AssetGrant> saved =
@@ -1010,5 +1008,108 @@ class AssetGrantServiceTest {
     assertThat(responses).hasSize(1);
     assertThat(responses.get(0).subjectDisplayName()).isNull();
     assertThat(responses.get(0).grantedByDisplayName()).isNull();
+  }
+
+  // --- "Alle Konten" as a recipient (#1931, ADR-0037) ---------------------------------
+
+  /** The recipient that names no row: both subject columns stay empty, the reach is everybody. */
+  @Test
+  void upsertGrantWritesAGrantToAllAccountsWithoutASubject() {
+    asManagerOfTheLibrary();
+    when(grantRepository.findByAssetTypeAndAssetIdAndSubjectType(
+            KnowledgeLibrary.ASSET_TYPE, libraryId, AssetGrantSubjectType.ALL_ACCOUNTS))
+        .thenReturn(Optional.empty());
+    when(grantRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+    AssetGrantView view =
+        grantService.upsertGrant(
+            KnowledgeLibrary.ASSET_TYPE,
+            libraryId,
+            AssetGrantUpsert.forAllAccounts(AssetRole.VIEWER),
+            managerCaller);
+
+    assertThat(view.grant().getSubjectType()).isEqualTo(AssetGrantSubjectType.ALL_ACCOUNTS);
+    assertThat(view.grant().getSubjectUserId()).isNull();
+    assertThat(view.grant().getSubjectGroupId()).isNull();
+    assertThat(view.grant().getMemberCountAtGrant())
+        .as("the reach is the organization itself - a figure would invite a meaningless comparison")
+        .isNull();
+    assertThat(view.subjectDisplayName()).isEqualTo("Alle Konten");
+  }
+
+  /**
+   * #797 after #1931: the share cap is asked here, not where a release level used to be set - the
+   * grant path is the only one that reaches everybody now.
+   */
+  @Test
+  void upsertGrantAsksTheTypesCeilingBeforeGrantingToAllAccounts() {
+    asManagerOfTheLibrary();
+    org.mockito.Mockito.doThrow(new ConflictException("nicht an alle freigegeben"))
+        .when(libraryType)
+        .requireAllAccountsGrantAllowed(library);
+
+    assertThatThrownBy(
+            () ->
+                grantService.upsertGrant(
+                    KnowledgeLibrary.ASSET_TYPE,
+                    libraryId,
+                    AssetGrantUpsert.forAllAccounts(AssetRole.VIEWER),
+                    managerCaller))
+        .isInstanceOf(ConflictException.class);
+    verify(grantRepository, never()).save(any());
+  }
+
+  @Test
+  void upsertGrantRejectsASubjectIdAlongsideAllAccounts() {
+    asManagerOfTheLibrary();
+
+    assertThatThrownBy(
+            () ->
+                grantService.upsertGrant(
+                    KnowledgeLibrary.ASSET_TYPE,
+                    libraryId,
+                    new AssetGrantUpsert(
+                        AssetGrantSubjectType.ALL_ACCOUNTS, UUID.randomUUID(), AssetRole.VIEWER),
+                    managerCaller))
+        .isInstanceOf(ValidationException.class);
+  }
+
+  /** The clamp of a lowered ceiling is an ordinary revocation - and is never refused. */
+  @Test
+  void revokeAllAccountsGrantForALoweredCapTakesTheGrantBackWithoutAManagerCheck() {
+    AssetGrant grant =
+        AssetGrant.forAllAccounts(
+            KnowledgeLibrary.ASSET_TYPE,
+            libraryId,
+            organizationId,
+            AssetRole.VIEWER,
+            null,
+            managerId);
+    when(grantRepository.findByAssetTypeAndAssetIdAndSubjectType(
+            KnowledgeLibrary.ASSET_TYPE, libraryId, AssetGrantSubjectType.ALL_ACCOUNTS))
+        .thenReturn(Optional.of(grant));
+
+    boolean revoked = grantService.revokeAllAccountsGrantForLoweredCap(library, managerId);
+
+    assertThat(revoked).isTrue();
+    verify(grantRepository).delete(grant);
+    verify(accessService, never()).requireRole(any(), any(), anyBoolean(), any());
+  }
+
+  @Test
+  void revokeAllAccountsGrantForALoweredCapDoesNothingWithoutSuchAGrant() {
+    when(grantRepository.findByAssetTypeAndAssetIdAndSubjectType(
+            KnowledgeLibrary.ASSET_TYPE, libraryId, AssetGrantSubjectType.ALL_ACCOUNTS))
+        .thenReturn(Optional.empty());
+
+    assertThat(grantService.revokeAllAccountsGrantForLoweredCap(library, managerId)).isFalse();
+    verify(grantRepository, never()).delete(any());
+  }
+
+  private void asManagerOfTheLibrary() {
+    when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
+        .thenReturn(AssetRole.OWNER);
+    when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
+        .thenReturn(AssetRole.OWNER);
   }
 }

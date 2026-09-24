@@ -6,7 +6,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.auth.DevAuthFilter;
 import io.opaa.auth.User;
@@ -83,7 +82,6 @@ class PipelineReindexHttpIntegrationTest {
                 "Reindex-HTTP-Testbibliothek",
                 null,
                 devAdmin.getId(),
-                AssetVisibility.PRIVATE,
                 false));
 
     Path managedDirectory =

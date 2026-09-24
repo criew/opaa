@@ -29,7 +29,7 @@ describe('AssetDistributionSection', () => {
   })
 
   describe.each(ASSETS)('für $assetType', ({ assetType, assetId, name, noun }) => {
-    it('saves distribution level and findability together through the caller', async () => {
+    it('saves the findability through the caller and shows the derived reach', async () => {
       const onSave = vi.fn().mockResolvedValue(undefined)
       const user = userEvent.setup()
       renderWithProviders(
@@ -37,19 +37,21 @@ describe('AssetDistributionSection', () => {
           assetType={assetType}
           assetId={assetId}
           assetName={name}
-          visibility="PRIVATE"
+          reach={{ allAccounts: false, groupCount: 0, userCount: 1 }}
           listed={false}
           onSave={onSave}
         />,
       )
 
+      // The reach is derived from the grants and only shown here (#1931): one person, themselves.
+      expect(screen.getByText('nur Sie')).toBeInTheDocument()
+      expect(screen.queryByRole('combobox', { name: 'Verteilungsstufe' })).not.toBeInTheDocument()
+
       expect(screen.getByRole('button', { name: 'Freigabe speichern' })).toBeDisabled()
-      await user.click(screen.getByRole('combobox', { name: 'Verteilungsstufe' }))
-      await user.click(await screen.findByRole('option', { name: 'geteilt' }))
-      await user.click(screen.getByLabelText('Im Katalog auffindbar'))
+      await user.click(screen.getByLabelText('Im Katalog auffindbar, auch ohne Berechtigung'))
       await user.click(screen.getByRole('button', { name: 'Freigabe speichern' }))
 
-      await waitFor(() => expect(onSave).toHaveBeenCalledWith('SHARED', true))
+      await waitFor(() => expect(onSave).toHaveBeenCalledWith(true))
     })
 
     it('opens the one rights dialog for this asset type', async () => {
@@ -64,7 +66,7 @@ describe('AssetDistributionSection', () => {
           assetType={assetType}
           assetId={assetId}
           assetName={name}
-          visibility="SHARED"
+          reach={{ allAccounts: false, groupCount: 0, userCount: 1 }}
           listed={false}
           onSave={vi.fn()}
         />,
@@ -103,7 +105,7 @@ describe('AssetDistributionSection', () => {
           assetType={assetType}
           assetId={assetId}
           assetName={name}
-          visibility="SHARED"
+          reach={{ allAccounts: false, groupCount: 0, userCount: 1 }}
           listed={false}
           onSave={vi.fn()}
         />,
@@ -119,32 +121,26 @@ describe('AssetDistributionSection', () => {
     })
   })
 
-  it('disables levels above a cap and puts the type-specific control into its slot', async () => {
-    const user = userEvent.setup()
+  it('locks the findability under a cap and puts the type-specific control into its slot', () => {
     renderWithProviders(
       <AssetDistributionSection
         assetType="KNOWLEDGE_LIBRARY"
         assetId="library-referat-50"
         assetName="Rechtsquellen Soziales"
-        visibility="PRIVATE"
+        reach={{ allAccounts: false, groupCount: 0, userCount: 1 }}
         listed={false}
         onSave={vi.fn()}
-        visibilityCap="SHARED"
         listedCap={false}
         capControl={<div>Obergrenze der Systemverwaltung</div>}
       />,
     )
 
     expect(screen.getByText('Obergrenze der Systemverwaltung')).toBeInTheDocument()
-    expect(screen.getByLabelText('Im Katalog auffindbar')).toBeDisabled()
-    await user.click(screen.getByRole('combobox', { name: 'Verteilungsstufe' }))
-    expect(await screen.findByRole('option', { name: 'organisationsweit' })).toHaveAttribute(
-      'aria-disabled',
-      'true',
-    )
+    expect(screen.getByLabelText('Im Katalog auffindbar, auch ohne Berechtigung')).toBeDisabled()
+    expect(screen.getByText(/im Katalog gesperrt/)).toBeInTheDocument()
   })
 
-  it('names the takeover when an open succession refuses a wider reach', async () => {
+  it('names the takeover when an open succession refuses the change', async () => {
     const refusal = new Error(
       'Für dieses Objekt ist die Nachfolge offen: eine größere Reichweite ist deshalb nicht möglich.',
     )
@@ -165,13 +161,13 @@ describe('AssetDistributionSection', () => {
         assetType="PROMPT_LIBRARY"
         assetId="prompt-library-referat-50"
         assetName="Formulierungshilfen Referat 50"
-        visibility="PRIVATE"
+        reach={{ allAccounts: false, groupCount: 0, userCount: 1 }}
         listed={false}
         onSave={onSave}
       />,
     )
 
-    await user.click(screen.getByLabelText('Im Katalog auffindbar'))
+    await user.click(screen.getByLabelText('Im Katalog auffindbar, auch ohne Berechtigung'))
     await user.click(screen.getByRole('button', { name: 'Freigabe speichern' }))
 
     expect(await screen.findByText(/Nachfolge offen/)).toBeInTheDocument()
@@ -186,13 +182,13 @@ describe('AssetDistributionSection', () => {
         assetType="KNOWLEDGE_LIBRARY"
         assetId="library-referat-50"
         assetName="Rechtsquellen Soziales"
-        visibility="PRIVATE"
+        reach={{ allAccounts: false, groupCount: 0, userCount: 1 }}
         listed={false}
         onSave={onSave}
       />,
     )
 
-    await user.click(screen.getByLabelText('Im Katalog auffindbar'))
+    await user.click(screen.getByLabelText('Im Katalog auffindbar, auch ohne Berechtigung'))
     await user.click(screen.getByRole('button', { name: 'Freigabe speichern' }))
 
     expect(await screen.findByText('Keine Berechtigung')).toBeInTheDocument()

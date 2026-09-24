@@ -25,7 +25,7 @@ function library(externalAccess: LibraryExternalAccessResponse | undefined): Lib
     name: 'Baugenehmigungen 2024',
     ownerType: 'USER',
     ownerId: 'user-1',
-    visibility: 'PRIVATE',
+    reach: { allAccounts: false, groupCount: 0, userCount: 1 },
     listed: false,
     myRole: 'MANAGER',
     sourceType: 'UPLOAD',

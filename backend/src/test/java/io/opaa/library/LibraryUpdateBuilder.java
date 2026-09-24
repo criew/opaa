@@ -1,6 +1,5 @@
 package io.opaa.library;
 
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.indexing.source.s3.S3SourceSettings;
@@ -16,7 +15,6 @@ public final class LibraryUpdateBuilder {
 
   private final String name;
   private String description;
-  private AssetVisibility visibility;
   private Boolean listed;
   private DocumentSourceType sourceType;
   private String sourcePath;
@@ -40,11 +38,6 @@ public final class LibraryUpdateBuilder {
 
   public LibraryUpdateBuilder description(String description) {
     this.description = description;
-    return this;
-  }
-
-  public LibraryUpdateBuilder visibility(AssetVisibility visibility) {
-    this.visibility = visibility;
     return this;
   }
 
@@ -112,7 +105,6 @@ public final class LibraryUpdateBuilder {
     return new LibraryUpdate(
         name,
         description,
-        visibility,
         listed,
         sourceType,
         sourcePath,

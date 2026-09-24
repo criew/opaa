@@ -13,7 +13,6 @@ import static org.mockito.Mockito.when;
 
 import com.sun.net.httpserver.HttpsConfigurator;
 import com.sun.net.httpserver.HttpsServer;
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.indexing.IndexingProperties;
@@ -267,7 +266,6 @@ class RssFeedIndexingExecutorInsecureSslTest {
         "Bibliothek",
         null,
         UUID.randomUUID(),
-        AssetVisibility.PRIVATE,
         false,
         DocumentSourceType.RSS_FEED,
         null,

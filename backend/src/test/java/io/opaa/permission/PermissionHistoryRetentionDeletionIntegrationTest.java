@@ -3,7 +3,6 @@ package io.opaa.permission;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.api.types.AssetRole;
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.ExternalAccessState;
 import io.opaa.api.types.PermissionTransferScope;
 import io.opaa.asset.AssetVisibilityHistory;
@@ -411,7 +410,6 @@ class PermissionHistoryRetentionDeletionIntegrationTest {
         KnowledgeLibrary.ASSET_TYPE,
         UUID.randomUUID(),
         Organization.DEFAULT_ID,
-        AssetVisibility.PRIVATE,
         false,
         ExternalAccessState.NEVER_SET,
         null,

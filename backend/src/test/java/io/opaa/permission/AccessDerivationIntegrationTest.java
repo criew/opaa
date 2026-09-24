@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.api.types.AccessBasis;
 import io.opaa.api.types.AssetRole;
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.GroupKind;
 import io.opaa.api.types.GroupMechanism;
 import io.opaa.api.types.GroupOrigin;
@@ -107,7 +106,7 @@ class AccessDerivationIntegrationTest {
   void aLibraryReachedThroughAGroupNamesTheGroupItsOriginAndItsMechanism() {
     UUID groupId = group("Referat 50", false);
     addMember(groupId, member.id());
-    UUID libraryId = library(AssetVisibility.PRIVATE);
+    UUID libraryId = library();
     grantToGroup(libraryId, groupId, AssetRole.EDITOR);
 
     AssetAccessDerivation derivation =
@@ -125,10 +124,18 @@ class AccessDerivationIntegrationTest {
     assertThat(path.group().providerName()).isNotBlank();
   }
 
-  /** The organization-wide release is a way of its own, and it names nobody. */
+  /** A grant to "Alle Konten" is a way of its own, and it names nobody (#1931). */
   @Test
-  void anOrganizationWideLibraryIsDerivedWithoutAnyGrant() {
-    UUID libraryId = library(AssetVisibility.ORGANIZATION);
+  void aLibraryGrantedToAllAccountsIsDerivedWithoutNamingAnybody() {
+    UUID libraryId = library();
+    grantRepository.save(
+        AssetGrant.forAllAccounts(
+            KnowledgeLibrary.ASSET_TYPE,
+            libraryId,
+            organizationId,
+            AssetRole.VIEWER,
+            null,
+            spaceAdmin.id()));
 
     AssetAccessDerivation derivation =
         derivationService.derive(KnowledgeLibrary.ASSET_TYPE, libraryId, member);
@@ -149,7 +156,7 @@ class AccessDerivationIntegrationTest {
    */
   @Test
   void aViewerCanRetrieveTheirOwnDerivationForAPrivateLibrary() {
-    UUID libraryId = library(AssetVisibility.PRIVATE);
+    UUID libraryId = library();
     grantToUser(libraryId, member.id(), AssetRole.VIEWER);
 
     AssetAccessDerivation derivation =
@@ -164,7 +171,7 @@ class AccessDerivationIntegrationTest {
   /** A library nothing reaches is "not found", not an empty derivation that confirms it exists. */
   @Test
   void aLibraryTheCallerDoesNotReachIsNotFound() {
-    UUID libraryId = library(AssetVisibility.PRIVATE);
+    UUID libraryId = library();
 
     assertThatThrownBy(
             () -> derivationService.derive(KnowledgeLibrary.ASSET_TYPE, libraryId, member))
@@ -262,10 +269,9 @@ class AccessDerivationIntegrationTest {
     membershipResolver.invalidateUser(userId);
   }
 
-  private UUID library(AssetVisibility visibility) {
+  private UUID library() {
     KnowledgeLibrary library =
-        KnowledgeLibrary.ownedByUser(
-            organizationId, "Bibliothek", null, spaceAdmin.id(), visibility, false);
+        KnowledgeLibrary.ownedByUser(organizationId, "Bibliothek", null, spaceAdmin.id(), false);
     UUID id = libraryRepository.save(library).getId();
     createdLibraryIds.add(id);
     return id;

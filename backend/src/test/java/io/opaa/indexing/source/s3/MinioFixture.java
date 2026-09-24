@@ -35,14 +35,16 @@ public final class MinioFixture {
   private static final Logger log = LoggerFactory.getLogger(MinioFixture.class);
 
   /**
-   * The pinned image, pulled from quay.io because MinIO removed the {@code minio/minio} repository
-   * from Docker Hub entirely (#1578); quay.io serves this release under the same tag and the same
-   * digest. The community line ended with it. The regex manager in {@code renovate.json5} reads the
-   * tag from the comment below and never merges a bump on its own: the mc commands of this fixture
-   * and of the event-path test need the client the image ships, so a new tag stays a decision.
+   * The pinned image, pulled from the project's own GHCR mirror: both public sources are gone -
+   * MinIO removed {@code minio/minio} from Docker Hub (#1578) and closed {@code
+   * quay.io/minio/minio} (#1948). The mirror carries the last community release under the same tag
+   * and the same digest; no newer tag will ever appear there, which is why the image is being
+   * replaced (#1949). The regex manager in {@code renovate.json5} reads the tag from the comment
+   * below and never merges a bump on its own: the mc commands of this fixture and of the event-path
+   * test need the client the image ships.
    */
-  // renovate: datasource=docker depName=quay.io/minio/minio
-  public static final String IMAGE = "quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z";
+  // renovate: datasource=docker depName=ghcr.io/criew/minio
+  public static final String IMAGE = "ghcr.io/criew/minio:RELEASE.2025-09-07T16-13-09Z";
 
   public static final String REGION = "us-east-1";
 
@@ -64,8 +66,8 @@ public final class MinioFixture {
 
   /**
    * {@link #IMAGE} as a Testcontainers name. {@link MinIOContainer} asserts on {@code minio/minio},
-   * which the registry prefix of the quay.io name no longer matches, so the compatibility is
-   * declared here once for every caller.
+   * which the mirror's name does not match, so the compatibility is declared here once for every
+   * caller.
    */
   public static DockerImageName imageName() {
     return DockerImageName.parse(IMAGE).asCompatibleSubstituteFor("minio/minio");

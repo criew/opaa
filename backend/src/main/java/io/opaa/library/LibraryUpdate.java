@@ -1,6 +1,5 @@
 package io.opaa.library;
 
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.indexing.source.s3.S3SourceSettings;
@@ -23,7 +22,6 @@ import java.util.List;
 public record LibraryUpdate(
     String name,
     String description,
-    AssetVisibility visibility,
     Boolean listed,
     DocumentSourceType sourceType,
     String sourcePath,

@@ -2,7 +2,6 @@ package io.opaa.indexing.maintenance;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.IndexingRunMode;
@@ -116,7 +115,6 @@ class PipelineReindexServiceIntegrationTest {
                 "Zielbibliothek",
                 null,
                 userId,
-                AssetVisibility.PRIVATE,
                 false,
                 DocumentSourceType.FILESYSTEM,
                 classTempDir.toString(),
@@ -127,12 +125,7 @@ class PipelineReindexServiceIntegrationTest {
     uploadLibrary =
         libraryRepository.save(
             KnowledgeLibrary.ownedByUser(
-                Organization.DEFAULT_ID,
-                "Uploadbibliothek",
-                null,
-                userId,
-                AssetVisibility.PRIVATE,
-                false));
+                Organization.DEFAULT_ID, "Uploadbibliothek", null, userId, false));
   }
 
   // Scoped by owner rather than by the two fields above: a test method may add a third library
@@ -894,7 +887,6 @@ class PipelineReindexServiceIntegrationTest {
                 "Zurückgezogene Bibliothek",
                 null,
                 userId,
-                AssetVisibility.PRIVATE,
                 false,
                 DocumentSourceType.FILESYSTEM,
                 withdrawnDirectory.toString(),

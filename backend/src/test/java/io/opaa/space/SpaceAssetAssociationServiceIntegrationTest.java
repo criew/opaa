@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.api.types.AssetRole;
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.SpaceRole;
 import io.opaa.api.types.SpaceVisibility;
 import io.opaa.api.types.SystemRole;
@@ -93,8 +92,7 @@ class SpaceAssetAssociationServiceIntegrationTest {
 
   private UUID createLibrary(UUID ownerId) {
     KnowledgeLibrary library =
-        KnowledgeLibrary.ownedByUser(
-            organizationA, "Bibliothek", null, ownerId, AssetVisibility.PRIVATE, false);
+        KnowledgeLibrary.ownedByUser(organizationA, "Bibliothek", null, ownerId, false);
     return libraryRepository.save(library).getId();
   }
 

@@ -11,7 +11,6 @@ import static org.mockito.Mockito.when;
 
 import com.sun.net.httpserver.HttpServer;
 import io.opaa.api.types.AssetRole;
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.Capability;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.SystemRole;
@@ -880,7 +879,6 @@ class SourceConnectionTestServiceTest {
             "Bibliothek",
             null,
             currentUserId,
-            AssetVisibility.PRIVATE,
             false,
             DocumentSourceType.HTTP_DIRECTORY,
             null,
@@ -944,7 +942,6 @@ class SourceConnectionTestServiceTest {
               "Bibliothek",
               null,
               currentUserId,
-              AssetVisibility.PRIVATE,
               false,
               DocumentSourceType.HTTP_DIRECTORY,
               null,
@@ -1005,7 +1002,6 @@ class SourceConnectionTestServiceTest {
             "Bibliothek",
             null,
             currentUserId,
-            AssetVisibility.PRIVATE,
             false,
             DocumentSourceType.HTTP_DIRECTORY,
             null,
@@ -1060,7 +1056,6 @@ class SourceConnectionTestServiceTest {
             "Bibliothek",
             null,
             UUID.randomUUID(),
-            AssetVisibility.PRIVATE,
             false,
             DocumentSourceType.FILESYSTEM,
             "/data/documents",
@@ -1101,7 +1096,6 @@ class SourceConnectionTestServiceTest {
             "Bibliothek",
             null,
             currentUserId,
-            AssetVisibility.PRIVATE,
             false,
             DocumentSourceType.HTTP_DIRECTORY,
             null,
@@ -1141,7 +1135,6 @@ class SourceConnectionTestServiceTest {
             "Bibliothek",
             null,
             currentUserId,
-            AssetVisibility.PRIVATE,
             false,
             DocumentSourceType.HTTP_DIRECTORY,
             null,
@@ -1211,7 +1204,6 @@ class SourceConnectionTestServiceTest {
             "Bibliothek",
             null,
             currentUserId,
-            AssetVisibility.PRIVATE,
             false,
             DocumentSourceType.RSS_FEED,
             null,

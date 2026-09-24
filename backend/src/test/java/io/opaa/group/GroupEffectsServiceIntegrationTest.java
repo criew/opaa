@@ -154,9 +154,8 @@ class GroupEffectsServiceIntegrationTest {
   /** A grant names an existing asset: its shell row is written here, once per id. */
   private AssetGrant grantFor(UUID groupId, UUID assetId) {
     jdbcTemplate.update(
-        "INSERT INTO assets (id, asset_type, organization_id, name, owner_type, owner_user_id,"
-            + " visibility) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, 'Bibliothek', 'USER', ?,"
-            + " 'PRIVATE') ON CONFLICT (id) DO NOTHING",
+        "INSERT INTO assets (id, asset_type, organization_id, name, owner_type, owner_user_id)"
+            + " VALUES (?, 'KNOWLEDGE_LIBRARY', ?, 'Bibliothek', 'USER', ?) ON CONFLICT (id) DO NOTHING",
         assetId,
         organizationId,
         createdUserIds.getFirst());

@@ -2,7 +2,6 @@ package io.opaa.indexing.document;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.indexing.chunk.ChunkingService;
@@ -66,7 +65,6 @@ class ConfluencePageIndexingIntegrationTest {
             "Wiki Bauamt " + owner,
             null,
             owner,
-            AssetVisibility.PRIVATE,
             false,
             DocumentSourceType.CONFLUENCE,
             null,

@@ -3,47 +3,33 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Checkbox from '@mui/material/Checkbox'
-import FormControl from '@mui/material/FormControl'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import FormHelperText from '@mui/material/FormHelperText'
-import MenuItem from '@mui/material/MenuItem'
-import Select from '@mui/material/Select'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
-import type { AssetType, AssetVisibility } from '../../types/api'
+import type { AssetReach, AssetType } from '../../types/api'
 import PageSection from '../PageSection'
 import FieldLabel from '../wizard/FieldLabel'
 import AssetGrantsDialog from '../permissions/AssetGrantsDialog'
 import { successionAwareMessage } from '../succession/successionConflict'
 import AssetAccessDerivationSection from './AssetAccessDerivationSection'
 import AssetSpacesList from './AssetSpacesList'
-import {
-  assetTypeLabel,
-  libraryVisibilities,
-  libraryVisibilityDescription,
-  libraryVisibilityLabel,
-} from '../../utils/labels'
-
-/**
- * Mirrors the backend's `AssetVisibility#exceeds`: whether `option` reaches further than the
- * cap - `false` while no cap is known, matching the backend's own "nothing to check" default.
- */
-function exceedsVisibilityCap(option: AssetVisibility, cap: AssetVisibility | null | undefined) {
-  if (!cap) return false
-  return libraryVisibilities.indexOf(option) > libraryVisibilities.indexOf(cap)
-}
+import { assetReachLabel, assetTypeLabel } from '../../utils/labels'
 
 export interface AssetDistributionSectionProps {
   assetType: AssetType
   assetId: string
   assetName: string
-  /** The saved values; the section keeps its own draft until "Freigabe speichern". */
-  visibility: AssetVisibility
+  /**
+   * How far the asset reaches right now - derived from its grants, never stored (#1931). Shown,
+   * not edited: who reaches it is changed in the rights dialog.
+   */
+  reach: AssetReach
+  /** The saved findability; the section keeps its own draft until "Freigabe speichern". */
   listed: boolean
-  /** Saves both fields together; a rejection is shown in the section, succession-aware. */
-  onSave: (visibility: AssetVisibility, listed: boolean) => Promise<void>
-  /** A ceiling on the reach set elsewhere; options above it are disabled and explained. */
-  visibilityCap?: AssetVisibility | null
+  /** Saves the findability; a rejection is shown in the section, succession-aware. */
+  onSave: (listed: boolean) => Promise<void>
+  /** A ceiling on the findability set elsewhere; the switch is locked and the reason explained. */
   listedCap?: boolean | null
   /** Type-specific control below the fields, e.g. the connector library's share cap. */
   capControl?: ReactNode
@@ -52,39 +38,37 @@ export interface AssetDistributionSectionProps {
 }
 
 /**
- * The one release section of every asset type: distribution level and findability, the rights
- * dialog, the spaces the asset is associated with, and the caller's own "warum sehe ich das".
- * Nothing in it knows the type beyond its label - the type-specific parts come in as slots.
- * Rendered only for MANAGER and above, who may change the reach and give rights.
+ * The one release section of every asset type: the derived reach, findability, the rights dialog,
+ * the spaces the asset is associated with, and the caller's own "warum sehe ich das". Nothing in
+ * it knows the type beyond its label - the type-specific parts come in as slots. Rendered only for
+ * MANAGER and above, who may change the findability and give rights.
  */
 export default function AssetDistributionSection({
   assetType,
   assetId,
   assetName,
-  visibility,
+  reach,
   listed,
   onSave,
-  visibilityCap,
   listedCap,
   capControl,
   grantsTypeSection,
 }: AssetDistributionSectionProps) {
-  const [draft, setDraft] = useState<{ visibility: AssetVisibility; listed: boolean } | null>(null)
+  const [draft, setDraft] = useState<boolean | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [grantsDialogOpen, setGrantsDialogOpen] = useState(false)
 
   const noun = assetTypeLabel(assetType)
-  const draftVisibility = draft?.visibility ?? visibility
-  const draftListed = draft?.listed ?? listed
-  const changed = draftVisibility !== visibility || draftListed !== listed
+  const draftListed = draft ?? listed
+  const changed = draftListed !== listed
   const idPrefix = `asset-distribution-${assetType.toLowerCase()}`
 
   async function handleSave() {
     setError(null)
     setSaving(true)
     try {
-      await onSave(draftVisibility, draftListed)
+      await onSave(draftListed)
       setDraft(null)
     } catch (err) {
       // The reach is the one thing an open succession freezes (ADR-0036/6): the refusal names the
@@ -117,46 +101,34 @@ export default function AssetDistributionSection({
               {error}
             </Alert>
           )}
-          <FormControl size="small" fullWidth>
-            <FieldLabel id={`${idPrefix}-visibility-label`}>Verteilungsstufe</FieldLabel>
-            <Select
-              labelId={`${idPrefix}-visibility-label`}
-              value={draftVisibility}
-              onChange={(e) =>
-                setDraft({ visibility: e.target.value as AssetVisibility, listed: draftListed })
-              }
+          <Box>
+            <FieldLabel id={`${idPrefix}-reach-label`}>Reichweite</FieldLabel>
+            <Typography
+              id={`${idPrefix}-reach`}
+              aria-labelledby={`${idPrefix}-reach-label`}
+              sx={{ fontSize: 14 }}
             >
-              {libraryVisibilities.map((option) => (
-                <MenuItem
-                  key={option}
-                  value={option}
-                  disabled={exceedsVisibilityCap(option, visibilityCap)}
-                >
-                  {libraryVisibilityLabel(option)}
-                </MenuItem>
-              ))}
-            </Select>
-            <FormHelperText>{libraryVisibilityDescription(draftVisibility)}</FormHelperText>
-            {visibilityCap && visibilityCap !== 'ORGANIZATION' && (
-              <FormHelperText>
-                Die Systemverwaltung hat die Freigabe dieser {noun} auf „
-                {libraryVisibilityLabel(visibilityCap)}“ begrenzt.
-              </FormHelperText>
-            )}
-          </FormControl>
+              {assetReachLabel(reach)}
+            </Typography>
+            <FormHelperText>
+              Ergibt sich aus den Berechtigungen — zu ändern über „Rechte verwalten".
+            </FormHelperText>
+          </Box>
           <Box>
             <FormControlLabel
               control={
                 <Checkbox
                   checked={draftListed}
                   disabled={listedCap === false}
-                  onChange={(e) =>
-                    setDraft({ visibility: draftVisibility, listed: e.target.checked })
-                  }
+                  onChange={(e) => setDraft(e.target.checked)}
                 />
               }
-              label="Im Katalog auffindbar"
+              label="Im Katalog auffindbar, auch ohne Berechtigung"
             />
+            <FormHelperText>
+              Sichtbar wird der Eintrag — Name, Beschreibung und zuständige Stelle —, nicht der
+              Inhalt.
+            </FormHelperText>
             {listedCap === false && (
               <FormHelperText>
                 Die Systemverwaltung hat die Auffindbarkeit dieser {noun} im Katalog gesperrt.

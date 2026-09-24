@@ -4,11 +4,11 @@ import static io.opaa.library.LibraryCreationBuilder.libraryCreation;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.opaa.api.types.AssetGrantSubjectType;
 import io.opaa.api.types.AssetOwnerType;
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.GroupKind;
-import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.api.types.SpaceRole;
 import io.opaa.api.types.SpaceVisibility;
 import io.opaa.api.types.SystemRole;
@@ -135,7 +135,7 @@ class GrantedGroupMembersIntegrationTest {
     grantTo(library, group, manager);
     UUID grantId =
         grantService.listGrants(KnowledgeLibrary.ASSET_TYPE, library, callerOf(manager)).stream()
-            .filter(view -> view.grant().getSubjectType() == PermissionSubjectType.GROUP)
+            .filter(view -> view.grant().getSubjectType() == AssetGrantSubjectType.GROUP)
             .map(view -> view.grant().getId())
             .findFirst()
             .orElseThrow();
@@ -160,7 +160,7 @@ class GrantedGroupMembersIntegrationTest {
         KnowledgeLibrary.ASSET_TYPE,
         library,
         new AssetGrantUpsert(
-            PermissionSubjectType.GROUP,
+            AssetGrantSubjectType.GROUP,
             group,
             AssetRole.VIEWER,
             Instant.now().plus(1, ChronoUnit.HOURS)),
@@ -292,7 +292,7 @@ class GrantedGroupMembersIntegrationTest {
     grantService.upsertGrant(
         KnowledgeLibrary.ASSET_TYPE,
         library,
-        new AssetGrantUpsert(PermissionSubjectType.USER, viewer, AssetRole.VIEWER, null),
+        new AssetGrantUpsert(AssetGrantSubjectType.USER, viewer, AssetRole.VIEWER, null),
         callerOf(manager));
 
     assertThatThrownBy(
@@ -572,7 +572,7 @@ class GrantedGroupMembersIntegrationTest {
     grantService.upsertGrant(
         KnowledgeLibrary.ASSET_TYPE,
         libraryId,
-        new AssetGrantUpsert(PermissionSubjectType.GROUP, groupId, AssetRole.VIEWER, null),
+        new AssetGrantUpsert(AssetGrantSubjectType.GROUP, groupId, AssetRole.VIEWER, null),
         callerOf(caller));
   }
 

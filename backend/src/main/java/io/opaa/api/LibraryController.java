@@ -182,7 +182,7 @@ public class LibraryController {
     return LibraryResponseMapper.toResponse(
         libraryService.updateShareCap(
             libraryId,
-            request.getVisibilityCap(),
+            Boolean.TRUE.equals(request.getAllAccountsGrantAllowed()),
             Boolean.TRUE.equals(request.getListedCap()),
             caller));
   }

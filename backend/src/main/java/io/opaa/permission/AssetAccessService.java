@@ -3,8 +3,8 @@ package io.opaa.permission;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import io.opaa.api.types.AccessBasis;
+import io.opaa.api.types.AssetGrantSubjectType;
 import io.opaa.api.types.AssetRole;
-import io.opaa.api.types.PermissionSubjectType;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -22,10 +22,10 @@ import org.springframework.stereotype.Component;
 /**
  * The one rights formula for an asset of any {@link AssetType}: the highest role a user reaches on
  * an asset and the set of asset ids they may read at all - through a direct grant, a grant to one
- * of their groups, or the asset's organization-wide release (see
- * docs/features/spaces-and-assets.md#rechte-an-einem-asset-erhalten). The release is read from the
- * asset shell ({@code assets.visibility}); for a single asset the caller, who has loaded it, states
- * it as {@code organizationWide}, and this class decides what it confers.
+ * of their groups, or a grant to "Alle Konten" (see
+ * docs/features/spaces-and-assets.md#rechte-an-einem-asset-erhalten). All three read the same
+ * table: organization-wide reach is a grant like any other since #1931 (ADR-0037), so no caller
+ * hands in a reach it read off the asset shell.
  *
  * <p>Two access paths, deliberately not unified:
  *
@@ -70,21 +70,10 @@ public class AssetAccessService {
   /** The cache key: an asset id alone is not unique across asset types. */
   private record AssetKey(AssetType assetType, UUID assetId) {}
 
-  /**
-   * The highest {@link AssetRole} {@code userId} holds on the asset, or {@code null} if none.
-   *
-   * @param organizationWide whether the asset is released organization-wide, as the caller read it
-   *     off the loaded asset - such an asset confers {@link AssetRole#VIEWER} without any grant.
-   */
-  public AssetRole effectiveRole(
-      AssetType assetType, UUID assetId, UUID userId, boolean organizationWide) {
+  /** The highest {@link AssetRole} {@code userId} holds on the asset, or {@code null} if none. */
+  public AssetRole effectiveRole(AssetType assetType, UUID assetId, UUID userId) {
     Set<UUID> groupIds = membershipResolver.groupIdsForUser(userId);
-    return bestRole(
-        cachedGrants(assetType, assetId),
-        userId,
-        groupIds,
-        Instant.now(),
-        organizationWideFloor(organizationWide));
+    return bestRole(cachedGrants(assetType, assetId), userId, groupIds, Instant.now());
   }
 
   /**
@@ -101,11 +90,9 @@ public class AssetAccessService {
    *   <li><b>Performance:</b> one query for N assets instead of up to N queries on a cold cache.
    * </ul>
    *
-   * @param organizationWideIds those of {@code assetIds} released organization-wide.
    * @return one entry per requested id; {@code null} value where nothing reaches the user.
    */
-  public Map<UUID, AssetRole> effectiveRoles(
-      AssetType assetType, Set<UUID> assetIds, UUID userId, Set<UUID> organizationWideIds) {
+  public Map<UUID, AssetRole> effectiveRoles(AssetType assetType, Set<UUID> assetIds, UUID userId) {
     Instant now = Instant.now();
     Set<UUID> groupIds = membershipResolver.groupIdsForUser(userId);
     Map<UUID, List<AssetGrant>> grantsByAssetId =
@@ -116,20 +103,15 @@ public class AssetAccessService {
     for (UUID assetId : assetIds) {
       roles.put(
           assetId,
-          bestRole(
-              grantsByAssetId.getOrDefault(assetId, List.of()),
-              userId,
-              groupIds,
-              now,
-              organizationWideFloor(organizationWideIds.contains(assetId))));
+          bestRole(grantsByAssetId.getOrDefault(assetId, List.of()), userId, groupIds, now));
     }
     return roles;
   }
 
   /**
    * Every asset id of {@code assetType} in {@code organizationId} that {@code userId} may read:
-   * direct grants, grants to the groups the user currently belongs to, and every asset released
-   * organization-wide. Space associations appear nowhere in this formula.
+   * direct grants, grants to the groups the user currently belongs to, and grants to "Alle
+   * Beschaeftigten". Space associations appear nowhere in this formula.
    */
   public Set<UUID> readableAssetIds(AssetType assetType, UUID userId, UUID organizationId) {
     Instant now = Instant.now();
@@ -144,23 +126,24 @@ public class AssetAccessService {
           grantRepository.findReadableAssetIdsByGroupGrant(
               assetType, groupIds, organizationId, now));
     }
-    readable.addAll(organizationWideAssetIds(assetType, organizationId));
+    readable.addAll(allAccountsAssetIds(assetType, organizationId, now));
     return readable;
   }
 
   /**
    * Every asset id of {@code assetType} a <b>permission profile</b> may read: the group's own
-   * non-expired grants plus every asset released organization-wide - the group-shaped counterpart
-   * of {@link #readableAssetIds}, deliberately without the direct user grants: a profile is a
-   * group, not a person (#1053, ADR-0036 Entscheidung 7). Uncached for the same reason.
+   * non-expired grants plus every asset granted to "Alle Konten" - the group-shaped counterpart of
+   * {@link #readableAssetIds}, deliberately without the direct user grants: a profile is a group,
+   * not a person (#1053, ADR-0036 Entscheidung 7). Uncached for the same reason.
    */
   public Set<UUID> readableAssetIdsForGroup(
       AssetType assetType, UUID groupId, UUID organizationId) {
+    Instant now = Instant.now();
     Set<UUID> readable =
         new HashSet<>(
             grantRepository.findReadableAssetIdsByGroupGrant(
-                assetType, Set.of(groupId), organizationId, Instant.now()));
-    readable.addAll(organizationWideAssetIds(assetType, organizationId));
+                assetType, Set.of(groupId), organizationId, now));
+    readable.addAll(allAccountsAssetIds(assetType, organizationId, now));
     return readable;
   }
 
@@ -172,17 +155,17 @@ public class AssetAccessService {
    */
   public Map<UUID, Integer> readableAssetCountsForGroups(
       AssetType assetType, Collection<UUID> groupIds, UUID organizationId) {
-    Set<UUID> organizationWide = organizationWideAssetIds(assetType, organizationId);
+    Instant now = Instant.now();
+    Set<UUID> allAccounts = allAccountsAssetIds(assetType, organizationId, now);
     Map<UUID, Set<UUID>> grantedByGroup = new HashMap<>();
-    for (AssetGrant grant :
-        grantRepository.findActiveGroupGrants(assetType, organizationId, Instant.now())) {
+    for (AssetGrant grant : grantRepository.findActiveGroupGrants(assetType, organizationId, now)) {
       grantedByGroup
           .computeIfAbsent(grant.getSubjectGroupId(), id -> new HashSet<>())
           .add(grant.getAssetId());
     }
     Map<UUID, Integer> counts = new HashMap<>();
     for (UUID groupId : groupIds) {
-      Set<UUID> readable = new HashSet<>(organizationWide);
+      Set<UUID> readable = new HashSet<>(allAccounts);
       readable.addAll(grantedByGroup.getOrDefault(groupId, Set.of()));
       counts.put(groupId, readable.size());
     }
@@ -218,12 +201,12 @@ public class AssetAccessService {
 
   /**
    * Every way {@code userId} reaches the asset right now, as one {@link AccessPath} each - the
-   * Herleitung of this formula (#1822, ADR-0036 Entscheidung 9): every grant that reaches the user,
-   * then the organization-wide release. A group grant carries the group's attribution - its name,
-   * origin and maintaining mechanism - but never a member.
+   * Herleitung of this formula (#1822, ADR-0036 Entscheidung 9). A group grant carries the group's
+   * attribution - its name, origin and maintaining mechanism - but never a member; a grant to "Alle
+   * Beschaeftigten" keeps the basis {@code ORGANIZATION_WIDE} the Herleitung has always used for
+   * it.
    */
-  public List<AccessPath> accessPaths(
-      AssetType assetType, UUID assetId, UUID userId, boolean organizationWide) {
+  public List<AccessPath> accessPaths(AssetType assetType, UUID assetId, UUID userId) {
     Instant now = Instant.now();
     Set<UUID> groupIds = membershipResolver.groupIdsForUser(userId);
     List<AssetGrant> reaching =
@@ -238,20 +221,16 @@ public class AssetAccessService {
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet()));
 
-    List<AccessPath> paths = new ArrayList<>(reaching.size() + 1);
+    List<AccessPath> paths = new ArrayList<>(reaching.size());
     for (AssetGrant grant : reaching) {
-      boolean groupGrant = grant.getSubjectType() == PermissionSubjectType.GROUP;
       paths.add(
           AccessPath.ofAsset(
-              groupGrant ? AccessBasis.GROUP_GRANT : AccessBasis.DIRECT_GRANT,
+              basisOf(grant.getSubjectType()),
               grant.getRole(),
               grant.getCreatedAt(),
-              groupGrant ? attributions.get(grant.getSubjectGroupId()) : null));
-    }
-    if (organizationWide) {
-      paths.add(
-          AccessPath.ofAsset(
-              AccessBasis.ORGANIZATION_WIDE, organizationWideFloor(true), null, null));
+              grant.getSubjectType() == AssetGrantSubjectType.GROUP
+                  ? attributions.get(grant.getSubjectGroupId())
+                  : null));
     }
     return List.copyOf(paths);
   }
@@ -270,14 +249,40 @@ public class AssetAccessService {
     return membershipResolver.groupIdsForUser(userId);
   }
 
-  private Set<UUID> organizationWideAssetIds(AssetType assetType, UUID organizationId) {
-    return new HashSet<>(
-        grantRepository.findOrganizationWideAssetIds(assetType.value(), organizationId));
+  /**
+   * How far each of {@code assetIds} reaches right now (#1931) - the figures an overview turns into
+   * its reach badge. Every requested id gets an entry, including one no grant reaches.
+   */
+  public Map<UUID, AssetReach> reachByAsset(AssetType assetType, Set<UUID> assetIds) {
+    Map<UUID, AssetReach> reach = new HashMap<>();
+    for (UUID assetId : assetIds) {
+      reach.put(assetId, AssetReach.NONE);
+    }
+    if (assetIds.isEmpty()) {
+      return reach;
+    }
+    for (Object[] row :
+        grantRepository.countActiveGrantsBySubjectType(assetType, assetIds, Instant.now())) {
+      UUID assetId = (UUID) row[0];
+      AssetGrantSubjectType subjectType = (AssetGrantSubjectType) row[1];
+      int count = ((Number) row[2]).intValue();
+      reach.computeIfPresent(assetId, (id, current) -> current.plus(subjectType, count));
+    }
+    return reach;
   }
 
-  /** What an organization-wide release confers without any grant. */
-  private static AssetRole organizationWideFloor(boolean organizationWide) {
-    return organizationWide ? AssetRole.VIEWER : null;
+  /** The Herleitungsgrund a grant of this subject kind carries. */
+  private static AccessBasis basisOf(AssetGrantSubjectType subjectType) {
+    return switch (subjectType) {
+      case USER -> AccessBasis.DIRECT_GRANT;
+      case GROUP -> AccessBasis.GROUP_GRANT;
+      case ALL_ACCOUNTS -> AccessBasis.ORGANIZATION_WIDE;
+    };
+  }
+
+  private Set<UUID> allAccountsAssetIds(AssetType assetType, UUID organizationId, Instant now) {
+    return new HashSet<>(
+        grantRepository.findAssetIdsGrantedToAllAccounts(assetType, organizationId, now));
   }
 
   private List<AssetGrant> cachedGrants(AssetType assetType, UUID assetId) {
@@ -290,12 +295,12 @@ public class AssetAccessService {
    * The single rights-resolution formula both {@link #effectiveRole} and {@link #effectiveRoles}
    * apply, over two different grant sources (a single cached asset's grants vs. a batch-loaded map
    * across many), so the formula itself cannot drift between the two call sites. Highest role among
-   * {@code seed} (the organization-wide floor, or {@code null}) and every non-expired grant in
-   * {@code grants} that reaches {@code userId} - directly, or via one of {@code groupIds}.
+   * every non-expired grant in {@code grants} that reaches {@code userId} - directly, via one of
+   * {@code groupIds}, or as one of all accounts.
    */
   private static AssetRole bestRole(
-      Collection<AssetGrant> grants, UUID userId, Set<UUID> groupIds, Instant now, AssetRole seed) {
-    AssetRole best = seed;
+      Collection<AssetGrant> grants, UUID userId, Set<UUID> groupIds, Instant now) {
+    AssetRole best = null;
     for (AssetGrant grant : grants) {
       if (grant.isExpired(now)) {
         continue;
@@ -307,11 +312,18 @@ public class AssetAccessService {
     return best;
   }
 
-  /** Whether {@code grant} reaches {@code userId} - directly, or via one of {@code groupIds}. */
+  /**
+   * Whether {@code grant} reaches {@code userId} - directly, via one of {@code groupIds}, or
+   * because it reaches every account. The {@code ALL_ACCOUNTS} branch is the one special case the
+   * formula keeps, and it stands here alone (ADR-0037, Entscheidung 1); the organization boundary
+   * behind it is the one every caller already applies by reading the grants of an asset of that
+   * organization.
+   */
   private static boolean reaches(AssetGrant grant, UUID userId, Set<UUID> groupIds) {
-    return (grant.getSubjectType() == PermissionSubjectType.USER
-            && grant.getSubjectUserId().equals(userId))
-        || (grant.getSubjectType() == PermissionSubjectType.GROUP
-            && groupIds.contains(grant.getSubjectGroupId()));
+    return switch (grant.getSubjectType()) {
+      case USER -> grant.getSubjectUserId().equals(userId);
+      case GROUP -> groupIds.contains(grant.getSubjectGroupId());
+      case ALL_ACCOUNTS -> true;
+    };
   }
 }

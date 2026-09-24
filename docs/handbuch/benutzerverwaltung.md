@@ -251,6 +251,7 @@ stehen im Kapitel [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigun
 
 | Gegenstand | Wo es steht |
 |---|---|
+| **Freigabe an „Alle Konten"** — der Empfänger, der jedes Konto des Hauses erreicht, und die Kennzeichnung der Reichweite in den Übersichten | Abschnitt 4 |
 | **Freigabe-Obergrenze für Konnektorbibliotheken** — der Deckel, den nur die Systemverwaltung setzt | Abschnitt 4 |
 | **Interne Gruppen und ihre Verantwortlichen** — anlegen, Mitglieder pflegen, zur Verwendung freigeben, als geschützt kennzeichnen, Verantwortung abgeben. Für lokale Konten der einzige Weg zu einer Gruppe | Abschnitt 7 |
 | **Übertragung von Rechten und „Nachfolge offen"** — was mit Berechtigungen, Eigentum und Verantwortung geschieht, wenn eine Person ausscheidet oder eine Gruppe aufgelöst wird | Abschnitt 13 |

@@ -1,7 +1,7 @@
 package io.opaa.permission;
 
+import io.opaa.api.types.AssetGrantSubjectType;
 import io.opaa.api.types.AssetRole;
-import io.opaa.api.types.PermissionSubjectType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
@@ -44,7 +44,7 @@ public class AssetGrantHistory {
 
   @Enumerated(EnumType.STRING)
   @Column(name = "subject_type", nullable = false, length = 20)
-  private PermissionSubjectType subjectType;
+  private AssetGrantSubjectType subjectType;
 
   @Column(name = "subject_user_id")
   private UUID subjectUserId;
@@ -89,7 +89,7 @@ public class AssetGrantHistory {
       AssetType assetType,
       UUID assetId,
       UUID organizationId,
-      PermissionSubjectType subjectType,
+      AssetGrantSubjectType subjectType,
       UUID subjectUserId,
       UUID subjectGroupId,
       AssetRole role,
@@ -191,7 +191,7 @@ public class AssetGrantHistory {
     return organizationId;
   }
 
-  public PermissionSubjectType getSubjectType() {
+  public AssetGrantSubjectType getSubjectType() {
     return subjectType;
   }
 

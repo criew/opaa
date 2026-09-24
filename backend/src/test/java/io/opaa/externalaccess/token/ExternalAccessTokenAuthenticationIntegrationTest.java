@@ -11,7 +11,6 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.jayway.jsonpath.JsonPath;
 import io.opaa.api.types.AssetOwnerType;
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.LockReason;
@@ -109,7 +108,6 @@ class ExternalAccessTokenAuthenticationIntegrationTest {
                     null,
                     AssetOwnerType.USER,
                     owner.getId(),
-                    AssetVisibility.ORGANIZATION,
                     false,
                     DocumentSourceType.UPLOAD,
                     null,
@@ -125,6 +123,14 @@ class ExternalAccessTokenAuthenticationIntegrationTest {
                     owner.getId(), owner.getOrganizationId(), owner.getSystemRole(), "x"))
             .library()
             .getId();
+    // #1931: Die Bibliothek muss jedem Konto der Organisation zugaenglich sein, damit die Tokens
+    // der hier angelegten lokalen Konten sie ueberhaupt benennen duerfen - frueher die Stufe
+    // ORGANIZATION, jetzt eine Freigabe an "Alle Konten".
+    jdbcTemplate.update(
+        "INSERT INTO asset_grants (id, asset_type, asset_id, organization_id, subject_type, role)"
+            + " VALUES (gen_random_uuid(), 'KNOWLEDGE_LIBRARY', ?, ?, 'ALL_ACCOUNTS', 'VIEWER')",
+        libraryId,
+        owner.getOrganizationId());
     removeOwnTokens();
     libraryRelease.setExternalAccess(
         CurrentUser.of(

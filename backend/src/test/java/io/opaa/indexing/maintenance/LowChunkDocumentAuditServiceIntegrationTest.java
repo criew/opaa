@@ -2,7 +2,6 @@ package io.opaa.indexing.maintenance;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.SystemRole;
 import io.opaa.indexing.document.Document;
@@ -75,8 +74,7 @@ class LowChunkDocumentAuditServiceIntegrationTest {
 
     library =
         libraryRepository.save(
-            KnowledgeLibrary.ownedByUser(
-                ORGANIZATION_ID, "Satzungen", null, userId, AssetVisibility.PRIVATE, false));
+            KnowledgeLibrary.ownedByUser(ORGANIZATION_ID, "Satzungen", null, userId, false));
 
     // A document's organizationId is always denormalized from its own library's (see
     // DocumentIngestService#processFile) - cross-org scoping is genuinely tested only against a
@@ -98,12 +96,7 @@ class LowChunkDocumentAuditServiceIntegrationTest {
     otherOrganizationLibrary =
         libraryRepository.save(
             KnowledgeLibrary.ownedByUser(
-                OTHER_ORGANIZATION_ID,
-                "Fremdbibliothek",
-                null,
-                otherOrganizationUserId,
-                AssetVisibility.PRIVATE,
-                false));
+                OTHER_ORGANIZATION_ID, "Fremdbibliothek", null, otherOrganizationUserId, false));
   }
 
   @AfterEach

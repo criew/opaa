@@ -224,7 +224,7 @@ const managerLibrary: LibraryListResponse = {
   name: 'Rechtsquellen Soziales',
   description: 'SGB II, SGB XII',
   ownerType: 'GROUP',
-  visibility: 'SHARED',
+  reach: { allAccounts: false, groupCount: 0, userCount: 1 },
   listed: true,
   myRole: 'MANAGER',
   sourceType: 'UPLOAD',
@@ -238,7 +238,7 @@ const viewerLibrary: LibraryListResponse = {
   name: 'Dienstanweisungen',
   description: 'Organisationsweit',
   ownerType: 'GROUP',
-  visibility: 'ORGANIZATION',
+  reach: { allAccounts: true, groupCount: 0, userCount: 1 },
   listed: true,
   myRole: 'VIEWER',
   sourceType: 'UPLOAD',
@@ -252,7 +252,7 @@ const personalLibrary: LibraryListResponse = {
   name: 'Meine Dokumente',
   description: 'Private Dokumente',
   ownerType: 'USER',
-  visibility: 'PRIVATE',
+  reach: { allAccounts: false, groupCount: 0, userCount: 1 },
   listed: false,
   myRole: 'OWNER',
   sourceType: 'UPLOAD',
@@ -358,6 +358,20 @@ describe('LibraryDetailPage', () => {
       ).toBeInTheDocument()
       expect(screen.getByRole('heading', { name: 'Zuordnungen' })).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: /rechte verwalten/i })).not.toBeInTheDocument()
+    })
+
+    // Die Herleitung steht für beide Rollen im selben Reiter, aber aus zwei Zweigen - für eine
+    // verwaltende Rolle aus dem Freigabeabschnitt, sonst als eigener Abschnitt. Genau einer.
+    it('shows the Herleitung exactly once for a MANAGER', async () => {
+      setLibraryState(managerLibrary, detailsOf(managerLibrary))
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+      const user = userEvent.setup()
+
+      await user.click(await screen.findByRole('tab', { name: 'Freigaben' }))
+
+      expect(
+        await screen.findAllByRole('heading', { name: /warum sehe ich diese bibliothek/i }),
+      ).toHaveLength(1)
     })
 
     it('names the source type exactly once, as a badge', async () => {
@@ -528,31 +542,27 @@ describe('LibraryDetailPage', () => {
       expect(mockUpdateLibrary).toHaveBeenCalledWith('library-team', {
         name: 'Rechtsquellen Soziales (neu)',
         description: 'Aktualisierte Beschreibung',
-        visibility: 'SHARED',
         listed: true,
         sourceInsecureSsl: null,
       } satisfies LibraryUpdateRequest)
     })
   }, 15000)
 
-  // Verteilungsstufe und Auffindbarkeit stehen im gemeinsamen Freigabeabschnitt und werden
-  // dort gespeichert - mit den gespeicherten Stammdaten, nicht mit einem Entwurf daneben.
-  it('saves distribution level and findability from the shared release section', async () => {
+  // Die Auffindbarkeit steht im gemeinsamen Freigabeabschnitt und wird dort gespeichert - mit den
+  // gespeicherten Stammdaten, nicht mit einem Entwurf daneben.
+  it('saves the findability from the shared release section', async () => {
     setLibraryState(managerLibrary, detailsOf(managerLibrary))
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
     const user = userEvent.setup()
 
     await user.click(await screen.findByRole('tab', { name: 'Freigaben' }))
-    await user.click(await screen.findByRole('combobox', { name: /verteilungsstufe/i }))
-    await user.click(await screen.findByRole('option', { name: 'privat' }))
-    await user.click(screen.getByLabelText('Im Katalog auffindbar'))
+    await user.click(await screen.findByLabelText('Im Katalog auffindbar, auch ohne Berechtigung'))
     await user.click(screen.getByRole('button', { name: 'Freigabe speichern' }))
 
     await waitFor(() => {
       expect(mockUpdateLibrary).toHaveBeenCalledWith('library-team', {
         name: 'Rechtsquellen Soziales',
         description: 'SGB II, SGB XII',
-        visibility: 'PRIVATE',
         listed: false,
         sourceInsecureSsl: null,
       } satisfies LibraryUpdateRequest)
@@ -708,7 +718,7 @@ describe('LibraryDetailPage', () => {
       const adminBypassLibrary = { ...managerLibrary, myRole: 'OWNER' as const }
       setLibraryState(
         adminBypassLibrary,
-        detailsOf(adminBypassLibrary, { visibilityCap: 'ORGANIZATION', listedCap: true }),
+        detailsOf(adminBypassLibrary, { allAccountsGrantAllowed: true, listedCap: true }),
       )
       renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
@@ -724,7 +734,7 @@ describe('LibraryDetailPage', () => {
         detailsOf(managerOfFilesystem, {
           sourceType: 'FILESYSTEM',
           sourcePath: '/data/dokumente',
-          visibilityCap: 'ORGANIZATION',
+          allAccountsGrantAllowed: true,
           listedCap: true,
         }),
       )
@@ -743,28 +753,30 @@ describe('LibraryDetailPage', () => {
         detailsOf(adminBypassLibrary, {
           sourceType: 'FILESYSTEM',
           sourcePath: '/data/dokumente',
-          visibility: 'ORGANIZATION',
+          reach: { allAccounts: true, groupCount: 0, userCount: 1 },
           listed: true,
-          visibilityCap: 'ORGANIZATION',
+          allAccountsGrantAllowed: true,
           listedCap: true,
         }),
       )
       // #1870 review, "hält eine Bedingung, die vor wie nach dem Speichern gilt": the button is
       // disabled whether or not a PUT ever went out, so the request itself is captured and
       // asserted on, not just the button state afterwards.
-      let putRequestBody: { visibilityCap: string; listedCap: boolean } | null = null
+      let putRequestBody: { allAccountsGrantAllowed: boolean; listedCap: boolean } | null = null
       server.use(
         http.put('/api/v1/libraries/:libraryId/share-cap', async ({ params, request }) => {
-          putRequestBody = (await request.json()) as { visibilityCap: string; listedCap: boolean }
+          putRequestBody = (await request.json()) as {
+            allAccountsGrantAllowed: boolean
+            listedCap: boolean
+          }
           return HttpResponse.json({
             ...detailsOf(adminBypassLibrary, {
               sourceType: 'FILESYSTEM',
               sourcePath: '/data/dokumente',
             }),
             id: String(params.libraryId),
-            visibility: putRequestBody.visibilityCap,
             listed: putRequestBody.listedCap,
-            visibilityCap: putRequestBody.visibilityCap,
+            allAccountsGrantAllowed: putRequestBody.allAccountsGrantAllowed,
             listedCap: putRequestBody.listedCap,
           })
         }),
@@ -773,26 +785,28 @@ describe('LibraryDetailPage', () => {
       renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
       await user.click(await screen.findByRole('tab', { name: 'Freigaben' }))
-      await user.click(await screen.findByLabelText('Katalog-Auffindbarkeit erlaubt'))
+      await user.click(await screen.findByLabelText('Auffindbarkeit im Katalog erlaubt'))
       await user.click(await screen.findByRole('button', { name: /obergrenze speichern/i }))
 
       await waitFor(() => {
-        expect(putRequestBody).toEqual({ visibilityCap: 'ORGANIZATION', listedCap: false })
+        expect(putRequestBody).toEqual({ allAccountsGrantAllowed: true, listedCap: false })
       })
       // the response replaces the cached detail - the owner-facing checkbox below reflects it
-      expect(await screen.findByLabelText('Im Katalog auffindbar')).toBeDisabled()
+      expect(
+        await screen.findByLabelText('Im Katalog auffindbar, auch ohne Berechtigung'),
+      ).toBeDisabled()
     })
 
-    it('disables options above the cap in the Verteilungsstufe select and explains why', async () => {
+    it('locks the findability under a lowered cap and explains why', async () => {
       const ownerLibrary = { ...managerLibrary, myRole: 'OWNER' as const }
       setLibraryState(
         ownerLibrary,
         detailsOf(ownerLibrary, {
           sourceType: 'FILESYSTEM',
           sourcePath: '/data/dokumente',
-          visibility: 'PRIVATE',
+          reach: { allAccounts: false, groupCount: 0, userCount: 1 },
           listed: false,
-          visibilityCap: 'PRIVATE',
+          allAccountsGrantAllowed: false,
           listedCap: false,
         }),
       )
@@ -802,47 +816,30 @@ describe('LibraryDetailPage', () => {
       await user.click(await screen.findByRole('tab', { name: 'Freigaben' }))
       expect(
         await screen.findByText(
-          'Die Systemverwaltung hat die Freigabe dieser Bibliothek auf „privat“ begrenzt.',
-        ),
-      ).toBeInTheDocument()
-      expect(
-        screen.getByText(
           'Die Systemverwaltung hat die Auffindbarkeit dieser Bibliothek im' + ' Katalog gesperrt.',
         ),
       ).toBeInTheDocument()
-      await user.click(screen.getByRole('combobox', { name: /Verteilungsstufe/ }))
-      expect(screen.getByRole('option', { name: 'privat' })).not.toHaveAttribute(
-        'aria-disabled',
-        'true',
-      )
-      expect(screen.getByRole('option', { name: /organisationsweit/i })).toHaveAttribute(
-        'aria-disabled',
-        'true',
-      )
-      expect(screen.getByLabelText('Im Katalog auffindbar')).toBeDisabled()
+      expect(screen.getByLabelText('Im Katalog auffindbar, auch ohne Berechtigung')).toBeDisabled()
     })
 
-    it('shows the backend 409 message in German when an already-wide value is re-saved above the cap', async () => {
-      // #1870 review: with the option disabled, a caller cannot pick it through the select - this
+    it('shows the backend 409 message in German when an already-listed library is re-saved above the cap', async () => {
+      // #1870 review: with the checkbox locked, a caller cannot set it through the form - this
       // covers the remaining path, a value that was already above the cap before this page loaded
-      // (the cap tightened elsewhere) and is resubmitted unchanged.
+      // (the cap tightened elsewhere) and is resubmitted unchanged with the master data.
       const ownerLibrary = { ...managerLibrary, myRole: 'OWNER' as const }
       setLibraryState(
         ownerLibrary,
         detailsOf(ownerLibrary, {
           sourceType: 'FILESYSTEM',
           sourcePath: '/data/dokumente',
-          visibility: 'ORGANIZATION',
-          listed: false,
-          visibilityCap: 'PRIVATE',
+          reach: { allAccounts: false, groupCount: 0, userCount: 1 },
+          listed: true,
+          allAccountsGrantAllowed: false,
           listedCap: false,
         }),
       )
       mockUpdateLibrary.mockRejectedValueOnce(
-        new Error(
-          'Die Sichtbarkeit dieser Bibliothek ist von der Systemverwaltung auf höchstens' +
-            ' "privat" begrenzt.',
-        ),
+        new Error('Diese Bibliothek darf laut Systemverwaltung nicht im Katalog gelistet werden.'),
       )
       const user = userEvent.setup()
       renderWithProviders(<LibraryDetailPage />, { withRouter: true })
@@ -853,7 +850,7 @@ describe('LibraryDetailPage', () => {
       await user.click(await screen.findByRole('button', { name: /^speichern$/i }))
 
       expect(
-        await screen.findByText(/von der Systemverwaltung auf höchstens "privat" begrenzt/),
+        await screen.findByText(/laut Systemverwaltung nicht im Katalog gelistet/),
       ).toBeInTheDocument()
     })
 
@@ -881,9 +878,10 @@ describe('LibraryDetailPage', () => {
       renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
       await user.click(await screen.findByRole('tab', { name: 'Freigaben' }))
-      // Nur eine größere Reichweite läuft in die Sperre: Verteilungsstufe erweitern, dann speichern.
-      await user.click(await screen.findByRole('combobox', { name: /verteilungsstufe/i }))
-      await user.click(await screen.findByRole('option', { name: /organisationsweit/i }))
+      // Nur eine Erweiterung läuft in die Sperre: auffindbar schalten, dann speichern.
+      await user.click(
+        await screen.findByLabelText('Im Katalog auffindbar, auch ohne Berechtigung'),
+      )
       await user.click(screen.getByRole('button', { name: 'Freigabe speichern' }))
 
       expect(await screen.findByText(/Nachfolge offen/)).toBeInTheDocument()
@@ -1495,7 +1493,6 @@ describe('LibraryDetailPage', () => {
       expect(mockUpdateLibrary).toHaveBeenCalledWith('library-team', {
         name: ownerLibrary.name,
         description: ownerLibrary.description,
-        visibility: ownerLibrary.visibility,
         listed: ownerLibrary.listed,
         sourcePath: '/data/umgezogen',
         sourceUrl: undefined,
@@ -1566,7 +1563,6 @@ describe('LibraryDetailPage', () => {
       expect(mockUpdateLibrary).toHaveBeenCalledWith('library-team', {
         name: ownerLibrary.name,
         description: ownerLibrary.description,
-        visibility: ownerLibrary.visibility,
         listed: ownerLibrary.listed,
         sourceInsecureSsl: null,
         schedule: {

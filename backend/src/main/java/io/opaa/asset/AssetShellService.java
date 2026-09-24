@@ -2,7 +2,6 @@ package io.opaa.asset;
 
 import io.opaa.api.types.AssetOwnerType;
 import io.opaa.api.types.AssetRole;
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.permission.AssetGrant;
 import io.opaa.permission.AssetGrantRepository;
@@ -15,18 +14,22 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 /**
- * The lifecycle of the asset shell for every type: creation, a change of release level or
- * findability, deletion. A change of owner happens only in a transfer and lives with it, in {@link
+ * The lifecycle of the asset shell for every type: creation, a change of findability, deletion. A
+ * change of owner happens only in a transfer and lives with it, in {@link
  * AssetShellOwnershipDirectory}. Audit, history and the frozen reach are applied here and nowhere
  * else; a type calls these from its own create, update and delete paths, inside its own
  * transaction.
  *
  * <p>The rules the shell owns: the creator holds {@link AssetRole#OWNER} and an owning group {@link
  * AssetRole#MANAGER} - never {@code OWNER}, which would grow with every member and could never be
- * downgraded; a widening of reach is refused while the succession is open (ADR-0036, Entscheidung
- * 6); every requested reach is first put to the type's {@link
- * AssetTypeDefinition#requireReachWithinLimits}; narrowing to a lowered limit ({@link
- * #narrowReachTo}) is never refused.
+ * downgraded; listing an unlisted asset is refused while the succession is open (ADR-0036,
+ * Entscheidung 6); a requested findability is first put to the type's {@link
+ * AssetTypeDefinition#requireListedWithinLimits}; clearing it for a lowered limit ({@link
+ * #clearListedForLoweredCap}) is never refused.
+ *
+ * <p><b>How far the asset reaches is no longer the shell's</b> (#1931, ADR-0037): a grant to "Alle
+ * Beschaeftigten" is an ordinary grant and runs through {@link AssetGrantService}, including its
+ * own succession guard and its own cap check.
  */
 @Service
 public class AssetShellService {
@@ -107,65 +110,52 @@ public class AssetShellService {
   }
 
   /**
-   * Sets release level and findability. A widening is refused while the asset's succession is open,
-   * and every requested state is put to the type's limits before it is applied; a request that
+   * Sets findability. Listing an unlisted asset is refused while the asset's succession is open,
+   * and the requested state is put to the type's limits before it is applied; a request that
    * changes nothing writes nothing.
    *
-   * @param visibility the requested visibility, {@code null} to keep the current one.
-   * @return whether visibility or listed actually changed.
+   * @return whether {@code listed} actually changed.
    */
-  public boolean changeReach(
-      Asset asset, AssetVisibility visibility, boolean listed, UUID actorUserId) {
+  public boolean changeListed(Asset asset, boolean listed, UUID actorUserId) {
     AssetTypeDefinition definition = assetTypes.require(asset.getAssetType());
-    AssetVisibility previousVisibility = asset.getVisibility();
     boolean previousListed = asset.isListed();
-    AssetVisibility effectiveVisibility = visibility != null ? visibility : previousVisibility;
-    if (widensReach(asset, visibility, listed)) {
+    if (listed && !previousListed) {
       successionGuard.requireAssetReachNotFrozen(
-          asset.getAssetType(),
-          asset.getId(),
-          "Eine größere Reichweite (Sichtbarkeit oder Auffindbarkeit)");
+          asset.getAssetType(), asset.getId(), "Eine größere Reichweite (Auffindbarkeit)");
     }
-    definition.requireReachWithinLimits(asset, effectiveVisibility, listed);
-    asset.applyReach(effectiveVisibility, listed);
-    if (effectiveVisibility == previousVisibility && listed == previousListed) {
+    definition.requireListedWithinLimits(asset, listed);
+    asset.applyListed(listed);
+    if (listed == previousListed) {
       return false;
     }
-    eventPublisher.publishEvent(
-        new AssetChanged(
-            asset,
-            AssetChanged.Cause.VISIBILITY_CHANGED,
-            actorUserId,
-            Map.of("visibility", previousVisibility.name(), "listed", previousListed),
-            Map.of("visibility", effectiveVisibility.name(), "listed", listed)));
+    publishListedChanged(asset, previousListed, listed, actorUserId);
     return true;
   }
 
   /**
-   * Narrows release level and findability to a limit the type has just lowered - never refused,
-   * because it only takes reach away.
+   * Takes findability away because the type has just forbidden it - never refused, because it only
+   * takes reach away.
    *
-   * @return whether visibility or listed actually changed.
+   * @return whether {@code listed} actually changed.
    */
-  public boolean narrowReachTo(
-      Asset asset, AssetVisibility visibilityLimit, boolean listedAllowed, UUID actorUserId) {
-    AssetVisibility previousVisibility = asset.getVisibility();
-    boolean previousListed = asset.isListed();
-    AssetVisibility visibility =
-        previousVisibility.exceeds(visibilityLimit) ? visibilityLimit : previousVisibility;
-    boolean listed = previousListed && listedAllowed;
-    if (visibility == previousVisibility && listed == previousListed) {
+  public boolean clearListedForLoweredCap(Asset asset, UUID actorUserId) {
+    if (!asset.isListed()) {
       return false;
     }
-    asset.applyReach(visibility, listed);
+    asset.applyListed(false);
+    publishListedChanged(asset, true, false, actorUserId);
+    return true;
+  }
+
+  private void publishListedChanged(
+      Asset asset, boolean previousListed, boolean listed, UUID actorUserId) {
     eventPublisher.publishEvent(
         new AssetChanged(
             asset,
             AssetChanged.Cause.VISIBILITY_CHANGED,
             actorUserId,
-            Map.of("visibility", previousVisibility.name(), "listed", previousListed),
-            Map.of("visibility", visibility.name(), "listed", listed)));
-    return true;
+            Map.of("listed", previousListed),
+            Map.of("listed", listed)));
   }
 
   /**
@@ -183,17 +173,5 @@ public class AssetShellService {
     ownershipHistory.recordAssetDeleted(
         asset.getAssetType(), asset.getId(), asset.ownerSubject(), actorUserId);
     grantService.invalidateAfterCommit(asset.getAssetType(), asset.getId());
-  }
-
-  /**
-   * Whether the request reaches further than the asset does today - a visibility moving up to
-   * {@code ORGANIZATION}, or listing an unlisted asset. Renaming and narrowing never widen.
-   */
-  private static boolean widensReach(Asset asset, AssetVisibility requested, boolean listed) {
-    boolean widerVisibility =
-        requested != null
-            && requested != asset.getVisibility()
-            && requested == AssetVisibility.ORGANIZATION;
-    return widerVisibility || (listed && !asset.isListed());
   }
 }

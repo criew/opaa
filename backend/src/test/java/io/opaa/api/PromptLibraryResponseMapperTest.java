@@ -8,8 +8,8 @@ import io.opaa.api.dto.PromptLibraryUpdateRequest;
 import io.opaa.api.dto.PromptRequest;
 import io.opaa.api.types.AssetOwnerType;
 import io.opaa.api.types.AssetRole;
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.PromptVariableType;
+import io.opaa.permission.AssetReach;
 import io.opaa.prompt.PromptContent;
 import io.opaa.prompt.PromptLibrary;
 import io.opaa.prompt.PromptLibraryCreation;
@@ -29,12 +29,12 @@ class PromptLibraryResponseMapperTest {
   @Test
   void theResponseCarriesShellFieldsRoleCountAndOwnerName() {
     PromptLibrary library =
-        PromptLibrary.ownedByGroup(
-            ORGANIZATION, "Vorlagen", "Beschreibung", GROUP, AssetVisibility.SHARED, true);
+        PromptLibrary.ownedByGroup(ORGANIZATION, "Vorlagen", "Beschreibung", GROUP, true);
 
     PromptLibraryResponse response =
         PromptLibraryResponseMapper.toResponse(
-            new PromptLibraryView(library, AssetRole.EDITOR, 7, "Referat 50", null));
+            new PromptLibraryView(
+                library, AssetRole.EDITOR, 7, "Referat 50", null, new AssetReach(true, 1, 2)));
 
     assertThat(response.getId()).isEqualTo(library.getId());
     assertThat(response.getName()).isEqualTo("Vorlagen");
@@ -42,7 +42,9 @@ class PromptLibraryResponseMapperTest {
     assertThat(response.getOwnerType()).isEqualTo(AssetOwnerType.GROUP);
     assertThat(response.getOwnerId()).isEqualTo(GROUP);
     assertThat(response.getOwnerName()).isEqualTo("Referat 50");
-    assertThat(response.getVisibility()).isEqualTo(AssetVisibility.SHARED);
+    assertThat(response.getReach().getAllAccounts()).isTrue();
+    assertThat(response.getReach().getGroupCount()).isEqualTo(1);
+    assertThat(response.getReach().getUserCount()).isEqualTo(2);
     assertThat(response.getListed()).isTrue();
     assertThat(response.getMyRole()).isEqualTo(AssetRole.EDITOR);
     assertThat(response.getPromptCount()).isEqualTo(7L);
@@ -56,23 +58,16 @@ class PromptLibraryResponseMapperTest {
             .description("Beschreibung")
             .ownerType(AssetOwnerType.GROUP)
             .ownerId(GROUP)
-            .visibility(AssetVisibility.ORGANIZATION)
             .listed(true);
 
     assertThat(PromptLibraryResponseMapper.toCreation(request))
         .isEqualTo(
             new PromptLibraryCreation(
-                "Vorlagen",
-                "Beschreibung",
-                AssetOwnerType.GROUP,
-                GROUP,
-                AssetVisibility.ORGANIZATION,
-                true));
+                "Vorlagen", "Beschreibung", AssetOwnerType.GROUP, GROUP, true));
     assertThat(
             PromptLibraryResponseMapper.toUpdate(
-                new PromptLibraryUpdateRequest("Neu", AssetVisibility.PRIVATE, false)
-                    .description("Text")))
-        .isEqualTo(new PromptLibraryUpdate("Neu", "Text", AssetVisibility.PRIVATE, false));
+                new PromptLibraryUpdateRequest("Neu", false).description("Text")))
+        .isEqualTo(new PromptLibraryUpdate("Neu", "Text", false));
   }
 
   @Test

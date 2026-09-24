@@ -721,7 +721,7 @@ describe('SpaceSettingsPage', () => {
         name: 'Freie Bibliothek',
         ownerType: 'USER',
         ownerId: 'u1',
-        visibility: 'PRIVATE',
+        reach: { allAccounts: false, groupCount: 0, userCount: 1 },
         listed: false,
         myRole: 'OWNER',
         documentCount: 0,

@@ -10,7 +10,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.AssetRole;
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.asset.Asset;
 import io.opaa.asset.AssetAuthorization;
 import io.opaa.asset.AssetRepository;
@@ -57,23 +56,26 @@ class LibraryAccessServiceTest {
 
   private KnowledgeLibrary privateUserOwnedLibrary(UUID libraryId) {
     KnowledgeLibrary library =
-        KnowledgeLibrary.ownedByUser(
-            organizationId, "Bibliothek", null, UUID.randomUUID(), AssetVisibility.PRIVATE, false);
+        KnowledgeLibrary.ownedByUser(organizationId, "Bibliothek", null, UUID.randomUUID(), false);
     setId(library, libraryId);
     return library;
   }
 
   /**
-   * A library owned by someone other than {@link #userId}, with an explicit visibility - used to
-   * exercise the fail-closed/opened-by-visibility/opened-by-grant formula independent of ownership
-   * (#406, formerly exercised via the now-removed {@code SYSTEM} owner kind - see #521).
+   * A library owned by someone other than {@link #userId} - used to exercise the
+   * fail-closed/opened-by-grant formula independent of ownership (#406, formerly exercised via the
+   * now-removed {@code SYSTEM} owner kind - see #521).
    */
-  private KnowledgeLibrary libraryWithVisibility(UUID libraryId, AssetVisibility visibility) {
+  private KnowledgeLibrary foreignLibrary(UUID libraryId) {
     KnowledgeLibrary library =
-        KnowledgeLibrary.ownedByUser(
-            organizationId, "Bibliothek", null, UUID.randomUUID(), visibility, false);
+        KnowledgeLibrary.ownedByUser(organizationId, "Bibliothek", null, UUID.randomUUID(), false);
     setId(library, libraryId);
     return library;
+  }
+
+  private AssetGrant allAccountsGrant(UUID libraryId, AssetRole role) {
+    return AssetGrant.forAllAccounts(
+        KnowledgeLibrary.ASSET_TYPE, libraryId, organizationId, role, null, UUID.randomUUID());
   }
 
   private AssetGrant userGrant(UUID libraryId, UUID subjectUserId, AssetRole role) {
@@ -100,7 +102,7 @@ class LibraryAccessServiceTest {
   @Test
   void aPrivateLibraryWithNoGrantsIsClosedToOrdinaryUsersButOpenToASystemAdmin() {
     UUID libraryId = UUID.randomUUID();
-    KnowledgeLibrary library = libraryWithVisibility(libraryId, AssetVisibility.PRIVATE);
+    KnowledgeLibrary library = foreignLibrary(libraryId);
     when(grantRepository.findByAssetTypeAndAssetId(KnowledgeLibrary.ASSET_TYPE, libraryId))
         .thenReturn(List.of());
 
@@ -111,12 +113,13 @@ class LibraryAccessServiceTest {
     assertThat(accessService.canRead(library, userId, true)).isTrue();
   }
 
+  /** #1931: the third way of the formula is a grant to "Alle Konten" like any other. */
   @Test
-  void anOrganizationVisibleLibraryIsReadableByAnyoneInTheOrganization() {
+  void aLibraryGrantedToAllAccountsIsReadableByAnyoneInTheOrganization() {
     UUID libraryId = UUID.randomUUID();
-    KnowledgeLibrary library = libraryWithVisibility(libraryId, AssetVisibility.ORGANIZATION);
+    KnowledgeLibrary library = foreignLibrary(libraryId);
     when(grantRepository.findByAssetTypeAndAssetId(KnowledgeLibrary.ASSET_TYPE, libraryId))
-        .thenReturn(List.of());
+        .thenReturn(List.of(allAccountsGrant(libraryId, AssetRole.VIEWER)));
 
     assertThat(accessService.canRead(library, userId, false)).isTrue();
   }
@@ -124,7 +127,7 @@ class LibraryAccessServiceTest {
   @Test
   void aGrantOnAPrivateLibraryCounts() {
     UUID libraryId = UUID.randomUUID();
-    KnowledgeLibrary library = libraryWithVisibility(libraryId, AssetVisibility.PRIVATE);
+    KnowledgeLibrary library = foreignLibrary(libraryId);
     when(grantRepository.findByAssetTypeAndAssetId(KnowledgeLibrary.ASSET_TYPE, libraryId))
         .thenReturn(List.of(userGrant(libraryId, userId, AssetRole.VIEWER)));
 
@@ -374,19 +377,11 @@ class LibraryAccessServiceTest {
   }
 
   @Test
-  void organizationWideVisibilityGrantsViewerToAnyOrganizationMemberWithoutAGrant() {
+  void aGrantToAllAccountsConfersViewerToAnyOrganizationMemberWithoutAnOwnGrant() {
     UUID libraryId = UUID.randomUUID();
-    KnowledgeLibrary library =
-        KnowledgeLibrary.ownedByUser(
-            organizationId,
-            "Bibliothek",
-            null,
-            UUID.randomUUID(),
-            AssetVisibility.ORGANIZATION,
-            false);
-    setId(library, libraryId);
+    KnowledgeLibrary library = foreignLibrary(libraryId);
     when(grantRepository.findByAssetTypeAndAssetId(KnowledgeLibrary.ASSET_TYPE, libraryId))
-        .thenReturn(List.of());
+        .thenReturn(List.of(allAccountsGrant(libraryId, AssetRole.VIEWER)));
 
     assertThat(accessService.canRead(library, userId, false)).isTrue();
     assertThat(accessService.canManage(library, userId, false)).isFalse();
@@ -405,18 +400,9 @@ class LibraryAccessServiceTest {
     when(grantRepository.findReadableAssetIdsByGroupGrant(
             eq(KnowledgeLibrary.ASSET_TYPE), eq(Set.of(groupId)), eq(organizationId), any()))
         .thenReturn(Set.of(groupLibrary));
-    KnowledgeLibrary orgWide =
-        KnowledgeLibrary.ownedByUser(
-            organizationId,
-            "Organisationsweit",
-            null,
-            UUID.randomUUID(),
-            AssetVisibility.ORGANIZATION,
-            false);
-    setId(orgWide, orgLibrary);
-    when(grantRepository.findOrganizationWideAssetIds(
-            KnowledgeLibrary.ASSET_TYPE.value(), organizationId))
-        .thenReturn(List.of(orgWide.getId()));
+    when(grantRepository.findAssetIdsGrantedToAllAccounts(
+            eq(KnowledgeLibrary.ASSET_TYPE), eq(organizationId), any()))
+        .thenReturn(Set.of(orgLibrary));
 
     Set<UUID> readable = accessService.readableLibraryIds(userId, organizationId);
 
@@ -424,13 +410,13 @@ class LibraryAccessServiceTest {
   }
 
   @Test
-  void readableLibraryIdsIsEmptyForAUserWithNoGrantsNoGroupsAndNoOrganizationWideLibrary() {
+  void readableLibraryIdsIsEmptyForAUserWithNoGrantsNoGroupsAndNoAllAccountsGrant() {
     when(grantRepository.findReadableAssetIdsByDirectGrant(
             eq(KnowledgeLibrary.ASSET_TYPE), eq(userId), eq(organizationId), any()))
         .thenReturn(Set.of());
-    when(grantRepository.findOrganizationWideAssetIds(
-            KnowledgeLibrary.ASSET_TYPE.value(), organizationId))
-        .thenReturn(List.of());
+    when(grantRepository.findAssetIdsGrantedToAllAccounts(
+            eq(KnowledgeLibrary.ASSET_TYPE), eq(organizationId), any()))
+        .thenReturn(Set.of());
 
     assertThat(accessService.readableLibraryIds(userId, organizationId)).isEmpty();
     verify(grantRepository, never()).findReadableAssetIdsByGroupGrant(any(), any(), any(), any());
