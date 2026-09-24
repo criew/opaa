@@ -24,7 +24,7 @@ services:
       # must be filled by then - the backend therefore only starts once the mirror step has
       # finished. Only here, not in docker-compose.yml: a depends_on on a profile-gated service
       # would break every `docker compose up` without the demo profile.
-      minio-seed:
+      objectstore-seed:
         condition: service_completed_successfully
     environment:
       OPAA_PGVECTOR_DIMENSIONS: *embedding-dimensions

@@ -18,34 +18,34 @@ import org.junit.jupiter.api.Test;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
- * The adapter against a real MinIO (ADR-0027, Entscheidung 9): pagination past 1000 keys,
+ * The adapter against a real object store (ADR-0027, Entscheidung 9): pagination past 1000 keys,
  * path-style addressing, the ETag as MD5 of a simple upload, folder markers, the byte ceiling, a
  * missing bucket, and the rights a restricted key lacks - listing without reading, and neither - as
  * {@link S3ObjectStore#testAccess} reports them. Skipped without Docker; the CI runs it.
  */
 @Testcontainers(disabledWithoutDocker = true)
-class MinioS3ObjectStoreTest {
+class S3ObjectStoreIntegrationTest {
 
-  private static MinioFixture minio;
+  private static S3TestFixture fixture;
   private static String bucket;
   private static S3ObjectStore root;
 
   @BeforeAll
   static void start() throws Exception {
-    minio = MinioFixture.get();
-    bucket = minio.createBucket("opaa-zugriff");
-    minio.putObject(bucket, "2025/protokolle/sitzung.pdf", "%PDF-1.4 sitzung", "application/pdf");
-    minio.putObject(bucket, "2025/protokolle/", new byte[0], "application/x-directory");
-    minio.putObject(
+    fixture = S3TestFixture.get();
+    bucket = fixture.createBucket("opaa-zugriff");
+    fixture.putObject(bucket, "2025/protokolle/sitzung.pdf", "%PDF-1.4 sitzung", "application/pdf");
+    fixture.putObject(bucket, "2025/protokolle/", new byte[0], "application/x-directory");
+    fixture.putObject(
         bucket,
         "2024/alt.docx",
         "alt",
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
-    minio.putObject(bucket, "gross.bin", new byte[4096], "application/octet-stream");
-    minio.putMany(bucket, "viele/", 1100, null);
+    fixture.putObject(bucket, "gross.bin", new byte[4096], "application/octet-stream");
+    fixture.putMany(bucket, "viele/", 1100, null);
     root =
         store(
-            minio.rootCredentials(),
+            fixture.rootCredentials(),
             new S3Properties(0, 0, Duration.ofSeconds(10), null, null, 0, null, 0, 0));
   }
 
@@ -59,7 +59,7 @@ class MinioS3ObjectStoreTest {
   private static S3ObjectStore store(S3Credentials credentials, S3Properties properties)
       throws Exception {
     return new S3ClientFactory(properties, TargetAddressValidator.disabled())
-        .create(minio.connection(credentials), List.of(S3Scope.of(bucket, "")));
+        .create(fixture.connection(credentials), List.of(S3Scope.of(bucket, "")));
   }
 
   @Test
@@ -68,22 +68,22 @@ class MinioS3ObjectStoreTest {
     // the validation blocks; only an operator's allowlist entry opens it. Holds for a local Docker
     // socket (loopback or bridge gateway) - a remote DOCKER_HOST on a public address is not that
     // case, so the test steps aside there instead of failing for the wrong reason.
-    java.net.InetAddress host = java.net.InetAddress.getByName(minio.endpoint().getHost());
+    java.net.InetAddress host = java.net.InetAddress.getByName(fixture.endpoint().getHost());
     org.junit.jupiter.api.Assumptions.assumeTrue(
         host.isLoopbackAddress() || host.isSiteLocalAddress(),
-        "the MinIO endpoint is not a private address; the blocking case needs a local Docker host");
+        "the store endpoint is not a private address; the blocking case needs a local Docker host");
     S3Properties properties = S3Properties.defaults();
     List<S3Scope> scopes = List.of(S3Scope.of(bucket, ""));
     assertThatThrownBy(
             () ->
                 new S3ClientFactory(properties, new TargetAddressValidator(true, List.of()))
-                    .create(minio.connection(minio.rootCredentials()), scopes))
+                    .create(fixture.connection(fixture.rootCredentials()), scopes))
         .isInstanceOf(S3AccessException.TargetBlocked.class)
         .hasMessageContaining(TargetAddressValidator.ALLOWLIST_HINT);
     try (S3ObjectStore allowed =
         new S3ClientFactory(
-                properties, new TargetAddressValidator(true, List.of(minio.endpoint().getHost())))
-            .create(minio.connection(minio.rootCredentials()), scopes)) {
+                properties, new TargetAddressValidator(true, List.of(fixture.endpoint().getHost())))
+            .create(fixture.connection(fixture.rootCredentials()), scopes)) {
       assertThat(allowed.listObjects(S3Scope.of(bucket, "2024/"), null).objects())
           .extracting(S3ObjectSummary::key)
           .containsExactly("2024/alt.docx");
@@ -109,7 +109,8 @@ class MinioS3ObjectStoreTest {
   @Test
   void aSmallerPageSizeFollowsMoreTokens() throws Exception {
     try (S3ObjectStore small =
-        store(minio.rootCredentials(), new S3Properties(300, 0, null, null, null, 0, null, 0, 0))) {
+        store(
+            fixture.rootCredentials(), new S3Properties(300, 0, null, null, null, 0, null, 0, 0))) {
       int pages = 0;
       int objects = 0;
       String token = null;
@@ -169,7 +170,7 @@ class MinioS3ObjectStoreTest {
     Path tempDir = Files.createTempDirectory("opaa-s3-test-");
     try (S3ObjectStore store =
         store(
-            minio.rootCredentials(),
+            fixture.rootCredentials(),
             new S3Properties(0, 1024, null, null, null, 0, tempDir, 0, 0))) {
       assertThatThrownBy(() -> store.getObject(bucket, "gross.bin", 1024))
           .isInstanceOf(S3AccessException.ObjectTooLarge.class);
@@ -207,8 +208,8 @@ class MinioS3ObjectStoreTest {
   @Test
   void aKeyThatMayListButNotReadIsReportedAsSuch() throws Exception {
     S3Credentials listOnly =
-        minio.createUser(
-            MinioFixture.policyAllowing(bucket, "s3:ListBucket", "s3:GetBucketLocation"));
+        fixture.createUser(
+            S3TestFixture.policyAllowing(bucket, "s3:ListBucket", "s3:GetBucketLocation"));
     try (S3ObjectStore store = store(listOnly, S3Properties.defaults())) {
       S3AccessCheck check = store.testAccess(S3Scope.of(bucket, "2024/"));
 
@@ -220,7 +221,7 @@ class MinioS3ObjectStoreTest {
           .hasMessageContaining("s3:GetObject");
       assertThatThrownBy(() -> store.getObject(bucket, "2024/alt.docx", 1024))
           .isInstanceOf(S3AccessException.ReadForbidden.class);
-      // MinIO filters ListBuckets to the buckets the key may see instead of refusing it
+      // the store filters ListBuckets to the buckets the key may see instead of refusing it
       assertThat(store.listBuckets())
           .isInstanceOf(S3BucketListing.Listed.class)
           .extracting(l -> ((S3BucketListing.Listed) l).names())
@@ -230,8 +231,9 @@ class MinioS3ObjectStoreTest {
 
   @Test
   void aKeyWithoutRightsOnTheBucketCannotListIt() throws Exception {
-    String other = minio.createBucket("opaa-fremd");
-    S3Credentials otherOnly = minio.createUser(MinioFixture.policyAllowing(other, "s3:ListBucket"));
+    String other = fixture.createBucket("opaa-fremd");
+    S3Credentials otherOnly =
+        fixture.createUser(S3TestFixture.policyAllowing(other, "s3:ListBucket"));
     try (S3ObjectStore store = store(otherOnly, S3Properties.defaults())) {
       S3AccessCheck check = store.testAccess(S3Scope.of(bucket, ""));
 

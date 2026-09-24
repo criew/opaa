@@ -60,11 +60,11 @@ Das Skript:
      Eskalationsregeln, FAQ-Dokumente und Schulungsfolien (`intern.py`).
    - `ratsinformationen/<jahr>/` (`.md`/`.txt`): 12 Niederschriften und Beschlussvorlagen des
      Stadtrats und des Hauptausschusses, je Jahrgang ein Unterverzeichnis (`rat.py`) — der
-     Ausschnitt, den der Demo-Stack in seinen MinIO-Bucket `rheinfurt-archiv` spiegelt
+     Ausschnitt, den der Demo-Stack in seinen Bucket `rheinfurt-archiv` spiegelt
      (`S3`-Bibliothek, #1383).
    - `formate/` (je ein Dokument pro unterstützter Endung): 14 Dokumente rund um Dokumentenformate,
      Posteingang und Langzeitarchivierung (`formate.py`, `odf_utils.py`) — die technische
-     Schaubibliothek „Formattest auf S3", die der Demo-Stack in den MinIO-Bucket `formattest`
+     Schaubibliothek „Formattest auf S3", die der Demo-Stack in den Bucket `formattest`
      spiegelt (#1519, #1520).
 3. Validiert die erzeugten Inhalte aller sieben Bibliotheken gegen eine Liste von Verbotsmustern
    (`validation.py`): reale Ortsnamen (München/KVR/Pasing/Landeshauptstadt/Fischerei), Straßen

@@ -13,7 +13,7 @@ import io.opaa.auth.UserRepository;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.document.Document;
 import io.opaa.indexing.document.DocumentRepository;
-import io.opaa.indexing.source.s3.MinioFixture;
+import io.opaa.indexing.source.s3.S3TestFixture;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.permission.AssetGrantHistoryRepository;
@@ -47,17 +47,17 @@ import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 
 /**
- * The whole upload path with {@code opaa.upload.store=s3} against a real MinIO (ADR-0030): an
- * upload lands in the bucket, is processed to {@code INDEXED} from its working file - which is gone
- * afterwards - is served back from the bucket and removed from it on deletion; and the store's
+ * The whole upload path with {@code opaa.upload.store=s3} against a real object store (ADR-0030):
+ * an upload lands in the bucket, is processed to {@code INDEXED} from its working file - which is
+ * gone afterwards - is served back from the bucket and removed from it on deletion; and the store's
  * health contributor sits in its own group, not in the overall status. Skipped without Docker.
  */
 @OpaaMockedChatModelIntegrationTest
 class S3UploadStorageIntegrationTest {
 
   // Bucket, endpoint and credentials come from OpaaS3UploadStoreInitializer, part of this class's
-  // signature; both refer to the same JVM-wide MinIO and the same working directory.
-  private static final MinioFixture minio = MinioFixture.get();
+  // signature; both refer to the same JVM-wide store and the same working directory.
+  private static final S3TestFixture store = S3TestFixture.get();
   private static final String bucket = OpaaTestUploadStore.BUCKET;
   private static final Path tempDir = OpaaTestDirectory.subdirectory("upload-s3-temp");
 
@@ -284,7 +284,7 @@ class S3UploadStorageIntegrationTest {
 
   private static boolean objectExists(String key) {
     try {
-      minio.admin().headObject(HeadObjectRequest.builder().bucket(bucket).key(key).build());
+      store.admin().headObject(HeadObjectRequest.builder().bucket(bucket).key(key).build());
       return true;
     } catch (NoSuchKeyException e) {
       return false;
@@ -292,7 +292,7 @@ class S3UploadStorageIntegrationTest {
   }
 
   private static int objectCount() {
-    return minio.admin().listObjectsV2(b -> b.bucket(bucket)).contents().size();
+    return store.admin().listObjectsV2(b -> b.bucket(bucket)).contents().size();
   }
 
   private static List<Path> ownTempFiles() {

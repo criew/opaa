@@ -123,8 +123,8 @@ class LibraryDocumentServiceTest {
   private UploadProperties uploadProperties;
   private UploadedOriginalStore uploadedOriginalStore;
   // #1524: mocked here - what this class asserts is the branching, the failure pictures and the
-  // temp-file contract around it; the access layer itself is covered against a real MinIO by
-  // io.opaa.indexing.source.s3.S3OriginalAccessMinioTest.
+  // temp-file contract around it; the access layer itself is covered against a real object store by
+  // io.opaa.indexing.source.s3.S3OriginalAccessIntegrationTest.
   private S3OriginalAccess s3OriginalAccess;
   private LibraryDocumentService service;
 

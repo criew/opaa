@@ -77,12 +77,12 @@ class LibraryDef:
     upload_dir: Path | None = None  # every file directly inside is uploaded (non-recursive)
     # S3 only (ADR-0027): the static key as accessKey:secretKey (write-only in the API) and the
     # typed settings the API's S3Settings schema takes (pathStyle, scopes, patterns). Documented
-    # demo values, never secrets - the bucket lives in the demo stack's own MinIO (docker-compose.yml).
+    # demo values, never secrets - the bucket lives in the demo stack's own object store (docker-compose.yml).
     source_credentials: str | None = None
     s3_settings: Mapping[str, object] | None = None  # read-only by contract, like every field here
     # The corpus directory a connector run must reproduce one-to-one. seed.py counts its files and
     # fails a run that ended COMPLETED with fewer documents - without it, a run against a bucket
-    # the "minio-seed" step has not finished filling reports success with nothing indexed.
+    # the "objectstore-seed" step has not finished filling reports success with nothing indexed.
     expected_documents_dir: Path | None = None
 
 
@@ -243,15 +243,15 @@ DEMO_PROFILE = Profile(
             viewer_keys=("maria", "selin", "andrea"),
             upload_dir=DEMO_CORPUS_ROOT / "interne-dienstanweisungen-meldewesen",
         ),
-        # The S3 library (#1383, ADR-0027): reads the demo stack's MinIO (service "minio",
+        # The S3 library (#1383, ADR-0027): reads the demo stack's object store (service "objectstore",
         # path-style over the Compose network), bucket "rheinfurt-archiv" under the prefix the
-        # "minio-seed" init step mirrors demo/corpus/ratsinformationen/ to. Public council
+        # "objectstore-seed" init step mirrors demo/corpus/ratsinformationen/ to. Public council
         # information, readable by every fach account like the press releases.
         LibraryDef(
             name="Ratsinformationen Stadt Rheinfurt",
             description="Niederschriften und Beschlussvorlagen des Stadtrats und des Hauptausschusses, nach Jahrgängen abgelegt.",
             source_type="S3",
-            source_url="http://minio:9000",
+            source_url="http://objectstore:9000",
             source_credentials="rheinfurt-archiv:RheinfurtDemo!2026",  # nosec - documented demo credential
             s3_settings={
                 "pathStyle": True,
@@ -262,7 +262,7 @@ DEMO_PROFILE = Profile(
         ),
         # The seventh library (#1520): a technical showcase, not a Fachablage - one document per
         # file extension OPAA admits, read over the S3 connector from the bucket "formattest" of
-        # the same MinIO. It stays with the admin account that creates it and gets no VIEWER grant
+        # the same store. It stays with the admin account that creates it and gets no VIEWER grant
         # and no space association, so it never widens what a fach account sees.
         LibraryDef(
             name="Formattest auf S3",
@@ -274,7 +274,7 @@ DEMO_PROFILE = Profile(
                 "des Apache-POI-Projekts (Apache License 2.0) und ist als einzige englisch."
             ),
             source_type="S3",
-            source_url="http://minio:9000",
+            source_url="http://objectstore:9000",
             source_credentials="rheinfurt-archiv:RheinfurtDemo!2026",  # nosec - documented demo credential
             s3_settings={
                 "pathStyle": True,

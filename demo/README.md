@@ -43,8 +43,8 @@ Konnektortypen und mehrere Dateiformate:
 | Satzungen & Gebührenordnungen | `.pdf` | `HTTP_DIRECTORY` |
 | Pressemitteilungen Stadt Rheinfurt | RSS-XML + HTML-Detailseiten | `RSS_FEED` (statisch, selbst gehostet) |
 | Interne Dienstanweisungen Meldewesen | `.docx`, `.pdf`, `.pptx` | `UPLOAD` (im Seed automatisiert) |
-| Ratsinformationen Stadt Rheinfurt | `.md`, `.txt` (ein Ordner je Jahrgang) | `S3` (MinIO im Demo-Stack, Bucket `rheinfurt-archiv`; #1383) |
-| Formattest auf S3 | je ein Dokument pro unterstützter Endung | `S3` (MinIO im Demo-Stack, Bucket `formattest`; #1520) |
+| Ratsinformationen Stadt Rheinfurt | `.md`, `.txt` (ein Ordner je Jahrgang) | `S3` (Objektspeicher des Demo-Stacks, Bucket `rheinfurt-archiv`; #1383) |
+| Formattest auf S3 | je ein Dokument pro unterstützter Endung | `S3` (Objektspeicher des Demo-Stacks, Bucket `formattest`; #1520) |
 
 Die siebte Bibliothek ist keine Fachablage, sondern eine **technische Schaubibliothek**: Sie zeigt,
 dass jedes vom Handbuch zugelassene Dateiformat wirklich verarbeitet wird, und gehört deshalb allein
@@ -80,7 +80,7 @@ In der eigenen `.env.docker` zusätzlich setzen:
 SPRING_PROFILES_ACTIVE=docker,oidc
 OPAA_INITIAL_ADMIN_EMAIL=admin@stadt-rheinfurt.example
 OPAA_INITIAL_ADMIN_PASSWORD=<eigener Wert, nur für die Dauer des Seeds; siehe unten>
-OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST=demo-corpus,presse.stadt-rheinfurt.example,minio
+OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST=demo-corpus,presse.stadt-rheinfurt.example,objectstore
 OPAA_CREDENTIALS_ENCRYPTION_KEY=<Ausgabe von: openssl rand -base64 32>
 OPAA_AUTH_JWT_SECRET=<Ausgabe von: openssl rand -base64 48>
 OPAA_CSP_CONNECT_SRC_EXTRA=http://localhost:8180
@@ -88,7 +88,7 @@ OPAA_DEMO_MODE=true
 OPAA_PGVECTOR_DIMENSIONS=768
 OPAA_UPLOAD_THREAD_POOL_QUEUE_CAPACITY=30
 OPAA_UPLOAD_STORE=s3
-OPAA_UPLOAD_S3_ENDPOINT=http://minio:9000
+OPAA_UPLOAD_S3_ENDPOINT=http://objectstore:9000
 OPAA_UPLOAD_S3_BUCKET=opaa-uploads
 OPAA_UPLOAD_S3_ACCESS_KEY=opaa-uploads
 OPAA_UPLOAD_S3_SECRET_KEY=OpaaUploads!2026
@@ -107,10 +107,10 @@ Herkunft und Zwang jeder einzelnen Variable:
   vorliegen — sonst bricht Schritt 1 mit einer klaren Fehlermeldung ab, statt eine falsche Rolle
   stillschweigend zu akzeptieren. Die Adresse darf dieselbe sein wie die des Keycloak-Nutzers
   (zwei Konten unter zwei Issuern); `admin@opaa.local` wird abgelehnt.
-- `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST=demo-corpus,presse.stadt-rheinfurt.example,minio` ist
+- `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST=demo-corpus,presse.stadt-rheinfurt.example,objectstore` ist
   zwingend: Die Zielprüfung ausgehender Abrufe (`opaa.indexing.target-validation`, #267,
   standardmäßig aktiv) lehnt Compose-interne Adressen in privaten Bereichen ab — ohne diesen Eintrag
-  würde jede Indizierung der beiden Demo-Webserver und des Demo-Objektspeichers `minio` (#1383) mit
+  würde jede Indizierung der beiden Demo-Webserver und des Demo-Objektspeichers `objectstore` (#1383) mit
   „Zieladresse liegt in einem gesperrten Adressbereich" abgelehnt (siehe [`../docs/handbuch/deployment.md`, „Sicherheitshinweis"](../docs/handbuch/deployment.md#sicherheitshinweis-post-apiv1librarieslibraryidindexing-ist-von-außen-erreichbar)).
   Der Eintrag steht bewusst **nicht** in `docker-compose.yml`: Der Backend-Service dort läuft immer,
   mit oder ohne `demo`-Profil, und ein dort fest eingetragener Wert würde jede eigene Belegung dieser
@@ -119,7 +119,7 @@ Herkunft und Zwang jeder einzelnen Variable:
   führt die Variable bereits auskommentiert mit diesem Demo-Wert als Beispiel.
 - `OPAA_CREDENTIALS_ENCRYPTION_KEY` ist seit #1383 zwingend: Die `S3`-Bibliothek „Ratsinformationen
   Stadt Rheinfurt" ist die erste Demo-Bibliothek mit Zugangsdaten (dem Root-Schlüssel des
-  `minio`-Containers), und Zugangsdaten werden nur verschlüsselt gespeichert (#483,
+  `objectstore`-Containers), und Zugangsdaten werden nur verschlüsselt gespeichert (#483,
   [`../docs/handbuch/deployment.md`, „Zugangsdaten-Verschlüsselung"](../docs/handbuch/deployment.md#zugangsdaten-verschlüsselung)).
   Ohne Schlüssel bricht der Seed beim Anlegen dieser Bibliothek mit `503` ab. Der Demo-Stack läuft
   mit `docker,oidc`, nicht mit `dev` — der nur dort hinterlegte Entwicklungsschlüssel greift also
@@ -160,15 +160,15 @@ Herkunft und Zwang jeder einzelnen Variable:
   „Seed-Mechanismus (#712)" unten für den Umgang, falls das trotzdem passiert).
 - Der `OPAA_UPLOAD_S3_*`-Block stellt die **Originalablage der Demo auf den Objektspeicher** um
   ([ADR-0030](../docs/decisions/0030-originalablage-der-uploads.md), #1520): Hochgeladene Originale
-  landen im Bucket `opaa-uploads` desselben `minio`-Containers, der auch die beiden S3-Quellen
+  landen im Bucket `opaa-uploads` desselben `objectstore`-Containers, der auch die beiden S3-Quellen
   bereitstellt — nicht im Dienst `upload-store` des Compose-Profils `upload-s3`, der für reguläre
   Installationen gedacht ist. Ohne diesen Block bleibt die Demo auf der Dateisystem-Ablage
   (Anwendungs-Default) und zeigt einen gebauten Betriebsweg nicht. Zugangsdaten sind **nicht** der
-  Root-Schlüssel: Der Init-Schritt `minio-seed` legt den Schlüssel `opaa-uploads` an und bindet ihn
-  über `demo/minio/opaa-uploads-policy.json` auf genau diesen einen Bucket — der Root-Schlüssel
+  Root-Schlüssel: Der Init-Schritt `objectstore-seed` legt den Schlüssel `opaa-uploads` an und bindet ihn
+  über `demo/objectstore/opaa-uploads-policy.json` auf genau diesen einen Bucket — der Root-Schlüssel
   steckt dagegen als Quellzugangsdaten in den beiden S3-Bibliotheken. Die Zieladressprüfung der
   Ablage hat einen eigenen Namensraum und lässt ihre eigene konfigurierte Adresse immer zu; der
-  Eintrag `minio` in `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST` oben betrifft ausschließlich die
+  Eintrag `objectstore` in `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST` oben betrifft ausschließlich die
   Konnektoren.
 
 #### 2. Stack starten
@@ -215,9 +215,8 @@ Das startet zusätzlich zu `postgres`/`backend`/`frontend`:
   realistische Domain statt `localhost`, damit die Demo das `RSS_FEED`-Konnektorverhalten so vorführt,
   wie es auch gegen eine echte Domain liefe.
 
-- **`minio`** (`ghcr.io/criew/minio`, gepinnt auf dasselbe Release wie die MinIO-Testfixture des
-  Backends; die Quelle ist der eigene GHCR-Spiegel, seit MinIO das Docker-Hub-Repository (#1578)
-  und das quay.io-Repository (#1948) entfernt hat; Ablösung des Images: #1949)
+- **`objectstore`** (`rustfs/rustfs`, gepinnt auf dieselbe Version wie die S3-Testfixture des
+  Backends; seit #1949 an der Stelle von MinIO, dessen Images öffentlich nicht mehr beziehbar sind)
   ist der **eine** S3-kompatible Objektspeicher der Demo — mit drei Buckets (#1383, #1520,
   [ADR-0027](../docs/decisions/0027-s3-konnektor.md),
   [ADR-0030](../docs/decisions/0030-originalablage-der-uploads.md), Handbuch
@@ -229,17 +228,23 @@ Das startet zusätzlich zu `postgres`/`backend`/`frontend`:
   | `formattest` | Quelle der Bibliothek „Formattest auf S3" | `demo/corpus/formate/`, je ein Dokument pro unterstützter Endung |
   | `opaa-uploads` | **Ablage** der hochgeladenen Originale der Demo | was über die Oberfläche hochgeladen wird, einschließlich der 26 Dokumente der Upload-Bibliothek, die der Seed einspielt — je Original ein Objekt unter `<Organisations-ID>/<Bibliotheks-ID>/<Zufallsname><Endung>` ([ADR-0030](../docs/decisions/0030-originalablage-der-uploads.md), Entscheidung 4 mit Nachtrag) |
 
-  Der Einmal-Schritt **`minio-seed`** legt alle drei Buckets an, spiegelt die beiden Korpus-Buckets
-  (`mc mirror --overwrite --remove`, idempotent; Fortschritt mit `docker compose logs minio-seed`)
-  und richtet den auf `opaa-uploads` beschränkten Zugangsschlüssel der Ablage ein
-  (`demo/minio/opaa-uploads-policy.json`). Den Uploads-Bucket **befüllt er nie** — dessen Inhalt
-  gehört der Anwendung allein.
+  Der Einmal-Schritt **`objectstore-seed`** legt alle drei Buckets an, spiegelt die beiden
+  Korpus-Buckets (`aws s3 sync --delete`, idempotent; Fortschritt mit
+  `docker compose logs objectstore-seed`) und richtet den auf `opaa-uploads` beschränkten
+  Zugangsschlüssel der Ablage ein (`demo/objectstore/opaa-uploads-policy.json`, angelegt von
+  `demo/objectstore/scoped-key.py` über die Admin-API des Speichers — einen mitgelieferten
+  Kommandozeilenclient wie MinIOs `mc` gibt es dort nicht). Den Uploads-Bucket **befüllt er nie** —
+  dessen Inhalt gehört der Anwendung allein.
 
-  **Volume:** Der Dienst hat seit #1520 ein benanntes Volume (`opaa-demo-minio-data`), weil die
-  Datenbank der Demo einen Neustart überlebt und eine Dokumentzeile ohne ihr Objekt genau das
-  kaputte Bild ist, das der Aufräumlauf (#1478) anschließend meldet. Die beiden Korpus-Buckets
-  bleiben davon unberührt: `mc mirror --overwrite --remove` erzwingt bei jedem Start wieder den
-  committeten Korpusstand, egal was im Volume lag.
+  **Volume:** Der Dienst hat seit #1520 ein benanntes Volume (seit #1949
+  `opaa-demo-objectstore-data`), weil die Datenbank der Demo einen Neustart überlebt und eine
+  Dokumentzeile ohne ihr Objekt genau das kaputte Bild ist, das der Aufräumlauf (#1478)
+  anschließend meldet. Die beiden Korpus-Buckets bleiben davon unberührt: `aws s3 sync --delete`
+  erzwingt bei jedem Start wieder den committeten Korpusstand, egal was im Volume lag.
+
+  > **Einmalig beim Wechsel auf #1949:** Das alte Volume trägt MinIOs Ablageformat, das der neue
+  > Dienst nicht liest. Ein bestehender Demo-Stack braucht deshalb genau einmal
+  > `docker compose --profile demo down -v` und einen neuen Seed-Lauf.
 
   > **Neustart:** Objekte, Datenbank, Dokumentzeilen **und Konten** überleben ein
   > `docker compose --profile demo down` (ohne `-v`). Die Konten tun das seit #1526, weil beide
@@ -251,26 +256,33 @@ Das startet zusätzlich zu `postgres`/`backend`/`frontend`:
 
   **Zugangsdaten:** Der Root-Schlüssel `rheinfurt-archiv` / `RheinfurtDemo!2026` ist ein
   dokumentierter Demo-Wert; ihn gibt der Seed den **beiden S3-Bibliotheken** als
-  `accessKey:secretKey` mit, und mit ihm öffnet sich die MinIO-Konsole. Die **Ablage** benutzt
-  stattdessen den eigenen, bucket-beschränkten Schlüssel `opaa-uploads` / `OpaaUploads!2026`
-  (Schritt 1). Das Backend spricht `minio` Path-Style über das Compose-Netzwerk an, weshalb der
-  Servicename für die Konnektoren in der Allowlist stehen muss (Schritt 1).
+  `accessKey:secretKey` mit, und mit ihm liest `aws s3` vom Host die drei Buckets. Die **Ablage**
+  benutzt stattdessen den eigenen, bucket-beschränkten Schlüssel `opaa-uploads` /
+  `OpaaUploads!2026` (Schritt 1). Das Backend spricht `objectstore` Path-Style über das
+  Compose-Netzwerk an, weshalb der Servicename für die Konnektoren in der Allowlist stehen muss
+  (Schritt 1).
 
 Alle Quellcontainer binden standardmäßig nur an `127.0.0.1` (Ports `OPAA_DEMO_CORPUS_PORT`, Default
-8091, `OPAA_DEMO_PRESSE_PORT`, Default 8092, `OPAA_DEMO_MINIO_PORT`, Default 8093, und
-`OPAA_DEMO_MINIO_CONSOLE_PORT`, Default 8094) — zum Prüfen im Browser, nicht als öffentlicher Zugang;
+8091, `OPAA_DEMO_PRESSE_PORT`, Default 8092, und `OPAA_DEMO_OBJECTSTORE_PORT`, Default 8093) —
+zum Prüfen von Hand, nicht als öffentlicher Zugang;
 das Backend erreicht alle drei ohnehin über das Compose-Netzwerk unter ihrem Servicenamen bzw. Alias,
 ein Hafen nach außen ist dafür nicht nötig:
 
 - <http://127.0.0.1:8091/leistungen-meldewesen-ausweise/> (ebenso für die anderen beiden Verzeichnisse)
 - <http://127.0.0.1:8092/rss.xml>
-- <http://127.0.0.1:8094/> — **MinIO-Konsole**, der Weg, sich die drei Buckets anzusehen. Anmeldung
-  mit dem Root-Schlüssel oben (`rheinfurt-archiv` / `RheinfurtDemo!2026`), dann „Object Browser":
-  `rheinfurt-archiv` zeigt die Jahrgangsordner unter `ratsinformationen/`, `formattest` die vierzehn
-  Formatmuster, und `opaa-uploads` füllt sich mit je einem Objekt pro hochgeladenem Original —
-  sichtbar unmittelbar nach einem Upload über die Oberfläche, zwei Ordnerebenen tief: erst die
-  Organisation, darin die Bibliothek. Die Konsole des gepinnten Release ist
-  vollständig; ein zusätzlicher UI-Container ist dafür nicht nötig.
+- <http://127.0.0.1:8093/> — die **S3-API des Objektspeichers**, der Weg, sich die drei Buckets
+  anzusehen. Eine Weboberfläche bringt der Dienst nicht mit; mit dem Root-Schlüssel oben
+  (`rheinfurt-archiv` / `RheinfurtDemo!2026`) genügt die Kommandozeile:
+
+  ```bash
+  AWS_ACCESS_KEY_ID=rheinfurt-archiv AWS_SECRET_ACCESS_KEY='RheinfurtDemo!2026' \
+    aws --endpoint-url http://127.0.0.1:8093 s3 ls --recursive s3://rheinfurt-archiv
+  ```
+
+  `rheinfurt-archiv` zeigt die Jahrgangsordner unter `ratsinformationen/`, `formattest` die
+  vierzehn Formatmuster, und `opaa-uploads` füllt sich mit je einem Objekt pro hochgeladenem
+  Original — sichtbar unmittelbar nach einem Upload über die Oberfläche, zwei Schlüsselebenen
+  tief: erst die Organisation, darin die Bibliothek.
 
 Listing-Format: Apache `IndexOptions FancyIndexing HTMLTable`
 (`webserver/httpd-demo-autoindex.conf`) — die erprobte Referenz, seit #550 aber keine Notwendigkeit
@@ -280,7 +292,7 @@ Warten, bis `backend` und `keycloak` bereit sind (`docker compose logs -f backen
 „Started OpaaApplication").
 
 Wer nur den Korpus-Webserver ohne Anmeldung ausprobieren will (kein Login, keine Spaces/Rechte), lässt
-`SPRING_PROFILES_ACTIVE` auf `docker,dev` — `demo-corpus`/`demo-presse`/`minio` starten trotzdem über
+`SPRING_PROFILES_ACTIVE` auf `docker,dev` — `demo-corpus`/`demo-presse`/`objectstore` starten trotzdem über
 `--profile demo`, `keycloak` läuft dann einfach mit, bleibt aber ungenutzt. Für den vollständigen Seed
 (unten) ist `docker,oidc` zwingend: Das `demo`-Datenprofil des Seeds meldet sich über Keycloak an.
 
@@ -299,8 +311,8 @@ benannter Verantwortung ein, ordnet den drei Sachgebiets- und Amtsleitungs-Space
 als Datenquellen zu (Assoziation als reine Kuratierung, #706 — Marias persönlicher Space bleibt
 bewusst ohne Zuordnung), lädt die 26 Dokumente der internen Upload-Bibliothek hoch und stößt die
 Indizierung der sechs konnektorgespeisten Bibliotheken an — darunter die beiden `S3`-Bibliotheken,
-deren Läufe die Buckets `rheinfurt-archiv` und `formattest` des `minio`-Containers lesen (der
-Einmal-Schritt `minio-seed` muss dafür durchgelaufen sein, siehe Schritt 2). Vollständiger Ablauf,
+deren Läufe die Buckets `rheinfurt-archiv` und `formattest` des `objectstore`-Containers lesen (der
+Einmal-Schritt `objectstore-seed` muss dafür durchgelaufen sein, siehe Schritt 2). Vollständiger Ablauf,
 Idempotenz und Fehlerfälle: „Seed-Mechanismus (#712)" unten.
 
 **Wie lange dauert die Erstindizierung, und wie erkennt man, dass sie fertig ist?** Der Seed selbst
@@ -333,11 +345,11 @@ zu ersetzen. Der Ist-Zustand auf der öffentlichen Instanz opaa.ewerlin.com weic
 | `thomas.klein` | Sachbearbeiter Kfz-Zulassung | „Kfz-Zulassung" (allein) | Leistungen Kfz-Zulassung, Satzungen & Gebührenordnungen, Pressemitteilungen, Ratsinformationen | `RheinfurtDemo!2026` |
 | `andrea.vogt` | Amtsleitung Bürgerbüro | „Amtsleitung Bürgerbüro" (allein) | alle sechs fachlichen Bibliotheken (nicht „Formattest auf S3") | `RheinfurtDemo!2026` |
 
-Der Objektspeicher `minio` des Demo-Stacks hat einen eigenen Root-Schlüssel (`rheinfurt-archiv` /
+Der Objektspeicher `objectstore` des Demo-Stacks hat einen eigenen Root-Schlüssel (`rheinfurt-archiv` /
 `RheinfurtDemo!2026`, `docker-compose.yml`) — derselbe offene Demo-Wert, mit dem der Seed die beiden
-`S3`-Bibliotheken anlegt und mit dem sich die MinIO-Konsole (Port 8094) öffnen lässt. Die
+`S3`-Bibliotheken anlegt und mit dem sich die drei Buckets über die S3-API (Port 8093) lesen lassen. Die
 Originalablage benutzt davon getrennt den bucket-beschränkten Schlüssel `opaa-uploads` /
-`OpaaUploads!2026`, den der Init-Schritt `minio-seed` anlegt — ebenfalls ein offener Demo-Wert.
+`OpaaUploads!2026`, den der Init-Schritt `objectstore-seed` anlegt — ebenfalls ein offener Demo-Wert.
 
 Zusätzlich existiert im zweiten Keycloak-Realm `partner` (`keycloak/realm-partner-export.json`,
 ADR-0025) eine **zweite `maria.weber` mit derselben E-Mail** und demselben Passwort — ein
@@ -473,7 +485,7 @@ Der Lauf richtet über die API ein:
    Bürgerbüro" (Andrea Vogt).
 4. **Sieben Wissensbibliotheken** im Besitz des Admin-Kontos, je mit eigener Quellkonfiguration
    (ADR-0018): drei `HTTP_DIRECTORY` gegen `demo-corpus`, ein `RSS_FEED` gegen
-   `presse.stadt-rheinfurt.example`, ein `UPLOAD`, zwei `S3` gegen `minio` (Bucket
+   `presse.stadt-rheinfurt.example`, ein `UPLOAD`, zwei `S3` gegen `objectstore` (Bucket
    `rheinfurt-archiv` mit Präfix `ratsinformationen/` sowie Bucket `formattest` ohne Präfix,
    Zugangsdaten und typisierte `s3Settings` direkt aus `profiles.py`,
    [ADR-0027](../docs/decisions/0027-s3-konnektor.md)). „Formattest auf S3" ist die einzige
@@ -503,7 +515,7 @@ Der Lauf richtet über die API ein:
    (`expected_documents_dir` in `profiles.py`), also muss der Lauf mindestens so viele Dokumente
    verarbeitet haben, wie dort Dateien liegen. Ohne diese Prüfung meldete ein Lauf gegen einen noch
    nicht fertig befüllten Bucket „abgeschlossen" über eine leere Bibliothek — der Einmal-Schritt
-   `minio-seed` muss vorher durch sein (Schritt 2 von „Demo nutzen" oben).
+   `objectstore-seed` muss vorher durch sein (Schritt 2 von „Demo nutzen" oben).
 
 Für das minimale, eingefrorene `e2e`-Profil (dev-Auth, keine Keycloak-Anmeldung nötig) braucht es den
 separaten E2E-Stack (`e2e/docker-compose.e2e.yml`), nicht den `demo`-Stack — nur dieser provisioniert
@@ -622,10 +634,10 @@ Demo-Konten) und mit dem Rheinfurt-Korpus samt Seed-Profil `demo` befüllt.
   würde Uploads sonst schon vor dem Frontend-Container abweisen. Zusätzlich zu
   `postgres`/`backend`/`frontend`/`keycloak` laufen in der Instanz-Compose die beiden schlanken
   httpd-Container `demo-corpus`/`demo-presse` aus „Demo nutzen" oben — beide binden ihre Ports
-  ebenfalls ausschließlich auf `127.0.0.1`. Seit #1383 gehören `minio` und der Befüll-Schritt
-  `minio-seed` ebenso dazu (zwei Bibliotheken sind `S3`-gespeist; ohne sie bricht der Seed beim
-  Lauf dieser Bibliotheken ab) — samt `minio` in der Allowlist, und seit #1520 samt dem Volume
-  `opaa-demo-minio-data` und dem `OPAA_UPLOAD_S3_*`-Block, ohne den die Originale der Instanz
+  ebenfalls ausschließlich auf `127.0.0.1`. Seit #1383 gehören `objectstore` und der Befüll-Schritt
+  `objectstore-seed` ebenso dazu (zwei Bibliotheken sind `S3`-gespeist; ohne sie bricht der Seed beim
+  Lauf dieser Bibliotheken ab) — samt `objectstore` in der Allowlist, und seit #1520 samt dem Volume
+  `opaa-demo-objectstore-data` und dem `OPAA_UPLOAD_S3_*`-Block, ohne den die Originale der Instanz
   weiter auf dem Dateisystem liegen; ob die öffentliche Instanz das aufnimmt, ist eine
   Betreiber-Entscheidung nach dem Merge.
 - **Betriebsart:** Die Instanz läuft ausschließlich aus vorgebauten GHCR-Images

@@ -189,42 +189,38 @@ services:
     profiles:
       - demo
 
-  # The object store of the Rheinfurt demo (#1383, #1520, ADR-0027/ADR-0030): one MinIO with three
-  # buckets - "rheinfurt-archiv" and "formattest" are *sources* the S3 connector reads (the
-  # libraries "Ratsinformationen Stadt Rheinfurt" and "Formattest auf S3"), "opaa-uploads" is the
-  # *storage* the demo writes its uploaded originals to. The backend reaches it over the Compose
-  # network under its service name ("minio", path-style, http) - which the target validation
-  # rejects as a private address unless "minio" is on OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST
-  # (demo/README.md, "Installation mit einem Befehl", same reasoning as demo-corpus/demo-presse);
-  # the upload store's own check passes its configured endpoint by definition.
+  # The object store of the Rheinfurt demo (#1383, #1520, #1949, ADR-0027/ADR-0030): one
+  # S3-compatible store with three buckets - "rheinfurt-archiv" and "formattest" are *sources* the
+  # S3 connector reads (the libraries "Ratsinformationen Stadt Rheinfurt" and "Formattest auf S3"),
+  # "opaa-uploads" is the *storage* the demo writes its uploaded originals to. The backend reaches
+  # it over the Compose network under its service name ("objectstore", path-style, http) - which
+  # the target validation rejects as a private address unless "objectstore" is on
+  # OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST (demo/README.md, "Installation mit einem Befehl",
+  # same reasoning as demo-corpus/demo-presse); the upload store's own check passes its configured
+  # endpoint by definition.
   # Root credentials are documented demo values (demo/README.md, "Nutzerkonten"), never secrets;
   # the seed hands them to the two source libraries as accessKey:secretKey, while the upload store
-  # gets its own bucket-scoped key from "minio-seed" below. Same pinned image line as the
-  # backend's MinIO test fixture (MinioFixture.IMAGE), from the project's GHCR mirror: both public
-  # sources are gone - Docker Hub "minio/minio" (#1578) and quay.io/minio/minio (#1948). The
-  # community line ended with this release, the "mc" client the seed step below needs still ships
-  # in it, and the image is being replaced (#1949).
+  # gets its own bucket-scoped key from "objectstore-seed" below. Same pinned image line as the
+  # backend's S3 test fixture (S3TestFixture.IMAGE).
   #
   # The volume exists for "opaa-uploads" alone: the demo's database survives a restart, and a
   # document row whose object is gone is exactly the broken picture the orphan sweep (#1478) then
-  # reports. The two source buckets are unaffected by it - "mc mirror --overwrite --remove" forces
-  # them back to the committed corpus on every start, whatever the volume held before.
-  minio:
-    image: ghcr.io/criew/minio:RELEASE.2025-09-07T16-13-09Z
-    command: server /data --console-address ":9001"
+  # reports. The two source buckets are unaffected by it - "aws s3 sync --delete" forces them back
+  # to the committed corpus on every start, whatever the volume held before.
+  objectstore:
+    image: rustfs/rustfs:1.0.0
     environment:
-      MINIO_ROOT_USER: rheinfurt-archiv
-      MINIO_ROOT_PASSWORD: RheinfurtDemo!2026
+      RUSTFS_ACCESS_KEY: rheinfurt-archiv
+      RUSTFS_SECRET_KEY: RheinfurtDemo!2026
+      RUSTFS_VOLUMES: /data
     volumes:
-      - opaa-demo-minio-data:/data
-    # Published to 127.0.0.1 only, for the "prüfen im Browser" step (the console at 8094 shows the
-    # three buckets, the API at 8093 answers "mc"/"aws s3" from the host) - the backend never uses
-    # these.
+      - opaa-demo-objectstore-data:/data
+    # Published to 127.0.0.1 only, so "aws s3 ls" from the host can look into the three buckets -
+    # the backend never uses this port, it goes through the Compose network.
     ports:
-      - "127.0.0.1:${OPAA_DEMO_MINIO_PORT:-8093}:9000"
-      - "127.0.0.1:${OPAA_DEMO_MINIO_CONSOLE_PORT:-8094}:9001"
+      - "127.0.0.1:${OPAA_DEMO_OBJECTSTORE_PORT:-8093}:9000"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://127.0.0.1:9000/minio/health/live"]
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:9000/health"]
       interval: 2s
       timeout: 2s
       retries: 15
@@ -236,35 +232,42 @@ services:
   # the key prefix the seed's library scope names (bucket "rheinfurt-archiv", prefix
   # "ratsinformationen/"), year folders included, and demo/corpus/formate/ into the bucket
   # "formattest". "opaa-uploads" is only created, never filled: its content belongs to the
-  # application alone. Idempotent ("mc mb --ignore-existing", "mc mirror --overwrite --remove": a
-  # source bucket ends up as an exact copy of its directory, an object removed from the corpus
-  # disappears on the next start), runs to completion and exits;
+  # application alone. Idempotent (a failing "s3 mb" on an existing bucket is tolerated, and
+  # "s3 sync --delete" makes a source bucket an exact copy of its directory, so an object removed
+  # from the corpus disappears on the next start), runs to completion and exits;
   # e2e/docker-compose.demo-smoke.yml makes the backend wait for it so neither the seed indexes a
   # half-filled bucket nor an upload hits a missing one.
   #
   # The upload store gets its own access key rather than the root key the two source libraries
-  # carry as stored credentials, scoped by demo/minio/opaa-uploads-policy.json to that one bucket.
-  # "mc admin policy attach" is the one non-idempotent step (it fails once the mapping exists), so
-  # its failure is tolerated deliberately - and only its failure.
-  minio-seed:
-    image: ghcr.io/criew/minio:RELEASE.2025-09-07T16-13-09Z
+  # carry as stored credentials, scoped by demo/objectstore/opaa-uploads-policy.json to that one
+  # bucket. The store ships no command-line client, so demo/objectstore/scoped-key.py creates the
+  # key over its admin API - idempotent, because policy and user are overwritten under their names.
+  objectstore-seed:
+    image: amazon/aws-cli:2.32.6
+    environment:
+      AWS_ACCESS_KEY_ID: rheinfurt-archiv
+      AWS_SECRET_ACCESS_KEY: RheinfurtDemo!2026
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_ENDPOINT_URL: http://objectstore:9000
+      # Same reasoning as the connector's own setting: the store understands the newer checksum
+      # headers only where it asks for them.
+      AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+      AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
     volumes:
       - ./demo/corpus/ratsinformationen:/corpus/ratsinformationen:ro
       - ./demo/corpus/formate:/corpus/formate:ro
-      - ./demo/minio/opaa-uploads-policy.json:/policies/opaa-uploads-policy.json:ro
+      - ./demo/objectstore:/objectstore:ro
     entrypoint: ["/bin/sh", "-c"]
     command: >-
-      "mc alias set demo http://minio:9000 rheinfurt-archiv 'RheinfurtDemo!2026' >/dev/null &&
-      mc mb --ignore-existing demo/rheinfurt-archiv demo/formattest demo/opaa-uploads &&
-      mc mirror --overwrite --remove /corpus/ratsinformationen demo/rheinfurt-archiv/ratsinformationen &&
-      mc mirror --overwrite --remove /corpus/formate demo/formattest &&
-      mc admin user add demo opaa-uploads 'OpaaUploads!2026' &&
-      mc admin policy create demo opaa-uploads-rw /policies/opaa-uploads-policy.json &&
-      { mc admin policy attach demo opaa-uploads-rw --user opaa-uploads ||
-      echo 'policy already attached'; } &&
-      mc ls --recursive demo/rheinfurt-archiv demo/formattest"
+      "for bucket in rheinfurt-archiv formattest opaa-uploads; do
+      aws s3 mb s3://$$bucket || true; done &&
+      aws s3 sync --delete /corpus/ratsinformationen s3://rheinfurt-archiv/ratsinformationen &&
+      aws s3 sync --delete /corpus/formate s3://formattest &&
+      python3 /objectstore/scoped-key.py http://objectstore:9000 opaa-uploads-rw
+      /objectstore/opaa-uploads-policy.json opaa-uploads 'OpaaUploads!2026' &&
+      aws s3 ls --recursive s3://rheinfurt-archiv && aws s3 ls --recursive s3://formattest"
     depends_on:
-      minio:
+      objectstore:
         condition: service_healthy
     profiles:
       - demo
@@ -272,8 +275,8 @@ services:
   # The object store of the uploaded originals (ADR-0030), opt-in via the "upload-s3" Compose
   # profile - the store of a regular installation, which never starts the "demo" profile. The demo
   # does not use this service: it writes its originals into the "opaa-uploads" bucket of its own
-  # "minio" above (#1520), so a demo stack stays one object store rather than two. Hence the named
-  # volume here too - without it the originals would be gone after "docker compose down -v" while
+  # "objectstore" above (#1520), so a demo stack stays one object store rather than two. Hence the
+  # named volume here too - without it the originals would be gone after "docker compose down -v" while
   # their document rows survive in the database and point at objects that no longer exist, the same
   # trap the ./uploads bind mount has on the filesystem path.
   #
@@ -287,40 +290,39 @@ services:
   # "Originalablage" block - whoever changes them changes them on both sides, here (process
   # environment or .env) and for the backend (.env.docker).
   upload-store:
-    image: ghcr.io/criew/minio:RELEASE.2025-09-07T16-13-09Z
-    command: server /data --console-address ":9001"
+    image: rustfs/rustfs:1.0.0
     environment:
-      MINIO_ROOT_USER: ${OPAA_UPLOAD_STORE_ROOT_USER:-opaa-uploads}
-      MINIO_ROOT_PASSWORD: ${OPAA_UPLOAD_STORE_ROOT_PASSWORD:-OpaaUploads!2026}
+      RUSTFS_ACCESS_KEY: ${OPAA_UPLOAD_STORE_ROOT_USER:-opaa-uploads}
+      RUSTFS_SECRET_KEY: ${OPAA_UPLOAD_STORE_ROOT_PASSWORD:-OpaaUploads!2026}
+      RUSTFS_VOLUMES: /data
     volumes:
       - opaa-upload-store-data:/data
-    # Published to 127.0.0.1 only, for the operator's own "mc"/"aws s3" calls from the host (API on
-    # 8095) and for looking an original up in the browser (console on 8096) - the backend uses
-    # neither, it goes through the Compose network.
+    # Published to 127.0.0.1 only, for the operator's own "aws s3" calls from the host - the
+    # backend never uses it, it goes through the Compose network.
     ports:
       - "127.0.0.1:${OPAA_UPLOAD_STORE_PORT:-8095}:9000"
-      - "127.0.0.1:${OPAA_UPLOAD_STORE_CONSOLE_PORT:-8096}:9001"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://127.0.0.1:9000/minio/health/live"]
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:9000/health"]
       interval: 2s
       timeout: 2s
       retries: 15
     profiles:
       - upload-s3
 
-  # One-shot init step (pattern: minio-seed, ollama-pull): creates the bucket, because OPAA never
-  # creates one - without it the start logs a warning and every upload fails. Idempotent
-  # ("mc mb --ignore-existing"), runs to completion and exits. It never writes objects: the content
-  # of this bucket belongs to the application alone.
+  # One-shot init step (pattern: objectstore-seed, ollama-pull): creates the bucket, because OPAA
+  # never creates one - without it the start logs a warning and every upload fails. Idempotent (a
+  # failing "s3 mb" on an existing bucket is tolerated), runs to completion and exits. It never
+  # writes objects: the content of this bucket belongs to the application alone.
   upload-store-init:
-    image: ghcr.io/criew/minio:RELEASE.2025-09-07T16-13-09Z
+    image: amazon/aws-cli:2.32.6
+    environment:
+      AWS_ACCESS_KEY_ID: ${OPAA_UPLOAD_STORE_ROOT_USER:-opaa-uploads}
+      AWS_SECRET_ACCESS_KEY: ${OPAA_UPLOAD_STORE_ROOT_PASSWORD:-OpaaUploads!2026}
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_ENDPOINT_URL: http://upload-store:9000
     entrypoint: ["/bin/sh", "-c"]
     command: >-
-      "mc alias set store http://upload-store:9000
-      '${OPAA_UPLOAD_STORE_ROOT_USER:-opaa-uploads}'
-      '${OPAA_UPLOAD_STORE_ROOT_PASSWORD:-OpaaUploads!2026}' >/dev/null &&
-      mc mb --ignore-existing store/${OPAA_UPLOAD_STORE_BUCKET:-opaa-uploads} &&
-      mc ls store"
+      "aws s3 mb s3://${OPAA_UPLOAD_STORE_BUCKET:-opaa-uploads} || true; aws s3 ls"
     depends_on:
       upload-store:
         condition: service_healthy
@@ -409,7 +411,7 @@ volumes:
   opaa-postgres-data:
   opaa-ollama-data:
   opaa-upload-store-data:
-  opaa-demo-minio-data:
+  opaa-demo-objectstore-data:
 
 # ADR-0033, Entscheidung 9: a fixed subnet, so the frontend service above can hold a fixed address
 # (OPAA_COMPOSE_FRONTEND_ADDRESS) that OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS in .env.docker names -
