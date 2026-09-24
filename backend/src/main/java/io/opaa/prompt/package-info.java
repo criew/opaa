@@ -1,6 +1,6 @@
 /**
- * The prompt library, the second asset type on the shell (#1901,
- * docs/features/spaces-and-assets.md#prompt-bibliothek): a type table, an entity extending {@code
+ * The prompt library, the second asset type on the shell
+ * (docs/features/spaces-and-assets.md#prompt-bibliothek): a type table, an entity extending {@code
  * io.opaa.asset.Asset}, an {@code io.opaa.asset.AssetTypeDefinition} - and its prompts with their
  * variables.
  *

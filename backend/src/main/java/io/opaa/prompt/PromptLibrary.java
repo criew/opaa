@@ -11,9 +11,9 @@ import jakarta.persistence.Table;
 import java.util.UUID;
 
 /**
- * The second asset type (#1901, docs/features/spaces-and-assets.md#prompt-bibliothek): a named
- * collection of {@link Prompt}s. Everything it has besides its prompts - name, owner, release
- * level, findability - is the shell's; the table {@code prompt_libraries} only holds the type.
+ * The second asset type (docs/features/spaces-and-assets.md#prompt-bibliothek): a named collection
+ * of {@link Prompt}s. Everything it has besides its prompts - name, owner, release level,
+ * findability - is the shell's; the table {@code prompt_libraries} only holds the type.
  */
 @Entity
 @Table(name = "prompt_libraries")

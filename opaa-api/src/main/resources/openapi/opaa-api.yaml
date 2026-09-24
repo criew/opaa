@@ -15863,10 +15863,12 @@ components:
       required: [name, label, type, required]
       description: >
         One variable of a prompt (docs/features/spaces-and-assets.md#prompt-bibliothek). The prompt
-        text uses it as {{name}}; whoever inserts the prompt fills it in first. The server refuses
-        a text that uses an undefined variable and a definition the text does not use. The system
-        variables {{CURRENT_DATE}} and {{USER_NAME}} are resolved on insertion and cannot be
-        defined.
+        text uses it as {{name}}; whoever inserts the prompt fills it in first. Blanks inside the
+        braces ({{ name }}) are accepted and removed on saving - a stored text, and every
+        PromptResponse, carries {{name}} only. The server refuses a text that uses an undefined
+        variable and a definition the text does not use. The system variables {{CURRENT_DATE}} and
+        {{USER_NAME}} are recognised in any case, stored upper-case, resolved on insertion and
+        cannot be defined.
       properties:
         name:
           type: string

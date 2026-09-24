@@ -14,10 +14,11 @@ import java.util.regex.Pattern;
 
 /**
  * The variable syntax of a prompt text and the rules its definitions follow
- * (docs/features/spaces-and-assets.md#prompt-bibliothek). A placeholder is exactly {@code {{name}}}
- * - no blanks, a name of letters, digits and underscores starting with a letter; any other {@code
- * {{...}}} is refused rather than left as text, so the syntax stays unambiguous. The text and the
- * definitions must agree in both directions; the {@link #SYSTEM_VARIABLES} are resolved on
+ * (docs/features/spaces-and-assets.md#prompt-bibliothek). A placeholder is {@code {{name}}}, a name
+ * of letters, digits and underscores starting with a letter; blanks inside the braces are tolerated
+ * and {@link #normalize} removes them, and a system variable is recognised in any case and stored
+ * in its canonical form. Any other {@code {{...}}} is refused rather than left as text. The text
+ * and the definitions must agree in both directions; the {@link #SYSTEM_VARIABLES} are resolved on
  * insertion and never defined.
  */
 public final class PromptTemplate {
@@ -34,12 +35,26 @@ public final class PromptTemplate {
   private static final int MAX_DEFAULT_LENGTH = 2000;
 
   private static final Pattern PLACEHOLDER = Pattern.compile("\\{\\{(.*?)}}", Pattern.DOTALL);
+  private static final Pattern PADDED_PLACEHOLDER =
+      Pattern.compile("\\{\\{\\s*([A-Za-z][A-Za-z0-9_]*)\\s*}}");
   private static final Pattern VARIABLE_NAME = Pattern.compile("[A-Za-z][A-Za-z0-9_]*");
 
   private PromptTemplate() {}
 
   /**
-   * The names the text uses as placeholders, in order of first use, system variables included.
+   * The text as it is stored: every valid placeholder without blanks inside its braces, every
+   * system variable in its canonical upper-case form ({@code {{ current_date }}} becomes {@code
+   * {{CURRENT_DATE}}}). Anything else stays as it is, for {@link #placeholders} to refuse.
+   */
+  public static String normalize(String text) {
+    return PADDED_PLACEHOLDER
+        .matcher(text)
+        .replaceAll(match -> Matcher.quoteReplacement("{{" + canonical(match.group(1)) + "}}"));
+  }
+
+  /**
+   * The names the text uses as placeholders, in order of first use, system variables included - as
+   * {@link #normalize} writes them.
    *
    * @throws ValidationException for a {@code {{...}}} that is no valid placeholder.
    */
@@ -47,15 +62,15 @@ public final class PromptTemplate {
     Set<String> names = new LinkedHashSet<>();
     Matcher matcher = PLACEHOLDER.matcher(text);
     while (matcher.find()) {
-      String name = matcher.group(1);
+      String name = matcher.group(1).strip();
       if (!VARIABLE_NAME.matcher(name).matches() || name.length() > MAX_NAME_LENGTH) {
         throw new ValidationException(
             "Ungültiger Platzhalter „{{"
                 + name
                 + "}}“: Ein Variablenname beginnt mit einem Buchstaben und enthält nur Buchstaben,"
-                + " Ziffern und Unterstriche, ohne Leerzeichen.");
+                + " Ziffern und Unterstriche.");
       }
-      names.add(name);
+      names.add(canonical(name));
     }
     return names;
   }
@@ -94,6 +109,12 @@ public final class PromptTemplate {
     }
   }
 
+  /** A system variable in its canonical form, any other name unchanged. */
+  private static String canonical(String name) {
+    String upper = name.toUpperCase(Locale.ROOT);
+    return SYSTEM_VARIABLES.contains(upper) ? upper : name;
+  }
+
   private static void validateDefinition(PromptVariable variable) {
     if (variable == null) {
       throw new ValidationException("Eine Variablendefinition ist leer.");
@@ -109,11 +130,16 @@ public final class PromptTemplate {
               + " Zeichen.");
     }
     if (SYSTEM_VARIABLES.contains(name.toUpperCase(Locale.ROOT))) {
+      String system = name.toUpperCase(Locale.ROOT);
       throw new ValidationException(
           "„"
               + name
-              + "“ ist eine Systemvariable und wird beim Einsetzen aufgelöst; sie kann nicht"
-              + " definiert werden.");
+              + "“ ist die Systemvariable {{"
+              + system
+              + "}}: Sie wird beim Einsetzen automatisch gefüllt und braucht keine Definition."
+              + " Entfernen Sie die Definition; im Text darf {{"
+              + system
+              + "}} stehen bleiben.");
     }
     if (variable.label() == null
         || variable.label().isBlank()

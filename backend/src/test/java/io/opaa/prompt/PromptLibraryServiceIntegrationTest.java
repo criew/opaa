@@ -282,6 +282,12 @@ class PromptLibraryServiceIntegrationTest {
                     foreignSpace, PromptLibrary.ASSET_TYPE, id, callerOf(foreigner)))
         .as("an association into a space of another organization")
         .isInstanceOf(NotFoundException.class);
+    assertThatThrownBy(
+            () ->
+                associationService.associate(
+                    foreignSpace, PromptLibrary.ASSET_TYPE, id, callerOf(owner)))
+        .as("its owner cannot hang it into a space of another organization either")
+        .isInstanceOf(NotFoundException.class);
     assertThat(grantRepository.findByAssetTypeAndAssetId(PromptLibrary.ASSET_TYPE, id))
         .extracting(grant -> grant.getSubjectId())
         .containsExactly(owner);
@@ -355,6 +361,31 @@ class PromptLibraryServiceIntegrationTest {
 
     assertThat(promptService.get(id, created.getId(), callerOf(owner)).getVariables())
         .containsExactly(aktenzeichen);
+  }
+
+  @Test
+  void blanksInPlaceholdersAreStoredNormalizedAndResavingThemChangesNothing() {
+    UUID id = libraryOf(owner, "Schreibweisen");
+    PromptVariable aktenzeichen =
+        new PromptVariable(
+            "aktenzeichen", "Aktenzeichen", PromptVariableType.TEXT, true, null, List.of());
+    PromptContent spaced =
+        new PromptContent(
+            "anhoerung",
+            "Anhörung",
+            null,
+            "Zu {{ aktenzeichen }}, Stand {{ current_date }}",
+            List.of(aktenzeichen),
+            0);
+
+    Prompt created = promptService.create(id, spaced, callerOf(owner));
+    promptService.update(id, created.getId(), spaced, callerOf(owner));
+
+    assertThat(promptService.get(id, created.getId(), callerOf(owner)).getText())
+        .isEqualTo("Zu {{aktenzeichen}}, Stand {{CURRENT_DATE}}");
+    assertThat(auditEvents(created.getId()))
+        .as("the same text in another spelling is no change")
+        .containsExactly("PROMPT_CREATED");
   }
 
   @Test
