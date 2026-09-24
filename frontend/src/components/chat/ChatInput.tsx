@@ -120,7 +120,7 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
   // "every readable library" - a space curated via space<->library associations (#706) narrows
   // the actual search to associated ∩ readable, and the line has to say so, not the wider number
   // the user never gets to search. Loaded per current chat's space via the same spaceStore
-  // SpaceManagementPage/SpacePage use (their routes never render at the same time as this one, so
+  // SpaceSettingsPage/SpacePage use (their routes never render at the same time as this one, so
   // there is no simultaneous-consumer conflict) - but #783 review finding 1: that store write-back
   // is asynchronous and per-space, so this component must not simply trust whatever is currently in
   // assetAssociations/hasAssetAssociations. assetAssociationsSpaceId names which space that

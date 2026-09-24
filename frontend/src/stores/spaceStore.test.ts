@@ -187,7 +187,7 @@ describe('spaceStore', () => {
   })
 
   // #203: library associations - loaded on demand, not part of selectSpace, since only pages that
-  // actually show them (SpacePage, SpaceManagementPage) need the extra request.
+  // actually show them (SpacePage, SpaceSettingsPage) need the extra request.
   it('loads library associations for a space', async () => {
     await useSpaceStore.getState().loadAssetAssociations('space-project')
 
