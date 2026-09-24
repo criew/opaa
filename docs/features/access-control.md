@@ -1353,7 +1353,7 @@ Antwort.
 **Die Mitgliederliste für Rechtevergebende (gebaut, #1880).** Wer einer Gruppe an einem Objekt ein
 Recht einräumt oder es verwaltet — `MANAGER`/`OWNER` einer Bibliothek, `ADMIN`/Eigentümer eines
 Space — sieht **an diesem Objekt** ihre Mitglieder: `GET
-/api/v1/libraries/{libraryId}/grants/groups/{groupId}/members` und `GET
+/api/v1/assets/{assetType}/{assetId}/grants/groups/{groupId}/members` und `GET
 /api/v1/spaces/{spaceId}/members/groups/{groupId}/members`. Der Objektbezug ist Pflicht; eine
 objektlose Abfrage „wer ist in dieser Gruppe" gibt es nicht. Durchgesetzt werden die vier Grenzen
 von ADR-0036, Entscheidung 9 **im Dienst**, jede einzelne mit `404` wie für eine unbekannte Gruppe:

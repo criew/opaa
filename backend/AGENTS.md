@@ -130,7 +130,7 @@ pauschales `deleteAll()` über eine Tabelle, in die auch andere Klassen schreibe
 `knowledge_libraries`), ist ein Fehler, kein Aufräumen — es scheitert spätestens an einer
 RESTRICT-Fremdschlüsselbeziehung einer fremden, noch gebrauchten Zeile. Ebenso wenig räumt eine
 Klasse vorsorglich hinter einer namentlich genannten anderen her; stattdessen wird die verursachende
-Klasse repariert. `LeftoverRowGuard` zählt `documents`, `knowledge_libraries`, `vector_store`,
+Klasse repariert. `LeftoverRowGuard` zählt `documents`, `knowledge_libraries`, `assets`, `vector_store`,
 `diagnostic_impersonation_grants` und `audit_incident_scope_grants` zu Beginn und am Ende jeder
 Testklasse, jeweils erst wenn alle Task-Executor des Kontexts leer sind, und nennt die Klasse, nach
 der eine Zählung gewachsen ist — nur sie, nicht jede folgende.

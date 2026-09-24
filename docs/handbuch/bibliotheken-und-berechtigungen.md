@@ -105,6 +105,11 @@ als Eigentümerin erhält die Gruppe die Verwalterrolle — die anlegende Person
 Gruppe sein. **Gruppeneigentum ist die haltbarere Wahl**: Es übersteht den Weggang einzelner
 Personen, und genau dafür ist Abschnitt 13 sonst zuständig.
 
+Weitere Rollen lassen sich schon beim Anlegen vergeben. Das Formular wählt Person oder Gruppe mit
+derselben Auswahl wie der Dialog „Rechte" an einer bestehenden Bibliothek — mit denselben Regeln für
+geschützte Gruppen (Abschnitt 8) und derselben Rückfrage vor einer Freigabe an die Gruppe eines
+externen Anbieters.
+
 ### Reichweite: Verteilungsstufe und Auffindbarkeit
 
 Neben den einzeln erteilten Rollen trägt jede Bibliothek zwei Felder, die niemanden benennen und
