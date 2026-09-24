@@ -81,7 +81,8 @@ der Zugriff fehlt.
 ### Anlegen
 
 „Neue Prompt-Bibliothek" öffnet einen Assistenten mit drei Schritten; es sind dieselben Bausteine
-wie beim Anlegen einer Wissensbibliothek, nur ohne den Schritt „Herkunft":
+wie beim Anlegen einer Wissensbibliothek, nur ohne deren Schritte „Art des Wissens" und „Quelle" —
+eine Prompt-Bibliothek bindet kein Wissen und hat keine Quelle:
 
 1. **Stammdaten** — Name und, optional, Beschreibung.
 2. **Eigentümer** — „Mein Konto" oder „Eine Gruppe". Angeboten werden nur Gruppen, in denen die
@@ -98,7 +99,8 @@ Anlegen darf, wer das Anlegerecht **„Prompt-Bibliotheken anlegen"** hat; ausge
 Fehlt es, nennt der Assistent es beim Namen, statt die Funktion zu verstecken. Kann eine
 vorgemerkte Rolle nicht erteilt werden, ist die Bibliothek trotzdem angelegt: Der Assistent führt
 auf ihre Detailseite, nennt in einem Hinweis die betroffenen Personen oder Gruppen, und die Rolle
-lässt sich dort unter „Rechte verwalten" nachtragen. Ein zweites Anlegen bietet er nicht an.
+lässt sich dort im Reiter „Verwaltung" unter „Berechtigungen" nachtragen. Ein zweites Anlegen
+bietet er nicht an.
 
 ### Die Detailseite
 
@@ -107,14 +109,16 @@ Die Detailseite hat zwei Reiter, jeder mit eigener Adresse:
 | Reiter | Inhalt | Sichtbar für |
 |---|---|---|
 | **Prompts** | Die Prompts der Bibliothek, aufklappbar mit Text und Variablen; ab der Bearbeiterrolle „Neuer Prompt", „Bearbeiten" und „Löschen" | alle Leser |
-| **Verwaltung** | Stammdaten, der Abschnitt „Freigabe", „Warum sehe ich diese Prompt-Bibliothek?" und für den Eigentümer „Prompt-Bibliothek löschen" | ab der Verwalterrolle |
+| **Verwaltung** | Name und Beschreibung, dann dieselben Freigabeabschnitte wie bei einer Wissensbibliothek und für den Eigentümer „Prompt-Bibliothek löschen" | ab der Verwalterrolle |
 
-Der Abschnitt **„Freigabe"** ist derselbe wie bei einer Wissensbibliothek: „Im Katalog auffindbar,
-auch ohne Berechtigung" mit eigenem „Freigabe speichern", „Rechte verwalten" mit dem Dialog, in dem
-Rollen erteilt, geändert, befristet und entzogen werden, und die Liste „Zuordnungen" mit den
-Räumen, denen die Bibliothek zugeordnet ist — jede Zuordnung einzeln lösbar. Das Speichern der
-Stammdaten ändert die Reichweite nicht, und das Speichern der Freigabe ändert Name und Beschreibung
-nicht.
+Der Reiter **„Verwaltung"** führt in dieser Reihenfolge: Name und Beschreibung mit eigenem
+„Speichern", **„Berechtigungen"** als Liste auf der Seite — Personen, Gruppen und „Alle Konten" mit
+Rolle, Befristung und Entzug, dazu das Formular „Freigeben" —, **„Im Katalog auffindbar"** mit
+eigenem „Auffindbarkeit speichern", **„Zuordnungen"** mit den Räumen, denen die Bibliothek
+zugeordnet ist (jede einzeln lösbar), und **„Warum sehe ich diese Prompt-Bibliothek?"**. Es sind
+dieselben Abschnitte wie im Reiter „Freigaben" einer Wissensbibliothek; jeder speichert für sich,
+einen gemeinsamen Knopf über Abschnitte hinweg gibt es nicht. Ein Abschnitt „Eigentümer" fehlt
+hier: Die Antwort einer Prompt-Bibliothek trägt den Namen ihrer zuständigen Stelle nicht.
 
 Die **Herleitung** „Warum sehe ich das?" zeigt den eigenen Weg zur wirksamen Rolle, genau wie bei
 der Wissensbibliothek ([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md),

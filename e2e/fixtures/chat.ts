@@ -278,7 +278,4 @@ export async function shareLibraryWithPerson(
   await adminPage.getByRole('option', { name: personOption }).click()
   await adminPage.getByRole('button', { name: 'Freigeben' }).last().click()
   await expect(adminPage.getByText(personOption)).toBeVisible()
-  // Scoped to the dialog: the deDE MUI locale also names an error Alert's own close button
-  // "Schließen" (#784), so an unscoped lookup could resolve to two elements on the error path.
-  await adminPage.getByRole('dialog').getByRole('button', { name: 'Schließen' }).click()
 }

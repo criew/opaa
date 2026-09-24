@@ -107,9 +107,10 @@ und wird deshalb **nicht** protokolliert — jede andere Änderung auf dieser Se
 
 ## 4. Die Freigabe einer Wissensbibliothek
 
-Freigabe-Einheit ist die **Wissensbibliothek**, nicht der Raum. Jede Bibliothek trägt im
-Zugriffsbereich das Merkmal „über Fremdzugänge nutzbar", Standard **aus**. Setzen darf es, wer die
-Bibliothek verwaltet (Verwalter-Rolle), sowie die Systemverwaltung. Eine zusätzliche
+Freigabe-Einheit ist die **Wissensbibliothek**, nicht der Raum. Jede Bibliothek trägt im Reiter
+**„Freigaben"** ihrer Detailseite, Abschnitt **„Externer Zugang"**, das Merkmal „über Fremdzugänge
+nutzbar", Standard **aus**. Setzen darf es, wer die Bibliothek verwaltet (Verwalter-Rolle), sowie
+die Systemverwaltung. Eine zusätzliche
 Genehmigungsstufe gibt es nicht: Wer den Bestand verantwortet, entscheidet über ihn.
 
 **Die Freigabe ist pflichtbefristet.** Ohne Ablauf wäre sie eine Ratsche — jede Anfrage erzeugt

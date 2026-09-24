@@ -139,10 +139,12 @@ als Eigentümerin erhält die Gruppe die Verwalterrolle — die anlegende Person
 Gruppe sein. **Gruppeneigentum ist die haltbarere Wahl**: Es übersteht den Weggang einzelner
 Personen, und genau dafür ist Abschnitt 13 sonst zuständig.
 
-Weitere Rollen lassen sich schon beim Anlegen vergeben. Das Formular wählt Person oder Gruppe mit
-derselben Auswahl wie der Dialog „Rechte" an einer bestehenden Bibliothek — mit denselben Regeln für
-geschützte Gruppen (Abschnitt 8) und derselben Rückfrage vor einer Freigabe an die Gruppe eines
-externen Anbieters.
+Weitere Rollen lassen sich schon beim Anlegen vergeben. Der Schritt „Freigaben" des Assistenten
+wählt Person oder Gruppe mit derselben Auswahl wie der Abschnitt „Berechtigungen" an einer
+bestehenden Bibliothek — mit denselben Regeln für geschützte Gruppen (Abschnitt 8) und derselben
+Rückfrage vor einer Freigabe an die Gruppe eines externen Anbieters. Den Empfänger **„Alle Konten"**
+bietet der Assistent nicht an: Ein Bestand, den es noch nicht gibt, hat keine Reichweite zu weiten,
+und die Obergrenze, die über eine solche Freigabe entscheidet, gehört der angelegten Bibliothek.
 
 ### Reichweite: „Alle Konten" und Auffindbarkeit
 

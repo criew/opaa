@@ -66,8 +66,10 @@ machen, und die leistet die Volltextsuche über den Kopfblock im Chunk-Text ohne
 ### 2b. Bibliotheksfelder
 
 Kernfelder und Formatfelder sind fest eingebaut. Darüber hinaus definiert **jede Bibliothek bis zu
-fünf eigene Felder** — „Fassung", „Rechtsebene", „Aktenzeichen" —, verwaltet in den
-Bibliothekseinstellungen unter **„Metadatenfelder"** mit dem Verwaltungsrecht (MANAGER).
+fünf eigene Felder** — „Fassung", „Rechtsebene", „Aktenzeichen" —, verwaltet auf der Detailseite
+der Bibliothek im Reiter **„Metadaten"**, Abschnitt **„Metadatenfelder"**, mit dem
+Verwaltungsrecht (MANAGER). Im selben Reiter steht darunter die **modellgestützte Extraktion**
+(Abschnitt 5).
 
 | Typ | Wert | Filter |
 |---|---|---|
@@ -108,9 +110,9 @@ in drei Schritten:
    und nicht durch die modellgestützte Ermittlung. Für ein Feld, dessen Löschung läuft, gilt
    dasselbe; es ist als „wird gelöscht" gekennzeichnet und nimmt keine Änderung mehr an.
 2. **Umgeschrieben.** Die betroffenen Dokumente werden paketweise umgeschrieben, jedes für sich und
-   mit seinem eigenen Audit-Eintrag. Der Fortschritt steht in den Bibliothekseinstellungen („N
-   Dokumente offen, M umgeschrieben") und in der Zustandsübersicht der Seite **„Suche &
-   Indexierung"**. **Anhalten** hält nach dem laufenden Paket an, **Fortsetzen** macht dort weiter,
+   mit seinem eigenen Audit-Eintrag. Der Fortschritt steht im Reiter „Metadaten" der Bibliothek
+   („N Dokumente offen, M umgeschrieben") und in der Zustandsübersicht der Seite
+   **„Suche & Indexierung"**. **Anhalten** hält nach dem laufenden Paket an, **Fortsetzen** macht dort weiter,
    wo der Lauf stand; bereits Umgeschriebenes wird nie ein zweites Mal angefasst.
 3. **Gelöscht.** Erst wenn kein Dokument den Wert mehr trägt, verschwindet er aus der Werteliste —
    beim Feld: das Feld mit seiner ganzen Werteliste. Ein kleiner Bestand ist mit der Bestätigung
@@ -264,9 +266,9 @@ nachgezogen, ohne neu zu zerlegen oder neu einzubetten. Der Titel steht nur am D
 
 ### 5.3 Modellgestützte Ermittlung und freie Schlagworte
 
-Zwei Schalter je Bibliothek, **beide voreingestellt aus**, in den Bibliothekseinstellungen unter
-**„Modellgestützte Extraktion"** (Verwaltungsrecht). Sie sind der einzige Teil der Ermittlung, der
-Geld kostet, ausfallen kann und Dokumentinhalte an ein Sprachmodell übergibt.
+Zwei Schalter je Bibliothek, **beide voreingestellt aus**, im Reiter **„Metadaten"** der
+Bibliothek unter **„Modellgestützte Extraktion"** (Verwaltungsrecht). Sie sind der einzige Teil
+der Ermittlung, der Geld kostet, ausfallen kann und Dokumentinhalte an ein Sprachmodell übergibt.
 
 > **Datenschutz.** Wird die aktive Chat-Rolle extern betrieben, verlässt mit eingeschaltetem
 > Schalter **der Inhalt jedes aufgenommenen Dokuments dauerhaft das Haus** — anders als im Chat,
@@ -307,8 +309,8 @@ ein Modellausfall aussieht. Ein so übergangenes Dokument gilt weiterhin als off
 nächsten Bestandslauf erneut angefasst.
 
 **Zählwerk.** Je Bibliothek werden Aufrufe, übernommene Werte, wegen Konfidenz und wegen Werteliste
-verworfene Werte, Fehler, nicht angefragte Dokumente und vergebene Schlagworte geführt — sichtbar in den Bibliothekseinstellungen
-und auf der Seite „Suche & Indexierung". Ohne diese Zahlen ist die einzige Rückmeldung über die
+verworfene Werte, Fehler, nicht angefragte Dokumente und vergebene Schlagworte geführt — sichtbar
+im Reiter „Metadaten" der Bibliothek und auf der Seite „Suche & Indexierung". Ohne diese Zahlen ist die einzige Rückmeldung über die
 Kosten die Rechnung des Modellanbieters. Verworfene Werte werden zusätzlich mit ihrer Konfidenz
 protokolliert (je Bibliothek die 1.000 jüngsten), damit die Schwelle an einem echten Bestand
 bewertbar bleibt.
@@ -326,8 +328,8 @@ unverändert. Was sie nicht tun:
 
 ### 5.4 Extraktionsgüte
 
-In den Bibliothekseinstellungen steht neben den Schaltern die **Extraktionsgüte**: je Feld, wie viele
-der indizierten Dokumente ihren Wert regelbasiert, modellbefüllt oder von Hand tragen, wie viele als
+Im Reiter „Metadaten" der Bibliothek steht neben den Schaltern die **Extraktionsgüte**: je Feld,
+wie viele der indizierten Dokumente ihren Wert regelbasiert, modellbefüllt oder von Hand tragen, wie viele als
 „kein Wert ermittelbar" gekennzeichnet und wie viele leer sind. Sie beantwortet die Frage, die ein
 Suchergebnis allein nicht beantwortet: ob ein schwacher Filter am Filter liegt oder an der
 Ermittlung. Die Zahlen werden bei jeder Abfrage gezählt, im Rechtekontext der fragenden Person.
@@ -412,7 +414,7 @@ Für Konnektorbibliotheken gilt dasselbe; der Wert hängt am Dokument, nicht an 
 
 ### 7.1 Der Pflege-Anker
 
-Auf der Bibliotheksseite steht über der Dokumentliste der Abschnitt
+Im Reiter **„Dokumente"** einer Bibliothek steht über der Dokumentliste der Abschnitt
 **„Metadaten-Pflege"**: je Feld „N Dokumente ohne Wert (x %)" oder „vollständig gepflegt", mit
 einer Schaltfläche, die genau diese Dokumente in der Liste darunter öffnet. Gezählt werden nur leere
 Felder; „kein Wert ermittelbar" zählt nicht mit, deshalb kann die Zahl null erreichen. Die Liste
@@ -497,10 +499,9 @@ zunächst auch nicht, weil noch kein Dokument einen Wert trägt.
 **Das Speichern setzt nichts in Bewegung.** Es merkt nur die betroffenen Dokumente vor — genau die,
 die die Vorschau gezählt hat, denn die Auswahl steht auf Dokumentebene über einen Abdruck des
 zuletzt eingebetteten Präfix. Den **Kontextpräfix-Nachlauf** startet ein Systemadministrator je
-Bibliothek auf der Seite **„Suche & Indexierung"** im Reiter **„Indexstatus"**; die
-Bibliothekseinstellungen zeigen dafür „N
-Dokumente warten auf Neu-Einbetten". Der Lauf bettet die Abschnitte **unter ihren eigenen Kennungen**
-neu ein, ohne neu zu zerlegen: Belege und Deep Links überleben, die Suche bleibt durchgehend
+Bibliothek auf der Seite **„Suche & Indexierung"** im Reiter **„Indexstatus"**; der Reiter
+„Metadaten" der Bibliothek zeigt dafür „N Dokumente warten auf Neu-Einbetten". Der Lauf bettet die
+Abschnitte **unter ihren eigenen Kennungen** neu ein, ohne neu zu zerlegen: Belege und Deep Links überleben, die Suche bleibt durchgehend
 verfügbar, und ein Dokument, das nicht verarbeitet werden kann, behält alles, was es hatte. Anhalten
 ist schlicht das Ausbleiben des nächsten Aufrufs; ein zweiter Lauf über bereits verarbeitete
 Dokumente kostet keinen Einbettungsaufruf.

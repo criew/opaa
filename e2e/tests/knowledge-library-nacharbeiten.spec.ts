@@ -410,6 +410,12 @@ test.describe('Dokumentliste mit Paging und Suche (#517)', () => {
     await page.getByRole('radio', { name: /Webverzeichnis/ }).click()
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
     await page.getByLabel('Adresse (URL)').fill('http://rss-feed/anlagen/')
+    // #1942: Der Sofortstart gilt seit dem neuen Assistenten für jeden Konnektortyp und ist
+    // vorbelegt. Dieses Szenario braucht eine Bibliothek ohne einen einzigen Lauf - sonst prüft es
+    // statt des Leerzustands den Bestand des ersten Laufs.
+    await page
+      .getByRole('switch', { name: 'Erste Indizierung sofort nach dem Anlegen starten' })
+      .uncheck()
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
     await page.getByLabel('Name').fill(libraryName)
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
@@ -420,9 +426,8 @@ test.describe('Dokumentliste mit Paging und Suche (#517)', () => {
     await expect(page.getByRole('heading', { name: libraryName })).toBeVisible()
     createdLibraryIds.push(libraryIdFromCurrentUrl(page))
 
-    // No indexing run was triggered - the documents area (the default tab since the tab layout)
-    // must still render, with its empty state and without an upload widget, since this library
-    // was never given upload rights at all.
+    // Kein Lauf ausgelöst - der Dokumentbereich (der vorgewählte Reiter) muss trotzdem erscheinen,
+    // mit seinem Leerzustand und ohne Upload-Fläche, weil diese Bibliothek nie eine hatte.
     await expect(page.getByRole('tab', { name: 'Dokumente' })).toBeVisible()
     await expect(page.getByText('Es sind noch keine Dokumente vorhanden.')).toBeVisible()
     await expect(page.getByRole('button', { name: 'Dateien hochladen' })).toHaveCount(0)
@@ -490,6 +495,11 @@ test.describe('Quellkonfiguration bearbeiten (#516)', () => {
     // Credentials are set on creation so this test can prove they survive an edit that leaves the
     // field blank - a library created without any has nothing to preserve in the first place.
     await page.getByLabel('Anmeldedaten').fill('testuser:testpass')
+    // #1942: Der vorbelegte Sofortstart würde hier das Anlagen-Fixture in den gemeinsamen Bestand
+    // der Suite indizieren, obwohl dieses Szenario nie einen Lauf braucht.
+    await page
+      .getByRole('switch', { name: 'Erste Indizierung sofort nach dem Anlegen starten' })
+      .uncheck()
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
     await page.getByLabel('Name').fill(libraryName)
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()

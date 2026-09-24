@@ -56,6 +56,11 @@ flowchart LR
 
 ## 2. Quellkonfiguration
 
+Wo diese Felder stehen: Detailansicht der Bibliothek, Reiter **„Quelle"**, Abschnitt
+**„Anbindung"**; beim Anlegen im gleichnamigen Schritt des Assistenten. Die ausgewählten Spaces
+stehen darüber im Abschnitt **„Umfang"** und sind dort für jeden Leseberechtigten sichtbar; im
+selben Reiter folgen der **„Zeitplan"** und, als **„Läufe"**, das Laufprotokoll.
+
 | Feld der Bibliothek | Regel |
 |---|---|
 | Adresse (`sourceUrl`) | Pflicht. Cloud mit oder ohne `/wiki`; Data Center einschließlich Kontextpfad, etwa `https://wiki.behoerde.example/confluence`. |

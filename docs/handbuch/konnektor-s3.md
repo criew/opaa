@@ -69,6 +69,11 @@ flowchart LR
 
 ## 2. Quellkonfiguration
 
+Wo diese Felder stehen: Detailansicht der Bibliothek, Reiter **„Quelle"**, Abschnitt
+**„Anbindung"**; beim Anlegen im gleichnamigen Schritt des Assistenten. Die Geltungsbereiche stehen
+darüber im Abschnitt **„Umfang"** und sind dort für jeden Leseberechtigten sichtbar; im selben
+Reiter folgen der **„Zeitplan"** und, als **„Läufe"**, das Laufprotokoll.
+
 | Feld der Bibliothek | Regel |
 |---|---|
 | Endpoint (`sourceUrl`) | Pflicht. `http(s)://host[:port]` **ohne Pfad**, Abfrage oder Zugangsdaten; wird normalisiert gespeichert (Schema und Host kleingeschrieben). Bucket und Präfix gehören in die Geltungsbereiche, nicht in den Endpoint. |
