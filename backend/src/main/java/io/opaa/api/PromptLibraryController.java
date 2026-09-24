@@ -24,8 +24,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Prompt libraries and their prompts (#1901). Grants, the Herleitung and the space association of a
- * prompt library are the asset shell's, under {@code /api/v1/assets/PROMPT_LIBRARY/{assetId}}.
+ * Prompt libraries and their prompts. Grants, the Herleitung and the space association of a prompt
+ * library are the asset shell's, under {@code /api/v1/assets/PROMPT_LIBRARY/{assetId}}.
  */
 @RestController
 @RequestMapping("/api/v1/prompt-libraries")

@@ -106,9 +106,9 @@ describe('ChatPage routing (real router)', () => {
     renderChatPageAt('/spaces/space-personal/chats/new')
     await waitFor(() => expect(useChatStore.getState().spaceId).toBe('space-personal'))
 
-    const input = screen.getByPlaceholderText('Frage stellen … mit @ auf eine Quelle eingrenzen')
+    const input = screen.getByPlaceholderText('Nachricht eingeben …')
     fireEvent.change(input, { target: { value: 'Wie ist das Projekt aufgebaut?' } })
-    fireEvent.click(screen.getByLabelText('Nachricht senden'))
+    fireEvent.click(screen.getByLabelText('Senden'))
 
     // The user message must stay visible throughout - including the moment the store's chatId
     // flips (and the URL replaces) but the query has not resolved yet.
@@ -177,9 +177,9 @@ describe('ChatPage routing (real router)', () => {
     fireEvent.click(screen.getByRole('link', { name: 'Neuer Chat' }))
     await waitFor(() => expect(useChatStore.getState().chatId).toBeNull())
 
-    const input = screen.getByPlaceholderText('Frage stellen … mit @ auf eine Quelle eingrenzen')
+    const input = screen.getByPlaceholderText('Nachricht eingeben …')
     fireEvent.change(input, { target: { value: 'Eine neue Frage' } })
-    fireEvent.click(screen.getByLabelText('Nachricht senden'))
+    fireEvent.click(screen.getByLabelText('Senden'))
 
     await waitFor(() => expect(capturedChatId).toBeTruthy())
     expect(capturedChatId).not.toBe('chat-personal-1')

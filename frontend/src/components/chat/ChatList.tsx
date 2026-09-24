@@ -5,7 +5,6 @@ import Button from '@mui/material/Button'
 import ButtonBase from '@mui/material/ButtonBase'
 import CircularProgress from '@mui/material/CircularProgress'
 import IconButton from '@mui/material/IconButton'
-import Link from '@mui/material/Link'
 import Divider from '@mui/material/Divider'
 import ListItemIcon from '@mui/material/ListItemIcon'
 import Menu from '@mui/material/Menu'
@@ -26,41 +25,30 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import MoreVertIcon from '@mui/icons-material/MoreVert'
 import PushPinIcon from '@mui/icons-material/PushPin'
 import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined'
+import SearchIcon from '@mui/icons-material/Search'
 import visuallyHidden from '@mui/utils/visuallyHidden'
-import { ThemeProvider } from '@mui/material/styles'
-import type { SxProps, Theme } from '@mui/material/styles'
 import { useLocation, useNavigate } from 'react-router'
-import { blue } from '../../theme/tokens'
 import type { ChatSummary } from '../../types/api'
 import type { ChatSearchHandover } from '../../hooks/useChatSearch'
 import { useChatListStore } from '../../stores/chatListStore'
 import { confirmAction } from '../../stores/confirmStore'
 import { notify } from '../../stores/notificationStore'
 import { useSpaceStore } from '../../stores/spaceStore'
-import { chatTitle, groupChats, matchesTitle } from './chatListGroups'
-
-function filterStatusText(query: string, matches: number): string {
-  if (query.trim() === '') return ''
-  if (matches === 0) return 'Kein Chat mit diesem Titel'
-  return matches === 1 ? '1 Chat gefunden' : `${matches} Chats gefunden`
-}
+import { chatTitle, RECENT_PAGE_SIZE, splitChats } from './chatListSections'
 
 interface ChatListProps {
   spaceId: string
   /** Rendered left of the "+ Neu" action, in the same row (mockup 1a's section head). */
   header?: ReactNode
-  /**
-   * Theme for the context menu. Mockup 1a shows light panels even over the navy sidebar, so
-   * the Sidebar passes the app theme in here - the list itself stays on the sidebar theme.
-   */
-  menuTheme?: Theme
 }
 
 /**
- * A person's chats in one space (docs/features/chat-list.md, "Die Seitenleiste"): a title filter
- * over the loaded list, pinned chats first, the rest in time groups by last activity.
+ * A person's chats in one space (docs/features/chat-list.md, "Die Seitenleiste"): pinned chats
+ * first, then the most recently used ones in pages of {@link RECENT_PAGE_SIZE}. The full-text
+ * search over every chat - archived ones included - sits behind the search button in the head
+ * row; the list itself never filters.
  */
-export default function ChatList({ spaceId, header, menuTheme }: ChatListProps) {
+export default function ChatList({ spaceId, header }: ChatListProps) {
   const navigate = useNavigate()
   const location = useLocation()
   const chats = useChatListStore((s) => s.chatsBySpaceId[spaceId])
@@ -79,15 +67,25 @@ export default function ChatList({ spaceId, header, menuTheme }: ChatListProps) 
   const [renamingChatId, setRenamingChatId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
   const [menuAnchor, setMenuAnchor] = useState<{ chatId: string; el: HTMLElement } | null>(null)
-  const [titleFilter, setTitleFilter] = useState('')
   // View state only: neither persisted nor sent to the server.
   const [pinnedCollapsed, setPinnedCollapsed] = useState(false)
+  // How many "Zuletzt verwendet" rows are revealed, together with the space they were revealed
+  // for - switching spaces starts that section at its first page again.
+  const [revealed, setRevealed] = useState({ spaceId, count: RECENT_PAGE_SIZE })
+  if (revealed.spaceId !== spaceId) setRevealed({ spaceId, count: RECENT_PAGE_SIZE })
+  const recentShown = revealed.spaceId === spaceId ? revealed.count : RECENT_PAGE_SIZE
+  const setRecentShown = (count: number) => setRevealed({ spaceId, count })
   const groupIdPrefix = useId()
   // Pinning moves a row into another group, which remounts it; focus follows it there.
   const refocusMovedChatIdRef = useRef<string | null>(null)
   // While its pin request is in flight, a row the rollback moves back takes lost focus along.
   const pinFocusChatIdRef = useRef<string | null>(null)
-  const allChatsLinkRef = useRef<HTMLAnchorElement>(null)
+  const searchButtonRef = useRef<HTMLButtonElement>(null)
+  // Revealing the last page unmounts the "… weitere anzeigen" button under the pointer, so focus
+  // moves to the first row that just appeared - and the live region says how many did.
+  const [revealStatus, setRevealStatus] = useState('')
+  const refocusRevealedChatIdRef = useRef<string | null>(null)
+  const rowButtonRefs = useRef<Map<string, HTMLElement> | null>(null)
   // A row's actions button is unmounted while the row is in rename mode, so focus can only
   // return to it after the re-render that brings it back - hence the pending id is stashed in
   // a ref and consumed once rename mode ends. Blur commits deliberately don't refocus: the
@@ -99,6 +97,18 @@ export default function ChatList({ spaceId, header, menuTheme }: ChatListProps) 
     actionButtonRefs.current ??= new Map()
     return actionButtonRefs.current
   }
+
+  function getRowButtonRefs() {
+    rowButtonRefs.current ??= new Map()
+    return rowButtonRefs.current
+  }
+
+  useEffect(() => {
+    const chatId = refocusRevealedChatIdRef.current
+    if (chatId === null) return
+    refocusRevealedChatIdRef.current = null
+    rowButtonRefs.current?.get(chatId)?.focus()
+  }, [recentShown])
 
   useEffect(() => {
     if (renamingChatId !== null) return
@@ -158,14 +168,39 @@ export default function ChatList({ spaceId, header, menuTheme }: ChatListProps) 
     })
   }
 
+  /**
+   * Reveals the next page of "Zuletzt verwendet". Focus goes to the first row that appears: the
+   * click that reveals the last page unmounts the button it came from, and focus would otherwise
+   * fall to the page body.
+   */
+  function revealMore() {
+    const recent = splitChats(chats ?? []).recent
+    const shown = Math.max(recentShown, RECENT_PAGE_SIZE)
+    const next = Math.min(recent.length, shown + RECENT_PAGE_SIZE)
+    const added = next - shown
+    if (added <= 0) return
+    refocusRevealedChatIdRef.current = recent[shown]?.id ?? null
+    setRecentShown(next)
+    setRevealStatus(added === 1 ? '1 weiterer Chat angezeigt' : `${added} weitere Chats angezeigt`)
+  }
+
+  function showFewer() {
+    setRecentShown(RECENT_PAGE_SIZE)
+    setRevealStatus(`Wieder ${RECENT_PAGE_SIZE} Chats angezeigt`)
+  }
+
+  /** The chats the list currently renders, in visual order. */
+  function shownChats(): ChatSummary[] {
+    const sections = splitChats(chats ?? [])
+    return [
+      ...(pinnedCollapsed ? [] : sections.pinned),
+      ...sections.recent.slice(0, Math.max(recentShown, RECENT_PAGE_SIZE)),
+    ]
+  }
+
   /** The chat shown next to `chatId` in the list, where focus goes once that row is gone. */
   function neighbourOf(chatId: string): string | null {
-    const shown = groupChats(
-      (chats ?? []).filter((chat) => matchesTitle(chat, titleFilter)),
-      new Date(),
-    )
-      .filter((group) => !(group.key === 'pinned' && pinnedCollapsed))
-      .flatMap((group) => group.chats)
+    const shown = shownChats()
     const index = shown.findIndex((chat) => chat.id === chatId)
     return (shown[index + 1] ?? shown[index - 1])?.id ?? null
   }
@@ -180,35 +215,7 @@ export default function ChatList({ spaceId, header, menuTheme }: ChatListProps) 
     notify(`Chat „${chatTitle(chat)}“ archiviert`, 'success')
     const next = neighbour ? actionButtonRefs.current?.get(neighbour) : undefined
     if (next) next.focus()
-    else allChatsLinkRef.current?.focus()
-  }
-
-  // The term goes along as router state only: in the address it would land in the browser
-  // history and in the access log of a reverse proxy.
-  function openChatSearch(event: React.MouseEvent) {
-    event.preventDefault()
-    const handover: ChatSearchHandover = { chatSearchTerm: titleFilter.trim() }
-    navigate(`/spaces/${spaceId}/chats`, { state: handover })
-  }
-
-  function chatSearchLink(sx?: SxProps<Theme>) {
-    return (
-      <Link
-        href={`/spaces/${spaceId}/chats`}
-        onClick={openChatSearch}
-        underline="hover"
-        sx={[
-          {
-            display: 'inline-block',
-            fontSize: 12.5,
-            color: (theme) => (theme.palette.mode === 'dark' ? blue[300] : blue[700]),
-          },
-          ...(Array.isArray(sx) ? sx : [sx]),
-        ]}
-      >
-        In Inhalten suchen <span aria-hidden="true">→</span>
-      </Link>
-    )
+    else searchButtonRef.current?.focus()
   }
 
   async function handleDelete(chat: ChatSummary) {
@@ -265,6 +272,10 @@ export default function ChatList({ spaceId, header, menuTheme }: ChatListProps) 
       >
         <ListItemButton
           selected={active}
+          ref={(el: HTMLElement | null) => {
+            if (el) getRowButtonRefs().set(chat.id, el)
+            else getRowButtonRefs().delete(chat.id)
+          }}
           onClick={isRenaming ? undefined : () => navigate(`/spaces/${spaceId}/chats/${chat.id}`)}
           sx={{ borderRadius: '6px', mb: 0.25, pr: 5.5, py: 0.5 }}
         >
@@ -310,125 +321,136 @@ export default function ChatList({ spaceId, header, menuTheme }: ChatListProps) 
     )
   }
 
+  function renderSection(key: string, label: string, rows: ChatSummary[], toggle?: ReactNode) {
+    const headingId = `${groupIdPrefix}-${key}`
+    return (
+      <Box key={key} sx={{ mt: 0.75 }}>
+        <Typography
+          component="h3"
+          variant="overline"
+          id={headingId}
+          sx={{ display: 'block', color: 'text.secondary', lineHeight: 1.8, px: 1 }}
+        >
+          {toggle ?? label}
+        </Typography>
+        {rows.length > 0 && (
+          <List id={`${headingId}-list`} aria-labelledby={headingId} sx={{ px: 0, py: 0 }}>
+            {rows.map((chat) => renderChatRow(chat))}
+          </List>
+        )}
+      </Box>
+    )
+  }
+
   function renderChats(allChats: ChatSummary[]) {
-    const matching = allChats.filter((chat) => matchesTitle(chat, titleFilter))
-    const groups = groupChats(matching, new Date())
+    const { pinned, recent } = splitChats(allChats)
+    const shown = Math.max(recentShown, RECENT_PAGE_SIZE)
+    const remaining = recent.length - shown
+    const headingId = `${groupIdPrefix}-pinned`
     return (
       <>
-        <TextField
-          type="search"
-          size="small"
-          fullWidth
-          placeholder="Chats filtern …"
-          value={titleFilter}
-          onChange={(event) => setTitleFilter(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === 'Escape' && titleFilter !== '') {
-              event.preventDefault()
-              event.stopPropagation()
-              setTitleFilter('')
-            }
-          }}
-          slotProps={{ htmlInput: { 'aria-label': 'Chats filtern' } }}
-          sx={{ mb: 0.5, '& .MuiInputBase-input': { py: 0.75, fontSize: 12.5 } }}
-        />
+        {pinned.length > 0 &&
+          renderSection(
+            'pinned',
+            'Angeheftet',
+            pinnedCollapsed ? [] : pinned,
+            <ButtonBase
+              aria-expanded={!pinnedCollapsed}
+              aria-controls={`${headingId}-list`}
+              onClick={() => setPinnedCollapsed((value) => !value)}
+              sx={{
+                font: 'inherit',
+                color: 'inherit',
+                letterSpacing: 'inherit',
+                textTransform: 'inherit',
+                gap: 0.5,
+                borderRadius: '4px',
+              }}
+            >
+              Angeheftet
+              {pinnedCollapsed ? (
+                <ExpandMoreIcon aria-hidden sx={{ fontSize: 14 }} />
+              ) : (
+                <ExpandLessIcon aria-hidden sx={{ fontSize: 14 }} />
+              )}
+            </ButtonBase>,
+          )}
+        {recent.length > 0 && renderSection('recent', 'Zuletzt verwendet', recent.slice(0, shown))}
         <Box role="status" sx={visuallyHidden}>
-          {filterStatusText(titleFilter, matching.length)}
+          {revealStatus}
         </Box>
-        {matching.length === 0 && (
-          <Box sx={{ mt: 1 }}>
-            <Typography sx={{ color: 'text.secondary' }} variant="body2">
-              Kein Chat mit diesem Titel
-            </Typography>
-            {/* The chat search also finds titles in the chat archive and words in the messages. */}
-            {chatSearchLink({ mt: 0.5 })}
+        {(remaining > 0 || shown > RECENT_PAGE_SIZE) && (
+          <Box sx={{ display: 'flex', gap: 1, px: 1, mt: 0.5 }}>
+            {remaining > 0 && (
+              <Button
+                variant="text"
+                size="small"
+                onClick={revealMore}
+                sx={{ minHeight: 0, px: 0.75, py: 0.25, fontSize: 11.5 }}
+              >
+                {Math.min(remaining, RECENT_PAGE_SIZE)} weitere anzeigen
+              </Button>
+            )}
+            {shown > RECENT_PAGE_SIZE && (
+              <Button
+                variant="text"
+                size="small"
+                onClick={showFewer}
+                sx={{ minHeight: 0, px: 0.75, py: 0.25, fontSize: 11.5 }}
+              >
+                weniger anzeigen
+              </Button>
+            )}
           </Box>
         )}
-        {groups.map((group) => {
-          const headingId = `${groupIdPrefix}-${group.key}`
-          const listId = `${headingId}-list`
-          const isPinnedGroup = group.key === 'pinned'
-          const collapsed = isPinnedGroup && pinnedCollapsed
-          return (
-            <Box key={group.key} sx={{ mt: 0.75 }}>
-              <Typography
-                component="h3"
-                variant="overline"
-                id={headingId}
-                sx={{ display: 'block', color: 'text.secondary', lineHeight: 1.8, px: 1 }}
-              >
-                {isPinnedGroup ? (
-                  <ButtonBase
-                    aria-expanded={!collapsed}
-                    aria-controls={listId}
-                    onClick={() => setPinnedCollapsed((value) => !value)}
-                    sx={{
-                      font: 'inherit',
-                      color: 'inherit',
-                      letterSpacing: 'inherit',
-                      textTransform: 'inherit',
-                      gap: 0.5,
-                      borderRadius: '4px',
-                    }}
-                  >
-                    {group.label}
-                    {collapsed ? (
-                      <ExpandMoreIcon aria-hidden sx={{ fontSize: 14 }} />
-                    ) : (
-                      <ExpandLessIcon aria-hidden sx={{ fontSize: 14 }} />
-                    )}
-                  </ButtonBase>
-                ) : (
-                  group.label
-                )}
-              </Typography>
-              {!collapsed && (
-                <List id={listId} aria-labelledby={headingId} sx={{ px: 0, py: 0 }}>
-                  {group.chats.map((chat) => renderChatRow(chat))}
-                </List>
-              )}
-            </Box>
-          )
-        })}
       </>
     )
   }
 
   return (
     <Box>
-      {/* Mockup 1a: section head and the "+ Neu" action share one baseline row (#658). */}
-      <Box
-        sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', pb: 0.5 }}
-      >
+      {/* Mockup 1a: section head and the actions share one baseline row (#658). */}
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pb: 0.5 }}>
         {header ?? <span />}
-        <Tooltip
-          title={
-            isArchived ? 'Dieser Space ist archiviert und nimmt keine neuen Chats mehr an' : ''
-          }
-        >
-          <span>
-            <Button
-              variant="text"
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+          <Tooltip
+            title={
+              isArchived ? 'Dieser Space ist archiviert und nimmt keine neuen Chats mehr an' : ''
+            }
+          >
+            <span>
+              <Button
+                variant="text"
+                size="small"
+                aria-label="Neuer Chat"
+                startIcon={<AddIcon sx={{ fontSize: 13 }} />}
+                onClick={handleNewChat}
+                disabled={Boolean(isArchived)}
+                // Mockup 1a: a quiet small link, not a boxed button.
+                sx={{ minHeight: 0, px: 0.75, py: 0.25, fontSize: 11.5 }}
+              >
+                Neu
+              </Button>
+            </span>
+          </Tooltip>
+          {/* The chat search covers titles and message texts of every chat, the archived ones
+              included - the empty term it opens with lists them all, so this is also the way to
+              "alle Chats". The empty handover puts the cursor into the page's search field. */}
+          <Tooltip title="Chats durchsuchen">
+            <IconButton
+              ref={searchButtonRef}
               size="small"
-              aria-label="Neuer Chat"
-              startIcon={<AddIcon sx={{ fontSize: 13 }} />}
-              onClick={handleNewChat}
-              disabled={Boolean(isArchived)}
-              // Mockup 1a: a quiet small link, not a boxed button. Blue-300 on the navy/carbon
-              // sidebar; on light surfaces (SpacePage renders this list on white) blue-700 keeps
-              // the 4.5:1 contrast the a11y suite enforces (#586).
-              sx={{
-                minHeight: 0,
-                px: 0.75,
-                py: 0.25,
-                fontSize: 11.5,
-                color: (theme) => (theme.palette.mode === 'dark' ? blue[300] : blue[700]),
+              aria-label="Chats durchsuchen"
+              onClick={() => {
+                const handover: ChatSearchHandover = { chatSearchTerm: '' }
+                navigate(`/spaces/${spaceId}/chats`, { state: handover })
               }}
+              sx={{ p: 0.5, borderRadius: '4px' }}
             >
-              Neu
-            </Button>
-          </span>
-        </Tooltip>
+              <SearchIcon sx={{ fontSize: 16 }} />
+            </IconButton>
+          </Tooltip>
+        </Box>
       </Box>
 
       {error && (
@@ -449,32 +471,10 @@ export default function ChatList({ spaceId, header, menuTheme }: ChatListProps) 
         renderChats(chats)
       )}
 
-      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', mt: 1.5 }}>
-        {chatSearchLink({ px: 1 })}
-        <Link
-          ref={allChatsLinkRef}
-          href={`/spaces/${spaceId}/chats`}
-          onClick={(event) => {
-            event.preventDefault()
-            navigate(`/spaces/${spaceId}/chats`)
-          }}
-          underline="hover"
-          sx={{
-            display: 'inline-block',
-            mt: 0.5,
-            px: 1,
-            fontSize: 12.5,
-            color: (theme) => (theme.palette.mode === 'dark' ? blue[300] : blue[700]),
-          }}
-        >
-          Alle Chats <span aria-hidden="true">→</span>
-        </Link>
-      </Box>
-
       {(() => {
         const menuChat = chats?.find((chat) => chat.id === menuAnchor?.chatId)
         const pinned = Boolean(menuChat?.pinnedAt)
-        const menu = (
+        return (
           <Menu
             anchorEl={menuAnchor?.el ?? null}
             open={Boolean(menuAnchor && menuChat)}
@@ -541,7 +541,6 @@ export default function ChatList({ spaceId, header, menuTheme }: ChatListProps) 
             </MenuItem>
           </Menu>
         )
-        return menuTheme ? <ThemeProvider theme={menuTheme}>{menu}</ThemeProvider> : menu
       })()}
     </Box>
   )

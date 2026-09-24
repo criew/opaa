@@ -21,7 +21,7 @@ import visuallyHidden from '@mui/utils/visuallyHidden'
 import { useLocation, useNavigate, useParams } from 'react-router'
 import PageHeading from '../components/a11y/PageHeading'
 import ChatSearchResults from '../components/chat/ChatSearchResults'
-import { chatTitle, groupChats } from '../components/chat/chatListGroups'
+import { chatTitle, splitChats } from '../components/chat/chatListSections'
 import {
   CHAT_SEARCH_MAX_LENGTH,
   CHAT_SEARCH_MIN_LENGTH,
@@ -123,10 +123,11 @@ export default function ChatsPage() {
     void loadArchivedChats(spaceId, 0)
   }, [spaceId, loadArchivedChats])
 
-  const orderedActive = useMemo(
-    () => groupChats(chats ?? [], new Date()).flatMap((group) => group.chats),
-    [chats],
-  )
+  // Same order as the sidebar: pinned chats first, the rest by last use.
+  const orderedActive = useMemo(() => {
+    const { pinned, recent } = splitChats(chats ?? [])
+    return [...pinned, ...recent]
+  }, [chats])
   const activePageCount = Math.max(1, Math.ceil(orderedActive.length / CHAT_PAGE_SIZE))
   const shownActivePage = Math.min(activePage, activePageCount - 1)
   const rows: ChatSummary[] =

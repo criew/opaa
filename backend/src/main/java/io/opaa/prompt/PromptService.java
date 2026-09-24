@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.regex.Pattern;
+import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,6 +37,7 @@ public class PromptService {
   private static final int MAX_NAME_LENGTH = 64;
   private static final int MAX_TITLE_LENGTH = 255;
   private static final int MAX_DESCRIPTION_LENGTH = 2000;
+  private static final String UNIQUE_NAME = "uk_prompts_library_name";
 
   private final PromptLibraryService libraryService;
   private final PromptRepository promptRepository;
@@ -66,8 +68,9 @@ public class PromptService {
 
   /** Adds a prompt; a name the library already holds is a {@code 409}. */
   @Transactional
-  public Prompt create(UUID libraryId, PromptContent content, CurrentUser caller) {
+  public Prompt create(UUID libraryId, PromptContent requested, CurrentUser caller) {
     PromptLibrary library = requireContent(libraryId, caller, AssetRole.EDITOR);
+    PromptContent content = normalized(requested);
     validate(content);
     if (promptRepository.existsByLibraryIdAndName(library.getId(), content.name())) {
       throw nameTaken(content.name());
@@ -83,9 +86,10 @@ public class PromptService {
    * values, and a request that changes nothing writes nothing.
    */
   @Transactional
-  public Prompt update(UUID libraryId, UUID promptId, PromptContent content, CurrentUser caller) {
+  public Prompt update(UUID libraryId, UUID promptId, PromptContent requested, CurrentUser caller) {
     PromptLibrary library = requireContent(libraryId, caller, AssetRole.EDITOR);
     Prompt prompt = load(library, promptId);
+    PromptContent content = normalized(requested);
     validate(content);
     if (!prompt.getName().equals(content.name())
         && promptRepository.existsByLibraryIdAndName(library.getId(), content.name())) {
@@ -129,13 +133,43 @@ public class PromptService {
         .orElseThrow(() -> new NotFoundException("Prompt nicht gefunden"));
   }
 
-  /** The unique name is checked above; a concurrent insert of the same name still ends as 409. */
+  /**
+   * The unique name is checked above; a concurrent insert of the same name still ends as 409. Any
+   * other violated constraint is rethrown unchanged.
+   */
   private Prompt saveUnique(Prompt prompt, String name) {
     try {
       return promptRepository.saveAndFlush(prompt);
-    } catch (DataIntegrityViolationException duplicate) {
-      throw nameTaken(name);
+    } catch (DataIntegrityViolationException violation) {
+      if (violatesUniqueName(violation)) {
+        throw nameTaken(name);
+      }
+      throw violation;
     }
+  }
+
+  private static boolean violatesUniqueName(Throwable violation) {
+    for (Throwable cause = violation; cause != null; cause = cause.getCause()) {
+      if (cause instanceof ConstraintViolationException constraint
+          && UNIQUE_NAME.equalsIgnoreCase(constraint.getConstraintName())) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /** The content as it is stored: the text with its placeholders normalized. */
+  private static PromptContent normalized(PromptContent content) {
+    if (content.text() == null) {
+      return content;
+    }
+    return new PromptContent(
+        content.name(),
+        content.title(),
+        content.description(),
+        PromptTemplate.normalize(content.text()),
+        content.variables(),
+        content.sortOrder());
   }
 
   private static ConflictException nameTaken(String name) {

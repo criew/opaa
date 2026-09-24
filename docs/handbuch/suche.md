@@ -117,6 +117,18 @@ eine Anheftung. Ein **archivierter Chat** ist etwas anderes als ein **archiviert
 Space nimmt für alle keine neuen Inhalte mehr an, auch keine Frage in einem archivierten Chat; das
 Archivieren eines Chats ist dort trotzdem möglich und ändert an der Sichtbarkeit des Space nichts.
 
+Die **Chatliste** in der Seitenleiste zeigt zuerst die angehefteten Chats, darunter „Zuletzt
+verwendet" mit den 15 zuletzt genutzten. „15 weitere anzeigen" blendet die nächsten ein, „weniger
+anzeigen" klappt wieder auf die ersten 15 zurück. Ein Filterfeld gibt es nicht; der Suchknopf neben
+„Neu" öffnet die Chatsuche (Abschnitt 7.2), die auch archivierte Chats findet. Jeder Eintrag hat ein
+Menü mit Umbenennen, Anheften, Archivieren und Löschen; der Titel des offenen Chats lässt sich
+zusätzlich direkt in der Kopfzeile bearbeiten (Enter speichert, Escape verwirft).
+
+Das **Eingabefeld** sendet mit dem Senden-Knopf oder mit Enter. Darunter steht „@ für Quellen, /
+für Aktionen". An zwei Stellen tritt stattdessen ein Hinweis an diese Stelle: solange der
+Suchbereich des Space noch ermittelt wird, und wenn dem Space nur Bibliotheken zugeordnet sind, die
+die Person nicht lesen darf.
+
 Der **Suchbereich** ist die Menge der Bibliotheken, in denen diese Frage sucht. Er steht in der
 Chip-Leiste am Eingabefeld und gilt für den ganzen Chat: „Durchsucht wird, was in der Leiste
 steht."
@@ -604,6 +616,10 @@ dieselbe Zusage, die für die einzelne Abfrage gilt.
 Die **Chatsuche** findet eigene Gespräche wieder, die Wissenssuche findet Dokumente. Beide teilen
 nichts außer der deutschen Sprachkonfiguration: Die Chatsuche ist eine reine Volltextsuche ohne
 Teilfragen, Vektoren, Fusion oder Reranking, und sie berührt keinen Chunk einer Bibliothek.
+
+Erreichbar ist sie über den Suchknopf neben „Neu" in der Chatliste. Er öffnet die Seite „Chats" des
+Space mit leerem Suchbegriff: Solange nichts eingegeben ist, listet die Seite alle Chats in den
+Reitern „Aktiv" und „Archiv"; ab drei Zeichen treten die Treffer an deren Stelle.
 
 `POST /api/v1/spaces/{spaceId}/chats/search` durchsucht **Titel, Fragen und Antworten** der Chats
 im angegebenen Space, archivierte Chats eingeschlossen. Nicht durchsucht werden die Gesprächsnotiz,

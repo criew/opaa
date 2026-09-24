@@ -1,8 +1,8 @@
 package io.opaa.api.types;
 
 /**
- * How a prompt variable is filled in before its prompt is inserted (#1901,
- * docs/features/spaces-and-assets.md#prompt-bibliothek). Stored by name inside {@code
+ * How a prompt variable is filled in before its prompt is inserted
+ * (docs/features/spaces-and-assets.md#prompt-bibliothek). Stored by name inside {@code
  * prompts.variables}, so renaming a value makes stored prompts unreadable.
  */
 public enum PromptVariableType {

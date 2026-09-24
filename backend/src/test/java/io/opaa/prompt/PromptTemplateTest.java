@@ -50,18 +50,40 @@ class PromptTemplateTest {
     assertThatCode(
             () -> PromptTemplate.validate("Stand {{CURRENT_DATE}}, {{USER_NAME}}", List.of()))
         .doesNotThrowAnyException();
+    assertThatCode(() -> PromptTemplate.validate("Stand {{current_date}}", List.of()))
+        .as("a system variable in any case needs no definition")
+        .doesNotThrowAnyException();
     assertThatThrownBy(
             () -> PromptTemplate.validate("{{current_date}}", List.of(text("current_date"))))
         .isInstanceOf(ValidationException.class)
-        .hasMessageContaining("ist eine Systemvariable");
+        .hasMessage(
+            "„current_date“ ist die Systemvariable {{CURRENT_DATE}}: Sie wird beim Einsetzen"
+                + " automatisch gefüllt und braucht keine Definition. Entfernen Sie die Definition;"
+                + " im Text darf {{CURRENT_DATE}} stehen bleiben.");
     assertThatThrownBy(() -> PromptTemplate.validate("{{USER_NAME}}", List.of(text("USER_NAME"))))
         .isInstanceOf(ValidationException.class)
-        .hasMessageContaining("ist eine Systemvariable");
+        .hasMessageContaining("ist die Systemvariable {{USER_NAME}}");
+  }
+
+  @Test
+  void blanksInsideTheBracesAreToleratedAndNormalizedAway() {
+    assertThat(
+            PromptTemplate.normalize(
+                "Zu {{ aktenzeichen }}, {{\taktenzeichen}}, Stand {{ current_date }},"
+                    + " {{User_Name}}, {{ na-me }}, { einfach }"))
+        .isEqualTo(
+            "Zu {{aktenzeichen}}, {{aktenzeichen}}, Stand {{CURRENT_DATE}},"
+                + " {{USER_NAME}}, {{ na-me }}, { einfach }");
+    assertThatCode(
+            () -> PromptTemplate.validate("Zu {{ aktenzeichen }}", List.of(text("aktenzeichen"))))
+        .doesNotThrowAnyException();
+    assertThat(PromptTemplate.placeholders("{{ b }} {{current_date}}"))
+        .containsExactly("b", "CURRENT_DATE");
   }
 
   @Test
   void aMalformedPlaceholderIsRefusedRatherThanKeptAsText() {
-    for (String text : List.of("{{ name }}", "{{1name}}", "{{na-me}}", "{{}}", "{{{name}}}")) {
+    for (String text : List.of("{{ na me }}", "{{1name}}", "{{na-me}}", "{{ }}", "{{{name}}}")) {
       assertThatThrownBy(() -> PromptTemplate.validate(text, List.of()))
           .as(text)
           .isInstanceOf(ValidationException.class)

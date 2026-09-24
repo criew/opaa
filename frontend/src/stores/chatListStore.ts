@@ -12,7 +12,7 @@ import {
   unpinChat,
   updateChat,
 } from '../services/api'
-import { dropChatSettingsCache, useChatStore } from './chatStore'
+import { dropChatSettingsCache, markChatManuallyRenamed, useChatStore } from './chatStore'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
 
 /** Page size of the chat archive and of the active table on the "Chats" page. */
@@ -35,7 +35,8 @@ interface ChatListState {
   /** Returns null (and sets `error`) when creation fails, instead of throwing - callers must
    * handle the null case explicitly rather than relying on a rejected promise. */
   createChatInSpace: (spaceId: string) => Promise<ChatSummary | null>
-  renameChat: (spaceId: string, chatId: string, title: string) => Promise<void>
+  /** Renames a chat; resolves to false (with `error` set) if the server rejects it. */
+  renameChat: (spaceId: string, chatId: string, title: string) => Promise<boolean>
   deleteChatFromList: (spaceId: string, chatId: string) => Promise<void>
   /** Pins or unpins a chat for the current person. Applied optimistically and rolled back (with
    * `error` set) if the server rejects it. Requests for one chat reach the server in the order
@@ -184,9 +185,13 @@ export const useChatListStore = create<ChatListState>((set, get) => ({
 
   renameChat: async (spaceId: string, chatId: string, title: string) => {
     const sessionEpoch = currentSessionEpoch()
+    // Marked before the request, not after it: the delayed title reload (#557) must already skip
+    // this chat while the PATCH is still on the wire, otherwise it reads the server's still
+    // generated title and puts it back on screen (#1919).
+    markChatManuallyRenamed(chatId)
     try {
       await updateChat(chatId, { title })
-      if (isStaleSessionEpoch(sessionEpoch)) return
+      if (isStaleSessionEpoch(sessionEpoch)) return false
       set((state) => {
         const chats = state.chatsBySpaceId[spaceId]
         if (!chats) return state
@@ -197,10 +202,12 @@ export const useChatListStore = create<ChatListState>((set, get) => ({
           },
         }
       })
+      return true
     } catch (err) {
-      if (isStaleSessionEpoch(sessionEpoch)) return
+      if (isStaleSessionEpoch(sessionEpoch)) return false
       const message = err instanceof Error ? err.message : 'Chat konnte nicht umbenannt werden'
       set({ error: message })
+      return false
     }
   },
 
