@@ -2439,7 +2439,7 @@ class KnowledgeLibraryServiceIntegrationTest {
     // document) is added to the page. PR #601 review, finding 2: apple is owned by a *different*
     // user than zebra/mango - the same user for all three would let the first-level persistence
     // context cache a single owner lookup and mask a regression to one owner-name query per row
-    // (#438's own batching, resolveOwnerNames).
+    // (#438's own batching, AssetOwnerNames).
     UUID appleOwner = createUser(organizationA);
     Statistics statistics = entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
     boolean statisticsWerePreviouslyEnabled = statistics.isStatisticsEnabled();
