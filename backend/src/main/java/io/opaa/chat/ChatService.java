@@ -526,6 +526,17 @@ public class ChatService {
    */
   @Transactional(propagation = Propagation.NOT_SUPPORTED)
   public String appendTurn(Chat chat, String question, String answer, List<ChatSource> sources) {
+    return appendTurn(chat, question, null, answer, sources);
+  }
+
+  /**
+   * {@link #appendTurn(Chat, String, String, List)} with the prompt the question was built from,
+   * kept as a snapshot on the question's message; {@code null} for none. The caller has checked
+   * that the author may read the prompt.
+   */
+  @Transactional(propagation = Propagation.NOT_SUPPORTED)
+  public String appendTurn(
+      Chat chat, String question, UsedPrompt usedPrompt, String answer, List<ChatSource> sources) {
     // #613 review, finding 2 / #840: an archived space accepts no new content - including a new
     // turn in an existing chat, or the space could keep gaining fresh content forever and never
     // actually empty out into a state deleteSpace would accept. The early check now lives in
@@ -545,6 +556,7 @@ public class ChatService {
                 chat.getId(),
                 chat.getAuthorId(),
                 question,
+                usedPrompt,
                 answer,
                 serializedSources,
                 derivedTitle);
@@ -607,6 +619,7 @@ public class ChatService {
         message.getRole(),
         message.getContent(),
         parseSources(message.getSources()),
+        message.getUsedPrompt(),
         message.getCreatedAt());
   }
 

@@ -1074,15 +1074,18 @@ class PermissionHistoryServiceIntegrationTest {
    * nothing but its own audit entry for a system administrator's retrieval. {@code
    * PromptLibraryService} (#1901) reads the formula to list prompt libraries; the grants, reach and
    * history of a prompt library's creation, reach change and deletion it leaves to {@code
-   * AssetShellService}, covered above. {@code AssetOwnerNames} only reads the display names of
-   * owning groups; {@code KnowledgeLibraryService} reaches groups only through it and through
-   * {@code AssetGrantService}, and its write paths are covered above.
+   * AssetShellService}, covered above. {@code PromptService} (#1903) reads the formula to offer the
+   * prompts a person may insert in the chat and to check an inserted one; it writes prompts only.
+   * {@code AssetOwnerNames} only reads the display names of owning groups; {@code
+   * KnowledgeLibraryService} reaches groups only through it and through {@code AssetGrantService},
+   * and its write paths are covered above.
    */
   private static final Set<String> BEANS_REACHING_THE_RIGHTS_TABLES =
       Set.of(
           "AssetAccessService",
           "AssetAuthorization",
           "AssetOwnerNames",
+          "PromptService",
           "AssetShellService",
           "SpaceAccessPolicy",
           "SpaceAssetAssociationService",

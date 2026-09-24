@@ -15,6 +15,10 @@ public interface PromptRepository extends JpaRepository<Prompt, UUID> {
 
   Optional<Prompt> findByIdAndLibraryId(UUID id, UUID libraryId);
 
+  Optional<Prompt> findByIdAndOrganizationId(UUID id, UUID organizationId);
+
+  List<Prompt> findByLibraryIdIn(Collection<UUID> libraryIds);
+
   boolean existsByLibraryIdAndName(UUID libraryId, String name);
 
   long countByLibraryId(UUID libraryId);

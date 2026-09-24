@@ -4,7 +4,7 @@ import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import type { PromptVariable } from '../../types/api'
 import { useAuthStore } from '../../stores/authStore'
-import { resolvePromptPreview } from '../../utils/promptTemplate'
+import { resolvePromptText } from '../../utils/promptTemplate'
 import PromptVariableInput from './PromptVariableInput'
 import FieldLabel from '../wizard/FieldLabel'
 
@@ -22,10 +22,7 @@ export default function PromptPreview({
 }) {
   const userName = useAuthStore((s) => s.user?.displayName ?? s.user?.email ?? '')
   const [values, setValues] = useState<Record<string, string>>({})
-  const resolved = resolvePromptPreview(text, variables, values, {
-    CURRENT_DATE: new Date().toLocaleDateString('de-DE'),
-    USER_NAME: userName,
-  })
+  const resolved = resolvePromptText(text, variables, values, { userName, showUnfilled: true })
 
   return (
     <Stack spacing={1.5}>

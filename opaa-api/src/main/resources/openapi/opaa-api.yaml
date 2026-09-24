@@ -97,7 +97,10 @@ paths:
         "403":
           description: >
             The author of the named chat is no longer a member of its space (#525): querying
-            is chatting, so the turn is refused where merely reading the chat is not.
+            is chatting, so the turn is refused where merely reading the chat is not. Or
+            usedPromptId names a prompt the caller may not read (anymore), with code
+            PROMPT_NOT_USABLE - an unknown prompt and one of another organization answer the same
+            way, so a foreign id is never confirmed.
           content:
             application/json:
               schema:
@@ -6870,6 +6873,39 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/prompts/available:
+    get:
+      operationId: listAvailablePrompts
+      tags: [prompt]
+      summary: >
+        The prompts the caller can insert in the chat: every prompt of every prompt library
+        the caller may read by the formula, within the caller's organization. With spaceId, the
+        libraries associated with that space come first and are marked associatedWithSpace; then
+        by library name, within a library by sortOrder and name. Deliberately lightweight - the
+        text and the variables come from GET .../prompts/{promptId} once one is chosen. There is no
+        parameter by person and no usage figure: inserting a prompt is not evaluated.
+      parameters:
+        - name: spaceId
+          in: query
+          required: false
+          description: The space of the chat; the caller must be a member of it.
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: The prompts the caller may insert
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AvailablePrompt"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/libraries/{libraryId}/external-access:
     parameters:
       - name: libraryId
@@ -9772,6 +9808,17 @@ components:
             to the permission filter. Ignored when chatId names a chat the caller authored - that
             chat's own persisted metadataFilter applies instead, exactly like its search scope.
             Absent or empty: no metadata filter.
+        usedPromptId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >
+            The prompt the question was built from
+            (docs/features/spaces-and-assets.md#prompt-im-chat). The client resolves the prompt's
+            text and variables itself and sends the finished question; the server only checks that
+            the caller may read the prompt's library (403 otherwise) and, for a persisted chat,
+            keeps the prompt's id and its current title as a snapshot on the question's message.
+            It changes nothing about the model call.
 
     QueryResponse:
       type: object
@@ -11210,6 +11257,19 @@ components:
           items:
             $ref: "#/components/schemas/SourceReference"
           description: Present on ASSISTANT messages that used document context; absent otherwise.
+        usedPromptId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >
+            On a USER message: the prompt the question was built from, null otherwise. A
+            snapshot - the prompt may since have been changed, deleted or become unreadable.
+        usedPromptTitle:
+          type: string
+          nullable: true
+          description: >
+            The prompt's title as it stood when the question was sent - shown as "Prompt: <title>",
+            never resolved again.
         createdAt:
           type: string
           format: date-time
@@ -16028,6 +16088,36 @@ components:
             type: string
             minLength: 1
             maxLength: 255
+
+    AvailablePrompt:
+      type: object
+      required: [id, libraryId, libraryName, name, title, hasVariables, associatedWithSpace]
+      description: One entry of the slash-command selection in the chat.
+      properties:
+        id:
+          type: string
+          format: uuid
+        libraryId:
+          type: string
+          format: uuid
+        libraryName:
+          type: string
+        name:
+          type: string
+          description: The slash command without the slash.
+          example: zusammenfassung
+        title:
+          type: string
+          example: Zusammenfassung
+        description:
+          type: string
+          nullable: true
+        hasVariables:
+          type: boolean
+          description: Whether inserting the prompt asks for values first.
+        associatedWithSpace:
+          type: boolean
+          description: Whether the prompt's library is associated with the space named by spaceId.
 
     PromptRequest:
       type: object

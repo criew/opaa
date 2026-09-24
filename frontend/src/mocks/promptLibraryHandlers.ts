@@ -1,5 +1,6 @@
 import { http, HttpResponse } from 'msw'
 import type {
+  AvailablePrompt,
   PromptLibraryRequest,
   PromptLibraryResponse,
   PromptLibraryUpdateRequest,
@@ -8,6 +9,8 @@ import type {
 } from '../types/api'
 import { mockGroups, mockMyCapabilities, mockMyGroups } from './fixtures'
 import {
+  MOCK_PROMPT_SPACE_ID,
+  MOCK_PROMPT_SPACE_LIBRARY_ID,
   mockPromptLibraries,
   mockPrompts,
   mockUnreadablePromptLibraryIds,
@@ -196,6 +199,52 @@ export const promptLibraryHandlers = [
       )
     }
     return HttpResponse.json(mockPrompts[id] ?? [])
+  }),
+
+  http.get('/api/v1/prompt-libraries/:id/prompts/:promptId', ({ params }) => {
+    const id = String(params.id)
+    if (!mockPromptLibraries[id]) return notFound()
+    if (mockUnreadablePromptLibraryIds.has(id)) {
+      return HttpResponse.json(
+        { error: 'Kein Zugriff auf die Prompts dieser Prompt-Bibliothek' },
+        { status: 403 },
+      )
+    }
+    const prompt = (mockPrompts[id] ?? []).find((p) => p.id === String(params.promptId))
+    return prompt
+      ? HttpResponse.json(prompt)
+      : HttpResponse.json({ error: 'Prompt nicht gefunden' }, { status: 404 })
+  }),
+
+  // Mirrors GET /api/v1/prompts/available: the prompts of every readable library, the space's
+  // associated library first, then by library name - fed by the same fixtures as the pages.
+  http.get('/api/v1/prompts/available', ({ request }) => {
+    const spaceId = new URL(request.url).searchParams.get('spaceId')
+    const entries: AvailablePrompt[] = Object.values(mockPromptLibraries)
+      .filter((library) => !mockUnreadablePromptLibraryIds.has(library.id))
+      .flatMap((library) =>
+        (mockPrompts[library.id] ?? []).map((prompt) => ({
+          id: prompt.id,
+          libraryId: library.id,
+          libraryName: library.name,
+          name: prompt.name,
+          title: prompt.title,
+          description: prompt.description ?? null,
+          hasVariables: prompt.variables.length > 0,
+          associatedWithSpace:
+            spaceId === MOCK_PROMPT_SPACE_ID && library.id === MOCK_PROMPT_SPACE_LIBRARY_ID,
+        })),
+      )
+    const order = (entry: AvailablePrompt) =>
+      mockPrompts[entry.libraryId]?.find((p) => p.id === entry.id)?.sortOrder ?? 0
+    entries.sort(
+      (a, b) =>
+        Number(b.associatedWithSpace) - Number(a.associatedWithSpace) ||
+        a.libraryName.localeCompare(b.libraryName, 'de') ||
+        order(a) - order(b) ||
+        a.name.localeCompare(b.name),
+    )
+    return HttpResponse.json(entries)
   }),
 
   http.post('/api/v1/prompt-libraries/:id/prompts', async ({ params, request }) => {
