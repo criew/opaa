@@ -22,7 +22,7 @@ interface PromptVariablesDialogProps {
 }
 
 /**
- * Asks for the values of a prompt's variables before it is inserted (#1903): one field per
+ * Asks for the values of a prompt's variables before it is inserted: one field per
  * variable by its type, defaults prefilled, a date without default prefilled with today. Required
  * fields block "Einsetzen"; the result goes into the input, never straight to the model.
  */

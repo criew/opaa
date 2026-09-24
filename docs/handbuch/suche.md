@@ -176,8 +176,9 @@ Sendens, auch wenn der Prompt später umbenannt, gelöscht oder nicht mehr lesba
 Für Suche und Antwort macht ein Prompt keinen Unterschied: Sie sehen die fertige Frage wie jede
 getippte. Das Backend prüft nur, ob die Person den Prompt noch lesen darf. Ist das Recht inzwischen
 entzogen oder der Prompt gelöscht, lehnt es die Frage ab („Dieser Prompt steht Ihnen nicht zur
-Verfügung …"), bevor ein Modell gerufen wird, und speichert nichts; nach dem Entfernen des Chips geht
-dieselbe Frage durch. Die Verwendung eines Prompts wird nicht protokolliert, und es gibt keine
+Verfügung …"), bevor ein Modell gerufen wird, und speichert nichts. Die Frage verschwindet dann aus
+dem Verlauf und steht wieder im Eingabefeld, diesmal ohne Chip; erneut gesendet geht sie ohne
+Prompt-Kennzeichnung durch. Die Verwendung eines Prompts wird nicht protokolliert, und es gibt keine
 Auswertung, wer welchen Prompt wie oft verwendet hat.
 
 Ein **Chunk** ist ein Textstück aus dem Index, wie die Indexierung es zugeschnitten hat, samt seinen

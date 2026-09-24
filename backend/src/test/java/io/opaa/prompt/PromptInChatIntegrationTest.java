@@ -143,6 +143,19 @@ class PromptInChatIntegrationTest {
                 prompt.getId().toString()))
         .as("inserting a prompt writes no audit entry - only PROMPT_CREATED stands there")
         .isEqualTo(1L);
+    assertThatThrownBy(
+            () ->
+                queryService.query(
+                    QUESTION,
+                    null,
+                    callerOf(administrator, true),
+                    true,
+                    List.of(),
+                    null,
+                    prompt.getId()))
+        .as("administering is not reading: the system administration without a grant may not")
+        .isInstanceOf(AccessDeniedException.class)
+        .hasMessage(PromptService.NOT_USABLE);
 
     promptService.update(
         library,
@@ -162,7 +175,8 @@ class PromptInChatIntegrationTest {
                 queryService.query(
                     QUESTION, chat, callerOf(reader), true, List.of(), null, prompt.getId()))
         .isInstanceOf(AccessDeniedException.class)
-        .hasMessage(PromptService.NOT_USABLE);
+        .hasMessage(PromptService.NOT_USABLE)
+        .hasFieldOrPropertyWithValue("code", PromptService.NOT_USABLE_CODE);
     List<ChatTurn> after = chatService.getChat(chat, reader).getMessages();
     assertThat(after).as("the refused question is not persisted").hasSize(2);
     assertThat(after.get(0).getUsedPrompt().title())

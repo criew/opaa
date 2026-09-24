@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * The prompts a person can insert in the chat (#1903). Readability is the formula's, through {@link
+ * The prompts a person can insert in the chat. Readability is the formula's, through {@link
  * PromptService#available}; the space only orders, through its associations.
  */
 @RestController

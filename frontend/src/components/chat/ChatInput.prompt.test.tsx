@@ -1,5 +1,8 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { http, HttpResponse } from 'msw'
+import { server } from '../../mocks/server'
+import { mockAvailablePrompts } from '../../mocks/promptChatHandlers'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ChatInput from './ChatInput'
 import { germanDate, todayIso } from './promptTemplate'
@@ -8,7 +11,7 @@ import { useChatStore } from '../../stores/chatStore'
 import { useLibraryStore } from '../../stores/libraryStore'
 import { useSpaceStore } from '../../stores/spaceStore'
 
-/** The chat input's '/' command (#1903), against the MSW prompt fixtures. */
+/** The chat input's '/' command, against the MSW prompt fixtures. */
 describe('ChatInput: inserting a prompt', () => {
   beforeEach(() => {
     useChatStore.setState({
@@ -158,6 +161,100 @@ describe('ChatInput: inserting a prompt', () => {
     await user.type(input, 'z')
     expect(screen.queryByRole('listbox', { name: 'Prompts' })).not.toBeInTheDocument()
     expect(input).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  // Enter on an open '/' selection never sends the '/' text as a question - with no match, while
+  // the list is still loading, or after Escape turned the fragment into plain text.
+  it('Enter without a match sends nothing; after Escape the text is an ordinary question', async () => {
+    const user = userEvent.setup()
+    const { onSend, input } = renderInput()
+
+    await user.type(input, '/zusamenfasung')
+    await screen.findByText('Kein passender Prompt gefunden')
+    await user.keyboard('{Enter}')
+
+    expect(onSend).not.toHaveBeenCalled()
+    expect(input).toHaveValue('/zusamenfasung')
+
+    await user.keyboard('{Escape}{Enter}')
+
+    expect(onSend).toHaveBeenCalledWith('/zusamenfasung')
+  })
+
+  it('Enter while the selection is still loading sends nothing', async () => {
+    let release!: () => void
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    server.use(
+      http.get('/api/v1/prompts/available', async () => {
+        await gate
+        return HttpResponse.json(mockAvailablePrompts('space-engineering'))
+      }),
+    )
+    const user = userEvent.setup()
+    const { onSend, input } = renderInput()
+
+    await user.type(input, '/zu')
+    await screen.findByText('Prompts werden geladen …')
+    await user.keyboard('{Enter}')
+
+    expect(onSend).not.toHaveBeenCalled()
+    release()
+    expect(await screen.findByRole('option', { name: /\/zusammenfassung/ })).toBeInTheDocument()
+  })
+
+  it('a prompt whose fetch is overtaken by typing is not inserted', async () => {
+    let release!: () => void
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    server.use(
+      http.get('/api/v1/prompt-libraries/:libraryId/prompts/:promptId', async () => {
+        await gate
+        return HttpResponse.json({
+          id: 'prompt-dank',
+          promptLibraryId: 'prompt-library-hausweit',
+          name: 'dank',
+          title: 'Dankesschreiben',
+          text: 'Danke.',
+          variables: [],
+          sortOrder: 0,
+          createdAt: '2026-09-20T08:00:00Z',
+          updatedAt: '2026-09-20T08:00:00Z',
+        })
+      }),
+    )
+    const user = userEvent.setup()
+    const { onSend, input } = renderInput()
+
+    await user.type(input, '/dank')
+    await screen.findByRole('option', { name: /\/dank/ })
+    await user.keyboard('{Enter}')
+    await user.keyboard('{Enter}')
+    expect(onSend).not.toHaveBeenCalled()
+
+    await user.type(input, ' und mehr')
+    release()
+
+    await waitFor(() => expect(input).toHaveValue('/dank und mehr'))
+    expect(screen.queryByTestId('used-prompt-chip')).not.toBeInTheDocument()
+  })
+
+  it('a question refused for its prompt comes back into the input without the chip', async () => {
+    const user = userEvent.setup()
+    const onSend = vi.fn().mockResolvedValue({ restoreDraft: 'Formuliere ein Danke.' })
+    render(<ChatInput onSend={onSend} />)
+    const input = screen.getByRole('combobox')
+
+    await user.type(input, '/dank')
+    await screen.findByRole('option', { name: /\/dank/ })
+    await user.keyboard('{Enter}')
+    await waitFor(() => expect(screen.getByTestId('used-prompt-chip')).toBeInTheDocument())
+    await user.keyboard('{Enter}')
+
+    await waitFor(() => expect(input).toHaveValue('Formuliere ein Danke.'))
+    expect(screen.queryByTestId('used-prompt-chip')).not.toBeInTheDocument()
   })
 
   it('a slash inside a sentence is plain text', async () => {

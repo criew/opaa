@@ -270,7 +270,7 @@ class QueryServiceTest {
   @Test
   void queryFallsThroughToTheOrdinaryPathWhenTheSpikeHandlerDeclines() {
     SpikeToolLoopQueryHandler spikeHandler = mock(SpikeToolLoopQueryHandler.class);
-    when(spikeHandler.handle(any(), any(), any(), any(), any(), any(), any(), anyLong()))
+    when(spikeHandler.handle(any(), any(), any(), any(), any(), any(), any(), anyLong(), any()))
         .thenReturn(Optional.empty());
     QueryService serviceWithSpikeEnabled =
         newQueryService(
@@ -306,7 +306,7 @@ class QueryServiceTest {
             null,
             null);
     when(spikeHandler.handle(
-            eq("@test Frage"), any(), any(), any(), any(), any(), any(), anyLong()))
+            eq("@test Frage"), any(), any(), any(), any(), any(), any(), anyLong(), any()))
         .thenReturn(Optional.of(spikeResult));
     QueryService serviceWithSpikeEnabled =
         newQueryService(

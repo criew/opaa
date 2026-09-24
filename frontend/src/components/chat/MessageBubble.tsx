@@ -75,7 +75,7 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
         }}
       >
         <Box sx={{ minWidth: 0, flexGrow: isUser ? undefined : 1 }}>
-          {/* #1903: the prompt a question was built from - a snapshot of its title, deliberately no
+          {/* The prompt a question was built from - a snapshot of its title, deliberately no
               link, since the person may no longer be allowed to read the prompt. */}
           {isUser && message.usedPromptTitle && (
             <Typography

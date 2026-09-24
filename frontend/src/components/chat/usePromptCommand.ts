@@ -25,7 +25,7 @@ interface UsePromptCommandOptions {
 }
 
 /**
- * The state behind the chat input's '/' command (#1903): which fragment is being typed, the
+ * The state behind the chat input's '/' command: which fragment is being typed, the
  * prompts it matches, the highlighted one, the prompt waiting for its form, and the prompt the
  * input's text was built from. The selection is loaded on every opening, so a prompt added or
  * withdrawn meanwhile is current; the previous list stays visible while it loads.
@@ -33,7 +33,7 @@ interface UsePromptCommandOptions {
 export function usePromptCommand({ spaceId, userName, insertText }: UsePromptCommandOptions) {
   const [command, setCommand] = useState<ActiveSlashCommand | null>(null)
   const [dismissedStart, setDismissedStart] = useState<number | null>(null)
-  const [highlightedIndex, setHighlightedIndex] = useState(0)
+  const [highlight, setHighlight] = useState(0)
   const [prompts, setPrompts] = useState<AvailablePrompt[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -42,7 +42,10 @@ export function usePromptCommand({ spaceId, userName, insertText }: UsePromptCom
     range: InsertionRange
   } | null>(null)
   const [selected, setSelected] = useState<SelectedPrompt | null>(null)
+  const [isInserting, setIsInserting] = useState(false)
   const loadToken = useRef(0)
+  // Bumped by every change of the input: a prompt fetched for an outdated fragment is not inserted.
+  const insertionToken = useRef(0)
 
   const isOpen = command !== null
 
@@ -68,10 +71,22 @@ export function usePromptCommand({ spaceId, userName, insertText }: UsePromptCom
     () => (command === null ? [] : matchPrompts(prompts, command.query)),
     [command, prompts],
   )
+  // A reloaded, shorter list must not leave the highlight behind its last option.
+  const highlightedIndex = matches.length === 0 ? -1 : Math.min(highlight, matches.length - 1)
+
+  const moveHighlight = useCallback(
+    (delta: 1 | -1) => {
+      const count = matches.length
+      if (count === 0) return
+      setHighlight((current) => (Math.min(current, count - 1) + delta + count) % count)
+    },
+    [matches.length],
+  )
 
   /** Follows the input's value: opens, narrows or closes the selection. */
   const track = useCallback(
     (text: string, cursor: number) => {
+      insertionToken.current++
       const detected = findActiveSlashCommand(text, cursor)
       if (detected === null) {
         setCommand(null)
@@ -81,7 +96,7 @@ export function usePromptCommand({ spaceId, userName, insertText }: UsePromptCom
       } else {
         if (command === null || command.start !== detected.start) load()
         setCommand(detected)
-        setHighlightedIndex(0)
+        setHighlight(0)
       }
       if (text.trim() === '') setSelected(null)
     },
@@ -90,7 +105,7 @@ export function usePromptCommand({ spaceId, userName, insertText }: UsePromptCom
 
   const close = useCallback(() => {
     setCommand(null)
-    setHighlightedIndex(0)
+    setHighlight(0)
   }, [])
 
   /** Escape: closed until the fragment is left, like the '@' selection. */
@@ -103,18 +118,25 @@ export function usePromptCommand({ spaceId, userName, insertText }: UsePromptCom
     async (entry: AvailablePrompt, cursor: number) => {
       if (command === null) return
       const range = { start: command.start, end: cursor }
+      const token = ++insertionToken.current
       close()
       setDismissedStart(null)
+      setIsInserting(true)
       let prompt: PromptForInsertion
       try {
         prompt = await getPromptForInsertion(entry.libraryId, entry.id)
       } catch (err) {
-        notify(
-          err instanceof Error ? err.message : 'Der Prompt konnte nicht geladen werden',
-          'error',
-        )
+        if (token === insertionToken.current) {
+          notify(
+            err instanceof Error ? err.message : 'Der Prompt konnte nicht geladen werden',
+            'error',
+          )
+        }
         return
+      } finally {
+        setIsInserting(false)
       }
+      if (token !== insertionToken.current) return
       if (prompt.variables.length > 0) {
         setPendingForm({ prompt, range })
         return
@@ -128,6 +150,7 @@ export function usePromptCommand({ spaceId, userName, insertText }: UsePromptCom
   const completeForm = useCallback(
     (text: string) => {
       if (pendingForm === null) return
+      insertionToken.current++
       insertText(pendingForm.range, text)
       setSelected({ id: pendingForm.prompt.id, title: pendingForm.prompt.title })
       setPendingForm(null)
@@ -139,8 +162,11 @@ export function usePromptCommand({ spaceId, userName, insertText }: UsePromptCom
     isOpen,
     matches,
     highlightedIndex,
-    setHighlightedIndex,
+    setHighlightedIndex: setHighlight,
+    moveHighlight,
     isLoading,
+    /** While the chosen prompt is fetched, sending waits - the input is about to change. */
+    isInserting,
     error,
     track,
     close,
@@ -151,5 +177,12 @@ export function usePromptCommand({ spaceId, userName, insertText }: UsePromptCom
     completeForm,
     selected,
     clearSelected: () => setSelected(null),
+    /** After sending: nothing still in flight may land in the next question's input. */
+    reset: () => {
+      insertionToken.current++
+      setCommand(null)
+      setHighlight(0)
+      setSelected(null)
+    },
   }
 }

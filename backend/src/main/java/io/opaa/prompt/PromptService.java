@@ -48,8 +48,10 @@ public class PromptService {
 
   static final String NOT_USABLE =
       "Dieser Prompt steht Ihnen nicht zur Verfügung – er wurde gelöscht oder Ihre Leseberechtigung"
-          + " für seine Prompt-Bibliothek besteht nicht mehr. Entfernen Sie den Prompt und senden"
-          + " Sie die Frage erneut.";
+          + " für seine Prompt-Bibliothek besteht nicht mehr.";
+
+  /** The code of that refusal, on which a client hands the question back without the prompt. */
+  public static final String NOT_USABLE_CODE = "PROMPT_NOT_USABLE";
 
   private final PromptLibraryService libraryService;
   private final PromptRepository promptRepository;
@@ -83,11 +85,11 @@ public class PromptService {
     Prompt prompt =
         promptRepository
             .findByIdAndOrganizationId(promptId, caller.organizationId())
-            .orElseThrow(() -> new AccessDeniedException(NOT_USABLE));
+            .orElseThrow(() -> new AccessDeniedException(NOT_USABLE, NOT_USABLE_CODE));
     try {
       requireContent(prompt.getLibraryId(), caller, AssetRole.VIEWER);
     } catch (NotFoundException | AccessDeniedException notReadable) {
-      throw new AccessDeniedException(NOT_USABLE);
+      throw new AccessDeniedException(NOT_USABLE, NOT_USABLE_CODE);
     }
     return prompt;
   }

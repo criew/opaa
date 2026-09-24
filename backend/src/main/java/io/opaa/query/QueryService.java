@@ -248,7 +248,8 @@ public class QueryService {
                           notePoints,
                           searchScope,
                           metadataFilter,
-                          startTime);
+                          startTime,
+                          usedPrompt);
                   if (spikeResult.isPresent()) {
                     return spikeResult.get();
                   }

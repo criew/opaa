@@ -44,9 +44,17 @@ import {
   withoutLibraryField,
 } from './metadataFilterText'
 
+/** What became of a sent message; `restoreDraft` hands a refused question back to the input. */
+export interface SendOutcome {
+  restoreDraft?: string
+}
+
 interface ChatInputProps {
   /** `usedPrompt` is the prompt the message was built from, absent when none is marked. */
-  onSend: (message: string, usedPrompt?: SelectedPrompt) => void
+  onSend: (
+    message: string,
+    usedPrompt?: SelectedPrompt,
+  ) => void | SendOutcome | Promise<void | SendOutcome>
   disabled?: boolean
 }
 
@@ -118,7 +126,7 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
   const setMetadataFilter = useChatStore((s) => s.setMetadataFilter)
   const filterOptions = useMetadataFilterOptionsStore((s) => s.options)
 
-  // '/' at the start of a line inserts a prompt (#1903): its text lands in the input, marked by a
+  // '/' at the start of a line inserts a prompt: its text lands in the input, marked by a
   // removable chip; sending stays a separate action.
   const userName = useAuthStore((s) => s.user?.displayName ?? s.user?.email ?? '')
   const insertPromptText = useCallback((range: { start: number; end: number }, text: string) => {
@@ -320,17 +328,22 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
 
   const handleSend = () => {
     const trimmed = value.trim()
-    if (!trimmed) return
-    if (promptCommand.selected) {
-      onSend(trimmed, promptCommand.selected)
-    } else {
-      onSend(trimmed)
-    }
+    if (!trimmed || promptCommand.isInserting) return
+    const outcome = promptCommand.selected
+      ? onSend(trimmed, promptCommand.selected)
+      : onSend(trimmed)
     setValue('')
     setDismissedMentionStart(null)
     closeMention()
-    promptCommand.close()
-    promptCommand.clearSelected()
+    promptCommand.reset()
+    // A question refused for its prompt comes back without the prompt, unless the person has
+    // already started the next one.
+    void Promise.resolve(outcome).then((result) => {
+      if (result?.restoreDraft) {
+        const draft = result.restoreDraft
+        setValue((current) => (current.trim() === '' ? draft : current))
+      }
+    })
   }
 
   const choosePrompt = (index: number) => {
@@ -340,28 +353,28 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
   }
 
   const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    // While the '/' selection is open - loading, empty or failed alike - Enter never sends: the
+    // '/' text is a command in the making, not a question. Escape turns it into plain text.
     if (promptCommand.isOpen) {
-      const count = promptCommand.matches.length
       if (e.key === 'Escape') {
         e.preventDefault()
         promptCommand.dismiss()
         return
       }
-      if (count > 0 && e.key === 'ArrowDown') {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
         e.preventDefault()
-        promptCommand.setHighlightedIndex((i) => (i + 1 >= count ? 0 : i + 1))
+        promptCommand.moveHighlight(e.key === 'ArrowDown' ? 1 : -1)
         return
       }
-      if (count > 0 && e.key === 'ArrowUp') {
+      if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault()
-        promptCommand.setHighlightedIndex((i) => (i - 1 < 0 ? count - 1 : i - 1))
+        if (promptCommand.highlightedIndex >= 0) choosePrompt(promptCommand.highlightedIndex)
         return
       }
-      if (count > 0 && e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault()
-        choosePrompt(promptCommand.highlightedIndex)
-        return
-      }
+    }
+    if (promptCommand.isInserting && e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      return
     }
     if (mention !== null) {
       if (e.key === 'Escape') {
@@ -645,7 +658,7 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
         <IconButton
           color="primary"
           onClick={handleSend}
-          disabled={disabled || !value.trim()}
+          disabled={disabled || !value.trim() || promptCommand.isInserting}
           aria-label="Senden"
           sx={{
             alignSelf: 'flex-end',

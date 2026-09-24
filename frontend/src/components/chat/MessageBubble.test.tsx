@@ -40,7 +40,7 @@ const uncitedSource = {
 }
 
 describe('MessageBubble', () => {
-  it('names the prompt a question was built from, as plain text without a link (#1903)', () => {
+  it('names the prompt a question was built from, as plain text without a link', () => {
     render(
       <MessageBubble
         message={{

@@ -18,8 +18,9 @@ import org.yaml.snakeyaml.Yaml;
  * the prompt used in the chat (#1903): which prompt built a question is visible at that question
  * and nowhere else. No operation takes the used prompt as a parameter, no operation but the one
  * query takes it in a request, and only the operations returning one single chat carry it in a
- * response - there is no list by prompt or by person across conversations. A reviewer cannot see
- * the absence of a filter; this test can.
+ * response. This holds the fields by their names; an evaluation under another name would still have
+ * to read {@code chat_messages.used_prompt_id}, which {@code io.opaa.chat.UsedPromptQueryGuardTest}
+ * holds at the source.
  */
 class PromptUsageSpecificationTest {
 

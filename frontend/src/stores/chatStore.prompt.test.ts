@@ -22,7 +22,7 @@ function chatDetail(messages: ChatDetail['messages']): ChatDetail {
   }
 }
 
-describe('chatStore with a prompt (#1903)', () => {
+describe('chatStore with a prompt', () => {
   beforeEach(() => {
     clearSettingsPersistenceCache()
     useChatStore.setState({
@@ -93,6 +93,49 @@ describe('chatStore with a prompt (#1903)', () => {
 
     expect(bodies[0]).not.toHaveProperty('usedPromptId')
     expect(useChatStore.getState().messages[0].usedPromptTitle).toBeUndefined()
+  })
+
+  it('hands a question refused for its prompt back and keeps no trace of it', async () => {
+    server.use(
+      http.post('/api/v1/query', () =>
+        HttpResponse.json(
+          {
+            error: 'Dieser Prompt steht Ihnen nicht zur Verfügung.',
+            code: 'PROMPT_NOT_USABLE',
+            timestamp: '2026-09-24T08:00:00Z',
+          },
+          { status: 403 },
+        ),
+      ),
+    )
+    await useChatStore.getState().loadChat(CHAT_ID)
+
+    const outcome = await useChatStore
+      .getState()
+      .sendMessage('Fasse zusammen.', { id: 'prompt-zusammenfassung', title: 'Zusammenfassung' })
+
+    expect(outcome).toEqual({ restoreDraft: 'Fasse zusammen.' })
+    expect(useChatStore.getState().messages).toEqual([])
+    expect(useChatStore.getState().error).toContain('ohne Prompt senden')
+  })
+
+  it('keeps the question on any other failure', async () => {
+    server.use(
+      http.post('/api/v1/query', () =>
+        HttpResponse.json(
+          { error: 'Kein Modell erreichbar.', timestamp: '2026-09-24T08:00:00Z' },
+          { status: 503 },
+        ),
+      ),
+    )
+    await useChatStore.getState().loadChat(CHAT_ID)
+
+    const outcome = await useChatStore
+      .getState()
+      .sendMessage('Fasse zusammen.', { id: 'prompt-zusammenfassung', title: 'Zusammenfassung' })
+
+    expect(outcome).toBeUndefined()
+    expect(useChatStore.getState().messages).toHaveLength(1)
   })
 
   it('reads the prompt snapshot of a persisted question back from the history', async () => {

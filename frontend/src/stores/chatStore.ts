@@ -41,6 +41,13 @@ function toChatMessage(message: ChatMessageResponse): ChatMessage {
   }
 }
 
+/** The server refused the question because the person may no longer use its prompt. */
+function isPromptNotUsable(err: unknown): boolean {
+  const cause = err instanceof Error ? err.cause : undefined
+  const data = (cause as { response?: { data?: { code?: unknown } } } | undefined)?.response?.data
+  return data?.code === 'PROMPT_NOT_USABLE'
+}
+
 // Monotonically increasing token guarding loadChat against two hazards (#548 review, finding d):
 // a slower-arriving response from an earlier loadChat(A) call overwriting a faster one from a
 // later loadChat(B), and a synchronous startNewChat() in between being clobbered once the
@@ -390,8 +397,15 @@ interface ChatState {
   pendingSettingsUpdate: Promise<void> | null
   loadChat: (chatId: string) => Promise<void>
   startNewChat: (spaceId: string) => void
-  /** `usedPrompt` names the prompt the question was built from (#1903). */
-  sendMessage: (question: string, usedPrompt?: { id: string; title: string }) => Promise<void>
+  /**
+   * `usedPrompt` names the prompt the question was built from. A question refused because that
+   * prompt is no longer usable resolves to `restoreDraft`: nothing of it stays in the history, and
+   * the input gets it back to be sent without the prompt.
+   */
+  sendMessage: (
+    question: string,
+    usedPrompt?: { id: string; title: string },
+  ) => Promise<{ restoreDraft?: string } | void>
   /** Sets the chip bar back to the special @Alles-Wissen chip, replacing any concrete chips. */
   setScopeAll: () => void
   /** Adds a concrete library chip. The first concrete chip replaces @Alles-Wissen (scope 'all' ->
@@ -761,6 +775,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }
       // TODO: Add retry UX (e.g. "Retry" button on failed messages)
       const message = err instanceof Error ? err.message : 'Ein unerwarteter Fehler ist aufgetreten'
+      if (usedPrompt && isPromptNotUsable(err)) {
+        set((state) => ({
+          messages: state.messages.filter((m) => m !== send.userMessage),
+          error: `${message} Die Frage steht wieder im Eingabefeld und lässt sich ohne Prompt senden.`,
+          isLoading,
+        }))
+        return { restoreDraft: question }
+      }
       set({ error: message, isLoading })
     } finally {
       inFlightSends.delete(send)

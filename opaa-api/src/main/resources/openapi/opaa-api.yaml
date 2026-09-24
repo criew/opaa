@@ -98,8 +98,9 @@ paths:
           description: >
             The author of the named chat is no longer a member of its space (#525): querying
             is chatting, so the turn is refused where merely reading the chat is not. Or
-            usedPromptId names a prompt the caller may not read (anymore) - an unknown prompt and
-            one of another organization answer the same way, so a foreign id is never confirmed.
+            usedPromptId names a prompt the caller may not read (anymore), with code
+            PROMPT_NOT_USABLE - an unknown prompt and one of another organization answer the same
+            way, so a foreign id is never confirmed.
           content:
             application/json:
               schema:
@@ -6817,7 +6818,7 @@ paths:
       operationId: listAvailablePrompts
       tags: [prompt]
       summary: >
-        The prompts the caller can insert in the chat (#1903): every prompt of every prompt library
+        The prompts the caller can insert in the chat: every prompt of every prompt library
         the caller may read by the formula, within the caller's organization. With spaceId, the
         libraries associated with that space come first and are marked associatedWithSpace; then
         by library name, within a library by sortOrder and name. Deliberately lightweight - the
@@ -9752,8 +9753,8 @@ components:
           format: uuid
           nullable: true
           description: >
-            The prompt the question was built from (#1903,
-            docs/features/spaces-and-assets.md#prompt-im-chat). The client resolves the prompt's
+            The prompt the question was built from
+            (docs/features/spaces-and-assets.md#prompt-im-chat). The client resolves the prompt's
             text and variables itself and sends the finished question; the server only checks that
             the caller may read the prompt's library (403 otherwise) and, for a persisted chat,
             keeps the prompt's id and its current title as a snapshot on the question's message.
@@ -11132,7 +11133,7 @@ components:
           format: uuid
           nullable: true
           description: >
-            On a USER message: the prompt the question was built from (#1903), null otherwise. A
+            On a USER message: the prompt the question was built from, null otherwise. A
             snapshot - the prompt may since have been changed, deleted or become unreadable.
         usedPromptTitle:
           type: string
@@ -15962,7 +15963,7 @@ components:
     AvailablePrompt:
       type: object
       required: [id, libraryId, libraryName, name, title, hasVariables, associatedWithSpace]
-      description: One entry of the slash-command selection in the chat (#1903).
+      description: One entry of the slash-command selection in the chat.
       properties:
         id:
           type: string

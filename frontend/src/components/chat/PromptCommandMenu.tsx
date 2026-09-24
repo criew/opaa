@@ -27,7 +27,7 @@ interface PromptCommandMenuProps {
 }
 
 /**
- * The '/' selection above the chat input (#1903), built like the '@' popper: a listbox whose
+ * The '/' selection above the chat input, built like the '@' popper: a listbox whose
  * options are grouped by prompt library, the input keeping focus and driving the highlight.
  */
 export default function PromptCommandMenu({
