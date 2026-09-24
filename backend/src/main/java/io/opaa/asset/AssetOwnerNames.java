@@ -30,10 +30,10 @@ public class AssetOwnerNames {
   }
 
   /** Display name by owner id (person or group). */
-  public Map<UUID, String> of(Collection<? extends Asset> assets) {
+  public Map<UUID, String> of(Collection<? extends OwnedAsset> assets) {
     Set<UUID> userOwnerIds = new HashSet<>();
     Set<UUID> groupOwnerIds = new HashSet<>();
-    for (Asset asset : assets) {
+    for (OwnedAsset asset : assets) {
       if (asset.getOwnerType() == AssetOwnerType.USER) {
         userOwnerIds.add(asset.getOwnerId());
       } else {

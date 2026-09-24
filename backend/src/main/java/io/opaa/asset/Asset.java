@@ -38,7 +38,7 @@ import org.hibernate.annotations.DynamicUpdate;
 @DynamicUpdate
 @Table(name = "assets")
 @Inheritance(strategy = InheritanceType.JOINED)
-public class Asset {
+public class Asset implements OwnedAsset {
 
   @Id private UUID id;
 
