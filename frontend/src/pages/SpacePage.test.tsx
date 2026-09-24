@@ -202,12 +202,12 @@ describe('SpacePage', () => {
     expect(screen.getByText('Mitglied: 1')).toBeInTheDocument()
     expect(screen.getByText('Administrator: 1')).toBeInTheDocument()
     expect(screen.queryByText('Admin')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /space verwalten/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /einstellungen/i })).not.toBeInTheDocument()
   })
 
   // #674 re-review: transferOwnership never changes the new owner's own membership role (see
   // SpaceService#requireMemberListViewer) - an owner whose own role is MEMBER must still see the
-  // full member list and the "Space verwalten" entry point, not just the aggregated counts.
+  // full member list and the "Einstellungen" entry point, not just the aggregated counts.
   it('shows the full member list and the manage button for a non-ADMIN owner', async () => {
     mockListSpaceMembers.mockResolvedValueOnce([
       {
@@ -278,6 +278,6 @@ describe('SpacePage', () => {
     // body returns.
     expect(await screen.findByText('Owner')).toBeInTheDocument()
     expect(screen.getByText('Admin')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /space verwalten/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /einstellungen/i })).toBeInTheDocument()
   })
 })

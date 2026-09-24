@@ -560,7 +560,7 @@ function isSearchAdminTab(value: string | undefined): value is SearchAdminTab {
   return value === 'overview' || value === 'index' || value === 'diagnosis'
 }
 
-// „Indexstatus" statt „Bibliotheken": Der Katalog führt bereits einen Hauptbereich dieses Namens,
+// „Indexstatus" statt „Bibliotheken": Der Bereich „Wissen" führt bereits denselben Bestand,
 // und gemeint ist hier nicht der Bestand selbst, sondern sein Zustand im Index.
 const tabs: Array<{ value: SearchAdminTab; label: string }> = [
   { value: 'overview', label: 'Überblick' },

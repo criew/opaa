@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from 'react'
 import { CssBaseline, ThemeProvider, useMediaQuery } from '@mui/material'
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
+import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router'
 import ErrorBoundary from './components/ErrorBoundary'
 import ProtectedRoute from './components/ProtectedRoute'
 import { createAppTheme } from './theme/theme'
@@ -22,7 +22,7 @@ import AuthCallbackPage from './pages/AuthCallbackPage'
 import SpacePage from './pages/SpacePage'
 import SpacesOverviewPage from './pages/SpacesOverviewPage'
 import SpaceCreatePage from './pages/SpaceCreatePage'
-import SpaceManagementPage from './pages/SpaceManagementPage'
+import SpaceSettingsPage from './pages/SpaceSettingsPage'
 import GroupManagementPage from './pages/GroupManagementPage'
 import CapabilityManagementPage from './pages/CapabilityManagementPage'
 import DirectorySyncPage from './pages/DirectorySyncPage'
@@ -37,6 +37,7 @@ import {
   HANDOVER_ROUTE,
   REGISTER_ROUTE,
   SET_PASSWORD_ROUTE,
+  spaceSettingsRoute,
   VERIFY_EMAIL_ROUTE,
 } from './routes'
 import { useAuthStore } from './stores/authStore'
@@ -82,6 +83,12 @@ function AdminAreaLayout() {
   ) : (
     <GlobalAreaLayout />
   )
+}
+
+/** Leitet auf den ersten Reiter der Space-Einstellungen weiter - ohne den Space zu laden. */
+function SpaceSettingsRedirect() {
+  const { spaceId } = useParams<{ spaceId: string }>()
+  return <Navigate to={spaceId ? spaceSettingsRoute(spaceId) : '/spaces'} replace />
 }
 
 export default function App() {
@@ -150,7 +157,11 @@ export default function App() {
               <Route path="spaces/:spaceId/chats" element={<ChatsPage />} />
               <Route path="spaces/:spaceId/chats/:chatId" element={<ChatPage />} />
               <Route path="spaces/:spaceId" element={<SpacePage />} />
-              <Route path="spaces/:spaceId/manage" element={<SpaceManagementPage />} />
+              {/* Die frühere Verwaltungsseite: Lesezeichen auf /manage landen auf dem ersten
+                  Reiter der Einstellungen (#1917). */}
+              <Route path="spaces/:spaceId/manage" element={<SpaceSettingsRedirect />} />
+              <Route path="spaces/:spaceId/settings" element={<SpaceSettingsRedirect />} />
+              <Route path="spaces/:spaceId/settings/:tab" element={<SpaceSettingsPage />} />
               {/* No space selected yet (#809): overview and create wizard render in the
                   bare global frame; the navy column appears only inside a chosen space. */}
               <Route element={<GlobalAreaLayout />}>

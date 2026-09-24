@@ -216,7 +216,8 @@ export default function LibraryManagementPage() {
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
       <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2, mb: 2.5, flexWrap: 'wrap' }}>
-        <PageHeading title="Wissensbibliotheken" />
+        {/* Die Seite heißt wie ihr Menüpunkt (#1915); jeder Asset-Typ trägt einen eigenen. */}
+        <PageHeading title="Wissen" />
         <GlobalBadge />
         <Typography component="span" sx={{ fontSize: 13, color: 'text.secondary' }}>
           {bestaende} Sie lesen dürfen
