@@ -235,6 +235,14 @@ Jedes Asset hat genau einen Eigentümer. Wenn dieser Eigentümer eine **Person**
 
 Damit gibt es keine Regel mehr, die eine andere aufhebt: Der Zugang endet sofort, die Zuständigkeit wird nachgezogen, und in der Zwischenzeit ist das Asset nutzbar, aber eingefroren.
 
+**Ein Asset einzeln übergeben** ([#1941](https://github.com/criew/opaa/issues/1941)). Neben der Übertragung aller Wirkungen einer Person oder Gruppe (ADR-0036, Entscheidung 10) gibt es den kleinen Weg für genau ein Objekt: `POST /api/v1/assets/{assetType}/{assetId}/transfer-ownership`, im Reiter „Freigaben" der Abschnitt „Eigentümer" mit „Eigentum übergeben". Die Regeln sind dieselben wie bei der großen Übertragung, nur der Umfang ist ein anderer:
+
+- **Übergeben darf nur der Eigentümer** (`OWNER`), und nur innerhalb der eigenen Organisation. Verwaltungsrechte genügen nicht.
+- **Ziel ist eine Person oder eine Gruppe.** Für eine Gruppe gilt dieselbe Prüfung wie beim Anlegen in ihrem Namen: Der Übergebende ist Mitglied, und die Gruppe darf die Verwaltungsrolle überhaupt noch erhalten (nicht aufgelöst, kein abgeschalteter Anbieter).
+- **Die Rolle geht mit.** Eine Person wird `OWNER`, eine Gruppe `MANAGER` — eine Gruppe hält nie `OWNER`, weil diese Rolle sonst mit jedem neuen Mitglied mitwüchse. Die Rolle des bisherigen Eigentümers endet mit der Übergabe.
+- **Eine offene Nachfolge wird dabei geschlossen**, und zwar mit dem Namen des Übergebenden: Diese Handlung *ist* die Übernahme, auf die die Nachfolgeliste zeigt. Führt die Übergabe wieder zu einem handlungsunfähigen Eigentümer, bleibt der Vorgang offen, statt geschlossen und sofort neu eröffnet zu werden.
+- **An den aktuellen Eigentümer zu übergeben ändert nichts** und ist kein Fehler.
+
 Verfall — also automatisches Löschen von Assets ohne Zuständigkeit — wird ausdrücklich verworfen: In der Verwaltung ist der Verlust einer gepflegten Wissensbibliothek teurer als ihr Weiterbestehen unter geklärter Einschränkung.
 
 ### Prompt-Bibliothek

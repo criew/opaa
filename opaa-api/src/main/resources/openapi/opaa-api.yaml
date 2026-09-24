@@ -6533,6 +6533,44 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/assets/{assetType}/{assetId}/transfer-ownership:
+    parameters:
+      - $ref: "#/components/parameters/AssetTypePath"
+      - $ref: "#/components/parameters/AssetIdPath"
+
+    post:
+      operationId: transferAssetOwnership
+      tags: [asset]
+      summary: >
+        Hand this one asset to another owner - a person or a group (#1941)
+      description: >
+        The per-asset counterpart of POST /api/v1/permission-transfers, which moves everything a
+        subject holds: here exactly one asset changes hands, and nothing else of the previous
+        owner's does. OWNER on the asset is required. The owner columns, the grant that goes with
+        ownership and the ownership interval move together (ADR-0036, Entscheidung 10), an audit
+        entry is written, and an open succession record of this asset is closed naming the caller -
+        this transfer is the Übernahme the Nachfolgeliste points at. A person target must belong to
+        the caller's organization; a group target follows the rule that governs creating an asset
+        in a group's name - the caller is a member and the group may still receive its MANAGER
+        grant (400 for a dissolved group or one of a disabled provider). A group never holds OWNER,
+        it holds MANAGER; ownership itself is recorded on the asset. Handing the asset to its
+        current owner changes nothing and answers 204.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssetOwnershipTransferRequest"
+      responses:
+        "204":
+          description: Ownership transferred
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/spaces/{spaceId}/assets:
     parameters:
       - name: spaceId
@@ -12400,6 +12438,16 @@ components:
           nullable: true
           allOf:
             - $ref: "#/components/schemas/S3Settings"
+        schedule:
+          description: >
+            The indexing rhythm, set together with the library rather than in a second call right
+            after it (#1942) - the assistant asks for it in the same step as the connection.
+            Absent leaves the library without a schedule, exactly as before. Validated like
+            LibraryUpdateRequest.schedule, including the refusal of anything but DISABLED on an
+            UPLOAD library (400).
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/LibraryScheduleRequest"
 
     ConfluenceWebhookSecretResponse:
       type: object
@@ -13072,6 +13120,17 @@ components:
           type: string
           format: uuid
           description: The owning user or group, whichever ownerType names.
+        ownerName:
+          type: string
+          nullable: true
+          description: >
+            Display name of the owning group or person, so the detail view can name the
+            responsible body instead of a bare id (#1941) - the same field the overview already
+            carries (LibraryListResponse.ownerName). Readable by everyone who may read the
+            library: who is responsible for a library is not a secret from its readers. Null
+            where the owner cannot be named - a deleted subject, a person without a display name
+            (no e-mail fallback) or a protected group (ADR-0036, Entscheidung 9).
+          example: Referat 50
         reach:
           $ref: "#/components/schemas/AssetReachResponse"
         listed:
@@ -16000,6 +16059,22 @@ components:
           description: >
             Null means the grant never expires. Present from the start even though
             recertification only arrives with #241.
+
+    AssetOwnershipTransferRequest:
+      type: object
+      required: [ownerType, ownerId]
+      description: >
+        Who the asset belongs to from now on. Deliberately the same pair a creation names
+        (LibraryRequest.ownerType/ownerId), so the section that shows the owner and the one that
+        sets it at creation speak of it the same way - and deliberately not the source/target/scope
+        shape of a PermissionTransferRequest, which is about a subject's whole holdings.
+      properties:
+        ownerType:
+          $ref: "#/components/schemas/AssetOwnerType"
+        ownerId:
+          type: string
+          format: uuid
+          description: The person or group taking the asset over, whichever ownerType names.
 
     PermissionTransferScope:
       type: string

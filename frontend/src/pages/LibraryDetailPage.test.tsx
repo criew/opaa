@@ -502,18 +502,26 @@ describe('LibraryDetailPage', () => {
     expect(screen.queryByRole('button', { name: /weitere aktionen/i })).not.toBeInTheDocument()
   })
 
-  it('offers "Rechte verwalten" for a MANAGER but hides it for a VIEWER', async () => {
+  // #1941: Die Berechtigungen stehen als Liste auf der Seite statt hinter „Rechte verwalten";
+  // eine lesende Rolle sieht den Abschnitt gar nicht, wohl aber Eigentümer und Zuordnungen.
+  it('lists the grants for a MANAGER and hides the whole section from a VIEWER', async () => {
     setLibraryState(managerLibrary, detailsOf(managerLibrary))
     const { unmount } = renderWithProviders(<LibraryDetailPage />, { withRouter: true })
     const user = userEvent.setup()
     await user.click(await screen.findByRole('tab', { name: 'Freigaben' }))
-    expect(await screen.findByRole('button', { name: /rechte verwalten/i })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Berechtigungen' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Freigeben' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /rechte verwalten/i })).not.toBeInTheDocument()
     unmount()
 
     setLibraryState(viewerLibrary, detailsOf(viewerLibrary))
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
-    expect(await screen.findByText(/87 Dokumente/i)).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /rechte verwalten/i })).not.toBeInTheDocument()
+    const viewer = userEvent.setup()
+    await viewer.click(await screen.findByRole('tab', { name: 'Freigaben' }))
+    expect(await screen.findByRole('heading', { name: 'Eigentümer' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Zuordnungen' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Berechtigungen' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Eigentum übergeben' })).not.toBeInTheDocument()
   })
 
   it('lets a system admin edit and delete a library without an own grant', async () => {
@@ -560,16 +568,16 @@ describe('LibraryDetailPage', () => {
     })
   }, 15000)
 
-  // Die Auffindbarkeit steht im gemeinsamen Freigabeabschnitt und wird dort gespeichert - mit den
+  // Die Auffindbarkeit ist ein eigener Abschnitt mit eigenem Knopf (#1941) und speichert mit den
   // gespeicherten Stammdaten, nicht mit einem Entwurf daneben.
-  it('saves the findability from the shared release section', async () => {
+  it('saves the findability from its own section', async () => {
     setLibraryState(managerLibrary, detailsOf(managerLibrary))
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
     const user = userEvent.setup()
 
     await user.click(await screen.findByRole('tab', { name: 'Freigaben' }))
     await user.click(await screen.findByLabelText('Im Katalog auffindbar, auch ohne Berechtigung'))
-    await user.click(screen.getByRole('button', { name: 'Freigabe speichern' }))
+    await user.click(screen.getByRole('button', { name: 'Auffindbarkeit speichern' }))
 
     await waitFor(() => {
       expect(mockUpdateLibrary).toHaveBeenCalledWith('library-team', {
@@ -736,7 +744,8 @@ describe('LibraryDetailPage', () => {
 
       await userEvent.setup().click(await screen.findByRole('tab', { name: 'Freigaben' }))
 
-      expect(screen.queryByText(/Freigabe-Obergrenze \(Systemverwaltung\)/)).not.toBeInTheDocument()
+      expect(screen.queryByText(/Obergrenze \(Systemverwaltung\)/)).not.toBeInTheDocument()
+      expect(screen.queryByLabelText('Freigabe an Alle erlaubt')).not.toBeInTheDocument()
     })
 
     it('is hidden from a MANAGER of a connector library, not being a system administrator', async () => {
@@ -754,7 +763,8 @@ describe('LibraryDetailPage', () => {
 
       await userEvent.setup().click(await screen.findByRole('tab', { name: 'Freigaben' }))
 
-      expect(screen.queryByText(/Freigabe-Obergrenze \(Systemverwaltung\)/)).not.toBeInTheDocument()
+      expect(screen.queryByText(/Obergrenze \(Systemverwaltung\)/)).not.toBeInTheDocument()
+      expect(screen.queryByLabelText('Freigabe an Alle erlaubt')).not.toBeInTheDocument()
     })
 
     it('lets a system administrator lower the cap on a connector library', async () => {
@@ -798,7 +808,11 @@ describe('LibraryDetailPage', () => {
 
       await user.click(await screen.findByRole('tab', { name: 'Freigaben' }))
       await user.click(await screen.findByLabelText('Auffindbarkeit im Katalog erlaubt'))
-      await user.click(await screen.findByRole('button', { name: /obergrenze speichern/i }))
+      await user.click(
+        await screen.findByRole('button', {
+          name: 'Obergrenze „Auffindbarkeit im Katalog erlaubt“ speichern',
+        }),
+      )
 
       await waitFor(() => {
         expect(putRequestBody).toEqual({ allAccountsGrantAllowed: true, listedCap: false })
@@ -894,7 +908,7 @@ describe('LibraryDetailPage', () => {
       await user.click(
         await screen.findByLabelText('Im Katalog auffindbar, auch ohne Berechtigung'),
       )
-      await user.click(screen.getByRole('button', { name: 'Freigabe speichern' }))
+      await user.click(screen.getByRole('button', { name: 'Auffindbarkeit speichern' }))
 
       expect(await screen.findByText(/Nachfolge offen/)).toBeInTheDocument()
       expect(screen.getByText(/Übernahme/)).toBeInTheDocument()

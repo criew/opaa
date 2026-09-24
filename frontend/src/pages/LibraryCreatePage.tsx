@@ -1,10 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import FormControlLabel from '@mui/material/FormControlLabel'
-import Radio from '@mui/material/Radio'
-import RadioGroup from '@mui/material/RadioGroup'
 import Switch from '@mui/material/Switch'
 import Typography from '@mui/material/Typography'
 import { alpha } from '@mui/material/styles'
@@ -16,8 +14,17 @@ import PathSourceForm from '../components/library/PathSourceForm'
 import S3SourceForm from '../components/library/S3SourceForm'
 import SourceConnectionTest from '../components/library/SourceConnectionTest'
 import UrlSourceForm from '../components/library/UrlSourceForm'
+import LibraryScheduleForm from '../components/library/LibraryScheduleForm'
+import SourceTypeIcon from '../components/library/sourceTypeIcon'
 import { EMPTY_CONFLUENCE_VALUES, type ConfluenceSourceValues } from '../utils/confluenceSource'
 import { EMPTY_S3_VALUES, type S3SourceValues } from '../utils/s3Source'
+import {
+  scheduleUpdateFrom,
+  scheduleValuesFrom,
+  validateScheduleValues,
+  type ConfluenceFullSyncRhythm,
+  type LibraryScheduleValues,
+} from '../utils/librarySchedule'
 import WizardStepBar from '../components/wizard/WizardStepBar'
 import { confirmAction } from '../stores/confirmStore'
 import { useLibraryStore } from '../stores/libraryStore'
@@ -51,14 +58,75 @@ import type {
   AssetOwnerType,
 } from '../types/api'
 
-const STEPS = ['Stammdaten', 'Herkunft', 'Rechte'] as const
-const STEP_TITLES = ['Stammdaten', 'Woher kommen die Dokumente?', 'Rechte'] as const
+/**
+ * Die Schritte des Assistenten (#1942): jeder trägt den Namen des Reiters bzw. des Kopfes, den er
+ * in der Detailansicht bekommt. Eine Upload-Bibliothek hat keine Quelle und deshalb drei Schritte.
+ */
+const STEP_ART = 'Art des Wissens'
+const STEP_SOURCE = 'Quelle'
+const STEP_NAME = 'Name & Beschreibung'
+const STEP_SHARING = 'Freigaben'
+
+function stepsFor(sourceType: DocumentSourceType): string[] {
+  return sourceType === 'UPLOAD'
+    ? [STEP_ART, STEP_NAME, STEP_SHARING]
+    : [STEP_ART, STEP_SOURCE, STEP_NAME, STEP_SHARING]
+}
+
+const stepHeadings: Record<string, string> = {
+  [STEP_ART]: 'Welche Art von Wissen soll hier stehen?',
+  [STEP_SOURCE]: 'Woher kommen die Dokumente?',
+  [STEP_NAME]: 'Name & Beschreibung',
+  [STEP_SHARING]: 'Freigaben',
+}
 
 /**
- * The library creation wizard (#596, mockup 1e), replacing CreateLibraryDialog. The origin step
- * carries the four source cards with the type-bound connection form and test (#514 invalidation
- * semantics preserved); the rights step sets the distribution level at creation time and queues
- * grants that are applied through the grant API right after the library exists.
+ * Die Vollabgleich-Angabe beim Anlegen: Die Bibliothek hat noch keinen eigenen Rhythmus, und die
+ * Vorgabe der Instanz steht erst in ihrer Antwort - leer heißt hier wie dort „Vorgabe der
+ * Instanz", und das Formular nennt deren ausgelieferten Wert.
+ */
+const NEW_CONFLUENCE_RHYTHM: ConfluenceFullSyncRhythm = { intervalDays: null, defaultDays: null }
+
+/** Der Name, den die Quelle selbst schon hergibt - überschreibbar, nie erzwungen. */
+function nameFromSource(
+  sourceType: DocumentSourceType,
+  values: {
+    generic: GenericSourceValues
+    confluence: ConfluenceSourceValues
+    s3: S3SourceValues
+  },
+): string {
+  switch (documentSourceTypeConfigKind[sourceType]) {
+    case 'confluence': {
+      const first = values.confluence.spaces[0]
+      if (!first) return ''
+      return values.confluence.spaces.length === 1 ? (first.name ?? first.key) : ''
+    }
+    case 's3': {
+      const first = values.s3.scopes.find((scope) => scope.bucket.trim() !== '')
+      return first ? first.bucket.trim() : ''
+    }
+    case 'path': {
+      const segments = values.generic.sourcePath.split(/[\\/]+/).filter(Boolean)
+      return segments.length > 0 ? segments[segments.length - 1] : ''
+    }
+    case 'url': {
+      try {
+        return new URL(values.generic.sourceUrl).hostname
+      } catch {
+        return ''
+      }
+    }
+    default:
+      return ''
+  }
+}
+
+/**
+ * Der Anlage-Assistent für Wissensbibliotheken (#1942, Zielentwurf aus #1927). Jeder Schritt
+ * entspricht einem Reiter der Detailseite und verwendet dessen Formulare - Quellformulare,
+ * Verbindungstest, Zeitplan und die Freigabebausteine sind gemeinsame Komponenten, keine eigenen
+ * Felder dieser Seite.
  */
 export default function LibraryCreatePage() {
   const navigate = useNavigate()
@@ -74,6 +142,7 @@ export default function LibraryCreatePage() {
   const { isMissing } = useMyCapabilities()
 
   const [name, setName] = useState('')
+  const [nameTouched, setNameTouched] = useState(false)
   const [description, setDescription] = useState('')
   const [ownerType, setOwnerType] = useState<AssetOwnerType>('USER')
   const [selectedGroup, setSelectedGroup] = useState<GroupListResponse | null>(null)
@@ -83,9 +152,18 @@ export default function LibraryCreatePage() {
   const [generic, setGeneric] = useState<GenericSourceValues>(EMPTY_GENERIC_SOURCE_VALUES)
   const [confluence, setConfluence] = useState<ConfluenceSourceValues>(EMPTY_CONFLUENCE_VALUES)
   const [s3, setS3] = useState<S3SourceValues>(EMPTY_S3_VALUES)
-  // Opt-out, not opt-in: whoever just configured a source expects content - the first run (a full
-  // reconciliation over the selected spaces) starts right after creation unless switched off.
+  const [schedule, setSchedule] = useState<LibraryScheduleValues>(() => scheduleValuesFrom(null))
+  // Opt-out, not opt-in: whoever just configured a source expects content - the first run starts
+  // right after creation unless switched off. Since #1942 for every connector type, not only
+  // Confluence and S3.
   const [startFirstRun, setStartFirstRun] = useState(true)
+  const [listed, setListed] = useState(false)
+  const [pendingGrants, setPendingGrants] = useState<PendingGrant[]>([])
+
+  const steps = stepsFor(sourceType)
+  const currentStep = steps[Math.min(activeStep, steps.length - 1)]
+  const configKind = documentSourceTypeConfigKind[sourceType]
+  const confluenceRhythm = configKind === 'confluence' ? NEW_CONFLUENCE_RHYTHM : undefined
 
   const requiredCapability: Capability =
     sourceType === 'UPLOAD' ? 'CREATE_LIBRARY' : 'CREATE_CONNECTOR_LIBRARY'
@@ -93,9 +171,17 @@ export default function LibraryCreatePage() {
     ? capabilityMissingMessage(requiredCapability)
     : null
 
-  const [pendingGrants, setPendingGrants] = useState<PendingGrant[]>([])
-
-  const configKind = documentSourceTypeConfigKind[sourceType]
+  // Der Fokus folgt dem Schritt (WCAG 2.4.3): Nach „Weiter" steht er auf der Überschrift des neuen
+  // Schritts, nicht auf dem Knopf, der gerade verschwunden ist.
+  const stepHeadingRef = useRef<HTMLHeadingElement>(null)
+  const firstRender = useRef(true)
+  useEffect(() => {
+    if (firstRender.current) {
+      firstRender.current = false
+      return
+    }
+    stepHeadingRef.current?.focus()
+  }, [activeStep])
 
   const isDirty =
     name.trim() !== '' ||
@@ -125,11 +211,7 @@ export default function LibraryCreatePage() {
   }
 
   const handleNext = () => {
-    if (activeStep === 0 && ownerType === 'GROUP' && !selectedGroup) {
-      setError('Bitte eine Gruppe auswählen')
-      return
-    }
-    if (activeStep === 1) {
+    if (currentStep === STEP_SOURCE) {
       const validationError = validateLibrarySourceFields(sourceType, {
         ...generic,
         confluence,
@@ -139,12 +221,38 @@ export default function LibraryCreatePage() {
         setError(validationError)
         return
       }
+      const scheduleError = validateScheduleValues(schedule, confluenceRhythm)
+      if (scheduleError) {
+        setError(scheduleError)
+        return
+      }
+      // Der Name kommt, wo die Quelle ihn hergibt, aus ihr - solange niemand selbst getippt hat.
+      if (!nameTouched && name.trim() === '') {
+        setName(nameFromSource(sourceType, { generic, confluence, s3 }))
+      }
+    }
+    if (currentStep === STEP_NAME && name.trim() === '') {
+      setError('Bitte einen Namen angeben')
+      return
+    }
+    if (currentStep === STEP_SHARING && ownerType === 'GROUP' && !selectedGroup) {
+      setError('Bitte eine Gruppe auswählen')
+      return
     }
     setError(null)
     setActiveStep((s) => s + 1)
   }
 
   const handleCreate = async () => {
+    if (ownerType === 'GROUP' && !selectedGroup) {
+      setError('Bitte eine Gruppe auswählen')
+      return
+    }
+    const scheduleError = validateScheduleValues(schedule, confluenceRhythm)
+    if (scheduleError) {
+      setError(scheduleError)
+      return
+    }
     setSubmitting(true)
     setError(null)
     try {
@@ -153,15 +261,19 @@ export default function LibraryCreatePage() {
         description: description.trim() || undefined,
         ownerType,
         ownerId: ownerType === 'GROUP' ? (selectedGroup?.id ?? undefined) : undefined,
+        listed,
         sourceType,
         ...deriveLibrarySourceConfigPayload(sourceType, {
           ...generic,
           confluence,
           s3,
         }),
+        // #1942: Anlage und Zeitplan werden atomar gesetzt; eine Upload-Bibliothek bekommt gar
+        // keinen (das Backend wiese alles außer DISABLED mit 400 ab).
+        ...(sourceType !== 'UPLOAD' ? scheduleUpdateFrom(schedule, confluenceRhythm) : {}),
       })
       await applyPendingGrantsAfterCreation('KNOWLEDGE_LIBRARY', libraryId, pendingGrants)
-      if ((configKind === 'confluence' || configKind === 's3') && startFirstRun) {
+      if (sourceType !== 'UPLOAD' && startFirstRun) {
         // Awaited so the run is already in the indexing store when the detail page mounts and its
         // progress strip picks it up. triggerIndexing never throws - a failure surfaces through
         // the global indexing snackbar, and the detail page still offers "Jetzt indizieren".
@@ -174,6 +286,13 @@ export default function LibraryCreatePage() {
     }
   }
 
+  const firstRunHint =
+    configKind === 'confluence'
+      ? 'Der erste Lauf ist ein Vollabgleich über alle ausgewählten Spaces; sein Stand bleibt auf der Detailseite sichtbar.'
+      : configKind === 's3'
+        ? 'Der erste Lauf ist ein Vollabgleich über alle Geltungsbereiche; sein Stand bleibt auf der Detailseite sichtbar.'
+        : 'Der erste Lauf liest die Quelle vollständig ein; sein Stand bleibt auf der Detailseite sichtbar.'
+
   return (
     <Box sx={{ flexGrow: 1, overflowY: 'auto', p: { xs: 2.5, md: 5 } }}>
       <Box sx={{ maxWidth: 720 }}>
@@ -181,10 +300,15 @@ export default function LibraryCreatePage() {
           Neue Wissensbibliothek
         </Typography>
         <PageHeading title="Neue Wissensbibliothek" visuallyHidden />
-        <Typography component="div" sx={{ fontSize: 26, fontWeight: 600, mb: 3 }} aria-hidden>
-          {STEP_TITLES[activeStep]}
+        <Typography
+          ref={stepHeadingRef}
+          component="h2"
+          tabIndex={-1}
+          sx={{ fontSize: 26, fontWeight: 600, mb: 3 }}
+        >
+          {stepHeadings[currentStep] ?? currentStep}
         </Typography>
-        <WizardStepBar steps={STEPS} active={activeStep} />
+        <WizardStepBar steps={steps} active={activeStep} />
 
         {missingCapability && (
           <Alert severity="info" sx={{ mb: 2 }} id="library-create-capability-hint">
@@ -192,191 +316,215 @@ export default function LibraryCreatePage() {
           </Alert>
         )}
 
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        )}
+        {/* Ein Fehler eines Schritts wird angesagt, ohne den Fokus zu verschieben (WCAG 4.1.3). */}
+        <Box role="alert" aria-live="polite">
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {error}
+            </Alert>
+          )}
+        </Box>
 
-        {activeStep === 0 && (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, maxWidth: 640 }}>
-            <AssetNameFields
-              idPrefix="library-create"
-              name={name}
-              onNameChange={setName}
-              description={description}
-              onDescriptionChange={setDescription}
-              namePlaceholder="z. B. Rechtsquellen Soziales"
-            />
-            <AssetOwnerFields
-              idPrefix="library-create"
-              assetType="KNOWLEDGE_LIBRARY"
-              ownerType={ownerType}
-              onOwnerTypeChange={setOwnerType}
-              myGroups={myGroups}
-              selectedGroup={selectedGroup}
-              onSelectedGroupChange={setSelectedGroup}
-            />
+        {currentStep === STEP_ART && (
+          <Box
+            role="radiogroup"
+            aria-label="Art des Wissens wählen"
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+              gap: '14px',
+            }}
+          >
+            {allDocumentSourceTypes.map((type) => {
+              const selected = type === sourceType
+              const missing = isMissing(
+                type === 'UPLOAD' ? 'CREATE_LIBRARY' : 'CREATE_CONNECTOR_LIBRARY',
+              )
+                ? capabilityMissingMessage(
+                    type === 'UPLOAD' ? 'CREATE_LIBRARY' : 'CREATE_CONNECTOR_LIBRARY',
+                  )
+                : null
+              return (
+                <Box
+                  key={type}
+                  component="button"
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  aria-disabled={missing != null}
+                  disabled={missing != null}
+                  onClick={() => {
+                    if (missing) return
+                    setSourceType(type)
+                    setError(null)
+                  }}
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '12px',
+                    textAlign: 'left',
+                    font: 'inherit',
+                    cursor: missing ? 'not-allowed' : 'pointer',
+                    opacity: missing ? 0.6 : 1,
+                    p: 2,
+                    border: selected ? 2 : 1,
+                    borderColor: selected ? 'primary.main' : 'divider',
+                    borderRadius: '10px',
+                    color: 'text.primary',
+                    bgcolor: selected
+                      ? (theme) =>
+                          theme.palette.mode === 'dark'
+                            ? alpha(theme.palette.primary.main, 0.16)
+                            : blue[50]
+                      : 'transparent',
+                    '&:hover': { borderColor: selected ? 'primary.main' : 'text.disabled' },
+                  }}
+                >
+                  <Box aria-hidden sx={{ display: 'flex', color: 'text.secondary', mt: '2px' }}>
+                    <SourceTypeIcon sourceType={type} fontSize={22} />
+                  </Box>
+                  <Box>
+                    <Typography sx={{ fontSize: 14.5, fontWeight: 600 }}>
+                      {documentSourceTypeLabel(type)}
+                    </Typography>
+                    <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.25 }}>
+                      {documentSourceTypeDescription(type)}
+                    </Typography>
+                    {missing && (
+                      <Typography sx={{ fontSize: 12.5, color: 'warning.main', mt: 0.5 }}>
+                        {missing}
+                      </Typography>
+                    )}
+                  </Box>
+                </Box>
+              )
+            })}
           </Box>
         )}
 
-        {activeStep === 1 && (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            <RadioGroup
-              aria-label="Herkunft wählen"
-              value={sourceType}
-              onChange={(e) => {
-                setSourceType(e.target.value as DocumentSourceType)
-                setError(null)
-              }}
-              sx={{
-                display: 'grid',
-                gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
-                gap: '14px',
-              }}
-            >
-              {allDocumentSourceTypes.map((type) => {
-                const selected = type === sourceType
-                return (
-                  <FormControlLabel
-                    key={type}
-                    value={type}
-                    control={<Radio size="small" sx={{ p: 0, mt: '2px' }} />}
-                    label={
-                      <Box>
-                        <Typography sx={{ fontSize: 14.5, fontWeight: 600 }}>
-                          {documentSourceTypeLabel(type)}
-                        </Typography>
-                        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.25 }}>
-                          {documentSourceTypeDescription(type)}
-                        </Typography>
-                      </Box>
-                    }
-                    sx={{
-                      alignItems: 'flex-start',
-                      gap: '12px',
-                      m: 0,
-                      p: 2,
-                      border: selected ? 2 : 1,
-                      borderColor: selected ? 'primary.main' : 'divider',
-                      borderRadius: '10px',
-                      bgcolor: selected
-                        ? (theme) =>
-                            theme.palette.mode === 'dark'
-                              ? alpha(theme.palette.primary.main, 0.16)
-                              : blue[50]
-                        : 'transparent',
-                      '&:hover': { borderColor: selected ? 'primary.main' : 'text.disabled' },
-                    }}
-                  />
-                )
-              })}
-            </RadioGroup>
+        {currentStep === STEP_SOURCE && (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, maxWidth: 640 }}>
+            {configKind === 'confluence' && (
+              <ConfluenceSourceForm
+                mode="create"
+                idPrefix="library-create-confluence"
+                values={confluence}
+                onChange={(patch) => {
+                  setConfluence((prev) => ({ ...prev, ...patch }))
+                  setError(null)
+                }}
+              />
+            )}
 
+            {configKind === 's3' && (
+              <S3SourceForm
+                mode="create"
+                idPrefix="library-create-s3"
+                values={s3}
+                onChange={(patch) => {
+                  setS3((prev) => ({ ...prev, ...patch }))
+                  setError(null)
+                }}
+              />
+            )}
+
+            {configKind === 'path' && (
+              <PathSourceForm
+                mode="create"
+                idPrefix="library-create"
+                values={generic}
+                onChange={(patch) => setGeneric((prev) => ({ ...prev, ...patch }))}
+              />
+            )}
+
+            {configKind === 'url' && (
+              <UrlSourceForm
+                mode="create"
+                sourceType={sourceType}
+                idPrefix="library-create"
+                values={generic}
+                onChange={(patch) => setGeneric((prev) => ({ ...prev, ...patch }))}
+              />
+            )}
+
+            {(configKind === 'path' || configKind === 'url') && (
+              <SourceConnectionTest sourceType={sourceType} values={generic} />
+            )}
+
+            {/* Zeitplan und Sofortstart gelten seit #1942 für jeden Konnektortyp, nicht mehr nur
+                für Confluence und S3. */}
+            <Box>
+              <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1.75 }}>
+                Zeitplan
+              </Typography>
+              <LibraryScheduleForm
+                idPrefix="library-create-schedule"
+                values={schedule}
+                onChange={(patch) => {
+                  setSchedule((prev) => ({ ...prev, ...patch }))
+                  setError(null)
+                }}
+                confluence={confluenceRhythm}
+              />
+              <FormControlLabel
+                sx={{ mt: 2 }}
+                control={
+                  <Switch
+                    checked={startFirstRun}
+                    onChange={(e) => setStartFirstRun(e.target.checked)}
+                  />
+                }
+                label="Erste Indizierung sofort nach dem Anlegen starten"
+              />
+              <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.5 }}>
+                {startFirstRun
+                  ? firstRunHint
+                  : 'Ohne Sofortstart beginnt die Indizierung erst über „Jetzt indizieren“ auf der Detailseite oder über den Zeitplan.'}
+              </Typography>
+            </Box>
+          </Box>
+        )}
+
+        {currentStep === STEP_NAME && (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, maxWidth: 640 }}>
             {configKind === 'none' && (
               <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
                 Dokumente laden Sie nach dem Anlegen auf der Detailseite hoch — einzeln oder
                 gebündelt.
               </Typography>
             )}
-
-            {configKind === 'confluence' && (
-              <Box sx={{ maxWidth: 640 }}>
-                <ConfluenceSourceForm
-                  mode="create"
-                  idPrefix="library-create-confluence"
-                  values={confluence}
-                  onChange={(patch) => {
-                    setConfluence((prev) => ({ ...prev, ...patch }))
-                    setError(null)
-                  }}
-                />
-                <FormControlLabel
-                  sx={{ mt: 2 }}
-                  control={
-                    <Switch
-                      checked={startFirstRun}
-                      onChange={(e) => setStartFirstRun(e.target.checked)}
-                    />
-                  }
-                  label="Erste Indizierung sofort nach dem Anlegen starten"
-                />
-                <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.5 }}>
-                  {startFirstRun
-                    ? 'Der erste Lauf ist ein Vollabgleich über alle ausgewählten Spaces; sein Stand bleibt auf der Detailseite sichtbar.'
-                    : 'Ohne Sofortstart beginnt die Indizierung erst über „Jetzt indizieren“ auf der Detailseite oder über den Zeitplan.'}
-                </Typography>
-              </Box>
-            )}
-
-            {configKind === 's3' && (
-              <Box sx={{ maxWidth: 640 }}>
-                <S3SourceForm
-                  mode="create"
-                  idPrefix="library-create-s3"
-                  values={s3}
-                  onChange={(patch) => {
-                    setS3((prev) => ({ ...prev, ...patch }))
-                    setError(null)
-                  }}
-                />
-                <FormControlLabel
-                  sx={{ mt: 2 }}
-                  control={
-                    <Switch
-                      checked={startFirstRun}
-                      onChange={(e) => setStartFirstRun(e.target.checked)}
-                    />
-                  }
-                  label="Erste Indizierung sofort nach dem Anlegen starten"
-                />
-                <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.5 }}>
-                  {startFirstRun
-                    ? 'Der erste Lauf ist ein Vollabgleich über alle Geltungsbereiche; sein Stand bleibt auf der Detailseite sichtbar.'
-                    : 'Ohne Sofortstart beginnt die Indizierung erst über „Jetzt indizieren“ auf der Detailseite oder über den Zeitplan.'}
-                </Typography>
-              </Box>
-            )}
-
-            {configKind === 'path' && (
-              <Box sx={{ maxWidth: 640 }}>
-                <PathSourceForm
-                  mode="create"
-                  idPrefix="library-create"
-                  values={generic}
-                  onChange={(patch) => setGeneric((prev) => ({ ...prev, ...patch }))}
-                />
-              </Box>
-            )}
-
-            {configKind === 'url' && (
-              <Box sx={{ maxWidth: 640 }}>
-                <UrlSourceForm
-                  mode="create"
-                  sourceType={sourceType}
-                  idPrefix="library-create"
-                  values={generic}
-                  onChange={(patch) => setGeneric((prev) => ({ ...prev, ...patch }))}
-                />
-              </Box>
-            )}
-
-            {(configKind === 'path' || configKind === 'url') && (
-              <Box sx={{ maxWidth: 640 }}>
-                <SourceConnectionTest sourceType={sourceType} values={generic} />
-                <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 2 }}>
-                  Der erste Lauf startet nach dem Anlegen; sein Stand bleibt auf der Detailseite
-                  sichtbar.
-                </Typography>
-              </Box>
-            )}
+            <AssetNameFields
+              idPrefix="library-create"
+              name={name}
+              onNameChange={(next) => {
+                setNameTouched(true)
+                setName(next)
+                setError(null)
+              }}
+              description={description}
+              onDescriptionChange={setDescription}
+              namePlaceholder="z. B. Rechtsquellen Soziales"
+            />
           </Box>
         )}
 
-        {activeStep === 2 && (
+        {currentStep === STEP_SHARING && (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, maxWidth: 640 }}>
+            <AssetOwnerFields
+              idPrefix="library-create"
+              assetType="KNOWLEDGE_LIBRARY"
+              ownerType={ownerType}
+              onOwnerTypeChange={(next) => {
+                setOwnerType(next)
+                setError(null)
+              }}
+              myGroups={myGroups}
+              selectedGroup={selectedGroup}
+              onSelectedGroupChange={setSelectedGroup}
+            />
             <AssetRightsFields
               idPrefix="library-create"
+              listed={{ value: listed, onChange: setListed }}
               pendingGrants={pendingGrants}
               onPendingGrantsChange={setPendingGrants}
             />
@@ -398,7 +546,7 @@ export default function LibraryCreatePage() {
             Abbrechen
           </Button>
           <Box sx={{ flex: 1 }} />
-          {activeStep === 2 && pendingGrants.length > 0 && (
+          {currentStep === STEP_SHARING && pendingGrants.length > 0 && (
             <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
               {pendingGrants.length === 1
                 ? '1 Freigabe vorgemerkt'
@@ -408,15 +556,18 @@ export default function LibraryCreatePage() {
           {activeStep > 0 && (
             <Button
               variant="outlined"
-              onClick={() => setActiveStep((s) => s - 1)}
+              onClick={() => {
+                setError(null)
+                setActiveStep((s) => s - 1)
+              }}
               disabled={submitting}
             >
               Zurück
             </Button>
           )}
-          {activeStep < STEPS.length - 1 ? (
-            <Button variant="contained" onClick={handleNext} disabled={name.trim() === ''}>
-              {activeStep === 1 ? 'Weiter zu Rechten' : 'Weiter'}
+          {activeStep < steps.length - 1 ? (
+            <Button variant="contained" onClick={handleNext}>
+              Weiter
             </Button>
           ) : (
             <Button

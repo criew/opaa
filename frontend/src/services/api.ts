@@ -2,6 +2,7 @@ import axios, { AxiosError } from 'axios'
 import type {
   AssetGrantRequest,
   AssetGrantResponse,
+  AssetOwnershipTransferRequest,
   BrandingResponse,
   BrandingUpdateRequest,
   ChatCreateRequest,
@@ -1855,6 +1856,22 @@ export async function revokeAssetGrant(
 ): Promise<void> {
   try {
     await client.delete(`/v1/assets/${assetType}/${assetId}/grants/${grantId}`)
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/**
+ * Übergibt genau dieses eine Objekt an eine andere zuständige Stelle (#1941) — anders als die
+ * Übertragung aller Wirkungen einer Person oder Gruppe, die `permissionTransferApi` fährt.
+ */
+export async function transferAssetOwnership(
+  assetType: AssetType,
+  assetId: string,
+  request: AssetOwnershipTransferRequest,
+): Promise<void> {
+  try {
+    await client.post(`/v1/assets/${assetType}/${assetId}/transfer-ownership`, request)
   } catch (err) {
     normalizeError(err)
   }

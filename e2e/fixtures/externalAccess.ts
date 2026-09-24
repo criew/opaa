@@ -230,21 +230,18 @@ export async function setLibraryReleaseViaApi(
 }
 
 /**
- * Öffnet den Zugriffsbereich einer Bibliothek (Detailseite → Freigaben → Rechte verwalten), in dem
- * die Freigabe für Fremdzugänge steht.
+ * Öffnet den Reiter „Freigaben" einer Bibliothek, auf dem seit #1941 der Abschnitt „Externer
+ * Zugang" mit der Freigabe für Fremdzugänge steht - ohne Dialog davor.
  */
 export async function openLibraryAccessDialog(page: Page, libraryName: string): Promise<void> {
   await gotoLibraries(page)
   await gotoLibraryDetail(page, libraryName)
   await page.getByRole('tab', { name: 'Freigaben' }).click()
-  await page.getByRole('button', { name: 'Rechte verwalten' }).click()
   await expect(page.getByRole('heading', { name: 'Fremdzugänge' })).toBeVisible()
 }
 
-/** Schließt den Zugriffsbereich wieder - im Dialog, weil auch eine Meldung „Schließen“ heißt (#784). */
-export async function closeLibraryAccessDialog(page: Page): Promise<void> {
-  await page.getByRole('dialog').getByRole('button', { name: 'Schließen' }).click()
-}
+/** Seit #1941 steht der Abschnitt auf der Seite; zu schließen gibt es nichts mehr. */
+export async function closeLibraryAccessDialog(_page: Page): Promise<void> {}
 
 /** Ein Datum im Format des Eingabefelds, so viele Tage in der Zukunft. */
 export function dateInputValue(daysFromNow: number): string {

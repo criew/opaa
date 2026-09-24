@@ -61,7 +61,8 @@ final class LibraryResponseMapper {
         request.getConfluenceEdition(),
         toSelections(request.getConfluenceSpaces()),
         request.getConfluenceFullSyncIntervalDays(),
-        toS3Settings(request.getS3Settings()));
+        toS3Settings(request.getS3Settings()),
+        toScheduleUpdate(request.getSchedule()));
   }
 
   static LibraryUpdate toUpdate(LibraryUpdateRequest request) {
@@ -186,6 +187,7 @@ final class LibraryResponseMapper {
                 library.getCreatedAt(),
                 library.getUpdatedAt())
             .description(library.getDescription())
+            .ownerName(detail.ownerName())
             .documentCount(detail.documentCount())
             .diagnosticsLocked(library.isDiagnosticsLocked())
             .diagnosticsLockToggleable(detail.diagnosticsLockToggleable())

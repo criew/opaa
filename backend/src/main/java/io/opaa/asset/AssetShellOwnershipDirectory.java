@@ -169,6 +169,88 @@ class AssetShellOwnershipDirectory implements AssetOwnershipDirectory {
   }
 
   /**
+   * Hands one asset to {@code newOwner} outside a {@link io.opaa.permission.PermissionTransfer}
+   * (#1941): the same four moves as {@link #transferOwnership}, but without a transfer to belong to
+   * - the history intervals carry the ordinary causes of a grant given and revoked, so no interval
+   * points at a transfer row that does not exist. Handing the asset to its current owner is a
+   * no-op.
+   *
+   * @return whether the owner actually changed.
+   */
+  boolean handOver(Asset asset, PermissionSubject newOwner, UUID actorUserId) {
+    PermissionSubject previousOwner = asset.ownerSubject();
+    if (previousOwner.type() == newOwner.type() && previousOwner.id().equals(newOwner.id())) {
+      return false;
+    }
+    AssetTypeDefinition definition = assetTypes.require(asset.getAssetType());
+    UUID previousOwnerId = asset.getOwnerId();
+    asset.applyOwner(
+        newOwner.type() == PermissionSubjectType.GROUP ? AssetOwnerType.GROUP : AssetOwnerType.USER,
+        newOwner.id());
+    giveOwnerGrant(asset, newOwner, actorUserId);
+    AssetGrant left = findGrant(asset, previousOwner);
+    if (left != null) {
+      permissionHistory.recordGrantRevoked(left, actorUserId);
+      grantRepository.delete(left);
+    }
+    ownershipHistory.recordTransferred(asset.getAssetType(), asset.getId(), newOwner, actorUserId);
+    auditEventRecorder.recordUserAction(
+        AuditEvent.builder()
+            .organizationId(asset.getOrganizationId())
+            .actor(actorUserId)
+            .type(AuditEventType.ASSET_OWNER_CHANGED)
+            .object(definition.auditObjectType(), asset.getId(), asset.getName())
+            .before(Map.of("ownerId", previousOwnerId.toString()))
+            .after(Map.of("ownerId", newOwner.id().toString()))
+            .outcome(AuditOutcome.SUCCESS)
+            .build());
+    assetRepository.save(asset);
+    return true;
+  }
+
+  /**
+   * The role ownership goes with, raising only: a person becomes {@code OWNER}, a group {@code
+   * MANAGER} - a group never holds {@code OWNER}, which would grow with every member (see {@link
+   * AssetShellService}). A target already holding at least that role keeps what it has.
+   */
+  private void giveOwnerGrant(Asset asset, PermissionSubject newOwner, UUID actorUserId) {
+    AssetRole ownerRole =
+        newOwner.type() == PermissionSubjectType.GROUP ? AssetRole.MANAGER : AssetRole.OWNER;
+    AssetGrant existing = findGrant(asset, newOwner);
+    if (existing == null) {
+      AssetGrant granted =
+          grantRepository.save(
+              newOwner.type() == PermissionSubjectType.GROUP
+                  ? AssetGrant.forGroup(
+                      asset.getAssetType(),
+                      asset.getId(),
+                      asset.getOrganizationId(),
+                      newOwner.id(),
+                      ownerRole,
+                      null,
+                      actorUserId,
+                      // Ownership, not a release: the growth signal belongs to a granted role.
+                      null)
+                  : AssetGrant.forUser(
+                      asset.getAssetType(),
+                      asset.getId(),
+                      asset.getOrganizationId(),
+                      newOwner.id(),
+                      ownerRole,
+                      null,
+                      actorUserId));
+      permissionHistory.recordGrantCreated(granted, actorUserId);
+      return;
+    }
+    Instant now = Instant.now();
+    if (existing.getRole().ordinal() < ownerRole.ordinal() || existing.isExpired(now)) {
+      existing.updateRole(ownerRole, null, actorUserId, now);
+      grantRepository.save(existing);
+      permissionHistory.recordGrantRoleChanged(existing, actorUserId);
+    }
+  }
+
+  /**
    * Gives the new owner the role that goes with ownership and ends the previous owner's, both at
    * the transfer's one boundary and under its one id. Raising only: a target that already holds a
    * stronger role keeps it, and one that already holds exactly this role gets no second interval.

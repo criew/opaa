@@ -211,9 +211,9 @@ test.describe('Upload > 1 MB durch den echten nginx (#519)', () => {
 
     await gotoLibraries(page)
     await page.getByRole('button', { name: 'Neue Bibliothek' }).click()
+    await page.getByRole('button', { name: 'Weiter', exact: true }).click()
     await page.getByLabel('Name').fill(libraryName)
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
-    await page.getByRole('button', { name: 'Weiter zu Rechten' }).click()
     await Promise.all([
       // Negative lookahead: the wizard itself lives at /libraries/new, which the plain
       // one-segment pattern would match immediately.
@@ -268,9 +268,8 @@ test.describe('Verbindungstest im Anlage-Assistenten (#514)', () => {
   test('Erreichbare Quelle zeigt einen Zaehlwert', async ({ authenticatedPage: page }) => {
     await gotoLibraries(page)
     await page.getByRole('button', { name: 'Neue Bibliothek' }).click()
-    await page.getByLabel('Name').fill(`E2E Verbindungstest ${runId}`)
-    await page.getByRole('button', { name: 'Weiter', exact: true }).click()
     await page.getByRole('radio', { name: /Webverzeichnis/ }).click()
+    await page.getByRole('button', { name: 'Weiter', exact: true }).click()
     await page.getByLabel('Adresse (URL)').fill('http://rss-feed/webverzeichnis/')
     await page.getByRole('button', { name: 'Verbindung testen' }).click()
 
@@ -290,9 +289,8 @@ test.describe('Verbindungstest im Anlage-Assistenten (#514)', () => {
 
     await gotoLibraries(page)
     await page.getByRole('button', { name: 'Neue Bibliothek' }).click()
-    await page.getByLabel('Name').fill(libraryName)
-    await page.getByRole('button', { name: 'Weiter', exact: true }).click()
     await page.getByRole('radio', { name: /Webverzeichnis/ }).click()
+    await page.getByRole('button', { name: 'Weiter', exact: true }).click()
     // "ai-stub" resolves instantly (it is part of this very stack) - nothing listens on port 9,
     // so the backend's HTTP client gets an immediate, DNS-independent connection refusal.
     await page.getByLabel('Adresse (URL)').fill('http://ai-stub:9/')
@@ -304,7 +302,9 @@ test.describe('Verbindungstest im Anlage-Assistenten (#514)', () => {
 
     // The failed test must not block creation itself (#514 acceptance criteria) - the source
     // configuration is only probed, never required to succeed.
-    await page.getByRole('button', { name: 'Weiter zu Rechten' }).click()
+    await page.getByRole('button', { name: 'Weiter', exact: true }).click()
+    await page.getByLabel('Name').fill(libraryName)
+    await page.getByRole('button', { name: 'Weiter', exact: true }).click()
     await Promise.all([
       page.waitForURL(/\/libraries\/(?!new$)[^/]+$/),
       page.getByRole('button', { name: 'Bibliothek anlegen' }).click(),
@@ -334,9 +334,9 @@ test.describe('Dokumentliste mit Paging und Suche (#517)', () => {
 
     await gotoLibraries(page)
     await page.getByRole('button', { name: 'Neue Bibliothek' }).click()
+    await page.getByRole('button', { name: 'Weiter', exact: true }).click()
     await page.getByLabel('Name').fill(libraryName)
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
-    await page.getByRole('button', { name: 'Weiter zu Rechten' }).click()
     await Promise.all([
       page.waitForURL(/\/libraries\/(?!new$)[^/]+$/),
       page.getByRole('button', { name: 'Bibliothek anlegen' }).click(),
@@ -407,11 +407,12 @@ test.describe('Dokumentliste mit Paging und Suche (#517)', () => {
 
     await gotoLibraries(page)
     await page.getByRole('button', { name: 'Neue Bibliothek' }).click()
+    await page.getByRole('radio', { name: /Webverzeichnis/ }).click()
+    await page.getByRole('button', { name: 'Weiter', exact: true }).click()
+    await page.getByLabel('Adresse (URL)').fill('http://rss-feed/anlagen/')
+    await page.getByRole('button', { name: 'Weiter', exact: true }).click()
     await page.getByLabel('Name').fill(libraryName)
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
-    await page.getByRole('radio', { name: /Webverzeichnis/ }).click()
-    await page.getByLabel('Adresse (URL)').fill('http://rss-feed/anlagen/')
-    await page.getByRole('button', { name: 'Weiter zu Rechten' }).click()
     await Promise.all([
       page.waitForURL(/\/libraries\/(?!new$)[^/]+$/),
       page.getByRole('button', { name: 'Bibliothek anlegen' }).click(),
@@ -441,9 +442,9 @@ test.describe('Sammelloeschen von Dokumenten (#1943)', () => {
 
     await gotoLibraries(page)
     await page.getByRole('button', { name: 'Neue Bibliothek' }).click()
+    await page.getByRole('button', { name: 'Weiter', exact: true }).click()
     await page.getByLabel('Name').fill(libraryName)
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
-    await page.getByRole('button', { name: 'Weiter zu Rechten' }).click()
     await Promise.all([
       page.waitForURL(/\/libraries\/(?!new$)[^/]+$/),
       page.getByRole('button', { name: 'Bibliothek anlegen' }).click(),
@@ -483,14 +484,15 @@ test.describe('Quellkonfiguration bearbeiten (#516)', () => {
 
     await gotoLibraries(page)
     await page.getByRole('button', { name: 'Neue Bibliothek' }).click()
-    await page.getByLabel('Name').fill(libraryName)
-    await page.getByRole('button', { name: 'Weiter', exact: true }).click()
     await page.getByRole('radio', { name: /Webverzeichnis/ }).click()
+    await page.getByRole('button', { name: 'Weiter', exact: true }).click()
     await page.getByLabel('Adresse (URL)').fill('http://rss-feed/anlagen/')
     // Credentials are set on creation so this test can prove they survive an edit that leaves the
     // field blank - a library created without any has nothing to preserve in the first place.
     await page.getByLabel('Anmeldedaten').fill('testuser:testpass')
-    await page.getByRole('button', { name: 'Weiter zu Rechten' }).click()
+    await page.getByRole('button', { name: 'Weiter', exact: true }).click()
+    await page.getByLabel('Name').fill(libraryName)
+    await page.getByRole('button', { name: 'Weiter', exact: true }).click()
     await Promise.all([
       page.waitForURL(/\/libraries\/(?!new$)[^/]+$/),
       page.getByRole('button', { name: 'Bibliothek anlegen' }).click(),

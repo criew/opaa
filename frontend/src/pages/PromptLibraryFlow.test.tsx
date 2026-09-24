@@ -168,7 +168,7 @@ describe('Prompt-Bibliothek anlegen, füllen und freigeben', () => {
 
     expect(await screen.findByText(/Nachfolge offen — zuständig/)).toBeInTheDocument()
     await user.click(await screen.findByLabelText('Im Katalog auffindbar, auch ohne Berechtigung'))
-    await user.click(screen.getByRole('button', { name: 'Freigabe speichern' }))
+    await user.click(screen.getByRole('button', { name: 'Auffindbarkeit speichern' }))
 
     expect(await screen.findByText(/Übernahme/)).toBeInTheDocument()
   }, 15000)
@@ -222,8 +222,12 @@ describe('Prompt-Bibliothek anlegen, füllen und freigeben', () => {
       'aria-selected',
       'true',
     )
-    expect(screen.getByRole('heading', { name: 'Freigabe' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Rechte verwalten' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Berechtigungen' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Im Katalog auffindbar' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Zuordnungen' })).toBeInTheDocument()
+    // #1941: Die Berechtigungen stehen als Liste auf der Seite, nicht hinter einem Dialog.
+    expect(screen.getByRole('button', { name: 'Freigeben' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Rechte verwalten' })).not.toBeInTheDocument()
     expect(
       screen.getByRole('heading', { name: 'Warum sehe ich diese Prompt-Bibliothek?' }),
     ).toBeInTheDocument()

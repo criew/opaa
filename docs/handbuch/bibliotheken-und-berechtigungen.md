@@ -87,10 +87,27 @@ OPAA eine **leere** Gruppe — eine Freigabe an sie erreicht niemanden.
 Die Bibliotheken, die eine Person lesen darf, stehen in der Hauptnavigation unter **„Wissen"**. Jede
 Art von Bestand hat dort einen eigenen Punkt; der Menüpunkt und die Seite dahinter heißen gleich —
 die [Prompt-Bibliotheken](prompt-bibliotheken.md) stehen unter **„Prompts"**. Rollen,
-Auffindbarkeit, Herleitung und „Nachfolge offen" gelten für beide Arten gleich; dafür steht bei
-beiden derselbe Abschnitt **„Freigabe"** mit der Auffindbarkeit, „Rechte verwalten",
-den Zuordnungen zu Räumen und darunter „Warum sehe ich das?" — bei einer Wissensbibliothek im
-Reiter „Freigaben", bei einer Prompt-Bibliothek im Reiter „Verwaltung".
+Auffindbarkeit, Herleitung und „Nachfolge offen" gelten für beide Arten gleich; dafür stehen bei
+beiden dieselben Abschnitte — **„Berechtigungen"** als Liste auf der Seite (nicht mehr hinter einem
+Knopf „Rechte verwalten"), **„Im Katalog auffindbar"**, **„Zuordnungen"** und **„Warum sehe ich
+das?"** — bei einer Wissensbibliothek im Reiter „Freigaben", bei einer Prompt-Bibliothek im Reiter
+„Verwaltung".
+
+Der Reiter **„Freigaben"** einer Wissensbibliothek führt sie in dieser Reihenfolge:
+
+| Abschnitt | Inhalt |
+|---|---|
+| **Eigentümer** | die zuständige Stelle mit Namen; der Eigentümer selbst kann sie über „Eigentum übergeben" an eine Person oder eine Gruppe weiterreichen — mit Rückfrage, und die Eigentümerrolle geht mit |
+| **Berechtigungen** | Personen, Gruppen und „Alle Konten" mit Rolle, Befristung und Entzug, dazu das Formular „Freigeben"; für die Systemverwaltung darunter die Obergrenze „Freigabe an Alle erlaubt" |
+| **Im Katalog auffindbar** | der Schalter mit eigenem „Auffindbarkeit speichern"; für die Systemverwaltung darunter die Obergrenze „Auffindbarkeit im Katalog erlaubt" |
+| **Externer Zugang** | die Freigabe für Fremdzugänge |
+| **Zuordnungen** | die Spaces, in denen die Bibliothek als Datenquelle bereitsteht |
+| **Diagnosesperre** | ob die Bibliothek in einer fremden Suchdiagnose auftauchen darf |
+| **Warum sehe ich diese Wissensbibliothek?** | die eigene Herleitung |
+
+Jeder Abschnitt speichert für sich; einen gemeinsamen „Speichern"-Knopf über Abschnitte hinweg gibt
+es nicht. Eine lesende Rolle sieht Eigentümer, Zuordnungen, Diagnosesperre und die Herleitung —
+schreibgeschützt.
 
 **Zuordnungen: wer welchen Space erfährt.** Die Liste der Spaces, in denen ein Bestand
 bereitsteht, sehen alle Leseberechtigten — aber nur so weit, wie der Space selbst sichtbar ist.
@@ -149,33 +166,6 @@ Beides wird **historisiert** wie eine erteilte Rolle: Zu jedem Stichtag innerhal
 Aufbewahrungsfrist ist belegbar, wie weit eine Bibliothek gereicht hat (Abschnitt 12) — die
 Freigabe an alle Konten in der Rechtehistorie, die Auffindbarkeit in ihrer eigenen. Die
 Freigabe für [Fremdzugänge](fremdzugaenge.md) ist ein weiteres Reichweitenfeld derselben Art.
-
-### Der Katalog
-
-Der **Katalog** ist ein eigener Punkt der Hauptnavigation neben „Wissen" und „Prompts". Er zeigt
-Wissens- und Prompt-Bibliotheken gemischt: alle, die die Person lesen darf — über eine eigene Rolle,
-eine Rolle über eine Gruppe oder die Freigabe an „Alle Konten" —, und dazu alle, die im Katalog
-auffindbar sind. Die Übersichten unter „Wissen" und „Prompts" bleiben daneben die Orte, an
-denen Bibliotheken angelegt und verwaltet werden.
-
-| Element | Inhalt |
-|---|---|
-| **Suche** | Über Name und Beschreibung, ohne Rücksicht auf Groß- und Kleinschreibung; der Suchtext ist begrenzt |
-| **Filter** | „Alle", „Wissen" oder „Prompts" |
-| **Eintrag** | Art (Wissens- oder Prompt-Bibliothek), Name, Beschreibung, Umfang (Dokumente bzw. Prompts), in wie vielen Räumen sie bereitsteht, zuständige Stelle; in der Tabelle zusätzlich die Herkunft |
-| **Seiten** | Die Einträge kommen seitenweise; „Weitere laden" hängt die nächste Seite an |
-
-**Auffindbar ist nicht zugänglich.** Eine auffindbare Bibliothek, die die Person nicht lesen darf,
-steht im Katalog mit dem Hinweis **„Auffindbar ohne Berechtigung — zuständig: …"** und führt nirgendwohin;
-ihre Adresse antwortet „nicht gefunden" wie bei einer unbekannten Bibliothek. Zuständig ist der
-Eigentümer — bei einer Gruppe ihr Name, bei einer Person ihr Anzeigename. Eine geschützte Gruppe und
-eine Person ohne Anzeigenamen bleiben unbenannt, eine E-Mail-Adresse erscheint nie. Ist die
-Nachfolge offen (Abschnitt 13.3), nennt der Hinweis deren Adressaten.
-
-Die Systemverwaltung sieht im Katalog nicht mehr als andere: **Verwalten ist nicht Lesen.** Eine
-Bibliothek, die sie nur verwaltet, erscheint dort nur, wenn sie auffindbar ist, und dann als Eintrag
-ohne Zugriff. Der Katalog zeigt nie etwas aus einer anderen Organisation, und ein Eintrag enthält
-Beschreibungen, nie Inhalte: keine Dokumente, keine Prompts.
 
 ### Freigabe-Obergrenze für Konnektorbibliotheken
 
@@ -890,8 +880,7 @@ Abschnitt „Vor dem Update auf die Gruppenherkunft".
 - **Keine freien Rollen.** Die vier Bibliotheks- und die drei Raumrollen sind fest; wer ein Bündel
   braucht, nimmt eine Gruppe.
 - **Keine Mitgliederliste ohne Objekt.** Wer wissen will, wer in einer Gruppe ist, fragt an einem
-  Objekt, an dem er selbst das Recht vergibt (Abschnitt 8), oder verantwortet die Gruppe.
-- **Keinen Personen-Einstieg in die Stichtagsauskunft** (Abschnitt 12) und **keine Vorschau
+  Objekt, an dem er selbst das Recht vergibt (Abschnitt 8), oder verantwortet die Gruppe.- **Keinen Personen-Einstieg in die Stichtagsauskunft** (Abschnitt 12) und **keine Vorschau
   „alles, was diese Person darf"** (Abschnitt 13.2).
 - **Keine Historie der Systemrollen.** Was mit einer Systemrolle geschah, steht im
   Nachweisprotokoll und unterliegt dessen Frist.
@@ -900,8 +889,6 @@ Abschnitt „Vor dem Update auf die Gruppenherkunft".
 - **Keine Rezertifizierung.** Ein Recht kann befristet werden, aber niemand wird zur Wiedervorlage
   gezwungen.
 - **Kein Schreiben ins Verzeichnis.** OPAA liest, und zwar nur.
-- **Keinen Freigabestand, keine Versionen und keine Nutzungsangaben im Katalog** (Abschnitt 4,
-  „Der Katalog"). Ein Eintrag sagt, was es gibt und wer zuständig ist.
 
 ## 18. Weiterführende Kapitel
 

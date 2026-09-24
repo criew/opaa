@@ -276,6 +276,14 @@ public class KnowledgeLibraryService {
     if (sourceConfiguration.sourceType() == DocumentSourceType.S3) {
       library.updateS3Settings(sourceConfiguration.s3Settings());
     }
+    // #1942: the rhythm is set with the library, not in a second call right after it - same
+    // validation as on an update, so an UPLOAD library is refused here too instead of by the
+    // database's own chk_knowledge_libraries_schedule.
+    if (request.schedule() != null) {
+      ValidatedSchedule schedule =
+          validateSchedule(request.schedule(), sourceConfiguration.sourceType());
+      library.updateSchedule(schedule.enabled(), schedule.cron());
+    }
 
     KnowledgeLibrary saved = libraryRepository.save(library);
     // The creator holds OWNER, an owning group MANAGER - never OWNER, see AssetShellService. The
@@ -1749,7 +1757,10 @@ public class KnowledgeLibraryService {
         documentCount,
         managementDetail,
         diagnosticsLockToggleable,
-        accessService.reachOf(List.of(library)).get(library.getId()));
+        accessService.reachOf(List.of(library)).get(library.getId()),
+        // #1941: who is responsible for a library is not a secret from its readers - the same
+        // resolution the overview uses, and the same silence about a name it may not disclose.
+        assetOwnerNames.of(List.of(library)).get(library.getOwnerId()));
   }
 
   private LibraryManagementDetail toManagementDetail(KnowledgeLibrary library) {

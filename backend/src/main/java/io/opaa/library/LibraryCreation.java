@@ -18,6 +18,9 @@ import java.util.UUID;
  *     applied to a {@code null} {@code LibraryRequest.ownerType}.
  * @param s3Settings the typed configuration of an {@code S3} library (ADR-0027), required for that
  *     type and rejected for every other
+ * @param schedule the indexing rhythm to set together with the library (#1942); {@code null} leaves
+ *     the library without one, and anything but {@code DISABLED} on an {@code UPLOAD} library is
+ *     refused exactly as it is on an update
  */
 public record LibraryCreation(
     String name,
@@ -34,4 +37,5 @@ public record LibraryCreation(
     ConfluenceEdition confluenceEdition,
     List<ConfluenceSpaceSelection> confluenceSpaces,
     Integer confluenceFullSyncIntervalDays,
-    S3SourceSettings s3Settings) {}
+    S3SourceSettings s3Settings,
+    LibraryScheduleUpdate schedule) {}

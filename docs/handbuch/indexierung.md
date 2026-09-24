@@ -158,6 +158,18 @@ Dokumente gelöscht wurden; blieb eines stehen (etwa weil es zwischenzeitlich sc
 nennt die Meldung den Grund. In einer Konnektorbibliothek gibt es weder das Einzel- noch das
 Sammellöschen — ein gelöschtes Dokument käme mit dem nächsten Lauf zurück.
 
+**Eine Bibliothek anlegen.** „Neue Bibliothek" führt in einen Assistenten, dessen Schritte dieselben
+Namen tragen wie die Reiter der fertigen Bibliothek: **Art des Wissens · Quelle · Name &
+Beschreibung · Freigaben**. Der erste Schritt bietet je Quellentyp eine Kachel mit Symbol und einem
+Satz dazu; fehlt das Anlegerecht für diese Art (Upload und Konnektor sind zwei getrennte Rechte),
+ist die Kachel gesperrt und nennt den Grund. Der Schritt „Quelle" enthält Anbindung,
+Verbindungstest, **Zeitplan** und den Schalter „Erste Indizierung sofort nach dem Anlegen starten";
+beide gelten für jeden Konnektortyp, nicht nur für Confluence und S3. Bei einer Upload-Bibliothek
+entfällt der Schritt. Der Name ist, wo die Quelle ihn hergibt, vorbelegt — der einzelne
+Confluence-Space, der erste Bucket, der letzte Pfadabschnitt, der Hostname — und bleibt
+überschreibbar. Der letzte Schritt setzt Eigentümer, vorgemerkte Freigaben und den Schalter „Im
+Katalog auffindbar". Nach dem Anlegen führt der Assistent auf die Detailseite.
+
 ## 3. Wie ein Lauf entsteht und endet
 
 ### 3.1 Auslöser

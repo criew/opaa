@@ -30,6 +30,7 @@ public final class LibraryCreationBuilder {
   private List<ConfluenceSpaceSelection> confluenceSpaces;
   private Integer confluenceFullSyncIntervalDays;
   private S3SourceSettings s3Settings;
+  private LibraryScheduleUpdate schedule;
 
   private LibraryCreationBuilder(String name, DocumentSourceType sourceType) {
     this.name = name;
@@ -105,6 +106,11 @@ public final class LibraryCreationBuilder {
     return this;
   }
 
+  public LibraryCreationBuilder schedule(LibraryScheduleUpdate schedule) {
+    this.schedule = schedule;
+    return this;
+  }
+
   public LibraryCreation build() {
     return new LibraryCreation(
         name,
@@ -121,6 +127,7 @@ public final class LibraryCreationBuilder {
         confluenceEdition,
         confluenceSpaces,
         confluenceFullSyncIntervalDays,
-        s3Settings);
+        s3Settings,
+        schedule);
   }
 }

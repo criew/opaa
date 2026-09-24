@@ -65,7 +65,8 @@ class LibraryResponseMapperTest {
             7L,
             LibraryManagementDetail.EMPTY,
             false,
-            new AssetReach(true, 2, 1));
+            new AssetReach(true, 2, 1),
+            "Referat 50");
 
     LibraryResponse response = LibraryResponseMapper.toResponse(detail);
 
@@ -74,6 +75,9 @@ class LibraryResponseMapperTest {
     assertThat(response.getDescription()).isEqualTo("Beschreibung");
     assertThat(response.getOwnerType()).isEqualTo(AssetOwnerType.USER);
     assertThat(response.getOwnerId()).isEqualTo(owner);
+    // #1941: the owner's name reaches every reader - the section "Eigentümer" of the Reiter
+    // „Freigaben" is not gated at MANAGER like the configuration fields below.
+    assertThat(response.getOwnerName()).isEqualTo("Referat 50");
     assertThat(response.getReach().getAllAccounts()).isTrue();
     assertThat(response.getReach().getGroupCount()).isEqualTo(2);
     assertThat(response.getReach().getUserCount()).isEqualTo(1);
@@ -111,10 +115,22 @@ class LibraryResponseMapperTest {
             UUID.randomUUID(), "Rechtsquellen", null, UUID.randomUUID(), false);
     LibraryDetail toggleable =
         new LibraryDetail(
-            library, AssetRole.OWNER, 0L, LibraryManagementDetail.EMPTY, true, AssetReach.NONE);
+            library,
+            AssetRole.OWNER,
+            0L,
+            LibraryManagementDetail.EMPTY,
+            true,
+            AssetReach.NONE,
+            null);
     LibraryDetail notToggleable =
         new LibraryDetail(
-            library, AssetRole.OWNER, 0L, LibraryManagementDetail.EMPTY, false, AssetReach.NONE);
+            library,
+            AssetRole.OWNER,
+            0L,
+            LibraryManagementDetail.EMPTY,
+            false,
+            AssetReach.NONE,
+            null);
 
     assertThat(LibraryResponseMapper.toResponse(toggleable).getDiagnosticsLockToggleable())
         .isTrue();
@@ -159,7 +175,8 @@ class LibraryResponseMapperTest {
             false,
             false);
     LibraryDetail detail =
-        new LibraryDetail(library, AssetRole.MANAGER, 3L, managementDetail, true, AssetReach.NONE);
+        new LibraryDetail(
+            library, AssetRole.MANAGER, 3L, managementDetail, true, AssetReach.NONE, null);
 
     LibraryResponse response = LibraryResponseMapper.toResponse(detail);
 
@@ -205,7 +222,8 @@ class LibraryResponseMapperTest {
             null, null, null, false, false, null, null, null, null, null, null, 0L, 0L, null, null,
             null);
     LibraryDetail detail =
-        new LibraryDetail(library, AssetRole.OWNER, 0L, managementDetail, true, AssetReach.NONE);
+        new LibraryDetail(
+            library, AssetRole.OWNER, 0L, managementDetail, true, AssetReach.NONE, null);
 
     LibraryResponse response = LibraryResponseMapper.toResponse(detail);
 
@@ -499,7 +517,13 @@ class LibraryResponseMapperTest {
     LibraryResponse response =
         LibraryResponseMapper.toResponse(
             new LibraryDetail(
-                s3, AssetRole.VIEWER, 0, LibraryManagementDetail.EMPTY, false, AssetReach.NONE));
+                s3,
+                AssetRole.VIEWER,
+                0,
+                LibraryManagementDetail.EMPTY,
+                false,
+                AssetReach.NONE,
+                null));
 
     assertThat(response.getS3Settings().getRegion()).isEqualTo("eu-central-1");
     assertThat(response.getS3Settings().getPathStyle()).isTrue();
@@ -521,7 +545,8 @@ class LibraryResponseMapperTest {
                         0,
                         LibraryManagementDetail.EMPTY,
                         false,
-                        AssetReach.NONE))
+                        AssetReach.NONE,
+                        null))
                 .getS3Settings())
         .isNull();
   }
@@ -555,7 +580,8 @@ class LibraryResponseMapperTest {
                 0,
                 LibraryManagementDetail.EMPTY,
                 false,
-                AssetReach.NONE));
+                AssetReach.NONE,
+                null));
 
     assertThat(response.getConfluenceEdition()).isEqualTo(ConfluenceEdition.CLOUD);
     assertThat(response.getConfluenceSpaces())
@@ -568,7 +594,13 @@ class LibraryResponseMapperTest {
     LibraryResponse plain =
         LibraryResponseMapper.toResponse(
             new LibraryDetail(
-                upload, AssetRole.OWNER, 0, LibraryManagementDetail.EMPTY, false, AssetReach.NONE));
+                upload,
+                AssetRole.OWNER,
+                0,
+                LibraryManagementDetail.EMPTY,
+                false,
+                AssetReach.NONE,
+                null));
     assertThat(plain.getConfluenceEdition()).isNull();
     assertThat(plain.getConfluenceSpaces()).isNull();
   }

@@ -33,11 +33,12 @@ async function gotoLibraries(page: Page) {
 async function createFilesystemLibrary(page: Page, name: string): Promise<string> {
   await gotoLibraries(page)
   await page.getByRole('button', { name: 'Neue Bibliothek' }).click()
+  await page.getByRole('radio', { name: /Dateisystem/ }).click()
+  await page.getByRole('button', { name: 'Weiter', exact: true }).click()
+  await page.getByLabel('Verzeichnispfad').fill(SOURCE_PATH)
+  await page.getByRole('button', { name: 'Weiter', exact: true }).click()
   await page.getByLabel('Name').fill(name)
   await page.getByRole('button', { name: 'Weiter', exact: true }).click()
-  await page.getByRole('radio', { name: /Dateisystem/ }).click()
-  await page.getByLabel('Verzeichnispfad').fill(SOURCE_PATH)
-  await page.getByRole('button', { name: 'Weiter zu Rechten' }).click()
   await Promise.all([
     // /libraries/new is the wizard itself - without the lookahead the wait would resolve
     // immediately against the current URL.

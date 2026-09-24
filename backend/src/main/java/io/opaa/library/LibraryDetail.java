@@ -16,6 +16,8 @@ import io.opaa.permission.AssetReach;
  *     LibraryAccessService#holdsIndependentOwnerRole}), independent of {@code myRole} - a system
  *     admin's {@code myRole} bypasses to {@code OWNER} unconditionally, this field never does.
  * @param reach how far the library reaches right now, derived from its grants (#1931).
+ * @param ownerName the owner's display name, or {@code null} where it cannot be named - the same
+ *     resolution {@link io.opaa.asset.AssetOwnerNames} performs for the overview.
  */
 public record LibraryDetail(
     KnowledgeLibrary library,
@@ -23,4 +25,5 @@ public record LibraryDetail(
     long documentCount,
     LibraryManagementDetail managementDetail,
     boolean diagnosticsLockToggleable,
-    AssetReach reach) {}
+    AssetReach reach,
+    String ownerName) {}
