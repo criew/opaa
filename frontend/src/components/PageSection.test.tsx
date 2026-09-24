@@ -44,6 +44,16 @@ const QUELLEN = {
     import: 'default',
     eager: true,
   }) as Record<string, string>),
+  ...(import.meta.glob('./assets/*.tsx', {
+    query: '?raw',
+    import: 'default',
+    eager: true,
+  }) as Record<string, string>),
+  ...(import.meta.glob('./prompts/*.tsx', {
+    query: '?raw',
+    import: 'default',
+    eager: true,
+  }) as Record<string, string>),
 }
 
 /**
@@ -58,6 +68,8 @@ const VERWALTUNGSDATEIEN = Object.keys(QUELLEN).filter((pfad) => {
   if (pfad.startsWith('./space/')) return true
   // #1821: die Betriebsliste entsteht in einer eigenen Komponente, nicht auf der Seite.
   if (pfad.startsWith('./succession/')) return true
+  // Freigabeabschnitt, Assistentenschritte und Prompt-Pflege, die jeder Asset-Typ teilt.
+  if (pfad.startsWith('./assets/') || pfad.startsWith('./prompts/')) return true
   return [
     'BrandingSettingsPage',
     'UserManagementPage',
@@ -76,6 +88,8 @@ const VERWALTUNGSDATEIEN = Object.keys(QUELLEN).filter((pfad) => {
     'LibraryManagementPage',
     'SpacePage',
     'SpaceSettingsPage',
+    'PromptLibrariesPage',
+    'PromptLibraryDetailPage',
   ].some((seite) => pfad.endsWith(`${seite}.tsx`))
 })
 
@@ -111,6 +125,9 @@ const VERWALTUNGSDATEIEN = Object.keys(QUELLEN).filter((pfad) => {
  * - `LibraryManagementPage`: die Kachel je Bibliothek ist eine `ButtonBase` — ein Bedienelement,
  *   das den Weg in die Detailansicht trägt. Ohne Begrenzung wäre unklar, wie weit die Trefferfläche
  *   reicht; das ist der dritte Fall aus #1608, nicht ein Kasten um ruhenden Inhalt.
+ * - `PromptTextHighlight`, `PromptPreview`: der Wortlaut eines Prompts als Monospace-Block und der
+ *   daraus eingesetzte Text als Ergebnisfläche — fremder Inhalt in der Seite, derselbe Fall wie
+ *   beim `MailTemplateEditor`.
  */
 const AUSNAHMEN = [
   'BrandingPreview.tsx',
@@ -126,6 +143,8 @@ const AUSNAHMEN = [
   'PromptCommandMenu.tsx',
   'LibraryManagementPage.tsx',
   'SpaceGeneralSection.tsx',
+  'PromptTextHighlight.tsx',
+  'PromptPreview.tsx',
 ]
 
 /**

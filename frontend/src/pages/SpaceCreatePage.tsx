@@ -23,6 +23,7 @@ import FieldLabel from '../components/wizard/FieldLabel'
 import WizardStepBar from '../components/wizard/WizardStepBar'
 import { getLibraries } from '../services/api'
 import { confirmAction } from '../stores/confirmStore'
+import { notify } from '../stores/notificationStore'
 import { useSpaceStore } from '../stores/spaceStore'
 import { useMyCapabilities } from '../hooks/useMyCapabilities'
 import { useUserSearch } from '../hooks/useUserSearch'
@@ -136,12 +137,12 @@ export default function SpaceCreatePage() {
           failed.push(member.user.displayName ?? member.user.email ?? member.user.id)
         }
       }
+      // The space exists either way: leaving the wizard keeps a second click from creating it again.
       if (failed.length > 0) {
-        setError(
-          `Der Space wurde angelegt, aber diese Mitglieder konnten nicht hinzugefügt werden: ${failed.join(', ')}. Ergänzen Sie sie in der Space-Verwaltung.`,
+        notify(
+          `Der Space wurde angelegt, aber diese Mitglieder konnten nicht hinzugefügt werden: ${failed.join(', ')}. Ergänzen Sie sie in den Einstellungen des Space.`,
+          'warning',
         )
-        setSubmitting(false)
-        return
       }
       navigate(`/spaces/${spaceId}`)
     } catch (err) {

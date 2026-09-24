@@ -6,14 +6,13 @@ import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogContentText from '@mui/material/DialogContentText'
 import DialogTitle from '@mui/material/DialogTitle'
-import MenuItem from '@mui/material/MenuItem'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
-import type { PromptForInsertion, PromptVariableDefinition } from '../../types/api'
-import { initialValues, isComplete, resolvePromptText } from './promptTemplate'
+import type { PromptResponse } from '../../types/api'
+import { initialValues, isComplete, resolvePromptText } from '../../utils/promptTemplate'
+import PromptVariableInput from '../prompts/PromptVariableInput'
 
 interface PromptVariablesDialogProps {
-  prompt: PromptForInsertion
+  prompt: PromptResponse
   /** The name `{{USER_NAME}}` resolves to. */
   userName: string
   onCancel: () => void
@@ -22,9 +21,9 @@ interface PromptVariablesDialogProps {
 }
 
 /**
- * Asks for the values of a prompt's variables before it is inserted: one field per
- * variable by its type, defaults prefilled, a date without default prefilled with today. Required
- * fields block "Einsetzen"; the result goes into the input, never straight to the model.
+ * Asks for the values of a prompt's variables before it is inserted: one field per variable by its
+ * type, defaults prefilled, a date without default prefilled with today. Required fields block
+ * "Einsetzen"; the result goes into the input, never straight to the model.
  */
 export default function PromptVariablesDialog({
   prompt,
@@ -32,8 +31,7 @@ export default function PromptVariablesDialog({
   onCancel,
   onInsert,
 }: PromptVariablesDialogProps) {
-  const baseId = useId()
-  const titleId = `${baseId}-title`
+  const titleId = useId()
   const [values, setValues] = useState<Record<string, string>>(() =>
     initialValues(prompt.variables),
   )
@@ -45,58 +43,6 @@ export default function PromptVariablesDialog({
     onInsert(resolvePromptText(prompt.text, prompt.variables, values, { userName }))
   }
 
-  const fieldFor = (variable: PromptVariableDefinition) => {
-    const id = `${baseId}-${variable.name}`
-    const common = {
-      id,
-      label: variable.label,
-      required: variable.required,
-      fullWidth: true,
-      size: 'small' as const,
-      value: values[variable.name] ?? '',
-      onChange: (event: { target: { value: string } }) =>
-        setValues((current) => ({ ...current, [variable.name]: event.target.value })),
-    }
-    switch (variable.type) {
-      case 'TEXTAREA':
-        return <TextField key={variable.name} {...common} multiline minRows={3} />
-      case 'DATE':
-        return (
-          <TextField
-            key={variable.name}
-            {...common}
-            type="date"
-            slotProps={{ inputLabel: { shrink: true } }}
-          />
-        )
-      case 'SELECT':
-        return (
-          <TextField
-            key={variable.name}
-            {...common}
-            select
-            slotProps={{
-              inputLabel: { id: `${id}-label` },
-              select: { SelectDisplayProps: { 'aria-labelledby': `${id}-label` } },
-            }}
-          >
-            {!variable.required && (
-              <MenuItem value="">
-                <em>keine Angabe</em>
-              </MenuItem>
-            )}
-            {(variable.options ?? []).map((option) => (
-              <MenuItem key={option} value={option}>
-                {option}
-              </MenuItem>
-            ))}
-          </TextField>
-        )
-      default:
-        return <TextField key={variable.name} {...common} />
-    }
-  }
-
   return (
     <Dialog open fullWidth maxWidth="sm" onClose={onCancel} aria-labelledby={titleId}>
       <form onSubmit={handleSubmit} noValidate>
@@ -106,7 +52,19 @@ export default function PromptVariablesDialog({
             <DialogContentText sx={{ mb: 2 }}>{prompt.description}</DialogContentText>
           )}
           <Stack spacing={2} sx={{ pt: 1 }}>
-            {prompt.variables.map(fieldFor)}
+            {prompt.variables.map((variable) => (
+              <PromptVariableInput
+                key={variable.name}
+                variable={variable}
+                value={values[variable.name] ?? ''}
+                onChange={(value) =>
+                  setValues((current) => ({ ...current, [variable.name]: value }))
+                }
+                label={variable.label || variable.name}
+                required={variable.required}
+                allowEmpty={!variable.required}
+              />
+            ))}
           </Stack>
         </DialogContent>
         <DialogActions>

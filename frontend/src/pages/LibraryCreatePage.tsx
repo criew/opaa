@@ -1,20 +1,13 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useState } from 'react'
 import Alert from '@mui/material/Alert'
-import Autocomplete from '@mui/material/Autocomplete'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import FormControl from '@mui/material/FormControl'
 import FormControlLabel from '@mui/material/FormControlLabel'
-import FormHelperText from '@mui/material/FormHelperText'
-import IconButton from '@mui/material/IconButton'
-import MenuItem from '@mui/material/MenuItem'
 import Radio from '@mui/material/Radio'
 import RadioGroup from '@mui/material/RadioGroup'
-import Select from '@mui/material/Select'
 import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import DeleteIcon from '@mui/icons-material/Delete'
 import { alpha } from '@mui/material/styles'
 import { useNavigate } from 'react-router'
 import PageHeading from '../components/a11y/PageHeading'
@@ -25,56 +18,41 @@ import S3SourceForm from '../components/library/S3SourceForm'
 import { EMPTY_CONFLUENCE_VALUES, type ConfluenceSourceValues } from '../utils/confluenceSource'
 import { EMPTY_S3_VALUES, type S3SourceValues } from '../utils/s3Source'
 import WizardStepBar from '../components/wizard/WizardStepBar'
-import { getMyGroups, testLibrarySource, upsertAssetGrant } from '../services/api'
+import { testLibrarySource } from '../services/api'
 import { confirmAction } from '../stores/confirmStore'
 import { useLibraryStore } from '../stores/libraryStore'
 import { useIndexingStore } from '../stores/indexingStore'
 import { useMyCapabilities } from '../hooks/useMyCapabilities'
-import SubjectPicker from '../components/permissions/SubjectPicker'
+import { useMyGroups } from '../hooks/useMyGroups'
+import AssetNameFields from '../components/assets/AssetNameFields'
+import AssetOwnerFields from '../components/assets/AssetOwnerFields'
+import AssetRightsFields from '../components/assets/AssetRightsFields'
 import {
-  confirmExternalSubject,
-  emptySubjectSelection,
-  groupLabel,
-  selectedSubjectId,
-  type SubjectSelection,
-} from '../components/permissions/subjectSelection'
+  applyPendingGrantsAfterCreation,
+  type PendingGrant,
+} from '../components/assets/pendingGrants'
 import {
   allDocumentSourceTypes,
-  assetRoleLabel,
   capabilityMissingMessage,
   documentSourceTypeConfigKind,
   documentSourceTypeDescription,
   documentSourceTypeLabel,
-  libraryVisibilities,
-  libraryVisibilityDescription,
-  libraryVisibilityLabel,
-  permissionSubjectTypeLabel,
 } from '../utils/labels'
 import {
   deriveLibrarySourceConfigPayload,
   validateLibrarySourceFields,
 } from '../utils/librarySourceConfig'
 import type {
-  AssetRole,
   Capability,
   DocumentSourceType,
   GroupListResponse,
   AssetOwnerType,
   AssetVisibility,
-  PermissionSubjectType,
   SourceConnectionTestResponse,
 } from '../types/api'
 
 const STEPS = ['Stammdaten', 'Herkunft', 'Rechte'] as const
 const STEP_TITLES = ['Stammdaten', 'Woher kommen die Dokumente?', 'Rechte'] as const
-const GRANT_ROLES: AssetRole[] = ['VIEWER', 'EDITOR', 'MANAGER']
-
-interface PendingGrant {
-  subjectType: PermissionSubjectType
-  subjectId: string
-  label: string
-  role: AssetRole
-}
 
 /**
  * The library creation wizard (#596, mockup 1e), replacing CreateLibraryDialog. The origin step
@@ -99,9 +77,7 @@ export default function LibraryCreatePage() {
   const [description, setDescription] = useState('')
   const [ownerType, setOwnerType] = useState<AssetOwnerType>('USER')
   const [selectedGroup, setSelectedGroup] = useState<GroupListResponse | null>(null)
-  const [groups, setGroups] = useState<GroupListResponse[]>([])
-  const [groupsError, setGroupsError] = useState<string | null>(null)
-  const [groupsLoaded, setGroupsLoaded] = useState(false)
+  const myGroups = useMyGroups()
 
   const [sourceType, setSourceType] = useState<DocumentSourceType>('UPLOAD')
   const [sourcePath, setSourcePath] = useState('')
@@ -126,28 +102,6 @@ export default function LibraryCreatePage() {
 
   const [visibility, setVisibility] = useState<AssetVisibility>('PRIVATE')
   const [pendingGrants, setPendingGrants] = useState<PendingGrant[]>([])
-  const [grantSubject, setGrantSubject] = useState<SubjectSelection>(emptySubjectSelection)
-  const [grantRole, setGrantRole] = useState<AssetRole>('VIEWER')
-
-  useEffect(() => {
-    let cancelled = false
-    void getMyGroups()
-      .then((result) => {
-        if (cancelled) return
-        setGroups(result)
-        setGroupsLoaded(true)
-        setGroupsError(null)
-      })
-      .catch((err) => {
-        if (cancelled) return
-        setGroups([])
-        setGroupsLoaded(true)
-        setGroupsError(err instanceof Error ? err.message : 'Gruppen konnten nicht geladen werden')
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [])
 
   const configKind = documentSourceTypeConfigKind[sourceType]
 
@@ -157,15 +111,6 @@ export default function LibraryCreatePage() {
     setTestResult((prev) => (prev === null ? prev : null))
     setTestErrorMessage((prev) => (prev === null ? prev : null))
   }
-
-  const pendingUserIds = useMemo(
-    () => pendingGrants.filter((g) => g.subjectType === 'USER').map((g) => g.subjectId),
-    [pendingGrants],
-  )
-  const pendingGroupIds = useMemo(
-    () => pendingGrants.filter((g) => g.subjectType === 'GROUP').map((g) => g.subjectId),
-    [pendingGrants],
-  )
 
   const isDirty =
     name.trim() !== '' ||
@@ -251,23 +196,6 @@ export default function LibraryCreatePage() {
     }
   }
 
-  const handleAddGrant = async () => {
-    const subjectId = selectedSubjectId(grantSubject)
-    if (!subjectId) return
-    if (!(await confirmExternalSubject(grantSubject))) return
-    const label =
-      grantSubject.type === 'USER'
-        ? (grantSubject.user?.displayName ?? grantSubject.user?.email ?? subjectId)
-        : grantSubject.group
-          ? groupLabel(grantSubject.group)
-          : subjectId
-    setPendingGrants((prev) => [
-      ...prev,
-      { subjectType: grantSubject.type, subjectId, label, role: grantRole },
-    ])
-    setGrantSubject({ type: grantSubject.type, user: null, group: null })
-  }
-
   const handleCreate = async () => {
     setSubmitting(true)
     setError(null)
@@ -289,25 +217,7 @@ export default function LibraryCreatePage() {
         }),
         visibility,
       })
-      const failed: string[] = []
-      for (const grant of pendingGrants) {
-        try {
-          await upsertAssetGrant('KNOWLEDGE_LIBRARY', libraryId, {
-            subjectType: grant.subjectType,
-            subjectId: grant.subjectId,
-            role: grant.role,
-          })
-        } catch {
-          failed.push(grant.label)
-        }
-      }
-      if (failed.length > 0) {
-        setError(
-          `Die Bibliothek wurde angelegt, aber diese Freigaben konnten nicht gespeichert werden: ${failed.join(', ')}. Ergänzen Sie sie auf der Detailseite.`,
-        )
-        setSubmitting(false)
-        return
-      }
+      await applyPendingGrantsAfterCreation('KNOWLEDGE_LIBRARY', libraryId, pendingGrants)
       if ((configKind === 'confluence' || configKind === 's3') && startFirstRun) {
         // Awaited so the run is already in the indexing store when the detail page mounts and its
         // progress strip picks it up. triggerIndexing never throws - a failure surfaces through
@@ -347,74 +257,23 @@ export default function LibraryCreatePage() {
 
         {activeStep === 0 && (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, maxWidth: 640 }}>
-            <Box>
-              <FieldLabel htmlFor="library-create-name">Name</FieldLabel>
-              <TextField
-                id="library-create-name"
-                size="small"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="z. B. Rechtsquellen Soziales"
-                fullWidth
-                slotProps={{ htmlInput: { maxLength: 255 } }}
-              />
-            </Box>
-            <Box>
-              <FieldLabel htmlFor="library-create-description">Beschreibung (optional)</FieldLabel>
-              <TextField
-                id="library-create-description"
-                size="small"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                multiline
-                minRows={2}
-                fullWidth
-                slotProps={{ htmlInput: { maxLength: 2000 } }}
-              />
-            </Box>
-            <FormControl>
-              <FieldLabel id="library-create-owner-label">Eigentümer</FieldLabel>
-              <RadioGroup
-                row
-                aria-labelledby="library-create-owner-label"
-                value={ownerType}
-                onChange={(e) => setOwnerType(e.target.value as AssetOwnerType)}
-              >
-                <FormControlLabel value="USER" control={<Radio />} label="Mein Konto" />
-                <FormControlLabel value="GROUP" control={<Radio />} label="Eine Gruppe" />
-              </RadioGroup>
-            </FormControl>
-            {ownerType === 'GROUP' && (
-              <>
-                {groupsError && <Alert severity="error">{groupsError}</Alert>}
-                {groupsLoaded && !groupsError && groups.length === 0 && (
-                  <Alert severity="info">
-                    Sie sind aktuell in keiner Gruppe Mitglied. Eine Bibliothek mit Gruppen-Eigentum
-                    lässt sich erst anlegen, sobald Sie einer Gruppe angehören.
-                  </Alert>
-                )}
-                <Autocomplete
-                  options={groups}
-                  size="small"
-                  getOptionLabel={(option) => option.name}
-                  noOptionsText="Keine Treffer"
-                  value={selectedGroup}
-                  onChange={(_e, value) => setSelectedGroup(value)}
-                  disabled={groups.length === 0}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      placeholder="Gruppe auswählen …"
-                      slotProps={{
-                        ...params.slotProps,
-                        htmlInput: { ...params.slotProps.htmlInput, 'aria-label': 'Gruppe' },
-                      }}
-                    />
-                  )}
-                  isOptionEqualToValue={(option, value) => option.id === value.id}
-                />
-              </>
-            )}
+            <AssetNameFields
+              idPrefix="library-create"
+              name={name}
+              onNameChange={setName}
+              description={description}
+              onDescriptionChange={setDescription}
+              namePlaceholder="z. B. Rechtsquellen Soziales"
+            />
+            <AssetOwnerFields
+              idPrefix="library-create"
+              assetType="KNOWLEDGE_LIBRARY"
+              ownerType={ownerType}
+              onOwnerTypeChange={setOwnerType}
+              myGroups={myGroups}
+              selectedGroup={selectedGroup}
+              onSelectedGroupChange={setSelectedGroup}
+            />
           </Box>
         )}
 
@@ -674,103 +533,13 @@ export default function LibraryCreatePage() {
 
         {activeStep === 2 && (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, maxWidth: 640 }}>
-            <FormControl fullWidth>
-              <FieldLabel id="library-create-visibility-label">Verteilungsstufe</FieldLabel>
-              <Select
-                labelId="library-create-visibility-label"
-                size="small"
-                value={visibility}
-                onChange={(e) => setVisibility(e.target.value as AssetVisibility)}
-                aria-describedby="library-create-visibility-helper"
-              >
-                {libraryVisibilities.map((option) => (
-                  <MenuItem key={option} value={option}>
-                    {libraryVisibilityLabel(option)}
-                  </MenuItem>
-                ))}
-              </Select>
-              <FormHelperText id="library-create-visibility-helper">
-                {libraryVisibilityDescription(visibility)}
-              </FormHelperText>
-            </FormControl>
-
-            <Box>
-              <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mb: 1.5 }}>
-                Freigaben lassen sich auch später jederzeit auf der Detailseite ergänzen — dieser
-                Schritt ist optional.
-              </Typography>
-              <SubjectPicker
-                labelId="library-create-grant-subject-label"
-                value={grantSubject}
-                onChange={setGrantSubject}
-                excludedUserIds={pendingUserIds}
-                excludedGroupIds={pendingGroupIds}
-              />
-              <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', mt: 1.5 }}>
-                <Select
-                  size="small"
-                  value={grantRole}
-                  onChange={(e) => setGrantRole(e.target.value as AssetRole)}
-                  aria-label="Rolle der Freigabe"
-                  sx={{ width: 150 }}
-                >
-                  {GRANT_ROLES.map((role) => (
-                    <MenuItem key={role} value={role}>
-                      {assetRoleLabel(role)}
-                    </MenuItem>
-                  ))}
-                </Select>
-                <Button
-                  variant="outlined"
-                  disabled={!selectedSubjectId(grantSubject)}
-                  onClick={() => void handleAddGrant()}
-                >
-                  Vormerken
-                </Button>
-              </Box>
-              {pendingGrants.length > 0 && (
-                <Box sx={{ border: 1, borderColor: 'divider', borderRadius: '10px', mt: 1.5 }}>
-                  {pendingGrants.map((grant) => (
-                    <Box
-                      key={`${grant.subjectType}-${grant.subjectId}`}
-                      sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 1.5,
-                        px: 2,
-                        py: 1.25,
-                        '& + &': { borderTop: 1, borderColor: 'divider' },
-                      }}
-                    >
-                      <Typography sx={{ fontSize: 13.5, flex: 1 }} noWrap>
-                        {grant.label}
-                      </Typography>
-                      <Typography sx={{ fontSize: 11.5, color: 'text.secondary' }}>
-                        {permissionSubjectTypeLabel(grant.subjectType)} ·{' '}
-                        {assetRoleLabel(grant.role)}
-                      </Typography>
-                      <IconButton
-                        size="small"
-                        aria-label={`Vorgemerkte Freigabe für ${grant.label} entfernen`}
-                        onClick={() =>
-                          setPendingGrants((prev) =>
-                            prev.filter(
-                              (g) =>
-                                !(
-                                  g.subjectType === grant.subjectType &&
-                                  g.subjectId === grant.subjectId
-                                ),
-                            ),
-                          )
-                        }
-                      >
-                        <DeleteIcon sx={{ fontSize: 16 }} />
-                      </IconButton>
-                    </Box>
-                  ))}
-                </Box>
-              )}
-            </Box>
+            <AssetRightsFields
+              idPrefix="library-create"
+              visibility={visibility}
+              onVisibilityChange={setVisibility}
+              pendingGrants={pendingGrants}
+              onPendingGrantsChange={setPendingGrants}
+            />
           </Box>
         )}
 

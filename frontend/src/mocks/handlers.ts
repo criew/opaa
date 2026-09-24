@@ -9,7 +9,8 @@ import { externalAccessHandlers } from './externalAccessHandlers'
 import { externalAccessTokenHandlers } from './externalAccessTokenHandlers'
 import { groupAdminHandlers } from './groupAdminHandlers'
 import { successionHandlers } from './successionHandlers'
-import { promptChatHandlers } from './promptChatHandlers'
+import { promptLibraryHandlers } from './promptLibraryHandlers'
+import { mockPromptLibraries } from './promptLibraryFixtures'
 
 /** Per-library countdown of the mock metadata backfill; see the handler below. */
 const mockMetadataBackfillRemaining = new Map<string, number>()
@@ -93,6 +94,7 @@ import type {
   LibraryMetadataFieldResponse,
   MetadataValueRequest,
   AssetRole,
+  AssetType,
   ChatCreateRequest,
   ChatSearchRequest,
   ChatUpdateRequest,
@@ -415,9 +417,22 @@ const ASSET_ROLE_ORDER: AssetRole[] = ['VIEWER', 'EDITOR', 'MANAGER', 'OWNER']
  * Mirrors AssetGrantService#requireManageable: every grants endpoint requires at least MANAGER on
  * the library, distinct from canManageMockLibrary's EDITOR threshold for documents.
  */
-function canManageMockLibraryGrants(libraryId: string): boolean {
-  const role = mockLibraryDetails[libraryId]?.myRole
+function canManageMockLibraryGrants(libraryId: string, assetType = 'KNOWLEDGE_LIBRARY'): boolean {
+  const role = mockAssetOf(assetType, libraryId)?.myRole
   return role === 'MANAGER' || role === 'OWNER'
+}
+
+/**
+ * The asset behind an asset-shell path: the grant, derivation and space endpoints name the type,
+ * and a type that does not match the id answers 404 like an unknown id.
+ */
+function mockAssetOf(
+  assetType: string,
+  assetId: string,
+): { name: string; myRole: AssetRole } | undefined {
+  if (assetType === 'PROMPT_LIBRARY') return mockPromptLibraries[assetId]
+  if (assetType === 'KNOWLEDGE_LIBRARY') return mockLibraryDetails[assetId]
+  return undefined
 }
 
 /** Mirrors AssetGrant#isExpired: null expiresAt means "never expires". */
@@ -1046,6 +1061,74 @@ export const handlers = [
       items: [],
     }
     return HttpResponse.json(associations)
+  }),
+
+  // Associating needs a readable asset of the named type; the list keeps one entry per asset.
+  http.post('/api/v1/spaces/:spaceId/assets', async ({ params, request }) => {
+    const spaceId = String(params.spaceId)
+    if (!mockSpaceDetails[spaceId]) {
+      return HttpResponse.json({ error: 'Space nicht gefunden' }, { status: 404 })
+    }
+    const body = (await request.json()) as { assetType: AssetType; assetId: string }
+    const asset = mockAssetOf(body.assetType, body.assetId)
+    if (!asset) {
+      return HttpResponse.json({ error: 'Asset nicht gefunden' }, { status: 404 })
+    }
+    const current = mockSpaceAssetAssociations[spaceId] ?? {
+      hasAssociations: false,
+      narrowsSearch: false,
+      items: [],
+    }
+    const entry = {
+      assetType: body.assetType,
+      assetId: body.assetId,
+      name: asset.name,
+      readableByCaller: true,
+      createdByUserId: mockUser.id,
+      createdAt: new Date().toISOString(),
+    }
+    const items = [...current.items.filter((item) => item.assetId !== body.assetId), entry]
+    mockSpaceAssetAssociations[spaceId] = {
+      hasAssociations: true,
+      narrowsSearch: items.some((item) => item.assetType === 'KNOWLEDGE_LIBRARY'),
+      items,
+    }
+    return HttpResponse.json(entry, { status: 201 })
+  }),
+
+  http.delete('/api/v1/spaces/:spaceId/assets/:assetId', ({ params }) => {
+    const spaceId = String(params.spaceId)
+    const current = mockSpaceAssetAssociations[spaceId]
+    if (current) {
+      const items = current.items.filter((item) => item.assetId !== String(params.assetId))
+      mockSpaceAssetAssociations[spaceId] = {
+        hasAssociations: items.length > 0,
+        narrowsSearch: items.some((item) => item.assetType === 'KNOWLEDGE_LIBRARY'),
+        items,
+      }
+    }
+    return new HttpResponse(null, { status: 204 })
+  }),
+
+  // The owner-facing list of spaces an asset is associated with (MANAGER and above).
+  http.get('/api/v1/assets/:assetType/:assetId/spaces', ({ params }) => {
+    const assetId = String(params.assetId)
+    if (!mockAssetOf(String(params.assetType), assetId)) {
+      return HttpResponse.json({ error: 'Asset nicht gefunden' }, { status: 404 })
+    }
+    const spaces = Object.entries(mockSpaceAssetAssociations)
+      .filter(([, list]) => list.items.some((item) => item.assetId === assetId))
+      .map(([spaceId, list]) => {
+        const item = list.items.find((candidate) => candidate.assetId === assetId)
+        return {
+          spaceId,
+          spaceName: mockSpaceDetails[spaceId]?.name ?? spaceId,
+          createdByUserId: item?.createdByUserId ?? mockUser.id,
+          createdAt: item?.createdAt ?? new Date().toISOString(),
+          narrowerReaderCircle: false,
+        }
+      })
+    return HttpResponse.json(spaces)
   }),
 
   http.post('/api/v1/spaces/:spaceId/members', async ({ params, request }) => {
@@ -3390,10 +3473,11 @@ export const handlers = [
 
   http.get('/api/v1/assets/:assetType/:libraryId/grants', ({ params }) => {
     const libraryId = String(params.libraryId)
-    if (!mockLibraryDetails[libraryId]) {
+    const assetType = String(params.assetType)
+    if (!mockAssetOf(assetType, libraryId)) {
       return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
     }
-    if (!canManageMockLibraryGrants(libraryId)) {
+    if (!canManageMockLibraryGrants(libraryId, assetType)) {
       return HttpResponse.json({ error: 'Kein Zugriff auf diese Bibliothek' }, { status: 403 })
     }
     return HttpResponse.json(mockLibraryGrants[libraryId] ?? [])
@@ -3401,11 +3485,12 @@ export const handlers = [
 
   http.post('/api/v1/assets/:assetType/:libraryId/grants', async ({ params, request }) => {
     const libraryId = String(params.libraryId)
-    const library = mockLibraryDetails[libraryId]
+    const assetType = String(params.assetType)
+    const library = mockAssetOf(assetType, libraryId)
     if (!library) {
       return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
     }
-    if (!canManageMockLibraryGrants(libraryId)) {
+    if (!canManageMockLibraryGrants(libraryId, assetType)) {
       return HttpResponse.json({ error: 'Kein Zugriff auf diese Bibliothek' }, { status: 403 })
     }
     const body = (await request.json()) as AssetGrantRequest
@@ -3492,11 +3577,12 @@ export const handlers = [
   http.delete('/api/v1/assets/:assetType/:libraryId/grants/:grantId', ({ params }) => {
     const libraryId = String(params.libraryId)
     const grantId = String(params.grantId)
-    const library = mockLibraryDetails[libraryId]
+    const assetType = String(params.assetType)
+    const library = mockAssetOf(assetType, libraryId)
     if (!library) {
       return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
     }
-    if (!canManageMockLibraryGrants(libraryId)) {
+    if (!canManageMockLibraryGrants(libraryId, assetType)) {
       return HttpResponse.json({ error: 'Kein Zugriff auf diese Bibliothek' }, { status: 403 })
     }
     const existing = mockLibraryGrants[libraryId] ?? []
@@ -3545,13 +3631,14 @@ export const handlers = [
   // #1822: die eigene Herleitung. Ohne userId geht es um die eigene Person.
   http.get('/api/v1/assets/:assetType/:assetId/access-derivation', ({ params }) => {
     const libraryId = String(params.assetId)
-    if (!mockLibraryDetails[libraryId]) {
+    const asset = mockAssetOf(String(params.assetType), libraryId)
+    if (!asset) {
       return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
     }
     return HttpResponse.json({
-      assetType: 'KNOWLEDGE_LIBRARY',
+      assetType: String(params.assetType),
       assetId: libraryId,
-      effectiveRole: mockLibraryDetails[libraryId].myRole ?? 'VIEWER',
+      effectiveRole: asset.myRole ?? 'VIEWER',
       pathsWithheld: false,
       paths: [
         {
@@ -3569,7 +3656,7 @@ export const handlers = [
         },
         {
           basis: 'DIRECT_GRANT',
-          assetRole: mockLibraryDetails[libraryId].myRole ?? 'VIEWER',
+          assetRole: asset.myRole ?? 'VIEWER',
           spaceRole: null,
           since: '2026-03-02T10:00:00Z',
           group: null,
@@ -3751,5 +3838,5 @@ export const handlers = [
   ...groupAdminHandlers,
   // Die Betriebsliste des Lebenszyklus (#1819/#1821) - eigene Datei aus demselben Grund.
   ...successionHandlers,
-  ...promptChatHandlers,
+  ...promptLibraryHandlers,
 ]

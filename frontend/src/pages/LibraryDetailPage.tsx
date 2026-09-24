@@ -16,7 +16,6 @@ import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import FormControl from '@mui/material/FormControl'
 import FormControlLabel from '@mui/material/FormControlLabel'
-import FormHelperText from '@mui/material/FormHelperText'
 import IconButton from '@mui/material/IconButton'
 import InputAdornment from '@mui/material/InputAdornment'
 import LinearProgress from '@mui/material/LinearProgress'
@@ -66,12 +65,11 @@ import type {
   LibraryFolderListItem,
   LibrarySchedule,
   S3Settings,
-  AssetSpaceAssociationResponse,
   AssetVisibility,
   ConfluenceEdition,
   ConfluenceSpaceRef,
 } from '../types/api'
-import { detachSpaceAsset, getAssetSpaceAssociations, getLibraryFolder } from '../services/api'
+import { getLibraryFolder } from '../services/api'
 import { confluenceEditionLabel } from '../utils/labels'
 import { useAuthStore } from '../stores/authStore'
 import { confirmAction } from '../stores/confirmStore'
@@ -96,9 +94,8 @@ import {
   filterAcceptedFiles,
   resolveDroppedItems,
 } from '../utils/directoryEntries'
-import AssetGrantsDialog from '../components/permissions/AssetGrantsDialog'
+import AssetDistributionSection from '../components/assets/AssetDistributionSection'
 import LibraryExternalAccessSection from '../components/library/LibraryExternalAccessSection'
-import AccessDerivation from '../components/permissions/AccessDerivation'
 import EditLibrarySourceDialog from '../components/EditLibrarySourceDialog'
 import EditLibraryScheduleDialog from '../components/EditLibraryScheduleDialog'
 import ConfluenceWebhookSection from '../components/library/ConfluenceWebhookSection'
@@ -126,16 +123,6 @@ export const ACCEPTED_FILE_EXTENSIONS =
   '.csv,.doc,.docx,.eml,.html,.md,.msg,.odp,.ods,.odt,.pdf,.pptx,.txt,.xlsx'
 
 const allVisibilities: AssetVisibility[] = ['PRIVATE', 'SHARED', 'ORGANIZATION']
-
-/**
- * Mirrors the backend's `AssetVisibility#exceeds` (#797, #1870 review): whether `option` reaches
- * further than the share cap - `false` while no cap is known (UPLOAD, or below MANAGER), matching
- * the backend's own "nothing to check" default there.
- */
-function exceedsVisibilityCap(option: AssetVisibility, cap: AssetVisibility | null | undefined) {
-  if (!cap) return false
-  return allVisibilities.indexOf(option) > allVisibilities.indexOf(cap)
-}
 
 // #823: an upload entry carries an optional relativePath (the directory portion within a
 // dropped/selected folder tree, e.g. "Protokolle/2026") alongside each File - sequential upload,
@@ -392,14 +379,7 @@ export default function LibraryDetailPage() {
   const setLibraryShareCap = useLibraryStore((s) => s.setLibraryShareCap)
   const storeError = useLibraryStore((s) => s.error)
 
-  const [grantsDialogOpen, setGrantsDialogOpen] = useState(false)
-  const [derivationShown, setDerivationShown] = useState(false)
-  const [draft, setDraft] = useState<{
-    name: string
-    description: string
-    visibility: AssetVisibility
-    listed: boolean
-  } | null>(null)
+  const [draft, setDraft] = useState<{ name: string; description: string } | null>(null)
   const [localError, setLocalError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [diagnosticsLockError, setDiagnosticsLockError] = useState<string | null>(null)
@@ -494,25 +474,42 @@ export default function LibraryDetailPage() {
 
   const name = draft ? draft.name : (library?.name ?? '')
   const description = draft ? draft.description : (library?.description ?? '')
-  const visibility = draft ? draft.visibility : (library?.visibility ?? 'PRIVATE')
-  const listed = draft ? draft.listed : (library?.listed ?? false)
+
+  /**
+   * The PUT replaces name, description and reach as a whole; each form sends its own fields and
+   * the saved values of the other, so saving the master data never changes the reach.
+   */
+  async function saveLibrary(fields: {
+    name: string
+    description: string | null | undefined
+    visibility: AssetVisibility
+    listed: boolean
+  }) {
+    if (!libraryId) return
+    await updateExistingLibrary(libraryId, {
+      name: fields.name.trim(),
+      description: fields.description?.trim() || undefined,
+      visibility: fields.visibility,
+      listed: fields.listed,
+      // Bewusst kein Quellkonfigurationsfeld gesetzt: das Backend lässt die gespeicherte
+      // Konfiguration unverändert, solange keines der sourcePath/sourceUrl/sourceProxy/
+      // sourceCredentials/sourceInsecureSsl-Felder in der Anfrage vorhanden ist (ADR-0018). Das
+      // Bearbeiten der Quellkonfiguration selbst laeuft ueber EditLibrarySourceDialog weiter
+      // unten in dieser Datei (#516) - dieses Stammdaten-Formular hier ruehrt sie nicht an.
+      sourceInsecureSsl: null,
+    })
+  }
 
   async function handleSave() {
-    if (!libraryId) return
+    if (!libraryId || !library) return
     setLocalError(null)
     setSaving(true)
     try {
-      await updateExistingLibrary(libraryId, {
-        name: name.trim(),
-        description: description.trim() || undefined,
-        visibility,
-        listed,
-        // Bewusst kein Quellkonfigurationsfeld gesetzt: das Backend lässt die gespeicherte
-        // Konfiguration unverändert, solange keines der sourcePath/sourceUrl/sourceProxy/
-        // sourceCredentials/sourceInsecureSsl-Felder in der Anfrage vorhanden ist (ADR-0018). Das
-        // Bearbeiten der Quellkonfiguration selbst laeuft ueber EditLibrarySourceDialog weiter
-        // unten in dieser Datei (#516) - dieses Stammdaten-Formular hier ruehrt sie nicht an.
-        sourceInsecureSsl: null,
+      await saveLibrary({
+        name,
+        description,
+        visibility: library.visibility,
+        listed: library.listed,
       })
       setDraft(null)
     } catch (err) {
@@ -1131,10 +1128,7 @@ export default function LibraryDetailPage() {
             >
               <MetadataExtractionSettingsSection libraryId={libraryId} canManage={canEdit} />
             </PageSection>
-            <PageSection
-              title="Stammdaten"
-              description="Name, Beschreibung und Verteilungsstufe dieser Bibliothek."
-            >
+            <PageSection title="Stammdaten" description="Name und Beschreibung dieser Bibliothek.">
               <Stack spacing={2}>
                 {details && (
                   <Typography variant="caption" sx={{ color: 'text.secondary' }}>
@@ -1148,9 +1142,7 @@ export default function LibraryDetailPage() {
                     id="library-detail-name"
                     fullWidth
                     value={name}
-                    onChange={(e) =>
-                      setDraft({ name: e.target.value, description, visibility, listed })
-                    }
+                    onChange={(e) => setDraft({ name: e.target.value, description })}
                     size="small"
                   />
                 </Box>
@@ -1160,66 +1152,12 @@ export default function LibraryDetailPage() {
                     id="library-detail-description"
                     fullWidth
                     value={description}
-                    onChange={(e) =>
-                      setDraft({ name, description: e.target.value, visibility, listed })
-                    }
+                    onChange={(e) => setDraft({ name, description: e.target.value })}
                     multiline
                     minRows={2}
                     size="small"
                   />
                 </Box>
-                <FormControl size="small" fullWidth>
-                  <FieldLabel id="library-detail-visibility-label">Verteilungsstufe</FieldLabel>
-                  <Select
-                    labelId="library-detail-visibility-label"
-                    value={visibility}
-                    onChange={(e) =>
-                      setDraft({
-                        name,
-                        description,
-                        visibility: e.target.value as AssetVisibility,
-                        listed,
-                      })
-                    }
-                  >
-                    {allVisibilities.map((option) => (
-                      <MenuItem
-                        key={option}
-                        value={option}
-                        disabled={exceedsVisibilityCap(option, details?.visibilityCap)}
-                      >
-                        {libraryVisibilityLabel(option)}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                  {/* #1870 review: explains the limit to the owner/MANAGER instead of only
-                      letting a save above it fail with 409 - the system administration's own
-                      control (ShareCapControl below) is where it is actually changed. */}
-                  {details?.visibilityCap && details.visibilityCap !== 'ORGANIZATION' && (
-                    <FormHelperText>
-                      Die Systemverwaltung hat die Freigabe dieser Bibliothek auf „
-                      {libraryVisibilityLabel(details.visibilityCap)}“ begrenzt.
-                    </FormHelperText>
-                  )}
-                </FormControl>
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={listed}
-                      disabled={details?.listedCap === false}
-                      onChange={(e) =>
-                        setDraft({ name, description, visibility, listed: e.target.checked })
-                      }
-                    />
-                  }
-                  label="Im Katalog auffindbar"
-                />
-                {details?.listedCap === false && (
-                  <FormHelperText>
-                    Die Systemverwaltung hat die Auffindbarkeit dieser Bibliothek im Katalog
-                    gesperrt.
-                  </FormHelperText>
-                )}
                 <Stack direction="row" spacing={1}>
                   <Button
                     variant="contained"
@@ -1246,63 +1184,47 @@ export default function LibraryDetailPage() {
                     onDismissError={() => setDiagnosticsLockError(null)}
                   />
                 )}
-
-                {/* #797: only the system administration sets this - the owner only ever sees
-                    its consequence, the 409 above when a save would exceed it. */}
-                {isSystemAdmin &&
-                  details &&
-                  details.sourceType !== 'UPLOAD' &&
-                  details.visibilityCap != null &&
-                  details.listedCap != null && (
-                    <ShareCapControl
-                      visibilityCap={details.visibilityCap}
-                      listedCap={details.listedCap}
-                      saving={shareCapSaving}
-                      error={shareCapError}
-                      onSave={(visibilityCap, listedCap) =>
-                        void handleSaveShareCap(visibilityCap, listedCap)
-                      }
-                      onDismissError={() => setShareCapError(null)}
-                    />
-                  )}
               </Stack>
             </PageSection>
 
-            <PageSection
-              title="Freigabe"
-              description="In diesen Spaces steht die Bibliothek als Datenquelle bereit. Wer sie darüber hinaus lesen oder bearbeiten darf, regeln die Rechte."
-              action={
-                <Button
-                  variant="outlined"
-                  size="small"
-                  onClick={() => setGrantsDialogOpen(true)}
-                  sx={{ flexShrink: 0 }}
-                >
-                  Rechte verwalten
-                </Button>
+            <AssetDistributionSection
+              assetType="KNOWLEDGE_LIBRARY"
+              assetId={libraryId}
+              assetName={library.name}
+              visibility={library.visibility}
+              listed={library.listed}
+              onSave={(visibility, listed) =>
+                saveLibrary({
+                  name: library.name,
+                  description: library.description,
+                  visibility,
+                  listed,
+                })
               }
-            >
-              <LibrarySpacesSection key={`spaces-${libraryId}`} libraryId={libraryId} />
-            </PageSection>
-
-            {/* #1822, ADR-0036 Entscheidung 9: Flach zu sein und das flach zu zeigen sind zwei
-                Zusagen - jede Person sieht ihren eigenen Weg zu dieser Bibliothek. */}
-            <PageSection
-              title="Warum sehe ich diese Bibliothek?"
-              description="Ihr eigener Weg zur wirksamen Rolle. Ohne Vollmacht, ohne Protokoll."
-            >
-              {/* Auf Nachfrage, wie im Space: die Herleitung kostet eine eigene Anfrage, die nur
-                  stellt, wer sie sehen will. */}
-              {derivationShown ? (
-                <AccessDerivation
-                  target={{ kind: 'asset', assetType: 'KNOWLEDGE_LIBRARY', assetId: libraryId }}
-                />
-              ) : (
-                <Button size="small" onClick={() => setDerivationShown(true)}>
-                  Herleitung anzeigen
-                </Button>
-              )}
-            </PageSection>
+              visibilityCap={details?.visibilityCap}
+              listedCap={details?.listedCap}
+              capControl={
+                // #797: only the system administration sets this - the owner only ever sees its
+                // consequence, the disabled options and the 409 when a save would exceed it.
+                isSystemAdmin &&
+                details &&
+                details.sourceType !== 'UPLOAD' &&
+                details.visibilityCap != null &&
+                details.listedCap != null ? (
+                  <ShareCapControl
+                    visibilityCap={details.visibilityCap}
+                    listedCap={details.listedCap}
+                    saving={shareCapSaving}
+                    error={shareCapError}
+                    onSave={(visibilityCap, listedCap) =>
+                      void handleSaveShareCap(visibilityCap, listedCap)
+                    }
+                    onDismissError={() => setShareCapError(null)}
+                  />
+                ) : null
+              }
+              grantsTypeSection={<LibraryExternalAccessSection libraryId={libraryId} />}
+            />
 
             {canDelete && (
               <PageSection
@@ -1325,17 +1247,6 @@ export default function LibraryDetailPage() {
             )}
           </Stack>
         </Box>
-      )}
-
-      {canEdit && (
-        <AssetGrantsDialog
-          open={grantsDialogOpen}
-          assetType="KNOWLEDGE_LIBRARY"
-          assetId={libraryId}
-          assetName={library.name}
-          onClose={() => setGrantsDialogOpen(false)}
-          typeSection={<LibraryExternalAccessSection libraryId={libraryId} />}
-        />
       )}
     </Box>
   )
@@ -2701,101 +2612,6 @@ function RenameFolderDialog({ open, folder, onClose, onRename }: RenameFolderDia
         </Button>
       </DialogActions>
     </Dialog>
-  )
-}
-
-interface LibrarySpacesSectionProps {
-  libraryId: string
-}
-
-// #203: the owner-facing "bereitgestellt in" view - every space this library is associated with,
-// never filtered by the caller's own space membership (docs/features/spaces-and-assets.md#assets-
-// in-einen-space-assoziieren: "Der Eigentümer des Assets sieht alle Assoziationen und kann jede
-// davon jederzeit einseitig lösen"). Only rendered for MANAGER/OWNER (see canEdit above), the same
-// threshold GET /v1/assets/{assetType}/{assetId}/spaces itself requires.
-function LibrarySpacesSection({ libraryId }: LibrarySpacesSectionProps) {
-  const [associations, setAssociations] = useState<AssetSpaceAssociationResponse[] | null>(null)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    let cancelled = false
-    getAssetSpaceAssociations('KNOWLEDGE_LIBRARY', libraryId)
-      .then((data) => {
-        if (!cancelled) setAssociations(data)
-      })
-      .catch((err) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Laden fehlgeschlagen')
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [libraryId])
-
-  async function handleDetach(spaceId: string, spaceName: string) {
-    const confirmed = await confirmAction({
-      question: `Bereitstellung im Space "${spaceName}" lösen?`,
-      confirmLabel: 'Lösen',
-      tone: 'neutral',
-    })
-    if (!confirmed) return
-    setError(null)
-    try {
-      await detachSpaceAsset(spaceId, libraryId)
-      setAssociations((prev) => prev?.filter((a) => a.spaceId !== spaceId) ?? null)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Lösen fehlgeschlagen')
-    }
-  }
-
-  return (
-    <Box>
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
-          {error}
-        </Alert>
-      )}
-      {associations === null ? (
-        // Loading without a layout jump (guidelines 5.7) - one skeleton row where the first
-        // association will land.
-        <Skeleton variant="rounded" height={32} sx={{ maxWidth: 360 }} />
-      ) : associations.length === 0 ? (
-        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-          Diese Bibliothek ist derzeit keinem Space als Datenquelle zugeordnet. Die Zuordnung
-          erfolgt in den Einstellungen des jeweiligen Space.
-        </Typography>
-      ) : (
-        <Stack spacing={1}>
-          {associations.map((association) => (
-            <Box
-              key={association.spaceId}
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 1.5,
-                flexWrap: 'wrap',
-              }}
-            >
-              <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                <Typography>{association.spaceName}</Typography>
-                {association.narrowerReaderCircle && (
-                  <Tooltip title="Mindestens ein Mitglied dieses Space hat keinen eigenen Lesezugriff auf diese Bibliothek.">
-                    <Chip label="nicht alle Mitglieder lesen" size="small" color="warning" />
-                  </Tooltip>
-                )}
-              </Stack>
-              <Button
-                color="error"
-                size="small"
-                onClick={() => void handleDetach(association.spaceId, association.spaceName)}
-              >
-                Lösen
-              </Button>
-            </Box>
-          ))}
-        </Stack>
-      )}
-    </Box>
   )
 }
 

@@ -10,7 +10,7 @@ import { alpha } from '@mui/material/styles'
 import TextSnippetOutlinedIcon from '@mui/icons-material/TextSnippetOutlined'
 import { fontFamily } from '../../theme/tokens'
 import type { AvailablePrompt } from '../../types/api'
-import { promptOptionId } from './promptTemplate'
+import { promptOptionId } from './promptCommand'
 
 interface PromptCommandMenuProps {
   open: boolean

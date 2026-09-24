@@ -27,7 +27,14 @@ const PAGE_SIZE = 50
 function objectHref(entry: SuccessionEntryResponse): string | null {
   switch (entry.objectType) {
     case 'ASSET':
-      return entry.assetType === 'KNOWLEDGE_LIBRARY' ? `/libraries/${entry.objectId}` : null
+      switch (entry.assetType) {
+        case 'KNOWLEDGE_LIBRARY':
+          return `/libraries/${entry.objectId}`
+        case 'PROMPT_LIBRARY':
+          return `/prompts/${entry.objectId}`
+        default:
+          return null
+      }
     case 'SPACE':
       return `/spaces/${entry.objectId}`
     default:

@@ -1,9 +1,10 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
-import { getPromptForInsertion, listAvailablePrompts } from '../../services/promptChatApi'
+import { getPrompt, listAvailablePrompts } from '../../services/promptLibraryApi'
 import { notify } from '../../stores/notificationStore'
-import type { AvailablePrompt, PromptForInsertion } from '../../types/api'
-import { findActiveSlashCommand, matchPrompts, resolvePromptText } from './promptTemplate'
-import type { ActiveSlashCommand } from './promptTemplate'
+import type { AvailablePrompt, PromptResponse } from '../../types/api'
+import { resolvePromptText } from '../../utils/promptTemplate'
+import { findActiveSlashCommand, matchPrompts } from './promptCommand'
+import type { ActiveSlashCommand } from './promptCommand'
 
 /** The prompt a question in the input was built from - shown as a chip, sent as usedPromptId. */
 export interface SelectedPrompt {
@@ -38,7 +39,7 @@ export function usePromptCommand({ spaceId, userName, insertText }: UsePromptCom
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [pendingForm, setPendingForm] = useState<{
-    prompt: PromptForInsertion
+    prompt: PromptResponse
     range: InsertionRange
   } | null>(null)
   const [selected, setSelected] = useState<SelectedPrompt | null>(null)
@@ -122,9 +123,9 @@ export function usePromptCommand({ spaceId, userName, insertText }: UsePromptCom
       close()
       setDismissedStart(null)
       setIsInserting(true)
-      let prompt: PromptForInsertion
+      let prompt: PromptResponse
       try {
-        prompt = await getPromptForInsertion(entry.libraryId, entry.id)
+        prompt = await getPrompt(entry.libraryId, entry.id)
       } catch (err) {
         if (token === insertionToken.current) {
           notify(

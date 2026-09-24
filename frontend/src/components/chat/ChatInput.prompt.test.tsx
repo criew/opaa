@@ -2,10 +2,9 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { server } from '../../mocks/server'
-import { mockAvailablePrompts } from '../../mocks/promptChatHandlers'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ChatInput from './ChatInput'
-import { germanDate, todayIso } from './promptTemplate'
+import { germanDate, todayIso } from '../../utils/promptTemplate'
 import { useAuthStore } from '../../stores/authStore'
 import { useChatStore } from '../../stores/chatStore'
 import { useLibraryStore } from '../../stores/libraryStore'
@@ -53,7 +52,7 @@ describe('ChatInput: inserting a prompt', () => {
 
     const option = await screen.findByRole('option', { name: /\/zusammenfassung/ })
     expect(option).toHaveAttribute('aria-selected', 'true')
-    expect(screen.queryByRole('option', { name: /\/dank/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: /\/vermerk/ })).not.toBeInTheDocument()
     expect(input).toHaveAttribute('aria-activedescendant', option.id)
 
     await user.keyboard('{Enter}')
@@ -96,9 +95,10 @@ describe('ChatInput: inserting a prompt', () => {
 
     expect(insert).toBeEnabled()
     await user.click(insert)
+    const today = germanDate(todayIso())
     await waitFor(() =>
       expect(input).toHaveValue(
-        `Entwirf ein Anhörungsschreiben zum Aktenzeichen 32-1/2026, Stand ${germanDate(todayIso())}. Sachverhalt: `,
+        `Entwirf ein Anhörungsschreiben zum Aktenzeichen 32-1/2026, Stand ${today}. Frist: ${today}.`,
       ),
     )
   })
@@ -107,15 +107,15 @@ describe('ChatInput: inserting a prompt', () => {
     const user = userEvent.setup()
     const { onSend, input } = renderInput()
 
-    await user.type(input, '/dank')
-    await screen.findByRole('option', { name: /\/dank/ })
+    await user.type(input, '/vermerk')
+    await screen.findByRole('option', { name: /\/vermerk/ })
     await user.keyboard('{Enter}')
 
-    const text = 'Formuliere ein kurzes, freundliches Dankesschreiben. Gezeichnet Erika Muster.'
+    const text = 'Fasse den Sachverhalt als Vermerk für Erika Muster zusammen.'
     await waitFor(() => expect(input).toHaveValue(text))
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     const chip = screen.getByTestId('used-prompt-chip')
-    expect(chip).toHaveTextContent('Prompt: Dankesschreiben')
+    expect(chip).toHaveTextContent('Prompt: Vermerk')
 
     await user.click(within(chip).getByTestId('CancelIcon'))
     expect(screen.queryByTestId('used-prompt-chip')).not.toBeInTheDocument()
@@ -132,14 +132,14 @@ describe('ChatInput: inserting a prompt', () => {
 
     await user.type(input, '/')
 
-    await screen.findByRole('option', { name: /\/zusammenfassung/ })
+    await screen.findByRole('option', { name: /\/anhoerung/ })
     const groups = within(screen.getByRole('listbox', { name: 'Prompts' })).getAllByRole('group')
     expect(groups.map((group) => group.getAttribute('aria-labelledby'))).toHaveLength(2)
     expect(groups[0]).toHaveAccessibleName(
       'Formulierungshilfen Referat 50 · diesem Space zugeordnet',
     )
     expect(groups[1]).toHaveAccessibleName('Hausweite Vorlagen')
-    expect(within(groups[1]).getByRole('option', { name: /\/dank/ })).toBeInTheDocument()
+    expect(within(groups[1]).getByRole('option', { name: /\/ablehnung/ })).toBeInTheDocument()
   })
 
   it('navigates with the arrow keys and closes on Escape until the fragment is left', async () => {
@@ -147,14 +147,17 @@ describe('ChatInput: inserting a prompt', () => {
     const { input } = renderInput()
 
     await user.type(input, '/')
-    await screen.findByRole('option', { name: /\/zusammenfassung/ })
+    await screen.findByRole('option', { name: /\/anhoerung/ })
     await user.keyboard('{ArrowDown}')
-    expect(screen.getByRole('option', { name: /\/anhoerung/ })).toHaveAttribute(
+    expect(screen.getByRole('option', { name: /\/vermerk/ })).toHaveAttribute(
       'aria-selected',
       'true',
     )
     await user.keyboard('{ArrowUp}{ArrowUp}')
-    expect(screen.getByRole('option', { name: /\/dank/ })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('option', { name: /\/zusammenfassung/ })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
 
     await user.keyboard('{Escape}')
     expect(screen.queryByRole('listbox', { name: 'Prompts' })).not.toBeInTheDocument()
@@ -189,7 +192,18 @@ describe('ChatInput: inserting a prompt', () => {
     server.use(
       http.get('/api/v1/prompts/available', async () => {
         await gate
-        return HttpResponse.json(mockAvailablePrompts('space-engineering'))
+        return HttpResponse.json([
+          {
+            id: 'prompt-zusammenfassung',
+            libraryId: 'prompt-library-organisation',
+            libraryName: 'Hausweite Vorlagen',
+            name: 'zusammenfassung',
+            title: 'Zusammenfassung',
+            description: null,
+            hasVariables: true,
+            associatedWithSpace: false,
+          },
+        ])
       }),
     )
     const user = userEvent.setup()
@@ -213,11 +227,11 @@ describe('ChatInput: inserting a prompt', () => {
       http.get('/api/v1/prompt-libraries/:libraryId/prompts/:promptId', async () => {
         await gate
         return HttpResponse.json({
-          id: 'prompt-dank',
-          promptLibraryId: 'prompt-library-hausweit',
-          name: 'dank',
-          title: 'Dankesschreiben',
-          text: 'Danke.',
+          id: 'prompt-vermerk',
+          promptLibraryId: 'prompt-library-referat-50',
+          name: 'vermerk',
+          title: 'Vermerk',
+          text: 'Vermerk.',
           variables: [],
           sortOrder: 0,
           createdAt: '2026-09-20T08:00:00Z',
@@ -228,8 +242,8 @@ describe('ChatInput: inserting a prompt', () => {
     const user = userEvent.setup()
     const { onSend, input } = renderInput()
 
-    await user.type(input, '/dank')
-    await screen.findByRole('option', { name: /\/dank/ })
+    await user.type(input, '/vermerk')
+    await screen.findByRole('option', { name: /\/vermerk/ })
     await user.keyboard('{Enter}')
     await user.keyboard('{Enter}')
     expect(onSend).not.toHaveBeenCalled()
@@ -237,23 +251,23 @@ describe('ChatInput: inserting a prompt', () => {
     await user.type(input, ' und mehr')
     release()
 
-    await waitFor(() => expect(input).toHaveValue('/dank und mehr'))
+    await waitFor(() => expect(input).toHaveValue('/vermerk und mehr'))
     expect(screen.queryByTestId('used-prompt-chip')).not.toBeInTheDocument()
   })
 
   it('a question refused for its prompt comes back into the input without the chip', async () => {
     const user = userEvent.setup()
-    const onSend = vi.fn().mockResolvedValue({ restoreDraft: 'Formuliere ein Danke.' })
+    const onSend = vi.fn().mockResolvedValue({ restoreDraft: 'Fasse als Vermerk zusammen.' })
     render(<ChatInput onSend={onSend} />)
     const input = screen.getByRole('combobox')
 
-    await user.type(input, '/dank')
-    await screen.findByRole('option', { name: /\/dank/ })
+    await user.type(input, '/vermerk')
+    await screen.findByRole('option', { name: /\/vermerk/ })
     await user.keyboard('{Enter}')
     await waitFor(() => expect(screen.getByTestId('used-prompt-chip')).toBeInTheDocument())
     await user.keyboard('{Enter}')
 
-    await waitFor(() => expect(input).toHaveValue('Formuliere ein Danke.'))
+    await waitFor(() => expect(input).toHaveValue('Fasse als Vermerk zusammen.'))
     expect(screen.queryByTestId('used-prompt-chip')).not.toBeInTheDocument()
   })
 

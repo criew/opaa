@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { renderWithProviders } from '../test/test-utils'
 import SpacePage from './SpacePage'
@@ -143,6 +143,30 @@ describe('SpacePage', () => {
 
     expect(await screen.findByText('Rechtsquellen Soziales')).toBeInTheDocument()
     expect(screen.getByText(/andere Mitglieder können deshalb/)).toBeInTheDocument()
+  })
+
+  it('names the type of every data source, a prompt library included', async () => {
+    mockGetSpaceAssetAssociations.mockResolvedValue({
+      hasAssociations: true,
+      narrowsSearch: false,
+      items: [
+        {
+          assetType: 'PROMPT_LIBRARY',
+          assetId: 'prompt-library-1',
+          name: 'Formulierungshilfen',
+          readableByCaller: true,
+          createdByUserId: 'mock-user-id',
+          createdAt: '2026-03-01T10:00:00Z',
+        },
+      ],
+    })
+
+    renderWithProviders(<SpacePage />, { withRouter: true })
+
+    const entry = (await screen.findByText('Formulierungshilfen')).parentElement as HTMLElement
+    expect(within(entry).getByText('Prompt-Bibliothek')).toBeInTheDocument()
+    // A prompt library carries no documents: the search still falls back to every library.
+    expect(screen.getByText(/keine Wissensbibliothek zugeordnet/)).toBeInTheDocument()
   })
 
   it('shows a fallback message when the space has no library associations', async () => {
