@@ -22,7 +22,7 @@ interface SourceConnectionTestProps {
 }
 
 interface Outcome {
-  /** The configuration this outcome belongs to - a since-changed one hides it again. */
+  /** The probe this outcome belongs to - a since-changed one hides it again. */
   token: string
   result?: SourceConnectionTestResponse
   error?: string
@@ -32,10 +32,11 @@ interface Outcome {
  * The one „Verbindung testen" of the Pfad- und URL-Formulare (#1940) - the same button and the same
  * two result shapes in the Anlage-Assistent and on the Reiter „Quelle".
  *
- * <p>#514: a result belongs to the configuration it was measured against. Rather than clearing it
- * from every field's onChange, the outcome carries the configuration it came from and is simply not
- * rendered once the current one differs - a stale „erreichbar" can never survive a changed address,
- * including one changed while the request was still in flight.
+ * <p>#514: a result belongs to the probe it was measured with - the source type, the library it was
+ * aimed at and every entered field. Rather than clearing it from every field's onChange, the
+ * outcome carries that probe and is simply not rendered once the current one differs: a stale
+ * „erreichbar" survives neither a changed address nor a changed source type, including one changed
+ * while the request was still in flight.
  */
 export default function SourceConnectionTest({
   sourceType,
@@ -45,7 +46,7 @@ export default function SourceConnectionTest({
 }: SourceConnectionTestProps) {
   const [outcome, setOutcome] = useState<Outcome | null>(null)
   const [testing, setTesting] = useState(false)
-  const token = JSON.stringify(values)
+  const token = JSON.stringify({ sourceType, libraryId, values })
   const visible = outcome?.token === token ? outcome : null
 
   async function handleTest() {

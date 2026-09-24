@@ -2365,6 +2365,26 @@ describe('LibraryDetailPage', () => {
       await user.type(screen.getByLabelText('Dokumente durchsuchen'), 'dienst')
       expect(within(toolbar).getByText('0 ausgewählt')).toBeInTheDocument()
     })
+
+    it('drops the selection when the page size changes, too', async () => {
+      // A smaller page size shows fewer rows - anything selected beyond them would be invisible
+      // to the person, and "Löschen" is irreversible.
+      mockGetLibraryDocuments.mockResolvedValue(pageOf(indexedDocuments, { totalElements: 45 }))
+      setLibraryState(managerLibrary, detailsOf(managerLibrary))
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+      const user = userEvent.setup()
+
+      const toolbar = await screen.findByRole('toolbar', { name: 'Sammelaktionen' })
+      await user.click(
+        screen.getByRole('checkbox', { name: 'Dokument dienstanweisung.pdf auswählen' }),
+      )
+      expect(within(toolbar).getByText('1 ausgewählt')).toBeInTheDocument()
+
+      await user.click(screen.getByRole('combobox', { name: 'Dokumente je Seite' }))
+      await user.click(await screen.findByRole('option', { name: '50 je Seite' }))
+
+      await waitFor(() => expect(within(toolbar).getByText('0 ausgewählt')).toBeInTheDocument())
+    })
   })
 
   describe('"Original öffnen"', () => {
@@ -3809,9 +3829,35 @@ describe('LibraryDetailPage', () => {
           'doc-2',
         ]),
       )
+      // Ein Teilerfolg ist eine Warnung, kein grüner Erfolg, und gleiche Gründe werden gezählt
+      // statt aneinandergereiht.
+      const result = await screen.findByText(
+        '1 von 2 Dokumenten gelöscht. Nicht gelöscht — 1 Dokument: Dokument nicht gefunden.',
+      )
+      expect(result.closest('.MuiAlert-root')).toHaveClass('MuiAlert-colorWarning')
+    })
+
+    it('counts identical reasons instead of repeating them', async () => {
+      mockGetLibraryDocuments.mockResolvedValue(pageOf(uploads))
+      mockBulkDeleteLibraryDocuments.mockResolvedValueOnce({
+        deletedDocumentIds: [],
+        failures: [
+          { documentId: 'doc-1', message: 'Dokument nicht gefunden' },
+          { documentId: 'doc-2', message: 'Dokument nicht gefunden' },
+        ],
+      })
+      setLibraryState(managerLibrary, detailsOf(managerLibrary))
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+      const user = userEvent.setup()
+
+      const toolbar = await screen.findByRole('toolbar', { name: 'Sammelaktionen' })
+      await user.click(screen.getByRole('checkbox', { name: 'Alle auf dieser Seite auswählen' }))
+      await user.click(within(toolbar).getByRole('button', { name: 'Löschen' }))
+      await answerConfirm(user, '2 ausgewählte Dokumente löschen?', 'Löschen')
+
       expect(
         await screen.findByText(
-          '1 von 2 Dokumenten gelöscht. Nicht gelöscht: Dokument nicht gefunden.',
+          '0 von 2 Dokumenten gelöscht. Nicht gelöscht — 2 Dokumente: Dokument nicht gefunden.',
         ),
       ).toBeInTheDocument()
     })

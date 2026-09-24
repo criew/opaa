@@ -393,7 +393,14 @@ export default function LibraryDocumentList({
             }
             label="Alle auf dieser Seite auswählen"
           />
-          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+          {/* accessibility.md 2.8: the count changes without moving the focus, so it is announced
+              politely instead of staying silent for anyone not watching the checkboxes. */}
+          <Typography
+            variant="body2"
+            role="status"
+            aria-live="polite"
+            sx={{ color: 'text.secondary' }}
+          >
             {selectedIds.length} ausgewählt
           </Typography>
           {bulkActions}

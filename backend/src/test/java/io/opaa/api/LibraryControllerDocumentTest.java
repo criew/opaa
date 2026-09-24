@@ -9,6 +9,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -21,8 +22,10 @@ import io.opaa.auth.TestSecurityConfig;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
 import io.opaa.common.AccessDeniedException;
+import io.opaa.common.ConflictException;
 import io.opaa.indexing.document.Document;
 import io.opaa.indexing.job.DocumentIndexingService;
+import io.opaa.library.BulkDocumentDeletion;
 import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.library.LibraryDocumentEntry;
 import io.opaa.library.LibraryDocumentPage;
@@ -34,6 +37,8 @@ import io.opaa.space.SpaceAssetAssociationService;
 import io.opaa.succession.SuccessionService;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,6 +46,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -328,5 +334,85 @@ class LibraryControllerDocumentTest {
             delete("/api/v1/libraries/" + libraryId + "/documents/" + documentId)
                 .with(asTestUser()))
         .andExpect(status().isNoContent());
+  }
+
+  // #1943: the bulk delete's own wiring - both lists in the body, the connector rejection, the
+  // permission rejection, and the declared ceiling of 200 ids.
+  private String bulkDeleteBody(List<UUID> ids) {
+    return ids.stream()
+        .map(id -> "\"" + id + "\"")
+        .collect(Collectors.joining(",", "{\"documentIds\":[", "]}"));
+  }
+
+  @Test
+  void bulkDeletingDocumentsReturnsBothListsOfTheOutcome() throws Exception {
+    UUID libraryId = UUID.randomUUID();
+    UUID deleted = UUID.randomUUID();
+    UUID missing = UUID.randomUUID();
+    when(documentService.deleteDocuments(eq(libraryId), eq(List.of(deleted, missing)), any()))
+        .thenReturn(
+            new BulkDocumentDeletion(
+                List.of(deleted),
+                List.of(new BulkDocumentDeletion.Failure(missing, "Dokument nicht gefunden"))));
+
+    mockMvc
+        .perform(
+            post("/api/v1/libraries/" + libraryId + "/documents/bulk-delete")
+                .with(asTestUser())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(bulkDeleteBody(List.of(deleted, missing))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.deletedDocumentIds[0]").value(deleted.toString()))
+        .andExpect(jsonPath("$.failures[0].documentId").value(missing.toString()))
+        .andExpect(jsonPath("$.failures[0].message").value("Dokument nicht gefunden"));
+  }
+
+  @Test
+  void bulkDeletingInAConnectorLibraryReturns409() throws Exception {
+    UUID libraryId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    when(documentService.deleteDocuments(eq(libraryId), any(), any()))
+        .thenThrow(
+            new ConflictException("Diese Bibliothek verwaltet ihren Bestand über ihre Quelle"));
+
+    mockMvc
+        .perform(
+            post("/api/v1/libraries/" + libraryId + "/documents/bulk-delete")
+                .with(asTestUser())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(bulkDeleteBody(List.of(documentId))))
+        .andExpect(status().isConflict());
+  }
+
+  @Test
+  void bulkDeletingWithoutTheEditorRightReturns403() throws Exception {
+    UUID libraryId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    when(documentService.deleteDocuments(eq(libraryId), any(), any()))
+        .thenThrow(new AccessDeniedException("Kein Zugriff auf diese Bibliothek"));
+
+    mockMvc
+        .perform(
+            post("/api/v1/libraries/" + libraryId + "/documents/bulk-delete")
+                .with(asTestUser())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(bulkDeleteBody(List.of(documentId))))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  void bulkDeletingMoreThanTheDeclaredCeilingReturns400() throws Exception {
+    // maxItems: 200 in the specification becomes @Size on the generated request - 201 ids are
+    // rejected by bean validation before the service is ever reached.
+    UUID libraryId = UUID.randomUUID();
+    List<UUID> tooMany = Stream.generate(UUID::randomUUID).limit(201).toList();
+
+    mockMvc
+        .perform(
+            post("/api/v1/libraries/" + libraryId + "/documents/bulk-delete")
+                .with(asTestUser())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(bulkDeleteBody(tooMany)))
+        .andExpect(status().isBadRequest());
   }
 }

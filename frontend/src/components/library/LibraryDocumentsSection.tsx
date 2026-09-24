@@ -134,7 +134,12 @@ export default function LibraryDocumentsSection({
   const [metadataOpenById, setMetadataOpenById] = useState<Record<string, boolean>>({})
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([])
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false)
-  const [bulkResultMessage, setBulkResultMessage] = useState<string | null>(null)
+  // The outcome of the last Sammelaktion. Carries its own severity: a delete that left documents
+  // standing is a warning, not the green success a metadata assignment produces.
+  const [bulkResult, setBulkResult] = useState<{
+    severity: 'success' | 'warning'
+    text: string
+  } | null>(null)
   const [metadataRefreshToken, setMetadataRefreshToken] = useState(0)
   // #1069: bumped after every metadata change so the anchor recounts; separate from
   // metadataRefreshToken, which reloads the open per-document panels.
@@ -162,6 +167,7 @@ export default function LibraryDocumentsSection({
   // #1068: whoever may edit the library's documents may correct their metadata - for every
   // sourceType, since a metadata value hangs at the document row, not at the file.
   const canEditMetadata = canManage
+  const tooManySelectedToDelete = selectedDocumentIds.length > MAX_BULK_DELETE
 
   useEffect(() => {
     // #506 review, finding 2: uploadErrors/deleteError/error are not keyed by library - without
@@ -268,7 +274,7 @@ export default function LibraryDocumentsSection({
     if (result.rejectedDocumentIds.length > 0) {
       parts.push(`${result.rejectedDocumentIds.length} abgewiesen`)
     }
-    setBulkResultMessage(`Feld gesetzt: ${parts.join(', ')}.`)
+    setBulkResult({ severity: 'success', text: `Feld gesetzt: ${parts.join(', ')}.` })
     setSelectedDocumentIds([])
     setMetadataRefreshToken((previous) => previous + 1)
     setAnchorRefreshToken((previous) => previous + 1)
@@ -279,11 +285,14 @@ export default function LibraryDocumentsSection({
   /**
    * #1943: the Sammellöschen of an upload library. The confirmation names the number, and the
    * answer is reported as it comes back - a partial success says how many stayed and why, instead
-   * of leaving the person to compare the list against their own selection.
+   * of leaving the person to compare the list against their own selection. Identical reasons are
+   * counted rather than repeated, so fifty stale ids read as one sentence.
    */
   async function handleBulkDelete() {
-    const ids = selectedDocumentIds.slice(0, MAX_BULK_DELETE)
-    if (ids.length === 0) return
+    const ids = selectedDocumentIds
+    // The ceiling is announced in the toolbar and disables the button there; this is the guard
+    // that keeps a racing click from sending an over-long request the backend would reject.
+    if (ids.length === 0 || ids.length > MAX_BULK_DELETE) return
     const confirmed = await confirmAction({
       question:
         ids.length === 1 ? '1 Dokument löschen?' : `${ids.length} ausgewählte Dokumente löschen?`,
@@ -297,13 +306,24 @@ export default function LibraryDocumentsSection({
       const result = await removeDocuments(libraryId, ids)
       if (!result) return
       const deleted = result.deletedDocumentIds.length
-      const message =
-        result.failures.length === 0
-          ? `${deleted} ${deleted === 1 ? 'Dokument' : 'Dokumente'} gelöscht.`
-          : `${deleted} von ${ids.length} Dokumenten gelöscht. Nicht gelöscht: ${result.failures
-              .map((failure) => failure.message)
-              .join('; ')}.`
-      setBulkResultMessage(message)
+      if (result.failures.length === 0) {
+        setBulkResult({
+          severity: 'success',
+          text: `${deleted} ${deleted === 1 ? 'Dokument' : 'Dokumente'} gelöscht.`,
+        })
+      } else {
+        const countByReason = new Map<string, number>()
+        for (const failure of result.failures) {
+          countByReason.set(failure.message, (countByReason.get(failure.message) ?? 0) + 1)
+        }
+        const reasons = [...countByReason.entries()].map(([reason, count]) =>
+          count === 1 ? `1 Dokument: ${reason}` : `${count} Dokumente: ${reason}`,
+        )
+        setBulkResult({
+          severity: 'warning',
+          text: `${deleted} von ${ids.length} Dokumenten gelöscht. Nicht gelöscht — ${reasons.join('; ')}.`,
+        })
+      }
       setSelectedDocumentIds([])
       setAnchorRefreshToken((previous) => previous + 1)
       onDocumentsChanged()
@@ -686,9 +706,16 @@ export default function LibraryDocumentsSection({
         </Alert>
       )}
 
-      {bulkResultMessage && (
-        <Alert severity="success" sx={{ mb: 2 }} onClose={() => setBulkResultMessage(null)}>
-          {bulkResultMessage}
+      {bulkResult && (
+        // role="status" (polite) rather than the Alert's own assertive default: the outcome of a
+        // finished action is announced without interrupting (accessibility.md 2.8).
+        <Alert
+          severity={bulkResult.severity}
+          role="status"
+          sx={{ mb: 2 }}
+          onClose={() => setBulkResult(null)}
+        >
+          {bulkResult.text}
         </Alert>
       )}
 
@@ -737,7 +764,12 @@ export default function LibraryDocumentsSection({
           setSelectedDocumentIds([])
           void loadDocuments(libraryId, { page: page - 1 })
         }}
-        onPageSizeChange={(size) => void loadDocuments(libraryId, { page: 0, size })}
+        onPageSizeChange={(size) => {
+          // Like every other change of the shown list: a smaller page size would otherwise leave
+          // documents selected that nobody can see any more - and "Löschen" is irreversible.
+          setSelectedDocumentIds([])
+          void loadDocuments(libraryId, { page: 0, size })
+        }}
         selectable={canEditMetadata}
         selectedIds={selectedDocumentIds}
         onToggleSelected={toggleSelected}
@@ -756,15 +788,25 @@ export default function LibraryDocumentsSection({
               Feld setzen
             </Button>
             {canDelete && (
-              <Button
-                size="small"
-                variant="outlined"
-                color="error"
-                disabled={selectedDocumentIds.length === 0}
-                onClick={() => void handleBulkDelete()}
-              >
-                Löschen
-              </Button>
+              <>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  color="error"
+                  disabled={selectedDocumentIds.length === 0 || tooManySelectedToDelete}
+                  onClick={() => void handleBulkDelete()}
+                >
+                  Löschen
+                </Button>
+                {/* The ceiling is named rather than applied silently: cutting the selection down
+                    to 200 would delete a different set than the one the person chose. */}
+                {tooManySelectedToDelete && (
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                    Höchstens {MAX_BULK_DELETE} Dokumente auf einmal löschen — bitte die Auswahl
+                    verkleinern.
+                  </Typography>
+                )}
+              </>
             )}
           </>
         }
