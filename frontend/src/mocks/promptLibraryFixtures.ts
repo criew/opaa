@@ -33,6 +33,28 @@ const INITIAL_PROMPT_LIBRARIES: Record<string, PromptLibraryResponse> = {
   },
 }
 
+/**
+ * A library the mock user administers without reading it (system administration without a right
+ * of the formula): not in the list, reachable by its address, its prompts answer 403.
+ */
+const ADMINISTERED_ONLY: PromptLibraryResponse = {
+  id: 'prompt-library-verwaltet',
+  name: 'Vorlagen Personalrat',
+  description: 'Nur verwaltet, nicht lesbar',
+  ownerType: 'GROUP',
+  ownerId: 'group-personalrat',
+  ownerName: null,
+  visibility: 'PRIVATE',
+  listed: false,
+  myRole: 'OWNER',
+  promptCount: 3,
+  succession: null,
+  createdAt: '2026-09-01T10:00:00Z',
+  updatedAt: '2026-09-01T10:00:00Z',
+}
+
+export const mockUnreadablePromptLibraryIds: ReadonlySet<string> = new Set([ADMINISTERED_ONLY.id])
+
 const INITIAL_PROMPTS: Record<string, PromptResponse[]> = {
   'prompt-library-referat-50': [
     {
@@ -96,11 +118,16 @@ const INITIAL_PROMPTS: Record<string, PromptResponse[]> = {
 }
 
 // Mutable copies: the handlers read and write them, and the test setup resets them between tests.
-export let mockPromptLibraries: Record<string, PromptLibraryResponse> =
-  structuredClone(INITIAL_PROMPT_LIBRARIES)
+export let mockPromptLibraries: Record<string, PromptLibraryResponse> = structuredClone({
+  ...INITIAL_PROMPT_LIBRARIES,
+  [ADMINISTERED_ONLY.id]: ADMINISTERED_ONLY,
+})
 export let mockPrompts: Record<string, PromptResponse[]> = structuredClone(INITIAL_PROMPTS)
 
 export function resetMockPromptLibraries() {
-  mockPromptLibraries = structuredClone(INITIAL_PROMPT_LIBRARIES)
+  mockPromptLibraries = structuredClone({
+    ...INITIAL_PROMPT_LIBRARIES,
+    [ADMINISTERED_ONLY.id]: ADMINISTERED_ONLY,
+  })
   mockPrompts = structuredClone(INITIAL_PROMPTS)
 }

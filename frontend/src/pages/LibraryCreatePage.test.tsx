@@ -140,6 +140,29 @@ describe('LibraryCreatePage (#596, Mockup 1e)', () => {
     )
   })
 
+  // The library exists once the POST succeeded: a refused grant leads to its detail page instead
+  // of re-enabling "Bibliothek anlegen", which would create a second library.
+  it('goes to the new library when a noted grant is refused, and names the grant', async () => {
+    mockGetUserSummaries.mockResolvedValue([
+      { id: 'user-alice', email: 'alice@example.com', displayName: 'Alice' },
+    ])
+    mockUpsertAssetGrant.mockRejectedValueOnce(new Error('abgelehnt'))
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.type(screen.getByLabelText(/^Name/), 'Rechtsquellen Soziales')
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    await user.click(screen.getByRole('button', { name: 'Weiter zu Rechten' }))
+    await user.type(screen.getByRole('combobox', { name: 'Person suchen' }), 'al')
+    await user.click(await screen.findByRole('option', { name: /Alice/ }))
+    await user.click(screen.getByRole('button', { name: 'Vormerken' }))
+    await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
+
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/libraries/lib-neu'))
+    expect(mockCreateNewLibrary).toHaveBeenCalledTimes(1)
+    expect(await screen.findByText(/nicht gespeichert werden: Alice/)).toBeInTheDocument()
+  }, 15000)
+
   /** ADR-0036, Entscheidung 2: dieselbe Zwischenfrage wie im Dialog „Rechte". */
   it('asks before noting a group of an external provider and notes nothing on cancel', async () => {
     mockSearchSelectableGroups.mockResolvedValue([

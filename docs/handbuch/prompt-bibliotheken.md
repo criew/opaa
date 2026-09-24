@@ -92,8 +92,9 @@ wie beim Anlegen einer Wissensbibliothek, nur ohne den Schritt „Herkunft":
 Anlegen darf, wer das Anlegerecht **„Prompt-Bibliotheken anlegen"** hat; ausgeliefert ist es an
 „Alle Konten" ([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 9).
 Fehlt es, nennt der Assistent es beim Namen, statt die Funktion zu verstecken. Kann eine
-vorgemerkte Rolle nicht erteilt werden, ist die Bibliothek trotzdem angelegt; der Assistent nennt
-die betroffenen Personen oder Gruppen, und die Rolle lässt sich auf der Detailseite nachtragen.
+vorgemerkte Rolle nicht erteilt werden, ist die Bibliothek trotzdem angelegt: Der Assistent führt
+auf ihre Detailseite, nennt in einem Hinweis die betroffenen Personen oder Gruppen, und die Rolle
+lässt sich dort unter „Rechte verwalten" nachtragen. Ein zweites Anlegen bietet er nicht an.
 
 ### Die Detailseite
 
@@ -136,7 +137,10 @@ gekennzeichnet.
 | **Text** | Die Anweisung selbst, mit Platzhaltern `{{name}}` |
 
 Unter dem Text zeigt eine Hervorhebung, was OPAA als Platzhalter liest: eigene Variablen,
-Systemvariablen und ungültige Platzhalter in je eigener Farbe und mit eigenem Titel.
+Systemvariablen und ungültige Platzhalter in je eigener Farbe, Systemvariablen zusätzlich
+gepunktet und ungültige Platzhalter gewellt unterstrichen; eine Legende darunter nennt die
+vorkommenden Arten. Feldfehler des Servers stehen mit dem Namen des Formularfelds, etwa
+„Variable „frist“ – Beschriftung“.
 
 **Die Variablentabelle folgt dem Text.** Jeder Platzhalter, der im Text steht, hat eine Zeile —
 ein neuer Platzhalter fügt sie hinzu, ein gelöschter entfernt sie. Je Variable:
@@ -200,8 +204,8 @@ Eigentum und Nachfolge protokolliert und historisiert OPAA wie bei jeder Wissens
 ## 9. Was nicht gebaut ist
 
 - **Einsetzen im Chat** mit `/befehl`, dem Formular für die Variablen und dem Nachweis, welcher
-  Prompt verwendet wurde — [#1903](https://github.com/criew/opaa/issues/1903).
-- **Der Katalog**, in dem „Im Katalog auffindbar" wirkt — [#1904](https://github.com/criew/opaa/issues/1904).
+  Prompt verwendet wurde (#1903).
+- **Der Katalog**, in dem „Im Katalog auffindbar" wirkt (#1904).
   Bis dahin wird die Auffindbarkeit gespeichert und historisiert, aber nirgends ausgewertet.
 - **Versionen, Freigabeweg, Favoriten und Nutzungszähler** für Prompts.
 - **Mitgelieferte Prompt-Bibliotheken** und **Export und Import** als Paket.

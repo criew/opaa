@@ -17,6 +17,7 @@ import {
   PROMPT_NAME_MAX_LENGTH,
   PROMPT_TEXT_MAX_LENGTH,
   PROMPT_TITLE_MAX_LENGTH,
+  promptFieldLabel,
   suggestPromptName,
   validatePromptDraft,
   variablesForText,
@@ -93,7 +94,9 @@ export default function PromptEditorDialog({
       const message =
         err instanceof Error ? err.message : 'Der Prompt konnte nicht gespeichert werden'
       const fieldErrors = apiFieldErrors(err).map((fieldError) =>
-        fieldError.field ? `${fieldError.field}: ${fieldError.message}` : fieldError.message,
+        fieldError.field
+          ? `${promptFieldLabel(fieldError.field, variables)}: ${fieldError.message}`
+          : fieldError.message,
       )
       setServerErrors([message, ...fieldErrors])
     } finally {

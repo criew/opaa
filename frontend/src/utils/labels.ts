@@ -167,7 +167,7 @@ const assetRoleDescriptions: Record<AssetType, Record<AssetRole, string>> = {
 
 export function assetRoleDescription(
   role: AssetRole | string | undefined,
-  assetType: AssetType = 'KNOWLEDGE_LIBRARY',
+  assetType: AssetType,
 ): string {
   if (!role) return ''
   return assetRoleDescriptions[assetType]?.[role as AssetRole] ?? ''

@@ -63,6 +63,10 @@ describe('PromptEditorDialog', () => {
     expect(within(highlight).getByTitle('Variable')).toHaveTextContent('{{ frist }}')
     expect(within(highlight).getByTitle('Systemvariable')).toHaveTextContent('{{user_name}}')
     expect(within(highlight).getByTitle('Ungültiger Platzhalter')).toHaveTextContent('{{fal sch}}')
+    // Colour is not the only feature: the legend names the second one of each kind.
+    expect(
+      screen.getByText(/Systemvariable \(gepunktet unterstrichen, füllt OPAA selbst\)/),
+    ).toBeInTheDocument()
   })
 
   // Several typing sequences take longer than the default 5s under full-suite CPU contention.
@@ -90,7 +94,10 @@ describe('PromptEditorDialog', () => {
         HttpResponse.json(
           {
             error: 'Ein Prompt mit dem Namen „vermerk“ gibt es in dieser Bibliothek bereits.',
-            fieldErrors: [{ field: 'name', message: 'bereits vergeben' }],
+            fieldErrors: [
+              { field: 'name', message: 'bereits vergeben' },
+              { field: 'variables[0].label', message: 'darf nicht leer sein' },
+            ],
           },
           { status: 409 },
         ),
@@ -100,12 +107,16 @@ describe('PromptEditorDialog', () => {
     const { onClose } = renderEditor()
 
     await user.type(screen.getByLabelText('Titel'), 'Vermerk')
-    await user.type(screen.getByLabelText('Text'), 'Fasse zusammen.')
+    await user.click(screen.getByLabelText('Text'))
+    await user.paste('Vermerk zu {{akte}}.')
     await user.click(screen.getByRole('button', { name: 'Prompt speichern' }))
 
     const alert = await screen.findByRole('alert')
     expect(alert).toHaveTextContent('gibt es in dieser Bibliothek bereits')
-    expect(alert).toHaveTextContent('name: bereits vergeben')
+    // The API paths are translated into the labels of the form, never shown in English.
+    expect(alert).toHaveTextContent('Befehl: bereits vergeben')
+    expect(alert).toHaveTextContent('Variable „akte“ – Beschriftung: darf nicht leer sein')
+    expect(alert).not.toHaveTextContent('variables[0]')
     expect(onClose).not.toHaveBeenCalled()
   })
 

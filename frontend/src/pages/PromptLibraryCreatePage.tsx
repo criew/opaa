@@ -9,7 +9,10 @@ import WizardStepBar from '../components/wizard/WizardStepBar'
 import AssetNameFields from '../components/assets/AssetNameFields'
 import AssetOwnerFields from '../components/assets/AssetOwnerFields'
 import AssetRightsFields from '../components/assets/AssetRightsFields'
-import { applyPendingGrants, type PendingGrant } from '../components/assets/pendingGrants'
+import {
+  applyPendingGrantsAfterCreation,
+  type PendingGrant,
+} from '../components/assets/pendingGrants'
 import { confirmAction } from '../stores/confirmStore'
 import { usePromptLibraryStore } from '../stores/promptLibraryStore'
 import { useMyCapabilities } from '../hooks/useMyCapabilities'
@@ -82,14 +85,7 @@ export default function PromptLibraryCreatePage() {
         visibility,
         listed,
       })
-      const failed = await applyPendingGrants('PROMPT_LIBRARY', id, pendingGrants)
-      if (failed.length > 0) {
-        setError(
-          `Die Prompt-Bibliothek wurde angelegt, aber diese Freigaben konnten nicht gespeichert werden: ${failed.join(', ')}. Ergänzen Sie sie auf der Detailseite.`,
-        )
-        setSubmitting(false)
-        return
-      }
+      await applyPendingGrantsAfterCreation('PROMPT_LIBRARY', id, pendingGrants)
       navigate(promptLibraryRoute(id))
     } catch (err) {
       setError(

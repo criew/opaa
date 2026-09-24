@@ -6,8 +6,12 @@ import type {
   PromptRequest,
   PromptResponse,
 } from '../types/api'
-import { mockGroups } from './fixtures'
-import { mockPromptLibraries, mockPrompts } from './promptLibraryFixtures'
+import { mockGroups, mockMyCapabilities, mockMyGroups } from './fixtures'
+import {
+  mockPromptLibraries,
+  mockPrompts,
+  mockUnreadablePromptLibraryIds,
+} from './promptLibraryFixtures'
 
 const ROLE_ORDER = ['VIEWER', 'EDITOR', 'MANAGER', 'OWNER'] as const
 
@@ -17,6 +21,23 @@ function holds(library: PromptLibraryResponse, minimum: (typeof ROLE_ORDER)[numb
 
 function notFound() {
   return HttpResponse.json({ error: 'Prompt-Bibliothek nicht gefunden' }, { status: 404 })
+}
+
+const VISIBILITY_ORDER = ['PRIVATE', 'SHARED', 'ORGANIZATION'] as const
+
+/** The server's text form: blanks inside the braces removed, system variables upper case. */
+function normalizeText(text: string): string {
+  return text.replace(/\{\{\s*([A-Za-z][A-Za-z0-9_]*)\s*\}\}/g, (_match, name: string) => {
+    const upper = name.toUpperCase()
+    return `{{${upper === 'CURRENT_DATE' || upper === 'USER_NAME' ? upper : name}}}`
+  })
+}
+
+function duplicateName(name: string) {
+  return HttpResponse.json(
+    { error: `In dieser Prompt-Bibliothek gibt es bereits einen Prompt mit dem Namen „${name}“.` },
+    { status: 409 },
+  )
 }
 
 function forbidden() {
@@ -58,15 +79,29 @@ function refreshPromptCount(libraryId: string) {
   if (library) library.promptCount = (mockPrompts[libraryId] ?? []).length
 }
 
-/** The prompt library endpoints for the mocked frontend (#1901's API). */
+/** The prompt library endpoints for the mocked frontend. */
 export const promptLibraryHandlers = [
+  // The list holds what the caller may read; a library reached only through administration is not
+  // in it.
   http.get('/api/v1/prompt-libraries', () =>
     HttpResponse.json(
-      Object.values(mockPromptLibraries).sort((a, b) => a.name.localeCompare(b.name)),
+      Object.values(mockPromptLibraries)
+        .filter((library) => !mockUnreadablePromptLibraryIds.has(library.id))
+        .sort((a, b) => a.name.localeCompare(b.name)),
     ),
   ),
 
   http.post('/api/v1/prompt-libraries', async ({ request }) => {
+    if (!mockMyCapabilities.capabilities.includes('CREATE_PROMPT_LIBRARY')) {
+      return HttpResponse.json(
+        {
+          error:
+            'Ihnen fehlt das Anlegerecht „Prompt-Bibliotheken anlegen“. Wenden Sie sich an die Systemverwaltung, wenn Sie es benötigen.',
+          code: 'CAPABILITY_REQUIRED',
+        },
+        { status: 403 },
+      )
+    }
     const body = (await request.json()) as PromptLibraryRequest
     if (!body.name?.trim()) {
       return HttpResponse.json({ error: 'Name ist erforderlich' }, { status: 400 })
@@ -77,6 +112,12 @@ export const promptLibraryHandlers = [
       return HttpResponse.json(
         { error: 'ownerId ist erforderlich, wenn ownerType GROUP ist' },
         { status: 400 },
+      )
+    }
+    if (group && !mockMyGroups.some((mine) => mine.id === group.id)) {
+      return HttpResponse.json(
+        { error: 'Nur Mitglieder der Gruppe können eine Prompt-Bibliothek in ihrem Namen anlegen' },
+        { status: 403 },
       )
     }
     const now = new Date().toISOString()
@@ -111,6 +152,18 @@ export const promptLibraryHandlers = [
     if (!library) return notFound()
     if (!holds(library, 'MANAGER')) return forbidden()
     const body = (await request.json()) as PromptLibraryUpdateRequest
+    const widens =
+      VISIBILITY_ORDER.indexOf(body.visibility) > VISIBILITY_ORDER.indexOf(library.visibility) ||
+      (body.listed && !library.listed)
+    if (library.succession && widens) {
+      return HttpResponse.json(
+        {
+          error: `Für dieses Objekt ist die Nachfolge offen: eine größere Reichweite (Sichtbarkeit oder Auffindbarkeit) ist deshalb nicht möglich. Bestehende Rechte bleiben unverändert, und nichts wird gelöscht. Zuständig: ${library.succession.addresseeLabel}`,
+          code: 'SUCCESSION_OPEN',
+        },
+        { status: 409 },
+      )
+    }
     Object.assign(library, {
       name: body.name,
       description: body.description ?? null,
@@ -134,6 +187,14 @@ export const promptLibraryHandlers = [
   http.get('/api/v1/prompt-libraries/:id/prompts', ({ params }) => {
     const id = String(params.id)
     if (!mockPromptLibraries[id]) return notFound()
+    // Administering a library is not reading it: without a right of the formula the prompts stay
+    // closed, as they do on the server.
+    if (mockUnreadablePromptLibraryIds.has(id)) {
+      return HttpResponse.json(
+        { error: 'Kein Zugriff auf die Prompts dieser Prompt-Bibliothek' },
+        { status: 403 },
+      )
+    }
     return HttpResponse.json(mockPrompts[id] ?? [])
   }),
 
@@ -146,12 +207,7 @@ export const promptLibraryHandlers = [
     const invalid = validatePrompt(body)
     if (invalid) return HttpResponse.json({ error: invalid }, { status: 400 })
     const prompts = mockPrompts[id] ?? []
-    if (prompts.some((prompt) => prompt.name === body.name)) {
-      return HttpResponse.json(
-        { error: `Ein Prompt mit dem Namen „${body.name}“ gibt es in dieser Bibliothek bereits.` },
-        { status: 409 },
-      )
-    }
+    if (prompts.some((prompt) => prompt.name === body.name)) return duplicateName(body.name)
     const now = new Date().toISOString()
     const prompt: PromptResponse = {
       id: `prompt-${crypto.randomUUID().slice(0, 8)}`,
@@ -159,7 +215,7 @@ export const promptLibraryHandlers = [
       name: body.name,
       title: body.title,
       description: body.description ?? null,
-      text: body.text,
+      text: normalizeText(body.text),
       variables: body.variables ?? [],
       sortOrder: body.sortOrder ?? 0,
       createdAt: now,
@@ -181,12 +237,15 @@ export const promptLibraryHandlers = [
     const body = (await request.json()) as PromptRequest
     const invalid = validatePrompt(body)
     if (invalid) return HttpResponse.json({ error: invalid }, { status: 400 })
+    if (prompts.some((prompt) => prompt.id !== existing.id && prompt.name === body.name)) {
+      return duplicateName(body.name)
+    }
     const updated: PromptResponse = {
       ...existing,
       name: body.name,
       title: body.title,
       description: body.description ?? null,
-      text: body.text,
+      text: normalizeText(body.text),
       variables: body.variables ?? [],
       sortOrder: body.sortOrder ?? existing.sortOrder,
       updatedAt: new Date().toISOString(),

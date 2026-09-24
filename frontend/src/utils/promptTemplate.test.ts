@@ -87,6 +87,35 @@ describe('promptTemplate', () => {
     ).toEqual(['Die Vorbelegung der Auswahl „ton“ ist keiner ihrer Auswahlwerte.'])
   })
 
+  it('checks options and defaults with the server limits and wording', () => {
+    expect(
+      validatePromptDraft({
+        ...validDraft,
+        text: '{{ton}} {{notiz}}',
+        variables: [
+          {
+            name: 'ton',
+            label: 'Ton',
+            type: 'SELECT',
+            required: false,
+            options: ['sachlich', 'x'.repeat(256), 'sachlich'],
+          },
+          {
+            name: 'notiz',
+            label: 'Notiz',
+            type: 'TEXTAREA',
+            required: false,
+            defaultValue: 'y'.repeat(2001),
+          },
+        ],
+      }),
+    ).toEqual([
+      'Ein Auswahlwert der Variable „ton“ ist leer oder länger als 255 Zeichen.',
+      'Der Auswahlwert „sachlich“ steht mehrfach in der Variable „ton“.',
+      'Die Vorbelegung der Variable „notiz“ ist länger als 2000 Zeichen.',
+    ])
+  })
+
   it('resolves the preview from example values, defaults and system values', () => {
     const text = '{{a}} {{b}} {{c}} {{CURRENT_DATE}} {{USER_NAME}}'
     const variables = [

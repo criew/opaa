@@ -124,7 +124,8 @@ function PromptsArea({
       ) : (
         <Box>
           {prompts.map((prompt) => (
-            <Accordion key={prompt.id} disableGutters variant="outlined">
+            // The summary is the prompt's heading (MUI's heading slot); the title inside is a span.
+            <Accordion key={prompt.id} slotProps={{ heading: { component: 'h3' } }}>
               <AccordionSummary
                 expandIcon={<ExpandMoreIcon />}
                 aria-controls={`prompt-${prompt.id}-content`}
@@ -136,7 +137,7 @@ function PromptsArea({
                     spacing={1.5}
                     sx={{ alignItems: 'baseline', flexWrap: 'wrap' }}
                   >
-                    <Typography component="h3" sx={{ fontSize: 14.5, fontWeight: 600 }}>
+                    <Typography component="span" sx={{ fontSize: 14.5, fontWeight: 600 }}>
                       {prompt.title}
                     </Typography>
                     <Typography

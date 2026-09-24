@@ -19,6 +19,8 @@ export const PROMPT_MAX_OPTIONS = 50
 const VARIABLE_NAME_PATTERN = /^[A-Za-z][A-Za-z0-9_]*$/
 const VARIABLE_NAME_MAX_LENGTH = 64
 const LABEL_MAX_LENGTH = 255
+const OPTION_MAX_LENGTH = 255
+const DEFAULT_MAX_LENGTH = 2000
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/
 
 export type PromptTextSegment =
@@ -116,12 +118,26 @@ function validateVariable(variable: PromptVariable, errors: string[]) {
     if (options.length === 0 || options.length > PROMPT_MAX_OPTIONS) {
       errors.push(`Die Auswahl „${name}“ braucht zwischen 1 und 50 Auswahlwerte.`)
     }
-    if (new Set(options).size !== options.length) {
-      errors.push(`Ein Auswahlwert steht mehrfach in der Variable „${name}“.`)
+    if (options.some((option) => !option.trim() || option.length > OPTION_MAX_LENGTH)) {
+      errors.push(
+        `Ein Auswahlwert der Variable „${name}“ ist leer oder länger als ${OPTION_MAX_LENGTH} Zeichen.`,
+      )
+    }
+    const seen = new Set<string>()
+    for (const option of options) {
+      if (seen.has(option)) {
+        errors.push(`Der Auswahlwert „${option}“ steht mehrfach in der Variable „${name}“.`)
+        break
+      }
+      seen.add(option)
     }
   }
   const value = variable.defaultValue
-  if (value) {
+  if (value && value.length > DEFAULT_MAX_LENGTH) {
+    errors.push(
+      `Die Vorbelegung der Variable „${name}“ ist länger als ${DEFAULT_MAX_LENGTH} Zeichen.`,
+    )
+  } else if (value) {
     if (variable.type === 'SELECT' && !options.includes(value)) {
       errors.push(`Die Vorbelegung der Auswahl „${name}“ ist keiner ihrer Auswahlwerte.`)
     }
@@ -192,4 +208,37 @@ export function resolvePromptPreview(
       return value || `[${variable?.label || segment.name}]`
     })
     .join('')
+}
+
+const PROMPT_FIELD_LABELS: Record<string, string> = {
+  name: 'Befehl',
+  title: 'Titel',
+  description: 'Beschreibung',
+  text: 'Text',
+  variables: 'Variablen',
+  sortOrder: 'Reihenfolge',
+}
+
+const VARIABLE_FIELD_LABELS: Record<string, string> = {
+  name: 'Name',
+  label: 'Beschriftung',
+  type: 'Typ',
+  required: 'Pflicht',
+  defaultValue: 'Vorbelegung',
+  options: 'Auswahlwerte',
+}
+
+/**
+ * The German name of a field the server refused, from its API path (`variables[0].label` becomes
+ * „Variable „frist“ – Beschriftung“). An unknown path yields „Eingabe“ rather than English.
+ */
+export function promptFieldLabel(field: string, variables: PromptVariable[]): string {
+  const variableMatch = /^variables\[(\d+)\](?:\.(\w+))?/.exec(field)
+  if (variableMatch) {
+    const variable = variables[Number(variableMatch[1])]
+    const which = variable ? `Variable „${variable.name}“` : 'Variable'
+    const part = variableMatch[2] ? VARIABLE_FIELD_LABELS[variableMatch[2]] : undefined
+    return part ? `${which} – ${part}` : which
+  }
+  return PROMPT_FIELD_LABELS[field] ?? 'Eingabe'
 }

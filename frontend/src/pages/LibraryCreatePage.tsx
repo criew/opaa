@@ -27,7 +27,10 @@ import { useMyGroups } from '../hooks/useMyGroups'
 import AssetNameFields from '../components/assets/AssetNameFields'
 import AssetOwnerFields from '../components/assets/AssetOwnerFields'
 import AssetRightsFields from '../components/assets/AssetRightsFields'
-import { applyPendingGrants, type PendingGrant } from '../components/assets/pendingGrants'
+import {
+  applyPendingGrantsAfterCreation,
+  type PendingGrant,
+} from '../components/assets/pendingGrants'
 import {
   allDocumentSourceTypes,
   capabilityMissingMessage,
@@ -214,14 +217,7 @@ export default function LibraryCreatePage() {
         }),
         visibility,
       })
-      const failed = await applyPendingGrants('KNOWLEDGE_LIBRARY', libraryId, pendingGrants)
-      if (failed.length > 0) {
-        setError(
-          `Die Bibliothek wurde angelegt, aber diese Freigaben konnten nicht gespeichert werden: ${failed.join(', ')}. Ergänzen Sie sie auf der Detailseite.`,
-        )
-        setSubmitting(false)
-        return
-      }
+      await applyPendingGrantsAfterCreation('KNOWLEDGE_LIBRARY', libraryId, pendingGrants)
       if ((configKind === 'confluence' || configKind === 's3') && startFirstRun) {
         // Awaited so the run is already in the indexing store when the detail page mounts and its
         // progress strip picks it up. triggerIndexing never throws - a failure surfaces through

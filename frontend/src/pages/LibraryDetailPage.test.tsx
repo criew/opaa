@@ -411,7 +411,7 @@ describe('LibraryDetailPage', () => {
     })
   }, 15000)
 
-  // #1902: Verteilungsstufe und Auffindbarkeit stehen im gemeinsamen Freigabeabschnitt und werden
+  // Verteilungsstufe und Auffindbarkeit stehen im gemeinsamen Freigabeabschnitt und werden
   // dort gespeichert - mit den gespeicherten Stammdaten, nicht mit einem Entwurf daneben.
   it('saves distribution level and findability from the shared release section', async () => {
     setLibraryState(managerLibrary, detailsOf(managerLibrary))
@@ -755,7 +755,10 @@ describe('LibraryDetailPage', () => {
       renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
       await user.click(await screen.findByRole('tab', { name: 'Verwaltung' }))
-      await user.click(await screen.findByRole('button', { name: /^speichern$/i }))
+      // Nur eine größere Reichweite läuft in die Sperre: Verteilungsstufe erweitern, dann speichern.
+      await user.click(await screen.findByRole('combobox', { name: /verteilungsstufe/i }))
+      await user.click(await screen.findByRole('option', { name: /organisationsweit/i }))
+      await user.click(screen.getByRole('button', { name: 'Freigabe speichern' }))
 
       expect(await screen.findByText(/Nachfolge offen/)).toBeInTheDocument()
       expect(screen.getByText(/Übernahme/)).toBeInTheDocument()

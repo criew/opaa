@@ -1,3 +1,4 @@
+import { AxiosError } from 'axios'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -141,7 +142,19 @@ describe('AssetDistributionSection', () => {
   })
 
   it('names the takeover when an open succession refuses a wider reach', async () => {
-    const refusal = Object.assign(new Error('Für dieses Objekt ist die Nachfolge offen.'), {})
+    const refusal = new Error(
+      'Für dieses Objekt ist die Nachfolge offen: eine größere Reichweite ist deshalb nicht möglich.',
+    )
+    // A real AxiosError as cause, as normalizeError attaches it: apiErrorCode reads the code there.
+    const axiosError = new AxiosError('Request failed')
+    axiosError.response = {
+      status: 409,
+      statusText: 'Conflict',
+      headers: {},
+      config: { headers: {} } as never,
+      data: { error: refusal.message, code: 'SUCCESSION_OPEN' },
+    }
+    Object.defineProperty(refusal, 'cause', { value: axiosError })
     const onSave = vi.fn().mockRejectedValue(refusal)
     const user = userEvent.setup()
     renderWithProviders(
@@ -159,5 +172,27 @@ describe('AssetDistributionSection', () => {
     await user.click(screen.getByRole('button', { name: 'Freigabe speichern' }))
 
     expect(await screen.findByText(/Nachfolge offen/)).toBeInTheDocument()
+    expect(screen.getByText(/Übernahme/)).toBeInTheDocument()
+  })
+
+  it('shows any other refusal verbatim, without the takeover hint', async () => {
+    const onSave = vi.fn().mockRejectedValue(new Error('Keine Berechtigung'))
+    const user = userEvent.setup()
+    renderWithProviders(
+      <AssetDistributionSection
+        assetType="KNOWLEDGE_LIBRARY"
+        assetId="library-referat-50"
+        assetName="Rechtsquellen Soziales"
+        visibility="PRIVATE"
+        listed={false}
+        onSave={onSave}
+      />,
+    )
+
+    await user.click(screen.getByLabelText('Im Katalog auffindbar'))
+    await user.click(screen.getByRole('button', { name: 'Freigabe speichern' }))
+
+    expect(await screen.findByText('Keine Berechtigung')).toBeInTheDocument()
+    expect(screen.queryByText(/Übernahme/)).not.toBeInTheDocument()
   })
 })

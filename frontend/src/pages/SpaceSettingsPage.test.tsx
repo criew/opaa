@@ -772,7 +772,7 @@ describe('SpaceSettingsPage', () => {
   })
 
   /**
-   * #1902: der Reiter „Prompts" ordnet Prompt-Bibliotheken über dieselben Space-Endpunkte zu wie
+   * Der Reiter „Prompts" ordnet Prompt-Bibliotheken über dieselben Space-Endpunkte zu wie
    * „Wissen" die Wissensbibliotheken; jeder Reiter zeigt nur die Zuordnungen seines Typs.
    */
   describe('Reiter „Prompts"', () => {

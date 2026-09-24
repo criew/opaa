@@ -2,7 +2,9 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Route, Routes } from 'react-router'
+import { http, HttpResponse } from 'msw'
 import { server } from '../mocks/server'
+import { mockPromptLibraries } from '../mocks/promptLibraryFixtures'
 import { renderWithProviders, setMockAuthState } from '../test/test-utils'
 import { usePromptLibraryStore } from '../stores/promptLibraryStore'
 import type { AssetGrantRequest, PromptLibraryRequest, PromptRequest } from '../types/api'
@@ -39,7 +41,7 @@ function renderApp() {
   )
 }
 
-describe('Prompt-Bibliothek anlegen, füllen und freigeben (#1902)', () => {
+describe('Prompt-Bibliothek anlegen, füllen und freigeben', () => {
   beforeEach(() => {
     setMockAuthState()
     usePromptLibraryStore.getState().reset()
@@ -126,6 +128,68 @@ describe('Prompt-Bibliothek anlegen, füllen und freigeben (#1902)', () => {
       expect.objectContaining({ name: 'vermerk', variables: [] }),
     ])
   }, 30000)
+
+  it('führt nach einer abgelehnten Freigabe zur angelegten Bibliothek, statt ein zweites Anlegen anzubieten', async () => {
+    const captured = captureRequests()
+    server.use(
+      http.post('/api/v1/assets/:assetType/:assetId/grants', () =>
+        HttpResponse.json({ error: 'Kein Zugriff' }, { status: 403 }),
+      ),
+    )
+    const user = userEvent.setup()
+    renderApp()
+
+    await user.type(screen.getByLabelText(/^Name/), 'Vorlagen')
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    await user.click(screen.getByRole('button', { name: 'Weiter zu Rechten' }))
+    await user.click(screen.getByRole('radio', { name: 'Gruppe' }))
+    await user.type(await screen.findByLabelText('Gruppe suchen'), 'Referat')
+    const [referat] = await screen.findAllByRole('option', { name: /Referat 50/ })
+    await user.click(referat)
+    await user.click(screen.getByRole('button', { name: 'Vormerken' }))
+    await user.click(screen.getByRole('button', { name: 'Prompt-Bibliothek anlegen' }))
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Vorlagen' })).toBeInTheDocument()
+    expect(await screen.findByText(/nicht gespeichert werden: Referat 50/)).toBeInTheDocument()
+    expect(captured.libraries).toHaveLength(1)
+  }, 30000)
+
+  it('nennt bei offener Nachfolge den Ausgang, wenn die Reichweite wachsen soll', async () => {
+    mockPromptLibraries['prompt-library-referat-50'].succession = {
+      addressee: 'SYSTEM_ADMINISTRATION',
+      addresseeLabel: 'die Systemverwaltung',
+    }
+    const user = userEvent.setup()
+    renderWithProviders(
+      <Routes>
+        <Route path="/prompts/:promptLibraryId/:tab" element={<PromptLibraryDetailPage />} />
+      </Routes>,
+      { withRouter: true, initialRoute: '/prompts/prompt-library-referat-50/settings' },
+    )
+
+    expect(await screen.findByText(/Nachfolge offen — zuständig/)).toBeInTheDocument()
+    await user.click(await screen.findByRole('combobox', { name: 'Verteilungsstufe' }))
+    await user.click(await screen.findByRole('option', { name: 'organisationsweit' }))
+    await user.click(screen.getByRole('button', { name: 'Freigabe speichern' }))
+
+    expect(await screen.findByText(/Übernahme/)).toBeInTheDocument()
+  }, 15000)
+
+  it('zeigt der Verwaltung ohne Leserecht statt der Prompts den verweigerten Zugriff', async () => {
+    renderWithProviders(
+      <Routes>
+        <Route path="/prompts/:promptLibraryId" element={<PromptLibraryDetailPage />} />
+      </Routes>,
+      { withRouter: true, initialRoute: '/prompts/prompt-library-verwaltet' },
+    )
+
+    expect(
+      await screen.findByText('Kein Zugriff auf die Prompts dieser Prompt-Bibliothek'),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Neuer Prompt' })).not.toBeInTheDocument()
+    // Verwalten bleibt möglich: der Reiter „Verwaltung“ steht zur Verfügung.
+    expect(screen.getByRole('tab', { name: 'Verwaltung' })).toBeInTheDocument()
+  })
 
   it('zeigt einer Leserin die Prompts, aber weder Verwaltung noch Bearbeiten', async () => {
     const user = userEvent.setup()

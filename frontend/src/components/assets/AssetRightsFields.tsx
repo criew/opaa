@@ -161,7 +161,7 @@ export default function AssetRightsFields({
           </Button>
         </Box>
         {pendingGrants.length > 0 && (
-          <Box sx={{ border: 1, borderColor: 'divider', borderRadius: '10px', mt: 1.5 }}>
+          <Box sx={{ mt: 1.5, borderTop: 1, borderColor: 'divider' }}>
             {pendingGrants.map((grant) => (
               <Box
                 key={`${grant.subjectType}-${grant.subjectId}`}
@@ -169,9 +169,9 @@ export default function AssetRightsFields({
                   display: 'flex',
                   alignItems: 'center',
                   gap: 1.5,
-                  px: 2,
                   py: 1.25,
-                  '& + &': { borderTop: 1, borderColor: 'divider' },
+                  borderBottom: 1,
+                  borderColor: 'divider',
                 }}
               >
                 <Typography sx={{ fontSize: 13.5, flex: 1 }} noWrap>
