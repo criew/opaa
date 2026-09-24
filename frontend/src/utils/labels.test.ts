@@ -22,6 +22,9 @@ describe('capabilityMissingMessage', () => {
     expect(capabilityMissingMessage('CREATE_INTERNAL_GROUP')).toBe(
       'Ihnen fehlt das Anlegerecht „Interne Gruppen anlegen“. Wenden Sie sich an die Systemverwaltung, wenn Sie es benötigen.',
     )
+    expect(capabilityMissingMessage('CREATE_PROMPT_LIBRARY')).toBe(
+      'Ihnen fehlt das Anlegerecht „Prompt-Bibliotheken anlegen“. Wenden Sie sich an die Systemverwaltung, wenn Sie es benötigen.',
+    )
   })
 
   it('has a sentence for every capability the API knows', () => {
@@ -30,6 +33,7 @@ describe('capabilityMissingMessage', () => {
       'CREATE_LIBRARY',
       'CREATE_CONNECTOR_LIBRARY',
       'CREATE_INTERNAL_GROUP',
+      'CREATE_PROMPT_LIBRARY',
     ]
 
     for (const capability of everyCapability) {

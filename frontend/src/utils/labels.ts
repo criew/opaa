@@ -151,6 +151,7 @@ export function assetRoleDescription(role: AssetRole | string | undefined): stri
 
 const assetTypeLabels: Record<AssetType, string> = {
   KNOWLEDGE_LIBRARY: 'Bibliothek',
+  PROMPT_LIBRARY: 'Prompt-Bibliothek',
 }
 
 /** The singular noun of an asset type, as a sentence names it ("diese Bibliothek"). */
@@ -162,6 +163,8 @@ export function assetTypeLabel(assetType: AssetType | string | undefined): strin
 const assetGrantScopeHints: Record<AssetType, string> = {
   KNOWLEDGE_LIBRARY:
     'Eine Freigabe gewährt Zugriff auf alle Dokumente dieser Bibliothek, nicht auf eine Auswahl.',
+  PROMPT_LIBRARY:
+    'Eine Freigabe gewährt Zugriff auf alle Prompts dieser Prompt-Bibliothek, nicht auf eine Auswahl.',
 }
 
 /** What one grant opens on an asset of this type - the first sentence of the rights dialog. */
@@ -424,6 +427,7 @@ const capabilityLabels: Record<Capability, string> = {
   CREATE_LIBRARY: 'Bibliotheken für Uploads anlegen',
   CREATE_CONNECTOR_LIBRARY: 'Konnektorbibliotheken anlegen',
   CREATE_INTERNAL_GROUP: 'Interne Gruppen anlegen',
+  CREATE_PROMPT_LIBRARY: 'Prompt-Bibliotheken anlegen',
 }
 
 /**
