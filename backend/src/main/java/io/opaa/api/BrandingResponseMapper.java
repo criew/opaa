@@ -1,6 +1,7 @@
 package io.opaa.api;
 
 import io.opaa.api.dto.BrandingResponse;
+import io.opaa.branding.BrandingImageKind;
 import io.opaa.branding.EffectiveBranding;
 
 /**
@@ -21,16 +22,36 @@ final class BrandingResponseMapper {
             branding.primaryColor(),
             branding.defaultColorScheme());
     branding
-        .logo()
+        .image(BrandingImageKind.LOGO)
         .ifPresent(
             logo -> {
-              // The content-derived version turns "the logo changed" into "a different URL", which
-              // is what lets BrandingController#getBrandingLogo cache aggressively without ever
-              // serving a stale logo.
-              response.setLogoUrl("/api/v1/branding/logo?v=" + logo.version());
+              // The content-derived version turns "the image changed" into "a different URL", which
+              // is what lets BrandingController cache aggressively without ever serving a stale
+              // one.
+              response.setLogoUrl(url("logo", logo.version()));
               response.setLogoContentType(logo.contentType());
               response.setLogoUpdatedAt(logo.updatedAt());
             });
+    branding
+        .image(BrandingImageKind.LOGIN_LOGO)
+        .ifPresent(
+            loginLogo -> {
+              response.setLoginLogoUrl(url("login-logo", loginLogo.version()));
+              response.setLoginLogoContentType(loginLogo.contentType());
+              response.setLoginLogoUpdatedAt(loginLogo.updatedAt());
+            });
+    branding
+        .image(BrandingImageKind.LOGIN_BACKGROUND)
+        .ifPresent(
+            background -> {
+              response.setLoginBackgroundUrl(url("login-background", background.version()));
+              response.setLoginBackgroundContentType(background.contentType());
+              response.setLoginBackgroundUpdatedAt(background.updatedAt());
+            });
     return response;
+  }
+
+  private static String url(String path, String version) {
+    return "/api/v1/branding/" + path + "?v=" + version;
   }
 }

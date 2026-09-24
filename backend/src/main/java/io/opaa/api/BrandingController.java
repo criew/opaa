@@ -1,7 +1,8 @@
 package io.opaa.api;
 
 import io.opaa.api.dto.BrandingResponse;
-import io.opaa.branding.BrandingLogo;
+import io.opaa.branding.BrandingImage;
+import io.opaa.branding.BrandingImageKind;
 import io.opaa.branding.BrandingSettingsService;
 import java.time.Duration;
 import org.springframework.http.CacheControl;
@@ -21,12 +22,12 @@ import org.springframework.web.server.ResponseStatusException;
  * SystemRole.SYSTEM_ADMIN}.
  *
  * <p><b>Reachable without authentication at all</b> - both security chains ({@code
- * DevSecurityConfig}/{@code OidcSecurityConfig}) list these two paths among their {@code permitAll}
+ * DevSecurityConfig}/{@code OidcSecurityConfig}) list these paths among their {@code permitAll}
  * exceptions. #582 wrote "lesbar für alle angemeldeten Nutzer", which turned out to be one notch
  * too narrow once #583 came to build the sign-in page: it renders before there is a session and
  * still has to carry the operator's product name, claim and logo, so an authenticated-only endpoint
  * could not brand the one screen that most needs it. What this exposes is deliberate and bounded -
- * the name, claim, accent colour and logo of the deployment, i.e. which Behörde runs it, which
+ * the name, claim, accent colour and images of the deployment, i.e. which Behörde runs it, which
  * anyone reaching its sign-in page can already tell. No user, space, library or configuration data
  * is reachable through either path, and every write still requires {@code SYSTEM_ADMIN} ({@link
  * SystemBrandingController}). {@code BrandingPublicAccessTest} proves both halves.
@@ -62,29 +63,45 @@ public class BrandingController {
    *       source: nothing it might contain may load or execute anything.
    * </ul>
    *
-   * <p>{@link io.opaa.branding.BrandingLogoValidator} is what makes those headers a second line of
+   * <p>{@link io.opaa.branding.BrandingImageValidator} is what makes those headers a second line of
    * defense rather than the only one - the bytes were already required to be a real PNG or JPEG.
    */
   @GetMapping("/logo")
   public ResponseEntity<byte[]> getBrandingLogo() {
-    BrandingLogo logo =
+    return serve(BrandingImageKind.LOGO, "logo");
+  }
+
+  /** The sign-in page's own logo (#1910), served exactly like {@link #getBrandingLogo}. */
+  @GetMapping("/login-logo")
+  public ResponseEntity<byte[]> getBrandingLoginLogo() {
+    return serve(BrandingImageKind.LOGIN_LOGO, "login-logo");
+  }
+
+  /** The sign-in page's background image (#1910), served exactly like {@link #getBrandingLogo}. */
+  @GetMapping("/login-background")
+  public ResponseEntity<byte[]> getBrandingLoginBackground() {
+    return serve(BrandingImageKind.LOGIN_BACKGROUND, "login-background");
+  }
+
+  private ResponseEntity<byte[]> serve(BrandingImageKind kind, String fileName) {
+    BrandingImage image =
         brandingSettingsService
-            .currentLogo()
+            .currentImage(kind)
             .orElseThrow(
                 () ->
                     new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Es ist kein Logo konfiguriert"));
+                        HttpStatus.NOT_FOUND, kind.label() + " ist nicht konfiguriert"));
 
     return ResponseEntity.ok()
-        .contentType(MediaType.parseMediaType(logo.contentType()))
-        .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"logo\"")
+        .contentType(MediaType.parseMediaType(image.contentType()))
+        .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + fileName + "\"")
         .header("X-Content-Type-Options", "nosniff")
         .header("Content-Security-Policy", "default-src 'none'; sandbox")
-        // The URL carries the content-derived version (see BrandingResponseMapper#logoUrl), so a
-        // changed logo is a different URL and this cache entry can never go stale. The ETag covers
-        // the case of a client that ignores the version parameter and re-requests the bare path.
+        // The URL carries the content-derived version (see BrandingResponseMapper), so a changed
+        // image is a different URL and this cache entry can never go stale. The ETag covers the
+        // case of a client that ignores the version parameter and re-requests the bare path.
         .cacheControl(CacheControl.maxAge(Duration.ofHours(1)).cachePrivate())
-        .eTag(logo.version())
-        .body(logo.content());
+        .eTag(image.version())
+        .body(image.content());
   }
 }

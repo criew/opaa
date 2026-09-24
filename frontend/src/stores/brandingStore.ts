@@ -1,11 +1,28 @@
 import { create } from 'zustand'
 import type { BrandingResponse, BrandingUpdateRequest } from '../types/api'
+import type { BrandingImageSlot } from '../services/api'
 import {
-  deleteBrandingLogo,
+  deleteBrandingImage,
   getBranding,
   updateBranding,
-  uploadBrandingLogo,
+  uploadBrandingImage,
 } from '../services/api'
+
+/**
+ * What an operator may upload, in the order the branding form shows it (#582, #1910). `maxBytes`
+ * mirrors `BrandingImageKind` in the backend - rejected there too, just less pleasantly.
+ */
+export const BRANDING_IMAGES = {
+  logo: { slot: 'logo', label: 'Logo', maxBytes: 512 * 1024 },
+  loginLogo: { slot: 'login-logo', label: 'Logo der Anmeldeseite', maxBytes: 512 * 1024 },
+  loginBackground: {
+    slot: 'login-background',
+    label: 'Hintergrundbild der Anmeldeseite',
+    maxBytes: 2 * 1024 * 1024,
+  },
+} as const satisfies Record<string, { slot: BrandingImageSlot; label: string; maxBytes: number }>
+
+export type BrandingImageKind = keyof typeof BRANDING_IMAGES
 
 /**
  * The OPAA standard, mirroring `io.opaa.branding.BrandingDefaults` in the backend. Kept as a
@@ -32,8 +49,8 @@ interface BrandingState {
   error: string | null
   loadBranding: () => Promise<void>
   saveBranding: (request: BrandingUpdateRequest) => Promise<void>
-  saveLogo: (file: File) => Promise<void>
-  removeLogo: () => Promise<void>
+  saveImage: (kind: BrandingImageKind, file: File) => Promise<void>
+  removeImage: (kind: BrandingImageKind) => Promise<void>
   clearError: () => void
 }
 
@@ -73,23 +90,26 @@ export const useBrandingStore = create<BrandingState>((set) => ({
     }
   },
 
-  saveLogo: async (file: File) => {
+  saveImage: async (kind: BrandingImageKind, file: File) => {
+    const { slot, label } = BRANDING_IMAGES[kind]
     set({ isSaving: true, error: null })
     try {
-      set({ branding: await uploadBrandingLogo(file), isSaving: false })
+      set({ branding: await uploadBrandingImage(slot, file), isSaving: false })
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Logo konnte nicht gespeichert werden'
+      const message =
+        err instanceof Error ? err.message : `${label} konnte nicht gespeichert werden`
       set({ error: message, isSaving: false })
       throw err
     }
   },
 
-  removeLogo: async () => {
+  removeImage: async (kind: BrandingImageKind) => {
+    const { slot, label } = BRANDING_IMAGES[kind]
     set({ isSaving: true, error: null })
     try {
-      set({ branding: await deleteBrandingLogo(), isSaving: false })
+      set({ branding: await deleteBrandingImage(slot), isSaving: false })
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Logo konnte nicht entfernt werden'
+      const message = err instanceof Error ? err.message : `${label} konnte nicht entfernt werden`
       set({ error: message, isSaving: false })
       throw err
     }

@@ -117,7 +117,8 @@ test.describe("Erststart: Systemverwalter, SMTP, Schalter", () => {
     const visitor = await visitorContext.newPage();
     await visitor.goto("/login/system");
     await expect(visitor).toHaveURL(/\/login(?:$|[?#])/);
-    await expect(visitor.getByRole("form", { name: "Anmeldung" })).toBeVisible();
+    // #1910: Der Abschnitt heißt nach seinem Weg; „Anmelden" steht nur noch als Seitenüberschrift.
+    await expect(visitor.getByRole("form", { name: "Konto dieser Installation" })).toBeVisible();
     await expect(visitor.getByLabel("E-Mail-Adresse")).toBeVisible();
     await visitorContext.close();
   });

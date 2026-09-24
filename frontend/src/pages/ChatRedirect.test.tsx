@@ -19,8 +19,36 @@ vi.mock('react-router', async () => {
 })
 
 describe('ChatRedirect', () => {
+  const spaces = [
+    {
+      id: 'space-personal',
+      name: 'Meine Dokumente',
+      description: 'Privat',
+      isDefault: true,
+      archived: false,
+      visibility: 'PRIVATE' as const,
+      memberCount: 1,
+      userRole: 'ADMIN' as const,
+      createdAt: '2026-03-01T10:00:00Z',
+      updatedAt: '2026-03-01T10:00:00Z',
+    },
+    {
+      id: 'space-engineering',
+      name: 'Engineering',
+      description: 'Dokumente der Entwicklung',
+      isDefault: false,
+      archived: false,
+      visibility: 'PRIVATE' as const,
+      memberCount: 3,
+      userRole: 'ADMIN' as const,
+      createdAt: '2026-03-01T10:00:00Z',
+      updatedAt: '2026-03-01T10:00:00Z',
+    },
+  ]
+
   beforeEach(() => {
     mockNavigate.mockReset()
+    window.localStorage.clear()
     useSpaceStore.setState({
       spaces: [],
       selectedSpaceId: null,
@@ -79,6 +107,53 @@ describe('ChatRedirect', () => {
 
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith('/spaces/space-phoenix/chats/new', {
+        replace: true,
+      })
+    })
+  })
+
+  /** #1911: Der Einstieg öffnet den zuletzt genutzten Space, nicht immer den persönlichen. */
+  it('opens the space last used instead of the personal one', async () => {
+    useSpaceStore.setState({ spaces })
+    window.localStorage.setItem('opaa.spaces.recent', JSON.stringify(['space-engineering']))
+
+    renderWithProviders(<ChatRedirect />, { withRouter: true })
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith('/spaces/space-engineering/chats/new', {
+        replace: true,
+      })
+    })
+  })
+
+  /**
+   * #1911: Ein gemerkter Space, den der Dienst nicht mehr ausliefert - Mitgliedschaft entzogen,
+   * gelöscht, oder das Gemerkte stammt von einem anderen Konto am selben Rechner.
+   */
+  it('falls back to the personal space when the remembered one is no longer delivered', async () => {
+    useSpaceStore.setState({ spaces })
+    window.localStorage.setItem('opaa.spaces.recent', JSON.stringify(['space-entzogen']))
+
+    renderWithProviders(<ChatRedirect />, { withRouter: true })
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith('/spaces/space-personal/chats/new', {
+        replace: true,
+      })
+    })
+  })
+
+  /** Ein archivierter Space nimmt keinen neuen Chat an - er ist deshalb kein Einstieg. */
+  it('falls back to the personal space when the remembered one is archived', async () => {
+    useSpaceStore.setState({
+      spaces: [spaces[0], { ...spaces[1], archived: true }],
+    })
+    window.localStorage.setItem('opaa.spaces.recent', JSON.stringify(['space-engineering']))
+
+    renderWithProviders(<ChatRedirect />, { withRouter: true })
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith('/spaces/space-personal/chats/new', {
         replace: true,
       })
     })

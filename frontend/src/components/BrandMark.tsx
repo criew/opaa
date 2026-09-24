@@ -16,6 +16,11 @@ interface BrandMarkProps {
    * for text, and its `nav` landmark already names the region for assistive tech.
    */
   logoOnly?: boolean
+  /**
+   * Prefers the sign-in page's own logo where one is configured (#1910), falling back to the app
+   * logo and then to the OPAA standard mark. Only the screens before a session set this.
+   */
+  preferLoginLogo?: boolean
 }
 
 /**
@@ -35,9 +40,11 @@ export default function BrandMark({
   variant = 'h6',
   orientation = 'horizontal',
   logoOnly = false,
+  preferLoginLogo = false,
 }: BrandMarkProps) {
   const branding = useBrandingStore((s) => s.branding)
   const vertical = orientation === 'vertical'
+  const logoUrl = (preferLoginLogo ? branding.loginLogoUrl : undefined) ?? branding.logoUrl
 
   return (
     <Box sx={vertical ? { textAlign: 'center' } : undefined}>
@@ -49,10 +56,10 @@ export default function BrandMark({
           gap: vertical ? 1.5 : 1,
         }}
       >
-        {branding.logoUrl ? (
+        {logoUrl ? (
           <Box
             component="img"
-            src={branding.logoUrl}
+            src={logoUrl}
             // The name is right next to it, so the image adds nothing for a screen reader and is
             // marked decorative instead of read out twice (WCAG 1.1.1).
             alt=""
@@ -60,7 +67,9 @@ export default function BrandMark({
             sx={{
               height: logoHeight,
               width: 'auto',
-              maxWidth: logoOnly ? 40 : 160,
+              // Breite folgt der Höhe statt einem festen Deckel: Ein breites Wortmarken-Logo auf
+              // der Anmeldeseite würde sonst auf Seitenleistenbreite beschnitten (#1910).
+              maxWidth: logoOnly ? 40 : Math.max(160, logoHeight * 4),
               objectFit: 'contain',
             }}
           />

@@ -47,6 +47,61 @@ describe('BrandMark', () => {
     )
   })
 
+  /**
+   * #1910: Die Anmeldeseite hat ein eigenes Logo, weil sie es um ein Vielfaches größer zeigt.
+   * Ohne eigenes greift sie auf das der Anwendung zurück - und ohne beides auf die OPAA-Marke.
+   */
+  it('prefers the sign-in logo where one is configured, and falls back where none is', () => {
+    const branding = {
+      productName: 'Landesamt-Assistent',
+      claim: 'Kurz und klar',
+      primaryColor: '#7A1FA2',
+      defaultColorScheme: 'LIGHT' as const,
+      logoUrl: '/api/v1/branding/logo?v=abc',
+    }
+
+    useBrandingStore.setState({
+      branding: { ...branding, loginLogoUrl: '/api/v1/branding/login-logo?v=def' },
+    })
+    const { unmount } = renderMark(<BrandMark preferLoginLogo />)
+    expect(document.querySelector('img[alt=""]')).toHaveAttribute(
+      'src',
+      '/api/v1/branding/login-logo?v=def',
+    )
+    unmount()
+
+    useBrandingStore.setState({ branding })
+    const withoutOwn = renderMark(<BrandMark preferLoginLogo />)
+    expect(withoutOwn.container.querySelector('img[alt=""]')).toHaveAttribute(
+      'src',
+      '/api/v1/branding/logo?v=abc',
+    )
+    withoutOwn.unmount()
+
+    // Und wo nichts konfiguriert ist, bleibt es bei der OPAA-Marke - einem <svg>, keinem <img>.
+    useBrandingStore.setState({ branding: OPAA_BRANDING })
+    const standard = renderMark(<BrandMark preferLoginLogo />)
+    expect(standard.container.querySelector('img')).toBeNull()
+  })
+
+  /** Die Seitenleiste zeigt weiter das Logo der Anwendung, auch wenn ein Anmeldelogo existiert. */
+  it('ignores the sign-in logo where it is not asked for', () => {
+    useBrandingStore.setState({
+      branding: {
+        ...OPAA_BRANDING,
+        logoUrl: '/api/v1/branding/logo?v=abc',
+        loginLogoUrl: '/api/v1/branding/login-logo?v=def',
+      },
+    })
+
+    const { container } = renderMark()
+
+    expect(container.querySelector('img[alt=""]')).toHaveAttribute(
+      'src',
+      '/api/v1/branding/logo?v=abc',
+    )
+  })
+
   it('caps a configured logo to the rail tile width in logoOnly mode (review #791)', () => {
     useBrandingStore.setState({
       branding: {

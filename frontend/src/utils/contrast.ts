@@ -73,6 +73,24 @@ export function lightenHex(color: string, coefficient: number): string | null {
   return `#${scaled.map((value) => value.toString(16).padStart(2, '0')).join('')}`
 }
 
+/**
+ * The colour a translucent layer actually produces over a ground - `alpha` of `overlay` composited
+ * onto `background`, in hex, so the result feeds back into {@link contrastRatio}.
+ *
+ * Exists for the sign-in page's background image (#1910): text there sits on a scrim over an image
+ * nobody can check in advance, so the only checkable statement is about the worst case - pure white
+ * and pure black under that scrim. Null for anything unparseable.
+ */
+export function compositeOver(overlay: string, background: string, alpha: number): string | null {
+  const top = parseHexColor(overlay)
+  const bottom = parseHexColor(background)
+  if (!top || !bottom) return null
+  const mixed = top.map((value, index) =>
+    Math.round(value * alpha + (bottom[index] as number) * (1 - alpha)),
+  )
+  return `#${mixed.map((value) => value.toString(16).padStart(2, '0')).join('')}`
+}
+
 /** One darkening step of the surface derivation - matches the sampled -8% hover rhythm. */
 const ACCENT_SURFACE_DARKEN_STEP = 0.08
 

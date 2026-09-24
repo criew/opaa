@@ -276,6 +276,25 @@ Gruppe beliebiger Größe sein; nur im eigenen Standard-Raum steht statt der Zah
 archivierter Space ist als solcher gekennzeichnet und führt auf seine Übersicht statt in einen
 neuen Chat. Die Tabellenansicht zeigt dieselben Angaben spaltenweise.
 
+### Einstieg und Space-Wechsel
+
+Nach der Anmeldung öffnet OPAA einen **leeren Chat im zuletzt genutzten Space** — nicht den letzten
+Chat, und nicht mehr grundsätzlich den persönlichen Space. Ist der gemerkte Space nicht mehr
+zugänglich, weil er archiviert wurde, die Mitgliedschaft entzogen ist oder der Rechner zuletzt von
+jemand anderem benutzt wurde, führt der Einstieg in den persönlichen Space.
+
+Das Space-Menü am Kopf der Seitenleiste führt aus demselben Grund **höchstens fünf Spaces**, den
+zuletzt genutzten zuoberst; darunter stehen unverändert „Alle Spaces anzeigen" und „Neuen Space
+anlegen". Wer in vielen Spaces Mitglied ist, findet den vollständigen Bestand samt Suchfeld in der
+Übersicht — das Menü ist der schnelle Weg zurück, nicht das Verzeichnis.
+
+Die Nutzungsreihenfolge merkt sich der Browser, nicht der Server: Sie gilt je Gerät und je Browser
+und wandert nicht mit. Gemerkt werden nur Space-Kennungen, und die Liste wird bei jedem Öffnen gegen
+die Spaces abgeglichen, die der Dienst dem angemeldeten Konto ausliefert. Melden sich zwei Personen
+nacheinander am selben Rechner an, wirkt die Reihenfolge deshalb genau in den Spaces weiter, in
+denen beide Mitglied sind — alles andere fällt heraus. Wer das nicht möchte, meldet sich in einem
+privaten Fenster an oder löscht die Browserdaten; ein Recht verschafft die Liste ohnehin nicht.
+
 ## 6. Woher Gruppen kommen
 
 Jede Gruppe hat genau eine Herkunft, und sie steht als Zusatz neben dem Namen — nie im Namen selbst:

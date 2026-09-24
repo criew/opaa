@@ -8007,6 +8007,55 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/branding/login-logo:
+    get:
+      operationId: getBrandingLoginLogo
+      tags: [branding]
+      summary: >
+        The sign-in page's own logo (#1910), served under exactly the same rules as GET
+        /api/v1/branding/logo - detected content type, nosniff, restrictive Content-Security-Policy,
+        readable without authentication. A separate image rather than a size variant of the app
+        logo: the sign-in page renders it several times larger than the sidebar chrome does, and an
+        emblem that works at 28 px is rarely the one a house wants at 96 px. Answered with 404 while
+        none is configured; clients read BrandingResponse.loginLogoUrl and fall back to logoUrl.
+      responses:
+        "200":
+          description: Login logo bytes
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/branding/login-background:
+    get:
+      operationId: getBrandingLoginBackground
+      tags: [branding]
+      summary: >
+        The sign-in page's optional background image (#1910), served under the same rules as the
+        two logos above and readable without authentication for the same reason. Answered with 404
+        while none is configured; without one the sign-in page keeps its plain navy panel.
+      responses:
+        "200":
+          description: Login background bytes
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/system/branding:
     put:
       operationId: updateBranding
@@ -8078,6 +8127,104 @@ paths:
       responses:
         "200":
           description: Logo removed; the effective configuration afterwards
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BrandingResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/system/branding/login-logo:
+    put:
+      operationId: updateBrandingLoginLogo
+      tags: [branding]
+      summary: >
+        Upload the sign-in page's own logo (SYSTEM_ADMIN only, #1910). Same rules as the app logo -
+        PNG and JPEG only, SVG rejected rather than sanitised, declared content type not trusted,
+        at most 512 KiB and 2000 px per edge.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: Login logo stored; the effective configuration afterwards
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BrandingResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+    delete:
+      operationId: deleteBrandingLoginLogo
+      tags: [branding]
+      summary: >
+        Remove the sign-in page's own logo (SYSTEM_ADMIN only, #1910) - the page falls back to the
+        app logo, and to the OPAA standard mark where none is configured either. Idempotent.
+      responses:
+        "200":
+          description: Login logo removed; the effective configuration afterwards
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BrandingResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/system/branding/login-background:
+    put:
+      operationId: updateBrandingLoginBackground
+      tags: [branding]
+      summary: >
+        Upload the sign-in page's background image (SYSTEM_ADMIN only, #1910). PNG and JPEG only,
+        for the same reasons as the logos, but with its own ceilings: at most 2 MiB and 4000 px per
+        edge, because this one is a photograph covering half a screen rather than a piece of chrome.
+        The page lays a fixed scrim over whatever is uploaded, so the text on it keeps its contrast
+        regardless of the image (docs/design/accessibility.md).
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: Background stored; the effective configuration afterwards
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BrandingResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+    delete:
+      operationId: deleteBrandingLoginBackground
+      tags: [branding]
+      summary: >
+        Remove the sign-in page's background image (SYSTEM_ADMIN only, #1910) - the page returns to
+        its plain navy panel. Idempotent.
+      responses:
+        "200":
+          description: Background removed; the effective configuration afterwards
           content:
             application/json:
               schema:
@@ -17734,6 +17881,35 @@ components:
           type: string
           format: date-time
           description: When the configured logo was last replaced. Absent while none is configured.
+        loginLogoUrl:
+          type: string
+          description: >
+            Path the sign-in page's own logo is served from, with the same content-derived version
+            parameter logoUrl carries (#1910). Absent while none is configured, and the sign-in
+            page then falls back to logoUrl.
+          example: /api/v1/branding/login-logo?v=3f8a1c2d
+        loginLogoContentType:
+          type: string
+          description: Server-detected media type of the sign-in logo. Absent while none is configured.
+          example: image/png
+        loginLogoUpdatedAt:
+          type: string
+          format: date-time
+          description: When the sign-in logo was last replaced. Absent while none is configured.
+        loginBackgroundUrl:
+          type: string
+          description: >
+            Path the sign-in page's background image is served from, versioned like the logos
+            (#1910). Absent while none is configured; the page then keeps its plain panel.
+          example: /api/v1/branding/login-background?v=9b2e7c10
+        loginBackgroundContentType:
+          type: string
+          description: Server-detected media type of the background image. Absent while none is configured.
+          example: image/jpeg
+        loginBackgroundUpdatedAt:
+          type: string
+          format: date-time
+          description: When the background image was last replaced. Absent while none is configured.
 
     BrandingUpdateRequest:
       type: object
