@@ -83,7 +83,7 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
   test("Chat in beiden Farbschemata", async ({ authenticatedPage: page }) => {
     await startFreshChat(page);
     const input = page.getByPlaceholder(
-      "Frage stellen … mit @ auf eine Quelle eingrenzen",
+      "Nachricht eingeben …",
     );
     await expect(input).toBeVisible();
 

@@ -21,7 +21,7 @@ test.describe('Content Security Policy (#707)', () => {
 
     await page.goto('/?devUser=dev-admin')
     await expect(
-      page.getByPlaceholder('Frage stellen … mit @ auf eine Quelle eingrenzen'),
+      page.getByPlaceholder('Nachricht eingeben …'),
     ).toBeVisible()
 
     expect(violations, 'CSP-Verstöße in der Browser-Konsole').toEqual([])

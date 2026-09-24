@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter } from 'react-router'
@@ -138,6 +138,21 @@ describe('GlobalRail', () => {
 
     await user.click(screen.getByRole('menuitem', { name: 'Einstellungen' }))
     expect(mockNavigate).toHaveBeenCalledWith('/settings')
+  })
+
+  // #1921: Produktname und Version standen bis dahin dauerhaft unter jeder Seite.
+  it('shows product name and version behind "Info zu …" instead of a page footer', async () => {
+    const user = userEvent.setup()
+    renderRailAt('/spaces')
+
+    await user.click(screen.getByRole('button', { name: 'Profil und Einstellungen' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Info zu OPAA' }))
+
+    const dialog = screen.getByRole('dialog', { name: 'Info zu OPAA' })
+    expect(dialog).toHaveTextContent('OPAA v0.1.0')
+
+    await user.click(screen.getByRole('button', { name: 'Schließen' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
   it('renders in the light scheme as well - the navy-900 rail surface', () => {

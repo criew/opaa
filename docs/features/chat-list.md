@@ -27,8 +27,8 @@ verraten, den die Person nicht sehen darf.
 
 ## Überblick
 
-1. **Seitenleiste für den schnellen Griff.** Titelfilter beim Tippen, Zeitgruppen, eine Gruppe
-   „Angeheftet" ganz oben.
+1. **Seitenleiste für den schnellen Griff.** Eine Gruppe „Angeheftet" ganz oben, darunter „Zuletzt
+   verwendet" mit Nachladen; ein Suchknopf neben „Neu" führt in die Chatsuche.
 2. **Eine Seite „Chats" je Space zum Verwalten.** Reiter „Aktiv" und „Archiv", Mehrfachauswahl,
    Inhaltssuche mit Trefferauszug. Die Seitenleiste ist für Auszüge und Auswahlkästchen zu schmal.
 3. **Archivieren ist eine persönliche Ablage.** Der Chat verschwindet aus der Liste, bleibt lesbar und
@@ -65,49 +65,43 @@ missverständlich, weil der ganze Assistent „sucht".
 ┌──────────────────────┐
 │ SPACE ▾ Widerspruch  │
 ├──────────────────────┤
-│ CHATS          + Neu │
-│ ┌──────────────────┐ │
-│ │ Chats filtern …  │ │
-│ └──────────────────┘ │
+│ CHATS      + Neu  🔍 │
 │ ANGEHEFTET        ▾  │
 │ ▪ Fristen Übersicht  │
 │ ▪ Az. 12/4-2026      │
-│ HEUTE                │
+│ ZULETZT VERWENDET    │
 │ · Erlass vom März    │
-│ GESTERN              │
 │ · Rückfrage Kämmerei │
-│ LETZTE 7 TAGE        │
 │ · …                  │
-│ In Inhalten suchen → │
-│ Alle Chats →         │
+│ 15 weitere anzeigen  │
 └──────────────────────┘
 ```
 
-### Titelfilter
+### Suchknopf statt Filterfeld
 
-- Ein Feld über der Liste filtert beim Tippen sofort nach Titel — ohne Unterscheidung von Groß- und
-  Kleinschreibung, über die Liste, die der Client ohnehin hält. Kein Serveraufruf.
-- Der Filter durchsucht die **aktiven** Chats der Seitenleiste. Findet er nichts, sagt er das und bietet
-  „In Inhalten suchen" an — die [Chatsuche](#chatsuche) auf der Seite „Chats", mit dem eingegebenen
-  Begriff vorbelegt. Sie durchsucht auch Titel und Archiv; ein eigener Weg „Im Archiv suchen" ist
-  deshalb nicht nötig. Der Begriff geht als Navigationszustand mit, nicht in der Adresse; die Seite
-  übernimmt ihn und verwirft ihn sofort, nach einem Neuladen ist das Feld leer.
-- Escape leert das Feld; das Feld ist beschriftet und für Screenreader angekündigt, die Zahl der
-  gefilterten Einträge wird als Statusmeldung ausgegeben.
+Ein Titelfilter beantwortet nur die halbe Frage — wer einen Chat sucht, erinnert sich oft an ein Wort
+aus dem Gespräch, nicht an dessen Titel. Statt eines Filterfelds steht deshalb ein Suchknopf neben
+„Neu" (#1918, Epic #1441):
 
-### Zeitgruppen
+- Er öffnet die [Chatsuche](#chatsuche) auf der Seite „Chats" mit leerem Suchbegriff. Leer listet sie
+  alle Chats, Archiv eingeschlossen; ab drei Zeichen treten die Treffer an deren Stelle.
+- Der Begriff geht als Navigationszustand mit, nie in der Adresse; die Seite übernimmt ihn und
+  verwirft ihn sofort, nach einem Neuladen ist das Feld leer.
+- Unter der Liste stehen keine Verweise mehr: „Alle Chats" und „In Inhalten suchen" führten ohnehin
+  auf dieselbe Seite wie der Suchknopf.
 
-| Gruppe | Enthält |
+### Abschnitte
+
+| Abschnitt | Enthält |
 |---|---|
 | **Angeheftet** | alle angehefteten Chats, zuletzt angeheftet oben; einklappbar |
-| **Heute** | letzte Aktivität am heutigen Kalendertag |
-| **Gestern** | am Vortag |
-| **Letzte 7 Tage** | davor, bis sieben Tage zurück |
-| **Letzte 30 Tage** | davor, bis dreißig Tage zurück |
-| **Älter** | alles Übrige |
+| **Zuletzt verwendet** | alle übrigen Chats nach letzter Aktivität, die jüngsten 15 sichtbar |
 
-- Maßgeblich ist die **letzte Aktivität** des Chats; innerhalb einer Gruppe steht die jüngste oben.
-  Leere Gruppen erscheinen nicht. Die Tagesgrenzen folgen der Zeitzone des Browsers.
+- „15 weitere anzeigen" blendet die nächste Seite ein — die letzte nennt ihre tatsächliche Zahl;
+  „weniger anzeigen" klappt auf die ersten 15 zurück. Ein Spacewechsel beginnt wieder bei 15.
+- Maßgeblich ist die **letzte Aktivität** des Chats; die jüngste steht oben. Tagesgruppen (Heute,
+  Gestern, Letzte 7 Tage …) gibt es seit #1918 nicht mehr: Sie zerlegten eine kurze Liste in viele
+  Überschriften, ohne beim Wiederfinden zu helfen.
 - Solange es nur private Chats gibt, ist die letzte Aktivität die eigene. Ob in einem **geteilten** Chat
   fremde Aktivität die eigene Liste umsortieren darf, ist eine Frage des Teilens
   ([agents-and-tools.md, Offene Fragen zur Oberfläche](./agents-and-tools.md#offene-fragen-zur-oberfläche))
@@ -122,12 +116,19 @@ missverständlich, weil der ganze Assistent „sucht".
 - Anheften ist auch in einem **archivierten Space** möglich: Es ist ein Merkmal der Person, keine
   Änderung am Chat, und fällt deshalb nicht unter die Sperre „keine Änderungen an einem Chat".
 
+### Umbenennen
+
+- Über das Kontextmenü eines Eintrags, und seit #1919 zusätzlich **direkt in der Kopfzeile** des
+  offenen Chats: Klick auf den Titel öffnet das Feld, Enter speichert, Escape verwirft. Beide Wege
+  nutzen denselben Endpunkt; die Chatliste zieht sofort nach.
+- In einem **archivierten Space** ist der Titel schreibgeschützt — anders als das Anheften ist
+  Umbenennen eine Änderung am Chat.
+
 ---
 
 ## Die Seite „Chats" je Space
 
-Erreichbar über „Alle Chats" am Ende der Chatliste in der Seitenleiste und über „In Inhalten suchen"
-(dauerhaft unter der Liste und im Hinweis eines leeren Filterergebnisses). Sie ist die Verwaltungsfläche der eigenen
+Erreichbar über den Suchknopf neben „Neu" in der Chatliste. Sie ist die Verwaltungsfläche der eigenen
 Chats eines Space, keine zweite Chatoberfläche: Ein Klick auf einen Eintrag öffnet den Chat.
 
 ```
@@ -203,8 +204,9 @@ Archivieren ist **eine persönliche Ablage**, keine Zustandsänderung am Chat:
 ### Kein automatisches Archivieren
 
 Ein Archivieren nach Inaktivität wird **nicht** gebaut. Eine Liste, die sich von selbst verändert, ist
-erklärungsbedürftig, und die Zeitgruppen leisten das Wesentliche — Altes rutscht in „Älter", ohne zu
-verschwinden. Das Sammelarchivieren auf der Seite „Chats" ist der bewusste Weg, aufzuräumen.
+erklärungsbedürftig, und „Zuletzt verwendet" leistet das Wesentliche — Altes rutscht hinter die
+Nachladeschwelle, ohne zu verschwinden. Das Sammelarchivieren auf der Seite „Chats" ist der bewusste
+Weg, aufzuräumen. (Ein Auto-Archivieren wird in #1923 erneut aufgeworfen.)
 
 ---
 

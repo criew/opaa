@@ -35,7 +35,8 @@ interface ChatListState {
   /** Returns null (and sets `error`) when creation fails, instead of throwing - callers must
    * handle the null case explicitly rather than relying on a rejected promise. */
   createChatInSpace: (spaceId: string) => Promise<ChatSummary | null>
-  renameChat: (spaceId: string, chatId: string, title: string) => Promise<void>
+  /** Renames a chat; resolves to false (with `error` set) if the server rejects it. */
+  renameChat: (spaceId: string, chatId: string, title: string) => Promise<boolean>
   deleteChatFromList: (spaceId: string, chatId: string) => Promise<void>
   /** Pins or unpins a chat for the current person. Applied optimistically and rolled back (with
    * `error` set) if the server rejects it. Requests for one chat reach the server in the order
@@ -186,7 +187,7 @@ export const useChatListStore = create<ChatListState>((set, get) => ({
     const sessionEpoch = currentSessionEpoch()
     try {
       await updateChat(chatId, { title })
-      if (isStaleSessionEpoch(sessionEpoch)) return
+      if (isStaleSessionEpoch(sessionEpoch)) return false
       set((state) => {
         const chats = state.chatsBySpaceId[spaceId]
         if (!chats) return state
@@ -197,10 +198,12 @@ export const useChatListStore = create<ChatListState>((set, get) => ({
           },
         }
       })
+      return true
     } catch (err) {
-      if (isStaleSessionEpoch(sessionEpoch)) return
+      if (isStaleSessionEpoch(sessionEpoch)) return false
       const message = err instanceof Error ? err.message : 'Chat konnte nicht umbenannt werden'
       set({ error: message })
+      return false
     }
   },
 

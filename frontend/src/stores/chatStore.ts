@@ -391,6 +391,8 @@ interface ChatState {
   removeNoteItem: (itemId: string) => Promise<void>
   /** Records a changed archive mark of a chat - a no-op unless that chat is the active one. */
   applyArchivedAt: (chatId: string, archivedAt: string | null) => void
+  /** Records a renamed chat - a no-op unless that chat is the active one. */
+  applyTitle: (chatId: string, title: string | null) => void
   /** Drops the active chat back to its initial, empty state (#440) - used on logout so a
    * subsequent sign-in by a different user never briefly sees the previous user's conversation. */
   reset: () => void
@@ -858,6 +860,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   applyArchivedAt: (chatId: string, archivedAt: string | null) => {
     if (get().chatId === chatId) set({ archivedAt })
+  },
+
+  applyTitle: (chatId: string, title: string | null) => {
+    if (get().chatId === chatId) set({ title })
   },
 }))
 

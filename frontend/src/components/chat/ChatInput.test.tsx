@@ -84,69 +84,32 @@ describe('ChatInput', () => {
     })
   })
 
-  // #782: a space curated via space<->library associations (#706) must narrow the @Alles-Wissen
-  // scope line to the intersection of associated and readable libraries, not show every readable
-  // library the user happens to have - the backend (ChatService#effectiveLibraryScope) already
-  // narrows the actual search, so a wider count here is a pure display lie about what gets
-  // searched. Each test below drives the real spaceStore#loadAssetAssociations action through an
-  // MSW override for its own space id (see mockAssociations above).
-  describe('scope line for a space with library associations (#782)', () => {
-    it('counts only the associated-and-readable intersection, not every readable library', async () => {
-      mockAssociations('space-gewerbeamt', {
-        hasAssociations: true,
-        narrowsSearch: true,
-        items: [
-          {
-            assetType: 'KNOWLEDGE_LIBRARY',
-            assetId: rechtsquellen.id,
-            name: rechtsquellen.name,
-            readableByCaller: true,
-            createdByUserId: 'user-1',
-            createdAt: '2026-03-01T10:00:00Z',
-          },
-        ],
-      })
-      useChatStore.setState({ scope: 'all', spaceId: 'space-gewerbeamt' })
-
+  // #1920: die Zeile unter der Eingabe nennt keine Bestandszahl mehr. Was sie weiter tragen muss,
+  // sind die beiden Zustände, in denen die Zusage der Chip-Leiste (@Alles-Wissen) sonst falsch wäre
+  // (#782/#783) - ein kuratierter Space ohne lesbar zugeordnetes Wissen, und noch unbekannte
+  // Zuordnungen des aktuellen Space.
+  describe('the line under the input (#1920)', () => {
+    it('shows the neutral hint instead of a library count', async () => {
       render(<ChatInput onSend={vi.fn()} />)
 
-      expect(await screen.findByText(/1 zugeordneter lesbarer Bestand/)).toBeInTheDocument()
-      // The old, wrong wording named both readable libraries here - it must be gone.
-      expect(screen.queryByText(/2 lesbare Bestände/)).not.toBeInTheDocument()
+      expect(await screen.findByText('@ für Quellen, / für Aktionen')).toBeInTheDocument()
+      expect(screen.queryByText(/Durchsucht/)).not.toBeInTheDocument()
+      expect(screen.queryByText(/Bestände/)).not.toBeInTheDocument()
     })
 
-    it('shows the plural form for more than one associated-and-readable library', async () => {
-      mockAssociations('space-gewerbeamt', {
-        hasAssociations: true,
-        narrowsSearch: true,
-        items: [
-          {
-            assetType: 'KNOWLEDGE_LIBRARY',
-            assetId: rechtsquellen.id,
-            name: rechtsquellen.name,
-            readableByCaller: true,
-            createdByUserId: 'user-1',
-            createdAt: '2026-03-01T10:00:00Z',
-          },
-          {
-            assetType: 'KNOWLEDGE_LIBRARY',
-            assetId: dienstanweisungen.id,
-            name: dienstanweisungen.name,
-            readableByCaller: true,
-            createdByUserId: 'user-1',
-            createdAt: '2026-03-01T10:00:00Z',
-          },
-        ],
+    it('keeps the neutral hint for chosen references and for an emptied bar', async () => {
+      useChatStore.setState({
+        scope: 'libraries',
+        referencedLibraryIds: ['library-referat-50', 'library-dienstanweisungen'],
       })
-      useChatStore.setState({ scope: 'all', spaceId: 'space-gewerbeamt' })
-
       render(<ChatInput onSend={vi.fn()} />)
 
-      expect(await screen.findByText(/2 zugeordnete lesbare Bestände/)).toBeInTheDocument()
+      expect(await screen.findByText('@ für Quellen, / für Aktionen')).toBeInTheDocument()
+      expect(screen.queryByText(/gewählte Bestände/)).not.toBeInTheDocument()
     })
 
-    // #783 review nit 3: "curated, but nothing the caller may read" must read like MessageBubble's
-    // and SpacePage's own wording for the identical state, not a bare "0 zugeordnete Bestände".
+    // #783 review nit 3: "kuratiert, aber nichts davon lesbar" liest sich wie bei MessageBubble
+    // und SpacePage - und verdrängt den Hinweis, weil @Alles-Wissen hier nichts durchsucht.
     it('shows the established "kein Wissen verfügbar" notice when nothing associated is readable', async () => {
       mockAssociations('space-gewerbeamt', {
         hasAssociations: true,
@@ -160,46 +123,37 @@ describe('ChatInput', () => {
       expect(
         await screen.findByText('In diesem Space ist für Sie derzeit kein Wissen verfügbar.'),
       ).toBeInTheDocument()
-      expect(screen.queryByText(/zugeordnete/)).not.toBeInTheDocument()
+      expect(screen.queryByText('@ für Quellen, / für Aktionen')).not.toBeInTheDocument()
     })
 
-    it('does not narrow for a space whose only associations are no knowledge libraries', async () => {
+    it('shows the neutral hint again once associated knowledge is readable', async () => {
       mockAssociations('space-gewerbeamt', {
         hasAssociations: true,
-        narrowsSearch: false,
-        items: [],
+        narrowsSearch: true,
+        items: [
+          {
+            assetType: 'KNOWLEDGE_LIBRARY',
+            assetId: rechtsquellen.id,
+            name: rechtsquellen.name,
+            readableByCaller: true,
+            createdByUserId: 'user-1',
+            createdAt: '2026-03-01T10:00:00Z',
+          },
+        ],
       })
       useChatStore.setState({ scope: 'all', spaceId: 'space-gewerbeamt' })
 
       render(<ChatInput onSend={vi.fn()} />)
 
-      expect(await screen.findByText(/2 lesbare Bestände/)).toBeInTheDocument()
+      expect(await screen.findByText('@ für Quellen, / für Aktionen')).toBeInTheDocument()
       expect(
         screen.queryByText('In diesem Space ist für Sie derzeit kein Wissen verfügbar.'),
       ).not.toBeInTheDocument()
     })
 
-    it('keeps the previous "all readable" wording for a space without any association', async () => {
-      mockAssociations('space-gewerbeamt', {
-        hasAssociations: false,
-        narrowsSearch: false,
-        items: [],
-      })
-      useChatStore.setState({ scope: 'all', spaceId: 'space-gewerbeamt' })
-
-      render(<ChatInput onSend={vi.fn()} />)
-
-      expect(await screen.findByText(/2 lesbare Bestände/)).toBeInTheDocument()
-    })
-  })
-
-  // #783 review, finding 1 (🔴): a chat/space switch must not render the *previous* space's
-  // association count for the new one, even for one render - neither while the new space's own
-  // load is still in flight nor if it fails outright.
-  describe("the scope line never shows another space's association data (#783)", () => {
-    it("shows a neutral notice, not the previous space's number, right after switching spaceId", async () => {
-      // Space A's associations already resolved and are sitting in the store - exactly the state
-      // ChatInput would be in right after chatting in a curated space A.
+    // #783 review, finding 1: der Suchbereich eines gewechselten Space ist noch unbekannt - solange
+    // darf weder der vorige Stand noch "alles Lesbare" behauptet werden.
+    it("shows a neutral notice, not the previous space's state, right after switching spaceId", async () => {
       useSpaceStore.setState({
         hasAssetAssociations: true,
         assetAssociationsNarrowSearch: true,
@@ -222,12 +176,10 @@ describe('ChatInput', () => {
       render(<ChatInput onSend={vi.fn()} />)
 
       expect(await screen.findByText('Suchbereich wird ermittelt …')).toBeInTheDocument()
-      expect(screen.queryByText(/1 zugeordneter/)).not.toBeInTheDocument()
     })
 
-    // #783 review nit 1: a failed load must not silently read as "this space has no associations"
-    // - that renders as "every readable library", the exact false claim #782 fixed.
-    it('does not fall back to "every readable library" when the association load fails', async () => {
+    // #783 review nit 1: ein fehlgeschlagener Ladevorgang darf nicht als "keine Zuordnungen" gelten.
+    it('does not fall back to the plain hint when the association load fails', async () => {
       server.use(
         http.get('/api/v1/spaces/space-gewerbeamt/assets', () =>
           HttpResponse.json({ error: 'Netzwerkfehler' }, { status: 500 }),
@@ -238,53 +190,8 @@ describe('ChatInput', () => {
       render(<ChatInput onSend={vi.fn()} />)
 
       expect(await screen.findByText('Suchbereich wird ermittelt …')).toBeInTheDocument()
-      expect(screen.queryByText(/lesbare Bestände/)).not.toBeInTheDocument()
+      expect(screen.queryByText('@ für Quellen, / für Aktionen')).not.toBeInTheDocument()
     })
-  })
-
-  // #782/#783: exercises the real api -> spaceStore -> ChatInput chain through the MSW handler
-  // (mocks/handlers.ts) and its curated fixture (mockSpaceAssetAssociations['space-phoenix']),
-  // rather than mocking the store action away - the earlier mocked tests above cover the display
-  // logic in isolation, this one covers that readableByCaller actually survives the wire.
-  it('resolves the associated-and-readable count through the real api/store chain (#783 review nit 2)', async () => {
-    useChatStore.setState({ scope: 'all', spaceId: 'space-phoenix' })
-
-    render(<ChatInput onSend={vi.fn()} />)
-
-    expect(await screen.findByText(/1 zugeordneter lesbarer Bestand/)).toBeInTheDocument()
-  })
-
-  it('shows the search-scope line for the default scope (#591, mockup 1a)', async () => {
-    render(<ChatInput onSend={vi.fn()} />)
-    expect(await screen.findByText(/Durchsucht:/)).toBeInTheDocument()
-    expect(screen.getByText(/mit @ auf eine Quelle eingrenzen/)).toBeInTheDocument()
-  })
-
-  it('reflects chosen references in the scope line (#591)', async () => {
-    useChatStore.setState({
-      scope: 'libraries',
-      referencedLibraryIds: ['library-referat-50', 'library-dienstanweisungen'],
-    })
-    render(<ChatInput onSend={vi.fn()} />)
-    expect(await screen.findByText(/2 gewählte Bestände/)).toBeInTheDocument()
-  })
-
-  // #783 review, "vorbestehend" finding: ChatService#effectiveLibraryScope intersects even the
-  // concrete-chip scope with the readable libraries (ChatService.java:249-251) - a reference the
-  // caller can no longer read must not inflate the count the footer shows.
-  it('counts only the readable references in the "libraries" scope line, not every referenced id', async () => {
-    useChatStore.setState({
-      scope: 'libraries',
-      referencedLibraryIds: ['library-referat-50', 'library-removed'],
-    })
-    render(<ChatInput onSend={vi.fn()} />)
-    expect(await screen.findByText(/1 gewählter Bestand/)).toBeInTheDocument()
-  })
-
-  it('names the empty scope honestly (#591)', () => {
-    useChatStore.setState({ scope: 'none', referencedLibraryIds: [] })
-    render(<ChatInput onSend={vi.fn()} />)
-    expect(screen.getByText(/antwortet ohne Wissensbasis/)).toBeInTheDocument()
   })
 
   // #1070: the chat's sticky core-field filter is visible as removable chips next to the scope
@@ -328,17 +235,15 @@ describe('ChatInput', () => {
   it('labels library suggestions with the type badge (#591, mockup 1h)', async () => {
     const user = userEvent.setup()
     render(<ChatInput onSend={vi.fn()} />)
-    const input = screen.getByPlaceholderText('Frage stellen … mit @ auf eine Quelle eingrenzen')
+    const input = screen.getByPlaceholderText('Nachricht eingeben …')
     await user.type(input, '@Rechts')
     expect(await screen.findByText('Bibliothek · verengt die Suche')).toBeInTheDocument()
   })
 
   it('renders input field, send button and the @Alles-Wissen chip by default', () => {
     render(<ChatInput onSend={vi.fn()} />)
-    expect(
-      screen.getByPlaceholderText('Frage stellen … mit @ auf eine Quelle eingrenzen'),
-    ).toBeInTheDocument()
-    expect(screen.getByLabelText('Nachricht senden')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Nachricht eingeben …')).toBeInTheDocument()
+    expect(screen.getByLabelText('Senden')).toBeInTheDocument()
     expect(screen.getByText('@Alles-Wissen')).toBeInTheDocument()
   })
 
@@ -346,9 +251,9 @@ describe('ChatInput', () => {
     const onSend = vi.fn()
     render(<ChatInput onSend={onSend} />)
 
-    const input = screen.getByPlaceholderText('Frage stellen … mit @ auf eine Quelle eingrenzen')
+    const input = screen.getByPlaceholderText('Nachricht eingeben …')
     fireEvent.change(input, { target: { value: 'Hello world' } })
-    fireEvent.click(screen.getByLabelText('Nachricht senden'))
+    fireEvent.click(screen.getByLabelText('Senden'))
 
     expect(onSend).toHaveBeenCalledWith('Hello world')
   })
@@ -357,7 +262,7 @@ describe('ChatInput', () => {
     const onSend = vi.fn()
     render(<ChatInput onSend={onSend} />)
 
-    const input = screen.getByPlaceholderText('Frage stellen … mit @ auf eine Quelle eingrenzen')
+    const input = screen.getByPlaceholderText('Nachricht eingeben …')
     fireEvent.change(input, { target: { value: 'Test' } })
     fireEvent.keyDown(input, { key: 'Enter', shiftKey: false })
 
@@ -368,7 +273,7 @@ describe('ChatInput', () => {
     const onSend = vi.fn()
     render(<ChatInput onSend={onSend} />)
 
-    const input = screen.getByPlaceholderText('Frage stellen … mit @ auf eine Quelle eingrenzen')
+    const input = screen.getByPlaceholderText('Nachricht eingeben …')
     fireEvent.change(input, { target: { value: 'Test' } })
     fireEvent.keyDown(input, { key: 'Enter', shiftKey: true })
 
@@ -379,7 +284,7 @@ describe('ChatInput', () => {
     const onSend = vi.fn()
     render(<ChatInput onSend={onSend} />)
 
-    const input = screen.getByPlaceholderText('Frage stellen … mit @ auf eine Quelle eingrenzen')
+    const input = screen.getByPlaceholderText('Nachricht eingeben …')
     fireEvent.change(input, { target: { value: '   ' } })
     fireEvent.keyDown(input, { key: 'Enter', shiftKey: false })
 
@@ -388,9 +293,7 @@ describe('ChatInput', () => {
 
   it('disables input when disabled prop is true', () => {
     render(<ChatInput onSend={vi.fn()} disabled />)
-    expect(
-      screen.getByPlaceholderText('Frage stellen … mit @ auf eine Quelle eingrenzen'),
-    ).toBeDisabled()
+    expect(screen.getByPlaceholderText('Nachricht eingeben …')).toBeDisabled()
   })
 
   describe('the three chip-bar states (#560)', () => {
@@ -480,7 +383,7 @@ describe('ChatInput', () => {
     it('replaces @Alles-Wissen with the first concrete chip selected via @', async () => {
       const user = userEvent.setup()
       render(<ChatInput onSend={vi.fn()} />)
-      const input = screen.getByPlaceholderText('Frage stellen … mit @ auf eine Quelle eingrenzen')
+      const input = screen.getByPlaceholderText('Nachricht eingeben …')
 
       await user.type(input, 'Bitte @Rechts')
       await user.click(await screen.findByRole('option', { name: /Rechtsquellen Soziales/ }))
@@ -494,7 +397,7 @@ describe('ChatInput', () => {
       const user = userEvent.setup()
       useChatStore.setState({ scope: 'libraries', referencedLibraryIds: ['library-referat-50'] })
       render(<ChatInput onSend={vi.fn()} />)
-      const input = screen.getByPlaceholderText('Frage stellen … mit @ auf eine Quelle eingrenzen')
+      const input = screen.getByPlaceholderText('Nachricht eingeben …')
 
       await user.type(input, '@Alles')
       await user.click(await screen.findByRole('option', { name: /@Alles-Wissen/ }))
@@ -507,7 +410,7 @@ describe('ChatInput', () => {
   it('opens library suggestions on "@", with @Alles-Wissen always listed first, and filters by further typing', async () => {
     const user = userEvent.setup()
     render(<ChatInput onSend={vi.fn()} />)
-    const input = screen.getByPlaceholderText('Frage stellen … mit @ auf eine Quelle eingrenzen')
+    const input = screen.getByPlaceholderText('Nachricht eingeben …')
 
     await user.type(input, '@')
     const listbox = await screen.findByRole('listbox', { name: 'Suchbereich' })
@@ -528,9 +431,7 @@ describe('ChatInput', () => {
   it('selects a suggestion by click, adds a chip and removes the @-fragment from the text', async () => {
     const user = userEvent.setup()
     render(<ChatInput onSend={vi.fn()} />)
-    const input = screen.getByPlaceholderText(
-      'Frage stellen … mit @ auf eine Quelle eingrenzen',
-    ) as HTMLTextAreaElement
+    const input = screen.getByPlaceholderText('Nachricht eingeben …') as HTMLTextAreaElement
 
     await user.type(input, 'Bitte @Rechts')
     await user.click(await screen.findByRole('option', { name: /Rechtsquellen Soziales/ }))
@@ -542,7 +443,7 @@ describe('ChatInput', () => {
   it('selects the highlighted suggestion via keyboard (arrow + Enter)', async () => {
     const user = userEvent.setup()
     render(<ChatInput onSend={vi.fn()} />)
-    const input = screen.getByPlaceholderText('Frage stellen … mit @ auf eine Quelle eingrenzen')
+    const input = screen.getByPlaceholderText('Nachricht eingeben …')
 
     await user.type(input, '@')
     await screen.findByRole('option', { name: /Rechtsquellen Soziales/ })
@@ -556,7 +457,7 @@ describe('ChatInput', () => {
   it('selects the hovered suggestion on click without prior keyboard navigation', async () => {
     const user = userEvent.setup()
     render(<ChatInput onSend={vi.fn()} />)
-    const input = screen.getByPlaceholderText('Frage stellen … mit @ auf eine Quelle eingrenzen')
+    const input = screen.getByPlaceholderText('Nachricht eingeben …')
 
     await user.type(input, '@')
     const option = await screen.findByRole('option', { name: /Dienstanweisungen/ })
@@ -570,7 +471,7 @@ describe('ChatInput', () => {
     const onSend = vi.fn()
     const user = userEvent.setup()
     render(<ChatInput onSend={onSend} />)
-    const input = screen.getByPlaceholderText('Frage stellen … mit @ auf eine Quelle eingrenzen')
+    const input = screen.getByPlaceholderText('Nachricht eingeben …')
 
     await user.type(input, 'Bitte @Rechts')
     await screen.findByRole('option', { name: /Rechtsquellen Soziales/ })
@@ -584,7 +485,7 @@ describe('ChatInput', () => {
     const onSend = vi.fn()
     const user = userEvent.setup()
     render(<ChatInput onSend={onSend} />)
-    const input = screen.getByPlaceholderText('Frage stellen … mit @ auf eine Quelle eingrenzen')
+    const input = screen.getByPlaceholderText('Nachricht eingeben …')
 
     await user.type(input, '@Rechts')
     await screen.findByRole('option', { name: /Rechtsquellen Soziales/ })
@@ -597,7 +498,7 @@ describe('ChatInput', () => {
   it('does not reopen the suggestion list while typing further inside a dismissed mention', async () => {
     const user = userEvent.setup()
     render(<ChatInput onSend={vi.fn()} />)
-    const input = screen.getByPlaceholderText('Frage stellen … mit @ auf eine Quelle eingrenzen')
+    const input = screen.getByPlaceholderText('Nachricht eingeben …')
 
     await user.type(input, '@Rechts')
     await screen.findByRole('option', { name: /Rechtsquellen Soziales/ })
@@ -621,7 +522,7 @@ describe('ChatInput', () => {
         <button type="button">Außerhalb</button>
       </div>,
     )
-    const input = screen.getByPlaceholderText('Frage stellen … mit @ auf eine Quelle eingrenzen')
+    const input = screen.getByPlaceholderText('Nachricht eingeben …')
 
     await user.type(input, '@Rechts')
     await screen.findByRole('option', { name: /Rechtsquellen Soziales/ })

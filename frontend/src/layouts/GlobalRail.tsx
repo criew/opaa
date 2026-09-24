@@ -9,11 +9,13 @@ import Typography from '@mui/material/Typography'
 import { ThemeProvider, useTheme } from '@mui/material/styles'
 import GridViewOutlinedIcon from '@mui/icons-material/GridViewOutlined'
 import HistoryOutlinedIcon from '@mui/icons-material/HistoryOutlined'
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import LogoutIcon from '@mui/icons-material/Logout'
 import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined'
 import SettingsIcon from '@mui/icons-material/Settings'
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined'
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router'
+import AboutDialog from './AboutDialog'
 import BrandMark from '../components/BrandMark'
 import NotificationBell from '../components/notifications/NotificationBell'
 import { useAuthStore } from '../stores/authStore'
@@ -48,6 +50,7 @@ export default function GlobalRail() {
   const logout = useAuthStore((s) => s.logout)
   const branding = useBrandingStore((s) => s.branding)
   const [userMenuAnchor, setUserMenuAnchor] = useState<HTMLElement | null>(null)
+  const [aboutOpen, setAboutOpen] = useState(false)
 
   const appTheme = useTheme()
   const appMode = appTheme.palette.mode
@@ -210,6 +213,19 @@ export default function GlobalRail() {
                   </ListItemIcon>
                   Einstellungen
                 </MenuItem>
+                {/* #1921: Produktname, Version und der Demo-Hinweis stehen hier statt dauerhaft
+                    unter jeder Seite. */}
+                <MenuItem
+                  onClick={() => {
+                    closeUserMenu()
+                    setAboutOpen(true)
+                  }}
+                >
+                  <ListItemIcon>
+                    <InfoOutlinedIcon fontSize="small" />
+                  </ListItemIcon>
+                  Info zu {branding.productName}
+                </MenuItem>
                 <MenuItem
                   onClick={() => {
                     closeUserMenu()
@@ -222,6 +238,7 @@ export default function GlobalRail() {
                   Abmelden
                 </MenuItem>
               </Menu>
+              <AboutDialog open={aboutOpen} onClose={() => setAboutOpen(false)} />
             </ThemeProvider>
           </>
         )}

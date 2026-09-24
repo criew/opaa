@@ -19,7 +19,6 @@ import {
   lineHeight,
   motion,
   navy,
-  navyRoles,
   radius,
   railRoles,
   semanticColors,
@@ -77,15 +76,6 @@ function resolveAccent(roles: SchemeRoles, branding?: BrandingOverrides) {
  */
 export function createAppTheme(mode: PaletteMode, branding?: BrandingOverrides): Theme {
   return buildTheme(mode, mode === 'dark' ? darkRoles : lightRoles, branding)
-}
-
-/**
- * The sidebar's own theme (#587/#654): while the app is light it keeps the mockup's navy block
- * ({@link navyRoles}, guidelines 2.3); while the app is dark it follows the carbon dark scheme
- * like the rest of the interface. Always dark-mode MUI semantics, since both surfaces are dark.
- */
-export function createSidebarTheme(appMode: PaletteMode, branding?: BrandingOverrides): Theme {
-  return buildTheme('dark', appMode === 'light' ? navyRoles : darkRoles, branding)
 }
 
 /**

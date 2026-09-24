@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { createAppTheme, createSidebarTheme } from './theme'
+import { createAppTheme } from './theme'
 import {
   blue,
   carbon,
@@ -206,44 +206,24 @@ describe('createAppTheme', () => {
     expect(button.variants[0].style.backgroundColor).toBe('#7A1FA2')
   })
 
-  test('the sidebar theme stays navy while the app is light (#654, mockup 1a)', () => {
-    const theme = createSidebarTheme('light')
+  // #1922: Die Seitenleiste des Space hat kein eigenes Thema mehr - sie folgt wie der Adminbereich
+  // dem Schema der Anwendung. Die Ableitung einer Hausfarbe auf dunklem Grund prüft deshalb das
+  // Dunkelschema der Anwendung selbst.
+  test('the dark scheme derives its accent from a branding color', () => {
+    const theme = createAppTheme('dark', { primaryColor: '#7A1FA2' })
 
-    expect(theme.palette.mode).toBe('dark')
-    expect(theme.palette.background.default).toBe(navy[800])
-  })
-
-  test('the sidebar theme follows the carbon dark scheme while the app is dark (#654)', () => {
-    const theme = createSidebarTheme('dark')
-
-    expect(theme.palette.background.default).toBe(carbon[950])
-  })
-
-  test('the sidebar theme derives its accent from a branding color like the app theme', () => {
-    const theme = createSidebarTheme('light', { primaryColor: '#7A1FA2' })
-
-    // #1600: Die Seitenleiste ist auch im hellen Schema dunkel (navy). Ein dunkles Violett wäre
-    // dort als Verweis nicht lesbar, also rückt es vom Grund weg - dieselbe Ableitung wie im
-    // Dunkelschema der Anwendung, und deshalb hier *nicht* mehr die konfigurierte Farbe selbst.
+    // #1600: Ein dunkles Violett wäre auf dem dunklen Grund als Verweis nicht lesbar, also rückt
+    // es vom Grund weg - und ist deshalb *nicht* mehr die konfigurierte Farbe selbst.
     expect(theme.palette.primary.main).not.toBe('#7A1FA2')
-    const vorher = contrastRatio('#7A1FA2', navyRoles.bg1) as number
-    const nachher = contrastRatio(theme.palette.primary.main, navyRoles.bg1) as number
+    const vorher = contrastRatio('#7A1FA2', darkRoles.bg1) as number
+    const nachher = contrastRatio(theme.palette.primary.main, darkRoles.bg1) as number
     expect(nachher).toBeGreaterThan(vorher)
   })
 
-  /**
-   * #1600: Dieses Violett ist der Grenzfall - selbst nach den sechs zugelassenen Schritten bleibt
-   * es unter der Schwelle. Die Ableitung bricht dann bewusst ab, statt die Farbe bis zur
-   * Unkenntlichkeit aufzuhellen (dieselbe Begrenzung wie bei der Fläche in #634); das
-   * Branding-Formular meldet den Rest über `checkAccentContrast`.
-   */
-  test('a colour beyond the bounded steps stops instead of being repainted (#1600)', () => {
-    const theme = createSidebarTheme('light', { primaryColor: '#7A1FA2' })
-
-    expect(contrastRatio(theme.palette.primary.main, navyRoles.bg3)).toBeLessThan(
-      TEXT_CONTRAST_MINIMUM,
-    )
-  })
+  // #1600: Dass die Ableitung nach den zugelassenen Schritten bewusst abbricht, statt eine
+  // Extremfarbe bis zur Unkenntlichkeit aufzuhellen, prüft utils/contrast.test.ts an
+  // `deriveAccentText` selbst - seit #1922 gibt es kein Thema mehr, in dem dieser Grenzfall
+  // über `buildTheme` erreichbar wäre.
 
   /**
    * #1600: Der gemessene Fall aus der Demo-Installation. `#1153EE` erreicht auf Weiß 6,0:1, im

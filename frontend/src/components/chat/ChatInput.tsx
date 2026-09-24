@@ -9,11 +9,12 @@ import Paper from '@mui/material/Paper'
 import Popper from '@mui/material/Popper'
 import { alpha } from '@mui/material/styles'
 import { darkRoles, fontFamily, gray, shadow } from '../../theme/tokens'
-import Button from '@mui/material/Button'
+import IconButton from '@mui/material/IconButton'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import AllInclusiveIcon from '@mui/icons-material/AllInclusive'
 import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined'
+import SendIcon from '@mui/icons-material/Send'
 import { CHAT_MAX_WIDTH } from '../../theme/theme'
 import { useChatStore } from '../../stores/chatStore'
 import { useLibraryStore } from '../../stores/libraryStore'
@@ -53,10 +54,12 @@ const ALL_KNOWLEDGE_LABEL = 'Alles-Wissen'
 
 type MentionSuggestion = { kind: 'all' } | { kind: 'library'; library: LibraryListResponse }
 
-// #782/#783: the scope line under the input either renders as "Durchsucht: <text>" ('summary') or
-// replaces that whole line with a standalone sentence ('notice') - see the scopeLine memo below for
-// which case is which.
-type ScopeLine = { kind: 'summary'; text: string } | { kind: 'notice'; text: string }
+/**
+ * The neutral hint under the input (#1920): the input triggers more than a question - prompts,
+ * later agents and skills - so the line names the two prefixes instead of counting libraries.
+ * What the next question searches is stated by the chip bar above it.
+ */
+const INPUT_HINT = '@ für Quellen, / für Aktionen'
 
 /**
  * Finds an in-progress '@' mention ending at the cursor, or null if none is active. Only
@@ -164,70 +167,22 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
     })
   }, [libraries, librariesLoading, referencedLibraryIds, scope])
 
-  // Mockup 1a's quiet scope line (#591), narrowed for #782: says what the next question will
-  // actually search - ChatService#effectiveLibraryScope's own rule (docs/features/spaces-and-
-  // assets.md#suchbereich-je-chatart). A space *with* library associations narrows @Alles-Wissen to
-  // associated ∩ readable, so the line counts that intersection (readableByCaller on each
-  // association) and calls it "zugeordnet [...] lesbar", not just "zugeordnet" - a CURATOR/ADMIN can
-  // see associations they cannot themselves read (#706), so "zugeordnet" alone would silently omit
-  // the readability narrowing and look inconsistent with SpacePage's own count for the same space
-  // (#783 review nit 4). A space *without* any association still falls back to every readable
-  // library, unchanged from before #782.
-  //
-  // 'summary' renders as "Durchsucht: <text>"; 'notice' replaces that whole line with a standalone
-  // sentence - used for the two cases a bare number cannot honestly represent: the associated∩
-  // readable scope being empty (#783 review nit 3, matching the wording MessageBubble/SpacePage
-  // already use for the same state) and the associations for the current space not being known yet
-  // (still loading, or the load failed - #783 review nit 1: must never default to "every readable
-  // library", which is exactly the false claim #782 fixed).
-  const scopeLine = useMemo((): ScopeLine => {
-    if (scope === 'none') {
-      return { kind: 'summary', text: 'nichts — antwortet ohne Wissensbasis' }
-    }
-    if (scope === 'libraries') {
-      // #783 review, "vorbestehend": ChatService#effectiveLibraryScope intersects referenced ids
-      // with the readable libraries too (ChatService.java:249-251) - only the 'known' chips (found
-      // in the readable `libraries` list) survive that intersection, exactly like 'missing' chips
-      // already mark an id that is not (or no longer) readable.
-      const count = referencedLibraryIds.filter((id) => libraries.some((l) => l.id === id)).length
-      return {
-        kind: 'summary',
-        text: count === 1 ? '1 gewählter Bestand' : `${count} gewählte Bestände`,
-      }
-    }
-    if (!isAssetAssociationsCurrent) {
-      return { kind: 'notice', text: 'Suchbereich wird ermittelt …' }
-    }
-    if (narrowsSearch) {
-      // The search reads knowledge libraries only; an associated asset of another type is no Bestand.
-      const count = assetAssociations.filter(
-        (a) => a.readableByCaller && a.assetType === 'KNOWLEDGE_LIBRARY',
-      ).length
-      if (count === 0) {
-        return {
-          kind: 'notice',
-          text: 'In diesem Space ist für Sie derzeit kein Wissen verfügbar.',
-        }
-      }
-      return {
-        kind: 'summary',
-        text:
-          count === 1 ? '1 zugeordneter lesbarer Bestand' : `${count} zugeordnete lesbare Bestände`,
-      }
-    }
-    if (libraries.length === 1) return { kind: 'summary', text: '1 lesbarer Bestand' }
-    if (libraries.length > 1) {
-      return { kind: 'summary', text: `${libraries.length} lesbare Bestände` }
-    }
-    return { kind: 'summary', text: 'alle lesbaren Bestände' }
-  }, [
-    narrowsSearch,
-    isAssetAssociationsCurrent,
-    libraries,
-    assetAssociations,
-    referencedLibraryIds,
-    scope,
-  ])
+  // #1920 dropped the library count from the line under the input, but not the two statements a
+  // count never carried anyway (#782/#783): the chip bar promises @Alles-Wissen, and there are
+  // exactly two states in which that promise would be a false claim - the associated ∩ readable
+  // scope of a curated space being empty (wording shared with MessageBubble/SpacePage), and the
+  // associations of the current space not being known yet (still loading, or the load failed -
+  // this must never quietly default to "every readable library"). Both replace the hint below.
+  const scopeNotice = useMemo((): string | null => {
+    if (scope !== 'all') return null
+    if (!isAssetAssociationsCurrent) return 'Suchbereich wird ermittelt …'
+    if (!narrowsSearch) return null
+    // The search reads knowledge libraries only; an associated asset of another type is no Bestand.
+    const count = assetAssociations.filter(
+      (a) => a.readableByCaller && a.assetType === 'KNOWLEDGE_LIBRARY',
+    ).length
+    return count === 0 ? 'In diesem Space ist für Sie derzeit kein Wissen verfügbar.' : null
+  }, [narrowsSearch, isAssetAssociationsCurrent, assetAssociations, scope])
 
   // The scope the next question searches - the filter options are loaded for exactly this scope,
   // resolved server-side with the query's own rules (chat first, otherwise useKnowledge/ids).
@@ -565,7 +520,7 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
           fullWidth
           multiline
           maxRows={6}
-          placeholder="Frage stellen … mit @ auf eine Quelle eingrenzen"
+          placeholder="Nachricht eingeben …"
           value={value}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
@@ -597,14 +552,24 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
             },
           }}
         />
-        <Button
-          variant="contained"
+        {/* #1920: a send symbol, not "Fragen" - the input triggers more than questions. */}
+        <IconButton
+          color="primary"
           onClick={handleSend}
           disabled={disabled || !value.trim()}
-          aria-label="Nachricht senden"
+          aria-label="Senden"
+          sx={{
+            alignSelf: 'flex-end',
+            bgcolor: 'primary.main',
+            color: 'primary.contrastText',
+            borderRadius: '8px',
+            p: 1,
+            '&:hover': { bgcolor: 'primary.dark' },
+            '&.Mui-disabled': { bgcolor: 'action.disabledBackground', color: 'action.disabled' },
+          }}
         >
-          Fragen
-        </Button>
+          <SendIcon sx={{ fontSize: 18 }} />
+        </IconButton>
       </Box>
 
       <Popper
@@ -714,20 +679,10 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
         </ClickAwayListener>
       </Popper>
 
-      {/* Mockup 1a (#591): the quiet scope line under the input. */}
+      {/* Mockup 1a (#591): the quiet line under the input, neutral since #1920. */}
       <Box sx={{ maxWidth: CHAT_MAX_WIDTH, mx: 'auto', mt: 0.875 }}>
         <Typography component="div" sx={{ fontSize: 12, color: 'text.secondary' }}>
-          {scopeLine.kind === 'summary' ? (
-            <>
-              Durchsucht:{' '}
-              <Box component="span" sx={{ fontWeight: 500 }}>
-                {scopeLine.text}
-              </Box>
-              {scope === 'all' && ' · mit @ auf eine Quelle eingrenzen'}
-            </>
-          ) : (
-            scopeLine.text
-          )}
+          {scopeNotice ?? INPUT_HINT}
         </Typography>
       </Box>
     </Box>

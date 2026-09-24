@@ -84,7 +84,7 @@ function uniqueId(testInfo: TestInfo): string {
  * this reason.
  */
 async function referenceLibrary(page: Page, libraryName: string) {
-  const input = page.getByPlaceholder('Frage stellen … mit @ auf eine Quelle eingrenzen')
+  const input = page.getByPlaceholder('Nachricht eingeben …')
   await input.fill(`@${libraryName}`)
   await page.getByRole('option', { name: libraryName }).click()
 }
@@ -242,12 +242,12 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
     // mention feature itself is broken" - only the contrast between adminPage and bPage below
     // makes the absence a real, permission-specific finding.
     await startFreshChat(adminPage)
-    const adminInput = adminPage.getByPlaceholder('Frage stellen … mit @ auf eine Quelle eingrenzen')
+    const adminInput = adminPage.getByPlaceholder('Nachricht eingeben …')
     await adminInput.fill(`@${privateLibraryName}`)
     await expect(adminPage.getByRole('option', { name: privateLibraryName })).toBeVisible()
 
     await startFreshChat(bPage)
-    const input = bPage.getByPlaceholder('Frage stellen … mit @ auf eine Quelle eingrenzen')
+    const input = bPage.getByPlaceholder('Nachricht eingeben …')
     await input.fill(`@${sharedLibraryName}`)
     await expect(bPage.getByRole('option', { name: sharedLibraryName })).toBeVisible()
 
@@ -360,7 +360,7 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
     ).toBeVisible()
   })
 
-  test('7. Chatliste ordnen: Titelfilter, Anheften und Gruppe „Angeheftet“ nach Neuladen', async (
+  test('7. Chatliste ordnen: Anheften und Gruppe „Angeheftet“ nach Neuladen', async (
     { authenticatedPage: page },
     testInfo,
   ) => {
@@ -368,7 +368,6 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
     const title = `E2E-Anheften-${id}`
     const question = `Frage zum Anheften (${id})`
     const chatList = page.getByRole('navigation', { name: 'Chats' })
-    const filter = chatList.getByRole('searchbox', { name: 'Chats filtern' })
     const actionsName = `Aktionen für Chat „${title}“`
     const actionsOfChat = chatList.getByRole('button', { name: actionsName })
     const inGroup = (group: string) =>
@@ -381,27 +380,15 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
     await expect(page.getByTestId('message-list').getByText(question)).toBeVisible()
 
     // Every chat of this suite ends up with the KI stub's one fixed title (see the module doc
-    // comment), so this chat gets a unique one first: the newest chat is the top entry of "Heute".
-    await chatList
-      .getByRole('list', { name: 'Heute' })
-      .getByRole('button', { name: /^Aktionen für Chat/ })
-      .first()
-      .click()
-    await page.getByRole('menuitem', { name: /umbenennen$/ }).click()
-    const titleField = chatList.getByLabel('Chat-Titel')
+    // comment), so this chat gets a unique one first - renamed right in the header of the open
+    // chat (#1919). The newest chat is the top entry of "Zuletzt verwendet".
+    const titleButton = page.getByRole('button', { name: /^Chat-Titel .* umbenennen$/ })
+    await titleButton.click()
+    const titleField = page.getByLabel('Chat-Titel')
     await titleField.fill(title)
     await titleField.press('Enter')
     await expect(actionsOfChat).toHaveCount(1)
-
-    // Filter: narrows the list to the matching title while typing, Escape restores it.
-    const entriesBefore = await chatSidebarEntries(page).count()
-    await filter.fill(title.toLowerCase())
-    await expect(chatSidebarEntries(page)).toHaveCount(1)
-    await expect(actionsOfChat).toHaveCount(1)
-    await expect(chatList.getByRole('status')).toHaveText('1 Chat gefunden')
-    await filter.press('Escape')
-    await expect(filter).toHaveValue('')
-    await expect(chatSidebarEntries(page)).toHaveCount(entriesBefore)
+    await expect(inGroup('Zuletzt verwendet')).toHaveCount(1)
 
     // Pin via the context menu; the chat moves into "Angeheftet" and stays there after a reload.
     await actionsOfChat.click()
@@ -412,12 +399,12 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
     await expect(inGroup('Angeheftet')).toHaveCount(1)
     await expectNoSeriousA11yViolations(page, 'Seitenleiste mit angeheftetem Chat')
 
-    // Unpinning puts it back into its time group - and leaves no pin behind for later runs.
+    // Unpinning puts it back into "Zuletzt verwendet" - and leaves no pin behind for later runs.
     await actionsOfChat.click()
     await page.getByRole('menuitem', { name: `Chat „${title}“ lösen` }).click()
-    await expect(inGroup('Heute')).toHaveCount(1)
+    await expect(inGroup('Zuletzt verwendet')).toHaveCount(1)
     await page.reload()
-    await expect(inGroup('Heute')).toHaveCount(1)
+    await expect(inGroup('Zuletzt verwendet')).toHaveCount(1)
   })
 
   test('8. Chat-Archiv: archivieren, im Archiv öffnen, zurückholen, Mehrfachauswahl, Weiterschreiben', async (
@@ -443,7 +430,7 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
       await expect(page).toHaveURL(/\/spaces\/[^/]+\/chats\/(?!new$)[^/]+$/)
       await expect(main.getByText(question)).toBeVisible()
       await chatList
-        .getByRole('list', { name: 'Heute' })
+        .getByRole('list', { name: 'Zuletzt verwendet' })
         .getByRole('button', { name: /^Aktionen für Chat/ })
         .first()
         .click()
@@ -465,7 +452,7 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
     await expect(page.getByText(`Chat „${titleA}“ archiviert`)).toBeVisible()
 
     // The page "Chats" lists it in the archive; opening it shows the chat with the hint.
-    await chatList.getByRole('link', { name: 'Alle Chats' }).click()
+    await chatList.getByRole('button', { name: 'Chats durchsuchen' }).click()
     await expect(page).toHaveURL(chatsPageUrl)
     await page.getByRole('tab', { name: /^Archiv \(/ }).click()
     await archiveTable.getByRole('link', { name: titleA }).click()
@@ -532,19 +519,20 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
 
     // Into the chat archive: the search includes it, and the hit must open there as well.
     await chatList
-      .getByRole('list', { name: 'Heute' })
+      .getByRole('list', { name: 'Zuletzt verwendet' })
       .getByRole('button', { name: /^Aktionen für Chat/ })
       .first()
       .click()
     await page.getByRole('menuitem', { name: /archivieren$/ }).click()
     await expect(page.getByText(/^Chat „.*“ archiviert$/)).toBeVisible()
 
-    // The title filter finds nothing and hands the term over to the chat search.
-    await chatList.getByRole('searchbox', { name: 'Chats filtern' }).fill(term)
-    await chatList.getByRole('link', { name: 'In Inhalten suchen' }).first().click()
-    // The term is never part of the address.
+    // The search button of the chat list opens the chat search; the term is typed there and is
+    // never part of the address.
+    await chatList.getByRole('button', { name: 'Chats durchsuchen' }).click()
     await expect(page).toHaveURL(chatsPageUrl)
-    await expect(page.getByRole('searchbox', { name: 'In Chats suchen' })).toHaveValue(term)
+    const searchField = page.getByRole('searchbox', { name: 'In Chats suchen' })
+    await searchField.fill(term)
+    await expect(page).toHaveURL(chatsPageUrl)
 
     const hits = page.getByRole('list', { name: 'Suchtreffer' })
     const hit = hits.getByRole('listitem')

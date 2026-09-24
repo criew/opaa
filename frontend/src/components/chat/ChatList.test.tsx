@@ -229,45 +229,14 @@ describe('ChatList ordering', () => {
       .map((item) => item.textContent ?? '')
   }
 
-  it('groups the chats under headings, pinned chats first', () => {
+  it('lists pinned chats above "Zuletzt verwendet" and offers no title filter', () => {
     renderWithProviders(<ChatList spaceId="space-personal" />)
 
     const headings = screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent)
-    expect(headings).toEqual(['Angeheftet', 'Heute', 'Älter'])
+    expect(headings).toEqual(['Angeheftet', 'Zuletzt verwendet'])
     expect(groupTitles('Angeheftet')).toEqual(['Fristen Übersicht'])
-    expect(groupTitles('Heute')).toEqual(['Erlass vom März'])
-    expect(groupTitles('Älter')).toEqual(['Rückfrage Kämmerei'])
-  })
-
-  it('filters by title while typing, announces the count and restores the list on Escape', async () => {
-    const user = userEvent.setup()
-    renderWithProviders(<ChatList spaceId="space-personal" />)
-    const field = screen.getByRole('searchbox', { name: 'Chats filtern' })
-
-    await user.type(field, 'KÄMMER')
-
-    expect(screen.getByText('Rückfrage Kämmerei')).toBeInTheDocument()
-    expect(screen.queryByText('Erlass vom März')).not.toBeInTheDocument()
-    expect(screen.queryByText('Fristen Übersicht')).not.toBeInTheDocument()
-    expect(screen.getByRole('status')).toHaveTextContent('1 Chat gefunden')
-
-    await user.keyboard('{Escape}')
-
-    expect(field).toHaveValue('')
-    expect(screen.getByText('Erlass vom März')).toBeInTheDocument()
-    expect(screen.getByText('Fristen Übersicht')).toBeInTheDocument()
-    expect(screen.getByRole('status')).toHaveTextContent('')
-  })
-
-  it('says so when no title matches', async () => {
-    const user = userEvent.setup()
-    renderWithProviders(<ChatList spaceId="space-personal" />)
-
-    await user.type(screen.getByRole('searchbox', { name: 'Chats filtern' }), 'Haushalt')
-
-    expect(screen.getByRole('status')).toHaveTextContent('Kein Chat mit diesem Titel')
-    expect(screen.queryAllByRole('listitem')).toHaveLength(0)
-    expect(screen.queryByRole('heading', { level: 3 })).not.toBeInTheDocument()
+    expect(groupTitles('Zuletzt verwendet')).toEqual(['Erlass vom März', 'Rückfrage Kämmerei'])
+    expect(screen.queryByRole('searchbox', { name: 'Chats filtern' })).not.toBeInTheDocument()
   })
 
   it('collapses and expands the pinned group without touching the others', async () => {
@@ -304,7 +273,7 @@ describe('ChatList ordering', () => {
     await user.click(screen.getByRole('menuitem', { name: 'Chat „Erlass vom März“ anheften' }))
 
     expect(groupTitles('Angeheftet')).toEqual(['Erlass vom März', 'Fristen Übersicht'])
-    expect(screen.queryByRole('list', { name: 'Heute' })).not.toBeInTheDocument()
+    expect(groupTitles('Zuletzt verwendet')).toEqual(['Rückfrage Kämmerei'])
     await waitFor(() => expect(pinned).toBe('chat-1'))
     await waitFor(() =>
       expect(screen.getByLabelText('Aktionen für Chat „Erlass vom März“')).toHaveFocus(),
@@ -343,7 +312,7 @@ describe('ChatList ordering', () => {
     )
   })
 
-  it('unpins a chat back into its time group', async () => {
+  it('unpins a chat back into "Zuletzt verwendet"', async () => {
     let unpinned: string | null = null
     server.use(
       http.delete('/api/v1/chats/:chatId/pin', ({ params }) => {
@@ -358,7 +327,11 @@ describe('ChatList ordering', () => {
     await user.click(screen.getByRole('menuitem', { name: 'Chat „Fristen Übersicht“ lösen' }))
 
     expect(screen.queryByRole('list', { name: 'Angeheftet' })).not.toBeInTheDocument()
-    expect(groupTitles('Älter')).toEqual(['Fristen Übersicht', 'Rückfrage Kämmerei'])
+    expect(groupTitles('Zuletzt verwendet')).toEqual([
+      'Erlass vom März',
+      'Fristen Übersicht',
+      'Rückfrage Kämmerei',
+    ])
     await waitFor(() => expect(unpinned).toBe('chat-3'))
   })
 
@@ -375,7 +348,7 @@ describe('ChatList ordering', () => {
     await user.click(screen.getByRole('menuitem', { name: 'Chat „Erlass vom März“ anheften' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Chat nicht gefunden')
-    expect(groupTitles('Heute')).toEqual(['Erlass vom März'])
+    expect(groupTitles('Zuletzt verwendet')).toEqual(['Erlass vom März', 'Rückfrage Kämmerei'])
     expect(groupTitles('Angeheftet')).toEqual(['Fristen Übersicht'])
   })
 
@@ -398,7 +371,7 @@ describe('ChatList ordering', () => {
     )
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Chat nicht gefunden')
-    expect(groupTitles('Heute')).toEqual(['Erlass vom März'])
+    expect(groupTitles('Zuletzt verwendet')).toEqual(['Erlass vom März', 'Rückfrage Kämmerei'])
     await waitFor(() =>
       expect(screen.getByLabelText('Aktionen für Chat „Erlass vom März“')).toHaveFocus(),
     )
@@ -442,54 +415,78 @@ describe('ChatList ordering', () => {
     await user.click(screen.getByRole('menuitem', { name: 'Chat „Erlass vom März“ archivieren' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Chat nicht gefunden')
-    expect(groupTitles('Heute')).toEqual(['Erlass vom März'])
+    expect(groupTitles('Zuletzt verwendet')).toEqual(['Erlass vom März', 'Rückfrage Kämmerei'])
   })
 
-  it('links to the page "Chats" below the list, also when the filter finds nothing', async () => {
-    const user = userEvent.setup()
-    renderWithProviders(<ChatList spaceId="space-personal" />)
-
-    await user.type(screen.getByRole('searchbox', { name: 'Chats filtern' }), 'Haushalt')
-    const link = screen.getByRole('link', { name: 'Alle Chats' })
-    expect(link).toHaveAttribute('href', '/spaces/space-personal/chats')
-
-    await user.click(link)
-    expect(mockNavigate).toHaveBeenCalledWith('/spaces/space-personal/chats')
-  })
-
-  it('offers the chat search when the filter finds nothing and hands the term over by router state', async () => {
+  it('opens the chat search with an empty term and no links below the list', async () => {
     const user = userEvent.setup()
     renderWithProviders(<ChatList spaceId="space-personal" />)
     await screen.findByText('Erlass vom März')
 
-    await user.type(screen.getByRole('searchbox', { name: 'Chats filtern' }), 'Haushalt')
-    const links = screen.getAllByRole('link', { name: 'In Inhalten suchen' })
-    // One in the empty state of the filter, one permanently below the list.
-    expect(links).toHaveLength(2)
-    for (const link of links) {
-      // Never in the address: it would end up in the browser history and the proxy's access log.
-      expect(link).toHaveAttribute('href', '/spaces/space-personal/chats')
-    }
+    expect(screen.queryByRole('link', { name: 'Alle Chats' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'In Inhalten suchen' })).not.toBeInTheDocument()
 
-    await user.click(links[0])
+    await user.click(screen.getByRole('button', { name: 'Chats durchsuchen' }))
 
-    expect(mockNavigate).toHaveBeenCalledWith('/spaces/space-personal/chats', {
-      state: { chatSearchTerm: 'Haushalt' },
-    })
-  })
-
-  it('keeps the chat search link below the list without a filter', async () => {
-    const user = userEvent.setup()
-    renderWithProviders(<ChatList spaceId="space-personal" />)
-    await screen.findByText('Erlass vom März')
-
-    const links = screen.getAllByRole('link', { name: 'In Inhalten suchen' })
-    expect(links).toHaveLength(1)
-
-    await user.click(links[0])
-
+    // The term rides along as router state only, never in the address - an empty one lists
+    // every chat and puts the cursor into the page's search field.
     expect(mockNavigate).toHaveBeenCalledWith('/spaces/space-personal/chats', {
       state: { chatSearchTerm: '' },
     })
+  })
+})
+
+describe('ChatList "Zuletzt verwendet"', () => {
+  function summary(index: number): ChatSummary {
+    const updatedAt = new Date(Date.now() - index * 60 * 1000).toISOString()
+    return {
+      id: `chat-${index}`,
+      spaceId: 'space-personal',
+      authorId: 'mock-user-id',
+      title: `Chat ${index}`,
+      useKnowledge: true,
+      referencedLibraryIds: [],
+      status: 'PRIVATE',
+      createdAt: updatedAt,
+      updatedAt,
+      pinnedAt: null,
+    }
+  }
+
+  beforeEach(() => {
+    mockNavigate.mockReset()
+    currentPathname = '/spaces/space-personal'
+    useChatListStore.setState({
+      chatsBySpaceId: {
+        'space-personal': Array.from({ length: 38 }, (_, index) => summary(index + 1)),
+      },
+      isLoading: false,
+      error: null,
+    })
+  })
+
+  function shownTitles(): string[] {
+    return within(screen.getByRole('list', { name: 'Zuletzt verwendet' }))
+      .getAllByRole('listitem')
+      .map((item) => item.textContent ?? '')
+  }
+
+  it('shows 15 chats and loads the rest in pages of 15', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<ChatList spaceId="space-personal" />)
+
+    expect(shownTitles()).toHaveLength(15)
+    expect(screen.queryByRole('button', { name: 'weniger anzeigen' })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '15 weitere anzeigen' }))
+    expect(shownTitles()).toHaveLength(30)
+
+    // The last page is shorter than a full one and says so.
+    await user.click(screen.getByRole('button', { name: '8 weitere anzeigen' }))
+    expect(shownTitles()).toHaveLength(38)
+    expect(screen.queryByRole('button', { name: /weitere anzeigen/ })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'weniger anzeigen' }))
+    expect(shownTitles()).toHaveLength(15)
   })
 })
