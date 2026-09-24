@@ -1,10 +1,12 @@
 import { expect, test } from '../fixtures/auth'
+import { startFreshChat } from '../fixtures/chat'
 import { apiAs } from '../fixtures/externalAccess'
 import {
   accessibleCatalogEntry,
   createKnowledgeLibraryViaApi,
   createPromptLibraryViaApi,
   createReleasedGroupViaApi,
+  escapeRegExp,
   gotoPromptLibraries,
   gotoPromptLibraryDetail,
   listedCatalogEntry,
@@ -18,6 +20,7 @@ const LIBRARY_NAME = `E2E Prompt-Bibliothek ${runId}`
 const PROMPT_TITLE = `Anhörung ${runId}`
 const PROMPT_COMMAND = `anhoerung-${runId.toString(36)}`
 const PROMPT_TEXT = 'Entwirf ein Anhörungsschreiben zum Aktenzeichen {{aktenzeichen}}.'
+const RESOLVED_TEXT = 'Entwirf ein Anhörungsschreiben zum Aktenzeichen AZ 50-123.'
 const GROUP_NAME = `E2E Prompt-Gruppe ${runId}`
 const LISTED_LIBRARY_NAME = `E2E Gelistete Prompts ${runId}`
 const LISTED_KNOWLEDGE_NAME = `E2E Gelistetes Wissen ${runId}`
@@ -70,7 +73,7 @@ async function expectInPromptList(page: Page, name: string): Promise<void> {
  * prompt library with a prompt and a required variable, gives it to a person, to a group and to the
  * whole organization - and a person it was never given to finds nothing of it, not in the list, not
  * in the catalog, not at its address. The catalog finds a listed asset of either type without
- * opening it.
+ * opening it, and a person the organization-wide release reaches inserts the prompt in the chat.
  *
  * dev-user owns everything here. dev-admin receives the person grant and dev-format-pipelines is
  * the one member of the group: dev-outsider must stay unrelated until the organization-wide
@@ -238,5 +241,33 @@ test.describe.serial('Prompt-Bibliotheken: Verteilungsstufen und Katalog (#1904)
     await expect(knowledge).toBeVisible()
     await expect(listedCatalogEntry(outsider, LISTED_LIBRARY_NAME)).toHaveCount(0)
     await expect(accessibleCatalogEntry(outsider, LIBRARY_NAME)).toHaveCount(0)
+  })
+
+  test('8. Im Chat per Befehl einsetzen, mit Variablenformular und Hinweis im Verlauf', async ({
+    outsiderPage: outsider,
+  }) => {
+    await startFreshChat(outsider)
+    const input = outsider.getByPlaceholder('Nachricht eingeben …')
+    await input.fill(`/${PROMPT_COMMAND}`)
+    await outsider
+      .getByRole('option', { name: new RegExp(escapeRegExp(`/${PROMPT_COMMAND}`)) })
+      .click()
+
+    const dialog = outsider.getByRole('dialog', { name: `Prompt einsetzen: ${PROMPT_TITLE}` })
+    await expect(dialog.getByRole('button', { name: 'Einsetzen' })).toBeDisabled()
+    await dialog.getByLabel(/Aktenzeichen/).fill('AZ 50-123')
+    await dialog.getByRole('button', { name: 'Einsetzen' }).click()
+    await expect(dialog).toHaveCount(0)
+    // Inserting is not sending: the resolved text waits in the input.
+    await expect(input).toHaveValue(RESOLVED_TEXT)
+
+    await outsider.getByRole('button', { name: 'Senden' }).click()
+    await outsider.waitForURL(/\/spaces\/[^/]+\/chats\/(?!new$)[^/]+$/)
+    await expect(outsider.getByTestId('used-prompt')).toContainText(`Prompt: ${PROMPT_TITLE}`)
+
+    // The note belongs to the history, not to the session that sent it.
+    await outsider.reload()
+    await expect(outsider.getByText(RESOLVED_TEXT)).toBeVisible()
+    await expect(outsider.getByTestId('used-prompt')).toContainText(`Prompt: ${PROMPT_TITLE}`)
   })
 })

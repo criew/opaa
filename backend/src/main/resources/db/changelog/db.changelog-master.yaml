@@ -214,3 +214,6 @@ databaseChangeLog:
   # Der Nachweis im Verlauf, welcher Prompt eine Frage gebaut hat.
   - include:
       file: db/changelog/changes/088-chat-messages-used-prompt.yaml
+  # Der gelistete Teil des Katalogs.
+  - include:
+      file: db/changelog/changes/089-assets-listed-index.yaml
