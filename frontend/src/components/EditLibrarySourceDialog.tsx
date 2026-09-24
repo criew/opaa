@@ -14,7 +14,6 @@ import type {
   ConfluenceEdition,
   ConfluenceSpaceRef,
   DocumentSourceType,
-  AssetVisibility,
   S3Settings,
   SourceConnectionTestResponse,
 } from '../types/api'
@@ -42,7 +41,6 @@ import {
 export interface EditableLibrarySource {
   name: string
   description?: string | null
-  visibility: AssetVisibility
   listed: boolean
   sourceType: DocumentSourceType
   sourcePath?: string | null
@@ -207,13 +205,11 @@ export default function EditLibrarySourceDialog({
     setSubmitting(true)
     try {
       await updateExistingLibrary(libraryId, {
-        // name/description/visibility/listed are resent unchanged - KnowledgeLibraryService#
-        // updateLibrary overwrites all four unconditionally, so omitting them here would wipe the
-        // description and reset listed to false even though this dialog only touches the source
-        // configuration.
+        // name/description/listed are resent unchanged - KnowledgeLibraryService#updateLibrary
+        // overwrites all three unconditionally, so omitting them here would wipe the description
+        // and reset listed to false even though this dialog only touches the source configuration.
         name: library.name,
         description: library.description ?? undefined,
-        visibility: library.visibility,
         listed: library.listed,
         // Left blank -> sourceCredentials undefined -> backend keeps the currently stored
         // credentials unchanged, but only if sourceUrl still names the same origin as before;

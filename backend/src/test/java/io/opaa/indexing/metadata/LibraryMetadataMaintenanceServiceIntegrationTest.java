@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.api.types.AssetRole;
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DatePrecision;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
@@ -387,7 +386,6 @@ class LibraryMetadataMaintenanceServiceIntegrationTest {
             name,
             null,
             owner.id(),
-            AssetVisibility.PRIVATE,
             false,
             DocumentSourceType.FILESYSTEM,
             sourcePath.toString(),

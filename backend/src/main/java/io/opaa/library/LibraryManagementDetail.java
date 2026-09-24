@@ -1,7 +1,6 @@
 package io.opaa.library;
 
 import io.opaa.api.types.AssetRole;
-import io.opaa.api.types.AssetVisibility;
 
 /**
  * The management-only half of a {@link LibraryDetail} - source configuration, schedule and storage
@@ -18,9 +17,11 @@ import io.opaa.api.types.AssetVisibility;
  * @param externalAccess the library's Freigabe fuer Fremdzugaenge (#1731), MANAGER-gated like the
  *     rest: it is set at this bar, and the token count it carries is an input of the annual renewal
  *     decision, not something a VIEWER needs.
- * @param visibilityCap the share cap (#797); {@code null} for {@code UPLOAD} (which carries none)
- *     and below the MANAGER threshold, same gating as {@link #schedule}.
- * @param listedCap the counterpart cap on {@code listed}, same gating as {@link #visibilityCap}.
+ * @param allAccountsGrantAllowed the share cap (#797, #1931): whether this library may be granted
+ *     to "Alle Konten". {@code null} for {@code UPLOAD} (which carries none) and below the MANAGER
+ *     threshold, same gating as {@link #schedule}.
+ * @param listedCap the counterpart cap on {@code listed}, same gating as {@link
+ *     #allAccountsGrantAllowed}.
  */
 public record LibraryManagementDetail(
     String sourcePath,
@@ -37,7 +38,7 @@ public record LibraryManagementDetail(
     Long storageQuotaBytes,
     Long storageUsedBytes,
     LibraryExternalAccess externalAccess,
-    AssetVisibility visibilityCap,
+    Boolean allAccountsGrantAllowed,
     Boolean listedCap) {
 
   public static final LibraryManagementDetail EMPTY =

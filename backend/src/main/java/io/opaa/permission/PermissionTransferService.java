@@ -2,6 +2,7 @@ package io.opaa.permission;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import io.opaa.api.types.AssetGrantSubjectType;
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
@@ -415,7 +416,7 @@ public class PermissionTransferService {
           grantRepository.findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectGroupId(
               grant.getAssetType(),
               grant.getAssetId(),
-              PermissionSubjectType.GROUP,
+              AssetGrantSubjectType.GROUP,
               parties.target().id());
       if (existing.isPresent()) {
         AssetGrant target = existing.get();

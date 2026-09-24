@@ -64,7 +64,7 @@ describe('Prompt-Bibliothek anlegen, füllen und freigeben', () => {
     await user.click(screen.getByRole('button', { name: 'Weiter zu Rechten' }))
 
     // Rechte: Auffindbarkeit ist aus, bis jemand sie ausdrücklich setzt
-    expect(screen.getByLabelText('Im Katalog auffindbar')).not.toBeChecked()
+    expect(screen.getByLabelText('Im Katalog auffindbar, auch ohne Berechtigung')).not.toBeChecked()
     await user.click(screen.getByRole('radio', { name: 'Gruppe' }))
     await user.type(await screen.findByLabelText('Gruppe suchen'), 'Referat')
     const [referat] = await screen.findAllByRole('option', { name: /Referat 50/ })
@@ -81,7 +81,6 @@ describe('Prompt-Bibliothek anlegen, füllen und freigeben', () => {
         name: 'Formulierungshilfen Referat 50',
         ownerType: 'GROUP',
         ownerId: 'group-phoenix',
-        visibility: 'PRIVATE',
         listed: false,
       }),
     ])
@@ -168,8 +167,7 @@ describe('Prompt-Bibliothek anlegen, füllen und freigeben', () => {
     )
 
     expect(await screen.findByText(/Nachfolge offen — zuständig/)).toBeInTheDocument()
-    await user.click(await screen.findByRole('combobox', { name: 'Verteilungsstufe' }))
-    await user.click(await screen.findByRole('option', { name: 'organisationsweit' }))
+    await user.click(await screen.findByLabelText('Im Katalog auffindbar, auch ohne Berechtigung'))
     await user.click(screen.getByRole('button', { name: 'Freigabe speichern' }))
 
     expect(await screen.findByText(/Übernahme/)).toBeInTheDocument()

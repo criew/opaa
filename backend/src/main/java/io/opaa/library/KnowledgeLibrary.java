@@ -1,7 +1,6 @@
 package io.opaa.library;
 
 import io.opaa.api.types.AssetOwnerType;
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.ExternalAccessState;
@@ -69,29 +68,28 @@ public class KnowledgeLibrary extends Asset {
   private UUID libraryOrganizationId;
 
   /**
-   * The ceiling the shell's visibility may not exceed (#797) - {@code SYSTEM_ADMIN}-set, per
-   * library, meaningless for {@code UPLOAD} ({@code
+   * Whether this library may be granted to "Alle Konten" (#797, #1931) - {@code SYSTEM_ADMIN}-set,
+   * per library, meaningless for {@code UPLOAD} ({@code
    * chk_knowledge_libraries_share_cap_upload_unrestricted} keeps it at its unrestricted default
-   * there). Delivered {@code ORGANIZATION}: the migration day changes nothing until a system
-   * administrator actually lowers it (migration 069).
+   * there). Delivered {@code true}: the migration day changes nothing until a system administrator
+   * actually lowers it.
    */
-  @Enumerated(EnumType.STRING)
-  @Column(name = "visibility_cap", nullable = false, length = 20)
-  private AssetVisibility visibilityCap = AssetVisibility.ORGANIZATION;
+  @Column(name = "all_accounts_grant_allowed", nullable = false)
+  private boolean allAccountsGrantAllowed = true;
 
   /**
    * The counterpart ceiling for the shell's {@code listed} - {@code false} forbids listing this
-   * library regardless of its visibility. Delivered {@code true} (unrestricted), same reasoning as
-   * {@link #visibilityCap}.
+   * library at all. Delivered {@code true} (unrestricted), same reasoning as {@link
+   * #allAccountsGrantAllowed}.
    */
   @Column(name = "listed_cap", nullable = false)
   private boolean listedCap = true;
 
   /**
-   * The third reach field beside the shell's visibility and listed: whether this library may be
-   * used through a Fremdzugang, and where it may not, why not (#1731,
-   * docs/features/external-access.md). {@code NEVER_SET} for every new and every pre-existing
-   * library - a Bestand never leaves the house because nobody decided it should.
+   * The reach field beside the shell's listed and the grants: whether this library may be used
+   * through a Fremdzugang, and where it may not, why not (#1731, docs/features/external-access.md).
+   * {@code NEVER_SET} for every new and every pre-existing library - a Bestand never leaves the
+   * house because nobody decided it should.
    */
   @Enumerated(EnumType.STRING)
   @Column(name = "external_access_state", nullable = false, length = 20)
@@ -301,7 +299,6 @@ public class KnowledgeLibrary extends Asset {
       AssetOwnerType ownerType,
       UUID ownerUserId,
       UUID ownerGroupId,
-      AssetVisibility visibility,
       boolean listed,
       DocumentSourceType sourceType,
       String sourcePath,
@@ -316,7 +313,6 @@ public class KnowledgeLibrary extends Asset {
         description,
         ownerType,
         ownerType == AssetOwnerType.USER ? ownerUserId : ownerGroupId,
-        visibility,
         listed);
     this.libraryOrganizationId = organizationId;
     this.sourceType = sourceType;
@@ -333,18 +329,12 @@ public class KnowledgeLibrary extends Asset {
    * after migration 027's backfill.
    */
   public static KnowledgeLibrary ownedByUser(
-      UUID organizationId,
-      String name,
-      String description,
-      UUID ownerUserId,
-      AssetVisibility visibility,
-      boolean listed) {
+      UUID organizationId, String name, String description, UUID ownerUserId, boolean listed) {
     return ownedByUser(
         organizationId,
         name,
         description,
         ownerUserId,
-        visibility,
         listed,
         DocumentSourceType.UPLOAD,
         null,
@@ -359,7 +349,6 @@ public class KnowledgeLibrary extends Asset {
       String name,
       String description,
       UUID ownerUserId,
-      AssetVisibility visibility,
       boolean listed,
       DocumentSourceType sourceType,
       String sourcePath,
@@ -374,7 +363,6 @@ public class KnowledgeLibrary extends Asset {
         AssetOwnerType.USER,
         ownerUserId,
         null,
-        visibility,
         listed,
         sourceType,
         sourcePath,
@@ -387,21 +375,15 @@ public class KnowledgeLibrary extends Asset {
   /**
    * Convenience overload for callers that do not care about the quellentyp - defaults to {@link
    * DocumentSourceType#UPLOAD} with no configuration, mirroring the no-config overload of {@link
-   * #ownedByUser(UUID, String, String, UUID, AssetVisibility, boolean)}.
+   * #ownedByUser(UUID, String, String, UUID, boolean)}.
    */
   public static KnowledgeLibrary ownedByGroup(
-      UUID organizationId,
-      String name,
-      String description,
-      UUID ownerGroupId,
-      AssetVisibility visibility,
-      boolean listed) {
+      UUID organizationId, String name, String description, UUID ownerGroupId, boolean listed) {
     return ownedByGroup(
         organizationId,
         name,
         description,
         ownerGroupId,
-        visibility,
         listed,
         DocumentSourceType.UPLOAD,
         null,
@@ -416,7 +398,6 @@ public class KnowledgeLibrary extends Asset {
       String name,
       String description,
       UUID ownerGroupId,
-      AssetVisibility visibility,
       boolean listed,
       DocumentSourceType sourceType,
       String sourcePath,
@@ -431,7 +412,6 @@ public class KnowledgeLibrary extends Asset {
         AssetOwnerType.GROUP,
         null,
         ownerGroupId,
-        visibility,
         listed,
         sourceType,
         sourcePath,
@@ -531,8 +511,8 @@ public class KnowledgeLibrary extends Asset {
     touch();
   }
 
-  public AssetVisibility getVisibilityCap() {
-    return visibilityCap;
+  public boolean isAllAccountsGrantAllowed() {
+    return allAccountsGrantAllowed;
   }
 
   public boolean isListedCap() {
@@ -542,11 +522,11 @@ public class KnowledgeLibrary extends Asset {
   /**
    * Sets the share cap alone (#797) - never the clamp its narrowing may require. {@code
    * KnowledgeLibraryService#updateShareCap} validates {@code SYSTEM_ADMIN} and the {@code UPLOAD}
-   * exclusion before calling this, then has the asset shell narrow visibility and listed in the
-   * same transaction when the newly set cap is narrower than what the library currently carries.
+   * exclusion before calling this, then revokes the grant to "Alle Konten" and clears {@code
+   * listed} in the same transaction where the newly set cap forbids them (#1931).
    */
-  void updateShareCap(AssetVisibility visibilityCap, boolean listedCap) {
-    this.visibilityCap = Objects.requireNonNull(visibilityCap, "visibilityCap");
+  void updateShareCap(boolean allAccountsGrantAllowed, boolean listedCap) {
+    this.allAccountsGrantAllowed = allAccountsGrantAllowed;
     this.listedCap = listedCap;
   }
 
@@ -602,10 +582,10 @@ public class KnowledgeLibrary extends Asset {
 
   /**
    * Package-private by contract: the release is a reach field sharing one history interval with the
-   * shell's visibility and listed ({@code
-   * AssetVisibilityHistoryService#recordExternalAccessChanged}), so whoever changes it must write
-   * that interval - in production code today only {@link LibraryExternalAccessService} does.
-   * Package scope keeps that obligation reachable; it does not enforce it.
+   * shell's listed ({@code AssetVisibilityHistoryService#recordExternalAccessChanged}), so whoever
+   * changes it must write that interval - in production code today only {@link
+   * LibraryExternalAccessService} does. Package scope keeps that obligation reachable; it does not
+   * enforce it.
    *
    * <p>{@code expiresAt} is required for {@link ExternalAccessState#ACTIVE} and kept as the date
    * the release ran to for every other state except {@link ExternalAccessState#NEVER_SET}, which

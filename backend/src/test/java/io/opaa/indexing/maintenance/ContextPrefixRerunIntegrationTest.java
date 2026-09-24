@@ -3,7 +3,6 @@ package io.opaa.indexing.maintenance;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.api.types.AssetRole;
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DatePrecision;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.LibraryMetadataFieldType;
@@ -596,7 +595,6 @@ class ContextPrefixRerunIntegrationTest {
             "Kontextpräfix",
             null,
             owner.id(),
-            AssetVisibility.PRIVATE,
             false,
             DocumentSourceType.FILESYSTEM,
             classTempDir.toString(),

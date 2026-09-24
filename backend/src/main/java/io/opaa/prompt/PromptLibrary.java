@@ -1,7 +1,6 @@
 package io.opaa.prompt;
 
 import io.opaa.api.types.AssetOwnerType;
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.asset.Asset;
 import io.opaa.permission.AssetType;
 import jakarta.persistence.Column;
@@ -35,9 +34,8 @@ public class PromptLibrary extends Asset {
       String description,
       AssetOwnerType ownerType,
       UUID ownerId,
-      AssetVisibility visibility,
       boolean listed) {
-    super(ASSET_TYPE, organizationId, name, description, ownerType, ownerId, visibility, listed);
+    super(ASSET_TYPE, organizationId, name, description, ownerType, ownerId, listed);
     this.libraryOrganizationId = organizationId;
   }
 
@@ -47,24 +45,14 @@ public class PromptLibrary extends Asset {
   }
 
   public static PromptLibrary ownedByUser(
-      UUID organizationId,
-      String name,
-      String description,
-      UUID ownerUserId,
-      AssetVisibility visibility,
-      boolean listed) {
+      UUID organizationId, String name, String description, UUID ownerUserId, boolean listed) {
     return new PromptLibrary(
-        organizationId, name, description, AssetOwnerType.USER, ownerUserId, visibility, listed);
+        organizationId, name, description, AssetOwnerType.USER, ownerUserId, listed);
   }
 
   public static PromptLibrary ownedByGroup(
-      UUID organizationId,
-      String name,
-      String description,
-      UUID ownerGroupId,
-      AssetVisibility visibility,
-      boolean listed) {
+      UUID organizationId, String name, String description, UUID ownerGroupId, boolean listed) {
     return new PromptLibrary(
-        organizationId, name, description, AssetOwnerType.GROUP, ownerGroupId, visibility, listed);
+        organizationId, name, description, AssetOwnerType.GROUP, ownerGroupId, listed);
   }
 }

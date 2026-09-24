@@ -3,10 +3,9 @@ package io.opaa.audit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.opaa.api.types.AssetGrantSubjectType;
 import io.opaa.api.types.AssetRole;
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.AuditEventType;
-import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.asset.AssetChanged;
 import io.opaa.asset.AssetGrantChanged;
 import io.opaa.asset.AssetGrantService;
@@ -111,8 +110,7 @@ class GrantLibraryChangedEventIntegrationTest {
 
   private KnowledgeLibrary newLibrary() {
     KnowledgeLibrary library =
-        KnowledgeLibrary.ownedByUser(
-            organizationId, "Bibliothek", null, actorUserId, AssetVisibility.PRIVATE, false);
+        KnowledgeLibrary.ownedByUser(organizationId, "Bibliothek", null, actorUserId, false);
     createdLibraryIds.add(library.getId());
     return library;
   }
@@ -149,7 +147,7 @@ class GrantLibraryChangedEventIntegrationTest {
                 .findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectGroupIdAndValidToIsNull(
                     KnowledgeLibrary.ASSET_TYPE,
                     library.getId(),
-                    PermissionSubjectType.GROUP,
+                    AssetGrantSubjectType.GROUP,
                     subjectGroupId))
         .isPresent();
     assertThat(
@@ -191,7 +189,7 @@ class GrantLibraryChangedEventIntegrationTest {
                 .findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectGroupIdAndValidToIsNull(
                     KnowledgeLibrary.ASSET_TYPE,
                     library.getId(),
-                    PermissionSubjectType.GROUP,
+                    AssetGrantSubjectType.GROUP,
                     subjectGroupId))
         .isEmpty();
     assertThat(

@@ -9,7 +9,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.AssetRole;
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.SystemRole;
 import io.opaa.asset.AssetGrantService;
@@ -177,7 +176,6 @@ class KnowledgeLibraryServiceConnectorDeleteOrderTest {
             "Konnektor-Bibliothek",
             null,
             ownerId,
-            AssetVisibility.PRIVATE,
             false,
             DocumentSourceType.FILESYSTEM,
             "/tmp/does-not-matter",

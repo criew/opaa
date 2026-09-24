@@ -2,7 +2,7 @@ package io.opaa.query.filter;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import io.opaa.api.types.PermissionSubjectType;
+import io.opaa.api.types.AssetGrantSubjectType;
 import io.opaa.asset.AssetChanged;
 import io.opaa.asset.AssetGrantChanged;
 import io.opaa.indexing.metadata.LibraryMetadataSchemaChanged;
@@ -72,7 +72,7 @@ public class MetadataFilterOptionsCache implements GroupMembershipChangeListener
    */
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMPLETION, fallbackExecution = true)
   public void onGrantChanged(AssetGrantChanged event) {
-    if (event.grant().getSubjectType() == PermissionSubjectType.USER) {
+    if (event.grant().getSubjectType() == AssetGrantSubjectType.USER) {
       invalidateUser(event.grant().getSubjectUserId());
     } else {
       invalidateAll();

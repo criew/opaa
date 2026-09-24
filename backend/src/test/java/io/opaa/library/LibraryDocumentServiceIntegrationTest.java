@@ -7,7 +7,6 @@ import static org.awaitility.Awaitility.await;
 
 import com.sun.net.httpserver.HttpServer;
 import io.opaa.api.types.AssetRole;
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.SystemRole;
@@ -135,7 +134,7 @@ class LibraryDocumentServiceIntegrationTest {
 
     var grantRequest =
         new AssetGrantUpsert(
-            io.opaa.api.types.PermissionSubjectType.USER, viewer.getId(), AssetRole.VIEWER);
+            io.opaa.api.types.AssetGrantSubjectType.USER, viewer.getId(), AssetRole.VIEWER);
     grantService.upsertGrant(
         KnowledgeLibrary.ASSET_TYPE, libraryId, grantRequest, currentUserOf(editor, false));
   }
@@ -742,7 +741,6 @@ class LibraryDocumentServiceIntegrationTest {
             "Remote-Quelle",
             null,
             editor.getId(),
-            AssetVisibility.PRIVATE,
             true,
             sourceType,
             null,
@@ -911,7 +909,6 @@ class LibraryDocumentServiceIntegrationTest {
             "Blockierte Quelle",
             null,
             editor.getId(),
-            AssetVisibility.PRIVATE,
             true,
             DocumentSourceType.HTTP_DIRECTORY,
             null,
@@ -1038,7 +1035,6 @@ class LibraryDocumentServiceIntegrationTest {
             "Verzeichnis",
             null,
             editor.getId(),
-            AssetVisibility.PRIVATE,
             true,
             DocumentSourceType.FILESYSTEM,
             sourcePath,

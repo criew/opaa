@@ -1,7 +1,6 @@
 package io.opaa.library;
 
 import io.opaa.api.types.AssetOwnerType;
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.indexing.source.s3.S3SourceSettings;
@@ -20,7 +19,6 @@ public final class LibraryCreationBuilder {
   private String description;
   private AssetOwnerType ownerType;
   private UUID ownerId;
-  private AssetVisibility visibility;
   private Boolean listed;
   private final DocumentSourceType sourceType;
   private String sourcePath;
@@ -54,11 +52,6 @@ public final class LibraryCreationBuilder {
 
   public LibraryCreationBuilder ownerId(UUID ownerId) {
     this.ownerId = ownerId;
-    return this;
-  }
-
-  public LibraryCreationBuilder visibility(AssetVisibility visibility) {
-    this.visibility = visibility;
     return this;
   }
 
@@ -118,7 +111,6 @@ public final class LibraryCreationBuilder {
         description,
         ownerType,
         ownerId,
-        visibility,
         listed,
         sourceType,
         sourcePath,

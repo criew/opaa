@@ -1,6 +1,7 @@
 package io.opaa.library;
 
 import io.opaa.api.types.AssetRole;
+import io.opaa.permission.AssetReach;
 import io.opaa.permission.SuccessionFinding;
 import java.time.Instant;
 
@@ -17,6 +18,8 @@ import java.time.Instant;
  * @param succession the derived state "Nachfolge offen" (ADR-0036, Entscheidung 6), {@code null}
  *     while the library has a capable owner - the overview carries the marking as the detail view
  *     does, reduced to state and addressee by the mapper.
+ * @param reach how far the library reaches right now, derived from its grants (#1931) - the
+ *     overview shows it as a badge instead of the former release level.
  */
 public record LibrarySummary(
     KnowledgeLibrary library,
@@ -24,4 +27,5 @@ public record LibrarySummary(
     long documentCount,
     String ownerName,
     Instant lastIndexedAt,
-    SuccessionFinding succession) {}
+    SuccessionFinding succession,
+    AssetReach reach) {}

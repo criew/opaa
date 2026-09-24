@@ -12,12 +12,7 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
-import type {
-  AssetRole,
-  AssetVisibility,
-  PromptLibraryResponse,
-  PromptResponse,
-} from '../types/api'
+import type { AssetRole, PromptLibraryResponse, PromptResponse } from '../types/api'
 import { usePromptLibraryStore } from '../stores/promptLibraryStore'
 import { confirmAction } from '../stores/confirmStore'
 import { assetRoleLabel, promptVariableTypeLabel } from '../utils/labels'
@@ -220,18 +215,16 @@ function SettingsArea({ library }: { library: PromptLibraryResponse }) {
   const name = draft?.name ?? library.name
   const description = draft?.description ?? library.description ?? ''
 
-  // The PUT replaces name, description and reach as a whole; each form sends its own fields and
-  // the saved values of the other.
+  // The PUT replaces name, description and findability as a whole; each form sends its own
+  // fields and the saved values of the other.
   async function save(fields: {
     name: string
     description: string | null | undefined
-    visibility: AssetVisibility
     listed: boolean
   }) {
     await updateLibrary(library.id, {
       name: fields.name.trim(),
       description: fields.description?.trim() || null,
-      visibility: fields.visibility,
       listed: fields.listed,
     })
   }
@@ -240,7 +233,7 @@ function SettingsArea({ library }: { library: PromptLibraryResponse }) {
     setError(null)
     setSaving(true)
     try {
-      await save({ name, description, visibility: library.visibility, listed: library.listed })
+      await save({ name, description, listed: library.listed })
       setDraft(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Speichern fehlgeschlagen')
@@ -317,11 +310,9 @@ function SettingsArea({ library }: { library: PromptLibraryResponse }) {
         assetType="PROMPT_LIBRARY"
         assetId={library.id}
         assetName={library.name}
-        visibility={library.visibility}
+        reach={library.reach}
         listed={library.listed}
-        onSave={(visibility, listed) =>
-          save({ name: library.name, description: library.description, visibility, listed })
-        }
+        onSave={(listed) => save({ name: library.name, description: library.description, listed })}
       />
 
       {library.myRole === 'OWNER' && (

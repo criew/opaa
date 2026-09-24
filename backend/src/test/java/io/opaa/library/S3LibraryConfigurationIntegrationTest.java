@@ -9,7 +9,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
@@ -426,7 +425,6 @@ class S3LibraryConfigurationIntegrationTest {
             .createLibrary(
                 libraryCreation("Feed", DocumentSourceType.RSS_FEED)
                     .sourceUrl(URI.create("https://example.org/feed.xml"))
-                    .visibility(AssetVisibility.PRIVATE)
                     .build(),
                 caller)
             .library()
@@ -452,8 +450,7 @@ class S3LibraryConfigurationIntegrationTest {
     return libraryCreation(name, DocumentSourceType.S3)
         .sourceUrl(endpoint == null ? null : URI.create(endpoint))
         .sourceCredentials("AKIAEXAMPLE:geheim")
-        .s3Settings(settings("eu-central-1", true, S3Scope.of("protokolle", "2025/")))
-        .visibility(AssetVisibility.PRIVATE);
+        .s3Settings(settings("eu-central-1", true, S3Scope.of("protokolle", "2025/")));
   }
 
   private UUID user() {

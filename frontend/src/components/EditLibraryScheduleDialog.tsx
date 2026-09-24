@@ -11,12 +11,7 @@ import MenuItem from '@mui/material/MenuItem'
 import Select from '@mui/material/Select'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
-import type {
-  LibrarySchedule,
-  AssetVisibility,
-  ScheduleFrequency,
-  ScheduleWeekday,
-} from '../types/api'
+import type { LibrarySchedule, ScheduleFrequency, ScheduleWeekday } from '../types/api'
 import { useLibraryStore } from '../stores/libraryStore'
 import {
   scheduleFrequencies,
@@ -59,7 +54,6 @@ interface EditLibraryScheduleDialogProps {
   library: {
     name: string
     description?: string | null
-    visibility: AssetVisibility
     listed: boolean
   }
 }
@@ -119,7 +113,6 @@ export default function EditLibraryScheduleDialog({
       await updateExistingLibrary(libraryId, {
         name: library.name,
         description: library.description ?? undefined,
-        visibility: library.visibility,
         listed: library.listed,
         // Bewusst kein Quellkonfigurationsfeld gesetzt - mirrors LibraryDetailPage's own
         // Stammdaten-Formular: das Backend lässt die gespeicherte Quellkonfiguration

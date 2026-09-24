@@ -5,7 +5,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.withSettings;
 
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.asset.Asset;
 import io.opaa.common.ConflictException;
@@ -28,8 +27,7 @@ class KnowledgeLibraryAssetTypeTest {
     when(((HibernateProxy) proxy).getHibernateLazyInitializer()).thenReturn(initializer);
     when(initializer.getImplementation()).thenReturn(library);
 
-    assertThatThrownBy(
-            () -> definition.requireReachWithinLimits(proxy, AssetVisibility.ORGANIZATION, false))
+    assertThatThrownBy(() -> definition.requireAllAccountsGrantAllowed(proxy))
         .isInstanceOf(ConflictException.class);
   }
 
@@ -37,9 +35,7 @@ class KnowledgeLibraryAssetTypeTest {
   void anAssetOfThisTypeThatIsNoLibraryIsRefused() {
     Asset shellOnly = new Asset() {};
 
-    assertThatThrownBy(
-            () ->
-                definition.requireReachWithinLimits(shellOnly, AssetVisibility.ORGANIZATION, false))
+    assertThatThrownBy(() -> definition.requireAllAccountsGrantAllowed(shellOnly))
         .isInstanceOf(IllegalStateException.class);
   }
 
@@ -50,7 +46,6 @@ class KnowledgeLibraryAssetTypeTest {
             "Bibliothek",
             null,
             UUID.randomUUID(),
-            AssetVisibility.PRIVATE,
             false,
             DocumentSourceType.FILESYSTEM,
             "/data/dokumente",
@@ -58,7 +53,7 @@ class KnowledgeLibraryAssetTypeTest {
             null,
             null,
             false);
-    library.updateShareCap(AssetVisibility.SHARED, false);
+    library.updateShareCap(false, true);
     return library;
   }
 }

@@ -285,20 +285,23 @@ Chunk trägt weiterhin nur ihre Kennung als Filterachse, nicht zusätzlich eine 
 
 ### Verteilungsstufe
 
-Die Reichweite, für die ein [KI-Asset](#ki-asset) freigegeben ist. Die Stufen bauen aufeinander auf:
+Die Reichweite, für die ein [KI-Asset](#ki-asset) freigegeben ist. Sie ist **keine Einstellung am
+Asset**, sondern ergibt sich daraus, wem es freigegeben wurde:
 
 1. **Persönlich** — nur die Person, der das Asset gehört
-2. **Team** — die Mitglieder eines Raums oder einer benannten Gruppe
-3. **Fachbereich** — eine Gruppe aus dem Verzeichnisdienst, die eine Organisationseinheit abbildet
-4. **Organisationsweit** — der Katalog des Hauses, erreichbar für alle Beschäftigten
+2. **Team** — Freigabe an eine benannte Gruppe
+3. **Fachbereich** — Freigabe an eine Gruppe aus dem Verzeichnisdienst, die eine Organisationseinheit
+   abbildet
+4. **Organisationsweit** — Freigabe an **„Alle Konten"**, den Empfänger, der jedes Konto des
+   Hauses erreicht
 
 Der Sprung auf die nächste Stufe ist eine **Handlung mit Freigabe- und Prüfschritt**, keine Einstellung, die
-nebenbei verrutscht. Die [Organisation](#organisation-als-mandantengrenze) ist die Obergrenze: Es gibt keine
-Stufe darüber.
+nebenbei verrutscht; vor der Freigabe an alle Konten fragt die Anwendung eigens zurück. Die
+[Organisation](#organisation-als-mandantengrenze) ist die Obergrenze: Es gibt keine Stufe darüber.
 
 - **Beispiel:** Eine Sachbearbeiterin baut sich einen Agenten für Aktenvermerke (persönlich). Ihr Team
   übernimmt ihn (Team). Das Referat prüft ihn fachlich und gibt ihn frei (Fachbereich). Nach einer Prüfung
-  durch die Systemverwaltung steht er im hausweiten Katalog (organisationsweit).
+  durch die Systemverwaltung ist er an alle Konten freigegeben (organisationsweit).
 
 ---
 
@@ -327,8 +330,9 @@ löschen.
 - **Manager** — zusätzlich teilen und Rechte vergeben
 - **Owner** — zusätzlich löschen und Eigentum übertragen
 
-Rechte werden an **Personen oder Gruppen** vergeben. Gruppen bilden die Aufbauorganisation ab und tragen die
-[Verteilungsstufe](#verteilungsstufe) „Fachbereich".
+Rechte werden an **Personen, Gruppen oder „Alle Beschäftigte"** vergeben. Gruppen bilden die
+Aufbauorganisation ab und tragen die [Verteilungsstufe](#verteilungsstufe) „Fachbereich"; „Alle
+Beschäftigten" ist die organisationsweite Stufe und keine Gruppe der Gruppenverwaltung.
 
 ---
 
@@ -1007,7 +1011,7 @@ Recherchegrundlage steht in [discussion-retrieval-strategien.md, Abschnitt 9](./
 | **KI-Asset** | Benanntes, teilbares Objekt mit Eigentümer und Rechten | Agent, Prompt-Bibliothek, Wissensbibliothek |
 | **Wissensbibliothek** | Dokumentencontainer und Rechteanker der Suche | „Rechtsquellen Soziales" |
 | **Assoziation** | Asset in einem Space bereitstellen; gewährt keine Rechte | „Rechtsquellen" in fünf Spaces |
-| **Verteilungsstufe** | Reichweite der Freigabe | persönlich → Team → Fachbereich → organisationsweit |
+| **Verteilungsstufe** | Reichweite der Freigabe, abgeleitet aus den Empfängern | persönlich → Team → Fachbereich → „Alle Konten" |
 | **Aufgabenbeschreibung** | Was ein Agent tut und was nicht | „Prüft Frist, Form, Zuständigkeit; versendet nichts" |
 | **Agenten-Prüfstand** | Durchlauf an Testfällen vor der Freigabe | 30 Altfälle, 2 Abweichungen |
 | **Prüfagent** | Kontrolliert Ergebnisse gegen die Quellen | Findet fehlende Rechtsbehelfsbelehrung |

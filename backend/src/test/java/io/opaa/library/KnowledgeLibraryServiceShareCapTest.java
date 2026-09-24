@@ -9,7 +9,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.SystemRole;
@@ -58,11 +57,11 @@ import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.context.ApplicationEventPublisher;
 
 /**
- * Unit-level coverage of the share cap #797 introduces - the ceiling {@code
- * KnowledgeLibraryService#updateShareCap} sets on {@code visibility}/{@code listed} and {@code
- * updateLibrary}'s own refusal once a request would exceed it. Wired exactly like {@link
- * KnowledgeLibraryServiceFilesystemAllowlistTest}: a mocked repository that echoes {@code save}
- * back, no Spring context.
+ * Unit-level coverage of the share cap #797 introduces, in the shape #1931 gave it: the two
+ * booleans {@code KnowledgeLibraryService#updateShareCap} sets - may this library be granted to
+ * "Alle Konten", may it be listed - and what lowering either of them takes back at once. Wired
+ * exactly like {@link KnowledgeLibraryServiceFilesystemAllowlistTest}: a mocked repository that
+ * echoes {@code save} back, no Spring context.
  */
 class KnowledgeLibraryServiceShareCapTest {
 
@@ -70,6 +69,7 @@ class KnowledgeLibraryServiceShareCapTest {
   private KnowledgeLibraryRepository libraryRepository;
   private AuditEventRecorder auditEventRecorder;
   private ApplicationEventPublisher eventPublisher;
+  private AssetGrantService grantService;
   private UUID ownerId;
   private UUID organizationId;
   private CurrentUser ownerCaller;
@@ -84,7 +84,7 @@ class KnowledgeLibraryServiceShareCapTest {
     GroupMembershipResolver membershipResolver = mock(GroupMembershipResolver.class);
     DocumentRepository documentRepository = mock(DocumentRepository.class);
     AssetGrantRepository grantRepository = mock(AssetGrantRepository.class);
-    AssetGrantService grantService = mock(AssetGrantService.class);
+    grantService = mock(AssetGrantService.class);
     LibraryAccessService accessService = mock(LibraryAccessService.class);
     PermissionHistoryService permissionHistoryService = mock(PermissionHistoryService.class);
     AssetVisibilityHistoryService visibilityHistoryService =
@@ -159,14 +159,13 @@ class KnowledgeLibraryServiceShareCapTest {
         .thenReturn(io.opaa.api.types.AssetRole.OWNER);
   }
 
-  private KnowledgeLibrary filesystemLibrary(AssetVisibility visibility, boolean listed) {
+  private KnowledgeLibrary filesystemLibrary(boolean listed) {
     KnowledgeLibrary library =
         KnowledgeLibrary.ownedByUser(
             organizationId,
             "Bibliothek",
             null,
             ownerId,
-            visibility,
             listed,
             DocumentSourceType.FILESYSTEM,
             "/data/dokumente",
@@ -178,27 +177,19 @@ class KnowledgeLibraryServiceShareCapTest {
     return library;
   }
 
+  private KnowledgeLibrary uploadLibrary() {
+    KnowledgeLibrary library =
+        KnowledgeLibrary.ownedByUser(organizationId, "Uploads", null, ownerId, false);
+    when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
+    return library;
+  }
+
   // --- updateLibrary is capped -------------------------------------------------------------
 
   @Test
-  void updateLibraryRejectsVisibilityAboveTheShareCapWith409() {
-    KnowledgeLibrary library = filesystemLibrary(AssetVisibility.PRIVATE, false);
-    library.updateShareCap(AssetVisibility.SHARED, true);
-
-    assertThatThrownBy(
-            () ->
-                libraryService.updateLibrary(
-                    library.getId(),
-                    libraryUpdate("Bibliothek").visibility(AssetVisibility.ORGANIZATION).build(),
-                    ownerCaller))
-        .isInstanceOf(ConflictException.class)
-        .hasMessageContaining("geteilt");
-  }
-
-  @Test
   void updateLibraryRejectsListedAboveTheShareCapWith409() {
-    KnowledgeLibrary library = filesystemLibrary(AssetVisibility.SHARED, false);
-    library.updateShareCap(AssetVisibility.SHARED, false);
+    KnowledgeLibrary library = filesystemLibrary(false);
+    library.updateShareCap(true, false);
 
     assertThatThrownBy(
             () ->
@@ -209,75 +200,73 @@ class KnowledgeLibraryServiceShareCapTest {
   }
 
   @Test
-  void updateLibraryAllowsVisibilityAtTheShareCap() {
-    KnowledgeLibrary library = filesystemLibrary(AssetVisibility.PRIVATE, false);
-    library.updateShareCap(AssetVisibility.SHARED, true);
+  void updateLibraryAllowsListedAtTheShareCap() {
+    KnowledgeLibrary library = filesystemLibrary(false);
+    library.updateShareCap(true, true);
 
     LibraryDetail updated =
         libraryService.updateLibrary(
-            library.getId(),
-            libraryUpdate("Bibliothek").visibility(AssetVisibility.SHARED).build(),
-            ownerCaller);
+            library.getId(), libraryUpdate("Bibliothek").listed(true).build(), ownerCaller);
 
-    assertThat(updated.library().getVisibility()).isEqualTo(AssetVisibility.SHARED);
+    assertThat(updated.library().isListed()).isTrue();
   }
 
   @Test
   void updateLibraryIgnoresTheShareCapForAnUploadLibrary() {
-    KnowledgeLibrary library =
-        KnowledgeLibrary.ownedByUser(
-            organizationId, "Uploads", null, ownerId, AssetVisibility.PRIVATE, false);
-    when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
+    KnowledgeLibrary library = uploadLibrary();
 
     LibraryDetail updated =
         libraryService.updateLibrary(
-            library.getId(),
-            libraryUpdate("Uploads").visibility(AssetVisibility.ORGANIZATION).build(),
-            ownerCaller);
+            library.getId(), libraryUpdate("Uploads").listed(true).build(), ownerCaller);
 
-    assertThat(updated.library().getVisibility()).isEqualTo(AssetVisibility.ORGANIZATION);
+    assertThat(updated.library().isListed()).isTrue();
   }
 
   // --- updateShareCap: who may call it --------------------------------------------------
 
   @Test
   void updateShareCapIsRefusedWithoutSystemAdmin() {
-    KnowledgeLibrary library = filesystemLibrary(AssetVisibility.PRIVATE, false);
+    KnowledgeLibrary library = filesystemLibrary(false);
 
     assertThatThrownBy(
-            () ->
-                libraryService.updateShareCap(
-                    library.getId(), AssetVisibility.SHARED, true, ownerCaller))
+            () -> libraryService.updateShareCap(library.getId(), false, true, ownerCaller))
         .isInstanceOf(AccessDeniedException.class);
   }
 
   @Test
   void updateShareCapIsRefusedForAnUploadLibrary() {
-    KnowledgeLibrary library =
-        KnowledgeLibrary.ownedByUser(
-            organizationId, "Uploads", null, ownerId, AssetVisibility.PRIVATE, false);
-    when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
+    KnowledgeLibrary library = uploadLibrary();
 
     assertThatThrownBy(
-            () ->
-                libraryService.updateShareCap(
-                    library.getId(), AssetVisibility.PRIVATE, true, systemAdminCaller))
+            () -> libraryService.updateShareCap(library.getId(), false, true, systemAdminCaller))
         .isInstanceOf(ValidationException.class);
   }
 
-  // --- updateShareCap: the immediate clamp --------------------------------------------------
+  // --- updateShareCap: what lowering it takes back at once ------------------------------
 
+  /**
+   * #1931: organization-wide reach is a grant, so the clamp is a revocation through the ordinary
+   * grant path - not a field the shell lowers.
+   */
   @Test
-  void loweringTheShareCapClampsAWiderVisibilityAndListedImmediately() {
-    KnowledgeLibrary library = filesystemLibrary(AssetVisibility.ORGANIZATION, true);
+  void forbiddingAllAccountsRevokesAnExistingGrantToAllAccounts() {
+    KnowledgeLibrary library = filesystemLibrary(false);
 
     LibraryDetail result =
-        libraryService.updateShareCap(
-            library.getId(), AssetVisibility.PRIVATE, false, systemAdminCaller);
+        libraryService.updateShareCap(library.getId(), false, true, systemAdminCaller);
 
-    assertThat(result.library().getVisibility()).isEqualTo(AssetVisibility.PRIVATE);
+    assertThat(result.library().isAllAccountsGrantAllowed()).isFalse();
+    verify(grantService).revokeAllAccountsGrantForLoweredCap(library, systemAdminCaller.id());
+  }
+
+  @Test
+  void loweringTheListedCapClearsListedImmediately() {
+    KnowledgeLibrary library = filesystemLibrary(true);
+
+    LibraryDetail result =
+        libraryService.updateShareCap(library.getId(), true, false, systemAdminCaller);
+
     assertThat(result.library().isListed()).isFalse();
-    assertThat(result.library().getVisibilityCap()).isEqualTo(AssetVisibility.PRIVATE);
     assertThat(result.library().isListedCap()).isFalse();
     // the clamp writes the same event an owner's own edit would - one history interval, one
     // audit entry, through the identical publish path
@@ -286,10 +275,9 @@ class KnowledgeLibraryServiceShareCapTest {
 
   @Test
   void loweringTheShareCapRecordsItsOwnAuditEventSeparatelyFromTheClamp() {
-    KnowledgeLibrary library = filesystemLibrary(AssetVisibility.ORGANIZATION, true);
+    KnowledgeLibrary library = filesystemLibrary(true);
 
-    libraryService.updateShareCap(
-        library.getId(), AssetVisibility.PRIVATE, false, systemAdminCaller);
+    libraryService.updateShareCap(library.getId(), false, false, systemAdminCaller);
 
     org.mockito.ArgumentCaptor<AuditEvent> captor =
         org.mockito.ArgumentCaptor.forClass(AuditEvent.class);
@@ -298,35 +286,16 @@ class KnowledgeLibraryServiceShareCapTest {
         .isEqualTo(AuditEventType.CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED);
   }
 
-  /**
-   * #1870 review, "Zweig ohne Test": every other clamp test above lowers both fields together -
-   * this one lowers only {@code listedCap}, {@code visibilityCap} stays at its wide default, so
-   * only {@code listedClamped} (not {@code visibilityClamped}) is true in {@code updateShareCap}.
-   */
-  @Test
-  void loweringOnlyTheListedCapClampsListedAloneAndLeavesVisibilityUntouched() {
-    KnowledgeLibrary library = filesystemLibrary(AssetVisibility.ORGANIZATION, true);
-
-    LibraryDetail result =
-        libraryService.updateShareCap(
-            library.getId(), AssetVisibility.ORGANIZATION, false, systemAdminCaller);
-
-    assertThat(result.library().getVisibility()).isEqualTo(AssetVisibility.ORGANIZATION);
-    assertThat(result.library().isListed()).isFalse();
-    assertThat(result.library().isListedCap()).isFalse();
-    verify(eventPublisher).publishEvent(org.mockito.ArgumentMatchers.any(AssetChanged.class));
-  }
-
   @Test
   void raisingTheShareCapNeverClampsAndPublishesNoVisibilityChangedEvent() {
-    KnowledgeLibrary library = filesystemLibrary(AssetVisibility.PRIVATE, false);
+    KnowledgeLibrary library = filesystemLibrary(false);
 
     LibraryDetail result =
-        libraryService.updateShareCap(
-            library.getId(), AssetVisibility.ORGANIZATION, true, systemAdminCaller);
+        libraryService.updateShareCap(library.getId(), true, true, systemAdminCaller);
 
-    assertThat(result.library().getVisibility()).isEqualTo(AssetVisibility.PRIVATE);
     assertThat(result.library().isListed()).isFalse();
+    assertThat(result.library().isAllAccountsGrantAllowed()).isTrue();
     verify(eventPublisher, never()).publishEvent(any());
+    verify(grantService, never()).revokeAllAccountsGrantForLoweredCap(any(), any());
   }
 }

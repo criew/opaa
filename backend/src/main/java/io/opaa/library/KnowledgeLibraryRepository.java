@@ -1,6 +1,5 @@
 package io.opaa.library;
 
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.ExternalAccessState;
 import java.time.Instant;
 import java.util.Collection;
@@ -72,20 +71,7 @@ public interface KnowledgeLibraryRepository extends JpaRepository<KnowledgeLibra
   List<KnowledgeLibrary> findByOrganizationIdAndOwnerUserId(UUID organizationId, UUID ownerUserId);
 
   /**
-   * Ids only - the readable-set computation in {@code LibraryAccessService} needs nothing else, and
-   * loading the entities would drag their eager Confluence space selection along, one query per
-   * organization-wide library (the flat-query-count guard in {@code
-   * KnowledgeLibraryServiceIntegrationTest}).
-   */
-  @Query(
-      "select l.id from KnowledgeLibrary l where l.organizationId = :organizationId"
-          + " and l.visibility = :visibility")
-  List<UUID> findIdsByOrganizationIdAndVisibility(
-      @Param("organizationId") UUID organizationId,
-      @Param("visibility") AssetVisibility visibility);
-
-  /**
-   * Every library of one organization, regardless of visibility or grants - for the administrative
+   * Every library of one organization, regardless of reach or grants - for the administrative
    * index-status view (#1053), which reports on the bestand as such rather than on what any one
    * person may read.
    */

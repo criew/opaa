@@ -3,11 +3,10 @@ import { useNavigate } from 'react-router'
 import Box from '@mui/material/Box'
 import TableCell from '@mui/material/TableCell'
 import Typography from '@mui/material/Typography'
-import CheckIcon from '@mui/icons-material/Check'
 import type { PromptLibraryResponse } from '../types/api'
 import { usePromptLibraryStore } from '../stores/promptLibraryStore'
 import { fontFamily } from '../theme/tokens'
-import { assetRoleLabel } from '../utils/labels'
+import { assetReachLabel, assetRoleLabel } from '../utils/labels'
 import MetaBadge from '../components/MetaBadge'
 import OverviewPage, { OverviewCard, OverviewRowLink } from '../components/overview/OverviewPage'
 import SuccessionStateNote from '../components/succession/SuccessionStateNote'
@@ -20,10 +19,6 @@ function ownerSummary(library: PromptLibraryResponse): string {
 
 function promptCountLabel(count: number): string {
   return count === 1 ? '1 Prompt' : `${count} Prompts`
-}
-
-function isSharedWithOrganization(library: PromptLibraryResponse): boolean {
-  return library.visibility === 'ORGANIZATION'
 }
 
 function formatDate(value: string): string {
@@ -61,7 +56,8 @@ function PromptLibraryCard({ library }: { library: PromptLibraryResponse }) {
       <SuccessionStateNote succession={library.succession} variant="badge" />
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
         <MetaBadge accent>{assetRoleLabel(library.myRole)}</MetaBadge>
-        {isSharedWithOrganization(library) && <MetaBadge>In der Organisation geteilt</MetaBadge>}
+        {/* #1931: die Reichweite ist abgeleitet, keine gespeicherte Stufe. */}
+        <MetaBadge>{assetReachLabel(library.reach)}</MetaBadge>
       </Box>
     </OverviewCard>
   )
@@ -80,10 +76,8 @@ function PromptLibraryRow({ library }: { library: PromptLibraryResponse }) {
       <TableCell sx={{ fontFamily: fontFamily.mono, fontSize: '12.5px !important' }}>
         {library.promptCount}
       </TableCell>
-      <TableCell>
-        {isSharedWithOrganization(library) && (
-          <CheckIcon titleAccess="ja" sx={{ fontSize: 18, color: 'text.secondary' }} />
-        )}
+      <TableCell sx={{ fontSize: '12px !important', color: 'text.secondary' }}>
+        {assetReachLabel(library.reach)}
       </TableCell>
       <TableCell>
         <MetaBadge accent>{assetRoleLabel(library.myRole)}</MetaBadge>
@@ -98,7 +92,7 @@ function PromptLibraryRow({ library }: { library: PromptLibraryResponse }) {
 const columns = [
   { key: 'name', label: 'Name' },
   { key: 'prompts', label: 'Prompts' },
-  { key: 'shared', label: 'In der Organisation geteilt' },
+  { key: 'reach', label: 'Reichweite' },
   { key: 'role', label: 'Ihre Rolle' },
   { key: 'updated', label: 'Zuletzt geändert' },
 ]

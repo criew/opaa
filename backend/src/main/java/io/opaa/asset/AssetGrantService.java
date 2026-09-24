@@ -1,10 +1,10 @@
 package io.opaa.asset;
 
+import io.opaa.api.types.AssetGrantSubjectType;
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.api.types.AuditSubjectKind;
-import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
@@ -33,6 +33,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.context.ApplicationEventPublisher;
@@ -61,12 +62,30 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * <p>No new or widened grant targets a group that is no effective grant target any more (dissolved,
  * provider disabled, unmaintained token group); existing grants to it keep working.
  *
+ * <p><b>"Alle Konten" is a recipient here, not a level elsewhere</b> (#1931, ADR-0037): it is the
+ * subject {@link AssetGrantSubjectType#ALL_ACCOUNTS}, reaching every account of the asset's
+ * organization. It passes the same escalation guard and the same succession guard as any other
+ * recipient, and additionally the type's own ceiling ({@link
+ * AssetTypeDefinition#requireAllAccountsGrantAllowed}) - which is where a connector library's share
+ * cap (#797) takes effect now.
+ *
  * <p>Every response carries {@code subjectDisplayName} and {@code grantedByDisplayName}, resolved
  * here - see {@link #toViews(List)}.
  */
 @Service
 @Transactional(readOnly = true)
 public class AssetGrantService {
+
+  /**
+   * The highest role "Alle Konten" may hold (#1931, ADR-0037 Entscheidung 1). {@link
+   * AssetRole#MANAGER} and {@link AssetRole#OWNER} are responsibilities - vergeben von Rechten,
+   * Eigentum, Nachfolge - and a responsibility is borne by a named person or group, never by
+   * everybody. The same reasoning already keeps an owning group at {@code MANAGER} instead of
+   * {@code OWNER} in {@link AssetShellService#registerCreated}; here it goes one rank further,
+   * because {@code countOtherActiveOwnerGrants} would otherwise count a grant that answers for
+   * nobody and let the last named owner be removed.
+   */
+  private static final AssetRole HIGHEST_ROLE_FOR_ALL_ACCOUNTS = AssetRole.EDITOR;
 
   private final AssetGrantRepository grantRepository;
   private final UserRepository userRepository;
@@ -127,7 +146,7 @@ public class AssetGrantService {
     AssetGrant grant =
         grantRepository
             .findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectGroupId(
-                assetType, asset.getId(), PermissionSubjectType.GROUP, groupId)
+                assetType, asset.getId(), AssetGrantSubjectType.GROUP, groupId)
             .filter(found -> !found.isExpired(Instant.now()))
             .orElseThrow(() -> new NotFoundException("Gruppe nicht gefunden"));
     return disclosureDirectory
@@ -145,19 +164,33 @@ public class AssetGrantService {
     Asset asset = requireManageable(assetType, assetId, caller);
     AssetTypeDefinition definition = assetTypes.require(assetType);
 
-    if (request.subjectType() == null || request.subjectId() == null) {
+    if (request.subjectType() == null) {
       throw new ValidationException("Empfänger ist erforderlich");
     }
     if (request.role() == null) {
       throw new ValidationException("Rolle ist erforderlich");
     }
+    boolean allAccounts = request.subjectType() == AssetGrantSubjectType.ALL_ACCOUNTS;
+    if (allAccounts == (request.subjectId() != null)) {
+      throw new ValidationException(
+          allAccounts
+              ? "Eine Freigabe an alle Konten benennt keinen einzelnen Empfänger"
+              : "Empfänger ist erforderlich");
+    }
+    if (allAccounts && request.role().atLeast(AssetRole.MANAGER)) {
+      throw new ValidationException(
+          "Alle Konten können höchstens die Rolle "
+              + roleLabel(HIGHEST_ROLE_FOR_ALL_ACCOUNTS)
+              + " erhalten. Rechte zu vergeben und ein Asset zu besitzen sind Zuständigkeiten,"
+              + " die eine benannte Person oder Gruppe trägt.");
+    }
     // Subject validation runs before the escalation guard: the guard pseudonymises the subject for
     // its DENIED entry, and a subject that names no real account of this organization would violate
     // the pseudonym table's foreign key - an unknown or foreign subject is a plain 404 instead.
-    if (request.subjectType() == PermissionSubjectType.USER) {
-      requireUserInOrganization(request.subjectId(), asset.getOrganizationId());
-    } else {
-      requireGrantableGroup(request.subjectId(), asset.getOrganizationId(), caller);
+    switch (request.subjectType()) {
+      case USER -> requireUserInOrganization(request.subjectId(), asset.getOrganizationId());
+      case GROUP -> requireGrantableGroup(request.subjectId(), asset.getOrganizationId(), caller);
+      case ALL_ACCOUNTS -> definition.requireAllAccountsGrantAllowed(asset);
     }
 
     // Escalation guard, half 1: a caller may never grant a role higher than their own.
@@ -173,34 +206,48 @@ public class AssetGrantService {
     } catch (AccessDeniedException denied) {
       // The rejected attempt to grant oneself a higher role is itself protocol-worthy
       // (docs/features/security-and-compliance.md).
-      auditEventRecorder.recordUserActionOnSubject(
+      AuditEvent.Builder deniedEntry =
           AuditEvent.builder()
               .organizationId(asset.getOrganizationId())
               .actor(currentUserId)
               .type(AuditEventType.ASSET_GRANT_GRANTED)
               .object(definition.auditObjectType(), asset.getId(), asset.getName())
-              .subject(
-                  request.subjectType() == PermissionSubjectType.USER
-                      ? AuditSubjectKind.USER
-                      : AuditSubjectKind.GROUP,
-                  request.subjectId())
-              .after(Map.of("role", request.role().name()))
+              .after(grantAuditPayload(request.subjectType(), request.role(), null))
               .outcome(AuditOutcome.DENIED)
-              .reason(denied.getMessage())
-              .build());
+              .reason(denied.getMessage());
+      // No audit subject for ALL_ACCOUNTS - it names neither person nor group, see
+      // AssetAuditListener#onGrantChanged.
+      if (allAccounts) {
+        auditEventRecorder.recordUserAction(deniedEntry.build());
+      } else {
+        auditEventRecorder.recordUserActionOnSubject(
+            deniedEntry
+                .subject(
+                    request.subjectType() == AssetGrantSubjectType.USER
+                        ? AuditSubjectKind.USER
+                        : AuditSubjectKind.GROUP,
+                    request.subjectId())
+                .build());
+      }
       throw denied;
     }
 
     // One reference instant for the whole upsert, so the revival check in AssetGrant#updateRole and
     // any expiry comparison below judge the same moment.
     Instant now = Instant.now();
-    AssetGrant grant =
-        (request.subjectType() == PermissionSubjectType.USER
-                ? grantRepository.findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectUserId(
-                    assetType, asset.getId(), PermissionSubjectType.USER, request.subjectId())
-                : grantRepository.findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectGroupId(
-                    assetType, asset.getId(), PermissionSubjectType.GROUP, request.subjectId()))
-            .orElse(null);
+    Optional<AssetGrant> existing =
+        switch (request.subjectType()) {
+          case USER ->
+              grantRepository.findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectUserId(
+                  assetType, asset.getId(), AssetGrantSubjectType.USER, request.subjectId());
+          case GROUP ->
+              grantRepository.findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectGroupId(
+                  assetType, asset.getId(), AssetGrantSubjectType.GROUP, request.subjectId());
+          case ALL_ACCOUNTS ->
+              grantRepository.findByAssetTypeAndAssetIdAndSubjectType(
+                  assetType, asset.getId(), AssetGrantSubjectType.ALL_ACCOUNTS);
+        };
+    AssetGrant grant = existing.orElse(null);
     boolean isNewGrant = grant == null;
     requireReachNotFrozenIfWidening(asset, grant, request);
     // The "before" half of an ASSET_GRANT_CHANGED entry, captured before updateRole mutates it.
@@ -208,25 +255,36 @@ public class AssetGrantService {
     Instant previousExpiresAt = null;
     if (isNewGrant) {
       grant =
-          request.subjectType() == PermissionSubjectType.USER
-              ? AssetGrant.forUser(
-                  assetType,
-                  asset.getId(),
-                  asset.getOrganizationId(),
-                  request.subjectId(),
-                  request.role(),
-                  request.expiresAt(),
-                  currentUserId)
-              : AssetGrant.forGroup(
-                  assetType,
-                  asset.getId(),
-                  asset.getOrganizationId(),
-                  request.subjectId(),
-                  request.role(),
-                  request.expiresAt(),
-                  currentUserId,
-                  groupMemberships.activeMemberCount(
-                      request.subjectId(), asset.getOrganizationId()));
+          switch (request.subjectType()) {
+            case USER ->
+                AssetGrant.forUser(
+                    assetType,
+                    asset.getId(),
+                    asset.getOrganizationId(),
+                    request.subjectId(),
+                    request.role(),
+                    request.expiresAt(),
+                    currentUserId);
+            case GROUP ->
+                AssetGrant.forGroup(
+                    assetType,
+                    asset.getId(),
+                    asset.getOrganizationId(),
+                    request.subjectId(),
+                    request.role(),
+                    request.expiresAt(),
+                    currentUserId,
+                    groupMemberships.activeMemberCount(
+                        request.subjectId(), asset.getOrganizationId()));
+            case ALL_ACCOUNTS ->
+                AssetGrant.forAllAccounts(
+                    assetType,
+                    asset.getId(),
+                    asset.getOrganizationId(),
+                    request.role(),
+                    request.expiresAt(),
+                    currentUserId);
+          };
     } else {
       requireCallerCanTouchExistingGrant(callerRole, grant, "ändern");
       requireNotDowngradingTheLastActiveOwnerGrant(
@@ -245,14 +303,14 @@ public class AssetGrantService {
                 AssetGrantChanged.Cause.GRANTED,
                 currentUserId,
                 null,
-                grantAuditPayload(saved.getRole(), saved.getExpiresAt()))
+                grantAuditPayload(saved))
             : new AssetGrantChanged(
                 asset,
                 saved,
                 AssetGrantChanged.Cause.ROLE_CHANGED,
                 currentUserId,
-                grantAuditPayload(previousRole, previousExpiresAt),
-                grantAuditPayload(saved.getRole(), saved.getExpiresAt())));
+                grantAuditPayload(saved.getSubjectType(), previousRole, previousExpiresAt),
+                grantAuditPayload(saved)));
     invalidateAfterCommit(assetType, asset.getId());
     return toViews(List.of(saved)).get(0);
   }
@@ -271,7 +329,7 @@ public class AssetGrantService {
             AssetGrantChanged.Cause.GRANTED,
             actorUserId,
             null,
-            Map.of("role", saved.getRole().name())));
+            grantAuditPayload(saved)));
     invalidateAfterCommit(asset.getAssetType(), asset.getId());
     return saved;
   }
@@ -305,8 +363,19 @@ public class AssetGrantService {
     return requestedExpiresAt == null || requestedExpiresAt.isAfter(previousExpiry);
   }
 
-  private Map<String, Object> grantAuditPayload(AssetRole role, Instant expiresAt) {
+  private static Map<String, Object> grantAuditPayload(AssetGrant grant) {
+    return grantAuditPayload(grant.getSubjectType(), grant.getRole(), grant.getExpiresAt());
+  }
+
+  /**
+   * The payload of a grant audit entry. It names the recipient kind, because a grant to {@code
+   * ALL_ACCOUNTS} carries no audit subject (see {@link AssetAuditListener#onGrantChanged}) and the
+   * entry would otherwise not say who it reached.
+   */
+  private static Map<String, Object> grantAuditPayload(
+      AssetGrantSubjectType subjectType, AssetRole role, Instant expiresAt) {
     Map<String, Object> payload = new LinkedHashMap<>();
+    payload.put("subjectType", subjectType.name());
     payload.put("role", role.name());
     if (expiresAt != null) {
       payload.put("expiresAt", expiresAt.toString());
@@ -351,10 +420,44 @@ public class AssetGrantService {
             grant,
             AssetGrantChanged.Cause.REVOKED,
             currentUserId,
-            grantAuditPayload(grant.getRole(), grant.getExpiresAt()),
+            grantAuditPayload(grant),
             null));
     grantRepository.delete(grant);
     invalidateAfterCommit(assetType, asset.getId());
+  }
+
+  /**
+   * Takes back the grant to "Alle Konten" because the type's ceiling now forbids it (#797, #1931,
+   * ADR-0037 Entscheidung 5) - the counterpart of {@link
+   * AssetShellService#clearListedForLoweredCap} on the grant side. Deliberately without the {@code
+   * MANAGER} check of {@link #revokeGrant}: the caller is the system administration, whose {@code
+   * SYSTEM_ADMIN} role it has already established, and the clamp must never be refused. Everything
+   * else is an ordinary revocation - one grant-history interval, one audit entry, one cache
+   * invalidation.
+   *
+   * @return whether such a grant existed and was taken back.
+   */
+  @Transactional
+  public boolean revokeAllAccountsGrantForLoweredCap(Asset asset, UUID actorUserId) {
+    AssetGrant grant =
+        grantRepository
+            .findByAssetTypeAndAssetIdAndSubjectType(
+                asset.getAssetType(), asset.getId(), AssetGrantSubjectType.ALL_ACCOUNTS)
+            .orElse(null);
+    if (grant == null) {
+      return false;
+    }
+    eventPublisher.publishEvent(
+        new AssetGrantChanged(
+            asset,
+            grant,
+            AssetGrantChanged.Cause.REVOKED,
+            actorUserId,
+            grantAuditPayload(grant),
+            null));
+    grantRepository.delete(grant);
+    invalidateAfterCommit(asset.getAssetType(), asset.getId());
+    return true;
   }
 
   private void requireCallerCanTouchExistingGrant(
@@ -537,10 +640,12 @@ public class AssetGrantService {
     Set<UUID> userIds = new HashSet<>();
     Set<UUID> groupIds = new HashSet<>();
     for (AssetGrant grant : grants) {
-      if (grant.getSubjectType() == PermissionSubjectType.USER) {
-        userIds.add(grant.getSubjectId());
-      } else {
-        groupIds.add(grant.getSubjectId());
+      switch (grant.getSubjectType()) {
+        case USER -> userIds.add(grant.getSubjectId());
+        case GROUP -> groupIds.add(grant.getSubjectId());
+        case ALL_ACCOUNTS -> {
+          // Names no row, so there is nothing to resolve.
+        }
       }
       if (grant.getGrantedByUserId() != null) {
         userIds.add(grant.getGrantedByUserId());
@@ -562,7 +667,10 @@ public class AssetGrantService {
                   grant.getGrantedByUserId() == null
                       ? null
                       : userNames.get(grant.getGrantedByUserId());
-              if (grant.getSubjectType() == PermissionSubjectType.USER) {
+              if (grant.getSubjectType() == AssetGrantSubjectType.ALL_ACCOUNTS) {
+                return AssetGrantView.ofAllAccounts(grant, grantedByName);
+              }
+              if (grant.getSubjectType() == AssetGrantSubjectType.USER) {
                 return AssetGrantView.ofUser(
                     grant, userNames.get(grant.getSubjectId()), grantedByName);
               }

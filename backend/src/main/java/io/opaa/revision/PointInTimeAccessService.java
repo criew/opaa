@@ -3,11 +3,9 @@ package io.opaa.revision;
 import io.opaa.api.types.AccessAsOfObjectType;
 import io.opaa.api.types.AccessAsOfSource;
 import io.opaa.api.types.AccessBasis;
-import io.opaa.api.types.AssetRole;
+import io.opaa.api.types.AssetGrantSubjectType;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.PermissionSubjectType;
-import io.opaa.asset.AssetVisibilityHistory;
-import io.opaa.asset.AssetVisibilityHistoryService;
 import io.opaa.audit.AuditAccessGate;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.User;
@@ -81,7 +79,6 @@ public class PointInTimeAccessService {
   private final AuditAccessGate gate;
   private final AuditEventRecorder eventRecorder;
   private final PermissionHistoryService permissionHistory;
-  private final AssetVisibilityHistoryService visibilityHistory;
   private final SpaceMembershipHistoryService spaceMembershipHistory;
   private final PermissionHistoryRetentionService retentionService;
   private final GroupSubjectDirectory groupDirectory;
@@ -93,7 +90,6 @@ public class PointInTimeAccessService {
       AuditAccessGate gate,
       AuditEventRecorder eventRecorder,
       PermissionHistoryService permissionHistory,
-      AssetVisibilityHistoryService visibilityHistory,
       SpaceMembershipHistoryService spaceMembershipHistory,
       PermissionHistoryRetentionService retentionService,
       GroupSubjectDirectory groupDirectory,
@@ -103,7 +99,6 @@ public class PointInTimeAccessService {
     this.gate = gate;
     this.eventRecorder = eventRecorder;
     this.permissionHistory = permissionHistory;
-    this.visibilityHistory = visibilityHistory;
     this.spaceMembershipHistory = spaceMembershipHistory;
     this.retentionService = retentionService;
     this.groupDirectory = groupDirectory;
@@ -159,12 +154,12 @@ public class PointInTimeAccessService {
   }
 
   /**
-   * The three sources of the readable-library formula, evaluated backwards: grants naming a person,
-   * grants naming a group (resolved through the membership intervals of that same period), and the
-   * organization-wide release. The composition mirrors {@code
-   * AssetVisibilityHistoryService#readableAssetIdsAsOf} so both directions of the question stay one
-   * formula, and every source is scoped to {@code organizationId} - a foreign object answers like
-   * an unknown one.
+   * The three ways of the readable-library formula, evaluated backwards: grants naming a person,
+   * grants naming a group (resolved through the membership intervals of that same period), and
+   * grants to "Alle Konten". All three come from the same table since #1931 (ADR-0037), so both
+   * directions of the question read one source; the composition mirrors {@code
+   * PermissionHistoryService#readableAssetIdsAsOf}, and it is scoped to {@code organizationId} - a
+   * foreign object answers like an unknown one.
    */
   private List<AccessAsOfEntry> libraryReaders(
       UUID organizationId, UUID libraryId, Instant from, Instant to) {
@@ -180,7 +175,7 @@ public class PointInTimeAccessService {
             "Freigaben");
     Set<UUID> groupIds = new HashSet<>();
     for (AssetGrantHistory grant : grants) {
-      if (grant.getSubjectType() == PermissionSubjectType.GROUP) {
+      if (grant.getSubjectType() == AssetGrantSubjectType.GROUP) {
         groupIds.add(grant.getSubjectGroupId());
       }
     }
@@ -199,7 +194,24 @@ public class PointInTimeAccessService {
       if (!grantFrom.isBefore(grantTo)) {
         continue;
       }
-      if (grant.getSubjectType() == PermissionSubjectType.USER) {
+      // Reaches every account without naming one, which is why it stays one entry instead of a
+      // list of people - exactly as the organization-wide release did before #1931.
+      if (grant.getSubjectType() == AssetGrantSubjectType.ALL_ACCOUNTS) {
+        add(
+            entries,
+            new AccessAsOfEntry(
+                AccessBasis.ORGANIZATION_WIDE,
+                null,
+                null,
+                null,
+                null,
+                grant.getRole(),
+                null,
+                grantFrom,
+                openEnded(grantTo, to)));
+        continue;
+      }
+      if (grant.getSubjectType() == AssetGrantSubjectType.USER) {
         add(
             entries,
             new AccessAsOfEntry(
@@ -238,31 +250,6 @@ public class PointInTimeAccessService {
       }
     }
 
-    for (AssetVisibilityHistory interval :
-        visibilityHistory.organizationWideIntervalsBetween(
-            KnowledgeLibrary.ASSET_TYPE,
-            libraryId,
-            organizationId,
-            from,
-            to,
-            MAX_SOURCE_INTERVALS)) {
-      Instant start = max(interval.getValidFrom(), from);
-      Instant end = min(interval.getValidTo(), to);
-      if (start.isBefore(end)) {
-        add(
-            entries,
-            new AccessAsOfEntry(
-                AccessBasis.ORGANIZATION_WIDE,
-                null,
-                null,
-                null,
-                null,
-                AssetRole.VIEWER,
-                null,
-                start,
-                openEnded(end, to)));
-      }
-    }
     return entries;
   }
 

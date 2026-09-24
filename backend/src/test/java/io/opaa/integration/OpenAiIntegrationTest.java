@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import io.opaa.TestcontainersConfiguration;
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
@@ -105,7 +104,6 @@ class OpenAiIntegrationTest {
                 "OpenAI-IT-Bibliothek",
                 null,
                 userId,
-                AssetVisibility.PRIVATE,
                 false,
                 DocumentSourceType.FILESYSTEM,
                 tempDir.toAbsolutePath().toString(),

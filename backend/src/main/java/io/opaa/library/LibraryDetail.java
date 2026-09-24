@@ -1,6 +1,7 @@
 package io.opaa.library;
 
 import io.opaa.api.types.AssetRole;
+import io.opaa.permission.AssetReach;
 
 /**
  * A {@link KnowledgeLibrary} enriched with the caller's effective role, its document count and its
@@ -14,10 +15,12 @@ import io.opaa.api.types.AssetRole;
  *     LibraryDiagnosticsLockService#setLocked} on this library right now ({@link
  *     LibraryAccessService#holdsIndependentOwnerRole}), independent of {@code myRole} - a system
  *     admin's {@code myRole} bypasses to {@code OWNER} unconditionally, this field never does.
+ * @param reach how far the library reaches right now, derived from its grants (#1931).
  */
 public record LibraryDetail(
     KnowledgeLibrary library,
     AssetRole myRole,
     long documentCount,
     LibraryManagementDetail managementDetail,
-    boolean diagnosticsLockToggleable) {}
+    boolean diagnosticsLockToggleable,
+    AssetReach reach) {}

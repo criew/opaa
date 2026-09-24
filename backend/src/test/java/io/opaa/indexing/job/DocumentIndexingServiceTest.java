@@ -11,7 +11,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.AssetRole;
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.auth.CurrentUser;
@@ -114,7 +113,6 @@ class DocumentIndexingServiceTest {
             "Zielbibliothek",
             null,
             UUID.randomUUID(),
-            AssetVisibility.PRIVATE,
             false,
             DocumentSourceType.FILESYSTEM,
             "/data/docs",
@@ -150,12 +148,7 @@ class DocumentIndexingServiceTest {
     // does not exist at all.
     KnowledgeLibrary foreignLibrary =
         KnowledgeLibrary.ownedByUser(
-            UUID.randomUUID(),
-            "Fremde Bibliothek",
-            null,
-            UUID.randomUUID(),
-            AssetVisibility.PRIVATE,
-            false);
+            UUID.randomUUID(), "Fremde Bibliothek", null, UUID.randomUUID(), false);
     when(libraryRepository.findById(foreignLibrary.getId()))
         .thenReturn(Optional.of(foreignLibrary));
 
@@ -264,12 +257,7 @@ class DocumentIndexingServiceTest {
   void anUploadLibraryIsRejectedWithConflictAndNoJobStarts() {
     KnowledgeLibrary uploadLibrary =
         KnowledgeLibrary.ownedByUser(
-            organizationId,
-            "Upload-Bibliothek",
-            null,
-            UUID.randomUUID(),
-            AssetVisibility.PRIVATE,
-            false);
+            organizationId, "Upload-Bibliothek", null, UUID.randomUUID(), false);
     when(libraryRepository.findById(uploadLibrary.getId())).thenReturn(Optional.of(uploadLibrary));
     when(libraryAccessService.requireRole(uploadLibrary, caller.id(), false, AssetRole.EDITOR))
         .thenReturn(AssetRole.EDITOR);
@@ -288,7 +276,6 @@ class DocumentIndexingServiceTest {
             "HTTP-Bibliothek",
             null,
             UUID.randomUUID(),
-            AssetVisibility.PRIVATE,
             false,
             DocumentSourceType.HTTP_DIRECTORY,
             null,
@@ -321,7 +308,6 @@ class DocumentIndexingServiceTest {
             "RSS-Bibliothek",
             null,
             UUID.randomUUID(),
-            AssetVisibility.PRIVATE,
             false,
             DocumentSourceType.RSS_FEED,
             null,
@@ -471,12 +457,7 @@ class DocumentIndexingServiceTest {
   void getStatusForAForeignLibraryFailsWithNotFound() {
     KnowledgeLibrary foreignLibrary =
         KnowledgeLibrary.ownedByUser(
-            UUID.randomUUID(),
-            "Fremde Bibliothek",
-            null,
-            UUID.randomUUID(),
-            AssetVisibility.PRIVATE,
-            false);
+            UUID.randomUUID(), "Fremde Bibliothek", null, UUID.randomUUID(), false);
     when(libraryRepository.findById(foreignLibrary.getId()))
         .thenReturn(Optional.of(foreignLibrary));
 
@@ -524,12 +505,7 @@ class DocumentIndexingServiceTest {
   void getRecentRunsForAForeignLibraryFailsWithNotFound() {
     KnowledgeLibrary foreignLibrary =
         KnowledgeLibrary.ownedByUser(
-            UUID.randomUUID(),
-            "Fremde Bibliothek",
-            null,
-            UUID.randomUUID(),
-            AssetVisibility.PRIVATE,
-            false);
+            UUID.randomUUID(), "Fremde Bibliothek", null, UUID.randomUUID(), false);
     when(libraryRepository.findById(foreignLibrary.getId()))
         .thenReturn(Optional.of(foreignLibrary));
 

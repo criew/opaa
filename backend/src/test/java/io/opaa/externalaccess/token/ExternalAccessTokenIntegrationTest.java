@@ -12,7 +12,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.jayway.jsonpath.JsonPath;
 import io.opaa.api.types.AssetOwnerType;
 import io.opaa.api.types.AssetRole;
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.audit.AuditEventRecorder;
@@ -159,7 +158,6 @@ class ExternalAccessTokenIntegrationTest {
                 null,
                 AssetOwnerType.USER,
                 user.getId(),
-                AssetVisibility.PRIVATE,
                 false,
                 DocumentSourceType.UPLOAD,
                 null,
