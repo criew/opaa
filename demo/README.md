@@ -256,33 +256,35 @@ Das startet zusätzlich zu `postgres`/`backend`/`frontend`:
 
   **Zugangsdaten:** Der Root-Schlüssel `rheinfurt-archiv` / `RheinfurtDemo!2026` ist ein
   dokumentierter Demo-Wert; ihn gibt der Seed den **beiden S3-Bibliotheken** als
-  `accessKey:secretKey` mit, und mit ihm liest `aws s3` vom Host die drei Buckets. Die **Ablage**
+  `accessKey:secretKey` mit, und mit ihm öffnet sich die Konsole des Speichers. Die **Ablage**
   benutzt stattdessen den eigenen, bucket-beschränkten Schlüssel `opaa-uploads` /
   `OpaaUploads!2026` (Schritt 1). Das Backend spricht `objectstore` Path-Style über das
   Compose-Netzwerk an, weshalb der Servicename für die Konnektoren in der Allowlist stehen muss
   (Schritt 1).
 
 Alle Quellcontainer binden standardmäßig nur an `127.0.0.1` (Ports `OPAA_DEMO_CORPUS_PORT`, Default
-8091, `OPAA_DEMO_PRESSE_PORT`, Default 8092, und `OPAA_DEMO_OBJECTSTORE_PORT`, Default 8093) —
-zum Prüfen von Hand, nicht als öffentlicher Zugang;
+8091, `OPAA_DEMO_PRESSE_PORT`, Default 8092, `OPAA_DEMO_OBJECTSTORE_PORT`, Default 8093, und
+`OPAA_DEMO_OBJECTSTORE_CONSOLE_PORT`, Default 8094) — zum Prüfen im Browser, nicht als
+öffentlicher Zugang;
 das Backend erreicht alle drei ohnehin über das Compose-Netzwerk unter ihrem Servicenamen bzw. Alias,
 ein Hafen nach außen ist dafür nicht nötig:
 
 - <http://127.0.0.1:8091/leistungen-meldewesen-ausweise/> (ebenso für die anderen beiden Verzeichnisse)
 - <http://127.0.0.1:8092/rss.xml>
-- <http://127.0.0.1:8093/> — die **S3-API des Objektspeichers**, der Weg, sich die drei Buckets
-  anzusehen. Eine Weboberfläche bringt der Dienst nicht mit; mit dem Root-Schlüssel oben
-  (`rheinfurt-archiv` / `RheinfurtDemo!2026`) genügt die Kommandozeile:
+- <http://127.0.0.1:8094/rustfs/console/> — **Konsole des Objektspeichers**, der Weg, sich die
+  drei Buckets anzusehen (der Dienst serviert sie unter diesem Pfad, nicht unter `/`). Anmeldung
+  mit dem Root-Schlüssel oben (`rheinfurt-archiv` / `RheinfurtDemo!2026`): `rheinfurt-archiv`
+  zeigt die Jahrgangsordner unter `ratsinformationen/`, `formattest` die vierzehn Formatmuster,
+  und `opaa-uploads` füllt sich mit je einem Objekt pro hochgeladenem Original — sichtbar
+  unmittelbar nach einem Upload über die Oberfläche, zwei Schlüsselebenen tief: erst die
+  Organisation, darin die Bibliothek.
+
+  Dasselbe von der Kommandozeile, über die S3-API auf Port 8093:
 
   ```bash
   AWS_ACCESS_KEY_ID=rheinfurt-archiv AWS_SECRET_ACCESS_KEY='RheinfurtDemo!2026' \
     aws --endpoint-url http://127.0.0.1:8093 s3 ls --recursive s3://rheinfurt-archiv
   ```
-
-  `rheinfurt-archiv` zeigt die Jahrgangsordner unter `ratsinformationen/`, `formattest` die
-  vierzehn Formatmuster, und `opaa-uploads` füllt sich mit je einem Objekt pro hochgeladenem
-  Original — sichtbar unmittelbar nach einem Upload über die Oberfläche, zwei Schlüsselebenen
-  tief: erst die Organisation, darin die Bibliothek.
 
 Listing-Format: Apache `IndexOptions FancyIndexing HTMLTable`
 (`webserver/httpd-demo-autoindex.conf`) — die erprobte Referenz, seit #550 aber keine Notwendigkeit
@@ -347,7 +349,7 @@ zu ersetzen. Der Ist-Zustand auf der öffentlichen Instanz opaa.ewerlin.com weic
 
 Der Objektspeicher `objectstore` des Demo-Stacks hat einen eigenen Root-Schlüssel (`rheinfurt-archiv` /
 `RheinfurtDemo!2026`, `docker-compose.yml`) — derselbe offene Demo-Wert, mit dem der Seed die beiden
-`S3`-Bibliotheken anlegt und mit dem sich die drei Buckets über die S3-API (Port 8093) lesen lassen. Die
+`S3`-Bibliotheken anlegt und mit dem sich die Konsole (Port 8094, Pfad `/rustfs/console/`) öffnen lässt. Die
 Originalablage benutzt davon getrennt den bucket-beschränkten Schlüssel `opaa-uploads` /
 `OpaaUploads!2026`, den der Init-Schritt `objectstore-seed` anlegt — ebenfalls ein offener Demo-Wert.
 

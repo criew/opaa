@@ -228,15 +228,14 @@
       matchUpdateTypes: ['major'],
       automerge: false,
     },
-    // Das S3-Testimage (S3TestFixture.IMAGE und die Compose-Dienste des Demo-Stacks, #1949) wird
-    // nie automatisch gemergt: Die Fixture spricht neben der S3-API auch die Admin-API des Images
-    // an, die kein Standard ist — ein neuer Tag kann sie ändern, ohne dass ein grüner Vorschlag
-    // das zeigt, weil die Suite ihn erst nach dem Merge fährt. Ein Vorschlag bleibt als PR zur
-    // Entscheidung. Vorabversionen ("1.0.1-preview.3") bleiben außen vor.
+    // Die beiden Images des Objektspeichers (#1949) werden nie automatisch gemergt, weil ihr
+    // Nachweis erst nach dem Merge läuft: S3TestFixture.IMAGE spricht neben der S3-API auch die
+    // Admin-API von rustfs an, die kein Standard ist, und amazon/aws-cli führt die Seed-Schritte
+    // des Demo-Stacks aus, die allein die nightly demo-smoke prüft. Ein Vorschlag bleibt als PR
+    // zur Entscheidung.
     {
-      matchPackageNames: ['rustfs/rustfs'],
+      matchPackageNames: ['rustfs/rustfs', 'amazon/aws-cli'],
       automerge: false,
-      ignoreUnstable: true,
     },
     // Das Keycloak-Image wird nie automatisch gemergt: Der Tag steckt in KeycloakFixture.IMAGE und
     // im Compose-Stack, geprüft wird er aber nur von keycloakIntegrationTest — einer Suite, die

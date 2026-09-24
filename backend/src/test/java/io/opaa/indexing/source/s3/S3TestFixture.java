@@ -76,12 +76,12 @@ public final class S3TestFixture {
   }
 
   /** {@link #IMAGE} as a Testcontainers name. */
-  public static DockerImageName imageName() {
+  private static DockerImageName imageName() {
     return DockerImageName.parse(IMAGE);
   }
 
   /** A container of {@link #IMAGE} with the root credentials of this fixture, not yet started. */
-  public static GenericContainer<?> newContainer() {
+  private static GenericContainer<?> newContainer() {
     return new GenericContainer<>(imageName())
         .withExposedPorts(PORT)
         .withEnv("RUSTFS_ACCESS_KEY", ROOT_ACCESS_KEY)

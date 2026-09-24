@@ -213,12 +213,18 @@ services:
       RUSTFS_ACCESS_KEY: rheinfurt-archiv
       RUSTFS_SECRET_KEY: RheinfurtDemo!2026
       RUSTFS_VOLUMES: /data
+      # The store serves its console only when asked to, and under /rustfs/console/ rather than at
+      # the root of the port.
+      RUSTFS_CONSOLE_ENABLE: "true"
+      RUSTFS_CONSOLE_ADDRESS: ":9001"
     volumes:
       - opaa-demo-objectstore-data:/data
-    # Published to 127.0.0.1 only, so "aws s3 ls" from the host can look into the three buckets -
-    # the backend never uses this port, it goes through the Compose network.
+    # Published to 127.0.0.1 only, for the "prüfen im Browser" step (the console at 8094 shows the
+    # three buckets, the API at 8093 answers "aws s3" from the host) - the backend never uses
+    # these.
     ports:
       - "127.0.0.1:${OPAA_DEMO_OBJECTSTORE_PORT:-8093}:9000"
+      - "127.0.0.1:${OPAA_DEMO_OBJECTSTORE_CONSOLE_PORT:-8094}:9001"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1:9000/health"]
       interval: 2s
@@ -295,12 +301,17 @@ services:
       RUSTFS_ACCESS_KEY: ${OPAA_UPLOAD_STORE_ROOT_USER:-opaa-uploads}
       RUSTFS_SECRET_KEY: ${OPAA_UPLOAD_STORE_ROOT_PASSWORD:-OpaaUploads!2026}
       RUSTFS_VOLUMES: /data
+      # Same reasoning as "objectstore": the console is opt-in and lives under /rustfs/console/.
+      RUSTFS_CONSOLE_ENABLE: "true"
+      RUSTFS_CONSOLE_ADDRESS: ":9001"
     volumes:
       - opaa-upload-store-data:/data
-    # Published to 127.0.0.1 only, for the operator's own "aws s3" calls from the host - the
-    # backend never uses it, it goes through the Compose network.
+    # Published to 127.0.0.1 only, for the operator's own "aws s3" calls from the host (API on
+    # 8095) and for looking an original up in the browser (console on 8096) - the backend uses
+    # neither, it goes through the Compose network.
     ports:
       - "127.0.0.1:${OPAA_UPLOAD_STORE_PORT:-8095}:9000"
+      - "127.0.0.1:${OPAA_UPLOAD_STORE_CONSOLE_PORT:-8096}:9001"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1:9000/health"]
       interval: 2s
