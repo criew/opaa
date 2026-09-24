@@ -1,10 +1,12 @@
 package io.opaa.api;
 
+import io.opaa.api.dto.AssetSpaceAssociationListResponse;
 import io.opaa.api.dto.AssetSpaceAssociationResponse;
 import io.opaa.api.dto.AssetType;
 import io.opaa.api.dto.SpaceAssetAssociationListResponse;
 import io.opaa.api.dto.SpaceAssetAssociationResponse;
 import io.opaa.space.AssetSpaceLink;
+import io.opaa.space.AssetSpaceLinks;
 import io.opaa.space.SpaceAssetAssociation;
 import io.opaa.space.SpaceAssetLink;
 import io.opaa.space.SpaceAssetLinks;
@@ -39,18 +41,30 @@ final class SpaceAssetAssociationResponseMapper {
         links.hasAssociations(), links.narrowsSearch(), items);
   }
 
+  /**
+   * Below MANAGER the entry carries the space alone (#1939): {@link
+   * AssetSpaceLink#managementDetail} is the one place that decides it, so a reduced link can never
+   * leak a field through this mapper.
+   */
   static AssetSpaceAssociationResponse toAssetSpaceResponse(AssetSpaceLink link) {
     SpaceAssetAssociation association = link.association();
-    return new AssetSpaceAssociationResponse(
-            association.getSpaceId(),
-            link.spaceName(),
-            association.getCreatedByUserId(),
-            association.getCreatedAt(),
-            link.narrowerReaderCircle())
+    AssetSpaceAssociationResponse response =
+        new AssetSpaceAssociationResponse(association.getSpaceId(), link.spaceName());
+    if (!link.managementDetail()) {
+      return response;
+    }
+    return response
+        .createdByUserId(association.getCreatedByUserId())
+        .createdAt(association.getCreatedAt())
+        .narrowerReaderCircle(link.narrowerReaderCircle())
         .createdByDisplayName(link.createdByDisplayName());
   }
 
-  static List<AssetSpaceAssociationResponse> toAssetSpaceResponses(List<AssetSpaceLink> links) {
-    return links.stream().map(SpaceAssetAssociationResponseMapper::toAssetSpaceResponse).toList();
+  static AssetSpaceAssociationListResponse toAssetSpaceListResponse(AssetSpaceLinks links) {
+    return new AssetSpaceAssociationListResponse(
+        links.items().stream()
+            .map(SpaceAssetAssociationResponseMapper::toAssetSpaceResponse)
+            .toList(),
+        links.hiddenCount());
   }
 }

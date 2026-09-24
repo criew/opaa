@@ -230,13 +230,13 @@ export async function setLibraryReleaseViaApi(
 }
 
 /**
- * Öffnet den Zugriffsbereich einer Bibliothek (Detailseite → Verwaltung → Rechte verwalten), in dem
+ * Öffnet den Zugriffsbereich einer Bibliothek (Detailseite → Freigaben → Rechte verwalten), in dem
  * die Freigabe für Fremdzugänge steht.
  */
 export async function openLibraryAccessDialog(page: Page, libraryName: string): Promise<void> {
   await gotoLibraries(page)
   await gotoLibraryDetail(page, libraryName)
-  await page.getByRole('tab', { name: 'Verwaltung' }).click()
+  await page.getByRole('tab', { name: 'Freigaben' }).click()
   await page.getByRole('button', { name: 'Rechte verwalten' }).click()
   await expect(page.getByRole('heading', { name: 'Fremdzugänge' })).toBeVisible()
 }

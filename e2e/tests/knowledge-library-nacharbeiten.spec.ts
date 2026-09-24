@@ -457,7 +457,7 @@ test.describe('Quellkonfiguration bearbeiten (#516)', () => {
     await expect(page.getByRole('heading', { name: libraryName })).toBeVisible()
     createdLibraryIds.push(libraryIdFromCurrentUrl(page))
 
-    await page.getByRole('tab', { name: 'Indizierung' }).click()
+    await page.getByRole('tab', { name: 'Quelle' }).click()
     await page.getByRole('button', { name: 'Quellkonfiguration bearbeiten' }).click()
     const editDialog = page.getByRole('dialog')
     await expect(
@@ -485,7 +485,7 @@ test.describe('Quellkonfiguration bearbeiten (#516)', () => {
 
     // Reopening confirms the credentials are still considered present - had the blank field wiped
     // them, this would show the "keine Zugangsdaten hinterlegt" copy instead.
-    await page.getByRole('tab', { name: 'Indizierung' }).click()
+    await page.getByRole('tab', { name: 'Quelle' }).click()
     await page.getByRole('button', { name: 'Quellkonfiguration bearbeiten' }).click()
     await expect(
       page.getByRole('dialog').getByText(

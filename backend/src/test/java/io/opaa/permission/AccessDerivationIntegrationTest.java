@@ -150,6 +150,24 @@ class AccessDerivationIntegrationTest {
             });
   }
 
+  /**
+   * #1939: „Warum sehe ich diese Bibliothek?" steht im Reiter „Freigaben" für jede Rolle - ein
+   * VIEWER ruft die Herleitung mit seiner eigenen Rolle ab, nicht mit einem 403.
+   */
+  @Test
+  void aViewerCanRetrieveTheirOwnDerivationForAPrivateLibrary() {
+    UUID libraryId = library();
+    grantToUser(libraryId, member.id(), AssetRole.VIEWER);
+
+    AssetAccessDerivation derivation =
+        derivationService.derive(KnowledgeLibrary.ASSET_TYPE, libraryId, member);
+
+    assertThat(derivation.effectiveRole()).isEqualTo(AssetRole.VIEWER);
+    assertThat(derivation.paths())
+        .singleElement()
+        .satisfies(path -> assertThat(path.basis()).isEqualTo(AccessBasis.DIRECT_GRANT));
+  }
+
   /** A library nothing reaches is "not found", not an empty derivation that confirms it exists. */
   @Test
   void aLibraryTheCallerDoesNotReachIsNotFound() {
@@ -257,6 +275,18 @@ class AccessDerivationIntegrationTest {
     UUID id = libraryRepository.save(library).getId();
     createdLibraryIds.add(id);
     return id;
+  }
+
+  private void grantToUser(UUID libraryId, UUID userId, AssetRole role) {
+    grantRepository.save(
+        AssetGrant.forUser(
+            KnowledgeLibrary.ASSET_TYPE,
+            libraryId,
+            organizationId,
+            userId,
+            role,
+            null,
+            spaceAdmin.id()));
   }
 
   private void grantToGroup(UUID libraryId, UUID groupId, AssetRole role) {

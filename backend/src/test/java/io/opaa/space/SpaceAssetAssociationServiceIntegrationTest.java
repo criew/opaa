@@ -23,7 +23,9 @@ import io.opaa.permission.AssetGrant;
 import io.opaa.permission.AssetGrantRepository;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OwnOrganizationFixtures;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -73,8 +75,11 @@ class SpaceAssetAssociationServiceIntegrationTest {
   }
 
   private UUID createSpace(UUID ownerId, SpaceRole ownerRole) {
-    Space space =
-        new Space("Fachbereich", null, false, SpaceVisibility.PRIVATE, ownerId, organizationA);
+    return createSpace(ownerId, ownerRole, SpaceVisibility.PRIVATE);
+  }
+
+  private UUID createSpace(UUID ownerId, SpaceRole ownerRole, SpaceVisibility visibility) {
+    Space space = new Space("Fachbereich", null, false, visibility, ownerId, organizationA);
     space.addMembership(SpaceMembership.ofUser(ownerId, ownerRole, organizationA));
     return spaceRepository.save(space).getId();
   }
@@ -357,12 +362,143 @@ class SpaceAssetAssociationServiceIntegrationTest {
     associationService.associate(
         space, KnowledgeLibrary.ASSET_TYPE, library, currentUserOf(curator));
 
-    List<AssetSpaceLink> ownerView =
+    AssetSpaceLinks ownerView =
         associationService.listForAsset(KnowledgeLibrary.ASSET_TYPE, library, currentUserOf(owner));
 
-    assertThat(ownerView)
+    assertThat(ownerView.items())
         .extracting(link -> link.association().getSpaceId())
         .containsExactly(space);
+    assertThat(ownerView.items())
+        .singleElement()
+        .extracting(AssetSpaceLink::managementDetail)
+        .isEqualTo(true);
+    assertThat(ownerView.hiddenCount()).isZero();
+  }
+
+  /**
+   * #1939: die Zuordnungen stehen im schreibgeschützten Abschnitt des Reiters „Freigaben" - ein
+   * VIEWER erfährt den Space-Namen, aber weder den Lesekreis noch wer die Zuordnung angelegt hat.
+   */
+  @Test
+  void viewerSeesTheSpaceNameButNoManagementDetailOfAnAssociation() {
+    UUID owner = createUser();
+    UUID library = createLibrary(owner);
+    grant(library, owner, AssetRole.OWNER);
+    UUID reader = createUser();
+    grant(library, reader, AssetRole.VIEWER);
+    // DISCOVERABLE: der Space steht ohnehin im Verzeichnis, sein Name ist keine Preisgabe.
+    UUID space = createSpace(owner, SpaceRole.ADMIN, SpaceVisibility.DISCOVERABLE);
+    // A member without their own read access - exactly what narrowerReaderCircle would report.
+    addMember(space, createUser(), SpaceRole.MEMBER);
+    associationService.associate(space, KnowledgeLibrary.ASSET_TYPE, library, currentUserOf(owner));
+
+    AssetSpaceLinks readerView =
+        associationService.listForAsset(
+            KnowledgeLibrary.ASSET_TYPE, library, currentUserOf(reader));
+
+    assertThat(readerView.hiddenCount()).isZero();
+    assertThat(readerView.items())
+        .singleElement()
+        .satisfies(
+            link -> {
+              assertThat(link.association().getSpaceId()).isEqualTo(space);
+              assertThat(link.spaceName()).isEqualTo("Fachbereich");
+              assertThat(link.managementDetail()).isFalse();
+              assertThat(link.narrowerReaderCircle()).isFalse();
+              assertThat(link.createdByDisplayName()).isNull();
+            });
+
+    assertThat(
+            associationService
+                .listForAsset(KnowledgeLibrary.ASSET_TYPE, library, currentUserOf(owner))
+                .items())
+        .singleElement()
+        .satisfies(
+            link -> {
+              assertThat(link.managementDetail()).isTrue();
+              assertThat(link.narrowerReaderCircle()).isTrue();
+            });
+  }
+
+  /**
+   * #1939: Ein PRIVATE-Space verspricht, dass nur seine Mitglieder von ihm wissen
+   * (docs/features/spaces-and-assets.md, „Space-Sichtbarkeit"). Unterhalb von MANAGER wird eine
+   * Zuordnung dorthin deshalb nicht benannt, sondern nur gezählt - auch für einen EDITOR, der die
+   * Schwelle `canManage` ebenfalls nicht erreicht.
+   */
+  @Test
+  void aPrivateSpaceIsOnlyCountedBelowManagerAndNamedFromManagerOn() {
+    UUID owner = createUser();
+    UUID library = createLibrary(owner);
+    grant(library, owner, AssetRole.OWNER);
+    UUID space = createSpace(owner, SpaceRole.ADMIN, SpaceVisibility.PRIVATE);
+    // Jede Berechtigung steht, bevor ein Dienstaufruf den Grant-Zwischenspeicher der Bibliothek
+    // füllt - dieser Test schreibt sie am Dienst vorbei direkt ins Repository.
+    Map<AssetRole, UUID> callers = new LinkedHashMap<>();
+    for (AssetRole role : List.of(AssetRole.VIEWER, AssetRole.EDITOR, AssetRole.MANAGER)) {
+      UUID caller = createUser();
+      grant(library, caller, role);
+      callers.put(role, caller);
+    }
+    associationService.associate(space, KnowledgeLibrary.ASSET_TYPE, library, currentUserOf(owner));
+
+    for (AssetRole role : List.of(AssetRole.VIEWER, AssetRole.EDITOR)) {
+      AssetSpaceLinks view =
+          associationService.listForAsset(
+              KnowledgeLibrary.ASSET_TYPE, library, currentUserOf(callers.get(role)));
+
+      assertThat(view.items()).as("role %s", role).isEmpty();
+      assertThat(view.hiddenCount()).as("role %s", role).isEqualTo(1);
+    }
+
+    UUID manager = callers.get(AssetRole.MANAGER);
+    AssetSpaceLinks managerView =
+        associationService.listForAsset(
+            KnowledgeLibrary.ASSET_TYPE, library, currentUserOf(manager));
+
+    assertThat(managerView.hiddenCount()).isZero();
+    assertThat(managerView.items())
+        .singleElement()
+        .extracting(AssetSpaceLink::spaceName)
+        .isEqualTo("Fachbereich");
+  }
+
+  /** Wer im PRIVATE-Space Mitglied ist, weiß ohnehin von ihm - für ihn ist nichts verborgen. */
+  @Test
+  void aReaderWhoBelongsToThePrivateSpaceSeesItByName() {
+    UUID owner = createUser();
+    UUID library = createLibrary(owner);
+    grant(library, owner, AssetRole.OWNER);
+    UUID reader = createUser();
+    grant(library, reader, AssetRole.VIEWER);
+    UUID space = createSpace(owner, SpaceRole.ADMIN, SpaceVisibility.PRIVATE);
+    addMember(space, reader, SpaceRole.MEMBER);
+    associationService.associate(space, KnowledgeLibrary.ASSET_TYPE, library, currentUserOf(owner));
+
+    AssetSpaceLinks readerView =
+        associationService.listForAsset(
+            KnowledgeLibrary.ASSET_TYPE, library, currentUserOf(reader));
+
+    assertThat(readerView.hiddenCount()).isZero();
+    assertThat(readerView.items())
+        .singleElement()
+        .extracting(AssetSpaceLink::spaceName)
+        .isEqualTo("Fachbereich");
+  }
+
+  /** Below VIEWER the asset is not there at all - the same 404 as for an unknown id (#436). */
+  @Test
+  void aPersonWithoutAnyRoleOnTheAssetStillGetsNotFoundForItsAssociations() {
+    UUID owner = createUser();
+    UUID library = createLibrary(owner);
+    grant(library, owner, AssetRole.OWNER);
+    UUID outsider = createUser();
+
+    assertThatThrownBy(
+            () ->
+                associationService.listForAsset(
+                    KnowledgeLibrary.ASSET_TYPE, library, currentUserOf(outsider)))
+        .isInstanceOf(NotFoundException.class);
   }
 
   @Test

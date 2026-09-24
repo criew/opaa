@@ -128,6 +128,15 @@ oder ein Lauf von hier aus angestoßen wurde; nach einem frischen Seitenaufruf s
 das Datum. Verlässlich steht der Status des letzten Laufs in der **Detailansicht der Bibliothek**
 und in ihrem Laufprotokoll (Abschnitt 8.2).
 
+**Wo die Detailansicht was zeigt.** Der Kopf trägt Typ-Symbol und Quellentyp-Abzeichen, Name und
+Beschreibung (für Verwaltende über den Stift gemeinsam änderbar), die Kennzahlen, bei Confluence
+und S3 eine Kurzzeile zum Umfang mit Verweis auf den Reiter „Quelle", die Schaltflächen „Jetzt
+indizieren" und — bei Confluence — „Vollabgleich starten" sowie ein „⋯"-Menü mit „Bibliothek
+löschen". Darunter liegen die Reiter **Dokumente · Quelle · Metadaten · Freigaben**; eine
+Upload-Bibliothek hat keinen Reiter „Quelle". Alle Reiter stehen jeder Rolle offen — wer nur lesen
+darf, sieht im Reiter „Quelle" lediglich den Umfang, nicht Quelladresse, Zeitplan und
+Laufprotokoll.
+
 ## 3. Wie ein Lauf entsteht und endet
 
 ### 3.1 Auslöser
