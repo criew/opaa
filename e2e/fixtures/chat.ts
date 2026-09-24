@@ -26,7 +26,7 @@ import { expect } from '@playwright/test'
 export async function startFreshChat(page: Page): Promise<void> {
   await page.goto('/chat')
   await page.waitForURL(/\/spaces\/[^/]+\/chats\/new$/)
-  await expect(page.getByPlaceholder('Frage stellen … mit @ auf eine Quelle eingrenzen')).toBeVisible()
+  await expect(page.getByPlaceholder('Nachricht eingeben …')).toBeVisible()
 }
 
 /**
@@ -37,7 +37,7 @@ export async function startFreshChat(page: Page): Promise<void> {
 export async function startAnotherChatViaSidebar(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Neuer Chat' }).click()
   await page.waitForURL(/\/spaces\/[^/]+\/chats\/new$/)
-  await expect(page.getByPlaceholder('Frage stellen … mit @ auf eine Quelle eingrenzen')).toBeVisible()
+  await expect(page.getByPlaceholder('Nachricht eingeben …')).toBeVisible()
 }
 
 /**
@@ -53,10 +53,10 @@ export async function clearSearchScope(page: Page): Promise<void> {
 
 /** Fills the chat input and sends it, waiting for it to be visible first (see startFreshChat). */
 export async function askQuestion(page: Page, question: string): Promise<void> {
-  const input = page.getByPlaceholder('Frage stellen … mit @ auf eine Quelle eingrenzen')
+  const input = page.getByPlaceholder('Nachricht eingeben …')
   await expect(input).toBeVisible()
   await input.fill(question)
-  await page.getByRole('button', { name: 'Nachricht senden' }).click()
+  await page.getByRole('button', { name: 'Senden' }).click()
 }
 
 /**
@@ -81,7 +81,7 @@ export function chatSidebarEntries(page: Page): Locator {
 }
 
 /**
- * Asserts the sidebar's most recently used chat (topmost in the "Heute" group - pinned chats sit
+ * Asserts the sidebar's most recently used chat (topmost in the "Zuletzt verwendet" group - pinned chats sit
  * above it in their own group, see ChatList.tsx) has a real title - present and not the
  * "Unbenannter Chat" fallback ChatList.tsx renders for a still-empty one. Used in place of asserting the exact (LLM-generated, and per chatSidebarEntries'
  * Javadoc not reliably unique across chats) title text: this only proves *some* title reached the
@@ -92,7 +92,7 @@ export function chatSidebarEntries(page: Page): Locator {
 export async function expectTopSidebarChatToBeNamed(page: Page): Promise<void> {
   const ariaLabel = await page
     .getByRole('navigation', { name: 'Chats' })
-    .getByRole('list', { name: 'Heute' })
+    .getByRole('list', { name: 'Zuletzt verwendet' })
     .getByRole('button', { name: /^Aktionen für Chat/ })
     .first()
     .getAttribute('aria-label')

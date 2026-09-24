@@ -110,13 +110,16 @@ class CapabilityServiceIntegrationTest {
   }
 
   @Test
-  void deliversTheThreeCreationCapabilitiesToEveryAccountAndTheGroupToNobody() {
+  void deliversTheFourCreationCapabilitiesToEveryAccountAndTheGroupToNobody() {
     assertThat(capabilityService.capabilitiesOf(member))
-        .as("after the migration every account creates spaces and libraries exactly as before")
+        .as(
+            "after the migration every account creates spaces, libraries and prompt libraries;"
+                + " internal groups stay with the system administration")
         .containsExactlyInAnyOrder(
             Capability.CREATE_SPACE,
             Capability.CREATE_LIBRARY,
-            Capability.CREATE_CONNECTOR_LIBRARY);
+            Capability.CREATE_CONNECTOR_LIBRARY,
+            Capability.CREATE_PROMPT_LIBRARY);
   }
 
   @Test

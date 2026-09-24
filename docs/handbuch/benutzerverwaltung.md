@@ -235,10 +235,10 @@ gedacht ist und welche Auflagen dafür gelten, steht im Kapitel [Deployment](dep
 ### Anlegerechte
 
 Neben der Rolle steht eine zweite installationsweite Entscheidung: **wer etwas anlegen darf** —
-Räume, Bibliotheken für Uploads, Konnektorbibliotheken, interne Gruppen. Diese **Anlegerechte**
-gelten für alle Konten der Installation, gleich ob lokal oder aus einem Identitätsanbieter, und
-werden an eine Person, eine Gruppe oder an **„Alle Konten"** vergeben; die Systemverwaltung hat
-jedes ohnehin, die Rolle **Revision** verleiht keines.
+Räume, Bibliotheken für Uploads, Konnektorbibliotheken, interne Gruppen, Prompt-Bibliotheken. Diese
+**Anlegerechte** gelten für alle Konten der Installation, gleich ob lokal oder aus einem
+Identitätsanbieter, und werden an eine Person, eine Gruppe oder an **„Alle Konten"** vergeben; die
+Systemverwaltung hat jedes ohnehin, die Rolle **Revision** verleiht keines.
 
 Der ausgelieferte Zustand, die Empfehlung für den Einstieg und die Verwaltung unter
 **Administration → Anlegerechte** stehen im Kapitel

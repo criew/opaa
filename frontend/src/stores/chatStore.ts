@@ -231,6 +231,7 @@ export function dropChatSettingsCache(chatId: string): void {
   // confirmed - and nothing would ever filter against them either.
   removedNoteItemIdsByChatId.delete(chatId)
   persistedUserTurnsByChatId.delete(chatId)
+  manuallyRenamedChatIds.delete(chatId)
   if (pendingChain) {
     void pendingChain.finally(() => confirmedSettingsByChatId.delete(chatId))
     return
@@ -282,6 +283,22 @@ export type SearchScope = 'all' | 'libraries' | 'none'
 // shown (from QueryResponse#chatTitle) simply stays.
 const TITLE_RELOAD_DELAY_MS = 2500
 
+// #1919: the server never overwrites a manually set title (ChatTitleGenerationService writes only
+// while titleSource is GENERATED), but the delayed reload below would still *display* the
+// generated one if the rename happened inside its window - and its PATCH was still in flight when
+// the reload read the chat. A chat renamed by hand is therefore excluded from that reload for the
+// rest of the session; every rename path goes through chatListStore#renameChat, which marks it.
+const manuallyRenamedChatIds = new Set<string>()
+
+export function markChatManuallyRenamed(chatId: string): void {
+  manuallyRenamedChatIds.add(chatId)
+}
+
+/** Test seam: the marks are module state and would otherwise leak between test cases. */
+export function clearManualRenameMarks(): void {
+  manuallyRenamedChatIds.clear()
+}
+
 function scheduleTitleReload(
   get: () => ChatState,
   set: (partial: Partial<ChatState>) => void,
@@ -291,10 +308,10 @@ function scheduleTitleReload(
   setTimeout(() => {
     // The user may have navigated to a different chat by the time this fires - applying a reload
     // for a chat that is no longer active would silently resurrect stale state.
-    if (get().chatId !== chatId) return
+    if (get().chatId !== chatId || manuallyRenamedChatIds.has(chatId)) return
     getChat(chatId)
       .then((detail) => {
-        if (get().chatId !== chatId) return
+        if (get().chatId !== chatId || manuallyRenamedChatIds.has(chatId)) return
         set({ title: detail.title ?? null })
         if (spaceId) {
           useChatListStore.getState().updateChatTitle(spaceId, chatId, detail.title ?? null)
@@ -391,6 +408,8 @@ interface ChatState {
   removeNoteItem: (itemId: string) => Promise<void>
   /** Records a changed archive mark of a chat - a no-op unless that chat is the active one. */
   applyArchivedAt: (chatId: string, archivedAt: string | null) => void
+  /** Records a renamed chat - a no-op unless that chat is the active one. */
+  applyTitle: (chatId: string, title: string | null) => void
   /** Drops the active chat back to its initial, empty state (#440) - used on logout so a
    * subsequent sign-in by a different user never briefly sees the previous user's conversation. */
   reset: () => void
@@ -858,6 +877,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   applyArchivedAt: (chatId: string, archivedAt: string | null) => {
     if (get().chatId === chatId) set({ archivedAt })
+  },
+
+  applyTitle: (chatId: string, title: string | null) => {
+    if (get().chatId === chatId) set({ title })
   },
 }))
 

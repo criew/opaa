@@ -70,8 +70,8 @@ class SeededRowRestorerIntegrationTest {
                     + " AND capability <> 'CREATE_INTERNAL_GROUP'",
                 Integer.class,
                 Organization.DEFAULT_ID))
-        .as("and the three delivered rows are where they were")
-        .isEqualTo(3);
+        .as("and the four delivered rows are where they were")
+        .isEqualTo(4);
   }
 
   private boolean exists(UUID grantId) {

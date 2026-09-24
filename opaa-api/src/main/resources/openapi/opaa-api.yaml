@@ -6573,6 +6573,243 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/prompt-libraries:
+    get:
+      operationId: listPromptLibraries
+      tags: [prompt]
+      summary: >
+        List the prompt libraries the caller may read - direct grant, grant to one of their
+        groups, or organization-wide release (docs/features/spaces-and-assets.md#prompt-bibliothek).
+        Exactly the libraries whose prompts the caller may read; a system administrator sees here
+        only what the formula grants them.
+      responses:
+        "200":
+          description: The readable prompt libraries, by name
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PromptLibraryResponse"
+
+    post:
+      operationId: createPromptLibrary
+      tags: [prompt]
+      summary: >
+        Create a prompt library, owned by the caller or by one of the caller's groups. Needs the
+        capability CREATE_PROMPT_LIBRARY. Rights are then given through
+        /api/v1/assets/PROMPT_LIBRARY/{assetId}/grants.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PromptLibraryRequest"
+      responses:
+        "201":
+          description: Prompt library created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PromptLibraryResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          description: >
+            The caller lacks the capability CREATE_PROMPT_LIBRARY (code CAPABILITY_REQUIRED), or
+            the named owner group is one the caller is not a member of.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/prompt-libraries/{promptLibraryId}:
+    parameters:
+      - $ref: "#/components/parameters/PromptLibraryIdPath"
+
+    get:
+      operationId: getPromptLibrary
+      tags: [prompt]
+      summary: Get a prompt library (VIEWER or above; a system administrator counts as OWNER)
+      responses:
+        "200":
+          description: The prompt library
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PromptLibraryResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      operationId: updatePromptLibrary
+      tags: [prompt]
+      summary: >
+        Replace name, description, visibility and listed (MANAGER or above). A wider reach is
+        refused with 409 while the library's succession is open (ADR-0036, Entscheidung 6).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PromptLibraryUpdateRequest"
+      responses:
+        "200":
+          description: Prompt library updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PromptLibraryResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+    delete:
+      operationId: deletePromptLibrary
+      tags: [prompt]
+      summary: >
+        Delete a prompt library (OWNER only) together with its prompts, grants and space
+        associations.
+      responses:
+        "204":
+          description: Prompt library deleted
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/prompt-libraries/{promptLibraryId}/prompts:
+    parameters:
+      - $ref: "#/components/parameters/PromptLibraryIdPath"
+
+    get:
+      operationId: listPrompts
+      tags: [prompt]
+      summary: >
+        List the prompts of a library by sortOrder, then name. Reading prompts needs a right of
+        the formula (VIEWER or above); administering the library is not reading it, so a system
+        administrator without such a right gets 403.
+      responses:
+        "200":
+          description: The library's prompts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PromptResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    post:
+      operationId: createPrompt
+      tags: [prompt]
+      summary: Add a prompt to the library (EDITOR or above, by the formula)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PromptRequest"
+      responses:
+        "201":
+          description: Prompt created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PromptResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Another prompt of this library already has the name
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/prompt-libraries/{promptLibraryId}/prompts/{promptId}:
+    parameters:
+      - $ref: "#/components/parameters/PromptLibraryIdPath"
+      - name: promptId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: getPrompt
+      tags: [prompt]
+      summary: Get one prompt (VIEWER or above, by the formula)
+      responses:
+        "200":
+          description: The prompt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PromptResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      operationId: updatePrompt
+      tags: [prompt]
+      summary: Replace a prompt (EDITOR or above, by the formula)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PromptRequest"
+      responses:
+        "200":
+          description: Prompt updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PromptResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Another prompt of this library already has the name
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    delete:
+      operationId: deletePrompt
+      tags: [prompt]
+      summary: Delete a prompt (EDITOR or above, by the formula)
+      responses:
+        "204":
+          description: Prompt deleted
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/libraries/{libraryId}/external-access:
     parameters:
       - name: libraryId
@@ -10495,7 +10732,7 @@ components:
         The type of an asset on the asset shell (#1899, docs/features/spaces-and-assets.md#assets).
         Grants, the Herleitung and the space association name an asset by its type plus id; a type
         without a registered definition answers 404 like an unknown asset.
-      enum: [KNOWLEDGE_LIBRARY]
+      enum: [KNOWLEDGE_LIBRARY, PROMPT_LIBRARY]
 
     SpaceAssetAssociationRequest:
       type: object
@@ -15290,6 +15527,7 @@ components:
           CREATE_LIBRARY,
           CREATE_CONNECTOR_LIBRARY,
           CREATE_INTERNAL_GROUP,
+          CREATE_PROMPT_LIBRARY,
         ]
       example: CREATE_SPACE
 
@@ -15297,7 +15535,7 @@ components:
       type: string
       description: >
         Who a capability grant refers to. ALL_ACCOUNTS names every account of the organization
-        without naming one and is the delivered state of the three creation capabilities; it is
+        without naming one and is the delivered state of the four creation capabilities; it is
         deliberately not modelled as a synthetic group.
       enum: [USER, GROUP, ALL_ACCOUNTS]
       example: ALL_ACCOUNTS
@@ -15758,6 +15996,228 @@ components:
           format: date-time
         reason:
           type: string
+
+    PromptVariableType:
+      type: string
+      description: >
+        How a prompt variable is filled in before the prompt is inserted: a single line, several
+        lines, one of the declared options, or a calendar date (ISO 8601, yyyy-MM-dd).
+      enum: [TEXT, TEXTAREA, SELECT, DATE]
+      example: TEXT
+
+    PromptVariable:
+      type: object
+      required: [name, label, type, required]
+      description: >
+        One variable of a prompt (docs/features/spaces-and-assets.md#prompt-bibliothek). The prompt
+        text uses it as {{name}}; whoever inserts the prompt fills it in first. Blanks inside the
+        braces ({{ name }}) are accepted and removed on saving - a stored text, and every
+        PromptResponse, carries {{name}} only. The server refuses a text that uses an undefined
+        variable and a definition the text does not use. The system variables {{CURRENT_DATE}} and
+        {{USER_NAME}} are recognised in any case, stored upper-case, resolved on insertion and
+        cannot be defined.
+      properties:
+        name:
+          type: string
+          pattern: "^[A-Za-z][A-Za-z0-9_]*$"
+          maxLength: 64
+          example: aktenzeichen
+        label:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: Aktenzeichen
+        type:
+          $ref: "#/components/schemas/PromptVariableType"
+        required:
+          type: boolean
+        defaultValue:
+          type: string
+          nullable: true
+          maxLength: 2000
+          description: >
+            Prefilled value. For SELECT one of options, for DATE an ISO date (yyyy-MM-dd).
+        options:
+          type: array
+          nullable: true
+          maxItems: 50
+          description: The choices of a SELECT variable - required there, refused for every other type.
+          items:
+            type: string
+            minLength: 1
+            maxLength: 255
+
+    PromptRequest:
+      type: object
+      required: [name, title, text]
+      properties:
+        name:
+          type: string
+          pattern: "^[a-z0-9]+(-[a-z0-9]+)*$"
+          maxLength: 64
+          description: >
+            Unique within the library and the basis of the slash command (/name): lower-case
+            letters, digits and single hyphens.
+          example: anhoerung
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: Anhörungsschreiben
+        description:
+          type: string
+          nullable: true
+          maxLength: 2000
+        text:
+          type: string
+          minLength: 1
+          maxLength: 8000
+          example: "Entwirf ein Anhörungsschreiben zum Aktenzeichen {{aktenzeichen}}, Stand {{CURRENT_DATE}}."
+        variables:
+          type: array
+          maxItems: 20
+          description: Every variable the text uses, except the system variables. Absent means none.
+          items:
+            $ref: "#/components/schemas/PromptVariable"
+        sortOrder:
+          type: integer
+          format: int32
+          nullable: true
+          description: Position in the library's list, ascending; absent means 0.
+
+    PromptResponse:
+      type: object
+      required: [id, promptLibraryId, name, title, text, variables, sortOrder, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        promptLibraryId:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: anhoerung
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        text:
+          type: string
+        variables:
+          type: array
+          items:
+            $ref: "#/components/schemas/PromptVariable"
+        sortOrder:
+          type: integer
+          format: int32
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    PromptLibraryRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: Formulierungshilfen Referat 50
+        description:
+          type: string
+          nullable: true
+          maxLength: 2000
+        ownerType:
+          $ref: "#/components/schemas/AssetOwnerType"
+          description: Defaults to USER (the creator) when omitted
+        ownerId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >
+            Required when ownerType is GROUP (the caller must be a member of that group). Ignored
+            for ownerType USER, which always owns as the creator.
+        visibility:
+          $ref: "#/components/schemas/AssetVisibility"
+        listed:
+          type: boolean
+          nullable: true
+          description: Defaults to false - listing is a deliberate act.
+
+    PromptLibraryUpdateRequest:
+      type: object
+      required: [name, visibility, listed]
+      description: Replaces name, description, release level and findability as a whole.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+          nullable: true
+          maxLength: 2000
+        visibility:
+          $ref: "#/components/schemas/AssetVisibility"
+        listed:
+          type: boolean
+
+    PromptLibraryResponse:
+      type: object
+      required:
+        [id, name, ownerType, ownerId, visibility, listed, myRole, promptCount, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        ownerType:
+          $ref: "#/components/schemas/AssetOwnerType"
+        ownerId:
+          type: string
+          format: uuid
+          description: The owning user or group, whichever ownerType names.
+        ownerName:
+          type: string
+          nullable: true
+          description: >
+            Display name of the owning person or group; null when it cannot be resolved or the
+            group is protected and the caller may not see its name (ADR-0036, Entscheidung 9).
+        visibility:
+          $ref: "#/components/schemas/AssetVisibility"
+        listed:
+          type: boolean
+        myRole:
+          description: >
+            The role the caller holds. In the list, the role of the formula (at least VIEWER);
+            for a single library a system administrator counts as OWNER, as for every asset.
+          allOf:
+            - $ref: "#/components/schemas/AssetRole"
+        promptCount:
+          type: integer
+          format: int64
+        succession:
+          description: >
+            Set while the library has no capable owner (ADR-0036, Entscheidung 6) - state and
+            addressee only.
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/SuccessionStateResponse"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
 
     SuccessionStateResponse:
       type: object
@@ -16332,6 +16792,8 @@ components:
           SYSTEM_SETTING,
           AUDIT_LOG,
           DIRECTORY_SYNC_RUN,
+          PROMPT_LIBRARY,
+          PROMPT,
         ]
       example: KNOWLEDGE_LIBRARY
 
@@ -16354,6 +16816,12 @@ components:
           LIBRARY_CREATED,
           LIBRARY_CHANGED,
           LIBRARY_DELETED,
+          PROMPT_LIBRARY_CREATED,
+          PROMPT_LIBRARY_CHANGED,
+          PROMPT_LIBRARY_DELETED,
+          PROMPT_CREATED,
+          PROMPT_CHANGED,
+          PROMPT_DELETED,
           LIBRARY_SOURCE_UPDATED,
           GROUP_CREATED,
           GROUP_CHANGED,
@@ -18972,6 +19440,13 @@ components:
         $ref: "#/components/schemas/AssetType"
     AssetIdPath:
       name: assetId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    PromptLibraryIdPath:
+      name: promptLibraryId
       in: path
       required: true
       schema:

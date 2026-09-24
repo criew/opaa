@@ -1,6 +1,6 @@
 package io.opaa.asset;
 
-import static io.opaa.test.TestPromptLibraryAssetType.PROMPT_LIBRARY;
+import static io.opaa.test.TestAssetType.TEST_ASSET;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -46,12 +46,11 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * The acceptance criteria of #1899 and #1900 for a second asset type: {@code PROMPT_LIBRARY},
- * declared by the tests alone ({@code TestPromptLibraryAssetType}), gets grants, the
- * organization-wide release, the Herleitung, a reach change with its history and a space
- * association from the one shell, and the succession rules of an asset without a capable owner -
- * without a table, an entity or a line of logic of its own. The search keeps reading knowledge
- * libraries only.
+ * The acceptance criteria of #1899 and #1900 for a second asset type: {@code TEST_ASSET}, declared
+ * by the tests alone ({@code TestAssetType}), gets grants, the organization-wide release, the
+ * Herleitung, a reach change with its history and a space association from the one shell, and the
+ * succession rules of an asset without a capable owner - without a table, an entity or a line of
+ * logic of its own. The search keeps reading knowledge libraries only.
  */
 @OpaaIntegrationTest
 class AssetShellTypeIndependenceIntegrationTest {
@@ -97,56 +96,56 @@ class AssetShellTypeIndependenceIntegrationTest {
 
   @Test
   void aGrantOnATestDefinedTypeIsWrittenListedEvaluatedAndRevokedByTheOneGrantService() {
-    UUID prompts = createPromptLibrary(AssetVisibility.PRIVATE);
+    UUID asset = createTestAsset(AssetVisibility.PRIVATE);
 
     var view =
         grantService.upsertGrant(
-            PROMPT_LIBRARY,
-            prompts,
+            TEST_ASSET,
+            asset,
             new AssetGrantUpsert(PermissionSubjectType.USER, reader, AssetRole.EDITOR),
             callerOf(owner));
 
-    assertThat(view.grant().getAssetType()).isEqualTo(PROMPT_LIBRARY);
-    assertThat(grantService.listGrants(PROMPT_LIBRARY, prompts, callerOf(owner)))
+    assertThat(view.grant().getAssetType()).isEqualTo(TEST_ASSET);
+    assertThat(grantService.listGrants(TEST_ASSET, asset, callerOf(owner)))
         .extracting(listed -> listed.grant().getSubjectId())
         .containsExactlyInAnyOrder(owner, reader);
-    assertThat(accessService.readableAssetIds(PROMPT_LIBRARY, reader, organizationId))
-        .containsExactly(prompts);
-    assertThat(accessService.effectiveRole(PROMPT_LIBRARY, prompts, reader, false))
+    assertThat(accessService.readableAssetIds(TEST_ASSET, reader, organizationId))
+        .containsExactly(asset);
+    assertThat(accessService.effectiveRole(TEST_ASSET, asset, reader, false))
         .isEqualTo(AssetRole.EDITOR);
 
-    grantService.revokeGrant(PROMPT_LIBRARY, prompts, view.grant().getId(), callerOf(owner));
+    grantService.revokeGrant(TEST_ASSET, asset, view.grant().getId(), callerOf(owner));
 
-    assertThat(accessService.readableAssetIds(PROMPT_LIBRARY, reader, organizationId)).isEmpty();
+    assertThat(accessService.readableAssetIds(TEST_ASSET, reader, organizationId)).isEmpty();
   }
 
   @Test
   void anOrganizationWideReleaseOfATestDefinedTypeReachesEverybodyAndIsHistorised() {
-    UUID prompts = createPromptLibrary(AssetVisibility.PRIVATE);
-    assertThat(accessService.readableAssetIds(PROMPT_LIBRARY, reader, organizationId)).isEmpty();
+    UUID asset = createTestAsset(AssetVisibility.PRIVATE);
+    assertThat(accessService.readableAssetIds(TEST_ASSET, reader, organizationId)).isEmpty();
 
     transactionTemplate.executeWithoutResult(
         status -> {
-          Asset asset = assetRepository.findById(prompts).orElseThrow();
-          assertThat(asset)
+          Asset loaded = assetRepository.findById(asset).orElseThrow();
+          assertThat(loaded)
               .as("a type without an entity loads as the shell")
               .isExactlyInstanceOf(Asset.class);
-          shellService.changeReach(asset, AssetVisibility.ORGANIZATION, false, owner);
+          shellService.changeReach(loaded, AssetVisibility.ORGANIZATION, false, owner);
         });
 
-    assertThat(accessService.readableAssetIds(PROMPT_LIBRARY, reader, organizationId))
-        .containsExactly(prompts);
+    assertThat(accessService.readableAssetIds(TEST_ASSET, reader, organizationId))
+        .containsExactly(asset);
     assertThat(accessService.readableAssetIds(KnowledgeLibrary.ASSET_TYPE, reader, organizationId))
-        .doesNotContain(prompts);
+        .doesNotContain(asset);
     AssetAccessDerivation derivation =
-        derivationService.derive(PROMPT_LIBRARY, prompts, callerOf(reader));
+        derivationService.derive(TEST_ASSET, asset, callerOf(reader));
     assertThat(derivation.effectiveRole()).isEqualTo(AssetRole.VIEWER);
     assertThat(derivation.paths())
         .extracting(AccessPath::basis)
         .containsExactly(AccessBasis.ORGANIZATION_WIDE);
     assertThat(
             visibilityHistoryRepository.findByAssetTypeAndAssetIdAndValidToIsNull(
-                PROMPT_LIBRARY, prompts))
+                TEST_ASSET, asset))
         .get()
         .satisfies(
             interval -> {
@@ -158,7 +157,7 @@ class AssetShellTypeIndependenceIntegrationTest {
 
   @Test
   void aTestDefinedTypeIsAssociatedAndDetachedButTheSearchReadsLibrariesOnly() {
-    UUID prompts = createPromptLibrary(AssetVisibility.PRIVATE);
+    UUID asset = createTestAsset(AssetVisibility.PRIVATE);
     UUID library =
         libraryRepository
             .save(
@@ -177,23 +176,23 @@ class AssetShellTypeIndependenceIntegrationTest {
     UUID space = createSpace(owner);
 
     SpaceAssetLink associated =
-        associationService.associate(space, PROMPT_LIBRARY, prompts, callerOf(owner));
+        associationService.associate(space, TEST_ASSET, asset, callerOf(owner));
     assertThat(associationService.listForSpace(space, callerOf(owner)).narrowsSearch())
         .as("an asset without documents narrows no search")
         .isFalse();
     associationService.associate(space, KnowledgeLibrary.ASSET_TYPE, library, callerOf(owner));
 
-    assertThat(associated.assetType()).isEqualTo(PROMPT_LIBRARY);
+    assertThat(associated.assetType()).isEqualTo(TEST_ASSET);
     assertThat(associationService.listForSpace(space, callerOf(owner)).items())
         .extracting(SpaceAssetLink::assetType)
-        .containsExactlyInAnyOrder(PROMPT_LIBRARY, KnowledgeLibrary.ASSET_TYPE);
+        .containsExactlyInAnyOrder(TEST_ASSET, KnowledgeLibrary.ASSET_TYPE);
     assertThat(associationService.libraryIdsInSpace(space)).containsExactly(library);
     assertThat(associationService.listForSpace(space, callerOf(owner)).narrowsSearch()).isTrue();
     assertThat(associationRepository.findLibraryIdsBySpaceId(space)).containsExactly(library);
 
-    associationService.detach(space, prompts, callerOf(owner));
+    associationService.detach(space, asset, callerOf(owner));
 
-    assertThat(associationRepository.existsBySpaceIdAndAssetId(space, prompts)).isFalse();
+    assertThat(associationRepository.existsBySpaceIdAndAssetId(space, asset)).isFalse();
     assertThat(associationRepository.existsBySpaceIdAndAssetId(space, library)).isTrue();
   }
 
@@ -203,10 +202,10 @@ class AssetShellTypeIndependenceIntegrationTest {
    */
   @Test
   void aTestDefinedTypeWithoutACapableOwnerIsListedRecordedAndFrozen() {
-    UUID prompts = createPromptLibrary(AssetVisibility.PRIVATE);
+    UUID asset = createTestAsset(AssetVisibility.PRIVATE);
     grantRepository.save(
         AssetGrant.forUser(
-            PROMPT_LIBRARY, prompts, organizationId, reader, AssetRole.VIEWER, null, owner));
+            TEST_ASSET, asset, organizationId, reader, AssetRole.VIEWER, null, owner));
     UUID space = createSpace(reader);
     UUID administrator = createUser("Systemverwaltung");
     CurrentUser systemAdmin =
@@ -215,29 +214,29 @@ class AssetShellTypeIndependenceIntegrationTest {
 
     detectionService.runFor(organizationId);
 
-    assertThat(successionService.findingForAsset(PROMPT_LIBRARY, prompts))
+    assertThat(successionService.findingForAsset(TEST_ASSET, asset))
         .get()
         .extracting(SuccessionFinding::assetType)
-        .isEqualTo(PROMPT_LIBRARY);
+        .isEqualTo(TEST_ASSET);
     assertThat(
             successionService.list(organizationId, SuccessionKind.OPEN_SUCCESSION, 0, 50).entries())
         .extracting(entry -> entry.finding().objectId())
-        .contains(prompts);
+        .contains(asset);
     assertThat(
             successionCases.findByKindAndObjectIdAndClosedAtIsNull(
-                SuccessionKind.OPEN_SUCCESSION, prompts))
+                SuccessionKind.OPEN_SUCCESSION, asset))
         .singleElement()
         .satisfies(
             recorded -> {
               assertThat(recorded.getObjectType()).isEqualTo(SuccessionObjectType.ASSET);
-              assertThat(recorded.getAssetType()).isEqualTo(PROMPT_LIBRARY);
+              assertThat(recorded.getAssetType()).isEqualTo(TEST_ASSET);
             });
 
     assertThatThrownBy(
             () ->
                 grantService.upsertGrant(
-                    PROMPT_LIBRARY,
-                    prompts,
+                    TEST_ASSET,
+                    asset,
                     new AssetGrantUpsert(
                         PermissionSubjectType.USER, administrator, AssetRole.VIEWER),
                     systemAdmin))
@@ -247,49 +246,49 @@ class AssetShellTypeIndependenceIntegrationTest {
                 transactionTemplate.executeWithoutResult(
                     status ->
                         shellService.changeReach(
-                            assetRepository.findById(prompts).orElseThrow(),
+                            assetRepository.findById(asset).orElseThrow(),
                             AssetVisibility.ORGANIZATION,
                             false,
                             administrator)))
         .isInstanceOf(ConflictException.class);
     assertThatThrownBy(
-            () -> associationService.associate(space, PROMPT_LIBRARY, prompts, callerOf(reader)))
+            () -> associationService.associate(space, TEST_ASSET, asset, callerOf(reader)))
         .isInstanceOf(ConflictException.class);
   }
 
   /** The grants and associations of any type go with their asset - the foreign keys of #1899. */
   @Test
   void deletingTheShellTakesGrantsAndAssociationsOfEveryTypeWithIt() {
-    UUID prompts = createPromptLibrary(AssetVisibility.PRIVATE);
+    UUID asset = createTestAsset(AssetVisibility.PRIVATE);
     UUID space = createSpace(owner);
-    associationService.associate(space, PROMPT_LIBRARY, prompts, callerOf(owner));
+    associationService.associate(space, TEST_ASSET, asset, callerOf(owner));
 
-    jdbcTemplate.update("DELETE FROM assets WHERE id = ?", prompts);
+    jdbcTemplate.update("DELETE FROM assets WHERE id = ?", asset);
 
-    assertThat(grantRepository.findByAssetTypeAndAssetId(PROMPT_LIBRARY, prompts)).isEmpty();
-    assertThat(associationRepository.existsBySpaceIdAndAssetId(space, prompts)).isFalse();
+    assertThat(grantRepository.findByAssetTypeAndAssetId(TEST_ASSET, asset)).isEmpty();
+    assertThat(associationRepository.existsBySpaceIdAndAssetId(space, asset)).isFalse();
   }
 
-  /** A prompt library as its later issue will hold one: a shell row and its owner's grant. */
-  private UUID createPromptLibrary(AssetVisibility visibility) {
+  /** An asset of the test type: a shell row and its owner's grant, nothing else. */
+  private UUID createTestAsset(AssetVisibility visibility) {
     UUID id = UUID.randomUUID();
     jdbcTemplate.update(
         "INSERT INTO assets (id, asset_type, organization_id, name, owner_type, owner_user_id,"
-            + " visibility, created_by_user_id) VALUES (?, ?, ?, 'Prompts', 'USER', ?, ?, ?)",
+            + " visibility, created_by_user_id) VALUES (?, ?, ?, 'Testobjekt', 'USER', ?, ?, ?)",
         id,
-        PROMPT_LIBRARY.value(),
+        TEST_ASSET.value(),
         organizationId,
         owner,
         visibility.name(),
         owner);
     grantRepository.save(
-        AssetGrant.forUser(
-            PROMPT_LIBRARY, id, organizationId, owner, AssetRole.OWNER, null, owner));
+        AssetGrant.forUser(TEST_ASSET, id, organizationId, owner, AssetRole.OWNER, null, owner));
     return id;
   }
 
   private UUID createSpace(UUID admin) {
-    Space space = new Space("Prompts", null, false, SpaceVisibility.PRIVATE, admin, organizationId);
+    Space space =
+        new Space("Testobjekte", null, false, SpaceVisibility.PRIVATE, admin, organizationId);
     space.addMembership(SpaceMembership.ofUser(admin, SpaceRole.ADMIN, organizationId));
     return spaceRepository.save(space).getId();
   }

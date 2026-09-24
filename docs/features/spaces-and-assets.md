@@ -60,9 +60,9 @@ Die Ausdifferenzierung der Asset-Typen ist **nicht** Gegenstand dieses Dokuments
 
 #### Die Asset-Schale
 
-Was alle Typen gemeinsam haben, liegt in **einer** Tabelle `assets` ([#1899](https://github.com/criew/opaa/issues/1899), [ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md), Nachtrag zu Entscheidung 12): Kennung, Typ (`asset_type`), Organisation, Name, Beschreibung, Eigentümer (Person oder Gruppe), Freigabestufe (`visibility`, `listed`), Herkunft (`LOCAL` oder `BUILT_IN`), Anleger und Zeitstempel. Die Typtabelle — heute nur `knowledge_libraries` — trägt nur, was allein ihr gehört, und teilt die Kennung der Schale; im Code ist `KnowledgeLibrary` eine Unterklasse der Basisentität `Asset` (`io.opaa.asset`).
+Was alle Typen gemeinsam haben, liegt in **einer** Tabelle `assets` ([#1899](https://github.com/criew/opaa/issues/1899), [ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md), Nachtrag zu Entscheidung 12): Kennung, Typ (`asset_type`), Organisation, Name, Beschreibung, Eigentümer (Person oder Gruppe), Freigabestufe (`visibility`, `listed`), Herkunft (`LOCAL` oder `BUILT_IN`), Anleger und Zeitstempel. Die Typtabelle — heute `knowledge_libraries` und `prompt_libraries` — trägt nur, was allein ihr gehört, und teilt die Kennung der Schale; im Code sind `KnowledgeLibrary` und `PromptLibrary` Unterklassen der Basisentität `Asset` (`io.opaa.asset`).
 
-Auf der Schale arbeitet alles, was für jeden Typ gleich gilt, ohne den Typ zu kennen: Grants und ihre Historie, die Herleitung, die Freigabestufe samt Historie (`asset_visibility_history`), Eigentum und Nachfolge sowie die Space-Assoziation. Die zugehörigen Endpunkte tragen den Typ im Pfad (`/api/v1/assets/{assetType}/{assetId}/grants`, `…/access-derivation`, `…/spaces`); ein Typ, der nicht zur Kennung passt, antwortet `404` wie eine unbekannte Kennung. Die Betriebsliste der Nachfolge und die Reichweitensperre führen ein Asset als `ASSET` mit seinem Typ (`succession_cases.asset_type`), nicht über einen Katalog der Typen. Ein neuer Asset-Typ bringt damit eine Typtabelle, eine Unterklasse von `Asset`, eine `AssetTypeDefinition` (Bezeichnung, Protokoll-Objekttyp und gegebenenfalls eine eigene Reichweitenobergrenze) und seinen Wert im Enum `AssetType` der API-Spezifikation mit — Rechte, Katalog, Nachfolge und Reichweitensperre erreicht er ohne weitere Stelle.
+Auf der Schale arbeitet alles, was für jeden Typ gleich gilt, ohne den Typ zu kennen: Grants und ihre Historie, die Herleitung, die Freigabestufe samt Historie (`asset_visibility_history`), Eigentum und Nachfolge sowie die Space-Assoziation. Die zugehörigen Endpunkte tragen den Typ im Pfad (`/api/v1/assets/{assetType}/{assetId}/grants`, `…/access-derivation`, `…/spaces`); ein Typ, der nicht zur Kennung passt, antwortet `404` wie eine unbekannte Kennung. Die Betriebsliste der Nachfolge und die Reichweitensperre führen ein Asset als `ASSET` mit seinem Typ (`succession_cases.asset_type`), nicht über einen Katalog der Typen. Ein neuer Asset-Typ bringt damit eine Typtabelle, eine Unterklasse von `Asset`, eine `AssetTypeDefinition` (Bezeichnung, Protokoll-Objekttyp und gegebenenfalls eine eigene Reichweitenobergrenze) und seinen Wert im Enum `AssetType` der API-Spezifikation mit — Rechte, Katalog, Nachfolge und Reichweitensperre erreicht er ohne weitere Stelle. Hinzu kommen, weil beide Listen geschlossen sind, sein Protokoll-Objekttyp in der Prüfbedingung des Protokolls (`chk_audit_log_object_type`) und, wenn er ein eigenes Anlegerecht hat, dessen Fähigkeit. Auch die Regeln, die jeder Typ gleich braucht, liegen auf der Schale: der Inhalt eines Assets folgt der Formel, nicht der Verwaltung (`AssetAuthorization#requireContentRole`); eine Gruppe als Eigentümerin wählt nur ein Mitglied (`AssetGrantService#requireOwnableGroup`); Eigentümernamen einer Liste nennen weder E-Mail-Adresse noch geschützte Gruppe (`AssetOwnerNames`). Mit der [Prompt-Bibliothek](#prompt-bibliothek) ist das für einen zweiten Typ eingelöst.
 
 ### Asset-Rollen
 
@@ -232,6 +232,57 @@ Damit gibt es keine Regel mehr, die eine andere aufhebt: Der Zugang endet sofort
 
 Verfall — also automatisches Löschen von Assets ohne Zuständigkeit — wird ausdrücklich verworfen: In der Verwaltung ist der Verlust einer gepflegten Wissensbibliothek teurer als ihr Weiterbestehen unter geklärter Einschränkung.
 
+### Prompt-Bibliothek
+
+Die Prompt-Bibliothek ist der zweite gebaute Asset-Typ ([#1901](https://github.com/criew/opaa/issues/1901), Epic [#1726](https://github.com/criew/opaa/issues/1726)). Sie ist ein Asset wie die Wissensbibliothek — Name, Beschreibung, Eigentümer (Person oder Gruppe), Freigabestufe, `listed` (Vorgabe `false`), Organisation, Herkunft `LOCAL` — und liegt als Typtabelle `prompt_libraries` auf der [Asset-Schale](#die-asset-schale). Eigene Spalten hat sie vorerst keine; die Tabelle hält den Typ.
+
+**Ein Prompt** ist eine benannte, wiederverwendbare Anweisung in genau einer Prompt-Bibliothek. Er hat keine Wissensbindung, keine Werkzeuge und keine Modellwahl ([Abgrenzung zu Skill und Agent](./agents-and-tools.md#skills-und-prompt-bibliotheken)):
+
+| Feld | Bedeutung |
+|---|---|
+| `name` | eindeutig je Bibliothek und Grundlage des Slash-Befehls (`/anhoerung`): Kleinbuchstaben, Ziffern und einzelne Bindestriche, höchstens 64 Zeichen |
+| `title` | die Bezeichnung für Menschen, höchstens 255 Zeichen |
+| `description` | optional, höchstens 2000 Zeichen |
+| `text` | die Anweisung selbst, höchstens 8000 Zeichen |
+| `variables` | die Definitionen der Variablen, die der Text verwendet |
+| `sortOrder` | Position in der Liste der Bibliothek (aufsteigend, dann nach `name`) |
+
+#### Variablen
+
+Ein Prompt kann Stellen offenlassen, die beim Einsetzen gefüllt werden: `Entwirf ein Anhörungsschreiben zum Aktenzeichen {{aktenzeichen}}, Stand {{CURRENT_DATE}}.` Syntax und Typen folgen dem, was sich bei Open WebUI und LibreChat bewährt hat (Wettbewerbsrecherche im Epic #1726, Kommentar vom 24.09.2026).
+
+- **Ein Platzhalter ist `{{name}}`** — der Name beginnt mit einem Buchstaben und enthält nur Buchstaben, Ziffern und Unterstriche. Leerraum innerhalb der Klammern (`{{ name }}`, die Schreibweise von Langdock) ist erlaubt und wird beim Speichern entfernt: Der Server speichert und liefert nur die Form `{{name}}`, auch an Oberfläche und Chat-Einbindung. Jede andere Folge `{{…}}` (`{{na-me}}`, `{{ na me }}`) wird abgelehnt statt als Text stehen gelassen; eine einzelne geschweifte Klammer oder ein nicht geschlossenes `{{` bleibt Text.
+- **Je Variable eine Definition:** `name`, `label` (die Beschriftung im Formular), `type`, `required`, optional `defaultValue` und bei einer Auswahl `options`. Die Typen sind `TEXT` (eine Zeile), `TEXTAREA` (mehrere Zeilen), `SELECT` (einer von 1 bis 50 verschiedenen Auswahlwerten; die Vorbelegung muss einer davon sein) und `DATE` (ein Kalenderdatum `JJJJ-MM-TT`). Höchstens 20 Variablen je Prompt.
+- **Systemvariablen** `{{CURRENT_DATE}}` und `{{USER_NAME}}` werden beim Einsetzen aufgelöst — das Datum des Tages, der Name der einsetzenden Person. Sie werden in jeder Schreibweise erkannt (`{{current_date}}`, die Schreibweise von LibreChat) und in Großbuchstaben gespeichert. Sie werden nicht definiert; eine Definition dieses Namens, gleich in welcher Schreibweise, wird mit dem Hinweis abgelehnt, dass die Systemvariable ohne Definition im Text stehen darf.
+- **Text und Definitionen müssen in beide Richtungen übereinstimmen.** Der Server lehnt einen Platzhalter ohne Definition ebenso ab wie eine Definition, die der Text nicht verwendet. Geprüft wird der normalisierte Text, und ein Prompt wird nur gespeichert, wie diese Prüfung ihn angenommen hat; derselbe Text in anderer Schreibweise gilt nicht als Änderung.
+
+Das Einsetzen selbst — Formular für die Variablen, aufgelöster Text im Eingabefeld, Senden als eigene Handlung — ist Gegenstand von [#1903](https://github.com/criew/opaa/issues/1903); die Oberfläche zum Anlegen und Pflegen kommt mit [#1902](https://github.com/criew/opaa/issues/1902).
+
+**Variablen sind keine Parameter.** Ein [Parameter](#anpassen-ohne-fork-parameter) stellt ein geteiltes Asset für Empfangende dauerhaft ein, ohne es zu verändern. Eine Variable dagegen gehört zu dem, was der Prompt ist, und wird bei jedem Einsetzen von der einsetzenden Person gefüllt.
+
+#### Rechte, Anlegen und Nachfolge
+
+Die Prompt-Bibliothek bringt keine eigene Rechtelogik mit. Rechte, Herleitung und Space-Assoziation laufen ausschließlich über die Endpunkte der Schale (`/api/v1/assets/PROMPT_LIBRARY/{assetId}/grants`, `…/access-derivation`, `…/spaces`); Freigabestufe, Auffindbarkeit, Eigentum und „Nachfolge offen" wirken wie bei jedem Asset.
+
+| Rolle | an einer Prompt-Bibliothek |
+|---|---|
+| `VIEWER` | Bibliothek und Prompts lesen |
+| `EDITOR` | Prompts anlegen, ändern, löschen |
+| `MANAGER` | Name, Beschreibung, Freigabestufe und Auffindbarkeit ändern, Rechte vergeben |
+| `OWNER` | die Bibliothek samt Prompts löschen |
+
+**Verwalten ist nicht Lesen.** Die Systemverwaltung zählt für die Verwaltung einer Prompt-Bibliothek als `OWNER`, für ihre Prompts aber nicht: Wer sie nur über die Verwaltung erreicht, erhält beim Lesen der Prompts `403` — dieselbe Regel wie beim Original eines Dokuments. Die Liste `GET /api/v1/prompt-libraries` enthält genau die Bibliotheken, deren Prompts die Person lesen darf; die Einzelansicht urteilt für jede Person ohne Systemrolle genauso.
+
+**Anlegen** braucht die Fähigkeit `CREATE_PROMPT_LIBRARY`, ausgeliefert an „Alle Konten" ([access-control.md](./access-control.md)). Ein Prompt bindet kein Wissen und erreicht keine Quelle; wer die Anlage einschränken will, entzieht „Alle Konten". Eine Bibliothek im Namen einer Gruppe legt nur ein Mitglied dieser Gruppe an; die Gruppe erhält `MANAGER`.
+
+**Löschen** nimmt Prompts, Grants und Space-Assoziationen über die Fremdschlüssel der Schale mit; die offenen Historienintervalle schließt die Schale vorher.
+
+#### Protokoll
+
+Anlegen, Ändern und Löschen einer Prompt-Bibliothek und eines Prompts schreiben je einen Eintrag (`PROMPT_LIBRARY_CREATED`/`_CHANGED`/`_DELETED`, `PROMPT_CREATED`/`_CHANGED`/`_DELETED`, [Ereignisliste](./security-and-compliance.md#die-ereignisse-der-ersten-stufe)). Rechte, Freigabestufe, Eigentum und Nachfolge schreiben die `ASSET_*`-Einträge der Schale. Eine Änderung nennt nur die geänderten Felder, nie ihre Werte — Titel und Text eines Prompts stehen nie im Protokoll. Die **Verwendung** eines Prompts erzeugt keinen Eintrag.
+
+*Außerhalb dieser Ausbaustufe: Versionierung und Freigabeweg, mitgelieferte Prompt-Bibliotheken (`origin = BUILT_IN`), Export und Import.*
+
 ---
 
 ## Verteilung von Assets
@@ -302,7 +353,7 @@ Agent "Auskunft Beihilfe"
 
 Empfangende setzen Werte je Nutzer, Gruppe oder Space, **ohne zu forken**. Das Asset bleibt eine Referenz, Verbesserungen fließen weiter.
 
-Das ist bewusst **kein Vorlagensystem** — keine Schleifen, keine Bedingungen, keine freie Textersetzung im Systemprompt. Eine kurze, typisierte Liste. Der Zweck ist ausschließlich, den häufigsten Fork-Anlass zu vermeiden: Wer nur einen anderen Tonfall oder einen Zusatzhinweis braucht, soll dafür nicht die Wartungsverbindung zum Original kappen.
+Das ist bewusst **kein Vorlagensystem** — keine Schleifen, keine Bedingungen, keine freie Textersetzung im Systemprompt. Eine kurze, typisierte Liste. Davon zu unterscheiden sind die [Variablen eines Prompts](#variablen): Sie gehören zu dem, was ein Prompt ist, und werden bei jedem Einsetzen gefüllt — auch sie ohne Schleifen und Bedingungen, aber als Textersetzung an benannten Stellen. Der Satz gilt für Parameter. Der Zweck ist ausschließlich, den häufigsten Fork-Anlass zu vermeiden: Wer nur einen anderen Tonfall oder einen Zusatzhinweis braucht, soll dafür nicht die Wartungsverbindung zum Original kappen.
 
 **Zur Reihenfolge:** Parameter gehören in dieselbe Auslieferung wie das Teilen von Agenten, nicht in eine spätere. Forks, die in der Zwischenzeit entstehen, lassen sich nachträglich nicht mehr einsammeln — sie sind dauerhaft.
 
@@ -694,7 +745,7 @@ Das Datenmodell hält von Anfang an die Achsen offen, die für Mensch+KI-Gruppen
 
 **Zielbild (Epic #1482): Die Gesprächsnotiz ist Bestandteil des Chats** ([conversation-memory.md](./conversation-memory.md)): eine kleine, sichtbare, punktweise löschbare Liste von Angaben, die die Person in diesem Chat gemacht hat. Sie folgt dem Chat in allem — Löschung, Archivierung des Space (dort nur lesbar), und sobald gebaut auch Export und Kontolöschung — und ist **pro Chat, nie pro Person**: Ein chatübergreifendes Gedächtnis wäre ein systemgepflegtes Profil und ist als Produkthaltung ausgeschlossen (ADR-0031). Wird das Teilen von Chats gebaut, wird die Notiz mit dem Chat geteilt: Mitlesende sehen sie, weil sie die Antworten beeinflusst hat; ändern kann sie nur der Autor.
 
-**Die Chatliste eines Space** — Titelfilter, Zeitgruppen, Anheften, ein persönliches Chat-Archiv und die Chatsuche über eigene Gespräche — ist in [chat-list.md](./chat-list.md) spezifiziert (Epic #1762). Anheften und Archivieren sind dort Merkmale der **Person**, nicht des Chats; das Chat-Archiv ist vom [archivierten Space](#einen-space-stilllegen-archivieren-statt-löschen) streng zu unterscheiden.
+**Die Chatliste eines Space** — Anheften, „Zuletzt verwendet", ein persönliches Chat-Archiv und die Chatsuche über eigene Gespräche — ist in [chat-list.md](./chat-list.md) spezifiziert (Epic #1762). Anheften und Archivieren sind dort Merkmale der **Person**, nicht des Chats; das Chat-Archiv ist vom [archivierten Space](#einen-space-stilllegen-archivieren-statt-löschen) streng zu unterscheiden.
 
 #### Private Inhalte: der Hauptbestand des Systems
 
@@ -1205,4 +1256,4 @@ Das Modell weicht **von beiden Mustern ab**, aber nicht in derselben Sache — e
 - [Monitoring, Kosten & Governance](./monitoring-and-governance.md) — Grenzen, Kosten und aggregierte Auswertung
 - [Daten-Indizierung & RAG](./data-indexing-rag.md) — Aufnahme, Chunking, Abfrageablauf
 - [Agenten, Prompts & Werkzeuge](./agents-and-tools.md) — was in einem Agenten steckt, wie er entsteht und wie er vor der Freigabe geprüft wird
-- [Chatliste eines Space](./chat-list.md) — finden, ordnen, wegräumen: Titelfilter, Zeitgruppen, Anheften, Chat-Archiv, Chatsuche
+- [Chatliste eines Space](./chat-list.md) — finden, ordnen, wegräumen: Anheften, „Zuletzt verwendet", Chat-Archiv, Chatsuche

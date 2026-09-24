@@ -12,6 +12,7 @@ import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.SystemRole;
 import io.opaa.asset.AssetGrantService;
+import io.opaa.asset.AssetOwnerNames;
 import io.opaa.asset.AssetShellService;
 import io.opaa.asset.AssetSuccessionSource;
 import io.opaa.asset.AssetTypes;
@@ -108,9 +109,7 @@ class KnowledgeLibraryServiceDeleteLockTest {
         new KnowledgeLibraryService(
             mock(AssetSuccessionSource.class),
             libraryRepository,
-            userRepository,
-            groupDirectory,
-            membershipResolver,
+            new AssetOwnerNames(userRepository, groupDirectory),
             mock(CapabilityService.class),
             documentRepository,
             grantService,

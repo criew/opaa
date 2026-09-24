@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
+import ButtonBase from '@mui/material/ButtonBase'
 import Chip from '@mui/material/Chip'
+import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import Box from '@mui/material/Box'
 import CircularProgress from '@mui/material/CircularProgress'
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import { useNavigate, useParams, useSearchParams } from 'react-router'
 import MessageList from '../components/chat/MessageList'
 import ChatInput from '../components/chat/ChatInput'
@@ -36,7 +39,21 @@ export default function ChatPage() {
   const removeNoteItem = useChatStore((s) => s.removeNoteItem)
   const archivedAt = useChatStore((s) => s.archivedAt)
   const setChatArchived = useChatListStore((s) => s.setChatArchived)
+  const renameChat = useChatListStore((s) => s.renameChat)
+  const applyChatTitle = useChatStore((s) => s.applyTitle)
   const [isUnarchiving, setIsUnarchiving] = useState(false)
+  // The open title field belongs to one chat: switching chats must never carry it - or its text -
+  // along, so the chat it was opened for is part of the state.
+  const [rename, setRename] = useState<{ chatId: string; value: string } | null>(null)
+  const isRenaming = rename !== null && rename.chatId === storeChatId
+  const renameValue = rename?.value ?? ''
+  const setRenameValue = (value: string) =>
+    setRename((current) => (current === null ? current : { ...current, value }))
+  const closeRename = () => setRename(null)
+  const titleButtonRef = useRef<HTMLButtonElement>(null)
+  // The title button is unmounted while the field is open, so focus can only return to it on the
+  // render that brings it back. A commit via blur leaves focus where the user put it.
+  const refocusTitleRef = useRef(false)
   // #543: an archived space accepts no change to an existing chat - the points stay visible, the
   // remove buttons do not. Same lookup as ChatList's "Neuer Chat" guard.
   const isArchivedSpace = useSpaceStore(
@@ -125,6 +142,12 @@ export default function ChatPage() {
     })
   }
 
+  useEffect(() => {
+    if (isRenaming || !refocusTitleRef.current) return
+    refocusTitleRef.current = false
+    titleButtonRef.current?.focus()
+  }, [isRenaming])
+
   async function handleUnarchive() {
     if (!storeSpaceId || !storeChatId) return
     setIsUnarchiving(true)
@@ -142,6 +165,30 @@ export default function ChatPage() {
   }
 
   const isArchivedChat = !isNewChat && archivedAt !== null
+  // #1919: renaming from the header writes through the same endpoint as the list's context menu,
+  // so both surfaces and the list itself stay in step. An archived space accepts no change to a
+  // chat, so there the title stays read-only.
+  const canRename = Boolean(storeChatId) && !isArchivedSpace
+
+  function startRename() {
+    if (storeChatId) setRename({ chatId: storeChatId, value: chatTitle ?? '' })
+  }
+
+  async function commitRename(refocus: boolean) {
+    const title = renameValue.trim()
+    const chatId = storeChatId
+    const previous = chatTitle
+    if (refocus) refocusTitleRef.current = true
+    closeRename()
+    if (!chatId || !storeSpaceId || !title || title === previous) return
+    // Shown at once and taken back if the server rejects it - the field is already gone by then.
+    applyChatTitle(chatId, title)
+    const renamed = await renameChat(storeSpaceId, chatId, title)
+    if (!renamed) {
+      applyChatTitle(chatId, previous)
+      notify(useChatListStore.getState().error ?? 'Chat konnte nicht umbenannt werden', 'error')
+    }
+  }
 
   if (isLoadingChat) {
     return (
@@ -182,15 +229,74 @@ export default function ChatPage() {
             gap: 2,
           }}
         >
-          {/* aria-hidden: the visually hidden PageHeading above already announces the title. */}
-          <Typography
-            aria-hidden="true"
-            component="div"
-            noWrap
-            sx={{ fontSize: 18, fontWeight: 600, flexGrow: 1, minWidth: 0 }}
-          >
-            {chatTitle}
-          </Typography>
+          {chatTitle &&
+            (isRenaming ? (
+              <TextField
+                // Opened deliberately by clicking the title or its pencil; moving focus into
+                // the field is the expected inline-edit behaviour.
+                // eslint-disable-next-line jsx-a11y-x/no-autofocus
+                autoFocus
+                size="small"
+                value={renameValue}
+                onChange={(event) => setRenameValue(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault()
+                    void commitRename(true)
+                  } else if (event.key === 'Escape') {
+                    event.preventDefault()
+                    refocusTitleRef.current = true
+                    closeRename()
+                  }
+                }}
+                onBlur={() => void commitRename(false)}
+                slotProps={{ htmlInput: { 'aria-label': 'Chat-Titel' } }}
+                sx={{ flexGrow: 1, minWidth: 0, maxWidth: 520 }}
+              />
+            ) : (
+              // The title is a button, not a heading: the visually hidden PageHeading above
+              // already announces the chat, so this row only has to be operable.
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.5,
+                  flexGrow: 1,
+                  minWidth: 0,
+                  '& .rename-hint': { opacity: 0 },
+                  '&:hover .rename-hint, &:focus-within .rename-hint': { opacity: 1 },
+                }}
+              >
+                <ButtonBase
+                  ref={titleButtonRef}
+                  onClick={startRename}
+                  disabled={!canRename}
+                  aria-label={`Chat-Titel „${chatTitle}“ umbenennen`}
+                  sx={{
+                    minWidth: 0,
+                    borderRadius: '6px',
+                    px: 0.5,
+                    py: 0.25,
+                    justifyContent: 'flex-start',
+                  }}
+                >
+                  <Typography
+                    component="span"
+                    noWrap
+                    sx={{ fontSize: 18, fontWeight: 600, minWidth: 0 }}
+                  >
+                    {chatTitle}
+                  </Typography>
+                </ButtonBase>
+                {canRename && (
+                  <EditOutlinedIcon
+                    aria-hidden
+                    className="rename-hint"
+                    sx={{ fontSize: 15, color: 'text.secondary', transition: 'opacity 120ms' }}
+                  />
+                )}
+              </Box>
+            ))}
           {isArchivedChat && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               {/* The chat archive of the person, not an archived space. */}

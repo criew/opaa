@@ -203,6 +203,14 @@ databaseChangeLog:
   # Nachfolgevorgaenge benennen ein Asset ueber seinen Typ statt ueber einen geschlossenen Katalog.
   - include:
       file: db/changelog/changes/084-succession-cases-asset-type.yaml
+  # Die Prompt-Bibliothek als zweiter Asset-Typ (#1901): Typtabelle und Prompts, die beiden
+  # Protokollobjekte und das Anlegerecht.
+  - include:
+      file: db/changelog/changes/085-create-prompt-libraries.yaml
+  - include:
+      file: db/changelog/changes/086-audit-log-prompt-object-types.yaml
+  - include:
+      file: db/changelog/changes/087-capability-create-prompt-library.yaml
   # Eigenes Logo und optionales Hintergrundbild der Anmeldeseite, im selben Branding-Singleton
   # wie das Logo der Anwendung (#1910).
   - include:

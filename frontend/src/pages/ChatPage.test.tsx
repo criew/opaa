@@ -85,9 +85,9 @@ describe('ChatPage', () => {
     renderWithProviders(<ChatPage />, { withRouter: true })
     await waitFor(() => expect(useChatStore.getState().spaceId).toBe('space-personal'))
 
-    const input = screen.getByPlaceholderText('Frage stellen … mit @ auf eine Quelle eingrenzen')
+    const input = screen.getByPlaceholderText('Nachricht eingeben …')
     fireEvent.change(input, { target: { value: 'What is the architecture?' } })
-    fireEvent.click(screen.getByLabelText('Nachricht senden'))
+    fireEvent.click(screen.getByLabelText('Senden'))
 
     expect(screen.getByText('What is the architecture?')).toBeInTheDocument()
 
@@ -272,9 +272,9 @@ describe('ChatPage', () => {
       renderWithProviders(<ChatPage />, { withRouter: true })
       expect(await screen.findByText('Archiviert')).toBeInTheDocument()
 
-      const input = screen.getByPlaceholderText('Frage stellen … mit @ auf eine Quelle eingrenzen')
+      const input = screen.getByPlaceholderText('Nachricht eingeben …')
       fireEvent.change(input, { target: { value: 'Und wie geht es weiter?' } })
-      fireEvent.click(screen.getByLabelText('Nachricht senden'))
+      fireEvent.click(screen.getByLabelText('Senden'))
 
       expect(
         await screen.findByText('Chat aus dem Archiv zurückgeholt', {}, { timeout: 10000 }),
@@ -315,11 +315,10 @@ describe('ChatPage', () => {
       expect(await screen.findByText('Wie ist das Projekt aufgebaut?')).toBeInTheDocument()
       await act(() => useChatListStore.getState().loadChats('space-personal'))
 
-      fireEvent.change(
-        screen.getByPlaceholderText('Frage stellen … mit @ auf eine Quelle eingrenzen'),
-        { target: { value: 'Und wie geht es weiter?' } },
-      )
-      fireEvent.click(screen.getByLabelText('Nachricht senden'))
+      fireEvent.change(screen.getByPlaceholderText('Nachricht eingeben …'), {
+        target: { value: 'Und wie geht es weiter?' },
+      })
+      fireEvent.click(screen.getByLabelText('Senden'))
       await act(() =>
         useChatListStore.getState().setChatArchived('space-personal', 'chat-personal-1', true),
       )
@@ -347,6 +346,88 @@ describe('ChatPage', () => {
       expect(screen.queryByRole('button', { name: /zurückholen/ })).not.toBeInTheDocument()
     })
   })
+  // #1919: Umbenennen ging bisher nur über das Kontextmenü der Chatliste.
+  describe('Titel in der Kopfzeile umbenennen (#1919)', () => {
+    beforeEach(() => {
+      currentSpaceId = 'space-personal'
+      currentChatId = 'chat-personal-1'
+      delete mockChatArchive['chat-personal-1']
+      useChatListStore.setState({
+        chatsBySpaceId: {},
+        archiveBySpaceId: {},
+        isLoading: false,
+        isLoadingArchive: false,
+        error: null,
+      })
+    })
+
+    async function openTitleField(user: ReturnType<typeof userEvent.setup>) {
+      const title = await screen.findByRole('button', {
+        name: 'Chat-Titel „Architektur des Projekts“ umbenennen',
+      })
+      await user.click(title)
+      return screen.getByLabelText('Chat-Titel')
+    }
+
+    it('saves on Enter, updates the chat list and returns focus to the title', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(<ChatPage />, { withRouter: true })
+      await act(() => useChatListStore.getState().loadChats('space-personal'))
+
+      const field = await openTitleField(user)
+      await user.clear(field)
+      await user.type(field, 'Bauantrag Nordstadt{Enter}')
+
+      const renamed = await screen.findByRole('button', {
+        name: 'Chat-Titel „Bauantrag Nordstadt“ umbenennen',
+      })
+      await waitFor(() => expect(renamed).toHaveFocus())
+      await waitFor(() =>
+        expect(
+          useChatListStore
+            .getState()
+            .chatsBySpaceId['space-personal']?.find((chat) => chat.id === 'chat-personal-1')?.title,
+        ).toBe('Bauantrag Nordstadt'),
+      )
+    })
+
+    it('discards the edit on Escape', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(<ChatPage />, { withRouter: true })
+
+      const field = await openTitleField(user)
+      await user.clear(field)
+      await user.type(field, 'Verworfen{Escape}')
+
+      expect(
+        await screen.findByRole('button', {
+          name: 'Chat-Titel „Architektur des Projekts“ umbenennen',
+        }),
+      ).toBeInTheDocument()
+    })
+
+    it('takes the title back and says so when the server refuses the rename', async () => {
+      server.use(
+        http.patch('/api/v1/chats/:chatId', () =>
+          HttpResponse.json({ error: 'Umbenennen fehlgeschlagen' }, { status: 500 }),
+        ),
+      )
+      const user = userEvent.setup()
+      renderWithProviders(<ChatPage />, { withRouter: true })
+
+      const field = await openTitleField(user)
+      await user.clear(field)
+      await user.type(field, 'Neuer Titel{Enter}')
+
+      expect(await screen.findByText('Umbenennen fehlgeschlagen')).toBeInTheDocument()
+      expect(
+        await screen.findByRole('button', {
+          name: 'Chat-Titel „Architektur des Projekts“ umbenennen',
+        }),
+      ).toBeInTheDocument()
+    })
+  })
+
   describe('jump to a search hit', () => {
     const hitLink = '/spaces/space-personal/chats/chat-personal-1?message=message-personal-1-2'
 

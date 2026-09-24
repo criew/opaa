@@ -30,5 +30,11 @@ public enum Capability {
   /**
    * Creating an internal group. Delivered to nobody; a system administrator holds it implicitly.
    */
-  CREATE_INTERNAL_GROUP
+  CREATE_INTERNAL_GROUP,
+
+  /**
+   * Creating a prompt library. Delivered to all accounts: a prompt binds no knowledge and reaches
+   * no source, so creating one widens nothing.
+   */
+  CREATE_PROMPT_LIBRARY
 }

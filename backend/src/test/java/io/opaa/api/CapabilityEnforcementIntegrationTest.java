@@ -106,9 +106,10 @@ class CapabilityEnforcementIntegrationTest {
     mockMvc
         .perform(get("/api/v1/me/capabilities").with(devUser()))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.capabilities", org.hamcrest.Matchers.hasSize(3)))
+        .andExpect(jsonPath("$.capabilities", org.hamcrest.Matchers.hasSize(4)))
         .andExpect(
             content().string(org.hamcrest.Matchers.containsString("CREATE_CONNECTOR_LIBRARY")))
+        .andExpect(content().string(org.hamcrest.Matchers.containsString("CREATE_PROMPT_LIBRARY")))
         .andExpect(
             content()
                 .string(

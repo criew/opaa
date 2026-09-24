@@ -136,7 +136,7 @@ Nicht jede wiederverwendbare Fähigkeit braucht einen eigenen Agenten. Drei Ausp
 | **Skill** | eine benannte Teilfähigkeit mit Anleitung und Beispielen — im gewöhnlichen Chat anwendbar, von einem Agenten einbindbar | Eine Arbeitsweise, die mehrere Personen und mehrere Agenten teilen — etwa „Vermerk nach Hausstandard gliedern" |
 | **Agent** | das vollständige Paket oben | Eigene Wissensbindung, eigene Werkzeuge oder eigene Befugnisse |
 
-Alle drei sind **Assets** im Sinne von [spaces-and-assets.md](./spaces-and-assets.md#was-ein-asset-ist) und erben Rechte, Versionierung, Katalog, Freigabeweg und Portabilität unverändert. Dieses Dokument beschreibt ihren Inhalt, nicht ihre Verteilung.
+Alle drei sind **Assets** im Sinne von [spaces-and-assets.md](./spaces-and-assets.md#was-ein-asset-ist) und erben Rechte, Versionierung, Katalog, Freigabeweg und Portabilität unverändert. Dieses Dokument beschreibt ihren Inhalt, nicht ihre Verteilung. Was ein Prompt genau ist — Felder, Name als Slash-Befehl, typisierte Variablen `{{name}}` und die Systemvariablen — legt das Kapitel [Prompt-Bibliothek](./spaces-and-assets.md#prompt-bibliothek) fest; die Prompt-Bibliothek ist dort als zweiter Asset-Typ gebaut.
 
 **Ein Skill sagt, *wie* gearbeitet wird; ein Werkzeug ist das, *womit*.** Diese Trennung ist keine Begriffspflege, sondern entscheidet über den Zuschnitt: Ein Skill ist Anleitung und Beispiel und damit lesbar, prüfbar und zwischen Häusern austauschbar, weil er keine Zugänge voraussetzt. Ein Werkzeug ist eine Fähigkeit der Installation — es braucht eine Anbindung, Zugangsdaten und eine Rechteklasse und wandert deshalb nicht mit. Ein Skill darf Werkzeuge **benennen**, die er braucht; ob sie vorhanden und freigegeben sind, entscheidet die empfangende Installation. Ein Skill, dem ein benanntes Werkzeug fehlt, wird als eingeschränkt angezeigt, statt still weniger zu leisten.
 
@@ -153,7 +153,7 @@ Alle drei sind **Assets** im Sinne von [spaces-and-assets.md](./spaces-and-asset
 
 Zusammen sind die drei Punkte die kleinste brauchbare Vorwegnahme des [Prüfstands](#agenten-prüfstand-vor-der-freigabe) für eine Stufe, in der es ihn noch nicht gibt.
 
-*Phasenlage: Prompt-Bibliotheken je Space in Phase 1 (#1726). Der Skill ist als eigene Objektart geschnitten (#1727); die früher hier geführte Frage „eigene Objektart oder benannter Abschnitt einer Aufgabenbeschreibung" entscheidet der ADR jenes Epics. Entscheidend für die Reihenfolge: Ein Skill braucht ausdrücklich **keine** Agenten-Laufzeit, sondern wird im gewöhnlichen Chat angewandt. Agenten als teilbares Paket bleiben Phase 2.*
+*Phasenlage: Prompt-Bibliotheken je Space in Phase 1 (#1726); Modell, API, Protokoll und Nachfolge sind mit #1901 gebaut, Oberfläche und Chat-Einbindung folgen mit #1902 und #1903. Der Skill ist als eigene Objektart geschnitten (#1727); die früher hier geführte Frage „eigene Objektart oder benannter Abschnitt einer Aufgabenbeschreibung" entscheidet der ADR jenes Epics. Entscheidend für die Reihenfolge: Ein Skill braucht ausdrücklich **keine** Agenten-Laufzeit, sondern wird im gewöhnlichen Chat angewandt. Agenten als teilbares Paket bleiben Phase 2.*
 
 ---
 

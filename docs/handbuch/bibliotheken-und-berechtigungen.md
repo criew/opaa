@@ -483,6 +483,7 @@ gleich ob lokal oder aus einem Identitätsanbieter, und werden an eine Person, e
 | **Bibliotheken für Uploads anlegen** | Alle Konten |
 | **Konnektorbibliotheken anlegen** | Alle Konten |
 | **Interne Gruppen anlegen** | niemanden — die Systemverwaltung hat es ohnehin |
+| **Prompt-Bibliotheken anlegen** | Alle Konten |
 
 Fünf Punkte dazu:
 

@@ -10,7 +10,7 @@ import Typography from '@mui/material/Typography'
 import visuallyHidden from '@mui/utils/visuallyHidden'
 import type { ChatSearch } from '../../hooks/useChatSearch'
 import type { ChatSearchHit } from '../../types/api'
-import { chatTitle } from './chatListGroups'
+import { chatTitle } from './chatListSections'
 import HighlightedExcerpt from './HighlightedExcerpt'
 
 const dateTimeFormat = new Intl.DateTimeFormat('de-DE', { dateStyle: 'medium', timeStyle: 'short' })

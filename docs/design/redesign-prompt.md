@@ -95,16 +95,15 @@ Rechte vergeben. Wer OPAA öffnet, landet in einem Gespräch, nicht in einer Ver
 │ SPACE ▾      │                                  │
 │ Widerspr.    │       Antwort mit Belegen        │
 ├──────────────┤                                  │
-│ CHATS  + Neu │                                  │
-│ [filtern …]  │                                  │
+│ CHATS +Neu 🔍│                                  │
 │ ANGEHEFTET   │                                  │
 │ ▪ Fristen    │                                  │
-│ HEUTE        │                                  │
+│ ZULETZT VERW.│                                  │
 │ · Az. 12/4   │                                  │
-│ LETZTE 7 T.  │  ┌────────────────────────────┐  │
-│ · Erlasse    │  │ Frage stellen …         @  │  │
-│ Alle Chats → │  └────────────────────────────┘  │
-├──────────────┤  Durchsucht: 4 Bestände          │
+│ · Erlasse    │  ┌────────────────────────────┐  │
+│ · …          │  │ Nachricht eingeben …    ➤  │  │
+│ 15 weitere   │  └────────────────────────────┘  │
+├──────────────┤  @ für Quellen, / für Aktionen   │
 │ Einrichten   │                                  │
 │ Katalog      │                                  │
 │ Verwaltung   │                                  │
@@ -117,11 +116,12 @@ mit seinen Chats, unten die selteneren Wege. Der Space-Wechsel gehört an die pr
 **Die Chatliste bleibt auch mit Hunderten Chats beherrschbar**
 ([chat-list.md](../features/chat-list.md)):
 
-- **In der Seitenleiste** — ein Feld filtert beim Tippen nach Titel; die Liste ist in Zeitgruppen
-  gegliedert (Angeheftet, Heute, Gestern, Letzte 7 Tage, Letzte 30 Tage, Älter); angeheftete Chats
-  stehen als einklappbare Gruppe oben. Findet der Filter nichts, führt er weiter zu „In Inhalten suchen" — die
-  Chatsuche findet auch Titel und archivierte Chats.
-- **Auf der Seite „Chats" des Space** — erreichbar über „Alle Chats →": Reiter „Aktiv" und „Archiv",
+- **In der Seitenleiste** — angeheftete Chats stehen als einklappbare Gruppe oben, darunter
+  „Zuletzt verwendet" mit den 15 zuletzt genutzten und „15 weitere anzeigen". Ein Filterfeld gibt
+  es seit #1918 nicht: Wer einen Chat sucht, erinnert sich meist an ein Wort aus dem Gespräch, nicht
+  an dessen Titel — deshalb führt ein Suchknopf neben „Neu" in die Chatsuche, die auch Titel und
+  archivierte Chats findet.
+- **Auf der Seite „Chats" des Space** — erreichbar über den Suchknopf der Chatliste: Reiter „Aktiv" und „Archiv",
   Mehrfachauswahl zum Archivieren, Zurückholen und Löschen, und die **Chatsuche** über Titel, Fragen und
   Antworten mit Trefferauszug. Ein Treffer öffnet den Chat an der Trefferstelle. Die Seitenleiste ist
   für Auszüge und Auswahlkästchen zu schmal; deshalb liegt das Verwalten hier.
