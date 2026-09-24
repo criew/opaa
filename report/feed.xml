@@ -5,8 +5,16 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-09-23T04:58:51Z</updated>
+  <updated>2026-09-24T05:09:46Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Mittwoch, 23. September 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-09-23.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-09-23.html</id>
+    <updated>2026-09-24T05:09:46Z</updated>
+    <summary type="text">Sonstiges:
+— Abhängigkeiten aktualisiert: ollama/ollama auf v0.34.3, AWS Java SDK auf 2.55.3</summary>
+  </entry>
   <entry>
     <title>Tagesreport Dienstag, 22. September 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-09-22.html"/>
