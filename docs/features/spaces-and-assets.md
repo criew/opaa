@@ -468,7 +468,7 @@ Ein Katalogeintrag enthält **Beschreibungen, keine Inhalte**:
 
 Die Suche im Katalog läuft über die Assets, auf die der Nutzer Zugriff hat, **vereinigt** mit den gelisteten. Sie überschreitet **nie** die Organisationsgrenze (siehe [Organisation als Mandantengrenze](#organisation-als-mandantengrenze)).
 
-*Phasenlage: durchsuchbarer Katalog in Phase 2; der organisationsweite Katalog mit Freigabestand in Phase 3.*
+*Phasenlage: durchsuchbarer Katalog in Phase 2; der organisationsweite Katalog mit Freigabestand in Phase 3. Gebaut ist ein erster Katalog ohne Freigabestand, Fachbereich und Nutzungsangaben ([#1904](https://github.com/criew/opaa/issues/1904)); was er zeigt, steht unter [Gebauter Ist-Stand](#gebauter-ist-stand).*
 
 ### Vorlagenkatalog nach Fachbereich
 
@@ -1262,6 +1262,50 @@ Das Modell weicht **von beiden Mustern ab**, aber nicht in derselben Sache — e
 - Ob ein Freigabestempel über Installationsgrenzen hinweg nachweisbar bleiben soll (Signatur der Herkunftsinstallation) — heute wandert er als bloße Herkunftsangabe mit.
 - Übernahme von Berechtigungen aus Quellsystemen zusätzlich zu den Bibliotheksrechten.
 - Konkreter Aktualisierungsweg für mitgelieferte Assets in einem Netz ohne Internetanbindung (Signatur, Prüfung, Einspielung).
+
+---
+
+## Gebauter Ist-Stand
+
+Stand nach Epic [#1726](https://github.com/criew/opaa/issues/1726), September 2026. Die Kapitel oben beschreiben das Zielbild; hier steht, was davon gebaut ist und was nicht. Wie es sich bedient, beschreibt das Handbuch (`docs/handbuch/bibliotheken-und-berechtigungen.md`, `docs/handbuch/prompt-bibliotheken.md`).
+
+**Zwei Asset-Typen.** Gebaut sind die Wissensbibliothek (`KNOWLEDGE_LIBRARY`) und die [Prompt-Bibliothek](#prompt-bibliothek) (`PROMPT_LIBRARY`). Der Agent ist Zielbild.
+
+**Die Schale.** Beide Typen liegen auf der [Asset-Schale](#die-asset-schale): Tabelle `assets` plus je Typ eine Typtabelle, im Code die Basisentität `Asset` (`io.opaa.asset`) mit `KnowledgeLibrary` und `PromptLibrary` als Unterklassen und je eine `AssetTypeDefinition`. Was für jeden Typ gleich gilt, gibt es genau einmal:
+
+| Baustein | Ort |
+|---|---|
+| Rechteformel „direkter Grant ∪ Gruppen-Grant ∪ organisationsweit" | `AssetAccessService` (`io.opaa.permission`), ohne Durchgriff der Systemverwaltung |
+| Verwaltungsboden der Systemverwaltung — Verwalten ist nicht Lesen | `AssetAuthorization` |
+| Grants und Rechtehistorie, Freigabestufe und ihre Historie, Eigentum und Übertragung, „Nachfolge offen" | `AssetGrantService`, `AssetShellService`, `AssetVisibilityHistoryService`, `AssetShellOwnershipDirectory`, `AssetSuccessionSource` |
+| Space-Assoziation | `space_asset_associations` mit Fremdschlüssel auf `assets` |
+| Katalog | `AssetCatalogService` |
+| Oberfläche | ein Freigabeabschnitt (`AssetDistributionSection`), ein Rechtedialog samt Grant-Store, eine Übersichtskomponente (`OverviewPage`) |
+
+**Generische Endpunkte.** Was jeder Typ hat, nennt den Typ im Pfad oder als Parameter; die typeigenen Pfade tragen nur Stammdaten und Inhalt (`/api/v1/libraries/…`, `/api/v1/prompt-libraries/…`, für den Chat `/api/v1/prompts/available`).
+
+| Zweck | Endpunkt |
+|---|---|
+| Rechte erteilen, ändern, entziehen; Mitglieder einer berechtigten Gruppe | `/api/v1/assets/{assetType}/{assetId}/grants`, `…/grants/{grantId}`, `…/grants/groups/{groupId}/members` |
+| Herleitung „warum sehe ich das" | `GET /api/v1/assets/{assetType}/{assetId}/access-derivation` |
+| Space-Assoziation aus Sicht des Assets | `/api/v1/assets/{assetType}/{assetId}/spaces` |
+| Katalog | `GET /api/v1/catalog?type=&q=&page=&size=` |
+
+**Der Katalog.** Eine Abfrage auf `assets` über alle Typen: innerhalb der Organisation der anfragenden Person, `listed = true` oder lesbar, dazu Suche über Name und Beschreibung (ohne Rücksicht auf Groß- und Kleinschreibung, jedes Zeichen wörtlich), sortiert nach Name, seitenweise. Die lesbare Menge kommt je Typ aus `AssetAccessService#readableAssetIds` — der Katalog hat keine eigene Rechteformel, `listed` wird getrennt davon ausgewertet. Der gelistete Teil hat einen Teilindex (`idx_assets_organization_listed`), gebaut wie der für die organisationsweite Freigabe. Ein Eintrag trägt Typ, Kennung, Name, Beschreibung, Eigentümerart und zuständige Stelle (Gruppenname oder Anzeigename, nie eine E-Mail-Adresse, eine geschützte Gruppe unbenannt), Herkunft, `accessible`, `listed` und den Zustand „Nachfolge offen" mit Adressat — keine Inhalte. `accessible` folgt allein der Formel: Auch die Systemverwaltung ohne Grant findet ein gelistetes Asset nur als Eintrag ohne Zugriff, und seine Detailansicht antwortet weiter `404` bzw. `403`. In der Oberfläche ist der Katalog ein eigener Punkt der Leiste (`/catalog`) neben den Verwaltungssichten „Wissen" und „Prompts"; ein Eintrag ohne Zugriff ist kein Link und nennt die zuständige Stelle.
+
+Gegenüber dem Kapitel [Der Katalog](#der-katalog) fehlen im Eintrag der Anwendungsfall in einem Satz, der Fachbereich, der Freigabestand und die Nutzungsangaben. Die Regel aus [Freigabestufen und Auffindbarkeit](#freigabestufen-und-auffindbarkeit), dass erst ab Fachbereichsebene gelistet werden kann, ist nicht gebaut: Listen ist eine ausdrückliche Handlung mit Vorgabe `false`, aber an keine Verteilungsstufe gebunden; begrenzen kann es nur die Freigabe-Obergrenze einer Konnektorbibliothek.
+
+**Die Prompt-Bibliothek in Gebrauch.** Anlegen (auch im Namen einer Gruppe), Prompts mit typisierten Variablen pflegen, an Personen, Gruppen und die Organisation freigeben, einem Space zuordnen, im Chat per `/name` mit Variablenformular einsetzen, Nachweis „Prompt: <Titel>" im Verlauf — alles über die Oberfläche und ohne Systemverwaltung.
+
+**Nachweis.** Die Typunabhängigkeit belegt `AssetShellTypeIndependenceIntegrationTest` mit einem nur im Test deklarierten Typ; die Verteilungsstufen, die Organisationsgrenze und die Einigkeit von Liste und Einzelansicht der Prompt-Bibliothek `PromptLibraryServiceIntegrationTest`; die Katalogmenge über beide Typen samt `accessible` und Organisationsgrenze `AssetCatalogServiceIntegrationTest`; den ganzen Weg über die Oberfläche `e2e/tests/prompt-libraries.spec.ts`.
+
+**Was fehlt.**
+
+- **Freigabeweg und Versionierung** — vorschlagen, prüfen, freigeben, veröffentlichen; damit auch der Freigabestand im Katalog.
+- **Mitgelieferte Assets** — `origin = BUILT_IN` ist im Schema vorgesehen, angelegt wird es von nichts; ebenso der Aktualisierungsweg.
+- **Nutzungsstatistik** — aggregiert und mit Mindestgruppengröße ([Nutzungstransparenz](#nutzungstransparenz)); die Verwendung eines Prompts wird bewusst weder protokolliert noch gezählt.
+- **Parameter, Abkömmlinge, Referenz statt Kopie, Export und Import** und der **Agent** als Asset-Typ.
+- **Organisationsweit als Grant an „Alle"** — beschlossen ([#1931](https://github.com/criew/opaa/issues/1931)), nicht gebaut: Die Stufe ist noch `visibility = ORGANIZATION`. Der Katalog bezieht die lesbare Menge ausschließlich aus der Rechteformel und ist davon deshalb nicht berührt.
 
 ---
 

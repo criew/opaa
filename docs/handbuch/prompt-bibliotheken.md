@@ -23,7 +23,9 @@ Die Prompt-Bibliotheken, die eine Person lesen darf, stehen in der Hauptnavigati
 **„Prompts"**, gleich unter „Wissen". Die Übersicht dort funktioniert wie die der
 Wissensbibliotheken: Anzahl in der Kopfzeile, „Neue Prompt-Bibliothek" oben rechts, Suche über Name
 und Beschreibung, Umschalter zwischen Kacheln und Tabelle. Eine Kachel nennt Eigentümer, Anzahl der
-Prompts, die eigene Rolle und ob die Bibliothek in der Organisation geteilt ist.
+Prompts, die eigene Rolle und ob die Bibliothek in der Organisation geteilt ist. Gefunden werden
+Prompt-Bibliotheken außerdem im **Katalog**, zusammen mit den Wissensbibliotheken (Abschnitt 4, „Im
+Katalog finden").
 
 ```mermaid
 flowchart LR
@@ -87,7 +89,8 @@ wie beim Anlegen einer Wissensbibliothek, nur ohne den Schritt „Herkunft":
    **Gruppeneigentum ist die haltbarere Wahl** für Prompts, die ein Referat gemeinsam pflegt.
 3. **Rechte** — die Verteilungsstufe, „Im Katalog auffindbar" und optional vorgemerkte Rollen für
    Personen und Gruppen, die gleich nach dem Anlegen erteilt werden. **„Im Katalog auffindbar" ist
-   aus**, bis jemand es ausdrücklich setzt.
+   aus**, bis jemand es ausdrücklich setzt; eingeschaltet macht es die Bibliothek im Katalog für die
+   ganze Organisation sichtbar, auch für alle ohne Leserecht.
 
 Anlegen darf, wer das Anlegerecht **„Prompt-Bibliotheken anlegen"** hat; ausgeliefert ist es an
 „Alle Konten" ([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 9).
@@ -124,6 +127,16 @@ wieder. Die Zuordnung **gewährt niemandem zusätzlichen Zugriff**: Wer die Bibl
 darf, sieht sie im Raum nicht. Auf der Übersichtsseite des Raums stehen zugeordnete
 Prompt-Bibliotheken unter „Datenquellen" zusammen mit den Wissensbibliotheken, jede mit ihrer Art
 gekennzeichnet.
+
+### Im Katalog finden
+
+Der **Katalog** in der Hauptnavigation zeigt alle Prompt- und Wissensbibliotheken, die die Person
+lesen darf, und dazu alle, die im Katalog auffindbar sind — mit Suche über Name und Beschreibung und
+dem Filter „Alle", „Wissen" oder „Prompts". Ein lesbarer Eintrag führt auf die Detailseite. Eine
+auffindbare Prompt-Bibliothek ohne Leserecht steht mit dem Hinweis „Gelistet, kein Zugriff —
+zuständig: …" da, ohne Link und ohne ihre Prompts; wer sie nutzen will, wendet sich an die genannte
+Stelle. Die Regeln im Einzelnen stehen in
+[Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 4, „Der Katalog".
 
 ## 5. Prompts pflegen
 
@@ -228,9 +241,8 @@ Eigentum und Nachfolge protokolliert und historisiert OPAA wie bei jeder Wissens
 
 ## 9. Was nicht gebaut ist
 
-- **Der Katalog**, in dem „Im Katalog auffindbar" wirkt (#1904).
-  Bis dahin wird die Auffindbarkeit gespeichert und historisiert, aber nirgends ausgewertet.
-- **Versionen, Freigabeweg, Favoriten und Nutzungszähler** für Prompts.
+- **Versionen, Freigabeweg, Favoriten und Nutzungszähler** für Prompts; der Katalog nennt deshalb
+  weder einen Freigabestand noch Nutzungsangaben.
 - **Mitgelieferte Prompt-Bibliotheken** und **Export und Import** als Paket.
 - **Eine eigene Reihenfolge der Prompts** in der Oberfläche; die Liste folgt der gespeicherten
   Reihenfolge, dann dem Befehl.

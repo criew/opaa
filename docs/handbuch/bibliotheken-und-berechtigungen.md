@@ -126,11 +126,38 @@ die ihr Verwalter setzt:
 | Feld | Werte | Wirkung |
 |---|---|---|
 | **Verteilungsstufe** | persönlich / geteilt / organisationsweit | Wie weit die Bibliothek **ohne** einzelne Rollen reicht. „Organisationsweit" heißt: jedes Konto des Hauses darf lesen |
-| **Auffindbarkeit** | im Katalog auffindbar, ja/nein | Ob die Bibliothek in der Übersicht erscheint — unabhängig davon, ob jemand sie lesen darf. Vorgabe: nein |
+| **Auffindbarkeit** | im Katalog auffindbar, ja/nein | Ob die Bibliothek im Katalog erscheint — auch für alle, die sie nicht lesen dürfen. Vorgabe: nein |
 
 Beides wird **historisiert** wie eine erteilte Rolle: Zu jedem Stichtag innerhalb der
 Aufbewahrungsfrist ist belegbar, wie weit eine Bibliothek gereicht hat (Abschnitt 12). Die
 Freigabe für [Fremdzugänge](fremdzugaenge.md) ist ein drittes Reichweitenfeld derselben Art.
+
+### Der Katalog
+
+Der **Katalog** ist ein eigener Punkt der Hauptnavigation neben „Wissen" und „Prompts". Er zeigt
+Wissens- und Prompt-Bibliotheken gemischt: alle, die die Person lesen darf — über eine eigene Rolle,
+eine Rolle über eine Gruppe oder die Verteilungsstufe „organisationsweit" —, und dazu alle, die im
+Katalog auffindbar sind. Die Übersichten unter „Wissen" und „Prompts" bleiben daneben die Orte, an
+denen Bibliotheken angelegt und verwaltet werden.
+
+| Element | Inhalt |
+|---|---|
+| **Suche** | Über Name und Beschreibung, ohne Rücksicht auf Groß- und Kleinschreibung |
+| **Filter** | „Alle", „Wissen" oder „Prompts" |
+| **Eintrag** | Art (Wissens- oder Prompt-Bibliothek), Name, Beschreibung, zuständige Stelle; in der Tabelle zusätzlich die Herkunft |
+| **Seiten** | Die Einträge kommen seitenweise; „Weitere laden" hängt die nächste Seite an |
+
+**Auffindbar ist nicht zugänglich.** Eine auffindbare Bibliothek, die die Person nicht lesen darf,
+steht im Katalog mit dem Hinweis **„Gelistet, kein Zugriff — zuständig: …"** und führt nirgendwohin;
+ihre Adresse antwortet „nicht gefunden" wie bei einer unbekannten Bibliothek. Zuständig ist der
+Eigentümer — bei einer Gruppe ihr Name, bei einer Person ihr Anzeigename. Eine geschützte Gruppe und
+eine Person ohne Anzeigenamen bleiben unbenannt, eine E-Mail-Adresse erscheint nie. Ist die
+Nachfolge offen (Abschnitt 13.3), nennt der Hinweis deren Adressaten.
+
+Die Systemverwaltung sieht im Katalog nicht mehr als andere: **Verwalten ist nicht Lesen.** Eine
+Bibliothek, die sie nur verwaltet, erscheint dort nur, wenn sie auffindbar ist, und dann als Eintrag
+ohne Zugriff. Der Katalog zeigt nie etwas aus einer anderen Organisation, und ein Eintrag enthält
+Beschreibungen, nie Inhalte: keine Dokumente, keine Prompts.
 
 ### Freigabe-Obergrenze für Konnektorbibliotheken
 
@@ -827,7 +854,8 @@ Abschnitt „Vor dem Update auf die Gruppenherkunft".
 - **Keine freien Rollen.** Die vier Bibliotheks- und die drei Raumrollen sind fest; wer ein Bündel
   braucht, nimmt eine Gruppe.
 - **Keine Mitgliederliste ohne Objekt.** Wer wissen will, wer in einer Gruppe ist, fragt an einem
-  Objekt, an dem er selbst das Recht vergibt (Abschnitt 8), oder verantwortet die Gruppe.- **Keinen Personen-Einstieg in die Stichtagsauskunft** (Abschnitt 12) und **keine Vorschau
+  Objekt, an dem er selbst das Recht vergibt (Abschnitt 8), oder verantwortet die Gruppe.
+- **Keinen Personen-Einstieg in die Stichtagsauskunft** (Abschnitt 12) und **keine Vorschau
   „alles, was diese Person darf"** (Abschnitt 13.2).
 - **Keine Historie der Systemrollen.** Was mit einer Systemrolle geschah, steht im
   Nachweisprotokoll und unterliegt dessen Frist.
@@ -836,6 +864,8 @@ Abschnitt „Vor dem Update auf die Gruppenherkunft".
 - **Keine Rezertifizierung.** Ein Recht kann befristet werden, aber niemand wird zur Wiedervorlage
   gezwungen.
 - **Kein Schreiben ins Verzeichnis.** OPAA liest, und zwar nur.
+- **Keinen Freigabestand, keine Versionen und keine Nutzungsangaben im Katalog** (Abschnitt 4,
+  „Der Katalog"). Ein Eintrag sagt, was es gibt und wer zuständig ist.
 
 ## 18. Weiterführende Kapitel
 
