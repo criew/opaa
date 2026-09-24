@@ -9,11 +9,11 @@ package io.opaa.branding;
  * <p>Only the ceilings differ, and only for the background: a logo is chrome a few hundred pixels
  * wide, while a background image covers half a screen and is usually a photograph.
  *
- * @param label German name of the image in validation messages and in the audit record
- * @param maxSizeBytes largest accepted upload; also the ceiling the database's own {@code
- *     chk_branding_settings_*_size} constraints carry
- * @param maxEdgePixels largest accepted edge, read from the image header before anything decodes a
- *     pixel - the decompression-bomb guard, not a layout rule
+ * <p>Each constant carries three things: {@link #label()}, its German name in validation messages
+ * and in the audit record; {@link #maxSizeBytes()}, the largest accepted upload, which is also the
+ * ceiling the database's own {@code chk_branding_settings_*_size} constraints carry; and {@link
+ * #maxEdgePixels()}, the largest accepted edge, read from the image header before anything decodes
+ * a pixel - the decompression-bomb guard, not a layout rule.
  */
 public enum BrandingImageKind {
   LOGO("Das Logo", 512 * 1024, 2000),
