@@ -18,8 +18,8 @@ interface UseUserSearchResult {
 }
 
 /**
- * Debounced, server-side user search backing the member/grant pickers on `SpaceManagementPage`,
- * `SpaceCreatePage`, `LibraryCreatePage` and `LibraryGrantsDialog` (#777).
+ * Debounced, server-side user search backing the member/grant pickers - `UserPicker` (and with it
+ * `SubjectPicker`) and `SpaceCreatePage` (#777).
  *
  * #778 review, finding 4: `GET /v1/users` now requires a query (min. `MIN_QUERY_LENGTH`
  * characters) and caps its result server-side - it no longer answers an unqualified "list

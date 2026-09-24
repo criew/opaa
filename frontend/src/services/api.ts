@@ -752,8 +752,8 @@ export async function getUsers(): Promise<UserInfo[]> {
 }
 
 // unlike getUsers() above (GET /v1/admin/users, SYSTEM_ADMIN only), this is reachable for
-// any authenticated organization member - the member/grant pickers on SpaceManagementPage,
-// SpaceCreatePage, LibraryCreatePage and LibraryGrantsDialog need to search for a user to add,
+// any authenticated organization member - the member/grant pickers (UserPicker, SubjectPicker,
+// SpaceCreatePage) need to search for a user to add,
 // and the caller reaching those pages is not necessarily a system admin.
 //
 //  review, finding 4: the backend requires `query` (min. 2 characters) and caps the result at

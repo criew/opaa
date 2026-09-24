@@ -2712,7 +2712,7 @@ interface LibrarySpacesSectionProps {
 // never filtered by the caller's own space membership (docs/features/spaces-and-assets.md#assets-
 // in-einen-space-assoziieren: "Der Eigentümer des Assets sieht alle Assoziationen und kann jede
 // davon jederzeit einseitig lösen"). Only rendered for MANAGER/OWNER (see canEdit above), the same
-// threshold GET /v1/libraries/{libraryId}/spaces itself requires.
+// threshold GET /v1/assets/{assetType}/{assetId}/spaces itself requires.
 function LibrarySpacesSection({ libraryId }: LibrarySpacesSectionProps) {
   const [associations, setAssociations] = useState<AssetSpaceAssociationResponse[] | null>(null)
   const [error, setError] = useState<string | null>(null)
