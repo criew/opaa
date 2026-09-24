@@ -97,7 +97,10 @@ paths:
         "403":
           description: >
             The author of the named chat is no longer a member of its space (#525): querying
-            is chatting, so the turn is refused where merely reading the chat is not.
+            is chatting, so the turn is refused where merely reading the chat is not. Or
+            usedPromptId names a prompt the caller may not read (anymore), with code
+            PROMPT_NOT_USABLE - an unknown prompt and one of another organization answer the same
+            way, so a foreign id is never confirmed.
           content:
             application/json:
               schema:
@@ -6456,26 +6459,29 @@ paths:
       operationId: listAssetSpaceAssociations
       tags: [asset, space]
       summary: >
-        Every space this asset is associated with (MANAGER role or above on the asset required) -
-        the owner-facing "bereitgestellt in" view (#203). Unlike GET /v1/spaces/{spaceId}/assets,
-        this is never filtered - the owner sees every association, regardless of whether they
-        themselves are a member of the space.
+        The spaces this asset is associated with (VIEWER role or above on the asset required) -
+        the "Zuordnungen" view (#203, #1939). For a caller with at least MANAGER on the asset it is
+        never filtered: they see every association, regardless of whether they are a member of the
+        space. Below MANAGER the entry is reduced to spaceId and spaceName, and an association in a
+        PRIVATE space the caller does not belong to is not named at all - it only raises
+        hiddenCount.
       description: >
         docs/features/spaces-and-assets.md#assets-in-einen-space-assoziieren: "Der Eigentümer des
         Assets sieht alle Assoziationen und kann jede davon jederzeit einseitig lösen."
         narrowerReaderCircle on each entry is the same "not every member can already read this"
         signal that triggers the owner notification when the association was created (#203) -
         recomputed live here, not stored, since space membership and asset grants both change
-        independently afterwards.
+        independently afterwards. It, the creator and the creation time are disclosed to a caller
+        with at least MANAGER only; a plain reader learns which spaces the asset stands in, nothing
+        about who put it there or who in them may read it - and a PRIVATE space keeps the promise
+        of its own visibility, that only its members know it exists.
       responses:
         "200":
-          description: Every association of this asset, across all spaces
+          description: The associations of this asset the caller may see, plus the count of the rest
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/AssetSpaceAssociationResponse"
+                $ref: "#/components/schemas/AssetSpaceAssociationListResponse"
         "403":
           $ref: "#/components/responses/Forbidden"
         "404":
@@ -6581,6 +6587,66 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+
+  /api/v1/catalog:
+    get:
+      operationId: listCatalog
+      tags: [asset]
+      summary: >
+        The catalog across every asset type (docs/features/spaces-and-assets.md#der-katalog): the
+        assets the caller may read - direct grant, grant to one of their groups, organization-wide
+        release - united with the listed ones, always within the caller's organization. An entry
+        describes an asset and never carries its content.
+      description: >
+        A listed asset the caller may not read is an entry with accessible = false; its detail
+        view still answers 404 or 403 - being findable is not being accessible. accessible follows
+        the rights formula alone, so a system administrator without a grant sees the listed assets
+        like everybody else and no more. Ordered by name; the search matches name and
+        description, case-insensitive, every character literally.
+      parameters:
+        - name: type
+          in: query
+          required: false
+          description: Only entries of this asset type; all types when absent.
+          schema:
+            $ref: "#/components/schemas/AssetType"
+        - name: q
+          in: query
+          required: false
+          description: Part of the name or the description.
+          schema:
+            type: string
+            maxLength: 200
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: size
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+      responses:
+        "200":
+          description: One page of the catalog
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CatalogPageResponse"
+        "400":
+          description: >
+            A page, size or search text outside the bounds declared above - refused rather than
+            silently answering a different page than the one asked for.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /api/v1/prompt-libraries:
     get:
@@ -6814,6 +6880,39 @@ paths:
       responses:
         "204":
           description: Prompt deleted
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/prompts/available:
+    get:
+      operationId: listAvailablePrompts
+      tags: [prompt]
+      summary: >
+        The prompts the caller can insert in the chat: every prompt of every prompt library
+        the caller may read by the formula, within the caller's organization. With spaceId, the
+        libraries associated with that space come first and are marked associatedWithSpace; then
+        by library name, within a library by sortOrder and name. Deliberately lightweight - the
+        text and the variables come from GET .../prompts/{promptId} once one is chosen. There is no
+        parameter by person and no usage figure: inserting a prompt is not evaluated.
+      parameters:
+        - name: spaceId
+          in: query
+          required: false
+          description: The space of the chat; the caller must be a member of it.
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: The prompts the caller may insert
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AvailablePrompt"
         "403":
           $ref: "#/components/responses/Forbidden"
         "404":
@@ -7968,6 +8067,55 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/branding/login-logo:
+    get:
+      operationId: getBrandingLoginLogo
+      tags: [branding]
+      summary: >
+        The sign-in page's own logo (#1910), served under exactly the same rules as GET
+        /api/v1/branding/logo - detected content type, nosniff, restrictive Content-Security-Policy,
+        readable without authentication. A separate image rather than a size variant of the app
+        logo: the sign-in page renders it several times larger than the sidebar chrome does, and an
+        emblem that works at 28 px is rarely the one a house wants at 96 px. Answered with 404 while
+        none is configured; clients read BrandingResponse.loginLogoUrl and fall back to logoUrl.
+      responses:
+        "200":
+          description: Login logo bytes
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/branding/login-background:
+    get:
+      operationId: getBrandingLoginBackground
+      tags: [branding]
+      summary: >
+        The sign-in page's optional background image (#1910), served under the same rules as the
+        two logos above and readable without authentication for the same reason. Answered with 404
+        while none is configured; without one the sign-in page keeps its plain navy panel.
+      responses:
+        "200":
+          description: Login background bytes
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/system/branding:
     put:
       operationId: updateBranding
@@ -8039,6 +8187,104 @@ paths:
       responses:
         "200":
           description: Logo removed; the effective configuration afterwards
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BrandingResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/system/branding/login-logo:
+    put:
+      operationId: updateBrandingLoginLogo
+      tags: [branding]
+      summary: >
+        Upload the sign-in page's own logo (SYSTEM_ADMIN only, #1910). Same rules as the app logo -
+        PNG and JPEG only, SVG rejected rather than sanitised, declared content type not trusted,
+        at most 512 KiB and 2000 px per edge.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: Login logo stored; the effective configuration afterwards
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BrandingResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+    delete:
+      operationId: deleteBrandingLoginLogo
+      tags: [branding]
+      summary: >
+        Remove the sign-in page's own logo (SYSTEM_ADMIN only, #1910) - the page falls back to the
+        app logo, and to the OPAA standard mark where none is configured either. Idempotent.
+      responses:
+        "200":
+          description: Login logo removed; the effective configuration afterwards
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BrandingResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/system/branding/login-background:
+    put:
+      operationId: updateBrandingLoginBackground
+      tags: [branding]
+      summary: >
+        Upload the sign-in page's background image (SYSTEM_ADMIN only, #1910). PNG and JPEG only,
+        for the same reasons as the logos, but with its own ceilings: at most 2 MiB and 4000 px per
+        edge, because this one is a photograph covering half a screen rather than a piece of chrome.
+        The page lays a fixed scrim over whatever is uploaded, so the text on it keeps its contrast
+        regardless of the image (docs/design/accessibility.md).
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: Background stored; the effective configuration afterwards
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BrandingResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+    delete:
+      operationId: deleteBrandingLoginBackground
+      tags: [branding]
+      summary: >
+        Remove the sign-in page's background image (SYSTEM_ADMIN only, #1910) - the page returns to
+        its plain navy panel. Idempotent.
+      responses:
+        "200":
+          description: Background removed; the effective configuration afterwards
           content:
             application/json:
               schema:
@@ -9721,6 +9967,17 @@ components:
             to the permission filter. Ignored when chatId names a chat the caller authored - that
             chat's own persisted metadataFilter applies instead, exactly like its search scope.
             Absent or empty: no metadata filter.
+        usedPromptId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >
+            The prompt the question was built from
+            (docs/features/spaces-and-assets.md#prompt-im-chat). The client resolves the prompt's
+            text and variables itself and sends the finished question; the server only checks that
+            the caller may read the prompt's library (403 otherwise) and, for a persisted chat,
+            keeps the prompt's id and its current title as a snapshot on the question's message.
+            It changes nothing about the model call.
 
     QueryResponse:
       type: object
@@ -10596,6 +10853,85 @@ components:
         without a registered definition answers 404 like an unknown asset.
       enum: [KNOWLEDGE_LIBRARY, PROMPT_LIBRARY]
 
+    AssetOrigin:
+      type: string
+      description: >
+        Where an asset comes from: created in this installation (LOCAL) or delivered with it
+        (BUILT_IN, docs/features/spaces-and-assets.md#mitgelieferte-assets).
+      enum: [LOCAL, BUILT_IN]
+
+    CatalogEntryResponse:
+      type: object
+      required: [assetType, assetId, name, ownerType, origin, accessible, listed, itemCount, spaceCount]
+      description: >
+        One asset in the catalog - a description, never a content
+        (docs/features/spaces-and-assets.md#der-katalog).
+      properties:
+        assetType:
+          $ref: "#/components/schemas/AssetType"
+        assetId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        ownerType:
+          $ref: "#/components/schemas/AssetOwnerType"
+        ownerLabel:
+          type: string
+          nullable: true
+          description: >
+            The responsible party - the owning group's or person's display name. Null when it
+            cannot be resolved, when the person has no display name or when the group is protected
+            (ADR-0036, Entscheidung 9); never an e-mail address.
+          example: Referat 50
+        origin:
+          $ref: "#/components/schemas/AssetOrigin"
+        accessible:
+          type: boolean
+          description: >
+            Whether the caller may read the asset by the rights formula. False for an entry that is
+            only listed - its detail view answers 404 or 403.
+        listed:
+          type: boolean
+        itemCount:
+          type: integer
+          format: int64
+          description: >
+            The extent: what the asset holds by its type - top-level documents of a knowledge
+            library, prompts of a prompt library.
+        spaceCount:
+          type: integer
+          format: int64
+          description: The spread - in how many spaces of the organization the asset is associated.
+        succession:
+          description: >
+            Set while the asset has no capable owner (ADR-0036, Entscheidung 6) - state and
+            addressee only, as on the asset's own view.
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/SuccessionStateResponse"
+
+    CatalogPageResponse:
+      type: object
+      required: [entries, page, size, totalElements, totalPages]
+      properties:
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/CatalogEntryResponse"
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+
     SpaceAssetAssociationRequest:
       type: object
       required: [assetType, assetId]
@@ -10676,13 +11012,35 @@ components:
           items:
             $ref: "#/components/schemas/SpaceAssetAssociationResponse"
 
+    AssetSpaceAssociationListResponse:
+      type: object
+      required: [items, hiddenCount]
+      description: >
+        The "Zuordnungen" of one asset: the associations the caller may be shown, and the number of
+        further ones they may not (#1939).
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/AssetSpaceAssociationResponse"
+        hiddenCount:
+          type: integer
+          format: int32
+          minimum: 0
+          description: >
+            How many further spaces the asset stands in that this caller must not learn about -
+            PRIVATE spaces they are no member of. Always 0 for a caller with at least MANAGER on
+            the asset, who sees every association by name.
+          example: 2
+
     AssetSpaceAssociationResponse:
       type: object
-      required: [spaceId, spaceName, createdByUserId, createdAt, narrowerReaderCircle]
+      required: [spaceId, spaceName]
       description: >
-        One asset's view of one space it is associated with - the owner-facing "bereitgestellt
-        in" list (GET /v1/assets/{assetType}/{assetId}/spaces), never filtered by the caller's own
-        space membership.
+        One asset's view of one space it is associated with - the "Zuordnungen" list
+        (GET /v1/assets/{assetType}/{assetId}/spaces), never filtered by the caller's own space
+        membership. Only spaceId and spaceName are sent to every reader; the remaining fields are
+        present exactly for a caller with at least MANAGER on the asset (#1939).
       properties:
         spaceId:
           type: string
@@ -10705,7 +11063,8 @@ components:
             True if at least one member of this space cannot themselves read the asset - the same
             condition that triggered the owner notification when the association was created.
             Recomputed at read time, not stored, since both space membership and asset grants
-            change independently afterwards.
+            change independently afterwards. Absent below MANAGER: who in a space may read the
+            asset is a management detail, not part of the plain "which spaces" answer.
 
     NotificationType:
       type: string
@@ -11090,6 +11449,19 @@ components:
           items:
             $ref: "#/components/schemas/SourceReference"
           description: Present on ASSISTANT messages that used document context; absent otherwise.
+        usedPromptId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >
+            On a USER message: the prompt the question was built from, null otherwise. A
+            snapshot - the prompt may since have been changed, deleted or become unreadable.
+        usedPromptTitle:
+          type: string
+          nullable: true
+          description: >
+            The prompt's title as it stood when the question was sent - shown as "Prompt: <title>",
+            never resolved again.
         createdAt:
           type: string
           format: date-time
@@ -15939,6 +16311,36 @@ components:
             minLength: 1
             maxLength: 255
 
+    AvailablePrompt:
+      type: object
+      required: [id, libraryId, libraryName, name, title, hasVariables, associatedWithSpace]
+      description: One entry of the slash-command selection in the chat.
+      properties:
+        id:
+          type: string
+          format: uuid
+        libraryId:
+          type: string
+          format: uuid
+        libraryName:
+          type: string
+        name:
+          type: string
+          description: The slash command without the slash.
+          example: zusammenfassung
+        title:
+          type: string
+          example: Zusammenfassung
+        description:
+          type: string
+          nullable: true
+        hasVariables:
+          type: boolean
+          description: Whether inserting the prompt asks for values first.
+        associatedWithSpace:
+          type: boolean
+          description: Whether the prompt's library is associated with the space named by spaceId.
+
     PromptRequest:
       type: object
       required: [name, title, text]
@@ -17618,6 +18020,35 @@ components:
           type: string
           format: date-time
           description: When the configured logo was last replaced. Absent while none is configured.
+        loginLogoUrl:
+          type: string
+          description: >
+            Path the sign-in page's own logo is served from, with the same content-derived version
+            parameter logoUrl carries (#1910). Absent while none is configured, and the sign-in
+            page then falls back to logoUrl.
+          example: /api/v1/branding/login-logo?v=3f8a1c2d
+        loginLogoContentType:
+          type: string
+          description: Server-detected media type of the sign-in logo. Absent while none is configured.
+          example: image/png
+        loginLogoUpdatedAt:
+          type: string
+          format: date-time
+          description: When the sign-in logo was last replaced. Absent while none is configured.
+        loginBackgroundUrl:
+          type: string
+          description: >
+            Path the sign-in page's background image is served from, versioned like the logos
+            (#1910). Absent while none is configured; the page then keeps its plain panel.
+          example: /api/v1/branding/login-background?v=9b2e7c10
+        loginBackgroundContentType:
+          type: string
+          description: Server-detected media type of the background image. Absent while none is configured.
+          example: image/jpeg
+        loginBackgroundUpdatedAt:
+          type: string
+          format: date-time
+          description: When the background image was last replaced. Absent while none is configured.
 
     BrandingUpdateRequest:
       type: object

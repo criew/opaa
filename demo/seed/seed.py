@@ -238,11 +238,11 @@ def ensure_library(admin_client: Client, library_def: LibraryDef) -> str:
 
 
 def ensure_association(owner_client: Client, space_id: str, library_id: str) -> None:
-    # associateSpaceLibrary is idempotent by design (see opaa-api.yaml): an already-associated
-    # library returns its existing association unchanged, also with 201.
+    # associateSpaceAsset is idempotent by design (see opaa-api.yaml): an already-associated
+    # asset returns its existing association unchanged, also with 201.
     owner_client.post_ok(
-        f"/v1/spaces/{space_id}/libraries",
-        json={"libraryId": library_id},
+        f"/v1/spaces/{space_id}/assets",
+        json={"assetType": "KNOWLEDGE_LIBRARY", "assetId": library_id},
         expected=(201,),
     )
 
@@ -256,7 +256,7 @@ def ensure_grant(
 ) -> None:
     # upsertAssetGrant is idempotent per subject by design (see opaa-api.yaml) - always safe to call.
     admin_client.post_ok(
-        f"/v1/libraries/{library_id}/grants",
+        f"/v1/assets/KNOWLEDGE_LIBRARY/{library_id}/grants",
         json={"subjectType": subject_type, "subjectId": subject_id, "role": role},
         expected=(200,),
     )

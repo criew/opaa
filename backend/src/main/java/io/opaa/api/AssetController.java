@@ -3,7 +3,7 @@ package io.opaa.api;
 import io.opaa.api.dto.AssetAccessDerivationResponse;
 import io.opaa.api.dto.AssetGrantRequest;
 import io.opaa.api.dto.AssetGrantResponse;
-import io.opaa.api.dto.AssetSpaceAssociationResponse;
+import io.opaa.api.dto.AssetSpaceAssociationListResponse;
 import io.opaa.api.dto.GroupMemberDisclosureResponse;
 import io.opaa.asset.AssetAccessDerivationService;
 import io.opaa.asset.AssetGrantService;
@@ -102,9 +102,9 @@ public class AssetController {
   }
 
   @GetMapping("/spaces")
-  public List<AssetSpaceAssociationResponse> listAssetSpaceAssociations(
+  public AssetSpaceAssociationListResponse listAssetSpaceAssociations(
       @PathVariable String assetType, @PathVariable UUID assetId, @Caller CurrentUser caller) {
-    return SpaceAssetAssociationResponseMapper.toAssetSpaceResponses(
+    return SpaceAssetAssociationResponseMapper.toAssetSpaceListResponse(
         associationService.listForAsset(typeOf(assetType), assetId, caller));
   }
 

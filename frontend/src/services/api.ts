@@ -53,7 +53,7 @@ import type {
   LibraryListResponse,
   LibraryRequest,
   LibraryResponse,
-  AssetSpaceAssociationResponse,
+  AssetSpaceAssociationListResponse,
   AssetType,
   LibraryShareCapRequest,
   LibraryUpdateRequest,
@@ -199,6 +199,7 @@ export async function sendQuery(
   useKnowledge = true,
   libraryIds?: string[],
   metadataFilter?: MetadataFilter | null,
+  usedPromptId?: string,
 ): Promise<QueryResponse> {
   try {
     // libraryIds is only meaningful (and only sent) when useKnowledge is false - the backend
@@ -214,6 +215,7 @@ export async function sendQuery(
       useKnowledge,
       ...(useKnowledge ? {} : { libraryIds }),
       ...(metadataFilter && !isEmptyMetadataFilter(metadataFilter) ? { metadataFilter } : {}),
+      ...(usedPromptId ? { usedPromptId } : {}),
     }
     const { data } = await client.post<QueryResponse>('/v1/query', request)
     return data
@@ -607,14 +609,15 @@ export async function detachSpaceAsset(spaceId: string, assetId: string): Promis
   }
 }
 
-// the asset owner's view - every space this asset is associated with, never filtered by the
-// caller's own space membership (requires MANAGER role or above on the asset).
+// the "Zuordnungen" of an asset (requires VIEWER or above). From MANAGER on it is never filtered
+// by the caller's own space membership; below it a PRIVATE space the caller does not belong to is
+// only counted in hiddenCount (#1939).
 export async function getAssetSpaceAssociations(
   assetType: AssetType,
   assetId: string,
-): Promise<AssetSpaceAssociationResponse[]> {
+): Promise<AssetSpaceAssociationListResponse> {
   try {
-    const { data } = await client.get<AssetSpaceAssociationResponse[]>(
+    const { data } = await client.get<AssetSpaceAssociationListResponse>(
       `/v1/assets/${assetType}/${assetId}/spaces`,
     )
     return data
@@ -1858,24 +1861,30 @@ export async function updateBranding(request: BrandingUpdateRequest): Promise<Br
   }
 }
 
-export async function uploadBrandingLogo(file: File): Promise<BrandingResponse> {
+/** The three image slots of the branding settings (#582, #1910), by their path segment. */
+export type BrandingImageSlot = 'logo' | 'login-logo' | 'login-background'
+
+export async function uploadBrandingImage(
+  slot: BrandingImageSlot,
+  file: File,
+): Promise<BrandingResponse> {
   try {
     const formData = new FormData()
     formData.append('file', file)
-    const { data } = await client.put<BrandingResponse>('/v1/system/branding/logo', formData, {
+    const { data } = await client.put<BrandingResponse>(`/v1/system/branding/${slot}`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
     return data
   } catch (err) {
-    // 'upload' so an oversized logo turned away by the reverse proxy's own bare HTML 413 still
+    // 'upload' so an oversized image turned away by the reverse proxy's own bare HTML 413 still
     // produces a German message rather than "HTTP 413: ..." - same reasoning as uploadDocument.
     normalizeError(err, 'upload')
   }
 }
 
-export async function deleteBrandingLogo(): Promise<BrandingResponse> {
+export async function deleteBrandingImage(slot: BrandingImageSlot): Promise<BrandingResponse> {
   try {
-    const { data } = await client.delete<BrandingResponse>('/v1/system/branding/logo')
+    const { data } = await client.delete<BrandingResponse>(`/v1/system/branding/${slot}`)
     return data
   } catch (err) {
     normalizeError(err)

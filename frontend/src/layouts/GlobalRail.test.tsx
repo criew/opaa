@@ -65,6 +65,17 @@ describe('GlobalRail', () => {
     expect(screen.getByRole('link', { name: 'Prompts' })).toHaveAttribute('aria-current', 'true')
   })
 
+  it('leads to the catalog beside the asset overviews, which stay (#1904)', () => {
+    renderRailAt('/catalog')
+
+    const labels = screen.getAllByRole('link').map((link) => link.textContent)
+    expect(labels.indexOf('Katalog')).toBe(labels.indexOf('Prompts') + 1)
+    expect(screen.getByRole('link', { name: 'Katalog' })).toHaveAttribute('href', '/catalog')
+    expect(screen.getByRole('link', { name: 'Katalog' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('link', { name: 'Wissen' })).toHaveAttribute('href', '/libraries')
+    expect(screen.getByRole('link', { name: 'Wissen' })).not.toHaveAttribute('aria-current')
+  })
+
   it('shows the brand emblem without the product name - the rail has no room for text', () => {
     renderRailAt('/spaces')
 

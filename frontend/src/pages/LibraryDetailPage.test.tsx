@@ -311,13 +311,149 @@ describe('LibraryDetailPage', () => {
     useIndexingStore.getState().stopPolling('library-mine')
   })
 
+  // #1939: Reiterleiste und Kopf - welche Bereiche eine Rolle sieht, und wo Bearbeiten und
+  // Löschen stehen.
+  describe('Kopf und Reiterrahmen (#1939)', () => {
+    async function tabNames(): Promise<string[]> {
+      const tabs = await screen.findAllByRole('tab')
+      return tabs.map((tab) => tab.textContent ?? '')
+    }
+
+    it('shows every area to a VIEWER of an UPLOAD library, without a source area', async () => {
+      setLibraryState(viewerLibrary, detailsOf(viewerLibrary))
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+      expect(await tabNames()).toEqual(['Dokumente', 'Metadaten', 'Freigaben'])
+    })
+
+    it('adds the source area for a connector library, for a VIEWER as well', async () => {
+      setLibraryState(
+        viewerLibrary,
+        detailsOf(viewerLibrary, { sourceType: 'FILESYSTEM', sourcePath: '/data' }),
+      )
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+      expect(await tabNames()).toEqual(['Dokumente', 'Quelle', 'Metadaten', 'Freigaben'])
+    })
+
+    it('shows the same four areas to a MANAGER of a connector library', async () => {
+      setLibraryState(
+        managerLibrary,
+        detailsOf(managerLibrary, { sourceType: 'CONFLUENCE', sourceUrl: 'https://wiki.local' }),
+      )
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+      expect(await tabNames()).toEqual(['Dokumente', 'Quelle', 'Metadaten', 'Freigaben'])
+    })
+
+    it('lets a VIEWER reach the Herleitung and the Zuordnungen in the Freigaben area', async () => {
+      setLibraryState(viewerLibrary, detailsOf(viewerLibrary))
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+      const user = userEvent.setup()
+
+      await user.click(await screen.findByRole('tab', { name: 'Freigaben' }))
+
+      expect(
+        await screen.findByRole('heading', { name: /warum sehe ich diese bibliothek/i }),
+      ).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Zuordnungen' })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /rechte verwalten/i })).not.toBeInTheDocument()
+    })
+
+    // Die Herleitung steht für beide Rollen im selben Reiter, aber aus zwei Zweigen - für eine
+    // verwaltende Rolle aus dem Freigabeabschnitt, sonst als eigener Abschnitt. Genau einer.
+    it('shows the Herleitung exactly once for a MANAGER', async () => {
+      setLibraryState(managerLibrary, detailsOf(managerLibrary))
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+      const user = userEvent.setup()
+
+      await user.click(await screen.findByRole('tab', { name: 'Freigaben' }))
+
+      expect(
+        await screen.findAllByRole('heading', { name: /warum sehe ich diese bibliothek/i }),
+      ).toHaveLength(1)
+    })
+
+    it('names the source type exactly once, as a badge', async () => {
+      setLibraryState(
+        managerLibrary,
+        detailsOf(managerLibrary, { sourceType: 'CONFLUENCE', sourceUrl: 'https://wiki.local' }),
+      )
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+      expect(await screen.findAllByText('Confluence')).toHaveLength(1)
+      expect(screen.queryByText(/zurück zur übersicht/i)).not.toBeInTheDocument()
+    })
+
+    it('falls back to the documents for a stale ?tab= value from before the rename', async () => {
+      setLibraryState(managerLibrary, detailsOf(managerLibrary))
+      renderWithProviders(<LibraryDetailPage />, {
+        withRouter: true,
+        initialRoute: '/libraries/library-team?tab=verwaltung',
+      })
+
+      expect(await screen.findByRole('tab', { selected: true })).toHaveTextContent('Dokumente')
+    })
+
+    it('edits name and description in the head and discards the draft on Escape', async () => {
+      setLibraryState(managerLibrary, detailsOf(managerLibrary))
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+      const user = userEvent.setup()
+
+      await user.click(await screen.findByRole('button', { name: /name und beschreibung/i }))
+      const nameField = await screen.findByLabelText(/name der bibliothek/i)
+      expect(nameField).toHaveFocus()
+      await user.type(nameField, ' (Entwurf)')
+      await user.keyboard('{Escape}')
+
+      expect(screen.queryByLabelText(/name der bibliothek/i)).not.toBeInTheDocument()
+      expect(mockUpdateLibrary).not.toHaveBeenCalled()
+      // accessibility.md 2.1: Der Fokus kehrt zum auslösenden Element zurück, sonst beginnt die
+      // nächste Tabulatortaste wieder ganz oben auf der Seite.
+      expect(screen.getByRole('button', { name: /name und beschreibung/i })).toHaveFocus()
+    })
+
+    it('returns the focus to the pencil after Abbrechen and after a successful save', async () => {
+      setLibraryState(managerLibrary, detailsOf(managerLibrary))
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+      const user = userEvent.setup()
+      const pencil = () => screen.getByRole('button', { name: /name und beschreibung/i })
+
+      await user.click(await screen.findByRole('button', { name: /name und beschreibung/i }))
+      await user.click(screen.getByRole('button', { name: 'Abbrechen' }))
+      expect(pencil()).toHaveFocus()
+
+      await user.click(pencil())
+      await user.click(screen.getByRole('button', { name: /^speichern$/i }))
+      await waitFor(() => expect(mockUpdateLibrary).toHaveBeenCalled())
+      await waitFor(() => expect(pencil()).toHaveFocus())
+    }, 15000)
+
+    it('shows a rejected head save in the head itself, keeping the draft and taking the focus', async () => {
+      setLibraryState(managerLibrary, detailsOf(managerLibrary))
+      mockUpdateLibrary.mockRejectedValueOnce(new Error('Name bereits vergeben'))
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+      const user = userEvent.setup()
+
+      await user.click(await screen.findByRole('button', { name: /name und beschreibung/i }))
+      await user.click(await screen.findByRole('button', { name: /^speichern$/i }))
+
+      const alert = await screen.findByRole('alert')
+      expect(alert).toHaveTextContent('Name bereits vergeben')
+      // accessibility.md 2.4: Nach einem Abschickfehler geht der Fokus auf die Fehlermeldung, und
+      // die Eingabe bleibt erhalten.
+      expect(alert).toHaveFocus()
+      expect(screen.getByLabelText(/name der bibliothek/i)).toBeInTheDocument()
+    })
+  })
+
   it('shows neither edit nor delete controls for a VIEWER', async () => {
     setLibraryState(viewerLibrary, detailsOf(viewerLibrary, { documentCount: 87 }))
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
     expect(await screen.findByText(/87 Dokumente/i)).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /speichern/i })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /bibliothek löschen/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /name und beschreibung/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /weitere aktionen/i })).not.toBeInTheDocument()
   })
 
   it('shows storage quota usage for a MANAGER but not for a VIEWER whose response omits it', async () => {
@@ -348,17 +484,17 @@ describe('LibraryDetailPage', () => {
     setLibraryState(managerLibrary, detailsOf(managerLibrary))
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
-    const user = userEvent.setup()
-    await user.click(await screen.findByRole('tab', { name: 'Verwaltung' }))
-    expect(await screen.findByRole('button', { name: /^speichern$/i })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /bibliothek löschen/i })).not.toBeInTheDocument()
+    expect(
+      await screen.findByRole('button', { name: /name und beschreibung/i }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /weitere aktionen/i })).not.toBeInTheDocument()
   })
 
   it('offers "Rechte verwalten" for a MANAGER but hides it for a VIEWER', async () => {
     setLibraryState(managerLibrary, detailsOf(managerLibrary))
     const { unmount } = renderWithProviders(<LibraryDetailPage />, { withRouter: true })
     const user = userEvent.setup()
-    await user.click(await screen.findByRole('tab', { name: 'Verwaltung' }))
+    await user.click(await screen.findByRole('tab', { name: 'Freigaben' }))
     expect(await screen.findByRole('button', { name: /rechte verwalten/i })).toBeInTheDocument()
     unmount()
 
@@ -377,9 +513,11 @@ describe('LibraryDetailPage', () => {
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
     const user = userEvent.setup()
-    await user.click(await screen.findByRole('tab', { name: 'Verwaltung' }))
-    expect(await screen.findByRole('button', { name: /^speichern$/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /bibliothek löschen/i })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('button', { name: /name und beschreibung/i }),
+    ).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /weitere aktionen/i }))
+    expect(await screen.findByRole('menuitem', { name: /bibliothek löschen/i })).toBeInTheDocument()
     expect(screen.getByText('administrativ')).toBeInTheDocument()
   })
 
@@ -391,11 +529,11 @@ describe('LibraryDetailPage', () => {
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
     const user = userEvent.setup()
 
-    await user.click(await screen.findByRole('tab', { name: 'Verwaltung' }))
+    await user.click(await screen.findByRole('button', { name: /name und beschreibung/i }))
     const nameField = await screen.findByLabelText(/name der bibliothek/i)
     await user.clear(nameField)
     await user.type(nameField, 'Rechtsquellen Soziales (neu)')
-    const descriptionField = screen.getByLabelText(/^beschreibung$/i)
+    const descriptionField = screen.getByLabelText(/^beschreibung \(optional\)$/i)
     await user.clear(descriptionField)
     await user.type(descriptionField, 'Aktualisierte Beschreibung')
     await user.click(screen.getByRole('button', { name: /^speichern$/i }))
@@ -417,7 +555,7 @@ describe('LibraryDetailPage', () => {
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
     const user = userEvent.setup()
 
-    await user.click(await screen.findByRole('tab', { name: 'Verwaltung' }))
+    await user.click(await screen.findByRole('tab', { name: 'Freigaben' }))
     await user.click(await screen.findByLabelText('Im Katalog auffindbar, auch ohne Berechtigung'))
     await user.click(screen.getByRole('button', { name: 'Freigabe speichern' }))
 
@@ -439,8 +577,8 @@ describe('LibraryDetailPage', () => {
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
     const user = userEvent.setup()
 
-    await user.click(await screen.findByRole('tab', { name: 'Verwaltung' }))
-    await user.click(await screen.findByRole('button', { name: /bibliothek löschen/i }))
+    await user.click(await screen.findByRole('button', { name: /weitere aktionen/i }))
+    await user.click(await screen.findByRole('menuitem', { name: /bibliothek löschen/i }))
     await answerConfirm(user, 'Bibliothek "Rechtsquellen Soziales" löschen?', 'Löschen')
 
     await waitFor(() => {
@@ -458,8 +596,8 @@ describe('LibraryDetailPage', () => {
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
     const user = userEvent.setup()
 
-    await user.click(await screen.findByRole('tab', { name: 'Verwaltung' }))
-    await user.click(await screen.findByRole('button', { name: /bibliothek löschen/i }))
+    await user.click(await screen.findByRole('button', { name: /weitere aktionen/i }))
+    await user.click(await screen.findByRole('menuitem', { name: /bibliothek löschen/i }))
 
     const question = 'Bibliothek "Rechtsquellen Soziales" löschen?'
     expect(await screen.findByRole('dialog', { name: question })).toHaveTextContent(
@@ -530,7 +668,7 @@ describe('LibraryDetailPage', () => {
       renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
       // Since the tab layout, the Diagnosesperre control lives in the "Verwaltung" area.
-      await user.click(await screen.findByRole('tab', { name: 'Verwaltung' }))
+      await user.click(await screen.findByRole('tab', { name: 'Freigaben' }))
       await user.click(await screen.findByRole('button', { name: /diagnosesperre lösen/i }))
 
       expect(await screen.findByText('Diagnose freigegeben')).toBeInTheDocument()
@@ -558,7 +696,7 @@ describe('LibraryDetailPage', () => {
       renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
       // Since the tab layout, the Diagnosesperre control lives in the "Verwaltung" area.
-      await user.click(await screen.findByRole('tab', { name: 'Verwaltung' }))
+      await user.click(await screen.findByRole('tab', { name: 'Freigaben' }))
       await user.click(await screen.findByRole('button', { name: /diagnosesperre lösen/i }))
 
       expect(
@@ -584,7 +722,7 @@ describe('LibraryDetailPage', () => {
       )
       renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
-      await userEvent.setup().click(await screen.findByRole('tab', { name: 'Verwaltung' }))
+      await userEvent.setup().click(await screen.findByRole('tab', { name: 'Freigaben' }))
 
       expect(screen.queryByText(/Freigabe-Obergrenze \(Systemverwaltung\)/)).not.toBeInTheDocument()
     })
@@ -602,7 +740,7 @@ describe('LibraryDetailPage', () => {
       )
       renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
-      await userEvent.setup().click(await screen.findByRole('tab', { name: 'Verwaltung' }))
+      await userEvent.setup().click(await screen.findByRole('tab', { name: 'Freigaben' }))
 
       expect(screen.queryByText(/Freigabe-Obergrenze \(Systemverwaltung\)/)).not.toBeInTheDocument()
     })
@@ -646,7 +784,7 @@ describe('LibraryDetailPage', () => {
       const user = userEvent.setup()
       renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
-      await user.click(await screen.findByRole('tab', { name: 'Verwaltung' }))
+      await user.click(await screen.findByRole('tab', { name: 'Freigaben' }))
       await user.click(await screen.findByLabelText('Auffindbarkeit im Katalog erlaubt'))
       await user.click(await screen.findByRole('button', { name: /obergrenze speichern/i }))
 
@@ -675,7 +813,7 @@ describe('LibraryDetailPage', () => {
       const user = userEvent.setup()
       renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
-      await user.click(await screen.findByRole('tab', { name: 'Verwaltung' }))
+      await user.click(await screen.findByRole('tab', { name: 'Freigaben' }))
       expect(
         await screen.findByText(
           'Die Systemverwaltung hat die Auffindbarkeit dieser Bibliothek im' + ' Katalog gesperrt.',
@@ -706,7 +844,9 @@ describe('LibraryDetailPage', () => {
       const user = userEvent.setup()
       renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
-      await user.click(await screen.findByRole('tab', { name: 'Verwaltung' }))
+      // Seit #1939 ist der Kopf der eine Weg, der die gespeicherte Reichweite unveraendert
+      // mitschickt - der Freigabeabschnitt selbst speichert nur eine geaenderte.
+      await user.click(await screen.findByRole('button', { name: /name und beschreibung/i }))
       await user.click(await screen.findByRole('button', { name: /^speichern$/i }))
 
       expect(
@@ -737,7 +877,7 @@ describe('LibraryDetailPage', () => {
       const user = userEvent.setup()
       renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
-      await user.click(await screen.findByRole('tab', { name: 'Verwaltung' }))
+      await user.click(await screen.findByRole('tab', { name: 'Freigaben' }))
       // Nur eine Erweiterung läuft in die Sperre: auffindbar schalten, dann speichern.
       await user.click(
         await screen.findByLabelText('Im Katalog auffindbar, auch ohne Berechtigung'),
@@ -915,24 +1055,25 @@ describe('LibraryDetailPage', () => {
     )
     const { unmount } = renderWithProviders(<LibraryDetailPage />, { withRouter: true })
     const user = userEvent.setup()
-    await user.click(await screen.findByRole('tab', { name: 'Indizierung' }))
+    await user.click(await screen.findByRole('tab', { name: 'Quelle' }))
     expect(
       await screen.findByRole('button', { name: /^quellkonfiguration bearbeiten$/i }),
     ).toBeInTheDocument()
     unmount()
 
-    // Since the tab layout, a VIEWER has no "Indizierung" area at all - no tab, no section, and
-    // therefore no edit affordance (#507 unchanged: the path never reaches the client).
+    // #1939: a VIEWER has the "Quelle" area too, but it holds no source configuration - #507
+    // unchanged, the path never reaches the client.
     setLibraryState(
       viewerLibrary,
       detailsOf(viewerLibrary, { sourceType: 'FILESYSTEM', sourcePath: '/data/dokumente' }),
     )
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
-    await screen.findByText(/87 Dokumente/i)
-    expect(screen.queryByRole('tab', { name: 'Indizierung' })).not.toBeInTheDocument()
+    await user.click(await screen.findByRole('tab', { name: 'Quelle' }))
+    expect(await screen.findByText(/Quelladresse, Zeitplan und Laufprotokoll/i)).toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: /^quellkonfiguration bearbeiten$/i }),
     ).not.toBeInTheDocument()
+    expect(screen.queryByText('/data/dokumente')).not.toBeInTheDocument()
   })
 
   it('shows an S3 library with its scopes in the page head, the configuration card and "Bearbeiten" (#1377)', async () => {
@@ -964,7 +1105,7 @@ describe('LibraryDetailPage', () => {
     expect(screen.getByText('satzungen')).toBeInTheDocument()
 
     const user = userEvent.setup()
-    await user.click(await screen.findByRole('tab', { name: 'Indizierung' }))
+    await user.click(await screen.findByRole('tab', { name: 'Quelle' }))
     expect(
       await screen.findByRole('button', { name: /^quellkonfiguration bearbeiten$/i }),
     ).toBeInTheDocument()
@@ -989,12 +1130,13 @@ describe('LibraryDetailPage', () => {
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
     const user = userEvent.setup()
-    await user.click(await screen.findByRole('tab', { name: 'Indizierung' }))
+    await user.click(await screen.findByRole('tab', { name: 'Quelle' }))
     expect(
       await screen.findByRole('button', { name: /^quellkonfiguration bearbeiten$/i }),
     ).toBeInTheDocument()
     expect(screen.getByText('https://wiki.behoerde.example/confluence')).toBeInTheDocument()
-    expect(screen.getByText(/Data Center/)).toBeInTheDocument()
+    // Kopf-Kurzzeile und Umfang des Reiters nennen die Edition je einmal.
+    expect(screen.getAllByText(/Data Center/)).toHaveLength(2)
     expect(screen.getByText(/nach der Anlage nicht änderbar/)).toBeInTheDocument()
     expect(screen.getByText('Bauamt (BAU)')).toBeInTheDocument()
     expect(screen.getByText(/gilt für alle Leseberechtigten der Bibliothek/)).toBeInTheDocument()
@@ -1166,7 +1308,7 @@ describe('LibraryDetailPage', () => {
     )
     const { unmount } = renderWithProviders(<LibraryDetailPage />, { withRouter: true })
     const user = userEvent.setup()
-    await user.click(await screen.findByRole('tab', { name: 'Indizierung' }))
+    await user.click(await screen.findByRole('tab', { name: 'Quelle' }))
     expect(await screen.findByTestId('confluence-webhook-section')).toHaveTextContent(
       /Webhook:.*eingerichtet/,
     )
@@ -1202,7 +1344,8 @@ describe('LibraryDetailPage', () => {
     )
     // the scope itself - edition and spaces - is visible to the VIEWER, address and proxy are not
     expect(screen.getByText('Bauamt (BAU)')).toBeInTheDocument()
-    expect(screen.getByText(/Cloud/)).toBeInTheDocument()
+    // Die Edition steht zweimal: in der Umfangskurzzeile des Kopfes und im Reiter „Quelle".
+    expect(screen.getAllByText(/Cloud/)).toHaveLength(2)
     expect(screen.queryByText(/Proxy/)).not.toBeInTheDocument()
     unmount()
 
@@ -1211,7 +1354,7 @@ describe('LibraryDetailPage', () => {
       detailsOf(viewerLibrary, { sourceType: 'RSS_FEED', sourceUrl: 'https://example.org/feed' }),
     )
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
-    await screen.findByText(/Sie können diese Bibliothek einsehen/)
+    await screen.findByText(/nur Leserechte/)
     expect(screen.queryByTestId('confluence-sharing-consequence')).not.toBeInTheDocument()
   })
 
@@ -1315,16 +1458,16 @@ describe('LibraryDetailPage', () => {
     expect(await screen.findByText('/data/dokumente')).toBeInTheDocument()
     unmount()
 
-    // Since the tab layout, a VIEWER has no source configuration area (and no hint about it) -
-    // #507 unchanged: the backend never serves the path to a VIEWER, and the page renders no
-    // placeholder for data that was never sent.
+    // #1939: Der Reiter „Quelle" steht auch einem Leser offen, die Quellkonfiguration nicht -
+    // #507 unverändert: Das Backend liefert den Pfad nie an einen VIEWER, und die Seite zeigt
+    // auch keinen Platzhalter für Daten, die nie gesendet wurden.
     setLibraryState(
       viewerLibrary,
       detailsOf(viewerLibrary, { sourceType: 'FILESYSTEM', sourcePath: '/data/dokumente' }),
     )
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
     await screen.findByText(/87 Dokumente/i)
-    expect(screen.queryByRole('tab', { name: 'Indizierung' })).not.toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Quelle' })).toBeInTheDocument()
     expect(screen.queryByText('/data/dokumente')).not.toBeInTheDocument()
   })
 
@@ -1337,7 +1480,7 @@ describe('LibraryDetailPage', () => {
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
     const user = userEvent.setup()
 
-    await user.click(await screen.findByRole('tab', { name: 'Indizierung' }))
+    await user.click(await screen.findByRole('tab', { name: 'Quelle' }))
     await user.click(
       await screen.findByRole('button', { name: /^quellkonfiguration bearbeiten$/i }),
     )
@@ -1410,7 +1553,7 @@ describe('LibraryDetailPage', () => {
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
     const user = userEvent.setup()
 
-    await user.click(await screen.findByRole('tab', { name: 'Indizierung' }))
+    await user.click(await screen.findByRole('tab', { name: 'Quelle' }))
     await user.click(await screen.findByRole('button', { name: /^zeitplan bearbeiten$/i }))
     await user.click(screen.getByRole('combobox', { name: /^zeitplan$/i }))
     await user.click(await screen.findByRole('option', { name: 'Stündlich' }))
@@ -1449,7 +1592,7 @@ describe('LibraryDetailPage', () => {
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
     const user = userEvent.setup()
 
-    await user.click(await screen.findByRole('tab', { name: 'Indizierung' }))
+    await user.click(await screen.findByRole('tab', { name: 'Quelle' }))
     expect(
       await screen.findByText('Vollabgleich alle 7 Tage (Vorgabe der Instanz)'),
     ).toBeInTheDocument()
@@ -1484,7 +1627,7 @@ describe('LibraryDetailPage', () => {
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
     const user = userEvent.setup()
 
-    await user.click(await screen.findByRole('tab', { name: 'Indizierung' }))
+    await user.click(await screen.findByRole('tab', { name: 'Quelle' }))
     expect(await screen.findByText('Vollabgleich alle 30 Tage')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: /^zeitplan bearbeiten$/i }))
@@ -1596,7 +1739,7 @@ describe('LibraryDetailPage', () => {
       ),
     )
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
-    await userEvent.setup().click(await screen.findByRole('tab', { name: 'Indizierung' }))
+    await userEvent.setup().click(await screen.findByRole('tab', { name: 'Quelle' }))
 
     expect(await screen.findByText(/letzte indizierungsläufe/i)).toBeInTheDocument()
     await screen.findByText(/10 verarbeitet, 2 übersprungen/i)
@@ -1830,9 +1973,8 @@ describe('LibraryDetailPage', () => {
     )
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
-    // Exact match, not a substring: LibraryIndexingSection shows its own, differently worded
-    // "nur Leserechte und können keine Indizierung anstoßen." hint on the same connector-library
-    // page, so a loose regex would find two elements and fail as ambiguous.
+    // #1939: genau ein Hinweis auf die eigene Rolle, im Seitenkopf - der Dokumentenbereich
+    // trägt keinen zweiten mehr.
     expect(
       await screen.findByText('Sie haben in dieser Bibliothek nur Leserechte.'),
     ).toBeInTheDocument()

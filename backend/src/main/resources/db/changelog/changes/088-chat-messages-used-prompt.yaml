@@ -1,0 +1,25 @@
+databaseChangeLog:
+  - changeSet:
+      id: 088-chat-messages-used-prompt
+      author: opaa
+      comment: >-
+        Der Nachweis im Verlauf, welcher Prompt eine Frage gebaut hat (#1903, Epic #1726): zwei
+        Spalten an chat_messages, gesetzt nur an der Nutzer-Nachricht und nur gemeinsam.
+        .
+        used_prompt_title ist ein Namens-Snapshot zum Zeitpunkt des Sendens, used_prompt_id die
+        Kennung von damals. Bewusst ohne Fremdschluessel: Ein Prompt darf geloescht, umbenannt oder
+        unlesbar werden, der Hinweis im Verlauf bleibt stehen. Bewusst ohne Index: Es gibt keine
+        Abfrage nach Prompt ueber Gespraeche hinweg (spaces-and-assets.md, Kein personenbezogener
+        Auswertungspfad).
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE chat_messages
+                  ADD COLUMN used_prompt_id uuid,
+                  ADD COLUMN used_prompt_title character varying(255),
+                  ADD CONSTRAINT chk_chat_messages_used_prompt CHECK (
+                      (used_prompt_id IS NULL AND used_prompt_title IS NULL)
+                      OR (used_prompt_id IS NOT NULL
+                          AND used_prompt_title IS NOT NULL
+                          AND (role)::text = 'USER'::text));

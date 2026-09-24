@@ -11,6 +11,7 @@ import {
   shareLibraryWithPerson,
   startFreshChat,
 } from '../fixtures/chat'
+import { createReleasedGroupViaApi } from '../fixtures/promptLibraries'
 import type { Page } from '@playwright/test'
 
 // Deterministic, tiny, and part of the repo (see AGENTS.md "Reproduktionsnachweis" context on
@@ -154,7 +155,7 @@ test.describe.serial('Wissensbibliotheken: Upload, Freigabe, rechtebewusste Such
   test('5. Entzug wirkt', async ({ authenticatedPage: adminPage, regularUserPage: bPage }) => {
     await gotoLibraries(adminPage)
     await gotoLibraryDetail(adminPage, LIBRARY_NAME)
-    await adminPage.getByRole('tab', { name: 'Verwaltung' }).click()
+    await adminPage.getByRole('tab', { name: 'Freigaben' }).click()
     await adminPage.getByRole('button', { name: 'Rechte verwalten' }).click()
     await adminPage.getByRole('button', { name: 'Freigabe für Dev User entziehen' }).click()
     // The confirmation is the app's own overlay (#1610) and opens on top of the still-open "Rechte
@@ -186,40 +187,13 @@ test.describe.serial('Wissensbibliotheken: Upload, Freigabe, rechtebewusste Such
   })
 
   test('6. Freigabe an eine Gruppe', async ({ authenticatedPage: adminPage, outsiderPage: cPage }) => {
-    // dev-outsider is already provisioned by the #233 seed run same as dev-user, same reasoning
-    // as scenario 3's comment above.
-    await adminPage.goto('/admin/groups')
-    await adminPage.getByRole('button', { name: 'Neue Gruppe' }).click()
-    // CreateGroupDialog's field is labelled "Name" (not "Name der Gruppe" - that label belongs to
-    // the already-created GroupCard's own rename field instead), so this needs the same dialog
-    // scoping as the library's "Name" field above, for the same reason.
-    await adminPage.getByRole('dialog').getByLabel('Name').fill(GROUP_NAME)
-    await adminPage.getByRole('button', { name: 'Erstellen' }).click()
-    await expect(adminPage.getByText(GROUP_NAME)).toBeVisible()
-
-    await ensureAccordionExpanded(adminPage, GROUP_NAME)
-    const memberInput = adminPage.getByRole('combobox', { name: 'Benutzer' })
-    await memberInput.click()
-    await memberInput.fill('Dev Outsider')
-    await adminPage.getByRole('option', { name: /Dev Outsider/ }).click()
-    // addMember's loadGroups() flips GroupManagementPage's isLoading to true while it refetches,
-    // which swaps out the entire list of GroupCards for a loading message - unmounting this card
-    // and, with it, its local `expanded` state. ensureAccordionExpanded only helps once that
-    // reload has actually finished (a freshly mounted card really does start collapsed); waiting
-    // for the GET it triggers is what pins that moment down, rather than guessing at a delay.
-    await Promise.all([
-      adminPage.waitForResponse(
-        (response) =>
-          response.request().method() === 'GET' && response.url().endsWith('/api/v1/admin/groups'),
-      ),
-      adminPage.getByRole('button', { name: 'Mitglied hinzufügen' }).click(),
-    ])
-    await ensureAccordionExpanded(adminPage, GROUP_NAME)
-    await expect(adminPage.getByText('Dev Outsider')).toBeVisible()
+    // The group is a precondition, not the subject: it is created, filled and released through
+    // the API. dev-outsider is already provisioned by the #233 seed run, as in scenario 3.
+    await createReleasedGroupViaApi(GROUP_NAME, 'Dev Outsider')
 
     await gotoLibraries(adminPage)
     await gotoLibraryDetail(adminPage, LIBRARY_NAME)
-    await adminPage.getByRole('tab', { name: 'Verwaltung' }).click()
+    await adminPage.getByRole('tab', { name: 'Freigaben' }).click()
     await adminPage.getByRole('button', { name: 'Rechte verwalten' }).click()
     await adminPage.getByRole('button', { name: 'Freigeben' }).click()
     await adminPage.getByRole('radio', { name: 'Gruppe' }).click()
@@ -252,15 +226,3 @@ test.describe.serial('Wissensbibliotheken: Upload, Freigabe, rechtebewusste Such
     await expect(cPage.getByLabel('Dateien auswählen')).toHaveCount(0)
   })
 })
-
-// Idempotent, unlike a plain click on the summary: a MUI Accordion re-collapses on a second click,
-// and a store refresh that fires while it is open (e.g. GroupCard's addMember, which reloads the
-// whole group list) can leave it collapsed again by the time the next assertion runs. Checking
-// aria-expanded first means this always ends up open, whichever state it started in. Still used
-// for the group management accordion (#481 only touched the library pages).
-async function ensureAccordionExpanded(page: Page, name: string) {
-  const summary = page.getByRole('button', { name })
-  if ((await summary.getAttribute('aria-expanded')) !== 'true') {
-    await summary.click()
-  }
-}

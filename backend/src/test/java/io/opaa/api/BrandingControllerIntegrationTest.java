@@ -12,7 +12,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import io.opaa.auth.DevAuthFilter;
 import io.opaa.branding.BrandingDefaults;
-import io.opaa.branding.BrandingLogoValidator;
+import io.opaa.branding.BrandingImageKind;
+import io.opaa.branding.BrandingImageValidator;
 import io.opaa.test.OpaaIntegrationTest;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
@@ -57,7 +58,11 @@ class BrandingControllerIntegrationTest {
     jdbcTemplate.update(
         "UPDATE branding_settings SET product_name = NULL, claim = NULL, primary_color = NULL,"
             + " default_color_scheme = NULL, logo_content = NULL, logo_content_type = NULL,"
-            + " logo_version = NULL, logo_updated_at = NULL, updated_at = now() WHERE id = 1");
+            + " logo_version = NULL, logo_updated_at = NULL, login_logo_content = NULL,"
+            + " login_logo_content_type = NULL, login_logo_version = NULL,"
+            + " login_logo_updated_at = NULL, login_background_content = NULL,"
+            + " login_background_content_type = NULL, login_background_version = NULL,"
+            + " login_background_updated_at = NULL, updated_at = now() WHERE id = 1");
   }
 
   @Test
@@ -169,7 +174,7 @@ class BrandingControllerIntegrationTest {
                     .file(logoPart(content))
                     .with(devUser("dev-admin")))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.logoContentType").value(BrandingLogoValidator.PNG_MIME_TYPE))
+            .andExpect(jsonPath("$.logoContentType").value(BrandingImageValidator.PNG_MIME_TYPE))
             .andExpect(jsonPath("$.logoUrl").exists())
             .andReturn()
             .getResponse()
@@ -218,7 +223,7 @@ class BrandingControllerIntegrationTest {
    */
   @Test
   void aLogoAboveTheSizeLimitIsRejectedWith413() throws Exception {
-    byte[] tooLarge = new byte[BrandingLogoValidator.MAX_LOGO_SIZE_BYTES + 1];
+    byte[] tooLarge = new byte[BrandingImageKind.LOGO.maxSizeBytes() + 1];
 
     mockMvc
         .perform(
@@ -251,6 +256,103 @@ class BrandingControllerIntegrationTest {
     mockMvc
         .perform(get("/api/v1/branding/logo").with(devUser("dev-user")))
         .andExpect(status().isNotFound());
+  }
+
+  /**
+   * #1910: the three images are separate slots. Uploading one must neither show up as another nor
+   * remove one - the single stored row is what makes that worth proving rather than assuming.
+   */
+  @Test
+  void theThreeImagesAreStoredServedAndRemovedIndependently() throws Exception {
+    byte[] logo = png(120, 40);
+    byte[] loginLogo = png(300, 100);
+    byte[] background = png(1200, 800);
+
+    mockMvc.perform(
+        multipart(HttpMethod.PUT, "/api/v1/system/branding/logo")
+            .file(logoPart(logo))
+            .with(devUser("dev-admin")));
+    mockMvc.perform(
+        multipart(HttpMethod.PUT, "/api/v1/system/branding/login-logo")
+            .file(logoPart(loginLogo))
+            .with(devUser("dev-admin")));
+    mockMvc
+        .perform(
+            multipart(HttpMethod.PUT, "/api/v1/system/branding/login-background")
+                .file(logoPart(background))
+                .with(devUser("dev-admin")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.logoUrl").exists())
+        .andExpect(jsonPath("$.loginLogoUrl").exists())
+        .andExpect(jsonPath("$.loginBackgroundUrl").exists())
+        .andExpect(
+            jsonPath("$.loginBackgroundContentType").value(BrandingImageValidator.PNG_MIME_TYPE));
+
+    mockMvc
+        .perform(get("/api/v1/branding/login-logo").with(devUser("dev-user")))
+        .andExpect(status().isOk())
+        .andExpect(content().bytes(loginLogo))
+        .andExpect(header().string("X-Content-Type-Options", "nosniff"))
+        .andExpect(header().string("Content-Disposition", "inline; filename=\"login-logo\""));
+    mockMvc
+        .perform(get("/api/v1/branding/login-background").with(devUser("dev-user")))
+        .andExpect(status().isOk())
+        .andExpect(content().bytes(background));
+    mockMvc
+        .perform(get("/api/v1/branding/logo").with(devUser("dev-user")))
+        .andExpect(content().bytes(logo));
+
+    mockMvc
+        .perform(delete("/api/v1/system/branding/login-background").with(devUser("dev-admin")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.loginBackgroundUrl").doesNotExist())
+        .andExpect(jsonPath("$.loginLogoUrl").exists())
+        .andExpect(jsonPath("$.logoUrl").exists());
+    mockMvc
+        .perform(get("/api/v1/branding/login-background").with(devUser("dev-user")))
+        .andExpect(status().isNotFound());
+  }
+
+  /** The background's own, larger ceiling is what the endpoint applies - not the logo's. */
+  @Test
+  void aBackgroundTooLargeForALogoIsAcceptedButOneAboveItsOwnCeilingIsNot() throws Exception {
+    byte[] wide = png(BrandingImageKind.LOGO.maxEdgePixels() + 200, 600);
+
+    mockMvc
+        .perform(
+            multipart(HttpMethod.PUT, "/api/v1/system/branding/login-logo")
+                .file(logoPart(wide))
+                .with(devUser("dev-admin")))
+        .andExpect(status().isBadRequest());
+    mockMvc
+        .perform(
+            multipart(HttpMethod.PUT, "/api/v1/system/branding/login-background")
+                .file(logoPart(wide))
+                .with(devUser("dev-admin")))
+        .andExpect(status().isOk());
+
+    mockMvc
+        .perform(
+            multipart(HttpMethod.PUT, "/api/v1/system/branding/login-background")
+                .file(logoPart(new byte[BrandingImageKind.LOGIN_BACKGROUND.maxSizeBytes() + 1]))
+                .with(devUser("dev-admin")))
+        .andExpect(status().isPayloadTooLarge());
+  }
+
+  /** The authorization decision is per endpoint, so each of the new ones needs its own proof. */
+  @Test
+  void aPlainUserMayNeitherUploadNorRemoveTheSignInImages() throws Exception {
+    for (String path : new String[] {"login-logo", "login-background"}) {
+      mockMvc
+          .perform(
+              multipart(HttpMethod.PUT, "/api/v1/system/branding/" + path)
+                  .file(logoPart(png(120, 40)))
+                  .with(devUser("dev-user")))
+          .andExpect(status().isForbidden());
+      mockMvc
+          .perform(delete("/api/v1/system/branding/" + path).with(devUser("dev-user")))
+          .andExpect(status().isForbidden());
+    }
   }
 
   private static MockMultipartFile logoPart(byte[] content) {

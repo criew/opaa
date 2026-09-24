@@ -168,6 +168,70 @@ describe('OverviewPage (#1913)', () => {
     expect(screen.getByLabelText('Liste wird geladen')).toBeInTheDocument()
   })
 
+  it('hands a controlled search to the caller and filters nothing itself', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    renderOverview({
+      searchText: undefined,
+      search: { value: 'bau', onChange },
+      heading: undefined,
+      countLabel: (count) => `${count} Einträge`,
+      total: 57,
+    })
+
+    // Both items stay: the caller's result is what `items` hold.
+    expect(screen.getByRole('link', { name: 'Widerspruchsstelle' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Bauamt' })).toBeInTheDocument()
+    expect(screen.getByText('57 Einträge')).toBeInTheDocument()
+
+    await user.type(screen.getByRole('textbox', { name: 'Suchen' }), 'x')
+    expect(onChange).toHaveBeenCalledWith('baux')
+  })
+
+  it('announces a controlled search only once the result answers the typed text', () => {
+    const search = { value: 'bau', onChange: () => {}, resultFor: 'ba' }
+    const { rerender } = renderOverview({
+      searchText: undefined,
+      search,
+      items: [],
+      total: 57,
+    })
+
+    // The 57 belong to "ba", not to "bau": nothing is announced, and nothing is called empty.
+    expect(screen.getByRole('status')).toBeEmptyDOMElement()
+    expect(screen.queryByText(/Kein Eintrag passt/)).not.toBeInTheDocument()
+
+    rerender(
+      <OverviewPage<Item>
+        title="Beispiele"
+        storageKey="test"
+        items={[]}
+        itemKey={(item) => item.id}
+        search={{ ...search, resultFor: 'bau' }}
+        total={0}
+        columns={[]}
+        renderCard={() => null}
+        renderRow={() => null}
+      />,
+    )
+
+    expect(screen.getByRole('status')).toHaveTextContent('Kein Eintrag passt zu „bau“.')
+  })
+
+  it('keeps search and filters in reach when a narrowed result is empty', () => {
+    renderOverview({
+      items: [],
+      filters: <button type="button">Nur Prompts</button>,
+      filtered: true,
+      emptyState: <p>Noch nichts da.</p>,
+    })
+
+    expect(screen.queryByText('Noch nichts da.')).not.toBeInTheDocument()
+    expect(screen.getByText('Kein Eintrag passt zu den Filtern.', { selector: 'p' })).toBeVisible()
+    expect(screen.getByRole('textbox', { name: 'Suchen' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Nur Prompts' })).toBeInTheDocument()
+  })
+
   it('shows a load error above the list', () => {
     renderOverview({ error: 'Laden fehlgeschlagen' })
 

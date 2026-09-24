@@ -5,6 +5,7 @@ import io.opaa.chat.ChatNoteExtractionService;
 import io.opaa.chat.ChatNotePoint;
 import io.opaa.chat.ChatService;
 import io.opaa.chat.ChatSource;
+import io.opaa.chat.UsedPrompt;
 import io.opaa.indexing.metadata.MetadataFilter;
 import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.observability.QueryMetrics;
@@ -138,6 +139,8 @@ public class SpikeToolLoopQueryHandler {
    *
    * @param startTime {@code System.currentTimeMillis()} at the start of the caller's turn, for
    *     {@link QueryOutcome#durationMs()} - the same reference point the ordinary path uses.
+   * @param usedPrompt the checked prompt the question was built from, or {@code null}; persisted
+   *     with the question like on the ordinary path.
    */
   public Optional<QueryResult> handle(
       String rawQuestion,
@@ -147,7 +150,8 @@ public class SpikeToolLoopQueryHandler {
       List<ChatNotePoint> notePoints,
       Set<UUID> searchScope,
       MetadataFilter metadataFilter,
-      long startTime) {
+      long startTime,
+      UsedPrompt usedPrompt) {
     if (rawQuestion == null
         || !rawQuestion.regionMatches(true, 0, TEST_PREFIX, 0, TEST_PREFIX.length())) {
       return Optional.empty();
@@ -205,7 +209,8 @@ public class SpikeToolLoopQueryHandler {
         .ifPresent(message -> chatMemory.add(conversationKey, message));
 
     String chatTitle =
-        chat.map(c -> chatService.appendTurn(c, question, rawAnswer, sources)).orElse(null);
+        chat.map(c -> chatService.appendTurn(c, question, usedPrompt, rawAnswer, sources))
+            .orElse(null);
     chat.ifPresent(
         c -> chatNoteExtractionService.condenseAsync(c.getId(), c.getSpaceId(), question));
 

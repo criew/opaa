@@ -5,9 +5,10 @@
  * Herleitung ({@link io.opaa.asset.AssetAccessDerivationService}), its release level, findability
  * and owner ({@link io.opaa.asset.AssetShellService}), the reach history ({@link
  * io.opaa.asset.AssetVisibilityHistoryService}), succession ({@link
- * io.opaa.asset.AssetSuccessionSource}) and ownership transfer. There is exactly one of each; an
- * asset type adds a table, an entity extending {@code Asset} and an {@link
- * io.opaa.asset.AssetTypeDefinition} - no grant logic, no history, no finding source of its own.
+ * io.opaa.asset.AssetSuccessionSource}), ownership transfer and the catalog ({@link
+ * io.opaa.asset.AssetCatalogService}). There is exactly one of each; an asset type adds a table, an
+ * entity extending {@code Asset} and an {@link io.opaa.asset.AssetTypeDefinition} - no grant logic,
+ * no history, no finding source of its own.
  *
  * <p><b>Dependencies.</b> This package builds on {@code io.opaa.permission} (the rights formula,
  * the grant rows, the rights history) and never reaches a business package: {@code io.opaa.library}

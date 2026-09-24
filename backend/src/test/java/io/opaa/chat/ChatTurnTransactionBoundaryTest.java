@@ -34,10 +34,15 @@ class ChatTurnTransactionBoundaryTest {
     Method appendTurn =
         ChatService.class.getMethod(
             "appendTurn", Chat.class, String.class, String.class, List.class);
+    Method appendTurnWithPrompt =
+        ChatService.class.getMethod(
+            "appendTurn", Chat.class, String.class, UsedPrompt.class, String.class, List.class);
 
-    Transactional annotation = appendTurn.getAnnotation(Transactional.class);
-    assertThat(annotation).isNotNull();
-    assertThat(annotation.propagation()).isEqualTo(Propagation.NOT_SUPPORTED);
+    for (Method method : List.of(appendTurn, appendTurnWithPrompt)) {
+      Transactional annotation = method.getAnnotation(Transactional.class);
+      assertThat(annotation).as(method.toString()).isNotNull();
+      assertThat(annotation.propagation()).isEqualTo(Propagation.NOT_SUPPORTED);
+    }
   }
 
   /**
@@ -64,6 +69,7 @@ class ChatTurnTransactionBoundaryTest {
             UUID.class,
             UUID.class,
             String.class,
+            UsedPrompt.class,
             String.class,
             String.class,
             String.class);

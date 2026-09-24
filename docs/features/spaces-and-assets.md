@@ -261,9 +261,25 @@ Ein Prompt kann Stellen offenlassen, die beim Einsetzen gefüllt werden: `Entwir
 - **Systemvariablen** `{{CURRENT_DATE}}` und `{{USER_NAME}}` werden beim Einsetzen aufgelöst — das Datum des Tages, der Name der einsetzenden Person. Sie werden in jeder Schreibweise erkannt (`{{current_date}}`, die Schreibweise von LibreChat) und in Großbuchstaben gespeichert. Sie werden nicht definiert; eine Definition dieses Namens, gleich in welcher Schreibweise, wird mit dem Hinweis abgelehnt, dass die Systemvariable ohne Definition im Text stehen darf.
 - **Text und Definitionen müssen in beide Richtungen übereinstimmen.** Der Server lehnt einen Platzhalter ohne Definition ebenso ab wie eine Definition, die der Text nicht verwendet. Geprüft wird der normalisierte Text, und ein Prompt wird nur gespeichert, wie diese Prüfung ihn angenommen hat; derselbe Text in anderer Schreibweise gilt nicht als Änderung.
 
-Das Einsetzen selbst — Formular für die Variablen, aufgelöster Text im Eingabefeld, Senden als eigene Handlung — ist Gegenstand von [#1903](https://github.com/criew/opaa/issues/1903). Angelegt und gepflegt werden Prompts in der Oberfläche ([#1902](https://github.com/criew/opaa/issues/1902)): Der Editor leitet die Variablentabelle aus den Platzhaltern des Textes ab, prüft vor dem Senden dieselben Regeln wie der Server und zeigt eine Vorschau mit Beispielwerten.
+Das Einsetzen im Chat beschreibt der Abschnitt [Prompt im Chat](#prompt-im-chat). Angelegt und gepflegt werden Prompts in der Oberfläche ([#1902](https://github.com/criew/opaa/issues/1902)): Der Editor leitet die Variablentabelle aus den Platzhaltern des Textes ab, prüft vor dem Senden dieselben Regeln wie der Server und zeigt eine Vorschau mit Beispielwerten. Vorschau und Einsetzen lösen die Platzhalter mit demselben Resolver auf und schreiben Daten gleich (`TT.MM.JJJJ`); die Vorschau ist also der Text, wie er beim Einsetzen herauskäme.
 
 **Variablen sind keine Parameter.** Ein [Parameter](#anpassen-ohne-fork-parameter) stellt ein geteiltes Asset für Empfangende dauerhaft ein, ohne es zu verändern. Eine Variable dagegen gehört zu dem, was der Prompt ist, und wird bei jedem Einsetzen von der einsetzenden Person gefüllt.
+
+#### Prompt im Chat
+
+Ein Prompt wird im Chat benutzt, nicht nur abgelegt ([#1903](https://github.com/criew/opaa/issues/1903)). Der Ablauf folgt dem Konsens der Wettbewerbsrecherche (Epic #1726) — `/name` als Auslöser, Formular für die Variablen — und weicht an einer Stelle bewusst ab: Der aufgelöste Text wird **nicht** sofort gesendet, sondern steht bearbeitbar im Eingabefeld. Die fragende Person sieht, was an das Modell geht.
+
+1. **Auswählen.** Ein `/` am Anfang einer Zeile im Eingabefeld öffnet die Auswahl. Sie enthält alle Prompts aus Prompt-Bibliotheken, die die Person nach der Formel lesen darf (`GET /api/v1/prompts/available`), gruppiert nach Bibliothek; im Chat eines Space stehen die dort [assoziierten](#assets-in-einen-space-assoziieren) Bibliotheken voran und sind gekennzeichnet (`associatedWithSpace`). Die Assoziation ordnet nur — eine assoziierte Bibliothek, die die Person nicht lesen darf, erscheint nicht. Gesucht wird in Befehlsname, Titel und Beschreibung. Die Auswahl ist bewusst schlank (Kennung, Bibliothek, Name, Titel, Beschreibung, `hasVariables`); Text und Variablen holt der Client erst mit der Wahl über die Einzelansicht des Prompts.
+2. **Ausfüllen.** Ein Prompt ohne Variablen wird sofort eingesetzt. Einer mit Variablen fragt die Werte in einem Formular ab: ein Feld je Variable nach ihrem Typ, Vorbelegungen eingetragen, ein Datum ohne Vorbelegung auf den heutigen Tag gesetzt; Pflichtfelder sperren „Einsetzen". `{{CURRENT_DATE}}` und `{{USER_NAME}}` löst der Client auf. Datumswerte stehen im eingesetzten Text als `TT.MM.JJJJ`.
+3. **Senden.** Der Text landet im Eingabefeld, ein Chip „Prompt: <Titel>" kennzeichnet ihn. Senden bleibt eine eigene Handlung. Wer den Chip entfernt, sendet ohne Kennzeichnung.
+
+**Was der Server tut.** Die Anfrage trägt `usedPromptId`. Der Server löst den Text **nicht** auf — er sieht die fertige Frage wie jede getippte; Suche und Modellaufruf bleiben unverändert. Er prüft nur das Leserecht auf die Bibliothek des Prompts über die Schale (`AssetAuthorization#requireContentRole`, also die Formel; die Systemverwaltung ohne Grant darf nicht). Fehlt es, lehnt er die Frage vor jedem Modellaufruf mit `403` und dem Code `PROMPT_NOT_USABLE` ab; ein unbekannter Prompt und einer einer anderen Organisation antworten gleich, damit keine fremde Kennung bestätigt wird. Der Client nimmt die Frage dann aus dem Verlauf und legt ihren Text ohne Chip ins Eingabefeld zurück. Im gespeicherten Chat hält er Kennung und **Titel zum Zeitpunkt des Sendens** an der Nutzer-Nachricht fest (`chat_messages.used_prompt_id`, `used_prompt_title`, nur gemeinsam und nur an einer Frage) und liefert beides in `ChatMessageResponse` zurück.
+
+**Nachweis im Verlauf.** An der Frage steht „Prompt: <Titel>". Das ist ein Namens-Snapshot, kein Link: Er bleibt stehen, wenn der Prompt umbenannt oder gelöscht wird oder die Person ihn nicht mehr lesen darf. Die Spalten haben deshalb keinen Fremdschlüssel auf `prompts`. Kein Wettbewerber zeigt im Verlauf, welcher Prompt benutzt wurde.
+
+**Kein Auswertungspfad.** Die Verwendung ist kein Protokollereignis ([Protokoll](#protokoll)) und keine Statistik: Es gibt keinen Endpunkt, keinen Filter und keine Sortierung nach Person oder nach verwendetem Prompt über Gespräche hinweg, und `used_prompt_id` trägt keinen Index. Der Prompt ist nur dort sichtbar, wo die Frage selbst sichtbar ist — im Chat ihres Autors ([Kein personenbezogener Auswertungspfad](#kein-personenbezogener-auswertungspfad)). `PromptUsageSpecificationTest` hält das über die API-Spezifikation fest, `UsedPromptQueryGuardTest` an der Quelle: Keine Abfrage, keine abgeleitete Repository-Methode und kein späteres Changeset nennt die Spalten. Eine künftige [Nutzungstransparenz](#nutzungstransparenz) je Asset wäre eine eigene, aggregierte Erhebung, nicht eine Abfrage über diese Spalten.
+
+Außerhalb dieses Abschnitts: ein Prompt als dauerhafter Vorspann für einen ganzen Chat (das ist der Skill), Favoriten und „zuletzt verwendet".
 
 #### Rechte, Anlegen und Nachfolge
 
@@ -457,7 +473,7 @@ Ein Katalogeintrag enthält **Beschreibungen, keine Inhalte**:
 
 Die Suche im Katalog läuft über die Assets, auf die der Nutzer Zugriff hat — direkter Grant, Grant an eine seiner Gruppen oder Grant an „Alle Konten" —, **vereinigt** mit den gelisteten. Sie überschreitet **nie** die Organisationsgrenze (siehe [Organisation als Mandantengrenze](#organisation-als-mandantengrenze)).
 
-*Phasenlage: durchsuchbarer Katalog in Phase 2; der organisationsweite Katalog mit Freigabestand in Phase 3.*
+*Phasenlage: durchsuchbarer Katalog in Phase 2; der organisationsweite Katalog mit Freigabestand in Phase 3. Gebaut ist ein erster Katalog ohne Freigabestand, Fachbereich und Nutzungsangaben ([#1904](https://github.com/criew/opaa/issues/1904)); was er zeigt, steht unter [Gebauter Ist-Stand](#gebauter-ist-stand).*
 
 ### Vorlagenkatalog nach Fachbereich
 
@@ -646,6 +662,18 @@ Warum drei statt der bisherigen vier Rollen:
 Ein Space-`CURATOR` kann jedes Asset, auf das er selbst Zugriff hat, in seinen Space assoziieren. Das ist unbedenklich, weil die Assoziation **keine Rechte gewährt** — sie stellt das Asset lediglich im Space zur Verfügung, und zwar nur für die Mitglieder, die ohnehin Zugriff darauf haben.
 
 Der Eigentümer des Assets sieht alle Assoziationen und kann jede davon jederzeit einseitig lösen. Das Asset bleibt Herr über seine Verbreitung.
+
+**Die Zuordnungen sind für jeden Leseberechtigten sichtbar — aber nur so weit, wie der Space selbst sichtbar ist** ([#1939](https://github.com/criew/opaa/issues/1939)). Wer ein Asset lesen darf, darf auch erfahren, in welchen Spaces es bereitsteht: Das ist Teil der Antwort auf „wer sieht das eigentlich?", und die Detailansicht zeigt es im Reiter „Freigaben". Die Preisgabe endet jedoch an der [Space-Sichtbarkeit](#space-sichtbarkeit): Ein `PRIVATE`-Space verspricht, dass nur seine Mitglieder von seiner Existenz wissen, und dieses Versprechen wiegt schwerer als die Vollständigkeit der Zuordnungsliste — sonst verriete jede organisationsweit lesbare Bibliothek den Namen jedes Verfahrens, in dem sie eingebunden ist.
+
+Daraus folgt eine Schwelle, nicht zwei Listen:
+
+| Rolle am Asset | Was die Zuordnungen zeigen |
+| --- | --- |
+| ab `MANAGER` | jede Assoziation mit Name, Urheber, Zeitpunkt und dem Hinweis „nicht alle Mitglieder lesen"; ungefiltert, auch Spaces, in denen der Aufrufer nicht Mitglied ist — er soll eine zu weite Zuordnung auch lösen können |
+| `VIEWER`/`EDITOR` | Name und Verweis der Spaces, die der Aufrufer ohnehin sehen darf (Mitgliedschaft oder eine Sichtbarkeit ungleich `PRIVATE`). Die übrigen erscheinen nur als Zahl (`hiddenCount`), die Oberfläche nennt sie „+ N weitere, die Sie nicht sehen können" |
+| unter `VIEWER` | `404` wie für ein unbekanntes Asset |
+
+Die Zahl selbst ist bewusst kein Geheimnis: Sie sagt, dass die Liste unvollständig ist, ohne einen einzigen Space zu benennen — ein unkommentiert gekürztes Ergebnis wäre die schlechtere Auskunft.
 
 **Die Assoziation hängt an der Schale** ([#1900](https://github.com/criew/opaa/issues/1900)). `space_asset_associations.asset_id` verweist mit der Organisation auf `assets`; das Löschen eines Assets nimmt seine Assoziationen mit, gleich welchen Typs es ist. Ein Space führt seine Assets über `GET/POST /api/v1/spaces/{spaceId}/assets` und `DELETE /api/v1/spaces/{spaceId}/assets/{assetId}`, die Gegenrichtung über `GET /api/v1/assets/{assetType}/{assetId}/spaces`; jeder Eintrag nennt den Asset-Typ. Assoziieren darf, wer im Space `CURATOR` ist und das Asset selbst lesen kann; lösen darf auch der Verwalter des Assets. Den Suchbereich verengen nur assoziierte **Wissensbibliotheken** — andere Typen tragen keine Dokumente und bleiben dort außen vor.
 
@@ -1252,6 +1280,51 @@ Das Modell weicht **von beiden Mustern ab**, aber nicht in derselben Sache — e
 - Ob ein Freigabestempel über Installationsgrenzen hinweg nachweisbar bleiben soll (Signatur der Herkunftsinstallation) — heute wandert er als bloße Herkunftsangabe mit.
 - Übernahme von Berechtigungen aus Quellsystemen zusätzlich zu den Bibliotheksrechten.
 - Konkreter Aktualisierungsweg für mitgelieferte Assets in einem Netz ohne Internetanbindung (Signatur, Prüfung, Einspielung).
+
+---
+
+## Gebauter Ist-Stand
+
+Stand nach Epic [#1726](https://github.com/criew/opaa/issues/1726), September 2026. Die Kapitel oben beschreiben das Zielbild; hier steht, was davon gebaut ist und was nicht. Wie es sich bedient, beschreibt das Handbuch (`docs/handbuch/bibliotheken-und-berechtigungen.md`, `docs/handbuch/prompt-bibliotheken.md`).
+
+**Zwei Asset-Typen.** Gebaut sind die Wissensbibliothek (`KNOWLEDGE_LIBRARY`) und die [Prompt-Bibliothek](#prompt-bibliothek) (`PROMPT_LIBRARY`). Der Agent ist Zielbild.
+
+**Die Schale.** Beide Typen liegen auf der [Asset-Schale](#die-asset-schale): Tabelle `assets` plus je Typ eine Typtabelle, im Code die Basisentität `Asset` (`io.opaa.asset`) mit `KnowledgeLibrary` und `PromptLibrary` als Unterklassen und je eine `AssetTypeDefinition`. Was für jeden Typ gleich gilt, gibt es genau einmal:
+
+| Baustein | Ort |
+|---|---|
+| Rechteformel „direkter Grant ∪ Gruppen-Grant ∪ Grant an „Alle Konten"" | `AssetAccessService` (`io.opaa.permission`), ohne Durchgriff der Systemverwaltung |
+| Verwaltungsboden der Systemverwaltung — Verwalten ist nicht Lesen | `AssetAuthorization` |
+| Grants samt der Freigabe an „Alle Konten" und Rechtehistorie, Auffindbarkeit und ihre Historie, Eigentum und Übertragung, „Nachfolge offen" | `AssetGrantService`, `AssetShellService`, `AssetVisibilityHistoryService`, `AssetShellOwnershipDirectory`, `AssetSuccessionSource` |
+| Space-Assoziation | `space_asset_associations` mit Fremdschlüssel auf `assets` |
+| Katalog | `AssetCatalogService` |
+| Oberfläche | ein Freigabeabschnitt (`AssetDistributionSection`), ein Rechtedialog samt Grant-Store, eine Übersichtskomponente (`OverviewPage`) |
+
+**Generische Endpunkte.** Was jeder Typ hat, nennt den Typ im Pfad oder als Parameter; die typeigenen Pfade tragen nur Stammdaten und Inhalt (`/api/v1/libraries/…`, `/api/v1/prompt-libraries/…`, für den Chat `/api/v1/prompts/available`).
+
+| Zweck | Endpunkt |
+|---|---|
+| Rechte erteilen, ändern, entziehen; Mitglieder einer berechtigten Gruppe | `/api/v1/assets/{assetType}/{assetId}/grants`, `…/grants/{grantId}`, `…/grants/groups/{groupId}/members` |
+| Herleitung „warum sehe ich das" | `GET /api/v1/assets/{assetType}/{assetId}/access-derivation` |
+| Space-Assoziation aus Sicht des Assets | `/api/v1/assets/{assetType}/{assetId}/spaces` |
+| Katalog | `GET /api/v1/catalog?type=&q=&page=&size=` |
+
+**Der Katalog.** Eine Abfrage auf `assets` über alle Typen: innerhalb der Organisation der anfragenden Person, `listed = true` oder lesbar, dazu Suche über Name und Beschreibung (ohne Rücksicht auf Groß- und Kleinschreibung, jedes Zeichen wörtlich), sortiert nach Name, seitenweise. Die lesbare Menge kommt je Typ aus `AssetAccessService#readableAssetIds` — der Katalog hat keine eigene Rechteformel, `listed` wird getrennt davon ausgewertet. Der gelistete Teil hat einen Teilindex (`idx_assets_organization_listed`, Organisation und Typ, nur gelistete Assets). Ein Eintrag trägt Typ, Kennung, Name, Beschreibung, Eigentümerart und zuständige Stelle (Gruppenname oder Anzeigename, nie eine E-Mail-Adresse, eine geschützte Gruppe unbenannt), Herkunft, `accessible`, `listed`, Umfang (`itemCount`: oberste Dokumente einer Wissensbibliothek, Prompts einer Prompt-Bibliothek — je Typ über den Port `AssetExtent`, eine gruppierte Abfrage je Typ und Seite), Verbreitung (`spaceCount`: Zahl der assoziierten Spaces aus `space_asset_associations`, eine gruppierte Abfrage je Seite) und den Zustand „Nachfolge offen" mit Adressat — keine Inhalte. `accessible` folgt allein der Formel: Auch die Systemverwaltung ohne Grant findet ein gelistetes Asset nur als Eintrag ohne Zugriff, und seine Detailansicht antwortet weiter `404` bzw. `403`. In der Oberfläche ist der Katalog ein eigener Punkt der Leiste (`/catalog`) neben den Verwaltungssichten „Wissen" und „Prompts"; die Kachel zeigt Typ, Umfang und Verbreitung, die Tabelle zusätzlich die Herkunft, und ein Eintrag ohne Zugriff ist kein Link und nennt die zuständige Stelle.
+
+**Bekannte Grenze.** Die lesbare Menge entsteht im Speicher — je Typ aus der Formel, die an „Alle Konten" freigegebenen Assets eingeschlossen — und geht als `IN`-Liste in die Katalogabfrage und ihre Zählung. Der PostgreSQL-Treiber nimmt je Anweisung höchstens 65 535 Parameter; eine Person, die mehr Assets lesen darf, bekäme vom Katalog einen Fehler statt einer Seite. Dasselbe Muster tragen die bestehenden Listen der Asset-Typen. Die Formel als Teilabfrage in SQL nachzubauen, verdoppelte sie und ist deshalb nicht gebaut.
+
+Gegenüber dem Kapitel [Der Katalog](#der-katalog) fehlen im Eintrag der Anwendungsfall in einem Satz, der Fachbereich, der Freigabestand und die Nutzungsangaben — von „Umfang und Verbreitung" ist die Verbreitung über Spaces gebaut, „wie oft genutzt" nicht, weil es keine Nutzungsstatistik gibt. Die Regel aus [Freigabestufen und Auffindbarkeit](#freigabestufen-und-auffindbarkeit), dass erst ab Fachbereichsebene gelistet werden kann, ist nicht gebaut: Listen ist eine ausdrückliche Handlung mit Vorgabe `false`, aber an keine Freigabe gebunden; begrenzen kann es nur die Freigabe-Obergrenze einer Konnektorbibliothek.
+
+**Die Prompt-Bibliothek in Gebrauch.** Anlegen (auch im Namen einer Gruppe), Prompts mit typisierten Variablen pflegen, an Personen, Gruppen und „Alle Konten" freigeben, einem Space zuordnen, im Chat per `/name` mit Variablenformular einsetzen, Nachweis „Prompt: <Titel>" im Verlauf — alles über die Oberfläche und ohne Systemverwaltung.
+
+**Nachweis.** Die Typunabhängigkeit belegt `AssetShellTypeIndependenceIntegrationTest` mit einem nur im Test deklarierten Typ; die Freigabewege, die Organisationsgrenze und die Einigkeit von Liste und Einzelansicht der Prompt-Bibliothek `PromptLibraryServiceIntegrationTest`; die Katalogmenge über beide Typen samt `accessible` und Organisationsgrenze `AssetCatalogServiceIntegrationTest`; den ganzen Weg über die Oberfläche `e2e/tests/prompt-libraries.spec.ts`.
+
+**Was fehlt.**
+
+- **Freigabeweg und Versionierung** — vorschlagen, prüfen, freigeben, veröffentlichen; damit auch der Freigabestand im Katalog.
+- **Mitgelieferte Assets** — `origin = BUILT_IN` ist im Schema vorgesehen, angelegt wird es von nichts; ebenso der Aktualisierungsweg.
+- **Nutzungsstatistik** — aggregiert und mit Mindestgruppengröße ([Nutzungstransparenz](#nutzungstransparenz)). Die Verwendung eines Prompts ist nur an der eigenen Nachricht vermerkt (`chat_messages.used_prompt_id`/`used_prompt_title`, Changeset 088, Hinweis im Verlauf), ohne Index und ohne Abfrage über Gespräche hinweg; sie wird weder protokolliert noch gezählt.
+- **Parameter, Abkömmlinge, Referenz statt Kopie, Export und Import** und der **Agent** als Asset-Typ.
 
 ---
 

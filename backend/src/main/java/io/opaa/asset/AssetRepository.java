@@ -1,8 +1,12 @@
 package io.opaa.asset;
 
+import io.opaa.permission.AssetType;
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -53,6 +57,51 @@ public interface AssetRepository extends JpaRepository<Asset, UUID> {
       "select new io.opaa.asset.AssetHeader(a.id, a.assetType, a.organizationId, a.name,"
           + " a.description) from Asset a where a.id in :ids")
   List<AssetHeader> findHeadersByIdIn(@Param("ids") Collection<UUID> ids);
+
+  /**
+   * The catalog in one query over every type: the assets of {@code assetTypes} in the organization
+   * that are listed or among {@code readableIds}, whose name or description matches {@code pattern}
+   * case-insensitively (a {@code LIKE} pattern escaped with a backslash), ordered by name.
+   */
+  @Query(
+      value =
+          "select a.id as id, a.assetType as assetType, a.name as name,"
+              + " a.description as description, a.ownerType as ownerType,"
+              + " a.ownerUserId as ownerUserId, a.ownerGroupId as ownerGroupId,"
+              + " a.origin as origin, a.listed as listed"
+              + CATALOG_CONDITION
+              + " order by lower(a.name), a.id",
+      countQuery = "select count(a)" + CATALOG_CONDITION)
+  Page<AssetCatalogRow> findCatalogPage(
+      @Param("organizationId") UUID organizationId,
+      @Param("assetTypes") Collection<AssetType> assetTypes,
+      @Param("readableIds") Set<UUID> readableIds,
+      @Param("pattern") String pattern,
+      Pageable pageable);
+
+  /**
+   * In how many spaces each of the assets is associated, in one grouped query - the spread the
+   * catalog shows. An asset without association is absent.
+   */
+  @Query(
+      value =
+          "SELECT asset_id AS \"assetId\", count(*) AS \"spaceCount\""
+              + " FROM space_asset_associations WHERE asset_id IN (:assetIds) GROUP BY asset_id",
+      nativeQuery = true)
+  List<AssetSpaceCount> countSpaceAssociations(@Param("assetIds") Collection<UUID> assetIds);
+
+  interface AssetSpaceCount {
+    UUID getAssetId();
+
+    long getSpaceCount();
+  }
+
+  String CATALOG_CONDITION =
+      " from Asset a where a.organizationId = :organizationId"
+          + " and a.assetType in :assetTypes"
+          + " and (a.listed = true or a.id in :readableIds)"
+          + " and (lower(a.name) like lower(:pattern) escape '\\'"
+          + " or lower(coalesce(a.description, '')) like lower(:pattern) escape '\\')";
 
   /** Every asset of one organization - what the succession detection run walks. */
   List<Asset> findByOrganizationId(UUID organizationId);

@@ -2,12 +2,14 @@ package io.opaa.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.opaa.api.dto.AssetSpaceAssociationListResponse;
 import io.opaa.api.dto.AssetSpaceAssociationResponse;
 import io.opaa.api.dto.AssetType;
 import io.opaa.api.dto.SpaceAssetAssociationListResponse;
 import io.opaa.api.dto.SpaceAssetAssociationResponse;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.space.AssetSpaceLink;
+import io.opaa.space.AssetSpaceLinks;
 import io.opaa.space.SpaceAssetAssociation;
 import io.opaa.space.SpaceAssetLink;
 import io.opaa.space.SpaceAssetLinks;
@@ -103,7 +105,8 @@ class SpaceAssetAssociationResponseMapperTest {
   @Test
   void toAssetSpaceResponseCarriesTheSpaceNameAndNarrowerReaderCircleFlag() {
     SpaceAssetAssociation association = association();
-    AssetSpaceLink link = new AssetSpaceLink(association, "Fachbereich", true, "Ada Lovelace");
+    AssetSpaceLink link =
+        new AssetSpaceLink(association, "Fachbereich", true, "Ada Lovelace", true);
 
     AssetSpaceAssociationResponse response =
         SpaceAssetAssociationResponseMapper.toAssetSpaceResponse(link);
@@ -116,11 +119,48 @@ class SpaceAssetAssociationResponseMapperTest {
     assertThat(response.getNarrowerReaderCircle()).isTrue();
   }
 
+  // #1939: the reduced entry a reader below MANAGER gets - space and name, nothing else. Asserted
+  // field by field, because every omitted field is a deliberate non-disclosure.
   @Test
-  void toAssetSpaceResponsesReturnsAnEmptyListForNoLinksInsteadOfNull() {
-    List<AssetSpaceAssociationResponse> responses =
-        SpaceAssetAssociationResponseMapper.toAssetSpaceResponses(List.of());
+  void toAssetSpaceResponseOmitsEveryManagementFieldWithoutManagementDetail() {
+    SpaceAssetAssociation association = association();
+    AssetSpaceLink link =
+        new AssetSpaceLink(association, "Fachbereich", false, "Ada Lovelace", false);
 
-    assertThat(responses).isEmpty();
+    AssetSpaceAssociationResponse response =
+        SpaceAssetAssociationResponseMapper.toAssetSpaceResponse(link);
+
+    assertThat(response.getSpaceId()).isEqualTo(association.getSpaceId());
+    assertThat(response.getSpaceName()).isEqualTo("Fachbereich");
+    assertThat(response.getCreatedByUserId()).isNull();
+    assertThat(response.getCreatedByDisplayName()).isNull();
+    assertThat(response.getCreatedAt()).isNull();
+    assertThat(response.getNarrowerReaderCircle()).isNull();
+  }
+
+  @Test
+  void toAssetSpaceListResponseReturnsAnEmptyListForNoLinksInsteadOfNull() {
+    AssetSpaceAssociationListResponse response =
+        SpaceAssetAssociationResponseMapper.toAssetSpaceListResponse(
+            new AssetSpaceLinks(List.of(), 0));
+
+    assertThat(response.getItems()).isEmpty();
+    assertThat(response.getHiddenCount()).isZero();
+  }
+
+  // #1939: hiddenCount zählt die Spaces, die dieser Aufrufer nicht erfahren darf - er steht neben
+  // den Einträgen, nicht in ihnen.
+  @Test
+  void toAssetSpaceListResponseCarriesTheHiddenCountAlongsideTheItems() {
+    AssetSpaceAssociationListResponse response =
+        SpaceAssetAssociationResponseMapper.toAssetSpaceListResponse(
+            new AssetSpaceLinks(
+                List.of(new AssetSpaceLink(association(), "Fachbereich", false, null, false)), 2));
+
+    assertThat(response.getItems())
+        .singleElement()
+        .extracting(AssetSpaceAssociationResponse::getSpaceName)
+        .isEqualTo("Fachbereich");
+    assertThat(response.getHiddenCount()).isEqualTo(2);
   }
 }

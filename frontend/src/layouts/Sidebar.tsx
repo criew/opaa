@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
@@ -23,6 +23,7 @@ import { spaceSettingsRoute } from '../routes'
 import ChatList from '../components/chat/ChatList'
 import { useChatStore } from '../stores/chatStore'
 import { useSpaceStore } from '../stores/spaceStore'
+import { rememberSpaceUse, spacesByRecentUse, useRecentSpaceIds } from '../utils/recentSpaces'
 import { darkRoles, fontFamily, lightRoles, shadow } from '../theme/tokens'
 
 const SIDEBAR_WIDTH = 248
@@ -85,6 +86,25 @@ export default function Sidebar() {
   const defaultSpace = spaces.find((space) => space.isDefault) ?? spaces[0]
   const activeChatSpaceId = routeSpaceId ?? chatSpaceId ?? defaultSpace?.id ?? null
   const activeSpace = spaces.find((space) => space.id === activeChatSpaceId)
+
+  // #1911/#1912: Gemerkt wird nur der Space, den die Route selbst nennt - nicht der Rückfall
+  // oben. Sonst stünde der persönliche Space als „zuletzt genutzt" in der Liste, sobald jemand
+  // eine Seite ohne Space-Bezug geöffnet hat.
+  useEffect(() => {
+    if (routeSpaceId) rememberSpaceUse(routeSpaceId)
+  }, [routeSpaceId])
+
+  const recentSpaceIds = useRecentSpaceIds()
+
+  // #1912: Das Menü bleibt kurz - die zuletzt genutzten Spaces, damit „Alle Spaces anzeigen" und
+  // „Neuen Space anlegen" darunter sichtbar bleiben, auch wenn jemand in dreißig Spaces Mitglied
+  // ist. Der ganze Bestand steht in der Übersicht. Die Reihenfolge kommt als Zustand herein, nicht
+  // als Lesezugriff: Sonst rechnete dieser Wert vor dem Effekt oben, und ein über „Alle Spaces"
+  // geöffneter Space stünde erst nach einem Neuladen im Menü.
+  const menuSpaces = useMemo(
+    () => spacesByRecentUse(spaces, recentSpaceIds),
+    [spaces, recentSpaceIds],
+  )
 
   // #1917: Den Einstieg sieht, wer an diesem Space etwas zu verwalten hat - ein Administrator
   // (Stammdaten, Mitglieder) oder ein Kurator (zugeordnetes Wissen). Für alle anderen sind die
@@ -176,14 +196,14 @@ export default function Sidebar() {
               textTransform: 'uppercase',
             }}
           >
-            Ihre Spaces
+            Zuletzt genutzt
           </ListSubheader>
           {isLoadingSpaces && spaces.length === 0 && (
             <Box sx={{ py: 1.5, display: 'flex', justifyContent: 'center' }}>
               <CircularProgress size={20} aria-label="Spaces werden geladen" />
             </Box>
           )}
-          {spaces.map((space) => (
+          {menuSpaces.map((space) => (
             <MenuItem
               key={space.id}
               selected={space.id === activeChatSpaceId}

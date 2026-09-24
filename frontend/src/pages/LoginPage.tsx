@@ -42,6 +42,8 @@ function providerHost(issuerUri: string): string {
 interface ProviderChoiceProps {
   provider: SignInProvider
   isSuggested: boolean
+  /** Whether this tile is the page's one primary button - never while the local mask is shown. */
+  emphasised: boolean
   showsLastUsed: boolean
   isSigningIn: boolean
   disabled: boolean
@@ -49,12 +51,15 @@ interface ProviderChoiceProps {
 }
 
 /**
- * One sign-in tile: monogram, the action as its label, the provider's host as the line a person
- * recognises it by. The suggested provider is the page's one primary button (guidelines 5.1).
+ * One sign-in tile, one line high (#1910): monogram, the provider's name, its host as the line a
+ * person recognises it by. Five of them stand under each other without scrolling, which is what
+ * #1910 asks for instead of a dropdown. The action stays in the accessible name, not in the
+ * visible label - the section above already says that this is how one signs in here.
  */
 function ProviderChoice({
   provider,
   isSuggested,
+  emphasised,
   showsLastUsed,
   isSigningIn,
   disabled,
@@ -65,43 +70,50 @@ function ProviderChoice({
   const lastUsedHintId = `login-${provider.id}-last-used`
   return (
     <Button
-      variant={isSuggested ? 'contained' : 'outlined'}
+      variant={emphasised ? 'contained' : 'outlined'}
       fullWidth
       onClick={onChoose}
       disabled={disabled}
-      // The host line is recognition, not part of the action - the name stays the plain verb
-      // phrase the tile shows in its first line.
+      // The host line is recognition, not part of the action - the accessible name stays the
+      // plain verb phrase, which is also what a voice command has to be able to say.
       aria-label={label}
       aria-describedby={showsLastUsed ? lastUsedHintId : undefined}
       sx={{
         justifyContent: 'flex-start',
         textAlign: 'left',
-        gap: 1.5,
-        px: 1.5,
-        py: 1.25,
-        minHeight: 64,
+        gap: 1.25,
+        px: 1.25,
+        py: 0.75,
+        minHeight: 44,
         borderRadius: `${radius.md}px`,
         '&:hover .login-choice-arrow': { transform: 'translateX(3px)' },
       }}
     >
-      <ProviderMonogram name={provider.displayName} tone={isSuggested ? 'inverse' : 'accent'} />
-      <Box component="span" sx={{ flex: 1, minWidth: 0 }}>
+      <ProviderMonogram
+        name={provider.displayName}
+        tone={emphasised ? 'inverse' : 'accent'}
+        size={26}
+      />
+      <Box
+        component="span"
+        sx={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'baseline', gap: 1 }}
+      >
         <Box
           component="span"
-          sx={{ display: 'block', fontSize: 14.5, fontWeight: 600, lineHeight: 1.25 }}
+          sx={{ fontSize: 14, fontWeight: 600, lineHeight: 1.3, whiteSpace: 'nowrap' }}
         >
-          {label}
+          {isSigningIn && isSuggested ? 'Anmeldung läuft …' : provider.displayName}
         </Box>
         <Box
           component="span"
           sx={{
-            display: 'block',
-            mt: 0.5,
-            fontSize: 12,
+            flex: 1,
+            minWidth: 0,
+            fontSize: 11.5,
             fontWeight: 400,
-            lineHeight: 1.25,
+            lineHeight: 1.3,
             fontFamily: fontFamily.mono,
-            color: isSuggested ? 'inherit' : 'text.secondary',
+            color: emphasised ? 'inherit' : 'text.secondary',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
@@ -123,7 +135,7 @@ function ProviderChoice({
         fontSize="small"
         sx={{
           flex: 'none',
-          opacity: isSuggested ? 1 : 0.6,
+          opacity: emphasised ? 1 : 0.6,
           transition: 'transform 150ms ease-out',
         }}
       />
@@ -182,7 +194,8 @@ export default function LoginPage() {
         thing a user sees would be the only thing that could not carry their house's mark.
       */}
       {/* Die Überschrift benennt die Seite, nicht das Produkt: Ein Screenreader sagte hier vorher
-          nur den Markennamen, obwohl die Marke daneben ohnehin steht. */}
+          nur den Markennamen, obwohl die Marke daneben ohnehin steht. #1910: „Anmelden" steht nur
+          noch hier - die Abschnitte darunter benennen ihren Weg, nicht noch einmal die Handlung. */}
       <PageHeading title="Anmelden" variant="h5" sx={{ mb: 3 }} />
 
       {error && (
@@ -192,22 +205,37 @@ export default function LoginPage() {
         </Alert>
       )}
 
+      {/* #1910: Ist die Maske eingeschaltet, steht sie oben - sie ist der Weg, den diese
+          Installation für ihre eigenen Konten eingerichtet hat; die Verzeichnisdienste folgen. */}
+      {hasLocalForm && (
+        <LocalSignInForm
+          title="Konto dieser Installation"
+          description="Melden Sie sich mit Ihrer E-Mail-Adresse und Ihrem Passwort an."
+          showPasswordReset={localAccounts.passwordResetEnabled}
+          showSelfRegistration={localAccounts.selfRegistrationEnabled}
+          disabled={isLoading}
+        />
+      )}
+
+      {hasChoice && hasLocalForm && <Divider sx={{ my: 3 }} />}
+
       {hasChoice && (
         <Box component="section" role="group" aria-labelledby="login-choice-title">
-          <SectionEyebrow id="login-choice-title">
-            {hasLocalForm ? 'Mit Identitätsanbieter' : 'Anmeldung'}
-          </SectionEyebrow>
-          <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mt: 0.5, mb: 2 }}>
+          <SectionEyebrow id="login-choice-title">Identitätsanbieter</SectionEyebrow>
+          <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mt: 0.5, mb: 1.5 }}>
             {providers.length > 1
               ? 'Wählen Sie den Identitätsanbieter, bei dem Sie ein Konto haben.'
               : 'Melden Sie sich mit dem Konto Ihrer Organisation an.'}
           </Typography>
-          <Stack spacing={1}>
+          <Stack spacing={0.75}>
             {providers.map((provider) => (
               <ProviderChoice
                 key={provider.id}
                 provider={provider}
                 isSuggested={provider.id === suggested?.id}
+                // Eine Seite hat eine primäre Schaltfläche (guidelines 5.1): Steht die Maske
+                // oben, gehört sie deren „Anmelden"; die Dienste bleiben dann alle sekundär.
+                emphasised={!hasLocalForm && provider.id === suggested?.id}
                 showsLastUsed={providers.length > 1 && provider.id === lastUsedId}
                 isSigningIn={isSigningIn}
                 disabled={isBusy}
@@ -216,18 +244,6 @@ export default function LoginPage() {
             ))}
           </Stack>
         </Box>
-      )}
-
-      {hasChoice && hasLocalForm && <Divider sx={{ my: 3 }} />}
-
-      {hasLocalForm && (
-        <LocalSignInForm
-          title={hasChoice ? 'Mit Konto dieser Installation' : 'Anmeldung'}
-          description="Melden Sie sich mit Ihrer E-Mail-Adresse und Ihrem Passwort an."
-          showPasswordReset={localAccounts.passwordResetEnabled}
-          showSelfRegistration={localAccounts.selfRegistrationEnabled}
-          disabled={isLoading}
-        />
       )}
 
       <Divider sx={{ my: 3 }} />

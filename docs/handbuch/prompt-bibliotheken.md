@@ -11,7 +11,7 @@
 
 | Objekt | Was es ist | Was es an Rechten trägt |
 |---|---|---|
-| **Prompt-Bibliothek** | Eine benannte, beschriebene Sammlung von Prompts mit genau einem Eigentümer | Eigene Rollen, eine Verteilungsstufe, eine Auffindbarkeit, einen Eigentümer — wie eine Wissensbibliothek |
+| **Prompt-Bibliothek** | Eine benannte, beschriebene Sammlung von Prompts mit genau einem Eigentümer | Eigene Rollen (auch an „Alle Konten"), eine Auffindbarkeit, einen Eigentümer — wie eine Wissensbibliothek |
 | **Prompt** | Eine benannte Anweisung in genau einer Prompt-Bibliothek, mit Titel, Befehl, Beschreibung, Text und Variablen | Keine eigenen — wer die Bibliothek lesen darf, liest alle ihre Prompts |
 
 Eine Prompt-Bibliothek **bindet kein Wissen und erreicht keine Quelle**: Ein Prompt ist Text mit
@@ -23,7 +23,9 @@ Die Prompt-Bibliotheken, die eine Person lesen darf, stehen in der Hauptnavigati
 **„Prompts"**, gleich unter „Wissen". Die Übersicht dort funktioniert wie die der
 Wissensbibliotheken: Anzahl in der Kopfzeile, „Neue Prompt-Bibliothek" oben rechts, Suche über Name
 und Beschreibung, Umschalter zwischen Kacheln und Tabelle. Eine Kachel nennt Eigentümer, Anzahl der
-Prompts, die eigene Rolle und ob die Bibliothek in der Organisation geteilt ist.
+Prompts, die eigene Rolle und ob die Bibliothek in der Organisation geteilt ist. Gefunden werden
+Prompt-Bibliotheken außerdem im **Katalog**, zusammen mit den Wissensbibliotheken (Abschnitt 4, „Im
+Katalog finden").
 
 ```mermaid
 flowchart LR
@@ -58,8 +60,9 @@ Genau wie bei einer Wissensbibliothek: einer **Person** oder einer **Gruppe**, u
 Ablaufdatum, ausgewählt mit derselben Personen- und Gruppenauswahl, mit denselben Regeln für
 geschützte Gruppen und derselben Rückfrage vor einer Freigabe an die Gruppe eines externen Anbieters
 ([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitte 3 und 8).
-**„Alle Konten"** erreicht eine Prompt-Bibliothek nicht über eine Rolle, sondern über die
-Verteilungsstufe „organisationsweit".
+Dem ganzen Haus öffnet sie ein Recht an den Empfänger **„Alle Konten"** — im selben Dialog, nach
+einer eigenen Rückfrage ([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md),
+Abschnitt 4, „Reichweite").
 
 ## 4. Rollen an einer Prompt-Bibliothek
 
@@ -67,12 +70,12 @@ Verteilungsstufe „organisationsweit".
 |---|---|
 | **Leser** (`VIEWER`) | Die Prompt-Bibliothek und ihre Prompts lesen |
 | **Bearbeiter** (`EDITOR`) | Zusätzlich Prompts anlegen, ändern und löschen |
-| **Verwalter** (`MANAGER`) | Zusätzlich Name und Beschreibung ändern, Verteilungsstufe und Auffindbarkeit setzen, Rechte vergeben und entziehen |
+| **Verwalter** (`MANAGER`) | Zusätzlich Name und Beschreibung ändern, die Auffindbarkeit setzen, Rechte vergeben und entziehen — auch an alle Konten |
 | **Eigentümer** (`OWNER`) | Zusätzlich die Prompt-Bibliothek samt aller Prompts löschen |
 
 **Verwalten ist nicht Lesen.** Die Systemverwaltung kann jede Prompt-Bibliothek verwalten, liest
 ihre Prompts aber nur mit einer eigenen Rolle, einer Rolle über eine Gruppe oder einer
-organisationsweiten Freigabe. Ohne sie zeigt der Reiter „Prompts" statt der Liste den Hinweis, dass
+Freigabe an „Alle Konten". Ohne sie zeigt der Reiter „Prompts" statt der Liste den Hinweis, dass
 der Zugriff fehlt.
 
 ### Anlegen
@@ -85,9 +88,10 @@ wie beim Anlegen einer Wissensbibliothek, nur ohne den Schritt „Herkunft":
    anlegende Person Mitglied ist. Als persönliche Bibliothek erhält die anlegende Person die
    Eigentümerrolle, bei einer Gruppe als Eigentümerin erhält die Gruppe die Verwalterrolle.
    **Gruppeneigentum ist die haltbarere Wahl** für Prompts, die ein Referat gemeinsam pflegt.
-3. **Rechte** — die Verteilungsstufe, „Im Katalog auffindbar" und optional vorgemerkte Rollen für
-   Personen und Gruppen, die gleich nach dem Anlegen erteilt werden. **„Im Katalog auffindbar" ist
-   aus**, bis jemand es ausdrücklich setzt.
+3. **Rechte** — „Im Katalog auffindbar, auch ohne Berechtigung" und optional vorgemerkte Rollen für
+   Personen, Gruppen und „Alle Konten", die gleich nach dem Anlegen erteilt werden. **„Im Katalog auffindbar" ist
+   aus**, bis jemand es ausdrücklich setzt; eingeschaltet macht es die Bibliothek im Katalog für die
+   ganze Organisation sichtbar, auch für alle ohne Leserecht.
 
 Anlegen darf, wer das Anlegerecht **„Prompt-Bibliotheken anlegen"** hat; ausgeliefert ist es an
 „Alle Konten" ([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 9).
@@ -105,9 +109,9 @@ Die Detailseite hat zwei Reiter, jeder mit eigener Adresse:
 | **Prompts** | Die Prompts der Bibliothek, aufklappbar mit Text und Variablen; ab der Bearbeiterrolle „Neuer Prompt", „Bearbeiten" und „Löschen" | alle Leser |
 | **Verwaltung** | Stammdaten, der Abschnitt „Freigabe", „Warum sehe ich diese Prompt-Bibliothek?" und für den Eigentümer „Prompt-Bibliothek löschen" | ab der Verwalterrolle |
 
-Der Abschnitt **„Freigabe"** ist derselbe wie bei einer Wissensbibliothek: Verteilungsstufe und
-„Im Katalog auffindbar" mit eigenem „Freigabe speichern", „Rechte verwalten" mit dem Dialog, in dem
-Rollen erteilt, geändert, befristet und entzogen werden, und die Liste „Bereitgestellt in" mit den
+Der Abschnitt **„Freigabe"** ist derselbe wie bei einer Wissensbibliothek: „Im Katalog auffindbar,
+auch ohne Berechtigung" mit eigenem „Freigabe speichern", „Rechte verwalten" mit dem Dialog, in dem
+Rollen erteilt, geändert, befristet und entzogen werden, und die Liste „Zuordnungen" mit den
 Räumen, denen die Bibliothek zugeordnet ist — jede Zuordnung einzeln lösbar. Das Speichern der
 Stammdaten ändert die Reichweite nicht, und das Speichern der Freigabe ändert Name und Beschreibung
 nicht.
@@ -124,6 +128,16 @@ wieder. Die Zuordnung **gewährt niemandem zusätzlichen Zugriff**: Wer die Bibl
 darf, sieht sie im Raum nicht. Auf der Übersichtsseite des Raums stehen zugeordnete
 Prompt-Bibliotheken unter „Datenquellen" zusammen mit den Wissensbibliotheken, jede mit ihrer Art
 gekennzeichnet.
+
+### Im Katalog finden
+
+Der **Katalog** in der Hauptnavigation zeigt alle Prompt- und Wissensbibliotheken, die die Person
+lesen darf, und dazu alle, die im Katalog auffindbar sind — mit Suche über Name und Beschreibung und
+dem Filter „Alle", „Wissen" oder „Prompts". Ein lesbarer Eintrag führt auf die Detailseite. Eine
+auffindbare Prompt-Bibliothek ohne Leserecht steht mit dem Hinweis „Auffindbar ohne Berechtigung —
+zuständig: …" da, ohne Link und ohne ihre Prompts; wer sie nutzen will, wendet sich an die genannte
+Stelle. Die Regeln im Einzelnen stehen in
+[Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 4, „Der Katalog".
 
 ## 5. Prompts pflegen
 
@@ -177,7 +191,32 @@ gespeichert.
 
 ## 6. Im Chat verwenden
 
-Das Einsetzen eines Prompts im Chat ist noch nicht gebaut (siehe „Was nicht gebaut ist").
+Im Eingabefeld des Chats öffnet ein `/` am Anfang einer Zeile die Auswahl der Prompts. Angeboten
+wird jeder Prompt aus einer Prompt-Bibliothek, die die Person lesen darf, gruppiert nach
+Bibliothek. Die dem Raum zugeordneten Bibliotheken (Abschnitt 4, „In einem Raum bereitstellen")
+stehen voran und tragen den Zusatz „diesem Space zugeordnet". Eine zugeordnete Bibliothek, die die
+Person nicht lesen darf, erscheint nicht. Die Systemverwaltung ohne eigenes Recht sieht keine
+Prompts: Verwalten ist nicht Lesen. Weitertippen sucht in Befehl, Titel und Beschreibung.
+
+- **Ohne Variablen** steht der Text sofort im Eingabefeld.
+- **Mit Variablen** fragt ein Formular die Werte ab. Das Formular hat dieselben Felder wie die
+  Vorschau (Abschnitt 5). Pflichtfelder sperren „Einsetzen", Vorbelegungen sind eingetragen, und ein
+  Datum ohne Vorbelegung steht auf dem heutigen Tag.
+- Eingesetzt wird genau der Text, den die Vorschau zeigt: Daten als `TT.MM.JJJJ`, die
+  Systemvariablen mit dem heutigen Datum und dem eigenen Namen.
+
+Der Text bleibt bearbeitbar. Gesendet wird er erst mit Enter oder der Senden-Schaltfläche. Ein Chip
+„Prompt: <Titel>" am Eingabefeld markiert die Herkunft und lässt sich entfernen. Im Verlauf steht
+an der Frage „Prompt: <Titel>", mit dem Titel zum Zeitpunkt des Sendens, ohne Verweis auf den
+Prompt. Dieser Hinweis bleibt, wenn der Prompt später umbenannt oder gelöscht wird.
+
+Wird der Prompt nach dem Einsetzen gelöscht oder das Leserecht entzogen, lehnt OPAA die Frage ab.
+Sie steht dann ohne Chip wieder im Eingabefeld und lässt sich ohne Prompt senden. Wie die Frage
+danach gesucht und beantwortet wird, beschreibt [Suche](suche.md), Abschnitt 2 („Prompts
+einsetzen"). Für die Suche und die Antwort macht ein Prompt keinen Unterschied.
+
+Die **Verwendung** eines Prompts wird weder protokolliert noch gezählt. Es gibt keine Auswertung,
+wer welchen Prompt wie oft verwendet hat.
 
 ## 7. Lebenszyklus: „Nachfolge offen"
 
@@ -186,7 +225,7 @@ Für Prompt-Bibliotheken gilt der Lebenszyklus aus
 Abweichung: Scheidet die Eigentümerin einer persönlichen Prompt-Bibliothek aus oder verliert eine
 Eigentümergruppe ihr letztes aktives Mitglied, geht die Bibliothek in den Zustand **„Nachfolge
 offen"**. Sie bleibt nutzbar, alle Rollen bleiben, nichts wird gelöscht — **nur ihre Reichweite ist
-eingefroren**: keine neuen oder größeren Rollen, keine größere Verteilungsstufe, keine neue
+eingefroren**: keine neuen oder größeren Rollen, keine Freigabe an „Alle Konten", keine neue
 Auffindbarkeit, keine neue Zuordnung zu einem Raum. Prompts anlegen und ändern bleibt möglich.
 
 Die Kennzeichnung „Nachfolge offen — zuständig: …" steht in der Übersicht unter „Prompts" und auf
@@ -198,16 +237,13 @@ dieselbe Übertragung wie bei jeder anderen Bibliothek.
 
 Anlegen, Ändern und Löschen einer Prompt-Bibliothek und eines Prompts schreiben je einen Eintrag ins
 Nachweisprotokoll. Eine Änderung nennt nur, welche Felder sich geändert haben, nie deren Werte —
-Titel und Text eines Prompts stehen nie im Protokoll. Rollen, Verteilungsstufe, Auffindbarkeit,
+Titel und Text eines Prompts stehen nie im Protokoll. Rollen, Auffindbarkeit,
 Eigentum und Nachfolge protokolliert und historisiert OPAA wie bei jeder Wissensbibliothek.
 
 ## 9. Was nicht gebaut ist
 
-- **Einsetzen im Chat** mit `/befehl`, dem Formular für die Variablen und dem Nachweis, welcher
-  Prompt verwendet wurde (#1903).
-- **Der Katalog**, in dem „Im Katalog auffindbar" wirkt (#1904).
-  Bis dahin wird die Auffindbarkeit gespeichert und historisiert, aber nirgends ausgewertet.
-- **Versionen, Freigabeweg, Favoriten und Nutzungszähler** für Prompts.
+- **Versionen, Freigabeweg, Favoriten und Nutzungszähler** für Prompts; der Katalog nennt deshalb
+  weder einen Freigabestand noch Nutzungsangaben.
 - **Mitgelieferte Prompt-Bibliotheken** und **Export und Import** als Paket.
 - **Eine eigene Reihenfolge der Prompts** in der Oberfläche; die Liste folgt der gespeicherten
   Reihenfolge, dann dem Befehl.

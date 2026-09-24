@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -112,7 +113,8 @@ class SpikeToolLoopQueryHandlerTest {
             null,
             Set.of(),
             MetadataFilter.NONE,
-            System.currentTimeMillis());
+            System.currentTimeMillis(),
+            null);
 
     assertThat(result).isEmpty();
     verifyNoInteractions(activeChatModelResolver, chatSourceAssembler);
@@ -161,7 +163,8 @@ class SpikeToolLoopQueryHandlerTest {
             null,
             searchScope,
             metadataFilter,
-            System.currentTimeMillis());
+            System.currentTimeMillis(),
+            null);
 
     assertThat(result).isPresent();
     assertThat(result.get().answer())
@@ -176,7 +179,7 @@ class SpikeToolLoopQueryHandlerTest {
             eq(List.of()),
             eq(searchScope),
             eq(metadataFilter));
-    verify(chatService, never()).appendTurn(any(), any(), any(), any());
+    verify(chatService, never()).appendTurn(any(), any(), any(), any(), any());
   }
 
   /**
@@ -216,12 +219,14 @@ class SpikeToolLoopQueryHandlerTest {
             null,
             Set.of(),
             MetadataFilter.NONE,
-            System.currentTimeMillis());
+            System.currentTimeMillis(),
+            null);
 
     assertThat(result).isPresent();
     assertThat(result.get().answer()).contains("Suchschritte:");
     verify(chatService)
-        .appendTurn(eq(chat), eq("Wie melde ich mich an?"), eq("Über das Bürgerportal."), any());
+        .appendTurn(
+            eq(chat), eq("Wie melde ich mich an?"), isNull(), eq("Über das Bürgerportal."), any());
     verify(chatMemory).add(eq("conv-key"), eq(new AssistantMessage("Über das Bürgerportal.")));
   }
 
@@ -253,7 +258,8 @@ class SpikeToolLoopQueryHandlerTest {
             null,
             Set.of(),
             MetadataFilter.NONE,
-            System.currentTimeMillis());
+            System.currentTimeMillis(),
+            null);
 
     assertThat(result).isPresent();
     assertThat(result.get().answer()).contains(SpikeToolLoopQueryHandler.TOOL_CALL_LIMIT_MESSAGE);
@@ -295,10 +301,11 @@ class SpikeToolLoopQueryHandlerTest {
                     null,
                     Set.of(),
                     MetadataFilter.NONE,
-                    System.currentTimeMillis()))
+                    System.currentTimeMillis(),
+                    null))
         .isInstanceOf(RuntimeException.class);
 
     verify(metrics, never()).recordSuccess(anyInt());
-    verify(chatService, never()).appendTurn(any(), any(), any(), any());
+    verify(chatService, never()).appendTurn(any(), any(), any(), any(), any());
   }
 }

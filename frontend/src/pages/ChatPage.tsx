@@ -334,7 +334,10 @@ export default function ChatPage() {
         isLoading={isLoading}
         targetMessageId={targetMessageId}
       />
-      <ChatInput onSend={(message) => sendMessage(message)} disabled={isLoading} />
+      <ChatInput
+        onSend={(message, usedPrompt) => sendMessage(message, usedPrompt)}
+        disabled={isLoading}
+      />
     </Box>
   )
 }

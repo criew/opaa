@@ -10,6 +10,7 @@ import { externalAccessTokenHandlers } from './externalAccessTokenHandlers'
 import { groupAdminHandlers } from './groupAdminHandlers'
 import { successionHandlers } from './successionHandlers'
 import { promptLibraryHandlers } from './promptLibraryHandlers'
+import { catalogHandlers } from './catalogHandlers'
 import { mockPromptLibraries } from './promptLibraryFixtures'
 
 /** Per-library countdown of the mock metadata backfill; see the handler below. */
@@ -1109,7 +1110,8 @@ export const handlers = [
     return new HttpResponse(null, { status: 204 })
   }),
 
-  // The owner-facing list of spaces an asset is associated with (MANAGER and above).
+  // The "Zuordnungen" of an asset (VIEWER and above). The mock always answers the manager's view;
+  // hiddenCount stays 0 because no mock space is PRIVATE-without-membership (#1939).
   http.get('/api/v1/assets/:assetType/:assetId/spaces', ({ params }) => {
     const assetId = String(params.assetId)
     if (!mockAssetOf(String(params.assetType), assetId)) {
@@ -1127,7 +1129,7 @@ export const handlers = [
           narrowerReaderCircle: false,
         }
       })
-    return HttpResponse.json(spaces)
+    return HttpResponse.json({ items: spaces, hiddenCount: 0 })
   }),
 
   http.post('/api/v1/spaces/:spaceId/members', async ({ params, request }) => {
@@ -3814,6 +3816,45 @@ export const handlers = [
     return HttpResponse.json(mockBranding)
   }),
 
+  http.put('/api/v1/system/branding/login-logo', () => {
+    setMockBranding({
+      ...mockBranding,
+      loginLogoUrl: '/api/v1/branding/login-logo?v=mockloginlogo',
+      loginLogoContentType: 'image/png',
+      loginLogoUpdatedAt: new Date().toISOString(),
+    })
+    return HttpResponse.json(mockBranding)
+  }),
+
+  http.delete('/api/v1/system/branding/login-logo', () => {
+    const { loginLogoUrl, loginLogoContentType, loginLogoUpdatedAt, ...rest } = mockBranding
+    void loginLogoUrl
+    void loginLogoContentType
+    void loginLogoUpdatedAt
+    setMockBranding(rest)
+    return HttpResponse.json(mockBranding)
+  }),
+
+  http.put('/api/v1/system/branding/login-background', () => {
+    setMockBranding({
+      ...mockBranding,
+      loginBackgroundUrl: '/api/v1/branding/login-background?v=mockbackground',
+      loginBackgroundContentType: 'image/jpeg',
+      loginBackgroundUpdatedAt: new Date().toISOString(),
+    })
+    return HttpResponse.json(mockBranding)
+  }),
+
+  http.delete('/api/v1/system/branding/login-background', () => {
+    const { loginBackgroundUrl, loginBackgroundContentType, loginBackgroundUpdatedAt, ...rest } =
+      mockBranding
+    void loginBackgroundUrl
+    void loginBackgroundContentType
+    void loginBackgroundUpdatedAt
+    setMockBranding(rest)
+    return HttpResponse.json(mockBranding)
+  }),
+
   http.get('/api/v1/auth/me', () => {
     return HttpResponse.json(mockUser)
   }),
@@ -3834,4 +3875,5 @@ export const handlers = [
   // Die Betriebsliste des Lebenszyklus (#1819/#1821) - eigene Datei aus demselben Grund.
   ...successionHandlers,
   ...promptLibraryHandlers,
+  ...catalogHandlers,
 ]

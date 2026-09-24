@@ -25,6 +25,11 @@ public class AssetTypes {
     }
   }
 
+  /** Every served type, in registration order. */
+  public List<AssetType> registered() {
+    return List.copyOf(byType.keySet());
+  }
+
   public Optional<AssetTypeDefinition> find(AssetType assetType) {
     return Optional.ofNullable(byType.get(assetType));
   }

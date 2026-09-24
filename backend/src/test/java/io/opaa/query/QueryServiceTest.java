@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
@@ -29,6 +30,8 @@ import io.opaa.chat.ChatService;
 import io.opaa.chat.ChatSource;
 import io.opaa.chat.ChatSourceLocation;
 import io.opaa.chat.ChatSourceMetadataEntry;
+import io.opaa.chat.UsedPrompt;
+import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.indexing.chunk.ChunkingService;
 import io.opaa.indexing.document.DocumentRepository;
@@ -43,6 +46,8 @@ import io.opaa.library.LibraryAccessService;
 import io.opaa.llm.RerankModelRole;
 import io.opaa.llm.RerankRoleStatus;
 import io.opaa.observability.QueryMetrics;
+import io.opaa.prompt.Prompt;
+import io.opaa.prompt.PromptService;
 import io.opaa.query.answer.AnswerGenerationService;
 import io.opaa.query.answer.CaffeineChatMemoryRepository;
 import io.opaa.query.answer.ConversationMemoryConfiguration;
@@ -116,6 +121,7 @@ class QueryServiceTest {
   // SubQueryDecompositionStage) - every test in this class relies on that unless it
   // explicitly stubs this mock (see the "Query decomposition (#923)" nested class below).
   @Mock private QueryDecompositionService queryDecompositionService;
+  @Mock private PromptService promptService;
   private QueryService queryService;
 
   private final UUID currentUserId = UUID.randomUUID();
@@ -180,6 +186,7 @@ class QueryServiceTest {
         chatNoteExtractionService,
         new QueryMetrics(new SimpleMeterRegistry()),
         mock(MetadataFilterValidator.class),
+        promptService,
         spikeHandlerProvider);
   }
 
@@ -263,7 +270,7 @@ class QueryServiceTest {
   @Test
   void queryFallsThroughToTheOrdinaryPathWhenTheSpikeHandlerDeclines() {
     SpikeToolLoopQueryHandler spikeHandler = mock(SpikeToolLoopQueryHandler.class);
-    when(spikeHandler.handle(any(), any(), any(), any(), any(), any(), any(), anyLong()))
+    when(spikeHandler.handle(any(), any(), any(), any(), any(), any(), any(), anyLong(), any()))
         .thenReturn(Optional.empty());
     QueryService serviceWithSpikeEnabled =
         newQueryService(
@@ -299,7 +306,7 @@ class QueryServiceTest {
             null,
             null);
     when(spikeHandler.handle(
-            eq("@test Frage"), any(), any(), any(), any(), any(), any(), anyLong()))
+            eq("@test Frage"), any(), any(), any(), any(), any(), any(), anyLong(), any()))
         .thenReturn(Optional.of(spikeResult));
     QueryService serviceWithSpikeEnabled =
         newQueryService(
@@ -857,7 +864,7 @@ class QueryServiceTest {
     QueryResult response = queryService.query("Question", chatId, caller, true, List.of());
 
     assertThat(response.chatId()).isEqualTo(chatId);
-    verify(chatService).appendTurn(eq(chat), eq("Question"), eq("Answer"), any());
+    verify(chatService).appendTurn(eq(chat), eq("Question"), isNull(), eq("Answer"), any());
   }
 
   /**
@@ -881,7 +888,8 @@ class QueryServiceTest {
     when(answerGenerationService.generateAnswer(
             any(), any(), eq(conversationKey), any(), anyBoolean()))
         .thenReturn(chatResponse);
-    when(chatService.appendTurn(eq(chat), any(), any(), any())).thenReturn("Frage zur Frist");
+    when(chatService.appendTurn(eq(chat), any(), any(), any(), any()))
+        .thenReturn("Frage zur Frist");
 
     QueryResult response = queryService.query("Frage zur Frist", chatId, caller, true, List.of());
 
@@ -1014,7 +1022,7 @@ class QueryServiceTest {
     QueryResult response = queryService.query("Question", foreignChatId, caller, true, List.of());
 
     assertThat(response.chatId()).isEqualTo(foreignChatId);
-    verify(chatService, never()).appendTurn(any(), any(), any(), any());
+    verify(chatService, never()).appendTurn(any(), any(), any(), any(), any());
   }
 
   // #840: a space archived between a persisted chat's creation and this query must reject the
@@ -1043,7 +1051,76 @@ class QueryServiceTest {
     // readable-scope computation and the conversation-memory cache - proving the check's early
     // placement, not merely that it precedes the LLM call specifically.
     verifyNoInteractions(vectorStore, answerGenerationService, libraryAccessService, chatMemory);
-    verify(chatService, never()).appendTurn(any(), any(), any(), any());
+    verify(chatService, never()).appendTurn(any(), any(), any(), any(), any());
+  }
+
+  /**
+   * A question built from a prompt the caller may not (or no longer) read is refused before
+   * anything is paid for - like an archived space, nothing past the check runs.
+   */
+  @Test
+  void queryRejectsAnUnusablePromptBeforeCallingTheModel() {
+    Chat chat = new Chat(UUID.randomUUID(), currentUserId, organizationId, null, true, Set.of());
+    UUID chatId = chat.getId();
+    UUID promptId = UUID.randomUUID();
+    when(chatService.findOwnedChat(chatId, currentUserId)).thenReturn(Optional.of(chat));
+    when(promptService.requireUsable(promptId, caller))
+        .thenThrow(new AccessDeniedException("Dieser Prompt steht Ihnen nicht zur Verfügung"));
+
+    assertThatThrownBy(
+            () ->
+                queryService.query(
+                    "Fasse zusammen", chatId, caller, true, List.of(), null, promptId))
+        .isInstanceOf(AccessDeniedException.class);
+
+    verifyNoInteractions(vectorStore, answerGenerationService, libraryAccessService, chatMemory);
+    verify(chatService, never()).appendTurn(any(), any(), any(), any(), any());
+  }
+
+  /**
+   * The prompt's id and its title at sending time go onto the question; the question itself -
+   * already resolved by the client - reaches the model unchanged.
+   */
+  @Test
+  void queryPersistsTheUsedPromptAsASnapshotOnTheQuestion() {
+    Chat chat = new Chat(UUID.randomUUID(), currentUserId, organizationId, null, true, Set.of());
+    UUID chatId = chat.getId();
+    String conversationKey = currentUserId + ":" + chatId;
+    Prompt prompt = mock(Prompt.class);
+    UUID promptId = UUID.randomUUID();
+    when(prompt.getId()).thenReturn(promptId);
+    when(prompt.getTitle()).thenReturn("Zusammenfassung");
+    when(promptService.requireUsable(promptId, caller)).thenReturn(prompt);
+    when(chatService.findOwnedChat(chatId, currentUserId)).thenReturn(Optional.of(chat));
+    when(chatMemory.get(conversationKey)).thenReturn(List.of());
+    when(chatService.historyAsSpringAiMessages(chatId, 20)).thenReturn(List.of());
+    when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId)))
+        .thenReturn(Set.of(readableLibraryId));
+    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+    when(answerGenerationService.generateAnswer(
+            eq("Fasse den Stand zum 24.09.2026 zusammen."),
+            any(),
+            eq(conversationKey),
+            any(),
+            anyBoolean()))
+        .thenReturn(new ChatResponse(List.of(new Generation(new AssistantMessage("Answer")))));
+
+    queryService.query(
+        "Fasse den Stand zum 24.09.2026 zusammen.",
+        chatId,
+        caller,
+        true,
+        List.of(),
+        null,
+        promptId);
+
+    verify(chatService)
+        .appendTurn(
+            eq(chat),
+            eq("Fasse den Stand zum 24.09.2026 zusammen."),
+            eq(new UsedPrompt(promptId, "Zusammenfassung")),
+            eq("Answer"),
+            any());
   }
 
   /**

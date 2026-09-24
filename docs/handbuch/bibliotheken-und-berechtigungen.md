@@ -86,11 +86,20 @@ OPAA eine **leere** Gruppe — eine Freigabe an sie erreicht niemanden.
 
 Die Bibliotheken, die eine Person lesen darf, stehen in der Hauptnavigation unter **„Wissen"**. Jede
 Art von Bestand hat dort einen eigenen Punkt; der Menüpunkt und die Seite dahinter heißen gleich —
-die [Prompt-Bibliotheken](prompt-bibliotheken.md) stehen unter **„Prompts"**. Rollen, Verteilungsstufe,
-Auffindbarkeit, Herleitung und „Nachfolge offen" gelten für beide Arten gleich; im Reiter
-„Verwaltung" steht dafür bei beiden derselbe Abschnitt **„Freigabe"** mit Verteilungsstufe,
-Auffindbarkeit, „Rechte verwalten", den Räumen, in denen der Bestand bereitsteht, und darunter
-„Warum sehe ich das?".
+die [Prompt-Bibliotheken](prompt-bibliotheken.md) stehen unter **„Prompts"**. Rollen,
+Auffindbarkeit, Herleitung und „Nachfolge offen" gelten für beide Arten gleich; dafür steht bei
+beiden derselbe Abschnitt **„Freigabe"** mit der Auffindbarkeit, „Rechte verwalten",
+den Zuordnungen zu Räumen und darunter „Warum sehe ich das?" — bei einer Wissensbibliothek im
+Reiter „Freigaben", bei einer Prompt-Bibliothek im Reiter „Verwaltung".
+
+**Zuordnungen: wer welchen Space erfährt.** Die Liste der Spaces, in denen ein Bestand
+bereitsteht, sehen alle Leseberechtigten — aber nur so weit, wie der Space selbst sichtbar ist.
+Ab der Verwalterrolle steht jede Zuordnung mit Namen da, samt Urheber, Zeitpunkt und dem Hinweis
+„nicht alle Mitglieder lesen", und jede lässt sich einzeln lösen. Wer nur liest oder bearbeitet,
+sieht die Namen der Spaces, die ohnehin im Space-Verzeichnis stehen oder in denen er Mitglied ist;
+private Spaces, zu denen er nicht gehört, erscheinen nur als Zahl — „+ 2 weitere, die Sie nicht
+sehen können". Ein privater Space verspricht, dass nur seine Mitglieder von ihm wissen, und dieses
+Versprechen gilt auch hier.
 
 | Rolle | Darf |
 |---|---|
@@ -141,6 +150,33 @@ Aufbewahrungsfrist ist belegbar, wie weit eine Bibliothek gereicht hat (Abschnit
 Freigabe an alle Konten in der Rechtehistorie, die Auffindbarkeit in ihrer eigenen. Die
 Freigabe für [Fremdzugänge](fremdzugaenge.md) ist ein weiteres Reichweitenfeld derselben Art.
 
+### Der Katalog
+
+Der **Katalog** ist ein eigener Punkt der Hauptnavigation neben „Wissen" und „Prompts". Er zeigt
+Wissens- und Prompt-Bibliotheken gemischt: alle, die die Person lesen darf — über eine eigene Rolle,
+eine Rolle über eine Gruppe oder die Freigabe an „Alle Konten" —, und dazu alle, die im Katalog
+auffindbar sind. Die Übersichten unter „Wissen" und „Prompts" bleiben daneben die Orte, an
+denen Bibliotheken angelegt und verwaltet werden.
+
+| Element | Inhalt |
+|---|---|
+| **Suche** | Über Name und Beschreibung, ohne Rücksicht auf Groß- und Kleinschreibung; der Suchtext ist begrenzt |
+| **Filter** | „Alle", „Wissen" oder „Prompts" |
+| **Eintrag** | Art (Wissens- oder Prompt-Bibliothek), Name, Beschreibung, Umfang (Dokumente bzw. Prompts), in wie vielen Räumen sie bereitsteht, zuständige Stelle; in der Tabelle zusätzlich die Herkunft |
+| **Seiten** | Die Einträge kommen seitenweise; „Weitere laden" hängt die nächste Seite an |
+
+**Auffindbar ist nicht zugänglich.** Eine auffindbare Bibliothek, die die Person nicht lesen darf,
+steht im Katalog mit dem Hinweis **„Auffindbar ohne Berechtigung — zuständig: …"** und führt nirgendwohin;
+ihre Adresse antwortet „nicht gefunden" wie bei einer unbekannten Bibliothek. Zuständig ist der
+Eigentümer — bei einer Gruppe ihr Name, bei einer Person ihr Anzeigename. Eine geschützte Gruppe und
+eine Person ohne Anzeigenamen bleiben unbenannt, eine E-Mail-Adresse erscheint nie. Ist die
+Nachfolge offen (Abschnitt 13.3), nennt der Hinweis deren Adressaten.
+
+Die Systemverwaltung sieht im Katalog nicht mehr als andere: **Verwalten ist nicht Lesen.** Eine
+Bibliothek, die sie nur verwaltet, erscheint dort nur, wenn sie auffindbar ist, und dann als Eintrag
+ohne Zugriff. Der Katalog zeigt nie etwas aus einer anderen Organisation, und ein Eintrag enthält
+Beschreibungen, nie Inhalte: keine Dokumente, keine Prompts.
+
 ### Freigabe-Obergrenze für Konnektorbibliotheken
 
 Wer eine Konnektorbibliothek anlegen darf, entscheidet auch über ihre Reichweite — bis zu einer
@@ -160,7 +196,7 @@ deshalb **nach jeder Neuanlage** einer Konnektorbibliothek, oder schränkt das A
 „Konnektorbibliotheken anlegen" auf eine benannte Gruppe ein (Abschnitt 9) — dann entscheidet diese
 Gruppe, wer überhaupt anlegen darf, bevor die Obergrenze greifen müsste.
 
-Zu finden ist die Obergrenze auf der Detailseite der jeweiligen Bibliothek, Reiter „Verwaltung" —
+Zu finden ist die Obergrenze auf der Detailseite der jeweiligen Bibliothek, Reiter „Freigaben" —
 sichtbar und änderbar nur für die Systemverwaltung. Zwei Erlaubnisse:
 
 | Erlaubnis | Wirkung, wenn entzogen |
@@ -266,6 +302,25 @@ eigene Rolle als Badge. Gezählt werden Mitgliedschaftszeilen, nicht Personen �
 Gruppe beliebiger Größe sein; nur im eigenen Standard-Raum steht statt der Zahl „nur Sie". Ein
 archivierter Space ist als solcher gekennzeichnet und führt auf seine Übersicht statt in einen
 neuen Chat. Die Tabellenansicht zeigt dieselben Angaben spaltenweise.
+
+### Einstieg und Space-Wechsel
+
+Nach der Anmeldung öffnet OPAA einen **leeren Chat im zuletzt genutzten Space** — nicht den letzten
+Chat, und nicht mehr grundsätzlich den persönlichen Space. Ist der gemerkte Space nicht mehr
+zugänglich, weil er archiviert wurde, die Mitgliedschaft entzogen ist oder der Rechner zuletzt von
+jemand anderem benutzt wurde, führt der Einstieg in den persönlichen Space.
+
+Das Space-Menü am Kopf der Seitenleiste führt aus demselben Grund **höchstens fünf Spaces**, den
+zuletzt genutzten zuoberst; darunter stehen unverändert „Alle Spaces anzeigen" und „Neuen Space
+anlegen". Wer in vielen Spaces Mitglied ist, findet den vollständigen Bestand samt Suchfeld in der
+Übersicht — das Menü ist der schnelle Weg zurück, nicht das Verzeichnis.
+
+Die Nutzungsreihenfolge merkt sich der Browser, nicht der Server: Sie gilt je Gerät und je Browser
+und wandert nicht mit. Gemerkt werden nur Space-Kennungen, und die Liste wird bei jedem Öffnen gegen
+die Spaces abgeglichen, die der Dienst dem angemeldeten Konto ausliefert. Melden sich zwei Personen
+nacheinander am selben Rechner an, wirkt die Reihenfolge deshalb genau in den Spaces weiter, in
+denen beide Mitglied sind — alles andere fällt heraus. Wer das nicht möchte, meldet sich in einem
+privaten Fenster an oder löscht die Browserdaten; ein Recht verschafft die Liste ohnehin nicht.
 
 ## 6. Woher Gruppen kommen
 
@@ -835,7 +890,8 @@ Abschnitt „Vor dem Update auf die Gruppenherkunft".
 - **Keine freien Rollen.** Die vier Bibliotheks- und die drei Raumrollen sind fest; wer ein Bündel
   braucht, nimmt eine Gruppe.
 - **Keine Mitgliederliste ohne Objekt.** Wer wissen will, wer in einer Gruppe ist, fragt an einem
-  Objekt, an dem er selbst das Recht vergibt (Abschnitt 8), oder verantwortet die Gruppe.- **Keinen Personen-Einstieg in die Stichtagsauskunft** (Abschnitt 12) und **keine Vorschau
+  Objekt, an dem er selbst das Recht vergibt (Abschnitt 8), oder verantwortet die Gruppe.
+- **Keinen Personen-Einstieg in die Stichtagsauskunft** (Abschnitt 12) und **keine Vorschau
   „alles, was diese Person darf"** (Abschnitt 13.2).
 - **Keine Historie der Systemrollen.** Was mit einer Systemrolle geschah, steht im
   Nachweisprotokoll und unterliegt dessen Frist.
@@ -844,6 +900,8 @@ Abschnitt „Vor dem Update auf die Gruppenherkunft".
 - **Keine Rezertifizierung.** Ein Recht kann befristet werden, aber niemand wird zur Wiedervorlage
   gezwungen.
 - **Kein Schreiben ins Verzeichnis.** OPAA liest, und zwar nur.
+- **Keinen Freigabestand, keine Versionen und keine Nutzungsangaben im Katalog** (Abschnitt 4,
+  „Der Katalog"). Ein Eintrag sagt, was es gibt und wer zuständig ist.
 
 ## 18. Weiterführende Kapitel
 

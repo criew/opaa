@@ -162,15 +162,19 @@ public class OidcSecurityConfig {
                             LOCAL_REGISTER,
                             LocalSelfServiceAvailability::isSelfRegistrationAvailable))
                     .permitAll()
-                    // #582/#583: branding is readable without authentication. The sign-in
+                    // #582/#583/#1910: branding is readable without authentication. The sign-in
                     // page is the first thing a user sees and has to carry the operator's own
-                    // product name, claim and logo - it renders before there is a session, so an
-                    // authenticated-only endpoint could not brand it at all. What this exposes is
-                    // deliberate and bounded: the name, claim, accent colour and logo of the
-                    // deployment - that is, which Behörde runs it, which anyone reaching its
-                    // sign-in page in the first place can already tell. No user, space, library or
-                    // configuration data is reachable through either path.
-                    .requestMatchers("/api/v1/branding", "/api/v1/branding/logo")
+                    // product name, claim, logo and background - it renders before there is a
+                    // session, so an authenticated-only endpoint could not brand it at all. What
+                    // this exposes is deliberate and bounded: the name, claim, accent colour and
+                    // images of the deployment - that is, which Behörde runs it, which anyone
+                    // reaching its sign-in page in the first place can already tell. No user,
+                    // space, library or configuration data is reachable through these paths.
+                    .requestMatchers(
+                        "/api/v1/branding",
+                        "/api/v1/branding/logo",
+                        "/api/v1/branding/login-logo",
+                        "/api/v1/branding/login-background")
                     .permitAll()
                     // #1140: a Confluence instance or Automation rule has no session - the
                     // notification authenticates itself with the library's own webhook secret
