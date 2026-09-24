@@ -22,6 +22,7 @@ import io.opaa.chat.ChatSource;
 import io.opaa.chat.ChatSourceLocation;
 import io.opaa.chat.ChatSourceMetadataEntry;
 import io.opaa.chat.ChatTurn;
+import io.opaa.chat.UsedPrompt;
 import io.opaa.indexing.metadata.MetadataFilter;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -199,6 +200,33 @@ class ChatResponseMapperTest {
     assertThat(mappedAssistantTurn.getChatId()).isEqualTo(chat.getId());
     assertThat(mappedAssistantTurn.getSources()).hasSize(1);
     assertThat(mappedAssistantTurn.getSources().getFirst().getFileName()).isEqualTo("bericht.pdf");
+    assertThat(mappedUserTurn.getUsedPromptId()).isNull();
+    assertThat(mappedUserTurn.getUsedPromptTitle()).isNull();
+  }
+
+  @Test
+  void toDetailResponseCarriesThePromptSnapshotOfAQuestion() {
+    Chat chat =
+        new Chat(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), null, true, Set.of());
+    UUID promptId = UUID.randomUUID();
+    ChatTurn question =
+        new ChatTurn(
+            UUID.randomUUID(),
+            chat.getId(),
+            ChatRole.USER,
+            "Fasse den Stand zusammen.",
+            null,
+            new UsedPrompt(promptId, "Zusammenfassung"),
+            Instant.parse("2026-09-24T08:00:00Z"));
+
+    ChatMessageResponse mapped =
+        ChatResponseMapper.toDetailResponse(
+                new ChatConversation(chat, List.of(question), List.of()))
+            .getMessages()
+            .getFirst();
+
+    assertThat(mapped.getUsedPromptId()).isEqualTo(promptId);
+    assertThat(mapped.getUsedPromptTitle()).isEqualTo("Zusammenfassung");
   }
 
   @Test

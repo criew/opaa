@@ -16,6 +16,7 @@ import io.opaa.chat.ChatSource;
 import io.opaa.chat.ChatSourceLocation;
 import io.opaa.chat.ChatSourceMetadataEntry;
 import io.opaa.chat.ChatTurn;
+import io.opaa.chat.UsedPrompt;
 import java.util.List;
 import org.springframework.data.domain.Page;
 
@@ -91,9 +92,19 @@ final class ChatResponseMapper {
   }
 
   private static ChatMessageResponse toMessageResponse(ChatTurn turn) {
-    return new ChatMessageResponse(
-            turn.getId(), turn.getChatId(), turn.getRole(), turn.getContent(), turn.getCreatedAt())
-        .sources(toSourceReferences(turn.getSources()));
+    ChatMessageResponse response =
+        new ChatMessageResponse(
+                turn.getId(),
+                turn.getChatId(),
+                turn.getRole(),
+                turn.getContent(),
+                turn.getCreatedAt())
+            .sources(toSourceReferences(turn.getSources()));
+    UsedPrompt usedPrompt = turn.getUsedPrompt();
+    if (usedPrompt != null) {
+      response.usedPromptId(usedPrompt.id()).usedPromptTitle(usedPrompt.title());
+    }
+    return response;
   }
 
   /** Package-private (not private): reused by {@code QueryResponseMapper}. */

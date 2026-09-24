@@ -8,16 +8,22 @@ import io.opaa.asset.AssetAuthorization;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
+import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
+import io.opaa.permission.AssetAccessService;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -27,7 +33,8 @@ import org.springframework.transaction.annotation.Transactional;
  * The prompts of a prompt library - its content. Content is reached through the formula alone
  * ({@link AssetAuthorization#requireContentRole}): {@code VIEWER} reads, {@code EDITOR} writes, and
  * the system administration's floor opens nothing here. Each change writes one audit entry naming
- * the prompt and its library; the prompt text never enters the log.
+ * the prompt and its library; the prompt text never enters the log. Inserting a prompt in the chat
+ * writes nothing: {@link #requireUsable} and {@link #available} only read.
  */
 @Service
 @Transactional(readOnly = true)
@@ -39,20 +46,83 @@ public class PromptService {
   private static final int MAX_DESCRIPTION_LENGTH = 2000;
   private static final String UNIQUE_NAME = "uk_prompts_library_name";
 
+  static final String NOT_USABLE =
+      "Dieser Prompt steht Ihnen nicht zur Verfügung – er wurde gelöscht oder Ihre Leseberechtigung"
+          + " für seine Prompt-Bibliothek besteht nicht mehr. Entfernen Sie den Prompt und senden"
+          + " Sie die Frage erneut.";
+
   private final PromptLibraryService libraryService;
   private final PromptRepository promptRepository;
+  private final PromptLibraryRepository libraryRepository;
   private final AssetAuthorization authorization;
+  private final AssetAccessService accessService;
   private final AuditEventRecorder auditEventRecorder;
 
   PromptService(
       PromptLibraryService libraryService,
       PromptRepository promptRepository,
+      PromptLibraryRepository libraryRepository,
       AssetAuthorization authorization,
+      AssetAccessService accessService,
       AuditEventRecorder auditEventRecorder) {
     this.libraryService = libraryService;
     this.promptRepository = promptRepository;
+    this.libraryRepository = libraryRepository;
     this.authorization = authorization;
+    this.accessService = accessService;
     this.auditEventRecorder = auditEventRecorder;
+  }
+
+  /**
+   * The prompt {@code promptId} if the caller may read its library by the formula - the check a
+   * question built from it has to pass. An unknown prompt, one of another organization and one
+   * whose library the caller cannot (or can no longer) read all answer the same {@code 403}, so a
+   * foreign id is never confirmed.
+   */
+  public Prompt requireUsable(UUID promptId, CurrentUser caller) {
+    Prompt prompt =
+        promptRepository
+            .findByIdAndOrganizationId(promptId, caller.organizationId())
+            .orElseThrow(() -> new AccessDeniedException(NOT_USABLE));
+    try {
+      requireContent(prompt.getLibraryId(), caller, AssetRole.VIEWER);
+    } catch (NotFoundException | AccessDeniedException notReadable) {
+      throw new AccessDeniedException(NOT_USABLE);
+    }
+    return prompt;
+  }
+
+  /**
+   * Every prompt of every prompt library the caller may read by the formula - the same set {@link
+   * PromptLibraryService#list} shows. Libraries in {@code spaceLibraryIds} come first and are
+   * marked as such; then by library name, within a library by sort order and name. {@code
+   * spaceLibraryIds} only orders: a library in it the caller cannot read is not offered.
+   */
+  public List<AvailablePrompt> available(CurrentUser caller, Set<UUID> spaceLibraryIds) {
+    Set<UUID> readable =
+        accessService.readableAssetIds(
+            PromptLibrary.ASSET_TYPE, caller.id(), caller.organizationId());
+    if (readable.isEmpty()) {
+      return List.of();
+    }
+    Map<UUID, PromptLibrary> libraries =
+        libraryRepository.findAllById(readable).stream()
+            .collect(Collectors.toMap(PromptLibrary::getId, Function.identity()));
+    Comparator<AvailablePrompt> order =
+        Comparator.comparing((AvailablePrompt entry) -> !entry.associatedWithSpace())
+            .thenComparing(entry -> entry.library().getName())
+            .thenComparing(entry -> entry.library().getId())
+            .thenComparingInt(entry -> entry.prompt().getSortOrder())
+            .thenComparing(entry -> entry.prompt().getName());
+    return promptRepository.findByLibraryIdIn(libraries.keySet()).stream()
+        .map(
+            prompt ->
+                new AvailablePrompt(
+                    prompt,
+                    libraries.get(prompt.getLibraryId()),
+                    spaceLibraryIds.contains(prompt.getLibraryId())))
+        .sorted(order)
+        .toList();
   }
 
   /** The library's prompts by sort order, then name. */

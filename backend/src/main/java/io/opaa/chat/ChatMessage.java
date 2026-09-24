@@ -57,18 +57,42 @@ public class ChatMessage {
   @Column(name = "sources", updatable = false, columnDefinition = "json")
   private String sources;
 
+  @Column(name = "used_prompt_id", updatable = false)
+  private UUID usedPromptId;
+
+  @Column(name = "used_prompt_title", updatable = false, length = 255)
+  private String usedPromptTitle;
+
   @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt;
 
   protected ChatMessage() {}
 
   public ChatMessage(UUID chatId, int sequence, ChatRole role, String content, String sources) {
+    this(chatId, sequence, role, content, sources, null);
+  }
+
+  /**
+   * A message with the prompt its question was built from; {@code usedPrompt} is only ever set on a
+   * {@link ChatRole#USER} message ({@code chk_chat_messages_used_prompt}).
+   */
+  public ChatMessage(
+      UUID chatId,
+      int sequence,
+      ChatRole role,
+      String content,
+      String sources,
+      UsedPrompt usedPrompt) {
     this.id = UUID.randomUUID();
     this.chatId = chatId;
     this.sequence = sequence;
     this.role = role;
     this.content = content;
     this.sources = sources;
+    if (usedPrompt != null) {
+      this.usedPromptId = usedPrompt.id();
+      this.usedPromptTitle = usedPrompt.title();
+    }
   }
 
   @PrePersist
@@ -98,6 +122,11 @@ public class ChatMessage {
 
   public String getSources() {
     return sources;
+  }
+
+  /** The prompt snapshot of a question, or {@code null}. */
+  public UsedPrompt getUsedPrompt() {
+    return usedPromptId == null ? null : new UsedPrompt(usedPromptId, usedPromptTitle);
   }
 
   public Instant getCreatedAt() {
