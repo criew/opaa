@@ -189,7 +189,7 @@ test.describe('Upload > 1 MB durch den echten nginx (#519)', () => {
   })
 })
 
-// #514: the connection test in CreateLibraryDialog, both directions.
+// #514: the connection test in the creation wizard's step "Quelle", both directions.
 //
 // Happy path: HTTP_DIRECTORY against the suite's own "rss-feed" httpd service
 // (docker-compose.e2e.yml, also used by #471), reachable from the backend container under the

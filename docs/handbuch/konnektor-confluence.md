@@ -72,8 +72,9 @@ selben Reiter folgen der **„Zeitplan"** und, als **„Läufe"**, das Laufproto
 | Vollabgleich-Rhythmus (`confluenceFullSyncIntervalDays`) | optional, 1 bis 365 Tage, im Zeitplan-Dialog („Vollabgleich alle … Tage"); leer bedeutet die instanzweite Vorgabe (Standard sieben Tage). |
 | Webhook-Geheimnis | optional, in OPAA erzeugt (Abschnitt 8). |
 
-**Anlagedialog.** Die Reihenfolge ist Adresse eingeben, „Edition erkennen", Zugangsdaten im Format
-der erkannten Edition, „Verbindung testen", Spaces auswählen. Die Auswahl zeigt nur, was das Token
+**Das gestufte Quellformular** — im Schritt „Quelle" des Assistenten wie hinter „Bearbeiten" im
+Abschnitt „Anbindung". Die Reihenfolge ist Adresse eingeben, „Edition erkennen", Zugangsdaten im
+Format der erkannten Edition, „Verbindung testen", Spaces auswählen. Die Auswahl zeigt nur, was das Token
 lesen darf. Über der Auswahl steht der Hinweis, den auch dieses Kapitel wiederholt: Alles, was aus
 den gewählten Spaces indiziert wird, sehen alle Leseberechtigten der Bibliothek.
 

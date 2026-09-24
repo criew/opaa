@@ -60,9 +60,10 @@ Genau wie bei einer Wissensbibliothek: einer **Person** oder einer **Gruppe**, u
 Ablaufdatum, ausgewählt mit derselben Personen- und Gruppenauswahl, mit denselben Regeln für
 geschützte Gruppen und derselben Rückfrage vor einer Freigabe an die Gruppe eines externen Anbieters
 ([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitte 3 und 8).
-Dem ganzen Haus öffnet sie ein Recht an den Empfänger **„Alle Konten"** — im selben Dialog, nach
-einer eigenen Rückfrage ([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md),
-Abschnitt 4, „Reichweite").
+Dem ganzen Haus öffnet sie ein Recht an den Empfänger **„Alle Konten"** — im selben Abschnitt
+„Berechtigungen", nach einer eigenen Rückfrage und höchstens mit der Rolle „Bearbeiter"
+([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 4,
+„Reichweite").
 
 ## 4. Rollen an einer Prompt-Bibliothek
 
