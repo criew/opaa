@@ -62,13 +62,13 @@ describe('CatalogPage (#1904)', () => {
 
     const listed = await screen.findByRole('article', { name: 'Satzungen der Kämmerei' })
     expect(
-      within(listed).getByText('Gelistet, kein Zugriff — zuständig: Kämmerei'),
+      within(listed).getByText('Auffindbar ohne Berechtigung — zuständig: Kämmerei'),
     ).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /Satzungen der Kämmerei/ })).not.toBeInTheDocument()
     // While the succession is open, its addressee is the one to turn to.
     const orphaned = screen.getByRole('article', { name: 'Bescheidbausteine Ordnungsamt' })
     expect(
-      within(orphaned).getByText('Gelistet, kein Zugriff — zuständig: die Systemverwaltung'),
+      within(orphaned).getByText('Auffindbar ohne Berechtigung — zuständig: die Systemverwaltung'),
     ).toBeInTheDocument()
   })
 
@@ -156,7 +156,7 @@ describe('CatalogPage (#1904)', () => {
     expect(within(row).getByText('Kämmerei')).toBeInTheDocument()
     expect(within(row).getByText('lokal angelegt')).toBeInTheDocument()
     expect(
-      within(row).getByText('Gelistet, kein Zugriff — zuständig: Kämmerei'),
+      within(row).getByText('Auffindbar ohne Berechtigung — zuständig: Kämmerei'),
     ).toBeInTheDocument()
     expect(within(row).queryByRole('link')).not.toBeInTheDocument()
   })

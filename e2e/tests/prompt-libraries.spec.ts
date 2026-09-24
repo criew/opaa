@@ -204,7 +204,7 @@ test.describe.serial('Prompt-Bibliotheken: Verteilungsstufen und Katalog (#1904)
     const entry = listedCatalogEntry(outsider, LISTED_LIBRARY_NAME)
     await expect(entry).toBeVisible()
     await expect(entry).toContainText('Bescheidbausteine nach Hausstandard')
-    await expect(entry).toContainText('Gelistet, kein Zugriff — zuständig: Dev User')
+    await expect(entry).toContainText('Auffindbar ohne Berechtigung — zuständig: Dev User')
     await expect(accessibleCatalogEntry(outsider, LISTED_LIBRARY_NAME)).toHaveCount(0)
 
     // Findable is not accessible: neither the list nor the address opens it.
@@ -226,7 +226,7 @@ test.describe.serial('Prompt-Bibliotheken: Verteilungsstufen und Katalog (#1904)
     const knowledge = listedCatalogEntry(outsider, LISTED_KNOWLEDGE_NAME)
     await expect(knowledge).toBeVisible()
     await expect(knowledge).toContainText('Wissensbibliothek')
-    await expect(knowledge).toContainText('Gelistet, kein Zugriff — zuständig: Dev User')
+    await expect(knowledge).toContainText('Auffindbar ohne Berechtigung — zuständig: Dev User')
     await expect(listedCatalogEntry(outsider, LISTED_LIBRARY_NAME)).toBeVisible()
     await expect(accessibleCatalogEntry(outsider, LIBRARY_NAME)).toBeVisible()
 

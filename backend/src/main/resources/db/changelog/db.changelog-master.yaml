@@ -216,4 +216,4 @@ databaseChangeLog:
       file: db/changelog/changes/088-chat-messages-used-prompt.yaml
   # Der gelistete Teil des Katalogs.
   - include:
-      file: db/changelog/changes/089-assets-listed-index.yaml
+      file: db/changelog/changes/091-assets-listed-index.yaml

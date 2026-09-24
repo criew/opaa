@@ -9,13 +9,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Delta tests for {@code changes/089-assets-listed-index.yaml} (#1904): the listed part of the
+ * Delta tests for {@code changes/091-assets-listed-index.yaml} (#1904): the listed part of the
  * catalog query gets a partial index built like {@code idx_assets_organization_wide}, over the
  * organization and the type, restricted to listed assets.
  */
-class Migration089AssetsListedIndexTest extends AbstractMigrationTest {
+class Migration091AssetsListedIndexTest extends AbstractMigrationTest {
 
-  private static final String CHANGELOG_PATH = "db/changelog/changes/089-assets-listed-index.yaml";
+  private static final String CHANGELOG_PATH = "db/changelog/changes/091-assets-listed-index.yaml";
 
   private Connection connection;
   private AssetShellMigrationFixtures fixtures;

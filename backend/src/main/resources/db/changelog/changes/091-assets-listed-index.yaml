@@ -1,6 +1,6 @@
 databaseChangeLog:
   - changeSet:
-      id: 089-assets-listed-index
+      id: 091-assets-listed-index
       author: opaa
       comment: >-
         Der Katalog (#1904) liest die Assets einer Organisation, die gelistet oder fuer die

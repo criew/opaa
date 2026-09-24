@@ -48,7 +48,7 @@ function responsibleLabel(entry: CatalogEntryResponse): string {
 function NoAccessNote({ entry }: { entry: CatalogEntryResponse }) {
   return (
     <Typography component="span" sx={{ fontSize: 12, color: 'text.secondary' }}>
-      Gelistet, kein Zugriff — zuständig: {responsibleLabel(entry)}
+      Auffindbar ohne Berechtigung — zuständig: {responsibleLabel(entry)}
     </Typography>
   )
 }

@@ -133,7 +133,7 @@ gekennzeichnet.
 Der **Katalog** in der Hauptnavigation zeigt alle Prompt- und Wissensbibliotheken, die die Person
 lesen darf, und dazu alle, die im Katalog auffindbar sind — mit Suche über Name und Beschreibung und
 dem Filter „Alle", „Wissen" oder „Prompts". Ein lesbarer Eintrag führt auf die Detailseite. Eine
-auffindbare Prompt-Bibliothek ohne Leserecht steht mit dem Hinweis „Gelistet, kein Zugriff —
+auffindbare Prompt-Bibliothek ohne Leserecht steht mit dem Hinweis „Auffindbar ohne Berechtigung —
 zuständig: …" da, ohne Link und ohne ihre Prompts; wer sie nutzen will, wendet sich an die genannte
 Stelle. Die Regeln im Einzelnen stehen in
 [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 4, „Der Katalog".

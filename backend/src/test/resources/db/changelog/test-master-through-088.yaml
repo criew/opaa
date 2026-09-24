@@ -1,4 +1,4 @@
-# Fixture chain for the delta test of changeset 089 (#1904): the delivered master changelog up to
+# Fixture chain for the delta test of changeset 091 (#1904): the delivered master changelog up to
 # and including 088, in master order. Keep this include list identical to the master prefix.
 databaseChangeLog:
   - include:
