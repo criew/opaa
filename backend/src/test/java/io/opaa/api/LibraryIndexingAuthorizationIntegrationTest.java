@@ -7,7 +7,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import io.opaa.api.types.AssetRole;
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.DevAuthFilter;
@@ -137,7 +136,6 @@ class LibraryIndexingAuthorizationIntegrationTest {
                 name,
                 null,
                 ownerId,
-                AssetVisibility.PRIVATE,
                 false,
                 DocumentSourceType.FILESYSTEM,
                 documentDir.toAbsolutePath().toString(),
@@ -239,12 +237,7 @@ class LibraryIndexingAuthorizationIntegrationTest {
     KnowledgeLibrary library =
         libraryRepository.save(
             KnowledgeLibrary.ownedByUser(
-                Organization.DEFAULT_ID,
-                "Test-Bibliothek Upload",
-                null,
-                devAdmin.getId(),
-                AssetVisibility.PRIVATE,
-                false));
+                Organization.DEFAULT_ID, "Test-Bibliothek Upload", null, devAdmin.getId(), false));
     ownLibraryIds.add(library.getId());
     grantRepository.save(
         AssetGrant.forUser(
@@ -318,7 +311,6 @@ class LibraryIndexingAuthorizationIntegrationTest {
                 "Test-Bibliothek Fremd",
                 null,
                 foreignOwnerId,
-                AssetVisibility.PRIVATE,
                 false,
                 DocumentSourceType.FILESYSTEM,
                 documentDir.toAbsolutePath().toString(),

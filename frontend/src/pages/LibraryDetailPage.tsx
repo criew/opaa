@@ -14,7 +14,6 @@ import Dialog from '@mui/material/Dialog'
 import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
-import FormControl from '@mui/material/FormControl'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import IconButton from '@mui/material/IconButton'
 import InputAdornment from '@mui/material/InputAdornment'
@@ -65,7 +64,6 @@ import type {
   LibraryFolderListItem,
   LibrarySchedule,
   S3Settings,
-  AssetVisibility,
   ConfluenceEdition,
   ConfluenceSpaceRef,
 } from '../types/api'
@@ -85,7 +83,6 @@ import {
   indexingRunEventCategoryLabel,
   indexingRunModeLabel,
   indexingTriggerSourceLabel,
-  libraryVisibilityLabel,
   scheduleFrequencyLabel,
 } from '../utils/labels'
 import { useDocumentPreview } from '../hooks/useDocumentPreview'
@@ -121,8 +118,6 @@ import { successionAwareMessage } from '../components/succession/successionConfl
 // than a copy that can silently drift out of sync with it.
 export const ACCEPTED_FILE_EXTENSIONS =
   '.csv,.doc,.docx,.eml,.html,.md,.msg,.odp,.ods,.odt,.pdf,.pptx,.txt,.xlsx'
-
-const allVisibilities: AssetVisibility[] = ['PRIVATE', 'SHARED', 'ORGANIZATION']
 
 // #823: an upload entry carries an optional relativePath (the directory portion within a
 // dropped/selected folder tree, e.g. "Protokolle/2026") alongside each File - sequential upload,
@@ -279,56 +274,50 @@ function DiagnosticsLockControl({
 }
 
 interface ShareCapControlProps {
-  visibilityCap: AssetVisibility
+  allAccountsGrantAllowed: boolean
   listedCap: boolean
   saving: boolean
   error: string | null
-  onSave: (visibilityCap: AssetVisibility, listedCap: boolean) => void
+  onSave: (allAccountsGrantAllowed: boolean, listedCap: boolean) => void
   onDismissError: () => void
 }
 
 /**
- * The system administration's own ceiling on a connector library's visibility/listed (#797) -
- * visible and settable only here, never to the library's own owner: the owner already sees the
- * effect (a save above the cap answers 409, shown verbatim by the surrounding form) but not the
- * control that sets it, mirroring how DiagnosticsLockControl above splits "who sees the state"
- * from "who may change it".
+ * The system administration's own ceiling on a connector library (#797, in the shape #1931 gave
+ * it) - visible and settable only here, never to the library's own owner: the owner already sees
+ * the effect (a grant or a listing above the cap answers 409, shown verbatim by the surrounding
+ * form) but not the control that sets it, mirroring how DiagnosticsLockControl above splits "who
+ * sees the state" from "who may change it".
  */
 function ShareCapControl({
-  visibilityCap,
+  allAccountsGrantAllowed,
   listedCap,
   saving,
   error,
   onSave,
   onDismissError,
 }: ShareCapControlProps) {
-  const [draftVisibilityCap, setDraftVisibilityCap] = useState(visibilityCap)
+  const [draftAllAccounts, setDraftAllAccounts] = useState(allAccountsGrantAllowed)
   const [draftListedCap, setDraftListedCap] = useState(listedCap)
-  const changed = draftVisibilityCap !== visibilityCap || draftListedCap !== listedCap
+  const changed = draftAllAccounts !== allAccountsGrantAllowed || draftListedCap !== listedCap
 
   return (
     <Box sx={{ pt: 1, borderTop: '1px solid', borderColor: 'divider' }}>
       <Typography variant="subtitle2">Freigabe-Obergrenze (Systemverwaltung)</Typography>
       <Typography variant="caption" component="p" sx={{ color: 'text.secondary', mb: 1 }}>
-        Weder die Verteilungsstufe noch die Katalog-Auffindbarkeit dieser Konnektorbibliothek dürfen
-        die hier gesetzte Obergrenze überschreiten. Wird sie gesenkt, klemmt eine bereits
-        weitergehende Freigabe sofort auf die neue Obergrenze zurück.
+        Legt fest, wie weit diese Konnektorbibliothek überhaupt freigegeben werden darf. Wird eine
+        Erlaubnis entzogen, wird eine bereits bestehende Freigabe sofort zurückgenommen.
       </Typography>
       <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-        <FormControl size="small" sx={{ minWidth: 200 }}>
-          <FieldLabel id="library-detail-visibility-cap-label">Höchste Verteilungsstufe</FieldLabel>
-          <Select
-            labelId="library-detail-visibility-cap-label"
-            value={draftVisibilityCap}
-            onChange={(e) => setDraftVisibilityCap(e.target.value as AssetVisibility)}
-          >
-            {allVisibilities.map((option) => (
-              <MenuItem key={option} value={option}>
-                {libraryVisibilityLabel(option)}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={draftAllAccounts}
+              onChange={(e) => setDraftAllAccounts(e.target.checked)}
+            />
+          }
+          label="Freigabe an alle Konten erlaubt"
+        />
         <FormControlLabel
           control={
             <Checkbox
@@ -336,13 +325,13 @@ function ShareCapControl({
               onChange={(e) => setDraftListedCap(e.target.checked)}
             />
           }
-          label="Katalog-Auffindbarkeit erlaubt"
+          label="Auffindbarkeit im Katalog erlaubt"
         />
         <Button
           size="small"
           variant="outlined"
           disabled={saving || !changed}
-          onClick={() => onSave(draftVisibilityCap, draftListedCap)}
+          onClick={() => onSave(draftAllAccounts, draftListedCap)}
         >
           {saving ? 'Wird gespeichert …' : 'Obergrenze speichern'}
         </Button>
@@ -482,14 +471,12 @@ export default function LibraryDetailPage() {
   async function saveLibrary(fields: {
     name: string
     description: string | null | undefined
-    visibility: AssetVisibility
     listed: boolean
   }) {
     if (!libraryId) return
     await updateExistingLibrary(libraryId, {
       name: fields.name.trim(),
       description: fields.description?.trim() || undefined,
-      visibility: fields.visibility,
       listed: fields.listed,
       // Bewusst kein Quellkonfigurationsfeld gesetzt: das Backend lässt die gespeicherte
       // Konfiguration unverändert, solange keines der sourcePath/sourceUrl/sourceProxy/
@@ -505,12 +492,7 @@ export default function LibraryDetailPage() {
     setLocalError(null)
     setSaving(true)
     try {
-      await saveLibrary({
-        name,
-        description,
-        visibility: library.visibility,
-        listed: library.listed,
-      })
+      await saveLibrary({ name, description, listed: library.listed })
       setDraft(null)
     } catch (err) {
       // Die Reichweite ist der eine Weg, den eine offene Nachfolge sperrt (ADR-0036/6): Die
@@ -563,12 +545,12 @@ export default function LibraryDetailPage() {
     }
   }
 
-  async function handleSaveShareCap(visibilityCap: AssetVisibility, listedCap: boolean) {
+  async function handleSaveShareCap(allAccountsGrantAllowed: boolean, listedCap: boolean) {
     if (!libraryId) return
     setShareCapError(null)
     setShareCapSaving(true)
     try {
-      await setLibraryShareCap(libraryId, { visibilityCap, listedCap })
+      await setLibraryShareCap(libraryId, { allAccountsGrantAllowed, listedCap })
     } catch (err) {
       setShareCapError(
         err instanceof Error ? err.message : 'Freigabe-Obergrenze konnte nicht geändert werden',
@@ -1191,33 +1173,27 @@ export default function LibraryDetailPage() {
               assetType="KNOWLEDGE_LIBRARY"
               assetId={libraryId}
               assetName={library.name}
-              visibility={library.visibility}
+              reach={library.reach}
               listed={library.listed}
-              onSave={(visibility, listed) =>
-                saveLibrary({
-                  name: library.name,
-                  description: library.description,
-                  visibility,
-                  listed,
-                })
+              onSave={(listed) =>
+                saveLibrary({ name: library.name, description: library.description, listed })
               }
-              visibilityCap={details?.visibilityCap}
               listedCap={details?.listedCap}
               capControl={
                 // #797: only the system administration sets this - the owner only ever sees its
-                // consequence, the disabled options and the 409 when a save would exceed it.
+                // consequence, the locked switch and the 409 when a grant would exceed it.
                 isSystemAdmin &&
                 details &&
                 details.sourceType !== 'UPLOAD' &&
-                details.visibilityCap != null &&
+                details.allAccountsGrantAllowed != null &&
                 details.listedCap != null ? (
                   <ShareCapControl
-                    visibilityCap={details.visibilityCap}
+                    allAccountsGrantAllowed={details.allAccountsGrantAllowed}
                     listedCap={details.listedCap}
                     saving={shareCapSaving}
                     error={shareCapError}
-                    onSave={(visibilityCap, listedCap) =>
-                      void handleSaveShareCap(visibilityCap, listedCap)
+                    onSave={(allAccountsGrantAllowed, listedCap) =>
+                      void handleSaveShareCap(allAccountsGrantAllowed, listedCap)
                     }
                     onDismissError={() => setShareCapError(null)}
                   />
@@ -2620,7 +2596,6 @@ interface LibraryIndexingSectionProps {
   library: {
     name: string
     description?: string | null
-    visibility: AssetVisibility
     listed: boolean
     sourceType: DocumentSourceType
     sourcePath?: string | null

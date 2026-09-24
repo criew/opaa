@@ -1,6 +1,6 @@
 package io.opaa.permission;
 
-import io.opaa.api.types.PermissionSubjectType;
+import io.opaa.api.types.AssetGrantSubjectType;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.HashSet;
@@ -22,12 +22,11 @@ import org.springframework.transaction.annotation.Transactional;
  * and its history row commit or roll back together, the same as any other write this class's
  * callers already make in the same transaction.
  *
- * <p><b>The third source of the readable-asset formula is not here.</b> An asset's reach history is
- * shell state, not a grant, and lives in {@code io.opaa.asset.AssetVisibilityHistoryService} -
- * which composes {@link #readableAssetIdsAsOf} with its organization-wide part for any past
- * instant, the way {@link AssetAccessService} reads the release off the shell for "now". Both
- * halves share the one {@link PermissionHistoryClock}, so the interval contract below holds across
- * all three tables.
+ * <p><b>All three ways of the readable-asset formula are here</b> since #1931 (ADR-0037): the
+ * organization-wide reach is a grant to {@code ALL_ACCOUNTS} and is historised in the same table as
+ * the other two. {@code io.opaa.asset.AssetVisibilityHistoryService} still records findability and
+ * the release for Fremdzugaenge, and shares the one {@link PermissionHistoryClock} with this class,
+ * so the interval contract below holds across both tables.
  *
  * <p><b>Interval contract</b> (#1497, ADR-0032), holding for every row written from that change on
  * - rows written before it can still carry the empty intervals it prevents, and are not repaired:
@@ -196,21 +195,25 @@ public class PermissionHistoryService {
 
   /** The interval the subject currently holds on this asset, if any. */
   private Optional<AssetGrantHistory> openGrantInterval(AssetGrant grant) {
-    var open =
-        grant.getSubjectType() == PermissionSubjectType.USER
-            ? grantHistoryRepository
-                .findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectUserIdAndValidToIsNull(
-                    grant.getAssetType(),
-                    grant.getAssetId(),
-                    grant.getSubjectType(),
-                    grant.getSubjectUserId())
-            : grantHistoryRepository
-                .findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectGroupIdAndValidToIsNull(
-                    grant.getAssetType(),
-                    grant.getAssetId(),
-                    grant.getSubjectType(),
-                    grant.getSubjectGroupId());
-    return open;
+    return switch (grant.getSubjectType()) {
+      case USER ->
+          grantHistoryRepository
+              .findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectUserIdAndValidToIsNull(
+                  grant.getAssetType(),
+                  grant.getAssetId(),
+                  AssetGrantSubjectType.USER,
+                  grant.getSubjectUserId());
+      case GROUP ->
+          grantHistoryRepository
+              .findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectGroupIdAndValidToIsNull(
+                  grant.getAssetType(),
+                  grant.getAssetId(),
+                  AssetGrantSubjectType.GROUP,
+                  grant.getSubjectGroupId());
+      case ALL_ACCOUNTS ->
+          grantHistoryRepository.findByAssetTypeAndAssetIdAndSubjectTypeAndValidToIsNull(
+              grant.getAssetType(), grant.getAssetId(), AssetGrantSubjectType.ALL_ACCOUNTS);
+    };
   }
 
   // -------------------------------------------------------------------------------------------
@@ -338,11 +341,10 @@ public class PermissionHistoryService {
   // -------------------------------------------------------------------------------------------
 
   /**
-   * Every asset id of {@code assetType} that a grant to {@code userId} - directly, or to a group
-   * they belonged to - covered at {@code asOf}. The grant half of the formula {@link
-   * AssetAccessService#readableAssetIds} evaluates for "now", evaluated against the two history
-   * tables. Whatever an asset type adds on top of grants (a library's organization-wide visibility)
-   * is composed by that type's own reader.
+   * Every asset id of {@code assetType} that a grant covered at {@code asOf} for {@code userId} -
+   * directly, to a group they belonged to, or to "Alle Konten". The complete formula {@link
+   * AssetAccessService#readableAssetIds} evaluates for "now", evaluated against the history tables
+   * (#1931: the third way is a grant too, so nothing is composed on top of this answer any more).
    *
    * <p><b>Only inside the retention period</b> (#1833). A closed interval whose {@code validTo}
    * lies before {@link PermissionHistoryRetentionService#retentionCutoff()} is deleted, so an
@@ -366,6 +368,9 @@ public class PermissionHistoryService {
           grantHistoryRepository.findReadableAssetIdsByGroupGrantAsOf(
               assetType, groupIds, organizationId, asOf));
     }
+    readable.addAll(
+        grantHistoryRepository.findReadableAssetIdsByAllAccountsGrantAsOf(
+            assetType, organizationId, asOf));
     return readable;
   }
 

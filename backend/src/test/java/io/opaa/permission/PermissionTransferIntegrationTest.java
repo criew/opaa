@@ -6,9 +6,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.api.types.AccessAsOfObjectType;
 import io.opaa.api.types.AccessBasis;
+import io.opaa.api.types.AssetGrantSubjectType;
 import io.opaa.api.types.AssetOwnerType;
 import io.opaa.api.types.AssetRole;
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.Capability;
 import io.opaa.api.types.CapabilitySubjectType;
@@ -211,7 +211,7 @@ class PermissionTransferIntegrationTest {
     assertThat(roleOfGroup(library, target)).isEqualTo(AssetRole.MANAGER);
     assertThat(
             grantRepository.findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectGroupId(
-                KnowledgeLibrary.ASSET_TYPE, library, PermissionSubjectType.GROUP, source))
+                KnowledgeLibrary.ASSET_TYPE, library, AssetGrantSubjectType.GROUP, source))
         .as("the source group holds nothing on the library any more")
         .isEmpty();
   }
@@ -445,7 +445,7 @@ class PermissionTransferIntegrationTest {
     assertThat(grantRepository.existsBySubjectGroupId(source)).isFalse();
     assertThat(
             grantRepository.findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectGroupId(
-                KnowledgeLibrary.ASSET_TYPE, library, PermissionSubjectType.GROUP, target))
+                KnowledgeLibrary.ASSET_TYPE, library, AssetGrantSubjectType.GROUP, target))
         .as("a dead grant is not handed on")
         .isEmpty();
   }
@@ -810,9 +810,8 @@ class PermissionTransferIntegrationTest {
       // suffices, the transfer counts grants and never loads the library behind them.
       UUID assetId = UUID.randomUUID();
       jdbcTemplate.update(
-          "INSERT INTO assets (id, asset_type, organization_id, name, owner_type, owner_user_id,"
-              + " visibility) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, 'Bibliothek', 'USER', ?,"
-              + " 'PRIVATE')",
+          "INSERT INTO assets (id, asset_type, organization_id, name, owner_type, owner_user_id)"
+              + " VALUES (?, 'KNOWLEDGE_LIBRARY', ?, 'Bibliothek', 'USER', ?)",
           assetId,
           organizationA,
           admin.id());
@@ -878,7 +877,7 @@ class PermissionTransferIntegrationTest {
     AssetGrant ownerGrant =
         grantRepository
             .findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectGroupId(
-                KnowledgeLibrary.ASSET_TYPE, library, PermissionSubjectType.GROUP, source)
+                KnowledgeLibrary.ASSET_TYPE, library, AssetGrantSubjectType.GROUP, source)
             .orElseThrow();
     ownerGrant.updateRole(AssetRole.VIEWER, null, admin.id(), Instant.now());
     grantRepository.save(ownerGrant);
@@ -954,7 +953,7 @@ class PermissionTransferIntegrationTest {
   private AssetRole roleOfGroup(UUID libraryId, UUID groupId) {
     return grantRepository
         .findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectGroupId(
-            KnowledgeLibrary.ASSET_TYPE, libraryId, PermissionSubjectType.GROUP, groupId)
+            KnowledgeLibrary.ASSET_TYPE, libraryId, AssetGrantSubjectType.GROUP, groupId)
         .orElseThrow()
         .getRole();
   }
@@ -962,7 +961,7 @@ class PermissionTransferIntegrationTest {
   private AssetGrantHistory openIntervalOfGroup(UUID libraryId, UUID groupId) {
     return grantHistoryRepository
         .findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectGroupIdAndValidToIsNull(
-            KnowledgeLibrary.ASSET_TYPE, libraryId, PermissionSubjectType.GROUP, groupId)
+            KnowledgeLibrary.ASSET_TYPE, libraryId, AssetGrantSubjectType.GROUP, groupId)
         .orElse(null);
   }
 
@@ -1003,12 +1002,7 @@ class PermissionTransferIntegrationTest {
     return libraryRepository
         .save(
             KnowledgeLibrary.ownedByUser(
-                organizationId,
-                "Bibliothek " + UUID.randomUUID(),
-                null,
-                ownerUserId,
-                AssetVisibility.PRIVATE,
-                false))
+                organizationId, "Bibliothek " + UUID.randomUUID(), null, ownerUserId, false))
         .getId();
   }
 
@@ -1023,7 +1017,6 @@ class PermissionTransferIntegrationTest {
             libraryCreation("Eigene Bibliothek " + UUID.randomUUID(), DocumentSourceType.UPLOAD)
                 .ownerType(AssetOwnerType.USER)
                 .ownerId(owner.id())
-                .visibility(AssetVisibility.PRIVATE)
                 .build(),
             owner)
         .library()
@@ -1036,7 +1029,6 @@ class PermissionTransferIntegrationTest {
             libraryCreation("Referatsbibliothek " + UUID.randomUUID(), DocumentSourceType.UPLOAD)
                 .ownerType(AssetOwnerType.GROUP)
                 .ownerId(ownerGroupId)
-                .visibility(AssetVisibility.PRIVATE)
                 .build(),
             creator)
         .library()
@@ -1051,7 +1043,6 @@ class PermissionTransferIntegrationTest {
                 "Referatsbibliothek " + UUID.randomUUID(),
                 null,
                 ownerGroupId,
-                AssetVisibility.PRIVATE,
                 false))
         .getId();
   }

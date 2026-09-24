@@ -13,7 +13,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.sun.net.httpserver.HttpServer;
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.IndexingRunMode;
@@ -107,7 +106,6 @@ class RssFeedIndexingExecutorTest {
           "Bibliothek",
           null,
           UUID.randomUUID(),
-          AssetVisibility.PRIVATE,
           false,
           DocumentSourceType.RSS_FEED,
           null,

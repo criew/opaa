@@ -1,6 +1,5 @@
 package io.opaa.asset;
 
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.ExternalAccessState;
 import io.opaa.permission.AssetType;
 import io.opaa.permission.AssetTypeConverter;
@@ -16,12 +15,13 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * A half-open interval {@code [validFrom, validTo)} recording one reach state of an asset - its
- * {@link AssetVisibility}, {@code listed} and its release for Fremdzugaenge (#238, #1731, see
- * docs/features/security-and-compliance.md#nachweisbarkeit-historisierung-von-rechten). It is the
- * third source the readable-asset formula depends on besides direct and group grants. {@code
- * validTo == null} is the current state. Written and closed exclusively by {@link
- * AssetVisibilityHistoryService}; a type without Fremdzugang carries {@code NEVER_SET}.
+ * A half-open interval {@code [validFrom, validTo)} recording one state of an asset's findability
+ * ({@code listed}) and its release for Fremdzugaenge (#238, #1731, see
+ * docs/features/security-and-compliance.md#nachweisbarkeit-historisierung-von-rechten). Neither is
+ * access: who may read the asset follows from the grants alone, and their history lives in {@code
+ * asset_grant_history} (#1931, ADR-0037 Entscheidung 7). {@code validTo == null} is the current
+ * state. Written and closed exclusively by {@link AssetVisibilityHistoryService}; a type without
+ * Fremdzugang carries {@code NEVER_SET}.
  */
 @Entity
 @Table(name = "asset_visibility_history")
@@ -38,10 +38,6 @@ public class AssetVisibilityHistory {
 
   @Column(name = "organization_id", nullable = false)
   private UUID organizationId;
-
-  @Enumerated(EnumType.STRING)
-  @Column(name = "visibility", nullable = false, length = 20)
-  private AssetVisibility visibility;
 
   @Column(name = "listed", nullable = false)
   private boolean listed;
@@ -75,7 +71,6 @@ public class AssetVisibilityHistory {
       AssetType assetType,
       UUID assetId,
       UUID organizationId,
-      AssetVisibility visibility,
       boolean listed,
       ExternalAccessState externalAccessState,
       Instant externalAccessExpiresAt,
@@ -86,7 +81,6 @@ public class AssetVisibilityHistory {
     this.assetType = assetType;
     this.assetId = assetId;
     this.organizationId = organizationId;
-    this.visibility = visibility;
     this.listed = listed;
     this.externalAccessState = externalAccessState;
     this.externalAccessExpiresAt = externalAccessExpiresAt;
@@ -118,10 +112,6 @@ public class AssetVisibilityHistory {
 
   public UUID getOrganizationId() {
     return organizationId;
-  }
-
-  public AssetVisibility getVisibility() {
-    return visibility;
   }
 
   public boolean isListed() {

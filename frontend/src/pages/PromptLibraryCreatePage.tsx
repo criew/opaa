@@ -19,7 +19,7 @@ import { useMyCapabilities } from '../hooks/useMyCapabilities'
 import { useMyGroups } from '../hooks/useMyGroups'
 import { capabilityMissingMessage } from '../utils/labels'
 import { promptLibraryRoute } from '../routes'
-import type { AssetOwnerType, AssetVisibility, GroupListResponse } from '../types/api'
+import type { AssetOwnerType, GroupListResponse } from '../types/api'
 
 const STEPS = ['Stammdaten', 'Eigentümer', 'Rechte'] as const
 const STEP_TITLES = ['Stammdaten', 'Wem gehört die Prompt-Bibliothek?', 'Rechte'] as const
@@ -42,7 +42,6 @@ export default function PromptLibraryCreatePage() {
   const [description, setDescription] = useState('')
   const [ownerType, setOwnerType] = useState<AssetOwnerType>('USER')
   const [selectedGroup, setSelectedGroup] = useState<GroupListResponse | null>(null)
-  const [visibility, setVisibility] = useState<AssetVisibility>('PRIVATE')
   const [listed, setListed] = useState(false)
   const [pendingGrants, setPendingGrants] = useState<PendingGrant[]>([])
 
@@ -82,7 +81,6 @@ export default function PromptLibraryCreatePage() {
         description: description.trim() || null,
         ownerType,
         ownerId: ownerType === 'GROUP' ? (selectedGroup?.id ?? null) : null,
-        visibility,
         listed,
       })
       await applyPendingGrantsAfterCreation('PROMPT_LIBRARY', id, pendingGrants)
@@ -149,8 +147,6 @@ export default function PromptLibraryCreatePage() {
           {activeStep === 2 && (
             <AssetRightsFields
               idPrefix="prompt-library-create"
-              visibility={visibility}
-              onVisibilityChange={setVisibility}
               listed={{ value: listed, onChange: setListed }}
               pendingGrants={pendingGrants}
               onPendingGrantsChange={setPendingGrants}

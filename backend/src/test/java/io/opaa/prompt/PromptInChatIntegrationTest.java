@@ -7,9 +7,8 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.api.AvailablePromptController;
 import io.opaa.api.dto.AvailablePrompt;
+import io.opaa.api.types.AssetGrantSubjectType;
 import io.opaa.api.types.AssetRole;
-import io.opaa.api.types.AssetVisibility;
-import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.api.types.PromptVariableType;
 import io.opaa.api.types.SpaceRole;
 import io.opaa.api.types.SpaceVisibility;
@@ -187,9 +186,10 @@ class PromptInChatIntegrationTest {
   @Test
   void anUnknownPromptAndOneOfAnotherOrganizationAreRefusedAlike() {
     UUID foreignLibrary = libraryOf(foreigner, "Fremd");
-    libraryService.update(
+    grantService.upsertGrant(
+        PromptLibrary.ASSET_TYPE,
         foreignLibrary,
-        new PromptLibraryUpdate("Fremd", null, AssetVisibility.ORGANIZATION, false),
+        AssetGrantUpsert.forAllAccounts(AssetRole.VIEWER),
         callerOf(foreigner));
     Prompt foreignPrompt =
         promptService.create(
@@ -216,9 +216,10 @@ class PromptInChatIntegrationTest {
     grantViewer(associated, reader);
     associationService.associate(space, PromptLibrary.ASSET_TYPE, associated, callerOf(reader));
     UUID organizationWide = libraryOf(owner, "Alpha Haus");
-    libraryService.update(
+    grantService.upsertGrant(
+        PromptLibrary.ASSET_TYPE,
         organizationWide,
-        new PromptLibraryUpdate("Alpha Haus", null, AssetVisibility.ORGANIZATION, false),
+        AssetGrantUpsert.forAllAccounts(AssetRole.VIEWER),
         callerOf(owner));
     promptService.create(
         organizationWide,
@@ -230,9 +231,10 @@ class PromptInChatIntegrationTest {
         new PromptContent("privat", "Privat", null, "Bitte.", List.of(), 0),
         callerOf(owner));
     UUID foreignLibrary = libraryOf(foreigner, "Fremd");
-    libraryService.update(
+    grantService.upsertGrant(
+        PromptLibrary.ASSET_TYPE,
         foreignLibrary,
-        new PromptLibraryUpdate("Fremd", null, AssetVisibility.ORGANIZATION, false),
+        AssetGrantUpsert.forAllAccounts(AssetRole.VIEWER),
         callerOf(foreigner));
     promptService.create(
         foreignLibrary,
@@ -294,7 +296,7 @@ class PromptInChatIntegrationTest {
         .upsertGrant(
             PromptLibrary.ASSET_TYPE,
             library,
-            new AssetGrantUpsert(PermissionSubjectType.USER, person, AssetRole.VIEWER),
+            new AssetGrantUpsert(AssetGrantSubjectType.USER, person, AssetRole.VIEWER),
             callerOf(owner))
         .grant()
         .getId();
@@ -302,7 +304,7 @@ class PromptInChatIntegrationTest {
 
   private UUID libraryOf(UUID person, String name) {
     return libraryService
-        .create(new PromptLibraryCreation(name, null, null, null, null, null), callerOf(person))
+        .create(new PromptLibraryCreation(name, null, null, null, null), callerOf(person))
         .library()
         .getId();
   }

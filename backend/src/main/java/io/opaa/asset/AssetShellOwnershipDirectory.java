@@ -1,5 +1,6 @@
 package io.opaa.asset;
 
+import io.opaa.api.types.AssetGrantSubjectType;
 import io.opaa.api.types.AssetOwnerType;
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.AuditEventType;
@@ -221,9 +222,9 @@ class AssetShellOwnershipDirectory implements AssetOwnershipDirectory {
   private AssetGrant findGrant(Asset asset, PermissionSubject subject) {
     return (subject.type() == PermissionSubjectType.GROUP
             ? grantRepository.findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectGroupId(
-                asset.getAssetType(), asset.getId(), PermissionSubjectType.GROUP, subject.id())
+                asset.getAssetType(), asset.getId(), AssetGrantSubjectType.GROUP, subject.id())
             : grantRepository.findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectUserId(
-                asset.getAssetType(), asset.getId(), PermissionSubjectType.USER, subject.id()))
+                asset.getAssetType(), asset.getId(), AssetGrantSubjectType.USER, subject.id()))
         .orElse(null);
   }
 }

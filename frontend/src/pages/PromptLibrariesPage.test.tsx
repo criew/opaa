@@ -21,7 +21,9 @@ describe('PromptLibrariesPage', () => {
     expect(card).toHaveAttribute('href', '/prompts/prompt-library-referat-50')
     expect(card).toHaveTextContent('Referat 50 · 2 Prompts')
     expect(screen.getByText('2 Prompt-Bibliotheken')).toBeInTheDocument()
-    expect(screen.getByText('In der Organisation geteilt')).toBeInTheDocument()
+    // #1931: die Reichweite ist abgeleitet - „Alle" steht für die Freigabe an alle Konten.
+    expect(screen.getByText('Alle')).toBeInTheDocument()
+    expect(screen.getByText('nur Sie')).toBeInTheDocument()
   })
 
   it('leads to the creation wizard', async () => {

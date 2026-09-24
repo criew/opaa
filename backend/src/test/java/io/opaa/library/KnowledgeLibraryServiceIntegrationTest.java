@@ -5,12 +5,11 @@ import static io.opaa.library.LibraryUpdateBuilder.libraryUpdate;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.opaa.api.types.AssetGrantSubjectType;
 import io.opaa.api.types.AssetOwnerType;
 import io.opaa.api.types.AssetRole;
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.GroupKind;
-import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.api.types.ScheduleFrequency;
 import io.opaa.api.types.SystemRole;
 import io.opaa.asset.AssetGrantService;
@@ -42,6 +41,7 @@ import io.opaa.permission.AssetGrant;
 import io.opaa.permission.AssetGrantHistoryRepository;
 import io.opaa.permission.AssetGrantRepository;
 import io.opaa.permission.AssetOwnershipHistoryRepository;
+import io.opaa.permission.AssetReach;
 import io.opaa.permission.GroupMembershipHistoryRepository;
 import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.security.CredentialsEncryptionProperties;
@@ -269,7 +269,8 @@ class KnowledgeLibraryServiceIntegrationTest {
 
     assertThat(response.library().getOwnerType()).isEqualTo(AssetOwnerType.USER);
     assertThat(response.library().getOwnerId()).isEqualTo(owner);
-    assertThat(response.library().getVisibility()).isEqualTo(AssetVisibility.PRIVATE);
+    // #1931: the reach is derived - a fresh library carries exactly its creator's OWNER grant.
+    assertThat(response.reach()).isEqualTo(new AssetReach(false, 0, 1));
     assertThat(response.library().isListed()).isFalse();
   }
 
@@ -1354,23 +1355,22 @@ class KnowledgeLibraryServiceIntegrationTest {
   }
 
   @Test
-  void organizationWideVisibilityGrantsReadButNotManageToOtherOrganizationMembers() {
+  void aGrantToAllAccountsGivesReadButNotManageToOtherOrganizationMembers() {
     UUID owner = createUser(organizationA);
     UUID otherMember = createUser(organizationA);
     LibraryDetail library =
         libraryService.createLibrary(
-            libraryCreation("Rechtsquellen", DocumentSourceType.UPLOAD)
-                .visibility(AssetVisibility.ORGANIZATION)
-                .build(),
+            libraryCreation("Rechtsquellen", DocumentSourceType.UPLOAD).build(),
             currentUserOf(owner));
+    grantToAllAccounts(library, owner);
 
-    // Read succeeds for any member of the same organization once visibility is ORGANIZATION.
+    // Read succeeds for any member of the same organization once the grant is there.
     LibraryDetail read =
         libraryService.getLibrary(library.library().getId(), currentUserOf(otherMember, false));
     assertThat(read.library().getId()).isEqualTo(library.library().getId());
 
-    // Organization-wide visibility grants read, not manage - only the owner (or a group member,
-    // or a system admin) may update.
+    // The grant confers VIEWER, not MANAGER - only the owner (or a group member, or a system
+    // admin) may update.
     assertThatThrownBy(
             () ->
                 libraryService.updateLibrary(
@@ -1394,9 +1394,9 @@ class KnowledgeLibraryServiceIntegrationTest {
         libraryService.createLibrary(
             libraryCreation("Verzeichnis", DocumentSourceType.FILESYSTEM)
                 .sourcePath("/data/documents")
-                .visibility(AssetVisibility.ORGANIZATION)
                 .build(),
             currentUserOf(owner));
+    grantToAllAccounts(created, owner);
     // #507 code review, finding 2: an explicit EDITOR grant (one rank below the MANAGER bar) and
     // an explicit MANAGER grant, so an accidental weakening to atLeast(EDITOR) - a plausible typo
     // given AssetRole's general Javadoc calls EDITOR the "changes configuration" rank - fails this
@@ -1404,12 +1404,12 @@ class KnowledgeLibraryServiceIntegrationTest {
     grantService.upsertGrant(
         KnowledgeLibrary.ASSET_TYPE,
         created.library().getId(),
-        new AssetGrantUpsert(PermissionSubjectType.USER, editorGrantee, AssetRole.EDITOR),
+        new AssetGrantUpsert(AssetGrantSubjectType.USER, editorGrantee, AssetRole.EDITOR),
         currentUserOf(owner, false));
     grantService.upsertGrant(
         KnowledgeLibrary.ASSET_TYPE,
         created.library().getId(),
-        new AssetGrantUpsert(PermissionSubjectType.USER, managerGrantee, AssetRole.MANAGER),
+        new AssetGrantUpsert(AssetGrantSubjectType.USER, managerGrantee, AssetRole.MANAGER),
         currentUserOf(owner, false));
 
     // The owner holds OWNER (at least MANAGER) and sees the full source configuration.
@@ -1461,10 +1461,9 @@ class KnowledgeLibraryServiceIntegrationTest {
     UUID otherMember = createUser(organizationA);
     LibraryDetail created =
         libraryService.createLibrary(
-            libraryCreation("Rechtsquellen Soziales", DocumentSourceType.UPLOAD)
-                .visibility(AssetVisibility.ORGANIZATION)
-                .build(),
+            libraryCreation("Rechtsquellen Soziales", DocumentSourceType.UPLOAD).build(),
             currentUserOf(owner));
+    grantToAllAccounts(created, owner);
 
     LibraryDetail asOwner =
         libraryService.getLibrary(created.library().getId(), currentUserOf(owner, false));
@@ -1496,7 +1495,7 @@ class KnowledgeLibraryServiceIntegrationTest {
     grantService.upsertGrant(
         KnowledgeLibrary.ASSET_TYPE,
         library.library().getId(),
-        new AssetGrantUpsert(PermissionSubjectType.USER, viewer, AssetRole.VIEWER),
+        new AssetGrantUpsert(AssetGrantSubjectType.USER, viewer, AssetRole.VIEWER),
         currentUserOf(owner, false));
 
     // stranger holds no grant at all on this (default PRIVATE) library - every endpoint answers
@@ -1712,7 +1711,7 @@ class KnowledgeLibraryServiceIntegrationTest {
         grantRepository
             .findByAssetTypeAndAssetId(KnowledgeLibrary.ASSET_TYPE, library.library().getId())
             .stream()
-            .filter(g -> g.getSubjectType() == PermissionSubjectType.USER)
+            .filter(g -> g.getSubjectType() == AssetGrantSubjectType.USER)
             .filter(g -> creator.equals(g.getSubjectUserId()))
             .findFirst()
             .orElseThrow();
@@ -1786,7 +1785,7 @@ class KnowledgeLibraryServiceIntegrationTest {
     grantService.upsertGrant(
         KnowledgeLibrary.ASSET_TYPE,
         library.library().getId(),
-        new AssetGrantUpsert(PermissionSubjectType.GROUP, group.getId(), AssetRole.VIEWER),
+        new AssetGrantUpsert(AssetGrantSubjectType.GROUP, group.getId(), AssetRole.VIEWER),
         currentUserOf(owner, false));
 
     LibraryDetail read =
@@ -1830,7 +1829,7 @@ class KnowledgeLibraryServiceIntegrationTest {
         grantService.upsertGrant(
             KnowledgeLibrary.ASSET_TYPE,
             library.library().getId(),
-            new AssetGrantUpsert(PermissionSubjectType.USER, viewer, AssetRole.VIEWER),
+            new AssetGrantUpsert(AssetGrantSubjectType.USER, viewer, AssetRole.VIEWER),
             currentUserOf(owner, false));
     assertThat(
             libraryService
@@ -1871,12 +1870,12 @@ class KnowledgeLibraryServiceIntegrationTest {
     grantService.upsertGrant(
         KnowledgeLibrary.ASSET_TYPE,
         library.library().getId(),
-        new AssetGrantUpsert(PermissionSubjectType.USER, subjectUser, AssetRole.VIEWER),
+        new AssetGrantUpsert(AssetGrantSubjectType.USER, subjectUser, AssetRole.VIEWER),
         currentUserOf(owner, false));
     grantService.upsertGrant(
         KnowledgeLibrary.ASSET_TYPE,
         library.library().getId(),
-        new AssetGrantUpsert(PermissionSubjectType.GROUP, subjectGroup.getId(), AssetRole.VIEWER),
+        new AssetGrantUpsert(AssetGrantSubjectType.GROUP, subjectGroup.getId(), AssetRole.VIEWER),
         currentUserOf(owner, false));
 
     // owner only ever holds a MANAGER-or-above library grant here, never SYSTEM_ADMIN - the
@@ -1933,7 +1932,7 @@ class KnowledgeLibraryServiceIntegrationTest {
         grantService.upsertGrant(
             KnowledgeLibrary.ASSET_TYPE,
             library.library().getId(),
-            new AssetGrantUpsert(PermissionSubjectType.USER, secondOwner, AssetRole.OWNER),
+            new AssetGrantUpsert(AssetGrantSubjectType.USER, secondOwner, AssetRole.OWNER),
             currentUserOf(firstOwner, false));
 
     var barrier = new CyclicBarrier(2);
@@ -2035,7 +2034,7 @@ class KnowledgeLibraryServiceIntegrationTest {
         grantService.upsertGrant(
             KnowledgeLibrary.ASSET_TYPE,
             library.library().getId(),
-            new AssetGrantUpsert(PermissionSubjectType.USER, secondOwner, AssetRole.OWNER),
+            new AssetGrantUpsert(AssetGrantSubjectType.USER, secondOwner, AssetRole.OWNER),
             currentUserOf(firstOwner, false));
 
     var barrier = new CyclicBarrier(2);
@@ -2048,7 +2047,7 @@ class KnowledgeLibraryServiceIntegrationTest {
               grantService.upsertGrant(
                   KnowledgeLibrary.ASSET_TYPE,
                   library.library().getId(),
-                  new AssetGrantUpsert(PermissionSubjectType.USER, firstOwner, AssetRole.VIEWER),
+                  new AssetGrantUpsert(AssetGrantSubjectType.USER, firstOwner, AssetRole.VIEWER),
                   currentUserOf(firstOwner, false));
               return null;
             } catch (ConflictException e) {
@@ -2113,7 +2112,7 @@ class KnowledgeLibraryServiceIntegrationTest {
     grantService.upsertGrant(
         KnowledgeLibrary.ASSET_TYPE,
         library.library().getId(),
-        new AssetGrantUpsert(PermissionSubjectType.USER, reader, AssetRole.VIEWER),
+        new AssetGrantUpsert(AssetGrantSubjectType.USER, reader, AssetRole.VIEWER),
         currentUserOf(owner, false));
 
     long startNanos = System.nanoTime();
@@ -2168,7 +2167,7 @@ class KnowledgeLibraryServiceIntegrationTest {
     grantService.upsertGrant(
         KnowledgeLibrary.ASSET_TYPE,
         library.library().getId(),
-        new AssetGrantUpsert(PermissionSubjectType.USER, viewer, AssetRole.VIEWER),
+        new AssetGrantUpsert(AssetGrantSubjectType.USER, viewer, AssetRole.VIEWER),
         currentUserOf(owner, false));
 
     List<LibrarySummary> listed = libraryService.listLibraries(currentUserOf(viewer, false));
@@ -2193,7 +2192,7 @@ class KnowledgeLibraryServiceIntegrationTest {
     grantService.upsertGrant(
         KnowledgeLibrary.ASSET_TYPE,
         library.library().getId(),
-        new AssetGrantUpsert(PermissionSubjectType.GROUP, group.getId(), AssetRole.EDITOR),
+        new AssetGrantUpsert(AssetGrantSubjectType.GROUP, group.getId(), AssetRole.EDITOR),
         currentUserOf(owner, false));
 
     List<LibrarySummary> listed = libraryService.listLibraries(currentUserOf(member, false));
@@ -2218,7 +2217,7 @@ class KnowledgeLibraryServiceIntegrationTest {
     grantService.upsertGrant(
         KnowledgeLibrary.ASSET_TYPE,
         library.library().getId(),
-        new AssetGrantUpsert(PermissionSubjectType.USER, formerViewer, AssetRole.VIEWER)
+        new AssetGrantUpsert(AssetGrantSubjectType.USER, formerViewer, AssetRole.VIEWER)
             .expiresAt(Instant.now().minusSeconds(60)),
         currentUserOf(owner, false));
 
@@ -2268,7 +2267,7 @@ class KnowledgeLibraryServiceIntegrationTest {
     grantService.upsertGrant(
         KnowledgeLibrary.ASSET_TYPE,
         directGrantLibrary.library().getId(),
-        new AssetGrantUpsert(PermissionSubjectType.USER, member, AssetRole.VIEWER),
+        new AssetGrantUpsert(AssetGrantSubjectType.USER, member, AssetRole.VIEWER),
         currentUserOf(owner, false));
     LibraryDetail groupGrantLibrary =
         libraryService.createLibrary(
@@ -2277,14 +2276,13 @@ class KnowledgeLibraryServiceIntegrationTest {
     grantService.upsertGrant(
         KnowledgeLibrary.ASSET_TYPE,
         groupGrantLibrary.library().getId(),
-        new AssetGrantUpsert(PermissionSubjectType.GROUP, group.getId(), AssetRole.VIEWER),
+        new AssetGrantUpsert(AssetGrantSubjectType.GROUP, group.getId(), AssetRole.VIEWER),
         currentUserOf(owner, false));
     LibraryDetail orgWideLibrary =
         libraryService.createLibrary(
-            libraryCreation("Organisationsweit", DocumentSourceType.UPLOAD)
-                .visibility(AssetVisibility.ORGANIZATION)
-                .build(),
+            libraryCreation("Organisationsweit", DocumentSourceType.UPLOAD).build(),
             currentUserOf(owner));
+    grantToAllAccounts(orgWideLibrary, owner);
     libraryService.createLibrary(
         libraryCreation("Unerreichbar fuer member", DocumentSourceType.UPLOAD).build(),
         currentUserOf(owner));
@@ -2314,10 +2312,9 @@ class KnowledgeLibraryServiceIntegrationTest {
     UUID userInA = createUser(organizationA);
     LibraryDetail orgWideInB =
         libraryService.createLibrary(
-            libraryCreation("Organisationsweit in B", DocumentSourceType.UPLOAD)
-                .visibility(AssetVisibility.ORGANIZATION)
-                .build(),
+            libraryCreation("Organisationsweit in B", DocumentSourceType.UPLOAD).build(),
             currentUserOf(ownerInB));
+    grantToAllAccounts(orgWideInB, ownerInB);
 
     List<LibrarySummary> listed = libraryService.listLibraries(currentUserOf(userInA, false));
 
@@ -2451,10 +2448,10 @@ class KnowledgeLibraryServiceIntegrationTest {
 
       LibraryDetail apple =
           libraryService.createLibrary(
-              libraryCreation("Apple", DocumentSourceType.UPLOAD)
-                  .visibility(AssetVisibility.ORGANIZATION)
-                  .build(),
+              libraryCreation("Apple", DocumentSourceType.UPLOAD).build(),
               currentUserOf(appleOwner));
+      // Reaches owner without a grant of their own - the third row the query count must absorb.
+      grantToAllAccounts(apple, appleOwner);
       Document third = new Document("c.pdf", "/tmp/477-c.pdf", null, 10L);
       third.setLibraryId(apple.library().getId());
       third.setOrganizationId(organizationA);
@@ -2591,10 +2588,9 @@ class KnowledgeLibraryServiceIntegrationTest {
             currentUserOf(owner));
     LibraryDetail orgWideLibrary =
         libraryService.createLibrary(
-            libraryCreation("Organisationsweit", DocumentSourceType.UPLOAD)
-                .visibility(AssetVisibility.ORGANIZATION)
-                .build(),
+            libraryCreation("Organisationsweit", DocumentSourceType.UPLOAD).build(),
             currentUserOf(owner));
+    grantToAllAccounts(orgWideLibrary, owner);
 
     // getLibrary does bypass for a system admin, on a library the admin has no grant on at all.
     assertThat(
@@ -2610,7 +2606,7 @@ class KnowledgeLibraryServiceIntegrationTest {
         .extracting(s -> s.library().getId())
         .doesNotContain(privateLibraryNoGrantForAdmin.library().getId());
 
-    // ...and myRole on a library the formula does reach (here: via organization-wide visibility)
+    // ...and myRole on a library the formula does reach (here: via the grant to all accounts)
     // reports the real VIEWER role, not an admin-bypassed OWNER.
     assertThat(listed)
         .filteredOn(l -> l.library().getId().equals(orgWideLibrary.library().getId()))
@@ -2643,7 +2639,7 @@ class KnowledgeLibraryServiceIntegrationTest {
     grantService.upsertGrant(
         KnowledgeLibrary.ASSET_TYPE,
         library.library().getId(),
-        new AssetGrantUpsert(PermissionSubjectType.USER, viewer, AssetRole.VIEWER),
+        new AssetGrantUpsert(AssetGrantSubjectType.USER, viewer, AssetRole.VIEWER),
         currentUserOf(owner, false));
 
     assertThat(
@@ -2689,12 +2685,7 @@ class KnowledgeLibraryServiceIntegrationTest {
   void savingALibraryWithANonExistentOwnerUserFailsInsteadOfSilentlyPersisting() {
     KnowledgeLibrary library =
         KnowledgeLibrary.ownedByUser(
-            organizationA,
-            "Ghost",
-            "Owner does not exist",
-            UUID.randomUUID(),
-            AssetVisibility.PRIVATE,
-            false);
+            organizationA, "Ghost", "Owner does not exist", UUID.randomUUID(), false);
 
     assertThatThrownBy(() -> libraryRepository.saveAndFlush(library))
         .isInstanceOf(DataIntegrityViolationException.class)
@@ -2705,15 +2696,22 @@ class KnowledgeLibraryServiceIntegrationTest {
   void savingALibraryWithANonExistentOwnerGroupFailsInsteadOfSilentlyPersisting() {
     KnowledgeLibrary library =
         KnowledgeLibrary.ownedByGroup(
-            organizationA,
-            "Ghost",
-            "Owner group does not exist",
-            UUID.randomUUID(),
-            AssetVisibility.PRIVATE,
-            false);
+            organizationA, "Ghost", "Owner group does not exist", UUID.randomUUID(), false);
 
     assertThatThrownBy(() -> libraryRepository.saveAndFlush(library))
         .isInstanceOf(DataIntegrityViolationException.class)
         .hasMessageContaining("fk_assets_owner_group_organization");
+  }
+
+  /**
+   * The successor of the former release level {@code ORGANIZATION} (#1931): a grant to "Alle
+   * Beschäftigten" reaches every account of the organization, and nothing beyond it.
+   */
+  private void grantToAllAccounts(LibraryDetail library, UUID owner) {
+    grantService.upsertGrant(
+        KnowledgeLibrary.ASSET_TYPE,
+        library.library().getId(),
+        AssetGrantUpsert.forAllAccounts(AssetRole.VIEWER),
+        currentUserOf(owner, false));
   }
 }

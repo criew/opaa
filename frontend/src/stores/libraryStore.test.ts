@@ -21,7 +21,7 @@ function library(overrides: Partial<LibraryListResponse> = {}): LibraryListRespo
     name: 'A',
     description: null,
     ownerType: 'USER',
-    visibility: 'PRIVATE',
+    reach: { allAccounts: false, groupCount: 0, userCount: 1 },
     listed: false,
     myRole: 'OWNER',
     sourceType: 'UPLOAD',

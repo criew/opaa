@@ -1,12 +1,11 @@
 package io.opaa.library;
 
 import static io.opaa.library.LibraryCreationBuilder.libraryCreation;
-import static io.opaa.library.LibraryUpdateBuilder.libraryUpdate;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.opaa.api.types.AssetGrantSubjectType;
 import io.opaa.api.types.AssetOwnerType;
 import io.opaa.api.types.AssetRole;
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DirectorySyncOutcome;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.GroupKind;
@@ -294,14 +293,14 @@ class PermissionHistoryServiceIntegrationTest {
     grantService.upsertGrant(
         KnowledgeLibrary.ASSET_TYPE,
         libraryId,
-        new AssetGrantUpsert(PermissionSubjectType.USER, reader, AssetRole.VIEWER),
+        new AssetGrantUpsert(AssetGrantSubjectType.USER, reader, AssetRole.VIEWER),
         currentUserOf(owner));
     Instant whileGranted = historyClock.nextBoundary();
 
     AssetGrantHistory grantHistory =
         grantHistoryRepository
             .findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectUserIdAndValidToIsNull(
-                KnowledgeLibrary.ASSET_TYPE, libraryId, PermissionSubjectType.USER, reader)
+                KnowledgeLibrary.ASSET_TYPE, libraryId, AssetGrantSubjectType.USER, reader)
             .orElseThrow();
     UUID grantId = grantHistory.getId();
     assertThat(grantHistory.getCause()).isEqualTo(AssetGrantHistoryCause.GRANTED);
@@ -314,12 +313,12 @@ class PermissionHistoryServiceIntegrationTest {
     Instant afterRevocation = historyClock.nextBoundary();
 
     assertThat(
-            visibilityHistoryService.readableAssetIdsAsOf(
+            permissionHistoryService.readableAssetIdsAsOf(
                 KnowledgeLibrary.ASSET_TYPE, reader, organizationId, whileGranted))
         .contains(libraryId);
     // The negative question: prove absence, not merely the lack of a log entry.
     assertThat(
-            visibilityHistoryService.readableAssetIdsAsOf(
+            permissionHistoryService.readableAssetIdsAsOf(
                 KnowledgeLibrary.ASSET_TYPE, reader, organizationId, afterRevocation))
         .doesNotContain(libraryId);
 
@@ -347,7 +346,7 @@ class PermissionHistoryServiceIntegrationTest {
     grantService.upsertGrant(
         KnowledgeLibrary.ASSET_TYPE,
         libraryId,
-        new AssetGrantUpsert(PermissionSubjectType.GROUP, savedGroup.getId(), AssetRole.VIEWER),
+        new AssetGrantUpsert(AssetGrantSubjectType.GROUP, savedGroup.getId(), AssetRole.VIEWER),
         currentUserOf(owner));
     groupService.addMember(savedGroup.getId(), member, currentUserOf(owner));
     Instant whileMember = historyClock.nextBoundary();
@@ -356,11 +355,11 @@ class PermissionHistoryServiceIntegrationTest {
     Instant afterRemoval = historyClock.nextBoundary();
 
     assertThat(
-            visibilityHistoryService.readableAssetIdsAsOf(
+            permissionHistoryService.readableAssetIdsAsOf(
                 KnowledgeLibrary.ASSET_TYPE, member, organizationId, whileMember))
         .contains(libraryId);
     assertThat(
-            visibilityHistoryService.readableAssetIdsAsOf(
+            permissionHistoryService.readableAssetIdsAsOf(
                 KnowledgeLibrary.ASSET_TYPE, member, organizationId, afterRemoval))
         .doesNotContain(libraryId);
   }
@@ -396,30 +395,33 @@ class PermissionHistoryServiceIntegrationTest {
     assertThat(recorded).isTrue();
   }
 
+  /** #1931: the third way is a grant, so revoking it closes an ordinary grant interval. */
   @Test
-  void narrowingLibraryVisibilityClosesTheOrganizationWideIntervalInTheAsOfReconstruction() {
+  void revokingTheGrantToAllAccountsClosesItsIntervalInTheAsOfReconstruction() {
     UUID owner = createUser();
     UUID libraryId = createLibrary(owner);
     UUID otherUser = createUser();
 
-    libraryService.updateLibrary(
-        libraryId,
-        libraryUpdate("Bibliothek").visibility(AssetVisibility.ORGANIZATION).build(),
-        currentUserOf(owner));
+    UUID grantId =
+        grantService
+            .upsertGrant(
+                KnowledgeLibrary.ASSET_TYPE,
+                libraryId,
+                AssetGrantUpsert.forAllAccounts(AssetRole.VIEWER),
+                currentUserOf(owner))
+            .grant()
+            .getId();
     Instant whileOrganizationWide = historyClock.nextBoundary();
 
-    libraryService.updateLibrary(
-        libraryId,
-        libraryUpdate("Bibliothek").visibility(AssetVisibility.PRIVATE).build(),
-        currentUserOf(owner));
+    grantService.revokeGrant(KnowledgeLibrary.ASSET_TYPE, libraryId, grantId, currentUserOf(owner));
     Instant afterNarrowing = historyClock.nextBoundary();
 
     assertThat(
-            visibilityHistoryService.readableAssetIdsAsOf(
+            permissionHistoryService.readableAssetIdsAsOf(
                 KnowledgeLibrary.ASSET_TYPE, otherUser, organizationId, whileOrganizationWide))
         .contains(libraryId);
     assertThat(
-            visibilityHistoryService.readableAssetIdsAsOf(
+            permissionHistoryService.readableAssetIdsAsOf(
                 KnowledgeLibrary.ASSET_TYPE, otherUser, organizationId, afterNarrowing))
         .doesNotContain(libraryId);
   }
@@ -432,9 +434,8 @@ class PermissionHistoryServiceIntegrationTest {
     // gave the organization-wide state validFrom == validTo, an interval no asOf can satisfy, so
     // the reconstruction reported "no access" for a period in which access existed.
     // Recording through a locally built service replaces KnowledgeLibraryService#updateLibrary ->
-    // AssetShellService#changeReach -> AssetHistoryListener; it therefore says nothing about how
-    // many
-    // boundaries that production path consumes per change - the tests above cover that.
+    // AssetShellService#changeListed -> AssetHistoryListener; it therefore says nothing about how
+    // many boundaries that production path consumes per change - the tests above cover that.
     UUID owner = createUser();
     UUID otherUser = createUser();
     UUID libraryId = createLibrary(owner);
@@ -448,48 +449,29 @@ class PermissionHistoryServiceIntegrationTest {
     PermissionHistoryClock standingClock =
         new PermissionHistoryClock(InstantSource.fixed(standstill));
     AssetVisibilityHistoryService serviceOnAStandingClock =
-        new AssetVisibilityHistoryService(
-            visibilityHistoryRepository, permissionHistoryService, standingClock);
+        new AssetVisibilityHistoryService(visibilityHistoryRepository, standingClock);
 
     KnowledgeLibrary library = libraryRepository.findById(libraryId).orElseThrow();
-    ReflectionTestUtils.setField(library, "visibility", AssetVisibility.ORGANIZATION);
+    ReflectionTestUtils.setField(library, "listed", true);
     serviceOnAStandingClock.recordVisibilityChanged(libraryRepository.save(library), owner);
 
-    Instant whileOrganizationWide = standingClock.nextBoundary();
-
-    ReflectionTestUtils.setField(library, "visibility", AssetVisibility.PRIVATE);
+    ReflectionTestUtils.setField(library, "listed", false);
     serviceOnAStandingClock.recordVisibilityChanged(libraryRepository.save(library), owner);
 
-    Instant afterNarrowing = standingClock.nextBoundary();
-
-    AssetVisibilityHistory organizationWide =
-        visibilityIntervalOf(
-            libraryId,
-            AssetVisibilityHistoryCause.VISIBILITY_CHANGED,
-            AssetVisibility.ORGANIZATION);
-    assertThat(organizationWide.getValidTo())
+    AssetVisibilityHistory whileListed =
+        visibilityIntervalOf(libraryId, AssetVisibilityHistoryCause.VISIBILITY_CHANGED, true);
+    assertThat(whileListed.getValidTo())
         .as("a state the object really held must occupy a non-empty interval")
-        .isAfter(organizationWide.getValidFrom());
-
-    assertThat(
-            visibilityHistoryService.readableAssetIdsAsOf(
-                KnowledgeLibrary.ASSET_TYPE, otherUser, organizationId, whileOrganizationWide))
-        .contains(libraryId);
-    assertThat(
-            visibilityHistoryService.readableAssetIdsAsOf(
-                KnowledgeLibrary.ASSET_TYPE, otherUser, organizationId, afterNarrowing))
-        .doesNotContain(libraryId);
+        .isAfter(whileListed.getValidFrom());
 
     // The chaining the strictly increasing boundaries must not cost: no instant falls between two
     // successive intervals of the same library.
     AssetVisibilityHistory created =
-        visibilityIntervalOf(
-            libraryId, AssetVisibilityHistoryCause.CREATED, AssetVisibility.PRIVATE);
-    AssetVisibilityHistory narrowedAgain =
-        visibilityIntervalOf(
-            libraryId, AssetVisibilityHistoryCause.VISIBILITY_CHANGED, AssetVisibility.PRIVATE);
-    assertThat(created.getValidTo()).isEqualTo(organizationWide.getValidFrom());
-    assertThat(organizationWide.getValidTo()).isEqualTo(narrowedAgain.getValidFrom());
+        visibilityIntervalOf(libraryId, AssetVisibilityHistoryCause.CREATED, false);
+    AssetVisibilityHistory unlistedAgain =
+        visibilityIntervalOf(libraryId, AssetVisibilityHistoryCause.VISIBILITY_CHANGED, false);
+    assertThat(created.getValidTo()).isEqualTo(whileListed.getValidFrom());
+    assertThat(whileListed.getValidTo()).isEqualTo(unlistedAgain.getValidFrom());
   }
 
   @Test
@@ -504,7 +486,7 @@ class PermissionHistoryServiceIntegrationTest {
     grantService.upsertGrant(
         KnowledgeLibrary.ASSET_TYPE,
         libraryId,
-        new AssetGrantUpsert(PermissionSubjectType.USER, reader, AssetRole.VIEWER),
+        new AssetGrantUpsert(AssetGrantSubjectType.USER, reader, AssetRole.VIEWER),
         currentUserOf(owner));
     grantService.revokeGrant(
         KnowledgeLibrary.ASSET_TYPE,
@@ -527,13 +509,11 @@ class PermissionHistoryServiceIntegrationTest {
   }
 
   private AssetVisibilityHistory visibilityIntervalOf(
-      UUID libraryId, AssetVisibilityHistoryCause cause, AssetVisibility visibility) {
+      UUID libraryId, AssetVisibilityHistoryCause cause, boolean listed) {
     return visibilityHistoryRepository.findAll().stream()
         .filter(
             h ->
-                h.getAssetId().equals(libraryId)
-                    && h.getCause() == cause
-                    && h.getVisibility() == visibility)
+                h.getAssetId().equals(libraryId) && h.getCause() == cause && h.isListed() == listed)
         .findFirst()
         .orElseThrow();
   }
@@ -565,7 +545,7 @@ class PermissionHistoryServiceIntegrationTest {
     grantService.upsertGrant(
         KnowledgeLibrary.ASSET_TYPE,
         sharedLibraryId,
-        new AssetGrantUpsert(PermissionSubjectType.USER, user, AssetRole.VIEWER),
+        new AssetGrantUpsert(AssetGrantSubjectType.USER, user, AssetRole.VIEWER),
         currentUserOf(sharedOwner));
 
     UUID groupOwner = createUser();
@@ -574,21 +554,22 @@ class PermissionHistoryServiceIntegrationTest {
     grantService.upsertGrant(
         KnowledgeLibrary.ASSET_TYPE,
         groupLibraryId,
-        new AssetGrantUpsert(PermissionSubjectType.GROUP, savedGroup.getId(), AssetRole.VIEWER),
+        new AssetGrantUpsert(AssetGrantSubjectType.GROUP, savedGroup.getId(), AssetRole.VIEWER),
         currentUserOf(groupOwner));
     groupService.addMember(savedGroup.getId(), user, currentUserOf(groupOwner));
 
     UUID orgWideOwner = createUser();
     UUID orgWideLibraryId = createLibrary(orgWideOwner);
-    libraryService.updateLibrary(
+    grantService.upsertGrant(
+        KnowledgeLibrary.ASSET_TYPE,
         orgWideLibraryId,
-        libraryUpdate("Bibliothek").visibility(AssetVisibility.ORGANIZATION).build(),
+        AssetGrantUpsert.forAllAccounts(AssetRole.VIEWER),
         currentUserOf(orgWideOwner));
 
     Instant now = historyClock.nextBoundary();
     Set<UUID> live = accessService.readableLibraryIds(user, organizationId);
     Set<UUID> historized =
-        visibilityHistoryService.readableAssetIdsAsOf(
+        permissionHistoryService.readableAssetIdsAsOf(
             KnowledgeLibrary.ASSET_TYPE, user, organizationId, now);
 
     assertThat(historized).isEqualTo(live);
@@ -607,7 +588,7 @@ class PermissionHistoryServiceIntegrationTest {
     grantService.upsertGrant(
         KnowledgeLibrary.ASSET_TYPE,
         libraryId,
-        new AssetGrantUpsert(PermissionSubjectType.USER, reader, AssetRole.VIEWER),
+        new AssetGrantUpsert(AssetGrantSubjectType.USER, reader, AssetRole.VIEWER),
         currentUserOf(owner));
 
     libraryService.deleteLibrary(libraryId, currentUserOf(owner));
@@ -624,7 +605,7 @@ class PermissionHistoryServiceIntegrationTest {
     assertThat(
             grantHistoryRepository
                 .findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectUserIdAndValidToIsNull(
-                    KnowledgeLibrary.ASSET_TYPE, libraryId, PermissionSubjectType.USER, reader))
+                    KnowledgeLibrary.ASSET_TYPE, libraryId, AssetGrantSubjectType.USER, reader))
         .isEmpty();
 
     boolean visibilityClosedWithCorrectCause =
@@ -641,7 +622,7 @@ class PermissionHistoryServiceIntegrationTest {
         .isEmpty();
 
     assertThat(
-            visibilityHistoryService.readableAssetIdsAsOf(
+            permissionHistoryService.readableAssetIdsAsOf(
                 KnowledgeLibrary.ASSET_TYPE, reader, organizationId, historyClock.nextBoundary()))
         .doesNotContain(libraryId);
   }
@@ -781,10 +762,10 @@ class PermissionHistoryServiceIntegrationTest {
         .doesNotContain(libraryId);
     assertThat(accessService.readableLibraryIds(owner, organizationId)).isEqualTo(ownerBefore);
     assertThat(
-            visibilityHistoryService.readableAssetIdsAsOf(
+            permissionHistoryService.readableAssetIdsAsOf(
                 KnowledgeLibrary.ASSET_TYPE, outsider, organizationId, afterTheRelease))
         .isEqualTo(
-            visibilityHistoryService.readableAssetIdsAsOf(
+            permissionHistoryService.readableAssetIdsAsOf(
                 KnowledgeLibrary.ASSET_TYPE, outsider, organizationId, beforeTheRelease));
   }
 
@@ -882,20 +863,19 @@ class PermissionHistoryServiceIntegrationTest {
         this::directorySyncConfirmedMembershipRemoval);
     paths.put("KnowledgeLibraryService#createLibrary", this::libraryCreated);
     paths.put("AssetShellService#registerCreated", this::libraryCreated);
-    paths.put("AssetShellService#changeReach (visibility widened)", this::visibilityWidened);
-    paths.put("AssetShellService#changeReach (visibility narrowed)", this::visibilityNarrowed);
-    paths.put("AssetShellService#narrowReachTo", this::shareCapLoweredClampsVisibility);
+    paths.put("AssetGrantService#upsertGrant (granted to all accounts)", this::visibilityWidened);
+    paths.put(
+        "AssetGrantService#revokeAllAccountsGrantForLoweredCap",
+        this::shareCapLoweredClampsVisibility);
     paths.put("AssetShellService#registerDeleted", this::libraryDeleted);
     paths.put(
-        "KnowledgeLibraryService#updateLibrary (visibility widened)", this::visibilityWidened);
-    paths.put(
-        "KnowledgeLibraryService#updateLibrary (visibility narrowed)", this::visibilityNarrowed);
+        "AssetGrantService#revokeGrant (all-accounts grant revoked)", this::visibilityNarrowed);
     paths.put("KnowledgeLibraryService#deleteLibrary (granted reader)", this::libraryDeleted);
     paths.put(
         "KnowledgeLibraryService#deleteLibrary (organization-wide library)",
         this::organizationWideLibraryDeleted);
     paths.put(
-        "KnowledgeLibraryService#updateShareCap (visibility clamped)",
+        "KnowledgeLibraryService#updateShareCap (all-accounts grant revoked)",
         this::shareCapLoweredClampsVisibility);
     paths.put(
         "PermissionTransferService#transfer (group grant moved)", this::groupGrantTransferred);
@@ -986,12 +966,12 @@ class PermissionHistoryServiceIntegrationTest {
    * <p>{@code KnowledgeLibraryRepository} is deliberately not scanned: some thirty beans inject it,
    * nearly all of them only to load a library by id, so the list would flag unrelated indexing work
    * without naming a write path. What carries the omission for the reach fields is the compiler,
-   * not an observation: {@code KnowledgeLibrary#updateDetails} is package-private and the only door
-   * to {@code visibility} and {@code listed} outside the constructor, so both can be changed only
-   * from {@code io.opaa.library} - the package that publishes {@code LibraryChanged} - and {@code
-   * KnowledgeLibraryService#updateLibrary} is its single caller. A library's existence stays an
-   * observation: rows are created and removed through the repository, which every holder can call.
-   * The three beans outside the service that do save library rows ({@code
+   * not an observation: {@code Asset#applyListed} is package-private and the only door to {@code
+   * listed} outside the constructor, so it can be changed only from {@code io.opaa.asset} - the
+   * package that publishes {@code AssetChanged}. Who may read a library follows from the grants
+   * alone since #1931, and those are covered by the write paths above. A library's existence stays
+   * an observation: rows are created and removed through the repository, which every holder can
+   * call. The three beans outside the service that do save library rows ({@code
    * LibraryDiagnosticsLockService}, {@code LibraryMetadataExtractionService}, {@code
    * LibraryMetadataFieldService}) each touch only their own fields. A write issued through {@code
    * JdbcTemplate} instead of a repository is out of reach of both checks.
@@ -1118,13 +1098,17 @@ class PermissionHistoryServiceIntegrationTest {
   /**
    * The public methods of the classes above that cannot move a library into or out of a user's
    * readable set: the reads, plus the writes touching neither a grant, nor a membership, nor a
-   * library's existence or visibility. A fresh group grants nothing until it holds a grant, a
-   * renamed group or library keeps every grant it had, a webhook or event credential is no right on
-   * the library, and a dry run writes no group data at all.
+   * library's existence or reach. A fresh group grants nothing until it holds a grant, a renamed
+   * group or library keeps every grant it had, a webhook or event credential is no right on the
+   * library, and a dry run writes no group data at all.
    */
   private static final Set<String> CANNOT_CHANGE_READABILITY =
       Set.of(
           "AssetGrantService#listGrants",
+          // #1931: Auffindbarkeit ist eine Aussage ueber den Katalog, nie ueber den Zugriff -
+          // die lesbare Menge ist vor und nach dem Schalten dieselbe.
+          "AssetShellService#changeListed",
+          "AssetShellService#clearListedForLoweredCap",
           // #1880: Wer ein Recht gibt, sieht, an wen - der Lesepfad nennt Mitglieder einer
           // Gruppe, die hier schon ein Recht haelt, und erteilt selbst keines.
           "AssetGrantService#listGroupMembers",
@@ -1156,6 +1140,9 @@ class PermissionHistoryServiceIntegrationTest {
           // note an object carries - neither moves a library into or out of anybody's set.
           "PermissionTransferService#preview",
           "PermissionTransferService#markOf",
+          // #1931: Umbenennen und Auffindbarkeit - wer lesen darf, entscheiden allein die
+          // Freigaben, und die aendert dieser Pfad nicht.
+          "KnowledgeLibraryService#updateLibrary",
           "KnowledgeLibraryService#getLibrary",
           "KnowledgeLibraryService#listLibraries",
           "KnowledgeLibraryService#listDocuments",
@@ -1178,7 +1165,7 @@ class PermissionHistoryServiceIntegrationTest {
     Instant afterTheChange = historyClock.nextBoundary();
     Set<UUID> live = accessService.readableLibraryIds(change.userId(), organizationId);
     Set<UUID> historized =
-        visibilityHistoryService.readableAssetIdsAsOf(
+        permissionHistoryService.readableAssetIdsAsOf(
             KnowledgeLibrary.ASSET_TYPE, change.userId(), organizationId, afterTheChange);
 
     // Without this the entry would pass for an operation that changed nothing at all, and the
@@ -1205,7 +1192,7 @@ class PermissionHistoryServiceIntegrationTest {
     grantService.upsertGrant(
         KnowledgeLibrary.ASSET_TYPE,
         libraryId,
-        new AssetGrantUpsert(PermissionSubjectType.USER, reader, AssetRole.VIEWER),
+        new AssetGrantUpsert(AssetGrantSubjectType.USER, reader, AssetRole.VIEWER),
         currentUserOf(owner));
 
     return new ReadabilityChange(reader, libraryId, true);
@@ -1218,13 +1205,13 @@ class PermissionHistoryServiceIntegrationTest {
     grantService.upsertGrant(
         KnowledgeLibrary.ASSET_TYPE,
         libraryId,
-        new AssetGrantUpsert(PermissionSubjectType.USER, reader, AssetRole.VIEWER),
+        new AssetGrantUpsert(AssetGrantSubjectType.USER, reader, AssetRole.VIEWER),
         currentUserOf(owner));
 
     grantService.upsertGrant(
         KnowledgeLibrary.ASSET_TYPE,
         libraryId,
-        new AssetGrantUpsert(PermissionSubjectType.USER, reader, AssetRole.EDITOR),
+        new AssetGrantUpsert(AssetGrantSubjectType.USER, reader, AssetRole.EDITOR),
         currentUserOf(owner));
 
     return new ReadabilityChange(reader, libraryId, true);
@@ -1240,7 +1227,7 @@ class PermissionHistoryServiceIntegrationTest {
     grantService.upsertGrant(
         KnowledgeLibrary.ASSET_TYPE,
         libraryId,
-        new AssetGrantUpsert(PermissionSubjectType.GROUP, group.getId(), AssetRole.VIEWER),
+        new AssetGrantUpsert(AssetGrantSubjectType.GROUP, group.getId(), AssetRole.VIEWER),
         currentUserOf(owner));
 
     return new ReadabilityChange(member, libraryId, true);
@@ -1261,7 +1248,7 @@ class PermissionHistoryServiceIntegrationTest {
     grantService.upsertGrant(
         KnowledgeLibrary.ASSET_TYPE,
         libraryId,
-        new AssetGrantUpsert(PermissionSubjectType.GROUP, source.getId(), AssetRole.VIEWER),
+        new AssetGrantUpsert(AssetGrantSubjectType.GROUP, source.getId(), AssetRole.VIEWER),
         currentUserOf(owner));
 
     PermissionTransferOrder order =
@@ -1291,7 +1278,7 @@ class PermissionHistoryServiceIntegrationTest {
     grantService.upsertGrant(
         KnowledgeLibrary.ASSET_TYPE,
         libraryId,
-        new AssetGrantUpsert(PermissionSubjectType.USER, reader, AssetRole.VIEWER),
+        new AssetGrantUpsert(AssetGrantSubjectType.USER, reader, AssetRole.VIEWER),
         currentUserOf(owner));
 
     grantService.revokeGrant(
@@ -1311,7 +1298,7 @@ class PermissionHistoryServiceIntegrationTest {
     grantService.upsertGrant(
         KnowledgeLibrary.ASSET_TYPE,
         libraryId,
-        new AssetGrantUpsert(PermissionSubjectType.GROUP, group.getId(), AssetRole.VIEWER),
+        new AssetGrantUpsert(AssetGrantSubjectType.GROUP, group.getId(), AssetRole.VIEWER),
         currentUserOf(owner));
 
     groupService.addMember(group.getId(), member, currentUserOf(owner));
@@ -1327,7 +1314,7 @@ class PermissionHistoryServiceIntegrationTest {
     grantService.upsertGrant(
         KnowledgeLibrary.ASSET_TYPE,
         libraryId,
-        new AssetGrantUpsert(PermissionSubjectType.GROUP, group.getId(), AssetRole.VIEWER),
+        new AssetGrantUpsert(AssetGrantSubjectType.GROUP, group.getId(), AssetRole.VIEWER),
         currentUserOf(owner));
     groupService.addMember(group.getId(), member, currentUserOf(owner));
 
@@ -1350,7 +1337,7 @@ class PermissionHistoryServiceIntegrationTest {
     grantService.upsertGrant(
         KnowledgeLibrary.ASSET_TYPE,
         libraryId,
-        new AssetGrantUpsert(PermissionSubjectType.GROUP, group.getId(), AssetRole.VIEWER),
+        new AssetGrantUpsert(AssetGrantSubjectType.GROUP, group.getId(), AssetRole.VIEWER),
         currentUserOf(owner));
     groupService.addMember(group.getId(), member, currentUserOf(owner));
     grantService.revokeGrant(
@@ -1385,7 +1372,7 @@ class PermissionHistoryServiceIntegrationTest {
     grantService.upsertGrant(
         KnowledgeLibrary.ASSET_TYPE,
         libraryId,
-        new AssetGrantUpsert(PermissionSubjectType.GROUP, tokenGroup.getId(), AssetRole.VIEWER),
+        new AssetGrantUpsert(AssetGrantSubjectType.GROUP, tokenGroup.getId(), AssetRole.VIEWER),
         currentUserOf(owner));
     User member = createUserEntity();
 
@@ -1404,7 +1391,7 @@ class PermissionHistoryServiceIntegrationTest {
     grantService.upsertGrant(
         KnowledgeLibrary.ASSET_TYPE,
         libraryId,
-        new AssetGrantUpsert(PermissionSubjectType.GROUP, tokenGroup.getId(), AssetRole.VIEWER),
+        new AssetGrantUpsert(AssetGrantSubjectType.GROUP, tokenGroup.getId(), AssetRole.VIEWER),
         currentUserOf(owner));
 
     // The next sign-in's token no longer names the group.
@@ -1449,7 +1436,7 @@ class PermissionHistoryServiceIntegrationTest {
     grantService.upsertGrant(
         KnowledgeLibrary.ASSET_TYPE,
         libraryId,
-        new AssetGrantUpsert(PermissionSubjectType.GROUP, orgUnit.getId(), AssetRole.VIEWER),
+        new AssetGrantUpsert(AssetGrantSubjectType.GROUP, orgUnit.getId(), AssetRole.VIEWER),
         currentUserOf(owner));
 
     runDirectorySyncReporting(
@@ -1478,7 +1465,7 @@ class PermissionHistoryServiceIntegrationTest {
     grantService.upsertGrant(
         KnowledgeLibrary.ASSET_TYPE,
         libraryId,
-        new AssetGrantUpsert(PermissionSubjectType.GROUP, created.getId(), AssetRole.VIEWER),
+        new AssetGrantUpsert(AssetGrantSubjectType.GROUP, created.getId(), AssetRole.VIEWER),
         currentUserOf(owner));
 
     return new ReadabilityChange(member, libraryId, true);
@@ -1507,7 +1494,7 @@ class PermissionHistoryServiceIntegrationTest {
     grantService.upsertGrant(
         KnowledgeLibrary.ASSET_TYPE,
         libraryId,
-        new AssetGrantUpsert(PermissionSubjectType.GROUP, orgUnit.getId(), AssetRole.VIEWER),
+        new AssetGrantUpsert(AssetGrantSubjectType.GROUP, orgUnit.getId(), AssetRole.VIEWER),
         currentUserOf(owner));
     UUID leaving = createUser();
     // Three members stay behind: a run removing more than 30% of all memberships is aborted by
@@ -1565,7 +1552,7 @@ class PermissionHistoryServiceIntegrationTest {
     grantService.upsertGrant(
         KnowledgeLibrary.ASSET_TYPE,
         libraryId,
-        new AssetGrantUpsert(PermissionSubjectType.GROUP, orgUnit.getId(), AssetRole.VIEWER),
+        new AssetGrantUpsert(AssetGrantSubjectType.GROUP, orgUnit.getId(), AssetRole.VIEWER),
         currentUserOf(owner));
     UUID leaving = createUserAt(provider.getIssuerUri());
     Set<String> staying = Set.of(memberSubject(createUserAt(provider.getIssuerUri())));
@@ -1604,10 +1591,7 @@ class PermissionHistoryServiceIntegrationTest {
     UUID libraryId = createLibrary(owner);
     UUID otherUser = createUser();
 
-    libraryService.updateLibrary(
-        libraryId,
-        libraryUpdate("Bibliothek").visibility(AssetVisibility.ORGANIZATION).build(),
-        currentUserOf(owner));
+    grantToAllAccounts(libraryId, owner);
 
     return new ReadabilityChange(otherUser, libraryId, true);
   }
@@ -1616,36 +1600,38 @@ class PermissionHistoryServiceIntegrationTest {
     UUID owner = createUser();
     UUID libraryId = createLibrary(owner);
     UUID otherUser = createUser();
-    libraryService.updateLibrary(
-        libraryId,
-        libraryUpdate("Bibliothek").visibility(AssetVisibility.ORGANIZATION).build(),
-        currentUserOf(owner));
+    UUID grantId = grantToAllAccounts(libraryId, owner);
 
-    libraryService.updateLibrary(
-        libraryId,
-        libraryUpdate("Bibliothek").visibility(AssetVisibility.PRIVATE).build(),
-        currentUserOf(owner));
+    grantService.revokeGrant(KnowledgeLibrary.ASSET_TYPE, libraryId, grantId, currentUserOf(owner));
 
     return new ReadabilityChange(otherUser, libraryId, false);
   }
 
   /**
-   * #797: the counterpart to {@link #visibilityNarrowed} for the share cap - a SYSTEM_ADMIN, not
-   * the owner, lowers the cap below the library's current (wider) visibility, which clamps it back
-   * down in the very same call.
+   * #797/#1931: the counterpart to {@link #visibilityNarrowed} for the share cap - a SYSTEM_ADMIN,
+   * not the owner, forbids the grant to "Alle Konten", which revokes the existing one in the very
+   * same call.
    */
   private ReadabilityChange shareCapLoweredClampsVisibility() {
     UUID owner = createUser();
     UUID libraryId = createFilesystemLibrary(owner);
     UUID otherUser = createUser();
-    libraryService.updateLibrary(
-        libraryId,
-        libraryUpdate("Bibliothek").visibility(AssetVisibility.ORGANIZATION).build(),
-        currentUserOf(owner));
+    grantToAllAccounts(libraryId, owner);
 
-    libraryService.updateShareCap(libraryId, AssetVisibility.PRIVATE, false, systemAdminCaller());
+    libraryService.updateShareCap(libraryId, false, true, systemAdminCaller());
 
     return new ReadabilityChange(otherUser, libraryId, false);
+  }
+
+  private UUID grantToAllAccounts(UUID libraryId, UUID owner) {
+    return grantService
+        .upsertGrant(
+            KnowledgeLibrary.ASSET_TYPE,
+            libraryId,
+            AssetGrantUpsert.forAllAccounts(AssetRole.VIEWER),
+            currentUserOf(owner))
+        .grant()
+        .getId();
   }
 
   private ReadabilityChange libraryDeleted() {
@@ -1655,7 +1641,7 @@ class PermissionHistoryServiceIntegrationTest {
     grantService.upsertGrant(
         KnowledgeLibrary.ASSET_TYPE,
         libraryId,
-        new AssetGrantUpsert(PermissionSubjectType.USER, reader, AssetRole.VIEWER),
+        new AssetGrantUpsert(AssetGrantSubjectType.USER, reader, AssetRole.VIEWER),
         currentUserOf(owner));
 
     libraryService.deleteLibrary(libraryId, currentUserOf(owner));
@@ -1664,18 +1650,14 @@ class PermissionHistoryServiceIntegrationTest {
   }
 
   /**
-   * The deletion closes a grant interval and a visibility interval through two separate calls; a
-   * library readable through its organization-wide visibility rather than a grant is what makes the
-   * second one observable here.
+   * The deletion closes every grant interval of the asset; a library readable only through its
+   * grant to "Alle Konten" is what makes that observable for somebody with no grant of their own.
    */
   private ReadabilityChange organizationWideLibraryDeleted() {
     UUID owner = createUser();
     UUID libraryId = createLibrary(owner);
     UUID otherUser = createUser();
-    libraryService.updateLibrary(
-        libraryId,
-        libraryUpdate("Bibliothek").visibility(AssetVisibility.ORGANIZATION).build(),
-        currentUserOf(owner));
+    grantToAllAccounts(libraryId, owner);
 
     libraryService.deleteLibrary(libraryId, currentUserOf(owner));
 
@@ -1751,7 +1733,7 @@ class PermissionHistoryServiceIntegrationTest {
   private UUID findLiveGroupGrantId(UUID libraryId, UUID subjectGroupId) {
     return grantRepository
         .findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectGroupId(
-            KnowledgeLibrary.ASSET_TYPE, libraryId, PermissionSubjectType.GROUP, subjectGroupId)
+            KnowledgeLibrary.ASSET_TYPE, libraryId, AssetGrantSubjectType.GROUP, subjectGroupId)
         .orElseThrow()
         .getId();
   }
@@ -1759,7 +1741,7 @@ class PermissionHistoryServiceIntegrationTest {
   private UUID findLiveGrantId(UUID libraryId, UUID subjectUserId) {
     return grantRepository
         .findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectUserId(
-            KnowledgeLibrary.ASSET_TYPE, libraryId, PermissionSubjectType.USER, subjectUserId)
+            KnowledgeLibrary.ASSET_TYPE, libraryId, AssetGrantSubjectType.USER, subjectUserId)
         .orElseThrow()
         .getId();
   }

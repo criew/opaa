@@ -30,7 +30,7 @@ const ownLibrary: LibraryListResponse = {
   name: 'Meine Dokumente',
   description: 'Private Dokumente',
   ownerType: 'USER',
-  visibility: 'PRIVATE',
+  reach: { allAccounts: false, groupCount: 0, userCount: 1 },
   listed: false,
   myRole: 'OWNER',
   sourceType: 'UPLOAD',
@@ -45,7 +45,7 @@ const managerLibrary: LibraryListResponse = {
   description: 'SGB II, SGB XII',
   ownerType: 'GROUP',
   ownerName: 'Referat 50',
-  visibility: 'SHARED',
+  reach: { allAccounts: false, groupCount: 0, userCount: 1 },
   listed: true,
   myRole: 'MANAGER',
   sourceType: 'FILESYSTEM',
@@ -60,7 +60,7 @@ const viewerLibrary: LibraryListResponse = {
   name: 'Dienstanweisungen',
   description: 'Organisationsweit',
   ownerType: 'GROUP',
-  visibility: 'ORGANIZATION',
+  reach: { allAccounts: true, groupCount: 0, userCount: 1 },
   listed: true,
   myRole: 'VIEWER',
   sourceType: 'UPLOAD',
@@ -104,7 +104,7 @@ describe('LibraryManagementPage', () => {
       'Name',
       'Herkunft',
       'Dokumente',
-      'In der Organisation geteilt',
+      'Reichweite',
       'Ihre Rolle',
       'Letzte Aktualisierung',
     ]) {
@@ -124,13 +124,14 @@ describe('LibraryManagementPage', () => {
     expect(screen.queryByText('431 Dok.')).not.toBeInTheDocument()
   })
 
-  it('marks a library shared with the whole organization with a tick (#1916)', async () => {
+  // #1931: Die Reichweite ist abgeleitet, keine gespeicherte Stufe - die Spalte nennt sie in
+  // Worten, statt einen Haken für genau einen der früheren drei Werte zu setzen.
+  it('names the derived reach of each library (#1931)', async () => {
     setLibraryState([managerLibrary, viewerLibrary])
     renderWithProviders(<LibraryManagementPage />, { withRouter: true })
 
-    // Nur die ORGANIZATION-Bibliothek trägt den Haken; die Stufe selbst steht nicht mehr da.
-    const ticks = await screen.findAllByTitle('ja')
-    expect(ticks).toHaveLength(1)
+    expect(await screen.findByText('nur Sie')).toBeInTheDocument()
+    expect(screen.getByText('Alle')).toBeInTheDocument()
     expect(screen.queryByText('organisationsweit')).not.toBeInTheDocument()
     expect(screen.queryByText('gelistet')).not.toBeInTheDocument()
   })

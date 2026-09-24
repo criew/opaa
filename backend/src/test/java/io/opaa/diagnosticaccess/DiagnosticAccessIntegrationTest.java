@@ -3,11 +3,10 @@ package io.opaa.diagnosticaccess;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.opaa.api.types.AssetGrantSubjectType;
 import io.opaa.api.types.AssetRole;
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DiagnosticTargetKind;
 import io.opaa.api.types.GroupKind;
-import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.api.types.SystemRole;
 import io.opaa.asset.AssetGrantService;
 import io.opaa.asset.AssetGrantUpsert;
@@ -439,12 +438,7 @@ class DiagnosticAccessIntegrationTest {
     KnowledgeLibrary saved =
         libraryRepository.save(
             KnowledgeLibrary.ownedByUser(
-                organizationId,
-                "Personalvorgänge",
-                null,
-                holderId,
-                AssetVisibility.PRIVATE,
-                false));
+                organizationId, "Personalvorgänge", null, holderId, false));
 
     assertThat(
             jdbcTemplate.queryForObject(
@@ -625,7 +619,7 @@ class DiagnosticAccessIntegrationTest {
     assetGrantService.upsertGrant(
         KnowledgeLibrary.ASSET_TYPE,
         library.getId(),
-        new AssetGrantUpsert(PermissionSubjectType.GROUP, profile.getId(), AssetRole.VIEWER),
+        new AssetGrantUpsert(AssetGrantSubjectType.GROUP, profile.getId(), AssetRole.VIEWER),
         owner);
 
     ForeignDiagnosticOutcome<String> outcome =
@@ -650,7 +644,7 @@ class DiagnosticAccessIntegrationTest {
     assetGrantService.upsertGrant(
         KnowledgeLibrary.ASSET_TYPE,
         library.getId(),
-        new AssetGrantUpsert(PermissionSubjectType.USER, admin.id(), AssetRole.OWNER),
+        new AssetGrantUpsert(AssetGrantSubjectType.USER, admin.id(), AssetRole.OWNER),
         admin);
 
     assertThatThrownBy(() -> lockService.setLocked(admin, library.getId(), false))
@@ -679,12 +673,12 @@ class DiagnosticAccessIntegrationTest {
     assetGrantService.upsertGrant(
         KnowledgeLibrary.ASSET_TYPE,
         library.getId(),
-        new AssetGrantUpsert(PermissionSubjectType.USER, admin.id(), AssetRole.VIEWER),
+        new AssetGrantUpsert(AssetGrantSubjectType.USER, admin.id(), AssetRole.VIEWER),
         owner);
     assetGrantService.upsertGrant(
         KnowledgeLibrary.ASSET_TYPE,
         library.getId(),
-        new AssetGrantUpsert(PermissionSubjectType.USER, admin.id(), AssetRole.OWNER),
+        new AssetGrantUpsert(AssetGrantSubjectType.USER, admin.id(), AssetRole.OWNER),
         admin);
 
     assertThatThrownBy(() -> lockService.setLocked(admin, library.getId(), false))
@@ -700,7 +694,7 @@ class DiagnosticAccessIntegrationTest {
                 .findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectUserId(
                     KnowledgeLibrary.ASSET_TYPE,
                     library.getId(),
-                    PermissionSubjectType.USER,
+                    AssetGrantSubjectType.USER,
                     admin.id())
                 .orElseThrow()
                 .getGrantedByUserId())
@@ -731,7 +725,7 @@ class DiagnosticAccessIntegrationTest {
         KnowledgeLibrary.ASSET_TYPE,
         library.getId(),
         new AssetGrantUpsert(
-            PermissionSubjectType.USER,
+            AssetGrantSubjectType.USER,
             admin.id(),
             AssetRole.OWNER,
             Instant.now().plus(90, ChronoUnit.DAYS)),
@@ -750,7 +744,7 @@ class DiagnosticAccessIntegrationTest {
                 .findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectUserId(
                     KnowledgeLibrary.ASSET_TYPE,
                     library.getId(),
-                    PermissionSubjectType.USER,
+                    AssetGrantSubjectType.USER,
                     admin.id())
                 .orElseThrow()
                 .getGrantedByUserId())
@@ -775,7 +769,6 @@ class DiagnosticAccessIntegrationTest {
                 "Personalvorgaenge " + UUID.randomUUID(),
                 null,
                 ownerUserId,
-                AssetVisibility.PRIVATE,
                 false));
     assetGrantRepository.save(
         AssetGrant.forUser(

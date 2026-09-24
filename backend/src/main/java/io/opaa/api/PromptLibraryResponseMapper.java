@@ -1,10 +1,12 @@
 package io.opaa.api;
 
+import io.opaa.api.dto.AssetReachResponse;
 import io.opaa.api.dto.PromptLibraryRequest;
 import io.opaa.api.dto.PromptLibraryResponse;
 import io.opaa.api.dto.PromptLibraryUpdateRequest;
 import io.opaa.api.dto.PromptRequest;
 import io.opaa.api.dto.PromptResponse;
+import io.opaa.permission.AssetReach;
 import io.opaa.prompt.Prompt;
 import io.opaa.prompt.PromptContent;
 import io.opaa.prompt.PromptLibrary;
@@ -25,16 +27,12 @@ final class PromptLibraryResponseMapper {
         request.getDescription(),
         request.getOwnerType(),
         request.getOwnerId(),
-        request.getVisibility(),
         request.getListed());
   }
 
   static PromptLibraryUpdate toUpdate(PromptLibraryUpdateRequest request) {
     return new PromptLibraryUpdate(
-        request.getName(),
-        request.getDescription(),
-        request.getVisibility(),
-        Boolean.TRUE.equals(request.getListed()));
+        request.getName(), request.getDescription(), Boolean.TRUE.equals(request.getListed()));
   }
 
   static PromptLibraryResponse toResponse(PromptLibraryView view) {
@@ -44,7 +42,7 @@ final class PromptLibraryResponseMapper {
             library.getName(),
             library.getOwnerType(),
             library.getOwnerId(),
-            library.getVisibility(),
+            toReachResponse(view.reach()),
             library.isListed(),
             view.myRole(),
             view.promptCount(),
@@ -57,6 +55,11 @@ final class PromptLibraryResponseMapper {
 
   static List<PromptLibraryResponse> toResponses(List<PromptLibraryView> views) {
     return views.stream().map(PromptLibraryResponseMapper::toResponse).toList();
+  }
+
+  /** The derived reach (#1931) - three figures, no stored level. */
+  private static AssetReachResponse toReachResponse(AssetReach reach) {
+    return new AssetReachResponse(reach.allAccounts(), reach.groupCount(), reach.userCount());
   }
 
   static PromptContent toContent(PromptRequest request) {

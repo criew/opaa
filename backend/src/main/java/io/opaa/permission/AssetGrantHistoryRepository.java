@@ -1,6 +1,6 @@
 package io.opaa.permission;
 
-import io.opaa.api.types.PermissionSubjectType;
+import io.opaa.api.types.AssetGrantSubjectType;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
@@ -35,14 +35,21 @@ public interface AssetGrantHistoryRepository
 
   Optional<AssetGrantHistory>
       findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectUserIdAndValidToIsNull(
-          AssetType assetType, UUID assetId, PermissionSubjectType subjectType, UUID subjectUserId);
+          AssetType assetType, UUID assetId, AssetGrantSubjectType subjectType, UUID subjectUserId);
 
   Optional<AssetGrantHistory>
       findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectGroupIdAndValidToIsNull(
           AssetType assetType,
           UUID assetId,
-          PermissionSubjectType subjectType,
+          AssetGrantSubjectType subjectType,
           UUID subjectGroupId);
+
+  /**
+   * The open interval of the one grant to "Alle Konten" on an asset - named without a subject,
+   * because that subject names no row (#1931).
+   */
+  Optional<AssetGrantHistory> findByAssetTypeAndAssetIdAndSubjectTypeAndValidToIsNull(
+      AssetType assetType, UUID assetId, AssetGrantSubjectType subjectType);
 
   /**
    * Test-only cleanup helper: {@code subject_user_id} is {@code ON DELETE RESTRICT} (deliberately,
@@ -71,7 +78,7 @@ public interface AssetGrantHistoryRepository
   @Query(
       "select h.assetId from AssetGrantHistory h "
           + "where h.assetType = :assetType "
-          + "and h.subjectType = io.opaa.api.types.PermissionSubjectType.USER "
+          + "and h.subjectType = io.opaa.api.types.AssetGrantSubjectType.USER "
           + "and h.subjectUserId = :userId and h.organizationId = :organizationId "
           + "and h.validFrom <= :asOf and (h.validTo is null or h.validTo > :asOf) "
           + "and (h.expiresAt is null or h.expiresAt > :asOf)")
@@ -106,13 +113,31 @@ public interface AssetGrantHistoryRepository
   @Query(
       "select h.assetId from AssetGrantHistory h "
           + "where h.assetType = :assetType "
-          + "and h.subjectType = io.opaa.api.types.PermissionSubjectType.GROUP "
+          + "and h.subjectType = io.opaa.api.types.AssetGrantSubjectType.GROUP "
           + "and h.subjectGroupId in :groupIds and h.organizationId = :organizationId "
           + "and h.validFrom <= :asOf and (h.validTo is null or h.validTo > :asOf) "
           + "and (h.expiresAt is null or h.expiresAt > :asOf)")
   Set<UUID> findReadableAssetIdsByGroupGrantAsOf(
       @Param("assetType") AssetType assetType,
       @Param("groupIds") Set<UUID> groupIds,
+      @Param("organizationId") UUID organizationId,
+      @Param("asOf") Instant asOf);
+
+  /**
+   * The "Alle Konten" counterpart of {@link #findReadableAssetIdsByDirectGrantAsOf} (#1931,
+   * ADR-0037 Entscheidung 8) - the third way of the readable-asset formula, evaluated against the
+   * history. It reaches every account of {@code organizationId} without naming one, so unlike the
+   * two above it takes no subject.
+   */
+  @Query(
+      "select h.assetId from AssetGrantHistory h "
+          + "where h.assetType = :assetType "
+          + "and h.subjectType = io.opaa.api.types.AssetGrantSubjectType.ALL_ACCOUNTS "
+          + "and h.organizationId = :organizationId "
+          + "and h.validFrom <= :asOf and (h.validTo is null or h.validTo > :asOf) "
+          + "and (h.expiresAt is null or h.expiresAt > :asOf)")
+  Set<UUID> findReadableAssetIdsByAllAccountsGrantAsOf(
+      @Param("assetType") AssetType assetType,
       @Param("organizationId") UUID organizationId,
       @Param("asOf") Instant asOf);
 }

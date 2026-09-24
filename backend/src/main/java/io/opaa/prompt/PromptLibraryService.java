@@ -2,7 +2,6 @@ package io.opaa.prompt;
 
 import io.opaa.api.types.AssetOwnerType;
 import io.opaa.api.types.AssetRole;
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
@@ -19,6 +18,7 @@ import io.opaa.auth.CurrentUser;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.permission.AssetAccessService;
+import io.opaa.permission.AssetReach;
 import io.opaa.permission.CapabilityService;
 import io.opaa.permission.SuccessionFinding;
 import java.util.ArrayList;
@@ -93,8 +93,6 @@ public class PromptLibraryService {
     capabilityService.requireCapability(caller, Capability.CREATE_PROMPT_LIBRARY);
     String name = validateName(request.name());
     String description = validateDescription(request.description());
-    AssetVisibility visibility =
-        request.visibility() != null ? request.visibility() : AssetVisibility.PRIVATE;
     boolean listed = Boolean.TRUE.equals(request.listed());
 
     PromptLibrary library;
@@ -105,11 +103,11 @@ public class PromptLibraryService {
       grantService.requireOwnableGroup(request.ownerId(), PromptLibrary.ASSET_TYPE, caller);
       library =
           PromptLibrary.ownedByGroup(
-              caller.organizationId(), name, description, request.ownerId(), visibility, listed);
+              caller.organizationId(), name, description, request.ownerId(), listed);
     } else {
       library =
           PromptLibrary.ownedByUser(
-              caller.organizationId(), name, description, caller.id(), visibility, listed);
+              caller.organizationId(), name, description, caller.id(), listed);
     }
     PromptLibrary saved = libraryRepository.save(library);
     shellService.registerCreated(saved, caller.id(), auditPayload(saved));
@@ -130,14 +128,8 @@ public class PromptLibraryService {
                 Comparator.comparing(PromptLibrary::getName).thenComparing(PromptLibrary::getId))
             .toList();
     Map<UUID, AssetRole> roles =
-        accessService.effectiveRoles(
-            PromptLibrary.ASSET_TYPE,
-            readable,
-            caller.id(),
-            libraries.stream()
-                .filter(Asset::isOrganizationWide)
-                .map(Asset::getId)
-                .collect(Collectors.toSet()));
+        accessService.effectiveRoles(PromptLibrary.ASSET_TYPE, readable, caller.id());
+    Map<UUID, AssetReach> reach = accessService.reachByAsset(PromptLibrary.ASSET_TYPE, readable);
     Map<UUID, Long> counts =
         promptRepository.countByLibraryIdIn(readable).stream()
             .collect(
@@ -154,7 +146,8 @@ public class PromptLibraryService {
               Objects.requireNonNullElse(roles.get(library.getId()), AssetRole.VIEWER),
               counts.getOrDefault(library.getId(), 0L),
               names.get(library.getOwnerId()),
-              succession.get(library.getId())));
+              succession.get(library.getId()),
+              reach.getOrDefault(library.getId(), AssetReach.NONE)));
     }
     return views;
   }
@@ -178,10 +171,7 @@ public class PromptLibraryService {
         authorization.requireRole(library, caller.id(), caller.isSystemAdmin(), AssetRole.MANAGER);
     String name = validateName(request.name());
     String description = validateDescription(request.description());
-    if (request.visibility() == null) {
-      throw new ValidationException("visibility ist erforderlich");
-    }
-    shellService.changeReach(library, request.visibility(), request.listed(), caller.id());
+    shellService.changeListed(library, request.listed(), caller.id());
 
     List<String> changedFields = new ArrayList<>();
     if (!Objects.equals(library.getName(), name)) {
@@ -248,13 +238,15 @@ public class PromptLibraryService {
         role,
         promptRepository.countByLibraryId(library.getId()),
         ownerNames.of(List.of(library)).get(library.getOwnerId()),
-        successionSource.findingsAmong(List.of(library), false).get(library.getId()));
+        successionSource.findingsAmong(List.of(library), false).get(library.getId()),
+        accessService
+            .reachByAsset(PromptLibrary.ASSET_TYPE, Set.of(library.getId()))
+            .get(library.getId()));
   }
 
   private static Map<String, Object> auditPayload(PromptLibrary library) {
     Map<String, Object> payload = new LinkedHashMap<>();
     payload.put("name", library.getName());
-    payload.put("visibility", library.getVisibility().name());
     payload.put("listed", library.isListed());
     return payload;
   }

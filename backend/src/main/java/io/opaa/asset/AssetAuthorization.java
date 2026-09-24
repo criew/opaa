@@ -53,8 +53,7 @@ public class AssetAuthorization {
     if (systemAdmin) {
       return AssetRole.OWNER;
     }
-    return accessService.effectiveRole(
-        asset.getAssetType(), asset.getId(), userId, asset.isOrganizationWide());
+    return accessService.effectiveRole(asset.getAssetType(), asset.getId(), userId);
   }
 
   /**
@@ -91,11 +90,7 @@ public class AssetAuthorization {
     requireRole(asset, userId, systemAdmin, AssetRole.VIEWER);
     AssetRole role =
         accessService
-            .effectiveRoles(
-                asset.getAssetType(),
-                Set.of(asset.getId()),
-                userId,
-                asset.isOrganizationWide() ? Set.of(asset.getId()) : Set.of())
+            .effectiveRoles(asset.getAssetType(), Set.of(asset.getId()), userId)
             .get(asset.getId());
     if (role == null) {
       throw new AccessDeniedException(
@@ -130,9 +125,7 @@ public class AssetAuthorization {
    */
   public List<AccessPath> accessPaths(Asset asset, UUID userId, boolean systemAdmin) {
     List<AccessPath> paths =
-        new ArrayList<>(
-            accessService.accessPaths(
-                asset.getAssetType(), asset.getId(), userId, asset.isOrganizationWide()));
+        new ArrayList<>(accessService.accessPaths(asset.getAssetType(), asset.getId(), userId));
     if (systemAdmin) {
       paths.add(AccessPath.ofAsset(AccessBasis.SYSTEM_ADMINISTRATION, AssetRole.OWNER, null, null));
     }

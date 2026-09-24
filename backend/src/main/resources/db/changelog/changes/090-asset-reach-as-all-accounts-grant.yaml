@@ -1,0 +1,209 @@
+databaseChangeLog:
+  - changeSet:
+      id: 090-asset-reach-as-all-accounts-grant
+      author: opaa
+      comment: >-
+        Die Verteilungsstufe assets.visibility entfaellt; organisationsweite Reichweite wird eine
+        Freigabe an "Alle Konten" (#1931, ADR-0037). asset_grants und asset_grant_history
+        bekommen dafuer die dritte Subjektart ALL_ACCOUNTS, bei der beide Subjektspalten leer
+        bleiben - Form, Pruefregel und eindeutiger Teilindex genau wie bei capability_grants (042).
+        Von den drei Werten PRIVATE/SHARED/ORGANIZATION wirkte ohnehin nur der letzte; PRIVATE und
+        SHARED wurden nirgends unterschieden.
+        .
+        BESTANDSMIGRATION, zwei Teile - der zweite ist der eigentliche Aufwand:
+        (1) Jedes Asset mit visibility = 'ORGANIZATION' bekommt eine lebende Freigabe an
+        ALL_ACCOUNTS mit der Rolle VIEWER - genau das, was die Stufe bisher verlieh. Ohne sie
+        verloeren organisationsweite Bibliotheken am Migrationstag ihre Reichweite.
+        (2) Jedes ORGANIZATION-Intervall aus asset_visibility_history wird in ein Intervall in
+        asset_grant_history uebersetzt, abgeschlossene eingeschlossen. Eine Migration, die nur den
+        lebenden Zustand uebernaehme, liesse den Rueckblick auf abgeschlossene organisationsweite
+        Zeitraeume ins Leere laufen: Ein Pruefer bekaeme fuer einen Stichtag in einem solchen
+        Fenster eine falsche Negativantwort (PointInTimeAccessService, ADR-0037 Entscheidung 8).
+        cause = 'BACKFILL' ist der zutreffende Wert - die Zeile ist nicht als Vorgang beobachtet,
+        sondern aus einer anderen Tabelle rekonstruiert. Nullmarker (valid_to = valid_from,
+        geschrieben beim Loeschen eines Assets) werden uebersprungen: Sie tragen keinen Zustand.
+        .
+        granted_by_user_id bleibt bei (1) leer: Wer die Stufe gesetzt hat, stand nie an der
+        Freigabe, sondern nur im Protokoll und in der Sichtbarkeitshistorie - eine Person hier
+        einzutragen, waere erfunden. Bei (2) traegt actor_user_id den Akteur des jeweiligen
+        Intervalls weiter.
+        .
+        idx_asset_grants_all_accounts ersetzt idx_assets_organization_wide Form fuer Form: ein
+        Teilindex ueber (asset_type, organization_id) genau auf den Zeilen dieser Art. Die Zahl der
+        Abfragen auf dem Lesepfad bleibt damit unveraendert.
+        .
+        asset_visibility_history verliert nur ihre Spalte visibility. Die Tabelle bleibt: Dasselbe
+        Intervall traegt listed und die Fremdzugangsfreigabe (#1731), und beide bleiben (ADR-0037
+        Entscheidung 7).
+        .
+        knowledge_libraries.visibility_cap wird zum Boolean all_accounts_grant_allowed (#797).
+        Bestandswerte werden abgebildet: ORGANIZATION war unrestriktiv (true), PRIVATE und SHARED
+        untersagten die organisationsweite Stufe (false). listed_cap bleibt unveraendert.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE asset_grants
+                  DROP CONSTRAINT chk_asset_grants_subject_type,
+                  DROP CONSTRAINT chk_asset_grants_subject;
+
+              ALTER TABLE asset_grants
+                  ADD CONSTRAINT chk_asset_grants_subject_type CHECK ((subject_type IN ('USER', 'GROUP', 'ALL_ACCOUNTS'))),
+                  ADD CONSTRAINT chk_asset_grants_subject CHECK (((((subject_type)::text = 'USER'::text) AND (subject_user_id IS NOT NULL) AND (subject_group_id IS NULL)) OR (((subject_type)::text = 'GROUP'::text) AND (subject_group_id IS NOT NULL) AND (subject_user_id IS NULL)) OR (((subject_type)::text = 'ALL_ACCOUNTS'::text) AND (subject_user_id IS NULL) AND (subject_group_id IS NULL))));
+
+              ALTER TABLE asset_grant_history
+                  DROP CONSTRAINT chk_asset_grant_history_subject_type,
+                  DROP CONSTRAINT chk_asset_grant_history_subject;
+
+              ALTER TABLE asset_grant_history
+                  ADD CONSTRAINT chk_asset_grant_history_subject_type CHECK ((subject_type IN ('USER', 'GROUP', 'ALL_ACCOUNTS'))),
+                  ADD CONSTRAINT chk_asset_grant_history_subject CHECK (((((subject_type)::text = 'USER'::text) AND (subject_user_id IS NOT NULL) AND (subject_group_id IS NULL)) OR (((subject_type)::text = 'GROUP'::text) AND (subject_group_id IS NOT NULL) AND (subject_user_id IS NULL)) OR (((subject_type)::text = 'ALL_ACCOUNTS'::text) AND (subject_user_id IS NULL) AND (subject_group_id IS NULL))));
+
+              CREATE UNIQUE INDEX uk_asset_grants_all_accounts ON asset_grants USING btree (asset_type, asset_id) WHERE ((subject_type)::text = 'ALL_ACCOUNTS'::text);
+
+              CREATE INDEX idx_asset_grants_all_accounts ON asset_grants USING btree (asset_type, organization_id) WHERE ((subject_type)::text = 'ALL_ACCOUNTS'::text);
+
+              CREATE UNIQUE INDEX uk_asset_grant_history_open_all_accounts ON asset_grant_history USING btree (asset_type, asset_id) WHERE (((subject_type)::text = 'ALL_ACCOUNTS'::text) AND (valid_to IS NULL));
+
+              CREATE INDEX idx_asset_grant_history_all_accounts ON asset_grant_history USING btree (asset_type, organization_id, valid_from) WHERE ((subject_type)::text = 'ALL_ACCOUNTS'::text);
+
+              INSERT INTO asset_grants
+                  (id, asset_type, asset_id, organization_id, subject_type, subject_user_id,
+                   subject_group_id, role, expires_at, granted_by_user_id, member_count_at_grant,
+                   created_at, updated_at)
+              SELECT gen_random_uuid(), a.asset_type, a.id, a.organization_id, 'ALL_ACCOUNTS', NULL,
+                     NULL, 'VIEWER', NULL, NULL, NULL, now(), now()
+                FROM assets a
+               WHERE a.visibility = 'ORGANIZATION';
+
+              INSERT INTO asset_grant_history
+                  (id, asset_type, asset_id, organization_id, subject_type, subject_user_id,
+                   subject_group_id, role, expires_at, cause, actor_user_id, valid_from, valid_to,
+                   transfer_id, created_at)
+              SELECT gen_random_uuid(), h.asset_type, h.asset_id, h.organization_id, 'ALL_ACCOUNTS',
+                     NULL, NULL, 'VIEWER', NULL, 'BACKFILL', h.actor_user_id, h.valid_from,
+                     h.valid_to, NULL, now()
+                FROM asset_visibility_history h
+               WHERE h.visibility = 'ORGANIZATION'
+                 AND (h.valid_to IS NULL OR h.valid_to > h.valid_from);
+
+              DROP INDEX idx_assets_organization_wide;
+
+              ALTER TABLE assets
+                  DROP CONSTRAINT chk_assets_visibility;
+
+              ALTER TABLE assets
+                  DROP COLUMN visibility;
+
+              ALTER TABLE asset_visibility_history
+                  DROP CONSTRAINT chk_asset_visibility_history_visibility;
+
+              ALTER TABLE asset_visibility_history
+                  DROP COLUMN visibility;
+
+              ALTER TABLE knowledge_libraries
+                  DROP CONSTRAINT chk_knowledge_libraries_share_cap_upload_unrestricted;
+
+              ALTER TABLE knowledge_libraries
+                  ADD COLUMN all_accounts_grant_allowed boolean DEFAULT true NOT NULL;
+
+              UPDATE knowledge_libraries SET all_accounts_grant_allowed = (visibility_cap = 'ORGANIZATION');
+
+              ALTER TABLE knowledge_libraries
+                  DROP CONSTRAINT chk_knowledge_libraries_visibility_cap;
+
+              ALTER TABLE knowledge_libraries
+                  DROP COLUMN visibility_cap;
+
+              ALTER TABLE knowledge_libraries
+                  ADD CONSTRAINT chk_knowledge_libraries_share_cap_upload_unrestricted
+                      CHECK (source_type <> 'UPLOAD'
+                          OR (all_accounts_grant_allowed = true AND listed_cap = true));
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE knowledge_libraries
+                  DROP CONSTRAINT chk_knowledge_libraries_share_cap_upload_unrestricted;
+
+              ALTER TABLE knowledge_libraries
+                  ADD COLUMN visibility_cap varchar(20) DEFAULT 'ORGANIZATION' NOT NULL
+                      CONSTRAINT chk_knowledge_libraries_visibility_cap
+                          CHECK (visibility_cap IN ('PRIVATE', 'SHARED', 'ORGANIZATION'));
+
+              UPDATE knowledge_libraries
+                 SET visibility_cap = CASE WHEN all_accounts_grant_allowed THEN 'ORGANIZATION' ELSE 'SHARED' END;
+
+              ALTER TABLE knowledge_libraries
+                  DROP COLUMN all_accounts_grant_allowed;
+
+              ALTER TABLE knowledge_libraries
+                  ADD CONSTRAINT chk_knowledge_libraries_share_cap_upload_unrestricted
+                      CHECK (source_type <> 'UPLOAD'
+                          OR (visibility_cap = 'ORGANIZATION' AND listed_cap = true));
+
+              ALTER TABLE asset_visibility_history
+                  ADD COLUMN visibility varchar(20) DEFAULT 'PRIVATE' NOT NULL;
+
+              UPDATE asset_visibility_history h
+                 SET visibility = 'ORGANIZATION'
+               WHERE EXISTS (
+                     SELECT 1 FROM asset_grant_history g
+                      WHERE g.asset_type = h.asset_type
+                        AND g.asset_id = h.asset_id
+                        AND g.subject_type = 'ALL_ACCOUNTS'
+                        AND g.valid_from = h.valid_from
+                        AND g.valid_to IS NOT DISTINCT FROM h.valid_to);
+
+              ALTER TABLE asset_visibility_history
+                  ALTER COLUMN visibility DROP DEFAULT;
+
+              ALTER TABLE asset_visibility_history
+                  ADD CONSTRAINT chk_asset_visibility_history_visibility CHECK ((visibility IN ('PRIVATE', 'SHARED', 'ORGANIZATION')));
+
+              ALTER TABLE assets
+                  ADD COLUMN visibility varchar(20) DEFAULT 'PRIVATE' NOT NULL;
+
+              UPDATE assets a
+                 SET visibility = 'ORGANIZATION'
+               WHERE EXISTS (
+                     SELECT 1 FROM asset_grants g
+                      WHERE g.asset_type = a.asset_type
+                        AND g.asset_id = a.id
+                        AND g.subject_type = 'ALL_ACCOUNTS');
+
+              ALTER TABLE assets
+                  ALTER COLUMN visibility DROP DEFAULT;
+
+              ALTER TABLE assets
+                  ADD CONSTRAINT chk_assets_visibility CHECK ((visibility IN ('PRIVATE', 'SHARED', 'ORGANIZATION')));
+
+              CREATE INDEX idx_assets_organization_wide ON assets USING btree (organization_id, asset_type) WHERE ((visibility)::text = 'ORGANIZATION'::text);
+
+              DELETE FROM asset_grant_history WHERE subject_type = 'ALL_ACCOUNTS';
+
+              DELETE FROM asset_grants WHERE subject_type = 'ALL_ACCOUNTS';
+
+              DROP INDEX idx_asset_grant_history_all_accounts;
+
+              DROP INDEX uk_asset_grant_history_open_all_accounts;
+
+              DROP INDEX idx_asset_grants_all_accounts;
+
+              DROP INDEX uk_asset_grants_all_accounts;
+
+              ALTER TABLE asset_grant_history
+                  DROP CONSTRAINT chk_asset_grant_history_subject_type,
+                  DROP CONSTRAINT chk_asset_grant_history_subject;
+
+              ALTER TABLE asset_grant_history
+                  ADD CONSTRAINT chk_asset_grant_history_subject_type CHECK ((subject_type IN ('USER', 'GROUP'))),
+                  ADD CONSTRAINT chk_asset_grant_history_subject CHECK (((((subject_type)::text = 'USER'::text) AND (subject_user_id IS NOT NULL) AND (subject_group_id IS NULL)) OR (((subject_type)::text = 'GROUP'::text) AND (subject_group_id IS NOT NULL) AND (subject_user_id IS NULL))));
+
+              ALTER TABLE asset_grants
+                  DROP CONSTRAINT chk_asset_grants_subject_type,
+                  DROP CONSTRAINT chk_asset_grants_subject;
+
+              ALTER TABLE asset_grants
+                  ADD CONSTRAINT chk_asset_grants_subject_type CHECK ((subject_type IN ('USER', 'GROUP'))),
+                  ADD CONSTRAINT chk_asset_grants_subject CHECK (((((subject_type)::text = 'USER'::text) AND (subject_user_id IS NOT NULL) AND (subject_group_id IS NULL)) OR (((subject_type)::text = 'GROUP'::text) AND (subject_group_id IS NOT NULL) AND (subject_user_id IS NULL))));

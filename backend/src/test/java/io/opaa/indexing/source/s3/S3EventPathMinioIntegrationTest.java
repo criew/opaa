@@ -3,7 +3,6 @@ package io.opaa.indexing.source.s3;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.IndexingRunMode;
@@ -116,7 +115,6 @@ class S3EventPathMinioIntegrationTest {
             "Ereignisse",
             null,
             userId,
-            AssetVisibility.PRIVATE,
             false,
             DocumentSourceType.S3,
             null,

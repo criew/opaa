@@ -1,6 +1,5 @@
 package io.opaa.library;
 
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.DocumentSourceType;
@@ -46,36 +45,40 @@ class KnowledgeLibraryAssetType implements AssetTypeDefinition {
     return "Bibliotheken";
   }
 
-  /**
-   * Resolves a proxy of the shell to the library behind it; an asset of this type that is no
-   * library is refused rather than let past the cap.
-   */
   @Override
-  public void requireReachWithinLimits(Asset asset, AssetVisibility visibility, boolean listed) {
-    if (!(Hibernate.unproxy(asset) instanceof KnowledgeLibrary library)) {
-      throw new IllegalStateException(
-          "asset " + asset.getId() + " of type " + asset.getAssetType() + " is no library");
-    }
-    if (library.getSourceType() == DocumentSourceType.UPLOAD) {
-      return;
-    }
-    if (visibility.exceeds(library.getVisibilityCap())) {
-      throw new ConflictException(
-          "Die Sichtbarkeit dieser Bibliothek ist von der Systemverwaltung auf höchstens \""
-              + visibilityLabel(library.getVisibilityCap())
-              + "\" begrenzt.");
-    }
-    if (listed && !library.isListedCap()) {
+  public void requireListedWithinLimits(Asset asset, boolean listed) {
+    KnowledgeLibrary library = cappedLibrary(asset);
+    if (library != null && listed && !library.isListedCap()) {
       throw new ConflictException(
           "Diese Bibliothek darf laut Systemverwaltung nicht im Katalog gelistet werden.");
     }
   }
 
-  private static String visibilityLabel(AssetVisibility visibility) {
-    return switch (visibility) {
-      case PRIVATE -> "privat";
-      case SHARED -> "geteilt";
-      case ORGANIZATION -> "organisationsweit";
-    };
+  /**
+   * The half of the cap that moved to the grant path with #1931: organization-wide reach is a grant
+   * to "Alle Konten", so the ceiling has to be asked where that grant is written and not where a
+   * reach field used to be set.
+   */
+  @Override
+  public void requireAllAccountsGrantAllowed(Asset asset) {
+    KnowledgeLibrary library = cappedLibrary(asset);
+    if (library != null && !library.isAllAccountsGrantAllowed()) {
+      throw new ConflictException(
+          "Diese Bibliothek darf laut Systemverwaltung nicht an alle Konten freigegeben"
+              + " werden.");
+    }
+  }
+
+  /**
+   * Resolves a proxy of the shell to the library behind it; an asset of this type that is no
+   * library is refused rather than let past the cap. {@code null} for an upload library, which
+   * carries no cap at all.
+   */
+  private static KnowledgeLibrary cappedLibrary(Asset asset) {
+    if (!(Hibernate.unproxy(asset) instanceof KnowledgeLibrary library)) {
+      throw new IllegalStateException(
+          "asset " + asset.getId() + " of type " + asset.getAssetType() + " is no library");
+    }
+    return library.getSourceType() == DocumentSourceType.UPLOAD ? null : library;
   }
 }
