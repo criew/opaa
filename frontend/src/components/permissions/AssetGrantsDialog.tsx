@@ -441,7 +441,7 @@ export default function AssetGrantsDialog({
               </Select>
             </FormControl>
             <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-              {assetRoleDescription(role)}
+              {assetRoleDescription(role, assetType)}
             </Typography>
 
             <TextField
@@ -472,7 +472,7 @@ export default function AssetGrantsDialog({
         <Stack spacing={0.5}>
           {grantableRoles.map((option) => (
             <Typography key={option} sx={{ fontSize: 12.5, color: 'text.secondary' }}>
-              <strong>{assetRoleLabel(option)}</strong> · {assetRoleDescription(option)}
+              <strong>{assetRoleLabel(option)}</strong> · {assetRoleDescription(option, assetType)}
             </Typography>
           ))}
         </Stack>

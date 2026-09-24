@@ -24,7 +24,7 @@ vi.mock('react-router', async () => {
 })
 
 /** Rendert die Einstellungsseite auf einem bestimmten Reiter. */
-function renderTab(tab: 'general' | 'members' | 'knowledge') {
+function renderTab(tab: 'general' | 'members' | 'knowledge' | 'prompts') {
   routeParams.tab = tab
   return renderWithProviders(<SpaceSettingsPage />, { withRouter: true })
 }
@@ -296,7 +296,7 @@ describe('SpaceSettingsPage', () => {
    * #1917: eine Einstellungsseite je Space, gegliedert in Reiter. Die Leiste ist die Stelle, an
    * der ein weiterer Asset-Typ („Prompts") einen Reiter bekommt.
    */
-  it('gliedert die Einstellungen in Stammdaten, Mitglieder und Wissen', () => {
+  it('gliedert die Einstellungen in Stammdaten, Mitglieder, Wissen und Prompts', () => {
     setSpaceState(teamSpace)
     renderTab('general')
 
@@ -305,7 +305,7 @@ describe('SpaceSettingsPage', () => {
       within(tablist)
         .getAllByRole('tab')
         .map((tab) => tab.textContent),
-    ).toEqual(['Stammdaten', 'Mitglieder', 'Wissen'])
+    ).toEqual(['Stammdaten', 'Mitglieder', 'Wissen', 'Prompts'])
     expect(screen.getByRole('heading', { level: 1, name: 'Einstellungen' })).toBeInTheDocument()
     // Die Reiterleiste trägt keine Überschrift: Ohne die h2 des Panels spränge die Gliederung von
     // h1 auf die h3 des Gefahrenbereichs (docs/design/accessibility.md 2.3).
@@ -769,5 +769,74 @@ describe('SpaceSettingsPage', () => {
 
     expect(await screen.findByText('Keine Treffer')).toBeInTheDocument()
     expect(screen.queryByText('No options')).not.toBeInTheDocument()
+  })
+
+  /**
+   * #1902: der Reiter „Prompts" ordnet Prompt-Bibliotheken über dieselben Space-Endpunkte zu wie
+   * „Wissen" die Wissensbibliotheken; jeder Reiter zeigt nur die Zuordnungen seines Typs.
+   */
+  describe('Reiter „Prompts"', () => {
+    const mixedAssociations: SpaceAssetAssociationListResponse = {
+      hasAssociations: true,
+      narrowsSearch: true,
+      items: [
+        {
+          assetType: 'KNOWLEDGE_LIBRARY',
+          assetId: 'lib-1',
+          name: 'Rechtsquellen Soziales',
+          readableByCaller: true,
+          createdByUserId: 'u1',
+          createdAt: '2026-03-01T10:00:00Z',
+        },
+        {
+          assetType: 'PROMPT_LIBRARY',
+          assetId: 'prompt-library-organisation',
+          name: 'Hausweite Vorlagen',
+          readableByCaller: true,
+          createdByUserId: 'u1',
+          createdAt: '2026-03-01T10:00:00Z',
+        },
+      ],
+    }
+
+    it('zeigt je Reiter nur die Zuordnungen seines Typs', async () => {
+      mockGetSpaceAssetAssociations.mockResolvedValue(mixedAssociations)
+      setSpaceState(teamSpace)
+      const { unmount } = renderTab('prompts')
+
+      expect(await screen.findByText('Hausweite Vorlagen')).toBeInTheDocument()
+      expect(screen.queryByText('Rechtsquellen Soziales')).not.toBeInTheDocument()
+      unmount()
+
+      renderTab('knowledge')
+      expect(await screen.findByText('Rechtsquellen Soziales')).toBeInTheDocument()
+      expect(screen.queryByText('Hausweite Vorlagen')).not.toBeInTheDocument()
+    })
+
+    it('ordnet eine lesbare Prompt-Bibliothek mit ihrem Typ zu', async () => {
+      const requests: unknown[] = []
+      server.use(
+        http.post('/api/v1/spaces/:spaceId/assets', async ({ request }) => {
+          requests.push(await request.json())
+          return HttpResponse.json({}, { status: 201 })
+        }),
+      )
+      setSpaceState(teamSpace)
+      renderTab('prompts')
+      const user = userEvent.setup()
+
+      await user.click(await screen.findByPlaceholderText('Prompt-Bibliothek suchen …'))
+      await user.click(
+        await screen.findByRole('option', { name: 'Formulierungshilfen Referat 50' }),
+      )
+      await user.click(screen.getByRole('button', { name: 'Zuordnen' }))
+
+      await waitFor(() =>
+        expect(requests).toEqual([
+          { assetType: 'PROMPT_LIBRARY', assetId: 'prompt-library-referat-50' },
+        ]),
+      )
+      expect(await screen.findByText('Prompt-Bibliothek zugeordnet')).toBeInTheDocument()
+    })
   })
 })

@@ -14,6 +14,7 @@ import type {
   AssetVisibility,
   MetadataOrigin,
   PermissionSubjectType,
+  PromptVariableType,
   ScheduleFrequency,
   ScheduleWeekday,
   SpaceRole,
@@ -145,20 +146,31 @@ export function assetRoleLabel(role: AssetRole | string | undefined): string {
   return assetRoleLabels[role as AssetRole] ?? role
 }
 
-// One sentence per role, mirroring the graded ranking documented on the AssetRole schema in
-// opaa-api.yaml (VIEWER < EDITOR < MANAGER < OWNER, deliberately separate from SpaceRole) - each
-// additionally implies everything the role below it already permits, so every sentence below
-// starts with "zusätzlich" except VIEWER's, which is the baseline a grant can carry.
-const assetRoleDescriptions: Record<AssetRole, string> = {
-  VIEWER: 'Darf die Bibliothek benutzen und ihren Inhalt einsehen.',
-  EDITOR: 'Darf zusätzlich Dokumente ändern, hochladen und entfernen.',
-  MANAGER: 'Darf zusätzlich Rechte vergeben und die Sichtbarkeit der Bibliothek ändern.',
-  OWNER: 'Darf zusätzlich die Bibliothek löschen und das Eigentum übertragen.',
+// One sentence per role and asset type, mirroring the graded ranking documented on the AssetRole
+// schema in opaa-api.yaml (VIEWER < EDITOR < MANAGER < OWNER, deliberately separate from
+// SpaceRole) - each additionally implies everything the role below it already permits, so every
+// sentence below starts with "zusätzlich" except VIEWER's, which is the baseline a grant can carry.
+const assetRoleDescriptions: Record<AssetType, Record<AssetRole, string>> = {
+  KNOWLEDGE_LIBRARY: {
+    VIEWER: 'Darf die Bibliothek benutzen und ihren Inhalt einsehen.',
+    EDITOR: 'Darf zusätzlich Dokumente ändern, hochladen und entfernen.',
+    MANAGER: 'Darf zusätzlich Rechte vergeben und die Sichtbarkeit der Bibliothek ändern.',
+    OWNER: 'Darf zusätzlich die Bibliothek löschen und das Eigentum übertragen.',
+  },
+  PROMPT_LIBRARY: {
+    VIEWER: 'Darf die Prompts der Prompt-Bibliothek lesen und einsetzen.',
+    EDITOR: 'Darf zusätzlich Prompts anlegen, ändern und löschen.',
+    MANAGER: 'Darf zusätzlich Rechte vergeben und die Sichtbarkeit der Prompt-Bibliothek ändern.',
+    OWNER: 'Darf zusätzlich die Prompt-Bibliothek samt ihrer Prompts löschen.',
+  },
 }
 
-export function assetRoleDescription(role: AssetRole | string | undefined): string {
+export function assetRoleDescription(
+  role: AssetRole | string | undefined,
+  assetType: AssetType = 'KNOWLEDGE_LIBRARY',
+): string {
   if (!role) return ''
-  return assetRoleDescriptions[role as AssetRole] ?? ''
+  return assetRoleDescriptions[assetType]?.[role as AssetRole] ?? ''
 }
 
 const assetTypeLabels: Record<AssetType, string> = {
@@ -170,6 +182,32 @@ const assetTypeLabels: Record<AssetType, string> = {
 export function assetTypeLabel(assetType: AssetType | string | undefined): string {
   if (!assetType) return ''
   return assetTypeLabels[assetType as AssetType] ?? assetType
+}
+
+const assetTypeTitles: Record<AssetType, string> = {
+  KNOWLEDGE_LIBRARY: 'Wissensbibliothek',
+  PROMPT_LIBRARY: 'Prompt-Bibliothek',
+}
+
+/** The full name of an asset type, as the type marker of a mixed list shows it. */
+export function assetTypeTitle(assetType: AssetType | string | undefined): string {
+  if (!assetType) return ''
+  return assetTypeTitles[assetType as AssetType] ?? assetType
+}
+
+const promptVariableTypeLabels: Record<PromptVariableType, string> = {
+  TEXT: 'Text (eine Zeile)',
+  TEXTAREA: 'Text (mehrere Zeilen)',
+  SELECT: 'Auswahl',
+  DATE: 'Datum',
+}
+
+/** Render order of the variable types in the prompt editor. */
+export const promptVariableTypes = Object.keys(promptVariableTypeLabels) as PromptVariableType[]
+
+export function promptVariableTypeLabel(type: PromptVariableType | string | undefined): string {
+  if (!type) return ''
+  return promptVariableTypeLabels[type as PromptVariableType] ?? type
 }
 
 const assetGrantScopeHints: Record<AssetType, string> = {
