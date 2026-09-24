@@ -24,5 +24,10 @@ export interface ChatMessage {
    * answers of this session; persisted history does not carry it.
    */
   searchedLibraries?: SearchedLibrary[]
+  /**
+   * On a question: the title of the prompt it was built from, as it stood when it was sent - a
+   * snapshot shown as "Prompt: <title>", never a link.
+   */
+  usedPromptTitle?: string
   timestamp: Date
 }

@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
-  resolvePromptPreview,
+  germanDate,
+  initialValues,
+  isComplete,
+  resolvePromptText,
+  todayIso,
   splitPromptText,
   suggestPromptName,
   validatePromptDraft,
@@ -124,16 +128,66 @@ describe('promptTemplate', () => {
       { name: 'c', label: 'Feld C', type: 'TEXT' as const, required: true },
     ]
     expect(
-      resolvePromptPreview(
+      resolvePromptText(
         text,
         variables,
         { a: 'Beispiel' },
-        {
-          CURRENT_DATE: '24.09.2026',
-          USER_NAME: 'Andrea Vogt',
-        },
+        { userName: 'Andrea Vogt', now: new Date(2026, 8, 24), showUnfilled: true },
       ),
     ).toBe('Beispiel vorbelegt [Feld C] 24.09.2026 Andrea Vogt')
+  })
+
+  it('resolves for insertion with the same rules and the same date form as the preview', () => {
+    const stichtag = { name: 'stichtag', label: 'Stichtag', type: 'DATE' as const, required: true }
+    const umfang = {
+      name: 'umfang',
+      label: 'Umfang',
+      type: 'SELECT' as const,
+      required: false,
+      defaultValue: 'kurz',
+      options: ['kurz', 'ausführlich'],
+    }
+    const text = 'Stand {{ stichtag }} ({{umfang}}), erstellt {{current_date}} von {{USER_NAME}}.'
+    const context = { userName: 'Erika Muster', now: new Date(2026, 8, 24) }
+
+    expect(
+      resolvePromptText(text, [stichtag, umfang], { stichtag: '2026-09-01', umfang: '' }, context),
+    ).toBe('Stand 01.09.2026 (), erstellt 24.09.2026 von Erika Muster.')
+    expect(
+      resolvePromptText(
+        text,
+        [stichtag, umfang],
+        { stichtag: '2026-09-01' },
+        {
+          ...context,
+          showUnfilled: true,
+        },
+      ),
+    ).toBe('Stand 01.09.2026 (kurz), erstellt 24.09.2026 von Erika Muster.')
+    expect(resolvePromptText('A {{kein name}} B', [], {}, context)).toBe('A {{kein name}} B')
+  })
+
+  it('prefills the insertion form and knows when it is complete', () => {
+    const now = new Date(2026, 8, 24, 10, 30)
+    const stichtag = { name: 'stichtag', label: 'Stichtag', type: 'DATE' as const, required: true }
+    const vermerk = { name: 'vermerk', label: 'Vermerk', type: 'TEXT' as const, required: true }
+    const umfang = {
+      name: 'umfang',
+      label: 'Umfang',
+      type: 'SELECT' as const,
+      required: false,
+      defaultValue: 'kurz',
+    }
+
+    expect(todayIso(now)).toBe('2026-09-24')
+    expect(germanDate('kein Datum')).toBe('kein Datum')
+    expect(initialValues([stichtag, umfang, vermerk], now)).toEqual({
+      stichtag: '2026-09-24',
+      umfang: 'kurz',
+      vermerk: '',
+    })
+    expect(isComplete([stichtag, vermerk], { stichtag: '2026-09-24', vermerk: ' ' })).toBe(false)
+    expect(isComplete([stichtag, vermerk], { stichtag: '2026-09-24', vermerk: 'A-1' })).toBe(true)
   })
 
   it('suggests a command name from a title', () => {

@@ -321,6 +321,17 @@ public class SpaceAssetAssociationService {
   }
 
   /**
+   * Every asset of {@code assetType} associated with the space, for a member of it - without a
+   * rights filter of its own, like {@link #libraryIdsInSpace}: the caller intersects it with what
+   * the person may read. An unknown space or one of another organization is a {@code 404}.
+   */
+  public Set<UUID> assetIdsInSpace(UUID spaceId, AssetType assetType, CurrentUser caller) {
+    Space space = loadSpace(spaceId, caller);
+    accessPolicy.requireMember(space, caller);
+    return associationRepository.findAssetIdsBySpaceIdAndAssetType(space.getId(), assetType);
+  }
+
+  /**
    * Notifies the asset's owner (every member, if group-owned) when the space just associated has at
    * least one member without read access to it (#203: "Benachrichtigung statt Zustimmung"). The
    * caller who created the association is never among the recipients - they know what they did.

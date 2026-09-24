@@ -199,6 +199,7 @@ export async function sendQuery(
   useKnowledge = true,
   libraryIds?: string[],
   metadataFilter?: MetadataFilter | null,
+  usedPromptId?: string,
 ): Promise<QueryResponse> {
   try {
     // libraryIds is only meaningful (and only sent) when useKnowledge is false - the backend
@@ -214,6 +215,7 @@ export async function sendQuery(
       useKnowledge,
       ...(useKnowledge ? {} : { libraryIds }),
       ...(metadataFilter && !isEmptyMetadataFilter(metadataFilter) ? { metadataFilter } : {}),
+      ...(usedPromptId ? { usedPromptId } : {}),
     }
     const { data } = await client.post<QueryResponse>('/v1/query', request)
     return data

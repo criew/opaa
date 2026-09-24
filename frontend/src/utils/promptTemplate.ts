@@ -188,24 +188,79 @@ export function isMultilineType(type: PromptVariableType): boolean {
   return type === 'TEXTAREA'
 }
 
+/** Today as `yyyy-MM-dd` in the person's own time zone - the value of a date field. */
+export function todayIso(now: Date = new Date()): string {
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  return `${now.getFullYear()}-${month}-${day}`
+}
+
+/** `yyyy-MM-dd` as the German `TT.MM.JJJJ` a resolved text carries; anything else unchanged. */
+export function germanDate(iso: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso)
+  return match ? `${match[3]}.${match[2]}.${match[1]}` : iso
+}
+
 /**
- * The text with every placeholder replaced for the preview: the example value, else the default,
- * else the label in brackets - so an unfilled variable stays visible as such.
+ * The starting values of the insertion form: the defined default, and for a date field without one
+ * the current day - a date is almost always "as of today".
  */
-export function resolvePromptPreview(
+export function initialValues(
+  variables: PromptVariable[],
+  now: Date = new Date(),
+): Record<string, string> {
+  const values: Record<string, string> = {}
+  for (const variable of variables) {
+    values[variable.name] = variable.defaultValue ?? (variable.type === 'DATE' ? todayIso(now) : '')
+  }
+  return values
+}
+
+/** Whether every required variable has a value - the condition for inserting. */
+export function isComplete(
+  variables: PromptVariable[],
+  values: Readonly<Record<string, string>>,
+): boolean {
+  return variables.every((variable) => !variable.required || (values[variable.name] ?? '').trim())
+}
+
+export interface PromptResolution {
+  /** What `{{USER_NAME}}` becomes. */
+  userName: string
+  /** The day `{{CURRENT_DATE}}` stands for; today when absent. */
+  now?: Date
+  /**
+   * The preview's rule for an empty value: the default, else the label in brackets, so an unfilled
+   * variable stays visible. Inserting leaves it empty - the form already carried the default.
+   */
+  showUnfilled?: boolean
+}
+
+/**
+ * The text with every placeholder replaced - the one resolution behind both the editor's preview
+ * and the chat's insertion: own variables by their values, a date as `TT.MM.JJJJ`, `{{CURRENT_DATE}}`
+ * by the day and `{{USER_NAME}}` by the person's name. An invalid placeholder stays as written.
+ */
+export function resolvePromptText(
   text: string,
   variables: PromptVariable[],
   values: Readonly<Record<string, string>>,
-  system: Readonly<Record<(typeof SYSTEM_VARIABLES)[number], string>>,
+  { userName, now, showUnfilled = false }: PromptResolution,
 ): string {
   const byName = new Map(variables.map((variable) => [variable.name, variable]))
   return splitPromptText(text)
     .map((segment) => {
-      if (segment.kind === 'system') return system[segment.name as keyof typeof system]
+      if (segment.kind === 'system') {
+        return segment.name === 'CURRENT_DATE' ? germanDate(todayIso(now)) : userName
+      }
       if (segment.kind !== 'variable') return segment.value
       const variable = byName.get(segment.name)
-      const value = values[segment.name] || variable?.defaultValue || ''
-      return value || `[${variable?.label || segment.name}]`
+      let value = values[segment.name] ?? ''
+      if (!value && showUnfilled) {
+        value = variable?.defaultValue ?? ''
+        if (!value) return `[${variable?.label || segment.name}]`
+      }
+      return variable?.type === 'DATE' ? germanDate(value) : value
     })
     .join('')
 }

@@ -20,6 +20,7 @@ public final class ChatTurn {
   private final ChatRole role;
   private final String content;
   private final List<ChatSource> sources;
+  private final UsedPrompt usedPrompt;
   private final Instant createdAt;
 
   public ChatTurn(
@@ -29,11 +30,23 @@ public final class ChatTurn {
       String content,
       List<ChatSource> sources,
       Instant createdAt) {
+    this(id, chatId, role, content, sources, null, createdAt);
+  }
+
+  public ChatTurn(
+      UUID id,
+      UUID chatId,
+      ChatRole role,
+      String content,
+      List<ChatSource> sources,
+      UsedPrompt usedPrompt,
+      Instant createdAt) {
     this.id = id;
     this.chatId = chatId;
     this.role = role;
     this.content = content;
     this.sources = sources;
+    this.usedPrompt = usedPrompt;
     this.createdAt = createdAt;
   }
 
@@ -55,6 +68,11 @@ public final class ChatTurn {
 
   public List<ChatSource> getSources() {
     return sources;
+  }
+
+  /** The prompt snapshot of a question, or {@code null}. */
+  public UsedPrompt getUsedPrompt() {
+    return usedPrompt;
   }
 
   public Instant getCreatedAt() {
