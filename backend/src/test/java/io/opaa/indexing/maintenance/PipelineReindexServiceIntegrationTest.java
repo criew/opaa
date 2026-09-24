@@ -2,10 +2,10 @@ package io.opaa.indexing.maintenance;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.IndexingRunMode;
-import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.SystemRole;
 import io.opaa.indexing.chunk.FullTextChunkStore;
 import io.opaa.indexing.chunk.VectorChunkStore;
@@ -116,7 +116,7 @@ class PipelineReindexServiceIntegrationTest {
                 "Zielbibliothek",
                 null,
                 userId,
-                LibraryVisibility.PRIVATE,
+                AssetVisibility.PRIVATE,
                 false,
                 DocumentSourceType.FILESYSTEM,
                 classTempDir.toString(),
@@ -131,7 +131,7 @@ class PipelineReindexServiceIntegrationTest {
                 "Uploadbibliothek",
                 null,
                 userId,
-                LibraryVisibility.PRIVATE,
+                AssetVisibility.PRIVATE,
                 false));
   }
 
@@ -146,7 +146,7 @@ class PipelineReindexServiceIntegrationTest {
 
   private List<UUID> ownLibraryIds() {
     return jdbcTemplate.queryForList(
-        "SELECT id FROM knowledge_libraries WHERE owner_user_id = ?", UUID.class, userId);
+        "SELECT id FROM assets WHERE owner_user_id = ?", UUID.class, userId);
   }
 
   /**
@@ -894,7 +894,7 @@ class PipelineReindexServiceIntegrationTest {
                 "Zurückgezogene Bibliothek",
                 null,
                 userId,
-                LibraryVisibility.PRIVATE,
+                AssetVisibility.PRIVATE,
                 false,
                 DocumentSourceType.FILESYSTEM,
                 withdrawnDirectory.toString(),

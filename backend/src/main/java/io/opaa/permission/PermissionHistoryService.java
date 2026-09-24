@@ -22,12 +22,12 @@ import org.springframework.transaction.annotation.Transactional;
  * and its history row commit or roll back together, the same as any other write this class's
  * callers already make in the same transaction.
  *
- * <p><b>The third source of the readable-library formula is not here.</b> A library's
- * visibility/release history is library state, not a grant, and lives in {@code
- * io.opaa.library.LibraryVisibilityHistoryService} - which composes {@link #readableAssetIdsAsOf}
- * with its own organization-wide part, exactly as {@code io.opaa.library.LibraryAccessService}
- * composes {@link AssetAccessService} with the visibility floor for "now". Both halves share the
- * one {@link PermissionHistoryClock}, so the interval contract below holds across all three tables.
+ * <p><b>The third source of the readable-asset formula is not here.</b> An asset's reach history is
+ * shell state, not a grant, and lives in {@code io.opaa.asset.AssetVisibilityHistoryService} -
+ * which composes {@link #readableAssetIdsAsOf} with its organization-wide part for any past
+ * instant, the way {@link AssetAccessService} reads the release off the shell for "now". Both
+ * halves share the one {@link PermissionHistoryClock}, so the interval contract below holds across
+ * all three tables.
  *
  * <p><b>Interval contract</b> (#1497, ADR-0032), holding for every row written from that change on
  * - rows written before it can still carry the empty intervals it prevents, and are not repaired:
@@ -56,7 +56,7 @@ import org.springframework.transaction.annotation.Transactional;
  * GroupMembershipHistoryCause#DIRECTORY_SYNC_REMOVED} and no actor - a sync run has no acting
  * user), {@code KnowledgeLibraryService#deleteLibrary} and {@link CapabilityService#grant}/{@link
  * CapabilityService#revoke}. The delete paths close every open interval the deleted asset/group
- * left behind ({@link AssetGrantHistoryCause#LIBRARY_DELETED}, {@link
+ * left behind ({@link AssetGrantHistoryCause#ASSET_DELETED}, {@link
  * GroupMembershipHistoryCause#GROUP_DELETED}) - required because {@code asset_id}/{@code
  * group_id}/{@code subject_group_id} carry no foreign key (ADR-0016), so the deletion itself never
  * closes them.
@@ -121,7 +121,7 @@ public class PermissionHistoryService {
 
   /**
    * The asset-deletion counterpart of {@link #recordGrantRevoked} - same closing/marker mechanics,
-   * cause {@link AssetGrantHistoryCause#LIBRARY_DELETED} instead of {@code REVOKED}. Call once per
+   * cause {@link AssetGrantHistoryCause#ASSET_DELETED} instead of {@code REVOKED}. Call once per
    * live grant on the asset, before the asset itself is deleted: {@code asset_id} carries no
    * foreign key, so an asset deletion never closes these intervals on its own, leaving a deleted
    * asset's grants looking "currently readable".
@@ -130,8 +130,7 @@ public class PermissionHistoryService {
     Instant now = clock.nextBoundary();
     closeOpenGrantInterval(grant, now);
     grantHistoryRepository.save(
-        AssetGrantHistory.terminal(
-            grant, AssetGrantHistoryCause.LIBRARY_DELETED, actorUserId, now));
+        AssetGrantHistory.terminal(grant, AssetGrantHistoryCause.ASSET_DELETED, actorUserId, now));
   }
 
   /**

@@ -6,8 +6,8 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.doThrow;
 
 import io.opaa.api.types.AssetRole;
+import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.ExternalAccessState;
-import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.api.types.SpaceRole;
 import io.opaa.api.types.SpaceVisibility;
@@ -15,6 +15,8 @@ import io.opaa.api.types.SuccessionAddressee;
 import io.opaa.api.types.SuccessionKind;
 import io.opaa.api.types.SuccessionObjectType;
 import io.opaa.api.types.SystemRole;
+import io.opaa.asset.AssetGrantService;
+import io.opaa.asset.AssetGrantUpsert;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
@@ -24,8 +26,6 @@ import io.opaa.group.GroupMembership;
 import io.opaa.group.GroupRepository;
 import io.opaa.group.GroupSteward;
 import io.opaa.group.GroupStewardRepository;
-import io.opaa.library.AssetGrantService;
-import io.opaa.library.AssetGrantUpsert;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.KnowledgeLibraryService;
@@ -131,8 +131,9 @@ class SuccessionLifecycleIntegrationTest {
             "asset_ownership_history",
             "asset_grants",
             "asset_grant_history",
-            "library_visibility_history",
+            "asset_visibility_history",
             "knowledge_libraries",
+            "assets",
             "group_membership_history",
             "group_memberships",
             "group_stewards",
@@ -222,6 +223,7 @@ class SuccessionLifecycleIntegrationTest {
     assertThatThrownBy(
             () ->
                 grantService.upsertGrant(
+                    KnowledgeLibrary.ASSET_TYPE,
                     library,
                     new AssetGrantUpsert(PermissionSubjectType.USER, reader.id(), AssetRole.VIEWER),
                     admin))
@@ -316,7 +318,10 @@ class SuccessionLifecycleIntegrationTest {
     UUID group = group("Referat 50", member.id());
     UUID library = libraryOwnedByUser(admin.id());
     grantService.upsertGrant(
-        library, new AssetGrantUpsert(PermissionSubjectType.GROUP, group, AssetRole.VIEWER), admin);
+        KnowledgeLibrary.ASSET_TYPE,
+        library,
+        new AssetGrantUpsert(PermissionSubjectType.GROUP, group, AssetRole.VIEWER),
+        admin);
     lock(member.id());
     membershipResolver.invalidateUser(member.id());
 
@@ -399,6 +404,7 @@ class SuccessionLifecycleIntegrationTest {
     UUID library = libraryOwnedByUser(owner.id());
     CurrentUser holder = user(SystemRole.USER);
     grantService.upsertGrant(
+        KnowledgeLibrary.ASSET_TYPE,
         library,
         new AssetGrantUpsert(PermissionSubjectType.USER, holder.id(), AssetRole.MANAGER),
         admin);
@@ -407,6 +413,7 @@ class SuccessionLifecycleIntegrationTest {
     assertThat(
             grantService
                 .upsertGrant(
+                    KnowledgeLibrary.ASSET_TYPE,
                     library,
                     new AssetGrantUpsert(PermissionSubjectType.USER, holder.id(), AssetRole.VIEWER),
                     admin)
@@ -418,6 +425,7 @@ class SuccessionLifecycleIntegrationTest {
     assertThatThrownBy(
             () ->
                 grantService.upsertGrant(
+                    KnowledgeLibrary.ASSET_TYPE,
                     library,
                     new AssetGrantUpsert(
                         PermissionSubjectType.USER, holder.id(), AssetRole.MANAGER),
@@ -504,6 +512,7 @@ class SuccessionLifecycleIntegrationTest {
     CurrentUser owner = user(SystemRole.USER);
     UUID library = libraryOwnedByUser(owner.id());
     grantService.upsertGrant(
+        KnowledgeLibrary.ASSET_TYPE,
         library,
         new AssetGrantUpsert(PermissionSubjectType.USER, admin.id(), AssetRole.VIEWER),
         admin);
@@ -732,7 +741,7 @@ class SuccessionLifecycleIntegrationTest {
             "Bibliothek " + UUID.randomUUID(),
             null,
             ownerId,
-            LibraryVisibility.PRIVATE,
+            AssetVisibility.PRIVATE,
             false));
     lock(ownerId);
     return foreignId;
@@ -754,7 +763,7 @@ class SuccessionLifecycleIntegrationTest {
                 "Bibliothek " + UUID.randomUUID(),
                 null,
                 ownerId,
-                LibraryVisibility.PRIVATE,
+                AssetVisibility.PRIVATE,
                 false))
         .getId();
   }
@@ -767,7 +776,7 @@ class SuccessionLifecycleIntegrationTest {
                 "Referatsbibliothek " + UUID.randomUUID(),
                 null,
                 groupId,
-                LibraryVisibility.PRIVATE,
+                AssetVisibility.PRIVATE,
                 false))
         .getId();
   }

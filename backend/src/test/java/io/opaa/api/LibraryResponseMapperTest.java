@@ -11,12 +11,12 @@ import io.opaa.api.dto.LibraryScheduleRequest;
 import io.opaa.api.dto.LibraryUpdateRequest;
 import io.opaa.api.dto.S3ScopeRef;
 import io.opaa.api.dto.S3Settings;
+import io.opaa.api.types.AssetOwnerType;
 import io.opaa.api.types.AssetRole;
+import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.ExternalAccessState;
-import io.opaa.api.types.LibraryOwnerType;
-import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.ScheduleFrequency;
 import io.opaa.api.types.ScheduleWeekday;
 import io.opaa.api.types.SuccessionAddressee;
@@ -60,7 +60,7 @@ class LibraryResponseMapperTest {
             "Rechtsquellen",
             "Beschreibung",
             owner,
-            LibraryVisibility.ORGANIZATION,
+            AssetVisibility.ORGANIZATION,
             true);
     LibraryDetail detail =
         new LibraryDetail(library, AssetRole.VIEWER, 7L, LibraryManagementDetail.EMPTY, false);
@@ -70,9 +70,9 @@ class LibraryResponseMapperTest {
     assertThat(response.getId()).isEqualTo(library.getId());
     assertThat(response.getName()).isEqualTo("Rechtsquellen");
     assertThat(response.getDescription()).isEqualTo("Beschreibung");
-    assertThat(response.getOwnerType()).isEqualTo(LibraryOwnerType.USER);
+    assertThat(response.getOwnerType()).isEqualTo(AssetOwnerType.USER);
     assertThat(response.getOwnerId()).isEqualTo(owner);
-    assertThat(response.getVisibility()).isEqualTo(LibraryVisibility.ORGANIZATION);
+    assertThat(response.getVisibility()).isEqualTo(AssetVisibility.ORGANIZATION);
     assertThat(response.getListed()).isTrue();
     assertThat(response.getMyRole()).isEqualTo(AssetRole.VIEWER);
     assertThat(response.getSourceType()).isEqualTo(DocumentSourceType.UPLOAD);
@@ -108,7 +108,7 @@ class LibraryResponseMapperTest {
             "Rechtsquellen",
             null,
             UUID.randomUUID(),
-            LibraryVisibility.PRIVATE,
+            AssetVisibility.PRIVATE,
             false);
     LibraryDetail toggleable =
         new LibraryDetail(library, AssetRole.OWNER, 0L, LibraryManagementDetail.EMPTY, true);
@@ -129,7 +129,7 @@ class LibraryResponseMapperTest {
             "Web-Verzeichnis",
             null,
             UUID.randomUUID(),
-            LibraryVisibility.PRIVATE,
+            AssetVisibility.PRIVATE,
             false);
     Instant nextRunAt = Instant.now().plusSeconds(3600);
     Instant releaseExpiresAt = Instant.now().plusSeconds(86_400);
@@ -160,7 +160,7 @@ class LibraryResponseMapperTest {
                 "Erika Mustermann",
                 0L,
                 365),
-            LibraryVisibility.SHARED,
+            AssetVisibility.SHARED,
             false);
     LibraryDetail detail =
         new LibraryDetail(library, AssetRole.MANAGER, 3L, managementDetail, true);
@@ -194,7 +194,7 @@ class LibraryResponseMapperTest {
     assertThat(response.getExternalAccess().getTokenCount()).isZero();
     assertThat(response.getExternalAccess().getMaxReleaseDays()).isEqualTo(365);
     // #797
-    assertThat(response.getVisibilityCap()).isEqualTo(LibraryVisibility.SHARED);
+    assertThat(response.getVisibilityCap()).isEqualTo(AssetVisibility.SHARED);
     assertThat(response.getListedCap()).isFalse();
   }
 
@@ -204,12 +204,7 @@ class LibraryResponseMapperTest {
     // schedule field distinguishes that case from "not visible to this caller" (previous test).
     KnowledgeLibrary library =
         KnowledgeLibrary.ownedByUser(
-            UUID.randomUUID(),
-            "Uploads",
-            null,
-            UUID.randomUUID(),
-            LibraryVisibility.PRIVATE,
-            false);
+            UUID.randomUUID(), "Uploads", null, UUID.randomUUID(), AssetVisibility.PRIVATE, false);
     LibraryManagementDetail managementDetail =
         new LibraryManagementDetail(
             null, null, null, false, false, null, null, null, null, null, null, 0L, 0L, null, null,
@@ -230,7 +225,7 @@ class LibraryResponseMapperTest {
     UUID owner = UUID.randomUUID();
     KnowledgeLibrary library =
         KnowledgeLibrary.ownedByUser(
-            UUID.randomUUID(), "Team-Bibliothek", null, owner, LibraryVisibility.SHARED, true);
+            UUID.randomUUID(), "Team-Bibliothek", null, owner, AssetVisibility.SHARED, true);
     LibrarySummary summary =
         new LibrarySummary(
             library,
@@ -260,10 +255,10 @@ class LibraryResponseMapperTest {
   void toListResponsesMapsEverySummaryInOrder() {
     KnowledgeLibrary first =
         KnowledgeLibrary.ownedByUser(
-            UUID.randomUUID(), "A", null, UUID.randomUUID(), LibraryVisibility.PRIVATE, false);
+            UUID.randomUUID(), "A", null, UUID.randomUUID(), AssetVisibility.PRIVATE, false);
     KnowledgeLibrary second =
         KnowledgeLibrary.ownedByUser(
-            UUID.randomUUID(), "B", null, UUID.randomUUID(), LibraryVisibility.PRIVATE, false);
+            UUID.randomUUID(), "B", null, UUID.randomUUID(), AssetVisibility.PRIVATE, false);
     List<LibrarySummary> summaries =
         List.of(
             new LibrarySummary(first, AssetRole.VIEWER, 0L, null, null, null),
@@ -286,9 +281,9 @@ class LibraryResponseMapperTest {
     LibraryRequest request =
         new LibraryRequest("Rechtsquellen", DocumentSourceType.HTTP_DIRECTORY)
             .description("Beschreibung")
-            .ownerType(LibraryOwnerType.GROUP)
+            .ownerType(AssetOwnerType.GROUP)
             .ownerId(ownerId)
-            .visibility(LibraryVisibility.ORGANIZATION)
+            .visibility(AssetVisibility.ORGANIZATION)
             .listed(true)
             .sourcePath("/data/documents")
             .sourceUrl(URI.create("https://example.com/documents/"))
@@ -300,9 +295,9 @@ class LibraryResponseMapperTest {
 
     assertThat(creation.name()).isEqualTo("Rechtsquellen");
     assertThat(creation.description()).isEqualTo("Beschreibung");
-    assertThat(creation.ownerType()).isEqualTo(LibraryOwnerType.GROUP);
+    assertThat(creation.ownerType()).isEqualTo(AssetOwnerType.GROUP);
     assertThat(creation.ownerId()).isEqualTo(ownerId);
-    assertThat(creation.visibility()).isEqualTo(LibraryVisibility.ORGANIZATION);
+    assertThat(creation.visibility()).isEqualTo(AssetVisibility.ORGANIZATION);
     assertThat(creation.listed()).isTrue();
     assertThat(creation.sourceType()).isEqualTo(DocumentSourceType.HTTP_DIRECTORY);
     assertThat(creation.sourcePath()).isEqualTo("/data/documents");
@@ -319,7 +314,7 @@ class LibraryResponseMapperTest {
     LibraryUpdateRequest request =
         new LibraryUpdateRequest("Umbenannt")
             .description("Neue Beschreibung")
-            .visibility(LibraryVisibility.PRIVATE)
+            .visibility(AssetVisibility.PRIVATE)
             .listed(false)
             .sourceType(DocumentSourceType.RSS_FEED)
             .sourcePath("/data/documents")
@@ -337,7 +332,7 @@ class LibraryResponseMapperTest {
 
     assertThat(update.name()).isEqualTo("Umbenannt");
     assertThat(update.description()).isEqualTo("Neue Beschreibung");
-    assertThat(update.visibility()).isEqualTo(LibraryVisibility.PRIVATE);
+    assertThat(update.visibility()).isEqualTo(AssetVisibility.PRIVATE);
     assertThat(update.listed()).isFalse();
     assertThat(update.sourceType()).isEqualTo(DocumentSourceType.RSS_FEED);
     assertThat(update.sourcePath()).isEqualTo("/data/documents");
@@ -454,7 +449,7 @@ class LibraryResponseMapperTest {
             "Protokolle",
             null,
             UUID.randomUUID(),
-            LibraryVisibility.PRIVATE,
+            AssetVisibility.PRIVATE,
             false,
             DocumentSourceType.S3,
             null,
@@ -486,7 +481,7 @@ class LibraryResponseMapperTest {
 
     KnowledgeLibrary upload =
         KnowledgeLibrary.ownedByUser(
-            UUID.randomUUID(), "Upload", null, UUID.randomUUID(), LibraryVisibility.PRIVATE, false);
+            UUID.randomUUID(), "Upload", null, UUID.randomUUID(), AssetVisibility.PRIVATE, false);
     assertThat(
             LibraryResponseMapper.toResponse(
                     new LibraryDetail(
@@ -503,7 +498,7 @@ class LibraryResponseMapperTest {
             "Wiki",
             null,
             UUID.randomUUID(),
-            LibraryVisibility.PRIVATE,
+            AssetVisibility.PRIVATE,
             false,
             DocumentSourceType.CONFLUENCE,
             null,
@@ -530,7 +525,7 @@ class LibraryResponseMapperTest {
 
     KnowledgeLibrary upload =
         KnowledgeLibrary.ownedByUser(
-            UUID.randomUUID(), "Upload", null, UUID.randomUUID(), LibraryVisibility.PRIVATE, false);
+            UUID.randomUUID(), "Upload", null, UUID.randomUUID(), AssetVisibility.PRIVATE, false);
     LibraryResponse plain =
         LibraryResponseMapper.toResponse(
             new LibraryDetail(upload, AssetRole.OWNER, 0, LibraryManagementDetail.EMPTY, false));

@@ -69,7 +69,7 @@ public final class OwnLibraryFixtures {
   public void removeLibraries(UUID... libraryIds) {
     for (UUID libraryId : libraryIds) {
       removeContentOf(libraryId);
-      jdbcTemplate.update("DELETE FROM library_visibility_history WHERE library_id = ?", libraryId);
+      jdbcTemplate.update("DELETE FROM asset_visibility_history WHERE asset_id = ?", libraryId);
       // Since #1819 a library also carries ownership intervals, held by their owner through
       // fk_asset_ownership_history_owner_user_organization (RESTRICT) - without this the caller's
       // own user teardown fails on a library it has already removed.
@@ -77,7 +77,7 @@ public final class OwnLibraryFixtures {
           "DELETE FROM asset_ownership_history WHERE asset_type = 'KNOWLEDGE_LIBRARY'"
               + " AND asset_id = ?",
           libraryId);
-      jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE id = ?", libraryId);
+      jdbcTemplate.update("DELETE FROM assets WHERE id = ?", libraryId);
     }
   }
 }

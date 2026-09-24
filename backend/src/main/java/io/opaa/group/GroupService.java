@@ -685,7 +685,7 @@ public class GroupService {
     // bean.
     for (AssetOwnershipDirectory ownership : assetOwnershipDirectories) {
       if (ownership.existsAssetOwnedByGroup(groupId)) {
-        throw new ConflictException(ownership.ownedAssetConflictMessage());
+        throw new ConflictException(ownership.ownedAssetConflictMessage(groupId));
       }
     }
     // A group that merely holds a grant (never owns anything) hits the same RESTRICT constraint

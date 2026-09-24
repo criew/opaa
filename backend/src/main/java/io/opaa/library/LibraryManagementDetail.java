@@ -1,7 +1,7 @@
 package io.opaa.library;
 
 import io.opaa.api.types.AssetRole;
-import io.opaa.api.types.LibraryVisibility;
+import io.opaa.api.types.AssetVisibility;
 
 /**
  * The management-only half of a {@link LibraryDetail} - source configuration, schedule and storage
@@ -37,7 +37,7 @@ public record LibraryManagementDetail(
     Long storageQuotaBytes,
     Long storageUsedBytes,
     LibraryExternalAccess externalAccess,
-    LibraryVisibility visibilityCap,
+    AssetVisibility visibilityCap,
     Boolean listedCap) {
 
   public static final LibraryManagementDetail EMPTY =

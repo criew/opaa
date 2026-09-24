@@ -1,7 +1,7 @@
 package io.opaa.library;
 
+import io.opaa.api.types.AssetOwnerType;
 import io.opaa.api.types.ExternalAccessState;
-import io.opaa.api.types.LibraryOwnerType;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.PublicBaseUrl;
@@ -138,7 +138,7 @@ public class LibraryExternalAccessReminderService {
     return findUser(library.getExternalAccessSetByUserId())
         .or(
             () ->
-                library.getOwnerType() == LibraryOwnerType.USER
+                library.getOwnerType() == AssetOwnerType.USER
                     ? findUser(library.getOwnerUserId())
                     : Optional.empty());
   }

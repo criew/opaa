@@ -7,8 +7,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import io.opaa.api.types.AssetRole;
+import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DocumentSourceType;
-import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.DevAuthFilter;
 import io.opaa.auth.User;
@@ -82,7 +82,7 @@ class LibraryIndexingAuthorizationIntegrationTest {
     ownLibraryFixtures.removeLibraries(
         jdbcTemplate
             .queryForList(
-                "SELECT id FROM knowledge_libraries WHERE owner_user_id IN (SELECT id FROM users"
+                "SELECT id FROM assets WHERE owner_user_id IN (SELECT id FROM users"
                     + " WHERE email = 'foreign-owner-478@example.com')",
                 UUID.class)
             .toArray(new UUID[0]));
@@ -137,7 +137,7 @@ class LibraryIndexingAuthorizationIntegrationTest {
                 name,
                 null,
                 ownerId,
-                LibraryVisibility.PRIVATE,
+                AssetVisibility.PRIVATE,
                 false,
                 DocumentSourceType.FILESYSTEM,
                 documentDir.toAbsolutePath().toString(),
@@ -243,7 +243,7 @@ class LibraryIndexingAuthorizationIntegrationTest {
                 "Test-Bibliothek Upload",
                 null,
                 devAdmin.getId(),
-                LibraryVisibility.PRIVATE,
+                AssetVisibility.PRIVATE,
                 false));
     ownLibraryIds.add(library.getId());
     grantRepository.save(
@@ -318,7 +318,7 @@ class LibraryIndexingAuthorizationIntegrationTest {
                 "Test-Bibliothek Fremd",
                 null,
                 foreignOwnerId,
-                LibraryVisibility.PRIVATE,
+                AssetVisibility.PRIVATE,
                 false,
                 DocumentSourceType.FILESYSTEM,
                 documentDir.toAbsolutePath().toString(),

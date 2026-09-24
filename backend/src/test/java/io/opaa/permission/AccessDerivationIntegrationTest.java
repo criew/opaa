@@ -5,13 +5,15 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.api.types.AccessBasis;
 import io.opaa.api.types.AssetRole;
+import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.GroupKind;
 import io.opaa.api.types.GroupMechanism;
 import io.opaa.api.types.GroupOrigin;
-import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.SpaceRole;
 import io.opaa.api.types.SpaceVisibility;
 import io.opaa.api.types.SystemRole;
+import io.opaa.asset.AssetAccessDerivation;
+import io.opaa.asset.AssetAccessDerivationService;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
@@ -23,7 +25,6 @@ import io.opaa.group.GroupRepository;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.KnowledgeLibraryService;
-import io.opaa.library.LibraryAccessDerivation;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.space.Space;
@@ -51,6 +52,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 class AccessDerivationIntegrationTest {
 
   @Autowired private KnowledgeLibraryService libraryService;
+  @Autowired private AssetAccessDerivationService derivationService;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private SpaceService spaceService;
   @Autowired private SpaceRepository spaceRepository;
@@ -105,10 +107,11 @@ class AccessDerivationIntegrationTest {
   void aLibraryReachedThroughAGroupNamesTheGroupItsOriginAndItsMechanism() {
     UUID groupId = group("Referat 50", false);
     addMember(groupId, member.id());
-    UUID libraryId = library(LibraryVisibility.PRIVATE);
+    UUID libraryId = library(AssetVisibility.PRIVATE);
     grantToGroup(libraryId, groupId, AssetRole.EDITOR);
 
-    LibraryAccessDerivation derivation = libraryService.getAccessDerivation(libraryId, member);
+    AssetAccessDerivation derivation =
+        derivationService.derive(KnowledgeLibrary.ASSET_TYPE, libraryId, member);
 
     assertThat(derivation.effectiveRole()).isEqualTo(AssetRole.EDITOR);
     assertThat(derivation.paths()).hasSize(1);
@@ -125,9 +128,10 @@ class AccessDerivationIntegrationTest {
   /** The organization-wide release is a way of its own, and it names nobody. */
   @Test
   void anOrganizationWideLibraryIsDerivedWithoutAnyGrant() {
-    UUID libraryId = library(LibraryVisibility.ORGANIZATION);
+    UUID libraryId = library(AssetVisibility.ORGANIZATION);
 
-    LibraryAccessDerivation derivation = libraryService.getAccessDerivation(libraryId, member);
+    AssetAccessDerivation derivation =
+        derivationService.derive(KnowledgeLibrary.ASSET_TYPE, libraryId, member);
 
     assertThat(derivation.effectiveRole()).isEqualTo(AssetRole.VIEWER);
     assertThat(derivation.paths())
@@ -142,9 +146,10 @@ class AccessDerivationIntegrationTest {
   /** A library nothing reaches is "not found", not an empty derivation that confirms it exists. */
   @Test
   void aLibraryTheCallerDoesNotReachIsNotFound() {
-    UUID libraryId = library(LibraryVisibility.PRIVATE);
+    UUID libraryId = library(AssetVisibility.PRIVATE);
 
-    assertThatThrownBy(() -> libraryService.getAccessDerivation(libraryId, member))
+    assertThatThrownBy(
+            () -> derivationService.derive(KnowledgeLibrary.ASSET_TYPE, libraryId, member))
         .isInstanceOf(NotFoundException.class);
   }
 
@@ -239,7 +244,7 @@ class AccessDerivationIntegrationTest {
     membershipResolver.invalidateUser(userId);
   }
 
-  private UUID library(LibraryVisibility visibility) {
+  private UUID library(AssetVisibility visibility) {
     KnowledgeLibrary library =
         KnowledgeLibrary.ownedByUser(
             organizationId, "Bibliothek", null, spaceAdmin.id(), visibility, false);

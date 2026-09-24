@@ -2,7 +2,6 @@ package io.opaa.library;
 
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.ExternalAccessState;
-import io.opaa.api.types.SuccessionObjectType;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
@@ -112,10 +111,8 @@ public class LibraryExternalAccessService {
       // ADR-0036, Entscheidung 6: a release across the Hausgrenze is the largest reach there is -
       // and reach is frozen while the succession is open. Taking one back, and shortening a
       // running release, stay possible.
-      successionGuard.requireReachNotFrozen(
-          SuccessionObjectType.KNOWLEDGE_LIBRARY,
-          library.getId(),
-          "Eine Freigabe für Fremdzugänge");
+      successionGuard.requireAssetReachNotFrozen(
+          KnowledgeLibrary.ASSET_TYPE, library.getId(), "Eine Freigabe für Fremdzugänge");
     }
     if (!enabled && previousState != ExternalAccessState.ACTIVE) {
       return describe(library);

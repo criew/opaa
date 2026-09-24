@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.api.types.SystemRole;
+import io.opaa.asset.AssetGrantService;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.TestSecurityConfig;
 import io.opaa.auth.User;
@@ -28,7 +29,6 @@ import io.opaa.indexing.job.IndexingRunDetail;
 import io.opaa.indexing.job.IndexingRunEvent;
 import io.opaa.indexing.job.IndexingStatusView;
 import io.opaa.indexing.job.JobStatus;
-import io.opaa.library.AssetGrantService;
 import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.library.LibraryDocumentService;
 import io.opaa.library.LibraryFolderService;

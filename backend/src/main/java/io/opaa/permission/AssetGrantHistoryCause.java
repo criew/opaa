@@ -34,12 +34,8 @@ public enum AssetGrantHistoryCause {
    * "currently readable" for something that no longer exists: {@code asset_id}/{@code
    * subject_group_id} carry no foreign key (ADR-0016, "Objektspalten ohne FK"), so deleting the
    * asset never closes them on its own.
-   *
-   * <p>The name is the value stored in {@code chk_asset_grant_history_cause} since #238, from the
-   * time the only asset type was a knowledge library; it means "the asset was deleted" for every
-   * type. Renaming it would be a data migration over the whole history without a functional gain.
    */
-  LIBRARY_DELETED,
+  ASSET_DELETED,
 
   /**
    * The grant was handed to another subject by a transfer (#1834, ADR-0036 Entscheidung 10) -

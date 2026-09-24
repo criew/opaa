@@ -512,8 +512,8 @@ public class LocalUserService {
 
   private static List<String> blockers(UserRepository.DeletionBlockers counts) {
     List<String> blockers = new ArrayList<>();
-    if (counts.getLibraries() > 0) {
-      blockers.add("knowledge_libraries");
+    if (counts.getAssets() > 0) {
+      blockers.add("assets");
     }
     if (counts.getSpaces() > 0) {
       blockers.add("spaces");

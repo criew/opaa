@@ -113,7 +113,7 @@ class S3UploadStorageIntegrationTest {
     }
     // Written by PermissionHistoryListener when libraryService.createLibrary above ran. It has no
     // foreign key at all, so a row left here would never fail loudly, only accumulate.
-    jdbcTemplate.update("DELETE FROM library_visibility_history WHERE library_id = ?", libraryId);
+    jdbcTemplate.update("DELETE FROM asset_visibility_history WHERE asset_id = ?", libraryId);
     libraryRepository.deleteById(libraryId);
     grantHistoryRepository.deleteBySubjectUserIdIn(List.of(editor.getId()));
     membershipHistoryRepository.deleteByUserIdIn(List.of(editor.getId()));

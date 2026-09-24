@@ -150,7 +150,7 @@ public class SuccessionService implements SuccessionReachGuard, SuccessionCaseCl
   @Transactional(readOnly = true)
   public Optional<SuccessionFinding> findingFor(SuccessionObjectType objectType, UUID objectId) {
     for (SuccessionFindingSource source : sources) {
-      if (source.kind() == SuccessionKind.OPEN_SUCCESSION && source.objectType() == objectType) {
+      if (source.kind() == SuccessionKind.OPEN_SUCCESSION && source.answersFor(objectType)) {
         Optional<SuccessionFinding> finding = source.findingFor(objectId);
         if (finding.isPresent()) {
           return finding;
@@ -158,6 +158,15 @@ public class SuccessionService implements SuccessionReachGuard, SuccessionCaseCl
       }
     }
     return Optional.empty();
+  }
+
+  /**
+   * The state of one asset of the asset shell, named by its open {@link AssetType} - empty for a
+   * type no source answers for, like {@link #findingFor}.
+   */
+  @Transactional(readOnly = true)
+  public Optional<SuccessionFinding> findingForAsset(AssetType assetType, UUID assetId) {
+    return objectTypeOf(assetType).flatMap(type -> findingFor(type, assetId));
   }
 
   /** Whether this object's succession is open - the question the reach guards ask. */
@@ -186,6 +195,16 @@ public class SuccessionService implements SuccessionReachGuard, SuccessionCaseCl
             + " gelöscht. Zuständig: "
             + addresseeLabel(finding),
         SUCCESSION_OPEN);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public void requireAssetReachNotFrozen(
+      AssetType assetType, UUID assetId, String attemptedAction) {
+    Optional<SuccessionObjectType> objectType = objectTypeOf(assetType);
+    if (objectType.isPresent()) {
+      requireReachNotFrozen(objectType.get(), assetId, attemptedAction);
+    }
   }
 
   /** The German wording of the addressee - the same one the list and the object's view use. */

@@ -2,27 +2,31 @@ package io.opaa.api;
 
 import io.opaa.api.dto.AccessPathGroup;
 import io.opaa.api.dto.AccessPathResponse;
-import io.opaa.api.dto.LibraryAccessDerivationResponse;
+import io.opaa.api.dto.AssetAccessDerivationResponse;
 import io.opaa.api.dto.SpaceAccessDerivationResponse;
-import io.opaa.library.LibraryAccessDerivation;
+import io.opaa.asset.AssetAccessDerivation;
 import io.opaa.permission.AccessPath;
 import io.opaa.permission.GroupAttribution;
 import io.opaa.space.SpaceAccessDerivation;
 import java.util.List;
 
 /**
- * Maps the Herleitung of a library and of a space onto their generated responses (#1822, ADR-0006).
+ * Maps the Herleitung of an asset and of a space onto their generated responses (#1822, ADR-0006).
  * Pure: whether a way is withheld is decided in the domain service, not here.
  */
 final class AccessDerivationResponseMapper {
 
   private AccessDerivationResponseMapper() {}
 
-  static LibraryAccessDerivationResponse toResponse(LibraryAccessDerivation derivation) {
-    // pathsWithheld is constantly false: the library derivation is only ever about the asking
+  static AssetAccessDerivationResponse toResponse(AssetAccessDerivation derivation) {
+    // pathsWithheld is constantly false: the asset derivation is only ever about the asking
     // person, and an own derivation is never withheld (ADR-0036, Entscheidung 9, Personalrat Z2).
-    return new LibraryAccessDerivationResponse(
-        derivation.libraryId(), derivation.effectiveRole(), toPaths(derivation.paths()), false);
+    return new AssetAccessDerivationResponse(
+        io.opaa.api.dto.AssetType.fromValue(derivation.assetType().value()),
+        derivation.assetId(),
+        derivation.effectiveRole(),
+        toPaths(derivation.paths()),
+        false);
   }
 
   static SpaceAccessDerivationResponse toResponse(SpaceAccessDerivation derivation) {

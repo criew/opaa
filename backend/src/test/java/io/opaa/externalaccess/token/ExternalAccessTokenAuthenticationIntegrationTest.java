@@ -10,10 +10,10 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.jayway.jsonpath.JsonPath;
+import io.opaa.api.types.AssetOwnerType;
+import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.DocumentSourceType;
-import io.opaa.api.types.LibraryOwnerType;
-import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.LockReason;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.DevAuthFilter;
@@ -107,9 +107,9 @@ class ExternalAccessTokenAuthenticationIntegrationTest {
                 new LibraryCreation(
                     "Bearer-Testbibliothek",
                     null,
-                    LibraryOwnerType.USER,
+                    AssetOwnerType.USER,
                     owner.getId(),
-                    LibraryVisibility.ORGANIZATION,
+                    AssetVisibility.ORGANIZATION,
                     false,
                     DocumentSourceType.UPLOAD,
                     null,

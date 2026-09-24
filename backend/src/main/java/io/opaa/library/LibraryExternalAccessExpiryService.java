@@ -4,6 +4,8 @@ import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.api.types.ExternalAccessState;
+import io.opaa.asset.AssetVisibilityHistoryCause;
+import io.opaa.asset.AssetVisibilityHistoryService;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import java.time.Instant;
@@ -23,7 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p>Writes both halves the specification requires, the way {@code
  * KnowledgeLibraryService#deleteLibrary} does rather than through {@link LibraryChanged}: the
- * history interval carries {@link LibraryVisibilityHistoryCause#EXTERNAL_ACCESS_EXPIRED} with no
+ * history interval carries {@link AssetVisibilityHistoryCause#EXTERNAL_ACCESS_EXPIRED} with no
  * actor, and the audit entry is a system-process action - a run has no acting person, and an expiry
  * recorded under the last person to touch the release would name someone who did nothing.
  *
@@ -45,21 +47,21 @@ public class LibraryExternalAccessExpiryService {
       LoggerFactory.getLogger(LibraryExternalAccessExpiryService.class);
 
   private final KnowledgeLibraryRepository libraryRepository;
-  private final LibraryVisibilityHistoryService visibilityHistoryService;
+  private final AssetVisibilityHistoryService visibilityHistoryService;
   private final AuditEventRecorder auditEventRecorder;
   private final InstantSource clock;
 
   @Autowired
   public LibraryExternalAccessExpiryService(
       KnowledgeLibraryRepository libraryRepository,
-      LibraryVisibilityHistoryService visibilityHistoryService,
+      AssetVisibilityHistoryService visibilityHistoryService,
       AuditEventRecorder auditEventRecorder) {
     this(libraryRepository, visibilityHistoryService, auditEventRecorder, InstantSource.system());
   }
 
   LibraryExternalAccessExpiryService(
       KnowledgeLibraryRepository libraryRepository,
-      LibraryVisibilityHistoryService visibilityHistoryService,
+      AssetVisibilityHistoryService visibilityHistoryService,
       AuditEventRecorder auditEventRecorder,
       InstantSource clock) {
     this.libraryRepository = libraryRepository;
@@ -82,7 +84,11 @@ public class LibraryExternalAccessExpiryService {
       library.expireExternalAccess();
       KnowledgeLibrary saved = libraryRepository.save(library);
       visibilityHistoryService.recordExternalAccessChanged(
-          saved, LibraryVisibilityHistoryCause.EXTERNAL_ACCESS_EXPIRED, null);
+          saved,
+          saved.getExternalAccessState(),
+          saved.getExternalAccessExpiresAt(),
+          AssetVisibilityHistoryCause.EXTERNAL_ACCESS_EXPIRED,
+          null);
       auditEventRecorder.recordSystemProcessAction(
           AuditEvent.builder()
               .organizationId(saved.getOrganizationId())

@@ -9,8 +9,8 @@ import java.util.UUID;
  * a space no new members. Everything else keeps working, and <b>nothing is deleted</b>.
  *
  * <p>Declared here because every business package asks it and implemented by {@code
- * io.opaa.succession}, which composes the three of them; the dependency stays {@code succession}
- * &rarr; {@code permission}, like every other port of this package.
+ * io.opaa.succession}, which composes the findings; the dependency stays {@code succession} &rarr;
+ * {@code permission}, like every other port of this package.
  */
 public interface SuccessionReachGuard {
 
@@ -21,4 +21,10 @@ public interface SuccessionReachGuard {
    */
   void requireReachNotFrozen(
       SuccessionObjectType objectType, UUID objectId, String attemptedAction);
+
+  /**
+   * The same rule for an asset of the asset shell, named by its open {@link AssetType}: a type no
+   * finding source answers for is never frozen.
+   */
+  void requireAssetReachNotFrozen(AssetType assetType, UUID assetId, String attemptedAction);
 }

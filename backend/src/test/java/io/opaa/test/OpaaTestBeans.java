@@ -1,6 +1,7 @@
 package io.opaa.test;
 
 import io.opaa.FakeEmbeddingModel;
+import io.opaa.asset.AssetTypeDefinition;
 import io.opaa.auth.UserRepository;
 import io.opaa.group.sync.DirectoryClient;
 import io.opaa.indexing.chunk.VectorChunkStore;
@@ -58,6 +59,15 @@ class OpaaTestBeans {
   @Primary
   FakeDirectoryClient testDirectoryClient() {
     return new FakeDirectoryClient();
+  }
+
+  /**
+   * The test-defined second asset type: registered in every context so a test can serve it through
+   * the one grant service, derivation and association without a context of its own.
+   */
+  @Bean
+  AssetTypeDefinition testPromptLibraryAssetType() {
+    return new TestPromptLibraryAssetType();
   }
 
   @Bean

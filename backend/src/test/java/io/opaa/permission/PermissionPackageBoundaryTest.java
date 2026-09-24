@@ -29,11 +29,15 @@ import org.junit.jupiter.api.Test;
  *       space and group (#1819) and therefore sits above them, like {@code io.opaa.revision}; what
  *       the three of them need from it - the frozen reach and the closing of a record - they reach
  *       through ports of {@code io.opaa.permission}.
+ *   <li><b>The asset shell sits between the permission model and the asset types.</b> {@code
+ *       io.opaa.asset} depends on {@code io.opaa.permission} and on no business package; {@code
+ *       io.opaa.library} and {@code io.opaa.space} depend on it, {@code io.opaa.permission} does
+ *       not (#1899).
  *   <li><b>The business packages do not depend on each other</b>, with one declared exception:
- *       {@code io.opaa.space} reaches {@code io.opaa.library} because a space association names a
- *       library, and nothing in {@code io.opaa.library} names a space. Every other pair is
- *       forbidden in both directions - {@code library} &harr; {@code group} was a real cycle (12
- *       class edges one way, 4 the other) until this package took the permission model out of both.
+ *       {@code io.opaa.space} reaches {@code io.opaa.library} for the one type the search reads,
+ *       and nothing in {@code io.opaa.library} names a space. Every other pair is forbidden in both
+ *       directions - {@code library} &harr; {@code group} was a real cycle (12 class edges one way,
+ *       4 the other) until this package took the permission model out of both.
  * </ol>
  *
  * <p>The scan is source-based; see {@link PackageDependencyScanner} for what that catches that a
@@ -49,6 +53,7 @@ class PermissionPackageBoundaryTest {
   private static final String SPACE = "io.opaa.space";
   private static final String AUDIT = "io.opaa.audit";
   private static final String SUCCESSION = "io.opaa.succession";
+  private static final String ASSET = "io.opaa.asset";
 
   /**
    * Deliberately the subpackage, not {@code io.opaa.auth}: {@code
@@ -104,7 +109,25 @@ class PermissionPackageBoundaryTest {
           Map.entry(List.of(GROUP, SUCCESSION), "same direction, same reason"),
           Map.entry(List.of(SPACE, SUCCESSION), "same direction, same reason"),
           Map.entry(List.of(AUDIT, LIBRARY), "same direction, same reason"),
-          Map.entry(List.of(AUDIT, SPACE), "same direction, same reason"));
+          Map.entry(List.of(AUDIT, SPACE), "same direction, same reason"),
+          Map.entry(
+              List.of(PERMISSION, ASSET),
+              "the asset shell builds on the permission model - the counter-direction would be a"
+                  + " cycle; the formula reads the shell's release through SQL, never its classes"),
+          Map.entry(
+              List.of(ASSET, LIBRARY),
+              "the shell serves every asset type and names none; a type declares itself through"
+                  + " an AssetTypeDefinition bean"),
+          Map.entry(
+              List.of(ASSET, SPACE),
+              "a space associates assets, an asset knows no space - the counter-direction exists"),
+          Map.entry(
+              List.of(ASSET, GROUP),
+              "the shell reaches groups through the permission model's ports, like every consumer"),
+          Map.entry(
+              List.of(ASSET, SUCCESSION),
+              "the shell contributes a SuccessionFindingSource and asks the guard, both declared"
+                  + " in io.opaa.permission"));
 
   private static List<Reference> references;
 

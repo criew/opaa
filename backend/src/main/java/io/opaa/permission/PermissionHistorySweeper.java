@@ -4,9 +4,9 @@ import java.time.Instant;
 
 /**
  * One rights-history table's own part of the retention deletion (ADR-0036, Entscheidung 8). The
- * port exists because the three history tables of today do not live in one package - {@code
- * library_visibility_history} is library state and belongs to {@code io.opaa.library} - and this
- * package depends on no business package; see {@code io.opaa.permission.package-info}.
+ * port exists because the history tables do not live in one package - {@code
+ * asset_visibility_history} belongs to the asset shell ({@code io.opaa.asset}), which depends on
+ * this package and not the other way round; see {@code io.opaa.permission.package-info}.
  *
  * <p><b>What a further personal history source owes.</b> The maximum retention period is the
  * precondition under which #1813, #1815, #1818 and #1819 may add their tables at all. A new history

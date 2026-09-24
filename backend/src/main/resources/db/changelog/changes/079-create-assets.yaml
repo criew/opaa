@@ -1,0 +1,110 @@
+databaseChangeLog:
+  - changeSet:
+      id: 079-create-assets
+      author: opaa
+      comment: >-
+        Die gemeinsame Asset-Schale (#1899, ADR-0036 Entscheidung 12, Nachtrag vom 24.09.2026):
+        alles, was jedes Asset unabhaengig von seinem Typ hat - Name, Beschreibung, Eigentuemer,
+        Freigabestufe, Auffindbarkeit, Herkunft, Anlegende und die beiden Zeitstempel - steht in
+        einer Tabelle assets. Die Typtabelle (zuerst knowledge_libraries) behaelt nur das
+        Typische und zeigt mit ihrer id auf die Schale; die IDs bleiben erhalten, Dokumente,
+        Index und Chats verweisen weiter auf dieselben UUIDs.
+        .
+        asset_type traegt wie in 038 keine Werteliste, nur die Formpruefung, die AssetType
+        zulaesst: Die Menge der Typen gehoert den Fachpaketen. (id, organization_id) und
+        (id, asset_type, organization_id) sind die Ziele der Fremdschluessel, die mit 081 und
+        083 zurueckkommen - der zweite laesst eine Freigabe nur auf ein Asset des Typs zeigen,
+        den sie selbst nennt.
+        .
+        origin unterscheidet ein vor Ort angelegtes Asset (LOCAL) von einem mitgelieferten
+        (BUILT_IN, #1726); heute gibt es nur LOCAL. created_by_user_id ist die anlegende Person,
+        nicht der Eigentuemer; sie wird fuer den Bestand aus der eigenen OWNER-Freigabe der
+        anlegenden Person gelesen (subject = granted_by), die jede Bibliothek bei ihrer Anlage
+        bekommt, und bleibt leer, wo diese Freigabe nicht mehr existiert. SET NULL, weil die
+        Loeschung eines Kontos an einer Herkunftsangabe nicht scheitern darf.
+        .
+        Dieses Changeset legt die Schale an, fuellt sie und bindet knowledge_libraries an sie
+        (ON DELETE CASCADE: das Loeschen des Assets nimmt die Typzeile mit). Die dadurch doppelt
+        gefuehrten Spalten entfernt 080.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE TABLE assets (
+                  id uuid NOT NULL,
+                  asset_type character varying(30) NOT NULL,
+                  organization_id uuid NOT NULL,
+                  name character varying(255) NOT NULL,
+                  description character varying(2000),
+                  owner_type character varying(20) NOT NULL,
+                  owner_user_id uuid,
+                  owner_group_id uuid,
+                  visibility character varying(20) NOT NULL,
+                  listed boolean DEFAULT false NOT NULL,
+                  origin character varying(20) DEFAULT 'LOCAL' NOT NULL,
+                  created_by_user_id uuid,
+                  created_at timestamp with time zone DEFAULT now() NOT NULL,
+                  updated_at timestamp with time zone DEFAULT now() NOT NULL,
+                  CONSTRAINT chk_assets_asset_type_format CHECK ((asset_type ~ '^[A-Z][A-Z0-9_]*$')),
+                  CONSTRAINT chk_assets_owner CHECK (((((owner_type)::text = 'USER'::text) AND (owner_user_id IS NOT NULL) AND (owner_group_id IS NULL)) OR (((owner_type)::text = 'GROUP'::text) AND (owner_group_id IS NOT NULL) AND (owner_user_id IS NULL)))),
+                  CONSTRAINT chk_assets_owner_type CHECK ((owner_type IN ('USER', 'GROUP'))),
+                  CONSTRAINT chk_assets_visibility CHECK ((visibility IN ('PRIVATE', 'SHARED', 'ORGANIZATION'))),
+                  CONSTRAINT chk_assets_origin CHECK ((origin IN ('LOCAL', 'BUILT_IN')))
+              );
+
+              ALTER TABLE ONLY assets
+                  ADD CONSTRAINT assets_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY assets
+                  ADD CONSTRAINT uk_assets_id_organization UNIQUE (id, organization_id);
+
+              ALTER TABLE ONLY assets
+                  ADD CONSTRAINT uk_assets_id_type_organization UNIQUE (id, asset_type, organization_id);
+
+              CREATE INDEX idx_assets_organization_type ON assets USING btree (organization_id, asset_type);
+
+              CREATE INDEX idx_assets_organization_wide ON assets USING btree (organization_id, asset_type) WHERE ((visibility)::text = 'ORGANIZATION'::text);
+
+              CREATE INDEX idx_assets_owner_user ON assets USING btree (owner_user_id, organization_id) WHERE ((owner_type)::text = 'USER'::text);
+
+              CREATE INDEX idx_assets_owner_group ON assets USING btree (owner_group_id, organization_id) WHERE ((owner_type)::text = 'GROUP'::text);
+
+              ALTER TABLE ONLY assets
+                  ADD CONSTRAINT fk_assets_organization FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY assets
+                  ADD CONSTRAINT fk_assets_owner_user_organization FOREIGN KEY (owner_user_id, organization_id) REFERENCES users(id, organization_id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY assets
+                  ADD CONSTRAINT fk_assets_owner_group_organization FOREIGN KEY (owner_group_id, organization_id) REFERENCES groups(id, organization_id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY assets
+                  ADD CONSTRAINT fk_assets_created_by_user_organization FOREIGN KEY (created_by_user_id, organization_id) REFERENCES users(id, organization_id) ON DELETE SET NULL (created_by_user_id);
+
+              INSERT INTO assets
+                  (id, asset_type, organization_id, name, description, owner_type, owner_user_id,
+                   owner_group_id, visibility, listed, origin, created_by_user_id, created_at, updated_at)
+              SELECT kl.id, 'KNOWLEDGE_LIBRARY', kl.organization_id, kl.name, kl.description,
+                     kl.owner_type, kl.owner_user_id, kl.owner_group_id, kl.visibility, kl.listed,
+                     'LOCAL',
+                     (SELECT g.subject_user_id
+                        FROM asset_grants g
+                       WHERE g.asset_type = 'KNOWLEDGE_LIBRARY'
+                         AND g.asset_id = kl.id
+                         AND g.subject_type = 'USER'
+                         AND g.role = 'OWNER'
+                         AND g.granted_by_user_id = g.subject_user_id
+                       ORDER BY g.created_at
+                       LIMIT 1),
+                     kl.created_at, kl.updated_at
+                FROM knowledge_libraries kl;
+
+              ALTER TABLE ONLY knowledge_libraries
+                  ADD CONSTRAINT fk_knowledge_libraries_asset FOREIGN KEY (id, organization_id) REFERENCES assets(id, organization_id) ON DELETE CASCADE;
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE knowledge_libraries DROP CONSTRAINT IF EXISTS fk_knowledge_libraries_asset;
+
+              DROP TABLE assets;

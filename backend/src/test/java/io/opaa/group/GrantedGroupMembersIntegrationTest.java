@@ -4,22 +4,23 @@ import static io.opaa.library.LibraryCreationBuilder.libraryCreation;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.opaa.api.types.AssetOwnerType;
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.GroupKind;
-import io.opaa.api.types.LibraryOwnerType;
 import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.api.types.SpaceRole;
 import io.opaa.api.types.SpaceVisibility;
 import io.opaa.api.types.SystemRole;
+import io.opaa.asset.AssetGrantService;
+import io.opaa.asset.AssetGrantUpsert;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.auth.oidc.OidcProviderRepository;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.NotFoundException;
-import io.opaa.library.AssetGrantService;
-import io.opaa.library.AssetGrantUpsert;
+import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
@@ -109,7 +110,8 @@ class GrantedGroupMembersIntegrationTest {
     grantTo(library, group, manager);
 
     GroupMemberDisclosure disclosure =
-        grantService.listGroupMembers(library, group, 0, 50, callerOf(manager));
+        grantService.listGroupMembers(
+            KnowledgeLibrary.ASSET_TYPE, library, group, 0, 50, callerOf(manager));
 
     assertThat(disclosure.name()).isEqualTo("Referat 50");
     assertThat(disclosure.protectedGroup()).isFalse();
@@ -132,16 +134,18 @@ class GrantedGroupMembersIntegrationTest {
     UUID library = createLibrary(manager);
     grantTo(library, group, manager);
     UUID grantId =
-        grantService.listGrants(library, callerOf(manager)).stream()
+        grantService.listGrants(KnowledgeLibrary.ASSET_TYPE, library, callerOf(manager)).stream()
             .filter(view -> view.grant().getSubjectType() == PermissionSubjectType.GROUP)
             .map(view -> view.grant().getId())
             .findFirst()
             .orElseThrow();
 
-    grantService.revokeGrant(library, grantId, callerOf(manager));
+    grantService.revokeGrant(KnowledgeLibrary.ASSET_TYPE, library, grantId, callerOf(manager));
 
     assertThatThrownBy(
-            () -> grantService.listGroupMembers(library, group, 0, 50, callerOf(manager)))
+            () ->
+                grantService.listGroupMembers(
+                    KnowledgeLibrary.ASSET_TYPE, library, group, 0, 50, callerOf(manager)))
         .isInstanceOf(NotFoundException.class)
         .hasMessage("Gruppe nicht gefunden");
   }
@@ -153,6 +157,7 @@ class GrantedGroupMembersIntegrationTest {
     UUID group = createReleasedGroup("Referat 50", fiveNamedMembers());
     UUID library = createLibrary(manager);
     grantService.upsertGrant(
+        KnowledgeLibrary.ASSET_TYPE,
         library,
         new AssetGrantUpsert(
             PermissionSubjectType.GROUP,
@@ -166,7 +171,9 @@ class GrantedGroupMembersIntegrationTest {
         group);
 
     assertThatThrownBy(
-            () -> grantService.listGroupMembers(library, group, 0, 50, callerOf(manager)))
+            () ->
+                grantService.listGroupMembers(
+                    KnowledgeLibrary.ASSET_TYPE, library, group, 0, 50, callerOf(manager)))
         .isInstanceOf(NotFoundException.class);
   }
 
@@ -177,7 +184,11 @@ class GrantedGroupMembersIntegrationTest {
     UUID group = createReleasedGroup("Referat 50", fiveNamedMembers());
     UUID library = createLibrary(manager);
     grantTo(library, group, manager);
-    assertThat(grantService.listGroupMembers(library, group, 0, 50, callerOf(manager)).members())
+    assertThat(
+            grantService
+                .listGroupMembers(
+                    KnowledgeLibrary.ASSET_TYPE, library, group, 0, 50, callerOf(manager))
+                .members())
         .hasSize(5);
 
     Group loaded = groupRepository.findById(group).orElseThrow();
@@ -185,7 +196,9 @@ class GrantedGroupMembersIntegrationTest {
     groupRepository.save(loaded);
 
     assertThatThrownBy(
-            () -> grantService.listGroupMembers(library, group, 0, 50, callerOf(manager)))
+            () ->
+                grantService.listGroupMembers(
+                    KnowledgeLibrary.ASSET_TYPE, library, group, 0, 50, callerOf(manager)))
         .isInstanceOf(NotFoundException.class);
   }
 
@@ -201,7 +214,8 @@ class GrantedGroupMembersIntegrationTest {
     grantTo(library, group, manager);
 
     GroupMemberDisclosure disclosure =
-        grantService.listGroupMembers(library, group, 0, 50, callerOf(manager));
+        grantService.listGroupMembers(
+            KnowledgeLibrary.ASSET_TYPE, library, group, 0, 50, callerOf(manager));
 
     assertThat(disclosure.protectedGroup()).isTrue();
     assertThat(disclosure.name()).isNull();
@@ -225,7 +239,8 @@ class GrantedGroupMembersIntegrationTest {
     grantTo(library, group, manager);
 
     GroupMemberDisclosure disclosure =
-        grantService.listGroupMembers(library, group, 0, 50, callerOf(manager));
+        grantService.listGroupMembers(
+            KnowledgeLibrary.ASSET_TYPE, library, group, 0, 50, callerOf(manager));
 
     assertThat(disclosure.protectedGroup()).isTrue();
     assertThat(disclosure.name()).isNull();
@@ -250,7 +265,8 @@ class GrantedGroupMembersIntegrationTest {
     grantTo(library, ofFiveId, manager);
 
     GroupMemberDisclosure ofFour =
-        grantService.listGroupMembers(library, ofFourId, 0, 50, callerOf(manager));
+        grantService.listGroupMembers(
+            KnowledgeLibrary.ASSET_TYPE, library, ofFourId, 0, 50, callerOf(manager));
 
     assertThat(ofFour.smallGroup()).isTrue();
     assertThat(ofFour.activeMemberCount()).isNull();
@@ -258,7 +274,8 @@ class GrantedGroupMembersIntegrationTest {
     assertThat(ofFour.name()).as("the group is named in the grant list anyway").isNotNull();
 
     GroupMemberDisclosure ofFive =
-        grantService.listGroupMembers(library, ofFiveId, 0, 50, callerOf(manager));
+        grantService.listGroupMembers(
+            KnowledgeLibrary.ASSET_TYPE, library, ofFiveId, 0, 50, callerOf(manager));
 
     assertThat(ofFive.smallGroup()).isFalse();
     assertThat(ofFive.activeMemberCount()).isEqualTo(5);
@@ -273,15 +290,25 @@ class GrantedGroupMembersIntegrationTest {
     UUID library = createLibrary(manager);
     grantTo(library, group, manager);
     grantService.upsertGrant(
+        KnowledgeLibrary.ASSET_TYPE,
         library,
         new AssetGrantUpsert(PermissionSubjectType.USER, viewer, AssetRole.VIEWER, null),
         callerOf(manager));
 
-    assertThatThrownBy(() -> grantService.listGroupMembers(library, group, 0, 50, callerOf(viewer)))
+    assertThatThrownBy(
+            () ->
+                grantService.listGroupMembers(
+                    KnowledgeLibrary.ASSET_TYPE, library, group, 0, 50, callerOf(viewer)))
         .isInstanceOf(AccessDeniedException.class);
     assertThatThrownBy(
             () ->
-                grantService.listGroupMembers(library, UUID.randomUUID(), 0, 50, callerOf(manager)))
+                grantService.listGroupMembers(
+                    KnowledgeLibrary.ASSET_TYPE,
+                    library,
+                    UUID.randomUUID(),
+                    0,
+                    50,
+                    callerOf(manager)))
         .isInstanceOf(NotFoundException.class);
   }
 
@@ -297,9 +324,11 @@ class GrantedGroupMembersIntegrationTest {
     grantTo(library, group, manager);
 
     GroupMemberDisclosure first =
-        grantService.listGroupMembers(library, group, 0, 2, callerOf(manager));
+        grantService.listGroupMembers(
+            KnowledgeLibrary.ASSET_TYPE, library, group, 0, 2, callerOf(manager));
     GroupMemberDisclosure second =
-        grantService.listGroupMembers(library, group, 2, 2, callerOf(manager));
+        grantService.listGroupMembers(
+            KnowledgeLibrary.ASSET_TYPE, library, group, 2, 2, callerOf(manager));
 
     assertThat(first.activeMemberCount()).isEqualTo(5);
     assertThat(first.members())
@@ -310,7 +339,11 @@ class GrantedGroupMembersIntegrationTest {
         .containsExactly("Clara Dorn", "Dora Erle");
     // A nonsensical window is clamped rather than refused: a limit below one would otherwise turn
     // into a query that can never answer anything, a negative offset into a database error.
-    assertThat(grantService.listGroupMembers(library, group, -5, 0, callerOf(manager)).members())
+    assertThat(
+            grantService
+                .listGroupMembers(
+                    KnowledgeLibrary.ASSET_TYPE, library, group, -5, 0, callerOf(manager))
+                .members())
         .hasSize(1);
   }
 
@@ -330,7 +363,8 @@ class GrantedGroupMembersIntegrationTest {
     grantTo(library, group, manager);
 
     GroupMemberDisclosure disclosure =
-        grantService.listGroupMembers(library, group, 0, 50, callerOf(manager));
+        grantService.listGroupMembers(
+            KnowledgeLibrary.ASSET_TYPE, library, group, 0, 50, callerOf(manager));
 
     assertThat(disclosure.activeMemberCount()).isEqualTo(5);
     assertThat(disclosure.members())
@@ -355,11 +389,13 @@ class GrantedGroupMembersIntegrationTest {
     UUID library = createLibrary(manager);
     grantTo(library, group, manager);
 
-    grantService.listGroupMembers(library, group, 0, 50, callerOf(manager));
+    grantService.listGroupMembers(
+        KnowledgeLibrary.ASSET_TYPE, library, group, 0, 50, callerOf(manager));
 
     assertThat(memberReadEvents(group)).as("the grant giver writes nothing").isZero();
 
-    grantService.listGroupMembers(library, group, 0, 50, callerOf(systemAdmin));
+    grantService.listGroupMembers(
+        KnowledgeLibrary.ASSET_TYPE, library, group, 0, 50, callerOf(systemAdmin));
 
     assertThat(memberReadEvents(group)).isOne();
   }
@@ -392,7 +428,8 @@ class GrantedGroupMembersIntegrationTest {
     UUID library = createLibrary(systemAdmin);
     grantTo(library, group, systemAdmin);
 
-    grantService.listGroupMembers(library, group, 0, 50, callerOf(systemAdmin));
+    grantService.listGroupMembers(
+        KnowledgeLibrary.ASSET_TYPE, library, group, 0, 50, callerOf(systemAdmin));
 
     assertThat(memberReadEvents(group)).isZero();
   }
@@ -523,7 +560,7 @@ class GrantedGroupMembersIntegrationTest {
     return libraryService
         .createLibrary(
             libraryCreation("Bibliothek", DocumentSourceType.UPLOAD)
-                .ownerType(LibraryOwnerType.USER)
+                .ownerType(AssetOwnerType.USER)
                 .ownerId(ownerId)
                 .build(),
             callerOf(ownerId))
@@ -533,6 +570,7 @@ class GrantedGroupMembersIntegrationTest {
 
   private void grantTo(UUID libraryId, UUID groupId, UUID caller) {
     grantService.upsertGrant(
+        KnowledgeLibrary.ASSET_TYPE,
         libraryId,
         new AssetGrantUpsert(PermissionSubjectType.GROUP, groupId, AssetRole.VIEWER, null),
         callerOf(caller));

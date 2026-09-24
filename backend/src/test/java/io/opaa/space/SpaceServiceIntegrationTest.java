@@ -104,7 +104,7 @@ class SpaceServiceIntegrationTest {
             "Bibliothek",
             null,
             ownerId,
-            io.opaa.api.types.LibraryVisibility.PRIVATE,
+            io.opaa.api.types.AssetVisibility.PRIVATE,
             false);
     UUID libraryId = libraryRepository.save(library).getId();
     jdbcTemplate.update(
@@ -1098,8 +1098,8 @@ class SpaceServiceIntegrationTest {
 
     List<UUID> associatedLibraryIds =
         jdbcTemplate.query(
-            "SELECT library_id FROM space_asset_associations WHERE space_id = ?",
-            (rs, rowNum) -> (UUID) rs.getObject("library_id"),
+            "SELECT asset_id FROM space_asset_associations WHERE space_id = ?",
+            (rs, rowNum) -> (UUID) rs.getObject("asset_id"),
             created.getId());
     assertThat(associatedLibraryIds).containsExactlyInAnyOrder(libraryOne, libraryTwo);
   }

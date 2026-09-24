@@ -1,9 +1,9 @@
 package io.opaa.library;
 
+import io.opaa.api.types.AssetOwnerType;
+import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.api.types.DocumentSourceType;
-import io.opaa.api.types.LibraryOwnerType;
-import io.opaa.api.types.LibraryVisibility;
 import io.opaa.indexing.source.s3.S3SourceSettings;
 import java.net.URI;
 import java.util.List;
@@ -23,9 +23,9 @@ import java.util.UUID;
 public record LibraryCreation(
     String name,
     String description,
-    LibraryOwnerType ownerType,
+    AssetOwnerType ownerType,
     UUID ownerId,
-    LibraryVisibility visibility,
+    AssetVisibility visibility,
     Boolean listed,
     DocumentSourceType sourceType,
     String sourcePath,

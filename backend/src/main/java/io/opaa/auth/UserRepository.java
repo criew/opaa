@@ -153,7 +153,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
   @Query(
       value =
           "SELECT"
-              + " (SELECT count(*) FROM knowledge_libraries WHERE owner_user_id = :id) AS libraries,"
+              + " (SELECT count(*) FROM assets WHERE owner_user_id = :id) AS assets,"
               + " (SELECT count(*) FROM spaces WHERE owner_id = :id AND is_default = false) AS spaces,"
               + " (SELECT count(*) FROM chats WHERE author_id = :id) AS chats,"
               + " (SELECT count(*) FROM group_membership_history WHERE user_id = :id) AS group_history,"
@@ -183,7 +183,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
   /** The result of {@link #countDeletionBlockers}; every non-zero count refuses the deletion. */
   interface DeletionBlockers {
-    long getLibraries();
+    long getAssets();
 
     long getSpaces();
 

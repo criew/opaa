@@ -186,3 +186,17 @@ databaseChangeLog:
   # Baseline konvergierte nie, eine Verkürzung wurde damit nie wirksam.
   - include:
       file: db/changelog/changes/078-retention-deletion-without-forward-cap.yaml
+  # Die gemeinsame Asset-Schale (#1899, ADR-0036 Entscheidung 12, Nachtrag 24.09.2026): assets als
+  # Tabelle aller typunabhaengigen Felder, knowledge_libraries als erste Typtabelle, die
+  # Fremdschluessel von asset_grants zurueck auf die Schale, die Sichtbarkeitshistorie typunabhaengig.
+  - include:
+      file: db/changelog/changes/079-create-assets.yaml
+  - include:
+      file: db/changelog/changes/080-knowledge-libraries-drop-shell-columns.yaml
+  - include:
+      file: db/changelog/changes/081-asset-grants-asset-foreign-key.yaml
+  - include:
+      file: db/changelog/changes/082-asset-visibility-history.yaml
+  # Die Space-Assoziation auf der Asset-Schale (#1900): asset_id statt library_id.
+  - include:
+      file: db/changelog/changes/083-space-asset-associations-asset.yaml

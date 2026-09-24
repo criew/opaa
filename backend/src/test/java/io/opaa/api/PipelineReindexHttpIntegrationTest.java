@@ -6,8 +6,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DocumentSourceType;
-import io.opaa.api.types.LibraryVisibility;
 import io.opaa.auth.DevAuthFilter;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
@@ -83,7 +83,7 @@ class PipelineReindexHttpIntegrationTest {
                 "Reindex-HTTP-Testbibliothek",
                 null,
                 devAdmin.getId(),
-                LibraryVisibility.PRIVATE,
+                AssetVisibility.PRIVATE,
                 false));
 
     Path managedDirectory =
@@ -122,7 +122,7 @@ class PipelineReindexHttpIntegrationTest {
         "DELETE FROM vector_store WHERE metadata->>'document_id' = ?", document.getId().toString());
     jdbcTemplate.update("DELETE FROM chunk_full_text WHERE document_id = ?", document.getId());
     documentRepository.deleteById(document.getId());
-    jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE id = ?", library.getId());
+    jdbcTemplate.update("DELETE FROM assets WHERE id = ?", library.getId());
   }
 
   @Test

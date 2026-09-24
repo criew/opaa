@@ -2,8 +2,8 @@ package io.opaa.indexing.maintenance;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DocumentStatus;
-import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.SystemRole;
 import io.opaa.indexing.document.Document;
 import io.opaa.indexing.document.DocumentRepository;
@@ -76,7 +76,7 @@ class LowChunkDocumentAuditServiceIntegrationTest {
     library =
         libraryRepository.save(
             KnowledgeLibrary.ownedByUser(
-                ORGANIZATION_ID, "Satzungen", null, userId, LibraryVisibility.PRIVATE, false));
+                ORGANIZATION_ID, "Satzungen", null, userId, AssetVisibility.PRIVATE, false));
 
     // A document's organizationId is always denormalized from its own library's (see
     // DocumentIngestService#processFile) - cross-org scoping is genuinely tested only against a
@@ -102,7 +102,7 @@ class LowChunkDocumentAuditServiceIntegrationTest {
                 "Fremdbibliothek",
                 null,
                 otherOrganizationUserId,
-                LibraryVisibility.PRIVATE,
+                AssetVisibility.PRIVATE,
                 false));
   }
 
@@ -122,7 +122,7 @@ class LowChunkDocumentAuditServiceIntegrationTest {
     for (String ownerEmail : List.of(OWNER_EMAIL, OTHER_ORGANIZATION_OWNER_EMAIL)) {
       List<UUID> ownLibraryIds =
           jdbcTemplate.queryForList(
-              "SELECT id FROM knowledge_libraries WHERE owner_user_id IN (SELECT id FROM users"
+              "SELECT id FROM assets WHERE owner_user_id IN (SELECT id FROM users"
                   + " WHERE email = ?)",
               UUID.class,
               ownerEmail);

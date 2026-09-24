@@ -132,10 +132,25 @@ public interface AssetGrantRepository extends JpaRepository<AssetGrant, UUID> {
       @Param("now") Instant now);
 
   /**
+   * Every asset of {@code assetType} in one organization released organization-wide - the third way
+   * of {@link AssetAccessService#readableAssetIds}, read off the asset shell ({@code assets})
+   * rather than off a grant. Native, so this package names the shell's column without depending on
+   * the package that maps it; a native query still flushes pending changes first, so a release
+   * changed earlier in the same transaction is seen.
+   */
+  @Query(
+      value =
+          "SELECT a.id FROM assets a WHERE a.asset_type = :assetType"
+              + " AND a.organization_id = :organizationId AND a.visibility = 'ORGANIZATION'",
+      nativeQuery = true)
+  List<UUID> findOrganizationWideAssetIds(
+      @Param("assetType") String assetType, @Param("organizationId") UUID organizationId);
+
+  /**
    * Every non-expired group grant of one organization on {@code assetType}, for {@link
-   * AssetAccessService#grantedAssetIdsByGroup} - one query for every profile at once instead of one
-   * per profile, which would put a round trip per row onto the administration page's profile picker
-   * (#1053).
+   * AssetAccessService#readableAssetCountsForGroups} - one query for every profile at once instead
+   * of one per profile, which would put a round trip per row onto the administration page's profile
+   * picker (#1053).
    */
   @Query(
       "select g from AssetGrant g "

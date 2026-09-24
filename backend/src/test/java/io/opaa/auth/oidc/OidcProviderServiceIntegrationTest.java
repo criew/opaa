@@ -122,6 +122,7 @@ class OidcProviderServiceIntegrationTest {
     jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organizationId);
     jdbcTemplate.update(
         "DELETE FROM diagnostic_impersonation_grants WHERE organization_id = ?", organizationId);
+    jdbcTemplate.update("DELETE FROM assets WHERE organization_id = ?", organizationId);
     removeOwnProviders();
     jdbcTemplate.update("DELETE FROM groups WHERE organization_id = ?", organizationId);
     registry.refresh();
@@ -183,12 +184,20 @@ class OidcProviderServiceIntegrationTest {
    * foreign key since #1811, so no library row is needed to make the group "wirksam".
    */
   private void grantOnSomeAsset(Group group) {
+    UUID assetId = UUID.randomUUID();
+    jdbcTemplate.update(
+        "INSERT INTO assets (id, asset_type, organization_id, name, owner_type, owner_user_id,"
+            + " visibility) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, 'Bibliothek', 'USER', ?,"
+            + " 'PRIVATE')",
+        assetId,
+        organizationId,
+        userId);
     jdbcTemplate.update(
         "INSERT INTO asset_grants (id, asset_type, asset_id, organization_id, subject_type,"
             + " subject_group_id, role) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, ?, 'GROUP', ?,"
             + " 'VIEWER')",
         UUID.randomUUID(),
-        UUID.randomUUID(),
+        assetId,
         organizationId,
         group.getId());
   }

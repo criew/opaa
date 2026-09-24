@@ -33,6 +33,9 @@ final class LeftoverRowGuard extends AbstractTestExecutionListener {
           "diagnostic_impersonation_grants",
           "audit_incident_scope_grants",
           "knowledge_libraries",
+          // The shell of every asset type - a library deleted from its type table alone
+          // leaves its shell row, its grants and its owner reference behind.
+          "assets",
           "documents",
           "vector_store",
           // #1816: a provider row left behind is not inert - it decides whether the next class's

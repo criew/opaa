@@ -186,7 +186,7 @@ class SearchDiagnosisPersonContextHttpIntegrationTest {
         lockedLibraryId,
         ungrantedLockedLibraryId);
     jdbcTemplate.update(
-        "DELETE FROM knowledge_libraries WHERE id in (?, ?, ?)",
+        "DELETE FROM assets WHERE id in (?, ?, ?)",
         openLibraryId,
         lockedLibraryId,
         ungrantedLockedLibraryId);
@@ -327,7 +327,7 @@ class SearchDiagnosisPersonContextHttpIntegrationTest {
           .andExpect(jsonPath("$.trackedDocument.libraryName").doesNotExist());
     } finally {
       jdbcTemplate.update("DELETE FROM documents WHERE library_id = ?", foreignLibraryId);
-      jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE id = ?", foreignLibraryId);
+      jdbcTemplate.update("DELETE FROM assets WHERE id = ?", foreignLibraryId);
     }
   }
 
@@ -452,9 +452,10 @@ class SearchDiagnosisPersonContextHttpIntegrationTest {
   private UUID insertLibrary(String name) {
     UUID libraryId = UUID.randomUUID();
     jdbcTemplate.update(
-        "INSERT INTO knowledge_libraries (id, organization_id, name, owner_type, owner_user_id,"
-            + " visibility, listed, source_type, created_at, updated_at)"
-            + " VALUES (?, ?, ?, 'USER', ?, 'PRIVATE', false, 'UPLOAD', now(), now())",
+        "WITH shell AS (INSERT INTO assets (id, asset_type, organization_id, name, owner_type,"
+            + " owner_user_id, visibility, listed) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, ?, 'USER', ?, 'PRIVATE', false)"
+            + " RETURNING id, organization_id) INSERT INTO knowledge_libraries (id,"
+            + " organization_id, source_type) SELECT id, organization_id, 'UPLOAD' FROM shell",
         libraryId,
         organizationId,
         name,

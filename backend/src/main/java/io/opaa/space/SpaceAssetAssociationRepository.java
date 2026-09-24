@@ -1,5 +1,7 @@
 package io.opaa.space;
 
+import io.opaa.library.KnowledgeLibrary;
+import io.opaa.permission.AssetType;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -14,27 +16,34 @@ public interface SpaceAssetAssociationRepository
 
   List<SpaceAssetAssociation> findBySpaceIdOrderByCreatedAtAsc(UUID spaceId);
 
-  List<SpaceAssetAssociation> findByLibraryIdOrderByCreatedAtAsc(UUID libraryId);
+  List<SpaceAssetAssociation> findByAssetIdOrderByCreatedAtAsc(UUID assetId);
 
-  Optional<SpaceAssetAssociation> findBySpaceIdAndLibraryId(UUID spaceId, UUID libraryId);
+  Optional<SpaceAssetAssociation> findBySpaceIdAndAssetId(UUID spaceId, UUID assetId);
 
-  boolean existsBySpaceIdAndLibraryId(UUID spaceId, UUID libraryId);
+  boolean existsBySpaceIdAndAssetId(UUID spaceId, UUID assetId);
+
+  /** Every asset id of {@code assetType} associated with {@code spaceId}. */
+  @Query(
+      "select a.assetId from SpaceAssetAssociation a, Asset s where s.id = a.assetId"
+          + " and a.spaceId = :spaceId and s.assetType = :assetType")
+  Set<UUID> findAssetIdsBySpaceIdAndAssetType(
+      @Param("spaceId") UUID spaceId, @Param("assetType") AssetType assetType);
 
   /**
-   * Every library id associated with {@code spaceId} - the set {@code
-   * ChatService#effectiveLibraryScope} intersects with the caller's readable libraries for the
-   * default @Alles-Wissen search scope (docs/features/spaces-and-assets.md#suchbereich-je-chatart).
-   * An empty result means "no association exists yet", which the caller must treat as "do not
-   * narrow" (the permanent transition rule), not as "search nothing".
+   * Every knowledge library associated with {@code spaceId} - the typed view the search reads:
+   * {@code ChatService#effectiveLibraryScope} intersects it with the caller's readable libraries
+   * for the default @Alles-Wissen scope
+   * (docs/features/spaces-and-assets.md#suchbereich-je-chatart). An empty result means "no library
+   * association", which the caller treats as "do not narrow", not as "search nothing".
    */
-  @Query("select a.libraryId from SpaceAssetAssociation a where a.spaceId = :spaceId")
-  Set<UUID> findLibraryIdsBySpaceId(@Param("spaceId") UUID spaceId);
+  default Set<UUID> findLibraryIdsBySpaceId(UUID spaceId) {
+    return findAssetIdsBySpaceIdAndAssetType(spaceId, KnowledgeLibrary.ASSET_TYPE);
+  }
 
   /**
    * Every association of the given spaces in one query - the overview card's "Quellen" figure
    * (#682) is counted from this in memory, because a plain MEMBER's figure must only include the
-   * libraries they may read (same rule as {@code SpaceAssetAssociationService#listForSpace}), which
-   * no grouped SQL count can express without the caller's readable set.
+   * assets they may read, which no grouped SQL count can express without the caller's readable set.
    */
   List<SpaceAssetAssociation> findBySpaceIdIn(Collection<UUID> spaceIds);
 }

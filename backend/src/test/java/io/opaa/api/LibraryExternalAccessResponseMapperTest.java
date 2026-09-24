@@ -4,8 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.api.dto.ExternalAccessLibraryResponse;
 import io.opaa.api.dto.LibraryExternalAccessResponse;
+import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.ExternalAccessState;
-import io.opaa.api.types.LibraryVisibility;
 import io.opaa.library.ExternalAccessLibrary;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryExternalAccess;
@@ -72,7 +72,7 @@ class LibraryExternalAccessResponseMapperTest {
             "Baugenehmigungen 2024",
             null,
             UUID.randomUUID(),
-            LibraryVisibility.PRIVATE,
+            AssetVisibility.PRIVATE,
             false);
     LibraryExternalAccess access =
         new LibraryExternalAccess(

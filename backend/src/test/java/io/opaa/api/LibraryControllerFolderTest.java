@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import io.opaa.api.types.SystemRole;
+import io.opaa.asset.AssetGrantService;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.TestSecurityConfig;
 import io.opaa.auth.User;
@@ -20,7 +21,6 @@ import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.indexing.job.DocumentIndexingService;
-import io.opaa.library.AssetGrantService;
 import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.library.LibraryDocumentService;
 import io.opaa.library.LibraryFolder;

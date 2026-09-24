@@ -1,0 +1,60 @@
+databaseChangeLog:
+  - changeSet:
+      id: 083-space-asset-associations-asset
+      author: opaa
+      comment: >-
+        Die Space-Assoziation verweist auf ein Asset beliebigen Typs statt auf eine
+        Wissensbibliothek (#1900): library_id wird zu asset_id, und der zusammengesetzte
+        Fremdschluessel zeigt auf die Asset-Schale aus 079 statt auf knowledge_libraries. Die
+        Zusagen bleiben dieselben - ON DELETE CASCADE nimmt die Assoziation mit dem Asset, und
+        (asset_id, organization_id) macht eine Assoziation ueber eine Organisationsgrenze nicht
+        anlegbar. Die Zeilen behalten ihre Werte; jede Bestandszeile zeigt auf eine Bibliothek,
+        deren Schale 079 angelegt hat.
+        .
+        Die Tabelle traegt keinen eigenen asset_type: Der Typ ist eine Eigenschaft des Assets und
+        steht genau einmal, in assets.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE space_asset_associations
+                  DROP CONSTRAINT fk_space_asset_associations_library_organization;
+
+              ALTER TABLE space_asset_associations
+                  DROP CONSTRAINT uk_space_asset_associations_space_library;
+
+              DROP INDEX idx_space_asset_associations_library_organization;
+
+              ALTER TABLE space_asset_associations RENAME COLUMN library_id TO asset_id;
+
+              ALTER TABLE ONLY space_asset_associations
+                  ADD CONSTRAINT uk_space_asset_associations_space_asset UNIQUE (space_id, asset_id);
+
+              CREATE INDEX idx_space_asset_associations_asset_organization ON space_asset_associations USING btree (asset_id, organization_id);
+
+              ALTER TABLE ONLY space_asset_associations
+                  ADD CONSTRAINT fk_space_asset_associations_asset_organization FOREIGN KEY (asset_id, organization_id) REFERENCES assets(id, organization_id) ON DELETE CASCADE;
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE space_asset_associations
+                  DROP CONSTRAINT fk_space_asset_associations_asset_organization;
+
+              DROP INDEX idx_space_asset_associations_asset_organization;
+
+              ALTER TABLE space_asset_associations
+                  DROP CONSTRAINT uk_space_asset_associations_space_asset;
+
+              DELETE FROM space_asset_associations s
+               WHERE NOT EXISTS (SELECT 1 FROM knowledge_libraries kl WHERE kl.id = s.asset_id);
+
+              ALTER TABLE space_asset_associations RENAME COLUMN asset_id TO library_id;
+
+              ALTER TABLE ONLY space_asset_associations
+                  ADD CONSTRAINT uk_space_asset_associations_space_library UNIQUE (space_id, library_id);
+
+              CREATE INDEX idx_space_asset_associations_library_organization ON space_asset_associations USING btree (library_id, organization_id);
+
+              ALTER TABLE ONLY space_asset_associations
+                  ADD CONSTRAINT fk_space_asset_associations_library_organization FOREIGN KEY (library_id, organization_id) REFERENCES knowledge_libraries(id, organization_id) ON DELETE CASCADE;

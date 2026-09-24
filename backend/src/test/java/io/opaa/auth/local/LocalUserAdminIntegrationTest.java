@@ -12,8 +12,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.icegreen.greenmail.util.GreenMail;
 import com.icegreen.greenmail.util.ServerSetup;
 import com.jayway.jsonpath.JsonPath;
+import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.GroupKind;
-import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.LocalAccountState;
 import io.opaa.api.types.MailEncryption;
 import io.opaa.api.types.SystemRole;
@@ -698,7 +698,7 @@ class LocalUserAdminIntegrationTest {
                 "Meine",
                 null,
                 owner.id(),
-                LibraryVisibility.PRIVATE,
+                AssetVisibility.PRIVATE,
                 false));
     try {
       asAdmin(delete(LOCAL_USERS + "/" + owner.id()))

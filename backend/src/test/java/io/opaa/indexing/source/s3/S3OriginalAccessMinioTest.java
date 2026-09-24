@@ -3,8 +3,8 @@ package io.opaa.indexing.source.s3;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DocumentSourceType;
-import io.opaa.api.types.LibraryVisibility;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import java.nio.charset.StandardCharsets;
@@ -47,7 +47,7 @@ class S3OriginalAccessMinioTest {
             "Belegsprung",
             null,
             UUID.randomUUID(),
-            LibraryVisibility.PRIVATE,
+            AssetVisibility.PRIVATE,
             false,
             DocumentSourceType.S3,
             null,

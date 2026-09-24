@@ -99,7 +99,11 @@ class GrantedGroupMembersControllerIntegrationTest {
 
     mockMvc
         .perform(
-            get("/api/v1/libraries/" + library + "/grants/groups/" + group + "/members")
+            get("/api/v1/assets/KNOWLEDGE_LIBRARY/"
+                    + library
+                    + "/grants/groups/"
+                    + group
+                    + "/members")
                 .with(devUser()))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.groupId").value(group.toString()))
@@ -113,7 +117,11 @@ class GrantedGroupMembersControllerIntegrationTest {
 
     mockMvc
         .perform(
-            get("/api/v1/libraries/" + library + "/grants/groups/" + group + "/members")
+            get("/api/v1/assets/KNOWLEDGE_LIBRARY/"
+                    + library
+                    + "/grants/groups/"
+                    + group
+                    + "/members")
                 .param("offset", "4")
                 .param("limit", "2")
                 .with(devUser()))
@@ -131,7 +139,7 @@ class GrantedGroupMembersControllerIntegrationTest {
     grantTo(library, group, devAdmin());
     mockMvc
         .perform(
-            post("/api/v1/libraries/" + library + "/grants")
+            post("/api/v1/assets/KNOWLEDGE_LIBRARY/" + library + "/grants")
                 .with(devAdmin())
                 .content(
                     "{\"subjectType\":\"USER\",\"subjectId\":\""
@@ -141,13 +149,21 @@ class GrantedGroupMembersControllerIntegrationTest {
 
     mockMvc
         .perform(
-            get("/api/v1/libraries/" + library + "/grants/groups/" + group + "/members")
+            get("/api/v1/assets/KNOWLEDGE_LIBRARY/"
+                    + library
+                    + "/grants/groups/"
+                    + group
+                    + "/members")
                 .with(devUser()))
         .andExpect(status().isForbidden());
 
     mockMvc
         .perform(
-            get("/api/v1/libraries/" + library + "/grants/groups/" + UUID.randomUUID() + "/members")
+            get("/api/v1/assets/KNOWLEDGE_LIBRARY/"
+                    + library
+                    + "/grants/groups/"
+                    + UUID.randomUUID()
+                    + "/members")
                 .with(devAdmin()))
         .andExpect(status().isNotFound());
   }
@@ -258,7 +274,7 @@ class GrantedGroupMembersControllerIntegrationTest {
       throws Exception {
     mockMvc
         .perform(
-            post("/api/v1/libraries/" + libraryId + "/grants")
+            post("/api/v1/assets/KNOWLEDGE_LIBRARY/" + libraryId + "/grants")
                 .with(caller)
                 .content(
                     "{\"subjectType\":\"GROUP\",\"subjectId\":\""

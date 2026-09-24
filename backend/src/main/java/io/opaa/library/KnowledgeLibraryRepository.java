@@ -1,7 +1,7 @@
 package io.opaa.library;
 
+import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.ExternalAccessState;
-import io.opaa.api.types.LibraryVisibility;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
@@ -82,7 +82,7 @@ public interface KnowledgeLibraryRepository extends JpaRepository<KnowledgeLibra
           + " and l.visibility = :visibility")
   List<UUID> findIdsByOrganizationIdAndVisibility(
       @Param("organizationId") UUID organizationId,
-      @Param("visibility") LibraryVisibility visibility);
+      @Param("visibility") AssetVisibility visibility);
 
   /**
    * Every library of one organization, regardless of visibility or grants - for the administrative

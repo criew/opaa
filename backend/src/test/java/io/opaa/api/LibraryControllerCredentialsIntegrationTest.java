@@ -502,7 +502,7 @@ class LibraryControllerCredentialsIntegrationTest {
     // Javadoc) - subjectDisplayName is resolved by AssetGrantService#toViews and mapped by
     // AssetGrantResponseMapper, neither of which touches a lazy relation.
     mockMvc
-        .perform(get("/api/v1/libraries/" + libraryId + "/grants").with(devUser()))
+        .perform(get("/api/v1/assets/KNOWLEDGE_LIBRARY/" + libraryId + "/grants").with(devUser()))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$[0].role").value("OWNER"))
         .andExpect(jsonPath("$[0].subjectDisplayName").isNotEmpty());

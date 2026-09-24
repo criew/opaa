@@ -4,8 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import io.opaa.TestcontainersConfiguration;
+import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DocumentSourceType;
-import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.indexing.chunk.VectorChunkStore;
@@ -105,7 +105,7 @@ class OpenAiIntegrationTest {
                 "OpenAI-IT-Bibliothek",
                 null,
                 userId,
-                LibraryVisibility.PRIVATE,
+                AssetVisibility.PRIVATE,
                 false,
                 DocumentSourceType.FILESYSTEM,
                 tempDir.toAbsolutePath().toString(),
@@ -152,7 +152,7 @@ class OpenAiIntegrationTest {
   private void removeOwnFixtures() {
     List<UUID> ownLibraryIds =
         jdbcTemplate.queryForList(
-            "SELECT id FROM knowledge_libraries WHERE owner_user_id IN (SELECT id FROM users"
+            "SELECT id FROM assets WHERE owner_user_id IN (SELECT id FROM users"
                 + " WHERE email = 'openai-it@example.com')",
             UUID.class);
     for (UUID libraryId : ownLibraryIds) {
@@ -161,7 +161,7 @@ class OpenAiIntegrationTest {
       // end, so a parent and its attachment go together (ADR-0022).
       jdbcTemplate.update("DELETE FROM documents WHERE library_id = ?", libraryId);
       jdbcTemplate.update("DELETE FROM indexing_jobs WHERE library_id = ?", libraryId);
-      jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE id = ?", libraryId);
+      jdbcTemplate.update("DELETE FROM assets WHERE id = ?", libraryId);
     }
     jdbcTemplate.update("DELETE FROM users WHERE email = 'openai-it@example.com'");
   }

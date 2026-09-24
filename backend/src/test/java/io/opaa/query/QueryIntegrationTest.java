@@ -88,10 +88,10 @@ class QueryIntegrationTest {
         "Query IT User",
         DEFAULT_ORGANIZATION_ID);
     jdbcTemplate.update(
-        "INSERT INTO knowledge_libraries (id, organization_id, name, owner_type, owner_user_id,"
-            + " visibility, listed, source_type, created_at, updated_at)"
-            + " VALUES (?, ?, 'IT-Bibliothek', 'USER', ?, 'PRIVATE', false, 'UPLOAD',"
-            + " now(), now())",
+        "WITH shell AS (INSERT INTO assets (id, asset_type, organization_id, name, owner_type,"
+            + " owner_user_id, visibility, listed) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, 'IT-Bibliothek', 'USER', ?, 'PRIVATE', false)"
+            + " RETURNING id, organization_id) INSERT INTO knowledge_libraries (id,"
+            + " organization_id, source_type) SELECT id, organization_id, 'UPLOAD' FROM shell",
         libraryId,
         DEFAULT_ORGANIZATION_ID,
         userId);
@@ -109,7 +109,7 @@ class QueryIntegrationTest {
   void tearDown() {
     vectorChunkStore.deleteByLibraryId(libraryId);
     jdbcTemplate.update("DELETE FROM asset_grants WHERE asset_id = ?", libraryId);
-    jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE id = ?", libraryId);
+    jdbcTemplate.update("DELETE FROM assets WHERE id = ?", libraryId);
     // #525: chats/spaces the persisted-chat tests below create for userId - fk_chats_author and
     // fk_spaces_owner are ON DELETE RESTRICT, so these must go before the user itself.
     jdbcTemplate.update("DELETE FROM chats WHERE author_id = ?", userId);
@@ -267,10 +267,10 @@ class QueryIntegrationTest {
         "Other Owner",
         DEFAULT_ORGANIZATION_ID);
     jdbcTemplate.update(
-        "INSERT INTO knowledge_libraries (id, organization_id, name, owner_type, owner_user_id,"
-            + " visibility, listed, source_type, created_at, updated_at)"
-            + " VALUES (?, ?, 'Verschlossene Bibliothek', 'USER', ?, 'PRIVATE', false,"
-            + " 'UPLOAD', now(), now())",
+        "WITH shell AS (INSERT INTO assets (id, asset_type, organization_id, name, owner_type,"
+            + " owner_user_id, visibility, listed) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, 'Verschlossene Bibliothek', 'USER', ?, 'PRIVATE', false)"
+            + " RETURNING id, organization_id) INSERT INTO knowledge_libraries (id,"
+            + " organization_id, source_type) SELECT id, organization_id, 'UPLOAD' FROM shell",
         closedLibraryId,
         DEFAULT_ORGANIZATION_ID,
         otherOwnerId);
@@ -301,8 +301,7 @@ class QueryIntegrationTest {
       assertThat(closed.sources()).isEmpty();
 
       jdbcTemplate.update(
-          "UPDATE knowledge_libraries SET visibility = 'ORGANIZATION' WHERE id = ?",
-          closedLibraryId);
+          "UPDATE assets SET visibility = 'ORGANIZATION' WHERE id = ?", closedLibraryId);
 
       var answer =
           new AssistantMessage("Batman ist 188 cm gross. 【source: doc-batman#0 | batman.md】");
@@ -317,7 +316,7 @@ class QueryIntegrationTest {
       assertThat(opened.sources().getFirst().getFileName()).isEqualTo("batman.md");
     } finally {
       vectorChunkStore.deleteByLibraryId(closedLibraryId);
-      jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE id = ?", closedLibraryId);
+      jdbcTemplate.update("DELETE FROM assets WHERE id = ?", closedLibraryId);
       jdbcTemplate.update("DELETE FROM users WHERE id = ?", otherOwnerId);
     }
   }
@@ -348,10 +347,10 @@ class QueryIntegrationTest {
     // holding exactly one chunk (the pre-#932 shape, which DocumentCompletion is a no-op for).
     UUID ungrantedLibraryId = UUID.randomUUID();
     jdbcTemplate.update(
-        "INSERT INTO knowledge_libraries (id, organization_id, name, owner_type, owner_user_id,"
-            + " visibility, listed, source_type, created_at, updated_at)"
-            + " VALUES (?, ?, 'Fremde Bibliothek', 'USER', ?, 'PRIVATE', false, 'UPLOAD',"
-            + " now(), now())",
+        "WITH shell AS (INSERT INTO assets (id, asset_type, organization_id, name, owner_type,"
+            + " owner_user_id, visibility, listed) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, 'Fremde Bibliothek', 'USER', ?, 'PRIVATE', false)"
+            + " RETURNING id, organization_id) INSERT INTO knowledge_libraries (id,"
+            + " organization_id, source_type) SELECT id, organization_id, 'UPLOAD' FROM shell",
         ungrantedLibraryId,
         DEFAULT_ORGANIZATION_ID,
         userId);
@@ -405,7 +404,7 @@ class QueryIntegrationTest {
           .isEqualTo(8);
     } finally {
       vectorChunkStore.deleteByLibraryId(ungrantedLibraryId);
-      jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE id = ?", ungrantedLibraryId);
+      jdbcTemplate.update("DELETE FROM assets WHERE id = ?", ungrantedLibraryId);
     }
   }
 
@@ -493,10 +492,10 @@ class QueryIntegrationTest {
   void queryFiltersEveryDecomposedSubQuerysSimilaritySearchByTheSameGrantedLibrary() {
     UUID ungrantedLibraryId = UUID.randomUUID();
     jdbcTemplate.update(
-        "INSERT INTO knowledge_libraries (id, organization_id, name, owner_type, owner_user_id,"
-            + " visibility, listed, source_type, created_at, updated_at)"
-            + " VALUES (?, ?, 'Fremde Bibliothek', 'USER', ?, 'PRIVATE', false, 'UPLOAD',"
-            + " now(), now())",
+        "WITH shell AS (INSERT INTO assets (id, asset_type, organization_id, name, owner_type,"
+            + " owner_user_id, visibility, listed) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, 'Fremde Bibliothek', 'USER', ?, 'PRIVATE', false)"
+            + " RETURNING id, organization_id) INSERT INTO knowledge_libraries (id,"
+            + " organization_id, source_type) SELECT id, organization_id, 'UPLOAD' FROM shell",
         ungrantedLibraryId,
         DEFAULT_ORGANIZATION_ID,
         userId);
@@ -544,7 +543,7 @@ class QueryIntegrationTest {
           .isEqualTo(8);
     } finally {
       vectorChunkStore.deleteByLibraryId(ungrantedLibraryId);
-      jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE id = ?", ungrantedLibraryId);
+      jdbcTemplate.update("DELETE FROM assets WHERE id = ?", ungrantedLibraryId);
     }
   }
 

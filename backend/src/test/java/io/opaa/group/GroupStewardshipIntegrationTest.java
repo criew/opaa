@@ -4,13 +4,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.api.types.AssetRole;
+import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.Capability;
 import io.opaa.api.types.GroupKind;
-import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.NotificationType;
 import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.api.types.SystemRole;
+import io.opaa.asset.AssetGrantService;
+import io.opaa.asset.AssetGrantUpsert;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
@@ -19,8 +21,6 @@ import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
-import io.opaa.library.AssetGrantService;
-import io.opaa.library.AssetGrantUpsert;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.notification.Notification;
@@ -301,14 +301,20 @@ class GroupStewardshipIntegrationTest {
     AssetGrantUpsert request =
         new AssetGrantUpsert(PermissionSubjectType.GROUP, groupId, AssetRole.VIEWER);
 
-    assertThatThrownBy(() -> assetGrantService.upsertGrant(libraryId, request, manager))
+    assertThatThrownBy(
+            () ->
+                assetGrantService.upsertGrant(
+                    KnowledgeLibrary.ASSET_TYPE, libraryId, request, manager))
         .isInstanceOf(NotFoundException.class)
         .hasMessage("Gruppe nicht gefunden");
 
     groupService.setRelease(groupId, true, steward);
 
     assertThat(
-            assetGrantService.upsertGrant(libraryId, request, manager).grant().getSubjectGroupId())
+            assetGrantService
+                .upsertGrant(KnowledgeLibrary.ASSET_TYPE, libraryId, request, manager)
+                .grant()
+                .getSubjectGroupId())
         .isEqualTo(groupId);
   }
 
@@ -325,13 +331,14 @@ class GroupStewardshipIntegrationTest {
 
     assertThat(
             assetGrantService
-                .upsertGrant(libraryManagedBy(member), request, member)
+                .upsertGrant(KnowledgeLibrary.ASSET_TYPE, libraryManagedBy(member), request, member)
                 .grant()
                 .getSubjectGroupId())
         .isEqualTo(groupId);
     assertThat(
             assetGrantService
-                .upsertGrant(libraryManagedBy(steward), request, steward)
+                .upsertGrant(
+                    KnowledgeLibrary.ASSET_TYPE, libraryManagedBy(steward), request, steward)
                 .grant()
                 .getSubjectGroupId())
         .isEqualTo(groupId);
@@ -592,7 +599,7 @@ class GroupStewardshipIntegrationTest {
                 "Bibliothek " + UUID.randomUUID(),
                 null,
                 caller.id(),
-                LibraryVisibility.PRIVATE,
+                AssetVisibility.PRIVATE,
                 false));
     assetGrantRepository.save(
         AssetGrant.forUser(

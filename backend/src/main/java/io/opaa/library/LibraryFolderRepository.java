@@ -44,7 +44,7 @@ public interface LibraryFolderRepository extends JpaRepository<LibraryFolder, UU
    * is a pre-flight for. Split from {@link #findByLibraryIdAndParentFolderIdAndName(UUID, UUID,
    * String)} rather than accepting a nullable {@code parentFolderId} in one method, the same
    * explicit-{@code IsNull}-suffix convention {@code AssetGrantHistoryRepository}/{@code
-   * LibraryVisibilityHistoryRepository} already use for their own nullable columns, instead of
+   * AssetVisibilityHistoryRepository} already use for their own nullable columns, instead of
    * relying on a derived query's implicit null-parameter handling.
    */
   Optional<LibraryFolder> findByLibraryIdAndParentFolderIdIsNullAndName(

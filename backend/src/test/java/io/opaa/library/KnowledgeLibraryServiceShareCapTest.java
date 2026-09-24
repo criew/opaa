@@ -9,10 +9,16 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.DocumentSourceType;
-import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.SystemRole;
+import io.opaa.asset.AssetChanged;
+import io.opaa.asset.AssetGrantService;
+import io.opaa.asset.AssetShellService;
+import io.opaa.asset.AssetSuccessionSource;
+import io.opaa.asset.AssetTypes;
+import io.opaa.asset.AssetVisibilityHistoryService;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
@@ -42,6 +48,7 @@ import io.opaa.permission.PermissionHistoryService;
 import io.opaa.permission.SuccessionReachGuard;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import java.time.Clock;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -79,8 +86,8 @@ class KnowledgeLibraryServiceShareCapTest {
     AssetGrantService grantService = mock(AssetGrantService.class);
     LibraryAccessService accessService = mock(LibraryAccessService.class);
     PermissionHistoryService permissionHistoryService = mock(PermissionHistoryService.class);
-    LibraryVisibilityHistoryService visibilityHistoryService =
-        mock(LibraryVisibilityHistoryService.class);
+    AssetVisibilityHistoryService visibilityHistoryService =
+        mock(AssetVisibilityHistoryService.class);
     auditEventRecorder = mock(AuditEventRecorder.class);
     VectorChunkStore vectorChunkStore =
         new VectorChunkStore(
@@ -102,20 +109,25 @@ class KnowledgeLibraryServiceShareCapTest {
         new ConfluenceProperties(0, null, null, 0, null, 0, 0, 0, null, null, 0);
     libraryService =
         new KnowledgeLibraryService(
-            mock(SuccessionReachGuard.class),
-            mock(LibrarySuccessionSource.class),
-            mock(AssetOwnershipHistoryService.class),
+            mock(AssetSuccessionSource.class),
             libraryRepository,
             userRepository,
             groupDirectory,
             membershipResolver,
             mock(CapabilityService.class),
             documentRepository,
-            grantRepository,
             grantService,
+            new AssetShellService(
+                new AssetTypes(List.of(new KnowledgeLibraryAssetType())),
+                grantService,
+                grantRepository,
+                mock(AssetOwnershipHistoryService.class),
+                permissionHistoryService,
+                visibilityHistoryService,
+                auditEventRecorder,
+                eventPublisher,
+                mock(SuccessionReachGuard.class)),
             accessService,
-            permissionHistoryService,
-            visibilityHistoryService,
             auditEventRecorder,
             vectorChunkStore,
             filesystemAllowlist,
@@ -148,7 +160,7 @@ class KnowledgeLibraryServiceShareCapTest {
         .thenReturn(io.opaa.api.types.AssetRole.OWNER);
   }
 
-  private KnowledgeLibrary filesystemLibrary(LibraryVisibility visibility, boolean listed) {
+  private KnowledgeLibrary filesystemLibrary(AssetVisibility visibility, boolean listed) {
     KnowledgeLibrary library =
         KnowledgeLibrary.ownedByUser(
             organizationId,
@@ -171,14 +183,14 @@ class KnowledgeLibraryServiceShareCapTest {
 
   @Test
   void updateLibraryRejectsVisibilityAboveTheShareCapWith409() {
-    KnowledgeLibrary library = filesystemLibrary(LibraryVisibility.PRIVATE, false);
-    library.updateShareCap(LibraryVisibility.SHARED, true);
+    KnowledgeLibrary library = filesystemLibrary(AssetVisibility.PRIVATE, false);
+    library.updateShareCap(AssetVisibility.SHARED, true);
 
     assertThatThrownBy(
             () ->
                 libraryService.updateLibrary(
                     library.getId(),
-                    libraryUpdate("Bibliothek").visibility(LibraryVisibility.ORGANIZATION).build(),
+                    libraryUpdate("Bibliothek").visibility(AssetVisibility.ORGANIZATION).build(),
                     ownerCaller))
         .isInstanceOf(ConflictException.class)
         .hasMessageContaining("geteilt");
@@ -186,8 +198,8 @@ class KnowledgeLibraryServiceShareCapTest {
 
   @Test
   void updateLibraryRejectsListedAboveTheShareCapWith409() {
-    KnowledgeLibrary library = filesystemLibrary(LibraryVisibility.SHARED, false);
-    library.updateShareCap(LibraryVisibility.SHARED, false);
+    KnowledgeLibrary library = filesystemLibrary(AssetVisibility.SHARED, false);
+    library.updateShareCap(AssetVisibility.SHARED, false);
 
     assertThatThrownBy(
             () ->
@@ -199,44 +211,44 @@ class KnowledgeLibraryServiceShareCapTest {
 
   @Test
   void updateLibraryAllowsVisibilityAtTheShareCap() {
-    KnowledgeLibrary library = filesystemLibrary(LibraryVisibility.PRIVATE, false);
-    library.updateShareCap(LibraryVisibility.SHARED, true);
+    KnowledgeLibrary library = filesystemLibrary(AssetVisibility.PRIVATE, false);
+    library.updateShareCap(AssetVisibility.SHARED, true);
 
     LibraryDetail updated =
         libraryService.updateLibrary(
             library.getId(),
-            libraryUpdate("Bibliothek").visibility(LibraryVisibility.SHARED).build(),
+            libraryUpdate("Bibliothek").visibility(AssetVisibility.SHARED).build(),
             ownerCaller);
 
-    assertThat(updated.library().getVisibility()).isEqualTo(LibraryVisibility.SHARED);
+    assertThat(updated.library().getVisibility()).isEqualTo(AssetVisibility.SHARED);
   }
 
   @Test
   void updateLibraryIgnoresTheShareCapForAnUploadLibrary() {
     KnowledgeLibrary library =
         KnowledgeLibrary.ownedByUser(
-            organizationId, "Uploads", null, ownerId, LibraryVisibility.PRIVATE, false);
+            organizationId, "Uploads", null, ownerId, AssetVisibility.PRIVATE, false);
     when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
 
     LibraryDetail updated =
         libraryService.updateLibrary(
             library.getId(),
-            libraryUpdate("Uploads").visibility(LibraryVisibility.ORGANIZATION).build(),
+            libraryUpdate("Uploads").visibility(AssetVisibility.ORGANIZATION).build(),
             ownerCaller);
 
-    assertThat(updated.library().getVisibility()).isEqualTo(LibraryVisibility.ORGANIZATION);
+    assertThat(updated.library().getVisibility()).isEqualTo(AssetVisibility.ORGANIZATION);
   }
 
   // --- updateShareCap: who may call it --------------------------------------------------
 
   @Test
   void updateShareCapIsRefusedWithoutSystemAdmin() {
-    KnowledgeLibrary library = filesystemLibrary(LibraryVisibility.PRIVATE, false);
+    KnowledgeLibrary library = filesystemLibrary(AssetVisibility.PRIVATE, false);
 
     assertThatThrownBy(
             () ->
                 libraryService.updateShareCap(
-                    library.getId(), LibraryVisibility.SHARED, true, ownerCaller))
+                    library.getId(), AssetVisibility.SHARED, true, ownerCaller))
         .isInstanceOf(AccessDeniedException.class);
   }
 
@@ -244,13 +256,13 @@ class KnowledgeLibraryServiceShareCapTest {
   void updateShareCapIsRefusedForAnUploadLibrary() {
     KnowledgeLibrary library =
         KnowledgeLibrary.ownedByUser(
-            organizationId, "Uploads", null, ownerId, LibraryVisibility.PRIVATE, false);
+            organizationId, "Uploads", null, ownerId, AssetVisibility.PRIVATE, false);
     when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
 
     assertThatThrownBy(
             () ->
                 libraryService.updateShareCap(
-                    library.getId(), LibraryVisibility.PRIVATE, true, systemAdminCaller))
+                    library.getId(), AssetVisibility.PRIVATE, true, systemAdminCaller))
         .isInstanceOf(ValidationException.class);
   }
 
@@ -258,27 +270,27 @@ class KnowledgeLibraryServiceShareCapTest {
 
   @Test
   void loweringTheShareCapClampsAWiderVisibilityAndListedImmediately() {
-    KnowledgeLibrary library = filesystemLibrary(LibraryVisibility.ORGANIZATION, true);
+    KnowledgeLibrary library = filesystemLibrary(AssetVisibility.ORGANIZATION, true);
 
     LibraryDetail result =
         libraryService.updateShareCap(
-            library.getId(), LibraryVisibility.PRIVATE, false, systemAdminCaller);
+            library.getId(), AssetVisibility.PRIVATE, false, systemAdminCaller);
 
-    assertThat(result.library().getVisibility()).isEqualTo(LibraryVisibility.PRIVATE);
+    assertThat(result.library().getVisibility()).isEqualTo(AssetVisibility.PRIVATE);
     assertThat(result.library().isListed()).isFalse();
-    assertThat(result.library().getVisibilityCap()).isEqualTo(LibraryVisibility.PRIVATE);
+    assertThat(result.library().getVisibilityCap()).isEqualTo(AssetVisibility.PRIVATE);
     assertThat(result.library().isListedCap()).isFalse();
     // the clamp writes the same event an owner's own edit would - one history interval, one
     // audit entry, through the identical publish path
-    verify(eventPublisher).publishEvent(org.mockito.ArgumentMatchers.any(LibraryChanged.class));
+    verify(eventPublisher).publishEvent(org.mockito.ArgumentMatchers.any(AssetChanged.class));
   }
 
   @Test
   void loweringTheShareCapRecordsItsOwnAuditEventSeparatelyFromTheClamp() {
-    KnowledgeLibrary library = filesystemLibrary(LibraryVisibility.ORGANIZATION, true);
+    KnowledgeLibrary library = filesystemLibrary(AssetVisibility.ORGANIZATION, true);
 
     libraryService.updateShareCap(
-        library.getId(), LibraryVisibility.PRIVATE, false, systemAdminCaller);
+        library.getId(), AssetVisibility.PRIVATE, false, systemAdminCaller);
 
     org.mockito.ArgumentCaptor<AuditEvent> captor =
         org.mockito.ArgumentCaptor.forClass(AuditEvent.class);
@@ -294,27 +306,27 @@ class KnowledgeLibraryServiceShareCapTest {
    */
   @Test
   void loweringOnlyTheListedCapClampsListedAloneAndLeavesVisibilityUntouched() {
-    KnowledgeLibrary library = filesystemLibrary(LibraryVisibility.ORGANIZATION, true);
+    KnowledgeLibrary library = filesystemLibrary(AssetVisibility.ORGANIZATION, true);
 
     LibraryDetail result =
         libraryService.updateShareCap(
-            library.getId(), LibraryVisibility.ORGANIZATION, false, systemAdminCaller);
+            library.getId(), AssetVisibility.ORGANIZATION, false, systemAdminCaller);
 
-    assertThat(result.library().getVisibility()).isEqualTo(LibraryVisibility.ORGANIZATION);
+    assertThat(result.library().getVisibility()).isEqualTo(AssetVisibility.ORGANIZATION);
     assertThat(result.library().isListed()).isFalse();
     assertThat(result.library().isListedCap()).isFalse();
-    verify(eventPublisher).publishEvent(org.mockito.ArgumentMatchers.any(LibraryChanged.class));
+    verify(eventPublisher).publishEvent(org.mockito.ArgumentMatchers.any(AssetChanged.class));
   }
 
   @Test
   void raisingTheShareCapNeverClampsAndPublishesNoVisibilityChangedEvent() {
-    KnowledgeLibrary library = filesystemLibrary(LibraryVisibility.PRIVATE, false);
+    KnowledgeLibrary library = filesystemLibrary(AssetVisibility.PRIVATE, false);
 
     LibraryDetail result =
         libraryService.updateShareCap(
-            library.getId(), LibraryVisibility.ORGANIZATION, true, systemAdminCaller);
+            library.getId(), AssetVisibility.ORGANIZATION, true, systemAdminCaller);
 
-    assertThat(result.library().getVisibility()).isEqualTo(LibraryVisibility.PRIVATE);
+    assertThat(result.library().getVisibility()).isEqualTo(AssetVisibility.PRIVATE);
     assertThat(result.library().isListed()).isFalse();
     verify(eventPublisher, never()).publishEvent(any());
   }

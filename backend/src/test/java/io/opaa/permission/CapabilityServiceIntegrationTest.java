@@ -3,10 +3,10 @@ package io.opaa.permission;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.Capability;
 import io.opaa.api.types.CapabilitySubjectType;
-import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
@@ -302,7 +302,7 @@ class CapabilityServiceIntegrationTest {
             "Fremde Bibliothek " + UUID.randomUUID(),
             null,
             ownerId,
-            LibraryVisibility.PRIVATE,
+            AssetVisibility.PRIVATE,
             false);
     UUID libraryId = libraryRepository.save(library).getId();
     libraryIds.add(libraryId);
