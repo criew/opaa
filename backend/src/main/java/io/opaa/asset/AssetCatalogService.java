@@ -5,11 +5,14 @@ import io.opaa.common.ValidationException;
 import io.opaa.permission.AssetAccessService;
 import io.opaa.permission.AssetType;
 import io.opaa.permission.SuccessionFinding;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -20,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
  * {@link AssetAccessService#readableAssetIds}, united with the listed ones, over every served type
  * and within the person's organization - one query on the shell, paged and searched in SQL. Whether
  * an entry is accessible is the formula's alone; the administration's floor never counts here.
+ * Extent and spread of a page come in grouped queries, one per type and one for the spaces.
  */
 @Service
 @Transactional(readOnly = true)
@@ -35,18 +39,22 @@ public class AssetCatalogService {
   private final AssetTypes assetTypes;
   private final AssetOwnerNames ownerNames;
   private final AssetSuccessionSource successionSource;
+  private final Map<AssetType, AssetExtent> extents;
 
   AssetCatalogService(
       AssetRepository assetRepository,
       AssetAccessService accessService,
       AssetTypes assetTypes,
       AssetOwnerNames ownerNames,
-      AssetSuccessionSource successionSource) {
+      AssetSuccessionSource successionSource,
+      List<AssetExtent> extents) {
     this.assetRepository = assetRepository;
     this.accessService = accessService;
     this.assetTypes = assetTypes;
     this.ownerNames = ownerNames;
     this.successionSource = successionSource;
+    this.extents =
+        extents.stream().collect(Collectors.toMap(AssetExtent::assetType, extent -> extent));
   }
 
   /**
@@ -85,6 +93,8 @@ public class AssetCatalogService {
             likePattern(query),
             PageRequest.of(page, size));
 
+    Map<UUID, Long> itemCounts = itemCounts(rows.getContent());
+    Map<UUID, Long> spaceCounts = spaceCounts(rows.getContent());
     Map<UUID, String> names = ownerNames.of(rows.getContent());
     Map<UUID, SuccessionFinding> succession =
         successionSource.findingsAmong(rows.getContent(), false);
@@ -96,9 +106,39 @@ public class AssetCatalogService {
                         row,
                         readable.contains(row.getId()),
                         names.get(row.getOwnerId()),
-                        succession.get(row.getId())))
+                        succession.get(row.getId()),
+                        itemCounts.getOrDefault(row.getId(), 0L),
+                        spaceCounts.getOrDefault(row.getId(), 0L)))
             .toList();
     return new AssetCatalogPage(entries, page, size, rows.getTotalElements(), rows.getTotalPages());
+  }
+
+  /** The extent of the page's assets, one grouped query per type present on it. */
+  private Map<UUID, Long> itemCounts(List<AssetCatalogRow> rows) {
+    Map<UUID, Long> counts = new HashMap<>();
+    rows.stream()
+        .collect(
+            Collectors.groupingBy(
+                AssetCatalogRow::getAssetType,
+                Collectors.mapping(AssetCatalogRow::getId, Collectors.toSet())))
+        .forEach(
+            (type, ids) ->
+                Optional.ofNullable(extents.get(type))
+                    .ifPresent(extent -> counts.putAll(extent.itemCounts(ids))));
+    return counts;
+  }
+
+  private Map<UUID, Long> spaceCounts(List<AssetCatalogRow> rows) {
+    if (rows.isEmpty()) {
+      return Map.of();
+    }
+    return assetRepository
+        .countSpaceAssociations(rows.stream().map(AssetCatalogRow::getId).toList())
+        .stream()
+        .collect(
+            Collectors.toMap(
+                AssetRepository.AssetSpaceCount::getAssetId,
+                AssetRepository.AssetSpaceCount::getSpaceCount));
   }
 
   /** A {@code LIKE} pattern that takes every character of {@code query} literally. */

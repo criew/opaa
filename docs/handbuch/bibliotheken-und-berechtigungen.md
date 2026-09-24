@@ -142,9 +142,9 @@ denen Bibliotheken angelegt und verwaltet werden.
 
 | Element | Inhalt |
 |---|---|
-| **Suche** | Über Name und Beschreibung, ohne Rücksicht auf Groß- und Kleinschreibung |
+| **Suche** | Über Name und Beschreibung, ohne Rücksicht auf Groß- und Kleinschreibung; der Suchtext ist begrenzt |
 | **Filter** | „Alle", „Wissen" oder „Prompts" |
-| **Eintrag** | Art (Wissens- oder Prompt-Bibliothek), Name, Beschreibung, zuständige Stelle; in der Tabelle zusätzlich die Herkunft |
+| **Eintrag** | Art (Wissens- oder Prompt-Bibliothek), Name, Beschreibung, Umfang (Dokumente bzw. Prompts), in wie vielen Räumen sie bereitsteht, zuständige Stelle; in der Tabelle zusätzlich die Herkunft |
 | **Seiten** | Die Einträge kommen seitenweise; „Weitere laden" hängt die nächste Seite an |
 
 **Auffindbar ist nicht zugänglich.** Eine auffindbare Bibliothek, die die Person nicht lesen darf,

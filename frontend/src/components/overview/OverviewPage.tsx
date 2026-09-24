@@ -32,6 +32,17 @@ export interface OverviewColumn {
   label: string
 }
 
+export interface ControlledSearch {
+  value: string
+  onChange: (value: string) => void
+  /**
+   * The search text the current `items` answer. Until it matches the typed text and loading has
+   * ended, the overview announces no result - a count of the previous search would be wrong.
+   */
+  resultFor?: string
+  maxLength?: number
+}
+
 export interface OverviewPageProps<T> {
   /** Document title, and the heading unless `heading` names one. */
   title: string
@@ -54,7 +65,7 @@ export interface OverviewPageProps<T> {
    * Hands the search to the caller, e.g. to a server query: `items` are then the result as it
    * stands, and the overview filters nothing itself. Omitted, the search runs over `searchText`.
    */
-  search?: { value: string; onChange: (value: string) => void }
+  search?: ControlledSearch
   /** Further controls beside the search, e.g. a type filter. */
   filters?: ReactNode
   /** Whether `filters` currently narrow `items` - an empty result then reads as "no match". */
@@ -178,6 +189,9 @@ export default function OverviewPage<T>({
   const firstLoad = isLoading && items.length === 0 && !narrowed
   const showList = visible.length > 0
   const count = total ?? visible.length
+  // Only a result that answers the text now in the field may be announced or called empty.
+  const resultCurrent =
+    !search || search.resultFor === undefined || (search.resultFor === query.trim() && !isLoading)
 
   return (
     <Box sx={{ flexGrow: 1, overflowY: 'auto', p: { xs: 2.5, md: 5 } }}>
@@ -236,7 +250,7 @@ export default function OverviewPage<T>({
                   </InputAdornment>
                 ) : undefined,
               },
-              htmlInput: { 'aria-label': 'Suchen' },
+              htmlInput: { 'aria-label': 'Suchen', maxLength: search?.maxLength },
             }}
           />
           {filters}
@@ -261,7 +275,9 @@ export default function OverviewPage<T>({
       {/* Das Filtern verschiebt den Fokus nicht; ohne Live-Bereich bliebe das Ergebnis am
           Screenreader unbemerkt (accessibility.md, Prüfpunkt 2.8). */}
       <Box role="status" aria-live="polite" sx={visuallyHidden}>
-        {query.trim() || filtered ? searchResultMessage(count, query.trim()) : ''}
+        {resultCurrent && (query.trim() || filtered)
+          ? searchResultMessage(count, query.trim())
+          : ''}
       </Box>
 
       {firstLoad ? (
@@ -270,7 +286,7 @@ export default function OverviewPage<T>({
         </Box>
       ) : isEmpty ? (
         emptyState
-      ) : visible.length === 0 && !isLoading ? (
+      ) : visible.length === 0 && !isLoading && resultCurrent ? (
         <Typography sx={{ color: 'text.secondary' }}>
           {searchResultMessage(0, query.trim())}
         </Typography>

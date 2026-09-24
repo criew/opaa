@@ -3,9 +3,12 @@ package io.opaa.asset;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.opaa.api.types.AssetOrigin;
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.GroupKind;
+import io.opaa.api.types.SpaceRole;
+import io.opaa.api.types.SpaceVisibility;
 import io.opaa.api.types.SuccessionAddressee;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
@@ -22,8 +25,14 @@ import io.opaa.organization.OrganizationRepository;
 import io.opaa.permission.AssetGrant;
 import io.opaa.permission.AssetGrantRepository;
 import io.opaa.permission.AssetType;
+import io.opaa.prompt.PromptContent;
 import io.opaa.prompt.PromptLibrary;
 import io.opaa.prompt.PromptLibraryRepository;
+import io.opaa.prompt.PromptService;
+import io.opaa.space.Space;
+import io.opaa.space.SpaceAssetAssociationService;
+import io.opaa.space.SpaceMembership;
+import io.opaa.space.SpaceRepository;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OwnOrganizationFixtures;
 import java.util.LinkedHashMap;
@@ -56,6 +65,9 @@ class AssetCatalogServiceIntegrationTest {
   @Autowired private GroupRepository groupRepository;
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private OwnOrganizationFixtures ownOrganizationFixtures;
+  @Autowired private PromptService promptService;
+  @Autowired private SpaceRepository spaceRepository;
+  @Autowired private SpaceAssetAssociationService associationService;
   @Autowired private JdbcTemplate jdbcTemplate;
 
   private UUID organization;
@@ -187,6 +199,32 @@ class AssetCatalogServiceIntegrationTest {
     assertThat(knowledge.asset().isListed()).isFalse();
     assertThat(knowledge.accessible()).isTrue();
     assertThat(knowledge.succession()).isNull();
+  }
+
+  @Test
+  void anEntryCarriesItsExtentAndItsSpreadOverSpaces() {
+    UUID prompts =
+        promptLibrary(organization, "Vorlagen", owner, AssetVisibility.ORGANIZATION, false);
+    UUID knowledge =
+        knowledgeLibrary(organization, "Leer", owner, AssetVisibility.ORGANIZATION, false);
+    for (String name : List.of("anhoerung", "vermerk")) {
+      promptService.create(
+          prompts,
+          new PromptContent(name, name, null, "Bitte formulieren.", List.of(), 0),
+          callerOf(owner));
+    }
+    for (int i = 0; i < 2; i++) {
+      associationService.associate(
+          createSpace(), PromptLibrary.ASSET_TYPE, prompts, callerOf(owner));
+    }
+
+    List<AssetCatalogEntry> entries =
+        catalogService.list(callerOf(outsider), null, null, 0, 50).entries();
+
+    assertThat(entryFor(entries, prompts).itemCount()).as("its prompts").isEqualTo(2);
+    assertThat(entryFor(entries, prompts).spaceCount()).isEqualTo(2);
+    assertThat(entryFor(entries, knowledge).itemCount()).as("no document yet").isZero();
+    assertThat(entryFor(entries, knowledge).spaceCount()).isZero();
   }
 
   @Test
@@ -339,6 +377,12 @@ class AssetCatalogServiceIntegrationTest {
         .filter(entry -> entry.asset().getId().equals(id))
         .findFirst()
         .orElseThrow();
+  }
+
+  private UUID createSpace() {
+    Space space = new Space("Space", null, false, SpaceVisibility.PRIVATE, owner, organization);
+    space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organization));
+    return spaceRepository.save(space).getId();
   }
 
   private UUID createOrganization(String name) {

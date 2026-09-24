@@ -2,10 +2,10 @@ package io.opaa.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.api.dto.AssetOrigin;
 import io.opaa.api.dto.AssetType;
 import io.opaa.api.dto.CatalogEntryResponse;
 import io.opaa.api.dto.CatalogPageResponse;
+import io.opaa.api.types.AssetOrigin;
 import io.opaa.api.types.AssetOwnerType;
 import io.opaa.api.types.SuccessionAddressee;
 import io.opaa.asset.AssetCatalogEntry;
@@ -25,14 +25,16 @@ class CatalogResponseMapperTest {
   void everyFieldOfAnEntryAndThePageIsCarried() {
     AssetCatalogEntry entry =
         new AssetCatalogEntry(
-            row(io.opaa.asset.AssetOrigin.BUILT_IN),
+            row(AssetOrigin.BUILT_IN),
             false,
             "Referat 50",
             SuccessionFinding.ofAsset(
                 io.opaa.permission.AssetType.of("PROMPT_LIBRARY"),
                 ASSET_ID,
                 "Vorlagen",
-                SuccessionAddressee.GROUP_STEWARDS));
+                SuccessionAddressee.GROUP_STEWARDS),
+            7,
+            3);
 
     CatalogPageResponse page =
         CatalogResponseMapper.toResponse(new AssetCatalogPage(List.of(entry), 2, 10, 21, 3));
@@ -51,6 +53,8 @@ class CatalogResponseMapperTest {
     assertThat(response.getOrigin()).isEqualTo(AssetOrigin.BUILT_IN);
     assertThat(response.getAccessible()).isFalse();
     assertThat(response.getListed()).isTrue();
+    assertThat(response.getItemCount()).isEqualTo(7);
+    assertThat(response.getSpaceCount()).isEqualTo(3);
     assertThat(response.getSuccession()).isNotNull();
     assertThat(response.getSuccession().getAddressee())
         .isEqualTo(SuccessionAddressee.GROUP_STEWARDS);
@@ -60,7 +64,7 @@ class CatalogResponseMapperTest {
   void anEntryWithoutSuccessionOrOwnerLabelCarriesNeither() {
     CatalogEntryResponse response =
         CatalogResponseMapper.toResponse(
-            new AssetCatalogEntry(row(io.opaa.asset.AssetOrigin.LOCAL), true, null, null));
+            new AssetCatalogEntry(row(AssetOrigin.LOCAL), true, null, null, 0, 0));
 
     assertThat(response.getOwnerLabel()).isNull();
     assertThat(response.getSuccession()).isNull();
@@ -68,7 +72,7 @@ class CatalogResponseMapperTest {
     assertThat(response.getAccessible()).isTrue();
   }
 
-  private static AssetCatalogRow row(io.opaa.asset.AssetOrigin origin) {
+  private static AssetCatalogRow row(AssetOrigin origin) {
     return new AssetCatalogRow() {
       @Override
       public UUID getId() {
@@ -106,7 +110,7 @@ class CatalogResponseMapperTest {
       }
 
       @Override
-      public io.opaa.asset.AssetOrigin getOrigin() {
+      public AssetOrigin getOrigin() {
         return origin;
       }
 

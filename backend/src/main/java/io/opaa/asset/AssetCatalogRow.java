@@ -1,5 +1,6 @@
 package io.opaa.asset;
 
+import io.opaa.api.types.AssetOrigin;
 import java.util.UUID;
 
 /**

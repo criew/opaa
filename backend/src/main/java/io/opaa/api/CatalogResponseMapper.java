@@ -1,6 +1,5 @@
 package io.opaa.api;
 
-import io.opaa.api.dto.AssetOrigin;
 import io.opaa.api.dto.AssetType;
 import io.opaa.api.dto.CatalogEntryResponse;
 import io.opaa.api.dto.CatalogPageResponse;
@@ -29,9 +28,11 @@ final class CatalogResponseMapper {
             asset.getId(),
             asset.getName(),
             asset.getOwnerType(),
-            AssetOrigin.fromValue(asset.getOrigin().name()),
+            asset.getOrigin(),
             entry.accessible(),
-            asset.isListed())
+            asset.isListed(),
+            entry.itemCount(),
+            entry.spaceCount())
         .description(asset.getDescription())
         .ownerLabel(entry.ownerLabel())
         .succession(SuccessionResponseMapper.toStateResponse(entry.succession()));

@@ -79,6 +79,23 @@ public interface AssetRepository extends JpaRepository<Asset, UUID> {
       @Param("pattern") String pattern,
       Pageable pageable);
 
+  /**
+   * In how many spaces each of the assets is associated, in one grouped query - the spread the
+   * catalog shows. An asset without association is absent.
+   */
+  @Query(
+      value =
+          "SELECT asset_id AS \"assetId\", count(*) AS \"spaceCount\""
+              + " FROM space_asset_associations WHERE asset_id IN (:assetIds) GROUP BY asset_id",
+      nativeQuery = true)
+  List<AssetSpaceCount> countSpaceAssociations(@Param("assetIds") Collection<UUID> assetIds);
+
+  interface AssetSpaceCount {
+    UUID getAssetId();
+
+    long getSpaceCount();
+  }
+
   String CATALOG_CONDITION =
       " from Asset a where a.organizationId = :organizationId"
           + " and a.assetType in :assetTypes"

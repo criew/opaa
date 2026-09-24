@@ -10703,7 +10703,7 @@ components:
 
     CatalogEntryResponse:
       type: object
-      required: [assetType, assetId, name, ownerType, origin, accessible, listed]
+      required: [assetType, assetId, name, ownerType, origin, accessible, listed, itemCount, spaceCount]
       description: >
         One asset in the catalog - a description, never a content
         (docs/features/spaces-and-assets.md#der-katalog).
@@ -10737,6 +10737,16 @@ components:
             only listed - its detail view answers 404 or 403.
         listed:
           type: boolean
+        itemCount:
+          type: integer
+          format: int64
+          description: >
+            The extent: what the asset holds by its type - top-level documents of a knowledge
+            library, prompts of a prompt library.
+        spaceCount:
+          type: integer
+          format: int64
+          description: The spread - in how many spaces of the organization the asset is associated.
         succession:
           description: >
             Set while the asset has no capable owner (ADR-0036, Entscheidung 6) - state and

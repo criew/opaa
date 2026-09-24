@@ -26,6 +26,8 @@ function entry(name: string, overrides: Partial<CatalogEntryResponse> = {}): Cat
     origin: 'LOCAL',
     accessible: true,
     listed: true,
+    itemCount: 3,
+    spaceCount: 1,
     succession: null,
     ...overrides,
   }
@@ -64,6 +66,7 @@ describe('CatalogPage (#1904)', () => {
     expect(
       within(listed).getByText('Auffindbar ohne Berechtigung — zuständig: Kämmerei'),
     ).toBeInTheDocument()
+    expect(within(listed).getByText('38 Dokumente · in 2 Spaces')).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /Satzungen der Kämmerei/ })).not.toBeInTheDocument()
     // While the succession is open, its addressee is the one to turn to.
     const orphaned = screen.getByRole('article', { name: 'Bescheidbausteine Ordnungsamt' })
@@ -155,6 +158,7 @@ describe('CatalogPage (#1904)', () => {
     expect(within(row).getByText('Wissensbibliothek')).toBeInTheDocument()
     expect(within(row).getByText('Kämmerei')).toBeInTheDocument()
     expect(within(row).getByText('lokal angelegt')).toBeInTheDocument()
+    expect(within(row).getByText('38 Dokumente')).toBeInTheDocument()
     expect(
       within(row).getByText('Auffindbar ohne Berechtigung — zuständig: Kämmerei'),
     ).toBeInTheDocument()

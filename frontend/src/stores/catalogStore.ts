@@ -4,6 +4,8 @@ import { getCatalog } from '../services/catalogApi'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
 
 export const CATALOG_PAGE_SIZE = 50
+/** The bound the server sets on the search text. */
+export const CATALOG_QUERY_MAX_LENGTH = 200
 
 export interface CatalogFilter {
   /** Every type when absent. */
@@ -16,6 +18,8 @@ interface CatalogState {
   page: number
   totalPages: number
   totalElements: number
+  /** The trimmed search text the shown entries answer; `null` before the first result. */
+  loadedQuery: string | null
   isLoading: boolean
   error: string | null
   reset: () => void
@@ -46,6 +50,7 @@ export const useCatalogStore = create<CatalogState>((set, get) => {
         page: result.page,
         totalPages: result.totalPages,
         totalElements: result.totalElements,
+        loadedQuery: filter.q.trim(),
         isLoading: false,
       })
     } catch (err) {
@@ -62,6 +67,7 @@ export const useCatalogStore = create<CatalogState>((set, get) => {
     page: 0,
     totalPages: 0,
     totalElements: 0,
+    loadedQuery: null,
     isLoading: false,
     error: null,
 
@@ -73,6 +79,7 @@ export const useCatalogStore = create<CatalogState>((set, get) => {
         page: 0,
         totalPages: 0,
         totalElements: 0,
+        loadedQuery: null,
         isLoading: false,
         error: null,
       })

@@ -188,6 +188,36 @@ describe('OverviewPage (#1913)', () => {
     expect(onChange).toHaveBeenCalledWith('baux')
   })
 
+  it('announces a controlled search only once the result answers the typed text', () => {
+    const search = { value: 'bau', onChange: () => {}, resultFor: 'ba' }
+    const { rerender } = renderOverview({
+      searchText: undefined,
+      search,
+      items: [],
+      total: 57,
+    })
+
+    // The 57 belong to "ba", not to "bau": nothing is announced, and nothing is called empty.
+    expect(screen.getByRole('status')).toBeEmptyDOMElement()
+    expect(screen.queryByText(/Kein Eintrag passt/)).not.toBeInTheDocument()
+
+    rerender(
+      <OverviewPage<Item>
+        title="Beispiele"
+        storageKey="test"
+        items={[]}
+        itemKey={(item) => item.id}
+        search={{ ...search, resultFor: 'bau' }}
+        total={0}
+        columns={[]}
+        renderCard={() => null}
+        renderRow={() => null}
+      />,
+    )
+
+    expect(screen.getByRole('status')).toHaveTextContent('Kein Eintrag passt zu „bau“.')
+  })
+
   it('keeps search and filters in reach when a narrowed result is empty', () => {
     renderOverview({
       items: [],

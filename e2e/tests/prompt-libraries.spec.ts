@@ -57,6 +57,16 @@ async function saveRelease(page: Page): Promise<void> {
   ])
 }
 
+/**
+ * The rendered empty result of this very search - without it, an absent entry would also pass
+ * before the result is on the page.
+ */
+async function expectNoCatalogMatch(page: Page, query: string): Promise<void> {
+  await expect(
+    page.getByText(`Kein Eintrag passt zu „${query}“.`, { exact: true }).and(page.locator('p')),
+  ).toBeVisible()
+}
+
 async function expectNotInPromptList(page: Page, name: string): Promise<void> {
   await gotoPromptLibraries(page)
   await expect(page.getByRole('heading', { level: 1, name: 'Prompts' })).toBeVisible()
@@ -156,6 +166,7 @@ test.describe.serial('Prompt-Bibliotheken: Verteilungsstufen und Katalog (#1904)
     await expectNotInPromptList(outsider, LIBRARY_NAME)
 
     await searchCatalog(outsider, LIBRARY_NAME)
+    await expectNoCatalogMatch(outsider, LIBRARY_NAME)
     await expect(accessibleCatalogEntry(outsider, LIBRARY_NAME)).toHaveCount(0)
     await expect(listedCatalogEntry(outsider, LIBRARY_NAME)).toHaveCount(0)
 
@@ -194,6 +205,7 @@ test.describe.serial('Prompt-Bibliotheken: Verteilungsstufen und Katalog (#1904)
     })
 
     await searchCatalog(outsider, LISTED_LIBRARY_NAME)
+    await expectNoCatalogMatch(outsider, LISTED_LIBRARY_NAME)
     await expect(listedCatalogEntry(outsider, LISTED_LIBRARY_NAME)).toHaveCount(0)
 
     await openManagement(owner, LISTED_LIBRARY_NAME)

@@ -1,5 +1,6 @@
 package io.opaa.asset;
 
+import io.opaa.api.types.AssetOrigin;
 import io.opaa.api.types.AssetOwnerType;
 import io.opaa.api.types.AssetVisibility;
 import io.opaa.permission.AssetType;

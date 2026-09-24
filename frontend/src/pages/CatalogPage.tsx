@@ -6,7 +6,7 @@ import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Typography from '@mui/material/Typography'
 import type { AssetOrigin, AssetType, CatalogEntryResponse } from '../types/api'
-import { useCatalogStore } from '../stores/catalogStore'
+import { CATALOG_QUERY_MAX_LENGTH, useCatalogStore } from '../stores/catalogStore'
 import { assetTypeTitle } from '../utils/labels'
 import MetaBadge from '../components/MetaBadge'
 import OverviewPage, { OverviewCard, OverviewRowLink } from '../components/overview/OverviewPage'
@@ -45,6 +45,18 @@ function responsibleLabel(entry: CatalogEntryResponse): string {
   return entry.ownerType === 'GROUP' ? 'eine Gruppe' : 'eine Person'
 }
 
+/** The extent in the words of the type: what a knowledge or prompt library holds. */
+function extentLabel(entry: CatalogEntryResponse): string {
+  const count = entry.itemCount
+  if (entry.assetType === 'PROMPT_LIBRARY') return count === 1 ? '1 Prompt' : `${count} Prompts`
+  return count === 1 ? '1 Dokument' : `${count} Dokumente`
+}
+
+function spreadLabel(spaceCount: number): string {
+  if (spaceCount === 0) return 'in keinem Space'
+  return spaceCount === 1 ? 'in 1 Space' : `in ${spaceCount} Spaces`
+}
+
 function NoAccessNote({ entry }: { entry: CatalogEntryResponse }) {
   return (
     <Typography component="span" sx={{ fontSize: 12, color: 'text.secondary' }}>
@@ -58,7 +70,6 @@ function CardContent({ entry }: { entry: CatalogEntryResponse }) {
     <>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
         <MetaBadge accent>{assetTypeTitle(entry.assetType)}</MetaBadge>
-        {entry.origin === 'BUILT_IN' && <MetaBadge>{originLabels.BUILT_IN}</MetaBadge>}
       </Box>
       <Typography component="span" sx={{ fontSize: 16.5, fontWeight: 600 }}>
         {entry.name}
@@ -77,6 +88,9 @@ function CardContent({ entry }: { entry: CatalogEntryResponse }) {
         }}
       >
         {entry.description ?? ''}
+      </Typography>
+      <Typography component="span" sx={{ fontSize: 11.5, color: 'text.secondary' }}>
+        {extentLabel(entry)} · {spreadLabel(entry.spaceCount)}
       </Typography>
       {entry.accessible ? (
         <>
@@ -145,6 +159,8 @@ function CatalogRow({ entry }: { entry: CatalogEntryResponse }) {
       <TableCell>
         <MetaBadge accent>{assetTypeTitle(entry.assetType)}</MetaBadge>
       </TableCell>
+      <TableCell sx={{ fontSize: '12.5px !important' }}>{extentLabel(entry)}</TableCell>
+      <TableCell sx={{ fontSize: '12.5px !important' }}>{entry.spaceCount}</TableCell>
       <TableCell>{responsibleLabel(entry)}</TableCell>
       <TableCell sx={{ fontSize: '12px !important', color: 'text.secondary' }}>
         {originLabels[entry.origin]}
@@ -163,6 +179,8 @@ function CatalogRow({ entry }: { entry: CatalogEntryResponse }) {
 const columns = [
   { key: 'name', label: 'Name' },
   { key: 'type', label: 'Typ' },
+  { key: 'extent', label: 'Umfang' },
+  { key: 'spread', label: 'Spaces' },
   { key: 'owner', label: 'Zuständig' },
   { key: 'origin', label: 'Herkunft' },
   { key: 'access', label: 'Zugang' },
@@ -181,6 +199,7 @@ export default function CatalogPage() {
   const page = useCatalogStore((s) => s.page)
   const totalPages = useCatalogStore((s) => s.totalPages)
   const total = useCatalogStore((s) => s.totalElements)
+  const loadedQuery = useCatalogStore((s) => s.loadedQuery)
   const isLoading = useCatalogStore((s) => s.isLoading)
   const error = useCatalogStore((s) => s.error)
   const load = useCatalogStore((s) => s.load)
@@ -203,7 +222,12 @@ export default function CatalogPage() {
       defaultView="cards"
       items={entries}
       itemKey={(entry) => `${entry.assetType}:${entry.assetId}`}
-      search={{ value: query, onChange: setQuery }}
+      search={{
+        value: query,
+        onChange: setQuery,
+        resultFor: loadedQuery ?? undefined,
+        maxLength: CATALOG_QUERY_MAX_LENGTH,
+      }}
       filters={
         <ToggleButtonGroup
           size="small"

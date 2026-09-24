@@ -15,6 +15,8 @@ export const mockListedWithoutAccess: CatalogEntryResponse[] = [
     origin: 'LOCAL',
     accessible: false,
     listed: true,
+    itemCount: 38,
+    spaceCount: 2,
     succession: null,
   },
   {
@@ -27,6 +29,8 @@ export const mockListedWithoutAccess: CatalogEntryResponse[] = [
     origin: 'LOCAL',
     accessible: false,
     listed: true,
+    itemCount: 5,
+    spaceCount: 0,
     succession: { addressee: 'SYSTEM_ADMINISTRATION', addresseeLabel: 'die Systemverwaltung' },
   },
 ]
@@ -42,6 +46,8 @@ function readableEntries(): CatalogEntryResponse[] {
     origin: 'LOCAL',
     accessible: true,
     listed: library.listed,
+    itemCount: library.documentCount,
+    spaceCount: 0,
     succession: library.succession ?? null,
   }))
   const prompts: CatalogEntryResponse[] = Object.values(mockPromptLibraries)
@@ -56,6 +62,8 @@ function readableEntries(): CatalogEntryResponse[] {
       origin: 'LOCAL',
       accessible: true,
       listed: library.listed,
+      itemCount: library.promptCount,
+      spaceCount: 1,
       succession: library.succession ?? null,
     }))
   return [...knowledge, ...prompts]
