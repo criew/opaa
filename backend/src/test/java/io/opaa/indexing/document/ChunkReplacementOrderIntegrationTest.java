@@ -3,7 +3,6 @@ package io.opaa.indexing.document;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.SystemRole;
 import io.opaa.library.KnowledgeLibrary;
@@ -79,12 +78,7 @@ class ChunkReplacementOrderIntegrationTest {
     targetLibrary =
         libraryRepository.save(
             KnowledgeLibrary.ownedByUser(
-                Organization.DEFAULT_ID,
-                "Zielbibliothek",
-                null,
-                userId,
-                AssetVisibility.PRIVATE,
-                false));
+                Organization.DEFAULT_ID, "Zielbibliothek", null, userId, false));
   }
 
   @Test

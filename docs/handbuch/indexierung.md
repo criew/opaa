@@ -115,7 +115,7 @@ Die Tabelle hat sechs Spalten:
 | **Name** | Name, darunter Beschreibung und Eigentümer; darunter gegebenenfalls „Nachfolge offen" |
 | **Herkunft** | der Quellentyp |
 | **Dokumente** | die Anzahl als Zahl, ab fünf Stellen gekürzt („120 K", „1,2 Mio.") |
-| **In der Organisation geteilt** | ein Haken, wenn die Verteilungsstufe „organisationsweit" ist; sonst leer |
+| **Reichweite** | wie weit die Bibliothek reicht, abgeleitet aus ihren Berechtigungen: „Alle", „3 Gruppen, 2 Personen" oder „nur Sie" |
 | **Ihre Rolle** | Ihre Rolle an der Bibliothek |
 | **Letzte Aktualisierung** | das Datum des letzten erfolgreichen Laufs. Eine Upload-Bibliothek hat keinen Lauf, ihr Feld bleibt leer |
 

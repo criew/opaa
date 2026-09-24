@@ -1,6 +1,5 @@
 package io.opaa.asset;
 
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.permission.AssetType;
 import java.util.UUID;
 
@@ -9,9 +8,4 @@ import java.util.UUID;
  * needs, read in one query without loading any type table's collections.
  */
 public record AssetHeader(
-    UUID id,
-    AssetType assetType,
-    UUID organizationId,
-    String name,
-    String description,
-    AssetVisibility visibility) {}
+    UUID id, AssetType assetType, UUID organizationId, String name, String description) {}

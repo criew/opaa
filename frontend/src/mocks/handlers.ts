@@ -108,7 +108,6 @@ import type {
   LibraryFolderRequest,
   AssetOwnerType,
   LibraryScheduleRequest,
-  AssetVisibility,
   S3Settings,
   LlmModelRequest,
   LlmModelTestRequest,
@@ -2009,7 +2008,6 @@ export const handlers = [
       description?: string
       ownerType?: AssetOwnerType
       ownerId?: string
-      visibility?: AssetVisibility
       listed?: boolean
       sourceType: DocumentSourceType
       sourcePath?: string | null
@@ -2164,7 +2162,7 @@ export const handlers = [
       name: body.name.trim(),
       description: body.description?.trim() ?? null,
       ownerType,
-      visibility: body.visibility ?? 'PRIVATE',
+      reach: { allAccounts: false, groupCount: 0, userCount: 1 },
       listed: body.listed ?? false,
       myRole: 'OWNER',
       sourceType: body.sourceType,
@@ -2412,7 +2410,6 @@ export const handlers = [
     const body = (await request.json()) as {
       name: string
       description?: string
-      visibility?: AssetVisibility
       listed?: boolean
       schedule?: LibraryScheduleRequest
       sourceUrl?: string | null
@@ -2429,7 +2426,6 @@ export const handlers = [
       if (body.s3Settings) library.s3Settings = body.s3Settings
     }
     library.description = body.description ?? null
-    library.visibility = body.visibility ?? library.visibility
     library.listed = body.listed ?? library.listed
     if (body.schedule) {
       library.schedule = {
@@ -2447,7 +2443,6 @@ export const handlers = [
     }
     listEntry.name = library.name
     listEntry.description = library.description
-    listEntry.visibility = library.visibility
     listEntry.listed = library.listed
     return HttpResponse.json(library)
   }),

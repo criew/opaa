@@ -13,7 +13,7 @@
 | Objekt | Was es ist | Was es an Rechten trägt |
 |---|---|---|
 | **Organisation** | Das Haus. Heute genau eine je Installation | Die Grenze jeder Berechtigung: Gruppen, Konten, Bibliotheken und Räume gehören ihr, und nichts wirkt darüber hinaus |
-| **Wissensbibliothek** | Verwaltungseinheit für Dokumente mit genau einer Quelle | Eigene Rollen, eine Verteilungsstufe, eine Auffindbarkeit, einen Eigentümer |
+| **Wissensbibliothek** | Verwaltungseinheit für Dokumente mit genau einer Quelle | Eigene Rollen, eine Auffindbarkeit, einen Eigentümer |
 | **Raum** (Space) | Arbeitsbereich, in dem Chats liegen und Bibliotheken bereitgestellt werden | Eigene Rollen, eigene Mitgliedschaften, einen Eigentümer |
 | **Gruppe** | Eine benannte Menge von Konten | Kein Recht an sich selbst — sie ist das *Subjekt*, dem Rollen, Anlegerechte und Eigentum erteilt werden |
 
@@ -69,7 +69,7 @@ Dazu zwei Maße, die im Text gebraucht werden und in keiner Oberfläche als Wort
 |---|---|---|---|---|
 | **Person** | ja | ja | Bibliothek und Raum | ja |
 | **Gruppe** | ja | ja | Bibliothek (kein Raum) | nein |
-| **„Alle Konten"** | nein — dafür ist die Verteilungsstufe da | ja | nein | nein |
+| **„Alle Konten"** | ja — als Empfänger wie jeder andere | — (dort heißt dieselbe Art „Alle Konten") | nein | nein |
 
 **Gruppen werden nicht in Personen aufgelöst.** Wer eine Bibliothek an „Referat 50" freigibt, gibt
 sie an die Gruppe frei: Wer dort morgen Mitglied wird, liest sie ab dann, wer heute ausscheidet,
@@ -96,7 +96,7 @@ Auffindbarkeit, „Rechte verwalten", den Räumen, in denen der Bestand bereitst
 |---|---|
 | **Leser** (`VIEWER`) | Die Bibliothek durchsuchen, Treffer und Dokumentenliste sehen |
 | **Bearbeiter** (`EDITOR`) | Zusätzlich Dokumente hochladen und löschen, Ordner anlegen, umbenennen und löschen, einen Indexierungslauf anstoßen, Metadaten pflegen |
-| **Verwalter** (`MANAGER`) | Zusätzlich Rechte vergeben und entziehen, Verteilungsstufe und Auffindbarkeit setzen, die Quellverbindung sehen und ändern, die Bibliothek für [Fremdzugänge](fremdzugaenge.md) freigeben |
+| **Verwalter** (`MANAGER`) | Zusätzlich Rechte vergeben und entziehen — auch an alle Konten —, die Auffindbarkeit im Katalog setzen, die Quellverbindung sehen und ändern, die Bibliothek für [Fremdzugänge](fremdzugaenge.md) freigeben |
 | **Eigentümer** (`OWNER`) | Zusätzlich löschen und das Eigentum übertragen |
 
 Die Rollen sind gestuft: Wer Verwalter ist, darf alles, was ein Bearbeiter darf. Die
@@ -118,62 +118,70 @@ derselben Auswahl wie der Dialog „Rechte" an einer bestehenden Bibliothek — 
 geschützte Gruppen (Abschnitt 8) und derselben Rückfrage vor einer Freigabe an die Gruppe eines
 externen Anbieters.
 
-### Reichweite: Verteilungsstufe und Auffindbarkeit
+### Reichweite: „Alle Konten" und Auffindbarkeit
 
-Neben den einzeln erteilten Rollen trägt jede Bibliothek zwei Felder, die niemanden benennen und
-die ihr Verwalter setzt:
+**Es gibt keine getrennte Verteilungsstufe mehr.** Wie weit eine Bibliothek reicht, ergibt sich
+allein aus ihrer Rechteliste. Wer sie dem ganzen Haus öffnen will, erteilt ein Recht an den
+Empfänger **„Alle Konten"** — im selben Dialog, mit derselben Rollenauswahl und demselben
+Ablaufdatum wie bei einer Person oder einer Gruppe. Vor dem Erteilen fragt die Anwendung eigens
+zurück und spricht die Reichweite aus; zurücknehmen lässt sich die Freigabe wie jede andere.
+
+In den Übersichten steht die Reichweite als **abgeleitete Kennzeichnung**: „Alle", „3 Gruppen, 2
+Personen" oder „nur Sie". Sie ist keine Einstellung, sondern die Zusammenfassung dessen, was in der
+Rechteliste steht.
+
+Daneben trägt jede Bibliothek genau ein Feld, das niemanden benennt und das ihr Verwalter setzt:
 
 | Feld | Werte | Wirkung |
 |---|---|---|
-| **Verteilungsstufe** | persönlich / geteilt / organisationsweit | Wie weit die Bibliothek **ohne** einzelne Rollen reicht. „Organisationsweit" heißt: jedes Konto des Hauses darf lesen |
-| **Auffindbarkeit** | im Katalog auffindbar, ja/nein | Ob die Bibliothek in der Übersicht erscheint — unabhängig davon, ob jemand sie lesen darf. Vorgabe: nein |
+| **Auffindbarkeit** | im Katalog auffindbar, auch ohne Berechtigung, ja/nein | Ob der **Eintrag** der Bibliothek — Name, Beschreibung, zuständige Stelle — im Katalog erscheint. Der **Inhalt** bleibt den Berechtigten vorbehalten. Vorgabe: nein |
 
 Beides wird **historisiert** wie eine erteilte Rolle: Zu jedem Stichtag innerhalb der
-Aufbewahrungsfrist ist belegbar, wie weit eine Bibliothek gereicht hat (Abschnitt 12). Die
-Freigabe für [Fremdzugänge](fremdzugaenge.md) ist ein drittes Reichweitenfeld derselben Art.
+Aufbewahrungsfrist ist belegbar, wie weit eine Bibliothek gereicht hat (Abschnitt 12) — die
+Freigabe an alle Konten in der Rechtehistorie, die Auffindbarkeit in ihrer eigenen. Die
+Freigabe für [Fremdzugänge](fremdzugaenge.md) ist ein weiteres Reichweitenfeld derselben Art.
 
 ### Freigabe-Obergrenze für Konnektorbibliotheken
 
-Wer eine Konnektorbibliothek anlegen darf, wählt auch ihre Verteilungsstufe und ihre
-Katalog-Auffindbarkeit frei — bis zu einer **Obergrenze**, die ausschließlich die Systemverwaltung
-setzt. Ohne sie könnte, wer eine Bibliothek aus einem Dateiverzeichnis, einem Webverzeichnis, einem
-Feed, Confluence oder einem Objektspeicher anlegt, den eingespeisten Bestand im nächsten Schritt
-organisationsweit sichtbar machen — die Obergrenze ist die technische Sicherung gegen genau diesen
-einen Schritt. Bibliotheken für Uploads tragen keine Obergrenze: Dort kuratiert dieselbe Person
-ohnehin jedes Dokument einzeln.
+Wer eine Konnektorbibliothek anlegen darf, entscheidet auch über ihre Reichweite — bis zu einer
+**Obergrenze**, die ausschließlich die Systemverwaltung setzt. Ohne sie könnte, wer eine Bibliothek
+aus einem Dateiverzeichnis, einem Webverzeichnis, einem Feed, Confluence oder einem Objektspeicher
+anlegt, den eingespeisten Bestand im nächsten Schritt dem ganzen Haus öffnen — die Obergrenze ist
+die technische Sicherung gegen genau diesen einen Schritt. Bibliotheken für Uploads tragen keine
+Obergrenze: Dort kuratiert dieselbe Person ohnehin jedes Dokument einzeln.
 
 **Die Obergrenze gilt je Bibliothek und wird nicht automatisch gesetzt.** Neu angelegt ist jede
-Konnektorbibliothek zunächst **ungedeckelt**: Die Obergrenze steht auf der weitesten Stufe
-(organisationsweit, auffindbar), und die Systemverwaltung muss sie eigens senken, damit sie wirkt.
-Die Bibliothek selbst startet damit nicht weit offen — sie trägt die Reichweite, die der Anlegende
-wählt, und deren Vorgabe ist die engste (persönlich, nicht auffindbar). Wer die Obergrenze nicht
-senkt, lässt dem Anlegenden also die Wahl bis zur organisationsweiten Stufe. Ein Betrieb, der das
-systematisch verhindern will, prüft die Obergrenze deshalb **nach jeder Neuanlage** einer
-Konnektorbibliothek,
-oder schränkt das Anlegerecht „Konnektorbibliotheken anlegen" auf eine benannte Gruppe ein
-(Abschnitt 9) — dann entscheidet diese Gruppe, wer überhaupt anlegen darf, bevor die Obergrenze
-greifen müsste.
+Konnektorbibliothek zunächst **ungedeckelt**: Beide Erlaubnisse stehen offen, und die
+Systemverwaltung muss sie eigens entziehen, damit die Obergrenze wirkt. Die Bibliothek selbst
+startet trotzdem eng — sie trägt nur die Rechte, die der Anlegende erteilt, und ist nicht
+auffindbar. Wer die Obergrenze nicht senkt, lässt dem Anlegenden also die Wahl bis hin zur Freigabe
+an alle Konten. Ein Betrieb, der das systematisch verhindern will, prüft die Obergrenze
+deshalb **nach jeder Neuanlage** einer Konnektorbibliothek, oder schränkt das Anlegerecht
+„Konnektorbibliotheken anlegen" auf eine benannte Gruppe ein (Abschnitt 9) — dann entscheidet diese
+Gruppe, wer überhaupt anlegen darf, bevor die Obergrenze greifen müsste.
 
 Zu finden ist die Obergrenze auf der Detailseite der jeweiligen Bibliothek, Reiter „Verwaltung" —
-sichtbar und änderbar nur für die Systemverwaltung. Zwei Werte: die höchste zulässige
-Verteilungsstufe und ob die Bibliothek überhaupt im Katalog auffindbar sein darf.
+sichtbar und änderbar nur für die Systemverwaltung. Zwei Erlaubnisse:
 
-**Wird die Obergrenze gesenkt, wirkt das sofort — aber ausschließlich für Verteilungsstufe und
-Katalog-Auffindbarkeit.** Eine bereits weitergehende Verteilungsstufe oder Auffindbarkeit wird nicht
-nur für künftige Änderungen gesperrt, sondern **im selben Augenblick auf die neue Obergrenze
-zurückgenommen** — keine Übergangszeit, kein Zustand „noch zu weit, aber geduldet". **Unberührt
-bleiben dabei erteilte Rechte an einzelnen Personen und Gruppen sowie eine bestehende
-Fremdzugangsfreigabe** (Abschnitt „Die Freigabe einer Wissensbibliothek" im Kapitel
-[Fremdzugänge](fremdzugaenge.md)) — beide müssen gesondert geprüft und, falls gewünscht, gesondert
-zurückgenommen werden. Beide Vorgänge stehen im Nachweisprotokoll: das Setzen der Obergrenze selbst
-und, falls ausgelöst, die dadurch bewirkte Rücknahme von Verteilungsstufe oder Auffindbarkeit.
+| Erlaubnis | Wirkung, wenn entzogen |
+|---|---|
+| **Freigabe an alle Konten erlaubt** | Ein Recht an „Alle Konten" kann nicht mehr erteilt werden; ein bestehendes wird beim Entziehen sofort zurückgenommen |
+| **Auffindbarkeit im Katalog erlaubt** | Die Bibliothek kann nicht mehr im Katalog gelistet werden; eine bestehende Listung wird sofort gelöscht |
 
-Versucht die Eigentümerin oder ein Verwalter der Bibliothek anschließend, die Verteilungsstufe über
-die Obergrenze hinaus anzuheben oder die Bibliothek trotz gesperrter Auffindbarkeit zu listen, weist
-die Anwendung das mit einer Meldung ab, die die geltende Obergrenze beim Namen nennt und auf die
-Systemverwaltung verweist — kein technischer Fehler, sondern eine erklärte Grenze. Im Formular selbst
-sind Stufen oberhalb der Obergrenze bereits gesperrt, mit demselben Hinweis, sodass die Grenze schon
-vor dem Speichern sichtbar ist.
+**Wird eine Erlaubnis entzogen, wirkt das sofort — aber ausschließlich für diese beiden Dinge.**
+Es gibt keine Übergangszeit und keinen Zustand „noch zu weit, aber geduldet". **Unberührt bleiben
+erteilte Rechte an einzelnen Personen und Gruppen sowie eine bestehende Fremdzugangsfreigabe**
+(Abschnitt „Die Freigabe einer Wissensbibliothek" im Kapitel [Fremdzugänge](fremdzugaenge.md)) —
+beide müssen gesondert geprüft und, falls gewünscht, gesondert zurückgenommen werden. Jeder Vorgang
+steht im Nachweisprotokoll: das Setzen der Obergrenze selbst und, falls ausgelöst, die dadurch
+bewirkte Rücknahme der Freigabe oder der Auffindbarkeit.
+
+Versucht die Eigentümerin oder ein Verwalter der Bibliothek anschließend, an alle Konten
+freizugeben oder die Bibliothek trotz gesperrter Auffindbarkeit zu listen, weist die Anwendung das
+mit einer Meldung ab, die die geltende Obergrenze beim Namen nennt und auf die Systemverwaltung
+verweist — kein technischer Fehler, sondern eine erklärte Grenze. Der Schalter für die
+Auffindbarkeit ist im Formular bereits gesperrt, mit demselben Hinweis, sodass die Grenze schon vor
+dem Speichern sichtbar ist.
 
 ### Ordner, Speicherkontingent, Löschen
 
@@ -569,7 +577,7 @@ Gruppe offenzulegen**. Die Herleitung steht auf der Detailseite der Bibliothek u
 |---|---|
 | Freigabe an Sie | die Rolle |
 | Freigabe an eine Gruppe | die Rolle, den Gruppennamen, Herkunft und **Mechanismus** („gepflegt über Token" / „über Verzeichnisabgleich") und den Zeitpunkt |
-| Organisationsweite Freigabe | die Verteilungsstufe als Grund |
+| Freigabe an alle Konten | die Rolle, ohne jemanden zu benennen |
 | Eigene Mitgliedschaft / Mitgliedschaft über eine Gruppe | die Raumrolle, bei einer Gruppe mit Name, Herkunft und Mechanismus |
 | Eigentum | dass das Objekt Ihnen gehört |
 | Systemverwaltung | dass der Zugang allein aus der Systemrolle folgt — **ohne** Rolle, weil es keine Mitgliedschaftsrolle ist |

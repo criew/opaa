@@ -6,7 +6,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import io.opaa.api.types.AssetRole;
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.LibraryMetadataFieldType;
 import io.opaa.api.types.LibraryMetadataSchemaChangeKind;
@@ -565,7 +564,6 @@ class LibraryMetadataSchemaChangeIntegrationTest {
             "Schemaänderung",
             null,
             owner.id(),
-            AssetVisibility.PRIVATE,
             false,
             DocumentSourceType.FILESYSTEM,
             classTempDir.toString(),

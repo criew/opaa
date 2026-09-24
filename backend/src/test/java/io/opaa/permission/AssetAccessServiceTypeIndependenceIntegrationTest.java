@@ -58,28 +58,29 @@ class AssetAccessServiceTypeIndependenceIntegrationTest {
   @Test
   void aGrantOnASecondAssetTypeIsResolvedByTheSameFormula() {
     UUID userId = createUser();
-    UUID agentId = createAgent(userId, "PRIVATE");
+    UUID agentId = createAgent(userId);
     saveGrant(AGENT, agentId, userId, AssetRole.EDITOR);
 
-    assertThat(accessService.effectiveRole(AGENT, agentId, userId, false))
-        .isEqualTo(AssetRole.EDITOR);
+    assertThat(accessService.effectiveRole(AGENT, agentId, userId)).isEqualTo(AssetRole.EDITOR);
     assertThat(accessService.readableAssetIds(AGENT, userId, Organization.DEFAULT_ID))
         .containsExactly(agentId);
-    assertThat(accessService.effectiveRoles(AGENT, Set.of(agentId), userId, Set.of()))
+    assertThat(accessService.effectiveRoles(AGENT, Set.of(agentId), userId))
         .containsEntry(agentId, AssetRole.EDITOR);
   }
 
-  /** The organization-wide release of the second type reaches everybody, without any grant. */
+  /** A grant to "Alle Konten" on the second type reaches everybody (#1931). */
   @Test
-  void anOrganizationWideAssetOfASecondTypeIsReadableWithoutAGrant() {
+  void anAssetOfASecondTypeGrantedToAllAccountsIsReadableWithoutAnOwnGrant() {
     UUID owner = createUser();
     UUID reader = createUser();
-    UUID agentId = createAgent(owner, "ORGANIZATION");
+    UUID agentId = createAgent(owner);
+    grantRepository.save(
+        AssetGrant.forAllAccounts(
+            AGENT, agentId, Organization.DEFAULT_ID, AssetRole.VIEWER, null, owner));
 
     assertThat(accessService.readableAssetIds(AGENT, reader, Organization.DEFAULT_ID))
         .contains(agentId);
-    assertThat(accessService.effectiveRole(AGENT, agentId, reader, true))
-        .isEqualTo(AssetRole.VIEWER);
+    assertThat(accessService.effectiveRole(AGENT, agentId, reader)).isEqualTo(AssetRole.VIEWER);
     assertThat(
             accessService.readableAssetIds(
                 KnowledgeLibrary.ASSET_TYPE, reader, Organization.DEFAULT_ID))
@@ -93,13 +94,11 @@ class AssetAccessServiceTypeIndependenceIntegrationTest {
   @Test
   void aGrantOnOneAssetTypeDoesNotReachAnotherType() {
     UUID userId = createUser();
-    UUID agentId = createAgent(userId, "PRIVATE");
+    UUID agentId = createAgent(userId);
     saveGrant(AGENT, agentId, userId, AssetRole.OWNER);
 
-    assertThat(accessService.effectiveRole(AGENT, agentId, userId, false))
-        .isEqualTo(AssetRole.OWNER);
-    assertThat(accessService.effectiveRole(KnowledgeLibrary.ASSET_TYPE, agentId, userId, false))
-        .isNull();
+    assertThat(accessService.effectiveRole(AGENT, agentId, userId)).isEqualTo(AssetRole.OWNER);
+    assertThat(accessService.effectiveRole(KnowledgeLibrary.ASSET_TYPE, agentId, userId)).isNull();
     assertThat(
             accessService.readableAssetIds(
                 KnowledgeLibrary.ASSET_TYPE, userId, Organization.DEFAULT_ID))
@@ -110,7 +109,7 @@ class AssetAccessServiceTypeIndependenceIntegrationTest {
   @Test
   void theRightsHistoryOfASecondAssetTypeIsReconstructable() {
     UUID userId = createUser();
-    UUID agentId = createAgent(userId, "PRIVATE");
+    UUID agentId = createAgent(userId);
     AssetGrant grant = saveGrant(AGENT, agentId, userId, AssetRole.VIEWER);
     permissionHistoryService.recordGrantCreated(grant, userId);
 
@@ -128,16 +127,15 @@ class AssetAccessServiceTypeIndependenceIntegrationTest {
   }
 
   /** The one row an asset of any type owes: the shell, written here by plain SQL. */
-  private UUID createAgent(UUID owner, String visibility) {
+  private UUID createAgent(UUID owner) {
     UUID id = UUID.randomUUID();
     jdbcTemplate.update(
-        "INSERT INTO assets (id, asset_type, organization_id, name, owner_type, owner_user_id,"
-            + " visibility) VALUES (?, ?, ?, 'Agent', 'USER', ?, ?)",
+        "INSERT INTO assets (id, asset_type, organization_id, name, owner_type, owner_user_id)"
+            + " VALUES (?, ?, ?, 'Agent', 'USER', ?)",
         id,
         AGENT.value(),
         Organization.DEFAULT_ID,
-        owner,
-        visibility);
+        owner);
     createdAssetIds.add(id);
     return id;
   }

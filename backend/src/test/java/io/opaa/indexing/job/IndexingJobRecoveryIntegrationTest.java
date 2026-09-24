@@ -7,7 +7,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import io.opaa.api.types.AssetRole;
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.User;
@@ -93,7 +92,6 @@ class IndexingJobRecoveryIntegrationTest {
                 "Test-Bibliothek Recovery " + UUID.randomUUID(),
                 null,
                 devAdmin.getId(),
-                AssetVisibility.PRIVATE,
                 false,
                 DocumentSourceType.FILESYSTEM,
                 documentDir.toAbsolutePath().toString(),

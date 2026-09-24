@@ -2,7 +2,7 @@ package io.opaa.api;
 
 import io.opaa.api.dto.AssetGrantRequest;
 import io.opaa.api.dto.AssetGrantResponse;
-import io.opaa.api.types.PermissionSubjectType;
+import io.opaa.api.types.AssetGrantSubjectType;
 import io.opaa.asset.AssetGrantUpsert;
 import io.opaa.asset.AssetGrantView;
 import io.opaa.permission.AssetGrant;
@@ -32,20 +32,20 @@ final class AssetGrantResponseMapper {
     // A protected group carries no signal at all, not even "not small, not empty" - every figure
     // about it is withheld (ADR-0036, Entscheidung 9).
     boolean isGroup =
-        grant.getSubjectType() == PermissionSubjectType.GROUP && !view.protectedGroup();
+        grant.getSubjectType() == AssetGrantSubjectType.GROUP && !view.protectedGroup();
     return new AssetGrantResponse(
             grant.getId(),
             grant.getSubjectType(),
-            grant.getSubjectId(),
             grant.getRole(),
             grant.getCreatedAt(),
             grant.getUpdatedAt())
+        .subjectId(grant.getSubjectId())
         .subjectDisplayName(view.subjectDisplayName())
         .expiresAt(grant.getExpiresAt())
         .grantedByUserId(grant.getGrantedByUserId())
         .grantedByDisplayName(view.grantedByDisplayName())
         .protectedGroup(
-            grant.getSubjectType() == PermissionSubjectType.GROUP ? view.protectedGroup() : null)
+            grant.getSubjectType() == AssetGrantSubjectType.GROUP ? view.protectedGroup() : null)
         .memberCountAtGrant(size.memberCountAtGrant())
         .memberCountNow(size.memberCountNow())
         .smallGroup(isGroup ? size.smallGroup() : null)

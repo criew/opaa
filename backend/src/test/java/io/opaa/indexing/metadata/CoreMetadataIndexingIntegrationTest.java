@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DatePrecision;
 import io.opaa.api.types.MetadataOrigin;
 import io.opaa.api.types.SystemRole;
@@ -101,12 +100,7 @@ class CoreMetadataIndexingIntegrationTest {
     targetLibrary =
         libraryRepository.save(
             KnowledgeLibrary.ownedByUser(
-                Organization.DEFAULT_ID,
-                "Kernfelder",
-                null,
-                userId,
-                AssetVisibility.PRIVATE,
-                false));
+                Organization.DEFAULT_ID, "Kernfelder", null, userId, false));
   }
 
   @AfterEach

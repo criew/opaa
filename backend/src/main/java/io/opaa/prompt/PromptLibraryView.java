@@ -1,6 +1,7 @@
 package io.opaa.prompt;
 
 import io.opaa.api.types.AssetRole;
+import io.opaa.permission.AssetReach;
 import io.opaa.permission.SuccessionFinding;
 
 /**
@@ -14,4 +15,5 @@ public record PromptLibraryView(
     AssetRole myRole,
     long promptCount,
     String ownerName,
-    SuccessionFinding succession) {}
+    SuccessionFinding succession,
+    AssetReach reach) {}

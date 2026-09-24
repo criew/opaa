@@ -18,7 +18,6 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.sun.net.httpserver.HttpServer;
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.indexing.document.DocumentIngestResult;
@@ -91,7 +90,6 @@ class UrlIndexingExecutorExecuteTest {
           "Webverzeichnis",
           null,
           UUID.randomUUID(),
-          AssetVisibility.PRIVATE,
           false,
           DocumentSourceType.HTTP_DIRECTORY,
           null,

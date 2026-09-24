@@ -117,7 +117,7 @@ class LibraryFolderServiceIntegrationTest {
 
     var grantRequest =
         new AssetGrantUpsert(
-            io.opaa.api.types.PermissionSubjectType.USER, viewer.getId(), AssetRole.VIEWER);
+            io.opaa.api.types.AssetGrantSubjectType.USER, viewer.getId(), AssetRole.VIEWER);
     grantService.upsertGrant(
         KnowledgeLibrary.ASSET_TYPE, libraryId, grantRequest, currentUserOf(editor, false));
   }

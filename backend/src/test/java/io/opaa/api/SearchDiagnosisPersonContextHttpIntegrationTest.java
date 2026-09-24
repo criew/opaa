@@ -453,7 +453,7 @@ class SearchDiagnosisPersonContextHttpIntegrationTest {
     UUID libraryId = UUID.randomUUID();
     jdbcTemplate.update(
         "WITH shell AS (INSERT INTO assets (id, asset_type, organization_id, name, owner_type,"
-            + " owner_user_id, visibility, listed) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, ?, 'USER', ?, 'PRIVATE', false)"
+            + " owner_user_id, listed) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, ?, 'USER', ?, false)"
             + " RETURNING id, organization_id) INSERT INTO knowledge_libraries (id,"
             + " organization_id, source_type) SELECT id, organization_id, 'UPLOAD' FROM shell",
         libraryId,

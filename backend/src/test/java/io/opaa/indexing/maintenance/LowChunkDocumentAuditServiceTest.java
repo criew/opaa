@@ -6,7 +6,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.indexing.document.Document;
 import io.opaa.indexing.document.DocumentRepository;
@@ -43,8 +42,7 @@ class LowChunkDocumentAuditServiceTest {
   }
 
   private static KnowledgeLibrary library(String name) {
-    return KnowledgeLibrary.ownedByUser(
-        UUID.randomUUID(), name, null, UUID.randomUUID(), AssetVisibility.PRIVATE, false);
+    return KnowledgeLibrary.ownedByUser(UUID.randomUUID(), name, null, UUID.randomUUID(), false);
   }
 
   private static Document indexedDocument(UUID libraryId, String fileName, long size, int chunks) {

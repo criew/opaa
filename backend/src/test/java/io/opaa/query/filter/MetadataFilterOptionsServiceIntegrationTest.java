@@ -3,7 +3,6 @@ package io.opaa.query.filter;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.api.types.AssetRole;
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.GroupKind;
 import io.opaa.api.types.SystemRole;
@@ -297,7 +296,6 @@ class MetadataFilterOptionsServiceIntegrationTest {
             name,
             null,
             admin.id(),
-            AssetVisibility.PRIVATE,
             false,
             DocumentSourceType.FILESYSTEM,
             sourcePath.toString(),

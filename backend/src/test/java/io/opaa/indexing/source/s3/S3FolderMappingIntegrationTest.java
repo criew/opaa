@@ -5,7 +5,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.IndexingRunMode;
@@ -100,7 +99,6 @@ class S3FolderMappingIntegrationTest {
             "Objektspeicher",
             null,
             userId,
-            AssetVisibility.PRIVATE,
             false,
             DocumentSourceType.S3,
             null,

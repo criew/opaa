@@ -25,10 +25,11 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 /**
- * HTTP-layer coverage of {@code PUT /api/v1/libraries/{libraryId}/share-cap} (#797): SYSTEM_ADMIN
- * only, rejected for UPLOAD, and the immediate clamp of a wider visibility/listed once the cap
- * narrows - through the real {@link io.opaa.audit.AuditListener}, unlike the mocked-event-publisher
- * unit coverage in {@code io.opaa.library.KnowledgeLibraryServiceShareCapTest}.
+ * HTTP-layer coverage of {@code PUT /api/v1/libraries/{libraryId}/share-cap} (#797, in the shape
+ * #1931 gave it): SYSTEM_ADMIN only, rejected for UPLOAD, and what withdrawing either permission
+ * takes back at once - the grant to "Alle Konten" and {@code listed}. Runs through the real {@link
+ * io.opaa.audit.AuditListener}, unlike the mocked-event-publisher unit coverage in {@code
+ * io.opaa.library.KnowledgeLibraryServiceShareCapTest}.
  */
 @OpaaIntegrationTest
 class LibraryShareCapControllerIntegrationTest {
@@ -74,7 +75,7 @@ class LibraryShareCapControllerIntegrationTest {
     String body =
         """
         { "name": "Freigabe-Obergrenze Test", "sourceType": "FILESYSTEM",
-          "sourcePath": "/data/dokumente", "visibility": "ORGANIZATION", "listed": true }
+          "sourcePath": "/data/dokumente", "listed": true }
         """;
     String response =
         mockMvc
@@ -86,6 +87,15 @@ class LibraryShareCapControllerIntegrationTest {
     return JsonPath.read(response, "$.id");
   }
 
+  private void grantToAllAccounts(String libraryId, RequestPostProcessor caller) throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/assets/KNOWLEDGE_LIBRARY/" + libraryId + "/grants")
+                .with(caller)
+                .content("{\"subjectType\":\"ALL_ACCOUNTS\",\"role\":\"VIEWER\"}"))
+        .andExpect(status().isOk());
+  }
+
   @Test
   void isRefusedWithoutSystemAdmin() throws Exception {
     String libraryId = createFilesystemLibrary(devAdmin());
@@ -94,48 +104,67 @@ class LibraryShareCapControllerIntegrationTest {
         .perform(
             put("/api/v1/libraries/" + libraryId + "/share-cap")
                 .with(devUser())
-                .content("{\"visibilityCap\":\"PRIVATE\",\"listedCap\":false}"))
+                .content("{\"allAccountsGrantAllowed\":false,\"listedCap\":false}"))
         .andExpect(status().isForbidden());
   }
 
+  /**
+   * #1931: withdrawing the first permission revokes the grant that carried the organization-wide
+   * reach; withdrawing the second clears {@code listed}. Both happen in the same request.
+   */
   @Test
-  void succeedsForSystemAdminAndClampsAWiderVisibilityImmediately() throws Exception {
+  void succeedsForSystemAdminAndTakesTheWiderReachBackImmediately() throws Exception {
     String libraryId = createFilesystemLibrary(devAdmin());
+    grantToAllAccounts(libraryId, devAdmin());
+    assertThat(allAccountsGrantCount(libraryId)).isEqualTo(1);
 
     mockMvc
         .perform(
             put("/api/v1/libraries/" + libraryId + "/share-cap")
                 .with(devAdmin())
-                .content("{\"visibilityCap\":\"PRIVATE\",\"listedCap\":false}"))
+                .content("{\"allAccountsGrantAllowed\":false,\"listedCap\":false}"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.visibilityCap").value("PRIVATE"))
+        .andExpect(jsonPath("$.allAccountsGrantAllowed").value(false))
         .andExpect(jsonPath("$.listedCap").value(false))
-        // the library carried ORGANIZATION/listed=true - the new cap clamps it down at once
-        .andExpect(jsonPath("$.visibility").value("PRIVATE"))
+        // the library was granted to everybody and listed - the new cap takes both back at once
+        .andExpect(jsonPath("$.reach.allAccounts").value(false))
         .andExpect(jsonPath("$.listed").value(false));
 
+    assertThat(allAccountsGrantCount(libraryId))
+        .as("the grant that carried the organization-wide reach is gone")
+        .isZero();
+
     // #1870 review, finding 3: the real AuditListener (no mocked eventPublisher here, unlike the
-    // service-level unit test) must write both entries - the governance act and the clamp it
-    // triggered are two entries, not one, and both carry the acting system administrator.
+    // service-level unit test) must write all three entries - the governance act, the revoked
+    // grant and the cleared findability are separate facts, and all carry the acting system
+    // administrator.
     List<Map<String, Object>> events = auditEventsFor(libraryId);
     assertThat(events)
         .extracting(row -> row.get("event_type"))
         .containsExactlyInAnyOrder(
-            "CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED", "ASSET_VISIBILITY_CHANGED");
+            "CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED",
+            "ASSET_GRANT_REVOKED",
+            "ASSET_VISIBILITY_CHANGED");
     assertThat(events).extracting(row -> row.get("actor_ref")).doesNotContainNull();
     assertThat(events.stream().map(row -> row.get("actor_ref")).distinct().count())
-        .as("both entries carry the same actor")
+        .as("all entries carry the same actor")
         .isEqualTo(1);
   }
 
-  /**
-   * Only the two share-cap events - {@code LIBRARY_CREATED}/{@code ASSET_GRANT_GRANTED} fire too.
-   */
+  /** Only the share-cap events - {@code LIBRARY_CREATED}/{@code ASSET_GRANT_GRANTED} fire too. */
   private List<Map<String, Object>> auditEventsFor(String libraryId) {
     return jdbcTemplate.queryForList(
         "SELECT event_type, actor_ref FROM audit_log WHERE object_type = 'KNOWLEDGE_LIBRARY' AND"
             + " object_id = ? AND event_type IN ('CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED',"
-            + " 'ASSET_VISIBILITY_CHANGED')",
+            + " 'ASSET_GRANT_REVOKED', 'ASSET_VISIBILITY_CHANGED')",
+        libraryId);
+  }
+
+  private long allAccountsGrantCount(String libraryId) {
+    return jdbcTemplate.queryForObject(
+        "SELECT count(*) FROM asset_grants WHERE asset_id = ?::uuid AND subject_type ="
+            + " 'ALL_ACCOUNTS'",
+        Long.class,
         libraryId);
   }
 
@@ -155,30 +184,38 @@ class LibraryShareCapControllerIntegrationTest {
         .perform(
             put("/api/v1/libraries/" + libraryId + "/share-cap")
                 .with(devAdmin())
-                .content("{\"visibilityCap\":\"PRIVATE\",\"listedCap\":false}"))
+                .content("{\"allAccountsGrantAllowed\":false,\"listedCap\":false}"))
         .andExpect(status().isBadRequest());
   }
 
   /**
-   * #1870 review, finding "Testname behauptet mehr als er prüft": creates and updates as the actual
+   * #1870 review, finding "Testname behauptet mehr als er prüft": creates and grants as the actual
    * owner ({@code dev-user}, no system role) rather than {@code devAdmin()} - only the cap itself
-   * is set by the system administration, matching what the name promises.
+   * is set by the system administration, matching what the name promises. #1931 moved the refusal
+   * from the update path to the grant path, which is where the wider reach is now asked for.
    */
   @Test
-  void refusesTheRealOwnerRaisingVisibilityAboveTheNewCapWith409() throws Exception {
+  void refusesTheRealOwnerGrantingToAllAccountsAboveTheNewCapWith409() throws Exception {
     String libraryId = createFilesystemLibrary(devUser());
     mockMvc
         .perform(
             put("/api/v1/libraries/" + libraryId + "/share-cap")
                 .with(devAdmin())
-                .content("{\"visibilityCap\":\"PRIVATE\",\"listedCap\":false}"))
+                .content("{\"allAccountsGrantAllowed\":false,\"listedCap\":false}"))
         .andExpect(status().isOk());
+
+    mockMvc
+        .perform(
+            post("/api/v1/assets/KNOWLEDGE_LIBRARY/" + libraryId + "/grants")
+                .with(devUser())
+                .content("{\"subjectType\":\"ALL_ACCOUNTS\",\"role\":\"VIEWER\"}"))
+        .andExpect(status().isConflict());
 
     mockMvc
         .perform(
             put("/api/v1/libraries/" + libraryId)
                 .with(devUser())
-                .content("{\"name\":\"Freigabe-Obergrenze Test\",\"visibility\":\"ORGANIZATION\"}"))
+                .content("{\"name\":\"Freigabe-Obergrenze Test\",\"listed\":true}"))
         .andExpect(status().isConflict());
   }
 }

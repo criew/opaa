@@ -5,7 +5,6 @@ import static org.awaitility.Awaitility.await;
 
 import com.github.dockerjava.api.model.Bind;
 import com.github.dockerjava.api.model.Volume;
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
@@ -426,7 +425,6 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
                 "Eval-Zielbibliothek",
                 null,
                 evalUserId,
-                AssetVisibility.PRIVATE,
                 false,
                 DocumentSourceType.FILESYSTEM,
                 corpusWorkingDir.toAbsolutePath().toString(),

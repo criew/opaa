@@ -8,7 +8,6 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.ScheduleFrequency;
 import io.opaa.common.ConflictException;
@@ -68,7 +67,6 @@ class LibraryIndexingSchedulerTest {
             "Rechtsquellen",
             null,
             UUID.randomUUID(),
-            AssetVisibility.PRIVATE,
             false,
             DocumentSourceType.HTTP_DIRECTORY,
             null,

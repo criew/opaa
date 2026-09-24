@@ -47,7 +47,6 @@ import type {
   DocumentSourceType,
   GroupListResponse,
   AssetOwnerType,
-  AssetVisibility,
   SourceConnectionTestResponse,
 } from '../types/api'
 
@@ -100,7 +99,6 @@ export default function LibraryCreatePage() {
     ? capabilityMissingMessage(requiredCapability)
     : null
 
-  const [visibility, setVisibility] = useState<AssetVisibility>('PRIVATE')
   const [pendingGrants, setPendingGrants] = useState<PendingGrant[]>([])
 
   const configKind = documentSourceTypeConfigKind[sourceType]
@@ -215,7 +213,6 @@ export default function LibraryCreatePage() {
           confluence,
           s3,
         }),
-        visibility,
       })
       await applyPendingGrantsAfterCreation('KNOWLEDGE_LIBRARY', libraryId, pendingGrants)
       if ((configKind === 'confluence' || configKind === 's3') && startFirstRun) {
@@ -535,8 +532,6 @@ export default function LibraryCreatePage() {
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, maxWidth: 640 }}>
             <AssetRightsFields
               idPrefix="library-create"
-              visibility={visibility}
-              onVisibilityChange={setVisibility}
               pendingGrants={pendingGrants}
               onPendingGrantsChange={setPendingGrants}
             />

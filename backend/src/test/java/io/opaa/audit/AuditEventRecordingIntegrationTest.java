@@ -6,16 +6,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.api.types.ActorKind;
+import io.opaa.api.types.AssetGrantSubjectType;
 import io.opaa.api.types.AssetOwnerType;
 import io.opaa.api.types.AssetRole;
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.api.types.AuditSubjectKind;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.GroupKind;
-import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.api.types.SpaceRole;
 import io.opaa.api.types.SpaceVisibility;
 import io.opaa.api.types.SystemRole;
@@ -283,7 +282,7 @@ class AuditEventRecordingIntegrationTest {
     grantService.upsertGrant(
         KnowledgeLibrary.ASSET_TYPE,
         libraryId,
-        new AssetGrantUpsert(PermissionSubjectType.USER, reader, AssetRole.VIEWER),
+        new AssetGrantUpsert(AssetGrantSubjectType.USER, reader, AssetRole.VIEWER),
         currentUserOf(owner, false));
 
     List<AuditLogEntry> afterGrant =
@@ -310,7 +309,7 @@ class AuditEventRecordingIntegrationTest {
     UUID grantId =
         grantRepository
             .findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectUserId(
-                KnowledgeLibrary.ASSET_TYPE, libraryId, PermissionSubjectType.USER, reader)
+                KnowledgeLibrary.ASSET_TYPE, libraryId, AssetGrantSubjectType.USER, reader)
             .orElseThrow()
             .getId();
     grantService.revokeGrant(
@@ -334,7 +333,7 @@ class AuditEventRecordingIntegrationTest {
     grantService.upsertGrant(
         KnowledgeLibrary.ASSET_TYPE,
         libraryId,
-        new AssetGrantUpsert(PermissionSubjectType.USER, manager, AssetRole.MANAGER),
+        new AssetGrantUpsert(AssetGrantSubjectType.USER, manager, AssetRole.MANAGER),
         currentUserOf(owner, false));
     UUID targetUser = createUser();
 
@@ -344,7 +343,7 @@ class AuditEventRecordingIntegrationTest {
                 grantService.upsertGrant(
                     KnowledgeLibrary.ASSET_TYPE,
                     libraryId,
-                    new AssetGrantUpsert(PermissionSubjectType.USER, targetUser, AssetRole.OWNER),
+                    new AssetGrantUpsert(AssetGrantSubjectType.USER, targetUser, AssetRole.OWNER),
                     currentUserOf(manager, false)))
         .isInstanceOf(AccessDeniedException.class);
 
@@ -359,7 +358,7 @@ class AuditEventRecordingIntegrationTest {
     // The rejected grant itself must never have been written.
     assertThat(
             grantRepository.findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectUserId(
-                KnowledgeLibrary.ASSET_TYPE, libraryId, PermissionSubjectType.USER, targetUser))
+                KnowledgeLibrary.ASSET_TYPE, libraryId, AssetGrantSubjectType.USER, targetUser))
         .isEmpty();
   }
 
@@ -381,7 +380,7 @@ class AuditEventRecordingIntegrationTest {
                     KnowledgeLibrary.ASSET_TYPE,
                     libraryId,
                     new AssetGrantUpsert(
-                        PermissionSubjectType.USER, unknownSubject, AssetRole.VIEWER),
+                        AssetGrantSubjectType.USER, unknownSubject, AssetRole.VIEWER),
                     currentUserOf(owner, false)))
         .isInstanceOf(NotFoundException.class);
 
@@ -411,7 +410,7 @@ class AuditEventRecordingIntegrationTest {
                       KnowledgeLibrary.ASSET_TYPE,
                       libraryId,
                       new AssetGrantUpsert(
-                          PermissionSubjectType.USER, foreignUserId, AssetRole.VIEWER),
+                          AssetGrantSubjectType.USER, foreignUserId, AssetRole.VIEWER),
                       currentUserOf(owner, false)))
           .isInstanceOf(NotFoundException.class);
 
@@ -443,15 +442,15 @@ class AuditEventRecordingIntegrationTest {
     assertThat(created.get(0).getSubjectKind()).isNull();
 
     libraryService.updateLibrary(
-        libraryId,
-        libraryUpdate("Bibliothek").visibility(AssetVisibility.ORGANIZATION).build(),
-        currentUserOf(owner, false));
+        libraryId, libraryUpdate("Bibliothek").listed(true).build(), currentUserOf(owner, false));
     List<AuditLogEntry> visibilityChanged =
         entriesFor(AuditObjectType.KNOWLEDGE_LIBRARY, libraryId).stream()
             .filter(e -> e.getEventType() == AuditEventType.ASSET_VISIBILITY_CHANGED)
             .toList();
     assertThat(visibilityChanged).hasSize(1);
-    assertThat(visibilityChanged.get(0).getAfter()).contains("ORGANIZATION");
+    // #1931: Das Ereignis traegt nur noch die Auffindbarkeit - die Reichweite ist eine Freigabe
+    // und wird als ASSET_GRANT_GRANTED protokolliert.
+    assertThat(visibilityChanged.get(0).getAfter()).contains("listed");
 
     libraryService.deleteLibrary(libraryId, currentUserOf(owner, false));
     List<AuditLogEntry> deleted =
@@ -875,7 +874,7 @@ class AuditEventRecordingIntegrationTest {
                             KnowledgeLibrary.ASSET_TYPE,
                             libraryId,
                             new AssetGrantUpsert(
-                                PermissionSubjectType.USER, reader, AssetRole.VIEWER),
+                                AssetGrantSubjectType.USER, reader, AssetRole.VIEWER),
                             currentUserOf(owner, false));
                         throw new RuntimeException("simulated failure after the grant call");
                       }
@@ -894,7 +893,7 @@ class AuditEventRecordingIntegrationTest {
     assertThat(readerGrantEntries).isEmpty();
     assertThat(
             grantRepository.findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectUserId(
-                KnowledgeLibrary.ASSET_TYPE, libraryId, PermissionSubjectType.USER, reader))
+                KnowledgeLibrary.ASSET_TYPE, libraryId, AssetGrantSubjectType.USER, reader))
         .isEmpty();
   }
 }

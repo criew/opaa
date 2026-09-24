@@ -215,3 +215,8 @@ databaseChangeLog:
   # wie das Logo der Anwendung (#1910).
   - include:
       file: db/changelog/changes/089-branding-login-images.yaml
+  # Die Verteilungsstufe assets.visibility entfaellt; organisationsweite Reichweite wird eine
+  # Freigabe an "Alle Konten" (#1931, ADR-0037). Fuehrt die Bestaende samt ihrer
+  # Sichtbarkeitsintervalle in Freigaben und Freigabe-Intervalle ueber.
+  - include:
+      file: db/changelog/changes/090-asset-reach-as-all-accounts-grant.yaml

@@ -5,7 +5,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.SystemRole;
 import io.opaa.asset.AssetAuthorization;
 import io.opaa.audit.AuditEventRecorder;
@@ -41,9 +40,7 @@ class PromptServiceSaveTest {
 
   @BeforeEach
   void setUp() {
-    library =
-        PromptLibrary.ownedByUser(
-            organization, "Vorlagen", null, caller.id(), AssetVisibility.PRIVATE, false);
+    library = PromptLibrary.ownedByUser(organization, "Vorlagen", null, caller.id(), false);
     when(libraryService.load(library.getId(), caller)).thenReturn(library);
   }
 

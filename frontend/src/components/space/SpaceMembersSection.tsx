@@ -312,7 +312,9 @@ export default function SpaceMembersSection({
                   disabled={!selectedSubjectId(subject)}
                   onClick={async () => {
                     const subjectId = selectedSubjectId(subject)
-                    if (!subjectId) return
+                    // Eine Space-Mitgliedschaft kennt kein Subjekt „Alle“ (ADR-0037,
+                    // Entscheidung 3); die Auswahl bietet es hier nicht an.
+                    if (!subjectId || subject.type === 'ALL_ACCOUNTS') return
                     if (!(await confirmExternalSubject(subject))) return
                     setLocalError(null)
                     try {

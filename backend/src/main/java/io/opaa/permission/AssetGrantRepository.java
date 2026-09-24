@@ -1,6 +1,6 @@
 package io.opaa.permission;
 
-import io.opaa.api.types.PermissionSubjectType;
+import io.opaa.api.types.AssetGrantSubjectType;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
@@ -70,6 +70,11 @@ public interface AssetGrantRepository extends JpaRepository<AssetGrant, UUID> {
    * that method's Javadoc for why a plain scalar read is safe to rely on once the advisory lock is
    * held.
    *
+   * <p><b>A grant to all accounts never counts (#1931):</b> it cannot hold {@code OWNER} in the
+   * first place - {@code AssetGrantService} refuses roles above {@code EDITOR} for that recipient -
+   * and the guard exists to keep a <em>named</em> owner on every asset. The condition is repeated
+   * here so the invariant holds at the query, not only at the service that writes.
+   *
    * <p><b>Scalar aggregate, not an entity list:</b> {@code AssetGrantService}'s caller resolves the
    * effective role first, which populates {@link AssetAccessService}'s cache via {@link
    * #findByAssetTypeAndAssetId} inside the same transaction - an entity-list read here would hit
@@ -84,6 +89,7 @@ public interface AssetGrantRepository extends JpaRepository<AssetGrant, UUID> {
               + " WHERE asset_type = :assetType"
               + "   AND asset_id = :assetId"
               + "   AND role = 'OWNER'"
+              + "   AND subject_type <> 'ALL_ACCOUNTS'"
               + "   AND (expires_at IS NULL OR expires_at > :now)"
               + "   AND id <> :excludingGrantId",
       nativeQuery = true)
@@ -94,10 +100,10 @@ public interface AssetGrantRepository extends JpaRepository<AssetGrant, UUID> {
       @Param("now") Instant now);
 
   Optional<AssetGrant> findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectUserId(
-      AssetType assetType, UUID assetId, PermissionSubjectType subjectType, UUID subjectUserId);
+      AssetType assetType, UUID assetId, AssetGrantSubjectType subjectType, UUID subjectUserId);
 
   Optional<AssetGrant> findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectGroupId(
-      AssetType assetType, UUID assetId, PermissionSubjectType subjectType, UUID subjectGroupId);
+      AssetType assetType, UUID assetId, AssetGrantSubjectType subjectType, UUID subjectGroupId);
 
   /**
    * Every asset id of {@code assetType} the given user can reach via a direct grant, not expired as
@@ -109,7 +115,7 @@ public interface AssetGrantRepository extends JpaRepository<AssetGrant, UUID> {
   @Query(
       "select g.assetId from AssetGrant g "
           + "where g.assetType = :assetType "
-          + "and g.subjectType = io.opaa.api.types.PermissionSubjectType.USER "
+          + "and g.subjectType = io.opaa.api.types.AssetGrantSubjectType.USER "
           + "and g.subjectUserId = :userId and g.organizationId = :organizationId "
           + "and (g.expiresAt is null or g.expiresAt > :now)")
   Set<UUID> findReadableAssetIdsByDirectGrant(
@@ -122,7 +128,7 @@ public interface AssetGrantRepository extends JpaRepository<AssetGrant, UUID> {
   @Query(
       "select g.assetId from AssetGrant g "
           + "where g.assetType = :assetType "
-          + "and g.subjectType = io.opaa.api.types.PermissionSubjectType.GROUP "
+          + "and g.subjectType = io.opaa.api.types.AssetGrantSubjectType.GROUP "
           + "and g.subjectGroupId in :groupIds and g.organizationId = :organizationId "
           + "and (g.expiresAt is null or g.expiresAt > :now)")
   Set<UUID> findReadableAssetIdsByGroupGrant(
@@ -132,19 +138,44 @@ public interface AssetGrantRepository extends JpaRepository<AssetGrant, UUID> {
       @Param("now") Instant now);
 
   /**
-   * Every asset of {@code assetType} in one organization released organization-wide - the third way
-   * of {@link AssetAccessService#readableAssetIds}, read off the asset shell ({@code assets})
-   * rather than off a grant. Native, so this package names the shell's column without depending on
-   * the package that maps it; a native query still flushes pending changes first, so a release
-   * changed earlier in the same transaction is seen.
+   * Every asset of {@code assetType} in one organization granted to "Alle Konten" - the third way
+   * of {@link AssetAccessService#readableAssetIds} (#1931, ADR-0037). Bedient vom Teilindex {@code
+   * idx_asset_grants_all_accounts}, der den abgelösten {@code idx_assets_organization_wide}
+   * ersetzt.
    */
   @Query(
-      value =
-          "SELECT a.id FROM assets a WHERE a.asset_type = :assetType"
-              + " AND a.organization_id = :organizationId AND a.visibility = 'ORGANIZATION'",
-      nativeQuery = true)
-  List<UUID> findOrganizationWideAssetIds(
-      @Param("assetType") String assetType, @Param("organizationId") UUID organizationId);
+      "select g.assetId from AssetGrant g "
+          + "where g.assetType = :assetType "
+          + "and g.subjectType = io.opaa.api.types.AssetGrantSubjectType.ALL_ACCOUNTS "
+          + "and g.organizationId = :organizationId "
+          + "and (g.expiresAt is null or g.expiresAt > :now)")
+  Set<UUID> findAssetIdsGrantedToAllAccounts(
+      @Param("assetType") AssetType assetType,
+      @Param("organizationId") UUID organizationId,
+      @Param("now") Instant now);
+
+  /**
+   * The one grant to "Alle Konten" on an asset, if there is one - {@code
+   * uk_asset_grants_all_accounts} keeps it unique. Named without a subject, unlike its two
+   * siblings: this subject names no row.
+   */
+  Optional<AssetGrant> findByAssetTypeAndAssetIdAndSubjectType(
+      AssetType assetType, UUID assetId, AssetGrantSubjectType subjectType);
+
+  /**
+   * How many unexpired grants of each subject kind an asset carries - the figures {@code
+   * AssetReach} turns into the reach badge of an overview (#1931). One grouped read for a whole
+   * page instead of one per row.
+   */
+  @Query(
+      "select g.assetId, g.subjectType, count(g) from AssetGrant g "
+          + "where g.assetType = :assetType and g.assetId in :assetIds "
+          + "and (g.expiresAt is null or g.expiresAt > :now) "
+          + "group by g.assetId, g.subjectType")
+  List<Object[]> countActiveGrantsBySubjectType(
+      @Param("assetType") AssetType assetType,
+      @Param("assetIds") Set<UUID> assetIds,
+      @Param("now") Instant now);
 
   /**
    * Every non-expired group grant of one organization on {@code assetType}, for {@link
@@ -155,7 +186,7 @@ public interface AssetGrantRepository extends JpaRepository<AssetGrant, UUID> {
   @Query(
       "select g from AssetGrant g "
           + "where g.assetType = :assetType "
-          + "and g.subjectType = io.opaa.api.types.PermissionSubjectType.GROUP "
+          + "and g.subjectType = io.opaa.api.types.AssetGrantSubjectType.GROUP "
           + "and g.organizationId = :organizationId "
           + "and (g.expiresAt is null or g.expiresAt > :now)")
   List<AssetGrant> findActiveGroupGrants(

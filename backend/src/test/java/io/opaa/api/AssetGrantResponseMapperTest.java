@@ -4,8 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.api.dto.AssetGrantRequest;
 import io.opaa.api.dto.AssetGrantResponse;
+import io.opaa.api.types.AssetGrantSubjectType;
 import io.opaa.api.types.AssetRole;
-import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.asset.AssetGrantUpsert;
 import io.opaa.asset.AssetGrantView;
 import io.opaa.library.KnowledgeLibrary;
@@ -44,7 +44,7 @@ class AssetGrantResponseMapperTest {
     AssetGrantResponse response = AssetGrantResponseMapper.toResponse(view);
 
     assertThat(response.getId()).isEqualTo(grant.getId());
-    assertThat(response.getSubjectType()).isEqualTo(PermissionSubjectType.USER);
+    assertThat(response.getSubjectType()).isEqualTo(AssetGrantSubjectType.USER);
     assertThat(response.getSubjectId()).isEqualTo(subjectId);
     assertThat(response.getRole()).isEqualTo(AssetRole.MANAGER);
     assertThat(response.getCreatedAt()).isEqualTo(grant.getCreatedAt());
@@ -190,12 +190,13 @@ class AssetGrantResponseMapperTest {
     UUID subjectId = UUID.randomUUID();
     Instant expiresAt = Instant.now().plusSeconds(60);
     AssetGrantRequest request =
-        new AssetGrantRequest(PermissionSubjectType.GROUP, subjectId, AssetRole.EDITOR)
+        new AssetGrantRequest(AssetGrantSubjectType.GROUP, AssetRole.EDITOR)
+            .subjectId(subjectId)
             .expiresAt(expiresAt);
 
     AssetGrantUpsert upsert = AssetGrantResponseMapper.toUpsert(request);
 
-    assertThat(upsert.subjectType()).isEqualTo(PermissionSubjectType.GROUP);
+    assertThat(upsert.subjectType()).isEqualTo(AssetGrantSubjectType.GROUP);
     assertThat(upsert.subjectId()).isEqualTo(subjectId);
     assertThat(upsert.role()).isEqualTo(AssetRole.EDITOR);
     assertThat(upsert.expiresAt()).isEqualTo(expiresAt);
