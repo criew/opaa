@@ -156,7 +156,6 @@ test.describe.serial('Wissensbibliotheken: Upload, Freigabe, rechtebewusste Such
     await gotoLibraries(adminPage)
     await gotoLibraryDetail(adminPage, LIBRARY_NAME)
     await adminPage.getByRole('tab', { name: 'Freigaben' }).click()
-    await adminPage.getByRole('button', { name: 'Rechte verwalten' }).click()
     await adminPage.getByRole('button', { name: 'Freigabe für Dev User entziehen' }).click()
     // The confirmation is the app's own overlay (#1610) and opens on top of the still-open "Rechte
     // verwalten" dialog, so two elements carry role="dialog" while it stands. Hence the id the
@@ -194,7 +193,6 @@ test.describe.serial('Wissensbibliotheken: Upload, Freigabe, rechtebewusste Such
     await gotoLibraries(adminPage)
     await gotoLibraryDetail(adminPage, LIBRARY_NAME)
     await adminPage.getByRole('tab', { name: 'Freigaben' }).click()
-    await adminPage.getByRole('button', { name: 'Rechte verwalten' }).click()
     await adminPage.getByRole('button', { name: 'Freigeben' }).click()
     await adminPage.getByRole('radio', { name: 'Gruppe' }).click()
     // #1820: Die Subjekt-Auswahl sucht serverseitig; die Zeile traegt Name und Herkunft, weshalb

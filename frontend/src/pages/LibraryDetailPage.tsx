@@ -17,21 +17,15 @@ import Tab from '@mui/material/Tab'
 import Tabs from '@mui/material/Tabs'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
-import AccountTreeIcon from '@mui/icons-material/AccountTree'
-import FolderIcon from '@mui/icons-material/Folder'
-import LanguageIcon from '@mui/icons-material/Language'
 import MoreVertIcon from '@mui/icons-material/MoreVert'
-import RssFeedIcon from '@mui/icons-material/RssFeed'
-import StorageIcon from '@mui/icons-material/Storage'
 import DataUsageIcon from '@mui/icons-material/DataUsage'
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined'
 import HistoryIcon from '@mui/icons-material/History'
 import PlayArrowIcon from '@mui/icons-material/PlayArrow'
-import UploadFileIcon from '@mui/icons-material/UploadFile'
 import WarningAmberIcon from '@mui/icons-material/WarningAmber'
 import { alpha } from '@mui/material/styles'
 import { fontFamily } from '../theme/tokens'
-import type { AssetRole, DocumentSourceType, S3Settings, ConfluenceSpaceRef } from '../types/api'
+import type { AssetRole, S3Settings, ConfluenceSpaceRef } from '../types/api'
 import { confluenceEditionLabel } from '../utils/labels'
 import { useAuthStore } from '../stores/authStore'
 import { confirmAction } from '../stores/confirmStore'
@@ -44,10 +38,13 @@ import {
   formatFileSize,
 } from '../utils/labels'
 import AssetAccessDerivationSection from '../components/assets/AssetAccessDerivationSection'
-import AssetDistributionSection from '../components/assets/AssetDistributionSection'
 import AssetHeadlineEditor from '../components/assets/AssetHeadlineEditor'
-import AssetSpacesList from '../components/assets/AssetSpacesList'
+import AssetListedSection from '../components/assets/AssetListedSection'
+import AssetOwnerSection from '../components/assets/AssetOwnerSection'
+import AssetSpacesSection from '../components/assets/AssetSpacesSection'
+import AssetGrantsSection from '../components/permissions/AssetGrantsSection'
 import LibraryExternalAccessSection from '../components/library/LibraryExternalAccessSection'
+import SourceTypeIcon from '../components/library/sourceTypeIcon'
 import LibraryDocumentsSection from '../components/library/LibraryDocumentsSection'
 import LibrarySourceSection from '../components/library/LibrarySourceSection'
 import LibraryMetadataFieldsSection from '../components/metadata/LibraryMetadataFieldsSection'
@@ -118,24 +115,6 @@ function resolveTab(requested: string | null, hasSourceTab: boolean): LibraryDet
       return 'freigaben'
     default:
       return 'dokumente'
-  }
-}
-
-/** The hero's per-source glyph - the one pictorial anchor of the page. */
-function sourceGlyphIcon(sourceType: DocumentSourceType | undefined) {
-  switch (sourceType) {
-    case 'CONFLUENCE':
-      return <AccountTreeIcon sx={{ fontSize: 24 }} />
-    case 'FILESYSTEM':
-      return <FolderIcon sx={{ fontSize: 24 }} />
-    case 'HTTP_DIRECTORY':
-      return <LanguageIcon sx={{ fontSize: 24 }} />
-    case 'RSS_FEED':
-      return <RssFeedIcon sx={{ fontSize: 24 }} />
-    case 'S3':
-      return <StorageIcon sx={{ fontSize: 24 }} />
-    default:
-      return <UploadFileIcon sx={{ fontSize: 24 }} />
   }
 }
 
@@ -233,71 +212,69 @@ function DiagnosticsLockControl({
   )
 }
 
-interface ShareCapControlProps {
-  allAccountsGrantAllowed: boolean
-  listedCap: boolean
-  saving: boolean
-  error: string | null
-  onSave: (allAccountsGrantAllowed: boolean, listedCap: boolean) => void
-  onDismissError: () => void
+interface ShareCapSwitchProps {
+  label: string
+  description: string
+  checked: boolean
+  onSave: (checked: boolean) => Promise<void>
 }
 
 /**
- * The system administration's own ceiling on a connector library (#797, in the shape #1931 gave
- * it) - visible and settable only here, never to the library's own owner: the owner already sees
- * the effect (a grant or a listing above the cap answers 409, shown verbatim by the surrounding
- * form) but not the control that sets it, mirroring how DiagnosticsLockControl above splits "who
- * sees the state" from "who may change it".
+ * Eine Hälfte der Obergrenze, die die Systemverwaltung einer Konnektorbibliothek setzt (#797, in
+ * der Gestalt aus #1931) - sichtbar und setzbar nur hier, nie für den Eigentümer der Bibliothek:
+ * Der sieht die Wirkung (eine Freigabe über der Grenze antwortet 409), nicht den Schalter. Die
+ * beiden Hälften stehen in den Abschnitten, auf die sie wirken - „Freigabe an Alle erlaubt" bei den
+ * Berechtigungen, „Auffindbarkeit im Katalog erlaubt" beim Katalog. Jede führt ihren eigenen
+ * Speicher- und Fehlerzustand: Eine abgewiesene Hälfte darf die andere weder sperren noch mit
+ * einer Meldung behängen, die ihr nicht gilt.
  */
-function ShareCapControl({
-  allAccountsGrantAllowed,
-  listedCap,
-  saving,
-  error,
-  onSave,
-  onDismissError,
-}: ShareCapControlProps) {
-  const [draftAllAccounts, setDraftAllAccounts] = useState(allAccountsGrantAllowed)
-  const [draftListedCap, setDraftListedCap] = useState(listedCap)
-  const changed = draftAllAccounts !== allAccountsGrantAllowed || draftListedCap !== listedCap
+function ShareCapSwitch({ label, description, checked, onSave }: ShareCapSwitchProps) {
+  const [draft, setDraft] = useState(checked)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const changed = draft !== checked
+
+  async function handleSave() {
+    setError(null)
+    setSaving(true)
+    try {
+      await onSave(draft)
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Freigabe-Obergrenze konnte nicht geändert werden',
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
     <Box sx={{ pt: 1, borderTop: '1px solid', borderColor: 'divider' }}>
-      <Typography variant="subtitle2">Freigabe-Obergrenze (Systemverwaltung)</Typography>
+      <Typography variant="subtitle2" component="h3">
+        Obergrenze (Systemverwaltung)
+      </Typography>
       <Typography variant="caption" component="p" sx={{ color: 'text.secondary', mb: 1 }}>
-        Legt fest, wie weit diese Konnektorbibliothek überhaupt freigegeben werden darf. Wird eine
-        Erlaubnis entzogen, wird eine bereits bestehende Freigabe sofort zurückgenommen.
+        {description}
       </Typography>
       <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
         <FormControlLabel
-          control={
-            <Checkbox
-              checked={draftAllAccounts}
-              onChange={(e) => setDraftAllAccounts(e.target.checked)}
-            />
-          }
-          label="Freigabe an alle Konten erlaubt"
-        />
-        <FormControlLabel
-          control={
-            <Checkbox
-              checked={draftListedCap}
-              onChange={(e) => setDraftListedCap(e.target.checked)}
-            />
-          }
-          label="Auffindbarkeit im Katalog erlaubt"
+          control={<Checkbox checked={draft} onChange={(e) => setDraft(e.target.checked)} />}
+          label={label}
         />
         <Button
           size="small"
           variant="outlined"
           disabled={saving || !changed}
-          onClick={() => onSave(draftAllAccounts, draftListedCap)}
+          // Beide Hälften der Obergrenze stehen auf derselben Seite; der sichtbare Text ist
+          // derselbe, der zugängliche Name nennt deshalb, welche Hälfte gespeichert wird.
+          aria-label={`Obergrenze „${label}“ speichern`}
+          onClick={() => void handleSave()}
         >
           {saving ? 'Wird gespeichert …' : 'Obergrenze speichern'}
         </Button>
       </Stack>
       {error && (
-        <Alert severity="error" sx={{ mt: 1 }} onClose={onDismissError}>
+        <Alert severity="error" sx={{ mt: 1 }} onClose={() => setError(null)}>
           {error}
         </Alert>
       )}
@@ -324,8 +301,6 @@ export default function LibraryDetailPage() {
   const [actionMenuAnchor, setActionMenuAnchor] = useState<HTMLElement | null>(null)
   const [diagnosticsLockError, setDiagnosticsLockError] = useState<string | null>(null)
   const [diagnosticsLockSaving, setDiagnosticsLockSaving] = useState(false)
-  const [shareCapError, setShareCapError] = useState<string | null>(null)
-  const [shareCapSaving, setShareCapSaving] = useState(false)
   const [searchParams] = useSearchParams()
 
   useEffect(() => {
@@ -359,6 +334,16 @@ export default function LibraryDetailPage() {
   // #1939: every role sees every area; a reader simply finds less inside it. Only an UPLOAD
   // library genuinely has no source area.
   const showSourceTab = connectorSourceType != null
+
+  // #797: only the system administration sets the ceiling - the owner only ever sees its
+  // consequence, the locked switch and the 409 when a grant would exceed it. An UPLOAD library
+  // carries none.
+  const shareCapVisible =
+    isSystemAdmin &&
+    details != null &&
+    details.sourceType !== 'UPLOAD' &&
+    details.allAccountsGrantAllowed != null &&
+    details.listedCap != null
   const activeTab: LibraryDetailTab = resolveTab(searchParams.get('tab'), showSourceTab)
 
   // Status polling lives at page level, not inside the (hideable) "Indizierung" area: a running
@@ -429,6 +414,12 @@ export default function LibraryDetailPage() {
     })
   }
 
+  /** Nach einem Eigentumswechsel: Liste und Detail neu, damit Name und Rolle wieder stimmen. */
+  async function reloadLibrary() {
+    if (!libraryId) return
+    await Promise.all([loadLibraries(), loadLibraryDetails(libraryId)])
+  }
+
   /**
    * Name and description from the head. The rejection is thrown on, not swallowed: the editor in
    * the head shows it next to the fields the draft still holds.
@@ -490,19 +481,14 @@ export default function LibraryDetailPage() {
     }
   }
 
+  /**
+   * Beide Hälften der Obergrenze gehen als Paar an denselben Endpunkt; die nicht angefasste geht
+   * unverändert mit. Eine Ablehnung wird weitergereicht - sie gehört in den Schalter, der sie
+   * ausgelöst hat.
+   */
   async function handleSaveShareCap(allAccountsGrantAllowed: boolean, listedCap: boolean) {
     if (!libraryId) return
-    setShareCapError(null)
-    setShareCapSaving(true)
-    try {
-      await setLibraryShareCap(libraryId, { allAccountsGrantAllowed, listedCap })
-    } catch (err) {
-      setShareCapError(
-        err instanceof Error ? err.message : 'Freigabe-Obergrenze konnte nicht geändert werden',
-      )
-    } finally {
-      setShareCapSaving(false)
-    }
+    await setLibraryShareCap(libraryId, { allAccountsGrantAllowed, listedCap })
   }
 
   if (!libraryId) {
@@ -596,7 +582,7 @@ export default function LibraryDetailPage() {
                 border: `1px solid ${alpha(theme.palette.primary.main, 0.4)}`,
               })}
             >
-              {sourceGlyphIcon(details?.sourceType)}
+              <SourceTypeIcon sourceType={details?.sourceType} />
             </Box>
             <Box sx={{ minWidth: 0 }}>
               {/* Eyebrow (guidelines 3.3) - the source type is no longer repeated here: it is the
@@ -1040,58 +1026,73 @@ export default function LibraryDetailPage() {
         aria-labelledby="library-tab-freigaben"
         hidden={activeTab !== 'freigaben'}
       >
+        {/* Die Reihenfolge des Zielentwurfs (#1927): Eigentümer · Berechtigungen · Katalog ·
+            Externer Zugang · Zuordnungen · Diagnosesperre · Herleitung. Jeder Abschnitt speichert
+            für sich; es gibt keinen gemeinsamen „Speichern"-Knopf über Abschnitte hinweg. */}
         <Stack>
-          {canEdit ? (
-            <AssetDistributionSection
-              assetType="KNOWLEDGE_LIBRARY"
-              assetId={libraryId}
-              assetName={library.name}
-              reach={library.reach}
-              listed={library.listed}
-              onSave={(listed) =>
-                saveLibrary({ name: library.name, description: library.description, listed })
-              }
-              listedCap={details?.listedCap}
-              capControl={
-                // #797: only the system administration sets this - the owner only ever sees its
-                // consequence, the locked switch and the 409 when a grant would exceed it.
-                isSystemAdmin &&
-                details &&
-                details.sourceType !== 'UPLOAD' &&
-                details.allAccountsGrantAllowed != null &&
-                details.listedCap != null ? (
-                  <ShareCapControl
-                    allAccountsGrantAllowed={details.allAccountsGrantAllowed}
-                    listedCap={details.listedCap}
-                    saving={shareCapSaving}
-                    error={shareCapError}
-                    onSave={(allAccountsGrantAllowed, listedCap) =>
-                      void handleSaveShareCap(allAccountsGrantAllowed, listedCap)
-                    }
-                    onDismissError={() => setShareCapError(null)}
-                  />
-                ) : null
-              }
-              grantsTypeSection={<LibraryExternalAccessSection libraryId={libraryId} />}
-            />
-          ) : (
-            // Was eine lesende Rolle hier abrufen darf: in welchen Spaces die Bibliothek steht
-            // und warum sie selbst sie sieht. Die Rechtevergabe bleibt den Verwaltenden.
+          <AssetOwnerSection
+            assetType="KNOWLEDGE_LIBRARY"
+            assetId={libraryId}
+            ownerType={library.ownerType}
+            ownerName={library.ownerName}
+            // Übergeben darf nur, wer das Eigentum hält - myRole trägt für eine Systemverwaltung
+            // ohnehin OWNER, und genau die darf es laut Endpunkt auch.
+            canTransfer={library.myRole === 'OWNER'}
+            onTransferred={() => reloadLibrary()}
+          />
+
+          {canEdit && (
             <>
+              <AssetGrantsSection
+                assetType="KNOWLEDGE_LIBRARY"
+                assetId={libraryId}
+                capControl={
+                  shareCapVisible ? (
+                    <ShareCapSwitch
+                      label="Freigabe an Alle erlaubt"
+                      description="Legt fest, ob diese Konnektorbibliothek überhaupt an alle Konten freigegeben werden darf. Wird die Erlaubnis entzogen, wird eine bereits bestehende Freigabe sofort zurückgenommen."
+                      checked={details?.allAccountsGrantAllowed ?? true}
+                      onSave={(allowed) => handleSaveShareCap(allowed, details?.listedCap ?? true)}
+                    />
+                  ) : null
+                }
+              />
+
+              <AssetListedSection
+                assetType="KNOWLEDGE_LIBRARY"
+                listed={library.listed}
+                onSave={(listed) =>
+                  saveLibrary({ name: library.name, description: library.description, listed })
+                }
+                listedCap={details?.listedCap}
+                capControl={
+                  shareCapVisible ? (
+                    <ShareCapSwitch
+                      label="Auffindbarkeit im Katalog erlaubt"
+                      description="Legt fest, ob diese Konnektorbibliothek überhaupt im Katalog auffindbar sein darf. Wird die Erlaubnis entzogen, verschwindet ein bereits gesetzter Eintrag sofort."
+                      checked={details?.listedCap ?? true}
+                      onSave={(allowed) =>
+                        handleSaveShareCap(details?.allAccountsGrantAllowed ?? true, allowed)
+                      }
+                    />
+                  ) : null
+                }
+              />
+
               <PageSection
-                title="Zuordnungen"
-                description="Die Spaces, in denen diese Bibliothek als Datenquelle bereitsteht."
+                title="Externer Zugang"
+                description="Ob diese Bibliothek über einen Fremdzugang außerhalb der Anmeldung erreichbar ist."
               >
-                <AssetSpacesList
-                  key={`spaces-${libraryId}`}
-                  assetType="KNOWLEDGE_LIBRARY"
-                  assetId={libraryId}
-                  canManage={false}
-                />
+                <LibraryExternalAccessSection libraryId={libraryId} />
               </PageSection>
-              <AssetAccessDerivationSection assetType="KNOWLEDGE_LIBRARY" assetId={libraryId} />
             </>
           )}
+
+          <AssetSpacesSection
+            assetType="KNOWLEDGE_LIBRARY"
+            assetId={libraryId}
+            canManage={canEdit}
+          />
 
           {details && (
             <PageSection
@@ -1112,6 +1113,8 @@ export default function LibraryDetailPage() {
               />
             </PageSection>
           )}
+
+          <AssetAccessDerivationSection assetType="KNOWLEDGE_LIBRARY" assetId={libraryId} />
         </Stack>
       </Box>
     </Box>

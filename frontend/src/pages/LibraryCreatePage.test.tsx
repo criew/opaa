@@ -52,11 +52,31 @@ vi.mock('../services/api', async () => {
 const mockCreateNewLibrary = vi.fn().mockResolvedValue('lib-neu')
 const mockTriggerIndexing = vi.fn().mockResolvedValue(undefined)
 
+type User = ReturnType<typeof userEvent.setup>
+
 function renderPage() {
   return renderWithProviders(<LibraryCreatePage />, { withRouter: true })
 }
 
-describe('LibraryCreatePage (#596, Mockup 1e)', () => {
+function next(user: User) {
+  return user.click(screen.getByRole('button', { name: 'Weiter' }))
+}
+
+/** Schritt 1 „Art des Wissens": Kachel wählen und weiter - danach steht „Quelle" (oder „Name"). */
+async function chooseType(user: User, label: RegExp) {
+  await user.click(screen.getByRole('radio', { name: label }))
+  await next(user)
+}
+
+/** Schritt „Name & Beschreibung": den vorbelegten Namen überschreiben und weiter zu „Freigaben". */
+async function nameItAndContinue(user: User, name: string) {
+  const field = screen.getByLabelText(/^Name/)
+  await user.clear(field)
+  await user.type(field, name)
+  await next(user)
+}
+
+describe('LibraryCreatePage (#596, #1942)', () => {
   beforeEach(() => {
     mockNavigate.mockReset()
     mockCreateNewLibrary.mockClear()
@@ -71,32 +91,52 @@ describe('LibraryCreatePage (#596, Mockup 1e)', () => {
     useIndexingStore.setState({ triggerIndexing: mockTriggerIndexing })
   })
 
-  it('shows the three steps and blocks Weiter without a name', async () => {
+  // #1942: Jeder Schritt trägt den Namen des Reiters, den er in der Detailansicht bekommt - und
+  // eine Upload-Bibliothek hat keine Quelle, also auch keinen Schritt dafür.
+  it('names the steps after the tabs and drops "Quelle" for an upload library', async () => {
     const user = userEvent.setup()
     renderPage()
 
-    expect(screen.getByText('1 · Stammdaten')).toBeInTheDocument()
-    expect(screen.getByText('2 · Herkunft')).toBeInTheDocument()
-    expect(screen.getByText('3 · Rechte')).toBeInTheDocument()
+    expect(screen.getByText('1 · Art des Wissens')).toBeInTheDocument()
+    expect(screen.getByText('2 · Name & Beschreibung')).toBeInTheDocument()
+    expect(screen.getByText('3 · Freigaben')).toBeInTheDocument()
+    expect(screen.queryByText(/· Quelle/)).not.toBeInTheDocument()
 
-    expect(screen.getByRole('button', { name: 'Weiter' })).toBeDisabled()
-    await user.type(screen.getByLabelText(/Name/), 'Rechtsquellen Soziales')
-    expect(screen.getByRole('button', { name: 'Weiter' })).toBeEnabled()
+    await user.click(screen.getByRole('radio', { name: /Confluence/ }))
+    expect(screen.getByText('2 · Quelle')).toBeInTheDocument()
+    expect(screen.getByText('3 · Name & Beschreibung')).toBeInTheDocument()
+    expect(screen.getByText('4 · Freigaben')).toBeInTheDocument()
+  })
+
+  it('blocks Weiter without a name and says so', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await next(user)
+    await next(user)
+    expect(await screen.findByText('Bitte einen Namen angeben')).toBeInTheDocument()
+    expect(screen.getByLabelText(/^Name/)).toBeInTheDocument()
+  })
+
+  it('carries the focus to the heading of the step just entered', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await next(user)
+
+    const heading = screen.getByRole('heading', { level: 2, name: 'Name & Beschreibung' })
+    expect(heading).toHaveFocus()
   })
 
   describe('Anlegerechte (#1813, ADR-0036 Entscheidung 5)', () => {
-    it('names the upload right when only the connector right is held', async () => {
+    it('disables the tiles of a kind the caller may not create, with the reason on the tile', async () => {
       mockGetMyCapabilities.mockResolvedValue(['CREATE_CONNECTOR_LIBRARY'])
-      const user = userEvent.setup()
       renderPage()
 
-      expect(
-        await screen.findByText(capabilityMissingMessage('CREATE_LIBRARY')),
-      ).toBeInTheDocument()
-      await user.type(screen.getByLabelText(/^Name/), 'Rechtsquellen Soziales')
-      await user.click(screen.getByRole('button', { name: 'Weiter' }))
-      await user.click(screen.getByRole('button', { name: 'Weiter zu Rechten' }))
-      expect(screen.getByRole('button', { name: 'Bibliothek anlegen' })).toBeDisabled()
+      const upload = await screen.findByRole('radio', { name: /Upload/ })
+      expect(upload).toBeDisabled()
+      expect(upload).toHaveTextContent(capabilityMissingMessage('CREATE_LIBRARY'))
+      expect(screen.getByRole('radio', { name: /Confluence/ })).toBeEnabled()
     })
 
     it('names the connector right once a connector source is chosen', async () => {
@@ -104,16 +144,67 @@ describe('LibraryCreatePage (#596, Mockup 1e)', () => {
       const user = userEvent.setup()
       renderPage()
 
-      expect(screen.queryByText(/Ihnen fehlt das Anlegerecht/)).not.toBeInTheDocument()
-      await user.type(screen.getByLabelText(/^Name/), 'Rechtsquellen Soziales')
-      await user.click(screen.getByRole('button', { name: 'Weiter' }))
+      await waitFor(() => expect(screen.getByRole('radio', { name: /Dateisystem/ })).toBeDisabled())
+      expect(screen.getByRole('radio', { name: /Upload/ })).toBeEnabled()
+      // Eine gesperrte Kachel wählt nichts aus - der Typ bleibt der zuvor gewählte.
       await user.click(screen.getByRole('radio', { name: /Dateisystem/ }))
+      expect(screen.getByRole('radio', { name: /Upload/ })).toBeChecked()
+    })
 
-      expect(
-        await screen.findByText(capabilityMissingMessage('CREATE_CONNECTOR_LIBRARY')),
-      ).toBeInTheDocument()
+    // Die Anlegerechte kommen erst nach dem ersten Rendern an: Was dann gesperrt ist, darf nicht
+    // ausgewählt stehen bleiben - sonst führte „Weiter" in einen Pfad, der nie anlegen kann.
+    it('moves the selection off a tile that turns out to be locked', async () => {
+      mockGetMyCapabilities.mockResolvedValue(['CREATE_CONNECTOR_LIBRARY'])
+      renderPage()
+
+      // Die erste erlaubte Kachel rückt nach; die Schrittleiste führt damit wieder „Quelle".
+      await waitFor(() =>
+        expect(screen.getByRole('radio', { name: /Dateisystem/ })).toHaveAttribute(
+          'aria-checked',
+          'true',
+        ),
+      )
+      expect(screen.getByRole('radio', { name: /Upload/ })).toBeDisabled()
+      expect(screen.getByRole('radio', { name: /Upload/ })).toHaveAttribute('aria-checked', 'false')
+      expect(screen.getByText('2 · Quelle')).toBeInTheDocument()
+      // Die Begründung steht weiter auf der gesperrten Kachel, aber nicht mehr als Hinweis über
+      // dem Assistenten: Der gälte der gewählten Art, und die ist jetzt eine erlaubte.
+      expect(document.getElementById('library-create-capability-hint')).toBeNull()
     })
   })
+
+  // WAI-ARIA „radio group": ein Halt in der Tabulatorreihenfolge, die Pfeiltasten wählen innerhalb.
+  it('moves through the tiles with the arrow keys and skips a locked one', async () => {
+    mockGetMyCapabilities.mockResolvedValue(['CREATE_CONNECTOR_LIBRARY'])
+    const user = userEvent.setup()
+    renderPage()
+
+    await waitFor(() => expect(screen.getByRole('radio', { name: /Upload/ })).toBeDisabled())
+    const filesystem = screen.getByRole('radio', { name: /Dateisystem/ })
+    expect(filesystem).toHaveAttribute('tabindex', '0')
+    expect(screen.getByRole('radio', { name: /Confluence/ })).toHaveAttribute('tabindex', '-1')
+
+    filesystem.focus()
+    await user.keyboard('{ArrowRight}')
+    expect(screen.getByRole('radio', { name: /Webverzeichnis/ })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    )
+    expect(screen.getByRole('radio', { name: /Webverzeichnis/ })).toHaveFocus()
+
+    // Rückwärts über den Anfang hinaus landet am Ende - und die gesperrte Upload-Kachel wird
+    // übersprungen, statt den Fokus zu verschlucken.
+    await user.keyboard('{ArrowLeft}{ArrowLeft}')
+    expect(screen.getByRole('radio', { name: /S3-Objektspeicher/ })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    )
+    await user.keyboard('{Home}')
+    expect(screen.getByRole('radio', { name: /Dateisystem/ })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    )
+  }, 15000)
 
   it('notes a person with the shared subject picker and grants on the asset after creation', async () => {
     mockGetUserSummaries.mockResolvedValue([
@@ -123,9 +214,8 @@ describe('LibraryCreatePage (#596, Mockup 1e)', () => {
     const user = userEvent.setup()
     renderPage()
 
-    await user.type(screen.getByLabelText(/^Name/), 'Rechtsquellen Soziales')
-    await user.click(screen.getByRole('button', { name: 'Weiter' }))
-    await user.click(screen.getByRole('button', { name: 'Weiter zu Rechten' }))
+    await next(user)
+    await nameItAndContinue(user, 'Rechtsquellen Soziales')
     await user.type(screen.getByRole('combobox', { name: 'Person suchen' }), 'al')
     await user.click(await screen.findByRole('option', { name: /Alice/ }))
     await user.click(screen.getByRole('button', { name: 'Vormerken' }))
@@ -138,7 +228,22 @@ describe('LibraryCreatePage (#596, Mockup 1e)', () => {
         role: 'VIEWER',
       }),
     )
-  })
+  }, 15000)
+
+  // #1942: Der Katalog-Schalter ist neu im Assistenten und wird beim Anlegen mitgesetzt.
+  it('sets the catalog switch together with the library', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await next(user)
+    await nameItAndContinue(user, 'Rechtsquellen Soziales')
+    await user.click(screen.getByLabelText('Im Katalog auffindbar, auch ohne Berechtigung'))
+    await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
+
+    await waitFor(() =>
+      expect(mockCreateNewLibrary).toHaveBeenCalledWith(expect.objectContaining({ listed: true })),
+    )
+  }, 15000)
 
   // The library exists once the POST succeeded: a refused grant leads to its detail page instead
   // of re-enabling "Bibliothek anlegen", which would create a second library.
@@ -150,9 +255,8 @@ describe('LibraryCreatePage (#596, Mockup 1e)', () => {
     const user = userEvent.setup()
     renderPage()
 
-    await user.type(screen.getByLabelText(/^Name/), 'Rechtsquellen Soziales')
-    await user.click(screen.getByRole('button', { name: 'Weiter' }))
-    await user.click(screen.getByRole('button', { name: 'Weiter zu Rechten' }))
+    await next(user)
+    await nameItAndContinue(user, 'Rechtsquellen Soziales')
     await user.type(screen.getByRole('combobox', { name: 'Person suchen' }), 'al')
     await user.click(await screen.findByRole('option', { name: /Alice/ }))
     await user.click(screen.getByRole('button', { name: 'Vormerken' }))
@@ -163,7 +267,7 @@ describe('LibraryCreatePage (#596, Mockup 1e)', () => {
     expect(await screen.findByText(/nicht gespeichert werden: Alice/)).toBeInTheDocument()
   }, 15000)
 
-  /** ADR-0036, Entscheidung 2: dieselbe Zwischenfrage wie im Dialog „Rechte". */
+  /** ADR-0036, Entscheidung 2: dieselbe Zwischenfrage wie im Abschnitt „Berechtigungen". */
   it('asks before noting a group of an external provider and notes nothing on cancel', async () => {
     mockSearchSelectableGroups.mockResolvedValue([
       {
@@ -191,10 +295,9 @@ describe('LibraryCreatePage (#596, Mockup 1e)', () => {
     const user = userEvent.setup()
     renderPage()
 
-    await user.type(screen.getByLabelText(/^Name/), 'Rechtsquellen Soziales')
-    await user.click(screen.getByRole('button', { name: 'Weiter' }))
-    await user.click(screen.getByRole('button', { name: 'Weiter zu Rechten' }))
-    await user.click(await screen.findByRole('radio', { name: /gruppe/i }))
+    await next(user)
+    await nameItAndContinue(user, 'Rechtsquellen Soziales')
+    await user.click(await screen.findByRole('radio', { name: /^gruppe$/i }))
     await user.type(await screen.findByLabelText(/^gruppe suchen$/i), 'Referat')
     await user.click(await screen.findByRole('option', { name: /Referat 50/ }))
     await user.click(screen.getByRole('button', { name: 'Vormerken' }))
@@ -208,6 +311,45 @@ describe('LibraryCreatePage (#596, Mockup 1e)', () => {
     await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
     await waitFor(() => expect(mockCreateNewLibrary).toHaveBeenCalled())
     expect(mockUpsertAssetGrant).not.toHaveBeenCalled()
+  }, 20000)
+
+  describe('Zeitplan und Sofortstart im Assistenten (#1942)', () => {
+    it('sets the schedule together with the library, for a connector type that never had one here', async () => {
+      const user = userEvent.setup()
+      renderPage()
+
+      await chooseType(user, /Dateisystem/)
+      await user.type(screen.getByLabelText(/Verzeichnispfad/), '/data/dokumente')
+      await user.click(screen.getByRole('combobox', { name: 'Zeitplan' }))
+      await user.click(await screen.findByRole('option', { name: 'Täglich' }))
+      await next(user)
+      await nameItAndContinue(user, 'Dienstanweisungen')
+      await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
+
+      await waitFor(() =>
+        expect(mockCreateNewLibrary).toHaveBeenCalledWith(
+          expect.objectContaining({
+            sourceType: 'FILESYSTEM',
+            schedule: { frequency: 'DAILY', hour: 3, minute: 0, weekday: undefined },
+          }),
+        ),
+      )
+      // Sofortstart gilt seit #1942 für jeden Konnektortyp, nicht mehr nur Confluence und S3.
+      expect(mockTriggerIndexing).toHaveBeenCalledWith('lib-neu', 'FILESYSTEM')
+    }, 25000)
+
+    it('sends no schedule at all for an upload library', async () => {
+      const user = userEvent.setup()
+      renderPage()
+
+      await next(user)
+      await nameItAndContinue(user, 'Handakte')
+      await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
+
+      await waitFor(() => expect(mockCreateNewLibrary).toHaveBeenCalled())
+      expect(mockCreateNewLibrary.mock.calls[0][0]).not.toHaveProperty('schedule')
+      expect(mockTriggerIndexing).not.toHaveBeenCalled()
+    }, 15000)
   })
 
   describe('S3 origin (#1377, ADR-0027)', () => {
@@ -219,13 +361,11 @@ describe('LibraryCreatePage (#596, Mockup 1e)', () => {
     async function openS3Step() {
       const user = userEvent.setup()
       renderPage()
-      await user.type(screen.getByLabelText(/^Name/), 'Protokolle')
-      await user.click(screen.getByRole('button', { name: 'Weiter' }))
-      await user.click(screen.getByRole('radio', { name: /S3-Objektspeicher/ }))
+      await chooseType(user, /S3-Objektspeicher/)
       return user
     }
 
-    it('offers the S3 card, states the sharing consequence before the scopes, and blocks Weiter until the stages are complete', async () => {
+    it('offers the S3 tile, states the sharing consequence before the scopes, and blocks Weiter until the stages are complete', async () => {
       const user = await openS3Step()
 
       const consequence = screen.getByTestId('library-create-s3-sharing-consequence')
@@ -237,10 +377,10 @@ describe('LibraryCreatePage (#596, Mockup 1e)', () => {
         consequence.compareDocumentPosition(scopes) & Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy()
 
-      await user.click(screen.getByRole('button', { name: 'Weiter zu Rechten' }))
+      await next(user)
       expect(screen.getByText('Endpoint des Objektspeichers ist erforderlich')).toBeInTheDocument()
       await user.type(screen.getByLabelText('Endpoint'), 'https://minio.intern.example:9000')
-      await user.click(screen.getByRole('button', { name: 'Weiter zu Rechten' }))
+      await next(user)
       expect(screen.getByText('Access Key ist erforderlich')).toBeInTheDocument()
     }, 15000)
 
@@ -254,7 +394,10 @@ describe('LibraryCreatePage (#596, Mockup 1e)', () => {
       await user.type(screen.getByLabelText(/^Präfix 1/), '2025/protokolle')
       await user.click(screen.getByRole('button', { name: 'Bereich' }))
       await user.type(screen.getByLabelText('Bucket 2'), 'satzungen')
-      await user.click(screen.getByRole('button', { name: 'Weiter zu Rechten' }))
+      await next(user)
+      // #1942: Der Name ist aus der Quelle vorbelegt - hier der erste Bucket.
+      expect(screen.getByLabelText(/^Name/)).toHaveValue('protokolle')
+      await nameItAndContinue(user, 'Protokolle')
       await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
 
       await waitFor(() =>
@@ -295,7 +438,8 @@ describe('LibraryCreatePage (#596, Mockup 1e)', () => {
       await user.click(
         screen.getByRole('switch', { name: 'Erste Indizierung sofort nach dem Anlegen starten' }),
       )
-      await user.click(screen.getByRole('button', { name: 'Weiter zu Rechten' }))
+      await next(user)
+      await nameItAndContinue(user, 'Verwaltungsdokumente')
       await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
 
       await waitFor(() =>
@@ -314,7 +458,7 @@ describe('LibraryCreatePage (#596, Mockup 1e)', () => {
       await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/libraries/lib-neu'))
       // switched off: no first run, the detail page's "Jetzt indizieren" or the schedule starts it
       expect(mockTriggerIndexing).not.toHaveBeenCalled()
-    }, 20000)
+    }, 25000)
 
     it('refuses overlapping scopes before anything is sent', async () => {
       const user = await openS3Step()
@@ -326,7 +470,7 @@ describe('LibraryCreatePage (#596, Mockup 1e)', () => {
       await user.click(screen.getByRole('button', { name: 'Bereich' }))
       await user.type(screen.getByLabelText('Bucket 2'), 'dokumente')
       await user.type(screen.getByLabelText(/^Präfix 2/), '2025/q1')
-      await user.click(screen.getByRole('button', { name: 'Weiter zu Rechten' }))
+      await next(user)
 
       expect(
         screen.getByText(
@@ -334,7 +478,7 @@ describe('LibraryCreatePage (#596, Mockup 1e)', () => {
         ),
       ).toBeInTheDocument()
       expect(mockCreateNewLibrary).not.toHaveBeenCalled()
-    }, 20000)
+    }, 25000)
   })
 
   describe('Confluence origin (#1135, ADR-0023)', () => {
@@ -353,9 +497,7 @@ describe('LibraryCreatePage (#596, Mockup 1e)', () => {
     async function openConfluenceStep() {
       const user = userEvent.setup()
       renderPage()
-      await user.type(screen.getByLabelText(/^Name/), 'Wiki Bauamt')
-      await user.click(screen.getByRole('button', { name: 'Weiter' }))
-      await user.click(screen.getByRole('radio', { name: /Confluence/ }))
+      await chooseType(user, /Confluence/)
       return user
     }
 
@@ -397,7 +539,7 @@ describe('LibraryCreatePage (#596, Mockup 1e)', () => {
         /sieht alles aus allen ausgewählten Spaces/,
       )
       expect(screen.queryByLabelText(/Spaces suchen und auswählen/)).not.toBeInTheDocument()
-    })
+    }, 15000)
 
     it('shows the PAT field for Data Center and refuses to continue without a tested selection', async () => {
       mockTestLibrarySource.mockResolvedValueOnce({
@@ -416,12 +558,13 @@ describe('LibraryCreatePage (#596, Mockup 1e)', () => {
       expect(await screen.findByLabelText(/^Personal Access Token/)).toBeInTheDocument()
       expect(screen.queryByLabelText(/E-Mail-Adresse/)).not.toBeInTheDocument()
 
-      await user.click(screen.getByRole('button', { name: 'Weiter zu Rechten' }))
+      await next(user)
       expect(
         screen.getByText(/Bitte die Zugangsdaten mit „Verbindung testen“ prüfen/),
       ).toBeInTheDocument()
-      expect(screen.getByRole('radiogroup', { name: 'Herkunft wählen' })).toBeInTheDocument()
-    }, 10000)
+      // der Schritt bleibt stehen, die Quellfelder sind weiter da
+      expect(screen.getByLabelText(/Adresse der Confluence-Instanz/)).toBeInTheDocument()
+    }, 15000)
 
     it('verifies credentials, loads the spaces, and sends edition, credentials and selection', async () => {
       mockTestLibrarySource
@@ -460,26 +603,76 @@ describe('LibraryCreatePage (#596, Mockup 1e)', () => {
       await user.click(picker)
       await user.type(picker, 'Bau')
       await user.click(await screen.findByRole('option', { name: /Bauamt \(BAU\)/ }))
-      await user.click(screen.getByRole('button', { name: 'Weiter zu Rechten' }))
+      await next(user)
+      // #1942: Ein einzelner Space belegt den Namen vor.
+      expect(screen.getByLabelText(/^Name/)).toHaveValue('Bauamt')
+      await nameItAndContinue(user, 'Wiki Bauamt')
       await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
 
-      await waitFor(() =>
-        expect(mockCreateNewLibrary).toHaveBeenCalledWith(
-          expect.objectContaining({
-            name: 'Wiki Bauamt',
-            sourceType: 'CONFLUENCE',
-            sourceUrl: 'https://wiki.behoerde.example/confluence',
-            sourceCredentials: 'pat-geheim',
-            confluenceEdition: 'DATA_CENTER',
-            confluenceSpaces: [{ key: 'BAU', name: 'Bauamt' }],
-          }),
-        ),
-      )
+      // Die ganze Anfrage, nicht nur ein Ausschnitt: Ein Feld, das der Anlege-Endpunkt gar nicht
+      // annimmt, fällt nur auf, wenn der Vergleich auch das Zuviel sieht. Ohne eigenen
+      // Vollabgleich-Rhythmus darf `confluenceFullSyncIntervalDays` deshalb gar nicht mitgehen -
+      // die 0 („zurück zur Vorgabe der Instanz") kennt nur der Bearbeiten-Weg, das Anlegen weist
+      // sie mit 400 ab (KnowledgeLibraryService: 1 bis 365).
+      await waitFor(() => expect(mockCreateNewLibrary).toHaveBeenCalled())
+      expect(mockCreateNewLibrary).toHaveBeenCalledWith({
+        name: 'Wiki Bauamt',
+        description: undefined,
+        ownerType: 'USER',
+        ownerId: undefined,
+        listed: false,
+        sourceType: 'CONFLUENCE',
+        sourceUrl: 'https://wiki.behoerde.example/confluence',
+        sourceProxy: undefined,
+        sourceCredentials: 'pat-geheim',
+        sourceInsecureSsl: false,
+        confluenceEdition: 'DATA_CENTER',
+        confluenceSpaces: [{ key: 'BAU', name: 'Bauamt' }],
+        schedule: { frequency: 'DISABLED', hour: null, minute: null, weekday: undefined },
+      })
       // The "Erste Indizierung sofort ..." switch defaults to on - the first run starts right
       // after creation, before the navigation to the detail page.
       expect(mockTriggerIndexing).toHaveBeenCalledWith('lib-neu', 'CONFLUENCE')
       expect(mockNavigate).toHaveBeenCalledWith('/libraries/lib-neu')
-    }, 15000)
+    }, 25000)
+
+    // #1942: Ein eingetragener Rhythmus geht mit; nur das leere Feld bedeutet beim Anlegen
+    // „kein eigener Rhythmus" und darf das Feld nicht als 0 senden.
+    it('sends an entered full-sync rhythm as the number, not as the update path’s zero', async () => {
+      mockTestLibrarySource
+        .mockResolvedValueOnce({
+          reachable: true,
+          confluenceEdition: 'DATA_CENTER',
+          credentialsVerified: false,
+          message: 'Confluence Data Center erkannt.',
+        })
+        .mockResolvedValueOnce({
+          reachable: true,
+          confluenceEdition: 'DATA_CENTER',
+          credentialsVerified: true,
+          message: 'Zugangsdaten gültig.',
+        })
+      const user = await openConfluenceStep()
+      await user.type(
+        screen.getByLabelText(/Adresse der Confluence-Instanz/),
+        'https://wiki.behoerde.example/confluence',
+      )
+      await user.click(screen.getByRole('button', { name: 'Edition erkennen' }))
+      await user.type(await screen.findByLabelText(/^Personal Access Token/), 'pat-geheim')
+      await user.click(screen.getByRole('button', { name: 'Verbindung testen' }))
+      const picker = await screen.findByLabelText(/Spaces suchen und auswählen/)
+      await user.click(picker)
+      await user.click(await screen.findByRole('option', { name: /Bauamt \(BAU\)/ }))
+      await user.type(screen.getByLabelText(/Vollabgleich alle/), '14')
+      await next(user)
+      await nameItAndContinue(user, 'Wiki Bauamt')
+      await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
+
+      await waitFor(() => expect(mockCreateNewLibrary).toHaveBeenCalled())
+      expect(mockCreateNewLibrary.mock.calls[0][0]).toMatchObject({
+        confluenceFullSyncIntervalDays: 14,
+      })
+    }, 25000)
 
     it('skips the first run when the immediate-indexing switch is turned off', async () => {
       mockTestLibrarySource
@@ -511,12 +704,13 @@ describe('LibraryCreatePage (#596, Mockup 1e)', () => {
       await user.click(
         screen.getByRole('switch', { name: 'Erste Indizierung sofort nach dem Anlegen starten' }),
       )
-      await user.click(screen.getByRole('button', { name: 'Weiter zu Rechten' }))
+      await next(user)
+      await nameItAndContinue(user, 'Wiki Bauamt')
       await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
 
       await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/libraries/lib-neu'))
       expect(mockTriggerIndexing).not.toHaveBeenCalled()
-    }, 15000)
+    }, 25000)
 
     it('joins e-mail and token for Cloud and drops verification when the address changes', async () => {
       mockTestLibrarySource
@@ -551,7 +745,7 @@ describe('LibraryCreatePage (#596, Mockup 1e)', () => {
       await user.type(screen.getByLabelText(/Adresse der Confluence-Instanz/), '/wiki')
       expect(screen.queryByTestId('library-create-confluence-edition')).not.toBeInTheDocument()
       expect(screen.queryByLabelText(/Spaces suchen und auswählen/)).not.toBeInTheDocument()
-    }, 15000)
+    }, 25000)
 
     it('shows a blocked or unreachable address as an error with the backend wording, and never a credentials field', async () => {
       mockTestLibrarySource.mockResolvedValueOnce({
@@ -568,14 +762,13 @@ describe('LibraryCreatePage (#596, Mockup 1e)', () => {
       )
       await user.click(screen.getByRole('button', { name: 'Edition erkennen' }))
 
-      const alert = await screen.findByRole('alert')
-      expect(alert).toHaveTextContent(/OPAA_INDEXING_TARGET_ALLOWLIST freigegeben/)
-      expect(alert.className).toMatch(/Error/)
+      const alert = await screen.findByText(/OPAA_INDEXING_TARGET_ALLOWLIST freigegeben/)
+      expect(alert.closest('.MuiAlert-root')?.className).toMatch(/Error/)
       expect(screen.queryByLabelText(/Token/)).not.toBeInTheDocument()
       expect(screen.queryByTestId('library-create-confluence-edition')).not.toBeInTheDocument()
     }, 15000)
 
-    it('keeps the space picker usable after "Zurück" re-enters the origin step', async () => {
+    it('keeps the space picker usable after "Zurück" re-enters the source step', async () => {
       mockTestLibrarySource.mockResolvedValue({
         reachable: true,
         confluenceEdition: 'DATA_CENTER',
@@ -593,7 +786,7 @@ describe('LibraryCreatePage (#596, Mockup 1e)', () => {
       const picker = await screen.findByLabelText(/Spaces suchen und auswählen/)
       await user.click(picker)
       await user.click(await screen.findByRole('option', { name: /Bauamt \(BAU\)/ }))
-      await user.click(screen.getByRole('button', { name: 'Weiter zu Rechten' }))
+      await next(user)
       await user.click(screen.getByRole('button', { name: 'Zurück' }))
 
       // the remounted step reloads the listing for the still-verified credentials
@@ -603,7 +796,7 @@ describe('LibraryCreatePage (#596, Mockup 1e)', () => {
       )
       await user.click(screen.getByLabelText(/Spaces suchen und auswählen/))
       expect(await screen.findByRole('option', { name: /Personal \(HR\)/ })).toBeInTheDocument()
-    }, 20000)
+    }, 25000)
 
     it('drops a late test answer once the address changed in the meantime', async () => {
       let answer: (value: unknown) => void = () => {}
@@ -639,11 +832,11 @@ describe('LibraryCreatePage (#596, Mockup 1e)', () => {
       expect(screen.queryByLabelText(/Spaces suchen und auswählen/)).not.toBeInTheDocument()
       expect(screen.queryByText('Zugangsdaten gültig.')).not.toBeInTheDocument()
       expect(mockListConfluenceSpaces).not.toHaveBeenCalled()
-      await user.click(screen.getByRole('button', { name: 'Weiter zu Rechten' }))
+      await next(user)
       expect(
         screen.getByText('Bitte zuerst die Edition erkennen lassen („Edition erkennen“)'),
       ).toBeInTheDocument()
-    }, 15000)
+    }, 25000)
 
     it('offers a retry when the space listing fails, keeping the selection visible', async () => {
       mockTestLibrarySource.mockResolvedValue({
@@ -671,33 +864,31 @@ describe('LibraryCreatePage (#596, Mockup 1e)', () => {
         '0 von 3 lesbaren Spaces ausgewählt.',
       )
       expect(screen.queryByText('Confluence antwortete mit HTTP 502')).not.toBeInTheDocument()
-    }, 15000)
+    }, 20000)
   })
 
-  it('switches the connection form with the origin card and validates its fields', async () => {
+  it('switches the connection form with the chosen kind and validates its fields', async () => {
     const user = userEvent.setup()
     renderPage()
 
-    await user.type(screen.getByLabelText(/Name/), 'Rechtsquellen Soziales')
-    await user.click(screen.getByRole('button', { name: 'Weiter' }))
-
-    const radiogroup = screen.getByRole('radiogroup', { name: 'Herkunft wählen' })
+    const radiogroup = screen.getByRole('radiogroup', { name: 'Art des Wissens wählen' })
     expect(radiogroup).toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: /Upload/ })).toBeChecked()
+    expect(screen.getByRole('radio', { name: /Upload/ })).toHaveAttribute('aria-checked', 'true')
 
-    await user.click(screen.getByRole('radio', { name: /Webverzeichnis/ }))
+    await chooseType(user, /Webverzeichnis/)
     expect(screen.getByText('Verbindung zum Webverzeichnis')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Weiter zu Rechten' }))
+    await next(user)
     expect(screen.getByText('Adresse (URL) ist erforderlich')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('radio', { name: /Dateisystem/ }))
+    await user.click(screen.getByRole('button', { name: 'Zurück' }))
+    await chooseType(user, /Dateisystem/)
     expect(screen.getByLabelText(/Verzeichnispfad/)).toBeInTheDocument()
     await user.type(screen.getByLabelText(/Verzeichnispfad/), 'relativ/pfad')
-    await user.click(screen.getByRole('button', { name: 'Weiter zu Rechten' }))
+    await next(user)
     expect(
       screen.getByText('Verzeichnispfad muss ein absoluter Pfad sein, z. B. /data/dokumente'),
     ).toBeInTheDocument()
-  })
+  }, 20000)
 
   // #514: ein Ergebnis gehört zu der Probe, mit der es gemessen wurde - auch zu ihrem Quellentyp.
   it('drops a connection test result when the source type changes (#514)', async () => {
@@ -708,37 +899,37 @@ describe('LibraryCreatePage (#596, Mockup 1e)', () => {
     })
     renderPage()
 
-    await user.type(screen.getByLabelText(/Name/), 'Bekanntmachungen')
-    await user.click(screen.getByRole('button', { name: 'Weiter' }))
-    await user.click(screen.getByRole('radio', { name: /RSS-Feed/ }))
+    await chooseType(user, /RSS-Feed/)
     await user.type(screen.getByLabelText(/Adresse/), 'https://example.test/feed.xml')
     await user.click(screen.getByRole('button', { name: 'Verbindung testen' }))
     expect(await screen.findByText('Feed erreichbar, 12 Einträge gefunden.')).toBeInTheDocument()
 
     // Derselbe Adresswert, anderer Quellentyp: die Probe lief nie gegen ein Webverzeichnis.
-    await user.click(screen.getByRole('radio', { name: /Webverzeichnis/ }))
+    await user.click(screen.getByRole('button', { name: 'Zurück' }))
+    await chooseType(user, /Webverzeichnis/)
 
+    expect(screen.getByLabelText(/Adresse/)).toHaveValue('https://example.test/feed.xml')
     expect(screen.queryByText('Feed erreichbar, 12 Einträge gefunden.')).not.toBeInTheDocument()
-  })
+  }, 15000)
 
   it('keeps entered values when navigating back', async () => {
     const user = userEvent.setup()
     renderPage()
 
-    await user.type(screen.getByLabelText(/Name/), 'Rechtsquellen Soziales')
-    await user.click(screen.getByRole('button', { name: 'Weiter' }))
-    await user.click(screen.getByRole('radio', { name: /Webverzeichnis/ }))
+    await chooseType(user, /Webverzeichnis/)
     await user.type(
       screen.getByLabelText(/Adresse/),
       'https://intranet.behoerde.example/merkblaetter/',
     )
+    await next(user)
+    await user.type(screen.getByLabelText(/^Name/), ' Merkblätter')
     await user.click(screen.getByRole('button', { name: 'Zurück' }))
-    expect(screen.getByLabelText(/Name/)).toHaveValue('Rechtsquellen Soziales')
-    await user.click(screen.getByRole('button', { name: 'Weiter' }))
     expect(screen.getByLabelText(/Adresse/)).toHaveValue(
       'https://intranet.behoerde.example/merkblaetter/',
     )
-  })
+    await next(user)
+    expect(screen.getByLabelText(/^Name/)).toHaveValue('intranet.behoerde.example Merkblätter')
+  }, 20000)
 
   // #1931: a library is created with no reach of its own - the wizard no longer picks a release
   // level, because there is none to pick.
@@ -746,9 +937,8 @@ describe('LibraryCreatePage (#596, Mockup 1e)', () => {
     const user = userEvent.setup()
     renderPage()
 
-    await user.type(screen.getByLabelText(/Name/), 'Rechtsquellen Soziales')
-    await user.click(screen.getByRole('button', { name: 'Weiter' }))
-    await user.click(screen.getByRole('button', { name: 'Weiter zu Rechten' }))
+    await next(user)
+    await nameItAndContinue(user, 'Rechtsquellen Soziales')
 
     expect(screen.queryByRole('combobox', { name: /Verteilungsstufe/ })).not.toBeInTheDocument()
 
@@ -760,7 +950,7 @@ describe('LibraryCreatePage (#596, Mockup 1e)', () => {
       )
     })
     expect(mockNavigate).toHaveBeenCalledWith('/libraries/lib-neu')
-  })
+  }, 15000)
 
   it('creates a group-owned library, offering only the groups returned for the user', async () => {
     mockGetMyGroups.mockResolvedValue([
@@ -779,12 +969,11 @@ describe('LibraryCreatePage (#596, Mockup 1e)', () => {
     const user = userEvent.setup()
     renderPage()
 
-    await user.type(screen.getByLabelText(/Name/), 'Team-Bibliothek')
+    await next(user)
+    await nameItAndContinue(user, 'Team-Bibliothek')
     await user.click(screen.getByRole('radio', { name: /eine gruppe/i }))
-    await user.click(await screen.findByLabelText(/^gruppe$/i))
+    await user.click(await screen.findByRole('combobox', { name: 'Gruppe' }))
     await user.click(await screen.findByRole('option', { name: 'Referat 50' }))
-    await user.click(screen.getByRole('button', { name: 'Weiter' }))
-    await user.click(screen.getByRole('button', { name: 'Weiter zu Rechten' }))
     await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
 
     await waitFor(() => {
@@ -796,25 +985,28 @@ describe('LibraryCreatePage (#596, Mockup 1e)', () => {
         }),
       )
     })
-  })
+  }, 20000)
 
   it('shows a visible hint instead of a silent empty picker when the caller has no groups', async () => {
     const user = userEvent.setup()
     renderPage()
 
+    await next(user)
+    await nameItAndContinue(user, 'Rechtsquellen Soziales')
     await user.click(screen.getByRole('radio', { name: /eine gruppe/i }))
 
     expect(await screen.findByText(/keiner gruppe mitglied/i)).toBeInTheDocument()
-  })
+  }, 15000)
 
   it('asks before discarding entered values on cancel', async () => {
     const user = userEvent.setup()
     renderPage()
 
-    await user.type(screen.getByLabelText(/Name/), 'R')
+    await next(user)
+    await user.type(screen.getByLabelText(/^Name/), 'R')
     await user.click(screen.getByRole('button', { name: 'Abbrechen' }))
     await answerConfirm(user, 'Eingaben verwerfen und den Assistenten verlassen?', 'Abbrechen')
 
     expect(mockNavigate).not.toHaveBeenCalled()
-  })
+  }, 15000)
 })

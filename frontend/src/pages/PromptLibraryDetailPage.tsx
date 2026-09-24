@@ -24,7 +24,10 @@ import AreaTabs from '../components/AreaTabs'
 import MetaBadge from '../components/MetaBadge'
 import FieldLabel from '../components/wizard/FieldLabel'
 import SuccessionStateNote from '../components/succession/SuccessionStateNote'
-import AssetDistributionSection from '../components/assets/AssetDistributionSection'
+import AssetAccessDerivationSection from '../components/assets/AssetAccessDerivationSection'
+import AssetListedSection from '../components/assets/AssetListedSection'
+import AssetSpacesSection from '../components/assets/AssetSpacesSection'
+import AssetGrantsSection from '../components/permissions/AssetGrantsSection'
 import PromptEditorDialog from '../components/prompts/PromptEditorDialog'
 import PromptTextHighlight from '../components/prompts/PromptTextHighlight'
 
@@ -306,14 +309,20 @@ function SettingsArea({ library }: { library: PromptLibraryResponse }) {
         </Stack>
       </PageSection>
 
-      <AssetDistributionSection
+      {/* Dieselben Bausteine wie im Reiter „Freigaben" der Wissensbibliothek (#1941) - der
+          Eigentümer-Abschnitt bleibt dort, solange die Antwort einer Prompt-Bibliothek den
+          Anzeigenamen ihrer zuständigen Stelle nicht trägt. */}
+      <AssetGrantsSection assetType="PROMPT_LIBRARY" assetId={library.id} />
+
+      <AssetListedSection
         assetType="PROMPT_LIBRARY"
-        assetId={library.id}
-        assetName={library.name}
-        reach={library.reach}
         listed={library.listed}
         onSave={(listed) => save({ name: library.name, description: library.description, listed })}
       />
+
+      <AssetSpacesSection assetType="PROMPT_LIBRARY" assetId={library.id} canManage />
+
+      <AssetAccessDerivationSection assetType="PROMPT_LIBRARY" assetId={library.id} />
 
       {library.myRole === 'OWNER' && (
         <PageSection

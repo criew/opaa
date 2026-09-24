@@ -176,7 +176,7 @@ export async function gotoLibraries(page: Page): Promise<void> {
 }
 
 // #481: the library overview no longer expands inline - every row navigates to its own detail
-// page (/libraries/:id), which is where name and description, "Rechte verwalten" and, for an
+// page (/libraries/:id), which is where name and description, die Freigaben and, for an
 // UPLOAD library, the upload zone and document list now live.
 export async function gotoLibraryDetail(page: Page, libraryName: string): Promise<void> {
   await Promise.all([
@@ -220,9 +220,11 @@ export async function createLibraryWithDocuments(
 ): Promise<void> {
   await gotoLibraries(page)
   await page.getByRole('button', { name: 'Neue Bibliothek' }).click()
+  // #1942: Schrittfolge „Art des Wissens · Name & Beschreibung · Freigaben" - Upload ist
+  // vorausgewählt und hat keinen Schritt „Quelle".
+  await page.getByRole('button', { name: 'Weiter', exact: true }).click()
   await page.getByLabel('Name').fill(libraryName)
   await page.getByRole('button', { name: 'Weiter', exact: true }).click()
-  await page.getByRole('button', { name: 'Weiter zu Rechten' }).click()
   // #481/#596: the create wizard navigates straight to the new library's detail page on success -
   // there is no separate documents page or picker to visit afterwards. The wizard itself lives at
   // /libraries/new, hence the lookahead.
@@ -253,7 +255,7 @@ export async function createLibraryWithDocuments(
 
 /**
  * Shares libraryName (already visible on adminPage's library list) with the person matched by
- * personOption, via "Rechte verwalten" -> "Freigeben". personQuery is what gets typed into the
+ * personOption, im Reiter „Freigaben" über „Freigeben". personQuery is what gets typed into the
  * picker to narrow it down to personOption.
  */
 export async function shareLibraryWithPerson(
@@ -264,9 +266,8 @@ export async function shareLibraryWithPerson(
 ): Promise<void> {
   await gotoLibraries(adminPage)
   await gotoLibraryDetail(adminPage, libraryName)
-  // Seit #1939 liegt "Rechte verwalten" im Reiter "Freigaben".
+  // Seit #1941 steht der Abschnitt „Berechtigungen" als Liste im Reiter „Freigaben".
   await adminPage.getByRole('tab', { name: 'Freigaben' }).click()
-  await adminPage.getByRole('button', { name: 'Rechte verwalten' }).click()
   await adminPage.getByRole('button', { name: 'Freigeben' }).click()
   // Not getByLabel: once the Autocomplete's listbox is open, its aria-labelledby also points back
   // at the field, so getByLabel resolves to both the input and the listbox.

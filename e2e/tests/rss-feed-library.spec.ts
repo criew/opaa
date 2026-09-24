@@ -65,11 +65,12 @@ async function gotoLibraries(page: Page) {
 async function createRssLibrary(page: Page, name: string, feedUrl: string): Promise<string> {
   await gotoLibraries(page)
   await page.getByRole('button', { name: 'Neue Bibliothek' }).click()
+  await page.getByRole('radio', { name: /RSS-Feed/ }).click()
+  await page.getByRole('button', { name: 'Weiter', exact: true }).click()
+  await page.getByLabel('Adresse (URL)').fill(feedUrl)
+  await page.getByRole('button', { name: 'Weiter', exact: true }).click()
   await page.getByLabel('Name').fill(name)
   await page.getByRole('button', { name: 'Weiter', exact: true }).click()
-  await page.getByRole('radio', { name: /RSS-Feed/ }).click()
-  await page.getByLabel('Adresse (URL)').fill(feedUrl)
-  await page.getByRole('button', { name: 'Weiter zu Rechten' }).click()
   await Promise.all([
     // /libraries/new is the wizard itself - without the lookahead the wait would resolve
     // immediately against the current URL.

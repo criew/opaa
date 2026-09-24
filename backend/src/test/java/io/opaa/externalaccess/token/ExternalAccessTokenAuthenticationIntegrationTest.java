@@ -118,6 +118,7 @@ class ExternalAccessTokenAuthenticationIntegrationTest {
                     null,
                     null,
                     null,
+                    null,
                     null),
                 CurrentUser.of(
                     owner.getId(), owner.getOrganizationId(), owner.getSystemRole(), "x"))

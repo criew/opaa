@@ -247,6 +247,7 @@ export type PermissionSubjectType = components['schemas']['PermissionSubjectType
 export type AssetGrantSubjectType = components['schemas']['AssetGrantSubjectType']
 export type AssetGrantRequest = components['schemas']['AssetGrantRequest']
 export type AssetGrantResponse = components['schemas']['AssetGrantResponse']
+export type AssetOwnershipTransferRequest = components['schemas']['AssetOwnershipTransferRequest']
 
 export type ChatStatus = components['schemas']['ChatStatus']
 export type ChatRole = components['schemas']['ChatRole']

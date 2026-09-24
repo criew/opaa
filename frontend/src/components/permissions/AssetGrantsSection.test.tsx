@@ -2,7 +2,7 @@ import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { answerConfirm, renderWithProviders } from '../../test/test-utils'
-import AssetGrantsDialog from './AssetGrantsDialog'
+import AssetGrantsSection from './AssetGrantsSection'
 import { useAuthStore } from '../../stores/authStore'
 import { assetKey, useGrantStore } from '../../stores/grantStore'
 import type {
@@ -126,7 +126,7 @@ function setSystemAdmin() {
   })
 }
 
-describe('AssetGrantsDialog', () => {
+describe('AssetGrantsSection', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockSearchSelectableGroups.mockResolvedValue([group])
@@ -154,35 +154,24 @@ describe('AssetGrantsDialog', () => {
         updatedAt: '2026-03-01T10:00:00Z',
       },
     ])
-    renderWithProviders(
-      <AssetGrantsDialog
-        open
-        assetType="KNOWLEDGE_LIBRARY"
-        assetId={library.id}
-        assetName={library.name}
-        onClose={vi.fn()}
-      />,
-    )
+    renderWithProviders(<AssetGrantsSection assetType="KNOWLEDGE_LIBRARY" assetId={library.id} />)
 
     expect(await screen.findByText('Alice')).toBeInTheDocument()
     expect(screen.queryByText('user-alice')).not.toBeInTheDocument()
   })
 
-  it('shows what only the asset type has in the slot the caller passes, and names the type', async () => {
+  it('shows the ceiling the caller passes in its slot, and names the type', async () => {
     setSystemAdmin()
     setGrants(library.id, [])
     renderWithProviders(
-      <AssetGrantsDialog
-        open
+      <AssetGrantsSection
         assetType="KNOWLEDGE_LIBRARY"
         assetId={library.id}
-        assetName={library.name}
-        onClose={vi.fn()}
-        typeSection={<p>Typeigener Bereich</p>}
+        capControl={<p>Obergrenze der Systemverwaltung</p>}
       />,
     )
 
-    expect(await screen.findByText('Typeigener Bereich')).toBeInTheDocument()
+    expect(await screen.findByText('Obergrenze der Systemverwaltung')).toBeInTheDocument()
     expect(
       screen.getByText('Es sind noch keine Freigaben für diese Bibliothek erteilt.'),
     ).toBeInTheDocument()
@@ -205,15 +194,7 @@ describe('AssetGrantsDialog', () => {
         updatedAt: '2019-01-01T10:00:00Z',
       },
     ])
-    renderWithProviders(
-      <AssetGrantsDialog
-        open
-        assetType="KNOWLEDGE_LIBRARY"
-        assetId={library.id}
-        assetName={library.name}
-        onClose={vi.fn()}
-      />,
-    )
+    renderWithProviders(<AssetGrantsSection assetType="KNOWLEDGE_LIBRARY" assetId={library.id} />)
 
     expect(await screen.findByText('Alice')).toBeInTheDocument()
     expect(screen.getByText('abgelaufen')).toBeInTheDocument()
@@ -235,15 +216,7 @@ describe('AssetGrantsDialog', () => {
         updatedAt: '2026-03-01T10:00:00Z',
       },
     ])
-    renderWithProviders(
-      <AssetGrantsDialog
-        open
-        assetType="KNOWLEDGE_LIBRARY"
-        assetId={library.id}
-        assetName={library.name}
-        onClose={vi.fn()}
-      />,
-    )
+    renderWithProviders(<AssetGrantsSection assetType="KNOWLEDGE_LIBRARY" assetId={library.id} />)
 
     expect(await screen.findByText(/bis 31\.12\.2099/)).toBeInTheDocument()
   })
@@ -269,15 +242,7 @@ describe('AssetGrantsDialog', () => {
         return created
       },
     )
-    renderWithProviders(
-      <AssetGrantsDialog
-        open
-        assetType="KNOWLEDGE_LIBRARY"
-        assetId={library.id}
-        assetName={library.name}
-        onClose={vi.fn()}
-      />,
-    )
+    renderWithProviders(<AssetGrantsSection assetType="KNOWLEDGE_LIBRARY" assetId={library.id} />)
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
@@ -314,15 +279,7 @@ describe('AssetGrantsDialog', () => {
       createdAt: '2026-03-05T10:00:00Z',
       updatedAt: '2026-03-05T10:00:00Z',
     } satisfies AssetGrantResponse)
-    renderWithProviders(
-      <AssetGrantsDialog
-        open
-        assetType="KNOWLEDGE_LIBRARY"
-        assetId={library.id}
-        assetName={library.name}
-        onClose={vi.fn()}
-      />,
-    )
+    renderWithProviders(<AssetGrantsSection assetType="KNOWLEDGE_LIBRARY" assetId={library.id} />)
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
@@ -355,15 +312,7 @@ describe('AssetGrantsDialog', () => {
       createdAt: '2026-03-05T10:00:00Z',
       updatedAt: '2026-03-05T10:00:00Z',
     } satisfies AssetGrantResponse)
-    renderWithProviders(
-      <AssetGrantsDialog
-        open
-        assetType="KNOWLEDGE_LIBRARY"
-        assetId={library.id}
-        assetName={library.name}
-        onClose={vi.fn()}
-      />,
-    )
+    renderWithProviders(<AssetGrantsSection assetType="KNOWLEDGE_LIBRARY" assetId={library.id} />)
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
@@ -383,17 +332,52 @@ describe('AssetGrantsDialog', () => {
     expect(await screen.findByText('Alle Konten')).toBeInTheDocument()
   })
 
+  // Die Rückfrage hängt an der Reichweite, nicht am Formular: Auch ein Rollenwechsel an der
+  // bestehenden Zeile „Alle Konten" vergrößert sie und wird deshalb genauso gefragt.
+  it('asks back before raising the role of an existing all-accounts grant, and drops it on no', async () => {
+    setSystemAdmin()
+    setGrants(library.id, [
+      {
+        id: 'grant-all',
+        subjectType: 'ALL_ACCOUNTS',
+        role: 'VIEWER',
+        expiresAt: null,
+        grantedByUserId: 'admin-1',
+        grantedByDisplayName: 'Admin',
+        createdAt: '2026-03-01T10:00:00Z',
+        updatedAt: '2026-03-01T10:00:00Z',
+      },
+    ])
+    renderWithProviders(<AssetGrantsSection assetType="KNOWLEDGE_LIBRARY" assetId={library.id} />)
+    const userEventInstance = userEvent.setup()
+
+    await userEventInstance.click(
+      await screen.findByRole('combobox', { name: /^rolle für alle konten$/i }),
+    )
+    await userEventInstance.click(await screen.findByRole('option', { name: 'Bearbeiter' }))
+    await answerConfirm(userEventInstance, 'An alle Konten freigeben?', 'Abbrechen')
+
+    await waitFor(() => expect(mockUpsertAssetGrant).not.toHaveBeenCalled())
+
+    await userEventInstance.click(
+      await screen.findByRole('combobox', { name: /^rolle für alle konten$/i }),
+    )
+    await userEventInstance.click(await screen.findByRole('option', { name: 'Bearbeiter' }))
+    await answerConfirm(userEventInstance, 'An alle Konten freigeben?', 'An alle freigeben')
+
+    await waitFor(() =>
+      expect(mockUpsertAssetGrant).toHaveBeenCalledWith('KNOWLEDGE_LIBRARY', library.id, {
+        subjectType: 'ALL_ACCOUNTS',
+        subjectId: undefined,
+        role: 'EDITOR',
+        expiresAt: null,
+      }),
+    )
+  }, 15000)
+
   it('grants nothing when the confirmation for all accounts is declined', async () => {
     setSystemAdmin()
-    renderWithProviders(
-      <AssetGrantsDialog
-        open
-        assetType="KNOWLEDGE_LIBRARY"
-        assetId={library.id}
-        assetName={library.name}
-        onClose={vi.fn()}
-      />,
-    )
+    renderWithProviders(<AssetGrantsSection assetType="KNOWLEDGE_LIBRARY" assetId={library.id} />)
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
@@ -408,15 +392,7 @@ describe('AssetGrantsDialog', () => {
 
   it('rejects an expiry date in the past before calling the API', async () => {
     setSystemAdmin()
-    renderWithProviders(
-      <AssetGrantsDialog
-        open
-        assetType="KNOWLEDGE_LIBRARY"
-        assetId={library.id}
-        assetName={library.name}
-        onClose={vi.fn()}
-      />,
-    )
+    renderWithProviders(<AssetGrantsSection assetType="KNOWLEDGE_LIBRARY" assetId={library.id} />)
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
@@ -459,15 +435,7 @@ describe('AssetGrantsDialog', () => {
       createdAt: '2026-03-01T10:00:00Z',
       updatedAt: '2026-03-06T10:00:00Z',
     } satisfies AssetGrantResponse)
-    renderWithProviders(
-      <AssetGrantsDialog
-        open
-        assetType="KNOWLEDGE_LIBRARY"
-        assetId={library.id}
-        assetName={library.name}
-        onClose={vi.fn()}
-      />,
-    )
+    renderWithProviders(<AssetGrantsSection assetType="KNOWLEDGE_LIBRARY" assetId={library.id} />)
     const userEventInstance = userEvent.setup()
 
     // #423 code review, nit 5: the row-level role select's accessible name now names its subject
@@ -506,15 +474,7 @@ describe('AssetGrantsDialog', () => {
         updatedAt: '2026-03-01T10:00:00Z',
       },
     ])
-    renderWithProviders(
-      <AssetGrantsDialog
-        open
-        assetType="KNOWLEDGE_LIBRARY"
-        assetId={library.id}
-        assetName={library.name}
-        onClose={vi.fn()}
-      />,
-    )
+    renderWithProviders(<AssetGrantsSection assetType="KNOWLEDGE_LIBRARY" assetId={library.id} />)
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /entziehen/i }))
@@ -529,15 +489,7 @@ describe('AssetGrantsDialog', () => {
   it('shows a German 403 message instead of failing silently', async () => {
     setSystemAdmin()
     mockUpsertAssetGrant.mockRejectedValueOnce(new Error('Kein Zugriff auf diese Bibliothek'))
-    renderWithProviders(
-      <AssetGrantsDialog
-        open
-        assetType="KNOWLEDGE_LIBRARY"
-        assetId={library.id}
-        assetName={library.name}
-        onClose={vi.fn()}
-      />,
-    )
+    renderWithProviders(<AssetGrantsSection assetType="KNOWLEDGE_LIBRARY" assetId={library.id} />)
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
@@ -556,15 +508,7 @@ describe('AssetGrantsDialog', () => {
     // derselbe wie fuer eine Gruppe.
     setManager()
     mockGetUserSummaries.mockRejectedValueOnce(new Error('Netzwerkfehler'))
-    renderWithProviders(
-      <AssetGrantsDialog
-        open
-        assetType="KNOWLEDGE_LIBRARY"
-        assetId={library.id}
-        assetName={library.name}
-        onClose={vi.fn()}
-      />,
-    )
+    renderWithProviders(<AssetGrantsSection assetType="KNOWLEDGE_LIBRARY" assetId={library.id} />)
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
@@ -590,15 +534,7 @@ describe('AssetGrantsDialog', () => {
       createdAt: '2026-03-05T10:00:00Z',
       updatedAt: '2026-03-05T10:00:00Z',
     } satisfies AssetGrantResponse)
-    renderWithProviders(
-      <AssetGrantsDialog
-        open
-        assetType="KNOWLEDGE_LIBRARY"
-        assetId={library.id}
-        assetName={library.name}
-        onClose={vi.fn()}
-      />,
-    )
+    renderWithProviders(<AssetGrantsSection assetType="KNOWLEDGE_LIBRARY" assetId={library.id} />)
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
@@ -624,15 +560,7 @@ describe('AssetGrantsDialog', () => {
 
   it('rejects a manually entered user id that is not a valid UUID before calling the API', async () => {
     setManager()
-    renderWithProviders(
-      <AssetGrantsDialog
-        open
-        assetType="KNOWLEDGE_LIBRARY"
-        assetId={library.id}
-        assetName={library.name}
-        onClose={vi.fn()}
-      />,
-    )
+    renderWithProviders(<AssetGrantsSection assetType="KNOWLEDGE_LIBRARY" assetId={library.id} />)
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
@@ -677,15 +605,7 @@ describe('AssetGrantsDialog', () => {
         updatedAt: '2026-03-01T10:00:00Z',
       },
     ])
-    renderWithProviders(
-      <AssetGrantsDialog
-        open
-        assetType="KNOWLEDGE_LIBRARY"
-        assetId={library.id}
-        assetName={library.name}
-        onClose={vi.fn()}
-      />,
-    )
+    renderWithProviders(<AssetGrantsSection assetType="KNOWLEDGE_LIBRARY" assetId={library.id} />)
 
     expect(await screen.findByText('Alice')).toBeInTheDocument()
     expect(screen.getByText('Referat 50')).toBeInTheDocument()
@@ -712,15 +632,7 @@ describe('AssetGrantsDialog', () => {
         updatedAt: '2026-08-20T10:00:00Z',
       },
     ])
-    renderWithProviders(
-      <AssetGrantsDialog
-        open
-        assetType="KNOWLEDGE_LIBRARY"
-        assetId={library.id}
-        assetName={library.name}
-        onClose={vi.fn()}
-      />,
-    )
+    renderWithProviders(<AssetGrantsSection assetType="KNOWLEDGE_LIBRARY" assetId={library.id} />)
 
     expect(await screen.findByText(/Rolle vergeben von Admin B/i)).toHaveTextContent('20.8.2026')
     expect(screen.queryByText(/1\.3\.2026/)).not.toBeInTheDocument()
@@ -731,15 +643,7 @@ describe('AssetGrantsDialog', () => {
     // /v1/admin/users) - every other MANAGER went straight to the free-text UUID field, even
     // though the user list loaded successfully via GET /v1/users.
     setManager()
-    renderWithProviders(
-      <AssetGrantsDialog
-        open
-        assetType="KNOWLEDGE_LIBRARY"
-        assetId={library.id}
-        assetName={library.name}
-        onClose={vi.fn()}
-      />,
-    )
+    renderWithProviders(<AssetGrantsSection assetType="KNOWLEDGE_LIBRARY" assetId={library.id} />)
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
@@ -773,15 +677,7 @@ describe('AssetGrantsDialog', () => {
       createdAt: '2026-03-05T10:00:00Z',
       updatedAt: '2026-03-05T10:00:00Z',
     } satisfies AssetGrantResponse)
-    renderWithProviders(
-      <AssetGrantsDialog
-        open
-        assetType="KNOWLEDGE_LIBRARY"
-        assetId={library.id}
-        assetName={library.name}
-        onClose={vi.fn()}
-      />,
-    )
+    renderWithProviders(<AssetGrantsSection assetType="KNOWLEDGE_LIBRARY" assetId={library.id} />)
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
@@ -823,15 +719,7 @@ describe('AssetGrantsDialog', () => {
         updatedAt: '2026-03-01T10:00:00Z',
       },
     ])
-    renderWithProviders(
-      <AssetGrantsDialog
-        open
-        assetType="KNOWLEDGE_LIBRARY"
-        assetId={library.id}
-        assetName={library.name}
-        onClose={vi.fn()}
-      />,
-    )
+    renderWithProviders(<AssetGrantsSection assetType="KNOWLEDGE_LIBRARY" assetId={library.id} />)
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /entziehen/i }))
@@ -863,15 +751,7 @@ describe('AssetGrantsDialog', () => {
         sourcePath: null,
       },
     ])
-    renderWithProviders(
-      <AssetGrantsDialog
-        open
-        assetType="KNOWLEDGE_LIBRARY"
-        assetId={library.id}
-        assetName={library.name}
-        onClose={vi.fn()}
-      />,
-    )
+    renderWithProviders(<AssetGrantsSection assetType="KNOWLEDGE_LIBRARY" assetId={library.id} />)
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
@@ -912,15 +792,7 @@ describe('AssetGrantsDialog', () => {
         updatedAt: '2026-03-01T10:00:00Z',
       },
     ])
-    renderWithProviders(
-      <AssetGrantsDialog
-        open
-        assetType="KNOWLEDGE_LIBRARY"
-        assetId={library.id}
-        assetName={library.name}
-        onClose={vi.fn()}
-      />,
-    )
+    renderWithProviders(<AssetGrantsSection assetType="KNOWLEDGE_LIBRARY" assetId={library.id} />)
 
     expect(await screen.findByText(/23 bei Erteilung, heute 41/)).toBeInTheDocument()
   })
@@ -950,15 +822,7 @@ describe('AssetGrantsDialog', () => {
         updatedAt: '2026-03-01T10:00:00Z',
       },
     ])
-    renderWithProviders(
-      <AssetGrantsDialog
-        open
-        assetType="KNOWLEDGE_LIBRARY"
-        assetId={library.id}
-        assetName={library.name}
-        onClose={vi.fn()}
-      />,
-    )
+    renderWithProviders(<AssetGrantsSection assetType="KNOWLEDGE_LIBRARY" assetId={library.id} />)
     const trigger = await screen.findByRole('button', {
       name: 'Mitglieder der Gruppe „Referat 50“ anzeigen',
     })
@@ -997,15 +861,7 @@ describe('AssetGrantsDialog', () => {
         updatedAt: '2026-03-01T10:00:00Z',
       },
     ])
-    renderWithProviders(
-      <AssetGrantsDialog
-        open
-        assetType="KNOWLEDGE_LIBRARY"
-        assetId={library.id}
-        assetName={library.name}
-        onClose={vi.fn()}
-      />,
-    )
+    renderWithProviders(<AssetGrantsSection assetType="KNOWLEDGE_LIBRARY" assetId={library.id} />)
 
     expect(await screen.findByText(/kleine Gruppe/)).toBeInTheDocument()
   })
@@ -1032,15 +888,7 @@ describe('AssetGrantsDialog', () => {
         updatedAt: '2026-03-01T10:00:00Z',
       },
     ])
-    renderWithProviders(
-      <AssetGrantsDialog
-        open
-        assetType="KNOWLEDGE_LIBRARY"
-        assetId={library.id}
-        assetName={library.name}
-        onClose={vi.fn()}
-      />,
-    )
+    renderWithProviders(<AssetGrantsSection assetType="KNOWLEDGE_LIBRARY" assetId={library.id} />)
 
     expect(await screen.findByText('Geschützte Gruppe')).toBeInTheDocument()
     expect(screen.queryByText('group-personalrat')).not.toBeInTheDocument()
@@ -1068,15 +916,7 @@ describe('AssetGrantsDialog', () => {
       },
       sourcePath: null,
     })
-    renderWithProviders(
-      <AssetGrantsDialog
-        open
-        assetType="KNOWLEDGE_LIBRARY"
-        assetId={library.id}
-        assetName={library.name}
-        onClose={vi.fn()}
-      />,
-    )
+    renderWithProviders(<AssetGrantsSection assetType="KNOWLEDGE_LIBRARY" assetId={library.id} />)
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
@@ -1107,15 +947,7 @@ describe('AssetGrantsDialog', () => {
   it('grants nothing when the typed id does not resolve for this caller', async () => {
     setManager()
     mockResolveSelectableGroup.mockRejectedValue(new Error('Gruppe nicht gefunden'))
-    renderWithProviders(
-      <AssetGrantsDialog
-        open
-        assetType="KNOWLEDGE_LIBRARY"
-        assetId={library.id}
-        assetName={library.name}
-        onClose={vi.fn()}
-      />,
-    )
+    renderWithProviders(<AssetGrantsSection assetType="KNOWLEDGE_LIBRARY" assetId={library.id} />)
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
@@ -1137,15 +969,7 @@ describe('AssetGrantsDialog', () => {
   /** Eine Kennung gehoert zu genau einer Art von Empfaenger. */
   it('clears a typed id when the subject type changes', async () => {
     setManager()
-    renderWithProviders(
-      <AssetGrantsDialog
-        open
-        assetType="KNOWLEDGE_LIBRARY"
-        assetId={library.id}
-        assetName={library.name}
-        onClose={vi.fn()}
-      />,
-    )
+    renderWithProviders(<AssetGrantsSection assetType="KNOWLEDGE_LIBRARY" assetId={library.id} />)
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
@@ -1164,15 +988,7 @@ describe('AssetGrantsDialog', () => {
 
   it('explains every grantable role', async () => {
     setSystemAdmin()
-    renderWithProviders(
-      <AssetGrantsDialog
-        open
-        assetType="KNOWLEDGE_LIBRARY"
-        assetId={library.id}
-        assetName={library.name}
-        onClose={vi.fn()}
-      />,
-    )
+    renderWithProviders(<AssetGrantsSection assetType="KNOWLEDGE_LIBRARY" assetId={library.id} />)
 
     expect(
       await screen.findByText(/darf die bibliothek benutzen und ihren inhalt einsehen/i),

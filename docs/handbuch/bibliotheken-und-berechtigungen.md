@@ -87,10 +87,27 @@ OPAA eine **leere** Gruppe — eine Freigabe an sie erreicht niemanden.
 Die Bibliotheken, die eine Person lesen darf, stehen in der Hauptnavigation unter **„Wissen"**. Jede
 Art von Bestand hat dort einen eigenen Punkt; der Menüpunkt und die Seite dahinter heißen gleich —
 die [Prompt-Bibliotheken](prompt-bibliotheken.md) stehen unter **„Prompts"**. Rollen,
-Auffindbarkeit, Herleitung und „Nachfolge offen" gelten für beide Arten gleich; dafür steht bei
-beiden derselbe Abschnitt **„Freigabe"** mit der Auffindbarkeit, „Rechte verwalten",
-den Zuordnungen zu Räumen und darunter „Warum sehe ich das?" — bei einer Wissensbibliothek im
-Reiter „Freigaben", bei einer Prompt-Bibliothek im Reiter „Verwaltung".
+Auffindbarkeit, Herleitung und „Nachfolge offen" gelten für beide Arten gleich; dafür stehen bei
+beiden dieselben Abschnitte — **„Berechtigungen"** als Liste auf der Seite (nicht mehr hinter einem
+Knopf „Rechte verwalten"), **„Im Katalog auffindbar"**, **„Zuordnungen"** und **„Warum sehe ich
+das?"** — bei einer Wissensbibliothek im Reiter „Freigaben", bei einer Prompt-Bibliothek im Reiter
+„Verwaltung".
+
+Der Reiter **„Freigaben"** einer Wissensbibliothek führt sie in dieser Reihenfolge:
+
+| Abschnitt | Inhalt |
+|---|---|
+| **Eigentümer** | die zuständige Stelle mit Namen; über „Eigentum übergeben" reicht der Eigentümer sie an eine Person oder eine Gruppe weiter — mit Rückfrage, und die Eigentümerrolle geht mit. Auch die **Systemverwaltung** kann übergeben: So bekommt eine Bibliothek mit offener Nachfolge wieder eine handlungsfähige Stelle, ohne das Konto der ausgeschiedenen Person. Jede Übergabe steht mit Namen im Nachweisprotokoll |
+| **Berechtigungen** | Personen, Gruppen und „Alle Konten" mit Rolle, Befristung und Entzug, dazu das Formular „Freigeben"; für die Systemverwaltung darunter die Obergrenze „Freigabe an Alle erlaubt" |
+| **Im Katalog auffindbar** | der Schalter mit eigenem „Auffindbarkeit speichern"; für die Systemverwaltung darunter die Obergrenze „Auffindbarkeit im Katalog erlaubt" |
+| **Externer Zugang** | die Freigabe für Fremdzugänge |
+| **Zuordnungen** | die Spaces, in denen die Bibliothek als Datenquelle bereitsteht |
+| **Diagnosesperre** | ob die Bibliothek in einer fremden Suchdiagnose auftauchen darf |
+| **Warum sehe ich diese Wissensbibliothek?** | die eigene Herleitung |
+
+Jeder Abschnitt speichert für sich; einen gemeinsamen „Speichern"-Knopf über Abschnitte hinweg gibt
+es nicht. Eine lesende Rolle sieht Eigentümer, Zuordnungen, Diagnosesperre und die Herleitung —
+schreibgeschützt.
 
 **Zuordnungen: wer welchen Space erfährt.** Die Liste der Spaces, in denen ein Bestand
 bereitsteht, sehen alle Leseberechtigten — aber nur so weit, wie der Space selbst sichtbar ist.
@@ -821,6 +838,12 @@ und bei einem Objekt einer Gruppe der Weg in die Gruppenverwaltung. In jedem Fal
 die der Feststellungslauf noch nicht gesehen hat, steht bereits in der Liste — einen Vermerk nimmt
 sie erst an, wenn ihr Vorgang angelegt ist; wann der Lauf hinsieht, steht in Abschnitt 15.
 
+**Der kleine Weg für ein einzelnes Objekt.** Geht es nur um eine Bibliothek und nicht um den ganzen
+Bestand einer Person, genügt im Reiter „Freigaben" der Abschnitt „Eigentümer" mit „Eigentum
+übergeben" (Abschnitt 4). Auch das beendet den Zustand „Nachfolge offen" dieses Objekts und wird am
+Vorgang vermerkt; auch das darf die Systemverwaltung. Der Unterschied zum Übertragungsdialog ist
+allein der Umfang: ein Objekt statt aller Wirkungen eines Subjekts.
+
 **Vorgänge und Sichtungsvermerke sind Protokoll**, kein Rechtenachweis: Ein monatlicher Lauf löscht
 abgeschlossene Vorgänge samt ihren Vermerken, sobald ihr Ende länger zurückliegt als die
 Aufbewahrungsfrist des Nachweisprotokolls — dieselbe Frist, eine Verwaltungseinstellung und keine
@@ -899,9 +922,9 @@ Abschnitt „Vor dem Update auf die Gruppenherkunft".
   was bleibt, ist das passive Zuwachssignal (Abschnitt 8).
 - **Keine Rezertifizierung.** Ein Recht kann befristet werden, aber niemand wird zur Wiedervorlage
   gezwungen.
-- **Kein Schreiben ins Verzeichnis.** OPAA liest, und zwar nur.
 - **Keinen Freigabestand, keine Versionen und keine Nutzungsangaben im Katalog** (Abschnitt 4,
   „Der Katalog"). Ein Eintrag sagt, was es gibt und wer zuständig ist.
+- **Kein Schreiben ins Verzeichnis.** OPAA liest, und zwar nur.
 
 ## 18. Weiterführende Kapitel
 

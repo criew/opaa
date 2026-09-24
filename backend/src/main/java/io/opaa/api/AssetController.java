@@ -3,10 +3,12 @@ package io.opaa.api;
 import io.opaa.api.dto.AssetAccessDerivationResponse;
 import io.opaa.api.dto.AssetGrantRequest;
 import io.opaa.api.dto.AssetGrantResponse;
+import io.opaa.api.dto.AssetOwnershipTransferRequest;
 import io.opaa.api.dto.AssetSpaceAssociationListResponse;
 import io.opaa.api.dto.GroupMemberDisclosureResponse;
 import io.opaa.asset.AssetAccessDerivationService;
 import io.opaa.asset.AssetGrantService;
+import io.opaa.asset.AssetOwnershipTransferService;
 import io.opaa.asset.AssetTypes;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
@@ -37,16 +39,19 @@ public class AssetController {
   private final AssetGrantService grantService;
   private final AssetAccessDerivationService derivationService;
   private final SpaceAssetAssociationService associationService;
+  private final AssetOwnershipTransferService ownershipTransferService;
   private final AssetTypes assetTypes;
 
   public AssetController(
       AssetGrantService grantService,
       AssetAccessDerivationService derivationService,
       SpaceAssetAssociationService associationService,
+      AssetOwnershipTransferService ownershipTransferService,
       AssetTypes assetTypes) {
     this.grantService = grantService;
     this.derivationService = derivationService;
     this.associationService = associationService;
+    this.ownershipTransferService = ownershipTransferService;
     this.assetTypes = assetTypes;
   }
 
@@ -106,6 +111,17 @@ public class AssetController {
       @PathVariable String assetType, @PathVariable UUID assetId, @Caller CurrentUser caller) {
     return SpaceAssetAssociationResponseMapper.toAssetSpaceListResponse(
         associationService.listForAsset(typeOf(assetType), assetId, caller));
+  }
+
+  @PostMapping("/transfer-ownership")
+  public ResponseEntity<Void> transferAssetOwnership(
+      @PathVariable String assetType,
+      @PathVariable UUID assetId,
+      @Valid @RequestBody AssetOwnershipTransferRequest request,
+      @Caller CurrentUser caller) {
+    ownershipTransferService.transferOwnership(
+        typeOf(assetType), assetId, request.getOwnerType(), request.getOwnerId(), caller);
+    return ResponseEntity.noContent().build();
   }
 
   private AssetType typeOf(String assetType) {

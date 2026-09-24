@@ -866,6 +866,44 @@ class KnowledgeLibraryServiceIntegrationTest {
     assertThat(stored.getSourceCredentials()).isEqualTo("admin:new-secret");
   }
 
+  /** #1942: the assistant sets the rhythm with the library, not in a second call right after it. */
+  @Test
+  void createLibrarySavesAScheduleGivenAlongsideTheSource() {
+    UUID owner = createUser(organizationA);
+
+    LibraryDetail created =
+        libraryService.createLibrary(
+            libraryCreation("Web-Verzeichnis", DocumentSourceType.HTTP_DIRECTORY)
+                .sourceUrl(URI.create("https://example.com/documents/"))
+                .schedule(new LibraryScheduleUpdate(ScheduleFrequency.DAILY).hour(3).minute(30))
+                .build(),
+            currentUserOf(owner));
+
+    assertThat(created.managementDetail().schedule()).isNotNull();
+    assertThat(created.managementDetail().schedule().frequency())
+        .isEqualTo(ScheduleFrequency.DAILY);
+    assertThat(created.managementDetail().schedule().nextRunAt()).isNotNull();
+    KnowledgeLibrary stored = libraryRepository.findById(created.library().getId()).orElseThrow();
+    assertThat(stored.isScheduleEnabled()).isTrue();
+    assertThat(stored.getScheduleCron()).isEqualTo("0 30 3 * * *");
+  }
+
+  /** The same refusal the update path gives - not the database's own check constraint. */
+  @Test
+  void createLibraryRejectsAScheduleOnAnUploadLibrary() {
+    UUID owner = createUser(organizationA);
+
+    assertThatThrownBy(
+            () ->
+                libraryService.createLibrary(
+                    libraryCreation("Handakte", DocumentSourceType.UPLOAD)
+                        .schedule(new LibraryScheduleUpdate(ScheduleFrequency.HOURLY))
+                        .build(),
+                    currentUserOf(owner)))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("nur für Konnektorbibliotheken");
+  }
+
   @Test
   void updateLibrarySavesADailyScheduleAndComputesTheNextRunAt() {
     UUID owner = createUser(organizationA);
