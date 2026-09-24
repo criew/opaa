@@ -35,9 +35,22 @@ interface RailDestination {
 }
 
 /**
+ * Ein Eintrag je Asset-Typ, in der Reihenfolge der Leiste. Ein weiterer Typ ist eine weitere
+ * Zeile dieser Liste — die Seite dahinter trägt denselben Namen wie der Eintrag.
+ */
+const ASSET_DESTINATIONS: RailDestination[] = [
+  {
+    label: 'Wissen',
+    to: '/libraries',
+    activePrefixes: ['/libraries'],
+    icon: MenuBookOutlinedIcon,
+  },
+]
+
+/**
  * The global rail (#786, mockup 2a): the always-visible first navigation level left of the
  * space column, one shade darker so global and space scope read apart at a glance. It carries
- * the brand emblem, the global destinations - Spaces, the library catalog, administration -
+ * the brand emblem, the global destinations - Spaces, one entry per asset type, administration -
  * and the user's avatar with the account menu; the navy column next to it stays purely
  * space-scoped.
  */
@@ -67,12 +80,10 @@ export default function GlobalRail() {
       activePrefixes: ['/spaces', '/chat'],
       icon: GridViewOutlinedIcon,
     },
-    {
-      label: 'Katalog',
-      to: '/libraries',
-      activePrefixes: ['/libraries'],
-      icon: MenuBookOutlinedIcon,
-    },
+    // Je Asset-Typ ein eigener Punkt (#1915): „Wissen" führt auf die eigenen Wissens-
+    // bibliotheken; weitere Typen (Prompts, später Agenten) reihen sich hier als weitere
+    // Einträge ein. Der organisationsweite Katalog ist davon getrennt.
+    ...ASSET_DESTINATIONS,
     ...(user?.systemRole === 'SYSTEM_ADMIN'
       ? [
           {

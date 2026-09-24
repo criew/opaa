@@ -114,7 +114,11 @@ describe('Sidebar', () => {
     expect(screen.queryByText('OPAA')).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Wissensbibliotheken' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Benutzermenü' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: 'Einstellungen' })).not.toBeInTheDocument()
+    // Der einzige „Einstellungen"-Link der Spalte gehört dem Space, nicht dem Konto (#1917).
+    expect(screen.getByRole('link', { name: 'Einstellungen' })).toHaveAttribute(
+      'href',
+      '/spaces/space-personal/settings/general',
+    )
   })
 
   it('renders New Chat button for the default space', async () => {
@@ -251,7 +255,9 @@ describe('Sidebar', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/spaces/new')
   })
 
-  it('links the column foot to the active space: settings and data sources (mockup 2a)', () => {
+  // #1917: ein Einstiegspunkt am Fuß der Spalte statt zweier - „Datenquellen dieses Space" ist
+  // entfallen, alles Verwaltende liegt hinter den Einstellungen.
+  it('links the column foot to the settings of the active space, and to nothing else', () => {
     renderSidebarAtRoute('/spaces/space-engineering')
 
     // #792: the landmark must wrap a real list - List component="nav" once replaced the <ul>
@@ -259,13 +265,60 @@ describe('Sidebar', () => {
     const footNav = screen.getByRole('navigation', { name: 'Space-Navigation' })
     expect(within(footNav).getByRole('list')).toBeInTheDocument()
 
-    expect(screen.getByRole('link', { name: 'Space-Einstellungen' })).toHaveAttribute(
+    expect(within(footNav).getAllByRole('link')).toHaveLength(1)
+    expect(screen.getByRole('link', { name: 'Einstellungen' })).toHaveAttribute(
       'href',
-      '/spaces/space-engineering/manage',
+      '/spaces/space-engineering/settings/general',
     )
-    expect(screen.getByRole('link', { name: 'Datenquellen dieses Space' })).toHaveAttribute(
-      'href',
-      '/spaces/space-engineering',
-    )
+    expect(
+      screen.queryByRole('link', { name: 'Datenquellen dieses Space' }),
+    ).not.toBeInTheDocument()
+  })
+
+  /**
+   * #1917: Den Einstieg sieht nur, wer den Space verwalten darf - ein Mitglied hätte dort nichts
+   * zu tun und bekäme vom Dienst ohnehin nur Absagen.
+   */
+  it('hides the settings entry from a plain member and shows it to a curator', () => {
+    useSpaceStore.setState({
+      spaces: [
+        {
+          id: 'space-engineering',
+          name: 'Engineering',
+          description: 'Dokumente der Entwicklung',
+          isDefault: false,
+          archived: false,
+          visibility: 'PRIVATE',
+          memberCount: 3,
+          userRole: 'MEMBER',
+          createdAt: '2026-03-01T10:00:00Z',
+          updatedAt: '2026-03-01T10:00:00Z',
+        },
+      ],
+      isLoadingList: false,
+    })
+    const { unmount } = renderSidebarAtRoute('/spaces/space-engineering')
+    expect(screen.queryByRole('link', { name: 'Einstellungen' })).not.toBeInTheDocument()
+    unmount()
+
+    useSpaceStore.setState({
+      spaces: [
+        {
+          id: 'space-engineering',
+          name: 'Engineering',
+          description: 'Dokumente der Entwicklung',
+          isDefault: false,
+          archived: false,
+          visibility: 'PRIVATE',
+          memberCount: 3,
+          userRole: 'CURATOR',
+          createdAt: '2026-03-01T10:00:00Z',
+          updatedAt: '2026-03-01T10:00:00Z',
+        },
+      ],
+      isLoadingList: false,
+    })
+    renderSidebarAtRoute('/spaces/space-engineering')
+    expect(screen.getByRole('link', { name: 'Einstellungen' })).toBeInTheDocument()
   })
 })

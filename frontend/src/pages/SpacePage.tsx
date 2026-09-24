@@ -11,8 +11,9 @@ import Divider from '@mui/material/Divider'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
-import ManageAccountsIcon from '@mui/icons-material/ManageAccounts'
+import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined'
 import { useNavigate, useParams } from 'react-router'
+import { spaceSettingsRoute } from '../routes'
 import ChatList from '../components/chat/ChatList'
 import AccessDerivation from '../components/permissions/AccessDerivation'
 import { useAuthStore } from '../stores/authStore'
@@ -146,13 +147,15 @@ export default function SpacePage() {
               <SuccessionStateNote succession={space.succession} />
             </Box>
             <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-              {canManage(space.userRole, isOwner) && (
+              {/* #1917: Ein Kurator verwaltet zwar keine Mitglieder, aber das zugeordnete Wissen -
+                  auch für ihn führt der Weg dorthin über die Einstellungen. */}
+              {(canManage(space.userRole, isOwner) || space.userRole === 'CURATOR') && (
                 <Button
                   variant="outlined"
-                  startIcon={<ManageAccountsIcon />}
-                  onClick={() => navigate(`/spaces/${space.id}/manage`)}
+                  startIcon={<SettingsOutlinedIcon />}
+                  onClick={() => navigate(spaceSettingsRoute(space.id))}
                 >
-                  Space verwalten
+                  Einstellungen
                 </Button>
               )}
             </Stack>
