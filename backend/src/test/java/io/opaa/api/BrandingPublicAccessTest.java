@@ -7,10 +7,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import io.opaa.auth.OidcSecurityConfig;
 import io.opaa.auth.UserService;
 import io.opaa.branding.BrandingDefaults;
-import io.opaa.branding.BrandingLogoValidator;
+import io.opaa.branding.BrandingImageKind;
+import io.opaa.branding.BrandingImageValidator;
 import io.opaa.branding.BrandingSettingsService;
 import io.opaa.branding.EffectiveBranding;
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,9 +29,10 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 /**
- * #583: the sign-in page renders before there is a session and still has to carry the operator's
- * product name, claim and logo - so {@code GET /api/v1/branding} and {@code /api/v1/branding/logo}
- * are reachable without authentication, and nothing else under {@code /api/v1} is.
+ * #583/#1910: the sign-in page renders before there is a session and still has to carry the
+ * operator's product name, claim, logo and background - so {@code GET /api/v1/branding} and the
+ * three image paths under it are reachable without authentication, and nothing else under {@code
+ * /api/v1} is.
  *
  * <p>Runs against the real {@link OidcSecurityConfig} chain rather than the {@code dev} one,
  * because {@code dev} cannot express the question: {@code DevAuthFilter} authenticates every
@@ -59,7 +62,7 @@ class BrandingPublicAccessTest {
   @Autowired private MockMvc mockMvc;
 
   @MockitoBean private BrandingSettingsService brandingSettingsService;
-  @MockitoBean private BrandingLogoValidator logoValidator;
+  @MockitoBean private BrandingImageValidator imageValidator;
   @MockitoBean private UserService userService;
 
   @MockitoBean
@@ -74,21 +77,37 @@ class BrandingPublicAccessTest {
                 BrandingDefaults.CLAIM,
                 BrandingDefaults.PRIMARY_COLOR,
                 BrandingDefaults.COLOR_SCHEME,
-                Optional.empty()));
+                Map.of()));
 
     mockMvc.perform(get("/api/v1/branding")).andExpect(status().isOk());
   }
 
   /**
-   * The logo path is permitted separately from the settings path, so it needs its own proof - 404
-   * here means the request reached the controller and found no logo configured, which is precisely
-   * what "not rejected by authorization" looks like for this endpoint.
+   * Each image path is permitted separately from the settings path, so each needs its own proof -
+   * 404 here means the request reached the controller and found nothing configured, which is
+   * precisely what "not rejected by authorization" looks like for these endpoints.
    */
   @Test
-  void theLogoIsReadableWithoutAnyCredentials() throws Exception {
-    when(brandingSettingsService.currentLogo()).thenReturn(Optional.empty());
+  void everyImagePathIsReadableWithoutAnyCredentials() throws Exception {
+    for (BrandingImageKind kind : BrandingImageKind.values()) {
+      when(brandingSettingsService.currentImage(kind)).thenReturn(Optional.empty());
+    }
 
-    mockMvc.perform(get("/api/v1/branding/logo")).andExpect(status().isNotFound());
+    for (String path : new String[] {"logo", "login-logo", "login-background"}) {
+      mockMvc.perform(get("/api/v1/branding/" + path)).andExpect(status().isNotFound());
+    }
+  }
+
+  /** Uploading an image stays behind authentication, for every kind. */
+  @Test
+  void changingAnImageIsStillRejectedWithoutCredentials() throws Exception {
+    for (String path : new String[] {"logo", "login-logo", "login-background"}) {
+      mockMvc
+          .perform(
+              org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete(
+                  "/api/v1/system/branding/" + path))
+          .andExpect(status().isUnauthorized());
+    }
   }
 
   /**

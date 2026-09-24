@@ -65,6 +65,11 @@ Formularregeln in einem PR ohne Formular) entfallen ersatzlos — alles andere w
       [Guidelines 2.2](./guidelines.md) gelten als nachgewiesen; jede andere Kombination
       wird im PR belegt.
 - [ ] Farbe ist nie der einzige Informationsträger (zusätzlich Text, Icon oder Muster).
+- [ ] Steht Text über einem Bild, das eine Installation selbst hinterlegt (Hintergrundbild der
+      Anmeldeseite, #1910), ist der Nachweis über den **schlechtesten Fall** zu führen: die feste
+      Deckschicht über einem rein weißen und einem rein schwarzen Bild. Ein Nachweis gegen das
+      gerade hochgeladene Motiv sagt über das nächste nichts. Beispiel:
+      `frontend/src/components/auth/AuthLayout.contrast.test.ts`.
 
 ### 2.5 Zoom und Reflow
 

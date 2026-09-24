@@ -15,12 +15,25 @@ const formReveal = keyframes`
   to { opacity: 1; transform: none; }
 `
 
+/**
+ * Deckkraft des Schleiers über einem hinterlegten Hintergrundbild (#1910).
+ *
+ * Das Bild bringt eine Installation selbst mit; wie hell es ist, weiß diese Anwendung nicht. Der
+ * Schleier ist deshalb fest und nicht aus dem Bild abgeleitet: Bei dieser Deckkraft erreicht die
+ * Schrift der Markenfläche auch über einem rein weißen Bild noch die 4,5:1 aus
+ * docs/design/accessibility.md — nachgerechnet in AuthLayout.contrast.test.ts, dem einzigen Ort,
+ * an dem dieser Wert überhaupt prüfbar ist.
+ */
+export const LOGIN_BACKDROP_SCRIM_OPACITY = 0.82
+
 /** Die Marke der Installation, groß — der Inhalt der Fläche, die vorher leer war. */
 function BrandPanel() {
   const claim = useBrandingStore((s) => s.branding.claim)
   return (
     <Box sx={{ maxWidth: 460 }}>
-      <BrandMark logoHeight={52} variant="h4" />
+      {/* #1910: Das Logo der Anmeldeseite trägt diese Fläche, also steht es hier deutlich
+          größer als die Marke in der Seitenleiste. */}
+      <BrandMark logoHeight={96} variant="h4" preferLoginLogo />
       {claim && (
         <Typography
           sx={{
@@ -55,6 +68,16 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
   // Nur eine der beiden Marken wird gebaut, nicht eine davon versteckt: Zweimal derselbe Name im
   // Baum ist auch dann eine Dopplung, wenn eine Hälfte unsichtbar ist.
   const wide = useMediaQuery(theme.breakpoints.up('md'))
+  const backgroundUrl = useBrandingStore((s) => s.branding.loginBackgroundUrl)
+
+  // Ohne Bild bleibt die heutige Fläche (#1910): derselbe weiche Kern auf Navy. Mit Bild liegt
+  // der Schleier als eigene Ebene darüber, in derselben background-image-Eigenschaft — ein
+  // Farbverlauf aus zwei gleichen Stopps ist die einzige Form, in der CSS eine Deckfarbe über
+  // ein Bild legt, ohne dafür ein zweites Element zu brauchen.
+  const scrim = alpha(navyRoles.bg1, LOGIN_BACKDROP_SCRIM_OPACITY)
+  const panelBackgroundImage = backgroundUrl
+    ? `linear-gradient(${scrim}, ${scrim}), url("${backgroundUrl}")`
+    : `radial-gradient(70% 55% at 20% 22%, ${alpha(navyRoles.accent, 0.28)} 0%, transparent 72%)`
 
   return (
     <Box
@@ -66,6 +89,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
     >
       {wide && (
         <Box
+          data-testid="auth-brand-panel"
           sx={{
             display: 'flex',
             flexDirection: 'column',
@@ -76,7 +100,9 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
             color: navyRoles.fg1,
             // Tiefe statt einer flachen Fläche: ein weicher Kern oben links, gerade so viel, dass
             // die Fläche nicht als Block liegt (guidelines 4.3 - Atmosphäre, keine Effekte).
-            backgroundImage: `radial-gradient(70% 55% at 20% 22%, ${alpha(navyRoles.accent, 0.28)} 0%, transparent 72%)`,
+            backgroundImage: panelBackgroundImage,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
           }}
         >
           <BrandPanel />
@@ -103,7 +129,13 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
           {/* Ohne die Markenfläche daneben trägt die Eingabespalte die Marke selbst. */}
           {!wide && (
             <Box sx={{ mb: 3.5 }}>
-              <BrandMark orientation="vertical" variant="h5" logoHeight={36} showClaim />
+              <BrandMark
+                orientation="vertical"
+                variant="h5"
+                logoHeight={56}
+                showClaim
+                preferLoginLogo
+              />
             </Box>
           )}
           {children}

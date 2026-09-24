@@ -55,6 +55,8 @@ function renderSidebarAtRoute(initialPath: string) {
 describe('Sidebar', () => {
   beforeEach(() => {
     mockNavigate.mockReset()
+    // #1912: Die Nutzungsreihenfolge liegt im localStorage und überdauert sonst die Testfälle.
+    window.localStorage.clear()
     useBrandingStore.setState({ branding: OPAA_BRANDING })
     useChatStore.setState({
       spaceId: null,
@@ -172,16 +174,66 @@ describe('Sidebar', () => {
     expect(screen.queryByText('Deployment-Fragen')).not.toBeInTheDocument()
   })
 
-  it('opens the space switcher listing every space with kind and member count', async () => {
+  it('opens the space switcher listing the spaces with kind and member count', async () => {
     const user = userEvent.setup()
     renderSidebarAtRoute('/chat')
 
     await user.click(screen.getByRole('button', { name: /Meine Dokumente/ }))
 
-    expect(screen.getByText('Ihre Spaces')).toBeInTheDocument()
+    expect(screen.getByText('Zuletzt genutzt')).toBeInTheDocument()
     expect(screen.getByRole('menuitem', { name: /Engineering/ })).toBeInTheDocument()
     expect(screen.getByText('Team · 3 Mitgliedschaften')).toBeInTheDocument()
     expect(screen.getByText('Persönlich · 1 Mitgliedschaft')).toBeInTheDocument()
+  })
+
+  /**
+   * #1912: Das Menü bleibt kurz, damit die beiden Aktionen darunter sichtbar bleiben - und es
+   * beginnt mit dem zuletzt genutzten Space.
+   */
+  it('shows at most five spaces, most recently used first', async () => {
+    useSpaceStore.setState({
+      spaces: Array.from({ length: 8 }, (_, index) => ({
+        id: `space-${index}`,
+        name: `Space ${index}`,
+        description: '',
+        isDefault: index === 0,
+        archived: false,
+        visibility: 'PRIVATE' as const,
+        memberCount: 1,
+        userRole: 'ADMIN' as const,
+        createdAt: '2026-03-01T10:00:00Z',
+        updatedAt: '2026-03-01T10:00:00Z',
+      })),
+      isLoadingList: false,
+    })
+    window.localStorage.setItem('opaa.spaces.recent', JSON.stringify(['space-6', 'space-3']))
+
+    const user = userEvent.setup()
+    renderSidebarAtRoute('/chat')
+    await user.click(screen.getByRole('button', { name: /Space 0/ }))
+
+    const names = screen
+      .getAllByRole('menuitem')
+      .map((item) => item.textContent ?? '')
+      .filter((text) => text.startsWith('Space '))
+    expect(names).toHaveLength(5)
+    expect(names[0]).toContain('Space 6')
+    expect(names[1]).toContain('Space 3')
+
+    // Die beiden Aktionen stehen unabhängig davon immer im Menü.
+    expect(screen.getByRole('menuitem', { name: 'Alle Spaces anzeigen' })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: /Neuen Space anlegen/ })).toBeInTheDocument()
+  })
+
+  /** #1911/#1912: Gemerkt wird der Space der Route, nicht der Rückfall auf den persönlichen. */
+  it('remembers the space named by the route, not the fallback', () => {
+    renderSidebarAtRoute('/chat')
+    expect(window.localStorage.getItem('opaa.spaces.recent')).toBeNull()
+
+    renderSidebarAtRoute('/spaces/space-engineering')
+    expect(JSON.parse(window.localStorage.getItem('opaa.spaces.recent') ?? '[]')).toEqual([
+      'space-engineering',
+    ])
   })
 
   it('opens an empty chat in a space chosen in the switcher', async () => {

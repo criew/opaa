@@ -123,7 +123,7 @@ describe('LoginPage', () => {
     ).toBeInTheDocument()
     expect(screen.getByText('Fragen. Belegen. Entscheiden.')).toBeInTheDocument()
     // the choice is one named group; the trust line explains where the password goes (#1369)
-    expect(screen.getByRole('group', { name: 'Anmeldung' })).toBeInTheDocument()
+    expect(screen.getByRole('group', { name: 'Identitätsanbieter' })).toBeInTheDocument()
     expect(screen.getByText(/OPAA erhält kein Kennwort/)).toBeInTheDocument()
   })
 
@@ -403,7 +403,9 @@ describe('LoginPage', () => {
       ).toHaveAttribute('href', '/login/system')
     })
 
-    it('shows both sections, providers first, when both ways exist', () => {
+    // #1910: Ist die Maske eingeschaltet, steht sie oben - sie ist der Weg, den die
+    // Installation für ihre eigenen Konten eingerichtet hat.
+    it('shows both sections, the local mask first, when both ways exist', () => {
       useAuthStore.setState({
         mode: 'oidc',
         providers: [verzeichnisdienst],
@@ -412,7 +414,7 @@ describe('LoginPage', () => {
       renderWithProviders(<LoginPage />, { withRouter: true, withNotificationHost: false })
 
       const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)
-      expect(headings).toEqual(['Mit Identitätsanbieter', 'Mit Konto dieser Installation'])
+      expect(headings).toEqual(['Konto dieser Installation', 'Identitätsanbieter'])
       expect(screen.getByLabelText('E-Mail-Adresse')).toBeInTheDocument()
       expect(screen.getByLabelText('Passwort')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Anmelden' })).toBeInTheDocument()
@@ -428,7 +430,12 @@ describe('LoginPage', () => {
       useAuthStore.setState({ mode: 'oidc', providers: [], localAccounts: localEnabled })
       renderWithProviders(<LoginPage />, { withRouter: true, withNotificationHost: false })
 
-      expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent('Anmeldung')
+      // #1910: „Anmelden" steht genau einmal, als Seitenüberschrift - der Abschnitt darunter
+      // benennt den Weg.
+      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Anmelden')
+      expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(
+        'Konto dieser Installation',
+      )
       expect(screen.getByLabelText('E-Mail-Adresse')).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: /anmelden bei/i })).not.toBeInTheDocument()
     })

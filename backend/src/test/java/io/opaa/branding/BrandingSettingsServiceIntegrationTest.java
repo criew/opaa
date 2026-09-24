@@ -80,7 +80,7 @@ class BrandingSettingsServiceIntegrationTest {
     assertThat(branding.claim()).isEqualTo(BrandingDefaults.CLAIM);
     assertThat(branding.primaryColor()).isEqualTo(BrandingDefaults.PRIMARY_COLOR);
     assertThat(branding.defaultColorScheme()).isEqualTo(BrandingDefaults.COLOR_SCHEME);
-    assertThat(branding.logo()).isEmpty();
+    assertThat(branding.images()).isEmpty();
   }
 
   @Test
@@ -182,30 +182,53 @@ class BrandingSettingsServiceIntegrationTest {
     byte[] content = png(120, 40);
 
     EffectiveBranding afterUpload =
-        brandingSettingsService.replaceLogo(organizationId, userId, content);
+        brandingSettingsService.replaceImage(
+            organizationId, userId, BrandingImageKind.LOGO, content);
 
-    assertThat(afterUpload.logo()).isPresent();
-    assertThat(afterUpload.logo().orElseThrow().contentType())
-        .isEqualTo(BrandingLogoValidator.PNG_MIME_TYPE);
-    BrandingLogo stored = brandingSettingsService.currentLogo().orElseThrow();
+    assertThat(afterUpload.image(BrandingImageKind.LOGO)).isPresent();
+    assertThat(afterUpload.image(BrandingImageKind.LOGO).orElseThrow().contentType())
+        .isEqualTo(BrandingImageValidator.PNG_MIME_TYPE);
+    BrandingImage stored =
+        brandingSettingsService.currentImage(BrandingImageKind.LOGO).orElseThrow();
     assertThat(stored.content()).isEqualTo(content);
-    assertThat(stored.contentType()).isEqualTo(BrandingLogoValidator.PNG_MIME_TYPE);
+    assertThat(stored.contentType()).isEqualTo(BrandingImageValidator.PNG_MIME_TYPE);
 
     String after = (String) brandingAuditEntries().getFirst().get("after");
-    assertThat(after).contains(BrandingLogoValidator.PNG_MIME_TYPE).contains(stored.version());
+    assertThat(after).contains(BrandingImageValidator.PNG_MIME_TYPE).contains(stored.version());
   }
 
   @Test
   void removingALogoClearsItAndRemovingANonExistentOneAuditsNothing() throws IOException {
-    brandingSettingsService.removeLogo(organizationId, userId);
+    brandingSettingsService.removeImage(organizationId, userId, BrandingImageKind.LOGO);
     assertThat(brandingAuditEntries()).isEmpty();
 
-    brandingSettingsService.replaceLogo(organizationId, userId, png(120, 40));
-    brandingSettingsService.removeLogo(organizationId, userId);
+    brandingSettingsService.replaceImage(
+        organizationId, userId, BrandingImageKind.LOGO, png(120, 40));
+    brandingSettingsService.removeImage(organizationId, userId, BrandingImageKind.LOGO);
 
-    assertThat(brandingSettingsService.currentLogo()).isEmpty();
-    assertThat(brandingSettingsService.currentBranding().logo()).isEmpty();
+    assertThat(brandingSettingsService.currentImage(BrandingImageKind.LOGO)).isEmpty();
+    assertThat(brandingSettingsService.currentBranding().image(BrandingImageKind.LOGO)).isEmpty();
     assertThat(brandingAuditEntries()).hasSize(2);
+  }
+
+  /**
+   * #1910: the audit record names each image slot separately. Without that, "a branding image was
+   * replaced" would be all an auditor could reconstruct from a row that holds three of them.
+   */
+  @Test
+  void theAuditRecordNamesEachImageSlotSeparately() throws IOException {
+    brandingSettingsService.replaceImage(
+        organizationId, userId, BrandingImageKind.LOGIN_BACKGROUND, png(400, 300));
+
+    Map<String, Object> entry = brandingAuditEntries().getFirst();
+    assertThat((String) entry.get("before"))
+        .contains("\"loginBackgroundVersion\":\"-\"")
+        .contains("\"logoVersion\":\"-\"");
+    assertThat((String) entry.get("after"))
+        .contains("\"loginBackgroundContentType\":\"" + BrandingImageValidator.PNG_MIME_TYPE + "\"")
+        .as("the untouched slots stay empty in the record")
+        .contains("\"logoVersion\":\"-\"")
+        .contains("\"loginLogoVersion\":\"-\"");
   }
 
   @Test
@@ -231,6 +254,26 @@ class BrandingSettingsServiceIntegrationTest {
         .hasMessageContaining("chk_branding_settings_logo_complete");
   }
 
+  /** The same backstop for the two slots migration 088 added - one constraint each, not shared. */
+  @Test
+  void theDatabaseRejectsPartialSignInImagesToo() {
+    assertThatThrownBy(
+            () ->
+                jdbcTemplate.update(
+                    "UPDATE branding_settings SET login_logo_content = decode('89504e47', 'hex')"
+                        + " WHERE id = 1"))
+        .isInstanceOf(DataIntegrityViolationException.class)
+        .hasMessageContaining("chk_branding_settings_login_logo_complete");
+
+    assertThatThrownBy(
+            () ->
+                jdbcTemplate.update(
+                    "UPDATE branding_settings SET login_background_content_type = 'image/png'"
+                        + " WHERE id = 1"))
+        .isInstanceOf(DataIntegrityViolationException.class)
+        .hasMessageContaining("chk_branding_settings_login_background_complete");
+  }
+
   /**
    * Reads the audit trail through SQL rather than through {@code AuditLogRepository}: that
    * repository is package-private on purpose (see {@code io.opaa.audit}'s package-info), and
@@ -253,7 +296,11 @@ class BrandingSettingsServiceIntegrationTest {
     jdbcTemplate.update(
         "UPDATE branding_settings SET product_name = NULL, claim = NULL, primary_color = NULL,"
             + " default_color_scheme = NULL, logo_content = NULL, logo_content_type = NULL,"
-            + " logo_version = NULL, logo_updated_at = NULL, updated_at = now() WHERE id = 1");
+            + " logo_version = NULL, logo_updated_at = NULL, login_logo_content = NULL,"
+            + " login_logo_content_type = NULL, login_logo_version = NULL,"
+            + " login_logo_updated_at = NULL, login_background_content = NULL,"
+            + " login_background_content_type = NULL, login_background_version = NULL,"
+            + " login_background_updated_at = NULL, updated_at = now() WHERE id = 1");
   }
 
   private static byte[] png(int width, int height) throws IOException {

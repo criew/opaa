@@ -1,0 +1,62 @@
+databaseChangeLog:
+  - changeSet:
+      id: 088-branding-login-images
+      author: opaa
+      comment: "Two further branding images in the same singleton row (#1910): the sign-in page's own logo and its optional background image. Same shape as the logo columns of the baseline - content, detected content type, content-derived version, timestamp - with the same all-or-nothing and content-type constraints. The background carries its own, larger size ceiling: it is a photograph covering half a screen, not a piece of chrome."
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE branding_settings
+                  ADD COLUMN login_logo_content bytea,
+                  ADD COLUMN login_logo_content_type character varying(50),
+                  ADD COLUMN login_logo_version character varying(16),
+                  ADD COLUMN login_logo_updated_at timestamp with time zone,
+                  ADD COLUMN login_background_content bytea,
+                  ADD COLUMN login_background_content_type character varying(50),
+                  ADD COLUMN login_background_version character varying(16),
+                  ADD COLUMN login_background_updated_at timestamp with time zone;
+
+              ALTER TABLE branding_settings
+                  ADD CONSTRAINT chk_branding_settings_login_logo_complete CHECK (
+                      ((login_logo_content IS NULL) AND (login_logo_content_type IS NULL)
+                           AND (login_logo_version IS NULL) AND (login_logo_updated_at IS NULL))
+                      OR ((login_logo_content IS NOT NULL) AND (login_logo_content_type IS NOT NULL)
+                           AND (login_logo_version IS NOT NULL) AND (login_logo_updated_at IS NOT NULL))),
+                  ADD CONSTRAINT chk_branding_settings_login_logo_content_type CHECK (
+                      (login_logo_content_type IS NULL)
+                          OR (login_logo_content_type IN ('image/png', 'image/jpeg'))),
+                  ADD CONSTRAINT chk_branding_settings_login_logo_size CHECK (
+                      (login_logo_content IS NULL) OR (octet_length(login_logo_content) <= 524288)),
+                  ADD CONSTRAINT chk_branding_settings_login_background_complete CHECK (
+                      ((login_background_content IS NULL) AND (login_background_content_type IS NULL)
+                           AND (login_background_version IS NULL) AND (login_background_updated_at IS NULL))
+                      OR ((login_background_content IS NOT NULL) AND (login_background_content_type IS NOT NULL)
+                           AND (login_background_version IS NOT NULL) AND (login_background_updated_at IS NOT NULL))),
+                  ADD CONSTRAINT chk_branding_settings_login_background_content_type CHECK (
+                      (login_background_content_type IS NULL)
+                          OR (login_background_content_type IN ('image/png', 'image/jpeg'))),
+                  ADD CONSTRAINT chk_branding_settings_login_background_size CHECK (
+                      (login_background_content IS NULL)
+                          OR (octet_length(login_background_content) <= 2097152));
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE branding_settings
+                  DROP CONSTRAINT chk_branding_settings_login_logo_complete,
+                  DROP CONSTRAINT chk_branding_settings_login_logo_content_type,
+                  DROP CONSTRAINT chk_branding_settings_login_logo_size,
+                  DROP CONSTRAINT chk_branding_settings_login_background_complete,
+                  DROP CONSTRAINT chk_branding_settings_login_background_content_type,
+                  DROP CONSTRAINT chk_branding_settings_login_background_size;
+
+              ALTER TABLE branding_settings
+                  DROP COLUMN login_logo_content,
+                  DROP COLUMN login_logo_content_type,
+                  DROP COLUMN login_logo_version,
+                  DROP COLUMN login_logo_updated_at,
+                  DROP COLUMN login_background_content,
+                  DROP COLUMN login_background_content_type,
+                  DROP COLUMN login_background_version,
+                  DROP COLUMN login_background_updated_at;

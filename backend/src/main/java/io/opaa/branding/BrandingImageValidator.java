@@ -17,16 +17,19 @@ import org.apache.tika.Tika;
 import org.springframework.stereotype.Component;
 
 /**
- * Everything that has to be true of an uploaded logo before it is stored (#582: "Validierung an der
- * Systemgrenze ... Logo-MIME-Typ und -Größe" and "das hochgeladene Logo darf kein Skript ausführen
- * können").
+ * Everything that has to be true of an uploaded branding image before it is stored (#582:
+ * "Validierung an der Systemgrenze ... Logo-MIME-Typ und -Größe" and "das hochgeladene Logo darf
+ * kein Skript ausführen können"). Since #1910 the same rules cover the sign-in page's own logo and
+ * its background image; only the ceilings differ, and they come from {@link BrandingImageKind}.
  *
  * <p><b>SVG is rejected, not sanitised.</b> #582 allows either; rejecting is the choice that cannot
  * be wrong on a bad day. An SVG is a document, not an image file - it can carry {@code <script>},
  * event handlers, external references and {@code <foreignObject>} - and a sanitiser that misses one
  * construct hands script execution to every user's browser under the deployment's own origin. A
  * format restriction is inconvenient once, when the operator converts their logo; a sanitiser bug
- * is a cross-site scripting hole in a page every user of the deployment loads.
+ * is a cross-site scripting hole in a page every user of the deployment loads. This is also why
+ * #1910's wish for SVG on the sign-in page is not granted: that page is the one surface an
+ * unauthenticated visitor reaches.
  *
  * <p><b>PNG and JPEG, and nothing else</b> - narrower than the "images generally" one might expect,
  * and deliberately so: every accepted format is validated the same, complete way, and both of these
@@ -41,20 +44,7 @@ import org.springframework.stereotype.Component;
  * {@code LibraryDocumentService#requireContentMatchesExtension} applies to document uploads, #435).
  */
 @Component
-public class BrandingLogoValidator {
-
-  /**
-   * 512 KiB. A logo is a piece of chrome rendered a few hundred pixels wide; anything past this is
-   * either a photograph pasted into the wrong form or an attempt to see what happens.
-   */
-  public static final int MAX_LOGO_SIZE_BYTES = 512 * 1024;
-
-  /**
-   * 2000 px per edge. Not about layout - about not accepting a small file that decompresses into a
-   * very large raster ("decompression bomb"): the dimensions are read from the image header, before
-   * anything decodes a single pixel.
-   */
-  public static final int MAX_LOGO_EDGE_PIXELS = 2000;
+public class BrandingImageValidator {
 
   public static final String PNG_MIME_TYPE = "image/png";
   public static final String JPEG_MIME_TYPE = "image/jpeg";
@@ -66,51 +56,53 @@ public class BrandingLogoValidator {
   private final Tika tika = new Tika();
 
   /**
-   * Validates {@code content} and returns what should be stored for it. Throws {@link
-   * PayloadTooLargeException} (413, "too large") or {@link ValidationException} (400, everything
-   * else) with a German-language message for every rejection, so a caller does not have to
-   * translate anything.
+   * Validates {@code content} against the rules of {@code kind} and returns what should be stored
+   * for it. Throws {@link PayloadTooLargeException} (413, "too large") or {@link
+   * ValidationException} (400, everything else) with a German-language message for every rejection,
+   * so a caller does not have to translate anything.
    */
-  public ValidatedLogo validate(byte[] content) {
+  public ValidatedImage validate(BrandingImageKind kind, byte[] content) {
     if (content == null || content.length == 0) {
-      throw new ValidationException("Die Logo-Datei ist leer");
+      throw new ValidationException(kind.label() + " ist leer");
     }
-    requireAcceptableSize(content.length);
+    requireAcceptableSize(kind, content.length);
 
-    String detectedMimeType = detectMimeType(content);
+    String detectedMimeType = detectMimeType(kind, content);
     if (!ACCEPTED_MIME_TYPES.contains(detectedMimeType)) {
       throw new ValidationException(
-          "Als Logo sind nur PNG- und JPEG-Dateien zulässig; SVG wird bewusst nicht angenommen,"
-              + " weil eine SVG-Datei Skripte enthalten kann");
+          kind.label()
+              + " muss eine PNG- oder JPEG-Datei sein; SVG wird bewusst nicht angenommen, weil eine"
+              + " SVG-Datei Skripte enthalten kann");
     }
 
-    requireSaneDimensions(content, detectedMimeType);
+    requireSaneDimensions(kind, content, detectedMimeType);
 
-    return new ValidatedLogo(content, detectedMimeType, version(content));
+    return new ValidatedImage(content, detectedMimeType, version(content));
   }
 
   /**
    * The size rule on its own, so a caller can apply it to a declared size before reading anything
    * into memory. {@code spring.servlet.multipart.max-file-size} is bound to the document-upload
-   * limit of 50 MiB (application.yml), which is two orders of magnitude past what a logo may be -
-   * without this, {@code MultipartFile#getBytes} would pull a 50 MiB "logo" fully into the heap
-   * only for {@link #validate} to reject it a line later. {@link #validate} still applies the same
-   * rule to the bytes it actually got, so this stays an optimisation rather than the guarantee.
+   * limit of 50 MiB (application.yml), which is orders of magnitude past what a branding image may
+   * be - without this, {@code MultipartFile#getBytes} would pull a 50 MiB "logo" fully into the
+   * heap only for {@link #validate} to reject it a line later. {@link #validate} still applies the
+   * same rule to the bytes it actually got, so this stays an optimisation rather than the
+   * guarantee.
    */
-  public void requireAcceptableSize(long sizeBytes) {
-    if (sizeBytes > MAX_LOGO_SIZE_BYTES) {
+  public void requireAcceptableSize(BrandingImageKind kind, long sizeBytes) {
+    if (sizeBytes > kind.maxSizeBytes()) {
       throw new PayloadTooLargeException(
-          "Das Logo darf höchstens " + (MAX_LOGO_SIZE_BYTES / 1024) + " KiB groß sein");
+          kind.label() + " darf höchstens " + (kind.maxSizeBytes() / 1024) + " KiB groß sein");
     }
   }
 
-  private String detectMimeType(byte[] content) {
+  private String detectMimeType(BrandingImageKind kind, byte[] content) {
     try (InputStream contentStream = new ByteArrayInputStream(content)) {
       return tika.detect(contentStream);
     } catch (IOException e) {
       // Unreachable for a ByteArrayInputStream, but IOException is checked and swallowing it
       // silently would turn a genuine detection failure into "accepted".
-      throw new ValidationException("Das Logo konnte nicht auf sein Format geprüft werden");
+      throw new ValidationException(kind.label() + " konnte nicht auf sein Format geprüft werden");
     }
   }
 
@@ -120,26 +112,27 @@ public class BrandingLogoValidator {
    * ImageIO.read}, which would allocate the full raster of exactly the oversized image this check
    * exists to reject.
    */
-  private void requireSaneDimensions(byte[] content, String mimeType) {
+  private void requireSaneDimensions(BrandingImageKind kind, byte[] content, String mimeType) {
     try (ImageInputStream imageStream =
         ImageIO.createImageInputStream(new ByteArrayInputStream(content))) {
       Iterator<ImageReader> readers = ImageIO.getImageReadersByMIMEType(mimeType);
       if (!readers.hasNext()) {
         // Only reachable if the accepted-type set and the JRE's readers ever drift apart; failing
         // closed here is what keeps that drift from silently disabling this check.
-        throw new ValidationException("Das Logo konnte nicht als Bild gelesen werden");
+        throw new ValidationException(kind.label() + " konnte nicht als Bild gelesen werden");
       }
       ImageReader reader = readers.next();
       try {
         reader.setInput(imageStream);
         int width = reader.getWidth(0);
         int height = reader.getHeight(0);
-        if (width > MAX_LOGO_EDGE_PIXELS || height > MAX_LOGO_EDGE_PIXELS) {
+        if (width > kind.maxEdgePixels() || height > kind.maxEdgePixels()) {
           throw new ValidationException(
-              "Das Logo darf höchstens "
-                  + MAX_LOGO_EDGE_PIXELS
+              kind.label()
+                  + " darf höchstens "
+                  + kind.maxEdgePixels()
                   + " × "
-                  + MAX_LOGO_EDGE_PIXELS
+                  + kind.maxEdgePixels()
                   + " Bildpunkte groß sein, war aber "
                   + width
                   + " × "
@@ -149,15 +142,15 @@ public class BrandingLogoValidator {
         reader.dispose();
       }
     } catch (IOException e) {
-      throw new ValidationException("Das Logo konnte nicht als Bild gelesen werden");
+      throw new ValidationException(kind.label() + " konnte nicht als Bild gelesen werden");
     }
   }
 
   /**
    * A short, content-derived version - the first 16 hex characters of the content's SHA-256. Used
-   * both as the cache-busting query parameter in {@code logoUrl} and as the {@code ETag} the
-   * logo-serving endpoint returns, so both change exactly when the bytes do. Truncated because this
-   * identifies a version, it does not authenticate one.
+   * both as the cache-busting query parameter in the image URLs and as the {@code ETag} the
+   * image-serving endpoints return, so both change exactly when the bytes do. Truncated because
+   * this identifies a version, it does not authenticate one.
    */
   private String version(byte[] content) {
     try {
@@ -168,6 +161,6 @@ public class BrandingLogoValidator {
     }
   }
 
-  /** An accepted logo: the bytes, the type detected in them, and their content-derived version. */
-  public record ValidatedLogo(byte[] content, String contentType, String version) {}
+  /** An accepted image: the bytes, the type detected in them, and their content-derived version. */
+  public record ValidatedImage(byte[] content, String contentType, String version) {}
 }
