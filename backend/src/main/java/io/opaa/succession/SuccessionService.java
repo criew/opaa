@@ -144,8 +144,8 @@ public class SuccessionService implements SuccessionReachGuard, SuccessionCaseCl
 
   /**
    * The state of one object, for its own view and for the reach guards. Empty when the object is in
-   * order - and empty for an object type nobody answers for, so a new type is silently unguarded
-   * rather than silently frozen.
+   * order. Every asset type is answered for as {@link SuccessionObjectType#ASSET}, so no type of
+   * the shell escapes the reach guards.
    */
   @Transactional(readOnly = true)
   public Optional<SuccessionFinding> findingFor(SuccessionObjectType objectType, UUID objectId) {
@@ -161,12 +161,13 @@ public class SuccessionService implements SuccessionReachGuard, SuccessionCaseCl
   }
 
   /**
-   * The state of one asset of the asset shell, named by its open {@link AssetType} - empty for a
-   * type no source answers for, like {@link #findingFor}.
+   * The state of one asset of the asset shell, whatever its type - every type is answered for as
+   * {@link SuccessionObjectType#ASSET}.
    */
   @Transactional(readOnly = true)
   public Optional<SuccessionFinding> findingForAsset(AssetType assetType, UUID assetId) {
-    return objectTypeOf(assetType).flatMap(type -> findingFor(type, assetId));
+    return findingFor(SuccessionObjectType.ASSET, assetId)
+        .filter(finding -> assetType.equals(finding.assetType()));
   }
 
   /** Whether this object's succession is open - the question the reach guards ask. */
@@ -201,10 +202,7 @@ public class SuccessionService implements SuccessionReachGuard, SuccessionCaseCl
   @Transactional(readOnly = true)
   public void requireAssetReachNotFrozen(
       AssetType assetType, UUID assetId, String attemptedAction) {
-    Optional<SuccessionObjectType> objectType = objectTypeOf(assetType);
-    if (objectType.isPresent()) {
-      requireReachNotFrozen(objectType.get(), assetId, attemptedAction);
-    }
+    requireReachNotFrozen(SuccessionObjectType.ASSET, assetId, attemptedAction);
   }
 
   /** The German wording of the addressee - the same one the list and the object's view use. */
@@ -243,30 +241,20 @@ public class SuccessionService implements SuccessionReachGuard, SuccessionCaseCl
 
   /**
    * Ends the open succession of one asset and names who ended it - called by an operation that
-   * knows its actor, today the transfer of ownership and responsibility (#1834). An asset type no
-   * source answers for has no record to close (#1726), which is why this takes the open {@link
-   * AssetType} rather than a closed enum.
+   * knows its actor, today the transfer of ownership and responsibility (#1834). The transfer also
+   * names a space by its asset type, so the record is found by the object alone - its id is unique
+   * across every object type.
    */
   @Override
   @Transactional
   public void closeForAsset(AssetType assetType, UUID assetId, UUID endedByUserId) {
-    objectTypeOf(assetType).ifPresent(type -> closeIfEnded(type, assetId, endedByUserId));
+    closeIfEnded(assetId, endedByUserId);
   }
 
   @Override
   @Transactional
   public void closeForGroup(UUID groupId, UUID endedByUserId) {
-    closeIfEnded(SuccessionObjectType.GROUP, groupId, endedByUserId);
-  }
-
-  /** The object type a succession source answers for, or empty for a type none knows (#1726). */
-  static Optional<SuccessionObjectType> objectTypeOf(AssetType assetType) {
-    for (SuccessionObjectType type : SuccessionObjectType.values()) {
-      if (type.name().equals(assetType.value())) {
-        return Optional.of(type);
-      }
-    }
-    return Optional.empty();
+    closeIfEnded(groupId, endedByUserId);
   }
 
   /**
@@ -275,18 +263,14 @@ public class SuccessionService implements SuccessionReachGuard, SuccessionCaseCl
    * the age of the entry back to zero, and the other tabs are about a different question than the
    * one this operation answered.
    */
-  private void closeIfEnded(SuccessionObjectType objectType, UUID objectId, UUID endedByUserId) {
-    if (isOpen(objectType, objectId)) {
-      return;
+  private void closeIfEnded(UUID objectId, UUID endedByUserId) {
+    for (SuccessionCase open :
+        cases.findByKindAndObjectIdAndClosedAtIsNull(SuccessionKind.OPEN_SUCCESSION, objectId)) {
+      if (!isOpen(open.getObjectType(), objectId)) {
+        open.close(clock.instant(), endedByUserId);
+        cases.save(open);
+      }
     }
-    cases
-        .findByKindAndObjectTypeAndObjectIdAndClosedAtIsNull(
-            SuccessionKind.OPEN_SUCCESSION, objectType, objectId)
-        .ifPresent(
-            open -> {
-              open.close(clock.instant(), endedByUserId);
-              cases.save(open);
-            });
   }
 
   private Map<UUID, SuccessionReview> newestReviews(Collection<SuccessionCase> openCases) {

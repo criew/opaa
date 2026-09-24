@@ -11,7 +11,7 @@ import java.sql.SQLException;
 import java.util.UUID;
 
 /**
- * The rows the delta tests of changesets 079-083 seed through plain JDBC, against the schema of
+ * The rows the delta tests of changesets 079-084 seed through plain JDBC, against the schema of
  * {@code test-master-through-078.yaml} plus whatever the test has applied on top. A library is
  * seeded in the pre-079 shape (every shell column still on {@code knowledge_libraries}).
  */
@@ -26,6 +26,8 @@ final class AssetShellMigrationFixtures {
   static final String VISIBILITY_HISTORY = "db/changelog/changes/082-asset-visibility-history.yaml";
   static final String SPACE_ASSOCIATIONS =
       "db/changelog/changes/083-space-asset-associations-asset.yaml";
+  static final String SUCCESSION_CASES =
+      "db/changelog/changes/084-succession-cases-asset-type.yaml";
 
   static final UUID DEFAULT_ORGANIZATION = UUID.fromString("00000000-0000-0000-0000-000000000001");
 

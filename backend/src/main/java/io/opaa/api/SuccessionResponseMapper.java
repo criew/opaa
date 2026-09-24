@@ -41,6 +41,10 @@ final class SuccessionResponseMapper {
             finding.affectedObjects(),
             entry.highlighted())
         .caseId(entry.caseId())
+        .assetType(
+            finding.assetType() == null
+                ? null
+                : io.opaa.api.dto.AssetType.fromValue(finding.assetType().value()))
         .addresseeLabel(SuccessionService.addresseeLabel(finding))
         .ownerHint(finding.ownerHint())
         .membershipHints(finding.membershipHints())

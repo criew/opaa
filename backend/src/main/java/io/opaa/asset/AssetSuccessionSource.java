@@ -7,7 +7,6 @@ import io.opaa.api.types.SuccessionObjectType;
 import io.opaa.auth.AccountActivityService;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
-import io.opaa.permission.AssetType;
 import io.opaa.permission.GroupCapabilityService;
 import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.GroupSubject;
@@ -27,8 +26,8 @@ import org.springframework.stereotype.Component;
 /**
  * An asset without a capable owner (#1819, ADR-0036 Entscheidung 6), for every asset type in one
  * query: a person whose account is no longer active, or a group that is dissolved, switched off or
- * has lost its last active account. An asset type the operational list has no object type for
- * ({@link SuccessionObjectType}) is not reported.
+ * has lost its last active account. Every type of the shell is reported, as {@link
+ * SuccessionObjectType#ASSET} with its own asset type - there is no type this source skips.
  *
  * <p>The addressee follows the object, not the finder: an asset of an internal group is the
  * business of that group's stewards, everything else of the system administration.
@@ -65,7 +64,7 @@ public class AssetSuccessionSource implements SuccessionFindingSource {
 
   @Override
   public boolean answersFor(SuccessionObjectType objectType) {
-    return objectType != SuccessionObjectType.SPACE && objectType != SuccessionObjectType.GROUP;
+    return objectType == SuccessionObjectType.ASSET;
   }
 
   @Override
@@ -91,21 +90,15 @@ public class AssetSuccessionSource implements SuccessionFindingSource {
                 .toList());
     Map<UUID, SuccessionFinding> findings = new LinkedHashMap<>();
     for (Asset asset : candidates) {
-      Optional<SuccessionObjectType> objectType = objectTypeOf(asset.getAssetType());
-      if (objectType.isEmpty()) {
-        continue;
-      }
       if (asset.getOwnerType() == AssetOwnerType.USER) {
         if (!activeOwners.contains(asset.getOwnerUserId())) {
-          findings.put(
-              asset.getId(), findingFor(asset, objectType.get(), null, withMembershipHints));
+          findings.put(asset.getId(), findingFor(asset, null, withMembershipHints));
         }
         continue;
       }
       GroupSubject owner = groupDirectory.find(asset.getOwnerGroupId()).orElse(null);
       if (owner == null || !groupCapability.isCapable(owner)) {
-        findings.put(
-            asset.getId(), findingFor(asset, objectType.get(), owner, withMembershipHints));
+        findings.put(asset.getId(), findingFor(asset, owner, withMembershipHints));
       }
     }
     return findings;
@@ -116,33 +109,14 @@ public class AssetSuccessionSource implements SuccessionFindingSource {
     return assets
         .findById(assetId)
         .filter(this::withoutCapableOwner)
-        .flatMap(
+        .map(
             asset ->
-                objectTypeOf(asset.getAssetType())
-                    .map(
-                        objectType ->
-                            findingFor(
-                                asset,
-                                objectType,
-                                asset.getOwnerType() == AssetOwnerType.GROUP
-                                    ? groupDirectory.find(asset.getOwnerGroupId()).orElse(null)
-                                    : null,
-                                true)));
-  }
-
-  /**
-   * The object type of the operational list an asset type appears as - the same name, where the
-   * list knows one ({@code SuccessionService#objectTypeOf} reads the other direction).
-   */
-  static Optional<SuccessionObjectType> objectTypeOf(AssetType assetType) {
-    for (SuccessionObjectType type : SuccessionObjectType.values()) {
-      if (type != SuccessionObjectType.SPACE
-          && type != SuccessionObjectType.GROUP
-          && type.name().equals(assetType.value())) {
-        return Optional.of(type);
-      }
-    }
-    return Optional.empty();
+                findingFor(
+                    asset,
+                    asset.getOwnerType() == AssetOwnerType.GROUP
+                        ? groupDirectory.find(asset.getOwnerGroupId()).orElse(null)
+                        : null,
+                    true));
   }
 
   private boolean withoutCapableOwner(Asset asset) {
@@ -157,14 +131,11 @@ public class AssetSuccessionSource implements SuccessionFindingSource {
    * protected group is named by its protection alone (ADR-0036, Entscheidung 9).
    */
   private SuccessionFinding findingFor(
-      Asset asset,
-      SuccessionObjectType objectType,
-      GroupSubject ownerGroup,
-      boolean withMembershipHints) {
+      Asset asset, GroupSubject ownerGroup, boolean withMembershipHints) {
     boolean internalGroupOwner = ownerGroup != null && ownerGroup.internal();
     SuccessionFinding finding =
-        SuccessionFinding.of(
-            objectType,
+        SuccessionFinding.ofAsset(
+            asset.getAssetType(),
             asset.getId(),
             asset.getName(),
             internalGroupOwner

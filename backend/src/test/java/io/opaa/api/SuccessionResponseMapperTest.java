@@ -7,6 +7,7 @@ import io.opaa.api.dto.SuccessionListResponse;
 import io.opaa.api.dto.SuccessionStateResponse;
 import io.opaa.api.types.SuccessionAddressee;
 import io.opaa.api.types.SuccessionObjectType;
+import io.opaa.permission.AssetType;
 import io.opaa.permission.SuccessionFinding;
 import io.opaa.succession.SuccessionEntry;
 import io.opaa.succession.SuccessionPage;
@@ -29,8 +30,8 @@ class SuccessionResponseMapperTest {
     Instant firstSeenAt = Instant.parse("2026-01-02T03:04:05Z");
     Instant reviewedAt = Instant.parse("2026-06-07T08:09:10Z");
     SuccessionFinding finding =
-        SuccessionFinding.of(
-                SuccessionObjectType.KNOWLEDGE_LIBRARY,
+        SuccessionFinding.ofAsset(
+                AssetType.of("KNOWLEDGE_LIBRARY"),
                 objectId,
                 "Vergabeakten 2025",
                 SuccessionAddressee.GROUP_STEWARDS)
@@ -43,7 +44,8 @@ class SuccessionResponseMapperTest {
             new SuccessionEntry(
                 caseId, finding, firstSeenAt, true, reviewedAt, "geprüft, Nachfolge läuft"));
 
-    assertThat(response.getObjectType()).isEqualTo(SuccessionObjectType.KNOWLEDGE_LIBRARY);
+    assertThat(response.getObjectType()).isEqualTo(SuccessionObjectType.ASSET);
+    assertThat(response.getAssetType()).isEqualTo(io.opaa.api.dto.AssetType.KNOWLEDGE_LIBRARY);
     assertThat(response.getObjectId()).isEqualTo(objectId);
     assertThat(response.getObjectName()).isEqualTo("Vergabeakten 2025");
     assertThat(response.getAddressee()).isEqualTo(SuccessionAddressee.GROUP_STEWARDS);
@@ -78,6 +80,7 @@ class SuccessionResponseMapperTest {
                 null));
 
     assertThat(response.getCaseId()).isNull();
+    assertThat(response.getAssetType()).as("a space is no asset").isNull();
     assertThat(response.getFirstSeenAt()).isNull();
     assertThat(response.getLastReviewedAt()).isNull();
     assertThat(response.getLastReviewReason()).isNull();
@@ -122,8 +125,8 @@ class SuccessionResponseMapperTest {
   void theMarkingAtTheObjectNamesStateAndAddresseeAndNothingElse() {
     SuccessionStateResponse response =
         SuccessionResponseMapper.toStateResponse(
-            SuccessionFinding.of(
-                    SuccessionObjectType.KNOWLEDGE_LIBRARY,
+            SuccessionFinding.ofAsset(
+                    AssetType.of("KNOWLEDGE_LIBRARY"),
                     UUID.randomUUID(),
                     "Vergabeakten 2025",
                     SuccessionAddressee.SYSTEM_ADMINISTRATION)

@@ -1219,9 +1219,8 @@ paths:
       tags: [auth]
       summary: >
         List users in the caller's own organization for member/grant selection - deliberately not
-        admin-restricted, unlike GET /api/v1/admin/users (#777). The member/grant pickers on
-        SpaceManagementPage, SpaceCreatePage, LibraryCreatePage and LibraryGrantsDialog need to
-        search for a user to add, but GET /api/v1/admin/users requires SYSTEM_ADMIN (#199) - a
+        admin-restricted, unlike GET /api/v1/admin/users (#777). The member/grant pickers
+        (UserPicker, SubjectPicker, SpaceCreatePage) need to search for a user to add, but GET /api/v1/admin/users requires SYSTEM_ADMIN (#199) - a
         403 that the frontend silently swallowed into an empty, dead-looking search field for
         every non-admin, making "Mitglied hinzufügen" unusable for anyone but a system admin.
         Same precedent as GET /api/v1/me/groups (any authenticated user needs their own group
@@ -10404,7 +10403,7 @@ components:
 
     SpaceAssetAssociationListResponse:
       type: object
-      required: [hasAssociations, items]
+      required: [hasAssociations, narrowsSearch, items]
       description: >
         The wrapper around GET /v1/spaces/{spaceId}/assets's list, carrying one count-free state
         field alongside it (#203 review finding on #706). hasAssociations distinguishes two
@@ -10420,6 +10419,12 @@ components:
           description: >
             Whether the space has at least one association at all, regardless of whether the
             caller may read it - computed unfiltered, independently of items.
+        narrowsSearch:
+          type: boolean
+          description: >
+            Whether the space narrows a chat's search scope: at least one associated knowledge
+            library, readable or not - the rule the search itself applies. An asset of another type
+            carries no documents and narrows nothing.
         items:
           type: array
           items:
@@ -15484,9 +15489,11 @@ components:
 
     SuccessionObjectType:
       type: string
-      description: What an entry is about - a group is no asset, and the list carries all three.
-      enum: [KNOWLEDGE_LIBRARY, SPACE, GROUP]
-      example: KNOWLEDGE_LIBRARY
+      description: >
+        What an entry is about - an asset of any type (its type in assetType), a space or a group.
+        A group is no asset, and the list carries all three.
+      enum: [ASSET, SPACE, GROUP]
+      example: ASSET
 
     SuccessionAddressee:
       type: string
@@ -15510,6 +15517,11 @@ components:
             seen the finding. The list is complete from day one; the record follows within the hour.
         objectType:
           $ref: "#/components/schemas/SuccessionObjectType"
+        assetType:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/AssetType"
+          description: The type of the asset - set exactly when objectType is ASSET.
         objectId:
           type: string
           format: uuid

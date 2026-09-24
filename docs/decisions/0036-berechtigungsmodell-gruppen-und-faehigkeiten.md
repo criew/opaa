@@ -830,8 +830,11 @@ das ist der Grund, warum #1813 von #1811 abhängt.
 >   Grants, Herleitung, Freigabestufe samt Historie (`asset_visibility_history`), Eigentum und
 >   Space-Assoziation arbeiten auf der Schale, ohne den Typ zu kennen.
 > - **Ein neuer Typ ist eine Tabelle und eine Entität** (dazu eine `AssetTypeDefinition` mit
->   Bezeichnung, Protokoll-Objekttyp und optionaler Reichweitenobergrenze) — keine weitere Stelle in
->   Rechten, Katalog oder Nachfolge.
+>   Bezeichnung, Protokoll-Objekttyp und optionaler Reichweitenobergrenze und sein Wert im Enum
+>   `AssetType` der Spezifikation) — keine weitere Stelle in Rechten, Katalog oder Nachfolge. Die
+>   Nachfolge führt ein Asset deshalb als `ASSET` mit seinem Typ (`succession_cases.asset_type`,
+>   Changeset 084) statt als eigenen Wert von `SuccessionObjectType`; die Reichweitensperre gilt so
+>   für jeden Typ der Schale, auch einen, den kein geschlossener Katalog nennt.
 >
 > Die Historientabellen (`asset_grant_history`, `asset_visibility_history`, `asset_ownership_history`)
 > bleiben nach ADR-0016 ohne Fremdschlüssel auf `assets`, weil sie das Löschen überdauern. Die

@@ -12,8 +12,8 @@ import java.util.UUID;
  * <b>not</b> end the state leaves the record alone: a record closed and reopened would restart the
  * age the list shows.
  *
- * <p>The asset half takes the open {@link AssetType}, not a closed enum of object types: a type
- * nobody answers for simply has no record to close (#1726).
+ * <p>The asset half takes the open {@link AssetType}, not a closed enum of object types: every
+ * asset type has its record, and a transfer names a space the same way.
  */
 public interface SuccessionCaseCloser {
 

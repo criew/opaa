@@ -23,9 +23,11 @@ public interface SuccessionCaseRepository extends JpaRepository<SuccessionCase, 
   Optional<SuccessionCase> findByKindAndObjectTypeAndObjectIdAndClosedAtIsNull(
       SuccessionKind kind, SuccessionObjectType objectType, UUID objectId);
 
-  /** Every open case about one object, whatever the tab - what a transfer closes when it acts. */
-  List<SuccessionCase> findByObjectTypeAndObjectIdAndClosedAtIsNull(
-      SuccessionObjectType objectType, UUID objectId);
+  /**
+   * The open cases of one tab about one object, whatever its object type - what a transfer closes
+   * when it acts. Object ids are unique across object types.
+   */
+  List<SuccessionCase> findByKindAndObjectIdAndClosedAtIsNull(SuccessionKind kind, UUID objectId);
 
   Optional<SuccessionCase> findByIdAndOrganizationId(UUID id, UUID organizationId);
 

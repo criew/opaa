@@ -23,8 +23,8 @@ public interface SuccessionReachGuard {
       SuccessionObjectType objectType, UUID objectId, String attemptedAction);
 
   /**
-   * The same rule for an asset of the asset shell, named by its open {@link AssetType}: a type no
-   * finding source answers for is never frozen.
+   * The same rule for an asset of the asset shell, whatever its {@link AssetType} - every type is
+   * guarded, none is skipped.
    */
   void requireAssetReachNotFrozen(AssetType assetType, UUID assetId, String attemptedAction);
 }

@@ -20,13 +20,14 @@ import PermissionTransferDialog, {
   type TransferSubject,
 } from '../permissions/PermissionTransferDialog'
 import { ageLabel } from '../groups/groupOriginLabels'
+import { assetTypeLabel } from '../../utils/labels'
 
 const PAGE_SIZE = 50
 
 function objectHref(entry: SuccessionEntryResponse): string | null {
   switch (entry.objectType) {
-    case 'KNOWLEDGE_LIBRARY':
-      return `/libraries/${entry.objectId}`
+    case 'ASSET':
+      return entry.assetType === 'KNOWLEDGE_LIBRARY' ? `/libraries/${entry.objectId}` : null
     case 'SPACE':
       return `/spaces/${entry.objectId}`
     default:
@@ -36,8 +37,8 @@ function objectHref(entry: SuccessionEntryResponse): string | null {
 
 function objectTypeLabel(entry: SuccessionEntryResponse): string {
   switch (entry.objectType) {
-    case 'KNOWLEDGE_LIBRARY':
-      return 'Bibliothek'
+    case 'ASSET':
+      return assetTypeLabel(entry.assetType ?? undefined)
     case 'SPACE':
       return 'Space'
     default:

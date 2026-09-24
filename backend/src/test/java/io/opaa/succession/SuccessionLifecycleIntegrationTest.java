@@ -156,13 +156,13 @@ class SuccessionLifecycleIntegrationTest {
     CurrentUser owner = user(SystemRole.USER);
     UUID library = libraryOwnedByUser(owner.id());
 
-    assertThat(successionService.isOpen(SuccessionObjectType.KNOWLEDGE_LIBRARY, library)).isFalse();
+    assertThat(successionService.isOpen(SuccessionObjectType.ASSET, library)).isFalse();
 
     lock(owner.id());
-    assertThat(successionService.isOpen(SuccessionObjectType.KNOWLEDGE_LIBRARY, library)).isTrue();
+    assertThat(successionService.isOpen(SuccessionObjectType.ASSET, library)).isTrue();
 
     unlock(owner.id());
-    assertThat(successionService.isOpen(SuccessionObjectType.KNOWLEDGE_LIBRARY, library))
+    assertThat(successionService.isOpen(SuccessionObjectType.ASSET, library))
         .as("a derived state ends when its reason ends, without anybody clearing anything")
         .isFalse();
   }
@@ -174,14 +174,14 @@ class SuccessionLifecycleIntegrationTest {
     UUID group = group("Referat 50", member.id());
     UUID library = libraryOwnedByGroup(group);
 
-    assertThat(successionService.isOpen(SuccessionObjectType.KNOWLEDGE_LIBRARY, library)).isFalse();
+    assertThat(successionService.isOpen(SuccessionObjectType.ASSET, library)).isFalse();
 
     lock(member.id());
     membershipResolver.invalidateUser(member.id());
-    assertThat(successionService.isOpen(SuccessionObjectType.KNOWLEDGE_LIBRARY, library)).isTrue();
+    assertThat(successionService.isOpen(SuccessionObjectType.ASSET, library)).isTrue();
     assertThat(
             successionService
-                .findingFor(SuccessionObjectType.KNOWLEDGE_LIBRARY, library)
+                .findingFor(SuccessionObjectType.ASSET, library)
                 .orElseThrow()
                 .addressee())
         .as("an internal group's library is the business of its stewards")
@@ -189,7 +189,7 @@ class SuccessionLifecycleIntegrationTest {
 
     unlock(member.id());
     membershipResolver.invalidateUser(member.id());
-    assertThat(successionService.isOpen(SuccessionObjectType.KNOWLEDGE_LIBRARY, library)).isFalse();
+    assertThat(successionService.isOpen(SuccessionObjectType.ASSET, library)).isFalse();
   }
 
   /** A dissolved group can act as little as an empty one - same state, same list. */
@@ -202,7 +202,7 @@ class SuccessionLifecycleIntegrationTest {
     dissolved.dissolve(Instant.now());
     groups.save(dissolved);
 
-    assertThat(successionService.isOpen(SuccessionObjectType.KNOWLEDGE_LIBRARY, library)).isTrue();
+    assertThat(successionService.isOpen(SuccessionObjectType.ASSET, library)).isTrue();
   }
 
   // -------------------------------------------------------------------------------------------
@@ -270,7 +270,7 @@ class SuccessionLifecycleIntegrationTest {
     SuccessionCase open =
         cases
             .findByKindAndObjectTypeAndObjectIdAndClosedAtIsNull(
-                SuccessionKind.OPEN_SUCCESSION, SuccessionObjectType.KNOWLEDGE_LIBRARY, library)
+                SuccessionKind.OPEN_SUCCESSION, SuccessionObjectType.ASSET, library)
             .orElseThrow();
     assertThat(open.getFirstSeenAt()).isNotNull();
     assertThat(open.getClosedAt()).isNull();
@@ -280,7 +280,7 @@ class SuccessionLifecycleIntegrationTest {
     SuccessionCase again =
         cases
             .findByKindAndObjectTypeAndObjectIdAndClosedAtIsNull(
-                SuccessionKind.OPEN_SUCCESSION, SuccessionObjectType.KNOWLEDGE_LIBRARY, library)
+                SuccessionKind.OPEN_SUCCESSION, SuccessionObjectType.ASSET, library)
             .orElseThrow();
     assertThat(again.getId()).isEqualTo(open.getId());
     assertThat(again.getFirstSeenAt()).isEqualTo(open.getFirstSeenAt());

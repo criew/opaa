@@ -20,7 +20,6 @@ import io.opaa.api.types.ExternalAccessState;
 import io.opaa.api.types.ScheduleFrequency;
 import io.opaa.api.types.ScheduleWeekday;
 import io.opaa.api.types.SuccessionAddressee;
-import io.opaa.api.types.SuccessionObjectType;
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.source.s3.S3Scope;
 import io.opaa.indexing.source.s3.S3SourceSettings;
@@ -33,6 +32,7 @@ import io.opaa.library.LibraryManagementDetail;
 import io.opaa.library.LibraryScheduleDetail;
 import io.opaa.library.LibrarySummary;
 import io.opaa.library.LibraryUpdate;
+import io.opaa.permission.AssetType;
 import io.opaa.permission.SuccessionFinding;
 import java.net.URI;
 import java.time.Instant;
@@ -233,8 +233,8 @@ class LibraryResponseMapperTest {
             4L,
             "Referat 50",
             Instant.parse("2026-08-18T06:00:00Z"),
-            SuccessionFinding.of(
-                SuccessionObjectType.KNOWLEDGE_LIBRARY,
+            SuccessionFinding.ofAsset(
+                AssetType.of("KNOWLEDGE_LIBRARY"),
                 library.getId(),
                 library.getName(),
                 SuccessionAddressee.GROUP_STEWARDS));

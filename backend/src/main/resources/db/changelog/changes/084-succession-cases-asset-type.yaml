@@ -1,0 +1,48 @@
+databaseChangeLog:
+  - changeSet:
+      id: 084-succession-cases-asset-type
+      author: opaa
+      comment: >-
+        Ein Nachfolgevorgang benennt ein Asset beliebigen Typs (#1899): object_type kennt statt
+        KNOWLEDGE_LIBRARY den einen Wert ASSET, und die neue Spalte asset_type sagt, welcher Typ.
+        Damit erreicht ein neuer Asset-Typ Betriebsliste und Reichweitensperre ohne neuen Wert in
+        einem geschlossenen Katalog. Bestandszeilen werden zu (ASSET, KNOWLEDGE_LIBRARY).
+        .
+        asset_type steht hier trotz assets.asset_type, weil der Vorgang das Asset ueberlebt
+        (object_id ohne Fremdschluessel, ADR-0016) und dann noch sagen muss, worum es ging.
+        chk_succession_cases_asset_type haelt die Spalte genau fuer ASSET gesetzt.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE succession_cases
+                  DROP CONSTRAINT chk_succession_cases_object_type;
+
+              ALTER TABLE succession_cases
+                  ADD COLUMN asset_type character varying(30);
+
+              UPDATE succession_cases
+                 SET object_type = 'ASSET', asset_type = 'KNOWLEDGE_LIBRARY'
+               WHERE object_type = 'KNOWLEDGE_LIBRARY';
+
+              ALTER TABLE succession_cases
+                  ADD CONSTRAINT chk_succession_cases_object_type
+                  CHECK ((object_type IN ('ASSET', 'SPACE', 'GROUP')));
+
+              ALTER TABLE succession_cases
+                  ADD CONSTRAINT chk_succession_cases_asset_type
+                  CHECK (((object_type = 'ASSET') = (asset_type IS NOT NULL)));
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE succession_cases DROP CONSTRAINT chk_succession_cases_asset_type;
+              ALTER TABLE succession_cases DROP CONSTRAINT chk_succession_cases_object_type;
+              DELETE FROM succession_cases
+               WHERE object_type = 'ASSET' AND asset_type <> 'KNOWLEDGE_LIBRARY';
+              UPDATE succession_cases SET object_type = 'KNOWLEDGE_LIBRARY'
+               WHERE object_type = 'ASSET';
+              ALTER TABLE succession_cases DROP COLUMN asset_type;
+              ALTER TABLE succession_cases
+                  ADD CONSTRAINT chk_succession_cases_object_type
+                  CHECK ((object_type IN ('KNOWLEDGE_LIBRARY', 'SPACE', 'GROUP')));

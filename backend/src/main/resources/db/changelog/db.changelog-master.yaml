@@ -200,3 +200,6 @@ databaseChangeLog:
   # Die Space-Assoziation auf der Asset-Schale (#1900): asset_id statt library_id.
   - include:
       file: db/changelog/changes/083-space-asset-associations-asset.yaml
+  # Nachfolgevorgaenge benennen ein Asset ueber seinen Typ statt ueber einen geschlossenen Katalog.
+  - include:
+      file: db/changelog/changes/084-succession-cases-asset-type.yaml
