@@ -129,7 +129,7 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
   // null rather than defaulting to "no associations", #783 review nit 1), and the moment right after
   // switching to a chat in a different space, before its own load has even started.
   const chatSpaceId = useChatStore((s) => s.spaceId)
-  const hasAssetAssociations = useSpaceStore((s) => s.hasAssetAssociations)
+  const narrowsSearch = useSpaceStore((s) => s.assetAssociationsNarrowSearch)
   const assetAssociations = useSpaceStore((s) => s.assetAssociations)
   const assetAssociationsSpaceId = useSpaceStore((s) => s.assetAssociationsSpaceId)
   const loadAssetAssociations = useSpaceStore((s) => s.loadAssetAssociations)
@@ -198,7 +198,7 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
     if (!isAssetAssociationsCurrent) {
       return { kind: 'notice', text: 'Suchbereich wird ermittelt …' }
     }
-    if (hasAssetAssociations) {
+    if (narrowsSearch) {
       // The search reads knowledge libraries only; an associated asset of another type is no Bestand.
       const count = assetAssociations.filter(
         (a) => a.readableByCaller && a.assetType === 'KNOWLEDGE_LIBRARY',
@@ -221,7 +221,7 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
     }
     return { kind: 'summary', text: 'alle lesbaren Bestände' }
   }, [
-    hasAssetAssociations,
+    narrowsSearch,
     isAssetAssociationsCurrent,
     libraries,
     assetAssociations,

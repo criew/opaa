@@ -30,6 +30,7 @@ const { mockListSpaceMembers, mockGetSpaceAssetAssociations } = vi.hoisted(() =>
   mockListSpaceMembers: vi.fn(async (): Promise<SpaceMemberResponse[]> => []),
   mockGetSpaceAssetAssociations: vi.fn(async (): Promise<SpaceAssetAssociationListResponse> => ({
     hasAssociations: false,
+    narrowsSearch: false,
     items: [],
   })),
 }))
@@ -50,7 +51,11 @@ describe('SpacePage', () => {
   beforeEach(() => {
     mockListSpaceMembers.mockClear()
     mockGetSpaceAssetAssociations.mockClear()
-    mockGetSpaceAssetAssociations.mockResolvedValue({ hasAssociations: false, items: [] })
+    mockGetSpaceAssetAssociations.mockResolvedValue({
+      hasAssociations: false,
+      narrowsSearch: false,
+      items: [],
+    })
     useChatListStore.setState({ chatsBySpaceId: {}, isLoading: false, error: null })
     useAuthStore.setState({
       mode: 'dev',
@@ -121,6 +126,7 @@ describe('SpacePage', () => {
     window.localStorage.removeItem('opaa.space-library-hint-dismissed')
     mockGetSpaceAssetAssociations.mockResolvedValue({
       hasAssociations: true,
+      narrowsSearch: true,
       items: [
         {
           assetType: 'KNOWLEDGE_LIBRARY',
@@ -140,7 +146,11 @@ describe('SpacePage', () => {
   })
 
   it('shows a fallback message when the space has no library associations', async () => {
-    mockGetSpaceAssetAssociations.mockResolvedValue({ hasAssociations: false, items: [] })
+    mockGetSpaceAssetAssociations.mockResolvedValue({
+      hasAssociations: false,
+      narrowsSearch: false,
+      items: [],
+    })
 
     renderWithProviders(<SpacePage />, { withRouter: true })
 
@@ -153,7 +163,11 @@ describe('SpacePage', () => {
   // reported the same as "no association at all" - the space IS curated, the caller just cannot
   // read any of what it curates.
   it('shows the space-has-no-readable-knowledge message when curated but nothing is readable', async () => {
-    mockGetSpaceAssetAssociations.mockResolvedValue({ hasAssociations: true, items: [] })
+    mockGetSpaceAssetAssociations.mockResolvedValue({
+      hasAssociations: true,
+      narrowsSearch: true,
+      items: [],
+    })
 
     renderWithProviders(<SpacePage />, { withRouter: true })
 

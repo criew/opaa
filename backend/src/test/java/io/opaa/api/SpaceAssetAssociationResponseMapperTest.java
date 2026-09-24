@@ -75,9 +75,11 @@ class SpaceAssetAssociationResponseMapperTest {
     // #706 review, finding 2: hasAssociations must stay true even when every item was filtered
     // out of the (possibly filtered) items list - the two are computed independently.
     SpaceAssetAssociationListResponse response =
-        SpaceAssetAssociationResponseMapper.toListResponse(new SpaceAssetLinks(true, List.of()));
+        SpaceAssetAssociationResponseMapper.toListResponse(
+            new SpaceAssetLinks(true, false, List.of()));
 
     assertThat(response.getHasAssociations()).isTrue();
+    assertThat(response.getNarrowsSearch()).isFalse();
     assertThat(response.getItems()).isEmpty();
   }
 
@@ -85,6 +87,7 @@ class SpaceAssetAssociationResponseMapperTest {
   void toListResponseMapsEveryItemInOrder() {
     SpaceAssetLinks links =
         new SpaceAssetLinks(
+            true,
             true,
             List.of(link(association(), true, "A", null), link(association(), true, "B", null)));
 
@@ -94,6 +97,7 @@ class SpaceAssetAssociationResponseMapperTest {
     assertThat(response.getItems())
         .extracting(SpaceAssetAssociationResponse::getName)
         .containsExactly("A", "B");
+    assertThat(response.getNarrowsSearch()).isTrue();
   }
 
   @Test

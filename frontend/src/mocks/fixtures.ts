@@ -1706,6 +1706,7 @@ export const mockLibraries: LibraryListResponse[] = [
 export const mockSpaceAssetAssociations: Record<string, SpaceAssetAssociationListResponse> = {
   'space-phoenix': {
     hasAssociations: true,
+    narrowsSearch: true,
     items: [
       {
         assetType: 'KNOWLEDGE_LIBRARY',

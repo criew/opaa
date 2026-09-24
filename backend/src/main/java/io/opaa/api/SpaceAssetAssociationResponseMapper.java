@@ -35,7 +35,8 @@ final class SpaceAssetAssociationResponseMapper {
   static SpaceAssetAssociationListResponse toListResponse(SpaceAssetLinks links) {
     List<SpaceAssetAssociationResponse> items =
         links.items().stream().map(SpaceAssetAssociationResponseMapper::toResponse).toList();
-    return new SpaceAssetAssociationListResponse(links.hasAssociations(), items);
+    return new SpaceAssetAssociationListResponse(
+        links.hasAssociations(), links.narrowsSearch(), items);
   }
 
   static AssetSpaceAssociationResponse toAssetSpaceResponse(AssetSpaceLink link) {

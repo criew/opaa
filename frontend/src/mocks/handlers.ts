@@ -1041,6 +1041,7 @@ export const handlers = [
     }
     const associations = mockSpaceAssetAssociations[spaceId] ?? {
       hasAssociations: false,
+      narrowsSearch: false,
       items: [],
     }
     return HttpResponse.json(associations)
@@ -3541,8 +3542,8 @@ export const handlers = [
   // eine geschützte Gruppe erscheint nur auf ihre vollständige Bezeichnung hin.
 
   // #1822: die eigene Herleitung. Ohne userId geht es um die eigene Person.
-  http.get('/api/v1/assets/:assetType/:libraryId/access-derivation', ({ params }) => {
-    const libraryId = String(params.libraryId)
+  http.get('/api/v1/assets/:assetType/:assetId/access-derivation', ({ params }) => {
+    const libraryId = String(params.assetId)
     if (!mockLibraryDetails[libraryId]) {
       return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
     }

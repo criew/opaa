@@ -117,7 +117,7 @@ const {
     mockGetSpaceAssetAssociations: vi.fn(
       async (spaceId: string): Promise<SpaceAssetAssociationListResponse> => {
         void spaceId
-        return { hasAssociations: false, items: [] }
+        return { hasAssociations: false, narrowsSearch: false, items: [] }
       },
     ),
     // #1820: die Subjekt-Auswahl sucht serverseitig; welche Gruppen erscheinen, entscheidet der
@@ -265,7 +265,11 @@ function setSpaceState(space: SpaceResponse) {
 describe('SpaceManagementPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockGetSpaceAssetAssociations.mockResolvedValue({ hasAssociations: false, items: [] })
+    mockGetSpaceAssetAssociations.mockResolvedValue({
+      hasAssociations: false,
+      narrowsSearch: false,
+      items: [],
+    })
     useAuthStore.setState({
       mode: 'dev',
       isAuthenticated: true,
@@ -611,6 +615,7 @@ describe('SpaceManagementPage', () => {
   it('shows an unreadable association without its name and still offers to detach it', async () => {
     mockGetSpaceAssetAssociations.mockResolvedValue({
       hasAssociations: true,
+      narrowsSearch: true,
       items: [
         {
           assetType: 'KNOWLEDGE_LIBRARY',

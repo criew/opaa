@@ -141,7 +141,8 @@ public class SpaceAssetAssociationService {
    *
    * <p>{@link SpaceAssetLinks#hasAssociations()} is computed unfiltered, independently of the
    * (possibly filtered) item list: "no association at all" and "curated, but nothing the viewer may
-   * read" need different messages (#706 review).
+   * read" need different messages (#706 review). {@link SpaceAssetLinks#narrowsSearch()} is
+   * unfiltered as well: an association the viewer cannot read still narrows their search.
    */
   public SpaceAssetLinks listForSpace(UUID spaceId, CurrentUser caller) {
     Space space = loadSpace(spaceId, caller);
@@ -150,7 +151,7 @@ public class SpaceAssetAssociationService {
     List<SpaceAssetAssociation> associations =
         associationRepository.findBySpaceIdOrderByCreatedAtAsc(space.getId());
     if (associations.isEmpty()) {
-      return new SpaceAssetLinks(false, List.of());
+      return new SpaceAssetLinks(false, false, List.of());
     }
     boolean unfiltered =
         accessPolicy.hasAtLeast(space, caller.id(), SpaceRole.CURATOR) || caller.isSystemAdmin();
@@ -177,7 +178,10 @@ public class SpaceAssetAssociationService {
                       displayNames.get(association.getCreatedByUserId()));
                 })
             .toList();
-    return new SpaceAssetLinks(true, items);
+    boolean narrowsSearch =
+        headers.values().stream()
+            .anyMatch(asset -> KnowledgeLibrary.ASSET_TYPE.equals(asset.assetType()));
+    return new SpaceAssetLinks(true, narrowsSearch, items);
   }
 
   /**

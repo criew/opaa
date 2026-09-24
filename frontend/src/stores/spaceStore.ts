@@ -53,6 +53,9 @@ interface SpaceState {
   // read" (#706 review, finding 2), two cases that look identical if only items is inspected.
   assetAssociations: SpaceAssetAssociationResponse[]
   hasAssetAssociations: boolean
+  // Whether the space narrows a chat's search: an associated knowledge library, readable or not.
+  // Computed by the server, because the filtered list does not show what the caller cannot read.
+  assetAssociationsNarrowSearch: boolean
   isLoadingAssetAssociations: boolean
   // #783 review: the space id that assetAssociations/hasAssetAssociations actually describe -
   // null while nothing has successfully loaded yet, or after a failed load. A caller reading
@@ -112,6 +115,7 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
   isLoadingMembers: false,
   assetAssociations: [],
   hasAssetAssociations: false,
+  assetAssociationsNarrowSearch: false,
   isLoadingAssetAssociations: false,
   assetAssociationsSpaceId: null,
 
@@ -127,6 +131,7 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
       isLoadingMembers: false,
       assetAssociations: [],
       hasAssetAssociations: false,
+      assetAssociationsNarrowSearch: false,
       isLoadingAssetAssociations: false,
       assetAssociationsSpaceId: null,
     }),
@@ -169,6 +174,7 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
       members: [],
       assetAssociations: [],
       hasAssetAssociations: false,
+      assetAssociationsNarrowSearch: false,
       assetAssociationsSpaceId: null,
     })
     try {
@@ -281,6 +287,7 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
       error: null,
       assetAssociations: [],
       hasAssetAssociations: false,
+      assetAssociationsNarrowSearch: false,
       assetAssociationsSpaceId: null,
     })
     try {
@@ -289,6 +296,7 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
       set({
         assetAssociations: response.items,
         hasAssetAssociations: response.hasAssociations,
+        assetAssociationsNarrowSearch: response.narrowsSearch,
         assetAssociationsSpaceId: spaceId,
         isLoadingAssetAssociations: false,
       })
@@ -300,6 +308,7 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
         error: message,
         assetAssociations: [],
         hasAssetAssociations: false,
+        assetAssociationsNarrowSearch: false,
         assetAssociationsSpaceId: null,
         isLoadingAssetAssociations: false,
       })

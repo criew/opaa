@@ -2,6 +2,7 @@ package io.opaa.asset;
 
 import static io.opaa.test.TestPromptLibraryAssetType.PROMPT_LIBRARY;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.api.types.AccessBasis;
 import io.opaa.api.types.AssetRole;
@@ -9,10 +10,13 @@ import io.opaa.api.types.AssetVisibility;
 import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.api.types.SpaceRole;
 import io.opaa.api.types.SpaceVisibility;
+import io.opaa.api.types.SuccessionKind;
+import io.opaa.api.types.SuccessionObjectType;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.common.ConflictException;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
@@ -21,12 +25,16 @@ import io.opaa.permission.AccessPath;
 import io.opaa.permission.AssetAccessService;
 import io.opaa.permission.AssetGrant;
 import io.opaa.permission.AssetGrantRepository;
+import io.opaa.permission.SuccessionFinding;
 import io.opaa.space.Space;
 import io.opaa.space.SpaceAssetAssociationRepository;
 import io.opaa.space.SpaceAssetAssociationService;
 import io.opaa.space.SpaceAssetLink;
 import io.opaa.space.SpaceMembership;
 import io.opaa.space.SpaceRepository;
+import io.opaa.succession.SuccessionCaseRepository;
+import io.opaa.succession.SuccessionDetectionService;
+import io.opaa.succession.SuccessionService;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OwnOrganizationFixtures;
 import java.util.UUID;
@@ -41,8 +49,9 @@ import org.springframework.transaction.support.TransactionTemplate;
  * The acceptance criteria of #1899 and #1900 for a second asset type: {@code PROMPT_LIBRARY},
  * declared by the tests alone ({@code TestPromptLibraryAssetType}), gets grants, the
  * organization-wide release, the Herleitung, a reach change with its history and a space
- * association from the one shell - without a table, an entity or a line of logic of its own. The
- * search keeps reading knowledge libraries only.
+ * association from the one shell, and the succession rules of an asset without a capable owner -
+ * without a table, an entity or a line of logic of its own. The search keeps reading knowledge
+ * libraries only.
  */
 @OpaaIntegrationTest
 class AssetShellTypeIndependenceIntegrationTest {
@@ -57,6 +66,9 @@ class AssetShellTypeIndependenceIntegrationTest {
   @Autowired private SpaceAssetAssociationService associationService;
   @Autowired private SpaceAssetAssociationRepository associationRepository;
   @Autowired private SpaceRepository spaceRepository;
+  @Autowired private SuccessionDetectionService detectionService;
+  @Autowired private SuccessionService successionService;
+  @Autowired private SuccessionCaseRepository successionCases;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private UserRepository userRepository;
   @Autowired private OrganizationRepository organizationRepository;
@@ -162,10 +174,13 @@ class AssetShellTypeIndependenceIntegrationTest {
             AssetRole.OWNER,
             null,
             owner));
-    UUID space = createSpace();
+    UUID space = createSpace(owner);
 
     SpaceAssetLink associated =
         associationService.associate(space, PROMPT_LIBRARY, prompts, callerOf(owner));
+    assertThat(associationService.listForSpace(space, callerOf(owner)).narrowsSearch())
+        .as("an asset without documents narrows no search")
+        .isFalse();
     associationService.associate(space, KnowledgeLibrary.ASSET_TYPE, library, callerOf(owner));
 
     assertThat(associated.assetType()).isEqualTo(PROMPT_LIBRARY);
@@ -173,6 +188,7 @@ class AssetShellTypeIndependenceIntegrationTest {
         .extracting(SpaceAssetLink::assetType)
         .containsExactlyInAnyOrder(PROMPT_LIBRARY, KnowledgeLibrary.ASSET_TYPE);
     assertThat(associationService.libraryIdsInSpace(space)).containsExactly(library);
+    assertThat(associationService.listForSpace(space, callerOf(owner)).narrowsSearch()).isTrue();
     assertThat(associationRepository.findLibraryIdsBySpaceId(space)).containsExactly(library);
 
     associationService.detach(space, prompts, callerOf(owner));
@@ -181,11 +197,71 @@ class AssetShellTypeIndependenceIntegrationTest {
     assertThat(associationRepository.existsBySpaceIdAndAssetId(space, library)).isTrue();
   }
 
+  /**
+   * ADR-0036 Entscheidung 6 for a type no enum names: without a capable owner it is listed, the run
+   * records it, and its reach is frozen for a new grant, a wider release and a new association.
+   */
+  @Test
+  void aTestDefinedTypeWithoutACapableOwnerIsListedRecordedAndFrozen() {
+    UUID prompts = createPromptLibrary(AssetVisibility.PRIVATE);
+    grantRepository.save(
+        AssetGrant.forUser(
+            PROMPT_LIBRARY, prompts, organizationId, reader, AssetRole.VIEWER, null, owner));
+    UUID space = createSpace(reader);
+    UUID administrator = createUser("Systemverwaltung");
+    CurrentUser systemAdmin =
+        CurrentUser.of(administrator, organizationId, SystemRole.SYSTEM_ADMIN, "Systemverwaltung");
+    jdbcTemplate.update("UPDATE users SET directory_locked_at = now() WHERE id = ?", owner);
+
+    detectionService.runFor(organizationId);
+
+    assertThat(successionService.findingForAsset(PROMPT_LIBRARY, prompts))
+        .get()
+        .extracting(SuccessionFinding::assetType)
+        .isEqualTo(PROMPT_LIBRARY);
+    assertThat(
+            successionService.list(organizationId, SuccessionKind.OPEN_SUCCESSION, 0, 50).entries())
+        .extracting(entry -> entry.finding().objectId())
+        .contains(prompts);
+    assertThat(
+            successionCases.findByKindAndObjectIdAndClosedAtIsNull(
+                SuccessionKind.OPEN_SUCCESSION, prompts))
+        .singleElement()
+        .satisfies(
+            recorded -> {
+              assertThat(recorded.getObjectType()).isEqualTo(SuccessionObjectType.ASSET);
+              assertThat(recorded.getAssetType()).isEqualTo(PROMPT_LIBRARY);
+            });
+
+    assertThatThrownBy(
+            () ->
+                grantService.upsertGrant(
+                    PROMPT_LIBRARY,
+                    prompts,
+                    new AssetGrantUpsert(
+                        PermissionSubjectType.USER, administrator, AssetRole.VIEWER),
+                    systemAdmin))
+        .isInstanceOf(ConflictException.class);
+    assertThatThrownBy(
+            () ->
+                transactionTemplate.executeWithoutResult(
+                    status ->
+                        shellService.changeReach(
+                            assetRepository.findById(prompts).orElseThrow(),
+                            AssetVisibility.ORGANIZATION,
+                            false,
+                            administrator)))
+        .isInstanceOf(ConflictException.class);
+    assertThatThrownBy(
+            () -> associationService.associate(space, PROMPT_LIBRARY, prompts, callerOf(reader)))
+        .isInstanceOf(ConflictException.class);
+  }
+
   /** The grants and associations of any type go with their asset - the foreign keys of #1899. */
   @Test
   void deletingTheShellTakesGrantsAndAssociationsOfEveryTypeWithIt() {
     UUID prompts = createPromptLibrary(AssetVisibility.PRIVATE);
-    UUID space = createSpace();
+    UUID space = createSpace(owner);
     associationService.associate(space, PROMPT_LIBRARY, prompts, callerOf(owner));
 
     jdbcTemplate.update("DELETE FROM assets WHERE id = ?", prompts);
@@ -212,9 +288,9 @@ class AssetShellTypeIndependenceIntegrationTest {
     return id;
   }
 
-  private UUID createSpace() {
-    Space space = new Space("Prompts", null, false, SpaceVisibility.PRIVATE, owner, organizationId);
-    space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organizationId));
+  private UUID createSpace(UUID admin) {
+    Space space = new Space("Prompts", null, false, SpaceVisibility.PRIVATE, admin, organizationId);
+    space.addMembership(SpaceMembership.ofUser(admin, SpaceRole.ADMIN, organizationId));
     return spaceRepository.save(space).getId();
   }
 

@@ -93,6 +93,7 @@ const mockGetSpaceAssetAssociations = vi.fn(async (spaceId: string) => {
   void spaceId
   return {
     hasAssociations: true,
+    narrowsSearch: true,
     items: [
       {
         assetType: 'KNOWLEDGE_LIBRARY',
@@ -202,6 +203,7 @@ describe('spaceStore', () => {
       },
     ])
     expect(useSpaceStore.getState().hasAssetAssociations).toBe(true)
+    expect(useSpaceStore.getState().assetAssociationsNarrowSearch).toBe(true)
     // #783 review finding 1: callers must be able to tell which space this data actually
     // describes before trusting it.
     expect(useSpaceStore.getState().assetAssociationsSpaceId).toBe('space-project')
@@ -213,6 +215,7 @@ describe('spaceStore', () => {
   it('ignores a stale response for a space no longer being loaded', async () => {
     const first = deferred<{
       hasAssociations: boolean
+      narrowsSearch: boolean
       items: {
         assetType: string
         assetId: string
@@ -235,6 +238,7 @@ describe('spaceStore', () => {
 
     first.resolve({
       hasAssociations: true,
+      narrowsSearch: true,
       items: [
         {
           assetType: 'KNOWLEDGE_LIBRARY',
@@ -273,6 +277,7 @@ describe('spaceStore', () => {
 
     expect(useSpaceStore.getState().assetAssociationsSpaceId).toBeNull()
     expect(useSpaceStore.getState().hasAssetAssociations).toBe(false)
+    expect(useSpaceStore.getState().assetAssociationsNarrowSearch).toBe(false)
   })
 
   it('associates a library and reloads the association list', async () => {

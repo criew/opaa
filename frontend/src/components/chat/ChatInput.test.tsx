@@ -25,6 +25,7 @@ function mockAssociations(
   spaceId: string,
   response: {
     hasAssociations: boolean
+    narrowsSearch: boolean
     items: SpaceAssetAssociationResponse[]
   },
 ) {
@@ -77,6 +78,7 @@ describe('ChatInput', () => {
     useSpaceStore.setState({
       assetAssociations: [],
       hasAssetAssociations: false,
+      assetAssociationsNarrowSearch: false,
       isLoadingAssetAssociations: false,
       assetAssociationsSpaceId: null,
     })
@@ -92,6 +94,7 @@ describe('ChatInput', () => {
     it('counts only the associated-and-readable intersection, not every readable library', async () => {
       mockAssociations('space-gewerbeamt', {
         hasAssociations: true,
+        narrowsSearch: true,
         items: [
           {
             assetType: 'KNOWLEDGE_LIBRARY',
@@ -115,6 +118,7 @@ describe('ChatInput', () => {
     it('shows the plural form for more than one associated-and-readable library', async () => {
       mockAssociations('space-gewerbeamt', {
         hasAssociations: true,
+        narrowsSearch: true,
         items: [
           {
             assetType: 'KNOWLEDGE_LIBRARY',
@@ -144,7 +148,11 @@ describe('ChatInput', () => {
     // #783 review nit 3: "curated, but nothing the caller may read" must read like MessageBubble's
     // and SpacePage's own wording for the identical state, not a bare "0 zugeordnete Bestände".
     it('shows the established "kein Wissen verfügbar" notice when nothing associated is readable', async () => {
-      mockAssociations('space-gewerbeamt', { hasAssociations: true, items: [] })
+      mockAssociations('space-gewerbeamt', {
+        hasAssociations: true,
+        narrowsSearch: true,
+        items: [],
+      })
       useChatStore.setState({ scope: 'all', spaceId: 'space-gewerbeamt' })
 
       render(<ChatInput onSend={vi.fn()} />)
@@ -155,8 +163,28 @@ describe('ChatInput', () => {
       expect(screen.queryByText(/zugeordnete/)).not.toBeInTheDocument()
     })
 
+    it('does not narrow for a space whose only associations are no knowledge libraries', async () => {
+      mockAssociations('space-gewerbeamt', {
+        hasAssociations: true,
+        narrowsSearch: false,
+        items: [],
+      })
+      useChatStore.setState({ scope: 'all', spaceId: 'space-gewerbeamt' })
+
+      render(<ChatInput onSend={vi.fn()} />)
+
+      expect(await screen.findByText(/2 lesbare Bestände/)).toBeInTheDocument()
+      expect(
+        screen.queryByText('In diesem Space ist für Sie derzeit kein Wissen verfügbar.'),
+      ).not.toBeInTheDocument()
+    })
+
     it('keeps the previous "all readable" wording for a space without any association', async () => {
-      mockAssociations('space-gewerbeamt', { hasAssociations: false, items: [] })
+      mockAssociations('space-gewerbeamt', {
+        hasAssociations: false,
+        narrowsSearch: false,
+        items: [],
+      })
       useChatStore.setState({ scope: 'all', spaceId: 'space-gewerbeamt' })
 
       render(<ChatInput onSend={vi.fn()} />)
@@ -174,6 +202,7 @@ describe('ChatInput', () => {
       // ChatInput would be in right after chatting in a curated space A.
       useSpaceStore.setState({
         hasAssetAssociations: true,
+        assetAssociationsNarrowSearch: true,
         assetAssociations: [
           {
             assetType: 'KNOWLEDGE_LIBRARY',
@@ -214,7 +243,7 @@ describe('ChatInput', () => {
   })
 
   // #782/#783: exercises the real api -> spaceStore -> ChatInput chain through the MSW handler
-  // (mocks/handlers.ts) and its curated fixture (mockSpaceLibraryAssociations['space-phoenix']),
+  // (mocks/handlers.ts) and its curated fixture (mockSpaceAssetAssociations['space-phoenix']),
   // rather than mocking the store action away - the earlier mocked tests above cover the display
   // logic in isolation, this one covers that readableByCaller actually survives the wire.
   it('resolves the associated-and-readable count through the real api/store chain (#783 review nit 2)', async () => {
