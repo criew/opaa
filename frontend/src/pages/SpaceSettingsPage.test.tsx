@@ -307,10 +307,28 @@ describe('SpaceSettingsPage', () => {
         .map((tab) => tab.textContent),
     ).toEqual(['Stammdaten', 'Mitglieder', 'Wissen'])
     expect(screen.getByRole('heading', { level: 1, name: 'Einstellungen' })).toBeInTheDocument()
+    // Die Reiterleiste trägt keine Überschrift: Ohne die h2 des Panels spränge die Gliederung von
+    // h1 auf die h3 des Gefahrenbereichs (docs/design/accessibility.md 2.3).
+    expect(screen.getByRole('heading', { level: 2, name: 'Stammdaten' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 3, name: 'Gefahrenbereich' })).toBeInTheDocument()
     expect(within(tablist).getByRole('tab', { name: 'Mitglieder' })).toHaveAttribute(
       'href',
       '/spaces/space-team/settings/members',
     )
+  })
+
+  /**
+   * #1917: Jeder Abschnitt lädt in seinem eigenen Effekt, und `AreaTabs` rendert nur das aktive
+   * Panel — die Mitgliederliste wird also erst auf ihrem Reiter geholt. Ein Rückbau auf
+   * Seitenebene würde das unbemerkt wieder einsammeln.
+   */
+  it('lädt nur, was der sichtbare Reiter braucht', async () => {
+    setSpaceState(teamSpace)
+    renderTab('general')
+
+    await screen.findByRole('button', { name: /einstellungen speichern/i })
+    expect(mockListSpaceMembers).not.toHaveBeenCalled()
+    expect(mockGetSpaceAssetAssociations).not.toHaveBeenCalled()
   })
 
   // #1917: Die Einstellungen führen keine Chatliste mehr - sie war der Grund, warum die alte

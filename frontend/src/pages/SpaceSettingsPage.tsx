@@ -111,28 +111,40 @@ export default function SpaceSettingsPage() {
           label="Bereiche der Space-Einstellungen"
           idPrefix="space-settings"
         >
-          {(value) =>
-            value === 'general' ? (
-              <SpaceGeneralSection
-                spaceId={spaceId}
-                space={space}
-                canManage={canManage}
-                isOwner={isOwner}
-              />
-            ) : value === 'members' ? (
-              <SpaceMembersSection
-                spaceId={spaceId}
-                space={space}
-                canManage={canManage}
-                isOwner={isOwner}
-              />
-            ) : (
-              <SpaceKnowledgeSection
-                spaceId={spaceId}
-                canManage={canManageLibraries(space.userRole, isOwner)}
-              />
-            )
-          }
+          {(value) => {
+            switch (value) {
+              case 'general':
+                return (
+                  <SpaceGeneralSection
+                    spaceId={spaceId}
+                    space={space}
+                    canManage={canManage}
+                    isOwner={isOwner}
+                  />
+                )
+              case 'members':
+                return (
+                  <SpaceMembersSection
+                    spaceId={spaceId}
+                    space={space}
+                    canManage={canManage}
+                    isOwner={isOwner}
+                  />
+                )
+              case 'knowledge':
+                return (
+                  <SpaceKnowledgeSection
+                    spaceId={spaceId}
+                    canManage={canManageLibraries(space.userRole, isOwner)}
+                  />
+                )
+              // Jeder Reiter hat seinen eigenen Zweig: Ein Wert in SPACE_SETTINGS_TABS ohne Zweig
+              // landet hier und wird sichtbar auf die Stammdaten zurückgeführt, statt
+              // stillschweigend den Inhalt eines anderen Reiters zu zeigen.
+              default:
+                return <Navigate to={spaceSettingsRoute(spaceId)} replace />
+            }
+          }}
         </AreaTabs>
       </Box>
     </Box>

@@ -11,6 +11,7 @@ import { getLibraries } from '../../services/api'
 import { useSpaceStore } from '../../stores/spaceStore'
 import { assetTypeLabel } from '../../utils/labels'
 import { successionAwareMessage } from '../succession/successionConflict'
+import SectionHead from '../SectionHead'
 
 interface SpaceKnowledgeSectionProps {
   spaceId: string
@@ -53,6 +54,8 @@ export default function SpaceKnowledgeSection({ spaceId, canManage }: SpaceKnowl
 
   return (
     <Stack spacing={2}>
+      {/* Die h2 dieses Panels unter der h1 der Seite. */}
+      <SectionHead>Zugeordnete Bibliotheken</SectionHead>
       {(localError || storeError) && <Alert severity="error">{localError ?? storeError}</Alert>}
       {successMessage && <Alert severity="success">{successMessage}</Alert>}
       <Typography variant="body2" sx={{ color: 'text.secondary' }}>
@@ -61,7 +64,7 @@ export default function SpaceKnowledgeSection({ spaceId, canManage }: SpaceKnowl
         Treffer.
       </Typography>
       {isLoadingAssetAssociations ? (
-        <Typography sx={{ color: 'text.secondary' }}>Datenquellen werden geladen …</Typography>
+        <Typography sx={{ color: 'text.secondary' }}>Bibliotheken werden geladen …</Typography>
       ) : assetAssociations.length === 0 ? (
         <Typography sx={{ color: 'text.secondary' }}>
           Diesem Space sind keine Bibliotheken zugeordnet.

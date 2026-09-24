@@ -18,7 +18,7 @@ import AddIcon from '@mui/icons-material/Add'
 import CheckIcon from '@mui/icons-material/Check'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined'
-import { NavLink, useLocation, useNavigate, useParams } from 'react-router'
+import { Link as RouterLink, useLocation, useNavigate, useParams } from 'react-router'
 import { spaceSettingsRoute } from '../routes'
 import ChatList from '../components/chat/ChatList'
 import { useChatStore } from '../stores/chatStore'
@@ -95,6 +95,7 @@ export default function Sidebar() {
   // Einstellungen leer, und der Dienst weist ihre Schreibzugriffe ohnehin ab.
   const mayOpenSettings = activeSpace?.userRole === 'ADMIN' || activeSpace?.userRole === 'CURATOR'
   const settingsRoute = activeChatSpaceId ? spaceSettingsRoute(activeChatSpaceId) : ''
+  const inSettings = location.pathname.startsWith(`/spaces/${activeChatSpaceId}/settings`)
 
   const closeSpaceMenu = () => setSpaceMenuAnchor(null)
 
@@ -299,9 +300,19 @@ export default function Sidebar() {
                     hinter dem Zahnrad. Wer den Space nicht verwalten darf, sieht ihn nicht. */}
                 <ListItem disablePadding>
                   <ListItemButton
-                    component={NavLink}
+                    component={RouterLink}
                     to={settingsRoute}
-                    selected={location.pathname.startsWith(`/spaces/${activeChatSpaceId}/settings`)}
+                    selected={inSettings}
+                    // Wie auf der globalen Leiste: „page" nur für das eigene Ziel, „true" für
+                    // jeden anderen Reiter der Einstellungen - sonst wäre der Eintrag auf
+                    // .../settings/members hervorgehoben, ohne es anzusagen.
+                    aria-current={
+                      inSettings
+                        ? location.pathname === settingsRoute
+                          ? 'page'
+                          : 'true'
+                        : undefined
+                    }
                     sx={{ borderRadius: '6px', px: '10px', py: '5px' }}
                   >
                     <ListItemIcon sx={{ minWidth: 26 }}>

@@ -42,6 +42,7 @@ function renderSidebarAtRoute(initialPath: string) {
         <Routes>
           <Route element={<Sidebar />}>
             <Route path="spaces/:spaceId/chats/:chatId" element={null} />
+            <Route path="spaces/:spaceId/settings/:tab" element={null} />
             <Route path="spaces/:spaceId" element={null} />
             <Route path="*" element={null} />
           </Route>
@@ -273,6 +274,26 @@ describe('Sidebar', () => {
     expect(
       screen.queryByRole('link', { name: 'Datenquellen dieses Space' }),
     ).not.toBeInTheDocument()
+  })
+
+  /**
+   * #1917: Der Eintrag zeigt auf den ersten Reiter, ist aber auf jedem Reiter hervorgehoben -
+   * dann sagt `aria-current="true"` den Bereichstreffer an, „page" nur das eigene Ziel
+   * (docs/design/accessibility.md 2.3, wie auf der globalen Leiste).
+   */
+  it('meldet den Einstellungs-Einstieg auf jedem Reiter als aktiv', () => {
+    const { unmount } = renderSidebarAtRoute('/spaces/space-engineering/settings/general')
+    expect(screen.getByRole('link', { name: 'Einstellungen' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+    unmount()
+
+    renderSidebarAtRoute('/spaces/space-engineering/settings/members')
+    expect(screen.getByRole('link', { name: 'Einstellungen' })).toHaveAttribute(
+      'aria-current',
+      'true',
+    )
   })
 
   /**

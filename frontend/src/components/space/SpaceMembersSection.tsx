@@ -83,6 +83,8 @@ export default function SpaceMembersSection({
 
   return (
     <Stack spacing={2}>
+      {/* Die h2 dieses Panels unter der h1 der Seite - „Mitglied hinzufügen" darunter ist h3. */}
+      <SectionHead>Mitglieder</SectionHead>
       {(localError || storeError) && <Alert severity="error">{localError ?? storeError}</Alert>}
       {successMessage && <Alert severity="success">{successMessage}</Alert>}
       {space.isDefault && space.memberCount === 1 && (

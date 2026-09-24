@@ -234,8 +234,11 @@ Seitenleiste. Es sehen nur Administratoren und Kuratoren des Raums. Die Seite ha
 | **Mitglieder** | Die Mitgliederliste mit Rollen, das Aufnehmen von Personen und Gruppen, die Übertragung der Verantwortung und die Herleitung je Zeile |
 | **Wissen** | Die dem Raum zugeordneten Bibliotheken; Zuordnen und Lösen ab der Kuratorenrolle |
 
-Den Gefahrenbereich sieht nur der Eigentümer, und nicht im eigenen Standard-Raum: Der lässt sich
-weder archivieren noch löschen.
+**Die ersten beiden Reiter gehören den Administratoren.** Ein Kurator öffnet dieselbe Seite, sieht
+die Stammdaten aber nur lesend, und im Reiter „Mitglieder" steht für ihn der Hinweis, dass die
+Liste seiner Rolle nicht offensteht — seine Arbeit liegt im Reiter „Wissen". Den Gefahrenbereich
+sieht nur der Eigentümer, und nicht im eigenen Standard-Raum: Der lässt sich weder archivieren noch
+löschen.
 
 ## 6. Woher Gruppen kommen
 

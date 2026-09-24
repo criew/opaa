@@ -35,8 +35,10 @@ interface RailDestination {
 }
 
 /**
- * Ein Eintrag je Asset-Typ, in der Reihenfolge der Leiste. Ein weiterer Typ ist eine weitere
- * Zeile dieser Liste — die Seite dahinter trägt denselben Namen wie der Eintrag.
+ * Ein Eintrag je Asset-Typ, in der Reihenfolge der Leiste; die Seite dahinter trägt denselben
+ * Namen wie der Eintrag. Ein weiterer Typ braucht drei Stellen: diese Zeile, seine Route unter
+ * `GlobalAreaLayout` in App.tsx und sein Präfix in `GLOBAL_AREA_PREFIXES` (globalArea.ts) — ohne
+ * das letzte rendert die neue Seite mit der Space-Spalte daneben statt im globalen Rahmen.
  */
 const ASSET_DESTINATIONS: RailDestination[] = [
   {
