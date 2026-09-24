@@ -642,6 +642,18 @@ Ein Space-`CURATOR` kann jedes Asset, auf das er selbst Zugriff hat, in seinen S
 
 Der Eigentümer des Assets sieht alle Assoziationen und kann jede davon jederzeit einseitig lösen. Das Asset bleibt Herr über seine Verbreitung.
 
+**Die Zuordnungen sind für jeden Leseberechtigten sichtbar — aber nur so weit, wie der Space selbst sichtbar ist** ([#1939](https://github.com/criew/opaa/issues/1939)). Wer ein Asset lesen darf, darf auch erfahren, in welchen Spaces es bereitsteht: Das ist Teil der Antwort auf „wer sieht das eigentlich?", und die Detailansicht zeigt es im Reiter „Freigaben". Die Preisgabe endet jedoch an der [Space-Sichtbarkeit](#space-sichtbarkeit): Ein `PRIVATE`-Space verspricht, dass nur seine Mitglieder von seiner Existenz wissen, und dieses Versprechen wiegt schwerer als die Vollständigkeit der Zuordnungsliste — sonst verriete jede organisationsweit lesbare Bibliothek den Namen jedes Verfahrens, in dem sie eingebunden ist.
+
+Daraus folgt eine Schwelle, nicht zwei Listen:
+
+| Rolle am Asset | Was die Zuordnungen zeigen |
+| --- | --- |
+| ab `MANAGER` | jede Assoziation mit Name, Urheber, Zeitpunkt und dem Hinweis „nicht alle Mitglieder lesen"; ungefiltert, auch Spaces, in denen der Aufrufer nicht Mitglied ist — er soll eine zu weite Zuordnung auch lösen können |
+| `VIEWER`/`EDITOR` | Name und Verweis der Spaces, die der Aufrufer ohnehin sehen darf (Mitgliedschaft oder eine Sichtbarkeit ungleich `PRIVATE`). Die übrigen erscheinen nur als Zahl (`hiddenCount`), die Oberfläche nennt sie „+ N weitere, die Sie nicht sehen können" |
+| unter `VIEWER` | `404` wie für ein unbekanntes Asset |
+
+Die Zahl selbst ist bewusst kein Geheimnis: Sie sagt, dass die Liste unvollständig ist, ohne einen einzigen Space zu benennen — ein unkommentiert gekürztes Ergebnis wäre die schlechtere Auskunft.
+
 **Die Assoziation hängt an der Schale** ([#1900](https://github.com/criew/opaa/issues/1900)). `space_asset_associations.asset_id` verweist mit der Organisation auf `assets`; das Löschen eines Assets nimmt seine Assoziationen mit, gleich welchen Typs es ist. Ein Space führt seine Assets über `GET/POST /api/v1/spaces/{spaceId}/assets` und `DELETE /api/v1/spaces/{spaceId}/assets/{assetId}`, die Gegenrichtung über `GET /api/v1/assets/{assetType}/{assetId}/spaces`; jeder Eintrag nennt den Asset-Typ. Assoziieren darf, wer im Space `CURATOR` ist und das Asset selbst lesen kann; lösen darf auch der Verwalter des Assets. Den Suchbereich verengen nur assoziierte **Wissensbibliotheken** — andere Typen tragen keine Dokumente und bleiben dort außen vor.
 
 **Benachrichtigung statt Zustimmung.** Wird eine Bibliothek in einem Space bereitgestellt, dessen Mitglieder nicht sämtlich Lesezugriff darauf haben, **wird ihr Eigentümer aktiv benachrichtigt**. Er muss nicht zustimmen — die Assoziation setzt niemanden etwas aus, weil Inhalte erst durch das Teilen sichtbar werden —, aber er erfährt davon, ohne in eine Liste schauen zu müssen. Das schließt die Lücke, dass ein Referatsleiter erst zufällig bemerkt, wo sein Wissen bereitsteht.

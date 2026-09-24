@@ -873,7 +873,12 @@ export default function LibraryDetailPage() {
                     .join(' · ')
                 : s3ScopeSummaryLabel(details.s3Settings)}
               {' · '}
-              <Link component={RouterLink} to={{ search: tabSearch('quelle') }} underline="hover">
+              <Link
+                component={RouterLink}
+                to={{ search: tabSearch('quelle') }}
+                replace
+                underline="hover"
+              >
                 Details
               </Link>
             </Typography>
@@ -1044,6 +1049,9 @@ export default function LibraryDetailPage() {
             value={entry.value}
             component={RouterLink}
             to={{ search: tabSearch(entry.value) }}
+            // Der Bereich ist ein Zustand derselben Seite, kein eigener Halt: Wer vier Reiter
+            // durchsieht, soll die Seite mit einem „Zurück" verlassen, nicht mit vieren.
+            replace
             id={`library-tab-${entry.value}`}
             aria-controls={`library-tabpanel-${entry.value}`}
           />

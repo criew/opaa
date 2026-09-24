@@ -5,6 +5,7 @@ import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.api.types.NotificationType;
 import io.opaa.api.types.SpaceRole;
+import io.opaa.api.types.SpaceVisibility;
 import io.opaa.api.types.SuccessionObjectType;
 import io.opaa.asset.Asset;
 import io.opaa.asset.AssetAuthorization;
@@ -27,6 +28,7 @@ import io.opaa.permission.AssetType;
 import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.PermissionSubject;
 import io.opaa.permission.SuccessionReachGuard;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -275,15 +277,18 @@ public class SpaceAssetAssociationService {
   }
 
   /**
-   * Every space the asset is associated with - the "Zuordnungen" view (#203, #1939), requiring
-   * VIEWER or above on the asset. Never filtered by the caller's own space membership: the caller
-   * sees every association, including in spaces they do not belong to.
+   * The spaces the asset is associated with - the "Zuordnungen" view (#203, #1939), requiring
+   * VIEWER or above on the asset. For a caller who may manage the asset it is never filtered by
+   * their own space membership: they see every association, including in spaces they do not belong
+   * to.
    *
-   * <p>Below MANAGER the answer carries the space and nothing else: neither the reader circle nor
-   * the creator is resolved, so a plain reader learns which spaces the asset stands in without
-   * learning who put it there or who in them may read it.
+   * <p>Below MANAGER the answer carries the space and nothing else - neither the reader circle nor
+   * the creator is resolved - and an association in a PRIVATE space the caller is no member of is
+   * not named at all, only counted in {@link AssetSpaceLinks#hiddenCount}: a PRIVATE space keeps
+   * the promise of its own visibility, that only its members know it exists
+   * (docs/features/spaces-and-assets.md, "Space-Sichtbarkeit").
    */
-  public List<AssetSpaceLink> listForAsset(AssetType assetType, UUID assetId, CurrentUser caller) {
+  public AssetSpaceLinks listForAsset(AssetType assetType, UUID assetId, CurrentUser caller) {
     Asset asset = assetAuthorization.load(assetType, assetId, caller.organizationId());
     assetAuthorization.requireRole(asset, caller.id(), caller.isSystemAdmin(), AssetRole.VIEWER);
     boolean managementDetail =
@@ -292,7 +297,7 @@ public class SpaceAssetAssociationService {
     List<SpaceAssetAssociation> associations =
         associationRepository.findByAssetIdOrderByCreatedAtAsc(asset.getId());
     if (associations.isEmpty()) {
-      return List.of();
+      return new AssetSpaceLinks(List.of(), 0);
     }
     Map<UUID, Space> spacesById = new LinkedHashMap<>();
     for (SpaceAssetAssociation association : associations) {
@@ -305,18 +310,39 @@ public class SpaceAssetAssociationService {
                 associations.stream().map(SpaceAssetAssociation::getCreatedByUserId).toList())
             : Map.of();
 
-    return associations.stream()
-        .map(
-            association -> {
-              Space space = spacesById.get(association.getSpaceId());
-              return new AssetSpaceLink(
-                  association,
-                  space != null ? space.getName() : "",
-                  managementDetail && space != null && !allMembersCanRead(space, asset),
-                  displayNames.get(association.getCreatedByUserId()),
-                  managementDetail);
-            })
-        .toList();
+    List<AssetSpaceLink> items = new ArrayList<>();
+    int hidden = 0;
+    for (SpaceAssetAssociation association : associations) {
+      Space space = spacesById.get(association.getSpaceId());
+      if (!managementDetail && !mayLearnOfSpace(space, caller)) {
+        hidden++;
+        continue;
+      }
+      items.add(
+          new AssetSpaceLink(
+              association,
+              space != null ? space.getName() : "",
+              managementDetail && space != null && !allMembersCanRead(space, asset),
+              displayNames.get(association.getCreatedByUserId()),
+              managementDetail));
+    }
+    return new AssetSpaceLinks(List.copyOf(items), hidden);
+  }
+
+  /**
+   * Whether the caller may be told that {@code space} exists: a PRIVATE space only reaches its own
+   * members, every other visibility stands in the space directory anyway. A vanished space (the
+   * association outlives nothing, but the read is not transactional with a deletion) is treated as
+   * unnameable.
+   */
+  private boolean mayLearnOfSpace(Space space, CurrentUser caller) {
+    if (space == null) {
+      return false;
+    }
+    if (space.getVisibility() != SpaceVisibility.PRIVATE) {
+      return true;
+    }
+    return accessPolicy.effectiveRole(space, caller.id()) != null;
   }
 
   /**

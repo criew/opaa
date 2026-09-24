@@ -1,4 +1,11 @@
-import { useCallback, useState, type FormEvent, type KeyboardEvent, type ReactNode } from 'react'
+import {
+  useCallback,
+  useRef,
+  useState,
+  type FormEvent,
+  type KeyboardEvent,
+  type ReactNode,
+} from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -31,8 +38,11 @@ export interface AssetHeadlineEditorProps {
 /**
  * Name and description of an asset in the head of its detail page (#1939): read as a heading, with
  * a pencil that turns the two into a small form. Never click-into-the-text — the mode is explicit,
- * so a screen reader and a keyboard reach it the same way; Escape discards the draft, and a
- * rejected save keeps the input and announces the reason.
+ * so a screen reader and a keyboard reach it the same way.
+ *
+ * <p>Focus follows the mode (docs/design/accessibility.md, 2.1/2.4): the name field takes it when
+ * the form opens, the pencil gets it back on every exit — Escape, „Abbrechen" and a successful
+ * save — and a refused save moves it onto the message, which keeps the draft.
  */
 export default function AssetHeadlineEditor({
   name,
@@ -47,12 +57,25 @@ export default function AssetHeadlineEditor({
   const [draft, setDraft] = useState<{ name: string; description: string } | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const editButtonRef = useRef<HTMLButtonElement>(null)
+  // Returning the focus to the pencil has to wait for the button to exist again: it is unmounted
+  // while the form stands, so a stable callback ref focuses it the moment it is mounted back.
+  const returnFocus = useRef(false)
 
-  // Der Bearbeitungsmodus beginnt im Namensfeld (docs/design/accessibility.md, 2.1). Als stabiler
-  // Callback-Ref greift er genau beim Einhängen des Formulars, nicht bei jedem Rendervorgang -
-  // `autoFocus` wäre dasselbe Verhalten ohne diese Zusicherung.
   const focusOnMount = useCallback((node: HTMLInputElement | null) => {
     node?.focus()
+  }, [])
+
+  const focusErrorOnMount = useCallback((node: HTMLDivElement | null) => {
+    node?.focus()
+  }, [])
+
+  const acceptPencil = useCallback((node: HTMLButtonElement | null) => {
+    editButtonRef.current = node
+    if (node && returnFocus.current) {
+      returnFocus.current = false
+      node.focus()
+    }
   }, [])
 
   function startEditing() {
@@ -60,7 +83,8 @@ export default function AssetHeadlineEditor({
     setDraft({ name, description: description ?? '' })
   }
 
-  function cancelEditing() {
+  function closeEditing() {
+    returnFocus.current = true
     setError(null)
     setDraft(null)
   }
@@ -72,7 +96,7 @@ export default function AssetHeadlineEditor({
     setSaving(true)
     try {
       await onSave(draft.name, draft.description)
-      setDraft(null)
+      closeEditing()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Speichern fehlgeschlagen')
     } finally {
@@ -83,28 +107,28 @@ export default function AssetHeadlineEditor({
   function handleKeyDown(event: KeyboardEvent) {
     if (event.key === 'Escape') {
       event.stopPropagation()
-      cancelEditing()
+      closeEditing()
     }
   }
+
+  const headingRow = (
+    <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap', mb: 0.5 }}>
+      {draft ? <PageHeading title={name} visuallyHidden /> : <PageHeading title={name} />}
+      {badges}
+      {canEdit && !draft && (
+        <Tooltip title={editLabel}>
+          <IconButton ref={acceptPencil} size="small" aria-label={editLabel} onClick={startEditing}>
+            <EditOutlinedIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      )}
+    </Stack>
+  )
 
   if (!draft) {
     return (
       <Box sx={{ minWidth: 0 }}>
-        <Stack
-          direction="row"
-          spacing={1.5}
-          sx={{ alignItems: 'center', flexWrap: 'wrap', mb: 0.5 }}
-        >
-          <PageHeading title={name} />
-          {badges}
-          {canEdit && (
-            <Tooltip title={editLabel}>
-              <IconButton size="small" aria-label={editLabel} onClick={startEditing}>
-                <EditOutlinedIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-          )}
-        </Stack>
+        {headingRow}
         {description && (
           <Typography sx={{ fontSize: 13.5, color: 'text.secondary', maxWidth: 640 }}>
             {description}
@@ -121,10 +145,17 @@ export default function AssetHeadlineEditor({
       onKeyDown={handleKeyDown}
       sx={{ minWidth: 0, maxWidth: 640, width: '100%' }}
     >
-      {/* The page keeps exactly one h1 while the name is being edited - hidden, not removed. */}
-      <PageHeading title={name} visuallyHidden />
+      {/* Die Abzeichen bleiben auch im Bearbeitungsmodus stehen; nur die Überschrift wird
+          unsichtbar, damit die Seite nie ohne ihre h1 dasteht. */}
+      {headingRow}
       {error && (
-        <Alert severity="error" sx={{ mb: 1.5 }} onClose={() => setError(null)}>
+        <Alert
+          severity="error"
+          ref={focusErrorOnMount}
+          tabIndex={-1}
+          sx={{ mb: 1.5 }}
+          onClose={() => setError(null)}
+        >
           {error}
         </Alert>
       )}
@@ -162,7 +193,7 @@ export default function AssetHeadlineEditor({
         >
           {saving ? 'Wird gespeichert …' : 'Speichern'}
         </Button>
-        <Button size="small" onClick={cancelEditing} disabled={saving}>
+        <Button size="small" onClick={closeEditing} disabled={saving}>
           Abbrechen
         </Button>
       </Stack>

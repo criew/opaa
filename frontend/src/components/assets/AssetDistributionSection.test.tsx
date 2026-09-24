@@ -83,15 +83,18 @@ describe('AssetDistributionSection', () => {
     it('lists the spaces the asset is associated with and derives the own access', async () => {
       server.use(
         http.get(`/api/v1/assets/${assetType}/${assetId}/spaces`, () =>
-          HttpResponse.json([
-            {
-              spaceId: 'space-phoenix',
-              spaceName: 'Projekt Phoenix',
-              createdByUserId: 'u1',
-              createdAt: '2026-09-01T10:00:00Z',
-              narrowerReaderCircle: true,
-            },
-          ]),
+          HttpResponse.json({
+            items: [
+              {
+                spaceId: 'space-phoenix',
+                spaceName: 'Projekt Phoenix',
+                createdByUserId: 'u1',
+                createdAt: '2026-09-01T10:00:00Z',
+                narrowerReaderCircle: true,
+              },
+            ],
+            hiddenCount: 0,
+          }),
         ),
       )
       const user = userEvent.setup()

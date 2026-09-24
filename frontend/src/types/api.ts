@@ -33,6 +33,8 @@ export type SpaceAssetAssociationResponse = components['schemas']['SpaceAssetAss
 export type SpaceAssetAssociationListResponse =
   components['schemas']['SpaceAssetAssociationListResponse']
 export type AssetSpaceAssociationResponse = components['schemas']['AssetSpaceAssociationResponse']
+export type AssetSpaceAssociationListResponse =
+  components['schemas']['AssetSpaceAssociationListResponse']
 
 export type NotificationType = components['schemas']['NotificationType']
 export type NotificationResponse = components['schemas']['NotificationResponse']

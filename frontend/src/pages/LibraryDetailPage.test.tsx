@@ -394,9 +394,28 @@ describe('LibraryDetailPage', () => {
 
       expect(screen.queryByLabelText(/name der bibliothek/i)).not.toBeInTheDocument()
       expect(mockUpdateLibrary).not.toHaveBeenCalled()
+      // accessibility.md 2.1: Der Fokus kehrt zum auslösenden Element zurück, sonst beginnt die
+      // nächste Tabulatortaste wieder ganz oben auf der Seite.
+      expect(screen.getByRole('button', { name: /name und beschreibung/i })).toHaveFocus()
     })
 
-    it('shows a rejected head save in the head itself, keeping the draft', async () => {
+    it('returns the focus to the pencil after Abbrechen and after a successful save', async () => {
+      setLibraryState(managerLibrary, detailsOf(managerLibrary))
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+      const user = userEvent.setup()
+      const pencil = () => screen.getByRole('button', { name: /name und beschreibung/i })
+
+      await user.click(await screen.findByRole('button', { name: /name und beschreibung/i }))
+      await user.click(screen.getByRole('button', { name: 'Abbrechen' }))
+      expect(pencil()).toHaveFocus()
+
+      await user.click(pencil())
+      await user.click(screen.getByRole('button', { name: /^speichern$/i }))
+      await waitFor(() => expect(mockUpdateLibrary).toHaveBeenCalled())
+      await waitFor(() => expect(pencil()).toHaveFocus())
+    }, 15000)
+
+    it('shows a rejected head save in the head itself, keeping the draft and taking the focus', async () => {
       setLibraryState(managerLibrary, detailsOf(managerLibrary))
       mockUpdateLibrary.mockRejectedValueOnce(new Error('Name bereits vergeben'))
       renderWithProviders(<LibraryDetailPage />, { withRouter: true })
@@ -405,7 +424,11 @@ describe('LibraryDetailPage', () => {
       await user.click(await screen.findByRole('button', { name: /name und beschreibung/i }))
       await user.click(await screen.findByRole('button', { name: /^speichern$/i }))
 
-      expect(await screen.findByRole('alert')).toHaveTextContent('Name bereits vergeben')
+      const alert = await screen.findByRole('alert')
+      expect(alert).toHaveTextContent('Name bereits vergeben')
+      // accessibility.md 2.4: Nach einem Abschickfehler geht der Fokus auf die Fehlermeldung, und
+      // die Eingabe bleibt erhalten.
+      expect(alert).toHaveFocus()
       expect(screen.getByLabelText(/name der bibliothek/i)).toBeInTheDocument()
     })
   })

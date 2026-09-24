@@ -2,12 +2,14 @@ package io.opaa.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.opaa.api.dto.AssetSpaceAssociationListResponse;
 import io.opaa.api.dto.AssetSpaceAssociationResponse;
 import io.opaa.api.dto.AssetType;
 import io.opaa.api.dto.SpaceAssetAssociationListResponse;
 import io.opaa.api.dto.SpaceAssetAssociationResponse;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.space.AssetSpaceLink;
+import io.opaa.space.AssetSpaceLinks;
 import io.opaa.space.SpaceAssetAssociation;
 import io.opaa.space.SpaceAssetLink;
 import io.opaa.space.SpaceAssetLinks;
@@ -137,10 +139,28 @@ class SpaceAssetAssociationResponseMapperTest {
   }
 
   @Test
-  void toAssetSpaceResponsesReturnsAnEmptyListForNoLinksInsteadOfNull() {
-    List<AssetSpaceAssociationResponse> responses =
-        SpaceAssetAssociationResponseMapper.toAssetSpaceResponses(List.of());
+  void toAssetSpaceListResponseReturnsAnEmptyListForNoLinksInsteadOfNull() {
+    AssetSpaceAssociationListResponse response =
+        SpaceAssetAssociationResponseMapper.toAssetSpaceListResponse(
+            new AssetSpaceLinks(List.of(), 0));
 
-    assertThat(responses).isEmpty();
+    assertThat(response.getItems()).isEmpty();
+    assertThat(response.getHiddenCount()).isZero();
+  }
+
+  // #1939: hiddenCount zählt die Spaces, die dieser Aufrufer nicht erfahren darf - er steht neben
+  // den Einträgen, nicht in ihnen.
+  @Test
+  void toAssetSpaceListResponseCarriesTheHiddenCountAlongsideTheItems() {
+    AssetSpaceAssociationListResponse response =
+        SpaceAssetAssociationResponseMapper.toAssetSpaceListResponse(
+            new AssetSpaceLinks(
+                List.of(new AssetSpaceLink(association(), "Fachbereich", false, null, false)), 2));
+
+    assertThat(response.getItems())
+        .singleElement()
+        .extracting(AssetSpaceAssociationResponse::getSpaceName)
+        .isEqualTo("Fachbereich");
+    assertThat(response.getHiddenCount()).isEqualTo(2);
   }
 }

@@ -92,6 +92,15 @@ beiden derselbe Abschnitt **„Freigabe"** mit Verteilungsstufe, Auffindbarkeit,
 den Zuordnungen zu Räumen und darunter „Warum sehe ich das?" — bei einer Wissensbibliothek im
 Reiter „Freigaben", bei einer Prompt-Bibliothek im Reiter „Verwaltung".
 
+**Zuordnungen: wer welchen Space erfährt.** Die Liste der Spaces, in denen ein Bestand
+bereitsteht, sehen alle Leseberechtigten — aber nur so weit, wie der Space selbst sichtbar ist.
+Ab der Verwalterrolle steht jede Zuordnung mit Namen da, samt Urheber, Zeitpunkt und dem Hinweis
+„nicht alle Mitglieder lesen", und jede lässt sich einzeln lösen. Wer nur liest oder bearbeitet,
+sieht die Namen der Spaces, die ohnehin im Space-Verzeichnis stehen oder in denen er Mitglied ist;
+private Spaces, zu denen er nicht gehört, erscheinen nur als Zahl — „+ 2 weitere, die Sie nicht
+sehen können". Ein privater Space verspricht, dass nur seine Mitglieder von ihm wissen, und dieses
+Versprechen gilt auch hier.
+
 | Rolle | Darf |
 |---|---|
 | **Leser** (`VIEWER`) | Die Bibliothek durchsuchen, Treffer und Dokumentenliste sehen |

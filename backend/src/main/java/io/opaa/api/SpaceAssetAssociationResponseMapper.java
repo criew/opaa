@@ -1,10 +1,12 @@
 package io.opaa.api;
 
+import io.opaa.api.dto.AssetSpaceAssociationListResponse;
 import io.opaa.api.dto.AssetSpaceAssociationResponse;
 import io.opaa.api.dto.AssetType;
 import io.opaa.api.dto.SpaceAssetAssociationListResponse;
 import io.opaa.api.dto.SpaceAssetAssociationResponse;
 import io.opaa.space.AssetSpaceLink;
+import io.opaa.space.AssetSpaceLinks;
 import io.opaa.space.SpaceAssetAssociation;
 import io.opaa.space.SpaceAssetLink;
 import io.opaa.space.SpaceAssetLinks;
@@ -58,7 +60,11 @@ final class SpaceAssetAssociationResponseMapper {
         .createdByDisplayName(link.createdByDisplayName());
   }
 
-  static List<AssetSpaceAssociationResponse> toAssetSpaceResponses(List<AssetSpaceLink> links) {
-    return links.stream().map(SpaceAssetAssociationResponseMapper::toAssetSpaceResponse).toList();
+  static AssetSpaceAssociationListResponse toAssetSpaceListResponse(AssetSpaceLinks links) {
+    return new AssetSpaceAssociationListResponse(
+        links.items().stream()
+            .map(SpaceAssetAssociationResponseMapper::toAssetSpaceResponse)
+            .toList(),
+        links.hiddenCount());
   }
 }

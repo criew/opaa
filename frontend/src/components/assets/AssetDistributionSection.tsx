@@ -183,6 +183,7 @@ export default function AssetDistributionSection({
               key={`${assetType}-${assetId}`}
               assetType={assetType}
               assetId={assetId}
+              canManage
             />
           </Box>
         </Stack>
