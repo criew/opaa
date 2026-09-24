@@ -122,6 +122,14 @@ public enum AuditEventType {
   ASSET_SHARED_TO_SPACE,
   /** The reverse of {@link #ASSET_SHARED_TO_SPACE} - an asset detached from a space. */
   ASSET_DETACHED_FROM_SPACE,
+  /**
+   * {@link #ASSET_SHARED_TO_SPACE} as recorded while only libraries could be associated. Never
+   * written; it stays so those protocol rows remain readable, since {@code audit_log} cannot be
+   * rewritten.
+   */
+  LIBRARY_SHARED_TO_SPACE,
+  /** {@link #ASSET_DETACHED_FROM_SPACE} under its former name - read-only like the one above. */
+  LIBRARY_DETACHED_FROM_SPACE,
   ASSET_OWNER_CHANGED,
   /** Taking over an asset left without a responsible owner. */
   ASSET_OWNERSHIP_CLAIMED,
