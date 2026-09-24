@@ -1881,24 +1881,30 @@ export async function updateBranding(request: BrandingUpdateRequest): Promise<Br
   }
 }
 
-export async function uploadBrandingLogo(file: File): Promise<BrandingResponse> {
+/** The three image slots of the branding settings (#582, #1910), by their path segment. */
+export type BrandingImageSlot = 'logo' | 'login-logo' | 'login-background'
+
+export async function uploadBrandingImage(
+  slot: BrandingImageSlot,
+  file: File,
+): Promise<BrandingResponse> {
   try {
     const formData = new FormData()
     formData.append('file', file)
-    const { data } = await client.put<BrandingResponse>('/v1/system/branding/logo', formData, {
+    const { data } = await client.put<BrandingResponse>(`/v1/system/branding/${slot}`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
     return data
   } catch (err) {
-    // 'upload' so an oversized logo turned away by the reverse proxy's own bare HTML 413 still
+    // 'upload' so an oversized image turned away by the reverse proxy's own bare HTML 413 still
     // produces a German message rather than "HTTP 413: ..." - same reasoning as uploadDocument.
     normalizeError(err, 'upload')
   }
 }
 
-export async function deleteBrandingLogo(): Promise<BrandingResponse> {
+export async function deleteBrandingImage(slot: BrandingImageSlot): Promise<BrandingResponse> {
   try {
-    const { data } = await client.delete<BrandingResponse>('/v1/system/branding/logo')
+    const { data } = await client.delete<BrandingResponse>(`/v1/system/branding/${slot}`)
     return data
   } catch (err) {
     normalizeError(err)

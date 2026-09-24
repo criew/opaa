@@ -25,10 +25,10 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
  * chat-title call on it (#616). A class that needs the production timing instead uses {@link
  * OpaaMockedDocumentServiceIntegrationTest}.
  *
- * <p><b>Rider:</b> {@link OpaaS3UploadStoreInitializer} points the upload store at MinIO here too.
- * That has nothing to do with the chat model - it rides along because a signature of its own would
- * cost a fifth Spring context and a fifth Postgres, and none of the classes below ever uploads a
- * document (AGENTS.md: a shared signature must be correct, not thematically coherent).
+ * <p><b>Rider:</b> {@link OpaaS3UploadStoreInitializer} points the upload store at that store here
+ * too. That has nothing to do with the chat model - it rides along because a signature of its own
+ * would cost a fifth Spring context and a fifth Postgres, and none of the classes below ever
+ * uploads a document (AGENTS.md: a shared signature must be correct, not thematically coherent).
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)

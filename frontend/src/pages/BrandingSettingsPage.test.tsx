@@ -162,7 +162,7 @@ describe('BrandingSettingsPage', () => {
 
     await user.upload(fileInput, svg)
 
-    expect(alertTexts()).toMatch(/nur PNG- und JPEG-Dateien zulässig/i)
+    expect(alertTexts()).toMatch(/nur PNG- und JPEG-Dateien sind zulässig/i)
     expect(useBrandingStore.getState().branding.logoUrl).toBeUndefined()
   })
 
@@ -180,6 +180,57 @@ describe('BrandingSettingsPage', () => {
     // field's own help text, and the assertion is about the rejection, not about the sentence.
     expect(alertTexts()).toMatch(/höchstens 512 KiB/i)
     expect(useBrandingStore.getState().branding.logoUrl).toBeUndefined()
+  })
+
+  /**
+   * #1910: Drei Bildfelder statt eines - und jedes landet in seinem eigenen Fach. Ein Hintergrund,
+   * der als Logo abgelegt wird, wäre an der Oberfläche nicht zu sehen, aber überall falsch.
+   */
+  it('stores each of the three images in its own slot', async () => {
+    signInAs('SYSTEM_ADMIN')
+    const user = userEvent.setup()
+
+    const { container } = renderWithProviders(<BrandingSettingsPage />, { withRouter: true })
+    const inputs = container.querySelectorAll('input[type="file"]')
+    expect(inputs).toHaveLength(3)
+
+    await user.upload(
+      inputs[2] as HTMLInputElement,
+      new File([new Uint8Array(64)], 'hintergrund.jpg', { type: 'image/jpeg' }),
+    )
+    await user.click(screen.getByRole('button', { name: 'Speichern' }))
+
+    await waitFor(() => {
+      expect(useBrandingStore.getState().branding.loginBackgroundUrl).toContain(
+        '/api/v1/branding/login-background',
+      )
+    })
+    expect(useBrandingStore.getState().branding.logoUrl).toBeUndefined()
+    expect(useBrandingStore.getState().branding.loginLogoUrl).toBeUndefined()
+  })
+
+  /** Das Hintergrundbild darf größer sein als ein Logo - die Grenze gilt je Feld. */
+  it('applies the larger size limit of the background image', async () => {
+    signInAs('SYSTEM_ADMIN')
+    const user = userEvent.setup()
+
+    const { container } = renderWithProviders(<BrandingSettingsPage />, { withRouter: true })
+    const backgroundInput = container.querySelectorAll('input[type="file"]')[2] as HTMLInputElement
+
+    await user.upload(
+      backgroundInput,
+      new File([new Uint8Array(1024 * 1024)], 'gross.jpg', { type: 'image/jpeg' }),
+    )
+    // Ein Megabyte ist für ein Logo zu viel, für den Hintergrund nicht: keine Meldung, und die
+    // Datei wartet auf das Speichern.
+    expect(screen.queryAllByRole('alert')).toEqual([])
+    expect(screen.getByText(/gross\.jpg/)).toBeInTheDocument()
+
+    await user.upload(
+      backgroundInput,
+      new File([new Uint8Array(2 * 1024 * 1024 + 1)], 'zugross.jpg', { type: 'image/jpeg' }),
+    )
+    expect(alertTexts()).toMatch(/höchstens 2048 KiB/i)
   })
 
   it('resets every field back to the OPAA standard', async () => {

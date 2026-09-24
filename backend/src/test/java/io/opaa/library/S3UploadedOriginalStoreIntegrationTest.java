@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.opaa.indexing.source.s3.MinioFixture;
+import io.opaa.indexing.source.s3.S3TestFixture;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -28,17 +28,17 @@ import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.S3Object;
 
 /**
- * The S3 adapter against a real MinIO ({@link MinioFixture}, ADR-0030): store and serve, delete,
- * delete of a missing object, containment against a key of another library and of another
+ * The S3 adapter against a real object store ({@link S3TestFixture}, ADR-0030): store and serve,
+ * delete, delete of a missing object, containment against a key of another library and of another
  * organization, the synthetic attachment locator, the working file after release and the local copy
  * after the action. The container's private address is reached with the target validation on and no
  * allowlist entry - the configured endpoint passes on its own (Entscheidung 8). Skipped without
  * Docker; the CI runs it.
  */
 @Testcontainers(disabledWithoutDocker = true)
-class S3UploadedOriginalStoreMinioTest {
+class S3UploadedOriginalStoreIntegrationTest {
 
-  private static MinioFixture minio;
+  private static S3TestFixture fixture;
   private static String bucket;
   private static S3UploadedOriginalStore store;
 
@@ -49,18 +49,18 @@ class S3UploadedOriginalStoreMinioTest {
 
   @BeforeAll
   static void start() {
-    minio = MinioFixture.get();
-    bucket = minio.createBucket("opaa-ablage");
+    fixture = S3TestFixture.get();
+    bucket = fixture.createBucket("opaa-ablage");
     store =
         new S3UploadedOriginalStore(
             new UploadS3Properties(
-                minio.endpoint().toString(),
-                MinioFixture.REGION,
+                fixture.endpoint().toString(),
+                S3TestFixture.REGION,
                 bucket,
                 "uploads/",
                 true,
-                minio.rootCredentials().accessKey(),
-                minio.rootCredentials().secretKey(),
+                fixture.rootCredentials().accessKey(),
+                fixture.rootCredentials().secretKey(),
                 tempDir,
                 new UploadS3Properties.TargetValidation(true, List.of())));
   }
@@ -196,13 +196,13 @@ class S3UploadedOriginalStoreMinioTest {
     UUID library = UUID.randomUUID();
     UploadS3Properties properties =
         new UploadS3Properties(
-            minio.endpoint().toString(),
-            MinioFixture.REGION,
+            fixture.endpoint().toString(),
+            S3TestFixture.REGION,
             bucket,
             "uploads/",
             true,
-            minio.rootCredentials().accessKey(),
-            minio.rootCredentials().secretKey(),
+            fixture.rootCredentials().accessKey(),
+            fixture.rootCredentials().secretKey(),
             tempDir,
             new UploadS3Properties.TargetValidation(true, List.of()));
     try (S3UploadedOriginalStore paging =
@@ -247,13 +247,13 @@ class S3UploadedOriginalStoreMinioTest {
     UUID organization = UUID.randomUUID();
     UploadS3Properties properties =
         new UploadS3Properties(
-            minio.endpoint().toString(),
-            MinioFixture.REGION,
+            fixture.endpoint().toString(),
+            S3TestFixture.REGION,
             bucket,
             "uploads/",
             true,
-            minio.rootCredentials().accessKey(),
-            minio.rootCredentials().secretKey(),
+            fixture.rootCredentials().accessKey(),
+            fixture.rootCredentials().secretKey(),
             tempDir,
             new UploadS3Properties.TargetValidation(true, List.of()));
     try (S3UploadedOriginalStore paging =
@@ -302,7 +302,7 @@ class S3UploadedOriginalStoreMinioTest {
 
   private static boolean exists(String key) {
     try {
-      minio.admin().headObject(HeadObjectRequest.builder().bucket(bucket).key(key).build());
+      fixture.admin().headObject(HeadObjectRequest.builder().bucket(bucket).key(key).build());
       return true;
     } catch (NoSuchKeyException e) {
       return false;
@@ -310,7 +310,7 @@ class S3UploadedOriginalStoreMinioTest {
   }
 
   private static List<String> keysUnder(String prefix) {
-    return minio
+    return fixture
         .admin()
         .listObjectsV2(ListObjectsV2Request.builder().bucket(bucket).prefix(prefix).build())
         .contents()

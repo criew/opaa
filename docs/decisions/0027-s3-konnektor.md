@@ -553,6 +553,39 @@ Virtual-Host-Adressierung über die Anfragesignatur im Unit-Test, weil MinIO im 
 Bucket-Subdomains auflöst. S3 wird damit der erste Konnektor mit vollständigem Container-Nachweis
 und die Referenz für Epic #1293.
 
+> **Nachtrag (Issue #1949, 09/2026): das Testdoppel ist nicht mehr MinIO, und der Ereignisweg wird
+> gegen simulierte Benachrichtigungen geprüft.** MinIO ist als frei beziehbares Image verschwunden —
+> erst Docker Hub (#1578), dann `quay.io/minio/minio` (#1948) —, ein eigener GHCR-Spiegel hielt nur
+> den letzten Community-Stand fest und bekam nie wieder ein Update. An seine Stelle tritt
+> **RustFS** (`rustfs/rustfs`, Apache-2.0, Docker Hub, SemVer-Tags, ~1 s bis zur ersten Antwort),
+> gepinnt in `S3TestFixture.IMAGE` und in denselben Compose-Diensten.
+>
+> Die Wahl fiel auf gemessene Übereinstimmung, nicht auf Zusicherungen: Geprüft wurden Garage,
+> SeaweedFS, adobe/s3mock und LocalStack; die Erhebung steht in Issue #1949. Entscheidend war, dass
+> RustFS als einziger Kandidat **eingeschränkte Schlüssel mit denselben IAM-Policy-Dokumenten**
+> führt, die MinIO nahm, und dabei dieselben Fehlerformen liefert — „darf auflisten, aber nicht
+> lesen" (403 auf `GetObject` bei erlaubter Auflistung), 403 auf einen fremden Bucket und eine auf
+> die erlaubten Buckets **gefilterte** Bucket-Liste. Garage kennt je Bucket nur `read`/`write`/
+> `owner` und kann die erste Unterscheidung nicht ausdrücken; SeaweedFS braucht 16 s zum Start und
+> wies auch den erlaubten Bucket ab; s3mock prüft keine Signaturen; LocalStack ist als
+> Demo-Objektspeicher zu schwer. Der `mc`-Client entfällt ersatzlos: RustFS nimmt die Aufrufe der
+> MinIO-Admin-API (`add-canned-policy`, `add-user`, `set-user-or-group-policy`) im Klartext
+> entgegen, SigV4 genügt — die Fixture braucht kein `execInContainer` mehr, und der Demo-Seed
+> erledigt denselben Schritt mit `demo/objectstore/scoped-key.py`.
+>
+> **Der Ereignisweg (Entscheidung 6) wird damit anders abgenommen.** RustFS bringt Webhook-Ziele
+> mit, sie ließen sich im veröffentlichten Image aber mit keiner dokumentierten Variablenform
+> aktivieren (`PutBucketNotificationConfiguration` antwortet „No notify targets configured"), und
+> kein anderer öffentlich beziehbarer S3-Server liefert Bucket-Benachrichtigungen. Der Test stellt
+> die Benachrichtigung deshalb **selbst zu**: die dokumentierte `Records`-Nutzlast mit
+> `Authorization: Bearer <Token>` und URL-kodiertem Schlüssel an den Eingang. Alles dahinter bleibt
+> echt — Sicherheitskette, Token-Prüfung, Entprellung, der `EVENT`-Lauf mit seinem `HeadObject`
+> gegen den echten Speicher, der Dokumentpfad und die Entfernung bei bestätigtem 404. **Nicht mehr
+> belegt ist die Zustellung durch den Speicher selbst**; dass MinIO, Ceph und AWS genau diese Bytes
+> senden, steht weiterhin in der Belegtabelle oben und im Handbuch, ist aber ab hier Dokumentation
+> und kein Testnachweis. Nebeneffekt: Der sshd-Sidecar und der zusätzliche Container je Testmethode
+> entfallen.
+
 ### 10. Zielanbieter und die Grenze Nextcloud/ownCloud
 
 Zielliste des ersten Ausbaus: **AWS S3, MinIO, Ceph RGW, Hetzner Object Storage** — und jeder
@@ -624,9 +657,10 @@ Kompaktkonstruktor liest keine Spring-Property.
 - **Die Löschregel bleibt ein Satz:** Löschung braucht einen positiven Befund. Für S3 ist er ein
   `404` unter Pflichtrecht oder das Fehlen in einer vollständigen Auflistung — der Ereignislauf
   darf löschen, ohne die Regel zu brechen.
-- **Der Container-Nachweis läuft mit jedem Build.** MinIO ist klein; die Suite ersetzt das
+- **Der Container-Nachweis läuft mit jedem Build.** Der Speicher ist klein; die Suite ersetzt das
   Testdoppel nicht, aber sie fängt, was Fakes nicht sehen (Paginierung, Signatur, ETag-Form,
-  Webhook-Zustellung).
+  Rechteform eingeschränkter Schlüssel) — seit dem Nachtrag zu Entscheidung 9 ohne die Zustellung
+  der Benachrichtigung selbst.
 - **Der Push-Weg hat ein Geheimnis je Bibliothek, gleich welchen Typs**, über die umbenannte
   Spalte — kein zweiter Verschlüsselungs- und Verwaltungsweg.
 
@@ -727,7 +761,7 @@ abweicht: Bucket und Schlüssel sind die Identität, der Endpoint ist der Weg.
 
 | Issue | Folgt aus diesem ADR |
 |---|---|
-| #1374 Zugriffsschicht | Port `S3ObjectStore` mit einem Adapter; `apache5-client`; **nur** `StaticCredentialsProvider` und explizite Region; Zieladressprüfung beim Bau des Clients (Endpoint, Proxy, `<bucket>.<host>` bei Virtual-Host) **und je Anfrage** im `ExecutionInterceptor`; `getObject` mit `BoundedStreams` in eine temporäre Datei; `S3RequestMeter` zählt Aufrufe **und** Bytes; Fehlerabbildung aus Entscheidung 8 einschließlich `InvalidAccessKeyId`/`SignatureDoesNotMatch` und `InvalidObjectState`; Log-Capture-Test, dass keine SDK-Ausnahme mit Geheimnis durchsickert; `MinioFixture` im regulären `test`-Task; Anfrage-Prüfsummen `WHEN_REQUIRED` für S3-kompatible Ziele |
+| #1374 Zugriffsschicht | Port `S3ObjectStore` mit einem Adapter; `apache5-client`; **nur** `StaticCredentialsProvider` und explizite Region; Zieladressprüfung beim Bau des Clients (Endpoint, Proxy, `<bucket>.<host>` bei Virtual-Host) **und je Anfrage** im `ExecutionInterceptor`; `getObject` mit `BoundedStreams` in eine temporäre Datei; `S3RequestMeter` zählt Aufrufe **und** Bytes; Fehlerabbildung aus Entscheidung 8 einschließlich `InvalidAccessKeyId`/`SignatureDoesNotMatch` und `InvalidObjectState`; Log-Capture-Test, dass keine SDK-Ausnahme mit Geheimnis durchsickert; `MinioFixture` im regulären `test`-Task (seit #1949 `S3TestFixture`); Anfrage-Prüfsummen `WHEN_REQUIRED` für S3-kompatible Ziele |
 | #1375 Quellentyp | `source_settings jsonb` mit `@JdbcTypeCode(SqlTypes.JSON)` auf einem String und Record-Validierung; `CHECK` für `S3`-Zweig **und** `jsonb_typeof(scopes) = 'array' AND jsonb_array_length(scopes) >= 1`; Überlappungsregel und feste Obergrenze 50 im Record; Doppelpunkt in Access-/Secret-Key abgewiesen; `Document#getDeepLinkSourceUrl` liefert für `S3` `null`; kein `EVENT`-Laufmodus (kommt mit #1381); Platzhalter-Executor deklariert nur `FULL` |
 | #1376 Verbindungstest | `HeadBucket`, `ListObjectsV2` (`MaxKeys` 1), `HeadObject` auf das erste Objekt; `301` → Region/Adressstil; `403` beim Listen vs. Lesen; `ListBuckets` ohne Recht → Rückfallmeldung, nie `500`; beide im Topf `source-test`; Zieladressprüfung je Bereich bei Virtual-Host |
 | #1377 Wizard | Freigabefolge **vor** der Bereichsliste; Anbietervorlagen aus Entscheidung 10 (Hetzner: Virtual-Host, Hinweis auf fehlende Benachrichtigungen); Überlappungsmeldung; Wortliste „Herkunft" um „S3-Objektspeicher" |

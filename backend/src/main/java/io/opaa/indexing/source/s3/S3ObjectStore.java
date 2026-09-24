@@ -7,7 +7,7 @@ import io.opaa.sourceaccess.SourceRequestMeter;
  * 9) - one adapter on the AWS SDK, created by {@link S3ClientFactory}. An instance is bound to one
  * library's connection, holds an HTTP connection pool and must be closed.
  *
- * <p>Contract, guarded by {@code AwsSdkS3ObjectStoreTest} and the MinIO suite: a listing follows
+ * <p>Contract, guarded by {@code AwsSdkS3ObjectStoreTest} and the S3 suite: a listing follows
  * continuation tokens page by page and never a body; {@code 503 SlowDown}/{@code 429} are retried
  * with backoff and counted, never silently; every failure surfaces as an {@link S3AccessException}
  * whose German message names bucket, key and cause but never a credential; the target of every

@@ -4,12 +4,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.common.ValidationException;
-import io.opaa.indexing.source.s3.MinioFixture;
 import io.opaa.indexing.source.s3.S3ClientFactory;
 import io.opaa.indexing.source.s3.S3Credentials;
 import io.opaa.indexing.source.s3.S3Properties;
 import io.opaa.indexing.source.s3.S3Scope;
 import io.opaa.indexing.source.s3.S3SourceSettings;
+import io.opaa.indexing.source.s3.S3TestFixture;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import java.util.List;
 import org.junit.jupiter.api.BeforeAll;
@@ -17,25 +17,25 @@ import org.junit.jupiter.api.Test;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
- * The connection test against a real MinIO (ADR-0027, #1376): per scope the three steps and the
- * count, the rights a restricted key lacks named by right, refused credentials named as such, and
- * the bucket listing - MinIO filters it for a restricted key rather than refusing it. Skipped
- * without Docker; the CI runs it.
+ * The connection test against a real object store (ADR-0027, #1376): per scope the three steps and
+ * the count, the rights a restricted key lacks named by right, refused credentials named as such,
+ * and the bucket listing - the store filters it for a restricted key rather than refusing it.
+ * Skipped without Docker; the CI runs it.
  */
 @Testcontainers(disabledWithoutDocker = true)
-class S3ConnectionServiceMinioTest {
+class S3ConnectionServiceIntegrationTest {
 
-  private static MinioFixture minio;
+  private static S3TestFixture store;
   private static String bucket;
   private static S3ConnectionService service;
 
   @BeforeAll
   static void start() throws Exception {
-    minio = MinioFixture.get();
-    bucket = minio.createBucket("opaa-sonde");
-    minio.putObject(bucket, "2025/protokoll.pdf", "%PDF-1.4 protokoll", "application/pdf");
-    minio.putObject(bucket, "2025/anlage.docx", "anlage", "application/octet-stream");
-    minio.putMany(bucket, "viele/", 1100, null);
+    store = S3TestFixture.get();
+    bucket = store.createBucket("opaa-sonde");
+    store.putObject(bucket, "2025/protokoll.pdf", "%PDF-1.4 protokoll", "application/pdf");
+    store.putObject(bucket, "2025/anlage.docx", "anlage", "application/octet-stream");
+    store.putMany(bucket, "viele/", 1100, null);
     service =
         new S3ConnectionService(
             new S3ClientFactory(S3Properties.defaults(), TargetAddressValidator.disabled()));
@@ -46,7 +46,7 @@ class S3ConnectionServiceMinioTest {
   }
 
   private static String endpoint() {
-    return minio.endpoint().toString();
+    return store.endpoint().toString();
   }
 
   @Test
@@ -55,7 +55,7 @@ class S3ConnectionServiceMinioTest {
         service.probe(
             endpoint() + "/",
             null,
-            minio.rootCredentials().stored(),
+            store.rootCredentials().stored(),
             false,
             settings(S3Scope.of(bucket, "2025/"), S3Scope.of(bucket, "viele")));
 
@@ -78,8 +78,8 @@ class S3ConnectionServiceMinioTest {
   @Test
   void aKeyThatMayListButNotReadIsToldWhichRightIsMissing() throws Exception {
     S3Credentials listOnly =
-        minio.createUser(
-            MinioFixture.policyAllowing(bucket, "s3:ListBucket", "s3:GetBucketLocation"));
+        store.createUser(
+            S3TestFixture.policyAllowing(bucket, "s3:ListBucket", "s3:GetBucketLocation"));
 
     S3ConnectionService.Probe probe =
         service.probe(
@@ -98,8 +98,9 @@ class S3ConnectionServiceMinioTest {
 
   @Test
   void aKeyWithoutRightsOnTheBucketIsToldSoForAnExistingAndAMissingBucket() throws Exception {
-    String other = minio.createBucket("opaa-fremd");
-    S3Credentials otherOnly = minio.createUser(MinioFixture.policyAllowing(other, "s3:ListBucket"));
+    String other = store.createBucket("opaa-fremd");
+    S3Credentials otherOnly =
+        store.createUser(S3TestFixture.policyAllowing(other, "s3:ListBucket"));
 
     S3ConnectionService.Probe probe =
         service.probe(
@@ -140,13 +141,13 @@ class S3ConnectionServiceMinioTest {
   @Test
   void listsTheBucketsTheKeyMaySee() throws Exception {
     S3BucketListResult root =
-        service.listBuckets(endpoint(), null, minio.rootCredentials().stored(), false, null, true);
+        service.listBuckets(endpoint(), null, store.rootCredentials().stored(), false, null, true);
     assertThat(root.permitted()).isTrue();
     assertThat(root.buckets()).contains(bucket);
 
-    // MinIO filters the listing for a restricted key instead of refusing it
+    // the store filters the listing for a restricted key instead of refusing it
     S3Credentials restricted =
-        minio.createUser(MinioFixture.policyAllowing(bucket, "s3:ListBucket"));
+        store.createUser(S3TestFixture.policyAllowing(bucket, "s3:ListBucket"));
     S3BucketListResult filtered =
         service.listBuckets(endpoint(), null, restricted.stored(), false, null, true);
     assertThat(filtered.permitted()).isTrue();

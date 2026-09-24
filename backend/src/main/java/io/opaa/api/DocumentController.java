@@ -50,7 +50,7 @@ public class DocumentController {
    *
    * <p>Three headers keep a stored, user-supplied file from becoming an execution vector when
    * opened inline - mirrors {@link BrandingController#getBrandingLogo}'s own three, except this
-   * endpoint serves arbitrary indexed files rather than a format {@code BrandingLogoValidator}
+   * endpoint serves arbitrary indexed files rather than a format {@code BrandingImageValidator}
    * already forces to a real image, so these headers are the only line of defense here, not a
    * second one (#742 review, finding 1):
    *

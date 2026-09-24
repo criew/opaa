@@ -106,10 +106,29 @@ describe('brandingStore', () => {
       type: 'image/png',
     })
 
-    await useBrandingStore.getState().saveLogo(file)
+    await useBrandingStore.getState().saveImage('logo', file)
     expect(useBrandingStore.getState().branding.logoUrl).toBeTruthy()
 
-    await useBrandingStore.getState().removeLogo()
+    await useBrandingStore.getState().removeImage('logo')
     expect(useBrandingStore.getState().branding.logoUrl).toBeUndefined()
+  })
+
+  /** #1910: Jede Bildart hat ihr eigenes Fach - und die Ablage trifft das richtige. */
+  it('stores and removes each sign-in image in its own slot', async () => {
+    const file = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], 'bild.png', {
+      type: 'image/png',
+    })
+
+    await useBrandingStore.getState().saveImage('loginLogo', file)
+    await useBrandingStore.getState().saveImage('loginBackground', file)
+
+    const branding = useBrandingStore.getState().branding
+    expect(branding.loginLogoUrl).toContain('/api/v1/branding/login-logo')
+    expect(branding.loginBackgroundUrl).toContain('/api/v1/branding/login-background')
+    expect(branding.logoUrl).toBeUndefined()
+
+    await useBrandingStore.getState().removeImage('loginBackground')
+    expect(useBrandingStore.getState().branding.loginBackgroundUrl).toBeUndefined()
+    expect(useBrandingStore.getState().branding.loginLogoUrl).toBeTruthy()
   })
 })

@@ -15,16 +15,16 @@ import SettingsBrightnessIcon from '@mui/icons-material/SettingsBrightness'
 import PaletteOutlinedIcon from '@mui/icons-material/PaletteOutlined'
 import type { ColorScheme } from '../types/api'
 import { useAuthStore } from '../stores/authStore'
-import { useBrandingStore, OPAA_BRANDING } from '../stores/brandingStore'
+import type { BrandingImageKind } from '../stores/brandingStore'
+import { BRANDING_IMAGES, useBrandingStore, OPAA_BRANDING } from '../stores/brandingStore'
 import PageHeading from '../components/a11y/PageHeading'
 import AreaPageHeader from '../components/AreaPageHeader'
 import BrandingPreview from '../components/admin/BrandingPreview'
 import { checkAccentContrast, formatContrastRatio, parseHexColor } from '../utils/contrast'
 import { contentWidth } from '../theme/tokens'
 
-/** Mirrors `BrandingLogoValidator` in the backend - rejected there too, just less pleasantly. */
-const ACCEPTED_LOGO_TYPES = ['image/png', 'image/jpeg']
-const MAX_LOGO_SIZE_BYTES = 512 * 1024
+/** Mirrors `BrandingImageValidator` in the backend - rejected there too, just less pleasantly. */
+const ACCEPTED_IMAGE_TYPES = ['image/png', 'image/jpeg']
 
 const MAX_PRODUCT_NAME_LENGTH = 60
 const MAX_CLAIM_LENGTH = 120
@@ -55,17 +55,19 @@ export default function BrandingSettingsPage() {
   const isSaving = useBrandingStore((s) => s.isSaving)
   const storeError = useBrandingStore((s) => s.error)
   const saveBranding = useBrandingStore((s) => s.saveBranding)
-  const saveLogo = useBrandingStore((s) => s.saveLogo)
-  const removeLogo = useBrandingStore((s) => s.removeLogo)
+  const saveImage = useBrandingStore((s) => s.saveImage)
+  const removeImage = useBrandingStore((s) => s.removeImage)
 
   const [productName, setProductName] = useState(branding.productName)
   const [claim, setClaim] = useState(branding.claim)
   const [primaryColor, setPrimaryColor] = useState(branding.primaryColor)
   const [colorScheme, setColorScheme] = useState<ColorScheme>(branding.defaultColorScheme)
-  const [logoFile, setLogoFile] = useState<File | null>(null)
-  const [logoError, setLogoError] = useState<string | null>(null)
+  // One pending file per slot; the upload happens with the rest of the form, so a single
+  // "Speichern" carries every change the operator made on this page.
+  const [pendingImages, setPendingImages] = useState<Partial<Record<BrandingImageKind, File>>>({})
+  const [imageErrors, setImageErrors] = useState<Partial<Record<BrandingImageKind, string>>>({})
   const [saved, setSaved] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const fileInputRefs = useRef<Partial<Record<BrandingImageKind, HTMLInputElement | null>>>({})
 
   // The store may still be loading when this page mounts; adopt the values once they arrive,
   // but never overwrite something the operator has already started typing.
@@ -79,10 +81,10 @@ export default function BrandingSettingsPage() {
     setColorScheme(branding.defaultColorScheme)
   }, [branding])
 
-  const logoPreviewUrl = useMemo(
-    () => (logoFile ? URL.createObjectURL(logoFile) : undefined),
-    [logoFile],
-  )
+  const logoPreviewUrl = useMemo(() => {
+    const file = pendingImages.logo
+    return file ? URL.createObjectURL(file) : undefined
+  }, [pendingImages.logo])
   useEffect(
     () => () => {
       if (logoPreviewUrl) URL.revokeObjectURL(logoPreviewUrl)
@@ -116,24 +118,35 @@ export default function BrandingSettingsPage() {
     )
   }
 
-  function selectLogo(file: File | null) {
-    setLogoError(null)
+  function clearInput(kind: BrandingImageKind) {
+    const input = fileInputRefs.current[kind]
+    if (input) input.value = ''
+  }
+
+  function selectImage(kind: BrandingImageKind, file: File | null) {
+    const { label, maxBytes } = BRANDING_IMAGES[kind]
+    setImageErrors((errors) => ({ ...errors, [kind]: undefined }))
     if (!file) {
-      setLogoFile(null)
+      setPendingImages((files) => ({ ...files, [kind]: undefined }))
       return
     }
-    if (!ACCEPTED_LOGO_TYPES.includes(file.type)) {
-      setLogoError(
-        'Als Logo sind nur PNG- und JPEG-Dateien zulässig. SVG wird bewusst nicht angenommen,' +
+    if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
+      setImageErrors((errors) => ({
+        ...errors,
+        [kind]:
+          `${label}: nur PNG- und JPEG-Dateien sind zulässig. SVG wird bewusst nicht angenommen,` +
           ' weil eine SVG-Datei Skripte enthalten kann.',
-      )
+      }))
       return
     }
-    if (file.size > MAX_LOGO_SIZE_BYTES) {
-      setLogoError(`Das Logo darf höchstens ${MAX_LOGO_SIZE_BYTES / 1024} KiB groß sein.`)
+    if (file.size > maxBytes) {
+      setImageErrors((errors) => ({
+        ...errors,
+        [kind]: `${label}: höchstens ${Math.round(maxBytes / 1024)} KiB.`,
+      }))
       return
     }
-    setLogoFile(file)
+    setPendingImages((files) => ({ ...files, [kind]: file }))
   }
 
   async function handleSave() {
@@ -145,10 +158,14 @@ export default function BrandingSettingsPage() {
         primaryColor: primaryColor.trim(),
         defaultColorScheme: colorScheme,
       })
-      if (logoFile) {
-        await saveLogo(logoFile)
-        setLogoFile(null)
-        if (fileInputRef.current) fileInputRef.current.value = ''
+      // Sequentially, not in parallel: each upload answers with the whole effective branding, and
+      // two in flight at once would let the slower answer overwrite the faster one's slot.
+      for (const kind of Object.keys(BRANDING_IMAGES) as BrandingImageKind[]) {
+        const file = pendingImages[kind]
+        if (!file) continue
+        await saveImage(kind, file)
+        setPendingImages((files) => ({ ...files, [kind]: undefined }))
+        clearInput(kind)
       }
       setSaved(true)
     } catch {
@@ -156,12 +173,36 @@ export default function BrandingSettingsPage() {
     }
   }
 
-  async function handleRemoveLogo() {
+  const imageSlots: Array<{
+    kind: BrandingImageKind
+    description: string
+    configuredUrl?: string
+  }> = [
+    {
+      kind: 'logo',
+      description: 'Steht in der Seitenleiste und im Kopf der Anwendung.',
+      configuredUrl: branding.logoUrl,
+    },
+    {
+      kind: 'loginLogo',
+      description:
+        'Wird auf der Anmeldeseite groß dargestellt. Ohne eigenes Bild gilt dort das Logo der Anwendung.',
+      configuredUrl: branding.loginLogoUrl,
+    },
+    {
+      kind: 'loginBackground',
+      description:
+        'Liegt hinter der Markenfläche der Anmeldeseite. Über dem Bild liegt ein fester dunkler Schleier, damit die Schrift lesbar bleibt — unabhängig davon, wie hell das Bild ist. Ohne Bild bleibt die heutige Fläche.',
+      configuredUrl: branding.loginBackgroundUrl,
+    },
+  ]
+
+  async function handleRemoveImage(kind: BrandingImageKind) {
     setSaved(false)
-    setLogoFile(null)
-    if (fileInputRef.current) fileInputRef.current.value = ''
+    setPendingImages((files) => ({ ...files, [kind]: undefined }))
+    clearInput(kind)
     try {
-      await removeLogo()
+      await removeImage(kind)
     } catch {
       // dito
     }
@@ -283,45 +324,54 @@ export default function BrandingSettingsPage() {
 
           <Divider />
 
-          <Box>
-            <Typography variant="subtitle2" component="h2" gutterBottom>
-              Logo
-            </Typography>
-            <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5 }}>
-              PNG oder JPEG, höchstens {MAX_LOGO_SIZE_BYTES / 1024} KiB. SVG wird nicht angenommen,
-              weil eine SVG-Datei Skripte enthalten kann.
-            </Typography>
-            {logoError && (
-              <Alert severity="error" sx={{ mb: 1.5 }}>
-                {logoError}
-              </Alert>
-            )}
-            <Stack direction="row" spacing={2} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-              <Button component="label" variant="outlined">
-                Logo auswählen
-                <Box
-                  component="input"
-                  type="file"
-                  ref={fileInputRef}
-                  accept={ACCEPTED_LOGO_TYPES.join(',')}
-                  hidden
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                    selectLogo(e.target.files?.[0] ?? null)
-                  }
-                />
-              </Button>
-              {branding.logoUrl && (
-                <Button color="error" onClick={() => void handleRemoveLogo()} disabled={isSaving}>
-                  Logo entfernen
+          {imageSlots.map((slot) => (
+            <Box key={slot.kind}>
+              <Typography variant="subtitle2" component="h2" gutterBottom>
+                {BRANDING_IMAGES[slot.kind].label}
+              </Typography>
+              <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5 }}>
+                {slot.description} PNG oder JPEG, höchstens{' '}
+                {Math.round(BRANDING_IMAGES[slot.kind].maxBytes / 1024)} KiB. SVG wird nicht
+                angenommen, weil eine SVG-Datei Skripte enthalten kann.
+              </Typography>
+              {imageErrors[slot.kind] && (
+                <Alert severity="error" sx={{ mb: 1.5 }}>
+                  {imageErrors[slot.kind]}
+                </Alert>
+              )}
+              <Stack direction="row" spacing={2} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+                <Button component="label" variant="outlined">
+                  {BRANDING_IMAGES[slot.kind].label} auswählen
+                  <Box
+                    component="input"
+                    type="file"
+                    ref={(element: HTMLInputElement | null) => {
+                      fileInputRefs.current[slot.kind] = element
+                    }}
+                    accept={ACCEPTED_IMAGE_TYPES.join(',')}
+                    hidden
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      selectImage(slot.kind, e.target.files?.[0] ?? null)
+                    }
+                  />
                 </Button>
-              )}
-              {logoFile && (
-                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                  {logoFile.name} — wird beim Speichern übernommen
-                </Typography>
-              )}
-            </Stack>
-          </Box>
+                {slot.configuredUrl && (
+                  <Button
+                    color="error"
+                    onClick={() => void handleRemoveImage(slot.kind)}
+                    disabled={isSaving}
+                  >
+                    {BRANDING_IMAGES[slot.kind].label} entfernen
+                  </Button>
+                )}
+                {pendingImages[slot.kind] && (
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                    {pendingImages[slot.kind]?.name} — wird beim Speichern übernommen
+                  </Typography>
+                )}
+              </Stack>
+            </Box>
+          ))}
 
           <Divider />
 
@@ -357,9 +407,11 @@ export default function BrandingSettingsPage() {
                 setClaim('')
                 setPrimaryColor('')
                 setColorScheme(OPAA_BRANDING.defaultColorScheme)
-                setLogoFile(null)
-                setLogoError(null)
-                if (fileInputRef.current) fileInputRef.current.value = ''
+                setPendingImages({})
+                setImageErrors({})
+                for (const kind of Object.keys(BRANDING_IMAGES) as BrandingImageKind[]) {
+                  clearInput(kind)
+                }
               }}
               disabled={isSaving}
             >

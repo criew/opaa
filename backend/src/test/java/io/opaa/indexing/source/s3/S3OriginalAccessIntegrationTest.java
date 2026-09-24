@@ -18,25 +18,25 @@ import org.junit.jupiter.api.io.TempDir;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
- * Reading one indexed object back out of a real object store (MinIO in a container, ADR-0027,
- * Entscheidung 5, #1524): the object body with its declared content type, the "no object of this
- * library" answers that become a 404 at the caller, and the store failures that must stay
- * distinguishable from them. Skipped without Docker; the CI runs it.
+ * Reading one indexed object back out of a real object store (an S3-compatible store in a
+ * container, ADR-0027, Entscheidung 5, #1524): the object body with its declared content type, the
+ * "no object of this library" answers that become a 404 at the caller, and the store failures that
+ * must stay distinguishable from them. Skipped without Docker; the CI runs it.
  */
 @Testcontainers(disabledWithoutDocker = true)
-class S3OriginalAccessMinioTest {
+class S3OriginalAccessIntegrationTest {
 
-  private static MinioFixture minio;
+  private static S3TestFixture store;
   private static String bucket;
 
   @TempDir Path downloadDirectory;
 
   @BeforeAll
   static void start() {
-    minio = MinioFixture.get();
-    bucket = minio.createBucket("opaa-beleg");
-    minio.putObject(bucket, "2025/protokoll.pdf", "%PDF-1.4 Protokollinhalt", "application/pdf");
-    minio.putObject(bucket, "2024/altes.pdf", "%PDF-1.4 alt", "application/pdf");
+    store = S3TestFixture.get();
+    bucket = store.createBucket("opaa-beleg");
+    store.putObject(bucket, "2025/protokoll.pdf", "%PDF-1.4 Protokollinhalt", "application/pdf");
+    store.putObject(bucket, "2024/altes.pdf", "%PDF-1.4 alt", "application/pdf");
   }
 
   private KnowledgeLibrary library(String endpoint, S3Credentials credentials, S3Scope... scopes) {
@@ -54,12 +54,12 @@ class S3OriginalAccessMinioTest {
             credentials.accessKey() + ":" + credentials.secretKey(),
             false);
     library.updateS3Settings(
-        new S3SourceSettings(MinioFixture.REGION, true, List.of(scopes), null, null));
+        new S3SourceSettings(S3TestFixture.REGION, true, List.of(scopes), null, null));
     return library;
   }
 
   private KnowledgeLibrary library(S3Scope... scopes) {
-    return library(minio.endpoint().toString(), minio.rootCredentials(), scopes);
+    return library(store.endpoint().toString(), store.rootCredentials(), scopes);
   }
 
   /**
@@ -92,8 +92,8 @@ class S3OriginalAccessMinioTest {
 
   @Test
   void answersEmptyForAnObjectThatHasSinceBeenDeleted() throws Exception {
-    minio.putObject(bucket, "2025/vergaenglich.pdf", "%PDF-1.4 weg gleich", "application/pdf");
-    minio.deleteObject(bucket, "2025/vergaenglich.pdf");
+    store.putObject(bucket, "2025/vergaenglich.pdf", "%PDF-1.4 weg gleich", "application/pdf");
+    store.deleteObject(bucket, "2025/vergaenglich.pdf");
 
     Optional<S3Download> download =
         access()
@@ -123,7 +123,7 @@ class S3OriginalAccessMinioTest {
 
   @Test
   void refusesAnObjectAboveTheSizeBoundWithoutLeavingAPartialFileBehind() throws Exception {
-    minio.putObject(bucket, "2025/gross.pdf", "%PDF-1.4 " + "x".repeat(4096), "application/pdf");
+    store.putObject(bucket, "2025/gross.pdf", "%PDF-1.4 " + "x".repeat(4096), "application/pdf");
 
     Optional<S3Download> download =
         access(64)
@@ -138,7 +138,7 @@ class S3OriginalAccessMinioTest {
     // Port 1 is a privileged port nothing in this test listens on - "the store is offline",
     // deliberately NOT the empty answer a missing object gives.
     KnowledgeLibrary library =
-        library("http://127.0.0.1:1", minio.rootCredentials(), S3Scope.of(bucket, "2025/"));
+        library("http://127.0.0.1:1", store.rootCredentials(), S3Scope.of(bucket, "2025/"));
 
     assertThatThrownBy(() -> access().download(library, "s3://" + bucket + "/2025/protokoll.pdf"))
         .isInstanceOf(S3AccessException.class);
@@ -165,10 +165,10 @@ class S3OriginalAccessMinioTest {
     // with 403 rather than 404. Were that 403 a store failure, a deleted object would surface as
     // "store unreachable"; io.opaa.library.S3UploadedOriginalStore resolves it the same way.
     S3Credentials listOnly =
-        minio.createUser(
-            MinioFixture.policyAllowing(bucket, "s3:ListBucket", "s3:GetBucketLocation"));
+        store.createUser(
+            S3TestFixture.policyAllowing(bucket, "s3:ListBucket", "s3:GetBucketLocation"));
     KnowledgeLibrary library =
-        library(minio.endpoint().toString(), listOnly, S3Scope.of(bucket, "2025/"));
+        library(store.endpoint().toString(), listOnly, S3Scope.of(bucket, "2025/"));
 
     assertThat(access().download(library, "s3://" + bucket + "/2025/protokoll.pdf")).isEmpty();
   }

@@ -214,8 +214,15 @@ databaseChangeLog:
   # Der Nachweis im Verlauf, welcher Prompt eine Frage gebaut hat.
   - include:
       file: db/changelog/changes/088-chat-messages-used-prompt.yaml
+  # Eigenes Logo und optionales Hintergrundbild der Anmeldeseite, im selben Branding-Singleton
+  # wie das Logo der Anwendung (#1910).
+  - include:
+      file: db/changelog/changes/089-branding-login-images.yaml
   # Die Verteilungsstufe assets.visibility entfaellt; organisationsweite Reichweite wird eine
   # Freigabe an "Alle Konten" (#1931, ADR-0037). Fuehrt die Bestaende samt ihrer
   # Sichtbarkeitsintervalle in Freigaben und Freigabe-Intervalle ueber.
   - include:
       file: db/changelog/changes/090-asset-reach-as-all-accounts-grant.yaml
+  # Der gelistete Teil des Katalogs.
+  - include:
+      file: db/changelog/changes/091-assets-listed-index.yaml

@@ -6,7 +6,7 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.OrphanedOriginalSkipReason;
 import io.opaa.indexing.document.DocumentRepository;
-import io.opaa.indexing.source.s3.MinioFixture;
+import io.opaa.indexing.source.s3.S3TestFixture;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -26,20 +26,20 @@ import org.junit.jupiter.api.io.TempDir;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
- * Both steps of both cleanup runs against a real MinIO ({@link MinioFixture}, ADR-0030): the report
- * names the objects no row points to - and, over the whole organization, the key levels no library
- * row belongs to any more - deleting removes exactly the named ones and nothing else, and the next
- * report is empty. The clock runs two hours ahead of the store, so an object written a moment ago
- * is already past the grace period without the test having to wait. Row lookups are mocked - the
- * rows themselves are covered by {@code OrphanedOriginalCleanupIntegrationTest}. Skipped without
- * Docker; the CI runs it.
+ * Both steps of both cleanup runs against a real object store ({@link S3TestFixture}, ADR-0030):
+ * the report names the objects no row points to - and, over the whole organization, the key levels
+ * no library row belongs to any more - deleting removes exactly the named ones and nothing else,
+ * and the next report is empty. The clock runs two hours ahead of the store, so an object written a
+ * moment ago is already past the grace period without the test having to wait. Row lookups are
+ * mocked - the rows themselves are covered by {@code OrphanedOriginalCleanupIntegrationTest}.
+ * Skipped without Docker; the CI runs it.
  */
 @Testcontainers(disabledWithoutDocker = true)
-class OrphanedOriginalCleanupMinioTest {
+class OrphanedOriginalCleanupS3Test {
 
   private static final int GRACE_MINUTES = 60;
 
-  private static MinioFixture minio;
+  private static S3TestFixture fixture;
   private static String bucket;
   private static S3UploadedOriginalStore store;
 
@@ -52,18 +52,18 @@ class OrphanedOriginalCleanupMinioTest {
 
   @BeforeAll
   static void start() {
-    minio = MinioFixture.get();
-    bucket = minio.createBucket("opaa-aufraeumlauf");
+    fixture = S3TestFixture.get();
+    bucket = fixture.createBucket("opaa-aufraeumlauf");
     store =
         new S3UploadedOriginalStore(
             new UploadS3Properties(
-                minio.endpoint().toString(),
-                MinioFixture.REGION,
+                fixture.endpoint().toString(),
+                S3TestFixture.REGION,
                 bucket,
                 "uploads/",
                 true,
-                minio.rootCredentials().accessKey(),
-                minio.rootCredentials().secretKey(),
+                fixture.rootCredentials().accessKey(),
+                fixture.rootCredentials().secretKey(),
                 tempDir,
                 new UploadS3Properties.TargetValidation(true, List.of())));
   }

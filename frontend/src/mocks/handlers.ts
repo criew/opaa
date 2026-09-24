@@ -10,6 +10,7 @@ import { externalAccessTokenHandlers } from './externalAccessTokenHandlers'
 import { groupAdminHandlers } from './groupAdminHandlers'
 import { successionHandlers } from './successionHandlers'
 import { promptLibraryHandlers } from './promptLibraryHandlers'
+import { catalogHandlers } from './catalogHandlers'
 import { mockPromptLibraries } from './promptLibraryFixtures'
 
 /** Per-library countdown of the mock metadata backfill; see the handler below. */
@@ -3854,6 +3855,45 @@ export const handlers = [
     return HttpResponse.json(mockBranding)
   }),
 
+  http.put('/api/v1/system/branding/login-logo', () => {
+    setMockBranding({
+      ...mockBranding,
+      loginLogoUrl: '/api/v1/branding/login-logo?v=mockloginlogo',
+      loginLogoContentType: 'image/png',
+      loginLogoUpdatedAt: new Date().toISOString(),
+    })
+    return HttpResponse.json(mockBranding)
+  }),
+
+  http.delete('/api/v1/system/branding/login-logo', () => {
+    const { loginLogoUrl, loginLogoContentType, loginLogoUpdatedAt, ...rest } = mockBranding
+    void loginLogoUrl
+    void loginLogoContentType
+    void loginLogoUpdatedAt
+    setMockBranding(rest)
+    return HttpResponse.json(mockBranding)
+  }),
+
+  http.put('/api/v1/system/branding/login-background', () => {
+    setMockBranding({
+      ...mockBranding,
+      loginBackgroundUrl: '/api/v1/branding/login-background?v=mockbackground',
+      loginBackgroundContentType: 'image/jpeg',
+      loginBackgroundUpdatedAt: new Date().toISOString(),
+    })
+    return HttpResponse.json(mockBranding)
+  }),
+
+  http.delete('/api/v1/system/branding/login-background', () => {
+    const { loginBackgroundUrl, loginBackgroundContentType, loginBackgroundUpdatedAt, ...rest } =
+      mockBranding
+    void loginBackgroundUrl
+    void loginBackgroundContentType
+    void loginBackgroundUpdatedAt
+    setMockBranding(rest)
+    return HttpResponse.json(mockBranding)
+  }),
+
   http.get('/api/v1/auth/me', () => {
     return HttpResponse.json(mockUser)
   }),
@@ -3874,4 +3914,5 @@ export const handlers = [
   // Die Betriebsliste des Lebenszyklus (#1819/#1821) - eigene Datei aus demselben Grund.
   ...successionHandlers,
   ...promptLibraryHandlers,
+  ...catalogHandlers,
 ]

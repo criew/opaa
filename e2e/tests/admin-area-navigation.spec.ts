@@ -18,7 +18,8 @@ test.describe('Verwaltungsbereich: Navigation über die Sekundärspalte (#787)',
     await expect(column).toBeVisible()
 
     await column.getByRole('link', { name: 'Modelle' }).click()
-    await page.waitForURL('**/admin/models')
+    // The bare path forwards to the chat models at once, so only the target is certain to be seen.
+    await page.waitForURL('**/admin/models/chat')
     await expect(page.getByRole('heading', { level: 1, name: 'Modelle' })).toBeVisible()
 
     // #1542: der Eintrag „E-Mail" landet auf dem Server-Tab, der selbst eine Route ist.

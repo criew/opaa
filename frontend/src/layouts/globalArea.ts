@@ -5,7 +5,14 @@
  * GlobalAreaLayout.tsx so that file only exports components
  * (react-refresh/only-export-components).
  */
-const GLOBAL_AREA_PREFIXES = ['/admin', '/settings', '/libraries', '/prompts', '/revision']
+const GLOBAL_AREA_PREFIXES = [
+  '/admin',
+  '/settings',
+  '/libraries',
+  '/prompts',
+  '/catalog',
+  '/revision',
+]
 
 /**
  * Views where no space is selected yet (#809): the overview of all spaces and the create

@@ -238,11 +238,11 @@ def ensure_library(admin_client: Client, library_def: LibraryDef) -> str:
 
 
 def ensure_association(owner_client: Client, space_id: str, library_id: str) -> None:
-    # associateSpaceLibrary is idempotent by design (see opaa-api.yaml): an already-associated
-    # library returns its existing association unchanged, also with 201.
+    # associateSpaceAsset is idempotent by design (see opaa-api.yaml): an already-associated
+    # asset returns its existing association unchanged, also with 201.
     owner_client.post_ok(
-        f"/v1/spaces/{space_id}/libraries",
-        json={"libraryId": library_id},
+        f"/v1/spaces/{space_id}/assets",
+        json={"assetType": "KNOWLEDGE_LIBRARY", "assetId": library_id},
         expected=(201,),
     )
 
@@ -256,7 +256,7 @@ def ensure_grant(
 ) -> None:
     # upsertAssetGrant is idempotent per subject by design (see opaa-api.yaml) - always safe to call.
     admin_client.post_ok(
-        f"/v1/libraries/{library_id}/grants",
+        f"/v1/assets/KNOWLEDGE_LIBRARY/{library_id}/grants",
         json={"subjectType": subject_type, "subjectId": subject_id, "role": role},
         expected=(200,),
     )
@@ -481,7 +481,7 @@ def trigger_indexing(
             f"Indizierung für '{name}' nicht sauber abgeschlossen: status={status['status']}, "
             f"documentsFailed={status['documentsFailed']}, message={status.get('message')}"
         )
-    # A run that saw nothing also ends COMPLETED. Against a bucket the "minio-seed" step has not
+    # A run that saw nothing also ends COMPLETED. Against a bucket the "objectstore-seed" step has not
     # finished filling, that would report success over a half-filled - or empty - library.
     # Unchanged documents count as skipped on a repeat run, so both numbers belong in the total.
     processed = status["documentsIndexedTotal"] + status["documentsSkipped"]
@@ -490,8 +490,8 @@ def trigger_indexing(
             f"Indizierung für '{name}' hat nur {processed} von erwarteten {expected_documents} "
             f"Dokumenten verarbeitet (indiziert: {status['documentsIndexedTotal']}, übersprungen: "
             f"{status['documentsSkipped']}). Bei einer S3-Bibliothek heißt das meist: Der "
-            "Einmal-Schritt 'minio-seed' war beim Auslösen noch nicht fertig - "
-            "'docker compose logs minio-seed' prüfen und den Seed erneut laufen lassen."
+            "Einmal-Schritt 'objectstore-seed' war beim Auslösen noch nicht fertig - "
+            "'docker compose logs objectstore-seed' prüfen und den Seed erneut laufen lassen."
         )
     print(
         f"  Indizierung für '{name}' abgeschlossen: "

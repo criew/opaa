@@ -266,7 +266,7 @@ lassen.
 - `tests/smoke.spec.ts` — die Anwendung lädt und zeigt die Chat-Startseite (#231).
 - `tests/accessibility.spec.ts` (#586) — automatisierte Barrierefreiheitsprüfung mit axe-core
   (`@axe-core/playwright`, Helfer in `fixtures/a11y.ts`): Anmeldeseite, Chat in beiden
-  Farbschemata, Space-Seite, Wissen (Übersicht der Wissensbibliotheken), Verwaltungsbereich (Gruppen) und
+  Farbschemata, Space-Seite, Wissen (Übersicht der Wissensbibliotheken), Katalog, Verwaltungsbereich (Gruppen) und
   Benutzer-Einstellungen werden im Ausgangszustand gegen WCAG 2.1 A/AA geprüft. Verstöße der Stufen „serious" und „critical"
   lassen den Test fehlschlagen; „minor"/„moderate" landen als Annotation im Playwright-Report.
   Ausnahmen werden am Aufrufort als `exclude`/`disableRules` übergeben, jede mit Begründung und
@@ -500,6 +500,19 @@ lassen.
   nachdem, wie der Schalter der Installation gerade steht —, nie mit der Auslieferung der
   Anwendung. Ohne Browser, ohne Anmeldung und ohne eigenen Bestand; verändert nichts und ist
   deshalb gegenüber den übrigen Szenarien reihenfolgeunabhängig.
+- `tests/prompt-libraries.spec.ts` (#1904, Nachweis von Epic #1726) — Prompt-Bibliothek und Katalog
+  über den vollen Stack: `dev-user` legt ohne Systemrolle eine Prompt-Bibliothek mit einem Prompt
+  und einer Pflicht-Variable an und gibt sie an eine Person (`dev-admin`), an eine Gruppe (Mitglied
+  `dev-format-pipelines`) und an „Alle Konten" frei. Vor der Freigabe an „Alle Konten" findet
+  `dev-outsider` sie weder in der Liste noch im Katalog noch unter ihrer Adresse (Negativfall).
+  Eine zweite Prompt-Bibliothek und eine Wissensbibliothek erscheinen erst nach der Listung im
+  Katalog — als Eintrag ohne Zugriff, ohne Link, mit zuständiger Stelle; der Typfilter trennt sie.
+  Zuletzt setzt `dev-outsider` den Prompt im Chat per Befehl ein, füllt das Variablenformular und
+  sieht den Hinweis „Prompt: <Titel>" im Verlauf, auch nach einem Neuladen. Eine zweite Organisation
+  ist im `dev`-Auth-Modus nicht erreichbar; die Organisationsgrenze prüft das Backend
+  (`AssetCatalogServiceIntegrationTest`). Vorbedingungen (Gruppe, zweite Bibliothek) legt
+  `fixtures/promptLibraries.ts` über die API an; `dev-format-pipelines` stellt nie eine Frage und
+  bekommt keinen durchsuchbaren Bestand, bleibt also für seinen eigentlichen Zweck unberührt.
 
 ## Demo-Smoke (#232)
 
@@ -524,8 +537,8 @@ pnpm run test:demo-smoke
 Lebenszyklus wie `pnpm test` oben, mit denselben Bausteinen, aber anderem Ziel:
 
 - Compose-Profil `demo` (`docker compose --profile demo`) statt der festen Servicenamen der
-  `e2e`-Suite — startet zusätzlich `keycloak`, `demo-corpus`, `demo-presse` sowie `minio` und
-  den Befüll-Schritt `minio-seed` (S3-Quelle der beiden S3-Bibliotheken und, seit #1520, Ablage der
+  `e2e`-Suite — startet zusätzlich `keycloak`, `demo-corpus`, `demo-presse` sowie `objectstore` und
+  den Befüll-Schritt `objectstore-seed` (S3-Quelle der beiden S3-Bibliotheken und, seit #1520, Ablage der
   hochgeladenen Originale der Demo; #1383, #1520)
   ([`../demo/README.md`](../demo/README.md), „Compose-Stack starten (#229)").
 - `ai-stub` (dasselbe Skript, `ai-stub/server.mjs`) tritt über

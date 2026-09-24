@@ -879,8 +879,14 @@ gelockert werden.
   bereits mit, ausgewertet werden sie nicht
 - **Anmeldung über die Instanzrolle** des OPAA-Hosts statt eines statischen Schlüssels
 - **Vorsignierte Beleg-Links** auf das Objekt
-- **Ein Test der Virtual-Host-Adressierung gegen MinIO im Container** — MinIO löst dort keine
-  Bucket-Subdomains auf; Virtual-Host ist über die Anfragesignatur im Unit-Test abgesichert,
-  Path-Style, Paginierung, Signaturen, ETag-Verhalten und der Webhook gegen MinIO
+- **Ein Test der Virtual-Host-Adressierung gegen einen Objektspeicher im Container** — der löst
+  keine Bucket-Subdomains auf; Virtual-Host ist über die Anfragesignatur im Unit-Test abgesichert,
+  Path-Style, Paginierung, Signaturen, ETag-Verhalten und die Rechteform eingeschränkter Schlüssel
+  gegen einen echten Speicher
+- **Ein Test der Ereigniszustellung durch den Speicher selbst** — der Ereignisweg ist bis zum
+  Eingang hin gegen **simulierte** Benachrichtigungen abgenommen (dieselbe `Records`-Nutzlast und
+  dieselbe Kopfzeile, vom Test zugestellt); alles dahinter läuft gegen einen echten Speicher. Kein
+  öffentlich beziehbares Container-Image liefert Bucket-Benachrichtigungen; dass MinIO, Ceph und
+  AWS genau diese Form senden, steht in Abschnitt 8 und ist dort belegt, nicht durch einen Test
 - **Replay-Schutz** und **Ergebnisrückmeldung** für Ereignisbenachrichtigungen
 - **Koordination der Läufe** mehrerer Bibliotheken gegen denselben Speicher

@@ -45,12 +45,15 @@ function describeViolation(violation: Violation): string {
  * and `color-contrast` reports pairs the interface never shows (#1643). Skipped are animations
  * that would never settle - endless repetition (loading indicators), unbounded duration, and
  * paused ones. Returns the number of animations still running when the wait gave up, so a caller
- * can surface that instead of silently measuring an unsettled page.
+ * can surface that instead of silently measuring an unsettled page. Two frames pass first: a
+ * change the caller has just caused (a colour scheme switch) starts its transitions only once the
+ * page has rendered it, and an animation that has not started yet cannot be waited for.
  *
  * A string expression: the E2E suite compiles without DOM typings, so `document` is unknown here.
  */
 const SETTLE_ANIMATIONS = `
   (async () => {
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     const deadline = Date.now() + 5000;
     const pending = () =>
       document.getAnimations().filter((animation) => {
