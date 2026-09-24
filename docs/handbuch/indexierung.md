@@ -101,6 +101,26 @@ flowchart TB
     D --> K[Chunks<br/>Text, Vektor, Metadaten]
 ```
 
+### Die Bibliotheksübersicht
+
+Unter „Wissen" stehen alle Bibliotheken, die Sie lesen dürfen. Die Überschrift nennt ihre Anzahl,
+oben rechts steht „Neue Bibliothek". Ein Suchfeld filtert die Liste über Name und Beschreibung,
+ein Umschalter wechselt zwischen Kacheln und Tabelle; die gewählte Ansicht bleibt für die nächste
+Sitzung gemerkt.
+
+Die Tabelle hat sechs Spalten:
+
+| Spalte | Inhalt |
+|---|---|
+| **Name** | Name, darunter Beschreibung und Eigentümer; darunter gegebenenfalls „Nachfolge offen" |
+| **Herkunft** | der Quellentyp |
+| **Dokumente** | die Anzahl als Zahl, ab fünf Stellen gekürzt („120 K", „1,2 Mio.") |
+| **In der Organisation geteilt** | ein Haken, wenn die Verteilungsstufe „organisationsweit" ist; sonst leer |
+| **Ihre Rolle** | Ihre Rolle an der Bibliothek |
+| **Letzte Aktualisierung** | das Datum des letzten erfolgreichen Laufs. Läuft gerade einer, steht dort sein Fortschritt; ist der letzte gescheitert, steht „Lauf fehlgeschlagen". Eine Upload-Bibliothek hat keinen Lauf, ihr Feld bleibt leer |
+
+Bestände ohne Leserecht erscheinen nicht in der Liste.
+
 ## 3. Wie ein Lauf entsteht und endet
 
 ### 3.1 Auslöser

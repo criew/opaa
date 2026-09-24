@@ -222,6 +222,18 @@ gibt. Wieweit ein Raum überhaupt auffindbar ist, entscheidet seine Sichtbarkeit
 Mitglieder, im Verzeichnis sichtbar mit Beitritt auf Antrag, oder im Verzeichnis sichtbar mit
 Selbstbeitritt.
 
+### Die Space-Übersicht
+
+Die Übersicht führt alle Räume auf, in denen Sie Mitglied sind — in der Oberfläche heißen sie
+„Spaces". Die Überschrift nennt ihre Anzahl, oben rechts steht „Neuer Space". Ein Suchfeld filtert
+über Name und Beschreibung, ein Umschalter wechselt zwischen Kacheln und Tabelle; die gewählte
+Ansicht bleibt gemerkt.
+
+Eine Kachel zeigt Name, Beschreibung, die Anzahl der Chats, die Mitgliedschaften — sind Sie allein
+darin, steht „nur Sie" — und Ihre eigene Rolle als Badge. Ein archivierter Space ist als solcher
+gekennzeichnet und führt auf seine Übersicht statt in einen neuen Chat. Die Tabellenansicht zeigt
+dieselben Angaben spaltenweise.
+
 ## 6. Woher Gruppen kommen
 
 Jede Gruppe hat genau eine Herkunft, und sie steht als Zusatz neben dem Namen — nie im Namen selbst:

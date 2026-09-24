@@ -92,6 +92,16 @@ export function accessLevelLabel(level: AccessLevel): string {
   return accessLevelLabels[level]
 }
 
+/**
+ * Die Dokumentzahl einer Bestandsübersicht (#1916): die blanke Zahl, ab fünf Stellen gekürzt —
+ * „9.999“, „120 K“, „1,2 Mio.“ —, damit die Spalte auf einen Blick lesbar bleibt.
+ */
+export function documentCountLabel(count: number): string {
+  if (count < 10_000) return count.toLocaleString('de-DE')
+  if (count < 1_000_000) return `${Math.round(count / 1_000).toLocaleString('de-DE')} K`
+  return `${(count / 1_000_000).toFixed(1).replace('.', ',')} Mio.`
+}
+
 const libraryVisibilityLabels: Record<AssetVisibility, string> = {
   PRIVATE: 'privat',
   SHARED: 'geteilt',

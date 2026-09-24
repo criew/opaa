@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithProviders } from '../test/test-utils'
@@ -81,35 +81,71 @@ function setLibraryState(libraries: LibraryListResponse[]) {
 describe('LibraryManagementPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    // jsdom hat kein matchMedia - ohne Desktop-Stub rendert die Seite die mobile Kartenliste
-    // statt der Zielbild-Tabelle (Mockup 1d).
-    window.matchMedia = (query: string) =>
-      ({
-        matches: query.includes('min-width'),
-        media: query,
-        onchange: null,
-        addListener: () => {},
-        removeListener: () => {},
-        addEventListener: () => {},
-        removeEventListener: () => {},
-        dispatchEvent: () => false,
-      }) as MediaQueryList
+    useIndexingStore.setState({ runsByLibrary: {} })
+    // Die Übersicht merkt sich die Ansicht je Bestand; ohne Reset trüge ein vorheriger Test
+    // seine Wahl in den nächsten.
+    window.localStorage.clear()
   })
 
-  it('renders the mockup table with its six column heads (#595)', async () => {
+  it('renders the table with its six column heads and without the "Global" badge (#1916)', async () => {
     setLibraryState([managerLibrary])
     renderWithProviders(<LibraryManagementPage />, { withRouter: true })
 
     await screen.findByRole('table')
-    for (const head of ['Name', 'Herkunft', 'Umfang', 'Verteilungsstufe', 'Ihre Rolle', 'Stand']) {
+    for (const head of [
+      'Name',
+      'Herkunft',
+      'Dokumente',
+      'In der Organisation geteilt',
+      'Ihre Rolle',
+      'Letzte Aktualisierung',
+    ]) {
       expect(screen.getByRole('columnheader', { name: head })).toBeInTheDocument()
     }
     expect(screen.getByText(/Bestände ohne Leserecht erscheinen hier nicht/)).toBeInTheDocument()
-    // #800 (Review zu #799): das Badge am Titel ist die einzige neue Ausgabe von #789.
-    expect(screen.getByText('Global')).toBeInTheDocument()
+    expect(screen.queryByText('Global')).not.toBeInTheDocument()
+    expect(screen.queryByRole('columnheader', { name: 'Umfang' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('columnheader', { name: 'Verteilungsstufe' })).not.toBeInTheDocument()
   })
 
-  it('shows a running indexing state with progress in the Stand column (#595)', async () => {
+  it('shows the document count as a plain number without a repeated unit (#1916)', async () => {
+    setLibraryState([managerLibrary])
+    renderWithProviders(<LibraryManagementPage />, { withRouter: true })
+
+    expect(await screen.findByText('431')).toBeInTheDocument()
+    expect(screen.queryByText('431 Dok.')).not.toBeInTheDocument()
+  })
+
+  it('marks a library shared with the whole organization with a tick (#1916)', async () => {
+    setLibraryState([managerLibrary, viewerLibrary])
+    renderWithProviders(<LibraryManagementPage />, { withRouter: true })
+
+    // Nur die ORGANIZATION-Bibliothek trägt den Haken; die Stufe selbst steht nicht mehr da.
+    const ticks = await screen.findAllByTitle('ja')
+    expect(ticks).toHaveLength(1)
+    expect(screen.queryByText('organisationsweit')).not.toBeInTheDocument()
+    expect(screen.queryByText('gelistet')).not.toBeInTheDocument()
+  })
+
+  it('shows the last update as a bare date, empty for an upload library (#1916)', async () => {
+    setLibraryState([managerLibrary, viewerLibrary])
+    renderWithProviders(<LibraryManagementPage />, { withRouter: true })
+
+    expect(await screen.findByText('18.08.2026')).toBeInTheDocument()
+    expect(screen.queryByText(/indiziert|abgerufen/)).not.toBeInTheDocument()
+    // viewerLibrary is an UPLOAD library - it never runs, so its cell stays empty rather than
+    // claiming a missing update.
+    expect(screen.queryByText('–')).not.toBeInTheDocument()
+  })
+
+  it('shows a dash for a run-based library that never completed a run (#1916)', async () => {
+    setLibraryState([{ ...managerLibrary, lastIndexedAt: undefined }])
+    renderWithProviders(<LibraryManagementPage />, { withRouter: true })
+
+    expect(await screen.findByText('–')).toBeInTheDocument()
+  })
+
+  it('shows a running indexing state with progress in the update column', async () => {
     setLibraryState([managerLibrary])
     useIndexingStore.setState({
       runsByLibrary: {
@@ -126,47 +162,35 @@ describe('LibraryManagementPage', () => {
     expect(await screen.findByText(/Lauf läuft · 62 %/)).toBeInTheDocument()
   })
 
-  it('shows the last successful run in the Stand column without a live run (#684)', async () => {
-    // managerLibrary (FILESYSTEM): "indiziert" + date; an RSS library fetched today at 06:00
-    // local time reads "abgerufen heute 06:00" (mockup 1d); without any completed run: dash.
-    const today = new Date()
-    today.setHours(6, 0, 0, 0)
-    // The running-run test above leaves its RUNNING state in the module-global zustand store -
-    // without this reset the FILESYSTEM row would still show the live-run bar instead of the
-    // last successful run.
-    useIndexingStore.setState({ runsByLibrary: {} })
-    const rssLibrary: LibraryListResponse = {
-      ...viewerLibrary,
-      id: 'library-rss',
-      name: 'Amtsblatt-Feed',
-      sourceType: 'RSS_FEED',
-      lastIndexedAt: today.toISOString(),
-    }
-    setLibraryState([managerLibrary, rssLibrary, viewerLibrary])
+  it('names a failed last run instead of the older success date (#1916)', async () => {
+    setLibraryState([managerLibrary])
+    useIndexingStore.setState({
+      runsByLibrary: { [managerLibrary.id]: { ...IDLE_RUN_STATE, status: 'FAILED' } },
+    })
     renderWithProviders(<LibraryManagementPage />, { withRouter: true })
 
-    expect(await screen.findByText('indiziert 18.08.2026')).toBeInTheDocument()
-    expect(screen.getByText('abgerufen heute 06:00')).toBeInTheDocument()
-    // viewerLibrary carries no lastIndexedAt - its Stand cell stays a dash.
-    expect(screen.getAllByText('–')).toHaveLength(1)
+    expect(await screen.findByText('Lauf fehlgeschlagen')).toBeInTheDocument()
+    expect(screen.queryByText('18.08.2026')).not.toBeInTheDocument()
   })
 
   it('lists libraries sorted alphabetically by name', async () => {
     setLibraryState([managerLibrary, ownLibrary])
     renderWithProviders(<LibraryManagementPage />, { withRouter: true })
 
-    const items = await screen.findAllByText(/Meine Dokumente|Rechtsquellen Soziales/)
-    expect(items[0]).toHaveTextContent('Meine Dokumente')
-    expect(items[1]).toHaveTextContent('Rechtsquellen Soziales')
+    // Der Laden sortiert erst, wenn die Antwort da ist - ohne waitFor prüfte die Zusicherung
+    // die ungeordnete Erstausgabe.
+    await waitFor(() => {
+      const items = screen.getAllByText(/Meine Dokumente|Rechtsquellen Soziales/)
+      expect(items[0]).toHaveTextContent('Meine Dokumente')
+      expect(items[1]).toHaveTextContent('Rechtsquellen Soziales')
+    })
   })
 
-  it('shows the document count and source type per library without a detail round trip', async () => {
+  it('shows the source type per library without a detail round trip', async () => {
     setLibraryState([managerLibrary, viewerLibrary])
     renderWithProviders(<LibraryManagementPage />, { withRouter: true })
 
-    expect(await screen.findByText('431 Dok.')).toBeInTheDocument()
-    expect(await screen.findByText('87 Dok.')).toBeInTheDocument()
-    expect(screen.getByText('Dateisystem')).toBeInTheDocument()
+    expect(await screen.findByText('Dateisystem')).toBeInTheDocument()
     expect(screen.getByText('Upload')).toBeInTheDocument()
   })
 
@@ -223,6 +247,20 @@ describe('LibraryManagementPage', () => {
 
     const link = await screen.findByRole('link', { name: /Rechtsquellen Soziales/ })
     expect(link).toHaveAttribute('href', '/libraries/library-team')
+  })
+
+  it('offers a card view and filters it by name and description (#1913)', async () => {
+    const user = userEvent.setup()
+    setLibraryState([managerLibrary, viewerLibrary])
+    renderWithProviders(<LibraryManagementPage />, { withRouter: true })
+
+    await screen.findByRole('table')
+    await user.click(screen.getByRole('button', { name: 'Kacheln' }))
+    expect(screen.queryByRole('table')).not.toBeInTheDocument()
+
+    await user.type(screen.getByRole('textbox', { name: 'Suchen' }), 'SGB')
+    expect(screen.getByRole('link', { name: /Rechtsquellen Soziales/ })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /Dienstanweisungen/ })).not.toBeInTheDocument()
   })
 
   it('navigates to the create wizard from the header button', async () => {
