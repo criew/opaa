@@ -82,7 +82,7 @@ class QueryControllerTest {
             chatId,
             null,
             null);
-    when(queryService.query(anyString(), any(), any(), anyBoolean(), any(), any()))
+    when(queryService.query(anyString(), any(), any(), anyBoolean(), any(), any(), any()))
         .thenReturn(response);
 
     mockMvc
@@ -115,7 +115,7 @@ class QueryControllerTest {
             chatId,
             null,
             null);
-    when(queryService.query(anyString(), any(), any(), anyBoolean(), any(), any()))
+    when(queryService.query(anyString(), any(), any(), anyBoolean(), any(), any(), any()))
         .thenReturn(response);
 
     mockMvc
@@ -129,6 +129,34 @@ class QueryControllerTest {
   }
 
   @Test
+  void queryWithUsedPromptIdPassesItThrough() throws Exception {
+    UUID promptId = UUID.randomUUID();
+    when(queryService.query(anyString(), any(), any(), anyBoolean(), any(), any(), any()))
+        .thenReturn(
+            new QueryResult(
+                "Answer",
+                List.of(),
+                new QueryOutcome("gpt-4o", 100, 500L, false, false, null),
+                UUID.randomUUID(),
+                null,
+                null));
+
+    mockMvc
+        .perform(
+            post("/api/v1/query")
+                .with(asTestUser())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"question\": \"Fasse zusammen\", \"usedPromptId\": \"" + promptId + "\"}"))
+        .andExpect(status().isOk());
+
+    ArgumentCaptor<UUID> promptCaptor = ArgumentCaptor.forClass(UUID.class);
+    verify(queryService)
+        .query(anyString(), any(), any(), anyBoolean(), any(), any(), promptCaptor.capture());
+    assertThat(promptCaptor.getValue()).isEqualTo(promptId);
+  }
+
+  @Test
   void queryWithoutUseKnowledgeInBodyDefaultsToTrue() throws Exception {
     var response =
         new QueryResult(
@@ -138,7 +166,7 @@ class QueryControllerTest {
             UUID.randomUUID(),
             null,
             null);
-    when(queryService.query(anyString(), any(), any(), anyBoolean(), any(), any()))
+    when(queryService.query(anyString(), any(), any(), anyBoolean(), any(), any(), any()))
         .thenReturn(response);
 
     mockMvc
@@ -151,7 +179,7 @@ class QueryControllerTest {
 
     ArgumentCaptor<Boolean> useKnowledgeCaptor = ArgumentCaptor.forClass(Boolean.class);
     verify(queryService)
-        .query(anyString(), any(), any(), useKnowledgeCaptor.capture(), any(), any());
+        .query(anyString(), any(), any(), useKnowledgeCaptor.capture(), any(), any(), any());
     assertThat(useKnowledgeCaptor.getValue()).isTrue();
   }
 
@@ -168,7 +196,7 @@ class QueryControllerTest {
             UUID.randomUUID(),
             null,
             null);
-    when(queryService.query(anyString(), any(), any(), anyBoolean(), any(), any()))
+    when(queryService.query(anyString(), any(), any(), anyBoolean(), any(), any(), any()))
         .thenReturn(response);
 
     mockMvc
@@ -194,6 +222,7 @@ class QueryControllerTest {
             any(),
             useKnowledgeCaptor.capture(),
             libraryIdsCaptor.capture(),
+            any(),
             any());
     assertThat(useKnowledgeCaptor.getValue()).isFalse();
     assertThat(libraryIdsCaptor.getValue()).containsExactly(libraryId1, libraryId2);
@@ -236,7 +265,7 @@ class QueryControllerTest {
 
   @Test
   void queryWithTransientAiExceptionReturns503() throws Exception {
-    when(queryService.query(anyString(), any(), any(), anyBoolean(), any(), any()))
+    when(queryService.query(anyString(), any(), any(), anyBoolean(), any(), any(), any()))
         .thenThrow(new TransientAiException("Service unavailable"));
 
     mockMvc
@@ -252,7 +281,7 @@ class QueryControllerTest {
 
   @Test
   void queryWithNonTransientAiExceptionReturns502() throws Exception {
-    when(queryService.query(anyString(), any(), any(), anyBoolean(), any(), any()))
+    when(queryService.query(anyString(), any(), any(), anyBoolean(), any(), any(), any()))
         .thenThrow(new NonTransientAiException("Invalid API key"));
 
     mockMvc
@@ -278,7 +307,7 @@ class QueryControllerTest {
             chatId,
             null,
             null);
-    when(queryService.query(anyString(), any(), any(), anyBoolean(), any(), any()))
+    when(queryService.query(anyString(), any(), any(), anyBoolean(), any(), any(), any()))
         .thenReturn(response);
 
     mockMvc
@@ -293,7 +322,7 @@ class QueryControllerTest {
 
     ArgumentCaptor<MetadataFilter> filterCaptor = ArgumentCaptor.forClass(MetadataFilter.class);
     verify(queryService)
-        .query(anyString(), any(), any(), anyBoolean(), any(), filterCaptor.capture());
+        .query(anyString(), any(), any(), anyBoolean(), any(), filterCaptor.capture(), any());
     assertThat(filterCaptor.getValue().documentTypes()).containsExactly("VERMERK");
     assertThat(filterCaptor.getValue().documentDateFrom()).isEqualTo(LocalDate.of(2024, 1, 1));
     assertThat(filterCaptor.getValue().documentDateTo()).isNull();

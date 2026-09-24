@@ -26,7 +26,7 @@ const INITIAL_PROMPT_LIBRARIES: Record<string, PromptLibraryResponse> = {
     reach: { allAccounts: true, groupCount: 0, userCount: 1 },
     listed: true,
     myRole: 'VIEWER',
-    promptCount: 1,
+    promptCount: 2,
     succession: null,
     createdAt: '2026-09-01T10:00:00Z',
     updatedAt: '2026-09-02T10:00:00Z',
@@ -114,8 +114,34 @@ const INITIAL_PROMPTS: Record<string, PromptResponse[]> = {
       createdAt: '2026-09-01T10:00:00Z',
       updatedAt: '2026-09-01T10:00:00Z',
     },
+    {
+      id: 'prompt-zusammenfassung',
+      promptLibraryId: 'prompt-library-organisation',
+      name: 'zusammenfassung',
+      title: 'Zusammenfassung',
+      description: 'Stand eines Vorgangs zu einem Stichtag',
+      text: 'Fasse den Stand des Vorgangs zum {{stichtag}} zusammen. Umfang: {{umfang}}.',
+      variables: [
+        { name: 'stichtag', label: 'Stichtag', type: 'DATE', required: true },
+        {
+          name: 'umfang',
+          label: 'Umfang',
+          type: 'SELECT',
+          required: true,
+          defaultValue: 'kurz',
+          options: ['kurz', 'ausführlich'],
+        },
+      ],
+      sortOrder: 1,
+      createdAt: '2026-09-01T10:00:00Z',
+      updatedAt: '2026-09-01T10:00:00Z',
+    },
   ],
 }
+
+/** The space whose chat puts the Referat's prompt library first (a mock space association). */
+export const MOCK_PROMPT_SPACE_ID = 'space-engineering'
+export const MOCK_PROMPT_SPACE_LIBRARY_ID = 'prompt-library-referat-50'
 
 // Mutable copies: the handlers read and write them, and the test setup resets them between tests.
 export let mockPromptLibraries: Record<string, PromptLibraryResponse> = structuredClone({

@@ -40,7 +40,8 @@ public class QueryController {
             caller,
             useKnowledge,
             request.getLibraryIds(),
-            MetadataFilterMapper.toDomain(request.getMetadataFilter())));
+            MetadataFilterMapper.toDomain(request.getMetadataFilter()),
+            request.getUsedPromptId()));
   }
 
   /**

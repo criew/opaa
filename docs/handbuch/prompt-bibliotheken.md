@@ -177,7 +177,32 @@ gespeichert.
 
 ## 6. Im Chat verwenden
 
-Das Einsetzen eines Prompts im Chat ist noch nicht gebaut (siehe „Was nicht gebaut ist").
+Im Eingabefeld des Chats öffnet ein `/` am Anfang einer Zeile die Auswahl der Prompts. Angeboten
+wird jeder Prompt aus einer Prompt-Bibliothek, die die Person lesen darf, gruppiert nach
+Bibliothek. Die dem Raum zugeordneten Bibliotheken (Abschnitt 4, „In einem Raum bereitstellen")
+stehen voran und tragen den Zusatz „diesem Space zugeordnet". Eine zugeordnete Bibliothek, die die
+Person nicht lesen darf, erscheint nicht. Die Systemverwaltung ohne eigenes Recht sieht keine
+Prompts: Verwalten ist nicht Lesen. Weitertippen sucht in Befehl, Titel und Beschreibung.
+
+- **Ohne Variablen** steht der Text sofort im Eingabefeld.
+- **Mit Variablen** fragt ein Formular die Werte ab. Das Formular hat dieselben Felder wie die
+  Vorschau (Abschnitt 5). Pflichtfelder sperren „Einsetzen", Vorbelegungen sind eingetragen, und ein
+  Datum ohne Vorbelegung steht auf dem heutigen Tag.
+- Eingesetzt wird genau der Text, den die Vorschau zeigt: Daten als `TT.MM.JJJJ`, die
+  Systemvariablen mit dem heutigen Datum und dem eigenen Namen.
+
+Der Text bleibt bearbeitbar. Gesendet wird er erst mit Enter oder der Senden-Schaltfläche. Ein Chip
+„Prompt: <Titel>" am Eingabefeld markiert die Herkunft und lässt sich entfernen. Im Verlauf steht
+an der Frage „Prompt: <Titel>", mit dem Titel zum Zeitpunkt des Sendens, ohne Verweis auf den
+Prompt. Dieser Hinweis bleibt, wenn der Prompt später umbenannt oder gelöscht wird.
+
+Wird der Prompt nach dem Einsetzen gelöscht oder das Leserecht entzogen, lehnt OPAA die Frage ab.
+Sie steht dann ohne Chip wieder im Eingabefeld und lässt sich ohne Prompt senden. Wie die Frage
+danach gesucht und beantwortet wird, beschreibt [Suche](suche.md), Abschnitt 2 („Prompts
+einsetzen"). Für die Suche und die Antwort macht ein Prompt keinen Unterschied.
+
+Die **Verwendung** eines Prompts wird weder protokolliert noch gezählt. Es gibt keine Auswertung,
+wer welchen Prompt wie oft verwendet hat.
 
 ## 7. Lebenszyklus: „Nachfolge offen"
 
@@ -203,8 +228,6 @@ Eigentum und Nachfolge protokolliert und historisiert OPAA wie bei jeder Wissens
 
 ## 9. Was nicht gebaut ist
 
-- **Einsetzen im Chat** mit `/befehl`, dem Formular für die Variablen und dem Nachweis, welcher
-  Prompt verwendet wurde (#1903).
 - **Der Katalog**, in dem „Im Katalog auffindbar" wirkt (#1904).
   Bis dahin wird die Auffindbarkeit gespeichert und historisiert, aber nirgends ausgewertet.
 - **Versionen, Freigabeweg, Favoriten und Nutzungszähler** für Prompts.

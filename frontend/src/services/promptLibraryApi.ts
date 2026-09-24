@@ -1,4 +1,5 @@
 import type {
+  AvailablePrompt,
   PromptLibraryRequest,
   PromptLibraryResponse,
   PromptLibraryUpdateRequest,
@@ -71,6 +72,36 @@ export async function getPrompts(promptLibraryId: string): Promise<PromptRespons
     const { data } = await apiClient.get<PromptResponse[]>(
       `/v1/prompt-libraries/${promptLibraryId}/prompts`,
     )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function getPrompt(
+  promptLibraryId: string,
+  promptId: string,
+): Promise<PromptResponse> {
+  try {
+    const { data } = await apiClient.get<PromptResponse>(
+      `/v1/prompt-libraries/${promptLibraryId}/prompts/${promptId}`,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/**
+ * The prompts the person can insert in the chat: every prompt of a readable prompt library, the
+ * ones associated with the space first. Without text and variables - those come with the choice,
+ * through {@link getPrompt}.
+ */
+export async function listAvailablePrompts(spaceId?: string | null): Promise<AvailablePrompt[]> {
+  try {
+    const { data } = await apiClient.get<AvailablePrompt[]>('/v1/prompts/available', {
+      params: spaceId ? { spaceId } : undefined,
+    })
     return data
   } catch (err) {
     normalizeError(err)

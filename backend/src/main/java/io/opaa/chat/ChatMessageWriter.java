@@ -37,7 +37,7 @@ class ChatMessageWriter {
    * {@code updated_at} touch) - see {@link ChatService#appendTurn} for the retry loop and
    * rollback-isolation reasoning around this call. The sender's own message brings the chat back
    * from the sender's chat archive, in the same transaction as the turn; nobody else's archive
-   * changes.
+   * changes. {@code usedPrompt} - may be {@code null} - goes onto the question's message only.
    *
    * @return true if this turn was the chat's very first ({@code nextSequence == 0})
    */
@@ -46,12 +46,13 @@ class ChatMessageWriter {
       UUID chatId,
       UUID senderId,
       String question,
+      UsedPrompt usedPrompt,
       String answer,
       String serializedSources,
       String derivedTitle) {
     int nextSequence = nextSequenceFor(chatId);
     chatMessageRepository.save(
-        new ChatMessage(chatId, nextSequence, ChatRole.USER, question, null));
+        new ChatMessage(chatId, nextSequence, ChatRole.USER, question, null, usedPrompt));
     chatMessageRepository.save(
         new ChatMessage(chatId, nextSequence + 1, ChatRole.ASSISTANT, answer, serializedSources));
     chatRepository.deriveTitleFromFirstQuestionIfAbsent(chatId, derivedTitle);

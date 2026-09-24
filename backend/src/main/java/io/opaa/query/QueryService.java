@@ -8,10 +8,13 @@ import io.opaa.chat.ChatNotePoint;
 import io.opaa.chat.ChatNoteService;
 import io.opaa.chat.ChatService;
 import io.opaa.chat.ChatSource;
+import io.opaa.chat.UsedPrompt;
 import io.opaa.indexing.metadata.MetadataFilter;
 import io.opaa.indexing.metadata.MetadataFilterValidator;
 import io.opaa.library.LibraryAccessService;
 import io.opaa.observability.QueryMetrics;
+import io.opaa.prompt.Prompt;
+import io.opaa.prompt.PromptService;
 import io.opaa.query.answer.AnswerGenerationService;
 import io.opaa.query.answer.ChatResponses;
 import io.opaa.query.answer.ConversationWindowMessages;
@@ -73,6 +76,7 @@ public class QueryService {
   private final ChatNoteExtractionService chatNoteExtractionService;
   private final QueryMetrics metrics;
   private final MetadataFilterValidator metadataFilterValidator;
+  private final PromptService promptService;
   private final ObjectProvider<SpikeToolLoopQueryHandler> spikeToolLoopQueryHandler;
 
   public QueryService(
@@ -90,6 +94,7 @@ public class QueryService {
       ChatNoteExtractionService chatNoteExtractionService,
       QueryMetrics metrics,
       MetadataFilterValidator metadataFilterValidator,
+      PromptService promptService,
       ObjectProvider<SpikeToolLoopQueryHandler> spikeToolLoopQueryHandler) {
     this.knowledgeRetrieval = knowledgeRetrieval;
     this.retrievalContextFactory = retrievalContextFactory;
@@ -105,6 +110,7 @@ public class QueryService {
     this.chatNoteExtractionService = chatNoteExtractionService;
     this.metrics = metrics;
     this.metadataFilterValidator = metadataFilterValidator;
+    this.promptService = promptService;
     this.spikeToolLoopQueryHandler = spikeToolLoopQueryHandler;
   }
 
@@ -149,6 +155,25 @@ public class QueryService {
       boolean useKnowledge,
       List<UUID> requestedLibraryIds,
       MetadataFilter requestedMetadataFilter) {
+    return query(
+        question, chatId, caller, useKnowledge, requestedLibraryIds, requestedMetadataFilter, null);
+  }
+
+  /**
+   * The same query, built from the prompt {@code usedPromptId} names ({@code null}: none). The
+   * question arrives already resolved - the prompt changes nothing about retrieval or the model
+   * call. It is checked before anything is paid for: a prompt the caller may not read refuses the
+   * turn with {@code 403}. A persisted chat keeps its id and current title on the question's
+   * message; no audit entry is written.
+   */
+  public QueryResult query(
+      String question,
+      UUID chatId,
+      CurrentUser caller,
+      boolean useKnowledge,
+      List<UUID> requestedLibraryIds,
+      MetadataFilter requestedMetadataFilter,
+      UUID usedPromptId) {
     UUID currentUserId = caller.id();
     return metrics
         .queryTimer()
@@ -166,6 +191,7 @@ public class QueryService {
                 // no answer is paid for that appendTurn would discard. appendTurn's own call to
                 // the same guard remains the race guard for a space archived after this point.
                 chat.ifPresent(c -> chatService.requireSpaceNotArchived(c.getSpaceId()));
+                UsedPrompt usedPrompt = usedPrompt(usedPromptId, caller);
                 // A chatId that does not resolve to an owned persisted chat (including "none
                 // given") runs ephemerally rather than being rejected, reused as the in-memory
                 // conversation-cache key when the caller supplied one, or freshly generated
@@ -222,7 +248,8 @@ public class QueryService {
                           notePoints,
                           searchScope,
                           metadataFilter,
-                          startTime);
+                          startTime,
+                          usedPrompt);
                   if (spikeResult.isPresent()) {
                     return spikeResult.get();
                   }
@@ -293,7 +320,7 @@ public class QueryService {
                 // fallback title on a first turn, never the LLM-derived one, which is generated
                 // asynchronously after this response is built.
                 String chatTitle =
-                    chat.map(c -> chatService.appendTurn(c, question, answer, sources))
+                    chat.map(c -> chatService.appendTurn(c, question, usedPrompt, answer, sources))
                         .orElse(null);
                 // #1487: the condensation of this turn's question, off the request thread and
                 // only once the turn is durably persisted - triggered here rather than inside
@@ -319,6 +346,14 @@ public class QueryService {
                 throw e;
               }
             });
+  }
+
+  private UsedPrompt usedPrompt(UUID usedPromptId, CurrentUser caller) {
+    if (usedPromptId == null) {
+      return null;
+    }
+    Prompt prompt = promptService.requireUsable(usedPromptId, caller);
+    return new UsedPrompt(prompt.getId(), prompt.getTitle());
   }
 
   /**

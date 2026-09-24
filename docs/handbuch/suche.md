@@ -152,6 +152,35 @@ hängt vom Grund ab:
 Der letzte Fall bleibt absichtlich stumm: Die Antwort unterscheidet „nichts gefunden" nicht von
 „nichts lesbar", damit aus einer Fehlantwort kein Rückschluss auf fremde Bestände möglich ist.
 
+**Prompts einsetzen.** Ein `/` am Anfang einer Zeile im Eingabefeld öffnet die Auswahl der Prompts:
+alle Prompts aus Prompt-Bibliotheken, die die Person lesen darf, gruppiert nach Bibliothek. Die dem
+Raum zugeordneten Bibliotheken stehen voran und tragen den Zusatz „diesem Space zugeordnet".
+Weitertippen sucht in Befehlsname, Titel und Beschreibung — `/zusam` findet `/zusammenfassung`;
+Pfeiltasten wählen, Enter setzt ein, Escape schließt die Auswahl. Ein `/` mitten im Satz ist
+gewöhnlicher Text.
+
+| Prompt | Was beim Einsetzen geschieht |
+|---|---|
+| ohne Variablen | Der Text steht sofort im Eingabefeld |
+| mit Variablen | Ein Formular fragt die Werte ab: Pflichtfelder sperren „Einsetzen", Vorbelegungen sind eingetragen, ein Datum ohne Vorbelegung steht auf dem heutigen Tag. Abbrechen lässt das Eingabefeld unverändert |
+
+`{{CURRENT_DATE}}` und `{{USER_NAME}}` füllt der Browser selbst: das heutige Datum und der Name der
+angemeldeten Person. Daten stehen im eingesetzten Text als `TT.MM.JJJJ`.
+
+Der eingesetzte Text bleibt bearbeitbar und wird erst mit Enter oder der Senden-Schaltfläche
+gesendet. Ein Chip „Prompt: <Titel>" in der Leiste über dem Eingabefeld markiert, dass die Frage
+aus einem Prompt entstanden ist; wer ihn entfernt oder das Eingabefeld leert, sendet ohne diese
+Kennzeichnung. Im Verlauf steht an der Frage „Prompt: <Titel>" — der Titel zum Zeitpunkt des
+Sendens, auch wenn der Prompt später umbenannt, gelöscht oder nicht mehr lesbar ist.
+
+Für Suche und Antwort macht ein Prompt keinen Unterschied: Sie sehen die fertige Frage wie jede
+getippte. Das Backend prüft nur, ob die Person den Prompt noch lesen darf. Ist das Recht inzwischen
+entzogen oder der Prompt gelöscht, lehnt es die Frage ab („Dieser Prompt steht Ihnen nicht zur
+Verfügung …"), bevor ein Modell gerufen wird, und speichert nichts. Die Frage verschwindet dann aus
+dem Verlauf und steht wieder im Eingabefeld, diesmal ohne Chip; erneut gesendet geht sie ohne
+Prompt-Kennzeichnung durch. Die Verwendung eines Prompts wird nicht protokolliert, und es gibt keine
+Auswertung, wer welchen Prompt wie oft verwendet hat.
+
 Ein **Chunk** ist ein Textstück aus dem Index, wie die Indexierung es zugeschnitten hat, samt seinen
 Metadaten: Dokument, Bibliothek, laufende Nummer, Ortsangabe („S. 3 · Abschn. Fristen") und die
 Kernfelder des Dokuments. Die Suche arbeitet ausschließlich auf Chunks. Ein „Dokument" taucht erst
@@ -942,3 +971,4 @@ entsprechen.
 - Umgebungsvariablen, Reranking einschalten, Grenze des Volltextpfads:
   [Deployment](deployment.md)
 - Wie fremde KI-Werkzeuge diesen Such- und Abrufweg benutzen: [Fremdzugänge](fremdzugaenge.md)
+- Prompts anlegen, pflegen und im Chat verwenden: [Prompt-Bibliotheken](prompt-bibliotheken.md)

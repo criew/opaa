@@ -211,6 +211,9 @@ databaseChangeLog:
       file: db/changelog/changes/086-audit-log-prompt-object-types.yaml
   - include:
       file: db/changelog/changes/087-capability-create-prompt-library.yaml
+  # Der Nachweis im Verlauf, welcher Prompt eine Frage gebaut hat.
+  - include:
+      file: db/changelog/changes/088-chat-messages-used-prompt.yaml
   # Die Verteilungsstufe assets.visibility entfaellt; organisationsweite Reichweite wird eine
   # Freigabe an "Alle Konten" (#1931, ADR-0037). Fuehrt die Bestaende samt ihrer
   # Sichtbarkeitsintervalle in Freigaben und Freigabe-Intervalle ueber.
