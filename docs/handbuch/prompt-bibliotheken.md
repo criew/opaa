@@ -111,7 +111,7 @@ Die Detailseite hat zwei Reiter, jeder mit eigener Adresse:
 
 Der Abschnitt **„Freigabe"** ist derselbe wie bei einer Wissensbibliothek: „Im Katalog auffindbar,
 auch ohne Berechtigung" mit eigenem „Freigabe speichern", „Rechte verwalten" mit dem Dialog, in dem
-Rollen erteilt, geändert, befristet und entzogen werden, und die Liste „Bereitgestellt in" mit den
+Rollen erteilt, geändert, befristet und entzogen werden, und die Liste „Zuordnungen" mit den
 Räumen, denen die Bibliothek zugeordnet ist — jede Zuordnung einzeln lösbar. Das Speichern der
 Stammdaten ändert die Reichweite nicht, und das Speichern der Freigabe ändert Name und Beschreibung
 nicht.

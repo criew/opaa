@@ -1110,7 +1110,8 @@ export const handlers = [
     return new HttpResponse(null, { status: 204 })
   }),
 
-  // The owner-facing list of spaces an asset is associated with (MANAGER and above).
+  // The "Zuordnungen" of an asset (VIEWER and above). The mock always answers the manager's view;
+  // hiddenCount stays 0 because no mock space is PRIVATE-without-membership (#1939).
   http.get('/api/v1/assets/:assetType/:assetId/spaces', ({ params }) => {
     const assetId = String(params.assetId)
     if (!mockAssetOf(String(params.assetType), assetId)) {
@@ -1128,7 +1129,7 @@ export const handlers = [
           narrowerReaderCircle: false,
         }
       })
-    return HttpResponse.json(spaces)
+    return HttpResponse.json({ items: spaces, hiddenCount: 0 })
   }),
 
   http.post('/api/v1/spaces/:spaceId/members', async ({ params, request }) => {

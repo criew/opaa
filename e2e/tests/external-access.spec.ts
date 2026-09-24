@@ -450,7 +450,7 @@ test.describe.serial('Fremdzugänge', () => {
   }) => {
     await gotoLibraries(adminPage)
     await gotoLibraryDetail(adminPage, LIBRARY_C)
-    await adminPage.getByRole('tab', { name: 'Verwaltung' }).click()
+    await adminPage.getByRole('tab', { name: 'Freigaben' }).click()
     await adminPage.getByRole('button', { name: 'Rechte verwalten' }).click()
     await adminPage
       .getByRole('button', { name: `Freigabe für ${PERSON_DISPLAY_NAME} entziehen` })
@@ -548,7 +548,7 @@ function inDays(days: number): Date {
 async function shareWithPerson(adminPage: Page, libraryName: string) {
   await gotoLibraries(adminPage)
   await gotoLibraryDetail(adminPage, libraryName)
-  await adminPage.getByRole('tab', { name: 'Verwaltung' }).click()
+  await adminPage.getByRole('tab', { name: 'Freigaben' }).click()
   await adminPage.getByRole('button', { name: 'Rechte verwalten' }).click()
   await adminPage.getByRole('button', { name: 'Freigeben' }).click()
   const personInput = adminPage.getByRole('combobox', { name: 'Person suchen' })

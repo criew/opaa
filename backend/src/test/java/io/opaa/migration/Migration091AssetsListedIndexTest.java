@@ -22,7 +22,7 @@ class Migration091AssetsListedIndexTest extends AbstractMigrationTest {
 
   @Override
   protected String baseFixtureChangelogPath() {
-    return "db/changelog/test-master-through-088.yaml";
+    return "db/changelog/test-master-through-090.yaml";
   }
 
   @BeforeEach

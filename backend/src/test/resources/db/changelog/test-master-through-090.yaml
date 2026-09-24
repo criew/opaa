@@ -1,5 +1,5 @@
 # Fixture chain for the delta test of changeset 091 (#1904): the delivered master changelog up to
-# and including 088, in master order - 090 comes before 088 there. Keep this include list identical to the master prefix.
+# and including 090, in master order. Keep this include list identical to the master prefix.
 databaseChangeLog:
   - include:
       file: db/changelog/changes/001-baseline.yaml
@@ -132,6 +132,6 @@ databaseChangeLog:
   - include:
       file: db/changelog/changes/087-capability-create-prompt-library.yaml
   - include:
-      file: db/changelog/changes/090-asset-reach-as-all-accounts-grant.yaml
-  - include:
       file: db/changelog/changes/088-chat-messages-used-prompt.yaml
+  - include:
+      file: db/changelog/changes/090-asset-reach-as-all-accounts-grant.yaml

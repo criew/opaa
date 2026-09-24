@@ -53,7 +53,7 @@ import type {
   LibraryListResponse,
   LibraryRequest,
   LibraryResponse,
-  AssetSpaceAssociationResponse,
+  AssetSpaceAssociationListResponse,
   AssetType,
   LibraryShareCapRequest,
   LibraryUpdateRequest,
@@ -609,14 +609,15 @@ export async function detachSpaceAsset(spaceId: string, assetId: string): Promis
   }
 }
 
-// the asset owner's view - every space this asset is associated with, never filtered by the
-// caller's own space membership (requires MANAGER role or above on the asset).
+// the "Zuordnungen" of an asset (requires VIEWER or above). From MANAGER on it is never filtered
+// by the caller's own space membership; below it a PRIVATE space the caller does not belong to is
+// only counted in hiddenCount (#1939).
 export async function getAssetSpaceAssociations(
   assetType: AssetType,
   assetId: string,
-): Promise<AssetSpaceAssociationResponse[]> {
+): Promise<AssetSpaceAssociationListResponse> {
   try {
-    const { data } = await client.get<AssetSpaceAssociationResponse[]>(
+    const { data } = await client.get<AssetSpaceAssociationListResponse>(
       `/v1/assets/${assetType}/${assetId}/spaces`,
     )
     return data

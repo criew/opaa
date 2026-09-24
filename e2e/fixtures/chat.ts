@@ -176,8 +176,8 @@ export async function gotoLibraries(page: Page): Promise<void> {
 }
 
 // #481: the library overview no longer expands inline - every row navigates to its own detail
-// page (/libraries/:id), which is where Stammdaten, "Rechte verwalten" and, for an UPLOAD
-// library, the upload zone and document list now live.
+// page (/libraries/:id), which is where name and description, "Rechte verwalten" and, for an
+// UPLOAD library, the upload zone and document list now live.
 export async function gotoLibraryDetail(page: Page, libraryName: string): Promise<void> {
   await Promise.all([
     page.waitForURL(/\/libraries\/[^/]+$/),
@@ -264,8 +264,8 @@ export async function shareLibraryWithPerson(
 ): Promise<void> {
   await gotoLibraries(adminPage)
   await gotoLibraryDetail(adminPage, libraryName)
-  // Seit dem Reiter-Umbau der Detailseite liegt "Rechte verwalten" im Bereich "Verwaltung".
-  await adminPage.getByRole('tab', { name: 'Verwaltung' }).click()
+  // Seit #1939 liegt "Rechte verwalten" im Reiter "Freigaben".
+  await adminPage.getByRole('tab', { name: 'Freigaben' }).click()
   await adminPage.getByRole('button', { name: 'Rechte verwalten' }).click()
   await adminPage.getByRole('button', { name: 'Freigeben' }).click()
   // Not getByLabel: once the Autocomplete's listbox is open, its aria-labelledby also points back

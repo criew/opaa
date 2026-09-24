@@ -186,7 +186,11 @@ class PromptInChatIntegrationTest {
   @Test
   void anUnknownPromptAndOneOfAnotherOrganizationAreRefusedAlike() {
     UUID foreignLibrary = libraryOf(foreigner, "Fremd");
-    releaseToAllAccounts(foreignLibrary, foreigner);
+    grantService.upsertGrant(
+        PromptLibrary.ASSET_TYPE,
+        foreignLibrary,
+        AssetGrantUpsert.forAllAccounts(AssetRole.VIEWER),
+        callerOf(foreigner));
     Prompt foreignPrompt =
         promptService.create(
             foreignLibrary,
@@ -212,7 +216,11 @@ class PromptInChatIntegrationTest {
     grantViewer(associated, reader);
     associationService.associate(space, PromptLibrary.ASSET_TYPE, associated, callerOf(reader));
     UUID organizationWide = libraryOf(owner, "Alpha Haus");
-    releaseToAllAccounts(organizationWide, owner);
+    grantService.upsertGrant(
+        PromptLibrary.ASSET_TYPE,
+        organizationWide,
+        AssetGrantUpsert.forAllAccounts(AssetRole.VIEWER),
+        callerOf(owner));
     promptService.create(
         organizationWide,
         new PromptContent("vermerk", "Vermerk", "Kurzer Vermerk", "Bitte.", List.of(), 0),
@@ -223,7 +231,11 @@ class PromptInChatIntegrationTest {
         new PromptContent("privat", "Privat", null, "Bitte.", List.of(), 0),
         callerOf(owner));
     UUID foreignLibrary = libraryOf(foreigner, "Fremd");
-    releaseToAllAccounts(foreignLibrary, foreigner);
+    grantService.upsertGrant(
+        PromptLibrary.ASSET_TYPE,
+        foreignLibrary,
+        AssetGrantUpsert.forAllAccounts(AssetRole.VIEWER),
+        callerOf(foreigner));
     promptService.create(
         foreignLibrary,
         new PromptContent("fremd", "Fremd", null, "Bitte.", List.of(), 0),
@@ -288,14 +300,6 @@ class PromptInChatIntegrationTest {
             callerOf(owner))
         .grant()
         .getId();
-  }
-
-  private void releaseToAllAccounts(UUID library, UUID owner) {
-    grantService.upsertGrant(
-        PromptLibrary.ASSET_TYPE,
-        library,
-        AssetGrantUpsert.forAllAccounts(AssetRole.VIEWER),
-        callerOf(owner));
   }
 
   private UUID libraryOf(UUID person, String name) {

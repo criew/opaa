@@ -87,10 +87,19 @@ OPAA eine **leere** Gruppe — eine Freigabe an sie erreicht niemanden.
 Die Bibliotheken, die eine Person lesen darf, stehen in der Hauptnavigation unter **„Wissen"**. Jede
 Art von Bestand hat dort einen eigenen Punkt; der Menüpunkt und die Seite dahinter heißen gleich —
 die [Prompt-Bibliotheken](prompt-bibliotheken.md) stehen unter **„Prompts"**. Rollen,
-Auffindbarkeit, Herleitung und „Nachfolge offen" gelten für beide Arten gleich; im Reiter
-„Verwaltung" steht dafür bei beiden derselbe Abschnitt **„Freigabe"** mit der
-Auffindbarkeit, „Rechte verwalten", den Räumen, in denen der Bestand bereitsteht, und darunter
-„Warum sehe ich das?".
+Auffindbarkeit, Herleitung und „Nachfolge offen" gelten für beide Arten gleich; dafür steht bei
+beiden derselbe Abschnitt **„Freigabe"** mit der Auffindbarkeit, „Rechte verwalten",
+den Zuordnungen zu Räumen und darunter „Warum sehe ich das?" — bei einer Wissensbibliothek im
+Reiter „Freigaben", bei einer Prompt-Bibliothek im Reiter „Verwaltung".
+
+**Zuordnungen: wer welchen Space erfährt.** Die Liste der Spaces, in denen ein Bestand
+bereitsteht, sehen alle Leseberechtigten — aber nur so weit, wie der Space selbst sichtbar ist.
+Ab der Verwalterrolle steht jede Zuordnung mit Namen da, samt Urheber, Zeitpunkt und dem Hinweis
+„nicht alle Mitglieder lesen", und jede lässt sich einzeln lösen. Wer nur liest oder bearbeitet,
+sieht die Namen der Spaces, die ohnehin im Space-Verzeichnis stehen oder in denen er Mitglied ist;
+private Spaces, zu denen er nicht gehört, erscheinen nur als Zahl — „+ 2 weitere, die Sie nicht
+sehen können". Ein privater Space verspricht, dass nur seine Mitglieder von ihm wissen, und dieses
+Versprechen gilt auch hier.
 
 | Rolle | Darf |
 |---|---|
@@ -187,7 +196,7 @@ deshalb **nach jeder Neuanlage** einer Konnektorbibliothek, oder schränkt das A
 „Konnektorbibliotheken anlegen" auf eine benannte Gruppe ein (Abschnitt 9) — dann entscheidet diese
 Gruppe, wer überhaupt anlegen darf, bevor die Obergrenze greifen müsste.
 
-Zu finden ist die Obergrenze auf der Detailseite der jeweiligen Bibliothek, Reiter „Verwaltung" —
+Zu finden ist die Obergrenze auf der Detailseite der jeweiligen Bibliothek, Reiter „Freigaben" —
 sichtbar und änderbar nur für die Systemverwaltung. Zwei Erlaubnisse:
 
 | Erlaubnis | Wirkung, wenn entzogen |
