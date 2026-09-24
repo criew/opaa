@@ -14,8 +14,8 @@ import type { AssetType, AssetVisibility } from '../../types/api'
 import PageSection from '../PageSection'
 import FieldLabel from '../wizard/FieldLabel'
 import AssetGrantsDialog from '../permissions/AssetGrantsDialog'
-import AccessDerivation from '../permissions/AccessDerivation'
 import { successionAwareMessage } from '../succession/successionConflict'
+import AssetAccessDerivationSection from './AssetAccessDerivationSection'
 import AssetSpacesList from './AssetSpacesList'
 import {
   assetTypeLabel,
@@ -73,7 +73,6 @@ export default function AssetDistributionSection({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [grantsDialogOpen, setGrantsDialogOpen] = useState(false)
-  const [derivationShown, setDerivationShown] = useState(false)
 
   const noun = assetTypeLabel(assetType)
   const draftVisibility = draft?.visibility ?? visibility
@@ -178,7 +177,7 @@ export default function AssetDistributionSection({
 
           <Box sx={{ pt: 1, borderTop: 1, borderColor: 'divider' }}>
             <Typography variant="subtitle2" component="h3" sx={{ mb: 1 }}>
-              Bereitgestellt in
+              Zuordnungen
             </Typography>
             <AssetSpacesList
               key={`${assetType}-${assetId}`}
@@ -189,20 +188,7 @@ export default function AssetDistributionSection({
         </Stack>
       </PageSection>
 
-      {/* ADR-0036, Entscheidung 9: flat and shown as flat - every person sees their own way to
-          this asset. Asked for on demand: the derivation costs a request of its own. */}
-      <PageSection
-        title={`Warum sehe ich diese ${noun}?`}
-        description="Ihr eigener Weg zur wirksamen Rolle. Ohne Vollmacht, ohne Protokoll."
-      >
-        {derivationShown ? (
-          <AccessDerivation target={{ kind: 'asset', assetType, assetId }} />
-        ) : (
-          <Button size="small" onClick={() => setDerivationShown(true)}>
-            Herleitung anzeigen
-          </Button>
-        )}
-      </PageSection>
+      <AssetAccessDerivationSection assetType={assetType} assetId={assetId} />
 
       <AssetGrantsDialog
         open={grantsDialogOpen}

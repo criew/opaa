@@ -6447,17 +6447,20 @@ paths:
       operationId: listAssetSpaceAssociations
       tags: [asset, space]
       summary: >
-        Every space this asset is associated with (MANAGER role or above on the asset required) -
-        the owner-facing "bereitgestellt in" view (#203). Unlike GET /v1/spaces/{spaceId}/assets,
-        this is never filtered - the owner sees every association, regardless of whether they
-        themselves are a member of the space.
+        Every space this asset is associated with (VIEWER role or above on the asset required) -
+        the "Zuordnungen" view (#203, #1939). Unlike GET /v1/spaces/{spaceId}/assets, this is never
+        filtered - the caller sees every association, regardless of whether they themselves are a
+        member of the space. A caller below MANAGER gets the reduced entry of spaceId and spaceName
+        alone.
       description: >
         docs/features/spaces-and-assets.md#assets-in-einen-space-assoziieren: "Der Eigentümer des
         Assets sieht alle Assoziationen und kann jede davon jederzeit einseitig lösen."
         narrowerReaderCircle on each entry is the same "not every member can already read this"
         signal that triggers the owner notification when the association was created (#203) -
         recomputed live here, not stored, since space membership and asset grants both change
-        independently afterwards.
+        independently afterwards. It, the creator and the creation time are disclosed to a caller
+        with at least MANAGER only; a plain reader learns which spaces the asset stands in, nothing
+        about who put it there or who in them may read it.
       responses:
         "200":
           description: Every association of this asset, across all spaces
@@ -10669,11 +10672,12 @@ components:
 
     AssetSpaceAssociationResponse:
       type: object
-      required: [spaceId, spaceName, createdByUserId, createdAt, narrowerReaderCircle]
+      required: [spaceId, spaceName]
       description: >
-        One asset's view of one space it is associated with - the owner-facing "bereitgestellt
-        in" list (GET /v1/assets/{assetType}/{assetId}/spaces), never filtered by the caller's own
-        space membership.
+        One asset's view of one space it is associated with - the "Zuordnungen" list
+        (GET /v1/assets/{assetType}/{assetId}/spaces), never filtered by the caller's own space
+        membership. Only spaceId and spaceName are sent to every reader; the remaining fields are
+        present exactly for a caller with at least MANAGER on the asset (#1939).
       properties:
         spaceId:
           type: string
@@ -10696,7 +10700,8 @@ components:
             True if at least one member of this space cannot themselves read the asset - the same
             condition that triggered the owner notification when the association was created.
             Recomputed at read time, not stored, since both space membership and asset grants
-            change independently afterwards.
+            change independently afterwards. Absent below MANAGER: who in a space may read the
+            asset is a management detail, not part of the plain "which spaces" answer.
 
     NotificationType:
       type: string

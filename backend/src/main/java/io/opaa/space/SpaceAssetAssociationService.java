@@ -275,13 +275,19 @@ public class SpaceAssetAssociationService {
   }
 
   /**
-   * Every space the asset is associated with - the owner-facing view (#203), requiring MANAGER or
-   * above on the asset. Never filtered by the caller's own space membership: the owner sees every
-   * association, including in spaces they do not belong to.
+   * Every space the asset is associated with - the "Zuordnungen" view (#203, #1939), requiring
+   * VIEWER or above on the asset. Never filtered by the caller's own space membership: the caller
+   * sees every association, including in spaces they do not belong to.
+   *
+   * <p>Below MANAGER the answer carries the space and nothing else: neither the reader circle nor
+   * the creator is resolved, so a plain reader learns which spaces the asset stands in without
+   * learning who put it there or who in them may read it.
    */
   public List<AssetSpaceLink> listForAsset(AssetType assetType, UUID assetId, CurrentUser caller) {
     Asset asset = assetAuthorization.load(assetType, assetId, caller.organizationId());
-    assetAuthorization.requireRole(asset, caller.id(), caller.isSystemAdmin(), AssetRole.MANAGER);
+    assetAuthorization.requireRole(asset, caller.id(), caller.isSystemAdmin(), AssetRole.VIEWER);
+    boolean managementDetail =
+        assetAuthorization.canManage(asset, caller.id(), caller.isSystemAdmin());
 
     List<SpaceAssetAssociation> associations =
         associationRepository.findByAssetIdOrderByCreatedAtAsc(asset.getId());
@@ -294,8 +300,10 @@ public class SpaceAssetAssociationService {
           association.getSpaceId(), id -> spaceRepository.findByIdWithMemberships(id).orElse(null));
     }
     Map<UUID, String> displayNames =
-        resolveDisplayNames(
-            associations.stream().map(SpaceAssetAssociation::getCreatedByUserId).toList());
+        managementDetail
+            ? resolveDisplayNames(
+                associations.stream().map(SpaceAssetAssociation::getCreatedByUserId).toList())
+            : Map.of();
 
     return associations.stream()
         .map(
@@ -304,8 +312,9 @@ public class SpaceAssetAssociationService {
               return new AssetSpaceLink(
                   association,
                   space != null ? space.getName() : "",
-                  space != null && !allMembersCanRead(space, asset),
-                  displayNames.get(association.getCreatedByUserId()));
+                  managementDetail && space != null && !allMembersCanRead(space, asset),
+                  displayNames.get(association.getCreatedByUserId()),
+                  managementDetail);
             })
         .toList();
   }

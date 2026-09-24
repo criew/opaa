@@ -32,7 +32,6 @@ import TextField from '@mui/material/TextField'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import AccountTreeIcon from '@mui/icons-material/AccountTree'
-import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import AttachFileIcon from '@mui/icons-material/AttachFile'
 import CloseIcon from '@mui/icons-material/Close'
 import CreateNewFolderIcon from '@mui/icons-material/CreateNewFolder'
@@ -94,7 +93,10 @@ import {
   filterAcceptedFiles,
   resolveDroppedItems,
 } from '../utils/directoryEntries'
+import AssetAccessDerivationSection from '../components/assets/AssetAccessDerivationSection'
 import AssetDistributionSection from '../components/assets/AssetDistributionSection'
+import AssetHeadlineEditor from '../components/assets/AssetHeadlineEditor'
+import AssetSpacesList from '../components/assets/AssetSpacesList'
 import LibraryExternalAccessSection from '../components/library/LibraryExternalAccessSection'
 import EditLibrarySourceDialog from '../components/EditLibrarySourceDialog'
 import EditLibraryScheduleDialog from '../components/EditLibraryScheduleDialog'
@@ -107,7 +109,6 @@ import LibraryMetadataFieldsSection from '../components/metadata/LibraryMetadata
 import MetadataExtractionSettingsSection from '../components/metadata/MetadataExtractionSettingsSection'
 import { coreMetadataFieldLabel } from '../components/metadata/metadataValues'
 import BulkMetadataDialog from '../components/metadata/BulkMetadataDialog'
-import PageHeading from '../components/a11y/PageHeading'
 import PageSection from '../components/PageSection'
 import FieldLabel from '../components/wizard/FieldLabel'
 import MetaBadge from '../components/MetaBadge'
@@ -158,13 +159,43 @@ function confluenceSpaceHeroLabel(
   return name ? `${name} (${key})` : key
 }
 
+/** The head's one-line Umfang of a Confluence library - the detail lives in the "Quelle" area. */
+function confluenceScopeSummaryLabel(spaces: ConfluenceSpaceRef[] | null | undefined): string {
+  const count = spaces?.length ?? 0
+  return count === 1 ? '1 Space' : `${count} Spaces`
+}
+
+/** The same one-liner for an S3 library's scopes (ADR-0027). */
+function s3ScopeSummaryLabel(settings: S3Settings | null | undefined): string {
+  const count = settings?.scopes?.length ?? 0
+  return count === 1 ? '1 Geltungsbereich' : `${count} Geltungsbereiche`
+}
+
 function formatIndexedAt(indexedAt: string | null | undefined): string {
   if (!indexedAt) return '—'
   return new Date(indexedAt).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' })
 }
 
 /** The page's areas; the active one is shareable via the "tab" search param (URL as state). */
-type LibraryDetailTab = 'dokumente' | 'indizierung' | 'verwaltung'
+type LibraryDetailTab = 'dokumente' | 'quelle' | 'metadaten' | 'freigaben'
+
+/**
+ * The area named by `?tab=`. Every role sees every area, so only the source area can be missing -
+ * an UPLOAD library has no source. An unknown or no-longer-existing value (the pre-#1939 names
+ * „indizierung" and „verwaltung" among them) falls back to the documents.
+ */
+function resolveTab(requested: string | null, hasSourceTab: boolean): LibraryDetailTab {
+  switch (requested) {
+    case 'quelle':
+      return hasSourceTab ? 'quelle' : 'dokumente'
+    case 'metadaten':
+      return 'metadaten'
+    case 'freigaben':
+      return 'freigaben'
+    default:
+      return 'dokumente'
+  }
+}
 
 /** The hero's per-source glyph - the one pictorial anchor of the page. */
 function sourceGlyphIcon(sourceType: DocumentSourceType | undefined) {
@@ -242,7 +273,7 @@ function DiagnosticsLockControl({
   onDismissError,
 }: DiagnosticsLockControlProps) {
   return (
-    <Box sx={{ pt: 1, borderTop: '1px solid', borderColor: 'divider' }}>
+    <Box>
       <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
         <Chip
           label={locked ? 'Diagnose gesperrt' : 'Diagnose freigegeben'}
@@ -379,14 +410,13 @@ export default function LibraryDetailPage() {
   const setLibraryShareCap = useLibraryStore((s) => s.setLibraryShareCap)
   const storeError = useLibraryStore((s) => s.error)
 
-  const [draft, setDraft] = useState<{ name: string; description: string } | null>(null)
   const [localError, setLocalError] = useState<string | null>(null)
-  const [saving, setSaving] = useState(false)
+  const [actionMenuAnchor, setActionMenuAnchor] = useState<HTMLElement | null>(null)
   const [diagnosticsLockError, setDiagnosticsLockError] = useState<string | null>(null)
   const [diagnosticsLockSaving, setDiagnosticsLockSaving] = useState(false)
   const [shareCapError, setShareCapError] = useState<string | null>(null)
   const [shareCapSaving, setShareCapSaving] = useState(false)
-  const [searchParams, setSearchParams] = useSearchParams()
+  const [searchParams] = useSearchParams()
 
   useEffect(() => {
     // The list entry (myRole, documentCount, sourceType) may not be loaded yet if this page was
@@ -416,16 +446,10 @@ export default function LibraryDetailPage() {
     ? documentSourceTypeConfigKind[connectorSourceType]
     : null
 
-  const showIndexingTab = connectorSourceType != null && canEdit
-  const showManagementTab = canEdit
-  const showTabs = showIndexingTab || showManagementTab
-  const requestedTab = searchParams.get('tab')
-  const activeTab: LibraryDetailTab =
-    requestedTab === 'indizierung' && showIndexingTab
-      ? 'indizierung'
-      : requestedTab === 'verwaltung' && showManagementTab
-        ? 'verwaltung'
-        : 'dokumente'
+  // #1939: every role sees every area; a reader simply finds less inside it. Only an UPLOAD
+  // library genuinely has no source area.
+  const showSourceTab = connectorSourceType != null
+  const activeTab: LibraryDetailTab = resolveTab(searchParams.get('tab'), showSourceTab)
 
   // Status polling lives at page level, not inside the (hideable) "Indizierung" area: a running
   // indexing stays visible in the page head no matter which area is active (guidelines 5.7).
@@ -460,20 +484,17 @@ export default function LibraryDetailPage() {
     wasRunningRef.current = isRunning
   }, [isRunning, libraryId, loadLibraryDetails])
 
-  function selectTab(tab: LibraryDetailTab) {
-    setSearchParams(
-      (prev) => {
-        const next = new URLSearchParams(prev)
-        if (tab === 'dokumente') next.delete('tab')
-        else next.set('tab', tab)
-        return next
-      },
-      { replace: true },
-    )
+  /**
+   * The area's own address - a tab is a link, so middle-click and „open in new tab" work, and the
+   * other URL state of the page (open folder, Pflege-Anker filter) survives the change.
+   */
+  function tabSearch(tab: LibraryDetailTab): string {
+    const next = new URLSearchParams(searchParams)
+    if (tab === 'dokumente') next.delete('tab')
+    else next.set('tab', tab)
+    const query = next.toString()
+    return query ? `?${query}` : ''
   }
-
-  const name = draft ? draft.name : (library?.name ?? '')
-  const description = draft ? draft.description : (library?.description ?? '')
 
   /**
    * The PUT replaces name, description and reach as a whole; each form sends its own fields and
@@ -500,24 +521,23 @@ export default function LibraryDetailPage() {
     })
   }
 
-  async function handleSave() {
-    if (!libraryId || !library) return
-    setLocalError(null)
-    setSaving(true)
+  /**
+   * Name and description from the head. The rejection is thrown on, not swallowed: the editor in
+   * the head shows it next to the fields the draft still holds.
+   */
+  async function saveHeadline(nextName: string, nextDescription: string) {
+    if (!library) return
     try {
       await saveLibrary({
-        name,
-        description,
+        name: nextName,
+        description: nextDescription,
         visibility: library.visibility,
         listed: library.listed,
       })
-      setDraft(null)
     } catch (err) {
       // Die Reichweite ist der eine Weg, den eine offene Nachfolge sperrt (ADR-0036/6): Die
       // Ablehnung nennt deshalb auch den Ausgang.
-      setLocalError(successionAwareMessage(err, 'Aktualisierung fehlgeschlagen'))
-    } finally {
-      setSaving(false)
+      throw new Error(successionAwareMessage(err, 'Aktualisierung fehlgeschlagen'), { cause: err })
     }
   }
 
@@ -602,18 +622,15 @@ export default function LibraryDetailPage() {
   const runFailedSuffix =
     run.documentsFailed > 0 ? `, davon ${run.documentsFailed} fehlgeschlagen` : ''
 
+  const tabs: Array<{ value: LibraryDetailTab; label: string }> = [
+    { value: 'dokumente', label: 'Dokumente' },
+    ...(showSourceTab ? ([{ value: 'quelle', label: 'Quelle' }] as const) : []),
+    { value: 'metadaten', label: 'Metadaten' },
+    { value: 'freigaben', label: 'Freigaben' },
+  ]
+
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
-      <Link
-        component={RouterLink}
-        to="/libraries"
-        underline="hover"
-        sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, mb: 2, fontSize: 13 }}
-      >
-        <ArrowBackIcon fontSize="small" />
-        Zurück zur Übersicht
-      </Link>
-
       {/* Quellen-Bühne (#1609): Identität, Kennzahlen, Umfang und Aktionen der Bibliothek — als
           Bühne mit einer Grundlinie, nicht als Kasten. Der zurückhaltende Akzentschein bleibt: Er
           gibt der Seite ihre Atmosphäre, ohne eine Fläche zu behaupten, und läuft nach unten in
@@ -675,8 +692,8 @@ export default function LibraryDetailPage() {
               {sourceGlyphIcon(details?.sourceType)}
             </Box>
             <Box sx={{ minWidth: 0 }}>
-              {/* Eyebrow (guidelines 3.3) - uppercase literals, so the mixed-case edition label
-                  below stays the page's only "Data Center"/"Cloud" text match. */}
+              {/* Eyebrow (guidelines 3.3) - the source type is no longer repeated here: it is the
+                  badge on the heading's baseline and the glyph beside it, and nowhere else. */}
               <Typography
                 sx={{
                   fontFamily: fontFamily.mono,
@@ -687,32 +704,28 @@ export default function LibraryDetailPage() {
                   mb: 0.5,
                 }}
               >
-                {[
-                  'Wissensbibliothek',
-                  details ? documentSourceTypeLabel(details.sourceType) : null,
-                  details?.sourceType === 'CONFLUENCE' && details.confluenceEdition
-                    ? confluenceEditionLabel(details.confluenceEdition)
-                    : null,
-                ]
-                  .filter(Boolean)
-                  .join(' · ')
-                  .toUpperCase()}
+                WISSENSBIBLIOTHEK
               </Typography>
-              <Stack
-                direction="row"
-                spacing={1.5}
-                sx={{ alignItems: 'center', flexWrap: 'wrap', mb: 0.5 }}
-              >
-                <PageHeading title={library.name} />
-                {details && <MetaBadge>{documentSourceTypeLabel(details.sourceType)}</MetaBadge>}
-                <MetaBadge accent>{assetRoleLabel(library.myRole)}</MetaBadge>
-                {isAdministrativeOverride && <MetaBadge>administrativ</MetaBadge>}
-              </Stack>
-              {library.description && (
-                <Typography sx={{ fontSize: 13.5, color: 'text.secondary', maxWidth: 640 }}>
-                  {library.description}
-                </Typography>
-              )}
+              <AssetHeadlineEditor
+                // A fresh editor per library, so a draft never survives a change of library.
+                key={`headline-${libraryId}`}
+                name={library.name}
+                description={library.description}
+                idPrefix="library-detail"
+                nameLabel="Name der Bibliothek"
+                editLabel="Name und Beschreibung bearbeiten"
+                canEdit={canEdit}
+                onSave={saveHeadline}
+                badges={
+                  <>
+                    {details && (
+                      <MetaBadge>{documentSourceTypeLabel(details.sourceType)}</MetaBadge>
+                    )}
+                    <MetaBadge accent>{assetRoleLabel(library.myRole)}</MetaBadge>
+                    {isAdministrativeOverride && <MetaBadge>administrativ</MetaBadge>}
+                  </>
+                }
+              />
               {/* ADR-0036, Entscheidung 6: Zustand und Adressat für jeden Leseberechtigten -
                   ohne Datum, früheren Eigentümer oder Grund. */}
               <Box sx={{ maxWidth: 640 }}>
@@ -720,34 +733,67 @@ export default function LibraryDetailPage() {
               </Box>
             </Box>
           </Stack>
-          {connectorSourceType && canTrigger && (
-            <Stack
-              direction="row"
-              spacing={1.5}
-              useFlexGap
-              sx={{ flexWrap: 'wrap', flexShrink: 0, pt: { md: 0.5 } }}
-            >
-              <Button
-                variant="contained"
-                startIcon={<PlayArrowIcon />}
-                onClick={() => void triggerIndexing(libraryId, connectorSourceType)}
-                disabled={isRunning}
-              >
-                {isRunning ? 'Indizierung läuft …' : 'Jetzt indizieren'}
-              </Button>
-              {/* ADR-0023, Entscheidung 4 (#1139): "Jetzt indizieren" follows the library's state
-                  (incremental between two full runs); the full reconciliation can be forced. */}
-              {connectorConfigKind === 'confluence' && (
+          <Stack
+            direction="row"
+            spacing={1.5}
+            useFlexGap
+            sx={{ flexWrap: 'wrap', flexShrink: 0, pt: { md: 0.5 }, alignItems: 'flex-start' }}
+          >
+            {connectorSourceType && canTrigger && (
+              <>
                 <Button
-                  variant="outlined"
-                  onClick={() => void triggerIndexing(libraryId, connectorSourceType, 'FULL')}
+                  variant="contained"
+                  startIcon={<PlayArrowIcon />}
+                  onClick={() => void triggerIndexing(libraryId, connectorSourceType)}
                   disabled={isRunning}
                 >
-                  Vollabgleich starten
+                  {isRunning ? 'Indizierung läuft …' : 'Jetzt indizieren'}
                 </Button>
-              )}
-            </Stack>
-          )}
+                {/* ADR-0023, Entscheidung 4 (#1139): "Jetzt indizieren" follows the library's state
+                    (incremental between two full runs); the full reconciliation can be forced. */}
+                {connectorConfigKind === 'confluence' && (
+                  <Button
+                    variant="outlined"
+                    onClick={() => void triggerIndexing(libraryId, connectorSourceType, 'FULL')}
+                    disabled={isRunning}
+                  >
+                    Vollabgleich starten
+                  </Button>
+                )}
+              </>
+            )}
+            {/* Das Löschen ist die eine folgenschwere Aktion der Seite - sie steht im „⋯"-Menü,
+                nirgends sonst (#1939). Für eine Upload-Bibliothek steht das Menü allein. */}
+            {canDelete && (
+              <>
+                <Tooltip title="Weitere Aktionen">
+                  <IconButton
+                    aria-label="Weitere Aktionen"
+                    aria-haspopup="menu"
+                    aria-expanded={actionMenuAnchor != null}
+                    onClick={(event) => setActionMenuAnchor(event.currentTarget)}
+                  >
+                    <MoreVertIcon />
+                  </IconButton>
+                </Tooltip>
+                <Menu
+                  anchorEl={actionMenuAnchor}
+                  open={actionMenuAnchor != null}
+                  onClose={() => setActionMenuAnchor(null)}
+                >
+                  <MenuItem
+                    onClick={() => {
+                      setActionMenuAnchor(null)
+                      void handleDelete()
+                    }}
+                    sx={{ color: 'error.main' }}
+                  >
+                    Bibliothek löschen
+                  </MenuItem>
+                </Menu>
+              </>
+            )}
+          </Stack>
         </Stack>
 
         {/* Key figures - each tile one flat statement ("87 Dokumente"), one element for screen
@@ -798,10 +844,11 @@ export default function LibraryDetailPage() {
           )}
         </Stack>
 
-        {/* #1138 (ADR-0023): edition, selected spaces and the sharing consequence are visible to
-            every reader of the library - permanently in the page head, never only inside the
-            manager-only configuration area. */}
-        {details?.sourceType === 'CONFLUENCE' && (
+        {/* #1939: Der Umfang steht im Kopf nur noch als Kurzzeile mit Sprung in den Reiter
+            „Quelle"; dort steht er vollständig, für jede Rolle. Die Warnung über einen
+            unvollständig gelesenen Umfang bleibt dagegen hier: Sie betrifft den Bestand, den
+            jede Ansicht der Seite zeigt, nicht die Einstellung dahinter. */}
+        {(details?.sourceType === 'CONFLUENCE' || details?.sourceType === 'S3') && (
           <Box
             sx={{
               mt: 2.5,
@@ -814,38 +861,23 @@ export default function LibraryDetailPage() {
               gap: 1,
             }}
           >
-            <Typography variant="body2">
-              <strong>Edition:</strong>{' '}
-              {details.confluenceEdition ? confluenceEditionLabel(details.confluenceEdition) : '—'}{' '}
-              <Typography component="span" variant="caption" sx={{ color: 'text.secondary' }}>
-                (erkannt, nach der Anlage nicht änderbar)
-              </Typography>
+            <Typography variant="body2" data-testid="library-scope-summary">
+              {details.sourceType === 'CONFLUENCE'
+                ? [
+                    confluenceScopeSummaryLabel(details.confluenceSpaces),
+                    details.confluenceEdition
+                      ? confluenceEditionLabel(details.confluenceEdition)
+                      : null,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')
+                : s3ScopeSummaryLabel(details.s3Settings)}
+              {' · '}
+              <Link component={RouterLink} to={{ search: tabSearch('quelle') }} underline="hover">
+                Details
+              </Link>
             </Typography>
-            <ConfluenceSpacesSummary spaces={details.confluenceSpaces} />
-            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-              Dieser Umfang gilt für alle Leseberechtigten der Bibliothek.
-            </Typography>
-            <Stack
-              direction="row"
-              spacing={1}
-              role="note"
-              data-testid="confluence-sharing-consequence"
-              sx={{ alignItems: 'flex-start', mt: 0.5 }}
-            >
-              <InfoOutlinedIcon
-                aria-hidden
-                sx={{ fontSize: 16, color: 'primary.main', mt: '2px', flexShrink: 0 }}
-              />
-              <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
-                Diese Bibliothek spiegelt ausgewählte Confluence-Spaces. Alles, was daraus indiziert
-                wurde, ist für alle Leseberechtigten dieser Bibliothek sichtbar — unabhängig davon,
-                wer es in Confluence lesen dürfte. Was das hinterlegte Dienstkonto in Confluence
-                nicht lesen darf, nimmt OPAA nicht auf: Seiten, die es gar nicht erst sieht, tauchen
-                nirgends auf; wo ein Abruf oder ein ganzer Space scheitert, weist das Laufprotokoll
-                das aus.
-              </Typography>
-            </Stack>
-            {run.unlistedScopeKeys.length > 0 && (
+            {details.sourceType === 'CONFLUENCE' && run.unlistedScopeKeys.length > 0 && (
               <Stack
                 direction="row"
                 spacing={1}
@@ -877,46 +909,7 @@ export default function LibraryDetailPage() {
                 </Typography>
               </Stack>
             )}
-          </Box>
-        )}
-
-        {/* ADR-0027: the scopes of an S3 library are the scope every reader sees - shown in the
-            page head like the Confluence selection, with the same consequence. */}
-        {details?.sourceType === 'S3' && (
-          <Box
-            sx={{
-              mt: 2.5,
-              pt: 2,
-              borderTop: 1,
-              borderTopColor: 'divider',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 1,
-            }}
-          >
-            <S3ScopesSummary settings={details.s3Settings} />
-            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-              Dieser Umfang gilt für alle Leseberechtigten der Bibliothek.
-            </Typography>
-            <Stack
-              direction="row"
-              spacing={1}
-              role="note"
-              data-testid="s3-sharing-consequence"
-              sx={{ alignItems: 'flex-start', mt: 0.5 }}
-            >
-              <InfoOutlinedIcon
-                aria-hidden
-                sx={{ fontSize: 16, color: 'primary.main', mt: '2px', flexShrink: 0 }}
-              />
-              <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
-                Diese Bibliothek spiegelt Geltungsbereiche eines S3-Objektspeichers. Alles, was
-                daraus indiziert wurde, ist für alle Leseberechtigten dieser Bibliothek sichtbar —
-                unabhängig davon, wer es im Objektspeicher lesen dürfte. Was der hinterlegte
-                Schlüssel nicht lesen darf, nimmt OPAA nicht auf.
-              </Typography>
-            </Stack>
-            {run.unlistedScopeKeys.length > 0 && (
+            {details.sourceType === 'S3' && run.unlistedScopeKeys.length > 0 && (
               <Stack
                 direction="row"
                 spacing={1}
@@ -928,9 +921,6 @@ export default function LibraryDetailPage() {
                   pl: 1.5,
                   pr: 1.25,
                   py: 1,
-                  // Hervorhebung als Signalkante links statt als Rahmen ringsum (#1608, Regel 4):
-                  // dasselbe Mittel wie im Bestätigungs-Overlay, damit ein Hinweis überall gleich
-                  // aussieht. Die Signalfarbe bleibt in Kante und Symbol — nie im Fließtext.
                   borderLeft: 3,
                   borderColor: 'warning.main',
                   bgcolor: (theme) => alpha(theme.palette.warning.main, 0.08),
@@ -1008,9 +998,17 @@ export default function LibraryDetailPage() {
           {storeError}
         </Alert>
       )}
-      {!canEdit && (
+      {/* #1939: ein Hinweis auf die eigene Rolle, nicht zwei — der Dokumentenbereich trägt
+          keinen zweiten mehr. Die beiden Stufen sagen Verschiedenes: Wer Dokumente pflegen darf,
+          liest nicht bloß. */}
+      {!canTrigger && (
         <Alert severity="info" sx={{ mb: 2 }}>
-          Sie können diese Bibliothek einsehen, aber nicht bearbeiten.
+          Sie haben in dieser Bibliothek nur Leserechte.
+        </Alert>
+      )}
+      {canTrigger && !canEdit && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Sie können Dokumente dieser Bibliothek pflegen, ihre Einstellungen aber nicht ändern.
         </Alert>
       )}
       {isAdministrativeOverride && (
@@ -1020,57 +1018,45 @@ export default function LibraryDetailPage() {
         </Alert>
       )}
 
-      {showTabs && (
-        <Tabs
-          value={activeTab}
-          onChange={(_, value) => selectTab(value as LibraryDetailTab)}
-          aria-label="Bereiche dieser Bibliothek"
-          sx={{
-            borderBottom: 1,
-            borderColor: 'divider',
-            mb: 4,
+      {/* Jeder Reiter ist ein Link auf dieselbe Seite mit anderem `?tab=` — Mittelklick und
+          „in neuem Tab öffnen" funktionieren, und ein Lesezeichen landet im richtigen Bereich. */}
+      <Tabs
+        value={activeTab}
+        aria-label="Bereiche dieser Bibliothek"
+        sx={{
+          borderBottom: 1,
+          borderColor: 'divider',
+          mb: 4,
+          minHeight: 42,
+          '& .MuiTab-root': {
+            textTransform: 'none',
+            fontSize: 13.5,
+            fontWeight: 500,
             minHeight: 42,
-            '& .MuiTab-root': {
-              textTransform: 'none',
-              fontSize: 13.5,
-              fontWeight: 500,
-              minHeight: 42,
-              px: 2,
-            },
-          }}
-        >
+            px: 2,
+          },
+        }}
+      >
+        {tabs.map((entry) => (
           <Tab
-            label="Dokumente"
-            value="dokumente"
-            id="library-tab-dokumente"
-            aria-controls="library-tabpanel-dokumente"
+            key={entry.value}
+            label={entry.label}
+            value={entry.value}
+            component={RouterLink}
+            to={{ search: tabSearch(entry.value) }}
+            id={`library-tab-${entry.value}`}
+            aria-controls={`library-tabpanel-${entry.value}`}
           />
-          {showIndexingTab && (
-            <Tab
-              label="Indizierung"
-              value="indizierung"
-              id="library-tab-indizierung"
-              aria-controls="library-tabpanel-indizierung"
-            />
-          )}
-          {showManagementTab && (
-            <Tab
-              label="Verwaltung"
-              value="verwaltung"
-              id="library-tab-verwaltung"
-              aria-controls="library-tabpanel-verwaltung"
-            />
-          )}
-        </Tabs>
-      )}
+        ))}
+      </Tabs>
 
       {/* Every area stays mounted while another one is active: status polling, running uploads
           and loaded run protocols keep living, only their visibility toggles. */}
       <Box
-        role={showTabs ? 'tabpanel' : undefined}
+        role="tabpanel"
         id="library-tabpanel-dokumente"
-        aria-labelledby={showTabs ? 'library-tab-dokumente' : undefined}
-        hidden={showTabs && activeTab !== 'dokumente'}
+        aria-labelledby="library-tab-dokumente"
+        hidden={activeTab !== 'dokumente'}
       >
         {details && (
           <LibraryDocumentsSection
@@ -1094,99 +1080,53 @@ export default function LibraryDetailPage() {
         )}
       </Box>
 
-      {showIndexingTab && details && (
+      {showSourceTab && details && (
         <Box
           role="tabpanel"
-          id="library-tabpanel-indizierung"
-          aria-labelledby="library-tab-indizierung"
-          hidden={activeTab !== 'indizierung'}
+          id="library-tabpanel-quelle"
+          aria-labelledby="library-tab-quelle"
+          hidden={activeTab !== 'quelle'}
         >
-          {/* #604 review, finding 1: the run protocol GET stays behind the MANAGER bar (canEdit)
-              - the whole area only exists for callers who may read source paths and run
-              references. */}
-          <LibraryIndexingSection libraryId={libraryId} library={details} canEditSource={canEdit} />
+          {/* #604 review, finding 1: source paths and the run protocol stay behind the MANAGER
+              bar (canEditSource); the Umfang above them is visible to every reader. */}
+          <LibrarySourceSection libraryId={libraryId} library={details} canEditSource={canEdit} />
         </Box>
       )}
 
-      {showManagementTab && (
-        <Box
-          role="tabpanel"
-          id="library-tabpanel-verwaltung"
-          aria-labelledby="library-tab-verwaltung"
-          hidden={activeTab !== 'verwaltung'}
-        >
-          <Stack>
-            <PageSection
-              title="Metadatenfelder"
-              description="Eigene typisierte Felder dieser Bibliothek, ihre Wirkstellen und ihre Wertelisten."
-            >
-              <LibraryMetadataFieldsSection libraryId={libraryId} canManageSchema={canEdit} />
-            </PageSection>
+      <Box
+        role="tabpanel"
+        id="library-tabpanel-metadaten"
+        aria-labelledby="library-tab-metadaten"
+        hidden={activeTab !== 'metadaten'}
+      >
+        <Stack>
+          <PageSection
+            title="Metadatenfelder"
+            description="Eigene typisierte Felder dieser Bibliothek, ihre Wirkstellen und ihre Wertelisten."
+          >
+            <LibraryMetadataFieldsSection libraryId={libraryId} canManageSchema={canEdit} />
+          </PageSection>
+          {/* Die Extraktionseinstellungen liest erst MANAGER (GET .../metadata/extraction-settings)
+              - für eine lesende Rolle bliebe hier nur eine Fehlermeldung stehen. */}
+          {canEdit && (
             <PageSection
               title="Modellgestützte Extraktion"
               description="Ob das Sprachmodell leer gebliebene Felder ergänzt und freie Schlagworte vergibt — und wie gut die Extraktion diese Bibliothek beschreibt."
             >
               <MetadataExtractionSettingsSection libraryId={libraryId} canManage={canEdit} />
             </PageSection>
-            <PageSection title="Stammdaten" description="Name und Beschreibung dieser Bibliothek.">
-              <Stack spacing={2}>
-                {details && (
-                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                    Quellentyp: {documentSourceTypeLabel(details.sourceType)} — kann nach der Anlage
-                    nicht geändert werden.
-                  </Typography>
-                )}
-                <Box>
-                  <FieldLabel htmlFor="library-detail-name">Name der Bibliothek</FieldLabel>
-                  <TextField
-                    id="library-detail-name"
-                    fullWidth
-                    value={name}
-                    onChange={(e) => setDraft({ name: e.target.value, description })}
-                    size="small"
-                  />
-                </Box>
-                <Box>
-                  <FieldLabel htmlFor="library-detail-description">Beschreibung</FieldLabel>
-                  <TextField
-                    id="library-detail-description"
-                    fullWidth
-                    value={description}
-                    onChange={(e) => setDraft({ name, description: e.target.value })}
-                    multiline
-                    minRows={2}
-                    size="small"
-                  />
-                </Box>
-                <Stack direction="row" spacing={1}>
-                  <Button
-                    variant="contained"
-                    size="small"
-                    onClick={() => void handleSave()}
-                    disabled={saving || !name.trim()}
-                  >
-                    {saving ? 'Wird gespeichert …' : 'Speichern'}
-                  </Button>
-                </Stack>
+          )}
+        </Stack>
+      </Box>
 
-                {details && (
-                  <DiagnosticsLockControl
-                    locked={details.diagnosticsLocked ?? true}
-                    // #1278 review: myRole bypasses to OWNER for a system admin unconditionally
-                    // (LibraryResponse#myRole) - this dedicated field mirrors the backend's
-                    // stricter holdsIndependentOwnerRole instead, so an admin without an
-                    // independent OWNER grant never sees a button that is guaranteed to fail
-                    // with 403.
-                    canToggle={details.diagnosticsLockToggleable ?? false}
-                    saving={diagnosticsLockSaving}
-                    error={diagnosticsLockError}
-                    onToggle={() => void handleToggleDiagnosticsLock()}
-                    onDismissError={() => setDiagnosticsLockError(null)}
-                  />
-                )}
-              </Stack>
-            </PageSection>
-
+      <Box
+        role="tabpanel"
+        id="library-tabpanel-freigaben"
+        aria-labelledby="library-tab-freigaben"
+        hidden={activeTab !== 'freigaben'}
+      >
+        <Stack>
+          {canEdit ? (
             <AssetDistributionSection
               assetType="KNOWLEDGE_LIBRARY"
               assetId={libraryId}
@@ -1225,29 +1165,46 @@ export default function LibraryDetailPage() {
               }
               grantsTypeSection={<LibraryExternalAccessSection libraryId={libraryId} />}
             />
-
-            {canDelete && (
+          ) : (
+            // Was eine lesende Rolle hier abrufen darf: in welchen Spaces die Bibliothek steht
+            // und warum sie selbst sie sieht. Die Rechtevergabe bleibt den Verwaltenden.
+            <>
               <PageSection
-                title="Bibliothek löschen"
-                description={
-                  details && details.sourceType !== 'UPLOAD'
-                    ? 'Entfernt die Bibliothek unwiderruflich — einschließlich aller indizierten Dokumente.'
-                    : 'Entfernt die Bibliothek unwiderruflich. Sie darf dafür keine Dokumente mehr enthalten.'
-                }
+                title="Zuordnungen"
+                description="Die Spaces, in denen diese Bibliothek als Datenquelle bereitsteht."
               >
-                <Button
-                  color="error"
-                  variant="outlined"
-                  size="small"
-                  onClick={() => void handleDelete()}
-                >
-                  Bibliothek löschen
-                </Button>
+                <AssetSpacesList
+                  key={`spaces-${libraryId}`}
+                  assetType="KNOWLEDGE_LIBRARY"
+                  assetId={libraryId}
+                  canManage={false}
+                />
               </PageSection>
-            )}
-          </Stack>
-        </Box>
-      )}
+              <AssetAccessDerivationSection assetType="KNOWLEDGE_LIBRARY" assetId={libraryId} />
+            </>
+          )}
+
+          {details && (
+            <PageSection
+              title="Diagnosesperre"
+              description="Ob diese Bibliothek in einer Suchdiagnose im Rechtekontext einer anderen Person auftauchen darf."
+            >
+              <DiagnosticsLockControl
+                locked={details.diagnosticsLocked ?? true}
+                // #1278 review: myRole bypasses to OWNER for a system admin unconditionally
+                // (LibraryResponse#myRole) - this dedicated field mirrors the backend's stricter
+                // holdsIndependentOwnerRole instead, so an admin without an independent OWNER
+                // grant never sees a button that is guaranteed to fail with 403.
+                canToggle={details.diagnosticsLockToggleable ?? false}
+                saving={diagnosticsLockSaving}
+                error={diagnosticsLockError}
+                onToggle={() => void handleToggleDiagnosticsLock()}
+                onDismissError={() => setDiagnosticsLockError(null)}
+              />
+            </PageSection>
+          )}
+        </Stack>
+      </Box>
     </Box>
   )
 }
@@ -1952,14 +1909,8 @@ function LibraryDocumentsSection({
 
   return (
     <Box sx={{ mb: 5 }}>
-      {/* #517 code review, nit 4: scoped to !canManage alone (not additionally isUploadLibrary,
-          as an earlier version had it) - a VIEWER on a connector library lost this hint entirely
-          otherwise, even though it is just as true there as for a read-only UPLOAD library. */}
-      {!canManage && (
-        <Alert severity="info" sx={{ mb: 2 }}>
-          Sie haben in dieser Bibliothek nur Leserechte.
-        </Alert>
-      )}
+      {/* #1939: Der Hinweis auf die eigenen Leserechte steht einmal, im Seitenkopf - er gilt für
+          jeden Reiter gleichermaßen und wurde hier doppelt gezeigt. */}
       {!isUploadLibrary && (
         <Alert severity="info" sx={{ mb: 2 }}>
           Diese Liste zeigt den zuletzt indizierten Bestand dieser Konnektorbibliothek. Einzelne
@@ -2615,7 +2566,7 @@ function RenameFolderDialog({ open, folder, onClose, onRename }: RenameFolderDia
   )
 }
 
-interface LibraryIndexingSectionProps {
+interface LibrarySourceSectionProps {
   libraryId: string
   library: {
     name: string
@@ -2642,212 +2593,288 @@ interface LibraryIndexingSectionProps {
 }
 
 /**
- * The "Indizierung" area of a connector library: source configuration, schedule and the run
- * protocol as one card each. Rendered only behind the MANAGER bar (#507/#604) - triggering and
- * the live progress live in the page head, visible from every area.
+ * The "Quelle" area of a connector library (#1939): the Umfang for every reader, then - behind the
+ * MANAGER bar (#507/#604) - source configuration, schedule and the run protocol. Triggering and the
+ * live progress live in the page head, visible from every area.
  */
-function LibraryIndexingSection({
-  libraryId,
-  library,
-  canEditSource,
-}: LibraryIndexingSectionProps) {
+function LibrarySourceSection({ libraryId, library, canEditSource }: LibrarySourceSectionProps) {
   const [editSourceOpen, setEditSourceOpen] = useState(false)
   const [editScheduleOpen, setEditScheduleOpen] = useState(false)
   const configKind = documentSourceTypeConfigKind[library.sourceType]
+  const hasScope = configKind === 'confluence' || configKind === 's3'
 
   return (
     <Stack>
-      <PageSection
-        title="Quellkonfiguration"
-        description="Woher diese Bibliothek ihre Dokumente bezieht. Nur für Verwaltende sichtbar."
-        action={
-          canEditSource ? (
-            <Button
-              size="small"
-              variant="outlined"
-              onClick={() => setEditSourceOpen(true)}
-              aria-label="Quellkonfiguration bearbeiten"
-              sx={{ flexShrink: 0 }}
-            >
-              Bearbeiten
-            </Button>
-          ) : undefined
-        }
-      >
-        {/* #507: sourcePath/sourceUrl/sourceProxy expose internal server paths, source URLs and
-            proxy hosts - the backend only serves them to a caller with at least MANAGER, and this
-            whole area only renders behind the same bar. Edition and selected spaces are shown to
-            every reader in the page head (#1138), not repeated here. */}
-        <Stack spacing={0.75}>
-          {configKind === 'path' && (
-            <Typography variant="body2">
-              <strong>Verzeichnispfad:</strong> {library.sourcePath ?? '—'}
-            </Typography>
-          )}
-          {configKind === 'url' && (
-            <Typography variant="body2">
-              <strong>Adresse (URL):</strong> {library.sourceUrl ?? '—'}
-            </Typography>
-          )}
-          {configKind === 'confluence' && (
-            <Typography variant="body2">
-              <strong>Adresse:</strong> {library.sourceUrl ?? '—'}
-            </Typography>
-          )}
-          {configKind === 's3' && (
-            <>
-              <Typography variant="body2">
-                <strong>Endpoint:</strong> {library.sourceUrl ?? '—'}
-              </Typography>
-              <Typography variant="body2">
-                <strong>Region:</strong> {library.s3Settings?.region ?? 'us-east-1 (Vorgabe)'} ·{' '}
-                <strong>Adressstil:</strong>{' '}
-                {library.s3Settings?.pathStyle ? 'Path-Style' : 'Virtual-Host'}
-              </Typography>
-              {(library.s3Settings?.includePatterns?.length ?? 0) > 0 && (
-                <Typography variant="body2">
-                  <strong>Einschlussmuster:</strong>{' '}
-                  {library.s3Settings?.includePatterns?.join(', ')}
-                </Typography>
-              )}
-              {(library.s3Settings?.excludePatterns?.length ?? 0) > 0 && (
-                <Typography variant="body2">
-                  <strong>Ausschlussmuster:</strong>{' '}
-                  {library.s3Settings?.excludePatterns?.join(', ')}
-                </Typography>
-              )}
-            </>
-          )}
-          {(configKind === 'url' || configKind === 'confluence' || configKind === 's3') && (
-            <>
-              <Typography variant="body2">
-                <strong>Proxy:</strong> {library.sourceProxy ?? 'nicht konfiguriert'}
-              </Typography>
-              <Typography variant="body2">
-                <strong>Zertifikatsprüfung aussetzen:</strong>{' '}
-                {library.sourceInsecureSsl ? 'ja' : 'nein'}
-              </Typography>
-              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                Zugangsdaten sind aus Sicherheitsgründen nie Teil einer API-Antwort - diese Ansicht
-                zeigt sie deshalb weder ein noch aus.
-              </Typography>
-            </>
-          )}
-          {configKind === 'confluence' && (
-            <ConfluenceWebhookSection
-              libraryId={libraryId}
-              secretSet={library.confluenceWebhookSecretSet}
-            />
-          )}
-          {configKind === 's3' && (
-            <S3EventSection
-              libraryId={libraryId}
-              tokenSet={library.s3EventsTokenSet}
-              scopes={library.s3Settings?.scopes ?? []}
-            />
-          )}
-        </Stack>
-        {canEditSource && (
-          <EditLibrarySourceDialog
-            // Forces a remount every time the dialog opens, so its internal field state always
-            // starts fresh from the current library configuration without an effect calling
-            // setState on open (react-hooks/set-state-in-effect).
-            key={editSourceOpen ? 'source-edit-open' : 'source-edit-closed'}
-            open={editSourceOpen}
-            onClose={() => setEditSourceOpen(false)}
-            libraryId={libraryId}
-            library={library}
-          />
-        )}
-      </PageSection>
-
-      {/* #485: Zeitplan - nur für Verwaltende sichtbar/bearbeitbar, dieselbe Schwelle wie die
-          Quellkonfiguration (canEditSource). */}
-      {canEditSource && (
+      {/* #1138 (ADR-0023) / ADR-0027: Umfang und seine Freigabefolge gelten für alle
+          Leseberechtigten - seit #1939 stehen sie hier statt im Kopf, mit Erklärung. */}
+      {hasScope && (
         <PageSection
-          title="Zeitplan"
-          description="Wann diese Bibliothek automatisch indiziert wird."
-          action={
-            <Button
-              size="small"
-              variant="outlined"
-              onClick={() => setEditScheduleOpen(true)}
-              aria-label="Zeitplan bearbeiten"
-              sx={{ flexShrink: 0 }}
-            >
-              Bearbeiten
-            </Button>
-          }
+          title="Umfang"
+          description="Was diese Bibliothek aus ihrer Quelle aufnimmt. Dieser Umfang gilt für alle Leseberechtigten der Bibliothek."
         >
-          <Typography variant="body2">
-            {scheduleFrequencyLabel(library.schedule?.frequency ?? 'DISABLED')}
-          </Typography>
-          {configKind === 'confluence' && (
-            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-              {(() => {
-                const days =
-                  library.confluenceFullSyncIntervalDays ??
-                  library.confluenceFullSyncIntervalDefaultDays ??
-                  7
-                const rhythm =
-                  days === 1 ? 'Vollabgleich täglich' : `Vollabgleich alle ${days} Tage`
-                return library.confluenceFullSyncIntervalDays == null
-                  ? `${rhythm} (Vorgabe der Instanz)`
-                  : rhythm
-              })()}
-            </Typography>
-          )}
-          {library.schedule?.nextRunAt && (
-            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-              Nächster geplanter Lauf:{' '}
-              {new Date(library.schedule.nextRunAt).toLocaleString('de-DE', {
-                dateStyle: 'medium',
-                timeStyle: 'short',
-              })}
-            </Typography>
-          )}
-          {library.lastScheduledRunsFailed && (
-            <Alert severity="warning" sx={{ mt: 1 }}>
-              Die letzten geplanten Läufe dieser Bibliothek sind fehlgeschlagen. Der Zeitplan bleibt
-              aktiv und versucht es beim nächsten Termin erneut.
-            </Alert>
-          )}
-          <EditLibraryScheduleDialog
-            // Mirrors EditLibrarySourceDialog's own remount-on-open pattern above, so the dialog's
-            // internal field state always starts fresh from the current schedule.
-            key={editScheduleOpen ? 'schedule-edit-open' : 'schedule-edit-closed'}
-            open={editScheduleOpen}
-            onClose={() => setEditScheduleOpen(false)}
-            libraryId={libraryId}
-            schedule={library.schedule}
-            confluence={
-              configKind === 'confluence'
-                ? {
-                    intervalDays: library.confluenceFullSyncIntervalDays ?? null,
-                    defaultDays: library.confluenceFullSyncIntervalDefaultDays ?? null,
-                  }
-                : undefined
-            }
-            library={library}
-          />
+          <Stack spacing={1}>
+            {configKind === 'confluence' && (
+              <>
+                <Typography variant="body2">
+                  <strong>Edition:</strong>{' '}
+                  {library.confluenceEdition
+                    ? confluenceEditionLabel(library.confluenceEdition)
+                    : '—'}{' '}
+                  <Typography component="span" variant="caption" sx={{ color: 'text.secondary' }}>
+                    (erkannt, nach der Anlage nicht änderbar)
+                  </Typography>
+                </Typography>
+                <ConfluenceSpacesSummary spaces={library.confluenceSpaces} />
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  role="note"
+                  data-testid="confluence-sharing-consequence"
+                  sx={{ alignItems: 'flex-start', mt: 0.5 }}
+                >
+                  <InfoOutlinedIcon
+                    aria-hidden
+                    sx={{ fontSize: 16, color: 'primary.main', mt: '2px', flexShrink: 0 }}
+                  />
+                  <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+                    Diese Bibliothek spiegelt ausgewählte Confluence-Spaces. Alles, was daraus
+                    indiziert wurde, ist für alle Leseberechtigten dieser Bibliothek sichtbar —
+                    unabhängig davon, wer es in Confluence lesen dürfte. Was das hinterlegte
+                    Dienstkonto in Confluence nicht lesen darf, nimmt OPAA nicht auf: Seiten, die es
+                    gar nicht erst sieht, tauchen nirgends auf; wo ein Abruf oder ein ganzer Space
+                    scheitert, weist das Laufprotokoll das aus.
+                  </Typography>
+                </Stack>
+              </>
+            )}
+            {configKind === 's3' && (
+              <>
+                <S3ScopesSummary settings={library.s3Settings} />
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  role="note"
+                  data-testid="s3-sharing-consequence"
+                  sx={{ alignItems: 'flex-start', mt: 0.5 }}
+                >
+                  <InfoOutlinedIcon
+                    aria-hidden
+                    sx={{ fontSize: 16, color: 'primary.main', mt: '2px', flexShrink: 0 }}
+                  />
+                  <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+                    Diese Bibliothek spiegelt Geltungsbereiche eines S3-Objektspeichers. Alles, was
+                    daraus indiziert wurde, ist für alle Leseberechtigten dieser Bibliothek sichtbar
+                    — unabhängig davon, wer es im Objektspeicher lesen dürfte. Was der hinterlegte
+                    Schlüssel nicht lesen darf, nimmt OPAA nicht auf.
+                  </Typography>
+                </Stack>
+              </>
+            )}
+          </Stack>
         </PageSection>
       )}
 
-      <PageSection
-        title="Letzte Indizierungsläufe"
-        description="Jeder Lauf mit seinen Kennzahlen und seinem Protokoll — aufklappen für die Einzelheiten."
-      >
-        {configKind === 'confluence' && (
-          <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 2 }}>
-            „Jetzt indizieren“ nimmt in der Regel nur Änderungen seit dem letzten Lauf auf. Nach
-            einer Änderung der Space-Auswahl und im vom Betrieb eingestellten Abstand läuft es
-            automatisch als Vollabgleich — dieser prüft alle ausgewählten Spaces vollständig und
-            entfernt, was in Confluence nicht mehr vorhanden ist. „Vollabgleich starten“ erzwingt
-            ihn sofort.
-          </Typography>
-        )}
-        <LibraryIndexingHistorySection libraryId={libraryId} sourceType={library.sourceType} />
-      </PageSection>
+      {!canEditSource && (
+        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+          Quelladresse, Zeitplan und Laufprotokoll dieser Bibliothek sehen nur Verwaltende.
+        </Typography>
+      )}
+
+      {canEditSource && (
+        <>
+          <PageSection
+            title="Quellkonfiguration"
+            description="Woher diese Bibliothek ihre Dokumente bezieht. Nur für Verwaltende sichtbar."
+            action={
+              canEditSource ? (
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() => setEditSourceOpen(true)}
+                  aria-label="Quellkonfiguration bearbeiten"
+                  sx={{ flexShrink: 0 }}
+                >
+                  Bearbeiten
+                </Button>
+              ) : undefined
+            }
+          >
+            {/* #507: sourcePath/sourceUrl/sourceProxy expose internal server paths, source URLs and
+            proxy hosts - the backend only serves them to a caller with at least MANAGER, and this
+            whole area only renders behind the same bar. Edition and selected spaces are shown to
+            every reader in the page head (#1138), not repeated here. */}
+            <Stack spacing={0.75}>
+              {configKind === 'path' && (
+                <Typography variant="body2">
+                  <strong>Verzeichnispfad:</strong> {library.sourcePath ?? '—'}
+                </Typography>
+              )}
+              {configKind === 'url' && (
+                <Typography variant="body2">
+                  <strong>Adresse (URL):</strong> {library.sourceUrl ?? '—'}
+                </Typography>
+              )}
+              {configKind === 'confluence' && (
+                <Typography variant="body2">
+                  <strong>Adresse:</strong> {library.sourceUrl ?? '—'}
+                </Typography>
+              )}
+              {configKind === 's3' && (
+                <>
+                  <Typography variant="body2">
+                    <strong>Endpoint:</strong> {library.sourceUrl ?? '—'}
+                  </Typography>
+                  <Typography variant="body2">
+                    <strong>Region:</strong> {library.s3Settings?.region ?? 'us-east-1 (Vorgabe)'} ·{' '}
+                    <strong>Adressstil:</strong>{' '}
+                    {library.s3Settings?.pathStyle ? 'Path-Style' : 'Virtual-Host'}
+                  </Typography>
+                  {(library.s3Settings?.includePatterns?.length ?? 0) > 0 && (
+                    <Typography variant="body2">
+                      <strong>Einschlussmuster:</strong>{' '}
+                      {library.s3Settings?.includePatterns?.join(', ')}
+                    </Typography>
+                  )}
+                  {(library.s3Settings?.excludePatterns?.length ?? 0) > 0 && (
+                    <Typography variant="body2">
+                      <strong>Ausschlussmuster:</strong>{' '}
+                      {library.s3Settings?.excludePatterns?.join(', ')}
+                    </Typography>
+                  )}
+                </>
+              )}
+              {(configKind === 'url' || configKind === 'confluence' || configKind === 's3') && (
+                <>
+                  <Typography variant="body2">
+                    <strong>Proxy:</strong> {library.sourceProxy ?? 'nicht konfiguriert'}
+                  </Typography>
+                  <Typography variant="body2">
+                    <strong>Zertifikatsprüfung aussetzen:</strong>{' '}
+                    {library.sourceInsecureSsl ? 'ja' : 'nein'}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                    Zugangsdaten sind aus Sicherheitsgründen nie Teil einer API-Antwort - diese
+                    Ansicht zeigt sie deshalb weder ein noch aus.
+                  </Typography>
+                </>
+              )}
+              {configKind === 'confluence' && (
+                <ConfluenceWebhookSection
+                  libraryId={libraryId}
+                  secretSet={library.confluenceWebhookSecretSet}
+                />
+              )}
+              {configKind === 's3' && (
+                <S3EventSection
+                  libraryId={libraryId}
+                  tokenSet={library.s3EventsTokenSet}
+                  scopes={library.s3Settings?.scopes ?? []}
+                />
+              )}
+            </Stack>
+            {canEditSource && (
+              <EditLibrarySourceDialog
+                // Forces a remount every time the dialog opens, so its internal field state always
+                // starts fresh from the current library configuration without an effect calling
+                // setState on open (react-hooks/set-state-in-effect).
+                key={editSourceOpen ? 'source-edit-open' : 'source-edit-closed'}
+                open={editSourceOpen}
+                onClose={() => setEditSourceOpen(false)}
+                libraryId={libraryId}
+                library={library}
+              />
+            )}
+          </PageSection>
+
+          {/* #485: Zeitplan - nur für Verwaltende sichtbar/bearbeitbar, dieselbe Schwelle wie die
+          Quellkonfiguration (canEditSource). */}
+          {canEditSource && (
+            <PageSection
+              title="Zeitplan"
+              description="Wann diese Bibliothek automatisch indiziert wird."
+              action={
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() => setEditScheduleOpen(true)}
+                  aria-label="Zeitplan bearbeiten"
+                  sx={{ flexShrink: 0 }}
+                >
+                  Bearbeiten
+                </Button>
+              }
+            >
+              <Typography variant="body2">
+                {scheduleFrequencyLabel(library.schedule?.frequency ?? 'DISABLED')}
+              </Typography>
+              {configKind === 'confluence' && (
+                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                  {(() => {
+                    const days =
+                      library.confluenceFullSyncIntervalDays ??
+                      library.confluenceFullSyncIntervalDefaultDays ??
+                      7
+                    const rhythm =
+                      days === 1 ? 'Vollabgleich täglich' : `Vollabgleich alle ${days} Tage`
+                    return library.confluenceFullSyncIntervalDays == null
+                      ? `${rhythm} (Vorgabe der Instanz)`
+                      : rhythm
+                  })()}
+                </Typography>
+              )}
+              {library.schedule?.nextRunAt && (
+                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                  Nächster geplanter Lauf:{' '}
+                  {new Date(library.schedule.nextRunAt).toLocaleString('de-DE', {
+                    dateStyle: 'medium',
+                    timeStyle: 'short',
+                  })}
+                </Typography>
+              )}
+              {library.lastScheduledRunsFailed && (
+                <Alert severity="warning" sx={{ mt: 1 }}>
+                  Die letzten geplanten Läufe dieser Bibliothek sind fehlgeschlagen. Der Zeitplan
+                  bleibt aktiv und versucht es beim nächsten Termin erneut.
+                </Alert>
+              )}
+              <EditLibraryScheduleDialog
+                // Mirrors EditLibrarySourceDialog's own remount-on-open pattern above, so the dialog's
+                // internal field state always starts fresh from the current schedule.
+                key={editScheduleOpen ? 'schedule-edit-open' : 'schedule-edit-closed'}
+                open={editScheduleOpen}
+                onClose={() => setEditScheduleOpen(false)}
+                libraryId={libraryId}
+                schedule={library.schedule}
+                confluence={
+                  configKind === 'confluence'
+                    ? {
+                        intervalDays: library.confluenceFullSyncIntervalDays ?? null,
+                        defaultDays: library.confluenceFullSyncIntervalDefaultDays ?? null,
+                      }
+                    : undefined
+                }
+                library={library}
+              />
+            </PageSection>
+          )}
+
+          <PageSection
+            title="Letzte Indizierungsläufe"
+            description="Jeder Lauf mit seinen Kennzahlen und seinem Protokoll — aufklappen für die Einzelheiten."
+          >
+            {configKind === 'confluence' && (
+              <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 2 }}>
+                „Jetzt indizieren“ nimmt in der Regel nur Änderungen seit dem letzten Lauf auf. Nach
+                einer Änderung der Space-Auswahl und im vom Betrieb eingestellten Abstand läuft es
+                automatisch als Vollabgleich — dieser prüft alle ausgewählten Spaces vollständig und
+                entfernt, was in Confluence nicht mehr vorhanden ist. „Vollabgleich starten“
+                erzwingt ihn sofort.
+              </Typography>
+            )}
+            <LibraryIndexingHistorySection libraryId={libraryId} sourceType={library.sourceType} />
+          </PageSection>
+        </>
+      )}
     </Stack>
   )
 }

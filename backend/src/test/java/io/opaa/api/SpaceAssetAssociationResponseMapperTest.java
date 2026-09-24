@@ -103,7 +103,8 @@ class SpaceAssetAssociationResponseMapperTest {
   @Test
   void toAssetSpaceResponseCarriesTheSpaceNameAndNarrowerReaderCircleFlag() {
     SpaceAssetAssociation association = association();
-    AssetSpaceLink link = new AssetSpaceLink(association, "Fachbereich", true, "Ada Lovelace");
+    AssetSpaceLink link =
+        new AssetSpaceLink(association, "Fachbereich", true, "Ada Lovelace", true);
 
     AssetSpaceAssociationResponse response =
         SpaceAssetAssociationResponseMapper.toAssetSpaceResponse(link);
@@ -114,6 +115,25 @@ class SpaceAssetAssociationResponseMapperTest {
     assertThat(response.getCreatedByDisplayName()).isEqualTo("Ada Lovelace");
     assertThat(response.getCreatedAt()).isEqualTo(association.getCreatedAt());
     assertThat(response.getNarrowerReaderCircle()).isTrue();
+  }
+
+  // #1939: the reduced entry a reader below MANAGER gets - space and name, nothing else. Asserted
+  // field by field, because every omitted field is a deliberate non-disclosure.
+  @Test
+  void toAssetSpaceResponseOmitsEveryManagementFieldWithoutManagementDetail() {
+    SpaceAssetAssociation association = association();
+    AssetSpaceLink link =
+        new AssetSpaceLink(association, "Fachbereich", false, "Ada Lovelace", false);
+
+    AssetSpaceAssociationResponse response =
+        SpaceAssetAssociationResponseMapper.toAssetSpaceResponse(link);
+
+    assertThat(response.getSpaceId()).isEqualTo(association.getSpaceId());
+    assertThat(response.getSpaceName()).isEqualTo("Fachbereich");
+    assertThat(response.getCreatedByUserId()).isNull();
+    assertThat(response.getCreatedByDisplayName()).isNull();
+    assertThat(response.getCreatedAt()).isNull();
+    assertThat(response.getNarrowerReaderCircle()).isNull();
   }
 
   @Test

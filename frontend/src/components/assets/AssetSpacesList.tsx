@@ -15,15 +15,24 @@ import { assetTypeLabel } from '../../utils/labels'
 interface AssetSpacesListProps {
   assetType: AssetType
   assetId: string
+  /**
+   * Whether the caller may manage the asset. Only then does the endpoint answer with the reader
+   * circle of each space, and only then may an association be detached (#1939).
+   */
+  canManage?: boolean
 }
 
 /**
- * The owner-facing "bereitgestellt in" list: every space the asset is associated with, never
- * filtered by the caller's own space membership - the owner sees every association and may detach
- * each one unilaterally (docs/features/spaces-and-assets.md#assets-in-einen-space-assoziieren).
- * Rendered for MANAGER and above only, the threshold the endpoint itself requires.
+ * The "Zuordnungen" list: every space the asset is associated with, never filtered by the caller's
+ * own space membership - a manager sees every association and may detach each one unilaterally
+ * (docs/features/spaces-and-assets.md#assets-in-einen-space-assoziieren), a plain reader sees the
+ * space names alone.
  */
-export default function AssetSpacesList({ assetType, assetId }: AssetSpacesListProps) {
+export default function AssetSpacesList({
+  assetType,
+  assetId,
+  canManage = true,
+}: AssetSpacesListProps) {
   const [associations, setAssociations] = useState<AssetSpaceAssociationResponse[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const noun = assetTypeLabel(assetType)
@@ -97,13 +106,15 @@ export default function AssetSpacesList({ assetType, assetId }: AssetSpacesListP
                   </Tooltip>
                 )}
               </Stack>
-              <Button
-                color="error"
-                size="small"
-                onClick={() => void handleDetach(association.spaceId, association.spaceName)}
-              >
-                Lösen
-              </Button>
+              {canManage && (
+                <Button
+                  color="error"
+                  size="small"
+                  onClick={() => void handleDetach(association.spaceId, association.spaceName)}
+                >
+                  Lösen
+                </Button>
+              )}
             </Box>
           ))}
         </Stack>

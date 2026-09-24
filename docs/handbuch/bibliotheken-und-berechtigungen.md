@@ -87,10 +87,10 @@ OPAA eine **leere** Gruppe — eine Freigabe an sie erreicht niemanden.
 Die Bibliotheken, die eine Person lesen darf, stehen in der Hauptnavigation unter **„Wissen"**. Jede
 Art von Bestand hat dort einen eigenen Punkt; der Menüpunkt und die Seite dahinter heißen gleich —
 die [Prompt-Bibliotheken](prompt-bibliotheken.md) stehen unter **„Prompts"**. Rollen, Verteilungsstufe,
-Auffindbarkeit, Herleitung und „Nachfolge offen" gelten für beide Arten gleich; im Reiter
-„Verwaltung" steht dafür bei beiden derselbe Abschnitt **„Freigabe"** mit Verteilungsstufe,
-Auffindbarkeit, „Rechte verwalten", den Räumen, in denen der Bestand bereitsteht, und darunter
-„Warum sehe ich das?".
+Auffindbarkeit, Herleitung und „Nachfolge offen" gelten für beide Arten gleich; dafür steht bei
+beiden derselbe Abschnitt **„Freigabe"** mit Verteilungsstufe, Auffindbarkeit, „Rechte verwalten",
+den Zuordnungen zu Räumen und darunter „Warum sehe ich das?" — bei einer Wissensbibliothek im
+Reiter „Freigaben", bei einer Prompt-Bibliothek im Reiter „Verwaltung".
 
 | Rolle | Darf |
 |---|---|
@@ -154,7 +154,7 @@ oder schränkt das Anlegerecht „Konnektorbibliotheken anlegen" auf eine benann
 (Abschnitt 9) — dann entscheidet diese Gruppe, wer überhaupt anlegen darf, bevor die Obergrenze
 greifen müsste.
 
-Zu finden ist die Obergrenze auf der Detailseite der jeweiligen Bibliothek, Reiter „Verwaltung" —
+Zu finden ist die Obergrenze auf der Detailseite der jeweiligen Bibliothek, Reiter „Freigaben" —
 sichtbar und änderbar nur für die Systemverwaltung. Zwei Werte: die höchste zulässige
 Verteilungsstufe und ob die Bibliothek überhaupt im Katalog auffindbar sein darf.
 

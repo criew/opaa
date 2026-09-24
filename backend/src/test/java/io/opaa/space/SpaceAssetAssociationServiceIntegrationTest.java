@@ -365,6 +365,67 @@ class SpaceAssetAssociationServiceIntegrationTest {
     assertThat(ownerView)
         .extracting(link -> link.association().getSpaceId())
         .containsExactly(space);
+    assertThat(ownerView)
+        .singleElement()
+        .extracting(AssetSpaceLink::managementDetail)
+        .isEqualTo(true);
+  }
+
+  /**
+   * #1939: die Zuordnungen stehen im schreibgeschützten Abschnitt des Reiters „Freigaben" - ein
+   * VIEWER erfährt den Space-Namen, aber weder den Lesekreis noch wer die Zuordnung angelegt hat.
+   */
+  @Test
+  void viewerSeesTheSpaceNameButNoManagementDetailOfAnAssociation() {
+    UUID owner = createUser();
+    UUID library = createLibrary(owner);
+    grant(library, owner, AssetRole.OWNER);
+    UUID reader = createUser();
+    grant(library, reader, AssetRole.VIEWER);
+    UUID space = createSpace(owner, SpaceRole.ADMIN);
+    // A member without their own read access - exactly what narrowerReaderCircle would report.
+    addMember(space, createUser(), SpaceRole.MEMBER);
+    associationService.associate(space, KnowledgeLibrary.ASSET_TYPE, library, currentUserOf(owner));
+
+    List<AssetSpaceLink> readerView =
+        associationService.listForAsset(
+            KnowledgeLibrary.ASSET_TYPE, library, currentUserOf(reader));
+
+    assertThat(readerView)
+        .singleElement()
+        .satisfies(
+            link -> {
+              assertThat(link.association().getSpaceId()).isEqualTo(space);
+              assertThat(link.spaceName()).isEqualTo("Fachbereich");
+              assertThat(link.managementDetail()).isFalse();
+              assertThat(link.narrowerReaderCircle()).isFalse();
+              assertThat(link.createdByDisplayName()).isNull();
+            });
+
+    assertThat(
+            associationService.listForAsset(
+                KnowledgeLibrary.ASSET_TYPE, library, currentUserOf(owner)))
+        .singleElement()
+        .satisfies(
+            link -> {
+              assertThat(link.managementDetail()).isTrue();
+              assertThat(link.narrowerReaderCircle()).isTrue();
+            });
+  }
+
+  /** Below VIEWER the asset is not there at all - the same 404 as for an unknown id (#436). */
+  @Test
+  void aPersonWithoutAnyRoleOnTheAssetStillGetsNotFoundForItsAssociations() {
+    UUID owner = createUser();
+    UUID library = createLibrary(owner);
+    grant(library, owner, AssetRole.OWNER);
+    UUID outsider = createUser();
+
+    assertThatThrownBy(
+            () ->
+                associationService.listForAsset(
+                    KnowledgeLibrary.ASSET_TYPE, library, currentUserOf(outsider)))
+        .isInstanceOf(NotFoundException.class);
   }
 
   @Test
