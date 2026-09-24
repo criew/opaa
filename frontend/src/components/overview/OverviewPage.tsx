@@ -16,6 +16,7 @@ import TextField from '@mui/material/TextField'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Typography from '@mui/material/Typography'
+import visuallyHidden from '@mui/utils/visuallyHidden'
 import CloseIcon from '@mui/icons-material/Close'
 import SearchIcon from '@mui/icons-material/Search'
 import ViewModuleIcon from '@mui/icons-material/ViewModule'
@@ -32,14 +33,18 @@ export interface OverviewColumn {
 }
 
 export interface OverviewPageProps<T> {
-  /** Document title and fallback heading while the list is still loading. */
+  /** Document title, and the heading unless `heading` names one. */
   title: string
-  /** The visible heading once the list is there, e.g. `(n) => '3 Spaces'`. */
-  heading: (count: number) => string
-  createLabel: string
-  onCreate: () => void
+  /** Puts the figure into the heading itself, e.g. `(n) => '3 Spaces'` (#1914). */
+  heading?: (count: number) => string
+  /** The quiet figure beside a fixed heading; use instead of `heading`. */
+  countLabel?: (count: number) => string
+  /** Both omitted where an overview offers no creation at all. */
+  createLabel?: string
+  onCreate?: () => void
   /** Distinguishes the remembered view; one key per overview. */
   storageKey: string
+  /** Used on the first visit only; a narrow viewport always starts with cards. */
   defaultView?: OverviewView
   items: T[]
   itemKey: (item: T) => string
@@ -58,18 +63,32 @@ export interface OverviewPageProps<T> {
   footNote?: ReactNode
 }
 
+/** MUI's `md` breakpoint - the width from which the table view is the better first impression. */
+const NARROW_QUERY = '(min-width: 900px)'
+
 function viewStorageKey(storageKey: string): string {
   return `opaa.overview.${storageKey}.view`
 }
 
+/**
+ * The remembered choice wins; without one a narrow viewport starts with cards, because a
+ * multi-column table would arrive scrolled sideways before the switch has been found.
+ */
 function readView(storageKey: string, fallback: OverviewView): OverviewView {
+  let stored: string | null = null
   try {
-    const stored = window.localStorage.getItem(viewStorageKey(storageKey))
-    return stored === 'cards' || stored === 'table' ? stored : fallback
+    stored = window.localStorage.getItem(viewStorageKey(storageKey))
   } catch {
     // A browser with blocked storage must still render the overview.
-    return fallback
   }
+  if (stored === 'cards' || stored === 'table') return stored
+  const narrow = typeof window.matchMedia === 'function' && !window.matchMedia(NARROW_QUERY).matches
+  return narrow ? 'cards' : fallback
+}
+
+function searchResultMessage(count: number, query: string): string {
+  if (count === 0) return `Kein Eintrag passt zu „${query}“.`
+  return count === 1 ? `1 Eintrag passt zu „${query}“.` : `${count} Einträge passen zu „${query}“.`
 }
 
 function matches(text: string, query: string): boolean {
@@ -90,6 +109,7 @@ function matches(text: string, query: string): boolean {
 export default function OverviewPage<T>({
   title,
   heading,
+  countLabel,
   createLabel,
   onCreate,
   storageKey,
@@ -126,18 +146,26 @@ export default function OverviewPage<T>({
   }
 
   const isEmpty = items.length === 0
+  const firstLoad = isLoading && isEmpty
   const showList = !isEmpty && visible.length > 0
 
   return (
     <Box sx={{ flexGrow: 1, overflowY: 'auto', p: { xs: 2.5, md: 5 } }}>
       <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2, mb: 2.5, flexWrap: 'wrap' }}>
         <PageHeading
-          title={isLoading && isEmpty ? title : heading(visible.length)}
+          title={firstLoad || !heading ? title : heading(visible.length)}
           documentTitle={title}
         />
-        <Button variant="contained" onClick={onCreate} sx={{ ml: 'auto', flex: 'none' }}>
-          {createLabel}
-        </Button>
+        {countLabel && !firstLoad && (
+          <Typography component="span" sx={{ fontSize: 13, color: 'text.secondary' }}>
+            {countLabel(visible.length)}
+          </Typography>
+        )}
+        {createLabel && onCreate && (
+          <Button variant="contained" onClick={onCreate} sx={{ ml: 'auto', flex: 'none' }}>
+            {createLabel}
+          </Button>
+        )}
       </Box>
 
       {error && (
@@ -202,15 +230,21 @@ export default function OverviewPage<T>({
         </Box>
       )}
 
-      {isLoading && isEmpty ? (
+      {/* Das Filtern verschiebt den Fokus nicht; ohne Live-Bereich bliebe das Ergebnis am
+          Screenreader unbemerkt (accessibility.md, Prüfpunkt 2.8). */}
+      <Box role="status" aria-live="polite" sx={visuallyHidden}>
+        {query.trim() ? searchResultMessage(visible.length, query.trim()) : ''}
+      </Box>
+
+      {firstLoad ? (
         <Box sx={{ py: 6, display: 'flex', justifyContent: 'center' }}>
-          <CircularProgress size={24} aria-label={`${title} werden geladen`} />
+          <CircularProgress size={24} aria-label="Liste wird geladen" />
         </Box>
       ) : isEmpty ? (
         emptyState
       ) : visible.length === 0 ? (
         <Typography sx={{ color: 'text.secondary' }}>
-          Kein Eintrag passt zu „{query.trim()}“.
+          {searchResultMessage(0, query.trim())}
         </Typography>
       ) : null}
 
@@ -296,5 +330,28 @@ export function OverviewCard({ to, children }: { to: string; children: ReactNode
     >
       {children}
     </ButtonBase>
+  )
+}
+
+/**
+ * The name link of a table row: its stretched pseudo-element turns the whole row into one click
+ * target while the link stays its single tab stop (guidelines 5.3). Relies on the row being
+ * positioned, which `OverviewPage` guarantees for every row it renders.
+ */
+export function OverviewRowLink({ to, children }: { to: string; children: ReactNode }) {
+  return (
+    <Typography
+      component={RouterLink}
+      to={to}
+      sx={{
+        fontSize: 13.5,
+        fontWeight: 500,
+        color: 'text.primary',
+        textDecoration: 'none',
+        '&::after': { content: '""', position: 'absolute', inset: 0 },
+      }}
+    >
+      {children}
+    </Typography>
   )
 }

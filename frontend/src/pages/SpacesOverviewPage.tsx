@@ -3,9 +3,9 @@ import Box from '@mui/material/Box'
 import Chip from '@mui/material/Chip'
 import TableCell from '@mui/material/TableCell'
 import Typography from '@mui/material/Typography'
-import { Link as RouterLink, useNavigate } from 'react-router'
+import { useNavigate } from 'react-router'
 import MetaBadge from '../components/MetaBadge'
-import OverviewPage, { OverviewCard } from '../components/overview/OverviewPage'
+import OverviewPage, { OverviewCard, OverviewRowLink } from '../components/overview/OverviewPage'
 import SuccessionStateNote from '../components/succession/SuccessionStateNote'
 import { useSpaceStore } from '../stores/spaceStore'
 import { spaceRoleLabel } from '../utils/labels'
@@ -15,10 +15,13 @@ function plural(count: number, singular: string, pluralForm: string): string {
   return `${count} ${count === 1 ? singular : pluralForm}`
 }
 
-/** A membership row may be a group standing for any number of people - see Sidebar#spaceSubtitle
- *  for why the figure is not resolved to persons. A space you are alone in reads "nur Sie". */
+/**
+ * A membership row may be a group standing for any number of people - see Sidebar#spaceSubtitle
+ * for why the figure is not resolved to persons. Only the personal space, which no one else can
+ * join, may therefore claim "nur Sie".
+ */
 function memberSummary(space: SpaceListResponse): string {
-  if (space.memberCount <= 1) return 'nur Sie'
+  if (space.isDefault && space.memberCount <= 1) return 'nur Sie'
   return plural(space.memberCount, 'Mitgliedschaft', 'Mitgliedschaften')
 }
 
@@ -77,21 +80,7 @@ function SpaceRow({ space }: { space: SpaceListResponse }) {
   return (
     <>
       <TableCell>
-        {/* The stretched pseudo-element makes the whole row one click target while the link
-            itself stays the single tab stop (guidelines 5.3). */}
-        <Typography
-          component={RouterLink}
-          to={spaceHref(space)}
-          sx={{
-            fontSize: 13.5,
-            fontWeight: 500,
-            color: 'text.primary',
-            textDecoration: 'none',
-            '&::after': { content: '""', position: 'absolute', inset: 0 },
-          }}
-        >
-          {space.name}
-        </Typography>
+        <OverviewRowLink to={spaceHref(space)}>{space.name}</OverviewRowLink>
         {space.description && (
           <Typography component="div" sx={{ fontSize: 11.5, color: 'text.disabled' }}>
             {space.description}
@@ -112,7 +101,7 @@ function SpaceRow({ space }: { space: SpaceListResponse }) {
 const columns = [
   { key: 'name', label: 'Name' },
   { key: 'chats', label: 'Chats' },
-  { key: 'members', label: 'Mitglieder' },
+  { key: 'members', label: 'Mitgliedschaften' },
   { key: 'role', label: 'Ihre Rolle' },
   { key: 'state', label: 'Zustand' },
 ]

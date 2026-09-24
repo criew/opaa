@@ -34,6 +34,11 @@ const QUELLEN = {
     import: 'default',
     eager: true,
   }) as Record<string, string>),
+  ...(import.meta.glob('./space/*.tsx', {
+    query: '?raw',
+    import: 'default',
+    eager: true,
+  }) as Record<string, string>),
   ...(import.meta.glob('./succession/*.tsx', {
     query: '?raw',
     import: 'default',
@@ -49,6 +54,8 @@ const QUELLEN = {
 const VERWALTUNGSDATEIEN = Object.keys(QUELLEN).filter((pfad) => {
   if (pfad.startsWith('./admin/') || pfad.includes('/searchadmin/')) return true
   if (pfad.startsWith('./chat/') || pfad.startsWith('./metadata/')) return true
+  // #1917: die Abschnitte der Space-Einstellungen sind eigene Komponenten.
+  if (pfad.startsWith('./space/')) return true
   // #1821: die Betriebsliste entsteht in einer eigenen Komponente, nicht auf der Seite.
   if (pfad.startsWith('./succession/')) return true
   return [
@@ -68,7 +75,7 @@ const VERWALTUNGSDATEIEN = Object.keys(QUELLEN).filter((pfad) => {
     'LibraryDetailPage',
     'LibraryManagementPage',
     'SpacePage',
-    'SpaceManagementPage',
+    'SpaceSettingsPage',
   ].some((seite) => pfad.endsWith(`${seite}.tsx`))
 })
 
@@ -95,6 +102,9 @@ const VERWALTUNGSDATEIEN = Object.keys(QUELLEN).filter((pfad) => {
  *   („ohne Angabe im gefilterten Feld") — derselbe Fall wie ein Chip.
  * - `ChatInput`: die Eingabezeile ist ein Bedienelement, und ihr Vorschlagsfeld eine schwebende
  *   Ebene. Beides bringt seine Fläche zu Recht mit.
+ * - `SpaceGeneralSection`: der Gefahrenbereich am Ende der Stammdaten (#1917). Der Rahmen setzt
+ *   Archivieren und Löschen vom Formular darüber ab — er markiert eine Grenze, statt Inhalt zu
+ *   bündeln.
  * - `LibraryManagementPage`: die Kachel je Bibliothek ist eine `ButtonBase` — ein Bedienelement,
  *   das den Weg in die Detailansicht trägt. Ohne Begrenzung wäre unklar, wie weit die Trefferfläche
  *   reicht; das ist der dritte Fall aus #1608, nicht ein Kasten um ruhenden Inhalt.
@@ -111,6 +121,7 @@ const AUSNAHMEN = [
   'SourceFootnotes.tsx',
   'ChatInput.tsx',
   'LibraryManagementPage.tsx',
+  'SpaceGeneralSection.tsx',
 ]
 
 /**

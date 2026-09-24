@@ -55,6 +55,8 @@ describe('SpacesOverviewPage (#593, Mockup 1c)', () => {
     const personalCard = screen.getByRole('link', { name: /Mein Space/ })
     expect(personalCard).toHaveAttribute('href', '/spaces/space-personal/chats/new')
     expect(personalCard).toHaveTextContent('Eigener Denkraum ohne Mitleser.')
+    // "nur Sie" gilt allein im persönlichen Space; anderswo ist eine Mitgliedschaftszeile
+    // womöglich eine Gruppe (#1815).
     expect(personalCard).toHaveTextContent('12 Chats · nur Sie')
     expect(personalCard).toHaveTextContent('Administrator')
 
@@ -74,6 +76,16 @@ describe('SpacesOverviewPage (#593, Mockup 1c)', () => {
     expect(screen.queryByText(/Quelle/)).not.toBeInTheDocument()
   })
 
+  it('never reads "nur Sie" in a team space whose single membership may be a group (#1815)', () => {
+    const groupOnly = { ...team, archived: false, memberCount: 1 }
+    useSpaceStore.setState({ spaces: [groupOnly], isLoadingList: false, error: null })
+    renderWithProviders(<SpacesOverviewPage />, { withRouter: true })
+
+    const card = screen.getByRole('link', { name: /Widerspruchsstelle/ })
+    expect(card).toHaveTextContent('1 Mitgliedschaft')
+    expect(card).not.toHaveTextContent('nur Sie')
+  })
+
   it('falls back to the member figure when the list API carries no chat figure (#682)', () => {
     const withoutFigures = { ...team, chatCount: undefined }
     useSpaceStore.setState({ spaces: [withoutFigures], isLoadingList: false, error: null })
@@ -90,7 +102,7 @@ describe('SpacesOverviewPage (#593, Mockup 1c)', () => {
 
     await user.click(screen.getByRole('button', { name: 'Tabelle' }))
 
-    for (const head of ['Name', 'Chats', 'Mitglieder', 'Ihre Rolle', 'Zustand']) {
+    for (const head of ['Name', 'Chats', 'Mitgliedschaften', 'Ihre Rolle', 'Zustand']) {
       expect(screen.getByRole('columnheader', { name: head })).toBeInTheDocument()
     }
     expect(screen.getByRole('link', { name: 'Widerspruchsstelle' })).toHaveAttribute(

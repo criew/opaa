@@ -234,7 +234,7 @@ export async function expectSessionEndedWith(
       (response) => response.status() === 401 && response.url().includes("/api/v1/"),
       { timeout: 20_000 },
     ),
-    page.getByRole("link", { name: "Katalog" }).click(),
+    page.getByRole("link", { name: "Wissen" }).click(),
   ]);
   expect(refused.headers()["www-authenticate"] ?? "").toContain(marker);
   await expect(page).toHaveURL(/\/login(?:$|[?#])/, { timeout: 20_000 });

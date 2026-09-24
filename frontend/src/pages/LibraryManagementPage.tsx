@@ -1,5 +1,5 @@
 import { useCallback, useEffect } from 'react'
-import { Link as RouterLink, useNavigate } from 'react-router'
+import { useNavigate } from 'react-router'
 import Box from '@mui/material/Box'
 import TableCell from '@mui/material/TableCell'
 import Typography from '@mui/material/Typography'
@@ -10,7 +10,7 @@ import { useLibraryStore } from '../stores/libraryStore'
 import { fontFamily } from '../theme/tokens'
 import { assetRoleLabel, documentCountLabel, documentSourceTypeLabel } from '../utils/labels'
 import MetaBadge from '../components/MetaBadge'
-import OverviewPage, { OverviewCard } from '../components/overview/OverviewPage'
+import OverviewPage, { OverviewCard, OverviewRowLink } from '../components/overview/OverviewPage'
 import SuccessionStateNote from '../components/succession/SuccessionStateNote'
 
 function ownerTypeSummary(library: LibraryListResponse): string {
@@ -112,7 +112,7 @@ function LibraryCard({ library }: { library: LibraryListResponse }) {
         {[
           ownerTypeSummary(library),
           documentSourceTypeLabel(library.sourceType),
-          `${documentCountLabel(library.documentCount)} Dokumente`,
+          `${documentCountLabel(library.documentCount)} ${library.documentCount === 1 ? 'Dokument' : 'Dokumente'}`,
         ].join(' · ')}
       </Typography>
       <SuccessionStateNote succession={library.succession} variant="badge" />
@@ -128,21 +128,7 @@ function LibraryRow({ library }: { library: LibraryListResponse }) {
   return (
     <>
       <TableCell>
-        {/* The stretched pseudo-element makes the whole row one click target while the link
-            itself stays the single tab stop (guidelines 5.3). */}
-        <Typography
-          component={RouterLink}
-          to={`/libraries/${library.id}`}
-          sx={{
-            fontSize: 13.5,
-            fontWeight: 500,
-            color: 'text.primary',
-            textDecoration: 'none',
-            '&::after': { content: '""', position: 'absolute', inset: 0 },
-          }}
-        >
-          {library.name}
-        </Typography>
+        <OverviewRowLink to={`/libraries/${library.id}`}>{library.name}</OverviewRowLink>
         <Typography component="div" sx={{ fontSize: 11.5, color: 'text.disabled' }}>
           {[library.description, ownerTypeSummary(library)].filter(Boolean).join(' · ')}
         </Typography>
@@ -192,10 +178,11 @@ export default function LibraryManagementPage() {
     [],
   )
 
+  // Die Seite heißt wie ihr Menüpunkt (#1915); die Anzahl steht in der Zeile daneben.
   return (
     <OverviewPage<LibraryListResponse>
-      title="Wissensbibliotheken"
-      heading={(count) => (count === 1 ? '1 Wissensbibliothek' : `${count} Wissensbibliotheken`)}
+      title="Wissen"
+      countLabel={(count) => (count === 1 ? '1 Bibliothek' : `${count} Bibliotheken`)}
       createLabel="Neue Bibliothek"
       onCreate={() => navigate('/libraries/new')}
       storageKey="libraries"

@@ -121,6 +121,8 @@ Issues sind die Arbeitseinheit und müssen ausreichend in sich geschlossen sein,
 - **Abhängigkeiten** — blockierende Issues
 - **Labels** — einschließlich `size:S/M/L`
 
+**Epics grob schneiden.** Ein Epic wird in wenige, größere Sub-Issues zerlegt — Richtwert höchstens acht. Viele kleine Tickets kosten je Ticket denselben Fixaufwand (Kontext einlesen, Worktree, PR, Review, CI) und verleiten dazu, Entscheidungen in immer neue Folge-Issues zu verschieben. Ein Sub-Issue darf deshalb einen zusammenhängenden Block umfassen, in dem der Entwickler kleinere Entscheidungen selbst trifft; was fachlich in derselben Ecke liegt, wird im selben Issue miterledigt statt ausgegliedert (siehe Schritt 5 des Workflows). Bereits angelegte Issues derselben Ecke darf der Koordinator einem Entwickler gebündelt geben (siehe Koordinator-Betrieb, „Bündelung"). (Anweisung des Maintainers vom 24.09.2026.)
+
 ### Dokumentation
 
 - **Feature-Dokumentation wird von demjenigen geschrieben, der das Feature baut, im selben PR.** Kein separater Dokumentationsdurchgang; dies wird durch die Abnahmekriterien durchgesetzt und vom Code Reviewer geprüft.

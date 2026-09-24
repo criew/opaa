@@ -354,7 +354,7 @@ test.describe('Modellverwaltung (#760) - unabhängige Szenarien', () => {
     // "Admin"-Link auch dann grün, wenn die globale Leiste selbst noch gar nicht gerendert hätte.
     // Seit #786 führen die Admin-Seiten über den "Admin"-Eintrag der globalen Leiste; die
     // einzelnen Links (Modelle, Gruppen, Branding) stehen nicht mehr in der Seitenleiste.
-    await expect(page.getByRole('link', { name: 'Katalog' })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Wissen' })).toBeVisible()
     await expect(page.getByRole('link', { name: 'Admin' })).toHaveCount(0)
 
     await page.goto('/admin/models')

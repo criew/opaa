@@ -87,6 +87,14 @@ describe('LibraryManagementPage', () => {
     window.localStorage.clear()
   })
 
+  it('heads the page like its menu entry and names the figure beside it (#1915, #1913)', async () => {
+    setLibraryState([managerLibrary, viewerLibrary])
+    renderWithProviders(<LibraryManagementPage />, { withRouter: true })
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Wissen' })).toBeInTheDocument()
+    expect(screen.getByText('2 Bibliotheken')).toBeInTheDocument()
+  })
+
   it('renders the table with its six column heads and without the "Global" badge (#1916)', async () => {
     setLibraryState([managerLibrary])
     renderWithProviders(<LibraryManagementPage />, { withRouter: true })

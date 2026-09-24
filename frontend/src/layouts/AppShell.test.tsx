@@ -78,7 +78,7 @@ describe('AppShell', () => {
     renderShell()
     expect(screen.getByText('Chats')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Spaces' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Katalog' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Wissen' })).toBeInTheDocument()
   })
 
   it('renders OPAA branding', () => {
@@ -196,7 +196,7 @@ describe('AppShell', () => {
       expect(rail).toBeVisible()
       expect(screen.getByRole('complementary', { name: 'Space-Bereich' })).toBeVisible()
 
-      await user.click(within(rail).getByText('Katalog'))
+      await user.click(within(rail).getByText('Wissen'))
 
       await waitFor(() => expect(useUiStore.getState().sidebarOpen).toBe(false))
     } finally {
@@ -209,7 +209,7 @@ describe('AppShell', () => {
     renderShell()
 
     await user.click(
-      within(screen.getByRole('navigation', { name: 'Globale Navigation' })).getByText('Katalog'),
+      within(screen.getByRole('navigation', { name: 'Globale Navigation' })).getByText('Wissen'),
     )
 
     expect(screen.getByRole('main')).toHaveFocus()

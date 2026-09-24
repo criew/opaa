@@ -53,7 +53,7 @@ describe('GlobalRail', () => {
     const rail = screen.getByRole('navigation', { name: 'Globale Navigation' })
     expect(rail).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Spaces' })).toHaveAttribute('href', '/spaces')
-    expect(screen.getByRole('link', { name: 'Katalog' })).toHaveAttribute('href', '/libraries')
+    expect(screen.getByRole('link', { name: 'Wissen' })).toHaveAttribute('href', '/libraries')
   })
 
   it('shows the brand emblem without the product name - the rail has no room for text', () => {
@@ -65,16 +65,16 @@ describe('GlobalRail', () => {
   it('marks the exact destination with aria-current="page"', () => {
     renderRailAt('/libraries')
 
-    expect(screen.getByRole('link', { name: 'Katalog' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('link', { name: 'Wissen' })).toHaveAttribute('aria-current', 'page')
     expect(screen.getByRole('link', { name: 'Spaces' })).not.toHaveAttribute('aria-current')
   })
 
   it('marks a scope hit below the destination with aria-current="true"', () => {
-    // /libraries/lib-1 is in the catalog scope but is not the link's own target - "true" is
+    // /libraries/lib-1 is in the knowledge scope but is not the link's own target - "true" is
     // the accurate token there, "page" would claim the link points at the current page.
     renderRailAt('/libraries/lib-1')
 
-    expect(screen.getByRole('link', { name: 'Katalog' })).toHaveAttribute('aria-current', 'true')
+    expect(screen.getByRole('link', { name: 'Wissen' })).toHaveAttribute('aria-current', 'true')
   })
 
   it('counts an open chat as the Spaces scope', () => {

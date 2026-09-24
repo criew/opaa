@@ -12,5 +12,19 @@ export const HANDOVER_ROUTE = '/handover'
 /** Where every provider sign-in returns - the one route a running handover may pass through. */
 export const AUTH_CALLBACK_ROUTE = '/auth/callback'
 export const SETTINGS_ROUTE = '/settings'
+/**
+ * Die Reiter der Space-Einstellungen (#1917). Ein weiterer Asset-Typ ist ein weiterer Wert hier
+ * und ein weiterer Eintrag in SpaceSettingsPage; die Reihenfolge ist die der Reiterleiste, der
+ * erste Wert das Ziel eines Verweises ohne eigenen Reiter.
+ */
+export const SPACE_SETTINGS_TABS = ['general', 'members', 'knowledge'] as const
+export type SpaceSettingsTab = (typeof SPACE_SETTINGS_TABS)[number]
+
+export function spaceSettingsRoute(
+  spaceId: string,
+  tab: SpaceSettingsTab = SPACE_SETTINGS_TABS[0],
+): string {
+  return `/spaces/${spaceId}/settings/${tab}`
+}
 /** Where a sign-in lands when it carries no target of its own. */
 export const AFTER_SIGN_IN_ROUTE = '/chat'

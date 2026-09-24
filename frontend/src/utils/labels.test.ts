@@ -44,6 +44,8 @@ describe('documentCountLabel (#1916)', () => {
     expect(documentCountLabel(431)).toBe('431')
     expect(documentCountLabel(9_999)).toBe('9.999')
     expect(documentCountLabel(120_000)).toBe('120 K')
+    // Das Runden trägt nie über die nächste Größenordnung hinweg - sonst stünde hier „1.000 K".
+    expect(documentCountLabel(999_999)).toBe('1 Mio.')
     expect(documentCountLabel(1_234_567)).toBe('1,2 Mio.')
   })
 })

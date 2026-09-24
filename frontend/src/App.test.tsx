@@ -61,8 +61,19 @@ describe('App', () => {
     render(<App />)
     await waitFor(() => {
       expect(screen.getByText('Chats')).toBeInTheDocument()
-      // The catalog moved from the space column onto the global rail (#786).
-      expect(screen.getByText('Katalog')).toBeInTheDocument()
+      // Der Bestand je Asset-Typ steht als eigener Punkt auf der globalen Leiste (#786, #1915).
+      expect(screen.getByText('Wissen')).toBeInTheDocument()
     })
+  })
+
+  // #1917: Die Verwaltungsseite heißt jetzt „Einstellungen" und ist in Reiter gegliedert. Ein
+  // Lesezeichen auf die alte Adresse darf deshalb nicht ins Leere laufen.
+  it('sends a bookmark of the former management route to the first settings tab', async () => {
+    window.history.pushState({}, '', '/spaces/space-1/manage')
+    render(<App />)
+    await waitFor(() => {
+      expect(window.location.pathname).toBe('/spaces/space-1/settings/general')
+    })
+    window.history.pushState({}, '', '/')
   })
 })

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { screen } from '@testing-library/react'
+import { cleanup, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import TableCell from '@mui/material/TableCell'
 import { renderWithProviders } from '../../test/test-utils'
@@ -47,6 +47,8 @@ function renderOverview(props: Partial<React.ComponentProps<typeof OverviewPage<
 describe('OverviewPage (#1913)', () => {
   beforeEach(() => {
     window.localStorage.clear()
+    // Ein Stub aus einem vorherigen Test würde sonst die Ansichtswahl aller folgenden bestimmen.
+    Reflect.deleteProperty(window, 'matchMedia')
   })
 
   it('shows the heading with the visible count and the create button', () => {
@@ -72,13 +74,48 @@ describe('OverviewPage (#1913)', () => {
     expect(screen.getByRole('heading', { level: 1, name: '1 Beispiele' })).toBeInTheDocument()
   })
 
+  it('offers a count beside a fixed heading where the heading must stay the page name', async () => {
+    const user = userEvent.setup()
+    renderOverview({ heading: undefined, countLabel: (count) => `${count} Einträge` })
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Beispiele' })).toBeInTheDocument()
+    expect(screen.getByText('2 Einträge')).toBeInTheDocument()
+
+    await user.type(screen.getByRole('textbox', { name: 'Suchen' }), 'Bauamt')
+    expect(screen.getByText('1 Einträge')).toBeInTheDocument()
+  })
+
+  it('leaves out the create button where an overview offers no creation', () => {
+    renderOverview({ createLabel: undefined, onCreate: undefined })
+
+    expect(screen.queryByRole('button', { name: 'Neues Beispiel' })).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1, name: '2 Beispiele' })).toBeInTheDocument()
+  })
+
   it('names the query when nothing matches', async () => {
     const user = userEvent.setup()
     renderOverview()
 
     await user.type(screen.getByRole('textbox', { name: 'Suchen' }), 'Ordnungsamt')
 
-    expect(screen.getByText(/Kein Eintrag passt zu „Ordnungsamt“/)).toBeInTheDocument()
+    // Zweimal: einmal sichtbar, einmal im Statusbereich für Screenreader.
+    expect(screen.getAllByText(/Kein Eintrag passt zu „Ordnungsamt“/)).toHaveLength(2)
+  })
+
+  it('announces the filter result in a live region (accessibility.md 2.8)', async () => {
+    // Das Filtern verschiebt den Fokus nicht - ohne Statusbereich bliebe das Ergebnis am
+    // Screenreader unbemerkt.
+    const user = userEvent.setup()
+    renderOverview()
+
+    const status = screen.getByRole('status')
+    expect(status).toHaveTextContent('')
+
+    await user.type(screen.getByRole('textbox', { name: 'Suchen' }), 'Bauamt')
+    expect(status).toHaveTextContent('1 Eintrag passt zu „Bauamt“.')
+
+    await user.type(screen.getByRole('textbox', { name: 'Suchen' }), 'xyz')
+    expect(status).toHaveTextContent('Kein Eintrag passt zu „Bauamtxyz“.')
   })
 
   it('switches to the table view and remembers the choice per overview', async () => {
@@ -90,19 +127,30 @@ describe('OverviewPage (#1913)', () => {
 
     expect(screen.getByRole('table')).toBeInTheDocument()
     expect(screen.getByRole('columnheader', { name: 'Beschreibung' })).toBeInTheDocument()
-    expect(window.localStorage.getItem('opaa.overview.test.view')).toBe('table')
 
-    // A second overview keeps its own choice - the key carries the overview's name.
+    // Die Wahl überlebt den Seitenwechsel ...
     unmount()
+    renderOverview()
+    expect(screen.getByRole('table')).toBeInTheDocument()
+
+    // ... und gilt nur für diese Übersicht, nicht für die nächste.
+    cleanup()
     renderOverview({ storageKey: 'other' })
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
   })
 
-  it('starts in the remembered view instead of the default', () => {
-    window.localStorage.setItem('opaa.overview.test.view', 'table')
-    renderOverview()
+  it('starts a first visit on a narrow viewport with cards, not with the wide table', () => {
+    // jsdom kennt kein matchMedia; die Übersicht fällt sonst auf den Vorgabewert zurück.
+    window.matchMedia = ((query: string) =>
+      ({
+        matches: false,
+        media: query,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+      }) as unknown as MediaQueryList) as typeof window.matchMedia
+    renderOverview({ defaultView: 'table' })
 
-    expect(screen.getByRole('table')).toBeInTheDocument()
+    expect(screen.queryByRole('table')).not.toBeInTheDocument()
   })
 
   it('shows the empty state without search and switch when there is nothing to list', () => {
@@ -117,7 +165,7 @@ describe('OverviewPage (#1913)', () => {
     renderOverview({ items: [], isLoading: true })
 
     expect(screen.getByRole('heading', { level: 1, name: 'Beispiele' })).toBeInTheDocument()
-    expect(screen.getByLabelText('Beispiele werden geladen')).toBeInTheDocument()
+    expect(screen.getByLabelText('Liste wird geladen')).toBeInTheDocument()
   })
 
   it('shows a load error above the list', () => {
