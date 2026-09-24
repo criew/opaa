@@ -6,19 +6,19 @@ import FormControlLabel from '@mui/material/FormControlLabel'
 import Radio from '@mui/material/Radio'
 import RadioGroup from '@mui/material/RadioGroup'
 import Switch from '@mui/material/Switch'
-import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { alpha } from '@mui/material/styles'
 import { useNavigate } from 'react-router'
 import PageHeading from '../components/a11y/PageHeading'
 import { blue } from '../theme/tokens'
-import FieldLabel from '../components/wizard/FieldLabel'
 import ConfluenceSourceForm from '../components/library/ConfluenceSourceForm'
+import PathSourceForm from '../components/library/PathSourceForm'
 import S3SourceForm from '../components/library/S3SourceForm'
+import SourceConnectionTest from '../components/library/SourceConnectionTest'
+import UrlSourceForm from '../components/library/UrlSourceForm'
 import { EMPTY_CONFLUENCE_VALUES, type ConfluenceSourceValues } from '../utils/confluenceSource'
 import { EMPTY_S3_VALUES, type S3SourceValues } from '../utils/s3Source'
 import WizardStepBar from '../components/wizard/WizardStepBar'
-import { testLibrarySource } from '../services/api'
 import { confirmAction } from '../stores/confirmStore'
 import { useLibraryStore } from '../stores/libraryStore'
 import { useIndexingStore } from '../stores/indexingStore'
@@ -41,13 +41,14 @@ import {
 import {
   deriveLibrarySourceConfigPayload,
   validateLibrarySourceFields,
+  EMPTY_GENERIC_SOURCE_VALUES,
+  type GenericSourceValues,
 } from '../utils/librarySourceConfig'
 import type {
   Capability,
   DocumentSourceType,
   GroupListResponse,
   AssetOwnerType,
-  SourceConnectionTestResponse,
 } from '../types/api'
 
 const STEPS = ['Stammdaten', 'Herkunft', 'Rechte'] as const
@@ -79,19 +80,12 @@ export default function LibraryCreatePage() {
   const myGroups = useMyGroups()
 
   const [sourceType, setSourceType] = useState<DocumentSourceType>('UPLOAD')
-  const [sourcePath, setSourcePath] = useState('')
-  const [sourceUrl, setSourceUrl] = useState('')
-  const [sourceProxy, setSourceProxy] = useState('')
-  const [sourceCredentials, setSourceCredentials] = useState('')
-  const [sourceInsecureSsl, setSourceInsecureSsl] = useState(false)
+  const [generic, setGeneric] = useState<GenericSourceValues>(EMPTY_GENERIC_SOURCE_VALUES)
   const [confluence, setConfluence] = useState<ConfluenceSourceValues>(EMPTY_CONFLUENCE_VALUES)
   const [s3, setS3] = useState<S3SourceValues>(EMPTY_S3_VALUES)
   // Opt-out, not opt-in: whoever just configured a source expects content - the first run (a full
   // reconciliation over the selected spaces) starts right after creation unless switched off.
   const [startFirstRun, setStartFirstRun] = useState(true)
-  const [testResult, setTestResult] = useState<SourceConnectionTestResponse | null>(null)
-  const [testErrorMessage, setTestErrorMessage] = useState<string | null>(null)
-  const [testing, setTesting] = useState(false)
 
   const requiredCapability: Capability =
     sourceType === 'UPLOAD' ? 'CREATE_LIBRARY' : 'CREATE_CONNECTOR_LIBRARY'
@@ -103,18 +97,11 @@ export default function LibraryCreatePage() {
 
   const configKind = documentSourceTypeConfigKind[sourceType]
 
-  // #514: any edit to a field the connection test depends on invalidates a previous result -
-  // a stale "erreichbar" must never survive a since-changed address.
-  function clearTestResult() {
-    setTestResult((prev) => (prev === null ? prev : null))
-    setTestErrorMessage((prev) => (prev === null ? prev : null))
-  }
-
   const isDirty =
     name.trim() !== '' ||
     description.trim() !== '' ||
-    sourcePath !== '' ||
-    sourceUrl !== '' ||
+    generic.sourcePath !== '' ||
+    generic.sourceUrl !== '' ||
     confluence.sourceUrl !== '' ||
     confluence.sourceProxy !== '' ||
     confluence.sourceInsecureSsl ||
@@ -144,8 +131,7 @@ export default function LibraryCreatePage() {
     }
     if (activeStep === 1) {
       const validationError = validateLibrarySourceFields(sourceType, {
-        sourcePath,
-        sourceUrl,
+        ...generic,
         confluence,
         s3,
       })
@@ -156,42 +142,6 @@ export default function LibraryCreatePage() {
     }
     setError(null)
     setActiveStep((s) => s + 1)
-  }
-
-  const handleTest = async () => {
-    const validationError = validateLibrarySourceFields(sourceType, {
-      sourcePath,
-      sourceUrl,
-      confluence,
-      s3,
-    })
-    if (validationError) {
-      setError(validationError)
-      return
-    }
-    setError(null)
-    setTestResult(null)
-    setTestErrorMessage(null)
-    setTesting(true)
-    try {
-      const result = await testLibrarySource({
-        sourceType,
-        ...deriveLibrarySourceConfigPayload(sourceType, {
-          sourcePath,
-          sourceUrl,
-          sourceProxy,
-          sourceCredentials,
-          sourceInsecureSsl,
-        }),
-      })
-      setTestResult(result)
-    } catch (err) {
-      setTestErrorMessage(
-        err instanceof Error ? err.message : 'Verbindung konnte nicht getestet werden',
-      )
-    } finally {
-      setTesting(false)
-    }
   }
 
   const handleCreate = async () => {
@@ -205,11 +155,7 @@ export default function LibraryCreatePage() {
         ownerId: ownerType === 'GROUP' ? (selectedGroup?.id ?? undefined) : undefined,
         sourceType,
         ...deriveLibrarySourceConfigPayload(sourceType, {
-          sourcePath,
-          sourceUrl,
-          sourceProxy,
-          sourceCredentials,
-          sourceInsecureSsl,
+          ...generic,
           confluence,
           s3,
         }),
@@ -281,7 +227,6 @@ export default function LibraryCreatePage() {
               value={sourceType}
               onChange={(e) => {
                 setSourceType(e.target.value as DocumentSourceType)
-                clearTestResult()
                 setError(null)
               }}
               sx={{
@@ -395,130 +340,30 @@ export default function LibraryCreatePage() {
 
             {configKind === 'path' && (
               <Box sx={{ maxWidth: 640 }}>
-                <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1.75 }}>
-                  Verbindung zum Dateisystem
-                </Typography>
-                <FieldLabel htmlFor="library-create-path">Verzeichnispfad</FieldLabel>
-                <TextField
-                  id="library-create-path"
-                  size="small"
-                  value={sourcePath}
-                  onChange={(e) => {
-                    setSourcePath(e.target.value)
-                    clearTestResult()
-                  }}
-                  placeholder="/data/dokumente"
-                  helperText="Absoluter Pfad auf dem Server, den OPAA regelmäßig einliest."
-                  fullWidth
-                  slotProps={{ htmlInput: { maxLength: 2000, sx: { fontFamily: 'monospace' } } }}
+                <PathSourceForm
+                  mode="create"
+                  idPrefix="library-create"
+                  values={generic}
+                  onChange={(patch) => setGeneric((prev) => ({ ...prev, ...patch }))}
                 />
               </Box>
             )}
 
             {configKind === 'url' && (
               <Box sx={{ maxWidth: 640 }}>
-                <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1.75 }}>
-                  Verbindung zum {documentSourceTypeLabel(sourceType)}
-                </Typography>
-                {sourceType === 'RSS_FEED' && (
-                  <Alert severity="info" sx={{ mb: 1.75 }}>
-                    OPAA ruft neben dem Feed auch die von ihm verlinkten Detailseiten ab. Welche
-                    Adressen das sind, bestimmt der Betreiber des Feeds, nicht Sie selbst.
-                  </Alert>
-                )}
-                <Box
-                  sx={{
-                    display: 'grid',
-                    gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
-                    gap: '14px',
-                  }}
-                >
-                  <Box sx={{ gridColumn: '1 / -1' }}>
-                    <FieldLabel htmlFor="library-create-url">Adresse (URL)</FieldLabel>
-                    <TextField
-                      id="library-create-url"
-                      size="small"
-                      value={sourceUrl}
-                      onChange={(e) => {
-                        setSourceUrl(e.target.value)
-                        clearTestResult()
-                      }}
-                      placeholder="https://files.example.com/dokumente/"
-                      helperText="http oder https."
-                      fullWidth
-                      slotProps={{
-                        htmlInput: { maxLength: 2000, sx: { fontFamily: 'monospace' } },
-                      }}
-                    />
-                  </Box>
-                  <Box>
-                    <FieldLabel htmlFor="library-create-proxy">Proxy (optional)</FieldLabel>
-                    <TextField
-                      id="library-create-proxy"
-                      size="small"
-                      value={sourceProxy}
-                      onChange={(e) => {
-                        setSourceProxy(e.target.value)
-                        clearTestResult()
-                      }}
-                      placeholder="proxy.example.com:8080"
-                      autoComplete="off"
-                      fullWidth
-                      slotProps={{ htmlInput: { maxLength: 255 } }}
-                    />
-                  </Box>
-                  <Box>
-                    <FieldLabel htmlFor="library-create-credentials">
-                      Anmeldedaten (optional)
-                    </FieldLabel>
-                    <TextField
-                      id="library-create-credentials"
-                      size="small"
-                      type="password"
-                      value={sourceCredentials}
-                      onChange={(e) => {
-                        setSourceCredentials(e.target.value)
-                        clearTestResult()
-                      }}
-                      placeholder="benutzer:passwort"
-                      helperText="Wird nie in einer API-Antwort ausgegeben."
-                      autoComplete="new-password"
-                      fullWidth
-                      slotProps={{ htmlInput: { maxLength: 500 } }}
-                    />
-                  </Box>
-                  <FormControlLabel
-                    sx={{ gridColumn: '1 / -1' }}
-                    control={
-                      <Switch
-                        checked={sourceInsecureSsl}
-                        onChange={(e) => {
-                          setSourceInsecureSsl(e.target.checked)
-                          clearTestResult()
-                        }}
-                      />
-                    }
-                    label="Zertifikatsprüfung aussetzen"
-                  />
-                </Box>
+                <UrlSourceForm
+                  mode="create"
+                  sourceType={sourceType}
+                  idPrefix="library-create"
+                  values={generic}
+                  onChange={(patch) => setGeneric((prev) => ({ ...prev, ...patch }))}
+                />
               </Box>
             )}
 
             {(configKind === 'path' || configKind === 'url') && (
               <Box sx={{ maxWidth: 640 }}>
-                <Button onClick={() => void handleTest()} disabled={testing} variant="outlined">
-                  {testing ? 'Verbindung wird getestet …' : 'Verbindung testen'}
-                </Button>
-                {testErrorMessage && (
-                  <Alert severity="error" sx={{ mt: 1 }}>
-                    {testErrorMessage}
-                  </Alert>
-                )}
-                {testResult && (
-                  <Alert severity={testResult.reachable ? 'success' : 'warning'} sx={{ mt: 1 }}>
-                    {testResult.message}
-                  </Alert>
-                )}
+                <SourceConnectionTest sourceType={sourceType} values={generic} />
                 <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 2 }}>
                   Der erste Lauf startet nach dem Anlegen; sein Stand bleibt auf der Detailseite
                   sichtbar.

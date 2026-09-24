@@ -1,5 +1,7 @@
 package io.opaa.api;
 
+import io.opaa.api.dto.BulkDocumentDeleteRequest;
+import io.opaa.api.dto.BulkDocumentDeleteResponse;
 import io.opaa.api.dto.ConfluenceSpaceListRequest;
 import io.opaa.api.dto.ConfluenceSpaceListResponse;
 import io.opaa.api.dto.ConfluenceWebhookSecretResponse;
@@ -281,6 +283,19 @@ public class LibraryController {
       @PathVariable UUID libraryId, @PathVariable UUID documentId, @Caller CurrentUser caller) {
     documentService.deleteDocument(libraryId, documentId, caller);
     return ResponseEntity.noContent().build();
+  }
+
+  /**
+   * #1943: the selection's ids travel in the body, so this is a POST - each id is deleted on its
+   * own and reported on its own; see {@code LibraryDocumentService#deleteDocuments}.
+   */
+  @PostMapping("/{libraryId}/documents/bulk-delete")
+  public BulkDocumentDeleteResponse bulkDeleteDocuments(
+      @PathVariable UUID libraryId,
+      @Valid @RequestBody BulkDocumentDeleteRequest request,
+      @Caller CurrentUser caller) {
+    return LibraryDocumentResponseMapper.toBulkDeleteResponse(
+        documentService.deleteDocuments(libraryId, request.getDocumentIds(), caller));
   }
 
   @PostMapping("/{libraryId}/folders")

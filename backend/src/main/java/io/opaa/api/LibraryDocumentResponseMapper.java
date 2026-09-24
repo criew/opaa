@@ -1,10 +1,13 @@
 package io.opaa.api;
 
+import io.opaa.api.dto.BulkDocumentDeleteFailure;
+import io.opaa.api.dto.BulkDocumentDeleteResponse;
 import io.opaa.api.dto.LibraryDocumentPageResponse;
 import io.opaa.api.dto.LibraryDocumentResponse;
 import io.opaa.api.dto.LibraryFolderBreadcrumbItem;
 import io.opaa.api.dto.LibraryFolderListItem;
 import io.opaa.indexing.document.Document;
+import io.opaa.library.BulkDocumentDeletion;
 import io.opaa.library.LibraryDocumentEntry;
 import io.opaa.library.LibraryDocumentPage;
 import io.opaa.library.LibraryFolder;
@@ -74,5 +77,14 @@ final class LibraryDocumentResponseMapper {
 
   private static LibraryFolderBreadcrumbItem toBreadcrumbItem(LibraryFolder folder) {
     return new LibraryFolderBreadcrumbItem(folder.getId(), folder.getName());
+  }
+
+  /** #1943: both lists together cover every id of the request, each exactly once. */
+  static BulkDocumentDeleteResponse toBulkDeleteResponse(BulkDocumentDeletion deletion) {
+    return new BulkDocumentDeleteResponse(
+        deletion.deletedDocumentIds(),
+        deletion.failures().stream()
+            .map(failure -> new BulkDocumentDeleteFailure(failure.documentId(), failure.message()))
+            .toList());
   }
 }

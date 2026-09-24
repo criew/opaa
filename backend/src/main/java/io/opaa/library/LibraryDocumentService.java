@@ -40,6 +40,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -51,9 +52,11 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.InvalidMediaTypeException;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
@@ -139,6 +142,9 @@ public class LibraryDocumentService {
   private final SupportedDocumentFormats supportedFormats;
   private final S3OriginalAccess s3OriginalAccess;
 
+  /** One transaction per document for {@link #deleteDocuments} - see its contract. */
+  private final TransactionTemplate transactionTemplate;
+
   public LibraryDocumentService(
       KnowledgeLibraryRepository libraryRepository,
       LibraryAccessService accessService,
@@ -159,7 +165,8 @@ public class LibraryDocumentService {
       AttachmentProperties attachmentProperties,
       AttachmentExtractionLimiter attachmentExtractionLimiter,
       SupportedDocumentFormats supportedFormats,
-      S3OriginalAccess s3OriginalAccess) {
+      S3OriginalAccess s3OriginalAccess,
+      PlatformTransactionManager transactionManager) {
     this.libraryRepository = libraryRepository;
     this.accessService = accessService;
     this.documentRepository = documentRepository;
@@ -180,6 +187,7 @@ public class LibraryDocumentService {
     this.attachmentExtractionLimiter = attachmentExtractionLimiter;
     this.supportedFormats = supportedFormats;
     this.s3OriginalAccess = s3OriginalAccess;
+    this.transactionTemplate = new TransactionTemplate(transactionManager);
   }
 
   /**
@@ -1059,6 +1067,44 @@ public class LibraryDocumentService {
     } catch (IOException e) {
       return null;
     }
+  }
+
+  /**
+   * Deletes each of {@code documentIds} on its own (#1943): one transaction per id through {@link
+   * #transactionTemplate}, so an id that is no longer a document of this library costs only its own
+   * entry in the answer while every other document is still gone - the whole call as one
+   * transaction would roll the successful deletions back with it. Duplicates are deleted once and
+   * reported once, in the order they were first requested.
+   *
+   * <p>Only an {@code UPLOAD} library is accepted ({@link #requireUploadLibrary}): a document
+   * removed from a connector library returns with its next indexing run (ADR-0018, Entscheidung 1),
+   * so the bulk action is refused outright rather than silently undone.
+   */
+  public BulkDocumentDeletion deleteDocuments(
+      UUID libraryId, List<UUID> documentIds, CurrentUser caller) {
+    KnowledgeLibrary library = loadLibrary(libraryId, caller);
+    requireEditable(library, caller.id(), caller.isSystemAdmin());
+    requireUploadLibrary(library);
+
+    List<UUID> deleted = new ArrayList<>();
+    List<BulkDocumentDeletion.Failure> failures = new ArrayList<>();
+    for (UUID documentId : new LinkedHashSet<>(documentIds)) {
+      try {
+        transactionTemplate.executeWithoutResult(
+            status -> deleteDocument(libraryId, documentId, caller));
+        deleted.add(documentId);
+      } catch (NotFoundException e) {
+        failures.add(new BulkDocumentDeletion.Failure(documentId, e.getMessage()));
+      } catch (RuntimeException e) {
+        // The remaining ids must still be attempted; the caller is told which one stayed and why,
+        // without the internal cause the German message deliberately omits.
+        log.error("Bulk delete of document {} in library {} failed", documentId, libraryId, e);
+        failures.add(
+            new BulkDocumentDeletion.Failure(
+                documentId, "Dokument konnte nicht gelöscht werden — bitte erneut versuchen"));
+      }
+    }
+    return new BulkDocumentDeletion(List.copyOf(deleted), List.copyOf(failures));
   }
 
   @Transactional

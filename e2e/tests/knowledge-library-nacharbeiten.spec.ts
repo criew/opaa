@@ -428,6 +428,47 @@ test.describe('Dokumentliste mit Paging und Suche (#517)', () => {
   })
 })
 
+// #1943: Sammellöschen einer Upload-Bibliothek - die Auswahl, die Bestätigung und die Meldung
+// danach. Der Endpunkt POST .../documents/bulk-delete wird dabei durch den echten Stack gefahren,
+// nicht gemockt.
+test.describe('Sammelloeschen von Dokumenten (#1943)', () => {
+  const createdLibraryIds = cleanupLibraries()
+
+  test('Auswahl auf der Seite wird nach Bestaetigung gesammelt geloescht', async ({
+    authenticatedPage: page,
+  }) => {
+    const libraryName = `E2E Sammelloeschen ${runId}`
+
+    await gotoLibraries(page)
+    await page.getByRole('button', { name: 'Neue Bibliothek' }).click()
+    await page.getByLabel('Name').fill(libraryName)
+    await page.getByRole('button', { name: 'Weiter', exact: true }).click()
+    await page.getByRole('button', { name: 'Weiter zu Rechten' }).click()
+    await Promise.all([
+      page.waitForURL(/\/libraries\/(?!new$)[^/]+$/),
+      page.getByRole('button', { name: 'Bibliothek anlegen' }).click(),
+    ])
+    await expect(page.getByRole('heading', { name: libraryName })).toBeVisible()
+    const libraryId = libraryIdFromCurrentUrl(page)
+    createdLibraryIds.push(libraryId)
+
+    await uploadFillerDocuments(page, libraryId, 3)
+    await page.reload()
+    await expect(page.getByRole('heading', { name: libraryName })).toBeVisible()
+    await expect(page.getByText(/^E2E-Fuelldokument-/)).toHaveCount(3)
+
+    const toolbar = page.getByRole('toolbar', { name: 'Sammelaktionen' })
+    await toolbar.getByRole('checkbox', { name: 'Alle auf dieser Seite auswählen' }).check()
+    await expect(toolbar.getByText('3 ausgewählt')).toBeVisible()
+
+    await toolbar.getByRole('button', { name: 'Löschen' }).click()
+    await page.getByRole('button', { name: 'Löschen', exact: true }).last().click()
+
+    await expect(page.getByText('3 Dokumente gelöscht.')).toBeVisible({ timeout: 30_000 })
+    await expect(page.getByText(/^E2E-Fuelldokument-/)).toHaveCount(0)
+  })
+})
+
 // #516: editing a connector library's source configuration - the "wirkt erst mit dem naechsten
 // Indizierungslauf" hint, and the credentials-blank-means-unchanged semantics
 // (KnowledgeLibraryService#updateLibrary, ADR-0018; frontend behaviour added by #516, refined by

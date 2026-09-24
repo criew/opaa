@@ -79,7 +79,17 @@ const {
   mockGetDocumentTypeVocabulary,
   mockGetLibraryMetadataMaintenance,
   mockSetDocumentMetadataValue,
+  mockBulkDeleteLibraryDocuments,
+  mockTestLibrarySource,
 } = vi.hoisted(() => ({
+  mockBulkDeleteLibraryDocuments: vi.fn(async (_libraryId: string, documentIds: string[]) => ({
+    deletedDocumentIds: documentIds,
+    failures: [] as { documentId: string; message: string }[],
+  })),
+  mockTestLibrarySource: vi.fn(async () => ({
+    reachable: true,
+    message: 'Verzeichnis erreichbar, 3 unterstützte Dokumente gefunden.',
+  })),
   mockSetDocumentMetadataValue: vi.fn(async () => ({
     fieldKey: 'document_type',
     label: 'Dokumentart',
@@ -202,6 +212,8 @@ vi.mock('../services/api', async () => {
     getDocumentTypeVocabulary: mockGetDocumentTypeVocabulary,
     getLibraryMetadataMaintenance: mockGetLibraryMetadataMaintenance,
     setDocumentMetadataValue: mockSetDocumentMetadataValue,
+    bulkDeleteLibraryDocuments: mockBulkDeleteLibraryDocuments,
+    testLibrarySource: mockTestLibrarySource,
   }
 })
 
@@ -1033,7 +1045,7 @@ describe('LibraryDetailPage', () => {
     )
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
-    expect(await screen.findByText(/quellkonfiguration/i)).toBeInTheDocument()
+    expect(await screen.findByText('Anbindung')).toBeInTheDocument()
     expect(screen.getByText('/data/dokumente')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /dateien hochladen/i })).not.toBeInTheDocument()
     const triggerButton = screen.getByRole('button', { name: /jetzt indizieren/i })
@@ -1069,7 +1081,7 @@ describe('LibraryDetailPage', () => {
     )
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
     await user.click(await screen.findByRole('tab', { name: 'Quelle' }))
-    expect(await screen.findByText(/Quelladresse, Zeitplan und Laufprotokoll/i)).toBeInTheDocument()
+    expect(await screen.findByText(/Anbindung, Zeitplan und Läufe/i)).toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: /^quellkonfiguration bearbeiten$/i }),
     ).not.toBeInTheDocument()
@@ -1741,7 +1753,7 @@ describe('LibraryDetailPage', () => {
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
     await userEvent.setup().click(await screen.findByRole('tab', { name: 'Quelle' }))
 
-    expect(await screen.findByText(/letzte indizierungsläufe/i)).toBeInTheDocument()
+    expect(await screen.findByText('Läufe')).toBeInTheDocument()
     await screen.findByText(/10 verarbeitet, 2 übersprungen/i)
     // MUI's Accordion keeps its (collapsed) AccordionDetails mounted in the DOM for the
     // collapse/expand animation - collapsed-ness is exposed through aria-expanded on the summary
@@ -1950,7 +1962,7 @@ describe('LibraryDetailPage', () => {
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
     await screen.findByText(/87 Dokumente/i)
-    expect(screen.queryByText(/letzte indizierungsläufe/i)).not.toBeInTheDocument()
+    expect(screen.queryByText('Läufe')).not.toBeInTheDocument()
   })
 
   it('hides the indexing trigger for a VIEWER on a connector library', async () => {
@@ -2244,7 +2256,7 @@ describe('LibraryDetailPage', () => {
       expect(within(region).getByText('abgeleitet')).toBeInTheDocument()
       // A VIEWER sees the values but neither correction controls nor the bulk toolbar.
       expect(within(region).queryByRole('button', { name: /bearbeiten/ })).not.toBeInTheDocument()
-      expect(screen.queryByRole('toolbar', { name: 'Sammelzuweisung' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('toolbar', { name: 'Sammelaktionen' })).not.toBeInTheDocument()
       expect(
         screen.queryByRole('checkbox', { name: 'Dokument dienstanweisung.pdf auswählen' }),
       ).not.toBeInTheDocument()
@@ -2266,7 +2278,7 @@ describe('LibraryDetailPage', () => {
       renderWithProviders(<LibraryDetailPage />, { withRouter: true })
       const user = userEvent.setup()
 
-      const toolbar = await screen.findByRole('toolbar', { name: 'Sammelzuweisung' })
+      const toolbar = await screen.findByRole('toolbar', { name: 'Sammelaktionen' })
       expect(within(toolbar).getByRole('button', { name: 'Feld setzen' })).toBeDisabled()
       await user.click(
         screen.getByRole('checkbox', { name: 'Dokument dienstanweisung.pdf auswählen' }),
@@ -2336,7 +2348,7 @@ describe('LibraryDetailPage', () => {
       renderWithProviders(<LibraryDetailPage />, { withRouter: true })
       const user = userEvent.setup()
 
-      const toolbar = await screen.findByRole('toolbar', { name: 'Sammelzuweisung' })
+      const toolbar = await screen.findByRole('toolbar', { name: 'Sammelaktionen' })
       await user.click(
         screen.getByRole('checkbox', { name: 'Dokument dienstanweisung.pdf auswählen' }),
       )
@@ -2352,6 +2364,26 @@ describe('LibraryDetailPage', () => {
       expect(within(toolbar).getByText('1 ausgewählt')).toBeInTheDocument()
       await user.type(screen.getByLabelText('Dokumente durchsuchen'), 'dienst')
       expect(within(toolbar).getByText('0 ausgewählt')).toBeInTheDocument()
+    })
+
+    it('drops the selection when the page size changes, too', async () => {
+      // A smaller page size shows fewer rows - anything selected beyond them would be invisible
+      // to the person, and "Löschen" is irreversible.
+      mockGetLibraryDocuments.mockResolvedValue(pageOf(indexedDocuments, { totalElements: 45 }))
+      setLibraryState(managerLibrary, detailsOf(managerLibrary))
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+      const user = userEvent.setup()
+
+      const toolbar = await screen.findByRole('toolbar', { name: 'Sammelaktionen' })
+      await user.click(
+        screen.getByRole('checkbox', { name: 'Dokument dienstanweisung.pdf auswählen' }),
+      )
+      expect(within(toolbar).getByText('1 ausgewählt')).toBeInTheDocument()
+
+      await user.click(screen.getByRole('combobox', { name: 'Dokumente je Seite' }))
+      await user.click(await screen.findByRole('option', { name: '50 je Seite' }))
+
+      await waitFor(() => expect(within(toolbar).getByText('0 ausgewählt')).toBeInTheDocument())
     })
   })
 
@@ -3649,5 +3681,198 @@ describe('LibraryDetailPage', () => {
     expect(
       await screen.findByText(/Es werden nur Dokumente ohne Wert für „Dokumentart" angezeigt/),
     ).toBeInTheDocument()
+  })
+
+  // #1940: der Reiter „Quelle" in vier Abschnitten - Umfang für jeden Leser, Anbindung, Zeitplan
+  // und Läufe für Verwaltende.
+  describe('Reiter Quelle (#1940)', () => {
+    const connectorLibrary: LibraryListResponse = {
+      ...managerLibrary,
+      id: 'library-team',
+      myRole: 'MANAGER',
+      sourceType: 'HTTP_DIRECTORY',
+    }
+
+    async function openSourceTab() {
+      const user = userEvent.setup()
+      await user.click(await screen.findByRole('tab', { name: 'Quelle' }))
+      return user
+    }
+
+    it('names the sections behind the MANAGER bar in order', async () => {
+      setLibraryState(
+        connectorLibrary,
+        detailsOf(connectorLibrary, {
+          sourceType: 'HTTP_DIRECTORY',
+          sourceUrl: 'https://files.example.com/dokumente/',
+        }),
+      )
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+      await openSourceTab()
+
+      const panel = screen.getByRole('tabpanel', { name: 'Quelle' })
+      const headings = within(panel)
+        .getAllByRole('heading', { level: 2 })
+        .map((heading) => heading.textContent)
+      expect(headings).toEqual(['Anbindung', 'Zeitplan', 'Läufe'])
+    })
+
+    it('explains what a Geltungsbereich is and shows a VIEWER the Umfang only', async () => {
+      const readerOfS3: LibraryListResponse = {
+        ...viewerLibrary,
+        id: 'library-readonly',
+        sourceType: 'S3',
+      }
+      setLibraryState(
+        readerOfS3,
+        detailsOf(readerOfS3, {
+          sourceType: 'S3',
+          sourceUrl: 'https://s3.example.com',
+          s3Settings: { pathStyle: false, scopes: [{ bucket: 'akten', prefix: '2026/' }] },
+        }),
+      )
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+      await openSourceTab()
+
+      const panel = screen.getByRole('tabpanel', { name: 'Quelle' })
+      expect(within(panel).getByText('Umfang')).toBeInTheDocument()
+      expect(within(panel).getByText(/Ein Geltungsbereich ist ein Bucket/)).toBeInTheDocument()
+      expect(within(panel).getByText('akten/2026/')).toBeInTheDocument()
+      expect(within(panel).getByText(/Anbindung, Zeitplan und Läufe/)).toBeInTheDocument()
+      expect(within(panel).queryByText('Anbindung')).not.toBeInTheDocument()
+    })
+
+    it('tests the stored configuration from the Anbindung section, without opening the editor', async () => {
+      setLibraryState(
+        connectorLibrary,
+        detailsOf(connectorLibrary, {
+          sourceType: 'HTTP_DIRECTORY',
+          sourceUrl: 'https://files.example.com/dokumente/',
+          sourceProxy: null,
+          sourceInsecureSsl: false,
+        }),
+      )
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+      const user = await openSourceTab()
+
+      const panel = screen.getByRole('tabpanel', { name: 'Quelle' })
+      await user.click(within(panel).getByRole('button', { name: 'Verbindung testen' }))
+
+      await waitFor(() =>
+        // The credentials field stays blank, which is what makes the backend fall back to the
+        // stored ones; libraryId is what lets it (#1856).
+        expect(mockTestLibrarySource).toHaveBeenCalledWith(
+          expect.objectContaining({
+            sourceType: 'HTTP_DIRECTORY',
+            sourceUrl: 'https://files.example.com/dokumente/',
+            libraryId: 'library-team',
+            sourceCredentials: undefined,
+          }),
+        ),
+      )
+      expect(
+        await within(panel).findByText(
+          'Verzeichnis erreichbar, 3 unterstützte Dokumente gefunden.',
+        ),
+      ).toBeInTheDocument()
+    })
+  })
+
+  // #1943: Sammelaktionen der Auswahl - „Feld setzen" überall, „Löschen" nur wo eine Einzelzeile
+  // es auch anbietet.
+  describe('Sammelloeschen (#1943)', () => {
+    const uploads: LibraryDocumentResponse[] = [
+      {
+        id: 'doc-1',
+        fileName: 'a.pdf',
+        contentType: 'application/pdf',
+        fileSize: 10,
+        status: 'INDEXED',
+        sourceType: 'UPLOAD',
+        chunkCount: 1,
+        indexedAt: '2026-03-01T10:00:00Z',
+        uploadedByUserId: null,
+      },
+      {
+        id: 'doc-2',
+        fileName: 'b.pdf',
+        contentType: 'application/pdf',
+        fileSize: 10,
+        status: 'INDEXED',
+        sourceType: 'UPLOAD',
+        chunkCount: 1,
+        indexedAt: '2026-03-01T10:00:00Z',
+        uploadedByUserId: null,
+      },
+    ]
+
+    it('deletes the whole selection after a confirmation and reports a partial success', async () => {
+      mockGetLibraryDocuments.mockResolvedValue(pageOf(uploads))
+      mockBulkDeleteLibraryDocuments.mockResolvedValueOnce({
+        deletedDocumentIds: ['doc-1'],
+        failures: [{ documentId: 'doc-2', message: 'Dokument nicht gefunden' }],
+      })
+      setLibraryState(managerLibrary, detailsOf(managerLibrary))
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+      const user = userEvent.setup()
+
+      const toolbar = await screen.findByRole('toolbar', { name: 'Sammelaktionen' })
+      await user.click(screen.getByRole('checkbox', { name: 'Alle auf dieser Seite auswählen' }))
+      expect(within(toolbar).getByText('2 ausgewählt')).toBeInTheDocument()
+
+      await user.click(within(toolbar).getByRole('button', { name: 'Löschen' }))
+      await answerConfirm(user, '2 ausgewählte Dokumente löschen?', 'Löschen')
+
+      await waitFor(() =>
+        expect(mockBulkDeleteLibraryDocuments).toHaveBeenCalledWith('library-team', [
+          'doc-1',
+          'doc-2',
+        ]),
+      )
+      // Ein Teilerfolg ist eine Warnung, kein grüner Erfolg, und gleiche Gründe werden gezählt
+      // statt aneinandergereiht.
+      const result = await screen.findByText(
+        '1 von 2 Dokumenten gelöscht. Nicht gelöscht — 1 Dokument: Dokument nicht gefunden.',
+      )
+      expect(result.closest('.MuiAlert-root')).toHaveClass('MuiAlert-colorWarning')
+    })
+
+    it('counts identical reasons instead of repeating them', async () => {
+      mockGetLibraryDocuments.mockResolvedValue(pageOf(uploads))
+      mockBulkDeleteLibraryDocuments.mockResolvedValueOnce({
+        deletedDocumentIds: [],
+        failures: [
+          { documentId: 'doc-1', message: 'Dokument nicht gefunden' },
+          { documentId: 'doc-2', message: 'Dokument nicht gefunden' },
+        ],
+      })
+      setLibraryState(managerLibrary, detailsOf(managerLibrary))
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+      const user = userEvent.setup()
+
+      const toolbar = await screen.findByRole('toolbar', { name: 'Sammelaktionen' })
+      await user.click(screen.getByRole('checkbox', { name: 'Alle auf dieser Seite auswählen' }))
+      await user.click(within(toolbar).getByRole('button', { name: 'Löschen' }))
+      await answerConfirm(user, '2 ausgewählte Dokumente löschen?', 'Löschen')
+
+      expect(
+        await screen.findByText(
+          '0 von 2 Dokumenten gelöscht. Nicht gelöscht — 2 Dokumente: Dokument nicht gefunden.',
+        ),
+      ).toBeInTheDocument()
+    })
+
+    it('offers no Löschen on a connector bestand, and says why exactly once', async () => {
+      const connector = { ...managerLibrary, sourceType: 'FILESYSTEM' as const }
+      mockGetLibraryDocuments.mockResolvedValue(
+        pageOf(uploads.map((doc) => ({ ...doc, sourceType: 'FILESYSTEM' as const }))),
+      )
+      setLibraryState(connector, detailsOf(connector, { sourceType: 'FILESYSTEM' }))
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+      const toolbar = await screen.findByRole('toolbar', { name: 'Sammelaktionen' })
+      expect(within(toolbar).queryByRole('button', { name: 'Löschen' })).not.toBeInTheDocument()
+      expect(screen.getAllByText(/lassen sich hier nicht löschen/)).toHaveLength(1)
+    })
   })
 })

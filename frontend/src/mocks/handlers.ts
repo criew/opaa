@@ -3255,6 +3255,45 @@ export const handlers = [
     })
   }),
 
+  // #1943: Sammellöschen - jede Id für sich, Erfolge und Fehlschläge getrennt gemeldet.
+  http.post('/api/v1/libraries/:libraryId/documents/bulk-delete', async ({ params, request }) => {
+    const libraryId = String(params.libraryId)
+    const existing = mockLibraryDocuments[libraryId]
+    const detail = mockLibraryDetails[libraryId]
+    if (!detail || !existing) {
+      return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
+    }
+    if (!canManageMockLibrary(libraryId)) {
+      return HttpResponse.json({ error: 'Kein Zugriff auf diese Bibliothek' }, { status: 403 })
+    }
+    if (detail.sourceType !== 'UPLOAD') {
+      return HttpResponse.json(
+        { error: 'Diese Bibliothek verwaltet ihren Bestand über ihre Quelle' },
+        { status: 409 },
+      )
+    }
+    const body = (await request.json()) as { documentIds?: string[] }
+    const requested = [...new Set(body.documentIds ?? [])]
+    const deletedDocumentIds: string[] = []
+    const failures: { documentId: string; message: string }[] = []
+    for (const documentId of requested) {
+      const idx = existing.findIndex((doc) => doc.id === documentId)
+      if (idx < 0) {
+        failures.push({ documentId, message: 'Dokument nicht gefunden' })
+        continue
+      }
+      existing.splice(idx, 1)
+      deletedDocumentIds.push(documentId)
+    }
+    const listEntry = mockLibraries.find((item) => item.id === libraryId)
+    for (const target of [detail, listEntry]) {
+      if (target && (target.documentCount ?? 0) > 0) {
+        target.documentCount = Math.max(0, (target.documentCount ?? 0) - deletedDocumentIds.length)
+      }
+    }
+    return HttpResponse.json({ deletedDocumentIds, failures })
+  }),
+
   http.delete('/api/v1/libraries/:libraryId/documents/:documentId', ({ params }) => {
     const libraryId = String(params.libraryId)
     const documentId = String(params.documentId)

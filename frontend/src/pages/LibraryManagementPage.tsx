@@ -33,14 +33,24 @@ function lastUpdateDate(library: LibraryListResponse): string {
 }
 
 /**
- * The "Letzte Aktualisierung" cell (#1916): the date of the last successful run, a live run with
- * its progress, and a failed last run named as such. An upload library has no run at all - its
+ * The "Letzte Aktualisierung" cell (#1916/#1940): the date of the last successful run, a live run
+ * with its progress, and a failed last run named as such. An upload library has no run at all - its
  * cell stays empty rather than claiming a missing update.
+ *
+ * <p>Two sources, in this order: the indexing store, which only knows a library whose status was
+ * polled in this session, and otherwise the list entry's own `lastRunStatus` - without it a failed
+ * last run was invisible here, because `lastIndexedAt` only ever moves on a success.
  */
 function LastUpdateCell({ library }: { library: LibraryListResponse }) {
-  const run = useIndexingStore((s) => s.runsByLibrary[library.id]) ?? IDLE_RUN_STATE
+  const polledRun = useIndexingStore((s) => s.runsByLibrary[library.id])
+  const run =
+    polledRun ??
+    (library.lastRunStatus ? { ...IDLE_RUN_STATE, status: library.lastRunStatus } : IDLE_RUN_STATE)
 
   if (run.status === 'RUNNING') {
+    // Without a polled run there are no figures to show a share of - the list entry only says
+    // that a run is under way, and claiming "0 %" would be a number nobody measured.
+    if (!polledRun) return <>Lauf läuft</>
     const percent =
       run.totalDocuments > 0 ? Math.round((run.documentCount / run.totalDocuments) * 100) : 0
     return (

@@ -110,7 +110,7 @@ Webhook-Zustand sehen nur Verwaltende (Rolle MANAGER oder Eigentümer), ebenso d
 - **Kein persönliches Konto.** Ein persönliches Token trägt die Rechte einer Person und verfällt mit
   ihrem Austritt; die Bibliothek fällt dann aus.
 - **Token je Bibliothek.** OPAA kennt keine geteilte Verbindung; wer ein Token rotiert, das in fünf
-  Bibliotheken steht, rotiert es fünfmal (Bibliothek, Quellkonfiguration, Bearbeiten). Ein
+  Bibliotheken steht, rotiert es fünfmal (Bibliothek, Reiter „Quelle", Anbindung, Bearbeiten). Ein
   Rotationskalender mit Bibliotheksliste je Token erspart die Suche.
 - **Webhook-Geheimnis** ebenfalls je Bibliothek (Abschnitt 8); es ist ein zweites Geheimnis, kein
   Ersatz für das Token.
@@ -259,7 +259,8 @@ nur später.**
 
 ### 8.1 Geheimnis in OPAA erzeugen
 
-Bibliothek, Quellkonfiguration (Verwaltende), Zeile **Webhook**, **„Webhook einrichten"**. OPAA
+Bibliothek, Reiter „Quelle", Abschnitt **Anbindung** (Verwaltende), Zeile **Webhook**,
+**„Webhook einrichten"**. OPAA
 zeigt das Geheimnis **genau einmal** zusammen mit der Adresse des Eingangs
 (`https://<opaa-host>/api/v1/libraries/<Bibliotheks-ID>/confluence-webhook`). Beides jetzt in
 Confluence hinterlegen; danach ist das Geheimnis nur noch als „eingerichtet" sichtbar. „Geheimnis

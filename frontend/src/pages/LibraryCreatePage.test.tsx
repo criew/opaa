@@ -699,6 +699,28 @@ describe('LibraryCreatePage (#596, Mockup 1e)', () => {
     ).toBeInTheDocument()
   })
 
+  // #514: ein Ergebnis gehört zu der Probe, mit der es gemessen wurde - auch zu ihrem Quellentyp.
+  it('drops a connection test result when the source type changes (#514)', async () => {
+    const user = userEvent.setup()
+    mockTestLibrarySource.mockResolvedValueOnce({
+      reachable: true,
+      message: 'Feed erreichbar, 12 Einträge gefunden.',
+    })
+    renderPage()
+
+    await user.type(screen.getByLabelText(/Name/), 'Bekanntmachungen')
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    await user.click(screen.getByRole('radio', { name: /RSS-Feed/ }))
+    await user.type(screen.getByLabelText(/Adresse/), 'https://example.test/feed.xml')
+    await user.click(screen.getByRole('button', { name: 'Verbindung testen' }))
+    expect(await screen.findByText('Feed erreichbar, 12 Einträge gefunden.')).toBeInTheDocument()
+
+    // Derselbe Adresswert, anderer Quellentyp: die Probe lief nie gegen ein Webverzeichnis.
+    await user.click(screen.getByRole('radio', { name: /Webverzeichnis/ }))
+
+    expect(screen.queryByText('Feed erreichbar, 12 Einträge gefunden.')).not.toBeInTheDocument()
+  })
+
   it('keeps entered values when navigating back', async () => {
     const user = userEvent.setup()
     renderPage()

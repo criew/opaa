@@ -182,6 +182,25 @@ describe('LibraryManagementPage', () => {
     expect(screen.queryByText('18.08.2026')).not.toBeInTheDocument()
   })
 
+  // #1940: without a polled run, the list entry's own lastRunStatus is what makes a failed last
+  // run visible - lastIndexedAt below still stands at the older success and never moves on a
+  // failure, so before this field the overview could not tell the two apart.
+  it('names a failed last run from the list entry alone, without any polling (#1940)', async () => {
+    setLibraryState([{ ...managerLibrary, lastRunStatus: 'FAILED' }])
+    renderWithProviders(<LibraryManagementPage />, { withRouter: true })
+
+    expect(await screen.findByText('Lauf fehlgeschlagen')).toBeInTheDocument()
+    expect(screen.queryByText('18.08.2026')).not.toBeInTheDocument()
+  })
+
+  it('keeps the success date when the list entry reports a completed last run (#1940)', async () => {
+    setLibraryState([{ ...managerLibrary, lastRunStatus: 'COMPLETED' }])
+    renderWithProviders(<LibraryManagementPage />, { withRouter: true })
+
+    expect(await screen.findByText('18.08.2026')).toBeInTheDocument()
+    expect(screen.queryByText('Lauf fehlgeschlagen')).not.toBeInTheDocument()
+  })
+
   it('lists libraries sorted alphabetically by name', async () => {
     setLibraryState([managerLibrary, ownLibrary])
     renderWithProviders(<LibraryManagementPage />, { withRouter: true })

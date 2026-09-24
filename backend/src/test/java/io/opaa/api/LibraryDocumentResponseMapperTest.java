@@ -1,12 +1,16 @@
 package io.opaa.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 
+import io.opaa.api.dto.BulkDocumentDeleteFailure;
+import io.opaa.api.dto.BulkDocumentDeleteResponse;
 import io.opaa.api.dto.LibraryDocumentPageResponse;
 import io.opaa.api.dto.LibraryDocumentResponse;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.indexing.document.Document;
 import io.opaa.indexing.document.SourceDocumentContext;
+import io.opaa.library.BulkDocumentDeletion;
 import io.opaa.library.LibraryDocumentEntry;
 import io.opaa.library.LibraryDocumentPage;
 import io.opaa.library.LibraryFolder;
@@ -259,5 +263,40 @@ class LibraryDocumentResponseMapperTest {
     assertThat(response.getFolders()).isEmpty();
     assertThat(response.getBreadcrumb()).isEmpty();
     assertThat(response.getFolderId()).isNull();
+  }
+
+  @Test
+  void toBulkDeleteResponseCarriesEveryIdWithItsReason() {
+    // #1943: both lists together cover every requested id exactly once - a failure without its
+    // German reason would leave the caller unable to say what stayed and why.
+    UUID deleted = UUID.randomUUID();
+    UUID missing = UUID.randomUUID();
+    UUID broken = UUID.randomUUID();
+    BulkDocumentDeletion deletion =
+        new BulkDocumentDeletion(
+            List.of(deleted),
+            List.of(
+                new BulkDocumentDeletion.Failure(missing, "Dokument nicht gefunden"),
+                new BulkDocumentDeletion.Failure(broken, "Dokument konnte nicht gelöscht werden")));
+
+    BulkDocumentDeleteResponse response =
+        LibraryDocumentResponseMapper.toBulkDeleteResponse(deletion);
+
+    assertThat(response.getDeletedDocumentIds()).containsExactly(deleted);
+    assertThat(response.getFailures())
+        .extracting(BulkDocumentDeleteFailure::getDocumentId, BulkDocumentDeleteFailure::getMessage)
+        .containsExactly(
+            tuple(missing, "Dokument nicht gefunden"),
+            tuple(broken, "Dokument konnte nicht gelöscht werden"));
+  }
+
+  @Test
+  void toBulkDeleteResponseLeavesBothListsEmptyWhenNothingWasRequested() {
+    BulkDocumentDeleteResponse response =
+        LibraryDocumentResponseMapper.toBulkDeleteResponse(
+            new BulkDocumentDeletion(List.of(), List.of()));
+
+    assertThat(response.getDeletedDocumentIds()).isEmpty();
+    assertThat(response.getFailures()).isEmpty();
   }
 }

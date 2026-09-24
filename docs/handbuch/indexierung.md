@@ -117,16 +117,17 @@ Die Tabelle hat sechs Spalten:
 | **Dokumente** | die Anzahl als Zahl, ab fünf Stellen gekürzt („120 K", „1,2 Mio.") |
 | **Reichweite** | wie weit die Bibliothek reicht, abgeleitet aus ihren Berechtigungen: „Alle", „3 Gruppen, 2 Personen" oder „nur Sie" |
 | **Ihre Rolle** | Ihre Rolle an der Bibliothek |
-| **Letzte Aktualisierung** | das Datum des letzten erfolgreichen Laufs. Eine Upload-Bibliothek hat keinen Lauf, ihr Feld bleibt leer |
+| **Letzte Aktualisierung** | das Datum des letzten erfolgreichen Laufs — oder „Lauf fehlgeschlagen", wenn der jüngste Lauf gescheitert ist, und „Lauf läuft", solange einer läuft. Eine Upload-Bibliothek hat keinen Lauf, ihr Feld bleibt leer |
 
 Bestände ohne Leserecht erscheinen nicht in der Liste.
 
-**Was die Übersicht über Läufe noch nicht zeigt.** Die Liste trägt nur den Zeitpunkt des letzten
-*erfolgreichen* Laufs. Einen laufenden Vorgang und einen gescheiterten letzten Lauf zeigt die
-Spalte nur, solange die Sitzung ihn kennt — also nachdem die Bibliothek in dieser Sitzung geöffnet
-oder ein Lauf von hier aus angestoßen wurde; nach einem frischen Seitenaufruf steht dort wieder
-das Datum. Verlässlich steht der Status des letzten Laufs in der **Detailansicht der Bibliothek**
-und in ihrem Laufprotokoll (Abschnitt 8.2).
+**Was die Übersicht über Läufe sagt — und was nicht.** Die Spalte nennt den Ausgang des jüngsten
+Laufs, auch ohne die Bibliothek zu öffnen: Ein gescheiterter letzter Lauf steht dort als „Lauf
+fehlgeschlagen" statt als Datum eines älteren Erfolgs. Den *Fortschritt* eines laufenden Vorgangs
+(„Lauf läuft · 62 %") zeigt sie dagegen nur, solange die Sitzung ihn verfolgt — also nachdem die
+Bibliothek in dieser Sitzung geöffnet oder ein Lauf von hier aus angestoßen wurde; sonst steht dort
+schlicht „Lauf läuft". Warum ein Lauf gescheitert ist, steht im Laufprotokoll der Detailansicht
+(Abschnitt 8.2).
 
 **Wo die Detailansicht was zeigt.** Der Kopf trägt Typ-Symbol und Quellentyp-Abzeichen, Name und
 Beschreibung (für Verwaltende über den Stift gemeinsam änderbar), die Kennzahlen, bei Confluence
@@ -134,8 +135,28 @@ und S3 eine Kurzzeile zum Umfang mit Verweis auf den Reiter „Quelle", die Scha
 indizieren" und — bei Confluence — „Vollabgleich starten" sowie ein „⋯"-Menü mit „Bibliothek
 löschen". Darunter liegen die Reiter **Dokumente · Quelle · Metadaten · Freigaben**; eine
 Upload-Bibliothek hat keinen Reiter „Quelle". Alle Reiter stehen jeder Rolle offen — wer nur lesen
-darf, sieht im Reiter „Quelle" lediglich den Umfang, nicht Quelladresse, Zeitplan und
-Laufprotokoll.
+darf, sieht im Reiter „Quelle" lediglich den Umfang.
+
+Der Reiter **„Quelle"** hat vier Abschnitte in dieser Reihenfolge:
+
+| Abschnitt | Inhalt | Sichtbar für |
+|---|---|---|
+| **Umfang** | Welchen Ausschnitt der Quelle diese Bibliothek spiegelt — bei Confluence die ausgewählten Spaces und die erkannte Edition, bei S3 die Geltungsbereiche (Bucket, wahlweise mit Präfix), jeweils mit einem Satz dazu, was ein Geltungsbereich ist und wer den daraus indizierten Bestand lesen kann. Entfällt bei den übrigen Konnektoren | alle Leseberechtigten |
+| **Anbindung** | Quelladresse und Verbindungsparameter, „Bearbeiten", „Verbindung testen" gegen die gespeicherte Konfiguration sowie — je nach Typ — Webhook (Confluence) oder Ereignisse (S3) | ab MANAGER |
+| **Zeitplan** | Rhythmus, nächster Termin, bei Confluence zusätzlich der Vollabgleich-Rhythmus; eine Warnung, wenn die letzten geplanten Läufe gescheitert sind | ab MANAGER |
+| **Läufe** | das Laufprotokoll (Abschnitt 8.2) | ab MANAGER |
+
+Der Reiter **„Dokumente"** zeigt für jeden Quellentyp dieselbe Liste: Suche, Seitengröße, Auswahl
+und Blättern sind überall gleich; typabhängig sind nur die Zusatzzeilen einer Dokumentzeile
+(Space bzw. Bucket, Herkunft, Anhänge) und die Aktionen. Steht ein Ordner offen, liegt sein Pfad
+unmittelbar über dem Suchfeld. Ordnerzeilen sind nicht auswählbar; das ist an ihrem abgeblendeten
+Auswahlkästchen zu sehen. „Alle auf dieser Seite auswählen" steht auch auf der obersten Ebene.
+Für die Auswahl bietet die Leiste alle Aktionen an, die für **alle** ausgewählten Dokumente
+zulässig sind: „Feld setzen" (siehe [Metadaten](metadaten.md)) und — nur in einer
+Upload-Bibliothek — „Löschen". Das Sammellöschen fragt einmal nach und meldet danach, wie viele
+Dokumente gelöscht wurden; blieb eines stehen (etwa weil es zwischenzeitlich schon weg war),
+nennt die Meldung den Grund. In einer Konnektorbibliothek gibt es weder das Einzel- noch das
+Sammellöschen — ein gelöschtes Dokument käme mit dem nächsten Lauf zurück.
 
 ## 3. Wie ein Lauf entsteht und endet
 
