@@ -49,7 +49,18 @@ export interface OverviewPageProps<T> {
   items: T[]
   itemKey: (item: T) => string
   /** Everything the client-side search matches against - name, description, whatever fits. */
-  searchText: (item: T) => string
+  searchText?: (item: T) => string
+  /**
+   * Hands the search to the caller, e.g. to a server query: `items` are then the result as it
+   * stands, and the overview filters nothing itself. Omitted, the search runs over `searchText`.
+   */
+  search?: { value: string; onChange: (value: string) => void }
+  /** Further controls beside the search, e.g. a type filter. */
+  filters?: ReactNode
+  /** Whether `filters` currently narrow `items` - an empty result then reads as "no match". */
+  filtered?: boolean
+  /** The size of the whole result where `items` hold only a part of it, e.g. one page. */
+  total?: number
   searchPlaceholder?: string
   isLoading?: boolean
   error?: string | null
@@ -61,6 +72,8 @@ export interface OverviewPageProps<T> {
   renderRow: (item: T) => ReactNode
   /** Quiet note below the list, e.g. which items the list cannot show. */
   footNote?: ReactNode
+  /** Rendered below the list, e.g. a button that loads the next page. */
+  listFooter?: ReactNode
 }
 
 /** MUI's `md` breakpoint - the width from which the table view is the better first impression. */
@@ -87,6 +100,12 @@ function readView(storageKey: string, fallback: OverviewView): OverviewView {
 }
 
 function searchResultMessage(count: number, query: string): string {
+  if (!query) {
+    if (count === 0) return 'Kein Eintrag passt zu den Filtern.'
+    return count === 1
+      ? '1 Eintrag passt zu den Filtern.'
+      : `${count} Einträge passen zu den Filtern.`
+  }
   if (count === 0) return `Kein Eintrag passt zu „${query}“.`
   return count === 1 ? `1 Eintrag passt zu „${query}“.` : `${count} Einträge passen zu „${query}“.`
 }
@@ -117,6 +136,10 @@ export default function OverviewPage<T>({
   items,
   itemKey,
   searchText,
+  search,
+  filters,
+  filtered = false,
+  total,
   searchPlaceholder = 'Name oder Beschreibung …',
   isLoading = false,
   error = null,
@@ -125,15 +148,18 @@ export default function OverviewPage<T>({
   renderCard,
   renderRow,
   footNote,
+  listFooter,
 }: OverviewPageProps<T>) {
   const [view, setView] = useState<OverviewView>(() => readView(storageKey, defaultView))
-  const [query, setQuery] = useState('')
+  const [ownQuery, setOwnQuery] = useState('')
+  const query = search ? search.value : ownQuery
+  const setQuery = search ? search.onChange : setOwnQuery
 
   const visible = useMemo(() => {
     const trimmed = query.trim()
-    if (!trimmed) return items
+    if (search || !trimmed || !searchText) return items
     return items.filter((item) => matches(searchText(item), trimmed))
-  }, [items, query, searchText])
+  }, [items, query, search, searchText])
 
   function changeView(next: OverviewView | null) {
     if (!next) return
@@ -145,20 +171,21 @@ export default function OverviewPage<T>({
     }
   }
 
-  const isEmpty = items.length === 0
-  const firstLoad = isLoading && isEmpty
-  const showList = !isEmpty && visible.length > 0
+  // A narrowed result is still "a list with no match", never the overview's empty state - the
+  // search and the filters have to stay in reach to widen it again.
+  const narrowed = filtered || (search !== undefined && query.trim() !== '')
+  const isEmpty = items.length === 0 && !narrowed
+  const firstLoad = isLoading && items.length === 0 && !narrowed
+  const showList = visible.length > 0
+  const count = total ?? visible.length
 
   return (
     <Box sx={{ flexGrow: 1, overflowY: 'auto', p: { xs: 2.5, md: 5 } }}>
       <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2, mb: 2.5, flexWrap: 'wrap' }}>
-        <PageHeading
-          title={firstLoad || !heading ? title : heading(visible.length)}
-          documentTitle={title}
-        />
+        <PageHeading title={firstLoad || !heading ? title : heading(count)} documentTitle={title} />
         {countLabel && !firstLoad && (
           <Typography component="span" sx={{ fontSize: 13, color: 'text.secondary' }}>
-            {countLabel(visible.length)}
+            {countLabel(count)}
           </Typography>
         )}
         {createLabel && onCreate && (
@@ -212,6 +239,7 @@ export default function OverviewPage<T>({
               htmlInput: { 'aria-label': 'Suchen' },
             }}
           />
+          {filters}
           <ToggleButtonGroup
             size="small"
             exclusive
@@ -233,7 +261,7 @@ export default function OverviewPage<T>({
       {/* Das Filtern verschiebt den Fokus nicht; ohne Live-Bereich bliebe das Ergebnis am
           Screenreader unbemerkt (accessibility.md, Prüfpunkt 2.8). */}
       <Box role="status" aria-live="polite" sx={visuallyHidden}>
-        {query.trim() ? searchResultMessage(visible.length, query.trim()) : ''}
+        {query.trim() || filtered ? searchResultMessage(count, query.trim()) : ''}
       </Box>
 
       {firstLoad ? (
@@ -242,7 +270,7 @@ export default function OverviewPage<T>({
         </Box>
       ) : isEmpty ? (
         emptyState
-      ) : visible.length === 0 ? (
+      ) : visible.length === 0 && !isLoading ? (
         <Typography sx={{ color: 'text.secondary' }}>
           {searchResultMessage(0, query.trim())}
         </Typography>
@@ -288,6 +316,8 @@ export default function OverviewPage<T>({
           </Table>
         </Box>
       )}
+
+      {showList && listFooter}
 
       {showList && footNote && (
         <Typography sx={{ fontSize: 11.5, color: 'text.secondary', mt: 1.5 }}>

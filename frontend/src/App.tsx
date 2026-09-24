@@ -35,6 +35,7 @@ import LibraryDetailPage from './pages/LibraryDetailPage'
 import PromptLibrariesPage from './pages/PromptLibrariesPage'
 import PromptLibraryCreatePage from './pages/PromptLibraryCreatePage'
 import PromptLibraryDetailPage from './pages/PromptLibraryDetailPage'
+import CatalogPage from './pages/CatalogPage'
 import {
   FORGOT_PASSWORD_ROUTE,
   HANDOVER_ROUTE,
@@ -181,6 +182,7 @@ export default function App() {
                 <Route path="prompts/new" element={<PromptLibraryCreatePage />} />
                 <Route path="prompts/:promptLibraryId" element={<PromptLibraryDetailPage />} />
                 <Route path="prompts/:promptLibraryId/:tab" element={<PromptLibraryDetailPage />} />
+                <Route path="catalog" element={<CatalogPage />} />
               </Route>
               {/* Global areas render inside the frame from mockup 2b (#787): no space
                   column, a light secondary column with the area navigation instead. */}
