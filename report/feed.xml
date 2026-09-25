@@ -5,8 +5,30 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-09-24T05:09:46Z</updated>
+  <updated>2026-09-25T05:11:53Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Donnerstag, 24. September 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-09-24.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-09-24.html</id>
+    <updated>2026-09-25T05:11:53Z</updated>
+    <summary type="text">feat: UI-Politur-Runde Oktober 2026 — Sammel-Epic:
+— Seitenleistenfarbe, Chat-Fußzeile, Eingabefeld und Chatliste poliert
+— Space-Dropdown, Anmeldung und Übersichtskomponente überarbeitet
+— Hauptnavigation mit Asset-Typen, Space-Einstellungen mit Reitern
+feat: Prompt-Bibliothek als zweiter Asset-Typ — der erste tragfähige Schnitt der Verteilung:
+— Prompt-Bibliothek und Prompt als zweiter Asset-Typ eingeführt
+— Gemeinsame Asset-Schale mit Grants, Freigabestufe, Nachfolge
+— Prompt im Chat per Slash-Befehl einsetzbar, Variablenformular
+feat: UI der Wissensbibliothek-Detailansicht konsolidieren:
+— Detailansicht mit Reiterrahmen Dokumente, Quelle, Metadaten, Freigaben
+— Anlage-Assistent und Freigaben-Reiter nach Zielentwurf umgesetzt
+— Handbuch und E2E-Suite auf Ist-Stand gebracht
+Sonstiges:
+— MinIO-Image durch RustFS ersetzt, CI-Fehler behoben
+— Verteilungsstufe visibility entfällt, Reichweite als Grant an Alle
+— Schnittregel für Epics dokumentiert, Installationsflyer ergänzt</summary>
+  </entry>
   <entry>
     <title>Tagesreport Mittwoch, 23. September 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-09-23.html"/>
