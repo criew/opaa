@@ -16,8 +16,10 @@ const {
   mockRemoveGroupMember,
   mockAppointGroupContact,
   mockDismissGroupContact,
+  mockListGroupMembers,
 } = vi.hoisted(() => ({
   mockGetGroup: vi.fn(),
+  mockListGroupMembers: vi.fn(),
   /** Was `getGroup` liefert, wenn der Store die Details noch nicht kennt. */
   mockFetchedDetails: {} as Record<string, GroupResponse>,
   mockCreateGroup: vi.fn(async () => ({}) as GroupResponse),
@@ -42,6 +44,10 @@ vi.mock('../services/api', async () => {
     getGroup: vi.fn(async (groupId: string) => {
       mockGetGroup(groupId)
       return useGroupStore.getState().groupDetails[groupId] ?? mockFetchedDetails[groupId]
+    }),
+    listGroupMembers: vi.fn(async (groupId: string) => {
+      mockListGroupMembers(groupId)
+      return mockFetchedDetails[groupId]?.members ?? []
     }),
     createGroup: mockCreateGroup,
     updateGroup: mockUpdateGroup,
@@ -261,12 +267,14 @@ describe('GroupManagementPage', () => {
     await user.click(await screen.findByText('Projektbeteiligte Phoenix'))
 
     expect(await screen.findByText(/Audit-Ereignis/)).toBeInTheDocument()
-    expect(mockGetGroup).not.toHaveBeenCalled()
+    expect(mockListGroupMembers).not.toHaveBeenCalled()
 
     mockFetchedDetails['group-phoenix'] = adHocDetails
     await user.click(screen.getByRole('button', { name: /mitglieder anzeigen/i }))
 
-    await waitFor(() => expect(mockGetGroup).toHaveBeenCalledWith('group-phoenix'))
+    // #1989: only the recorded endpoint hands the administration the names.
+    await waitFor(() => expect(mockListGroupMembers).toHaveBeenCalledWith('group-phoenix'))
+    expect(mockGetGroup).not.toHaveBeenCalled()
     expect(await screen.findByText('Alice')).toBeInTheDocument()
   })
 

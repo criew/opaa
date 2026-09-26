@@ -12086,6 +12086,11 @@ components:
           example: 4
         members:
           type: array
+          nullable: true
+          description: >
+            Null when the caller reads the group as the system administration without being one of
+            its stewards. For them the member list is an audit event of its own and only
+            GET /api/v1/groups/{groupId}/members hands it out; memberCount is set either way.
           items:
             $ref: "#/components/schemas/GroupMemberResponse"
         dissolved:

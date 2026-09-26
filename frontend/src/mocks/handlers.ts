@@ -1353,13 +1353,24 @@ export const handlers = [
     return HttpResponse.json(group.protectedGroup ? { ...group, name: null } : group)
   }),
 
+  // Wie im Backend (#1989): Die Mock-Nutzerin ist Systemverwaltung; wo sie nicht verantwortlich ist,
+  // bleibt die Liste im Detail aus und kommt nur über den protokollierten Endpunkt '/members'.
   http.get('/api/v1/groups/:groupId', ({ params }) => {
     const groupId = String(params.groupId)
     const group = mockGroupDetails[groupId]
     if (!group) {
       return HttpResponse.json({ error: 'Gruppe nicht gefunden' }, { status: 404 })
     }
-    return HttpResponse.json(group)
+    const isSteward = group.stewards.some((steward) => steward.userId === 'mock-user-id')
+    return HttpResponse.json(isSteward ? group : { ...group, members: null })
+  }),
+
+  http.get('/api/v1/groups/:groupId/members', ({ params }) => {
+    const group = mockGroupDetails[String(params.groupId)]
+    if (!group) {
+      return HttpResponse.json({ error: 'Gruppe nicht gefunden' }, { status: 404 })
+    }
+    return HttpResponse.json(group.members ?? [])
   }),
 
   http.put('/api/v1/groups/:groupId', async ({ params, request }) => {
