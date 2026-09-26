@@ -28,7 +28,7 @@ function originPatch(value: string): Partial<GroupFilters> {
 }
 
 /**
- * Suche und Filter der Gruppenliste (#1978), gebaut wie die der Kontenliste: das Suchfeld
+ * Suche und Filter der Gruppenliste, gebaut wie die der Kontenliste: das Suchfeld
  * entprellt, daneben Herkunft (alle, intern, alle Anbieter oder ein einzelner Anbieter) und
  * Zustand. Die primäre Handlung steht im Kopf des Bereichs darüber, damit diese Zeile nur Filter
  * trägt.

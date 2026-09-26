@@ -2326,7 +2326,7 @@ paths:
       tags: [admin]
       summary: One page of the groups of the caller's organization (system admin only)
       description: >
-        The group list of the administration (#1978), searched, filtered, sorted and paged on the
+        The group list of the administration, searched, filtered, sorted and paged on the
         server like /admin/accounts. Stewards and provider are resolved for the
         returned page only. The unpaged listGroups stays for callers that need every group.
       parameters:
@@ -11614,8 +11614,8 @@ components:
     GroupState:
       type: string
       description: >
-        Whether a group is in effect, in the order that decides when several apply (#1978,
-        ADR-0036 Entscheidungen 2 and 3). DISSOLVED - the source no longer reports it;
+        Whether a group is in effect, in the order that decides when several apply
+        (ADR-0036 Entscheidungen 2 and 3). DISSOLVED - the source no longer reports it;
         PROVIDER_DISABLED - its identity provider is disabled; UNMAINTAINED - a token group of a
         provider that now delivers its groups through the directory sync; NOT_RELEASED - an
         internal group not yet released for use; ACTIVE otherwise. Existing grants stay in every
@@ -11705,6 +11705,7 @@ components:
             nothing is created).
         stewardIds:
           type: array
+          maxItems: 50
           description: >
             The stewards of the new group. Empty or absent: the caller. A caller without the
             SYSTEM_ADMIN role is always among them - whoever creates a group stays responsible

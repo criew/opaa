@@ -35,7 +35,7 @@ interface GroupFormFieldsProps {
 }
 
 /**
- * Die Felder einer Gruppe, gemeinsam für „Gruppe anlegen“ und „Bearbeiten“ (#1978): Name,
+ * Die Felder einer Gruppe, gemeinsam für „Gruppe anlegen“ und „Bearbeiten“: Name,
  * Beschreibung, Freigabe und - nur für die Systemverwaltung - der Schutz. Beide Dialoge sehen damit
  * gleich aus und sprechen dieselbe Sprache.
  */
@@ -87,11 +87,17 @@ export default function GroupFormFields({
                 <Switch
                   checked={values.released}
                   onChange={(e) => set({ released: e.target.checked })}
+                  slotProps={{ input: { 'aria-describedby': `${idPrefix}-release-help` } }}
                 />
               }
               label="Zur Verwendung freigegeben"
             />
-            <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>{RELEASE_HELP}</Typography>
+            <Typography
+              id={`${idPrefix}-release-help`}
+              sx={{ fontSize: 12.5, color: 'text.secondary' }}
+            >
+              {RELEASE_HELP}
+            </Typography>
           </Box>
         </>
       )}
@@ -102,11 +108,15 @@ export default function GroupFormFields({
               <Switch
                 checked={values.protectedGroup}
                 onChange={(e) => set({ protectedGroup: e.target.checked })}
+                slotProps={{ input: { 'aria-describedby': `${idPrefix}-protection-help` } }}
               />
             }
             label="Geschützte Gruppe"
           />
-          <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+          <Typography
+            id={`${idPrefix}-protection-help`}
+            sx={{ fontSize: 12.5, color: 'text.secondary' }}
+          >
             {PROTECTION_HELP}
           </Typography>
         </Box>

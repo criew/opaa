@@ -16,10 +16,10 @@ import { getUsers } from '../../../services/api'
 import { selectGroupMembers, useGroupStore } from '../../../stores/groupStore'
 import GroupMembersTable from './GroupMembersTable'
 
-const AUDIT_NOTICE = 'Dieser Abruf wird im Nachweisprotokoll festgehalten.'
+const AUDIT_NOTICE =
+  'Ruft die Systemverwaltung die Mitgliederliste ab, wird das im Nachweisprotokoll festgehalten.'
 
-const PROVIDER_AUDIT_NOTICE =
-  'Die Mitglieder pflegt die Quelle der Gruppe. Dieser Abruf wird im Nachweisprotokoll festgehalten.'
+const PROVIDER_AUDIT_NOTICE = 'Die Mitglieder pflegt die Quelle der Gruppe. ' + AUDIT_NOTICE
 
 interface GroupMembersDialogProps {
   /** The group whose members to show; the dialog is closed while this is null. */
@@ -28,7 +28,7 @@ interface GroupMembersDialogProps {
 }
 
 /**
- * Die Mitglieder einer Gruppe (#1978) als Tabelle. Ihr Abruf durch die Systemverwaltung ist ein
+ * Die Mitglieder einer Gruppe als Tabelle. Ihr Abruf durch die Systemverwaltung ist ein
  * Audit-Ereignis (ADR-0036, Entscheidungen 4 und 9); das Öffnen des Dialogs ist der ausdrückliche
  * Wunsch, die Liste lädt deshalb sofort, und der Dialog nennt die Protokollierung. Aufnehmen und
  * entfernen lässt sich nur bei einer internen Gruppe - die übrigen pflegt ihre Quelle.
@@ -58,15 +58,21 @@ function GroupMembersDialogContent({
   const [allUsers, setAllUsers] = useState<UserInfo[]>([])
   const [selectedUser, setSelectedUser] = useState<UserInfo | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
-    void loadGroupMembers(group.id)
+    loadGroupMembers(group.id).catch((err: unknown) =>
+      setLoadError(
+        err instanceof Error ? err.message : 'Die Mitgliederliste konnte nicht geladen werden.',
+      ),
+    )
     if (isInternal) {
       void getUsers()
         .then(setAllUsers)
         .catch(() => setAllUsers([]))
     }
-  }, [group.id, isInternal, loadGroupMembers])
+  }, [group.id, isInternal, loadGroupMembers, attempt])
 
   const members = knownMembers
   const availableUsers = useMemo(() => {
@@ -97,7 +103,25 @@ function GroupMembersDialogContent({
             {error}
           </Alert>
         )}
-        {!members ? (
+        {!members && loadError ? (
+          <Alert
+            severity="error"
+            action={
+              <Button
+                color="inherit"
+                size="small"
+                onClick={() => {
+                  setLoadError(null)
+                  setAttempt((current) => current + 1)
+                }}
+              >
+                Erneut versuchen
+              </Button>
+            }
+          >
+            {loadError}
+          </Alert>
+        ) : !members ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
             <CircularProgress size={22} aria-label="Mitglieder werden geladen" />
           </Box>

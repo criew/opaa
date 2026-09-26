@@ -13,9 +13,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * The administration's group list, one page at a time (#1978). Filter and order run over the
- * organization's groups in memory - their number is bounded by the directory sync's group limit -
- * and stewards, contact points and provider details are resolved for the returned page only.
+ * The administration's group list, one page at a time. Filter and order run over the organization's
+ * groups in memory - their number is bounded by the directory sync's group limit - and stewards and
+ * provider details are resolved for the returned page only.
  */
 @Service
 public class GroupListService {

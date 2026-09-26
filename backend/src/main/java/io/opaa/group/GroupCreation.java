@@ -1,6 +1,8 @@
 package io.opaa.group;
 
+import io.opaa.common.ValidationException;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 /**
@@ -16,6 +18,9 @@ public record GroupCreation(
     List<UUID> stewardIds) {
 
   public GroupCreation {
+    if (stewardIds != null && stewardIds.stream().anyMatch(Objects::isNull)) {
+      throw new ValidationException("Eine der benannten Personen fehlt.");
+    }
     stewardIds = stewardIds == null ? List.of() : List.copyOf(stewardIds);
   }
 

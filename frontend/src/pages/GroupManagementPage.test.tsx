@@ -390,6 +390,27 @@ describe('GroupManagementPage', () => {
     expect(within(dialog).getByText(/Nachweisprotokoll/)).toBeInTheDocument()
   })
 
+  // regression guard: a failed member list shows its reason and a retry, never an endless spinner
+  it('names a failed member list and loads it again on request', async () => {
+    serve([orgUnitGroup])
+    mockListGroupMembers.mockImplementationOnce(() => {
+      throw new Error('Gruppe nicht gefunden')
+    })
+    mockFetchedDetails['group-referat-50'] = orgUnitDetails
+    renderPage()
+    const user = userEvent.setup()
+
+    const menu = await openRowMenu(user, 'Referat 50')
+    await user.click(within(menu).getByRole('menuitem', { name: 'Mitglieder' }))
+    const dialog = await screen.findByRole('dialog')
+
+    expect(await within(dialog).findByText('Gruppe nicht gefunden')).toBeInTheDocument()
+    expect(within(dialog).queryByLabelText('Mitglieder werden geladen')).not.toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'Erneut versuchen' }))
+
+    expect(await within(dialog).findByRole('table', { name: 'Mitglieder' })).toBeInTheDocument()
+  })
+
   it('deletes an internal group once the confirmation was answered', async () => {
     serve([adHocGroup])
     renderPage()
@@ -434,7 +455,9 @@ describe('GroupManagementPage', () => {
     expect(within(dialog).getByText('Ada Admin (Sie)')).toBeInTheDocument()
     await user.type(within(dialog).getByLabelText('Name der Gruppe'), 'Neue Gruppe')
     await user.click(within(dialog).getByRole('switch', { name: 'Zur Verwendung freigegeben' }))
-    await user.click(within(dialog).getByRole('switch', { name: 'Geschützte Gruppe' }))
+    const protection = within(dialog).getByRole('switch', { name: 'Geschützte Gruppe' })
+    expect(protection).toHaveAccessibleDescription(/Personalvertretung/)
+    await user.click(protection)
     await user.click(within(dialog).getByRole('button', { name: 'Anlegen' }))
 
     await waitFor(() =>

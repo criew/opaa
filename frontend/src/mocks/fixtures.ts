@@ -1309,8 +1309,8 @@ export const mockGroups: GroupListResponse[] = [
     createdAt: '2026-03-01T10:00:00Z',
     updatedAt: '2026-03-01T10:00:00Z',
   },
-  // #1875: eine Anbietergruppe mit Ansprechstelle - das Gegenstueck zu den verantworteten
-  // internen Gruppen. Sie ist geschuetzt, denn genau dort entscheidet die Ansprechstelle.
+  // A protected provider group: maintained where it comes from, its protection decided by the
+  // system administration.
   {
     id: 'group-schwerbehindertenvertretung',
     name: 'Schwerbehindertenvertretung',

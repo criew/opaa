@@ -28,7 +28,7 @@ interface GroupRowMenuProps {
 }
 
 /**
- * Das Zeilenmenü einer Gruppe (#1978), gebaut wie das eines Kontos: Bearbeiten, Mitglieder und
+ * Das Zeilenmenü einer Gruppe, gebaut wie das eines Kontos: Bearbeiten, Mitglieder und
  * „Rechte übertragen" öffnen ihren Dialog; „Löschen" steht nachrangig unter einer Trennlinie
  * und legt seine Konsequenz vorher im Bestätigungs-Overlay vor. Ein Eintrag, der für diese
  * Gruppe nicht gilt, ist abgeblendet und nennt den Grund.

@@ -23,7 +23,7 @@ function nameOf(user: UserSummary): string {
 }
 
 /**
- * Die Verantwortlichen einer neuen Gruppe (#1978) - wie der Abschnitt „Verantwortlich“ beim
+ * Die Verantwortlichen einer neuen Gruppe - wie der Abschnitt „Verantwortlich“ beim
  * Bearbeiten, nur als Entwurf: Benennen und Entfernen wirken erst mit „Anlegen“.
  */
 export default function InitialStewardsSection({

@@ -6,7 +6,7 @@ import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import WarningAmberIcon from '@mui/icons-material/WarningAmber'
 
 /**
- * Ein Hinweis der Admin-Listen (#1978): ein kurzer Link mit Symbol in der Zeile der primären
+ * Ein Hinweis der Admin-Listen: ein kurzer Link mit Symbol in der Zeile der primären
  * Handlung, dahinter ein Popover mit Titel und Einzelheiten - statt eines farbigen Kastens über
  * der Liste. `tone="warning"` für einen Zustand, der eine Entscheidung braucht.
  */

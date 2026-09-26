@@ -5,9 +5,9 @@ import io.opaa.api.types.GroupMechanism;
 import io.opaa.api.types.GroupState;
 
 /**
- * The one definition of whether a group is in effect (#1978, ADR-0036 Entscheidungen 2 and 3),
- * shared by the list, its filter and sort, and the subject selection. {@code provider} is null
- * exactly for an internal group.
+ * The one definition of whether a group is in effect (ADR-0036 Entscheidungen 2 and 3), shared by
+ * the list, its filter and sort, and the subject selection. {@code provider} is null exactly for an
+ * internal group.
  */
 public final class GroupStates {
 

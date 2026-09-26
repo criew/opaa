@@ -8,9 +8,9 @@ import java.util.Locale;
 import java.util.UUID;
 
 /**
- * Search, filter, sort and page of the administration's group list (#1978), bounded like the
- * account list. {@code providerId} implies {@link GroupOrigin#PROVIDER}; a contradicting {@code
- * origin} is refused rather than silently answered with an empty page.
+ * Search, filter, sort and page of the administration's group list, bounded like the account list.
+ * {@code providerId} implies {@link GroupOrigin#PROVIDER}; a contradicting {@code origin} is
+ * refused rather than silently answered with an empty page.
  */
 public record GroupListQuery(
     String query,

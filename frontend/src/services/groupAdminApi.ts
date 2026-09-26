@@ -1,7 +1,7 @@
 import type { GroupKind, GroupOrigin, GroupPageResponse, GroupState } from '../types/api'
 import { apiClient, normalizeError } from './api'
 
-/** The sort fields of the group list (#1978), as the server allow-lists them. */
+/** The sort fields of the group list, as the server allow-lists them. */
 export type GroupSortField = 'name' | 'kind' | 'origin' | 'memberCount' | 'state' | 'createdAt'
 
 /** The group list's page size: the server's default, well under its maximum of 50. */

@@ -8,7 +8,7 @@ import { InfoHint } from '../list/AdminList'
 import { groupOriginExplanation } from './groupListLabels'
 
 /**
- * Die Herkunft einer Gruppe, gebaut wie die Herkunft eines Kontos (#1978): „Intern" für eine
+ * Die Herkunft einer Gruppe, gebaut wie die Herkunft eines Kontos: „Intern" für eine
  * Gruppe dieser Installation, Gebäude und Anbietername für eine Gruppe eines Identitätsanbieters.
  * Hinter dem Anbieter erklärt ein Info-Symbol in ganzen Sätzen, was diese Herkunft für die
  * Mitglieder bedeutet - die Art einer Gruppe braucht damit keine eigene Spalte.

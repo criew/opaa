@@ -12,7 +12,7 @@ import HintLink from '../list/HintLink'
 /**
  * Ein ausstehender Verzeichnisplan ist ein lauter Zustand (ADR-0036, Entscheidung 3): Sein Alter
  * steht auf der Verwaltungsübersicht, nicht nur in der Unterseite des Anbieters. Hier als
- * Warn-Link in der Zeile von „Gruppe anlegen" (#1978), mit dem Alter schon im Linktext und den
+ * Warn-Link in der Zeile von „Gruppe anlegen", mit dem Alter schon im Linktext und den
  * Einzelheiten je Anbieter im Popover.
  */
 export default function PendingPlanHint() {

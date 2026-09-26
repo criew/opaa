@@ -47,7 +47,7 @@ final class AdminListSortParams {
     };
   }
 
-  /** The sort fields of the group list (#1978). */
+  /** The sort fields of the group list. */
   static GroupListQuery.Sort groupSortOf(String sort) {
     return switch (sort == null ? "" : sort.trim()) {
       case "name", "" -> GroupListQuery.Sort.NAME;

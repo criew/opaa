@@ -18,7 +18,7 @@ import PermissionTransferDialog from '../components/permissions/PermissionTransf
 import { contentWidth } from '../theme/tokens'
 
 /**
- * Die Gruppenverwaltung (#1821, #1978), gebaut wie die Kontenliste: Kopf, primäre Handlung,
+ * Die Gruppenverwaltung (#1821), gebaut wie die Kontenliste: Kopf, primäre Handlung,
  * Filterleiste, Tabelle mit Zeilenmenü und die Dialoge der Handlungen. Die Herkunft steht an
  * jeder Zeile, die Wirkung als Zusammenfassung; die Mitgliederliste lädt erst im Dialog
  * „Mitglieder" - ihr Abruf durch die Systemverwaltung ist ein Audit-Ereignis (ADR-0036,
@@ -49,7 +49,7 @@ export default function GroupManagementPage() {
         <AreaPageHeader
           icon={GroupsOutlinedIcon}
           title="Gruppen"
-          description="Alle Gruppen der Organisation. Interne Gruppen legen Sie hier an und pflegen sie. Gruppen eines Identitätsanbieters oder Verzeichnisses pflegt ihre Quelle – bei ihnen legen Sie hier nur die Ansprechpersonen fest."
+          description="Alle Gruppen der Organisation. Interne Gruppen legen Sie hier an und pflegen sie. Gruppen eines Identitätsanbieters oder Verzeichnisses pflegt ihre Quelle – bei ihnen entscheiden Sie hier nur über den Schutz."
         />
 
         {error && (

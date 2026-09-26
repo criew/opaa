@@ -44,7 +44,7 @@ interface GroupMembersTableProps {
 }
 
 /**
- * Die Mitglieder einer Gruppe als Tabelle (#1978): alphabetisch, mit fester Kopfzeile in einem
+ * Die Mitglieder einer Gruppe als Tabelle: alphabetisch, mit fester Kopfzeile in einem
  * scrollbaren Rahmen, mit einem Filterfeld für jede Gruppe mit Mitgliedern - interne wie externe. Die Liste liegt vollständig vor;
  * gefiltert wird im Browser. Rahmen und Ergebniszeile behalten beim Filtern ihre Höhe, damit der
  * Dialog nicht springt.

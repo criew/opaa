@@ -10,7 +10,7 @@ import { GROUP_PAGE_SIZE, listGroupPage, type GroupSortField } from '../services
 import { getGroupEffects } from '../services/permissionTransferApi'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
 
-/** The filters of the group list (#1978); `providerId` implies origin PROVIDER. */
+/** The filters of the group list; `providerId` implies origin PROVIDER. */
 export interface GroupFilters {
   query: string
   origin: GroupOrigin | null
@@ -74,7 +74,7 @@ function messageOf(err: unknown, fallback: string): string {
 }
 
 /**
- * The group list of the administration (#1978), searched, filtered, sorted and paged on the
+ * The group list of the administration, searched, filtered, sorted and paged on the
  * server like the account list. Acts on a single group stay in `useGroupStore`; after one of them
  * the page reloads here, because an act can move a group out of the current filter.
  */

@@ -1265,7 +1265,7 @@ diesem Weg.
   keine Gruppe ohne Verantwortliche entsteht.
 - **Verantwortliche dürfen:** Mitglieder aufnehmen und entfernen (nur Konten der eigenen
   Organisation), Name und Beschreibung ändern, weitere Verantwortliche ernennen und entlassen, die
-  Gruppe zur Verwendung freigeben, sie als geschützt kennzeichnen und sie löschen — Letzteres unter
+  Gruppe zur Verwendung freigeben und sie löschen — Letzteres unter
   denselben Bedingungen wie bisher (`409`, solange die Gruppe Berechtigungen trägt, ein Anlegerecht
   hält oder ein Objekt besitzt).
 - **Die Rechteprüfung ist je Gruppe, nicht je Rolle.** Die Schnittstelle liegt deshalb unter
@@ -1273,8 +1273,7 @@ diesem Weg.
   für eine unbekannte Gruppe (`404`). Ein `403` verriete, dass es die Gruppe gibt. Unter `/admin`
   bleibt genau eine Gruppenoperation: die Liste **aller** Gruppen der Organisation.
 - **Die Systemverwaltung darf jede Gruppe pflegen** — sie muss eine Bestandsgruppe ohne
-  Verantwortliche wieder besetzen können. **Die eine Ausnahme ist das Schutzkennzeichen** (siehe
-  unten).
+  Verantwortliche wieder besetzen können. **Das Schutzkennzeichen setzt allein sie** (siehe unten).
 - **Der letzte Verantwortliche kann sich nicht selbst entfernen.** Die Abgabe der Verantwortung ist
   ein eigener, sichtbarer Schritt: erst die Nachfolge benennen, dann selbst zurücktreten. Nur die
   Systemverwaltung kann den letzten Verantwortlichen entlassen — ein Konto, das das Haus verlässt,

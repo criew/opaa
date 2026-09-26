@@ -193,6 +193,29 @@ class GroupStewardshipIntegrationTest {
     assertThat(groupService.listStewardedGroups(creator)).isEmpty();
   }
 
+  /** A steward who does not exist in the organization refuses the creation as a whole. */
+  @Test
+  void anUnknownStewardCreatesNothing() {
+    CurrentUser admin = grantInternalGroupCapability(systemAdmin());
+
+    assertThatThrownBy(
+            () ->
+                groupService.createGroup(
+                    new GroupCreation("Geisterteam", null, true, false, List.of(UUID.randomUUID())),
+                    admin))
+        .isInstanceOf(NotFoundException.class);
+    assertThat(groupRepository.findAll()).noneMatch(group -> "Geisterteam".equals(group.getName()));
+  }
+
+  @Test
+  void aMissingStewardIdIsAValidationError() {
+    List<UUID> withGap = new ArrayList<>();
+    withGap.add(null);
+
+    assertThatThrownBy(() -> new GroupCreation("Team", null, false, false, withGap))
+        .isInstanceOf(ValidationException.class);
+  }
+
   /** A new group is not released: "Vorgabe nicht freigegeben" (ADR-0036, Entscheidung 9). */
   @Test
   void aNewlyCreatedGroupIsNotReleasedForUse() {

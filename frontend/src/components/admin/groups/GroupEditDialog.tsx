@@ -29,7 +29,7 @@ interface GroupEditDialogProps {
 }
 
 /**
- * Bearbeiten einer Gruppe (#1978), als Dialog wie beim Konto. Eine interne Gruppe hat Name,
+ * Bearbeiten einer Gruppe, als Dialog wie beim Konto. Eine interne Gruppe hat Name,
  * Beschreibung, Freigabe und Schutz als Entwurf, den „Speichern" übernimmt, dazu ihre
  * Verantwortlichen, deren Ernennung sofort wirkt; eine Gruppe aus einem Anbieter oder Verzeichnis
  * nur den Schutz - den Rest pflegt die Quelle. Über den Schutz entscheidet allein die

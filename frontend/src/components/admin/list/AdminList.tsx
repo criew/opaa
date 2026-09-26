@@ -14,7 +14,7 @@ import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import { radius } from '../../../theme/tokens'
 
 /**
- * Die gemeinsamen Bausteine der Listen der Administration (Konten, Gruppen, #1978): Tabelle mit
+ * Die gemeinsamen Bausteine der Listen der Administration (Konten, Gruppen): Tabelle mit
  * festen Spaltenbreiten, sortierbare Köpfe, Seitenumschalter, Leer- und Ladezustand, Zustandszelle.
  * Beide Listen setzen sich daraus zusammen, damit sie gleich aussehen und sich gleich bedienen.
  */

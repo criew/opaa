@@ -234,7 +234,7 @@ function Pager() {
 }
 
 /**
- * Die Liste aller Gruppen der Organisation (#1978), gebaut wie die Kontenliste: am Desktop eine
+ * Die Liste aller Gruppen der Organisation, gebaut wie die Kontenliste: am Desktop eine
  * Tabelle, unter Tablet-Breite eine Liste, serverseitig durchsucht, gefiltert, sortiert und
  * geblättert. Wofür eine Gruppe verwendet wird, steht als Zusammenfassung da; die Mitgliederliste
  * nicht -

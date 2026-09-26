@@ -52,7 +52,7 @@ public class AdminGroupController {
     return GroupResponseMapper.toListResponses(groups);
   }
 
-  /** The group list of the administration, searched, filtered, sorted and paged (#1978). */
+  /** The group list of the administration, searched, filtered, sorted and paged. */
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @GetMapping("/page")
   public GroupPageResponse listGroupPage(

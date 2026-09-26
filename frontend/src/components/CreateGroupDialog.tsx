@@ -26,7 +26,7 @@ const EMPTY_VALUES: GroupFormValues = {
 }
 
 /**
- * „Gruppe anlegen“ (#1978), aufgebaut wie der Dialog „Bearbeiten“: dieselben Felder für Name,
+ * „Gruppe anlegen“, aufgebaut wie der Dialog „Bearbeiten“: dieselben Felder für Name,
  * Beschreibung, Freigabe und Schutz, darunter die Verantwortlichen - hier als Entwurf, den
  * „Anlegen“ in einem Schritt übernimmt.
  */

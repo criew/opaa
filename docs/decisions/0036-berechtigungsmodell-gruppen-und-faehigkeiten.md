@@ -719,6 +719,12 @@ Bibliotheken benennt — gilt dieselbe Sonderstellung:
 > - **Die Freigabe einer geschützten internen Gruppe** ist nicht mehr den Verantwortlichen
 >   vorbehalten: Ihre Begründung („eine Administration, die das Kennzeichen nicht setzen darf, soll
 >   die Gruppe auch nicht in jede Auswahl stellen") fällt mit diesem Nachtrag weg.
+> - **Bestand:** OPAA läuft noch nicht produktiv. Changeset 077 (`group_contacts`) ist deshalb
+>   ersatzlos aus der Historie entfernt statt durch ein Lösch-Changeset aufgehoben, und die
+>   Audit-Werte `GROUP_CONTACT_*` sind aus dem Enum gestrichen. Eine Installation, die 077 schon
+>   angewendet hat, behält eine leere, verwaiste Tabelle und wird wie bei jeder Baseline-Zusammen-
+>   fassung neu aufgesetzt; ein Protokolleintrag mit einem gestrichenen Wert ließe sich dort nicht
+>   mehr lesen.
 > - Unberührt bleiben die Wirkungen des Kennzeichens (nicht über Suche auffindbar, namenlos in
 >   fremden Listen, keine Mitgliederliste und kein Größensignal für Grant-Geber, keine
 >   Gruppenableitung in fremden Herleitungen) und die Regel, dass der Mitgliederabruf durch die
