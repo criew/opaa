@@ -1335,9 +1335,6 @@ export const mockGroups: GroupListResponse[] = [
     releasedForUse: true,
     protectedGroup: true,
     stewards: [],
-    contacts: [
-      { userId: 'mock-user-id', displayName: 'Admin', appointedAt: '2026-09-01T10:00:00Z' },
-    ],
     createdAt: '2026-09-01T10:00:00Z',
     updatedAt: '2026-09-01T10:00:00Z',
   },
@@ -1562,9 +1559,6 @@ export const mockGroupDetails: Record<string, MockGroupDetail> = {
     releasedForUse: true,
     protectedGroup: true,
     stewards: [],
-    contacts: [
-      { userId: 'mock-user-id', displayName: 'Admin', appointedAt: '2026-09-01T10:00:00Z' },
-    ],
     members: [
       {
         userId: 'mock-user-id',
@@ -1884,15 +1878,6 @@ export const mockMyGroups: GroupListResponse[] = mockGroups.filter((group) =>
  */
 export const mockMyStewardedGroups: GroupListResponse[] = mockGroups.filter((group) =>
   group.stewards.some((steward) => steward.userId === 'mock-user-id'),
-)
-
-/**
- * Anbietergruppen, fuer die der Mock-Nutzer Ansprechstelle ist - was GET
- * /api/v1/me/contacted-groups liefert (#1875). Wieder eine andere Menge: Ansprechstelle zu sein
- * ist kein Pflegerecht, sondern berechtigt allein zum Schutzkennzeichen.
- */
-export const mockMyContactedGroups: GroupListResponse[] = mockGroups.filter((group) =>
-  (group.contacts ?? []).some((contact) => contact.userId === 'mock-user-id'),
 )
 
 /**

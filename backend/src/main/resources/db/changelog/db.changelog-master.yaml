@@ -180,8 +180,6 @@ databaseChangeLog:
       file: db/changelog/changes/076-backfill-library-ownership-history.yaml
   # Ansprechstellen an Anbietergruppen (#1875, ADR-0036 Entscheidung 9): die Personen, die das
   # Schutzkennzeichen einer Anbietergruppe setzen und lösen — ohne Pflegerechte an der Gruppe.
-  - include:
-      file: db/changelog/changes/077-create-group-contacts.yaml
   # Der Löschlauf beider Protokolle löscht nach der eingestellten Frist (#1851): der Deckel der
   # Baseline konvergierte nie, eine Verkürzung wurde damit nie wirksam.
   - include:

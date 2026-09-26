@@ -94,17 +94,6 @@ public enum AuditEventType {
   /** The reverse of {@link #GROUP_STEWARD_APPOINTED} - including handing responsibility over. */
   GROUP_STEWARD_DISMISSED,
   /**
-   * The system administration named a contact point of a provider group (#1875, ADR-0036
-   * Entscheidung 9) - a Verwaltungsakt that changes nothing about the group and grants no
-   * maintenance right; it entitles the person to set and release that group's protection mark.
-   */
-  GROUP_CONTACT_APPOINTED,
-  /**
-   * The reverse of {@link #GROUP_CONTACT_APPOINTED}, by a decision or because the person left the
-   * group - in the latter case recorded by the process, with no acting person.
-   */
-  GROUP_CONTACT_DISMISSED,
-  /**
    * An internal group was released for use by other people granting rights, or the release was
    * taken back (ADR-0036, Entscheidung 9). A reach field like {@link #ASSET_VISIBILITY_CHANGED}: it
    * decides who may name this group as a grant subject at all.
@@ -112,8 +101,8 @@ public enum AuditEventType {
   GROUP_RELEASE_CHANGED,
   /**
    * The protection mark of the staff council and the comparable bodies was set or released
-   * (ADR-0036, Entscheidung 9) - by the body itself, never by the administration, the same
-   * treatment {@link #LIBRARY_DIAGNOSTICS_LOCK_CHANGED} gets.
+   * (ADR-0036, Entscheidung 9) - by the system administration, which alone decides it for internal
+   * and provider groups alike.
    */
   GROUP_PROTECTION_CHANGED,
   /**

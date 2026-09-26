@@ -96,12 +96,14 @@ public class GroupService {
    */
   private static final int MAX_SEARCH_SCAN = MAX_SEARCH_RESULTS * 5;
 
-  /** The stable {@code code} of the {@code 403} a non-steward gets where a role does not help. */
-  public static final String STEWARDSHIP_REQUIRED = "STEWARDSHIP_REQUIRED";
+  /**
+   * The stable {@code code} of the {@code 403} anybody but the system administration gets for the
+   * protection mark - where they already know the group, and so learn nothing new from the answer.
+   */
+  public static final String PROTECTION_ADMIN_ONLY = "PROTECTION_ADMIN_ONLY";
 
   private final GroupRepository groupRepository;
   private final GroupStewardRepository stewardRepository;
-  private final GroupContactService contactService;
   private final UserRepository userRepository;
   private final OidcProviderRepository providerRepository;
   private final DirectorySyncStatusRepository directorySyncStatusRepository;
@@ -119,7 +121,6 @@ public class GroupService {
   public GroupService(
       GroupRepository groupRepository,
       GroupStewardRepository stewardRepository,
-      GroupContactService contactService,
       UserRepository userRepository,
       OidcProviderRepository providerRepository,
       DirectorySyncStatusRepository directorySyncStatusRepository,
@@ -135,7 +136,6 @@ public class GroupService {
       AuditEventRecorder auditEventRecorder) {
     this.groupRepository = groupRepository;
     this.stewardRepository = stewardRepository;
-    this.contactService = contactService;
     this.userRepository = userRepository;
     this.providerRepository = providerRepository;
     this.directorySyncStatusRepository = directorySyncStatusRepository;
@@ -336,7 +336,7 @@ public class GroupService {
     boolean selectable = !group.isDissolved() && !providerDisabled && !unmaintained;
     if (group.isProtectedGroup()) {
       // Whom to ask instead of reading the member list (ADR-0036, Entscheidung 9): the stewards of
-      // an internal group, the contact points of a provider group (#1875).
+      // an internal group; for a provider group the system administration answers.
       return new SelectableGroup(
           group,
           publishedName,
@@ -367,17 +367,17 @@ public class GroupService {
   }
 
   /**
-   * The people a grant giver may ask about a protected group - never its members. Only a protected
-   * group pays for it, and only by its own query: the substring search never returns one, so a
-   * result page carries at most the handful the caller named by their complete designation.
+   * The people a grant giver may ask about a protected group - never its members: the stewards of
+   * an internal group, nobody for a provider group, for which the system administration answers.
+   * Only a protected group pays for it, and only by its own query: the substring search never
+   * returns one, so a result page carries at most the handful the caller named by their complete
+   * designation.
    */
   private List<String> responsibleNamesOf(Group group) {
-    List<UUID> userIds =
-        group.isInternal()
-            ? stewardsOf(group.getId()).stream().map(GroupSteward::getUserId).toList()
-            : contactService.contactsOf(group.getId()).stream()
-                .map(view -> view.contact().getUserId())
-                .toList();
+    if (!group.isInternal()) {
+      return List.of();
+    }
+    List<UUID> userIds = stewardsOf(group.getId()).stream().map(GroupSteward::getUserId).toList();
     Map<UUID, String> displayNames = resolveDisplayNames(userIds);
     return userIds.stream().map(displayNames::get).filter(Objects::nonNull).toList();
   }
@@ -406,22 +406,20 @@ public class GroupService {
   }
 
   /**
-   * Stewards and contact points for exactly these groups, with the provider views already read -
-   * the paged list resolves them for its page only.
+   * Stewards for exactly these groups, with the provider views already read - the paged list
+   * resolves them for its page only.
    */
   List<GroupOverview> toOverviews(List<Group> groups, Map<UUID, GroupProviderView> byId) {
     if (groups.isEmpty()) {
       return List.of();
     }
     Map<UUID, List<GroupStewardView>> stewardsByGroup = stewardsOf(groups);
-    Map<UUID, List<GroupContactView>> contactsByGroup = contactService.contactsOf(groups);
     return groups.stream()
         .map(
             group ->
                 new GroupOverview(
                     group,
                     stewardsByGroup.getOrDefault(group.getId(), List.of()),
-                    contactsByGroup.getOrDefault(group.getId(), List.of()),
                     byId.get(group.getProviderId())))
         .toList();
   }
@@ -474,31 +472,9 @@ public class GroupService {
         lastSyncAt);
   }
 
-  /**
-   * The group detail. Besides the stewards and the administration, a <b>contact point</b> reads
-   * their own provider group here (#1875): they decide its protection mark and have to see it. That
-   * is a read, not a maintenance right - every write path keeps asking {@link
-   * #requireMaintainable}.
-   */
+  /** The group detail, for its stewards and the system administration. */
   public GroupDetail getGroup(UUID groupId, CurrentUser caller) {
-    if (!caller.isSystemAdmin()
-        && !stewardRepository.existsByGroupIdAndUserId(groupId, caller.id())
-        && contactService.isContact(groupId, caller.id())) {
-      return toGroupDetail(loadGroup(groupId, caller), caller);
-    }
     return toGroupDetail(requireMaintainable(groupId, caller), caller);
-  }
-
-  /** The provider groups the caller is the contact point of - their half of "Meine Gruppen". */
-  public List<GroupOverview> listContactedGroups(CurrentUser caller) {
-    Set<UUID> groupIds = contactService.contactedGroupIds(caller.id());
-    if (groupIds.isEmpty()) {
-      return List.of();
-    }
-    return toOverviews(
-        groupRepository.findAllByIdWithMemberships(groupIds).stream()
-            .filter(group -> group.getOrganizationId().equals(caller.organizationId()))
-            .toList());
   }
 
   /**
@@ -563,21 +539,11 @@ public class GroupService {
    * Releases an internal group for use by other people granting rights, or takes that back
    * (ADR-0036, Entscheidung 9). Taking it back removes the group from every selection; the grants
    * it already holds stay untouched, exactly as for a dissolved group.
-   *
-   * <p><b>A protected group is released by its stewards alone.</b> The mark exists to keep the
-   * group out of other people's sight; an administration that could put it into every selection
-   * would decide the protection after all, even though it may not set or release the mark itself.
    */
   @Transactional
   public GroupDetail setRelease(UUID groupId, boolean releasedForUse, CurrentUser caller) {
     Group group = requireMaintainable(groupId, caller);
     rejectOrgUnit(group);
-    if (group.isProtectedGroup()) {
-      requireStewardship(
-          group,
-          caller,
-          "Diese Gruppe ist geschützt. Ihre Freigabe entscheiden die Verantwortlichen selbst.");
-    }
     if (group.isReleasedForUse() != releasedForUse) {
       group.release(releasedForUse);
       groupRepository.save(group);
@@ -587,14 +553,10 @@ public class GroupService {
   }
 
   /**
-   * Sets or releases the protection mark of ADR-0036, Entscheidung 9. The one operation a system
-   * administrator may <b>not</b> perform: the mark is the decision of the body concerned, and an
-   * administration that could set or release it would make the protection theirs.
-   *
-   * <p>Who the body is follows the origin: an internal group's stewards, a provider group's
-   * <b>contact points</b> (#1875) - the persons the administration named, who hold no maintenance
-   * right over the group. This is therefore the one write path a provider group has at all, and the
-   * reason {@code rejectOrgUnit} does not guard it.
+   * Sets or releases the protection mark of ADR-0036, Entscheidung 9 (as amended): the system
+   * administration alone decides it, for internal and provider groups alike. This is therefore the
+   * one write path a provider group has at all, and the reason {@code rejectOrgUnit} does not guard
+   * it.
    */
   @Transactional
   public GroupDetail setProtection(UUID groupId, boolean protectedGroup, CurrentUser caller) {
@@ -608,41 +570,23 @@ public class GroupService {
   }
 
   /**
-   * The group whose mark is about to change, with the decision about who may change it. A caller
-   * who is neither steward nor contact point gets {@code 403} with the reason where they already
-   * know the group exists - a system administrator always does - and the answer of an unknown group
-   * otherwise, so the existence of a protected group stays a secret from everybody else.
+   * The group whose mark is about to change, for the system administration. Anybody else who
+   * already knows the group - a steward or a member - is told why with {@code 403}; everybody else
+   * gets the answer of an unknown group, so the existence of a protected group stays a secret.
    */
   private Group requireProtectionAuthority(UUID groupId, CurrentUser caller) {
     Group group = loadGroup(groupId, caller);
-    if (group.isInternal()) {
-      if (!caller.isSystemAdmin()
-          && !stewardRepository.existsByGroupIdAndUserId(groupId, caller.id())) {
-        throw new NotFoundException("Gruppe nicht gefunden");
-      }
-      requireStewardship(
-          group,
-          caller,
-          "Das Schutzkennzeichen setzen und lösen die Verantwortlichen dieser Gruppe selbst.");
+    if (caller.isSystemAdmin()) {
       return group;
     }
-    if (contactService.isContact(groupId, caller.id())) {
-      return group;
-    }
-    // Whoever may already read the group is told why, not sent away: an administrator, a member,
-    // and a steward of a provider group (which only the stock of #1814 has).
     boolean knowsTheGroup =
-        caller.isSystemAdmin()
-            || userMembership(group, caller.id()) != null
+        userMembership(group, caller.id()) != null
             || stewardRepository.existsByGroupIdAndUserId(group.getId(), caller.id());
     if (!knowsTheGroup) {
       throw new NotFoundException("Gruppe nicht gefunden");
     }
     throw new AccessDeniedException(
-        "Das Schutzkennzeichen einer Anbietergruppe setzen und lösen ausschließlich ihre"
-            + " Ansprechstellen. Benennen Sie eine Ansprechstelle; die Systemverwaltung entscheidet"
-            + " über den Schutz nicht selbst.",
-        GroupContactService.CONTACT_REQUIRED);
+        "Über den Schutz einer Gruppe entscheidet die Systemverwaltung.", PROTECTION_ADMIN_ONLY);
   }
 
   @Transactional
@@ -962,19 +906,6 @@ public class GroupService {
     throw new NotFoundException("Gruppe nicht gefunden");
   }
 
-  /**
-   * Refuses a caller who is no steward of this group, whatever their system role - the two
-   * decisions a protected group keeps to itself (ADR-0036, Entscheidung 9). {@code 403} rather than
-   * {@code 404} here on purpose: the caller has already got past {@link #requireMaintainable}, so
-   * the group's existence is no longer a secret from them, and the refusal is meant to explain
-   * rather than hide.
-   */
-  private void requireStewardship(Group group, CurrentUser caller, String message) {
-    if (!stewardRepository.existsByGroupIdAndUserId(group.getId(), caller.id())) {
-      throw new AccessDeniedException(message, STEWARDSHIP_REQUIRED);
-    }
-  }
-
   /** Writes the stewardship row and its audit event - the one path an appointment takes. */
   private GroupSteward appoint(Group group, UUID userId, CurrentUser caller) {
     GroupSteward steward =
@@ -1088,7 +1019,6 @@ public class GroupService {
         group,
         readsAsAdministration(group.getId(), caller) ? null : toGroupMemberViews(group),
         toStewardViews(stewardsOf(group.getId())),
-        contactService.contactsOf(group.getId()),
         providerOf(group));
   }
 }

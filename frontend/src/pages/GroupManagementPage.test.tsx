@@ -18,8 +18,7 @@ const {
   mockSetGroupRelease,
   mockDeleteGroup,
   mockRemoveGroupMember,
-  mockAppointGroupContact,
-  mockDismissGroupContact,
+  mockSetGroupProtection,
 } = vi.hoisted(() => ({
   mockListGroupPage: vi.fn(),
   mockListGroupMembers: vi.fn(),
@@ -32,12 +31,7 @@ const {
   mockSetGroupRelease: vi.fn(async () => ({}) as GroupResponse),
   mockDeleteGroup: vi.fn(async () => undefined),
   mockRemoveGroupMember: vi.fn(async () => undefined),
-  mockAppointGroupContact: vi.fn(async () => ({
-    userId: 'u2',
-    displayName: 'Bob',
-    appointedAt: '2026-09-01T10:00:00Z',
-  })),
-  mockDismissGroupContact: vi.fn(async () => undefined),
+  mockSetGroupProtection: vi.fn(async () => ({}) as GroupResponse),
 }))
 
 vi.mock('../services/groupAdminApi', async () => {
@@ -80,8 +74,7 @@ vi.mock('../services/api', async () => {
     setGroupRelease: mockSetGroupRelease,
     deleteGroup: mockDeleteGroup,
     removeGroupMember: mockRemoveGroupMember,
-    appointGroupContact: mockAppointGroupContact,
-    dismissGroupContact: mockDismissGroupContact,
+    setGroupProtection: mockSetGroupProtection,
   }
 })
 
@@ -282,7 +275,6 @@ describe('GroupManagementPage', () => {
     })
     expect(within(dialog).getByRole('button', { name: 'Speichern' })).toBeDisabled()
     expect(within(dialog).getByText('Verantwortlich')).toBeInTheDocument()
-    expect(within(dialog).queryByText(/Ansprechstellen sprechen/)).not.toBeInTheDocument()
 
     const name = within(dialog).getByLabelText('Name der Gruppe')
     await user.clear(name)
@@ -299,7 +291,7 @@ describe('GroupManagementPage', () => {
 
   // ADR-0025, Entscheidung 4 (#1331): Name und Mitglieder pflegt die Quelle; die Erklärung nennt
   // die tatsächliche Quelle
-  it('explains a provider group and offers only its contact points', async () => {
+  it('explains a provider group and offers only its protection', async () => {
     const tokenGroup: GroupListResponse = {
       ...orgUnitGroup,
       id: 'group-token-fachbereich',
@@ -325,49 +317,25 @@ describe('GroupManagementPage', () => {
     expect(within(dialog).getByText(/stammt aus dem Identitätsanbieter/)).toBeInTheDocument()
     expect(within(dialog).getByText('Verzeichnisdienst · /Haus A/Referat 50')).toBeInTheDocument()
     expect(within(dialog).queryByLabelText('Name der Gruppe')).not.toBeInTheDocument()
-    expect(within(dialog).queryByRole('button', { name: 'Speichern' })).not.toBeInTheDocument()
+    expect(within(dialog).getByRole('switch', { name: 'Geschützte Gruppe' })).toBeInTheDocument()
+    expect(within(dialog).getByRole('button', { name: 'Speichern' })).toBeDisabled()
   })
 
-  // #1875: benennbar ist nur ein Mitglied - die Auswahl hängt am ausdrücklichen Abruf der Liste
-  it('appoints a member of a provider group as contact point once the list was fetched', async () => {
+  // ADR-0036, Entscheidung 9: über den Schutz entscheidet die Systemverwaltung - auch bei einer
+  // Gruppe aus einem Anbieter, deren Name und Mitglieder die Quelle pflegt
+  it('protects a provider group from the edit dialog', async () => {
     serve([orgUnitGroup])
-    mockFetchedDetails['group-referat-50'] = orgUnitDetails
     renderPage()
     const user = userEvent.setup()
 
     const menu = await openRowMenu(user, 'Referat 50')
     await user.click(within(menu).getByRole('menuitem', { name: 'Bearbeiten' }))
     const dialog = await screen.findByRole('dialog')
-    expect(within(dialog).getByText(/aus dem Verzeichnis synchronisiert/)).toBeInTheDocument()
-    expect(mockListGroupMembers).not.toHaveBeenCalled()
-
-    await user.click(within(dialog).getByRole('button', { name: 'Mitgliederliste abrufen' }))
-    await waitFor(() => expect(mockListGroupMembers).toHaveBeenCalledWith('group-referat-50'))
-    await user.click(await within(dialog).findByRole('combobox', { name: /ansprechstelle/i }))
-    await user.click(await screen.findByRole('option', { name: 'Bob' }))
-    await user.click(within(dialog).getByRole('button', { name: /als ansprechstelle benennen/i }))
+    await user.click(within(dialog).getByRole('switch', { name: 'Geschützte Gruppe' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Speichern' }))
 
     await waitFor(() =>
-      expect(mockAppointGroupContact).toHaveBeenCalledWith('group-referat-50', 'u2'),
-    )
-  })
-
-  it('dismisses a contact point after confirmation', async () => {
-    const withContact: GroupListResponse = {
-      ...orgUnitGroup,
-      contacts: [{ userId: 'u2', displayName: 'Bob', appointedAt: '2026-09-01T10:00:00Z' }],
-    }
-    serve([withContact])
-    renderPage()
-    const user = userEvent.setup()
-
-    const menu = await openRowMenu(user, 'Referat 50')
-    await user.click(within(menu).getByRole('menuitem', { name: 'Bearbeiten' }))
-    await user.click(await screen.findByRole('button', { name: /entlassen/i }))
-    await answerConfirm(user, 'Bob als Ansprechstelle entlassen?', 'Entlassen')
-
-    await waitFor(() =>
-      expect(mockDismissGroupContact).toHaveBeenCalledWith('group-referat-50', 'u2'),
+      expect(mockSetGroupProtection).toHaveBeenCalledWith('group-referat-50', true),
     )
   })
 

@@ -433,7 +433,6 @@ Verantwortliche dürfen:
 - Name und Beschreibung ändern
 - weitere Verantwortliche benennen und entlassen
 - die Gruppe **zur Verwendung freigeben** und die Freigabe zurücknehmen
-- die Gruppe als **geschützt** kennzeichnen
 - die Gruppe löschen, solange sie keine Berechtigung, kein Anlegerecht und kein Eigentum mehr trägt
   und in keinem Raum Mitglied ist
 
@@ -476,10 +475,11 @@ Auskunft, die Abschnitt 8 schützt. Stattdessen warnt das Formular, wenn eine f�
 Person **sichtbare** Gruppe gleich heißt.
 
 **Geschützte Gruppen** sind die Gruppen der Personalvertretung, der Schwerbehindertenvertretung, der
-Gleichstellung und der Personalvorgänge. **Das Kennzeichen setzen und lösen die Verantwortlichen der
-Gruppe selbst — die Systemverwaltung kann es nicht**, auch nicht mit Systemrolle. Dasselbe gilt für
-die Freigabe zur Verwendung, sobald eine Gruppe geschützt ist: Wer die Gruppe in jede Auswahl stellen
-könnte, entschiede sonst über den Schutz, ohne das Kennzeichen anfassen zu dürfen.
+Gleichstellung und der Personalvorgänge. **Über den Schutz entscheidet die Systemverwaltung** — für
+interne Gruppen ebenso wie für Gruppen eines Identitätsanbieters. Sie setzt und löst das Kennzeichen
+in der Gruppenverwaltung im Dialog **„Bearbeiten“** mit dem Schalter **„Geschützte Gruppe“**;
+Verantwortliche einer internen Gruppe können es nicht. Jede Änderung steht mit handelnder Person im
+Nachweisprotokoll.
 
 **Was festgehalten wird.** Aufnahme und Entfernung eines Mitglieds werden der betroffenen Person in
 der Anwendung angezeigt (ohne E-Mail) und stehen mit der handelnden verantwortlichen Person im
@@ -491,34 +491,8 @@ Nachweisprotokoll — mit der Zahl der Mitglieder, ohne die Namen. Verantwortlic
 ihrer eigenen Gruppe keinen Eintrag.
 
 **Gruppen aus dem Verzeichnis oder dem Anmeldetoken lassen sich hier nicht bearbeiten.** Sie haben
-keine Verantwortlichen, sondern **Ansprechstellen**.
-
-### 7.1 Ansprechstellen an Anbietergruppen
-
-Eine Anbietergruppe wird beim Anbieter gepflegt — es gibt hier niemanden, der ihr Schutzkennzeichen
-setzen könnte. Deshalb benennt die **Systemverwaltung Ansprechstellen**: eine oder mehrere Personen,
-die **Mitglied der Gruppe** sind. In der Gruppenverwaltung steht dafür im Dialog **„Bearbeiten“**
-jeder Anbietergruppe (Zeilenmenü) der Abschnitt „Ansprechstelle“; zur Auswahl stehen dort genau die
-Mitglieder dieser Gruppe. Die Liste lädt erst über **„Mitgliederliste abrufen“**, denn ihr Abruf ist
-ein protokollierter Vorgang.
-
-**Die Benennung ist ein Verwaltungsakt und kein Pflegerecht.** Sie ändert an der Gruppe nichts, gibt
-keine Möglichkeit, Namen oder Mitglieder zu ändern, und berechtigt zu genau einer Handlung: das
-**Schutzkennzeichen** dieser Gruppe zu setzen und zu lösen. Die Systemverwaltung kann das Kennzeichen
-an einer Anbietergruppe **nicht** setzen und nicht lösen — der Versuch wird mit einer Begründung
-abgelehnt, so wie bei einer internen Gruppe, deren Kennzeichen nur die Verantwortlichen bedienen. Wer
-Ansprechstelle ist, findet seine Anbietergruppen unter „Meine Gruppen" und bedient das Kennzeichen
-dort; mehr gibt es dort nicht zu tun.
-
-**Die Benennung endet mit ihrer Grundlage.** Verlässt die Person die Gruppe — im Verzeichnisabgleich
-oder beim nächsten Anmeldetoken —, endet sie von selbst, mit einem Eintrag im Nachweisprotokoll und
-ohne handelnde Person. Wird ihr Konto gesperrt, bleibt die Benennung stehen und zählt nicht mehr:
-Eine **geschützte** Anbietergruppe ohne handlungsfähige Ansprechstelle erscheint dann in der
-Betriebsliste unter „Offene Nachfolgen" (Abschnitt 13.3), denn ihr Kennzeichen kann niemand mehr
-lösen. Eine ungeschützte Anbietergruppe braucht keine Ansprechstelle und steht dort nicht.
-
-Benennung und Entlassung stehen im **Nachweisprotokoll**; eine Rechtehistorie führen sie nicht — die
-Benennung trägt kein Leserecht, genau wie die Verantwortlichkeit an einer internen Gruppe.
+keine Verantwortlichen; Name und Mitglieder pflegt ihre Quelle. In der Gruppenverwaltung lässt sich an
+ihnen nur der Schutz einstellen.
 
 ## 8. Wer welche Gruppe sieht — und wie groß sie ist
 
@@ -568,8 +542,8 @@ wie viele es insgesamt sind; bei langen Listen wird seitenweise nachgeladen. Fü
   die Verantwortlichen die Freigabe zurück, endet auch diese Auskunft.
 - **Die Vorgabe ist „nicht freigegeben".**
 - **Bei einer geschützten Gruppe gibt es keine Liste**, keinen Namen und keine Größe: An ihre Stelle
-  tritt, **wen man fragen kann** — die Verantwortlichen einer internen Gruppe, die
-  **Ansprechstellen** einer Anbietergruppe (Abschnitt 7.1).
+  tritt, **wen man fragen kann** — die Verantwortlichen einer internen Gruppe; bei einer Gruppe
+  eines Identitätsanbieters gibt die Systemverwaltung Auskunft.
 - **Unterhalb der Mindestgruppengröße gibt es keine Liste** und keine Zahl, sondern „kleine Gruppe"
   — dieselbe Unterdrückung wie beim Zuwachssignal derselben Zeile. Eine Gruppe von vier ist in einem
   Referat eine Person mit Namen.
