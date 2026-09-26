@@ -1222,6 +1222,7 @@ export const mockGroups: GroupListResponse[] = [
     kind: 'AD_HOC',
     externalId: null,
     origin: 'INTERNAL',
+    state: 'ACTIVE',
     provider: null,
     sourcePath: null,
     parentGroupId: null,
@@ -1242,6 +1243,7 @@ export const mockGroups: GroupListResponse[] = [
     kind: 'ORG_UNIT',
     externalId: 'directory-guid-referat-50',
     origin: 'PROVIDER',
+    state: 'ACTIVE',
     provider: {
       id: 'oidc-provider-beschaeftigte',
       displayName: 'Verzeichnisdienst',
@@ -1266,6 +1268,7 @@ export const mockGroups: GroupListResponse[] = [
     kind: 'ORG_UNIT',
     externalId: 'directory-guid-referat-49',
     origin: 'PROVIDER',
+    state: 'DISSOLVED',
     provider: {
       id: 'oidc-provider-partner',
       displayName: 'Partnerportal',
@@ -1292,6 +1295,7 @@ export const mockGroups: GroupListResponse[] = [
     kind: 'AD_HOC',
     externalId: null,
     origin: 'INTERNAL',
+    state: 'NOT_RELEASED',
     provider: null,
     sourcePath: null,
     parentGroupId: null,
@@ -1314,6 +1318,7 @@ export const mockGroups: GroupListResponse[] = [
     kind: 'ORG_UNIT',
     externalId: 'directory-guid-sbv',
     origin: 'PROVIDER',
+    state: 'ACTIVE',
     provider: {
       id: 'oidc-provider-beschaeftigte',
       displayName: 'Verzeichnisdienst',
@@ -1345,6 +1350,7 @@ export const mockGroups: GroupListResponse[] = [
     kind: 'IDENTITY_PROVIDER',
     externalId: 'Meldewesen',
     origin: 'PROVIDER',
+    state: 'ACTIVE',
     provider: {
       id: 'oidc-provider-partner',
       displayName: 'Partnerbehoerde',

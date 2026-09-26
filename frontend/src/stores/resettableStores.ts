@@ -1,5 +1,6 @@
 import { useSpaceStore } from './spaceStore'
 import { useGroupStore } from './groupStore'
+import { useGroupAdminListStore } from './groupAdminListStore'
 import { useLibraryStore } from './libraryStore'
 import { usePromptLibraryStore } from './promptLibraryStore'
 import { useCatalogStore } from './catalogStore'
@@ -44,6 +45,7 @@ function resettableStores() {
   return [
     useSpaceStore,
     useGroupStore,
+    useGroupAdminListStore,
     useLibraryStore,
     usePromptLibraryStore,
     useCatalogStore,

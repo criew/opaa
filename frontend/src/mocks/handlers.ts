@@ -1308,6 +1308,7 @@ export const handlers = [
       kind: 'AD_HOC',
       externalId: null,
       origin: 'INTERNAL',
+      state: 'NOT_RELEASED',
       provider: null,
       sourcePath: null,
       parentGroupId: null,
@@ -1543,6 +1544,10 @@ export const handlers = [
     const body = (await request.json()) as { releasedForUse: boolean }
     group.releasedForUse = body.releasedForUse
     listEntry.releasedForUse = body.releasedForUse
+    // the state follows the release, as the server derives it (GroupStates)
+    if (listEntry.kind === 'AD_HOC' && !listEntry.dissolved) {
+      listEntry.state = body.releasedForUse ? 'ACTIVE' : 'NOT_RELEASED'
+    }
     return HttpResponse.json(group)
   }),
 

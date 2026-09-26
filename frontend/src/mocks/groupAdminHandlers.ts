@@ -1,6 +1,8 @@
 import { http, HttpResponse } from 'msw'
 import type {
   CapabilityGrantRequest,
+  GroupListResponse,
+  GroupState,
   DirectorySyncPlanDecisionRequest,
   PermissionTransferPreviewRequest,
   PermissionTransferRequest,
@@ -12,6 +14,61 @@ import {
   mockGroupEffects,
   mockPendingPlan,
 } from './groupAdminFixtures'
+import { mockGroups } from './fixtures'
+
+const KIND_ORDER = ['AD_HOC', 'IDENTITY_PROVIDER', 'ORG_UNIT']
+const STATE_ORDER: GroupState[] = [
+  'DISSOLVED',
+  'PROVIDER_DISABLED',
+  'UNMAINTAINED',
+  'NOT_RELEASED',
+  'ACTIVE',
+]
+
+/** The server's filter of GET /admin/groups/page (GroupListQuery), over the mock groups. */
+function matchesGroupFilter(group: GroupListResponse, params: URLSearchParams): boolean {
+  const query = params.get('query')?.toLowerCase()
+  const origin = params.get('origin')
+  const providerId = params.get('providerId')
+  if (origin && group.origin !== origin) return false
+  if (providerId && group.provider?.id !== providerId) return false
+  if (params.get('kind') && group.kind !== params.get('kind')) return false
+  if (params.get('state') && group.state !== params.get('state')) return false
+  if (!query) return true
+  return [group.name, group.description, group.sourcePath].some((text) =>
+    text?.toLowerCase().includes(query),
+  )
+}
+
+/** The server's order (GroupListService): the chosen field, then the name. */
+function groupOrder(sort: string, descending: boolean) {
+  const byName = (a: GroupListResponse, b: GroupListResponse) => a.name.localeCompare(b.name, 'de')
+  const key = (group: GroupListResponse): string | number => {
+    switch (sort) {
+      case 'kind':
+        return KIND_ORDER.indexOf(group.kind)
+      case 'origin':
+        return group.provider ? `1${group.provider.displayName}` : '0'
+      case 'memberCount':
+        return group.memberCount
+      case 'state':
+        return STATE_ORDER.indexOf(group.state)
+      case 'createdAt':
+        return group.createdAt
+      default:
+        return group.name.toLocaleLowerCase('de')
+    }
+  }
+  return (a: GroupListResponse, b: GroupListResponse) => {
+    const left = key(a)
+    const right = key(b)
+    const primary =
+      typeof left === 'number' && typeof right === 'number'
+        ? left - right
+        : String(left).localeCompare(String(right), 'de')
+    return (descending ? -primary : primary) || byName(a, b)
+  }
+}
 
 /**
  * Die Endpunkte der Verwaltung von Anlegerechten, Verzeichnisabgleich und Übertragung (#1821).
@@ -40,6 +97,21 @@ export const groupAdminHandlers = [
     '/api/v1/admin/capabilities/:capability/grants/:grantId',
     () => new HttpResponse(null, { status: 204 }),
   ),
+
+  http.get('/api/v1/admin/groups/page', ({ request }) => {
+    const params = new URL(request.url).searchParams
+    const page = Number(params.get('page') ?? 0)
+    const size = Number(params.get('size') ?? 25)
+    const matching = mockGroups
+      .filter((group) => matchesGroupFilter(group, params))
+      .sort(groupOrder(params.get('sort') ?? 'name', params.get('direction') === 'desc'))
+    return HttpResponse.json({
+      items: matching.slice(page * size, page * size + size),
+      total: matching.length,
+      page,
+      size,
+    })
+  }),
 
   http.get('/api/v1/admin/groups/effects', ({ request }) => {
     const params = new URL(request.url).searchParams

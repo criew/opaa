@@ -420,9 +420,13 @@ Verantwortliche dürfen:
 **Wer nicht verantwortlich ist, sieht die Gruppe unter „Meine Gruppen" nicht** und bekommt auf jeden
 Pflegeversuch dieselbe Antwort wie für eine Gruppe, die es nicht gibt. Die Systemverwaltung darf
 jede interne Gruppe pflegen — sie muss eine Gruppe ohne Verantwortliche wieder besetzen können; ihr
-Einstieg ist **Administration → Gruppen**, mit einem Filter auf die Herkunft und der Kennzeichnung
-„nicht freigegeben" an jeder internen Gruppe, die ihre Verantwortlichen noch nicht freigegeben
-haben.
+Einstieg ist **Administration → Gruppen**. Dort stehen alle Gruppen in einer Tabelle wie die Konten
+der Benutzerverwaltung: durchsuchbar über Name, Beschreibung und Quellpfad, filterbar nach Herkunft,
+Art und Zustand, sortierbar und seitenweise. Eine interne Gruppe, die ihre Verantwortlichen noch
+nicht freigegeben haben, trägt den Zustand **„Nicht freigegeben“**; das Info-Symbol daneben nennt
+den Grund, ebenso bei „Aufgelöst“, „Anbieter deaktiviert“ und „Nicht mehr gepflegt“. Die Handlungen
+einer Gruppe stehen im Zeilenmenü: **Bearbeiten**, **Mitglieder**, **Wirkungen übertragen** und
+**Löschen**; gelöscht werden kann nur eine interne Gruppe.
 
 **Verantwortung wird abgegeben, nicht abgelegt.** Die letzte verantwortliche Person kann sich nicht
 selbst entfernen: erst die Nachfolge benennen, dann zurücktreten. Wer die Aufgabe wechselt, gibt die
@@ -467,8 +471,10 @@ keine Verantwortlichen, sondern **Ansprechstellen**.
 
 Eine Anbietergruppe wird beim Anbieter gepflegt — es gibt hier niemanden, der ihr Schutzkennzeichen
 setzen könnte. Deshalb benennt die **Systemverwaltung Ansprechstellen**: eine oder mehrere Personen,
-die **Mitglied der Gruppe** sind. In der Gruppenverwaltung steht dafür an jeder Anbietergruppe der
-Abschnitt „Ansprechstelle"; zur Auswahl stehen dort genau die Mitglieder dieser Gruppe.
+die **Mitglied der Gruppe** sind. In der Gruppenverwaltung steht dafür im Dialog **„Bearbeiten“**
+jeder Anbietergruppe (Zeilenmenü) der Abschnitt „Ansprechstelle“; zur Auswahl stehen dort genau die
+Mitglieder dieser Gruppe. Die Liste lädt erst über **„Mitgliederliste abrufen“**, denn ihr Abruf ist
+ein protokollierter Vorgang.
 
 **Die Benennung ist ein Verwaltungsakt und kein Pflegerecht.** Sie ändert an der Gruppe nichts, gibt
 keine Möglichkeit, Namen oder Mitglieder zu ändern, und berechtigt zu genau einer Handlung: das
@@ -776,8 +782,8 @@ erzeugt eine aufgelöste Gruppe und einen Eintrag in der Betriebsliste — die E
 Rechte gehen, trifft ein Mensch. Ebenso wenig nimmt sie Mitgliedschaften zurück, die ein
 kompromittierter Anbieter gesetzt hat; das bleibt Handarbeit.
 
-**Wo sie steht.** In der Gruppenverwaltung (**Administration → Gruppen**) trägt jede Gruppe die
-Handlung „Wirkungen übertragen"; für die Gruppen eines Anbieters führt die **Arbeitsliste** desselben
+**Wo sie steht.** In der Gruppenverwaltung (**Administration → Gruppen**) steht im Zeilenmenü jeder
+Gruppe die Handlung „Wirkungen übertragen“; für die Gruppen eines Anbieters führt die **Arbeitsliste** desselben
 Anbieters dieselbe Handlung je Gruppe (**Administration → Identitätsanbieter → Zeilenmenü →
 Arbeitsliste der Gruppen**). Die eigene Abgabe steht unter **Einstellungen → Meine Gruppen →
 „Verantwortung und Eigentum abgeben"**. In allen drei Fällen ist der Ablauf derselbe: Ziel wählen,

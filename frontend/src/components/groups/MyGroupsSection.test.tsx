@@ -51,6 +51,7 @@ const group: GroupListResponse = {
   kind: 'AD_HOC',
   externalId: null,
   origin: 'INTERNAL',
+  state: 'NOT_RELEASED',
   provider: null,
   sourcePath: null,
   parentGroupId: null,
