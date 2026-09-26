@@ -107,6 +107,28 @@ class SourceConnectorRegistryTest {
         .isInstanceOf(IllegalStateException.class);
   }
 
+  @Test
+  void theDefaultSettingsViewShowsTheStoredSettingsToAManagerOnly() {
+    KnowledgeLibrary library =
+        KnowledgeLibrary.ownedByUser(
+            UUID.randomUUID(),
+            "Wiki",
+            null,
+            UUID.randomUUID(),
+            false,
+            DocumentSourceType.HTTP_DIRECTORY,
+            null,
+            "https://example.org",
+            null,
+            null,
+            false);
+    library.updateSourceSettings("{\"root\": \"/intern/pfad\"}");
+    SourceConnector connector = plain(DocumentSourceType.HTTP_DIRECTORY, true);
+
+    assertThat(connector.settingsView(library, false)).isNull();
+    assertThat(connector.settingsView(library, true).asMap()).containsEntry("root", "/intern/pfad");
+  }
+
   /** One connector per source type, with the abilities the production connectors offer. */
   private List<SourceConnector> complete() {
     List<SourceConnector> connectors = new ArrayList<>();

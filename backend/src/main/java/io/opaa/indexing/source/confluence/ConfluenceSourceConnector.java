@@ -27,6 +27,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.UnaryOperator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A Confluence instance (ADR-0023). The edition is required, confirmed against the instance at
@@ -38,6 +40,8 @@ import java.util.function.UnaryOperator;
  */
 public class ConfluenceSourceConnector
     implements SourceConnector, SourceBrowser, PushIntakeHandler {
+
+  private static final Logger log = LoggerFactory.getLogger(ConfluenceSourceConnector.class);
 
   /** Upper bound of a space selection - matches LibraryRequest.confluenceSpaces.maxItems. */
   static final int MAX_SPACES = 500;
@@ -248,11 +252,14 @@ public class ConfluenceSourceConnector
     library.updateSourceSettings(settings.sortedByKey().toData().toJson());
   }
 
-  /** Every reader sees the edition and the selection; the rhythm is administration detail. */
+  /**
+   * Every reader sees the edition and the selection; the rhythm is administration detail. Stored
+   * settings the record no longer reads are left out rather than failing the whole read.
+   */
   @Override
   public ConnectorData settingsView(KnowledgeLibrary library, boolean manager) {
-    ConfluenceSourceSettings stored = ConfluenceSourceSettings.of(library);
-    if (stored.edition() == null) {
+    ConfluenceSourceSettings stored = readableStored(library);
+    if (stored == null || stored.edition() == null) {
       return null;
     }
     return new ConfluenceSourceSettings(
@@ -265,11 +272,25 @@ public class ConfluenceSourceConnector
   /** The selection is exactly what every reader may see - a change leaves an audit trail. */
   @Override
   public Map<String, Object> settingsState(KnowledgeLibrary library) {
+    ConfluenceSourceSettings stored = readableStored(library);
     return Map.of(
         SPACES_STATE,
-        ConfluenceSourceSettings.of(library).spaceSelection().stream()
-            .map(ConfluenceSpaceSelection::getSpaceKey)
-            .toList());
+        stored == null
+            ? List.of()
+            : stored.spaceSelection().stream().map(ConfluenceSpaceSelection::getSpaceKey).toList());
+  }
+
+  /** The stored settings, or {@code null} with a log entry when they no longer read. */
+  private static ConfluenceSourceSettings readableStored(KnowledgeLibrary library) {
+    try {
+      return ConfluenceSourceSettings.of(library);
+    } catch (ValidationException | IllegalArgumentException e) {
+      log.warn(
+          "Library {} carries Confluence settings the record rejects; left out: {}",
+          library.getId(),
+          e.getMessage());
+      return null;
+    }
   }
 
   /**

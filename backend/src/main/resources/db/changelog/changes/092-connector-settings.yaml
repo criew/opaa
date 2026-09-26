@@ -75,3 +75,10 @@ databaseChangeLog:
               ALTER TABLE knowledge_libraries
                   ADD CONSTRAINT chk_knowledge_libraries_confluence_full_sync_interval
                       CHECK (source_confluence_full_sync_interval_days IS NULL OR source_confluence_full_sync_interval_days > 0);
+              ALTER TABLE knowledge_libraries
+                  ADD CONSTRAINT chk_knowledge_libraries_source_configuration
+                      CHECK (((((source_type)::text = 'UPLOAD'::text) AND (source_path IS NULL) AND (source_url IS NULL) AND (source_proxy IS NULL) AND (source_credentials IS NULL) AND (source_insecure_ssl = false) AND (source_confluence_edition IS NULL) AND (source_settings IS NULL)) OR (((source_type)::text = 'FILESYSTEM'::text) AND (source_path IS NOT NULL) AND (source_url IS NULL) AND (source_proxy IS NULL) AND (source_credentials IS NULL) AND (source_insecure_ssl = false) AND (source_confluence_edition IS NULL) AND (source_settings IS NULL)) OR (((source_type)::text = 'HTTP_DIRECTORY'::text) AND (source_path IS NULL) AND (source_url IS NOT NULL) AND (source_confluence_edition IS NULL) AND (source_settings IS NULL)) OR (((source_type)::text = 'RSS_FEED'::text) AND (source_path IS NULL) AND (source_url IS NOT NULL) AND (source_confluence_edition IS NULL) AND (source_settings IS NULL)) OR (((source_type)::text = 'CONFLUENCE'::text) AND (source_path IS NULL) AND (source_url IS NOT NULL) AND (source_credentials IS NOT NULL) AND (source_confluence_edition IS NOT NULL) AND (source_settings IS NULL)) OR (((source_type)::text = 'S3'::text) AND (source_path IS NULL) AND (source_url IS NOT NULL) AND (source_credentials IS NOT NULL) AND (source_confluence_edition IS NULL) AND (source_settings IS NOT NULL) AND
+                          CASE
+                          WHEN (jsonb_typeof((source_settings -> 'scopes'::text)) = 'array'::text) THEN (jsonb_array_length((source_settings -> 'scopes'::text)) >= 1)
+                          ELSE false
+                          END))) NOT VALID;

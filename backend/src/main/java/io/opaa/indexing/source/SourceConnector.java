@@ -52,12 +52,13 @@ public interface SourceConnector {
   default void applyChange(KnowledgeLibrary library, SourceSettings validated) {}
 
   /**
-   * The connector settings of {@code library} as a caller sees them: every reader what the library
-   * covers, a manager ({@code manager}) the whole of them. {@code null} for none. Never a secret -
-   * the settings carry none (ADR-0038, Entscheidung 3).
+   * The connector settings of {@code library} as a caller sees them, {@code null} for none. By
+   * default only a manager ({@code manager}) sees them, whole; a connector that shows readers what
+   * the library covers overrides this deliberately. Never a secret - the settings carry none
+   * (ADR-0038, Entscheidung 3).
    */
   default ConnectorData settingsView(KnowledgeLibrary library, boolean manager) {
-    return ConnectorData.storedIn(library);
+    return manager ? ConnectorData.storedIn(library) : null;
   }
 
   /**

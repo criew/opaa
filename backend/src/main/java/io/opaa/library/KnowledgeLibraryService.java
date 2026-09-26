@@ -1002,11 +1002,10 @@ public class KnowledgeLibraryService {
   }
 
   /**
-   * A library's quellentyp is required at creation (ADR-0018); its connector validates the
-   * configuration - the 400-before-insert half of {@code
-   * chk_knowledge_libraries_source_configuration}. A connector-owned field on a library of another
-   * type is refused naming its owner. {@code sourceInsecureSsl} defaults to {@code false} when
-   * omitted.
+   * A library's quellentyp is required at creation (ADR-0018); its connector alone validates the
+   * configuration - the database checks nothing per type (ADR-0038). A connector setting addressed
+   * to another type is refused naming its owner. {@code sourceInsecureSsl} defaults to {@code
+   * false} when omitted.
    */
   private SourceConfiguration validateSourceConfiguration(LibraryCreation request) {
     DocumentSourceType sourceType = request.sourceType();

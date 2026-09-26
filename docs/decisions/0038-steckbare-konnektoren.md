@@ -4,11 +4,12 @@
 
 **Vorgeschlagen (26.09.2026)** — Issue [#1977](https://github.com/criew/opaa/issues/1977), Epic
 [#1906](https://github.com/criew/opaa/issues/1906). Ergänzt
-[ADR-0018](0018-quellkonfiguration-in-der-bibliothek.md) und
 [ADR-0006](0006-openapi-dto-generation.md). Ändert
-[ADR-0023](0023-confluence-konnektor.md), Entscheidungen 1 und 2 (Ablage von Space-Auswahl und
-Edition), und [ADR-0027](0027-s3-konnektor.md), Entscheidung 1 (`CHECK`-Zweige je Typ,
-„Ausdrücklich offen": Umzug der bestehenden Typen).
+[ADR-0018](0018-quellkonfiguration-in-der-bibliothek.md) (Nachtrag #1131: Kindtabelle der
+Space-Auswahl), [ADR-0023](0023-confluence-konnektor.md), Entscheidungen 1, 2 und 4 (Ablage von
+Space-Auswahl, Edition und Vollabgleichsrhythmus), und [ADR-0027](0027-s3-konnektor.md),
+Entscheidung 1 (`CHECK`-Zweige je Typ, „Ausdrücklich offen": Umzug der bestehenden Typen). Alle
+drei tragen einen Nachtrag mit Verweis hierher.
 
 ## Kontext
 
@@ -63,15 +64,25 @@ zwei Plätze für Geheimnisse, beide Spalten des Kerns, beide über `SourceCrede
 verschlüsselt:
 
 - `source_credentials` für die Zugangsdaten. Das Format bestimmt der Konnektor (S3
-  `accessKey:secretKey[:sessionToken]`, Confluence je Edition).
+  `accessKey:secretKey[:sessionToken]`, Confluence je Edition). Mehrere Zugangsgeheimnisse passen
+  damit schon heute ohne Kernänderung hinein; S3 trägt bis zu drei.
 - `source_webhook_secret` für das Push-Geheimnis. Der Kern erzeugt, rotiert und löscht es und zeigt
   es genau einmal an.
 
 Antworten tragen nur Ja/Nein-Angaben (`sourceCredentialsSet`, gesetztes Push-Geheimnis). Das Audit
 nennt Feldnamen, nie Werte; den Feldnamen des Push-Geheimnisses liefert der Konnektor in seiner
-Beschreibung. `SourceSettings#toString` maskiert die Zugangsdaten. Braucht ein künftiger Konnektor
-ein drittes Geheimnis, wird der Kern bewusst erweitert, mit eigenem ADR-Nachtrag. Ein
-verschlüsseltes Feld innerhalb von `source_settings` gibt es nicht.
+Beschreibung. `SourceSettings#toString` maskiert die Zugangsdaten. Ein verschlüsseltes Feld
+innerhalb von `source_settings` gibt es nicht.
+
+**Invariante: Jedes Ziel, an das Zugangsdaten gehen, leitet sich aus `sourceUrl` ab.** Die
+Ursprungsbindung (`SourceOriginMatcher`, #516/#542) verwirft gespeicherte Zugangsdaten, sobald sich
+der Ursprung von `sourceUrl` ändert. Ein Konnektor darf Host, Mandant oder ein anderes Ziel seiner
+Zugangsdaten deshalb nicht allein in `source_settings` führen. Braucht er das doch, verlangt er bei
+einer Zieländerung in den Einstellungen selbst neue Zugangsdaten.
+
+**Offen:** Das Push-Geheimnis erzeugt heute der Kern. Ein Anbieter, der sein Signaturgeheimnis
+selbst ausgibt und es nur eintragen lässt, passt nicht in diesen Weg; das braucht einen eigenen
+Nachtrag, sobald ein solcher Konnektor kommt.
 
 ### 4. Abbildung in OpenAPI: freies Objekt, `sourceType` als Diskriminator daneben
 
@@ -85,6 +96,15 @@ Auflistung vor dem Speichern werden typneutral benannt und über den Typ-Schlüs
 geleitet. Die Form der Einstellungen je Konnektor dokumentiert sein Handbuchkapitel und seine
 Formularkomponente im Frontend, die nach Typ-Schlüssel registriert wird.
 
+Damit geht verloren, was die Spezifikation bisher je Feld leistete: Grenzen wie `required`,
+`maxItems` und `maxLength`, die Bean-Validation der generierten DTOs und die Frontend-Typen (aus
+`sourceSettings` wird `Record<string, unknown>`). Die Formularkomponente muss ihre Form selbst
+deklarieren und aktuell halten; das prüft kein Build mehr. Als Ausgleich liefert
+`GET /source-types` je Konnektor ein JSON-Schema seiner Einstellungen, wo der Konnektor eines
+angibt. Das braucht keine Spec-Änderung, dokumentiert die Form für Clients und kann das Frontend
+vor dem Senden prüfen lassen; maßgeblich bleibt die Validierung im Konnektor. Ob das Schema schon
+mit dem API-Bruch kommt, entscheidet dessen Umsetzung.
+
 ### 5. Übergang in zwei Schritten
 
 Zuerst stellt das Backend intern um (Einstellungen je Konnektor, Schema, Kern ohne
@@ -95,8 +115,7 @@ Frontend und E2E bleiben dabei unverändert. Danach folgt der API-Bruch mit frei
 ## Verworfene Alternativen
 
 - **`oneOf` mit einem Zweig je Konnektor.** Dokumentiert jede Form in der Spezifikation, verlangt
-  aber für jeden neuen Konnektor eine Spec-Änderung; genau das soll entfallen. Der
-  `spring`-Generator bildet `oneOf` zudem nur als Marker-Interface ohne Felder ab.
+  aber für jeden neuen Konnektor eine Spec-Änderung; genau das soll entfallen.
 - **Bekannte Zweige plus freier Rückfallzweig.** Ein freier Zweig passt auf jede Eingabe, `oneOf`
   wäre damit nie eindeutig; die Spezifikation täuschte eine Prüfung vor, die der Konnektor ohnehin
   selbst macht.
@@ -108,7 +127,8 @@ Frontend und E2E bleiben dabei unverändert. Danach folgt der API-Bruch mit frei
   beziehungsweise der Synchronisationszustand, wie schon ADR-0027 für S3 festgehalten hat.
 - **Enum behalten, Registry nur zur Prüfung.** Jeder neue Wert wäre eine Spec-Änderung.
 - **Formulare vollständig aus einem Schema erzeugen.** Lohnt bei sechs Konnektoren nicht; die
-  Formularkomponente je Typ bleibt.
+  Formularkomponente je Typ bleibt. Das Schema je Konnektor aus Entscheidung 4 dient der Prüfung
+  und Dokumentation, nicht dem Erzeugen.
 
 ## Konsequenzen
 
@@ -126,6 +146,7 @@ Frontend und E2E bleiben dabei unverändert. Danach folgt der API-Bruch mit frei
   mindestens ein S3-Bereich, die Confluence-Edition) sichert allein der Konnektor. Seine
   Record-Tests sind deshalb Pflicht, nicht Stilfrage.
 - **Die Spezifikation beschreibt `sourceSettings` nicht mehr im Einzelnen.** Clients sehen die
-  Form im Handbuch und in der Formularkomponente, nicht im generierten Typ.
+  Form im Handbuch, in der Formularkomponente und gegebenenfalls im Schema aus `GET /source-types`,
+  nicht im generierten Typ; Spec-Validierung und generierte Frontend-Typen entfallen dafür.
 - **Eine Umbenennung von Einstellungs-Schlüsseln braucht künftig eine Datenmigration über
   `jsonb`**, sobald es Bestandssysteme gibt.

@@ -321,6 +321,66 @@ class ConfluenceLibraryConfigurationIntegrationTest {
   }
 
   @Test
+  void aForeignEditionIsRefusedBeforeTheConnectorAndForeignSpacesOnCreationAfterIt() {
+    CurrentUser caller = currentUser(user());
+    // an address the RSS connector refuses tells which check ran first
+    URI notHttp = URI.create("ftp://example.org/feed.xml");
+
+    assertThatThrownBy(
+            () ->
+                libraryService.createLibrary(
+                    libraryCreation("RSS mit Edition", DocumentSourceType.RSS_FEED)
+                        .sourceUrl(notHttp)
+                        .confluenceEdition(ConfluenceEdition.CLOUD)
+                        .build(),
+                    caller))
+        .isInstanceOf(ValidationException.class)
+        .hasMessage("confluenceEdition ist nur für sourceType CONFLUENCE zulässig");
+    assertThatThrownBy(
+            () ->
+                libraryService.createLibrary(
+                    libraryCreation("RSS mit Spaces", DocumentSourceType.RSS_FEED)
+                        .sourceUrl(notHttp)
+                        .confluenceSpaces(List.of(new ConfluenceSpaceSelection("A", null)))
+                        .build(),
+                    caller))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("sourceUrl");
+
+    UUID rss =
+        libraryService
+            .createLibrary(
+                libraryCreation("Feed", DocumentSourceType.RSS_FEED)
+                    .sourceUrl(URI.create("https://example.org/feed.xml"))
+                    .build(),
+                caller)
+            .library()
+            .getId();
+    assertThatThrownBy(
+            () ->
+                libraryService.updateLibrary(
+                    rss,
+                    libraryUpdate("Feed")
+                        .sourceUrl(notHttp)
+                        .confluenceSpaces(List.of(new ConfluenceSpaceSelection("A", null)))
+                        .build(),
+                    caller))
+        .isInstanceOf(ValidationException.class)
+        .hasMessage("confluenceSpaces sind nur für sourceType CONFLUENCE zulässig");
+    assertThatThrownBy(
+            () ->
+                libraryService.updateLibrary(
+                    rss,
+                    libraryUpdate("Feed")
+                        .sourceUrl(notHttp)
+                        .confluenceFullSyncIntervalDays(14)
+                        .build(),
+                    caller))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("sourceUrl");
+  }
+
+  @Test
   void editionAndSpacesAreRefusedOnALibraryOfAnotherType() {
     UUID owner = user();
     CurrentUser caller = currentUser(owner);

@@ -6,6 +6,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.UUID;
+import liquibase.Contexts;
+import liquibase.LabelExpression;
+import liquibase.Liquibase;
+import liquibase.resource.ClassLoaderResourceAccessor;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -119,6 +123,22 @@ class Migration092ConnectorSettingsTest extends AbstractMigrationTest {
     assertThatThrownBy(() -> library(owner, "UPLOAD", null, "{}"))
         .isInstanceOf(SQLException.class)
         .hasMessageContaining("chk_knowledge_libraries_upload_without_source");
+  }
+
+  @Test
+  void theRollbackRestoresTheColumnsTheTableAndThePerTypeCheck() throws Exception {
+    applyChangelog(connection, CHANGELOG_PATH);
+
+    new Liquibase(CHANGELOG_PATH, new ClassLoaderResourceAccessor(), liquibaseDatabase(connection))
+        .rollback(1, new Contexts(), new LabelExpression());
+    connection.setAutoCommit(true);
+
+    assertThat(fixtures.columnExists("knowledge_libraries", "source_confluence_edition")).isTrue();
+    assertThat(tableExists("knowledge_library_confluence_spaces")).isTrue();
+    UUID owner = fixtures.user();
+    assertThatThrownBy(() -> library(owner, "CONFLUENCE", "https://wiki.example.org", null))
+        .isInstanceOf(SQLException.class)
+        .hasMessageContaining("chk_knowledge_libraries_source_configuration");
   }
 
   @Test
