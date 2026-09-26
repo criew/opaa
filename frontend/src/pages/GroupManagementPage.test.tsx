@@ -202,7 +202,7 @@ describe('GroupManagementPage', () => {
     expect(within(referat).getByText('Verzeichnisdienst')).toBeInTheDocument()
     expect(
       within(referat).getByRole('img', {
-        name: /^Herkunft: Diese Gruppe stammt aus dem Verzeichnis von „Verzeichnisdienst“/,
+        name: /^Herkunft: OPAA liest Gruppen und Mitglieder von „Verzeichnisdienst“ selbst aus/,
       }),
     ).toBeInTheDocument()
     expect(within(table).queryByRole('columnheader', { name: /^Art/ })).not.toBeInTheDocument()
@@ -310,9 +310,13 @@ describe('GroupManagementPage', () => {
     renderPage()
     const user = userEvent.setup()
 
-    const origin = await screen.findByRole('img', { name: /^Herkunft: Diese Gruppe meldet/ })
+    const origin = await screen.findByRole('img', {
+      name: /^Herkunft: OPAA erfährt die Mitglieder dieser Gruppe nur bei der Anmeldung/,
+    })
     await user.hover(origin)
-    expect(await screen.findByRole('tooltip')).toHaveTextContent(/bei jeder Anmeldung mit/)
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(
+      /erst bei der nächsten Anmeldung dieser Person/,
+    )
     await user.unhover(origin)
 
     const menu = await openRowMenu(user, 'Fachbereich 3')

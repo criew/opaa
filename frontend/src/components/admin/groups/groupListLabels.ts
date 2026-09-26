@@ -35,8 +35,8 @@ function intervalText(minutes: number): string {
 }
 
 /**
- * Where a provider group comes from and what that means for its members, in plain words - the
- * one thing its kind adds to its origin. Null for an internal group, whose origin says it all.
+ * How OPAA learns a provider group's members - by reading the directory itself or only from the
+ * sign-in - and what follows for their currency, in plain words. Null for an internal group.
  */
 export function groupOriginExplanation(group: GroupListResponse): string | null {
   const provider = group.provider
@@ -47,15 +47,14 @@ export function groupOriginExplanation(group: GroupListResponse): string | null 
       ? `, zurzeit ${intervalText(provider.directorySyncIntervalMinutes)}`
       : ''
     return (
-      `Diese Gruppe stammt aus dem Verzeichnis von ${name}. OPAA gleicht sie regelmäßig ab${rhythm}; ` +
-      'wer dort in die Gruppe kommt oder sie verlässt, ist danach auch hier Mitglied oder nicht ' +
-      'mehr – ohne dass sich die Person anmelden muss.'
+      `OPAA liest Gruppen und Mitglieder von ${name} selbst aus${rhythm}. Änderungen dort gelten ` +
+      'hier nach dem nächsten Abgleich, auch für Personen, die sich nicht anmelden.'
     )
   }
   return (
-    `Diese Gruppe meldet ${name} bei jeder Anmeldung mit. Wer dazugehört, wird erst aktualisiert, ` +
-    'wenn sich die Person das nächste Mal anmeldet; wer sich länger nicht anmeldet, behält den ' +
-    'bisherigen Stand.'
+    'OPAA erfährt die Mitglieder dieser Gruppe nur bei der Anmeldung: Meldet sich jemand über ' +
+    `${name} an, teilt der Anbieter mit, in welchen Gruppen die Person ist. Ändert sich dort etwas, ` +
+    'sieht OPAA das erst bei der nächsten Anmeldung dieser Person.'
   )
 }
 

@@ -357,6 +357,26 @@ Jede Gruppe hat genau eine Herkunft, und sie steht als Zusatz neben dem Namen �
 | **intern** | Die Verantwortlichen der Gruppe (Abschnitt 7) | ja |
 | **von einem Identitätsanbieter** | Der Anbieter — über den Gruppen-Claim seiner Tokens oder über den Verzeichnisabgleich | nein, schreibgeschützt |
 
+**Wie OPAA die Mitglieder einer Anbietergruppe erfährt.** Gruppen aus einem Identitätsanbieter
+unterscheiden sich nicht in sich, sondern darin, wie ihr Anbieter angeschlossen ist. Das wird je
+Anbieter eingerichtet, und alle seine Gruppen folgen dieser Einstellung:
+
+- **Über die Anmeldung (Gruppen-Claim):** OPAA darf beim Anbieter nichts nachfragen. Es erfährt die
+  Gruppen einer Person nur in dem Moment, in dem sie sich anmeldet — der Anbieter schickt dann mit,
+  in welchen Gruppen sie ist. Wird jemand dort aus einer Gruppe genommen, bleibt die Person in OPAA
+  Mitglied, bis sie sich das nächste Mal anmeldet; wer sich nicht mehr anmeldet, bleibt es.
+  Vergleichbar dem Dienstausweis am Einlass: Man sieht nur, wer gerade durch die Tür kommt.
+- **Über den Verzeichnisabgleich:** OPAA hat ein eigenes Lesekonto beim Anbieter und liest Gruppen
+  und Mitglieder im eingestellten Takt selbst aus. Änderungen gelten nach dem nächsten Abgleich,
+  auch für Personen, die sich nicht anmelden. Vergleichbar der Personalliste, die das Personalamt
+  regelmäßig schickt.
+
+Warum nicht jeder Anbieter abgeglichen wird: Der Abgleich braucht ein Lesekonto, das die IT des
+Verzeichnisses einrichten und freigeben muss. Die Anmeldung kommt ohne aus und ist deshalb schneller
+eingerichtet — um den Preis, dass Änderungen erst mit der nächsten Anmeldung ankommen. In der
+Gruppenverwaltung erklärt das Info-Symbol hinter dem Anbieternamen, welcher der beiden Wege für eine
+Gruppe gilt.
+
 **Je Anbieter genau ein Mechanismus.** Entweder der **Gruppen-Claim** seiner Tokens oder der
 **Verzeichnisabgleich**; beides zugleich lehnt OPAA ab. Einrichtung, Zeitplan, Trockenlauf,
 Plausibilitätsschwelle, leeres Ergebnis, unerreichbares Verzeichnis und der Bestätigungsweg stehen
@@ -423,9 +443,8 @@ jede interne Gruppe pflegen — sie muss eine Gruppe ohne Verantwortliche wieder
 Einstieg ist **Administration → Gruppen**. Dort stehen alle Gruppen in einer Tabelle wie die Konten
 der Benutzerverwaltung: durchsuchbar über Name, Beschreibung und Quellpfad, filterbar nach Herkunft
 und Zustand, sortierbar und seitenweise. Hinter dem Anbieter einer Anbietergruppe erklärt ein
-Info-Symbol, was die Herkunft für die Mitglieder bedeutet: Eine Gruppe, die der Anbieter bei jeder
-Anmeldung mitmeldet, wird erst bei der nächsten Anmeldung der Person aktualisiert; eine Gruppe aus
-dem Verzeichnisabgleich im Takt des Abgleichs, auch ohne Anmeldung. Eine interne Gruppe, die ihre Verantwortlichen noch
+Info-Symbol, wie OPAA die Mitglieder erfährt: nur bei der Anmeldung der jeweiligen Person oder durch
+eigenes Auslesen im Takt des Verzeichnisabgleichs, auch ohne Anmeldung (Abschnitt 6). Eine interne Gruppe, die ihre Verantwortlichen noch
 nicht freigegeben haben, trägt den Zustand **„Nicht freigegeben“**; das Info-Symbol daneben nennt
 den Grund, ebenso bei „Aufgelöst“, „Anbieter deaktiviert“ und „Nicht mehr gepflegt“. Die Handlungen
 einer Gruppe stehen im Zeilenmenü: **Bearbeiten**, **Mitglieder**, **Wirkungen übertragen** und
