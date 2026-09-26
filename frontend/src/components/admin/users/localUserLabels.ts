@@ -1,5 +1,4 @@
 import type {
-  LocalAccountActivity,
   LocalAccountState,
   LockReason,
   LocalUserResponse,
@@ -32,16 +31,6 @@ export function localAccountStateText(user: LocalUserResponse): string {
   const label = LOCAL_ACCOUNT_STATE_LABEL[user.status]
   if (user.status !== 'LOCKED' || !user.lockedReason) return label
   return `${label} (${LOCK_REASON_LABEL[user.lockedReason]})`
-}
-
-/**
- * Activity as a class, never as a timestamp and never sortable (ADR-0033, Entscheidung 11): the
- * list is no evaluation path, and „zuletzt angemeldet" is not a value this view may publish.
- */
-export const LOCAL_ACCOUNT_ACTIVITY_LABEL: Record<LocalAccountActivity, string> = {
-  NEVER: 'nie',
-  INACTIVE_90_DAYS: 'länger als 90 Tage nicht',
-  ACTIVE: 'aktiv',
 }
 
 export const PASSWORD_CHANGE_REASON_LABEL: Record<PasswordChangeReason, string> = {

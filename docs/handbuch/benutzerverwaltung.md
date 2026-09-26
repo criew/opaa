@@ -3,7 +3,7 @@
 > **Entwurf.** Dieses Kapitel beschreibt die Verwaltung **lokaler Konten** — derjenigen Konten, die
 > OPAA selbst führt. Konten, die über einen Identitätsanbieter entstehen, werden dort verwaltet, wo
 > sie herkommen; in der Kontenliste stehen sie mit ihrer Herkunft und ihrer Rolle, aber ohne
-> Zustand, Ablauf und Aktivität — was sich an ihnen ändern lässt, sagen die Abschnitte 6 und 7.
+> Zustand und Ablauf — was sich an ihnen ändern lässt, sagen die Abschnitte 6 und 7.
 > Einrichtung des Anmeldewegs, Erststart, Umgebungsvariablen und E-Mail-Versand stehen im Kapitel
 > [Deployment](deployment.md); hier geht es um die täglichen Abläufe.
 
@@ -160,11 +160,11 @@ Identitätsanbieter. Die **Herkunft** steht an jeder Zeile: „Lokal" mit einem 
 Name des Anbieters. Der Filter „Herkunft" grenzt auf lokale Konten, auf alle Anbieter oder auf einen
 einzelnen Anbieter ein.
 
-Ein **lokales Konto** zeigt Zustand, Rolle, Ablauf, Anlagedatum, Anlagegrund und eine
-**Aktivitätsklasse**. Die Klasse ist grob — „nie", „länger nicht genutzt", „aktiv" — und bewusst so:
-Ein exakter Zeitstempel der letzten Nutzung wäre der Rohstoff für eine Anwesenheitsauswertung. Nach
-Aktivität lässt sich deshalb auch **nicht sortieren**, und es gibt **keinen Export** der Liste. Das
-ist eine dauerhafte Eigenschaft dieser Ansicht.
+Ein **lokales Konto** zeigt Zustand, Rolle, Ablauf, Anlagedatum und Anlagegrund. Wann ein Konto
+zuletzt genutzt wurde, zeigt die Liste bewusst **nicht** — ein Zeitstempel der letzten Nutzung wäre
+der Rohstoff für eine Anwesenheitsauswertung. Wer Konten sucht, an denen eine Sperre oder Löschung
+der nächste Schritt wäre, nimmt den Filter **länger nicht genutzt**. Aus demselben Grund gibt es
+**keinen Export** der Liste. Das ist eine dauerhafte Eigenschaft dieser Ansicht.
 
 Sortieren lässt sich über die Spaltenköpfe Name, E-Mail, Herkunft, Rolle, Zustand, Ablauf und
 Angelegt. Drei davon ordnen keine Wörter, sondern Kategorien, und tun das nach einer festen
@@ -178,8 +178,8 @@ Reihenfolge statt alphabetisch:
 
 Der Zustand sortiert damit das nach oben, was eine Entscheidung braucht.
 
-Ein **Konto eines Identitätsanbieters** zeigt Herkunft und Rolle, aber weder Zustand noch Ablauf
-noch Aktivität: Sein Lebenszyklus liegt beim Anbieter, und die Prüfpflicht dieses Kapitels gilt ihm
+Ein **Konto eines Identitätsanbieters** zeigt Herkunft und Rolle, aber weder Zustand noch
+Ablauf: Sein Lebenszyklus liegt beim Anbieter, und die Prüfpflicht dieses Kapitels gilt ihm
 nicht. Steht in seiner Zustandsspalte „Anbieter deaktiviert", kann sich niemand mehr über diesen
 Anbieter anmelden; „Anmeldung nicht möglich" heißt, dass zu seinem Issuer gar keine Anbieterzeile
 mehr existiert — das Konto bleibt, der Weg hinein ist zu. In der Spalte Herkunft steht dann „Kein
@@ -203,8 +203,7 @@ ausgesperrte Installation und deshalb kein Fall für die Auflagenprüfung.
 Im Filter **länger nicht genutzt** fehlt es ebenfalls, dort aus einem eigenen Grund: Dieser Filter
 zeigt Konten, an denen eine Sperre oder eine Löschung der nächste Schritt wäre — beides ist am
 Notanker-Konto nicht vorgesehen, es soll gerade unbenutzt bleiben, und die automatische Sperre nach
-Inaktivität lässt es aus demselben Grund aus. Wie lange es ruht, steht weiterhin in seiner eigenen
-Zeile.
+Inaktivität lässt es aus demselben Grund aus.
 
 Dazu kommen zwei Automatiken, die die Prüfung am Laufen halten: Vor einem Ablauf erhalten die Person
 und die Systemverwaltung eine Nachricht, und einmal im Quartal geht eine Wiedervorlage an die

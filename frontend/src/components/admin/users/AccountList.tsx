@@ -27,7 +27,6 @@ import ProviderAccountRowMenu from './ProviderAccountRowMenu'
 import type { SetupLinkHandover } from './SetupLinkDialog'
 import { NOT_APPLICABLE, providerStateHint, providerStateText } from './accountLabels'
 import {
-  LOCAL_ACCOUNT_ACTIVITY_LABEL,
   PASSWORD_CHANGE_REASON_LABEL,
   SYSTEM_ROLE_LABEL,
   formatExpiry,
@@ -185,7 +184,7 @@ function SortableLabel({ field, label }: SortableLabelProps) {
 interface SortableHeadProps {
   fields: AccountSortField[]
   width?: string
-  /** The column's second, unsortable value - „Aktivität" under „Ablauf". */
+  /** The column's second, unsortable value - „Anlagegrund" under „Angelegt". */
   secondLine?: string
 }
 
@@ -229,10 +228,6 @@ interface RowHandlers {
 interface RowProps extends RowHandlers {
   account: AccountResponse
   isSelf: boolean
-}
-
-function activityText(account: AccountResponse): string {
-  return account.local ? LOCAL_ACCOUNT_ACTIVITY_LABEL[account.local.activity] : NOT_APPLICABLE
 }
 
 function expiryText(account: AccountResponse): string {
@@ -282,18 +277,6 @@ function RoleCell({ account }: { account: AccountResponse }) {
   )
 }
 
-/** Expiry above, the activity class below it - one column for the two dates of an account's use. */
-function LifetimeCell({ account }: { account: AccountResponse }) {
-  return (
-    <Box sx={{ minWidth: 0 }}>
-      <Typography sx={{ fontSize: 13 }}>{expiryText(account)}</Typography>
-      <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
-        {account.local ? activityText(account) : ''}
-      </Typography>
-    </Box>
-  )
-}
-
 /** One account as a card - the layout below tablet width (guidelines 5.3). */
 function AccountCard(props: RowProps) {
   const { account } = props
@@ -325,7 +308,7 @@ function AccountCard(props: RowProps) {
       <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.75 }}>
         {SYSTEM_ROLE_LABEL[account.systemRole]}
         {account.roleManagedByProvider ? ' (vom Anbieter geführt)' : ''} · Ablauf{' '}
-        {expiryText(account)} · Aktivität: {activityText(account)}
+        {expiryText(account)}
       </Typography>
       {account.local && (
         <Typography sx={{ fontSize: 12, color: 'text.secondary', mt: 0.5 }}>
@@ -353,7 +336,7 @@ function AccountTableRow(props: RowProps) {
         <StateCell account={account} />
       </TableCell>
       <TableCell>
-        <LifetimeCell account={account} />
+        <Typography sx={{ fontSize: 13 }}>{expiryText(account)}</Typography>
       </TableCell>
       <TableCell>
         <Typography sx={{ fontSize: 13 }}>{formatExpiry(account.createdAt)}</Typography>
@@ -452,11 +435,10 @@ interface AccountListProps extends RowHandlers {
 
 /**
  * Die Liste aller Konten (#1541, #1601, ADR-0033 Entscheidung 11): lokale Konten mit Zustand,
- * Ablauf, Anlagegrund und Aktivitätsklasse, Anbieterkonten mit ihrem Anbieter - am Desktop eine
- * Tabelle, unter Tablet-Breite eine Kartenliste (guidelines 5.3). Sieben Spalten, nicht neun:
- * Name und Adresse teilen sich eine Zelle, Ablauf und Aktivität ebenso - sonst bleibt für Herkunft
- * und Anlagegrund keine lesbare Breite. Sortierbar sind nur die vier erlaubten Felder; nach der
- * Aktivität wird ausdrücklich nicht sortiert, und für ein Anbieterkonto gibt es sie nicht.
+ * Ablauf und Anlagegrund, Anbieterkonten mit ihrem Anbieter - am Desktop eine Tabelle, unter
+ * Tablet-Breite eine Kartenliste (guidelines 5.3). Name und Adresse teilen sich eine Zelle, sonst
+ * bleibt für Herkunft und Anlagegrund keine lesbare Breite. Die Aktivität eines Kontos zeigt die
+ * Liste nicht; sie wirkt nur als Filter „länger nicht genutzt".
  */
 export default function AccountList({ currentUserId, ...handlers }: AccountListProps) {
   const theme = useTheme()
@@ -500,10 +482,10 @@ export default function AccountList({ currentUserId, ...handlers }: AccountListP
               <SortableHead fields={['origin']} width="15%" />
               <SortableHead fields={['role']} width="13%" />
               <SortableHead fields={['status']} width="16%" />
+              <SortableHead fields={['expiresAt']} width="11%" />
               {/* Zwei Zeilen im Kopf, aber nur die obere sortiert: `sortDirection` gehört
                   trotzdem an die Zelle, sonst meldet keine Spalte eine Richtung, sobald nach
-                  Ablauf oder Anlagedatum sortiert wird. */}
-              <SortableHead fields={['expiresAt']} width="11%" secondLine="Aktivität" />
+                  dem Anlagedatum sortiert wird. */}
               <SortableHead fields={['createdAt']} width="19%" secondLine="Anlagegrund" />
               <TableCell align="right" sx={{ width: 56 }}>
                 <span style={visuallyHidden}>Aktionen</span>

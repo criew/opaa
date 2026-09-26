@@ -45,8 +45,8 @@ const FALLBACK_EXPIRY_DAYS = 365
 /**
  * Der Bereich „Konten" (#1601): der Hinweis zur Auflage, Suche und Filter, die Liste
  * aller Konten - lokale wie die der Identitätsanbieter, mit ihrer Herkunft an jeder Zeile - und
- * die Dialoge der Handlungen. Kein Auswertungspfad: Aktivität nur als Klasse und nur für lokale
- * Konten, keine Sortierung danach, kein Export, Seitengröße höchstens 50.
+ * die Dialoge der Handlungen. Kein Auswertungspfad: keine Aktivität in der Liste, kein Export,
+ * Seitengröße höchstens 50.
  */
 function AccountsSection({ currentUserId }: { currentUserId: string | null }) {
   const accounts = useUserAdminStore((s) => s.accounts)
@@ -201,7 +201,6 @@ function AccountsSection({ currentUserId }: { currentUserId: string | null }) {
       />
       {accounts.length > 0 && (
         <Typography sx={{ fontSize: 11.5, color: 'text.secondary', mt: 2 }}>
-          Aktivität erscheint nur als Klasse und nur für lokale Konten; sie ist nicht sortierbar.
           Einen Export dieser Liste gibt es nicht.
         </Typography>
       )}

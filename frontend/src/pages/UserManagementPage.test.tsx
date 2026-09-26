@@ -137,21 +137,23 @@ describe('UserManagementPage', () => {
     renderAccounts()
 
     const table = await screen.findByRole('table', { name: 'Konten' })
-    // local rows: state, marker, activity class, reason - as before #1601
+    // local rows: state, marker, reason - as before #1601; no activity class (#1978)
     expect(within(table).getByText('Eingeladen')).toBeInTheDocument()
     expect(within(table).getByText('Gesperrt (Verwalter)')).toBeInTheDocument()
     expect(within(table).getByText('Abgelaufen')).toBeInTheDocument()
     expect(within(table).getByText('Passwortwechsel ausstehend')).toBeInTheDocument()
-    expect(within(table).getAllByText('länger als 90 Tage nicht').length).toBeGreaterThan(0)
+    expect(within(table).queryByText(/Tage nicht|^nie$|^aktiv$/)).not.toBeInTheDocument()
+    expect(within(table).getByRole('columnheader', { name: /Ablauf/ })).not.toHaveTextContent(
+      /Aktivität/,
+    )
     expect(within(table).getByText(/Vertretung im Bauamt/)).toBeInTheDocument()
     expect(within(table).getByText('Notanker')).toBeInTheDocument()
     expect(within(rowOf('T. Klein')).getByText('Lokal')).toBeInTheDocument()
 
-    // provider rows: the provider as origin, the lifecycle at the provider, no activity class
+    // provider rows: the provider as origin, the lifecycle at the provider
     const maria = rowOf('Maria Weber')
     expect(within(maria).getByText('Verzeichnisdienst')).toBeInTheDocument()
     expect(within(maria).getByText('Beim Anbieter')).toBeInTheDocument()
-    expect(within(maria).queryByText(/Tage nicht|^nie$|^aktiv$/)).not.toBeInTheDocument()
     expect(within(rowOf('P. Admin')).getByText('Vom Anbieter geführt')).toBeInTheDocument()
     const ohneAnbieter = within(rowOf('Alte Anbieterin'))
     expect(ohneAnbieter.getByText('Kein Anbieter')).toBeInTheDocument()
@@ -161,7 +163,7 @@ describe('UserManagementPage', () => {
     // No activity timestamp, no sort by activity and no export (ADR-0033, Entscheidung 11).
     expect(within(table).queryByRole('button', { name: /Aktivität/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /export/i })).not.toBeInTheDocument()
-    expect(screen.getByText(/nur für lokale Konten/)).toBeInTheDocument()
+    expect(screen.getByText('Einen Export dieser Liste gibt es nicht.')).toBeInTheDocument()
   })
 
   it('filters by origin and passes the provider type to the API', async () => {
@@ -1018,7 +1020,7 @@ describe('UserManagementPage', () => {
       expect(accounts.at(-1)?.local).toBeUndefined()
     })
 
-    // Die Aktivität bleibt, was sie ist: eine Klasse ohne Sortierung.
+    // Nach der Aktivität lässt sich nicht sortieren – die Liste zeigt sie gar nicht.
     expect(within(table).queryByRole('button', { name: /Aktivität/ })).not.toBeInTheDocument()
     expect(useUserAdminStore.getState().error).toBeNull()
   }, 20000)
