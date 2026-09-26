@@ -7,7 +7,7 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
-import io.opaa.sourceaccess.TargetAddressValidator;
+import io.opaa.security.TargetAddressValidator;
 import java.io.InputStream;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -51,6 +51,8 @@ class S3LogLeakTest {
           "io.opaa.indexing.source.s3",
           Level.TRACE,
           "io.opaa.sourceaccess",
+          Level.TRACE,
+          "io.opaa.security.TargetAddressValidator",
           Level.TRACE,
           "software.amazon.awssdk",
           Level.DEBUG,

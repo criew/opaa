@@ -70,7 +70,7 @@ public final class S3FailureTranslator {
     return new S3FailureTranslator(
         properties.requestTimeout(),
         properties.maxRetries(),
-        io.opaa.sourceaccess.TargetAddressValidator.ALLOWLIST_HINT);
+        io.opaa.security.TargetAddressValidator.ALLOWLIST_HINT);
   }
 
   /**

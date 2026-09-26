@@ -2,12 +2,12 @@ package io.opaa.indexing.source.confluence;
 
 import io.opaa.indexing.source.RequestBudget;
 import io.opaa.indexing.source.RequestBudgetExhaustedException;
+import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.RateLimitPolicy;
 import io.opaa.sourceaccess.RedirectFollowingFetcher;
 import io.opaa.sourceaccess.SourceRequestMeter;
 import io.opaa.sourceaccess.SourceRequestPolicy;
-import io.opaa.sourceaccess.TargetAddressValidator;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.ConnectException;

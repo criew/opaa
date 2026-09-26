@@ -27,7 +27,7 @@ import io.opaa.library.LibraryFolder;
 import io.opaa.library.LibraryFolderRepository;
 import io.opaa.library.LibraryFolderService;
 import io.opaa.organization.Organization;
-import io.opaa.sourceaccess.TargetAddressValidator;
+import io.opaa.security.TargetAddressValidator;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.ProductionDocumentFormats;
 import java.time.Clock;

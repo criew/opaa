@@ -2,7 +2,7 @@ package io.opaa.auth.oidc;
 
 import io.opaa.auth.AuthProperties;
 import io.opaa.common.ValidationException;
-import io.opaa.sourceaccess.TargetAddressValidator;
+import io.opaa.security.TargetAddressValidator;
 import java.io.IOException;
 import java.net.URI;
 import java.util.HashSet;

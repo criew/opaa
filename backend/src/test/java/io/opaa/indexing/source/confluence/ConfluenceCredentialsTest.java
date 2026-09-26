@@ -64,8 +64,7 @@ class ConfluenceCredentialsTest {
   void factoryRefusesCredentialsOfTheOtherEdition() {
     ConfluenceClientFactory factory =
         new ConfluenceClientFactory(
-            ConfluenceProperties.defaults(),
-            io.opaa.sourceaccess.TargetAddressValidator.disabled());
+            ConfluenceProperties.defaults(), io.opaa.security.TargetAddressValidator.disabled());
     ConfluenceConnection mismatch =
         new ConfluenceConnection(
             URI.create("https://wiki.example.org"),

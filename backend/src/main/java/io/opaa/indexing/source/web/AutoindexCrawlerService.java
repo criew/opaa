@@ -2,12 +2,12 @@ package io.opaa.indexing.source.web;
 
 import io.opaa.indexing.format.SupportedDocumentFormats;
 import io.opaa.indexing.source.SourceFolderPath;
+import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedStreams;
 import io.opaa.sourceaccess.RateLimitListener;
 import io.opaa.sourceaccess.RedirectFollowingFetcher;
 import io.opaa.sourceaccess.SourceHttpClientFactory;
 import io.opaa.sourceaccess.SourceRequestPolicy;
-import io.opaa.sourceaccess.TargetAddressValidator;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;

@@ -1,4 +1,4 @@
-package io.opaa.sourceaccess;
+package io.opaa.security;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;

@@ -1,7 +1,7 @@
 package io.opaa.library;
 
 import io.opaa.indexing.source.s3.S3RequestGuard;
-import io.opaa.sourceaccess.TargetAddressValidator;
+import io.opaa.security.TargetAddressValidator;
 import java.io.IOException;
 import java.net.URI;
 import java.util.Locale;

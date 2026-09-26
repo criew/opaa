@@ -38,10 +38,10 @@ import tools.jackson.databind.ObjectMapper;
  * "unreachable", "not authenticated" and "model unknown", per the issue's technical hint.
  *
  * <p><b>No target-address blocking here, deliberately</b> - unlike {@code
- * io.opaa.sourceaccess.TargetAddressValidator}, which exists to stop a crawl from walking a public
- * URL onto an internal address it was never told to reach. A managed chat model's baseUrl is
- * entered directly by {@code SYSTEM_ADMIN} and is expected to routinely be an address on the
- * operator's own network - {@code http://ollama:11434/v1} is the specification's own example
+ * io.opaa.security.TargetAddressValidator}, which exists to stop a crawl from walking a public URL
+ * onto an internal address it was never told to reach. A managed chat model's baseUrl is entered
+ * directly by {@code SYSTEM_ADMIN} and is expected to routinely be an address on the operator's own
+ * network - {@code http://ollama:11434/v1} is the specification's own example
  * (docs/features/llm-integration.md#ein-anbindungsweg-nicht-zwei) - so blocking private ranges here
  * would break the primary supported case rather than guard against one.
  *

@@ -15,7 +15,7 @@ import io.opaa.auth.oidc.OidcProviderRepository;
 import io.opaa.group.sync.DirectoryUnavailableException;
 import io.opaa.group.sync.keycloak.KeycloakDirectoryConnector;
 import io.opaa.security.CredentialsEncryptionKeyMissingException;
-import io.opaa.sourceaccess.TargetAddressValidator;
+import io.opaa.security.TargetAddressValidator;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
