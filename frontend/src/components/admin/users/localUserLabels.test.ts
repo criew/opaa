@@ -5,9 +5,8 @@ import {
   defaultExpiryInputValue,
   formatExpiry,
   fromDateInputValue,
-  localAccountStateText,
+  lockReasonText,
   localUserErrorMessage,
-  shortenReason,
   toDateInputValue,
 } from './localUserLabels'
 
@@ -41,18 +40,17 @@ function apiError(message: string, data: unknown, status = 409): Error {
 }
 
 describe('localUserLabels', () => {
-  it('names the lock reason as part of the state', () => {
-    expect(localAccountStateText(account())).toBe('Aktiv')
-    expect(localAccountStateText(account({ status: 'INVITED' }))).toBe('Eingeladen')
-    expect(localAccountStateText(account({ status: 'EXPIRED' }))).toBe('Abgelaufen')
-    expect(localAccountStateText(account({ status: 'LOCKED', lockedReason: 'ADMIN' }))).toBe(
-      'Gesperrt (Verwalter)',
+  it('names the lock reason of a locked account only', () => {
+    expect(lockReasonText(account())).toBeNull()
+    expect(lockReasonText(account({ status: 'INVITED' }))).toBeNull()
+    expect(lockReasonText(account({ status: 'LOCKED', lockedReason: 'ADMIN' }))).toBe(
+      'Von der Verwaltung gesperrt',
     )
-    expect(
-      localAccountStateText(account({ status: 'LOCKED', lockedReason: 'FAILED_LOGINS' })),
-    ).toBe('Gesperrt (Fehlversuche)')
-    expect(localAccountStateText(account({ status: 'LOCKED', lockedReason: 'INACTIVITY' }))).toBe(
-      'Gesperrt (Inaktivität)',
+    expect(lockReasonText(account({ status: 'LOCKED', lockedReason: 'FAILED_LOGINS' }))).toBe(
+      'Nach mehreren falschen Passwörtern gesperrt',
+    )
+    expect(lockReasonText(account({ status: 'LOCKED', lockedReason: 'INACTIVITY' }))).toBe(
+      'Wegen Inaktivität gesperrt',
     )
   })
 
@@ -76,13 +74,6 @@ describe('localUserLabels', () => {
     const expected = new Date()
     expected.setDate(expected.getDate() + 30)
     expect(prefill).toBe(toDateInputValue(expected.toISOString()))
-  })
-
-  it('shortens a long creation reason and leaves a short one alone', () => {
-    expect(shortenReason('kurz')).toBe('kurz')
-    const long = 'x'.repeat(80)
-    expect(shortenReason(long)).toHaveLength(60)
-    expect(shortenReason(long).endsWith('…')).toBe(true)
   })
 
   it('prefers the curated text of a known conflict code', () => {

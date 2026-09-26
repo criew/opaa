@@ -15,12 +15,14 @@ import AreaPageHeader from '../components/AreaPageHeader'
 import PageHeading from '../components/a11y/PageHeading'
 import MetaBadge from '../components/MetaBadge'
 import PermissionTransferDialog from '../components/permissions/PermissionTransferDialog'
+import { groupUsageDetails } from '../components/admin/groups/groupUsageLabels'
 import { contentWidth } from '../theme/tokens'
 
 /**
  * Die Arbeitsliste je Anbieter (#1821, ADR-0036 Entscheidung 2): Der `409` beim Löschen eines
- * Anbieters verweist hierher. Je Gruppe stehen ihre Wirkungen und der Ausgang — übertragen oder
- * die Wirkung am jeweiligen Objekt entfernen. Gruppen ohne Wirkung gehen mit dem Anbieter.
+ * Anbieters verweist hierher. Je Gruppe steht, wofür sie verwendet wird, und der Ausgang — ihre
+ * Rechte übertragen oder dort entfernen, wo sie vergeben sind. Nicht verwendete Gruppen gehen mit
+ * dem Anbieter.
  */
 export default function ProviderGroupWorklistPage() {
   const { providerId = '' } = useParams()
@@ -66,8 +68,8 @@ export default function ProviderGroupWorklistPage() {
   }
 
   const provider = providers.find((entry) => entry.id === providerId)
-  const reaching = effects.filter((entry) => entry.summary !== '')
-  const idle = effects.filter((entry) => entry.summary === '')
+  const reaching = effects.filter((entry) => groupUsageDetails(entry).length > 0)
+  const idle = effects.filter((entry) => groupUsageDetails(entry).length === 0)
 
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
@@ -75,8 +77,10 @@ export default function ProviderGroupWorklistPage() {
         <AreaPageHeader
           icon={ChecklistOutlinedIcon}
           title={`Gruppen von „${provider?.displayName ?? 'Anbieter'}"`}
-          meta={reaching.length === 1 ? '1 wirkende Gruppe' : `${reaching.length} wirkende Gruppen`}
-          description="Solange eine Gruppe dieses Anbieters wirkt, wird der Anbieter nicht gelöscht. Jede Zeile hat zwei Ausgänge: die Wirkungen an eine andere Gruppe übertragen oder sie am jeweiligen Objekt entfernen. Gruppen ohne Wirkung werden mit dem Anbieter gelöscht. Abgelaufene Berechtigungen zählen hier mit — sie halten das Löschen auf; die Vorschau der Übertragung lässt sie aus und kann deshalb kleinere Zahlen nennen."
+          meta={
+            reaching.length === 1 ? '1 verwendete Gruppe' : `${reaching.length} verwendete Gruppen`
+          }
+          description="Solange eine Gruppe dieses Anbieters noch verwendet wird, lässt sich der Anbieter nicht löschen. Für jede dieser Gruppen gibt es zwei Wege: ihre Rechte an eine andere Gruppe übertragen oder sie dort entfernen, wo sie vergeben sind – an der Bibliothek oder im Space. Nicht verwendete Gruppen werden mit dem Anbieter gelöscht. Abgelaufene Berechtigungen zählen hier mit — sie halten das Löschen auf; die Vorschau der Übertragung lässt sie aus und kann deshalb kleinere Zahlen nennen."
         />
 
         <Link component={RouterLink} to="/admin/identity-providers" sx={{ fontSize: 13 }}>
@@ -111,7 +115,7 @@ export default function ProviderGroupWorklistPage() {
                     sx={{ ml: 'auto' }}
                     onClick={() => setTransferSource(entry)}
                   >
-                    Wirkungen übertragen
+                    Rechte übertragen
                   </Button>
                 </Stack>
                 {entry.sourcePath && (
@@ -119,12 +123,15 @@ export default function ProviderGroupWorklistPage() {
                     {entry.sourcePath}
                   </Typography>
                 )}
-                <Typography sx={{ fontSize: 13.5, mt: 0.5 }}>{entry.summary}</Typography>
+                <Typography sx={{ fontSize: 13.5, mt: 0.5 }}>
+                  {groupUsageDetails(entry).join(' · ')}
+                </Typography>
               </Box>
             ))}
             {idle.length > 0 && (
               <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
-                Ohne Wirkung und damit kein Hindernis: {idle.map((entry) => entry.name).join(', ')}
+                Nicht verwendet, werden mit dem Anbieter gelöscht:{' '}
+                {idle.map((entry) => entry.name).join(', ')}
               </Typography>
             )}
           </Stack>
@@ -137,7 +144,7 @@ export default function ProviderGroupWorklistPage() {
             source={{ type: 'GROUP', id: transferSource.groupId, name: transferSource.name }}
             targetKinds={['GROUP']}
             scopes={['ASSET_GRANTS', 'SPACE_MEMBERSHIPS', 'CAPABILITIES', 'OWNERSHIP']}
-            intro={`Alle gewählten Wirkungen von „${transferSource.name}" gehen in einem Vorgang an die Zielgruppe. Die Vorschau ist Pflicht, die Bestätigung ausdrücklich.`}
+            intro={`Alle gewählten Rechte von „${transferSource.name}" gehen in einem Vorgang an die Zielgruppe. Die Vorschau ist Pflicht, die Bestätigung ausdrücklich.`}
             onTransferred={() => void reload()}
           />
         )}

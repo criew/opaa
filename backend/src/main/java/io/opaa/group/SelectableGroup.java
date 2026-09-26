@@ -15,9 +15,9 @@ import java.util.List;
  *     target or space member; {@code dissolved}, {@code providerDisabled} and {@code unmaintained}
  *     name which reason applies.
  * @param responsible whom to ask about a protected group instead of reading its member list
- *     (ADR-0036, Entscheidung 9): its stewards where it is internal, its contact points where it
- *     comes from a provider (#1875). Empty for every unprotected group - there the member list is
- *     the answer, and naming people here would be a disclosure nobody asked for.
+ *     (ADR-0036, Entscheidung 9): its stewards where it is internal. Empty for a protected provider
+ *     group, for which the system administration answers, and for every unprotected group - there
+ *     the member list is the answer, and naming people here would be a disclosure nobody asked for.
  */
 public record SelectableGroup(
     Group group,

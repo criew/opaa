@@ -279,7 +279,7 @@ export default function LocalUserRowMenu({
           <ListItemIcon>
             <SwapHorizOutlinedIcon fontSize="small" />
           </ListItemIcon>
-          Übergabe anstoßen
+          An Identitätsanbieter übergeben
         </MenuItem>
         {handoverDisabled && (
           <Box

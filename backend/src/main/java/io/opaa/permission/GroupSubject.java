@@ -19,7 +19,7 @@ import java.util.UUID;
  *
  * <p>{@code internal} separates a group of this installation from one of a provider - the one
  * property that decides who is responsible for it: an internal group has stewards, a provider group
- * has contact points named by the system administration.
+ * is maintained where it comes from.
  *
  * <p>{@code protectedGroup} is the mark of ADR-0036, Entscheidung 9. It decides no grant - a
  * protected group receives rights like any other - but it decides how the group is <b>named</b> to

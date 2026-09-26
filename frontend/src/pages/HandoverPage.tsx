@@ -4,15 +4,13 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import CircularProgress from '@mui/material/CircularProgress'
 import Link from '@mui/material/Link'
-import List from '@mui/material/List'
-import ListItem from '@mui/material/ListItem'
-import ListItemText from '@mui/material/ListItemText'
 import Typography from '@mui/material/Typography'
 import { Link as RouterLink, useNavigate } from 'react-router'
 import AuthLayout from '../components/auth/AuthLayout'
 import AuthNotice from '../components/auth/AuthNotice'
 import PageHeading from '../components/a11y/PageHeading'
 import SectionEyebrow from '../components/auth/SectionEyebrow'
+import HandoverScopeSummary from '../components/auth/HandoverScopeSummary'
 import { useLinkToken } from '../hooks/useLinkToken'
 import { usePageTitle } from '../hooks/usePageTitle'
 import {
@@ -36,12 +34,6 @@ import type { LocalHandoverPreviewResponse } from '../types/api'
 import { LINK_INVALID_MESSAGE, tooManyRequestsMessage } from '../utils/authMessages'
 
 const HEADING = 'Zugang an Ihre Anbieteridentität übergeben'
-
-const SYSTEM_ROLE_TEXT: Record<string, string> = {
-  USER: 'Benutzer',
-  AUDITOR: 'Auditor',
-  SYSTEM_ADMIN: 'Systemverwaltung',
-}
 
 type Status =
   | 'loading'
@@ -262,29 +254,10 @@ export default function HandoverPage() {
 
       <Box component="section" aria-labelledby="handover-scope-title" sx={{ mt: 3 }}>
         <SectionEyebrow id="handover-scope-title">Das geht mit</SectionEyebrow>
-        <List dense sx={{ textAlign: 'left' }}>
-          <ListItem disableGutters>
-            <ListItemText
-              primary="Persönlicher Space"
-              secondary={scope.personalSpaceName ?? 'Noch keiner angelegt'}
-            />
-          </ListItem>
-          <ListItem disableGutters>
-            <ListItemText primary="Space-Mitgliedschaften" secondary={scope.spaceMemberships} />
-          </ListItem>
-          <ListItem disableGutters>
-            <ListItemText primary="Gruppenmitgliedschaften" secondary={scope.groupMemberships} />
-          </ListItem>
-          <ListItem disableGutters>
-            <ListItemText
-              primary="Rolle"
-              secondary={SYSTEM_ROLE_TEXT[scope.systemRole] ?? scope.systemRole}
-            />
-          </ListItem>
-        </List>
+        <HandoverScopeSummary scope={scope} />
       </Box>
 
-      <Alert severity="warning" sx={{ mt: 1, textAlign: 'left' }}>
+      <Alert severity="warning" sx={{ mt: 2, textAlign: 'left' }}>
         Nach der Übergabe melden Sie sich nur noch über {provider.displayName} an. Ihr bisheriges
         Passwort gilt dann nicht mehr, und einen Rückweg gibt es nicht.
       </Alert>

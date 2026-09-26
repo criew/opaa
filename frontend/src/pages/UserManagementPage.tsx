@@ -4,7 +4,6 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
-import Typography from '@mui/material/Typography'
 import AddIcon from '@mui/icons-material/Add'
 import BadgeOutlinedIcon from '@mui/icons-material/BadgeOutlined'
 import type { AccountResponse, LocalUserResponse } from '../types/api'
@@ -17,7 +16,7 @@ import AreaTabs from '../components/AreaTabs'
 import AccountFilterBar from '../components/admin/users/AccountFilterBar'
 import AccountList from '../components/admin/users/AccountList'
 import LocalAuthSettingsCard from '../components/admin/users/LocalAuthSettingsCard'
-import LocalUserReviewNotice from '../components/admin/users/LocalUserReviewNotice'
+import LocalUserReviewHint from '../components/admin/users/LocalUserReviewHint'
 import RoleChangeDialog from '../components/admin/users/RoleChangeDialog'
 import UserFormDialog from '../components/admin/users/UserFormDialog'
 import SetupLinkDialog, { type SetupLinkHandover } from '../components/admin/users/SetupLinkDialog'
@@ -43,13 +42,12 @@ const tabs: Array<{ value: UserManagementTab; label: string }> = [
 const FALLBACK_EXPIRY_DAYS = 365
 
 /**
- * Der Bereich „Konten" (#1601): der stehende Hinweis zur Auflage, Suche und Filter, die Liste
+ * Der Bereich „Konten" (#1601): der Hinweis zur Auflage, Suche und Filter, die Liste
  * aller Konten - lokale wie die der Identitätsanbieter, mit ihrer Herkunft an jeder Zeile - und
- * die Dialoge der Handlungen. Kein Auswertungspfad: Aktivität nur als Klasse und nur für lokale
- * Konten, keine Sortierung danach, kein Export, Seitengröße höchstens 50.
+ * die Dialoge der Handlungen. Kein Auswertungspfad: keine Aktivität in der Liste, kein Export,
+ * Seitengröße höchstens 50.
  */
 function AccountsSection({ currentUserId }: { currentUserId: string | null }) {
-  const accounts = useUserAdminStore((s) => s.accounts)
   const error = useUserAdminStore((s) => s.error)
   const summary = useUserAdminStore((s) => s.summary)
   const settings = useUserAdminStore((s) => s.settings)
@@ -83,33 +81,6 @@ function AccountsSection({ currentUserId }: { currentUserId: string | null }) {
 
   return (
     <>
-      <LocalUserReviewNotice
-        summary={summary}
-        // Der Sprung setzt jeden anderen Filter zurück (Review-Runde 1, LOW 10): Der Hinweis
-        // nennt eine Zahl über alle lokalen Konten, und eine stehende Herkunfts-, Rollen- oder
-        // Zustandsauswahl zeigte danach weniger Zeilen, als die Zahl verspricht.
-        onShowWithoutExpiry={() =>
-          void setFilters({
-            review: 'WITHOUT_EXPIRY',
-            status: null,
-            role: null,
-            query: '',
-            providerType: 'LOCAL',
-            providerId: null,
-          })
-        }
-        onShowInvited={() =>
-          void setFilters({
-            status: 'INVITED',
-            review: 'ALL',
-            role: null,
-            query: '',
-            providerType: 'LOCAL',
-            providerId: null,
-          })
-        }
-      />
-
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
@@ -118,12 +89,41 @@ function AccountsSection({ currentUserId }: { currentUserId: string | null }) {
 
       {/* Die primäre Handlung im Kopf des Bereichs, nicht in der Filterzeile: fünf Filter und
           eine Schaltfläche in einer Reihe brechen um, und der Umbruch stellt die Handlung dann
-          unter einen halben Filtersatz. */}
+          unter einen halben Filtersatz. Links daneben, bündig mit der Tabelle, der Hinweis zur
+          Auflage – nur wenn es einen gibt. */}
       <Stack
         direction="row"
         spacing={2}
-        sx={{ alignItems: 'center', justifyContent: 'flex-end', mb: 1.5 }}
+        sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}
       >
+        <Box sx={{ minWidth: 0 }}>
+          <LocalUserReviewHint
+            summary={summary}
+            // Der Sprung setzt jeden anderen Filter zurück (Review-Runde 1, LOW 10): Der Hinweis
+            // nennt eine Zahl über alle lokalen Konten, und eine stehende Herkunfts-, Rollen- oder
+            // Zustandsauswahl zeigte danach weniger Zeilen, als die Zahl verspricht.
+            onShowWithoutExpiry={() =>
+              void setFilters({
+                review: 'WITHOUT_EXPIRY',
+                status: null,
+                role: null,
+                query: '',
+                providerType: 'LOCAL',
+                providerId: null,
+              })
+            }
+            onShowInvited={() =>
+              void setFilters({
+                status: 'INVITED',
+                review: 'ALL',
+                role: null,
+                query: '',
+                providerType: 'LOCAL',
+                providerId: null,
+              })
+            }
+          />
+        </Box>
         <Button
           variant="contained"
           startIcon={<AddIcon />}
@@ -197,12 +197,6 @@ function AccountsSection({ currentUserId }: { currentUserId: string | null }) {
         account={roleChange}
         onClose={() => setRoleChange(null)}
       />
-      {accounts.length > 0 && (
-        <Typography sx={{ fontSize: 11.5, color: 'text.secondary', mt: 2 }}>
-          Aktivität erscheint nur als Klasse und nur für lokale Konten; sie ist nicht sortierbar.
-          Einen Export dieser Liste gibt es nicht.
-        </Typography>
-      )}
     </>
   )
 }
@@ -245,7 +239,7 @@ export default function UserManagementPage() {
         <AreaPageHeader
           icon={BadgeOutlinedIcon}
           title="Benutzer"
-          description="Gilt für die gesamte Anwendung. Lokale Konten werden hier angelegt und geführt; Konten eines Identitätsanbieters erscheinen mit ihrer Rolle, ihr Lebenszyklus liegt beim Anbieter."
+          description="Alle Konten, mit denen man sich bei OPAA anmelden kann. Lokale Konten legen Sie hier an und pflegen sie. Bei Konten eines Identitätsanbieters, etwa des Verzeichnisdienstes Ihres Hauses, ändern Sie hier nur die Rolle."
         />
 
         <AreaTabs

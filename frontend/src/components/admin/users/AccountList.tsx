@@ -1,25 +1,28 @@
 import Box from '@mui/material/Box'
-import IconButton from '@mui/material/IconButton'
-import Skeleton from '@mui/material/Skeleton'
 import Stack from '@mui/material/Stack'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
-import TableSortLabel from '@mui/material/TableSortLabel'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
 import visuallyHidden from '@mui/utils/visuallyHidden'
-import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
-import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import WarningAmberIcon from '@mui/icons-material/WarningAmber'
 import type { AccountResponse, LocalAccountState, LocalUserResponse } from '../../../types/api'
 import { useUserAdminStore } from '../../../stores/userAdminStore'
 import type { AccountSortField } from '../../../services/accountApi'
-import { fontFamily, radius } from '../../../theme/tokens'
+import {
+  ListEmptyState,
+  ListLoading,
+  ListPager,
+  SortableHeadCell,
+  StateLabel,
+  type SortBinding,
+} from '../list/AdminList'
+import { adminTableSx, listCardSx } from '../list/adminListStyles'
 import MetaBadge from '../../MetaBadge'
 import AccountOriginTag from './AccountOriginTag'
 import LocalUserRowMenu from './LocalUserRowMenu'
@@ -27,12 +30,11 @@ import ProviderAccountRowMenu from './ProviderAccountRowMenu'
 import type { SetupLinkHandover } from './SetupLinkDialog'
 import { NOT_APPLICABLE, providerStateHint, providerStateText } from './accountLabels'
 import {
-  LOCAL_ACCOUNT_ACTIVITY_LABEL,
+  LOCAL_ACCOUNT_STATE_LABEL,
   PASSWORD_CHANGE_REASON_LABEL,
   SYSTEM_ROLE_LABEL,
   formatExpiry,
-  localAccountStateText,
-  shortenReason,
+  lockReasonText,
 } from './localUserLabels'
 
 const STATE_DOT_COLOR: Record<LocalAccountState, string> = {
@@ -44,25 +46,14 @@ const STATE_DOT_COLOR: Record<LocalAccountState, string> = {
 
 /** Meaning-only colour: a dot next to the word, never a coloured chip (guidelines 1.2, 5.5). */
 function LocalStateCell({ user }: { user: LocalUserResponse }) {
+  const reason = lockReasonText(user)
   return (
     <Box sx={{ minWidth: 0 }}>
-      <Stack direction="row" spacing={0.75} sx={{ alignItems: 'flex-start' }}>
-        <Box
-          component="span"
-          aria-hidden="true"
-          sx={{
-            width: 8,
-            height: 8,
-            mt: '5px',
-            borderRadius: '50%',
-            flex: 'none',
-            bgcolor: STATE_DOT_COLOR[user.status],
-          }}
-        />
-        <Typography component="span" sx={{ fontSize: 13, fontWeight: 500 }}>
-          {localAccountStateText(user)}
-        </Typography>
-      </Stack>
+      <StateLabel
+        color={STATE_DOT_COLOR[user.status]}
+        label={LOCAL_ACCOUNT_STATE_LABEL[user.status]}
+        hint={reason ? { label: 'Sperrgrund', reason } : null}
+      />
       {user.passwordChangeRequired && (
         <Box sx={{ mt: 0.5 }}>
           <Tooltip
@@ -99,12 +90,12 @@ function ProviderStateCell({ account }: { account: AccountResponse }) {
       direction="row"
       spacing={0.5}
       component="span"
-      sx={{ alignItems: 'flex-start', display: 'inline-flex', minWidth: 0 }}
+      sx={{ alignItems: 'center', display: 'inline-flex', minWidth: 0 }}
     >
       {hint && (
         <WarningAmberIcon
           aria-hidden="true"
-          sx={{ fontSize: 14, mt: '2px', flex: 'none', color: 'warning.main' }}
+          sx={{ fontSize: 14, flex: 'none', color: 'warning.main' }}
         />
       )}
       <Typography
@@ -124,11 +115,6 @@ function StateCell({ account }: { account: AccountResponse }) {
   ) : (
     <ProviderStateCell account={account} />
   )
-}
-
-interface SortableLabelProps {
-  field: AccountSortField
-  label: string
 }
 
 /** What the screen reader announces after a click - the field, and for the three ranked ones
@@ -154,68 +140,17 @@ const SORT_LABEL: Record<AccountSortField, string> = {
   createdAt: 'Angelegt',
 }
 
-/** One sort control; several of them share a header cell where one column carries two values. */
-function SortableLabel({ field, label }: SortableLabelProps) {
+/** The account list's sort, bound to its store. */
+function useAccountSort(): SortBinding<AccountSortField> {
   const filters = useUserAdminStore((s) => s.filters)
   const setFilters = useUserAdminStore((s) => s.setFilters)
-  const active = filters.sort === field
-  return (
-    <TableSortLabel
-      active={active}
-      direction={active ? filters.direction : 'asc'}
-      onClick={() =>
-        void setFilters({
-          sort: field,
-          direction: active && filters.direction === 'asc' ? 'desc' : 'asc',
-        })
-      }
-    >
-      {label}
-      {active && (
-        <span style={visuallyHidden}>
-          {filters.direction === 'asc'
-            ? `aufsteigend nach ${SORT_DESCRIPTION[field]} sortiert`
-            : `absteigend nach ${SORT_DESCRIPTION[field]} sortiert`}
-        </span>
-      )}
-    </TableSortLabel>
-  )
-}
-
-interface SortableHeadProps {
-  fields: AccountSortField[]
-  width?: string
-  /** The column's second, unsortable value - „Aktivität" under „Ablauf". */
-  secondLine?: string
-}
-
-function SortableHead({ fields, width, secondLine }: SortableHeadProps) {
-  const filters = useUserAdminStore((s) => s.filters)
-  const active = fields.includes(filters.sort)
-  return (
-    <TableCell
-      sortDirection={active ? filters.direction : false}
-      sx={width ? { width } : undefined}
-    >
-      <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
-        {fields.map((field, index) => (
-          <Box key={field} component="span" sx={{ display: 'inline-flex', alignItems: 'center' }}>
-            {index > 0 && (
-              <Box component="span" aria-hidden="true" sx={{ mr: 0.5, color: 'text.disabled' }}>
-                ·
-              </Box>
-            )}
-            <SortableLabel field={field} label={SORT_LABEL[field]} />
-          </Box>
-        ))}
-      </Stack>
-      {secondLine && (
-        <Box component="span" sx={{ display: 'block', color: 'text.disabled' }}>
-          {secondLine}
-        </Box>
-      )}
-    </TableCell>
-  )
+  return {
+    sort: filters.sort,
+    direction: filters.direction,
+    onSort: (sort, direction) => void setFilters({ sort, direction }),
+    labels: SORT_LABEL,
+    descriptions: SORT_DESCRIPTION,
+  }
 }
 
 interface RowHandlers {
@@ -231,12 +166,10 @@ interface RowProps extends RowHandlers {
   isSelf: boolean
 }
 
-function activityText(account: AccountResponse): string {
-  return account.local ? LOCAL_ACCOUNT_ACTIVITY_LABEL[account.local.activity] : NOT_APPLICABLE
-}
-
+/** A local account without a date is „unbefristet"; a provider account has no expiry here. */
 function expiryText(account: AccountResponse): string {
-  return account.local ? formatExpiry(account.local.expiresAt) : NOT_APPLICABLE
+  if (!account.local) return NOT_APPLICABLE
+  return account.local.expiresAt ? formatExpiry(account.local.expiresAt) : 'unbefristet'
 }
 
 /** The menu of the row: the local one with its acts, the provider one with the role only. */
@@ -282,18 +215,6 @@ function RoleCell({ account }: { account: AccountResponse }) {
   )
 }
 
-/** Expiry above, the activity class below it - one column for the two dates of an account's use. */
-function LifetimeCell({ account }: { account: AccountResponse }) {
-  return (
-    <Box sx={{ minWidth: 0 }}>
-      <Typography sx={{ fontSize: 13 }}>{expiryText(account)}</Typography>
-      <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
-        {account.local ? activityText(account) : ''}
-      </Typography>
-    </Box>
-  )
-}
-
 /** One account as a card - the layout below tablet width (guidelines 5.3). */
 function AccountCard(props: RowProps) {
   const { account } = props
@@ -303,12 +224,7 @@ function AccountCard(props: RowProps) {
       aria-label={account.displayName ?? account.email ?? account.id}
       // Auch schmal ein Listeneintrag, keine Karte (#1608) - dieselbe Sprache wie die Tabelle
       // daneben, nur einspaltig.
-      sx={{
-        borderBottom: 1,
-        borderColor: 'divider',
-        py: 1.5,
-        '&:last-of-type': { borderBottom: 0 },
-      }}
+      sx={listCardSx}
     >
       <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-start' }}>
         <Box sx={{ minWidth: 0, flexGrow: 1 }}>
@@ -325,13 +241,8 @@ function AccountCard(props: RowProps) {
       <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.75 }}>
         {SYSTEM_ROLE_LABEL[account.systemRole]}
         {account.roleManagedByProvider ? ' (vom Anbieter geführt)' : ''} · Ablauf{' '}
-        {expiryText(account)} · Aktivität: {activityText(account)}
+        {expiryText(account)}
       </Typography>
-      {account.local && (
-        <Typography sx={{ fontSize: 12, color: 'text.secondary', mt: 0.5 }}>
-          {shortenReason(account.local.createdReason, 120)}
-        </Typography>
-      )}
     </Box>
   )
 }
@@ -353,17 +264,10 @@ function AccountTableRow(props: RowProps) {
         <StateCell account={account} />
       </TableCell>
       <TableCell>
-        <LifetimeCell account={account} />
+        <Typography sx={{ fontSize: 13 }}>{expiryText(account)}</Typography>
       </TableCell>
       <TableCell>
         <Typography sx={{ fontSize: 13 }}>{formatExpiry(account.createdAt)}</Typography>
-        {account.local && (
-          <Tooltip title={account.local.createdReason}>
-            <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
-              {shortenReason(account.local.createdReason)}
-            </Typography>
-          </Tooltip>
-        )}
       </TableCell>
       <TableCell align="right">
         <RowMenu {...props} />
@@ -372,49 +276,20 @@ function AccountTableRow(props: RowProps) {
   )
 }
 
-/** Page switch with German labels; the page size stays at the list's own default (≤ 50). */
+/** Page switch; the page size stays at the list's own default (≤ 50). */
 function Pager() {
   const total = useUserAdminStore((s) => s.total)
   const size = useUserAdminStore((s) => s.size)
   const page = useUserAdminStore((s) => s.filters.page)
   const setFilters = useUserAdminStore((s) => s.setFilters)
-  const pageCount = Math.max(1, Math.ceil(total / Math.max(size, 1)))
-  if (total === 0) return null
-
   return (
-    <Stack
-      direction="row"
-      spacing={1}
-      sx={{ alignItems: 'center', justifyContent: 'flex-end', mt: 1.5, flexWrap: 'wrap' }}
-    >
-      <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
-        {total === 1 ? '1 Konto' : `${total} Konten`} · Seite {page + 1} von {pageCount}
-      </Typography>
-      <Tooltip title="Vorherige Seite">
-        <span>
-          <IconButton
-            size="small"
-            aria-label="Vorherige Seite"
-            disabled={page === 0}
-            onClick={() => void setFilters({ page: page - 1 })}
-          >
-            <ChevronLeftIcon fontSize="small" />
-          </IconButton>
-        </span>
-      </Tooltip>
-      <Tooltip title="Nächste Seite">
-        <span>
-          <IconButton
-            size="small"
-            aria-label="Nächste Seite"
-            disabled={page + 1 >= pageCount}
-            onClick={() => void setFilters({ page: page + 1 })}
-          >
-            <ChevronRightIcon fontSize="small" />
-          </IconButton>
-        </span>
-      </Tooltip>
-    </Stack>
+    <ListPager
+      total={total}
+      size={size}
+      page={page}
+      onPage={(next) => void setFilters({ page: next })}
+      countLabel={total === 1 ? '1 Konto' : `${total} Konten`}
+    />
   )
 }
 
@@ -423,25 +298,14 @@ function EmptyState() {
   const contradiction =
     filters.providerType === 'OIDC' && (filters.status !== null || filters.review !== 'ALL')
   return (
-    <Box
-      sx={{
-        border: 1,
-        borderStyle: 'dashed',
-        borderColor: 'divider',
-        borderRadius: `${radius.md}px`,
-        p: 3,
-        textAlign: 'center',
-      }}
-    >
-      <Typography sx={{ fontSize: 13.5, fontWeight: 500 }}>
-        Kein Konto entspricht den gewählten Filtern.
-      </Typography>
-      <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.5 }}>
-        {contradiction
+    <ListEmptyState
+      title="Kein Konto entspricht den gewählten Filtern."
+      hint={
+        contradiction
           ? 'Zustand und Auflage gelten nur für lokale Konten – bei Anbieterkonten führt der Anbieter den Lebenszyklus.'
-          : 'Lokale Konten und Konten der Identitätsanbieter stehen hier gemeinsam; die Herkunft steht an jeder Zeile.'}
-      </Typography>
-    </Box>
+          : 'Lokale Konten und Konten der Identitätsanbieter stehen hier gemeinsam; die Herkunft steht an jeder Zeile.'
+      }
+    />
   )
 }
 
@@ -451,28 +315,21 @@ interface AccountListProps extends RowHandlers {
 }
 
 /**
- * Die Liste aller Konten (#1541, #1601, ADR-0033 Entscheidung 11): lokale Konten mit Zustand,
- * Ablauf, Anlagegrund und Aktivitätsklasse, Anbieterkonten mit ihrem Anbieter - am Desktop eine
- * Tabelle, unter Tablet-Breite eine Kartenliste (guidelines 5.3). Sieben Spalten, nicht neun:
- * Name und Adresse teilen sich eine Zelle, Ablauf und Aktivität ebenso - sonst bleibt für Herkunft
- * und Anlagegrund keine lesbare Breite. Sortierbar sind nur die vier erlaubten Felder; nach der
- * Aktivität wird ausdrücklich nicht sortiert, und für ein Anbieterkonto gibt es sie nicht.
+ * Die Liste aller Konten (#1541, #1601, ADR-0033 Entscheidung 11): lokale Konten mit Zustand und
+ * Ablauf, Anbieterkonten mit ihrem Anbieter - am Desktop eine Tabelle, unter Tablet-Breite eine
+ * Kartenliste (guidelines 5.3). Name und Adresse teilen sich eine Zelle. Der Anlagegrund steht im
+ * Bearbeiten-Dialog, nicht in der Liste. Die Aktivität eines Kontos zeigt die
+ * Liste nicht; sie wirkt nur als Filter „länger nicht genutzt".
  */
 export default function AccountList({ currentUserId, ...handlers }: AccountListProps) {
   const theme = useTheme()
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'))
   const accounts = useUserAdminStore((s) => s.accounts)
   const isLoading = useUserAdminStore((s) => s.isLoading)
+  const sort = useAccountSort()
 
   if (isLoading && accounts.length === 0) {
-    return (
-      <Stack spacing={1} aria-busy="true">
-        <span style={visuallyHidden}>Konten werden geladen …</span>
-        <Skeleton variant="rounded" height={48} />
-        <Skeleton variant="rounded" height={48} />
-        <Skeleton variant="rounded" height={48} />
-      </Stack>
-    )
+    return <ListLoading label="Konten werden geladen …" />
   }
 
   if (accounts.length === 0) {
@@ -482,29 +339,15 @@ export default function AccountList({ currentUserId, ...handlers }: AccountListP
   return (
     <>
       {isDesktop ? (
-        <Table
-          size="small"
-          aria-label="Konten"
-          sx={{
-            // Feste Breiten, weil der Inhalt es nicht ist: E-Mail-Adressen, Anbieternamen und
-            // Anlagegründe sind beliebig lang. Ohne overflow liefe jede dieser Zellen in ihre
-            // Nachbarin - mit ihr schneidet sie ab, und der Tooltip nennt den vollen Wert.
-            tableLayout: 'fixed',
-            '& th': { fontFamily: fontFamily.mono, fontSize: 10, letterSpacing: '0.08em' },
-            '& td': { fontSize: 13, py: 1.25, verticalAlign: 'top', overflow: 'hidden' },
-          }}
-        >
+        <Table size="small" aria-label="Konten" sx={adminTableSx}>
           <TableHead>
             <TableRow>
-              <SortableHead fields={['displayName', 'email']} />
-              <SortableHead fields={['origin']} width="15%" />
-              <SortableHead fields={['role']} width="13%" />
-              <SortableHead fields={['status']} width="16%" />
-              {/* Zwei Zeilen im Kopf, aber nur die obere sortiert: `sortDirection` gehört
-                  trotzdem an die Zelle, sonst meldet keine Spalte eine Richtung, sobald nach
-                  Ablauf oder Anlagedatum sortiert wird. */}
-              <SortableHead fields={['expiresAt']} width="11%" secondLine="Aktivität" />
-              <SortableHead fields={['createdAt']} width="19%" secondLine="Anlagegrund" />
+              <SortableHeadCell fields={['displayName', 'email']} binding={sort} />
+              <SortableHeadCell fields={['origin']} binding={sort} width="15%" />
+              <SortableHeadCell fields={['role']} binding={sort} width="13%" />
+              <SortableHeadCell fields={['status']} binding={sort} width="16%" />
+              <SortableHeadCell fields={['expiresAt']} binding={sort} width="11%" />
+              <SortableHeadCell fields={['createdAt']} binding={sort} width="11%" />
               <TableCell align="right" sx={{ width: 56 }}>
                 <span style={visuallyHidden}>Aktionen</span>
               </TableCell>

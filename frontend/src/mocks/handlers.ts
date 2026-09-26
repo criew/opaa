@@ -82,7 +82,6 @@ import {
 } from './fixtures'
 import type { MockLibraryFolder } from './fixtures'
 import type {
-  GroupContactResponse,
   OidcProviderOrderRequest,
   OidcProviderRequest,
   OidcProviderResponse,
@@ -1295,7 +1294,13 @@ export const handlers = [
   }),
 
   http.post('/api/v1/groups', async ({ request }) => {
-    const body = (await request.json()) as { name: string; description?: string }
+    const body = (await request.json()) as {
+      name: string
+      description?: string
+      releasedForUse?: boolean
+      protectedGroup?: boolean
+      stewardIds?: string[]
+    }
     if (!body.name || body.name.trim() === '') {
       return HttpResponse.json({ error: 'Der Name der Gruppe ist erforderlich' }, { status: 400 })
     }
@@ -1308,16 +1313,20 @@ export const handlers = [
       kind: 'AD_HOC',
       externalId: null,
       origin: 'INTERNAL',
+      state: body.releasedForUse ? 'ACTIVE' : 'NOT_RELEASED',
       provider: null,
       sourcePath: null,
       parentGroupId: null,
       memberCount: 0,
-      // Wie im Dienst: nicht freigegeben, und die anlegende Person ist erste verantwortliche
-      // Person (#1814, ADR-0036 Entscheidung 4 und 9).
+      // As in the service: the named stewards, or the creating account where none are named.
       dissolved: false,
-      releasedForUse: false,
-      protectedGroup: false,
-      stewards: [{ userId: 'mock-user-id', displayName: 'Admin', appointedAt: now }],
+      releasedForUse: body.releasedForUse ?? false,
+      protectedGroup: body.protectedGroup ?? false,
+      stewards: (body.stewardIds?.length ? body.stewardIds : ['mock-user-id']).map((userId) => ({
+        userId,
+        displayName: userId === 'mock-user-id' ? 'Admin' : null,
+        appointedAt: now,
+      })),
       createdAt: now,
       updatedAt: now,
     }
@@ -1444,55 +1453,6 @@ export const handlers = [
     )
   }),
 
-  http.get('/api/v1/me/contacted-groups', () => {
-    return HttpResponse.json(
-      mockGroups.filter((group) =>
-        (group.contacts ?? []).some((contact) => contact.userId === 'mock-user-id'),
-      ),
-    )
-  }),
-
-  // #1875: Benennen und Entlassen einer Ansprechstelle - der Verwaltungsakt aendert an der Gruppe
-  // nichts, deshalb fasst der Handler nur die contacts-Liste an.
-  http.post('/api/v1/admin/groups/:groupId/contacts', async ({ params, request }) => {
-    const listEntry = mockGroups.find((group) => group.id === String(params.groupId))
-    const detail = mockGroupDetails[String(params.groupId)]
-    if (!listEntry) {
-      return new HttpResponse(null, { status: 404 })
-    }
-    const body = (await request.json()) as { userId: string }
-    if (!detail?.members.some((member) => member.userId === body.userId)) {
-      return HttpResponse.json(
-        { error: 'Nur ein Mitglied dieser Gruppe kann ihre Ansprechstelle sein' },
-        { status: 400 },
-      )
-    }
-    const appointed = {
-      userId: body.userId,
-      displayName:
-        detail.members.find((member) => member.userId === body.userId)?.displayName ?? null,
-      appointedAt: new Date().toISOString(),
-    }
-    listEntry.contacts = [...(listEntry.contacts ?? []), appointed]
-    detail.contacts = [...(detail.contacts ?? []), appointed]
-    return HttpResponse.json(appointed, { status: 201 })
-  }),
-
-  http.delete('/api/v1/admin/groups/:groupId/contacts/:userId', ({ params }) => {
-    const listEntry = mockGroups.find((group) => group.id === String(params.groupId))
-    const detail = mockGroupDetails[String(params.groupId)]
-    if (!listEntry) {
-      return new HttpResponse(null, { status: 404 })
-    }
-    const remaining = (contacts: GroupContactResponse[] | undefined) =>
-      (contacts ?? []).filter((contact) => contact.userId !== String(params.userId))
-    listEntry.contacts = remaining(listEntry.contacts)
-    if (detail) {
-      detail.contacts = remaining(detail.contacts)
-    }
-    return new HttpResponse(null, { status: 204 })
-  }),
-
   http.get('/api/v1/groups/:groupId/stewards', ({ params }) => {
     const group = mockGroupDetails[String(params.groupId)]
     if (!group) {
@@ -1554,6 +1514,10 @@ export const handlers = [
     const body = (await request.json()) as { releasedForUse: boolean }
     group.releasedForUse = body.releasedForUse
     listEntry.releasedForUse = body.releasedForUse
+    // the state follows the release, as the server derives it (GroupStates)
+    if (listEntry.kind === 'AD_HOC' && !listEntry.dissolved) {
+      listEntry.state = body.releasedForUse ? 'ACTIVE' : 'NOT_RELEASED'
+    }
     return HttpResponse.json(group)
   }),
 

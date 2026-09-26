@@ -51,18 +51,6 @@ public class MeController {
   }
 
   /**
-   * The provider groups the caller is the contact point of (#1875, ADR-0036 Entscheidung 9) - where
-   * the protection mark of such a group is set and released. Being a contact point is no
-   * maintenance right, which is why this is a list of its own rather than part of the stewarded
-   * groups above.
-   */
-  @GetMapping("/contacted-groups")
-  public List<GroupListResponse> myContactedGroups(@Caller CurrentUser caller) {
-    List<GroupOverview> groups = groupService.listContactedGroups(caller);
-    return GroupResponseMapper.toListResponses(groups);
-  }
-
-  /**
    * The caller's own capabilities, so the interface can explain a missing creation right instead of
    * hiding the button (ADR-0036, Entscheidung 5). Read per request, never from the token: a
    * withdrawal takes effect without a new sign-in.

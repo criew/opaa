@@ -81,8 +81,8 @@ export default function GroupMembersDisclosure({ groupLabel, load }: GroupMember
       {disclosure?.protectedGroup ? (
         <Typography sx={{ fontSize: 12.5 }}>
           {disclosure.responsible.length > 0
-            ? `Geschützte Gruppe — die Mitglieder werden nicht genannt. Ansprechstelle: ${disclosure.responsible.join(', ')}`
-            : 'Geschützte Gruppe — die Mitglieder werden nicht genannt. Eine Ansprechstelle ist noch nicht benannt.'}
+            ? `Geschützte Gruppe — die Mitglieder werden nicht genannt. Verantwortlich: ${disclosure.responsible.join(', ')}`
+            : 'Geschützte Gruppe — die Mitglieder werden nicht genannt. Auskunft gibt die Systemverwaltung.'}
         </Typography>
       ) : disclosure?.smallGroup ? (
         <Typography sx={{ fontSize: 12.5 }}>

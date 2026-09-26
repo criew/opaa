@@ -107,7 +107,8 @@ class ProviderGroupDirectoryAdapter implements ProviderGroupDirectory {
     // A group holding only a capability is effective too: its rows block
     // fk_capability_grants_subject_group_organization, and deleteGroupsOfProvider below deletes
     // every group of the provider once the caller confirms there is no effect left to decide about.
-    effective.addAll(capabilityGrantRepository.findSubjectGroupIdsIn(groupIds));
+    List<UUID> capabilityGroups = capabilityGrantRepository.findSubjectGroupIdsIn(groupIds);
+    effective.addAll(capabilityGroups);
     return new ProviderGroupEffects(
         effective.size(),
         grants.size(),
@@ -115,7 +116,8 @@ class ProviderGroupDirectoryAdapter implements ProviderGroupDirectory {
         owningGroups,
         spaceMemberships.size(),
         spaces.size(),
-        scopedAuthorizations.size());
+        scopedAuthorizations.size(),
+        capabilityGroups.size());
   }
 
   @Override

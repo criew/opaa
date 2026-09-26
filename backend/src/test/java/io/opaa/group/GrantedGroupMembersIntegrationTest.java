@@ -59,7 +59,6 @@ class GrantedGroupMembersIntegrationTest {
   @Autowired private SpaceService spaceService;
   @Autowired private GroupRepository groupRepository;
   @Autowired private GroupStewardRepository stewardRepository;
-  @Autowired private GroupContactRepository contactRepository;
   @Autowired private GroupMembershipResolver membershipResolver;
   @Autowired private UserRepository userRepository;
   @Autowired private OidcProviderRepository providerRepository;
@@ -83,12 +82,7 @@ class GrantedGroupMembersIntegrationTest {
     // and the helper does everything else including the organization itself.
     for (String table :
         List.of(
-            "asset_grants",
-            "space_memberships",
-            "group_contacts",
-            "group_memberships",
-            "group_stewards",
-            "groups")) {
+            "asset_grants", "space_memberships", "group_memberships", "group_stewards", "groups")) {
       jdbcTemplate.update("DELETE FROM " + table + " WHERE organization_id = ?", organization);
     }
     ownOrganizationFixtures.removeOrganizations(organization);
@@ -225,16 +219,15 @@ class GrantedGroupMembersIntegrationTest {
   }
 
   /**
-   * Limit (d) for a provider group, which has no stewards: there the contact points the system
-   * administration named take their place (#1875).
+   * Limit (d) for a provider group, which has no stewards: nobody is named, the system
+   * administration answers for it (ADR-0036, Entscheidung 9, as amended).
    */
   @Test
-  void aProtectedProviderGroupAnswersWithItsContactPoints() {
+  void aProtectedProviderGroupNamesNobody() {
     UUID manager = createUser();
-    UUID contact = createUser("Ansprechstelle Nord");
-    UUID group = createProviderGroup("Personalvertretung", contact);
+    UUID member = createUser("Mitglied Nord");
+    UUID group = createProviderGroup("Personalvertretung", member);
     markProtected(group);
-    contactRepository.save(new GroupContact(group, contact, organization, manager));
     UUID library = createLibrary(manager);
     grantTo(library, group, manager);
 
@@ -245,7 +238,7 @@ class GrantedGroupMembersIntegrationTest {
     assertThat(disclosure.protectedGroup()).isTrue();
     assertThat(disclosure.name()).isNull();
     assertThat(disclosure.members()).isEmpty();
-    assertThat(disclosure.responsible()).containsExactly("Ansprechstelle Nord");
+    assertThat(disclosure.responsible()).isEmpty();
   }
 
   /**

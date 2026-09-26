@@ -35,7 +35,6 @@ import type {
   GroupMemberDisclosureResponse,
   GroupMemberResponse,
   GroupResponse,
-  GroupContactResponse,
   GroupStewardResponse,
   AssetAccessDerivationResponse,
   SelectableGroupResponse,
@@ -927,9 +926,24 @@ export async function getGroup(groupId: string): Promise<GroupResponse> {
   }
 }
 
-export async function createGroup(name: string, description: string): Promise<GroupResponse> {
+/** What a new group starts with besides its name - everything unset means the defaults. */
+export interface GroupCreationOptions {
+  releasedForUse?: boolean
+  protectedGroup?: boolean
+  stewardIds?: string[]
+}
+
+export async function createGroup(
+  name: string,
+  description: string,
+  options: GroupCreationOptions = {},
+): Promise<GroupResponse> {
   try {
-    const { data } = await client.post<GroupResponse>('/v1/groups', { name, description })
+    const { data } = await client.post<GroupResponse>('/v1/groups', {
+      name,
+      description,
+      ...options,
+    })
     return data
   } catch (err) {
     normalizeError(err)
@@ -1027,38 +1041,6 @@ export async function appointGroupSteward(
 export async function dismissGroupSteward(groupId: string, userId: string): Promise<void> {
   try {
     await client.delete(`/v1/groups/${groupId}/stewards/${userId}`)
-  } catch (err) {
-    normalizeError(err)
-  }
-}
-
-export async function getMyContactedGroups(): Promise<GroupListResponse[]> {
-  try {
-    const { data } = await client.get<GroupListResponse[]>('/v1/me/contacted-groups')
-    return data
-  } catch (err) {
-    normalizeError(err)
-  }
-}
-
-export async function appointGroupContact(
-  groupId: string,
-  userId: string,
-): Promise<GroupContactResponse> {
-  try {
-    const { data } = await client.post<GroupContactResponse>(
-      `/v1/admin/groups/${groupId}/contacts`,
-      { userId },
-    )
-    return data
-  } catch (err) {
-    normalizeError(err)
-  }
-}
-
-export async function dismissGroupContact(groupId: string, userId: string): Promise<void> {
-  try {
-    await client.delete(`/v1/admin/groups/${groupId}/contacts/${userId}`)
   } catch (err) {
     normalizeError(err)
   }

@@ -1,5 +1,4 @@
 import type {
-  LocalAccountActivity,
   LocalAccountState,
   LockReason,
   LocalUserResponse,
@@ -21,27 +20,17 @@ export const LOCAL_ACCOUNT_STATE_LABEL: Record<LocalAccountState, string> = {
   EXPIRED: 'Abgelaufen',
 }
 
+/** Who or what locked the account - shown behind „Gesperrt" as a tooltip, not in the cell. */
 export const LOCK_REASON_LABEL: Record<LockReason, string> = {
-  ADMIN: 'Verwalter',
-  FAILED_LOGINS: 'Fehlversuche',
-  INACTIVITY: 'Inaktivität',
+  ADMIN: 'Von der Verwaltung gesperrt',
+  FAILED_LOGINS: 'Nach mehreren falschen Passwörtern gesperrt',
+  INACTIVITY: 'Wegen Inaktivität gesperrt',
 }
 
-/** „Gesperrt (Verwalter)" - the lock reason belongs to the state, not to a second column. */
-export function localAccountStateText(user: LocalUserResponse): string {
-  const label = LOCAL_ACCOUNT_STATE_LABEL[user.status]
-  if (user.status !== 'LOCKED' || !user.lockedReason) return label
-  return `${label} (${LOCK_REASON_LABEL[user.lockedReason]})`
-}
-
-/**
- * Activity as a class, never as a timestamp and never sortable (ADR-0033, Entscheidung 11): the
- * list is no evaluation path, and „zuletzt angemeldet" is not a value this view may publish.
- */
-export const LOCAL_ACCOUNT_ACTIVITY_LABEL: Record<LocalAccountActivity, string> = {
-  NEVER: 'nie',
-  INACTIVE_90_DAYS: 'länger als 90 Tage nicht',
-  ACTIVE: 'aktiv',
+/** The cause of a lock, or `null` for an account that is not locked. */
+export function lockReasonText(user: LocalUserResponse): string | null {
+  if (user.status !== 'LOCKED' || !user.lockedReason) return null
+  return LOCK_REASON_LABEL[user.lockedReason]
 }
 
 export const PASSWORD_CHANGE_REASON_LABEL: Record<PasswordChangeReason, string> = {
@@ -149,10 +138,4 @@ export function defaultExpiryInputValue(days: number): string {
   const date = new Date()
   date.setDate(date.getDate() + days)
   return toDateInputValue(date.toISOString())
-}
-
-/** The creation reason, shortened for the table; the full text stays in the edit dialog. */
-export function shortenReason(reason: string, maxLength = 60): string {
-  if (reason.length <= maxLength) return reason
-  return `${reason.slice(0, maxLength - 1).trimEnd()}…`
 }

@@ -84,8 +84,8 @@ export default function DirectorySyncReportView({
             />
             <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
               Ihre Mitgliedschaft bleibt eingefroren stehen, und sie sind kein neues Ziel für
-              Berechtigungen mehr. Nichts wird stillschweigend entzogen — die Wirkungen dieser
-              Gruppen lassen sich in der Arbeitsliste des Anbieters übertragen.
+              Berechtigungen mehr. Nichts wird stillschweigend entzogen — die Rechte dieser Gruppen
+              lassen sich in der Arbeitsliste des Anbieters übertragen.
             </Typography>
           </Box>
         )}

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { screen, waitFor } from '@testing-library/react'
+import { screen, within, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BrowserRouter, Route, Routes } from 'react-router'
 import { renderWithProviders } from '../test/test-utils'
@@ -53,8 +53,18 @@ describe('HandoverPage', () => {
 
     expect(await screen.findByText('Das geht mit')).toBeInTheDocument()
     expect(screen.getByText('Mein Space')).toBeInTheDocument()
+    // was mitgeht als vier Kacheln - Zahlen statt Listen, Rolle wie in der Benutzerverwaltung
+    const tiles = within(screen.getByRole('region', { name: 'Das geht mit' })).getAllByRole(
+      'listitem',
+    )
+    expect(tiles.map((tile) => tile.textContent)).toEqual([
+      'Persönlicher SpaceMein Space',
+      'RolleNutzer',
+      'Spaces3',
+      'Gruppen1',
+    ])
     expect(screen.getByText('3')).toBeInTheDocument()
-    expect(screen.getByText('Benutzer')).toBeInTheDocument()
+    expect(screen.getByText('Nutzer')).toBeInTheDocument()
     expect(screen.getByText(/Umstellung auf den Identitätsanbieter der Stadt/)).toBeInTheDocument()
     // one button, naming the provider - there is no picker
     expect(screen.getByRole('button', { name: /anmelden und übergeben/i })).toBeInTheDocument()

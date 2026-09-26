@@ -41,10 +41,12 @@ export default function GeneratedPasswordDialog({
       // Siehe SetupLinkDialog: Das Passwort existiert genau einmal, also schließt weder Escape
       // noch ein Klick daneben – allein die Schaltfläche (Review-Runde 1, LOW 7).
     >
-      <DialogTitle id="generated-password-title">Passwort übergeben</DialogTitle>
+      <DialogTitle id="generated-password-title">
+        Neues Passwort für „{generated.displayName}“
+      </DialogTitle>
       <DialogContent>
-        <Typography sx={{ fontSize: 13.5, mb: 1.5 }}>
-          Für „{generated.displayName}“ ({generated.email})
+        <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mb: 1.5 }}>
+          {generated.email}
         </Typography>
         <Box
           data-testid="generated-password-value"
@@ -79,7 +81,7 @@ export default function GeneratedPasswordDialog({
             Passwort kopieren
           </Button>
           <Button variant="contained" onClick={onClose}>
-            Übergeben, schließen
+            Schließen
           </Button>
         </Stack>
       </DialogActions>

@@ -199,7 +199,7 @@ function SuccessionRow({
           source={groupSource}
           targetKinds={['GROUP']}
           scopes={['OWNERSHIP', 'ASSET_GRANTS', 'SPACE_MEMBERSHIPS', 'CAPABILITIES']}
-          intro={`Eigentum und Wirkungen von „${entry.objectName}" gehen an die gewählte Gruppe. Endet der Zustand damit, schließt der nächste Feststellungslauf den Vorgang.`}
+          intro={`Eigentum und Rechte von „${entry.objectName}" gehen an die gewählte Gruppe. Endet der Zustand damit, schließt der nächste Feststellungslauf den Vorgang.`}
           onTransferred={onReviewed}
         />
       )}

@@ -65,7 +65,7 @@ interface PermissionTransferDialogProps {
 }
 
 /**
- * Die Übertragung von Wirkungen (ADR-0036, Entscheidung 10): Quelle und Ziel, der wählbare Umfang,
+ * Die Übertragung von Rechten (ADR-0036, Entscheidung 10): Quelle und Ziel, der wählbare Umfang,
  * die Pflicht-Vorschau und die ausdrückliche Bestätigung. Verschiebt sich der Stand zwischen
  * Vorschau und Bestätigung, verlangt das Backend eine neue Vorlage — der Dialog sagt das und
  * beginnt bei der Vorschau von vorn.
@@ -162,7 +162,7 @@ export default function PermissionTransferDialog({
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
-      <DialogTitle>Wirkungen übertragen</DialogTitle>
+      <DialogTitle>Rechte übertragen</DialogTitle>
       <DialogContent>
         <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mb: 2 }}>{intro}</Typography>
 

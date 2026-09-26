@@ -11,20 +11,20 @@ import {
   getMyStewardedGroups,
   listGroupMembers,
   removeGroupMember,
-  appointGroupContact,
-  dismissGroupContact,
   setGroupProtection,
   setGroupRelease,
   updateGroup,
 } from '../services/api'
+import type { GroupCreationOptions } from '../services/api'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
 
 /**
- * Woher die Liste kommt: alle Gruppen der Organisation (Administration) oder die eigenen
- * Verantwortlichkeiten (#1814). Die Quelle wird beim Laden gesetzt, damit jedes Nachladen nach
- * einer Änderung dieselbe Liste holt wie die Seite, die sie anzeigt.
+ * Woher die Liste kommt: alle Gruppen der Organisation, die eigenen Verantwortlichkeiten (#1814)
+ * oder keine - Letzteres, solange keine Seite diese Liste anzeigt, etwa die Gruppenverwaltung mit
+ * ihrer eigenen, geblätterten Liste. Die Quelle wird beim Laden gesetzt, damit jedes Nachladen nach
+ * einer Änderung dieselbe Liste holt wie die Seite, die sie anzeigt, und bei „keine“ gar nichts.
  */
-export type GroupListSource = 'ADMIN' | 'STEWARDED'
+export type GroupListSource = 'ADMIN' | 'STEWARDED' | 'NONE'
 
 interface GroupState {
   groups: GroupListResponse[]
@@ -42,7 +42,11 @@ interface GroupState {
   loadGroups: (source?: GroupListSource) => Promise<void>
   loadGroupDetails: (groupId: string) => Promise<void>
   loadGroupMembers: (groupId: string) => Promise<void>
-  createNewGroup: (name: string, description: string) => Promise<void>
+  createNewGroup: (
+    name: string,
+    description: string,
+    options?: GroupCreationOptions,
+  ) => Promise<void>
   renameGroup: (groupId: string, name: string, description: string) => Promise<void>
   deleteExistingGroup: (groupId: string) => Promise<void>
   addMember: (groupId: string, userId: string) => Promise<void>
@@ -51,8 +55,6 @@ interface GroupState {
   dismissSteward: (groupId: string, userId: string) => Promise<void>
   changeRelease: (groupId: string, releasedForUse: boolean) => Promise<void>
   changeProtection: (groupId: string, protectedGroup: boolean) => Promise<void>
-  appointContact: (groupId: string, userId: string) => Promise<void>
-  dismissContact: (groupId: string, userId: string) => Promise<void>
 }
 
 function sortGroups(list: GroupListResponse[]): GroupListResponse[] {
@@ -63,7 +65,7 @@ export const useGroupStore = create<GroupState>((set, get) => ({
   groups: [],
   groupDetails: {},
   memberLists: {},
-  source: 'ADMIN',
+  source: 'NONE',
   isLoading: false,
   error: null,
 
@@ -72,7 +74,7 @@ export const useGroupStore = create<GroupState>((set, get) => ({
       groups: [],
       groupDetails: {},
       memberLists: {},
-      source: 'ADMIN',
+      source: 'NONE',
       isLoading: false,
       error: null,
     }),
@@ -83,6 +85,10 @@ export const useGroupStore = create<GroupState>((set, get) => ({
     // arriving after a logout (resetAllStores) skips its write-back instead of resurrecting the
     // previous user's groups into the now-emptied store.
     const sessionEpoch = currentSessionEpoch()
+    if (nextSource === 'NONE') {
+      set({ source: nextSource })
+      return
+    }
     set({ isLoading: true, error: null, source: nextSource })
     try {
       const loaded = nextSource === 'STEWARDED' ? await getMyStewardedGroups() : await getGroups()
@@ -116,15 +122,15 @@ export const useGroupStore = create<GroupState>((set, get) => ({
       if (isStaleSessionEpoch(sessionEpoch)) return
       set({ memberLists: { ...get().memberLists, [groupId]: members } })
     } catch (err) {
+      // The caller shows the reason where the list was asked for; a page-wide error would sit on
+      // a page that no longer renders it.
       if (isStaleSessionEpoch(sessionEpoch)) return
-      const message =
-        err instanceof Error ? err.message : 'Mitgliederliste konnte nicht geladen werden'
-      set({ error: message })
+      throw err
     }
   },
 
-  createNewGroup: async (name, description) => {
-    await createGroup(name, description)
+  createNewGroup: async (name, description, options) => {
+    await createGroup(name, description, options)
     await get().loadGroups()
   },
 
@@ -202,16 +208,6 @@ export const useGroupStore = create<GroupState>((set, get) => ({
 
   changeProtection: async (groupId, protectedGroup) => {
     await setGroupProtection(groupId, protectedGroup)
-    await Promise.all([get().loadGroups(), get().loadGroupDetails(groupId)])
-  },
-
-  appointContact: async (groupId, userId) => {
-    await appointGroupContact(groupId, userId)
-    await Promise.all([get().loadGroups(), get().loadGroupDetails(groupId)])
-  },
-
-  dismissContact: async (groupId, userId) => {
-    await dismissGroupContact(groupId, userId)
     await Promise.all([get().loadGroups(), get().loadGroupDetails(groupId)])
   },
 }))

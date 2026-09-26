@@ -166,7 +166,7 @@ export default function SpaceMembersSection({
                   )}
                   {/* #1880, ADR-0036 Entscheidung 9: Wer die Gruppe hier aufgenommen hat,
                       sieht ihre Mitglieder — erst auf ausdrücklichen Wunsch. Bei einer
-                      geschützten Gruppe nennt die Antwort die Ansprechstelle statt der
+                      geschützten Gruppe nennt die Antwort die Verantwortlichen statt der
                       Namen. */}
                   {isGroup && (canManage || isOwner) && (
                     <GroupMembersDisclosure

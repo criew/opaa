@@ -136,6 +136,86 @@ class GroupStewardshipIntegrationTest {
         .containsExactly(created.group().getId());
   }
 
+  /**
+   * The administration creates a group complete in one step: the named stewards instead of itself,
+   * released and protected, each decision on the record.
+   */
+  @Test
+  void theAdministrationCreatesAGroupWithStewardsReleaseAndProtection() {
+    CurrentUser admin = grantInternalGroupCapability(systemAdmin());
+    UUID first = regularUser();
+    UUID second = regularUser();
+
+    GroupDetail created =
+        groupService.createGroup(
+            new GroupCreation("Personalrat", null, true, true, List.of(first, second, first)),
+            admin);
+
+    UUID groupId = created.group().getId();
+    assertThat(created.stewards())
+        .extracting(view -> view.steward().getUserId())
+        .containsExactlyInAnyOrder(first, second);
+    assertThat(created.group().isReleasedForUse()).isTrue();
+    assertThat(created.group().isProtectedGroup()).isTrue();
+    assertThat(auditCount(groupId, AuditEventType.GROUP_STEWARD_APPOINTED)).isEqualTo(2);
+    assertThat(auditCount(groupId, AuditEventType.GROUP_RELEASE_CHANGED)).isEqualTo(1);
+    assertThat(auditCount(groupId, AuditEventType.GROUP_PROTECTION_CHANGED)).isEqualTo(1);
+  }
+
+  /** Whoever creates a group without the system role stays responsible for it. */
+  @Test
+  void aCreatorWithoutTheSystemRoleStaysAStewardBesideTheNamedOnes() {
+    CurrentUser creator = grantInternalGroupCapability(regularUser());
+    UUID colleague = regularUser();
+
+    GroupDetail created =
+        groupService.createGroup(
+            new GroupCreation("Projektteam", null, false, false, List.of(colleague)), creator);
+
+    assertThat(created.stewards())
+        .extracting(view -> view.steward().getUserId())
+        .containsExactlyInAnyOrder(creator.id(), colleague);
+    assertThat(created.group().isReleasedForUse()).isFalse();
+  }
+
+  /** The protection stays the administration's at creation, too - and nothing is created. */
+  @Test
+  void aCreatorWithoutTheSystemRoleCannotCreateAProtectedGroup() {
+    CurrentUser creator = grantInternalGroupCapability(regularUser());
+
+    assertThatThrownBy(
+            () ->
+                groupService.createGroup(
+                    new GroupCreation("Personalrat", null, false, true, List.of()), creator))
+        .isInstanceOf(AccessDeniedException.class)
+        .extracting(denied -> ((AccessDeniedException) denied).getCode())
+        .isEqualTo(GroupService.PROTECTION_ADMIN_ONLY);
+    assertThat(groupService.listStewardedGroups(creator)).isEmpty();
+  }
+
+  /** A steward who does not exist in the organization refuses the creation as a whole. */
+  @Test
+  void anUnknownStewardCreatesNothing() {
+    CurrentUser admin = grantInternalGroupCapability(systemAdmin());
+
+    assertThatThrownBy(
+            () ->
+                groupService.createGroup(
+                    new GroupCreation("Geisterteam", null, true, false, List.of(UUID.randomUUID())),
+                    admin))
+        .isInstanceOf(NotFoundException.class);
+    assertThat(groupRepository.findAll()).noneMatch(group -> "Geisterteam".equals(group.getName()));
+  }
+
+  @Test
+  void aMissingStewardIdIsAValidationError() {
+    List<UUID> withGap = new ArrayList<>();
+    withGap.add(null);
+
+    assertThatThrownBy(() -> new GroupCreation("Team", null, false, false, withGap))
+        .isInstanceOf(ValidationException.class);
+  }
+
   /** A new group is not released: "Vorgabe nicht freigegeben" (ADR-0036, Entscheidung 9). */
   @Test
   void aNewlyCreatedGroupIsNotReleasedForUse() {
@@ -358,55 +438,38 @@ class GroupStewardshipIntegrationTest {
   }
 
   /**
-   * The one thing a system administrator may not do to a group they do not steward (ADR-0036,
-   * Entscheidung 9; Personalrat A3) - otherwise the protection would be the administration's.
+   * The system administration alone sets and releases the protection mark (ADR-0036, Entscheidung
+   * 9, as amended) - a steward who knows the group is told why, not sent away.
    */
   @Test
-  void onlyAStewardSetsTheProtectionMarkNotTheAdministration() {
+  void onlyTheAdministrationSetsTheProtectionMark() {
     CurrentUser steward = grantInternalGroupCapability(regularUser());
     UUID groupId =
         groupService.createGroup(new GroupCreation("Personalrat", null), steward).group().getId();
     CurrentUser admin = currentUserOf(systemAdmin());
 
-    assertThatThrownBy(() -> groupService.setProtection(groupId, true, admin))
+    assertThatThrownBy(() -> groupService.setProtection(groupId, true, steward))
         .isInstanceOf(AccessDeniedException.class)
-        .hasMessageContaining("Verantwortlichen dieser Gruppe selbst");
+        .hasMessageContaining("Systemverwaltung")
+        .extracting(denied -> ((AccessDeniedException) denied).getCode())
+        .isEqualTo(GroupService.PROTECTION_ADMIN_ONLY);
 
-    groupService.setProtection(groupId, true, steward);
+    groupService.setProtection(groupId, true, admin);
 
     assertThat(groupRepository.findById(groupId).orElseThrow().isProtectedGroup()).isTrue();
     assertThat(auditCount(groupId, AuditEventType.GROUP_PROTECTION_CHANGED)).isEqualTo(1);
   }
 
-  /**
-   * A protected group decides its own release as well (ADR-0036, Entscheidung 9; Personalrat A3):
-   * an administration that may not set the mark must not be able to put the group into every
-   * selection either. Without the protection the administration keeps the release, and the group's
-   * own stewards keep it with the protection.
-   */
+  /** The protection no longer binds the release: the administration releases a protected group. */
   @Test
-  void theAdministrationDoesNotReleaseAProtectedGroup() {
+  void theAdministrationReleasesAProtectedGroup() {
     CurrentUser steward = grantInternalGroupCapability(regularUser());
     UUID guarded =
         groupService.createGroup(new GroupCreation("Personalrat", null), steward).group().getId();
-    UUID ordinary =
-        groupService.createGroup(new GroupCreation("Projektteam", null), steward).group().getId();
-    groupService.setProtection(guarded, true, steward);
     CurrentUser admin = currentUserOf(systemAdmin());
+    groupService.setProtection(guarded, true, admin);
 
-    assertThatThrownBy(() -> groupService.setRelease(guarded, true, admin))
-        .isInstanceOf(AccessDeniedException.class)
-        .hasMessageContaining("Verantwortlichen selbst")
-        .extracting(denied -> ((AccessDeniedException) denied).getCode())
-        .isEqualTo(GroupService.STEWARDSHIP_REQUIRED);
-    assertThat(groupRepository.findById(guarded).orElseThrow().isReleasedForUse()).isFalse();
-
-    assertThat(groupService.setRelease(ordinary, true, admin).group().isReleasedForUse())
-        .as("an unprotected group is the administration's to release")
-        .isTrue();
-    assertThat(groupService.setRelease(guarded, true, steward).group().isReleasedForUse())
-        .as("the protection binds the administration, not the group's own stewards")
-        .isTrue();
+    assertThat(groupService.setRelease(guarded, true, admin).group().isReleasedForUse()).isTrue();
   }
 
   /**
@@ -510,11 +573,10 @@ class GroupStewardshipIntegrationTest {
         .isInstanceOf(ValidationException.class);
     assertThatThrownBy(() -> groupService.setRelease(providerGroup.getId(), true, steward))
         .isInstanceOf(ValidationException.class);
-    // #1875: the mark of a provider group is the one thing decided there - by its contact points,
-    // never by a steward and never by the administration.
+    // the mark of a provider group is the system administration's, never a steward's
     assertThatThrownBy(() -> groupService.setProtection(providerGroup.getId(), true, steward))
         .isInstanceOf(AccessDeniedException.class)
-        .hasMessageContaining("Ansprechstellen");
+        .hasMessageContaining("Systemverwaltung");
     assertThatThrownBy(() -> groupService.appointSteward(providerGroup.getId(), someone, steward))
         .isInstanceOf(ValidationException.class);
   }

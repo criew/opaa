@@ -83,16 +83,30 @@ describe('groupStore', () => {
   })
 
   it('sorts groups alphabetically', async () => {
-    await useGroupStore.getState().loadGroups()
+    await useGroupStore.getState().loadGroups('ADMIN')
     const names = useGroupStore.getState().groups.map((g) => g.name)
     expect(names).toEqual(['Team A', 'Team B'])
   })
 
   it('creates a new group and reloads the list', async () => {
     mockCreateGroup.mockResolvedValueOnce({})
+    useGroupStore.setState({ source: 'ADMIN' })
     await useGroupStore.getState().createNewGroup('Team C', 'desc')
-    expect(mockCreateGroup).toHaveBeenCalledWith('Team C', 'desc')
+    expect(mockCreateGroup).toHaveBeenCalledWith('Team C', 'desc', undefined)
     expect(useGroupStore.getState().groups.length).toBeGreaterThan(0)
+  })
+
+  // The group administration shows its own paged list: an act there must not fetch every group.
+  it('reloads no list after an act while no page shows one', async () => {
+    mockUpdateGroup.mockResolvedValueOnce({})
+    useGroupStore.getState().reset()
+    vi.mocked(getGroups).mockClear()
+
+    await useGroupStore.getState().renameGroup('group-a', 'Renamed', 'desc')
+
+    expect(useGroupStore.getState().source).toBe('NONE')
+    expect(vi.mocked(getGroups)).not.toHaveBeenCalled()
+    expect(vi.mocked(getGroup)).toHaveBeenCalledWith('group-a')
   })
 
   it('loads group details on demand', async () => {
@@ -242,6 +256,7 @@ describe('groupStore', () => {
           description: null,
           kind: 'AD_HOC',
           origin: 'INTERNAL',
+          state: 'ACTIVE',
           externalId: null,
           parentGroupId: null,
           memberCount: 2,
@@ -255,7 +270,7 @@ describe('groupStore', () => {
       ]
     })
 
-    await useGroupStore.getState().loadGroups()
+    await useGroupStore.getState().loadGroups('ADMIN')
 
     expect(useGroupStore.getState().groups).toEqual([])
     expect(useGroupStore.getState().isLoading).toBe(false)

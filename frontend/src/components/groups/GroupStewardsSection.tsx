@@ -131,15 +131,21 @@ export default function GroupStewardsSection({
             Verantwortliche da, bis eine neue benannt wird.
           </Typography>
         )}
-        <Stack direction={{ xs: 'column', md: 'row' }} spacing={1} sx={{ pt: 1 }}>
+        <Stack
+          direction={{ xs: 'column', md: 'row' }}
+          spacing={1}
+          sx={{ pt: 1, alignItems: { md: 'center' } }}
+        >
           <UserPicker
             ariaLabel="Verantwortliche Person"
             placeholder="Person suchen …"
             value={selected}
             onChange={setSelected}
+            grow
             excludedUserIds={stewards.map((steward) => steward.userId)}
           />
           <Button
+            sx={{ flexShrink: 0 }}
             variant="outlined"
             size="small"
             disabled={!selected}

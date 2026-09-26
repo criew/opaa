@@ -183,8 +183,8 @@ ersten Stufe nicht geschrieben.
   Reichweitenfeld wie `listed` bei einem Asset: sie entscheidet, wer die Gruppe überhaupt als
   Empfänger benennen kann
 - **Setzen und Lösen des Schutzkennzeichens einer Gruppe** (Personalvertretung,
-  Schwerbehindertenvertretung, Gleichstellung, Personalvorgänge) — durch die zuständige Stelle
-  selbst, nie durch die Administration
+  Schwerbehindertenvertretung, Gleichstellung, Personalvorgänge) — allein durch die
+  Systemverwaltung (ADR-0036, Entscheidung 9, Nachtrag vom 26.09.2026)
 - Bereitstellung einer Bibliothek in einem Space, dessen Mitglieder nicht sämtlich Lesezugriff haben
 - Eigentümerwechsel, Übernahme von Assets ohne Zuständigkeit und der Übergang in „Nachfolge offen"
 

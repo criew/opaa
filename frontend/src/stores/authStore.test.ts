@@ -129,6 +129,7 @@ describe('authStore', () => {
           kind: 'AD_HOC',
           externalId: null,
           origin: 'INTERNAL',
+          state: 'ACTIVE',
           provider: null,
           sourcePath: null,
           parentGroupId: null,

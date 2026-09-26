@@ -82,7 +82,10 @@ test.describe("Fehlversuche sperren, Verwalter entsperrt", () => {
     await clearMailbox();
     await openAccountList(admin);
     const table = admin.getByRole("table", { name: "Konten" });
-    await expect(table).toContainText("Gesperrt (Fehlversuche)");
+    await expect(table).toContainText("Gesperrt");
+    await expect(
+      table.getByRole("img", { name: "Sperrgrund: Nach mehreren falschen Passwörtern gesperrt" }),
+    ).toBeVisible();
 
     await admin.getByRole("button", { name: `Aktionen für „${displayName}“` }).click();
     await admin.getByRole("menuitem", { name: "Entsperren" }).click();

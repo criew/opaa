@@ -290,10 +290,11 @@ public class OidcProviderService {
     ProviderGroupEffects effects = providerGroups.effectsOf(provider.getId());
     if (effects.any()) {
       throw new ConflictException(
-          "Der Anbieter kann nicht gelöscht werden, solange seine Gruppen wirken. "
+          "Der Anbieter kann nicht gelöscht werden, solange seine Gruppen noch verwendet werden. "
               + effects.describe()
-              + " Entfernen Sie diese Wirkungen zuerst; Gruppen ohne Wirkung werden mit dem"
-              + " Anbieter gelöscht. Deaktivieren ist jederzeit möglich.",
+              + " Übertragen Sie deren Rechte in der Arbeitsliste des Anbieters an eine andere"
+              + " Gruppe oder entfernen Sie sie dort, wo sie vergeben sind; nicht verwendete"
+              + " Gruppen werden mit dem Anbieter gelöscht. Deaktivieren ist jederzeit möglich.",
           PROVIDER_GROUPS_IN_EFFECT);
     }
     Map<String, Object> before = auditState(provider);
