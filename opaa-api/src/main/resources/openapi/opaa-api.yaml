@@ -1290,9 +1290,11 @@ paths:
       tags: [admin]
       summary: Change a user's system role (system admin only)
       description: >
-        Two conflicts of its own are refused with 409. The withdrawal of the SYSTEM_ADMIN role
-        while no other login-capable system administrator of the organization remains carries the
-        code LAST_LOGIN_CAPABLE_ADMIN (ADR-0033, Entscheidung 4); the check runs under the
+        Three conflicts of its own are refused with 409. A role other than SYSTEM_ADMIN for the
+        bootstrap account carries the code BOOTSTRAP_ACCOUNT (ADR-0033, Entscheidungen 3 and 5);
+        returning it to SYSTEM_ADMIN stays allowed. The withdrawal of
+        the SYSTEM_ADMIN role while no other login-capable system administrator of the
+        organization remains carries the code LAST_LOGIN_CAPABLE_ADMIN (ADR-0033, Entscheidung 4); the check runs under the
         organization's advisory lock, so it also holds when a manual and a token-driven
         withdrawal run at the same time. A role that an enabled OIDC provider with a roles claim
         manages itself cannot be changed here (ADR-0025, Entscheidung 4) - that refusal names the
@@ -1508,7 +1510,10 @@ paths:
         login-capable system administrator remains (ADR-0033, Entscheidung 4). The role change
         runs through the same path as POST /api/v1/admin/users/{id}/role and is audited as a role
         grant or withdrawal; everything else is one LOCAL_USER_CHANGED that carries before/after
-        for the expiry date only and otherwise just the names of the changed fields.
+        for the expiry date only and otherwise just the names of the changed fields. On the
+        bootstrap account an expiry date and a role other than SYSTEM_ADMIN are refused with 409
+        and code BOOTSTRAP_ACCOUNT (ADR-0033, Entscheidungen 3 and 5), and none of the fields sent
+        alongside is applied; noExpiry=true and a return to SYSTEM_ADMIN stay allowed.
       requestBody:
         required: true
         content:
@@ -1568,9 +1573,9 @@ paths:
         LOCAL_SESSION_REVOKED only when a session was actually active), replaces a running
         failed-login lockout and resets its counter, and tells the person by mail
         (ACCOUNT_LOCKED with the reason). Refused with 409 for the caller's own account
-        (SELF_LOCKOUT), for the last login-capable system administrator
-        (LAST_LOGIN_CAPABLE_ADMIN) and for an account that is already locked by the
-        administration or for inactivity (ALREADY_LOCKED).
+        (SELF_LOCKOUT), for the bootstrap account (BOOTSTRAP_ACCOUNT), for the last
+        login-capable system administrator (LAST_LOGIN_CAPABLE_ADMIN) and for an account that is
+        already locked by the administration or for inactivity (ALREADY_LOCKED).
       parameters:
         - name: id
           in: path

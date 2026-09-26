@@ -92,7 +92,7 @@ export const LOCAL_USER_CONFLICT_MESSAGES: Readonly<Record<string, string>> = {
   ALREADY_LOCKED: 'Dieses Konto ist bereits gesperrt.',
   NOT_LOCKED: 'Dieses Konto ist nicht gesperrt.',
   BOOTSTRAP_ACCOUNT:
-    'Das Notanker-Konto der Systemverwaltung kann nicht gelöscht werden – es ist der Weg zurück in eine Installation ohne funktionierenden Anbieter.',
+    'Das Notanker-Konto der Systemverwaltung kann nicht gesperrt, befristet, herabgestuft, übergeben oder gelöscht werden – es ist der Weg zurück in eine Installation ohne funktionierenden Anbieter.',
   LAST_LOGIN_CAPABLE_ADMIN:
     'Es bliebe kein anmeldefähiger Systemverwalter übrig. Richten Sie zuerst ein weiteres Systemverwalterkonto mit Passwort ein.',
   PUBLIC_BASE_URL_REQUIRED:

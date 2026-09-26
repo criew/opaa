@@ -18,6 +18,7 @@ import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.SystemRole;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.local.LocalAdminAvailabilityGuard;
+import io.opaa.auth.local.LocalCredentialsRepository;
 import io.opaa.auth.oidc.OidcClaimMapping;
 import io.opaa.auth.oidc.OidcProvider;
 import io.opaa.auth.oidc.OidcProviderRegistry;
@@ -61,6 +62,7 @@ class UserServiceTest {
   private OidcProviderRepository providerRepository;
   private TokenRoleSynchronizer roleSynchronizer;
   private LocalAdminAvailabilityGuard adminGuard;
+  private LocalCredentialsRepository localCredentials;
   private UserService userService;
   private final List<UserProvisionedEvent> publishedEvents = new ArrayList<>();
 
@@ -107,6 +109,7 @@ class UserServiceTest {
     providerRepository = mock(OidcProviderRepository.class);
     roleSynchronizer = mock(TokenRoleSynchronizer.class);
     adminGuard = mock(LocalAdminAvailabilityGuard.class);
+    localCredentials = mock(LocalCredentialsRepository.class);
     when(providerRegistry.findEnabledByIssuer(any())).thenReturn(Optional.empty());
     when(providerRepository.findByNormalizedIssuerUri(any())).thenReturn(Optional.empty());
     userService = userServiceWith(event -> publishedEvents.add((UserProvisionedEvent) event));
@@ -120,6 +123,7 @@ class UserServiceTest {
         providerRepository,
         roleSynchronizer,
         adminGuard,
+        localCredentials,
         auditEventRecorder,
         eventPublisher,
         clock);

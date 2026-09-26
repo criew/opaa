@@ -20,12 +20,12 @@ import { useMailStore } from '../stores/mailStore'
 import { useUserAdminStore } from '../stores/userAdminStore'
 import UserManagementPage from './UserManagementPage'
 
-function signInAs(systemRole: 'SYSTEM_ADMIN' | 'USER') {
+function signInAs(systemRole: 'SYSTEM_ADMIN' | 'USER', id = 'mock-user-id') {
   useAuthStore.setState({
     mode: 'oidc',
     isAuthenticated: true,
     isLoading: false,
-    user: { id: 'mock-user-id', email: 'admin@opaa.local', displayName: 'Admin', systemRole },
+    user: { id, email: 'admin@opaa.local', displayName: 'Admin', systemRole },
     token: null,
     error: null,
     providers: [],
@@ -483,6 +483,89 @@ describe('UserManagementPage', () => {
     expect(within(menu).getByText(/muss deshalb ein lokales Konto bleiben/)).toBeInTheDocument()
   }, 20000)
 
+  /**
+   * Regressionsschutz zu #1640: Am Notanker-Konto bietet die Oberfläche Sperren, Rollenwechsel und
+   * Befristen gar nicht erst an – auch einem anderen Verwalter nicht, für den die Sperre des
+   * eigenen Kontos nicht greift.
+   */
+  it('offers another administrator no lock, role change or expiry on the bootstrap account', async () => {
+    signInAs('SYSTEM_ADMIN', 'local-user-vogt')
+    const user = userEvent.setup()
+    renderAccounts()
+    await screen.findByRole('table', { name: 'Konten' })
+
+    const menu = await openRowMenu(user, 'Systemverwaltung', 'admin@opaa.local')
+    expect(within(menu).getByRole('menuitem', { name: 'Sperren' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+    expect(within(menu).getByText(/weder gesperrt noch gelöscht/)).toBeInTheDocument()
+    expect(within(menu).queryByText(/Das eigene Konto/)).not.toBeInTheDocument()
+    await user.click(within(menu).getByRole('menuitem', { name: 'Bearbeiten' }))
+
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByRole('combobox', { name: 'Rolle' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+    expect(within(dialog).getByText(/behält die Rolle der Systemverwaltung/)).toBeInTheDocument()
+    expect(within(dialog).getByLabelText('Ablaufdatum')).toBeDisabled()
+    expect(within(dialog).getByRole('checkbox', { name: 'Kein Ablaufdatum' })).toBeDisabled()
+  }, 20000)
+
+  /**
+   * Ein Notanker-Konto aus der Zeit vor #1640 kann ein Ablaufdatum und eine andere Rolle tragen. Der
+   * Dialog lässt genau die Rückkehr in den zugesagten Zustand zu: Datum entfernen, zurück zur
+   * Systemverwaltung – und nichts, was das Backend ablehnen würde.
+   */
+  it('lets a bootstrap account from an older state return to no expiry and Systemverwaltung', async () => {
+    setMockLocalUsers(
+      mockLocalUsers.map((account) =>
+        account.bootstrap
+          ? { ...account, systemRole: 'USER', expiresAt: '2027-01-31T22:59:59Z' }
+          : account,
+      ),
+    )
+    signInAs('SYSTEM_ADMIN', 'local-user-vogt')
+    const user = userEvent.setup()
+    const bodies: LocalUserUpdateRequest[] = []
+    server.use(
+      http.patch('/api/v1/admin/local-users/:id', async ({ params, request }) => {
+        const body = (await request.json()) as LocalUserUpdateRequest
+        bodies.push(body)
+        const stored = mockLocalUsers.find((account) => account.id === String(params.id))!
+        return HttpResponse.json({ ...stored, systemRole: body.systemRole ?? stored.systemRole })
+      }),
+    )
+    renderAccounts()
+    await screen.findByRole('table', { name: 'Konten' })
+
+    const menu = await openRowMenu(user, 'Systemverwaltung', 'admin@opaa.local')
+    await user.click(within(menu).getByRole('menuitem', { name: 'Bearbeiten' }))
+    const dialog = await screen.findByRole('dialog')
+
+    const role = within(dialog).getByRole('combobox', { name: 'Rolle' })
+    expect(role).not.toHaveAttribute('aria-disabled')
+    await user.click(role)
+    const options = await screen.findByRole('listbox')
+    expect(
+      within(options)
+        .getAllByRole('option')
+        .map((option) => option.textContent),
+    ).toEqual(['Nutzer', 'Systemverwaltung'])
+    await user.click(within(options).getByRole('option', { name: 'Systemverwaltung' }))
+
+    expect(within(dialog).getByLabelText('Ablaufdatum')).toBeDisabled()
+    const noExpiry = within(dialog).getByRole('checkbox', { name: 'Kein Ablaufdatum' })
+    expect(noExpiry).toBeEnabled()
+    await user.click(noExpiry)
+    await user.click(within(dialog).getByRole('button', { name: 'Speichern' }))
+
+    await waitFor(() => expect(bodies).toHaveLength(1))
+    expect(bodies[0]).toMatchObject({ systemRole: 'SYSTEM_ADMIN', noExpiry: true })
+    expect(bodies[0]).not.toHaveProperty('expiresAt')
+  }, 20000)
+
   it('opens the handover dialog for a regular local account', async () => {
     signInAs('SYSTEM_ADMIN')
     const user = userEvent.setup()
@@ -544,7 +627,7 @@ describe('UserManagementPage', () => {
     await user.click(within(menu).getByRole('menuitem', { name: 'Bearbeiten' }))
 
     const bootstrapDialog = await screen.findByRole('dialog')
-    expect(within(bootstrapDialog).getByText(/soll unbefristet bleiben/)).toBeInTheDocument()
+    expect(within(bootstrapDialog).getByText(/bleibt unbefristet/)).toBeInTheDocument()
     expect(within(bootstrapDialog).queryByText(/erscheint im Hinweis zur/)).not.toBeInTheDocument()
     await user.click(within(bootstrapDialog).getByRole('button', { name: 'Abbrechen' }))
     // erst wenn der Dialog fort ist, ist die Tabelle wieder erreichbar
@@ -557,7 +640,10 @@ describe('UserManagementPage', () => {
 
     const regularDialog = await screen.findByRole('dialog')
     expect(within(regularDialog).getByText(/erscheint im Hinweis zur/)).toBeInTheDocument()
-    expect(within(regularDialog).queryByText(/soll unbefristet bleiben/)).not.toBeInTheDocument()
+    expect(within(regularDialog).getByRole('combobox', { name: 'Rolle' })).not.toHaveAttribute(
+      'aria-disabled',
+    )
+    expect(within(regularDialog).queryByText(/bleibt unbefristet/)).not.toBeInTheDocument()
   }, 20000)
 
   /**
