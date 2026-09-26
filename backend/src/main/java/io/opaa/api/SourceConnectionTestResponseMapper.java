@@ -5,26 +5,42 @@ import io.opaa.api.dto.ConfluenceSpaceListResponse;
 import io.opaa.api.dto.ConfluenceSpaceRef;
 import io.opaa.api.dto.S3BucketListRequest;
 import io.opaa.api.dto.S3BucketListResponse;
-import io.opaa.api.dto.S3ScopeCheck;
 import io.opaa.api.dto.SourceConnectionTestRequest;
 import io.opaa.api.dto.SourceConnectionTestResponse;
+import io.opaa.api.types.DocumentSourceType;
+import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.SourceConnectionTestResult;
+import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.indexing.source.SourceListing;
-import io.opaa.library.ConfluenceSpaceListing;
-import io.opaa.library.S3BucketListingRequest;
+import io.opaa.library.SourceBrowseRequest;
 import io.opaa.library.SourceConnectionTest;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Maps {@link SourceConnectionTestResult} onto its generated response counterpart, and {@link
  * SourceConnectionTestRequest} onto the domain-level {@link SourceConnectionTest} (ADR-0006: API
- * DTOs are generated from the specification, never hand-written).
+ * DTOs are generated from the specification, never hand-written). The per-type fields of the flat
+ * API become the connector settings of the request's type (ADR-0038).
  */
 final class SourceConnectionTestResponseMapper {
 
   private SourceConnectionTestResponseMapper() {}
 
-  static SourceConnectionTest toDomain(SourceConnectionTestRequest request) {
+  /** Malformed {@code s3Settings} are the caller's 400 whatever the type, as before any check. */
+  static SourceConnectionTest toDomain(
+      SourceConnectionTestRequest request, SourceConnectorRegistry connectors) {
+    ConnectorData s3Settings =
+        FlatSourceSettings.readS3Settings(request.getS3Settings(), connectors);
+    ConnectorData connectorSettings = null;
+    if (request.getSourceType() == DocumentSourceType.S3) {
+      connectorSettings = s3Settings;
+    } else if (request.getSourceType() == DocumentSourceType.CONFLUENCE
+        && request.getConfluenceEdition() != null) {
+      connectorSettings =
+          ConnectorData.of(Map.of("edition", request.getConfluenceEdition().name()));
+    }
     return new SourceConnectionTest(
         request.getSourceType(),
         request.getSourcePath(),
@@ -33,18 +49,24 @@ final class SourceConnectionTestResponseMapper {
         request.getSourceCredentials(),
         request.getSourceInsecureSsl(),
         request.getLibraryId(),
-        request.getConfluenceEdition(),
-        LibraryResponseMapper.toS3Settings(request.getS3Settings()));
+        connectorSettings);
   }
 
-  static S3BucketListingRequest toDomain(S3BucketListRequest request) {
-    return new S3BucketListingRequest(
+  static SourceBrowseRequest toDomain(S3BucketListRequest request) {
+    Map<String, Object> query = new LinkedHashMap<>();
+    if (request.getRegion() != null) {
+      query.put("region", request.getRegion());
+    }
+    if (request.getPathStyle() != null) {
+      query.put("pathStyle", request.getPathStyle());
+    }
+    return new SourceBrowseRequest(
+        DocumentSourceType.S3,
         request.getSourceUrl(),
         request.getSourceCredentials(),
         request.getSourceProxy(),
         request.getSourceInsecureSsl(),
-        request.getRegion(),
-        request.getPathStyle(),
+        ConnectorData.of(query),
         request.getLibraryId());
   }
 
@@ -54,13 +76,16 @@ final class SourceConnectionTestResponseMapper {
         .message(listing.message());
   }
 
-  static ConfluenceSpaceListing toDomain(ConfluenceSpaceListRequest request) {
-    return new ConfluenceSpaceListing(
+  static SourceBrowseRequest toDomain(ConfluenceSpaceListRequest request) {
+    return new SourceBrowseRequest(
+        DocumentSourceType.CONFLUENCE,
         request.getSourceUrl(),
-        request.getConfluenceEdition(),
         request.getSourceCredentials(),
         request.getSourceProxy(),
         request.getSourceInsecureSsl(),
+        request.getConfluenceEdition() == null
+            ? null
+            : ConnectorData.of(Map.of("edition", request.getConfluenceEdition().name())),
         request.getLibraryId());
   }
 
@@ -77,25 +102,8 @@ final class SourceConnectionTestResponseMapper {
   static SourceConnectionTestResponse toResponse(SourceConnectionTestResult result) {
     return new SourceConnectionTestResponse(result.reachable(), result.message())
         .documentCount(result.documentCount())
-        .confluenceEdition(result.confluenceEdition())
+        .confluenceEdition(FlatSourceSettings.detectedEdition(result.details()))
         .credentialsVerified(result.credentialsVerified())
-        .s3Scopes(result.s3Scopes() == null ? null : toScopeChecks(result.s3Scopes()));
-  }
-
-  private static List<S3ScopeCheck> toScopeChecks(
-      List<io.opaa.indexing.source.S3ScopeCheck> checks) {
-    return checks.stream()
-        .map(
-            check ->
-                new S3ScopeCheck(
-                        check.bucket(),
-                        check.prefix(),
-                        check.bucketReachable(),
-                        check.listAllowed(),
-                        check.objectCount(),
-                        check.objectCountIsLowerBound())
-                    .readAllowed(check.readAllowed())
-                    .message(check.message()))
-        .toList();
+        .s3Scopes(FlatSourceSettings.scopeChecks(result.details()));
   }
 }

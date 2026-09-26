@@ -9,10 +9,10 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import io.opaa.api.types.DocumentSourceType;
 import io.opaa.auth.OidcSecurityConfig;
 import io.opaa.auth.UserService;
 import io.opaa.common.UnauthorizedException;
-import io.opaa.indexing.source.PushIntake;
 import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.indexing.source.confluence.ConfluenceConnectionService;
@@ -69,7 +69,7 @@ class ConfluenceWebhookPublicAccessTest {
   /** The real connector in front of the mocked service, so its header mapping is covered. */
   @BeforeEach
   void wireTheConnector() {
-    when(connectors.pushIntakeHandler(PushIntake.WEBHOOK_SECRET))
+    when(connectors.pushIntakeHandler(DocumentSourceType.CONFLUENCE))
         .thenReturn(
             new ConfluenceSourceConnector(
                 mock(ConfluenceConnectionService.class),

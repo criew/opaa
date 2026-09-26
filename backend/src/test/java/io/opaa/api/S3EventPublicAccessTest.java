@@ -11,11 +11,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import io.opaa.api.types.DocumentSourceType;
 import io.opaa.auth.OidcSecurityConfig;
 import io.opaa.auth.S3EventSecurityConfig;
 import io.opaa.auth.UserService;
 import io.opaa.common.UnauthorizedException;
-import io.opaa.indexing.source.PushIntake;
 import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.indexing.source.s3.S3ClientFactory;
@@ -79,7 +79,7 @@ class S3EventPublicAccessTest {
   /** The real connector in front of the mocked service, so its header mapping is covered. */
   @BeforeEach
   void wireTheConnector() {
-    when(connectors.pushIntakeHandler(PushIntake.EVENT_TOKEN))
+    when(connectors.pushIntakeHandler(DocumentSourceType.S3))
         .thenReturn(
             new S3SourceConnector(
                 mock(S3ConnectionService.class),

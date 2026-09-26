@@ -16,7 +16,7 @@ final class ConfluenceLibraryConnection {
   private ConfluenceLibraryConnection() {}
 
   static ConfluenceConnection of(KnowledgeLibrary library) {
-    ConfluenceEdition edition = library.getSourceConfluenceEdition();
+    ConfluenceEdition edition = ConfluenceSourceSettings.of(library).edition();
     if (edition == null) {
       throw new InvalidConfluenceConfigurationException(
           "Die Bibliothek trägt keine Confluence-Edition; bitte die Quellkonfiguration prüfen.");

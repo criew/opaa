@@ -38,7 +38,6 @@ import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.SourceSyncState;
 import io.opaa.indexing.source.SourceSyncStateRepository;
-import io.opaa.knowledge.ConfluenceSpaceSelection;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
@@ -239,7 +238,7 @@ class ConfluenceIndexingExecutorTest {
     for (String key : spaceKeys) {
       selection.add(new ConfluenceSpaceSelection(key, null));
     }
-    library.configureConfluence(edition, selection);
+    ConfluenceTestSettings.configure(library, edition, selection);
     ConfluenceProperties properties =
         new ConfluenceProperties(
             2,
@@ -543,7 +542,8 @@ class ConfluenceIndexingExecutorTest {
             null,
             edition == ConfluenceEdition.CLOUD ? EMAIL + ":falsch" : "falsch",
             false);
-    library.configureConfluence(edition, List.of(new ConfluenceSpaceSelection("ENG", null)));
+    ConfluenceTestSettings.configure(
+        library, edition, List.of(new ConfluenceSpaceSelection("ENG", null)));
 
     executor.execute(jobId, library, IndexingRunMode.FULL);
 
@@ -723,7 +723,8 @@ class ConfluenceIndexingExecutorTest {
             null,
             edition == ConfluenceEdition.CLOUD ? EMAIL + ":falsch" : "falsch",
             false);
-    library.configureConfluence(edition, List.of(new ConfluenceSpaceSelection("ENG", null)));
+    ConfluenceTestSettings.configure(
+        library, edition, List.of(new ConfluenceSpaceSelection("ENG", null)));
     server.throttleNext(1, "1");
 
     executor.execute(jobId, library, IndexingRunMode.FULL);
@@ -1033,13 +1034,13 @@ class ConfluenceIndexingExecutorTest {
 
     // the library's own rhythm takes precedence over the instance-wide default - the same
     // 8-day-old state reads as recent under a 30-day rhythm ...
-    library.updateConfluenceFullSyncIntervalDays(30);
+    ConfluenceTestSettings.fullSyncIntervalDays(library, 30);
     assertThat(executor.defaultRunMode(library))
         .as("8 days old, own rhythm 30 days")
         .isEqualTo(IndexingRunMode.INCREMENTAL);
     // ... and a 2-day-old state as due under a 1-day rhythm
     completedFullSync(NOW.minus(Duration.ofDays(2)));
-    library.updateConfluenceFullSyncIntervalDays(1);
+    ConfluenceTestSettings.fullSyncIntervalDays(library, 1);
     assertThat(executor.defaultRunMode(library))
         .as("2 days old, own rhythm 1 day")
         .isEqualTo(IndexingRunMode.FULL);
@@ -1173,7 +1174,8 @@ class ConfluenceIndexingExecutorTest {
             null,
             edition == ConfluenceEdition.CLOUD ? EMAIL + ":falsch" : "falsch",
             false);
-    library.configureConfluence(edition, List.of(new ConfluenceSpaceSelection("ENG", null)));
+    ConfluenceTestSettings.configure(
+        library, edition, List.of(new ConfluenceSpaceSelection("ENG", null)));
 
     executor.refreshPages(jobId, library, Set.of("101"));
 

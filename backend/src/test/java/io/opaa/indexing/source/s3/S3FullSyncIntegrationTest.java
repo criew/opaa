@@ -26,8 +26,6 @@ import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryFolder;
 import io.opaa.knowledge.LibraryFolderRepository;
 import io.opaa.knowledge.LibraryFolderService;
-import io.opaa.knowledge.sourcesettings.S3Scope;
-import io.opaa.knowledge.sourcesettings.S3SourceSettings;
 import io.opaa.organization.Organization;
 import io.opaa.s3.S3Credentials;
 import io.opaa.s3.S3TestFixture;
@@ -158,8 +156,8 @@ class S3FullSyncIntegrationTest {
             null,
             credentials.accessKey() + ":" + credentials.secretKey(),
             false);
-    fresh.updateS3Settings(
-        new S3SourceSettings(S3TestFixture.REGION, true, scopes, include, exclude));
+    S3TestSettings.configure(
+        fresh, new S3SourceSettings(S3TestFixture.REGION, true, scopes, include, exclude));
     KnowledgeLibrary saved = libraryRepository.save(fresh);
     createdLibraries.add(saved);
     return saved;

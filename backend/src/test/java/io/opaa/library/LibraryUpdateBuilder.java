@@ -2,8 +2,8 @@ package io.opaa.library;
 
 import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.api.types.DocumentSourceType;
-import io.opaa.knowledge.ConfluenceSpaceSelection;
-import io.opaa.knowledge.sourcesettings.S3SourceSettings;
+import io.opaa.indexing.source.confluence.ConfluenceSpaceSelection;
+import io.opaa.indexing.source.s3.S3SourceSettings;
 import java.net.URI;
 import java.util.List;
 
@@ -114,9 +114,7 @@ public final class LibraryUpdateBuilder {
         sourceCredentials,
         sourceInsecureSsl,
         schedule,
-        confluenceEdition,
-        confluenceSpaces,
-        confluenceFullSyncIntervalDays,
-        s3Settings);
+        FlatSourceSettingsFixture.of(
+            confluenceEdition, confluenceSpaces, confluenceFullSyncIntervalDays, s3Settings));
   }
 }

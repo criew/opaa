@@ -1,0 +1,77 @@
+databaseChangeLog:
+  - changeSet:
+      id: 092-connector-settings
+      author: opaa
+      comment: >-
+        Steckbare Konnektoren (#1977, ADR-0038): Jeder Konnektor speichert seine Einstellungen als
+        ein JSON-Objekt in source_settings. Die Confluence-Spalten fuer Edition und
+        Vollabgleichsrhythmus und die Tabelle der Space-Auswahl entfallen, ebenso die
+        CHECK-Zweige je Quellentyp und die Wertelisten der Quellentypen; die Datenbank prueft nur
+        noch die Form des Typ-Schluessels, dass source_settings ein Objekt ist und dass eine
+        UPLOAD-Bibliothek keine Quellkonfiguration traegt. Keine Datenmigration - es gibt keine
+        Bestandssysteme.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE knowledge_libraries DROP CONSTRAINT chk_knowledge_libraries_source_configuration;
+              ALTER TABLE knowledge_libraries DROP CONSTRAINT chk_knowledge_libraries_confluence_edition;
+              ALTER TABLE knowledge_libraries DROP CONSTRAINT chk_knowledge_libraries_confluence_full_sync_interval;
+              ALTER TABLE knowledge_libraries DROP CONSTRAINT chk_knowledge_libraries_source_type;
+              ALTER TABLE documents DROP CONSTRAINT chk_documents_source_type;
+
+              ALTER TABLE knowledge_libraries DROP COLUMN source_confluence_edition;
+              ALTER TABLE knowledge_libraries DROP COLUMN source_confluence_full_sync_interval_days;
+              DROP TABLE knowledge_library_confluence_spaces;
+
+              ALTER TABLE knowledge_libraries
+                  ADD CONSTRAINT chk_knowledge_libraries_source_type
+                      CHECK (source_type ~ '^[A-Z][A-Z0-9_]*$');
+              ALTER TABLE documents
+                  ADD CONSTRAINT chk_documents_source_type
+                      CHECK (source_type ~ '^[A-Z][A-Z0-9_]*$');
+              ALTER TABLE knowledge_libraries
+                  ADD CONSTRAINT chk_knowledge_libraries_source_settings
+                      CHECK (source_settings IS NULL OR jsonb_typeof(source_settings) = 'object');
+              ALTER TABLE knowledge_libraries
+                  ADD CONSTRAINT chk_knowledge_libraries_upload_without_source
+                      CHECK (source_type <> 'UPLOAD'
+                          OR (source_path IS NULL
+                              AND source_url IS NULL
+                              AND source_proxy IS NULL
+                              AND source_credentials IS NULL
+                              AND source_insecure_ssl = false
+                              AND source_settings IS NULL));
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE knowledge_libraries DROP CONSTRAINT chk_knowledge_libraries_upload_without_source;
+              ALTER TABLE knowledge_libraries DROP CONSTRAINT chk_knowledge_libraries_source_settings;
+              ALTER TABLE documents DROP CONSTRAINT chk_documents_source_type;
+              ALTER TABLE knowledge_libraries DROP CONSTRAINT chk_knowledge_libraries_source_type;
+
+              ALTER TABLE knowledge_libraries
+                  ADD COLUMN source_confluence_edition character varying(20),
+                  ADD COLUMN source_confluence_full_sync_interval_days integer;
+              CREATE TABLE knowledge_library_confluence_spaces (
+                  library_id uuid NOT NULL,
+                  space_key character varying(255) NOT NULL,
+                  space_name character varying(255),
+                  CONSTRAINT pk_knowledge_library_confluence_spaces PRIMARY KEY (library_id, space_key),
+                  CONSTRAINT knowledge_library_confluence_spaces_library_id_fkey FOREIGN KEY (library_id)
+                      REFERENCES knowledge_libraries(id) ON DELETE CASCADE
+              );
+
+              ALTER TABLE documents
+                  ADD CONSTRAINT chk_documents_source_type
+                      CHECK (source_type IN ('FILESYSTEM', 'HTTP_DIRECTORY', 'UPLOAD', 'RSS_FEED', 'CONFLUENCE', 'S3')) NOT VALID;
+              ALTER TABLE knowledge_libraries
+                  ADD CONSTRAINT chk_knowledge_libraries_source_type
+                      CHECK (source_type IN ('FILESYSTEM', 'HTTP_DIRECTORY', 'UPLOAD', 'RSS_FEED', 'CONFLUENCE', 'S3')) NOT VALID;
+              ALTER TABLE knowledge_libraries
+                  ADD CONSTRAINT chk_knowledge_libraries_confluence_edition
+                      CHECK (source_confluence_edition IS NULL OR source_confluence_edition IN ('CLOUD', 'DATA_CENTER'));
+              ALTER TABLE knowledge_libraries
+                  ADD CONSTRAINT chk_knowledge_libraries_confluence_full_sync_interval
+                      CHECK (source_confluence_full_sync_interval_days IS NULL OR source_confluence_full_sync_interval_days > 0);

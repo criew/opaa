@@ -28,8 +28,6 @@ import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.LibraryFolderService;
 import io.opaa.knowledge.LibraryStorageQuotaService;
-import io.opaa.knowledge.sourcesettings.S3Scope;
-import io.opaa.knowledge.sourcesettings.S3SourceSettings;
 import io.opaa.s3.S3Credentials;
 import io.opaa.s3.S3TestFixture;
 import io.opaa.security.TargetAddressValidator;
@@ -145,7 +143,8 @@ class S3IndexingExecutorIntegrationTest {
             null,
             credentials.accessKey() + ":" + credentials.secretKey(),
             false);
-    library.updateS3Settings(new S3SourceSettings(S3TestFixture.REGION, true, scopes, null, null));
+    S3TestSettings.configure(
+        library, new S3SourceSettings(S3TestFixture.REGION, true, scopes, null, null));
     return library;
   }
 

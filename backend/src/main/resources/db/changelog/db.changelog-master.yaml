@@ -226,3 +226,7 @@ databaseChangeLog:
   # Der gelistete Teil des Katalogs.
   - include:
       file: db/changelog/changes/091-assets-listed-index.yaml
+  # Steckbare Konnektoren (#1977, ADR-0038): Einstellungen je Konnektor in source_settings, keine
+  # Confluence-Spalten und keine Wertelisten der Quellentypen mehr.
+  - include:
+      file: db/changelog/changes/092-connector-settings.yaml

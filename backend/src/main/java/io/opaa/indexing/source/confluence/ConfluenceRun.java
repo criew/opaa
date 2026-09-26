@@ -3,7 +3,6 @@ package io.opaa.indexing.source.confluence;
 import io.opaa.indexing.job.IndexingRunEventRecorder;
 import io.opaa.indexing.job.IndexingRunProgress;
 import io.opaa.indexing.source.IndexingRun;
-import io.opaa.knowledge.ConfluenceSpaceSelection;
 import io.opaa.knowledge.KnowledgeLibrary;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -45,7 +44,7 @@ final class ConfluenceRun {
     this.library = frame.library();
     this.progress = frame.progress();
     this.events = frame.events();
-    for (ConfluenceSpaceSelection space : library.getConfluenceSpaces()) {
+    for (ConfluenceSpaceSelection space : ConfluenceSourceSettings.of(library).spaceSelection()) {
       selectedKeys.add(space.getSpaceKey());
     }
   }

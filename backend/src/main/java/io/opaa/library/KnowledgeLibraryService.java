@@ -26,11 +26,11 @@ import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.job.JobStatus;
 import io.opaa.indexing.job.LibraryScheduleCodec;
 import io.opaa.indexing.metadata.CoreMetadataField;
+import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.PushIntake;
 import io.opaa.indexing.source.SourceConnector;
 import io.opaa.indexing.source.SourceConnectorDescriptor;
 import io.opaa.indexing.source.SourceConnectorRegistry;
-import io.opaa.indexing.source.SourceSettingField;
 import io.opaa.indexing.source.SourceSettings;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
@@ -48,7 +48,6 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Base64;
 import java.util.Comparator;
 import java.util.Deque;
@@ -397,10 +396,9 @@ public class KnowledgeLibraryService {
         requestedSettingsChange(library, request, replacesSourceConfiguration);
     SourceConnector connector = connectors.connector(library.getSourceType());
     SourceSettings validatedSettings =
-        connectors.validateChange(library, requestedSettings, replacesSourceConfiguration);
-    boolean replacesOwnSettings =
-        Arrays.stream(SourceSettingField.values())
-            .anyMatch(field -> field.isSetIn(requestedSettings));
+        connector.validateChange(library, requestedSettings, replacesSourceConfiguration);
+    request.connectorSettings().rejectForeign(library.getSourceType(), true);
+    boolean replacesOwnSettings = requestedSettings.connectorSettings() != null;
     // #485: schedule follows the same replace-as-a-whole rule as the source configuration above -
     // only present when the caller actually intends to change it (LibraryUpdate.schedule), so a
     // request that only renames the library leaves an already-configured schedule untouched.
@@ -1022,11 +1020,9 @@ public class KnowledgeLibraryService {
             blankToNull(request.sourceProxy()),
             blankToNull(request.sourceCredentials()),
             Boolean.TRUE.equals(request.sourceInsecureSsl()),
-            request.confluenceEdition(),
-            request.confluenceSpaces(),
-            request.confluenceFullSyncIntervalDays(),
-            request.s3Settings());
-    SourceSettings validated = connectors.validateNew(sourceType, requested);
+            request.connectorSettings().addressedTo(sourceType, false));
+    SourceSettings validated = connectors.connector(sourceType).validate(requested);
+    request.connectorSettings().rejectForeign(sourceType, false);
     return new SourceConfiguration(sourceType, validated);
   }
 
@@ -1069,17 +1065,10 @@ public class KnowledgeLibraryService {
    */
   private SourceSettings requestedSettingsChange(
       KnowledgeLibrary library, LibraryUpdate request, boolean replacesConnection) {
+    ConnectorData connectorSettings =
+        request.connectorSettings().addressedTo(library.getSourceType(), true);
     if (!replacesConnection) {
-      return new SourceSettings(
-          null,
-          null,
-          null,
-          null,
-          false,
-          request.confluenceEdition(),
-          request.confluenceSpaces(),
-          request.confluenceFullSyncIntervalDays(),
-          request.s3Settings());
+      return new SourceSettings(null, null, null, null, false, connectorSettings);
     }
     String sourceUrl =
         blankToNull(request.sourceUrl() == null ? null : request.sourceUrl().toString());
@@ -1094,10 +1083,7 @@ public class KnowledgeLibraryService {
         blankToNull(request.sourceProxy()),
         sourceCredentials,
         Boolean.TRUE.equals(request.sourceInsecureSsl()),
-        request.confluenceEdition(),
-        request.confluenceSpaces(),
-        request.confluenceFullSyncIntervalDays(),
-        request.s3Settings());
+        connectorSettings);
   }
 
   /** Whether a run fills {@code library}, as its connector describes it. */
@@ -1189,39 +1175,20 @@ public class KnowledgeLibraryService {
   }
 
   /**
-   * Generates a fresh webhook secret (#1140) - MANAGER or above, like every other change of the
-   * source configuration - stores it encrypted and returns the plaintext exactly once. A second
-   * call rotates: the previous secret stops authenticating with the commit. The audit entry names
-   * the field, never the value (ADR-0018, Entscheidung 4).
+   * Generates a fresh push secret (#1140, ADR-0027 Entscheidung 6) for the push intake of {@code
+   * intakeType} - MANAGER or above, like every other change of the source configuration - stores it
+   * encrypted and returns the plaintext exactly once. A second call rotates: the previous secret
+   * stops authenticating with the commit. The audit entry names the field, never the value
+   * (ADR-0018, Entscheidung 4).
+   *
+   * @param intakeType the type whose intake the caller addresses; a library of another type is
+   *     refused with that intake's German 400
    */
   @Transactional
-  public String generateConfluenceWebhookSecret(UUID libraryId, CurrentUser caller) {
-    return generatePushSecret(libraryId, caller, PushIntake.WEBHOOK_SECRET);
-  }
-
-  /** Removes the webhook secret (#1140): the endpoint rejects every call from now on. */
-  @Transactional
-  public void removeConfluenceWebhookSecret(UUID libraryId, CurrentUser caller) {
-    removePushSecret(libraryId, caller, PushIntake.WEBHOOK_SECRET);
-  }
-
-  /**
-   * Generates (or rotates) the event token (ADR-0027, Entscheidung 6) and returns it exactly once -
-   * the same secret column, encryption path and audit trail as the webhook secret.
-   */
-  @Transactional
-  public String generateS3EventsToken(UUID libraryId, CurrentUser caller) {
-    return generatePushSecret(libraryId, caller, PushIntake.EVENT_TOKEN);
-  }
-
-  /** Removes the event token: the library's event endpoint rejects every call from now on. */
-  @Transactional
-  public void removeS3EventsToken(UUID libraryId, CurrentUser caller) {
-    removePushSecret(libraryId, caller, PushIntake.EVENT_TOKEN);
-  }
-
-  private String generatePushSecret(UUID libraryId, CurrentUser caller, PushIntake intake) {
-    KnowledgeLibrary library = requireLibraryWithPushIntake(libraryId, caller, intake);
+  public String generatePushSecret(
+      UUID libraryId, DocumentSourceType intakeType, CurrentUser caller) {
+    PushIntake intake = pushIntakeOf(intakeType);
+    KnowledgeLibrary library = requireLibraryWithPushIntake(libraryId, caller, intakeType, intake);
     byte[] random = new byte[WEBHOOK_SECRET_BYTES];
     secureRandom.nextBytes(random);
     String secret = Base64.getUrlEncoder().withoutPadding().encodeToString(random);
@@ -1231,8 +1198,11 @@ public class KnowledgeLibraryService {
     return secret;
   }
 
-  private void removePushSecret(UUID libraryId, CurrentUser caller, PushIntake intake) {
-    KnowledgeLibrary library = requireLibraryWithPushIntake(libraryId, caller, intake);
+  /** Removes the push secret: the library's intake rejects every call from now on. */
+  @Transactional
+  public void removePushSecret(UUID libraryId, DocumentSourceType intakeType, CurrentUser caller) {
+    PushIntake intake = pushIntakeOf(intakeType);
+    KnowledgeLibrary library = requireLibraryWithPushIntake(libraryId, caller, intakeType, intake);
     // Whether there is a secret to revoke is decided by the stored ciphertext, not by the entity
     // attribute: with the key missing the attribute reads null for a secret that still
     // authenticates once the key returns (#1806). The erasure carries the revocation; the entity
@@ -1245,12 +1215,20 @@ public class KnowledgeLibraryService {
     recordPushSecretChange(library, caller, intake);
   }
 
+  private PushIntake pushIntakeOf(DocumentSourceType intakeType) {
+    PushIntake intake = connectors.descriptor(intakeType).pushIntake();
+    if (intake == null) {
+      throw new IllegalStateException("The SourceConnector for " + intakeType + " has no intake");
+    }
+    return intake;
+  }
+
   private KnowledgeLibrary requireLibraryWithPushIntake(
-      UUID libraryId, CurrentUser caller, PushIntake intake) {
+      UUID libraryId, CurrentUser caller, DocumentSourceType intakeType, PushIntake intake) {
     KnowledgeLibrary library = loadLibrary(libraryId, caller);
     accessService.requireRole(library, caller.id(), caller.isSystemAdmin(), AssetRole.MANAGER);
-    if (connectors.descriptor(library.getSourceType()).pushIntake() != intake) {
-      throw new ValidationException(intake.unavailableMessage(connectors.ownerOf(intake)));
+    if (library.getSourceType() != intakeType) {
+      throw new ValidationException(intake.unavailableMessage(intakeType));
     }
     return library;
   }
@@ -1299,9 +1277,10 @@ public class KnowledgeLibraryService {
     // exposed to a mere VIEWER (or even EDITOR) of an organization-wide library.
     // sourceCredentials is deliberately never read here - ADR-0018 makes it a write-only field
     // that appears in no API response, not even for the library's own owner.
+    SourceConnector connector = connectors.connector(library.getSourceType());
     LibraryManagementDetail managementDetail =
         myRole.atLeast(AssetRole.MANAGER)
-            ? toManagementDetail(library)
+            ? toManagementDetail(library, connector)
             : LibraryManagementDetail.EMPTY;
     // #1278 review: myRole alone cannot tell a client whether PUT .../diagnostics-lock will
     // succeed - it bypasses to OWNER for a system admin, holdsIndependentOwnerRole never does.
@@ -1315,11 +1294,13 @@ public class KnowledgeLibraryService {
         accessService.reachOf(List.of(library)).get(library.getId()),
         // #1941: who is responsible for a library is not a secret from its readers - the same
         // resolution the overview uses, and the same silence about a name it may not disclose.
-        assetOwnerNames.of(List.of(library)).get(library.getOwnerId()));
+        assetOwnerNames.of(List.of(library)).get(library.getOwnerId()),
+        connector.settingsView(library, false));
   }
 
-  private LibraryManagementDetail toManagementDetail(KnowledgeLibrary library) {
-    SourceConnectorDescriptor descriptor = connectors.descriptor(library.getSourceType());
+  private LibraryManagementDetail toManagementDetail(
+      KnowledgeLibrary library, SourceConnector connector) {
+    SourceConnectorDescriptor descriptor = connector.descriptor();
     // #485: schedule/lastScheduledRunsFailed stay null for a library without a run, which cannot
     // carry a schedule at all (chk_knowledge_libraries_schedule) - nextRunAt would otherwise leak
     // the same "does an internal crawl target exist" detail #507 already gates.
@@ -1348,9 +1329,8 @@ public class KnowledgeLibraryService {
         // a client phrase an accurate "leave blank to keep the current credential" hint only when
         // one is actually stored.
         library.getSourceCredentials() != null,
-        descriptor.pushIntake() == PushIntake.WEBHOOK_SECRET ? pushSecretSet : null,
-        descriptor.pushIntake() == PushIntake.EVENT_TOKEN ? pushSecretSet : null,
-        descriptor.fullSyncInterval() == null ? null : library.getConfluenceFullSyncIntervalDays(),
+        pushSecretSet,
+        connector.settingsView(library, true),
         // #1200: the instance-wide rhythm in whole days, so the schedule dialog can name the
         // default instead of hard-coding it; a sub-day interval still reads as one day.
         descriptor.fullSyncInterval() == null
