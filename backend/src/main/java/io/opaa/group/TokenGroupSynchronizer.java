@@ -1,6 +1,5 @@
 package io.opaa.group;
 
-import io.opaa.api.RateLimitService;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
@@ -14,6 +13,7 @@ import io.opaa.auth.oidc.OidcProvider;
 import io.opaa.permission.GroupMembershipHistoryCause;
 import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.PermissionHistoryService;
+import io.opaa.ratelimit.RateLimitService;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;

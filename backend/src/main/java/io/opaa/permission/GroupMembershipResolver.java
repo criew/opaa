@@ -23,9 +23,9 @@ import org.springframework.stereotype.Component;
  * race a concurrent reader into repopulating the cache with the pre-commit state (see {@code
  * GroupService#invalidateAfterCommit} for the sequence).
  *
- * <p>Follows the same direct-Caffeine-cache pattern as {@link io.opaa.api.RateLimitService} rather
- * than the Spring Cache abstraction, to avoid introducing a second caching mechanism into the
- * codebase for a single use case.
+ * <p>Follows the same direct-Caffeine-cache pattern as {@link io.opaa.ratelimit.RateLimitService}
+ * rather than the Spring Cache abstraction, to avoid introducing a second caching mechanism into
+ * the codebase for a single use case.
  *
  * <p>The cache is process-local. A single instance is all the MVP runs (see {@code
  * docs/MVP-STATUS.md}); horizontal scaling is out of scope for now, but would require either a

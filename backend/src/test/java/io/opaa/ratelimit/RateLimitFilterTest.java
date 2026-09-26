@@ -1,4 +1,4 @@
-package io.opaa.api;
+package io.opaa.ratelimit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -12,9 +12,9 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import io.opaa.api.RateLimitFilter.Rule;
-import io.opaa.api.RateLimitService.Decision;
 import io.opaa.observability.RateLimitMetrics;
+import io.opaa.ratelimit.RateLimitFilter.Rule;
+import io.opaa.ratelimit.RateLimitService.Decision;
 import io.opaa.security.TrustedProxyClientIpResolver;
 import java.util.List;
 import java.util.UUID;

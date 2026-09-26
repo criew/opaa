@@ -1,5 +1,7 @@
 package io.opaa.auth.local;
 
+import io.opaa.ratelimit.SelfServiceEndpointAvailability;
+
 /**
  * Whether the two switchable self-service flows exist right now (ADR-0033, Entscheidung 11) - the
  * same answer {@code GET /api/v1/auth/config} publishes as {@code passwordResetEnabled} and {@code
@@ -13,7 +15,7 @@ package io.opaa.auth.local;
  * #NONE} applies wherever the implementing bean is absent - the {@code @WebMvcTest} slices that
  * import the chain to assert its public paths - and reports both flows as absent.
  */
-public interface LocalSelfServiceAvailability {
+public interface LocalSelfServiceAvailability extends SelfServiceEndpointAvailability {
 
   /** Neither flow exists; both paths are then authenticated like any other unknown route. */
   LocalSelfServiceAvailability NONE =
@@ -29,10 +31,4 @@ public interface LocalSelfServiceAvailability {
           return false;
         }
       };
-
-  /** Whether {@code POST /api/v1/auth/local/forgot-password} is served. */
-  boolean isPasswordResetAvailable();
-
-  /** Whether {@code POST /api/v1/auth/local/register} is served. */
-  boolean isSelfRegistrationAvailable();
 }

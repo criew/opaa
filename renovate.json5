@@ -145,6 +145,13 @@
       matchManagers: ['npm'],
       minimumReleaseAge: '1 day',
     },
+    // jsdom 30.1 no longer exposes the impl symbol that Vitest's jsdom environment reads to
+    // convert Blob/File/FormData request bodies - every upload test throws. Hold jsdom below
+    // 30.1 until the upstream fix (vitest-dev/vitest#11336) ships, then drop this rule.
+    {
+      matchPackageNames: ['jsdom'],
+      allowedVersions: '<30.1.0',
+    },
     // Gleichzeitige Lockfile-Updates gegen semantische Merge-Brueche absichern (#1000,
     // Fehlerbild #996): Am 28.08.2026 mergten mehrere npm-Update-PRs per Auto-Merge
     // nacheinander, jeder auf dem Stand VOR den jeweils anderen gruen - die textuell
