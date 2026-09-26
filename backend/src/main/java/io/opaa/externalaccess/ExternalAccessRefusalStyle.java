@@ -1,4 +1,4 @@
-package io.opaa.auth;
+package io.opaa.externalaccess;
 
 import io.opaa.externalaccess.token.ExternalAccessTokenRejection;
 import jakarta.servlet.http.HttpServletRequest;

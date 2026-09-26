@@ -2,11 +2,11 @@ package io.opaa.indexing.source.rss;
 
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.source.IndexingRunFailedException;
+import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedStreams;
 import io.opaa.sourceaccess.RateLimitListener;
 import io.opaa.sourceaccess.RedirectFollowingFetcher;
 import io.opaa.sourceaccess.SourceRequestPolicy;
-import io.opaa.sourceaccess.TargetAddressValidator;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;

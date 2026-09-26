@@ -2,8 +2,6 @@ package io.opaa.audit;
 
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.api.types.SystemRole;
-import io.opaa.auth.User;
-import io.opaa.auth.UserRepository;
 import io.opaa.common.AccessDeniedException;
 import java.time.Duration;
 import java.time.Instant;
@@ -54,10 +52,10 @@ public class AuditAccessGate {
 
   private static final Logger log = LoggerFactory.getLogger(AuditAccessGate.class);
 
-  private final UserRepository userRepository;
+  private final AuditPersonDirectory people;
 
-  public AuditAccessGate(UserRepository userRepository) {
-    this.userRepository = userRepository;
+  public AuditAccessGate(AuditPersonDirectory people) {
+    this.people = people;
   }
 
   /**
@@ -97,11 +95,11 @@ public class AuditAccessGate {
    * by id scoped to {@code organizationId} rather than trusting a bare id.
    */
   private void requireAuditor(UUID organizationId, UUID callerId) {
-    User caller =
-        userRepository
-            .findByIdAndOrganizationId(callerId, organizationId)
+    SystemRole role =
+        people
+            .systemRoleOf(organizationId, callerId)
             .orElseThrow(() -> new AccessDeniedException(NOT_AUDITOR_MESSAGE));
-    if (caller.getSystemRole() != SystemRole.AUDITOR) {
+    if (role != SystemRole.AUDITOR) {
       throw new AccessDeniedException(NOT_AUDITOR_MESSAGE);
     }
   }

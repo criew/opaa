@@ -1,10 +1,10 @@
 package io.opaa.indexing.source.confluence;
 
+import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.Sleeper;
 import io.opaa.sourceaccess.SourceHttpClientFactory;
 import io.opaa.sourceaccess.SourceRequestMeter;
 import io.opaa.sourceaccess.SourceRequestPolicy;
-import io.opaa.sourceaccess.TargetAddressValidator;
 import java.net.http.HttpClient;
 
 /**

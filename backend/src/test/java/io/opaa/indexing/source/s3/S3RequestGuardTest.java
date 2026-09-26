@@ -5,8 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.SourceRequestMeter;
-import io.opaa.sourceaccess.TargetAddressValidator;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;

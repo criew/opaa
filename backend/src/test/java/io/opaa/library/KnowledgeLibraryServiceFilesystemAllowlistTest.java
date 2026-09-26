@@ -39,7 +39,7 @@ import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.GroupSubjectDirectory;
 import io.opaa.permission.PermissionHistoryService;
 import io.opaa.permission.SuccessionReachGuard;
-import io.opaa.sourceaccess.TargetAddressValidator;
+import io.opaa.security.TargetAddressValidator;
 import java.time.Clock;
 import java.util.List;
 import java.util.Optional;

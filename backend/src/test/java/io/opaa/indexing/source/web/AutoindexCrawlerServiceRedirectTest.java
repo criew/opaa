@@ -3,7 +3,7 @@ package io.opaa.indexing.source.web;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.sun.net.httpserver.HttpServer;
-import io.opaa.sourceaccess.TargetAddressValidator;
+import io.opaa.security.TargetAddressValidator;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;

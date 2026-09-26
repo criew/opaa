@@ -1,7 +1,7 @@
 package io.opaa.indexing.source.s3;
 
+import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.SourceRequestMeter;
-import io.opaa.sourceaccess.TargetAddressValidator;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;

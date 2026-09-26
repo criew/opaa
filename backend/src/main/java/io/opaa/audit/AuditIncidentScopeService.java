@@ -1,7 +1,6 @@
 package io.opaa.audit;
 
 import io.opaa.api.types.AuditIncidentScopePurpose;
-import io.opaa.auth.UserRepository;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import java.time.Instant;
@@ -19,12 +18,12 @@ import org.springframework.transaction.annotation.Transactional;
 public class AuditIncidentScopeService {
 
   private final AuditIncidentScopeGrantRepository repository;
-  private final UserRepository userRepository;
+  private final AuditPersonDirectory people;
 
   public AuditIncidentScopeService(
-      AuditIncidentScopeGrantRepository repository, UserRepository userRepository) {
+      AuditIncidentScopeGrantRepository repository, AuditPersonDirectory people) {
     this.repository = repository;
-    this.userRepository = userRepository;
+    this.people = people;
   }
 
   /**
@@ -42,9 +41,9 @@ public class AuditIncidentScopeService {
       Instant scopeEnd,
       AuditIncidentScopePurpose purpose,
       String reason) {
-    userRepository
-        .findByIdAndOrganizationId(subjectUserId, organizationId)
-        .orElseThrow(() -> new NotFoundException("Person nicht in dieser Organisation gefunden"));
+    if (!people.belongsTo(organizationId, subjectUserId)) {
+      throw new NotFoundException("Person nicht in dieser Organisation gefunden");
+    }
     return repository.save(
         new AuditIncidentScopeGrant(
             organizationId,

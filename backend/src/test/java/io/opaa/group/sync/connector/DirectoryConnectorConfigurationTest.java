@@ -8,7 +8,7 @@ import io.opaa.auth.oidc.OidcProviderRepository;
 import io.opaa.group.sync.DirectoryClient;
 import io.opaa.group.sync.keycloak.KeycloakDirectoryConnector;
 import io.opaa.security.CredentialsEncryptor;
-import io.opaa.sourceaccess.TargetAddressValidator;
+import io.opaa.security.TargetAddressValidator;
 import java.net.http.HttpClient;
 import java.time.Clock;
 import java.util.List;

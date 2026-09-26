@@ -8,7 +8,7 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import io.opaa.api.types.ConfluenceEdition;
-import io.opaa.sourceaccess.TargetAddressValidator;
+import io.opaa.security.TargetAddressValidator;
 import java.net.URI;
 import java.util.List;
 import java.util.Set;
@@ -28,7 +28,9 @@ class ConfluenceLogLeakTest {
   private static final String TOKEN = "hochgeheimes-token-4711";
 
   private static final String[] WATCHED_LOGGERS = {
-    "io.opaa.indexing.source.confluence", "io.opaa.sourceaccess"
+    "io.opaa.indexing.source.confluence",
+    "io.opaa.sourceaccess",
+    "io.opaa.security.TargetAddressValidator"
   };
 
   private final ListAppender<ILoggingEvent> appender = new ListAppender<>();

@@ -10,7 +10,7 @@ import io.opaa.indexing.source.s3.S3Properties;
 import io.opaa.indexing.source.s3.S3Scope;
 import io.opaa.indexing.source.s3.S3SourceSettings;
 import io.opaa.indexing.source.s3.S3TestFixture;
-import io.opaa.sourceaccess.TargetAddressValidator;
+import io.opaa.security.TargetAddressValidator;
 import java.util.List;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;

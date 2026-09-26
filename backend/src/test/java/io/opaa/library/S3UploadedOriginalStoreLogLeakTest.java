@@ -41,6 +41,8 @@ class S3UploadedOriginalStoreLogLeakTest {
           Level.TRACE,
           "io.opaa.sourceaccess",
           Level.TRACE,
+          "io.opaa.security.TargetAddressValidator",
+          Level.TRACE,
           "software.amazon.awssdk",
           Level.DEBUG,
           "org.apache.hc.client5",

@@ -7,6 +7,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.sun.net.httpserver.HttpServer;
+import io.opaa.security.TargetAddressValidator;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetSocketAddress;

@@ -1,8 +1,8 @@
 package io.opaa.indexing.source.s3;
 
+import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedStreams;
 import io.opaa.sourceaccess.SourceRequestMeter;
-import io.opaa.sourceaccess.TargetAddressValidator;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;

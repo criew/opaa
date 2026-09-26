@@ -1016,13 +1016,13 @@ class PermissionHistoryServiceIntegrationTest {
    * group to validate a request, {@code GroupSubjectDirectoryAdapter} answers what a grant path
    * needs to know about a group, and {@link GroupMembershipResolver}, {@link AssetAccessService}
    * and {@link LibraryAccessService} are the read side of the live formula itself. {@code
-   * LocalHandoverAccountService} (#1563) only counts: the preview of a handover tells the person
-   * how many memberships move with their account, and the handover itself rewrites the identity of
-   * a {@code users} row - it writes no membership and no grant, and everything keyed by {@code
-   * users.id} therefore survives it untouched. {@code ProviderGroupDirectoryAdapter} (#1812) does
-   * delete groups and their memberships when their identity provider is deleted, but only after
-   * reporting that none of them holds a grant or owns an asset - a group without either moves no
-   * library into or out of anybody's readable set. {@code CapabilityService} (#1813) resolves a
+   * LocalAccountGroupDirectoryAdapter} (#1563) only counts for the handover: the preview tells the
+   * person how many memberships move with their account, and the handover itself rewrites the
+   * identity of a {@code users} row - it writes no membership and no grant, and everything keyed by
+   * {@code users.id} therefore survives it untouched. {@code ProviderGroupDirectoryAdapter} (#1812)
+   * does delete groups and their memberships when their identity provider is deleted, but only
+   * after reporting that none of them holds a grant or owns an asset - a group without either moves
+   * no library into or out of anybody's readable set. {@code CapabilityService} (#1813) resolves a
    * group only to decide whether it may receive an Anlegerecht; a capability opens a creation path
    * and never an existing content, which {@code
    * io.opaa.permission.CapabilityServiceIntegrationTest#noCapabilityWidensTheSetOfReadableLibraries}
@@ -1090,7 +1090,7 @@ class PermissionHistoryServiceIntegrationTest {
           "LibraryAccessService",
           "AssetShellOwnershipDirectory",
           "AssetSuccessionSource",
-          "LocalHandoverAccountService",
+          "LocalAccountGroupDirectoryAdapter",
           "PermissionTransferService",
           "PointInTimeAccessService",
           "PromptLibraryService",

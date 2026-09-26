@@ -19,10 +19,6 @@ import io.opaa.auth.oidc.OidcProviderRepository;
 import io.opaa.common.ConflictException;
 import io.opaa.common.FieldValidationException;
 import io.opaa.common.NotFoundException;
-import io.opaa.group.GroupMembershipRepository;
-import io.opaa.space.Space;
-import io.opaa.space.SpaceMembershipRepository;
-import io.opaa.space.SpaceRepository;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -82,9 +78,8 @@ public class LocalHandoverAccountService {
   private final LocalRevokedTokenRepository revokedTokens;
   private final LocalAdminAvailabilityGuard adminGuard;
   private final OidcProviderRepository providers;
-  private final SpaceRepository spaces;
-  private final SpaceMembershipRepository spaceMemberships;
-  private final GroupMembershipRepository groupMemberships;
+  private final LocalAccountSpaceDirectory spaces;
+  private final LocalAccountGroupDirectory groups;
   private final AuditEventRecorder audit;
   private final ApplicationEventPublisher events;
   private final Clock clock;
@@ -98,9 +93,8 @@ public class LocalHandoverAccountService {
       LocalRevokedTokenRepository revokedTokens,
       LocalAdminAvailabilityGuard adminGuard,
       OidcProviderRepository providers,
-      SpaceRepository spaces,
-      SpaceMembershipRepository spaceMemberships,
-      GroupMembershipRepository groupMemberships,
+      LocalAccountSpaceDirectory spaces,
+      LocalAccountGroupDirectory groups,
       AuditEventRecorder audit,
       ApplicationEventPublisher events,
       Clock clock) {
@@ -113,8 +107,7 @@ public class LocalHandoverAccountService {
     this.adminGuard = adminGuard;
     this.providers = providers;
     this.spaces = spaces;
-    this.spaceMemberships = spaceMemberships;
-    this.groupMemberships = groupMemberships;
+    this.groups = groups;
     this.audit = audit;
     this.events = events;
     this.clock = clock;
@@ -260,16 +253,10 @@ public class LocalHandoverAccountService {
   }
 
   private HandoverScope scopeOf(User user) {
-    String personalSpace =
-        spaces.findByOwnerId(user.getId()).stream()
-            .filter(Space::isDefault)
-            .map(Space::getName)
-            .findFirst()
-            .orElse(null);
     return new HandoverScope(
-        personalSpace,
-        spaceMemberships.countByUserId(user.getId()),
-        groupMemberships.countByUserId(user.getId()),
+        spaces.personalSpaceName(user.getId()).orElse(null),
+        spaces.countSpaceMemberships(user.getId()),
+        groups.countGroupMemberships(user.getId()),
         user.getSystemRole());
   }
 

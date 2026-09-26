@@ -9,7 +9,7 @@ import io.opaa.indexing.source.confluence.ConfluenceClientFactory;
 import io.opaa.indexing.source.confluence.ConfluenceProperties;
 import io.opaa.indexing.source.confluence.ConfluenceSpace;
 import io.opaa.indexing.source.confluence.FakeConfluenceServer;
-import io.opaa.sourceaccess.TargetAddressValidator;
+import io.opaa.security.TargetAddressValidator;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.List;

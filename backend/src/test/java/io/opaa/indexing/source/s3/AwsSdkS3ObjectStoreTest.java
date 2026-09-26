@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.indexing.source.RequestBudgetExhaustedException;
-import io.opaa.sourceaccess.TargetAddressValidator;
+import io.opaa.security.TargetAddressValidator;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;

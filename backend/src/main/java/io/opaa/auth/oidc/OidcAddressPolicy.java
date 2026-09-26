@@ -2,7 +2,7 @@ package io.opaa.auth.oidc;
 
 import io.opaa.auth.AuthProperties;
 import io.opaa.common.ValidationException;
-import io.opaa.sourceaccess.TargetAddressValidator;
+import io.opaa.security.TargetAddressValidator;
 import java.io.IOException;
 import java.net.URI;
 import java.util.HashSet;
@@ -23,10 +23,9 @@ import java.util.Set;
  *
  * <p>Applied at save time ({@link OidcProviderService}), at use time ({@link OidcProviderRegistry},
  * so a narrowed allowlist or a row edited directly in the database cannot slip past), before the
- * connection test sends anything ({@link OidcDiscoveryClient}) - and, since #1817, to the admin API
- * address of a provider's directory access, both when it is stored and every time a run uses it
- * ({@code io.opaa.group.sync.connector.DirectoryConnectorService} and {@code
- * ProviderDirectoryClient}).
+ * connection test sends anything ({@link OidcDiscoveryClient}) - and to the admin API address of a
+ * provider's directory access, both when it is stored and every time a run uses it ({@code
+ * DirectoryConnectorService} and {@code ProviderDirectoryClient} in the group package).
  */
 public class OidcAddressPolicy {
 

@@ -1,7 +1,7 @@
-package io.opaa.auth;
+package io.opaa.externalaccess;
 
-import io.opaa.mcp.McpEndpoint;
 import java.util.List;
+import java.util.stream.Stream;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
@@ -27,9 +27,9 @@ import org.springframework.stereotype.Component;
  *
  * <p>{@code /mcp} (#1721) is on the list twice over: authorised like the reading paths, and
  * <b>owned</b> by this channel - see {@link #ownedMatchers()}. Both entries are the <b>one</b>
- * matcher of {@link McpEndpoint}, which the endpoint itself listens on: a path interpreted twice
- * could be authorised in one place and not in the other, and a method restriction here would only
- * duplicate the {@code 405} the transport already answers.
+ * matcher its {@link ExternalAccessOwnedPath} contributes, which the endpoint itself listens on: a
+ * path interpreted twice could be authorised in one place and not in the other, and a method
+ * restriction here would only duplicate the {@code 405} the transport already answers.
  */
 @Component
 public class ExternalAccessPathAllowlist {
@@ -39,18 +39,8 @@ public class ExternalAccessPathAllowlist {
 
   // Explicit: with more than one declared constructor Spring would look for a no-arg one.
   @Autowired
-  public ExternalAccessPathAllowlist(McpEndpoint mcpEndpoint) {
-    this(
-        List.of(
-            post("/api/v1/search"),
-            get("/api/v1/search/libraries"),
-            get("/api/v1/search/hits/*"),
-            mcpEndpoint.matcher()),
-        List.of(mcpEndpoint.matcher()));
-  }
-
-  ExternalAccessPathAllowlist(List<RequestMatcher> allowed) {
-    this(allowed, List.of());
+  public ExternalAccessPathAllowlist(List<ExternalAccessOwnedPath> ownedPaths) {
+    this(withReadingPaths(matchersOf(ownedPaths)), matchersOf(ownedPaths));
   }
 
   ExternalAccessPathAllowlist(List<RequestMatcher> allowed, List<RequestMatcher> owned) {
@@ -71,6 +61,24 @@ public class ExternalAccessPathAllowlist {
    */
   public List<RequestMatcher> ownedMatchers() {
     return owned;
+  }
+
+  private static List<RequestMatcher> withReadingPaths(List<RequestMatcher> ownedMatchers) {
+    return Stream.concat(
+            Stream.of(
+                post("/api/v1/search"),
+                get("/api/v1/search/libraries"),
+                get("/api/v1/search/hits/*")),
+            ownedMatchers.stream())
+        .toList();
+  }
+
+  /** Mandatory: without an owned path, {@code /mcp} would be left to the other chains. */
+  private static List<RequestMatcher> matchersOf(List<ExternalAccessOwnedPath> ownedPaths) {
+    if (ownedPaths.isEmpty()) {
+      throw new IllegalStateException("No ExternalAccessOwnedPath is contributed");
+    }
+    return ownedPaths.stream().map(ExternalAccessOwnedPath::matcher).toList();
   }
 
   private static RequestMatcher get(String pattern) {

@@ -1,5 +1,6 @@
 package io.opaa.sourceaccess;
 
+import io.opaa.security.TargetAddressValidator;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;

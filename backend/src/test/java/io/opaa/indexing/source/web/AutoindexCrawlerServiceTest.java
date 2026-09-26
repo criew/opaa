@@ -2,9 +2,9 @@ package io.opaa.indexing.source.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.RedirectFollowingFetcher;
 import io.opaa.sourceaccess.SourceHttpClientFactory;
-import io.opaa.sourceaccess.TargetAddressValidator;
 import java.net.URI;
 import java.util.List;
 import org.junit.jupiter.api.Test;
