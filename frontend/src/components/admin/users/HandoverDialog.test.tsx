@@ -54,6 +54,9 @@ describe('HandoverDialog', () => {
     expect(screen.getByRole('textbox', { name: /Anlass/ })).toBeInTheDocument()
     expect(screen.queryByLabelText(/Subject/i)).not.toBeInTheDocument()
     expect(screen.getByText(/Einen Rückweg gibt es nicht/)).toBeInTheDocument()
+    // was eine Übergabe ist und wie sie abläuft, in einfachen Worten
+    expect(screen.getByText(/nicht mehr mit einem Passwort an/)).toBeInTheDocument()
+    expect(screen.getAllByRole('listitem')).toHaveLength(3)
   })
 
   it('keeps the action disabled until a reason is given', async () => {
