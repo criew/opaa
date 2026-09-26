@@ -249,7 +249,7 @@ services:
   # bucket. The store ships no command-line client, so demo/objectstore/scoped-key.py creates the
   # key over its admin API - idempotent, because policy and user are overwritten under their names.
   objectstore-seed:
-    image: amazon/aws-cli:2.37.3
+    image: amazon/aws-cli:2.37.4
     environment:
       AWS_ACCESS_KEY_ID: rheinfurt-archiv
       AWS_SECRET_ACCESS_KEY: RheinfurtDemo!2026
@@ -325,7 +325,7 @@ services:
   # failing "s3 mb" on an existing bucket is tolerated), runs to completion and exits. It never
   # writes objects: the content of this bucket belongs to the application alone.
   upload-store-init:
-    image: amazon/aws-cli:2.37.3
+    image: amazon/aws-cli:2.37.4
     environment:
       AWS_ACCESS_KEY_ID: ${OPAA_UPLOAD_STORE_ROOT_USER:-opaa-uploads}
       AWS_SECRET_ACCESS_KEY: ${OPAA_UPLOAD_STORE_ROOT_PASSWORD:-OpaaUploads!2026}
