@@ -14,6 +14,8 @@ interface UserPickerProps {
   excludedUserIds: string[]
   /** Kennung des Eingabefelds, damit eine eigene Beschriftung (`htmlFor`) ein Ziel hat. */
   inputId?: string
+  /** Füllt die Zeile, sodass eine Schaltfläche daneben bündig mit den Feldern darüber abschließt. */
+  grow?: boolean
 }
 
 function optionLabel(user: UserSummary): string {
@@ -33,6 +35,7 @@ export default function UserPicker({
   onChange,
   excludedUserIds,
   inputId,
+  grow = false,
 }: UserPickerProps) {
   const { query, setQuery, users, isLoading, error } = useUserSearch()
   // What the field shows is not always what is searched for: after a choice it shows the chosen
@@ -73,7 +76,7 @@ export default function UserPicker({
         />
       )}
       size="small"
-      sx={{ minWidth: 280 }}
+      sx={{ minWidth: 280, ...(grow ? { flexGrow: 1 } : {}) }}
     />
   )
 }

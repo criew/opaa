@@ -137,6 +137,7 @@ export default function GroupStewardsSection({
             placeholder="Person suchen …"
             value={selected}
             onChange={setSelected}
+            grow
             excludedUserIds={stewards.map((steward) => steward.userId)}
           />
           <Button

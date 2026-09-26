@@ -85,6 +85,7 @@ export default function InitialStewardsSection({
             placeholder="Person suchen …"
             value={selected}
             onChange={setSelected}
+            grow
             excludedUserIds={stewards.map((steward) => steward.id)}
           />
           <Button variant="outlined" size="small" disabled={!selected} onClick={add}>
