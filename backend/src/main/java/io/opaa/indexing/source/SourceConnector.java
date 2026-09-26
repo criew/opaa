@@ -12,8 +12,11 @@ import java.util.Set;
  * interfaces the same bean implements ({@link SourceBrowser}).
  *
  * <p>Every method that refuses input throws {@link io.opaa.common.ValidationException} with a
- * German, user-facing message. Fields the connector does not own ({@link
- * SourceConnectorDescriptor#settingFields}) have been refused by the caller before.
+ * German, user-facing message. {@link #validate} and {@link #validateChange} are reached through
+ * {@link SourceConnectorRegistry#validateNew} and {@link SourceConnectorRegistry#validateChange}:
+ * the settings may still carry fields the connector does not own ({@link
+ * SourceConnectorDescriptor#settingFields}), which it ignores - the registry refuses some of them
+ * before and every remaining one right after the connector's validation.
  */
 public interface SourceConnector {
 

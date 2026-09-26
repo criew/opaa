@@ -191,8 +191,8 @@ class SourceConnectionTestServiceTest {
 
   @Test
   void filesystemRejectsAnAccompanyingSourceUrlWith400() {
-    // PR #537 review, nit 7: mirrors KnowledgeLibraryService#validateConfigurationForType's
-    // FILESYSTEM branch - without this, a client could see a green test for a combination
+    // PR #537 review, nit 7: mirrors FilesystemSourceConnector#validate, the
+    // check behind createLibrary - without this, a client could see a green test for a combination
     // createLibrary itself rejects with 400 right afterwards.
     assertThatThrownBy(
             () ->

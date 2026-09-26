@@ -440,8 +440,8 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
   /**
    * Whether the URL's last path segment contains a dot, i.e. looks like a file with an extension;
    * query and fragment are stripped first, and no regex is used, so a long URL cannot overflow the
-   * stack. {@code public} because {@code SourceConnectionTestService} reuses this exact check, so a
-   * URL is normalised identically for the test and for the run it tests.
+   * stack. {@code HttpDirectorySourceConnector} reuses this exact check, so a URL is normalised
+   * identically for the connection test and for the run it tests.
    */
   public static boolean hasFileExtension(String url) {
     int queryStart = url.indexOf('?');

@@ -313,7 +313,8 @@ class LibraryControllerCredentialsIntegrationTest {
 
   @Test
   void aValidationErrorNeverEchoesTheSubmittedCredentialsInTheRawResponseBody() throws Exception {
-    // FILESYSTEM rejects sourceCredentials outright (validateConfigurationForType) - the request
+    // FILESYSTEM rejects sourceCredentials outright (FilesystemSourceConnector#validate) - the
+    // request
     // body that triggers the 400 still carries the plaintext credential, so this pins that
     // GlobalExceptionHandler's error response never reflects the request back.
     String body =

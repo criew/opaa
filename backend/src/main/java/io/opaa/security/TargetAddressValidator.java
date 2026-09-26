@@ -98,7 +98,7 @@ public class TargetAddressValidator {
     } catch (UnknownHostException e) {
       // Deliberately not surfaced as a generic "unreachable" - a DNS failure and a resolved-but-
       // blocked target are different diagnoses for whoever configured this source. Same wording
-      // SourceConnectionTestService#translateConnectionError already used for an ordinary
+      // ConnectorChecks#translateConnectionError already uses for an ordinary
       // UnknownHostException.
       throw new UnknownTargetHostException(
           "Der Host konnte nicht gefunden werden (DNS-Auflösung fehlgeschlagen): " + host);

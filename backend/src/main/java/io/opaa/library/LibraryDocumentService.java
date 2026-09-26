@@ -888,8 +888,8 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
    * protocol downgrade - and {@code Authorization} is therefore never built for, or sent to,
    * anything but the document's own stored URL and same-origin redirect hops from it. The
    * configured {@code sourceProxy} host is validated too (#748 review, nit 2) - it determines where
-   * the TCP connection (and the credentials below) actually go, exactly as {@code
-   * SourceConnectionTestService} already validates it before its own otherwise-identical probe.
+   * the TCP connection (and the credentials below) actually go, exactly as the connectors'
+   * connection tests validate it before their own otherwise-identical probes.
    *
    * <p><b>DNS-Rebinding (#267, #748 review, "vorbestehend").</b> Like every other caller of {@link
    * TargetAddressValidator}, the address validated here and the address the JDK's {@code
@@ -934,7 +934,7 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
               config.proxyHost(), config.proxyPort(), library.isSourceInsecureSsl());
       // #748 review, nit 2: the proxy is exactly as caller-controlled as the target URL and
       // determines where the TCP connection (and Authorization below) actually goes - mirrors
-      // SourceConnectionTestService's identical call before its own otherwise-analogous probe.
+      // the connection tests' identical call before their own otherwise-analogous probes.
       targetAddressValidator.validateHost(config.proxyHost());
       String authHeader =
           SourceHttpClientFactory.buildAuthHeader(config.username(), config.password());

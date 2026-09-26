@@ -2,6 +2,7 @@ package io.opaa.indexing.source;
 
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.common.ValidationException;
+import io.opaa.knowledge.KnowledgeLibrary;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.List;
@@ -73,6 +74,39 @@ public class SourceConnectorRegistry {
 
   public SourceConnectorDescriptor descriptor(DocumentSourceType type) {
     return connector(type).descriptor();
+  }
+
+  /**
+   * Validates the configuration of a new library of {@code type} through its connector. Foreign
+   * fields are refused in the order the request documents: edition and S3 settings before the
+   * connector, every other one right after it.
+   */
+  public SourceSettings validateNew(DocumentSourceType type, SourceSettings requested) {
+    rejectForeignSettings(
+        type, requested, SourceSettingField.CONFLUENCE_EDITION, SourceSettingField.S3_SETTINGS);
+    SourceSettings validated = connector(type).validate(requested);
+    rejectForeignSettings(type, requested, SourceSettingField.values());
+    return validated;
+  }
+
+  /**
+   * Validates a change of {@code library}'s configuration through its connector. Foreign fields are
+   * refused in the order the request documents: edition, spaces and S3 settings before the
+   * connector, every other one right after it.
+   */
+  public SourceSettings validateChange(
+      KnowledgeLibrary library, SourceSettings requested, boolean replacesConnection) {
+    DocumentSourceType type = library.getSourceType();
+    rejectForeignSettings(
+        type,
+        requested,
+        SourceSettingField.CONFLUENCE_EDITION,
+        SourceSettingField.CONFLUENCE_SPACES,
+        SourceSettingField.S3_SETTINGS);
+    SourceSettings validated =
+        connector(type).validateChange(library, requested, replacesConnection);
+    rejectForeignSettings(type, requested, SourceSettingField.values());
+    return validated;
   }
 
   /**

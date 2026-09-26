@@ -395,18 +395,9 @@ public class KnowledgeLibraryService {
     boolean replacesSourceConfiguration = hasSourceConfigurationFields(request);
     SourceSettings requestedSettings =
         requestedSettingsChange(library, request, replacesSourceConfiguration);
-    DocumentSourceType sourceType = library.getSourceType();
-    SourceConnector connector = connectors.connector(sourceType);
-    connectors.rejectForeignSettings(
-        sourceType,
-        requestedSettings,
-        SourceSettingField.CONFLUENCE_EDITION,
-        SourceSettingField.CONFLUENCE_SPACES,
-        SourceSettingField.S3_SETTINGS);
+    SourceConnector connector = connectors.connector(library.getSourceType());
     SourceSettings validatedSettings =
-        connector.validateChange(library, requestedSettings, replacesSourceConfiguration);
-    connectors.rejectForeignSettings(
-        sourceType, requestedSettings, SourceSettingField.CONFLUENCE_FULL_SYNC_INTERVAL_DAYS);
+        connectors.validateChange(library, requestedSettings, replacesSourceConfiguration);
     boolean replacesOwnSettings =
         Arrays.stream(SourceSettingField.values())
             .anyMatch(field -> field.isSetIn(requestedSettings));
@@ -442,7 +433,7 @@ public class KnowledgeLibraryService {
           validatedSettings.sourceProxy(),
           validatedSettings.sourceCredentials(),
           validatedSettings.sourceInsecureSsl());
-      // The discard a host change performs (see validateSourceConfigurationForUpdate's Javadoc) is
+      // The discard a host change performs (see requestedSettingsChange's Javadoc) is
       // a security invariant and must not depend on the dirty check: with the key missing the
       // attribute already reads null, so only an erasure on the column itself removes the
       // ciphertext the returning key would otherwise send to the new host (#1806). A change that
@@ -1035,17 +1026,7 @@ public class KnowledgeLibraryService {
             request.confluenceSpaces(),
             request.confluenceFullSyncIntervalDays(),
             request.s3Settings());
-    connectors.rejectForeignSettings(
-        sourceType,
-        requested,
-        SourceSettingField.CONFLUENCE_EDITION,
-        SourceSettingField.S3_SETTINGS);
-    SourceSettings validated = connectors.connector(sourceType).validate(requested);
-    connectors.rejectForeignSettings(
-        sourceType,
-        requested,
-        SourceSettingField.CONFLUENCE_SPACES,
-        SourceSettingField.CONFLUENCE_FULL_SYNC_INTERVAL_DAYS);
+    SourceSettings validated = connectors.validateNew(sourceType, requested);
     return new SourceConfiguration(sourceType, validated);
   }
 

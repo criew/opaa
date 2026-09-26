@@ -22,6 +22,30 @@ public record SourceSettings(
     Integer confluenceFullSyncIntervalDays,
     S3SourceSettings s3Settings) {
 
+  /** Names whether credentials are set, never their value - the record may reach a log. */
+  @Override
+  public String toString() {
+    return "SourceSettings[sourcePath="
+        + sourcePath
+        + ", sourceUrl="
+        + sourceUrl
+        + ", sourceProxy="
+        + sourceProxy
+        + ", sourceCredentials="
+        + (sourceCredentials == null ? "null" : "***")
+        + ", sourceInsecureSsl="
+        + sourceInsecureSsl
+        + ", confluenceEdition="
+        + confluenceEdition
+        + ", confluenceSpaces="
+        + confluenceSpaces
+        + ", confluenceFullSyncIntervalDays="
+        + confluenceFullSyncIntervalDays
+        + ", s3Settings="
+        + s3Settings
+        + "]";
+  }
+
   /** A copy carrying {@code url} as its address - the normalised form a connector stores. */
   public SourceSettings withSourceUrl(String url) {
     return new SourceSettings(
