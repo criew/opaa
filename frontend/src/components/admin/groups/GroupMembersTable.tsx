@@ -15,6 +15,21 @@ import { adminTableSx } from '../list/adminListStyles'
 /** From this many members on, a filter field helps more than it clutters. */
 const FILTER_THRESHOLD = 8
 
+/** Fixed row geometry, so the frame height follows from the member count alone. */
+const HEAD_HEIGHT = 37
+const ROW_HEIGHT = 41
+const VISIBLE_ROWS = 8
+const FRAME_BORDER = 2
+
+/**
+ * The height of the scroll frame: as many rows as the group has, at most {@link VISIBLE_ROWS}.
+ * It depends on the whole list, never on the filtered one - filtering must not resize the dialog.
+ */
+function frameHeight(memberCount: number): number {
+  const rows = Math.min(Math.max(memberCount, 1), VISIBLE_ROWS)
+  return HEAD_HEIGHT + rows * ROW_HEIGHT + FRAME_BORDER
+}
+
 const collator = new Intl.Collator('de-DE', { sensitivity: 'base' })
 
 function nameOf(member: GroupMemberResponse): string {
@@ -33,8 +48,9 @@ interface GroupMembersTableProps {
 
 /**
  * Die Mitglieder einer Gruppe als Tabelle (#1978): alphabetisch, mit fester Kopfzeile in einem
- * begrenzt hohen, scrollbaren Bereich, ab einigen Einträgen mit einem Filterfeld. Die Liste liegt
- * vollständig vor; gefiltert wird im Browser.
+ * scrollbaren Rahmen, ab einigen Einträgen mit einem Filterfeld. Die Liste liegt vollständig vor;
+ * gefiltert wird im Browser. Rahmen und Ergebniszeile behalten beim Filtern ihre Höhe, damit der
+ * Dialog nicht springt.
  */
 export default function GroupMembersTable({ members, onRemove }: GroupMembersTableProps) {
   const [filter, setFilter] = useState('')
@@ -62,7 +78,15 @@ export default function GroupMembersTable({ members, onRemove }: GroupMembersTab
         />
       )}
       <TableContainer
-        sx={{ maxHeight: 360, border: 1, borderColor: 'divider', borderRadius: 1 }}
+        sx={{
+          height: frameHeight(members.length),
+          border: 1,
+          borderColor: 'divider',
+          borderRadius: 1,
+          '& thead tr': { height: HEAD_HEIGHT },
+          '& tbody tr': { height: ROW_HEIGHT },
+        }}
+        role="region"
         tabIndex={0}
         aria-label="Mitglieder, scrollbar"
       >
@@ -118,10 +142,14 @@ export default function GroupMembersTable({ members, onRemove }: GroupMembersTab
           </Typography>
         )}
       </TableContainer>
-      {/* The total stands in the dialog title; only a filtered view needs its own count. */}
-      {needle && (
-        <Typography sx={{ fontSize: 12, color: 'text.secondary', mt: 0.75 }}>
-          {`${shown.length} von ${members.length} Mitgliedern`}
+      {/* The total stands in the dialog title; only a filtered view needs its own count. The line
+          keeps its place while empty, so typing the first letter does not push the dialog. */}
+      {members.length >= FILTER_THRESHOLD && (
+        <Typography
+          aria-live="polite"
+          sx={{ fontSize: 12, color: 'text.secondary', mt: 0.75, minHeight: '1.5em' }}
+        >
+          {needle ? `${shown.length} von ${members.length} Mitgliedern` : ''}
         </Typography>
       )}
     </>

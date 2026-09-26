@@ -45,6 +45,21 @@ describe('GroupMembersTable', () => {
     expect(screen.getByText('1 von 8 Mitgliedern')).toBeInTheDocument()
   })
 
+  // Filtern darf den Dialog nicht in der Größe verändern: Der Rahmen richtet sich nach der ganzen
+  // Liste, nicht nach dem Filterergebnis.
+  it('keeps the frame height while filtering', async () => {
+    renderWithProviders(<GroupMembersTable members={many} />)
+    const user = userEvent.setup()
+    const frame = screen.getByRole('region', { name: 'Mitglieder, scrollbar' })
+    const before = getComputedStyle(frame).height
+
+    await user.type(screen.getByRole('searchbox', { name: 'Mitglieder filtern' }), 'zzz')
+
+    expect(screen.getByText('Kein Mitglied entspricht dem Filter.')).toBeInTheDocument()
+    expect(before).toBe('367px')
+    expect(getComputedStyle(frame).height).toBe(before)
+  })
+
   it('offers removal per row only where the caller maintains the members', async () => {
     const onRemove = vi.fn()
     renderWithProviders(<GroupMembersTable members={many.slice(0, 1)} onRemove={onRemove} />)
