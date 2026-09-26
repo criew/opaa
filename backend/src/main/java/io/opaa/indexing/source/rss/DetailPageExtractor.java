@@ -1,9 +1,9 @@
-package io.opaa.indexing.source.web;
+package io.opaa.indexing.source.rss;
 
 import io.opaa.indexing.IndexingProperties;
+import io.opaa.indexing.attachment.AttachmentCandidate;
 import io.opaa.indexing.format.file.html.HtmlContentRoots;
 import io.opaa.indexing.format.shared.Whitespace;
-import io.opaa.indexing.source.attachment.AttachmentCandidate;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedStreams;
 import io.opaa.sourceaccess.RateLimitListener;

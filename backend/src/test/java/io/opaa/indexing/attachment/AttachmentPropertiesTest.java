@@ -1,4 +1,4 @@
-package io.opaa.indexing.source.attachment;
+package io.opaa.indexing.attachment;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

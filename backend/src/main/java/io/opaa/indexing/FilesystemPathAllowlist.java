@@ -1,4 +1,4 @@
-package io.opaa.indexing.source.filesystem;
+package io.opaa.indexing;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -12,10 +12,11 @@ import java.util.List;
  * back to "everything allowed".
  *
  * <p>Checked twice, deliberately: {@code io.opaa.library.KnowledgeLibraryService} enforces this at
- * creation and update time (a fast 400 for an operator who has not opened the directory), and
- * {@link AsyncIndexingExecutor} enforces it again at run time - the allowlist itself can be
- * narrowed after a library was created, so a run against a path that has since fallen outside the
- * allowlist must not silently succeed just because it once passed validation.
+ * creation and update time (a fast 400 for an operator who has not opened the directory), and the
+ * FILESYSTEM connector enforces it again at run time - the allowlist itself can be narrowed after a
+ * library was created, so a run against a path that has since fallen outside the allowlist must not
+ * silently succeed just because it once passed validation. The indexing core applies the same
+ * boundary when it re-reads a stored document, which is why the class lives here.
  */
 public class FilesystemPathAllowlist {
 

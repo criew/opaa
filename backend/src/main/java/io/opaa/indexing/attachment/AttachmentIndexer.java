@@ -1,4 +1,4 @@
-package io.opaa.indexing.source.attachment;
+package io.opaa.indexing.attachment;
 
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.indexing.document.DocumentIngest;

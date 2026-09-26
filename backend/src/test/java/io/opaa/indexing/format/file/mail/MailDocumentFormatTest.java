@@ -36,11 +36,10 @@ import org.springframework.ai.document.Document;
  * rather than chunk text, one chunk per message (or per thread segment). An attachment is never
  * recursively processed by this class (ADR-0022, Entscheidung 10) - it is reported via {@link
  * DocumentFormatResult#discoveredAttachments()} instead, for the generalized attachment path
- * ({@code io.opaa.indexing.source.attachment.AttachmentIndexer}, driven by {@code
- * DocumentIngestService}) to turn into its own {@code Document}. Recursion (Mail-in-Mail),
- * attachment-count/depth limits and format admission for an attachment therefore all live one level
- * up - see {@code AttachmentIndexerTest}/{@code DocumentIngestServiceTest} for that coverage
- * instead.
+ * ({@code io.opaa.indexing.attachment.AttachmentIndexer}, driven by {@code DocumentIngestService})
+ * to turn into its own {@code Document}. Recursion (Mail-in-Mail), attachment-count/depth limits
+ * and format admission for an attachment therefore all live one level up - see {@code
+ * AttachmentIndexerTest}/{@code DocumentIngestServiceTest} for that coverage instead.
  *
  * <p>EML fixtures are built at test time through mime4j's own writer ({@link DefaultMessageWriter})
  * - a real, spec-shaped MIME message rather than a hand-computed byte literal, mirroring how {@code

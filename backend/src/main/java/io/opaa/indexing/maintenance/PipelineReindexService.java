@@ -1,6 +1,8 @@
 package io.opaa.indexing.maintenance;
 
 import io.opaa.api.types.DocumentSourceType;
+import io.opaa.indexing.attachment.AttachmentAccess;
+import io.opaa.indexing.attachment.StandaloneAttachmentAccess;
 import io.opaa.indexing.chunk.FullTextChunkStore;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.document.Document;
@@ -12,8 +14,6 @@ import io.opaa.indexing.document.StoredDocumentSourceAccess;
 import io.opaa.indexing.format.ChunkFormatMetadata;
 import io.opaa.indexing.format.DocumentFormat;
 import io.opaa.indexing.format.DocumentFormatRegistry;
-import io.opaa.indexing.source.attachment.AttachmentAccess;
-import io.opaa.indexing.source.attachment.StandaloneAttachmentAccess;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.UploadStoreUnavailableException;

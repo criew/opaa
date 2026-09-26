@@ -6,10 +6,10 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
+import io.opaa.indexing.attachment.AttachmentOutcome;
 import io.opaa.indexing.document.DocumentIngestOutcomes;
 import io.opaa.indexing.document.DocumentIngestResult;
 import io.opaa.indexing.document.DocumentService;
-import io.opaa.indexing.source.attachment.AttachmentOutcome;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 

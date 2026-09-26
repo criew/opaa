@@ -14,6 +14,7 @@ import static org.mockito.Mockito.when;
 import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
+import io.opaa.indexing.attachment.AttachmentIndexer;
 import io.opaa.indexing.document.DocumentIngestResult;
 import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.document.DocumentIngests;
@@ -26,7 +27,6 @@ import io.opaa.indexing.job.IndexingRunEventRepository;
 import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.SourceSyncStateRepository;
-import io.opaa.indexing.source.attachment.AttachmentIndexer;
 import io.opaa.indexing.source.confluence.ConfluenceClientFactory;
 import io.opaa.indexing.source.confluence.ConfluenceIndexingExecutor;
 import io.opaa.indexing.source.confluence.ConfluenceProperties;
@@ -99,7 +99,7 @@ class ConfluenceDataCenterFullSyncTest {
                 new BoundedDownloader(TargetAddressValidator.disabled()),
                 documentIngestService,
                 mock(LibraryStorageQuotaService.class),
-                new io.opaa.indexing.source.attachment.AttachmentProperties(5, 0, 0),
+                new io.opaa.indexing.attachment.AttachmentProperties(5, 0, 0),
                 ProductionDocumentFormats.supportedFormats()),
             documentRepository,
             syncStateRepository,

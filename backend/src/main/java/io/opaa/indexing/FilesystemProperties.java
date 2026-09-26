@@ -1,4 +1,4 @@
-package io.opaa.indexing.source.filesystem;
+package io.opaa.indexing;
 
 import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;

@@ -1187,7 +1187,7 @@ jeden Anhang weiterhin in eine eigene temporäre Datei (unverändert Parse-Zeit-
 `MailDocumentFormat` routet ihn nicht mehr selbst durch `DocumentFormatRegistry` — sie meldet ihn
 nur noch als `DiscoveredAttachment` über `DocumentFormatResult#discoveredAttachments()`.
 `DocumentIngestService` übergibt jeden gemeldeten Anhang an
-`io.opaa.indexing.source.attachment.AttachmentIndexer#indexAll`, denselben Weg, den RSS-Anhänge
+`io.opaa.indexing.attachment.AttachmentIndexer#indexAll`, denselben Weg, den RSS-Anhänge
 schon seit #1182 nehmen: eigene `Document`-Zeile, eigene Prüfsumme, eigene Speicherquote,
 `parent_document_id` auf die Mail, und — der eigentliche Fix — die korrekte `pipeline_id`/
 `pipeline_version` der tatsächlich zuständigen Sub-Pipeline (PDF-Anhang trägt `pipeline_id=pdf`,

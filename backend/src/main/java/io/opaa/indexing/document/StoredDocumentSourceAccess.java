@@ -1,7 +1,7 @@
 package io.opaa.indexing.document;
 
 import io.opaa.api.types.DocumentSourceType;
-import io.opaa.indexing.source.filesystem.FilesystemPathAllowlist;
+import io.opaa.indexing.FilesystemPathAllowlist;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.UploadedOriginalRef;
