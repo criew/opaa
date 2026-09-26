@@ -1,4 +1,4 @@
-import type { GroupKind, GroupListResponse, GroupState } from '../../../types/api'
+import type { GroupListResponse, GroupState } from '../../../types/api'
 import { groupIneffectiveReason } from '../../groups/groupOriginLabels'
 
 /** The states in the order the filter offers them - what needs a decision after „Aktiv". */
@@ -27,18 +27,36 @@ export const GROUP_STATE_COLOR: Record<GroupState, string> = {
   DISSOLVED: 'error.main',
 }
 
-/**
- * How a provider group's members are kept - the one thing its kind adds to its origin: a token
- * group follows each sign-in, an org unit the directory sync. Null for an internal group.
- */
-const GROUP_MAINTENANCE_LABEL: Record<GroupKind, string | null> = {
-  AD_HOC: null,
-  IDENTITY_PROVIDER: 'bei Anmeldung',
-  ORG_UNIT: 'Verzeichnisabgleich',
+/** A sync interval in words: „alle 15 Minuten", „stündlich", „alle 6 Stunden", „täglich". */
+function intervalText(minutes: number): string {
+  if (minutes % 1440 === 0) return minutes === 1440 ? 'täglich' : `alle ${minutes / 1440} Tage`
+  if (minutes % 60 === 0) return minutes === 60 ? 'stündlich' : `alle ${minutes / 60} Stunden`
+  return `alle ${minutes} Minuten`
 }
 
-export function groupMaintenanceLabel(group: GroupListResponse): string | null {
-  return GROUP_MAINTENANCE_LABEL[group.kind]
+/**
+ * Where a provider group comes from and what that means for its members, in plain words - the
+ * one thing its kind adds to its origin. Null for an internal group, whose origin says it all.
+ */
+export function groupOriginExplanation(group: GroupListResponse): string | null {
+  const provider = group.provider
+  if (!provider) return null
+  const name = `„${provider.displayName}“`
+  if (group.kind === 'ORG_UNIT') {
+    const rhythm = provider.directorySyncIntervalMinutes
+      ? `, zurzeit ${intervalText(provider.directorySyncIntervalMinutes)}`
+      : ''
+    return (
+      `Diese Gruppe stammt aus dem Verzeichnis von ${name}. OPAA gleicht sie regelmäßig ab${rhythm}; ` +
+      'wer dort in die Gruppe kommt oder sie verlässt, ist danach auch hier Mitglied oder nicht ' +
+      'mehr – ohne dass sich die Person anmelden muss.'
+    )
+  }
+  return (
+    `Diese Gruppe meldet ${name} bei jeder Anmeldung mit. Wer dazugehört, wird erst aktualisiert, ` +
+    'wenn sich die Person das nächste Mal anmeldet; wer sich länger nicht anmeldet, behält den ' +
+    'bisherigen Stand.'
+  )
 }
 
 /** Why a group is not in effect, for the info symbol behind its state; null for an active one. */
