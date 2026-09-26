@@ -452,10 +452,10 @@ ob sie Anlegerechte trägt, etwa „2 Bibliotheken · 1 Space“. Der Tooltip sc
 „nicht verwendet“ heißt, dass die Gruppe nichts davon vermittelt. Die Handlungen
 einer Gruppe stehen im Zeilenmenü: **Bearbeiten**, **Mitglieder**, **Rechte übertragen** und
 **Löschen**; gelöscht werden kann nur eine interne Gruppe. **Mitglieder** zeigt die Mitglieder als
-alphabetische Tabelle mit dem Datum der Aufnahme, ab acht Einträgen mit einem Filterfeld. Bei einer
-Gruppe eines Identitätsanbieters lädt die Liste beim Öffnen des Dialogs; bei einer internen Gruppe
-erst über „Mitglieder anzeigen“, weil dort auch Aufnehmen und Entfernen stattfinden. Jeder Abruf
-durch die Systemverwaltung steht im Nachweisprotokoll.
+alphabetische Tabelle mit dem Datum der Aufnahme, ab acht Einträgen mit einem Filterfeld; die Liste
+lädt beim Öffnen des Dialogs. Bei einer internen Gruppe lassen sich dort Personen aufnehmen und
+entfernen. Jeder Abruf durch die Systemverwaltung steht im Nachweisprotokoll, und der Dialog sagt
+das.
 
 **Verantwortung wird abgegeben, nicht abgelegt.** Die letzte verantwortliche Person kann sich nicht
 selbst entfernen: erst die Nachfolge benennen, dann zurücktreten. Wer die Aufgabe wechselt, gibt die

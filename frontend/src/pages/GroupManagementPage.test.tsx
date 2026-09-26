@@ -339,24 +339,20 @@ describe('GroupManagementPage', () => {
     )
   })
 
-  // ADR-0036, Entscheidung 4/9: Der Abruf der Mitgliederliste ist das Audit-Ereignis - zugesichert
-  // ist deshalb die ausbleibende ANFRAGE, nicht nur die ausbleibende Anzeige.
-  it('does not load the member list until it is asked for', async () => {
+  // ADR-0036, Entscheidung 4/9: Der Abruf der Mitgliederliste ist das Audit-Ereignis - er geschieht
+  // erst mit dem Öffnen des Dialogs, nie mit der Tabelle, und der Dialog nennt die Protokollierung.
+  it('loads the member list of an internal group on opening the dialog', async () => {
     serve([adHocGroup])
+    mockFetchedDetails['group-phoenix'] = adHocDetails
     renderPage()
     const user = userEvent.setup()
 
     const menu = await openRowMenu(user, 'Projektbeteiligte Phoenix')
+    expect(mockListGroupMembers).not.toHaveBeenCalled()
     await user.click(within(menu).getByRole('menuitem', { name: 'Mitglieder' }))
     const dialog = await screen.findByRole('dialog', {
       name: 'Mitglieder von „Projektbeteiligte Phoenix“',
     })
-    expect(within(dialog).getByText(/Nachweisprotokoll/)).toBeInTheDocument()
-    expect(within(dialog).getByText('Die Gruppe hat 1 Mitglied.')).toBeInTheDocument()
-    expect(mockListGroupMembers).not.toHaveBeenCalled()
-
-    mockFetchedDetails['group-phoenix'] = adHocDetails
-    await user.click(within(dialog).getByRole('button', { name: 'Mitglieder anzeigen' }))
 
     await waitFor(() => expect(mockListGroupMembers).toHaveBeenCalledWith('group-phoenix'))
     const table = await within(dialog).findByRole('table', { name: 'Mitglieder' })

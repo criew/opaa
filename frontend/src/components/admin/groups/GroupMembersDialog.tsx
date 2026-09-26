@@ -16,9 +16,7 @@ import { getUsers } from '../../../services/api'
 import { selectGroupMembers, useGroupStore } from '../../../stores/groupStore'
 import GroupMembersTable from './GroupMembersTable'
 
-const AUDIT_NOTICE =
-  'Der Abruf der Mitgliederliste durch die Systemverwaltung wird im Nachweisprotokoll ' +
-  'festgehalten. Deshalb lädt dieser Dialog sie erst auf ausdrücklichen Wunsch.'
+const AUDIT_NOTICE = 'Dieser Abruf wird im Nachweisprotokoll festgehalten.'
 
 const PROVIDER_AUDIT_NOTICE =
   'Die Mitglieder pflegt die Quelle der Gruppe. Dieser Abruf wird im Nachweisprotokoll festgehalten.'
@@ -31,18 +29,13 @@ interface GroupMembersDialogProps {
 
 /**
  * Die Mitglieder einer Gruppe (#1978) als Tabelle. Ihr Abruf durch die Systemverwaltung ist ein
- * Audit-Ereignis (ADR-0036, Entscheidungen 4 und 9): Bei einer internen Gruppe lädt die Liste erst
- * auf ausdrücklichen Wunsch, bei einer Gruppe eines Identitätsanbieters ist das Öffnen des Dialogs
- * dieser Wunsch. Aufnehmen und entfernen lässt sich nur bei einer internen Gruppe - die übrigen
- * pflegt ihre Quelle.
+ * Audit-Ereignis (ADR-0036, Entscheidungen 4 und 9); das Öffnen des Dialogs ist der ausdrückliche
+ * Wunsch, die Liste lädt deshalb sofort, und der Dialog nennt die Protokollierung. Aufnehmen und
+ * entfernen lässt sich nur bei einer internen Gruppe - die übrigen pflegt ihre Quelle.
  */
 export default function GroupMembersDialog({ group, onClose }: GroupMembersDialogProps) {
   if (!group) return null
   return <GroupMembersDialogContent key={group.id} group={group} onClose={onClose} />
-}
-
-function memberText(count: number): string {
-  return count === 1 ? '1 Mitglied' : `${count} Mitglieder`
 }
 
 function GroupMembersDialogContent({
@@ -58,22 +51,20 @@ function GroupMembersDialogContent({
   const removeMember = useGroupStore((s) => s.removeMember)
   const isInternal = group.kind === 'AD_HOC'
 
-  const [requested, setRequested] = useState(!isInternal)
   const [allUsers, setAllUsers] = useState<UserInfo[]>([])
   const [selectedUser, setSelectedUser] = useState<UserInfo | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!requested) return
     void loadGroupMembers(group.id)
     if (isInternal) {
       void getUsers()
         .then(setAllUsers)
         .catch(() => setAllUsers([]))
     }
-  }, [requested, group.id, isInternal, loadGroupMembers])
+  }, [group.id, isInternal, loadGroupMembers])
 
-  const members = requested ? knownMembers : undefined
+  const members = knownMembers
   const availableUsers = useMemo(() => {
     const memberIds = new Set(members?.map((member) => member.userId) ?? [])
     return allUsers.filter((user) => !memberIds.has(user.id))
@@ -97,17 +88,7 @@ function GroupMembersDialogContent({
             {error}
           </Alert>
         )}
-        {!requested ? (
-          <Stack spacing={1.5} sx={{ alignItems: 'flex-start' }}>
-            <Typography sx={{ fontSize: 13.5 }}>
-              Die Gruppe hat {memberText(group.memberCount)}.
-            </Typography>
-            <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>{AUDIT_NOTICE}</Typography>
-            <Button variant="outlined" size="small" onClick={() => setRequested(true)}>
-              Mitglieder anzeigen
-            </Button>
-          </Stack>
-        ) : !members ? (
+        {!members ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
             <CircularProgress size={22} aria-label="Mitglieder werden geladen" />
           </Box>
@@ -166,11 +147,10 @@ function GroupMembersDialogContent({
                   Aufnehmen
                 </Button>
               </Stack>
-            ) : (
-              <Typography sx={{ fontSize: 12.5, color: 'text.secondary', pt: 1 }}>
-                {PROVIDER_AUDIT_NOTICE}
-              </Typography>
-            )}
+            ) : null}
+            <Typography sx={{ fontSize: 12.5, color: 'text.secondary', pt: 1 }}>
+              {isInternal ? AUDIT_NOTICE : PROVIDER_AUDIT_NOTICE}
+            </Typography>
           </Stack>
         )}
       </DialogContent>
