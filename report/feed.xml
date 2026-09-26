@@ -5,8 +5,17 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-09-25T05:11:53Z</updated>
+  <updated>2026-09-26T05:16:56Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Freitag, 25. September 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-09-25.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-09-25.html</id>
+    <updated>2026-09-26T05:16:56Z</updated>
+    <summary type="text">Sonstiges:
+— E2E-Test für Barrierefreiheit auf main fehlgeschlagen
+— Gradle auf v9.8.0 aktualisiert</summary>
+  </entry>
   <entry>
     <title>Tagesreport Donnerstag, 24. September 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-09-24.html"/>

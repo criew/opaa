@@ -1,0 +1,172 @@
+{
+  "repo": "criew/opaa",
+  "date": "2026-09-25",
+  "generated_at": "2026-09-26T07:16:56.412389+02:00",
+  "timezone": "Europe/Berlin",
+  "timezone_fallback": false,
+  "window_start": "2026-09-25T00:00:00+02:00",
+  "window_end": "2026-09-25T23:59:59+02:00",
+  "closed_issues": [
+    {
+      "number": 1953,
+      "title": "E2E-Suite auf main fehlgeschlagen (automatischer Lauf)",
+      "url": "https://github.com/criew/opaa/issues/1953",
+      "author": "github-actions[bot]",
+      "labels": [
+        "bug",
+        "e2e"
+      ],
+      "body": "<!-- e2e-alert -->\n\n**Die E2E-Suite auf `main` ist fehlgeschlagen.**\n\nWorkflow-Lauf: https://github.com/criew/opaa/actions/runs/36042294871 (Auslöser: push)\n\nFehlgeschlagene Szenarien:\n\n- `accessibility.spec.ts › Barrierefreiheit (axe-core, #586) › Spaces-Übersicht in beiden Farbschemata` — Error: expect(locator).toBeVisible() failed\n\nArtefakte des Laufs: `playwright-report`, `playwright-traces`, `docker-compose-logs`.\n\nDie Suite läuft nicht mehr bei Pull Requests (#1226); dieses Issue ist der Weg, auf dem ein Fehlschlag repariert wird. Es wird automatisch geschlossen, sobald ein Lauf wieder grün ist.",
+      "closes": []
+    }
+  ],
+  "opened_issues": [
+    {
+      "number": 1958,
+      "title": "E2E-Suite auf main fehlgeschlagen (automatischer Lauf)",
+      "url": "https://github.com/criew/opaa/issues/1958",
+      "author": "github-actions[bot]",
+      "labels": [
+        "bug",
+        "e2e"
+      ],
+      "body": "<!-- e2e-alert -->\n\n**Die E2E-Suite auf `main` ist fehlgeschlagen.**\n\nWorkflow-Lauf: https://github.com/criew/opaa/actions/runs/36120906046 (Auslöser: push)\n\nFehlgeschlagene Szenarien:\n\n- `accessibility.spec.ts › Barrierefreiheit (axe-core, #586) › Spaces-Übersicht in beiden Farbschemata` — Error: expect(locator).toBeVisible() failed\n\nArtefakte des Laufs: `playwright-report`, `playwright-traces`, `docker-compose-logs`.\n\nDie Suite läuft nicht mehr bei Pull Requests (#1226); dieses Issue ist der Weg, auf dem ein Fehlschlag repariert wird. Es wird automatisch geschlossen, sobald ein Lauf wieder grün ist.",
+      "closes": []
+    }
+  ],
+  "merged_pull_requests": [
+    {
+      "number": 1957,
+      "title": "chore(deps): gradle auf v9.8.0 aktualisieren",
+      "url": "https://github.com/criew/opaa/pull/1957",
+      "author": "bigpuritz",
+      "labels": [
+        "enhancement",
+        "backend"
+      ],
+      "body": "Automatisches Abhängigkeits-Update durch Renovate (#751, siehe docs/renovate.md) — Prüfung und Merge folgen dem normalen Weg.\n\nThis PR contains the following updates:\n\n| Package | Update | Change |\n|---|---|---|\n| [gradle](https://gradle.org) ([source](https://redirect.github.com/gradle/gradle)) | minor | `9.7.1` → `9.8.0` |\n\n---\n\n### Release Notes\n\n<details>\n<summary>gradle/gradle (gradle)</summary>\n\n### [`v9.8.0`](https://redirect.github.com/gradle/gradle/releases/tag/v9.8.0): 9.8.0\n\n[Compare Source](https://redirect.github.com/gradle/gradle/compare/v9.7.1...v9.8.0)\n\nThe Gradle team is excited to announce Gradle 9.8.0.\n\nHere are the highlights of this release:\n\n- Java 27 support\n- Maven mirror settings reuse\n- Linked problem locations in build output\n\n[Read the Release Notes](https://docs.gradle.org/9.8.0/release-notes.html)\n\nWe would like to thank the following community members for their contributions to this release of Gradle:\n[Aman Gautam](https://redirect.github.com/Gautam-aman),\n[Björn Kautler](https://redirect.github.com/Vampire),\n[Eng Zer Jun](https://redirect.github.com/Juneezee),\n[Hashim Khan](https://redirect.github.com/Hashim1999164),\n[Julian Krannich](https://redirect.github.com/jkrannich),\n[KBS](https://redirect.github.com/youdie006),\n[Labh R Jethe](https://redirect.github.com/itsCodeTide),\n[Mark Dodgson](https://redirect.github.com/doddi),\n[Maxim](https://redirect.github.com/kroune),\n[monkey](https://redirect.github.com/Develop-KIM),\n[nataphon-ktsystems](https://redirect.github.com/nataphon-ktsystems),\n[Paul King](https://redirect.github.com/paulk-asert),\n[Qiu Tian](https://redirect.github.com/qiu-tiandev),\n[rg\\_sandesh](https://redirect.github.com/sandeshgorde),\n[Roberto Perez Alcolea](https://redirect.github.com/rpalcolea),\n[Sean](https://redirect.github.com/seanxuu),\n[Zongle Wang](https://redirect.github.com/Goooler).\n\n#### Upgrade instructions\n\nSwitch your build to use Gradle 9.8.0 by updating your wrapper:\n\n```\n./gradlew :wrapper --gradle-version=9.8.0 && ./gradlew :wrapper\n```\n\nSee the Gradle [9.x upgrade guide](https://docs.gradle.org/9.8.0/userguide/upgrading_version_9.html) to learn about deprecations, breaking changes and other considerations when upgrading.\n\nFor Java, Groovy, Kotlin and Android compatibility, see the [full compatibility notes](https://docs.gradle.org/9.8.0/userguide/compatibility.html).\n\n#### Reporting problems\n\nIf you find a problem with this release, please file a bug on [GitHub Issues](https://redirect.github.com/gradle/gradle/issues) adhering to our issue guidelines.\nIf you're not sure you're encountering a bug, please use the [forum](https://discuss.gradle.org/c/help-discuss).\n\nWe hope you will build happiness with Gradle, and we look forward to your feedback via [Twitter](https://twitter.com/gradle) or on [GitHub](https://redirect.github.com/gradle).\n\n</details>\n\n---\n\n### Configuration\n\n📅 **Schedule**: (in timezone Europe/Berlin)\n\n- Branch creation\n  - At any time (no schedule defined)\n- Automerge\n  - At any time (no schedule defined)\n\n🚦 **Automerge**: Enabled.\n\n♻ **Rebasing**: Whenever PR is behind base branch, or you tick the rebase/retry checkbox.\n\n🔕 **Ignore**: Close this PR and you won't be reminded about this update again.\n\n---\n\n - [ ] <!-- rebase-check -->If you want to rebase/retry this PR, check this box\n\n---\n\nThis PR has been generated by [Mend Renovate CLI](https://redirect.github.com/renovatebot/renovate).\n<!--renovate-debug:eyJjcmVhdGVkSW5WZXIiOiI0NC4xMTUuNCIsInVwZGF0ZWRJblZlciI6IjQ0LjExNS40IiwidGFyZ2V0QnJhbmNoIjoibWFpbiIsImxhYmVscyI6WyJiYWNrZW5kIiwiZW5oYW5jZW1lbnQiXX0=-->",
+      "closes": [],
+      "additions": 42,
+      "deletions": 12,
+      "changed_files": 3
+    }
+  ],
+  "open_pull_requests": [
+    {
+      "number": 1956,
+      "title": "chore(deps): amazon/aws-cli docker tag to v2.37.3",
+      "url": "https://github.com/criew/opaa/pull/1956",
+      "author": "bigpuritz",
+      "labels": [
+        "enhancement",
+        "ci"
+      ],
+      "body": "",
+      "closes": []
+    },
+    {
+      "number": 1908,
+      "title": "chore(deps): aws-java-sdk-v2 monorepo aktualisieren",
+      "url": "https://github.com/criew/opaa/pull/1908",
+      "author": "bigpuritz",
+      "labels": [
+        "enhancement",
+        "backend"
+      ],
+      "body": "",
+      "closes": []
+    },
+    {
+      "number": 1692,
+      "title": "chore(deps): npm (non-major) aktualisieren",
+      "url": "https://github.com/criew/opaa/pull/1692",
+      "author": "bigpuritz",
+      "labels": [
+        "enhancement",
+        "frontend"
+      ],
+      "body": "",
+      "closes": []
+    },
+    {
+      "number": 161,
+      "title": "docs: plugin architecture deep dive for all three variants",
+      "url": "https://github.com/criew/opaa/pull/161",
+      "author": "bigpuritz",
+      "labels": [
+        "documentation",
+        "enhancement",
+        "backend"
+      ],
+      "body": "",
+      "closes": []
+    }
+  ],
+  "open_issues_total": 47,
+  "ci": {
+    "conclusion": "success",
+    "url": "https://github.com/criew/opaa/actions/runs/36120906189",
+    "title": "chore(deps): gradle auf v9.8.0 aktualisieren (#1957)",
+    "finished_at": "2026-09-25T10:02:39Z"
+  },
+  "highlights": {
+    "sonstiges": [
+      {
+        "nummer": 1958,
+        "text": "E2E-Test für Barrierefreiheit auf main fehlgeschlagen"
+      },
+      {
+        "nummer": 1957,
+        "text": "Gradle auf v9.8.0 aktualisiert"
+      }
+    ]
+  },
+  "epics": [],
+  "ohne_epic": {
+    "opened": [
+      {
+        "number": 1958,
+        "title": "E2E-Suite auf main fehlgeschlagen (automatischer Lauf)",
+        "url": "https://github.com/criew/opaa/issues/1958",
+        "author": "github-actions[bot]",
+        "labels": [
+          "bug",
+          "e2e"
+        ],
+        "body": "<!-- e2e-alert -->\n\n**Die E2E-Suite auf `main` ist fehlgeschlagen.**\n\nWorkflow-Lauf: https://github.com/criew/opaa/actions/runs/36120906046 (Auslöser: push)\n\nFehlgeschlagene Szenarien:\n\n- `accessibility.spec.ts › Barrierefreiheit (axe-core, #586) › Spaces-Übersicht in beiden Farbschemata` — Error: expect(locator).toBeVisible() failed\n\nArtefakte des Laufs: `playwright-report`, `playwright-traces`, `docker-compose-logs`.\n\nDie Suite läuft nicht mehr bei Pull Requests (#1226); dieses Issue ist der Weg, auf dem ein Fehlschlag repariert wird. Es wird automatisch geschlossen, sobald ein Lauf wieder grün ist.",
+        "closes": []
+      }
+    ],
+    "closed": [
+      {
+        "number": 1953,
+        "title": "E2E-Suite auf main fehlgeschlagen (automatischer Lauf)",
+        "url": "https://github.com/criew/opaa/issues/1953",
+        "author": "github-actions[bot]",
+        "labels": [
+          "bug",
+          "e2e"
+        ],
+        "body": "<!-- e2e-alert -->\n\n**Die E2E-Suite auf `main` ist fehlgeschlagen.**\n\nWorkflow-Lauf: https://github.com/criew/opaa/actions/runs/36042294871 (Auslöser: push)\n\nFehlgeschlagene Szenarien:\n\n- `accessibility.spec.ts › Barrierefreiheit (axe-core, #586) › Spaces-Übersicht in beiden Farbschemata` — Error: expect(locator).toBeVisible() failed\n\nArtefakte des Laufs: `playwright-report`, `playwright-traces`, `docker-compose-logs`.\n\nDie Suite läuft nicht mehr bei Pull Requests (#1226); dieses Issue ist der Weg, auf dem ein Fehlschlag repariert wird. Es wird automatisch geschlossen, sobald ein Lauf wieder grün ist.",
+        "closes": []
+      }
+    ],
+    "merged": [
+      {
+        "number": 1957,
+        "title": "chore(deps): gradle auf v9.8.0 aktualisieren",
+        "url": "https://github.com/criew/opaa/pull/1957",
+        "author": "bigpuritz",
+        "labels": [
+          "enhancement",
+          "backend"
+        ],
+        "body": "Automatisches Abhängigkeits-Update durch Renovate (#751, siehe docs/renovate.md) — Prüfung und Merge folgen dem normalen Weg.\n\nThis PR contains the following updates:\n\n| Package | Update | Change |\n|---|---|---|\n| [gradle](https://gradle.org) ([source](https://redirect.github.com/gradle/gradle)) | minor | `9.7.1` → `9.8.0` |\n\n---\n\n### Release Notes\n\n<details>\n<summary>gradle/gradle (gradle)</summary>\n\n### [`v9.8.0`](https://redirect.github.com/gradle/gradle/releases/tag/v9.8.0): 9.8.0\n\n[Compare Source](https://redirect.github.com/gradle/gradle/compare/v9.7.1...v9.8.0)\n\nThe Gradle team is excited to announce Gradle 9.8.0.\n\nHere are the highlights of this release:\n\n- Java 27 support\n- Maven mirror settings reuse\n- Linked problem locations in build output\n\n[Read the Release Notes](https://docs.gradle.org/9.8.0/release-notes.html)\n\nWe would like to thank the following community members for their contributions to this release of Gradle:\n[Aman Gautam](https://redirect.github.com/Gautam-aman),\n[Björn Kautler](https://redirect.github.com/Vampire),\n[Eng Zer Jun](https://redirect.github.com/Juneezee),\n[Hashim Khan](https://redirect.github.com/Hashim1999164),\n[Julian Krannich](https://redirect.github.com/jkrannich),\n[KBS](https://redirect.github.com/youdie006),\n[Labh R Jethe](https://redirect.github.com/itsCodeTide),\n[Mark Dodgson](https://redirect.github.com/doddi),\n[Maxim](https://redirect.github.com/kroune),\n[monkey](https://redirect.github.com/Develop-KIM),\n[nataphon-ktsystems](https://redirect.github.com/nataphon-ktsystems),\n[Paul King](https://redirect.github.com/paulk-asert),\n[Qiu Tian](https://redirect.github.com/qiu-tiandev),\n[rg\\_sandesh](https://redirect.github.com/sandeshgorde),\n[Roberto Perez Alcolea](https://redirect.github.com/rpalcolea),\n[Sean](https://redirect.github.com/seanxuu),\n[Zongle Wang](https://redirect.github.com/Goooler).\n\n#### Upgrade instructions\n\nSwitch your build to use Gradle 9.8.0 by updating your wrapper:\n\n```\n./gradlew :wrapper --gradle-version=9.8.0 && ./gradlew :wrapper\n```\n\nSee the Gradle [9.x upgrade guide](https://docs.gradle.org/9.8.0/userguide/upgrading_version_9.html) to learn about deprecations, breaking changes and other considerations when upgrading.\n\nFor Java, Groovy, Kotlin and Android compatibility, see the [full compatibility notes](https://docs.gradle.org/9.8.0/userguide/compatibility.html).\n\n#### Reporting problems\n\nIf you find a problem with this release, please file a bug on [GitHub Issues](https://redirect.github.com/gradle/gradle/issues) adhering to our issue guidelines.\nIf you're not sure you're encountering a bug, please use the [forum](https://discuss.gradle.org/c/help-discuss).\n\nWe hope you will build happiness with Gradle, and we look forward to your feedback via [Twitter](https://twitter.com/gradle) or on [GitHub](https://redirect.github.com/gradle).\n\n</details>\n\n---\n\n### Configuration\n\n📅 **Schedule**: (in timezone Europe/Berlin)\n\n- Branch creation\n  - At any time (no schedule defined)\n- Automerge\n  - At any time (no schedule defined)\n\n🚦 **Automerge**: Enabled.\n\n♻ **Rebasing**: Whenever PR is behind base branch, or you tick the rebase/retry checkbox.\n\n🔕 **Ignore**: Close this PR and you won't be reminded about this update again.\n\n---\n\n - [ ] <!-- rebase-check -->If you want to rebase/retry this PR, check this box\n\n---\n\nThis PR has been generated by [Mend Renovate CLI](https://redirect.github.com/renovatebot/renovate).\n<!--renovate-debug:eyJjcmVhdGVkSW5WZXIiOiI0NC4xMTUuNCIsInVwZGF0ZWRJblZlciI6IjQ0LjExNS40IiwidGFyZ2V0QnJhbmNoIjoibWFpbiIsImxhYmVscyI6WyJiYWNrZW5kIiwiZW5oYW5jZW1lbnQiXX0=-->",
+        "closes": [],
+        "additions": 42,
+        "deletions": 12,
+        "changed_files": 3
+      }
+    ]
+  }
+}
