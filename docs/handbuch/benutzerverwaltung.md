@@ -289,10 +289,13 @@ Das Notanker-Konto der Systemverwaltung lässt sich **weder löschen noch sperre
 Rolle herabsetzen oder übergeben** — auch dann nicht, wenn weitere Systemverwalter anmeldefähig
 sind. Die Oberfläche bietet diese Handlungen an ihm gar nicht erst an: „Sperren" und „Löschen" sind
 im Zeilenmenü abgeblendet und nennen den Grund, im Bearbeiten-Dialog sind Rolle und Ablaufdatum
-nicht änderbar. Name, Adresse und Anlagegrund lassen sich wie bei jedem Konto pflegen. Trägt das
-Konto aus einem älteren Stand noch ein Ablaufdatum, lässt es sich über „Kein Ablaufdatum"
-entfernen. Von der Sperre nach Inaktivität ist es ausgenommen. Die einzige Sperre, die es treffen
-kann, ist die Fehlversuch-Sperre nach fünf falschen Passwörtern (15 Minuten).
+nicht änderbar. Name, Adresse und Anlagegrund lassen sich wie bei jedem Konto pflegen. Von der
+Sperre nach Inaktivität ist es ausgenommen; neu treffen kann es nur noch die Fehlversuch-Sperre nach
+fünf falschen Passwörtern (15 Minuten).
+
+Hat ein älterer Stand das Konto bereits gesperrt, befristet oder herabgesetzt, lässt sich das
+zurücknehmen — nur in diese Richtung: „Entsperren" im Zeilenmenü, „Kein Ablaufdatum" und die Rolle
+„Systemverwaltung" im Bearbeiten-Dialog.
 
 ## 9. Ein Konto an einen Identitätsanbieter übergeben
 

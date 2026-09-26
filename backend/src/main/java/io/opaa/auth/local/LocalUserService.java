@@ -236,8 +236,14 @@ public class LocalUserService {
     LocalUserOverview current = load(actor.organizationId(), userId);
     User user = current.user();
     LocalCredentials row = current.credentials();
-    if (row.isBootstrap()) {
-      refuseBootstrapAct(update, user);
+    // ADR-0033, Entscheidungen 3 and 5: the bootstrap account takes no expiry; removing one
+    // restores
+    // the promised state. Its role is guarded in UserService#updateRole. A refusal rolls back every
+    // field sent alongside.
+    if (row.isBootstrap() && !update.noExpiry() && update.expiresAt() != null) {
+      throw new ConflictException(
+          "Das Notanker-Konto der Systemverwaltung kann nicht befristet werden.",
+          BOOTSTRAP_ACCOUNT);
     }
     List<String> changed = new ArrayList<>();
     Map<String, Object> before = new LinkedHashMap<>();
@@ -298,22 +304,6 @@ public class LocalUserService {
       userService.updateRole(user.getId(), update.systemRole(), actor);
     }
     return load(actor.organizationId(), userId);
-  }
-
-  /**
-   * The bootstrap account takes no expiry and no role change (ADR-0033, Entscheidungen 3 and 5).
-   * Checked before any field is applied, so a refused change writes nothing - not even the fields
-   * sent alongside. Removing an expiry stays possible: it restores the promised state.
-   */
-  private static void refuseBootstrapAct(LocalUserUpdate update, User user) {
-    if (!update.noExpiry() && update.expiresAt() != null) {
-      throw new ConflictException(
-          "Das Notanker-Konto der Systemverwaltung kann nicht befristet werden.",
-          BOOTSTRAP_ACCOUNT);
-    }
-    if (update.systemRole() != null && update.systemRole() != user.getSystemRole()) {
-      throw new ConflictException(BOOTSTRAP_ROLE_MESSAGE, BOOTSTRAP_ACCOUNT);
-    }
   }
 
   // ---- lock and unlock

@@ -313,8 +313,10 @@ public class UserService {
         userRepository
             .findByIdAndOrganizationId(userId, actor.organizationId())
             .orElseThrow(() -> new UserNotFoundException("Benutzer nicht gefunden: " + userId));
-    // ADR-0033, Entscheidungen 3 and 5: the bootstrap account keeps its role on every path
-    if (role != user.getSystemRole()
+    // ADR-0033, Entscheidungen 3 and 5: the bootstrap account never leaves SYSTEM_ADMIN; a return
+    // to it restores the promised state of an account demoted before this rule was enforced
+    if (role != SystemRole.SYSTEM_ADMIN
+        && role != user.getSystemRole()
         && localCredentials.findById(userId).filter(LocalCredentials::isBootstrap).isPresent()) {
       throw new ConflictException(
           LocalUserService.BOOTSTRAP_ROLE_MESSAGE, LocalUserService.BOOTSTRAP_ACCOUNT);

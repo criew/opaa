@@ -1290,8 +1290,9 @@ paths:
       tags: [admin]
       summary: Change a user's system role (system admin only)
       description: >
-        Three conflicts of its own are refused with 409. Any role change of the bootstrap account
-        carries the code BOOTSTRAP_ACCOUNT (ADR-0033, Entscheidungen 3 and 5). The withdrawal of
+        Three conflicts of its own are refused with 409. A role other than SYSTEM_ADMIN for the
+        bootstrap account carries the code BOOTSTRAP_ACCOUNT (ADR-0033, Entscheidungen 3 and 5);
+        returning it to SYSTEM_ADMIN stays allowed. The withdrawal of
         the SYSTEM_ADMIN role while no other login-capable system administrator of the
         organization remains carries the code LAST_LOGIN_CAPABLE_ADMIN (ADR-0033, Entscheidung 4); the check runs under the
         organization's advisory lock, so it also holds when a manual and a token-driven
@@ -1510,9 +1511,9 @@ paths:
         runs through the same path as POST /api/v1/admin/users/{id}/role and is audited as a role
         grant or withdrawal; everything else is one LOCAL_USER_CHANGED that carries before/after
         for the expiry date only and otherwise just the names of the changed fields. On the
-        bootstrap account an expiry date and a role change are refused with 409 and code
-        BOOTSTRAP_ACCOUNT (ADR-0033, Entscheidungen 3 and 5) before any field is applied;
-        noExpiry=true stays allowed.
+        bootstrap account an expiry date and a role other than SYSTEM_ADMIN are refused with 409
+        and code BOOTSTRAP_ACCOUNT (ADR-0033, Entscheidungen 3 and 5), and none of the fields sent
+        alongside is applied; noExpiry=true and a return to SYSTEM_ADMIN stay allowed.
       requestBody:
         required: true
         content:

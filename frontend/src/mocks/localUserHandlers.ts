@@ -283,7 +283,12 @@ export const localUserHandlers = [
         'Das Notanker-Konto der Systemverwaltung kann nicht befristet werden.',
       )
     }
-    if (user.bootstrap && body.systemRole && body.systemRole !== user.systemRole) {
+    if (
+      user.bootstrap &&
+      body.systemRole &&
+      body.systemRole !== 'SYSTEM_ADMIN' &&
+      body.systemRole !== user.systemRole
+    ) {
       return conflict(
         'BOOTSTRAP_ACCOUNT',
         'Die Rolle des Notanker-Kontos der Systemverwaltung kann nicht geändert werden.',

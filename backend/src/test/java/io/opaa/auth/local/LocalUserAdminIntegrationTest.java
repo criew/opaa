@@ -808,7 +808,17 @@ class LocalUserAdminIntegrationTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.displayName").value("Notanker Systemverwaltung"))
         .andExpect(jsonPath("$.expiresAt").doesNotExist());
-    asAdminJson(patch(path), "{\"systemRole\":\"SYSTEM_ADMIN\"}").andExpect(status().isOk());
+
+    // an account demoted before the rule was enforced may only return to SYSTEM_ADMIN
+    User demoted = users.findById(bootstrap.id()).orElseThrow();
+    demoted.setSystemRole(SystemRole.USER);
+    users.save(demoted);
+    asAdminJson(patch(path), "{\"systemRole\":\"AUDITOR\"}")
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("BOOTSTRAP_ACCOUNT"));
+    asAdminJson(patch(path), "{\"systemRole\":\"SYSTEM_ADMIN\"}")
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.systemRole").value("SYSTEM_ADMIN"));
   }
 
   /**

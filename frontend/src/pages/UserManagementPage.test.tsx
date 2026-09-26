@@ -508,9 +508,62 @@ describe('UserManagementPage', () => {
       'aria-disabled',
       'true',
     )
-    expect(within(dialog).getByText(/behält seine Rolle/)).toBeInTheDocument()
+    expect(within(dialog).getByText(/behält die Rolle der Systemverwaltung/)).toBeInTheDocument()
     expect(within(dialog).getByLabelText('Ablaufdatum')).toBeDisabled()
     expect(within(dialog).getByRole('checkbox', { name: 'Kein Ablaufdatum' })).toBeDisabled()
+  }, 20000)
+
+  /**
+   * Ein Notanker-Konto aus der Zeit vor #1640 kann ein Ablaufdatum und eine andere Rolle tragen. Der
+   * Dialog lässt genau die Rückkehr in den zugesagten Zustand zu: Datum entfernen, zurück zur
+   * Systemverwaltung – und nichts, was das Backend ablehnen würde.
+   */
+  it('lets a bootstrap account from an older state return to no expiry and Systemverwaltung', async () => {
+    setMockLocalUsers(
+      mockLocalUsers.map((account) =>
+        account.bootstrap
+          ? { ...account, systemRole: 'USER', expiresAt: '2027-01-31T22:59:59Z' }
+          : account,
+      ),
+    )
+    signInAs('SYSTEM_ADMIN', 'local-user-vogt')
+    const user = userEvent.setup()
+    const bodies: LocalUserUpdateRequest[] = []
+    server.use(
+      http.patch('/api/v1/admin/local-users/:id', async ({ params, request }) => {
+        const body = (await request.json()) as LocalUserUpdateRequest
+        bodies.push(body)
+        const stored = mockLocalUsers.find((account) => account.id === String(params.id))!
+        return HttpResponse.json({ ...stored, systemRole: body.systemRole ?? stored.systemRole })
+      }),
+    )
+    renderAccounts()
+    await screen.findByRole('table', { name: 'Konten' })
+
+    const menu = await openRowMenu(user, 'Systemverwaltung', 'admin@opaa.local')
+    await user.click(within(menu).getByRole('menuitem', { name: 'Bearbeiten' }))
+    const dialog = await screen.findByRole('dialog')
+
+    const role = within(dialog).getByRole('combobox', { name: 'Rolle' })
+    expect(role).not.toHaveAttribute('aria-disabled')
+    await user.click(role)
+    const options = await screen.findByRole('listbox')
+    expect(
+      within(options)
+        .getAllByRole('option')
+        .map((option) => option.textContent),
+    ).toEqual(['Nutzer', 'Systemverwaltung'])
+    await user.click(within(options).getByRole('option', { name: 'Systemverwaltung' }))
+
+    expect(within(dialog).getByLabelText('Ablaufdatum')).toBeDisabled()
+    const noExpiry = within(dialog).getByRole('checkbox', { name: 'Kein Ablaufdatum' })
+    expect(noExpiry).toBeEnabled()
+    await user.click(noExpiry)
+    await user.click(within(dialog).getByRole('button', { name: 'Speichern' }))
+
+    await waitFor(() => expect(bodies).toHaveLength(1))
+    expect(bodies[0]).toMatchObject({ systemRole: 'SYSTEM_ADMIN', noExpiry: true })
+    expect(bodies[0]).not.toHaveProperty('expiresAt')
   }, 20000)
 
   it('opens the handover dialog for a regular local account', async () => {
