@@ -9,7 +9,7 @@ import type { GroupListResponse } from '../types/api'
 import { useGroupAdminListStore } from '../stores/groupAdminListStore'
 import AreaPageHeader from '../components/AreaPageHeader'
 import CreateGroupDialog from '../components/CreateGroupDialog'
-import PendingPlanNotice from '../components/admin/directorysync/PendingPlanNotice'
+import PendingPlanHint from '../components/admin/directorysync/PendingPlanHint'
 import GroupEditDialog from '../components/admin/groups/GroupEditDialog'
 import GroupFilterBar from '../components/admin/groups/GroupFilterBar'
 import GroupList from '../components/admin/groups/GroupList'
@@ -52,15 +52,22 @@ export default function GroupManagementPage() {
           description="Alle Gruppen der Organisation. Interne Gruppen legen Sie hier an und pflegen sie. Gruppen eines Identitätsanbieters oder Verzeichnisses pflegt ihre Quelle – bei ihnen legen Sie hier nur die Ansprechpersonen fest."
         />
 
-        <PendingPlanNotice />
-
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>
             {error}
           </Alert>
         )}
 
-        <Stack direction="row" sx={{ justifyContent: 'flex-end', mb: 1.5 }}>
+        {/* Wie bei den Konten: links, bündig mit der Tabelle, ein Hinweis - hier ein wartender
+            Verzeichnisplan -, rechts die primäre Handlung. */}
+        <Stack
+          direction="row"
+          spacing={2}
+          sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}
+        >
+          <Box sx={{ minWidth: 0 }}>
+            <PendingPlanHint />
+          </Box>
           <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreateOpen(true)}>
             Gruppe anlegen
           </Button>

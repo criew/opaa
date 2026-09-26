@@ -210,6 +210,30 @@ describe('GroupManagementPage', () => {
     expect(mockGetGroup).not.toHaveBeenCalled()
   })
 
+  // ADR-0036, Entscheidung 3: ein wartender Plan bleibt laut - sein Alter steht im Link selbst,
+  // die Einzelheiten im Popover; ein Hinweiskasten über der Liste entfällt (#1978)
+  it('names a waiting directory plan in a warning link with its age', async () => {
+    serve([adHocGroup])
+    renderPage()
+    const user = userEvent.setup()
+
+    const hint = await screen.findByRole('button', {
+      name: /^Verzeichnisplan wartet seit \d+ Tagen auf Entscheidung$/,
+    })
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+
+    await user.click(hint)
+    const popup = await screen.findByRole('dialog', {
+      name: 'Verzeichnisabgleich wartet auf Ihre Entscheidung',
+    })
+    expect(popup).toHaveTextContent(/bleibt der bisherige Stand in Kraft/)
+    expect(popup).toHaveTextContent(/Mitgliedschaften würden entzogen/)
+    expect(within(popup).getByRole('link', { name: 'Zum Verzeichnisabgleich' })).toHaveAttribute(
+      'href',
+      '/admin/directory-sync',
+    )
+  })
+
   it('shows an empty state when no group matches', async () => {
     serve([])
     renderPage()

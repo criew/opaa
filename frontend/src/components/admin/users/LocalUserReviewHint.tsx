@@ -1,12 +1,9 @@
-import { useId, useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Link from '@mui/material/Link'
-import Popover from '@mui/material/Popover'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
-import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import type { LocalUserSummaryResponse } from '../../../types/api'
+import HintLink from '../list/HintLink'
 
 export const REVIEW_OBLIGATION_TEXT =
   'Lokale Konten sind begründet und befristet zu führen und regelmäßig zu überprüfen; ' +
@@ -42,10 +39,6 @@ export default function LocalUserReviewHint({
   onShowWithoutExpiry,
   onShowInvited,
 }: LocalUserReviewHintProps) {
-  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null)
-  const popoverId = useId()
-  const titleId = useId()
-
   if (!summary) return null
   const withoutExpiry = summary.withoutExpiry
   const invited = summary.invitedPending
@@ -54,68 +47,40 @@ export default function LocalUserReviewHint({
   const parts: string[] = []
   if (withoutExpiry > 0) parts.push(withoutExpiryText(withoutExpiry))
   if (invited > 0) parts.push(invitedText(invited))
-  const open = anchorEl !== null
-
-  function jump(action: () => void) {
-    setAnchorEl(null)
-    action()
-  }
 
   return (
-    <>
-      <Link
-        component="button"
-        type="button"
-        underline="hover"
-        onClick={(e) => setAnchorEl(e.currentTarget)}
-        aria-haspopup="dialog"
-        aria-expanded={open}
-        aria-controls={open ? popoverId : undefined}
-        sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75, fontSize: 13.5 }}
-      >
-        <InfoOutlinedIcon fontSize="small" sx={{ color: 'warning.main' }} aria-hidden />
-        {parts.join(' · ')}
-      </Link>
-      <Popover
-        id={popoverId}
-        open={open}
-        anchorEl={anchorEl}
-        onClose={() => setAnchorEl(null)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-        transformOrigin={{ vertical: 'top', horizontal: 'left' }}
-        slotProps={{
-          paper: {
-            role: 'dialog',
-            'aria-labelledby': titleId,
-            sx: { p: 2, mt: 0.5, width: 380, maxWidth: '90vw' },
-          },
-        }}
-      >
-        <Typography id={titleId} component="h2" sx={{ fontSize: 14, fontWeight: 600, mb: 0.75 }}>
-          Hinweise zur Kontenprüfung
-        </Typography>
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 1.5 }}>
-          {REVIEW_OBLIGATION_TEXT}
-          {summary.lastReviewHint ? ` ${summary.lastReviewHint}` : ''}
-        </Typography>
-        <Stack spacing={1}>
-          {withoutExpiry > 0 && (
-            <HintRow
-              text={withoutExpiryText(withoutExpiry)}
-              actionLabel="Konten ohne Ablaufdatum anzeigen"
-              onAction={() => jump(onShowWithoutExpiry)}
-            />
-          )}
-          {invited > 0 && (
-            <HintRow
-              text={invitedText(invited)}
-              actionLabel="Offene Einladungen anzeigen"
-              onAction={() => jump(onShowInvited)}
-            />
-          )}
-        </Stack>
-      </Popover>
-    </>
+    <HintLink text={parts.join(' · ')} title="Hinweise zur Kontenprüfung">
+      {(close) => (
+        <>
+          <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 1.5 }}>
+            {REVIEW_OBLIGATION_TEXT}
+            {summary.lastReviewHint ? ` ${summary.lastReviewHint}` : ''}
+          </Typography>
+          <Stack spacing={1}>
+            {withoutExpiry > 0 && (
+              <HintRow
+                text={withoutExpiryText(withoutExpiry)}
+                actionLabel="Konten ohne Ablaufdatum anzeigen"
+                onAction={() => {
+                  close()
+                  onShowWithoutExpiry()
+                }}
+              />
+            )}
+            {invited > 0 && (
+              <HintRow
+                text={invitedText(invited)}
+                actionLabel="Offene Einladungen anzeigen"
+                onAction={() => {
+                  close()
+                  onShowInvited()
+                }}
+              />
+            )}
+          </Stack>
+        </>
+      )}
+    </HintLink>
   )
 }
 
@@ -129,14 +94,7 @@ function HintRow({
   onAction: () => void
 }) {
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 1.5,
-      }}
-    >
+    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1.5 }}>
       <Typography sx={{ fontSize: 13.5, fontWeight: 500 }}>{text}</Typography>
       {/* Sichtbar knapp, damit jede Zeile einzeilig bleibt; der Name sagt, wohin es geht. */}
       <Button

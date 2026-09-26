@@ -48,3 +48,18 @@ export function ageLabel(iso: string, now: Date = new Date()): string {
   const days = Math.floor(hours / 24)
   return `${days} Tage`
 }
+
+/** The same age after „seit", which needs the dative: „seit 8 Tagen", „seit einer Stunde". */
+export function ageSinceLabel(iso: string, now: Date = new Date()): string {
+  const millis = now.getTime() - new Date(iso).getTime()
+  if (Number.isNaN(millis)) return 'unbekannter Zeit'
+  const hours = Math.floor(millis / 3_600_000)
+  if (hours < 1) return 'weniger als einer Stunde'
+  if (hours < 48) return hours === 1 ? 'einer Stunde' : `${hours} Stunden`
+  return `${Math.floor(hours / 24)} Tagen`
+}
+
+/** „1 Konto" / „3 Konten" and the like - a count with its noun in the right number. */
+export function countLabel(count: number, one: string, many: string): string {
+  return `${count} ${count === 1 ? one : many}`
+}
