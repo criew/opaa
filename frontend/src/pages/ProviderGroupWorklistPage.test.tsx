@@ -47,13 +47,13 @@ describe('ProviderGroupWorklistPage', () => {
     useOidcProviderStore.getState().reset()
   })
 
-  // ADR-0036, Entscheidung 2: Die Arbeitsliste führt je Gruppe ihre Wirkungen und den Ausgang.
-  it('lists every group of the provider with its effects', async () => {
+  // ADR-0036, Entscheidung 2: Die Arbeitsliste führt je Gruppe ihre Verwendung und den Ausgang.
+  it('lists every group of the provider with what it is used for', async () => {
     renderWorklist()
 
     expect(await screen.findByText('Referat 50')).toBeInTheDocument()
     expect(
-      screen.getByText(/12 Berechtigungen an 7 Objekten, 2 Space-Mitgliedschaften in 2 Spaces/),
+      screen.getByText('Rechte an 7 Bibliotheken · Mitglied in 2 Spaces', { exact: false }),
     ).toBeInTheDocument()
     expect(screen.getByText('/Haus A/Abteilung 5/Referat 50')).toBeInTheDocument()
   })
