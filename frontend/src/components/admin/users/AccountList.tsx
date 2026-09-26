@@ -44,14 +44,13 @@ const STATE_DOT_COLOR: Record<LocalAccountState, string> = {
 function LocalStateCell({ user }: { user: LocalUserResponse }) {
   return (
     <Box sx={{ minWidth: 0 }}>
-      <Stack direction="row" spacing={0.75} sx={{ alignItems: 'flex-start' }}>
+      <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
         <Box
           component="span"
           aria-hidden="true"
           sx={{
             width: 8,
             height: 8,
-            mt: '5px',
             borderRadius: '50%',
             flex: 'none',
             bgcolor: STATE_DOT_COLOR[user.status],
@@ -97,12 +96,12 @@ function ProviderStateCell({ account }: { account: AccountResponse }) {
       direction="row"
       spacing={0.5}
       component="span"
-      sx={{ alignItems: 'flex-start', display: 'inline-flex', minWidth: 0 }}
+      sx={{ alignItems: 'center', display: 'inline-flex', minWidth: 0 }}
     >
       {hint && (
         <WarningAmberIcon
           aria-hidden="true"
-          sx={{ fontSize: 14, mt: '2px', flex: 'none', color: 'warning.main' }}
+          sx={{ fontSize: 14, flex: 'none', color: 'warning.main' }}
         />
       )}
       <Typography
