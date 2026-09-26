@@ -99,6 +99,32 @@ class ConfluenceWebhookPublicAccessTest {
   }
 
   @Test
+  void theSharedSecretHeaderReachesTheIntakeAndARepeatedOneArrivesJoined() throws Exception {
+    UUID libraryId = UUID.randomUUID();
+    UUID otherLibraryId = UUID.randomUUID();
+
+    mockMvc
+        .perform(
+            post("/api/v1/libraries/" + libraryId + "/confluence-webhook")
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("X-OPAA-Webhook-Secret", "geheim")
+                .content(BODY))
+        .andExpect(status().isAccepted());
+    // regression guard: a repeated header arrives joined like Spring binds it, so a correct first
+    // value next to a wrong duplicate can never authenticate on its own
+    mockMvc
+        .perform(
+            post("/api/v1/libraries/" + otherLibraryId + "/confluence-webhook")
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("X-OPAA-Webhook-Secret", "geheim", "falsch")
+                .content(BODY))
+        .andExpect(status().isAccepted());
+
+    verify(webhookService).accept(eq(libraryId), eq(BODY), eq(null), eq("geheim"));
+    verify(webhookService).accept(eq(otherLibraryId), eq(BODY), eq(null), eq("geheim,falsch"));
+  }
+
+  @Test
   void aNotificationTheIntakeRejectsIsAnswered401() throws Exception {
     UUID libraryId = UUID.randomUUID();
     doThrow(new UnauthorizedException("Webhook nicht autorisiert"))

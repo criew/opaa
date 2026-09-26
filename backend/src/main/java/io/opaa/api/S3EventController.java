@@ -33,6 +33,8 @@ public class S3EventController {
   public void receive(@PathVariable UUID libraryId, HttpServletRequest request) throws IOException {
     PushIntakeHandler handler = connectors.pushIntakeHandler(PushIntake.EVENT_TOKEN);
     handler.acceptNotification(
-        libraryId, ConfluenceWebhookController.readBounded(request), request::getHeader);
+        libraryId,
+        ConfluenceWebhookController.readBounded(request),
+        name -> ConfluenceWebhookController.joinedHeader(request, name));
   }
 }

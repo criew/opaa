@@ -62,6 +62,11 @@ public class S3SourceConnector
 
   private static final String SETTINGS_STATE = "s3Settings";
 
+  /** The 503 of a store that cannot be reached; the store's own sentence stays in the log. */
+  static final String OBJECT_STORE_UNAVAILABLE =
+      "Der Objektspeicher dieser Bibliothek ist derzeit nicht erreichbar. Bitte später erneut"
+          + " versuchen.";
+
   private static final SourceConnectorDescriptor DESCRIPTOR =
       new SourceConnectorDescriptor(
           DocumentSourceType.S3,
@@ -101,11 +106,15 @@ public class S3SourceConnector
       download = originalAccess.download(library, document.getFilePath());
     } catch (S3AccessException e) {
       throw new OriginalUnavailableException(
-          "S3 object of document " + document.getId() + " is not readable right now", e);
+          OBJECT_STORE_UNAVAILABLE,
+          "S3 object of document " + document.getId() + " is not readable right now",
+          e);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new OriginalUnavailableException(
-          "Reading the S3 object of document " + document.getId() + " was interrupted", e);
+          OBJECT_STORE_UNAVAILABLE,
+          "Reading the S3 object of document " + document.getId() + " was interrupted",
+          e);
     }
     if (download.isEmpty()) {
       return Optional.empty();

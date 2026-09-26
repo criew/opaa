@@ -534,8 +534,9 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
    *
    * <p>Two failure pictures (ADR-0030, Entscheidung 9): an original the connector cannot serve
    * answers the same German 404 as every other "no original available" case; a storage that cannot
-   * be reached is a {@code 503}, a temporary condition a caller must not read as "this original
-   * does not exist". The storage's own sentence stays in the log.
+   * be reached is a {@code 503} with the connector's own German message, a temporary condition a
+   * caller must not read as "this original does not exist". The storage's own sentence stays in the
+   * log.
    */
   private DocumentContent loadOriginal(Document document, KnowledgeLibrary library) {
     OriginalAccess access =
@@ -551,18 +552,9 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
           "Original of document {} is not readable right now: {}",
           document.getId(),
           e.getCause() == null ? e.getMessage() : e.getCause().getMessage());
-      throw new ServiceUnavailableException(OBJECT_STORE_UNAVAILABLE);
+      throw new ServiceUnavailableException(e.userMessage());
     }
   }
-
-  /**
-   * The {@code 503} of an object store that cannot be reached or refuses the application right now
-   * (#1524) - carries no detail of the failure, which goes to the log; the wording mirrors {@link
-   * io.opaa.knowledge.UploadStoreUnavailableException}, whose storage is a different one.
-   */
-  static final String OBJECT_STORE_UNAVAILABLE =
-      "Der Objektspeicher dieser Bibliothek ist derzeit nicht erreichbar. Bitte später erneut"
-          + " versuchen.";
 
   private static NotFoundException noOriginalAvailable() {
     return new NotFoundException("Für dieses Dokument steht kein Originaldokument zur Verfügung");

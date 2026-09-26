@@ -194,6 +194,26 @@ class S3EventPathIntegrationTest {
   }
 
   @Test
+  void aCorrectTokenNextToAWrongDuplicateOfTheSameHeaderIsRefused() throws Exception {
+    // regression guard: a repeated header is judged as a whole, as Spring binds it - the correct
+    // first value must not authenticate a request that also carries a wrong one
+    mockMvc
+        .perform(
+            post("/api/v1/libraries/{id}/s3-events", library.getId())
+                .header("X-OPAA-Webhook-Secret", TOKEN, "falsch")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"Records\":[]}"))
+        .andExpect(status().isUnauthorized());
+    mockMvc
+        .perform(
+            post("/api/v1/libraries/{id}/s3-events", library.getId())
+                .header("X-OPAA-Webhook-Secret", TOKEN)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"Records\":[]}"))
+        .andExpect(status().isAccepted());
+  }
+
+  @Test
   void createdObjectsAreDebouncedIntoOneRunAndARemovedOneIsRemovedAgain() throws Exception {
     // Assurance: notifications reach the intake with the Bearer token and the Records body; three
     // objects announced within the debounce window cost ONE event run (trigger WEBHOOK, no listing

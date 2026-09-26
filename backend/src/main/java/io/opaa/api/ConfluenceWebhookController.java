@@ -7,6 +7,8 @@ import io.opaa.indexing.source.SourceConnectorRegistry;
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -40,7 +42,18 @@ public class ConfluenceWebhookController {
   @ResponseStatus(HttpStatus.ACCEPTED)
   public void receive(@PathVariable UUID libraryId, HttpServletRequest request) throws IOException {
     PushIntakeHandler handler = connectors.pushIntakeHandler(PushIntake.WEBHOOK_SECRET);
-    handler.acceptNotification(libraryId, readBounded(request), request::getHeader);
+    handler.acceptNotification(
+        libraryId, readBounded(request), name -> joinedHeader(request, name));
+  }
+
+  /**
+   * Every value of the header {@code name}, joined with {@code ","} the way Spring binds a repeated
+   * header, or {@code null} without one - a correct secret next to a wrong duplicate does not
+   * authenticate.
+   */
+  static String joinedHeader(HttpServletRequest request, String name) {
+    List<String> values = Collections.list(request.getHeaders(name));
+    return values.isEmpty() ? null : String.join(",", values);
   }
 
   /** Rejects by the declared length first, then by what actually arrives (chunked senders). */
