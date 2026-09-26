@@ -40,7 +40,7 @@ public final class S3RequestGuard implements ExecutionInterceptor {
      */
     void validate(SdkHttpRequest request) throws IOException;
 
-    /** The connector's policy: the host of every request passes {@code validator}. */
+    /** The host of every request passes {@code validator}. */
     static TargetPolicy hostOnly(TargetAddressValidator validator) {
       return request -> validator.validateHost(request.host());
     }
@@ -83,7 +83,8 @@ public final class S3RequestGuard implements ExecutionInterceptor {
     return new S3RequestGuard(targetPolicy, null, 0, null);
   }
 
-  int requestBudget() {
+  /** The budget this guard enforces; {@code 0} is unbounded. */
+  public int requestBudget() {
     return requestBudget;
   }
 

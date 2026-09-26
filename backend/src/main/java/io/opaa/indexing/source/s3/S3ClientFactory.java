@@ -113,7 +113,8 @@ public class S3ClientFactory {
     } catch (TargetAddressValidator.UnknownTargetHostException e) {
       throw new S3AccessException.Unreachable(e.getMessage());
     } catch (IOException e) {
-      throw new S3AccessException.TargetBlocked(e.getMessage());
+      throw new S3AccessException.TargetBlocked(
+          e.getMessage(), TargetAddressValidator.ALLOWLIST_HINT);
     }
   }
 }

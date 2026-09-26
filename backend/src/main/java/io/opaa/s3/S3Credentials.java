@@ -1,16 +1,16 @@
 package io.opaa.s3;
 
 /**
- * Credentials of an S3 library (ADR-0027, Entscheidung 7): a static access key and secret key,
- * optionally with a session token, stored as one string {@code accessKey:secretKey[:sessionToken]}
- * in {@code knowledge_libraries.source_credentials}. Neither key may contain a colon - MinIO and
- * Ceph let an operator choose them freely, and a colon would be split silently and show up as a
- * misleading {@code SignatureDoesNotMatch}; the stored form therefore never carries more than two
- * separators (a session token is base64 or a JWT and contains none).
+ * Static S3 credentials (ADR-0027, Entscheidung 7): an access key and secret key, optionally with a
+ * session token, in the stored form {@code accessKey:secretKey[:sessionToken]} ({@link #parse},
+ * {@link #stored}). Neither key may contain a colon - MinIO and Ceph let an operator choose them
+ * freely, and a colon would be split silently and show up as a misleading {@code
+ * SignatureDoesNotMatch}; the stored form therefore never carries more than two separators (a
+ * session token is base64 or a JWT and contains none).
  *
- * <p>{@link #toString()} never reveals any part; the adapter is the only place that hands the
- * values to the SDK, so a credential can appear in no log line, exception message or API response
- * by accident.
+ * <p>{@link #toString()} never reveals any part; {@link S3ClientSettings#of} is the only place that
+ * hands the values to the SDK, so a credential can appear in no log line, exception message or API
+ * response by accident.
  */
 public record S3Credentials(String accessKey, String secretKey, String sessionToken) {
 

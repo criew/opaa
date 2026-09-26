@@ -43,7 +43,6 @@ final class AwsSdkS3ObjectStore implements S3ObjectStore {
   private final S3Properties properties;
   private final SourceRequestMeter meter = new SourceRequestMeter();
   private final S3RequestGuard guard;
-  private final int requestBudget;
   private final S3FailureTranslator translator;
   private final S3SdkClient client;
   private final S3Client s3;
@@ -61,7 +60,6 @@ final class AwsSdkS3ObjectStore implements S3ObjectStore {
             meter,
             requestBudget,
             requestObserver);
-    this.requestBudget = requestBudget;
     this.translator =
         new S3FailureTranslator(
             properties.requestTimeout(),
@@ -80,7 +78,7 @@ final class AwsSdkS3ObjectStore implements S3ObjectStore {
   }
 
   int requestBudget() {
-    return requestBudget;
+    return guard.requestBudget();
   }
 
   @Override
