@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithProviders } from '../test/test-utils'
@@ -289,6 +289,20 @@ describe('LibraryManagementPage', () => {
     await user.type(screen.getByRole('textbox', { name: 'Suchen' }), 'SGB')
     expect(screen.getByRole('link', { name: /Rechtsquellen Soziales/ })).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /Dienstanweisungen/ })).not.toBeInTheDocument()
+  })
+
+  it('marks each card with the type "Wissen" and its origin as badges (#1970)', async () => {
+    const user = userEvent.setup()
+    setLibraryState([managerLibrary])
+    renderWithProviders(<LibraryManagementPage />, { withRouter: true })
+
+    await screen.findByRole('table')
+    await user.click(screen.getByRole('button', { name: 'Kacheln' }))
+
+    const card = screen.getByRole('link', { name: /Rechtsquellen Soziales/ })
+    expect(within(card).getByText('Wissen')).toBeInTheDocument()
+    expect(within(card).getByText('Dateisystem')).toBeInTheDocument()
+    expect(within(card).getByText('Referat 50 · 431 Dokumente')).toBeInTheDocument()
   })
 
   it('navigates to the create wizard from the header button', async () => {

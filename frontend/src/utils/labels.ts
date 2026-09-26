@@ -18,6 +18,7 @@ import type {
   PromptVariableType,
   ScheduleFrequency,
   ScheduleWeekday,
+  SpaceMembershipCounts,
   SpaceRole,
   SpaceVisibility,
   ConfluenceEdition,
@@ -110,25 +111,38 @@ export function documentCountLabel(count: number): string {
 export const allAccountsLabel = 'Alle Konten'
 
 /**
+ * Groups and persons as one short phrase ("2 Gruppen, 1 Person"); a group counts once, whatever
+ * its size. Only valid where the caller is known to be among those counted: exactly one person and
+ * no group then means that person is the caller - "nur Sie". Every other case is counted plainly,
+ * the caller included.
+ */
+function groupsAndPersonsLabel(groupCount: number, userCount: number): string {
+  if (groupCount === 0 && userCount <= 1) return 'nur Sie'
+  const parts: string[] = []
+  if (groupCount > 0) parts.push(groupCount === 1 ? '1 Gruppe' : `${groupCount} Gruppen`)
+  if (userCount > 0) parts.push(userCount === 1 ? '1 Person' : `${userCount} Personen`)
+  return parts.join(', ')
+}
+
+/**
  * The reach of an asset as one short phrase, derived from its grants rather than from a stored
- * level (#1931, ADR-0037): "Alle" outranks the counts, and an asset that only its owner reaches
- * reads "nur Sie".
+ * level (#1931, ADR-0037): "Alle" outranks the counts. The caller reads the asset, so a single
+ * grant to a person is the caller's own.
  */
 export function assetReachLabel(reach: AssetReach | undefined): string {
   if (!reach) return ''
   if (reach.allAccounts) return 'Alle'
-  // Exactly one person holds a grant and the caller reads the asset, so that person is the caller
-  // - no other way in exists. Every other case is counted plainly, the caller included:
-  // subtracting "the one owner" would miscount a foreign asset the caller merely reads.
-  if (reach.groupCount === 0 && reach.userCount <= 1) return 'nur Sie'
-  const parts: string[] = []
-  if (reach.groupCount > 0) {
-    parts.push(reach.groupCount === 1 ? '1 Gruppe' : `${reach.groupCount} Gruppen`)
-  }
-  if (reach.userCount > 0) {
-    parts.push(reach.userCount === 1 ? '1 Person' : `${reach.userCount} Personen`)
-  }
-  return parts.join(', ')
+  return groupsAndPersonsLabel(reach.groupCount, reach.userCount)
+}
+
+/**
+ * Who belongs to a space, worded like an asset's reach. The caller is a member of every listed
+ * space, so a single person row without a group is the caller - whether or not it is the default
+ * space.
+ */
+export function spaceMembershipLabel(counts: SpaceMembershipCounts | undefined): string {
+  if (!counts) return ''
+  return groupsAndPersonsLabel(counts.groupCount, counts.userCount)
 }
 
 const assetRoleLabels: Record<AssetRole, string> = {

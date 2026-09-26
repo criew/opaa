@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   assetReachLabel,
+  spaceMembershipLabel,
   assetRoleDescription,
   capabilityMissingMessage,
   documentCountLabel,
@@ -73,6 +74,18 @@ describe('assetReachLabel (#1931)', () => {
     expect(assetReachLabel({ allAccounts: false, groupCount: 1, userCount: 1 })).toBe(
       '1 Gruppe, 1 Person',
     )
+  })
+})
+
+describe('spaceMembershipLabel (#1970)', () => {
+  it('reads "nur Sie" when the caller is the only member, default space or not', () => {
+    expect(spaceMembershipLabel({ groupCount: 0, userCount: 1 })).toBe('nur Sie')
+  })
+
+  it('counts group and person rows without resolving groups to persons', () => {
+    expect(spaceMembershipLabel({ groupCount: 2, userCount: 3 })).toBe('2 Gruppen, 3 Personen')
+    expect(spaceMembershipLabel({ groupCount: 1, userCount: 0 })).toBe('1 Gruppe')
+    expect(spaceMembershipLabel({ groupCount: 1, userCount: 1 })).toBe('1 Gruppe, 1 Person')
   })
 })
 

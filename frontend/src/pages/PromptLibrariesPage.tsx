@@ -54,7 +54,8 @@ function PromptLibraryCard({ library }: { library: PromptLibraryResponse }) {
         {[ownerSummary(library), promptCountLabel(library.promptCount)].join(' · ')}
       </Typography>
       <SuccessionStateNote succession={library.succession} variant="badge" />
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 0.75 }}>
+        <MetaBadge>Prompts</MetaBadge>
         <MetaBadge accent>{assetRoleLabel(library.myRole)}</MetaBadge>
         {/* #1931: die Reichweite ist abgeleitet, keine gespeicherte Stufe. */}
         <MetaBadge>{assetReachLabel(library.reach)}</MetaBadge>

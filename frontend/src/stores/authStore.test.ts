@@ -109,6 +109,7 @@ describe('authStore', () => {
           archived: false,
           visibility: 'PRIVATE',
           memberCount: 1,
+          memberships: { groupCount: 0, userCount: 1 },
           userRole: 'ADMIN',
           createdAt: '',
           updatedAt: '',

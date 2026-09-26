@@ -114,12 +114,13 @@ function LibraryCard({ library }: { library: LibraryListResponse }) {
       <Typography component="span" sx={{ fontSize: 11.5, color: 'text.secondary' }}>
         {[
           ownerTypeSummary(library),
-          documentSourceTypeLabel(library.sourceType),
           `${documentCountLabel(library.documentCount)} ${library.documentCount === 1 ? 'Dokument' : 'Dokumente'}`,
         ].join(' · ')}
       </Typography>
       <SuccessionStateNote succession={library.succession} variant="badge" />
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 0.75 }}>
+        <MetaBadge>Wissen</MetaBadge>
+        <MetaBadge>{documentSourceTypeLabel(library.sourceType)}</MetaBadge>
         <MetaBadge accent>{assetRoleLabel(library.myRole)}</MetaBadge>
         {/* #1931: die Reichweite ist abgeleitet, keine gespeicherte Stufe. */}
         <MetaBadge>{assetReachLabel(library.reach)}</MetaBadge>
