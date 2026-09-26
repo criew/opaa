@@ -22,10 +22,7 @@ import io.opaa.common.ConflictException;
 import io.opaa.common.FieldValidationException;
 import io.opaa.common.FieldValidationException.FieldError;
 import io.opaa.common.NotFoundException;
-import io.opaa.diagnosticaccess.DiagnosticImpersonationGrantService;
 import io.opaa.security.PasswordGenerator;
-import io.opaa.space.Space;
-import io.opaa.space.SpaceRepository;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -86,8 +83,6 @@ public class LocalUserService {
   private final UserService userService;
   private final PasswordEncoder passwordEncoder;
   private final PasswordGenerator passwordGenerator;
-  private final SpaceRepository spaces;
-  private final DiagnosticImpersonationGrantService impersonationGrants;
   private final AuditEventRecorder audit;
   private final ApplicationEventPublisher events;
   private final Clock clock;
@@ -102,8 +97,6 @@ public class LocalUserService {
       UserService userService,
       PasswordEncoder passwordEncoder,
       PasswordGenerator passwordGenerator,
-      SpaceRepository spaces,
-      DiagnosticImpersonationGrantService impersonationGrants,
       AuditEventRecorder audit,
       ApplicationEventPublisher events,
       Clock clock) {
@@ -116,8 +109,6 @@ public class LocalUserService {
     this.userService = userService;
     this.passwordEncoder = passwordEncoder;
     this.passwordGenerator = passwordGenerator;
-    this.spaces = spaces;
-    this.impersonationGrants = impersonationGrants;
     this.audit = audit;
     this.events = events;
     this.clock = clock;
@@ -455,14 +446,11 @@ public class LocalUserService {
   /**
    * Deletes an account nothing counted by {@link UserRepository#countDeletionBlockers} references
    * (ADR-0033, Entscheidung 11) - in practice one that was never used; every other one is locked,
-   * not deleted. The personal space goes first, audited as {@code SPACE_DELETED} like any space
-   * deletion ({@code fk_spaces_owner_organization} is RESTRICT and leaves no choice); credentials,
-   * tokens, memberships and the pseudonym mapping follow by the schema's cascades. The refusal
-   * names the blocking tables in the log only - the response says "referenced", nothing more.
-   *
-   * <p>The diagnostic impersonation grants the account issued are no blocker - the schema lets them
-   * cascade - but are revoked here first, in this transaction: each one a holder who remains would
-   * otherwise lose without a revocation event (ADR-0016, Nachtrag).
+   * not deleted. What the account holds elsewhere - the diagnostic impersonation grants it issued,
+   * its personal space - is ended by the listeners of {@link LocalAccountDeletionEvent} inside this
+   * transaction; credentials, tokens, memberships and the pseudonym mapping follow by the schema's
+   * cascades. The refusal names the blocking tables in the log only - the response says
+   * "referenced", nothing more.
    */
   @Transactional
   public void delete(CurrentUser actor, UUID userId) {
@@ -487,21 +475,8 @@ public class LocalUserService {
     before.put("systemRole", user.getSystemRole().name());
     before.put("state", current.state().name());
     recordAdminAct(actor, user, AuditEventType.LOCAL_USER_DELETED, before, null);
-    impersonationGrants.revokeGrantsIssuedBy(actor, userId);
-    List<Space> personal = spaces.findByOwnerId(userId);
-    for (Space space : personal) {
-      audit.recordUserAction(
-          AuditEvent.builder()
-              .organizationId(space.getOrganizationId())
-              .actor(actor.id())
-              .type(AuditEventType.SPACE_DELETED)
-              .object(AuditObjectType.SPACE, space.getId(), space.getName())
-              .before(spaceAuditPayload(space))
-              .outcome(AuditOutcome.SUCCESS)
-              .build());
-    }
+    events.publishEvent(new LocalAccountDeletionEvent(actor, user));
     try {
-      spaces.deleteAll(personal);
       users.delete(user);
       users.flush();
     } catch (DataIntegrityViolationException referencedMeanwhile) {
@@ -565,15 +540,6 @@ public class LocalUserService {
         "Das Konto ist noch in Inhalts-, Rechte- oder Nachweisbeständen referenziert und kann"
             + " deshalb nicht gelöscht werden. Sperren Sie es stattdessen.",
         ACCOUNT_OWNS_CONTENT);
-  }
-
-  /** The same payload {@code SpaceService} writes for a space deletion. */
-  private static Map<String, Object> spaceAuditPayload(Space space) {
-    Map<String, Object> payload = new LinkedHashMap<>();
-    payload.put("name", space.getName());
-    payload.put("visibility", space.getVisibility().name());
-    payload.put("ownerId", space.getOwnerId().toString());
-    return payload;
   }
 
   /**
