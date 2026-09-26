@@ -26,6 +26,7 @@ import { adminTableSx, listCardSx } from '../list/adminListStyles'
 import GroupOriginTag from './GroupOriginTag'
 import GroupRowMenu from './GroupRowMenu'
 import { GROUP_STATE_COLOR, GROUP_STATE_LABEL, groupStateReason } from './groupListLabels'
+import { GROUP_UNUSED_DETAIL, groupUsageDetails, groupUsageShort } from './groupUsageLabels'
 
 const SORT_LABEL: Record<GroupSortField, string> = {
   name: 'Name',
@@ -136,22 +137,34 @@ function memberText(count: number): string {
   return count === 1 ? '1 Mitglied' : `${count} Mitglieder`
 }
 
-/** „Wo wirkt diese Gruppe" in one line; the full text stays in the tooltip. */
-function EffectsCell({ effects }: { effects: GroupEffectsResponse | undefined }) {
+/**
+ * What the group is used for in one line - libraries, spaces, ownership, create rights - with every
+ * figure spelled out in the tooltip. Answers the question before cleaning up: does anything hang on
+ * this group?
+ */
+function UsageCell({ effects }: { effects: GroupEffectsResponse | undefined }) {
   if (!effects) return <Typography sx={{ fontSize: 13, color: 'text.disabled' }}>–</Typography>
-  const text = effects.summary === '' ? 'ohne Wirkung' : effects.summary
+  const short = groupUsageShort(effects)
+  const details = groupUsageDetails(effects)
+  const unused = details.length === 0
+  const tooltip = unused ? GROUP_UNUSED_DETAIL : `Verwendet für: ${details.join('; ')}.`
   return (
-    <Tooltip title={effects.summary === '' ? '' : effects.summary}>
+    <Tooltip title={tooltip}>
       <Typography
+        tabIndex={0}
+        aria-label={`Verwendung: ${tooltip}`}
         sx={{
           fontSize: 12.5,
-          color: effects.summary === '' ? 'text.secondary' : 'text.primary',
+          color: unused ? 'text.secondary' : 'text.primary',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
           whiteSpace: 'nowrap',
+          cursor: 'help',
+          borderRadius: 0.5,
+          '&:focus-visible': { outline: 2, outlineColor: 'primary.main', outlineOffset: 1 },
         }}
       >
-        {text}
+        {short}
       </Typography>
     </Tooltip>
   )
@@ -171,7 +184,7 @@ function GroupTableRow({ group, effects, ...handlers }: RowProps) {
         <GroupStateCell group={group} />
       </TableCell>
       <TableCell>
-        <EffectsCell effects={effects} />
+        <UsageCell effects={effects} />
       </TableCell>
       <TableCell align="right">
         <GroupRowMenu group={group} {...handlers} />
@@ -198,7 +211,7 @@ function GroupCard({ group, effects, ...handlers }: RowProps) {
       </Box>
       <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.75 }}>
         {memberText(group.memberCount)}
-        {effects ? ` · ${effects.summary === '' ? 'ohne Wirkung' : effects.summary}` : ''}
+        {effects ? ` · ${groupUsageShort(effects)}` : ''}
       </Typography>
     </Box>
   )
@@ -223,7 +236,8 @@ function Pager() {
 /**
  * Die Liste aller Gruppen der Organisation (#1978), gebaut wie die Kontenliste: am Desktop eine
  * Tabelle, unter Tablet-Breite eine Liste, serverseitig durchsucht, gefiltert, sortiert und
- * geblättert. Die Wirkung einer Gruppe steht als Zusammenfassung da; die Mitgliederliste nicht -
+ * geblättert. Wofür eine Gruppe verwendet wird, steht als Zusammenfassung da; die Mitgliederliste
+ * nicht -
  * ihr Abruf ist ein Audit-Ereignis und geschieht erst im Dialog „Mitglieder" (ADR-0036/4, /9).
  */
 export default function GroupList(handlers: GroupRowHandlers) {
@@ -257,7 +271,7 @@ export default function GroupList(handlers: GroupRowHandlers) {
               <SortableHeadCell fields={['origin']} binding={sort} width="19%" />
               <SortableHeadCell fields={['memberCount']} binding={sort} width="10%" align="right" />
               <SortableHeadCell fields={['state']} binding={sort} width="19%" />
-              <TableCell sx={{ width: '18%' }}>Wirkung</TableCell>
+              <TableCell sx={{ width: '18%' }}>Verwendung</TableCell>
               <TableCell align="right" sx={{ width: 56 }}>
                 <span style={visuallyHidden}>Aktionen</span>
               </TableCell>

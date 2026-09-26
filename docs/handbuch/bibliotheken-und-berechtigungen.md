@@ -446,7 +446,11 @@ und Zustand, sortierbar und seitenweise. Hinter dem Anbieter einer Anbietergrupp
 Info-Symbol, wie OPAA die Mitglieder erfährt: nur bei der Anmeldung der jeweiligen Person oder durch
 eigenes Auslesen im Takt des Verzeichnisabgleichs, auch ohne Anmeldung (Abschnitt 6). Eine interne Gruppe, die ihre Verantwortlichen noch
 nicht freigegeben haben, trägt den Zustand **„Nicht freigegeben“**; das Info-Symbol daneben nennt
-den Grund, ebenso bei „Aufgelöst“, „Anbieter deaktiviert“ und „Nicht mehr gepflegt“. Die Handlungen
+den Grund, ebenso bei „Aufgelöst“, „Anbieter deaktiviert“ und „Nicht mehr gepflegt“. Die Spalte
+**Verwendung** beantwortet vor dem Aufräumen, ob an einer Gruppe etwas hängt: an wie vielen
+Bibliotheken sie Rechte hat, in wie vielen Spaces sie Mitglied ist, ob ihr Bibliotheken gehören und
+ob sie Anlegerechte trägt, etwa „2 Bibliotheken · 1 Space“. Der Tooltip schlüsselt die Angabe auf;
+„nicht verwendet“ heißt, dass die Gruppe nichts davon vermittelt. Die Handlungen
 einer Gruppe stehen im Zeilenmenü: **Bearbeiten**, **Mitglieder**, **Wirkungen übertragen** und
 **Löschen**; gelöscht werden kann nur eine interne Gruppe.
 
