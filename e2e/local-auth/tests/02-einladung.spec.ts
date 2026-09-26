@@ -142,7 +142,7 @@ test.describe("Einladung, Passwort setzen, erste Anmeldung", () => {
     await dialog.getByRole("button", { name: "Anlegen" }).click();
 
     // The generated password is shown exactly once, in a dialog that only its own button closes.
-    const handover = admin.getByRole("dialog", { name: "Passwort übergeben" });
+    const handover = admin.getByRole("dialog", { name: /^Neues Passwort für / });
     await expect(handover).toBeVisible();
     const initialPassword = (await admin.getByTestId("generated-password-value").innerText()).trim();
     expect(initialPassword.length).toBeGreaterThan(0);

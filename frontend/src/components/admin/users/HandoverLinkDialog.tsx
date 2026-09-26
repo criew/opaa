@@ -38,10 +38,12 @@ export default function HandoverLinkDialog({
       // Ohne `onClose` schließt weder ein Klick daneben noch Escape: Beides vernichtete den Wert,
       // den es genau einmal gibt - dasselbe Muster wie beim Einladungslink.
     >
-      <DialogTitle id="handover-link-title">Übergabe-Link übergeben</DialogTitle>
+      <DialogTitle id="handover-link-title">
+        Link zur Kontoübergabe für „{user.displayName}“
+      </DialogTitle>
       <DialogContent>
-        <Typography sx={{ fontSize: 13.5, mb: 1.5 }}>
-          Für „{user.displayName}“ ({user.email})
+        <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mb: 1.5 }}>
+          {user.email}
         </Typography>
         <Alert severity="warning" sx={{ mb: 2 }}>
           Der Link konnte nicht per E-Mail zugestellt werden. Übergeben Sie ihn der Person auf einem

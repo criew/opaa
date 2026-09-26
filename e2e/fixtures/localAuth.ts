@@ -196,7 +196,7 @@ export async function createActiveAccount(
     .click();
   await dialog.getByRole("button", { name: "Anlegen" }).click();
 
-  const handover = adminPage.getByRole("dialog", { name: "Passwort übergeben" });
+  const handover = adminPage.getByRole("dialog", { name: /^Neues Passwort für / });
   await expect(handover).toBeVisible();
   const initial = (await adminPage.getByTestId("generated-password-value").innerText()).trim();
   await handover.getByRole("button", { name: "Schließen" }).click();

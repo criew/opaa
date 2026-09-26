@@ -103,9 +103,9 @@ test.describe("Barrierefreiheit der lokalen Anmeldung (axe-core)", () => {
     await expectNoSeriousA11yViolations(admin, "Dialog „Lokales Konto anlegen“");
 
     await dialog.getByRole("button", { name: "Anlegen" }).click();
-    const handover = admin.getByRole("dialog", { name: "Passwort übergeben" });
+    const handover = admin.getByRole("dialog", { name: /^Neues Passwort für / });
     await expect(handover).toBeVisible();
-    await expectNoSeriousA11yViolations(admin, "Dialog „Passwort übergeben“");
+    await expectNoSeriousA11yViolations(admin, "Dialog „Neues Passwort für …“");
     const initial = (await admin.getByTestId("generated-password-value").innerText()).trim();
     await handover.getByRole("button", { name: "Schließen" }).click();
 

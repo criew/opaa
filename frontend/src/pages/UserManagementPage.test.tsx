@@ -408,6 +408,8 @@ describe('UserManagementPage', () => {
 
     const once = await screen.findByTestId('generated-password-value')
     expect(once).toHaveTextContent('Mock-Anfangs-Passwort-7Q2')
+    const shown = screen.getByRole('dialog', { name: 'Neues Passwort für „P. Neu“' })
+    expect(shown).toHaveTextContent('p.neu@stadt.example')
     expect(screen.getByText(/erscheint nur einmal/)).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Schließen' }))
@@ -432,6 +434,9 @@ describe('UserManagementPage', () => {
 
     const link = await screen.findByTestId('setup-link-value')
     expect(link).toHaveTextContent('token=')
+    expect(
+      screen.getByRole('dialog', { name: 'Einladungslink für „E. Extern“' }),
+    ).toBeInTheDocument()
     expect(screen.getByText(/Der Versand ist fehlgeschlagen/)).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Schließen' }))
