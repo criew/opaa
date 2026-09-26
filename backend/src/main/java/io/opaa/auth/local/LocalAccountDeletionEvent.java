@@ -11,7 +11,8 @@ import java.util.Objects;
  *
  * <p>A plain {@code @EventListener} runs in the publisher's transaction: everything a listener
  * writes commits with the deletion or not at all, and an exception from a listener fails the
- * deletion and stops the later ones - the order below is a contract.
+ * deletion and stops the later ones. The listeners are independent; the order below only keeps the
+ * audit entries in a stable sequence.
  */
 public record LocalAccountDeletionEvent(CurrentUser actor, User user) {
 

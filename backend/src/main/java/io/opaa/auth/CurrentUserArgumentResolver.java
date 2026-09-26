@@ -40,7 +40,9 @@ public class CurrentUserArgumentResolver implements HandlerMethodArgumentResolve
 
   /**
    * Attaches the caller of an external-access token call to {@code request} - always the reduced
-   * snapshot of {@link CurrentUser#forExternalAccess}, never the person's full identity.
+   * snapshot of {@link CurrentUser#forExternalAccess}, never the person's full identity. Its one
+   * intended caller is the access-token filter of {@code io.opaa.externalaccess}; nothing else
+   * binds a caller through it.
    */
   public static void bindExternalAccessCaller(HttpServletRequest request, User user) {
     request.setAttribute(REQUEST_ATTRIBUTE, CurrentUser.forExternalAccess(user));
