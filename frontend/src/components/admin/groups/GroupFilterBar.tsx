@@ -87,7 +87,7 @@ export default function GroupFilterBar() {
       >
         <MenuItem value="ALL">Alle Gruppen</MenuItem>
         <MenuItem value="INTERNAL">Intern</MenuItem>
-        <MenuItem value="PROVIDER">Alle Anbieter</MenuItem>
+        <MenuItem value="PROVIDER">Alle Identitätsanbieter</MenuItem>
         {providerOptions.map((provider) => (
           <MenuItem key={provider.id} value={`${PROVIDER_OPTION_PREFIX}${provider.id}`}>
             {provider.displayName}
