@@ -1,6 +1,6 @@
 package io.opaa.indexing.metadata;
 
-import io.opaa.indexing.document.Document;
+import io.opaa.knowledge.Document;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;

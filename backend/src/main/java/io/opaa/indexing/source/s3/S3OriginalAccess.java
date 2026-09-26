@@ -1,6 +1,8 @@
 package io.opaa.indexing.source.s3;
 
-import io.opaa.library.KnowledgeLibrary;
+import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.sourcesettings.S3Scope;
+import io.opaa.knowledge.sourcesettings.S3SourceSettings;
 import io.opaa.s3.S3AccessException;
 import io.opaa.s3.S3Connection;
 import java.util.List;
@@ -50,9 +52,10 @@ public class S3OriginalAccess {
    * or above the size bound.
    *
    * <p>A {@code 403} on the object is "not there" too, the same way {@code
-   * io.opaa.library.S3UploadedOriginalStore} resolves one: without {@code s3:ListBucket} - a right
-   * a policy can lose after indexing - AWS answers a missing key with {@code 403} instead of {@code
-   * 404}, so answering it as a store failure would turn a deleted object into "store unreachable".
+   * io.opaa.knowledge.S3UploadedOriginalStore} resolves one: without {@code s3:ListBucket} - a
+   * right a policy can lose after indexing - AWS answers a missing key with {@code 403} instead of
+   * {@code 404}, so answering it as a store failure would turn a deleted object into "store
+   * unreachable".
    *
    * @throws S3AccessException when the store cannot be reached or refuses the request as a whole -
    *     deliberately not folded into the empty result, because that is not "there is no original"

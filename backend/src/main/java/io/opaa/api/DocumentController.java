@@ -2,7 +2,7 @@ package io.opaa.api;
 
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
-import io.opaa.library.DocumentContent;
+import io.opaa.knowledge.DocumentContent;
 import io.opaa.library.LibraryDocumentService;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;

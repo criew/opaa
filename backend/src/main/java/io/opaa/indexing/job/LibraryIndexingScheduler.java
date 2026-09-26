@@ -1,8 +1,8 @@
 package io.opaa.indexing.job;
 
 import io.opaa.common.ConflictException;
-import io.opaa.library.KnowledgeLibrary;
-import io.opaa.library.KnowledgeLibraryRepository;
+import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.KnowledgeLibraryRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;

@@ -8,7 +8,7 @@ import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.format.SupportedDocumentFormats;
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.source.IndexingRun;
-import io.opaa.library.LibraryStorageQuotaService;
+import io.opaa.knowledge.LibraryStorageQuotaService;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.RedirectFollowingFetcher;
@@ -25,10 +25,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Indexes the attachments of a parent document into their own {@link
- * io.opaa.indexing.document.Document} rows (ADR-0022) - the shared path RSS, Mail and Confluence
- * all use. It depends on no connector package: a caller supplies an {@link AttachmentAccess} and a
- * list of {@link AttachmentSource}.
+ * Indexes the attachments of a parent document into their own {@link io.opaa.knowledge.Document}
+ * rows (ADR-0022) - the shared path RSS, Mail and Confluence all use. It depends on no connector
+ * package: a caller supplies an {@link AttachmentAccess} and a list of {@link AttachmentSource}.
  *
  * <p>An attachment failure never propagates: a lost attachment is logged and skipped with no effect
  * on the parent's outcome, but marks {@link AttachmentAccess#markDeferred()} so a later conditional

@@ -1,6 +1,6 @@
 package io.opaa.indexing.chunk;
 
-import io.opaa.indexing.document.SourceDocumentContext;
+import io.opaa.knowledge.SourceDocumentContext;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;

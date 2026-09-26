@@ -8,6 +8,7 @@ import static org.mockito.Mockito.withSettings;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.asset.Asset;
 import io.opaa.common.ConflictException;
+import io.opaa.knowledge.KnowledgeLibrary;
 import java.util.UUID;
 import org.hibernate.proxy.HibernateProxy;
 import org.hibernate.proxy.LazyInitializer;

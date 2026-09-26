@@ -38,7 +38,7 @@ import org.springframework.context.annotation.ClassPathScanningCandidateComponen
 class SourceAccessDependencyStructureTest {
 
   private static final Set<String> FORBIDDEN_PACKAGE_PREFIXES =
-      Set.of("io.opaa.indexing", "io.opaa.library", "io.opaa.api");
+      Set.of("io.opaa.indexing", "io.opaa.knowledge", "io.opaa.library", "io.opaa.api");
 
   @Test
   void sourceAccessImportsNeitherIndexingNorLibraryNorApi() {
@@ -49,8 +49,8 @@ class SourceAccessDependencyStructureTest {
 
     assertThat(offenses)
         .as(
-            "io.opaa.sourceaccess must not reference io.opaa.indexing, io.opaa.library or"
-                + " io.opaa.api in any field/parameter/return type - a source-access"
+            "io.opaa.sourceaccess must not reference io.opaa.indexing, io.opaa.knowledge,"
+                + " io.opaa.library or io.opaa.api in any field/parameter/return type - a source-access"
                 + " primitive has no business knowing about a knowledge library, indexing"
                 + " internals or a generated DTO")
         .isEmpty();

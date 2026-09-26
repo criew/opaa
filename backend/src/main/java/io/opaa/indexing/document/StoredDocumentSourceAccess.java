@@ -2,10 +2,12 @@ package io.opaa.indexing.document;
 
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.indexing.FilesystemPathAllowlist;
-import io.opaa.library.KnowledgeLibrary;
-import io.opaa.library.KnowledgeLibraryRepository;
-import io.opaa.library.UploadedOriginalRef;
-import io.opaa.library.UploadedOriginalStore;
+import io.opaa.knowledge.Document;
+import io.opaa.knowledge.DocumentRepository;
+import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.knowledge.UploadedOriginalRef;
+import io.opaa.knowledge.UploadedOriginalStore;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;

@@ -9,11 +9,11 @@ import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.chunk.EmbeddingRateEstimator;
-import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.indexing.maintenance.ContextPrefixRerunService;
-import io.opaa.library.KnowledgeLibrary;
-import io.opaa.library.KnowledgeLibraryRepository;
-import io.opaa.library.LibraryAccessService;
+import io.opaa.knowledge.DocumentRepository;
+import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.knowledge.LibraryAccessService;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -260,7 +260,8 @@ public class LibraryMetadataFieldService {
     if (wasPrefixEffective != contextPrefix) {
       // Both directions cost the same, and both cost it for exactly the documents that carry a
       // value: for every other document the prefix is unchanged.
-      documentRepository.clearContextPrefixStampForField(library.getId(), field.documentFieldKey());
+      documentValueRepository.clearContextPrefixStampForField(
+          library.getId(), field.documentFieldKey());
     }
     schemaChanged(library);
     return new LibraryMetadataFieldDefinition(field, valuesOfField(field.getId()));
@@ -404,7 +405,7 @@ public class LibraryMetadataFieldService {
     if (field.isContextPrefixEnabled()) {
       // A document carries the code, so no value moves - but the Kontextpraefix carries the label,
       // so the indexed text of the documents carrying exactly this value does change.
-      documentRepository.clearContextPrefixStampForValue(library.getId(), value.getId());
+      documentValueRepository.clearContextPrefixStampForValue(library.getId(), value.getId());
     }
     schemaChanged(library);
     return new LibraryMetadataFieldDefinition(field, valuesOfField(field.getId()));
@@ -605,11 +606,11 @@ public class LibraryMetadataFieldService {
     if (library.applyCoreContextPrefix(documentType, documentDate)) {
       libraryRepository.save(library);
       if (typeSwitched) {
-        documentRepository.clearContextPrefixStampForField(
+        documentValueRepository.clearContextPrefixStampForField(
             library.getId(), CoreMetadataField.DOCUMENT_TYPE.key());
       }
       if (dateSwitched) {
-        documentRepository.clearContextPrefixStampForField(
+        documentValueRepository.clearContextPrefixStampForField(
             library.getId(), CoreMetadataField.DOCUMENT_DATE.key());
       }
       schemaChanged(library);

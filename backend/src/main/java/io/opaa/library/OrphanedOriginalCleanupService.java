@@ -2,7 +2,12 @@ package io.opaa.library;
 
 import io.opaa.api.types.OrphanedOriginalSkipReason;
 import io.opaa.common.NotFoundException;
-import io.opaa.indexing.document.DocumentRepository;
+import io.opaa.knowledge.DocumentRepository;
+import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.knowledge.UploadProperties;
+import io.opaa.knowledge.UploadStoreUnavailableException;
+import io.opaa.knowledge.UploadedOriginalRef;
+import io.opaa.knowledge.UploadedOriginalStore;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;

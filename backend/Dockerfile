@@ -33,7 +33,7 @@ RUN "$JAVA_HOME/bin/jlink" \
 # The mount points of the runtime image, owned by the unprivileged uid below. A skeleton stage
 # because the runtime stage has no shell for mkdir/chown, and COPY --from carries the ownership of
 # the source stage. /app/uploads is the only directory the application writes to
-# (io.opaa.library.FilesystemUploadedOriginalStore); /app/documents is read-only in practice but is
+# (io.opaa.knowledge.FilesystemUploadedOriginalStore); /app/documents is read-only in practice but is
 # created here so both mount points exist with the same owner. A *named volume* mounted onto either
 # of them inherits that ownership from the image, a bind mount does not - the host directory's own
 # owner governs there (docs/handbuch/deployment.md, "Nicht-root-Betrieb des Backend-Containers").

@@ -1,7 +1,7 @@
 package io.opaa.indexing.metadata;
 
 import io.opaa.api.types.DocumentStatus;
-import io.opaa.indexing.document.DocumentRepository;
+import io.opaa.knowledge.DocumentRepository;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;

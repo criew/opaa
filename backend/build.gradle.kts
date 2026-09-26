@@ -347,7 +347,7 @@ tasks.named("check") {
 // nowhere. Rebalance the lists when one job runs noticeably longer than the others.
 val testShards = mapOf(
     "api" to listOf(
-        "io.opaa.api.*", "io.opaa.library.*", "io.opaa.auth.*", "io.opaa.audit.*",
+        "io.opaa.api.*", "io.opaa.library.*", "io.opaa.knowledge.*", "io.opaa.auth.*", "io.opaa.audit.*",
         "io.opaa.chat.*", "io.opaa.space.*", "io.opaa.group.*", "io.opaa.permission.*",
         "io.opaa.branding.*",
         "io.opaa.security.*", "io.opaa.diagnosticaccess.*", "io.opaa.sourceaccess.*",

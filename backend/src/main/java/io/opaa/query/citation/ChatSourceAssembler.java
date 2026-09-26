@@ -7,13 +7,13 @@ import io.opaa.chat.ChatSource;
 import io.opaa.chat.ChatSourceLocation;
 import io.opaa.chat.ChatSourceMetadataEntry;
 import io.opaa.indexing.chunk.ChunkingService;
-import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.indexing.metadata.CitationFieldValue;
 import io.opaa.indexing.metadata.CitationMetadataReader;
 import io.opaa.indexing.metadata.CoreMetadata;
 import io.opaa.indexing.metadata.DocumentMetadataService;
 import io.opaa.indexing.metadata.MetadataFilter;
-import io.opaa.library.KnowledgeLibraryRepository;
+import io.opaa.knowledge.DocumentRepository;
+import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.query.SearchedLibraryRef;
 import io.opaa.query.retrieval.ChunkGroupingKey;
 import io.opaa.query.retrieval.scope.MetadataFilterExpressions;
@@ -79,8 +79,7 @@ public class ChatSourceAssembler {
       MetadataFilter metadataFilter) {
     logInvalidCitations(validatedCitations);
     Map<String, Integer> matchCounts = countMatchesPerDocument(chunks);
-    Map<String, io.opaa.indexing.document.Document> sourceDocumentsByDocId =
-        lookupSourceDocuments(chunks);
+    Map<String, io.opaa.knowledge.Document> sourceDocumentsByDocId = lookupSourceDocuments(chunks);
     Map<UUID, CoreMetadata> coreMetadataByDocId = lookupCoreMetadata(sourceDocumentsByDocId);
     Map<UUID, List<CitationFieldValue>> citationFieldsByDocId =
         lookupCitationFields(sourceDocumentsByDocId);
@@ -121,20 +120,19 @@ public class ChatSourceAssembler {
 
   /**
    * Resolves each cited chunk's {@code document_id} to its persisted {@link
-   * io.opaa.indexing.document.Document} - the single {@link DocumentRepository} lookup {@link
-   * #mapSources} draws {@code indexedAt}, {@code sourceEntryUrl} and the source type from, rather
-   * than one lookup per field. The values are read from the document instead of being duplicated
-   * onto every chunk of the vector store.
+   * io.opaa.knowledge.Document} - the single {@link DocumentRepository} lookup {@link #mapSources}
+   * draws {@code indexedAt}, {@code sourceEntryUrl} and the source type from, rather than one
+   * lookup per field. The values are read from the document instead of being duplicated onto every
+   * chunk of the vector store.
    */
-  private Map<String, io.opaa.indexing.document.Document> lookupSourceDocuments(
-      List<Document> chunks) {
+  private Map<String, io.opaa.knowledge.Document> lookupSourceDocuments(List<Document> chunks) {
     Set<String> documentIds =
         chunks.stream()
             .map(c -> c.getMetadata().getOrDefault("document_id", "").toString())
             .filter(id -> !id.isEmpty())
             .collect(Collectors.toSet());
 
-    Map<String, io.opaa.indexing.document.Document> result = new LinkedHashMap<>();
+    Map<String, io.opaa.knowledge.Document> result = new LinkedHashMap<>();
     for (String docId : documentIds) {
       try {
         documentRepository
@@ -156,10 +154,10 @@ public class ChatSourceAssembler {
    * logged and yields no core fields rather than failing the answer.
    */
   private Map<UUID, CoreMetadata> lookupCoreMetadata(
-      Map<String, io.opaa.indexing.document.Document> sourceDocumentsByDocId) {
+      Map<String, io.opaa.knowledge.Document> sourceDocumentsByDocId) {
     Set<UUID> ids =
         sourceDocumentsByDocId.values().stream()
-            .map(io.opaa.indexing.document.Document::getId)
+            .map(io.opaa.knowledge.Document::getId)
             .collect(Collectors.toSet());
     try {
       return documentMetadataService.coreMetadataFor(ids);
@@ -190,7 +188,7 @@ public class ChatSourceAssembler {
    * failing the answer, exactly like the core-field lookup.
    */
   private Map<UUID, List<CitationFieldValue>> lookupCitationFields(
-      Map<String, io.opaa.indexing.document.Document> sourceDocumentsByDocId) {
+      Map<String, io.opaa.knowledge.Document> sourceDocumentsByDocId) {
     try {
       return citationMetadataReader.forDocuments(sourceDocumentsByDocId.values());
     } catch (RuntimeException e) {
@@ -206,7 +204,7 @@ public class ChatSourceAssembler {
       List<Document> chunks,
       List<CitationValidator.ValidatedCitation> validatedCitations,
       Map<String, Integer> matchCounts,
-      Map<String, io.opaa.indexing.document.Document> sourceDocumentsByDocId,
+      Map<String, io.opaa.knowledge.Document> sourceDocumentsByDocId,
       Map<UUID, CoreMetadata> coreMetadataByDocId,
       Map<UUID, List<CitationFieldValue>> citationFieldsByDocId,
       MetadataFilter metadataFilter) {
@@ -242,7 +240,7 @@ public class ChatSourceAssembler {
                   boolean cited = validCitedDocumentIds.contains(documentId);
                   boolean citationValid = !documentIdsWithInvalidCitation.contains(documentId);
                   int matches = matchCounts.getOrDefault(groupKey, 1);
-                  io.opaa.indexing.document.Document sourceDocument =
+                  io.opaa.knowledge.Document sourceDocument =
                       sourceDocumentsByDocId.get(documentId);
                   Instant indexedAt = sourceDocument != null ? sourceDocument.getIndexedAt() : null;
                   String sourceEntryUrl =

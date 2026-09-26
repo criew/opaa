@@ -12,7 +12,7 @@ import io.opaa.asset.AssetGrantService;
 import io.opaa.asset.AssetVisibilityHistoryRepository;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
-import io.opaa.library.KnowledgeLibrary;
+import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;

@@ -13,7 +13,7 @@ import org.springframework.scheduling.support.CronExpression;
 
 /**
  * Translates between the four fixed intervalstufen a library's indexing schedule may take and the
- * cron expression {@link io.opaa.library.KnowledgeLibrary#getScheduleCron()} stores - the single
+ * cron expression {@link io.opaa.knowledge.KnowledgeLibrary#getScheduleCron()} stores - the single
  * place that knows the mapping. Every expression this class writes it can also read back exactly,
  * and {@link #parse} only ever meets data this class itself wrote, since the API never accepts a
  * raw cron string.
@@ -37,8 +37,8 @@ public final class LibraryScheduleCodec {
 
   /**
    * Builds the cron expression for an already-validated schedule ({@code
-   * io.opaa.library.KnowledgeLibraryService#validateSchedule} enforces which of hour/minute/
-   * weekday are required for each frequency before this is ever called). Never called for {@link
+   * KnowledgeLibraryService#validateSchedule} enforces which of hour/minute/weekday are required
+   * for each frequency before this is ever called). Never called for {@link
    * ScheduleFrequency#DISABLED} - a disabled schedule stores no cron at all ({@code
    * chk_knowledge_libraries_schedule}).
    */

@@ -1,7 +1,8 @@
 package io.opaa.library;
 
 import io.opaa.asset.AssetExtent;
-import io.opaa.indexing.document.DocumentRepository;
+import io.opaa.knowledge.DocumentRepository;
+import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.permission.AssetType;
 import java.util.Collection;
 import java.util.Map;

@@ -1,10 +1,10 @@
 package io.opaa.indexing.maintenance;
 
 import io.opaa.api.types.DocumentStatus;
-import io.opaa.indexing.document.Document;
-import io.opaa.indexing.document.DocumentRepository;
-import io.opaa.library.KnowledgeLibrary;
-import io.opaa.library.KnowledgeLibraryRepository;
+import io.opaa.knowledge.Document;
+import io.opaa.knowledge.DocumentRepository;
+import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.KnowledgeLibraryRepository;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;

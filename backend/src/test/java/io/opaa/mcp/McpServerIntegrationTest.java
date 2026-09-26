@@ -20,7 +20,7 @@ import io.opaa.externalaccess.ExternalAccessSettingsService;
 import io.opaa.externalaccess.token.ExternalAccessTokenService;
 import io.opaa.indexing.chunk.ChunkingService;
 import io.opaa.indexing.chunk.VectorChunkStore;
-import io.opaa.indexing.document.DocumentRepository;
+import io.opaa.knowledge.DocumentRepository;
 import io.opaa.library.LibraryExternalAccessService;
 import io.opaa.test.OpaaIntegrationTest;
 import java.net.URI;
@@ -770,8 +770,8 @@ class McpServerIntegrationTest {
   }
 
   private UUID insertDocument(UUID library, String fileName, List<Passage> passages) {
-    io.opaa.indexing.document.Document document =
-        new io.opaa.indexing.document.Document(
+    io.opaa.knowledge.Document document =
+        new io.opaa.knowledge.Document(
             fileName, "/" + fileName, "text/markdown", 100L, DocumentSourceType.UPLOAD);
     document.setLibraryId(library);
     document.setOrganizationId(DEFAULT_ORGANIZATION_ID);

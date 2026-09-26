@@ -7,8 +7,10 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 public interface DocumentMetadataValueRepository
     extends JpaRepository<DocumentMetadataValue, UUID> {
@@ -227,6 +229,35 @@ public interface DocumentMetadataValueRepository
       @Param("libraryId") UUID libraryId,
       @Param("status") DocumentStatus status,
       @Param("libraryValueId") UUID libraryValueId);
+
+  /**
+   * Hands exactly the indexed documents that carry a value for {@code fieldKey} to the Nachlauf -
+   * the same set {@link #impactOfField} counts for the Folgekosten preview, so the price shown and
+   * the price paid are one number.
+   *
+   * @return the number of documents marked
+   */
+  @Modifying
+  @Transactional
+  @Query(
+      "update Document d set d.contextPrefixStamp = null where d.libraryId = :libraryId"
+          + " and d.status = io.opaa.api.types.DocumentStatus.INDEXED and d.id in"
+          + " (select v.documentId from DocumentMetadataValue v where v.fieldKey = :fieldKey"
+          + " and v.state = io.opaa.indexing.metadata.MetadataValueState.SET)")
+  int clearContextPrefixStampForField(
+      @Param("libraryId") UUID libraryId, @Param("fieldKey") String fieldKey);
+
+  /** The same marking for the documents carrying one value of a library field's list. */
+  @Modifying
+  @Transactional
+  @Query(
+      "update Document d set d.contextPrefixStamp = null where d.libraryId = :libraryId"
+          + " and d.status = io.opaa.api.types.DocumentStatus.INDEXED and d.id in"
+          + " (select v.documentId from DocumentMetadataValue v"
+          + " where v.libraryValueId = :libraryValueId"
+          + " and v.state = io.opaa.indexing.metadata.MetadataValueState.SET)")
+  int clearContextPrefixStampForValue(
+      @Param("libraryId") UUID libraryId, @Param("libraryValueId") UUID libraryValueId);
 
   /** One row of {@link #impactOfField}/{@link #impactOfValue}. */
   interface FieldImpactCount {

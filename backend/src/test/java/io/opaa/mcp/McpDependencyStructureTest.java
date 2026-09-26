@@ -24,8 +24,9 @@ import org.springframework.context.annotation.ClassPathScanningCandidateComponen
  * <p>Four forbidden directions, for four reasons. A vector store or the retrieval internals would
  * be a <b>second ranking path</b>; an answer generator would make this the assistant interface the
  * channel explicitly is not; a repository of the index would be a <b>second read path past the
- * permission filter</b>; and {@code io.opaa.library} would be the second place the effective view
- * is formed - the one place is {@code io.opaa.search.SearchScopeSource}.
+ * permission filter</b>; and {@code io.opaa.library} or its holdings in {@code io.opaa.knowledge}
+ * would be the second place the effective view is formed - the one place is {@code
+ * io.opaa.search.SearchScopeSource}.
  */
 class McpDependencyStructureTest {
 
@@ -37,6 +38,7 @@ class McpDependencyStructureTest {
           "io.opaa.query.citation",
           "io.opaa.indexing.chunk",
           "io.opaa.indexing.document",
+          "io.opaa.knowledge",
           "io.opaa.library",
           "io.opaa.searchadmin");
 

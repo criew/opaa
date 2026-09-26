@@ -2,6 +2,7 @@ package io.opaa.indexing.document;
 
 import io.opaa.indexing.chunk.PageMarkingContentHandler;
 import io.opaa.indexing.format.SupportedDocumentFormats;
+import io.opaa.knowledge.Document;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;

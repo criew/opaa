@@ -1,6 +1,6 @@
 package io.opaa.indexing.source;
 
-import io.opaa.library.LibraryFolderService;
+import io.opaa.knowledge.LibraryFolderService;
 import java.util.List;
 
 /**

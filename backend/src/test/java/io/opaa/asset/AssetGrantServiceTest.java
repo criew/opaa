@@ -23,7 +23,7 @@ import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
-import io.opaa.library.KnowledgeLibrary;
+import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.permission.AssetAccessService;
 import io.opaa.permission.AssetGrant;
 import io.opaa.permission.AssetGrantRepository;

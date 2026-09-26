@@ -1,5 +1,7 @@
 package io.opaa.library;
 
+import io.opaa.knowledge.LibraryFolder;
+import io.opaa.knowledge.LibraryFolderRepository;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Map;

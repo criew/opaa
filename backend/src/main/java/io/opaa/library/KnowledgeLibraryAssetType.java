@@ -6,6 +6,7 @@ import io.opaa.api.types.DocumentSourceType;
 import io.opaa.asset.Asset;
 import io.opaa.asset.AssetTypeDefinition;
 import io.opaa.common.ConflictException;
+import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.permission.AssetType;
 import org.hibernate.Hibernate;
 import org.springframework.stereotype.Component;

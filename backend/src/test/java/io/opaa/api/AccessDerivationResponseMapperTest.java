@@ -10,7 +10,7 @@ import io.opaa.api.types.GroupMechanism;
 import io.opaa.api.types.GroupOrigin;
 import io.opaa.api.types.SpaceRole;
 import io.opaa.asset.AssetAccessDerivation;
-import io.opaa.library.KnowledgeLibrary;
+import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.permission.AccessPath;
 import io.opaa.permission.GroupAttribution;
 import io.opaa.space.SpaceAccessDerivation;

@@ -3,7 +3,7 @@ package io.opaa.externalaccess.token;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.externalaccess.ExternalAccessSettingsService;
-import io.opaa.library.LibraryAccessService;
+import io.opaa.knowledge.LibraryAccessService;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.LinkedHashSet;

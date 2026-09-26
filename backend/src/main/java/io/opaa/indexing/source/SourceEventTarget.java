@@ -2,7 +2,7 @@ package io.opaa.indexing.source;
 
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
-import io.opaa.library.KnowledgeLibrary;
+import io.opaa.knowledge.KnowledgeLibrary;
 import java.util.Set;
 import java.util.UUID;
 

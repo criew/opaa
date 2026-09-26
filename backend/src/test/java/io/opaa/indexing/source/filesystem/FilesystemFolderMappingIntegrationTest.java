@@ -8,16 +8,16 @@ import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.indexing.document.ChecksumService;
-import io.opaa.indexing.document.Document;
-import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.indexing.job.DocumentIndexingService;
 import io.opaa.indexing.job.IndexingJob;
 import io.opaa.indexing.job.IndexingJobRepository;
 import io.opaa.indexing.job.JobStatus;
-import io.opaa.library.KnowledgeLibrary;
-import io.opaa.library.KnowledgeLibraryRepository;
-import io.opaa.library.LibraryFolder;
-import io.opaa.library.LibraryFolderRepository;
+import io.opaa.knowledge.Document;
+import io.opaa.knowledge.DocumentRepository;
+import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.knowledge.LibraryFolder;
+import io.opaa.knowledge.LibraryFolderRepository;
 import io.opaa.organization.Organization;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OpaaTestDirectory;
@@ -41,8 +41,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 /**
  * End-to-end coverage (ADR-0020): a FILESYSTEM library's real directory structure mirrored into
  * {@code library_folders} by {@link AsyncIndexingExecutor}/{@link
- * io.opaa.library.LibraryFolderService#materializeFolderPath}, kept in sync by {@link
- * io.opaa.library.LibraryFolderService#pruneOrphanedFolders}. Runs against the real Liquibase
+ * io.opaa.knowledge.LibraryFolderService#materializeFolderPath}, kept in sync by {@link
+ * io.opaa.knowledge.LibraryFolderService#pruneOrphanedFolders}. Runs against the real Liquibase
  * schema (AGENTS.md "Reproduktionsnachweis" - {@code fk_documents_folder}/{@code
  * fk_library_folders_parent} only exist there, not under {@code ddl-auto=create-drop}), the same
  * Testcontainers/fake-embedding-model setup every {@link io.opaa.test.OpaaIntegrationTest} class

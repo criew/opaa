@@ -1,10 +1,10 @@
 package io.opaa.indexing.source;
 
 import io.opaa.indexing.attachment.AttachmentAccess;
-import io.opaa.indexing.document.SourceDocumentContext;
 import io.opaa.indexing.job.AttachmentProgressSink;
 import io.opaa.indexing.job.IndexingEventSink;
-import io.opaa.library.KnowledgeLibrary;
+import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.SourceDocumentContext;
 
 /**
  * The {@link AttachmentAccess} of an {@link IndexingRun} that reconciles by absence (ADR-0022,
