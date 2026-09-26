@@ -7,7 +7,6 @@ import {
   fromDateInputValue,
   localAccountStateText,
   localUserErrorMessage,
-  shortenReason,
   toDateInputValue,
 } from './localUserLabels'
 
@@ -76,13 +75,6 @@ describe('localUserLabels', () => {
     const expected = new Date()
     expected.setDate(expected.getDate() + 30)
     expect(prefill).toBe(toDateInputValue(expected.toISOString()))
-  })
-
-  it('shortens a long creation reason and leaves a short one alone', () => {
-    expect(shortenReason('kurz')).toBe('kurz')
-    const long = 'x'.repeat(80)
-    expect(shortenReason(long)).toHaveLength(60)
-    expect(shortenReason(long).endsWith('…')).toBe(true)
   })
 
   it('prefers the curated text of a known conflict code', () => {

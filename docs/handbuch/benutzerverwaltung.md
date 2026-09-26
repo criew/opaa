@@ -160,7 +160,8 @@ Identitätsanbieter. Die **Herkunft** steht an jeder Zeile: „Lokal" mit einem 
 Name des Anbieters. Der Filter „Herkunft" grenzt auf lokale Konten, auf alle Anbieter oder auf einen
 einzelnen Anbieter ein.
 
-Ein **lokales Konto** zeigt Zustand, Rolle, Ablauf, Anlagedatum und Anlagegrund. Wann ein Konto
+Ein **lokales Konto** zeigt Zustand, Rolle, Ablauf und Anlagedatum; ohne Ablaufdatum steht dort
+„unbefristet". Den Anlagegrund zeigt und ändert der Dialog „Bearbeiten". Wann ein Konto
 zuletzt genutzt wurde, zeigt die Liste bewusst **nicht** — ein Zeitstempel der letzten Nutzung wäre
 der Rohstoff für eine Anwesenheitsauswertung. Wer Konten sucht, an denen eine Sperre oder Löschung
 der nächste Schritt wäre, nimmt den Filter **länger nicht genutzt**. Aus demselben Grund gibt es

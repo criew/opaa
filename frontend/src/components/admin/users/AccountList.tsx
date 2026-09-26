@@ -31,7 +31,6 @@ import {
   SYSTEM_ROLE_LABEL,
   formatExpiry,
   localAccountStateText,
-  shortenReason,
 } from './localUserLabels'
 
 const STATE_DOT_COLOR: Record<LocalAccountState, string> = {
@@ -184,11 +183,9 @@ function SortableLabel({ field, label }: SortableLabelProps) {
 interface SortableHeadProps {
   fields: AccountSortField[]
   width?: string
-  /** The column's second, unsortable value - „Anlagegrund" under „Angelegt". */
-  secondLine?: string
 }
 
-function SortableHead({ fields, width, secondLine }: SortableHeadProps) {
+function SortableHead({ fields, width }: SortableHeadProps) {
   const filters = useUserAdminStore((s) => s.filters)
   const active = fields.includes(filters.sort)
   return (
@@ -208,11 +205,6 @@ function SortableHead({ fields, width, secondLine }: SortableHeadProps) {
           </Box>
         ))}
       </Stack>
-      {secondLine && (
-        <Box component="span" sx={{ display: 'block', color: 'text.disabled' }}>
-          {secondLine}
-        </Box>
-      )}
     </TableCell>
   )
 }
@@ -312,11 +304,6 @@ function AccountCard(props: RowProps) {
         {account.roleManagedByProvider ? ' (vom Anbieter geführt)' : ''} · Ablauf{' '}
         {expiryText(account)}
       </Typography>
-      {account.local && (
-        <Typography sx={{ fontSize: 12, color: 'text.secondary', mt: 0.5 }}>
-          {shortenReason(account.local.createdReason, 120)}
-        </Typography>
-      )}
     </Box>
   )
 }
@@ -342,13 +329,6 @@ function AccountTableRow(props: RowProps) {
       </TableCell>
       <TableCell>
         <Typography sx={{ fontSize: 13 }}>{formatExpiry(account.createdAt)}</Typography>
-        {account.local && (
-          <Tooltip title={account.local.createdReason}>
-            <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
-              {shortenReason(account.local.createdReason)}
-            </Typography>
-          </Tooltip>
-        )}
       </TableCell>
       <TableCell align="right">
         <RowMenu {...props} />
@@ -436,10 +416,10 @@ interface AccountListProps extends RowHandlers {
 }
 
 /**
- * Die Liste aller Konten (#1541, #1601, ADR-0033 Entscheidung 11): lokale Konten mit Zustand,
- * Ablauf und Anlagegrund, Anbieterkonten mit ihrem Anbieter - am Desktop eine Tabelle, unter
- * Tablet-Breite eine Kartenliste (guidelines 5.3). Name und Adresse teilen sich eine Zelle, sonst
- * bleibt für Herkunft und Anlagegrund keine lesbare Breite. Die Aktivität eines Kontos zeigt die
+ * Die Liste aller Konten (#1541, #1601, ADR-0033 Entscheidung 11): lokale Konten mit Zustand und
+ * Ablauf, Anbieterkonten mit ihrem Anbieter - am Desktop eine Tabelle, unter Tablet-Breite eine
+ * Kartenliste (guidelines 5.3). Name und Adresse teilen sich eine Zelle. Der Anlagegrund steht im
+ * Bearbeiten-Dialog, nicht in der Liste. Die Aktivität eines Kontos zeigt die
  * Liste nicht; sie wirkt nur als Filter „länger nicht genutzt".
  */
 export default function AccountList({ currentUserId, ...handlers }: AccountListProps) {
@@ -470,9 +450,9 @@ export default function AccountList({ currentUserId, ...handlers }: AccountListP
           size="small"
           aria-label="Konten"
           sx={{
-            // Feste Breiten, weil der Inhalt es nicht ist: E-Mail-Adressen, Anbieternamen und
-            // Anlagegründe sind beliebig lang. Ohne overflow liefe jede dieser Zellen in ihre
-            // Nachbarin - mit ihr schneidet sie ab, und der Tooltip nennt den vollen Wert.
+            // Feste Breiten, weil der Inhalt es nicht ist: E-Mail-Adressen und Anbieternamen sind
+            // beliebig lang. Ohne overflow liefe jede dieser Zellen in ihre Nachbarin - mit ihr
+            // schneidet sie ab, und der Tooltip nennt den vollen Wert.
             tableLayout: 'fixed',
             '& th': { fontFamily: fontFamily.mono, fontSize: 10, letterSpacing: '0.08em' },
             '& td': { fontSize: 13, py: 1.25, verticalAlign: 'top', overflow: 'hidden' },
@@ -485,10 +465,7 @@ export default function AccountList({ currentUserId, ...handlers }: AccountListP
               <SortableHead fields={['role']} width="13%" />
               <SortableHead fields={['status']} width="16%" />
               <SortableHead fields={['expiresAt']} width="11%" />
-              {/* Zwei Zeilen im Kopf, aber nur die obere sortiert: `sortDirection` gehört
-                  trotzdem an die Zelle, sonst meldet keine Spalte eine Richtung, sobald nach
-                  dem Anlagedatum sortiert wird. */}
-              <SortableHead fields={['createdAt']} width="19%" secondLine="Anlagegrund" />
+              <SortableHead fields={['createdAt']} width="11%" />
               <TableCell align="right" sx={{ width: 56 }}>
                 <span style={visuallyHidden}>Aktionen</span>
               </TableCell>

@@ -137,7 +137,7 @@ describe('UserManagementPage', () => {
     renderAccounts()
 
     const table = await screen.findByRole('table', { name: 'Konten' })
-    // local rows: state, marker, reason - as before #1601; no activity class (#1978)
+    // local rows: state and marker; neither activity class nor creation reason (#1978)
     expect(within(table).getByText('Eingeladen')).toBeInTheDocument()
     expect(within(table).getByText('Gesperrt (Verwalter)')).toBeInTheDocument()
     expect(within(table).getByText('Abgelaufen')).toBeInTheDocument()
@@ -149,7 +149,10 @@ describe('UserManagementPage', () => {
     expect(within(table).getByRole('columnheader', { name: /Ablauf/ })).not.toHaveTextContent(
       /Aktivität/,
     )
-    expect(within(table).getByText(/Vertretung im Bauamt/)).toBeInTheDocument()
+    expect(within(table).queryByText(/Vertretung im Bauamt/)).not.toBeInTheDocument()
+    expect(within(table).getByRole('columnheader', { name: /Angelegt/ })).not.toHaveTextContent(
+      /Anlagegrund/,
+    )
     expect(within(table).getByText('Notanker')).toBeInTheDocument()
     expect(within(rowOf('T. Klein')).getByText('Lokal')).toBeInTheDocument()
 

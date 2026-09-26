@@ -139,9 +139,3 @@ export function defaultExpiryInputValue(days: number): string {
   date.setDate(date.getDate() + days)
   return toDateInputValue(date.toISOString())
 }
-
-/** The creation reason, shortened for the table; the full text stays in the edit dialog. */
-export function shortenReason(reason: string, maxLength = 60): string {
-  if (reason.length <= maxLength) return reason
-  return `${reason.slice(0, maxLength - 1).trimEnd()}…`
-}
