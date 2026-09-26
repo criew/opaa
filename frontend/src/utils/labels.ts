@@ -273,6 +273,23 @@ export function documentSourceTypeLabel(
   return documentSourceTypeLabels[sourceType as DocumentSourceType] ?? sourceType
 }
 
+const documentSourceTypeShortLabels: Record<DocumentSourceType, string> = {
+  UPLOAD: 'Upload',
+  FILESYSTEM: 'Dateisystem',
+  HTTP_DIRECTORY: 'Web',
+  RSS_FEED: 'Feed',
+  CONFLUENCE: 'Confluence',
+  S3: 'S3',
+}
+
+/** The origin as a card badge shows it; tables and forms keep {@link documentSourceTypeLabel}. */
+export function documentSourceTypeShortLabel(
+  sourceType: DocumentSourceType | string | undefined,
+): string {
+  if (!sourceType) return ''
+  return documentSourceTypeShortLabels[sourceType as DocumentSourceType] ?? sourceType
+}
+
 // One sentence per source type, shown on the origin cards in LibraryCreatePage (mockup 1e wording).
 const documentSourceTypeDescriptions: Record<DocumentSourceType, string> = {
   UPLOAD: 'Dateien auswählen oder hineinziehen; einzelne Dokumente pflegen.',

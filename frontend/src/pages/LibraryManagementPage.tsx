@@ -12,6 +12,7 @@ import {
   assetRoleLabel,
   documentCountLabel,
   documentSourceTypeLabel,
+  documentSourceTypeShortLabel,
 } from '../utils/labels'
 import MetaBadge from '../components/MetaBadge'
 import OverviewPage, { OverviewCard, OverviewRowLink } from '../components/overview/OverviewPage'
@@ -120,7 +121,7 @@ function LibraryCard({ library }: { library: LibraryListResponse }) {
       <SuccessionStateNote succession={library.succession} variant="badge" />
       <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 0.75 }}>
         <MetaBadge>Wissen</MetaBadge>
-        <MetaBadge>{documentSourceTypeLabel(library.sourceType)}</MetaBadge>
+        <MetaBadge>{documentSourceTypeShortLabel(library.sourceType)}</MetaBadge>
         <MetaBadge accent>{assetRoleLabel(library.myRole)}</MetaBadge>
         {/* #1931: die Reichweite ist abgeleitet, keine gespeicherte Stufe. */}
         <MetaBadge>{assetReachLabel(library.reach)}</MetaBadge>

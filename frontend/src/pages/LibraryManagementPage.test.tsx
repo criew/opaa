@@ -291,9 +291,9 @@ describe('LibraryManagementPage', () => {
     expect(screen.queryByRole('link', { name: /Dienstanweisungen/ })).not.toBeInTheDocument()
   })
 
-  it('marks each card with the type "Wissen" and its origin as badges (#1970)', async () => {
+  it('marks each card with the type "Wissen" and its short origin as badges (#1970)', async () => {
     const user = userEvent.setup()
-    setLibraryState([managerLibrary])
+    setLibraryState([managerLibrary, { ...viewerLibrary, sourceType: 'HTTP_DIRECTORY' }])
     renderWithProviders(<LibraryManagementPage />, { withRouter: true })
 
     await screen.findByRole('table')
@@ -303,6 +303,16 @@ describe('LibraryManagementPage', () => {
     expect(within(card).getByText('Wissen')).toBeInTheDocument()
     expect(within(card).getByText('Dateisystem')).toBeInTheDocument()
     expect(within(card).getByText('Referat 50 · 431 Dokumente')).toBeInTheDocument()
+    const webCard = screen.getByRole('link', { name: /Dienstanweisungen/ })
+    expect(within(webCard).getByText('Web')).toBeInTheDocument()
+    expect(within(webCard).queryByText('Webverzeichnis')).not.toBeInTheDocument()
+  })
+
+  it('keeps the long origin name in the table column (#1970)', async () => {
+    setLibraryState([{ ...managerLibrary, sourceType: 'HTTP_DIRECTORY' }])
+    renderWithProviders(<LibraryManagementPage />, { withRouter: true })
+
+    expect(await screen.findByRole('cell', { name: 'Webverzeichnis' })).toBeInTheDocument()
   })
 
   it('navigates to the create wizard from the header button', async () => {
