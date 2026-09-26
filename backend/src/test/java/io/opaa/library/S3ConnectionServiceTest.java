@@ -9,11 +9,11 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.source.s3.FakeS3ObjectStore;
-import io.opaa.indexing.source.s3.S3AccessException;
 import io.opaa.indexing.source.s3.S3ClientFactory;
-import io.opaa.indexing.source.s3.S3Connection;
 import io.opaa.indexing.source.s3.S3Scope;
 import io.opaa.indexing.source.s3.S3SourceSettings;
+import io.opaa.s3.S3AccessException;
+import io.opaa.s3.S3Connection;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

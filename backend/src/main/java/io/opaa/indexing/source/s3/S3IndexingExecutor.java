@@ -17,6 +17,8 @@ import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.indexing.source.VanishedDocumentPolicy;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryFolderService;
+import io.opaa.s3.S3AccessException;
+import io.opaa.s3.S3Connection;
 import java.time.Clock;
 import java.util.Map;
 import java.util.Set;

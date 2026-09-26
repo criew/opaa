@@ -1,5 +1,6 @@
 package io.opaa.indexing.source.s3;
 
+import io.opaa.s3.S3Connection;
 import java.nio.file.FileSystems;
 import java.util.ArrayList;
 import java.util.List;

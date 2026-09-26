@@ -6,7 +6,7 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.OrphanedOriginalSkipReason;
 import io.opaa.indexing.document.DocumentRepository;
-import io.opaa.indexing.source.s3.S3TestFixture;
+import io.opaa.s3.S3TestFixture;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;

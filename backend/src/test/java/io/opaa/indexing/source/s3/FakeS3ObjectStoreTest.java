@@ -3,6 +3,7 @@ package io.opaa.indexing.source.s3;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.opaa.s3.S3AccessException;
 import java.nio.file.Files;
 import org.junit.jupiter.api.Test;
 

@@ -1,4 +1,4 @@
-package io.opaa.indexing.source.s3;
+package io.opaa.s3;
 
 /**
  * The S3 call a failure is translated in the light of ({@link S3FailureTranslator}): a {@code 403}

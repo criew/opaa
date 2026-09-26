@@ -1,4 +1,4 @@
-package io.opaa.indexing.source.s3;
+package io.opaa.s3;
 
 /**
  * Credentials of an S3 library (ADR-0027, Entscheidung 7): a static access key and secret key,

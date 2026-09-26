@@ -1,6 +1,6 @@
 package io.opaa.test;
 
-import io.opaa.indexing.source.s3.S3TestFixture;
+import io.opaa.s3.S3TestFixture;
 
 /**
  * The one bucket the S3 upload store of {@link OpaaMockedChatModelIntegrationTest} writes to,

@@ -115,7 +115,7 @@ Die `regex`-Zeilen erscheinen in der Reihenfolge der `customManagers` (den erste
 trifft, hat gar keine Zeile** — das ist der Befund. Erwartet:
 
 ```
-DEBUG: Matched 1 file(s) for manager regex: backend/src/test/java/io/opaa/indexing/source/s3/S3TestFixture.java
+DEBUG: Matched 1 file(s) for manager regex: backend/src/test/java/io/opaa/s3/S3TestFixture.java
 DEBUG: Matched 1 file(s) for manager regex: backend/src/test/java/io/opaa/integration/keycloak/KeycloakFixture.java
 DEBUG: Matched 1 file(s) for manager regex: .github/workflows/sbom.yml
 ```

@@ -27,6 +27,7 @@ import io.opaa.library.LibraryFolder;
 import io.opaa.library.LibraryFolderRepository;
 import io.opaa.library.LibraryFolderService;
 import io.opaa.organization.Organization;
+import io.opaa.s3.S3AccessException;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.ProductionDocumentFormats;
 import java.nio.charset.StandardCharsets;

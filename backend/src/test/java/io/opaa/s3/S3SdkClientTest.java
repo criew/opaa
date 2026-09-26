@@ -1,4 +1,4 @@
-package io.opaa.indexing.source.s3;
+package io.opaa.s3;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -105,7 +105,7 @@ class S3SdkClientTest {
   }
 
   @Test
-  void aLibraryConnectionMapsOntoTheSettingsWithItsCredentialsAndBounds() {
+  void aConnectionMapsOntoTheSettingsWithItsCredentialsAndBounds() {
     S3Connection connection =
         new S3Connection(
             URI.create("https://s3.example"),
@@ -115,10 +115,9 @@ class S3SdkClientTest {
             "proxy.intern",
             3128,
             true);
-    S3Properties properties =
-        new S3Properties(0, 0, Duration.ofSeconds(11), 4, Duration.ofMillis(250), 0, null, 0, 0);
 
-    S3ClientSettings settings = S3ClientSettings.of(connection, properties);
+    S3ClientSettings settings =
+        S3ClientSettings.of(connection, Duration.ofSeconds(11), 4, Duration.ofMillis(250));
 
     assertThat(settings.endpoint()).isEqualTo(URI.create("https://s3.example"));
     assertThat(settings.region()).isEqualTo("eu-west-1");

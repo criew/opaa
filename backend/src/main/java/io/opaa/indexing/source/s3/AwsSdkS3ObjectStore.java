@@ -1,5 +1,13 @@
 package io.opaa.indexing.source.s3;
 
+import io.opaa.indexing.source.RequestBudgetExhaustedException;
+import io.opaa.s3.S3AccessException;
+import io.opaa.s3.S3ClientSettings;
+import io.opaa.s3.S3Connection;
+import io.opaa.s3.S3FailureTranslator;
+import io.opaa.s3.S3Operation;
+import io.opaa.s3.S3RequestGuard;
+import io.opaa.s3.S3SdkClient;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedStreams;
 import io.opaa.sourceaccess.SourceRequestMeter;
@@ -35,6 +43,7 @@ final class AwsSdkS3ObjectStore implements S3ObjectStore {
   private final S3Properties properties;
   private final SourceRequestMeter meter = new SourceRequestMeter();
   private final S3RequestGuard guard;
+  private final int requestBudget;
   private final S3FailureTranslator translator;
   private final S3SdkClient client;
   private final S3Client s3;
@@ -52,13 +61,26 @@ final class AwsSdkS3ObjectStore implements S3ObjectStore {
             meter,
             requestBudget,
             requestObserver);
-    this.translator = S3FailureTranslator.forConnector(properties);
-    this.client = S3SdkClient.open(S3ClientSettings.of(connection, properties), guard);
+    this.requestBudget = requestBudget;
+    this.translator =
+        new S3FailureTranslator(
+            properties.requestTimeout(),
+            properties.maxRetries(),
+            TargetAddressValidator.ALLOWLIST_HINT,
+            RequestBudgetExhaustedException::requests);
+    this.client =
+        S3SdkClient.open(
+            S3ClientSettings.of(
+                connection,
+                properties.requestTimeout(),
+                properties.maxRetries(),
+                properties.retryBackoff()),
+            guard);
     this.s3 = client.s3();
   }
 
   int requestBudget() {
-    return guard.requestBudget();
+    return requestBudget;
   }
 
   @Override

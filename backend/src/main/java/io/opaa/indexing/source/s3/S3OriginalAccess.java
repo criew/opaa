@@ -1,6 +1,8 @@
 package io.opaa.indexing.source.s3;
 
 import io.opaa.library.KnowledgeLibrary;
+import io.opaa.s3.S3AccessException;
+import io.opaa.s3.S3Connection;
 import java.util.List;
 import java.util.Optional;
 import org.slf4j.Logger;

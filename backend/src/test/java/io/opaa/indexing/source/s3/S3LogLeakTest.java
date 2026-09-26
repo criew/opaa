@@ -7,6 +7,10 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import io.opaa.s3.S3AccessException;
+import io.opaa.s3.S3Connection;
+import io.opaa.s3.S3Credentials;
+import io.opaa.s3.StubS3Server;
 import io.opaa.security.TargetAddressValidator;
 import java.io.InputStream;
 import java.net.URI;
@@ -49,6 +53,8 @@ class S3LogLeakTest {
   private static final Map<String, Level> WATCHED =
       Map.of(
           "io.opaa.indexing.source.s3",
+          Level.TRACE,
+          "io.opaa.s3",
           Level.TRACE,
           "io.opaa.sourceaccess",
           Level.TRACE,

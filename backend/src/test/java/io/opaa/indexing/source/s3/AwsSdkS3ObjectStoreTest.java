@@ -4,6 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.indexing.source.RequestBudgetExhaustedException;
+import io.opaa.s3.S3AccessException;
+import io.opaa.s3.S3Connection;
+import io.opaa.s3.S3Credentials;
+import io.opaa.s3.StubS3Server;
 import io.opaa.security.TargetAddressValidator;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;

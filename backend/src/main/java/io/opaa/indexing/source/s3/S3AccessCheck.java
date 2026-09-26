@@ -1,5 +1,7 @@
 package io.opaa.indexing.source.s3;
 
+import io.opaa.s3.S3AccessException;
+
 /**
  * What {@link S3ObjectStore#testAccess} found out about one scope, step by step. A refused step
  * ends the probe; {@code failure} carries its diagnosis for the connection test to render.

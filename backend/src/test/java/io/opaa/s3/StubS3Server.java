@@ -1,4 +1,4 @@
-package io.opaa.indexing.source.s3;
+package io.opaa.s3;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
@@ -82,7 +82,7 @@ public final class StubS3Server implements AutoCloseable {
   }
 
   /** Serves {@code key} chunked, without a {@code Content-Length} the client could reject early. */
-  void serveChunked(String bucket, String key) {
+  public void serveChunked(String bucket, String key) {
     chunkedKeys.add(bucket + "/" + key);
   }
 
@@ -112,7 +112,7 @@ public final class StubS3Server implements AutoCloseable {
     return seen;
   }
 
-  static String md5(byte[] bytes) {
+  public static String md5(byte[] bytes) {
     try {
       return HexFormat.of().formatHex(MessageDigest.getInstance("MD5").digest(bytes));
     } catch (Exception e) {

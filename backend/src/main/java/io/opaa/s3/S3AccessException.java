@@ -1,4 +1,4 @@
-package io.opaa.indexing.source.s3;
+package io.opaa.s3;
 
 import io.opaa.security.TargetAddressValidator;
 import java.io.IOException;

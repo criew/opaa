@@ -5,11 +5,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.source.s3.S3ClientFactory;
-import io.opaa.indexing.source.s3.S3Credentials;
 import io.opaa.indexing.source.s3.S3Properties;
 import io.opaa.indexing.source.s3.S3Scope;
 import io.opaa.indexing.source.s3.S3SourceSettings;
-import io.opaa.indexing.source.s3.S3TestFixture;
+import io.opaa.s3.S3Credentials;
+import io.opaa.s3.S3TestFixture;
 import io.opaa.security.TargetAddressValidator;
 import java.util.List;
 import org.junit.jupiter.api.BeforeAll;

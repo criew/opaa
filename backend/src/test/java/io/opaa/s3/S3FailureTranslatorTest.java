@@ -1,9 +1,8 @@
-package io.opaa.indexing.source.s3;
+package io.opaa.s3;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.opaa.indexing.source.RequestBudgetExhaustedException;
 import java.net.ConnectException;
 import java.time.Duration;
 import java.util.List;
@@ -98,17 +97,6 @@ class S3FailureTranslatorTest {
   }
 
   @Test
-  void theConnectorsTranslatorNamesTheIndexingAllowlist() {
-    S3FailureTranslator connector = S3FailureTranslator.forConnector(S3Properties.defaults());
-    NonRetryableException blocked =
-        NonRetryableException.create(
-            "target blocked", new S3RequestGuard.TargetSignal("Adresse gesperrt.", false));
-
-    assertThat(connector.translate(S3Operation.LIST_OBJECTS, "b", null, blocked))
-        .hasMessageContaining("OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST");
-  }
-
-  @Test
   void timeoutsAndThrottlingReportTheTranslatorsOwnBounds() {
     assertThat(
             translator.translate(
@@ -137,9 +125,15 @@ class S3FailureTranslatorTest {
         .isInstanceOf(InterruptedException.class);
     assertThat(Thread.interrupted()).as("the interrupt flag is restored").isTrue();
 
+    S3FailureTranslator budgeted =
+        new S3FailureTranslator(
+            Duration.ofSeconds(7),
+            2,
+            "Hinweis: OPAA_TEST_ALLOWLIST",
+            budget -> new BudgetSpent("Budget von " + budget + " Anfragen erschöpft"));
     assertThatThrownBy(
             () ->
-                translator.call(
+                budgeted.call(
                     S3Operation.HEAD_OBJECT,
                     "b",
                     "k",
@@ -147,8 +141,14 @@ class S3FailureTranslatorTest {
                       throw NonRetryableException.create(
                           "budget", new S3RequestGuard.BudgetSignal(3));
                     }))
-        .isInstanceOf(RequestBudgetExhaustedException.class)
+        .isInstanceOf(BudgetSpent.class)
         .hasMessageContaining("3 Anfragen");
+  }
+
+  private static final class BudgetSpent extends RuntimeException {
+    BudgetSpent(String message) {
+      super(message);
+    }
   }
 
   @Test
