@@ -36,6 +36,7 @@ import io.opaa.permission.PermissionHistoryService;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -151,11 +152,22 @@ public class GroupService {
     this.auditEventRecorder = auditEventRecorder;
   }
 
+  /**
+   * Creates an internal group with everything decided at once: its stewards, its release and - for
+   * the system administration alone - its protection. Every decision is recorded as if made right
+   * after the creation; a refused protection creates nothing.
+   */
   @Transactional
   public GroupDetail createGroup(GroupCreation creation, CurrentUser caller) {
     capabilityService.requireCapability(caller, Capability.CREATE_INTERNAL_GROUP);
     String normalizedName = validateName(creation.name());
     validateDescription(creation.description());
+    if (creation.protectedGroup() && !caller.isSystemAdmin()) {
+      throw new AccessDeniedException(
+          "Über den Schutz einer Gruppe entscheidet die Systemverwaltung.", PROTECTION_ADMIN_ONLY);
+    }
+    List<UUID> stewardIds = initialStewardsOf(creation, caller);
+    stewardIds.forEach(userId -> requireUserInOrganization(userId, caller.organizationId()));
 
     Group group =
         Group.internal(caller.organizationId(), normalizedName, creation.description(), null);
@@ -171,8 +183,29 @@ public class GroupService {
     // In the same transaction as the group itself: an internal group without a steward is the
     // "Nachfolge offen" state of ADR-0036, Entscheidung 6, and creating one is not how it should
     // ever be entered.
-    appoint(saved, caller.id(), caller);
-    return toGroupDetail(saved, caller);
+    stewardIds.forEach(userId -> appoint(saved, userId, caller));
+    if (creation.releasedForUse()) {
+      saved.release(true);
+      recordReachEvent(AuditEventType.GROUP_RELEASE_CHANGED, saved, "releasedForUse", caller);
+    }
+    if (creation.protectedGroup()) {
+      saved.markProtected(true);
+      recordReachEvent(AuditEventType.GROUP_PROTECTION_CHANGED, saved, "protected", caller);
+    }
+    return toGroupDetail(groupRepository.save(saved), caller);
+  }
+
+  /**
+   * The stewards a new group starts with: the named ones, or the caller where none are named. A
+   * caller without the system role is always among them - whoever creates a group stays responsible
+   * for it; only the administration may create one for others.
+   */
+  private static List<UUID> initialStewardsOf(GroupCreation creation, CurrentUser caller) {
+    Set<UUID> stewards = new LinkedHashSet<>(creation.stewardIds());
+    if (stewards.isEmpty() || !caller.isSystemAdmin()) {
+      stewards.add(caller.id());
+    }
+    return new ArrayList<>(stewards);
   }
 
   public List<GroupOverview> listGroups(CurrentUser caller) {

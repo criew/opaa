@@ -11693,6 +11693,25 @@ components:
           maxLength: 2000
           nullable: true
           example: Ad-hoc-Gruppe für das Projekt Phoenix
+        releasedForUse:
+          type: boolean
+          default: false
+          description: Release the new group for use right away (ADR-0036, Entscheidung 9).
+        protectedGroup:
+          type: boolean
+          default: false
+          description: >
+            Protect the new group right away. Only a SYSTEM_ADMIN may (403 PROTECTION_ADMIN_ONLY,
+            nothing is created).
+        stewardIds:
+          type: array
+          description: >
+            The stewards of the new group. Empty or absent: the caller. A caller without the
+            SYSTEM_ADMIN role is always among them - whoever creates a group stays responsible
+            for it; the system administration may name others instead of itself.
+          items:
+            type: string
+            format: uuid
 
     GroupUpdateRequest:
       type: object

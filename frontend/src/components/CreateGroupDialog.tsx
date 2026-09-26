@@ -5,10 +5,12 @@ import Dialog from '@mui/material/Dialog'
 import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
-import Box from '@mui/material/Box'
-import TextField from '@mui/material/TextField'
-import FieldLabel from './wizard/FieldLabel'
+import Divider from '@mui/material/Divider'
+import type { UserSummary } from '../types/api'
+import { useAuthStore } from '../stores/authStore'
 import { useGroupStore } from '../stores/groupStore'
+import GroupFormFields, { type GroupFormValues } from './groups/GroupFormFields'
+import InitialStewardsSection from './groups/InitialStewardsSection'
 
 interface CreateGroupDialogProps {
   open: boolean
@@ -16,90 +18,96 @@ interface CreateGroupDialogProps {
   onCreated: () => void
 }
 
+const EMPTY_VALUES: GroupFormValues = {
+  name: '',
+  description: '',
+  released: false,
+  protectedGroup: false,
+}
+
+/**
+ * „Gruppe anlegen“ (#1978), aufgebaut wie der Dialog „Bearbeiten“: dieselben Felder für Name,
+ * Beschreibung, Freigabe und Schutz, darunter die Verantwortlichen - hier als Entwurf, den
+ * „Anlegen“ in einem Schritt übernimmt.
+ */
 export default function CreateGroupDialog({ open, onClose, onCreated }: CreateGroupDialogProps) {
-  const [name, setName] = useState('')
-  const [description, setDescription] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  const [submitting, setSubmitting] = useState(false)
+  // Mounted only while open: every opening starts from an empty draft.
+  if (!open) return null
+  return <CreateGroupDialogContent onClose={onClose} onCreated={onCreated} />
+}
+
+function CreateGroupDialogContent({ onClose, onCreated }: Omit<CreateGroupDialogProps, 'open'>) {
+  const user = useAuthStore((s) => s.user)
+  const isSystemAdmin = user?.systemRole === 'SYSTEM_ADMIN'
   const createNewGroup = useGroupStore((s) => s.createNewGroup)
 
+  const [values, setValues] = useState<GroupFormValues>(EMPTY_VALUES)
+  const [stewards, setStewards] = useState<UserSummary[]>(() =>
+    user ? [{ id: user.id, displayName: user.displayName, email: user.email }] : [],
+  )
+  const [error, setError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+
   function handleClose() {
-    if (submitting) return
-    setName('')
-    setDescription('')
-    setError(null)
-    onClose()
+    if (!submitting) onClose()
   }
 
   async function handleCreate() {
-    const trimmedName = name.trim()
-    if (!trimmedName) {
+    const name = values.name.trim()
+    if (!name) {
       setError('Name ist erforderlich')
       return
     }
     setError(null)
     setSubmitting(true)
     try {
-      await createNewGroup(trimmedName, description.trim())
-      setName('')
-      setDescription('')
+      await createNewGroup(name, values.description.trim(), {
+        releasedForUse: values.released,
+        protectedGroup: values.protectedGroup,
+        stewardIds: stewards.map((steward) => steward.id),
+      })
       onCreated()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Gruppe konnte nicht erstellt werden')
+      setError(err instanceof Error ? err.message : 'Gruppe konnte nicht angelegt werden')
     } finally {
       setSubmitting(false)
     }
   }
 
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
-      <DialogTitle>Gruppe erstellen</DialogTitle>
+    <Dialog open onClose={handleClose} maxWidth="sm" fullWidth aria-labelledby="group-create-title">
+      <DialogTitle id="group-create-title">Gruppe anlegen</DialogTitle>
       <DialogContent>
         {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
+          <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
             {error}
           </Alert>
         )}
-        <Box sx={{ mt: 1 }}>
-          <FieldLabel htmlFor="create-group-name">Name</FieldLabel>
-          <TextField
-            // Focus moves to the first field of a dialog the user just opened (WAI-ARIA APG dialog
-            // pattern); re-verified with a screenreader in the closing audit, see #598.
-            // eslint-disable-next-line jsx-a11y-x/no-autofocus
-            autoFocus
-            id="create-group-name"
-            size="small"
-            fullWidth
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            slotProps={{ htmlInput: { maxLength: 255 } }}
-          />
-        </Box>
-        <Box sx={{ mt: 2 }}>
-          <FieldLabel htmlFor="create-group-description">Beschreibung (optional)</FieldLabel>
-          <TextField
-            id="create-group-description"
-            size="small"
-            fullWidth
-            multiline
-            minRows={2}
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            slotProps={{ htmlInput: { maxLength: 2000 } }}
-          />
-        </Box>
-        <Alert severity="info" sx={{ mt: 2 }}>
-          Sie werden die erste verantwortliche Person dieser Gruppe. Die Gruppe ist zunächst nicht
-          zur Verwendung freigegeben; sobald Sie sie freigeben, werden Name und Herkunft für alle
-          sichtbar, denen die Gruppe zur Auswahl steht.
-        </Alert>
+        <GroupFormFields
+          values={values}
+          onChange={setValues}
+          idPrefix="group-create"
+          canProtect={isSystemAdmin}
+          autoFocusName
+        />
+        <Divider sx={{ my: 2 }} />
+        <InitialStewardsSection
+          stewards={stewards}
+          onChange={setStewards}
+          currentUserId={user?.id}
+          canRemoveSelf={isSystemAdmin}
+        />
       </DialogContent>
       <DialogActions>
         <Button onClick={handleClose} disabled={submitting}>
           Abbrechen
         </Button>
-        <Button onClick={handleCreate} variant="contained" disabled={submitting || !name.trim()}>
-          {submitting ? 'Wird erstellt …' : 'Erstellen'}
+        <Button
+          onClick={() => void handleCreate()}
+          variant="contained"
+          disabled={submitting || !values.name.trim()}
+        >
+          {submitting ? 'Wird angelegt …' : 'Anlegen'}
         </Button>
       </DialogActions>
     </Dialog>

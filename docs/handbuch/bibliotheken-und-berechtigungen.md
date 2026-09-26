@@ -423,9 +423,16 @@ Eine **interne Gruppe** ist eine Gruppe, die in OPAA selbst entsteht. Sie wird n
 Systemverwaltung gepflegt, sondern von benannten **Verantwortlichen**.
 
 **Wer sie anlegt, ist verantwortlich.** Das Anlegen verlangt das Anlegerecht „Interne Gruppen
-anlegen" (Abschnitt 9); die anlegende Person wird im selben Schritt erste verantwortliche Person.
+anlegen" (Abschnitt 9); die anlegende Person wird im selben Schritt verantwortliche Person.
 Verantwortliche sind immer Personen, nie Gruppen, und sie sind nicht automatisch Mitglied. Angelegt
 und gepflegt wird unter **Einstellungen → Meine Gruppen**.
+
+Der Dialog **„Gruppe anlegen“** ist aufgebaut wie „Bearbeiten“: Name, Beschreibung, der Schalter
+„Zur Verwendung freigegeben“ und darunter die Verantwortlichen, die sich gleich mitbenennen lassen —
+alles wird mit „Anlegen“ in einem Schritt übernommen. Die **Systemverwaltung** sieht zusätzlich den
+Schalter „Geschützte Gruppe“ und kann eine Gruppe auch für andere anlegen: Benennt sie
+Verantwortliche, wird sie selbst es nur, wenn sie sich in der Liste lässt. Wer ohne Systemrolle
+anlegt, bleibt immer verantwortlich.
 
 Verantwortliche dürfen:
 

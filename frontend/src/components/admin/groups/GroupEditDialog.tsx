@@ -1,32 +1,19 @@
 import { useState } from 'react'
 import Alert from '@mui/material/Alert'
-import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Dialog from '@mui/material/Dialog'
 import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import Divider from '@mui/material/Divider'
-import FormControlLabel from '@mui/material/FormControlLabel'
-import Stack from '@mui/material/Stack'
-import Switch from '@mui/material/Switch'
-import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import type { GroupListResponse } from '../../../types/api'
 import { useAuthStore } from '../../../stores/authStore'
 import { useGroupStore } from '../../../stores/groupStore'
 import { notify } from '../../../stores/notificationStore'
-import FieldLabel from '../../wizard/FieldLabel'
 import GroupStewardsSection from '../../groups/GroupStewardsSection'
+import GroupFormFields, { type GroupFormValues } from '../../groups/GroupFormFields'
 import { groupStateReason } from './groupListLabels'
-
-const RELEASE_HELP = 'Erst freigegeben ist die Gruppe für andere Rechtevergebende wählbar.'
-
-const PROTECTION_HELP =
-  'Für Gruppen der Personalvertretung, der Schwerbehindertenvertretung, der Gleichstellung und ' +
-  'für Personalvorgänge. Eine geschützte Gruppe ist nicht über die Suche auffindbar, erscheint in ' +
-  'fremden Listen ohne Namen, und wer ihr ein Recht gibt, sieht weder ihre Mitglieder noch ihre ' +
-  'Größe. Über den Schutz entscheidet die Systemverwaltung.'
 
 const SOURCE_NOTICE: Record<string, string> = {
   ORG_UNIT:
@@ -71,10 +58,13 @@ function GroupEditDialogContent({
   const changeProtection = useGroupStore((s) => s.changeProtection)
   const isInternal = group.kind === 'AD_HOC'
 
-  const [name, setName] = useState(opened.name)
-  const [description, setDescription] = useState(opened.description ?? '')
-  const [released, setReleased] = useState(opened.releasedForUse)
-  const [protectedGroup, setProtectedGroup] = useState(opened.protectedGroup)
+  const [values, setValues] = useState<GroupFormValues>({
+    name: opened.name,
+    description: opened.description ?? '',
+    released: opened.releasedForUse,
+    protectedGroup: opened.protectedGroup,
+  })
+  const { name, description, released, protectedGroup } = values
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
@@ -128,63 +118,17 @@ function GroupEditDialogContent({
           </Alert>
         )}
 
-        <Stack spacing={2} sx={{ mb: isInternal ? 2 : 0 }}>
-          {isInternal && (
-            <>
-              <Box>
-                <FieldLabel htmlFor="group-edit-name">Name der Gruppe</FieldLabel>
-                <TextField
-                  id="group-edit-name"
-                  fullWidth
-                  size="small"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                />
-              </Box>
-              <Box>
-                <FieldLabel htmlFor="group-edit-description">Beschreibung</FieldLabel>
-                <TextField
-                  id="group-edit-description"
-                  fullWidth
-                  size="small"
-                  multiline
-                  minRows={2}
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                />
-              </Box>
-              <Box>
-                <FormControlLabel
-                  control={
-                    <Switch checked={released} onChange={(e) => setReleased(e.target.checked)} />
-                  }
-                  label="Zur Verwendung freigegeben"
-                />
-                <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
-                  {RELEASE_HELP}
-                </Typography>
-              </Box>
-            </>
-          )}
-          <Box>
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={protectedGroup}
-                  onChange={(e) => setProtectedGroup(e.target.checked)}
-                />
-              }
-              label="Geschützte Gruppe"
-            />
-            <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
-              {PROTECTION_HELP}
-            </Typography>
-          </Box>
-        </Stack>
+        <GroupFormFields
+          values={values}
+          onChange={setValues}
+          idPrefix="group-edit"
+          canProtect
+          isInternal={isInternal}
+        />
 
         {isInternal && (
           <>
-            <Divider sx={{ mb: 2 }} />
+            <Divider sx={{ my: 2 }} />
             <GroupStewardsSection
               groupId={group.id}
               groupName={group.name}

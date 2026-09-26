@@ -15,6 +15,7 @@ import {
   setGroupRelease,
   updateGroup,
 } from '../services/api'
+import type { GroupCreationOptions } from '../services/api'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
 
 /**
@@ -40,7 +41,11 @@ interface GroupState {
   loadGroups: (source?: GroupListSource) => Promise<void>
   loadGroupDetails: (groupId: string) => Promise<void>
   loadGroupMembers: (groupId: string) => Promise<void>
-  createNewGroup: (name: string, description: string) => Promise<void>
+  createNewGroup: (
+    name: string,
+    description: string,
+    options?: GroupCreationOptions,
+  ) => Promise<void>
   renameGroup: (groupId: string, name: string, description: string) => Promise<void>
   deleteExistingGroup: (groupId: string) => Promise<void>
   addMember: (groupId: string, userId: string) => Promise<void>
@@ -119,8 +124,8 @@ export const useGroupStore = create<GroupState>((set, get) => ({
     }
   },
 
-  createNewGroup: async (name, description) => {
-    await createGroup(name, description)
+  createNewGroup: async (name, description, options) => {
+    await createGroup(name, description, options)
     await get().loadGroups()
   },
 

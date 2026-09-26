@@ -57,7 +57,13 @@ public class GroupController {
       @Valid @RequestBody GroupRequest request, @Caller CurrentUser caller) {
     GroupDetail created =
         groupService.createGroup(
-            new GroupCreation(request.getName(), request.getDescription()), caller);
+            new GroupCreation(
+                request.getName(),
+                request.getDescription(),
+                Boolean.TRUE.equals(request.getReleasedForUse()),
+                Boolean.TRUE.equals(request.getProtectedGroup()),
+                request.getStewardIds()),
+            caller);
     return ResponseEntity.status(HttpStatus.CREATED).body(GroupResponseMapper.toResponse(created));
   }
 

@@ -77,9 +77,11 @@ export default function GroupMembersTable({ members, onRemove }: GroupMembersTab
       <TableContainer
         sx={{
           height: frameHeight(members.length),
-          border: 1,
+          // Rules above and below mark the scroll region; a full frame is reserved for empty
+          // states in this design system.
+          borderTop: 1,
+          borderBottom: 1,
           borderColor: 'divider',
-          borderRadius: 1,
           '& thead tr': { height: HEAD_HEIGHT },
           '& tbody tr': { height: ROW_HEIGHT },
         }}

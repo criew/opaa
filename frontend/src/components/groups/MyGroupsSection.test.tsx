@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { answerConfirm, renderWithProviders } from '../../test/test-utils'
@@ -235,6 +235,22 @@ describe('MyGroupsSection', () => {
     expect(await screen.findByText(/für keine gruppe verantwortlich/i)).toBeInTheDocument()
     expect(screen.queryByText('Gruppe nicht gefunden')).not.toBeInTheDocument()
     expect(useGroupStore.getState().error).toBeNull()
+  })
+
+  // Wer ohne Systemrolle anlegt, bleibt verantwortlich und entscheidet nicht über den Schutz.
+  it('legt eine Gruppe an, ohne Schutzschalter und mit sich selbst als Verantwortlicher', async () => {
+    withGroups([], ['CREATE_INTERNAL_GROUP'])
+    renderWithProviders(<MyGroupsSection />, { withRouter: true })
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByRole('button', { name: 'Neue Gruppe' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Gruppe anlegen' })
+
+    expect(
+      within(dialog).queryByRole('switch', { name: 'Geschützte Gruppe' }),
+    ).not.toBeInTheDocument()
+    expect(within(dialog).getByText('Rita Sachbearbeitung (Sie)')).toBeInTheDocument()
+    expect(within(dialog).queryByRole('button', { name: /nicht benennen/ })).not.toBeInTheDocument()
   })
 
   it('zeigt einen leeren Zustand, wenn man für keine Gruppe verantwortlich ist', async () => {

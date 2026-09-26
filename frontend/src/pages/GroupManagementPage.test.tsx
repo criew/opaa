@@ -4,6 +4,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 import { answerConfirm, renderWithProviders } from '../test/test-utils'
 import GroupManagementPage from './GroupManagementPage'
 import { useGroupStore } from '../stores/groupStore'
+import { useAuthStore } from '../stores/authStore'
 import { useGroupAdminListStore } from '../stores/groupAdminListStore'
 import type { GroupListResponse, GroupResponse } from '../types/api'
 import type { GroupListQuery } from '../services/groupAdminApi'
@@ -414,16 +415,35 @@ describe('GroupManagementPage', () => {
     expect(within(menu).getByText(/werden dort gepflegt/)).toBeInTheDocument()
   })
 
-  it('creates a group through the dialog', async () => {
+  // #1978: Anlegen sieht aus wie Bearbeiten - Freigabe, Schutz und Verantwortliche gleich mit
+  it('creates a released, protected group with its stewards in one step', async () => {
+    useAuthStore.setState({
+      user: {
+        id: 'admin-1',
+        email: 'admin@opaa.local',
+        displayName: 'Ada Admin',
+        systemRole: 'SYSTEM_ADMIN',
+      },
+    })
     serve([])
     renderPage()
     const user = userEvent.setup()
 
     await user.click(screen.getByRole('button', { name: 'Gruppe anlegen' }))
-    await user.type(screen.getByLabelText(/^name/i), 'Neue Gruppe')
-    await user.click(screen.getByRole('button', { name: /^erstellen$/i }))
+    const dialog = await screen.findByRole('dialog', { name: 'Gruppe anlegen' })
+    expect(within(dialog).getByText('Ada Admin (Sie)')).toBeInTheDocument()
+    await user.type(within(dialog).getByLabelText('Name der Gruppe'), 'Neue Gruppe')
+    await user.click(within(dialog).getByRole('switch', { name: 'Zur Verwendung freigegeben' }))
+    await user.click(within(dialog).getByRole('switch', { name: 'Geschützte Gruppe' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Anlegen' }))
 
-    await waitFor(() => expect(mockCreateGroup).toHaveBeenCalledWith('Neue Gruppe', ''))
+    await waitFor(() =>
+      expect(mockCreateGroup).toHaveBeenCalledWith('Neue Gruppe', '', {
+        releasedForUse: true,
+        protectedGroup: true,
+        stewardIds: ['admin-1'],
+      }),
+    )
   })
 
   // #1821: Eine aufgelöste Gruppe ist gekennzeichnet und nennt den Grund - ihre bestehenden

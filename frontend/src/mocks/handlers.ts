@@ -1294,7 +1294,13 @@ export const handlers = [
   }),
 
   http.post('/api/v1/groups', async ({ request }) => {
-    const body = (await request.json()) as { name: string; description?: string }
+    const body = (await request.json()) as {
+      name: string
+      description?: string
+      releasedForUse?: boolean
+      protectedGroup?: boolean
+      stewardIds?: string[]
+    }
     if (!body.name || body.name.trim() === '') {
       return HttpResponse.json({ error: 'Der Name der Gruppe ist erforderlich' }, { status: 400 })
     }
@@ -1307,17 +1313,20 @@ export const handlers = [
       kind: 'AD_HOC',
       externalId: null,
       origin: 'INTERNAL',
-      state: 'NOT_RELEASED',
+      state: body.releasedForUse ? 'ACTIVE' : 'NOT_RELEASED',
       provider: null,
       sourcePath: null,
       parentGroupId: null,
       memberCount: 0,
-      // Wie im Dienst: nicht freigegeben, und die anlegende Person ist erste verantwortliche
-      // Person (#1814, ADR-0036 Entscheidung 4 und 9).
+      // As in the service: the named stewards, or the creating account where none are named.
       dissolved: false,
-      releasedForUse: false,
-      protectedGroup: false,
-      stewards: [{ userId: 'mock-user-id', displayName: 'Admin', appointedAt: now }],
+      releasedForUse: body.releasedForUse ?? false,
+      protectedGroup: body.protectedGroup ?? false,
+      stewards: (body.stewardIds?.length ? body.stewardIds : ['mock-user-id']).map((userId) => ({
+        userId,
+        displayName: userId === 'mock-user-id' ? 'Admin' : null,
+        appointedAt: now,
+      })),
       createdAt: now,
       updatedAt: now,
     }

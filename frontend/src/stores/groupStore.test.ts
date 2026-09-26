@@ -91,7 +91,7 @@ describe('groupStore', () => {
   it('creates a new group and reloads the list', async () => {
     mockCreateGroup.mockResolvedValueOnce({})
     await useGroupStore.getState().createNewGroup('Team C', 'desc')
-    expect(mockCreateGroup).toHaveBeenCalledWith('Team C', 'desc')
+    expect(mockCreateGroup).toHaveBeenCalledWith('Team C', 'desc', undefined)
     expect(useGroupStore.getState().groups.length).toBeGreaterThan(0)
   })
 
