@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import Autocomplete from '@mui/material/Autocomplete'
 import TextField from '@mui/material/TextField'
 import type { UserSummary } from '../../types/api'
@@ -34,6 +35,9 @@ export default function UserPicker({
   inputId,
 }: UserPickerProps) {
   const { query, setQuery, users, isLoading, error } = useUserSearch()
+  // What the field shows is not always what is searched for: after a choice it shows the chosen
+  // person's label, which must not become a new request.
+  const [inputText, setInputText] = useState('')
   const options = users.filter((user) => !excludedUserIds.includes(user.id))
 
   return (
@@ -47,12 +51,12 @@ export default function UserPicker({
       }
       value={value}
       onChange={(_event, next) => onChange(next)}
-      inputValue={query}
+      inputValue={inputText}
       onInputChange={(_event, next, reason) => {
-        // Nur was getippt wurde, ist eine neue Anfrage (#778): Beim Auswählen setzt MUI den
-        // Eingabetext auf das Label der Option ('selectOption'), beim Verlassen springt er zurück
-        // ('reset') - beides als Eingabe weiterzugeben suchte nach nie getipptem Text. 'clear'
-        // leert das Feld, was unterhalb der Mindestlänge ohne Anfrage zurücksetzt.
+        // Das Feld zeigt immer, was MUI vorgibt - nach einer Auswahl das Label der Person. Eine
+        // neue Anfrage ist aber nur, was getippt wurde (#778): 'selectOption' und 'reset' als
+        // Eingabe weiterzugeben suchte nach nie getipptem Text. 'clear' leert beides.
+        setInputText(next)
         if (reason === 'input') setQuery(next)
         else if (reason === 'clear') setQuery('')
       }}
