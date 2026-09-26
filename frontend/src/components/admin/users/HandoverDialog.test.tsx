@@ -54,13 +54,16 @@ describe('HandoverDialog', () => {
     expect(screen.getByRole('textbox', { name: /Anlass/ })).toBeInTheDocument()
     expect(screen.queryByLabelText(/Subject/i)).not.toBeInTheDocument()
     expect(screen.getByText(/Einen Rückweg gibt es nicht/)).toBeInTheDocument()
+    // was eine Übergabe ist und wie sie abläuft, in einfachen Worten
+    expect(screen.getByText(/nicht mehr mit einem Passwort an/)).toBeInTheDocument()
+    expect(screen.getAllByRole('listitem')).toHaveLength(3)
   })
 
   it('keeps the action disabled until a reason is given', async () => {
     const requestHandover = vi.fn().mockResolvedValue({ emailSent: true })
     useUserAdminStore.setState({ requestHandover })
     render()
-    const submit = screen.getByRole('button', { name: 'Übergabe anstoßen' })
+    const submit = screen.getByRole('button', { name: 'An Identitätsanbieter übergeben' })
     expect(submit).toBeDisabled()
 
     await userEvent.type(screen.getByRole('textbox', { name: /Anlass/ }), 'Umstellung auf IdP')
@@ -91,7 +94,7 @@ describe('HandoverDialog', () => {
     )
 
     await userEvent.type(screen.getByRole('textbox', { name: /Anlass/ }), 'Umstellung auf IdP')
-    await userEvent.click(screen.getByRole('button', { name: 'Übergabe anstoßen' }))
+    await userEvent.click(screen.getByRole('button', { name: 'An Identitätsanbieter übergeben' }))
 
     await waitFor(() => expect(onLinkDisplayed).toHaveBeenCalledWith(USER, '/handover?token=abc'))
   })
@@ -100,6 +103,6 @@ describe('HandoverDialog', () => {
     render([])
 
     expect(screen.getByText(/keinen aktivierten Identitätsanbieter/)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Übergabe anstoßen' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'An Identitätsanbieter übergeben' })).toBeDisabled()
   })
 })

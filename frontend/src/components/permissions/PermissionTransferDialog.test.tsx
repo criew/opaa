@@ -15,7 +15,7 @@ function renderDialog() {
       source={{ type: 'GROUP', id: 'group-referat-50', name: 'Referat 50' }}
       targetKinds={['GROUP']}
       scopes={['ASSET_GRANTS', 'OWNERSHIP']}
-      intro="Die gewählten Wirkungen gehen an die Zielgruppe."
+      intro="Die gewählten Rechte gehen an die Zielgruppe."
     />,
     { withRouter: true },
   )

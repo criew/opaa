@@ -357,6 +357,26 @@ Jede Gruppe hat genau eine Herkunft, und sie steht als Zusatz neben dem Namen �
 | **intern** | Die Verantwortlichen der Gruppe (Abschnitt 7) | ja |
 | **von einem Identitätsanbieter** | Der Anbieter — über den Gruppen-Claim seiner Tokens oder über den Verzeichnisabgleich | nein, schreibgeschützt |
 
+**Wie OPAA die Mitglieder einer Anbietergruppe erfährt.** Gruppen aus einem Identitätsanbieter
+unterscheiden sich nicht in sich, sondern darin, wie ihr Anbieter angeschlossen ist. Das wird je
+Anbieter eingerichtet, und alle seine Gruppen folgen dieser Einstellung:
+
+- **Über die Anmeldung (Gruppen-Claim):** OPAA darf beim Anbieter nichts nachfragen. Es erfährt die
+  Gruppen einer Person nur in dem Moment, in dem sie sich anmeldet — der Anbieter schickt dann mit,
+  in welchen Gruppen sie ist. Wird jemand dort aus einer Gruppe genommen, bleibt die Person in OPAA
+  Mitglied, bis sie sich das nächste Mal anmeldet; wer sich nicht mehr anmeldet, bleibt es.
+  Vergleichbar dem Dienstausweis am Einlass: Man sieht nur, wer gerade durch die Tür kommt.
+- **Über den Verzeichnisabgleich:** OPAA hat ein eigenes Lesekonto beim Anbieter und liest Gruppen
+  und Mitglieder im eingestellten Takt selbst aus. Änderungen gelten nach dem nächsten Abgleich,
+  auch für Personen, die sich nicht anmelden. Vergleichbar der Personalliste, die das Personalamt
+  regelmäßig schickt.
+
+Warum nicht jeder Anbieter abgeglichen wird: Der Abgleich braucht ein Lesekonto, das die IT des
+Verzeichnisses einrichten und freigeben muss. Die Anmeldung kommt ohne aus und ist deshalb schneller
+eingerichtet — um den Preis, dass Änderungen erst mit der nächsten Anmeldung ankommen. In der
+Gruppenverwaltung erklärt das Info-Symbol hinter dem Anbieternamen, welcher der beiden Wege für eine
+Gruppe gilt.
+
 **Je Anbieter genau ein Mechanismus.** Entweder der **Gruppen-Claim** seiner Tokens oder der
 **Verzeichnisabgleich**; beides zugleich lehnt OPAA ab. Einrichtung, Zeitplan, Trockenlauf,
 Plausibilitätsschwelle, leeres Ergebnis, unerreichbares Verzeichnis und der Bestätigungsweg stehen
@@ -413,16 +433,30 @@ Verantwortliche dürfen:
 - Name und Beschreibung ändern
 - weitere Verantwortliche benennen und entlassen
 - die Gruppe **zur Verwendung freigeben** und die Freigabe zurücknehmen
-- die Gruppe als **geschützt** kennzeichnen
 - die Gruppe löschen, solange sie keine Berechtigung, kein Anlegerecht und kein Eigentum mehr trägt
   und in keinem Raum Mitglied ist
 
 **Wer nicht verantwortlich ist, sieht die Gruppe unter „Meine Gruppen" nicht** und bekommt auf jeden
 Pflegeversuch dieselbe Antwort wie für eine Gruppe, die es nicht gibt. Die Systemverwaltung darf
 jede interne Gruppe pflegen — sie muss eine Gruppe ohne Verantwortliche wieder besetzen können; ihr
-Einstieg ist **Administration → Gruppen**, mit einem Filter auf die Herkunft und der Kennzeichnung
-„nicht freigegeben" an jeder internen Gruppe, die ihre Verantwortlichen noch nicht freigegeben
-haben.
+Einstieg ist **Administration → Gruppen**. Dort stehen alle Gruppen in einer Tabelle wie die Konten
+der Benutzerverwaltung: durchsuchbar über Name, Beschreibung und Quellpfad, filterbar nach Herkunft
+und Zustand, sortierbar und seitenweise. Hinter dem Anbieter einer Anbietergruppe erklärt ein
+Info-Symbol, wie OPAA die Mitglieder erfährt: nur bei der Anmeldung der jeweiligen Person oder durch
+eigenes Auslesen im Takt des Verzeichnisabgleichs, auch ohne Anmeldung (Abschnitt 6). Eine interne Gruppe, die ihre Verantwortlichen noch
+nicht freigegeben haben, trägt den Zustand **„Nicht freigegeben“**; das Info-Symbol daneben nennt
+den Grund, ebenso bei „Aufgelöst“, „Anbieter deaktiviert“ und „Nicht mehr gepflegt“. Die Spalte
+**Verwendung** beantwortet vor dem Aufräumen, ob an einer Gruppe etwas hängt: an wie vielen
+Bibliotheken sie Rechte hat, in wie vielen Spaces sie Mitglied ist, ob ihr Bibliotheken gehören und
+ob sie Anlegerechte trägt, etwa „2 Bibliotheken · 1 Space“. Der Tooltip schlüsselt die Angabe auf;
+„nicht verwendet“ heißt, dass die Gruppe nichts davon vermittelt. Die Handlungen
+einer Gruppe stehen im Zeilenmenü: **Bearbeiten**, **Mitglieder**, **Rechte übertragen** und
+**Löschen**; gelöscht werden kann nur eine interne Gruppe. **Mitglieder** zeigt die Mitglieder als
+alphabetische Tabelle mit dem Datum der Aufnahme und ihre Zahl im Titel, ab acht Einträgen mit
+einem Filterfeld; die Liste
+lädt beim Öffnen des Dialogs. Bei einer internen Gruppe lassen sich dort Personen aufnehmen und
+entfernen. Jeder Abruf durch die Systemverwaltung steht im Nachweisprotokoll, und der Dialog sagt
+das.
 
 **Verantwortung wird abgegeben, nicht abgelegt.** Die letzte verantwortliche Person kann sich nicht
 selbst entfernen: erst die Nachfolge benennen, dann zurücktreten. Wer die Aufgabe wechselt, gibt die
@@ -446,10 +480,11 @@ Auskunft, die Abschnitt 8 schützt. Stattdessen warnt das Formular, wenn eine f�
 Person **sichtbare** Gruppe gleich heißt.
 
 **Geschützte Gruppen** sind die Gruppen der Personalvertretung, der Schwerbehindertenvertretung, der
-Gleichstellung und der Personalvorgänge. **Das Kennzeichen setzen und lösen die Verantwortlichen der
-Gruppe selbst — die Systemverwaltung kann es nicht**, auch nicht mit Systemrolle. Dasselbe gilt für
-die Freigabe zur Verwendung, sobald eine Gruppe geschützt ist: Wer die Gruppe in jede Auswahl stellen
-könnte, entschiede sonst über den Schutz, ohne das Kennzeichen anfassen zu dürfen.
+Gleichstellung und der Personalvorgänge. **Über den Schutz entscheidet die Systemverwaltung** — für
+interne Gruppen ebenso wie für Gruppen eines Identitätsanbieters. Sie setzt und löst das Kennzeichen
+in der Gruppenverwaltung im Dialog **„Bearbeiten“** mit dem Schalter **„Geschützte Gruppe“**;
+Verantwortliche einer internen Gruppe können es nicht. Jede Änderung steht mit handelnder Person im
+Nachweisprotokoll.
 
 **Was festgehalten wird.** Aufnahme und Entfernung eines Mitglieds werden der betroffenen Person in
 der Anwendung angezeigt (ohne E-Mail) und stehen mit der handelnden verantwortlichen Person im
@@ -461,32 +496,8 @@ Nachweisprotokoll — mit der Zahl der Mitglieder, ohne die Namen. Verantwortlic
 ihrer eigenen Gruppe keinen Eintrag.
 
 **Gruppen aus dem Verzeichnis oder dem Anmeldetoken lassen sich hier nicht bearbeiten.** Sie haben
-keine Verantwortlichen, sondern **Ansprechstellen**.
-
-### 7.1 Ansprechstellen an Anbietergruppen
-
-Eine Anbietergruppe wird beim Anbieter gepflegt — es gibt hier niemanden, der ihr Schutzkennzeichen
-setzen könnte. Deshalb benennt die **Systemverwaltung Ansprechstellen**: eine oder mehrere Personen,
-die **Mitglied der Gruppe** sind. In der Gruppenverwaltung steht dafür an jeder Anbietergruppe der
-Abschnitt „Ansprechstelle"; zur Auswahl stehen dort genau die Mitglieder dieser Gruppe.
-
-**Die Benennung ist ein Verwaltungsakt und kein Pflegerecht.** Sie ändert an der Gruppe nichts, gibt
-keine Möglichkeit, Namen oder Mitglieder zu ändern, und berechtigt zu genau einer Handlung: das
-**Schutzkennzeichen** dieser Gruppe zu setzen und zu lösen. Die Systemverwaltung kann das Kennzeichen
-an einer Anbietergruppe **nicht** setzen und nicht lösen — der Versuch wird mit einer Begründung
-abgelehnt, so wie bei einer internen Gruppe, deren Kennzeichen nur die Verantwortlichen bedienen. Wer
-Ansprechstelle ist, findet seine Anbietergruppen unter „Meine Gruppen" und bedient das Kennzeichen
-dort; mehr gibt es dort nicht zu tun.
-
-**Die Benennung endet mit ihrer Grundlage.** Verlässt die Person die Gruppe — im Verzeichnisabgleich
-oder beim nächsten Anmeldetoken —, endet sie von selbst, mit einem Eintrag im Nachweisprotokoll und
-ohne handelnde Person. Wird ihr Konto gesperrt, bleibt die Benennung stehen und zählt nicht mehr:
-Eine **geschützte** Anbietergruppe ohne handlungsfähige Ansprechstelle erscheint dann in der
-Betriebsliste unter „Offene Nachfolgen" (Abschnitt 13.3), denn ihr Kennzeichen kann niemand mehr
-lösen. Eine ungeschützte Anbietergruppe braucht keine Ansprechstelle und steht dort nicht.
-
-Benennung und Entlassung stehen im **Nachweisprotokoll**; eine Rechtehistorie führen sie nicht — die
-Benennung trägt kein Leserecht, genau wie die Verantwortlichkeit an einer internen Gruppe.
+keine Verantwortlichen; Name und Mitglieder pflegt ihre Quelle. In der Gruppenverwaltung lässt sich an
+ihnen nur der Schutz einstellen.
 
 ## 8. Wer welche Gruppe sieht — und wie groß sie ist
 
@@ -536,8 +547,8 @@ wie viele es insgesamt sind; bei langen Listen wird seitenweise nachgeladen. Fü
   die Verantwortlichen die Freigabe zurück, endet auch diese Auskunft.
 - **Die Vorgabe ist „nicht freigegeben".**
 - **Bei einer geschützten Gruppe gibt es keine Liste**, keinen Namen und keine Größe: An ihre Stelle
-  tritt, **wen man fragen kann** — die Verantwortlichen einer internen Gruppe, die
-  **Ansprechstellen** einer Anbietergruppe (Abschnitt 7.1).
+  tritt, **wen man fragen kann** — die Verantwortlichen einer internen Gruppe; bei einer Gruppe
+  eines Identitätsanbieters gibt die Systemverwaltung Auskunft.
 - **Unterhalb der Mindestgruppengröße gibt es keine Liste** und keine Zahl, sondern „kleine Gruppe"
   — dieselbe Unterdrückung wie beim Zuwachssignal derselben Zeile. Eine Gruppe von vier ist in einem
   Referat eine Person mit Namen.
@@ -776,8 +787,8 @@ erzeugt eine aufgelöste Gruppe und einen Eintrag in der Betriebsliste — die E
 Rechte gehen, trifft ein Mensch. Ebenso wenig nimmt sie Mitgliedschaften zurück, die ein
 kompromittierter Anbieter gesetzt hat; das bleibt Handarbeit.
 
-**Wo sie steht.** In der Gruppenverwaltung (**Administration → Gruppen**) trägt jede Gruppe die
-Handlung „Wirkungen übertragen"; für die Gruppen eines Anbieters führt die **Arbeitsliste** desselben
+**Wo sie steht.** In der Gruppenverwaltung (**Administration → Gruppen**) steht im Zeilenmenü jeder
+Gruppe die Handlung „Rechte übertragen“; für die Gruppen eines Anbieters führt die **Arbeitsliste** desselben
 Anbieters dieselbe Handlung je Gruppe (**Administration → Identitätsanbieter → Zeilenmenü →
 Arbeitsliste der Gruppen**). Die eigene Abgabe steht unter **Einstellungen → Meine Gruppen →
 „Verantwortung und Eigentum abgeben"**. In allen drei Fällen ist der Ablauf derselbe: Ziel wählen,

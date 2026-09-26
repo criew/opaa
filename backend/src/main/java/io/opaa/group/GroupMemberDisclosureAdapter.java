@@ -31,7 +31,6 @@ class GroupMemberDisclosureAdapter implements GroupMemberDisclosureDirectory {
 
   private final GroupRepository groupRepository;
   private final GroupStewardRepository stewardRepository;
-  private final GroupContactRepository contactRepository;
   private final GroupMembershipResolver membershipResolver;
   private final GroupSizeProperties groupSizeProperties;
   private final UserRepository userRepository;
@@ -40,14 +39,12 @@ class GroupMemberDisclosureAdapter implements GroupMemberDisclosureDirectory {
   GroupMemberDisclosureAdapter(
       GroupRepository groupRepository,
       GroupStewardRepository stewardRepository,
-      GroupContactRepository contactRepository,
       GroupMembershipResolver membershipResolver,
       GroupSizeProperties groupSizeProperties,
       UserRepository userRepository,
       AuditEventRecorder auditEventRecorder) {
     this.groupRepository = groupRepository;
     this.stewardRepository = stewardRepository;
-    this.contactRepository = contactRepository;
     this.membershipResolver = membershipResolver;
     this.groupSizeProperties = groupSizeProperties;
     this.userRepository = userRepository;
@@ -121,19 +118,18 @@ class GroupMemberDisclosureAdapter implements GroupMemberDisclosureDirectory {
   }
 
   /**
-   * Whom a grant giver may ask about a protected group: the stewards of an internal group, the
-   * contact points of a provider group (#1875). Resolved for a protected group alone, so it costs
-   * no per-row lookup anywhere else.
+   * Whom a grant giver may ask about a protected group: the stewards of an internal group; nobody
+   * for a provider group, for which the system administration answers. Resolved for a protected
+   * group alone, so it costs no per-row lookup anywhere else.
    */
   private List<String> responsibleNamesOf(Group group) {
+    if (!group.isInternal()) {
+      return List.of();
+    }
     List<UUID> userIds =
-        group.isInternal()
-            ? stewardRepository.findByGroupIdOrderByCreatedAtAsc(group.getId()).stream()
-                .map(GroupSteward::getUserId)
-                .toList()
-            : contactRepository.findByGroupIdOrderByCreatedAtAsc(group.getId()).stream()
-                .map(GroupContact::getUserId)
-                .toList();
+        stewardRepository.findByGroupIdOrderByCreatedAtAsc(group.getId()).stream()
+            .map(GroupSteward::getUserId)
+            .toList();
     Map<UUID, String> displayNames = userRepository.displayNamesById(userIds);
     return userIds.stream().map(displayNames::get).filter(Objects::nonNull).toList();
   }

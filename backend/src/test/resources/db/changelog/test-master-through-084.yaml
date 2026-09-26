@@ -111,8 +111,6 @@ databaseChangeLog:
   - include:
       file: db/changelog/changes/076-backfill-library-ownership-history.yaml
   - include:
-      file: db/changelog/changes/077-create-group-contacts.yaml
-  - include:
       file: db/changelog/changes/078-retention-deletion-without-forward-cap.yaml
   - include:
       file: db/changelog/changes/079-create-assets.yaml

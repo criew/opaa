@@ -3,6 +3,7 @@ package io.opaa.api;
 import io.opaa.auth.account.AccountQuery;
 import io.opaa.auth.local.LocalUserQuery;
 import io.opaa.common.ValidationException;
+import io.opaa.group.GroupListQuery;
 import java.util.Locale;
 
 /**
@@ -43,6 +44,21 @@ final class AdminListSortParams {
       default ->
           throw new ValidationException(
               "Sortierung nur nach displayName, email, expiresAt oder createdAt.");
+    };
+  }
+
+  /** The sort fields of the group list (#1978). */
+  static GroupListQuery.Sort groupSortOf(String sort) {
+    return switch (sort == null ? "" : sort.trim()) {
+      case "name", "" -> GroupListQuery.Sort.NAME;
+      case "kind" -> GroupListQuery.Sort.KIND;
+      case "origin" -> GroupListQuery.Sort.ORIGIN;
+      case "memberCount" -> GroupListQuery.Sort.MEMBER_COUNT;
+      case "state" -> GroupListQuery.Sort.STATE;
+      case "createdAt" -> GroupListQuery.Sort.CREATED_AT;
+      default ->
+          throw new ValidationException(
+              "Sortierung nur nach name, kind, origin, memberCount, state oder createdAt.");
     };
   }
 

@@ -1287,9 +1287,8 @@ diesem Weg.
   erzeugen Audit-Ereignisse; eine Historientabelle gibt es bewusst nicht, weil Verantwortung kein
   Leserecht trägt und für „wer konnte am Tag X was lesen" ohne Bedeutung ist. Mitglieder**änderungen**
   stehen unverändert in der Rechtehistorie — mit dem Verantwortlichen als Akteur.
-- **Anbietergruppen bleiben schreibgeschützt.** Sie haben keine Verantwortlichen, sondern
-  **Ansprechstellen**, die die Systemverwaltung benennt (#1875) — siehe „Geschützte Gruppen"
-  unten.
+- **Anbietergruppen bleiben schreibgeschützt.** Sie haben keine Verantwortlichen; ihr
+  Schutzkennzeichen setzt die Systemverwaltung — siehe „Geschützte Gruppen" unten.
 
 **Freigabe zur Verwendung.** Eine interne Gruppe ist erst dann für andere Rechtevergebende wählbar,
 wenn ihre Verantwortlichen sie **freigegeben** haben — das Gegenstück zu `listed` bei Assets:
@@ -1313,52 +1312,26 @@ Auffindbarkeit ist eine bewusste Handlung. Drei Festlegungen dazu:
 **Geschützte Gruppen.** Für die Gruppen der Personalvertretung, der Schwerbehindertenvertretung, der
 Gleichstellung und für Personalvorgänge gilt dieselbe Sonderstellung wie für die entsprechenden
 Bibliotheken ([hybrid-retrieval.md](./hybrid-retrieval.md#berechtigungs-leitplanken), Leitplanke
-(e)). **Das Kennzeichen setzt und löst die zuständige Stelle selbst, nicht die Administration** —
-bei einer internen Gruppe ihre Verantwortlichen. Eine Systemverwaltung, die es setzen oder lösen
-könnte, machte den Schutz zu ihrem; die Antwort auf ihren Versuch ist `403` mit dem Code
-`STEWARDSHIP_REQUIRED`. **Dieselbe Antwort bekommt sie an der Freigabe einer geschützten Gruppe**:
-Wer die Gruppe in jede Auswahl stellen kann, entscheidet sonst über den Schutz, ohne das Kennzeichen
-anfassen zu dürfen.
+(e)). **Über den Schutz entscheidet die Systemverwaltung** — für interne und für Anbietergruppen
+gleichermaßen (ADR-0036, Entscheidung 9, Nachtrag vom 26.09.2026). Sie setzt und löst das
+Kennzeichen über `PUT /api/v1/groups/{groupId}/protection`; jede Änderung ist ein Audit-Ereignis
+(`GROUP_PROTECTION_CHANGED`) mit handelnder Person. Wer die Gruppe kennt, ohne Systemverwaltung zu
+sein — Verantwortliche und Mitglieder —, bekommt `403` mit dem Code `PROTECTION_ADMIN_ONLY`; alle
+anderen die Antwort einer unbekannten Gruppe. Die Freigabe einer geschützten internen Gruppe ist
+nicht mehr den Verantwortlichen vorbehalten.
 
-**Ansprechstellen an Anbietergruppen (gebaut, #1875).** Bei einer Anbietergruppe gibt es keine
-Verantwortlichen, die das Kennzeichen setzen könnten — sie wird beim Anbieter gepflegt. Deshalb
-benennt die **Systemverwaltung Ansprechstellen**: eine oder mehrere Personen, die **Mitglied der
-Gruppe** sind. Vier Festlegungen, jede mit einem Test:
+**Ansprechstellen an Anbietergruppen (entfallen).** Bis zum Nachtrag vom 26.09.2026 benannte die
+Systemverwaltung für Anbietergruppen Ansprechstellen, die allein das Kennzeichen bedienten (#1875).
+Mit der Entscheidung, dass die Systemverwaltung selbst über den Schutz entscheidet, sind
+Verwaltungsakt, Tabelle `group_contacts`, Endpunkte, Audit-Ereignisse und der zugehörige Fall unter
+„Offene Nachfolgen" entfernt.
 
-1. **Der Verwaltungsakt verändert die Gruppe nicht und verleiht keine Pflegerechte.** Die Benennung
-   schreibt eine Zeile in `group_contacts` und ein Audit-Ereignis (`GROUP_CONTACT_APPOINTED`), sonst
-   nichts; die Gruppe bleibt schreibgeschützt, und eine Ansprechstelle kann sie weder umbenennen
-   noch ihre Mitglieder ändern. Sie **liest** ihre Gruppe — sie entscheidet über das Kennzeichen und
-   muss es sehen.
-2. **Benennbar ist nur ein Mitglied der Gruppe** und nur eine natürliche Person. Wer außerhalb
-   steht, spräche für ein Gremium, dem er nicht angehört; eine Gruppe als Ansprechstelle wäre
-   Schachtelung durch die Hintertür (dieselbe Begründung wie bei den Verantwortlichen).
-3. **Nur Ansprechstellen setzen und lösen das Kennzeichen.** Die Systemverwaltung bekommt dort
-   `403` mit dem Code `CONTACT_REQUIRED` und der Begründung — spiegelbildlich zum
-   `STEWARDSHIP_REQUIRED` der internen Gruppen. Das ist der einzige Schreibweg, den eine
-   Anbietergruppe an **ihr selbst** hat; was sie *hält* — Berechtigungen, Space-Mitgliedschaften,
-   Anlegerechte, Eigentum —, verschiebt die Übertragung von #1834 unverändert weiter, und der
-   Verzeichnisabgleich pflegt ihre Mitglieder.
-4. **Die Benennung endet mit ihrer Grundlage.** Verlässt die Person die Gruppe, fällt die Zeile mit
-   der Mitgliedschaft — an der einen Stelle, die jede Mitgliedsänderung passiert, also auch beim
-   Verzeichnisabgleich und beim Token-Abgleich; das Ende ist ein Audit-Ereignis **ohne** handelnde
-   Person (Akteur `group-membership`, wie jeder andere Systemprozess des Protokolls), weil niemand
-   es entschieden hat. Ist ihr Konto gesperrt, bleibt die Zeile und zählt
-   nicht: Eine **geschützte** Anbietergruppe ohne handlungsfähige Ansprechstelle steht in der
-   Betriebsliste „Offene Nachfolgen" (#1819) — ihr Kennzeichen kann dann niemand mehr lösen, und die
-   Verwaltung darf es nicht an ihrer Stelle tun. Eine **ungeschützte** Anbietergruppe braucht keine
-   Ansprechstelle und erscheint dort nicht; das ist die schmale Auslegung der im ADR offenen Frage.
-
-Ansprechstellen tragen, wie die Verantwortlichen, **keine Historientabelle** (Entscheidungen 4
-und 8): Die Benennung trägt kein Leserecht und sagt über „wer konnte am Tag X was lesen" nichts.
-
-**Was vom Schutz gebaut ist.** Gebaut sind das Kennzeichen samt seinem Vorbehalt — Verantwortliche
-bei einer internen, Ansprechstellen bei einer Anbietergruppe —, die Freigabe unter demselben
-Vorbehalt, das Audit-Ereignis jeder Änderung und alle drei Wirkungen nach außen: nicht über die
-Suche auffindbar, in fremden Listen namenlos als „geschützte Gruppe" (#1820), und statt der
-Mitgliederliste die Verantwortlichen bzw. die Ansprechstelle für den, der ihr ein Recht einräumt
-(#1875). Bei einer ungeschützten Gruppe steht dort niemand — da ist die Mitgliederzahl die
-Antwort.
+**Was vom Schutz gebaut ist.** Gebaut sind das Kennzeichen samt seinem Vorbehalt für die
+Systemverwaltung, das Audit-Ereignis jeder Änderung und alle drei Wirkungen nach außen: nicht über
+die Suche auffindbar, in fremden Listen namenlos als „geschützte Gruppe" (#1820), und statt der
+Mitgliederliste für den, der ihr ein Recht einräumt, die Verantwortlichen einer internen Gruppe —
+bei einer Anbietergruppe niemand, dort gibt die Systemverwaltung Auskunft. Bei einer ungeschützten
+Gruppe steht dort niemand — da ist die Mitgliederzahl die Antwort.
 
 **Die Mitgliederliste für Rechtevergebende (gebaut, #1880).** Wer einer Gruppe an einem Objekt ein
 Recht einräumt oder es verwaltet — `MANAGER`/`OWNER` einer Bibliothek, `ADMIN`/Eigentümer eines
@@ -1372,7 +1345,8 @@ von ADR-0036, Entscheidung 9 **im Dienst**, jede einzelne mit `404` wie für ein
 und eine beendete Raummitgliedschaft halten nichts; (b) nur für Gruppen, die **zur Verwendung
 freigegeben** sind, was Anbietergruppen immer sind; (c) die **Vorgabe ist nicht freigegeben**;
 (d) **nicht bei geschützten Gruppen** — dort nennt die Antwort weder Namen noch Größe noch
-Mitglieder, sondern die Verantwortlichen bzw. die Ansprechstelle (`responsible`).
+Mitglieder, sondern die Verantwortlichen einer internen Gruppe (`responsible`, bei einer
+Anbietergruppe leer).
 
 **Eine fünfte Grenze kommt aus Auflage A2, und sie ist eine vorläufige Festlegung des Koordinators
 (22.09.2026, #1882): Unterhalb der Mindestgruppengröße gibt es keine Liste** — keine Namen, keine

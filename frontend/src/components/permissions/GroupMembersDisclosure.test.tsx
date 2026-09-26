@@ -76,8 +76,8 @@ describe('GroupMembersDisclosure', () => {
     ).toBeNull()
   })
 
-  /** Begrenzung (d): keine Namen, keine Größe — die Ansprechstelle tritt an ihre Stelle. */
-  it('nennt bei einer geschützten Gruppe die Ansprechstelle statt der Mitglieder', async () => {
+  /** Begrenzung (d): keine Namen, keine Größe — die Verantwortlichen treten an ihre Stelle. */
+  it('nennt bei einer geschützten Gruppe die Verantwortlichen statt der Mitglieder', async () => {
     const load = vi.fn(async () => ({
       groupId: 'group-personalrat',
       name: null,
@@ -93,7 +93,7 @@ describe('GroupMembersDisclosure', () => {
       screen.getByRole('button', { name: 'Mitglieder der Gruppe „Geschützte Gruppe“ anzeigen' }),
     )
 
-    await waitFor(() => expect(screen.getByText(/Ansprechstelle: Andrea Vogt/)).toBeVisible())
+    await waitFor(() => expect(screen.getByText(/Verantwortlich: Andrea Vogt/)).toBeVisible())
     expect(screen.queryByText(/aktiven Konten/)).toBeNull()
   })
 

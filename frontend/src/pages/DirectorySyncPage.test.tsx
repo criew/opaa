@@ -39,7 +39,7 @@ describe('DirectorySyncPage', () => {
     const card = await providerCard()
     expect(within(card).getByText(/Ein Plan wartet seit/)).toBeInTheDocument()
     expect(within(card).getByText(/23 Mitgliedschaften würden entzogen/)).toBeInTheDocument()
-    expect(within(card).getByText(/1 Konten gesperrt/)).toBeInTheDocument()
+    expect(within(card).getByText(/1 Konto gesperrt/)).toBeInTheDocument()
   })
 
   // #237/#1816: Der Differenzbericht nennt die Mitgliederzahl je Gruppe, bevor etwas angewendet

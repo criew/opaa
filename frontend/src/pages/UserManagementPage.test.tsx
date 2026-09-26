@@ -132,26 +132,39 @@ describe('UserManagementPage', () => {
     expect(await screen.findByRole('table', { name: 'Konten' })).toBeInTheDocument()
   })
 
-  it('lists local and provider accounts with their origin, state, activity class and reason', async () => {
+  it('lists local and provider accounts with their origin and state', async () => {
     signInAs('SYSTEM_ADMIN')
     renderAccounts()
 
     const table = await screen.findByRole('table', { name: 'Konten' })
-    // local rows: state, marker, activity class, reason - as before #1601
+    // local rows: state and marker; neither activity class nor creation reason (#1978)
     expect(within(table).getByText('Eingeladen')).toBeInTheDocument()
-    expect(within(table).getByText('Gesperrt (Verwalter)')).toBeInTheDocument()
+    // Nur „Gesperrt“ in der Zelle, der Grund hinter dem Info-Symbol (#1978)
+    expect(within(table).getAllByText('Gesperrt').length).toBeGreaterThan(0)
+    expect(within(table).queryByText(/Gesperrt (von|nach|wegen)|\(Verwalter\)/)).toBeNull()
+    expect(
+      within(table).getAllByRole('img', { name: 'Sperrgrund: Von der Verwaltung gesperrt' }).length,
+    ).toBeGreaterThan(0)
     expect(within(table).getByText('Abgelaufen')).toBeInTheDocument()
     expect(within(table).getByText('Passwortwechsel ausstehend')).toBeInTheDocument()
-    expect(within(table).getAllByText('länger als 90 Tage nicht').length).toBeGreaterThan(0)
-    expect(within(table).getByText(/Vertretung im Bauamt/)).toBeInTheDocument()
+    expect(within(table).queryByText(/Tage nicht|^nie$|^aktiv$/)).not.toBeInTheDocument()
+    // lokale Konten ohne Datum heißen „unbefristet“, Anbieterkonten tragen keinen Ablauf
+    expect(within(table).getAllByText('unbefristet').length).toBeGreaterThan(0)
+    expect(within(rowOf('Maria Weber')).queryByText('unbefristet')).not.toBeInTheDocument()
+    expect(within(table).getByRole('columnheader', { name: /Ablauf/ })).not.toHaveTextContent(
+      /Aktivität/,
+    )
+    expect(within(table).queryByText(/Vertretung im Bauamt/)).not.toBeInTheDocument()
+    expect(within(table).getByRole('columnheader', { name: /Angelegt/ })).not.toHaveTextContent(
+      /Anlagegrund/,
+    )
     expect(within(table).getByText('Notanker')).toBeInTheDocument()
     expect(within(rowOf('T. Klein')).getByText('Lokal')).toBeInTheDocument()
 
-    // provider rows: the provider as origin, the lifecycle at the provider, no activity class
+    // provider rows: the provider as origin, the lifecycle at the provider
     const maria = rowOf('Maria Weber')
     expect(within(maria).getByText('Verzeichnisdienst')).toBeInTheDocument()
     expect(within(maria).getByText('Beim Anbieter')).toBeInTheDocument()
-    expect(within(maria).queryByText(/Tage nicht|^nie$|^aktiv$/)).not.toBeInTheDocument()
     expect(within(rowOf('P. Admin')).getByText('Vom Anbieter geführt')).toBeInTheDocument()
     const ohneAnbieter = within(rowOf('Alte Anbieterin'))
     expect(ohneAnbieter.getByText('Kein Anbieter')).toBeInTheDocument()
@@ -161,7 +174,7 @@ describe('UserManagementPage', () => {
     // No activity timestamp, no sort by activity and no export (ADR-0033, Entscheidung 11).
     expect(within(table).queryByRole('button', { name: /Aktivität/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /export/i })).not.toBeInTheDocument()
-    expect(screen.getByText(/nur für lokale Konten/)).toBeInTheDocument()
+    expect(screen.queryByText(/Export dieser Liste/)).not.toBeInTheDocument()
   })
 
   it('filters by origin and passes the provider type to the API', async () => {
@@ -317,21 +330,37 @@ describe('UserManagementPage', () => {
     ).toBeInTheDocument()
   })
 
-  it('names the review obligation and jumps into the matching filter of local accounts', async () => {
+  it('names the review obligation behind a hint link and jumps into the matching filter', async () => {
     signInAs('SYSTEM_ADMIN')
     const user = userEvent.setup()
     renderAccounts()
 
-    const notice = await screen.findByTestId('local-user-review-notice')
-    expect(notice).toHaveTextContent('2 lokale Konten ohne Ablaufdatum')
-    expect(notice).toHaveTextContent('1 offene Einladung')
-    expect(notice).toHaveTextContent(/regelmäßig zu überprüfen/)
+    // Kein Hinweiskasten mehr über der Liste (#1978), sondern ein Link in der Kopfzeile.
+    const hint = await screen.findByRole('button', {
+      name: '2 lokale Konten ohne Ablaufdatum · 1 offene Einladung',
+    })
+    expect(hint).toHaveAttribute('aria-haspopup', 'dialog')
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.queryByText(/regelmäßig zu überprüfen/)).not.toBeInTheDocument()
 
-    await user.click(within(notice).getByRole('button', { name: /ohne Ablaufdatum anzeigen/ }))
+    await user.click(hint)
+    const popup = await screen.findByRole('dialog', { name: 'Hinweise zur Kontenprüfung' })
+    expect(popup).toHaveTextContent(/regelmäßig zu überprüfen/)
+    expect(popup).toHaveTextContent('2 lokale Konten ohne Ablaufdatum')
+    expect(popup).toHaveTextContent('1 offene Einladung')
+
+    await user.click(
+      within(popup).getByRole('button', { name: 'Konten ohne Ablaufdatum anzeigen' }),
+    )
     await waitFor(() => expect(useUserAdminStore.getState().filters.review).toBe('WITHOUT_EXPIRY'))
     expect(useUserAdminStore.getState().filters.providerType).toBe('LOCAL')
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'Hinweise zur Kontenprüfung' }),
+      ).not.toBeInTheDocument(),
+    )
     // Die Zahl im Hinweis und die Zeilen hinter dem Sprung sind dieselbe Menge (#1603): Das
-    // Notanker-Konto soll unbefristet bleiben und steht in keiner von beiden.
+    // Notanker-Konto bleibt unbefristet und steht in keiner von beiden.
     await waitFor(() => {
       const accounts = useUserAdminStore.getState().accounts
       expect(accounts).toHaveLength(2)
@@ -342,11 +371,13 @@ describe('UserManagementPage', () => {
       ).toBe(true)
     })
 
-    await user.click(screen.getByRole('button', { name: /Offene Einladungen anzeigen/ }))
+    await user.click(hint)
+    const reopened = await screen.findByRole('dialog', { name: 'Hinweise zur Kontenprüfung' })
+    await user.click(within(reopened).getByRole('button', { name: 'Offene Einladungen anzeigen' }))
     await waitFor(() => expect(useUserAdminStore.getState().filters.status).toBe('INVITED'))
   })
 
-  it('hides the notice once no account is without an expiry date and none is invited', async () => {
+  it('shows no hint link once no account is without an expiry date and none is invited', async () => {
     setMockLocalUsers(
       mockLocalUsers
         .filter((account) => account.status !== 'INVITED')
@@ -357,7 +388,8 @@ describe('UserManagementPage', () => {
 
     await screen.findByRole('table', { name: 'Konten' })
     await waitFor(() => expect(useUserAdminStore.getState().summary).not.toBeNull())
-    expect(screen.queryByTestId('local-user-review-notice')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Konto anlegen' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /ohne Ablaufdatum|offene Einladung/ })).toBeNull()
   })
 
   it('creates an account with a generated password and shows it exactly once', async () => {
@@ -376,9 +408,11 @@ describe('UserManagementPage', () => {
 
     const once = await screen.findByTestId('generated-password-value')
     expect(once).toHaveTextContent('Mock-Anfangs-Passwort-7Q2')
+    const shown = screen.getByRole('dialog', { name: 'Neues Passwort für „P. Neu“' })
+    expect(shown).toHaveTextContent('p.neu@stadt.example')
     expect(screen.getByText(/erscheint nur einmal/)).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Übergeben, schließen' }))
+    await user.click(screen.getByRole('button', { name: 'Schließen' }))
     expect(screen.queryByTestId('generated-password-value')).not.toBeInTheDocument()
   }, 20000)
 
@@ -400,9 +434,12 @@ describe('UserManagementPage', () => {
 
     const link = await screen.findByTestId('setup-link-value')
     expect(link).toHaveTextContent('token=')
+    expect(
+      screen.getByRole('dialog', { name: 'Einladungslink für „E. Extern“' }),
+    ).toBeInTheDocument()
     expect(screen.getByText(/Der Versand ist fehlgeschlagen/)).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Übergeben, schließen' }))
+    await user.click(screen.getByRole('button', { name: 'Schließen' }))
     expect(screen.queryByTestId('setup-link-value')).not.toBeInTheDocument()
   }, 20000)
 
@@ -452,8 +489,16 @@ describe('UserManagementPage', () => {
     await user.click(within(sperrfrage).getByRole('button', { name: 'Sperren' }))
 
     await waitFor(() =>
-      expect(within(rowOf('T. Klein')).getByText('Gesperrt (Verwalter)')).toBeInTheDocument(),
+      expect(
+        within(rowOf('T. Klein')).getByRole('img', {
+          name: 'Sperrgrund: Von der Verwaltung gesperrt',
+        }),
+      ).toBeInTheDocument(),
     )
+    // der Grund erscheint beim Überfahren als Tooltip
+    await user.hover(within(rowOf('T. Klein')).getByRole('img', { name: /^Sperrgrund:/ }))
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Von der Verwaltung gesperrt')
+    await user.unhover(within(rowOf('T. Klein')).getByRole('img', { name: /^Sperrgrund:/ }))
 
     const lockedMenu = await openRowMenu(user, 'T. Klein')
     expect(within(lockedMenu).queryByRole('menuitem', { name: 'Sperren' })).not.toBeInTheDocument()
@@ -478,7 +523,9 @@ describe('UserManagementPage', () => {
     )
     // #1563: Die Übergabe ist an diesem Konto gar nicht erst anwählbar, und der Eintrag sagt warum
     // - das Notanker-Konto muss ein lokales Konto bleiben.
-    const uebergabe = within(menu).getByRole('menuitem', { name: 'Übergabe anstoßen' })
+    const uebergabe = within(menu).getByRole('menuitem', {
+      name: 'An Identitätsanbieter übergeben',
+    })
     expect(uebergabe).toHaveAttribute('aria-disabled', 'true')
     expect(within(menu).getByText(/muss deshalb ein lokales Konto bleiben/)).toBeInTheDocument()
   }, 20000)
@@ -586,9 +633,11 @@ describe('UserManagementPage', () => {
     })
 
     const menu = await openRowMenu(user, 'T. Klein')
-    await user.click(within(menu).getByRole('menuitem', { name: 'Übergabe anstoßen' }))
+    await user.click(
+      within(menu).getByRole('menuitem', { name: 'An Identitätsanbieter übergeben' }),
+    )
 
-    const dialog = await screen.findByRole('dialog', { name: 'Übergabe anstoßen' })
+    const dialog = await screen.findByRole('dialog', { name: 'An Identitätsanbieter übergeben' })
     // Der Dialog fragt nach Anbieter und Anlass - und nach keiner Kennung.
     expect(within(dialog).getByRole('combobox', { name: /Identitätsanbieter/ })).toBeInTheDocument()
     expect(within(dialog).getByRole('textbox', { name: /Anlass/ })).toBeInTheDocument()
@@ -999,7 +1048,7 @@ describe('UserManagementPage', () => {
       expect(accounts.at(-1)?.local).toBeUndefined()
     })
 
-    // Die Aktivität bleibt, was sie ist: eine Klasse ohne Sortierung.
+    // Nach der Aktivität lässt sich nicht sortieren – die Liste zeigt sie gar nicht.
     expect(within(table).queryByRole('button', { name: /Aktivität/ })).not.toBeInTheDocument()
     expect(useUserAdminStore.getState().error).toBeNull()
   }, 20000)

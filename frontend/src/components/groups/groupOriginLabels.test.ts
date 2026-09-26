@@ -9,6 +9,7 @@ const providerGroup: GroupListResponse = {
   kind: 'ORG_UNIT',
   externalId: 'ext-1',
   origin: 'PROVIDER',
+  state: 'ACTIVE',
   provider: {
     id: 'provider-1',
     displayName: 'Verzeichnis Haus A',

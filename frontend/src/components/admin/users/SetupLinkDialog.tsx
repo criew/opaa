@@ -35,7 +35,10 @@ export default function SetupLinkDialog({
 }) {
   if (!handover) return null
   const { user, url, deliveryPath, kind } = handover
-  const title = kind === 'INVITE' ? 'Einladungslink übergeben' : 'Rücksetzlink übergeben'
+  const title =
+    kind === 'INVITE'
+      ? `Einladungslink für „${user.displayName}“`
+      : `Link zum Zurücksetzen für „${user.displayName}“`
 
   return (
     <Dialog
@@ -49,8 +52,8 @@ export default function SetupLinkDialog({
     >
       <DialogTitle id="setup-link-title">{title}</DialogTitle>
       <DialogContent>
-        <Typography sx={{ fontSize: 13.5, mb: 1.5 }}>
-          Für „{user.displayName}“ ({user.email})
+        <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mb: 1.5 }}>
+          {user.email}
         </Typography>
         {deliveryPath && (
           <Alert severity="warning" sx={{ mb: 2 }}>
@@ -91,7 +94,7 @@ export default function SetupLinkDialog({
             Link kopieren
           </Button>
           <Button variant="contained" onClick={onClose}>
-            Übergeben, schließen
+            Schließen
           </Button>
         </Stack>
       </DialogActions>

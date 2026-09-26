@@ -242,6 +242,7 @@ describe('groupStore', () => {
           description: null,
           kind: 'AD_HOC',
           origin: 'INTERNAL',
+          state: 'ACTIVE',
           externalId: null,
           parentGroupId: null,
           memberCount: 2,

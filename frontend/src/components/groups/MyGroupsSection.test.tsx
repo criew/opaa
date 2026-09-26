@@ -9,7 +9,6 @@ import type { Capability, GroupListResponse, GroupResponse } from '../../types/a
 
 const {
   mockGetMyStewardedGroups,
-  mockGetMyContactedGroups,
   mockGetGroup,
   mockSetGroupRelease,
   mockSetGroupProtection,
@@ -18,7 +17,6 @@ const {
   mockGetMyCapabilities,
 } = vi.hoisted(() => ({
   mockGetMyStewardedGroups: vi.fn(),
-  mockGetMyContactedGroups: vi.fn(),
   mockGetGroup: vi.fn(),
   mockSetGroupRelease: vi.fn(),
   mockSetGroupProtection: vi.fn(),
@@ -32,7 +30,6 @@ vi.mock('../../services/api', async () => {
   return {
     ...actual,
     getMyStewardedGroups: mockGetMyStewardedGroups,
-    getMyContactedGroups: mockGetMyContactedGroups,
     getGroup: mockGetGroup,
     setGroupRelease: mockSetGroupRelease,
     setGroupProtection: mockSetGroupProtection,
@@ -51,6 +48,7 @@ const group: GroupListResponse = {
   kind: 'AD_HOC',
   externalId: null,
   origin: 'INTERNAL',
+  state: 'NOT_RELEASED',
   provider: null,
   sourcePath: null,
   parentGroupId: null,
@@ -74,35 +72,8 @@ const details: GroupResponse = {
   members: [{ userId: 'u1', displayName: 'Alice', createdAt: '2026-03-01T10:00:00Z' }],
 }
 
-/** Eine Anbietergruppe, für die das eigene Konto Ansprechstelle ist (#1875). */
-const contactedGroup: GroupListResponse = {
-  ...group,
-  id: 'group-sbv',
-  name: 'Schwerbehindertenvertretung',
-  kind: 'ORG_UNIT',
-  origin: 'PROVIDER',
-  provider: {
-    id: 'provider-1',
-    displayName: 'Verzeichnisdienst',
-    external: false,
-    enabled: true,
-    groupMechanism: 'DIRECTORY',
-  },
-  releasedForUse: true,
-  protectedGroup: true,
-  stewards: [],
-  contacts: [
-    {
-      userId: OWN_USER_ID,
-      displayName: 'Rita Sachbearbeitung',
-      appointedAt: '2026-09-01T10:00:00Z',
-    },
-  ],
-}
-
 function withGroups(groups: GroupListResponse[], capabilities: Capability[]) {
   mockGetMyStewardedGroups.mockResolvedValue(groups)
-  mockGetMyContactedGroups.mockResolvedValue([])
   mockGetGroup.mockImplementation(async (groupId: string) =>
     groupId === details.id ? details : { ...details, id: groupId },
   )
@@ -154,18 +125,17 @@ describe('MyGroupsSection', () => {
     await waitFor(() => expect(mockSetGroupRelease).toHaveBeenCalledWith('group-phoenix', true))
   })
 
-  it('setzt das Schutzkennzeichen', async () => {
+  // Über den Schutz entscheidet die Systemverwaltung (ADR-0036, Entscheidung 9) - Verantwortliche
+  // sehen dafür keinen Schalter.
+  it('bietet Verantwortlichen keinen Schalter für den Schutz', async () => {
     withGroups([group], ['CREATE_INTERNAL_GROUP'])
-    mockSetGroupProtection.mockResolvedValue(details)
     renderWithProviders(<MyGroupsSection />, { withRouter: true })
     const user = userEvent.setup()
 
     await user.click(await screen.findByText('Projektbeteiligte Phoenix'))
-    await user.click(
-      await screen.findByRole('switch', { name: /als geschützte gruppe kennzeichnen/i }),
-    )
+    await screen.findByRole('switch', { name: /zur verwendung freigeben/i })
 
-    await waitFor(() => expect(mockSetGroupProtection).toHaveBeenCalledWith('group-phoenix', true))
+    expect(screen.queryByRole('switch', { name: /geschützte gruppe/i })).not.toBeInTheDocument()
   })
 
   /**
@@ -273,50 +243,5 @@ describe('MyGroupsSection', () => {
     renderWithProviders(<MyGroupsSection />, { withRouter: true })
 
     expect(await screen.findByText(/für keine gruppe verantwortlich/i)).toBeInTheDocument()
-  })
-
-  /**
-   * #1875: Die Anbietergruppen, für die man Ansprechstelle ist, stehen neben den verantworteten -
-   * mit genau einer Handlung, dem Schutzkennzeichen.
-   */
-  it('zeigt die Gruppen, für die man Ansprechstelle ist, mit dem Schalter für das Kennzeichen', async () => {
-    withGroups([], ['CREATE_INTERNAL_GROUP'])
-    mockGetMyContactedGroups.mockResolvedValue([contactedGroup])
-    mockSetGroupProtection.mockResolvedValue({ ...details, id: 'group-sbv' })
-    renderWithProviders(<MyGroupsSection />, { withRouter: true })
-    const user = userEvent.setup()
-
-    expect(await screen.findByText('Schwerbehindertenvertretung')).toBeInTheDocument()
-    expect(screen.getByText(/über ihr Schutzkennzeichen entscheiden Sie/i)).toBeInTheDocument()
-    expect(
-      screen.queryByRole('switch', { name: /zur verwendung freigeben/i }),
-    ).not.toBeInTheDocument()
-
-    await user.click(screen.getByRole('switch', { name: /als geschützte gruppe kennzeichnen/i }))
-
-    await waitFor(() => expect(mockSetGroupProtection).toHaveBeenCalledWith('group-sbv', false))
-  })
-
-  it('nennt den Grund, wenn das Kennzeichen abgelehnt wird', async () => {
-    withGroups([], ['CREATE_INTERNAL_GROUP'])
-    mockGetMyContactedGroups.mockResolvedValue([contactedGroup])
-    mockSetGroupProtection.mockRejectedValue(new Error('Nur Ansprechstellen dürfen das'))
-    renderWithProviders(<MyGroupsSection />, { withRouter: true })
-    const user = userEvent.setup()
-
-    await user.click(
-      await screen.findByRole('switch', { name: /als geschützte gruppe kennzeichnen/i }),
-    )
-
-    expect(await screen.findByText('Nur Ansprechstellen dürfen das')).toBeInTheDocument()
-  })
-
-  it('lässt den Abschnitt weg, solange man für keine Anbietergruppe Ansprechstelle ist', async () => {
-    withGroups([group], ['CREATE_INTERNAL_GROUP'])
-
-    renderWithProviders(<MyGroupsSection />, { withRouter: true })
-
-    expect(await screen.findByText('Projektbeteiligte Phoenix')).toBeInTheDocument()
-    expect(screen.queryByText(/für die Sie Ansprechstelle sind/i)).not.toBeInTheDocument()
   })
 })

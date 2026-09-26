@@ -316,7 +316,8 @@ Personenkontext ohne dessen Schutzmechanik.
 - **Anbietergruppen bleiben schreibgeschützt.** `GroupService#rejectOrgUnit` weist heute bereits
   `ORG_UNIT` **und** `IDENTITY_PROVIDER` ab; die anderslautenden Stellen im Javadoc von
   `LibraryAccessService` und in `hybrid-retrieval.md` sind falsch und gehen an #1808/#1826.
-  Anbietergruppen haben keine Verantwortlichen, sondern Ansprechstellen (Entscheidung 9).
+  Anbietergruppen haben keine Verantwortlichen; ihr Schutzkennzeichen setzt die Systemverwaltung
+  (Entscheidung 9, Nachtrag vom 26.09.2026).
 - **Mitglieder sehen ihre Verantwortlichen namentlich** (`GET /api/v1/me/groups` liefert sie mit),
   und **Aufnahme wie Entfernung werden der betroffenen Person angezeigt** — über die
   Benachrichtigungsinfrastruktur aus [ADR-0019](0019-minimale-benachrichtigungsinfrastruktur.md),
@@ -686,7 +687,8 @@ Gruppen**.
 Gleichstellung und für Personalvorgänge — die Stellen, die `hybrid-retrieval.md`, Leitplanke (e), für
 Bibliotheken benennt — gilt dieselbe Sonderstellung:
 
-- **Das Kennzeichen setzt und löst die zuständige Stelle selbst, nicht die Administration**
+- *(Abgelöst durch den Nachtrag vom 26.09.2026 unten.)* **Das Kennzeichen setzt und löst die
+  zuständige Stelle selbst, nicht die Administration**
   (Audit-Ereignis wie `LIBRARY_DIAGNOSTICS_LOCK_CHANGED`). Bei internen Gruppen sind das die
   Verantwortlichen. **Bei Anbietergruppen benennt die Systemverwaltung eine oder mehrere
   Ansprechstellen** (Personen, die Mitglied der Gruppe sind) **ohne Pflegerechte an der Gruppe** — ein
@@ -695,11 +697,41 @@ Bibliotheken benennt — gilt dieselbe Sonderstellung:
 - Eine geschützte Gruppe ist **nicht über Suche auffindbar**, sondern nur über ihre vollständige
   Bezeichnung wählbar; in fremden Listen erscheint sie als **„geschützte Gruppe" ohne Namen** (die
   namenlose Zeile ist nötig, weil ein Space-`ADMIN` sonst eine Mitgliedschaft nicht beenden könnte,
-  die er nicht sieht); der Grant-Geber sieht statt der Mitgliederliste die **Ansprechstelle**.
+  die er nicht sieht); der Grant-Geber sieht statt der Mitgliederliste die **Ansprechstelle**
+  (seit dem Nachtrag unten: die Verantwortlichen einer internen Gruppe, bei einer Anbietergruppe
+  niemanden).
 - **Die Herleitung zeigt Dritten — auch Space-`ADMIN` und Eigentümer — bei einer geschützten Gruppe
   keine Gruppenableitung**, sondern nur die effektive Rolle. Sonst wäre die Namenlosigkeit wertlos:
   Steht bei Frau S. „Rolle über eine geschützte Gruppe" und wirkt im Space genau eine solche Gruppe,
   ist sie benannt. Die **eigene** Herleitung der betroffenen Person bleibt vollständig.
+
+> **Nachtrag (26.09.2026, Maintainer-Entscheidung, #1978): Über den Schutz entscheidet die
+> Systemverwaltung.** Der erste Punkt oben ist abgelöst. Das Schutzkennzeichen setzt und löst
+> **allein die Systemverwaltung** — für interne und für Anbietergruppen gleichermaßen; die
+> Verantwortlichen einer internen Gruppe bedienen es nicht mehr. Damit entfällt das Konzept der
+> **Ansprechstellen an Anbietergruppen vollständig** (Verwaltungsakt, Tabelle `group_contacts`,
+> die Endpunkte unter `/admin/groups/{id}/contacts` und `/me/contacted-groups`, die Audit-Ereignisse
+> `GROUP_CONTACT_APPOINTED`/`_DISMISSED` und der Eintrag „geschützte Anbietergruppe ohne
+> Ansprechstelle" unter „Offene Nachfolgen"). Folgen:
+>
+> - **Grant-Geber einer geschützten Gruppe** sehen bei einer internen Gruppe weiterhin die
+>   Verantwortlichen, bei einer Anbietergruppe niemanden — Auskunft gibt die Systemverwaltung.
+> - **Die Freigabe einer geschützten internen Gruppe** ist nicht mehr den Verantwortlichen
+>   vorbehalten: Ihre Begründung („eine Administration, die das Kennzeichen nicht setzen darf, soll
+>   die Gruppe auch nicht in jede Auswahl stellen") fällt mit diesem Nachtrag weg.
+> - Unberührt bleiben die Wirkungen des Kennzeichens (nicht über Suche auffindbar, namenlos in
+>   fremden Listen, keine Mitgliederliste und kein Größensignal für Grant-Geber, keine
+>   Gruppenableitung in fremden Herleitungen) und die Regel, dass der Mitgliederabruf durch die
+>   Systemverwaltung ein Audit-Ereignis ist.
+>
+> **Abwägung.** Der ursprüngliche Grundsatz ging auf den Personalrat zurück (Stakeholder-Diskussion,
+> A3/A6): Die Administration sollte den Schutz etwa einer Personalratsgruppe nicht selbst aufheben
+> können. Dagegen stand, dass das Kennzeichen an Anbietergruppen einen eigenen Verwaltungsakt, eine
+> eigene Tabelle, einen Nachfolgefall und eine eigene Oberfläche brauchte, deren Zweck in der
+> Verwaltung nicht verständlich war — und dass die Systemverwaltung die Mitgliederliste ohnehin
+> abrufen darf (protokolliert). Jede Änderung des Kennzeichens bleibt ein Audit-Ereignis
+> (`GROUP_PROTECTION_CHANGED`) mit handelnder Person; die Nachprüfbarkeit, nicht die
+> Unverfügbarkeit für die Administration, ist damit die Sicherung.
 
 **Die Herleitung für die eigene Person.** Flach zu *sein* und das flach zu *zeigen* sind zwei
 Zusagen. Für jede Bibliothek und jeden Space, den eine Person sieht, zeigt die Oberfläche ihr **den
@@ -719,7 +751,7 @@ zeigt beide Zahlen („Referat 50: 23 bei Erteilung, heute 41"). Keine Mail, kei
 die jemand liest, der für die Freigabe geradesteht. **Für beide Zahlen gilt die
 „kleine Gruppe"-Unterdrückung, einschließlich der Werte, die sich aus dem Vergleich errechnen ließen;
 für geschützte Gruppen entfällt das Signal ganz** (dort ist die Größe die eigentliche Auskunft), und
-der Grant-Geber hat die Ansprechstelle. Die gespeicherten Zahlen sind Teil der Grant-Historie und
+der Grant-Geber hat die Verantwortlichen einer internen Gruppe bzw. die Systemverwaltung. Die gespeicherten Zahlen sind Teil der Grant-Historie und
 unterliegen deren Höchstdauer.
 
 > **Nachtrag zur Ablage der Zahl (Koordinator, 22.09.2026, mit #1820/#1815 eingelöst).** Die Zahl
@@ -951,7 +983,8 @@ mit zeitlicher Einschränkung**; sie steht als eigener Absatz in Entscheidung 2.
 
 **Referatsleitung, Auflage 4** („ich gebe frei, ohne zu wissen, an wen") ist übernommen: **Wer ein
 Recht gibt, sieht, an wen** — mit der einen Ausnahme geschützter Gruppen, bei denen er die
-Ansprechstelle sieht (Entscheidung 9).
+Verantwortlichen einer internen Gruppe sieht (Entscheidung 9; bei einer Anbietergruppe seit dem
+Nachtrag vom 26.09.2026 niemanden, dort gibt die Systemverwaltung Auskunft).
 
 **Zurückgewiesen wurden drei Auflagen, jede mit Begründung** (kein stillschweigendes Übergehen):
 eine Historientabelle für Verantwortliche (Betrieb 4.2 — Verantwortung trägt kein Leserecht; eine
@@ -975,7 +1008,7 @@ ausdrücklichen Vergabe zu sperren (Sachbearbeitung 4a — die Auslieferung darf
 | #1818 Kontostatus | Schwelle und Bestätigungsweg, Rückholbarkeit, Kontozustandshistorie, Grund und Ansprechstelle für die Person (3, 8) | **nach #1817**, weil der Kontostatus den Konnektor braucht; Historie nur nach (a), sonst Audit |
 | #1819 Lebenszyklus | Feststellungslauf, vollständige Liste in beide Richtungen, Betriebsliste mit drei Reitern, Kennzeichnung ohne Eigentümer und Datum, Alterungsschwelle mit Sichtungsvermerk (6) | „Nachfolge offen" **abgeleitet**, kein Flag; Frist, Eskalation und Mail bleiben draußen; **Übernahme herausgeschnitten nach (b)** |
 | #1820 Freigabedialog und Space-Mitglieder | externe Anbieter sichtbar abgehoben mit Zwischenfrage; „kleine Gruppe"; Herleitung ohne Gruppenableitung bei geschützten Gruppen; Durchsetzung **auch für die Eingabe per ID** (2, 7, 9) | Rückfall „UUID von Hand" fällt unter die Durchsetzungsregel; Mitgliederzahl zählt aktive Konten |
-| #1821 Verwaltung | Arbeitsliste je Anbieter, Klartextzeile der Fähigkeiten, Betriebsliste, Ansprechstellen an Anbietergruppen (2, 5, 6, 9) | zusätzlich zur Sicht je Gruppe die Sicht je Anbieter |
+| #1821 Verwaltung | Arbeitsliste je Anbieter, Klartextzeile der Fähigkeiten, Betriebsliste, Ansprechstellen an Anbietergruppen (2, 5, 6, 9; Ansprechstellen entfallen mit dem Nachtrag vom 26.09.2026 zu Entscheidung 9) | zusätzlich zur Sicht je Gruppe die Sicht je Anbieter |
 | #1822 Herleitung und Stichtagsauskunft | Vollmacht für den Personen-Einstieg, **Ein-Objekt-Regel**, Zeitfenster und Seitenobergrenze, Abrufereignis auch bei Abweisung (8, 9) | Erweiterung (d); Pseudonymisierung (#391/#395) ist **Blocker des Personen-Einstiegs** |
 | #1823 Demo- und Entwicklungsdaten | Gruppen mit Herkunft in beiden Realms, interne Gruppe, Gruppe als Space-Mitglied | Vorbehaltsvermerk entfernen; gleichnamige Gruppe in beiden Realms |
 | #1824 Handbuchkapitel | Begriffe der Tabelle oben; Genauigkeit der Historie je Mechanismus; Pull als Empfehlung; `CREATE_CONNECTOR_LIBRARY` als erster Einschränkungskandidat; Untergrenze und Schwellen als Zahlen; „Nachfolge offen" lässt Arbeit unberührt; Verfahrensteil (F1–F3) | Vorabprüfung für das Update ergänzen (11) |
@@ -1049,7 +1082,8 @@ weil es die Oberflächen aus #1820 und #1821 beschreibt.
   jederzeit möglich.
 - **Eine Bestandsänderung trifft Bibliotheksverwalter:** Eine neu angelegte interne Gruppe ist nicht
   mehr ohne Zutun ihrer Verantwortlichen als Empfänger wählbar.
-- **Sieben neue Verwaltungsobjekte** (Verantwortliche, Ansprechstellen, Freigabe zur Verwendung,
+- **Sieben neue Verwaltungsobjekte** (Verantwortliche, Ansprechstellen — entfallen mit dem Nachtrag
+  vom 26.09.2026 zu Entscheidung 9 —, Freigabe zur Verwendung,
   Schutzkennzeichen, Fähigkeiten, Nachfolgevorgänge, Übertragungsvorgänge) sind sieben neue Dinge, die
   gepflegt, erklärt und im Handbuch beschrieben werden müssen.
 - **Der Vorgabeweg bleibt der ungeschützte.** Token ist die Vorgabe, hat aber keine der vier

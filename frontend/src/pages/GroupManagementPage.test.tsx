@@ -1,49 +1,69 @@
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { answerConfirm, renderWithProviders } from '../test/test-utils'
 import GroupManagementPage from './GroupManagementPage'
 import { useGroupStore } from '../stores/groupStore'
+import { useGroupAdminListStore } from '../stores/groupAdminListStore'
 import type { GroupListResponse, GroupResponse } from '../types/api'
+import type { GroupListQuery } from '../services/groupAdminApi'
 
 const {
-  mockGetGroup,
+  mockListGroupPage,
+  mockListGroupMembers,
   mockFetchedDetails,
+  listed,
   mockCreateGroup,
   mockUpdateGroup,
+  mockSetGroupRelease,
   mockDeleteGroup,
-  mockAddGroupMember,
   mockRemoveGroupMember,
-  mockAppointGroupContact,
-  mockDismissGroupContact,
-  mockListGroupMembers,
+  mockSetGroupProtection,
 } = vi.hoisted(() => ({
-  mockGetGroup: vi.fn(),
+  mockListGroupPage: vi.fn(),
   mockListGroupMembers: vi.fn(),
-  /** Was `getGroup` liefert, wenn der Store die Details noch nicht kennt. */
+  /** What the server knows per group; `getGroup` withholds the members from the administration. */
   mockFetchedDetails: {} as Record<string, GroupResponse>,
+  /** Die Gruppen, die der Server für die aktuelle Anfrage kennt. */
+  listed: { groups: [] as GroupListResponse[] },
   mockCreateGroup: vi.fn(async () => ({}) as GroupResponse),
   mockUpdateGroup: vi.fn(async () => ({}) as GroupResponse),
+  mockSetGroupRelease: vi.fn(async () => ({}) as GroupResponse),
   mockDeleteGroup: vi.fn(async () => undefined),
-  mockAddGroupMember: vi.fn(async () => ({})),
   mockRemoveGroupMember: vi.fn(async () => undefined),
-  mockAppointGroupContact: vi.fn(async () => ({
-    userId: 'u2',
-    displayName: 'Bob',
-    appointedAt: '2026-09-01T10:00:00Z',
-  })),
-  mockDismissGroupContact: vi.fn(async () => undefined),
+  mockSetGroupProtection: vi.fn(async () => ({}) as GroupResponse),
 }))
+
+vi.mock('../services/groupAdminApi', async () => {
+  const actual = await vi.importActual<typeof import('../services/groupAdminApi')>(
+    '../services/groupAdminApi',
+  )
+  return {
+    ...actual,
+    listGroupPage: vi.fn(async (query: GroupListQuery) => {
+      mockListGroupPage(query)
+      const items = listed.groups.filter((group) => !query.origin || group.origin === query.origin)
+      return { items, total: items.length, page: 0, size: 25 }
+    }),
+  }
+})
+
+vi.mock('../services/permissionTransferApi', async () => {
+  const actual = await vi.importActual<typeof import('../services/permissionTransferApi')>(
+    '../services/permissionTransferApi',
+  )
+  return { ...actual, getGroupEffects: vi.fn(async () => []) }
+})
 
 vi.mock('../services/api', async () => {
   const actual = await vi.importActual<typeof import('../services/api')>('../services/api')
   return {
     ...actual,
     getUsers: vi.fn(async () => []),
-    getGroups: vi.fn(async () => useGroupStore.getState().groups),
+    getGroups: vi.fn(async () => listed.groups),
     getGroup: vi.fn(async (groupId: string) => {
-      mockGetGroup(groupId)
-      return useGroupStore.getState().groupDetails[groupId] ?? mockFetchedDetails[groupId]
+      const details = mockFetchedDetails[groupId]
+      return details && { ...details, members: null }
     }),
     listGroupMembers: vi.fn(async (groupId: string) => {
       mockListGroupMembers(groupId)
@@ -51,11 +71,10 @@ vi.mock('../services/api', async () => {
     }),
     createGroup: mockCreateGroup,
     updateGroup: mockUpdateGroup,
+    setGroupRelease: mockSetGroupRelease,
     deleteGroup: mockDeleteGroup,
-    addGroupMember: mockAddGroupMember,
     removeGroupMember: mockRemoveGroupMember,
-    appointGroupContact: mockAppointGroupContact,
-    dismissGroupContact: mockDismissGroupContact,
+    setGroupProtection: mockSetGroupProtection,
   }
 })
 
@@ -66,6 +85,7 @@ const adHocGroup: GroupListResponse = {
   kind: 'AD_HOC',
   externalId: null,
   origin: 'INTERNAL',
+  state: 'NOT_RELEASED',
   provider: null,
   sourcePath: null,
   parentGroupId: null,
@@ -85,6 +105,7 @@ const orgUnitGroup: GroupListResponse = {
   kind: 'ORG_UNIT',
   externalId: 'directory-guid',
   origin: 'PROVIDER',
+  state: 'ACTIVE',
   provider: {
     id: 'oidc-provider-beschaeftigte',
     displayName: 'Verzeichnisdienst',
@@ -113,234 +134,305 @@ const orgUnitDetails: GroupResponse = {
   members: [{ userId: 'u2', displayName: 'Bob', createdAt: '2026-03-01T10:00:00Z' }],
 }
 
-function setGroupState(groups: GroupListResponse[], details: Record<string, GroupResponse>) {
-  useGroupStore.setState({
-    groups,
-    groupDetails: details,
-    isLoading: false,
-    error: null,
-  })
+/** jsdom has no matchMedia; the table renders only on a desktop viewport (guidelines 5.3). */
+function desktopMatchMedia(query: string): MediaQueryList {
+  return {
+    matches: query.includes('min-width'),
+    media: query,
+    onchange: null,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  } as unknown as MediaQueryList
+}
+
+function serve(groups: GroupListResponse[]) {
+  listed.groups = groups
+}
+
+function renderPage() {
+  return renderWithProviders(<GroupManagementPage />, { withRouter: true })
+}
+
+async function openRowMenu(user: ReturnType<typeof userEvent.setup>, name: string) {
+  await user.click(await screen.findByRole('button', { name: `Aktionen für „${name}“` }))
+  return screen.findByRole('menu', { name: `Aktionen für „${name}“` })
 }
 
 describe('GroupManagementPage', () => {
+  const originalMatchMedia = window.matchMedia
+  beforeAll(() => {
+    window.matchMedia = desktopMatchMedia
+  })
+  afterAll(() => {
+    window.matchMedia = originalMatchMedia
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
+    for (const key of Object.keys(mockFetchedDetails)) delete mockFetchedDetails[key]
+    useGroupStore.getState().reset()
+    useGroupAdminListStore.getState().reset()
   })
 
-  it('lists groups with their kind', async () => {
-    setGroupState([adHocGroup, orgUnitGroup], {})
-    renderWithProviders(<GroupManagementPage />, { withRouter: true })
+  // #1978: die Gruppen als Tabelle wie die Konten - Herkunft, Mitglieder, Zustand; eine eigene
+  // Spalte „Art" gibt es nicht, das Info-Symbol hinter dem Anbieter erklärt die Herkunft
+  it('lists the groups as a table with origin, member count and state', async () => {
+    serve([adHocGroup, orgUnitGroup])
+    renderPage()
 
-    expect(await screen.findByText('Projektbeteiligte Phoenix')).toBeInTheDocument()
-    expect(screen.getByText('Referat 50')).toBeInTheDocument()
-    expect(screen.getByText('Ad-hoc-Gruppe')).toBeInTheDocument()
-    expect(screen.getByText('Organisationseinheit')).toBeInTheDocument()
+    const table = await screen.findByRole('table', { name: 'Gruppen' })
+    const phoenix = within(table).getByText('Projektbeteiligte Phoenix').closest('tr')!
+    expect(within(phoenix).getByText('Intern')).toBeInTheDocument()
+    expect(within(phoenix).queryByRole('img', { name: /^Herkunft:/ })).not.toBeInTheDocument()
+    expect(within(phoenix).getByText('Nicht freigegeben')).toBeInTheDocument()
+    expect(
+      within(phoenix).getByRole('img', { name: /^Grund: Noch nicht zur Verwendung/ }),
+    ).toBeInTheDocument()
+    const referat = within(table).getByText('Referat 50').closest('tr')!
+    expect(within(referat).getByText('Verzeichnisdienst')).toBeInTheDocument()
+    expect(
+      within(referat).getByRole('img', {
+        name: /^Herkunft: OPAA liest Gruppen und Mitglieder von „Verzeichnisdienst“ selbst aus/,
+      }),
+    ).toBeInTheDocument()
+    expect(within(table).queryByRole('columnheader', { name: /^Art/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('combobox', { name: 'Art' })).not.toBeInTheDocument()
+    expect(within(referat).getByText('/Haus A/Referat 50')).toBeInTheDocument()
+    expect(within(referat).getByText('Aktiv')).toBeInTheDocument()
+    expect(screen.getByText('2 Gruppen · Seite 1 von 1')).toBeInTheDocument()
+    // the member list is never part of the table
+    expect(mockListGroupMembers).not.toHaveBeenCalled()
   })
 
-  it('shows an empty state when there are no groups', async () => {
-    setGroupState([], {})
-    renderWithProviders(<GroupManagementPage />, { withRouter: true })
-
-    expect(await screen.findByText(/keine gruppen dieser herkunft/i)).toBeInTheDocument()
-  })
-
-  it('expands an ad-hoc group and allows renaming and deleting', async () => {
-    setGroupState([adHocGroup], { 'group-phoenix': adHocDetails })
-    renderWithProviders(<GroupManagementPage />, { withRouter: true })
+  // ADR-0036, Entscheidung 3: ein wartender Plan bleibt laut - sein Alter steht im Link selbst,
+  // die Einzelheiten im Popover; ein Hinweiskasten über der Liste entfällt (#1978)
+  it('names a waiting directory plan in a warning link with its age', async () => {
+    serve([adHocGroup])
+    renderPage()
     const user = userEvent.setup()
 
-    await user.click(await screen.findByText('Projektbeteiligte Phoenix'))
-
-    await user.click(await screen.findByRole('button', { name: /mitglieder anzeigen/i }))
-    expect(await screen.findByText('Alice')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /speichern/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /gruppe löschen/i })).toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: /speichern/i }))
-
-    await waitFor(() => {
-      expect(mockUpdateGroup).toHaveBeenCalledWith(
-        'group-phoenix',
-        'Projektbeteiligte Phoenix',
-        'Ad hoc',
-      )
+    const hint = await screen.findByRole('button', {
+      name: /^Verzeichnisplan wartet seit \d+ Tagen auf Entscheidung$/,
     })
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+
+    await user.click(hint)
+    const popup = await screen.findByRole('dialog', {
+      name: 'Verzeichnisabgleich wartet auf Ihre Entscheidung',
+    })
+    expect(popup).toHaveTextContent(/bleibt der bisherige Stand in Kraft/)
+    expect(popup).toHaveTextContent(/Mitgliedschaften würden entzogen/)
+    expect(within(popup).getByRole('link', { name: 'Zum Verzeichnisabgleich' })).toHaveAttribute(
+      'href',
+      '/admin/directory-sync',
+    )
   })
 
-  // ADR-0025, Entscheidung 4 (#1331): a token-derived group is read-only like an org unit, but
-  // the explanation names its actual source
-  it('explains a group from the identity provider and keeps it read-only', async () => {
+  it('shows an empty state when no group matches', async () => {
+    serve([])
+    renderPage()
+
+    expect(
+      await screen.findByText('Keine Gruppe entspricht den gewählten Filtern.'),
+    ).toBeInTheDocument()
+  })
+
+  it('filters by origin and sorts on the server', async () => {
+    serve([adHocGroup, orgUnitGroup])
+    renderPage()
+    const user = userEvent.setup()
+    await screen.findByRole('table', { name: 'Gruppen' })
+
+    await user.click(screen.getByRole('combobox', { name: 'Herkunft' }))
+    await user.click(await screen.findByRole('option', { name: 'Intern' }))
+    await waitFor(() =>
+      expect(mockListGroupPage).toHaveBeenLastCalledWith(
+        expect.objectContaining({ origin: 'INTERNAL', page: 0 }),
+      ),
+    )
+    await waitFor(() => expect(screen.queryByText('Referat 50')).not.toBeInTheDocument())
+
+    await user.click(screen.getByRole('button', { name: /Mitglieder/ }))
+    await waitFor(() =>
+      expect(mockListGroupPage).toHaveBeenLastCalledWith(
+        expect.objectContaining({ sort: 'memberCount', direction: 'asc' }),
+      ),
+    )
+  })
+
+  it('edits name, description and release of an internal group in one save', async () => {
+    serve([adHocGroup])
+    renderPage()
+    const user = userEvent.setup()
+
+    const menu = await openRowMenu(user, 'Projektbeteiligte Phoenix')
+    await user.click(within(menu).getByRole('menuitem', { name: 'Bearbeiten' }))
+    const dialog = await screen.findByRole('dialog', {
+      name: '„Projektbeteiligte Phoenix“ bearbeiten',
+    })
+    expect(within(dialog).getByRole('button', { name: 'Speichern' })).toBeDisabled()
+    expect(within(dialog).getByText('Verantwortlich')).toBeInTheDocument()
+
+    const name = within(dialog).getByLabelText('Name der Gruppe')
+    await user.clear(name)
+    await user.type(name, 'Phoenix Kernteam')
+    await user.click(within(dialog).getByRole('switch', { name: 'Zur Verwendung freigegeben' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Speichern' }))
+
+    await waitFor(() =>
+      expect(mockUpdateGroup).toHaveBeenCalledWith('group-phoenix', 'Phoenix Kernteam', 'Ad hoc'),
+    )
+    expect(mockSetGroupRelease).toHaveBeenCalledWith('group-phoenix', true)
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  })
+
+  // ADR-0025, Entscheidung 4 (#1331): Name und Mitglieder pflegt die Quelle; die Erklärung nennt
+  // die tatsächliche Quelle
+  it('explains a provider group and offers only its protection', async () => {
     const tokenGroup: GroupListResponse = {
       ...orgUnitGroup,
       id: 'group-token-fachbereich',
       name: 'Fachbereich 3',
       kind: 'IDENTITY_PROVIDER',
-      externalId: 'oidc:p-partner:Fachbereich 3',
     }
-    setGroupState([tokenGroup], {
-      'group-token-fachbereich': {
-        ...tokenGroup,
-        members: [{ userId: 'u3', displayName: 'Carla', createdAt: '2026-03-01T10:00:00Z' }],
-      },
+    serve([tokenGroup])
+    renderPage()
+    const user = userEvent.setup()
+
+    const origin = await screen.findByRole('img', {
+      name: /^Herkunft: OPAA erfährt die Mitglieder dieser Gruppe nur bei der Anmeldung/,
     })
-    renderWithProviders(<GroupManagementPage />, { withRouter: true })
-    const user = userEvent.setup()
+    await user.hover(origin)
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(
+      /erst bei der nächsten Anmeldung dieser Person/,
+    )
+    await user.unhover(origin)
 
-    expect(await screen.findByText('Gruppe aus dem Identitätsanbieter')).toBeInTheDocument()
-    await user.click(screen.getByText('Fachbereich 3'))
-
-    await user.click(await screen.findByRole('button', { name: /mitglieder anzeigen/i }))
-    expect(await screen.findByText('Carla')).toBeInTheDocument()
-    expect(screen.getByText(/stammt aus dem identitätsanbieter/i)).toBeInTheDocument()
-    expect(screen.queryByText(/aus dem verzeichnis synchronisiert/i)).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /gruppe löschen/i })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /^entfernen$/i })).not.toBeInTheDocument()
+    const menu = await openRowMenu(user, 'Fachbereich 3')
+    await user.click(within(menu).getByRole('menuitem', { name: 'Bearbeiten' }))
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText(/stammt aus dem Identitätsanbieter/)).toBeInTheDocument()
+    expect(within(dialog).getByText('Verzeichnisdienst · /Haus A/Referat 50')).toBeInTheDocument()
+    expect(within(dialog).queryByLabelText('Name der Gruppe')).not.toBeInTheDocument()
+    expect(within(dialog).getByRole('switch', { name: 'Geschützte Gruppe' })).toBeInTheDocument()
+    expect(within(dialog).getByRole('button', { name: 'Speichern' })).toBeDisabled()
   })
 
-  it('disables editing and member management for an org-unit group', async () => {
-    setGroupState([orgUnitGroup], { 'group-referat-50': orgUnitDetails })
-    renderWithProviders(<GroupManagementPage />, { withRouter: true })
+  // ADR-0036, Entscheidung 9: über den Schutz entscheidet die Systemverwaltung - auch bei einer
+  // Gruppe aus einem Anbieter, deren Name und Mitglieder die Quelle pflegt
+  it('protects a provider group from the edit dialog', async () => {
+    serve([orgUnitGroup])
+    renderPage()
     const user = userEvent.setup()
 
-    await user.click(await screen.findByText('Referat 50'))
+    const menu = await openRowMenu(user, 'Referat 50')
+    await user.click(within(menu).getByRole('menuitem', { name: 'Bearbeiten' }))
+    const dialog = await screen.findByRole('dialog')
+    await user.click(within(dialog).getByRole('switch', { name: 'Geschützte Gruppe' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Speichern' }))
 
-    await user.click(await screen.findByRole('button', { name: /mitglieder anzeigen/i }))
-    expect(await screen.findByText('Bob')).toBeInTheDocument()
-    expect(screen.getByText(/aus dem verzeichnis synchronisiert/i)).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /gruppe löschen/i })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /^entfernen$/i })).not.toBeInTheDocument()
+    await waitFor(() =>
+      expect(mockSetGroupProtection).toHaveBeenCalledWith('group-referat-50', true),
+    )
   })
 
-  it('deletes an ad-hoc group once the confirmation was answered', async () => {
-    setGroupState([adHocGroup], { 'group-phoenix': adHocDetails })
-    renderWithProviders(<GroupManagementPage />, { withRouter: true })
+  // ADR-0036, Entscheidung 4/9: Der Abruf der Mitgliederliste ist das Audit-Ereignis - er geschieht
+  // erst mit dem Öffnen des Dialogs, nie mit der Tabelle, und der Dialog nennt die Protokollierung.
+  it('loads the member list of an internal group on opening the dialog', async () => {
+    serve([adHocGroup])
+    mockFetchedDetails['group-phoenix'] = adHocDetails
+    renderPage()
     const user = userEvent.setup()
 
-    await user.click(await screen.findByText('Projektbeteiligte Phoenix'))
-    await user.click(await screen.findByRole('button', { name: /gruppe löschen/i }))
-    await answerConfirm(user, 'Gruppe "Projektbeteiligte Phoenix" löschen?', 'Löschen')
-
-    await waitFor(() => {
-      expect(mockDeleteGroup).toHaveBeenCalledWith('group-phoenix')
+    const menu = await openRowMenu(user, 'Projektbeteiligte Phoenix')
+    expect(mockListGroupMembers).not.toHaveBeenCalled()
+    await user.click(within(menu).getByRole('menuitem', { name: 'Mitglieder' }))
+    const dialog = await screen.findByRole('dialog', {
+      name: /^Mitglieder von „Projektbeteiligte Phoenix“/,
     })
+
+    await waitFor(() => expect(mockListGroupMembers).toHaveBeenCalledWith('group-phoenix'))
+    const table = await within(dialog).findByRole('table', { name: 'Mitglieder' })
+    expect(within(table).getByText('Alice')).toBeInTheDocument()
+    expect(dialog).toHaveAccessibleName('Mitglieder von „Projektbeteiligte Phoenix“ · 1 Mitglied')
+    await user.click(within(table).getByRole('button', { name: 'Alice entfernen' }))
+    await waitFor(() => expect(mockRemoveGroupMember).toHaveBeenCalledWith('group-phoenix', 'u1'))
   })
 
-  it('creates a new group through the dialog', async () => {
-    setGroupState([], {})
-    renderWithProviders(<GroupManagementPage />, { withRouter: true })
+  // Bei einer Gruppe eines Identitätsanbieters ist das Öffnen des Dialogs der ausdrückliche Wunsch:
+  // die Liste lädt sofort, der Abruf bleibt protokolliert.
+  it('loads the members of a provider group on opening and keeps them read-only', async () => {
+    serve([orgUnitGroup])
+    mockFetchedDetails['group-referat-50'] = orgUnitDetails
+    renderPage()
     const user = userEvent.setup()
 
-    await user.click(screen.getByRole('button', { name: /neue gruppe/i }))
+    const menu = await openRowMenu(user, 'Referat 50')
+    await user.click(within(menu).getByRole('menuitem', { name: 'Mitglieder' }))
+    const dialog = await screen.findByRole('dialog')
+
+    await waitFor(() => expect(mockListGroupMembers).toHaveBeenCalledWith('group-referat-50'))
+    const table = await within(dialog).findByRole('table', { name: 'Mitglieder' })
+    expect(within(table).getByText('Bob')).toBeInTheDocument()
+    expect(within(table).getByRole('columnheader', { name: 'Mitglied seit' })).toBeInTheDocument()
+    expect(
+      within(dialog).queryByRole('button', { name: 'Mitglieder anzeigen' }),
+    ).not.toBeInTheDocument()
+    expect(within(dialog).queryByRole('button', { name: /entfernen/i })).not.toBeInTheDocument()
+    expect(within(dialog).getByText(/pflegt die Quelle/)).toBeInTheDocument()
+    expect(within(dialog).getByText(/Nachweisprotokoll/)).toBeInTheDocument()
+  })
+
+  it('deletes an internal group once the confirmation was answered', async () => {
+    serve([adHocGroup])
+    renderPage()
+    const user = userEvent.setup()
+
+    const menu = await openRowMenu(user, 'Projektbeteiligte Phoenix')
+    await user.click(within(menu).getByRole('menuitem', { name: 'Löschen' }))
+    await answerConfirm(user, '„Projektbeteiligte Phoenix“ löschen?', 'Löschen')
+
+    await waitFor(() => expect(mockDeleteGroup).toHaveBeenCalledWith('group-phoenix'))
+  })
+
+  it('offers no deletion of a provider group and says why', async () => {
+    serve([orgUnitGroup])
+    renderPage()
+    const user = userEvent.setup()
+
+    const menu = await openRowMenu(user, 'Referat 50')
+    expect(within(menu).getByRole('menuitem', { name: 'Löschen' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+    expect(within(menu).getByText(/werden dort gepflegt/)).toBeInTheDocument()
+  })
+
+  it('creates a group through the dialog', async () => {
+    serve([])
+    renderPage()
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('button', { name: 'Gruppe anlegen' }))
     await user.type(screen.getByLabelText(/^name/i), 'Neue Gruppe')
     await user.click(screen.getByRole('button', { name: /^erstellen$/i }))
 
-    await waitFor(() => {
-      expect(mockCreateGroup).toHaveBeenCalledWith('Neue Gruppe', '')
-    })
+    await waitFor(() => expect(mockCreateGroup).toHaveBeenCalledWith('Neue Gruppe', ''))
   })
 
-  // #1821: Die Herkunft steht ohne Aufklappen da, und der Filter trennt intern von Anbieter.
-  it('shows origin without expanding and filters by it', async () => {
-    setGroupState([adHocGroup, orgUnitGroup], {})
-    renderWithProviders(<GroupManagementPage />, { withRouter: true })
-    const user = userEvent.setup()
+  // #1821: Eine aufgelöste Gruppe ist gekennzeichnet und nennt den Grund - ihre bestehenden
+  // Berechtigungen bleiben.
+  it('marks a dissolved group and names the reason behind its state', async () => {
+    serve([{ ...orgUnitGroup, dissolved: true, state: 'DISSOLVED' }])
+    renderPage()
 
-    expect(await screen.findByText(/Herkunft: Verzeichnisdienst/)).toBeInTheDocument()
-    expect(screen.getByText(/\/Haus A\/Referat 50/)).toBeInTheDocument()
-
-    await user.click(screen.getByRole('combobox', { name: /herkunft/i }))
-    await user.click(await screen.findByRole('option', { name: 'Intern' }))
-
-    await waitFor(() => expect(screen.queryByText('Referat 50')).not.toBeInTheDocument())
-    expect(screen.getByText('Projektbeteiligte Phoenix')).toBeInTheDocument()
-  })
-
-  // ADR-0036, Entscheidung 4/9: Der Abruf der Mitgliederliste ist das Audit-Ereignis - zugesichert
-  // ist deshalb die ausbleibende ANFRAGE, nicht nur die ausbleibende Anzeige. Die Details werden
-  // hier bewusst nicht vorbelegt: Sonst bliebe der Test auch dann grün, wenn jemand die Bedingung
-  // im Effekt zurücknähme.
-  it('does not load the member list until it is asked for', async () => {
-    setGroupState([adHocGroup], {})
-    renderWithProviders(<GroupManagementPage />, { withRouter: true })
-    const user = userEvent.setup()
-
-    await user.click(await screen.findByText('Projektbeteiligte Phoenix'))
-
-    expect(await screen.findByText(/Audit-Ereignis/)).toBeInTheDocument()
-    expect(mockListGroupMembers).not.toHaveBeenCalled()
-
-    mockFetchedDetails['group-phoenix'] = adHocDetails
-    await user.click(screen.getByRole('button', { name: /mitglieder anzeigen/i }))
-
-    // #1989: only the recorded endpoint hands the administration the names.
-    await waitFor(() => expect(mockListGroupMembers).toHaveBeenCalledWith('group-phoenix'))
-    expect(mockGetGroup).not.toHaveBeenCalled()
-    expect(await screen.findByText('Alice')).toBeInTheDocument()
-  })
-
-  // #1821: Eine aufgelöste Gruppe ist gekennzeichnet und nennt den Grund, warum sie nicht mehr
-  // gewählt werden kann - ihre bestehenden Berechtigungen bleiben.
-  it('marks a dissolved group and names the reason', async () => {
-    const dissolved: GroupListResponse = { ...orgUnitGroup, dissolved: true }
-    setGroupState([dissolved], {})
-    renderWithProviders(<GroupManagementPage />, { withRouter: true })
-    const user = userEvent.setup()
-
-    expect(await screen.findByText('aufgelöst')).toBeInTheDocument()
-    await user.click(screen.getByText('Referat 50'))
-    expect(await screen.findByText(/Aufgelöst — die Quelle meldet/)).toBeInTheDocument()
-  })
-
-  // #1875: Die Ansprechstelle einer Anbietergruppe benennen - benennbar ist nur ein Mitglied,
-  // deshalb hängt die Auswahl am Abruf der Mitgliederliste.
-  it('benennt ein Mitglied einer Anbietergruppe als Ansprechstelle', async () => {
-    setGroupState([orgUnitGroup], { 'group-referat-50': orgUnitDetails })
-    renderWithProviders(<GroupManagementPage />, { withRouter: true })
-    const user = userEvent.setup()
-
-    await user.click(await screen.findByText('Referat 50'))
+    const table = await screen.findByRole('table', { name: 'Gruppen' })
+    expect(within(table).getByText('Aufgelöst')).toBeInTheDocument()
     expect(
-      await screen.findByText(/Für diese Gruppe ist keine Ansprechstelle benannt/),
+      within(table).getByRole('img', { name: /^Grund: Aufgelöst — die Quelle meldet/ }),
     ).toBeInTheDocument()
-
-    await user.click(screen.getByRole('combobox', { name: /ansprechstelle/i }))
-    await user.click(await screen.findByRole('option', { name: 'Bob' }))
-    await user.click(screen.getByRole('button', { name: /als ansprechstelle benennen/i }))
-
-    await waitFor(() =>
-      expect(mockAppointGroupContact).toHaveBeenCalledWith('group-referat-50', 'u2'),
-    )
-  })
-
-  it('entlässt eine Ansprechstelle nach Rückfrage', async () => {
-    const withContact: GroupListResponse = {
-      ...orgUnitGroup,
-      contacts: [{ userId: 'u2', displayName: 'Bob', appointedAt: '2026-09-01T10:00:00Z' }],
-    }
-    setGroupState([withContact], {
-      'group-referat-50': { ...orgUnitDetails, contacts: withContact.contacts },
-    })
-    renderWithProviders(<GroupManagementPage />, { withRouter: true })
-    const user = userEvent.setup()
-
-    await user.click(await screen.findByText('Referat 50'))
-    await user.click(await screen.findByRole('button', { name: /entlassen/i }))
-    await answerConfirm(user, 'Bob als Ansprechstelle entlassen?', 'Entlassen')
-
-    await waitFor(() =>
-      expect(mockDismissGroupContact).toHaveBeenCalledWith('group-referat-50', 'u2'),
-    )
-  })
-
-  /** Eine interne Gruppe hat Verantwortliche - dort steht der Abschnitt nicht. */
-  it('zeigt an einer internen Gruppe keine Ansprechstelle', async () => {
-    setGroupState([adHocGroup], { 'group-phoenix': adHocDetails })
-    renderWithProviders(<GroupManagementPage />, { withRouter: true })
-    const user = userEvent.setup()
-
-    await user.click(await screen.findByText('Projektbeteiligte Phoenix'))
-
-    expect(await screen.findByText('Verantwortlich')).toBeInTheDocument()
-    expect(screen.queryByText(/Ansprechstellen sprechen für diese Gruppe/)).not.toBeInTheDocument()
   })
 })

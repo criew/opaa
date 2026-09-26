@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import Alert from '@mui/material/Alert'
+import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Dialog from '@mui/material/Dialog'
 import DialogActions from '@mui/material/DialogActions'
@@ -19,9 +20,20 @@ import { localUserErrorMessage } from './localUserLabels'
 const REASON_MAX_LENGTH = 200
 
 export const HANDOVER_CONSEQUENCE =
-  'Die Person erhält einen einmaligen Link und schließt die Übergabe selbst ab, indem sie sich ' +
-  'beim gewählten Anbieter anmeldet. Erst dann wechselt das Konto die Identität; Spaces, ' +
-  'Mitgliedschaften und Rolle bleiben, das Passwort entfällt. Einen Rückweg gibt es nicht.'
+  'Einen Rückweg gibt es nicht: Nach dem Abschluss meldet sich die Person nur noch über den ' +
+  'gewählten Anbieter an, ihr bisheriges Passwort gilt dann nicht mehr.'
+
+/** What a handover is, in plain words - the dialog is often the first place anyone meets it. */
+export const HANDOVER_EXPLANATION =
+  'Mit einer Übergabe meldet sich die Person künftig nicht mehr mit einem Passwort an, sondern ' +
+  'über einen Identitätsanbieter, zum Beispiel den Verzeichnisdienst Ihres Hauses. Das Konto bleibt ' +
+  'dasselbe: Spaces, Gruppen und Rolle bleiben erhalten.'
+
+const HANDOVER_STEPS = [
+  'Sie wählen den Anbieter und nennen den Anlass.',
+  'Die Person bekommt per E-Mail einen Link, der 72 Stunden gilt.',
+  'Sie öffnet den Link und meldet sich beim Anbieter an. Erst damit ist die Übergabe abgeschlossen – bis dahin kann sie sich weiter mit ihrem Passwort anmelden.',
+]
 
 export const REASON_HELPER =
   'Dienstlicher Anlass der Übergabe. Die Person liest ihn auf der Einlöseseite. Keine Angaben zu ' +
@@ -80,11 +92,22 @@ export default function HandoverDialog({
 
   return (
     <Dialog open fullWidth maxWidth="sm" onClose={onClose} aria-labelledby="handover-title">
-      <DialogTitle id="handover-title">Übergabe anstoßen</DialogTitle>
+      <DialogTitle id="handover-title">An Identitätsanbieter übergeben</DialogTitle>
       <DialogContent>
-        <Typography sx={{ fontSize: 13.5, mb: 2 }}>
+        <Typography sx={{ fontSize: 13.5, mb: 1.5 }}>
           Für „{user.displayName}“ ({user.email})
         </Typography>
+        <Typography sx={{ fontSize: 13.5, mb: 1 }}>{HANDOVER_EXPLANATION}</Typography>
+        <Typography component="h3" sx={{ fontSize: 13.5, fontWeight: 600, mb: 0.5 }}>
+          So läuft es ab
+        </Typography>
+        <Box component="ol" sx={{ m: 0, mb: 2, pl: 2.5, fontSize: 13.5 }}>
+          {HANDOVER_STEPS.map((step) => (
+            <Box component="li" key={step} sx={{ mb: 0.25 }}>
+              {step}
+            </Box>
+          ))}
+        </Box>
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>
             {error}
@@ -136,7 +159,7 @@ export default function HandoverDialog({
           Abbrechen
         </Button>
         <Button variant="contained" onClick={() => void submit()} disabled={!canSubmit}>
-          Übergabe anstoßen
+          An Identitätsanbieter übergeben
         </Button>
       </DialogActions>
     </Dialog>

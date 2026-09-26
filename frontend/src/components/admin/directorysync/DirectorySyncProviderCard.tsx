@@ -29,7 +29,7 @@ import { notify } from '../../../stores/notificationStore'
 import MetaBadge from '../../MetaBadge'
 import SectionHead from '../../SectionHead'
 import StatusLine from '../../StatusLine'
-import { ageLabel } from '../../groups/groupOriginLabels'
+import { ageLabel, ageSinceLabel, countLabel } from '../../groups/groupOriginLabels'
 import DirectoryConnectorSection from './DirectoryConnectorSection'
 import DirectorySyncReportView from './DirectorySyncReportView'
 import {
@@ -139,9 +139,10 @@ export default function DirectorySyncProviderCard({
 
       {pendingSummary && (
         <Alert severity="warning" sx={{ mt: 1.5 }}>
-          Ein Plan wartet seit {ageLabel(pendingSummary.createdAt)} auf eine Entscheidung:{' '}
-          {pendingSummary.membershipsRemoved} Mitgliedschaften würden entzogen,{' '}
-          {pendingSummary.accountsLocked ?? 0} Konten gesperrt (Anteil{' '}
+          Ein Plan wartet seit {ageSinceLabel(pendingSummary.createdAt)} auf eine Entscheidung:{' '}
+          {countLabel(pendingSummary.membershipsRemoved, 'Mitgliedschaft', 'Mitgliedschaften')}{' '}
+          {pendingSummary.membershipsRemoved === 1 ? 'würde' : 'würden'} entzogen,{' '}
+          {countLabel(pendingSummary.accountsLocked ?? 0, 'Konto', 'Konten')} gesperrt (Anteil{' '}
           {formatFraction(pendingSummary.changedFraction)}).
         </Alert>
       )}

@@ -3,7 +3,7 @@
 > **Entwurf.** Dieses Kapitel beschreibt die Verwaltung **lokaler Konten** — derjenigen Konten, die
 > OPAA selbst führt. Konten, die über einen Identitätsanbieter entstehen, werden dort verwaltet, wo
 > sie herkommen; in der Kontenliste stehen sie mit ihrer Herkunft und ihrer Rolle, aber ohne
-> Zustand, Ablauf und Aktivität — was sich an ihnen ändern lässt, sagen die Abschnitte 6 und 7.
+> Zustand und Ablauf — was sich an ihnen ändern lässt, sagen die Abschnitte 6 und 7.
 > Einrichtung des Anmeldewegs, Erststart, Umgebungsvariablen und E-Mail-Versand stehen im Kapitel
 > [Deployment](deployment.md); hier geht es um die täglichen Abläufe.
 
@@ -118,11 +118,14 @@ Handlung; ein optionaler Satz aus dem Sperrdialog wird darin zitiert.
 
 Drei Dinge sperren ein Konto:
 
-| Anlass | Wer hebt sie auf | Nachricht an die Person |
-|---|---|---|
-| **Die Verwaltung** | Die Verwaltung, über „Entsperren" | ja |
-| **Fehlversuche** — mehrere falsche Passwörter in Folge | Sie endet nach kurzer Zeit von selbst; „Entsperren" hebt sie sofort auf; ein eingelöster Rücksetzlink ebenfalls | nein |
-| **Inaktivität** — das Konto war lange nicht in Gebrauch | Die Verwaltung, über „Entsperren" | ja |
+| Anlass | Hinweis am Info-Symbol | Wer hebt sie auf | Nachricht an die Person |
+|---|---|---|---|
+| **Die Verwaltung** | Von der Verwaltung gesperrt | Die Verwaltung, über „Entsperren" | ja |
+| **Fehlversuche** — mehrere falsche Passwörter in Folge | Nach mehreren falschen Passwörtern gesperrt | Sie endet nach kurzer Zeit von selbst; „Entsperren" hebt sie sofort auf; ein eingelöster Rücksetzlink ebenfalls | nein |
+| **Inaktivität** — das Konto war lange nicht in Gebrauch | Wegen Inaktivität gesperrt | Die Verwaltung, über „Entsperren" | ja |
+
+In der Spalte „Zustand" der Kontenliste steht in allen drei Fällen nur „Gesperrt"; den Anlass nennt
+das Info-Symbol dahinter, wenn die Maus darüber steht oder es per Tastatur angesteuert wird.
 
 Die Fehlversuch-Sperre schickt **bewusst keine** Nachricht: Sie wäre sonst ein Belästigungskanal für
 jeden, der eine Adresse kennt. Sie schneidet die Selbsthilfe auch nicht ab — „Passwort vergessen"
@@ -160,11 +163,12 @@ Identitätsanbieter. Die **Herkunft** steht an jeder Zeile: „Lokal" mit einem 
 Name des Anbieters. Der Filter „Herkunft" grenzt auf lokale Konten, auf alle Anbieter oder auf einen
 einzelnen Anbieter ein.
 
-Ein **lokales Konto** zeigt Zustand, Rolle, Ablauf, Anlagedatum, Anlagegrund und eine
-**Aktivitätsklasse**. Die Klasse ist grob — „nie", „länger nicht genutzt", „aktiv" — und bewusst so:
-Ein exakter Zeitstempel der letzten Nutzung wäre der Rohstoff für eine Anwesenheitsauswertung. Nach
-Aktivität lässt sich deshalb auch **nicht sortieren**, und es gibt **keinen Export** der Liste. Das
-ist eine dauerhafte Eigenschaft dieser Ansicht.
+Ein **lokales Konto** zeigt Zustand, Rolle, Ablauf und Anlagedatum; ohne Ablaufdatum steht dort
+„unbefristet". Den Anlagegrund zeigt und ändert der Dialog „Bearbeiten". Wann ein Konto
+zuletzt genutzt wurde, zeigt die Liste bewusst **nicht** — ein Zeitstempel der letzten Nutzung wäre
+der Rohstoff für eine Anwesenheitsauswertung. Wer Konten sucht, an denen eine Sperre oder Löschung
+der nächste Schritt wäre, nimmt den Filter **länger nicht genutzt**. Aus demselben Grund gibt es
+**keinen Export** der Liste. Das ist eine dauerhafte Eigenschaft dieser Ansicht.
 
 Sortieren lässt sich über die Spaltenköpfe Name, E-Mail, Herkunft, Rolle, Zustand, Ablauf und
 Angelegt. Drei davon ordnen keine Wörter, sondern Kategorien, und tun das nach einer festen
@@ -178,8 +182,8 @@ Reihenfolge statt alphabetisch:
 
 Der Zustand sortiert damit das nach oben, was eine Entscheidung braucht.
 
-Ein **Konto eines Identitätsanbieters** zeigt Herkunft und Rolle, aber weder Zustand noch Ablauf
-noch Aktivität: Sein Lebenszyklus liegt beim Anbieter, und die Prüfpflicht dieses Kapitels gilt ihm
+Ein **Konto eines Identitätsanbieters** zeigt Herkunft und Rolle, aber weder Zustand noch
+Ablauf: Sein Lebenszyklus liegt beim Anbieter, und die Prüfpflicht dieses Kapitels gilt ihm
 nicht. Steht in seiner Zustandsspalte „Anbieter deaktiviert", kann sich niemand mehr über diesen
 Anbieter anmelden; „Anmeldung nicht möglich" heißt, dass zu seinem Issuer gar keine Anbieterzeile
 mehr existiert — das Konto bleibt, der Weg hinein ist zu. In der Spalte Herkunft steht dann „Kein
@@ -193,17 +197,17 @@ aus:
 - **länger nicht genutzt** — Kandidaten für eine Sperre oder Löschung,
 - **offene Einladungen** — Konten, deren Einladung niemand eingelöst hat.
 
-Ein Hinweis über der Liste nennt die beiden Zahlen „Konten ohne Ablaufdatum" und „offene
-Einladungen" und führt direkt in den passenden Filter. Er verschwindet, sobald beide null sind. Die
-Zahl und die Liste dahinter meinen dieselben Konten: Das Notanker-Konto der Systemverwaltung
+Links neben „Konto anlegen" nennt ein Hinweis-Link die beiden Zahlen „Konten ohne Ablaufdatum" und
+„offene Einladungen". Ein Klick öffnet die Details: die Auflage selbst und je Zahl einen Sprung in
+den passenden Filter. Der Link verschwindet, sobald beide Zahlen null sind. Die Zahl und die Liste
+dahinter meinen dieselben Konten: Das Notanker-Konto der Systemverwaltung
 erscheint in keiner von beiden. Es soll unbefristet bleiben — es ist der Weg zurück in eine
 ausgesperrte Installation und deshalb kein Fall für die Auflagenprüfung.
 
 Im Filter **länger nicht genutzt** fehlt es ebenfalls, dort aus einem eigenen Grund: Dieser Filter
 zeigt Konten, an denen eine Sperre oder eine Löschung der nächste Schritt wäre — beides ist am
 Notanker-Konto nicht vorgesehen, es soll gerade unbenutzt bleiben, und die automatische Sperre nach
-Inaktivität lässt es aus demselben Grund aus. Wie lange es ruht, steht weiterhin in seiner eigenen
-Zeile.
+Inaktivität lässt es aus demselben Grund aus.
 
 Dazu kommen zwei Automatiken, die die Prüfung am Laufen halten: Vor einem Ablauf erhalten die Person
 und die Systemverwaltung eine Nachricht, und einmal im Quartal geht eine Wiedervorlage an die
@@ -312,7 +316,7 @@ Person, sie wird nirgends eingegeben.
 
 **So läuft es ab**
 
-1. Zeilenmenü des Kontos → **„Übergabe anstoßen …"**. Der Dialog fragt nach dem
+1. Zeilenmenü des Kontos → **„An Identitätsanbieter übergeben"**. Der Dialog fragt nach dem
    Identitätsanbieter und nach einem **Anlass** (Pflichtfeld, höchstens 200 Zeichen; er gehört zur
    Sache, nicht zur Person — dieselbe Regel wie beim Anlagegrund). Ein Feld für eine Kennung gibt es
    nicht.
