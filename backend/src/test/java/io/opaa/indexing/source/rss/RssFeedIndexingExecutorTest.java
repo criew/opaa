@@ -17,6 +17,7 @@ import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.indexing.IndexingProperties;
+import io.opaa.indexing.attachment.AttachmentProfile;
 import io.opaa.indexing.document.Document;
 import io.opaa.indexing.document.DocumentIngest;
 import io.opaa.indexing.document.DocumentIngestResult;
@@ -32,7 +33,6 @@ import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.job.IndexingRunEventRepository;
 import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
 import io.opaa.indexing.source.IndexingRunTemplate;
-import io.opaa.indexing.source.attachment.AttachmentProfile;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.security.TargetAddressValidator;
@@ -167,11 +167,11 @@ class RssFeedIndexingExecutorTest {
         documentIngestService,
         documentRepository,
         feedStateRepository,
-        new io.opaa.indexing.source.attachment.AttachmentIndexer(
+        new io.opaa.indexing.attachment.AttachmentIndexer(
             new BoundedDownloader(targetAddressValidator, requestPolicy),
             documentIngestService,
             storageQuotaService,
-            new io.opaa.indexing.source.attachment.AttachmentProperties(5, 0, 0),
+            new io.opaa.indexing.attachment.AttachmentProperties(5, 0, 0),
             io.opaa.test.ProductionDocumentFormats.supportedFormats()),
         properties,
         targetAddressValidator,

@@ -11,8 +11,9 @@ import java.util.stream.Collectors;
 /**
  * Resolves the {@link SourceIndexingExecutor} responsible for a given {@link IndexingSourceType}
  * (ADR-0017, decision 3). Populated from whatever {@link SourceIndexingExecutor} beans Spring finds
- * - see {@code IndexingConfiguration} - so a new source type becomes reachable by adding one more
- * bean, without touching this class or any of the call sites that use it.
+ * - each connector declares its own in its package's {@code @Configuration} - so a new source type
+ * becomes reachable by adding one more bean, without touching this class or any of the call sites
+ * that use it.
  *
  * <p>The key space is deliberately {@link IndexingSourceType}, not {@link DocumentSourceType}:
  * {@code UPLOAD} cannot be looked up here at all, since it is not a value of {@link

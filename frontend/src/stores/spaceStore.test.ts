@@ -21,6 +21,7 @@ const initialSpaces = [
     archived: false,
     reach: { allAccounts: false, groupCount: 0, userCount: 1 },
     memberCount: 2,
+    memberships: { groupCount: 0, userCount: 2 },
     userRole: 'ADMIN',
     createdAt: '2026-03-01T10:00:00Z',
     updatedAt: '2026-03-01T10:00:00Z',
@@ -33,6 +34,7 @@ const initialSpaces = [
     archived: false,
     reach: { allAccounts: false, groupCount: 0, userCount: 1 },
     memberCount: 1,
+    memberships: { groupCount: 0, userCount: 1 },
     userRole: 'ADMIN',
     createdAt: '2026-03-01T10:00:00Z',
     updatedAt: '2026-03-01T10:00:00Z',
@@ -40,6 +42,14 @@ const initialSpaces = [
 ]
 
 let mutableSpaces = initialSpaces.map((space) => ({ ...space }))
+
+// Membership writes change the list's member figures the way the backend's re-read would.
+function changeMemberships(spaceId: string, delta: number) {
+  const target = mutableSpaces.find((space) => space.id === spaceId)
+  if (!target) return
+  target.memberCount += delta
+  target.memberships = { ...target.memberships, userCount: target.memberships.userCount + delta }
+}
 
 const mockArchiveSpace = vi.fn(async (spaceId: string) => {
   const target = mutableSpaces.find((space) => space.id === spaceId)
@@ -81,6 +91,8 @@ vi.mock('../services/api', () => ({
   listSpaceMembers: vi.fn(async () => [
     { userId: 'u1', role: 'ADMIN', createdAt: '2026-03-01T10:00:00Z' },
   ]),
+  addSpaceMember: vi.fn(async (spaceId: string) => changeMemberships(spaceId, 1)),
+  removeSpaceMember: vi.fn(async (spaceId: string) => changeMemberships(spaceId, -1)),
   createSpace: (...args: unknown[]) => mockCreateSpace(...args),
   archiveSpace: (...args: [string]) => mockArchiveSpace(...args),
   getSpaceAssetAssociations: (spaceId: string) => mockGetSpaceAssetAssociations(spaceId),
@@ -311,6 +323,21 @@ describe('spaceStore', () => {
     // it was in the list from the start, but would not see archived: true.
     const refreshed = useSpaceStore.getState().spaces.find((space) => space.id === 'space-project')
     expect(refreshed?.archived).toBe(true)
+  })
+
+  // The list's member label ("nur Sie") must follow a membership change without a page reload.
+  it('refreshes the list figures after adding and after removing a member', async () => {
+    await useSpaceStore.getState().loadSpaces()
+
+    await useSpaceStore.getState().addMember('space-personal', 'USER', 'u2', 'MEMBER')
+    const afterAdd = useSpaceStore.getState().spaces.find((space) => space.id === 'space-personal')
+    expect(afterAdd?.memberships).toEqual({ groupCount: 0, userCount: 2 })
+
+    await useSpaceStore.getState().removeMember('space-personal', 'membership-u2')
+    const afterRemove = useSpaceStore
+      .getState()
+      .spaces.find((space) => space.id === 'space-personal')
+    expect(afterRemove?.memberships).toEqual({ groupCount: 0, userCount: 1 })
   })
 
   // #575: loadSpaces is one of the explicitly named unguarded write paths (Issue #575) - a

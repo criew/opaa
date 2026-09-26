@@ -239,20 +239,12 @@ describe('ChatList ordering', () => {
     expect(screen.queryByRole('searchbox', { name: 'Chats filtern' })).not.toBeInTheDocument()
   })
 
-  it('collapses and expands the pinned group without touching the others', async () => {
-    const user = userEvent.setup()
+  it('always shows the pinned group open, without a collapse toggle', () => {
     renderWithProviders(<ChatList spaceId="space-personal" />)
-    const toggle = screen.getByRole('button', { name: 'Angeheftet' })
-    expect(toggle).toHaveAttribute('aria-expanded', 'true')
 
-    await user.click(toggle)
-
-    expect(toggle).toHaveAttribute('aria-expanded', 'false')
-    expect(screen.queryByText('Fristen Übersicht')).not.toBeInTheDocument()
-    expect(screen.getByText('Erlass vom März')).toBeInTheDocument()
-
-    await user.click(toggle)
-    expect(screen.getByText('Fristen Übersicht')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 3, name: 'Angeheftet' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Angeheftet' })).not.toBeInTheDocument()
+    expect(groupTitles('Angeheftet')).toEqual(['Fristen Übersicht'])
   })
 
   it('pins a chat via the context menu and keeps focus on its actions button', async () => {
@@ -284,31 +276,6 @@ describe('ChatList ordering', () => {
           .getState()
           .chatsBySpaceId['space-personal']?.find((chat) => chat.id === 'chat-1')?.pinnedAt,
       ).toBe('2026-09-18T09:00:00Z'),
-    )
-  })
-
-  it('expands a collapsed pinned group when a chat is pinned into it', async () => {
-    server.use(
-      http.put('/api/v1/chats/:chatId/pin', () =>
-        HttpResponse.json({
-          ...summary('chat-1', 'Erlass vom März', 60 * 1000),
-          pinnedAt: '2026-09-18T09:00:00Z',
-        }),
-      ),
-    )
-    const user = userEvent.setup()
-    renderWithProviders(<ChatList spaceId="space-personal" />)
-    const toggle = screen.getByRole('button', { name: 'Angeheftet' })
-    await user.click(toggle)
-    expect(toggle).toHaveAttribute('aria-expanded', 'false')
-
-    await user.click(screen.getByLabelText('Aktionen für Chat „Erlass vom März“'))
-    await user.click(screen.getByRole('menuitem', { name: 'Chat „Erlass vom März“ anheften' }))
-
-    expect(toggle).toHaveAttribute('aria-expanded', 'true')
-    expect(groupTitles('Angeheftet')).toEqual(['Erlass vom März', 'Fristen Übersicht'])
-    await waitFor(() =>
-      expect(screen.getByLabelText('Aktionen für Chat „Erlass vom März“')).toHaveFocus(),
     )
   })
 

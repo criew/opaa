@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithProviders } from '../test/test-utils'
@@ -289,6 +289,30 @@ describe('LibraryManagementPage', () => {
     await user.type(screen.getByRole('textbox', { name: 'Suchen' }), 'SGB')
     expect(screen.getByRole('link', { name: /Rechtsquellen Soziales/ })).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /Dienstanweisungen/ })).not.toBeInTheDocument()
+  })
+
+  it('marks each card with the type "Wissen" and its short origin as badges (#1970)', async () => {
+    const user = userEvent.setup()
+    setLibraryState([managerLibrary, { ...viewerLibrary, sourceType: 'HTTP_DIRECTORY' }])
+    renderWithProviders(<LibraryManagementPage />, { withRouter: true })
+
+    await screen.findByRole('table')
+    await user.click(screen.getByRole('button', { name: 'Kacheln' }))
+
+    const card = screen.getByRole('link', { name: /Rechtsquellen Soziales/ })
+    expect(within(card).getByText('Wissen')).toBeInTheDocument()
+    expect(within(card).getByText('Dateisystem')).toBeInTheDocument()
+    expect(within(card).getByText('Referat 50 · 431 Dokumente')).toBeInTheDocument()
+    const webCard = screen.getByRole('link', { name: /Dienstanweisungen/ })
+    expect(within(webCard).getByText('Web')).toBeInTheDocument()
+    expect(within(webCard).queryByText('Webverzeichnis')).not.toBeInTheDocument()
+  })
+
+  it('keeps the long origin name in the table column (#1970)', async () => {
+    setLibraryState([{ ...managerLibrary, sourceType: 'HTTP_DIRECTORY' }])
+    renderWithProviders(<LibraryManagementPage />, { withRouter: true })
+
+    expect(await screen.findByRole('cell', { name: 'Webverzeichnis' })).toBeInTheDocument()
   })
 
   it('navigates to the create wizard from the header button', async () => {

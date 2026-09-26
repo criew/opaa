@@ -1,0 +1,545 @@
+package io.opaa.indexing.attachment;
+
+import io.opaa.api.types.DocumentSourceType;
+import io.opaa.indexing.document.DocumentIngest;
+import io.opaa.indexing.document.DocumentIngestOutcomes;
+import io.opaa.indexing.document.DocumentIngestResult;
+import io.opaa.indexing.document.DocumentIngestService;
+import io.opaa.indexing.format.SupportedDocumentFormats;
+import io.opaa.indexing.job.IndexingEventCategory;
+import io.opaa.indexing.source.IndexingRun;
+import io.opaa.library.LibraryStorageQuotaService;
+import io.opaa.security.TargetAddressValidator;
+import io.opaa.sourceaccess.BoundedDownloader;
+import io.opaa.sourceaccess.RedirectFollowingFetcher;
+import io.opaa.sourceaccess.RequestPoliteness;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import java.util.Optional;
+import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * Indexes the attachments of a parent document into their own {@link
+ * io.opaa.indexing.document.Document} rows (ADR-0022) - the shared path RSS, Mail and Confluence
+ * all use. It depends on no connector package: a caller supplies an {@link AttachmentAccess} and a
+ * list of {@link AttachmentSource}.
+ *
+ * <p>An attachment failure never propagates: a lost attachment is logged and skipped with no effect
+ * on the parent's outcome, but marks {@link AttachmentAccess#markDeferred()} so a later conditional
+ * {@code GET} cannot suppress the retry. What ends the run - an interruption, a spent request
+ * budget - is not an attachment failure and passes through ({@link IndexingRun#rethrowRunEnding}).
+ * Every attachment created or confirmed unchanged becomes a child of {@code parentDocumentId}
+ * (Entscheidung 4) and its {@code file_path} is returned, for a caller that folds those paths into
+ * its own reconciliation set (Entscheidung 3).
+ *
+ * <p>Every attachment handed in is counted exactly once on {@link AttachmentAccess#progress()}:
+ * {@code PROCESSED} when it became a document, {@code SKIPPED} when nothing was attempted for it
+ * (unchanged, unsupported, rejected by a limit or policy), {@code FAILED} when an attempt did not
+ * succeed (download, read or processing error, quota).
+ */
+public class AttachmentIndexer {
+
+  private static final Logger log = LoggerFactory.getLogger(AttachmentIndexer.class);
+
+  /**
+   * How many levels of attachment-in-attachment recursion the current thread is at - {@code null}
+   * outside of any {@link #indexAll} call. An attachment whose own pipeline reports further {@code
+   * discoveredAttachments} (e.g. a nested {@code .eml}) re-enters this class synchronously, through
+   * {@code DocumentIngestService#ingest}'s own attachment handling, on the same thread. The depth
+   * cutoff is this class's alone (ADR-0022, Entscheidung 6), never a pipeline's.
+   */
+  private static final ThreadLocal<Integer> RECURSION_DEPTH = new ThreadLocal<>();
+
+  private final BoundedDownloader attachmentDownloader;
+  private final DocumentIngestService documentIngestService;
+  private final LibraryStorageQuotaService storageQuotaService;
+  private final AttachmentProperties attachmentProperties;
+  private final SupportedDocumentFormats supportedFormats;
+
+  public AttachmentIndexer(
+      BoundedDownloader attachmentDownloader,
+      DocumentIngestService documentIngestService,
+      LibraryStorageQuotaService storageQuotaService,
+      AttachmentProperties attachmentProperties,
+      SupportedDocumentFormats supportedFormats) {
+    this.attachmentDownloader = attachmentDownloader;
+    this.documentIngestService = documentIngestService;
+    this.storageQuotaService = storageQuotaService;
+    this.attachmentProperties = attachmentProperties;
+    this.supportedFormats = supportedFormats;
+  }
+
+  /**
+   * {@link #indexAll(AttachmentAccess, List, UUID, String, DocumentSourceType, AttachmentLimits)}
+   * under the shared {@link AttachmentProperties#limits()} - for a connector without attachment
+   * numbers of its own.
+   */
+  public List<String> indexAll(
+      AttachmentAccess access,
+      List<AttachmentSource> sources,
+      UUID parentDocumentId,
+      String parentPath,
+      DocumentSourceType sourceType)
+      throws InterruptedException {
+    return indexAll(
+        access, sources, parentDocumentId, parentPath, sourceType, attachmentProperties.limits());
+  }
+
+  /**
+   * Indexes every attachment {@code sources} lists, up to {@link AttachmentLimits#maxPerParent()}.
+   * A {@link AttachmentSource.Download}'s own politeness delay applies before it; an {@link
+   * AttachmentSource.LocalFile} makes no request.
+   *
+   * @param parentDocumentId the row every indexed attachment becomes a child of
+   * @param parentPath the parent document's own {@code file_path} - recorded on every attachment
+   *     via {@code sourceEntryUrl}, alongside {@code parentDocumentId}
+   * @return the {@code file_path} of every attachment created or confirmed unchanged this call,
+   *     never {@code null}
+   */
+  public List<String> indexAll(
+      AttachmentAccess access,
+      List<AttachmentSource> sources,
+      UUID parentDocumentId,
+      String parentPath,
+      DocumentSourceType sourceType,
+      AttachmentLimits limits)
+      throws InterruptedException {
+    if (sources.isEmpty()) {
+      return List.of();
+    }
+    boolean topLevel = RECURSION_DEPTH.get() == null;
+    int depth = topLevel ? 0 : RECURSION_DEPTH.get();
+    if (depth >= attachmentProperties.maxDepth()) {
+      log.warn(
+          "Maximum attachment depth ({}) reached for {}, skipping {} nested attachment(s)",
+          attachmentProperties.maxDepth(),
+          parentPath,
+          sources.size());
+      access.markDeferred();
+      countSkipped(access, sources.size());
+      return List.of();
+    }
+    if (topLevel) {
+      RECURSION_DEPTH.set(0);
+    }
+    try {
+      int limit = Math.min(sources.size(), limits.maxPerParent());
+      if (sources.size() > limit) {
+        log.info(
+            "Parent document {} carries {} attachments, processing only the first {} (attachment"
+                + " limit)",
+            parentPath,
+            sources.size(),
+            limit);
+        access.markDeferred();
+        countSkipped(access, sources.size() - limit);
+      }
+      List<String> indexedPaths = new ArrayList<>();
+      RECURSION_DEPTH.set(depth + 1);
+      try {
+        for (AttachmentSource source : sources.subList(0, limit)) {
+          if (source instanceof AttachmentSource.Download download) {
+            RequestPoliteness.delayBeforeRequest(download.requestDelayMs());
+          }
+          indexOne(access, source, parentDocumentId, parentPath, sourceType, limits)
+              .ifPresent(indexedPaths::add);
+        }
+      } finally {
+        RECURSION_DEPTH.set(depth);
+      }
+      return List.copyOf(indexedPaths);
+    } finally {
+      if (topLevel) {
+        RECURSION_DEPTH.remove();
+      }
+    }
+  }
+
+  private static void countSkipped(AttachmentAccess access, int count) {
+    for (int i = 0; i < count; i++) {
+      access.progress().recordAttachment(AttachmentOutcome.SKIPPED);
+    }
+  }
+
+  private Optional<String> indexOne(
+      AttachmentAccess access,
+      AttachmentSource source,
+      UUID parentDocumentId,
+      String parentPath,
+      DocumentSourceType sourceType,
+      AttachmentLimits limits)
+      throws InterruptedException {
+    return switch (source) {
+      case AttachmentSource.Download download ->
+          indexDownload(access, download, parentDocumentId, parentPath, sourceType, limits);
+      case AttachmentSource.LocalFile localFile ->
+          indexLocalFile(access, localFile, parentDocumentId, parentPath, sourceType);
+    };
+  }
+
+  private Optional<String> indexDownload(
+      AttachmentAccess access,
+      AttachmentSource.Download download,
+      UUID parentDocumentId,
+      String parentPath,
+      DocumentSourceType sourceType,
+      AttachmentLimits limits)
+      throws InterruptedException {
+    BoundedDownloader.DownloadedFile downloaded = null;
+    try {
+      downloaded =
+          attachmentDownloader.downloadBounded(
+              download.httpClient(),
+              download.url(),
+              download.suggestedFileName(),
+              limits.maxSizeBytes(),
+              download.authHeader(),
+              RedirectFollowingFetcher.RedirectPolicy.REJECT_OFF_ORIGIN,
+              access.rateLimitListener());
+
+      String contentType = downloaded.contentType();
+      if (isHtmlContentType(contentType)) {
+        // An HTML response on what the caller identified as an attachment link - a bot-protection
+        // challenge or a 200-status error page - must never be trusted just because the URL
+        // carried a supported extension.
+        log.info(
+            "Skipping attachment that answered with HTML instead of a document (likely a"
+                + " bot-protection or error page): {} (from {})",
+            download.url(),
+            parentPath);
+        access
+            .events()
+            .record(
+                IndexingEventCategory.REJECTED,
+                "Anlage antwortete mit HTML statt einem Dokument (vermutlich Bot-Schutz)",
+                download.url());
+        access.markDeferred();
+        access.progress().recordAttachment(AttachmentOutcome.SKIPPED);
+        return Optional.empty();
+      }
+
+      // The GSB profile's candidates carry no extension in their URL - resolved here, once the
+      // response's actual Content-Type is known. Only a display name / hint from here on; the
+      // accept/reject decision below is made from the downloaded bytes.
+      String fileName = resolveFileName(download.suggestedFileName(), contentType);
+
+      // Caught here, not by the broader catch (IOException | InterruptedException e) below - that
+      // one reports "Anlage nicht erreichbar", which would be misleading for a read failure on a
+      // file already downloaded; the remote end answered just fine.
+      String detectedMimeType;
+      try {
+        detectedMimeType = SupportedDocumentFormats.detectMediaType(downloaded.path());
+      } catch (IOException e) {
+        log.warn(
+            "Could not read downloaded attachment to detect its format, skipping: {} (from {})",
+            download.url(),
+            parentPath,
+            e);
+        access
+            .events()
+            .record(
+                IndexingEventCategory.ERROR,
+                "Anlage konnte nach dem Herunterladen nicht auf ihr Format geprüft werden",
+                download.url());
+        access.markDeferred();
+        access.progress().recordAttachment(AttachmentOutcome.FAILED);
+        return Optional.empty();
+      }
+      SupportedDocumentFormats.ContentDecision decision =
+          supportedFormats.decideForFileName(fileName, detectedMimeType);
+      if (!decision.supported()) {
+        log.info(
+            "Skipping attachment with an unsupported format: {} (from {}, Content-Type {})",
+            download.url(),
+            parentPath,
+            contentType);
+        access
+            .events()
+            .record(
+                IndexingEventCategory.UNSUPPORTED_FORMAT,
+                "Anlagenformat wird nicht unterstützt",
+                download.url());
+        access.markDeferred();
+        access.progress().recordAttachment(AttachmentOutcome.SKIPPED);
+        return Optional.empty();
+      }
+      if (decision.extensionMismatch()) {
+        // Indexed anyway, only reported.
+        access
+            .events()
+            .record(
+                IndexingEventCategory.FORMAT_MISMATCH,
+                "Dateiendung passt nicht zum erkannten Inhalt (erkannt: "
+                    + decision.detectedExtension()
+                    + ")",
+                download.url());
+      }
+
+      long size = Files.size(downloaded.path());
+      return storeAttachment(
+          access,
+          downloaded.path(),
+          fileName,
+          download.url(),
+          null,
+          size,
+          parentDocumentId,
+          parentPath,
+          sourceType);
+    } catch (BoundedDownloader.AttachmentTooLargeException e) {
+      log.warn(
+          "Skipping attachment exceeding the size limit of {} bytes: {} (from {})",
+          limits.maxSizeBytes(),
+          download.url(),
+          parentPath);
+      access
+          .events()
+          .record(
+              IndexingEventCategory.REJECTED,
+              "Anlage überschreitet die zulässige Größe",
+              download.url());
+      access.markDeferred();
+      access.progress().recordAttachment(AttachmentOutcome.SKIPPED);
+    } catch (RedirectFollowingFetcher.RedirectRejectedException e) {
+      log.warn(
+          "Attachment redirected to a foreign host, skipping: {} (from {}, {})",
+          download.url(),
+          parentPath,
+          e.getMessage());
+      access
+          .events()
+          .record(IndexingEventCategory.REJECTED, e.userMessage() + " (Anlage)", download.url());
+      access.markDeferred();
+      access.progress().recordAttachment(AttachmentOutcome.SKIPPED);
+    } catch (TargetAddressValidator.TargetAddressBlockedException e) {
+      log.warn(
+          "Attachment target rejected, skipping: {} (from {}, {})",
+          download.url(),
+          parentPath,
+          e.getMessage());
+      access
+          .events()
+          .record(IndexingEventCategory.REJECTED, e.getMessage() + " (Anlage)", download.url());
+      access.markDeferred();
+      access.progress().recordAttachment(AttachmentOutcome.SKIPPED);
+    } catch (IOException e) {
+      IndexingRun.rethrowRunEnding(e);
+      log.warn(
+          "Attachment unreachable, skipping: {} (from {}, {})",
+          download.url(),
+          parentPath,
+          e.getMessage());
+      access
+          .events()
+          .record(IndexingEventCategory.UNREACHABLE, "Anlage nicht erreichbar", download.url());
+      access.markDeferred();
+      access.progress().recordAttachment(AttachmentOutcome.FAILED);
+    } catch (Exception e) {
+      IndexingRun.rethrowRunEnding(e);
+      log.error("Failed to process attachment: {} (from {})", download.url(), parentPath, e);
+      access
+          .events()
+          .record(
+              IndexingEventCategory.ERROR,
+              DocumentIngestOutcomes.ATTACHMENT_FAILED_MESSAGE,
+              download.url());
+      access.markDeferred();
+      access.progress().recordAttachment(AttachmentOutcome.FAILED);
+    } finally {
+      if (downloaded != null) {
+        try {
+          Files.deleteIfExists(downloaded.path());
+        } catch (IOException e) {
+          log.warn("Failed to delete temp file: {}", downloaded.path(), e);
+        }
+      }
+    }
+    return Optional.empty();
+  }
+
+  /**
+   * Indexes an attachment whose bytes are already on disk - the case Mail and Confluence need, no
+   * download step involved here. {@code localFile.filePathIdentity()} is this attachment's {@code
+   * file_path} (ADR-0022, Entscheidung 2); {@code localFile.fileName()} is only its display name.
+   */
+  private Optional<String> indexLocalFile(
+      AttachmentAccess access,
+      AttachmentSource.LocalFile localFile,
+      UUID parentDocumentId,
+      String parentPath,
+      DocumentSourceType sourceType) {
+    try {
+      String detectedMimeType = SupportedDocumentFormats.detectMediaType(localFile.file());
+      SupportedDocumentFormats.ContentDecision decision =
+          supportedFormats.decideForFileName(localFile.fileName(), detectedMimeType);
+      if (!decision.supported()) {
+        log.info(
+            "Skipping local attachment with an unsupported format: {} (from {})",
+            localFile.fileName(),
+            parentPath);
+        access
+            .events()
+            .record(
+                IndexingEventCategory.UNSUPPORTED_FORMAT,
+                "Anlagenformat wird nicht unterstützt",
+                localFile.fileName());
+        access.progress().recordAttachment(AttachmentOutcome.SKIPPED);
+        return Optional.empty();
+      }
+      if (decision.extensionMismatch()) {
+        access
+            .events()
+            .record(
+                IndexingEventCategory.FORMAT_MISMATCH,
+                "Dateiendung passt nicht zum erkannten Inhalt (erkannt: "
+                    + decision.detectedExtension()
+                    + ")",
+                localFile.fileName());
+      }
+      long size = Files.size(localFile.file());
+      return storeAttachment(
+          access,
+          localFile.file(),
+          localFile.fileName(),
+          localFile.filePathIdentity(),
+          localFile.remoteVersion(),
+          size,
+          parentDocumentId,
+          parentPath,
+          sourceType);
+    } catch (IOException e) {
+      log.warn(
+          "Failed to read local attachment, skipping: {} (from {})",
+          localFile.fileName(),
+          parentPath,
+          e);
+      access
+          .events()
+          .record(
+              IndexingEventCategory.ERROR,
+              "Anlage konnte nicht gelesen werden",
+              localFile.fileName());
+      // See storeAttachment's own comment: present in the parent, only not readable this run.
+      access.recordIndexedAttachment(localFile.filePathIdentity(), false);
+      access.progress().recordAttachment(AttachmentOutcome.FAILED);
+      return Optional.empty();
+    }
+  }
+
+  /**
+   * The {@link DocumentIngestService#ingest} call and outcome handling both branches share. {@code
+   * remoteVersion} is the source's change marker for the attachment ({@link
+   * AttachmentSource.LocalFile#remoteVersion()}), {@code null} for a download; {@code access}
+   * carries the parent's {@link AttachmentAccess#sourceContext()} to the attachment.
+   *
+   * <p>Whatever the outcome, an attachment that reached this point is present in its parent and is
+   * reported so - without that, a transient failure of an already-indexed attachment of a re-parsed
+   * parent would let the caller's reconciliation delete its row permanently.
+   */
+  private Optional<String> storeAttachment(
+      AttachmentAccess access,
+      Path localFile,
+      String fileName,
+      String filePathIdentity,
+      String remoteVersion,
+      long size,
+      UUID parentDocumentId,
+      String parentPath,
+      DocumentSourceType sourceType) {
+    try {
+      DocumentIngestResult result =
+          documentIngestService.ingest(
+              DocumentIngest.builder(access.targetLibrary())
+                  .file(localFile, size)
+                  .filePath(filePathIdentity)
+                  .fileName(fileName)
+                  .sourceType(sourceType)
+                  .parentDocumentId(parentDocumentId)
+                  .sourceEntryUrl(parentPath)
+                  .context(access.sourceContext())
+                  .changeMarker(remoteVersion)
+                  .build(),
+              access);
+      DocumentIngestOutcomes.record(
+          access.events(),
+          result,
+          filePathIdentity,
+          () -> storageQuotaService.quotaExceededMessage(access.targetLibrary().getId()),
+          DocumentIngestOutcomes.ATTACHMENT_FAILED_MESSAGE);
+      switch (result) {
+        case QUOTA_EXCEEDED, FAILED -> {
+          // Retried on a future run: deferred, so a conditional GET cannot suppress it.
+          access.markDeferred();
+          access.recordIndexedAttachment(filePathIdentity, false);
+          access.progress().recordAttachment(AttachmentOutcome.FAILED);
+          return Optional.empty();
+        }
+        case NO_EXTRACTABLE_TEXT -> {
+          // Rejected and marked FAILED for good - a scan PDF will not gain a text layer on retry.
+          access.recordIndexedAttachment(filePathIdentity, false);
+          access.progress().recordAttachment(AttachmentOutcome.SKIPPED);
+          return Optional.empty();
+        }
+        case SKIPPED -> {
+          // Unchanged (same checksum as an already-indexed document): confirmed present, not a
+          // document again.
+          access.recordIndexedAttachment(filePathIdentity, false);
+          access.progress().recordAttachment(AttachmentOutcome.SKIPPED);
+        }
+        case PROCESSED -> {
+          access.recordIndexedAttachment(filePathIdentity, true);
+          access.progress().recordAttachment(AttachmentOutcome.PROCESSED);
+        }
+      }
+      log.info("Indexed attachment: {} (from {})", filePathIdentity, parentPath);
+      return Optional.of(filePathIdentity);
+    } catch (IOException e) {
+      log.error("Failed to process attachment: {} (from {})", filePathIdentity, parentPath, e);
+      access
+          .events()
+          .record(
+              IndexingEventCategory.ERROR,
+              DocumentIngestOutcomes.ATTACHMENT_FAILED_MESSAGE,
+              filePathIdentity);
+      access.markDeferred();
+      access.recordIndexedAttachment(filePathIdentity, false);
+      access.progress().recordAttachment(AttachmentOutcome.FAILED);
+      return Optional.empty();
+    }
+  }
+
+  /**
+   * Appends an extension derived from {@code contentType} when {@code suggestedFileName} carries
+   * none at all - the Government Site Builder case, a no-op for {@link AttachmentProfile#GENERIC}.
+   * Checks {@code AttachmentProfile.fileHasSomeExtension}, not {@link
+   * SupportedDocumentFormats#isSupported}, so a candidate with an unrecognized extension gets no
+   * second one. From here on only the detected content decides acceptance.
+   */
+  private String resolveFileName(String suggestedFileName, String contentType) {
+    if (AttachmentProfile.fileHasSomeExtension(suggestedFileName)) {
+      return suggestedFileName;
+    }
+    String extension = supportedFormats.extensionForContentType(contentType);
+    if (extension == null) {
+      return suggestedFileName;
+    }
+    String baseName =
+        suggestedFileName == null || suggestedFileName.isBlank() ? "attachment" : suggestedFileName;
+    return baseName + extension;
+  }
+
+  /** Whether {@code contentType} (the raw {@code Content-Type} header value) denotes HTML. */
+  private static boolean isHtmlContentType(String contentType) {
+    if (contentType == null) {
+      return false;
+    }
+    String mediaType = contentType.split(";", 2)[0].strip().toLowerCase(Locale.ROOT);
+    return mediaType.equals("text/html") || mediaType.equals("application/xhtml+xml");
+  }
+}

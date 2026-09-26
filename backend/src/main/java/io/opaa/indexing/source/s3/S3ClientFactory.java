@@ -1,5 +1,7 @@
 package io.opaa.indexing.source.s3;
 
+import io.opaa.s3.S3AccessException;
+import io.opaa.s3.S3Connection;
 import io.opaa.security.TargetAddressValidator;
 import java.io.IOException;
 import java.time.Duration;
@@ -111,7 +113,8 @@ public class S3ClientFactory {
     } catch (TargetAddressValidator.UnknownTargetHostException e) {
       throw new S3AccessException.Unreachable(e.getMessage());
     } catch (IOException e) {
-      throw new S3AccessException.TargetBlocked(e.getMessage());
+      throw new S3AccessException.TargetBlocked(
+          e.getMessage(), TargetAddressValidator.ALLOWLIST_HINT);
     }
   }
 }

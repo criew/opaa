@@ -16,6 +16,7 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
+import io.opaa.indexing.attachment.AttachmentOutcome;
 import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.job.IndexingJobService;
@@ -23,7 +24,6 @@ import io.opaa.indexing.job.IndexingRunCost;
 import io.opaa.indexing.job.IndexingRunEvent;
 import io.opaa.indexing.job.IndexingRunEventRepository;
 import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
-import io.opaa.indexing.source.attachment.AttachmentOutcome;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.sourceaccess.SourceRequestMeter;

@@ -1,11 +1,11 @@
 package io.opaa.library;
 
-import io.opaa.indexing.source.s3.S3AccessException;
-import io.opaa.indexing.source.s3.S3ClientSettings;
-import io.opaa.indexing.source.s3.S3FailureTranslator;
-import io.opaa.indexing.source.s3.S3Operation;
-import io.opaa.indexing.source.s3.S3RequestGuard;
-import io.opaa.indexing.source.s3.S3SdkClient;
+import io.opaa.s3.S3AccessException;
+import io.opaa.s3.S3ClientSettings;
+import io.opaa.s3.S3FailureTranslator;
+import io.opaa.s3.S3Operation;
+import io.opaa.s3.S3RequestGuard;
+import io.opaa.s3.S3SdkClient;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;

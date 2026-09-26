@@ -517,7 +517,7 @@ ein Dokument. Was indiziert werden soll, muss OPAA erst aus dieser Seite gewinne
    den Government Site Builder, dessen Verweise Anlagen stattdessen über einen Abfrageparameter
    kennzeichnen. Jede gefundene Anlage durchläuft dieselbe Verarbeitungskette wie eine Datei aus einer
    Verzeichnisliste, über den quellentyp-übergreifenden Anhangsweg
-   (`io.opaa.indexing.source.attachment.AttachmentIndexer`, ADR-0022, seit #1182 ohne RSS-spezifische
+   (`io.opaa.indexing.attachment.AttachmentIndexer`, ADR-0022, seit #1182 ohne RSS-spezifische
    Abhängigkeiten — denselben Weg nutzt Mail seit #1183, Confluence künftig). Diese dritte Stufe läuft
    nicht bei jedem Eintrag: Sie folgt entweder aus einer tatsächlichen Neuverarbeitung (Stufe 2) oder —
    bei einem unveränderten Eintrag ohne bisherige Anlagen — aus dem Nachholmechanismus der

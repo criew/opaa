@@ -2,9 +2,9 @@ package io.opaa.indexing.format;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.opaa.indexing.attachment.AttachmentCandidate;
+import io.opaa.indexing.attachment.AttachmentProfile;
 import io.opaa.indexing.document.DocumentService;
-import io.opaa.indexing.source.attachment.AttachmentCandidate;
-import io.opaa.indexing.source.attachment.AttachmentProfile;
 import io.opaa.indexing.source.web.UrlIndexingExecutor;
 import io.opaa.test.ProductionDocumentFormats;
 import java.io.ByteArrayOutputStream;

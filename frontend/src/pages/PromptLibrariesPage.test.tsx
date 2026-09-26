@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { screen } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Route, Routes } from 'react-router'
 import { renderWithProviders, setMockAuthState } from '../test/test-utils'
@@ -20,6 +20,7 @@ describe('PromptLibrariesPage', () => {
     const card = await screen.findByRole('link', { name: /Formulierungshilfen Referat 50/ })
     expect(card).toHaveAttribute('href', '/prompts/prompt-library-referat-50')
     expect(card).toHaveTextContent('Referat 50 · 2 Prompts')
+    expect(within(card).getByText('Prompts')).toBeInTheDocument()
     expect(screen.getByText('2 Prompt-Bibliotheken')).toBeInTheDocument()
     // #1931: die Reichweite ist abgeleitet - „Alle" steht für die Freigabe an alle Konten.
     expect(screen.getByText('Alle')).toBeInTheDocument()

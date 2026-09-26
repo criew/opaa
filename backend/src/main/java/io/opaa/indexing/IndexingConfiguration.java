@@ -1,6 +1,9 @@
 package io.opaa.indexing;
 
 import io.micrometer.core.instrument.MeterRegistry;
+import io.opaa.indexing.attachment.AttachmentIndexer;
+import io.opaa.indexing.attachment.AttachmentLimits;
+import io.opaa.indexing.attachment.AttachmentProperties;
 import io.opaa.indexing.chunk.ChunkingService;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.document.AttachmentExtractor;
@@ -39,29 +42,8 @@ import io.opaa.indexing.metadata.ModelMetadataExtractor;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.IndexingSourceExecutorRegistry;
 import io.opaa.indexing.source.SourceIndexingExecutor;
-import io.opaa.indexing.source.SourceSyncStateRepository;
-import io.opaa.indexing.source.attachment.AttachmentIndexer;
-import io.opaa.indexing.source.attachment.AttachmentLimits;
-import io.opaa.indexing.source.attachment.AttachmentProperties;
-import io.opaa.indexing.source.confluence.ConfluenceClientFactory;
-import io.opaa.indexing.source.confluence.ConfluenceIndexingExecutor;
-import io.opaa.indexing.source.confluence.ConfluenceProperties;
-import io.opaa.indexing.source.filesystem.AsyncIndexingExecutor;
-import io.opaa.indexing.source.filesystem.FilesystemPathAllowlist;
-import io.opaa.indexing.source.filesystem.FilesystemProperties;
-import io.opaa.indexing.source.rss.RssFeedIndexingExecutor;
-import io.opaa.indexing.source.rss.RssFeedParser;
-import io.opaa.indexing.source.rss.RssFeedStateRepository;
-import io.opaa.indexing.source.s3.S3ClientFactory;
-import io.opaa.indexing.source.s3.S3IndexingExecutor;
-import io.opaa.indexing.source.s3.S3OriginalAccess;
-import io.opaa.indexing.source.s3.S3Properties;
-import io.opaa.indexing.source.web.AutoindexCrawlerService;
-import io.opaa.indexing.source.web.CrawlProperties;
-import io.opaa.indexing.source.web.UrlIndexingExecutor;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
-import io.opaa.library.LibraryFolderService;
 import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.library.UploadProperties;
 import io.opaa.library.UploadedOriginalStore;
@@ -363,39 +345,6 @@ public class IndexingConfiguration {
     return sourceHttpProperties.toRequestPolicy();
   }
 
-  /**
-   * Builds per-library Confluence clients (ADR-0023); shares the target validation and the request
-   * policy every other outbound source fetch uses.
-   */
-  @Bean
-  ConfluenceClientFactory confluenceClientFactory(
-      ConfluenceProperties confluenceProperties,
-      TargetAddressValidator targetAddressValidator,
-      SourceRequestPolicy sourceRequestPolicy) {
-    return new ConfluenceClientFactory(
-        confluenceProperties, targetAddressValidator, sourceRequestPolicy);
-  }
-
-  /**
-   * Builds per-library S3 stores (ADR-0027); shares the target validation every other outbound
-   * source fetch uses - the SDK's own HTTP client bypasses SourceHttpClientFactory, so the
-   * validation is applied on the client and on every request instead.
-   */
-  @Bean
-  S3ClientFactory s3ClientFactory(
-      S3Properties s3Properties, TargetAddressValidator targetAddressValidator) {
-    return new S3ClientFactory(s3Properties, targetAddressValidator);
-  }
-
-  /**
-   * Reads an indexed object back for the citation jump (ADR-0027, Entscheidung 5) - a read path
-   * outside every run, used by {@code io.opaa.library.LibraryDocumentService}.
-   */
-  @Bean
-  S3OriginalAccess s3OriginalAccess(S3ClientFactory s3ClientFactory, S3Properties s3Properties) {
-    return new S3OriginalAccess(s3ClientFactory, s3Properties);
-  }
-
   @Bean
   StaleDocumentCleanupService staleDocumentCleanupService(
       DocumentRepository documentRepository, VectorChunkStore vectorChunkStore) {
@@ -403,8 +352,8 @@ public class IndexingConfiguration {
   }
 
   /**
-   * The run frame every {@link SourceIndexingExecutor} bean below runs inside: job bookkeeping,
-   * protocol, result mapping, reconciliation and cost, once for all connectors.
+   * The run frame every {@link SourceIndexingExecutor} bean runs inside: job bookkeeping, protocol,
+   * result mapping, reconciliation and cost, once for all connectors.
    */
   @Bean
   IndexingRunTemplate indexingRunTemplate(
@@ -421,152 +370,15 @@ public class IndexingConfiguration {
         libraryStorageQuotaService);
   }
 
-  // Declared as SourceIndexingExecutor, not the concrete executor type: all three beans below
-  // carry @Async and are therefore wrapped in a JDK dynamic proxy at runtime, which only
-  // implements the interfaces the target class declares. Every consumer
-  // (IndexingSourceExecutorRegistry) depends on SourceIndexingExecutor already.
-  @Bean
-  SourceIndexingExecutor asyncIndexingExecutor(
-      DocumentService documentService,
-      DocumentIngestService documentIngestService,
-      FilesystemPathAllowlist filesystemPathAllowlist,
-      LibraryFolderService libraryFolderService,
-      IndexingRunTemplate indexingRunTemplate,
-      SupportedDocumentFormats supportedDocumentFormats) {
-    return new AsyncIndexingExecutor(
-        documentService,
-        documentIngestService,
-        filesystemPathAllowlist,
-        libraryFolderService,
-        indexingRunTemplate,
-        supportedDocumentFormats);
-  }
-
-  @Bean
-  AutoindexCrawlerService autoindexCrawlerService(
-      TargetAddressValidator targetAddressValidator,
-      CrawlProperties crawlProperties,
-      SourceRequestPolicy sourceRequestPolicy) {
-    return new AutoindexCrawlerService(
-        targetAddressValidator, crawlProperties, sourceRequestPolicy);
-  }
-
   @Bean
   BoundedDownloader boundedDownloader(
       TargetAddressValidator targetAddressValidator, SourceRequestPolicy sourceRequestPolicy) {
     return new BoundedDownloader(targetAddressValidator, sourceRequestPolicy);
   }
 
-  @Bean
-  SourceIndexingExecutor urlIndexingExecutor(
-      AutoindexCrawlerService autoindexCrawlerService,
-      BoundedDownloader boundedDownloader,
-      DocumentIngestService documentIngestService,
-      DocumentRepository documentRepository,
-      SourceRequestPolicy sourceRequestPolicy,
-      CrawlProperties crawlProperties,
-      LibraryFolderService libraryFolderService,
-      IndexingRunTemplate indexingRunTemplate,
-      SupportedDocumentFormats supportedDocumentFormats) {
-    return new UrlIndexingExecutor(
-        autoindexCrawlerService,
-        boundedDownloader,
-        documentIngestService,
-        documentRepository,
-        crawlProperties,
-        libraryFolderService,
-        sourceRequestPolicy,
-        indexingRunTemplate,
-        supportedDocumentFormats);
-  }
-
-  @Bean
-  RssFeedParser rssFeedParser() {
-    return new RssFeedParser();
-  }
-
-  @Bean
-  SourceIndexingExecutor rssFeedIndexingExecutor(
-      RssFeedParser rssFeedParser,
-      DocumentIngestService documentIngestService,
-      DocumentRepository documentRepository,
-      RssFeedStateRepository rssFeedStateRepository,
-      AttachmentIndexer attachmentIndexer,
-      IndexingProperties properties,
-      TargetAddressValidator targetAddressValidator,
-      SourceRequestPolicy sourceRequestPolicy,
-      IndexingRunTemplate indexingRunTemplate) {
-    return new RssFeedIndexingExecutor(
-        rssFeedParser,
-        documentIngestService,
-        documentRepository,
-        rssFeedStateRepository,
-        attachmentIndexer,
-        properties,
-        targetAddressValidator,
-        sourceRequestPolicy,
-        indexingRunTemplate);
-  }
-
   /**
-   * Declared as the concrete type, not as {@link SourceIndexingExecutor} like its siblings: {@code
-   * ConfluenceWebhookService} injects the executor directly for its targeted webhook run, and
-   * Spring resolves an injection point by the bean method's declared type - the registry still
-   * collects it through the interface it implements.
-   */
-  @Bean
-  ConfluenceIndexingExecutor confluenceIndexingExecutor(
-      ConfluenceClientFactory confluenceClientFactory,
-      ConfluenceProperties confluenceProperties,
-      DocumentIngestService documentIngestService,
-      AttachmentIndexer attachmentIndexer,
-      DocumentRepository documentRepository,
-      SourceSyncStateRepository sourceSyncStateRepository,
-      StaleDocumentCleanupService staleDocumentCleanupService,
-      IndexingRunTemplate indexingRunTemplate) {
-    return new ConfluenceIndexingExecutor(
-        confluenceClientFactory,
-        confluenceProperties,
-        documentIngestService,
-        attachmentIndexer,
-        documentRepository,
-        sourceSyncStateRepository,
-        staleDocumentCleanupService,
-        Clock.systemUTC(),
-        indexingRunTemplate);
-  }
-
-  /**
-   * Declared as the concrete type, like the Confluence executor: the event adapter ({@code
-   * S3EventService}) calls {@code refreshObjects}, which the interface does not carry.
-   */
-  @Bean
-  S3IndexingExecutor s3IndexingExecutor(
-      S3ClientFactory s3ClientFactory,
-      S3Properties s3Properties,
-      DocumentIngestService documentIngestService,
-      DocumentRepository documentRepository,
-      LibraryFolderService libraryFolderService,
-      StaleDocumentCleanupService staleDocumentCleanupService,
-      SourceSyncStateRepository sourceSyncStateRepository,
-      IndexingRunTemplate indexingRunTemplate,
-      SupportedDocumentFormats supportedDocumentFormats) {
-    return new S3IndexingExecutor(
-        s3ClientFactory,
-        s3Properties,
-        documentIngestService,
-        documentRepository,
-        libraryFolderService,
-        staleDocumentCleanupService,
-        sourceSyncStateRepository,
-        Clock.systemUTC(),
-        indexingRunTemplate,
-        supportedDocumentFormats);
-  }
-
-  /**
-   * Populated from every {@link SourceIndexingExecutor} bean Spring finds: a new source type
-   * becomes reachable by adding one more bean here, never by editing this method or {@link
+   * Populated from every {@link SourceIndexingExecutor} bean Spring finds - each connector package
+   * registers its own - so a new source type never requires editing this method or {@link
    * DocumentIndexingService}.
    */
   @Bean

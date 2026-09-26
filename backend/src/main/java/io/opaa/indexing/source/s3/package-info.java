@@ -1,19 +1,13 @@
 /**
  * Access layer of the S3 connector (ADR-0027): the port {@link
  * io.opaa.indexing.source.s3.S3ObjectStore} with its one adapter on the AWS SDK for Java v2, the
- * value objects a library's S3 configuration is made of ({@link
- * io.opaa.indexing.source.s3.S3Scope}, {@link io.opaa.indexing.source.s3.S3Credentials}, {@link
- * io.opaa.indexing.source.s3.S3Connection}) and the German, credential-free failures every caller
- * sees ({@link io.opaa.indexing.source.s3.S3AccessException}).
+ * scopes a library's S3 configuration is made of ({@link io.opaa.indexing.source.s3.S3Scope},
+ * {@link io.opaa.indexing.source.s3.S3SourceSettings}), listing, full sync, run executor and event
+ * intake.
  *
- * <p>The SDK brings its own HTTP client and bypasses {@code io.opaa.sourceaccess}; what that
- * package enforces centrally for the HTTP connectors - target validation, byte ceilings, timeouts,
- * proxy, relaxed TLS, retries - is rebuilt here deliberately, piece by piece, with a test per
- * piece. The client build itself ({@link io.opaa.indexing.source.s3.S3SdkClient} from {@link
- * io.opaa.indexing.source.s3.S3ClientSettings}), the per-request guard ({@link
- * io.opaa.indexing.source.s3.S3RequestGuard}) and the failure translation ({@link
- * io.opaa.indexing.source.s3.S3FailureTranslator}) are shared with the S3 storage of uploaded
- * originals in {@code io.opaa.library} (ADR-0030, Entscheidung 8); the request meter and the budget
- * stay with the connector's adapter.
+ * <p>Client build, connection values, per-request guard, failure translation and the German,
+ * credential-free failures come from {@code io.opaa.s3}, shared with the S3 storage of uploaded
+ * originals (ADR-0030, Entscheidung 8). What stays here: the byte ceiling while a download streams,
+ * the request meter and the run's request budget.
  */
 package io.opaa.indexing.source.s3;

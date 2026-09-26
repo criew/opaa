@@ -9,11 +9,12 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.source.s3.FakeS3ObjectStore;
-import io.opaa.indexing.source.s3.S3AccessException;
 import io.opaa.indexing.source.s3.S3ClientFactory;
-import io.opaa.indexing.source.s3.S3Connection;
 import io.opaa.indexing.source.s3.S3Scope;
 import io.opaa.indexing.source.s3.S3SourceSettings;
+import io.opaa.s3.S3AccessException;
+import io.opaa.s3.S3Connection;
+import io.opaa.security.TargetAddressValidator;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -75,7 +76,9 @@ class S3ConnectionServiceTest {
   @Test
   void aBlockedOrUnreachableEndpointIsAResultWithTheAccessLayersMessage() throws Exception {
     when(factory.createForProbe(any(), anyCollection()))
-        .thenThrow(new S3AccessException.TargetBlocked("Die Zieladresse 10.0.0.5 ist gesperrt."));
+        .thenThrow(
+            new S3AccessException.TargetBlocked(
+                "Die Zieladresse 10.0.0.5 ist gesperrt.", TargetAddressValidator.ALLOWLIST_HINT));
 
     S3ConnectionService.Probe probe =
         service.probe("http://10.0.0.5:9000", null, "ak:sk", false, SETTINGS);

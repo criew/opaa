@@ -22,6 +22,8 @@ import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.IndexingRunMode;
+import io.opaa.indexing.attachment.AttachmentAccess;
+import io.opaa.indexing.attachment.AttachmentIndexer;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.document.Document;
 import io.opaa.indexing.document.DocumentIngest;
@@ -39,8 +41,6 @@ import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.SourceSyncState;
 import io.opaa.indexing.source.SourceSyncStateRepository;
-import io.opaa.indexing.source.attachment.AttachmentAccess;
-import io.opaa.indexing.source.attachment.AttachmentIndexer;
 import io.opaa.library.ConfluenceSpaceSelection;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryStorageQuotaService;
@@ -305,7 +305,7 @@ class ConfluenceIndexingExecutorTest {
         new BoundedDownloader(TargetAddressValidator.disabled()),
         documentIngestService,
         storageQuotaService,
-        new io.opaa.indexing.source.attachment.AttachmentProperties(5, 0, 0),
+        new io.opaa.indexing.attachment.AttachmentProperties(5, 0, 0),
         ProductionDocumentFormats.supportedFormats());
   }
 

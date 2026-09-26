@@ -7,7 +7,7 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
-import io.opaa.indexing.source.s3.StubS3Server;
+import io.opaa.s3.StubS3Server;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
@@ -37,7 +37,7 @@ class S3UploadedOriginalStoreLogLeakTest {
       Map.of(
           "io.opaa.library",
           Level.TRACE,
-          "io.opaa.indexing.source.s3",
+          "io.opaa.s3",
           Level.TRACE,
           "io.opaa.sourceaccess",
           Level.TRACE,

@@ -10,8 +10,8 @@ import java.util.UUID;
  * A run-based way of getting documents into the index (ADR-0017, decision 3). Every implementation
  * declares the single {@link IndexingSourceType} it serves and is registered with the {@link
  * IndexingSourceExecutorRegistry} as a Spring bean - a new source type is added by implementing
- * this interface and wiring one more bean in {@code IndexingConfiguration}, never by editing an
- * existing implementation or the registry itself.
+ * this interface and declaring the bean in the connector package's own {@code @Configuration},
+ * never by editing the indexing core, an existing implementation or the registry itself.
  *
  * <p>{@code targetLibrary} is the only source of configuration (ADR-0018): {@code sourcePath},
  * {@code sourceUrl}, {@code sourceProxy}, {@code sourceCredentials} and {@code sourceInsecureSsl}

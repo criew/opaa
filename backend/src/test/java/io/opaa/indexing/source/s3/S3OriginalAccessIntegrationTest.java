@@ -5,6 +5,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.library.KnowledgeLibrary;
+import io.opaa.s3.S3AccessException;
+import io.opaa.s3.S3Credentials;
+import io.opaa.s3.S3TestFixture;
 import io.opaa.security.TargetAddressValidator;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;

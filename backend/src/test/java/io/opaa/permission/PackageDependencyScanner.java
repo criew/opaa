@@ -28,13 +28,13 @@ import java.util.stream.Stream;
  * assertions), and closing the gap would mean bytecode analysis of a build output the test would
  * then depend on.
  */
-final class PackageDependencyScanner {
+public final class PackageDependencyScanner {
 
   /**
    * One referenced package, with where it was found - the message must name the file and line, or a
    * failing run leaves the reader searching a 700-file tree.
    */
-  record Reference(String fromPackage, String toPackage, Path file, int line) {
+  public record Reference(String fromPackage, String toPackage, Path file, int line) {
 
     @Override
     public String toString() {
@@ -56,7 +56,7 @@ final class PackageDependencyScanner {
   private PackageDependencyScanner() {}
 
   /** Every cross-package {@code io.opaa} reference under {@code sourceRoot}. */
-  static List<Reference> scan(Path sourceRoot) {
+  public static List<Reference> scan(Path sourceRoot) {
     List<Reference> references = new ArrayList<>();
     try (Stream<Path> files = Files.walk(sourceRoot)) {
       files

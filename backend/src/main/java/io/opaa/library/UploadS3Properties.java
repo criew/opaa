@@ -67,8 +67,8 @@ public record UploadS3Properties(
    */
   public URI endpointUri() {
     try {
-      return io.opaa.indexing.source.s3.S3Connection.normalizeEndpoint(endpoint);
-    } catch (io.opaa.indexing.source.s3.S3Connection.InvalidEndpointException e) {
+      return io.opaa.s3.S3Connection.normalizeEndpoint(endpoint);
+    } catch (io.opaa.s3.S3Connection.InvalidEndpointException e) {
       throw new IllegalStateException(
           "opaa.upload.s3.endpoint (OPAA_UPLOAD_S3_ENDPOINT) is not a usable endpoint: "
               + e.getMessage(),

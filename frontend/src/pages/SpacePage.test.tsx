@@ -76,6 +76,7 @@ describe('SpacePage', () => {
           archived: false,
           visibility: 'PRIVATE',
           memberCount: 1,
+          memberships: { groupCount: 0, userCount: 1 },
           userRole: 'ADMIN',
           createdAt: '2026-03-01T10:00:00Z',
           updatedAt: '2026-03-01T10:00:00Z',
