@@ -8,6 +8,9 @@ import io.opaa.api.types.SystemRole;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.local.LocalAdminAvailabilityGuard;
+import io.opaa.auth.local.LocalCredentials;
+import io.opaa.auth.local.LocalCredentialsRepository;
+import io.opaa.auth.local.LocalUserService;
 import io.opaa.auth.oidc.OidcClaimMapping;
 import io.opaa.auth.oidc.OidcIssuerUris;
 import io.opaa.auth.oidc.OidcProvider;
@@ -47,6 +50,7 @@ public class UserService {
   private final OidcProviderRepository providerRepository;
   private final TokenRoleSynchronizer roleSynchronizer;
   private final LocalAdminAvailabilityGuard adminGuard;
+  private final LocalCredentialsRepository localCredentials;
   private final AuditEventRecorder auditEventRecorder;
   private final ApplicationEventPublisher eventPublisher;
   private final Clock clock;
@@ -58,6 +62,7 @@ public class UserService {
       OidcProviderRepository providerRepository,
       TokenRoleSynchronizer roleSynchronizer,
       LocalAdminAvailabilityGuard adminGuard,
+      LocalCredentialsRepository localCredentials,
       AuditEventRecorder auditEventRecorder,
       ApplicationEventPublisher eventPublisher,
       Clock clock) {
@@ -67,6 +72,7 @@ public class UserService {
     this.providerRepository = providerRepository;
     this.roleSynchronizer = roleSynchronizer;
     this.adminGuard = adminGuard;
+    this.localCredentials = localCredentials;
     this.auditEventRecorder = auditEventRecorder;
     this.eventPublisher = eventPublisher;
     this.clock = clock;
@@ -307,6 +313,12 @@ public class UserService {
         userRepository
             .findByIdAndOrganizationId(userId, actor.organizationId())
             .orElseThrow(() -> new UserNotFoundException("Benutzer nicht gefunden: " + userId));
+    // ADR-0033, Entscheidungen 3 and 5: the bootstrap account keeps its role on every path
+    if (role != user.getSystemRole()
+        && localCredentials.findById(userId).filter(LocalCredentials::isBootstrap).isPresent()) {
+      throw new ConflictException(
+          LocalUserService.BOOTSTRAP_ROLE_MESSAGE, LocalUserService.BOOTSTRAP_ACCOUNT);
+    }
     // ADR-0025, Entscheidung 4: an enabled provider with a roles claim is authoritative - a role
     // written here would be overwritten by the account's next request. A disabled provider issues
     // no more tokens, so its accounts' roles are managed here again.

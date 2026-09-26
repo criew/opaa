@@ -277,6 +277,18 @@ export const localUserHandlers = [
     ) {
       return conflict('EMAIL_TAKEN', 'Unter dieser Adresse existiert bereits ein lokales Konto')
     }
+    if (user.bootstrap && !body.noExpiry && body.expiresAt) {
+      return conflict(
+        'BOOTSTRAP_ACCOUNT',
+        'Das Notanker-Konto der Systemverwaltung kann nicht befristet werden.',
+      )
+    }
+    if (user.bootstrap && body.systemRole && body.systemRole !== user.systemRole) {
+      return conflict(
+        'BOOTSTRAP_ACCOUNT',
+        'Die Rolle des Notanker-Kontos der Systemverwaltung kann nicht geändert werden.',
+      )
+    }
     if (user.id === LAST_ADMIN_USER_ID && body.systemRole && body.systemRole !== user.systemRole) {
       return conflict(
         'LAST_LOGIN_CAPABLE_ADMIN',
@@ -321,6 +333,12 @@ export const localUserHandlers = [
     if (!user) return notFound()
     if (user.id === MOCK_SELF_USER_ID) {
       return conflict('SELF_LOCKOUT', 'Das eigene Konto kann nicht gesperrt werden')
+    }
+    if (user.bootstrap) {
+      return conflict(
+        'BOOTSTRAP_ACCOUNT',
+        'Das Notanker-Konto der Systemverwaltung kann nicht gesperrt werden.',
+      )
     }
     if (user.status === 'LOCKED') {
       return conflict('ALREADY_LOCKED', 'Das Konto ist bereits gesperrt')

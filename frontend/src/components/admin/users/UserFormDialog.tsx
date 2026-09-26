@@ -51,8 +51,17 @@ export const NO_EXPIRY_HELP =
  * verspräche ihm sonst einen Hinweis, in dem es nie auftaucht.
  */
 export const NO_EXPIRY_HELP_BOOTSTRAP =
-  'Das Notanker-Konto der Systemverwaltung soll unbefristet bleiben; es erscheint nicht im Hinweis ' +
-  'zur Auflage.'
+  'Das Notanker-Konto der Systemverwaltung bleibt unbefristet; es erscheint nicht im Hinweis zur ' +
+  'Auflage.'
+
+/**
+ * Das Notanker-Konto nimmt weder Ablaufdatum noch Rollenwechsel an (ADR-0033, Entscheidungen 3 und
+ * 5; sonst 409 `BOOTSTRAP_ACCOUNT`). Ein Datum aus der Zeit vor dieser Sperre lässt sich entfernen –
+ * das stellt den zugesagten Zustand wieder her.
+ */
+export const BOOTSTRAP_ROLE_HINT =
+  'Das Notanker-Konto der Systemverwaltung behält seine Rolle – es ist der Weg zurück in eine ' +
+  'Installation ohne funktionierenden Identitätsanbieter.'
 
 const MODE_LABEL: Record<LocalUserCreationMode, string> = {
   INVITE: 'Einladung per E-Mail senden',
@@ -141,6 +150,7 @@ export default function UserFormDialog({
   const [submitting, setSubmitting] = useState(false)
 
   const isEdit = user !== undefined
+  const isBootstrap = user?.bootstrap === true
   const isValid =
     draft.displayName.trim() !== '' &&
     draft.createdReason.trim() !== '' &&
@@ -265,9 +275,10 @@ export default function UserFormDialog({
                 select: { SelectDisplayProps: { 'aria-labelledby': 'user-form-role-label' } },
               }}
               value={draft.systemRole}
+              disabled={isBootstrap}
               onChange={(e) => update({ systemRole: e.target.value as SystemRole })}
               error={Boolean(fieldErrors.systemRole)}
-              helperText={fieldErrors.systemRole}
+              helperText={fieldErrors.systemRole ?? (isBootstrap ? BOOTSTRAP_ROLE_HINT : undefined)}
             >
               {SYSTEM_ROLES.map((role) => (
                 <MenuItem key={role} value={role}>
@@ -283,7 +294,7 @@ export default function UserFormDialog({
               fullWidth
               size="small"
               type="date"
-              disabled={draft.noExpiry}
+              disabled={draft.noExpiry || isBootstrap}
               value={draft.expiresAt}
               onChange={(e) => update({ expiresAt: e.target.value })}
               error={Boolean(fieldErrors.expiresAt)}
@@ -294,6 +305,7 @@ export default function UserFormDialog({
               control={
                 <Checkbox
                   checked={draft.noExpiry}
+                  disabled={isBootstrap && !user?.expiresAt}
                   onChange={(e) => update({ noExpiry: e.target.checked })}
                 />
               }
@@ -301,7 +313,7 @@ export default function UserFormDialog({
             />
             {draft.noExpiry && (
               <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
-                {user?.bootstrap ? NO_EXPIRY_HELP_BOOTSTRAP : NO_EXPIRY_HELP}
+                {isBootstrap ? NO_EXPIRY_HELP_BOOTSTRAP : NO_EXPIRY_HELP}
               </Typography>
             )}
           </Box>

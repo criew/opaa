@@ -757,6 +757,61 @@ class LocalUserAdminIntegrationTest {
   }
 
   /**
+   * Regression guard for #1640: the bootstrap account refuses lock, expiry and role withdrawal with
+   * 409 BOOTSTRAP_ACCOUNT on every path - also while another login-capable administrator exists, so
+   * the last-administrator guard cannot be what refuses. A refused change applies none of its
+   * fields.
+   */
+  @Test
+  void theBootstrapAccountRefusesLockExpiryAndRoleWithdrawal() throws Exception {
+    LocalAccount bootstrap =
+        fixtures.activeAdmin("notanker-" + UUID.randomUUID() + "@stadt.example");
+    LocalCredentials row = fixtures.credentialsOf(bootstrap);
+    row.markBootstrap();
+    fixtures.save(row);
+    String path = LOCAL_USERS + "/" + bootstrap.id();
+
+    asAdmin(post(path + "/lock"))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("BOOTSTRAP_ACCOUNT"));
+    asAdminJson(patch(path), "{\"expiresAt\":\"" + Instant.now().plus(Duration.ofDays(30)) + "\"}")
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("BOOTSTRAP_ACCOUNT"));
+    asAdminJson(patch(path), "{\"expiresAt\":\"" + Instant.now().minusSeconds(60) + "\"}")
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("BOOTSTRAP_ACCOUNT"));
+    asAdminJson(
+            patch(path),
+            "{\"displayName\":\"Notanker neu\",\"expiresAt\":\""
+                + Instant.now().plus(Duration.ofDays(30))
+                + "\"}")
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("BOOTSTRAP_ACCOUNT"));
+    asAdminJson(patch(path), "{\"systemRole\":\"USER\"}")
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("BOOTSTRAP_ACCOUNT"));
+    asAdminJson(post("/api/v1/admin/users/" + bootstrap.id() + "/role"), "{\"role\":\"AUDITOR\"}")
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("BOOTSTRAP_ACCOUNT"));
+
+    LocalCredentials after = credentials.findById(bootstrap.id()).orElseThrow();
+    assertThat(after.getLockedAt()).isNull();
+    assertThat(after.getExpiresAt()).isNull();
+    User user = users.findById(bootstrap.id()).orElseThrow();
+    assertThat(user.getSystemRole()).isEqualTo(SystemRole.SYSTEM_ADMIN);
+    assertThat(user.getDisplayName()).isNotEqualTo("Notanker neu");
+    assertThat(auditRows("LOCAL_USER_%", bootstrap.id())).isEmpty();
+    assertThat(auditRows("%_ROLE_%", bootstrap.id())).isEmpty();
+
+    // what the account is not protected against still passes
+    asAdminJson(patch(path), "{\"displayName\":\"Notanker Systemverwaltung\",\"noExpiry\":true}")
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.displayName").value("Notanker Systemverwaltung"))
+        .andExpect(jsonPath("$.expiresAt").doesNotExist());
+    asAdminJson(patch(path), "{\"systemRole\":\"SYSTEM_ADMIN\"}").andExpect(status().isOk());
+  }
+
+  /**
    * Diagnostic impersonation grants are no deletion blocker (#1697): the schema lets all their
    * person columns cascade since #1509, and an account that once granted or revoked one would
    * otherwise stay undeletable forever. What the account still confers on a holder who remains is

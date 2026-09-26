@@ -775,8 +775,8 @@ die Endpunkte noch den Filter. `AuthProfileGuard` bleibt unverändert: Der Betri
   die in die Wiedervorlage eingeht (deren Zahl fasst sie mit den auslaufenden Konten zusammen) —,
   und diese eine Menge nimmt das **Notanker-Konto** aus. Die Auflage meint Konten, die befristet
   werden *können*; das Notanker-Konto ist der Weg zurück in eine ausgesperrte Installation und soll
-  nach Entscheidung 5 unbefristet bleiben (die Durchsetzung im Code beschränkt sich heute auf die
-  Löschsperre und die Ausnahme von der Inaktivitätssperre — siehe #1640). Es in einer Prüfliste zu führen, die zum Befristen auffordert, wäre eine Einladung,
+  nach Entscheidung 5 unbefristet bleiben (seit #1640 lehnt die Admin-API jedes Ablaufdatum an
+  diesem Konto mit 409 `BOOTSTRAP_ACCOUNT` ab). Es in einer Prüfliste zu führen, die zum Befristen auffordert, wäre eine Einladung,
   den Notweg zu schließen. Das gilt nur für dieses eine Konto — jedes andere Systemverwalterkonto
   bleibt Teil der Auflage. **Ergänzung vom 17.09.2026 (#1641):** Der Filter „länger als 90 Tage
   nicht genutzt" sucht **Handlungskandidaten** — Konten, an denen eine Sperre oder eine Löschung der

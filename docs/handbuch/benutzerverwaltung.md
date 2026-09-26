@@ -285,9 +285,14 @@ Abschnitt 8.4 („Wie lange die Rechtehistorie liegt"). Das
 ist beabsichtigt — der Nachweis, wer wann welche Rechte hatte, überlebt das Konto. Für alle diese
 Fälle ist die Sperre der vorgesehene Weg.
 
-Das Notanker-Konto der Systemverwaltung lässt sich **nicht löschen**. Sperren, Befristen und
-Herabsetzen sind daran nicht grundsätzlich gesperrt — sie werden abgelehnt, solange es der letzte
-anmeldefähige Systemverwalter ist. Von der Sperre nach Inaktivität ist es ausgenommen.
+Das Notanker-Konto der Systemverwaltung lässt sich **weder löschen noch sperren, befristen, in der
+Rolle herabsetzen oder übergeben** — auch dann nicht, wenn weitere Systemverwalter anmeldefähig
+sind. Die Oberfläche bietet diese Handlungen an ihm gar nicht erst an: „Sperren" und „Löschen" sind
+im Zeilenmenü abgeblendet und nennen den Grund, im Bearbeiten-Dialog sind Rolle und Ablaufdatum
+nicht änderbar. Name, Adresse und Anlagegrund lassen sich wie bei jedem Konto pflegen. Trägt das
+Konto aus einem älteren Stand noch ein Ablaufdatum, lässt es sich über „Kein Ablaufdatum"
+entfernen. Von der Sperre nach Inaktivität ist es ausgenommen. Die einzige Sperre, die es treffen
+kann, ist die Fehlversuch-Sperre nach fünf falschen Passwörtern (15 Minuten).
 
 ## 9. Ein Konto an einen Identitätsanbieter übergeben
 

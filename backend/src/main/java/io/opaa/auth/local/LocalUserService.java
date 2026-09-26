@@ -67,6 +67,8 @@ public class LocalUserService {
   public static final String ALREADY_LOCKED = "ALREADY_LOCKED";
   public static final String NOT_LOCKED = "NOT_LOCKED";
   public static final String BOOTSTRAP_ACCOUNT = "BOOTSTRAP_ACCOUNT";
+  public static final String BOOTSTRAP_ROLE_MESSAGE =
+      "Die Rolle des Notanker-Kontos der Systemverwaltung kann nicht geändert werden.";
   public static final String ACCOUNT_OWNS_CONTENT = "ACCOUNT_OWNS_CONTENT";
 
   static final String NOT_FOUND_MESSAGE = "Lokales Konto nicht gefunden";
@@ -234,6 +236,9 @@ public class LocalUserService {
     LocalUserOverview current = load(actor.organizationId(), userId);
     User user = current.user();
     LocalCredentials row = current.credentials();
+    if (row.isBootstrap()) {
+      refuseBootstrapAct(update, user);
+    }
     List<String> changed = new ArrayList<>();
     Map<String, Object> before = new LinkedHashMap<>();
     Map<String, Object> after = new LinkedHashMap<>();
@@ -295,6 +300,22 @@ public class LocalUserService {
     return load(actor.organizationId(), userId);
   }
 
+  /**
+   * The bootstrap account takes no expiry and no role change (ADR-0033, Entscheidungen 3 and 5).
+   * Checked before any field is applied, so a refused change writes nothing - not even the fields
+   * sent alongside. Removing an expiry stays possible: it restores the promised state.
+   */
+  private static void refuseBootstrapAct(LocalUserUpdate update, User user) {
+    if (!update.noExpiry() && update.expiresAt() != null) {
+      throw new ConflictException(
+          "Das Notanker-Konto der Systemverwaltung kann nicht befristet werden.",
+          BOOTSTRAP_ACCOUNT);
+    }
+    if (update.systemRole() != null && update.systemRole() != user.getSystemRole()) {
+      throw new ConflictException(BOOTSTRAP_ROLE_MESSAGE, BOOTSTRAP_ACCOUNT);
+    }
+  }
+
   // ---- lock and unlock
 
   @Transactional
@@ -304,6 +325,10 @@ public class LocalUserService {
       throw new ConflictException("Das eigene Konto kann nicht gesperrt werden.", SELF_LOCKOUT);
     }
     LocalCredentials row = current.credentials();
+    if (row.isBootstrap()) {
+      throw new ConflictException(
+          "Das Notanker-Konto der Systemverwaltung kann nicht gesperrt werden.", BOOTSTRAP_ACCOUNT);
+    }
     if (row.getLockedAt() != null && row.getLockedReason() != LockReason.FAILED_LOGINS) {
       throw new ConflictException("Das Konto ist bereits gesperrt.", ALREADY_LOCKED);
     }

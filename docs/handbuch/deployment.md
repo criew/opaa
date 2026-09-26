@@ -1917,10 +1917,12 @@ aktiviert es bewusst über die Notfallprozedur unten.
 3. **Das Passwort des Notanker-Kontos versiegelt hinterlegen** — dort, wo das Haus andere
    Notfallzugänge hinterlegt. Es ist der Weg zurück, wenn die Anbieteranbindung bricht.
 
-Das Konto bleibt anmeldefähig. **Es lässt sich nicht löschen**; Sperren, Befristen und Herabsetzen
-lehnt OPAA ab, solange es der letzte anmeldefähige Systemverwalter ist — also genau dann, wenn der
-Schritt die Installation aussperren würde. Von der Sperre nach Inaktivität ist es ausgenommen (sein
-Zweck ist, unbenutzt zu bleiben). **Jede erfolgreiche Anmeldung
+Das Konto bleibt anmeldefähig. **Gegenüber Verwaltungsakten ist es unverletzlich**: Löschen,
+Sperren, Befristen, Herabsetzen der Rolle und die Übergabe an einen Identitätsanbieter lehnt OPAA
+immer ab (409 `BOOTSTRAP_ACCOUNT`), auch wenn weitere Systemverwalter anmeldefähig sind — ein
+Ablaufdatum in der Zukunft würde den Notweg sonst still und zeitversetzt schließen. Von der Sperre
+nach Inaktivität ist es ausgenommen (sein Zweck ist, unbenutzt zu bleiben). Nur die
+Fehlversuch-Sperre (15 Minuten nach fünf Fehlversuchen) gilt auch für dieses Konto. **Jede erfolgreiche Anmeldung
 mit ihm steht im Nachweisprotokoll** (`LOCAL_BOOTSTRAP_ACCOUNT_LOGIN`) und löst eine Nachricht an
 alle übrigen Systemverwalter aus — „wurde der Notfallzugang benutzt?" ist die Prüferfrage zu jedem
 Notfallkonto, und sie soll beantwortbar sein. Erkannt wird es an einer internen Markierung, nicht an

@@ -48,9 +48,9 @@ export const BOOTSTRAP_HANDOVER_TOOLTIP =
   'eine Installation ohne funktionierenden Identitätsanbieter und muss deshalb ein lokales Konto ' +
   'bleiben.'
 
-export const BOOTSTRAP_DELETE_TOOLTIP =
-  'Das Notanker-Konto der Systemverwaltung kann nicht gelöscht werden – es ist der Weg zurück in ' +
-  'eine Installation ohne funktionierenden Identitätsanbieter.'
+export const BOOTSTRAP_LOCK_DELETE_TOOLTIP =
+  'Das Notanker-Konto der Systemverwaltung kann weder gesperrt noch gelöscht werden – es ist der ' +
+  'Weg zurück in eine Installation ohne funktionierenden Identitätsanbieter.'
 
 interface LocalUserRowMenuProps {
   user: LocalUserResponse
@@ -193,14 +193,10 @@ export default function LocalUserRowMenu({
     }, 'Das Konto konnte nicht gelöscht werden.')
   }
 
-  const lockDisabled = isSelf
+  const lockDisabled = isSelf || user.bootstrap
   const handoverDisabled = user.bootstrap
   const deleteDisabled = isSelf || user.bootstrap
-  const deleteTooltip = isSelf
-    ? SELF_ACTION_TOOLTIP
-    : user.bootstrap
-      ? BOOTSTRAP_DELETE_TOOLTIP
-      : ''
+  const disabledReason = isSelf ? SELF_ACTION_TOOLTIP : BOOTSTRAP_LOCK_DELETE_TOOLTIP
   const reasonId = `local-user-${user.id}-menu-reason`
   const handoverReasonId = `local-user-${user.id}-handover-reason`
 
@@ -250,7 +246,7 @@ export default function LocalUserRowMenu({
             // Kein <span> um den Eintrag: Ein Zwischenelement im `menu` verletzt
             // `aria-required-children` (Review-Runde 1). Die Begründung hängt deshalb als
             // `title` am Eintrag selbst und steht zusätzlich als Text darunter.
-            title={lockDisabled ? SELF_ACTION_TOOLTIP : undefined}
+            title={lockDisabled ? disabledReason : undefined}
             aria-describedby={lockDisabled ? reasonId : undefined}
           >
             <ListItemIcon>
@@ -301,7 +297,7 @@ export default function LocalUserRowMenu({
         <MenuItem
           onClick={() => void remove()}
           disabled={deleteDisabled}
-          title={deleteTooltip || undefined}
+          title={deleteDisabled ? disabledReason : undefined}
           aria-describedby={deleteDisabled ? reasonId : undefined}
         >
           <ListItemIcon>
@@ -322,7 +318,7 @@ export default function LocalUserRowMenu({
             sx={{ px: 2, py: 1, maxWidth: 320 }}
           >
             <Typography component="span" sx={{ fontSize: 11.5, color: 'text.secondary' }}>
-              {isSelf ? SELF_ACTION_TOOLTIP : BOOTSTRAP_DELETE_TOOLTIP}
+              {disabledReason}
             </Typography>
           </Box>
         )}
