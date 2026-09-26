@@ -239,7 +239,7 @@ export default function UserManagementPage() {
         <AreaPageHeader
           icon={BadgeOutlinedIcon}
           title="Benutzer"
-          description="Gilt für die gesamte Anwendung. Lokale Konten werden hier angelegt und geführt; Konten eines Identitätsanbieters erscheinen mit ihrer Rolle, ihr Lebenszyklus liegt beim Anbieter."
+          description="Alle Konten, mit denen man sich bei OPAA anmelden kann. Lokale Konten legen Sie hier an und pflegen sie. Bei Konten eines Identitätsanbieters, etwa des Verzeichnisdienstes Ihres Hauses, ändern Sie hier nur die Rolle."
         />
 
         <AreaTabs
