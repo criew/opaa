@@ -8,8 +8,6 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.api.types.SystemRole;
-import io.opaa.auth.User;
-import io.opaa.auth.UserRepository;
 import io.opaa.common.AccessDeniedException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -40,7 +38,7 @@ class AuditQueryServiceOutcomeTest {
   @Mock private AuditIncidentScopeService incidentScopeService;
   @Mock private AuditActorPseudonymService pseudonymService;
   @Mock private AuditEventRecorder eventRecorder;
-  @Mock private UserRepository userRepository;
+  @Mock private AuditPersonDirectory people;
 
   private AuditQueryService service;
 
@@ -54,7 +52,7 @@ class AuditQueryServiceOutcomeTest {
             incidentScopeService,
             pseudonymService,
             eventRecorder,
-            new AuditAccessGate(userRepository));
+            new AuditAccessGate(people));
   }
 
   @Test
@@ -128,9 +126,6 @@ class AuditQueryServiceOutcomeTest {
   }
 
   private void callerIsAn(SystemRole role) {
-    User caller = new User("subject", "issuer", null, "Aufrufende");
-    caller.setSystemRole(role);
-    when(userRepository.findByIdAndOrganizationId(callerId, ORGANIZATION_ID))
-        .thenReturn(Optional.of(caller));
+    when(people.systemRoleOf(ORGANIZATION_ID, callerId)).thenReturn(Optional.of(role));
   }
 }
