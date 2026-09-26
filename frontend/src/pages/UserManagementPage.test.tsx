@@ -317,21 +317,37 @@ describe('UserManagementPage', () => {
     ).toBeInTheDocument()
   })
 
-  it('names the review obligation and jumps into the matching filter of local accounts', async () => {
+  it('names the review obligation behind a hint link and jumps into the matching filter', async () => {
     signInAs('SYSTEM_ADMIN')
     const user = userEvent.setup()
     renderAccounts()
 
-    const notice = await screen.findByTestId('local-user-review-notice')
-    expect(notice).toHaveTextContent('2 lokale Konten ohne Ablaufdatum')
-    expect(notice).toHaveTextContent('1 offene Einladung')
-    expect(notice).toHaveTextContent(/regelmäßig zu überprüfen/)
+    // Kein Hinweiskasten mehr über der Liste (#1978), sondern ein Link in der Kopfzeile.
+    const hint = await screen.findByRole('button', {
+      name: '2 lokale Konten ohne Ablaufdatum · 1 offene Einladung',
+    })
+    expect(hint).toHaveAttribute('aria-haspopup', 'dialog')
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.queryByText(/regelmäßig zu überprüfen/)).not.toBeInTheDocument()
 
-    await user.click(within(notice).getByRole('button', { name: /ohne Ablaufdatum anzeigen/ }))
+    await user.click(hint)
+    const popup = await screen.findByRole('dialog', { name: 'Hinweise zur Kontenprüfung' })
+    expect(popup).toHaveTextContent(/regelmäßig zu überprüfen/)
+    expect(popup).toHaveTextContent('2 lokale Konten ohne Ablaufdatum')
+    expect(popup).toHaveTextContent('1 offene Einladung')
+
+    await user.click(
+      within(popup).getByRole('button', { name: 'Konten ohne Ablaufdatum anzeigen' }),
+    )
     await waitFor(() => expect(useUserAdminStore.getState().filters.review).toBe('WITHOUT_EXPIRY'))
     expect(useUserAdminStore.getState().filters.providerType).toBe('LOCAL')
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'Hinweise zur Kontenprüfung' }),
+      ).not.toBeInTheDocument(),
+    )
     // Die Zahl im Hinweis und die Zeilen hinter dem Sprung sind dieselbe Menge (#1603): Das
-    // Notanker-Konto soll unbefristet bleiben und steht in keiner von beiden.
+    // Notanker-Konto bleibt unbefristet und steht in keiner von beiden.
     await waitFor(() => {
       const accounts = useUserAdminStore.getState().accounts
       expect(accounts).toHaveLength(2)
@@ -342,11 +358,13 @@ describe('UserManagementPage', () => {
       ).toBe(true)
     })
 
-    await user.click(screen.getByRole('button', { name: /Offene Einladungen anzeigen/ }))
+    await user.click(hint)
+    const reopened = await screen.findByRole('dialog', { name: 'Hinweise zur Kontenprüfung' })
+    await user.click(within(reopened).getByRole('button', { name: 'Offene Einladungen anzeigen' }))
     await waitFor(() => expect(useUserAdminStore.getState().filters.status).toBe('INVITED'))
   })
 
-  it('hides the notice once no account is without an expiry date and none is invited', async () => {
+  it('shows no hint link once no account is without an expiry date and none is invited', async () => {
     setMockLocalUsers(
       mockLocalUsers
         .filter((account) => account.status !== 'INVITED')
@@ -357,7 +375,8 @@ describe('UserManagementPage', () => {
 
     await screen.findByRole('table', { name: 'Konten' })
     await waitFor(() => expect(useUserAdminStore.getState().summary).not.toBeNull())
-    expect(screen.queryByTestId('local-user-review-notice')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Konto anlegen' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /ohne Ablaufdatum|offene Einladung/ })).toBeNull()
   })
 
   it('creates an account with a generated password and shows it exactly once', async () => {

@@ -193,9 +193,10 @@ aus:
 - **länger nicht genutzt** — Kandidaten für eine Sperre oder Löschung,
 - **offene Einladungen** — Konten, deren Einladung niemand eingelöst hat.
 
-Ein Hinweis über der Liste nennt die beiden Zahlen „Konten ohne Ablaufdatum" und „offene
-Einladungen" und führt direkt in den passenden Filter. Er verschwindet, sobald beide null sind. Die
-Zahl und die Liste dahinter meinen dieselben Konten: Das Notanker-Konto der Systemverwaltung
+Links neben „Konto anlegen" nennt ein Hinweis-Link die beiden Zahlen „Konten ohne Ablaufdatum" und
+„offene Einladungen". Ein Klick öffnet die Details: die Auflage selbst und je Zahl einen Sprung in
+den passenden Filter. Der Link verschwindet, sobald beide Zahlen null sind. Die Zahl und die Liste
+dahinter meinen dieselben Konten: Das Notanker-Konto der Systemverwaltung
 erscheint in keiner von beiden. Es soll unbefristet bleiben — es ist der Weg zurück in eine
 ausgesperrte Installation und deshalb kein Fall für die Auflagenprüfung.
 

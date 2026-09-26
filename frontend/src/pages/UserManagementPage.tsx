@@ -17,7 +17,7 @@ import AreaTabs from '../components/AreaTabs'
 import AccountFilterBar from '../components/admin/users/AccountFilterBar'
 import AccountList from '../components/admin/users/AccountList'
 import LocalAuthSettingsCard from '../components/admin/users/LocalAuthSettingsCard'
-import LocalUserReviewNotice from '../components/admin/users/LocalUserReviewNotice'
+import LocalUserReviewHint from '../components/admin/users/LocalUserReviewHint'
 import RoleChangeDialog from '../components/admin/users/RoleChangeDialog'
 import UserFormDialog from '../components/admin/users/UserFormDialog'
 import SetupLinkDialog, { type SetupLinkHandover } from '../components/admin/users/SetupLinkDialog'
@@ -43,7 +43,7 @@ const tabs: Array<{ value: UserManagementTab; label: string }> = [
 const FALLBACK_EXPIRY_DAYS = 365
 
 /**
- * Der Bereich „Konten" (#1601): der stehende Hinweis zur Auflage, Suche und Filter, die Liste
+ * Der Bereich „Konten" (#1601): der Hinweis zur Auflage, Suche und Filter, die Liste
  * aller Konten - lokale wie die der Identitätsanbieter, mit ihrer Herkunft an jeder Zeile - und
  * die Dialoge der Handlungen. Kein Auswertungspfad: Aktivität nur als Klasse und nur für lokale
  * Konten, keine Sortierung danach, kein Export, Seitengröße höchstens 50.
@@ -83,33 +83,6 @@ function AccountsSection({ currentUserId }: { currentUserId: string | null }) {
 
   return (
     <>
-      <LocalUserReviewNotice
-        summary={summary}
-        // Der Sprung setzt jeden anderen Filter zurück (Review-Runde 1, LOW 10): Der Hinweis
-        // nennt eine Zahl über alle lokalen Konten, und eine stehende Herkunfts-, Rollen- oder
-        // Zustandsauswahl zeigte danach weniger Zeilen, als die Zahl verspricht.
-        onShowWithoutExpiry={() =>
-          void setFilters({
-            review: 'WITHOUT_EXPIRY',
-            status: null,
-            role: null,
-            query: '',
-            providerType: 'LOCAL',
-            providerId: null,
-          })
-        }
-        onShowInvited={() =>
-          void setFilters({
-            status: 'INVITED',
-            review: 'ALL',
-            role: null,
-            query: '',
-            providerType: 'LOCAL',
-            providerId: null,
-          })
-        }
-      />
-
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
@@ -118,12 +91,41 @@ function AccountsSection({ currentUserId }: { currentUserId: string | null }) {
 
       {/* Die primäre Handlung im Kopf des Bereichs, nicht in der Filterzeile: fünf Filter und
           eine Schaltfläche in einer Reihe brechen um, und der Umbruch stellt die Handlung dann
-          unter einen halben Filtersatz. */}
+          unter einen halben Filtersatz. Links daneben, bündig mit der Tabelle, der Hinweis zur
+          Auflage – nur wenn es einen gibt. */}
       <Stack
         direction="row"
         spacing={2}
-        sx={{ alignItems: 'center', justifyContent: 'flex-end', mb: 1.5 }}
+        sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}
       >
+        <Box sx={{ minWidth: 0 }}>
+          <LocalUserReviewHint
+            summary={summary}
+            // Der Sprung setzt jeden anderen Filter zurück (Review-Runde 1, LOW 10): Der Hinweis
+            // nennt eine Zahl über alle lokalen Konten, und eine stehende Herkunfts-, Rollen- oder
+            // Zustandsauswahl zeigte danach weniger Zeilen, als die Zahl verspricht.
+            onShowWithoutExpiry={() =>
+              void setFilters({
+                review: 'WITHOUT_EXPIRY',
+                status: null,
+                role: null,
+                query: '',
+                providerType: 'LOCAL',
+                providerId: null,
+              })
+            }
+            onShowInvited={() =>
+              void setFilters({
+                status: 'INVITED',
+                review: 'ALL',
+                role: null,
+                query: '',
+                providerType: 'LOCAL',
+                providerId: null,
+              })
+            }
+          />
+        </Box>
         <Button
           variant="contained"
           startIcon={<AddIcon />}
