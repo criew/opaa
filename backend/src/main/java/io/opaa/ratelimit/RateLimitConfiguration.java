@@ -27,7 +27,7 @@ import tools.jackson.databind.json.JsonMapper;
  * opaa.rate-limit.enabled}.
  *
  * <p>The two switchable self-service rules ask {@link SelfServiceEndpointAvailability} whether
- * their endpoint is served at all; the auth side supplies the answer through that interface.
+ * their endpoint is served at all.
  */
 @Configuration
 @EnableConfigurationProperties(RateLimitProperties.class)

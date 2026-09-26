@@ -135,9 +135,8 @@ public record RateLimitProperties(
    * The limits of the local sign-in (ADR-0033, Entscheidung 9). {@code login}, {@code refresh},
    * {@code register}, {@code forgotPassword}, {@code setPassword} and {@code verifyEmail} are keyed
    * by client address in {@code RateLimitFilter}; {@code changePassword} by the authenticated
-   * account and {@code register}/{@code forgotPassword} additionally by the address they name, both
-   * in {@code LocalAuthRateLimiter}. {@code handover} (#1563) covers the preview and the redemption
-   * of a handover code together.
+   * account and {@code register}/{@code forgotPassword} additionally by the address they name.
+   * {@code handover} (#1563) covers the preview and the redemption of a handover code together.
    */
   public record LocalAuthLimits(
       LocalAuthLimit login,
