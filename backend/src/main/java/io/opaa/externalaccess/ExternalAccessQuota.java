@@ -16,8 +16,8 @@ import org.springframework.stereotype.Component;
  * call so a raised limit takes effect without a restart.
  *
  * <p>It comes <b>in addition to</b> the limits per client address and per installation that {@code
- * io.opaa.api.RateLimitFilter} applies, not in their place: behind a shared egress point in an
- * authority's network everyone shares one address, and a limit per address would hit the wrong
+ * io.opaa.ratelimit.RateLimitFilter} applies, not in their place: behind a shared egress point in
+ * an authority's network everyone shares one address, and a limit per address would hit the wrong
  * people.
  *
  * <p>Three things this deliberately is not. It is <b>not a protection against mass retrieval</b> -

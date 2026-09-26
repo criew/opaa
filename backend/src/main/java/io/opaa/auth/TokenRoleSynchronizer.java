@@ -1,6 +1,5 @@
 package io.opaa.auth;
 
-import io.opaa.api.RateLimitService;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
@@ -11,6 +10,7 @@ import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.local.LocalAdminAvailabilityGuard;
 import io.opaa.auth.oidc.OidcClaimMapping;
 import io.opaa.auth.oidc.OidcProvider;
+import io.opaa.ratelimit.RateLimitService;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;

@@ -5,12 +5,12 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import io.opaa.api.RateLimitProperties;
-import io.opaa.api.RateLimitProperties.LocalAuthLimit;
-import io.opaa.api.RateLimitProperties.LocalAuthLimits;
 import io.opaa.auth.local.LocalAuthRateLimiter.AddressScope;
 import io.opaa.common.TooManyRequestsException;
 import io.opaa.observability.RateLimitMetrics;
+import io.opaa.ratelimit.RateLimitProperties;
+import io.opaa.ratelimit.RateLimitProperties.LocalAuthLimit;
+import io.opaa.ratelimit.RateLimitProperties.LocalAuthLimits;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 

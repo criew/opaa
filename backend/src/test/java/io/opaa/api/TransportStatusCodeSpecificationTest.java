@@ -7,12 +7,15 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import io.opaa.api.RateLimitProperties.EndpointLimit;
-import io.opaa.api.RateLimitProperties.LocalAuthLimit;
-import io.opaa.api.RateLimitProperties.LocalAuthLimits;
-import io.opaa.auth.local.LocalSelfServiceAvailability;
 import io.opaa.common.PayloadTooLargeException;
 import io.opaa.observability.RateLimitMetrics;
+import io.opaa.ratelimit.RateLimitConfiguration;
+import io.opaa.ratelimit.RateLimitFilter;
+import io.opaa.ratelimit.RateLimitProperties;
+import io.opaa.ratelimit.RateLimitProperties.EndpointLimit;
+import io.opaa.ratelimit.RateLimitProperties.LocalAuthLimit;
+import io.opaa.ratelimit.RateLimitProperties.LocalAuthLimits;
+import io.opaa.ratelimit.SelfServiceEndpointAvailability;
 import io.opaa.security.TrustedProxyClientIpResolver;
 import io.opaa.test.JavaSources;
 import jakarta.servlet.Filter;
@@ -384,9 +387,9 @@ class TransportStatusCodeSpecificationTest {
   }
 
   @SuppressWarnings("unchecked")
-  private static ObjectProvider<LocalSelfServiceAvailability> servedSelfService() {
-    LocalSelfServiceAvailability served =
-        new LocalSelfServiceAvailability() {
+  private static ObjectProvider<SelfServiceEndpointAvailability> servedSelfService() {
+    SelfServiceEndpointAvailability served =
+        new SelfServiceEndpointAvailability() {
 
           @Override
           public boolean isPasswordResetAvailable() {
@@ -398,7 +401,7 @@ class TransportStatusCodeSpecificationTest {
             return true;
           }
         };
-    ObjectProvider<LocalSelfServiceAvailability> provider = mock(ObjectProvider.class);
+    ObjectProvider<SelfServiceEndpointAvailability> provider = mock(ObjectProvider.class);
     when(provider.getIfAvailable(any())).thenReturn(served);
     return provider;
   }
