@@ -317,7 +317,7 @@ class OidcProviderServiceIntegrationTest {
             thrown ->
                 assertThat(((ConflictException) thrown).getCode())
                     .isEqualTo(OidcProviderService.PROVIDER_GROUPS_IN_EFFECT))
-        .hasMessageContaining("1 Gruppe wird noch verwendet");
+        .hasMessageContaining("1 Gruppe wird noch verwendet: 1 Gruppe trägt ein Anlegerecht.");
     assertThat(repository.findById(partner.getId())).isPresent();
     assertThat(groupRepository.findById(group.getId())).isPresent();
   }

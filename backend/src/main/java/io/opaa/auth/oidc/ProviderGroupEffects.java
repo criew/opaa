@@ -19,6 +19,7 @@ import java.util.List;
  * @param scopedAuthorizations how many still-conferring diagnostic authorisations (ADR-0016) name
  *     one of those groups as their scope - they would cascade away with the group, without the
  *     revocation event ADR-0016 requires
+ * @param capabilityGroups how many of those groups hold an Anlegerecht
  */
 public record ProviderGroupEffects(
     long groups,
@@ -27,9 +28,10 @@ public record ProviderGroupEffects(
     long owningGroups,
     long spaceMemberships,
     long spaces,
-    long scopedAuthorizations) {
+    long scopedAuthorizations,
+    long capabilityGroups) {
 
-  public static final ProviderGroupEffects NONE = new ProviderGroupEffects(0, 0, 0, 0, 0, 0, 0);
+  public static final ProviderGroupEffects NONE = new ProviderGroupEffects(0, 0, 0, 0, 0, 0, 0, 0);
 
   public boolean any() {
     return groups > 0;
@@ -54,6 +56,12 @@ public record ProviderGroupEffects(
     }
     if (spaceMemberships > 0) {
       parts.add("Mitglied in " + (spaces == 1 ? "1 Space" : spaces + " Spaces"));
+    }
+    if (capabilityGroups > 0) {
+      parts.add(
+          capabilityGroups == 1
+              ? "1 Gruppe trägt ein Anlegerecht"
+              : capabilityGroups + " Gruppen tragen Anlegerechte");
     }
     if (scopedAuthorizations > 0) {
       parts.add(
