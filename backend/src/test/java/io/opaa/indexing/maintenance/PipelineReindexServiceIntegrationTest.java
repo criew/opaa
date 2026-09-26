@@ -9,9 +9,7 @@ import io.opaa.api.types.SystemRole;
 import io.opaa.indexing.chunk.FullTextChunkStore;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.document.ChecksumService;
-import io.opaa.indexing.document.Document;
 import io.opaa.indexing.document.DocumentIngestService;
-import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.indexing.document.StoredDocumentSourceAccess;
 import io.opaa.indexing.format.ChunkFormatMetadata;
 import io.opaa.indexing.format.DocumentFormat;
@@ -22,10 +20,12 @@ import io.opaa.indexing.job.IndexingRunEventRecorder;
 import io.opaa.indexing.job.IndexingRunEventRepository;
 import io.opaa.indexing.job.IndexingRunProgress;
 import io.opaa.indexing.source.IndexingRun;
-import io.opaa.library.KnowledgeLibrary;
-import io.opaa.library.KnowledgeLibraryRepository;
-import io.opaa.library.UploadProperties;
-import io.opaa.library.UploadStoreUnavailableException;
+import io.opaa.knowledge.Document;
+import io.opaa.knowledge.DocumentRepository;
+import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.knowledge.UploadProperties;
+import io.opaa.knowledge.UploadStoreUnavailableException;
 import io.opaa.organization.Organization;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OpaaTestDirectory;
@@ -995,7 +995,7 @@ class PipelineReindexServiceIntegrationTest {
         new IndexingRunEventRecorder(
             org.mockito.Mockito.mock(IndexingRunEventRepository.class), jobService, jobId),
         documentRepository,
-        org.mockito.Mockito.mock(io.opaa.library.LibraryStorageQuotaService.class));
+        org.mockito.Mockito.mock(io.opaa.knowledge.LibraryStorageQuotaService.class));
   }
 
   @Test

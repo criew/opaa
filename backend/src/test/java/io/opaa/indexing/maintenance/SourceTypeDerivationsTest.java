@@ -3,8 +3,8 @@ package io.opaa.indexing.maintenance;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.api.types.DocumentSourceType;
-import io.opaa.indexing.document.Document;
 import io.opaa.indexing.document.StoredDocumentSourceAccess;
+import io.opaa.knowledge.Document;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;

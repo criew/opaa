@@ -3,7 +3,7 @@ package io.opaa.search;
 import io.opaa.auth.CurrentUser;
 import io.opaa.indexing.metadata.MetadataFilter;
 import io.opaa.indexing.metadata.MetadataFilterValidator;
-import io.opaa.library.KnowledgeLibraryRepository;
+import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.query.KnowledgeRetrieval;
 import io.opaa.query.SearchScopeResolver;
 import io.opaa.query.SearchedLibraryRef;

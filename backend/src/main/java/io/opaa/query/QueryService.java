@@ -11,7 +11,7 @@ import io.opaa.chat.ChatSource;
 import io.opaa.chat.UsedPrompt;
 import io.opaa.indexing.metadata.MetadataFilter;
 import io.opaa.indexing.metadata.MetadataFilterValidator;
-import io.opaa.library.LibraryAccessService;
+import io.opaa.knowledge.LibraryAccessService;
 import io.opaa.observability.QueryMetrics;
 import io.opaa.prompt.Prompt;
 import io.opaa.prompt.PromptService;

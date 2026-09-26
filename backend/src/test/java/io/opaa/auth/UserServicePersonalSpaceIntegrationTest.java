@@ -3,7 +3,7 @@ package io.opaa.auth;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
-import io.opaa.library.KnowledgeLibraryRepository;
+import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
 import io.opaa.permission.AssetOwnershipHistoryRepository;
 import io.opaa.space.Space;

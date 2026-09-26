@@ -16,7 +16,7 @@ import io.opaa.common.ServiceUnavailableException;
 import io.opaa.common.TooManyRequestsException;
 import io.opaa.common.UnauthorizedException;
 import io.opaa.common.ValidationException;
-import io.opaa.library.UploadProperties;
+import io.opaa.knowledge.UploadProperties;
 import io.opaa.security.CredentialsEncryptionKeyMissingException;
 import java.sql.SQLException;
 import java.time.Instant;

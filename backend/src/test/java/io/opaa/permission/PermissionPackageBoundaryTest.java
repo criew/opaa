@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.opaa.permission.PackageDependencyScanner.Reference;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -34,14 +35,18 @@ import org.junit.jupiter.api.Test;
  *       io.opaa.library} and {@code io.opaa.space} depend on it, {@code io.opaa.permission} does
  *       not (#1899).
  *   <li><b>The business packages do not depend on each other</b>, with one declared exception:
- *       {@code io.opaa.space} reaches {@code io.opaa.library} for the one type the search reads,
- *       and nothing in {@code io.opaa.library} names a space. Every other pair is forbidden in both
- *       directions - {@code library} &harr; {@code group} was a real cycle (12 class edges one way,
- *       4 the other) until this package took the permission model out of both.
+ *       {@code io.opaa.space} reaches {@code io.opaa.knowledge} for the one type the search reads,
+ *       and nothing in {@code io.opaa.library} or {@code io.opaa.knowledge} names a space. Every
+ *       other pair is forbidden in both directions - {@code library} &harr; {@code group} was a
+ *       real cycle (12 class edges one way, 4 the other) until this package took the permission
+ *       model out of both.
  *   <li><b>A second asset type stands beside the first, never on it.</b> {@code io.opaa.prompt}
  *       builds on the shell and asks the permission model for roles and capabilities only; neither
  *       it nor {@code io.opaa.library} knows the other (#1901).
  * </ol>
+ *
+ * <p>The library asset type spans two packages: its holdings in {@code io.opaa.knowledge} and its
+ * administration in {@code io.opaa.library}. Every rule naming the library applies to both.
  *
  * <p>The scan is source-based; see {@link PackageDependencyScanner} for what that catches that a
  * signature-level reflection check does not, and for the one shape it cannot see.
@@ -52,6 +57,7 @@ class PermissionPackageBoundaryTest {
 
   private static final String PERMISSION = "io.opaa.permission";
   private static final String LIBRARY = "io.opaa.library";
+  private static final String KNOWLEDGE = "io.opaa.knowledge";
   private static final String GROUP = "io.opaa.group";
   private static final String SPACE = "io.opaa.space";
   private static final String AUDIT = "io.opaa.audit";
@@ -68,93 +74,108 @@ class PermissionPackageBoundaryTest {
 
   /** Ordered pairs that must not exist, each with the reason a reviewer needs. */
   private static final Map<List<String>, String> FORBIDDEN_EDGES =
-      Map.ofEntries(
-          Map.entry(
-              List.of(PERMISSION, LIBRARY),
-              "the permission model must not know an asset type - a library reaches it through"
-                  + " AssetType plus id"),
-          Map.entry(
-              List.of(PERMISSION, GROUP),
-              "the permission model asks for memberships and group subjects through its own ports"),
-          Map.entry(
-              List.of(PERMISSION, SPACE),
-              "a space is the third consumer of the permission model, not part of it"),
-          Map.entry(
-              List.of(LIBRARY, GROUP), "one half of the cycle ADR-0036, Entscheidung 12 resolved"),
-          Map.entry(List.of(GROUP, LIBRARY), "the other half of that cycle"),
-          Map.entry(
-              List.of(GROUP, SPACE), "a group must not learn where its members are organized"),
-          Map.entry(
-              List.of(SPACE, GROUP),
-              "a space reaches groups through the permission model, like every other consumer"),
-          Map.entry(
-              List.of(LIBRARY, SPACE),
-              "space -> library is the one allowed direction between business packages; the"
-                  + " counter-direction would make it a cycle"),
-          Map.entry(
-              List.of(OIDC, GROUP),
-              "the provider administration reaches groups through ProviderGroupDirectory, which"
-                  + " io.opaa.group implements - the counter-direction (group -> auth.oidc, for"
-                  + " the provider a group originates from) is the one that exists"),
-          Map.entry(
-              List.of(AUDIT, PERMISSION),
-              "every fachpaket writes its events through io.opaa.audit, so a dependency out of it"
-                  + " is a cycle - a reading path that composes several of them lives in"
-                  + " io.opaa.revision, above all of them (#1822)"),
-          Map.entry(
-              List.of(PERMISSION, SUCCESSION),
-              "the lifecycle composes the three fachpakete and therefore sits above them (#1819);"
-                  + " what the permission model needs from it - the reach guard and the closing of"
-                  + " a record - it declares as SuccessionReachGuard and SuccessionCaseCloser"),
-          Map.entry(
-              List.of(LIBRARY, SUCCESSION),
-              "a library contributes a SuccessionFindingSource and asks the guard, both declared"
-                  + " in io.opaa.permission - the counter-direction would be a cycle"),
-          Map.entry(List.of(GROUP, SUCCESSION), "same direction, same reason"),
-          Map.entry(List.of(SPACE, SUCCESSION), "same direction, same reason"),
-          Map.entry(List.of(AUDIT, LIBRARY), "same direction, same reason"),
-          Map.entry(List.of(AUDIT, SPACE), "same direction, same reason"),
-          Map.entry(
-              List.of(PERMISSION, ASSET),
-              "the asset shell builds on the permission model - the counter-direction would be a"
-                  + " cycle; the formula reads the shell's release through SQL, never its classes"),
-          Map.entry(
-              List.of(ASSET, LIBRARY),
-              "the shell serves every asset type and names none; a type declares itself through"
-                  + " an AssetTypeDefinition bean"),
-          Map.entry(
-              List.of(ASSET, SPACE),
-              "a space associates assets, an asset knows no space - the counter-direction exists"),
-          Map.entry(
-              List.of(ASSET, GROUP),
-              "the shell reaches groups through the permission model's ports, like every consumer"),
-          Map.entry(
-              List.of(ASSET, SUCCESSION),
-              "the shell contributes a SuccessionFindingSource and asks the guard, both declared"
-                  + " in io.opaa.permission"),
-          Map.entry(
-              List.of(PROMPT, LIBRARY),
-              "two asset types stand side by side on the shell; what both need belongs to"
-                  + " io.opaa.asset"),
-          Map.entry(List.of(LIBRARY, PROMPT), "the other direction of the same rule"),
-          Map.entry(
-              List.of(ASSET, PROMPT),
-              "the shell serves every asset type and names none; a type declares itself through"
-                  + " an AssetTypeDefinition bean"),
-          Map.entry(
-              List.of(PERMISSION, PROMPT), "the permission model must not know an asset type"),
-          Map.entry(
-              List.of(PROMPT, SPACE),
-              "a prompt library is associated through the shell, and knows no space"),
-          Map.entry(
-              List.of(SPACE, PROMPT),
-              "a space associates assets through the shell; only the searched type is named"),
-          Map.entry(
-              List.of(PROMPT, GROUP),
-              "a prompt library reaches groups through the shell and the permission model"),
-          Map.entry(
-              List.of(PROMPT, SUCCESSION),
-              "the shell's succession source covers every type; the guard is asked by the shell"));
+      withHoldings(
+          Map.ofEntries(
+              Map.entry(
+                  List.of(PERMISSION, LIBRARY),
+                  "the permission model must not know an asset type - a library reaches it through"
+                      + " AssetType plus id"),
+              Map.entry(
+                  List.of(PERMISSION, GROUP),
+                  "the permission model asks for memberships and group subjects through its own ports"),
+              Map.entry(
+                  List.of(PERMISSION, SPACE),
+                  "a space is the third consumer of the permission model, not part of it"),
+              Map.entry(
+                  List.of(LIBRARY, GROUP),
+                  "one half of the cycle ADR-0036, Entscheidung 12 resolved"),
+              Map.entry(List.of(GROUP, LIBRARY), "the other half of that cycle"),
+              Map.entry(
+                  List.of(GROUP, SPACE), "a group must not learn where its members are organized"),
+              Map.entry(
+                  List.of(SPACE, GROUP),
+                  "a space reaches groups through the permission model, like every other consumer"),
+              Map.entry(
+                  List.of(LIBRARY, SPACE),
+                  "space -> library is the one allowed direction between business packages; the"
+                      + " counter-direction would make it a cycle"),
+              Map.entry(
+                  List.of(OIDC, GROUP),
+                  "the provider administration reaches groups through ProviderGroupDirectory, which"
+                      + " io.opaa.group implements - the counter-direction (group -> auth.oidc, for"
+                      + " the provider a group originates from) is the one that exists"),
+              Map.entry(
+                  List.of(AUDIT, PERMISSION),
+                  "every fachpaket writes its events through io.opaa.audit, so a dependency out of it"
+                      + " is a cycle - a reading path that composes several of them lives in"
+                      + " io.opaa.revision, above all of them (#1822)"),
+              Map.entry(
+                  List.of(PERMISSION, SUCCESSION),
+                  "the lifecycle composes the three fachpakete and therefore sits above them (#1819);"
+                      + " what the permission model needs from it - the reach guard and the closing of"
+                      + " a record - it declares as SuccessionReachGuard and SuccessionCaseCloser"),
+              Map.entry(
+                  List.of(LIBRARY, SUCCESSION),
+                  "a library contributes a SuccessionFindingSource and asks the guard, both declared"
+                      + " in io.opaa.permission - the counter-direction would be a cycle"),
+              Map.entry(List.of(GROUP, SUCCESSION), "same direction, same reason"),
+              Map.entry(List.of(SPACE, SUCCESSION), "same direction, same reason"),
+              Map.entry(List.of(AUDIT, LIBRARY), "same direction, same reason"),
+              Map.entry(List.of(AUDIT, SPACE), "same direction, same reason"),
+              Map.entry(
+                  List.of(PERMISSION, ASSET),
+                  "the asset shell builds on the permission model - the counter-direction would be a"
+                      + " cycle; the formula reads the shell's release through SQL, never its classes"),
+              Map.entry(
+                  List.of(ASSET, LIBRARY),
+                  "the shell serves every asset type and names none; a type declares itself through"
+                      + " an AssetTypeDefinition bean"),
+              Map.entry(
+                  List.of(ASSET, SPACE),
+                  "a space associates assets, an asset knows no space - the counter-direction exists"),
+              Map.entry(
+                  List.of(ASSET, GROUP),
+                  "the shell reaches groups through the permission model's ports, like every consumer"),
+              Map.entry(
+                  List.of(ASSET, SUCCESSION),
+                  "the shell contributes a SuccessionFindingSource and asks the guard, both declared"
+                      + " in io.opaa.permission"),
+              Map.entry(
+                  List.of(PROMPT, LIBRARY),
+                  "two asset types stand side by side on the shell; what both need belongs to"
+                      + " io.opaa.asset"),
+              Map.entry(List.of(LIBRARY, PROMPT), "the other direction of the same rule"),
+              Map.entry(
+                  List.of(ASSET, PROMPT),
+                  "the shell serves every asset type and names none; a type declares itself through"
+                      + " an AssetTypeDefinition bean"),
+              Map.entry(
+                  List.of(PERMISSION, PROMPT), "the permission model must not know an asset type"),
+              Map.entry(
+                  List.of(PROMPT, SPACE),
+                  "a prompt library is associated through the shell, and knows no space"),
+              Map.entry(
+                  List.of(SPACE, PROMPT),
+                  "a space associates assets through the shell; only the searched type is named"),
+              Map.entry(
+                  List.of(PROMPT, GROUP),
+                  "a prompt library reaches groups through the shell and the permission model"),
+              Map.entry(
+                  List.of(PROMPT, SUCCESSION),
+                  "the shell's succession source covers every type; the guard is asked by the shell")));
+
+  /** Adds, for every edge naming {@link #LIBRARY}, the same edge naming {@link #KNOWLEDGE}. */
+  private static Map<List<String>, String> withHoldings(Map<List<String>, String> edges) {
+    Map<List<String>, String> all = new LinkedHashMap<>(edges);
+    edges.forEach(
+        (pair, reason) -> {
+          if (pair.contains(LIBRARY)) {
+            all.put(
+                pair.stream().map(pkg -> pkg.equals(LIBRARY) ? KNOWLEDGE : pkg).toList(), reason);
+          }
+        });
+    return Map.copyOf(all);
+  }
 
   private static List<Reference> references;
 

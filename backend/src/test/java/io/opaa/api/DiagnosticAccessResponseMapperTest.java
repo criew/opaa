@@ -14,7 +14,7 @@ import io.opaa.diagnosticaccess.DiagnosticContextLogEntry;
 import io.opaa.diagnosticaccess.DiagnosticContextRetentionSettings;
 import io.opaa.diagnosticaccess.DiagnosticImpersonationGrant;
 import io.opaa.diagnosticaccess.OwnDiagnosticContextEvent;
-import io.opaa.library.KnowledgeLibrary;
+import io.opaa.knowledge.KnowledgeLibrary;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;

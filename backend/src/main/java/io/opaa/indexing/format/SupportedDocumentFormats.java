@@ -332,8 +332,8 @@ public final class SupportedDocumentFormats {
   /**
    * The admitted extension that {@code fileName} ends with, or empty when it ends with none of them
    * - the file's own claimed extension, used only as a hint once {@link #decideForFileName} has
-   * already decided acceptance from the content. Package-visible so {@code
-   * io.opaa.library.LibraryDocumentService} can keep using its own equivalent private helper.
+   * already decided acceptance from the content. Package-visible so {@code LibraryDocumentService}
+   * can keep using its own equivalent private helper.
    */
   Optional<String> matchedExtension(String fileName) {
     if (fileName == null || fileName.isBlank()) {

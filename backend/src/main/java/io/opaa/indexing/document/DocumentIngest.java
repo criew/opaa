@@ -2,7 +2,8 @@ package io.opaa.indexing.document;
 
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.indexing.format.DocumentProperties;
-import io.opaa.library.KnowledgeLibrary;
+import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.SourceDocumentContext;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;

@@ -16,7 +16,7 @@ import io.opaa.api.dto.SourceConnectionTestResponse;
 import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.indexing.source.confluence.ConfluenceSpace;
-import io.opaa.indexing.source.s3.S3Scope;
+import io.opaa.knowledge.sourcesettings.S3Scope;
 import io.opaa.library.ConfluenceSpaceListing;
 import io.opaa.library.S3BucketListResult;
 import io.opaa.library.S3BucketListingRequest;

@@ -4,7 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.api.types.DocumentSourceType;
-import io.opaa.library.KnowledgeLibrary;
+import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.sourcesettings.S3Scope;
+import io.opaa.knowledge.sourcesettings.S3SourceSettings;
 import io.opaa.s3.S3AccessException;
 import io.opaa.s3.S3Credentials;
 import io.opaa.s3.S3TestFixture;
@@ -166,7 +168,7 @@ class S3OriginalAccessIntegrationTest {
   void aKeyWithoutTheReadRightIsIndistinguishableFromAMissingObject() throws Exception {
     // Without s3:ListBucket - a right a policy can lose after indexing - AWS answers a missing key
     // with 403 rather than 404. Were that 403 a store failure, a deleted object would surface as
-    // "store unreachable"; io.opaa.library.S3UploadedOriginalStore resolves it the same way.
+    // "store unreachable"; io.opaa.knowledge.S3UploadedOriginalStore resolves it the same way.
     S3Credentials listOnly =
         store.createUser(
             S3TestFixture.policyAllowing(bucket, "s3:ListBucket", "s3:GetBucketLocation"));

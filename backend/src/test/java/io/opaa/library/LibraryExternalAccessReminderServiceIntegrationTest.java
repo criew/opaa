@@ -21,6 +21,8 @@ import io.opaa.common.PublicBaseUrl;
 import io.opaa.group.Group;
 import io.opaa.group.GroupMembership;
 import io.opaa.group.GroupRepository;
+import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.mail.MailService;
 import io.opaa.mail.MailTemplateKey;
 import io.opaa.mail.SendResult;

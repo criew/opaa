@@ -10,13 +10,13 @@ import static org.mockito.Mockito.verify;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.indexing.document.DocumentIngestService;
-import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.job.IndexingRunEventRepository;
 import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
 import io.opaa.indexing.source.IndexingRunTemplate;
-import io.opaa.library.KnowledgeLibrary;
-import io.opaa.library.LibraryStorageQuotaService;
+import io.opaa.knowledge.DocumentRepository;
+import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.LibraryStorageQuotaService;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.SourceRequestPolicy;
@@ -78,7 +78,7 @@ class UrlIndexingExecutorTest {
             mock(DocumentIngestService.class),
             documentRepository,
             new CrawlProperties(0, 0, 0),
-            mock(io.opaa.library.LibraryFolderService.class),
+            mock(io.opaa.knowledge.LibraryFolderService.class),
             SourceRequestPolicy.defaults(),
             new IndexingRunTemplate(
                 jobService,

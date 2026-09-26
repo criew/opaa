@@ -1,5 +1,6 @@
 package io.opaa.library;
 
+import io.opaa.knowledge.LibraryFolder;
 import java.util.List;
 import java.util.UUID;
 

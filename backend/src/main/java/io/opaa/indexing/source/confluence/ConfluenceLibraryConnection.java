@@ -1,7 +1,7 @@
 package io.opaa.indexing.source.confluence;
 
 import io.opaa.api.types.ConfluenceEdition;
-import io.opaa.library.KnowledgeLibrary;
+import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.sourceaccess.ProxyAndCredentials;
 import java.net.URI;
 

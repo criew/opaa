@@ -21,7 +21,7 @@ import io.opaa.auth.UserRepository;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.OrganizationScopedLoader;
-import io.opaa.library.KnowledgeLibrary;
+import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.notification.NotificationService;
 import io.opaa.permission.AssetAccessService;
 import io.opaa.permission.AssetType;

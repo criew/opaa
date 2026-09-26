@@ -20,7 +20,7 @@ import io.opaa.auth.UserRepository;
 import io.opaa.auth.oidc.OidcProviderRepository;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.NotFoundException;
-import io.opaa.library.KnowledgeLibrary;
+import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;

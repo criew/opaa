@@ -51,7 +51,7 @@ class PackageDependencyScannerTest {
 
         class Service {
           void run() {
-            var ids = io.opaa.library.KnowledgeLibraryRepository.class.getName();
+            var ids = io.opaa.knowledge.KnowledgeLibraryRepository.class.getName();
           }
         }
         """);

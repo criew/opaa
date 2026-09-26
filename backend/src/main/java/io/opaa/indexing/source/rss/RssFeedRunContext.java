@@ -4,7 +4,7 @@ import io.opaa.indexing.attachment.AttachmentAccess;
 import io.opaa.indexing.job.IndexingRunEventRecorder;
 import io.opaa.indexing.job.IndexingRunProgress;
 import io.opaa.indexing.source.RequestBudget;
-import io.opaa.library.KnowledgeLibrary;
+import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.sourceaccess.RateLimitListener;
 import io.opaa.sourceaccess.RedirectFollowingFetcher;
 import java.net.URI;

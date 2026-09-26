@@ -24,8 +24,8 @@ import io.opaa.externalaccess.ExternalAccessSettings;
 import io.opaa.externalaccess.ExternalAccessSettingsRepository;
 import io.opaa.indexing.chunk.ChunkingService;
 import io.opaa.indexing.chunk.VectorChunkStore;
-import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.indexing.metadata.MetadataFilter;
+import io.opaa.knowledge.DocumentRepository;
 import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.query.QueryResult;
 import io.opaa.query.QueryService;
@@ -484,8 +484,8 @@ class SearchIntegrationTest {
   }
 
   private UUID insertDocument(UUID library, String fileName, List<Passage> passages) {
-    io.opaa.indexing.document.Document document =
-        new io.opaa.indexing.document.Document(
+    io.opaa.knowledge.Document document =
+        new io.opaa.knowledge.Document(
             fileName, "/" + fileName, "text/markdown", 100L, DocumentSourceType.UPLOAD);
     document.setLibraryId(library);
     document.setOrganizationId(DEFAULT_ORGANIZATION_ID);

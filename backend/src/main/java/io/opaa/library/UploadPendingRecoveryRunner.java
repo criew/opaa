@@ -1,6 +1,8 @@
 package io.opaa.library;
 
-import io.opaa.indexing.document.DocumentRepository;
+import io.opaa.knowledge.DocumentRepository;
+import io.opaa.knowledge.UploadProperties;
+import io.opaa.knowledge.UploadedOriginalStore;
 import java.time.Duration;
 import java.time.Instant;
 import org.slf4j.Logger;

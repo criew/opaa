@@ -1,6 +1,6 @@
 package io.opaa.externalaccess.token;
 
-import io.opaa.library.KnowledgeLibrary;
+import io.opaa.knowledge.KnowledgeLibrary;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;

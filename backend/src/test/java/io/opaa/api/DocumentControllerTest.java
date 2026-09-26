@@ -15,7 +15,7 @@ import io.opaa.auth.TestSecurityConfig;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
 import io.opaa.common.NotFoundException;
-import io.opaa.library.DocumentContent;
+import io.opaa.knowledge.DocumentContent;
 import io.opaa.library.LibraryDocumentService;
 import java.io.ByteArrayInputStream;
 import java.io.FilterInputStream;

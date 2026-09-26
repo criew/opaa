@@ -19,8 +19,8 @@ import io.opaa.indexing.source.SourceFolderMirror;
 import io.opaa.indexing.source.SourceFolderPath;
 import io.opaa.indexing.source.SourceIndexingExecutor;
 import io.opaa.indexing.source.VanishedDocumentPolicy;
-import io.opaa.library.KnowledgeLibrary;
-import io.opaa.library.LibraryFolderService;
+import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.LibraryFolderService;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -185,7 +185,7 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
   }
 
   /**
-   * Resolves the {@code io.opaa.library.LibraryFolder} {@code file}'s own directory maps to under
+   * Resolves the {@code io.opaa.knowledge.LibraryFolder} {@code file}'s own directory maps to under
    * {@code documentDir}, materializing it through {@link SourceFolderMirror} - which caches per
    * distinct directory, so a directory holding thousands of files still costs one materialization.
    *

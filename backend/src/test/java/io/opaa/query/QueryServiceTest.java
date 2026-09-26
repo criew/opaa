@@ -34,15 +34,15 @@ import io.opaa.chat.UsedPrompt;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.indexing.chunk.ChunkingService;
-import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.indexing.metadata.CitationMetadataReader;
 import io.opaa.indexing.metadata.CoreMetadata;
 import io.opaa.indexing.metadata.DocumentMetadataService;
 import io.opaa.indexing.metadata.DocumentTypeVocabularyRepository;
 import io.opaa.indexing.metadata.MetadataFilterValidator;
-import io.opaa.library.KnowledgeLibrary;
-import io.opaa.library.KnowledgeLibraryRepository;
-import io.opaa.library.LibraryAccessService;
+import io.opaa.knowledge.DocumentRepository;
+import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.knowledge.LibraryAccessService;
 import io.opaa.llm.RerankModelRole;
 import io.opaa.llm.RerankRoleStatus;
 import io.opaa.observability.QueryMetrics;
@@ -382,8 +382,7 @@ class QueryServiceTest {
             .build();
     when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
 
-    var indexedDocument =
-        new io.opaa.indexing.document.Document("entry.html", "/path", "text/html", 100L);
+    var indexedDocument = new io.opaa.knowledge.Document("entry.html", "/path", "text/html", 100L);
     indexedDocument.setSourceEntryUrl("https://example.com/feed/entry-123");
     when(documentRepository.findById(documentId)).thenReturn(Optional.of(indexedDocument));
 
@@ -486,11 +485,10 @@ class QueryServiceTest {
             .build();
     when(vectorStore.similaritySearch(any(SearchRequest.class)))
         .thenReturn(List.of(chunk, plainChunk));
-    io.opaa.indexing.document.Document document =
-        new io.opaa.indexing.document.Document(
-            "dienstanweisung.pdf", "/d.pdf", "application/pdf", 1L);
-    io.opaa.indexing.document.Document plainDocument =
-        new io.opaa.indexing.document.Document("anweisung.md", "/a.md", "text/markdown", 1L);
+    io.opaa.knowledge.Document document =
+        new io.opaa.knowledge.Document("dienstanweisung.pdf", "/d.pdf", "application/pdf", 1L);
+    io.opaa.knowledge.Document plainDocument =
+        new io.opaa.knowledge.Document("anweisung.md", "/a.md", "text/markdown", 1L);
     when(documentRepository.findById(any(UUID.class))).thenReturn(Optional.empty());
     when(documentRepository.findById(documentId)).thenReturn(Optional.of(document));
     when(documentRepository.findById(plainDocumentId)).thenReturn(Optional.of(plainDocument));
@@ -606,8 +604,7 @@ class QueryServiceTest {
             .build();
     when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
 
-    var indexedDocument =
-        new io.opaa.indexing.document.Document("entry.html", "/path", "text/html", 100L);
+    var indexedDocument = new io.opaa.knowledge.Document("entry.html", "/path", "text/html", 100L);
     when(documentRepository.findById(documentId)).thenReturn(Optional.of(indexedDocument));
 
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
@@ -637,7 +634,7 @@ class QueryServiceTest {
     when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
 
     var indexedDocument =
-        new io.opaa.indexing.document.Document(
+        new io.opaa.knowledge.Document(
             "upload.pdf",
             "/data/upload.pdf",
             "application/pdf",
@@ -676,7 +673,7 @@ class QueryServiceTest {
     when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
 
     var indexedDocument =
-        new io.opaa.indexing.document.Document(
+        new io.opaa.knowledge.Document(
             "dienstanweisung.pdf",
             "https://example.gov/verzeichnis/dienstanweisung.pdf",
             "application/pdf",
@@ -729,10 +726,10 @@ class QueryServiceTest {
         .thenReturn(List.of(firstChunk, secondChunk));
 
     var firstDocument =
-        new io.opaa.indexing.document.Document("attachment.pdf", "/path1", "application/pdf", 100L);
+        new io.opaa.knowledge.Document("attachment.pdf", "/path1", "application/pdf", 100L);
     firstDocument.setSourceEntryUrl("https://example.com/feed/entry-1");
     var secondDocument =
-        new io.opaa.indexing.document.Document("attachment.pdf", "/path2", "application/pdf", 100L);
+        new io.opaa.knowledge.Document("attachment.pdf", "/path2", "application/pdf", 100L);
     secondDocument.setSourceEntryUrl("https://example.com/feed/entry-2");
     when(documentRepository.findById(firstDocumentId)).thenReturn(Optional.of(firstDocument));
     when(documentRepository.findById(secondDocumentId)).thenReturn(Optional.of(secondDocument));

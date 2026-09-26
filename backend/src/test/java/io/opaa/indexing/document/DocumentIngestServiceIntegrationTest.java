@@ -5,8 +5,10 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.SystemRole;
-import io.opaa.library.KnowledgeLibrary;
-import io.opaa.library.KnowledgeLibraryRepository;
+import io.opaa.knowledge.Document;
+import io.opaa.knowledge.DocumentRepository;
+import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
 import io.opaa.test.OpaaMockedDocumentServiceIntegrationTest;
 import io.opaa.test.OpaaTestDirectory;

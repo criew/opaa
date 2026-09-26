@@ -1,6 +1,6 @@
 package io.opaa.space;
 
-import io.opaa.library.KnowledgeLibrary;
+import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.permission.AssetType;
 import java.util.Collection;
 import java.util.List;

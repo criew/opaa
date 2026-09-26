@@ -36,6 +36,7 @@ class AssetTypeTest {
 
   @Test
   void theKnowledgeLibraryConstantLivesWithItsAssetNotWithThePermissionModel() {
-    assertThat(io.opaa.library.KnowledgeLibrary.ASSET_TYPE.value()).isEqualTo("KNOWLEDGE_LIBRARY");
+    assertThat(io.opaa.knowledge.KnowledgeLibrary.ASSET_TYPE.value())
+        .isEqualTo("KNOWLEDGE_LIBRARY");
   }
 }

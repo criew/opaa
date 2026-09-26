@@ -1,6 +1,6 @@
 package io.opaa.indexing.metadata;
 
-import io.opaa.library.KnowledgeLibrary;
+import io.opaa.knowledge.KnowledgeLibrary;
 import java.util.ArrayList;
 import java.util.List;
 

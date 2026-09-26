@@ -1,9 +1,9 @@
 package io.opaa.indexing.metadata;
 
 import io.opaa.api.types.LibraryMetadataFieldType;
-import io.opaa.indexing.document.Document;
-import io.opaa.indexing.document.DocumentRepository;
-import io.opaa.library.KnowledgeLibrary;
+import io.opaa.knowledge.Document;
+import io.opaa.knowledge.DocumentRepository;
+import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.llm.ActiveChatModelResolver;
 import java.time.Duration;
 import java.util.ArrayList;

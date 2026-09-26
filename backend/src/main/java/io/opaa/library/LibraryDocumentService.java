@@ -16,13 +16,26 @@ import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.document.AttachmentExtractor;
 import io.opaa.indexing.document.AttachmentFilePath;
 import io.opaa.indexing.document.ChecksumService;
-import io.opaa.indexing.document.Document;
 import io.opaa.indexing.document.DocumentIngest;
 import io.opaa.indexing.document.DocumentIngestService;
-import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.indexing.format.SupportedDocumentFormats;
 import io.opaa.indexing.source.s3.S3Download;
 import io.opaa.indexing.source.s3.S3OriginalAccess;
+import io.opaa.knowledge.Document;
+import io.opaa.knowledge.DocumentContent;
+import io.opaa.knowledge.DocumentRepository;
+import io.opaa.knowledge.FolderDocumentDeleter;
+import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.knowledge.LibraryAccessService;
+import io.opaa.knowledge.LibraryFolder;
+import io.opaa.knowledge.LibraryFolderRepository;
+import io.opaa.knowledge.LibraryFolderService;
+import io.opaa.knowledge.LibraryStorageQuotaService;
+import io.opaa.knowledge.ServedContentTypes;
+import io.opaa.knowledge.UploadProperties;
+import io.opaa.knowledge.UploadedOriginalRef;
+import io.opaa.knowledge.UploadedOriginalStore;
 import io.opaa.s3.S3AccessException;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedDownloader;
@@ -90,9 +103,9 @@ import org.springframework.web.multipart.MultipartFile;
  * (#614).</b> Asynchronous processing (previous paragraph) means a document can still be mid-flight
  * on {@code uploadTaskExecutor} while a delete request for the same document arrives on another
  * thread. Deleting the row first closes that race: {@link
- * io.opaa.indexing.document.DocumentRepository#markIndexed}/{@code #markFailed} are conditional
- * updates that only ever affect a row that still exists, so once this method's transaction commits,
- * a racing task's status update is guaranteed to see the row gone and clean up any chunks it just
+ * io.opaa.knowledge.DocumentRepository#markIndexed}/{@code #markFailed} are conditional updates
+ * that only ever affect a row that still exists, so once this method's transaction commits, a
+ * racing task's status update is guaranteed to see the row gone and clean up any chunks it just
  * wrote itself (see {@code DocumentIngestService#processUploadedFileAsync}). The vector store
  * delete here only has to handle documents that already had chunks before this call, deferred to
  * after commit (next paragraph) alongside the file, for the same reason.
@@ -117,7 +130,7 @@ import org.springframework.web.multipart.MultipartFile;
  * reserved one) delete a file outside OPAA's own data directory entirely, with no undo.
  */
 @Service
-public class LibraryDocumentService {
+public class LibraryDocumentService implements FolderDocumentDeleter {
 
   private static final Logger log = LoggerFactory.getLogger(LibraryDocumentService.class);
 
@@ -474,11 +487,11 @@ public class LibraryDocumentService {
    * Resolves the on-disk original behind {@code documentId} for streaming (#736) - the read
    * counterpart to {@link #uploadDocument}/{@link #deleteDocument}'s write-side file handling, and
    * subject to the same "no existence leak" discipline {@link
-   * io.opaa.library.LibraryAccessService#requireRole} already applies to every other library-scoped
-   * endpoint: an unknown document, one in another organization, one the caller has no grant on, one
-   * of a sourceType with no local file, and one whose file has since disappeared from disk all
-   * answer the same {@code 404}, in that order, so a caller can never distinguish "does not exist"
-   * from any of the others.
+   * io.opaa.knowledge.LibraryAccessService#requireRole} already applies to every other
+   * library-scoped endpoint: an unknown document, one in another organization, one the caller has
+   * no grant on, one of a sourceType with no local file, and one whose file has since disappeared
+   * from disk all answer the same {@code 404}, in that order, so a caller can never distinguish
+   * "does not exist" from any of the others.
    *
    * <p>Requires only {@link AssetRole#VIEWER} (#736 acceptance criteria) - the same floor {@link
    * LibraryAccessService#canRead} already uses for a library's configuration and document list;
@@ -1107,6 +1120,7 @@ public class LibraryDocumentService {
     return new BulkDocumentDeletion(List.copyOf(deleted), List.copyOf(failures));
   }
 
+  @Override
   @Transactional
   public void deleteDocument(UUID libraryId, UUID documentId, CurrentUser caller) {
     KnowledgeLibrary library = loadLibrary(libraryId, caller);

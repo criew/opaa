@@ -11,10 +11,10 @@ import java.util.List;
  * allowlist disables the FILESYSTEM quellentyp entirely - the safe default - rather than falling
  * back to "everything allowed".
  *
- * <p>Checked twice, deliberately: {@code io.opaa.library.KnowledgeLibraryService} enforces this at
- * creation and update time (a fast 400 for an operator who has not opened the directory), and the
- * FILESYSTEM connector enforces it again at run time - the allowlist itself can be narrowed after a
- * library was created, so a run against a path that has since fallen outside the allowlist must not
+ * <p>Checked twice, deliberately: {@code KnowledgeLibraryService} enforces this at creation and
+ * update time (a fast 400 for an operator who has not opened the directory), and the FILESYSTEM
+ * connector enforces it again at run time - the allowlist itself can be narrowed after a library
+ * was created, so a run against a path that has since fallen outside the allowlist must not
  * silently succeed just because it once passed validation. The indexing core applies the same
  * boundary when it re-reads a stored document, which is why the class lives here.
  */

@@ -10,7 +10,7 @@ import io.opaa.asset.AssetVisibilityHistoryCause;
 import io.opaa.asset.AssetVisibilityHistoryRepository;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
-import io.opaa.library.KnowledgeLibrary;
+import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.organization.Organization;
 import io.opaa.test.OpaaIntegrationTest;
 import java.time.Instant;

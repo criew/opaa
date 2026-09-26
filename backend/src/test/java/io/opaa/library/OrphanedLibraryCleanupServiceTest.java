@@ -8,7 +8,11 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.OrphanedOriginalSkipReason;
 import io.opaa.common.NotFoundException;
-import io.opaa.indexing.document.DocumentRepository;
+import io.opaa.knowledge.DocumentRepository;
+import io.opaa.knowledge.FilesystemUploadedOriginalStore;
+import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.knowledge.UploadProperties;
+import io.opaa.knowledge.UploadedOriginalRef;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;

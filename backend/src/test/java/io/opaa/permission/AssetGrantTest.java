@@ -3,7 +3,7 @@ package io.opaa.permission;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.api.types.AssetRole;
-import io.opaa.library.KnowledgeLibrary;
+import io.opaa.knowledge.KnowledgeLibrary;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;

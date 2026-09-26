@@ -7,7 +7,7 @@ import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.metadata.MetadataFilter;
 import io.opaa.indexing.metadata.MetadataFilterValidator;
-import io.opaa.library.LibraryAccessService;
+import io.opaa.knowledge.LibraryAccessService;
 import io.opaa.observability.ChatMetrics;
 import io.opaa.space.Space;
 import io.opaa.space.SpaceAccessPolicy;

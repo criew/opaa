@@ -1,6 +1,6 @@
 package io.opaa.library;
 
-import io.opaa.indexing.document.Document;
+import io.opaa.knowledge.Document;
 
 /**
  * A {@link Document} paired with its already-resolved folder path (#821) - {@code folderPath} is

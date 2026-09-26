@@ -1,6 +1,7 @@
 package io.opaa.library;
 
 import io.opaa.api.types.AssetRole;
+import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.permission.AssetReach;
 
 /**

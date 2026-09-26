@@ -8,13 +8,13 @@ import static org.mockito.Mockito.when;
 import io.opaa.api.types.MetadataFilterMatch;
 import io.opaa.chat.ChatSource;
 import io.opaa.chat.ChatSourceLocation;
-import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.indexing.metadata.CitationMetadataReader;
 import io.opaa.indexing.metadata.CoreMetadata;
 import io.opaa.indexing.metadata.CoreMetadataChunkKeys;
 import io.opaa.indexing.metadata.DocumentMetadataService;
 import io.opaa.indexing.metadata.MetadataFilter;
-import io.opaa.library.KnowledgeLibraryRepository;
+import io.opaa.knowledge.DocumentRepository;
+import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.query.citation.CitationValidator.ValidatedCitation;
 import java.time.Instant;
 import java.util.List;
@@ -229,12 +229,10 @@ class ChatSourceAssemblerTest {
       when(documentRepository.findById(withTypeId))
           .thenReturn(
               Optional.of(
-                  new io.opaa.indexing.document.Document(
-                      "satzung.md", "/s.md", "text/markdown", 1L)));
+                  new io.opaa.knowledge.Document("satzung.md", "/s.md", "text/markdown", 1L)));
       when(documentRepository.findById(withoutTypeId))
           .thenReturn(
-              Optional.of(
-                  new io.opaa.indexing.document.Document("ohne.md", "/o.md", "text/markdown", 1L)));
+              Optional.of(new io.opaa.knowledge.Document("ohne.md", "/o.md", "text/markdown", 1L)));
 
       List<ChatSource> sources =
           assembler.assemble(
