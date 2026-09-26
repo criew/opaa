@@ -523,7 +523,9 @@ describe('UserManagementPage', () => {
     )
     // #1563: Die Übergabe ist an diesem Konto gar nicht erst anwählbar, und der Eintrag sagt warum
     // - das Notanker-Konto muss ein lokales Konto bleiben.
-    const uebergabe = within(menu).getByRole('menuitem', { name: 'Übergabe anstoßen' })
+    const uebergabe = within(menu).getByRole('menuitem', {
+      name: 'An Identitätsanbieter übergeben',
+    })
     expect(uebergabe).toHaveAttribute('aria-disabled', 'true')
     expect(within(menu).getByText(/muss deshalb ein lokales Konto bleiben/)).toBeInTheDocument()
   }, 20000)
@@ -631,9 +633,11 @@ describe('UserManagementPage', () => {
     })
 
     const menu = await openRowMenu(user, 'T. Klein')
-    await user.click(within(menu).getByRole('menuitem', { name: 'Übergabe anstoßen' }))
+    await user.click(
+      within(menu).getByRole('menuitem', { name: 'An Identitätsanbieter übergeben' }),
+    )
 
-    const dialog = await screen.findByRole('dialog', { name: 'Übergabe anstoßen' })
+    const dialog = await screen.findByRole('dialog', { name: 'An Identitätsanbieter übergeben' })
     // Der Dialog fragt nach Anbieter und Anlass - und nach keiner Kennung.
     expect(within(dialog).getByRole('combobox', { name: /Identitätsanbieter/ })).toBeInTheDocument()
     expect(within(dialog).getByRole('textbox', { name: /Anlass/ })).toBeInTheDocument()

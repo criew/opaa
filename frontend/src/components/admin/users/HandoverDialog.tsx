@@ -92,7 +92,7 @@ export default function HandoverDialog({
 
   return (
     <Dialog open fullWidth maxWidth="sm" onClose={onClose} aria-labelledby="handover-title">
-      <DialogTitle id="handover-title">Übergabe anstoßen</DialogTitle>
+      <DialogTitle id="handover-title">An Identitätsanbieter übergeben</DialogTitle>
       <DialogContent>
         <Typography sx={{ fontSize: 13.5, mb: 1.5 }}>
           Für „{user.displayName}“ ({user.email})
@@ -159,7 +159,7 @@ export default function HandoverDialog({
           Abbrechen
         </Button>
         <Button variant="contained" onClick={() => void submit()} disabled={!canSubmit}>
-          Übergabe anstoßen
+          An Identitätsanbieter übergeben
         </Button>
       </DialogActions>
     </Dialog>

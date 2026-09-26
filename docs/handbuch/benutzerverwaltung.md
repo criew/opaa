@@ -316,7 +316,7 @@ Person, sie wird nirgends eingegeben.
 
 **So läuft es ab**
 
-1. Zeilenmenü des Kontos → **„Übergabe anstoßen …"**. Der Dialog fragt nach dem
+1. Zeilenmenü des Kontos → **„An Identitätsanbieter übergeben"**. Der Dialog fragt nach dem
    Identitätsanbieter und nach einem **Anlass** (Pflichtfeld, höchstens 200 Zeichen; er gehört zur
    Sache, nicht zur Person — dieselbe Regel wie beim Anlagegrund). Ein Feld für eine Kennung gibt es
    nicht.

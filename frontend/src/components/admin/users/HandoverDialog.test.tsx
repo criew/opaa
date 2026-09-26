@@ -63,7 +63,7 @@ describe('HandoverDialog', () => {
     const requestHandover = vi.fn().mockResolvedValue({ emailSent: true })
     useUserAdminStore.setState({ requestHandover })
     render()
-    const submit = screen.getByRole('button', { name: 'Übergabe anstoßen' })
+    const submit = screen.getByRole('button', { name: 'An Identitätsanbieter übergeben' })
     expect(submit).toBeDisabled()
 
     await userEvent.type(screen.getByRole('textbox', { name: /Anlass/ }), 'Umstellung auf IdP')
@@ -94,7 +94,7 @@ describe('HandoverDialog', () => {
     )
 
     await userEvent.type(screen.getByRole('textbox', { name: /Anlass/ }), 'Umstellung auf IdP')
-    await userEvent.click(screen.getByRole('button', { name: 'Übergabe anstoßen' }))
+    await userEvent.click(screen.getByRole('button', { name: 'An Identitätsanbieter übergeben' }))
 
     await waitFor(() => expect(onLinkDisplayed).toHaveBeenCalledWith(USER, '/handover?token=abc'))
   })
@@ -103,6 +103,6 @@ describe('HandoverDialog', () => {
     render([])
 
     expect(screen.getByText(/keinen aktivierten Identitätsanbieter/)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Übergabe anstoßen' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'An Identitätsanbieter übergeben' })).toBeDisabled()
   })
 })
