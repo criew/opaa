@@ -1528,7 +1528,7 @@ andere Änderung schreiben nur die Spalten, die sie selbst geändert haben; der 
 bleibt stehen und ist mit dem wiedergefundenen Schlüssel unverändert lesbar. Die Oberfläche zeigt die
 Zugangsdaten in diesem Zustand allerdings als „nicht gesetzt“ an, obwohl sie gespeichert sind — das
 Ja/Nein wird aus dem gelesenen Wert abgeleitet. Zusätzlich hinterlässt jeder solche Lesevorgang eine
-Warnung im Protokoll (`io.opaa.library.SourceCredentialsConverter`, ohne den Wert und ohne die
+Warnung im Protokoll (`io.opaa.knowledge.SourceCredentialsConverter`, ohne den Wert und ohne die
 Bibliotheks-ID).
 
 **Zwei Vorgänge löschen den Geheimtext auch ohne Schlüssel — absichtlich:** ein Wechsel des Hosts in

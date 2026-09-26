@@ -37,13 +37,28 @@ import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.chunk.VectorStoreWriter;
 import io.opaa.indexing.document.AttachmentExtractor;
 import io.opaa.indexing.document.ChecksumService;
-import io.opaa.indexing.document.Document;
 import io.opaa.indexing.document.DocumentIngest;
 import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.document.DocumentIngests;
-import io.opaa.indexing.document.DocumentRepository;
+import io.opaa.indexing.source.RemoteContentProperties;
+import io.opaa.indexing.source.TestSourceConnectors;
 import io.opaa.indexing.source.s3.S3Download;
 import io.opaa.indexing.source.s3.S3OriginalAccess;
+import io.opaa.knowledge.Document;
+import io.opaa.knowledge.DocumentContent;
+import io.opaa.knowledge.DocumentRepository;
+import io.opaa.knowledge.FilesystemUploadedOriginalStore;
+import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.knowledge.LibraryAccessService;
+import io.opaa.knowledge.LibraryFolder;
+import io.opaa.knowledge.LibraryFolderRepository;
+import io.opaa.knowledge.LibraryFolderService;
+import io.opaa.knowledge.LibraryStorageQuotaService;
+import io.opaa.knowledge.UploadProperties;
+import io.opaa.knowledge.UploadStoreUnavailableException;
+import io.opaa.knowledge.UploadedOriginalRef;
+import io.opaa.knowledge.UploadedOriginalStore;
 import io.opaa.s3.S3AccessException;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedDownloader;
@@ -263,17 +278,19 @@ class LibraryDocumentServiceTest {
         uploadProperties,
         uploadedOriginalStore,
         storageQuotaService,
-        filesystemAllowlist,
-        boundedDownloader,
-        disabledTargetAddressValidator,
-        remoteContentProperties,
         folderRepository,
         folderService,
         attachmentExtractor,
         new AttachmentProperties(0, 0, 0),
         new AttachmentExtractionLimiter(limits),
         ProductionDocumentFormats.supportedFormats(),
-        s3OriginalAccess,
+        TestSourceConnectors.connectors()
+            .uploadedOriginalStore(uploadedOriginalStore)
+            .filesystemAllowlist(filesystemAllowlist)
+            .originalTargetValidator(disabledTargetAddressValidator)
+            .remoteContentProperties(remoteContentProperties)
+            .s3OriginalAccess(s3OriginalAccess)
+            .registry(),
         NO_OP_TRANSACTION_MANAGER);
   }
 
@@ -1656,17 +1673,19 @@ class LibraryDocumentServiceTest {
             new UploadProperties(storageDir.toString(), null, 10L * 1024, null, 0, 0),
             uploadedOriginalStore,
             storageQuotaService,
-            filesystemAllowlist,
-            new BoundedDownloader(enabledValidator),
-            enabledValidator,
-            remoteContentProperties,
             folderRepository,
             folderService,
             attachmentExtractor,
             new AttachmentProperties(0, 0, 0),
             new AttachmentExtractionLimiter(new AttachmentExtractionProperties(0, null)),
             ProductionDocumentFormats.supportedFormats(),
-            s3OriginalAccess,
+            TestSourceConnectors.connectors()
+                .uploadedOriginalStore(uploadedOriginalStore)
+                .filesystemAllowlist(filesystemAllowlist)
+                .originalTargetValidator(enabledValidator)
+                .remoteContentProperties(remoteContentProperties)
+                .s3OriginalAccess(s3OriginalAccess)
+                .registry(),
             NO_OP_TRANSACTION_MANAGER);
     grantViewerOnUploadLibrary();
     KnowledgeLibrary library = remoteLibrary(null);

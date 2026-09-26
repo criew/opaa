@@ -6,13 +6,22 @@ import io.opaa.indexing.document.DocumentService;
 import io.opaa.indexing.format.SupportedDocumentFormats;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.SourceIndexingExecutor;
-import io.opaa.library.LibraryFolderService;
+import io.opaa.knowledge.LibraryFolderService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /** Registers the FILESYSTEM connector; its executor reaches the core through the registry. */
 @Configuration
 public class FilesystemConnectorConfiguration {
+
+  @Bean
+  FilesystemSourceConnector filesystemSourceConnector(
+      FilesystemPathAllowlist filesystemPathAllowlist,
+      DocumentService documentService,
+      SupportedDocumentFormats supportedDocumentFormats) {
+    return new FilesystemSourceConnector(
+        filesystemPathAllowlist, documentService, supportedDocumentFormats);
+  }
 
   /**
    * Declared as {@link SourceIndexingExecutor}, not the concrete type: the executor carries

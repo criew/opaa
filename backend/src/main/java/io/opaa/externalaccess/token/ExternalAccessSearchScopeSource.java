@@ -2,7 +2,7 @@ package io.opaa.externalaccess.token;
 
 import io.opaa.auth.CurrentUser;
 import io.opaa.externalaccess.ExternalAccessTokenAuthenticationFilter;
-import io.opaa.library.LibraryAccessService;
+import io.opaa.knowledge.LibraryAccessService;
 import io.opaa.search.SearchRequestScope;
 import io.opaa.search.SearchScopeSource;
 import java.util.UUID;

@@ -3,8 +3,8 @@ package io.opaa.api;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.api.dto.LibraryFolderResponse;
-import io.opaa.library.LibraryFolder;
-import io.opaa.library.LibraryFolderDetail;
+import io.opaa.knowledge.LibraryFolder;
+import io.opaa.knowledge.LibraryFolderDetail;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 

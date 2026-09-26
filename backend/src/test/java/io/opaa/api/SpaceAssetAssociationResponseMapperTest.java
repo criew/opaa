@@ -7,7 +7,7 @@ import io.opaa.api.dto.AssetSpaceAssociationResponse;
 import io.opaa.api.dto.AssetType;
 import io.opaa.api.dto.SpaceAssetAssociationListResponse;
 import io.opaa.api.dto.SpaceAssetAssociationResponse;
-import io.opaa.library.KnowledgeLibrary;
+import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.space.AssetSpaceLink;
 import io.opaa.space.AssetSpaceLinks;
 import io.opaa.space.SpaceAssetAssociation;

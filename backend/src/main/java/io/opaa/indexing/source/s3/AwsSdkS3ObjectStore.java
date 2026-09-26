@@ -1,6 +1,7 @@
 package io.opaa.indexing.source.s3;
 
 import io.opaa.indexing.source.RequestBudgetExhaustedException;
+import io.opaa.knowledge.sourcesettings.S3Scope;
 import io.opaa.s3.S3AccessException;
 import io.opaa.s3.S3ClientSettings;
 import io.opaa.s3.S3Connection;

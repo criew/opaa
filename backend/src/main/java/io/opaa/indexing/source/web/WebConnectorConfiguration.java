@@ -1,11 +1,13 @@
 package io.opaa.indexing.source.web;
 
+import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.document.DocumentIngestService;
-import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.indexing.format.SupportedDocumentFormats;
 import io.opaa.indexing.source.IndexingRunTemplate;
+import io.opaa.indexing.source.RemoteOriginalAccess;
 import io.opaa.indexing.source.SourceIndexingExecutor;
-import io.opaa.library.LibraryFolderService;
+import io.opaa.knowledge.DocumentRepository;
+import io.opaa.knowledge.LibraryFolderService;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.SourceRequestPolicy;
@@ -25,6 +27,23 @@ public class WebConnectorConfiguration {
       SourceRequestPolicy sourceRequestPolicy) {
     return new AutoindexCrawlerService(
         targetAddressValidator, crawlProperties, sourceRequestPolicy);
+  }
+
+  @Bean
+  HttpDirectorySourceConnector httpDirectorySourceConnector(
+      AutoindexCrawlerService autoindexCrawlerService,
+      TargetAddressValidator targetAddressValidator,
+      SourceRequestPolicy sourceRequestPolicy,
+      SupportedDocumentFormats supportedDocumentFormats,
+      IndexingProperties indexingProperties,
+      RemoteOriginalAccess remoteOriginalAccess) {
+    return new HttpDirectorySourceConnector(
+        autoindexCrawlerService,
+        targetAddressValidator,
+        sourceRequestPolicy,
+        supportedDocumentFormats,
+        indexingProperties,
+        remoteOriginalAccess);
   }
 
   /**

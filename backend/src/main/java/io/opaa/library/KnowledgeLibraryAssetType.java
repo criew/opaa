@@ -2,10 +2,10 @@ package io.opaa.library;
 
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.asset.Asset;
 import io.opaa.asset.AssetTypeDefinition;
 import io.opaa.common.ConflictException;
+import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.permission.AssetType;
 import org.hibernate.Hibernate;
 import org.springframework.stereotype.Component;
@@ -79,6 +79,6 @@ class KnowledgeLibraryAssetType implements AssetTypeDefinition {
       throw new IllegalStateException(
           "asset " + asset.getId() + " of type " + asset.getAssetType() + " is no library");
     }
-    return library.getSourceType() == DocumentSourceType.UPLOAD ? null : library;
+    return library.getSourceType().hasIndexingRun() ? library : null;
   }
 }

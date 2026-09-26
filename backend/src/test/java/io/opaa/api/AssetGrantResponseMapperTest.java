@@ -8,7 +8,7 @@ import io.opaa.api.types.AssetGrantSubjectType;
 import io.opaa.api.types.AssetRole;
 import io.opaa.asset.AssetGrantUpsert;
 import io.opaa.asset.AssetGrantView;
-import io.opaa.library.KnowledgeLibrary;
+import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.permission.AssetGrant;
 import io.opaa.permission.GroupSizeSignal;
 import java.time.Instant;

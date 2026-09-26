@@ -1,15 +1,15 @@
 package io.opaa.indexing.source;
 
 import io.opaa.api.types.IndexingRunMode;
-import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.job.IndexingRunEventRecorder;
 import io.opaa.indexing.job.IndexingRunEventRepository;
 import io.opaa.indexing.job.IndexingRunProgress;
 import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
-import io.opaa.library.KnowledgeLibrary;
-import io.opaa.library.LibraryStorageQuotaService;
+import io.opaa.knowledge.DocumentRepository;
+import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.LibraryStorageQuotaService;
 import io.opaa.sourceaccess.SourceRequestMeter;
 import java.util.List;
 import java.util.Objects;

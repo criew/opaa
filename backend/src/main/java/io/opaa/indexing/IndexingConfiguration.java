@@ -9,7 +9,6 @@ import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.document.AttachmentExtractor;
 import io.opaa.indexing.document.ChecksumService;
 import io.opaa.indexing.document.DocumentIngestService;
-import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.indexing.document.DocumentService;
 import io.opaa.indexing.document.StoredDocumentSourceAccess;
 import io.opaa.indexing.format.DocumentFormat;
@@ -41,12 +40,17 @@ import io.opaa.indexing.metadata.DocumentMetadataService;
 import io.opaa.indexing.metadata.ModelMetadataExtractor;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.IndexingSourceExecutorRegistry;
+import io.opaa.indexing.source.RemoteContentProperties;
+import io.opaa.indexing.source.RemoteOriginalAccess;
+import io.opaa.indexing.source.SourceConnector;
+import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.indexing.source.SourceIndexingExecutor;
-import io.opaa.library.KnowledgeLibraryRepository;
-import io.opaa.library.LibraryAccessService;
-import io.opaa.library.LibraryStorageQuotaService;
-import io.opaa.library.UploadProperties;
-import io.opaa.library.UploadedOriginalStore;
+import io.opaa.knowledge.DocumentRepository;
+import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.knowledge.LibraryAccessService;
+import io.opaa.knowledge.LibraryStorageQuotaService;
+import io.opaa.knowledge.UploadProperties;
+import io.opaa.knowledge.UploadedOriginalStore;
 import io.opaa.observability.IndexingMetrics;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedDownloader;
@@ -385,6 +389,24 @@ public class IndexingConfiguration {
   IndexingSourceExecutorRegistry indexingSourceExecutorRegistry(
       List<SourceIndexingExecutor> executors) {
     return new IndexingSourceExecutorRegistry(executors);
+  }
+
+  /** Serves the originals of the URL-fetched connectors from their stored source URLs. */
+  @Bean
+  RemoteOriginalAccess remoteOriginalAccess(
+      BoundedDownloader boundedDownloader,
+      TargetAddressValidator targetAddressValidator,
+      RemoteContentProperties remoteContentProperties) {
+    return new RemoteOriginalAccess(
+        boundedDownloader, targetAddressValidator, remoteContentProperties);
+  }
+
+  /**
+   * Populated from every {@link SourceConnector} bean - each connector package registers its own.
+   */
+  @Bean
+  SourceConnectorRegistry sourceConnectorRegistry(List<SourceConnector> connectors) {
+    return new SourceConnectorRegistry(connectors);
   }
 
   @Bean

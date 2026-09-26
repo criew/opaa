@@ -16,7 +16,7 @@ import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
-import io.opaa.library.KnowledgeLibraryRepository;
+import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.permission.PermissionSubject;
@@ -98,8 +98,8 @@ class SpaceServiceIntegrationTest {
   }
 
   private UUID createReadableLibrary(UUID organizationId, UUID ownerId) {
-    io.opaa.library.KnowledgeLibrary library =
-        io.opaa.library.KnowledgeLibrary.ownedByUser(
+    io.opaa.knowledge.KnowledgeLibrary library =
+        io.opaa.knowledge.KnowledgeLibrary.ownedByUser(
             organizationId, "Bibliothek", null, ownerId, false);
     UUID libraryId = libraryRepository.save(library).getId();
     jdbcTemplate.update(

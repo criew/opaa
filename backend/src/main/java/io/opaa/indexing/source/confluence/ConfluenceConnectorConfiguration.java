@@ -2,10 +2,11 @@ package io.opaa.indexing.source.confluence;
 
 import io.opaa.indexing.attachment.AttachmentIndexer;
 import io.opaa.indexing.document.DocumentIngestService;
-import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.SourceSyncStateRepository;
+import io.opaa.indexing.source.confluence.webhook.ConfluenceWebhookService;
+import io.opaa.knowledge.DocumentRepository;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.SourceRequestPolicy;
 import java.time.Clock;
@@ -32,6 +33,19 @@ public class ConfluenceConnectorConfiguration {
       SourceRequestPolicy sourceRequestPolicy) {
     return new ConfluenceClientFactory(
         confluenceProperties, targetAddressValidator, sourceRequestPolicy);
+  }
+
+  @Bean
+  ConfluenceSourceConnector confluenceSourceConnector(
+      ConfluenceConnectionService confluenceConnectionService,
+      ConfluenceProperties confluenceProperties,
+      SourceSyncStateRepository sourceSyncStateRepository,
+      ConfluenceWebhookService confluenceWebhookService) {
+    return new ConfluenceSourceConnector(
+        confluenceConnectionService,
+        confluenceProperties,
+        sourceSyncStateRepository,
+        confluenceWebhookService);
   }
 
   /**

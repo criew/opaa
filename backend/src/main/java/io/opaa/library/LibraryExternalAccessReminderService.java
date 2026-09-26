@@ -5,6 +5,8 @@ import io.opaa.api.types.ExternalAccessState;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.PublicBaseUrl;
+import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.mail.MailService;
 import io.opaa.mail.MailTemplateKey;
 import java.time.Duration;

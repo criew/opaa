@@ -1,7 +1,6 @@
 package io.opaa.library;
 
 import io.opaa.api.types.AssetRole;
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.ConflictException;
@@ -9,48 +8,52 @@ import io.opaa.common.NotFoundException;
 import io.opaa.common.PayloadTooLargeException;
 import io.opaa.common.ServiceUnavailableException;
 import io.opaa.common.ValidationException;
-import io.opaa.indexing.FilesystemPathAllowlist;
 import io.opaa.indexing.attachment.AttachmentProperties;
 import io.opaa.indexing.attachment.StandaloneAttachmentAccess;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.document.AttachmentExtractor;
 import io.opaa.indexing.document.AttachmentFilePath;
 import io.opaa.indexing.document.ChecksumService;
-import io.opaa.indexing.document.Document;
 import io.opaa.indexing.document.DocumentIngest;
 import io.opaa.indexing.document.DocumentIngestService;
-import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.indexing.format.SupportedDocumentFormats;
-import io.opaa.indexing.source.s3.S3Download;
-import io.opaa.indexing.source.s3.S3OriginalAccess;
-import io.opaa.s3.S3AccessException;
-import io.opaa.security.TargetAddressValidator;
-import io.opaa.sourceaccess.BoundedDownloader;
+import io.opaa.indexing.source.OriginalAccess;
+import io.opaa.indexing.source.OriginalUnavailableException;
+import io.opaa.indexing.source.ServedOriginals;
+import io.opaa.indexing.source.SourceConnectorRegistry;
+import io.opaa.knowledge.Document;
+import io.opaa.knowledge.DocumentContent;
+import io.opaa.knowledge.DocumentRepository;
+import io.opaa.knowledge.FolderDocumentDeleter;
+import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.knowledge.LibraryAccessService;
+import io.opaa.knowledge.LibraryFolder;
+import io.opaa.knowledge.LibraryFolderRepository;
+import io.opaa.knowledge.LibraryFolderService;
+import io.opaa.knowledge.LibraryStorageQuotaService;
+import io.opaa.knowledge.ServedContentTypes;
+import io.opaa.knowledge.UploadProperties;
+import io.opaa.knowledge.UploadedOriginalRef;
+import io.opaa.knowledge.UploadedOriginalStore;
 import io.opaa.sourceaccess.BoundedStreams;
-import io.opaa.sourceaccess.ProxyAndCredentials;
-import io.opaa.sourceaccess.RedirectFollowingFetcher;
-import io.opaa.sourceaccess.SourceHttpClientFactory;
-import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
-import java.net.http.HttpClient;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.OptionalLong;
 import java.util.UUID;
 import org.hibernate.exception.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.task.TaskRejectedException;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.http.InvalidMediaTypeException;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
@@ -90,9 +93,9 @@ import org.springframework.web.multipart.MultipartFile;
  * (#614).</b> Asynchronous processing (previous paragraph) means a document can still be mid-flight
  * on {@code uploadTaskExecutor} while a delete request for the same document arrives on another
  * thread. Deleting the row first closes that race: {@link
- * io.opaa.indexing.document.DocumentRepository#markIndexed}/{@code #markFailed} are conditional
- * updates that only ever affect a row that still exists, so once this method's transaction commits,
- * a racing task's status update is guaranteed to see the row gone and clean up any chunks it just
+ * io.opaa.knowledge.DocumentRepository#markIndexed}/{@code #markFailed} are conditional updates
+ * that only ever affect a row that still exists, so once this method's transaction commits, a
+ * racing task's status update is guaranteed to see the row gone and clean up any chunks it just
  * wrote itself (see {@code DocumentIngestService#processUploadedFileAsync}). The vector store
  * delete here only has to handle documents that already had chunks before this call, deferred to
  * after commit (next paragraph) alongside the file, for the same reason.
@@ -117,7 +120,7 @@ import org.springframework.web.multipart.MultipartFile;
  * reserved one) delete a file outside OPAA's own data directory entirely, with no undo.
  */
 @Service
-public class LibraryDocumentService {
+public class LibraryDocumentService implements FolderDocumentDeleter {
 
   private static final Logger log = LoggerFactory.getLogger(LibraryDocumentService.class);
 
@@ -130,17 +133,13 @@ public class LibraryDocumentService {
   private final UploadProperties uploadProperties;
   private final UploadedOriginalStore uploadedOriginalStore;
   private final LibraryStorageQuotaService storageQuotaService;
-  private final FilesystemPathAllowlist filesystemAllowlist;
-  private final BoundedDownloader boundedDownloader;
-  private final TargetAddressValidator targetAddressValidator;
-  private final RemoteContentProperties remoteContentProperties;
   private final LibraryFolderRepository folderRepository;
   private final LibraryFolderService folderService;
   private final AttachmentExtractor attachmentExtractor;
   private final AttachmentProperties attachmentProperties;
   private final AttachmentExtractionLimiter attachmentExtractionLimiter;
   private final SupportedDocumentFormats supportedFormats;
-  private final S3OriginalAccess s3OriginalAccess;
+  private final SourceConnectorRegistry connectors;
 
   /** One transaction per document for {@link #deleteDocuments} - see its contract. */
   private final TransactionTemplate transactionTemplate;
@@ -155,17 +154,13 @@ public class LibraryDocumentService {
       UploadProperties uploadProperties,
       UploadedOriginalStore uploadedOriginalStore,
       LibraryStorageQuotaService storageQuotaService,
-      FilesystemPathAllowlist filesystemAllowlist,
-      BoundedDownloader boundedDownloader,
-      TargetAddressValidator targetAddressValidator,
-      RemoteContentProperties remoteContentProperties,
       LibraryFolderRepository folderRepository,
       LibraryFolderService folderService,
       AttachmentExtractor attachmentExtractor,
       AttachmentProperties attachmentProperties,
       AttachmentExtractionLimiter attachmentExtractionLimiter,
       SupportedDocumentFormats supportedFormats,
-      S3OriginalAccess s3OriginalAccess,
+      SourceConnectorRegistry connectors,
       PlatformTransactionManager transactionManager) {
     this.libraryRepository = libraryRepository;
     this.accessService = accessService;
@@ -176,17 +171,13 @@ public class LibraryDocumentService {
     this.uploadProperties = uploadProperties;
     this.uploadedOriginalStore = uploadedOriginalStore;
     this.storageQuotaService = storageQuotaService;
-    this.filesystemAllowlist = filesystemAllowlist;
-    this.boundedDownloader = boundedDownloader;
-    this.targetAddressValidator = targetAddressValidator;
-    this.remoteContentProperties = remoteContentProperties;
     this.folderRepository = folderRepository;
     this.folderService = folderService;
     this.attachmentExtractor = attachmentExtractor;
     this.attachmentProperties = attachmentProperties;
     this.attachmentExtractionLimiter = attachmentExtractionLimiter;
     this.supportedFormats = supportedFormats;
-    this.s3OriginalAccess = s3OriginalAccess;
+    this.connectors = connectors;
     this.transactionTemplate = new TransactionTemplate(transactionManager);
   }
 
@@ -330,7 +321,7 @@ public class LibraryDocumentService {
               accepted.store().locator(),
               contentType,
               fileSize,
-              DocumentSourceType.UPLOAD);
+              library.getSourceType());
       document.setLibraryId(libraryId);
       document.setOrganizationId(library.getOrganizationId());
       document.setUploadedByUserId(currentUserId);
@@ -355,7 +346,7 @@ public class LibraryDocumentService {
                 .file(storedFile, fileSize)
                 .filePath(document.getFilePath())
                 .fileName(displayFileName)
-                .sourceType(DocumentSourceType.UPLOAD)
+                .sourceType(library.getSourceType())
                 .existingRow()
                 .build(),
             new StandaloneAttachmentAccess(library, "Upload"),
@@ -474,11 +465,11 @@ public class LibraryDocumentService {
    * Resolves the on-disk original behind {@code documentId} for streaming (#736) - the read
    * counterpart to {@link #uploadDocument}/{@link #deleteDocument}'s write-side file handling, and
    * subject to the same "no existence leak" discipline {@link
-   * io.opaa.library.LibraryAccessService#requireRole} already applies to every other library-scoped
-   * endpoint: an unknown document, one in another organization, one the caller has no grant on, one
-   * of a sourceType with no local file, and one whose file has since disappeared from disk all
-   * answer the same {@code 404}, in that order, so a caller can never distinguish "does not exist"
-   * from any of the others.
+   * io.opaa.knowledge.LibraryAccessService#requireRole} already applies to every other
+   * library-scoped endpoint: an unknown document, one in another organization, one the caller has
+   * no grant on, one of a sourceType with no local file, and one whose file has since disappeared
+   * from disk all answer the same {@code 404}, in that order, so a caller can never distinguish
+   * "does not exist" from any of the others.
    *
    * <p>Requires only {@link AssetRole#VIEWER} (#736 acceptance criteria) - the same floor {@link
    * LibraryAccessService#canRead} already uses for a library's configuration and document list;
@@ -486,20 +477,11 @@ public class LibraryDocumentService {
    * {@link LibraryAccessService#requireContentRead}, which knows no administrative floor, so a
    * system admin without a grant gets {@code 403} (#1828).
    *
-   * <p>Path traversal is closed the same way deletion closes it: the file must actually resolve
-   * underneath the one directory this {@code sourceType} is allowed to serve from - this library's
-   * own upload storage area for {@code UPLOAD} ({@link UploadedOriginalStore#belongsToLibrary}),
-   * this library's own configured {@code sourcePath} for {@code FILESYSTEM} - rather than trusting
-   * the stored {@code file_path} column on its own.
-   *
-   * <p>{@code HTTP_DIRECTORY}/{@code RSS_FEED} (#747): neither sourceType names a local file at all
-   * - {@link #loadRemoteContent} proxies the original from the source URL stored at indexing time
-   * instead, applying the library's own quellkonfiguration (proxy, credentials, insecure TLS) the
-   * same way {@code UrlIndexingExecutor}/{@code RssFeedIndexingExecutor} already do.
-   *
-   * <p>{@code S3} (#1524): the stored {@code s3://bucket/key} names no local file and no address a
-   * browser could open either - {@link #loadS3Content} fetches the object from the library's own
-   * store, the way an indexing run reads it.
+   * <p>The original itself comes from the document's connector ({@link OriginalAccess}), which
+   * never trusts the stored {@code file_path} on its own: an upload resolves only within this
+   * library's own storage area, a directory file only underneath the library's own {@code
+   * sourcePath}, a URL-fetched original only from its stored address through the target validation,
+   * an object only from the library's own store.
    *
    * <p>An attachment document (ADR-0022, #1239) has no original of its own at all - neither on disk
    * nor behind its synthetic {@code file_path} - and is served by {@link #loadAttachmentContent},
@@ -545,94 +527,34 @@ public class LibraryDocumentService {
   }
 
   /**
-   * The original of a document that is not itself an attachment - resolved from local disk ({@code
-   * UPLOAD}/{@code FILESYSTEM}), proxied from its source URL ({@code HTTP_DIRECTORY}/{@code
-   * RSS_FEED}) or downloaded from the library's object store ({@code S3}). Access has already been
-   * checked by {@link #loadContent}; {@link #loadAttachmentContent} calls this for an attachment's
-   * root ancestor, which always lives in the same library as the attachment itself.
+   * The original of a document that is not itself an attachment, from its connector's {@link
+   * OriginalAccess}; a type without one has no original to serve. Access has already been checked
+   * by {@link #loadContent}; {@link #loadAttachmentContent} calls this for an attachment's root
+   * ancestor, which always lives in the same library as the attachment itself.
+   *
+   * <p>Two failure pictures (ADR-0030, Entscheidung 9): an original the connector cannot serve
+   * answers the same German 404 as every other "no original available" case; a storage that cannot
+   * be reached is a {@code 503} with the connector's own German message, a temporary condition a
+   * caller must not read as "this original does not exist". The storage's own sentence stays in the
+   * log.
    */
   private DocumentContent loadOriginal(Document document, KnowledgeLibrary library) {
-    return switch (document.getSourceType()) {
-      case HTTP_DIRECTORY, RSS_FEED -> loadRemoteContent(document, library);
-      case UPLOAD ->
-          UploadedOriginalRef.of(document)
-              .flatMap(
-                  ref ->
-                      uploadedOriginalStore.openForDownload(
-                          ref, document.getFileName(), document.getContentType()))
-              .orElseThrow(LibraryDocumentService::noOriginalAvailable);
-      case FILESYSTEM ->
-          localContent(document, filesystemFileIfWithinConfiguredDirectory(document, library));
-      case S3 -> loadS3Content(document, library);
-      // A Confluence page has no file of its own and its content sits behind the instance's
-      // authentication; the citation opens the page directly via getDeepLinkSourceUrl, which is
-      // why this is the one sourceType without an original of its own to serve.
-      case CONFLUENCE -> throw noOriginalAvailable();
-    };
-  }
-
-  /**
-   * Streams an {@code S3} document's object out of its library's own object store (#1524) through
-   * {@link S3OriginalAccess} - no access decision of its own, {@link #loadContent} has already
-   * required {@code VIEWER}. The temp file the download lands in is deleted when the returned
-   * stream is closed, the contract {@link #loadAttachmentContent} already relies on.
-   *
-   * <p>Two failure pictures, as for an uploaded original in an object store (ADR-0030, Entscheidung
-   * 9): an object this library resolves to nothing answers the same German 404 as every other "no
-   * original available" case, indistinguishable from it; a store that cannot be reached is a {@code
-   * 503}, a temporary condition a caller must not read as "this original does not exist". The
-   * store's own sentence stays in the log - it names configuration a VIEWER does not see.
-   */
-  private DocumentContent loadS3Content(Document document, KnowledgeLibrary library) {
-    S3Download download;
+    OriginalAccess access =
+        connectors
+            .originalAccess(document.getSourceType())
+            .orElseThrow(LibraryDocumentService::noOriginalAvailable);
     try {
-      download =
-          s3OriginalAccess
-              .download(library, document.getFilePath())
-              .orElseThrow(LibraryDocumentService::noOriginalAvailable);
-    } catch (S3AccessException e) {
+      return access
+          .openOriginal(document, library)
+          .orElseThrow(LibraryDocumentService::noOriginalAvailable);
+    } catch (OriginalUnavailableException e) {
       log.warn(
-          "S3 object of document {} is not readable right now: {}",
+          "Original of document {} is not readable right now: {}",
           document.getId(),
-          e.getMessage());
-      throw new ServiceUnavailableException(OBJECT_STORE_UNAVAILABLE);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      throw new ServiceUnavailableException(OBJECT_STORE_UNAVAILABLE);
-    }
-    try {
-      String contentType = document.getContentType();
-      if (contentType == null || contentType.isBlank()) {
-        contentType = normalizeContentType(download.contentType());
-      }
-      InputStream stream =
-          deletingOnClose(Files.newInputStream(download.file()), List.of(download.file()));
-      return DocumentContent.ofStream(
-          stream, document.getFileName(), ServedContentTypes.forFile(contentType, download.file()));
-    } catch (IOException e) {
-      deleteQuietly(download.file());
-      log.warn("Downloaded S3 object of document {} could not be opened", document.getId(), e);
-      throw noOriginalAvailable();
+          e.getCause() == null ? e.getMessage() : e.getCause().getMessage());
+      throw new ServiceUnavailableException(e.userMessage());
     }
   }
-
-  /** A local original to serve, or the same 404 every other unreachable original answers with. */
-  private DocumentContent localContent(Document document, Path file) {
-    if (file == null || !Files.isRegularFile(file)) {
-      throw noOriginalAvailable();
-    }
-    return new DocumentContent(
-        file, document.getFileName(), ServedContentTypes.forFile(document.getContentType(), file));
-  }
-
-  /**
-   * The {@code 503} of an object store that cannot be reached or refuses the application right now
-   * (#1524) - carries no detail of the failure, which goes to the log; the wording mirrors {@link
-   * UploadStoreUnavailableException}, whose storage is a different one.
-   */
-  static final String OBJECT_STORE_UNAVAILABLE =
-      "Der Objektspeicher dieser Bibliothek ist derzeit nicht erreichbar. Bitte später erneut"
-          + " versuchen.";
 
   private static NotFoundException noOriginalAvailable() {
     return new NotFoundException("Für dieses Dokument steht kein Originaldokument zur Verfügung");
@@ -770,7 +692,8 @@ public class LibraryDocumentService {
         currentName = extracted.fileName();
       }
 
-      InputStream stream = deletingOnClose(Files.newInputStream(currentFile), tempFiles);
+      InputStream stream =
+          ServedOriginals.deletingOnClose(Files.newInputStream(currentFile), tempFiles);
       streaming = true;
       return DocumentContent.ofStream(
           stream,
@@ -800,16 +723,16 @@ public class LibraryDocumentService {
   /**
    * The ceiling {@link #bufferToTempFile} applies to a streamed root: the bound the root's own
    * origin already had to pass, so a root that was legitimately indexed can always be buffered
-   * again. Taking one storage's bound for another's content would make an attachment inside a large
-   * {@code S3} object unopenable as soon as an operator sets the two differently. {@code
-   * FILESYSTEM}/{@code CONFLUENCE} never reach here - neither ever yields a streamed original.
+   * again - taking one storage's bound for another's content would make an attachment inside a
+   * large object unopenable as soon as an operator sets the two differently. The upload file-size
+   * limit applies where the connector names none.
    */
   private long bufferBoundFor(Document root) {
-    return switch (root.getSourceType()) {
-      case S3 -> s3OriginalAccess.maxObjectSizeBytes();
-      case HTTP_DIRECTORY, RSS_FEED -> remoteContentProperties.maxBytes();
-      case UPLOAD, FILESYSTEM, CONFLUENCE -> uploadProperties.maxFileSize();
-    };
+    return connectors
+        .originalAccess(root.getSourceType())
+        .map(OriginalAccess::streamedOriginalBound)
+        .orElse(OptionalLong.empty())
+        .orElse(uploadProperties.maxFileSize());
   }
 
   /**
@@ -828,25 +751,6 @@ public class LibraryDocumentService {
     return temp;
   }
 
-  /**
-   * {@code stream}, with every temp file in {@code tempFiles} deleted once it is closed - the
-   * counterpart to {@link DocumentContent}'s "the caller closes the stream" contract for content
-   * that, unlike a proxied remote body, does live in files this request created.
-   */
-  private InputStream deletingOnClose(InputStream stream, List<Path> tempFiles) {
-    List<Path> toDelete = List.copyOf(tempFiles);
-    return new FilterInputStream(stream) {
-      @Override
-      public void close() throws IOException {
-        try {
-          super.close();
-        } finally {
-          toDelete.forEach(LibraryDocumentService.this::deleteQuietly);
-        }
-      }
-    };
-  }
-
   private void closeQuietly(DocumentContent content) {
     if (content.isStreamed()) {
       try {
@@ -854,218 +758,6 @@ public class LibraryDocumentService {
       } catch (IOException e) {
         log.debug("Failed to close the proxied parent stream", e);
       }
-    }
-  }
-
-  /**
-   * Streams a {@code HTTP_DIRECTORY}/{@code RSS_FEED} document's original from its source URL
-   * (#747) - {@link Document#getFilePath()}, the same identity {@code DocumentIngestService#ingest}
-   * dedups by and {@link Document#getDeepLinkSourceUrl()} already names as this document's own
-   * origin. No part of the request ever influences which URL is fetched - only the value stored on
-   * this row at indexing time, already validated against the target allowlist then (#267).
-   *
-   * <p><b>SSRF: the allowlist is checked again here, not just at indexing time (#747 acceptance
-   * criteria).</b> {@link BoundedDownloader#downloadStreaming} re-validates {@link
-   * TargetAddressValidator} on every hop before a single further byte is requested - the same
-   * "Doppelprüfung" {@link #filesystemFileIfWithinConfiguredDirectory} already applies to {@link
-   * FilesystemPathAllowlist}: an allowlist narrowed after this document was indexed must not let a
-   * read against it silently keep succeeding. A redirect is only ever followed within the same
-   * origin - {@code downloadStreaming} throws {@link
-   * RedirectFollowingFetcher.RedirectRejectedException} outright for anything else, including a
-   * protocol downgrade - and {@code Authorization} is therefore never built for, or sent to,
-   * anything but the document's own stored URL and same-origin redirect hops from it. The
-   * configured {@code sourceProxy} host is validated too (#748 review, nit 2) - it determines where
-   * the TCP connection (and the credentials below) actually go, exactly as {@code
-   * SourceConnectionTestService} already validates it before its own otherwise-identical probe.
-   *
-   * <p><b>DNS-Rebinding (#267, #748 review, "vorbestehend").</b> Like every other caller of {@link
-   * TargetAddressValidator}, the address validated here and the address the JDK's {@code
-   * HttpClient} eventually connects to both come from resolving the same hostname, but not
-   * atomically - see {@link TargetAddressValidator}'s own Javadoc for why closing that gap
-   * completely is not achievable on this HTTP client. Unlike an indexing run, this endpoint is
-   * reachable by any caller with {@code VIEWER} on the library, repeatedly and on demand, which
-   * narrows - without eliminating - the window a rebinding attack would need.
-   *
-   * <p><b>Credentials (#747 acceptance criteria).</b> The library's own {@code sourceCredentials}/
-   * {@code sourceProxy}/{@code sourceInsecureSsl} - already offered to every {@code
-   * HTTP_DIRECTORY}/{@code RSS_FEED} indexing run (ADR-0018, #505) - are applied to this fetch too,
-   * mirroring {@code UrlIndexingExecutor#toUrlIndexingRequest}/{@code
-   * RssFeedIndexingExecutor#execute}. They reach only the {@code Authorization} header built for
-   * the outbound request; {@link DocumentContent} and the controller that serves it never see them.
-   *
-   * <p><b>Bounded by {@link RemoteContentProperties#maxBytes()} while streaming (#747, #748 review,
-   * finding 1/3)</b> - deliberately not {@link UploadProperties#maxFileSize()}, and deliberately
-   * not buffered into a {@code byte[]} or temp file first: the previous, buffering implementation
-   * let a VIEWER clicking this endpoint repeatedly hold up to {@code maxFileSize} of heap per
-   * in-flight request. {@link RemoteContentProperties#timeoutSeconds()} is likewise its own, short
-   * timeout per hop - {@link BoundedDownloader#downloadBounded}'s 120s is sized for an unattended
-   * background indexing run, not a human waiting on this click.
-   *
-   * <p>Every failure - the source offline, rejected by the allowlist, an invalid stored
-   * configuration - answers the same German, user-facing 404 {@link #loadContent} already uses for
-   * "no original available" locally (#747 acceptance criteria: "Quelle offline ≠ Serverfehler"),
-   * never a 5xx that would suggest an OPAA-side error.
-   */
-  private DocumentContent loadRemoteContent(Document document, KnowledgeLibrary library) {
-    String sourceUrl = document.getFilePath();
-    if (sourceUrl == null || sourceUrl.isBlank()) {
-      throw new NotFoundException("Für dieses Dokument steht kein Originaldokument zur Verfügung");
-    }
-
-    HttpClient httpClient = null;
-    try {
-      ProxyAndCredentials config =
-          ProxyAndCredentials.parse(library.getSourceProxy(), library.getSourceCredentials());
-      httpClient =
-          SourceHttpClientFactory.buildHttpClient(
-              config.proxyHost(), config.proxyPort(), library.isSourceInsecureSsl());
-      // #748 review, nit 2: the proxy is exactly as caller-controlled as the target URL and
-      // determines where the TCP connection (and Authorization below) actually goes - mirrors
-      // SourceConnectionTestService's identical call before its own otherwise-analogous probe.
-      targetAddressValidator.validateHost(config.proxyHost());
-      String authHeader =
-          SourceHttpClientFactory.buildAuthHeader(config.username(), config.password());
-
-      BoundedDownloader.DownloadedStream downloaded =
-          boundedDownloader.downloadStreaming(
-              httpClient,
-              sourceUrl,
-              remoteContentProperties.maxBytes(),
-              authHeader,
-              Duration.ofSeconds(remoteContentProperties.timeoutSeconds()));
-
-      // document.getContentType() - decided at index time, see loadOriginal - is the primary
-      // source here too, mirroring the local-file branch of loadContent above; the remote-declared
-      // Content-Type is only a fallback, normalized to type/subtype (no parameters) so a stray
-      // parameter cannot smuggle a value past a caller comparing it verbatim (frontend #743 SVG
-      // sperre) and a malformed header cannot turn into a 500 (see normalizeContentType).
-      String contentType = document.getContentType();
-      if (contentType == null || contentType.isBlank()) {
-        contentType = normalizeContentType(downloaded.contentType());
-      }
-      if (contentType == null || contentType.isBlank()) {
-        contentType = "application/octet-stream";
-      }
-      // #748 review, nit 3: closes the per-request HttpClient once the response stream (or the
-      // failure path below) is done with it, instead of leaking its connection pool/selector
-      // thread until the next GC - ResourceHttpMessageConverter closes this stream in a finally
-      // block once the response body has been written or the request aborted, so this always runs
-      // exactly once.
-      HttpClient clientToClose = httpClient;
-      InputStream closingStream =
-          new FilterInputStream(downloaded.stream()) {
-            @Override
-            public void close() throws IOException {
-              try {
-                super.close();
-              } finally {
-                clientToClose.close();
-              }
-            }
-          };
-      return DocumentContent.ofStream(closingStream, document.getFileName(), contentType);
-    } catch (BoundedDownloader.AttachmentTooLargeException
-        | ProxyAndCredentials.InvalidProxyConfigurationException
-        | IOException e) {
-      // #267/#747: every one of these is the source declining or being unreachable, never an
-      // OPAA-side failure - logged with the technical detail, answered with the same generic
-      // German 404 loadContent already uses so a caller cannot distinguish "offline" from any
-      // other reason no original is available. RedirectFollowingFetcher.RedirectRejectedException
-      // (a foreign-host redirect or protocol downgrade) is an IOException and therefore already
-      // covered by the IOException branch here, not caught separately.
-      log.warn("Remote document content unavailable: {} ({})", sourceUrl, e.getMessage());
-      closeQuietly(httpClient);
-      throw new NotFoundException("Für dieses Dokument steht kein Originaldokument zur Verfügung");
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      closeQuietly(httpClient);
-      throw new NotFoundException("Für dieses Dokument steht kein Originaldokument zur Verfügung");
-    }
-  }
-
-  /**
-   * Normalizes a remote-declared {@code Content-Type} header to its bare {@code type/subtype}
-   * essence, dropping every parameter (e.g. {@code charset}) - both so a caller comparing the value
-   * verbatim (the frontend's #743 SVG sperre, see {@code documentContent.ts}) cannot be bypassed by
-   * a harmless-looking parameter, and so a header the source sends that is not a valid media type
-   * at all (garbage, a bare {@code "pdf"}) never reaches {@link
-   * org.springframework.http.MediaType#parseMediaType} a second time downstream and turns into a
-   * 500 there (#748 review, finding 2a) - {@code null} here simply falls through to {@link
-   * #loadRemoteContent}'s own {@code "application/octet-stream"} fallback instead.
-   */
-  private String normalizeContentType(String rawContentType) {
-    if (rawContentType == null || rawContentType.isBlank()) {
-      return null;
-    }
-    try {
-      MediaType parsed = MediaType.parseMediaType(rawContentType);
-      return new MediaType(parsed.getType(), parsed.getSubtype()).toString();
-    } catch (InvalidMediaTypeException e) {
-      log.debug("Remote source declared an invalid Content-Type: {}", rawContentType, e);
-      return null;
-    }
-  }
-
-  private void closeQuietly(HttpClient httpClient) {
-    if (httpClient != null) {
-      httpClient.close();
-    }
-  }
-
-  /**
-   * The {@code FILESYSTEM} counterpart to {@link UploadedOriginalStore#belongsToLibrary} (#736): a
-   * {@code FILESYSTEM} document's {@code file_path} may only be served if it actually resolves
-   * underneath this library's own configured {@code sourcePath} - not merely inside some
-   * operator-managed directory in general, and not at all when {@code sourcePath} is unset (a
-   * {@code FILESYSTEM} library's own configuration is missing or was never set, in which case
-   * nothing can be considered "the configured index directory").
-   *
-   * <p>Also re-checks {@code sourcePath} against {@link FilesystemPathAllowlist} (#742 review,
-   * finding 2) - {@code KnowledgeLibraryService} enforces this at creation/update time, and {@code
-   * AsyncIndexingExecutor} enforces it again before every indexing run for exactly the reason
-   * {@link FilesystemPathAllowlist}'s own Javadoc gives: the allowlist can be narrowed (or emptied,
-   * which disables the {@code FILESYSTEM} sourceType entirely) after a library was created, and a
-   * read against a {@code sourcePath} that has since fallen outside it must not silently keep
-   * succeeding just because the library once passed validation. Without this check, an operator who
-   * disables (or narrows) {@code FILESYSTEM} would still have every previously indexed file
-   * readable through this endpoint.
-   *
-   * <p>Resolves both paths with {@link Path#toRealPath} rather than the lexical {@code
-   * toAbsolutePath().normalize()} the allowlist check itself deliberately stops short of (#742
-   * review, nit 8): a symlink inside {@code sourcePath} pointing outside it would otherwise pass
-   * the {@code startsWith} check below on its lexical path alone. Unlike the allowlist's own
-   * lexical boundary - a fast, pre-flight sanity check with no requirement that the path exist yet
-   * - this is the point where the file is actually opened and streamed back to an HTTP caller, so
-   * resolving symlinks here is required, not merely nice to have. A path that cannot be resolved
-   * (already gone from disk) yields {@code null}, which the caller already turns into the same 404
-   * it uses for every other "file not there" case.
-   */
-  private Path filesystemFileIfWithinConfiguredDirectory(
-      Document document, KnowledgeLibrary library) {
-    if (document.getFilePath() == null || library.getSourcePath() == null) {
-      return null;
-    }
-    if (!filesystemAllowlist.isAllowed(library.getSourcePath())) {
-      return null;
-    }
-    Path candidate = resolveReal(Path.of(document.getFilePath()));
-    Path configuredDirectory = resolveReal(Path.of(library.getSourcePath()));
-    if (candidate == null || configuredDirectory == null) {
-      return null;
-    }
-    return candidate.startsWith(configuredDirectory) ? candidate : null;
-  }
-
-  /**
-   * {@link Path#toRealPath()}, or {@code null} if the path does not (or no longer) exist - the
-   * exception {@code toRealPath} throws in that case is not a traversal attempt, just the ordinary
-   * "file has since disappeared" case {@link #loadContent} already answers with 404.
-   */
-  private Path resolveReal(Path path) {
-    try {
-      return path.toRealPath();
-    } catch (IOException e) {
-      return null;
     }
   }
 
@@ -1107,6 +799,7 @@ public class LibraryDocumentService {
     return new BulkDocumentDeletion(List.copyOf(deleted), List.copyOf(failures));
   }
 
+  @Override
   @Transactional
   public void deleteDocument(UUID libraryId, UUID documentId, CurrentUser caller) {
     KnowledgeLibrary library = loadLibrary(libraryId, caller);
@@ -1262,7 +955,7 @@ public class LibraryDocumentService {
    * simply conflicts with this library's fixed, immutable source type (#479).
    */
   private void requireUploadLibrary(KnowledgeLibrary library) {
-    if (library.getSourceType() != DocumentSourceType.UPLOAD) {
+    if (connectors.descriptor(library.getSourceType()).indexingRun()) {
       throw new ConflictException(
           "Diese Bibliothek ist eine Konnektorbibliothek und akzeptiert keine manuellen Uploads");
     }

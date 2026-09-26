@@ -4882,8 +4882,7 @@ paths:
         libraryId set (#544), sourceType must match that library's own sourceType (otherwise
         400) and a missing sourceCredentials falls back to the library's stored one, but only
         if sourceUrl still names the same origin as the library's stored sourceUrl - the same
-        rule KnowledgeLibraryService#validateSourceConfigurationForUpdate already applies when
-        saving.
+        rule KnowledgeLibraryService already applies when saving.
       requestBody:
         required: true
         content:
@@ -12203,6 +12202,11 @@ components:
           example: 4
         members:
           type: array
+          nullable: true
+          description: >
+            Null when the caller reads the group as the system administration without being one of
+            its stewards. For them the member list is an audit event of its own and only
+            GET /api/v1/groups/{groupId}/members hands it out; memberCount is set either way.
           items:
             $ref: "#/components/schemas/GroupMemberResponse"
         dissolved:
@@ -12682,8 +12686,7 @@ components:
           description: >
             Optional (#544). Identifies the library whose already-stored source credentials this
             test may fall back to when sourceCredentials is omitted here - the same
-            same-origin-only fallback KnowledgeLibraryService#validateSourceConfigurationForUpdate
-            already applies when saving an edited quellkonfiguration, so a caller pointed at a
+            same-origin-only fallback KnowledgeLibraryService already applies when saving an edited quellkonfiguration, so a caller pointed at a
             different host cannot silently reuse a credential it never entered. Requires at least
             AssetRole.MANAGER on that library (404 if it does not exist or belongs to another
             organization, 403 if it exists but the caller's role is below MANAGER - the same

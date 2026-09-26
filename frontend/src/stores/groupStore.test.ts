@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { useGroupStore } from './groupStore'
+import { selectGroupMembers, useGroupStore } from './groupStore'
 import { resetAllStores } from './resettableStores'
+import type { GroupResponse } from '../types/api'
 import { getGroup, getGroups } from '../services/api'
 
 const mockCreateGroup = vi.fn()
@@ -9,6 +10,8 @@ const mockRemoveGroupMember = vi.fn()
 const mockDeleteGroup = vi.fn()
 const mockUpdateGroup = vi.fn()
 const mockDismissGroupSteward = vi.fn()
+const mockListGroupMembers = vi.fn()
+const mockSetGroupRelease = vi.fn()
 
 vi.mock('../services/api', () => ({
   getGroups: vi.fn(async () => [
@@ -53,12 +56,25 @@ vi.mock('../services/api', () => ({
   addGroupMember: (...args: unknown[]) => mockAddGroupMember(...args),
   removeGroupMember: (...args: unknown[]) => mockRemoveGroupMember(...args),
   dismissGroupSteward: (...args: unknown[]) => mockDismissGroupSteward(...args),
+  listGroupMembers: (...args: unknown[]) => mockListGroupMembers(...args),
+  setGroupRelease: (...args: unknown[]) => mockSetGroupRelease(...args),
 }))
+
+const alice = { userId: 'u1', displayName: 'Alice', createdAt: '2026-03-01T10:00:00Z' }
+const bob = { userId: 'u2', displayName: 'Bob', createdAt: '2026-03-01T10:00:00Z' }
 
 describe('groupStore', () => {
   beforeEach(() => {
-    useGroupStore.setState({ groups: [], groupDetails: {}, isLoading: false, error: null })
+    useGroupStore.setState({
+      groups: [],
+      groupDetails: {},
+      memberLists: {},
+      isLoading: false,
+      error: null,
+    })
     mockCreateGroup.mockReset()
+    mockListGroupMembers.mockReset()
+    mockSetGroupRelease.mockReset()
     mockAddGroupMember.mockReset()
     mockRemoveGroupMember.mockReset()
     mockDeleteGroup.mockReset()
@@ -122,6 +138,56 @@ describe('groupStore', () => {
 
     expect(mockDeleteGroup).toHaveBeenCalledWith('group-a')
     expect(useGroupStore.getState().groupDetails['group-a']).toBeUndefined()
+  })
+
+  // #1989: for the administration a member list retrieval is an audit event - it happens only on
+  // request, through the recorded endpoint, and no other act repeats it.
+  it('fetches a member list only on request, through the recorded endpoint', async () => {
+    mockListGroupMembers.mockResolvedValueOnce([alice])
+
+    await useGroupStore.getState().loadGroupMembers('group-a')
+
+    expect(mockListGroupMembers).toHaveBeenCalledWith('group-a')
+    expect(selectGroupMembers('group-a')(useGroupStore.getState())).toEqual([alice])
+  })
+
+  it('refreshes the details after an act without fetching the member list again', async () => {
+    useGroupStore.setState({ memberLists: { 'group-a': [alice] } })
+    mockSetGroupRelease.mockResolvedValueOnce({})
+    mockUpdateGroup.mockResolvedValueOnce({})
+
+    await useGroupStore.getState().changeRelease('group-a', true)
+    await useGroupStore.getState().renameGroup('group-a', 'Renamed', 'desc')
+
+    expect(vi.mocked(getGroup)).toHaveBeenCalledWith('group-a')
+    expect(mockListGroupMembers).not.toHaveBeenCalled()
+  })
+
+  it('carries a fetched member list forward on add and remove instead of fetching it', async () => {
+    useGroupStore.setState({ memberLists: { 'group-a': [alice] } })
+    mockAddGroupMember.mockResolvedValueOnce(bob)
+    mockRemoveGroupMember.mockResolvedValueOnce(undefined)
+
+    await useGroupStore.getState().addMember('group-a', 'u2')
+    expect(useGroupStore.getState().memberLists['group-a']).toEqual([alice, bob])
+
+    await useGroupStore.getState().removeMember('group-a', 'u1')
+    expect(useGroupStore.getState().memberLists['group-a']).toEqual([bob])
+    expect(mockListGroupMembers).not.toHaveBeenCalled()
+  })
+
+  it('prefers the members the details disclose over a fetched list', () => {
+    useGroupStore.setState({
+      groupDetails: {
+        'group-a': { ...detailOf('group-a'), members: [bob] },
+        'group-b': { ...detailOf('group-b'), members: null },
+      },
+      memberLists: { 'group-a': [alice], 'group-b': [alice] },
+    })
+
+    expect(selectGroupMembers('group-a')(useGroupStore.getState())).toEqual([bob])
+    expect(selectGroupMembers('group-b')(useGroupStore.getState())).toEqual([alice])
+    expect(selectGroupMembers('group-c')(useGroupStore.getState())).toBeUndefined()
   })
 
   it('renames a group and refreshes list and details', async () => {
@@ -196,3 +262,20 @@ describe('groupStore', () => {
     expect(useGroupStore.getState().isLoading).toBe(false)
   })
 })
+
+function detailOf(id: string): GroupResponse {
+  return {
+    id,
+    name: id,
+    kind: 'AD_HOC',
+    origin: 'INTERNAL',
+    memberCount: 1,
+    dissolved: false,
+    releasedForUse: true,
+    protectedGroup: false,
+    stewards: [],
+    members: [],
+    createdAt: '2026-03-01T10:00:00Z',
+    updatedAt: '2026-03-01T10:00:00Z',
+  }
+}

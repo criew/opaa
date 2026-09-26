@@ -2,10 +2,10 @@ package io.opaa.indexing.metadata;
 
 import io.opaa.api.types.LibraryMetadataSchemaChangeKind;
 import io.opaa.auth.CurrentUser;
-import io.opaa.indexing.document.Document;
-import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.indexing.maintenance.DocumentBatchLoop;
-import io.opaa.library.KnowledgeLibrary;
+import io.opaa.knowledge.Document;
+import io.opaa.knowledge.DocumentRepository;
+import io.opaa.knowledge.KnowledgeLibrary;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;

@@ -2,14 +2,14 @@ package io.opaa.indexing.attachment;
 
 import io.opaa.indexing.job.AttachmentProgressSink;
 import io.opaa.indexing.job.IndexingEventSink;
-import io.opaa.library.KnowledgeLibrary;
+import io.opaa.knowledge.KnowledgeLibrary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * The {@link AttachmentAccess} for a caller with no run/job of its own: a single document upload
- * ({@code io.opaa.library.LibraryDocumentService}) and the operator-triggered pipeline re-index
- * ({@code PipelineReindexService}). Events are only logged, progress is a no-op, and {@link
+ * ({@code LibraryDocumentService}) and the operator-triggered pipeline re-index ({@code
+ * PipelineReindexService}). Events are only logged, progress is a no-op, and {@link
  * #markDeferred()} has no per-run state to suppress - a lost attachment is retried the next time
  * its parent is re-processed (a re-upload, a pipeline re-index). {@code recordIndexedAttachment}
  * keeps its no-op default: neither caller reconciles by absence.

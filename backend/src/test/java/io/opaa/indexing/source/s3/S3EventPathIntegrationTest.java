@@ -10,14 +10,16 @@ import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.api.types.SystemRole;
 import io.opaa.indexing.chunk.VectorChunkStore;
-import io.opaa.indexing.document.Document;
-import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.indexing.job.IndexingJob;
 import io.opaa.indexing.job.IndexingJobRepository;
 import io.opaa.indexing.job.JobStatus;
 import io.opaa.indexing.job.JobTriggerSource;
-import io.opaa.library.KnowledgeLibrary;
-import io.opaa.library.KnowledgeLibraryRepository;
+import io.opaa.knowledge.Document;
+import io.opaa.knowledge.DocumentRepository;
+import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.knowledge.sourcesettings.S3Scope;
+import io.opaa.knowledge.sourcesettings.S3SourceSettings;
 import io.opaa.organization.Organization;
 import io.opaa.s3.S3TestFixture;
 import io.opaa.test.OpaaIntegrationTest;
@@ -189,6 +191,26 @@ class S3EventPathIntegrationTest {
               assertThat(runs.getFirst().getStatus()).isEqualTo(JobStatus.COMPLETED);
             });
     return runsOfLibrary().getFirst();
+  }
+
+  @Test
+  void aCorrectTokenNextToAWrongDuplicateOfTheSameHeaderIsRefused() throws Exception {
+    // regression guard: a repeated header is judged as a whole, as Spring binds it - the correct
+    // first value must not authenticate a request that also carries a wrong one
+    mockMvc
+        .perform(
+            post("/api/v1/libraries/{id}/s3-events", library.getId())
+                .header("X-OPAA-Webhook-Secret", TOKEN, "falsch")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"Records\":[]}"))
+        .andExpect(status().isUnauthorized());
+    mockMvc
+        .perform(
+            post("/api/v1/libraries/{id}/s3-events", library.getId())
+                .header("X-OPAA-Webhook-Secret", TOKEN)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"Records\":[]}"))
+        .andExpect(status().isAccepted());
   }
 
   @Test

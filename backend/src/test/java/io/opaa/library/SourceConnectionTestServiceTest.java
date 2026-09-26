@@ -21,12 +21,14 @@ import io.opaa.common.ValidationException;
 import io.opaa.indexing.FilesystemPathAllowlist;
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.document.DocumentService;
+import io.opaa.indexing.source.SourceConnectionTestResult;
+import io.opaa.indexing.source.TestSourceConnectors;
 import io.opaa.indexing.source.rss.RssFeedParser;
 import io.opaa.indexing.source.web.AutoindexCrawlerService;
+import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.knowledge.LibraryAccessService;
 import io.opaa.permission.CapabilityService;
-import io.opaa.security.TargetAddressValidator;
-import io.opaa.sourceaccess.SourceRequestPolicy;
-import io.opaa.test.ProductionDocumentFormats;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URI;
@@ -87,18 +89,9 @@ class SourceConnectionTestServiceTest {
         CurrentUser.of(currentUserId, organizationId, SystemRole.SYSTEM_ADMIN, "Caller");
     service =
         new SourceConnectionTestService(
-            new DocumentService(),
-            new AutoindexCrawlerService(TargetAddressValidator.disabled()),
-            new RssFeedParser(),
-            filesystemAllowlist,
             libraryRepository,
             libraryAccessService,
-            new IndexingProperties(1000, 0, 50, null, null, null, null, 0),
-            TargetAddressValidator.disabled(),
-            SourceRequestPolicy.defaults(),
-            org.mockito.Mockito.mock(ConfluenceConnectionService.class),
-            org.mockito.Mockito.mock(S3ConnectionService.class),
-            ProductionDocumentFormats.supportedFormats(),
+            TestSourceConnectors.connectors().filesystemAllowlist(filesystemAllowlist).registry(),
             capabilityService);
   }
 
@@ -198,8 +191,8 @@ class SourceConnectionTestServiceTest {
 
   @Test
   void filesystemRejectsAnAccompanyingSourceUrlWith400() {
-    // PR #537 review, nit 7: mirrors KnowledgeLibraryService#validateConfigurationForType's
-    // FILESYSTEM branch - without this, a client could see a green test for a combination
+    // PR #537 review, nit 7: mirrors FilesystemSourceConnector#validate, the
+    // check behind createLibrary - without this, a client could see a green test for a combination
     // createLibrary itself rejects with 400 right afterwards.
     assertThatThrownBy(
             () ->
@@ -552,26 +545,21 @@ class SourceConnectionTestServiceTest {
     // RssFeedIndexingExecutor#readBounded/BoundedDownloader#readBounded.
     SourceConnectionTestService tightService =
         new SourceConnectionTestService(
-            new DocumentService(),
-            new AutoindexCrawlerService(TargetAddressValidator.disabled()),
-            new RssFeedParser(),
-            filesystemAllowlist,
             libraryRepository,
             libraryAccessService,
-            new IndexingProperties(
-                1000,
-                0,
-                50,
-                null,
-                new IndexingProperties.Rss(200, 10, 10, 0, null, null, 0, 0),
-                null,
-                null,
-                0),
-            TargetAddressValidator.disabled(),
-            SourceRequestPolicy.defaults(),
-            org.mockito.Mockito.mock(ConfluenceConnectionService.class),
-            org.mockito.Mockito.mock(S3ConnectionService.class),
-            ProductionDocumentFormats.supportedFormats(),
+            TestSourceConnectors.connectors()
+                .filesystemAllowlist(filesystemAllowlist)
+                .indexingProperties(
+                    new IndexingProperties(
+                        1000,
+                        0,
+                        50,
+                        null,
+                        new IndexingProperties.Rss(200, 10, 10, 0, null, null, 0, 0),
+                        null,
+                        null,
+                        0))
+                .registry(),
             capabilityService);
     String html = "<table>" + "x".repeat(100) + "</table>";
     server.createContext(
@@ -701,26 +689,21 @@ class SourceConnectionTestServiceTest {
     // run ever processes must not be reported with a count the run itself never reaches.
     SourceConnectionTestService cappedService =
         new SourceConnectionTestService(
-            new DocumentService(),
-            new AutoindexCrawlerService(TargetAddressValidator.disabled()),
-            new RssFeedParser(),
-            filesystemAllowlist,
             libraryRepository,
             libraryAccessService,
-            new IndexingProperties(
-                1000,
-                0,
-                50,
-                null,
-                new IndexingProperties.Rss(1, 0, 0, 0, null, null, 0, 0),
-                null,
-                null,
-                0),
-            TargetAddressValidator.disabled(),
-            SourceRequestPolicy.defaults(),
-            org.mockito.Mockito.mock(ConfluenceConnectionService.class),
-            org.mockito.Mockito.mock(S3ConnectionService.class),
-            ProductionDocumentFormats.supportedFormats(),
+            TestSourceConnectors.connectors()
+                .filesystemAllowlist(filesystemAllowlist)
+                .indexingProperties(
+                    new IndexingProperties(
+                        1000,
+                        0,
+                        50,
+                        null,
+                        new IndexingProperties.Rss(1, 0, 0, 0, null, null, 0, 0),
+                        null,
+                        null,
+                        0))
+                .registry(),
             capabilityService);
     String rss =
         """
@@ -761,26 +744,21 @@ class SourceConnectionTestServiceTest {
   void rssFeedRejectsAnOversizedResponseWithAGermanMessage() throws IOException {
     SourceConnectionTestService tightService =
         new SourceConnectionTestService(
-            new DocumentService(),
-            new AutoindexCrawlerService(TargetAddressValidator.disabled()),
-            new RssFeedParser(),
-            filesystemAllowlist,
             libraryRepository,
             libraryAccessService,
-            new IndexingProperties(
-                1000,
-                0,
-                50,
-                null,
-                new IndexingProperties.Rss(200, 10, 10, 0, null, null, 0, 0),
-                null,
-                null,
-                0),
-            TargetAddressValidator.disabled(),
-            SourceRequestPolicy.defaults(),
-            org.mockito.Mockito.mock(ConfluenceConnectionService.class),
-            org.mockito.Mockito.mock(S3ConnectionService.class),
-            ProductionDocumentFormats.supportedFormats(),
+            TestSourceConnectors.connectors()
+                .filesystemAllowlist(filesystemAllowlist)
+                .indexingProperties(
+                    new IndexingProperties(
+                        1000,
+                        0,
+                        50,
+                        null,
+                        new IndexingProperties.Rss(200, 10, 10, 0, null, null, 0, 0),
+                        null,
+                        null,
+                        0))
+                .registry(),
             capabilityService);
     String rss =
         "<?xml version=\"1.0\"?><rss version=\"2.0\"><channel>"

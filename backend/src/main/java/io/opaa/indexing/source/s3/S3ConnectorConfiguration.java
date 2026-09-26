@@ -1,12 +1,13 @@
 package io.opaa.indexing.source.s3;
 
 import io.opaa.indexing.document.DocumentIngestService;
-import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.indexing.format.SupportedDocumentFormats;
 import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.SourceSyncStateRepository;
-import io.opaa.library.LibraryFolderService;
+import io.opaa.indexing.source.s3.events.S3EventService;
+import io.opaa.knowledge.DocumentRepository;
+import io.opaa.knowledge.LibraryFolderService;
 import io.opaa.security.TargetAddressValidator;
 import java.time.Clock;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -29,9 +30,24 @@ public class S3ConnectorConfiguration {
     return new S3ClientFactory(s3Properties, targetAddressValidator);
   }
 
+  @Bean
+  S3SourceConnector s3SourceConnector(
+      S3ConnectionService s3ConnectionService,
+      S3ClientFactory s3ClientFactory,
+      SourceSyncStateRepository sourceSyncStateRepository,
+      S3OriginalAccess s3OriginalAccess,
+      S3EventService s3EventService) {
+    return new S3SourceConnector(
+        s3ConnectionService,
+        s3ClientFactory,
+        sourceSyncStateRepository,
+        s3OriginalAccess,
+        s3EventService);
+  }
+
   /**
    * Reads an indexed object back for the citation jump (ADR-0027, Entscheidung 5) - a read path
-   * outside every run, used by {@code io.opaa.library.LibraryDocumentService}.
+   * outside every run, served through {@link S3SourceConnector#openOriginal}.
    */
   @Bean
   S3OriginalAccess s3OriginalAccess(S3ClientFactory s3ClientFactory, S3Properties s3Properties) {

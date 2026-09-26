@@ -22,7 +22,7 @@ import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.OrganizationScopedLoader;
 import io.opaa.common.ValidationException;
-import io.opaa.library.KnowledgeLibrary;
+import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.permission.AccessPath;
 import io.opaa.permission.AssetOwnershipHistoryService;
 import io.opaa.permission.CapabilityService;

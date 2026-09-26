@@ -15,7 +15,7 @@ import io.opaa.indexing.maintenance.FullTextIndexFillStateService;
 import io.opaa.indexing.maintenance.MetadataBackfillService;
 import io.opaa.indexing.metadata.LibraryMetadataSchemaChangeService;
 import io.opaa.indexing.metadata.ModelExtractionCounters;
-import io.opaa.library.KnowledgeLibraryRepository;
+import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.llm.EmbeddingInfo;
 import io.opaa.llm.EmbeddingInfoService;
 import io.opaa.llm.LlmModel;

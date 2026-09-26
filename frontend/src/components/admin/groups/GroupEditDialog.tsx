@@ -14,7 +14,7 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import type { GroupListResponse } from '../../../types/api'
 import { useAuthStore } from '../../../stores/authStore'
-import { useGroupStore } from '../../../stores/groupStore'
+import { selectGroupMembers, useGroupStore } from '../../../stores/groupStore'
 import { notify } from '../../../stores/notificationStore'
 import FieldLabel from '../../wizard/FieldLabel'
 import GroupContactsSection from '../../groups/GroupContactsSection'
@@ -63,9 +63,10 @@ function GroupEditDialogContent({
   // dialog reads the group from there once it is present, so a new name shows at once.
   const group = useGroupStore((s) => s.groups.find((entry) => entry.id === opened.id)) ?? opened
   const details = useGroupStore((s) => s.groupDetails[opened.id])
+  const members = useGroupStore(selectGroupMembers(opened.id))
   const renameGroup = useGroupStore((s) => s.renameGroup)
   const changeRelease = useGroupStore((s) => s.changeRelease)
-  const loadGroupDetails = useGroupStore((s) => s.loadGroupDetails)
+  const loadGroupMembers = useGroupStore((s) => s.loadGroupMembers)
   const isInternal = group.kind === 'AD_HOC'
 
   const [name, setName] = useState(opened.name)
@@ -172,17 +173,17 @@ function GroupEditDialogContent({
             <GroupContactsSection
               groupId={group.id}
               contacts={details?.contacts ?? group.contacts ?? []}
-              members={details?.members}
+              members={members}
               currentUserId={currentUserId}
             />
             {/* Benennbar ist nur ein Mitglied; die Liste lädt erst auf ausdrücklichen Wunsch,
                 denn ihr Abruf ist ein Audit-Ereignis (ADR-0036, Entscheidungen 4 und 9). */}
-            {!details?.members && (
+            {!members && (
               <Button
                 variant="outlined"
                 size="small"
                 sx={{ mt: 1.5 }}
-                onClick={() => void loadGroupDetails(group.id)}
+                onClick={() => void loadGroupMembers(group.id)}
               >
                 Mitgliederliste abrufen
               </Button>

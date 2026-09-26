@@ -29,13 +29,16 @@ import io.opaa.group.GroupRepository;
 import io.opaa.group.GroupService;
 import io.opaa.group.GroupSteward;
 import io.opaa.group.GroupStewardRepository;
-import io.opaa.indexing.document.Document;
-import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.indexing.job.IndexingJob;
 import io.opaa.indexing.job.IndexingJobRepository;
 import io.opaa.indexing.job.JobStatus;
 import io.opaa.indexing.source.rss.RssFeedState;
 import io.opaa.indexing.source.rss.RssFeedStateRepository;
+import io.opaa.knowledge.Document;
+import io.opaa.knowledge.DocumentRepository;
+import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.knowledge.LibraryAccessService;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.permission.AssetGrant;
@@ -1225,7 +1228,7 @@ class KnowledgeLibraryServiceIntegrationTest {
       updateLibraryWritesNoLibrarySourceUpdatedEntryWhenTheDialogResendsTheSourceFieldsUnchanged() {
     // Code review finding 2 (PR #578): the real EditLibrarySourceDialog case - it resends
     // sourceUrl unchanged and leaves sourceCredentials blank (relying on the same-origin
-    // fallback in validateSourceConfigurationForUpdate). This walks the new #545 block all the
+    // fallback in requestedSettingsChange). This walks the new #545 block all the
     // way to the empty-changedSourceFields guard, unlike the rename-only test above, which never
     // enters replacesSourceConfiguration at all.
     UUID owner = createUser(organizationA);

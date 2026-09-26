@@ -21,16 +21,16 @@ import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ValidationException;
-import io.opaa.indexing.FilesystemPathAllowlist;
-import io.opaa.indexing.IndexingProperties;
-import io.opaa.indexing.document.DocumentService;
+import io.opaa.indexing.source.SourceConnectionTestResult;
+import io.opaa.indexing.source.SourceListing;
+import io.opaa.indexing.source.TestSourceConnectors;
+import io.opaa.indexing.source.confluence.ConfluenceConnectionService;
 import io.opaa.indexing.source.confluence.ConfluenceSpace;
-import io.opaa.indexing.source.rss.RssFeedParser;
-import io.opaa.indexing.source.web.AutoindexCrawlerService;
+import io.opaa.knowledge.ConfluenceSpaceSelection;
+import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.knowledge.LibraryAccessService;
 import io.opaa.permission.CapabilityService;
-import io.opaa.security.TargetAddressValidator;
-import io.opaa.sourceaccess.SourceRequestPolicy;
-import io.opaa.test.ProductionDocumentFormats;
 import java.net.URI;
 import java.util.List;
 import java.util.Optional;
@@ -67,18 +67,11 @@ class SourceConnectionTestServiceConfluenceTest {
     caller = CurrentUser.of(currentUserId, organizationId, SystemRole.USER, "Caller");
     service =
         new SourceConnectionTestService(
-            new DocumentService(),
-            new AutoindexCrawlerService(TargetAddressValidator.disabled()),
-            new RssFeedParser(),
-            mock(FilesystemPathAllowlist.class),
             libraryRepository,
             libraryAccessService,
-            new IndexingProperties(1000, 0, 50, null, null, null, null, 0),
-            TargetAddressValidator.disabled(),
-            SourceRequestPolicy.defaults(),
-            confluenceConnectionService,
-            mock(S3ConnectionService.class),
-            ProductionDocumentFormats.supportedFormats(),
+            TestSourceConnectors.connectors()
+                .confluenceConnectionService(confluenceConnectionService)
+                .registry(),
             capabilityService);
   }
 
@@ -201,7 +194,7 @@ class SourceConnectionTestServiceConfluenceTest {
         .thenReturn(List.of(new ConfluenceSpace("1", "ENG", "Engineering")));
 
     // same origin, other path; the caller offers its own proxy and asks to skip TLS checks
-    List<ConfluenceSpace> spaces =
+    SourceListing spaces =
         service.listConfluenceSpaces(
             new ConfluenceSpaceListing(
                 URI.create("https://wiki.example.org/other"),
@@ -212,7 +205,7 @@ class SourceConnectionTestServiceConfluenceTest {
                 libraryId),
             caller);
 
-    assertThat(spaces).extracting(ConfluenceSpace::key).containsExactly("ENG");
+    assertThat(spaces.entries()).extracting(SourceListing.Entry::key).containsExactly("ENG");
     // stored token, stored proxy, stored TLS setting - never the caller's (#617 rule shared with
     // the connection test)
     verify(confluenceConnectionService)

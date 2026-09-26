@@ -1,8 +1,8 @@
 package io.opaa.api;
 
 import io.opaa.api.dto.LibraryFolderResponse;
-import io.opaa.library.LibraryFolder;
-import io.opaa.library.LibraryFolderDetail;
+import io.opaa.knowledge.LibraryFolder;
+import io.opaa.knowledge.LibraryFolderDetail;
 
 /**
  * Maps {@link LibraryFolderDetail} onto its generated response counterpart (ADR-0006: API DTOs are

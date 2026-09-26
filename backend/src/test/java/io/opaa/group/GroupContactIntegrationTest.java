@@ -250,6 +250,10 @@ class GroupContactIntegrationTest {
     assertThat(groupService.getGroup(group.getId(), contact).group().getId())
         .as("they do read their group - they decide its mark and have to see it")
         .isEqualTo(group.getId());
+    assertThat(groupService.getGroup(group.getId(), contact).members())
+        .as("the list is withheld from the administration only, not from the contact point")
+        .extracting(view -> view.membership().getUserId())
+        .containsExactly(memberId);
     assertThat(groupService.listContactedGroups(contact))
         .extracting(overview -> overview.group().getId())
         .containsExactly(group.getId());

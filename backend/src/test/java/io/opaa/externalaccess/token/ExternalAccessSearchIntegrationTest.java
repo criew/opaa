@@ -16,7 +16,7 @@ import io.opaa.auth.UserRepository;
 import io.opaa.externalaccess.ExternalAccessSettings;
 import io.opaa.externalaccess.ExternalAccessSettingsService;
 import io.opaa.indexing.chunk.VectorChunkStore;
-import io.opaa.indexing.document.DocumentRepository;
+import io.opaa.knowledge.DocumentRepository;
 import io.opaa.library.LibraryExternalAccessService;
 import io.opaa.search.SearchScopeSource;
 import io.opaa.test.OpaaIntegrationTest;
@@ -337,8 +337,8 @@ class ExternalAccessSearchIntegrationTest {
   }
 
   private void insertDocument(UUID library, String fileName, String text) {
-    io.opaa.indexing.document.Document document =
-        new io.opaa.indexing.document.Document(
+    io.opaa.knowledge.Document document =
+        new io.opaa.knowledge.Document(
             fileName, "/" + fileName, "text/markdown", 100L, DocumentSourceType.UPLOAD);
     document.setLibraryId(library);
     document.setOrganizationId(DEFAULT_ORGANIZATION_ID);

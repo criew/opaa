@@ -960,6 +960,20 @@ export async function deleteGroup(groupId: string): Promise<void> {
   }
 }
 
+/**
+ * Die Mitgliederliste einer Gruppe. Für die Systemverwaltung ohne eigene Verantwortung ist der
+ * Abruf ein Audit-Ereignis (ADR-0036, Entscheidung 9) und dies ihr einziger Weg zu den Namen -
+ * {@link getGroup} liefert ihr die Liste nicht.
+ */
+export async function listGroupMembers(groupId: string): Promise<GroupMemberResponse[]> {
+  try {
+    const { data } = await client.get<GroupMemberResponse[]>(`/v1/groups/${groupId}/members`)
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
 export async function addGroupMember(
   groupId: string,
   userId: string,

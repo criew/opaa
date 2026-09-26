@@ -11,13 +11,12 @@ import io.opaa.api.dto.LibraryScheduleRequest;
 import io.opaa.api.dto.LibraryUpdateRequest;
 import io.opaa.api.dto.S3ScopeRef;
 import io.opaa.api.dto.S3Settings;
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.job.JobStatus;
-import io.opaa.indexing.source.s3.S3Scope;
-import io.opaa.indexing.source.s3.S3SourceSettings;
-import io.opaa.library.ConfluenceSpaceSelection;
-import io.opaa.library.KnowledgeLibrary;
+import io.opaa.knowledge.ConfluenceSpaceSelection;
+import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.sourcesettings.S3Scope;
+import io.opaa.knowledge.sourcesettings.S3SourceSettings;
 import io.opaa.library.LibraryCreation;
 import io.opaa.library.LibraryDetail;
 import io.opaa.library.LibraryManagementDetail;
@@ -193,7 +192,8 @@ final class LibraryResponseMapper {
             .diagnosticsLockToggleable(detail.diagnosticsLockToggleable())
             .lastTransfer(PermissionTransferResponseMapper.toResponse(lastTransfer))
             .succession(SuccessionResponseMapper.toStateResponse(succession));
-    if (library.getSourceType() == DocumentSourceType.CONFLUENCE) {
+    // only a CONFLUENCE library carries an edition (chk_knowledge_libraries_source_configuration)
+    if (library.getSourceConfluenceEdition() != null) {
       // ADR-0023: edition and selection are visible to every reader - the selection is exactly
       // the scope every reader of this library can see, so naming it is not configuration detail
       // in the sense of the MANAGER-gated fields above.
@@ -201,21 +201,20 @@ final class LibraryResponseMapper {
           .confluenceEdition(library.getSourceConfluenceEdition())
           .confluenceSpaces(toRefs(library.getConfluenceSpaces()));
     }
-    if (library.getSourceType() == DocumentSourceType.S3) {
-      // ADR-0027: the scopes are the scope every reader sees - visible like confluenceSpaces, and
-      // the record carries no credential by construction. A stored document the record no longer
-      // accepts hides the settings from this one response instead of failing the whole request.
-      try {
-        S3SourceSettings s3Settings = library.getS3Settings();
-        if (s3Settings != null) {
-          response.s3Settings(toS3SettingsRef(s3Settings));
-        }
-      } catch (S3SourceSettings.InvalidS3SourceSettingsException e) {
-        log.warn(
-            "Library {} carries S3 settings the record rejects; omitted from the response: {}",
-            library.getId(),
-            e.getMessage());
+    // ADR-0027: the scopes are the scope every reader sees - visible like confluenceSpaces, and
+    // the record carries no credential by construction; only an S3 library carries them. A stored
+    // document the record no longer accepts hides the settings from this one response instead of
+    // failing the whole request.
+    try {
+      S3SourceSettings s3Settings = library.getS3Settings();
+      if (s3Settings != null) {
+        response.s3Settings(toS3SettingsRef(s3Settings));
       }
+    } catch (S3SourceSettings.InvalidS3SourceSettingsException e) {
+      log.warn(
+          "Library {} carries S3 settings the record rejects; omitted from the response: {}",
+          library.getId(),
+          e.getMessage());
     }
     LibraryManagementDetail managementDetail = detail.managementDetail();
     response

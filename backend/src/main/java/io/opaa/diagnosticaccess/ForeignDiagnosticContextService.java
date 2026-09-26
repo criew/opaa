@@ -9,7 +9,7 @@ import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.group.Group;
 import io.opaa.group.GroupRepository;
-import io.opaa.library.LibraryAccessService;
+import io.opaa.knowledge.LibraryAccessService;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Set;

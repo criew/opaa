@@ -18,17 +18,17 @@ import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.indexing.attachment.AttachmentAccess;
 import io.opaa.indexing.chunk.VectorChunkStore;
-import io.opaa.indexing.document.Document;
 import io.opaa.indexing.document.DocumentIngestResult;
 import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.document.DocumentIngests;
-import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.job.IndexingRunEventRepository;
 import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
 import io.opaa.indexing.source.IndexingRunTemplate;
-import io.opaa.library.KnowledgeLibrary;
-import io.opaa.library.LibraryStorageQuotaService;
+import io.opaa.knowledge.Document;
+import io.opaa.knowledge.DocumentRepository;
+import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.LibraryStorageQuotaService;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.SourceRequestPolicy;
 import io.opaa.test.ProductionDocumentFormats;
@@ -113,7 +113,7 @@ class UrlIndexingExecutorAttachmentBookkeepingTest {
             documentIngestService,
             documentRepository,
             new CrawlProperties(0, 0, 0),
-            mock(io.opaa.library.LibraryFolderService.class),
+            mock(io.opaa.knowledge.LibraryFolderService.class),
             SourceRequestPolicy.defaults(),
             new IndexingRunTemplate(
                 mock(IndexingJobService.class),

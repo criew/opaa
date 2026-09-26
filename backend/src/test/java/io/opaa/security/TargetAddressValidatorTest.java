@@ -240,7 +240,7 @@ class TargetAddressValidatorTest {
   @Test
   void rejectsAHostThatCannotBeResolved() {
     // The same friendly wording
-    // SourceConnectionTestService#translateConnectionError already used for an ordinary
+    // ConnectorChecks#translateConnectionError already uses for an ordinary
     // UnknownHostException - this check now runs before that connection attempt is ever made, so
     // it is the only place this wording is reached for an http(s) target.
     assertThatThrownBy(

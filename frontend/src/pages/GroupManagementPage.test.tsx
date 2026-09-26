@@ -10,7 +10,7 @@ import type { GroupListQuery } from '../services/groupAdminApi'
 
 const {
   mockListGroupPage,
-  mockGetGroup,
+  mockListGroupMembers,
   mockFetchedDetails,
   listed,
   mockCreateGroup,
@@ -22,8 +22,8 @@ const {
   mockDismissGroupContact,
 } = vi.hoisted(() => ({
   mockListGroupPage: vi.fn(),
-  mockGetGroup: vi.fn(),
-  /** Was `getGroup` liefert - die Mitgliederliste, deren Abruf ein Audit-Ereignis ist. */
+  mockListGroupMembers: vi.fn(),
+  /** What the server knows per group; `getGroup` withholds the members from the administration. */
   mockFetchedDetails: {} as Record<string, GroupResponse>,
   /** Die Gruppen, die der Server für die aktuelle Anfrage kennt. */
   listed: { groups: [] as GroupListResponse[] },
@@ -68,8 +68,12 @@ vi.mock('../services/api', async () => {
     getUsers: vi.fn(async () => []),
     getGroups: vi.fn(async () => listed.groups),
     getGroup: vi.fn(async (groupId: string) => {
-      mockGetGroup(groupId)
-      return mockFetchedDetails[groupId]
+      const details = mockFetchedDetails[groupId]
+      return details && { ...details, members: null }
+    }),
+    listGroupMembers: vi.fn(async (groupId: string) => {
+      mockListGroupMembers(groupId)
+      return mockFetchedDetails[groupId]?.members ?? []
     }),
     createGroup: mockCreateGroup,
     updateGroup: mockUpdateGroup,
@@ -207,7 +211,7 @@ describe('GroupManagementPage', () => {
     expect(within(referat).getByText('Aktiv')).toBeInTheDocument()
     expect(screen.getByText('2 Gruppen · Seite 1 von 1')).toBeInTheDocument()
     // the member list is never part of the table
-    expect(mockGetGroup).not.toHaveBeenCalled()
+    expect(mockListGroupMembers).not.toHaveBeenCalled()
   })
 
   // ADR-0036, Entscheidung 3: ein wartender Plan bleibt laut - sein Alter steht im Link selbst,
@@ -331,10 +335,10 @@ describe('GroupManagementPage', () => {
     await user.click(within(menu).getByRole('menuitem', { name: 'Bearbeiten' }))
     const dialog = await screen.findByRole('dialog')
     expect(within(dialog).getByText(/aus dem Verzeichnis synchronisiert/)).toBeInTheDocument()
-    expect(mockGetGroup).not.toHaveBeenCalled()
+    expect(mockListGroupMembers).not.toHaveBeenCalled()
 
     await user.click(within(dialog).getByRole('button', { name: 'Mitgliederliste abrufen' }))
-    await waitFor(() => expect(mockGetGroup).toHaveBeenCalledWith('group-referat-50'))
+    await waitFor(() => expect(mockListGroupMembers).toHaveBeenCalledWith('group-referat-50'))
     await user.click(await within(dialog).findByRole('combobox', { name: /ansprechstelle/i }))
     await user.click(await screen.findByRole('option', { name: 'Bob' }))
     await user.click(within(dialog).getByRole('button', { name: /als ansprechstelle benennen/i }))
@@ -377,12 +381,12 @@ describe('GroupManagementPage', () => {
     })
     expect(within(dialog).getByText(/Nachweisprotokoll/)).toBeInTheDocument()
     expect(within(dialog).getByText('Die Gruppe hat 1 Mitglied.')).toBeInTheDocument()
-    expect(mockGetGroup).not.toHaveBeenCalled()
+    expect(mockListGroupMembers).not.toHaveBeenCalled()
 
     mockFetchedDetails['group-phoenix'] = adHocDetails
     await user.click(within(dialog).getByRole('button', { name: 'Mitglieder anzeigen' }))
 
-    await waitFor(() => expect(mockGetGroup).toHaveBeenCalledWith('group-phoenix'))
+    await waitFor(() => expect(mockListGroupMembers).toHaveBeenCalledWith('group-phoenix'))
     expect(await within(dialog).findByText('Alice')).toBeInTheDocument()
     await user.click(within(dialog).getByRole('button', { name: 'Entfernen' }))
     await waitFor(() => expect(mockRemoveGroupMember).toHaveBeenCalledWith('group-phoenix', 'u1'))

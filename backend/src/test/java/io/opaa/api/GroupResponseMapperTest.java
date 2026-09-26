@@ -279,6 +279,19 @@ class GroupResponseMapperTest {
     assertThat(response.getMembers().get(0).getDisplayName()).isEqualTo("Ada Lovelace");
   }
 
+  /** A withheld list stays distinguishable from an empty one, and the count still stands. */
+  @Test
+  void toResponseKeepsAWithheldMemberListNullAndCountsTheMemberships() {
+    Group group = Group.internal(UUID.randomUUID(), "Team", null, null);
+    group.addMembership(new GroupMembership(UUID.randomUUID(), group.getOrganizationId()));
+    GroupDetail detail = new GroupDetail(group, null, List.of(), List.of(), null);
+
+    GroupResponse response = GroupResponseMapper.toResponse(detail);
+
+    assertThat(response.getMembers()).isNull();
+    assertThat(response.getMemberCount()).isEqualTo(1);
+  }
+
   /** The detail path has to carry the origin as fully as the list path does (AGENTS.md). */
   @Test
   void toResponseCopiesTheOriginOfAProviderGroup() {

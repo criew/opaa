@@ -15,13 +15,12 @@ import io.opaa.api.dto.SourceConnectionTestRequest;
 import io.opaa.api.dto.SourceConnectionTestResponse;
 import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.api.types.DocumentSourceType;
-import io.opaa.indexing.source.confluence.ConfluenceSpace;
-import io.opaa.indexing.source.s3.S3Scope;
+import io.opaa.indexing.source.SourceConnectionTestResult;
+import io.opaa.indexing.source.SourceListing;
+import io.opaa.knowledge.sourcesettings.S3Scope;
 import io.opaa.library.ConfluenceSpaceListing;
-import io.opaa.library.S3BucketListResult;
 import io.opaa.library.S3BucketListingRequest;
 import io.opaa.library.SourceConnectionTest;
-import io.opaa.library.SourceConnectionTestResult;
 import java.net.URI;
 import java.util.List;
 import java.util.UUID;
@@ -90,9 +89,9 @@ class SourceConnectionTestResponseMapperTest {
                 null,
                 true,
                 List.of(
-                    new io.opaa.library.S3ScopeCheck(
+                    new io.opaa.indexing.source.S3ScopeCheck(
                         "dokumente", "2025/", true, true, false, 12, true, "s3:GetObject fehlt"),
-                    new io.opaa.library.S3ScopeCheck(
+                    new io.opaa.indexing.source.S3ScopeCheck(
                         "archiv", "", true, true, null, 0, false, null))));
 
     assertThat(response.getReachable()).isFalse();
@@ -142,14 +141,19 @@ class SourceConnectionTestResponseMapperTest {
 
     S3BucketListResponse listed =
         SourceConnectionTestResponseMapper.toResponse(
-            new S3BucketListResult(true, List.of("dokumente", "archiv"), null));
+            new SourceListing(
+                true,
+                List.of(
+                    new SourceListing.Entry("dokumente", null),
+                    new SourceListing.Entry("archiv", null)),
+                null));
     assertThat(listed.getListingPermitted()).isTrue();
     assertThat(listed.getBuckets()).containsExactly("dokumente", "archiv");
     assertThat(listed.getMessage()).isNull();
 
     S3BucketListResponse fallback =
         SourceConnectionTestResponseMapper.toResponse(
-            new S3BucketListResult(false, List.of(), "nicht lesbar"));
+            new SourceListing(false, List.of(), "nicht lesbar"));
     assertThat(fallback.getListingPermitted()).isFalse();
     assertThat(fallback.getBuckets()).isEmpty();
     assertThat(fallback.getMessage()).isEqualTo("nicht lesbar");
@@ -195,9 +199,12 @@ class SourceConnectionTestResponseMapperTest {
     ConfluenceSpaceListResponse response =
         SourceConnectionTestResponseMapper.toResponse(
             SourceConnectionTestResponseMapper.toRefs(
-                List.of(
-                    new ConfluenceSpace("1", "ENG", "Engineering"),
-                    new ConfluenceSpace("2", "HR", null))));
+                new SourceListing(
+                    true,
+                    List.of(
+                        new SourceListing.Entry("ENG", "Engineering"),
+                        new SourceListing.Entry("HR", null)),
+                    null)));
     assertThat(response.getSpaces())
         .extracting(ConfluenceSpaceRef::getKey, ConfluenceSpaceRef::getName)
         .containsExactly(tuple("ENG", "Engineering"), tuple("HR", null));

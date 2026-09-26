@@ -2,11 +2,9 @@ package io.opaa.indexing.source.web;
 
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
-import io.opaa.indexing.document.Document;
 import io.opaa.indexing.document.DocumentIngest;
 import io.opaa.indexing.document.DocumentIngestResult;
 import io.opaa.indexing.document.DocumentIngestService;
-import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.indexing.format.SupportedDocumentFormats;
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.source.IndexingRun;
@@ -20,8 +18,10 @@ import io.opaa.indexing.source.SourceFolderMirror;
 import io.opaa.indexing.source.SourceFolderPath;
 import io.opaa.indexing.source.SourceIndexingExecutor;
 import io.opaa.indexing.source.VanishedDocumentPolicy;
-import io.opaa.library.KnowledgeLibrary;
-import io.opaa.library.LibraryFolderService;
+import io.opaa.knowledge.Document;
+import io.opaa.knowledge.DocumentRepository;
+import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.LibraryFolderService;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.ProxyAndCredentials;
@@ -440,8 +440,8 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
   /**
    * Whether the URL's last path segment contains a dot, i.e. looks like a file with an extension;
    * query and fragment are stripped first, and no regex is used, so a long URL cannot overflow the
-   * stack. {@code public} because {@code SourceConnectionTestService} reuses this exact check, so a
-   * URL is normalised identically for the test and for the run it tests.
+   * stack. {@code HttpDirectorySourceConnector} reuses this exact check, so a URL is normalised
+   * identically for the connection test and for the run it tests.
    */
   public static boolean hasFileExtension(String url) {
     int queryStart = url.indexOf('?');

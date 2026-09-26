@@ -13,7 +13,7 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import type { GroupListResponse, UserInfo } from '../../../types/api'
 import { getUsers } from '../../../services/api'
-import { useGroupStore } from '../../../stores/groupStore'
+import { selectGroupMembers, useGroupStore } from '../../../stores/groupStore'
 
 const AUDIT_NOTICE =
   'Der Abruf der Mitgliederliste durch die Systemverwaltung wird im Nachweisprotokoll ' +
@@ -47,8 +47,8 @@ function GroupMembersDialogContent({
   group: GroupListResponse
   onClose: () => void
 }) {
-  const details = useGroupStore((s) => s.groupDetails[group.id])
-  const loadGroupDetails = useGroupStore((s) => s.loadGroupDetails)
+  const knownMembers = useGroupStore(selectGroupMembers(group.id))
+  const loadGroupMembers = useGroupStore((s) => s.loadGroupMembers)
   const addMember = useGroupStore((s) => s.addMember)
   const removeMember = useGroupStore((s) => s.removeMember)
   const isInternal = group.kind === 'AD_HOC'
@@ -60,15 +60,15 @@ function GroupMembersDialogContent({
 
   useEffect(() => {
     if (!requested) return
-    void loadGroupDetails(group.id)
+    void loadGroupMembers(group.id)
     if (isInternal) {
       void getUsers()
         .then(setAllUsers)
         .catch(() => setAllUsers([]))
     }
-  }, [requested, group.id, isInternal, loadGroupDetails])
+  }, [requested, group.id, isInternal, loadGroupMembers])
 
-  const members = requested ? details?.members : undefined
+  const members = requested ? knownMembers : undefined
   const availableUsers = useMemo(() => {
     const memberIds = new Set(members?.map((member) => member.userId) ?? [])
     return allUsers.filter((user) => !memberIds.has(user.id))

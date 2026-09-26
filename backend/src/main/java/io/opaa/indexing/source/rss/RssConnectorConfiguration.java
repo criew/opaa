@@ -3,9 +3,10 @@ package io.opaa.indexing.source.rss;
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.attachment.AttachmentIndexer;
 import io.opaa.indexing.document.DocumentIngestService;
-import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.indexing.source.IndexingRunTemplate;
+import io.opaa.indexing.source.RemoteOriginalAccess;
 import io.opaa.indexing.source.SourceIndexingExecutor;
+import io.opaa.knowledge.DocumentRepository;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.SourceRequestPolicy;
 import org.springframework.context.annotation.Bean;
@@ -18,6 +19,23 @@ public class RssConnectorConfiguration {
   @Bean
   RssFeedParser rssFeedParser() {
     return new RssFeedParser();
+  }
+
+  @Bean
+  RssFeedSourceConnector rssFeedSourceConnector(
+      RssFeedParser rssFeedParser,
+      RssFeedStateRepository rssFeedStateRepository,
+      TargetAddressValidator targetAddressValidator,
+      SourceRequestPolicy sourceRequestPolicy,
+      IndexingProperties properties,
+      RemoteOriginalAccess remoteOriginalAccess) {
+    return new RssFeedSourceConnector(
+        rssFeedParser,
+        rssFeedStateRepository,
+        targetAddressValidator,
+        sourceRequestPolicy,
+        properties,
+        remoteOriginalAccess);
   }
 
   /**

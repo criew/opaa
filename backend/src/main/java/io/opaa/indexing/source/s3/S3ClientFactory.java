@@ -1,5 +1,6 @@
 package io.opaa.indexing.source.s3;
 
+import io.opaa.knowledge.sourcesettings.S3Scope;
 import io.opaa.s3.S3AccessException;
 import io.opaa.s3.S3Connection;
 import io.opaa.security.TargetAddressValidator;

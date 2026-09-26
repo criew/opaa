@@ -1,6 +1,7 @@
 package io.opaa.indexing.source.s3;
 
-import io.opaa.library.KnowledgeLibrary;
+import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.sourcesettings.S3SourceSettings;
 import io.opaa.s3.S3Connection;
 import io.opaa.s3.S3Credentials;
 import io.opaa.sourceaccess.ProxyAndCredentials;

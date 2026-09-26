@@ -13,7 +13,7 @@ import io.opaa.auth.oidc.OidcProvider;
 import io.opaa.auth.oidc.OidcProviderRepository;
 import io.opaa.auth.oidc.ProviderGroupDirectory;
 import io.opaa.auth.oidc.ProviderGroupEffects;
-import io.opaa.library.KnowledgeLibrary;
+import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.permission.AssetGrant;

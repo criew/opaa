@@ -4,14 +4,14 @@ import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.indexing.document.DocumentIngestOutcomes;
 import io.opaa.indexing.document.DocumentIngestResult;
-import io.opaa.indexing.document.DocumentRepository;
-import io.opaa.indexing.document.SourceDocumentContext;
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.job.IndexingRunCost;
 import io.opaa.indexing.job.IndexingRunEventRecorder;
 import io.opaa.indexing.job.IndexingRunProgress;
-import io.opaa.library.KnowledgeLibrary;
-import io.opaa.library.LibraryStorageQuotaService;
+import io.opaa.knowledge.DocumentRepository;
+import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.LibraryStorageQuotaService;
+import io.opaa.knowledge.SourceDocumentContext;
 import io.opaa.sourceaccess.SourceRequestMeter;
 import java.util.Collections;
 import java.util.HashSet;
@@ -109,8 +109,8 @@ public final class IndexingRun {
 
   /**
    * Whether the document at {@code filePath} in this run's library already holds {@code
-   * remoteVersion} and is indexed - see {@link io.opaa.indexing.document.Document#isUnchangedAt}.
-   * Scoped to the library, so the same path in another library never matches.
+   * remoteVersion} and is indexed - see {@link io.opaa.knowledge.Document#isUnchangedAt}. Scoped to
+   * the library, so the same path in another library never matches.
    */
   public boolean isUnchanged(String filePath, String remoteVersion) {
     return documentRepository

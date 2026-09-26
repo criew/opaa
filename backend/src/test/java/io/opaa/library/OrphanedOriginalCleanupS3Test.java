@@ -5,7 +5,14 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.OrphanedOriginalSkipReason;
-import io.opaa.indexing.document.DocumentRepository;
+import io.opaa.knowledge.DocumentRepository;
+import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.knowledge.S3UploadedOriginalStore;
+import io.opaa.knowledge.UploadProperties;
+import io.opaa.knowledge.UploadS3Properties;
+import io.opaa.knowledge.UploadedOriginalRef;
+import io.opaa.knowledge.UploadedOriginalStore;
 import io.opaa.s3.S3TestFixture;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;

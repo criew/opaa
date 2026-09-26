@@ -89,13 +89,14 @@ final class GroupResponseMapper {
 
   static GroupResponse toResponse(GroupDetail detail) {
     Group group = detail.group();
-    List<GroupMemberResponse> members = toMemberResponses(detail.members());
+    List<GroupMemberResponse> members =
+        detail.members() == null ? null : toMemberResponses(detail.members());
     return new GroupResponse(
             group.getId(),
             group.getName(),
             group.getKind(),
             originOf(detail.provider()),
-            members.size(),
+            members == null ? group.getMemberships().size() : members.size(),
             members,
             group.isDissolved(),
             group.isSelectableAsSubject(),

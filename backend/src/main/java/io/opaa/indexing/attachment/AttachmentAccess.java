@@ -1,9 +1,9 @@
 package io.opaa.indexing.attachment;
 
-import io.opaa.indexing.document.SourceDocumentContext;
 import io.opaa.indexing.job.AttachmentProgressSink;
 import io.opaa.indexing.job.IndexingEventSink;
-import io.opaa.library.KnowledgeLibrary;
+import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.SourceDocumentContext;
 import io.opaa.sourceaccess.RateLimitListener;
 
 /**
@@ -14,8 +14,8 @@ import io.opaa.sourceaccess.RateLimitListener;
  * today. {@link #events()}/{@link #progress()} are declared against the narrow {@link
  * IndexingEventSink}/{@link AttachmentProgressSink} interfaces, not the full, job-bound {@code
  * IndexingRunEventRecorder}/{@code IndexingRunProgress} - a caller with no run/job of its own (a
- * single document upload, {@code io.opaa.library.LibraryDocumentService}) supplies a lightweight
- * implementation instead of standing up a job it does not have.
+ * single document upload, {@code LibraryDocumentService}) supplies a lightweight implementation
+ * instead of standing up a job it does not have.
  */
 public interface AttachmentAccess {
 

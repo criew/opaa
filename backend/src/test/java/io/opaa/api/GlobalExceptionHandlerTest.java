@@ -14,7 +14,7 @@ import com.openai.errors.OpenAIRetryableException;
 import com.openai.errors.RateLimitException;
 import com.openai.errors.UnauthorizedException;
 import io.opaa.api.dto.ErrorResponse;
-import io.opaa.library.UploadProperties;
+import io.opaa.knowledge.UploadProperties;
 import io.opaa.security.CredentialsEncryptionKeyMissingException;
 import java.sql.SQLException;
 import java.util.List;

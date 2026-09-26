@@ -1,7 +1,7 @@
 package io.opaa.indexing.source;
 
-import io.opaa.library.KnowledgeLibrary;
-import io.opaa.library.LibraryFolderService;
+import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.LibraryFolderService;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;

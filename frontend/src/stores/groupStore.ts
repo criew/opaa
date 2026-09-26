@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { GroupListResponse, GroupResponse } from '../types/api'
+import type { GroupListResponse, GroupMemberResponse, GroupResponse } from '../types/api'
 import {
   addGroupMember,
   appointGroupSteward,
@@ -9,6 +9,7 @@ import {
   getGroup,
   getGroups,
   getMyStewardedGroups,
+  listGroupMembers,
   removeGroupMember,
   appointGroupContact,
   dismissGroupContact,
@@ -28,12 +29,19 @@ export type GroupListSource = 'ADMIN' | 'STEWARDED'
 interface GroupState {
   groups: GroupListResponse[]
   groupDetails: Record<string, GroupResponse>
+  /**
+   * Mitgliederlisten, die ausdrücklich über {@link loadGroupMembers} abgerufen wurden. Kein
+   * anderer Weg füllt oder erneuert sie: Für die Systemverwaltung ist jeder Abruf ein
+   * Audit-Ereignis.
+   */
+  memberLists: Record<string, GroupMemberResponse[]>
   source: GroupListSource
   isLoading: boolean
   error: string | null
   reset: () => void
   loadGroups: (source?: GroupListSource) => Promise<void>
   loadGroupDetails: (groupId: string) => Promise<void>
+  loadGroupMembers: (groupId: string) => Promise<void>
   createNewGroup: (name: string, description: string) => Promise<void>
   renameGroup: (groupId: string, name: string, description: string) => Promise<void>
   deleteExistingGroup: (groupId: string) => Promise<void>
@@ -54,12 +62,20 @@ function sortGroups(list: GroupListResponse[]): GroupListResponse[] {
 export const useGroupStore = create<GroupState>((set, get) => ({
   groups: [],
   groupDetails: {},
+  memberLists: {},
   source: 'ADMIN',
   isLoading: false,
   error: null,
 
   reset: () =>
-    set({ groups: [], groupDetails: {}, source: 'ADMIN', isLoading: false, error: null }),
+    set({
+      groups: [],
+      groupDetails: {},
+      memberLists: {},
+      source: 'ADMIN',
+      isLoading: false,
+      error: null,
+    }),
 
   loadGroups: async (source) => {
     const nextSource = source ?? get().source
@@ -93,6 +109,20 @@ export const useGroupStore = create<GroupState>((set, get) => ({
     }
   },
 
+  loadGroupMembers: async (groupId: string) => {
+    const sessionEpoch = currentSessionEpoch()
+    try {
+      const members = await listGroupMembers(groupId)
+      if (isStaleSessionEpoch(sessionEpoch)) return
+      set({ memberLists: { ...get().memberLists, [groupId]: members } })
+    } catch (err) {
+      if (isStaleSessionEpoch(sessionEpoch)) return
+      const message =
+        err instanceof Error ? err.message : 'Mitgliederliste konnte nicht geladen werden'
+      set({ error: message })
+    }
+  },
+
   createNewGroup: async (name, description) => {
     await createGroup(name, description)
     await get().loadGroups()
@@ -112,17 +142,36 @@ export const useGroupStore = create<GroupState>((set, get) => ({
     if (isStaleSessionEpoch(sessionEpoch)) return
     const rest = { ...get().groupDetails }
     delete rest[groupId]
-    set({ groupDetails: rest })
+    const lists = { ...get().memberLists }
+    delete lists[groupId]
+    set({ groupDetails: rest, memberLists: lists })
     await get().loadGroups()
   },
 
+  // A loaded member list is carried forward from the answer rather than fetched again - a new
+  // retrieval would be a new audit event nobody asked for.
   addMember: async (groupId, userId) => {
-    await addGroupMember(groupId, userId)
+    const sessionEpoch = currentSessionEpoch()
+    const member = await addGroupMember(groupId, userId)
+    if (isStaleSessionEpoch(sessionEpoch)) return
+    const loaded = get().memberLists[groupId]
+    if (loaded) set({ memberLists: { ...get().memberLists, [groupId]: [...loaded, member] } })
     await Promise.all([get().loadGroups(), get().loadGroupDetails(groupId)])
   },
 
   removeMember: async (groupId, userId) => {
+    const sessionEpoch = currentSessionEpoch()
     await removeGroupMember(groupId, userId)
+    if (isStaleSessionEpoch(sessionEpoch)) return
+    const loaded = get().memberLists[groupId]
+    if (loaded) {
+      set({
+        memberLists: {
+          ...get().memberLists,
+          [groupId]: loaded.filter((member) => member.userId !== userId),
+        },
+      })
+    }
     await Promise.all([get().loadGroups(), get().loadGroupDetails(groupId)])
   },
 
@@ -166,3 +215,12 @@ export const useGroupStore = create<GroupState>((set, get) => ({
     await Promise.all([get().loadGroups(), get().loadGroupDetails(groupId)])
   },
 }))
+
+/**
+ * Die bekannten Mitglieder einer Gruppe: aus den Details, wo sie der Aufrufende ohne Weiteres sieht,
+ * sonst aus einer ausdrücklich abgerufenen Liste; `undefined`, solange keine vorliegt.
+ */
+export function selectGroupMembers(groupId: string) {
+  return (state: GroupState): GroupMemberResponse[] | undefined =>
+    state.groupDetails[groupId]?.members ?? state.memberLists[groupId]
+}

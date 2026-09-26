@@ -8,6 +8,8 @@ import io.opaa.asset.AssetVisibilityHistoryCause;
 import io.opaa.asset.AssetVisibilityHistoryService;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.KnowledgeLibraryRepository;
 import java.time.Instant;
 import java.time.InstantSource;
 import java.util.List;
