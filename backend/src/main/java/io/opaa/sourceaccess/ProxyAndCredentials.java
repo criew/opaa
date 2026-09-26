@@ -3,11 +3,9 @@ package io.opaa.sourceaccess;
 /**
  * Parses a source configuration's {@code sourceProxy} ({@code host:port}) and {@code
  * sourceCredentials} ({@code user:password}, Basic Auth) fields - the single implementation shared
- * by every caller that owns a source configuration ({@code
- * io.opaa.indexing.source.web.UrlIndexingExecutor}, {@code
- * io.opaa.indexing.source.rss.RssFeedIndexingExecutor}, {@code
- * io.opaa.library.SourceConnectionTestService}), instead of three separate copies of the same
- * parsing.
+ * by every caller that owns a source configuration ({@code UrlIndexingExecutor}, {@code
+ * RssFeedIndexingExecutor}, {@code SourceConnectionTestService}), instead of three separate copies
+ * of the same parsing.
  */
 public record ProxyAndCredentials(
     String proxyHost, int proxyPort, String username, String password) {

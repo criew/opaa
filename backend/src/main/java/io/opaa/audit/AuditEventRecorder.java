@@ -111,11 +111,11 @@ public class AuditEventRecorder {
   }
 
   /**
-   * Records an event with no acting person - a directory synchronisation run, which {@link
-   * io.opaa.permission.PermissionHistoryService}'s writers already treat the same way ("a sync run
-   * has no acting user"). {@link AuditEvent.Builder#actorRef} is a fixed, non-pseudonymised label
-   * identifying the process, not a per-run or per-organization value - there is no person behind it
-   * to protect. {@code event} must have been built with {@link AuditEvent.Builder#actorRef}; {@link
+   * Records an event with no acting person - a directory synchronisation run, which {@code
+   * PermissionHistoryService}'s writers already treat the same way ("a sync run has no acting
+   * user"). {@link AuditEvent.Builder#actorRef} is a fixed, non-pseudonymised label identifying the
+   * process, not a per-run or per-organization value - there is no person behind it to protect.
+   * {@code event} must have been built with {@link AuditEvent.Builder#actorRef}; {@link
    * AuditEvent.Builder#subject} is optional.
    */
   public void recordSystemProcessAction(AuditEvent event) {

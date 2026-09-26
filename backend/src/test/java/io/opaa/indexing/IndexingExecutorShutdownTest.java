@@ -2,7 +2,7 @@ package io.opaa.indexing;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.config.ShutdownLifecycleConfiguration;
+import io.opaa.common.ShutdownLifecycleConfiguration;
 import java.time.Duration;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;

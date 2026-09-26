@@ -9,9 +9,8 @@ import org.springframework.stereotype.Service;
  * Enforces the per-library storage quota (#119, Maintainer-Entscheidung: Standardkontingent je
  * Bibliothek, {@link LibraryProperties#quotaBytes}). Shared by every ingestion path that stores
  * document content - the upload endpoint ({@link LibraryDocumentService}) and the
- * FILESYSTEM/HTTP_DIRECTORY/RSS_FEED connector paths ({@code
- * io.opaa.indexing.document.DocumentIngestService}) - so a library cannot grow past its quota
- * through either route.
+ * FILESYSTEM/HTTP_DIRECTORY/RSS_FEED connector paths ({@code DocumentIngestService}) - so a library
+ * cannot grow past its quota through either route.
  *
  * <p><b>Datenschutz (#216, "kein personenbezogener Auswertungspfad"):</b> every method here is
  * scoped to a library, never to an individual user - {@link

@@ -5,7 +5,7 @@ import java.util.UUID;
 /**
  * What deleting an identity provider needs to know about its groups, without this package knowing
  * {@code io.opaa.group} - the port that keeps the dependency direction {@code group} &rarr; {@code
- * auth.oidc} a one-way street. Implemented by {@code io.opaa.group.ProviderGroupDirectoryAdapter}.
+ * auth.oidc} a one-way street. Implemented by {@code ProviderGroupDirectoryAdapter}.
  *
  * <p>{@code groups.provider_id} is {@code ON DELETE RESTRICT} (ADR-0036, Entscheidung 2): a
  * provider is only deletable once its groups are gone. Groups without effect go with it; a group

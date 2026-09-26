@@ -9,7 +9,7 @@ import java.time.Instant;
  * secret is stored" already follows from the presence of this record. {@code baseUrl} and {@code
  * realm} are the effective values - the override where one is stored, otherwise derived from the
  * provider's issuer URI. Domain counterpart of the generated {@code DirectoryConnectorResponse},
- * mapped by {@code io.opaa.api.DirectoryConnectorResponseMapper}.
+ * mapped by {@code DirectoryConnectorResponseMapper}.
  */
 public record DirectoryConnectorView(
     DirectoryConnectorType type,

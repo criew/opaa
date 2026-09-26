@@ -1,8 +1,6 @@
 package io.opaa.search;
 
 import io.opaa.auth.CurrentUser;
-import io.opaa.externalaccess.ExternalAccessMassRetrievalAlarm;
-import io.opaa.externalaccess.ExternalAccessQuota;
 import io.opaa.indexing.metadata.MetadataFilter;
 import io.opaa.indexing.metadata.MetadataFilterValidator;
 import io.opaa.library.KnowledgeLibraryRepository;
@@ -41,8 +39,8 @@ public class SearchService {
   private final MetadataFilterValidator metadataFilterValidator;
   private final SearchHitAssembler hitAssembler;
   private final SearchProperties properties;
-  private final ExternalAccessQuota quota;
-  private final ExternalAccessMassRetrievalAlarm alarm;
+  private final AccessTokenQuota quota;
+  private final MassRetrievalAlarm alarm;
   private final KnowledgeLibraryRepository libraries;
 
   public SearchService(
@@ -52,8 +50,8 @@ public class SearchService {
       MetadataFilterValidator metadataFilterValidator,
       SearchHitAssembler hitAssembler,
       SearchProperties properties,
-      ExternalAccessQuota quota,
-      ExternalAccessMassRetrievalAlarm alarm,
+      AccessTokenQuota quota,
+      MassRetrievalAlarm alarm,
       KnowledgeLibraryRepository libraries) {
     this.knowledgeRetrieval = knowledgeRetrieval;
     this.searchScopeSource = searchScopeSource;

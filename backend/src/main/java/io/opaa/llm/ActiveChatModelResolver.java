@@ -23,10 +23,10 @@ import org.springframework.transaction.event.TransactionalEventListener;
  * Resolves the {@link ChatClient} for the systemwide active {@link LlmModel} at runtime (#758,
  * docs/features/llm-integration.md#stufe-1-verwaltete-chat-modelle-in-umsetzung), replacing what
  * used to be a {@code ChatClient.Builder} built once at startup from the static Spring AI OpenAI
- * autoconfiguration. {@code io.opaa.query.answer.AnswerGenerationService} and {@code
- * io.opaa.chat.ChatTitleGenerationService} both call {@link #resolveChatClient()} on every request
- * instead of holding a {@code ChatClient} field built in their constructor - the only way an
- * activation via the admin API (#764) can take effect without a restart.
+ * autoconfiguration. {@code AnswerGenerationService} and {@code ChatTitleGenerationService} both
+ * call {@link #resolveChatClient()} on every request instead of holding a {@code ChatClient} field
+ * built in their constructor - the only way an activation via the admin API (#764) can take effect
+ * without a restart.
  *
  * <p><b>Built programmatically, not through Spring Boot's OpenAI autoconfiguration</b> - {@link
  * OpenAiChatModel#builder()} with an {@link OpenAiChatOptions} carrying the active model's own
@@ -144,9 +144,9 @@ public class ActiveChatModelResolver {
 
   /**
    * Basis-Adresse and Modell-Kennung of the systemwide active model, for {@code
-   * io.opaa.observability.ChatHealthIndicator} - reads {@code llm_models} directly rather than
-   * through {@link #cache}, so a health check never triggers building a full {@link ChatClient}
-   * (and never needs {@link SettingsEncryptor} to be configured) just to report these two values.
+   * ChatHealthIndicator} - reads {@code llm_models} directly rather than through {@link #cache}, so
+   * a health check never triggers building a full {@link ChatClient} (and never needs {@link
+   * SettingsEncryptor} to be configured) just to report these two values.
    *
    * @throws NoActiveChatModelException when {@code llm_models} has no active row
    */

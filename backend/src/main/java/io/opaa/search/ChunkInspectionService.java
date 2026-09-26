@@ -1,4 +1,4 @@
-package io.opaa.searchadmin;
+package io.opaa.search;
 
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.NotFoundException;
@@ -21,7 +21,7 @@ import tools.jackson.databind.ObjectMapper;
 /**
  * Reads stored chunks straight out of the pgvector table - text and metadata only, the embedding
  * column is never selected. Two callers: the administration page (#1230), which lists a whole
- * document at once, and the reading path {@code io.opaa.search} (#1720), which reads a bounded
+ * document at once, and the reading path {@link PassageFetchService} (#1720), which reads a bounded
  * window or one page at a time and never materializes a whole document.
  *
  * <p>The organization boundary is checked against the {@code documents} table, never against the

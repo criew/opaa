@@ -11,8 +11,8 @@
  * four access paths the specification allows
  * (docs/features/security-and-compliance.md#zugriffswege-was-es-gibt-und-was-es-nicht-gibt) plus
  * the one personenbezogene exception ({@link io.opaa.audit.AuditIncidentScopeService}, the
- * anlassbezogene Klärung under the Vier-Augen-Prinzip). {@code io.opaa.api.AuditController} exposes
- * it, restricted to {@code SystemRole.AUDITOR}.
+ * anlassbezogene Klärung under the Vier-Augen-Prinzip). {@code AuditController} exposes it,
+ * restricted to {@code SystemRole.AUDITOR}.
  *
  * <p>Retention and automatic deletion sit on top of that: {@link
  * io.opaa.audit.AuditRetentionSettingsService} reads and changes the single, system-wide retention

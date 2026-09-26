@@ -9,9 +9,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * administrative decision and live in {@code mail_settings}, while "how long may a stalled peer
  * hold a request thread" is a property of the deployment.
  *
- * <p>Named {@code SmtpProperties} rather than {@code MailProperties} because {@code
- * io.opaa.indexing.format.file.mail.MailProperties} already exists for reading {@code .eml}
- * documents - two unrelated concerns that must stay distinguishable at the import line.
+ * <p>Named {@code SmtpProperties} rather than {@code MailProperties} because the indexing package
+ * already has a {@code MailProperties} for reading {@code .eml} documents - two unrelated concerns
+ * that must stay distinguishable at the import line.
  *
  * @param connectTimeout how long establishing the TCP/TLS connection may take
  * @param readTimeout how long the server may take to answer a command

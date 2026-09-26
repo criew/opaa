@@ -50,8 +50,8 @@ import tools.jackson.databind.ObjectMapper;
  * io.opaa.api.dto} type. {@code ChatController} converts to/from the generated request/response
  * DTOs via {@code ChatResponseMapper} in {@code io.opaa.api}, mirroring the convention {@code
  * SpaceService} established (AGENTS.md, "API &amp; DTO-Konvention"). This also keeps this class
- * usable by {@link io.opaa.query.QueryService}, which needs the {@link Chat} entity itself and the
- * {@link ChatSource}/{@link ChatSourceLocation} domain shapes, never a response DTO.
+ * usable by {@code QueryService}, which needs the {@link Chat} entity itself and the {@link
+ * ChatSource}/{@link ChatSourceLocation} domain shapes, never a response DTO.
  *
  * <p><b>{@link #getChat}/{@link #updateChat}/{@link #deleteChat} deliberately stay author-exclusive
  * even without space membership</b> (#525 review, finding 4) - a chat's private content belongs to

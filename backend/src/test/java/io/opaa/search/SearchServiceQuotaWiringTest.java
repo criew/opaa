@@ -11,8 +11,6 @@ import static org.mockito.Mockito.when;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.TooManyRequestsException;
-import io.opaa.externalaccess.ExternalAccessMassRetrievalAlarm;
-import io.opaa.externalaccess.ExternalAccessQuota;
 import io.opaa.indexing.metadata.MetadataFilter;
 import io.opaa.indexing.metadata.MetadataFilterValidator;
 import io.opaa.library.KnowledgeLibraryRepository;
@@ -39,16 +37,16 @@ class SearchServiceQuotaWiringTest {
 
   private KnowledgeRetrieval retrieval;
   private SearchScopeSource scopeSource;
-  private ExternalAccessQuota quota;
-  private ExternalAccessMassRetrievalAlarm alarm;
+  private AccessTokenQuota quota;
+  private MassRetrievalAlarm alarm;
   private SearchService service;
 
   @BeforeEach
   void setUp() {
     retrieval = mock(KnowledgeRetrieval.class);
     scopeSource = mock(SearchScopeSource.class);
-    quota = mock(ExternalAccessQuota.class);
-    alarm = mock(ExternalAccessMassRetrievalAlarm.class);
+    quota = mock(AccessTokenQuota.class);
+    alarm = mock(MassRetrievalAlarm.class);
     KnowledgeLibraryRepository libraries = mock(KnowledgeLibraryRepository.class);
     when(libraries.findAllById(any())).thenReturn(List.of());
     when(retrieval.retrieve(any(), any(), any(), any(), any()))

@@ -1,4 +1,4 @@
-package io.opaa.config;
+package io.opaa.common;
 
 import java.time.Duration;
 import org.springframework.boot.autoconfigure.context.LifecycleProperties;

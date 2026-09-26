@@ -11,8 +11,7 @@
  * uploaded image from becoming an execution vector - see its Javadoc for why SVG is rejected
  * outright rather than sanitised.
  *
- * <p>{@code io.opaa.api.BrandingController} exposes the read path to every signed-in user; {@code
- * io.opaa.api.SystemBrandingController} exposes the write path to {@code SystemRole.SYSTEM_ADMIN}
- * alone.
+ * <p>{@code BrandingController} exposes the read path to every signed-in user; {@code
+ * SystemBrandingController} exposes the write path to {@code SystemRole.SYSTEM_ADMIN} alone.
  */
 package io.opaa.branding;

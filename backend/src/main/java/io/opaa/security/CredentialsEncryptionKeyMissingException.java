@@ -7,9 +7,9 @@ package io.opaa.security;
  * configured, or with a value that is not a valid Base64-encoded AES-256 key.
  *
  * <p>Deliberately a distinct, unchecked exception rather than {@link IllegalStateException} (#483):
- * {@code io.opaa.api.GlobalExceptionHandler} maps it to a clear {@code 503} instead of letting it
- * fall through to the generic {@code 500} handler, which would give an operator no indication of
- * what to fix. Never carries the submitted plaintext credentials in its message.
+ * {@code GlobalExceptionHandler} maps it to a clear {@code 503} instead of letting it fall through
+ * to the generic {@code 500} handler, which would give an operator no indication of what to fix.
+ * Never carries the submitted plaintext credentials in its message.
  */
 public class CredentialsEncryptionKeyMissingException extends RuntimeException {
 

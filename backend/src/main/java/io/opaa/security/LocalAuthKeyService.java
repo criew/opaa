@@ -17,9 +17,8 @@ import javax.crypto.spec.SecretKeySpec;
  * the refresh-token lookup, the action-token lookup and the external-access token lookup never
  * share a key - and a rotation of the one secret changes all four at once, ending every local
  * session, every open link and every personal access token. Constructed by {@code
- * io.opaa.auth.local.LocalAuthConfiguration}; without a secret (only possible in the {@code dev}
- * profile, where the startup guard is inert) every derivation fails with the same message the guard
- * would have given.
+ * LocalAuthConfiguration}; without a secret (only possible in the {@code dev} profile, where the
+ * startup guard is inert) every derivation fails with the same message the guard would have given.
  */
 public final class LocalAuthKeyService {
 

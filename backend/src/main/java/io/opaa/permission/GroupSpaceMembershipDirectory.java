@@ -10,7 +10,7 @@ import java.util.UUID;
  * io.opaa.auth.oidc} refuse a deletion with a countable reason, and {@link
  * PermissionTransferService} move those memberships, without any of them knowing {@code
  * io.opaa.space} (ADR-0036, Entscheidung 12). Implemented by {@code
- * io.opaa.space.GroupSpaceMembershipDirectoryAdapter}.
+ * GroupSpaceMembershipDirectoryAdapter}.
  *
  * <p>{@code space_memberships.group_id} is {@code ON DELETE RESTRICT} (changelog 043), so without
  * this port a group that is a space member would take its own deletion - and the deletion of its

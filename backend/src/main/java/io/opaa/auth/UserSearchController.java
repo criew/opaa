@@ -23,8 +23,8 @@ import org.springframework.web.bind.annotation.RestController;
  * <p>Returns {@link UserSummaryResponse} (id/email/displayName only, no {@code systemRole}) -
  * deliberately narrower than {@link io.opaa.api.dto.UserInfoResponse}, the admin list's response
  * type: this endpoint's audience is every authenticated organization member, not just SYSTEM_ADMIN,
- * so it exposes less, the same reasoning {@code io.opaa.asset.AssetOwnerNames} applies to an
- * organization-wide library-owner list.
+ * so it exposes less, the same reasoning {@code AssetOwnerNames} applies to an organization-wide
+ * library-owner list.
  */
 @RestController
 @RequestMapping("/api/v1/users")

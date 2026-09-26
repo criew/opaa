@@ -24,9 +24,9 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p><b>All three ways of the readable-asset formula are here</b> since #1931 (ADR-0037): the
  * organization-wide reach is a grant to {@code ALL_ACCOUNTS} and is historised in the same table as
- * the other two. {@code io.opaa.asset.AssetVisibilityHistoryService} still records findability and
- * the release for Fremdzugaenge, and shares the one {@link PermissionHistoryClock} with this class,
- * so the interval contract below holds across both tables.
+ * the other two. {@code AssetVisibilityHistoryService} still records findability and the release
+ * for Fremdzugaenge, and shares the one {@link PermissionHistoryClock} with this class, so the
+ * interval contract below holds across both tables.
  *
  * <p><b>Interval contract</b> (#1497, ADR-0032), holding for every row written from that change on
  * - rows written before it can still carry the empty intervals it prevents, and are not repaired:

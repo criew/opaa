@@ -6,6 +6,7 @@ import io.opaa.api.types.SystemRole;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.notification.NotificationService;
+import io.opaa.search.MassRetrievalAlarm;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -43,7 +44,7 @@ import org.springframework.stereotype.Component;
  * technical application log holds it for the incident itself.
  */
 @Component
-public class ExternalAccessMassRetrievalAlarm {
+public class ExternalAccessMassRetrievalAlarm implements MassRetrievalAlarm {
 
   private static final Logger log = LoggerFactory.getLogger(ExternalAccessMassRetrievalAlarm.class);
 
@@ -80,6 +81,7 @@ public class ExternalAccessMassRetrievalAlarm {
    * REST endpoint and counts for nothing: the alert watches the external-access channel, not the
    * web interface, and a person's work is not what it is meant to notice.
    */
+  @Override
   public void record(UUID organizationId, UUID accessTokenId) {
     if (accessTokenId == null) {
       return;

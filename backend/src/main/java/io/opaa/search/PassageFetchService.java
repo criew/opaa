@@ -2,13 +2,9 @@ package io.opaa.search;
 
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.NotFoundException;
-import io.opaa.externalaccess.ExternalAccessMassRetrievalAlarm;
-import io.opaa.externalaccess.ExternalAccessQuota;
 import io.opaa.indexing.chunk.ChunkingService;
 import io.opaa.indexing.document.Document;
 import io.opaa.indexing.document.DocumentRepository;
-import io.opaa.searchadmin.ChunkInspection;
-import io.opaa.searchadmin.ChunkInspectionService;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -51,8 +47,8 @@ public class PassageFetchService {
   private final SearchScopeSource searchScopeSource;
   private final SearchHitAssembler hitAssembler;
   private final SearchProperties properties;
-  private final ExternalAccessQuota quota;
-  private final ExternalAccessMassRetrievalAlarm alarm;
+  private final AccessTokenQuota quota;
+  private final MassRetrievalAlarm alarm;
 
   public PassageFetchService(
       ChunkInspectionService chunks,
@@ -60,8 +56,8 @@ public class PassageFetchService {
       SearchScopeSource searchScopeSource,
       SearchHitAssembler hitAssembler,
       SearchProperties properties,
-      ExternalAccessQuota quota,
-      ExternalAccessMassRetrievalAlarm alarm) {
+      AccessTokenQuota quota,
+      MassRetrievalAlarm alarm) {
     this.chunks = chunks;
     this.documents = documents;
     this.searchScopeSource = searchScopeSource;
