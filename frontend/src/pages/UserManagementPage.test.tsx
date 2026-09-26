@@ -174,7 +174,7 @@ describe('UserManagementPage', () => {
     // No activity timestamp, no sort by activity and no export (ADR-0033, Entscheidung 11).
     expect(within(table).queryByRole('button', { name: /Aktivität/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /export/i })).not.toBeInTheDocument()
-    expect(screen.getByText('Einen Export dieser Liste gibt es nicht.')).toBeInTheDocument()
+    expect(screen.queryByText(/Export dieser Liste/)).not.toBeInTheDocument()
   })
 
   it('filters by origin and passes the provider type to the API', async () => {

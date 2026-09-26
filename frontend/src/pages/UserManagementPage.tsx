@@ -4,7 +4,6 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
-import Typography from '@mui/material/Typography'
 import AddIcon from '@mui/icons-material/Add'
 import BadgeOutlinedIcon from '@mui/icons-material/BadgeOutlined'
 import type { AccountResponse, LocalUserResponse } from '../types/api'
@@ -49,7 +48,6 @@ const FALLBACK_EXPIRY_DAYS = 365
  * Seitengröße höchstens 50.
  */
 function AccountsSection({ currentUserId }: { currentUserId: string | null }) {
-  const accounts = useUserAdminStore((s) => s.accounts)
   const error = useUserAdminStore((s) => s.error)
   const summary = useUserAdminStore((s) => s.summary)
   const settings = useUserAdminStore((s) => s.settings)
@@ -199,11 +197,6 @@ function AccountsSection({ currentUserId }: { currentUserId: string | null }) {
         account={roleChange}
         onClose={() => setRoleChange(null)}
       />
-      {accounts.length > 0 && (
-        <Typography sx={{ fontSize: 11.5, color: 'text.secondary', mt: 2 }}>
-          Einen Export dieser Liste gibt es nicht.
-        </Typography>
-      )}
     </>
   )
 }
