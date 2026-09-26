@@ -1,12 +1,11 @@
-package io.opaa.api;
+package io.opaa.ratelimit;
 
 import io.micrometer.core.instrument.MeterRegistry;
-import io.opaa.api.RateLimitFilter.Rule;
-import io.opaa.api.RateLimitProperties.EndpointLimit;
-import io.opaa.api.RateLimitProperties.LocalAuthLimit;
-import io.opaa.api.RateLimitProperties.LocalAuthLimits;
-import io.opaa.auth.local.LocalSelfServiceAvailability;
 import io.opaa.observability.RateLimitMetrics;
+import io.opaa.ratelimit.RateLimitFilter.Rule;
+import io.opaa.ratelimit.RateLimitProperties.EndpointLimit;
+import io.opaa.ratelimit.RateLimitProperties.LocalAuthLimit;
+import io.opaa.ratelimit.RateLimitProperties.LocalAuthLimits;
 import io.opaa.security.TrustedProxyClientIpResolver;
 import java.util.ArrayList;
 import java.util.List;
@@ -27,10 +26,8 @@ import tools.jackson.databind.json.JsonMapper;
  * local system administrators (ADR-0033, Entscheidung 9); only the filter itself honours {@code
  * opaa.rate-limit.enabled}.
  *
- * <p>The two switchable self-service rules ask the auth side whether their endpoint is served at
- * all (#1592, {@link LocalSelfServiceAvailability}) - the one place where the rate-limit wiring
- * looks that way round. Moving the two rules into {@code io.opaa.auth.local} instead would split a
- * list ADR-0033 Entscheidung 9 documents as one, without removing the knowledge.
+ * <p>The two switchable self-service rules ask {@link SelfServiceEndpointAvailability} whether
+ * their endpoint is served at all; the auth side supplies the answer through that interface.
  */
 @Configuration
 @EnableConfigurationProperties(RateLimitProperties.class)
@@ -75,12 +72,12 @@ public class RateLimitConfiguration {
       name = "opaa.rate-limit.enabled",
       havingValue = "true",
       matchIfMissing = true)
-  FilterRegistrationBean<RateLimitFilter> rateLimitFilterRegistration(
+  public FilterRegistrationBean<RateLimitFilter> rateLimitFilterRegistration(
       RateLimitProperties properties,
       TrustedProxyClientIpResolver clientIpResolver,
       RateLimitMetrics metrics,
       JsonMapper jsonMapper,
-      ObjectProvider<LocalSelfServiceAvailability> selfServiceFlows) {
+      ObjectProvider<SelfServiceEndpointAvailability> selfServiceFlows) {
     // #478: the per-library indexing trigger (POST /api/v1/libraries/{libraryId}/indexing) carries
     // a variable path segment, so its rule is a regex rather than a plain prefix - see
     // RateLimitFilter.Rule's Javadoc. The trailing $ deliberately excludes the sibling status
@@ -126,13 +123,14 @@ public class RateLimitConfiguration {
             "local-auth-register",
             LOCAL_REGISTER_PATTERN,
             localAuth.register(),
-            served(selfServiceFlows, LocalSelfServiceAvailability::isSelfRegistrationAvailable)));
+            served(
+                selfServiceFlows, SelfServiceEndpointAvailability::isSelfRegistrationAvailable)));
     rules.add(
         rule(
             "local-auth-forgot-password",
             LOCAL_FORGOT_PASSWORD_PATTERN,
             localAuth.forgotPassword(),
-            served(selfServiceFlows, LocalSelfServiceAvailability::isPasswordResetAvailable)));
+            served(selfServiceFlows, SelfServiceEndpointAvailability::isPasswordResetAvailable)));
     rules.add(rule("local-auth-set-password", LOCAL_SET_PASSWORD_PATTERN, localAuth.setPassword()));
     rules.add(rule("local-auth-verify-email", LOCAL_VERIFY_EMAIL_PATTERN, localAuth.verifyEmail()));
     rules.add(rule("local-auth-handover", LOCAL_HANDOVER_PATTERN, localAuth.handover()));
@@ -175,8 +173,8 @@ public class RateLimitConfiguration {
    * without the bean is known today; the fallback is there to fail closed rather than to serve one.
    */
   private static BooleanSupplier served(
-      ObjectProvider<LocalSelfServiceAvailability> flows,
-      Predicate<LocalSelfServiceAvailability> flow) {
-    return () -> flow.test(flows.getIfAvailable(() -> LocalSelfServiceAvailability.NONE));
+      ObjectProvider<SelfServiceEndpointAvailability> flows,
+      Predicate<SelfServiceEndpointAvailability> flow) {
+    return () -> flow.test(flows.getIfAvailable(() -> SelfServiceEndpointAvailability.NONE));
   }
 }

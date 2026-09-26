@@ -1,4 +1,4 @@
-package io.opaa.api;
+package io.opaa.ratelimit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -6,9 +6,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import io.opaa.api.RateLimitProperties.EndpointLimit;
-import io.opaa.auth.local.LocalSelfServiceAvailability;
 import io.opaa.observability.RateLimitMetrics;
+import io.opaa.ratelimit.RateLimitProperties.EndpointLimit;
 import io.opaa.security.TrustedProxyClientIpResolver;
 import jakarta.servlet.Filter;
 import java.util.List;
@@ -103,9 +102,9 @@ class RateLimitConfigurationTest {
   }
 
   @SuppressWarnings("unchecked")
-  private ObjectProvider<LocalSelfServiceAvailability> availability() {
-    LocalSelfServiceAvailability flows =
-        new LocalSelfServiceAvailability() {
+  private ObjectProvider<SelfServiceEndpointAvailability> availability() {
+    SelfServiceEndpointAvailability flows =
+        new SelfServiceEndpointAvailability() {
 
           @Override
           public boolean isPasswordResetAvailable() {
@@ -117,7 +116,7 @@ class RateLimitConfigurationTest {
             return selfRegistration;
           }
         };
-    ObjectProvider<LocalSelfServiceAvailability> provider = mock(ObjectProvider.class);
+    ObjectProvider<SelfServiceEndpointAvailability> provider = mock(ObjectProvider.class);
     when(provider.getIfAvailable(any())).thenReturn(flows);
     return provider;
   }

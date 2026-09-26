@@ -1,8 +1,8 @@
-package io.opaa.api;
+package io.opaa.ratelimit;
 
-import io.opaa.api.RateLimitService.Decision;
 import io.opaa.common.TooManyRequestsException;
 import io.opaa.observability.RateLimitMetrics;
+import io.opaa.ratelimit.RateLimitService.Decision;
 import io.opaa.security.ClientIpResolver;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;

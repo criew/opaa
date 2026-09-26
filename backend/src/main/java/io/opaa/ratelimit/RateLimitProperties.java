@@ -1,4 +1,4 @@
-package io.opaa.api;
+package io.opaa.ratelimit;
 
 import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -136,8 +136,8 @@ public record RateLimitProperties(
    * {@code register}, {@code forgotPassword}, {@code setPassword} and {@code verifyEmail} are keyed
    * by client address in {@code RateLimitFilter}; {@code changePassword} by the authenticated
    * account and {@code register}/{@code forgotPassword} additionally by the address they name, both
-   * in {@code io.opaa.auth.local.LocalAuthRateLimiter}. {@code handover} (#1563) covers the preview
-   * and the redemption of a handover code together.
+   * in {@code LocalAuthRateLimiter}. {@code handover} (#1563) covers the preview and the redemption
+   * of a handover code together.
    */
   public record LocalAuthLimits(
       LocalAuthLimit login,

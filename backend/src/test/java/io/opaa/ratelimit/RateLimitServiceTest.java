@@ -1,8 +1,8 @@
-package io.opaa.api;
+package io.opaa.ratelimit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.api.RateLimitService.Decision;
+import io.opaa.ratelimit.RateLimitService.Decision;
 import org.junit.jupiter.api.Test;
 
 class RateLimitServiceTest {
