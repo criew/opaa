@@ -3,8 +3,10 @@ package io.opaa.api;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -13,11 +15,19 @@ import io.opaa.auth.OidcSecurityConfig;
 import io.opaa.auth.S3EventSecurityConfig;
 import io.opaa.auth.UserService;
 import io.opaa.common.UnauthorizedException;
+import io.opaa.indexing.source.PushIntake;
+import io.opaa.indexing.source.SourceConnectorRegistry;
+import io.opaa.indexing.source.SourceSyncStateRepository;
+import io.opaa.indexing.source.s3.S3ClientFactory;
+import io.opaa.indexing.source.s3.S3ConnectionService;
+import io.opaa.indexing.source.s3.S3OriginalAccess;
+import io.opaa.indexing.source.s3.S3SourceConnector;
 import io.opaa.indexing.source.s3.events.S3EventService;
 import jakarta.servlet.http.HttpServletRequest;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -64,6 +74,21 @@ class S3EventPublicAccessTest {
 
   @Autowired private MockMvc mockMvc;
   @MockitoBean private S3EventService eventService;
+  @MockitoBean private SourceConnectorRegistry connectors;
+
+  /** The real connector in front of the mocked service, so its header mapping is covered. */
+  @BeforeEach
+  void wireTheConnector() {
+    when(connectors.pushIntakeHandler(PushIntake.EVENT_TOKEN))
+        .thenReturn(
+            new S3SourceConnector(
+                mock(S3ConnectionService.class),
+                mock(S3ClientFactory.class),
+                mock(SourceSyncStateRepository.class),
+                mock(S3OriginalAccess.class),
+                eventService));
+  }
+
   @MockitoBean private UserService userService;
 
   @MockitoBean

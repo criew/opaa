@@ -9,13 +9,19 @@ import io.opaa.common.ValidationException;
 import io.opaa.indexing.FilesystemPathAllowlist;
 import io.opaa.indexing.document.DocumentService;
 import io.opaa.indexing.format.SupportedDocumentFormats;
+import io.opaa.indexing.source.OriginalAccess;
 import io.opaa.indexing.source.SourceConnectionTestResult;
 import io.opaa.indexing.source.SourceConnector;
 import io.opaa.indexing.source.SourceConnectorDescriptor;
 import io.opaa.indexing.source.SourceSettings;
+import io.opaa.knowledge.Document;
+import io.opaa.knowledge.DocumentContent;
+import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.ServedContentTypes;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,8 +30,12 @@ import org.slf4j.LoggerFactory;
  * security boundary against path enumeration (#484, ADR-0018 Entscheidung 6): an empty allowlist
  * disables the type, and both saving and testing check a path against it before anything on disk is
  * touched. A test reports no more than a count - never a file name or listing.
+ *
+ * <p>An original is served only when its path resolves - symlinks included - underneath the
+ * library's own {@code sourcePath}, and only while that path is still inside the allowlist: an
+ * allowlist narrowed or emptied after indexing must not leave the files readable here.
  */
-public class FilesystemSourceConnector implements SourceConnector {
+public class FilesystemSourceConnector implements SourceConnector, OriginalAccess {
 
   private static final Logger log = LoggerFactory.getLogger(FilesystemSourceConnector.class);
 
@@ -60,6 +70,46 @@ public class FilesystemSourceConnector implements SourceConnector {
   @Override
   public SourceConnectorDescriptor descriptor() {
     return DESCRIPTOR;
+  }
+
+  @Override
+  public Optional<DocumentContent> openOriginal(Document document, KnowledgeLibrary library) {
+    Path file = fileWithinConfiguredDirectory(document, library);
+    if (file == null || !Files.isRegularFile(file)) {
+      return Optional.empty();
+    }
+    return Optional.of(
+        new DocumentContent(
+            file,
+            document.getFileName(),
+            ServedContentTypes.forFile(document.getContentType(), file)));
+  }
+
+  /**
+   * {@code document}'s file, resolved with {@link Path#toRealPath}, when it lies underneath the
+   * library's resolved {@code sourcePath}; {@code null} otherwise, also for a file that is gone.
+   */
+  private Path fileWithinConfiguredDirectory(Document document, KnowledgeLibrary library) {
+    if (document.getFilePath() == null || library.getSourcePath() == null) {
+      return null;
+    }
+    if (!allowlist.isAllowed(library.getSourcePath())) {
+      return null;
+    }
+    Path candidate = resolveReal(Path.of(document.getFilePath()));
+    Path configuredDirectory = resolveReal(Path.of(library.getSourcePath()));
+    if (candidate == null || configuredDirectory == null) {
+      return null;
+    }
+    return candidate.startsWith(configuredDirectory) ? candidate : null;
+  }
+
+  private static Path resolveReal(Path path) {
+    try {
+      return path.toRealPath();
+    } catch (IOException e) {
+      return null;
+    }
   }
 
   @Override

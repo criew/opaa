@@ -7,6 +7,7 @@ import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -14,7 +15,8 @@ import java.util.Set;
  * reaches a connector. Built from the connector beans; startup fails unless every {@link
  * DocumentSourceType} has exactly one connector whose {@link SourceConnectorDescriptor#indexingRun}
  * agrees with {@link DocumentSourceType#hasIndexingRun}, every {@link SourceSettingField} has one
- * owner, and no push intake or browse kind is offered twice.
+ * owner, no push intake or browse kind is offered twice, and a connector names a push intake
+ * exactly when it is a {@link PushIntakeHandler}.
  */
 public class SourceConnectorRegistry {
 
@@ -22,8 +24,7 @@ public class SourceConnectorRegistry {
       new EnumMap<>(DocumentSourceType.class);
   private final Map<SourceSettingField, DocumentSourceType> fieldOwners =
       new EnumMap<>(SourceSettingField.class);
-  private final Map<PushIntake, DocumentSourceType> pushIntakeOwners =
-      new EnumMap<>(PushIntake.class);
+  private final Map<PushIntake, SourceConnector> pushIntakeOwners = new EnumMap<>(PushIntake.class);
   private final Map<SourceBrowser.Kind, SourceConnector> browsers =
       new EnumMap<>(SourceBrowser.Kind.class);
 
@@ -39,9 +40,13 @@ public class SourceConnectorRegistry {
       for (SourceSettingField field : descriptor.settingFields()) {
         requireUnique(fieldOwners.put(field, type), "setting field " + field);
       }
+      if ((descriptor.pushIntake() != null) != (connector instanceof PushIntakeHandler)) {
+        throw new IllegalStateException(
+            "SourceConnector for " + type + " must name a push intake exactly when it handles one");
+      }
       if (descriptor.pushIntake() != null) {
         requireUnique(
-            pushIntakeOwners.put(descriptor.pushIntake(), type),
+            pushIntakeOwners.put(descriptor.pushIntake(), connector),
             "push intake " + descriptor.pushIntake());
       }
       if (connector instanceof SourceBrowser browser) {
@@ -129,11 +134,31 @@ public class SourceConnectorRegistry {
    * @throws IllegalStateException when no connector offers it
    */
   public DocumentSourceType ownerOf(PushIntake intake) {
-    DocumentSourceType owner = pushIntakeOwners.get(intake);
+    return pushIntakeOwner(intake).descriptor().type();
+  }
+
+  /**
+   * The handler behind {@code intake}.
+   *
+   * @throws IllegalStateException when no connector offers it
+   */
+  public PushIntakeHandler pushIntakeHandler(PushIntake intake) {
+    return (PushIntakeHandler) pushIntakeOwner(intake);
+  }
+
+  private SourceConnector pushIntakeOwner(PushIntake intake) {
+    SourceConnector owner = pushIntakeOwners.get(intake);
     if (owner == null) {
       throw new IllegalStateException("No SourceConnector offers push intake " + intake);
     }
     return owner;
+  }
+
+  /** How originals of {@code type} are served; empty for a type without an original to serve. */
+  public Optional<OriginalAccess> originalAccess(DocumentSourceType type) {
+    return connector(type) instanceof OriginalAccess access
+        ? Optional.of(access)
+        : Optional.empty();
   }
 
   /**

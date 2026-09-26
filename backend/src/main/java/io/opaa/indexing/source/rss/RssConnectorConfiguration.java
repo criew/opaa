@@ -4,6 +4,7 @@ import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.attachment.AttachmentIndexer;
 import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.source.IndexingRunTemplate;
+import io.opaa.indexing.source.RemoteOriginalAccess;
 import io.opaa.indexing.source.SourceIndexingExecutor;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.security.TargetAddressValidator;
@@ -26,13 +27,15 @@ public class RssConnectorConfiguration {
       RssFeedStateRepository rssFeedStateRepository,
       TargetAddressValidator targetAddressValidator,
       SourceRequestPolicy sourceRequestPolicy,
-      IndexingProperties properties) {
+      IndexingProperties properties,
+      RemoteOriginalAccess remoteOriginalAccess) {
     return new RssFeedSourceConnector(
         rssFeedParser,
         rssFeedStateRepository,
         targetAddressValidator,
         sourceRequestPolicy,
-        properties);
+        properties,
+        remoteOriginalAccess);
   }
 
   /**

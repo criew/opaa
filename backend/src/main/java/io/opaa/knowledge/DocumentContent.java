@@ -16,9 +16,8 @@ import java.nio.file.Path;
  * org.springframework.core.io.FileSystemResource} - unowned by this request, left untouched once
  * served. {@code stream} is served via {@link org.springframework.core.io.InputStreamResource} and
  * is either the still-open body of a {@code HTTP_DIRECTORY}/{@code RSS_FEED} document proxied live
- * from its remote source (#747/#748, {@code LibraryDocumentService#loadRemoteContent}) or the
- * re-extracted bytes of an attachment (ADR-0022/#1239, {@code
- * LibraryDocumentService#loadAttachmentContent}).
+ * from its remote source (#747/#748, {@code RemoteOriginalAccess#openOriginal}) or the re-extracted
+ * bytes of an attachment (ADR-0022/#1239, {@code LibraryDocumentService#loadAttachmentContent}).
  *
  * <p><b>The caller closes {@code stream}, and closing it is what releases everything behind it</b>
  * - the remote connection for a proxied body, and the temp files an attachment's re-extraction

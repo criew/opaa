@@ -5,6 +5,7 @@ import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.SourceSyncStateRepository;
+import io.opaa.indexing.source.confluence.webhook.ConfluenceWebhookService;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.SourceRequestPolicy;
@@ -38,9 +39,13 @@ public class ConfluenceConnectorConfiguration {
   ConfluenceSourceConnector confluenceSourceConnector(
       ConfluenceConnectionService confluenceConnectionService,
       ConfluenceProperties confluenceProperties,
-      SourceSyncStateRepository sourceSyncStateRepository) {
+      SourceSyncStateRepository sourceSyncStateRepository,
+      ConfluenceWebhookService confluenceWebhookService) {
     return new ConfluenceSourceConnector(
-        confluenceConnectionService, confluenceProperties, sourceSyncStateRepository);
+        confluenceConnectionService,
+        confluenceProperties,
+        sourceSyncStateRepository,
+        confluenceWebhookService);
   }
 
   /**

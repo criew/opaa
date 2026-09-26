@@ -9,7 +9,8 @@ import java.util.Set;
  * the administration only through the {@link SourceConnectorRegistry}. The connector owns the
  * validation of its configuration, the connection test and the state its settings imply; the
  * administration owns permissions, persistence and the audit. Optional abilities are further
- * interfaces the same bean implements ({@link SourceBrowser}).
+ * interfaces the same bean implements ({@link SourceBrowser}, {@link OriginalAccess}, {@link
+ * PushIntakeHandler}).
  *
  * <p>Every method that refuses input throws {@link io.opaa.common.ValidationException} with a
  * German, user-facing message. {@link #validate} and {@link #validateChange} are reached through

@@ -1,5 +1,6 @@
 package io.opaa.indexing.source.upload;
 
+import io.opaa.knowledge.UploadedOriginalStore;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -8,7 +9,7 @@ import org.springframework.context.annotation.Configuration;
 public class UploadConnectorConfiguration {
 
   @Bean
-  UploadSourceConnector uploadSourceConnector() {
-    return new UploadSourceConnector();
+  UploadSourceConnector uploadSourceConnector(UploadedOriginalStore uploadedOriginalStore) {
+    return new UploadSourceConnector(uploadedOriginalStore);
   }
 }

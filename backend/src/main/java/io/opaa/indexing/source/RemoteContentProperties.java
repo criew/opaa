@@ -1,4 +1,4 @@
-package io.opaa.library;
+package io.opaa.indexing.source;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
