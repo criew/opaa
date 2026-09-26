@@ -4,6 +4,7 @@ import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.format.SupportedDocumentFormats;
 import io.opaa.indexing.source.IndexingRunTemplate;
+import io.opaa.indexing.source.RemoteOriginalAccess;
 import io.opaa.indexing.source.SourceIndexingExecutor;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.LibraryFolderService;
@@ -34,13 +35,15 @@ public class WebConnectorConfiguration {
       TargetAddressValidator targetAddressValidator,
       SourceRequestPolicy sourceRequestPolicy,
       SupportedDocumentFormats supportedDocumentFormats,
-      IndexingProperties indexingProperties) {
+      IndexingProperties indexingProperties,
+      RemoteOriginalAccess remoteOriginalAccess) {
     return new HttpDirectorySourceConnector(
         autoindexCrawlerService,
         targetAddressValidator,
         sourceRequestPolicy,
         supportedDocumentFormats,
-        indexingProperties);
+        indexingProperties,
+        remoteOriginalAccess);
   }
 
   /**

@@ -10,10 +10,14 @@ import static io.opaa.indexing.source.ConnectorChecks.unreachable;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.source.ConnectorChecks;
+import io.opaa.indexing.source.OriginalAccess;
+import io.opaa.indexing.source.RemoteOriginalAccess;
 import io.opaa.indexing.source.SourceConnectionTestResult;
 import io.opaa.indexing.source.SourceConnector;
 import io.opaa.indexing.source.SourceConnectorDescriptor;
 import io.opaa.indexing.source.SourceSettings;
+import io.opaa.knowledge.Document;
+import io.opaa.knowledge.DocumentContent;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedStreams;
@@ -28,6 +32,8 @@ import java.net.http.HttpClient;
 import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.OptionalLong;
 import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,9 +42,10 @@ import org.slf4j.LoggerFactory;
  * An RSS 2.0 feed (#474). The connection test fetches and parses the feed the way a run does,
  * bounded by {@code opaa.indexing.rss.max-feed-size-bytes}, and counts at most {@code max-entries}
  * entries - never more than a run would process. A changed feed address discards the
- * conditional-GET state, so the next run fetches the feed in full.
+ * conditional-GET state, so the next run fetches the feed in full. The original of an indexed entry
+ * is streamed from its stored URL ({@link RemoteOriginalAccess}).
  */
-public class RssFeedSourceConnector implements SourceConnector {
+public class RssFeedSourceConnector implements SourceConnector, OriginalAccess {
 
   private static final Logger log = LoggerFactory.getLogger(RssFeedSourceConnector.class);
 
@@ -51,19 +58,32 @@ public class RssFeedSourceConnector implements SourceConnector {
   private final SourceRequestPolicy requestPolicy;
   private final long maxFeedSizeBytes;
   private final int maxFeedEntries;
+  private final RemoteOriginalAccess remoteOriginals;
 
   public RssFeedSourceConnector(
       RssFeedParser feedParser,
       RssFeedStateRepository feedStateRepository,
       TargetAddressValidator targetAddressValidator,
       SourceRequestPolicy requestPolicy,
-      IndexingProperties properties) {
+      IndexingProperties properties,
+      RemoteOriginalAccess remoteOriginals) {
     this.feedParser = feedParser;
     this.feedStateRepository = feedStateRepository;
     this.targetAddressValidator = targetAddressValidator;
     this.requestPolicy = requestPolicy;
     this.maxFeedSizeBytes = properties.rss().maxFeedSizeBytes();
     this.maxFeedEntries = properties.rss().maxEntries();
+    this.remoteOriginals = remoteOriginals;
+  }
+
+  @Override
+  public Optional<DocumentContent> openOriginal(Document document, KnowledgeLibrary library) {
+    return remoteOriginals.openOriginal(document, library);
+  }
+
+  @Override
+  public OptionalLong streamedOriginalBound() {
+    return remoteOriginals.streamedOriginalBound();
   }
 
   @Override

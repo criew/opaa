@@ -26,7 +26,9 @@ class S3SourceConnectorBrowseTest {
       new S3SourceConnector(
           connectionService,
           new S3ClientFactory(S3Properties.defaults(), TargetAddressValidator.disabled()),
-          mock(SourceSyncStateRepository.class));
+          mock(SourceSyncStateRepository.class),
+          mock(S3OriginalAccess.class),
+          mock(io.opaa.indexing.source.s3.events.S3EventService.class));
 
   private static SourceBrowser.Query query(String credentials) {
     return new SourceBrowser.Query(

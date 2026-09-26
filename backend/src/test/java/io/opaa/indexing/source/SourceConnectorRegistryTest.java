@@ -110,7 +110,7 @@ class SourceConnectorRegistryTest {
     List<SourceConnector> connectors = complete();
     connectors.removeIf(c -> c.descriptor().type() == DocumentSourceType.RSS_FEED);
     connectors.add(
-        new Stub(
+        new PushStub(
             new SourceConnectorDescriptor(
                 DocumentSourceType.RSS_FEED, true, Set.of(), PushIntake.EVENT_TOKEN, null)));
 
@@ -131,6 +131,42 @@ class SourceConnectorRegistryTest {
     assertThatThrownBy(() -> new SourceConnectorRegistry(connectors))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("browse kind BUCKETS");
+  }
+
+  @Test
+  void aPushIntakeWithoutHandlerOrAHandlerWithoutPushIntakeFailsStartup() {
+    List<SourceConnector> withoutHandler = complete();
+    withoutHandler.removeIf(c -> c.descriptor().type() == DocumentSourceType.RSS_FEED);
+    withoutHandler.add(
+        new Stub(
+            new SourceConnectorDescriptor(
+                DocumentSourceType.RSS_FEED, true, Set.of(), PushIntake.EVENT_TOKEN, null)));
+    List<SourceConnector> withoutIntake = complete();
+    withoutIntake.removeIf(c -> c.descriptor().type() == DocumentSourceType.RSS_FEED);
+    withoutIntake.add(
+        new PushStub(SourceConnectorDescriptor.runBased(DocumentSourceType.RSS_FEED)));
+
+    assertThatThrownBy(() -> new SourceConnectorRegistry(withoutHandler))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("RSS_FEED must name a push intake exactly when it handles one");
+    assertThatThrownBy(() -> new SourceConnectorRegistry(withoutIntake))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("RSS_FEED must name a push intake exactly when it handles one");
+  }
+
+  @Test
+  void theHandlerOfAPushIntakeAndTheOriginalAccessOfATypeAreResolved() {
+    List<SourceConnector> connectors = complete();
+    connectors.removeIf(c -> c.descriptor().type() == DocumentSourceType.FILESYSTEM);
+    connectors.add(
+        new OriginalStub(SourceConnectorDescriptor.runBased(DocumentSourceType.FILESYSTEM)));
+    SourceConnectorRegistry registry = new SourceConnectorRegistry(connectors);
+
+    assertThat(registry.pushIntakeHandler(PushIntake.EVENT_TOKEN))
+        .isSameAs(registry.connector(DocumentSourceType.S3));
+    assertThat(registry.originalAccess(DocumentSourceType.FILESYSTEM))
+        .containsSame((OriginalAccess) registry.connector(DocumentSourceType.FILESYSTEM));
+    assertThat(registry.originalAccess(DocumentSourceType.CONFLUENCE)).isEmpty();
   }
 
   @Test
@@ -222,7 +258,7 @@ class SourceConnectorRegistryTest {
     connectors.add(plain(DocumentSourceType.HTTP_DIRECTORY, true));
     connectors.add(plain(DocumentSourceType.RSS_FEED, true));
     connectors.add(
-        new BrowsingStub(
+        new PushBrowsingStub(
             new SourceConnectorDescriptor(
                 DocumentSourceType.CONFLUENCE,
                 true,
@@ -231,7 +267,7 @@ class SourceConnectorRegistryTest {
                 null),
             SourceBrowser.Kind.SPACES));
     connectors.add(
-        new BrowsingStub(
+        new PushBrowsingStub(
             new SourceConnectorDescriptor(
                 DocumentSourceType.S3,
                 true,
@@ -269,6 +305,41 @@ class SourceConnectorRegistryTest {
     public SourceConnectionTestResult testConnection(SourceSettings settings) {
       throw new UnsupportedOperationException();
     }
+  }
+
+  private class PushStub extends Stub implements PushIntakeHandler {
+
+    PushStub(SourceConnectorDescriptor descriptor) {
+      super(descriptor);
+    }
+
+    @Override
+    public void acceptNotification(
+        UUID libraryId, byte[] body, java.util.function.UnaryOperator<String> header) {}
+  }
+
+  private class OriginalStub extends Stub implements OriginalAccess {
+
+    OriginalStub(SourceConnectorDescriptor descriptor) {
+      super(descriptor);
+    }
+
+    @Override
+    public java.util.Optional<io.opaa.knowledge.DocumentContent> openOriginal(
+        io.opaa.knowledge.Document document, KnowledgeLibrary library) {
+      return java.util.Optional.empty();
+    }
+  }
+
+  private class PushBrowsingStub extends BrowsingStub implements PushIntakeHandler {
+
+    PushBrowsingStub(SourceConnectorDescriptor descriptor, Kind kind) {
+      super(descriptor, kind);
+    }
+
+    @Override
+    public void acceptNotification(
+        UUID libraryId, byte[] body, java.util.function.UnaryOperator<String> header) {}
   }
 
   private class BrowsingStub extends Stub implements SourceBrowser {

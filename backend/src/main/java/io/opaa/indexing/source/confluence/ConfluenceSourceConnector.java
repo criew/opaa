@@ -7,6 +7,7 @@ import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.source.PushIntake;
+import io.opaa.indexing.source.PushIntakeHandler;
 import io.opaa.indexing.source.SourceBrowser;
 import io.opaa.indexing.source.SourceConnectionTestResult;
 import io.opaa.indexing.source.SourceConnector;
@@ -15,6 +16,8 @@ import io.opaa.indexing.source.SourceListing;
 import io.opaa.indexing.source.SourceSettingField;
 import io.opaa.indexing.source.SourceSettings;
 import io.opaa.indexing.source.SourceSyncStateRepository;
+import io.opaa.indexing.source.confluence.webhook.ConfluenceWebhookService;
+import io.opaa.indexing.source.confluence.webhook.ConfluenceWebhookSignature;
 import io.opaa.knowledge.ConfluenceSpaceSelection;
 import io.opaa.knowledge.KnowledgeLibrary;
 import java.util.ArrayList;
@@ -23,6 +26,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
+import java.util.function.UnaryOperator;
 
 /**
  * A Confluence instance (ADR-0023). The edition is required, confirmed against the instance at
@@ -31,7 +36,8 @@ import java.util.Set;
  * whole, and a library may lengthen the instance-wide full-sync rhythm to 1-365 days. A changed
  * address or selection discards the sync state, so the next run is a full one (Entscheidung 4).
  */
-public class ConfluenceSourceConnector implements SourceConnector, SourceBrowser {
+public class ConfluenceSourceConnector
+    implements SourceConnector, SourceBrowser, PushIntakeHandler {
 
   /** Upper bound of a space selection - matches LibraryRequest.confluenceSpaces.maxItems. */
   static final int MAX_SPACES = 500;
@@ -44,13 +50,16 @@ public class ConfluenceSourceConnector implements SourceConnector, SourceBrowser
   private final ConfluenceConnectionService connectionService;
   private final SourceSyncStateRepository syncStateRepository;
   private final SourceConnectorDescriptor descriptor;
+  private final ConfluenceWebhookService webhookService;
 
   public ConfluenceSourceConnector(
       ConfluenceConnectionService connectionService,
       ConfluenceProperties properties,
-      SourceSyncStateRepository syncStateRepository) {
+      SourceSyncStateRepository syncStateRepository,
+      ConfluenceWebhookService webhookService) {
     this.connectionService = connectionService;
     this.syncStateRepository = syncStateRepository;
+    this.webhookService = webhookService;
     this.descriptor =
         new SourceConnectorDescriptor(
             DocumentSourceType.CONFLUENCE,
@@ -66,6 +75,15 @@ public class ConfluenceSourceConnector implements SourceConnector, SourceBrowser
   @Override
   public SourceConnectorDescriptor descriptor() {
     return descriptor;
+  }
+
+  @Override
+  public void acceptNotification(UUID libraryId, byte[] body, UnaryOperator<String> header) {
+    webhookService.accept(
+        libraryId,
+        body,
+        header.apply(ConfluenceWebhookSignature.HUB_SIGNATURE_HEADER),
+        header.apply(ConfluenceWebhookSignature.SHARED_SECRET_HEADER));
   }
 
   @Override

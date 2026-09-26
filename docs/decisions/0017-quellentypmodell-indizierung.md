@@ -228,8 +228,11 @@ Dieser ADR entscheidet **nicht**:
   > hat einen Lauf, eigene Konfigurationsfelder, Push-Eingang, Rhythmus des Vollabgleichs). Eine
   > Registry nach `DocumentSourceType` umfasst auch `UPLOAD` – als Konnektor ohne Lauf. Die
   > Verwaltung fragt Beschreibung und Fähigkeiten ab, statt nach Quellart zu verzweigen; Prüfung
-  > der Konfiguration und Verbindungstest liegen im Konnektor. API, Schema und `DocumentSourceType`
-  > als geschlossenes Enum bleiben dabei unverändert (#1977).
+  > der Konfiguration und Verbindungstest liegen im Konnektor. Optionale Fähigkeiten sind weitere
+  > Schnittstellen desselben Konnektors: Auswahl vor dem Speichern (`SourceBrowser`), Ausliefern
+  > von Originalen (`OriginalAccess`) und Push-Eingang (`PushIntakeHandler`). Verwaltung und API
+  > kennen kein Konnektor-Paket mehr, `IndexingConnectorBoundaryTest` sichert das ab. API, Schema
+  > und `DocumentSourceType` als geschlossenes Enum bleiben dabei unverändert (#1977).
 
 ## Konsequenzen
 

@@ -27,7 +27,8 @@ class ConfluenceSourceConnectorBrowseTest {
       new ConfluenceSourceConnector(
           connectionService,
           new ConfluenceProperties(0, null, null, 0, null, 0, 0, 0, null, null, 0),
-          mock(SourceSyncStateRepository.class));
+          mock(SourceSyncStateRepository.class),
+          mock(io.opaa.indexing.source.confluence.webhook.ConfluenceWebhookService.class));
 
   private static SourceBrowser.Query query(String credentials) {
     return new SourceBrowser.Query(

@@ -40,6 +40,8 @@ import io.opaa.indexing.document.ChecksumService;
 import io.opaa.indexing.document.DocumentIngest;
 import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.document.DocumentIngests;
+import io.opaa.indexing.source.RemoteContentProperties;
+import io.opaa.indexing.source.TestSourceConnectors;
 import io.opaa.indexing.source.s3.S3Download;
 import io.opaa.indexing.source.s3.S3OriginalAccess;
 import io.opaa.knowledge.Document;
@@ -276,17 +278,19 @@ class LibraryDocumentServiceTest {
         uploadProperties,
         uploadedOriginalStore,
         storageQuotaService,
-        filesystemAllowlist,
-        boundedDownloader,
-        disabledTargetAddressValidator,
-        remoteContentProperties,
         folderRepository,
         folderService,
         attachmentExtractor,
         new AttachmentProperties(0, 0, 0),
         new AttachmentExtractionLimiter(limits),
         ProductionDocumentFormats.supportedFormats(),
-        s3OriginalAccess,
+        TestSourceConnectors.connectors()
+            .uploadedOriginalStore(uploadedOriginalStore)
+            .filesystemAllowlist(filesystemAllowlist)
+            .originalTargetValidator(disabledTargetAddressValidator)
+            .remoteContentProperties(remoteContentProperties)
+            .s3OriginalAccess(s3OriginalAccess)
+            .registry(),
         NO_OP_TRANSACTION_MANAGER);
   }
 
@@ -1669,17 +1673,19 @@ class LibraryDocumentServiceTest {
             new UploadProperties(storageDir.toString(), null, 10L * 1024, null, 0, 0),
             uploadedOriginalStore,
             storageQuotaService,
-            filesystemAllowlist,
-            new BoundedDownloader(enabledValidator),
-            enabledValidator,
-            remoteContentProperties,
             folderRepository,
             folderService,
             attachmentExtractor,
             new AttachmentProperties(0, 0, 0),
             new AttachmentExtractionLimiter(new AttachmentExtractionProperties(0, null)),
             ProductionDocumentFormats.supportedFormats(),
-            s3OriginalAccess,
+            TestSourceConnectors.connectors()
+                .uploadedOriginalStore(uploadedOriginalStore)
+                .filesystemAllowlist(filesystemAllowlist)
+                .originalTargetValidator(enabledValidator)
+                .remoteContentProperties(remoteContentProperties)
+                .s3OriginalAccess(s3OriginalAccess)
+                .registry(),
             NO_OP_TRANSACTION_MANAGER);
     grantViewerOnUploadLibrary();
     KnowledgeLibrary library = remoteLibrary(null);

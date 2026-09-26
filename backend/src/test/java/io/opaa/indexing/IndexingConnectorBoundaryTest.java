@@ -16,7 +16,8 @@ import org.junit.jupiter.api.Test;
  * The indexing core knows no connector, and no connector knows another: each connector registers
  * itself in its own package and reaches the core only through the source SPI. Every direct
  * subpackage of {@code io.opaa.indexing.source} is a connector, so a new one is covered without
- * touching this test. Packages outside {@code io.opaa.indexing} are not covered here.
+ * touching this test. No package outside {@code io.opaa.indexing} - the administration in {@code
+ * io.opaa.library} and the API included - names a connector either.
  */
 class IndexingConnectorBoundaryTest {
 
@@ -48,6 +49,22 @@ class IndexingConnectorBoundaryTest {
             "the indexing core must not name a connector, and connectors must not name each other"
                 + " - register the connector in its own @Configuration and share code through the"
                 + " core instead")
+        .isEmpty();
+  }
+
+  @Test
+  void noPackageOutsideTheIndexingReachesIntoAConnector() throws IOException {
+    List<String> connectors = connectors();
+    List<Reference> offenses =
+        PackageDependencyScanner.scan(MAIN_SOURCES).stream()
+            .filter(reference -> !reference.fromPackage().startsWith("io.opaa.indexing"))
+            .filter(reference -> connectorOf(reference.toPackage(), connectors) != null)
+            .toList();
+
+    assertThat(offenses)
+        .as(
+            "the administration (library), the API and every other package reach a connector"
+                + " only through the SourceConnectorRegistry and the capabilities it hands out")
         .isEmpty();
   }
 

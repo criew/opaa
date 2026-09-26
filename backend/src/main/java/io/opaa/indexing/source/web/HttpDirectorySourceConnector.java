@@ -11,10 +11,15 @@ import io.opaa.api.types.DocumentSourceType;
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.format.SupportedDocumentFormats;
 import io.opaa.indexing.source.ConnectorChecks;
+import io.opaa.indexing.source.OriginalAccess;
+import io.opaa.indexing.source.RemoteOriginalAccess;
 import io.opaa.indexing.source.SourceConnectionTestResult;
 import io.opaa.indexing.source.SourceConnector;
 import io.opaa.indexing.source.SourceConnectorDescriptor;
 import io.opaa.indexing.source.SourceSettings;
+import io.opaa.knowledge.Document;
+import io.opaa.knowledge.DocumentContent;
+import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedStreams;
 import io.opaa.sourceaccess.ProxyAndCredentials;
@@ -29,6 +34,8 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.OptionalLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,9 +44,10 @@ import org.slf4j.LoggerFactory;
  * SourceHttpClientFactory}, the shared {@link SourceRequestPolicy} headers, {@link
  * RedirectFollowingFetcher} with the target validation on every hop - and reads the listing page
  * bounded by {@code opaa.indexing.rss.max-page-size-bytes}. It looks at the top level only and
- * counts by file name; the run itself decides from each downloaded file.
+ * counts by file name; the run itself decides from each downloaded file. The original of an indexed
+ * document is streamed from its stored URL ({@link RemoteOriginalAccess}).
  */
-public class HttpDirectorySourceConnector implements SourceConnector {
+public class HttpDirectorySourceConnector implements SourceConnector, OriginalAccess {
 
   private static final Logger log = LoggerFactory.getLogger(HttpDirectorySourceConnector.class);
 
@@ -51,18 +59,31 @@ public class HttpDirectorySourceConnector implements SourceConnector {
   private final SourceRequestPolicy requestPolicy;
   private final SupportedDocumentFormats supportedFormats;
   private final long maxPageSizeBytes;
+  private final RemoteOriginalAccess remoteOriginals;
 
   public HttpDirectorySourceConnector(
       AutoindexCrawlerService crawlerService,
       TargetAddressValidator targetAddressValidator,
       SourceRequestPolicy requestPolicy,
       SupportedDocumentFormats supportedFormats,
-      IndexingProperties properties) {
+      IndexingProperties properties,
+      RemoteOriginalAccess remoteOriginals) {
     this.crawlerService = crawlerService;
     this.targetAddressValidator = targetAddressValidator;
     this.requestPolicy = requestPolicy;
     this.supportedFormats = supportedFormats;
     this.maxPageSizeBytes = properties.rss().maxPageSizeBytes();
+    this.remoteOriginals = remoteOriginals;
+  }
+
+  @Override
+  public Optional<DocumentContent> openOriginal(Document document, KnowledgeLibrary library) {
+    return remoteOriginals.openOriginal(document, library);
+  }
+
+  @Override
+  public OptionalLong streamedOriginalBound() {
+    return remoteOriginals.streamedOriginalBound();
   }
 
   @Override

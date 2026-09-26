@@ -5,7 +5,11 @@ import static io.opaa.indexing.source.ConnectorChecks.unreachable;
 
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.common.ValidationException;
+import io.opaa.indexing.source.OriginalAccess;
+import io.opaa.indexing.source.OriginalUnavailableException;
 import io.opaa.indexing.source.PushIntake;
+import io.opaa.indexing.source.PushIntakeHandler;
+import io.opaa.indexing.source.ServedOriginals;
 import io.opaa.indexing.source.SourceBrowser;
 import io.opaa.indexing.source.SourceConnectionTestResult;
 import io.opaa.indexing.source.SourceConnector;
@@ -14,17 +18,34 @@ import io.opaa.indexing.source.SourceListing;
 import io.opaa.indexing.source.SourceSettingField;
 import io.opaa.indexing.source.SourceSettings;
 import io.opaa.indexing.source.SourceSyncStateRepository;
+import io.opaa.indexing.source.s3.events.S3EventAuthentication;
+import io.opaa.indexing.source.s3.events.S3EventService;
+import io.opaa.knowledge.Document;
+import io.opaa.knowledge.DocumentContent;
 import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.ServedContentTypes;
 import io.opaa.knowledge.sourcesettings.S3SourceSettings;
 import io.opaa.knowledge.sourcesettings.S3SourceSettingsJson;
 import io.opaa.s3.S3AccessException;
 import io.opaa.s3.S3Connection;
 import io.opaa.s3.S3Credentials;
 import io.opaa.sourceaccess.ProxyAndCredentials;
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.OptionalLong;
 import java.util.Set;
+import java.util.UUID;
+import java.util.function.UnaryOperator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpHeaders;
 
 /**
  * An S3-compatible object store (ADR-0027). {@code sourceUrl} is the endpoint, stored normalised;
@@ -34,7 +55,10 @@ import java.util.Set;
  * (Entscheidung 8). A changed endpoint or changed settings discard the resumption state, so the
  * next run lists every scope from scratch (Entscheidung 3).
  */
-public class S3SourceConnector implements SourceConnector, SourceBrowser {
+public class S3SourceConnector
+    implements SourceConnector, SourceBrowser, OriginalAccess, PushIntakeHandler {
+
+  private static final Logger log = LoggerFactory.getLogger(S3SourceConnector.class);
 
   private static final String SETTINGS_STATE = "s3Settings";
 
@@ -49,14 +73,73 @@ public class S3SourceConnector implements SourceConnector, SourceBrowser {
   private final S3ConnectionService connectionService;
   private final S3ClientFactory clientFactory;
   private final SourceSyncStateRepository syncStateRepository;
+  private final S3OriginalAccess originalAccess;
+  private final S3EventService eventService;
 
   public S3SourceConnector(
       S3ConnectionService connectionService,
       S3ClientFactory clientFactory,
-      SourceSyncStateRepository syncStateRepository) {
+      SourceSyncStateRepository syncStateRepository,
+      S3OriginalAccess originalAccess,
+      S3EventService eventService) {
     this.connectionService = connectionService;
     this.clientFactory = clientFactory;
     this.syncStateRepository = syncStateRepository;
+    this.originalAccess = originalAccess;
+    this.eventService = eventService;
+  }
+
+  /**
+   * Downloads the object from the library's own store, the way a run reads it; the temp file is
+   * deleted when the served stream is closed. An object this library resolves to nothing is "no
+   * original"; a store that cannot be reached is {@link OriginalUnavailableException}.
+   */
+  @Override
+  public Optional<DocumentContent> openOriginal(Document document, KnowledgeLibrary library) {
+    Optional<S3Download> download;
+    try {
+      download = originalAccess.download(library, document.getFilePath());
+    } catch (S3AccessException e) {
+      throw new OriginalUnavailableException(
+          "S3 object of document " + document.getId() + " is not readable right now", e);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new OriginalUnavailableException(
+          "Reading the S3 object of document " + document.getId() + " was interrupted", e);
+    }
+    if (download.isEmpty()) {
+      return Optional.empty();
+    }
+    Path file = download.get().file();
+    try {
+      String contentType = document.getContentType();
+      if (contentType == null || contentType.isBlank()) {
+        contentType = ServedOriginals.normalizeContentType(download.get().contentType());
+      }
+      InputStream stream =
+          ServedOriginals.deletingOnClose(Files.newInputStream(file), List.of(file));
+      return Optional.of(
+          DocumentContent.ofStream(
+              stream, document.getFileName(), ServedContentTypes.forFile(contentType, file)));
+    } catch (IOException e) {
+      ServedOriginals.deleteQuietly(file);
+      log.warn("Downloaded S3 object of document {} could not be opened", document.getId(), e);
+      return Optional.empty();
+    }
+  }
+
+  @Override
+  public OptionalLong streamedOriginalBound() {
+    return OptionalLong.of(originalAccess.maxObjectSizeBytes());
+  }
+
+  @Override
+  public void acceptNotification(UUID libraryId, byte[] body, UnaryOperator<String> header) {
+    eventService.accept(
+        libraryId,
+        body,
+        header.apply(HttpHeaders.AUTHORIZATION),
+        header.apply(S3EventAuthentication.SHARED_SECRET_HEADER));
   }
 
   @Override

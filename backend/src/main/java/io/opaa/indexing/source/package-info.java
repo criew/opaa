@@ -6,8 +6,9 @@
  * {@link io.opaa.indexing.source.SourceConnectorRegistry}: its {@link
  * io.opaa.indexing.source.SourceConnectorDescriptor} answers what the administration would
  * otherwise branch on, the connector validates its configuration and tests the connection, and
- * optional abilities such as {@link io.opaa.indexing.source.SourceBrowser} are further interfaces
- * of the same bean. A run-based type additionally registers a {@link
+ * optional abilities - {@link io.opaa.indexing.source.SourceBrowser}, {@link
+ * io.opaa.indexing.source.OriginalAccess}, {@link io.opaa.indexing.source.PushIntakeHandler} - are
+ * further interfaces of the same bean. A run-based type additionally registers a {@link
  * io.opaa.indexing.source.SourceIndexingExecutor}, resolved at trigger time by {@link
  * io.opaa.indexing.source.IndexingSourceExecutorRegistry}. No package outside the connectors refers
  * to one, and the connectors do not refer to each other. The run itself stays in {@code
