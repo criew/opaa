@@ -87,10 +87,9 @@ public interface KnowledgeLibraryRepository extends JpaRepository<KnowledgeLibra
 
   /**
    * Every library with an active schedule (#485), across every organization - {@code
-   * io.opaa.indexing.job.LibraryIndexingScheduler}'s own tick is the only caller; a schedule can
-   * only ever be enabled on a connector library (migration 054's {@code
-   * chk_knowledge_libraries_schedule} forbids it for {@code UPLOAD}), so this needs no additional
-   * {@code sourceType} filter.
+   * LibraryIndexingScheduler}'s own tick is the only caller; a schedule can only ever be enabled on
+   * a connector library (migration 054's {@code chk_knowledge_libraries_schedule} forbids it for
+   * {@code UPLOAD}), so this needs no additional {@code sourceType} filter.
    */
   List<KnowledgeLibrary> findByScheduleEnabledTrue();
 

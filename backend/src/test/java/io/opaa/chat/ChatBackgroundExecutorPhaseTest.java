@@ -3,7 +3,7 @@ package io.opaa.chat;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import io.opaa.config.ShutdownLifecycleConfiguration;
+import io.opaa.common.ShutdownLifecycleConfiguration;
 import io.opaa.observability.ChatMetrics;
 import org.junit.jupiter.api.Test;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;

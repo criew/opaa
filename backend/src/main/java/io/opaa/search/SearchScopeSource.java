@@ -7,7 +7,7 @@ import io.opaa.auth.CurrentUser;
  * an access token, that token's id (#1720, ADR-0035).
  *
  * <p>Exactly one implementation exists, and deliberately so: {@code
- * io.opaa.externalaccess.token.ExternalAccessSearchScopeSource} answers for both callers. A
+ * ExternalAccessSearchScopeSource} in the external-access package answers for both callers. A
  * signed-in person sees every library she may read and has no quota key; a request that arrived on
  * an access token gets the person's rights intersected with the library's external-access release,
  * the token's own selection and the installation switch, and the token as the quota key - evaluated

@@ -232,7 +232,7 @@ invalidiert, wenn `io.opaa.llm.LlmModelService` das aktive Modell tatsächlich �
 Änderung des aktiven Eintrags) — und zwar erst nach dem Commit der auslösenden Transaktion, damit eine
 zurückgerollte Änderung den Zwischenspeicher nicht fälschlich verwirft. Ohne aktives Modell erhält die
 fragende Person eine verständliche deutsche Fehlermeldung (503) statt eines technischen Fehlers; die
-Health-Anzeige (`io.opaa.observability.ChatHealthIndicator`) benennt Basis-Adresse und Modell-Kennung
+Health-Anzeige (`io.opaa.health.ChatHealthIndicator`) benennt Basis-Adresse und Modell-Kennung
 des aktiven Modells und steht auf „down", solange keines aktiv ist. Ein nicht erreichbares aktives
 Modell führt zu einer Fehlermeldung, nie zu einem stillschweigenden Ausweichen auf ein anderes
 Modell. Die Einbettung ist davon unberührt und läuft unverändert über die native Autoconfiguration.

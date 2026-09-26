@@ -6,8 +6,7 @@ import java.util.List;
 
 /**
  * The outcome of one directory synchronisation run, dry or applied. Domain counterpart of the
- * generated {@code DirectorySyncReportResponse}, mapped by {@code
- * io.opaa.api.DirectorySyncResponseMapper}.
+ * generated {@code DirectorySyncReportResponse}, mapped by {@code DirectorySyncResponseMapper}.
  *
  * <p>{@code unmaintainedTokenGroups} names the provider's token groups while its directory run is
  * on - "no longer maintained" (ADR-0036, Entscheidung 3). They keep their frozen membership and are

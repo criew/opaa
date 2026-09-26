@@ -17,7 +17,6 @@ import io.opaa.api.types.SystemRole;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.UserRepository;
-import io.opaa.chat.ChatRepository;
 import io.opaa.common.ConflictException;
 import io.opaa.permission.AssetOwnershipHistoryService;
 import io.opaa.permission.CapabilityService;
@@ -63,7 +62,6 @@ class SpaceServiceTest {
     transactionManager = mock(PlatformTransactionManager.class);
     when(transactionManager.getTransaction(any())).thenReturn(mock(TransactionStatus.class));
     AuditEventRecorder auditEventRecorder = mock(AuditEventRecorder.class);
-    ChatRepository chatRepository = mock(ChatRepository.class);
     SpaceAssetAssociationService associationService = mock(SpaceAssetAssociationService.class);
     accessPolicy = mock(SpaceAccessPolicy.class);
     membershipHistory = mock(SpaceMembershipHistoryService.class);
@@ -73,7 +71,7 @@ class SpaceServiceTest {
             spaceRepository,
             userRepository,
             auditEventRecorder,
-            chatRepository,
+            mock(SpaceChatDirectory.class),
             associationService,
             accessPolicy,
             membershipHistory,

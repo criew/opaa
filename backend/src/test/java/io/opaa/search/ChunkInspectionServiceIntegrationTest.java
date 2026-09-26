@@ -1,4 +1,4 @@
-package io.opaa.searchadmin;
+package io.opaa.search;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;

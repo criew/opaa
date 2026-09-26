@@ -9,8 +9,8 @@ import org.springframework.stereotype.Component;
 
 /**
  * Triggers {@link LlmModelSeeder#seedIfNeeded()} once, at application startup, before any request
- * can be served - the same shape {@link io.opaa.library.UploadPendingRecoveryRunner} already uses
- * for its own one-shot startup migration (#756).
+ * can be served - the same shape {@code UploadPendingRecoveryRunner} already uses for its own
+ * one-shot startup migration (#756).
  *
  * <p>Deliberately thin: the actual transactional seeding logic lives in {@link LlmModelSeeder}, a
  * separate bean, because {@code @Transactional} only takes effect on a call that goes through that

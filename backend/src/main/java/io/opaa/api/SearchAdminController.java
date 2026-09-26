@@ -10,7 +10,7 @@ import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
-import io.opaa.searchadmin.ChunkInspectionService;
+import io.opaa.search.ChunkInspectionService;
 import io.opaa.searchadmin.DiagnosisContextType;
 import io.opaa.searchadmin.DiagnosisQuery;
 import io.opaa.searchadmin.SearchDiagnosisService;

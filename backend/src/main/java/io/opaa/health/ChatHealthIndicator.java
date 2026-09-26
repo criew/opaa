@@ -1,4 +1,4 @@
-package io.opaa.observability;
+package io.opaa.health;
 
 import io.opaa.llm.ActiveChatModelDescription;
 import io.opaa.llm.ActiveChatModelResolver;

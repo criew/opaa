@@ -1270,16 +1270,15 @@ public class KnowledgeLibraryService {
    * are write-only (never returned by any API response, ADR-0018), so a client editing e.g. only
    * the path portion of {@code sourceUrl} has no value it could resend even if it wanted to, and
    * without this fallback that edit alone would silently wipe an unrelated, previously configured
-   * credential. The fallback is deliberately restricted to the same origin: {@link
-   * io.opaa.indexing.source.web.AutoindexCrawlerService} sends the stored {@code Authorization}
-   * header preemptively on the very first request (RFC 7617 does not require a 401 challenge
-   * first), so a caller who does not know a configured credential could otherwise redirect it to a
-   * host they control simply by changing {@code sourceUrl} and leaving the credentials field blank
-   * - turning "must know the credential" into "can exfiltrate the credential". A host change
-   * intentionally drops the stored credential instead (matching the pre-fallback behaviour of
-   * #476), forcing the caller to re-enter it for the new host. There is deliberately no way to
-   * explicitly clear a stored credential while keeping the same origin - blank input is
-   * indistinguishable from "leave unchanged" by design.
+   * credential. The fallback is deliberately restricted to the same origin: {@code
+   * AutoindexCrawlerService} sends the stored {@code Authorization} header preemptively on the very
+   * first request (RFC 7617 does not require a 401 challenge first), so a caller who does not know
+   * a configured credential could otherwise redirect it to a host they control simply by changing
+   * {@code sourceUrl} and leaving the credentials field blank - turning "must know the credential"
+   * into "can exfiltrate the credential". A host change intentionally drops the stored credential
+   * instead (matching the pre-fallback behaviour of #476), forcing the caller to re-enter it for
+   * the new host. There is deliberately no way to explicitly clear a stored credential while
+   * keeping the same origin - blank input is indistinguishable from "leave unchanged" by design.
    */
   private SourceConfiguration validateSourceConfigurationForUpdate(
       KnowledgeLibrary library, LibraryUpdate request) {

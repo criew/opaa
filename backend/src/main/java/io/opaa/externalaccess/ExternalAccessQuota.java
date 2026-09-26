@@ -3,6 +3,7 @@ package io.opaa.externalaccess;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import io.opaa.common.TooManyRequestsException;
+import io.opaa.search.AccessTokenQuota;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.ArrayDeque;
@@ -28,7 +29,7 @@ import org.springframework.stereotype.Component;
  * on a token it would be a behavioural datum about a person.
  */
 @Component
-public class ExternalAccessQuota {
+public class ExternalAccessQuota implements AccessTokenQuota {
 
   private static final Duration WINDOW = Duration.ofHours(1);
 
@@ -56,6 +57,7 @@ public class ExternalAccessQuota {
    * a slow answer. A {@code null} token is a signed-in person and passes untouched: the quota is
    * the token's, and a person already has her own limits.
    */
+  @Override
   public void requireWithinQuota(UUID accessTokenId) {
     if (accessTokenId == null) {
       return;

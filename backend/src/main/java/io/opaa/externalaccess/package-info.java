@@ -11,7 +11,7 @@
  * whether a client address belongs to the channel's networks; its enforcement at {@code /mcp} comes
  * with #1721.
  *
- * <p>{@code io.opaa.api.ExternalAccessSettingsController} exposes read and write path to {@code
+ * <p>{@code ExternalAccessSettingsController} exposes read and write path to {@code
  * SystemRole.SYSTEM_ADMIN} alone.
  */
 package io.opaa.externalaccess;

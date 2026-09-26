@@ -12,7 +12,7 @@ package io.opaa.group.sync;
  * holds, i.e. what stays in force.
  *
  * <p>Domain counterpart of the generated {@code DirectorySyncGroupChange}, mapped by {@code
- * io.opaa.api.DirectorySyncResponseMapper}.
+ * DirectorySyncResponseMapper}.
  */
 public record GroupChange(
     String externalId, String name, String previousName, String sourcePath, int memberCount) {}

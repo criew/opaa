@@ -6,7 +6,7 @@ import io.opaa.permission.GroupSizeSignal;
 /**
  * A {@link AssetGrant} enriched with the subject's and granter's display names, resolved by {@link
  * AssetGrantService#toViews} (#423) - the domain counterpart of the generated {@code
- * AssetGrantResponse}, mapped onto it by {@code io.opaa.api.AssetGrantResponseMapper}.
+ * AssetGrantResponse}, mapped onto it by {@code AssetGrantResponseMapper}.
  *
  * @param subjectDisplayName {@code null} if the subject row itself no longer exists, and {@code
  *     null} for a protected group, which appears in another person's list as a nameless row

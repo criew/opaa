@@ -11,7 +11,7 @@ import java.lang.annotation.Target;
 /**
  * A secret that is present and strong: at least {@value SecretValidator#MIN_LENGTH} characters and
  * none of the well-known placeholders an example configuration ships with (ADR-0033, Entscheidung
- * 6). Enforced by {@code io.opaa.auth.local.LocalAuthSecretGuard} at startup.
+ * 6). Enforced by {@code LocalAuthSecretGuard} at startup.
  */
 @Documented
 @Constraint(validatedBy = SecretValidator.class)

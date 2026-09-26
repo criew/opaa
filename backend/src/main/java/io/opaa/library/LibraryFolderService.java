@@ -35,9 +35,8 @@ import org.springframework.transaction.support.TransactionTemplate;
  * such an indexing run uses to mirror that structure - deliberately bypassing {@link
  * #requireUploadLibrary} (those folders are meant to be created this way, not blocked) and {@link
  * #requireEditable} (an indexing job acts on the system's own behalf, there is no request-scoped
- * caller/role to check). Neither method is reachable through {@link io.opaa.api.LibraryController}
- * - only {@code io.opaa.indexing.source.SourceFolderMirror}, the executors' shared per-run helper,
- * calls them.
+ * caller/role to check). Neither method is reachable through {@code LibraryController} - only
+ * {@code SourceFolderMirror}, the executors' shared per-run helper, calls them.
  *
  * <p><b>Deletion is recursive and runs through the application layer, never a database cascade</b>
  * (ADR-0020, Entscheidung 5): {@link #deleteFolder} walks the folder's subtree leaf-first, deleting
@@ -208,11 +207,11 @@ public class LibraryFolderService {
    * a manually-typed {@code UPLOAD} folder name), and a real directory tree is free to nest deeper
    * than {@link #MAX_DEPTH}; rejecting either would mean silently refusing to mirror part of the
    * source instead of representing it as-is. Every mirroring run judges its segments on its own
-   * side through {@code io.opaa.indexing.source.SourceFolderPath} - a segment no folder row could
-   * carry leaves the item at the root, and only an {@code S3} run caps its chain at {@link
-   * #MAX_DEPTH} (a key nests freely, ADR-0027 Entscheidung 5). {@code createFolder}'s own callers
-   * (the CRUD REST endpoints) never reach this method - see this class's own Javadoc - so neither
-   * gap is reachable through user input.
+   * side through {@code SourceFolderPath} - a segment no folder row could carry leaves the item at
+   * the root, and only an {@code S3} run caps its chain at {@link #MAX_DEPTH} (a key nests freely,
+   * ADR-0027 Entscheidung 5). {@code createFolder}'s own callers (the CRUD REST endpoints) never
+   * reach this method - see this class's own Javadoc - so neither gap is reachable through user
+   * input.
    *
    * <p><b>A single {@code fk_documents_folder} violation can occur if two runs of the same library
    * overlap</b> (#824 review, Befund 4b) - e.g. after {@code IndexingJobRecoveryScheduler} restarts
@@ -388,10 +387,9 @@ public class LibraryFolderService {
    * currentFolderIds} (this indexing run's own directory walk never touched it - its source
    * directory is gone) and empty, including transitively (#824, docs/features/knowledge-sources.md
    * "Ordner in Konnektorbibliotheken"). Every calling executor calls {@code
-   * io.opaa.indexing.maintenance.StaleDocumentCleanupService#cleanupVanished} before this method
-   * (#886): a document whose backing file disappeared is already gone by the time this runs, so a
-   * folder left holding only such a document is correctly treated as empty and pruned, not left
-   * standing.
+   * StaleDocumentCleanupService#cleanupVanished} before this method (#886): a document whose
+   * backing file disappeared is already gone by the time this runs, so a folder left holding only
+   * such a document is correctly treated as empty and pruned, not left standing.
    *
    * <p>Walked leaf-first (post-order): a folder only qualifies once every one of its own subfolders
    * has already either survived (still referenced, or non-empty) or been removed - mirroring {@link

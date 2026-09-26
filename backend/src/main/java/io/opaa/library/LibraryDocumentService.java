@@ -1021,14 +1021,14 @@ public class LibraryDocumentService {
    * nothing can be considered "the configured index directory").
    *
    * <p>Also re-checks {@code sourcePath} against {@link FilesystemPathAllowlist} (#742 review,
-   * finding 2) - {@code KnowledgeLibraryService} enforces this at creation/update time, and {@link
-   * io.opaa.indexing.source.filesystem.AsyncIndexingExecutor} enforces it again before every
-   * indexing run for exactly the reason {@link FilesystemPathAllowlist}'s own Javadoc gives: the
-   * allowlist can be narrowed (or emptied, which disables the {@code FILESYSTEM} sourceType
-   * entirely) after a library was created, and a read against a {@code sourcePath} that has since
-   * fallen outside it must not silently keep succeeding just because the library once passed
-   * validation. Without this check, an operator who disables (or narrows) {@code FILESYSTEM} would
-   * still have every previously indexed file readable through this endpoint.
+   * finding 2) - {@code KnowledgeLibraryService} enforces this at creation/update time, and {@code
+   * AsyncIndexingExecutor} enforces it again before every indexing run for exactly the reason
+   * {@link FilesystemPathAllowlist}'s own Javadoc gives: the allowlist can be narrowed (or emptied,
+   * which disables the {@code FILESYSTEM} sourceType entirely) after a library was created, and a
+   * read against a {@code sourcePath} that has since fallen outside it must not silently keep
+   * succeeding just because the library once passed validation. Without this check, an operator who
+   * disables (or narrows) {@code FILESYSTEM} would still have every previously indexed file
+   * readable through this endpoint.
    *
    * <p>Resolves both paths with {@link Path#toRealPath} rather than the lexical {@code
    * toAbsolutePath().normalize()} the allowlist check itself deliberately stops short of (#742

@@ -1,5 +1,6 @@
-package io.opaa.observability;
+package io.opaa.health;
 
+import io.opaa.observability.SeparateHealthGroup;
 import java.util.Set;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.health.actuate.endpoint.HealthEndpointGroupsPostProcessor;
