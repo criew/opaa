@@ -1047,22 +1047,20 @@ class PermissionHistoryServiceIntegrationTest {
    * association grants nothing. The four beans of #1819 - {@code GroupCapabilityService}, {@code
    * GroupEffectReader}, {@code AssetSuccessionSource} and {@code GroupSuccessionSource} - only
    * read: they derive whether anybody can still act for an object, and the one effect of that
-   * state, freezing the reach, takes rights away from nobody. {@code GroupContactService} (#1875)
-   * reads a group's memberships to decide whether somebody may be its contact point; the
-   * appointment it writes is no grant and no membership, and the one act it entitles to - the
-   * protection mark - takes a group out of other people's sight rather than into it. {@code
-   * GroupEffectsService} (#1821) only counts: it answers "wo wirkt diese Gruppe" with figures per
-   * group and writes nothing at all. {@code GroupMemberDisclosureAdapter} (#1880) reads a group and
-   * one page of its active members for the person who granted it a right at an object; it writes
-   * nothing but its own audit entry for a system administrator's retrieval. {@code
-   * PromptLibraryService} (#1901) reads the formula to list prompt libraries; the grants, reach and
-   * history of a prompt library's creation, reach change and deletion it leaves to {@code
-   * AssetShellService}, covered above. {@code PromptService} (#1903) reads the formula to offer the
-   * prompts a person may insert in the chat and to check an inserted one; it writes prompts only.
-   * {@code AssetCatalogService} (#1904) reads the formula only to mark which catalog entries are
-   * accessible and writes nothing. {@code AssetOwnerNames} only reads the display names of owning
-   * groups; {@code KnowledgeLibraryService} reaches groups only through it and through {@code
-   * AssetGrantService}, and its write paths are covered above.
+   * state, freezing the reach, takes rights away from nobody. {@code GroupEffectsService} (#1821)
+   * only counts: it answers "wo wirkt diese Gruppe" with figures per group and writes nothing at
+   * all. {@code GroupListService} (#1978) only reads: it filters, sorts and pages the group list of
+   * the administration. {@code GroupMemberDisclosureAdapter} (#1880) reads a group and one page of
+   * its active members for the person who granted it a right at an object; it writes nothing but
+   * its own audit entry for a system administrator's retrieval. {@code PromptLibraryService}
+   * (#1901) reads the formula to list prompt libraries; the grants, reach and history of a prompt
+   * library's creation, reach change and deletion it leaves to {@code AssetShellService}, covered
+   * above. {@code PromptService} (#1903) reads the formula to offer the prompts a person may insert
+   * in the chat and to check an inserted one; it writes prompts only. {@code AssetCatalogService}
+   * (#1904) reads the formula only to mark which catalog entries are accessible and writes nothing.
+   * {@code AssetOwnerNames} only reads the display names of owning groups; {@code
+   * KnowledgeLibraryService} reaches groups only through it and through {@code AssetGrantService},
+   * and its write paths are covered above.
    */
   private static final Set<String> BEANS_REACHING_THE_RIGHTS_TABLES =
       Set.of(
@@ -1082,8 +1080,8 @@ class PermissionHistoryServiceIntegrationTest {
           "ForeignDiagnosticContextService",
           "GroupCapabilityService",
           "GroupEffectReader",
-          "GroupContactService",
           "GroupEffectsService",
+          "GroupListService",
           "GroupMemberDisclosureAdapter",
           "GroupMembershipResolver",
           "GroupService",
@@ -1127,7 +1125,6 @@ class PermissionHistoryServiceIntegrationTest {
           "GroupService#listGroups",
           "GroupService#listMyGroups",
           "GroupService#listMembers",
-          "GroupService#listContactedGroups",
           "GroupService#listStewardedGroups",
           "GroupService#listStewards",
           // #1820: Die Subjekt-Auswahl sucht und zaehlt, sie erteilt nichts - wer welche
