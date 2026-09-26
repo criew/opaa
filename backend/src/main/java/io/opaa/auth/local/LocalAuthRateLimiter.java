@@ -1,11 +1,11 @@
 package io.opaa.auth.local;
 
-import io.opaa.api.RateLimitProperties;
-import io.opaa.api.RateLimitProperties.LocalAuthLimit;
-import io.opaa.api.RateLimitService;
-import io.opaa.api.RateLimitService.Decision;
 import io.opaa.common.TooManyRequestsException;
 import io.opaa.observability.RateLimitMetrics;
+import io.opaa.ratelimit.RateLimitProperties;
+import io.opaa.ratelimit.RateLimitProperties.LocalAuthLimit;
+import io.opaa.ratelimit.RateLimitService;
+import io.opaa.ratelimit.RateLimitService.Decision;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;

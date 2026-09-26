@@ -19,9 +19,9 @@ import org.springframework.stereotype.Service;
  * transfer closes one interval and opens the next, and the actor of the change is recorded on the
  * interval that opens. Only a deletion leaves a closed interval without a successor.
  *
- * <p><b>Writers.</b> {@code io.opaa.space.SpaceService} for {@code SPACE}; the ownership of a
- * library follows with #1819. Every method runs in the caller's own transaction, so the ownership
- * change and its interval commit or roll back together.
+ * <p><b>Writers.</b> {@code SpaceService} for {@code SPACE}; the ownership of a library follows
+ * with #1819. Every method runs in the caller's own transaction, so the ownership change and its
+ * interval commit or roll back together.
  */
 @Service
 public class AssetOwnershipHistoryService {
@@ -103,7 +103,7 @@ public class AssetOwnershipHistoryService {
    * this call the deleted asset would keep reporting a current owner forever, and without the
    * marker the deletion would be the one ownership event nobody is named for: the closed interval
    * keeps the cause it was opened with, and that cause is somebody else's act. Same mechanics as
-   * {@code io.opaa.space.SpaceMembershipHistoryService#recordSpaceDeleted}.
+   * {@code SpaceMembershipHistoryService#recordSpaceDeleted}.
    */
   public void recordAssetDeleted(
       AssetType assetType, UUID assetId, PermissionSubject lastOwner, UUID actorUserId) {

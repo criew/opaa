@@ -17,7 +17,6 @@ import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
-import io.opaa.chat.ChatRepository;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
@@ -45,7 +44,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -64,7 +62,7 @@ public class SpaceService {
   private final SpaceRepository spaceRepository;
   private final UserRepository userRepository;
   private final AuditEventRecorder auditEventRecorder;
-  private final ChatRepository chatRepository;
+  private final SpaceChatDirectory spaceChats;
   private final SpaceAssetAssociationService associationService;
   private final SpaceAccessPolicy accessPolicy;
   private final SpaceMembershipHistoryService membershipHistory;
@@ -90,7 +88,7 @@ public class SpaceService {
       SpaceRepository spaceRepository,
       UserRepository userRepository,
       AuditEventRecorder auditEventRecorder,
-      ChatRepository chatRepository,
+      SpaceChatDirectory spaceChats,
       SpaceAssetAssociationService associationService,
       SpaceAccessPolicy accessPolicy,
       SpaceMembershipHistoryService membershipHistory,
@@ -106,7 +104,7 @@ public class SpaceService {
     this.spaceRepository = spaceRepository;
     this.successionGuard = successionGuard;
     this.successionSource = successionSource;
-    this.chatRepository = chatRepository;
+    this.spaceChats = spaceChats;
     this.userRepository = userRepository;
     this.auditEventRecorder = auditEventRecorder;
     this.associationService = associationService;
@@ -253,11 +251,7 @@ public class SpaceService {
     if (spaceIds.isEmpty()) {
       return Map.of();
     }
-    return chatRepository.countBySpaceIdInAndAuthorId(spaceIds, authorId).stream()
-        .collect(
-            Collectors.toMap(
-                ChatRepository.SpaceChatCount::getSpaceId,
-                ChatRepository.SpaceChatCount::getChatCount));
+    return spaceChats.countByAuthorPerSpace(spaceIds, authorId);
   }
 
   /**
@@ -782,7 +776,7 @@ public class SpaceService {
     // fk_chats_space_organization is ON DELETE RESTRICT (migration 032, composite as of migration
     // 047) and would reject this anyway, but a raw constraint violation surfaces as an opaque 500 -
     // this check turns it into an understandable 409 instead.
-    if (chatRepository.existsBySpaceId(spaceId)) {
+    if (spaceChats.existsInSpace(spaceId)) {
       throw new ConflictException(
           "Der Space enthält noch Chats und kann deshalb nicht gelöscht werden. Archivieren Sie"
               + " den Space stattdessen.");

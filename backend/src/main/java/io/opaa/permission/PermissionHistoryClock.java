@@ -8,12 +8,12 @@ import org.springframework.stereotype.Component;
 
 /**
  * Strictly monotonic source of the interval boundaries every permission-history writer records
- * ({@link PermissionHistoryService} and {@code io.opaa.asset.AssetVisibilityHistoryService}, which
- * share this one bean so the contract holds across all three history tables): every call returns an
- * instant strictly greater than the one returned before, at the microsecond resolution {@code
- * timestamptz} stores - so two boundaries that differ here still differ once read back from the
- * database. A wall-clock reading that is not greater than the last boundary is replaced by that
- * boundary plus one microsecond.
+ * ({@link PermissionHistoryService} and {@code AssetVisibilityHistoryService}, which share this one
+ * bean so the contract holds across all three history tables): every call returns an instant
+ * strictly greater than the one returned before, at the microsecond resolution {@code timestamptz}
+ * stores - so two boundaries that differ here still differ once read back from the database. A
+ * wall-clock reading that is not greater than the last boundary is replaced by that boundary plus
+ * one microsecond.
  *
  * <p>Monotonicity is unconditional, absolute accuracy is not. Within one coarse clock tick the
  * result runs one microsecond per call ahead of the wall clock and is caught up by the next tick.

@@ -1,10 +1,10 @@
-package io.opaa.api;
+package io.opaa.ratelimit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.opaa.api.RateLimitProperties.LocalAuthLimit;
-import io.opaa.api.RateLimitProperties.LocalAuthLimits;
+import io.opaa.ratelimit.RateLimitProperties.LocalAuthLimit;
+import io.opaa.ratelimit.RateLimitProperties.LocalAuthLimits;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 

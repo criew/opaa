@@ -91,10 +91,10 @@ public class CredentialsEncryptor {
    * garbage string - for every way a value that does carry the marker can fail to come back: an
    * unknown format version (anything starting with {@code "enc:"} other than the current {@link
    * #PREFIX}), a corrupted/non-Base64 blob, or a wrong/missing key. Callers that read a persisted
-   * {@code sourceCredentials} value (namely {@code io.opaa.library.SourceCredentialsConverter}) are
-   * expected to catch this and fail soft (log and treat the field as absent) rather than let one
-   * undecryptable row block every other row in the same read; callers that write (this class's own
-   * {@link #encrypt}) are expected to fail hard.
+   * {@code sourceCredentials} value (namely {@code SourceCredentialsConverter}) are expected to
+   * catch this and fail soft (log and treat the field as absent) rather than let one undecryptable
+   * row block every other row in the same read; callers that write (this class's own {@link
+   * #encrypt}) are expected to fail hard.
    */
   public String decrypt(String stored) {
     if (!StringUtils.hasText(stored)) {

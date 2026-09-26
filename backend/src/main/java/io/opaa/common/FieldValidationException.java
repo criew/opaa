@@ -6,9 +6,9 @@ import java.util.Objects;
 /**
  * A request failed one or more field-level rules the client has to show at the field, each with a
  * stable code it can map to its own text (e.g. the password policy's {@code TOO_SHORT}). {@code
- * io.opaa.api.GlobalExceptionHandler} maps it to {@code 400} with {@link #getMessage()} as the
- * user-facing text and {@link #fieldErrors()} as {@code fieldErrors}. A {@link ValidationException}
- * without field errors stays what it is - this type is for the cases where the field matters.
+ * GlobalExceptionHandler} maps it to {@code 400} with {@link #getMessage()} as the user-facing text
+ * and {@link #fieldErrors()} as {@code fieldErrors}. A {@link ValidationException} without field
+ * errors stays what it is - this type is for the cases where the field matters.
  */
 public class FieldValidationException extends RuntimeException {
 

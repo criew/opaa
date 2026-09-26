@@ -20,9 +20,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     new limit entirely rather than have every upload and connector document into it rejected the
  *     moment this version starts. Enforced by {@link LibraryStorageQuotaService} at every ingestion
  *     path that stores document content (upload via {@link LibraryDocumentService}, and the
- *     FILESYSTEM/HTTP_DIRECTORY/RSS_FEED connector paths via {@code
- *     io.opaa.indexing.document.DocumentIngestService}), not merely the upload endpoint - a
- *     connector run can grow a library's bestand just as much as a human upload can.
+ *     FILESYSTEM/HTTP_DIRECTORY/RSS_FEED connector paths via {@code DocumentIngestService}), not
+ *     merely the upload endpoint - a connector run can grow a library's bestand just as much as a
+ *     human upload can.
  */
 @ConfigurationProperties(prefix = "opaa.library")
 public record LibraryProperties(long quotaBytes) {

@@ -2,9 +2,9 @@ package io.opaa.common;
 
 /**
  * The request was refused because a concurrency or rate ceiling was reached - it may succeed when
- * repeated. {@code io.opaa.api.GlobalExceptionHandler} maps it to {@code 429} with {@link
- * #getMessage()} as the user-facing text and, when {@link #retryAfterSeconds()} is known, a {@code
- * Retry-After} header - the same answer {@code RateLimitFilter} gives for an overloaded endpoint.
+ * repeated. {@code GlobalExceptionHandler} maps it to {@code 429} with {@link #getMessage()} as the
+ * user-facing text and, when {@link #retryAfterSeconds()} is known, a {@code Retry-After} header -
+ * the same answer {@code RateLimitFilter} gives for an overloaded endpoint.
  */
 public class TooManyRequestsException extends RuntimeException {
 

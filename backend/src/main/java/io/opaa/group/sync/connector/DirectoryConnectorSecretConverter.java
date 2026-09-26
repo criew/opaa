@@ -10,9 +10,9 @@ import org.slf4j.LoggerFactory;
 /**
  * JPA converter for {@link DirectoryConnector#getClientSecret()} (#1817, ADR-0036 Entscheidung 3):
  * encrypts on the way to the database, decrypts on the way back, transparent to the connector that
- * signs in with it. Same shape as {@code io.opaa.library.SourceCredentialsConverter}, and
- * deliberately the same encryptor the issue names - one key per deployment for stored access
- * credentials, not a second one to forget.
+ * signs in with it. Same shape as {@code SourceCredentialsConverter}, and deliberately the same
+ * encryptor the issue names - one key per deployment for stored access credentials, not a second
+ * one to forget.
  *
  * <p><b>Write fails hard, read fails soft</b> - and for the same reason the library converter does
  * it: this is an attribute of the entity, so it is decrypted on <em>every</em> hydration of the

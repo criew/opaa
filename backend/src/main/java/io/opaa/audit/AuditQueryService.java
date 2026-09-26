@@ -21,8 +21,8 @@ import org.springframework.stereotype.Service;
  * AuditAccessGate}: role, Anlass and bounds are enforced there rather than by {@code @PreAuthorize}
  * on the controller - a role-based 403 thrown by a security interceptor would run before this class
  * and so be invisible to the self-log ("auch der abgewiesene Versuch erzeugt einen Eintrag").
- * {@link io.opaa.api.AuditController} therefore declares no {@code @PreAuthorize} on these
- * endpoints. Exactly one entry is written per call, whatever the outcome.
+ * {@code AuditController} therefore declares no {@code @PreAuthorize} on these endpoints. Exactly
+ * one entry is written per call, whatever the outcome.
  *
  * <p><b>Transaction behaviour.</b> No method here opens or joins an ambient transaction; {@link
  * AuditEventRecorder#recordAuditLogAccess} carries its own {@code Propagation.NOT_SUPPORTED} so the

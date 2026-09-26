@@ -2,9 +2,9 @@ package io.opaa.branding;
 
 /**
  * One configured branding image's bytes together with the media type they are served under (#582,
- * #1910). Loaded only by the endpoints of {@code io.opaa.api.BrandingController} that serve them -
- * every other read of the branding settings goes through {@link EffectiveBranding} and never pulls
- * a {@code bytea} column along.
+ * #1910). Loaded only by the endpoints of {@code BrandingController} that serve them - every other
+ * read of the branding settings goes through {@link EffectiveBranding} and never pulls a {@code
+ * bytea} column along.
  *
  * @param contentType the media type {@link BrandingImageValidator} detected in the bytes themselves
  *     at upload time. Serving this rather than an uploader-supplied header is what "Content-Type

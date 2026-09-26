@@ -1,4 +1,4 @@
-package io.opaa.searchadmin;
+package io.opaa.search;
 
 import java.util.List;
 import java.util.UUID;

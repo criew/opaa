@@ -1,7 +1,7 @@
 package io.opaa.chat;
 
 import io.micrometer.core.instrument.MeterRegistry;
-import io.opaa.config.ShutdownLifecycleConfiguration;
+import io.opaa.common.ShutdownLifecycleConfiguration;
 import io.opaa.observability.ChatMetrics;
 import java.util.concurrent.RejectedExecutionHandler;
 import java.util.concurrent.ThreadPoolExecutor;

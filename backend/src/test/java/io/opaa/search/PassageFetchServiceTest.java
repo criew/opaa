@@ -18,13 +18,9 @@ import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.TooManyRequestsException;
-import io.opaa.externalaccess.ExternalAccessMassRetrievalAlarm;
-import io.opaa.externalaccess.ExternalAccessQuota;
 import io.opaa.indexing.chunk.ChunkingService;
 import io.opaa.indexing.document.Document;
 import io.opaa.indexing.document.DocumentRepository;
-import io.opaa.searchadmin.ChunkInspection;
-import io.opaa.searchadmin.ChunkInspectionService;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -51,8 +47,8 @@ class PassageFetchServiceTest {
   private DocumentRepository documents;
   private SearchScopeSource scopeSource;
   private SearchHitAssembler hitAssembler;
-  private ExternalAccessQuota quota;
-  private ExternalAccessMassRetrievalAlarm alarm;
+  private AccessTokenQuota quota;
+  private MassRetrievalAlarm alarm;
   private Document document;
 
   @BeforeEach
@@ -61,8 +57,8 @@ class PassageFetchServiceTest {
     documents = mock(DocumentRepository.class);
     scopeSource = mock(SearchScopeSource.class);
     hitAssembler = mock(SearchHitAssembler.class);
-    quota = mock(ExternalAccessQuota.class);
-    alarm = mock(ExternalAccessMassRetrievalAlarm.class);
+    quota = mock(AccessTokenQuota.class);
+    alarm = mock(MassRetrievalAlarm.class);
 
     document =
         new Document("akte.pdf", "/akte.pdf", "application/pdf", 10L, DocumentSourceType.UPLOAD);

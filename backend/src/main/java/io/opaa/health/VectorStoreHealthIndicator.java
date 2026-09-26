@@ -1,4 +1,4 @@
-package io.opaa.observability;
+package io.opaa.health;
 
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;

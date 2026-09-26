@@ -33,9 +33,9 @@ import tools.jackson.databind.ObjectMapper;
  * docs/features/llm-integration.md#stufe-1-verwaltete-chat-modelle-in-umsetzung: "Verbindungstest
  * je Eintrag. Eine falsch eingetragene Adresse fällt sonst erst dem nächsten fragenden Menschen
  * auf") with a short, bounded chat completion request - the same shape {@code
- * io.opaa.library.SourceConnectionTestService} already uses for library sources: a synchronous
- * probe with a tight timeout, German user-facing outcomes, and a clean separation between
- * "unreachable", "not authenticated" and "model unknown", per the issue's technical hint.
+ * SourceConnectionTestService} already uses for library sources: a synchronous probe with a tight
+ * timeout, German user-facing outcomes, and a clean separation between "unreachable", "not
+ * authenticated" and "model unknown", per the issue's technical hint.
  *
  * <p><b>No target-address blocking here, deliberately</b> - unlike {@code
  * io.opaa.security.TargetAddressValidator}, which exists to stop a crawl from walking a public URL

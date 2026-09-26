@@ -49,12 +49,12 @@ import org.springframework.stereotype.Service;
 
 /**
  * Tests a source configuration <em>before</em> a library is created (#514) - the same checks {@link
- * KnowledgeLibraryService#createLibrary} and the corresponding {@code
- * io.opaa.indexing.source.SourceIndexingExecutor} would otherwise only surface much later, at the
- * first indexing run: whether a FILESYSTEM directory exists and is readable, whether an
- * HTTP_DIRECTORY page answers under the configured proxy/credentials/certificate settings, whether
- * an RSS_FEED URL serves a parseable feed, and - for CONFLUENCE (ADR-0023) - which edition an
- * address is and whether the credentials fit it ({@link ConfluenceConnectionService}).
+ * KnowledgeLibraryService#createLibrary} and the corresponding {@code SourceIndexingExecutor} would
+ * otherwise only surface much later, at the first indexing run: whether a FILESYSTEM directory
+ * exists and is readable, whether an HTTP_DIRECTORY page answers under the configured
+ * proxy/credentials/certificate settings, whether an RSS_FEED URL serves a parseable feed, and -
+ * for CONFLUENCE (ADR-0023) - which edition an address is and whether the credentials fit it
+ * ({@link ConfluenceConnectionService}).
  *
  * <p><b>Same building blocks as the real runs, deliberately</b> (issue #514): {@link
  * SourceHttpClientFactory#buildHttpClient} and {@link SourceHttpClientFactory#buildAuthHeader} are
@@ -82,16 +82,15 @@ import org.springframework.stereotype.Service;
  * the library the probe served. FILESYSTEM is additionally gated by the identical {@link
  * FilesystemPathAllowlist} check creation applies, before anything on disk is touched; every
  * per-request HTTP timeout here is kept well under {@code buildHttpClient}'s 30s connect timeout
- * (the S3 probe's store likewise carries {@link
- * io.opaa.indexing.source.s3.S3ClientFactory#PROBE_TIMEOUT} and a single retry, and the whole S3
- * test stops after {@link S3ConnectionService#PROBE_DEADLINE}) so a single caller cannot tie up
- * Tomcat's worker pool for long by requesting many tests against a filtered address at once -
- * {@code RateLimitConfiguration} additionally caps this endpoint per IP and globally, the same way
- * it already does for the indexing trigger. No response ever reveals more about a directory's
- * contents than a count - never a file name, a listing, or an exception's raw text. Target
- * validation for the URL-based types' addresses themselves (blocking internal/private ranges,
- * {@code TargetAddressValidator}) applies to every fetch here exactly as to the indexing run - for
- * CONFLUENCE including the credential-free edition probes and the proxy host - see
+ * (the S3 probe's store likewise carries {@code S3ClientFactory#PROBE_TIMEOUT} and a single retry,
+ * and the whole S3 test stops after {@link S3ConnectionService#PROBE_DEADLINE}) so a single caller
+ * cannot tie up Tomcat's worker pool for long by requesting many tests against a filtered address
+ * at once - {@code RateLimitConfiguration} additionally caps this endpoint per IP and globally, the
+ * same way it already does for the indexing trigger. No response ever reveals more about a
+ * directory's contents than a count - never a file name, a listing, or an exception's raw text.
+ * Target validation for the URL-based types' addresses themselves (blocking internal/private
+ * ranges, {@code TargetAddressValidator}) applies to every fetch here exactly as to the indexing
+ * run - for CONFLUENCE including the credential-free edition probes and the proxy host - see
  * docs/features/knowledge-sources.md.
  *
  * <p><b>Testing an existing library's stored quellkonfiguration (#544).</b> {@link

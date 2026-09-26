@@ -8,8 +8,8 @@ import java.util.UUID;
 /**
  * The membership questions {@link GroupMembershipResolver} asks of whoever stores group memberships
  * - the port that keeps this package free of a dependency on {@code io.opaa.group} (ADR-0036,
- * Entscheidung 12). Implemented by {@code io.opaa.group.GroupMembershipRepository}: the permission
- * model asks, the group administration answers.
+ * Entscheidung 12). Implemented by {@code GroupMembershipRepository}: the permission model asks,
+ * the group administration answers.
  */
 public interface GroupMembershipSource {
 

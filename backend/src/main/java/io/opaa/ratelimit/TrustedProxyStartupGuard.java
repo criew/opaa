@@ -1,6 +1,5 @@
-package io.opaa.security;
+package io.opaa.ratelimit;
 
-import io.opaa.api.RateLimitProperties;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

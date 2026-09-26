@@ -7,7 +7,7 @@ import io.opaa.permission.GroupSizeSignal;
  * A space membership enriched with what the row shows but the entity does not carry: the subject's
  * display name (a person's, or the group's) and, for a group, the growth signal of ADR-0036,
  * Entscheidung 9. Domain counterpart of the generated {@code SpaceMemberResponse}, mapped by {@code
- * io.opaa.api.SpaceResponseMapper}.
+ * SpaceResponseMapper}.
  *
  * @param displayName null for a protected group: in another person's list it is a nameless row, and
  *     {@code protectedGroup} is what tells that apart from a group row whose group is gone.

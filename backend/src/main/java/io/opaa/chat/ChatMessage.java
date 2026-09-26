@@ -15,9 +15,9 @@ import org.hibernate.type.SqlTypes;
 
 /**
  * One persisted question/answer turn of a {@link Chat} (#525). The source of truth for conversation
- * memory - see {@code io.opaa.query.QueryService} - replacing the purely in-memory, TTL-evicted
- * {@code CaffeineChatMemoryRepository} for chats that have a persisted chat id; that cache may
- * remain in front of it as a pure read optimisation.
+ * memory - see {@code QueryService} - replacing the purely in-memory, TTL-evicted {@code
+ * CaffeineChatMemoryRepository} for chats that have a persisted chat id; that cache may remain in
+ * front of it as a pure read optimisation.
  *
  * <p>{@link #sources} is stored as a raw JSON string (the {@code chat_messages.sources} column is
  * {@code json}), shaped like {@link ChatSource} - it is (de)serialized by {@code ChatService}, not
