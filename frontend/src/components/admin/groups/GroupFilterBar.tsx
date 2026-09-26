@@ -3,16 +3,11 @@ import Box from '@mui/material/Box'
 import MenuItem from '@mui/material/MenuItem'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
-import type { GroupKind, GroupState } from '../../../types/api'
+import type { GroupState } from '../../../types/api'
 import { useOidcProviderStore } from '../../../stores/oidcProviderStore'
 import { useGroupAdminListStore, type GroupFilters } from '../../../stores/groupAdminListStore'
 import { SEARCH_DEBOUNCE_MS } from '../users/AccountFilterBar'
-import {
-  GROUP_KINDS,
-  GROUP_KIND_SHORT_LABEL,
-  GROUP_STATES,
-  GROUP_STATE_LABEL,
-} from './groupListLabels'
+import { GROUP_STATES, GROUP_STATE_LABEL } from './groupListLabels'
 
 const PROVIDER_OPTION_PREFIX = 'provider:'
 
@@ -34,7 +29,7 @@ function originPatch(value: string): Partial<GroupFilters> {
 
 /**
  * Suche und Filter der Gruppenliste (#1978), gebaut wie die der Kontenliste: das Suchfeld
- * entprellt, daneben Herkunft (alle, intern, alle Anbieter oder ein einzelner Anbieter), Art und
+ * entprellt, daneben Herkunft (alle, intern, alle Anbieter oder ein einzelner Anbieter) und
  * Zustand. Die primäre Handlung steht im Kopf des Bereichs darüber, damit diese Zeile nur Filter
  * trägt.
  */
@@ -97,23 +92,6 @@ export default function GroupFilterBar() {
           <MenuItem key={provider.id} value={`${PROVIDER_OPTION_PREFIX}${provider.id}`}>
             {provider.displayName}
             {provider.enabled ? '' : ' (deaktiviert)'}
-          </MenuItem>
-        ))}
-      </TextField>
-      <TextField
-        size="small"
-        select
-        sx={selectSx}
-        label="Art"
-        value={filters.kind ?? 'ALL'}
-        onChange={(e) =>
-          update({ kind: e.target.value === 'ALL' ? null : (e.target.value as GroupKind) })
-        }
-      >
-        <MenuItem value="ALL">Alle Arten</MenuItem>
-        {GROUP_KINDS.map((kind) => (
-          <MenuItem key={kind} value={kind}>
-            {GROUP_KIND_SHORT_LABEL[kind]}
           </MenuItem>
         ))}
       </TextField>

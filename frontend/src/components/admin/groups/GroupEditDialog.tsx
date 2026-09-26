@@ -19,7 +19,7 @@ import { notify } from '../../../stores/notificationStore'
 import FieldLabel from '../../wizard/FieldLabel'
 import GroupContactsSection from '../../groups/GroupContactsSection'
 import GroupStewardsSection from '../../groups/GroupStewardsSection'
-import { GROUP_KIND_SHORT_LABEL, groupStateReason } from './groupListLabels'
+import { groupMaintenanceLabel, groupStateReason } from './groupListLabels'
 
 const RELEASE_HELP =
   'Erst freigegeben ist die Gruppe für andere Rechtevergebende wählbar. Das Schutzkennzeichen ' +
@@ -102,8 +102,9 @@ function GroupEditDialogContent({
       <DialogTitle id="group-edit-title">„{group.name}“ bearbeiten</DialogTitle>
       <DialogContent>
         <Typography sx={{ fontSize: 13, color: 'text.secondary', mb: 2 }}>
-          {GROUP_KIND_SHORT_LABEL[group.kind]}
-          {group.provider ? ` · ${group.provider.displayName}` : ' · Intern'}
+          {group.provider
+            ? `${group.provider.displayName} · ${groupMaintenanceLabel(group) ?? ''}`
+            : 'Interne Gruppe'}
           {group.sourcePath ? ` · ${group.sourcePath}` : ''}
         </Typography>
         {error && (

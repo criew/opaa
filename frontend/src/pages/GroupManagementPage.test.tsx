@@ -180,22 +180,25 @@ describe('GroupManagementPage', () => {
     useGroupAdminListStore.getState().reset()
   })
 
-  // #1978: die Gruppen als Tabelle wie die Konten - Art, Herkunft, Mitglieder, Zustand
-  it('lists the groups as a table with kind, origin, member count and state', async () => {
+  // #1978: die Gruppen als Tabelle wie die Konten - Herkunft mit Pflegeweg, Mitglieder, Zustand;
+  // eine eigene Spalte „Art" gibt es nicht, sie steckt im Pflegeweg
+  it('lists the groups as a table with origin, maintenance, member count and state', async () => {
     serve([adHocGroup, orgUnitGroup])
     renderPage()
 
     const table = await screen.findByRole('table', { name: 'Gruppen' })
     const phoenix = within(table).getByText('Projektbeteiligte Phoenix').closest('tr')!
-    expect(within(phoenix).getByText('Ad-hoc-Gruppe')).toBeInTheDocument()
     expect(within(phoenix).getByText('Intern')).toBeInTheDocument()
+    expect(within(phoenix).queryByText(/Verzeichnisabgleich|bei Anmeldung/)).not.toBeInTheDocument()
     expect(within(phoenix).getByText('Nicht freigegeben')).toBeInTheDocument()
     expect(
       within(phoenix).getByRole('img', { name: /^Grund: Noch nicht zur Verwendung/ }),
     ).toBeInTheDocument()
     const referat = within(table).getByText('Referat 50').closest('tr')!
-    expect(within(referat).getByText('Organisationseinheit')).toBeInTheDocument()
     expect(within(referat).getByText('Verzeichnisdienst')).toBeInTheDocument()
+    expect(within(referat).getByText('Verzeichnisabgleich')).toBeInTheDocument()
+    expect(within(table).queryByRole('columnheader', { name: /^Art/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('combobox', { name: 'Art' })).not.toBeInTheDocument()
     expect(within(referat).getByText('/Haus A/Referat 50')).toBeInTheDocument()
     expect(within(referat).getByText('Aktiv')).toBeInTheDocument()
     expect(screen.getByText('2 Gruppen · Seite 1 von 1')).toBeInTheDocument()
@@ -279,6 +282,9 @@ describe('GroupManagementPage', () => {
     await user.click(within(menu).getByRole('menuitem', { name: 'Bearbeiten' }))
     const dialog = await screen.findByRole('dialog')
     expect(within(dialog).getByText(/stammt aus dem Identitätsanbieter/)).toBeInTheDocument()
+    expect(
+      within(dialog).getByText('Verzeichnisdienst · bei Anmeldung · /Haus A/Referat 50'),
+    ).toBeInTheDocument()
     expect(within(dialog).queryByLabelText('Name der Gruppe')).not.toBeInTheDocument()
     expect(within(dialog).queryByRole('button', { name: 'Speichern' })).not.toBeInTheDocument()
   })

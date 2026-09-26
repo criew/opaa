@@ -421,8 +421,10 @@ Verantwortliche dürfen:
 Pflegeversuch dieselbe Antwort wie für eine Gruppe, die es nicht gibt. Die Systemverwaltung darf
 jede interne Gruppe pflegen — sie muss eine Gruppe ohne Verantwortliche wieder besetzen können; ihr
 Einstieg ist **Administration → Gruppen**. Dort stehen alle Gruppen in einer Tabelle wie die Konten
-der Benutzerverwaltung: durchsuchbar über Name, Beschreibung und Quellpfad, filterbar nach Herkunft,
-Art und Zustand, sortierbar und seitenweise. Eine interne Gruppe, die ihre Verantwortlichen noch
+der Benutzerverwaltung: durchsuchbar über Name, Beschreibung und Quellpfad, filterbar nach Herkunft
+und Zustand, sortierbar und seitenweise. Unter einer Anbietergruppe nennt die Herkunft, wie ihre
+Mitglieder gepflegt werden: **„bei Anmeldung“** (aus dem Token des Anbieters, bei jeder Anmeldung
+neu) oder **„Verzeichnisabgleich“** (im Takt des Abgleichs, auch ohne Anmeldung). Eine interne Gruppe, die ihre Verantwortlichen noch
 nicht freigegeben haben, trägt den Zustand **„Nicht freigegeben“**; das Info-Symbol daneben nennt
 den Grund, ebenso bei „Aufgelöst“, „Anbieter deaktiviert“ und „Nicht mehr gepflegt“. Die Handlungen
 einer Gruppe stehen im Zeilenmenü: **Bearbeiten**, **Mitglieder**, **Wirkungen übertragen** und

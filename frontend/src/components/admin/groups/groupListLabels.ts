@@ -27,13 +27,18 @@ export const GROUP_STATE_COLOR: Record<GroupState, string> = {
   DISSOLVED: 'error.main',
 }
 
-export const GROUP_KINDS: GroupKind[] = ['AD_HOC', 'IDENTITY_PROVIDER', 'ORG_UNIT']
+/**
+ * How a provider group's members are kept - the one thing its kind adds to its origin: a token
+ * group follows each sign-in, an org unit the directory sync. Null for an internal group.
+ */
+const GROUP_MAINTENANCE_LABEL: Record<GroupKind, string | null> = {
+  AD_HOC: null,
+  IDENTITY_PROVIDER: 'bei Anmeldung',
+  ORG_UNIT: 'Verzeichnisabgleich',
+}
 
-/** The kind as the list reads it - short, where the dialog may say more. */
-export const GROUP_KIND_SHORT_LABEL: Record<GroupKind, string> = {
-  AD_HOC: 'Ad-hoc-Gruppe',
-  IDENTITY_PROVIDER: 'Aus dem Anbieter',
-  ORG_UNIT: 'Organisationseinheit',
+export function groupMaintenanceLabel(group: GroupListResponse): string | null {
+  return GROUP_MAINTENANCE_LABEL[group.kind]
 }
 
 /** Why a group is not in effect, for the info symbol behind its state; null for an active one. */

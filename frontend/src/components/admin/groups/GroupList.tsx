@@ -25,12 +25,7 @@ import {
 import { adminTableSx, listCardSx } from '../list/adminListStyles'
 import GroupOriginTag from './GroupOriginTag'
 import GroupRowMenu from './GroupRowMenu'
-import {
-  GROUP_KIND_SHORT_LABEL,
-  GROUP_STATE_COLOR,
-  GROUP_STATE_LABEL,
-  groupStateReason,
-} from './groupListLabels'
+import { GROUP_STATE_COLOR, GROUP_STATE_LABEL, groupStateReason } from './groupListLabels'
 
 const SORT_LABEL: Record<GroupSortField, string> = {
   name: 'Name',
@@ -168,7 +163,6 @@ function GroupTableRow({ group, effects, ...handlers }: RowProps) {
       <TableCell>
         <GroupNameCell group={group} />
       </TableCell>
-      <TableCell>{GROUP_KIND_SHORT_LABEL[group.kind]}</TableCell>
       <TableCell>
         <GroupOriginTag group={group} />
       </TableCell>
@@ -203,7 +197,7 @@ function GroupCard({ group, effects, ...handlers }: RowProps) {
         <GroupStateCell group={group} />
       </Box>
       <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.75 }}>
-        {GROUP_KIND_SHORT_LABEL[group.kind]} · {memberText(group.memberCount)}
+        {memberText(group.memberCount)}
         {effects ? ` · ${effects.summary === '' ? 'ohne Wirkung' : effects.summary}` : ''}
       </Typography>
     </Box>
@@ -260,11 +254,10 @@ export default function GroupList(handlers: GroupRowHandlers) {
           <TableHead>
             <TableRow>
               <SortableHeadCell fields={['name']} binding={sort} />
-              <SortableHeadCell fields={['kind']} binding={sort} width="15%" />
-              <SortableHeadCell fields={['origin']} binding={sort} width="14%" />
-              <SortableHeadCell fields={['memberCount']} binding={sort} width="9%" align="right" />
+              <SortableHeadCell fields={['origin']} binding={sort} width="19%" />
+              <SortableHeadCell fields={['memberCount']} binding={sort} width="10%" align="right" />
               <SortableHeadCell fields={['state']} binding={sort} width="19%" />
-              <TableCell sx={{ width: '14%' }}>Wirkung</TableCell>
+              <TableCell sx={{ width: '18%' }}>Wirkung</TableCell>
               <TableCell align="right" sx={{ width: 56 }}>
                 <span style={visuallyHidden}>Aktionen</span>
               </TableCell>

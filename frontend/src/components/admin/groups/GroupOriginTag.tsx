@@ -1,16 +1,17 @@
+import Box from '@mui/material/Box'
 import Stack from '@mui/material/Stack'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import CorporateFareOutlinedIcon from '@mui/icons-material/CorporateFareOutlined'
 import GroupWorkOutlinedIcon from '@mui/icons-material/GroupWorkOutlined'
 import type { GroupListResponse } from '../../../types/api'
-import { groupMechanismLabel } from '../../groups/groupOriginLabels'
+import { groupMaintenanceLabel } from './groupListLabels'
 
 /**
  * Die Herkunft einer Gruppe, gebaut wie die Herkunft eines Kontos (#1978): „Intern" für eine
- * Gruppe dieser Installation, Gebäude und Anbietername für eine Gruppe eines Identitätsanbieters.
- * Das Symbol trägt keine eigene Bedeutung - das Wort daneben tut es; der Tooltip nennt den
- * Mechanismus, der die Gruppe pflegt.
+ * Gruppe dieser Installation, Gebäude und Anbietername für eine Gruppe eines Identitätsanbieters,
+ * darunter der Pflegeweg („bei Anmeldung", „Verzeichnisabgleich"). Die Art einer Gruppe steht
+ * damit hier und braucht keine eigene Spalte. Das Symbol trägt keine eigene Bedeutung.
  */
 export default function GroupOriginTag({ group }: { group: GroupListResponse }) {
   const internal = !group.provider
@@ -43,10 +44,16 @@ export default function GroupOriginTag({ group }: { group: GroupListResponse }) 
       </Typography>
     </Stack>
   )
+  const maintenance = groupMaintenanceLabel(group)
   if (!group.provider) return tag
   return (
-    <Tooltip title={`${label} · ${groupMechanismLabel(group.provider.groupMechanism)}`}>
-      {tag}
-    </Tooltip>
+    <Box sx={{ minWidth: 0 }}>
+      <Tooltip title={label}>{tag}</Tooltip>
+      {maintenance && (
+        <Typography sx={{ fontSize: 12, color: 'text.secondary', pl: '19px' }}>
+          {maintenance}
+        </Typography>
+      )}
+    </Box>
   )
 }
