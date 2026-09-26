@@ -5,9 +5,11 @@ import io.opaa.api.types.AuditObjectType;
 import io.opaa.asset.Asset;
 import io.opaa.asset.AssetTypeDefinition;
 import io.opaa.common.ConflictException;
+import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.permission.AssetType;
 import org.hibernate.Hibernate;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 /**
@@ -19,6 +21,13 @@ import org.springframework.stereotype.Component;
  */
 @Component
 class KnowledgeLibraryAssetType implements AssetTypeDefinition {
+
+  private final SourceConnectorRegistry connectors;
+
+  /** The registry arrives lazily - the connectors themselves sit on top of the asset shell. */
+  KnowledgeLibraryAssetType(@Lazy SourceConnectorRegistry connectors) {
+    this.connectors = connectors;
+  }
 
   @Override
   public AssetType assetType() {
@@ -74,11 +83,11 @@ class KnowledgeLibraryAssetType implements AssetTypeDefinition {
    * library is refused rather than let past the cap. {@code null} for an upload library, which
    * carries no cap at all.
    */
-  private static KnowledgeLibrary cappedLibrary(Asset asset) {
+  private KnowledgeLibrary cappedLibrary(Asset asset) {
     if (!(Hibernate.unproxy(asset) instanceof KnowledgeLibrary library)) {
       throw new IllegalStateException(
           "asset " + asset.getId() + " of type " + asset.getAssetType() + " is no library");
     }
-    return library.getSourceType().hasIndexingRun() ? library : null;
+    return connectors.descriptor(library.getSourceType()).indexingRun() ? library : null;
   }
 }

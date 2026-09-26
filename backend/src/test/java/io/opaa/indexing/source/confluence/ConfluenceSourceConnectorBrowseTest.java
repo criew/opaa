@@ -38,11 +38,7 @@ class ConfluenceSourceConnectorBrowseTest {
             null,
             credentials,
             false,
-            ConfluenceEdition.DATA_CENTER,
-            null,
-            null,
-            null),
-        null,
+            new ConfluenceSourceSettings(ConfluenceEdition.DATA_CENTER, null, null).toData()),
         null);
   }
 

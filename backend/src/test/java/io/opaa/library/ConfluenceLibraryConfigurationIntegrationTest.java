@@ -19,8 +19,9 @@ import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.source.SourceSyncState;
 import io.opaa.indexing.source.SourceSyncStateRepository;
+import io.opaa.indexing.source.confluence.ConfluenceSourceSettings;
+import io.opaa.indexing.source.confluence.ConfluenceSpaceSelection;
 import io.opaa.indexing.source.confluence.FakeConfluenceServer;
-import io.opaa.knowledge.ConfluenceSpaceSelection;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
@@ -119,15 +120,16 @@ class ConfluenceLibraryConfigurationIntegrationTest {
 
     KnowledgeLibrary library = detail.library();
     assertThat(library.getSourceType()).isEqualTo(DocumentSourceType.CONFLUENCE);
-    assertThat(library.getSourceConfluenceEdition()).isEqualTo(ConfluenceEdition.DATA_CENTER);
+    assertThat(ConfluenceSourceSettings.of(library).edition())
+        .isEqualTo(ConfluenceEdition.DATA_CENTER);
     assertThat(library.getSourceUrl()).isEqualTo(dataCenter.baseUrl());
-    assertThat(library.getConfluenceSpaces())
+    assertThat(ConfluenceSourceSettings.of(library).spaceSelection())
         .extracting(ConfluenceSpaceSelection::getSpaceKey)
         .containsExactly("BAU", "HR");
     assertThat(detail.managementDetail().sourceCredentialsSet()).isTrue();
 
     KnowledgeLibrary reloaded = libraryRepository.findById(library.getId()).orElseThrow();
-    assertThat(reloaded.getConfluenceSpaces()).hasSize(2);
+    assertThat(ConfluenceSourceSettings.of(reloaded).spaceSelection()).hasSize(2);
     assertThat(reloaded.getSourceCredentials()).isEqualTo("pat-geheim");
   }
 
@@ -149,7 +151,8 @@ class ConfluenceLibraryConfigurationIntegrationTest {
                 .build(),
             currentUser(owner));
     assertThat(detail.library().getSourceUrl()).isEqualTo(cloud.baseUrl());
-    assertThat(detail.library().getSourceConfluenceEdition()).isEqualTo(ConfluenceEdition.CLOUD);
+    assertThat(ConfluenceSourceSettings.of(detail.library()).edition())
+        .isEqualTo(ConfluenceEdition.CLOUD);
   }
 
   @Test
@@ -292,16 +295,20 @@ class ConfluenceLibraryConfigurationIntegrationTest {
             caller);
     assertThat(syncStateRepository.findByLibraryId(libraryId)).isEmpty();
     syncStateRepository.save(new SourceSyncState(libraryId));
-    assertThat(updated.library().getConfluenceSpaces())
+    assertThat(ConfluenceSourceSettings.of(updated.library()).spaceSelection())
         .extracting(ConfluenceSpaceSelection::getSpaceKey)
         .containsExactly("ENG", "OPS");
-    assertThat(libraryRepository.findById(libraryId).orElseThrow().getConfluenceSpaces())
+    assertThat(
+            ConfluenceSourceSettings.of(libraryRepository.findById(libraryId).orElseThrow())
+                .spaceSelection())
         .extracting(ConfluenceSpaceSelection::getSpaceKey)
         .containsExactly("ENG", "OPS");
 
     // a rename leaves the selection alone - and the run state
     libraryService.updateLibrary(libraryId, libraryUpdate("Wiki umbenannt").build(), caller);
-    assertThat(libraryRepository.findById(libraryId).orElseThrow().getConfluenceSpaces())
+    assertThat(
+            ConfluenceSourceSettings.of(libraryRepository.findById(libraryId).orElseThrow())
+                .spaceSelection())
         .hasSize(2);
     assertThat(syncStateRepository.findByLibraryId(libraryId)).isPresent();
 
@@ -311,6 +318,66 @@ class ConfluenceLibraryConfigurationIntegrationTest {
                     libraryId, libraryUpdate("Wiki").confluenceSpaces(List.of()).build(), caller))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("mindestens ein Space");
+  }
+
+  @Test
+  void aForeignEditionIsRefusedBeforeTheConnectorAndForeignSpacesOnCreationAfterIt() {
+    CurrentUser caller = currentUser(user());
+    // an address the RSS connector refuses tells which check ran first
+    URI notHttp = URI.create("ftp://example.org/feed.xml");
+
+    assertThatThrownBy(
+            () ->
+                libraryService.createLibrary(
+                    libraryCreation("RSS mit Edition", DocumentSourceType.RSS_FEED)
+                        .sourceUrl(notHttp)
+                        .confluenceEdition(ConfluenceEdition.CLOUD)
+                        .build(),
+                    caller))
+        .isInstanceOf(ValidationException.class)
+        .hasMessage("confluenceEdition ist nur für sourceType CONFLUENCE zulässig");
+    assertThatThrownBy(
+            () ->
+                libraryService.createLibrary(
+                    libraryCreation("RSS mit Spaces", DocumentSourceType.RSS_FEED)
+                        .sourceUrl(notHttp)
+                        .confluenceSpaces(List.of(new ConfluenceSpaceSelection("A", null)))
+                        .build(),
+                    caller))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("sourceUrl");
+
+    UUID rss =
+        libraryService
+            .createLibrary(
+                libraryCreation("Feed", DocumentSourceType.RSS_FEED)
+                    .sourceUrl(URI.create("https://example.org/feed.xml"))
+                    .build(),
+                caller)
+            .library()
+            .getId();
+    assertThatThrownBy(
+            () ->
+                libraryService.updateLibrary(
+                    rss,
+                    libraryUpdate("Feed")
+                        .sourceUrl(notHttp)
+                        .confluenceSpaces(List.of(new ConfluenceSpaceSelection("A", null)))
+                        .build(),
+                    caller))
+        .isInstanceOf(ValidationException.class)
+        .hasMessage("confluenceSpaces sind nur für sourceType CONFLUENCE zulässig");
+    assertThatThrownBy(
+            () ->
+                libraryService.updateLibrary(
+                    rss,
+                    libraryUpdate("Feed")
+                        .sourceUrl(notHttp)
+                        .confluenceFullSyncIntervalDays(14)
+                        .build(),
+                    caller))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("sourceUrl");
   }
 
   @Test
@@ -366,8 +433,11 @@ class ConfluenceLibraryConfigurationIntegrationTest {
                 .build(),
             caller);
     UUID libraryId = created.library().getId();
-    assertThat(created.managementDetail().confluenceFullSyncIntervalDays()).isEqualTo(14);
-    assertThat(created.managementDetail().confluenceFullSyncIntervalDefaultDays()).isEqualTo(7);
+    assertThat(
+            ConfluenceSourceSettings.read(created.managementDetail().connectorSettings())
+                .fullSyncIntervalDays())
+        .isEqualTo(14);
+    assertThat(created.managementDetail().fullSyncIntervalDefaultDays()).isEqualTo(7);
 
     // present replaces, absent leaves the stored value untouched, 0 returns to the default
     libraryService.updateLibrary(
@@ -381,8 +451,11 @@ class ConfluenceLibraryConfigurationIntegrationTest {
             libraryUpdate("Wiki umbenannt").confluenceFullSyncIntervalDays(0).build(),
             caller);
     assertThat(storedRhythm(libraryId)).isNull();
-    assertThat(reset.managementDetail().confluenceFullSyncIntervalDays()).isNull();
-    assertThat(reset.managementDetail().confluenceFullSyncIntervalDefaultDays()).isEqualTo(7);
+    assertThat(
+            ConfluenceSourceSettings.read(reset.managementDetail().connectorSettings())
+                .fullSyncIntervalDays())
+        .isNull();
+    assertThat(reset.managementDetail().fullSyncIntervalDefaultDays()).isEqualTo(7);
 
     // lengthenable, never switchable off: the bounds are 1-365 days, with no "never"
     assertThatThrownBy(
@@ -405,7 +478,8 @@ class ConfluenceLibraryConfigurationIntegrationTest {
   }
 
   private Integer storedRhythm(UUID libraryId) {
-    return libraryRepository.findById(libraryId).orElseThrow().getConfluenceFullSyncIntervalDays();
+    return ConfluenceSourceSettings.of(libraryRepository.findById(libraryId).orElseThrow())
+        .fullSyncIntervalDays();
   }
 
   @Test
@@ -478,10 +552,14 @@ class ConfluenceLibraryConfigurationIntegrationTest {
     assertThat(all).hasSize(6);
     assertThat(all).allMatch(l -> l.getSourceType() == DocumentSourceType.CONFLUENCE);
     assertThat(all.stream().filter(l -> l.getSourceUrl().equals(instance1))).hasSize(4);
-    assertThat(libraryRepository.findById(a).orElseThrow().getConfluenceSpaces())
+    assertThat(
+            ConfluenceSourceSettings.of(libraryRepository.findById(a).orElseThrow())
+                .spaceSelection())
         .extracting(ConfluenceSpaceSelection::getSpaceKey)
         .containsExactly("S1");
-    assertThat(libraryRepository.findById(f).orElseThrow().getConfluenceSpaces())
+    assertThat(
+            ConfluenceSourceSettings.of(libraryRepository.findById(f).orElseThrow())
+                .spaceSelection())
         .extracting(ConfluenceSpaceSelection::getSpaceKey)
         .containsExactly("S1", "S2");
 
@@ -492,8 +570,14 @@ class ConfluenceLibraryConfigurationIntegrationTest {
             .confluenceSpaces(List.of(new ConfluenceSpaceSelection("S3", null)))
             .build(),
         alice);
-    assertThat(libraryRepository.findById(f).orElseThrow().getConfluenceSpaces()).hasSize(2);
-    assertThat(libraryRepository.findById(b).orElseThrow().getConfluenceSpaces()).hasSize(1);
+    assertThat(
+            ConfluenceSourceSettings.of(libraryRepository.findById(f).orElseThrow())
+                .spaceSelection())
+        .hasSize(2);
+    assertThat(
+            ConfluenceSourceSettings.of(libraryRepository.findById(b).orElseThrow())
+                .spaceSelection())
+        .hasSize(1);
   }
 
   // ---- helpers ---------------------------------------------------------------------------------
@@ -509,10 +593,12 @@ class ConfluenceLibraryConfigurationIntegrationTest {
             libraryService
                 .getLibrary(libraryId, currentUser(owner))
                 .managementDetail()
-                .confluenceWebhookSecretSet())
+                .pushSecretSet())
         .isFalse();
 
-    String first = libraryService.generateConfluenceWebhookSecret(libraryId, currentUser(owner));
+    String first =
+        libraryService.generatePushSecret(
+            libraryId, DocumentSourceType.CONFLUENCE, currentUser(owner));
     assertThat(first).hasSize(43).matches("[A-Za-z0-9_-]+");
     KnowledgeLibrary stored = libraryRepository.findById(libraryId).orElseThrow();
     assertThat(stored.getWebhookSecret()).isEqualTo(first);
@@ -528,17 +614,19 @@ class ConfluenceLibraryConfigurationIntegrationTest {
             libraryService
                 .getLibrary(libraryId, currentUser(owner))
                 .managementDetail()
-                .confluenceWebhookSecretSet())
+                .pushSecretSet())
         .isTrue();
 
-    String second = libraryService.generateConfluenceWebhookSecret(libraryId, currentUser(owner));
+    String second =
+        libraryService.generatePushSecret(
+            libraryId, DocumentSourceType.CONFLUENCE, currentUser(owner));
     assertThat(second).isNotEqualTo(first);
     assertThat(libraryRepository.findById(libraryId).orElseThrow().getWebhookSecret())
         .isEqualTo(second);
 
-    libraryService.removeConfluenceWebhookSecret(libraryId, currentUser(owner));
+    libraryService.removePushSecret(libraryId, DocumentSourceType.CONFLUENCE, currentUser(owner));
     assertThat(libraryRepository.findById(libraryId).orElseThrow().getWebhookSecret()).isNull();
-    libraryService.removeConfluenceWebhookSecret(libraryId, currentUser(owner));
+    libraryService.removePushSecret(libraryId, DocumentSourceType.CONFLUENCE, currentUser(owner));
 
     List<String> audit =
         jdbcTemplate.queryForList(
@@ -566,14 +654,14 @@ class ConfluenceLibraryConfigurationIntegrationTest {
     UUID owner = user();
     UUID libraryId =
         create(currentUser(owner), "Wiki", dataCenter.baseUrl(), "pat", List.of("ENG"));
-    libraryService.generateConfluenceWebhookSecret(libraryId, currentUser(owner));
+    libraryService.generatePushSecret(libraryId, DocumentSourceType.CONFLUENCE, currentUser(owner));
     jdbcTemplate.update(
         "UPDATE knowledge_libraries SET source_webhook_secret = ? WHERE id = ?",
         "enc:v1:not-decryptable-with-any-key",
         libraryId);
     assertThat(libraryRepository.findById(libraryId).orElseThrow().getWebhookSecret()).isNull();
 
-    libraryService.removeConfluenceWebhookSecret(libraryId, currentUser(owner));
+    libraryService.removePushSecret(libraryId, DocumentSourceType.CONFLUENCE, currentUser(owner));
 
     assertThat(
             jdbcTemplate.queryForObject(
@@ -597,10 +685,14 @@ class ConfluenceLibraryConfigurationIntegrationTest {
         currentUser(owner));
 
     assertThatThrownBy(
-            () -> libraryService.generateConfluenceWebhookSecret(libraryId, currentUser(editor)))
+            () ->
+                libraryService.generatePushSecret(
+                    libraryId, DocumentSourceType.CONFLUENCE, currentUser(editor)))
         .isInstanceOf(AccessDeniedException.class);
     assertThatThrownBy(
-            () -> libraryService.removeConfluenceWebhookSecret(libraryId, currentUser(editor)))
+            () ->
+                libraryService.removePushSecret(
+                    libraryId, DocumentSourceType.CONFLUENCE, currentUser(editor)))
         .isInstanceOf(AccessDeniedException.class);
 
     UUID upload =
@@ -610,7 +702,9 @@ class ConfluenceLibraryConfigurationIntegrationTest {
             .library()
             .getId();
     assertThatThrownBy(
-            () -> libraryService.generateConfluenceWebhookSecret(upload, currentUser(owner)))
+            () ->
+                libraryService.generatePushSecret(
+                    upload, DocumentSourceType.CONFLUENCE, currentUser(owner)))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("CONFLUENCE");
   }

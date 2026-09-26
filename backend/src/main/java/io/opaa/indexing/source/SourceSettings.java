@@ -1,15 +1,10 @@
 package io.opaa.indexing.source;
 
-import io.opaa.api.types.ConfluenceEdition;
-import io.opaa.knowledge.ConfluenceSpaceSelection;
-import io.opaa.knowledge.sourcesettings.S3SourceSettings;
-import java.util.List;
-
 /**
  * A library's source configuration as a {@link SourceConnector} sees it: the connection fields
  * every run-based type draws from (path, address, proxy, credentials, TLS switch) and the
- * connector-owned fields of the flat library request ({@link SourceSettingField}). A
- * connector-owned field is {@code null} when absent - on a change that means "leave it as stored".
+ * connector-owned settings (ADR-0038). {@code connectorSettings} is {@code null} when absent - on a
+ * change that means "leave the stored ones as they are".
  */
 public record SourceSettings(
     String sourcePath,
@@ -17,10 +12,7 @@ public record SourceSettings(
     String sourceProxy,
     String sourceCredentials,
     boolean sourceInsecureSsl,
-    ConfluenceEdition confluenceEdition,
-    List<ConfluenceSpaceSelection> confluenceSpaces,
-    Integer confluenceFullSyncIntervalDays,
-    S3SourceSettings s3Settings) {
+    ConnectorData connectorSettings) {
 
   /** Names whether credentials are set, never their value - the record may reach a log. */
   @Override
@@ -35,43 +27,20 @@ public record SourceSettings(
         + (sourceCredentials == null ? "null" : "***")
         + ", sourceInsecureSsl="
         + sourceInsecureSsl
-        + ", confluenceEdition="
-        + confluenceEdition
-        + ", confluenceSpaces="
-        + confluenceSpaces
-        + ", confluenceFullSyncIntervalDays="
-        + confluenceFullSyncIntervalDays
-        + ", s3Settings="
-        + s3Settings
+        + ", connectorSettings="
+        + connectorSettings
         + "]";
   }
 
   /** A copy carrying {@code url} as its address - the normalised form a connector stores. */
   public SourceSettings withSourceUrl(String url) {
     return new SourceSettings(
-        sourcePath,
-        url,
-        sourceProxy,
-        sourceCredentials,
-        sourceInsecureSsl,
-        confluenceEdition,
-        confluenceSpaces,
-        confluenceFullSyncIntervalDays,
-        s3Settings);
+        sourcePath, url, sourceProxy, sourceCredentials, sourceInsecureSsl, connectorSettings);
   }
 
-  /** A copy carrying {@code spaces} and {@code intervalDays} as the Confluence-owned values. */
-  public SourceSettings withConfluenceSelection(
-      List<ConfluenceSpaceSelection> spaces, Integer intervalDays) {
+  /** A copy carrying {@code settings} as the connector-owned part. */
+  public SourceSettings withConnectorSettings(ConnectorData settings) {
     return new SourceSettings(
-        sourcePath,
-        sourceUrl,
-        sourceProxy,
-        sourceCredentials,
-        sourceInsecureSsl,
-        confluenceEdition,
-        spaces,
-        intervalDays,
-        s3Settings);
+        sourcePath, sourceUrl, sourceProxy, sourceCredentials, sourceInsecureSsl, settings);
   }
 }

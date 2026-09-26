@@ -79,6 +79,11 @@ mehrere Zuflüsse in einen Topf.
 > Bibliothek trägt als Spalten nur noch, was typübergreifend Regeln hat (Adresse, Zugangsdaten,
 > Proxy, TLS, Zeitplan). Geheimnisse bleiben in `source_credentials`. `CONFLUENCE` behält seine
 > Spalten und Kindtabelle; ein Umzug ist nicht Teil des Nachtrags.
+>
+> **Nachtrag (2026-09-26, #1977):** Mit [ADR-0038](0038-steckbare-konnektoren.md) speichert jeder
+> Konnektor seine eigene Konfiguration in `source_settings`, auch `CONFLUENCE`. Die Kindtabelle
+> `knowledge_library_confluence_spaces` und die Confluence-Spalten entfallen; der Nachtrag vom
+> 2026-09-03 beschreibt damit nur noch die frühere Ablage.
 
 ### 2. Der Anstoß eines Laufs verweist nur noch auf die Bibliothek
 

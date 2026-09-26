@@ -42,8 +42,6 @@ import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.LibraryFolderService;
 import io.opaa.knowledge.LibraryStorageQuotaService;
 import io.opaa.knowledge.SourceDocumentContext;
-import io.opaa.knowledge.sourcesettings.S3Scope;
-import io.opaa.knowledge.sourcesettings.S3SourceSettings;
 import io.opaa.s3.S3AccessException;
 import io.opaa.test.ProductionDocumentFormats;
 import java.io.IOException;
@@ -171,7 +169,7 @@ class S3IndexingExecutorTest {
             null,
             "AKIAEXAMPLE:geheim",
             false);
-    library.updateS3Settings(settings);
+    S3TestSettings.configure(library, settings);
     return library;
   }
 
@@ -840,7 +838,7 @@ class S3IndexingExecutorTest {
             null,
             "nur-ein-teil",
             false);
-    broken.updateS3Settings(settings(List.of(S3Scope.of("dokumente", ""))));
+    S3TestSettings.configure(broken, settings(List.of(S3Scope.of("dokumente", ""))));
     UUID jobId = UUID.randomUUID();
 
     executor.execute(jobId, broken, IndexingRunMode.FULL);

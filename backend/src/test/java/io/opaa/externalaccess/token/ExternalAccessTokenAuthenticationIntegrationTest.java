@@ -22,6 +22,7 @@ import io.opaa.auth.local.LocalCredentials;
 import io.opaa.auth.local.LocalUserService;
 import io.opaa.externalaccess.ExternalAccessSettings;
 import io.opaa.externalaccess.ExternalAccessSettingsService;
+import io.opaa.library.ConnectorSettingsRequest;
 import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.library.LibraryCreation;
 import io.opaa.library.LibraryExternalAccessService;
@@ -115,10 +116,7 @@ class ExternalAccessTokenAuthenticationIntegrationTest {
                     null,
                     null,
                     null,
-                    null,
-                    null,
-                    null,
-                    null,
+                    ConnectorSettingsRequest.NONE,
                     null),
                 CurrentUser.of(
                     owner.getId(), owner.getOrganizationId(), owner.getSystemRole(), "x"))

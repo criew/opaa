@@ -29,6 +29,7 @@ import io.opaa.indexing.job.IndexingRunDetail;
 import io.opaa.indexing.job.IndexingRunEvent;
 import io.opaa.indexing.job.IndexingStatusView;
 import io.opaa.indexing.job.JobStatus;
+import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.knowledge.LibraryFolderService;
 import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.library.LibraryDocumentService;
@@ -74,6 +75,7 @@ class LibraryIndexingControllerTest {
   @MockitoBean private DocumentIndexingService indexingService;
   @MockitoBean private UserService userService;
   @MockitoBean private SourceConnectionTestService sourceConnectionTestService;
+  @MockitoBean private SourceConnectorRegistry sourceConnectorRegistry;
   @MockitoBean private SpaceAssetAssociationService associationService;
   @MockitoBean private PermissionTransferService transferService;
   @MockitoBean private SuccessionService successionService;

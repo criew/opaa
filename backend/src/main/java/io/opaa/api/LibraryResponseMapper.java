@@ -1,7 +1,6 @@
 package io.opaa.api;
 
 import io.opaa.api.dto.AssetReachResponse;
-import io.opaa.api.dto.ConfluenceSpaceRef;
 import io.opaa.api.dto.IndexingStatus;
 import io.opaa.api.dto.LibraryListResponse;
 import io.opaa.api.dto.LibraryRequest;
@@ -9,14 +8,9 @@ import io.opaa.api.dto.LibraryResponse;
 import io.opaa.api.dto.LibrarySchedule;
 import io.opaa.api.dto.LibraryScheduleRequest;
 import io.opaa.api.dto.LibraryUpdateRequest;
-import io.opaa.api.dto.S3ScopeRef;
-import io.opaa.api.dto.S3Settings;
-import io.opaa.common.ValidationException;
 import io.opaa.indexing.job.JobStatus;
-import io.opaa.knowledge.ConfluenceSpaceSelection;
+import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.knowledge.KnowledgeLibrary;
-import io.opaa.knowledge.sourcesettings.S3Scope;
-import io.opaa.knowledge.sourcesettings.S3SourceSettings;
 import io.opaa.library.LibraryCreation;
 import io.opaa.library.LibraryDetail;
 import io.opaa.library.LibraryManagementDetail;
@@ -29,22 +23,18 @@ import io.opaa.permission.PermissionTransferMark;
 import io.opaa.permission.SuccessionFinding;
 import java.net.URI;
 import java.util.List;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Maps {@link LibraryDetail} and {@link LibrarySummary} onto their generated response counterparts,
  * and {@link LibraryRequest}/{@link LibraryUpdateRequest} onto the domain-level {@link
  * LibraryCreation}/{@link LibraryUpdate} (ADR-0006: API DTOs are generated from the specification,
- * never hand-written).
+ * never hand-written). The connector-owned fields travel through {@link FlatSourceSettings}.
  */
 final class LibraryResponseMapper {
 
-  private static final Logger log = LoggerFactory.getLogger(LibraryResponseMapper.class);
-
   private LibraryResponseMapper() {}
 
-  static LibraryCreation toCreation(LibraryRequest request) {
+  static LibraryCreation toCreation(LibraryRequest request, SourceConnectorRegistry connectors) {
     return new LibraryCreation(
         request.getName(),
         request.getDescription(),
@@ -57,14 +47,16 @@ final class LibraryResponseMapper {
         request.getSourceProxy(),
         request.getSourceCredentials(),
         request.getSourceInsecureSsl(),
-        request.getConfluenceEdition(),
-        toSelections(request.getConfluenceSpaces()),
-        request.getConfluenceFullSyncIntervalDays(),
-        toS3Settings(request.getS3Settings()),
+        FlatSourceSettings.of(
+            request.getConfluenceEdition(),
+            request.getConfluenceSpaces(),
+            request.getConfluenceFullSyncIntervalDays(),
+            request.getS3Settings(),
+            connectors),
         toScheduleUpdate(request.getSchedule()));
   }
 
-  static LibraryUpdate toUpdate(LibraryUpdateRequest request) {
+  static LibraryUpdate toUpdate(LibraryUpdateRequest request, SourceConnectorRegistry connectors) {
     return new LibraryUpdate(
         request.getName(),
         request.getDescription(),
@@ -76,82 +68,12 @@ final class LibraryResponseMapper {
         request.getSourceCredentials(),
         request.getSourceInsecureSsl(),
         toScheduleUpdate(request.getSchedule()),
-        request.getConfluenceEdition(),
-        toSelections(request.getConfluenceSpaces()),
-        request.getConfluenceFullSyncIntervalDays(),
-        toS3Settings(request.getS3Settings()));
-  }
-
-  /**
-   * {@code null} stays {@code null} ("leave the settings alone"); the record validates buckets,
-   * prefixes, overlap and patterns on construction (ADR-0027, Entscheidung 2) and its German
-   * message becomes the 400 the caller sees.
-   */
-  static S3SourceSettings toS3Settings(S3Settings settings) {
-    if (settings == null) {
-      return null;
-    }
-    try {
-      List<S3Scope> scopes =
-          settings.getScopes() == null
-              ? List.of()
-              : settings.getScopes().stream()
-                  .map(
-                      ref -> {
-                        if (ref == null) {
-                          throw new ValidationException(
-                              "s3Settings: jeder Geltungsbereich braucht einen Bucket");
-                        }
-                        return S3Scope.of(ref.getBucket(), ref.getPrefix());
-                      })
-                  .toList();
-      return new S3SourceSettings(
-          settings.getRegion(),
-          Boolean.TRUE.equals(settings.getPathStyle()),
-          scopes,
-          settings.getIncludePatterns(),
-          settings.getExcludePatterns());
-    } catch (S3Scope.InvalidS3ScopeException
-        | S3SourceSettings.InvalidS3SourceSettingsException e) {
-      throw new ValidationException("s3Settings: " + e.getMessage());
-    }
-  }
-
-  static S3Settings toS3SettingsRef(S3SourceSettings settings) {
-    return new S3Settings(
-            settings.scopes().stream()
-                .map(scope -> new S3ScopeRef(scope.bucket()).prefix(scope.prefix()))
-                .toList())
-        .region(settings.region())
-        .pathStyle(settings.pathStyle())
-        .includePatterns(settings.includePatterns())
-        .excludePatterns(settings.excludePatterns());
-  }
-
-  /**
-   * {@code null} stays {@code null} ("leave the selection alone"), an empty list stays empty; a
-   * {@code null} element (which bean validation lets through) is the caller's 400, never a 500.
-   */
-  private static List<ConfluenceSpaceSelection> toSelections(List<ConfluenceSpaceRef> refs) {
-    if (refs == null) {
-      return null;
-    }
-    return refs.stream()
-        .map(
-            ref -> {
-              if (ref == null) {
-                throw new ValidationException(
-                    "confluenceSpaces: jeder Eintrag braucht einen Space-Schlüssel");
-              }
-              return new ConfluenceSpaceSelection(ref.getKey(), ref.getName());
-            })
-        .toList();
-  }
-
-  private static List<ConfluenceSpaceRef> toRefs(List<ConfluenceSpaceSelection> selection) {
-    return selection.stream()
-        .map(space -> new ConfluenceSpaceRef(space.getSpaceKey()).name(space.getSpaceName()))
-        .toList();
+        FlatSourceSettings.of(
+            request.getConfluenceEdition(),
+            request.getConfluenceSpaces(),
+            request.getConfluenceFullSyncIntervalDays(),
+            request.getS3Settings(),
+            connectors));
   }
 
   private static LibraryScheduleUpdate toScheduleUpdate(LibraryScheduleRequest request) {
@@ -192,30 +114,6 @@ final class LibraryResponseMapper {
             .diagnosticsLockToggleable(detail.diagnosticsLockToggleable())
             .lastTransfer(PermissionTransferResponseMapper.toResponse(lastTransfer))
             .succession(SuccessionResponseMapper.toStateResponse(succession));
-    // only a CONFLUENCE library carries an edition (chk_knowledge_libraries_source_configuration)
-    if (library.getSourceConfluenceEdition() != null) {
-      // ADR-0023: edition and selection are visible to every reader - the selection is exactly
-      // the scope every reader of this library can see, so naming it is not configuration detail
-      // in the sense of the MANAGER-gated fields above.
-      response
-          .confluenceEdition(library.getSourceConfluenceEdition())
-          .confluenceSpaces(toRefs(library.getConfluenceSpaces()));
-    }
-    // ADR-0027: the scopes are the scope every reader sees - visible like confluenceSpaces, and
-    // the record carries no credential by construction; only an S3 library carries them. A stored
-    // document the record no longer accepts hides the settings from this one response instead of
-    // failing the whole request.
-    try {
-      S3SourceSettings s3Settings = library.getS3Settings();
-      if (s3Settings != null) {
-        response.s3Settings(toS3SettingsRef(s3Settings));
-      }
-    } catch (S3SourceSettings.InvalidS3SourceSettingsException e) {
-      log.warn(
-          "Library {} carries S3 settings the record rejects; omitted from the response: {}",
-          library.getId(),
-          e.getMessage());
-    }
     LibraryManagementDetail managementDetail = detail.managementDetail();
     response
         .sourcePath(managementDetail.sourcePath())
@@ -224,11 +122,6 @@ final class LibraryResponseMapper {
         .sourceProxy(managementDetail.sourceProxy())
         .sourceInsecureSsl(managementDetail.sourceInsecureSsl())
         .sourceCredentialsSet(managementDetail.sourceCredentialsSet())
-        .confluenceWebhookSecretSet(managementDetail.confluenceWebhookSecretSet())
-        .s3EventsTokenSet(managementDetail.s3EventsTokenSet())
-        .confluenceFullSyncIntervalDays(managementDetail.confluenceFullSyncIntervalDays())
-        .confluenceFullSyncIntervalDefaultDays(
-            managementDetail.confluenceFullSyncIntervalDefaultDays())
         .storageQuotaBytes(managementDetail.storageQuotaBytes())
         .storageUsedBytes(managementDetail.storageUsedBytes())
         .externalAccess(
@@ -237,6 +130,9 @@ final class LibraryResponseMapper {
                 : LibraryExternalAccessResponseMapper.toResponse(managementDetail.externalAccess()))
         .allAccountsGrantAllowed(managementDetail.allAccountsGrantAllowed())
         .listedCap(managementDetail.listedCap());
+    // ADR-0023/ADR-0027: edition, selection and scopes are the scope every reader sees; the rhythm
+    // and the push secret's flag stay behind the management bar
+    FlatSourceSettings.writeTo(response, detail);
     LibraryScheduleDetail schedule = managementDetail.schedule();
     if (schedule != null) {
       response

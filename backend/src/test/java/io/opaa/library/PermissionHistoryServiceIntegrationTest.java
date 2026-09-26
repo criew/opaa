@@ -1151,10 +1151,8 @@ class PermissionHistoryServiceIntegrationTest {
           "KnowledgeLibraryService#getLibrary",
           "KnowledgeLibraryService#listLibraries",
           "KnowledgeLibraryService#listDocuments",
-          "KnowledgeLibraryService#generateConfluenceWebhookSecret",
-          "KnowledgeLibraryService#removeConfluenceWebhookSecret",
-          "KnowledgeLibraryService#generateS3EventsToken",
-          "KnowledgeLibraryService#removeS3EventsToken",
+          "KnowledgeLibraryService#generatePushSecret",
+          "KnowledgeLibraryService#removePushSecret",
           // #1731: the release decides whether a Fremdzugang may reach the library, never whether
           // a person may read it - the readable set is the same before and after.
           "LibraryExternalAccessService#describe",

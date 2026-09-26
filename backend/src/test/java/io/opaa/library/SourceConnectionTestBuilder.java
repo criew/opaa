@@ -2,7 +2,7 @@ package io.opaa.library;
 
 import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.api.types.DocumentSourceType;
-import io.opaa.knowledge.sourcesettings.S3SourceSettings;
+import io.opaa.indexing.source.s3.S3SourceSettings;
 import java.net.URI;
 import java.util.UUID;
 
@@ -83,7 +83,6 @@ public final class SourceConnectionTestBuilder {
         sourceCredentials,
         sourceInsecureSsl,
         libraryId,
-        confluenceEdition,
-        s3Settings);
+        TestConnectorSettings.of(confluenceEdition, s3Settings));
   }
 }

@@ -26,7 +26,8 @@ import io.opaa.indexing.source.SourceListing;
 import io.opaa.indexing.source.TestSourceConnectors;
 import io.opaa.indexing.source.confluence.ConfluenceConnectionService;
 import io.opaa.indexing.source.confluence.ConfluenceSpace;
-import io.opaa.knowledge.ConfluenceSpaceSelection;
+import io.opaa.indexing.source.confluence.ConfluenceSpaceSelection;
+import io.opaa.indexing.source.confluence.ConfluenceTestSettings;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
@@ -89,8 +90,8 @@ class SourceConnectionTestServiceConfluenceTest {
             "proxy.stored.example:3128",
             "stored-pat",
             true);
-    library.configureConfluence(
-        ConfluenceEdition.DATA_CENTER, List.of(new ConfluenceSpaceSelection("ENG", null)));
+    ConfluenceTestSettings.configure(
+        library, ConfluenceEdition.DATA_CENTER, List.of(new ConfluenceSpaceSelection("ENG", null)));
     when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
     return library;
   }
@@ -113,12 +114,11 @@ class SourceConnectionTestServiceConfluenceTest {
                 "pat",
                 false,
                 null,
-                ConfluenceEdition.DATA_CENTER,
-                null),
+                TestConnectorSettings.of(ConfluenceEdition.DATA_CENTER, null)),
             caller);
 
     assertThat(result.reachable()).isTrue();
-    assertThat(result.confluenceEdition()).isEqualTo(ConfluenceEdition.DATA_CENTER);
+    assertThat(TestConnectorSettings.edition(result)).isEqualTo(ConfluenceEdition.DATA_CENTER);
     assertThat(result.credentialsVerified()).isTrue();
     assertThat(result.documentCount()).isNull();
   }
@@ -132,7 +132,6 @@ class SourceConnectionTestServiceConfluenceTest {
                         DocumentSourceType.CONFLUENCE,
                         "/srv/docs",
                         URI.create("https://wiki.example.org"),
-                        null,
                         null,
                         null,
                         null,
@@ -154,13 +153,14 @@ class SourceConnectionTestServiceConfluenceTest {
 
     assertThatThrownBy(
             () ->
-                service.listConfluenceSpaces(
-                    new ConfluenceSpaceListing(
+                service.browse(
+                    new SourceBrowseRequest(
+                        DocumentSourceType.CONFLUENCE,
                         URI.create("https://wiki.example.org"),
-                        ConfluenceEdition.DATA_CENTER,
                         "pat",
                         null,
                         null,
+                        TestConnectorSettings.of(ConfluenceEdition.DATA_CENTER, null),
                         null),
                     caller))
         .isInstanceOf(AccessDeniedException.class);
@@ -170,13 +170,14 @@ class SourceConnectionTestServiceConfluenceTest {
   void spaceListingRequiresCredentialsWithoutALibraryToFallBackOn() {
     assertThatThrownBy(
             () ->
-                service.listConfluenceSpaces(
-                    new ConfluenceSpaceListing(
+                service.browse(
+                    new SourceBrowseRequest(
+                        DocumentSourceType.CONFLUENCE,
                         URI.create("https://wiki.example.org"),
-                        ConfluenceEdition.DATA_CENTER,
                         null,
                         null,
                         null,
+                        TestConnectorSettings.of(ConfluenceEdition.DATA_CENTER, null),
                         null),
                     caller))
         .isInstanceOf(ValidationException.class)
@@ -195,13 +196,14 @@ class SourceConnectionTestServiceConfluenceTest {
 
     // same origin, other path; the caller offers its own proxy and asks to skip TLS checks
     SourceListing spaces =
-        service.listConfluenceSpaces(
-            new ConfluenceSpaceListing(
+        service.browse(
+            new SourceBrowseRequest(
+                DocumentSourceType.CONFLUENCE,
                 URI.create("https://wiki.example.org/other"),
-                ConfluenceEdition.DATA_CENTER,
                 null,
                 "proxy.attacker.example:8080",
                 false,
+                TestConnectorSettings.of(ConfluenceEdition.DATA_CENTER, null),
                 libraryId),
             caller);
 
@@ -226,13 +228,14 @@ class SourceConnectionTestServiceConfluenceTest {
 
     assertThatThrownBy(
             () ->
-                service.listConfluenceSpaces(
-                    new ConfluenceSpaceListing(
+                service.browse(
+                    new SourceBrowseRequest(
+                        DocumentSourceType.CONFLUENCE,
                         URI.create("https://other.example.org/confluence"),
-                        ConfluenceEdition.DATA_CENTER,
                         null,
                         null,
                         null,
+                        TestConnectorSettings.of(ConfluenceEdition.DATA_CENTER, null),
                         libraryId),
                     caller))
         .isInstanceOf(ValidationException.class)
@@ -245,16 +248,17 @@ class SourceConnectionTestServiceConfluenceTest {
     KnowledgeLibrary library = confluenceLibrary(libraryId, "https://wiki.example.org");
     when(libraryAccessService.requireRole(library, currentUserId, false, AssetRole.MANAGER))
         .thenThrow(new AccessDeniedException("Kein Zugriff auf diese Bibliothek"));
-    ConfluenceSpaceListing listing =
-        new ConfluenceSpaceListing(
+    SourceBrowseRequest listing =
+        new SourceBrowseRequest(
+            DocumentSourceType.CONFLUENCE,
             URI.create("https://wiki.example.org"),
-            ConfluenceEdition.DATA_CENTER,
             null,
             null,
             null,
+            TestConnectorSettings.of(ConfluenceEdition.DATA_CENTER, null),
             libraryId);
 
-    assertThatThrownBy(() -> service.listConfluenceSpaces(listing, caller))
+    assertThatThrownBy(() -> service.browse(listing, caller))
         .isInstanceOf(AccessDeniedException.class);
     verify(confluenceConnectionService, never())
         .listSpaces(anyString(), any(), any(), anyString(), anyBoolean());
@@ -278,13 +282,14 @@ class SourceConnectionTestServiceConfluenceTest {
         .thenReturn(AssetRole.MANAGER);
     assertThatThrownBy(
             () ->
-                service.listConfluenceSpaces(
-                    new ConfluenceSpaceListing(
+                service.browse(
+                    new SourceBrowseRequest(
+                        DocumentSourceType.CONFLUENCE,
                         URI.create("https://wiki.example.org"),
-                        ConfluenceEdition.DATA_CENTER,
                         null,
                         null,
                         null,
+                        TestConnectorSettings.of(ConfluenceEdition.DATA_CENTER, null),
                         rssId),
                     caller))
         .isInstanceOf(ValidationException.class)

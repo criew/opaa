@@ -28,7 +28,8 @@ import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.indexing.source.confluence.ConfluenceClientFactory;
 import io.opaa.indexing.source.confluence.ConfluenceIndexingExecutor;
 import io.opaa.indexing.source.confluence.ConfluenceProperties;
-import io.opaa.knowledge.ConfluenceSpaceSelection;
+import io.opaa.indexing.source.confluence.ConfluenceSpaceSelection;
+import io.opaa.indexing.source.confluence.ConfluenceTestSettings;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.LibraryStorageQuotaService;
@@ -127,7 +128,8 @@ class ConfluenceDataCenterFullSyncTest {
             null,
             token,
             false);
-    library.configureConfluence(
+    ConfluenceTestSettings.configure(
+        library,
         ConfluenceEdition.DATA_CENTER,
         java.util.Arrays.stream(spaceKeys)
             .map(k -> new ConfluenceSpaceSelection(k, null))

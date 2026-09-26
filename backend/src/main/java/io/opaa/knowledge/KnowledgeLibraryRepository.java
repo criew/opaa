@@ -5,23 +5,12 @@ import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
-import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface KnowledgeLibraryRepository extends JpaRepository<KnowledgeLibrary, UUID> {
-
-  /**
-   * The list loader used by {@code KnowledgeLibraryService#listLibraries}: joins the eager
-   * Confluence space selection into the one query instead of letting Hibernate load it with a
-   * subsequent select per row (ADR-0023) - the flat-query-count guard in {@code
-   * KnowledgeLibraryServiceIntegrationTest} pins this.
-   */
-  @Override
-  @EntityGraph(attributePaths = "confluenceSpaces")
-  List<KnowledgeLibrary> findAllById(Iterable<UUID> ids);
 
   /**
    * Whether any library is still owned by the given group - group ids are unique across the whole

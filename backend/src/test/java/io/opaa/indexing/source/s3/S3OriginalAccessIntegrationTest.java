@@ -5,8 +5,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.knowledge.KnowledgeLibrary;
-import io.opaa.knowledge.sourcesettings.S3Scope;
-import io.opaa.knowledge.sourcesettings.S3SourceSettings;
 import io.opaa.s3.S3AccessException;
 import io.opaa.s3.S3Credentials;
 import io.opaa.s3.S3TestFixture;
@@ -58,8 +56,8 @@ class S3OriginalAccessIntegrationTest {
             null,
             credentials.accessKey() + ":" + credentials.secretKey(),
             false);
-    library.updateS3Settings(
-        new S3SourceSettings(S3TestFixture.REGION, true, List.of(scopes), null, null));
+    S3TestSettings.configure(
+        library, new S3SourceSettings(S3TestFixture.REGION, true, List.of(scopes), null, null));
     return library;
   }
 

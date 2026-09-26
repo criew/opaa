@@ -3,7 +3,6 @@ package io.opaa.indexing.source.s3;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.indexing.source.SourceFolderPath;
-import io.opaa.knowledge.sourcesettings.S3Scope;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 

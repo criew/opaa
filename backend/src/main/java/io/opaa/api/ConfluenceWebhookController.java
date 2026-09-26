@@ -1,7 +1,7 @@
 package io.opaa.api;
 
+import io.opaa.api.types.DocumentSourceType;
 import io.opaa.common.PayloadTooLargeException;
-import io.opaa.indexing.source.PushIntake;
 import io.opaa.indexing.source.PushIntakeHandler;
 import io.opaa.indexing.source.SourceConnectorRegistry;
 import jakarta.servlet.http.HttpServletRequest;
@@ -19,12 +19,11 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * The one endpoint a Confluence instance (or an Automation rule) calls into OPAA (#1140). Reachable
  * without a session - the sender has none - and permitted explicitly in both security chains; the
- * request authenticates itself with the library's webhook secret instead, checked by the {@link
- * PushIntake#WEBHOOK_SECRET} handler of its connector. The body is read as raw bytes so a Data
- * Center signature is verified over exactly what was sent - and read through a bound of {@value
- * #MAX_BODY_BYTES}, before anything else: a stranger must not be able to make the backend buffer an
- * arbitrarily large body only to be told 401 afterwards. A page or attachment notification is a few
- * kilobytes.
+ * request authenticates itself with the library's webhook secret instead, checked by the push
+ * intake of its connector. The body is read as raw bytes so a Data Center signature is verified
+ * over exactly what was sent - and read through a bound of {@value #MAX_BODY_BYTES}, before
+ * anything else: a stranger must not be able to make the backend buffer an arbitrarily large body
+ * only to be told 401 afterwards. A page or attachment notification is a few kilobytes.
  */
 @RestController
 public class ConfluenceWebhookController {
@@ -41,7 +40,7 @@ public class ConfluenceWebhookController {
   @PostMapping(value = "/api/v1/libraries/{libraryId}/confluence-webhook", consumes = "*/*")
   @ResponseStatus(HttpStatus.ACCEPTED)
   public void receive(@PathVariable UUID libraryId, HttpServletRequest request) throws IOException {
-    PushIntakeHandler handler = connectors.pushIntakeHandler(PushIntake.WEBHOOK_SECRET);
+    PushIntakeHandler handler = connectors.pushIntakeHandler(DocumentSourceType.CONFLUENCE);
     handler.acceptNotification(
         libraryId, readBounded(request), name -> joinedHeader(request, name));
   }

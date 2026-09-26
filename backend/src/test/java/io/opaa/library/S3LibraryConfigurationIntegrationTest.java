@@ -16,10 +16,11 @@ import io.opaa.auth.DevAuthFilter;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.ValidationException;
+import io.opaa.indexing.source.s3.S3Scope;
+import io.opaa.indexing.source.s3.S3SourceSettings;
+import io.opaa.indexing.source.s3.S3SourceSettingsJson;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
-import io.opaa.knowledge.sourcesettings.S3Scope;
-import io.opaa.knowledge.sourcesettings.S3SourceSettings;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.test.OpaaIntegrationTest;
@@ -111,15 +112,14 @@ class S3LibraryConfigurationIntegrationTest {
     KnowledgeLibrary library = detail.library();
     assertThat(library.getSourceType()).isEqualTo(DocumentSourceType.S3);
     assertThat(library.getSourceUrl()).isEqualTo(ENDPOINT);
-    assertThat(library.getS3Settings().scopes())
+    assertThat(S3SourceSettingsJson.of(library).scopes())
         .containsExactly(S3Scope.of("protokolle", "2025/"), S3Scope.of("satzungen", ""));
-    assertThat(library.getS3Settings().region()).isEqualTo("eu-central-1");
-    assertThat(library.getS3Settings().pathStyle()).isTrue();
+    assertThat(S3SourceSettingsJson.of(library).region()).isEqualTo("eu-central-1");
+    assertThat(S3SourceSettingsJson.of(library).pathStyle()).isTrue();
     assertThat(detail.managementDetail().sourceCredentialsSet()).isTrue();
-    assertThat(library.getConfluenceSpaces()).isEmpty();
 
     KnowledgeLibrary reloaded = libraryRepository.findById(library.getId()).orElseThrow();
-    assertThat(reloaded.getS3Settings()).isEqualTo(library.getS3Settings());
+    assertThat(S3SourceSettingsJson.of(reloaded)).isEqualTo(S3SourceSettingsJson.of(library));
     assertThat(reloaded.getSourceCredentials()).isEqualTo("AKIAEXAMPLE:geheim/4711:session-token");
     String storedSettings =
         jdbcTemplate.queryForObject(
@@ -292,10 +292,10 @@ class S3LibraryConfigurationIntegrationTest {
     CurrentUser caller = currentUser(owner);
     UUID libraryId =
         libraryService.createLibrary(s3("Protokolle", ENDPOINT).build(), caller).library().getId();
-    assertThat(libraryService.getLibrary(libraryId, caller).managementDetail().s3EventsTokenSet())
+    assertThat(libraryService.getLibrary(libraryId, caller).managementDetail().pushSecretSet())
         .isFalse();
 
-    String first = libraryService.generateS3EventsToken(libraryId, caller);
+    String first = libraryService.generatePushSecret(libraryId, DocumentSourceType.S3, caller);
     assertThat(first).hasSize(43).matches("[A-Za-z0-9_-]+");
     assertThat(libraryRepository.findById(libraryId).orElseThrow().getWebhookSecret())
         .isEqualTo(first);
@@ -307,21 +307,14 @@ class S3LibraryConfigurationIntegrationTest {
         .as("encrypted at rest like the credentials")
         .startsWith("enc:v1:")
         .doesNotContain(first);
-    assertThat(libraryService.getLibrary(libraryId, caller).managementDetail().s3EventsTokenSet())
+    assertThat(libraryService.getLibrary(libraryId, caller).managementDetail().pushSecretSet())
         .isTrue();
-    assertThat(
-            libraryService
-                .getLibrary(libraryId, caller)
-                .managementDetail()
-                .confluenceWebhookSecretSet())
-        .as("the Confluence flag stays absent for an S3 library")
-        .isNull();
 
-    String second = libraryService.generateS3EventsToken(libraryId, caller);
+    String second = libraryService.generatePushSecret(libraryId, DocumentSourceType.S3, caller);
     assertThat(second).isNotEqualTo(first);
-    libraryService.removeS3EventsToken(libraryId, caller);
+    libraryService.removePushSecret(libraryId, DocumentSourceType.S3, caller);
     assertThat(libraryRepository.findById(libraryId).orElseThrow().getWebhookSecret()).isNull();
-    libraryService.removeS3EventsToken(libraryId, caller);
+    libraryService.removePushSecret(libraryId, DocumentSourceType.S3, caller);
 
     List<String> audit =
         jdbcTemplate.queryForList(
@@ -335,7 +328,9 @@ class S3LibraryConfigurationIntegrationTest {
         .hasSize(3)
         .allSatisfy(
             payload -> assertThat(payload).contains("s3EventsToken").doesNotContain(second));
-    assertThatThrownBy(() -> libraryService.generateConfluenceWebhookSecret(libraryId, caller))
+    assertThatThrownBy(
+            () ->
+                libraryService.generatePushSecret(libraryId, DocumentSourceType.CONFLUENCE, caller))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("CONFLUENCE");
   }
@@ -365,9 +360,9 @@ class S3LibraryConfigurationIntegrationTest {
                         S3Scope.of("protokolle", "2024/")))
                 .build(),
             caller);
-    assertThat(widened.library().getS3Settings().scopes())
+    assertThat(S3SourceSettingsJson.of(widened.library()).scopes())
         .containsExactly(S3Scope.of("protokolle", "2025/"), S3Scope.of("protokolle", "2024/"));
-    assertThat(widened.library().getS3Settings().region()).isEqualTo("eu-west-1");
+    assertThat(S3SourceSettingsJson.of(widened.library()).region()).isEqualTo("eu-west-1");
     assertThat(widened.library().getSourceCredentials()).isEqualTo("AKIAEXAMPLE:geheim");
     assertThat(syncStateRepository.findByLibraryId(libraryId))
         .as("a changed selection discards the resumption state (ADR-0027, Entscheidung 3)")
@@ -386,7 +381,8 @@ class S3LibraryConfigurationIntegrationTest {
     syncStateRepository.save(new io.opaa.indexing.source.SourceSyncState(libraryId));
     LibraryDetail renamed =
         libraryService.updateLibrary(libraryId, libraryUpdate("Sitzungen").build(), caller);
-    assertThat(renamed.library().getS3Settings()).isEqualTo(widened.library().getS3Settings());
+    assertThat(S3SourceSettingsJson.of(renamed.library()))
+        .isEqualTo(S3SourceSettingsJson.of(widened.library()));
     assertThat(syncStateRepository.findByLibraryId(libraryId)).isPresent();
 
     // an endpoint edit on the same origin keeps the stored key; a new origin drops it

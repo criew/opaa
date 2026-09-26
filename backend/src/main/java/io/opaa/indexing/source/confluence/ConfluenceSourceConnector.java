@@ -6,6 +6,7 @@ import static io.opaa.indexing.source.ConnectorChecks.unreachable;
 import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.common.ValidationException;
+import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.PushIntake;
 import io.opaa.indexing.source.PushIntakeHandler;
 import io.opaa.indexing.source.SourceBrowser;
@@ -13,12 +14,10 @@ import io.opaa.indexing.source.SourceConnectionTestResult;
 import io.opaa.indexing.source.SourceConnector;
 import io.opaa.indexing.source.SourceConnectorDescriptor;
 import io.opaa.indexing.source.SourceListing;
-import io.opaa.indexing.source.SourceSettingField;
 import io.opaa.indexing.source.SourceSettings;
 import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.indexing.source.confluence.webhook.ConfluenceWebhookService;
 import io.opaa.indexing.source.confluence.webhook.ConfluenceWebhookSignature;
-import io.opaa.knowledge.ConfluenceSpaceSelection;
 import io.opaa.knowledge.KnowledgeLibrary;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -28,16 +27,21 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.UnaryOperator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A Confluence instance (ADR-0023). The edition is required, confirmed against the instance at
  * creation and permanent afterwards; {@code sourceUrl} is stored in the edition's normalised form;
  * the credentials must parse for the edition. The space selection is configuration, replaced as a
- * whole, and a library may lengthen the instance-wide full-sync rhythm to 1-365 days. A changed
- * address or selection discards the sync state, so the next run is a full one (Entscheidung 4).
+ * whole, and a library may lengthen the instance-wide full-sync rhythm to 1-365 days - all three in
+ * {@link ConfluenceSourceSettings}. A changed address or selection discards the sync state, so the
+ * next run is a full one (Entscheidung 4).
  */
 public class ConfluenceSourceConnector
     implements SourceConnector, SourceBrowser, PushIntakeHandler {
+
+  private static final Logger log = LoggerFactory.getLogger(ConfluenceSourceConnector.class);
 
   /** Upper bound of a space selection - matches LibraryRequest.confluenceSpaces.maxItems. */
   static final int MAX_SPACES = 500;
@@ -64,11 +68,7 @@ public class ConfluenceSourceConnector
         new SourceConnectorDescriptor(
             DocumentSourceType.CONFLUENCE,
             true,
-            Set.of(
-                SourceSettingField.CONFLUENCE_EDITION,
-                SourceSettingField.CONFLUENCE_SPACES,
-                SourceSettingField.CONFLUENCE_FULL_SYNC_INTERVAL_DAYS),
-            PushIntake.WEBHOOK_SECRET,
+            new PushIntake("confluenceWebhookSecret", "Ein Webhook-Geheimnis"),
             properties.fullSyncInterval());
   }
 
@@ -88,18 +88,19 @@ public class ConfluenceSourceConnector
 
   @Override
   public SourceSettings validate(SourceSettings requested) {
-    String normalizedUrl = validateConnection(requested, requested.confluenceEdition());
+    ConfluenceSourceSettings own = ConfluenceSourceSettings.read(requested.connectorSettings());
+    String normalizedUrl = validateConnection(requested, own.edition());
     List<ConfluenceSpaceSelection> spaces =
-        requested.confluenceSpaces() == null
-            ? List.of()
-            : validateSpaces(requested.confluenceSpaces());
+        own.spaces() == null ? List.of() : validateSpaces(own.spaces());
     if (spaces.isEmpty()) {
       throw new ValidationException(SPACES_REQUIRED);
     }
     return requested
         .withSourceUrl(normalizedUrl)
-        .withConfluenceSelection(
-            spaces, validateFullSyncIntervalDays(requested.confluenceFullSyncIntervalDays()));
+        .withConnectorSettings(
+            new ConfluenceSourceSettings(
+                    own.edition(), spaces, validateFullSyncIntervalDays(own.fullSyncIntervalDays()))
+                .toData());
   }
 
   /**
@@ -110,24 +111,27 @@ public class ConfluenceSourceConnector
   @Override
   public SourceSettings validateChange(
       KnowledgeLibrary library, SourceSettings requested, boolean replacesConnection) {
-    if (requested.confluenceEdition() != null
-        && requested.confluenceEdition() != library.getSourceConfluenceEdition()) {
+    ConfluenceSourceSettings own = ConfluenceSourceSettings.read(requested.connectorSettings());
+    ConfluenceEdition storedEdition = ConfluenceSourceSettings.of(library).edition();
+    if (own.edition() != null && own.edition() != storedEdition) {
       throw new ValidationException(
           "confluenceEdition kann nach dem Anlegen der Bibliothek nicht mehr geändert werden");
     }
     List<ConfluenceSpaceSelection> spaces =
-        requested.confluenceSpaces() == null ? null : validateSpaces(requested.confluenceSpaces());
+        own.spaces() == null ? null : validateSpaces(own.spaces());
     SourceSettings validated = requested;
     if (replacesConnection) {
-      validated =
-          requested.withSourceUrl(
-              validateConnection(requested, library.getSourceConfluenceEdition()));
+      validated = requested.withSourceUrl(validateConnection(requested, storedEdition));
     }
-    Integer intervalDays = requested.confluenceFullSyncIntervalDays();
+    Integer intervalDays = own.fullSyncIntervalDays();
     if (intervalDays != null && intervalDays != 0) {
       validateFullSyncIntervalDays(intervalDays);
     }
-    return validated.withConfluenceSelection(spaces, intervalDays);
+    if (spaces == null && intervalDays == null) {
+      return validated.withConnectorSettings(null);
+    }
+    return validated.withConnectorSettings(
+        new ConfluenceSourceSettings(null, spaces, intervalDays).toData());
   }
 
   /** The connection half: edition, address and credentials. Returns the normalised address. */
@@ -215,32 +219,78 @@ public class ConfluenceSourceConnector
    */
   @Override
   public void configureNew(KnowledgeLibrary library, SourceSettings validated) {
+    ConfluenceSourceSettings own = ConfluenceSourceSettings.read(validated.connectorSettings());
     connectionService.requireEdition(
         validated.sourceUrl(),
         validated.sourceProxy(),
         validated.sourceInsecureSsl(),
-        validated.confluenceEdition());
-    library.configureConfluence(validated.confluenceEdition(), validated.confluenceSpaces());
-    library.updateConfluenceFullSyncIntervalDays(validated.confluenceFullSyncIntervalDays());
+        own.edition());
+    store(library, own);
   }
 
   @Override
   public void applyChange(KnowledgeLibrary library, SourceSettings validated) {
-    if (validated.confluenceSpaces() != null) {
-      library.updateConfluenceSpaces(validated.confluenceSpaces());
+    if (validated.connectorSettings() == null) {
+      return;
     }
-    Integer intervalDays = validated.confluenceFullSyncIntervalDays();
-    if (intervalDays != null) {
-      library.updateConfluenceFullSyncIntervalDays(intervalDays == 0 ? null : intervalDays);
+    ConfluenceSourceSettings change = ConfluenceSourceSettings.read(validated.connectorSettings());
+    ConfluenceSourceSettings stored = ConfluenceSourceSettings.of(library);
+    Integer intervalDays = stored.fullSyncIntervalDays();
+    if (change.fullSyncIntervalDays() != null) {
+      intervalDays = change.fullSyncIntervalDays() == 0 ? null : change.fullSyncIntervalDays();
     }
+    store(
+        library,
+        new ConfluenceSourceSettings(
+            stored.edition(),
+            change.spaces() != null ? change.spaces() : stored.spaceSelection(),
+            intervalDays));
+  }
+
+  /** Stores the settings with the spaces ordered by key - the order a run lists them in. */
+  private static void store(KnowledgeLibrary library, ConfluenceSourceSettings settings) {
+    library.updateSourceSettings(settings.sortedByKey().toData().toJson());
+  }
+
+  /**
+   * Every reader sees the edition and the selection; the rhythm is administration detail. Stored
+   * settings the record no longer reads are left out rather than failing the whole read.
+   */
+  @Override
+  public ConnectorData settingsView(KnowledgeLibrary library, boolean manager) {
+    ConfluenceSourceSettings stored = readableStored(library);
+    if (stored == null || stored.edition() == null) {
+      return null;
+    }
+    return new ConfluenceSourceSettings(
+            stored.edition(),
+            stored.spaceSelection(),
+            manager ? stored.fullSyncIntervalDays() : null)
+        .toData();
   }
 
   /** The selection is exactly what every reader may see - a change leaves an audit trail. */
   @Override
   public Map<String, Object> settingsState(KnowledgeLibrary library) {
+    ConfluenceSourceSettings stored = readableStored(library);
     return Map.of(
         SPACES_STATE,
-        library.getConfluenceSpaces().stream().map(ConfluenceSpaceSelection::getSpaceKey).toList());
+        stored == null
+            ? List.of()
+            : stored.spaceSelection().stream().map(ConfluenceSpaceSelection::getSpaceKey).toList());
+  }
+
+  /** The stored settings, or {@code null} with a log entry when they no longer read. */
+  private static ConfluenceSourceSettings readableStored(KnowledgeLibrary library) {
+    try {
+      return ConfluenceSourceSettings.of(library);
+    } catch (ValidationException | IllegalArgumentException e) {
+      log.warn(
+          "Library {} carries Confluence settings the record rejects; left out: {}",
+          library.getId(),
+          e.getMessage());
+      return null;
+    }
   }
 
   /**
@@ -257,10 +307,10 @@ public class ConfluenceSourceConnector
 
   /**
    * Detects the edition without credentials and, when credentials are given, verifies them. An
-   * instance problem is the test's result, not an exception.
+   * instance problem is the test's result, not an exception; the detected edition is its finding.
    */
   @Override
-  public SourceConnectionTestResult testConnection(SourceSettings settings) {
+  public SourceConnectionTestResult testConnection(SourceSettings settings, ConnectorData stored) {
     if (settings.sourcePath() != null && !settings.sourcePath().isBlank()) {
       throw new ValidationException("sourcePath ist für sourceType CONFLUENCE nicht zulässig");
     }
@@ -275,7 +325,7 @@ public class ConfluenceSourceConnector
               blankToNull(settings.sourceProxy()),
               blankToNull(settings.sourceCredentials()),
               settings.sourceInsecureSsl(),
-              settings.confluenceEdition());
+              ConfluenceSourceSettings.read(settings.connectorSettings()).edition());
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       return unreachable("Der Verbindungstest wurde unterbrochen.");
@@ -284,13 +334,10 @@ public class ConfluenceSourceConnector
         probe.reachable(),
         probe.message(),
         probe.readableSpaces(),
-        probe.detectedEdition(),
-        probe.credentialsVerified());
-  }
-
-  @Override
-  public Kind browseKind() {
-    return Kind.SPACES;
+        probe.credentialsVerified(),
+        probe.detectedEdition() == null
+            ? null
+            : new ConfluenceSourceSettings(probe.detectedEdition(), null, null).toData());
   }
 
   @Override
@@ -298,7 +345,7 @@ public class ConfluenceSourceConnector
     return "Die Bibliothek ist keine Confluence-Bibliothek";
   }
 
-  /** Every space the credentials may read. */
+  /** Every space the credentials may read, for the edition the query names. */
   @Override
   public SourceListing browse(Query query) {
     SourceSettings settings = query.settings();
@@ -311,7 +358,7 @@ public class ConfluenceSourceConnector
       spaces =
           connectionService.listSpaces(
               settings.sourceUrl(),
-              settings.confluenceEdition(),
+              ConfluenceSourceSettings.read(settings.connectorSettings()).edition(),
               blankToNull(settings.sourceProxy()),
               credentials,
               settings.sourceInsecureSsl());

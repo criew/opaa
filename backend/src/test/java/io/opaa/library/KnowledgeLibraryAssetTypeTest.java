@@ -8,6 +8,7 @@ import static org.mockito.Mockito.withSettings;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.asset.Asset;
 import io.opaa.common.ConflictException;
+import io.opaa.indexing.source.SourceConnectorStubs;
 import io.opaa.knowledge.KnowledgeLibrary;
 import java.util.UUID;
 import org.hibernate.proxy.HibernateProxy;
@@ -17,7 +18,8 @@ import org.junit.jupiter.api.Test;
 /** The share cap holds however the library reaches the check - never skipped silently. */
 class KnowledgeLibraryAssetTypeTest {
 
-  private final KnowledgeLibraryAssetType definition = new KnowledgeLibraryAssetType();
+  private final KnowledgeLibraryAssetType definition =
+      new KnowledgeLibraryAssetType(SourceConnectorStubs.registry());
 
   @Test
   void aProxyOfTheShellIsCheckedAgainstTheLibraryBehindIt() {

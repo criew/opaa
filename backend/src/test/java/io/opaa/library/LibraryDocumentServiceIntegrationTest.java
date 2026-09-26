@@ -1028,10 +1028,8 @@ class LibraryDocumentServiceIntegrationTest {
    * KnowledgeLibraryService#createLibrary} (#742 review, finding 3): that service additionally
    * requires an operator-style absolute Unix path ({@code sourcePath.startsWith("/")}), which a
    * JUnit {@code @TempDir} does not produce on every OS this suite runs on (Windows locally, Linux
-   * in CI) - the schema itself (migration 027's {@code
-   * chk_knowledge_libraries_source_configuration}) only requires a FILESYSTEM library's {@code
-   * source_path} to be non-null, not any particular shape, so bypassing the service here still
-   * leaves a row the database accepts.
+   * in CI) - the schema checks no configuration per type (ADR-0038), so bypassing the service here
+   * still leaves a row the database accepts.
    */
   private KnowledgeLibrary saveFilesystemLibrary(String sourcePath) {
     KnowledgeLibrary library =
@@ -1135,8 +1133,8 @@ class LibraryDocumentServiceIntegrationTest {
 
   @Test
   void loadContentAnswers404ForAFilesystemDocumentWhoseLibraryHasNoConfiguredSourcePath() {
-    // A library's sourcePath can go missing without the row itself ever violating
-    // chk_knowledge_libraries_source_configuration (migration 027): a FILESYSTEM library changed to
+    // A library's sourcePath can go missing without the row itself violating any constraint: a
+    // FILESYSTEM library changed to
     // UPLOAD has its sourcePath cleared to null (KnowledgeLibraryService#updateLibrary), but a
     // document created while it was still FILESYSTEM keeps that historical sourceType on its own
     // row. "Nothing can be considered the configured index directory" must not be treated as

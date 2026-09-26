@@ -1,9 +1,8 @@
 package io.opaa.library;
 
-import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.auth.CurrentUser;
-import io.opaa.knowledge.sourcesettings.S3SourceSettings;
+import io.opaa.indexing.source.ConnectorData;
 import java.net.URI;
 import java.util.UUID;
 
@@ -14,8 +13,8 @@ import java.util.UUID;
  *
  * @param libraryId {@code null} for a standalone test (#514); set to test an existing library's
  *     stored quellkonfiguration without resending a credential the caller does not know (#544).
- * @param s3Settings the scopes an {@code S3} test probes (ADR-0027, #1376); with {@code libraryId}
- *     the library's stored settings stand in for an omitted value
+ * @param connectorSettings the connector settings the probe uses (ADR-0038), {@code null} for none
+ *     - with {@code libraryId} the connector decides whether the stored ones stand in
  */
 public record SourceConnectionTest(
     DocumentSourceType sourceType,
@@ -25,5 +24,4 @@ public record SourceConnectionTest(
     String sourceCredentials,
     Boolean sourceInsecureSsl,
     UUID libraryId,
-    ConfluenceEdition confluenceEdition,
-    S3SourceSettings s3Settings) {}
+    ConnectorData connectorSettings) {}

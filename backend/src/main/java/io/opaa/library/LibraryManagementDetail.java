@@ -1,6 +1,7 @@
 package io.opaa.library;
 
 import io.opaa.api.types.AssetRole;
+import io.opaa.indexing.source.ConnectorData;
 
 /**
  * The management-only half of a {@link LibraryDetail} - source configuration, schedule and storage
@@ -9,11 +10,16 @@ import io.opaa.api.types.AssetRole;
  * own optional fields, which stay unset on the wire the same way rather than the whole object
  * disappearing.
  *
+ * @param sourceCredentialsSet whether a credential is stored, never the credential itself
+ *     (ADR-0018) - ships even at this MANAGER threshold as a non-secret yes/no.
+ * @param pushSecretSet whether the push secret is set, {@code null} for a type without push intake
+ * @param connectorSettings the whole of the connector settings, administration detail included
+ *     (ADR-0038)
+ * @param fullSyncIntervalDefaultDays the connector's instance-wide full-sync rhythm in whole days,
+ *     {@code null} for a connector whose every run is a full one
  * @param schedule {@code null} for an {@code UPLOAD} library (which cannot carry a schedule at all,
  *     {@code chk_knowledge_libraries_schedule}) even for a {@code MANAGER}, in addition to staying
  *     {@code null} below that threshold.
- * @param sourceCredentialsSet whether a credential is stored, never the credential itself
- *     (ADR-0018) - ships even at this MANAGER threshold as a non-secret yes/no.
  * @param externalAccess the library's Freigabe fuer Fremdzugaenge (#1731), MANAGER-gated like the
  *     rest: it is set at this bar, and the token count it carries is an input of the annual renewal
  *     decision, not something a VIEWER needs.
@@ -29,10 +35,9 @@ public record LibraryManagementDetail(
     String sourceProxy,
     Boolean sourceInsecureSsl,
     Boolean sourceCredentialsSet,
-    Boolean confluenceWebhookSecretSet,
-    Boolean s3EventsTokenSet,
-    Integer confluenceFullSyncIntervalDays,
-    Integer confluenceFullSyncIntervalDefaultDays,
+    Boolean pushSecretSet,
+    ConnectorData connectorSettings,
+    Integer fullSyncIntervalDefaultDays,
     LibraryScheduleDetail schedule,
     Boolean lastScheduledRunsFailed,
     Long storageQuotaBytes,
@@ -43,6 +48,5 @@ public record LibraryManagementDetail(
 
   public static final LibraryManagementDetail EMPTY =
       new LibraryManagementDetail(
-          null, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
-          null);
+          null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 }

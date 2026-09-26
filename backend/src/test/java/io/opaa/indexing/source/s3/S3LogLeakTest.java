@@ -7,7 +7,6 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
-import io.opaa.knowledge.sourcesettings.S3Scope;
 import io.opaa.s3.S3AccessException;
 import io.opaa.s3.S3Connection;
 import io.opaa.s3.S3Credentials;
