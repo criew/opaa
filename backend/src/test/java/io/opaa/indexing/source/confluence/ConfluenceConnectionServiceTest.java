@@ -1,14 +1,10 @@
-package io.opaa.library;
+package io.opaa.indexing.source.confluence;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.common.ValidationException;
-import io.opaa.indexing.source.confluence.ConfluenceClientFactory;
-import io.opaa.indexing.source.confluence.ConfluenceProperties;
-import io.opaa.indexing.source.confluence.ConfluenceSpace;
-import io.opaa.indexing.source.confluence.FakeConfluenceServer;
 import io.opaa.security.TargetAddressValidator;
 import java.io.IOException;
 import java.time.Instant;

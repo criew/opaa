@@ -14,6 +14,15 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class FilesystemConnectorConfiguration {
 
+  @Bean
+  FilesystemSourceConnector filesystemSourceConnector(
+      FilesystemPathAllowlist filesystemPathAllowlist,
+      DocumentService documentService,
+      SupportedDocumentFormats supportedDocumentFormats) {
+    return new FilesystemSourceConnector(
+        filesystemPathAllowlist, documentService, supportedDocumentFormats);
+  }
+
   /**
    * Declared as {@link SourceIndexingExecutor}, not the concrete type: the executor carries
    * {@code @Async} and is therefore wrapped in a JDK dynamic proxy, which only implements the

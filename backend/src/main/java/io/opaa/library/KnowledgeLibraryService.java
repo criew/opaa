@@ -6,7 +6,6 @@ import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.api.types.Capability;
-import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.ScheduleFrequency;
@@ -21,20 +20,18 @@ import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
-import io.opaa.indexing.FilesystemPathAllowlist;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.job.IndexingJobRepository;
 import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.job.JobStatus;
 import io.opaa.indexing.job.LibraryScheduleCodec;
 import io.opaa.indexing.metadata.CoreMetadataField;
-import io.opaa.indexing.source.SourceSyncStateRepository;
-import io.opaa.indexing.source.confluence.ConfluenceConnection;
-import io.opaa.indexing.source.confluence.ConfluenceCredentials;
-import io.opaa.indexing.source.confluence.ConfluenceProperties;
-import io.opaa.indexing.source.rss.RssFeedStateRepository;
-import io.opaa.indexing.source.s3.S3ClientFactory;
-import io.opaa.knowledge.ConfluenceSpaceSelection;
+import io.opaa.indexing.source.PushIntake;
+import io.opaa.indexing.source.SourceConnector;
+import io.opaa.indexing.source.SourceConnectorDescriptor;
+import io.opaa.indexing.source.SourceConnectorRegistry;
+import io.opaa.indexing.source.SourceSettingField;
+import io.opaa.indexing.source.SourceSettings;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
@@ -43,29 +40,23 @@ import io.opaa.knowledge.LibraryAccessService;
 import io.opaa.knowledge.LibraryFolder;
 import io.opaa.knowledge.LibraryFolderRepository;
 import io.opaa.knowledge.LibraryStorageQuotaService;
-import io.opaa.knowledge.sourcesettings.S3SourceSettings;
-import io.opaa.knowledge.sourcesettings.S3SourceSettingsJson;
 import io.opaa.permission.AssetReach;
 import io.opaa.permission.CapabilityService;
 import io.opaa.permission.SuccessionFinding;
-import io.opaa.s3.S3AccessException;
-import io.opaa.s3.S3Connection;
-import io.opaa.s3.S3Credentials;
-import io.opaa.sourceaccess.ProxyAndCredentials;
-import java.net.URI;
 import java.security.SecureRandom;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -123,11 +114,6 @@ public class KnowledgeLibraryService {
 
   private final SecureRandom secureRandom = new SecureRandom();
 
-  /**
-   * Upper bound of a Confluence space selection - matches LibraryRequest.confluenceSpaces.maxItems.
-   */
-  static final int MAX_CONFLUENCE_SPACES = 500;
-
   private static final Logger log = LoggerFactory.getLogger(KnowledgeLibraryService.class);
 
   private static final int MAX_NAME_LENGTH = 255;
@@ -142,19 +128,14 @@ public class KnowledgeLibraryService {
   private final LibraryAccessService accessService;
   private final AuditEventRecorder auditEventRecorder;
   private final VectorChunkStore vectorChunkStore;
-  private final FilesystemPathAllowlist filesystemAllowlist;
   private final IndexingJobRepository indexingJobRepository;
   private final IndexingJobService indexingJobService;
-  private final RssFeedStateRepository rssFeedStateRepository;
-  private final SourceSyncStateRepository sourceSyncStateRepository;
-  private final ConfluenceProperties confluenceProperties;
   private final Clock schedulingClock;
   private final LibraryStorageQuotaService storageQuotaService;
   private final LibraryExternalAccessService externalAccessService;
   private final LibraryFolderRepository folderRepository;
   private final ApplicationEventPublisher eventPublisher;
-  private final ConfluenceConnectionService confluenceConnectionService;
-  private final S3ClientFactory s3ClientFactory;
+  private final SourceConnectorRegistry connectors;
   private final AssetSuccessionSource successionSource;
 
   public KnowledgeLibraryService(
@@ -168,19 +149,14 @@ public class KnowledgeLibraryService {
       LibraryAccessService accessService,
       AuditEventRecorder auditEventRecorder,
       VectorChunkStore vectorChunkStore,
-      FilesystemPathAllowlist filesystemAllowlist,
       IndexingJobRepository indexingJobRepository,
       IndexingJobService indexingJobService,
-      RssFeedStateRepository rssFeedStateRepository,
-      SourceSyncStateRepository sourceSyncStateRepository,
       Clock schedulingClock,
       LibraryStorageQuotaService storageQuotaService,
       LibraryExternalAccessService externalAccessService,
       LibraryFolderRepository folderRepository,
       ApplicationEventPublisher eventPublisher,
-      ConfluenceConnectionService confluenceConnectionService,
-      ConfluenceProperties confluenceProperties,
-      S3ClientFactory s3ClientFactory) {
+      SourceConnectorRegistry connectors) {
     this.successionSource = successionSource;
     this.libraryRepository = libraryRepository;
     this.assetOwnerNames = assetOwnerNames;
@@ -191,29 +167,25 @@ public class KnowledgeLibraryService {
     this.accessService = accessService;
     this.auditEventRecorder = auditEventRecorder;
     this.vectorChunkStore = vectorChunkStore;
-    this.filesystemAllowlist = filesystemAllowlist;
     this.indexingJobRepository = indexingJobRepository;
     this.indexingJobService = indexingJobService;
-    this.rssFeedStateRepository = rssFeedStateRepository;
-    this.sourceSyncStateRepository = sourceSyncStateRepository;
     this.schedulingClock = schedulingClock;
     this.storageQuotaService = storageQuotaService;
     this.externalAccessService = externalAccessService;
     this.folderRepository = folderRepository;
     this.eventPublisher = eventPublisher;
-    this.confluenceConnectionService = confluenceConnectionService;
-    this.confluenceProperties = confluenceProperties;
-    this.s3ClientFactory = s3ClientFactory;
+    this.connectors = connectors;
   }
 
   /**
-   * Which capability a library of this source type needs (ADR-0036, Entscheidung 5). A connector
-   * library is its own capability because it reaches server paths and stored credentials; a missing
-   * source type - rejected by {@code validateSourceConfiguration} inside {@link #createLibrary} -
-   * takes the upload capability, so an unreadable request never decides which right is checked.
+   * Which capability a library of this source type needs (ADR-0036, Entscheidung 5). A library with
+   * an indexing run is its own capability because it reaches server paths and stored credentials; a
+   * missing source type - rejected by {@code validateSourceConfiguration} inside {@link
+   * #createLibrary} - takes the upload capability, so an unreadable request never decides which
+   * right is checked.
    */
-  private static Capability capabilityFor(DocumentSourceType sourceType) {
-    return sourceType == null || sourceType == DocumentSourceType.UPLOAD
+  private Capability capabilityFor(DocumentSourceType sourceType) {
+    return sourceType == null || !connectors.descriptor(sourceType).indexingRun()
         ? Capability.CREATE_LIBRARY
         : Capability.CREATE_CONNECTOR_LIBRARY;
   }
@@ -267,22 +239,9 @@ public class KnowledgeLibraryService {
               sourceConfiguration.sourceCredentials(),
               sourceConfiguration.sourceInsecureSsl());
     }
-    if (sourceConfiguration.sourceType() == DocumentSourceType.CONFLUENCE) {
-      // ADR-0023, Entscheidung 2: the stored edition must be the instance's - one credential-free
-      // probe at creation, so the invariant never depends on what the client sent.
-      confluenceConnectionService.requireEdition(
-          sourceConfiguration.sourceUrl(),
-          sourceConfiguration.sourceProxy(),
-          sourceConfiguration.sourceInsecureSsl(),
-          sourceConfiguration.confluenceEdition());
-      library.configureConfluence(
-          sourceConfiguration.confluenceEdition(), sourceConfiguration.confluenceSpaces());
-      library.updateConfluenceFullSyncIntervalDays(
-          sourceConfiguration.confluenceFullSyncIntervalDays());
-    }
-    if (sourceConfiguration.sourceType() == DocumentSourceType.S3) {
-      library.updateS3Settings(sourceConfiguration.s3Settings());
-    }
+    connectors
+        .connector(sourceConfiguration.sourceType())
+        .configureNew(library, sourceConfiguration.settings());
     // #1942: the rhythm is set with the library, not in a second call right after it - same
     // validation as on an update, so an UPLOAD library is refused here too instead of by the
     // database's own chk_knowledge_libraries_schedule.
@@ -425,49 +384,23 @@ public class KnowledgeLibraryService {
       throw new ValidationException(
           "sourceType kann nach dem Anlegen der Bibliothek nicht mehr geändert werden");
     }
-    // ADR-0023, Entscheidung 2: the edition is as permanent as the type - a Data Center library
-    // does not become a Cloud library by editing, whatever migration the instance went through.
-    if (request.confluenceEdition() != null
-        && library.getSourceType() != DocumentSourceType.CONFLUENCE) {
-      throw new ValidationException("confluenceEdition ist nur für sourceType CONFLUENCE zulässig");
-    }
-    if (request.confluenceEdition() != null
-        && request.confluenceEdition() != library.getSourceConfluenceEdition()) {
-      throw new ValidationException(
-          "confluenceEdition kann nach dem Anlegen der Bibliothek nicht mehr geändert werden");
-    }
-    // ADR-0023, Entscheidung 1: the space selection is configuration, not identity - replaced as a
-    // whole when present, left alone when absent, exactly like the schedule below.
-    boolean replacesConfluenceSpaces = request.confluenceSpaces() != null;
-    List<ConfluenceSpaceSelection> confluenceSpaces =
-        replacesConfluenceSpaces
-            ? validateConfluenceSpaces(library.getSourceType(), request.confluenceSpaces())
-            : null;
     // #476 code review, finding 4: the typed configuration - unlike sourceType itself - can be
     // updated (credential rotation, moving a crawl target) without deleting and recreating the
     // library. Only actually replaced when the request carries at least one configuration field
     // (hasSourceConfigurationFields) - a request that only renames the library (every existing
     // caller, e.g. LibraryManagementPage) must leave a FILESYSTEM/HTTP_DIRECTORY/RSS_FEED
     // library's configuration untouched rather than nulling it out because the fields were simply
-    // absent from that unrelated request.
+    // absent from that unrelated request. Connector-owned fields are replaced when present and
+    // left alone when absent.
     boolean replacesSourceConfiguration = hasSourceConfigurationFields(request);
-    SourceConfiguration sourceConfiguration =
-        replacesSourceConfiguration ? validateSourceConfigurationForUpdate(library, request) : null;
-    // ADR-0027, Entscheidung 2: the scopes are configuration, not identity - replaced as a whole
-    // when present, left alone when absent. A settings-only change still has to pass the target
-    // validation (a new bucket host under virtual-host addressing), against the stored address.
-    boolean replacesS3Settings = request.s3Settings() != null;
-    if (replacesS3Settings && library.getSourceType() != DocumentSourceType.S3) {
-      throw new ValidationException("s3Settings sind nur für sourceType S3 zulässig");
-    }
-    if (replacesS3Settings && !replacesSourceConfiguration) {
-      requireReachableS3Targets(
-          library.getSourceUrl(),
-          library.getSourceProxy(),
-          library.isSourceInsecureSsl(),
-          library.getSourceCredentials(),
-          request.s3Settings());
-    }
+    SourceSettings requestedSettings =
+        requestedSettingsChange(library, request, replacesSourceConfiguration);
+    SourceConnector connector = connectors.connector(library.getSourceType());
+    SourceSettings validatedSettings =
+        connectors.validateChange(library, requestedSettings, replacesSourceConfiguration);
+    boolean replacesOwnSettings =
+        Arrays.stream(SourceSettingField.values())
+            .anyMatch(field -> field.isSetIn(requestedSettings));
     // #485: schedule follows the same replace-as-a-whole rule as the source configuration above -
     // only present when the caller actually intends to change it (LibraryUpdate.schedule), so a
     // request that only renames the library leaves an already-configured schedule untouched.
@@ -485,9 +418,7 @@ public class KnowledgeLibraryService {
     String previousSourceProxy = library.getSourceProxy();
     String previousSourceCredentials = library.getSourceCredentials();
     boolean previousSourceInsecureSsl = library.isSourceInsecureSsl();
-    List<String> previousConfluenceSpaceKeys =
-        library.getConfluenceSpaces().stream().map(ConfluenceSpaceSelection::getSpaceKey).toList();
-    String previousS3Settings = S3SourceSettingsJson.write(library.getS3Settings());
+    Map<String, Object> previousSettingsState = connector.settingsState(library);
     // The shell refuses listing while the succession is open and asks the share cap; a change of
     // listed writes its history interval and ASSET_VISIBILITY_CHANGED there.
     library.rename(normalizedName, request.description());
@@ -497,43 +428,24 @@ public class KnowledgeLibraryService {
     }
     if (replacesSourceConfiguration) {
       library.updateSourceConfiguration(
-          sourceConfiguration.sourcePath(),
-          sourceConfiguration.sourceUrl(),
-          sourceConfiguration.sourceProxy(),
-          sourceConfiguration.sourceCredentials(),
-          sourceConfiguration.sourceInsecureSsl());
-      // The discard a host change performs (see validateSourceConfigurationForUpdate's Javadoc) is
+          validatedSettings.sourcePath(),
+          validatedSettings.sourceUrl(),
+          validatedSettings.sourceProxy(),
+          validatedSettings.sourceCredentials(),
+          validatedSettings.sourceInsecureSsl());
+      // The discard a host change performs (see requestedSettingsChange's Javadoc) is
       // a security invariant and must not depend on the dirty check: with the key missing the
       // attribute already reads null, so only an erasure on the column itself removes the
       // ciphertext the returning key would otherwise send to the new host (#1806). A change that
       // keeps the origin is deliberately not erased - there the same null means "unreadable, leave
       // it alone".
-      if (sourceConfiguration.sourceCredentials() == null
+      if (validatedSettings.sourceCredentials() == null
           && previousSourceUrl != null
-          && !SourceOriginMatcher.sameOrigin(previousSourceUrl, sourceConfiguration.sourceUrl())) {
+          && !SourceOriginMatcher.sameOrigin(previousSourceUrl, validatedSettings.sourceUrl())) {
         libraryRepository.eraseSourceCredentials(library.getId());
       }
     }
-    if (replacesConfluenceSpaces) {
-      library.updateConfluenceSpaces(confluenceSpaces);
-    }
-    if (replacesS3Settings) {
-      library.updateS3Settings(request.s3Settings());
-    }
-    // #1200: present replaces the library's own rhythm, 0 returns it to the instance-wide
-    // default, absent leaves the stored value untouched - the same replace-when-present rule as
-    // the space selection above.
-    if (request.confluenceFullSyncIntervalDays() != null) {
-      if (library.getSourceType() != DocumentSourceType.CONFLUENCE) {
-        throw new ValidationException(
-            "confluenceFullSyncIntervalDays ist nur für sourceType CONFLUENCE zulässig");
-      }
-      library.updateConfluenceFullSyncIntervalDays(
-          request.confluenceFullSyncIntervalDays() == 0
-              ? null
-              : validateConfluenceFullSyncIntervalDays(
-                  library.getSourceType(), request.confluenceFullSyncIntervalDays()));
-    }
+    connector.applyChange(library, validatedSettings);
     KnowledgeLibrary updated = libraryRepository.save(library);
     boolean nameChanged = !Objects.equals(previousName, updated.getName());
     boolean descriptionChanged = !Objects.equals(previousDescription, updated.getDescription());
@@ -567,7 +479,7 @@ public class KnowledgeLibraryService {
     // Only the set of changed fields is recorded, never their values - sourceCredentials in
     // particular must never appear in the log (ADR-0018, Entscheidung 4), so unlike
     // LIBRARY_CHANGED's before/after this event carries no value at all, not even a redacted one.
-    if (replacesSourceConfiguration || replacesConfluenceSpaces || replacesS3Settings) {
+    if (replacesSourceConfiguration || replacesOwnSettings) {
       List<String> changedSourceFields = new ArrayList<>();
       if (!Objects.equals(previousSourcePath, updated.getSourcePath())) {
         changedSourceFields.add("sourcePath");
@@ -575,19 +487,6 @@ public class KnowledgeLibraryService {
       boolean sourceUrlChanged = !Objects.equals(previousSourceUrl, updated.getSourceUrl());
       if (sourceUrlChanged) {
         changedSourceFields.add("sourceUrl");
-      }
-      // #646, PR #665 review "should" finding 3: fk_rss_feed_state_library's ON DELETE CASCADE
-      // (migration 045) only clears a library's rss_feed_state row when the library itself is
-      // deleted - a sourceUrl change on an otherwise-surviving RSS_FEED library leaves that row
-      // behind under the library's own id. Reconfiguring the library back to the same address
-      // later would otherwise find its own stale ETag/Last-Modified again and end that run in a
-      // false 304, the same defect #646 fixed for a *different* library reusing an address - just
-      // one level down, for the same library reusing its own former address. Deleting the row
-      // outright (rather than trying to update it) mirrors 045-clear-rss-feed-state: the next run
-      // simply costs one full fetch instead of a conditional GET, never a lost document. A no-op
-      // for every sourceType other than RSS_FEED, since no such row exists for them.
-      if (sourceUrlChanged) {
-        rssFeedStateRepository.deleteByLibraryId(updated.getId());
       }
       if (!Objects.equals(previousSourceProxy, updated.getSourceProxy())) {
         changedSourceFields.add("sourceProxy");
@@ -598,37 +497,17 @@ public class KnowledgeLibraryService {
       if (previousSourceInsecureSsl != updated.isSourceInsecureSsl()) {
         changedSourceFields.add("sourceInsecureSsl");
       }
-      List<String> currentConfluenceSpaceKeys =
-          updated.getConfluenceSpaces().stream()
-              .map(ConfluenceSpaceSelection::getSpaceKey)
-              .toList();
-      if (!previousConfluenceSpaceKeys.equals(currentConfluenceSpaceKeys)) {
-        // ADR-0023: the selection is exactly what every reader of the library may see - widening
-        // or narrowing it is a source change like any other and leaves the same audit trail.
-        changedSourceFields.add("confluenceSpaces");
+      // Connector-owned settings leave the same trail as the connection fields; the connector
+      // discards whatever run state the change invalidates.
+      Map<String, Object> currentSettingsState = connector.settingsState(updated);
+      Set<String> changedSettings = new LinkedHashSet<>();
+      for (Map.Entry<String, Object> previous : previousSettingsState.entrySet()) {
+        if (!Objects.equals(previous.getValue(), currentSettingsState.get(previous.getKey()))) {
+          changedSettings.add(previous.getKey());
+        }
       }
-      boolean s3SettingsChanged =
-          !Objects.equals(previousS3Settings, S3SourceSettingsJson.write(updated.getS3Settings()));
-      if (s3SettingsChanged) {
-        // ADR-0027, Entscheidung 2: the scopes are the scope every reader sees - same trail
-        changedSourceFields.add("s3Settings");
-      }
-      if (updated.getSourceType() == DocumentSourceType.S3
-          && (sourceUrlChanged || s3SettingsChanged)) {
-        // ADR-0027, Entscheidung 3: a changed endpoint or selection discards the resumption state
-        // - the next run lists every scope from scratch. Any settings change counts (region,
-        // addressing style and patterns included): discarding is safe, keeping a stale state is
-        // not.
-        sourceSyncStateRepository.deleteByLibraryId(updated.getId());
-      }
-      if (updated.getSourceType() == DocumentSourceType.CONFLUENCE
-          && (sourceUrlChanged
-              || !previousConfluenceSpaceKeys.equals(currentConfluenceSpaceKeys))) {
-        // ADR-0023, Entscheidung 4: the first run after a change of address or selection is a
-        // full one - "no sync state" is how the next run learns that, and how an interrupted
-        // full sync's per-space progress for a now-different selection is discarded.
-        sourceSyncStateRepository.deleteByLibraryId(updated.getId());
-      }
+      changedSourceFields.addAll(changedSettings);
+      connector.onSourceChanged(updated, sourceUrlChanged, changedSettings);
       if (!changedSourceFields.isEmpty()) {
         auditEventRecorder.recordUserAction(
             AuditEvent.builder()
@@ -662,7 +541,7 @@ public class KnowledgeLibraryService {
           "Nur die Systemverwaltung darf die Freigabe-Obergrenze einer Bibliothek setzen");
     }
     KnowledgeLibrary library = loadLibrary(libraryId, caller);
-    if (library.getSourceType() == DocumentSourceType.UPLOAD) {
+    if (!hasIndexingRun(library)) {
       throw new ValidationException(
           "Upload-Bibliotheken tragen keine Freigabe-Obergrenze - jedes Dokument wird ohnehin"
               + " einzeln von der Eigentümerin kuratiert");
@@ -732,7 +611,7 @@ public class KnowledgeLibraryService {
     // and vector store chunks) rather than being blocked.
     long documentCount = documentRepository.countByLibraryId(libraryId);
     long documentsRemoved = 0;
-    if (library.getSourceType() == DocumentSourceType.UPLOAD) {
+    if (!hasIndexingRun(library)) {
       if (documentCount > 0) {
         throw new ConflictException(
             "Die Bibliothek enthält noch Dokumente und kann nicht gelöscht werden");
@@ -1125,127 +1004,30 @@ public class KnowledgeLibraryService {
   }
 
   /**
-   * A library's quellentyp is required at creation (ADR-0018) and each type accepts a strictly
-   * different, non-overlapping set of the request's configuration fields - the database enforces
-   * the same rule at the row level via {@code chk_knowledge_libraries_source_configuration}
-   * (migration 027), this is the 400-before-insert half of that same invariant. {@code
-   * sourceInsecureSsl} defaults to {@code false} when omitted, mirroring {@code
-   * IndexingTriggerRequest}'s equivalent field.
+   * A library's quellentyp is required at creation (ADR-0018); its connector validates the
+   * configuration - the 400-before-insert half of {@code
+   * chk_knowledge_libraries_source_configuration}. A connector-owned field on a library of another
+   * type is refused naming its owner. {@code sourceInsecureSsl} defaults to {@code false} when
+   * omitted.
    */
   private SourceConfiguration validateSourceConfiguration(LibraryCreation request) {
     DocumentSourceType sourceType = request.sourceType();
     if (sourceType == null) {
       throw new ValidationException("sourceType ist erforderlich");
     }
-    String sourcePath = blankToNull(request.sourcePath());
-    String sourceUrl =
-        blankToNull(request.sourceUrl() == null ? null : request.sourceUrl().toString());
-    String sourceProxy = blankToNull(request.sourceProxy());
-    String sourceCredentials = blankToNull(request.sourceCredentials());
-    boolean sourceInsecureSsl = Boolean.TRUE.equals(request.sourceInsecureSsl());
-
-    sourceUrl =
-        validateConfigurationForType(
-            sourceType,
-            sourcePath,
-            sourceUrl,
-            sourceProxy,
-            sourceCredentials,
-            sourceInsecureSsl,
+    SourceSettings requested =
+        new SourceSettings(
+            blankToNull(request.sourcePath()),
+            blankToNull(request.sourceUrl() == null ? null : request.sourceUrl().toString()),
+            blankToNull(request.sourceProxy()),
+            blankToNull(request.sourceCredentials()),
+            Boolean.TRUE.equals(request.sourceInsecureSsl()),
             request.confluenceEdition(),
+            request.confluenceSpaces(),
+            request.confluenceFullSyncIntervalDays(),
             request.s3Settings());
-    List<ConfluenceSpaceSelection> confluenceSpaces =
-        validateConfluenceSpaces(sourceType, request.confluenceSpaces());
-    if (sourceType == DocumentSourceType.CONFLUENCE && confluenceSpaces.isEmpty()) {
-      throw new ValidationException(
-          "confluenceSpaces: mindestens ein Space ist erforderlich, wenn sourceType CONFLUENCE"
-              + " ist");
-    }
-    return new SourceConfiguration(
-        sourceType,
-        sourcePath,
-        sourceUrl,
-        sourceProxy,
-        sourceCredentials,
-        sourceInsecureSsl,
-        request.confluenceEdition(),
-        confluenceSpaces,
-        validateConfluenceFullSyncIntervalDays(
-            sourceType, request.confluenceFullSyncIntervalDays()),
-        request.s3Settings());
-  }
-
-  /**
-   * #1200 (ADR-0023, Entscheidung 4): only a {@code CONFLUENCE} library carries its own full-sync
-   * rhythm, and a value is 1-365 days - the rhythm can be lengthened, never switched off. {@code
-   * null} (follow the instance-wide default) is always acceptable.
-   */
-  private Integer validateConfluenceFullSyncIntervalDays(
-      DocumentSourceType sourceType, Integer days) {
-    if (days == null) {
-      return null;
-    }
-    if (sourceType != DocumentSourceType.CONFLUENCE) {
-      throw new ValidationException(
-          "confluenceFullSyncIntervalDays ist nur für sourceType CONFLUENCE zulässig");
-    }
-    if (days < 1 || days > 365) {
-      throw new ValidationException(
-          "confluenceFullSyncIntervalDays muss zwischen 1 und 365 Tagen liegen");
-    }
-    return days;
-  }
-
-  /**
-   * Validates a space selection (ADR-0023, Entscheidung 1): only a {@code CONFLUENCE} library may
-   * carry one, keys are non-blank, at most 255 characters and unique per library. Returns the
-   * normalised (trimmed) selection; an absent selection is an empty list - the caller decides
-   * whether that is acceptable (creation: no; update: absent means "leave alone" and never reaches
-   * this method).
-   */
-  private List<ConfluenceSpaceSelection> validateConfluenceSpaces(
-      DocumentSourceType sourceType, List<ConfluenceSpaceSelection> requested) {
-    if (requested == null) {
-      return List.of();
-    }
-    if (sourceType != DocumentSourceType.CONFLUENCE) {
-      throw new ValidationException("confluenceSpaces sind nur für sourceType CONFLUENCE zulässig");
-    }
-    if (requested.isEmpty()) {
-      throw new ValidationException(
-          "confluenceSpaces: mindestens ein Space ist erforderlich, wenn sourceType CONFLUENCE"
-              + " ist");
-    }
-    if (requested.size() > MAX_CONFLUENCE_SPACES) {
-      throw new ValidationException(
-          "confluenceSpaces: höchstens " + MAX_CONFLUENCE_SPACES + " Spaces je Bibliothek");
-    }
-    Set<String> seen = new HashSet<>();
-    List<ConfluenceSpaceSelection> normalized = new ArrayList<>();
-    for (ConfluenceSpaceSelection selection : requested) {
-      String key = selection == null ? null : blankToNull(selection.getSpaceKey());
-      if (key == null) {
-        throw new ValidationException(
-            "confluenceSpaces: jeder Eintrag braucht einen Space-Schlüssel");
-      }
-      if (key.length() > 255) {
-        throw new ValidationException(
-            "confluenceSpaces: der Space-Schlüssel darf höchstens 255 Zeichen lang sein");
-      }
-      // Confluence treats space keys case-insensitively in practice - two spellings of one key
-      // would list the same pages twice in a full sync.
-      if (!seen.add(key.toUpperCase(Locale.ROOT))) {
-        throw new ValidationException(
-            "confluenceSpaces: der Space " + key + " ist mehrfach ausgewählt");
-      }
-      String name = blankToNull(selection.getSpaceName());
-      if (name != null && name.length() > 255) {
-        throw new ValidationException(
-            "confluenceSpaces: der Space-Name darf höchstens 255 Zeichen lang sein");
-      }
-      normalized.add(new ConfluenceSpaceSelection(key, name));
-    }
-    return normalized;
+    SourceSettings validated = connectors.validateNew(sourceType, requested);
+    return new SourceConfiguration(sourceType, validated);
   }
 
   /**
@@ -1264,12 +1046,10 @@ public class KnowledgeLibraryService {
   }
 
   /**
-   * Same per-type validation {@link #validateSourceConfiguration} applies at creation, reused for
-   * {@link #updateLibrary} (issue #476, review finding 4): passwordrotation or moving a crawl
-   * target must not force deleting and recreating the library, so the typed configuration fields
-   * stay updatable even though {@code sourceType} itself never is. {@code sourceType} is always the
-   * library's own, already-immutable value - never taken from the update request - so a caller
-   * cannot use this path to smuggle in a type change.
+   * The change {@code request} asks for, as its connector validates it: the connection fields when
+   * {@code replacesConnection} (issue #476, review finding 4 - password rotation or moving a crawl
+   * target must not force recreating the library), and every connector-owned field as sent. {@code
+   * sourceType} is always the library's own, never taken from the request.
    *
    * <p>{@code sourceCredentials} falls back to the library's currently stored value when the
    * request omits it <em>and</em> the new {@code sourceUrl} still names the same origin (scheme,
@@ -1287,276 +1067,42 @@ public class KnowledgeLibraryService {
    * the new host. There is deliberately no way to explicitly clear a stored credential while
    * keeping the same origin - blank input is indistinguishable from "leave unchanged" by design.
    */
-  private SourceConfiguration validateSourceConfigurationForUpdate(
-      KnowledgeLibrary library, LibraryUpdate request) {
-    DocumentSourceType sourceType = library.getSourceType();
-    String sourcePath = blankToNull(request.sourcePath());
+  private SourceSettings requestedSettingsChange(
+      KnowledgeLibrary library, LibraryUpdate request, boolean replacesConnection) {
+    if (!replacesConnection) {
+      return new SourceSettings(
+          null,
+          null,
+          null,
+          null,
+          false,
+          request.confluenceEdition(),
+          request.confluenceSpaces(),
+          request.confluenceFullSyncIntervalDays(),
+          request.s3Settings());
+    }
     String sourceUrl =
         blankToNull(request.sourceUrl() == null ? null : request.sourceUrl().toString());
-    String sourceProxy = blankToNull(request.sourceProxy());
     String sourceCredentials = blankToNull(request.sourceCredentials());
     if (sourceCredentials == null
         && SourceOriginMatcher.sameOrigin(library.getSourceUrl(), sourceUrl)) {
       sourceCredentials = library.getSourceCredentials();
     }
-    boolean sourceInsecureSsl = Boolean.TRUE.equals(request.sourceInsecureSsl());
-    // ADR-0027: the settings the target validation runs against - the request's when it replaces
-    // them, otherwise the stored ones (an S3 library always has some); replaced by their own block
-    // in updateLibrary, so the value here only feeds the validation.
-    S3SourceSettings s3Settings =
-        sourceType == DocumentSourceType.S3 && request.s3Settings() == null
-            ? library.getS3Settings()
-            : request.s3Settings();
-
-    sourceUrl =
-        validateConfigurationForType(
-            sourceType,
-            sourcePath,
-            sourceUrl,
-            sourceProxy,
-            sourceCredentials,
-            sourceInsecureSsl,
-            library.getSourceConfluenceEdition(),
-            s3Settings);
-    return new SourceConfiguration(
-        sourceType,
-        sourcePath,
+    return new SourceSettings(
+        blankToNull(request.sourcePath()),
         sourceUrl,
-        sourceProxy,
+        blankToNull(request.sourceProxy()),
         sourceCredentials,
-        sourceInsecureSsl,
-        library.getSourceConfluenceEdition(),
-        List.of(),
-        // #1200: the rhythm is replaced by its own update block, never via the grouped source
-        // configuration - this value is unused on the update path.
-        null,
-        s3Settings);
+        Boolean.TRUE.equals(request.sourceInsecureSsl()),
+        request.confluenceEdition(),
+        request.confluenceSpaces(),
+        request.confluenceFullSyncIntervalDays(),
+        request.s3Settings());
   }
 
-  /**
-   * The type-bound half of {@code chk_knowledge_libraries_source_configuration} (migration 027),
-   * enforced here as a 400 before the insert/update ever reaches the database. {@code RSS_FEED}
-   * (#474) is deliberately handled like {@code HTTP_DIRECTORY} - both are run-based, URL-fetched
-   * source types (ADR-0018/{@code IndexingSourceType}) with the identical configuration shape. The
-   * {@code default} branch is a deliberate fallback for a {@link DocumentSourceType} value this
-   * method has not been taught yet: without it, a future enum constant would fall through
-   * unvalidated, hit the database's CHECK constraint instead, and surface as an unhandled 500 whose
-   * Postgres error text includes the failing row (and thus {@code source_credentials}) - exactly
-   * what ADR-0018, Entscheidung 4 rules out.
-   */
-  private String validateConfigurationForType(
-      DocumentSourceType sourceType,
-      String sourcePath,
-      String sourceUrl,
-      String sourceProxy,
-      String sourceCredentials,
-      boolean sourceInsecureSsl,
-      ConfluenceEdition confluenceEdition,
-      S3SourceSettings s3Settings) {
-    if (confluenceEdition != null && sourceType != DocumentSourceType.CONFLUENCE) {
-      throw new ValidationException("confluenceEdition ist nur für sourceType CONFLUENCE zulässig");
-    }
-    if (s3Settings != null && sourceType != DocumentSourceType.S3) {
-      throw new ValidationException("s3Settings sind nur für sourceType S3 zulässig");
-    }
-    switch (sourceType) {
-      case UPLOAD -> {
-        if (sourcePath != null
-            || sourceUrl != null
-            || sourceProxy != null
-            || sourceCredentials != null
-            || sourceInsecureSsl) {
-          throw new ValidationException("sourceType UPLOAD erlaubt keine Quellkonfiguration");
-        }
-      }
-      case FILESYSTEM -> {
-        if (sourcePath == null) {
-          throw new ValidationException(
-              "sourcePath ist erforderlich, wenn sourceType FILESYSTEM ist");
-        }
-        if (!sourcePath.startsWith("/")) {
-          throw new ValidationException("sourcePath muss ein absoluter Pfad sein");
-        }
-        if (sourceUrl != null || sourceProxy != null || sourceCredentials != null) {
-          throw new ValidationException(
-              "sourceUrl, sourceProxy und sourceCredentials sind für sourceType FILESYSTEM nicht"
-                  + " zulässig");
-        }
-        if (sourceInsecureSsl) {
-          throw new ValidationException(
-              "sourceInsecureSsl ist für sourceType FILESYSTEM nicht zulässig");
-        }
-        // #484/ADR-0018 Entscheidung 6: the actual security boundary for FILESYSTEM - anlage-recht
-        // alone no longer gates which sourcePath a caller may configure, the operator-controlled
-        // allowlist does. An empty allowlist (the default) disables FILESYSTEM entirely rather than
-        // defaulting to "everything allowed", so this check fires before - and independent of -
-        // whether sourcePath itself is inside it.
-        if (!filesystemAllowlist.isConfigured()) {
-          throw new ValidationException(
-              "sourceType FILESYSTEM ist deaktiviert: der Betrieb hat keine Verzeichnisse für"
-                  + " Dateisystem-Bibliotheken freigegeben");
-        }
-        if (!filesystemAllowlist.isAllowed(sourcePath)) {
-          throw new ValidationException(
-              "sourcePath liegt außerhalb der vom Betrieb freigegebenen Verzeichnisse. Die"
-                  + " freigegebenen Basisverzeichnisse teilt die Systemverwaltung mit.");
-        }
-      }
-      case HTTP_DIRECTORY -> validateUrlBasedConfiguration(sourceType, sourcePath, sourceUrl);
-      case RSS_FEED -> validateUrlBasedConfiguration(sourceType, sourcePath, sourceUrl);
-      case CONFLUENCE -> {
-        return validateConfluenceConfiguration(
-            sourcePath, sourceUrl, sourceCredentials, confluenceEdition);
-      }
-      case S3 -> {
-        return validateS3Configuration(
-            sourcePath, sourceUrl, sourceProxy, sourceCredentials, sourceInsecureSsl, s3Settings);
-      }
-      default ->
-          throw new ValidationException("sourceType " + sourceType + " wird nicht unterstützt");
-    }
-    return sourceUrl;
-  }
-
-  /**
-   * The {@code S3} arm (ADR-0027, Entscheidungen 1, 7 and 8): {@code sourceUrl} is the endpoint and
-   * is stored normalised ({@link S3Connection#normalizeEndpoint}), credentials are required and
-   * must parse as {@code accessKey:secretKey[:sessionToken]}, the typed settings are required, a
-   * filesystem path is forbidden - and the endpoint host, the proxy host and (under virtual-host
-   * addressing) every bucket host pass the target validation before anything is stored, so an
-   * internal address is refused with the allowlist hint here and not first by a run. Returns the
-   * normalised endpoint; the German messages of the parsers are user-facing and passed through.
-   */
-  private String validateS3Configuration(
-      String sourcePath,
-      String sourceUrl,
-      String sourceProxy,
-      String sourceCredentials,
-      boolean sourceInsecureSsl,
-      S3SourceSettings s3Settings) {
-    if (sourcePath != null) {
-      throw new ValidationException("sourcePath ist für sourceType S3 nicht zulässig");
-    }
-    if (sourceUrl == null) {
-      throw new ValidationException(
-          "sourceUrl (Endpoint des Objektspeichers) ist erforderlich, wenn sourceType S3 ist");
-    }
-    String normalizedUrl;
-    try {
-      normalizedUrl = S3Connection.normalizeEndpoint(sourceUrl).toString();
-    } catch (S3Connection.InvalidEndpointException e) {
-      throw new ValidationException(e.getMessage());
-    }
-    if (sourceCredentials == null) {
-      throw new ValidationException("sourceCredentials sind erforderlich, wenn sourceType S3 ist");
-    }
-    if (s3Settings == null) {
-      throw new ValidationException("s3Settings sind erforderlich, wenn sourceType S3 ist");
-    }
-    requireReachableS3Targets(
-        normalizedUrl, sourceProxy, sourceInsecureSsl, sourceCredentials, s3Settings);
-    return normalizedUrl;
-  }
-
-  /**
-   * ADR-0027, Entscheidung 8: the hosts an S3 library will contact pass {@code
-   * TargetAddressValidator} when the configuration is saved - the endpoint, the proxy and, under
-   * virtual-host addressing, {@code <bucket>.<host>} for every scope. A refusal or an unresolvable
-   * host is a 400 with the validator's own German message; nothing is sent.
-   */
-  private void requireReachableS3Targets(
-      String normalizedUrl,
-      String sourceProxy,
-      boolean sourceInsecureSsl,
-      String sourceCredentials,
-      S3SourceSettings s3Settings) {
-    S3Credentials credentials;
-    try {
-      credentials = S3Credentials.parse(sourceCredentials);
-    } catch (S3Credentials.InvalidCredentialsFormatException e) {
-      throw new ValidationException(e.getMessage());
-    }
-    ProxyAndCredentials proxy;
-    try {
-      proxy = ProxyAndCredentials.parse(sourceProxy, null);
-    } catch (ProxyAndCredentials.InvalidProxyConfigurationException e) {
-      throw new ValidationException(e.getMessage());
-    }
-    S3Connection connection =
-        new S3Connection(
-            URI.create(normalizedUrl),
-            s3Settings.effectiveRegion(),
-            s3Settings.pathStyle(),
-            credentials,
-            proxy.proxyHost(),
-            proxy.proxyPort(),
-            sourceInsecureSsl);
-    try {
-      s3ClientFactory.validateTargets(connection, s3Settings.scopes());
-    } catch (S3AccessException e) {
-      throw new ValidationException(e.getMessage());
-    }
-  }
-
-  /**
-   * The {@code CONFLUENCE} arm (ADR-0023): the edition is required, {@code sourceUrl} is the
-   * instance's base address and is stored in its normalised form (site root without {@code /wiki}
-   * for Cloud, including the context path for Data Center - {@link
-   * ConfluenceConnection#normalizeBaseUrl}), credentials are required and must parse for the
-   * edition ({@link ConfluenceCredentials#parse}), a filesystem path is forbidden. Returns the
-   * normalised address; the German messages of the two parsers are user-facing and passed through.
-   */
-  private String validateConfluenceConfiguration(
-      String sourcePath, String sourceUrl, String sourceCredentials, ConfluenceEdition edition) {
-    if (edition == null) {
-      throw new ValidationException(
-          "confluenceEdition ist erforderlich, wenn sourceType CONFLUENCE ist");
-    }
-    if (sourcePath != null) {
-      throw new ValidationException("sourcePath ist für sourceType CONFLUENCE nicht zulässig");
-    }
-    if (sourceUrl == null) {
-      throw new ValidationException("sourceUrl ist erforderlich, wenn sourceType CONFLUENCE ist");
-    }
-    String normalizedUrl;
-    try {
-      normalizedUrl = ConfluenceConnection.normalizeBaseUrl(sourceUrl, edition).toString();
-    } catch (ConfluenceConnection.InvalidBaseUrlException e) {
-      throw new ValidationException(e.getMessage());
-    }
-    if (sourceCredentials == null) {
-      throw new ValidationException(
-          "sourceCredentials sind erforderlich, wenn sourceType CONFLUENCE ist");
-    }
-    try {
-      ConfluenceCredentials.parse(edition, sourceCredentials);
-    } catch (ConfluenceCredentials.InvalidCredentialsFormatException e) {
-      throw new ValidationException(e.getMessage());
-    }
-    return normalizedUrl;
-  }
-
-  /** Shared by {@code HTTP_DIRECTORY} and {@code RSS_FEED} (#474) - both carry sourceUrl only. */
-  private void validateUrlBasedConfiguration(
-      DocumentSourceType sourceType, String sourcePath, String sourceUrl) {
-    if (sourceUrl == null) {
-      throw new ValidationException(
-          "sourceUrl ist erforderlich, wenn sourceType " + sourceType + " ist");
-    }
-    if (sourcePath != null) {
-      throw new ValidationException(
-          "sourcePath ist für sourceType " + sourceType + " nicht zulässig");
-    }
-    URI uri;
-    try {
-      uri = URI.create(sourceUrl);
-    } catch (IllegalArgumentException e) {
-      throw new ValidationException("sourceUrl ist keine gültige URL");
-    }
-    String scheme = uri.getScheme();
-    if (scheme == null || !(scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https"))) {
-      throw new ValidationException("sourceUrl muss mit http:// oder https:// beginnen");
-    }
+  /** Whether a run fills {@code library}, as its connector describes it. */
+  private boolean hasIndexingRun(KnowledgeLibrary library) {
+    return connectors.descriptor(library.getSourceType()).indexingRun();
   }
 
   private String blankToNull(String value) {
@@ -1577,7 +1123,8 @@ public class KnowledgeLibraryService {
     if (frequency == null) {
       throw new ValidationException("frequency ist erforderlich");
     }
-    if (frequency != ScheduleFrequency.DISABLED && sourceType == DocumentSourceType.UPLOAD) {
+    if (frequency != ScheduleFrequency.DISABLED
+        && !connectors.descriptor(sourceType).indexingRun()) {
       throw new ValidationException(
           "Ein Zeitplan ist nur für Konnektorbibliotheken verfügbar, nicht für UPLOAD");
     }
@@ -1617,67 +1164,75 @@ public class KnowledgeLibraryService {
   /** The validated {@code (enabled, cron)} pair {@link KnowledgeLibrary#updateSchedule} takes. */
   private record ValidatedSchedule(boolean enabled, String cron) {}
 
-  /** Groups a validated {@link LibraryCreation}'s source fields for the two entity factories. */
-  private record SourceConfiguration(
-      DocumentSourceType sourceType,
-      String sourcePath,
-      String sourceUrl,
-      String sourceProxy,
-      String sourceCredentials,
-      boolean sourceInsecureSsl,
-      ConfluenceEdition confluenceEdition,
-      List<ConfluenceSpaceSelection> confluenceSpaces,
-      Integer confluenceFullSyncIntervalDays,
-      S3SourceSettings s3Settings) {}
+  /** A validated {@link LibraryCreation}'s source type and settings, for the entity factories. */
+  private record SourceConfiguration(DocumentSourceType sourceType, SourceSettings settings) {
+
+    String sourcePath() {
+      return settings.sourcePath();
+    }
+
+    String sourceUrl() {
+      return settings.sourceUrl();
+    }
+
+    String sourceProxy() {
+      return settings.sourceProxy();
+    }
+
+    String sourceCredentials() {
+      return settings.sourceCredentials();
+    }
+
+    boolean sourceInsecureSsl() {
+      return settings.sourceInsecureSsl();
+    }
+  }
 
   /**
-   * Generates a fresh webhook secret for a CONFLUENCE library (#1140) - MANAGER or above, like
-   * every other change of the source configuration - stores it encrypted and returns the plaintext
-   * exactly once. A second call rotates: the previous secret stops authenticating with the commit.
-   * The audit entry names the field, never the value (ADR-0018, Entscheidung 4).
+   * Generates a fresh webhook secret (#1140) - MANAGER or above, like every other change of the
+   * source configuration - stores it encrypted and returns the plaintext exactly once. A second
+   * call rotates: the previous secret stops authenticating with the commit. The audit entry names
+   * the field, never the value (ADR-0018, Entscheidung 4).
    */
   @Transactional
   public String generateConfluenceWebhookSecret(UUID libraryId, CurrentUser caller) {
-    return generatePushSecret(libraryId, caller, DocumentSourceType.CONFLUENCE);
+    return generatePushSecret(libraryId, caller, PushIntake.WEBHOOK_SECRET);
   }
 
   /** Removes the webhook secret (#1140): the endpoint rejects every call from now on. */
   @Transactional
   public void removeConfluenceWebhookSecret(UUID libraryId, CurrentUser caller) {
-    removePushSecret(libraryId, caller, DocumentSourceType.CONFLUENCE);
+    removePushSecret(libraryId, caller, PushIntake.WEBHOOK_SECRET);
   }
 
   /**
-   * Generates (or rotates) the event token of an S3 library (ADR-0027, Entscheidung 6) and returns
-   * it exactly once - the same secret column, encryption path and audit trail as the Confluence
-   * webhook secret.
+   * Generates (or rotates) the event token (ADR-0027, Entscheidung 6) and returns it exactly once -
+   * the same secret column, encryption path and audit trail as the webhook secret.
    */
   @Transactional
   public String generateS3EventsToken(UUID libraryId, CurrentUser caller) {
-    return generatePushSecret(libraryId, caller, DocumentSourceType.S3);
+    return generatePushSecret(libraryId, caller, PushIntake.EVENT_TOKEN);
   }
 
   /** Removes the event token: the library's event endpoint rejects every call from now on. */
   @Transactional
   public void removeS3EventsToken(UUID libraryId, CurrentUser caller) {
-    removePushSecret(libraryId, caller, DocumentSourceType.S3);
+    removePushSecret(libraryId, caller, PushIntake.EVENT_TOKEN);
   }
 
-  private String generatePushSecret(
-      UUID libraryId, CurrentUser caller, DocumentSourceType expectedType) {
-    KnowledgeLibrary library = requireLibraryWithPushIntake(libraryId, caller, expectedType);
+  private String generatePushSecret(UUID libraryId, CurrentUser caller, PushIntake intake) {
+    KnowledgeLibrary library = requireLibraryWithPushIntake(libraryId, caller, intake);
     byte[] random = new byte[WEBHOOK_SECRET_BYTES];
     secureRandom.nextBytes(random);
     String secret = Base64.getUrlEncoder().withoutPadding().encodeToString(random);
     library.setWebhookSecret(secret);
     libraryRepository.save(library);
-    recordPushSecretChange(library, caller);
+    recordPushSecretChange(library, caller, intake);
     return secret;
   }
 
-  private void removePushSecret(
-      UUID libraryId, CurrentUser caller, DocumentSourceType expectedType) {
-    KnowledgeLibrary library = requireLibraryWithPushIntake(libraryId, caller, expectedType);
+  private void removePushSecret(UUID libraryId, CurrentUser caller, PushIntake intake) {
+    KnowledgeLibrary library = requireLibraryWithPushIntake(libraryId, caller, intake);
     // Whether there is a secret to revoke is decided by the stored ciphertext, not by the entity
     // attribute: with the key missing the attribute reads null for a secret that still
     // authenticates once the key returns (#1806). The erasure carries the revocation; the entity
@@ -1687,29 +1242,23 @@ public class KnowledgeLibraryService {
     }
     library.setWebhookSecret(null);
     libraryRepository.save(library);
-    recordPushSecretChange(library, caller);
+    recordPushSecretChange(library, caller, intake);
   }
 
   private KnowledgeLibrary requireLibraryWithPushIntake(
-      UUID libraryId, CurrentUser caller, DocumentSourceType expectedType) {
+      UUID libraryId, CurrentUser caller, PushIntake intake) {
     KnowledgeLibrary library = loadLibrary(libraryId, caller);
     accessService.requireRole(library, caller.id(), caller.isSystemAdmin(), AssetRole.MANAGER);
-    if (library.getSourceType() != expectedType) {
-      throw new ValidationException(
-          expectedType == DocumentSourceType.S3
-              ? "Ein Ereignis-Token gibt es nur für Bibliotheken vom Typ S3"
-              : "Ein Webhook-Geheimnis gibt es nur für Bibliotheken vom Typ CONFLUENCE");
+    if (connectors.descriptor(library.getSourceType()).pushIntake() != intake) {
+      throw new ValidationException(intake.unavailableMessage(connectors.ownerOf(intake)));
     }
     return library;
   }
 
-  /** The audit names the field of the library's type, never the value. */
-  private void recordPushSecretChange(KnowledgeLibrary library, CurrentUser caller) {
-    List<String> changedFields =
-        List.of(
-            library.getSourceType() == DocumentSourceType.S3
-                ? "s3EventsToken"
-                : "confluenceWebhookSecret");
+  /** The audit names the secret's field, never the value. */
+  private void recordPushSecretChange(
+      KnowledgeLibrary library, CurrentUser caller, PushIntake intake) {
+    List<String> changedFields = List.of(intake.auditField());
     auditEventRecorder.recordUserAction(
         AuditEvent.builder()
             .organizationId(library.getOrganizationId())
@@ -1770,12 +1319,13 @@ public class KnowledgeLibraryService {
   }
 
   private LibraryManagementDetail toManagementDetail(KnowledgeLibrary library) {
-    // #485: schedule/lastScheduledRunsFailed stay null for an UPLOAD library, which cannot carry
-    // a schedule at all (chk_knowledge_libraries_schedule) - nextRunAt would otherwise leak the
-    // same "does an internal crawl target exist" detail #507 already gates.
+    SourceConnectorDescriptor descriptor = connectors.descriptor(library.getSourceType());
+    // #485: schedule/lastScheduledRunsFailed stay null for a library without a run, which cannot
+    // carry a schedule at all (chk_knowledge_libraries_schedule) - nextRunAt would otherwise leak
+    // the same "does an internal crawl target exist" detail #507 already gates.
     LibraryScheduleDetail schedule = null;
     Boolean lastScheduledRunsFailed = null;
-    if (library.getSourceType() != DocumentSourceType.UPLOAD) {
+    if (descriptor.indexingRun()) {
       LibraryScheduleCodec.Schedule parsed = LibraryScheduleCodec.parse(library.getScheduleCron());
       Instant nextRunAt =
           LibraryScheduleCodec.nextRunAt(
@@ -1786,6 +1336,9 @@ public class KnowledgeLibraryService {
       lastScheduledRunsFailed =
           indexingJobService.lastScheduledRunsFailed(library.getId(), library.getOrganizationId());
     }
+    // #1140, ADR-0027 Entscheidung 6: whether the push secret is set - shown once, at generation.
+    Boolean pushSecretSet =
+        descriptor.pushIntake() == null ? null : library.getWebhookSecret() != null;
     return new LibraryManagementDetail(
         library.getSourcePath(),
         library.getSourceUrl(),
@@ -1795,35 +1348,25 @@ public class KnowledgeLibraryService {
         // a client phrase an accurate "leave blank to keep the current credential" hint only when
         // one is actually stored.
         library.getSourceCredentials() != null,
-        // #1140: the same yes/no for the webhook secret - it is shown once, at generation.
-        library.getSourceType() == DocumentSourceType.CONFLUENCE
-            ? library.getWebhookSecret() != null
-            : null,
-        // ADR-0027, Entscheidung 6: the S3 event token, same column, same yes/no
-        library.getSourceType() == DocumentSourceType.S3
-            ? library.getWebhookSecret() != null
-            : null,
-        library.getSourceType() == DocumentSourceType.CONFLUENCE
-            ? library.getConfluenceFullSyncIntervalDays()
-            : null,
+        descriptor.pushIntake() == PushIntake.WEBHOOK_SECRET ? pushSecretSet : null,
+        descriptor.pushIntake() == PushIntake.EVENT_TOKEN ? pushSecretSet : null,
+        descriptor.fullSyncInterval() == null ? null : library.getConfluenceFullSyncIntervalDays(),
         // #1200: the instance-wide rhythm in whole days, so the schedule dialog can name the
         // default instead of hard-coding it; a sub-day interval still reads as one day.
-        library.getSourceType() == DocumentSourceType.CONFLUENCE
-            ? (int) Math.max(1, confluenceProperties.fullSyncInterval().toDays())
-            : null,
+        descriptor.fullSyncInterval() == null
+            ? null
+            : (int) Math.max(1, descriptor.fullSyncInterval().toDays()),
         schedule,
         lastScheduledRunsFailed,
         storageQuotaService.quotaBytes(),
         storageQuotaService.usedBytes(library.getId()),
         externalAccessService.describe(library),
-        // #797: UPLOAD never carries a cap narrower than the unrestricted default
+        // #797: a library without a run never carries a cap narrower than the unrestricted default
         // (chk_knowledge_libraries_share_cap_upload_unrestricted) - null here rather than the
-        // always-true value keeps a MANAGER from reading a ceiling into an UPLOAD library that in
-        // fact has none.
-        library.getSourceType() == DocumentSourceType.UPLOAD
-            ? null
-            : library.isAllAccountsGrantAllowed(),
-        library.getSourceType() == DocumentSourceType.UPLOAD ? null : library.isListedCap());
+        // always-true value keeps a MANAGER from reading a ceiling into a library that in fact has
+        // none.
+        descriptor.indexingRun() ? library.isAllAccountsGrantAllowed() : null,
+        descriptor.indexingRun() ? library.isListedCap() : null);
   }
 
   private LibraryDocumentEntry toLibraryDocumentEntry(

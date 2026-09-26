@@ -1,4 +1,4 @@
-package io.opaa.library;
+package io.opaa.indexing.source.s3;
 
 import java.util.List;
 

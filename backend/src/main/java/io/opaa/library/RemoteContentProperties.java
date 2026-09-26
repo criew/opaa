@@ -12,8 +12,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * io.opaa.knowledge.UploadProperties#maxFileSize()}/its 120s indexing-run timeout (#748 review,
  * finding 1): this path is a synchronous, VIEWER-reachable, click-driven request against an
  * outbound connection this system does not control, not a background indexing run or a bounded
- * local-disk read - the same reasoning {@code SourceConnectionTestService#REQUEST_TIMEOUT} already
- * applies to its own synchronous probe.
+ * local-disk read - the same reasoning {@code ConnectorChecks#REQUEST_TIMEOUT} already applies to
+ * its own synchronous probe.
  *
  * @param maxBytes maximum number of bytes streamed from the remote source per request, enforced
  *     while streaming (see {@code io.opaa.sourceaccess.BoundedDownloader#downloadStreaming}), not

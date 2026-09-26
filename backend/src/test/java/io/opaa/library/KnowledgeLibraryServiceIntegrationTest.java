@@ -1228,7 +1228,7 @@ class KnowledgeLibraryServiceIntegrationTest {
       updateLibraryWritesNoLibrarySourceUpdatedEntryWhenTheDialogResendsTheSourceFieldsUnchanged() {
     // Code review finding 2 (PR #578): the real EditLibrarySourceDialog case - it resends
     // sourceUrl unchanged and leaves sourceCredentials blank (relying on the same-origin
-    // fallback in validateSourceConfigurationForUpdate). This walks the new #545 block all the
+    // fallback in requestedSettingsChange). This walks the new #545 block all the
     // way to the empty-changedSourceFields guard, unlike the rename-only test above, which never
     // enters replacesSourceConfiguration at all.
     UUID owner = createUser(organizationA);

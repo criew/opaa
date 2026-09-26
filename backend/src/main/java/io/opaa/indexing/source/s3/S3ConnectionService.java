@@ -1,10 +1,7 @@
-package io.opaa.library;
+package io.opaa.indexing.source.s3;
 
 import io.opaa.common.ValidationException;
-import io.opaa.indexing.source.s3.S3AccessCheck;
-import io.opaa.indexing.source.s3.S3BucketListing;
-import io.opaa.indexing.source.s3.S3ClientFactory;
-import io.opaa.indexing.source.s3.S3ObjectStore;
+import io.opaa.indexing.source.S3ScopeCheck;
 import io.opaa.knowledge.sourcesettings.S3Scope;
 import io.opaa.knowledge.sourcesettings.S3SourceSettings;
 import io.opaa.s3.S3AccessException;
@@ -27,12 +24,12 @@ import org.springframework.stereotype.Service;
  * store problem is the test's <em>result</em>, never an exception; only a caller's own mistake (an
  * address that is no endpoint, a proxy without a usable port, missing settings) is a 400.
  *
- * <p>The probe is bounded like every other synchronous test of {@link SourceConnectionTestService}:
- * its store uses {@link S3ClientFactory#createForProbe} (short timeout, one retry) and the whole
- * test stops after {@link #PROBE_DEADLINE}, reporting the remaining scopes as not probed - so a
- * caller cannot bind a request thread for long against a store that swallows packets. Messages come
- * from the access layer and are German and credential-free by its contract; the TLS diagnosis alone
- * gains the hint that the certificate check can be suspended, named as the last option.
+ * <p>The probe is bounded like every other synchronous connection test: its store uses {@link
+ * S3ClientFactory#createForProbe} (short timeout, one retry) and the whole test stops after {@link
+ * #PROBE_DEADLINE}, reporting the remaining scopes as not probed - so a caller cannot bind a
+ * request thread for long against a store that swallows packets. Messages come from the access
+ * layer and are German and credential-free by its contract; the TLS diagnosis alone gains the hint
+ * that the certificate check can be suspended, named as the last option.
  */
 @Service
 public class S3ConnectionService {

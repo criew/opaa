@@ -1,10 +1,10 @@
-package io.opaa.library;
+package io.opaa.indexing.source;
 
 import io.opaa.api.types.ConfluenceEdition;
 import java.util.List;
 
 /**
- * The outcome of a {@link SourceConnectionTestService} probe - the domain counterpart of the
+ * The outcome of a {@link SourceConnector#testConnection} probe - the domain counterpart of the
  * generated {@code SourceConnectionTestResponse}.
  *
  * @param message German, user-facing text, never a raw exception message (#514).

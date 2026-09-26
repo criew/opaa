@@ -40,6 +40,8 @@ import io.opaa.indexing.metadata.DocumentMetadataService;
 import io.opaa.indexing.metadata.ModelMetadataExtractor;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.IndexingSourceExecutorRegistry;
+import io.opaa.indexing.source.SourceConnector;
+import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.indexing.source.SourceIndexingExecutor;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
@@ -385,6 +387,14 @@ public class IndexingConfiguration {
   IndexingSourceExecutorRegistry indexingSourceExecutorRegistry(
       List<SourceIndexingExecutor> executors) {
     return new IndexingSourceExecutorRegistry(executors);
+  }
+
+  /**
+   * Populated from every {@link SourceConnector} bean - each connector package registers its own.
+   */
+  @Bean
+  SourceConnectorRegistry sourceConnectorRegistry(List<SourceConnector> connectors) {
+    return new SourceConnectorRegistry(connectors);
   }
 
   @Bean

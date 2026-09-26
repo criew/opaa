@@ -34,6 +34,15 @@ public class ConfluenceConnectorConfiguration {
         confluenceProperties, targetAddressValidator, sourceRequestPolicy);
   }
 
+  @Bean
+  ConfluenceSourceConnector confluenceSourceConnector(
+      ConfluenceConnectionService confluenceConnectionService,
+      ConfluenceProperties confluenceProperties,
+      SourceSyncStateRepository sourceSyncStateRepository) {
+    return new ConfluenceSourceConnector(
+        confluenceConnectionService, confluenceProperties, sourceSyncStateRepository);
+  }
+
   /**
    * Declared as the concrete type, not as {@code SourceIndexingExecutor}: {@code
    * ConfluenceWebhookService} injects the executor directly for its targeted webhook run, and

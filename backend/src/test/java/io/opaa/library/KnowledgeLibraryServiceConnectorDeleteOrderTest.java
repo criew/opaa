@@ -29,10 +29,10 @@ import io.opaa.indexing.chunk.VectorStoreWriter;
 import io.opaa.indexing.job.IndexingJobRepository;
 import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.job.JobStatus;
+import io.opaa.indexing.source.TestSourceConnectors;
+import io.opaa.indexing.source.confluence.ConfluenceConnectionService;
 import io.opaa.indexing.source.confluence.ConfluenceProperties;
 import io.opaa.indexing.source.rss.RssFeedStateRepository;
-import io.opaa.indexing.source.s3.S3ClientFactory;
-import io.opaa.indexing.source.s3.S3Properties;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
@@ -46,7 +46,6 @@ import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.GroupSubjectDirectory;
 import io.opaa.permission.PermissionHistoryService;
 import io.opaa.permission.SuccessionReachGuard;
-import io.opaa.security.TargetAddressValidator;
 import java.time.Clock;
 import java.util.List;
 import java.util.Optional;
@@ -154,19 +153,23 @@ class KnowledgeLibraryServiceConnectorDeleteOrderTest {
             accessService,
             auditEventRecorder,
             vectorChunkStore,
-            filesystemAllowlist,
             indexingJobRepository,
             indexingJobService,
-            rssFeedStateRepository,
-            org.mockito.Mockito.mock(io.opaa.indexing.source.SourceSyncStateRepository.class),
             Clock.systemDefaultZone(),
             storageQuotaService,
             mock(LibraryExternalAccessService.class),
             folderRepository,
             eventPublisher,
-            org.mockito.Mockito.mock(ConfluenceConnectionService.class),
-            confluenceProperties,
-            new S3ClientFactory(S3Properties.defaults(), TargetAddressValidator.disabled()));
+            TestSourceConnectors.connectors()
+                .filesystemAllowlist(filesystemAllowlist)
+                .rssFeedStateRepository(rssFeedStateRepository)
+                .sourceSyncStateRepository(
+                    org.mockito.Mockito.mock(
+                        io.opaa.indexing.source.SourceSyncStateRepository.class))
+                .confluenceConnectionService(
+                    org.mockito.Mockito.mock(ConfluenceConnectionService.class))
+                .confluenceProperties(confluenceProperties)
+                .registry());
 
     ownerId = UUID.randomUUID();
     UUID organizationId = UUID.randomUUID();

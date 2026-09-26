@@ -222,6 +222,15 @@ Dieser ADR entscheidet **nicht**:
   Entscheidung 3 ist bewusst schmal gehalten, damit es später Grundlage einer Plugin-Schnittstelle
   sein könnte, ohne dass diese Möglichkeit hier zugesagt wird.
 
+  > **Nachtrag (2026-09-26, #1976):** Der Maintainer hat entschieden, dass Konnektoren später
+  > steckbar sein sollen. Als erster Schritt tritt neben den `SourceIndexingExecutor` eine
+  > Konnektor-Schnittstelle `SourceConnector` mit einer Beschreibung (`SourceConnectorDescriptor`:
+  > hat einen Lauf, eigene Konfigurationsfelder, Push-Eingang, Rhythmus des Vollabgleichs). Eine
+  > Registry nach `DocumentSourceType` umfasst auch `UPLOAD` – als Konnektor ohne Lauf. Die
+  > Verwaltung fragt Beschreibung und Fähigkeiten ab, statt nach Quellart zu verzweigen; Prüfung
+  > der Konfiguration und Verbindungstest liegen im Konnektor. API, Schema und `DocumentSourceType`
+  > als geschlossenes Enum bleiben dabei unverändert (#1977).
+
 ## Konsequenzen
 
 ### Einfacher

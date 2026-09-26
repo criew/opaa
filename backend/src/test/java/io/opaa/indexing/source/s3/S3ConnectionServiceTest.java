@@ -1,4 +1,4 @@
-package io.opaa.library;
+package io.opaa.indexing.source.s3;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -8,8 +8,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import io.opaa.common.ValidationException;
-import io.opaa.indexing.source.s3.FakeS3ObjectStore;
-import io.opaa.indexing.source.s3.S3ClientFactory;
 import io.opaa.knowledge.sourcesettings.S3Scope;
 import io.opaa.knowledge.sourcesettings.S3SourceSettings;
 import io.opaa.s3.S3AccessException;

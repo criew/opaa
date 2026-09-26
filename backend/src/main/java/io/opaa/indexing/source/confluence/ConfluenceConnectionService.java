@@ -1,14 +1,7 @@
-package io.opaa.library;
+package io.opaa.indexing.source.confluence;
 
 import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.common.ValidationException;
-import io.opaa.indexing.source.confluence.ConfluenceAccessException;
-import io.opaa.indexing.source.confluence.ConfluenceClient;
-import io.opaa.indexing.source.confluence.ConfluenceClientFactory;
-import io.opaa.indexing.source.confluence.ConfluenceConnection;
-import io.opaa.indexing.source.confluence.ConfluenceCredentials;
-import io.opaa.indexing.source.confluence.ConfluenceEditionDetector;
-import io.opaa.indexing.source.confluence.ConfluenceSpace;
 import io.opaa.sourceaccess.ProxyAndCredentials;
 import java.net.URI;
 import java.util.List;
@@ -17,11 +10,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
- * The library-side face of the Confluence access layer (ADR-0023, #1134): detects the edition of an
- * address without credentials, verifies credentials and counts readable spaces for the connection
- * test, lists spaces for the selection, and re-checks the edition when a library is created. Every
- * outcome is a German, user-facing message without credentials; the access layer guarantees that
- * for its exceptions, this class only passes them on.
+ * The administration-side face of the Confluence access layer (ADR-0023, #1134): detects the
+ * edition of an address without credentials, verifies credentials and counts readable spaces for
+ * the connection test, lists spaces for the selection, and re-checks the edition when a library is
+ * created. Every outcome is a German, user-facing message without credentials; the access layer
+ * guarantees that for its exceptions, this class only passes them on.
  */
 @Service
 public class ConfluenceConnectionService {

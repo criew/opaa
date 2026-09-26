@@ -1,4 +1,4 @@
-package io.opaa.library;
+package io.opaa.indexing.source;
 
 /**
  * The connection test's finding for one scope of an S3 library (ADR-0027, #1376): how far the
