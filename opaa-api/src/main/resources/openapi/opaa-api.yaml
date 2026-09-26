@@ -10706,10 +10706,9 @@ components:
         memberCount:
           type: integer
           description: >
-            Number of membership rows, not of people (#1815): one row may be a group standing for
-            any number of members. Resolving it to persons would disclose group sizes to every
-            member of the space - the figure ADR-0036, Entscheidung 9 withholds below the minimum
-            group size. Clients name it accordingly ("Mitgliedschaften").
+            Number of membership rows, not of people: the sum of memberships.groupCount and
+            memberships.userCount. A group row stands for any number of members and is never
+            resolved to persons (ADR-0036, Entscheidung 9).
           example: 5
         memberships:
           $ref: "#/components/schemas/SpaceMembershipCountsResponse"
