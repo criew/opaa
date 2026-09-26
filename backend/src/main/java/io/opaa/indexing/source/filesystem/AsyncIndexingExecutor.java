@@ -1,6 +1,7 @@
 package io.opaa.indexing.source.filesystem;
 
 import io.opaa.api.types.IndexingRunMode;
+import io.opaa.indexing.FilesystemPathAllowlist;
 import io.opaa.indexing.document.DocumentIngest;
 import io.opaa.indexing.document.DocumentIngestResult;
 import io.opaa.indexing.document.DocumentIngestService;

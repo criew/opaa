@@ -2,17 +2,14 @@ package io.opaa;
 
 import io.opaa.auth.AuthProperties;
 import io.opaa.common.PublicBaseUrlProperties;
+import io.opaa.indexing.FilesystemProperties;
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.SourceHttpProperties;
+import io.opaa.indexing.attachment.AttachmentProperties;
 import io.opaa.indexing.format.file.mail.MailProperties;
 import io.opaa.indexing.format.file.office.OdfProperties;
 import io.opaa.indexing.format.file.tabular.TabularProperties;
 import io.opaa.indexing.source.SourceEventProperties;
-import io.opaa.indexing.source.attachment.AttachmentProperties;
-import io.opaa.indexing.source.confluence.ConfluenceProperties;
-import io.opaa.indexing.source.filesystem.FilesystemProperties;
-import io.opaa.indexing.source.s3.S3Properties;
-import io.opaa.indexing.source.web.CrawlProperties;
 import io.opaa.library.AttachmentExtractionProperties;
 import io.opaa.library.ExternalAccessProperties;
 import io.opaa.library.LibraryProperties;
@@ -43,9 +40,6 @@ import org.springframework.scheduling.annotation.EnableScheduling;
   RemoteContentProperties.class,
   AttachmentExtractionProperties.class,
   SettingsEncryptionProperties.class,
-  CrawlProperties.class,
-  ConfluenceProperties.class,
-  S3Properties.class,
   SourceEventProperties.class,
   FilesystemProperties.class,
   AttachmentProperties.class,

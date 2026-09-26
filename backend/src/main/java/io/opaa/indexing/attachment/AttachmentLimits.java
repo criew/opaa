@@ -1,4 +1,4 @@
-package io.opaa.indexing.source.attachment;
+package io.opaa.indexing.attachment;
 
 /**
  * How many attachments of one parent {@link AttachmentIndexer} indexes and how large a downloaded

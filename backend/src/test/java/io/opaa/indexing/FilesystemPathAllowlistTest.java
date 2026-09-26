@@ -1,4 +1,4 @@
-package io.opaa.indexing.source.filesystem;
+package io.opaa.indexing;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

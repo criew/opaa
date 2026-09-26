@@ -1,4 +1,4 @@
-package io.opaa.indexing.source.attachment;
+package io.opaa.indexing.attachment;
 
 /**
  * How one attachment the shared attachment path met ended: indexed as a document of its own,
