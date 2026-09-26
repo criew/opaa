@@ -8,7 +8,6 @@ import io.opaa.api.types.AuditOutcome;
 import io.opaa.api.types.AuditSubjectKind;
 import io.opaa.api.types.Capability;
 import io.opaa.api.types.GroupKind;
-import io.opaa.api.types.GroupMechanism;
 import io.opaa.api.types.NotificationType;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
@@ -333,10 +332,7 @@ public class GroupService {
   private SelectableGroup toSelectableGroup(
       Group group, GroupProviderView provider, String publishedName) {
     boolean providerDisabled = provider != null && !provider.enabled();
-    boolean unmaintained =
-        provider != null
-            && group.getKind() == GroupKind.IDENTITY_PROVIDER
-            && provider.mechanism() == GroupMechanism.DIRECTORY;
+    boolean unmaintained = GroupStates.unmaintained(group, provider);
     boolean selectable = !group.isDissolved() && !providerDisabled && !unmaintained;
     if (group.isProtectedGroup()) {
       // Whom to ask instead of reading the member list (ADR-0036, Entscheidung 9): the stewards of
@@ -391,9 +387,11 @@ public class GroupService {
    * handful of rows, read once instead of once per group.
    */
   private List<GroupOverview> toOverviews(List<Group> groups) {
-    if (groups.isEmpty()) {
-      return List.of();
-    }
+    return toOverviews(groups, providerViewsOf(groups));
+  }
+
+  /** The provider of every provider group in the list, each read once. */
+  Map<UUID, GroupProviderView> providerViewsOf(List<Group> groups) {
     Set<UUID> providerIds =
         groups.stream().map(Group::getProviderId).filter(Objects::nonNull).collect(toSet());
     Map<UUID, GroupProviderView> byId = new HashMap<>();
@@ -403,6 +401,17 @@ public class GroupService {
           .findAllById(providerIds)
           .forEach(
               provider -> byId.put(provider.getId(), toProviderView(provider, organizationId)));
+    }
+    return byId;
+  }
+
+  /**
+   * Stewards and contact points for exactly these groups, with the provider views already read -
+   * the paged list resolves them for its page only.
+   */
+  List<GroupOverview> toOverviews(List<Group> groups, Map<UUID, GroupProviderView> byId) {
+    if (groups.isEmpty()) {
+      return List.of();
     }
     Map<UUID, List<GroupStewardView>> stewardsByGroup = stewardsOf(groups);
     Map<UUID, List<GroupContactView>> contactsByGroup = contactService.contactsOf(groups);

@@ -3,6 +3,7 @@ package io.opaa.api;
 import io.opaa.api.dto.GroupContactResponse;
 import io.opaa.api.dto.GroupListResponse;
 import io.opaa.api.dto.GroupMemberResponse;
+import io.opaa.api.dto.GroupPageResponse;
 import io.opaa.api.dto.GroupProviderResponse;
 import io.opaa.api.dto.GroupResponse;
 import io.opaa.api.dto.GroupStewardResponse;
@@ -13,7 +14,9 @@ import io.opaa.group.GroupContactView;
 import io.opaa.group.GroupDetail;
 import io.opaa.group.GroupMemberView;
 import io.opaa.group.GroupOverview;
+import io.opaa.group.GroupPage;
 import io.opaa.group.GroupProviderView;
+import io.opaa.group.GroupStates;
 import io.opaa.group.GroupStewardView;
 import io.opaa.group.SelectableGroup;
 import java.util.List;
@@ -36,6 +39,7 @@ final class GroupResponseMapper {
             group.getName(),
             group.getKind(),
             originOf(overview.provider()),
+            GroupStates.stateOf(group, overview.provider()),
             group.getMemberships().size(),
             group.isDissolved(),
             group.isSelectableAsSubject(),
@@ -53,6 +57,11 @@ final class GroupResponseMapper {
 
   static List<GroupListResponse> toListResponses(List<GroupOverview> overviews) {
     return overviews.stream().map(GroupResponseMapper::toListResponse).toList();
+  }
+
+  static GroupPageResponse toPage(GroupPage page) {
+    return new GroupPageResponse(
+        toListResponses(page.items()), page.total(), page.page(), page.size());
   }
 
   static SelectableGroupResponse toSelectableResponse(SelectableGroup selectable) {

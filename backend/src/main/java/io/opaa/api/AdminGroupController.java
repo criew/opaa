@@ -4,11 +4,17 @@ import io.opaa.api.dto.GroupAppointContactRequest;
 import io.opaa.api.dto.GroupContactResponse;
 import io.opaa.api.dto.GroupEffectsResponse;
 import io.opaa.api.dto.GroupListResponse;
+import io.opaa.api.dto.GroupPageResponse;
+import io.opaa.api.types.GroupKind;
+import io.opaa.api.types.GroupOrigin;
+import io.opaa.api.types.GroupState;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import io.opaa.group.GroupContactService;
 import io.opaa.group.GroupEffectsService;
 import io.opaa.group.GroupEffectsView;
+import io.opaa.group.GroupListQuery;
+import io.opaa.group.GroupListService;
 import io.opaa.group.GroupOverview;
 import io.opaa.group.GroupService;
 import jakarta.validation.Valid;
@@ -37,14 +43,17 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminGroupController {
 
   private final GroupService groupService;
+  private final GroupListService groupListService;
   private final GroupEffectsService groupEffectsService;
   private final GroupContactService groupContactService;
 
   public AdminGroupController(
       GroupService groupService,
+      GroupListService groupListService,
       GroupEffectsService groupEffectsService,
       GroupContactService groupContactService) {
     this.groupService = groupService;
+    this.groupListService = groupListService;
     this.groupEffectsService = groupEffectsService;
     this.groupContactService = groupContactService;
   }
@@ -54,6 +63,34 @@ public class AdminGroupController {
   public List<GroupListResponse> listGroups(@Caller CurrentUser caller) {
     List<GroupOverview> groups = groupService.listGroups(caller);
     return GroupResponseMapper.toListResponses(groups);
+  }
+
+  /** The group list of the administration, searched, filtered, sorted and paged (#1978). */
+  @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+  @GetMapping("/page")
+  public GroupPageResponse listGroupPage(
+      @RequestParam(required = false) String query,
+      @RequestParam(required = false) GroupOrigin origin,
+      @RequestParam(required = false) UUID providerId,
+      @RequestParam(required = false) GroupKind kind,
+      @RequestParam(required = false) GroupState state,
+      @RequestParam(defaultValue = "name") String sort,
+      @RequestParam(defaultValue = "asc") String direction,
+      @RequestParam(defaultValue = "0") int page,
+      @RequestParam(defaultValue = "" + GroupListQuery.DEFAULT_PAGE_SIZE) int size,
+      @Caller CurrentUser caller) {
+    GroupListQuery listQuery =
+        new GroupListQuery(
+            query,
+            origin,
+            providerId,
+            kind,
+            state,
+            AdminListSortParams.groupSortOf(sort),
+            AdminListSortParams.descending(direction),
+            page,
+            size);
+    return GroupResponseMapper.toPage(groupListService.pageGroups(caller, listQuery));
   }
 
   /**
