@@ -10678,7 +10678,7 @@ components:
 
     SpaceListResponse:
       type: object
-      required: [id, name, isDefault, archived, memberCount, createdAt, updatedAt]
+      required: [id, name, isDefault, archived, memberCount, memberships, createdAt, updatedAt]
       properties:
         id:
           type: string
@@ -10711,6 +10711,8 @@ components:
             member of the space - the figure ADR-0036, Entscheidung 9 withholds below the minimum
             group size. Clients name it accordingly ("Mitgliedschaften").
           example: 5
+        memberships:
+          $ref: "#/components/schemas/SpaceMembershipCountsResponse"
         libraryCount:
           type: integer
           description: >
@@ -10750,6 +10752,23 @@ components:
         updatedAt:
           type: string
           format: date-time
+
+    SpaceMembershipCountsResponse:
+      type: object
+      required: [groupCount, userCount]
+      description: >
+        The membership rows of a space split by subject type - the figures an overview turns into
+        its member badge ("3 Gruppen, 2 Personen", "nur Sie"), worded like AssetReachResponse. A
+        group counts as one row and is never resolved to its members (ADR-0036, Entscheidung 9).
+      properties:
+        groupCount:
+          type: integer
+          description: Membership rows of a group.
+          example: 1
+        userCount:
+          type: integer
+          description: Membership rows of a single person.
+          example: 2
 
     SpaceMemberResponse:
       type: object
