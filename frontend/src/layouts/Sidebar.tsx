@@ -25,25 +25,11 @@ import { useChatStore } from '../stores/chatStore'
 import { useSpaceStore } from '../stores/spaceStore'
 import { rememberSpaceUse, spacesByRecentUse, useRecentSpaceIds } from '../utils/recentSpaces'
 import { darkRoles, fontFamily, lightRoles, shadow } from '../theme/tokens'
+import { spaceMembershipLabel } from '../utils/labels'
 
 const SIDEBAR_WIDTH = 248
 
 export { SIDEBAR_WIDTH }
-
-/**
- * Mockup 1a's space subtitle: the space's kind plus what the list API can already count.
- *
- * <p>"Mitgliedschaften", not "Mitglieder" (#1815): memberCount counts rows, and a row may be a
- * group standing for any number of people. Counting the people behind the groups instead would
- * disclose group sizes to everybody who sees the space - the very figure ADR-0036, Entscheidung 9
- * withholds below the minimum group size.
- */
-function spaceSubtitle(space: { isDefault: boolean; memberCount: number }): string {
-  const kind = space.isDefault ? 'Persönlich' : 'Team'
-  const members =
-    space.memberCount === 1 ? '1 Mitgliedschaft' : `${space.memberCount} Mitgliedschaften`
-  return `${kind} · ${members}`
-}
 
 /**
  * The space column of the target design (#587, since #786 mockup 2a): purely space-scoped -
@@ -218,7 +204,7 @@ export default function Sidebar() {
             >
               <ListItemText
                 primary={space.name}
-                secondary={spaceSubtitle(space)}
+                secondary={spaceMembershipLabel(space.memberships)}
                 slotProps={{
                   primary: {
                     noWrap: true,

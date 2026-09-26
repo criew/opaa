@@ -490,6 +490,12 @@ function recalculateRoleCounts(spaceId: string) {
   }
   space.roleCounts = base
   space.memberCount = members.length
+  const listEntry = mockSpaces.find((entry) => entry.id === spaceId)
+  if (listEntry) {
+    listEntry.memberCount = members.length
+    const groupCount = members.filter((member) => member.subjectType === 'GROUP').length
+    listEntry.memberships = { groupCount, userCount: members.length - groupCount }
+  }
 }
 
 function getRunningStatus(step: number): IndexingStatusResponse {
@@ -989,6 +995,7 @@ export const handlers = [
       archived: false,
       visibility: 'PRIVATE',
       memberCount: 1,
+      memberships: { groupCount: 0, userCount: 1 },
       libraryCount: 0,
       chatCount: 0,
       userRole: 'ADMIN',

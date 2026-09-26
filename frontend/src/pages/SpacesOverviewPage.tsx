@@ -8,29 +8,11 @@ import MetaBadge from '../components/MetaBadge'
 import OverviewPage, { OverviewCard, OverviewRowLink } from '../components/overview/OverviewPage'
 import SuccessionStateNote from '../components/succession/SuccessionStateNote'
 import { useSpaceStore } from '../stores/spaceStore'
-import { spaceRoleLabel } from '../utils/labels'
+import { spaceMembershipLabel, spaceRoleLabel } from '../utils/labels'
 import type { SpaceListResponse } from '../types/api'
 
 function plural(count: number, singular: string, pluralForm: string): string {
   return `${count} ${count === 1 ? singular : pluralForm}`
-}
-
-/**
- * A membership row may be a group standing for any number of people - see Sidebar#spaceSubtitle
- * for why the figure is not resolved to persons. Only the personal space, which no one else can
- * join, may therefore claim "nur Sie".
- */
-function memberSummary(space: SpaceListResponse): string {
-  if (space.isDefault && space.memberCount <= 1) return 'nur Sie'
-  return plural(space.memberCount, 'Mitgliedschaft', 'Mitgliedschaften')
-}
-
-/** The card's figures line (#1914): chats and members, nothing else - the source figure became
- *  ambiguous once a space can hold assets of several types. chatCount is optional in the API. */
-function spaceFigures(space: SpaceListResponse): string {
-  const members = memberSummary(space)
-  if (space.chatCount === undefined) return members
-  return [plural(space.chatCount, 'Chat', 'Chats'), members].join(' · ')
 }
 
 /** A card selects the space and opens an empty chat in it. An archived space accepts no new chats
@@ -63,14 +45,17 @@ function SpaceCard({ space }: { space: SpaceListResponse }) {
       >
         {space.description ?? ''}
       </Typography>
-      <Typography component="span" sx={{ fontSize: 11.5, color: 'text.secondary' }}>
-        {spaceFigures(space)}
-      </Typography>
+      {space.chatCount !== undefined && (
+        <Typography component="span" sx={{ fontSize: 11.5, color: 'text.secondary' }}>
+          {plural(space.chatCount, 'Chat', 'Chats')}
+        </Typography>
+      )}
       {/* ADR-0036, Entscheidung 6 verlangt die Kennzeichnung in Übersicht *und* Detailansicht -
           Zustand und Adressat, ohne Datum, Eigentümer oder Grund. */}
       <SuccessionStateNote succession={space.succession} variant="badge" />
-      <Box sx={{ display: 'flex', gap: 0.75 }}>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
         <MetaBadge accent>{spaceRoleLabel(space.userRole)}</MetaBadge>
+        <MetaBadge>{spaceMembershipLabel(space.memberships)}</MetaBadge>
       </Box>
     </OverviewCard>
   )
@@ -89,7 +74,7 @@ function SpaceRow({ space }: { space: SpaceListResponse }) {
         <SuccessionStateNote succession={space.succession} variant="badge" />
       </TableCell>
       <TableCell>{space.chatCount ?? '–'}</TableCell>
-      <TableCell>{memberSummary(space)}</TableCell>
+      <TableCell>{spaceMembershipLabel(space.memberships)}</TableCell>
       <TableCell>
         <MetaBadge accent>{spaceRoleLabel(space.userRole)}</MetaBadge>
       </TableCell>
@@ -101,7 +86,7 @@ function SpaceRow({ space }: { space: SpaceListResponse }) {
 const columns = [
   { key: 'name', label: 'Name' },
   { key: 'chats', label: 'Chats' },
-  { key: 'members', label: 'Mitgliedschaften' },
+  { key: 'members', label: 'Mitglieder' },
   { key: 'role', label: 'Ihre Rolle' },
   { key: 'state', label: 'Zustand' },
 ]

@@ -218,7 +218,8 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
 
   addMember: async (spaceId, subjectType, subjectId, role) => {
     await addSpaceMember(spaceId, subjectType, subjectId, role)
-    await Promise.all([get().selectSpace(spaceId), get().loadMembers(spaceId)])
+    // The list carries the member figures too - reloading it keeps "nur Sie" current.
+    await Promise.all([get().loadSpaces(), get().selectSpace(spaceId), get().loadMembers(spaceId)])
   },
 
   updateMemberRole: async (spaceId, membershipId, role) => {
@@ -228,7 +229,7 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
 
   removeMember: async (spaceId, membershipId) => {
     await removeSpaceMember(spaceId, membershipId)
-    await Promise.all([get().selectSpace(spaceId), get().loadMembers(spaceId)])
+    await Promise.all([get().loadSpaces(), get().selectSpace(spaceId), get().loadMembers(spaceId)])
   },
 
   transferOwnership: async (spaceId, userId) => {

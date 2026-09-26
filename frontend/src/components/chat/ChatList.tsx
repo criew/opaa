@@ -2,7 +2,6 @@ import { useEffect, useId, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import ButtonBase from '@mui/material/ButtonBase'
 import CircularProgress from '@mui/material/CircularProgress'
 import IconButton from '@mui/material/IconButton'
 import Divider from '@mui/material/Divider'
@@ -20,8 +19,6 @@ import AddIcon from '@mui/icons-material/Add'
 import ArchiveOutlinedIcon from '@mui/icons-material/ArchiveOutlined'
 import DeleteIcon from '@mui/icons-material/Delete'
 import EditIcon from '@mui/icons-material/Edit'
-import ExpandLessIcon from '@mui/icons-material/ExpandLess'
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import MoreVertIcon from '@mui/icons-material/MoreVert'
 import PushPinIcon from '@mui/icons-material/PushPin'
 import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined'
@@ -67,8 +64,6 @@ export default function ChatList({ spaceId, header }: ChatListProps) {
   const [renamingChatId, setRenamingChatId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
   const [menuAnchor, setMenuAnchor] = useState<{ chatId: string; el: HTMLElement } | null>(null)
-  // View state only: neither persisted nor sent to the server.
-  const [pinnedCollapsed, setPinnedCollapsed] = useState(false)
   // How many "Zuletzt verwendet" rows are revealed, together with the space they were revealed
   // for - switching spaces starts that section at its first page again.
   const [revealed, setRevealed] = useState({ spaceId, count: RECENT_PAGE_SIZE })
@@ -156,8 +151,6 @@ export default function ChatList({ spaceId, header }: ChatListProps) {
   }
 
   function handlePin(chat: ChatSummary, pinned: boolean) {
-    // A freshly pinned chat must stay visible - and focusable - in its new group.
-    if (pinned) setPinnedCollapsed(false)
     refocusMovedChatIdRef.current = chat.id
     pinFocusChatIdRef.current = chat.id
     void setChatPinned(spaceId, chat.id, pinned).finally(() => {
@@ -193,7 +186,7 @@ export default function ChatList({ spaceId, header }: ChatListProps) {
   function shownChats(): ChatSummary[] {
     const sections = splitChats(chats ?? [])
     return [
-      ...(pinnedCollapsed ? [] : sections.pinned),
+      ...sections.pinned,
       ...sections.recent.slice(0, Math.max(recentShown, RECENT_PAGE_SIZE)),
     ]
   }
@@ -321,7 +314,7 @@ export default function ChatList({ spaceId, header }: ChatListProps) {
     )
   }
 
-  function renderSection(key: string, label: string, rows: ChatSummary[], toggle?: ReactNode) {
+  function renderSection(key: string, label: string, rows: ChatSummary[]) {
     const headingId = `${groupIdPrefix}-${key}`
     return (
       <Box key={key} sx={{ mt: 0.75 }}>
@@ -331,7 +324,7 @@ export default function ChatList({ spaceId, header }: ChatListProps) {
           id={headingId}
           sx={{ display: 'block', color: 'text.secondary', lineHeight: 1.8, px: 1 }}
         >
-          {toggle ?? label}
+          {label}
         </Typography>
         {rows.length > 0 && (
           <List id={`${headingId}-list`} aria-labelledby={headingId} sx={{ px: 0, py: 0 }}>
@@ -346,35 +339,9 @@ export default function ChatList({ spaceId, header }: ChatListProps) {
     const { pinned, recent } = splitChats(allChats)
     const shown = Math.max(recentShown, RECENT_PAGE_SIZE)
     const remaining = recent.length - shown
-    const headingId = `${groupIdPrefix}-pinned`
     return (
       <>
-        {pinned.length > 0 &&
-          renderSection(
-            'pinned',
-            'Angeheftet',
-            pinnedCollapsed ? [] : pinned,
-            <ButtonBase
-              aria-expanded={!pinnedCollapsed}
-              aria-controls={`${headingId}-list`}
-              onClick={() => setPinnedCollapsed((value) => !value)}
-              sx={{
-                font: 'inherit',
-                color: 'inherit',
-                letterSpacing: 'inherit',
-                textTransform: 'inherit',
-                gap: 0.5,
-                borderRadius: '4px',
-              }}
-            >
-              Angeheftet
-              {pinnedCollapsed ? (
-                <ExpandMoreIcon aria-hidden sx={{ fontSize: 14 }} />
-              ) : (
-                <ExpandLessIcon aria-hidden sx={{ fontSize: 14 }} />
-              )}
-            </ButtonBase>,
-          )}
+        {pinned.length > 0 && renderSection('pinned', 'Angeheftet', pinned)}
         {recent.length > 0 && renderSection('recent', 'Zuletzt verwendet', recent.slice(0, shown))}
         <Box role="status" sx={visuallyHidden}>
           {revealStatus}

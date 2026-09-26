@@ -35,6 +35,7 @@ function manySpaces() {
     archived: false,
     visibility: 'PRIVATE' as const,
     memberCount: 1,
+    memberships: { groupCount: 0, userCount: 1 },
     userRole: 'ADMIN' as const,
     createdAt: '2026-03-01T10:00:00Z',
     updatedAt: '2026-03-01T10:00:00Z',
@@ -102,6 +103,7 @@ describe('Sidebar', () => {
           archived: false,
           visibility: 'PRIVATE',
           memberCount: 1,
+          memberships: { groupCount: 0, userCount: 1 },
           userRole: 'ADMIN',
           createdAt: '2026-03-01T10:00:00Z',
           updatedAt: '2026-03-01T10:00:00Z',
@@ -114,6 +116,7 @@ describe('Sidebar', () => {
           archived: false,
           visibility: 'PRIVATE',
           memberCount: 3,
+          memberships: { groupCount: 1, userCount: 2 },
           userRole: 'ADMIN',
           createdAt: '2026-03-01T10:00:00Z',
           updatedAt: '2026-03-01T10:00:00Z',
@@ -190,7 +193,7 @@ describe('Sidebar', () => {
     expect(screen.queryByText('Deployment-Fragen')).not.toBeInTheDocument()
   })
 
-  it('opens the space switcher listing the spaces with kind and member count', async () => {
+  it('opens the space switcher listing the spaces with their members, without a kind', async () => {
     const user = userEvent.setup()
     renderSidebarAtRoute('/chat')
 
@@ -198,8 +201,9 @@ describe('Sidebar', () => {
 
     expect(screen.getByText('Zuletzt genutzt')).toBeInTheDocument()
     expect(screen.getByRole('menuitem', { name: /Engineering/ })).toBeInTheDocument()
-    expect(screen.getByText('Team · 3 Mitgliedschaften')).toBeInTheDocument()
-    expect(screen.getByText('Persönlich · 1 Mitgliedschaft')).toBeInTheDocument()
+    expect(screen.getByText('1 Gruppe, 2 Personen')).toBeInTheDocument()
+    expect(screen.getByText('nur Sie')).toBeInTheDocument()
+    expect(screen.queryByText(/Team|Persönlich/)).not.toBeInTheDocument()
   })
 
   /**
@@ -282,6 +286,7 @@ describe('Sidebar', () => {
           archived: false,
           visibility: 'PRIVATE',
           memberCount: 1,
+          memberships: { groupCount: 0, userCount: 1 },
           userRole: 'ADMIN',
           createdAt: '2026-03-01T10:00:00Z',
           updatedAt: '2026-03-01T10:00:00Z',
@@ -294,6 +299,7 @@ describe('Sidebar', () => {
           archived: true,
           visibility: 'PRIVATE',
           memberCount: 2,
+          memberships: { groupCount: 0, userCount: 2 },
           userRole: 'ADMIN',
           createdAt: '2026-03-01T10:00:00Z',
           updatedAt: '2026-03-01T10:00:00Z',
@@ -385,6 +391,7 @@ describe('Sidebar', () => {
           archived: false,
           visibility: 'PRIVATE',
           memberCount: 3,
+          memberships: { groupCount: 0, userCount: 3 },
           userRole: 'MEMBER',
           createdAt: '2026-03-01T10:00:00Z',
           updatedAt: '2026-03-01T10:00:00Z',
@@ -406,6 +413,7 @@ describe('Sidebar', () => {
           archived: false,
           visibility: 'PRIVATE',
           memberCount: 3,
+          memberships: { groupCount: 0, userCount: 3 },
           userRole: 'CURATOR',
           createdAt: '2026-03-01T10:00:00Z',
           updatedAt: '2026-03-01T10:00:00Z',

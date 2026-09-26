@@ -319,11 +319,14 @@ Die Übersicht führt alle Räume auf, in denen Sie Mitglied sind — in der Obe
 über Name und Beschreibung, ein Umschalter wechselt zwischen Kacheln und Tabelle; die gewählte
 Ansicht bleibt gemerkt.
 
-Eine Kachel zeigt Name, Beschreibung, die Anzahl der Chats, die Zahl der Mitgliedschaften und Ihre
-eigene Rolle als Badge. Gezählt werden Mitgliedschaftszeilen, nicht Personen — eine Zeile kann eine
-Gruppe beliebiger Größe sein; nur im eigenen Standard-Raum steht statt der Zahl „nur Sie". Ein
-archivierter Space ist als solcher gekennzeichnet und führt auf seine Übersicht statt in einen
-neuen Chat. Die Tabellenansicht zeigt dieselben Angaben spaltenweise.
+Eine Kachel zeigt Name, Beschreibung und die Anzahl der Chats, darunter Ihre eigene Rolle und die
+Mitglieder als Badges. Die Mitgliederangabe ist wie die Reichweite einer Bibliothek formuliert:
+„2 Gruppen, 3 Personen", oder „nur Sie", wenn Ihr eigenes Konto das einzige Mitglied ist — gleich,
+ob es der Standard-Raum ist oder nicht. Eine Gruppe zählt als eine Mitgliedschaft, wie viele Personen
+sie auch umfasst; ihre Größe wird hier nicht genannt. Ein archivierter Space ist als solcher
+gekennzeichnet und führt auf seine Übersicht statt in einen neuen Chat. Die Tabellenansicht zeigt
+dieselben Angaben spaltenweise; das Space-Menü der Seitenleiste nennt unter jedem Namen dieselbe
+Mitgliederangabe.
 
 ### Einstieg und Space-Wechsel
 

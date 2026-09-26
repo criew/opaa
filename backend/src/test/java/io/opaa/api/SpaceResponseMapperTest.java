@@ -131,6 +131,38 @@ class SpaceResponseMapperTest {
   }
 
   @Test
+  void toListResponseSplitsMembershipsIntoGroupAndPersonRowsWithoutResolvingGroups() {
+    UUID owner = UUID.randomUUID();
+    UUID organization = UUID.randomUUID();
+    Space space = new Space("Team", null, false, SpaceVisibility.PRIVATE, owner, organization);
+    space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organization));
+    space.addMembership(SpaceMembership.ofUser(UUID.randomUUID(), SpaceRole.MEMBER, organization));
+    space.addMembership(
+        SpaceMembership.ofGroup(UUID.randomUUID(), SpaceRole.MEMBER, 40, organization));
+    SpaceOverview overview = new SpaceOverview(space, 0, 0, SpaceRole.ADMIN, false, null);
+
+    SpaceListResponse response = SpaceResponseMapper.toListResponse(overview);
+
+    assertThat(response.getMemberships().getGroupCount()).isEqualTo(1);
+    assertThat(response.getMemberships().getUserCount()).isEqualTo(2);
+    assertThat(response.getMemberCount()).isEqualTo(3);
+  }
+
+  @Test
+  void toListResponseCountsTheOwnerAloneAsOnePersonRow() {
+    UUID owner = UUID.randomUUID();
+    UUID organization = UUID.randomUUID();
+    Space space = new Space("Team", null, false, SpaceVisibility.PRIVATE, owner, organization);
+    space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organization));
+    SpaceOverview overview = new SpaceOverview(space, 0, 0, SpaceRole.ADMIN, false, null);
+
+    SpaceListResponse response = SpaceResponseMapper.toListResponse(overview);
+
+    assertThat(response.getMemberships().getGroupCount()).isZero();
+    assertThat(response.getMemberships().getUserCount()).isEqualTo(1);
+  }
+
+  @Test
   void toListResponsesMapsEveryOverviewInOrder() {
     UUID owner = UUID.randomUUID();
     UUID organization = UUID.randomUUID();

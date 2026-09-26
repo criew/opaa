@@ -119,7 +119,10 @@ Die Tabelle hat sechs Spalten:
 | **Ihre Rolle** | Ihre Rolle an der Bibliothek |
 | **Letzte Aktualisierung** | das Datum des letzten erfolgreichen Laufs — oder „Lauf fehlgeschlagen", wenn der jüngste Lauf gescheitert ist, und „Lauf läuft", solange einer läuft. Eine Upload-Bibliothek hat keinen Lauf, ihr Feld bleibt leer |
 
-Bestände ohne Leserecht erscheinen nicht in der Liste.
+Eine Kachel zeigt Name, Beschreibung, Eigentümer und Anzahl der Dokumente, darunter als Badges die
+Art „Wissen", die Herkunft in Kurzform („Web" statt „Webverzeichnis", „S3" statt
+„S3-Objektspeicher"), Ihre Rolle und die Reichweite. Bestände ohne Leserecht erscheinen nicht
+in der Liste.
 
 **Was die Übersicht über Läufe sagt — und was nicht.** Die Spalte nennt den Ausgang des jüngsten
 Laufs, auch ohne die Bibliothek zu öffnen: Ein gescheiterter letzter Lauf steht dort als „Lauf

@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach } from 'vitest'
-import { screen } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Route, Routes } from 'react-router'
 import { renderWithProviders } from '../test/test-utils'
@@ -14,6 +14,7 @@ const personal = {
   archived: false,
   visibility: 'PRIVATE' as const,
   memberCount: 1,
+  memberships: { groupCount: 0, userCount: 1 },
   libraryCount: 3,
   chatCount: 12,
   userRole: 'ADMIN' as const,
@@ -29,6 +30,7 @@ const team = {
   archived: true,
   visibility: 'PRIVATE' as const,
   memberCount: 9,
+  memberships: { groupCount: 2, userCount: 7 },
   libraryCount: 1,
   chatCount: 1,
   userRole: 'CURATOR' as const,
@@ -49,22 +51,22 @@ describe('SpacesOverviewPage (#593, Mockup 1c)', () => {
     expect(screen.getByRole('button', { name: 'Neuer Space' })).toBeInTheDocument()
   })
 
-  it('renders one linked card per space with figures and role badge (#1914)', () => {
+  it('renders one linked card per space with figures, role and member badge (#1914, #1970)', () => {
     renderWithProviders(<SpacesOverviewPage />, { withRouter: true })
 
     const personalCard = screen.getByRole('link', { name: /Mein Space/ })
     expect(personalCard).toHaveAttribute('href', '/spaces/space-personal/chats/new')
     expect(personalCard).toHaveTextContent('Eigener Denkraum ohne Mitleser.')
-    // "nur Sie" gilt allein im persönlichen Space; anderswo ist eine Mitgliedschaftszeile
-    // womöglich eine Gruppe (#1815).
-    expect(personalCard).toHaveTextContent('12 Chats · nur Sie')
+    expect(personalCard).toHaveTextContent('12 Chats')
+    expect(within(personalCard).getByText('nur Sie')).toBeInTheDocument()
     expect(personalCard).toHaveTextContent('Administrator')
 
     const teamCard = screen.getByRole('link', { name: /Widerspruchsstelle/ })
     // An archived space rejects new chats server-side (ChatService), so its card leads to the
     // space overview rather than to a draft whose first message would fail.
     expect(teamCard).toHaveAttribute('href', '/spaces/space-team')
-    expect(teamCard).toHaveTextContent('1 Chat · 9 Mitgliedschaften')
+    expect(teamCard).toHaveTextContent('1 Chat')
+    expect(within(teamCard).getByText('2 Gruppen, 7 Personen')).toBeInTheDocument()
     expect(teamCard).toHaveTextContent('Archiviert')
   })
 
@@ -76,23 +78,42 @@ describe('SpacesOverviewPage (#593, Mockup 1c)', () => {
     expect(screen.queryByText(/Quelle/)).not.toBeInTheDocument()
   })
 
-  it('never reads "nur Sie" in a team space whose single membership may be a group (#1815)', () => {
-    const groupOnly = { ...team, archived: false, memberCount: 1 }
+  it('reads "nur Sie" in a non-default space whose only member is the caller (#1970)', () => {
+    const alone = {
+      ...team,
+      archived: false,
+      memberCount: 1,
+      memberships: { groupCount: 0, userCount: 1 },
+    }
+    useSpaceStore.setState({ spaces: [alone], isLoadingList: false, error: null })
+    renderWithProviders(<SpacesOverviewPage />, { withRouter: true })
+
+    const card = screen.getByRole('link', { name: /Widerspruchsstelle/ })
+    expect(within(card).getByText('nur Sie')).toBeInTheDocument()
+  })
+
+  it('names a single group membership as a group, never as "nur Sie" (#1815)', () => {
+    const groupOnly = {
+      ...team,
+      archived: false,
+      memberCount: 1,
+      memberships: { groupCount: 1, userCount: 0 },
+    }
     useSpaceStore.setState({ spaces: [groupOnly], isLoadingList: false, error: null })
     renderWithProviders(<SpacesOverviewPage />, { withRouter: true })
 
     const card = screen.getByRole('link', { name: /Widerspruchsstelle/ })
-    expect(card).toHaveTextContent('1 Mitgliedschaft')
+    expect(within(card).getByText('1 Gruppe')).toBeInTheDocument()
     expect(card).not.toHaveTextContent('nur Sie')
   })
 
-  it('falls back to the member figure when the list API carries no chat figure (#682)', () => {
+  it('leaves the chat figure out when the list API carries none (#682)', () => {
     const withoutFigures = { ...team, chatCount: undefined }
     useSpaceStore.setState({ spaces: [withoutFigures], isLoadingList: false, error: null })
     renderWithProviders(<SpacesOverviewPage />, { withRouter: true })
 
     const teamCard = screen.getByRole('link', { name: /Widerspruchsstelle/ })
-    expect(teamCard).toHaveTextContent('9 Mitgliedschaften')
+    expect(within(teamCard).getByText('2 Gruppen, 7 Personen')).toBeInTheDocument()
     expect(teamCard).not.toHaveTextContent('Chat')
   })
 
@@ -102,9 +123,11 @@ describe('SpacesOverviewPage (#593, Mockup 1c)', () => {
 
     await user.click(screen.getByRole('button', { name: 'Tabelle' }))
 
-    for (const head of ['Name', 'Chats', 'Mitgliedschaften', 'Ihre Rolle', 'Zustand']) {
+    for (const head of ['Name', 'Chats', 'Mitglieder', 'Ihre Rolle', 'Zustand']) {
       expect(screen.getByRole('columnheader', { name: head })).toBeInTheDocument()
     }
+    expect(screen.getByRole('cell', { name: 'nur Sie' })).toBeInTheDocument()
+    expect(screen.getByRole('cell', { name: '2 Gruppen, 7 Personen' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Widerspruchsstelle' })).toHaveAttribute(
       'href',
       '/spaces/space-team',

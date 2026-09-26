@@ -323,8 +323,9 @@ Tintfläche (`bg-3`), **keine Signalfarben**. Feste Wortlisten:
 
 - **Rollen:** Leser · Bearbeiter · Verwalter · Eigentümer
 - **Verteilungsstufen:** privat · geteilt · organisationsweit
-- **Herkunft:** Upload · Dateisystem · Webverzeichnis · RSS-Feed · Confluence · S3-Objektspeicher
-- **Space-Art:** Persönlich · Team
+- **Herkunft:** Upload · Dateisystem · Webverzeichnis · RSS-Feed · Confluence · S3-Objektspeicher;
+  als Badge auf Kacheln die Kurzform Upload · Dateisystem · Web · Feed · Confluence · S3
+- **Asset-Art:** Wissen · Prompts
 
 Ein laufender Vorgang („Lauf läuft · 62 %") ist Text mit Fortschrittsangabe in `fg-2`, kein
 farbiger Chip.

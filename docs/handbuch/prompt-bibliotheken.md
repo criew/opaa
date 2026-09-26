@@ -22,8 +22,8 @@ Suchbereich — das tun nur Wissensbibliotheken.
 Die Prompt-Bibliotheken, die eine Person lesen darf, stehen in der Hauptnavigation unter
 **„Prompts"**, gleich unter „Wissen". Die Übersicht dort funktioniert wie die der
 Wissensbibliotheken: Anzahl in der Kopfzeile, „Neue Prompt-Bibliothek" oben rechts, Suche über Name
-und Beschreibung, Umschalter zwischen Kacheln und Tabelle. Eine Kachel nennt Eigentümer, Anzahl der
-Prompts, die eigene Rolle und ob die Bibliothek in der Organisation geteilt ist. Gefunden werden
+und Beschreibung, Umschalter zwischen Kacheln und Tabelle. Eine Kachel nennt Eigentümer und Anzahl
+der Prompts, darunter als Badges die Art „Prompts", die eigene Rolle und die Reichweite. Gefunden werden
 Prompt-Bibliotheken außerdem im **Katalog**, zusammen mit den Wissensbibliotheken (Abschnitt 4, „Im
 Katalog finden").
 
