@@ -12,9 +12,6 @@ import { visuallyHidden } from '@mui/utils'
 import type { GroupMemberResponse } from '../../../types/api'
 import { adminTableSx } from '../list/adminListStyles'
 
-/** From this many members on, a filter field helps more than it clutters. */
-const FILTER_THRESHOLD = 8
-
 /** Fixed row geometry, so the frame height follows from the member count alone. */
 const HEAD_HEIGHT = 37
 const ROW_HEIGHT = 41
@@ -48,7 +45,7 @@ interface GroupMembersTableProps {
 
 /**
  * Die Mitglieder einer Gruppe als Tabelle (#1978): alphabetisch, mit fester Kopfzeile in einem
- * scrollbaren Rahmen, ab einigen Einträgen mit einem Filterfeld. Die Liste liegt vollständig vor;
+ * scrollbaren Rahmen, mit einem Filterfeld für jede Gruppe mit Mitgliedern - interne wie externe. Die Liste liegt vollständig vor;
  * gefiltert wird im Browser. Rahmen und Ergebniszeile behalten beim Filtern ihre Höhe, damit der
  * Dialog nicht springt.
  */
@@ -65,7 +62,7 @@ export default function GroupMembersTable({ members, onRemove }: GroupMembersTab
 
   return (
     <>
-      {members.length >= FILTER_THRESHOLD && (
+      {members.length > 0 && (
         <TextField
           size="small"
           fullWidth
@@ -144,7 +141,7 @@ export default function GroupMembersTable({ members, onRemove }: GroupMembersTab
       </TableContainer>
       {/* The total stands in the dialog title; only a filtered view needs its own count. The line
           keeps its place while empty, so typing the first letter does not push the dialog. */}
-      {members.length >= FILTER_THRESHOLD && (
+      {members.length > 0 && (
         <Typography
           aria-live="polite"
           sx={{ fontSize: 12, color: 'text.secondary', mt: 0.75, minHeight: '1.5em' }}

@@ -379,6 +379,9 @@ describe('GroupManagementPage', () => {
     expect(within(table).getByText('Bob')).toBeInTheDocument()
     expect(within(table).getByRole('columnheader', { name: 'Mitglied seit' })).toBeInTheDocument()
     expect(
+      within(dialog).getByRole('searchbox', { name: 'Mitglieder filtern' }),
+    ).toBeInTheDocument()
+    expect(
       within(dialog).queryByRole('button', { name: 'Mitglieder anzeigen' }),
     ).not.toBeInTheDocument()
     expect(within(dialog).queryByRole('button', { name: /entfernen/i })).not.toBeInTheDocument()

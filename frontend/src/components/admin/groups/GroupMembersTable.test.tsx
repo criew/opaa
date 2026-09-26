@@ -30,7 +30,7 @@ describe('GroupMembersTable', () => {
       'Zora Weiß01.03.2026',
     ])
     expect(screen.queryByText(/Mitgliedern/)).not.toBeInTheDocument()
-    expect(screen.queryByRole('searchbox')).not.toBeInTheDocument()
+    expect(screen.getByRole('searchbox', { name: 'Mitglieder filtern' })).toBeInTheDocument()
   })
 
   it('filters a longer list by name', async () => {
@@ -74,5 +74,6 @@ describe('GroupMembersTable', () => {
     renderWithProviders(<GroupMembersTable members={[]} />)
 
     expect(screen.getByText('Diese Gruppe hat keine Mitglieder.')).toBeInTheDocument()
+    expect(screen.queryByRole('searchbox')).not.toBeInTheDocument()
   })
 })
