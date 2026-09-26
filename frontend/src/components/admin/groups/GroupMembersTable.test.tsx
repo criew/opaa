@@ -29,7 +29,7 @@ describe('GroupMembersTable', () => {
       'Ärne Becker01.03.2026',
       'Zora Weiß01.03.2026',
     ])
-    expect(screen.getByText('3 Mitglieder')).toBeInTheDocument()
+    expect(screen.queryByText(/Mitgliedern/)).not.toBeInTheDocument()
     expect(screen.queryByRole('searchbox')).not.toBeInTheDocument()
   })
 

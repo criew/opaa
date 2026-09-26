@@ -118,13 +118,12 @@ export default function GroupMembersTable({ members, onRemove }: GroupMembersTab
           </Typography>
         )}
       </TableContainer>
-      <Typography sx={{ fontSize: 12, color: 'text.secondary', mt: 0.75 }}>
-        {needle
-          ? `${shown.length} von ${members.length} Mitgliedern`
-          : members.length === 1
-            ? '1 Mitglied'
-            : `${members.length} Mitglieder`}
-      </Typography>
+      {/* The total stands in the dialog title; only a filtered view needs its own count. */}
+      {needle && (
+        <Typography sx={{ fontSize: 12, color: 'text.secondary', mt: 0.75 }}>
+          {`${shown.length} von ${members.length} Mitgliedern`}
+        </Typography>
+      )}
     </>
   )
 }

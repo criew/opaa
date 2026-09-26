@@ -351,12 +351,13 @@ describe('GroupManagementPage', () => {
     expect(mockListGroupMembers).not.toHaveBeenCalled()
     await user.click(within(menu).getByRole('menuitem', { name: 'Mitglieder' }))
     const dialog = await screen.findByRole('dialog', {
-      name: 'Mitglieder von „Projektbeteiligte Phoenix“',
+      name: /^Mitglieder von „Projektbeteiligte Phoenix“/,
     })
 
     await waitFor(() => expect(mockListGroupMembers).toHaveBeenCalledWith('group-phoenix'))
     const table = await within(dialog).findByRole('table', { name: 'Mitglieder' })
     expect(within(table).getByText('Alice')).toBeInTheDocument()
+    expect(dialog).toHaveAccessibleName('Mitglieder von „Projektbeteiligte Phoenix“ · 1 Mitglied')
     await user.click(within(table).getByRole('button', { name: 'Alice entfernen' }))
     await waitFor(() => expect(mockRemoveGroupMember).toHaveBeenCalledWith('group-phoenix', 'u1'))
   })

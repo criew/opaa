@@ -38,6 +38,10 @@ export default function GroupMembersDialog({ group, onClose }: GroupMembersDialo
   return <GroupMembersDialogContent key={group.id} group={group} onClose={onClose} />
 }
 
+function memberText(count: number): string {
+  return count === 1 ? '1 Mitglied' : `${count} Mitglieder`
+}
+
 function GroupMembersDialogContent({
   group,
   onClose,
@@ -81,7 +85,12 @@ function GroupMembersDialogContent({
 
   return (
     <Dialog open fullWidth maxWidth="md" onClose={onClose} aria-labelledby="group-members-title">
-      <DialogTitle id="group-members-title">Mitglieder von „{group.name}“</DialogTitle>
+      <DialogTitle id="group-members-title">
+        Mitglieder von „{group.name}“{' '}
+        <Box component="span" sx={{ color: 'text.secondary', fontWeight: 400 }}>
+          · {memberText(members?.length ?? group.memberCount)}
+        </Box>
+      </DialogTitle>
       <DialogContent>
         {error && (
           <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>

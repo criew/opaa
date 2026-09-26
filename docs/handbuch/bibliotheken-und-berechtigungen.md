@@ -452,7 +452,8 @@ ob sie Anlegerechte trägt, etwa „2 Bibliotheken · 1 Space“. Der Tooltip sc
 „nicht verwendet“ heißt, dass die Gruppe nichts davon vermittelt. Die Handlungen
 einer Gruppe stehen im Zeilenmenü: **Bearbeiten**, **Mitglieder**, **Rechte übertragen** und
 **Löschen**; gelöscht werden kann nur eine interne Gruppe. **Mitglieder** zeigt die Mitglieder als
-alphabetische Tabelle mit dem Datum der Aufnahme, ab acht Einträgen mit einem Filterfeld; die Liste
+alphabetische Tabelle mit dem Datum der Aufnahme und ihre Zahl im Titel, ab acht Einträgen mit
+einem Filterfeld; die Liste
 lädt beim Öffnen des Dialogs. Bei einer internen Gruppe lassen sich dort Personen aufnehmen und
 entfernen. Jeder Abruf durch die Systemverwaltung steht im Nachweisprotokoll, und der Dialog sagt
 das.
