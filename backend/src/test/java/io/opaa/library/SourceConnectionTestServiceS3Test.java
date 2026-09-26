@@ -19,20 +19,18 @@ import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ValidationException;
-import io.opaa.indexing.FilesystemPathAllowlist;
-import io.opaa.indexing.IndexingProperties;
-import io.opaa.indexing.document.DocumentService;
-import io.opaa.indexing.source.rss.RssFeedParser;
-import io.opaa.indexing.source.web.AutoindexCrawlerService;
+import io.opaa.indexing.source.S3ScopeCheck;
+import io.opaa.indexing.source.SourceConnectionTestResult;
+import io.opaa.indexing.source.SourceListing;
+import io.opaa.indexing.source.TestSourceConnectors;
+import io.opaa.indexing.source.s3.S3BucketListResult;
+import io.opaa.indexing.source.s3.S3ConnectionService;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
 import io.opaa.knowledge.sourcesettings.S3Scope;
 import io.opaa.knowledge.sourcesettings.S3SourceSettings;
 import io.opaa.permission.CapabilityService;
-import io.opaa.security.TargetAddressValidator;
-import io.opaa.sourceaccess.SourceRequestPolicy;
-import io.opaa.test.ProductionDocumentFormats;
 import java.net.URI;
 import java.util.List;
 import java.util.Optional;
@@ -74,18 +72,9 @@ class SourceConnectionTestServiceS3Test {
     caller = CurrentUser.of(currentUserId, organizationId, SystemRole.USER, "Caller");
     service =
         new SourceConnectionTestService(
-            new DocumentService(),
-            new AutoindexCrawlerService(TargetAddressValidator.disabled()),
-            new RssFeedParser(),
-            mock(FilesystemPathAllowlist.class),
             libraryRepository,
             libraryAccessService,
-            new IndexingProperties(1000, 0, 50, null, null, null, null, 0),
-            TargetAddressValidator.disabled(),
-            SourceRequestPolicy.defaults(),
-            mock(ConfluenceConnectionService.class),
-            s3ConnectionService,
-            ProductionDocumentFormats.supportedFormats(),
+            TestSourceConnectors.connectors().s3ConnectionService(s3ConnectionService).registry(),
             capabilityService);
   }
 
@@ -258,7 +247,7 @@ class SourceConnectionTestServiceS3Test {
             anyString(), any(), anyString(), anyBoolean(), any(), anyBoolean()))
         .thenReturn(new S3BucketListResult(true, List.of("protokolle"), null));
 
-    S3BucketListResult result =
+    SourceListing result =
         service.listS3Buckets(
             new S3BucketListingRequest(
                 URI.create("https://s3.example.org"),
@@ -270,7 +259,7 @@ class SourceConnectionTestServiceS3Test {
                 libraryId),
             caller);
 
-    assertThat(result.buckets()).containsExactly("protokolle");
+    assertThat(result.entries()).extracting(SourceListing.Entry::key).containsExactly("protokolle");
     verify(s3ConnectionService)
         .listBuckets(
             "https://s3.example.org",

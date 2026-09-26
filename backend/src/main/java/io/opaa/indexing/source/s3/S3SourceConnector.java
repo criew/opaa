@@ -1,0 +1,280 @@
+package io.opaa.indexing.source.s3;
+
+import static io.opaa.indexing.source.ConnectorChecks.blankToNull;
+import static io.opaa.indexing.source.ConnectorChecks.unreachable;
+
+import io.opaa.api.types.DocumentSourceType;
+import io.opaa.common.ValidationException;
+import io.opaa.indexing.source.PushIntake;
+import io.opaa.indexing.source.SourceBrowser;
+import io.opaa.indexing.source.SourceConnectionTestResult;
+import io.opaa.indexing.source.SourceConnector;
+import io.opaa.indexing.source.SourceConnectorDescriptor;
+import io.opaa.indexing.source.SourceListing;
+import io.opaa.indexing.source.SourceSettingField;
+import io.opaa.indexing.source.SourceSettings;
+import io.opaa.indexing.source.SourceSyncStateRepository;
+import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.sourcesettings.S3SourceSettings;
+import io.opaa.knowledge.sourcesettings.S3SourceSettingsJson;
+import io.opaa.s3.S3AccessException;
+import io.opaa.s3.S3Connection;
+import io.opaa.s3.S3Credentials;
+import io.opaa.sourceaccess.ProxyAndCredentials;
+import java.net.URI;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+
+/**
+ * An S3-compatible object store (ADR-0027). {@code sourceUrl} is the endpoint, stored normalised;
+ * the credentials are required as {@code accessKey:secretKey[:sessionToken]}; the scopes and
+ * patterns live in the typed {@link S3SourceSettings}. Before anything is stored, the endpoint, the
+ * proxy and - under virtual-host addressing - every bucket host pass the target validation
+ * (Entscheidung 8). A changed endpoint or changed settings discard the resumption state, so the
+ * next run lists every scope from scratch (Entscheidung 3).
+ */
+public class S3SourceConnector implements SourceConnector, SourceBrowser {
+
+  private static final String SETTINGS_STATE = "s3Settings";
+
+  private static final SourceConnectorDescriptor DESCRIPTOR =
+      new SourceConnectorDescriptor(
+          DocumentSourceType.S3,
+          true,
+          Set.of(SourceSettingField.S3_SETTINGS),
+          PushIntake.EVENT_TOKEN,
+          null);
+
+  private final S3ConnectionService connectionService;
+  private final S3ClientFactory clientFactory;
+  private final SourceSyncStateRepository syncStateRepository;
+
+  public S3SourceConnector(
+      S3ConnectionService connectionService,
+      S3ClientFactory clientFactory,
+      SourceSyncStateRepository syncStateRepository) {
+    this.connectionService = connectionService;
+    this.clientFactory = clientFactory;
+    this.syncStateRepository = syncStateRepository;
+  }
+
+  @Override
+  public SourceConnectorDescriptor descriptor() {
+    return DESCRIPTOR;
+  }
+
+  @Override
+  public SourceSettings validate(SourceSettings requested) {
+    if (requested.sourcePath() != null) {
+      throw new ValidationException("sourcePath ist für sourceType S3 nicht zulässig");
+    }
+    if (requested.sourceUrl() == null) {
+      throw new ValidationException(
+          "sourceUrl (Endpoint des Objektspeichers) ist erforderlich, wenn sourceType S3 ist");
+    }
+    String normalizedUrl;
+    try {
+      normalizedUrl = S3Connection.normalizeEndpoint(requested.sourceUrl()).toString();
+    } catch (S3Connection.InvalidEndpointException e) {
+      throw new ValidationException(e.getMessage());
+    }
+    if (requested.sourceCredentials() == null) {
+      throw new ValidationException("sourceCredentials sind erforderlich, wenn sourceType S3 ist");
+    }
+    if (requested.s3Settings() == null) {
+      throw new ValidationException("s3Settings sind erforderlich, wenn sourceType S3 ist");
+    }
+    requireReachableTargets(
+        normalizedUrl,
+        requested.sourceProxy(),
+        requested.sourceInsecureSsl(),
+        requested.sourceCredentials(),
+        requested.s3Settings());
+    return requested.withSourceUrl(normalizedUrl);
+  }
+
+  /**
+   * A new connection is validated against the requested settings, or the stored ones when the
+   * request keeps them; settings replaced on their own still pass the target validation against the
+   * stored connection (a new bucket host under virtual-host addressing).
+   */
+  @Override
+  public SourceSettings validateChange(
+      KnowledgeLibrary library, SourceSettings requested, boolean replacesConnection) {
+    if (replacesConnection) {
+      S3SourceSettings effective =
+          requested.s3Settings() != null ? requested.s3Settings() : library.getS3Settings();
+      SourceSettings validated = validate(withS3Settings(requested, effective));
+      return withS3Settings(validated, requested.s3Settings());
+    }
+    if (requested.s3Settings() != null) {
+      requireReachableTargets(
+          library.getSourceUrl(),
+          library.getSourceProxy(),
+          library.isSourceInsecureSsl(),
+          library.getSourceCredentials(),
+          requested.s3Settings());
+    }
+    return requested;
+  }
+
+  private static SourceSettings withS3Settings(SourceSettings settings, S3SourceSettings s3) {
+    return new SourceSettings(
+        settings.sourcePath(),
+        settings.sourceUrl(),
+        settings.sourceProxy(),
+        settings.sourceCredentials(),
+        settings.sourceInsecureSsl(),
+        settings.confluenceEdition(),
+        settings.confluenceSpaces(),
+        settings.confluenceFullSyncIntervalDays(),
+        s3);
+  }
+
+  /**
+   * The hosts a library will contact pass the target validation when its configuration is saved; a
+   * refusal or an unresolvable host is a 400 with the validator's own German message.
+   */
+  private void requireReachableTargets(
+      String normalizedUrl,
+      String sourceProxy,
+      boolean sourceInsecureSsl,
+      String sourceCredentials,
+      S3SourceSettings s3Settings) {
+    S3Credentials credentials;
+    try {
+      credentials = S3Credentials.parse(sourceCredentials);
+    } catch (S3Credentials.InvalidCredentialsFormatException e) {
+      throw new ValidationException(e.getMessage());
+    }
+    ProxyAndCredentials proxy;
+    try {
+      proxy = ProxyAndCredentials.parse(sourceProxy, null);
+    } catch (ProxyAndCredentials.InvalidProxyConfigurationException e) {
+      throw new ValidationException(e.getMessage());
+    }
+    S3Connection connection =
+        new S3Connection(
+            URI.create(normalizedUrl),
+            s3Settings.effectiveRegion(),
+            s3Settings.pathStyle(),
+            credentials,
+            proxy.proxyHost(),
+            proxy.proxyPort(),
+            sourceInsecureSsl);
+    try {
+      clientFactory.validateTargets(connection, s3Settings.scopes());
+    } catch (S3AccessException e) {
+      throw new ValidationException(e.getMessage());
+    }
+  }
+
+  @Override
+  public void configureNew(KnowledgeLibrary library, SourceSettings validated) {
+    library.updateS3Settings(validated.s3Settings());
+  }
+
+  @Override
+  public void applyChange(KnowledgeLibrary library, SourceSettings validated) {
+    if (validated.s3Settings() != null) {
+      library.updateS3Settings(validated.s3Settings());
+    }
+  }
+
+  @Override
+  public Map<String, Object> settingsState(KnowledgeLibrary library) {
+    Map<String, Object> state = new HashMap<>();
+    state.put(SETTINGS_STATE, S3SourceSettingsJson.write(library.getS3Settings()));
+    return state;
+  }
+
+  /** Any settings change counts: discarding the state is safe, keeping a stale one is not. */
+  @Override
+  public void onSourceChanged(
+      KnowledgeLibrary library, boolean addressChanged, Set<String> changedSettings) {
+    if (addressChanged || changedSettings.contains(SETTINGS_STATE)) {
+      syncStateRepository.deleteByLibraryId(library.getId());
+    }
+  }
+
+  @Override
+  public SourceConnectionTestResult testConnection(SourceSettings settings) {
+    if (blankToNull(settings.sourcePath()) != null) {
+      throw new ValidationException("sourcePath ist für sourceType S3 nicht zulässig");
+    }
+    if (settings.sourceUrl() == null) {
+      throw new ValidationException(
+          "sourceUrl (Endpoint des Objektspeichers) ist erforderlich, wenn sourceType S3 ist");
+    }
+    S3ConnectionService.Probe probe;
+    try {
+      probe =
+          connectionService.probe(
+              settings.sourceUrl(),
+              blankToNull(settings.sourceProxy()),
+              blankToNull(settings.sourceCredentials()),
+              settings.sourceInsecureSsl(),
+              settings.s3Settings());
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      return unreachable("Der Verbindungstest wurde unterbrochen.");
+    }
+    return new SourceConnectionTestResult(
+        probe.reachable(),
+        probe.message(),
+        probe.objectCount(),
+        null,
+        probe.credentialsVerified(),
+        probe.scopes());
+  }
+
+  @Override
+  public Kind browseKind() {
+    return Kind.BUCKETS;
+  }
+
+  @Override
+  public String otherTypeMessage() {
+    return "Die Bibliothek ist keine S3-Bibliothek";
+  }
+
+  /**
+   * The buckets the key may see; region and addressing style are the request's when given, else the
+   * stored library's - a listing against a stored library signs for its configured region.
+   */
+  @Override
+  public SourceListing browse(Query query) {
+    SourceSettings settings = query.settings();
+    String credentials = blankToNull(settings.sourceCredentials());
+    if (credentials == null) {
+      throw new ValidationException(
+          "sourceCredentials sind für die Bucket-Auflistung erforderlich");
+    }
+    S3SourceSettings stored = settings.s3Settings();
+    String region =
+        blankToNull(query.region()) != null
+            ? blankToNull(query.region())
+            : stored == null ? null : stored.effectiveRegion();
+    boolean pathStyle =
+        query.pathStyle() != null ? query.pathStyle() : stored != null && stored.pathStyle();
+    S3BucketListResult result;
+    try {
+      result =
+          connectionService.listBuckets(
+              settings.sourceUrl(),
+              blankToNull(settings.sourceProxy()),
+              credentials,
+              settings.sourceInsecureSsl(),
+              region,
+              pathStyle);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new ValidationException("Die Bucket-Auflistung wurde unterbrochen.");
+    }
+    return new SourceListing(
+        result.permitted(),
+        result.buckets().stream().map(name -> new SourceListing.Entry(name, null)).toList(),
+        result.message());
+  }
+}

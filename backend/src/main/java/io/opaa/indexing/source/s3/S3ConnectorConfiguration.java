@@ -29,6 +29,14 @@ public class S3ConnectorConfiguration {
     return new S3ClientFactory(s3Properties, targetAddressValidator);
   }
 
+  @Bean
+  S3SourceConnector s3SourceConnector(
+      S3ConnectionService s3ConnectionService,
+      S3ClientFactory s3ClientFactory,
+      SourceSyncStateRepository sourceSyncStateRepository) {
+    return new S3SourceConnector(s3ConnectionService, s3ClientFactory, sourceSyncStateRepository);
+  }
+
   /**
    * Reads an indexed object back for the citation jump (ADR-0027, Entscheidung 5) - a read path
    * outside every run, used by {@code LibraryDocumentService}.

@@ -20,6 +20,21 @@ public class RssConnectorConfiguration {
     return new RssFeedParser();
   }
 
+  @Bean
+  RssFeedSourceConnector rssFeedSourceConnector(
+      RssFeedParser rssFeedParser,
+      RssFeedStateRepository rssFeedStateRepository,
+      TargetAddressValidator targetAddressValidator,
+      SourceRequestPolicy sourceRequestPolicy,
+      IndexingProperties properties) {
+    return new RssFeedSourceConnector(
+        rssFeedParser,
+        rssFeedStateRepository,
+        targetAddressValidator,
+        sourceRequestPolicy,
+        properties);
+  }
+
   /**
    * Declared as {@link SourceIndexingExecutor}, not the concrete type: the executor carries
    * {@code @Async} and is therefore wrapped in a JDK dynamic proxy, which only implements the

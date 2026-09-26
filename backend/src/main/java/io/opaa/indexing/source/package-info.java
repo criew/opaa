@@ -1,13 +1,16 @@
 /**
- * The source/connector executor contract (ADR-0017, ADR-0018).
+ * The source/connector contract (ADR-0017, ADR-0018).
  *
- * <p>A {@link io.opaa.indexing.source.SourceIndexingExecutor} owns one {@link
- * io.opaa.indexing.source.IndexingSourceType} and is registered as a Spring bean, resolved at
- * trigger time by {@link io.opaa.indexing.source.IndexingSourceExecutorRegistry} - a new source
- * type is added by implementing the interface and wiring one more bean, never by editing the
- * registry or an existing executor. Each concrete source type lives in its own subpackage together
- * with the {@code @Configuration} that registers it; no package outside the connectors refers to
- * one, and the connectors do not refer to each other. The run itself stays in {@code
+ * <p>Every source type is a {@link io.opaa.indexing.source.SourceConnector} bean in its own
+ * subpackage, registered by that package's {@code @Configuration} and resolved by type through
+ * {@link io.opaa.indexing.source.SourceConnectorRegistry}: its {@link
+ * io.opaa.indexing.source.SourceConnectorDescriptor} answers what the administration would
+ * otherwise branch on, the connector validates its configuration and tests the connection, and
+ * optional abilities such as {@link io.opaa.indexing.source.SourceBrowser} are further interfaces
+ * of the same bean. A run-based type additionally registers a {@link
+ * io.opaa.indexing.source.SourceIndexingExecutor}, resolved at trigger time by {@link
+ * io.opaa.indexing.source.IndexingSourceExecutorRegistry}. No package outside the connectors refers
+ * to one, and the connectors do not refer to each other. The run itself stays in {@code
  * io.opaa.indexing.job} and the ingestion of a single document in {@code
  * io.opaa.indexing.document}.
  *

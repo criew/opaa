@@ -8,12 +8,11 @@ import io.opaa.api.dto.S3BucketListResponse;
 import io.opaa.api.dto.S3ScopeCheck;
 import io.opaa.api.dto.SourceConnectionTestRequest;
 import io.opaa.api.dto.SourceConnectionTestResponse;
-import io.opaa.indexing.source.confluence.ConfluenceSpace;
+import io.opaa.indexing.source.SourceConnectionTestResult;
+import io.opaa.indexing.source.SourceListing;
 import io.opaa.library.ConfluenceSpaceListing;
-import io.opaa.library.S3BucketListResult;
 import io.opaa.library.S3BucketListingRequest;
 import io.opaa.library.SourceConnectionTest;
-import io.opaa.library.SourceConnectionTestResult;
 import java.util.List;
 
 /**
@@ -49,8 +48,10 @@ final class SourceConnectionTestResponseMapper {
         request.getLibraryId());
   }
 
-  static S3BucketListResponse toResponse(S3BucketListResult result) {
-    return new S3BucketListResponse(result.permitted(), result.buckets()).message(result.message());
+  static S3BucketListResponse toResponse(SourceListing listing) {
+    return new S3BucketListResponse(
+            listing.complete(), listing.entries().stream().map(SourceListing.Entry::key).toList())
+        .message(listing.message());
   }
 
   static ConfluenceSpaceListing toDomain(ConfluenceSpaceListRequest request) {
@@ -67,8 +68,8 @@ final class SourceConnectionTestResponseMapper {
     return new ConfluenceSpaceListResponse(spaces);
   }
 
-  static List<ConfluenceSpaceRef> toRefs(List<ConfluenceSpace> spaces) {
-    return spaces.stream()
+  static List<ConfluenceSpaceRef> toRefs(SourceListing spaces) {
+    return spaces.entries().stream()
         .map(space -> new ConfluenceSpaceRef(space.key()).name(space.name()))
         .toList();
   }
@@ -81,7 +82,8 @@ final class SourceConnectionTestResponseMapper {
         .s3Scopes(result.s3Scopes() == null ? null : toScopeChecks(result.s3Scopes()));
   }
 
-  private static List<S3ScopeCheck> toScopeChecks(List<io.opaa.library.S3ScopeCheck> checks) {
+  private static List<S3ScopeCheck> toScopeChecks(
+      List<io.opaa.indexing.source.S3ScopeCheck> checks) {
     return checks.stream()
         .map(
             check ->
