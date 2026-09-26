@@ -36,17 +36,18 @@ import org.junit.jupiter.api.Test;
  *       not (#1899).
  *   <li><b>The business packages do not depend on each other</b>, with one declared exception:
  *       {@code io.opaa.space} reaches {@code io.opaa.knowledge} for the one type the search reads,
- *       and nothing in {@code io.opaa.library} or {@code io.opaa.knowledge} names a space. Every
- *       other pair is forbidden in both directions - {@code library} &harr; {@code group} was a
- *       real cycle (12 class edges one way, 4 the other) until this package took the permission
- *       model out of both.
+ *       never the administration in {@code io.opaa.library}, and nothing in {@code io.opaa.library}
+ *       or {@code io.opaa.knowledge} names a space. Every other pair is forbidden in both
+ *       directions - {@code library} &harr; {@code group} was a real cycle (12 class edges one way,
+ *       4 the other) until this package took the permission model out of both.
  *   <li><b>A second asset type stands beside the first, never on it.</b> {@code io.opaa.prompt}
  *       builds on the shell and asks the permission model for roles and capabilities only; neither
  *       it nor {@code io.opaa.library} knows the other (#1901).
  * </ol>
  *
  * <p>The library asset type spans two packages: its holdings in {@code io.opaa.knowledge} and its
- * administration in {@code io.opaa.library}. Every rule naming the library applies to both.
+ * administration in {@code io.opaa.library}. Every rule naming the library applies to both; a space
+ * may reach only the holdings.
  *
  * <p>The scan is source-based; see {@link PackageDependencyScanner} for what that catches that a
  * signature-level reflection check does not, and for the one shape it cannot see.
@@ -162,11 +163,20 @@ class PermissionPackageBoundaryTest {
                   "a prompt library reaches groups through the shell and the permission model"),
               Map.entry(
                   List.of(PROMPT, SUCCESSION),
-                  "the shell's succession source covers every type; the guard is asked by the shell")));
+                  "the shell's succession source covers every type; the guard is asked by the shell")),
+          Map.of(
+              List.of(SPACE, LIBRARY),
+              "a space reads the searched type from its holdings in io.opaa.knowledge; the"
+                  + " library administration sits above it"));
 
-  /** Adds, for every edge naming {@link #LIBRARY}, the same edge naming {@link #KNOWLEDGE}. */
-  private static Map<List<String>, String> withHoldings(Map<List<String>, String> edges) {
+  /**
+   * Adds, for every edge naming {@link #LIBRARY}, the same edge naming {@link #KNOWLEDGE}, then the
+   * edges that hold for the administration alone.
+   */
+  private static Map<List<String>, String> withHoldings(
+      Map<List<String>, String> edges, Map<List<String>, String> administrationOnly) {
     Map<List<String>, String> all = new LinkedHashMap<>(edges);
+    all.putAll(administrationOnly);
     edges.forEach(
         (pair, reason) -> {
           if (pair.contains(LIBRARY)) {

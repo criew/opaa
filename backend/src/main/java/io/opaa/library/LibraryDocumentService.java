@@ -641,7 +641,7 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
   /**
    * The {@code 503} of an object store that cannot be reached or refuses the application right now
    * (#1524) - carries no detail of the failure, which goes to the log; the wording mirrors {@link
-   * UploadStoreUnavailableException}, whose storage is a different one.
+   * io.opaa.knowledge.UploadStoreUnavailableException}, whose storage is a different one.
    */
   static final String OBJECT_STORE_UNAVAILABLE =
       "Der Objektspeicher dieser Bibliothek ist derzeit nicht erreichbar. Bitte später erneut"
