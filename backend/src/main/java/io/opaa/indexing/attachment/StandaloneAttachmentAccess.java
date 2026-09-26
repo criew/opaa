@@ -1,4 +1,4 @@
-package io.opaa.indexing.source.attachment;
+package io.opaa.indexing.attachment;
 
 import io.opaa.indexing.job.AttachmentProgressSink;
 import io.opaa.indexing.job.IndexingEventSink;

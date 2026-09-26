@@ -1,13 +1,13 @@
 package io.opaa.indexing.source.confluence;
 
 import io.opaa.api.types.DocumentSourceType;
+import io.opaa.indexing.attachment.AttachmentIndexer;
+import io.opaa.indexing.attachment.AttachmentOutcome;
+import io.opaa.indexing.attachment.AttachmentSource;
 import io.opaa.indexing.document.Document;
 import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.indexing.document.SourceDocumentContext;
 import io.opaa.indexing.job.IndexingEventCategory;
-import io.opaa.indexing.source.attachment.AttachmentIndexer;
-import io.opaa.indexing.source.attachment.AttachmentOutcome;
-import io.opaa.indexing.source.attachment.AttachmentSource;
 import io.opaa.sourceaccess.BoundedDownloader;
 import java.io.IOException;
 import java.nio.file.Files;

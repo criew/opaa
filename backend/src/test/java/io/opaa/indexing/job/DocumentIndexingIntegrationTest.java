@@ -575,7 +575,7 @@ class DocumentIndexingIntegrationTest {
     // ADR-0022 (the structural fix
     // structural fix): an attachment is no longer merged into its Mail parent's own chunks - it is
     // its own Document row, indexed through the generalized attachment path
-    // (io.opaa.indexing.source.attachment.AttachmentIndexer), with the correct pipeline id of its
+    // (io.opaa.indexing.attachment.AttachmentIndexer), with the correct pipeline id of its
     // own format (here: the Tika fallback for a plain-text attachment) and parent_document_id
     // pointing at the mail. Proves the real, Spring-wired bean graph end to end - not just
     // MailDocumentFormatTest's own hand-built registry.

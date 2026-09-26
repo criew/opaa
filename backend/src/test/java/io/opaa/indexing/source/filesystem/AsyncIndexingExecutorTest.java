@@ -17,7 +17,10 @@ import static org.mockito.Mockito.when;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
+import io.opaa.indexing.FilesystemPathAllowlist;
 import io.opaa.indexing.IndexingProperties;
+import io.opaa.indexing.attachment.AttachmentAccess;
+import io.opaa.indexing.attachment.AttachmentOutcome;
 import io.opaa.indexing.chunk.ChunkingService;
 import io.opaa.indexing.chunk.EmbeddingRateEstimator;
 import io.opaa.indexing.chunk.FullTextChunkStore;
@@ -37,8 +40,6 @@ import io.opaa.indexing.job.IndexingRunCost;
 import io.opaa.indexing.job.IndexingRunEventRepository;
 import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
 import io.opaa.indexing.source.IndexingRunTemplate;
-import io.opaa.indexing.source.attachment.AttachmentAccess;
-import io.opaa.indexing.source.attachment.AttachmentOutcome;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryFolderService;
 import io.opaa.library.LibraryStorageQuotaService;
@@ -253,7 +254,7 @@ class AsyncIndexingExecutorTest {
             indexingProperties,
             Runnable::run,
             org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class),
-            new io.opaa.indexing.source.attachment.AttachmentLimits(0, 0),
+            new io.opaa.indexing.attachment.AttachmentLimits(0, 0),
             io.opaa.indexing.document.TestDocumentMetadataServices.returningEmpty(),
             io.opaa.indexing.document.TestDocumentMetadataServices.notExtracting());
 

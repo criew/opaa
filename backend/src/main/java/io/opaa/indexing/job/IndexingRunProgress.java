@@ -1,8 +1,8 @@
 package io.opaa.indexing.job;
 
+import io.opaa.indexing.attachment.AttachmentOutcome;
 import io.opaa.indexing.document.DocumentIngestOutcomes;
 import io.opaa.indexing.document.DocumentIngestResult;
-import io.opaa.indexing.source.attachment.AttachmentOutcome;
 import java.util.UUID;
 import java.util.function.Supplier;
 
