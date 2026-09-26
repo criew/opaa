@@ -1,6 +1,6 @@
 package io.opaa.library;
 
-import io.opaa.indexing.source.s3.S3AccessException;
+import io.opaa.s3.S3AccessException;
 import org.springframework.boot.health.contributor.Health;
 import org.springframework.boot.health.contributor.HealthIndicator;
 

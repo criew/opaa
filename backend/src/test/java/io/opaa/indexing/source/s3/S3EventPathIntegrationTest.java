@@ -19,6 +19,7 @@ import io.opaa.indexing.job.JobTriggerSource;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
+import io.opaa.s3.S3TestFixture;
 import io.opaa.test.OpaaIntegrationTest;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;

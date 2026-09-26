@@ -1,6 +1,6 @@
 package io.opaa.test;
 
-import io.opaa.indexing.source.s3.S3TestFixture;
+import io.opaa.s3.S3TestFixture;
 import java.util.Map;
 import org.springframework.context.ApplicationContextInitializer;
 import org.springframework.context.ConfigurableApplicationContext;

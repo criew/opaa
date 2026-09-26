@@ -89,7 +89,7 @@
     // Der Tag ("1.0.0") ist reguläre docker-Versionierung und braucht kein eigenes Schema.
     {
       customType: 'regex',
-      managerFilePatterns: ['backend/src/test/java/io/opaa/indexing/source/s3/S3TestFixture.java'],
+      managerFilePatterns: ['backend/src/test/java/io/opaa/s3/S3TestFixture.java'],
       matchStrings: [
         '// renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\s*\\n\\s*public static final String IMAGE = "[^:"]+:(?<currentValue>[^"]+)"',
       ],

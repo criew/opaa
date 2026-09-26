@@ -42,6 +42,7 @@ import io.opaa.indexing.source.VanishedDocumentPolicy;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryFolderService;
 import io.opaa.library.LibraryStorageQuotaService;
+import io.opaa.s3.S3AccessException;
 import io.opaa.test.ProductionDocumentFormats;
 import java.io.IOException;
 import java.nio.file.Path;

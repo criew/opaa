@@ -2,14 +2,14 @@ package io.opaa.library;
 
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.source.s3.S3AccessCheck;
-import io.opaa.indexing.source.s3.S3AccessException;
 import io.opaa.indexing.source.s3.S3BucketListing;
 import io.opaa.indexing.source.s3.S3ClientFactory;
-import io.opaa.indexing.source.s3.S3Connection;
-import io.opaa.indexing.source.s3.S3Credentials;
 import io.opaa.indexing.source.s3.S3ObjectStore;
 import io.opaa.indexing.source.s3.S3Scope;
 import io.opaa.indexing.source.s3.S3SourceSettings;
+import io.opaa.s3.S3AccessException;
+import io.opaa.s3.S3Connection;
+import io.opaa.s3.S3Credentials;
 import io.opaa.sourceaccess.ProxyAndCredentials;
 import java.net.URI;
 import java.time.Clock;

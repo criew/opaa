@@ -1,6 +1,5 @@
-package io.opaa.indexing.source.s3;
+package io.opaa.s3;
 
-import io.opaa.indexing.source.RequestBudgetExhaustedException;
 import java.io.IOException;
 import java.net.ConnectException;
 import java.net.SocketTimeoutException;
@@ -8,6 +7,7 @@ import java.net.UnknownHostException;
 import java.time.Duration;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.function.IntFunction;
 import javax.net.ssl.SSLException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,26 +58,37 @@ public final class S3FailureTranslator {
   private final Duration requestTimeout;
   private final int maxRetries;
   private final String allowlistHint;
+  private final IntFunction<? extends RuntimeException> budgetExhausted;
 
+  /** For a client whose {@link S3RequestGuard} carries no request budget. */
   public S3FailureTranslator(Duration requestTimeout, int maxRetries, String allowlistHint) {
+    this(
+        requestTimeout,
+        maxRetries,
+        allowlistHint,
+        budget -> new IllegalStateException("request budget of " + budget + " exhausted"));
+  }
+
+  /**
+   * @param budgetExhausted what {@link #call} throws when the guard's request budget of the given
+   *     size is spent - the budget's owner decides how its run ends
+   */
+  public S3FailureTranslator(
+      Duration requestTimeout,
+      int maxRetries,
+      String allowlistHint,
+      IntFunction<? extends RuntimeException> budgetExhausted) {
     this.requestTimeout = requestTimeout;
     this.maxRetries = maxRetries;
     this.allowlistHint = allowlistHint;
-  }
-
-  /** The translator of a library's store under the access layer's bounds and allowlist hint. */
-  public static S3FailureTranslator forConnector(S3Properties properties) {
-    return new S3FailureTranslator(
-        properties.requestTimeout(),
-        properties.maxRetries(),
-        io.opaa.security.TargetAddressValidator.ALLOWLIST_HINT);
+    this.budgetExhausted = budgetExhausted;
   }
 
   /**
    * Runs {@code action} and translates whatever it throws: an interruption surfaces as {@link
-   * InterruptedException} with the flag restored, a spent request budget as {@link
-   * RequestBudgetExhaustedException}, an {@link S3AccessException} unchanged, anything else through
-   * {@link #translate}.
+   * InterruptedException} with the flag restored, a spent request budget as the exception of {@code
+   * budgetExhausted}, an {@link S3AccessException} unchanged, anything else through {@link
+   * #translate}.
    */
   public <T> T call(S3Operation op, String bucket, String key, Callable<T> action)
       throws S3AccessException, InterruptedException {
@@ -91,7 +102,7 @@ public final class S3FailureTranslator {
     } catch (Exception e) {
       S3RequestGuard.BudgetSignal budget = findCause(e, S3RequestGuard.BudgetSignal.class);
       if (budget != null) {
-        throw RequestBudgetExhaustedException.requests(budget.budget());
+        throw budgetExhausted.apply(budget.budget());
       }
       S3AccessException translated = translate(op, bucket, key, e);
       // the translated message is credential-free by contract; the SDK's own text is not logged

@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.opaa.indexing.source.s3.S3TestFixture;
+import io.opaa.s3.S3TestFixture;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;

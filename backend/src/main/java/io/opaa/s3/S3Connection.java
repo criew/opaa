@@ -1,12 +1,12 @@
-package io.opaa.indexing.source.s3;
+package io.opaa.s3;
 
 import java.net.URI;
 import java.net.URISyntaxException;
 
 /**
- * Everything the adapter needs to talk to one object store on behalf of one library: the normalised
- * endpoint, the signing region, the addressing style, the credentials and the outbound connection
- * options a library's source configuration carries for every URL-based type.
+ * Everything a client needs to talk to one object store: the normalised endpoint, the signing
+ * region, the addressing style, the credentials and the outbound connection options (proxy, relaxed
+ * TLS).
  *
  * @param endpoint normalised by {@link #normalizeEndpoint}: scheme and host lower-case, no path,
  *     query, fragment or user info

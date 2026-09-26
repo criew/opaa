@@ -22,6 +22,7 @@ import io.opaa.indexing.source.SourceFolderPath;
 import io.opaa.indexing.source.SourceSyncState;
 import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.library.LibraryFolderService;
+import io.opaa.s3.S3AccessException;
 import io.opaa.sourceaccess.SourceRequestMeter;
 import java.io.IOException;
 import java.nio.file.Files;

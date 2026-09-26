@@ -1,4 +1,4 @@
-package io.opaa.indexing.source.s3;
+package io.opaa.s3;
 
 import java.net.URI;
 import java.time.Duration;
@@ -65,8 +65,9 @@ public record S3ClientSettings(
     }
   }
 
-  /** The settings of a library's connection under the access layer's bounds. */
-  public static S3ClientSettings of(S3Connection connection, S3Properties properties) {
+  /** The settings of {@code connection} under the given request bounds. */
+  public static S3ClientSettings of(
+      S3Connection connection, Duration requestTimeout, int maxRetries, Duration retryBackoff) {
     S3Credentials c = connection.credentials();
     AwsCredentials credentials =
         c.hasSessionToken()
@@ -80,9 +81,9 @@ public record S3ClientSettings(
         connection.proxyHost(),
         connection.proxyPort(),
         connection.insecureSsl(),
-        properties.requestTimeout(),
-        properties.maxRetries(),
-        properties.retryBackoff());
+        requestTimeout,
+        maxRetries,
+        retryBackoff);
   }
 
   public boolean hasProxy() {

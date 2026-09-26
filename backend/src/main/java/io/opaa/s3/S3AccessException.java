@@ -1,6 +1,5 @@
-package io.opaa.indexing.source.s3;
+package io.opaa.s3;
 
-import io.opaa.security.TargetAddressValidator;
 import java.io.IOException;
 
 /**
@@ -169,10 +168,6 @@ public class S3AccessException extends IOException {
    * ADR-0030, Entscheidung 8).
    */
   public static final class TargetBlocked extends S3AccessException {
-    public TargetBlocked(String message) {
-      this(message, TargetAddressValidator.ALLOWLIST_HINT);
-    }
-
     public TargetBlocked(String message, String allowlistHint) {
       super(message + " " + allowlistHint);
     }

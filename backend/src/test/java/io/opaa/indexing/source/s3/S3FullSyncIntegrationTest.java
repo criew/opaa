@@ -27,6 +27,8 @@ import io.opaa.library.LibraryFolder;
 import io.opaa.library.LibraryFolderRepository;
 import io.opaa.library.LibraryFolderService;
 import io.opaa.organization.Organization;
+import io.opaa.s3.S3Credentials;
+import io.opaa.s3.S3TestFixture;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.ProductionDocumentFormats;
