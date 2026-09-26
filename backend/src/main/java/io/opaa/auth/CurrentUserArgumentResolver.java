@@ -38,6 +38,14 @@ public class CurrentUserArgumentResolver implements HandlerMethodArgumentResolve
     return attribute instanceof CurrentUser currentUser ? currentUser : null;
   }
 
+  /**
+   * Attaches the caller of an external-access token call to {@code request} - always the reduced
+   * snapshot of {@link CurrentUser#forExternalAccess}, never the person's full identity.
+   */
+  public static void bindExternalAccessCaller(HttpServletRequest request, User user) {
+    request.setAttribute(REQUEST_ATTRIBUTE, CurrentUser.forExternalAccess(user));
+  }
+
   @Override
   public boolean supportsParameter(MethodParameter parameter) {
     return parameter.hasParameterAnnotation(Caller.class)

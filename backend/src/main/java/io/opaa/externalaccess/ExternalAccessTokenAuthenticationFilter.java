@@ -1,6 +1,7 @@
-package io.opaa.auth;
+package io.opaa.externalaccess;
 
-import io.opaa.externalaccess.ExternalAccessNetworkPolicy;
+import io.opaa.auth.CurrentUser;
+import io.opaa.auth.CurrentUserArgumentResolver;
 import io.opaa.externalaccess.token.ExternalAccessTokenAuthenticator;
 import io.opaa.externalaccess.token.ExternalAccessTokenAuthenticator.Result;
 import io.opaa.externalaccess.token.ExternalAccessTokenRejection;
@@ -127,9 +128,7 @@ public class ExternalAccessTokenAuthenticationFilter extends OncePerRequestFilte
     }
     Result.Authenticated authenticated = (Result.Authenticated) result;
     UUID tokenId = authenticated.tokenId();
-    request.setAttribute(
-        CurrentUserArgumentResolver.REQUEST_ATTRIBUTE,
-        CurrentUser.forExternalAccess(authenticated.user()));
+    CurrentUserArgumentResolver.bindExternalAccessCaller(request, authenticated.user());
     request.setAttribute(TOKEN_ID_ATTRIBUTE, tokenId);
     SecurityContextHolder.getContext()
         .setAuthentication(

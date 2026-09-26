@@ -1,6 +1,5 @@
-package io.opaa.auth;
+package io.opaa.externalaccess;
 
-import io.opaa.externalaccess.ExternalAccessNetworkPolicy;
 import io.opaa.externalaccess.token.ExternalAccessTokenAuthenticator;
 import io.opaa.externalaccess.token.ExternalAccessTokenService;
 import java.time.Clock;

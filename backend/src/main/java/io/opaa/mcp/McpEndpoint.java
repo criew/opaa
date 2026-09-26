@@ -1,5 +1,6 @@
 package io.opaa.mcp;
 
+import io.opaa.externalaccess.ExternalAccessOwnedPath;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.ai.mcp.server.common.autoconfigure.properties.McpServerStreamableHttpProperties;
 import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
@@ -17,7 +18,7 @@ import org.springframework.stereotype.Component;
  * unprotected behind a rule pointing elsewhere.
  */
 @Component
-public class McpEndpoint {
+public class McpEndpoint implements ExternalAccessOwnedPath {
 
   private final String path;
   private final RequestMatcher matcher;
@@ -38,6 +39,7 @@ public class McpEndpoint {
   }
 
   /** The one matcher for this path - for the filter chain and for {@link #matches}. */
+  @Override
   public RequestMatcher matcher() {
     return matcher;
   }
