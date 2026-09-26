@@ -359,12 +359,15 @@ describe('GroupManagementPage', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Mitglieder anzeigen' }))
 
     await waitFor(() => expect(mockListGroupMembers).toHaveBeenCalledWith('group-phoenix'))
-    expect(await within(dialog).findByText('Alice')).toBeInTheDocument()
-    await user.click(within(dialog).getByRole('button', { name: 'Entfernen' }))
+    const table = await within(dialog).findByRole('table', { name: 'Mitglieder' })
+    expect(within(table).getByText('Alice')).toBeInTheDocument()
+    await user.click(within(table).getByRole('button', { name: 'Alice entfernen' }))
     await waitFor(() => expect(mockRemoveGroupMember).toHaveBeenCalledWith('group-phoenix', 'u1'))
   })
 
-  it('keeps the members of a provider group read-only', async () => {
+  // Bei einer Gruppe eines Identitätsanbieters ist das Öffnen des Dialogs der ausdrückliche Wunsch:
+  // die Liste lädt sofort, der Abruf bleibt protokolliert.
+  it('loads the members of a provider group on opening and keeps them read-only', async () => {
     serve([orgUnitGroup])
     mockFetchedDetails['group-referat-50'] = orgUnitDetails
     renderPage()
@@ -373,11 +376,17 @@ describe('GroupManagementPage', () => {
     const menu = await openRowMenu(user, 'Referat 50')
     await user.click(within(menu).getByRole('menuitem', { name: 'Mitglieder' }))
     const dialog = await screen.findByRole('dialog')
-    await user.click(within(dialog).getByRole('button', { name: 'Mitglieder anzeigen' }))
 
-    expect(await within(dialog).findByText('Bob')).toBeInTheDocument()
-    expect(within(dialog).queryByRole('button', { name: 'Entfernen' })).not.toBeInTheDocument()
-    expect(within(dialog).getByText(/pflegt ihre Quelle/)).toBeInTheDocument()
+    await waitFor(() => expect(mockListGroupMembers).toHaveBeenCalledWith('group-referat-50'))
+    const table = await within(dialog).findByRole('table', { name: 'Mitglieder' })
+    expect(within(table).getByText('Bob')).toBeInTheDocument()
+    expect(within(table).getByRole('columnheader', { name: 'Mitglied seit' })).toBeInTheDocument()
+    expect(
+      within(dialog).queryByRole('button', { name: 'Mitglieder anzeigen' }),
+    ).not.toBeInTheDocument()
+    expect(within(dialog).queryByRole('button', { name: /entfernen/i })).not.toBeInTheDocument()
+    expect(within(dialog).getByText(/pflegt die Quelle/)).toBeInTheDocument()
+    expect(within(dialog).getByText(/Nachweisprotokoll/)).toBeInTheDocument()
   })
 
   it('deletes an internal group once the confirmation was answered', async () => {

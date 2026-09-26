@@ -14,10 +14,14 @@ import Typography from '@mui/material/Typography'
 import type { GroupListResponse, UserInfo } from '../../../types/api'
 import { getUsers } from '../../../services/api'
 import { selectGroupMembers, useGroupStore } from '../../../stores/groupStore'
+import GroupMembersTable from './GroupMembersTable'
 
 const AUDIT_NOTICE =
   'Der Abruf der Mitgliederliste durch die Systemverwaltung wird im Nachweisprotokoll ' +
   'festgehalten. Deshalb lädt dieser Dialog sie erst auf ausdrücklichen Wunsch.'
+
+const PROVIDER_AUDIT_NOTICE =
+  'Die Mitglieder pflegt die Quelle der Gruppe. Dieser Abruf wird im Nachweisprotokoll festgehalten.'
 
 interface GroupMembersDialogProps {
   /** The group whose members to show; the dialog is closed while this is null. */
@@ -26,10 +30,11 @@ interface GroupMembersDialogProps {
 }
 
 /**
- * Die Mitglieder einer Gruppe (#1978). Die Liste lädt erst auf ausdrücklichen Wunsch, denn ihr
- * Abruf durch die Systemverwaltung ist ein Audit-Ereignis (ADR-0036, Entscheidungen 4 und 9);
- * bis dahin steht nur die Zahl da. Mitglieder aufnehmen und entfernen lässt sich nur bei einer
- * internen Gruppe - die übrigen pflegt ihre Quelle.
+ * Die Mitglieder einer Gruppe (#1978) als Tabelle. Ihr Abruf durch die Systemverwaltung ist ein
+ * Audit-Ereignis (ADR-0036, Entscheidungen 4 und 9): Bei einer internen Gruppe lädt die Liste erst
+ * auf ausdrücklichen Wunsch, bei einer Gruppe eines Identitätsanbieters ist das Öffnen des Dialogs
+ * dieser Wunsch. Aufnehmen und entfernen lässt sich nur bei einer internen Gruppe - die übrigen
+ * pflegt ihre Quelle.
  */
 export default function GroupMembersDialog({ group, onClose }: GroupMembersDialogProps) {
   if (!group) return null
@@ -53,7 +58,7 @@ function GroupMembersDialogContent({
   const removeMember = useGroupStore((s) => s.removeMember)
   const isInternal = group.kind === 'AD_HOC'
 
-  const [requested, setRequested] = useState(false)
+  const [requested, setRequested] = useState(!isInternal)
   const [allUsers, setAllUsers] = useState<UserInfo[]>([])
   const [selectedUser, setSelectedUser] = useState<UserInfo | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -84,7 +89,7 @@ function GroupMembersDialogContent({
   }
 
   return (
-    <Dialog open fullWidth maxWidth="sm" onClose={onClose} aria-labelledby="group-members-title">
+    <Dialog open fullWidth maxWidth="md" onClose={onClose} aria-labelledby="group-members-title">
       <DialogTitle id="group-members-title">Mitglieder von „{group.name}“</DialogTitle>
       <DialogContent>
         {error && (
@@ -108,55 +113,18 @@ function GroupMembersDialogContent({
           </Box>
         ) : (
           <Stack spacing={1}>
-            {members.length === 0 && (
-              <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
-                Diese Gruppe hat keine Mitglieder.
-              </Typography>
-            )}
-            <Box
-              component="ul"
-              aria-label="Mitglieder"
-              sx={{ listStyle: 'none', m: 0, p: 0, maxHeight: 320, overflowY: 'auto' }}
-            >
-              {members.map((member) => (
-                <Box
-                  component="li"
-                  key={member.userId}
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: 1,
-                    py: 0.5,
-                    borderBottom: 1,
-                    borderColor: 'divider',
-                  }}
-                >
-                  <Typography
-                    sx={{
-                      fontSize: 13.5,
-                      ...(member.displayName ? {} : { fontFamily: 'monospace' }),
-                    }}
-                  >
-                    {member.displayName ?? member.userId}
-                  </Typography>
-                  {isInternal && (
-                    <Button
-                      color="error"
-                      size="small"
-                      onClick={() =>
-                        void run(
-                          () => removeMember(group.id, member.userId),
-                          'Entfernen des Mitglieds fehlgeschlagen',
-                        )
-                      }
-                    >
-                      Entfernen
-                    </Button>
-                  )}
-                </Box>
-              ))}
-            </Box>
+            <GroupMembersTable
+              members={members}
+              onRemove={
+                isInternal
+                  ? (member) =>
+                      void run(
+                        () => removeMember(group.id, member.userId),
+                        'Entfernen des Mitglieds fehlgeschlagen',
+                      )
+                  : undefined
+              }
+            />
             {isInternal ? (
               <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ pt: 1 }}>
                 <Autocomplete
@@ -200,7 +168,7 @@ function GroupMembersDialogContent({
               </Stack>
             ) : (
               <Typography sx={{ fontSize: 12.5, color: 'text.secondary', pt: 1 }}>
-                Die Mitglieder dieser Gruppe pflegt ihre Quelle.
+                {PROVIDER_AUDIT_NOTICE}
               </Typography>
             )}
           </Stack>
