@@ -451,7 +451,7 @@ den Grund, ebenso bei „Aufgelöst“, „Anbieter deaktiviert“ und „Nicht 
 Bibliotheken sie Rechte hat, in wie vielen Spaces sie Mitglied ist, ob ihr Bibliotheken gehören und
 ob sie Anlegerechte trägt, etwa „2 Bibliotheken · 1 Space“. Der Tooltip schlüsselt die Angabe auf;
 „nicht verwendet“ heißt, dass die Gruppe nichts davon vermittelt. Die Handlungen
-einer Gruppe stehen im Zeilenmenü: **Bearbeiten**, **Mitglieder**, **Wirkungen übertragen** und
+einer Gruppe stehen im Zeilenmenü: **Bearbeiten**, **Mitglieder**, **Rechte übertragen** und
 **Löschen**; gelöscht werden kann nur eine interne Gruppe.
 
 **Verantwortung wird abgegeben, nicht abgelegt.** Die letzte verantwortliche Person kann sich nicht
@@ -809,7 +809,7 @@ Rechte gehen, trifft ein Mensch. Ebenso wenig nimmt sie Mitgliedschaften zurück
 kompromittierter Anbieter gesetzt hat; das bleibt Handarbeit.
 
 **Wo sie steht.** In der Gruppenverwaltung (**Administration → Gruppen**) steht im Zeilenmenü jeder
-Gruppe die Handlung „Wirkungen übertragen“; für die Gruppen eines Anbieters führt die **Arbeitsliste** desselben
+Gruppe die Handlung „Rechte übertragen“; für die Gruppen eines Anbieters führt die **Arbeitsliste** desselben
 Anbieters dieselbe Handlung je Gruppe (**Administration → Identitätsanbieter → Zeilenmenü →
 Arbeitsliste der Gruppen**). Die eigene Abgabe steht unter **Einstellungen → Meine Gruppen →
 „Verantwortung und Eigentum abgeben"**. In allen drei Fällen ist der Ablauf derselbe: Ziel wählen,

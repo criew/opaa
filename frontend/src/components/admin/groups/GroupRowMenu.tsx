@@ -29,7 +29,7 @@ interface GroupRowMenuProps {
 
 /**
  * Das Zeilenmenü einer Gruppe (#1978), gebaut wie das eines Kontos: Bearbeiten, Mitglieder und
- * „Wirkungen übertragen" öffnen ihren Dialog; „Löschen" steht nachrangig unter einer Trennlinie
+ * „Rechte übertragen" öffnen ihren Dialog; „Löschen" steht nachrangig unter einer Trennlinie
  * und legt seine Konsequenz vorher im Bestätigungs-Overlay vor. Ein Eintrag, der für diese
  * Gruppe nicht gilt, ist abgeblendet und nennt den Grund.
  */
@@ -116,7 +116,7 @@ export default function GroupRowMenu({
           <ListItemIcon>
             <SwapHorizOutlinedIcon fontSize="small" />
           </ListItemIcon>
-          Wirkungen übertragen
+          Rechte übertragen
         </MenuItem>
         <Divider />
         <MenuItem

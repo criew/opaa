@@ -96,7 +96,7 @@ export default function GroupManagementPage() {
             source={{ type: 'GROUP', id: transfer.id, name: transfer.name }}
             targetKinds={['GROUP']}
             scopes={['ASSET_GRANTS', 'SPACE_MEMBERSHIPS', 'CAPABILITIES', 'OWNERSHIP']}
-            intro={`Die gewählten Wirkungen von „${transfer.name}“ gehen in einem Vorgang an die Zielgruppe. Mitgliedschaften der Gruppe werden dabei nicht verschoben.`}
+            intro={`Die gewählten Rechte von „${transfer.name}“ gehen in einem Vorgang an die Zielgruppe. Mitgliedschaften der Gruppe werden dabei nicht verschoben.`}
             onTransferred={() => void loadGroups()}
           />
         )}

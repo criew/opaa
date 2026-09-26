@@ -62,9 +62,9 @@ describe('ProviderGroupWorklistPage', () => {
     renderWorklist()
     const user = userEvent.setup()
 
-    await user.click(await screen.findByRole('button', { name: /wirkungen übertragen/i }))
+    await user.click(await screen.findByRole('button', { name: /rechte übertragen/i }))
 
-    expect(await screen.findByRole('dialog')).toHaveTextContent('Wirkungen übertragen')
+    expect(await screen.findByRole('dialog')).toHaveTextContent('Rechte übertragen')
     expect(screen.getByRole('button', { name: /vorschau erstellen/i })).toBeInTheDocument()
   })
 })

@@ -111,7 +111,7 @@ export default function ProviderGroupWorklistPage() {
                     sx={{ ml: 'auto' }}
                     onClick={() => setTransferSource(entry)}
                   >
-                    Wirkungen übertragen
+                    Rechte übertragen
                   </Button>
                 </Stack>
                 {entry.sourcePath && (
@@ -137,7 +137,7 @@ export default function ProviderGroupWorklistPage() {
             source={{ type: 'GROUP', id: transferSource.groupId, name: transferSource.name }}
             targetKinds={['GROUP']}
             scopes={['ASSET_GRANTS', 'SPACE_MEMBERSHIPS', 'CAPABILITIES', 'OWNERSHIP']}
-            intro={`Alle gewählten Wirkungen von „${transferSource.name}" gehen in einem Vorgang an die Zielgruppe. Die Vorschau ist Pflicht, die Bestätigung ausdrücklich.`}
+            intro={`Alle gewählten Rechte von „${transferSource.name}" gehen in einem Vorgang an die Zielgruppe. Die Vorschau ist Pflicht, die Bestätigung ausdrücklich.`}
             onTransferred={() => void reload()}
           />
         )}

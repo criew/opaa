@@ -70,7 +70,7 @@ export function groupStateReason(group: GroupListResponse): string | null {
 export const GROUP_DELETE_CONSEQUENCE =
   'Die Gruppe und ihre Mitgliedschaften werden entfernt; das lässt sich nicht rückgängig machen. ' +
   'Gelöscht wird nur eine Gruppe, die nichts mehr trägt – Freigaben und Eigentum gehen vorher ' +
-  'über „Wirkungen übertragen" an eine andere Gruppe.'
+  'über „Rechte übertragen" an eine andere Gruppe.'
 
 export const PROVIDER_GROUP_DELETE_REASON =
   'Gruppen aus einem Identitätsanbieter oder Verzeichnis werden dort gepflegt und verschwinden, ' +
