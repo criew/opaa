@@ -35,29 +35,25 @@ public record ProviderGroupEffects(
     return groups > 0;
   }
 
-  /** The German sentence the refusal carries; only meaningful while {@link #any()}. */
+  /**
+   * The German sentence the refusal carries, in the words of the group administration's column
+   * „Verwendung": every asset a group reaches is a library. Only meaningful while {@link #any()}.
+   */
   public String describe() {
-    String lead = groups == 1 ? "1 Gruppe wirkt noch" : groups + " Gruppen wirken noch";
+    String lead =
+        groups == 1 ? "1 Gruppe wird noch verwendet" : groups + " Gruppen werden noch verwendet";
     List<String> parts = new ArrayList<>();
     if (grants > 0) {
-      parts.add(
-          (grants == 1 ? "1 Berechtigung" : grants + " Berechtigungen")
-              + " an "
-              + (grantedAssets == 1 ? "1 Objekt" : grantedAssets + " Objekten"));
+      parts.add("Rechte an " + libraries(grantedAssets));
     }
     if (owningGroups > 0) {
       parts.add(
           owningGroups == 1
-              ? "1 Gruppe ist Eigentümerin eines Objekts"
-              : owningGroups + " Gruppen sind Eigentümerinnen eines Objekts");
+              ? "1 Gruppe ist Eigentümerin einer Bibliothek"
+              : owningGroups + " Gruppen sind Eigentümerinnen von Bibliotheken");
     }
     if (spaceMemberships > 0) {
-      parts.add(
-          (spaceMemberships == 1
-                  ? "1 Space-Mitgliedschaft"
-                  : spaceMemberships + " Space-Mitgliedschaften")
-              + " in "
-              + (spaces == 1 ? "1 Space" : spaces + " Spaces"));
+      parts.add("Mitglied in " + (spaces == 1 ? "1 Space" : spaces + " Spaces"));
     }
     if (scopedAuthorizations > 0) {
       parts.add(
@@ -67,5 +63,9 @@ public record ProviderGroupEffects(
                   : scopedAuthorizations + " Diagnose-Vollmachten"));
     }
     return parts.isEmpty() ? lead + "." : lead + ": " + String.join(", ", parts) + ".";
+  }
+
+  private static String libraries(long count) {
+    return count == 1 ? "1 Bibliothek" : count + " Bibliotheken";
   }
 }

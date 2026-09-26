@@ -264,9 +264,8 @@ class OidcProviderServiceIntegrationTest {
             thrown ->
                 assertThat(((ConflictException) thrown).getCode())
                     .isEqualTo(OidcProviderService.PROVIDER_GROUPS_IN_EFFECT))
-        .hasMessageContaining("1 Gruppe wirkt noch")
-        .hasMessageContaining("1 Berechtigung")
-        .hasMessageContaining("1 Objekt");
+        .hasMessageContaining("1 Gruppe wird noch verwendet")
+        .hasMessageContaining("Rechte an 1 Bibliothek");
     assertThat(repository.findById(partner.getId())).isPresent();
     assertThat(groupRepository.findById(group.getId())).isPresent();
   }
@@ -289,7 +288,7 @@ class OidcProviderServiceIntegrationTest {
             thrown ->
                 assertThat(((ConflictException) thrown).getCode())
                     .isEqualTo(OidcProviderService.PROVIDER_GROUPS_IN_EFFECT))
-        .hasMessageContaining("1 Gruppe wirkt noch")
+        .hasMessageContaining("1 Gruppe wird noch verwendet")
         .hasMessageContaining("Geltungsbereich von 1 Diagnose-Vollmacht");
     assertThat(repository.findById(partner.getId())).isPresent();
     assertThat(
@@ -318,7 +317,7 @@ class OidcProviderServiceIntegrationTest {
             thrown ->
                 assertThat(((ConflictException) thrown).getCode())
                     .isEqualTo(OidcProviderService.PROVIDER_GROUPS_IN_EFFECT))
-        .hasMessageContaining("1 Gruppe wirkt noch");
+        .hasMessageContaining("1 Gruppe wird noch verwendet");
     assertThat(repository.findById(partner.getId())).isPresent();
     assertThat(groupRepository.findById(group.getId())).isPresent();
   }
