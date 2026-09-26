@@ -20,7 +20,7 @@ import { getUsers } from '../services/api'
 import { getGroupEffects } from '../services/permissionTransferApi'
 import { confirmAction } from '../stores/confirmStore'
 import { useAuthStore } from '../stores/authStore'
-import { useGroupStore } from '../stores/groupStore'
+import { selectGroupMembers, useGroupStore } from '../stores/groupStore'
 import { groupKindLabel } from '../utils/labels'
 import CreateGroupDialog from '../components/CreateGroupDialog'
 import GroupContactsSection from '../components/groups/GroupContactsSection'
@@ -51,7 +51,8 @@ function GroupCard({
 }) {
   const currentUserId = useAuthStore((s) => s.user?.id)
   const details = useGroupStore((s) => s.groupDetails[group.id])
-  const loadGroupDetails = useGroupStore((s) => s.loadGroupDetails)
+  const members = useGroupStore(selectGroupMembers(group.id))
+  const loadGroupMembers = useGroupStore((s) => s.loadGroupMembers)
   const renameGroup = useGroupStore((s) => s.renameGroup)
   const deleteExistingGroup = useGroupStore((s) => s.deleteExistingGroup)
   const addMember = useGroupStore((s) => s.addMember)
@@ -76,10 +77,10 @@ function GroupCard({
   // Der Abruf der Mitgliederliste durch die Systemverwaltung ist ein Audit-Ereignis (ADR-0036,
   // Entscheidung 4/9) - er geschieht deshalb erst auf ausdrücklichen Wunsch, nicht beim Aufklappen.
   useEffect(() => {
-    if (membersRequested && !details) {
-      void loadGroupDetails(group.id)
+    if (membersRequested && !members) {
+      void loadGroupMembers(group.id)
     }
-  }, [membersRequested, details, group.id, loadGroupDetails])
+  }, [membersRequested, members, group.id, loadGroupMembers])
 
   useEffect(() => {
     if (membersRequested) {
@@ -90,9 +91,9 @@ function GroupCard({
   }, [membersRequested])
 
   const availableUsers = useMemo(() => {
-    const memberIds = new Set(details?.members.map((m) => m.userId) ?? [])
+    const memberIds = new Set(members?.map((m) => m.userId) ?? [])
     return allUsers.filter((u) => !memberIds.has(u.id))
-  }, [allUsers, details?.members])
+  }, [allUsers, members])
 
   return (
     <Accordion expanded={expanded} onChange={(_event, isExpanded) => setExpanded(isExpanded)}>
@@ -229,7 +230,7 @@ function GroupCard({
             <GroupContactsSection
               groupId={group.id}
               contacts={details?.contacts ?? group.contacts ?? []}
-              members={details?.members}
+              members={members}
               currentUserId={currentUserId}
             />
           </>
@@ -305,7 +306,7 @@ function GroupCard({
           </Stack>
         ) : (
           <Stack spacing={1}>
-            {(details?.members ?? []).map((member) => (
+            {(members ?? []).map((member) => (
               <Box
                 key={member.userId}
                 sx={{

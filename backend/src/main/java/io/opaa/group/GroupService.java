@@ -173,7 +173,7 @@ public class GroupService {
     // "Nachfolge offen" state of ADR-0036, Entscheidung 6, and creating one is not how it should
     // ever be entered.
     appoint(saved, caller.id(), caller);
-    return toGroupDetail(saved);
+    return toGroupDetail(saved, caller);
   }
 
   public List<GroupOverview> listGroups(CurrentUser caller) {
@@ -475,9 +475,9 @@ public class GroupService {
     if (!caller.isSystemAdmin()
         && !stewardRepository.existsByGroupIdAndUserId(groupId, caller.id())
         && contactService.isContact(groupId, caller.id())) {
-      return toGroupDetail(loadGroup(groupId, caller));
+      return toGroupDetail(loadGroup(groupId, caller), caller);
     }
-    return toGroupDetail(requireMaintainable(groupId, caller));
+    return toGroupDetail(requireMaintainable(groupId, caller), caller);
   }
 
   /** The provider groups the caller is the contact point of - their half of "Meine Gruppen". */
@@ -574,7 +574,7 @@ public class GroupService {
       groupRepository.save(group);
       recordReachEvent(AuditEventType.GROUP_RELEASE_CHANGED, group, "releasedForUse", caller);
     }
-    return toGroupDetail(group);
+    return toGroupDetail(group, caller);
   }
 
   /**
@@ -595,7 +595,7 @@ public class GroupService {
       groupRepository.save(group);
       recordReachEvent(AuditEventType.GROUP_PROTECTION_CHANGED, group, "protected", caller);
     }
-    return toGroupDetail(group);
+    return toGroupDetail(group, caller);
   }
 
   /**
@@ -671,7 +671,7 @@ public class GroupService {
               .outcome(AuditOutcome.SUCCESS)
               .build());
     }
-    return toGroupDetail(updated);
+    return toGroupDetail(updated, caller);
   }
 
   @Transactional
@@ -760,8 +760,7 @@ public class GroupService {
   public List<GroupMemberView> listMembers(UUID groupId, CurrentUser caller) {
     Group group = requireMaintainable(groupId, caller);
     List<GroupMemberView> members = toGroupMemberViews(group);
-    if (caller.isSystemAdmin()
-        && !stewardRepository.existsByGroupIdAndUserId(groupId, caller.id())) {
+    if (readsAsAdministration(groupId, caller)) {
       auditEventRecorder.recordUserAction(
           AuditEvent.builder()
               .organizationId(group.getOrganizationId())
@@ -1066,10 +1065,19 @@ public class GroupService {
         .toList();
   }
 
-  private GroupDetail toGroupDetail(Group group) {
+  private boolean readsAsAdministration(UUID groupId, CurrentUser caller) {
+    return AdministrationReads.readsAsAdministration(stewardRepository, groupId, caller);
+  }
+
+  /**
+   * The detail every read and write path answers with. Its member list is withheld ({@code null})
+   * from a caller reading as the administration, so no answer bypasses the recorded {@link
+   * #listMembers}.
+   */
+  private GroupDetail toGroupDetail(Group group, CurrentUser caller) {
     return new GroupDetail(
         group,
-        toGroupMemberViews(group),
+        readsAsAdministration(group.getId(), caller) ? null : toGroupMemberViews(group),
         toStewardViews(stewardsOf(group.getId())),
         contactService.contactsOf(group.getId()),
         providerOf(group));

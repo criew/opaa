@@ -433,6 +433,34 @@ class GroupStewardshipIntegrationTest {
         .contains("\"memberCount\":1");
   }
 
+  /**
+   * The recorded {@code listMembers} is the administration's only way to the names: the group
+   * detail and every write path answering with it withhold the list from a system administrator who
+   * stewards none of the group, while the member count stays. Regression guard for #1989.
+   */
+  @Test
+  void theGroupDetailWithholdsTheMembersFromTheAdministration() {
+    CurrentUser steward = grantInternalGroupCapability(regularUser());
+    UUID groupId =
+        groupService.createGroup(new GroupCreation("Personalrat", null), steward).group().getId();
+    groupService.addMember(groupId, regularUser(), steward);
+    CurrentUser admin = currentUserOf(systemAdmin());
+
+    assertThat(groupService.getGroup(groupId, admin).members()).isNull();
+    assertThat(groupService.getGroup(groupId, admin).group().getMemberships()).hasSize(1);
+    assertThat(
+            groupService
+                .updateGroup(groupId, new GroupUpdate("Personalrat neu", null), admin)
+                .members())
+        .isNull();
+    assertThat(groupService.setRelease(groupId, true, admin).members()).isNull();
+    assertThat(auditCount(groupId, AuditEventType.GROUP_MEMBERS_READ)).isZero();
+
+    assertThat(groupService.getGroup(groupId, steward).members())
+        .as("a steward keeps seeing the list they maintain")
+        .hasSize(1);
+  }
+
   /** A system administrator who is a steward acts as a steward, not as the administration. */
   @Test
   void anAdministratorWhoIsAStewardReadsTheirOwnGroupWithoutAnEntry() {
@@ -441,10 +469,14 @@ class GroupStewardshipIntegrationTest {
         groupService.createGroup(new GroupCreation("Personalrat", null), steward).group().getId();
     CurrentUser admin = currentUserOf(systemAdmin());
     groupService.appointSteward(groupId, admin.id(), steward);
+    groupService.addMember(groupId, regularUser(), steward);
 
     groupService.listMembers(groupId, admin);
 
     assertThat(auditCount(groupId, AuditEventType.GROUP_MEMBERS_READ)).isZero();
+    assertThat(groupService.getGroup(groupId, admin).members())
+        .as("the detail withholds nothing from an administrator who stewards the group")
+        .hasSize(1);
   }
 
   // -------------------------------------------------------------------------------------------

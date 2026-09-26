@@ -1466,7 +1466,10 @@ export const mockSelectableGroups: SelectableGroupResponse[] = [
   },
 ]
 
-export const mockGroupDetails: Record<string, GroupResponse> = {
+/** The mock's stored groups always carry their list; only the answer withholds it. */
+type MockGroupDetail = GroupResponse & { members: NonNullable<GroupResponse['members']> }
+
+export const mockGroupDetails: Record<string, MockGroupDetail> = {
   'group-phoenix': {
     id: 'group-phoenix',
     name: 'Projektbeteiligte Phoenix',
