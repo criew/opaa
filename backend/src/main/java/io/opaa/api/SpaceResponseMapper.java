@@ -2,6 +2,7 @@ package io.opaa.api;
 
 import io.opaa.api.dto.SpaceListResponse;
 import io.opaa.api.dto.SpaceMemberResponse;
+import io.opaa.api.dto.SpaceMembershipCountsResponse;
 import io.opaa.api.dto.SpaceResponse;
 import io.opaa.api.types.SpaceRole;
 import io.opaa.permission.GroupSizeSignal;
@@ -78,6 +79,7 @@ final class SpaceResponseMapper {
             space.isDefault(),
             space.isArchived(),
             space.getMemberships().size(),
+            toMembershipCounts(space),
             space.getCreatedAt(),
             space.getUpdatedAt())
         .description(space.getDescription())
@@ -87,6 +89,14 @@ final class SpaceResponseMapper {
         .succession(SuccessionResponseMapper.toStateResponse(overview.succession()))
         .libraryCount(overview.libraryCount())
         .chatCount(overview.chatCount());
+  }
+
+  /** Membership rows per subject type; a group row counts once, whatever its size. */
+  private static SpaceMembershipCountsResponse toMembershipCounts(Space space) {
+    List<SpaceMembership> memberships = space.getMemberships();
+    return new SpaceMembershipCountsResponse(
+        (int) memberships.stream().filter(SpaceMembership::isGroupSubject).count(),
+        (int) memberships.stream().filter(SpaceMembership::isUserSubject).count());
   }
 
   static List<SpaceListResponse> toListResponses(List<SpaceOverview> overviews) {
