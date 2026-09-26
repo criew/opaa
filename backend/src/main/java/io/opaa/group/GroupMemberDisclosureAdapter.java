@@ -96,8 +96,7 @@ class GroupMemberDisclosureAdapter implements GroupMemberDisclosureDirectory {
    * through the group administration or through an object.
    */
   private void recordSystemAdminRetrieval(Group group, CurrentUser caller, int activeMembers) {
-    if (!caller.isSystemAdmin()
-        || stewardRepository.existsByGroupIdAndUserId(group.getId(), caller.id())) {
+    if (!AdministrationReads.readsAsAdministration(stewardRepository, group.getId(), caller)) {
       return;
     }
     auditEventRecorder.recordUserAction(

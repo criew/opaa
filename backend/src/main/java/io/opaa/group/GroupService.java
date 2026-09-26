@@ -1065,13 +1065,8 @@ public class GroupService {
         .toList();
   }
 
-  /**
-   * Whether the caller reads a group as the administration rather than as one of its stewards - the
-   * case in which the member list is an audit event and only {@link #listMembers} hands it out.
-   */
   private boolean readsAsAdministration(UUID groupId, CurrentUser caller) {
-    return caller.isSystemAdmin()
-        && !stewardRepository.existsByGroupIdAndUserId(groupId, caller.id());
+    return AdministrationReads.readsAsAdministration(stewardRepository, groupId, caller);
   }
 
   /**

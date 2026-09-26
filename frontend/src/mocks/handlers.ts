@@ -1353,8 +1353,8 @@ export const handlers = [
     return HttpResponse.json(group.protectedGroup ? { ...group, name: null } : group)
   }),
 
-  // Wie im Backend (#1989): Die Mock-Nutzerin ist Systemverwaltung; wo sie nicht verantwortlich ist,
-  // bleibt die Liste im Detail aus und kommt nur über den protokollierten Endpunkt '/members'.
+  // As in the backend, the mock user reads as the administration: where they steward nothing, the
+  // detail withholds the list and only the recorded '/members' endpoint hands it out.
   http.get('/api/v1/groups/:groupId', ({ params }) => {
     const groupId = String(params.groupId)
     const group = mockGroupDetails[groupId]

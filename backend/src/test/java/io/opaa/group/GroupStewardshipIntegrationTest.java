@@ -469,10 +469,14 @@ class GroupStewardshipIntegrationTest {
         groupService.createGroup(new GroupCreation("Personalrat", null), steward).group().getId();
     CurrentUser admin = currentUserOf(systemAdmin());
     groupService.appointSteward(groupId, admin.id(), steward);
+    groupService.addMember(groupId, regularUser(), steward);
 
     groupService.listMembers(groupId, admin);
 
     assertThat(auditCount(groupId, AuditEventType.GROUP_MEMBERS_READ)).isZero();
+    assertThat(groupService.getGroup(groupId, admin).members())
+        .as("the detail withholds nothing from an administrator who stewards the group")
+        .hasSize(1);
   }
 
   // -------------------------------------------------------------------------------------------
