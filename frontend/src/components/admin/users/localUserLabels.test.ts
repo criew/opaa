@@ -45,13 +45,13 @@ describe('localUserLabels', () => {
     expect(localAccountStateText(account({ status: 'INVITED' }))).toBe('Eingeladen')
     expect(localAccountStateText(account({ status: 'EXPIRED' }))).toBe('Abgelaufen')
     expect(localAccountStateText(account({ status: 'LOCKED', lockedReason: 'ADMIN' }))).toBe(
-      'Gesperrt (Verwalter)',
+      'Gesperrt von der Verwaltung',
     )
     expect(
       localAccountStateText(account({ status: 'LOCKED', lockedReason: 'FAILED_LOGINS' })),
-    ).toBe('Gesperrt (Fehlversuche)')
+    ).toBe('Gesperrt nach Fehlversuchen')
     expect(localAccountStateText(account({ status: 'LOCKED', lockedReason: 'INACTIVITY' }))).toBe(
-      'Gesperrt (Inaktivität)',
+      'Gesperrt wegen Inaktivität',
     )
   })
 

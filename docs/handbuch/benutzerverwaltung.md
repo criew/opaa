@@ -118,11 +118,11 @@ Handlung; ein optionaler Satz aus dem Sperrdialog wird darin zitiert.
 
 Drei Dinge sperren ein Konto:
 
-| Anlass | Wer hebt sie auf | Nachricht an die Person |
-|---|---|---|
-| **Die Verwaltung** | Die Verwaltung, über „Entsperren" | ja |
-| **Fehlversuche** — mehrere falsche Passwörter in Folge | Sie endet nach kurzer Zeit von selbst; „Entsperren" hebt sie sofort auf; ein eingelöster Rücksetzlink ebenfalls | nein |
-| **Inaktivität** — das Konto war lange nicht in Gebrauch | Die Verwaltung, über „Entsperren" | ja |
+| Anlass | Anzeige in der Spalte „Zustand" | Wer hebt sie auf | Nachricht an die Person |
+|---|---|---|---|
+| **Die Verwaltung** | Gesperrt von der Verwaltung | Die Verwaltung, über „Entsperren" | ja |
+| **Fehlversuche** — mehrere falsche Passwörter in Folge | Gesperrt nach Fehlversuchen | Sie endet nach kurzer Zeit von selbst; „Entsperren" hebt sie sofort auf; ein eingelöster Rücksetzlink ebenfalls | nein |
+| **Inaktivität** — das Konto war lange nicht in Gebrauch | Gesperrt wegen Inaktivität | Die Verwaltung, über „Entsperren" | ja |
 
 Die Fehlversuch-Sperre schickt **bewusst keine** Nachricht: Sie wäre sonst ein Belästigungskanal für
 jeden, der eine Adresse kennt. Sie schneidet die Selbsthilfe auch nicht ab — „Passwort vergessen"

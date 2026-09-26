@@ -139,7 +139,7 @@ describe('UserManagementPage', () => {
     const table = await screen.findByRole('table', { name: 'Konten' })
     // local rows: state and marker; neither activity class nor creation reason (#1978)
     expect(within(table).getByText('Eingeladen')).toBeInTheDocument()
-    expect(within(table).getByText('Gesperrt (Verwalter)')).toBeInTheDocument()
+    expect(within(table).getByText('Gesperrt von der Verwaltung')).toBeInTheDocument()
     expect(within(table).getByText('Abgelaufen')).toBeInTheDocument()
     expect(within(table).getByText('Passwortwechsel ausstehend')).toBeInTheDocument()
     expect(within(table).queryByText(/Tage nicht|^nie$|^aktiv$/)).not.toBeInTheDocument()
@@ -479,7 +479,9 @@ describe('UserManagementPage', () => {
     await user.click(within(sperrfrage).getByRole('button', { name: 'Sperren' }))
 
     await waitFor(() =>
-      expect(within(rowOf('T. Klein')).getByText('Gesperrt (Verwalter)')).toBeInTheDocument(),
+      expect(
+        within(rowOf('T. Klein')).getByText('Gesperrt von der Verwaltung'),
+      ).toBeInTheDocument(),
     )
 
     const lockedMenu = await openRowMenu(user, 'T. Klein')
