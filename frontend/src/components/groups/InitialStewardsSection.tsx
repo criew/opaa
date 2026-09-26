@@ -79,7 +79,11 @@ export default function InitialStewardsSection({
             </Box>
           )
         })}
-        <Stack direction={{ xs: 'column', md: 'row' }} spacing={1} sx={{ pt: 1 }}>
+        <Stack
+          direction={{ xs: 'column', md: 'row' }}
+          spacing={1}
+          sx={{ pt: 1, alignItems: { md: 'center' } }}
+        >
           <UserPicker
             ariaLabel="Verantwortliche Person"
             placeholder="Person suchen …"
@@ -88,7 +92,13 @@ export default function InitialStewardsSection({
             grow
             excludedUserIds={stewards.map((steward) => steward.id)}
           />
-          <Button variant="outlined" size="small" disabled={!selected} onClick={add}>
+          <Button
+            sx={{ flexShrink: 0 }}
+            variant="outlined"
+            size="small"
+            disabled={!selected}
+            onClick={add}
+          >
             Als verantwortlich benennen
           </Button>
         </Stack>
