@@ -410,7 +410,7 @@ describe('UserManagementPage', () => {
     expect(once).toHaveTextContent('Mock-Anfangs-Passwort-7Q2')
     expect(screen.getByText(/erscheint nur einmal/)).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Übergeben, schließen' }))
+    await user.click(screen.getByRole('button', { name: 'Schließen' }))
     expect(screen.queryByTestId('generated-password-value')).not.toBeInTheDocument()
   }, 20000)
 
@@ -434,7 +434,7 @@ describe('UserManagementPage', () => {
     expect(link).toHaveTextContent('token=')
     expect(screen.getByText(/Der Versand ist fehlgeschlagen/)).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Übergeben, schließen' }))
+    await user.click(screen.getByRole('button', { name: 'Schließen' }))
     expect(screen.queryByTestId('setup-link-value')).not.toBeInTheDocument()
   }, 20000)
 

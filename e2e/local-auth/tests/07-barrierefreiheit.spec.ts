@@ -107,7 +107,7 @@ test.describe("Barrierefreiheit der lokalen Anmeldung (axe-core)", () => {
     await expect(handover).toBeVisible();
     await expectNoSeriousA11yViolations(admin, "Dialog „Passwort übergeben“");
     const initial = (await admin.getByTestId("generated-password-value").innerText()).trim();
-    await handover.getByRole("button", { name: "Übergeben, schließen" }).click();
+    await handover.getByRole("button", { name: "Schließen" }).click();
 
     const userContext = await browser.newContext();
     const user = await userContext.newPage();

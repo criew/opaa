@@ -146,7 +146,7 @@ test.describe("Einladung, Passwort setzen, erste Anmeldung", () => {
     await expect(handover).toBeVisible();
     const initialPassword = (await admin.getByTestId("generated-password-value").innerText()).trim();
     expect(initialPassword.length).toBeGreaterThan(0);
-    await handover.getByRole("button", { name: "Übergeben, schließen" }).click();
+    await handover.getByRole("button", { name: "Schließen" }).click();
 
     const userContext = await browser.newContext();
     const user = await userContext.newPage();

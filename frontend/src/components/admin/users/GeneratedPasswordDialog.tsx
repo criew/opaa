@@ -79,7 +79,7 @@ export default function GeneratedPasswordDialog({
             Passwort kopieren
           </Button>
           <Button variant="contained" onClick={onClose}>
-            Übergeben, schließen
+            Schließen
           </Button>
         </Stack>
       </DialogActions>

@@ -91,7 +91,7 @@ export default function SetupLinkDialog({
             Link kopieren
           </Button>
           <Button variant="contained" onClick={onClose}>
-            Übergeben, schließen
+            Schließen
           </Button>
         </Stack>
       </DialogActions>
