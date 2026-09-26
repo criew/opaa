@@ -15,6 +15,7 @@ import { useTheme } from '@mui/material/styles'
 import visuallyHidden from '@mui/utils/visuallyHidden'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import WarningAmberIcon from '@mui/icons-material/WarningAmber'
 import type { AccountResponse, LocalAccountState, LocalUserResponse } from '../../../types/api'
 import { useUserAdminStore } from '../../../stores/userAdminStore'
@@ -27,10 +28,11 @@ import ProviderAccountRowMenu from './ProviderAccountRowMenu'
 import type { SetupLinkHandover } from './SetupLinkDialog'
 import { NOT_APPLICABLE, providerStateHint, providerStateText } from './accountLabels'
 import {
+  LOCAL_ACCOUNT_STATE_LABEL,
   PASSWORD_CHANGE_REASON_LABEL,
   SYSTEM_ROLE_LABEL,
   formatExpiry,
-  localAccountStateText,
+  lockReasonText,
 } from './localUserLabels'
 
 const STATE_DOT_COLOR: Record<LocalAccountState, string> = {
@@ -40,8 +42,36 @@ const STATE_DOT_COLOR: Record<LocalAccountState, string> = {
   EXPIRED: 'warning.main',
 }
 
+/**
+ * The reason of a lock behind an info symbol, so the state stays one word on one line. The symbol
+ * is focusable and carries the reason as its name: the tooltip opens on hover and on keyboard
+ * focus, and a screen reader announces the reason without it.
+ */
+function LockReasonInfo({ reason }: { reason: string }) {
+  return (
+    <Tooltip title={reason}>
+      <Box
+        component="span"
+        role="img"
+        tabIndex={0}
+        aria-label={`Sperrgrund: ${reason}`}
+        sx={{
+          display: 'inline-flex',
+          color: 'text.secondary',
+          borderRadius: '50%',
+          cursor: 'help',
+          '&:focus-visible': { outline: 2, outlineColor: 'primary.main', outlineOffset: 1 },
+        }}
+      >
+        <InfoOutlinedIcon aria-hidden sx={{ fontSize: 15 }} />
+      </Box>
+    </Tooltip>
+  )
+}
+
 /** Meaning-only colour: a dot next to the word, never a coloured chip (guidelines 1.2, 5.5). */
 function LocalStateCell({ user }: { user: LocalUserResponse }) {
+  const reason = lockReasonText(user)
   return (
     <Box sx={{ minWidth: 0 }}>
       <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
@@ -57,8 +87,9 @@ function LocalStateCell({ user }: { user: LocalUserResponse }) {
           }}
         />
         <Typography component="span" sx={{ fontSize: 13, fontWeight: 500 }}>
-          {localAccountStateText(user)}
+          {LOCAL_ACCOUNT_STATE_LABEL[user.status]}
         </Typography>
+        {reason && <LockReasonInfo reason={reason} />}
       </Stack>
       {user.passwordChangeRequired && (
         <Box sx={{ mt: 0.5 }}>

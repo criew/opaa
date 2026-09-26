@@ -5,7 +5,7 @@ import {
   defaultExpiryInputValue,
   formatExpiry,
   fromDateInputValue,
-  localAccountStateText,
+  lockReasonText,
   localUserErrorMessage,
   toDateInputValue,
 } from './localUserLabels'
@@ -40,18 +40,17 @@ function apiError(message: string, data: unknown, status = 409): Error {
 }
 
 describe('localUserLabels', () => {
-  it('names the lock reason as part of the state', () => {
-    expect(localAccountStateText(account())).toBe('Aktiv')
-    expect(localAccountStateText(account({ status: 'INVITED' }))).toBe('Eingeladen')
-    expect(localAccountStateText(account({ status: 'EXPIRED' }))).toBe('Abgelaufen')
-    expect(localAccountStateText(account({ status: 'LOCKED', lockedReason: 'ADMIN' }))).toBe(
-      'Gesperrt von der Verwaltung',
+  it('names the lock reason of a locked account only', () => {
+    expect(lockReasonText(account())).toBeNull()
+    expect(lockReasonText(account({ status: 'INVITED' }))).toBeNull()
+    expect(lockReasonText(account({ status: 'LOCKED', lockedReason: 'ADMIN' }))).toBe(
+      'Von der Verwaltung gesperrt',
     )
-    expect(
-      localAccountStateText(account({ status: 'LOCKED', lockedReason: 'FAILED_LOGINS' })),
-    ).toBe('Gesperrt nach Fehlversuchen')
-    expect(localAccountStateText(account({ status: 'LOCKED', lockedReason: 'INACTIVITY' }))).toBe(
-      'Gesperrt wegen Inaktivität',
+    expect(lockReasonText(account({ status: 'LOCKED', lockedReason: 'FAILED_LOGINS' }))).toBe(
+      'Nach mehreren falschen Passwörtern gesperrt',
+    )
+    expect(lockReasonText(account({ status: 'LOCKED', lockedReason: 'INACTIVITY' }))).toBe(
+      'Wegen Inaktivität gesperrt',
     )
   })
 

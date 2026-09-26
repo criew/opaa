@@ -20,18 +20,17 @@ export const LOCAL_ACCOUNT_STATE_LABEL: Record<LocalAccountState, string> = {
   EXPIRED: 'Abgelaufen',
 }
 
-/** The cause of a lock, phrased to follow „Gesperrt" - it says who or what locked the account. */
+/** Who or what locked the account - shown behind „Gesperrt" as a tooltip, not in the cell. */
 export const LOCK_REASON_LABEL: Record<LockReason, string> = {
-  ADMIN: 'von der Verwaltung',
-  FAILED_LOGINS: 'nach Fehlversuchen',
-  INACTIVITY: 'wegen Inaktivität',
+  ADMIN: 'Von der Verwaltung gesperrt',
+  FAILED_LOGINS: 'Nach mehreren falschen Passwörtern gesperrt',
+  INACTIVITY: 'Wegen Inaktivität gesperrt',
 }
 
-/** „Gesperrt von der Verwaltung" - the lock reason belongs to the state, not to a second column. */
-export function localAccountStateText(user: LocalUserResponse): string {
-  const label = LOCAL_ACCOUNT_STATE_LABEL[user.status]
-  if (user.status !== 'LOCKED' || !user.lockedReason) return label
-  return `${label} ${LOCK_REASON_LABEL[user.lockedReason]}`
+/** The cause of a lock, or `null` for an account that is not locked. */
+export function lockReasonText(user: LocalUserResponse): string | null {
+  if (user.status !== 'LOCKED' || !user.lockedReason) return null
+  return LOCK_REASON_LABEL[user.lockedReason]
 }
 
 export const PASSWORD_CHANGE_REASON_LABEL: Record<PasswordChangeReason, string> = {

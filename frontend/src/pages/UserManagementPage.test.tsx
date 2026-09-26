@@ -132,14 +132,19 @@ describe('UserManagementPage', () => {
     expect(await screen.findByRole('table', { name: 'Konten' })).toBeInTheDocument()
   })
 
-  it('lists local and provider accounts with their origin, state, activity class and reason', async () => {
+  it('lists local and provider accounts with their origin and state', async () => {
     signInAs('SYSTEM_ADMIN')
     renderAccounts()
 
     const table = await screen.findByRole('table', { name: 'Konten' })
     // local rows: state and marker; neither activity class nor creation reason (#1978)
     expect(within(table).getByText('Eingeladen')).toBeInTheDocument()
-    expect(within(table).getByText('Gesperrt von der Verwaltung')).toBeInTheDocument()
+    // Nur „Gesperrt“ in der Zelle, der Grund hinter dem Info-Symbol (#1978)
+    expect(within(table).getAllByText('Gesperrt').length).toBeGreaterThan(0)
+    expect(within(table).queryByText(/Gesperrt (von|nach|wegen)|\(Verwalter\)/)).toBeNull()
+    expect(
+      within(table).getAllByRole('img', { name: 'Sperrgrund: Von der Verwaltung gesperrt' }).length,
+    ).toBeGreaterThan(0)
     expect(within(table).getByText('Abgelaufen')).toBeInTheDocument()
     expect(within(table).getByText('Passwortwechsel ausstehend')).toBeInTheDocument()
     expect(within(table).queryByText(/Tage nicht|^nie$|^aktiv$/)).not.toBeInTheDocument()
@@ -480,9 +485,15 @@ describe('UserManagementPage', () => {
 
     await waitFor(() =>
       expect(
-        within(rowOf('T. Klein')).getByText('Gesperrt von der Verwaltung'),
+        within(rowOf('T. Klein')).getByRole('img', {
+          name: 'Sperrgrund: Von der Verwaltung gesperrt',
+        }),
       ).toBeInTheDocument(),
     )
+    // der Grund erscheint beim Überfahren als Tooltip
+    await user.hover(within(rowOf('T. Klein')).getByRole('img', { name: /^Sperrgrund:/ }))
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Von der Verwaltung gesperrt')
+    await user.unhover(within(rowOf('T. Klein')).getByRole('img', { name: /^Sperrgrund:/ }))
 
     const lockedMenu = await openRowMenu(user, 'T. Klein')
     expect(within(lockedMenu).queryByRole('menuitem', { name: 'Sperren' })).not.toBeInTheDocument()
