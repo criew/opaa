@@ -324,7 +324,7 @@ Tintfläche (`bg-3`), **keine Signalfarben**. Feste Wortlisten:
 - **Rollen:** Leser · Bearbeiter · Verwalter · Eigentümer
 - **Verteilungsstufen:** privat · geteilt · organisationsweit
 - **Herkunft:** Upload · Dateisystem · Webverzeichnis · RSS-Feed · Confluence · S3-Objektspeicher
-- **Space-Art:** Persönlich · Team
+- **Asset-Art:** Wissen · Prompts
 
 Ein laufender Vorgang („Lauf läuft · 62 %") ist Text mit Fortschrittsangabe in `fg-2`, kein
 farbiger Chip.

@@ -94,7 +94,7 @@ aus dem Gespräch, nicht an dessen Titel. Statt eines Filterfelds steht deshalb 
 
 | Abschnitt | Enthält |
 |---|---|
-| **Angeheftet** | alle angehefteten Chats, zuletzt angeheftet oben; einklappbar |
+| **Angeheftet** | alle angehefteten Chats, zuletzt angeheftet oben; immer offen |
 | **Zuletzt verwendet** | alle übrigen Chats nach letzter Aktivität, die jüngsten 15 sichtbar |
 
 - „15 weitere anzeigen" blendet die nächste Seite ein — die letzte nennt ihre tatsächliche Zahl;
