@@ -230,8 +230,10 @@ interface RowProps extends RowHandlers {
   isSelf: boolean
 }
 
+/** A local account without a date is „unbefristet"; a provider account has no expiry here. */
 function expiryText(account: AccountResponse): string {
-  return account.local ? formatExpiry(account.local.expiresAt) : NOT_APPLICABLE
+  if (!account.local) return NOT_APPLICABLE
+  return account.local.expiresAt ? formatExpiry(account.local.expiresAt) : 'unbefristet'
 }
 
 /** The menu of the row: the local one with its acts, the provider one with the role only. */

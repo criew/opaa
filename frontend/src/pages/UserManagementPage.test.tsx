@@ -143,6 +143,9 @@ describe('UserManagementPage', () => {
     expect(within(table).getByText('Abgelaufen')).toBeInTheDocument()
     expect(within(table).getByText('Passwortwechsel ausstehend')).toBeInTheDocument()
     expect(within(table).queryByText(/Tage nicht|^nie$|^aktiv$/)).not.toBeInTheDocument()
+    // lokale Konten ohne Datum heißen „unbefristet“, Anbieterkonten tragen keinen Ablauf
+    expect(within(table).getAllByText('unbefristet').length).toBeGreaterThan(0)
+    expect(within(rowOf('Maria Weber')).queryByText('unbefristet')).not.toBeInTheDocument()
     expect(within(table).getByRole('columnheader', { name: /Ablauf/ })).not.toHaveTextContent(
       /Aktivität/,
     )
