@@ -13,18 +13,21 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * The two precondition-guarded changeSets at the end of {@code changes/001-baseline.yaml}: the
- * expression indexes on {@code vector_store}'s {@code metadata->>'library_id'} and {@code
+ * The two precondition-guarded changeSets of {@code changes/001-baseline.yaml}: the expression
+ * indexes on {@code vector_store}'s {@code metadata->>'library_id'} and {@code
  * metadata->>'document_id'}. {@code vector_store} is created by Spring AI at application startup,
  * never by Liquibase, so their {@code tableExists} precondition fails on a genuinely fresh install;
  * {@code onFail: CONTINUE} skips them without recording them as executed, and Liquibase retries
  * them on the next start. That mechanic is live behaviour, not a historical transition, which is
- * why these two changeSets stay separate from the grouped ones and keep a test of their own.
+ * why these two changeSets stay separate from the module changeSets and keep a test of their own.
  */
 class VectorStoreExpressionIndexTest extends AbstractMigrationTest {
 
   private static final String BASELINE_PATH = "db/changelog/test-master-through-baseline.yaml";
-  private static final List<String> CHANGESET_IDS = List.of("001-baseline-n", "001-baseline-o");
+  private static final List<String> CHANGESET_IDS =
+      List.of(
+          "001-baseline-knowledge-vector-store-library-id",
+          "001-baseline-knowledge-vector-store-document-id");
   private static final List<String> INDEX_NAMES =
       List.of("idx_vector_store_library_id", "idx_vector_store_document_id");
 

@@ -186,10 +186,9 @@ class AssetGrantServiceTest {
   }
 
   /**
-   * One of the two application-side checks replacing {@code fk_asset_grants_library_organization}
-   * (#1811, see {@code changes/038-asset-grants-type-independent.yaml}): the grant takes its asset
-   * reference and its organization from the loaded library, never from the request, so a grant can
-   * still not name an asset of another organization.
+   * The grant takes its asset reference and its organization from the loaded library, never from
+   * the request, so the service itself never names an asset of another organization - before {@code
+   * fk_asset_grants_asset_organization} would refuse it.
    */
   @Test
   void aNewGrantTakesAssetTypeAssetIdAndOrganizationFromTheLoadedLibrary() {

@@ -15,8 +15,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * The audit privilege model ADR-0015 describes, as the baseline's group (j) establishes it -
- * ownership of {@code audit_log}/{@code audit_actor_pseudonyms}/{@code audit_retention_settings}
+ * The audit privilege model ADR-0015 describes, as the baseline's identity changeSet establishes it
+ * - ownership of {@code audit_log}/{@code audit_actor_pseudonyms}/{@code audit_retention_settings}
  * moved to the restricted {@code opaa_audit_owner} role, with the migration/application account
  * left only the narrow grants that group hands out. The sibling of {@link
  * DiagnosticContextPrivilegeModelTest}, which does the same for the second protocol using this
@@ -33,13 +33,13 @@ import org.junit.jupiter.api.Test;
  * #baseFixtureChangelogPath()} as the container's bootstrap superuser, and splitting {@code
  * changes/001-baseline.yaml} to change that would violate the "exactly one baseline file" rule.
  * Instead, this test creates an ordinary, freshly provisioned role after the baseline has been
- * applied and grants it exactly the privileges group (j) grants to {@code current_user} at
- * migration time (INSERT/SELECT on {@code audit_log}/{@code audit_actor_pseudonyms}, SELECT +
- * narrow UPDATE on {@code audit_retention_settings}) - the REVOKE/GRANT/ownership mechanism under
- * test does not care which role name holds those grants, only that holding exactly them (and no
- * more) blocks the operations below. The CREATEROLE-time residual membership of #426 is
- * deliberately not exercised: it is a property of the migration role's own CREATEROLE attribute,
- * not of an arbitrary grantee.
+ * applied and grants it exactly the privileges the identity changeSet grants to {@code
+ * current_user} at migration time (INSERT/SELECT on {@code audit_log}/{@code
+ * audit_actor_pseudonyms}, SELECT + narrow UPDATE on {@code audit_retention_settings}) - the
+ * REVOKE/GRANT/ownership mechanism under test does not care which role name holds those grants,
+ * only that holding exactly them (and no more) blocks the operations below. The CREATEROLE-time
+ * residual membership of #426 is deliberately not exercised: it is a property of the migration
+ * role's own CREATEROLE attribute, not of an arbitrary grantee.
  */
 class AuditPrivilegeModelTest extends AbstractMigrationTest {
 
@@ -78,9 +78,9 @@ class AuditPrivilegeModelTest extends AbstractMigrationTest {
   }
 
   /**
-   * Mirrors exactly what the baseline's group (j) grants to {@code current_user} at migration time
-   * - see this class's own Javadoc for why a fresh role rather than re-running the migration as a
-   * restricted account.
+   * Mirrors exactly what the baseline's identity changeSet grants to {@code current_user} at
+   * migration time - see this class's own Javadoc for why a fresh role rather than re-running the
+   * migration as a restricted account.
    */
   private void provisionApplicationRole() throws SQLException {
     dropRolesIfExist(bootstrapConnection, APP_ROLE);
@@ -196,7 +196,7 @@ class AuditPrivilegeModelTest extends AbstractMigrationTest {
 
   /**
    * The application account's grant on {@code audit_retention_settings} is narrowed to {@code
-   * (retention_months, updated_at)} (baseline group (j)) - {@code last_cutoff} is written
+   * (retention_months, updated_at)} (baseline, identity changeSet) - {@code last_cutoff} is written
    * exclusively by {@code opaa_audit_delete_expired_partitions()}, so the recorded deletion
    * progress is a guarantee rather than a convention the application could bypass by writing the
    * column directly.

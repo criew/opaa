@@ -22,9 +22,9 @@ import java.util.UUID;
  * adding the field later is cheap, assessing an existing body of grants without one is not.
  *
  * <p><b>The asset is named by {@link AssetType} plus id, not by a column of one asset table</b>
- * (ADR-0036, Entscheidung 12): a second asset type needs no second rights logic. The price is that
- * {@code asset_id} carries no foreign key - the guarantees that dropped with it and what replaces
- * them are named in {@code changes/038-asset-grants-type-independent.yaml}.
+ * (ADR-0036, Entscheidung 12): a second asset type needs no second rights logic. One composite
+ * foreign key onto the asset shell, {@code fk_asset_grants_asset_organization}, holds for every
+ * type that the asset exists, has the named type and belongs to the grant's organization.
  *
  * <p>The subject uses two nullable columns rather than one polymorphic id, so each column keeps a
  * real foreign key to its own target table instead of an unenforced UUID. {@code

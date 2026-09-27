@@ -155,14 +155,10 @@ Kurz: Ein Update über `docker compose pull` + `docker compose up -d` **gefährd
 
 - **Der Korpus** liegt in einem Bind-Mount auf dem Host und ist von Container-Neustarts unberührt.
 - **Der Index** liegt in PostgreSQL, dessen Daten im benannten Volume `opaa-postgres-data` liegen. Das Volume überlebt das Neuerstellen der Container; nur `docker compose down -v` löscht es.
-- **Liquibase** wendet beim Backend-Start ausschließlich noch nicht angewendete Changesets vorwärts an. Mit zwei Ausnahmen (siehe unten) löscht keines der Changesets Dokument- oder Vektordaten — die `dropTable`-Anweisungen in `db/changelog/changes/` stehen, mit Ausnahme einer entfallenen Hilfstabelle des Volltextpfads, ausnahmslos in `rollback`-Blöcken und laufen im Normalbetrieb nie.
+- **Liquibase** wendet beim Backend-Start ausschließlich noch nicht angewendete Changesets vorwärts an; keines davon löscht Dokument- oder Vektordaten. Die Ausnahme ist eine zu einer neuen Baseline zusammengefasste Historie: Dann ist das Update ein Neuaufsetzen, siehe [„Migrationen aus älteren Ständen"](#migrationen-aus-älteren-ständen).
 - **Die Vektortabelle** wird nicht von Liquibase, sondern von Spring AI selbst angelegt (`spring.ai.vectorstore.pgvector.initialize-schema: true`). Sie wird nur erzeugt, wenn sie fehlt, und bei einem Update nicht verändert.
 
 > **Der Vektorspeicher ist nicht wählbar.** OPAA speichert Vektoren in PostgreSQL mit pgvector; das ist der einzige unterstützte Vektorspeicher. Der Zugriff läuft zwar über eine portable Schnittstelle von Spring AI, ein Wechsel wird aber nicht unterstützt, nicht geprüft und nicht dokumentiert. Metadatenbestand und Vektorindex liegen damit in derselben Datenbank: ein Sicherungslauf, eine Wiederherstellung, ein Nachweispfad. Bekannte Grenze: pgvector stößt bei sehr großen Beständen im Bereich von Millionen Vektoren an Grenzen.
-
-> **Ausnahme: die Migration vom 19.08.2026, die die frühere System-Bibliothek entfernt** (seit der Zusammenfassung der Changesets zur Baseline nicht mehr als eigene Datei sichtbar). Diese Migration löscht bewusst Daten — die früher automatisch angelegte, nur für System-Admins lesbare System-Bibliothek samt ihrer Dokumente, Vektorspeicher-Chunks, Indizierungsaufträge und Grants. Ihr Rollback ist bewusst ein No-op (die entfernten Zeilen ließen sich nicht von danach regulär geschriebenen unterscheiden). **Vor dem Update auf einen Stand mit dieser Migration einen Datenbank-Dump ziehen**, wer den Inhalt der System-Bibliothek noch braucht. Dateien, die ein Dokument der System-Bibliothek einst unter `opaa.upload.storage-path` abgelegt hatte, räumt die Migration nicht mit auf — nur die Datenbankzeilen verschwinden, die Dateien bleiben liegen. Wie sie zu finden und zu entfernen sind, steht unter [„Originale gelöschter Bibliotheken"](#originale-gelöschter-bibliotheken) — liegen sie unter ihrer Organisation, findet sie der Aufräumlauf; liegen sie noch auf der obersten Ebene, bleibt es Handarbeit.
-
-> **Zweite Ausnahme: das Changeset, das die Statuszeile des Verzeichnisabgleichs auf den Anbieter umstellt** (#1816). Es **löscht die vorhandenen Zeilen in `directory_sync_status`**, statt sie zu raten: Sie beschreiben den letzten Lauf einer Bindung, die es nicht mehr gibt („der Abgleich dieser Organisation"), und es gibt keinen Anbieter, dem sie zuzuordnen wären. Verloren geht damit nur das **Ergebnis des letzten Laufs** — die bewirkten Änderungen selbst stehen im Nachweisprotokoll und in der Rechtehistorie und bleiben unangetastet. Der nächste Lauf je Anbieter schreibt die Zeile neu. Dasselbe Update wandelt Verzeichnisgruppen **ohne Anbieterbezug** (nur im Betriebsmodus `dev` entstanden) in interne Gruppen um, je Gruppe mit einem Protokolleintrag; Mitgliedschaften und Berechtigungen bleiben dabei unverändert.
 
 Eine Neuindizierung wird erst durch Änderungen nötig, die nichts mit dem Image-Update zu tun haben:
 
@@ -887,6 +883,36 @@ benennt (`io.opaa.config.OpenAiBaseUrlGuard`).
 > — ohne ihn scheitert nur diese einmalige Übernahme, der Start selbst nicht.
 
 ### Migrationen aus älteren Ständen
+
+**Neu aufsetzen: Datenbank-Baseline je Modul (seit Ende September 2026).** OPAA legt sein Schema mit
+Liquibase an und verzeichnet in der Tabelle `databasechangelog`, welche Changesets gelaufen sind. Die
+Historie ist zu einer neuen Baseline zusammengefasst, die je Modul ein Changeset trägt
+(`001-baseline-foundation` bis `001-baseline-external`). Zu einer Datenbank, die vor diesem Stand
+angelegt wurde, passt diese Liste nicht mehr: Liquibase spielte die Baseline in eine Datenbank ein,
+deren Tabellen schon existieren, und das Backend startet nicht. **Eine solche Installation lässt sich
+nicht aktualisieren, sondern nur neu aufsetzen.** Ob sie betroffen ist, zeigt vor dem Update:
+
+```bash
+docker compose exec postgres psql -U opaa -d opaa -tAc \
+  "SELECT count(*) FROM databasechangelog WHERE id = '001-baseline-foundation'"
+```
+
+`1` heißt: nicht betroffen. `0` heißt: neu aufsetzen, und zwar so:
+
+1. **Was in der Datenbank liegt, geht verloren** — Konten, Anbieter, Gruppen, Bibliotheken samt
+   Konfiguration und Rechten, Chats, Nachweisprotokoll und Rechtehistorie. Ein Dump des alten Stands
+   lässt sich nicht in den neuen einspielen; wer Inhalte nachschlagen will, zieht ihn trotzdem vorher.
+   Die Konfiguration in `.env.docker` und der Korpus im Dateisystem bleiben.
+2. Stapel anhalten und die Datenbank verwerfen: `docker compose down -v` verwirft alle benannten
+   Volumes des Stapels, darunter `opaa-postgres-data`.
+3. Die abgelegten Originale der alten Bibliotheken entfernen — das Verzeichnis `uploads/` bei
+   Ablage im Dateisystem, den Inhalt des Buckets bei Ablage im Objektspeicher. Sonst bleiben
+   Originale liegen, auf die keine Zeile mehr zeigt (siehe
+   [„Verwaiste Originale aufräumen"](#verwaiste-originale-aufräumen)).
+4. `docker compose pull && docker compose up -d`. Der erste Start legt das Schema neu an, übernimmt
+   den Anbieter aus `OPAA_OIDC_*` und legt das Konto der Systemverwaltung an (siehe
+   [„Erststart und Systemverwalter-Konto"](#erststart-und-systemverwalter-konto)).
+5. Bibliotheken neu anlegen und indizieren.
 
 **Lokaler Erstadministrator statt OIDC-Erstadmin-Regel (seit 11.09.2026, ADR-0033).** Beim ersten
 Start nach dem Update legt OPAA im Profil `oidc` das lokale Notanker-Konto der Systemverwaltung an —
@@ -1809,34 +1835,6 @@ Ein erfolgreicher Test antwortet z. B. „Verzeichnis erreichbar: Realm „haus"
 - **Nur Gruppen und Mitgliedschaften.** Kontosperren aus dem Verzeichnis sind ein eigener Schritt.
 - **Obergrenzen.** Mehr als `OPAA_DIRECTORY_SYNC_KEYCLOAK_MAX_GROUPS` Gruppen oder `…_MAX_MEMBERS_PER_GROUP` direkte Mitglieder je Gruppe lassen den Lauf abbrechen (`UNREACHABLE`), statt eine abgeschnittene Liste anzuwenden. Die Werte sind für Verwaltungsrealms reichlich bemessen; wer sie erreicht, hebt sie bewusst an.
 - **Keine anderen Verzeichnistypen.** LDAP und Microsoft Graph folgen als eigene Konnektoren. In vielen Häusern ist Keycloak ohnehin die Vermittlungsschicht vor Active Directory: Seine LDAP-Mapper importieren die AD-Gruppen, und OPAA liest sie dann aus Keycloak.
-
-#### Vor dem Update auf die Gruppenherkunft (einmalig)
-
-Mit dem Changeset `041-groups-provider-origin` bekommt jede Gruppe ihren Anbieter als echten
-Fremdschlüssel. Zeilen, denen kein Anbieter mehr zugeordnet werden kann, werden dabei zu **internen
-Gruppen ohne Verantwortliche** umgewandelt — je Zeile mit einem Protokolleintrag unter dem
-Systemprozess `migration`, mit einem Herkunftsvermerk in der Beschreibung, und ohne dass eine
-Berechtigung oder Mitgliedschaft angefasst wird. Betroffen sind zwei Fälle: Gruppen aus dem Token
-eines inzwischen gelöschten Anbieters und Verzeichnisgruppen einer Installation ohne
-Standardanbieter. Wer vorher wissen will, wie viele das sind:
-
-```sql
--- Gruppen eines gelöschten Anbieters (werden zu internen Gruppen)
-SELECT count(*) FROM groups g
- WHERE g.kind = 'IDENTITY_PROVIDER'
-   AND NOT EXISTS (SELECT 1 FROM oidc_providers p
-                    WHERE substring(g.external_id FROM 6 FOR 36) = p.id::text);
-
--- Verzeichnisgruppen und ob ein Standardanbieter existiert (ohne ihn werden auch sie intern)
-SELECT count(*) FROM groups WHERE kind = 'ORG_UNIT';
-SELECT count(*) FROM oidc_providers WHERE is_default;
-```
-
-Die Zahl der Gruppen ändert sich durch das Update nicht. Das Changeset bringt zwar einen
-Rollback-Block mit, der Schema und Präfix wiederherstellt — die Umwandlung der Waisen nimmt er
-aber **nicht** zurück, und die Baseline darunter hat gar keinen. Der vorgesehene Weg aus einem
-fehlgeschlagenen Update ist deshalb nicht das Zurückdrehen, sondern das Neuaufsetzen aus einer
-Sicherung.
 
 #### Bestandsübernahme aus `OPAA_OIDC_*`
 

@@ -927,10 +927,6 @@ Drei Dinge gehören vor die Inbetriebnahme, nicht danach:
 - **Der ausgelieferte Zustand der Anlegerechte wird bewusst bestätigt oder geändert** (Abschnitt 9).
   Die Klartextzeile unter Administration → Anlegerechte ist dafür gedacht.
 
-**Vor einem Update auf die Gruppenherkunft** prüft der Betrieb einmalig, wie viele Gruppen dabei zu
-internen Gruppen werden; die Abfragen dafür stehen im Kapitel [Deployment](deployment.md),
-Abschnitt „Vor dem Update auf die Gruppenherkunft".
-
 ## 17. Was es hier nicht gibt
 
 - **Keinen Administrator-Durchgriff in der Suche** (Abschnitt 10).

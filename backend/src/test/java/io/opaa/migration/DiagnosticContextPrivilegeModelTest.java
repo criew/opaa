@@ -17,13 +17,14 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * The privilege model of the diagnostic context log (#1052, ADR-0015), as the baseline's group (k)
- * establishes it - the sibling of {@link AuditPrivilegeModelTest} for the second protocol that uses
- * the same non-superuser model. Two groups of assertions, matching the two things the leitplanken
- * make binding about it: a Personenkontext without Begründung cannot be stored at all, and the
- * entry is unveränderlich in the ADR-0015 sense - an account holding exactly the application's own
- * grants can insert and read but neither update, delete nor truncate, not even through a named
- * partition, and the SECURITY DEFINER partition-drop function is the only deletion path.
+ * The privilege model of the diagnostic context log (#1052, ADR-0015), as the baseline's workspace
+ * changeSet establishes it - the sibling of {@link AuditPrivilegeModelTest} for the second protocol
+ * that uses the same non-superuser model. Two groups of assertions, matching the two things the
+ * leitplanken make binding about it: a Personenkontext without Begründung cannot be stored at all,
+ * and the entry is unveränderlich in the ADR-0015 sense - an account holding exactly the
+ * application's own grants can insert and read but neither update, delete nor truncate, not even
+ * through a named partition, and the SECURITY DEFINER partition-drop function is the only deletion
+ * path.
  *
  * <p>The restricted account is provisioned here rather than by re-running the baseline as a
  * non-superuser - same reasoning and same shape as {@link AuditPrivilegeModelTest}, see its
@@ -291,12 +292,10 @@ class DiagnosticContextPrivilegeModelTest extends AbstractMigrationTest {
     createOwnedPartitionMonthsAgo(6);
     insertEntryMonthsAgo(6);
     assertThat(countAs(connection)).isEqualTo(1);
-    // Retention 1 month, last run a month ago - a state the baseline's own capped function moves
-    // exactly one month for, from the sixth-last month to the fifth-last, which expires the
-    // partition seeded above. How far a run may go at all is changeset 078's subject (#1851), not
-    // this class's: the cap is gone from the shipped function, and this class deliberately stops
-    // at the baseline.
-    setRetentionState(1, 6, 1);
+    // Retention five months: the partition seeded above is the only expired one, the baseline's own
+    // partitions start three months back. How far a run goes is ProtocolRetentionDeletionTest's
+    // subject, not this class's.
+    setRetentionState(5, 6, 1);
 
     assertThat(runDeletion()).containsExactly(partitionNameMonthsAgo(6));
 
