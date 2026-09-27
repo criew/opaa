@@ -4,7 +4,7 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-/** Persistence for the singleton {@link ExternalAccessSettings} row, seeded by changeset 032. */
+/** Persistence for the singleton {@link ExternalAccessSettings} row, seeded by the baseline. */
 @Repository
 public interface ExternalAccessSettingsRepository
     extends JpaRepository<ExternalAccessSettings, Integer> {

@@ -15,8 +15,8 @@
  * <p><b>Grants are type-independent.</b> A grant names its asset by {@link
  * io.opaa.permission.AssetType} plus id; the values of {@code AssetType} belong to the packages
  * that own the asset types, and this package never enumerates them. {@code asset_grants} points at
- * the asset shell ({@code fk_asset_grants_asset_organization}, changeset 081), so "no grant
- * outlives its asset" holds in the database for every type at once.
+ * the asset shell ({@code fk_asset_grants_asset_organization}), so "no grant outlives its asset"
+ * holds in the database for every type at once.
  *
  * <p><b>The formula is complete here.</b> Direct grant, group grant and the organization-wide
  * release ({@code assets.visibility}) together decide what a person may read; the only floor

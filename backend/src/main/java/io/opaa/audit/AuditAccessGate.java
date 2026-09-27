@@ -44,7 +44,7 @@ public class AuditAccessGate {
    */
   static final long MAX_TIME_RANGE_DAYS = 92;
 
-  /** Matches {@code audit_log.reason varchar(1000)} (migration 017) - the single source. */
+  /** Matches {@code audit_log.reason varchar(1000)} - the single source. */
   static final int MAX_REASON_LENGTH = 1000;
 
   private static final String NOT_AUDITOR_MESSAGE =

@@ -584,9 +584,10 @@ class PointInTimeAccessIntegrationTest {
   }
 
   /**
-   * The shape migration 090 leaves behind for a period the library was organization-wide: a grant
-   * interval to ALL_ACCOUNTS with cause BACKFILL, written directly because {@link
-   * PermissionHistoryService} always stamps "now" and a Stichtag question is about the past.
+   * The shape the move to grants to all accounts left behind for a period the library was
+   * organization-wide: a grant interval to ALL_ACCOUNTS with cause BACKFILL, written directly
+   * because {@link PermissionHistoryService} always stamps "now" and a Stichtag question is about
+   * the past.
    */
   private void allAccountsGrantHistory(Instant validFrom, Instant validTo) {
     jdbcTemplate.update(

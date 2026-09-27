@@ -73,13 +73,13 @@ import org.springframework.web.multipart.MultipartFile;
  * Liquibase schema applied ({@code spring.liquibase.enabled=true}, {@code ddl-auto=none}) - the
  * pattern {@code KnowledgeLibraryServiceIntegrationTest} and {@code
  * DocumentIndexingIntegrationTest} already establish, needed here because {@code
- * fk_documents_uploaded_by_user} (migration 020) and {@code chk_documents_source_type}'s widened
- * check are real, enforced constraints, not something {@code ddl-auto=create-drop} would generate
- * from the entity mapping alone (AGENTS.md, "Reproduktionsnachweis"). Exercises the acceptance
- * criteria end to end: upload, then find the content through the vector store the query endpoint
- * reads from; a VIEWER is refused; an unsupported format and an over-limit file are refused without
- * a stored file; a duplicate checksum in the same library is refused, the same content in a
- * different library is not; deleting removes the row, the chunks and the file.
+ * fk_documents_uploaded_by_user} and {@code chk_documents_source_type}'s widened check are real,
+ * enforced constraints, not something {@code ddl-auto=create-drop} would generate from the entity
+ * mapping alone (AGENTS.md, "Reproduktionsnachweis"). Exercises the acceptance criteria end to end:
+ * upload, then find the content through the vector store the query endpoint reads from; a VIEWER is
+ * refused; an unsupported format and an over-limit file are refused without a stored file; a
+ * duplicate checksum in the same library is refused, the same content in a different library is
+ * not; deleting removes the row, the chunks and the file.
  *
  * <p>{@code uploadDocument} itself only ever returns {@code PENDING} now (#434) - parsing and
  * embedding run asynchronously on {@code uploadTaskExecutor}, the real thread pool this test's
@@ -178,7 +178,7 @@ class LibraryDocumentServiceIntegrationTest {
             organizationId);
     ownLibraryFixtures.removeLibraries(ownLibraryIds.toArray(new UUID[0]));
     // #238 code review, finding 2+4: asset_grant_history.subject_user_id is ON DELETE RESTRICT
-    // (see 018-permission-history.yaml's "Deletion survival" comment) - every library/grant
+    // (see ADR-0016) - every library/grant
     // operation setUp performs now historises a row referencing editor/viewer, which must be
     // purged before this teardown's own user deletion below (not a real account deletion).
     grantHistoryRepository.deleteBySubjectUserIdIn(List.of(editor.getId(), viewer.getId()));
@@ -190,7 +190,7 @@ class LibraryDocumentServiceIntegrationTest {
     userRepository.deleteById(editor.getId());
     userRepository.deleteById(viewer.getId());
     // #392: setUp's library/grant creation now also writes audit_log rows
-    // (fk_audit_log_organization is ON DELETE RESTRICT, migration 017).
+    // (fk_audit_log_organization is ON DELETE RESTRICT).
     jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organizationId);
     organizationRepository.deleteById(organizationId);
   }
@@ -415,7 +415,7 @@ class LibraryDocumentServiceIntegrationTest {
   void concurrentUploadsOfTheSameFileIntoTheSameLibraryProduceExactlyOneDocument()
       throws Exception {
     // #420 code review, nit 5: the sequential findByLibraryIdAndChecksum check alone cannot close
-    // this race - only uk_documents_library_checksum (migration 020) can, and only a genuine
+    // this race - only uk_documents_library_checksum can, and only a genuine
     // concurrent attempt (real threads, real Postgres) actually exercises it rather than the
     // sequential fast-path check.
     String identicalContent = "identical concurrent content";
@@ -1952,7 +1952,7 @@ class LibraryDocumentServiceIntegrationTest {
 
   @Test
   void twoUploadedMailsWithAnIdenticalAttachmentAreBothIndexed() throws Exception {
-    // uk_documents_library_checksum is scoped to parentless rows since migration 017 (#1218):
+    // uk_documents_library_checksum is scoped to parentless rows (#1218):
     // upload dedup is about what users upload, not about content derived from it - two different
     // mails legitimately carry the same attachment.
     LibraryDocumentEntry first =

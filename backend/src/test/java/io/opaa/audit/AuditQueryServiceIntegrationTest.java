@@ -76,7 +76,7 @@ class AuditQueryServiceIntegrationTest {
   private UUID organizationId;
   private UUID auditorId;
   private UUID regularUserId;
-  // audit_log is partitioned by month (migration 017) with a fixed horizon around the moment the
+  // audit_log is partitioned by month with a fixed horizon around the moment the
   // migration ran - a hardcoded historical date can fall outside it and make the recorded_at
   // UPDATE below fail with "no partition of relation found for row", so this anchors to "now"
   // instead.

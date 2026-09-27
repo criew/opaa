@@ -127,7 +127,7 @@ class AdminControllerOrganizationBoundaryIntegrationTest {
       assertThat(userRepository.findById(targetUserId).orElseThrow().getSystemRole())
           .isEqualTo(SystemRole.AUDITOR);
     } finally {
-      // fk_audit_actor_pseudonyms_user is ON DELETE CASCADE (migration 017) - deleting the user
+      // fk_audit_actor_pseudonyms_user is ON DELETE CASCADE - deleting the user
       // removes its pseudonym mapping automatically; audit_log itself has no foreign key back to
       // users (only to organizations), so the immutable log rows this test wrote simply remain,
       // scoped to Organization.DEFAULT_ID like every other test sharing this context.

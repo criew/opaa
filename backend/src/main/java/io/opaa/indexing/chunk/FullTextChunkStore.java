@@ -10,8 +10,8 @@ import org.springframework.stereotype.Component;
 /**
  * Writes/deletes rows in {@code chunk_full_text} (docs/features/hybrid-retrieval.md, "Arbeitspaket
  * 2a") - the lexical-search counterpart of {@link VectorChunkStore}'s {@code vector_store} writes.
- * A dedicated table, not columns on {@code vector_store} itself: see {@code
- * changes/001-baseline.yaml}, group (g), for why.
+ * A dedicated table without foreign keys, mirroring {@code vector_store}, which Spring AI rather
+ * than Liquibase creates (knowledge changeSet of {@code changes/001-baseline.yaml}).
  *
  * <p>Never called directly by {@link io.opaa.indexing.document.DocumentIngestService} - {@link
  * VectorChunkStore} owns both writes (see {@link VectorChunkStore#addChunks}) so a chunk can never

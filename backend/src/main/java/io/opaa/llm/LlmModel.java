@@ -15,7 +15,7 @@ import java.util.UUID;
  * plus the {@code ollama}/{@code openai} blocks in {@code application.yml}).
  *
  * <p><b>Exactly one row may be {@link #active} at a time</b>, enforced by the partial unique index
- * {@code ux_llm_models_single_active} (migration 058) - the database backstop for {@link
+ * {@code ux_llm_models_single_active} - the database backstop for {@link
  * LlmModelService#activateModel}, which is the primary defense the same way {@code
  * BrandingSettingsService}'s validation is the primary defense for {@code branding_settings}'s own
  * constraints.

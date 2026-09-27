@@ -32,9 +32,9 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p><b>Writing is validated here, before the database sees it</b> (#582: "Validierung an der
  * Systemgrenze"), with German-language messages: the database's own {@code chk_branding_settings_*}
- * constraints of the baseline and of migration 089 are the backstop that catches a future direct
- * write, not the primary defense that a caller is expected to hit. The images' own rules live in
- * {@link BrandingImageValidator}.
+ * constraints of the baseline are the backstop that catches a future direct write, not the primary
+ * defense that a caller is expected to hit. The images' own rules live in {@link
+ * BrandingImageValidator}.
  *
  * <p>Every change records an {@link AuditEventType#BRANDING_SETTINGS_CHANGED} event (#582: "Audit-
  * Ereignis für Branding-Änderungen"). The {@code before}/{@code after} maps carry the <em>effective
@@ -316,6 +316,6 @@ public class BrandingSettingsService {
     return new IllegalStateException(
         "branding_settings has no row with id="
             + BrandingSettings.SINGLETON_ID
-            + " - migration 041 should have created it");
+            + " - the baseline should have created it");
   }
 }

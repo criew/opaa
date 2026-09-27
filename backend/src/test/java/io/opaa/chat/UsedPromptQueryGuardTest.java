@@ -26,7 +26,7 @@ class UsedPromptQueryGuardTest {
   private static final Path MAIN_SOURCES = Path.of("src", "main", "java");
   private static final Path CHANGELOGS = Path.of("src", "main", "resources", "db", "changelog");
   private static final Path ENTITY = MAIN_SOURCES.resolve("io/opaa/chat/ChatMessage.java");
-  private static final String OWN_CHANGESET = "088-chat-messages-used-prompt.yaml";
+  private static final String BASELINE = "001-baseline.yaml";
 
   @Test
   void noQueryStringNamesTheUsedPromptOutsideTheEntityMapping() {
@@ -61,20 +61,41 @@ class UsedPromptQueryGuardTest {
         .isEmpty();
   }
 
+  /**
+   * The columns and their pairing check are part of the {@code chat_messages} table definition in
+   * the baseline; no other statement there, and no later changeset, names them.
+   */
   @Test
-  void onlyItsOwnChangesetTouchesTheColumns() throws IOException {
-    List<String> offenses;
+  void onlyTheTableDefinitionTouchesTheColumns() throws IOException {
+    List<String> offenses = new ArrayList<>();
     try (Stream<Path> files = Files.walk(CHANGELOGS)) {
-      offenses =
-          files
-              .filter(Files::isRegularFile)
-              .filter(file -> !file.getFileName().toString().equals(OWN_CHANGESET))
-              .filter(file -> mentionsUsedPrompt(read(file)))
-              .map(Path::toString)
-              .toList();
+      for (Path file : files.filter(Files::isRegularFile).toList()) {
+        if (!file.getFileName().toString().equals(BASELINE)) {
+          if (mentionsUsedPrompt(read(file))) {
+            offenses.add(file.toString());
+          }
+          continue;
+        }
+        for (String statement : read(file).split(";\\s*\\n")) {
+          if (mentionsUsedPrompt(statement)
+              && !statement.strip().startsWith("CREATE TABLE chat_messages (")) {
+            offenses.add(file + ": " + statement.strip());
+          }
+        }
+      }
     }
 
-    assertThat(offenses).as("no later index, view or function over the used prompt").isEmpty();
+    assertThat(offenses).as("no index, view or function over the used prompt").isEmpty();
+  }
+
+  /** Guards the premise of the statement filter above: the table definition carries the columns. */
+  @Test
+  void theBaselineDefinesTheColumnsInTheChatMessagesTable() {
+    String baseline = read(CHANGELOGS.resolve("changes").resolve(BASELINE));
+    String table =
+        baseline.substring(baseline.indexOf("CREATE TABLE chat_messages (")).split(";\\s*\\n")[0];
+
+    assertThat(table).contains("used_prompt_id uuid", "chk_chat_messages_used_prompt");
   }
 
   /** Guards the premise: the scan would pass just as well against an empty tree. */

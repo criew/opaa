@@ -178,11 +178,10 @@ public class LlmModelService {
    * since this method is exactly what is supposed to keep that true and must not silently trust it.
    *
    * <p>The deactivation is flushed before the new model is activated (rather than left to
-   * commit-time flush ordering): {@code ux_llm_models_single_active} (migration 058) is a plain,
-   * non-deferrable unique index, so if Hibernate's flush happened to write the new {@code active =
-   * true} row before the old one's {@code active = false}, the two would collide even though the
-   * end state is exactly one active row - a transient violation of an invariant that never actually
-   * held.
+   * commit-time flush ordering): {@code ux_llm_models_single_active} is a plain, non-deferrable
+   * unique index, so if Hibernate's flush happened to write the new {@code active = true} row
+   * before the old one's {@code active = false}, the two would collide even though the end state is
+   * exactly one active row - a transient violation of an invariant that never actually held.
    *
    * <p><b>Publishes {@link ActiveChatModelChangedEvent} whenever {@code id} was not already
    * active</b> (#758), so {@link ActiveChatModelResolver} drops its cached client after this

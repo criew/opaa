@@ -58,7 +58,7 @@ class AuditIncidentScopeServiceIntegrationTest {
   // AuditQueryService#byIncidentScope.
   private UUID auditor;
   private final List<UUID> createdUserIds = new ArrayList<>();
-  // audit_log is partitioned by month (migration 017) with a fixed horizon around the moment the
+  // audit_log is partitioned by month with a fixed horizon around the moment the
   // migration ran - a hardcoded historical date can fall outside it and make the recorded_at
   // UPDATE in writeAuditEntryForActor fail with "no partition of relation found for row", so this
   // anchors to "now" instead.

@@ -2,14 +2,14 @@ package io.opaa.permission;
 
 /**
  * Why an {@link AssetOwnershipHistory} interval was opened or closed. Mirrored by the database
- * check constraint {@code chk_asset_ownership_history_cause} (changelog 052); keep both in sync.
+ * check constraint {@code chk_asset_ownership_history_cause}; keep both in sync.
  */
 public enum AssetOwnershipHistoryCause {
   /** The asset was created with this owner. */
   CREATED,
   /** The responsibility was handed to another owner. */
   TRANSFERRED,
-  /** Written once by changelog 052 for the assets that existed before this table. */
+  /** Written once, by a data migration, for the assets that existed before this table. */
   BACKFILL,
   /**
    * The asset itself was deleted, recorded as a zero-length marker beside the interval that is

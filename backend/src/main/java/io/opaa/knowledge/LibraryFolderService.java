@@ -39,9 +39,9 @@ import org.springframework.transaction.support.TransactionTemplate;
  * (ADR-0020, Entscheidung 5): {@link #deleteFolder} walks the folder's subtree leaf-first, deleting
  * every contained document through {@link FolderDocumentDeleter#deleteDocument} - the same
  * file/chunk/row cleanup a single document's own deletion already performs - before removing each
- * folder row. {@code fk_documents_folder}/{@code fk_library_folders_parent} (migration 062) are
- * both {@code RESTRICT}, turning any violation of that leaf-first order into a loud database error
- * instead of a silent orphan.
+ * folder row. {@code fk_documents_folder}/{@code fk_library_folders_parent} are both {@code
+ * RESTRICT}, turning any violation of that leaf-first order into a loud database error instead of a
+ * silent orphan.
  */
 @Service
 @Transactional(readOnly = true)
@@ -115,7 +115,7 @@ public class LibraryFolderService {
       // DataIntegrityViolationException/ConstraintViolationException far from here, turning into a
       // 500 instead of the 409 this catch is meant to produce - flushing here forces the INSERT
       // (and
-      // therefore uk_library_folders_root_name/uk_library_folders_child_name, migration 062) to run
+      // therefore uk_library_folders_root_name/uk_library_folders_child_name) to run
       // and either succeed or throw inside this try.
       folder = folderRepository.saveAndFlush(folder);
     } catch (DataIntegrityViolationException e) {
@@ -123,7 +123,7 @@ public class LibraryFolderService {
       // uploadDocument's identical handling of uk_documents_library_checksum): the check and this
       // insert are two separate statements with no database guarantee between them, so two
       // concurrent creates of the same name on the same level could both pass it.
-      // uk_library_folders_root_name/uk_library_folders_child_name (migration 062) are the actual
+      // uk_library_folders_root_name/uk_library_folders_child_name are the actual
       // guarantee; this maps their violation to the same 409 the sequential check already
       // produces.
       throw conflict();

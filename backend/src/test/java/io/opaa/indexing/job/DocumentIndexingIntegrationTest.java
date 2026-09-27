@@ -991,8 +991,8 @@ class DocumentIndexingIntegrationTest {
    * The status query answers only with the caller's own organization's runs. Proven at two
    * independent layers against a real, two-organization database - not just the pre-existing
    * library-ownership check ({@code DocumentIndexingService#loadLibraryInOrganization}, which
-   * already 404s a foreign library) but the {@code indexing_jobs} row's own {@code organization_id}
-   * (migration 049): {@link IndexingJobService#getLatestJob} for organization B asking about
+   * already 404s a foreign library) but the {@code indexing_jobs} row's own {@code
+   * organization_id}: {@link IndexingJobService#getLatestJob} for organization B asking about
    * organization A's library must come back empty, exactly as if that library had never run at all
    * - not merely blocked one layer up.
    */
@@ -1068,7 +1068,7 @@ class DocumentIndexingIntegrationTest {
 
     // Seeds a RUNNING row directly (mirrors IndexingJobRecoveryIntegrationTest's
     // seedOrphanedRunningJob) instead of relying on timing a real async run's RUNNING window -
-    // deterministic, and it is uk_indexing_jobs_library_running (migration 028) plus
+    // deterministic, and it is uk_indexing_jobs_library_running plus
     // IndexingJobService#isJobRunning that this test actually needs held RUNNING, not a real
     // completed indexing pass.
     indexingJobService.startJob(

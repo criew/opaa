@@ -60,9 +60,9 @@ public class Chat {
   private String title;
 
   /**
-   * Where {@link #title} came from (#557, migration 034) - see {@link TitleSource}'s Javadoc.
-   * {@code GENERATED} unless the constructor or {@link #applyUpdate} set it to {@code CUSTOM}
-   * because a title was explicitly supplied.
+   * Where {@link #title} came from (#557) - see {@link TitleSource}'s Javadoc. {@code GENERATED}
+   * unless the constructor or {@link #applyUpdate} set it to {@code CUSTOM} because a title was
+   * explicitly supplied.
    */
   @Enumerated(EnumType.STRING)
   @Column(name = "title_source", nullable = false, length = 20)
@@ -78,11 +78,11 @@ public class Chat {
   /**
    * Sticky @-references (epic #523 "Entschiedene Semantik"). Used as the search scope when {@link
    * #useKnowledge} is {@code false}; ignored when it is {@code true}. Backed by the
-   * chat_library_references join table (migration 032), not an array column, so both foreign keys
-   * are enforced at the database level.
+   * chat_library_references join table, not an array column, so both foreign keys are enforced at
+   * the database level.
    *
-   * <p><b>#677 (migration 048): chat_library_references also carries organization_id, which this
-   * collection deliberately never sets.</b> A BEFORE INSERT trigger, {@code
+   * <p><b>#677: chat_library_references also carries organization_id, which this collection
+   * deliberately never sets.</b> A BEFORE INSERT trigger, {@code
    * trg_chat_library_references_set_organization}, derives it unconditionally from the row's own
    * {@code chat_id} on every insert - the composite foreign keys {@code
    * fk_chat_library_references_chat_organization}/{@code
@@ -107,10 +107,10 @@ public class Chat {
   private Set<UUID> referencedLibraryIds = new LinkedHashSet<>();
 
   /**
-   * The chat's sticky core-field filter (#1070, migration 022) as {@link MetadataFilterJson} writes
-   * it; {@code null} for no filter. Applied to every question of this chat next to the search scope
-   * above - the Kontext der Unterhaltung the specification names as one of the two sources of a
-   * filter (metadata-schema.md, Wirkstelle 1).
+   * The chat's sticky core-field filter (#1070) as {@link MetadataFilterJson} writes it; {@code
+   * null} for no filter. Applied to every question of this chat next to the search scope above -
+   * the Kontext der Unterhaltung the specification names as one of the two sources of a filter
+   * (metadata-schema.md, Wirkstelle 1).
    */
   @JdbcTypeCode(SqlTypes.JSON)
   @Column(name = "metadata_filter", columnDefinition = "jsonb")

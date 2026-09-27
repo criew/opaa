@@ -20,10 +20,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * exactly as it did before this issue, even though the underlying database column is now encrypted
  * ({@code SourceCredentialsConverter}). Runs against a real Postgres/Liquibase schema (not
  * Hibernate-generated DDL) so {@code source_credentials} is really the encrypted, widened {@code
- * varchar(3000)} column from migration 029, and reloads the entity through {@link
- * KnowledgeLibraryRepository} - the same path {@code SourceIndexingRunService} uses before calling
- * {@link UrlIndexingExecutor#execute} - rather than asserting against the in-memory object this
- * test itself constructed.
+ * varchar(3000)} column, and reloads the entity through {@link KnowledgeLibraryRepository} - the
+ * same path {@code SourceIndexingRunService} uses before calling {@link
+ * UrlIndexingExecutor#execute} - rather than asserting against the in-memory object this test
+ * itself constructed.
  *
  * <p>Carries the canonical {@link io.opaa.test.OpaaIntegrationTest} signature (AGENTS.md, "Spring-
  * Testkontexte"): this class never uses MockMvc or any web layer, so it shares one cached context
