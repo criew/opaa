@@ -348,7 +348,8 @@ Vollständige Tastaturbedienung (Pfeile, Enter, Escape) ist Teil der Komponente,
 ### 5.8 Fußnoten und Fundstellen (Signaturmuster des Chats)
 
 Belege erscheinen im Antworttext als **Fußnotenmarken**: die Ziffer in Mono und `accent` in einem
-Kreis mit 10 % `accent`-Fläche (dunkel 22 %), leicht angehoben; ein Bereich „1–3" wird zur Pille.
+Kreis mit 10 % `accent`-Fläche (dunkel 22 %), hochgestellt über der x-Höhe, ohne den
+Zeilenabstand zu ändern; ein Bereich „1–3" wird zur Pille.
 Beim Hover oder Fokus füllt sich die Marke in `accent`, und ein Tooltip nennt je Fundstelle
 Ziffer, Dokumentname und Fundort; erst ein Klick öffnet das Belegfenster.
 Unter der Antwort steht keine Quellenliste. Eine 1-px-Haarlinie in `border`, nach rechts

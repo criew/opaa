@@ -13,7 +13,7 @@ export function citationMarkTint(theme: Theme): string {
  * reader sees they point at the same Belege. The tint sits on a solid backdrop, so a mark
  * overlapping its neighbour covers it instead of blending into it.
  */
-export function citationMarkSx(theme: Theme, size: number) {
+export function citationMarkSx(theme: Theme, size: number, fontSize = Math.round(size * 0.5)) {
   const tint = citationMarkTint(theme)
   return {
     display: 'inline-grid',
@@ -23,7 +23,7 @@ export function citationMarkSx(theme: Theme, size: number) {
     px: '5px',
     borderRadius: `${radius.pill}px`,
     fontFamily: fontFamily.mono,
-    fontSize: Math.round(size * 0.5),
+    fontSize,
     fontWeight: 600,
     lineHeight: 1,
     fontVariantNumeric: 'tabular-nums',

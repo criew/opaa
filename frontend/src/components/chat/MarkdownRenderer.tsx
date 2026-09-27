@@ -53,7 +53,8 @@ interface ResolvedCitation {
 }
 
 /** Diameter of a footnote mark in running text, in px - small enough to keep the line height. */
-const INLINE_MARK_SIZE = 17
+const INLINE_MARK_SIZE = 15
+const INLINE_MARK_FONT_SIZE = 9
 
 function CitationTooltipContent({ citations }: { citations: ResolvedCitation[] }) {
   return (
@@ -124,11 +125,13 @@ function renderCitationGroup(
               }
               onClick={() => onCitationClick?.(segment.map((c) => c.number))}
               sx={(theme) => ({
-                ...citationMarkSx(theme, INLINE_MARK_SIZE),
-                // Raised like a superscript, without a <sup> changing the line box.
+                ...citationMarkSx(theme, INLINE_MARK_SIZE, INLINE_MARK_FONT_SIZE),
+                px: '4px',
+                // Superscript: the circle sits above the x-height. Shifted with a relative offset
+                // rather than vertical-align, so the line box - and the line spacing - stay put.
                 verticalAlign: 'baseline',
                 position: 'relative',
-                top: '-0.3em',
+                top: '-0.6em',
                 transition: `background ${motion.durationFastMs}ms ${motion.easeOut}, color ${motion.durationFastMs}ms ${motion.easeOut}`,
                 '&:hover, &[aria-describedby]': {
                   background: theme.palette.primary.main,
