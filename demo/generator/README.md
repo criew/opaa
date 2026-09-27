@@ -61,7 +61,7 @@ Das Skript:
      in Ordnern nach Aktenplan mit bis zu zwei Ebenen (`intern.AKTENPLAN`, z. B.
      `05 Bürgerbüro/02 Eskalation und Notfälle/`). Die laufende Nummer im Dateinamen bleibt
      bibliotheksweit; ein Dokument ohne Aktenplan-Eintrag oder ein Eintrag ohne Dokument bricht
-     den Lauf ab.
+     den Lauf ab, bevor irgendeine Bibliothek geleert wird.
    - `ratsinformationen/<jahr>/` (`.md`/`.txt`): 12 Niederschriften und Beschlussvorlagen des
      Stadtrats und des Hauptausschusses, je Jahrgang ein Unterverzeichnis (`rat.py`) — der
      Ausschnitt, den der Demo-Stack in seinen Bucket `rheinfurt-archiv` spiegelt

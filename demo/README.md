@@ -503,7 +503,10 @@ Der Lauf richtet über die API ein:
    gleichem Ordnerpfad und gleichem Dateinamen; der Seed liest dafür den Ordnerbaum der Bibliothek
    von der Wurzel ab. Eine Instanz, die die Dokumente noch flach in der Wurzel führt, lässt sich
    nicht nachträglich umsortieren — die API lehnt denselben Inhalt in derselben Bibliothek mit 409
-   ab; dafür die Demo neu aufsetzen.
+   ab, legt den Ordnerpfad aber vorher schon an. Der Seed erkennt diesen Fall deshalb vor dem
+   ersten Upload und bricht mit dem Hinweis ab, die Demo neu aufzusetzen; es entsteht kein
+   Ordner. Trifft ein Upload trotzdem auf 409 (derselbe Inhalt an anderer Stelle), bricht der Seed
+   mit derselben Empfehlung ab; der eben angelegte Ordner bleibt dann leer zurück.
 6. **Gruppen** (ADR-0036, `profiles.py`s `GroupDef`, siehe „Gruppen" oben) — je Gruppendefinition:
    anlegen oder per Namenssuche über `GET /api/v1/admin/groups` finden, die benannten
    Verantwortlichen ernennen und die automatische Erstverantwortung des Admin-Kontos wieder

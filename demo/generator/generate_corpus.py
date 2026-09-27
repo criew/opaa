@@ -223,12 +223,9 @@ def build_intern() -> list[tuple[str, str, bytes]]:
         + [(faq.slug, "pdf", intern.render_faq_pdf, faq) for faq in intern.FAQS]
         + [(s.slug, "pptx", intern.render_schulung_pptx, s) for s in intern.SCHULUNGEN]
     )
-    stale = sorted(set(intern.AKTENPLAN) - {slug for slug, *_ in documents})
-    if stale:
-        raise SystemExit(f"intern.AKTENPLAN nennt Dokumente, die es nicht gibt: {stale}")
     written = []
     for index, (slug, extension, render, document) in enumerate(documents, start=1):
-        folder = intern.aktenplan_ordner(slug)
+        folder = intern.AKTENPLAN[slug]
         written.append(
             (
                 f"interne-dienstanweisungen-meldewesen/{folder}/{index:02d}_{slug}.{extension}",
@@ -533,6 +530,7 @@ Gesamtgröße rund {f"{total_bytes / (1024 * 1024):.1f}".replace(".", ",")} MB.
 
 def main() -> None:
     leistungen_quelle.ensure_raw_files()
+    intern.verify_aktenplan()
     clean_library_dirs()
 
     leistungen_meldewesen = build_leistungen_meldewesen()

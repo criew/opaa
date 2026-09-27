@@ -850,8 +850,8 @@ def render_schulung_pptx(schulung: Schulung) -> bytes:
 
 # Folder of every document, relative to the library root, levels separated by "/". The seed
 # uploads each file with this path as folderPath, so the library shows the same tree. Every slug
-# above needs exactly one entry; aktenplan_ordner() rejects a missing one, generate_corpus.py a
-# stale one. No document here is marked as außer Kraft, hence no "99 Außer Kraft" folder.
+# above needs exactly one entry, checked by verify_aktenplan(). No document here is marked as
+# außer Kraft, hence no "99 Außer Kraft" folder.
 AKTENPLAN: dict[str, str] = {
     "faq-ummeldung": "01 Melderecht/01 An- und Ummeldung",
     "auskunftssperren-bearbeitung": "01 Melderecht/02 Auskünfte und Übermittlungen",
@@ -882,10 +882,17 @@ AKTENPLAN: dict[str, str] = {
 }
 
 
-def aktenplan_ordner(slug: str) -> str:
-    """The Aktenplan folder of slug; SystemExit if the Aktenplan does not place it."""
-    if slug not in AKTENPLAN:
+def verify_aktenplan() -> None:
+    """SystemExit unless AKTENPLAN places exactly the documents of this library. Runs before the
+    generator clears the corpus, so a broken Aktenplan leaves the committed files untouched."""
+    slugs = {
+        document.slug
+        for document in DIENSTANWEISUNGEN + ESKALATIONSREGELN + FAQS + SCHULUNGEN
+    }
+    missing = sorted(slugs - set(AKTENPLAN))
+    stale = sorted(set(AKTENPLAN) - slugs)
+    if missing or stale:
         raise SystemExit(
-            f"Kein Aktenplan-Ordner für '{slug}' - Eintrag in intern.AKTENPLAN fehlt."
+            f"intern.AKTENPLAN passt nicht zu den Dokumenten: ohne Ordner {missing}, "
+            f"Eintrag ohne Dokument {stale}"
         )
-    return AKTENPLAN[slug]

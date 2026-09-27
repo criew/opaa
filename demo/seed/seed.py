@@ -394,11 +394,33 @@ def upload_documents(admin_client: Client, library_id: str, upload_dir: Path) ->
     """Uploads every file below upload_dir not already present with status PENDING/INDEXED, into
     the library folder matching its subdirectory (folderPath, created on demand by the API). A
     document counts as present only under the same folder path and file name. One whose previous
-    attempt ended FAILED is re-uploaded rather than skipped."""
+    attempt ended FAILED is re-uploaded rather than skipped.
+
+    Stops before the first upload when the library holds, in its root, a file that belongs in a
+    subfolder: the API would create the folder chain and then reject the same content with 409."""
     existing = existing_documents(admin_client, library_id)
+    local_files = []
     for file_path in sorted(p for p in upload_dir.rglob("*") if p.is_file()):
         folder_path = file_path.parent.relative_to(upload_dir).as_posix()
-        folder_path = "" if folder_path == "." else folder_path
+        local_files.append(("" if folder_path == "." else folder_path, file_path))
+
+    misplaced = sorted(
+        {
+            file_path.name
+            for folder_path, file_path in local_files
+            if folder_path
+            and ("", file_path.name) in existing
+            and not any(f == "" and p.name == file_path.name for f, p in local_files)
+        }
+    )
+    if misplaced:
+        raise SystemExit(
+            f"Die Bibliothek führt {len(misplaced)} Dokument(e) noch flach in der Wurzel, die "
+            f"inzwischen in Ordnern liegen (z. B. {', '.join(misplaced[:3])}). Ein Seed kann sie "
+            "nicht umsortieren - die Demo neu aufsetzen (siehe demo/README.md)."
+        )
+
+    for folder_path, file_path in local_files:
         label = f"{folder_path}/{file_path.name}" if folder_path else file_path.name
         current = existing.get((folder_path, file_path.name))
         if current is not None and current["status"] != "FAILED":
@@ -408,12 +430,21 @@ def upload_documents(admin_client: Client, library_id: str, upload_dir: Path) ->
             print(f"    erneuter Versuch nach FAILED: {label} ({current.get('errorMessage')})")
         content_type = mimetypes.guess_type(file_path.name)[0] or "application/octet-stream"
         with file_path.open("rb") as handle:
-            admin_client.post_ok(
-                f"/v1/libraries/{library_id}/documents",
-                files={"file": (file_path.name, handle, content_type)},
-                data={"folderPath": folder_path} if folder_path else None,
-                expected=(201,),
-            )
+            try:
+                admin_client.post_ok(
+                    f"/v1/libraries/{library_id}/documents",
+                    files={"file": (file_path.name, handle, content_type)},
+                    data={"folderPath": folder_path} if folder_path else None,
+                    expected=(201,),
+                )
+            except ApiError as error:
+                if error.status_code != 409:
+                    raise
+                raise SystemExit(
+                    f"Upload von '{label}' abgelehnt: Derselbe Inhalt liegt bereits an anderer "
+                    "Stelle dieser Bibliothek. Ein Seed kann Dokumente nicht verschieben - die "
+                    "Demo neu aufsetzen (siehe demo/README.md)."
+                ) from error
         print(f"    hochgeladen: {label}")
 
 
