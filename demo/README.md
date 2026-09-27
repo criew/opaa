@@ -20,7 +20,7 @@ demo/
     ├── satzungen-gebuehrenordnungen/         .pdf
     ├── pressemitteilungen/                   rss.xml + .html
     ├── interne-dienstanweisungen-meldewesen/ .docx, .pdf, .pptx in Aktenplan-Ordnern (Upload mit folderPath, #2015)
-    ├── ratsinformationen/<jahr>/             .md, .txt (S3-Bucket des Demo-Stacks, #1383)
+    ├── ratsinformationen/<jahr>/<Gremium>/   .md, .txt, .eml mit PDF-Anlagen (S3-Bucket des Demo-Stacks, #1383, #2016)
     ├── formate/                              je ein Dokument pro unterstützter Endung (S3-Bucket des Demo-Stacks, #1519)
     ├── MANIFEST.sha256                       SHA-256 über alle Dokumente
     ├── SOURCE.md                             Quellen, Lizenzen, Hinweis auf synthetische Inhalte (vom Generator geschrieben)
@@ -43,7 +43,7 @@ Konnektortypen und mehrere Dateiformate:
 | Satzungen & Gebührenordnungen | `.pdf` | `HTTP_DIRECTORY` |
 | Pressemitteilungen Stadt Rheinfurt | RSS-XML + HTML-Detailseiten | `RSS_FEED` (statisch, selbst gehostet) |
 | Interne Dienstanweisungen Meldewesen | `.docx`, `.pdf`, `.pptx` (Ordner nach Aktenplan, bis zu zwei Ebenen) | `UPLOAD` (im Seed automatisiert) |
-| Ratsinformationen Stadt Rheinfurt | `.md`, `.txt` (ein Ordner je Jahrgang) | `S3` (Objektspeicher des Demo-Stacks, Bucket `rheinfurt-archiv`; #1383) |
+| Ratsinformationen Stadt Rheinfurt | `.md`, `.txt`, `.eml` mit PDF-Anhängen (Ordner Jahrgang › Gremium) | `S3` (Objektspeicher des Demo-Stacks, Bucket `rheinfurt-archiv`; #1383, #2016) |
 | Formattest auf S3 | je ein Dokument pro unterstützter Endung | `S3` (Objektspeicher des Demo-Stacks, Bucket `formattest`; #1520) |
 
 Die siebte Bibliothek ist keine Fachablage, sondern eine **technische Schaubibliothek**: Sie zeigt,
@@ -224,7 +224,7 @@ Das startet zusätzlich zu `postgres`/`backend`/`frontend`:
 
   | Bucket | Rolle | Inhalt |
   |---|---|---|
-  | `rheinfurt-archiv` | Quelle der Bibliothek „Ratsinformationen Stadt Rheinfurt" | `demo/corpus/ratsinformationen/` unter dem Präfix `ratsinformationen/`, Jahrgangsordner inklusive |
+  | `rheinfurt-archiv` | Quelle der Bibliothek „Ratsinformationen Stadt Rheinfurt" | `demo/corpus/ratsinformationen/` unter dem Präfix `ratsinformationen/`, Jahrgangs- und Gremiumsordner inklusive |
   | `formattest` | Quelle der Bibliothek „Formattest auf S3" | `demo/corpus/formate/`, je ein Dokument pro unterstützter Endung |
   | `opaa-uploads` | **Ablage** der hochgeladenen Originale der Demo | was über die Oberfläche hochgeladen wird, einschließlich der 26 Dokumente der Upload-Bibliothek, die der Seed einspielt — je Original ein Objekt unter `<Organisations-ID>/<Bibliotheks-ID>/<Zufallsname><Endung>` ([ADR-0030](../docs/decisions/0030-originalablage-der-uploads.md), Entscheidung 4 mit Nachtrag) |
 
@@ -274,7 +274,7 @@ ein Hafen nach außen ist dafür nicht nötig:
 - <http://127.0.0.1:8094/rustfs/console/> — **Konsole des Objektspeichers**, der Weg, sich die
   drei Buckets anzusehen (der Dienst serviert sie unter diesem Pfad, nicht unter `/`). Anmeldung
   mit dem Root-Schlüssel oben (`rheinfurt-archiv` / `RheinfurtDemo!2026`): `rheinfurt-archiv`
-  zeigt die Jahrgangsordner unter `ratsinformationen/`, `formattest` die vierzehn Formatmuster,
+  zeigt die Jahrgangs- und Gremiumsordner unter `ratsinformationen/`, `formattest` die vierzehn Formatmuster,
   und `opaa-uploads` füllt sich mit je einem Objekt pro hochgeladenem Original — sichtbar
   unmittelbar nach einem Upload über die Oberfläche, zwei Schlüsselebenen tief: erst die
   Organisation, darin die Bibliothek.
@@ -307,9 +307,9 @@ python seed.py --profile demo
 ```
 
 Der Seed richtet über die öffentliche API alle vier Demo-Nutzer plus das Admin-Konto ein, setzt den
-`groups_claim` des Anbieters „Verzeichnisdienst" (ADR-0036, siehe „Gruppen" unten), legt die vier
-Spaces und sieben Wissensbibliotheken an, vergibt die Leserechte, richtet eine interne Gruppe mit
-benannter Verantwortung ein, ordnet den drei Sachgebiets- und Amtsleitungs-Spaces ihre Bibliotheken
+`groups_claim` des Anbieters „Verzeichnisdienst" (ADR-0036, siehe „Gruppen" unten), legt die fünf
+Spaces und sieben Wissensbibliotheken an, vergibt die Leserechte, richtet drei interne Gruppen mit
+benannter Verantwortung ein, ordnet den vier gemeinsamen Spaces ihre Bibliotheken
 als Datenquellen zu (Assoziation als reine Kuratierung, #706 — Marias persönlicher Space bleibt
 bewusst ohne Zuordnung), lädt die 26 Dokumente der internen Upload-Bibliothek hoch und stößt die
 Indizierung der sechs konnektorgespeisten Bibliotheken an — darunter die beiden `S3`-Bibliotheken,
@@ -346,10 +346,10 @@ zu ersetzen. Der Ist-Zustand auf der öffentlichen Instanz opaa.ewerlin.com weic
 | Konto | Rolle im Szenario | Spaces | Lesbare Bibliotheken | Passwort |
 |---|---|---|---|---|
 | `demo-admin` (admin@stadt-rheinfurt.example) | Systemadministration | eigener Default-Space | richtet ein, besitzt alle sieben Bibliotheken — „Formattest auf S3" liest ausschließlich er | `RheinfurtDemo!2026` |
-| `maria.weber` | Sachbearbeiterin Meldewesen | „Meldewesen & Ausweise" (mit Selin), „Maria Weber – persönlich" (allein) | Leistungen Meldewesen & Ausweise, Satzungen & Gebührenordnungen, Pressemitteilungen, Interne Dienstanweisungen Meldewesen, Ratsinformationen | `RheinfurtDemo!2026` |
-| `selin.kaya` | Sachbearbeiterin Meldewesen | „Meldewesen & Ausweise" (mit Maria) | dieselben fünf wie Maria | `RheinfurtDemo!2026` |
-| `thomas.klein` | Sachbearbeiter Kfz-Zulassung | „Kfz-Zulassung" (allein) | Leistungen Kfz-Zulassung, Satzungen & Gebührenordnungen, Pressemitteilungen, Ratsinformationen | `RheinfurtDemo!2026` |
-| `andrea.vogt` | Amtsleitung Bürgerbüro | „Amtsleitung Bürgerbüro" (allein) | alle sechs fachlichen Bibliotheken (nicht „Formattest auf S3") | `RheinfurtDemo!2026` |
+| `maria.weber` | Sachbearbeiterin Meldewesen | „Meldewesen & Ausweise" (mit Selin), „Maria Weber – persönlich" (allein), „Dienstbesprechung Bürgerbüro" (über Gruppe) | Leistungen Meldewesen & Ausweise, Satzungen & Gebührenordnungen, Pressemitteilungen, Interne Dienstanweisungen Meldewesen, Ratsinformationen | `RheinfurtDemo!2026` |
+| `selin.kaya` | Sachbearbeiterin Meldewesen | „Meldewesen & Ausweise" (mit Maria), „Dienstbesprechung Bürgerbüro" (über Gruppe) | dieselben fünf wie Maria, Pressemitteilungen nur über die Gruppe „Presseverteiler Bürgerbüro" | `RheinfurtDemo!2026` |
+| `thomas.klein` | Sachbearbeiter Kfz-Zulassung | „Kfz-Zulassung" (allein), „Meldewesen & Ausweise" und „Dienstbesprechung Bürgerbüro" (je über Gruppe) | Leistungen Kfz-Zulassung, Satzungen & Gebührenordnungen, Ratsinformationen; Pressemitteilungen nur über „Presseverteiler Bürgerbüro", Interne Dienstanweisungen Meldewesen nur über „Vertretung Meldewesen" | `RheinfurtDemo!2026` |
+| `andrea.vogt` | Amtsleitung Bürgerbüro | „Amtsleitung Bürgerbüro" (allein), „Dienstbesprechung Bürgerbüro" (Eigentümerin) | alle sechs fachlichen Bibliotheken (nicht „Formattest auf S3") | `RheinfurtDemo!2026` |
 
 Der Objektspeicher `objectstore` des Demo-Stacks hat einen eigenen Root-Schlüssel (`rheinfurt-archiv` /
 `RheinfurtDemo!2026`, `docker-compose.yml`) — derselbe offene Demo-Wert, mit dem der Seed die beiden
@@ -363,10 +363,12 @@ eigenes Konto ohne die Rechte der Demo-Maria, sobald die Systemverwaltung den Re
 Anbieter angelegt hat (Administration → Identitätsanbieter; der Demo-Smoke-Lauf tut genau das).
 Sie zeigt, dass Konten zweier Anbieter nie zusammengeführt werden.
 
-Die Spalte „Lesbare Bibliotheken" zählt nur explizit vergebene `VIEWER`-Rechte; jeder Nutzer bekommt
+Die Spalte „Lesbare Bibliotheken" zählt die wirksamen `VIEWER`-Rechte, eigene wie über eine interne
+Gruppe vermittelte (siehe „Gruppen" unten); jeder Nutzer bekommt
 beim ersten Login zusätzlich automatisch seinen eigenen Default-Space, der oben nicht eigens
 aufgeführt ist. Die drei Sachgebiets- und Amtsleitungs-Spaces tragen ihre lesbaren Bibliotheken
-zusätzlich als zugeordnete Datenquellen (Space↔Bibliothek-Assoziation, #706): `@Alles-Wissen`
+zusätzlich als zugeordnete Datenquellen, „Dienstbesprechung Bürgerbüro" die drei für alle
+Fachkonten lesbaren (Space↔Bibliothek-Assoziation, #706): `@Alles-Wissen`
 durchsucht in diesen Spaces genau die zugeordneten Bibliotheken, geschnitten mit den Leserechten der
 fragenden Person. „Maria Weber – persönlich" bleibt bewusst ohne Zuordnung — dort greift
 `@Alles-Wissen` weiterhin auf alle für Maria lesbaren Bibliotheken zurück. Begründung der Matrix:
@@ -376,7 +378,9 @@ Berechtigungen"](../docs/features/demo-instance.md#nutzer-spaces-und-berechtigun
 **Der Vorführ-Kern:** Weil die Berechtigungsprüfung Teil der Vektorsuche ist und nicht ein
 nachgeschalteter Filter, ist ein für einen Nutzer unzugänglicher Treffer nicht nur unterdrückt,
 sondern nie geladen — Thomas' Anfrage nach einer internen Meldewesen-Dienstanweisung durchsucht diese
-Bibliothek gar nicht erst, unabhängig davon, wie thematisch treffend ein Chunk daraus wäre.
+Bibliothek gar nicht erst, unabhängig davon, wie thematisch treffend ein Chunk daraus wäre. Weil
+Thomas die Bibliothek über die Gruppe „Vertretung Meldewesen" lesen darf, stellt er die Frage dafür
+in seinem Space „Kfz-Zulassung", dem sie nicht zugeordnet ist.
 
 ### Gruppen (ADR-0036, #1823)
 
@@ -400,6 +404,24 @@ freigegeben**. Über sie liest Thomas die Bibliothek „Interne Dienstanweisunge
 Space „Meldewesen & Ausweise" (`MEMBER`, keine eigene Mitgliedschaft) — beides zusammen die
 Abnahmekriterien „ausschließlich über die Gruppe lesbar" bzw. „Space-Mitglied nur über die Gruppe".
 Geschützte Gruppen liefert die Demo bewusst nicht (Umfang von #1823).
+
+Seit #2013 kommen zwei weitere interne Gruppen hinzu, beide mit Andrea als alleiniger
+Verantwortlicher (sie ist nicht zugleich Mitglied) und zur Verwendung freigegeben:
+
+- **„Presseverteiler Bürgerbüro"** (Selin, Thomas) — ihre Mitglieder erhalten die
+  Pressemitteilungen des Presseamts der Stadt. Die Gruppe trägt `VIEWER` auf „Pressemitteilungen Stadt Rheinfurt"; Selin und Thomas haben
+  dort **kein eigenes Recht** mehr und lesen die Pressemitteilungen ausschließlich über die Gruppe.
+  Maria und Andrea behalten ihren eigenen Grant. Die wirksame Rechtematrix bleibt damit unverändert.
+- **„Sachbearbeitung Bürgerbüro"** (Maria, Selin, Thomas) — ist `MEMBER` des Space
+  „Dienstbesprechung Bürgerbüro" (Eigentümerin Andrea) und bringt damit alle drei
+  Sachbearbeitungskonten gleichzeitig in den Space, keines mit eigener Mitgliedschaft. Die Gruppe vermittelt kein
+  Leserecht; dem Space sind nur Bibliotheken zugeordnet, die alle vier Fachkonten ohnehin lesen.
+
+Übersicht aller Gruppen und der mit „G" markierten Gruppenrechte:
+[`../docs/features/demo-instance.md`, „Nutzer, Spaces und
+Berechtigungen"](../docs/features/demo-instance.md#nutzer-spaces-und-berechtigungen). Der Seed
+entzieht keine bestehenden Rechte: Auf einer vor #2013 eingespielten Instanz behalten Selin und Thomas
+ihren eigenen Grant auf die Pressemitteilungen, bis die Demo neu aufgesetzt wird.
 
 Die gleichnamige Gruppe „Meldewesen" im zweiten Realm `partner`
 (`keycloak/realm-partner-export.json`, mit demselben Gruppen-Mapper auf `opaa-partner`) demonstriert
@@ -516,7 +538,8 @@ Der Lauf richtet über die API ein:
    Anbieterzeile (ADR-0036, Entscheidung 3).
 3. **Spaces** gemäß `docs/features/demo-instance.md` — „Meldewesen & Ausweise" (Maria Weber, Selin
    Kaya), Marias eigener Space ohne weiteres Mitglied, „Kfz-Zulassung" (Thomas Klein), „Amtsleitung
-   Bürgerbüro" (Andrea Vogt).
+   Bürgerbüro" (Andrea Vogt), „Dienstbesprechung Bürgerbüro" (Andrea Vogt; die Sachbearbeitung
+   kommt erst in Schritt 6 über die Gruppe „Sachbearbeitung Bürgerbüro" hinzu).
 4. **Sieben Wissensbibliotheken** im Besitz des Admin-Kontos, je mit eigener Quellkonfiguration
    (ADR-0018): drei `HTTP_DIRECTORY` gegen `demo-corpus`, ein `RSS_FEED` gegen
    `presse.stadt-rheinfurt.example`, ein `UPLOAD`, zwei `S3` gegen `objectstore` (Bucket
@@ -524,7 +547,8 @@ Der Lauf richtet über die API ein:
    Zugangsdaten und die S3-Einstellungen (`sourceSettings`) direkt aus `profiles.py`,
    [ADR-0027](../docs/decisions/0027-s3-konnektor.md)). „Formattest auf S3" ist die einzige
    Bibliothek ohne `viewer_keys` und ohne Space-Zuordnung — sie bleibt beim anlegenden Admin-Konto.
-5. **VIEWER-Rechte** exakt nach der Matrix aus `docs/features/demo-instance.md` sowie die 26
+5. **VIEWER-Rechte** exakt nach der Matrix aus `docs/features/demo-instance.md` (die eigenen Grants;
+   die mit „G" markierten Gruppenrechte folgen in Schritt 6) sowie die 26
    Upload-Dokumente aus `demo/corpus/interne-dienstanweisungen-meldewesen/` — der Seed wartet nach
    dem Hochladen, bis kein Dokument mehr `PENDING` ist (Tika-Parsing und Embedding laufen asynchron,
    #434), und bricht bei `FAILED` mit der jeweiligen `errorMessage` ab. Das Upload-Verzeichnis wird
@@ -548,11 +572,13 @@ Der Lauf richtet über die API ein:
 7. **Space↔Bibliothek-Zuordnungen** (Assoziation als reine Kuratierung, #706) gemäß den
    `library_names` der Space-Definitionen in `profiles.py`: „Meldewesen & Ausweise" bekommt die fünf
    für das Sachgebiet lesbaren Bibliotheken zugeordnet, „Kfz-Zulassung" vier, „Amtsleitung Bürgerbüro"
-   alle sechs fachlichen („Formattest auf S3" ist keinem Space zugeordnet, siehe Schritt 4);
+   alle sechs fachlichen, „Dienstbesprechung Bürgerbüro" die drei für alle Fachkonten lesbaren
+   („Formattest auf S3" ist keinem Space zugeordnet, siehe Schritt 4);
    Marias persönlicher Space bleibt bewusst ohne Zuordnung (@Alles-Wissen greift dort
    weiter auf alle lesbaren Bibliotheken zurück). Die Zuordnung legt die Session des jeweiligen
    Space-Eigentümers an, denn `associateSpaceLibrary` verlangt CURATOR oder höher im Space plus
-   mindestens VIEWER auf der Bibliothek — beides hat der Eigentümer nach Schritt 5.
+   mindestens VIEWER auf der Bibliothek — beides hat der Eigentümer nach Schritt 6 (Thomas liest die
+   Pressemitteilungen, die „Kfz-Zulassung" zugeordnet sind, erst über die Gruppe „Presseverteiler Bürgerbüro").
 
    **7b. Prompt-Bibliotheken** (`profiles.py`s `PromptLibraryDef`, siehe „Prompt-Bibliotheken" oben)
    — je Definition über die Sitzung der Eigentümerin anlegen (`POST /api/v1/prompt-libraries`) oder
@@ -569,7 +595,10 @@ Der Lauf richtet über die API ein:
    bricht bei `documentsFailed > 0` ab. Für die beiden `S3`-Bibliotheken prüft er zusätzlich eine
    **Mindestzahl**: Ihr Bucket ist eine exakte Spiegelung eines Korpusverzeichnisses
    (`expected_documents_dir` in `profiles.py`), also muss der Lauf mindestens so viele Dokumente
-   verarbeitet haben, wie dort Dateien liegen. Ohne diese Prüfung meldete ein Lauf gegen einen noch
+   verarbeitet haben, wie dort Dateien liegen, Unterordner eingeschlossen. Die PDF-Anhänge der
+   Versandmails in „Ratsinformationen" kommen beim ersten Lauf als eigene Dokumente hinzu, zählen
+   aber nicht zur Mindestzahl: Ein erneuter Lauf überspringt die unveränderte Mail samt Anhängen
+   und meldet nur die Mail. Ohne diese Prüfung meldete ein Lauf gegen einen noch
    nicht fertig befüllten Bucket „abgeschlossen" über eine leere Bibliothek — der Einmal-Schritt
    `objectstore-seed` muss vorher durch sein (Schritt 2 von „Demo nutzen" oben).
 

@@ -87,7 +87,7 @@ Vorrat vollständig ab (#1519/#1520):
 | Satzungen & Gebührenordnungen | Verwaltungsgebührensatzung, Satzungsauszüge mit Gebührentabellen | `.pdf` | `HTTP_DIRECTORY` |
 | Pressemitteilungen Stadt Rheinfurt | ~20–30 Meldungen (Sperrungen, geänderte Öffnungszeiten, Stadtfest, Jubiläen) | RSS-XML, je Eintrag eine HTML-Detailseite auf demselben Host | `RSS_FEED` (statisch, selbst gehostet) |
 | Interne Dienstanweisungen Meldewesen | Dienstanweisungen, Eskalationsregeln, interne FAQ, Schulungsfolien, abgelegt in Ordnern nach Aktenplan (Melderecht, Pass- und Ausweiswesen, Datenschutz, Gebühren, Bürgerbüro, Aus- und Fortbildung; teils mit zweiter Ebene) | `.docx`, `.pdf`, `.pptx` | `UPLOAD` (manueller Upload, im Seed automatisiert, Ordner über `folderPath`) |
-| Ratsinformationen Stadt Rheinfurt | Niederschriften und Beschlussvorlagen des Stadtrats und des Hauptausschusses 2024–2026, ein Schlüsselpräfix je Jahrgang | `.md`, `.txt` | `S3` (Objektspeicher des Demo-Stacks, Bucket `rheinfurt-archiv`, Präfix `ratsinformationen/`; #1383, [ADR-0027](../decisions/0027-s3-konnektor.md)) |
+| Ratsinformationen Stadt Rheinfurt | Niederschriften und Beschlussvorlagen des Stadtrats, des Hauptausschusses und des Bauausschusses 2024–2026, Schlüsselpräfixe Jahrgang › Gremium (`2026/Stadtrat/…`); zwei Vorlagen mit Anlagen als Versandmail des Ratsinformationssystems | `.md`, `.txt`, `.eml` mit PDF-Anhängen | `S3` (Objektspeicher des Demo-Stacks, Bucket `rheinfurt-archiv`, Präfix `ratsinformationen/`; #1383, [ADR-0027](../decisions/0027-s3-konnektor.md)) |
 | Formattest auf S3 | Je ein Dokument pro zugelassener Endung, inhaltlich rund um Dokumentenformate, Posteingang und Langzeitarchivierung; jedes erzeugte Dokument nennt sein eigenes Format | alle oben genannten | `S3` (Objektspeicher des Demo-Stacks, Bucket `formattest`, ohne Präfix; #1519/#1520) |
 
 Die siebte Bibliothek ist **keine Fachablage, sondern eine technische Schaubibliothek**: Sie belegt,
@@ -117,10 +117,10 @@ von Space"):
 
 | Nutzer | Rolle im Szenario | Spaces |
 |---|---|---|
-| Maria Weber | Sachbearbeiterin Meldewesen | Space „Meldewesen & Ausweise" (gemeinsam mit Selin Kaya), zusätzlich ihr eigener Space, in dem niemand sonst Mitglied ist |
-| Selin Kaya | Sachbearbeiterin Meldewesen | Space „Meldewesen & Ausweise" |
-| Thomas Klein | Sachbearbeiter Kfz-Zulassung | Space „Kfz-Zulassung", alleiniges Mitglied |
-| Andrea Vogt | Amtsleitung Bürgerbüro | Space „Amtsleitung Bürgerbüro", alleiniges Mitglied |
+| Maria Weber | Sachbearbeiterin Meldewesen | Space „Meldewesen & Ausweise" (gemeinsam mit Selin Kaya), zusätzlich ihr eigener Space, in dem niemand sonst Mitglied ist; „Dienstbesprechung Bürgerbüro" über die Gruppe „Sachbearbeitung Bürgerbüro" |
+| Selin Kaya | Sachbearbeiterin Meldewesen | Space „Meldewesen & Ausweise"; „Dienstbesprechung Bürgerbüro" über die Gruppe „Sachbearbeitung Bürgerbüro" |
+| Thomas Klein | Sachbearbeiter Kfz-Zulassung | Space „Kfz-Zulassung", alleiniges Mitglied; „Meldewesen & Ausweise" über die Gruppe „Vertretung Meldewesen", „Dienstbesprechung Bürgerbüro" über die Gruppe „Sachbearbeitung Bürgerbüro" |
+| Andrea Vogt | Amtsleitung Bürgerbüro | Space „Amtsleitung Bürgerbüro", alleiniges Mitglied; Eigentümerin von „Dienstbesprechung Bürgerbüro" |
 | Administrationskonto (`demo-admin`) | Systemadministration | richtet ein und indiziert (`SYSTEM_ADMIN`) |
 
 Das Administrationskonto ist ein reguläres Konto aus dem Keycloak-Realm der Demo. Die Systemrolle
@@ -141,29 +141,46 @@ die fachlich gestellten Spaces auf: Jeder Nutzer bekommt beim ersten Login zusä
 Default-Space (`SpaceService#ensureDefaultSpace`, `isDefault`), der nicht eigens eingerichtet wird.
 
 Leserechte auf den Bibliotheken — vergeben als Asset-Rolle `VIEWER`, die Bibliotheken selbst gehören dem
-Admin-Konto:
+Admin-Konto. Die Matrix zeigt die wirksamen Rechte; „G" markiert ein Recht, das ausschließlich über eine
+interne Gruppe fließt (Tabelle unten), ohne eigenen Grant an das Konto:
 
-| Bibliothek | Meldewesen (Maria, Selin) | Kfz (Thomas) | Amtsleitung (Andrea) |
-|---|---|---|---|
-| Leistungen Meldewesen & Ausweise | ✔ | — | ✔ |
-| Leistungen Kfz-Zulassung | — | ✔ | ✔ |
-| Satzungen & Gebührenordnungen | ✔ | ✔ | ✔ |
-| Pressemitteilungen | ✔ | ✔ | ✔ |
-| Interne Dienstanweisungen Meldewesen | ✔ | — | ✔ |
-| Ratsinformationen Stadt Rheinfurt | ✔ | ✔ | ✔ |
-| Formattest auf S3 | — | — | — |
+| Bibliothek | Maria | Selin | Kfz (Thomas) | Amtsleitung (Andrea) |
+|---|---|---|---|---|
+| Leistungen Meldewesen & Ausweise | ✔ | ✔ | — | ✔ |
+| Leistungen Kfz-Zulassung | — | — | ✔ | ✔ |
+| Satzungen & Gebührenordnungen | ✔ | ✔ | ✔ | ✔ |
+| Pressemitteilungen | ✔ | ✔ G „Presseverteiler Bürgerbüro" | ✔ G „Presseverteiler Bürgerbüro" | ✔ |
+| Interne Dienstanweisungen Meldewesen | ✔ | ✔ | ✔ G „Vertretung Meldewesen" | ✔ |
+| Ratsinformationen Stadt Rheinfurt | ✔ | ✔ | ✔ | ✔ |
+| Formattest auf S3 | — | — | — | — |
+
+Die internen Gruppen (ADR-0036) legt der Seed mit benannten Verantwortlichen an; alle drei sind zur
+Verwendung freigegeben. Verantwortliche sind nicht zugleich Mitglieder:
+
+| Gruppe | Verantwortlich | Mitglieder | Leserecht | Space-Mitgliedschaft |
+|---|---|---|---|---|
+| Vertretung Meldewesen | Maria | Thomas | Interne Dienstanweisungen Meldewesen | „Meldewesen & Ausweise" (`MEMBER`) |
+| Pressestelle | Andrea | Selin, Thomas | Pressemitteilungen | — |
+| Sachbearbeitung Bürgerbüro | Andrea | Maria, Selin, Thomas | — | „Dienstbesprechung Bürgerbüro" (`MEMBER`) |
 
 Dieselben Bibliotheken sind den fachlichen Spaces zusätzlich als **Datenquellen zugeordnet**
 (Space↔Bibliothek-Assoziation als reine Kuratierung, #706): „Meldewesen & Ausweise" trägt die fünf
 für das Sachgebiet lesbaren Bibliotheken, „Kfz-Zulassung" seine vier, „Amtsleitung Bürgerbüro" alle
-sechs fachlichen. `@Alles-Wissen` durchsucht in diesen Spaces genau die zugeordneten Bibliotheken, geschnitten
+sechs fachlichen, „Dienstbesprechung Bürgerbüro" nur die drei, die alle vier Fachkonten lesen
+(Satzungen, Pressemitteilungen, Ratsinformationen). `@Alles-Wissen` durchsucht in diesen Spaces genau die zugeordneten Bibliotheken, geschnitten
 mit den Leserechten der fragenden Person. Marias persönlicher Space bleibt bewusst ohne Zuordnung —
 dort greift `@Alles-Wissen` auf alle für sie lesbaren Bibliotheken zurück. Die Zuordnung gewährt
 keinerlei Zugriff; die Matrix oben bleibt die alleinige Rechtequelle.
 
 Damit sind die Vorführmomente konstruierbar: Maria und Thomas stellen dieselbe Frage zu einer internen
-Dienstanweisung — Maria erhält die belegte Antwort, Thomas die Auskunft, dass dazu nichts vorliegt. Die
-Amtsleitung sieht amtsweit alles. Weil die Berechtigungsprüfung Teil der Vektorsuche ist und nicht ein
+Dienstanweisung — Maria erhält die belegte Antwort, Thomas die Auskunft, dass dazu nichts vorliegt. Weil
+Thomas die interne Bibliothek über „Vertretung Meldewesen" lesen darf, gilt das nur, wenn er in seinem
+Space „Kfz-Zulassung" fragt: Dem ist die Bibliothek nicht zugeordnet. In „Meldewesen & Ausweise" oder
+seinem Default-Space fände er die Dienstanweisung. Dasselbe gilt für seine Teile der Drehbuchfragen 6
+(Satzung ohne interne Verfahrensanleitung) und 7 (Wunschkennzeichenfrist ohne interne Terminvergabe).
+Andrea ist damit auch nicht mehr das einzige Fachkonto, das die interne Meldewesen- und die
+Kfz-Bibliothek zugleich liest — Thomas liest beide, bekommt die vollständige Antwort auf Frage 7 in
+„Kfz-Zulassung" aber nicht. Die Amtsleitung sieht amtsweit alles. Weil die Berechtigungsprüfung Teil der Vektorsuche ist und nicht ein
 Nachfilter, ist der unberechtigte Treffer bei Thomas nicht nur unterdrückt, sondern nie geladen.
 
 ### Prompt-Bibliotheken

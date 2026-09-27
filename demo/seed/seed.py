@@ -602,7 +602,9 @@ def wait_for_uploads_indexed(
 def expected_document_count(library_def: LibraryDef) -> int | None:
     """How many documents a run over library_def's own corpus directory has to end up with, or None
     when the profile names no such directory. The bucket of an S3 library is an exact mirror of it,
-    so one file is one document."""
+    nested folders included, so one file is one document. Attachments of a mail object are further
+    documents but stay out of the count: a repeat run skips an unchanged mail without counting its
+    attachments, and the count is a lower bound for both runs."""
     if library_def.expected_documents_dir is None:
         return None
     if not library_def.expected_documents_dir.is_dir():
@@ -759,8 +761,8 @@ def run(args: argparse.Namespace) -> None:
                     f"Space '{space_def.name}' referenziert eine unbekannte Bibliothek "
                     f"'{library_name}' - library_names muss auf eine LibraryDef des Profils zeigen."
                 )
-            # After step 5 the owner holds VIEWER on the library (grants) and is CURATOR or above
-            # on their own space - exactly what associateSpaceLibrary requires.
+            # After step 6 the owner holds VIEWER on the library (own or group grant) and is
+            # CURATOR or above on their own space - exactly what associateSpaceLibrary requires.
             ensure_association(
                 clients[space_def.owner_key],
                 space_ids[space_def.name],

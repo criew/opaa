@@ -236,8 +236,8 @@ services:
   # One-shot init step (pattern: ollama-pull): creates all three buckets and mirrors the two
   # committed corpus directories into their source buckets - demo/corpus/ratsinformationen/ under
   # the key prefix the seed's library scope names (bucket "rheinfurt-archiv", prefix
-  # "ratsinformationen/"), year folders included, and demo/corpus/formate/ into the bucket
-  # "formattest". "opaa-uploads" is only created, never filled: its content belongs to the
+  # "ratsinformationen/"), year and committee folders included, and demo/corpus/formate/ into the
+  # bucket "formattest". "opaa-uploads" is only created, never filled: its content belongs to the
   # application alone. Idempotent (a failing "s3 mb" on an existing bucket is tolerated, and
   # "s3 sync --delete" makes a source bucket an exact copy of its directory, so an object removed
   # from the corpus disappears on the next start), runs to completion and exits;
