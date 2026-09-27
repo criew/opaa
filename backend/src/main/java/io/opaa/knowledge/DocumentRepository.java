@@ -215,11 +215,11 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
       UUID libraryId, UUID folderId, Pageable pageable);
 
   /**
-   * The library root's counterpart to {@link #findByLibraryIdAndFolderId} - backs {@code GET
-   * .../documents} with no {@code folderId} and no {@code q}, ADR-0020's convention that a {@code
-   * null folder_id} means the library's root. Top-level documents only: an attachment ({@code
-   * parentDocumentId} set) is never paged independently, it rides along with its parent (see {@link
-   * #findByParentDocumentIdInOrderByFilePathAsc}).
+   * The library root's counterpart to {@link #findByLibraryIdAndFolderIdAndParentDocumentIdIsNull}
+   * - backs {@code GET .../documents} with no {@code folderId} and no {@code q}, ADR-0020's
+   * convention that a {@code null folder_id} means the library's root. Top-level documents only: an
+   * attachment ({@code parentDocumentId} set) is never paged independently, it rides along with its
+   * parent (see {@link #findByParentDocumentIdInOrderByFilePathAsc}).
    */
   Page<Document> findByLibraryIdAndFolderIdIsNullAndParentDocumentIdIsNull(
       UUID libraryId, Pageable pageable);
