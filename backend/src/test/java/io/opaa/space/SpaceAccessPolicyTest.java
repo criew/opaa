@@ -5,9 +5,9 @@ import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import io.opaa.account.AccountActivityService;
 import io.opaa.api.types.SpaceRole;
 import io.opaa.api.types.SpaceVisibility;
-import io.opaa.auth.AccountActivityService;
 import io.opaa.permission.GroupCapabilityService;
 import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.GroupSubjectDirectory;

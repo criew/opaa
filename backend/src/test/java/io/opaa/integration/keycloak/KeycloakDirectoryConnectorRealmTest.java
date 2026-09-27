@@ -3,12 +3,12 @@ package io.opaa.integration.keycloak;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.opaa.group.sync.DirectoryGroup;
-import io.opaa.group.sync.DirectorySnapshot;
-import io.opaa.group.sync.DirectoryUnavailableException;
-import io.opaa.group.sync.keycloak.KeycloakDirectoryConnector;
-import io.opaa.group.sync.keycloak.KeycloakDirectoryProperties;
-import io.opaa.group.sync.keycloak.KeycloakRealmAddress;
+import io.opaa.directory.sync.DirectoryGroup;
+import io.opaa.directory.sync.DirectorySnapshot;
+import io.opaa.directory.sync.DirectoryUnavailableException;
+import io.opaa.directory.sync.keycloak.KeycloakDirectoryConnector;
+import io.opaa.directory.sync.keycloak.KeycloakDirectoryProperties;
+import io.opaa.directory.sync.keycloak.KeycloakRealmAddress;
 import java.net.http.HttpClient;
 import java.time.Clock;
 import java.time.Duration;

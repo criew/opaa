@@ -4,10 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import io.opaa.account.LocalAccountSelfDisclosure;
 import io.opaa.api.dto.UserInfoResponse;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
-import io.opaa.auth.local.LocalAccountSelfDisclosure;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;

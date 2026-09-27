@@ -21,7 +21,7 @@ public class UserProvisioningFilter extends OncePerRequestFilter {
 
   /**
    * The {@code error_description} of an account the directory synchronisation locked (#1818) - the
-   * same channel the local issuer's refusals use ({@code io.opaa.auth.local.LocalTokenMarkers}), so
+   * same channel the local issuer's refusals use ({@code io.opaa.account.LocalTokenMarkers}), so
    * the SPA tells it apart from an expired token, starts no renewal and names reason and contact
    * instead of redirecting silently.
    */

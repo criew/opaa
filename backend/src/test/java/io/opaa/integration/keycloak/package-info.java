@@ -1,7 +1,7 @@
 /**
  * Integration tests against a <em>real</em> Keycloak started in Docker (#1817, ADR-0036
  * Entscheidung 3) - the acceptance level above the common test double ({@code
- * io.opaa.group.sync.keycloak.FakeKeycloakServer}), which stays the contract level.
+ * io.opaa.directory.sync.keycloak.FakeKeycloakServer}), which stays the contract level.
  *
  * <p><b>Runs only via {@code ./gradlew keycloakIntegrationTest}</b>, never as part of {@code
  * build}/{@code test}. Measured on the reference machine, a {@code start-dev} Keycloak 26.7 needs

@@ -1,0 +1,171 @@
+package io.opaa.account;
+
+import io.opaa.api.types.LockReason;
+import io.opaa.auth.LocalAccountAccess;
+import io.opaa.auth.LocalCredentials;
+import io.opaa.auth.LocalCredentialsRepository;
+import io.opaa.auth.LocalIssuer;
+import io.opaa.auth.OidcProviderRegistry;
+import io.opaa.auth.UserRepository;
+import java.time.Clock;
+import java.time.Instant;
+import java.util.EnumSet;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.stereotype.Component;
+
+/**
+ * The revocation validator of the local issuer (ADR-0033, Entscheidung 8), run for every request
+ * after signature, issuer and expiry have been verified: the management switch (the registry's
+ * flag; the {@code users} row is loaded only when the switch is off, to let a {@code SYSTEM_ADMIN}
+ * through), then the {@code jti} denylist (cache) and the account's {@code local_credentials} row
+ * (one primary-key lookup - the derived state, {@code password_invalidated_before}). Fail closed:
+ * only an account {@link LocalAccountAccess#isLoginCapable login-capable} right now passes. Every
+ * refusal is a {@link LocalTokenRejection} naming its reason; a token whose subject has no local
+ * account is refused rather than provisioned.
+ *
+ * <p>The switch is read first because while it is off it is the effective reason a regular local
+ * token is refused (ADR-0033, Entscheidung 4): the switch-off also revokes the running sessions, so
+ * any later check would answer with that revocation instead of the marker the switch promises. It
+ * governs local accounts only - a handed-over one passes it and keeps the refusal that names the
+ * handover, because its way in is the provider, not this switch.
+ */
+@Component
+public class LocalTokenValidator {
+
+  private final LocalCredentialsRepository credentials;
+  private final UserRepository users;
+  private final LocalRefreshTokenRepository refreshTokens;
+  private final LocalTokenRevocationService revocation;
+  private final OidcProviderRegistry registry;
+  private final Clock clock;
+
+  public LocalTokenValidator(
+      LocalCredentialsRepository credentials,
+      UserRepository users,
+      LocalRefreshTokenRepository refreshTokens,
+      LocalTokenRevocationService revocation,
+      OidcProviderRegistry registry,
+      Clock clock) {
+    this.credentials = credentials;
+    this.users = users;
+    this.refreshTokens = refreshTokens;
+    this.revocation = revocation;
+    this.registry = registry;
+    this.clock = clock;
+  }
+
+  public Optional<LocalTokenRejection> rejectionFor(Jwt jwt) {
+    String jti = jwt.getId();
+    Instant issuedAt = jwt.getIssuedAt();
+    UUID userId = subjectOf(jwt);
+    if (jti == null || issuedAt == null || userId == null) {
+      return Optional.of(new LocalTokenRejection(LocalTokenMarkers.MALFORMED_TOKEN, null));
+    }
+    if (!registry.localAccountsEnabled() && !passesManagementSwitch(userId)) {
+      return Optional.of(new LocalTokenRejection(LocalTokenMarkers.LOCAL_ACCOUNTS_DISABLED, null));
+    }
+    if (revocation.isDenylisted(jti)) {
+      return Optional.of(
+          new LocalTokenRejection(
+              LocalTokenMarkers.SESSION_REVOKED, latestRevocationCause(userId)));
+    }
+    LocalCredentials row = credentials.findById(userId).orElse(null);
+    if (row == null) {
+      // A handed-over account (ADR-0033, Entscheidung 12) has no credentials row any more, but its
+      // revoked families still name the act - so a token left in another tab says what happened
+      // instead of the bare "unknown account" every other missing row means.
+      String cause = latestRevocationCause(userId);
+      return Optional.of(
+          LocalTokenRejection.HANDED_OVER_CAUSE.equals(cause)
+              ? new LocalTokenRejection(LocalTokenMarkers.SESSION_REVOKED, cause)
+              : new LocalTokenRejection(LocalTokenMarkers.UNKNOWN_ACCOUNT, null));
+    }
+    Instant now = clock.instant();
+    if (!LocalAccountAccess.isLoginCapable(row, now)) {
+      // fail closed: whatever is not ACTIVE is refused, the two named states with their marker
+      return Optional.of(
+          switch (row.state(now)) {
+            case LOCKED ->
+                new LocalTokenRejection(LocalTokenMarkers.ACCOUNT_LOCKED, lockCause(row));
+            case EXPIRED -> new LocalTokenRejection(LocalTokenMarkers.ACCOUNT_EXPIRED, null);
+            default -> new LocalTokenRejection(LocalTokenMarkers.ACCOUNT_NOT_ACTIVE, null);
+          });
+    }
+    if (LocalTokenRevocationService.issuedBefore(issuedAt, row.getPasswordInvalidatedBefore())) {
+      return Optional.of(
+          new LocalTokenRejection(
+              LocalTokenMarkers.SESSION_REVOKED, latestRevocationCause(userId)));
+    }
+    return Optional.empty();
+  }
+
+  /**
+   * Whether the switch of the local management leaves this token's way open: a local {@code
+   * SYSTEM_ADMIN} passes (ADR-0033, Entscheidung 4), and so does an account that is no longer local
+   * - a handed-over one (Entscheidung 12) carries the provider's issuer, and the switch of the
+   * local management does not govern it. It falls through to the refusal that names the handover.
+   *
+   * <p>That fall-through rests on a contract of the handover: {@code
+   * LocalHandoverAccountService#redeem} rewrites {@code users.issuer} and deletes the {@code
+   * local_credentials} row in one transaction, and it is the only place that rewrites {@code
+   * users.issuer} after creation. A foreign issuer therefore never has a living credentials row,
+   * and passing the switch here can only lead to the branch that names the handover - never past
+   * it.
+   */
+  private boolean passesManagementSwitch(UUID userId) {
+    return users
+        .findById(userId)
+        .map(
+            user ->
+                !LocalIssuer.URN.equals(user.getIssuer())
+                    || LocalAccountAccess.passesManagementSwitch(registry, user))
+        .orElse(false);
+  }
+
+  /** A temporary lockout without a stored reason is the one after failed sign-ins. */
+  private static String lockCause(LocalCredentials row) {
+    LockReason reason = row.getLockedReason();
+    if (reason == null) {
+      reason = LockReason.FAILED_LOGINS;
+    }
+    return LocalTokenRejection.causeOf(reason);
+  }
+
+  /** The revocation reasons that are administrative acts - the ones a marker may name. */
+  static final Set<RevocationReason> ACTS =
+      EnumSet.of(
+          RevocationReason.ACCOUNT_LOCKED,
+          RevocationReason.PASSWORD_CHANGED,
+          RevocationReason.ADMIN_RESET,
+          RevocationReason.ADMIN,
+          RevocationReason.REUSE_DETECTED,
+          RevocationReason.HANDED_OVER);
+
+  /**
+   * The cause of the most recent administrative revocation among the account's refresh families -
+   * the act that ended the sessions; only read on the refusal path. Routine {@code ROTATED} and the
+   * person's own {@code LOGOUT} rows are skipped so they never hide the act.
+   */
+  private String latestRevocationCause(UUID userId) {
+    return refreshTokens
+        .findFirstByUserIdAndRevocationReasonInOrderByRevokedAtDesc(userId, ACTS)
+        .map(LocalRefreshToken::getRevocationReason)
+        .map(LocalTokenRejection::causeOf)
+        .orElse(null);
+  }
+
+  private static UUID subjectOf(Jwt jwt) {
+    String subject = jwt.getSubject();
+    if (subject == null) {
+      return null;
+    }
+    try {
+      return UUID.fromString(subject);
+    } catch (IllegalArgumentException notAUuid) {
+      return null;
+    }
+  }
+}

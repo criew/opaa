@@ -1,6 +1,5 @@
 package io.opaa.auth;
 
-import io.opaa.auth.oidc.OidcClaimMapping;
 import java.util.Map;
 import org.springframework.security.oauth2.jwt.Jwt;
 

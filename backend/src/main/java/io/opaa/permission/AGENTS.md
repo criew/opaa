@@ -1,13 +1,14 @@
 # Modul rights
 
-Pakete (`io.opaa.*`): permission, asset, group, succession. Ergänzt `backend/AGENTS.md`.
+Pakete (`io.opaa.*`): permission, asset, group, directory, succession. Ergänzt `backend/AGENTS.md`.
 
 ## Zweck und Grenze
 
 Das Berechtigungsmodell: Rechtesubjekt, Grant einer Rolle auf ein Asset, Rechteformel und
 Herleitung, Rechtehistorie (`permission`); die Asset-Schale, die jeder Asset-Typ teilt (`asset`);
-Gruppen samt Verzeichnis-Synchronisation (`group`); der Lebenszyklus „Nachfolge offen"
-(`succession`). rights hängt nur von foundation und identity ab.
+Gruppen (`group`); die Verwaltung der Identitätsanbieter, die Verzeichnis-Synchronisation und die
+Verzeichnis-Konnektoren (`directory`); der Lebenszyklus „Nachfolge offen" (`succession`). rights
+hängt nur von foundation und identity ab.
 
 ## Invarianten und Stolpersteine
 
@@ -29,9 +30,11 @@ Gruppen samt Verzeichnis-Synchronisation (`group`); der Lebenszyklus „Nachfolg
 - **Der Nachfolgezustand wird nie gespeichert.** `succession_cases` hält nur Beginn und Ende; alles
   andere wird bei jedem Lesen bei den Quellen erfragt.
 - **Rohes SQL gegen die Grant-Tabellen** nennt das Objekt über `asset_type` und `asset_id`.
-- **Web-Schicht:** `permission.web`, `asset.web` (Katalog), `group.web` (auch `/api/v1/me` und die
-  Identitätsanbieter samt Verzeichnis-Konnektor), `succession.web`. Die Grants und Raumzuordnungen
-  eines Assets bedient `AssetController` in `space.web` (workspace).
+- **`directory` liegt über `group`,** denn die Synchronisation schreibt Gruppen; `group` fragt das
+  Verzeichnis über den Port `DirectorySyncRuns`. Die Anbieter-Registratur liegt in `io.opaa.auth`.
+- **Web-Schicht:** `permission.web`, `asset.web` (Katalog), `group.web` (auch `/api/v1/me`),
+  `directory.web` (Anbieter, Verzeichnis-Konnektor, Synchronisation), `succession.web`. Die Grants
+  und Raumzuordnungen eines Assets bedient `AssetController` in `space.web` (workspace).
 - **Gruppenrechte enden mit der Mitgliedschaft:** Aufgelöst wird über `GroupMembershipResolver`,
   dessen Cache nach dem Commit der schreibenden Transaktion invalidiert wird.
 
@@ -45,11 +48,11 @@ Gruppen samt Verzeichnis-Synchronisation (`group`); der Lebenszyklus „Nachfolg
 ## Tests bei Änderungen
 
 ```bash
-./gradlew test --tests 'io.opaa.permission.*' --tests 'io.opaa.asset.*' \
-  --tests 'io.opaa.group.*' --tests 'io.opaa.succession.*' --tests 'io.opaa.architecture.*'
+./gradlew test --tests 'io.opaa.permission.*' --tests 'io.opaa.asset.*' --tests 'io.opaa.group.*' \
+  --tests 'io.opaa.directory.*' --tests 'io.opaa.succession.*' --tests 'io.opaa.architecture.*'
 ```
 
-Bei Änderungen am Verzeichnis-Konnektor (`group.sync`) zusätzlich `./gradlew keycloakIntegrationTest`
+Bei Änderungen am Verzeichnis-Konnektor (`directory.sync`) zusätzlich `./gradlew keycloakIntegrationTest`
 (braucht Docker).
 
 Bei Schemaänderungen: neue Datei unter `db/changelog/rights/` mit eigenem Delta-Test

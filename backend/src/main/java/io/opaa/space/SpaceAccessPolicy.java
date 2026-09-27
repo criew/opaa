@@ -1,7 +1,7 @@
 package io.opaa.space;
 
+import io.opaa.account.AccountActivityService;
 import io.opaa.api.types.SpaceRole;
-import io.opaa.auth.AccountActivityService;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.permission.GroupCapabilityService;

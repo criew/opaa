@@ -1,6 +1,6 @@
 package io.opaa.space;
 
-import io.opaa.auth.local.LocalAccountSpaceDirectory;
+import io.opaa.account.LocalAccountSpaceDirectory;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Component;

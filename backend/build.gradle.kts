@@ -349,6 +349,7 @@ val testShards = mapOf(
     "api" to listOf(
         "io.opaa.api.*", "io.opaa.library.*", "io.opaa.knowledge.*", "io.opaa.auth.*", "io.opaa.audit.*",
         "io.opaa.chat.*", "io.opaa.space.*", "io.opaa.group.*", "io.opaa.permission.*",
+        "io.opaa.account.*", "io.opaa.directory.*",
         "io.opaa.branding.*",
         "io.opaa.security.*", "io.opaa.diagnosticaccess.*", "io.opaa.sourceaccess.*",
         "io.opaa.asset.web.*", "io.opaa.mail.web.*", "io.opaa.revision.web.*", "io.opaa.succession.web.*",

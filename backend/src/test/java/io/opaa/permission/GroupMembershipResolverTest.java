@@ -5,7 +5,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.opaa.auth.AccountActivityService;
+import io.opaa.account.AccountActivityService;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import java.util.Optional;

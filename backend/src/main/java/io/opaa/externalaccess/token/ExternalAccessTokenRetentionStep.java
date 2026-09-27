@@ -1,7 +1,7 @@
 package io.opaa.externalaccess.token;
 
+import io.opaa.account.LocalAccountMaintenanceStep;
 import io.opaa.audit.AuditRetentionSettingsService;
-import io.opaa.auth.local.LocalAccountMaintenanceStep;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import org.slf4j.Logger;

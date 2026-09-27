@@ -7,11 +7,11 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
+import io.opaa.auth.OidcClaimMapping;
+import io.opaa.auth.OidcProvider;
 import io.opaa.auth.TokenGroups;
 import io.opaa.auth.User;
 import io.opaa.auth.UserProvisionedEvent;
-import io.opaa.auth.oidc.OidcClaimMapping;
-import io.opaa.auth.oidc.OidcProvider;
 import io.opaa.organization.Organization;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;

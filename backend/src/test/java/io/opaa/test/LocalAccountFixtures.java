@@ -1,18 +1,18 @@
 package io.opaa.test;
 
+import io.opaa.account.LocalRefreshTokenRepository;
+import io.opaa.account.LocalRevokedTokenRepository;
 import io.opaa.api.types.PasswordChangeReason;
 import io.opaa.api.types.SystemRole;
+import io.opaa.auth.LocalCredentials;
+import io.opaa.auth.LocalCredentialsRepository;
 import io.opaa.auth.LocalIssuer;
+import io.opaa.auth.OidcClaimMapping;
+import io.opaa.auth.OidcProvider;
+import io.opaa.auth.OidcProviderRepository;
+import io.opaa.auth.OidcProvidersChangedEvent;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
-import io.opaa.auth.local.LocalCredentials;
-import io.opaa.auth.local.LocalCredentialsRepository;
-import io.opaa.auth.local.LocalRefreshTokenRepository;
-import io.opaa.auth.local.LocalRevokedTokenRepository;
-import io.opaa.auth.oidc.OidcClaimMapping;
-import io.opaa.auth.oidc.OidcProvider;
-import io.opaa.auth.oidc.OidcProviderRepository;
-import io.opaa.auth.oidc.OidcProvidersChangedEvent;
 import io.opaa.organization.Organization;
 import java.time.Instant;
 import java.util.UUID;
