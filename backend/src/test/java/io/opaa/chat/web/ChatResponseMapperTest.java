@@ -1,0 +1,411 @@
+package io.opaa.chat.web;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import io.opaa.api.dto.ChatDetail;
+import io.opaa.api.dto.ChatMessageResponse;
+import io.opaa.api.dto.ChatSummary;
+import io.opaa.api.dto.ChatSummaryPage;
+import io.opaa.api.dto.SourceMetadataEntry;
+import io.opaa.api.dto.SourceReference;
+import io.opaa.api.types.ChatNoteItemKind;
+import io.opaa.api.types.ChatRole;
+import io.opaa.api.types.DatePrecision;
+import io.opaa.api.types.MetadataFilterMatch;
+import io.opaa.api.types.MetadataOrigin;
+import io.opaa.chat.Chat;
+import io.opaa.chat.ChatConversation;
+import io.opaa.chat.ChatListEntry;
+import io.opaa.chat.ChatNotePoint;
+import io.opaa.chat.ChatSource;
+import io.opaa.chat.ChatSourceLocation;
+import io.opaa.chat.ChatSourceMetadataEntry;
+import io.opaa.chat.ChatTurn;
+import io.opaa.chat.UsedPrompt;
+import io.opaa.indexing.metadata.MetadataFilter;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+import org.junit.jupiter.api.Test;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.test.util.ReflectionTestUtils;
+
+/**
+ * Pure JUnit tests (no Spring context) against directly constructed entities/domain objects - #860
+ * Teil 4, following the mapper-test convention {@code SpaceResponseMapperTest} established (#869
+ * review): the field-by-field response shape must be pinned somewhere, since neither {@code
+ * ChatService} nor {@code ChatController} tests exercise every field {@link ChatResponseMapper}
+ * copies.
+ */
+class ChatResponseMapperTest {
+
+  @Test
+  void toSummaryResponseCopiesEveryFieldIncludingReferencedLibraryIds() {
+    UUID libraryId = UUID.randomUUID();
+    Chat chat =
+        new Chat(
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            "Frage zur Frist",
+            false,
+            Set.of(libraryId));
+
+    Instant createdAt = Instant.parse("2026-09-01T07:00:00Z");
+    Instant updatedAt = Instant.parse("2026-09-17T16:30:00Z");
+    ReflectionTestUtils.setField(chat, "createdAt", createdAt);
+    ReflectionTestUtils.setField(chat, "updatedAt", updatedAt);
+    Instant pinnedAt = Instant.parse("2026-09-18T08:15:00Z");
+
+    ChatSummary response =
+        ChatResponseMapper.toSummaryResponse(new ChatListEntry(chat, pinnedAt, null));
+
+    assertThat(response.getId()).isEqualTo(chat.getId());
+    assertThat(response.getSpaceId()).isEqualTo(chat.getSpaceId());
+    assertThat(response.getAuthorId()).isEqualTo(chat.getAuthorId());
+    assertThat(response.getTitle()).isEqualTo("Frage zur Frist");
+    assertThat(response.getUseKnowledge()).isFalse();
+    assertThat(response.getStatus()).isEqualTo(chat.getStatus());
+    assertThat(response.getReferencedLibraryIds()).containsExactly(libraryId);
+    assertThat(response.getCreatedAt()).isEqualTo(createdAt);
+    assertThat(response.getUpdatedAt()).isEqualTo(updatedAt);
+    assertThat(response.getPinnedAt()).isEqualTo(pinnedAt);
+  }
+
+  @Test
+  void toSummaryResponseCopiesTheArchivedAt() {
+    Chat chat =
+        new Chat(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), null, true, Set.of());
+    Instant archivedAt = Instant.parse("2026-09-18T09:30:00Z");
+
+    ChatSummary response =
+        ChatResponseMapper.toSummaryResponse(new ChatListEntry(chat, null, archivedAt));
+
+    assertThat(response.getArchivedAt()).isEqualTo(archivedAt);
+    assertThat(response.getPinnedAt()).isNull();
+  }
+
+  @Test
+  void toSummaryPageCopiesItemsAndPaging() {
+    Chat chat =
+        new Chat(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "Eins", true, Set.of());
+    Instant archivedAt = Instant.parse("2026-09-18T09:30:00Z");
+
+    ChatSummaryPage page =
+        ChatResponseMapper.toSummaryPage(
+            new PageImpl<>(
+                List.of(new ChatListEntry(chat, null, archivedAt)), PageRequest.of(2, 1), 7));
+
+    assertThat(page.getItems()).extracting(ChatSummary::getId).containsExactly(chat.getId());
+    assertThat(page.getItems().getFirst().getArchivedAt()).isEqualTo(archivedAt);
+    assertThat(page.getPage()).isEqualTo(2);
+    assertThat(page.getSize()).isEqualTo(1);
+    assertThat(page.getTotalElements()).isEqualTo(7);
+  }
+
+  @Test
+  void toDetailResponseCopiesTheArchivedAt() {
+    Chat chat =
+        new Chat(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), null, true, Set.of());
+    Instant archivedAt = Instant.parse("2026-09-18T09:30:00Z");
+
+    ChatDetail archived =
+        ChatResponseMapper.toDetailResponse(
+            new ChatConversation(chat, List.of(), List.of(), archivedAt));
+    ChatDetail active =
+        ChatResponseMapper.toDetailResponse(new ChatConversation(chat, List.of(), List.of()));
+
+    assertThat(archived.getArchivedAt()).isEqualTo(archivedAt);
+    assertThat(active.getArchivedAt()).isNull();
+  }
+
+  @Test
+  void anUnpinnedChatMapsToANullPinnedAt() {
+    Chat chat =
+        new Chat(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), null, true, Set.of());
+
+    assertThat(
+            ChatResponseMapper.toSummaryResponse(new ChatListEntry(chat, null, null)).getPinnedAt())
+        .isNull();
+  }
+
+  @Test
+  void toDetailResponseCopiesTheConversationAndMapsEveryMessage() {
+    UUID libraryId = UUID.randomUUID();
+    Chat chat =
+        new Chat(
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            "Frage zur Frist",
+            false,
+            Set.of(libraryId));
+    // Fixed, distinct createdAt/updatedAt - Chat only assigns these via @PrePersist, which a
+    // directly constructed (never persisted) entity never runs, and equal or absent values would
+    // let a createdAt/updatedAt swap in the mapper pass unnoticed.
+    Instant createdAt = Instant.parse("2026-01-01T10:00:00Z");
+    Instant updatedAt = Instant.parse("2026-01-02T11:30:00Z");
+    ReflectionTestUtils.setField(chat, "createdAt", createdAt);
+    ReflectionTestUtils.setField(chat, "updatedAt", updatedAt);
+    UUID userTurnId = UUID.randomUUID();
+    UUID assistantTurnId = UUID.randomUUID();
+    ChatSource source = new ChatSource("bericht.pdf", 0.9, 1, true);
+    ChatTurn userTurn =
+        new ChatTurn(
+            userTurnId,
+            chat.getId(),
+            ChatRole.USER,
+            "Frage?",
+            null,
+            createdAt.plus(1, ChronoUnit.MINUTES));
+    ChatTurn assistantTurn =
+        new ChatTurn(
+            assistantTurnId,
+            chat.getId(),
+            ChatRole.ASSISTANT,
+            "Antwort.",
+            List.of(source),
+            createdAt.plus(2, ChronoUnit.MINUTES));
+    ChatConversation conversation =
+        new ChatConversation(chat, List.of(userTurn, assistantTurn), List.of());
+
+    ChatDetail response = ChatResponseMapper.toDetailResponse(conversation);
+
+    assertThat(response.getId()).isEqualTo(chat.getId());
+    assertThat(response.getSpaceId()).isEqualTo(chat.getSpaceId());
+    assertThat(response.getAuthorId()).isEqualTo(chat.getAuthorId());
+    assertThat(response.getTitle()).isEqualTo("Frage zur Frist");
+    assertThat(response.getUseKnowledge()).isFalse();
+    assertThat(response.getReferencedLibraryIds()).containsExactly(libraryId);
+    assertThat(response.getStatus()).isEqualTo(chat.getStatus());
+    assertThat(response.getCreatedAt()).isEqualTo(createdAt);
+    assertThat(response.getUpdatedAt()).isEqualTo(updatedAt);
+    assertThat(response.getMessages()).hasSize(2);
+    ChatMessageResponse mappedUserTurn = response.getMessages().get(0);
+    assertThat(mappedUserTurn.getId()).isEqualTo(userTurnId);
+    assertThat(mappedUserTurn.getChatId()).isEqualTo(chat.getId());
+    assertThat(mappedUserTurn.getRole()).isEqualTo(ChatRole.USER);
+    assertThat(mappedUserTurn.getContent()).isEqualTo("Frage?");
+    // A turn with no sources maps to a null (absent), not empty, sources list - matches the
+    // generated DTO's "present on ASSISTANT messages that used document context; absent
+    // otherwise" contract.
+    assertThat(mappedUserTurn.getSources()).isNull();
+    ChatMessageResponse mappedAssistantTurn = response.getMessages().get(1);
+    assertThat(mappedAssistantTurn.getId()).isEqualTo(assistantTurnId);
+    assertThat(mappedAssistantTurn.getChatId()).isEqualTo(chat.getId());
+    assertThat(mappedAssistantTurn.getSources()).hasSize(1);
+    assertThat(mappedAssistantTurn.getSources().getFirst().getFileName()).isEqualTo("bericht.pdf");
+    assertThat(mappedUserTurn.getUsedPromptId()).isNull();
+    assertThat(mappedUserTurn.getUsedPromptTitle()).isNull();
+  }
+
+  @Test
+  void toDetailResponseCarriesThePromptSnapshotOfAQuestion() {
+    Chat chat =
+        new Chat(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), null, true, Set.of());
+    UUID promptId = UUID.randomUUID();
+    ChatTurn question =
+        new ChatTurn(
+            UUID.randomUUID(),
+            chat.getId(),
+            ChatRole.USER,
+            "Fasse den Stand zusammen.",
+            null,
+            new UsedPrompt(promptId, "Zusammenfassung"),
+            Instant.parse("2026-09-24T08:00:00Z"));
+
+    ChatMessageResponse mapped =
+        ChatResponseMapper.toDetailResponse(
+                new ChatConversation(chat, List.of(question), List.of()))
+            .getMessages()
+            .getFirst();
+
+    assertThat(mapped.getUsedPromptId()).isEqualTo(promptId);
+    assertThat(mapped.getUsedPromptTitle()).isEqualTo("Zusammenfassung");
+  }
+
+  @Test
+  void toSourceReferenceCopiesEveryFieldIncludingChunkLocations() {
+    UUID documentId = UUID.randomUUID();
+    Instant indexedAt = Instant.now();
+    ChatSource source =
+        new ChatSource("readme.md", 0.85, 3, true)
+            .indexedAt(indexedAt)
+            .documentId(documentId)
+            .sourceType("UPLOAD")
+            .sourceUrl("https://example.com/readme.md")
+            .sourceEntryUrl("https://example.com/feed/entry-1")
+            .citationValid(false)
+            .chunkLocations(List.of(new ChatSourceLocation(3).location("S. 2-4")));
+
+    SourceReference response = ChatResponseMapper.toSourceReference(source);
+
+    assertThat(response.getFileName()).isEqualTo("readme.md");
+    assertThat(response.getRelevanceScore()).isEqualTo(0.85);
+    assertThat(response.getMatchCount()).isEqualTo(3);
+    assertThat(response.getCited()).isTrue();
+    assertThat(response.getIndexedAt()).isEqualTo(indexedAt);
+    assertThat(response.getDocumentId()).isEqualTo(documentId);
+    assertThat(response.getSourceType()).isEqualTo("UPLOAD");
+    assertThat(response.getSourceUrl()).isEqualTo("https://example.com/readme.md");
+    assertThat(response.getSourceEntryUrl()).isEqualTo("https://example.com/feed/entry-1");
+    assertThat(response.getCitationValid()).isFalse();
+    assertThat(response.getChunkLocations()).hasSize(1);
+    assertThat(response.getChunkLocations().getFirst().getChunkIndex()).isEqualTo(3);
+    assertThat(response.getChunkLocations().getFirst().getLocation()).isEqualTo("S. 2-4");
+  }
+
+  @Test
+  void toSourceReferenceLeavesChunkLocationsNullWhenAbsent() {
+    ChatSource source = new ChatSource("readme.md", 0.5, 1, false);
+
+    SourceReference response = ChatResponseMapper.toSourceReference(source);
+
+    assertThat(response.getChunkLocations()).isNull();
+  }
+
+  /** #1066: every field of every metadata entry reaches the generated DTO, in list order. */
+  @Test
+  void toSourceReferenceCopiesEveryMetadataEntryField() {
+    ChatSource source =
+        new ChatSource("dienstanweisung.pdf", 0.5, 1, true)
+            .metadata(
+                List.of(
+                    new ChatSourceMetadataEntry(
+                        "title",
+                        "Titel",
+                        "Dienstanweisung IT-Nutzung",
+                        "Dienstanweisung IT-Nutzung",
+                        MetadataOrigin.DETERMINISTIC,
+                        null),
+                    new ChatSourceMetadataEntry(
+                        "document_date",
+                        "Datum/Stand",
+                        "2024-01-01",
+                        "2024",
+                        MetadataOrigin.DERIVED,
+                        DatePrecision.YEAR)));
+
+    List<SourceMetadataEntry> response = ChatResponseMapper.toSourceReference(source).getMetadata();
+
+    assertThat(response).hasSize(2);
+    assertThat(response.get(0).getFieldKey()).isEqualTo("title");
+    assertThat(response.get(0).getLabel()).isEqualTo("Titel");
+    assertThat(response.get(0).getValue()).isEqualTo("Dienstanweisung IT-Nutzung");
+    assertThat(response.get(0).getDisplayValue()).isEqualTo("Dienstanweisung IT-Nutzung");
+    assertThat(response.get(0).getOrigin()).isEqualTo(MetadataOrigin.DETERMINISTIC);
+    assertThat(response.get(0).getDatePrecision()).isNull();
+    assertThat(response.get(1).getFieldKey()).isEqualTo("document_date");
+    assertThat(response.get(1).getLabel()).isEqualTo("Datum/Stand");
+    assertThat(response.get(1).getValue()).isEqualTo("2024-01-01");
+    assertThat(response.get(1).getDisplayValue()).isEqualTo("2024");
+    assertThat(response.get(1).getOrigin()).isEqualTo(MetadataOrigin.DERIVED);
+    assertThat(response.get(1).getDatePrecision()).isEqualTo(DatePrecision.YEAR);
+  }
+
+  /** #1066: a document without metadata maps to an absent list, never an empty one. */
+  @Test
+  void toSourceReferenceLeavesMetadataNullWhenAbsentOrEmpty() {
+    assertThat(
+            ChatResponseMapper.toSourceReference(new ChatSource("readme.md", 0.5, 1, false))
+                .getMetadata())
+        .isNull();
+    assertThat(
+            ChatResponseMapper.toSourceReference(
+                    new ChatSource("readme.md", 0.5, 1, false).metadata(List.of()))
+                .getMetadata())
+        .isNull();
+  }
+
+  /** #1070: the chat's sticky filter reaches summary and detail; an empty one maps to null. */
+  @Test
+  void toSummaryAndDetailCopyTheMetadataFilter() {
+    Chat chat =
+        new Chat(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), null, true, Set.of());
+    chat.applyMetadataFilter(
+        new MetadataFilter(
+            Set.of("VERMERK"), LocalDate.of(2024, 1, 1), LocalDate.of(2024, 12, 31)));
+
+    ChatSummary summary = ChatResponseMapper.toSummaryResponse(new ChatListEntry(chat, null, null));
+    ChatDetail detail =
+        ChatResponseMapper.toDetailResponse(new ChatConversation(chat, List.of(), List.of()));
+
+    assertThat(summary.getMetadataFilter().getDocumentTypes()).containsExactly("VERMERK");
+    assertThat(summary.getMetadataFilter().getDocumentDateFrom()).isEqualTo("2024-01-01");
+    assertThat(summary.getMetadataFilter().getDocumentDateTo()).isEqualTo("2024-12-31");
+    assertThat(detail.getMetadataFilter().getDocumentTypes()).containsExactly("VERMERK");
+
+    chat.applyMetadataFilter(MetadataFilter.NONE);
+    assertThat(
+            ChatResponseMapper.toSummaryResponse(new ChatListEntry(chat, null, null))
+                .getMetadataFilter())
+        .isNull();
+  }
+
+  /**
+   * #1487: every field of a note point reaches the response, in the order the note holds them. The
+   * kind is delivered even though the Oberfläche does not show it.
+   */
+  @Test
+  void toDetailCopiesEveryNotePointWithItsKindAndOrder() {
+    Chat chat =
+        new Chat(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), null, true, Set.of());
+    UUID firstId = UUID.randomUUID();
+    UUID secondId = UUID.randomUUID();
+    Instant createdAt = Instant.parse("2026-09-11T09:00:00Z");
+    ChatConversation conversation =
+        new ChatConversation(
+            chat,
+            List.of(),
+            List.of(
+                new ChatNotePoint(
+                    firstId, "Arbeitet in der Nebenstelle 3", ChatNoteItemKind.RAHMEN, createdAt),
+                new ChatNotePoint(
+                    secondId,
+                    "Möchte knappe Antworten",
+                    ChatNoteItemKind.ANTWORTFORM,
+                    createdAt.plus(1, ChronoUnit.MINUTES))));
+
+    ChatDetail detail = ChatResponseMapper.toDetailResponse(conversation);
+
+    assertThat(detail.getNoteItems()).hasSize(2);
+    assertThat(detail.getNoteItems().get(0).getId()).isEqualTo(firstId);
+    assertThat(detail.getNoteItems().get(0).getText()).isEqualTo("Arbeitet in der Nebenstelle 3");
+    assertThat(detail.getNoteItems().get(0).getKind()).isEqualTo(ChatNoteItemKind.RAHMEN);
+    assertThat(detail.getNoteItems().get(0).getCreatedAt()).isEqualTo(createdAt);
+    assertThat(detail.getNoteItems().get(1).getId()).isEqualTo(secondId);
+    assertThat(detail.getNoteItems().get(1).getKind()).isEqualTo(ChatNoteItemKind.ANTWORTFORM);
+    assertThat(detail.getNoteItems().get(1).getCreatedAt())
+        .isEqualTo(createdAt.plus(1, ChronoUnit.MINUTES));
+  }
+
+  @Test
+  void aChatWithoutNotePointsCarriesAnEmptyNoteNotNull() {
+    Chat chat =
+        new Chat(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), null, true, Set.of());
+
+    assertThat(
+            ChatResponseMapper.toDetailResponse(new ChatConversation(chat, List.of(), List.of()))
+                .getNoteItems())
+        .isEmpty();
+  }
+
+  /** #1070: a source's match state reaches the DTO, and stays null without a filter. */
+  @Test
+  void toSourceReferenceCopiesTheMetadataFilterMatch() {
+    assertThat(
+            ChatResponseMapper.toSourceReference(
+                    new ChatSource("readme.md", 0.5, 1, false)
+                        .metadataFilterMatch(MetadataFilterMatch.NO_VALUE))
+                .getMetadataFilterMatch())
+        .isEqualTo(MetadataFilterMatch.NO_VALUE);
+    assertThat(
+            ChatResponseMapper.toSourceReference(new ChatSource("readme.md", 0.5, 1, false))
+                .getMetadataFilterMatch())
+        .isNull();
+  }
+}

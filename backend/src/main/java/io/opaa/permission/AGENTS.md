@@ -13,7 +13,8 @@ Gruppen samt Verzeichnis-Synchronisation (`group`); der Lebenszyklus „Nachfolg
 
 - **`permission` kennt kein Fachpaket und nicht die Asset-Schale.** Was es von oben braucht,
   deklariert es als Port, den das obere Paket implementiert (`GroupMembershipSource`,
-  `GroupSubjectDirectory`, `AssetOwnershipDirectory`, `SuccessionFindingSource`).
+  `GroupSubjectDirectory`, `AssetOwnershipDirectory`, `SuccessionFindingSource`,
+  `GroupSpaceMembershipDirectory`, `SpaceAssetDirectory`).
 - **Grants sind typunabhängig:** Ein Grant nennt sein Asset über `AssetType` plus ID; `permission`
   zählt die Typen nie auf. `asset_grants` verweist mit der Organisation im Schlüssel und
   `ON DELETE CASCADE` auf `assets` — kein Grant überlebt sein Asset.

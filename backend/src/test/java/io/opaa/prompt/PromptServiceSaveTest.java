@@ -11,6 +11,7 @@ import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.ConflictException;
 import io.opaa.permission.AssetAccessService;
+import io.opaa.permission.SpaceAssetDirectory;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.UUID;
@@ -34,7 +35,8 @@ class PromptServiceSaveTest {
           mock(PromptLibraryRepository.class),
           mock(AssetAuthorization.class),
           mock(AssetAccessService.class),
-          mock(AuditEventRecorder.class));
+          mock(AuditEventRecorder.class),
+          mock(SpaceAssetDirectory.class));
 
   private final UUID organization = UUID.randomUUID();
   private final CurrentUser caller =

@@ -27,6 +27,8 @@ connectors und app ab.
 - **`mcp` ist eine Übersetzungsschicht und sonst nichts:** kein Index, keine Rechtelogik, kein
   Zugriff auf `vector_store`. Jeder Werkzeugaufruf geht über `io.opaa.search`, dieselben Dienste
   wie `POST /api/v1/search` und `POST /api/v1/query`.
+- **Web-Schicht:** `externalaccess.web` (Einstellungen und Zugangstoken); `mcp` hat keine
+  Controller.
 - **Zustandslos:** Jede JSON-RPC-Anfrage ist eine eigene HTTP-Anfrage mit eigenem Bearer-Wert;
   Schalter, Token und Sicht werden je Aufruf geprüft.
 - **Was der Spring-AI-Starter nicht tut, tut `mcp` selbst:** Die Filterkette des Kanals sichert

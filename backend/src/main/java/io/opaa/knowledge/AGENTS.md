@@ -32,7 +32,8 @@ Chat-Modelle (`llm`). knowledge hängt nur von foundation, identity und rights a
   über `SettingsEncryptor` verschlüsselt, bevor die Datenbank ihn sieht; jede Änderung wird
   protokolliert. Genau ein Modell ist systemweit aktiv.
 - **Web-Schicht:** `llm.web` (Modellverwaltung), `indexing.web` (Indexierungsverwaltung,
-  Dokument- und Bibliotheksmetadaten). Die Endpunkte der Bibliothek liegen in `library.web`.
+  Dokument- und Bibliotheksmetadaten, der Metadatenfilter aller Such- und Chat-Anfragen samt
+  strengem `MetadataFilterDeserializer`). Die Endpunkte der Bibliothek liegen in `library.web`.
 
 ## Verweise
 
