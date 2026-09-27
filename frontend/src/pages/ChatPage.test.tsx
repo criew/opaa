@@ -139,6 +139,31 @@ describe('ChatPage', () => {
     expect(screen.queryByText(ANSWER_ARRIVED_ANNOUNCEMENT)).not.toBeInTheDocument()
   })
 
+  it('puts a question the server rejects with 400 back into the input and explains why', async () => {
+    server.use(
+      http.post('/api/v1/query', () =>
+        HttpResponse.json(
+          { error: 'question: ungültig', status: 400, timestamp: new Date().toISOString() },
+          { status: 400 },
+        ),
+      ),
+    )
+    renderWithProviders(<ChatPage />, { withRouter: true })
+    await waitFor(() => expect(useChatStore.getState().spaceId).toBe('space-personal'))
+
+    const input = screen.getByPlaceholderText('Nachricht eingeben …')
+    fireEvent.change(input, { target: { value: 'Erste Zeile\nzweite Zeile' } })
+    fireEvent.click(screen.getByLabelText('Senden'))
+
+    await waitFor(() => expect(input).toHaveValue('Erste Zeile\nzweite Zeile'))
+    expect(
+      await screen.findByText(
+        'Die Frage konnte nicht gesendet werden. Bitte prüfen Sie die Eingabe (höchstens 2000 Zeichen). Die Frage steht wieder im Eingabefeld.',
+      ),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('question: ungültig')).not.toBeInTheDocument()
+  })
+
   it('shows error alert when present', async () => {
     renderWithProviders(<ChatPage />, { withRouter: true })
     await waitFor(() => expect(useChatStore.getState().spaceId).toBe('space-personal'))

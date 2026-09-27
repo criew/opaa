@@ -114,8 +114,11 @@ describe('chatStore with a prompt', () => {
       .getState()
       .sendMessage('Fasse zusammen.', { id: 'prompt-zusammenfassung', title: 'Zusammenfassung' })
 
-    expect(outcome).toEqual({ restoreDraft: 'Fasse zusammen.' })
+    expect(outcome).toMatchObject({ restoreDraft: 'Fasse zusammen.' })
     expect(useChatStore.getState().messages).toEqual([])
+    expect(useChatStore.getState().error).not.toContain('Eingabefeld')
+
+    outcome?.onRestored()
     expect(useChatStore.getState().error).toContain('ohne Prompt senden')
   })
 

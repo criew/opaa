@@ -8,6 +8,7 @@ import ClickAwayListener from '@mui/material/ClickAwayListener'
 import Paper from '@mui/material/Paper'
 import Popper from '@mui/material/Popper'
 import { alpha } from '@mui/material/styles'
+import visuallyHidden from '@mui/utils/visuallyHidden'
 import { darkRoles, fontFamily, gray, shadow } from '../../theme/tokens'
 import IconButton from '@mui/material/IconButton'
 import TextField from '@mui/material/TextField'
@@ -18,7 +19,7 @@ import SendIcon from '@mui/icons-material/Send'
 import TextSnippetOutlinedIcon from '@mui/icons-material/TextSnippetOutlined'
 import { CHAT_MAX_WIDTH } from '../../theme/theme'
 import { useAuthStore } from '../../stores/authStore'
-import { useChatStore } from '../../stores/chatStore'
+import { QUESTION_MAX_LENGTH, useChatStore } from '../../stores/chatStore'
 import { useLibraryStore } from '../../stores/libraryStore'
 import {
   metadataFilterScopeKey,
@@ -44,9 +45,13 @@ import {
   withoutLibraryField,
 } from './metadataFilterText'
 
-/** What became of a sent message; `restoreDraft` hands a refused question back to the input. */
+/**
+ * What became of a sent message; `restoreDraft` hands a refused question back to the input, and
+ * `onRestored` is called once it is actually back there.
+ */
 export interface SendOutcome {
   restoreDraft?: string
+  onRestored?: () => void
 }
 
 interface ChatInputProps {
@@ -76,6 +81,34 @@ type MentionSuggestion = { kind: 'all' } | { kind: 'library'; library: LibraryLi
  * What the next question searches is stated by the chip bar above it.
  */
 const INPUT_HINT = '@ für Quellen, / für Aktionen'
+
+/** From this share of {@link QUESTION_MAX_LENGTH} on, the input counts the characters. */
+const LENGTH_COUNTER_THRESHOLD = 0.9
+
+/**
+ * The counter under the input, measured on the trimmed text that is actually sent; `null` while
+ * the question is well below the limit.
+ */
+function lengthCounterText(length: number): string | null {
+  if (length < QUESTION_MAX_LENGTH * LENGTH_COUNTER_THRESHOLD) return null
+  const counted = `${length} von ${QUESTION_MAX_LENGTH} Zeichen`
+  if (length <= QUESTION_MAX_LENGTH) return counted
+  return `${counted} – bitte um ${length - QUESTION_MAX_LENGTH} Zeichen kürzen, damit sich die Frage senden lässt.`
+}
+
+/**
+ * The screen reader announcement for the length: one fixed sentence per threshold state, so it
+ * changes - and is announced - only when the question crosses 90 % or the limit, not per keystroke.
+ */
+function lengthAnnouncement(length: number): string {
+  if (length > QUESTION_MAX_LENGTH) {
+    return `Die Frage ist länger als ${QUESTION_MAX_LENGTH} Zeichen und lässt sich nicht senden.`
+  }
+  if (length >= QUESTION_MAX_LENGTH * LENGTH_COUNTER_THRESHOLD) {
+    return `Die Frage nähert sich der Grenze von ${QUESTION_MAX_LENGTH} Zeichen und lässt sich senden.`
+  }
+  return ''
+}
 
 /**
  * Finds an in-progress '@' mention ending at the cursor, or null if none is active. Only
@@ -109,6 +142,10 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
   const wasDisabled = useRef(false)
   const mentionListboxId = useId()
   const promptListboxId = useId()
+  const lengthCounterId = useId()
+  const questionLength = value.trim().length
+  const questionTooLong = questionLength > QUESTION_MAX_LENGTH
+  const lengthCounter = lengthCounterText(questionLength)
 
   // The chip bar is the only search-scope control (#560): "Durchsucht wird, was in der Leiste
   // steht." scope 'all' -> the special @Alles-Wissen chip, 'libraries' -> concrete chips,
@@ -328,7 +365,7 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
 
   const handleSend = () => {
     const trimmed = value.trim()
-    if (!trimmed || promptCommand.isInserting) return
+    if (!trimmed || trimmed.length > QUESTION_MAX_LENGTH || promptCommand.isInserting) return
     const outcome = promptCommand.selected
       ? onSend(trimmed, promptCommand.selected)
       : onSend(trimmed)
@@ -336,13 +373,14 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
     setDismissedMentionStart(null)
     closeMention()
     promptCommand.reset()
-    // A question refused for its prompt comes back without the prompt, unless the person has
-    // already started the next one.
+    // A refused question comes back without its prompt, unless the person has already started
+    // the next one or the input is gone.
     void Promise.resolve(outcome).then((result) => {
-      if (result?.restoreDraft) {
-        const draft = result.restoreDraft
-        setValue((current) => (current.trim() === '' ? draft : current))
-      }
+      if (!result?.restoreDraft) return
+      const input = inputRef.current
+      if (!input || input.value.trim() !== '') return
+      setValue(result.restoreDraft)
+      result.onRestored?.()
     })
   }
 
@@ -637,6 +675,8 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
               'aria-controls': comboboxControls,
               'aria-autocomplete': 'list',
               'aria-activedescendant': activeDescendant,
+              'aria-invalid': questionTooLong,
+              'aria-describedby': lengthCounter ? lengthCounterId : undefined,
             },
           }}
           sx={{
@@ -658,7 +698,7 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
         <IconButton
           color="primary"
           onClick={handleSend}
-          disabled={disabled || !value.trim() || promptCommand.isInserting}
+          disabled={disabled || !value.trim() || questionTooLong || promptCommand.isInserting}
           aria-label="Senden"
           sx={{
             alignSelf: 'flex-end',
@@ -807,6 +847,18 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
         <Typography component="div" sx={{ fontSize: 12, color: 'text.secondary' }}>
           {scopeNotice ?? INPUT_HINT}
         </Typography>
+        {lengthCounter && (
+          <Typography
+            id={lengthCounterId}
+            component="div"
+            sx={{ fontSize: 12, color: questionTooLong ? 'error.main' : 'text.secondary' }}
+          >
+            {lengthCounter}
+          </Typography>
+        )}
+        <Box component="div" aria-live="polite" sx={visuallyHidden}>
+          {lengthAnnouncement(questionLength)}
+        </Box>
       </Box>
     </Box>
   )

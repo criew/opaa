@@ -41,6 +41,37 @@ function toChatMessage(message: ChatMessageResponse): ChatMessage {
   }
 }
 
+/** The longest question the server accepts (`QueryRequest.question`, `maxLength`). */
+export const QUESTION_MAX_LENGTH = 2000
+
+const INVALID_QUESTION_MESSAGE = `Die Frage konnte nicht gesendet werden. Bitte prüfen Sie die Eingabe (höchstens ${QUESTION_MAX_LENGTH} Zeichen).`
+
+const DRAFT_RESTORED_NOTE = 'Die Frage steht wieder im Eingabefeld.'
+
+const DRAFT_RESTORED_WITHOUT_PROMPT_NOTE =
+  'Die Frage steht wieder im Eingabefeld und lässt sich ohne Prompt senden.'
+
+/** The server's bean validation names the rejected field first, e.g. `question: …`. */
+function isQuestionViolation(message: string): boolean {
+  return message.startsWith('question:')
+}
+
+/**
+ * What `sendMessage` resolves to for a question the server refused: the draft for the input, and
+ * `onRestored`, which the input calls once the draft is actually back in it.
+ */
+export interface RefusedQuestion {
+  restoreDraft: string
+  onRestored: () => void
+}
+
+/** The HTTP status of a failed request, or `null` when no response arrived. */
+function responseStatus(err: unknown): number | null {
+  const cause = err instanceof Error ? err.cause : undefined
+  const status = (cause as { response?: { status?: unknown } } | undefined)?.response?.status
+  return typeof status === 'number' ? status : null
+}
+
 /** The server refused the question because the person may no longer use its prompt. */
 function isPromptNotUsable(err: unknown): boolean {
   const cause = err instanceof Error ? err.cause : undefined
@@ -398,14 +429,14 @@ interface ChatState {
   loadChat: (chatId: string) => Promise<void>
   startNewChat: (spaceId: string) => void
   /**
-   * `usedPrompt` names the prompt the question was built from. A question refused because that
-   * prompt is no longer usable resolves to `restoreDraft`: nothing of it stays in the history, and
-   * the input gets it back to be sent without the prompt.
+   * `usedPrompt` names the prompt the question was built from. A question the server refuses (4xx,
+   * including a prompt that is no longer usable) resolves to a {@link RefusedQuestion}: nothing of
+   * it stays in the history, and the input gets it back to be corrected and sent again.
    */
   sendMessage: (
     question: string,
     usedPrompt?: { id: string; title: string },
-  ) => Promise<{ restoreDraft?: string } | void>
+  ) => Promise<RefusedQuestion | void>
   /** Sets the chip bar back to the special @Alles-Wissen chip, replacing any concrete chips. */
   setScopeAll: () => void
   /** Adds a concrete library chip. The first concrete chip replaces @Alles-Wissen (scope 'all' ->
@@ -775,13 +806,25 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }
       // TODO: Add retry UX (e.g. "Retry" button on failed messages)
       const message = err instanceof Error ? err.message : 'Ein unerwarteter Fehler ist aufgetreten'
-      if (usedPrompt && isPromptNotUsable(err)) {
+      // A question the server rejected (4xx) was not persisted: it leaves the history and goes
+      // back to the input. The error only promises that once the input confirms it.
+      const status = responseStatus(err)
+      if (status !== null && status >= 400 && status < 500) {
+        const promptNotUsable = usedPrompt !== undefined && isPromptNotUsable(err)
+        const reason =
+          status === 400 && isQuestionViolation(message) ? INVALID_QUESTION_MESSAGE : message
+        const note = promptNotUsable ? DRAFT_RESTORED_WITHOUT_PROMPT_NOTE : DRAFT_RESTORED_NOTE
         set((state) => ({
           messages: state.messages.filter((m) => m !== send.userMessage),
-          error: `${message} Die Frage steht wieder im Eingabefeld und lässt sich ohne Prompt senden.`,
+          error: reason,
           isLoading,
         }))
-        return { restoreDraft: question }
+        return {
+          restoreDraft: question,
+          onRestored: () => {
+            if (isTargetChatShown() && get().error === reason) set({ error: `${reason} ${note}` })
+          },
+        }
       }
       set({ error: message, isLoading })
     } finally {

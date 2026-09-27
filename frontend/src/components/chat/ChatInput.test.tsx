@@ -1,8 +1,9 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import ChatInput from './ChatInput'
+import type { SendOutcome } from './ChatInput'
 import { useChatStore } from '../../stores/chatStore'
 import { useLibraryStore } from '../../stores/libraryStore'
 import { useSpaceStore } from '../../stores/spaceStore'
@@ -30,6 +31,14 @@ function mockAssociations(
   },
 ) {
   server.use(http.get(`/api/v1/spaces/${spaceId}/assets`, () => HttpResponse.json(response)))
+}
+
+function deferredOutcome() {
+  let resolve: (outcome: SendOutcome) => void = () => {}
+  const promise = new Promise<SendOutcome>((r) => {
+    resolve = r
+  })
+  return { promise, resolve }
 }
 
 const rechtsquellen: LibraryListResponse = {
@@ -289,6 +298,129 @@ describe('ChatInput', () => {
     fireEvent.keyDown(input, { key: 'Enter', shiftKey: false })
 
     expect(onSend).not.toHaveBeenCalled()
+  })
+
+  it('sends a multiline question with its line breaks', () => {
+    const onSend = vi.fn()
+    render(<ChatInput onSend={onSend} />)
+
+    const input = screen.getByPlaceholderText('Nachricht eingeben …')
+    fireEvent.change(input, { target: { value: 'Erste Zeile\nzweite Zeile\n' } })
+    fireEvent.keyDown(input, { key: 'Enter', shiftKey: false })
+
+    expect(onSend).toHaveBeenCalledWith('Erste Zeile\nzweite Zeile')
+  })
+
+  describe('the length limit of a question', () => {
+    it('shows no counter for a short question', () => {
+      render(<ChatInput onSend={vi.fn()} />)
+
+      const input = screen.getByPlaceholderText('Nachricht eingeben …')
+      fireEvent.change(input, { target: { value: 'Kurze Frage' } })
+
+      expect(screen.queryByText(/von 2000 Zeichen/)).not.toBeInTheDocument()
+    })
+
+    it('shows a counter close to the limit and still sends', () => {
+      const onSend = vi.fn()
+      render(<ChatInput onSend={onSend} />)
+
+      const input = screen.getByPlaceholderText('Nachricht eingeben …')
+      fireEvent.change(input, { target: { value: 'a'.repeat(1800) } })
+
+      expect(screen.getByText('1800 von 2000 Zeichen')).toBeInTheDocument()
+      expect(screen.getByLabelText('Senden')).toBeEnabled()
+      fireEvent.keyDown(input, { key: 'Enter', shiftKey: false })
+      expect(onSend).toHaveBeenCalledWith('a'.repeat(1800))
+    })
+
+    it('blocks sending above the limit, says why and keeps the whole text', () => {
+      const onSend = vi.fn()
+      render(<ChatInput onSend={onSend} />)
+
+      const input = screen.getByPlaceholderText('Nachricht eingeben …')
+      fireEvent.change(input, { target: { value: 'a'.repeat(2150) } })
+
+      expect(
+        screen.getByText(
+          '2150 von 2000 Zeichen – bitte um 150 Zeichen kürzen, damit sich die Frage senden lässt.',
+        ),
+      ).toBeInTheDocument()
+      expect(screen.getByLabelText('Senden')).toBeDisabled()
+      expect(input).toHaveAttribute('aria-invalid', 'true')
+      fireEvent.keyDown(input, { key: 'Enter', shiftKey: false })
+      expect(onSend).not.toHaveBeenCalled()
+      expect(input).toHaveValue('a'.repeat(2150))
+    })
+
+    it('announces only the crossing of a threshold, not every keystroke', () => {
+      const { container } = render(<ChatInput onSend={vi.fn()} />)
+      const liveRegion = container.querySelector('[aria-live="polite"]')
+      const input = screen.getByPlaceholderText('Nachricht eingeben …')
+
+      expect(liveRegion).toBeInTheDocument()
+      expect(liveRegion).toHaveTextContent('')
+
+      fireEvent.change(input, { target: { value: 'a'.repeat(1800) } })
+      const nearLimit = liveRegion?.textContent
+      expect(nearLimit).toBe(
+        'Die Frage nähert sich der Grenze von 2000 Zeichen und lässt sich senden.',
+      )
+      fireEvent.change(input, { target: { value: 'a'.repeat(1850) } })
+      expect(liveRegion?.textContent).toBe(nearLimit)
+      expect(liveRegion).not.toHaveTextContent(/1850/)
+
+      fireEvent.change(input, { target: { value: 'a'.repeat(2001) } })
+      expect(liveRegion).toHaveTextContent(
+        'Die Frage ist länger als 2000 Zeichen und lässt sich nicht senden.',
+      )
+
+      fireEvent.change(input, { target: { value: 'a'.repeat(1999) } })
+      expect(liveRegion?.textContent).toBe(nearLimit)
+    })
+
+    it('counts the question without surrounding whitespace, like the text that is sent', () => {
+      const onSend = vi.fn()
+      render(<ChatInput onSend={onSend} />)
+
+      const input = screen.getByPlaceholderText('Nachricht eingeben …')
+      fireEvent.change(input, { target: { value: `  ${'a'.repeat(2000)}\n\n` } })
+
+      expect(screen.getByText('2000 von 2000 Zeichen')).toBeInTheDocument()
+      fireEvent.click(screen.getByLabelText('Senden'))
+      expect(onSend).toHaveBeenCalledWith('a'.repeat(2000))
+    })
+  })
+
+  describe('a question the server refused', () => {
+    it('comes back into the empty input and confirms that', async () => {
+      const onRestored = vi.fn()
+      const onSend = vi.fn().mockResolvedValue({ restoreDraft: 'Erste Zeile', onRestored })
+      render(<ChatInput onSend={onSend} />)
+
+      const input = screen.getByPlaceholderText('Nachricht eingeben …')
+      fireEvent.change(input, { target: { value: 'Erste Zeile' } })
+      fireEvent.click(screen.getByLabelText('Senden'))
+
+      await waitFor(() => expect(input).toHaveValue('Erste Zeile'))
+      expect(onRestored).toHaveBeenCalledTimes(1)
+    })
+
+    it('does not overwrite a new draft and does not confirm a restore', async () => {
+      const onRestored = vi.fn()
+      const refused = deferredOutcome()
+      render(<ChatInput onSend={() => refused.promise} />)
+
+      const input = screen.getByPlaceholderText('Nachricht eingeben …')
+      fireEvent.change(input, { target: { value: 'Alte Frage' } })
+      fireEvent.click(screen.getByLabelText('Senden'))
+      fireEvent.change(input, { target: { value: 'Neue Frage' } })
+      refused.resolve({ restoreDraft: 'Alte Frage', onRestored })
+      await refused.promise
+
+      await waitFor(() => expect(input).toHaveValue('Neue Frage'))
+      expect(onRestored).not.toHaveBeenCalled()
+    })
   })
 
   it('disables input when disabled prop is true', () => {
