@@ -4,7 +4,8 @@ Die eine Quelle für die Demo-Instanz „Stadt Rheinfurt" (Epic #708): installie
 vorführen — und, für alle, die die Demo selbst weiterentwickeln, Korpus-Generator und
 Seed-Mechanismus. Konzept dahinter — Behördenlandschaft, Bibliotheken, Berechtigungsmatrix, Quellen
 und Lizenzen — steht in [`docs/features/demo-instance.md`](../docs/features/demo-instance.md) und
-wird hier **nicht wiederholt**. Das ausformulierte Vorführ-Drehbuch mit acht Fragen steht in
+wird hier **nicht wiederholt**. Das ausformulierte Vorführ-Drehbuch mit acht Fragen und fünf
+Vorführschritten steht in
 [`docs/market/demo-drehbuch.md`](../docs/market/demo-drehbuch.md).
 
 Dieses Verzeichnis liegt wie `eval/` bewusst außerhalb von Gradle-Build und CI — der Generator läuft
@@ -62,6 +63,21 @@ das auch in der Oberfläche; Herkunft und Lizenz stehen in
 
 Begründung der Auswahl, Quellen und Lizenzen des Korpus:
 [`docs/features/demo-instance.md`](../docs/features/demo-instance.md).
+
+Über den Korpus hinaus richtet der Seed das ein, was das
+[Drehbuch](../docs/market/demo-drehbuch.md) vorführt:
+
+| Funktion | In der Demo | Drehbuch |
+|---|---|---|
+| Belegte Antworten, abhängig von Konto und Space | vier Fachkonten, fünf Spaces mit zugeordneten Bibliotheken | Fragen 1–8 |
+| Interne Gruppen | „Vertretung Meldewesen" (Maria verantwortet, Thomas liest darüber die internen Dienstanweisungen), „Presseverteiler Bürgerbüro", „Sachbearbeitung Bürgerbüro" | Schritt A |
+| Gruppen aus Keycloak | „Bürgerbüro Rheinfurt", „Meldewesen", „Kfz-Zulassung" über den Verzeichnisabgleich, mit Rechten | Schritt B |
+| Prompt-Bibliotheken | „Textbausteine Bürgerbüro" für alle, „Vorlagen Amtsleitung" nur für Andrea; Slash-Befehle mit Variablenformular | Schritt C |
+| Ordner und Anhänge | Aktenplan in der Upload-Bibliothek, Jahrgang und Gremium in den Ratsinformationen, Ratsvorlagen mit PDF-Anlagen | Schritt D |
+| Fachformate | Fachfragen aus XLSX, aus dem PDF-Anhang einer Mail und aus CSV | Schritt E |
+
+Einzelheiten zu Gruppen und Prompts stehen unten in den Abschnitten „Gruppen" und
+„Prompt-Bibliotheken".
 
 ### Installation mit einem Befehl
 
@@ -503,6 +519,7 @@ Vorbelegungen zielen auf Inhalte des Korpus — etwa die Niederschrift des Haupt
 ohne weiteres Tippen eine belegte Antwort liefert. Vorführen: als Maria im Space „Meldewesen &
 Ausweise" `/` tippen, `/gebuehrenauskunft-personalausweis` wählen, Formular bestätigen und senden.
 Als Thomas erscheint dieselbe Auswahl, die „Vorlagen Amtsleitung" aber weder dort noch im Katalog.
+Der vollständige Klickweg steht im Drehbuch, Schritt C.
 
 ---
 
@@ -1034,7 +1051,7 @@ standardmäßig eine Anfrage pro IP und Minute).
 - [`docs/features/demo-instance.md`](../docs/features/demo-instance.md) — Konzept: Behördenlandschaft,
   Bibliotheken, Formate, Quellen und Lizenzen, Rechtemodell
 - [`docs/market/demo-drehbuch.md`](../docs/market/demo-drehbuch.md) — das ausformulierte
-  Vorführ-Drehbuch mit acht Fragen
+  Vorführ-Drehbuch mit acht Fragen und fünf Vorführschritten
 - [`docs/handbuch/deployment.md`](../docs/handbuch/deployment.md), Abschnitt „Härtung für erreichbare
   Deployments" — zwingend vor jedem über `localhost` hinaus erreichbaren Rollout dieser Demo,
   einschließlich des dort separat behandelten `opaa-seed`-Clients

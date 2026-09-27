@@ -184,7 +184,7 @@ Anbindung an die elektronische Akte und an Dokumentenmanagement.
 - **[`../demo/README.md`](../demo/README.md)** — Anwenderdokumentation: Installation mit einem
   Befehl, Nutzerkonten mit Anmeldedaten, öffentliche Instanz, Korpus-Aktualisierung, Seed-Mechanismus
 - **[`market/demo-drehbuch.md`](./market/demo-drehbuch.md)** — ausformuliertes Vorführ-Drehbuch mit
-  acht Fragen
+  acht Fragen und fünf Vorführschritten
 - **[`features/demo-instance.md`](./features/demo-instance.md)** — Konzept: Demo-Instanz „Stadt
   Rheinfurt", fiktiver Verwaltungskorpus, Bibliotheken je Konnektortyp, Demo-Nutzer mit
   Berechtigungsgrenze, Seed-Mechanismus
