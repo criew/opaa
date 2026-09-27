@@ -1,1 +1,1 @@
-@../common/AGENTS.md
+@../auth/AGENTS.md

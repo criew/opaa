@@ -1,7 +1,7 @@
 # Modul foundation
 
-Pakete (`io.opaa.*`): common, observability, organization, notification, security, ratelimit,
-sourceaccess, s3. Ergänzt `backend/AGENTS.md`.
+Pakete (`io.opaa.*`): common, observability, organization, security, ratelimit, sourceaccess, s3.
+Ergänzt `backend/AGENTS.md`.
 
 ## Zweck und Grenze
 
@@ -33,7 +33,7 @@ Quellen (HTTP) und die S3-Clientschicht. foundation hängt von keinem anderen Mo
 
 ## Verweise
 
-- ADRs (`docs/decisions/`): 0018 (Entscheidung 4), 0019, 0021, 0027 (Entscheidung 8, 9), 0030
+- ADRs (`docs/decisions/`): 0018 (Entscheidung 4), 0021, 0027 (Entscheidung 8, 9), 0030
   (Entscheidung 8), 0033 (Entscheidung 6, 9)
 - Handbuch: `docs/handbuch/deployment.md`, „Härtung für erreichbare Deployments" und „Konfiguration"
 - Strukturtests: `SourceAccessDependencyStructureTest`, `TrustedProxyStartupGuardTest`,
@@ -47,4 +47,7 @@ Quellen (HTTP) und die S3-Clientschicht. foundation hängt von keinem anderen Mo
   --tests 'io.opaa.observability.*' --tests 'io.opaa.architecture.*'
 ```
 
-Die S3-Tests brauchen Docker und werden ohne Docker übersprungen.
+Die S3-Tests brauchen Docker und werden ohne Docker übersprungen. Bei Schemaänderungen: neue Datei
+unter `db/changelog/foundation/` mit eigenem Delta-Test (`MasterChangelog.filesExcept(...)`),
+Regeln in `backend/AGENTS.md`, „Liquibase: Changelog je Modul“; dazu `ChangelogLayoutTest`,
+`ChangelogModuleBoundaryTest`, `ChangelogOrderTest`.

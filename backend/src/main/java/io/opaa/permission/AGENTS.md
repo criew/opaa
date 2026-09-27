@@ -46,5 +46,8 @@ Gruppen samt Verzeichnis-Synchronisation (`group`); der Lebenszyklus „Nachfolg
 ```
 
 Bei Änderungen am Verzeichnis-Konnektor (`group.sync`) zusätzlich `./gradlew keycloakIntegrationTest`
-(braucht Docker). Bei Schemaänderungen: Changeset mit eigenem Delta-Test nach `backend/AGENTS.md`,
-Abschnitt „Liquibase“; die Baseline-Tests prüfen nur die Baseline, nicht die Änderung.
+(braucht Docker).
+
+Bei Schemaänderungen: neue Datei unter `db/changelog/rights/` mit eigenem Delta-Test
+(`MasterChangelog.filesExcept(...)`), Regeln in `backend/AGENTS.md`, „Liquibase: Changelog je
+Modul“; dazu `ChangelogLayoutTest`, `ChangelogModuleBoundaryTest`, `ChangelogOrderTest`.

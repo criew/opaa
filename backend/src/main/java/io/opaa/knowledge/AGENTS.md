@@ -46,7 +46,9 @@ Chat-Modelle (`llm`). knowledge hängt nur von foundation, identity und rights a
 ./gradlew test --tests 'io.opaa.knowledge.*' --tests 'io.opaa.architecture.*'
 ```
 
-Bei Schemaänderungen: Changeset mit eigenem Delta-Test nach `backend/AGENTS.md`, Abschnitt
-„Liquibase“; die Baseline-Tests prüfen nur die Baseline, nicht die Änderung.
-Ändert sich Schnitt, Einbettung oder Metadaten, misst `./gradlew evaluateRetrieval` die Suchqualität (braucht Docker, nicht Teil von
-`build`; siehe `eval/README.md`).
+Bei Schemaänderungen: neue Datei unter `db/changelog/knowledge/` mit eigenem Delta-Test
+(`MasterChangelog.filesExcept(...)`), Regeln in `backend/AGENTS.md`, „Liquibase: Changelog je
+Modul“; dazu `ChangelogLayoutTest`, `ChangelogModuleBoundaryTest`, `ChangelogOrderTest`.
+Die beiden `vector_store`-Ausdrucksindexe der Baseline bleiben eigenständige, precondition-geschützte
+Changesets. Ändert sich Schnitt, Einbettung oder Metadaten, misst `./gradlew evaluateRetrieval`
+die Suchqualität (braucht Docker, nicht Teil von `build`; siehe `eval/README.md`).
