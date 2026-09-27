@@ -759,8 +759,8 @@ def run(args: argparse.Namespace) -> None:
                     f"Space '{space_def.name}' referenziert eine unbekannte Bibliothek "
                     f"'{library_name}' - library_names muss auf eine LibraryDef des Profils zeigen."
                 )
-            # After step 5 the owner holds VIEWER on the library (grants) and is CURATOR or above
-            # on their own space - exactly what associateSpaceLibrary requires.
+            # After step 6 the owner holds VIEWER on the library (own or group grant) and is
+            # CURATOR or above on their own space - exactly what associateSpaceLibrary requires.
             ensure_association(
                 clients[space_def.owner_key],
                 space_ids[space_def.name],
