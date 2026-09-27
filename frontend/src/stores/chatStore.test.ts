@@ -346,13 +346,61 @@ describe('chatStore', () => {
         }),
       )
 
-      await useChatStore.getState().sendMessage('Hello')
+      const outcome = await useChatStore.getState().sendMessage('Hello')
 
       const state = useChatStore.getState()
-      expect(state.error).toBe('Zu viele Anfragen — bitte versuchen Sie es in Kürze erneut.')
+      expect(state.error).toBe(
+        'Zu viele Anfragen — bitte versuchen Sie es in Kürze erneut. Die Frage steht wieder im Eingabefeld.',
+      )
       expect(state.isLoading).toBe(false)
+      expect(outcome).toEqual({ restoreDraft: 'Hello' })
+      expect(state.messages).toEqual([])
+    })
+
+    it('hands a question the server rejects as invalid back with an understandable message', async () => {
+      useChatStore.getState().startNewChat(SPACE_ID)
+      server.use(
+        http.post('/api/v1/query', () =>
+          HttpResponse.json(
+            {
+              error: 'question: muss mit ".*\\S.*" übereinstimmen',
+              status: 400,
+              timestamp: new Date().toISOString(),
+            },
+            { status: 400 },
+          ),
+        ),
+      )
+
+      const outcome = await useChatStore.getState().sendMessage('Erste Zeile\nzweite Zeile')
+
+      const state = useChatStore.getState()
+      expect(outcome).toEqual({ restoreDraft: 'Erste Zeile\nzweite Zeile' })
+      expect(state.messages).toEqual([])
+      expect(state.error).toBe(
+        'Die Frage konnte nicht gesendet werden. Bitte prüfen Sie die Eingabe (höchstens 2000 Zeichen). Die Frage steht wieder im Eingabefeld.',
+      )
+      expect(state.error).not.toContain('muss mit')
+      expect(state.isLoading).toBe(false)
+    })
+
+    it('keeps the question in the history and the input empty on a server failure', async () => {
+      useChatStore.getState().startNewChat(SPACE_ID)
+      server.use(
+        http.post('/api/v1/query', () =>
+          HttpResponse.json(
+            { error: 'Fehler im KI-Dienst', status: 502, timestamp: new Date().toISOString() },
+            { status: 502 },
+          ),
+        ),
+      )
+
+      const outcome = await useChatStore.getState().sendMessage('Hello')
+
+      const state = useChatStore.getState()
+      expect(outcome).toBeUndefined()
+      expect(state.error).toBe('Fehler im KI-Dienst')
       expect(state.messages).toHaveLength(1)
-      expect(state.messages[0].role).toBe('user')
     })
 
     // #575, #618 review: sendMessage has two write-back paths after an await - the implicit chat

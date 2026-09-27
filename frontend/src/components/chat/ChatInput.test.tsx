@@ -291,6 +291,72 @@ describe('ChatInput', () => {
     expect(onSend).not.toHaveBeenCalled()
   })
 
+  it('sends a multiline question with its line breaks', () => {
+    const onSend = vi.fn()
+    render(<ChatInput onSend={onSend} />)
+
+    const input = screen.getByPlaceholderText('Nachricht eingeben …')
+    fireEvent.change(input, { target: { value: 'Erste Zeile\nzweite Zeile\n' } })
+    fireEvent.keyDown(input, { key: 'Enter', shiftKey: false })
+
+    expect(onSend).toHaveBeenCalledWith('Erste Zeile\nzweite Zeile')
+  })
+
+  describe('the length limit of a question', () => {
+    it('shows no counter for a short question', () => {
+      render(<ChatInput onSend={vi.fn()} />)
+
+      const input = screen.getByPlaceholderText('Nachricht eingeben …')
+      fireEvent.change(input, { target: { value: 'Kurze Frage' } })
+
+      expect(screen.queryByText(/von 2000 Zeichen/)).not.toBeInTheDocument()
+    })
+
+    it('shows a counter close to the limit and still sends', () => {
+      const onSend = vi.fn()
+      render(<ChatInput onSend={onSend} />)
+
+      const input = screen.getByPlaceholderText('Nachricht eingeben …')
+      fireEvent.change(input, { target: { value: 'a'.repeat(1800) } })
+
+      expect(screen.getByText('1800 von 2000 Zeichen')).toBeInTheDocument()
+      expect(screen.getByLabelText('Senden')).toBeEnabled()
+      fireEvent.keyDown(input, { key: 'Enter', shiftKey: false })
+      expect(onSend).toHaveBeenCalledWith('a'.repeat(1800))
+    })
+
+    it('blocks sending above the limit, says why and keeps the whole text', () => {
+      const onSend = vi.fn()
+      render(<ChatInput onSend={onSend} />)
+
+      const input = screen.getByPlaceholderText('Nachricht eingeben …')
+      fireEvent.change(input, { target: { value: 'a'.repeat(2150) } })
+
+      expect(
+        screen.getByText(
+          '2150 von 2000 Zeichen – bitte um 150 Zeichen kürzen, damit sich die Frage senden lässt.',
+        ),
+      ).toBeInTheDocument()
+      expect(screen.getByLabelText('Senden')).toBeDisabled()
+      expect(input).toHaveAttribute('aria-invalid', 'true')
+      fireEvent.keyDown(input, { key: 'Enter', shiftKey: false })
+      expect(onSend).not.toHaveBeenCalled()
+      expect(input).toHaveValue('a'.repeat(2150))
+    })
+
+    it('counts the question without surrounding whitespace, like the text that is sent', () => {
+      const onSend = vi.fn()
+      render(<ChatInput onSend={onSend} />)
+
+      const input = screen.getByPlaceholderText('Nachricht eingeben …')
+      fireEvent.change(input, { target: { value: `  ${'a'.repeat(2000)}\n\n` } })
+
+      expect(screen.getByText('2000 von 2000 Zeichen')).toBeInTheDocument()
+      fireEvent.click(screen.getByLabelText('Senden'))
+      expect(onSend).toHaveBeenCalledWith('a'.repeat(2000))
+    })
+  })
+
   it('disables input when disabled prop is true', () => {
     render(<ChatInput onSend={vi.fn()} disabled />)
     expect(screen.getByPlaceholderText('Nachricht eingeben …')).toBeDisabled()
