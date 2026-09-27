@@ -1,7 +1,7 @@
 # Modul app
 
-Pakete (`io.opaa.*`): api, config und `OpaaApplication` im Wurzelpaket. Ergänzt `backend/AGENTS.md`;
-die Regeln zu Spezifikation, DTOs und Statuscodes stehen dort und in der Wurzel-`AGENTS.md`.
+Pakete (`io.opaa.*`): api, config. Dazu `OpaaApplication` im Wurzelpaket. Ergänzt
+`backend/AGENTS.md`; die Regeln zu Spezifikation, DTOs und Statuscodes stehen dort und in der Wurzel-`AGENTS.md`.
 
 ## Zweck und Grenze
 

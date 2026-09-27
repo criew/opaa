@@ -14,6 +14,8 @@
  *
  * <p>Nothing here writes a token prefix to a log: over months it is stable and attributable to one
  * person, and together with a timestamp it would be the per-person query history the audit trail
- * deliberately excludes. {@code ExternalAccessTokenPrefixNotLoggedTest} holds that line.
+ * deliberately excludes. {@code
+ * ExternalAccessTokenAuthenticationIntegrationTest#thePrefixAppearsInNoLogLineOfTheApplication}
+ * holds that line.
  */
 package io.opaa.externalaccess.token;

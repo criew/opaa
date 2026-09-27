@@ -15,9 +15,11 @@ external und app ab.
 - **Genau ein Weg zu den Daten:** `io.opaa.query.KnowledgeRetrieval`, der Einstieg, den auch
   `POST /api/v1/query` nutzt, und er prüft Rechte. `search` greift weder auf den Vector Store noch
   auf `query.retrieval` noch auf `query.answer` zu.
-- **`searchadmin` schreibt nichts.** Es liest das Erklärungsprotokoll der Pipeline, statt ihre
-  Entscheidungen nachzubauen; die Diagnose fährt dieselbe Retrieval wie der Chat, Reranking
-  eingeschlossen.
+- **`searchadmin` ändert keine Fachdaten.** Es schreibt nur Protokolleinträge: einen
+  Diagnoselauf mit Rechteprofil ins Revisionsprotokoll, „Sicht als" über
+  `io.opaa.diagnosticaccess` ins Diagnoseprotokoll. Es liest das Erklärungsprotokoll der
+  Pipeline, statt ihre Entscheidungen nachzubauen; die Diagnose fährt dieselbe Retrieval wie der
+  Chat, Reranking eingeschlossen.
 - **Kein Transaktionsrahmen um den Modellaufruf:** `QueryService#query` trägt kein
   `@Transactional`, `ChatService#appendTurn` läuft mit `NOT_SUPPORTED`, und nur
   `ChatMessageWriter#writeTurnOnce` öffnet eine Transaktion. Sonst hält der Schreibweg eine
@@ -48,6 +50,7 @@ external und app ab.
   --tests 'io.opaa.architecture.*'
 ```
 
-Bei Schemaänderungen zusätzlich `AssistantBaselineTest`. Änderungen an Retrieval oder Antwort
-misst `./gradlew checkRetrievalBaseline` gegen die Baseline (braucht Docker, nicht Teil von
+Bei Schemaänderungen: Changeset mit eigenem Delta-Test nach `backend/AGENTS.md`, Abschnitt
+„Liquibase“; die Baseline-Tests prüfen nur die Baseline, nicht die Änderung.
+Änderungen an Retrieval oder Antwort misst `./gradlew checkRetrievalBaseline` gegen die Baseline (braucht Docker, nicht Teil von
 `build`; siehe `eval/README.md`).

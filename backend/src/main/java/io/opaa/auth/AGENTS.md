@@ -28,20 +28,8 @@ Mailversand. identity hängt nur von foundation ab.
 - **Branding** ändert nur `BrandingSettingsService`; SVG wird abgelehnt, nicht bereinigt
   (`BrandingImageValidator`).
 
-## Testkontexte der Familie `oidc`
-
-Unter `local,dev` authentifiziert `DevAuthFilter` jede Anfrage, bevor ein Bearer-Token gelesen
-wird; eine lokale Sitzung ist dort nicht fahrbar. Deshalb gibt es fünf Meta-Annotationen mit
-Profil `oidc`, jede Variante über die Basis meta-annotiert:
-
-- `@OpaaLocalAuthMockMvcTest` — Basis: MockMvc, starkes Test-Secret (sonst verweigert
-  `LocalAuthSecretGuard` den Start), angehobene `opaa.rate-limit.local-auth.*`-Grenzen.
-- `@OpaaLocalAuthLinkTest` — plus `opaa.public-base-url`; ohne sie sind die Link-Flüsse aus.
-- `@OpaaLocalAuthSeedTest` — plus zustellbare Erstadministrator-Adresse und Netzbeschränkung.
-- `@OpaaLocalAuthRateLimitTest` — mit den echten Grenzen, die hier Prüfgegenstand sind.
-- `@OpaaLocalAuthProviderTest` — plus `OidcProviderTokenTestConfiguration`, ein echter
-  `NimbusJwtDecoder` über einen lokalen Schlüssel statt eines JWK-Sets aus dem Netz: ein prüfbares
-  Anbieter-Token für die Übergabe eines lokalen Kontos. Nicht in die Basis ziehen.
+- **Lokale Anmeldung testet nur die Familie `oidc`** der Testkontexte (`@OpaaLocalAuth*`, siehe
+  `backend/AGENTS.md`, „Spring-Testkontexte"); unter `local,dev` ist keine lokale Sitzung fahrbar.
 
 ## Verweise
 
@@ -57,4 +45,5 @@ Profil `oidc`, jede Variante über die Basis meta-annotiert:
   --tests 'io.opaa.mail.*' --tests 'io.opaa.architecture.*'
 ```
 
-Bei Schemaänderungen zusätzlich `IdentityBaselineTest` und `AuditPrivilegeModelTest`.
+Bei Schemaänderungen: Changeset mit eigenem Delta-Test nach `backend/AGENTS.md`, Abschnitt
+„Liquibase“; die Baseline-Tests prüfen nur die Baseline, nicht die Änderung.

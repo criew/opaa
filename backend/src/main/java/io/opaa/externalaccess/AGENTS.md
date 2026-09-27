@@ -22,7 +22,8 @@ connectors und app ab.
   Freigabe der Bibliothek, Auswahl des Tokens, Schalter der Installation
   (`ExternalAccessTokenScopeService`).
 - **Kein Tokenpräfix ins Log:** Mit einem Zeitstempel ergäbe es die personenbezogene
-  Abfragehistorie, die das Revisionsprotokoll bewusst ausschließt.
+  Abfragehistorie, die das Revisionsprotokoll bewusst ausschließt
+  (`ExternalAccessTokenAuthenticationIntegrationTest#thePrefixAppearsInNoLogLineOfTheApplication`).
 - **`mcp` ist eine Übersetzungsschicht und sonst nichts:** kein Index, keine Rechtelogik, kein
   Zugriff auf `vector_store`. Jeder Werkzeugaufruf geht über `io.opaa.search`, dieselben Dienste
   wie `POST /api/v1/search` und `POST /api/v1/query`.
@@ -45,4 +46,5 @@ connectors und app ab.
   --tests 'io.opaa.search.*' --tests 'io.opaa.architecture.*'
 ```
 
-Bei Schemaänderungen zusätzlich `ExternalBaselineTest`.
+Bei Schemaänderungen: Changeset mit eigenem Delta-Test nach `backend/AGENTS.md`, Abschnitt
+„Liquibase“; die Baseline-Tests prüfen nur die Baseline, nicht die Änderung.

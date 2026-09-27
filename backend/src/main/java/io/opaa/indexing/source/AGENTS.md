@@ -1,7 +1,7 @@
 # Modul connectors
 
-Pakete: jedes direkte Unterpaket von `io.opaa.indexing.source` (confluence, filesystem, rss, s3,
-upload, web). Der Vertrag selbst liegt in `indexing.source` und gehört zu knowledge (siehe
+Pakete (`io.opaa.indexing.source.*`): confluence, filesystem, rss, s3, upload, web — jedes direkte
+Unterpaket ist ein Konnektor. Der Vertrag selbst liegt in `indexing.source` und gehört zu knowledge (siehe
 `knowledge/AGENTS.md`). Ergänzt `backend/AGENTS.md`.
 
 ## Zweck und Grenze
@@ -33,11 +33,8 @@ von foundation und knowledge ab.
   Element über `IndexingRun` weiter und meldet einen `ListingOutcome`. Fortschritt, Protokoll,
   Fehlerübersetzung und Abgleich durch Abwesenheit besitzt der Rahmen.
 - **Netzzugriff:** HTTP über `io.opaa.sourceaccess`, S3 über `io.opaa.s3`.
-- **Objektspeicher-Suite des S3-Konnektors:** läuft in `test`, sobald Docker erreichbar ist, auf
-  **einem** geteilten Speicher je Test-JVM (`S3TestFixture`, Image `rustfs/rustfs`) und im
-  `@OpaaIntegrationTest`-Kontext. Eingeschränkte Schlüssel legt `S3TestFixture.createUser(policyJson)`
-  über die MinIO-kompatible Admin-API an. Wer das Image wechselt, prüft zuerst diese Aufrufe sowie
-  „darf auflisten, aber nicht lesen" und die gefilterte Bucket-Liste.
+- **Die S3-Tests** nutzen die geteilte `S3TestFixture` (foundation, siehe `backend/AGENTS.md`,
+  „Spring-Testkontexte"); ohne Docker werden sie übersprungen.
 
 ## Verweise
 
@@ -53,4 +50,5 @@ von foundation und knowledge ab.
 OPAA_CONFLUENCE_IT=true ./gradlew confluenceIntegrationTest   # nur bei Confluence-Änderungen
 ```
 
-Bei Schemaänderungen zusätzlich `ConnectorsBaselineTest`.
+Bei Schemaänderungen: Changeset mit eigenem Delta-Test nach `backend/AGENTS.md`, Abschnitt
+„Liquibase“; die Baseline-Tests prüfen nur die Baseline, nicht die Änderung.

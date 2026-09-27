@@ -11,8 +11,15 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -25,6 +32,10 @@ class ModuleAgentsFileTest {
   private static final Path SOURCES = Path.of("src/main/java/io/opaa");
 
   private static final int MAX_LINES = 60;
+
+  /** "Pakete (`io.opaa.*`): a, b." - group 1 the prefix below io.opaa, group 2 the list. */
+  private static final Pattern PACKAGE_LINE =
+      Pattern.compile("Pakete \\(`io\\.opaa\\.([a-z.]*)\\*`\\): ([a-z0-9, ]+)");
 
   /** The package, relative to {@code io.opaa}, whose directory holds the module's AGENTS.md. */
   private static final Map<Module, String> MAIN_PACKAGES =
@@ -64,9 +75,32 @@ class ModuleAgentsFileTest {
           .as("%s has at most %d lines - move detail into ADRs or the Handbuch", agents, MAX_LINES)
           .hasSizeLessThanOrEqualTo(MAX_LINES)
           .anyMatch(line -> !line.isBlank());
-      assertThat(contentOf(directory.resolve("CLAUDE.md")))
-          .as("CLAUDE.md next to %s", agents)
-          .isEqualTo("@AGENTS.md");
+      Path claude = directory.resolve("CLAUDE.md");
+      assertThat(claude)
+          .as("%s is missing; create it with the single line @AGENTS.md", claude)
+          .isRegularFile();
+      assertThat(contentOf(claude)).as("CLAUDE.md next to %s", agents).isEqualTo("@AGENTS.md");
+    }
+  }
+
+  /** The "Pakete" line names exactly the packages the module holds, so it cannot drift. */
+  @Test
+  void everyAgentsFileNamesThePackagesOfItsModule() throws IOException {
+    for (Map.Entry<Module, String> module : MAIN_PACKAGES.entrySet()) {
+      Path agents = directoryOf(module.getValue()).resolve("AGENTS.md");
+      String text = Files.readString(agents, StandardCharsets.UTF_8).replaceAll("\\s+", " ");
+      Matcher line = PACKAGE_LINE.matcher(text);
+      assertThat(line.find())
+          .as("%s starts with a line \"Pakete (`io.opaa.*`): a, b.\"", agents)
+          .isTrue();
+      boolean connectors = module.getKey() == Module.CONNECTORS;
+      assertThat(line.group(1))
+          .as("package prefix in %s", agents)
+          .isEqualTo(connectors ? CONNECTOR_PARENT + "." : "");
+      Set<String> named = new TreeSet<>(Arrays.asList(line.group(2).strip().split(",\\s*")));
+      assertThat(named)
+          .as("packages named in %s", agents)
+          .isEqualTo(connectors ? connectorPackages() : packagesOf(module.getKey()));
     }
   }
 
@@ -79,12 +113,33 @@ class ModuleAgentsFileTest {
         continue;
       }
       Path directory = directoryOf(pkg);
-      assertThat(contentOf(directory.resolve("CLAUDE.md")))
+      String expected = "@../" + main.replace('.', '/') + "/AGENTS.md";
+      Path claude = directory.resolve("CLAUDE.md");
+      assertThat(claude)
+          .as("%s is missing; create it with the single line %s", claude, expected)
+          .isRegularFile();
+      assertThat(contentOf(claude))
           .as("CLAUDE.md of package %s imports the file of module %s", pkg, entry.getValue())
-          .isEqualTo("@../" + main.replace('.', '/') + "/AGENTS.md");
+          .isEqualTo(expected);
       assertThat(directory.resolve("AGENTS.md"))
           .as("module %s keeps one AGENTS.md, in package %s", entry.getValue(), main)
           .doesNotExist();
+    }
+  }
+
+  private static Set<String> packagesOf(Module module) {
+    return MODULES.entrySet().stream()
+        .filter(entry -> entry.getValue() == module && !entry.getKey().equals(ROOT))
+        .map(Map.Entry::getKey)
+        .collect(Collectors.toCollection(TreeSet::new));
+  }
+
+  private static Set<String> connectorPackages() throws IOException {
+    try (Stream<Path> children = Files.list(directoryOf(CONNECTOR_PARENT))) {
+      return children
+          .filter(Files::isDirectory)
+          .map(child -> child.getFileName().toString())
+          .collect(Collectors.toCollection(TreeSet::new));
     }
   }
 
@@ -93,7 +148,6 @@ class ModuleAgentsFileTest {
   }
 
   private static String contentOf(Path file) throws IOException {
-    assertThat(file).isRegularFile();
     return Files.readString(file, StandardCharsets.UTF_8).strip();
   }
 }

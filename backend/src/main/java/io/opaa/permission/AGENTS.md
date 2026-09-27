@@ -46,4 +46,5 @@ Gruppen samt Verzeichnis-Synchronisation (`group`); der Lebenszyklus „Nachfolg
 ```
 
 Bei Änderungen am Verzeichnis-Konnektor (`group.sync`) zusätzlich `./gradlew keycloakIntegrationTest`
-(braucht Docker). Bei Schemaänderungen `RightsBaselineTest`.
+(braucht Docker). Bei Schemaänderungen: Changeset mit eigenem Delta-Test nach `backend/AGENTS.md`,
+Abschnitt „Liquibase“; die Baseline-Tests prüfen nur die Baseline, nicht die Änderung.

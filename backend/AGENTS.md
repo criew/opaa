@@ -136,11 +136,23 @@ Familie des `local,dev`-Profils, fünf die des Betriebsmodus `oidc`:
   Schema-Initialisierung). Technischer Grund: eine Nachbarklasse prüft genau den Default, und der
   pgvector-Wächter zerstört und erzeugt `vector_store` neu.
 
-Fünf weitere tragen den Betriebsmodus **`oidc`**, den die vier oben nicht liefern können, weil unter
-`local,dev` keine lokale Sitzung fahrbar ist (ADR-0033, #1543): `@OpaaLocalAuthMockMvcTest` als
-Basis, dazu `@OpaaLocalAuthLinkTest`, `@OpaaLocalAuthSeedTest`, `@OpaaLocalAuthRateLimitTest` und
-`@OpaaLocalAuthProviderTest`. Was jede von ihnen abweichend trägt und warum, steht in der Datei des
-Moduls identity (`io/opaa/auth/AGENTS.md`).
+Fünf weitere tragen den Betriebsmodus **`oidc`**, den die vier oben nicht liefern können: Unter
+`local,dev` authentifiziert `DevAuthFilter` jede Anfrage, bevor ein Bearer-Token gelesen wird, eine
+lokale Sitzung ist dort nicht fahrbar (ADR-0033, #1543):
+
+- **`@OpaaLocalAuthMockMvcTest`** — die Basis: Profil `oidc`, MockMvc, geteiltes Postgres, ein
+  starkes Test-Secret (sonst verweigert `LocalAuthSecretGuard` den Start) und angehobene
+  `opaa.rate-limit.local-auth.*`-Grenzen, weil alle Anmeldungen von der einen Adresse von MockMvc
+  kommen.
+- **`@OpaaLocalAuthLinkTest`** — plus `opaa.public-base-url` und Einstellungs-Schlüssel; ohne
+  Basis-URL sind die Link-Flüsse abgeschaltet, und Klassen auf der Basis prüfen genau das.
+- **`@OpaaLocalAuthSeedTest`** — plus zustellbare Erstadministrator-Adresse und Netzbeschränkung;
+  die Basis trägt den ausgelieferten Vorgabewert, den der Seed ablehnt, und eine Klasse prüft das.
+- **`@OpaaLocalAuthRateLimitTest`** — mit den **echten** Grenzen, die hier Prüfgegenstand sind.
+- **`@OpaaLocalAuthProviderTest`** — plus `OidcProviderTokenTestConfiguration` (echter
+  `NimbusJwtDecoder` über einen lokal erzeugten Schlüssel statt eines JWK-Sets aus dem Netz) für
+  ein prüfbares Anbieter-Token bei der Übergabe eines lokalen Kontos (ADR-0033, Entscheidung 12).
+  Nicht in die Basis ziehen: Klassen daneben fahren den Decoder des lokalen Issuers.
 
 Die Varianten sind jeweils über die Basis ihrer Familie meta-annotiert und ergänzen nur ihre
 Abweichung. Eine Variante muss **nicht fachlich zusammengehören**: Wo eine Abweichung ohnehin einen
@@ -208,6 +220,13 @@ eingetragen; ein Code-Kommentar als Begründung genügt nicht mehr (nach #843 ha
 gewachsenen 23 Kontext-Varianten einen formal regelkonformen Kommentar). Er prüft außerdem je
 Klasse, dass `LeftoverRowGuard` und `SeededRowRestorer` als Listener aufgelöst werden — eine neue
 Basis-Signatur muss beide registrieren.
+
+**Objektspeicher-Fixture (`io.opaa.s3.S3TestFixture`, foundation):** läuft in `test`, sobald Docker
+erreichbar ist, mit **einem** geteilten S3-Speicher je Test-JVM (Image `rustfs/rustfs`) und im
+`@OpaaIntegrationTest`-Kontext, ohne zweiten Container. Eingeschränkte Schlüssel legt
+`S3TestFixture.createUser(policyJson)` über die MinIO-kompatible Admin-API des Images an (SigV4,
+Klartext-Nutzlast). Wer das Image wechselt, prüft zuerst diese Aufrufe und die beiden Fehlerformen
+„darf auflisten, aber nicht lesen" und gefilterte Bucket-Liste (ADR-0027, #1949).
 
 Ein neuer Postgres-Container wird nie manuell deklariert; `@ServiceConnection` kommt aus der
 Meta-Annotation. Ausnahme: `io.opaa.migration`-Tests booten bewusst einen eigenen Container mit

@@ -1,6 +1,6 @@
 # Modul library
 
-Paket: `io.opaa.library`. Ergänzt `backend/AGENTS.md`.
+Pakete (`io.opaa.*`): library. Ergänzt `backend/AGENTS.md`.
 
 ## Zweck und Grenze
 

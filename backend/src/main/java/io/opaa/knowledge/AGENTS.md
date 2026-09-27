@@ -1,7 +1,7 @@
 # Modul knowledge
 
-Pakete (`io.opaa.*`): knowledge, llm, indexing ohne die Konnektoren. Ergänzt `backend/AGENTS.md`;
-für den Konnektorvertrag in `indexing.source` gilt zusätzlich `indexing/source/AGENTS.md`.
+Pakete (`io.opaa.*`): knowledge, llm, indexing. Die Konnektoren darunter bilden das Modul
+connectors. Ergänzt `backend/AGENTS.md`; für den Konnektorvertrag in `indexing.source` gilt zusätzlich `indexing/source/AGENTS.md`.
 
 ## Zweck und Grenze
 
@@ -46,6 +46,7 @@ Chat-Modelle (`llm`). knowledge hängt nur von foundation, identity und rights a
 ./gradlew test --tests 'io.opaa.knowledge.*' --tests 'io.opaa.architecture.*'
 ```
 
-Bei Schemaänderungen zusätzlich `KnowledgeBaselineTest`. Ändert sich Schnitt, Einbettung oder
-Metadaten, misst `./gradlew evaluateRetrieval` die Suchqualität (braucht Docker, nicht Teil von
+Bei Schemaänderungen: Changeset mit eigenem Delta-Test nach `backend/AGENTS.md`, Abschnitt
+„Liquibase“; die Baseline-Tests prüfen nur die Baseline, nicht die Änderung.
+Ändert sich Schnitt, Einbettung oder Metadaten, misst `./gradlew evaluateRetrieval` die Suchqualität (braucht Docker, nicht Teil von
 `build`; siehe `eval/README.md`).
