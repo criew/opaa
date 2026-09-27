@@ -86,7 +86,7 @@ Vorrat vollständig ab (#1519/#1520):
 | Leistungen Kfz-Zulassung | Leistungsbeschreibungen (Zulassung, Umschreibung, Wunschkennzeichen, Führerschein) | `.md`, `.txt` | `HTTP_DIRECTORY` |
 | Satzungen & Gebührenordnungen | Verwaltungsgebührensatzung, Satzungsauszüge mit Gebührentabellen | `.pdf` | `HTTP_DIRECTORY` |
 | Pressemitteilungen Stadt Rheinfurt | ~20–30 Meldungen (Sperrungen, geänderte Öffnungszeiten, Stadtfest, Jubiläen) | RSS-XML, je Eintrag eine HTML-Detailseite auf demselben Host | `RSS_FEED` (statisch, selbst gehostet) |
-| Interne Dienstanweisungen Meldewesen | Dienstanweisungen, Eskalationsregeln, interne FAQ, Schulungsfolien | `.docx`, `.pdf`, `.pptx` | `UPLOAD` (manueller Upload, im Seed automatisiert) |
+| Interne Dienstanweisungen Meldewesen | Dienstanweisungen, Eskalationsregeln, interne FAQ, Schulungsfolien, abgelegt in Ordnern nach Aktenplan (Melderecht, Pass- und Ausweiswesen, Datenschutz, Gebühren, Bürgerbüro, Aus- und Fortbildung; teils mit zweiter Ebene) | `.docx`, `.pdf`, `.pptx` | `UPLOAD` (manueller Upload, im Seed automatisiert, Ordner über `folderPath`) |
 | Ratsinformationen Stadt Rheinfurt | Niederschriften und Beschlussvorlagen des Stadtrats und des Hauptausschusses 2024–2026, ein Schlüsselpräfix je Jahrgang | `.md`, `.txt` | `S3` (Objektspeicher des Demo-Stacks, Bucket `rheinfurt-archiv`, Präfix `ratsinformationen/`; #1383, [ADR-0027](../decisions/0027-s3-konnektor.md)) |
 | Formattest auf S3 | Je ein Dokument pro zugelassener Endung, inhaltlich rund um Dokumentenformate, Posteingang und Langzeitarchivierung; jedes erzeugte Dokument nennt sein eigenes Format | alle oben genannten | `S3` (Objektspeicher des Demo-Stacks, Bucket `formattest`, ohne Präfix; #1519/#1520) |
 

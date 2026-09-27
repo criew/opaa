@@ -363,44 +363,58 @@ def ensure_group_space_membership(
     )
 
 
-def existing_documents_by_name(admin_client: Client, library_id: str) -> dict[str, dict]:
-    by_name: dict[str, dict] = {}
-    page = 0
-    while True:
-        result = admin_client.get_ok(
-            f"/v1/libraries/{library_id}/documents", params={"page": page, "size": 100}
-        )
-        for item in result["items"]:
-            by_name[item["fileName"]] = item
-        if (page + 1) * result["size"] >= result["totalElements"] or not result["items"]:
-            break
-        page += 1
-    return by_name
+def existing_documents(admin_client: Client, library_id: str) -> dict[tuple[str, str], dict]:
+    """Every document of the library keyed by (folder path, file name), the folder path relative
+    to the library root with "/" between levels and "" for the root. The document list only shows
+    one folder level per request, so this walks the folder tree from the root."""
+    found: dict[tuple[str, str], dict] = {}
+    pending: list[tuple[str | None, str]] = [(None, "")]
+    while pending:
+        folder_id, folder_path = pending.pop()
+        subfolders: dict[str, str] = {}
+        page = 0
+        while True:
+            params = {"page": page, "size": 100}
+            if folder_id is not None:
+                params["folderId"] = folder_id
+            result = admin_client.get_ok(f"/v1/libraries/{library_id}/documents", params=params)
+            for item in result["items"]:
+                found[(folder_path, item["fileName"])] = item
+            for folder in result.get("folders", []):
+                subfolders[folder["id"]] = folder["name"]
+            if (page + 1) * result["size"] >= result["totalElements"] or not result["items"]:
+                break
+            page += 1
+        for subfolder_id, name in subfolders.items():
+            pending.append((subfolder_id, f"{folder_path}/{name}" if folder_path else name))
+    return found
 
 
 def upload_documents(admin_client: Client, library_id: str, upload_dir: Path) -> None:
-    """Uploads every file in upload_dir not already present with status PENDING/INDEXED. A
-    document whose previous attempt ended FAILED is re-uploaded rather than skipped - "already
-    there" only means so for a document that actually succeeded or is still being processed."""
-    existing = existing_documents_by_name(admin_client, library_id)
-    for file_path in sorted(p for p in upload_dir.iterdir() if p.is_file()):
-        current = existing.get(file_path.name)
+    """Uploads every file below upload_dir not already present with status PENDING/INDEXED, into
+    the library folder matching its subdirectory (folderPath, created on demand by the API). A
+    document counts as present only under the same folder path and file name. One whose previous
+    attempt ended FAILED is re-uploaded rather than skipped."""
+    existing = existing_documents(admin_client, library_id)
+    for file_path in sorted(p for p in upload_dir.rglob("*") if p.is_file()):
+        folder_path = file_path.parent.relative_to(upload_dir).as_posix()
+        folder_path = "" if folder_path == "." else folder_path
+        label = f"{folder_path}/{file_path.name}" if folder_path else file_path.name
+        current = existing.get((folder_path, file_path.name))
         if current is not None and current["status"] != "FAILED":
-            print(f"    bereits hochgeladen: {file_path.name} ({current['status']})")
+            print(f"    bereits hochgeladen: {label} ({current['status']})")
             continue
         if current is not None:
-            print(
-                f"    erneuter Versuch nach FAILED: {file_path.name} "
-                f"({current.get('errorMessage')})"
-            )
+            print(f"    erneuter Versuch nach FAILED: {label} ({current.get('errorMessage')})")
         content_type = mimetypes.guess_type(file_path.name)[0] or "application/octet-stream"
         with file_path.open("rb") as handle:
             admin_client.post_ok(
                 f"/v1/libraries/{library_id}/documents",
                 files={"file": (file_path.name, handle, content_type)},
+                data={"folderPath": folder_path} if folder_path else None,
                 expected=(201,),
             )
-        print(f"    hochgeladen: {file_path.name}")
+        print(f"    hochgeladen: {label}")
 
 
 def wait_for_uploads_indexed(
@@ -413,7 +427,7 @@ def wait_for_uploads_indexed(
     deadline = time.monotonic() + timeout_seconds
     documents: list[dict] = []
     while True:
-        documents = list(existing_documents_by_name(admin_client, library_id).values())
+        documents = list(existing_documents(admin_client, library_id).values())
         pending = [d for d in documents if d["status"] == "PENDING"]
         if not pending:
             break

@@ -19,7 +19,7 @@ demo/
     ├── leistungen-kfz-zulassung/             .md, .txt
     ├── satzungen-gebuehrenordnungen/         .pdf
     ├── pressemitteilungen/                   rss.xml + .html
-    ├── interne-dienstanweisungen-meldewesen/ .docx, .pdf, .pptx
+    ├── interne-dienstanweisungen-meldewesen/ .docx, .pdf, .pptx in Aktenplan-Ordnern (Upload mit folderPath, #2015)
     ├── ratsinformationen/<jahr>/             .md, .txt (S3-Bucket des Demo-Stacks, #1383)
     ├── formate/                              je ein Dokument pro unterstützter Endung (S3-Bucket des Demo-Stacks, #1519)
     ├── MANIFEST.sha256                       SHA-256 über alle Dokumente
@@ -42,7 +42,7 @@ Konnektortypen und mehrere Dateiformate:
 | Leistungen Kfz-Zulassung | `.md`, `.txt` | `HTTP_DIRECTORY` |
 | Satzungen & Gebührenordnungen | `.pdf` | `HTTP_DIRECTORY` |
 | Pressemitteilungen Stadt Rheinfurt | RSS-XML + HTML-Detailseiten | `RSS_FEED` (statisch, selbst gehostet) |
-| Interne Dienstanweisungen Meldewesen | `.docx`, `.pdf`, `.pptx` | `UPLOAD` (im Seed automatisiert) |
+| Interne Dienstanweisungen Meldewesen | `.docx`, `.pdf`, `.pptx` (Ordner nach Aktenplan, bis zu zwei Ebenen) | `UPLOAD` (im Seed automatisiert) |
 | Ratsinformationen Stadt Rheinfurt | `.md`, `.txt` (ein Ordner je Jahrgang) | `S3` (Objektspeicher des Demo-Stacks, Bucket `rheinfurt-archiv`; #1383) |
 | Formattest auf S3 | je ein Dokument pro unterstützter Endung | `S3` (Objektspeicher des Demo-Stacks, Bucket `formattest`; #1520) |
 
@@ -495,7 +495,15 @@ Der Lauf richtet über die API ein:
 5. **VIEWER-Rechte** exakt nach der Matrix aus `docs/features/demo-instance.md` sowie die 26
    Upload-Dokumente aus `demo/corpus/interne-dienstanweisungen-meldewesen/` — der Seed wartet nach
    dem Hochladen, bis kein Dokument mehr `PENDING` ist (Tika-Parsing und Embedding laufen asynchron,
-   #434), und bricht bei `FAILED` mit der jeweiligen `errorMessage` ab.
+   #434), und bricht bei `FAILED` mit der jeweiligen `errorMessage` ab. Das Upload-Verzeichnis wird
+   rekursiv gelesen: Jedes Unterverzeichnis wird zum gleichnamigen Bibliotheksordner (`folderPath`
+   relativ zur Bibliothekswurzel, die API legt fehlende Ordner selbst an). Die Dienstanweisungen
+   liegen so in ihren Aktenplan-Ordnern (`01 Melderecht/02 Auskünfte und Übermittlungen/…`, Zuordnung
+   in `generator/intern.py`, `AKTENPLAN`). Als „schon hochgeladen" gilt ein Dokument nur mit
+   gleichem Ordnerpfad und gleichem Dateinamen; der Seed liest dafür den Ordnerbaum der Bibliothek
+   von der Wurzel ab. Eine Instanz, die die Dokumente noch flach in der Wurzel führt, lässt sich
+   nicht nachträglich umsortieren — die API lehnt denselben Inhalt in derselben Bibliothek mit 409
+   ab; dafür die Demo neu aufsetzen.
 6. **Gruppen** (ADR-0036, `profiles.py`s `GroupDef`, siehe „Gruppen" oben) — je Gruppendefinition:
    anlegen oder per Namenssuche über `GET /api/v1/admin/groups` finden, die benannten
    Verantwortlichen ernennen und die automatische Erstverantwortung des Admin-Kontos wieder
