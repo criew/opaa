@@ -67,6 +67,12 @@ async function createRssLibrary(page: Page, name: string, feedUrl: string): Prom
   await page.getByRole('radio', { name: /RSS-Feed/ }).click()
   await page.getByRole('button', { name: 'Weiter', exact: true }).click()
   await page.getByLabel('Adresse (URL)').fill(feedUrl)
+  // The run each scenario measures is the one it triggers itself: an immediate first run from the
+  // wizard can finish before the detail page polls, and the explicit trigger then measures a
+  // second run over an unchanged feed instead.
+  await page
+    .getByRole('switch', { name: 'Erste Indizierung sofort nach dem Anlegen starten' })
+    .uncheck()
   await page.getByRole('button', { name: 'Weiter', exact: true }).click()
   await page.getByLabel('Name').fill(name)
   await page.getByRole('button', { name: 'Weiter', exact: true }).click()
