@@ -83,9 +83,15 @@ pnpm test                               # Stack via Docker Compose starten, Suit
 
 ## API & DTO-Konvention
 
-- **Alle API-DTOs MÜSSEN aus der OpenAPI-Spezifikation generiert werden** (`opaa-api/src/main/resources/openapi/opaa-api.yaml`) — niemals DTO-Klassen in `io.opaa.api.dto` manuell schreiben
+- **Alle API-DTOs MÜSSEN aus der OpenAPI-Spezifikation generiert werden** — niemals DTO-Klassen in `io.opaa.api.dto` manuell schreiben
 - Änderungen an Request-/Response-Schemas beginnen mit einer Spec-Änderung, dann werden die generierten DTOs verwendet
 - Frontend-Typen werden aus derselben Spezifikation über `openapi-typescript` generiert
+- **Die Spec liegt als eine Datei je Thema unter `opaa-api/src/main/openapi/`** und wird beim Build zu einer Spec gebündelt (`opaa-api/build/openapi-bundle/openapi/opaa-api.yaml`, im Klassenpfad `/openapi/opaa-api.yaml`). Nur die Fragmente bearbeiten, nie das Bündel. Wohin eine Änderung gehört:
+  - Pfade, Tag und Schemas eines Themas stehen in der Datei des Themas, z. B. `libraries.yaml`, `groups.yaml`. Neue Operationen kommen in die Datei ihres Themas und tragen genau dessen Tag.
+  - Ein Schema steht in der Datei des Themas, dem es fachlich gehört, auch wenn andere Themen es referenzieren (`SpaceRole` in `spaces.yaml`). Nur Bausteine ohne fachlichen Besitzer stehen in `common.yaml`: Fehlerhülle (`ErrorResponse`), übergreifende Enums wie `SystemRole`, gemeinsame Parameter und Antworten.
+  - `root.yaml` enthält nur `openapi` und `info`, einschließlich der Beschreibung der Statuscodes.
+  - Ein neues Thema bekommt eine neue Datei (`[a-z0-9-]+.yaml`) mit eigenem Eintrag unter `tags`.
+  - Alle `$ref` zeigen in die gebündelte Spec (`#/components/schemas/...`), auch über Dateigrenzen hinweg. Der Build bricht ab bei doppelten Pfaden oder Komponenten, bei nicht auflösbaren `$ref` und bei Operationen ohne genau ein Tag aus der eigenen Datei.
 - Weitere Backend-Regeln — Abhängigkeitsverwaltung, Enum-Mapping, Mapper-Schicht, Statuscode-Deklaration, Spring-Testkontexte, Liquibase — stehen in [backend/AGENTS.md](backend/AGENTS.md). **Vor jeder Änderung unter `backend/` oder `opaa-api/` lesen.**
 
 > Vollständige Begründung: [ADR-0006](docs/decisions/0006-openapi-dto-generation.md)
