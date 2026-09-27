@@ -101,13 +101,22 @@ async function signInAtKeycloak(
   return (await meResponse.json()) as { id: string; email: string | null; displayName: string | null }
 }
 
-/** The RP-initiated logout at the provider of the session (ADR-0025, Entscheidung 5). */
+/**
+ * The RP-initiated logout at the provider of the session (ADR-0025, Entscheidung 5). Resolves only
+ * once the document Keycloak sent the browser back to has loaded: the app already routes the old
+ * document to /login in-page while the redirect to Keycloak is still pending, so the URL alone
+ * would match a page that is about to be replaced.
+ */
 async function logout(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Profil und Einstellungen' }).click()
+  // The old document has fired its load event long ago; the next one belongs to the document
+  // behind Keycloak's redirect back to the origin.
+  const returnedFromProvider = page.waitForEvent('load', { timeout: 30_000 })
   await page.getByRole('menuitem', { name: 'Abmelden' }).click()
-  // Keycloak ends its session and sends the browser back to the origin, where the app - without
-  // a session now - shows the sign-in page again.
+  await returnedFromProvider
+  // Without a session the app shows the sign-in page again.
   await page.waitForURL(/\/login(?:$|[/?#])/, { timeout: 30_000 })
+  await expect(page.getByRole('heading', { name: 'Anmelden', level: 1 })).toBeVisible()
 }
 
 test.describe('Demo-Smoke (#232)', () => {
