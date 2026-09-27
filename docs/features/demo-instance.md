@@ -12,8 +12,8 @@
 > „Öffentliche Demo" beschreibt den bisherigen Superhelden-Stand und wird durch dieses Konzept
 > abgelöst. Die praktische Anwenderdokumentation — Installation mit einem Befehl, Nutzerkonten,
 > öffentliche Instanz — steht in [`../../demo/README.md`](../../demo/README.md), das ausformulierte
-> Vorführ-Drehbuch mit acht Fragen in [`../market/demo-drehbuch.md`](../market/demo-drehbuch.md);
-> beide wiederholen dieses Konzept nicht.
+> Vorführ-Drehbuch mit acht Fragen und fünf Vorführschritten in
+> [`../market/demo-drehbuch.md`](../market/demo-drehbuch.md); beide wiederholen dieses Konzept nicht.
 
 ## Motivation
 
@@ -231,8 +231,9 @@ bei Maria, weil er die Leistungsbeschreibungen Meldewesen nicht liest.
 Etwa acht vorbereitete Fragen, jede so gewählt, dass sie eine Eigenschaft der Rechtematrix oder der
 Konnektorvielfalt oben vorführt — von der einfachen belegten Auskunft (Frage 1) über die
 Berechtigungs-Doppelfrage (Frage 5, der stärkste Vorführ-Moment) bis zur bewusst unbeantwortbaren
-Frage (Frage 8). Das ausformulierte Drehbuch mit allen acht Fragen (Konto, erwartete Antwort,
-Quellbibliothek) steht in [`../market/demo-drehbuch.md`](../market/demo-drehbuch.md).
+Frage (Frage 8). Das ausformulierte Drehbuch mit allen acht Fragen und den Vorführschritten zu
+Gruppen, Prompts, Ordnern und Fachformaten (Konto, Klickweg, erwartete Antwort, Quellbibliothek)
+steht in [`../market/demo-drehbuch.md`](../market/demo-drehbuch.md).
 
 ---
 
