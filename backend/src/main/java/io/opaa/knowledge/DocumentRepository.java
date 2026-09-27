@@ -99,6 +99,13 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
    */
   long countByFolderId(UUID folderId);
 
+  /**
+   * The top-level documents directly in {@code folderId} - the figure a folder shows as its {@code
+   * documentCount}, on the same level as the document list's {@code totalElements}. {@link
+   * #countByFolderId} keeps backing the emptiness check, which must see every row.
+   */
+  long countByFolderIdAndParentDocumentIdIsNull(UUID folderId);
+
   long countByLibraryId(UUID libraryId);
 
   /**
@@ -199,11 +206,13 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   Page<Document> findByLibraryId(UUID libraryId, Pageable pageable);
 
   /**
-   * Backs a folder-scoped {@code GET .../documents} (no {@code q}): a page of exactly the documents
-   * sitting directly in {@code folderId}, mirroring {@link #findByLibraryId(UUID, Pageable)}'s
-   * existing root/whole-library paging.
+   * Backs a folder-scoped {@code GET .../documents} (no {@code q}): a page of the top-level
+   * documents sitting directly in {@code folderId}. An attachment carries its parent's folder but
+   * is never paged independently - it rides along with its parent (see {@link
+   * #findByParentDocumentIdInOrderByFilePathAsc}).
    */
-  Page<Document> findByLibraryIdAndFolderId(UUID libraryId, UUID folderId, Pageable pageable);
+  Page<Document> findByLibraryIdAndFolderIdAndParentDocumentIdIsNull(
+      UUID libraryId, UUID folderId, Pageable pageable);
 
   /**
    * The library root's counterpart to {@link #findByLibraryIdAndFolderId} - backs {@code GET
@@ -216,11 +225,11 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
       UUID libraryId, Pageable pageable);
 
   /**
-   * The recursive document counts of a set of folders - each folder's own documents plus every
-   * document in its descendant folders, one query for the whole set. Matches {@code
-   * LibraryFolderService#countDocumentsRecursive}'s semantics (ADR-0020, Entscheidung 5), not a
-   * shallow count. A {@code LEFT JOIN}, so a folder with an empty subtree still yields a row with
-   * count {@code 0} instead of disappearing.
+   * The recursive top-level document counts of a set of folders - each folder's own documents plus
+   * every document in its descendant folders, one query for the whole set; attachments do not
+   * count. Matches {@code LibraryFolderService#countDocumentsRecursive}'s semantics (ADR-0020,
+   * Entscheidung 5), not a shallow count. A {@code LEFT JOIN}, so a folder with an empty subtree
+   * still yields a row with count {@code 0} instead of disappearing.
    */
   @Query(
       value =
@@ -231,7 +240,8 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
               + "  JOIN folder_tree ft ON lf.parent_folder_id = ft.id"
               + ") "
               + "SELECT ft.root_id AS folder_id, count(d.id) AS document_count "
-              + "FROM folder_tree ft LEFT JOIN documents d ON d.folder_id = ft.id "
+              + "FROM folder_tree ft LEFT JOIN documents d"
+              + " ON d.folder_id = ft.id AND d.parent_document_id IS NULL "
               + "GROUP BY ft.root_id",
       nativeQuery = true)
   List<FolderDocumentCount> countRecursiveByFolderIdIn(

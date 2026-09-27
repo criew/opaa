@@ -786,7 +786,8 @@ public class KnowledgeLibraryService {
         folderId == null
             ? documentRepository.findByLibraryIdAndFolderIdIsNullAndParentDocumentIdIsNull(
                 libraryId, pageable)
-            : documentRepository.findByLibraryIdAndFolderId(libraryId, folderId, pageable);
+            : documentRepository.findByLibraryIdAndFolderIdAndParentDocumentIdIsNull(
+                libraryId, folderId, pageable);
     Map<UUID, LibraryFolder> foldersById =
         LibraryFolderPaths.loadFoldersById(folderRepository, libraryId);
 
