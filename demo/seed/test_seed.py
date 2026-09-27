@@ -240,6 +240,41 @@ def test_same_file_name_in_another_folder_is_a_different_document(tmp_path: Path
     assert library.uploads == [("hinweise.txt", "02 Ausweise")]
 
 
+def test_flat_library_stops_the_seed_before_any_upload(tmp_path: Path) -> None:
+    """A library that still holds the corpus flat in its root cannot be re-sorted: the API answers
+    the same content with 409, after it has already created the folder chain. The seed must stop
+    before the first upload, with a message that says what to do."""
+    write_tree(tmp_path, ["01 Melderecht/a.txt", "02 Ausweise/b.txt"])
+    library = FolderAwareLibrary()
+    library.post_ok("", files={"file": ("a.txt", None)}, data=None)
+    library.uploads.clear()
+
+    with pytest.raises(SystemExit) as exit_info:
+        seed.upload_documents(library, "lib", tmp_path)
+
+    assert library.uploads == []
+    assert library.folders == {}
+    assert "flach" in str(exit_info.value)
+    assert "neu aufsetzen" in str(exit_info.value)
+    assert "a.txt" in str(exit_info.value)
+
+
+def test_conflict_on_upload_ends_with_a_german_message(tmp_path: Path) -> None:
+    write_tree(tmp_path, ["01 Melderecht/a.txt"])
+
+    class ConflictingLibrary(FolderAwareLibrary):
+        def post_ok(self, path: str, expected=(201,), files=None, data=None, **kwargs) -> dict:
+            raise ApiError(response(409, body="Diese Datei ist bereits in dieser Bibliothek vorhanden"))
+
+    with pytest.raises(SystemExit) as exit_info:
+        seed.upload_documents(ConflictingLibrary(), "lib", tmp_path)
+
+    message = str(exit_info.value)
+    assert "01 Melderecht/a.txt" in message
+    assert "bereits" in message
+    assert "neu aufsetzen" in message
+
+
 def test_existing_documents_are_found_in_every_folder_level() -> None:
     library = FolderAwareLibrary(page_size=1)
     for name, folder_path in [("r.txt", None), ("a.txt", "x/y"), ("b.txt", "x/y"), ("c.txt", "x")]:
