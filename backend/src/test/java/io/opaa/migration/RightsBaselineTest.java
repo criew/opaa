@@ -181,6 +181,9 @@ class RightsBaselineTest extends AbstractBaselineTest {
     UUID transfer = insertPermissionTransfer();
 
     assertRejected(
+        grantSql("Knowledge_Library", asset, "USER", owner, null),
+        "chk_asset_grants_asset_type_format");
+    assertRejected(
         grantHistorySql("knowledgeLibrary", asset, "USER", owner, "VIEWER", "GRANTED", null),
         "chk_asset_grant_history_asset_type_format");
     assertRejected(
