@@ -93,9 +93,9 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   List<Document> findByFolderId(UUID folderId);
 
   /**
-   * The count-only counterpart to {@link #findByFolderId} - backs {@code LibraryFolderService}'s
-   * {@code documentCount}, which a confirmation dialog shows before a recursive DELETE; cheaper
-   * than loading every row just to call {@code .size()}.
+   * Every row in {@code folderId}, attachments included - the emptiness check before a mirrored
+   * folder is pruned. {@code fk_documents_folder} is {@code RESTRICT}, so a folder holding only
+   * attachment rows is not empty.
    */
   long countByFolderId(UUID folderId);
 

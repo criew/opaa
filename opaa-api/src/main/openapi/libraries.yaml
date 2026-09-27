@@ -1790,10 +1790,10 @@ components:
           format: int64
           description: >
             Every top-level document inside this subfolder and every one of its own descendant
-            subfolders, recursively - the same semantics as LibraryFolderResponse.documentCount
-            (#821 review: a subfolder row here shows the same number a subsequent delete
-            confirmation for it would). Computed with one bundled query for every subfolder
-            shown, not one per subfolder's own subtree walk.
+            subfolders, recursively - the same semantics as LibraryFolderResponse.documentCount,
+            so a subfolder row here shows the same number a subsequent delete confirmation for it
+            would. Computed with one bundled query for every subfolder shown, not one per
+            subfolder's own subtree walk.
 
     LibraryFolderBreadcrumbItem:
       type: object
