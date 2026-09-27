@@ -26,8 +26,6 @@ import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryFolder;
 import io.opaa.knowledge.LibraryFolderRepository;
 import io.opaa.knowledge.LibraryFolderService;
-import io.opaa.knowledge.sourcesettings.S3Scope;
-import io.opaa.knowledge.sourcesettings.S3SourceSettings;
 import io.opaa.organization.Organization;
 import io.opaa.s3.S3AccessException;
 import io.opaa.test.OpaaIntegrationTest;
@@ -109,7 +107,7 @@ class S3FolderMappingIntegrationTest {
             null,
             "AKIAEXAMPLE:geheim",
             false);
-    fresh.updateS3Settings(new S3SourceSettings(null, true, scopes, null, null));
+    S3TestSettings.configure(fresh, new S3SourceSettings(null, true, scopes, null, null));
     KnowledgeLibrary saved = libraryRepository.save(fresh);
     createdLibraries.add(saved);
     return saved;

@@ -1,7 +1,6 @@
 package io.opaa.indexing.source.s3;
 
 import io.opaa.indexing.source.SourceFolderPath;
-import io.opaa.knowledge.sourcesettings.S3Scope;
 import java.util.ArrayList;
 import java.util.List;
 

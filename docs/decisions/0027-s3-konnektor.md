@@ -4,6 +4,8 @@
 
 Vorgeschlagen
 
+**Nachtrag (26.09.2026):** [ADR-0038](0038-steckbare-konnektoren.md) übernimmt Entscheidung 1 für jeden Konnektor und löst den Punkt „Umzug der bestehenden Typen" unter „Ausdrücklich offen". Die `CHECK`-Zweige je Typ entfallen; die Datenbank prüft nur noch, dass `source_settings` ein JSON-Objekt ist. Mindestens einen Bereich sichert allein der Record.
+
 ## Kontext
 
 OPAA kennt fünf Herkünfte: `UPLOAD`, `FILESYSTEM`, `HTTP_DIRECTORY`, `RSS_FEED` und `CONFLUENCE`.

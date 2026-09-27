@@ -21,6 +21,7 @@ import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.indexing.job.DocumentIndexingService;
+import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.knowledge.LibraryFolder;
 import io.opaa.knowledge.LibraryFolderDetail;
 import io.opaa.knowledge.LibraryFolderService;
@@ -70,6 +71,7 @@ class LibraryControllerFolderTest {
   @MockitoBean private DocumentIndexingService indexingService;
   @MockitoBean private UserService userService;
   @MockitoBean private SourceConnectionTestService sourceConnectionTestService;
+  @MockitoBean private SourceConnectorRegistry sourceConnectorRegistry;
   @MockitoBean private SpaceAssetAssociationService associationService;
   @MockitoBean private PermissionTransferService transferService;
   @MockitoBean private SuccessionService successionService;

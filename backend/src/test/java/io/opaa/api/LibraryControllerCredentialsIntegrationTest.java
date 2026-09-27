@@ -30,8 +30,8 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
  * success path (already asserted at the object level by {@code
  * KnowledgeLibraryServiceIntegrationTest#createLibraryAcceptsAnHttpDirectorySourceTypeWithAUrlAndNeverReturnsCredentials}
  * via {@code LibraryResponse#toString}) and, just as important, not the failure path either - a
- * validation error or the database's own {@code chk_knowledge_libraries_source_configuration}
- * rejecting the row could otherwise surface the submitted credentials back to the caller via {@link
+ * validation error or a database constraint rejecting the row could otherwise surface the submitted
+ * credentials back to the caller via {@link
  * org.springframework.web.server.ResponseStatusException#getReason()} or a Postgres error message
  * forwarded verbatim (ADR-0018, Entscheidung 4). Asserts against the raw JSON response body via
  * MockMvc, not a Java object's toString(), because only the raw body is what an actual HTTP client
@@ -342,9 +342,9 @@ class LibraryControllerCredentialsIntegrationTest {
   void aSecondKindOfValidationErrorAlsoNeverEchoesTheSubmittedCredentials() throws Exception {
     // A second, independent 400 path (UPLOAD rejects any configuration at all, including a URL) -
     // guards against a fix that only special-cased the FILESYSTEM branch above. The database's own
-    // chk_knowledge_libraries_source_configuration (whose error text would include every column
+    // chk_knowledge_libraries_upload_without_source (whose error text would include every column
     // value, credentials included, per ADR-0018 Entscheidung 4) is exercised directly, without any
-    // HTTP layer in between (baseline group (e), the documents table).
+    // HTTP layer in between (Migration092ConnectorSettingsTest).
     String body =
         """
         {

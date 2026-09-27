@@ -54,12 +54,12 @@ public class CredentialsEncryptor {
 
   /**
    * Encrypts {@code plaintext}, or returns it unchanged if blank ({@code null}/empty carry no
-   * credentials to protect - {@code UPLOAD}/{@code FILESYSTEM} libraries always have a {@code null}
-   * {@code sourceCredentials}, see {@code chk_knowledge_libraries_source_configuration}). Requires
-   * a valid key even for the shortest non-blank value - see class Javadoc "Legacy cleartext" for
-   * why an already-encrypted value never reaches this method with its key missing at write time in
-   * practice, and {@link CredentialsEncryptionKeyMissingException}'s Javadoc for the failure this
-   * method raises when it is.
+   * credentials to protect - an {@code UPLOAD} library never carries any ({@code
+   * chk_knowledge_libraries_upload_without_source}), a {@code FILESYSTEM} one by its connector's
+   * validation). Requires a valid key even for the shortest non-blank value - see class Javadoc
+   * "Legacy cleartext" for why an already-encrypted value never reaches this method with its key
+   * missing at write time in practice, and {@link CredentialsEncryptionKeyMissingException}'s
+   * Javadoc for the failure this method raises when it is.
    */
   public String encrypt(String plaintext) {
     if (!StringUtils.hasText(plaintext)) {

@@ -18,7 +18,8 @@ import io.opaa.common.UnauthorizedException;
 import io.opaa.indexing.source.SourceEventIntake;
 import io.opaa.indexing.source.SourceEventTarget;
 import io.opaa.indexing.source.confluence.ConfluenceIndexingExecutor;
-import io.opaa.knowledge.ConfluenceSpaceSelection;
+import io.opaa.indexing.source.confluence.ConfluenceSpaceSelection;
+import io.opaa.indexing.source.confluence.ConfluenceTestSettings;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import java.nio.charset.StandardCharsets;
@@ -65,8 +66,8 @@ class ConfluenceWebhookServiceTest {
             null,
             "token",
             false);
-    library.configureConfluence(
-        ConfluenceEdition.DATA_CENTER, List.of(new ConfluenceSpaceSelection("ENG", null)));
+    ConfluenceTestSettings.configure(
+        library, ConfluenceEdition.DATA_CENTER, List.of(new ConfluenceSpaceSelection("ENG", null)));
     library.setWebhookSecret(SECRET);
     libraryId = UUID.randomUUID();
     when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));

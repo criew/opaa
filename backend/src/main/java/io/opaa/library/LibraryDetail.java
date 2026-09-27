@@ -1,6 +1,7 @@
 package io.opaa.library;
 
 import io.opaa.api.types.AssetRole;
+import io.opaa.indexing.source.ConnectorData;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.permission.AssetReach;
 
@@ -20,6 +21,8 @@ import io.opaa.permission.AssetReach;
  * @param reach how far the library reaches right now, derived from its grants (#1931).
  * @param ownerName the owner's display name, or {@code null} where it cannot be named - the same
  *     resolution {@link io.opaa.asset.AssetOwnerNames} performs for the overview.
+ * @param connectorSettings the connector settings as every reader of the library may see them
+ *     (ADR-0038), {@code null} for none
  */
 public record LibraryDetail(
     KnowledgeLibrary library,
@@ -28,4 +31,5 @@ public record LibraryDetail(
     LibraryManagementDetail managementDetail,
     boolean diagnosticsLockToggleable,
     AssetReach reach,
-    String ownerName) {}
+    String ownerName,
+    ConnectorData connectorSettings) {}

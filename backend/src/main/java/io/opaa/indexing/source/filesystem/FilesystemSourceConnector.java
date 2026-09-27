@@ -9,6 +9,7 @@ import io.opaa.common.ValidationException;
 import io.opaa.indexing.FilesystemPathAllowlist;
 import io.opaa.indexing.document.DocumentService;
 import io.opaa.indexing.format.SupportedDocumentFormats;
+import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.OriginalAccess;
 import io.opaa.indexing.source.SourceConnectionTestResult;
 import io.opaa.indexing.source.SourceConnector;
@@ -148,7 +149,7 @@ public class FilesystemSourceConnector implements SourceConnector, OriginalAcces
    * a real directory on every OS.
    */
   @Override
-  public SourceConnectionTestResult testConnection(SourceSettings settings) {
+  public SourceConnectionTestResult testConnection(SourceSettings settings, ConnectorData stored) {
     String sourcePath = blankToNull(settings.sourcePath());
     if (sourcePath == null) {
       throw new ValidationException("sourcePath ist erforderlich, wenn sourceType FILESYSTEM ist");

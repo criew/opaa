@@ -2,6 +2,8 @@ package io.opaa.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import io.opaa.api.dto.ConfluenceSpaceListRequest;
 import io.opaa.api.dto.ConfluenceSpaceListResponse;
@@ -15,29 +17,54 @@ import io.opaa.api.dto.SourceConnectionTestRequest;
 import io.opaa.api.dto.SourceConnectionTestResponse;
 import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.api.types.DocumentSourceType;
+import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.SourceConnectionTestResult;
+import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.indexing.source.SourceListing;
-import io.opaa.knowledge.sourcesettings.S3Scope;
-import io.opaa.library.ConfluenceSpaceListing;
-import io.opaa.library.S3BucketListingRequest;
+import io.opaa.indexing.source.SourceSyncStateRepository;
+import io.opaa.indexing.source.s3.S3ClientFactory;
+import io.opaa.indexing.source.s3.S3ConnectionService;
+import io.opaa.indexing.source.s3.S3OriginalAccess;
+import io.opaa.indexing.source.s3.S3Properties;
+import io.opaa.indexing.source.s3.S3Scope;
+import io.opaa.indexing.source.s3.S3SourceConnector;
+import io.opaa.indexing.source.s3.S3SourceSettingsJson;
+import io.opaa.indexing.source.s3.events.S3EventService;
+import io.opaa.library.SourceBrowseRequest;
 import io.opaa.library.SourceConnectionTest;
+import io.opaa.security.TargetAddressValidator;
 import java.net.URI;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 /**
  * Pure JUnit tests (no Spring context) - the mapper counterpart of {@code SpaceResponseMapperTest}
  * (#860): pins {@link SourceConnectionTestResponseMapper}'s field-by-field behaviour in both
- * directions, including that a failed probe carries no {@code documentCount}.
+ * directions, including that a failed probe carries no {@code documentCount}, and how the flat
+ * per-type fields become the connector settings of the request's type (ADR-0038).
  */
 class SourceConnectionTestResponseMapperTest {
+
+  private final SourceConnectorRegistry connectors = mock(SourceConnectorRegistry.class);
+
+  {
+    when(connectors.connector(DocumentSourceType.S3))
+        .thenReturn(
+            new S3SourceConnector(
+                mock(S3ConnectionService.class),
+                new S3ClientFactory(S3Properties.defaults(), TargetAddressValidator.disabled()),
+                mock(SourceSyncStateRepository.class),
+                mock(S3OriginalAccess.class),
+                mock(S3EventService.class)));
+  }
 
   @Test
   void toDomainCopiesEveryRequestField() {
     UUID libraryId = UUID.randomUUID();
     SourceConnectionTestRequest request =
-        new SourceConnectionTestRequest(DocumentSourceType.HTTP_DIRECTORY)
+        new SourceConnectionTestRequest(DocumentSourceType.CONFLUENCE)
             .sourcePath("/data/documents")
             .sourceUrl(URI.create("https://example.com/documents/"))
             .sourceProxy("proxy.example.com:8080")
@@ -46,16 +73,27 @@ class SourceConnectionTestResponseMapperTest {
             .libraryId(libraryId)
             .confluenceEdition(ConfluenceEdition.CLOUD);
 
-    SourceConnectionTest domain = SourceConnectionTestResponseMapper.toDomain(request);
+    SourceConnectionTest domain = SourceConnectionTestResponseMapper.toDomain(request, connectors);
 
-    assertThat(domain.sourceType()).isEqualTo(DocumentSourceType.HTTP_DIRECTORY);
+    assertThat(domain.sourceType()).isEqualTo(DocumentSourceType.CONFLUENCE);
     assertThat(domain.sourcePath()).isEqualTo("/data/documents");
     assertThat(domain.sourceUrl()).isEqualTo(URI.create("https://example.com/documents/"));
     assertThat(domain.sourceProxy()).isEqualTo("proxy.example.com:8080");
     assertThat(domain.sourceCredentials()).isEqualTo("admin:secret");
     assertThat(domain.sourceInsecureSsl()).isTrue();
     assertThat(domain.libraryId()).isEqualTo(libraryId);
-    assertThat(domain.confluenceEdition()).isEqualTo(ConfluenceEdition.CLOUD);
+    assertThat(domain.connectorSettings().asMap()).containsExactly(Map.entry("edition", "CLOUD"));
+  }
+
+  @Test
+  void anEditionReachesOnlyAConfluenceProbe() {
+    SourceConnectionTest domain =
+        SourceConnectionTestResponseMapper.toDomain(
+            new SourceConnectionTestRequest(DocumentSourceType.HTTP_DIRECTORY)
+                .confluenceEdition(ConfluenceEdition.CLOUD),
+            connectors);
+
+    assertThat(domain.connectorSettings()).isNull();
   }
 
   @Test
@@ -69,15 +107,16 @@ class SourceConnectionTestResponseMapperTest {
                     .region("eu-central-1")
                     .pathStyle(true));
 
-    SourceConnectionTest domain = SourceConnectionTestResponseMapper.toDomain(request);
+    SourceConnectionTest domain = SourceConnectionTestResponseMapper.toDomain(request, connectors);
 
-    assertThat(domain.s3Settings().region()).isEqualTo("eu-central-1");
-    assertThat(domain.s3Settings().pathStyle()).isTrue();
-    assertThat(domain.s3Settings().scopes()).containsExactly(S3Scope.of("dokumente", "2025/"));
+    var settings = S3SourceSettingsJson.fromData(domain.connectorSettings());
+    assertThat(settings.region()).isEqualTo("eu-central-1");
+    assertThat(settings.pathStyle()).isTrue();
+    assertThat(settings.scopes()).containsExactly(S3Scope.of("dokumente", "2025/"));
     assertThat(
             SourceConnectionTestResponseMapper.toDomain(
-                    new SourceConnectionTestRequest(DocumentSourceType.HTTP_DIRECTORY))
-                .s3Settings())
+                    new SourceConnectionTestRequest(DocumentSourceType.HTTP_DIRECTORY), connectors)
+                .connectorSettings())
         .isNull();
 
     SourceConnectionTestResponse response =
@@ -86,13 +125,24 @@ class SourceConnectionTestResponseMapperTest {
                 false,
                 "Bereich „dokumente/2025/“: s3:GetObject fehlt",
                 null,
-                null,
                 true,
-                List.of(
-                    new io.opaa.indexing.source.S3ScopeCheck(
-                        "dokumente", "2025/", true, true, false, 12, true, "s3:GetObject fehlt"),
-                    new io.opaa.indexing.source.S3ScopeCheck(
-                        "archiv", "", true, true, null, 0, false, null))));
+                ConnectorData.of(
+                    Map.of(
+                        "scopes",
+                        List.of(
+                            new io.opaa.indexing.source.s3.S3ScopeCheck(
+                                    "dokumente",
+                                    "2025/",
+                                    true,
+                                    true,
+                                    false,
+                                    12,
+                                    true,
+                                    "s3:GetObject fehlt")
+                                .toJson(),
+                            new io.opaa.indexing.source.s3.S3ScopeCheck(
+                                    "archiv", "", true, true, null, 0, false, null)
+                                .toJson())))));
 
     assertThat(response.getReachable()).isFalse();
     assertThat(response.getCredentialsVerified()).isTrue();
@@ -129,14 +179,15 @@ class SourceConnectionTestResponseMapperTest {
             .pathStyle(true)
             .libraryId(libraryId);
 
-    S3BucketListingRequest domain = SourceConnectionTestResponseMapper.toDomain(request);
+    SourceBrowseRequest domain = SourceConnectionTestResponseMapper.toDomain(request);
 
+    assertThat(domain.sourceType()).isEqualTo(DocumentSourceType.S3);
     assertThat(domain.sourceUrl()).isEqualTo(URI.create("https://s3.example.org"));
     assertThat(domain.sourceCredentials()).isEqualTo("ak:sk");
     assertThat(domain.sourceProxy()).isEqualTo("proxy.example.com:8080");
     assertThat(domain.sourceInsecureSsl()).isTrue();
-    assertThat(domain.region()).isEqualTo("eu-central-1");
-    assertThat(domain.pathStyle()).isTrue();
+    assertThat(domain.query().asMap())
+        .containsExactly(Map.entry("region", "eu-central-1"), Map.entry("pathStyle", true));
     assertThat(domain.libraryId()).isEqualTo(libraryId);
 
     S3BucketListResponse listed =
@@ -164,7 +215,11 @@ class SourceConnectionTestResponseMapperTest {
     SourceConnectionTestResponse confluence =
         SourceConnectionTestResponseMapper.toResponse(
             new SourceConnectionTestResult(
-                true, "Zugangsdaten gültig.", null, ConfluenceEdition.DATA_CENTER, true));
+                true,
+                "Zugangsdaten gültig.",
+                null,
+                true,
+                ConnectorData.of(Map.of("edition", "DATA_CENTER"))));
     assertThat(confluence.getConfluenceEdition()).isEqualTo(ConfluenceEdition.DATA_CENTER);
     assertThat(confluence.getCredentialsVerified()).isTrue();
     assertThat(confluence.getDocumentCount()).isNull();
@@ -187,10 +242,11 @@ class SourceConnectionTestResponseMapperTest {
             .sourceInsecureSsl(true)
             .libraryId(libraryId);
 
-    ConfluenceSpaceListing listing = SourceConnectionTestResponseMapper.toDomain(request);
+    SourceBrowseRequest listing = SourceConnectionTestResponseMapper.toDomain(request);
 
+    assertThat(listing.sourceType()).isEqualTo(DocumentSourceType.CONFLUENCE);
     assertThat(listing.sourceUrl()).isEqualTo(URI.create("https://wiki.example.org"));
-    assertThat(listing.confluenceEdition()).isEqualTo(ConfluenceEdition.DATA_CENTER);
+    assertThat(listing.query().asMap()).containsExactly(Map.entry("edition", "DATA_CENTER"));
     assertThat(listing.sourceCredentials()).isEqualTo("pat");
     assertThat(listing.sourceProxy()).isEqualTo("proxy.example.com:8080");
     assertThat(listing.sourceInsecureSsl()).isTrue();

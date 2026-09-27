@@ -1,31 +1,18 @@
 package io.opaa.knowledge;
 
 import io.opaa.api.types.AssetOwnerType;
-import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.ExternalAccessState;
 import io.opaa.asset.Asset;
-import io.opaa.knowledge.sourcesettings.S3SourceSettings;
-import io.opaa.knowledge.sourcesettings.S3SourceSettingsJson;
 import io.opaa.permission.AssetType;
-import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
-import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.OrderBy;
 import jakarta.persistence.PrimaryKeyJoinColumn;
 import jakarta.persistence.Table;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 import org.hibernate.annotations.DynamicUpdate;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -125,15 +112,11 @@ public class KnowledgeLibrary extends Asset {
   /**
    * The library's single quellentyp (ADR-0018) - chosen at creation, never changed afterwards (see
    * {@code KnowledgeLibraryService#updateLibrary}, which rejects a request that names a different
-   * one). {@code UPLOAD} carries no {@link #sourcePath}/{@link #sourceUrl}/{@link
-   * #sourceProxy}/{@link #sourceCredentials}, {@code FILESYSTEM} carries {@link #sourcePath} only,
-   * {@code HTTP_DIRECTORY} and {@code RSS_FEED} both carry {@link #sourceUrl} (optionally {@link
-   * #sourceProxy}, {@link #sourceCredentials}, {@link #sourceInsecureSsl}) - enforced both by
-   * {@code KnowledgeLibraryService#validateSourceConfiguration} and by the database ({@code
-   * chk_knowledge_libraries_source_configuration}, migration 027). The typed <em>configuration</em>
-   * (as opposed to the type itself) can still change after creation, via {@link
-   * #updateSourceConfiguration} - e.g. rotating {@link #sourceCredentials} or moving a crawl target
-   * does not require deleting and recreating the library.
+   * one). Which of the connection fields a type carries, the type's connector validates; the
+   * database only keeps {@code UPLOAD} free of any configuration ({@code
+   * chk_knowledge_libraries_upload_without_source}). The <em>configuration</em>, unlike the type,
+   * can change after creation via {@link #updateSourceConfiguration} and {@link
+   * #updateSourceSettings}.
    */
   @Enumerated(EnumType.STRING)
   @Column(name = "source_type", nullable = false, length = 20)
@@ -167,61 +150,20 @@ public class KnowledgeLibrary extends Asset {
   private boolean sourceInsecureSsl;
 
   /**
-   * The one push secret of this library: what a Confluence webhook or Automation rule (#1140) or an
-   * S3 event notification (ADR-0027, Entscheidung 6) authenticates itself with - one per library,
-   * like {@link #sourceCredentials}, and encrypted at rest the same way. {@code null} until a
-   * manager generates one; the library's intake rejects every call while it is {@code null}. Shown
-   * to the manager exactly once, at generation - never readable again through the API (only the
-   * yes/no {@code confluenceWebhookSecretSet}/{@code s3EventsTokenSet}).
+   * The one push secret of this library: what its connector's push intake authenticates a
+   * notification with - one per library, like {@link #sourceCredentials}, and encrypted at rest the
+   * same way. {@code null} until a manager generates one; the intake rejects every call while it is
+   * {@code null}. Shown to the manager exactly once, at generation - never readable again through
+   * the API, only as a yes/no.
    */
   @Convert(converter = SourceCredentialsConverter.class)
   @Column(name = "source_webhook_secret", length = 3000)
   private String webhookSecret;
 
   /**
-   * The Confluence edition of a {@code CONFLUENCE} library (ADR-0023, Entscheidung 2) - set once
-   * via {@link #configureConfluence}, immutable afterwards like {@link #sourceType} (enforced by
-   * {@code KnowledgeLibraryService#updateLibrary}), {@code null} for every other type (migration
-   * 010's {@code chk_knowledge_libraries_source_configuration}).
-   */
-  @Enumerated(EnumType.STRING)
-  @Column(name = "source_confluence_edition", length = 20)
-  private ConfluenceEdition sourceConfluenceEdition;
-
-  /**
-   * The selected spaces of a {@code CONFLUENCE} library (ADR-0023, Entscheidung 1) - the first
-   * list-valued piece of source configuration, kept in {@code knowledge_library_confluence_spaces}
-   * and replaced as a whole by {@link #updateConfluenceSpaces}. Non-empty for {@code CONFLUENCE} (a
-   * library without spaces would index nothing), empty for every other type. {@code EAGER} because
-   * the selection is small and read with every library detail; the list loader ({@code
-   * KnowledgeLibraryRepository#findAllById}) joins it in with an entity graph, so a page of
-   * libraries costs one query, not one per row.
-   */
-  @ElementCollection(fetch = FetchType.EAGER)
-  @CollectionTable(
-      name = "knowledge_library_confluence_spaces",
-      joinColumns = @JoinColumn(name = "library_id"))
-  @OrderBy("spaceKey ASC")
-  private List<ConfluenceSpaceSelection> confluenceSpaces = new ArrayList<>();
-
-  /**
-   * This library's own full-sync rhythm in days (#1200, ADR-0023, Entscheidung 4) - {@code null}
-   * while the library follows the instance-wide default ({@code
-   * opaa.indexing.confluence.full-sync-interval}). Always positive when set ({@code
-   * chk_knowledge_libraries_confluence_full_sync_interval}): the rhythm can be lengthened per
-   * library but never switched off. Only meaningful for {@code CONFLUENCE}; {@code
-   * KnowledgeLibraryService} rejects it for every other type.
-   */
-  @Column(name = "source_confluence_full_sync_interval_days")
-  private Integer confluenceFullSyncIntervalDays;
-
-  /**
-   * The typed configuration of an {@code S3} library (ADR-0027, Entscheidung 1) as {@link
-   * S3SourceSettingsJson} writes it - region, addressing style, scopes, key patterns; never a
-   * credential. {@code NULL} for every other type ({@code
-   * chk_knowledge_libraries_source_configuration}, migration 030), which also guards that an {@code
-   * S3} row carries at least one scope. Kept as the JSON text so the entity needs no Hibernate
-   * format mapper; the record validates on the way in and out.
+   * The connector settings (ADR-0038) as the library's connector writes them - one JSON object
+   * whose shape only that connector knows, never a credential or another secret. {@code NULL} for a
+   * type without settings. Kept as the JSON text so the entity needs no Hibernate format mapper.
    */
   @JdbcTypeCode(SqlTypes.JSON)
   @Column(name = "source_settings", columnDefinition = "jsonb")
@@ -454,61 +396,16 @@ public class KnowledgeLibrary extends Asset {
   }
 
   /**
-   * Sets the Confluence-specific half of a {@code CONFLUENCE} library's configuration at creation
-   * (ADR-0023): the edition, permanent from here on, and the initial space selection. Only valid on
-   * a library of that type - {@code KnowledgeLibraryService} validates before calling.
+   * Replaces the connector settings as a whole - the JSON object the library's connector has
+   * validated; {@code null} removes them.
    */
-  public void configureConfluence(
-      ConfluenceEdition edition, List<ConfluenceSpaceSelection> selection) {
-    if (sourceType != DocumentSourceType.CONFLUENCE) {
-      throw new IllegalStateException("only a CONFLUENCE library carries an edition and spaces");
-    }
-    this.sourceConfluenceEdition = Objects.requireNonNull(edition, "edition");
-    updateConfluenceSpaces(selection);
-  }
-
-  /**
-   * Sets the typed half of an {@code S3} library's configuration at creation (ADR-0027) and
-   * replaces it as a whole afterwards; the endpoint, credentials, proxy and TLS switch travel
-   * through {@link #updateSourceConfiguration} like every URL-based type's. Only valid on a library
-   * of that type - {@code KnowledgeLibraryService} validates before calling.
-   */
-  public void updateS3Settings(S3SourceSettings settings) {
-    if (sourceType != DocumentSourceType.S3) {
-      throw new IllegalStateException("only an S3 library carries S3 settings");
-    }
-    this.sourceSettings = S3SourceSettingsJson.write(Objects.requireNonNull(settings, "settings"));
+  public void updateSourceSettings(String json) {
+    this.sourceSettings = json;
     touch();
   }
 
-  /** The typed configuration of an {@code S3} library, {@code null} for every other type. */
-  public S3SourceSettings getS3Settings() {
-    return S3SourceSettingsJson.read(sourceSettings);
-  }
-
-  /**
-   * Replaces this library's own full-sync rhythm (#1200) - {@code null} returns it to the
-   * instance-wide default; a value is always positive, validated by {@code KnowledgeLibraryService}
-   * before this is called.
-   */
-  public void updateConfluenceFullSyncIntervalDays(Integer days) {
-    this.confluenceFullSyncIntervalDays = days;
-    touch();
-  }
-
-  public Integer getConfluenceFullSyncIntervalDays() {
-    return confluenceFullSyncIntervalDays;
-  }
-
-  /**
-   * Replaces the space selection as a whole (ADR-0023, Entscheidung 1) - validated by the caller.
-   */
-  public void updateConfluenceSpaces(List<ConfluenceSpaceSelection> selection) {
-    this.confluenceSpaces.clear();
-    selection.stream()
-        .sorted(Comparator.comparing(ConfluenceSpaceSelection::getSpaceKey))
-        .forEach(this.confluenceSpaces::add);
-    touch();
+  public String getSourceSettings() {
+    return sourceSettings;
   }
 
   public boolean isAllAccountsGrantAllowed() {
@@ -640,31 +537,17 @@ public class KnowledgeLibrary extends Asset {
     return sourceCredentials;
   }
 
-  public ConfluenceEdition getSourceConfluenceEdition() {
-    return sourceConfluenceEdition;
-  }
-
   public String getWebhookSecret() {
     return webhookSecret;
   }
 
-  /** Whether {@code sourceType} has a push intake whose secret this column carries. */
-  public static boolean hasPushIntake(DocumentSourceType sourceType) {
-    return sourceType == DocumentSourceType.CONFLUENCE || sourceType == DocumentSourceType.S3;
-  }
-
-  /** Stores a freshly generated push secret, or removes it with {@code null}. */
+  /**
+   * Stores a freshly generated push secret, or removes it with {@code null} - only for a type whose
+   * connector offers a push intake, which the caller checks.
+   */
   public void setWebhookSecret(String secret) {
-    if (!hasPushIntake(sourceType)) {
-      throw new IllegalStateException("only a CONFLUENCE or S3 library carries a push secret");
-    }
     this.webhookSecret = secret;
     touch();
-  }
-
-  /** The selected spaces, ordered by key; empty for every type but {@code CONFLUENCE}. */
-  public List<ConfluenceSpaceSelection> getConfluenceSpaces() {
-    return Collections.unmodifiableList(confluenceSpaces);
   }
 
   public boolean isSourceInsecureSsl() {

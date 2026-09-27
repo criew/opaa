@@ -32,10 +32,7 @@ class S3SourceConnectorBrowseTest {
 
   private static SourceBrowser.Query query(String credentials) {
     return new SourceBrowser.Query(
-        new SourceSettings(
-            null, "https://s3.example.org", null, credentials, false, null, null, null, null),
-        null,
-        null);
+        new SourceSettings(null, "https://s3.example.org", null, credentials, false, null), null);
   }
 
   @Test

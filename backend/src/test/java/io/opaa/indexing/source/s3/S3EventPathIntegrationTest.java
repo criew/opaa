@@ -18,8 +18,6 @@ import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
-import io.opaa.knowledge.sourcesettings.S3Scope;
-import io.opaa.knowledge.sourcesettings.S3SourceSettings;
 import io.opaa.organization.Organization;
 import io.opaa.s3.S3TestFixture;
 import io.opaa.test.OpaaIntegrationTest;
@@ -109,7 +107,8 @@ class S3EventPathIntegrationTest {
             null,
             store.rootCredentials().stored(),
             false);
-    fresh.updateS3Settings(
+    S3TestSettings.configure(
+        fresh,
         new S3SourceSettings(
             S3TestFixture.REGION, true, List.of(S3Scope.of(bucket, "")), null, null));
     fresh.setWebhookSecret(TOKEN);

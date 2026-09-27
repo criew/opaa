@@ -10,6 +10,7 @@ import static io.opaa.indexing.source.ConnectorChecks.unreachable;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.source.ConnectorChecks;
+import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.OriginalAccess;
 import io.opaa.indexing.source.RemoteOriginalAccess;
 import io.opaa.indexing.source.SourceConnectionTestResult;
@@ -111,7 +112,7 @@ public class RssFeedSourceConnector implements SourceConnector, OriginalAccess {
   }
 
   @Override
-  public SourceConnectionTestResult testConnection(SourceSettings settings) {
+  public SourceConnectionTestResult testConnection(SourceSettings settings, ConnectorData stored) {
     String url = requireHttpUrl(DocumentSourceType.RSS_FEED, settings);
     ProxyAndCredentials config = parseProxyAndCredentials(settings);
     HttpClient httpClient =

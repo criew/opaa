@@ -11,6 +11,7 @@ import io.opaa.api.types.DocumentSourceType;
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.format.SupportedDocumentFormats;
 import io.opaa.indexing.source.ConnectorChecks;
+import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.OriginalAccess;
 import io.opaa.indexing.source.RemoteOriginalAccess;
 import io.opaa.indexing.source.SourceConnectionTestResult;
@@ -99,7 +100,7 @@ public class HttpDirectorySourceConnector implements SourceConnector, OriginalAc
   }
 
   @Override
-  public SourceConnectionTestResult testConnection(SourceSettings settings) {
+  public SourceConnectionTestResult testConnection(SourceSettings settings, ConnectorData stored) {
     String url = requireHttpUrl(DocumentSourceType.HTTP_DIRECTORY, settings);
     // the run's own rule: a slash is appended unless the address already names a file, so a
     // working ".../index.html" is not turned into a false 404

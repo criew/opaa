@@ -28,6 +28,7 @@ import io.opaa.api.dto.S3BucketListResponse;
 import io.opaa.api.dto.S3EventsTokenResponse;
 import io.opaa.api.dto.SourceConnectionTestRequest;
 import io.opaa.api.dto.SourceConnectionTestResponse;
+import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
@@ -38,6 +39,7 @@ import io.opaa.indexing.job.IndexingRunCost;
 import io.opaa.indexing.job.IndexingRunDetail;
 import io.opaa.indexing.job.IndexingStatusView;
 import io.opaa.indexing.job.JobStatus;
+import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.LibraryFolderService;
 import io.opaa.library.KnowledgeLibraryService;
@@ -79,6 +81,7 @@ public class LibraryController {
   private final SourceConnectionTestService sourceConnectionTestService;
   private final PermissionTransferService transferService;
   private final SuccessionService successionService;
+  private final SourceConnectorRegistry connectors;
 
   public LibraryController(
       KnowledgeLibraryService libraryService,
@@ -87,7 +90,8 @@ public class LibraryController {
       DocumentIndexingService indexingService,
       SourceConnectionTestService sourceConnectionTestService,
       PermissionTransferService transferService,
-      SuccessionService successionService) {
+      SuccessionService successionService,
+      SourceConnectorRegistry connectors) {
     this.libraryService = libraryService;
     this.documentService = documentService;
     this.folderService = folderService;
@@ -95,6 +99,7 @@ public class LibraryController {
     this.sourceConnectionTestService = sourceConnectionTestService;
     this.transferService = transferService;
     this.successionService = successionService;
+    this.connectors = connectors;
   }
 
   @PostMapping
@@ -102,7 +107,8 @@ public class LibraryController {
       @Valid @RequestBody LibraryRequest request, @Caller CurrentUser caller) {
     LibraryResponse response =
         LibraryResponseMapper.toResponse(
-            libraryService.createLibrary(LibraryResponseMapper.toCreation(request), caller));
+            libraryService.createLibrary(
+                LibraryResponseMapper.toCreation(request, connectors), caller));
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 
@@ -120,7 +126,7 @@ public class LibraryController {
       @Valid @RequestBody SourceConnectionTestRequest request, @Caller CurrentUser caller) {
     return SourceConnectionTestResponseMapper.toResponse(
         sourceConnectionTestService.test(
-            SourceConnectionTestResponseMapper.toDomain(request), caller));
+            SourceConnectionTestResponseMapper.toDomain(request, connectors), caller));
   }
 
   /**
@@ -133,7 +139,7 @@ public class LibraryController {
       @Valid @RequestBody ConfluenceSpaceListRequest request, @Caller CurrentUser caller) {
     return SourceConnectionTestResponseMapper.toResponse(
         SourceConnectionTestResponseMapper.toRefs(
-            sourceConnectionTestService.listConfluenceSpaces(
+            sourceConnectionTestService.browse(
                 SourceConnectionTestResponseMapper.toDomain(request), caller)));
   }
 
@@ -146,7 +152,7 @@ public class LibraryController {
   public S3BucketListResponse listS3Buckets(
       @Valid @RequestBody S3BucketListRequest request, @Caller CurrentUser caller) {
     return SourceConnectionTestResponseMapper.toResponse(
-        sourceConnectionTestService.listS3Buckets(
+        sourceConnectionTestService.browse(
             SourceConnectionTestResponseMapper.toDomain(request), caller));
   }
 
@@ -169,7 +175,8 @@ public class LibraryController {
       @Valid @RequestBody LibraryUpdateRequest request,
       @Caller CurrentUser caller) {
     return LibraryResponseMapper.toResponse(
-        libraryService.updateLibrary(libraryId, LibraryResponseMapper.toUpdate(request), caller));
+        libraryService.updateLibrary(
+            libraryId, LibraryResponseMapper.toUpdate(request, connectors), caller));
   }
 
   /**
@@ -197,7 +204,8 @@ public class LibraryController {
   @PostMapping("/{libraryId}/confluence-webhook-secret")
   public ConfluenceWebhookSecretResponse generateConfluenceWebhookSecret(
       @PathVariable UUID libraryId, @Caller CurrentUser caller) {
-    String secret = libraryService.generateConfluenceWebhookSecret(libraryId, caller);
+    String secret =
+        libraryService.generatePushSecret(libraryId, DocumentSourceType.CONFLUENCE, caller);
     return new ConfluenceWebhookSecretResponse(
         secret, "/api/v1/libraries/" + libraryId + "/confluence-webhook");
   }
@@ -205,7 +213,7 @@ public class LibraryController {
   @DeleteMapping("/{libraryId}/confluence-webhook-secret")
   public ResponseEntity<Void> removeConfluenceWebhookSecret(
       @PathVariable UUID libraryId, @Caller CurrentUser caller) {
-    libraryService.removeConfluenceWebhookSecret(libraryId, caller);
+    libraryService.removePushSecret(libraryId, DocumentSourceType.CONFLUENCE, caller);
     return ResponseEntity.noContent().build();
   }
 
@@ -216,14 +224,14 @@ public class LibraryController {
   @PostMapping("/{libraryId}/s3-events-token")
   public S3EventsTokenResponse generateS3EventsToken(
       @PathVariable UUID libraryId, @Caller CurrentUser caller) {
-    String token = libraryService.generateS3EventsToken(libraryId, caller);
+    String token = libraryService.generatePushSecret(libraryId, DocumentSourceType.S3, caller);
     return new S3EventsTokenResponse(token, "/api/v1/libraries/" + libraryId + "/s3-events");
   }
 
   @DeleteMapping("/{libraryId}/s3-events-token")
   public ResponseEntity<Void> removeS3EventsToken(
       @PathVariable UUID libraryId, @Caller CurrentUser caller) {
-    libraryService.removeS3EventsToken(libraryId, caller);
+    libraryService.removePushSecret(libraryId, DocumentSourceType.S3, caller);
     return ResponseEntity.noContent().build();
   }
 

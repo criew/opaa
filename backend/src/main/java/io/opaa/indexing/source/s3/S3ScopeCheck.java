@@ -1,4 +1,7 @@
-package io.opaa.indexing.source;
+package io.opaa.indexing.source.s3;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * The connection test's finding for one scope of an S3 library (ADR-0027, #1376): how far the
@@ -22,5 +25,19 @@ public record S3ScopeCheck(
   /** Whether every step this scope allowed to probe passed. */
   public boolean passed() {
     return message == null;
+  }
+
+  /** The finding as one entry of the test's {@code scopes} details, under the API's names. */
+  public Map<String, Object> toJson() {
+    Map<String, Object> json = new LinkedHashMap<>();
+    json.put("bucket", bucket);
+    json.put("prefix", prefix);
+    json.put("bucketReachable", bucketReachable);
+    json.put("listAllowed", listAllowed);
+    json.put("readAllowed", readAllowed);
+    json.put("objectCount", objectCount);
+    json.put("objectCountIsLowerBound", objectCountIsLowerBound);
+    json.put("message", message);
+    return json;
   }
 }

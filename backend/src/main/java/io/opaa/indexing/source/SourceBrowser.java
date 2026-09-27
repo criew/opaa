@@ -9,25 +9,17 @@ package io.opaa.indexing.source;
  */
 public interface SourceBrowser {
 
-  /** What this browser lists; at most one connector offers each kind. */
-  Kind browseKind();
-
   /** The German 400 message for a stored library of another type. */
   String otherTypeMessage();
 
   SourceListing browse(Query query);
 
-  /** The kinds of listing a connector may offer. */
-  enum Kind {
-    BUCKETS,
-    SPACES
-  }
-
   /**
    * @param settings the effective connection - the request's, or the stored library's where the
-   *     same-origin rule lets it stand in
-   * @param region the signing region the request names, {@code null} to take the stored one
-   * @param pathStyle the addressing style the request names, {@code null} to take the stored one
+   *     same-origin rule lets it stand in - with the listing's own parameters as its connector
+   *     settings
+   * @param stored the connector settings of the stored library the listing is for, {@code null}
+   *     before one exists
    */
-  record Query(SourceSettings settings, String region, Boolean pathStyle) {}
+  record Query(SourceSettings settings, ConnectorData stored) {}
 }

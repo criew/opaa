@@ -15,6 +15,7 @@ import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.externalaccess.ExternalAccessSettings;
 import io.opaa.externalaccess.ExternalAccessSettingsService;
+import io.opaa.library.ConnectorSettingsRequest;
 import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.library.LibraryCreation;
 import io.opaa.mail.SendResult;
@@ -137,10 +138,7 @@ class ExternalAccessTokenLifecycleIntegrationTest {
                 null,
                 null,
                 null,
-                null,
-                null,
-                null,
-                null,
+                ConnectorSettingsRequest.NONE,
                 null),
             CurrentUser.of(owner.getId(), owner.getOrganizationId(), owner.getSystemRole(), "x"))
         .library()

@@ -1,11 +1,7 @@
 package io.opaa.library;
 
-import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.api.types.DocumentSourceType;
-import io.opaa.knowledge.ConfluenceSpaceSelection;
-import io.opaa.knowledge.sourcesettings.S3SourceSettings;
 import java.net.URI;
-import java.util.List;
 
 /**
  * Parameters for {@link KnowledgeLibraryService#updateLibrary} - replaces the generated {@code
@@ -17,8 +13,8 @@ import java.util.List;
  *     null} means the caller did not send one.
  * @param schedule {@code null} means the caller does not intend to change the schedule; the stored
  *     one stays untouched. Present (even if {@code DISABLED}) replaces it as a whole.
- * @param s3Settings replaces an {@code S3} library's typed configuration as a whole when present;
- *     {@code null} leaves the stored one untouched
+ * @param connectorSettings the change of the connector's settings (ADR-0038), never {@code null} -
+ *     an absent part leaves the stored one untouched
  */
 public record LibraryUpdate(
     String name,
@@ -31,7 +27,4 @@ public record LibraryUpdate(
     String sourceCredentials,
     Boolean sourceInsecureSsl,
     LibraryScheduleUpdate schedule,
-    ConfluenceEdition confluenceEdition,
-    List<ConfluenceSpaceSelection> confluenceSpaces,
-    Integer confluenceFullSyncIntervalDays,
-    S3SourceSettings s3Settings) {}
+    ConnectorSettingsRequest connectorSettings) {}

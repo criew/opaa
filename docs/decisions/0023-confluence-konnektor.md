@@ -4,6 +4,8 @@
 
 Vorgeschlagen
 
+**Nachtrag (26.09.2026):** Die Ablage von Space-Auswahl, Edition und Vollabgleichsrhythmus (Entscheidungen 1, 2 und 4) ist durch [ADR-0038](0038-steckbare-konnektoren.md) geändert: Alle drei stehen als Einstellungen des Konnektors in `source_settings`; die Kindtabelle `knowledge_library_confluence_spaces` und die Spalten `source_confluence_*` entfallen. Die fachlichen Regeln (Edition unveränderlich, Auswahl als Ganzes ersetzt, Rhythmus 1-365 Tage) gelten unverändert.
+
 ## Kontext
 
 OPAA kennt vier Herkünfte: `UPLOAD`, `FILESYSTEM`, `HTTP_DIRECTORY` und `RSS_FEED`. Epic #1129

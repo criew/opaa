@@ -2,6 +2,7 @@ package io.opaa.indexing.source.upload;
 
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.common.ValidationException;
+import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.OriginalAccess;
 import io.opaa.indexing.source.SourceConnectionTestResult;
 import io.opaa.indexing.source.SourceConnector;
@@ -13,7 +14,6 @@ import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.UploadedOriginalRef;
 import io.opaa.knowledge.UploadedOriginalStore;
 import java.util.Optional;
-import java.util.Set;
 
 /**
  * The source of an upload library (ADR-0017): no run, no configuration, no connection to test - its
@@ -24,7 +24,7 @@ import java.util.Set;
 public class UploadSourceConnector implements SourceConnector, OriginalAccess {
 
   private static final SourceConnectorDescriptor DESCRIPTOR =
-      new SourceConnectorDescriptor(DocumentSourceType.UPLOAD, false, Set.of(), null, null);
+      new SourceConnectorDescriptor(DocumentSourceType.UPLOAD, false, null, null);
 
   private final UploadedOriginalStore uploadedOriginalStore;
 
@@ -50,7 +50,7 @@ public class UploadSourceConnector implements SourceConnector, OriginalAccess {
   }
 
   @Override
-  public SourceConnectionTestResult testConnection(SourceSettings settings) {
+  public SourceConnectionTestResult testConnection(SourceSettings settings, ConnectorData stored) {
     throw new ValidationException("sourceType UPLOAD unterstützt keinen Verbindungstest");
   }
 

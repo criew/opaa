@@ -17,7 +17,6 @@ import io.opaa.indexing.source.VanishedDocumentPolicy;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.LibraryFolderService;
-import io.opaa.knowledge.sourcesettings.S3SourceSettings;
 import io.opaa.s3.S3AccessException;
 import io.opaa.s3.S3Connection;
 import java.time.Clock;
@@ -149,12 +148,12 @@ public class S3IndexingExecutor implements SourceIndexingExecutor {
    * layer's own German sentence, before any object is touched.
    */
   ListingOutcome indexScopes(IndexingRun run) throws InterruptedException {
-    return withStore(run, sync -> sync.run(run.library().getS3Settings().scopes()));
+    return withStore(run, sync -> sync.run(S3SourceSettingsJson.of(run.library()).scopes()));
   }
 
   private ListingOutcome withStore(IndexingRun run, SyncBody body) throws InterruptedException {
     KnowledgeLibrary library = run.library();
-    S3SourceSettings settings = library.getS3Settings();
+    S3SourceSettings settings = S3SourceSettingsJson.of(library);
     S3Connection connection;
     try {
       connection = S3LibraryConnection.of(library, settings);

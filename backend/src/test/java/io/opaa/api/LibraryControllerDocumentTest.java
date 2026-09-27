@@ -24,6 +24,7 @@ import io.opaa.auth.UserService;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.indexing.job.DocumentIndexingService;
+import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.LibraryFolderService;
 import io.opaa.library.BulkDocumentDeletion;
@@ -75,6 +76,7 @@ class LibraryControllerDocumentTest {
   @MockitoBean private DocumentIndexingService indexingService;
   @MockitoBean private UserService userService;
   @MockitoBean private SourceConnectionTestService sourceConnectionTestService;
+  @MockitoBean private SourceConnectorRegistry sourceConnectorRegistry;
   @MockitoBean private SpaceAssetAssociationService associationService;
   @MockitoBean private PermissionTransferService transferService;
   @MockitoBean private SuccessionService successionService;

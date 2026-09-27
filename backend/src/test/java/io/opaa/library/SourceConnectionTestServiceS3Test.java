@@ -19,17 +19,18 @@ import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ValidationException;
-import io.opaa.indexing.source.S3ScopeCheck;
 import io.opaa.indexing.source.SourceConnectionTestResult;
 import io.opaa.indexing.source.SourceListing;
 import io.opaa.indexing.source.TestSourceConnectors;
 import io.opaa.indexing.source.s3.S3BucketListResult;
 import io.opaa.indexing.source.s3.S3ConnectionService;
+import io.opaa.indexing.source.s3.S3Scope;
+import io.opaa.indexing.source.s3.S3ScopeCheck;
+import io.opaa.indexing.source.s3.S3SourceSettings;
+import io.opaa.indexing.source.s3.S3TestSettings;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
-import io.opaa.knowledge.sourcesettings.S3Scope;
-import io.opaa.knowledge.sourcesettings.S3SourceSettings;
 import io.opaa.permission.CapabilityService;
 import java.net.URI;
 import java.util.List;
@@ -92,7 +93,7 @@ class SourceConnectionTestServiceS3Test {
             "proxy.stored.example:3128",
             "AKIASTORED:stored-secret",
             true);
-    library.updateS3Settings(STORED_SETTINGS);
+    S3TestSettings.configure(library, STORED_SETTINGS);
     when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
     return library;
   }
@@ -120,8 +121,8 @@ class SourceConnectionTestServiceS3Test {
     assertThat(result.reachable()).isTrue();
     assertThat(result.documentCount()).isEqualTo(3);
     assertThat(result.credentialsVerified()).isTrue();
-    assertThat(result.confluenceEdition()).isNull();
-    assertThat(result.s3Scopes()).containsExactly(check);
+    assertThat(TestConnectorSettings.edition(result)).isNull();
+    assertThat(TestConnectorSettings.scopes(result)).containsExactly((Object) check.toJson());
   }
 
   @Test
@@ -207,14 +208,14 @@ class SourceConnectionTestServiceS3Test {
 
     assertThatThrownBy(
             () ->
-                service.listS3Buckets(
-                    new S3BucketListingRequest(
+                service.browse(
+                    new SourceBrowseRequest(
+                        DocumentSourceType.S3,
                         URI.create("https://s3.example.org"),
                         "ak:sk",
                         null,
                         null,
-                        null,
-                        true,
+                        TestConnectorSettings.s3Query(null, true),
                         null),
                     caller))
         .isInstanceOf(AccessDeniedException.class);
@@ -224,16 +225,29 @@ class SourceConnectionTestServiceS3Test {
   void bucketListingRequiresCredentialsWithoutALibraryToFallBackOn() {
     assertThatThrownBy(
             () ->
-                service.listS3Buckets(
-                    new S3BucketListingRequest(
-                        URI.create("https://s3.example.org"), null, null, null, null, true, null),
+                service.browse(
+                    new SourceBrowseRequest(
+                        DocumentSourceType.S3,
+                        URI.create("https://s3.example.org"),
+                        null,
+                        null,
+                        null,
+                        TestConnectorSettings.s3Query(null, true),
+                        null),
                     caller))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("sourceCredentials");
     assertThatThrownBy(
             () ->
-                service.listS3Buckets(
-                    new S3BucketListingRequest(null, "ak:sk", null, null, null, true, null),
+                service.browse(
+                    new SourceBrowseRequest(
+                        DocumentSourceType.S3,
+                        null,
+                        "ak:sk",
+                        null,
+                        null,
+                        TestConnectorSettings.s3Query(null, true),
+                        null),
                     caller))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("sourceUrl");
@@ -248,14 +262,14 @@ class SourceConnectionTestServiceS3Test {
         .thenReturn(new S3BucketListResult(true, List.of("protokolle"), null));
 
     SourceListing result =
-        service.listS3Buckets(
-            new S3BucketListingRequest(
+        service.browse(
+            new SourceBrowseRequest(
+                DocumentSourceType.S3,
                 URI.create("https://s3.example.org"),
                 null,
                 "attacker.example:8080",
                 false,
-                "eu-west-1",
-                false,
+                TestConnectorSettings.s3Query("eu-west-1", false),
                 libraryId),
             caller);
 
@@ -270,9 +284,15 @@ class SourceConnectionTestServiceS3Test {
             false);
 
     // without region and style in the request, the stored settings sign the listing
-    service.listS3Buckets(
-        new S3BucketListingRequest(
-            URI.create("https://s3.example.org"), null, null, null, null, null, libraryId),
+    service.browse(
+        new SourceBrowseRequest(
+            DocumentSourceType.S3,
+            URI.create("https://s3.example.org"),
+            null,
+            null,
+            null,
+            null,
+            libraryId),
         caller);
     verify(s3ConnectionService)
         .listBuckets(
@@ -313,14 +333,14 @@ class SourceConnectionTestServiceS3Test {
         .requireRole(any(), eq(currentUserId), eq(false), eq(AssetRole.MANAGER));
     assertThatThrownBy(
             () ->
-                service.listS3Buckets(
-                    new S3BucketListingRequest(
+                service.browse(
+                    new SourceBrowseRequest(
+                        DocumentSourceType.S3,
                         URI.create("https://s3.example.org"),
                         null,
                         null,
                         null,
-                        null,
-                        true,
+                        TestConnectorSettings.s3Query(null, true),
                         libraryId),
                     caller))
         .isInstanceOf(AccessDeniedException.class);
@@ -343,9 +363,15 @@ class SourceConnectionTestServiceS3Test {
     Mockito.reset(libraryAccessService);
     assertThatThrownBy(
             () ->
-                service.listS3Buckets(
-                    new S3BucketListingRequest(
-                        URI.create("https://example.org"), null, null, null, null, true, rssId),
+                service.browse(
+                    new SourceBrowseRequest(
+                        DocumentSourceType.S3,
+                        URI.create("https://example.org"),
+                        null,
+                        null,
+                        null,
+                        TestConnectorSettings.s3Query(null, true),
+                        rssId),
                     caller))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("keine S3-Bibliothek");

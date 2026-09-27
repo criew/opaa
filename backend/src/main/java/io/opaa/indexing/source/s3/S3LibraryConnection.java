@@ -1,7 +1,6 @@
 package io.opaa.indexing.source.s3;
 
 import io.opaa.knowledge.KnowledgeLibrary;
-import io.opaa.knowledge.sourcesettings.S3SourceSettings;
 import io.opaa.s3.S3Connection;
 import io.opaa.s3.S3Credentials;
 import io.opaa.sourceaccess.ProxyAndCredentials;
@@ -22,8 +21,8 @@ final class S3LibraryConnection {
   private S3LibraryConnection() {}
 
   /**
-   * @param settings the library's own {@link KnowledgeLibrary#getS3Settings()}, passed in so the
-   *     caller reads it once
+   * @param settings the library's own stored settings ({@link S3SourceSettingsJson#of}), passed in
+   *     so the caller reads them once
    */
   static S3Connection of(KnowledgeLibrary library, S3SourceSettings settings) {
     if (settings == null) {

@@ -1,4 +1,4 @@
-package io.opaa.knowledge.sourcesettings;
+package io.opaa.indexing.source.s3;
 
 import java.util.ArrayList;
 import java.util.Collection;

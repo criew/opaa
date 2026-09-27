@@ -1,4 +1,4 @@
-package io.opaa.knowledge.sourcesettings;
+package io.opaa.indexing.source.s3;
 
 import io.opaa.s3.S3Connection;
 import java.nio.file.FileSystems;

@@ -5,6 +5,7 @@ import static io.opaa.indexing.source.ConnectorChecks.unreachable;
 
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.common.ValidationException;
+import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.OriginalAccess;
 import io.opaa.indexing.source.OriginalUnavailableException;
 import io.opaa.indexing.source.PushIntake;
@@ -15,7 +16,6 @@ import io.opaa.indexing.source.SourceConnectionTestResult;
 import io.opaa.indexing.source.SourceConnector;
 import io.opaa.indexing.source.SourceConnectorDescriptor;
 import io.opaa.indexing.source.SourceListing;
-import io.opaa.indexing.source.SourceSettingField;
 import io.opaa.indexing.source.SourceSettings;
 import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.indexing.source.s3.events.S3EventAuthentication;
@@ -24,8 +24,6 @@ import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentContent;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.ServedContentTypes;
-import io.opaa.knowledge.sourcesettings.S3SourceSettings;
-import io.opaa.knowledge.sourcesettings.S3SourceSettingsJson;
 import io.opaa.s3.S3AccessException;
 import io.opaa.s3.S3Connection;
 import io.opaa.s3.S3Credentials;
@@ -50,10 +48,10 @@ import org.springframework.http.HttpHeaders;
 /**
  * An S3-compatible object store (ADR-0027). {@code sourceUrl} is the endpoint, stored normalised;
  * the credentials are required as {@code accessKey:secretKey[:sessionToken]}; the scopes and
- * patterns live in the typed {@link S3SourceSettings}. Before anything is stored, the endpoint, the
- * proxy and - under virtual-host addressing - every bucket host pass the target validation
- * (Entscheidung 8). A changed endpoint or changed settings discard the resumption state, so the
- * next run lists every scope from scratch (Entscheidung 3).
+ * patterns are the connector settings, read as {@link S3SourceSettings}. Before anything is stored,
+ * the endpoint, the proxy and - under virtual-host addressing - every bucket host pass the target
+ * validation (Entscheidung 8). A changed endpoint or changed settings discard the resumption state,
+ * so the next run lists every scope from scratch (Entscheidung 3).
  */
 public class S3SourceConnector
     implements SourceConnector, SourceBrowser, OriginalAccess, PushIntakeHandler {
@@ -69,11 +67,7 @@ public class S3SourceConnector
 
   private static final SourceConnectorDescriptor DESCRIPTOR =
       new SourceConnectorDescriptor(
-          DocumentSourceType.S3,
-          true,
-          Set.of(SourceSettingField.S3_SETTINGS),
-          PushIntake.EVENT_TOKEN,
-          null);
+          DocumentSourceType.S3, true, new PushIntake("s3EventsToken", "Ein Ereignis-Token"), null);
 
   private final S3ConnectionService connectionService;
   private final S3ClientFactory clientFactory;
@@ -156,6 +150,21 @@ public class S3SourceConnector
     return DESCRIPTOR;
   }
 
+  /** Buckets, prefixes, overlap and patterns are checked here, before anything else is asked. */
+  @Override
+  public ConnectorData readSettings(ConnectorData requested) {
+    return requested == null ? null : S3SourceSettingsJson.toData(settingsOf(requested));
+  }
+
+  private static S3SourceSettings settingsOf(ConnectorData data) {
+    try {
+      return S3SourceSettingsJson.fromData(data);
+    } catch (S3Scope.InvalidS3ScopeException
+        | S3SourceSettings.InvalidS3SourceSettingsException e) {
+      throw new ValidationException("s3Settings: " + e.getMessage());
+    }
+  }
+
   @Override
   public SourceSettings validate(SourceSettings requested) {
     if (requested.sourcePath() != null) {
@@ -174,16 +183,19 @@ public class S3SourceConnector
     if (requested.sourceCredentials() == null) {
       throw new ValidationException("sourceCredentials sind erforderlich, wenn sourceType S3 ist");
     }
-    if (requested.s3Settings() == null) {
+    if (requested.connectorSettings() == null) {
       throw new ValidationException("s3Settings sind erforderlich, wenn sourceType S3 ist");
     }
+    S3SourceSettings settings = settingsOf(requested.connectorSettings());
     requireReachableTargets(
         normalizedUrl,
         requested.sourceProxy(),
         requested.sourceInsecureSsl(),
         requested.sourceCredentials(),
-        requested.s3Settings());
-    return requested.withSourceUrl(normalizedUrl);
+        settings);
+    return requested
+        .withSourceUrl(normalizedUrl)
+        .withConnectorSettings(S3SourceSettingsJson.toData(settings));
   }
 
   /**
@@ -195,33 +207,26 @@ public class S3SourceConnector
   public SourceSettings validateChange(
       KnowledgeLibrary library, SourceSettings requested, boolean replacesConnection) {
     if (replacesConnection) {
-      S3SourceSettings effective =
-          requested.s3Settings() != null ? requested.s3Settings() : library.getS3Settings();
-      SourceSettings validated = validate(withS3Settings(requested, effective));
-      return withS3Settings(validated, requested.s3Settings());
+      ConnectorData effective =
+          requested.connectorSettings() != null
+              ? requested.connectorSettings()
+              : ConnectorData.storedIn(library);
+      SourceSettings validated = validate(requested.withConnectorSettings(effective));
+      return requested.connectorSettings() == null
+          ? validated.withConnectorSettings(null)
+          : validated;
     }
-    if (requested.s3Settings() != null) {
+    if (requested.connectorSettings() != null) {
+      S3SourceSettings settings = settingsOf(requested.connectorSettings());
       requireReachableTargets(
           library.getSourceUrl(),
           library.getSourceProxy(),
           library.isSourceInsecureSsl(),
           library.getSourceCredentials(),
-          requested.s3Settings());
+          settings);
+      return requested.withConnectorSettings(S3SourceSettingsJson.toData(settings));
     }
     return requested;
-  }
-
-  private static SourceSettings withS3Settings(SourceSettings settings, S3SourceSettings s3) {
-    return new SourceSettings(
-        settings.sourcePath(),
-        settings.sourceUrl(),
-        settings.sourceProxy(),
-        settings.sourceCredentials(),
-        settings.sourceInsecureSsl(),
-        settings.confluenceEdition(),
-        settings.confluenceSpaces(),
-        settings.confluenceFullSyncIntervalDays(),
-        s3);
   }
 
   /**
@@ -264,20 +269,39 @@ public class S3SourceConnector
 
   @Override
   public void configureNew(KnowledgeLibrary library, SourceSettings validated) {
-    library.updateS3Settings(validated.s3Settings());
+    library.updateSourceSettings(validated.connectorSettings().toJson());
   }
 
   @Override
   public void applyChange(KnowledgeLibrary library, SourceSettings validated) {
-    if (validated.s3Settings() != null) {
-      library.updateS3Settings(validated.s3Settings());
+    if (validated.connectorSettings() != null) {
+      library.updateSourceSettings(validated.connectorSettings().toJson());
+    }
+  }
+
+  /**
+   * The scopes are the scope every reader sees, and the record carries no credential. A stored
+   * document the record no longer accepts is left out rather than failing the whole read.
+   */
+  @Override
+  public ConnectorData settingsView(KnowledgeLibrary library, boolean manager) {
+    try {
+      S3SourceSettings settings = S3SourceSettingsJson.of(library);
+      return settings == null ? null : S3SourceSettingsJson.toData(settings);
+    } catch (S3Scope.InvalidS3ScopeException
+        | S3SourceSettings.InvalidS3SourceSettingsException e) {
+      log.warn(
+          "Library {} carries S3 settings the record rejects; omitted from the response: {}",
+          library.getId(),
+          e.getMessage());
+      return null;
     }
   }
 
   @Override
   public Map<String, Object> settingsState(KnowledgeLibrary library) {
     Map<String, Object> state = new HashMap<>();
-    state.put(SETTINGS_STATE, S3SourceSettingsJson.write(library.getS3Settings()));
+    state.put(SETTINGS_STATE, S3SourceSettingsJson.write(S3SourceSettingsJson.of(library)));
     return state;
   }
 
@@ -290,8 +314,12 @@ public class S3SourceConnector
     }
   }
 
+  /**
+   * Probes the requested scopes, or the stored library's when the request names none; the finding
+   * per scope is the test's {@code scopes} detail.
+   */
   @Override
-  public SourceConnectionTestResult testConnection(SourceSettings settings) {
+  public SourceConnectionTestResult testConnection(SourceSettings settings, ConnectorData stored) {
     if (blankToNull(settings.sourcePath()) != null) {
       throw new ValidationException("sourcePath ist für sourceType S3 nicht zulässig");
     }
@@ -299,6 +327,8 @@ public class S3SourceConnector
       throw new ValidationException(
           "sourceUrl (Endpoint des Objektspeichers) ist erforderlich, wenn sourceType S3 ist");
     }
+    ConnectorData probed =
+        settings.connectorSettings() != null ? settings.connectorSettings() : stored;
     S3ConnectionService.Probe probe;
     try {
       probe =
@@ -307,7 +337,7 @@ public class S3SourceConnector
               blankToNull(settings.sourceProxy()),
               blankToNull(settings.sourceCredentials()),
               settings.sourceInsecureSsl(),
-              settings.s3Settings());
+              probed == null ? null : settingsOf(probed));
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       return unreachable("Der Verbindungstest wurde unterbrochen.");
@@ -316,14 +346,9 @@ public class S3SourceConnector
         probe.reachable(),
         probe.message(),
         probe.objectCount(),
-        null,
         probe.credentialsVerified(),
-        probe.scopes());
-  }
-
-  @Override
-  public Kind browseKind() {
-    return Kind.BUCKETS;
+        ConnectorData.of(
+            Map.of("scopes", probe.scopes().stream().map(S3ScopeCheck::toJson).toList())));
   }
 
   @Override
@@ -332,8 +357,8 @@ public class S3SourceConnector
   }
 
   /**
-   * The buckets the key may see; region and addressing style are the request's when given, else the
-   * stored library's - a listing against a stored library signs for its configured region.
+   * The buckets the key may see; {@code region} and {@code pathStyle} are the query's when given,
+   * else the stored library's - a listing against a stored library signs for its configured region.
    */
   @Override
   public SourceListing browse(Query query) {
@@ -343,13 +368,21 @@ public class S3SourceConnector
       throw new ValidationException(
           "sourceCredentials sind für die Bucket-Auflistung erforderlich");
     }
-    S3SourceSettings stored = settings.s3Settings();
+    ConnectorData requested = settings.connectorSettings();
+    S3SourceSettings stored = query.stored() == null ? null : settingsOf(query.stored());
+    String requestedRegion =
+        requested == null || requested.get("region") == null
+            ? null
+            : blankToNull(requested.get("region").toString());
     String region =
-        blankToNull(query.region()) != null
-            ? blankToNull(query.region())
+        requestedRegion != null
+            ? requestedRegion
             : stored == null ? null : stored.effectiveRegion();
+    Object requestedPathStyle = requested == null ? null : requested.get("pathStyle");
     boolean pathStyle =
-        query.pathStyle() != null ? query.pathStyle() : stored != null && stored.pathStyle();
+        requestedPathStyle != null
+            ? Boolean.TRUE.equals(requestedPathStyle)
+            : stored != null && stored.pathStyle();
     S3BucketListResult result;
     try {
       result =

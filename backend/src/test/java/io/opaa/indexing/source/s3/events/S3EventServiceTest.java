@@ -17,10 +17,11 @@ import io.opaa.common.UnauthorizedException;
 import io.opaa.indexing.source.SourceEventIntake;
 import io.opaa.indexing.source.SourceEventTarget;
 import io.opaa.indexing.source.s3.S3IndexingExecutor;
+import io.opaa.indexing.source.s3.S3Scope;
+import io.opaa.indexing.source.s3.S3SourceSettings;
+import io.opaa.indexing.source.s3.S3TestSettings;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
-import io.opaa.knowledge.sourcesettings.S3Scope;
-import io.opaa.knowledge.sourcesettings.S3SourceSettings;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
@@ -66,7 +67,8 @@ class S3EventServiceTest {
             null,
             "AKIA:geheim",
             false);
-    library.updateS3Settings(
+    S3TestSettings.configure(
+        library,
         new S3SourceSettings(
             null,
             true,

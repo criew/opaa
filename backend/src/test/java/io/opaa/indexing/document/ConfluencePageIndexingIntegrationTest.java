@@ -7,6 +7,7 @@ import io.opaa.api.types.DocumentStatus;
 import io.opaa.indexing.chunk.ChunkingService;
 import io.opaa.indexing.format.ChunkFormatMetadata;
 import io.opaa.indexing.format.stream.confluencestorage.ConfluenceStorageFormat;
+import io.opaa.indexing.source.confluence.ConfluenceTestSettings;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
@@ -75,9 +76,11 @@ class ConfluencePageIndexingIntegrationTest {
             null,
             "enc:v1:token",
             false);
-    library.configureConfluence(
+    ConfluenceTestSettings.configure(
+        library,
         io.opaa.api.types.ConfluenceEdition.DATA_CENTER,
-        List.of(new io.opaa.knowledge.ConfluenceSpaceSelection("ENG", "Engineering")));
+        List.of(
+            new io.opaa.indexing.source.confluence.ConfluenceSpaceSelection("ENG", "Engineering")));
     library = libraryRepository.save(library);
   }
 

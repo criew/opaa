@@ -19,7 +19,6 @@ import io.opaa.indexing.source.SourceIndexingExecutor;
 import io.opaa.indexing.source.SourceSyncState;
 import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.indexing.source.VanishedDocumentPolicy;
-import io.opaa.knowledge.ConfluenceSpaceSelection;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
@@ -134,10 +133,9 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
   @Override
   public IndexingRunMode defaultRunMode(KnowledgeLibrary library) {
     // the library's own rhythm, where set, takes precedence over the instance-wide one.
+    Integer ownDays = ConfluenceSourceSettings.of(library).fullSyncIntervalDays();
     Duration fullSyncInterval =
-        library.getConfluenceFullSyncIntervalDays() != null
-            ? Duration.ofDays(library.getConfluenceFullSyncIntervalDays())
-            : properties.fullSyncInterval();
+        ownDays != null ? Duration.ofDays(ownDays) : properties.fullSyncInterval();
     return syncStateRepository
         .findByLibraryId(library.getId())
         .filter(state -> !state.isFullSyncDue(fullSyncInterval, clock.instant()))
@@ -519,13 +517,15 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
   static List<ConfluenceSpaceSelection> orderForResumption(
       KnowledgeLibrary library, SourceSyncState state) {
     Set<String> completed = state.isFullSyncInterrupted() ? state.completedScopeKeys() : Set.of();
+    List<ConfluenceSpaceSelection> selection =
+        ConfluenceSourceSettings.of(library).spaceSelection();
     List<ConfluenceSpaceSelection> ordered = new ArrayList<>();
-    for (ConfluenceSpaceSelection space : library.getConfluenceSpaces()) {
+    for (ConfluenceSpaceSelection space : selection) {
       if (!completed.contains(space.getSpaceKey())) {
         ordered.add(space);
       }
     }
-    for (ConfluenceSpaceSelection space : library.getConfluenceSpaces()) {
+    for (ConfluenceSpaceSelection space : selection) {
       if (completed.contains(space.getSpaceKey())) {
         ordered.add(space);
       }

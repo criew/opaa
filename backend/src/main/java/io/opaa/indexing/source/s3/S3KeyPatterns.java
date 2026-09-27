@@ -1,6 +1,5 @@
 package io.opaa.indexing.source.s3;
 
-import io.opaa.knowledge.sourcesettings.S3SourceSettings;
 import java.nio.file.FileSystems;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;

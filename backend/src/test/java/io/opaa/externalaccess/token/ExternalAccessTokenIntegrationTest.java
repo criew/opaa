@@ -25,6 +25,7 @@ import io.opaa.externalaccess.ExternalAccessSettingsService;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
+import io.opaa.library.ConnectorSettingsRequest;
 import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.library.LibraryCreation;
 import io.opaa.library.LibraryExternalAccessService;
@@ -165,10 +166,7 @@ class ExternalAccessTokenIntegrationTest {
                 null,
                 null,
                 null,
-                null,
-                null,
-                null,
-                null,
+                ConnectorSettingsRequest.NONE,
                 null),
             CurrentUser.of(user.getId(), user.getOrganizationId(), user.getSystemRole(), name))
         .library()

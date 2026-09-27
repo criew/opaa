@@ -7,48 +7,63 @@ import java.util.Set;
 /**
  * One kind of library source, registered as a Spring bean in its connector package and reached by
  * the administration only through the {@link SourceConnectorRegistry}. The connector owns the
- * validation of its configuration, the connection test and the state its settings imply; the
- * administration owns permissions, persistence and the audit. Optional abilities are further
- * interfaces the same bean implements ({@link SourceBrowser}, {@link OriginalAccess}, {@link
- * PushIntakeHandler}).
+ * validation of its configuration, its connector settings (ADR-0038), the connection test and the
+ * state its settings imply; the administration owns permissions, persistence and the audit.
+ * Optional abilities are further interfaces the same bean implements ({@link SourceBrowser}, {@link
+ * OriginalAccess}, {@link PushIntakeHandler}).
  *
  * <p>Every method that refuses input throws {@link io.opaa.common.ValidationException} with a
- * German, user-facing message. {@link #validate} and {@link #validateChange} are reached through
- * {@link SourceConnectorRegistry#validateNew} and {@link SourceConnectorRegistry#validateChange}:
- * the settings may still carry fields the connector does not own ({@link
- * SourceConnectorDescriptor#settingFields}), which it ignores - the registry refuses some of them
- * before and every remaining one right after the connector's validation.
+ * German, user-facing message.
  */
 public interface SourceConnector {
 
   SourceConnectorDescriptor descriptor();
 
   /**
+   * Reads connector settings as a request carries them into their normalised form, independent of
+   * any library and of the caller - a malformed value is refused before either is looked at.
+   */
+  default ConnectorData readSettings(ConnectorData requested) {
+    return requested;
+  }
+
+  /**
    * Validates the complete configuration of a new library and returns its normalised form - the
-   * connection fields as they are stored, the connector-owned fields as {@link #configureNew}
-   * applies them.
+   * connection fields as they are stored, the connector settings as {@link #configureNew} applies
+   * them.
    */
   SourceSettings validate(SourceSettings requested);
 
   /**
    * Validates a change of {@code library}'s configuration. The connection fields are only
-   * meaningful when {@code replacesConnection}; an absent connector-owned field stays as stored.
-   * Returns what {@link #applyChange} applies, the connection fields normalised.
+   * meaningful when {@code replacesConnection}; absent connector settings, or an absent part of
+   * them, stay as stored. Returns what {@link #applyChange} applies, the connection fields
+   * normalised.
    */
   default SourceSettings validateChange(
       KnowledgeLibrary library, SourceSettings requested, boolean replacesConnection) {
     return replacesConnection ? validate(requested) : requested;
   }
 
-  /** Writes the connector-owned part of {@link #validate}'s result onto an unsaved library. */
+  /** Writes the connector settings of {@link #validate}'s result onto an unsaved library. */
   default void configureNew(KnowledgeLibrary library, SourceSettings validated) {}
 
-  /** Writes the connector-owned part of {@link #validateChange}'s result. */
+  /** Writes the connector settings of {@link #validateChange}'s result. */
   default void applyChange(KnowledgeLibrary library, SourceSettings validated) {}
 
   /**
-   * The connector-owned settings of {@code library} in comparable form, keyed by the field name the
-   * audit records when a value changes.
+   * The connector settings of {@code library} as a caller sees them, {@code null} for none. By
+   * default only a manager ({@code manager}) sees them, whole; a connector that shows readers what
+   * the library covers overrides this deliberately. Never a secret - the settings carry none
+   * (ADR-0038, Entscheidung 3).
+   */
+  default ConnectorData settingsView(KnowledgeLibrary library, boolean manager) {
+    return manager ? ConnectorData.storedIn(library) : null;
+  }
+
+  /**
+   * The connector settings of {@code library} in comparable form, keyed by the field name the audit
+   * records when a value changes.
    */
   default Map<String, Object> settingsState(KnowledgeLibrary library) {
     return Map.of();
@@ -64,6 +79,9 @@ public interface SourceConnector {
   /**
    * Probes {@code settings} the way a run would reach the source. A source problem is the result,
    * not an exception; only the caller's own mistake is refused.
+   *
+   * @param stored the connector settings of the stored library the probe is for, {@code null}
+   *     before one exists
    */
-  SourceConnectionTestResult testConnection(SourceSettings settings);
+  SourceConnectionTestResult testConnection(SourceSettings settings, ConnectorData stored);
 }

@@ -8,10 +8,11 @@ import io.opaa.indexing.source.SourceEventTarget;
 import io.opaa.indexing.source.SourceIndexingExecutor;
 import io.opaa.indexing.source.s3.S3IndexingExecutor;
 import io.opaa.indexing.source.s3.S3KeyPatterns;
+import io.opaa.indexing.source.s3.S3Scope;
+import io.opaa.indexing.source.s3.S3SourceSettings;
+import io.opaa.indexing.source.s3.S3SourceSettingsJson;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
-import io.opaa.knowledge.sourcesettings.S3Scope;
-import io.opaa.knowledge.sourcesettings.S3SourceSettings;
 import java.util.LinkedHashSet;
 import java.util.Optional;
 import java.util.Set;
@@ -98,7 +99,7 @@ public class S3EventService {
       log.info("S3 set-up test event for library {} accepted", libraryId);
       return;
     }
-    S3SourceSettings settings = library.get().getS3Settings();
+    S3SourceSettings settings = S3SourceSettingsJson.of(library.get());
     Set<String> admitted = new LinkedHashSet<>();
     int dropped = 0;
     S3KeyPatterns patterns = settings == null ? null : S3KeyPatterns.of(settings);

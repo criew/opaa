@@ -1,4 +1,4 @@
-package io.opaa.knowledge.sourcesettings;
+package io.opaa.indexing.source.s3;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;

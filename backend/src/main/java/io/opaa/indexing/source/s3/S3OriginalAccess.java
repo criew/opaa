@@ -1,8 +1,6 @@
 package io.opaa.indexing.source.s3;
 
 import io.opaa.knowledge.KnowledgeLibrary;
-import io.opaa.knowledge.sourcesettings.S3Scope;
-import io.opaa.knowledge.sourcesettings.S3SourceSettings;
 import io.opaa.s3.S3AccessException;
 import io.opaa.s3.S3Connection;
 import java.util.List;
@@ -69,7 +67,7 @@ public class S3OriginalAccess {
     S3ObjectRef ref = parsed.get();
     S3SourceSettings settings;
     try {
-      settings = library.getS3Settings();
+      settings = S3SourceSettingsJson.of(library);
     } catch (S3SourceSettings.InvalidS3SourceSettingsException
         | S3Scope.InvalidS3ScopeException e) {
       log.warn(

@@ -29,6 +29,7 @@ import io.opaa.indexing.chunk.VectorStoreWriter;
 import io.opaa.indexing.job.IndexingJobRepository;
 import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.job.JobStatus;
+import io.opaa.indexing.source.SourceConnectorStubs;
 import io.opaa.indexing.source.TestSourceConnectors;
 import io.opaa.indexing.source.confluence.ConfluenceConnectionService;
 import io.opaa.indexing.source.confluence.ConfluenceProperties;
@@ -117,7 +118,8 @@ class KnowledgeLibraryServiceDeleteLockTest {
             documentRepository,
             grantService,
             new AssetShellService(
-                new AssetTypes(List.of(new KnowledgeLibraryAssetType())),
+                new AssetTypes(
+                    List.of(new KnowledgeLibraryAssetType(SourceConnectorStubs.registry()))),
                 grantService,
                 grantRepository,
                 mock(AssetOwnershipHistoryService.class),

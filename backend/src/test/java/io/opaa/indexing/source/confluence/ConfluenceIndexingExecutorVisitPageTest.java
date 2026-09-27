@@ -32,7 +32,6 @@ import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.RequestBudgetExhaustedException;
 import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.indexing.source.confluence.ConfluenceIndexingExecutor.PageVisitPolicy;
-import io.opaa.knowledge.ConfluenceSpaceSelection;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
@@ -114,7 +113,8 @@ class ConfluenceIndexingExecutorVisitPageTest {
             null,
             "token",
             false);
-    library.configureConfluence(
+    ConfluenceTestSettings.configure(
+        library,
         ConfluenceEdition.CLOUD,
         List.of(
             new ConfluenceSpaceSelection("ENG", null), new ConfluenceSpaceSelection("HR", null)));

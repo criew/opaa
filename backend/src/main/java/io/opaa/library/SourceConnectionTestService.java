@@ -6,6 +6,7 @@ import io.opaa.api.types.DocumentSourceType;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
+import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.SourceBrowser;
 import io.opaa.indexing.source.SourceConnectionTestResult;
 import io.opaa.indexing.source.SourceConnector;
@@ -15,7 +16,6 @@ import io.opaa.indexing.source.SourceSettings;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
-import io.opaa.knowledge.sourcesettings.S3SourceSettings;
 import io.opaa.permission.CapabilityService;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -92,7 +92,15 @@ public class SourceConnectionTestService {
     if (sourceType == null) {
       throw new ValidationException("sourceType ist erforderlich");
     }
-    SourceSettings settings = settingsOf(request);
+    SourceSettings settings =
+        new SourceSettings(
+            request.sourcePath(),
+            request.sourceUrl() == null ? null : request.sourceUrl().toString(),
+            request.sourceProxy(),
+            request.sourceCredentials(),
+            Boolean.TRUE.equals(request.sourceInsecureSsl()),
+            request.connectorSettings());
+    ConnectorData stored = null;
     if (request.libraryId() != null) {
       KnowledgeLibrary library = requireManagedLibrary(request.libraryId(), caller);
       if (library.getSourceType() != sourceType) {
@@ -100,98 +108,44 @@ public class SourceConnectionTestService {
             "sourceType passt nicht zum gespeicherten Quellentyp dieser Bibliothek");
       }
       settings = withStoredCredentialsIfOmitted(settings, library);
+      stored = ConnectorData.storedIn(library);
     }
-    return connectors.connector(sourceType).testConnection(settings);
+    return connectors.connector(sourceType).testConnection(settings, stored);
   }
 
   /**
-   * The buckets an S3 key may see (ADR-0027, #1376), for the wizard's scope entry - the same
-   * permission bar, stored-credentials fallback and proxy/TLS forcing as {@link #test}.
+   * What a source of the request's type offers for selection before it is saved - the buckets of an
+   * S3 key (ADR-0027, #1376), the spaces of a Confluence token (ADR-0023) - behind the very same
+   * permission bar and {@link #withStoredCredentialsIfOmitted} as {@link #test}, so the paths
+   * cannot drift apart. Without {@code libraryId}, the {@link Capability#CREATE_CONNECTOR_LIBRARY}
+   * bar applies (#1856).
    */
-  public SourceListing listS3Buckets(S3BucketListingRequest request, CurrentUser caller) {
-    return browse(
-        SourceBrowser.Kind.BUCKETS,
-        request.libraryId(),
-        new SourceSettings(
-            null,
-            request.sourceUrl() == null ? null : request.sourceUrl().toString(),
-            request.sourceProxy(),
-            request.sourceCredentials(),
-            Boolean.TRUE.equals(request.sourceInsecureSsl()),
-            null,
-            null,
-            null,
-            null),
-        request.region(),
-        request.pathStyle(),
-        caller);
-  }
-
-  /**
-   * The spaces a Confluence token may read (ADR-0023), for the wizard's selection - the same
-   * permission bar, stored-credentials fallback and proxy/TLS forcing as {@link #test}.
-   */
-  public SourceListing listConfluenceSpaces(ConfluenceSpaceListing request, CurrentUser caller) {
-    return browse(
-        SourceBrowser.Kind.SPACES,
-        request.libraryId(),
-        new SourceSettings(
-            null,
-            request.sourceUrl() == null ? null : request.sourceUrl().toString(),
-            request.sourceProxy(),
-            request.sourceCredentials(),
-            Boolean.TRUE.equals(request.sourceInsecureSsl()),
-            request.confluenceEdition(),
-            null,
-            null,
-            null),
-        null,
-        null,
-        caller);
-  }
-
-  /**
-   * A listing through the connector offering {@code kind}, behind the very same permission bar and
-   * {@link #withStoredCredentialsIfOmitted} as {@link #test}, so the paths cannot drift apart.
-   * Without {@code libraryId}, the {@link Capability#CREATE_CONNECTOR_LIBRARY} bar applies (#1856).
-   */
-  private SourceListing browse(
-      SourceBrowser.Kind kind,
-      UUID libraryId,
-      SourceSettings requested,
-      String region,
-      Boolean pathStyle,
-      CurrentUser caller) {
-    if (libraryId == null) {
+  public SourceListing browse(SourceBrowseRequest request, CurrentUser caller) {
+    if (request.libraryId() == null) {
       capabilityService.requireCapability(caller, Capability.CREATE_CONNECTOR_LIBRARY);
     }
-    if (requested.sourceUrl() == null) {
+    if (request.sourceUrl() == null) {
       throw new ValidationException("sourceUrl ist erforderlich");
     }
-    SourceConnector connector = connectors.browser(kind);
-    SourceBrowser browser = (SourceBrowser) connector;
-    SourceSettings settings = requested;
-    if (libraryId != null) {
-      KnowledgeLibrary library = requireManagedLibrary(libraryId, caller);
-      if (library.getSourceType() != connector.descriptor().type()) {
+    SourceBrowser browser = connectors.browser(request.sourceType());
+    SourceSettings settings =
+        new SourceSettings(
+            null,
+            request.sourceUrl().toString(),
+            request.sourceProxy(),
+            request.sourceCredentials(),
+            Boolean.TRUE.equals(request.sourceInsecureSsl()),
+            request.query());
+    ConnectorData stored = null;
+    if (request.libraryId() != null) {
+      KnowledgeLibrary library = requireManagedLibrary(request.libraryId(), caller);
+      if (library.getSourceType() != request.sourceType()) {
         throw new ValidationException(browser.otherTypeMessage());
       }
       settings = withStoredCredentialsIfOmitted(settings, library);
+      stored = ConnectorData.storedIn(library);
     }
-    return browser.browse(new SourceBrowser.Query(settings, region, pathStyle));
-  }
-
-  private static SourceSettings settingsOf(SourceConnectionTest request) {
-    return new SourceSettings(
-        request.sourcePath(),
-        request.sourceUrl() == null ? null : request.sourceUrl().toString(),
-        request.sourceProxy(),
-        request.sourceCredentials(),
-        Boolean.TRUE.equals(request.sourceInsecureSsl()),
-        request.confluenceEdition(),
-        null,
-        null,
-        request.s3Settings());
+    return browser.browse(new SourceBrowser.Query(settings, stored));
   }
 
   /**
@@ -241,13 +195,11 @@ public class SourceConnectionTestService {
    * the credential themselves - that combination was never a legitimate use of this fallback to
    * begin with, so nothing a real caller relied on changes.
    *
-   * <p>A request without its own {@code s3Settings} probes the library's stored ones (ADR-0027) -
-   * settings are not a secret, so unlike the credential they stand in regardless of the origin.
+   * <p>The library's stored connector settings are no secret; whether they stand in for the
+   * request's, regardless of the origin, the connector decides (it receives them beside).
    */
   private static SourceSettings withStoredCredentialsIfOmitted(
       SourceSettings request, KnowledgeLibrary library) {
-    S3SourceSettings s3Settings =
-        request.s3Settings() == null ? library.getS3Settings() : request.s3Settings();
     boolean fallback =
         blankToNull(request.sourceCredentials()) == null
             && SourceOriginMatcher.sameOrigin(library.getSourceUrl(), request.sourceUrl());
@@ -257,10 +209,7 @@ public class SourceConnectionTestService {
         fallback ? library.getSourceProxy() : request.sourceProxy(),
         fallback ? library.getSourceCredentials() : request.sourceCredentials(),
         fallback ? library.isSourceInsecureSsl() : request.sourceInsecureSsl(),
-        request.confluenceEdition(),
-        request.confluenceSpaces(),
-        request.confluenceFullSyncIntervalDays(),
-        s3Settings);
+        request.connectorSettings());
   }
 
   private static String blankToNull(String value) {
