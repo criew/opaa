@@ -206,6 +206,22 @@ DEMO_PROFILE = Profile(
                 "Ratsinformationen Stadt Rheinfurt",
             ),
         ),
+        # Its only individual member is Andrea as owner; Maria, Selin and Thomas join exclusively
+        # through the group "Sachbearbeitung Bürgerbüro" (step 6). It carries only the libraries
+        # every fach account reads, so a question asked here never reaches past an account's rights.
+        SpaceDef(
+            name="Dienstbesprechung Bürgerbüro",
+            description=(
+                "Gemeinsamer Space von Amtsleitung und Sachbearbeitung des Bürgerbüros für "
+                "sachgebietsübergreifende Themen der wöchentlichen Dienstbesprechung."
+            ),
+            owner_key="andrea",
+            library_names=(
+                "Satzungen & Gebührenordnungen",
+                "Pressemitteilungen Stadt Rheinfurt",
+                "Ratsinformationen Stadt Rheinfurt",
+            ),
+        ),
     ),
     libraries=(
         LibraryDef(
@@ -234,7 +250,8 @@ DEMO_PROFILE = Profile(
             description="Pressemitteilungen der Stadt Rheinfurt (Sperrungen, Öffnungszeiten, Veranstaltungen).",
             source_type="RSS_FEED",
             source_url="http://presse.stadt-rheinfurt.example/rss.xml",
-            viewer_keys=("maria", "selin", "thomas", "andrea"),
+            # Selin and Thomas read the press releases through the group "Pressestelle" only.
+            viewer_keys=("maria", "andrea"),
         ),
         LibraryDef(
             name="Interne Dienstanweisungen Meldewesen",
@@ -301,6 +318,33 @@ DEMO_PROFILE = Profile(
             released_for_use=True,
             library_grants=("Interne Dienstanweisungen Meldewesen",),
             space_membership=("Meldewesen & Ausweise", "MEMBER"),
+        ),
+        # Selin and Thomas hold no VIEWER of their own on the press releases; Andrea stewards the
+        # group but keeps her direct grant, as she is not a member.
+        GroupDef(
+            name="Pressestelle",
+            description=(
+                "Ansprechpersonen des Bürgerbüros für die Pressestelle der Stadt: stimmen "
+                "Meldungen zu Schließtagen, Sperrungen und Terminen ab und lesen die "
+                "Pressemitteilungen über diese Gruppe."
+            ),
+            steward_keys=("andrea",),
+            member_keys=("selin", "thomas"),
+            released_for_use=True,
+            library_grants=("Pressemitteilungen Stadt Rheinfurt",),
+        ),
+        # Brings all three Sachbearbeitung accounts into "Dienstbesprechung Bürgerbüro" at once,
+        # none of them with a membership row of their own; grants no library read.
+        GroupDef(
+            name="Sachbearbeitung Bürgerbüro",
+            description=(
+                "Alle Sachbearbeiterinnen und Sachbearbeiter des Bürgerbüros aus Meldewesen und "
+                "Kfz-Zulassung."
+            ),
+            steward_keys=("andrea",),
+            member_keys=("maria", "selin", "thomas"),
+            released_for_use=True,
+            space_membership=("Dienstbesprechung Bürgerbüro", "MEMBER"),
         ),
     ),
 )
