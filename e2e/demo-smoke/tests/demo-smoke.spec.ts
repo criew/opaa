@@ -25,9 +25,10 @@ const DEMO_ADMIN_USERNAME = 'demo-admin'
 
 // The sixth demo library (#1383): fed from the demo stack's MinIO bucket over the S3 connector
 // (demo/seed/profiles.py, docker-compose.yml's "minio"/"minio-seed"). Its documents are the
-// council records under demo/corpus/ratsinformationen/<jahr>/, named <datum>-<gremium>-<art>-….
+// council records under demo/corpus/ratsinformationen/<jahr>/<Gremium>/, named
+// <datum>-<gremium>-<art>-… (a Vorlage's PDF attachments carry the Vorlage's name as prefix).
 const S3_LIBRARY_NAME = 'Ratsinformationen Stadt Rheinfurt'
-const S3_DOCUMENT_NAME_PATTERN = /\d{4}-\d{2}-\d{2}-(stadtrat|hauptausschuss)-/
+const S3_DOCUMENT_NAME_PATTERN = /\d{4}-\d{2}-\d{2}-(stadtrat|hauptausschuss|bauausschuss)-/
 
 // The second identity provider of the demo stack (keycloak/realm-partner-export.json, ADR-0025):
 // the same origin, another realm, another public client - and a maria.weber with the same

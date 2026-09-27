@@ -151,3 +151,19 @@ def test_seed_client_carries_an_audience_mapper_for_the_frontend_client() -> Non
     ]
     assert len(mappers) == 1
     assert mappers[0]["config"]["access.token.claim"] == "true"
+
+
+def test_council_library_expects_every_file_below_year_and_committee_folders() -> None:
+    """The bucket mirrors demo/corpus/ratsinformationen/ with its <jahr>/<Gremium>/ prefixes; a
+    count over the top level alone would let the seed accept a half-filled bucket."""
+    from profiles import DEMO_PROFILE
+
+    council = next(
+        library
+        for library in DEMO_PROFILE.libraries
+        if library.name == "Ratsinformationen Stadt Rheinfurt"
+    )
+    files = [path for path in council.expected_documents_dir.rglob("*") if path.is_file()]
+    assert files, "corpus directory of the council library is empty"
+    assert all(len(path.relative_to(council.expected_documents_dir).parts) == 3 for path in files)
+    assert seed.expected_document_count(council) == len(files)

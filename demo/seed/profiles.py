@@ -249,7 +249,7 @@ DEMO_PROFILE = Profile(
         # information, readable by every fach account like the press releases.
         LibraryDef(
             name="Ratsinformationen Stadt Rheinfurt",
-            description="Niederschriften und Beschlussvorlagen des Stadtrats und des Hauptausschusses, nach Jahrgängen abgelegt.",
+            description="Niederschriften und Beschlussvorlagen des Stadtrats, des Hauptausschusses und des Bauausschusses, nach Jahrgang und Gremium abgelegt; Vorlagen mit Anlagen liegen als Versandmail mit PDF-Anhängen vor.",
             source_type="S3",
             source_url="http://objectstore:9000",
             source_credentials="rheinfurt-archiv:RheinfurtDemo!2026",  # nosec - documented demo credential

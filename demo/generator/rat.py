@@ -1,24 +1,39 @@
-"""Data and Markdown/text rendering for the "Ratsinformationen Stadt Rheinfurt"
-library (S3 connector, see docs/features/demo-instance.md and docs/handbuch/konnektor-s3.md).
+"""Data and rendering for the "Ratsinformationen Stadt Rheinfurt" library (S3 connector, see
+docs/features/demo-instance.md and docs/handbuch/konnektor-s3.md).
 
 Council minutes (Niederschriften, .md) and decision papers (Beschlussvorlagen, .txt) of the
-Stadtrat and the Hauptausschuss, laid out under one key prefix per year - the shape of a
-records archive an administration keeps in an object store. The keys are what the demo's
-MinIO bucket is seeded with (docker-compose.yml, service "minio-seed"), so the year prefixes
-become folders in the library.
+Stadtrat, the Hauptausschuss and the Bauausschuss, laid out under one key prefix per year and one
+per committee below it (`<jahr>/<Gremium>/`) - the shape of a records archive an administration
+keeps in an object store. The keys are what the demo's object store bucket is seeded with
+(docker-compose.yml, service "objectstore-seed"), so both prefix levels become folders.
+
+A Beschlussvorlage with Anlagen is stored as the council information system's dispatch mail
+(.eml) instead: the Vorlage text is the mail body and every Anlage a PDF attachment. In an S3
+library only mail objects carry attachments (konnektor-s3.md, "Anhänge"), so this is the one
+shape in which the Anlagen appear as attachments of their Vorlage.
 
 The council decisions here (budgets, the digitalisation strategy, the mobile citizen office, the
-fire station, the school bus, heat planning) are covered by no other library - a question about
-one of them is only answerable from here. Shared background such as the town festival or the
-citizen office's staffing may appear elsewhere; the demo smoke run does not rely on exclusivity
-but scopes its question to this library with an @-reference (e2e/demo-smoke).
+fire station, the school bus, heat planning, the town hall fountain) are covered by no other
+library - a question about one of them is only answerable from here. Shared background such as the
+town festival or the citizen office's staffing may appear elsewhere; the demo smoke run does not
+rely on exclusivity but scopes its question to this library with an @-reference (e2e/demo-smoke).
 
 All dates are fixed literals; the output is byte-identical across generator runs.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import base64
+from dataclasses import dataclass, field
+from email.header import Header
+from io import BytesIO
+from xml.sax.saxutils import escape as xml_escape
+
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.lib.units import cm
+from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 SYNTHETIC_NOTICE = (
     "Dieses Dokument ist Teil des synthetischen Demo-Korpus der fiktiven Stadt Rheinfurt "
@@ -28,6 +43,13 @@ SYNTHETIC_NOTICE = (
 
 STADTRAT = "Stadtrat der Stadt Rheinfurt"
 HAUPTAUSSCHUSS = "Hauptausschuss der Stadt Rheinfurt"
+BAUAUSSCHUSS = "Bauausschuss der Stadt Rheinfurt"
+# The committee's folder below the year prefix, a single key segment each.
+GREMIUM_FOLDERS = {
+    STADTRAT: "Stadtrat",
+    HAUPTAUSSCHUSS: "Hauptausschuss",
+    BAUAUSSCHUSS: "Bauausschuss",
+}
 SITZUNGSORT = "Großer Sitzungssaal, Rathaus Rheinfurt, Rathausplatz 1"
 
 
@@ -54,6 +76,29 @@ class Niederschrift:
 
 
 @dataclass
+class Abschnitt:
+    ueberschrift: str
+    absaetze: list[str]
+    tabelle: list[list[str]] | None = None  # first row is the header
+
+
+@dataclass
+class Anlage:
+    nummer: int
+    slug: str  # file name part after "<vorlage>-anlage-<nummer>-"
+    titel: str
+    abschnitte: list[Abschnitt]
+
+
+@dataclass
+class Versand:
+    """The dispatch mail a Vorlage with Anlagen is stored as."""
+
+    datum: str  # RFC 5322 date, a fixed literal
+    an: str
+
+
+@dataclass
 class Beschlussvorlage:
     slug: str
     gremium: str
@@ -65,6 +110,8 @@ class Beschlussvorlage:
     begruendung: list[str]
     finanzielle_auswirkungen: str
     beteiligung: str
+    anlagen: list[Anlage] = field(default_factory=list)
+    versand: Versand | None = None  # required exactly when anlagen is non-empty
 
 
 NIEDERSCHRIFTEN: list[Niederschrift] = [
@@ -364,6 +411,112 @@ NIEDERSCHRIFTEN: list[Niederschrift] = [
             ),
         ],
     ),
+    Niederschrift(
+        "2025-05-20-bauausschuss-niederschrift",
+        BAUAUSSCHUSS,
+        "2025-05-20",
+        "16:30 Uhr",
+        "18:40 Uhr",
+        "Bürgermeisterin Sabine Hartung",
+        13,
+        [],
+        [
+            Tagesordnungspunkt(
+                1,
+                "Fahrradstraße Uferstraße: Vorberatung",
+                [
+                    "Das Tiefbauamt stellt die Planung für die Umwidmung der Uferstraße zwischen "
+                    "Rheinpromenade und Bahnhofstraße vor: Beschilderung, rote Markierung der "
+                    "Einmündungen und zwei zusätzliche Querungshilfen. Die Kosten betragen 86.000 "
+                    "Euro.",
+                    "Aus dem Ausschuss wird angeregt, die Lieferzonen der Gewerbebetriebe vor "
+                    "Beginn der Umwidmung mit den Anliegern abzustimmen.",
+                ],
+                "Der Bauausschuss empfiehlt dem Stadtrat, die Einrichtung der Fahrradstraße "
+                "Uferstraße zu beschließen.",
+                "9 Ja-Stimmen, 3 Nein-Stimmen, 1 Enthaltung",
+            ),
+            Tagesordnungspunkt(
+                2,
+                "Sanierung des Brunnens auf dem Rathausplatz: Abschlussbericht",
+                [
+                    "Das Tiefbauamt berichtet, dass die Arbeiten Ende April 2025 abgeschlossen "
+                    "wurden; der Brunnen ist seit dem 2. Mai 2025 wieder in Betrieb. Die "
+                    "Schlussrechnung beläuft sich auf 141.300 Euro und liegt damit 2.700 Euro über "
+                    "der Auftragssumme, weil ein schadhafter Zulaufschieber zusätzlich ersetzt "
+                    "werden musste.",
+                    "Der Zuschuss aus dem Landesprogramm Ortskernsanierung in Höhe von 40 Prozent "
+                    "der förderfähigen Kosten ist ausgezahlt.",
+                ],
+                "Der Bauausschuss nimmt den Abschlussbericht zur Kenntnis.",
+                None,
+            ),
+            Tagesordnungspunkt(
+                3,
+                "Dachsanierung der Sporthalle am Schulzentrum Rheinau",
+                [
+                    "Das Hochbauamt legt die Entwurfsplanung vor. Die Dachabdichtung der Sporthalle "
+                    "ist nach 31 Jahren an mehreren Stellen undicht; die Kostenberechnung beläuft "
+                    "sich auf 612.000 Euro. Die Ausführung ist für die Sommerferien 2025 vorgesehen, "
+                    "damit der Schulsport nicht ausfällt.",
+                    "Die Tragfähigkeit des neuen Dachaufbaus wird so bemessen, dass später eine "
+                    "Photovoltaikanlage aufgesetzt werden kann.",
+                ],
+                "Der Bauausschuss beschließt die Entwurfsplanung und beauftragt die Verwaltung mit "
+                "der Ausschreibung der Dachsanierung.",
+                "einstimmig",
+            ),
+        ],
+    ),
+    Niederschrift(
+        "2026-05-12-bauausschuss-niederschrift",
+        BAUAUSSCHUSS,
+        "2026-05-12",
+        "16:30 Uhr",
+        "18:15 Uhr",
+        "Bürgermeisterin Sabine Hartung",
+        12,
+        ["Ratsmitglied Beate Cordes"],
+        [
+            Tagesordnungspunkt(
+                1,
+                "Neubau der Feuerwache Süd: Auslobung des Architektenwettbewerbs",
+                [
+                    "Nach dem Grundsatzbeschluss des Stadtrats vom 24. Februar 2026 legt das "
+                    "Hochbauamt den Entwurf der Auslobung vor: ein nichtoffener "
+                    "Realisierungswettbewerb mit 15 Teilnehmenden und einem Preisgericht aus sieben "
+                    "Fach- und sechs Sachpreisrichtern, darunter der Leiter der Freiwilligen "
+                    "Feuerwehr Rheinfurt.",
+                    "Die Wettbewerbsarbeiten sind im Oktober 2026 abzugeben; die Sitzung des "
+                    "Preisgerichts ist für November 2026 vorgesehen.",
+                ],
+                "Der Bauausschuss stimmt der Auslobung des Architektenwettbewerbs für die "
+                "Feuerwache Süd in der vorgelegten Fassung zu.",
+                "11 Ja-Stimmen, 0 Nein-Stimmen, 1 Enthaltung",
+            ),
+            Tagesordnungspunkt(
+                2,
+                "Photovoltaik auf städtischen Dächern, Ausbaustufe 2: statische Prüfung",
+                [
+                    "Von den vier vorgesehenen Dächern (Grundschule Weststadt, Stadtbibliothek, "
+                    "Bauhof, Sporthalle Nordfeld) sind drei ohne Verstärkung geeignet. Das Dach der "
+                    "Stadtbibliothek braucht eine Ertüchtigung der Dachträger für rund 48.000 Euro.",
+                ],
+                "Der Bauausschuss empfiehlt, die zweite Ausbaustufe mit allen vier Dächern dem "
+                "Stadtrat zum Baubeschluss vorzulegen.",
+                "einstimmig",
+            ),
+            Tagesordnungspunkt(
+                3,
+                "Anfragen und Mitteilungen",
+                [
+                    "Ratsmitglied Timo Vahle fragt nach der Evaluation der Fahrradstraße "
+                    "Uferstraße. Die Verwaltung kündigt den Bericht für die Sitzung im Oktober "
+                    "2026 an.",
+                ],
+            ),
+        ],
+    ),
 ]
 
 
@@ -388,6 +541,95 @@ BESCHLUSSVORLAGEN: list[Beschlussvorlage] = [
         "Einmalig 9.800 Euro für das Gerät und 1.200 Euro jährlich für Wartung und "
         "Datenverbindung; Deckung aus dem Ansatz Bürgerbüro-Sachaufwand 2024.",
         "Amt für Organisation und IT, Datenschutzbeauftragte",
+    ),
+    Beschlussvorlage(
+        "2024-10-15-bauausschuss-vorlage-brunnen-rathausplatz",
+        BAUAUSSCHUSS,
+        "2024-10-15",
+        "2024/044",
+        "Sanierung des Brunnens auf dem Rathausplatz: Vergabe der Bauleistungen",
+        "Tiefbauamt",
+        "Der Bauausschuss beschließt, die Bauleistungen zur Sanierung des Rathausplatzbrunnens an "
+        "den wirtschaftlichsten Bieter der öffentlichen Ausschreibung zum Angebotspreis von "
+        "138.600 Euro zu vergeben. Die Arbeiten beginnen im November 2024 und sollen bis Ende "
+        "April 2025 abgeschlossen sein.",
+        [
+            "Der Stadtrat hat die Verwaltung am 27. Februar 2024 beauftragt, die Sanierung "
+            "auszuschreiben; der Baubeginn sollte nach dem Stadtfest 2024 liegen. Auf die "
+            "öffentliche Ausschreibung sind vier Angebote eingegangen. Das wirtschaftlichste liegt "
+            "6.400 Euro unter der Kostenschätzung von 145.000 Euro.",
+            "Die Einzelpositionen, die Finanzierung und der Bauzeitenplan stehen in Anlage 1.",
+        ],
+        "Auftragssumme 138.600 Euro. Der Zuschuss aus dem Landesprogramm Ortskernsanierung "
+        "(40 Prozent der förderfähigen Kosten) ist bewilligt; der Eigenanteil ist im Haushalt 2024 "
+        "veranschlagt.",
+        "Untere Denkmalbehörde, Stadtwerke Rheinfurt (Wasserversorgung)",
+        anlagen=[
+            Anlage(
+                1,
+                "kostenaufstellung-bauzeitenplan",
+                "Kostenaufstellung und Bauzeitenplan: Sanierung Rathausplatzbrunnen",
+                [
+                    Abschnitt(
+                        "Kosten nach Leistungsbereichen",
+                        [
+                            "Angebot des wirtschaftlichsten Bieters, Bruttobeträge einschließlich "
+                            "Umsatzsteuer.",
+                        ],
+                        [
+                            ["Leistungsbereich", "Betrag"],
+                            ["Baustelleneinrichtung und Verkehrssicherung", "9.800 Euro"],
+                            ["Rückbau der schadhaften Beckenauskleidung", "14.200 Euro"],
+                            ["Abdichtung des Brunnenbeckens", "38.500 Euro"],
+                            ["Natursteinarbeiten am Beckenrand", "41.300 Euro"],
+                            ["Brunnentechnik (Pumpe, Filter, Steuerung)", "26.900 Euro"],
+                            ["Beleuchtung und Elektroinstallation", "7.900 Euro"],
+                            ["Summe", "138.600 Euro"],
+                        ],
+                    ),
+                    Abschnitt(
+                        "Finanzierung",
+                        [
+                            "Der Zuschuss wurde am 12. August 2024 bewilligt. Mehrkosten über die "
+                            "Auftragssumme hinaus sind nur zu 40 Prozent förderfähig, wenn sie vor "
+                            "der Ausführung angezeigt werden.",
+                        ],
+                        [
+                            ["Position", "Betrag"],
+                            ["Förderfähige Kosten", "138.600 Euro"],
+                            ["Zuschuss Landesprogramm Ortskernsanierung (40 Prozent)", "55.440 Euro"],
+                            ["Eigenanteil der Stadt Rheinfurt", "83.160 Euro"],
+                        ],
+                    ),
+                    Abschnitt(
+                        "Bauzeitenplan",
+                        [
+                            "November 2024: Baustelleneinrichtung, Entleerung des Beckens und "
+                            "Rückbau der alten Auskleidung.",
+                            "Dezember 2024 bis Februar 2025: Winterpause für die Abdichtung; die "
+                            "Natursteine werden in dieser Zeit in der Werkstatt aufgearbeitet.",
+                            "März und April 2025: Abdichtung, Versetzen der Natursteine, Einbau der "
+                            "Brunnentechnik.",
+                            "Anfang Mai 2025: Inbetriebnahme des Brunnens.",
+                        ],
+                    ),
+                    Abschnitt(
+                        "Vergabevorschlag",
+                        [
+                            "Eingegangen sind vier Angebote über 138.600 Euro, 149.200 Euro, "
+                            "152.750 Euro und 171.400 Euro. Gewertet wurde allein nach dem Preis. "
+                            "Der Bieter mit dem niedrigsten Angebot hat seine Eignung mit zwei "
+                            "vergleichbaren Brunnensanierungen aus den letzten fünf Jahren "
+                            "nachgewiesen.",
+                        ],
+                    ),
+                ],
+            ),
+        ],
+        versand=Versand(
+            "Tue, 1 Oct 2024 09:00:00 +0200",
+            "Mitglieder des Bauausschusses <bauausschuss@stadt-rheinfurt.example>",
+        ),
     ),
     Beschlussvorlage(
         "2024-11-26-stadtrat-vorlage-stellenplan-buergerbuero",
@@ -474,6 +716,129 @@ BESCHLUSSVORLAGEN: list[Beschlussvorlage] = [
         "Kostenrahmen 14,5 Millionen Euro; Förderung aus dem Landesprogramm Feuerwehrhäuser "
         "beantragt. Mittel für den Wettbewerb (220.000 Euro) sind im Haushalt 2026 veranschlagt.",
         "Freiwillige Feuerwehr Rheinfurt, Stadtplanungsamt",
+        anlagen=[
+            Anlage(
+                1,
+                "lageplan-erlaeuterung",
+                "Lageplan-Erläuterung: Standort Festplatz",
+                [
+                    Abschnitt(
+                        "Lage und Grundstück",
+                        [
+                            "Das Baufeld umfasst den nördlichen Teil des Festplatzes mit rund 6.200 "
+                            "Quadratmetern; das Grundstück steht im Eigentum der Stadt Rheinfurt. "
+                            "Der südliche Teil bleibt mit rund 9.000 Quadratmetern als "
+                            "Veranstaltungsfläche für Stadtfest und Märkte erhalten.",
+                            "Die Haltestelle des Pendelbusses zum Stadtfest, bisher Festplatz Nord, "
+                            "wird an die Südseite des Festplatzes verlegt.",
+                        ],
+                    ),
+                    Abschnitt(
+                        "Erschließung und Alarmausfahrt",
+                        [
+                            "Die Alarmausfahrt liegt an der Südseite zur Hauptverkehrsstraße hin; "
+                            "eine Vorrangschaltung der Ampel hält die Kreuzung bei Alarm frei.",
+                            "Die Einsatzkräfte erreichen die Wache über eine getrennte Zufahrt von "
+                            "Westen mit 40 Stellplätzen. Anfahrende Einsatzkräfte und ausrückende "
+                            "Fahrzeuge kreuzen sich damit nicht.",
+                        ],
+                    ),
+                    Abschnitt(
+                        "Baukörper",
+                        [
+                            "Fahrzeughalle mit sechs Stellplätzen in Durchfahrtstellung und einer "
+                            "lichten Höhe von 5,5 Metern.",
+                            "Zweigeschossiger Sozial- und Verwaltungstrakt mit "
+                            "Schwarz-Weiß-Trennung: getrennte Umkleiden für Einsatz- und "
+                            "Privatkleidung, Stiefelwäsche und Atemschutzwerkstatt.",
+                            "Übungshof mit Übungsturm an der Ostseite des Baufelds.",
+                        ],
+                    ),
+                    Abschnitt(
+                        "Erreichbarkeit der südlichen Ortsteile",
+                        [
+                            "Fahrzeiten ab Ausrücken nach der Berechnung des "
+                            "Brandschutzbedarfsplans 2025. Vom Standort Festplatz aus wird jeder "
+                            "südliche Ortsteil in weniger als acht Minuten erreicht.",
+                        ],
+                        [
+                            ["Ortsteil", "Standort Festplatz", "bisherige Feuerwache Süd"],
+                            ["Südheim", "4,5 Minuten", "6,0 Minuten"],
+                            ["Rheinau", "5,5 Minuten", "8,5 Minuten"],
+                            ["Wiesengrund", "6,5 Minuten", "9,5 Minuten"],
+                            ["Altfeld", "7,5 Minuten", "10,0 Minuten"],
+                        ],
+                    ),
+                    Abschnitt(
+                        "Hinweis",
+                        [
+                            "Der Lageplan selbst (Maßstab 1:500) liegt im Ratsinformationssystem "
+                            "als Zeichnung vor. Diese Erläuterung gibt seinen Inhalt in Textform "
+                            "wieder.",
+                        ],
+                    ),
+                ],
+            ),
+            Anlage(
+                2,
+                "kostenaufstellung",
+                "Kostenaufstellung: Kostenrahmen Neubau Feuerwache Süd",
+                [
+                    Abschnitt(
+                        "Kostenrahmen nach DIN 276",
+                        [
+                            "Bruttokosten einschließlich Umsatzsteuer, Preisstand Januar 2026. Die "
+                            "Einsatzfahrzeuge sind nicht enthalten; sie sind im "
+                            "Brandschutzbedarfsplan gesondert veranschlagt.",
+                        ],
+                        [
+                            ["Kostengruppe", "Bezeichnung", "Betrag"],
+                            ["200", "Vorbereitende Maßnahmen", "400.000 Euro"],
+                            ["300", "Bauwerk, Baukonstruktionen", "7.600.000 Euro"],
+                            ["400", "Bauwerk, Technische Anlagen", "2.900.000 Euro"],
+                            ["500", "Außenanlagen und Freiflächen", "900.000 Euro"],
+                            ["600", "Ausstattung", "600.000 Euro"],
+                            ["700", "Baunebenkosten", "2.100.000 Euro"],
+                            ["", "Kostenrahmen gesamt", "14.500.000 Euro"],
+                        ],
+                    ),
+                    Abschnitt(
+                        "Baunebenkosten im Einzelnen",
+                        [],
+                        [
+                            ["Leistung", "Betrag"],
+                            ["Architektenwettbewerb", "220.000 Euro"],
+                            ["Planung Architektur und Tragwerk", "1.310.000 Euro"],
+                            ["Fachplanung Technische Gebäudeausrüstung", "380.000 Euro"],
+                            ["Gutachten, Vermessung, Genehmigungen", "190.000 Euro"],
+                            ["Baunebenkosten gesamt", "2.100.000 Euro"],
+                        ],
+                    ),
+                    Abschnitt(
+                        "Mittelabfluss und Finanzierung",
+                        [
+                            "Baubeginn ist für das Frühjahr 2028 vorgesehen, die Inbetriebnahme "
+                            "für den Sommer 2030. Aus dem Landesprogramm Feuerwehrhäuser ist ein "
+                            "Zuschuss von bis zu 3,0 Millionen Euro beantragt; der Bescheid wird "
+                            "für den Herbst 2026 erwartet. Die Verpflichtungsermächtigungen ab 2027 "
+                            "werden mit dem Haushalt 2027 beantragt.",
+                        ],
+                        [
+                            ["Haushaltsjahr", "Mittelabfluss"],
+                            ["2026", "220.000 Euro"],
+                            ["2027", "1.100.000 Euro"],
+                            ["2028", "5.200.000 Euro"],
+                            ["2029", "6.400.000 Euro"],
+                            ["2030", "1.580.000 Euro"],
+                        ],
+                    ),
+                ],
+            ),
+        ],
+        versand=Versand(
+            "Tue, 10 Feb 2026 09:00:00 +0100",
+            "Mitglieder des Stadtrats <stadtrat@stadt-rheinfurt.example>",
+        ),
     ),
     Beschlussvorlage(
         "2026-07-07-stadtrat-vorlage-stadtbus-schueler",
@@ -593,6 +958,12 @@ def render_vorlage_txt(v: Beschlussvorlage) -> bytes:
     lines.append("------------------------")
     lines.append(v.finanzielle_auswirkungen)
     lines.append("")
+    if v.anlagen:
+        lines.append("Anlagen")
+        lines.append("-------")
+        for anlage in v.anlagen:
+            lines.append(f"Anlage {anlage.nummer}: {anlage.titel}")
+        lines.append("")
     lines.append("Rheinfurt, im Auftrag: Amtsleitung " + v.federfuehrung.split(",")[0])
     lines.append("")
     lines.append(SYNTHETIC_NOTICE)
@@ -600,9 +971,167 @@ def render_vorlage_txt(v: Beschlussvorlage) -> bytes:
     return "\n".join(lines).encode("utf-8")
 
 
+# --- Vorlagen with Anlagen: dispatch mail (.eml) with PDF attachments ---------
+
+_VERSAND_FROM = "Sitzungsdienst der Stadt Rheinfurt <sitzungsdienst@stadt-rheinfurt.example>"
+
+_STYLES = getSampleStyleSheet()
+_ANLAGE_TITLE_STYLE = ParagraphStyle(
+    "AnlageTitle", parent=_STYLES["Title"], fontSize=15, spaceAfter=12
+)
+_ANLAGE_HEADING_STYLE = ParagraphStyle(
+    "AnlageHeading", parent=_STYLES["Heading3"], spaceBefore=10, spaceAfter=4
+)
+_ANLAGE_BODY_STYLE = ParagraphStyle("AnlageBody", parent=_STYLES["BodyText"], spaceAfter=6)
+_ANLAGE_FOOTER_STYLE = ParagraphStyle(
+    "AnlageFooter", parent=_STYLES["BodyText"], fontSize=8, textColor=colors.grey
+)
+
+
+def gremium_folder(gremium: str) -> str:
+    return GREMIUM_FOLDERS[gremium]
+
+
+def vorlage_file_name(v: Beschlussvorlage) -> str:
+    return f"{v.slug}.eml" if v.anlagen else f"{v.slug}.txt"
+
+
+def anlage_file_name(v: Beschlussvorlage, anlage: Anlage) -> str:
+    return f"{v.slug}-anlage-{anlage.nummer}-{anlage.slug}.pdf"
+
+
+def _anlage_kopf(v: Beschlussvorlage, anlage: Anlage) -> str:
+    return (
+        f"Anlage {anlage.nummer} zur Beschlussvorlage Nr. {v.vorlagennummer} "
+        f"({v.gremium}, Sitzung am {_german_date(v.sitzungsdatum)})"
+    )
+
+
+def render_anlage_pdf(v: Beschlussvorlage, anlage: Anlage) -> bytes:
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        leftMargin=2.2 * cm,
+        rightMargin=2.2 * cm,
+        topMargin=2 * cm,
+        bottomMargin=2 * cm,
+        title=anlage.titel,
+        author="Stadt Rheinfurt (synthetisch)",
+    )
+    story = [
+        Paragraph(xml_escape(anlage.titel), _ANLAGE_TITLE_STYLE),
+        Paragraph(xml_escape(_anlage_kopf(v, anlage)), _ANLAGE_FOOTER_STYLE),
+        Paragraph(xml_escape(f"Betreff der Vorlage: {v.betreff}"), _ANLAGE_FOOTER_STYLE),
+        Spacer(1, 0.4 * cm),
+    ]
+    for abschnitt in anlage.abschnitte:
+        story.append(Paragraph(xml_escape(abschnitt.ueberschrift), _ANLAGE_HEADING_STYLE))
+        for absatz in abschnitt.absaetze:
+            story.append(Paragraph(xml_escape(absatz), _ANLAGE_BODY_STYLE))
+        if abschnitt.tabelle:
+            table = Table(abschnitt.tabelle, hAlign="LEFT")
+            table.setStyle(
+                TableStyle(
+                    [
+                        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#2f3e4e")),
+                        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                        ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                        ("ALIGN", (-1, 0), (-1, -1), "RIGHT"),
+                        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                        ("FONTSIZE", (0, 0), (-1, -1), 9),
+                        ("TOPPADDING", (0, 0), (-1, -1), 4),
+                        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                    ]
+                )
+            )
+            story.append(table)
+            story.append(Spacer(1, 0.3 * cm))
+    story.append(Spacer(1, 0.6 * cm))
+    story.append(Paragraph(xml_escape(SYNTHETIC_NOTICE), _ANLAGE_FOOTER_STYLE))
+    doc.build(story)
+    return buffer.getvalue()
+
+
+def _versand_text(v: Beschlussvorlage) -> str:
+    return (
+        "Sehr geehrte Damen und Herren,\n"
+        "\n"
+        f"zur Sitzung am {_german_date(v.sitzungsdatum)} ist im Ratsinformationssystem der Stadt "
+        "Rheinfurt die folgende Beschlussvorlage freigegeben. Ihre Anlagen sind dieser Nachricht "
+        "als PDF-Dateien beigefügt.\n"
+        "\n"
+        "Sitzungsdienst der Stadt Rheinfurt\n"
+        "\n"
+        "========================================================================\n"
+        "\n"
+    ) + render_vorlage_txt(v).decode("utf-8")
+
+
+def _header_value(value: str) -> str:
+    if value.isascii():
+        return value
+    return Header(value, "utf-8").encode()
+
+
+def _base64_lines(data: bytes) -> str:
+    encoded = base64.b64encode(data).decode("ascii")
+    return "\n".join(encoded[i : i + 76] for i in range(0, len(encoded), 76))
+
+
+def render_vorlage_eml(v: Beschlussvorlage) -> bytes:
+    """The dispatch mail: the Vorlage text as body, every Anlage a PDF attachment."""
+    if v.versand is None:
+        raise ValueError(f"Vorlage {v.vorlagennummer} has Anlagen but no Versand")
+    nummer = v.vorlagennummer.replace("/", "-")
+    boundary = f"=_rheinfurt-ratsinfo-{nummer}"
+    parts = [
+        "MIME-Version: 1.0",
+        f"Date: {v.versand.datum}",
+        f"Message-ID: <vorlage-{nummer}@ratsinfo.stadt-rheinfurt.example>",
+        f"From: {_VERSAND_FROM}",
+        f"To: {v.versand.an}",
+        "Subject: " + _header_value(f"Beschlussvorlage Nr. {v.vorlagennummer}: {v.betreff}"),
+        f'Content-Type: multipart/mixed; boundary="{boundary}"',
+        "",
+        f"--{boundary}",
+        'Content-Type: text/plain; charset="utf-8"',
+        "Content-Transfer-Encoding: 8bit",
+        "",
+        _versand_text(v),
+    ]
+    for anlage in v.anlagen:
+        file_name = anlage_file_name(v, anlage)
+        parts += [
+            f"--{boundary}",
+            f'Content-Type: application/pdf; name="{file_name}"',
+            "Content-Transfer-Encoding: base64",
+            f'Content-Disposition: attachment; filename="{file_name}"',
+            "",
+            _base64_lines(render_anlage_pdf(v, anlage)),
+        ]
+    parts += [f"--{boundary}--", ""]
+    return "\n".join(parts).encode("utf-8")
+
+
+def render_vorlage(v: Beschlussvorlage) -> bytes:
+    return render_vorlage_eml(v) if v.anlagen else render_vorlage_txt(v)
+
+
 def niederschrift_text(n: Niederschrift) -> str:
     return render_niederschrift_md(n).decode("utf-8")
 
 
 def vorlage_text(v: Beschlussvorlage) -> str:
-    return render_vorlage_txt(v).decode("utf-8")
+    return _versand_text(v) if v.anlagen else render_vorlage_txt(v).decode("utf-8")
+
+
+def anlage_text(v: Beschlussvorlage, anlage: Anlage) -> str:
+    parts = [anlage.titel, _anlage_kopf(v, anlage)]
+    for abschnitt in anlage.abschnitte:
+        parts.append(abschnitt.ueberschrift)
+        parts.extend(abschnitt.absaetze)
+        for row in abschnitt.tabelle or []:
+            parts.append(" ".join(row))
+    return "\n".join(parts)

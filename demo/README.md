@@ -20,7 +20,7 @@ demo/
     ├── satzungen-gebuehrenordnungen/         .pdf
     ├── pressemitteilungen/                   rss.xml + .html
     ├── interne-dienstanweisungen-meldewesen/ .docx, .pdf, .pptx
-    ├── ratsinformationen/<jahr>/             .md, .txt (S3-Bucket des Demo-Stacks, #1383)
+    ├── ratsinformationen/<jahr>/<Gremium>/   .md, .txt, .eml mit PDF-Anlagen (S3-Bucket des Demo-Stacks, #1383, #2016)
     ├── formate/                              je ein Dokument pro unterstützter Endung (S3-Bucket des Demo-Stacks, #1519)
     ├── MANIFEST.sha256                       SHA-256 über alle Dokumente
     ├── SOURCE.md                             Quellen, Lizenzen, Hinweis auf synthetische Inhalte (vom Generator geschrieben)
@@ -43,7 +43,7 @@ Konnektortypen und mehrere Dateiformate:
 | Satzungen & Gebührenordnungen | `.pdf` | `HTTP_DIRECTORY` |
 | Pressemitteilungen Stadt Rheinfurt | RSS-XML + HTML-Detailseiten | `RSS_FEED` (statisch, selbst gehostet) |
 | Interne Dienstanweisungen Meldewesen | `.docx`, `.pdf`, `.pptx` | `UPLOAD` (im Seed automatisiert) |
-| Ratsinformationen Stadt Rheinfurt | `.md`, `.txt` (ein Ordner je Jahrgang) | `S3` (Objektspeicher des Demo-Stacks, Bucket `rheinfurt-archiv`; #1383) |
+| Ratsinformationen Stadt Rheinfurt | `.md`, `.txt`, `.eml` mit PDF-Anhängen (Ordner Jahrgang › Gremium) | `S3` (Objektspeicher des Demo-Stacks, Bucket `rheinfurt-archiv`; #1383, #2016) |
 | Formattest auf S3 | je ein Dokument pro unterstützter Endung | `S3` (Objektspeicher des Demo-Stacks, Bucket `formattest`; #1520) |
 
 Die siebte Bibliothek ist keine Fachablage, sondern eine **technische Schaubibliothek**: Sie zeigt,
@@ -224,7 +224,7 @@ Das startet zusätzlich zu `postgres`/`backend`/`frontend`:
 
   | Bucket | Rolle | Inhalt |
   |---|---|---|
-  | `rheinfurt-archiv` | Quelle der Bibliothek „Ratsinformationen Stadt Rheinfurt" | `demo/corpus/ratsinformationen/` unter dem Präfix `ratsinformationen/`, Jahrgangsordner inklusive |
+  | `rheinfurt-archiv` | Quelle der Bibliothek „Ratsinformationen Stadt Rheinfurt" | `demo/corpus/ratsinformationen/` unter dem Präfix `ratsinformationen/`, Jahrgangs- und Gremiumsordner inklusive |
   | `formattest` | Quelle der Bibliothek „Formattest auf S3" | `demo/corpus/formate/`, je ein Dokument pro unterstützter Endung |
   | `opaa-uploads` | **Ablage** der hochgeladenen Originale der Demo | was über die Oberfläche hochgeladen wird, einschließlich der 26 Dokumente der Upload-Bibliothek, die der Seed einspielt — je Original ein Objekt unter `<Organisations-ID>/<Bibliotheks-ID>/<Zufallsname><Endung>` ([ADR-0030](../docs/decisions/0030-originalablage-der-uploads.md), Entscheidung 4 mit Nachtrag) |
 
@@ -274,7 +274,7 @@ ein Hafen nach außen ist dafür nicht nötig:
 - <http://127.0.0.1:8094/rustfs/console/> — **Konsole des Objektspeichers**, der Weg, sich die
   drei Buckets anzusehen (der Dienst serviert sie unter diesem Pfad, nicht unter `/`). Anmeldung
   mit dem Root-Schlüssel oben (`rheinfurt-archiv` / `RheinfurtDemo!2026`): `rheinfurt-archiv`
-  zeigt die Jahrgangsordner unter `ratsinformationen/`, `formattest` die vierzehn Formatmuster,
+  zeigt die Jahrgangs- und Gremiumsordner unter `ratsinformationen/`, `formattest` die vierzehn Formatmuster,
   und `opaa-uploads` füllt sich mit je einem Objekt pro hochgeladenem Original — sichtbar
   unmittelbar nach einem Upload über die Oberfläche, zwei Schlüsselebenen tief: erst die
   Organisation, darin die Bibliothek.
@@ -515,7 +515,10 @@ Der Lauf richtet über die API ein:
    bricht bei `documentsFailed > 0` ab. Für die beiden `S3`-Bibliotheken prüft er zusätzlich eine
    **Mindestzahl**: Ihr Bucket ist eine exakte Spiegelung eines Korpusverzeichnisses
    (`expected_documents_dir` in `profiles.py`), also muss der Lauf mindestens so viele Dokumente
-   verarbeitet haben, wie dort Dateien liegen. Ohne diese Prüfung meldete ein Lauf gegen einen noch
+   verarbeitet haben, wie dort Dateien liegen, Unterordner eingeschlossen. Die PDF-Anhänge der
+   Versandmails in „Ratsinformationen" kommen beim ersten Lauf als eigene Dokumente hinzu, zählen
+   aber nicht zur Mindestzahl: Ein erneuter Lauf überspringt die unveränderte Mail samt Anhängen
+   und meldet nur die Mail. Ohne diese Prüfung meldete ein Lauf gegen einen noch
    nicht fertig befüllten Bucket „abgeschlossen" über eine leere Bibliothek — der Einmal-Schritt
    `objectstore-seed` muss vorher durch sein (Schritt 2 von „Demo nutzen" oben).
 

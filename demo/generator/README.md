@@ -58,10 +58,15 @@ Das Skript:
      (`presse.py`).
    - `interne-dienstanweisungen-meldewesen/` (`.docx`/`.pdf`/`.pptx`): 26 Dienstanweisungen,
      Eskalationsregeln, FAQ-Dokumente und Schulungsfolien (`intern.py`).
-   - `ratsinformationen/<jahr>/` (`.md`/`.txt`): 12 Niederschriften und Beschlussvorlagen des
-     Stadtrats und des Hauptausschusses, je Jahrgang ein Unterverzeichnis (`rat.py`) — der
-     Ausschnitt, den der Demo-Stack in seinen Bucket `rheinfurt-archiv` spiegelt
-     (`S3`-Bibliothek, #1383).
+   - `ratsinformationen/<jahr>/<Gremium>/` (`.md`/`.txt`/`.eml`): 15 Niederschriften und
+     Beschlussvorlagen von Stadtrat, Hauptausschuss und Bauausschuss, je Jahrgang ein
+     Unterverzeichnis und darin eines je Gremium (`rat.py`) — der Ausschnitt, den der Demo-Stack in
+     seinen Bucket `rheinfurt-archiv` spiegelt (`S3`-Bibliothek, #1383, #2016). Eine Vorlage mit
+     Anlagen liegt als Versandmail des Ratsinformationssystems vor (`.eml`, Vorlagentext als
+     Nachrichtentext, jede Anlage ein PDF-Anhang): Im S3-Konnektor tragen nur Mail-Objekte Anhänge
+     (`docs/handbuch/konnektor-s3.md`, Abschnitt „Anhänge"). Die Anlagen-PDFs sind deshalb keine
+     eigenen Dateien im Korpus und zählen nicht in `MANIFEST.sha256`; OPAA macht aus jeder ein
+     eigenes Dokument mit der Mail als Elterndokument.
    - `formate/` (je ein Dokument pro unterstützter Endung): 14 Dokumente rund um Dokumentenformate,
      Posteingang und Langzeitarchivierung (`formate.py`, `odf_utils.py`) — die technische
      Schaubibliothek „Formattest auf S3", die der Demo-Stack in den Bucket `formattest`
@@ -223,7 +228,7 @@ demo/generator/
 ├── satzungen.py              Satzungsdaten + PDF-Rendering (reportlab)
 ├── presse.py                 Pressemitteilungsdaten + RSS/HTML-Rendering
 ├── intern.py                  Interne-Dienstanweisungen-Daten + DOCX/PDF/PPTX-Rendering
-├── rat.py                     Ratsinformationen (Niederschriften, Beschlussvorlagen) + Markdown/Text-Rendering
+├── rat.py                     Ratsinformationen (Niederschriften, Beschlussvorlagen, Anlagen) + Markdown/Text/EML/PDF-Rendering
 ├── formate.py                 Formattest-Bibliothek: je ein Dokument pro unterstützter Endung
 ├── make_doc_fixture.py        Einmal-Schritt für die Word-97-Datei (LibreOffice), siehe „Formate ohne Writer"
 ├── odf_utils.py               Baut deterministische ODT/ODS/ODP-Pakete ohne Writer-Bibliothek
