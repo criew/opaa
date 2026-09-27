@@ -1,0 +1,1074 @@
+# Topic "indexing": its tags, paths and the components only this topic uses.
+# Merged with all other fragments at build time, see root.yaml.
+tags:
+  - name: indexing
+    description: Indexing runs, push ingestion and index maintenance.
+paths:
+  /api/v1/admin/indexing/low-chunk-documents:
+    get:
+      operationId: listLowChunkDocuments
+      tags: [indexing]
+      summary: >
+        The one-time inventory check for scan-PDF fallout (system admin only, #1055/#1090,
+        ingestion-pipelines.md Teil 3 Punkt 1 "Scan-Erkennung und Bestandsprüfung")
+      description: >
+        Every INDEXED document of the caller's own organization whose chunkCount is at or below
+        chunkCountThreshold - the bestand a scan PDF could have silently landed in before ingest-time
+        detection existed, and the operational metric that stays permanently queryable rather than a
+        one-off cleanup that goes stale the moment the next such file is indexed. Scoped to the
+        caller's own organization the same way every other admin listing in this API is - never a
+        cross-organization view. Consumed by the "Suche & Indexierung" administration page (#1053).
+      parameters:
+        - name: chunkCountThreshold
+          in: query
+          required: false
+          description: >
+            Flags a document whose chunkCount is at or below this value. Default 0 - the unambiguous
+            anomaly this issue's own bug produces. Raising it also catches "auffällig wenige" chunks,
+            a judgement call with no measured threshold (see ingestion-pipelines.md's "gesetzt, nicht
+            gemessen" rule for chunk sizes) - left to the caller rather than guessed here.
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: page
+          in: query
+          required: false
+          description: Rejected with 400 if negative.
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: size
+          in: query
+          required: false
+          description: Rejected with 400 outside 1..100.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: Page of flagged documents
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LowChunkDocumentPageResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/indexing/pipeline-versions:
+    get:
+      operationId: getPipelineVersionStatus
+      tags: [indexing]
+      summary: >
+        Which ingestion pipeline versions the chunk bestand was produced with (system admin only,
+        #1056, ingestion-pipelines.md Querschnittsregel (d))
+      description: >
+        The registered pipelines with their current versions, plus the fill state per library of the
+        caller's own organization: how many chunks were produced by the current version of the
+        pipeline named on them, and how many are below it and therefore candidates for a selective
+        re-index. Without this, a bestand containing chunks from two verfahren is not feststellbar at
+        all - one cannot tell from a chunk which rules cut it.
+      responses:
+        "200":
+          description: Pipeline versions and per-library fill state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PipelineVersionStatusResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/indexing/pipeline-reindex:
+    post:
+      operationId: reindexPipelineBatch
+      tags: [indexing]
+      summary: >
+        Re-index one batch of chunks below a given pipeline version (system admin only, #1056)
+      description: >
+        Processes at most batchSize documents of the caller's own organization that still hold
+        chunks from pipelineId below belowVersion, and reports what it did. Deliberately batched and
+        repeatable rather than one long-running request: the remaining work is re-derived from the
+        chunk metadata on every call, so an interrupted run continues where it stood instead of
+        starting over. Repeat until done is true. Whether and when a bestand is nachgezogen at all is
+        an explicit operator decision - nothing triggers this automatically.
+
+
+        A document that cannot be advanced costs only that candidate and is counted as skipped,
+        fetching its source file included. One condition ends the call early instead: with
+        opaa.upload.store=s3, an upload store that does not answer would make every remaining
+        candidate wait for the same timeout, so that document is counted as skipped and the batch
+        returns 200 with what it has done so far. Nothing written is lost and nothing behind it is
+        touched - the next call re-derives the remaining work and picks those documents up once the
+        store answers again.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PipelineReindexRequest"
+      responses:
+        "200":
+          description: What this batch did
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PipelineReindexResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/indexing/metadata-backfill:
+    post:
+      operationId: backfillMetadataBatch
+      tags: [indexing]
+      summary: >
+        Re-extract the core metadata fields of one batch of a library's Altbestand from the
+        original files (system admin only, #1067, metadata-schema.md "Deterministischer
+        Bestandslauf")
+      description: >
+        Processes at most batchSize INDEXED documents of libraryId (which must belong to the
+        caller's own organization, otherwise 404) whose metadata_extraction_version is missing or
+        below the current CoreMetadataExtractor version: the original file is re-read for its
+        declared properties, the core fields are stored at the document and the filterable keys are
+        rewritten on its existing chunks - no re-chunking, no re-embedding, no model call. The
+        search stays available throughout; a document carries either its old or its new fields,
+        never a mixture. Repeat until done is true; the remaining work is re-derived from the
+        documents table on every call, so pausing is simply not calling again, and the next call
+        resumes at the next unprocessed document. A manually set value is never overwritten. A
+        system process without a person's rights context (Epic #1065, Beschluss 1). Nothing
+        triggers this automatically.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MetadataBackfillRequest"
+      responses:
+        "200":
+          description: What this batch did
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MetadataBackfillResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/admin/indexing/context-prefix-rerun:
+    post:
+      operationId: rerunContextPrefixBatch
+      tags: [indexing]
+      summary: >
+        Re-embed one batch of a library's documents under the current Kontextpräfix (system admin
+        only, #1072, metadata-schema.md "Nachlauf im Betrieb")
+      description: >
+        Processes at most batchSize INDEXED documents of libraryId (which must belong to the
+        caller's own organization, otherwise 404) whose context-prefix stamp was cleared - the
+        marking every prefix-effective schema change and every manual correction of a
+        prefix-effective value applies to exactly the documents whose prefix it alters, so the
+        number the Folgekosten preview shows and the number this run processes are the same set. The existing chunks are kept and re-embedded in place under
+        their own ids with the new prefix; the full-text row is rewritten from the same prefixed
+        text. No re-chunking, no model call beyond the embedding, no citation or deep link is lost.
+        Nothing is destroyed before its replacement exists: a document that cannot be advanced keeps
+        its chunks and stays selected. The search stays available throughout, and a document carries
+        either its old or its new prefix, never a mixture. Repeat until done is true; pausing is
+        simply not calling again. Nothing triggers this automatically - saving a schema change moves
+        no bestand.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContextPrefixRerunRequest"
+      responses:
+        "200":
+          description: What this batch did
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContextPrefixRerunResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/libraries/{libraryId}/push-secret:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      operationId: generatePushSecret
+      tags: [indexing]
+      summary: Generate or rotate the push secret of a library whose connector has a push intake
+      description: >
+        #1140, ADR-0027 Entscheidung 6, ADR-0038: generates a fresh random secret, stores it
+        encrypted (like sourceCredentials) and returns it exactly once, together with the path
+        the source has to notify. Calling again rotates: the previous secret stops authenticating
+        immediately. MANAGER or above, the same threshold as every other change of the source
+        configuration. Rejected with 400 for a library whose connector offers no push intake
+        (see SourceTypeDescriptor.pushIntake). Recorded in the audit log as
+        LIBRARY_SOURCE_UPDATED with the connector's own field name, never with the value. The
+        secret is stored through the same encryption as sourceCredentials, so this operation
+        needs the credentials encryption key (OPAA_CREDENTIALS_ENCRYPTION_KEY): without a usable
+        key no secret is stored and the answer is 503 naming the missing key. Removing a secret
+        (DELETE below) does not need the key: it erases the column instead of writing a value
+        that would have to be encrypted.
+      responses:
+        "200":
+          description: The new secret, shown once
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PushSecretResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+    delete:
+      operationId: removePushSecret
+      tags: [indexing]
+      summary: Remove the push secret of a library
+      description: >
+        From the commit on, the library's push intake answers every call with 401. Idempotent -
+        removing an absent secret succeeds without an audit entry. MANAGER or above.
+      responses:
+        "204":
+          description: Secret removed (or none was stored)
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/libraries/{libraryId}/push:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      operationId: receivePush
+      tags: [indexing]
+      summary: Receive a change notification a source pushes to a library
+      description: >
+        Reachable without a session - the sender has none - through its own security chain. The
+        library's connector reads the notification and authenticates it against the library's
+        push secret in the forms its sources send: a Confluence Data Center signature
+        (X-Hub-Signature: sha256=<hex HMAC-SHA256 of the raw body>) or the secret itself in
+        X-OPAA-Webhook-Secret (Confluence Cloud Automation, EventBridge API destination), and for
+        object stores Authorization: Bearer <secret> (MinIO) or Authorization: Basic with the
+        secret as password (Ceph RGW); every comparison is constant-time. An unknown library, a
+        library whose connector has no push intake or no secret, and a wrong or missing secret
+        are all answered with the same 401; no other information leaves this endpoint. What an
+        accepted notification names is queued, debounced (opaa.indexing.events.debounce) and
+        checked by one WEBHOOK-triggered run of the library's connector, which treats every
+        notification as a hint and the source's own answer as the finding (ADR-0023
+        Entscheidung 4, ADR-0027 Entscheidung 6). A body naming nothing is accepted and
+        ignored. Rate-limited per library (opaa.rate-limit.webhook).
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+              description: The sender's own payload, read by the library's connector.
+      responses:
+        "202":
+          description: Accepted and queued (or nothing to queue)
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "413":
+          description: Body larger than 256 KiB
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/libraries/{libraryId}/indexing:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      operationId: triggerLibraryIndexing
+      tags: [indexing]
+      summary: Trigger an indexing run for a library, using its own stored quellkonfiguration
+      parameters:
+        - name: runMode
+          in: query
+          required: false
+          description: >
+            The Betriebsart to run in (ADR-0023, Entscheidung 4). Optional: without it the
+            executor's own default applies - the only mode a one-mode source type knows
+            (FILESYSTEM/HTTP_DIRECTORY: FULL, RSS_FEED: INCREMENTAL); for CONFLUENCE the mode
+            its sync state calls for: FULL until a full run completed, after a change of the
+            space selection and once the configured full-sync interval passed, INCREMENTAL in
+            between (#1139). A
+            mode the source type does not support is rejected with 400, naming the supported ones.
+          schema:
+            $ref: "#/components/schemas/IndexingRunMode"
+      description: >
+        ADR-0018: a library carries at most one quellentyp and quellkonfiguration, so the
+        trigger no longer takes any request body - it reads sourceType/sourcePath/sourceUrl/
+        sourceProxy/sourceCredentials/sourceInsecureSsl from the library itself and resolves
+        the matching executor through the registry (ADR-0017, decision 3). EDITOR role or
+        above on the library is required (the former SYSTEM_ADMIN requirement is gone -
+        ADR-0018, Entscheidung 2). A library whose sourceType is UPLOAD has no run at all
+        and is rejected with 409, as is a second trigger while a run for this same library is
+        still in progress - concurrency is per library, not global (#478). A full
+        indexingTaskExecutor queue is rejected with 503 (#501) - the just-inserted job row is
+        failed immediately rather than left RUNNING with nothing left to ever complete it.
+      responses:
+        "202":
+          description: Indexing triggered successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IndexingStatusResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /api/v1/libraries/{libraryId}/indexing/status:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: getLibraryIndexingStatus
+      tags: [indexing]
+      summary: Get the current or most recently completed indexing status for a library
+      responses:
+        "200":
+          description: Current indexing status for this library, or IDLE if it never ran
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IndexingStatusResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/libraries/{libraryId}/indexing/runs:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: listLibraryIndexingRuns
+      tags: [indexing]
+      summary: >
+        The last 10 indexing runs for a library, each with its own protocol of skipped/rejected
+        items and errors (#513).
+      description: >
+        Requires MANAGER role or above on the library (PR #604 review, finding 1) - stricter than
+        GET .../indexing/status's plain read grant, since an event's reference routinely carries
+        the library's own sourcePath/sourceUrl, the same internal-path leak #507 exists to close
+        for the source configuration display itself. Runs are ordered newest first; older runs
+        (beyond the last 10 for this library) are pruned together with their events, mirroring
+        indexing_jobs' own existing retention (IndexingJobService). Every run's event list is
+        capped (IndexingRunEventRecorder) - eventsTruncatedCount on a run names how many further
+        events that run recorded beyond the cap, without listing them.
+      responses:
+        "200":
+          description: The last 10 runs for this library, newest first
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IndexingRunListResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+components:
+  schemas:
+    IndexingStatusResponse:
+      type: object
+      required:
+        [
+          status,
+          documentCount,
+          totalDocuments,
+          documentsSkipped,
+          documentsFailed,
+          documentsIndexedTotal,
+          timestamp,
+        ]
+      properties:
+        status:
+          $ref: "#/components/schemas/IndexingStatus"
+        documentCount:
+          type: integer
+          description: >
+            The number of source items this run has processed. On an RSS_FEED run this counts feed
+            entries, not indexed documents - an entry's detail page can carry additional attachment
+            documents (#468) that are not counted here. See documentsIndexedTotal for the true
+            document count.
+          example: 42
+        totalDocuments:
+          type: integer
+          example: 42
+        documentsSkipped:
+          type: integer
+          example: 0
+        documentsFailed:
+          type: integer
+          description: >
+            The number of source items this run failed to process (#518 review, finding 3) -
+            previously only visible inside the free-text message field, not as its own value the
+            UI could name explicitly.
+          example: 0
+        documentsIndexedTotal:
+          type: integer
+          description: >
+            The true count of documents this run has indexed (#518) - includes every attachment
+            document indexed for an RSS_FEED entry (#468), including one backfilled for an
+            otherwise-unchanged entry. Equals documentCount for FILESYSTEM/HTTP_DIRECTORY runs,
+            where one processed file is exactly one document.
+          example: 42
+        message:
+          type: string
+          nullable: true
+          description: >
+            For status FAILED, the detail is only included if the caller holds at least MANAGER
+            on the library (#507/#659) - the underlying exception message routinely repeats the
+            library's own sourcePath/sourceUrl (an absolute server path or a host:port), the same
+            internal-infrastructure leak #507 already closes for the source configuration display
+            itself. A caller below MANAGER gets a generic German message instead.
+          example: Indexing completed successfully
+        libraryId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >
+            The knowledge library this run targets (#419). Null for a run started before
+            migration 019 added the column, or once the run's target library has since been
+            deleted (indexing_jobs.library_id is ON DELETE SET NULL - a run's history is not the
+            same thing as its right to still write there, see IndexingJob#getLibraryId's Javadoc).
+        incomplete:
+          type: boolean
+          nullable: true
+          description: >
+            #1141: true when the most recent run completed as incomplete (request budget spent,
+            continued by the next run) - see IndexingRunResponse.incomplete.
+        unlistedScopeKeys:
+          type: array
+          nullable: true
+          description: >
+            The scope keys - Confluence space keys, S3 bucket/prefix keys - the most recent
+            listing-assessing run (a successful full sync that was not cut short by its request
+            budget) could not read or list completely; their bestand may be stale. Deliberately
+            not tied to the most recent run: an incremental, webhook or event run never assesses
+            the listing, so the warning survives such runs and clears only once a full sync lists
+            everything again. Absent for other source types and while no run has assessed the
+            listing yet.
+          items:
+            type: string
+        timestamp:
+          type: string
+          format: date-time
+
+    IndexingStatus:
+      type: string
+      enum: [IDLE, RUNNING, COMPLETED, FAILED]
+      example: COMPLETED
+
+    IndexingTriggerSource:
+      type: string
+      description: >
+        Who started a run (#485): a person via "Jetzt indizieren", the library's own schedule, or
+        an authenticated notification (#1140 Confluence webhook, #1381 S3 event) - a WEBHOOK run
+        checks only the pages or objects the notification named and never removes anything the
+        source does not itself confirm as gone.
+      enum: [MANUAL, SCHEDULED, WEBHOOK]
+      example: MANUAL
+
+    IndexingRunMode:
+      type: string
+      description: >
+        The Betriebsart of a run (ADR-0023, Entscheidung 4): FULL listed the source completely,
+        so a previously indexed document missing from the listing was removed at the end of the
+        run; INCREMENTAL only picked up what changed since the last anchor and never removes
+        anything for being absent; EVENT (ADR-0027, Entscheidung 3) checked exactly the object
+        keys an S3 event notification named, one by one - no listing, no change search, never a
+        removal by absence, only on the store's own 404 - and is started solely by the
+        notification (triggeredBy WEBHOOK), never by "Jetzt indizieren" or the schedule.
+        FILESYSTEM and HTTP_DIRECTORY only know FULL, RSS_FEED only INCREMENTAL; CONFLUENCE knows
+        FULL and INCREMENTAL (#1136, #1139), S3 knows FULL and EVENT (#1378, #1381).
+      enum: [FULL, INCREMENTAL, EVENT]
+      example: FULL
+
+    IndexingRunEventCategory:
+      type: string
+      description: >
+        Why a single item was skipped/rejected or failed during a run, or - for FORMAT_MISMATCH,
+        SCHEDULE_SKIPPED and REMOVED - a note that is not about the item's own outcome at all
+        (#513, #404, #485, #886). Deliberately coarse (eight buckets, not one per exception type)
+        so the category stays a stable, translatable label rather than growing a new value with
+        every executor change:
+          * REJECTED - the source itself declined to hand the item over (HTTP 403/429, a redirect
+            to a foreign host that looks like a bot-protection challenge, an unsupported link
+            scheme) - not a failure of OPAA's own processing.
+          * UNREACHABLE - the item's network location could not be reached at all (connection
+            failure, timeout, non-2xx status unrelated to a rejection above).
+          * UNSUPPORTED_FORMAT - the item's file format or content type is not one
+            SupportedDocumentFormats indexes.
+          * ALLOWLIST - the run's own source configuration (e.g. a FILESYSTEM library's
+            sourcePath) falls outside an operator-configured allowlist (#484).
+          * ERROR - processing started but failed unexpectedly (parsing, chunking, embedding).
+          * FORMAT_MISMATCH - the item's file extension did not match its detected content, but it
+            was indexed anyway (#404) - a note about an accepted item, not a reason it was not
+            counted among documentsSkipped/documentsFailed.
+          * SCHEDULE_SKIPPED - a scheduled run (#485) found the library still indexing from a
+            previous run and did not start a second one; recorded against the still-running job's
+            own protocol, not a new run of its own.
+          * REMOVED - a previously indexed document no longer exists at its source and was deleted
+            at the end of a successful, complete run (#886, ADR-0017 Entscheidung 5) - like
+            FORMAT_MISMATCH/SCHEDULE_SKIPPED, this does not count among documentsSkipped/
+            documentsFailed either.
+          * RATE_LIMITED - the source throttled the run (HTTP 429, Retry-After) and the run slowed
+            down instead of failing (#1136); one summary note per run, not an item outcome.
+          * BUDGET_EXHAUSTED - the run spent its request budget (#1141) and ended in an orderly
+            way as incomplete; the next run continues where this one left off.
+          * SUMMARY - the run's own figures at its end (#1380: requests, bytes, listed/skipped/
+            processed objects, time per container) for a source that counts them; one note per
+            run, never an item outcome.
+      enum:
+        [
+          REJECTED,
+          UNREACHABLE,
+          UNSUPPORTED_FORMAT,
+          ALLOWLIST,
+          ERROR,
+          FORMAT_MISMATCH,
+          SCHEDULE_SKIPPED,
+          REMOVED,
+          RATE_LIMITED,
+          BUDGET_EXHAUSTED,
+          SUMMARY,
+        ]
+      example: REJECTED
+
+    IndexingRunEvent:
+      type: object
+      required: [category, message]
+      properties:
+        category:
+          $ref: "#/components/schemas/IndexingRunEventCategory"
+        message:
+          type: string
+          description: >
+            A German, human-readable reason (#513) - never a raw challenge/redirect URL or
+            exception stack trace, only what an operator needs to understand why the item was
+            skipped.
+          example: "Vom Quellserver abgewiesen (Weiterleitung auf einen fremden Host)"
+        reference:
+          type: string
+          nullable: true
+          description: >
+            The affected document name, file path or source URL - never the raw challenge/
+            redirect target a bot-protection page issued (#513 acceptance criteria).
+          example: https://example.org/aktuelles/pressemitteilung-42
+      example:
+        category: REJECTED
+        message: "Vom Quellserver abgewiesen (Weiterleitung auf einen fremden Host)"
+        reference: https://example.org/aktuelles/pressemitteilung-42
+
+    IndexingRunResponse:
+      type: object
+      required:
+        [
+          id,
+          status,
+          documentCount,
+          totalDocuments,
+          documentsSkipped,
+          documentsFailed,
+          documentsIndexedTotal,
+          startedAt,
+          events,
+          eventsTruncatedCount,
+          triggeredBy,
+          runMode,
+        ]
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          $ref: "#/components/schemas/IndexingStatus"
+        triggeredBy:
+          $ref: "#/components/schemas/IndexingTriggerSource"
+        runMode:
+          $ref: "#/components/schemas/IndexingRunMode"
+        documentCount:
+          type: integer
+          example: 42
+        totalDocuments:
+          type: integer
+          example: 42
+        documentsSkipped:
+          type: integer
+          example: 0
+        documentsFailed:
+          type: integer
+          example: 0
+        documentsIndexedTotal:
+          type: integer
+          example: 42
+        message:
+          type: string
+          nullable: true
+          example: Indexing completed successfully
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+        events:
+          type: array
+          description: >
+            This run's protocol (#513), capped at 500 entries (IndexingRunEventRecorder) - see
+            eventsTruncatedCount for how many further events beyond the cap this run recorded.
+          items:
+            $ref: "#/components/schemas/IndexingRunEvent"
+        eventsTruncatedCount:
+          type: integer
+          description: >
+            How many further events this run recorded beyond the 500-entry cap on the events
+            list above (#513) - 0 when every event fit. The UI renders this as "… und N weitere".
+          example: 0
+
+        incomplete:
+          type: boolean
+          nullable: true
+          description: >
+            #1141: true for a COMPLETED run that stopped in an orderly way before covering
+            everything - its request budget (opaa.indexing.confluence.request-budget-per-run) ran
+            out - and is continued by the next run: a full sync resumes with the spaces it did not
+            finish, an incremental run searches the same window again (its anchor did not move).
+            Distinct from FAILED, which means the run itself broke. Absent or false otherwise.
+        unlistedScopeKeys:
+          type: array
+          nullable: true
+          description: >
+            The scope keys this run could not read or list completely - a Confluence space (not
+            readable, or the attachments of one of its pages not listable) or an S3 scope as
+            bucket/prefix (not listable). Only a successful full sync that was not cut short by
+            its budget assesses its listing and carries this field - absent (not an empty array)
+            on every other run, and on an assessing run that listed everything.
+          items:
+            type: string
+        metrics:
+          $ref: "#/components/schemas/IndexingRunMetrics"
+    IndexingRunMetrics:
+      type: object
+      nullable: true
+      required:
+        [
+          requestsSent,
+          throttleCount,
+          throttleWaitSeconds,
+          attachmentsProcessed,
+          attachmentsSkipped,
+          attachmentsFailed,
+        ]
+      description: >
+        #1141: what a run cost - recorded by executors that can measure it (Confluence); absent
+        for other source types and for runs from before the figures were recorded. Together with
+        startedAt/completedAt (the duration) and the document counters this is what an operator
+        reads throughput and the request budget against.
+      properties:
+        requestsSent:
+          type: integer
+          description: Requests the run sent to its source, retries after a 429 included.
+          example: 1842
+        throttleCount:
+          type: integer
+          description: How often the source answered 429 and the run waited instead of failing.
+          example: 3
+        throttleWaitSeconds:
+          type: integer
+          format: int64
+          description: The total time the run spent waiting on those throttles, in seconds.
+          example: 95
+        attachmentsProcessed:
+          type: integer
+          description: Attachment documents indexed - a subset of documentsIndexedTotal.
+          example: 120
+        attachmentsSkipped:
+          type: integer
+          description: Attachments met but not indexed (unchanged, unsupported format, rejected).
+          example: 800
+        attachmentsFailed:
+          type: integer
+          description: Attachments whose download or processing failed.
+          example: 2
+        bytesDownloaded:
+          type: integer
+          format: int64
+          description: >
+            The bytes the run downloaded from its source (#1380) - recorded by executors that
+            count them (S3); absent or 0 for other source types.
+          example: 734003200
+    IndexingRunListResponse:
+      type: object
+      required: [runs]
+      properties:
+        runs:
+          type: array
+          description: The last 10 runs for this library, newest first (#513).
+          items:
+            $ref: "#/components/schemas/IndexingRunResponse"
+
+    PushSecretResponse:
+      type: object
+      required: [secret, path]
+      description: >
+        The push secret of a library, returned exactly once at generation, and the path the
+        source has to notify. The client composes the absolute URL from its own origin - the
+        backend does not know the address the source reaches it under.
+      properties:
+        secret:
+          type: string
+          description: 32 random bytes, Base64url without padding.
+          example: 3q2-7wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        path:
+          type: string
+          description: The endpoint path, relative to the deployment's origin.
+          example: /api/v1/libraries/7f9c2b3e-1d4a-4c8b-9e2f-0a1b2c3d4e5f/push
+
+    ContextPrefixRerunRequest:
+      type: object
+      required: [libraryId]
+      properties:
+        libraryId:
+          type: string
+          format: uuid
+          description: >
+            The library whose documents are to be re-embedded under the current Kontextpraefix. Per
+            library on purpose: starting the run is the explicit, library-wise release the
+            specification demands.
+        batchSize:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 10
+          description: >
+            The maximum number of documents one call processes. Repeat until done is true; an
+            interrupted run loses at most one batch.
+
+    ContextPrefixRerunResponse:
+      type: object
+      required: [processedDocuments, skippedDocuments, done]
+      properties:
+        processedDocuments:
+          type: integer
+          description: >
+            Documents re-embedded under their current prefix: their chunks were rewritten in place
+            under their own ids, vector and full-text row together, and the document's new prefix
+            stamp was recorded.
+        skippedDocuments:
+          type: integer
+          description: >
+            Documents this call could not advance (embedding call failed, chunks vanished).
+            Nothing about them changed - they keep their old chunks and stay pending.
+        done:
+          type: boolean
+          description: >
+            True when this call advanced nothing - the signal to stop repeating it, ignoring
+            skippedDocuments for the same reason MetadataBackfillResponse.done does.
+
+    LowChunkDocumentResponse:
+      type: object
+      required: [documentId, libraryId, libraryName, fileName, chunkCount]
+      properties:
+        documentId:
+          type: string
+          format: uuid
+        libraryId:
+          type: string
+          format: uuid
+        libraryName:
+          type: string
+          description: >
+            The library's current name, or "Unbekannte Bibliothek" if the library no longer resolves
+            (deleted between the query and the response being built) - the document is still
+            reported rather than silently dropped.
+        fileName:
+          type: string
+        fileSize:
+          type: integer
+          format: int64
+          nullable: true
+        chunkCount:
+          type: integer
+
+    LowChunkDocumentPageResponse:
+      type: object
+      required: [items, page, size, totalElements]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/LowChunkDocumentResponse"
+        page:
+          type: integer
+          description: Zero-based index of the returned page.
+        size:
+          type: integer
+          description: The requested page size (not necessarily items.length for the last page).
+        totalElements:
+          type: integer
+          format: int64
+          description: Total number of flagged documents across all pages.
+
+    DocumentPipelineResponse:
+      type: object
+      required: [id, currentVersion, handledFormats]
+      properties:
+        id:
+          type: string
+          description: >
+            The pipeline's stable identity, persisted on every chunk it produced (#1056,
+            ingestion-pipelines.md Querschnittsregel (d)) - the value to pass as
+            PipelineReindexRequest.pipelineId.
+          example: tika-fallback
+        currentVersion:
+          type: integer
+          description: >
+            The version of the cut and structure metadata this pipeline currently produces. Raised
+            when either changes, never for a fix without an effect on the produced chunks.
+        handledFormats:
+          type: array
+          description: >
+            The file formats this pipeline claims, decided from the detected content and not from
+            the file extension (#404). Empty for the fallback pipeline, which handles everything no
+            other pipeline claimed.
+          items:
+            type: string
+            example: .pdf
+
+    LibraryPipelineVersionResponse:
+      type: object
+      required: [libraryId, totalChunks, currentVersionChunks, staleChunks, complete]
+      properties:
+        libraryId:
+          type: string
+          format: uuid
+        totalChunks:
+          type: integer
+          format: int64
+        currentVersionChunks:
+          type: integer
+          format: int64
+          description: Chunks produced by the current version of the pipeline named on them.
+        staleChunks:
+          type: integer
+          format: int64
+          description: >
+            Chunks below the current version of the pipeline named on them, including the bestand
+            written before the pipeline abstraction existed. Counted directly, not derived as
+            totalChunks - currentVersionChunks: a chunk naming a pipeline this deployment no longer
+            has is neither current nor re-indexable and inflates neither count.
+        complete:
+          type: boolean
+          description: staleChunks == 0 - nothing in this library waits for a version re-index.
+
+    PipelineVersionStatusResponse:
+      type: object
+      required: [pipelines, libraries]
+      properties:
+        pipelines:
+          type: array
+          items:
+            $ref: "#/components/schemas/DocumentPipelineResponse"
+        libraries:
+          type: array
+          description: >
+            Every library of the caller's own organization holding at least one chunk, sorted by id.
+          items:
+            $ref: "#/components/schemas/LibraryPipelineVersionResponse"
+
+    PipelineReindexRequest:
+      type: object
+      required: [pipelineId, belowVersion]
+      properties:
+        pipelineId:
+          type: string
+          description: The DocumentPipelineResponse.id whose chunks are to be re-indexed.
+          example: tika-fallback
+        belowVersion:
+          type: integer
+          minimum: 1
+          description: >
+            Only chunks below this version are re-indexed. Chunks written before the pipeline
+            abstraction existed count as version 0 and are therefore always included. Rejected with
+            400 above the pipeline's own currentVersion: a re-index cannot produce a version the
+            pipeline does not have, so every rewritten chunk would still be below the bound and the
+            same documents would be selected again on every following batch. A chunk still naming
+            the fallback pipeline whose format pipelineId now claims (#1105) is also always
+            included regardless of belowVersion - it is unreachable by any other call, not merely
+            below a version bound.
+        batchSize:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 10
+          description: >
+            The maximum number of documents one call processes. The call is meant to be repeated
+            until done is true - deliberately not one request that re-indexes a whole bestand, so an
+            interrupted run loses at most one batch.
+
+    PipelineReindexResponse:
+      type: object
+      required:
+        [
+          reindexedDocuments,
+          markedForNextRun,
+          skippedDocuments,
+          removedOrphanChunkSets,
+          done,
+        ]
+      properties:
+        reindexedDocuments:
+          type: integer
+          description: >
+            Documents whose source file was readable within the directories this deployment is
+            configured to read, and which were parsed, chunked and stored again on the spot, keeping
+            their own document id.
+        markedForNextRun:
+          type: integer
+          description: >
+            Documents whose source is remote and can only be re-read by their own connector run;
+            marked so that run redoes them instead of skipping them as unchanged. Their chunks stay
+            stale until that run happens, which the status figures keep showing.
+        skippedDocuments:
+          type: integer
+          description: >
+            Documents this call could not advance: their file lies outside what this deployment may
+            read (an allowlist narrowed since indexing, a path no longer resolving underneath its
+            library's configured directory), the pipeline produced no chunks for them this time, or
+            the document was re-indexed but its chunks still name the fallback pipeline, which is
+            counted here instead of as reindexedDocuments to avoid re-selecting it forever. For the
+            first two causes, nothing about the document is changed - a working document keeps its
+            existing chunks rather than being emptied. The third cause has already read the file,
+            replaced its chunks and paid for new embeddings; a persistent case of it is re-parsed
+            and re-embedded on every call that requests that pipeline. Regardless of cause, their
+            chunks stay visible as outstanding in the status figures.
+        removedOrphanChunkSets:
+          type: integer
+          description: Chunk sets whose document row no longer exists; deleted rather than re-read.
+        done:
+          type: boolean
+          description: >
+            True when this call advanced nothing - the signal to stop repeating it. Deliberately
+            ignores skippedDocuments: a call that only skipped is exactly the "nothing further is
+            possible right now" state, and repeating it would retry the same unreachable documents
+            forever.
+
+    MetadataBackfillRequest:
+      type: object
+      required: [libraryId]
+      properties:
+        libraryId:
+          type: string
+          format: uuid
+          description: >
+            The library whose Altbestand is to be nachgerüstet. Per library on purpose: starting the
+            run is the explicit, library-wise release the specification demands, never a side
+            effect of anything else.
+        batchSize:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 10
+          description: >
+            The maximum number of documents one call processes. Repeat until done is true; an
+            interrupted run loses at most one batch, and every finished document keeps its result.
+
+    MetadataBackfillResponse:
+      type: object
+      required: [processedDocuments, markedForNextRun, skippedDocuments, done]
+      properties:
+        processedDocuments:
+          type: integer
+          description: >
+            Documents whose original file (or, for an RSS entry, its stored headline and publication
+            date) was re-read on the spot: core fields stored at the document, filterable keys
+            rewritten on its chunks, extraction version recorded - one transaction per document.
+        markedForNextRun:
+          type: integer
+          description: >
+            Documents whose source is remote and can only be re-read by their own connector run;
+            marked so that run re-reads them, which re-extracts the core fields on every inflow. They
+            stay pending in the status figures until that run happens.
+        skippedDocuments:
+          type: integer
+          description: >
+            Documents this call could not advance: the file lies outside what this deployment may
+            read, has vanished, or its re-extraction failed this time. Nothing about such a document
+            changes - it keeps its old fields and chunks, stays pending, and is tried again on the
+            next call. Also reported per library as lastSkippedDocuments in the status display.
+        done:
+          type: boolean
+          description: >
+            True when this call advanced nothing - the signal to stop repeating it. Ignores
+            skippedDocuments for the same reason PipelineReindexResponse.done does.

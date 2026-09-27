@@ -80,11 +80,11 @@ jobs:
               - '!eval/generator/**'
               - '.github/workflows/ci.yml'
             # The frontend build regenerates its API types from the OpenAPI
-            # spec under opaa-api/ on every pnpm run build/test (ADR-0006), so a
-            # spec-only change must also run the frontend job.
+            # fragments under opaa-api/ on every pnpm run build/test (ADR-0006),
+            # so a spec-only change must also run the frontend job.
             frontend:
               - 'frontend/**'
-              - 'opaa-api/src/main/resources/openapi/opaa-api.yaml'
+              - 'opaa-api/src/main/openapi/**'
               - '.github/workflows/ci.yml'
             scripts:
               - '.github/scripts/**'

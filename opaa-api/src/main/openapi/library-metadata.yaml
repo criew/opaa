@@ -1,0 +1,1878 @@
+# Topic "library-metadata": its tags, paths and the components only this topic uses.
+# Merged with all other fragments at build time, see root.yaml.
+tags:
+  - name: library-metadata
+    description: Metadata schema, values and extraction of a library.
+paths:
+  /api/v1/libraries/{libraryId}/metadata/maintenance:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: getLibraryMetadataMaintenance
+      tags: [library-metadata]
+      summary: >
+        The Pflege-Anker of a library (#1069, metadata-schema.md "Der Pflege-Anker"): per core
+        field, how many of the library's indexed documents have no value - absolute and as a share
+        of the bestand. Only the empty state counts; a field marked "kein Wert ermittelbar" is
+        done, which is what lets the number reach zero. The figures are counted on every request in
+        the rights context of the asking person and never precomputed or cached
+        (metadata-schema.md, Rechte-Invariante) - reading needs VIEWER on the library, correcting a
+        value keeps the EDITOR right of #1068. GET
+        /api/v1/libraries/{libraryId}/documents?missingMetadataField=... lists exactly the counted
+        documents. A library of another organization or one the caller holds no right on is absent
+        (404).
+      responses:
+        "200":
+          description: The anchor per core field
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LibraryMetadataMaintenanceResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/libraries/{libraryId}/documents/{documentId}/metadata:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: documentId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: getDocumentMetadata
+      tags: [library-metadata]
+      summary: >
+        The core metadata fields of one document with the provenance of every value
+        (docs/features/metadata-schema.md, "Jeder Wert trägt seine Herkunft"; #1068). Every core
+        field is listed, an empty one with value null. Readable by everyone who may see the
+        library's document list (VIEWER or above); a document of another library or a library of
+        another organization is absent (404).
+      responses:
+        "200":
+          description: The document's core fields
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentMetadataResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/libraries/{libraryId}/documents/{documentId}/metadata/{fieldKey}:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: documentId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: fieldKey
+        in: path
+        required: true
+        description: One of the core field keys title, document_type or document_date.
+        schema:
+          type: string
+          example: document_type
+
+    put:
+      operationId: setDocumentMetadataValue
+      tags: [library-metadata]
+      summary: >
+        Set or change one core field of a document by hand (#1068, metadata-schema.md "Manuelle
+        Korrektur ist Teil des ersten Schnitts"). The stored value carries origin MANUAL, the
+        calling person as actor and the time of the call; no automatic extraction ever overwrites
+        it afterwards. The filterable keys on the document's chunks are rewritten in the same
+        transaction, without re-embedding. Requires the right to edit the library's documents
+        (EDITOR or above) - no management right at the library. Every call that changes something
+        writes one audit event (DOCUMENT_METADATA_CHANGED) with the old and the new value; an
+        identical manual value already in place changes nothing and writes no event. Validation:
+        a Dokumentart outside the vocabulary, a title that is blank, a date without precision or a
+        value of the wrong kind for the field are rejected with 400. The third state "kein Wert
+        ermittelbar" (#1069) is set through this same operation, with state NOT_DETERMINABLE and no
+        value.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MetadataValueRequest"
+      responses:
+        "200":
+          description: The field after the change
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentMetadataFieldResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      operationId: deleteDocumentMetadataValue
+      tags: [library-metadata]
+      summary: >
+        Remove the stored value of one core field (#1068). Removes the row whatever its origin, so
+        the field is empty again and the next automatic extraction may fill it: the document's
+        extraction version is cleared in the same transaction, which hands it back to the
+        Bestandslauf (POST /api/v1/admin/indexing/metadata-backfill) - a lasting "there is no
+        value" is the third state (PUT with state NOT_DETERMINABLE), not a deletion. Deleting a
+        NOT_DETERMINABLE mark works the same way and puts the document back into the Pflege-Anker. Same right as setting a value (EDITOR
+        or above); writes one audit event carrying the removed value. Deleting an already empty
+        field is a no-op that writes no event.
+      responses:
+        "204":
+          description: Value removed (or already absent)
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/libraries/{libraryId}/documents/metadata/bulk:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      operationId: bulkSetDocumentMetadata
+      tags: [library-metadata]
+      summary: >
+        Set one field to one value on a chosen set of this library's documents (#1068,
+        metadata-schema.md "Sammelzuweisung auf einer Auswahl"). Same right and same validation as
+        the single-document PUT; every document gets its own MANUAL value, its own chunk rewrite
+        and its own audit event with old and new value - the events of one call share a
+        correlationRef, returned in the response. An id that is not a document of this library
+        (deleted meanwhile, or belonging to another library) is rejected and listed in
+        rejectedDocumentIds - never silently skipped - while the remaining documents are still
+        processed; the whole call is one transaction.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BulkMetadataValueRequest"
+      responses:
+        "200":
+          description: Counters of the bulk assignment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BulkMetadataValueResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/metadata/document-types:
+    get:
+      operationId: listDocumentTypes
+      tags: [library-metadata]
+      summary: >
+        The controlled Dokumentart vocabulary (ADR-0024, Entscheidung 3) in display order - the
+        choice list a client offers when a person sets the field. Schema, not an aggregate over
+        documents: the list exists independently of any document and is visible to every
+        authenticated user (metadata-schema.md, Rechte-Invariante: "Die konfigurierte Werteliste
+        ... ist von dieser Regel ausgenommen").
+      responses:
+        "200":
+          description: The vocabulary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentTypeVocabularyResponse"
+
+  /api/v1/libraries/{libraryId}/metadata/extraction-settings:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: getLibraryMetadataExtractionSettings
+      tags: [library-metadata]
+      summary: >
+        The two model-backed extraction switches of a library (#1073, metadata-schema.md "Die
+        modellgestützte Extraktion im Betrieb"), both off by default, together with the chat role
+        the extraction would use - Basis-Adresse and Modell-Kennung, never an access key. The
+        endpoint the Datenschutzhinweis at the switch is built from: with an externally operated
+        model, every ingested document leaves the house without a person triggering it. Requires
+        the management right at the library.
+      responses:
+        "200":
+          description: The switches and the active chat role
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LibraryMetadataExtractionSettingsResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      operationId: updateLibraryMetadataExtractionSettings
+      tags: [library-metadata]
+      summary: >
+        Switches the model-backed extraction and the freie Schlagworte of this library on or off
+        (#1073). Takes effect on the next ingest and on the next Bestandslauf call; already stored
+        values are not touched by switching either flag off. Requires the management right at the
+        library.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LibraryMetadataExtractionSettingsRequest"
+      responses:
+        "200":
+          description: The switches after the change
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LibraryMetadataExtractionSettingsResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/libraries/{libraryId}/metadata/quality:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: getLibraryMetadataQuality
+      tags: [library-metadata]
+      summary: >
+        The Extraktionsgüte of a library (#1073, metadata-schema.md "Messung und Abnahme", Punkt
+        3): per field the share of deterministically filled, model-filled, manually set, empty and
+        "kein Wert ermittelbar" documents, plus the Zählwerk of the model-backed extraction. Without
+        it, a weak filter result cannot be told apart from a weak extraction. Counted on every
+        request in the rights context of the asking person and never precomputed or cached
+        (metadata-schema.md, Rechte-Invariante); reading needs VIEWER on the library.
+      responses:
+        "200":
+          description: The extraction quality per field
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LibraryMetadataQualityResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/libraries/{libraryId}/metadata/sample:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 500
+          default: 100
+        description: How many documents the sample covers; 100 is the size the specification fixes.
+
+    get:
+      operationId: getLibraryMetadataSample
+      tags: [library-metadata]
+      summary: >
+        A sample of documents with every stored metadata value and its provenance (#1073) - the
+        basis of the handausgewertete Stichprobe of 100 documents the QA role runs before the
+        model-backed extraction is accepted. Deterministically ordered by document id, so a repeat
+        run examines the same documents. Requires the management right at the library.
+      responses:
+        "200":
+          description: The sampled documents with their values
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LibraryMetadataSampleResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/libraries/{libraryId}/metadata-fields:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: listLibraryMetadataFields
+      tags: [library-metadata]
+      summary: >
+        The library's own metadata fields with their configured value lists (#1071,
+        metadata-schema.md Teil II (b)). Schema, not an aggregate over documents: the list exists
+        whether or not a document carries a value and is readable by everyone who may use the
+        library (VIEWER or above) - which is exactly why a value list must not carry
+        schutzbedürftige Bezeichnungen. A library with no own fields is the normal case and
+        answers with an empty list.
+      responses:
+        "200":
+          description: The library's fields in display order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LibraryMetadataFieldsResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    post:
+      operationId: createLibraryMetadataField
+      tags: [library-metadata]
+      summary: >
+        Defines a new library field (#1071). Requires the management right at the library (MANAGER
+        or above) - the same bar as changing the library's other settings, and deliberately higher
+        than the EDITOR right that sets a value on a document (#1068). Two rules are enforced here:
+        a field must serve the filter or the Kontextpräfix ("nur Beleg-Anzeige" is rejected with
+        400), and a library carries at most five own fields (a sixth is 409). A duplicate field key
+        and an already taken citationPosition are 409 as well; at most two fields of a library
+        carry a citation position, which is what keeps the Belegzeile readable. The Kontextpräfix
+        flag is stored here and becomes effective with the following work package (#1072).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLibraryMetadataFieldRequest"
+      responses:
+        "201":
+          description: The created field
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LibraryMetadataFieldResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/libraries/{libraryId}/metadata-fields/{fieldKey}:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: fieldKey
+        in: path
+        required: true
+        description: >-
+          The field's own key, without the lib namespace a document value carries.
+        schema:
+          type: string
+          example: fassung
+
+    put:
+      operationId: updateLibraryMetadataField
+      tags: [library-metadata]
+      summary: >
+        Changes label, Wirkstellen and citation position of a field (#1071). Type, key and value
+        list stay: the type is what every stored value was checked against, and the value list has
+        its own operations with the confirmed mapping. Same rules and same right as creating a
+        field. Switching the filter Wirkstelle on or off rewrites the field's chunk keys on the
+        documents that carry a value, without re-embedding.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateLibraryMetadataFieldRequest"
+      responses:
+        "200":
+          description: The field after the change
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LibraryMetadataFieldResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+    delete:
+      operationId: deleteLibraryMetadataField
+      tags: [library-metadata]
+      summary: >
+        Removes a field with everything that hangs on it (#1071, #1361): every stored document
+        value, the field's chunk keys and its value list. Two phases: the call retires the field -
+        no value of it can be set any more, while every value already stored stays valid and
+        filterable - and then empties documents in Chargen, each in its own transaction with its
+        own audit event. The field row itself is dropped only after the last document was emptied.
+        A bestand small enough to finish within the first Charge answers 204; otherwise the answer
+        is 202 with the remaining work, and the run is continued with POST
+        /api/v1/libraries/{libraryId}/metadata-fields/schema-changes/run. Pausing is not calling
+        again; a repeated call resumes at the next document and costs nothing for those already
+        done. The number of affected documents is available beforehand through GET
+        /api/v1/libraries/{libraryId}/metadata-fields/{fieldKey}/usage. Requires the management
+        right at the library.
+      responses:
+        "204":
+          description: Field and its values removed - the run finished within this call
+        "202":
+          description: >-
+            Field retired, documents still being emptied. The run is resumable and the field is
+            gone once its last document was emptied. The body describes the whole library's pending
+            work, not only this deletion - it is what the continuation call works off; this
+            deletion's own remainder is its entry in pendingChanges.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LibraryMetadataSchemaRunResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/libraries/{libraryId}/metadata-fields/{fieldKey}/usage:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: fieldKey
+        in: path
+        required: true
+        schema:
+          type: string
+
+    get:
+      operationId: getLibraryMetadataFieldUsage
+      tags: [library-metadata]
+      summary: >
+        How many documents carry a value for this field - the Folgekosten shown before a deletion
+        is confirmed (#1071). Requires the management right, like the deletion it precedes.
+      responses:
+        "200":
+          description: The number of affected documents
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MetadataFieldUsageResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/libraries/{libraryId}/metadata-fields/{fieldKey}/values:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: fieldKey
+        in: path
+        required: true
+        schema:
+          type: string
+
+    post:
+      operationId: addLibraryMetadataFieldValue
+      tags: [library-metadata]
+      summary: >
+        Adds one entry to a SELECT field's value list (#1071, metadata-schema.md "Kontrolliertes
+        Vokabular statt Freitext"). Extending a list is always possible, has no Rückwirkung on any
+        stored value and needs no Nachlauf - unlike removing an entry. Requires the management
+        right; a field that is not a SELECT field and a code already in the list are rejected.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LibraryMetadataFieldValueRequest"
+      responses:
+        "200":
+          description: The field with its extended value list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LibraryMetadataFieldResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/libraries/{libraryId}/metadata-fields/{fieldKey}/values/{code}:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: fieldKey
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: code
+        in: path
+        required: true
+        schema:
+          type: string
+
+    patch:
+      operationId: relabelLibraryMetadataFieldValue
+      tags: [library-metadata]
+      summary: >
+        Corrects the German label of one list entry (#1071). The code stays - it is what documents
+        carry, so a relabeling has no Rückwirkung and needs no mapping. Replacing a code is a
+        removal with a confirmed mapping (POST .../values/{code}/remap), never an edit here.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LibraryMetadataFieldValueLabelRequest"
+      responses:
+        "200":
+          description: The field with its corrected value list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LibraryMetadataFieldResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/libraries/{libraryId}/metadata-fields/{fieldKey}/values/{code}/usage:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: fieldKey
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: code
+        in: path
+        required: true
+        schema:
+          type: string
+
+    get:
+      operationId: getLibraryMetadataFieldValueUsage
+      tags: [library-metadata]
+      summary: >
+        How many documents carry this value - the number that stands before the confirmation of a
+        mapping (metadata-schema.md: "Die Zahl der betroffenen Dokumente steht vor der Bestätigung
+        fest"). Readable with VIEWER, since it is the number a confirmation dialog shows.
+      responses:
+        "200":
+          description: The number of affected documents
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MetadataFieldUsageResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/libraries/{libraryId}/metadata-fields/{fieldKey}/values/{code}/remap:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: fieldKey
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: code
+        in: path
+        required: true
+        schema:
+          type: string
+
+    post:
+      operationId: remapLibraryMetadataFieldValue
+      tags: [library-metadata]
+      summary: >
+        Removes a value from the list together with the confirmed mapping of every document that
+        carries it (#1071, #1361, metadata-schema.md "Kontrolliertes Vokabular statt Freitext"):
+        onto another value of the same list, or - with targetCode null - onto "leer". There is no
+        way to remove a value without a mapping, which is what makes the state "Dokument trägt
+        einen Wert, den es im Schema nicht mehr gibt" unreachable; the database enforces the same
+        rule from below. Two phases: the call first retires the value - it can no longer be set on
+        any document, while every document already carrying it keeps a value the schema still lists
+        and still filters by - then rewrites documents in Chargen, each in its own transaction, and
+        removes the list entry only after the last one. A bestand small enough to finish within the
+        first Charge is done when this call answers; otherwise complete is false and the run is
+        continued with POST
+        /api/v1/libraries/{libraryId}/metadata-fields/schema-changes/run. Repeating the call with
+        the same targetCode resumes the run, a different one is 409. Every affected document gets
+        its own DOCUMENT_METADATA_CHANGED audit event with its old value, all sharing the returned
+        correlationRef. A document mapped onto "leer" is found again by every filter through the
+        Leerwert rule and reappears in the Pflege-Anker. Requires the management right at the
+        library.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RemapLibraryMetadataFieldValueRequest"
+      responses:
+        "200":
+          description: What the mapping did
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RemapLibraryMetadataFieldValueResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/libraries/{libraryId}/metadata-fields/schema-changes/run:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      operationId: runLibraryMetadataSchemaChanges
+      tags: [library-metadata]
+      summary: >
+        One Charge of the library's pending schema changes (#1361, metadata-schema.md "Nachlauf im
+        Betrieb"): the documents that still carry a retired list value or a value of a retired
+        field are rewritten, each in its own transaction with its own audit event, and a change
+        whose last document is done removes its list entry or its field. Resumable and idempotent
+        per document - a Charge over documents already rewritten does nothing - and pausing is not
+        calling again. A library without pending changes answers with an empty list. Requires the
+        management right at the library.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LibraryMetadataSchemaRunRequest"
+      responses:
+        "200":
+          description: What this Charge did and what is left
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LibraryMetadataSchemaRunResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/libraries/{libraryId}/metadata-fields/change-impact:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: fieldKey
+        in: query
+        required: true
+        description: >
+          The field the planned change applies to - a core field key (title, document_type,
+          document_date) or a library field key.
+        schema:
+          type: string
+      - name: change
+        in: query
+        required: true
+        schema:
+          $ref: "#/components/schemas/MetadataChangeKind"
+      - name: valueCode
+        in: query
+        required: false
+        description: >
+          The value of a SELECT field's list that is about to be removed. Only evaluated for
+          change=VALUE_REMOVED, where it narrows the answer to the documents carrying exactly this
+          value; without it that change is answered with the whole field's usage, the honest upper
+          bound.
+        schema:
+          type: string
+
+    get:
+      operationId: getMetadataChangeImpact
+      tags: [library-metadata]
+      summary: >
+        The Folgekosten of a planned schema change before it is saved (#1072,
+        metadata-schema.md "Der Reindex-Preis, ehrlich ausgewiesen"): affected documents and
+        chunks, the resulting number of embedding calls and the expected runtime. Concrete
+        numbers, not a general warning. Requires the management right at the library.
+      responses:
+        "200":
+          description: The Folgekosten of the planned change
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MetadataChangeImpactResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/libraries/{libraryId}/metadata-fields/core-context-prefix:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    put:
+      operationId: updateCoreContextPrefix
+      tags: [library-metadata]
+      summary: >
+        Switches the Kontextpräfix-Wirkstelle of the two switchable core fields Dokumentart and
+        Datum/Stand for this library (#1072). Deliberately no installation-wide default: the
+        Wirkstelle "Kontextpräfix" is a deliberate decision per field. The Kernfeld Titel is always
+        prefix-effective and therefore not switchable. Saving hands exactly the documents carrying a
+        value for a switched field to the Nachlauf; it moves no bestand - the run is started
+        separately on the administration page. Requires the management right at the library.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CoreContextPrefixRequest"
+      responses:
+        "200":
+          description: The stored Wirkstellen of the core fields
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CoreContextPrefixResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+components:
+  schemas:
+    MetadataOrigin:
+      type: string
+      description: >-
+        Where a document metadata value came from (docs/features/metadata-schema.md, "Jeder Wert
+        trägt seine Herkunft"): DETERMINISTIC from a parser/regex rule, DERIVED from a model call,
+        MANUAL set by a person. A client marks DERIVED values as such wherever the value orders an
+        answer's evidence.
+      enum: [DETERMINISTIC, DERIVED, MANUAL]
+      example: DETERMINISTIC
+
+    DatePrecision:
+      type: string
+      description: >-
+        How much of a document date is actually known - a full day, only the month, or only the
+        year ("Fassung 2024"). The date itself is padded to the first day of the unknown part, so a
+        client renders YEAR as "2024", never as "01.01.2024".
+      enum: [DAY, MONTH, YEAR]
+      example: DAY
+
+    MetadataValueRequest:
+      type: object
+      description: >-
+        The value a person sets for one core field (#1068): exactly one of textValue (title),
+        vocabularyCode (document_type) or dateValue plus datePrecision (document_date), matching the
+        field addressed - or, with state NOT_DETERMINABLE and no value at all, the third state
+        "kein Wert ermittelbar" (#1069).
+      properties:
+        state:
+          type: string
+          enum: [SET, NOT_DETERMINABLE]
+          description: >-
+            SET - also the meaning of an absent state - stores the value given below. NOT_DETERMINABLE records that a person
+            established there is no value to find: valid for every core field, rejected with 400
+            together with any value, stored with origin MANUAL and the calling person as actor, and
+            never written or cleared by an automatic extraction. For filters and the Beleg it
+            behaves like an empty field; the Pflege-Anker does not count it.
+        textValue:
+          type: string
+          nullable: true
+          maxLength: 1000
+          description: The title text; blank is rejected.
+          example: Dienstanweisung zur IT-Nutzung
+        vocabularyCode:
+          type: string
+          nullable: true
+          description: A code of the Dokumentart vocabulary; anything else is rejected with 400.
+          example: DIENSTANWEISUNG
+        dateValue:
+          type: string
+          nullable: true
+          pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+          description: >-
+            The ISO-8601 calendar date; an impossible date is rejected with 400. Padded
+            server-side to the first day of what datePrecision leaves unknown.
+          example: "2026-03-12"
+        datePrecision:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/DatePrecision"
+          description: Required together with dateValue.
+
+    MetadataFieldState:
+      type: string
+      description: >-
+        The three states a core field of a document can be in (#1069, metadata-schema.md "Kein Wert
+        ermittelbar ist ein dritter Zustand"): EMPTY (not yet established - the open rest the
+        Pflege-Anker counts), SET (a value is present) and NOT_DETERMINABLE (a person established
+        there is none). NOT_DETERMINABLE behaves like EMPTY for filters and the Beleg-Anzeige, but
+        is done, not open.
+      enum: [EMPTY, SET, NOT_DETERMINABLE]
+
+    DocumentMetadataFieldResponse:
+      type: object
+      required: [fieldKey, label, state]
+      description: >-
+        One core field of a document with everything metadata-schema.md demands a value to carry
+        ("Jeder Wert trägt seine Herkunft"). An empty field has value, displayValue and origin
+        null; so does a NOT_DETERMINABLE one, which state tells apart from it.
+      properties:
+        fieldKey:
+          type: string
+          example: document_type
+        state:
+          $ref: "#/components/schemas/MetadataFieldState"
+        label:
+          type: string
+          description: The German field label.
+          example: Dokumentart
+        value:
+          type: string
+          nullable: true
+          description: >-
+            The machine-readable value - vocabulary code, ISO-8601 date or the text itself; null
+            when the field is empty.
+        displayValue:
+          type: string
+          nullable: true
+          description: >-
+            What a client shows - the German vocabulary label, or the date at its own precision.
+        origin:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/MetadataOrigin"
+        datePrecision:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/DatePrecision"
+        confidence:
+          type: number
+          format: double
+          nullable: true
+          description: Only for a DERIVED value.
+        modelId:
+          type: string
+          nullable: true
+          description: Only for a DERIVED value.
+        extractionVersion:
+          type: integer
+          nullable: true
+          description: Set for every non-manual value.
+        actorUserId:
+          type: string
+          format: uuid
+          nullable: true
+          description: The person who set a MANUAL value.
+        actorDisplayName:
+          type: string
+          nullable: true
+          description: >-
+            The display name of that person, null when the account no longer exists.
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the current value was written.
+        libraryFieldType:
+          nullable: true
+          description: >-
+            Set exactly for a library field (#1071) and tells a client which editor to offer; null
+            for a core field.
+          allOf:
+            - $ref: "#/components/schemas/LibraryMetadataFieldType"
+
+    DocumentMetadataResponse:
+      type: object
+      required: [documentId, fields]
+      properties:
+        documentId:
+          type: string
+          format: uuid
+        fields:
+          type: array
+          description: Every core field in schema order (Titel, Dokumentart, Datum/Stand).
+          items:
+            $ref: "#/components/schemas/DocumentMetadataFieldResponse"
+
+    BulkMetadataValueRequest:
+      type: object
+      required: [fieldKey, value, documentIds]
+      properties:
+        fieldKey:
+          type: string
+          description: The core field to set on every listed document.
+          example: document_type
+        value:
+          $ref: "#/components/schemas/MetadataValueRequest"
+        documentIds:
+          type: array
+          minItems: 1
+          maxItems: 1000
+          description: >-
+            The chosen documents - ids taken from this library's own document list. Duplicates are
+            processed once.
+          items:
+            type: string
+            format: uuid
+
+    BulkMetadataValueResponse:
+      type: object
+      required: [updatedCount, unchangedCount, rejectedDocumentIds, correlationRef]
+      properties:
+        updatedCount:
+          type: integer
+          description: Documents whose value was set or changed - one audit event each.
+        unchangedCount:
+          type: integer
+          description: >-
+            Documents that already carried exactly this manual value; nothing written, no event.
+        rejectedDocumentIds:
+          type: array
+          description: >-
+            Ids that are not documents of this library; none of them was touched.
+          items:
+            type: string
+            format: uuid
+        correlationRef:
+          type: string
+          description: >-
+            The correlationRef every audit event of this call carries, so the whole bulk
+            assignment can be read back from the audit log as one operation.
+
+    MetadataFieldMaintenanceResponse:
+      type: object
+      description: >-
+        The Pflege-Anker of one core field in one library (#1069, metadata-schema.md "Der
+        Pflege-Anker"): how many of the library's indexed documents still have no value for it -
+        absolute and as a share, both side by side, because "120 ohne Wert" means something
+        different at 130 than at 12.000 documents. documentsWithoutValue counts only the empty
+        state: a field marked "kein Wert ermittelbar" is done, which is what lets the number reach
+        zero.
+      required:
+        [
+          fieldKey,
+          label,
+          totalDocuments,
+          documentsWithoutValue,
+          missingShare,
+          filledDocuments,
+          notDeterminableDocuments,
+        ]
+      properties:
+        fieldKey:
+          type: string
+          example: document_date
+        label:
+          type: string
+          description: The German field label.
+          example: Datum/Stand
+        totalDocuments:
+          type: integer
+          format: int64
+          description: The library's indexed documents - the base of missingShare.
+        documentsWithoutValue:
+          type: integer
+          format: int64
+          description: Documents with neither a value nor a "kein Wert ermittelbar" mark.
+        missingShare:
+          type: number
+          format: double
+          description: documentsWithoutValue / totalDocuments, in 0..1; 0 for an empty library.
+        filledDocuments:
+          type: integer
+          format: int64
+        notDeterminableDocuments:
+          type: integer
+          format: int64
+          description: Documents a person marked as having no value to find.
+
+    LibraryMetadataMaintenanceResponse:
+      type: object
+      description: >-
+        The Pflege-Anker of one library (#1069), one entry per core field in schema order. Built at
+        query time in the rights context of the asking person and never precomputed or cached
+        (metadata-schema.md, Rechte-Invariante).
+      required: [libraryId, totalDocuments, fields]
+      properties:
+        libraryId:
+          type: string
+          format: uuid
+        totalDocuments:
+          type: integer
+          format: int64
+        fields:
+          type: array
+          items:
+            $ref: "#/components/schemas/MetadataFieldMaintenanceResponse"
+
+    LibraryMetadataExtractionSettingsRequest:
+      type: object
+      description: >-
+        The two switches of the model-backed extraction (#1073). Both are off by default; switching
+        one off leaves already stored values untouched.
+      required: [modelExtractionEnabled, keywordsEnabled]
+      properties:
+        modelExtractionEnabled:
+          type: boolean
+          description: >
+            Whether the chat role is asked for the unscharfe fields the deterministic extraction
+            left empty (Dokumentart and the library's own SELECT fields).
+        keywordsEnabled:
+          type: boolean
+          description: >
+            Whether the model assigns up to five freie Schlagworte per document. They reach the
+            full-text index and the Kontextpräfix and never filter.
+
+    LibraryMetadataExtractionSettingsResponse:
+      type: object
+      description: >-
+        The stored switches plus the chat role the extraction uses (#1073) - the facts a client
+        needs for the Datenschutzhinweis at the switch.
+      required: [libraryId, modelExtractionEnabled, keywordsEnabled, confidenceThreshold]
+      properties:
+        libraryId:
+          type: string
+          format: uuid
+        modelExtractionEnabled:
+          type: boolean
+        keywordsEnabled:
+          type: boolean
+        confidenceThreshold:
+          type: number
+          format: double
+          description: >
+            The confidence a model-proposed value must reach to be stored, fixed before the first
+            measurement (ADR-0012). Below it the field stays empty.
+          example: 0.8
+        chatModel:
+          $ref: "#/components/schemas/ActiveChatModelSummaryResponse"
+
+    ActiveChatModelSummaryResponse:
+      type: object
+      description: >-
+        Basis-Adresse and Modell-Kennung of the systemwide active chat role, never an access key
+        (#1073). Absent when no chat model is active at all.
+      required: [baseUrl, modelIdentifier, local]
+      properties:
+        baseUrl:
+          type: string
+          example: https://api.openai.com/v1
+        modelIdentifier:
+          type: string
+          example: gpt-4o-mini
+        local:
+          type: boolean
+          description: >
+            Whether the endpoint is a loopback or private address, i.e. whether the extraction runs
+            without an outgoing connection. Decides which of the two Datenschutzhinweise a client
+            shows.
+
+    MetadataModelExtractionStatsResponse:
+      type: object
+      description: >-
+        The Zählwerk of the model-backed extraction of one library (#1073, metadata-schema.md "Die
+        Zahl der Extraktionsaufrufe wird je Bibliothek geführt"). Without it, the only feedback about
+        the cost of this capability is the model provider's invoice.
+      required:
+        [
+          calls,
+          acceptedValues,
+          rejectedBelowThreshold,
+          rejectedOutsideVocabulary,
+          failures,
+          rejectedPoolFull,
+          keywordsAssigned,
+        ]
+      properties:
+        calls:
+          type: integer
+          format: int64
+          description: Model calls made for this library, successful or not.
+        acceptedValues:
+          type: integer
+          format: int64
+          description: Values stored - confidence at or above the threshold and inside the vocabulary.
+        rejectedBelowThreshold:
+          type: integer
+          format: int64
+        rejectedOutsideVocabulary:
+          type: integer
+          format: int64
+          description: >
+            Values discarded because the answer was not a code of the offered list - discarded
+            regardless of the confidence, never mapped onto the most similar value.
+        failures:
+          type: integer
+          format: int64
+          description: Calls that timed out, failed or answered unusably. The document is indexed regardless.
+        rejectedPoolFull:
+          type: integer
+          format: int64
+          description: >
+            Documents whose model call was skipped because every extraction thread was busy - no
+            call was made, the field stayed empty and the document was indexed regardless.
+        keywordsAssigned:
+          type: integer
+          format: int64
+        lastCallAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    MetadataFieldQualityResponse:
+      type: object
+      description: >-
+        The Extraktionsgüte of one field over one library (#1073): where the values of this field
+        came from, and how much of the bestand carries none.
+      required:
+        [
+          fieldKey,
+          label,
+          totalDocuments,
+          deterministicDocuments,
+          derivedDocuments,
+          manualDocuments,
+          notDeterminableDocuments,
+          emptyDocuments,
+          derivedShare,
+          emptyShare,
+        ]
+      properties:
+        fieldKey:
+          type: string
+          example: document_type
+        label:
+          type: string
+          example: Dokumentart
+        totalDocuments:
+          type: integer
+          format: int64
+        deterministicDocuments:
+          type: integer
+          format: int64
+        derivedDocuments:
+          type: integer
+          format: int64
+          description: Documents whose value came from the model.
+        manualDocuments:
+          type: integer
+          format: int64
+        notDeterminableDocuments:
+          type: integer
+          format: int64
+          description: Documents a person marked as having no value to find.
+        emptyDocuments:
+          type: integer
+          format: int64
+        derivedShare:
+          type: number
+          format: double
+        emptyShare:
+          type: number
+          format: double
+
+    LibraryMetadataQualityResponse:
+      type: object
+      description: >-
+        The extraction quality of one library, one entry per field in schema order, plus the
+        Zählwerk of the model-backed extraction (#1073). Built at query time in the rights context
+        of the asking person and never cached (metadata-schema.md, Rechte-Invariante).
+      required:
+        [
+          libraryId,
+          totalDocuments,
+          modelExtractionEnabled,
+          keywordsEnabled,
+          confidenceThreshold,
+          fields,
+          modelExtraction,
+        ]
+      properties:
+        libraryId:
+          type: string
+          format: uuid
+        totalDocuments:
+          type: integer
+          format: int64
+        modelExtractionEnabled:
+          type: boolean
+        keywordsEnabled:
+          type: boolean
+        confidenceThreshold:
+          type: number
+          format: double
+        fields:
+          type: array
+          items:
+            $ref: "#/components/schemas/MetadataFieldQualityResponse"
+        modelExtraction:
+          $ref: "#/components/schemas/MetadataModelExtractionStatsResponse"
+
+    MetadataSampleValueResponse:
+      type: object
+      description: One stored value of a sampled document, with its provenance (#1073).
+      required: [fieldKey, label, origin]
+      properties:
+        fieldKey:
+          type: string
+        label:
+          type: string
+        value:
+          type: string
+          nullable: true
+          description: The stored value as displayed; null for "kein Wert ermittelbar".
+        origin:
+          $ref: "#/components/schemas/MetadataOrigin"
+        confidence:
+          type: number
+          format: double
+          nullable: true
+          description: Only set for a model-derived value.
+        modelId:
+          type: string
+          nullable: true
+
+    MetadataSampleDocumentResponse:
+      type: object
+      description: One sampled document with every stored value (#1073).
+      required: [documentId, fileName, values]
+      properties:
+        documentId:
+          type: string
+          format: uuid
+        fileName:
+          type: string
+        title:
+          type: string
+          nullable: true
+          description: The document's Kernfeld Titel, the Titelzeile of the handauswertung.
+        values:
+          type: array
+          items:
+            $ref: "#/components/schemas/MetadataSampleValueResponse"
+
+    LibraryMetadataSampleResponse:
+      type: object
+      description: >-
+        The Stichproben-Export for the handausgewertete Auswertung of the QA role (#1073), ordered
+        by document id so a repeat run examines the same documents. Freie Schlagworte are not part
+        of it - they carry no claim the product stands behind.
+      required: [libraryId, size, documents]
+      properties:
+        libraryId:
+          type: string
+          format: uuid
+        size:
+          type: integer
+          description: The requested sample size; fewer documents are returned when the library holds fewer.
+        documents:
+          type: array
+          items:
+            $ref: "#/components/schemas/MetadataSampleDocumentResponse"
+
+    DocumentTypeVocabularyEntryResponse:
+      type: object
+      required: [code, label]
+      properties:
+        code:
+          type: string
+          example: DIENSTANWEISUNG
+        label:
+          type: string
+          example: Dienstanweisung
+
+    LibraryMetadataFieldType:
+      type: string
+      description: >-
+        The type of a library metadata field (docs/features/metadata-schema.md, Teil II (b)
+        "Kontrolliertes Vokabular statt Freitext"): SELECT - a choice from the field's own value
+        list; DATE - a year or date with the same precision semantics as the Kernfeld Datum/Stand;
+        PATTERN - an identifier checked against the regular expression the field definition
+        carries. There is deliberately no free-text type: free text is a keyword with the
+        appearance of structure.
+      enum: [SELECT, DATE, PATTERN]
+      example: SELECT
+
+    LibraryMetadataFieldValueResponse:
+      type: object
+      required: [code, label, retiring]
+      description: One entry of a SELECT field's controlled value list.
+      properties:
+        code:
+          type: string
+          description: >-
+            The stable code the documents carry. Never rewritten in place - replacing it is a
+            removal with a confirmed mapping.
+          example: FASSUNG_2026
+        label:
+          type: string
+          example: Fassung 2026
+        retiring:
+          type: boolean
+          description: >-
+            Whether a confirmed mapping is running for this entry (#1361). A retiring value can no
+            longer be set on a document, while every document that already carries it keeps a value
+            the schema still lists and every filter still finds - which is what keeps "Dokument
+            trägt einen Wert, den es im Schema nicht mehr gibt" unreachable during the run. The
+            entry disappears when the last document has been rewritten.
+        remapTargetCode:
+          type: string
+          nullable: true
+          description: >-
+            The value a running mapping rewrites onto; null while retiring means "leer".
+
+    LibraryMetadataFieldResponse:
+      type: object
+      required:
+        [
+          fieldKey,
+          documentFieldKey,
+          label,
+          type,
+          filter,
+          contextPrefix,
+          sortOrder,
+          values,
+          deletionPending,
+        ]
+      description: >-
+        One library metadata field with its Wirkstellen and its configured value list (#1071).
+      properties:
+        fieldKey:
+          type: string
+          description: The field's own key within its library, stable and lowercase.
+          example: fassung
+        documentFieldKey:
+          type: string
+          description: >-
+            The same field as a document value key - the namespaced form PUT
+            /api/v1/libraries/{libraryId}/documents/{documentId}/metadata/{fieldKey} and the
+            Pflege-Anker use. Two libraries may define the same fieldKey; those are two different
+            fields, which is why a filter condition names the library beside the key.
+          example: "lib:fassung"
+        label:
+          type: string
+          example: Fassung
+        type:
+          $ref: "#/components/schemas/LibraryMetadataFieldType"
+        valuePattern:
+          type: string
+          nullable: true
+          description: >-
+            The regular expression a PATTERN field's values must match entirely; null for the other
+            types.
+          example: "^§ ?[0-9]+[a-z]?$"
+        filter:
+          type: boolean
+          description: >-
+            Whether the field filters in both search paths. At least one of filter and
+            contextPrefix is true - the Aufnahmeregel of the specification.
+        contextPrefix:
+          type: boolean
+          description: >-
+            Whether the field's value belongs into the Kontextpräfix of every chunk, which goes
+            into embedding and full-text index alike (#1072). Switching it hands exactly the
+            documents that carry a value to the Nachlauf - see GET
+            /api/v1/libraries/{libraryId}/metadata-fields/change-impact.
+        citationPosition:
+          type: integer
+          nullable: true
+          description: >-
+            1 or 2 when the field appears in the Belegzeile, null otherwise. At most two fields of
+            a library carry a position - a Beleg stays a readable line.
+          example: 1
+        sortOrder:
+          type: integer
+          description: Display order within the library.
+        values:
+          type: array
+          description: The configured value list; empty for a DATE or PATTERN field.
+          items:
+            $ref: "#/components/schemas/LibraryMetadataFieldValueResponse"
+        deletionPending:
+          type: boolean
+          description: >-
+            Whether this field is being deleted (#1361): no value of it can be set any more, every
+            stored value stays valid and filterable until the run empties its document, and the
+            field disappears with its last one.
+
+    LibraryMetadataSchemaChangeResponse:
+      type: object
+      required:
+        [kind, fieldKey, processedDocuments, remainingDocuments, correlationRef]
+      description: >-
+        One running schema change of a library (#1361) - a retired list value being mapped, or a
+        retired field being emptied.
+      properties:
+        kind:
+          $ref: "#/components/schemas/LibraryMetadataSchemaChangeKind"
+        fieldKey:
+          type: string
+          example: fassung
+        valueCode:
+          type: string
+          nullable: true
+          description: The retired list value; null for a field deletion.
+          example: FASSUNG_2026
+        targetCode:
+          type: string
+          nullable: true
+          description: >-
+            The value the mapping rewrites onto; null means "leer" and is the only possibility for
+            a field deletion.
+        processedDocuments:
+          type: integer
+          format: int64
+          description: Documents this change has already rewritten - it never touches them again.
+        remainingDocuments:
+          type: integer
+          format: int64
+          description: Documents still carrying the retired value or field.
+        correlationRef:
+          type: string
+          description: >-
+            The correlationRef every audit event of this change carries, the whole run over, so it
+            reads back from the audit log as one operation even across many calls.
+
+    LibraryMetadataSchemaRunRequest:
+      type: object
+      description: One Charge of the pending schema changes of a library (#1361).
+      properties:
+        batchSize:
+          type: integer
+          minimum: 1
+          maximum: 1000
+          description: Documents to rewrite at most in this call; the default is 500.
+
+    LibraryMetadataSchemaRunResponse:
+      type: object
+      required:
+        [processedDocuments, skippedDocuments, remainingDocuments, complete, pendingChanges]
+      description: >-
+        What one Charge did and what is left (#1361) - verarbeitet, ausstehend, fehlgeschlagen, per
+        library.
+      properties:
+        processedDocuments:
+          type: integer
+          format: int64
+          description: Documents rewritten by this call.
+        skippedDocuments:
+          type: integer
+          format: int64
+          description: >-
+            Documents this call could not advance. Nothing about them changed; they keep their
+            value and stay pending for the next call.
+        remainingDocuments:
+          type: integer
+          format: int64
+          description: >-
+            Documents the pending changes of the whole library still have to rewrite, summed per
+            change - a document two changes have to touch counts twice, because it is two pieces of
+            work. Library-wide on purpose: it is what drives the next call, which works off every
+            pending change. Whether one particular operation is done is a different question - the
+            status code of the deletion answers it, and pendingChanges carries the per-change
+            figures.
+        complete:
+          type: boolean
+          description: >-
+            Whether the library has no pending schema change left - the signal to stop calling. A
+            deletion that finished within its own first Charge answers 204 even when this is false,
+            because another change of the same library is still running.
+        pendingChanges:
+          type: array
+          items:
+            $ref: "#/components/schemas/LibraryMetadataSchemaChangeResponse"
+
+    LibraryMetadataSchemaChangeKind:
+      type: string
+      description: >-
+        What a running schema change does: rewrite every document carrying one retired list value
+        (VALUE_REMAP) or empty every document carrying any value of a retired field
+        (FIELD_DELETION).
+      enum: [VALUE_REMAP, FIELD_DELETION]
+
+    LibraryMetadataFieldsResponse:
+      type: object
+      required:
+        [
+          items,
+          coreContextPrefix,
+          documentsAwaitingContextPrefixRerun,
+          pendingSchemaChanges,
+        ]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/LibraryMetadataFieldResponse"
+        coreContextPrefix:
+          $ref: "#/components/schemas/CoreContextPrefixResponse"
+        documentsAwaitingContextPrefixRerun:
+          type: integer
+          format: int64
+          description: >-
+            Indexed documents of this library whose chunks were embedded under an older
+            context-prefix configuration (#1072) - the "N Dokumente warten auf Neu-Einbetten" hint
+            in the library settings. Saving a schema change never starts the Nachlauf; it runs from
+            the administration page "Suche & Indexierung", started by a system administrator.
+        pendingSchemaChanges:
+          type: array
+          description: >-
+            The library's running value mappings and field deletions (#1361), empty in the normal
+            case. Continued with POST
+            /api/v1/libraries/{libraryId}/metadata-fields/schema-changes/run.
+          items:
+            $ref: "#/components/schemas/LibraryMetadataSchemaChangeResponse"
+
+    CoreContextPrefixRequest:
+      type: object
+      required: [documentType, documentDate]
+      description: >-
+        Which of the two switchable core fields belong into the Kontextpraefix of this library's
+        chunks. Titel is always prefix-effective and has no switch.
+      properties:
+        documentType:
+          type: boolean
+        documentDate:
+          type: boolean
+
+    CoreContextPrefixResponse:
+      type: object
+      required: [title, documentType, documentDate]
+      description: The Kontextpraefix-Wirkstelle of the three core fields (#1072).
+      properties:
+        title:
+          type: boolean
+          description: >-
+            Always true: the Titel replaces the file-name humanisation the prefix used before, and
+            a prefix without it would name nothing.
+        documentType:
+          type: boolean
+        documentDate:
+          type: boolean
+
+    MetadataChangeKind:
+      type: string
+      description: >-
+        The planned schema change whose Folgekosten are being asked for (#1072,
+        metadata-schema.md, Kostentabelle): FIELD_ADDED - a new field is defined, which no document
+        carries a value for yet; CONTEXT_PREFIX_ENABLED / CONTEXT_PREFIX_DISABLED - the
+        Kontextpraefix-Wirkstelle of the field is switched on or off; FIELD_REMOVED - the field is
+        deleted with everything hanging on it; VALUE_REMOVED - a value of the list is removed with
+        a confirmed mapping; VALUE_ADDED - the list is extended, which has no effect on stored
+        values and costs nothing.
+      enum:
+        [
+          FIELD_ADDED,
+          CONTEXT_PREFIX_ENABLED,
+          CONTEXT_PREFIX_DISABLED,
+          FIELD_REMOVED,
+          VALUE_REMOVED,
+          VALUE_ADDED,
+        ]
+      example: CONTEXT_PREFIX_ENABLED
+
+    EmbeddingRateSource:
+      type: string
+      description: >-
+        Where the runtime estimate's rate comes from: MEASURED - the mean duration per chunk of the
+        embedding calls this process has actually made; CONFIGURED - the configured
+        opaa.indexing.embedding-rate-estimate, used until enough calls have been measured.
+      enum: [MEASURED, CONFIGURED]
+
+    MetadataChangeImpactResponse:
+      type: object
+      required:
+        [
+          affectedDocuments,
+          affectedChunks,
+          embeddingCalls,
+          estimatedSeconds,
+          reembeddingRequired,
+          rateSource,
+        ]
+      description: >-
+        The Folgekosten of one planned schema change (#1072). Concrete numbers a decision can be
+        made on ("4.812 Chunks neu einzubetten, rund 40 Minuten"), never a general warning.
+      properties:
+        affectedDocuments:
+          type: integer
+          format: int64
+          description: Documents whose stored values the change touches.
+        affectedChunks:
+          type: integer
+          format: int64
+          description: >-
+            Chunks of those documents. 0 when the change is not prefix-effective, because then no
+            chunk changes.
+        embeddingCalls:
+          type: integer
+          format: int64
+          description: >-
+            Embedding calls the Nachlauf will make - one per chunk, so equal to affectedChunks for
+            a prefix-effective change and 0 otherwise.
+        estimatedSeconds:
+          type: integer
+          format: int64
+          description: Expected runtime of the Nachlauf, from embeddingCalls and the rate below.
+        reembeddingRequired:
+          type: boolean
+          description: >-
+            Whether the change makes re-embedding necessary at all. False for a pure filter or
+            Beleg field and for extending a value list - the two rows of the Kostentabelle that
+            cost nothing.
+        rateSource:
+          $ref: "#/components/schemas/EmbeddingRateSource"
+
+    LibraryMetadataFieldValueRequest:
+      type: object
+      required: [code, label]
+      properties:
+        code:
+          type: string
+          minLength: 1
+          maxLength: 50
+          pattern: "^[A-Za-z0-9][A-Za-z0-9_.-]*$"
+        label:
+          type: string
+          minLength: 1
+          maxLength: 100
+
+    LibraryMetadataFieldValueLabelRequest:
+      type: object
+      required: [label]
+      properties:
+        label:
+          type: string
+          minLength: 1
+          maxLength: 100
+
+    CreateLibraryMetadataFieldRequest:
+      type: object
+      required: [fieldKey, label, type]
+      description: >-
+        A new library field. filter and contextPrefix are the two retrieval effects, at least one
+        of which must be true; citationPosition is the optional Beleg-Anzeige and never a field's
+        only effect.
+      properties:
+        fieldKey:
+          type: string
+          minLength: 1
+          maxLength: 50
+          pattern: "^[a-z][a-z0-9_]*$"
+          example: fassung
+        label:
+          type: string
+          minLength: 1
+          maxLength: 100
+          example: Fassung
+        type:
+          $ref: "#/components/schemas/LibraryMetadataFieldType"
+        valuePattern:
+          type: string
+          nullable: true
+          maxLength: 200
+          description: Required for type PATTERN, rejected for the other types.
+        filter:
+          type: boolean
+          default: false
+        contextPrefix:
+          type: boolean
+          default: false
+        citationPosition:
+          type: integer
+          nullable: true
+          minimum: 1
+          maximum: 2
+        values:
+          type: array
+          description: >-
+            The initial value list; required and non-empty for type SELECT, rejected for the other
+            types.
+          items:
+            $ref: "#/components/schemas/LibraryMetadataFieldValueRequest"
+
+    UpdateLibraryMetadataFieldRequest:
+      type: object
+      required: [label]
+      properties:
+        label:
+          type: string
+          minLength: 1
+          maxLength: 100
+        filter:
+          type: boolean
+          default: false
+        contextPrefix:
+          type: boolean
+          default: false
+        citationPosition:
+          type: integer
+          nullable: true
+          minimum: 1
+          maximum: 2
+
+    MetadataFieldUsageResponse:
+      type: object
+      required: [documentCount]
+      description: >-
+        How many documents an about-to-be-confirmed change affects - the Folgekosten a dialog shows
+        before the confirmation (#1071).
+      properties:
+        documentCount:
+          type: integer
+          format: int64
+
+    RemapLibraryMetadataFieldValueRequest:
+      type: object
+      description: >-
+        The confirmed mapping of a value that is being removed. targetCode names another value of
+        the same list; null maps every affected document onto "leer" - the honest way out when no
+        successor value exists.
+      properties:
+        targetCode:
+          type: string
+          nullable: true
+          example: FASSUNG_2027
+
+    RemapLibraryMetadataFieldValueResponse:
+      type: object
+      required:
+        [remappedDocuments, clearedDocuments, correlationRef, remainingDocuments, complete]
+      properties:
+        remappedDocuments:
+          type: integer
+          format: int64
+          description: Documents rewritten onto targetCode by this call.
+        clearedDocuments:
+          type: integer
+          format: int64
+          description: >-
+            Documents whose value this call removed because the mapping was "leer".
+        remainingDocuments:
+          type: integer
+          format: int64
+          description: >-
+            Documents still carrying the retired value after this call - zero exactly when the
+            mapping finished and the list entry is gone.
+        complete:
+          type: boolean
+          description: >-
+            Whether the list entry was removed by this call. False means the run continues over
+            POST /api/v1/libraries/{libraryId}/metadata-fields/schema-changes/run.
+        correlationRef:
+          type: string
+          description: >-
+            The correlationRef every audit event of this mapping carries, so the whole operation
+            reads back from the audit log as one.
+
+    DocumentTypeVocabularyResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/DocumentTypeVocabularyEntryResponse"

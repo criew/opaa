@@ -1,0 +1,245 @@
+# Topic "capabilities": its tags, paths and the components only this topic uses.
+# Merged with all other fragments at build time, see root.yaml.
+tags:
+  - name: capability
+    description: Capabilities and their grants.
+paths:
+  /api/v1/me/capabilities:
+    get:
+      operationId: listMyCapabilities
+      tags: [capability]
+      summary: >
+        The installation-wide capabilities ("Anlegerechte") the caller holds - what the interface
+        needs to explain a missing right before the attempt instead of hiding the button
+        (ADR-0036, Entscheidung 5). A SYSTEM_ADMIN holds every one of them implicitly. Evaluated
+        per request from the database, so a withdrawal takes effect without a new sign-in.
+      responses:
+        "200":
+          description: The caller's capabilities
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MyCapabilitiesResponse"
+
+  /api/v1/admin/capabilities:
+    get:
+      operationId: listCapabilities
+      tags: [capability]
+      summary: >
+        Every capability with the subjects that currently hold it (system admin only) - one line
+        per capability including the ones nobody holds, so the delivered state is visible and can
+        be confirmed or changed rather than discovered later (ADR-0036, Entscheidung 5).
+      responses:
+        "200":
+          description: One entry per capability
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CapabilityOverviewResponse"
+        "403":
+          description: >
+            Managing capabilities is reserved to SYSTEM_ADMIN. Holding a capability is not the
+            same as being allowed to hand it out.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/admin/capabilities/{capability}/grants:
+    parameters:
+      - name: capability
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Capability"
+
+    post:
+      operationId: grantCapability
+      tags: [capability]
+      summary: >
+        Grant a capability to an account, a group or to all accounts (system admin only). A
+        governance event: withdrawing a capability from all accounts changes the working
+        conditions of every employee, so grant and revocation both appear in the audit trail and
+        carry an interval in the rights history.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CapabilityGrantRequest"
+      responses:
+        "201":
+          description: Capability granted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CapabilityGrantResponse"
+        "400":
+          description: >
+            subjectId is missing for a USER or GROUP subject, or given for an ALL_ACCOUNTS one,
+            which names no subject; or the group is no effective one - dissolved, or belonging to a
+            switched-off identity provider. Such a group keeps the rights it has and receives no
+            new one.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Managing capabilities is reserved to SYSTEM_ADMIN.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: No such account or group in the caller's organization.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: This subject already holds this capability.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/admin/capabilities/{capability}/grants/{grantId}:
+    parameters:
+      - name: capability
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/Capability"
+      - name: grantId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    delete:
+      operationId: revokeCapability
+      tags: [capability]
+      summary: >
+        Withdraw one capability grant (system admin only). Takes effect without a new sign-in: the
+        capability is evaluated per request. The withdrawal closes the interval in the rights
+        history and is recorded as a governance event.
+      responses:
+        "204":
+          description: Grant withdrawn
+        "403":
+          description: Managing capabilities is reserved to SYSTEM_ADMIN.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: No such grant for this capability in the caller's organization.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+components:
+  schemas:
+    Capability:
+      type: string
+      description: >
+        An installation-wide right to create something ("Anlegerecht"), granted to accounts,
+        groups or to all accounts at once. A capability opens a creation path and never an
+        existing content. CREATE_CONNECTOR_LIBRARY is separate from CREATE_LIBRARY because a
+        connector library reaches server paths and stored credentials.
+      enum:
+        [
+          CREATE_SPACE,
+          CREATE_LIBRARY,
+          CREATE_CONNECTOR_LIBRARY,
+          CREATE_INTERNAL_GROUP,
+          CREATE_PROMPT_LIBRARY,
+        ]
+      example: CREATE_SPACE
+
+    CapabilitySubjectType:
+      type: string
+      description: >
+        Who a capability grant refers to. ALL_ACCOUNTS names every account of the organization
+        without naming one and is the delivered state of the four creation capabilities; it is
+        deliberately not modelled as a synthetic group.
+      enum: [USER, GROUP, ALL_ACCOUNTS]
+      example: ALL_ACCOUNTS
+
+    MyCapabilitiesResponse:
+      type: object
+      required: [capabilities]
+      properties:
+        capabilities:
+          type: array
+          items:
+            $ref: "#/components/schemas/Capability"
+
+    CapabilityGrantRequest:
+      type: object
+      required: [subjectType]
+      properties:
+        subjectType:
+          $ref: "#/components/schemas/CapabilitySubjectType"
+        subjectId:
+          type: string
+          format: uuid
+          description: >
+            The account or group the capability is granted to. Required for USER and GROUP,
+            rejected for ALL_ACCOUNTS, which names no subject.
+
+    CapabilityGrantResponse:
+      type: object
+      required: [id, capability, subjectType, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        capability:
+          $ref: "#/components/schemas/Capability"
+        subjectType:
+          $ref: "#/components/schemas/CapabilitySubjectType"
+        subjectId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Absent for ALL_ACCOUNTS.
+        subjectName:
+          type: string
+          nullable: true
+          description: >
+            The display name of the account or group, for the overview. Absent for ALL_ACCOUNTS
+            and for a subject whose row is no longer resolvable.
+        grantedByUserId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Absent for the delivered grants, which nobody decided.
+        createdAt:
+          type: string
+          format: date-time
+
+    CapabilityOverviewResponse:
+      type: object
+      required: [capability, label, statement, grants]
+      properties:
+        capability:
+          $ref: "#/components/schemas/Capability"
+        label:
+          type: string
+          description: The German name of the capability, as interface and manual use it.
+          example: Konnektorbibliotheken anlegen
+        statement:
+          type: string
+          description: >
+            The plain-text line of who currently holds this capability - one display line, not a
+            wizard ("Alle Konten dürfen Konnektorbibliotheken anlegen").
+          example: Alle Konten dürfen Konnektorbibliotheken anlegen.
+        grants:
+          type: array
+          items:
+            $ref: "#/components/schemas/CapabilityGrantResponse"

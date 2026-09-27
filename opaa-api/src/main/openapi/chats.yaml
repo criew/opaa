@@ -1,0 +1,785 @@
+# Topic "chats": its tags, paths and the components only this topic uses.
+# Merged with all other fragments at build time, see root.yaml.
+tags:
+  - name: chat
+    description: Chats within a space.
+paths:
+  /api/v1/spaces/{spaceId}/chats:
+    parameters:
+      - name: spaceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: listSpaceChats
+      tags: [chat]
+      summary: List the current user's own active chats in this space (#525 - a chat is visible only to its author)
+      description: >
+        Only the chats the caller has not archived (docs/features/chat-list.md, "Archivieren");
+        the archived ones come page by page from GET /api/v1/spaces/{spaceId}/chats/archived.
+      responses:
+        "200":
+          description: List of the caller's active chats in this space
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChatSummary"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    post:
+      operationId: createChat
+      tags: [chat]
+      summary: >
+        Create a new chat in this space (requires space membership). Rejected with 409 if the
+        space is archived (#543) - an archived space accepts no new content.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatCreateRequest"
+      responses:
+        "201":
+          description: Chat created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatDetail"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/spaces/{spaceId}/chats/search:
+    parameters:
+      - name: spaceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      operationId: searchSpaceChats
+      tags: [chat]
+      summary: >
+        Full-text search over the titles, questions and answers of the caller's own chats in this
+        space, archived chats included (docs/features/chat-list.md, "Chatsuche").
+      description: >
+        The search term travels in the request body, never in the URL, so it reaches no access log
+        of a reverse proxy; it is not written to the audit trail, the application log or a metric
+        either. Only chats the caller may see are searched - today exactly the caller's own; there
+        is no parameter and no role that widens this, not even for a space or system admin. One hit
+        per chat, best first; pages are reported with hasMore only, never with a total. Reachable
+        in a signed-in session only - not with a personal access token and not through the MCP
+        server. Space membership is required exactly as for listing the space's chats.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatSearchRequest"
+      responses:
+        "200":
+          description: One page of hits, best first
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatSearchResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/chats/{chatId}:
+    parameters:
+      - name: chatId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: getChat
+      tags: [chat]
+      summary: Get a chat with its messages - only the author may retrieve it, not even a space or system admin (#525)
+      responses:
+        "200":
+          description: Chat with messages
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatDetail"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    patch:
+      operationId: updateChat
+      tags: [chat]
+      summary: >
+        Update a chat's title, useKnowledge switch or sticky library references - author only.
+        Rejected with 409 if the chat's space is archived (#543) - an archived space accepts no
+        changes to existing chats either.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatUpdateRequest"
+      responses:
+        "200":
+          description: Chat updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatDetail"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+    delete:
+      operationId: deleteChat
+      tags: [chat]
+      summary: Delete a chat - author only
+      responses:
+        "204":
+          description: Chat deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/chats/{chatId}/pin:
+    parameters:
+      - name: chatId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    put:
+      operationId: pinChat
+      tags: [chat]
+      summary: Pin a chat for the calling person (docs/features/chat-list.md, "Anheften")
+      description: >
+        A personal mark of the caller, not a change to the chat: updatedAt and every other field
+        of the chat stay as they are, and pinning is allowed in an archived space too. Idempotent -
+        pinning an already pinned chat keeps its original pinnedAt. Pinning an archived chat brings
+        it back from the caller's chat archive - a chat is never pinned and archived at once. A
+        chat the caller cannot see answers 404, exactly like one that does not exist.
+      responses:
+        "200":
+          description: The chat as the caller lists it, with pinnedAt set
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatSummary"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      operationId: unpinChat
+      tags: [chat]
+      summary: Unpin a chat for the calling person
+      description: >
+        Idempotent; like pinning, it leaves the chat itself untouched and is allowed in an
+        archived space. A chat the caller cannot see answers 404.
+      responses:
+        "204":
+          description: Chat unpinned (or was not pinned)
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # Chat-Archiv (docs/features/chat-list.md, "Archivieren"): a personal filing of the calling
+  # person - not an archived space.
+  /api/v1/chats/{chatId}/archive:
+    parameters:
+      - name: chatId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    put:
+      operationId: archiveChat
+      tags: [chat]
+      summary: Move a chat into the calling person's chat archive
+      description: >
+        A personal mark of the caller, not a change to the chat: updatedAt, title and status stay
+        as they are, and archiving is allowed in an archived space too. Archiving unpins the chat.
+        Idempotent - archiving an archived chat keeps its original archivedAt. A chat the caller
+        cannot see answers 404, exactly like one that does not exist.
+      responses:
+        "200":
+          description: The chat as the caller lists it, with archivedAt set and pinnedAt cleared
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatSummary"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      operationId: unarchiveChat
+      tags: [chat]
+      summary: Bring a chat back from the calling person's chat archive
+      description: >
+        Idempotent and, like archiving, leaves the chat itself untouched; the chat comes back
+        unpinned. A chat the caller cannot see answers 404.
+      responses:
+        "200":
+          description: The chat as the caller lists it, with archivedAt cleared
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatSummary"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/spaces/{spaceId}/chats/archived:
+    parameters:
+      - name: spaceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: listArchivedSpaceChats
+      tags: [chat]
+      summary: The caller's archived chats in this space, most recently archived first
+      description: >
+        Only the caller's own chats they archived themselves; totalElements counts exactly these.
+        Requires space membership, like listSpaceChats.
+      parameters:
+        - name: page
+          in: query
+          required: false
+          description: Rejected with 400 if negative.
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: size
+          in: query
+          required: false
+          description: Rejected with 400 outside 1..100.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+      responses:
+        "200":
+          description: One page of archived chats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatSummaryPage"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/spaces/{spaceId}/chats/bulk-actions:
+    parameters:
+      - name: spaceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      operationId: applyChatBulkAction
+      tags: [chat]
+      summary: Archive, bring back or delete several of the caller's chats of this space at once
+      description: >
+        Acts only on the caller's own chats of this space among chatIds. Every other id - one that
+        does not exist, belongs to another person or lies in another space - is skipped without
+        distinction and without an error, so the response never tells whether it exists. Archiving
+        and bringing back follow the rules of the single-chat endpoints (allowed in an archived
+        space, chat itself untouched); DELETE removes the chats like deleteChat. Requires space
+        membership.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatBulkActionRequest"
+      responses:
+        "200":
+          description: The chats the action was applied to
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatBulkActionResult"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/chats/{chatId}/note-items/{itemId}:
+    parameters:
+      - name: chatId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: itemId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    delete:
+      operationId: deleteChatNoteItem
+      tags: [chat]
+      summary: >
+        Remove one point of a chat's Gesprächsnotiz (#1487) - author only, and rejected with 409
+        while the chat's space is archived, like every other change to an existing chat (#543).
+      description: >
+        Immediate and without a confirmation step: the point stops reaching the prompts with the
+        next question. It is deliberately not blocked for the future - if the person states the
+        same thing again, the condensation may create it again (docs/features/conversation-memory.md,
+        "Zustand und Bedienung"). A point that does not belong to this chat, or a chat the caller
+        does not author, both answer 404.
+      responses:
+        "204":
+          description: Note point removed
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+components:
+  schemas:
+    ChatStatus:
+      type: string
+      description: >
+        Single-value for now (#525) - the SHARED/WITHDRAWN axis from the specification's sharing
+        model belongs to #205 and is deliberately not built here; the column exists so it can be
+        added without a further migration.
+      enum: [PRIVATE]
+      example: PRIVATE
+
+    ChatRole:
+      type: string
+      enum: [USER, ASSISTANT]
+      example: USER
+
+    ChatNoteItemKind:
+      type: string
+      description: >
+        What a Gesprächsnotiz point says about the asking person, and therefore which prompt it
+        reaches (docs/features/conversation-memory.md, "Bauteil 2"): RAHMEN (role, responsibility,
+        place, period, version, organization, decision) reaches the sub-question decomposition and
+        the answer, ANTWORTFORM (wishes about presentation) only the answer. Delivered so a client
+        can reason about it; the Oberfläche deliberately does not show it, and it is not
+        configurable.
+      enum: [RAHMEN, ANTWORTFORM]
+      example: RAHMEN
+
+    ChatNoteItem:
+      type: object
+      description: >
+        One point of a chat's Gesprächsnotiz - a single sentence of at most 200 characters,
+        condensed from a user message of this chat, in the order it was appended (oldest first).
+      required: [id, text, kind, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        text:
+          type: string
+          maxLength: 200
+          example: Arbeitet im Bürgerbüro Nebenstelle 3
+        kind:
+          $ref: "#/components/schemas/ChatNoteItemKind"
+        createdAt:
+          type: string
+          format: date-time
+
+    ChatSummary:
+      type: object
+      description: A chat as listed in its space - without its messages, see ChatDetail for those.
+      required: [id, spaceId, authorId, useKnowledge, status, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        spaceId:
+          type: string
+          format: uuid
+        authorId:
+          type: string
+          format: uuid
+        title:
+          type: string
+          nullable: true
+          description: Falls back to a title derived from the first question if never set explicitly.
+          example: Rückstellung für Altlastensanierung
+        useKnowledge:
+          type: boolean
+          default: true
+        referencedLibraryIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: >
+            Sticky @-references (epic #523). Used as the search scope when useKnowledge is false;
+            ignored when it is true.
+        metadataFilter:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/MetadataFilter"
+          description: >
+            The chat's sticky core-field filter (#1070) - the Kontext der Unterhaltung every
+            question of this chat is searched with, next to its search scope. Null: no filter.
+        status:
+          $ref: "#/components/schemas/ChatStatus"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        pinnedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: >
+            When the requesting person pinned this chat; null if they have not. A personal mark,
+            never another person's.
+        archivedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: >
+            When the requesting person moved this chat into their chat archive; null if it is not
+            archived for them. A personal mark, never another person's - unrelated to an archived
+            space.
+
+    ChatSummaryPage:
+      type: object
+      required: [items, page, size, totalElements]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChatSummary"
+        page:
+          type: integer
+          description: Zero-based index of the returned page.
+        size:
+          type: integer
+          description: The requested page size (not necessarily items.length for the last page).
+        totalElements:
+          type: integer
+          format: int64
+          description: Total number of matching chats across all pages.
+
+    ChatBulkAction:
+      type: string
+      enum: [ARCHIVE, UNARCHIVE, DELETE]
+
+    ChatBulkActionRequest:
+      type: object
+      required: [action, chatIds]
+      properties:
+        action:
+          $ref: "#/components/schemas/ChatBulkAction"
+        chatIds:
+          type: array
+          minItems: 1
+          maxItems: 200
+          items:
+            type: string
+            format: uuid
+
+    ChatBulkActionResult:
+      type: object
+      required: [chatIds]
+      properties:
+        chatIds:
+          type: array
+          description: >
+            The caller's own chats of this space among the requested ids - the ones the action was
+            applied to. Every other requested id is absent, whether it exists or not.
+          items:
+            type: string
+            format: uuid
+
+    ChatDetail:
+      type: object
+      description: A chat with its full message history, in chronological order.
+      required: [id, spaceId, authorId, useKnowledge, status, messages, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        spaceId:
+          type: string
+          format: uuid
+        authorId:
+          type: string
+          format: uuid
+        title:
+          type: string
+          nullable: true
+          example: Rückstellung für Altlastensanierung
+        useKnowledge:
+          type: boolean
+          default: true
+        referencedLibraryIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        metadataFilter:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/MetadataFilter"
+          description: The chat's sticky core-field filter (#1070), null without one.
+        status:
+          $ref: "#/components/schemas/ChatStatus"
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChatMessageResponse"
+        noteItems:
+          type: array
+          description: >
+            The chat's Gesprächsnotiz (#1487), oldest point first - always present, empty while
+            nothing has been condensed yet. Optional in the schema rather than required so a client
+            written before the note existed still type-checks; the server always sends it. Only the
+            author may remove a point, via DELETE /api/v1/chats/{chatId}/note-items/{itemId}.
+          items:
+            $ref: "#/components/schemas/ChatNoteItem"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        archivedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: >
+            When the requesting person moved this chat into their chat archive; null if it is not
+            archived for them. Lets a chat opened by link show that it is archived.
+
+    ChatSearchRequest:
+      type: object
+      description: >
+        The chat search term and the page wanted. Length limits are checked server-side with a
+        German message - at least 3 and at most 200 characters after trimming.
+      required: [query]
+      properties:
+        query:
+          type: string
+          description: >
+            The search term. German full-text semantics: stemmed words, all of which must occur in
+            the same message or in the title; the last word also matches as a prefix, so a term
+            typed halfway already finds something.
+          example: Widerspruch Frist
+        page:
+          type: integer
+          nullable: true
+          description: Zero-based page number. Absent means the first page; negative is rejected.
+          example: 0
+        pageSize:
+          type: integer
+          nullable: true
+          description: >
+            Hits per page. Absent means 20; a value above 50 is reduced to 50, a value below 1 is
+            rejected.
+          example: 20
+
+    ChatSearchResponse:
+      type: object
+      required: [hits, hasMore]
+      properties:
+        hits:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChatSearchHit"
+          description: At most one hit per chat, by relevance, ties by the time of the hit.
+        hasMore:
+          type: boolean
+          description: >
+            Whether a further page exists. Deliberately no total - it would be a count over the
+            caller's chats that serves no one.
+
+    ChatSearchHit:
+      type: object
+      description: >
+        The best spot of one chat. A hit in a message names that message; a chat that matches only
+        by its title has no messageId, role or messageCreatedAt, and its excerpt is the title.
+      required: [chatId, excerpt, highlights]
+      properties:
+        chatId:
+          type: string
+          format: uuid
+        title:
+          type: string
+          nullable: true
+        archivedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: >
+            When the caller archived this chat; null for an active chat. The search includes
+            archived chats.
+        messageId:
+          type: string
+          format: uuid
+          nullable: true
+        role:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/ChatRole"
+          description: USER for a question, ASSISTANT for an answer.
+        messageCreatedAt:
+          type: string
+          format: date-time
+          nullable: true
+        excerpt:
+          type: string
+          description: >
+            Plain text around the best spot - never HTML; markup in the message is returned as
+            literal characters and must be rendered as text.
+        highlights:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChatSearchHighlight"
+          description: The matched words within excerpt, in ascending order, non-overlapping.
+
+    ChatSearchHighlight:
+      type: object
+      description: >
+        One highlighted range of an excerpt, as UTF-16 code unit offsets (JavaScript string
+        indices): start inclusive, end exclusive.
+      required: [start, end]
+      properties:
+        start:
+          type: integer
+          minimum: 0
+        end:
+          type: integer
+          minimum: 0
+
+    ChatMessageResponse:
+      type: object
+      required: [id, chatId, role, content, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        chatId:
+          type: string
+          format: uuid
+        role:
+          $ref: "#/components/schemas/ChatRole"
+        content:
+          type: string
+        sources:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/SourceReference"
+          description: Present on ASSISTANT messages that used document context; absent otherwise.
+        usedPromptId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >
+            On a USER message: the prompt the question was built from, null otherwise. A
+            snapshot - the prompt may since have been changed, deleted or become unreadable.
+        usedPromptTitle:
+          type: string
+          nullable: true
+          description: >
+            The prompt's title as it stood when the question was sent - shown as "Prompt: <title>",
+            never resolved again.
+        createdAt:
+          type: string
+          format: date-time
+
+    ChatCreateRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 255
+          nullable: true
+        useKnowledge:
+          type: boolean
+          default: true
+        referencedLibraryIds:
+          type: array
+          nullable: true
+          items:
+            type: string
+            format: uuid
+        metadataFilter:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/MetadataFilter"
+          description: The chat's initial core-field filter (#1070); absent or empty means none.
+
+    ChatUpdateRequest:
+      type: object
+      description: >
+        Every field is optional and only overwrites the chat when present - omitting a field
+        leaves it unchanged, matching PATCH semantics rather than PUT's full replacement.
+      properties:
+        title:
+          type: string
+          maxLength: 255
+          nullable: true
+        useKnowledge:
+          type: boolean
+          nullable: true
+        referencedLibraryIds:
+          type: array
+          nullable: true
+          items:
+            type: string
+            format: uuid
+        metadataFilter:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/MetadataFilter"
+          description: >
+            Replaces the chat's core-field filter (#1070). Omitted or null leaves it unchanged; an
+            object without any condition clears it.

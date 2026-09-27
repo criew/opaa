@@ -23,10 +23,35 @@ repositories {
 // (currently only :backend) get them transitively through this module's main sourceSet, so a
 // spec-only change now only invalidates this module's compileJava/openApiGenerate, not the whole
 // backend (issue #826 T2 / #896's whole point).
+// The spec is kept as one fragment per topic under src/main/openapi (issue #2002) and merged into
+// build/openapi-bundle/openapi/opaa-api.yaml. The generator and the tests (classpath resource
+// /openapi/opaa-api.yaml) read only that bundle; the frontend merges the same fragments with
+// frontend/scripts/bundle-openapi.mjs by the same rules.
+val bundler by sourceSets.creating
+
+val openApiFragmentDir = layout.projectDirectory.dir("src/main/openapi")
+val openApiBundleDir = layout.buildDirectory.dir("openapi-bundle")
+val openApiBundleFile = layout.buildDirectory.file("openapi-bundle/openapi/opaa-api.yaml")
+
+val bundleOpenApi = tasks.register<JavaExec>("bundleOpenApi") {
+    description = "Merges the OpenAPI fragments into the single spec all consumers read."
+    group = "build"
+    classpath = bundler.runtimeClasspath
+    mainClass.set("io.opaa.api.bundler.OpenApiBundler")
+    inputs.dir(openApiFragmentDir).withPathSensitivity(PathSensitivity.RELATIVE)
+    outputs.file(openApiBundleFile)
+    args(openApiFragmentDir.asFile.absolutePath, openApiBundleFile.get().asFile.absolutePath)
+}
+
 sourceSets {
     main {
         java.srcDir(layout.buildDirectory.dir("generated/openapi/src/main/java"))
+        resources.srcDir(openApiBundleDir)
     }
+}
+
+tasks.named("processResources") {
+    dependsOn(bundleOpenApi)
 }
 
 dependencies {
@@ -44,7 +69,10 @@ dependencies {
     // Deliberately Spring-free (issue #896 leitplanke): plain JUnit Jupiter/AssertJ plus
     // SnakeYAML for the parity tests' direct spec parsing, not the Spring Boot-managed
     // test-deps bundle backend/build.gradle.kts uses.
+    "bundlerImplementation"(libs.snakeyaml)
+
     testImplementation(libs.bundles.opaa.api.test.deps)
+    testImplementation(bundler.output)
     testRuntimeOnly(libs.junit.jupiter.engine)
     testRuntimeOnly(libs.opaa.api.junit.platform.launcher)
 }
@@ -149,7 +177,8 @@ tasks.withType<Test> {
 
 tasks.named<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>("openApiGenerate") {
     generatorName.set("spring")
-    inputSpec.set(layout.projectDirectory.file("src/main/resources/openapi/opaa-api.yaml").asFile.absolutePath)
+    dependsOn(bundleOpenApi)
+    inputSpec.set(openApiBundleFile.get().asFile.absolutePath)
     outputDir.set(layout.buildDirectory.dir("generated/openapi").get().asFile.absolutePath)
     modelPackage.set("io.opaa.api.dto")
 

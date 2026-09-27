@@ -1,0 +1,628 @@
+# Topic "diagnostic-access": its tags, paths and the components only this topic uses.
+# Merged with all other fragments at build time, see root.yaml.
+tags:
+  - name: diagnostic-access
+    description: Diagnostic context, impersonation grants and their retention.
+paths:
+  /api/v1/admin/diagnostic-impersonation-grants:
+    get:
+      operationId: listDiagnosticImpersonationGrants
+      tags: [diagnostic-access]
+      summary: >
+        Lists the granted "Sicht als" befugnisse of the caller's organization (system admin only).
+        Granting the befugnis and holding it are separate acts - a system admin sees this list but
+        derives no befugnis of their own from it.
+      responses:
+        "200":
+          description: Granted befugnisse, newest first
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiagnosticImpersonationGrantListResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      operationId: grantDiagnosticImpersonation
+      tags: [diagnostic-access]
+      summary: >
+        Grants the "Sicht als" befugnis (system admin only). Scope and validity window are
+        mandatory and the window may not exceed twelve months - an unbounded, scopeless permanent
+        right is not representable, at the database level as well.
+      description: >
+        The scope is any group of an identity provider - ORG_UNIT or IDENTITY_PROVIDER (ADR-0036,
+        Entscheidung 3, #1879): a house that stays in token mode never gets an ORG_UNIT group, and
+        the befugnis would be ungrantable there for good. Refused with 400 are an internal group of
+        this house, a group that is no longer effective (dissolved, provider switched off, or a
+        token group whose provider has since switched to the directory run - its membership is
+        frozen and no picture of the present), and a group below the configured
+        Mindestgruppengröße counted in active accounts: in a unit of that size a group context
+        discloses an individual without the Schutzmechanik of the person context. The refusal names
+        no figure - below that threshold the house withholds it ("kleine Gruppe" instead of a
+        number, ADR-0036 Entscheidung 9).
+
+        Those conditions are conditions of the use, not only of the granting: they are checked
+        again on every use, and the befugnis then answers 403 without being revoked. See POST
+        /api/v1/admin/search/diagnosis.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DiagnosticImpersonationGrantRequest"
+      responses:
+        "201":
+          description: Befugnis granted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiagnosticImpersonationGrantResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/admin/diagnostic-impersonation-grants/{grantId}:
+    parameters:
+      - name: grantId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    delete:
+      operationId: revokeDiagnosticImpersonation
+      tags: [diagnostic-access]
+      summary: Revokes a "Sicht als" befugnis before its own expiry (system admin only).
+      responses:
+        "200":
+          description: Befugnis revoked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiagnosticImpersonationGrantResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/admin/diagnostic-context/retention:
+    get:
+      operationId: getDiagnosticContextRetention
+      tags: [diagnostic-access]
+      summary: >
+        Reads the retention period of the diagnostic context protocol (system admin only). Twelve
+        months by default, configurable between 1 and 24; there is no field to switch the deletion
+        off, here or anywhere else.
+      responses:
+        "200":
+          description: Current retention configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiagnosticContextRetentionResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    put:
+      operationId: updateDiagnosticContextRetention
+      tags: [diagnostic-access]
+      summary: Changes the retention period of the diagnostic context protocol (system admin only).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DiagnosticContextRetentionRequest"
+      responses:
+        "200":
+          description: Retention configuration updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiagnosticContextRetentionResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/diagnostics/client-address:
+    get:
+      operationId: getClientAddressDiagnostics
+      tags: [diagnostic-access]
+      summary: >
+        Shows the client address of this very request as the rate limiter and the network
+        restriction of local system administrators resolve it (system admin only, ADR-0033
+        Entscheidung 9): the address of the connection, the X-Forwarded-For header as received,
+        whether the connection came from a trusted proxy (OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS) so
+        the header counted, and the resulting client address - the check that the trusted-proxy
+        list is right, without a shell.
+      responses:
+        "200":
+          description: The addresses of this request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClientAddressDiagnosticsResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/libraries/{libraryId}/diagnostics-lock:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    put:
+      operationId: setLibraryDiagnosticsLock
+      tags: [diagnostic-access]
+      summary: >
+        Sets or lifts a library's Diagnosesperre. It takes an OWNER grant on that library which the
+        caller did not issue to themselves - being a system admin confers nothing here, and neither
+        does an OWNER grant an admin issued to themselves through the administrative floor of the
+        grant endpoint, whether newly created or raised from a pre-existing foreign grant; all of
+        these are rejected with 403. Every library is locked by default, including all pre-existing
+        ones.
+
+        What remains possible, stated plainly and without the claim that it takes a second person:
+        an admin can grant OWNER to a different, named account, whose use of this endpoint is
+        audited in turn - and, where the library is owned by a group that is not an ORG_UNIT, an
+        admin can add themselves to that owning group via POST /api/v1/groups/{groupId}/members,
+        which makes them the library's named responsible body and lets them lift the lock alone.
+        Group administration has no self-exclusion, and that stays so by decision rather than by
+        omission (docs/features/hybrid-retrieval.md, Berechtigungs-Leitplanken (e)): both steps are
+        audited. The library's named owner user, in contrast, is immutable.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LibraryDiagnosticsLockRequest"
+      responses:
+        "200":
+          description: Diagnosesperre updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LibraryDiagnosticsLockResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/me/diagnostic-context-events:
+    get:
+      operationId: listOwnDiagnosticContextEvents
+      tags: [diagnostic-access]
+      summary: >
+        Einsichtsrecht: when and by whom the caller's own rights context was assumed for a search
+        diagnosis. No role, no reason and no approval - the filter is the caller's own identity,
+        resolved server-side, and no parameter names a person.
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: size
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 50
+      responses:
+        "200":
+          description: The caller's own entries, newest first
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OwnDiagnosticContextEventPage"
+
+  /api/v1/audit/diagnostic-context-events:
+    get:
+      operationId: listDiagnosticContextEvents
+      tags: [diagnostic-access]
+      summary: >
+        The Gesamtprotokoll of diagnoses run in a foreign rights context (AUDITOR role required -
+        Datenschutzbeauftragte und Personalvertretung; Fachvorgesetzte hold USER or SYSTEM_ADMIN and
+        reach nothing here). Requires a reason and a time range of at most 31 days, because the
+        evaluation is einzelfall- und anlassbezogen. There is deliberately no parameter naming a
+        target person and no aggregate response field: "Diagnosen je Nutzer" is not restricted here,
+        it is not expressible.
+      parameters:
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: reason
+          in: query
+          required: true
+          description: >
+            Mandatory Anlass; a missing or over-length one is rejected, and the rejected attempt is
+            itself recorded in audit_log.
+          schema:
+            type: string
+            maxLength: 1000
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: size
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 50
+      responses:
+        "200":
+          description: Bounded page of protocol entries
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiagnosticContextEventPage"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/audit/diagnostic-context-events/{eventId}:
+    parameters:
+      - name: eventId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: getDiagnosticContextEvent
+      tags: [diagnostic-access]
+      summary: >
+        One already-known protocol entry, named by its own event id - the einzelfall- und
+        anlassbezogene Auswertung of Leitplanke (g), and the only place the rights snapshot of an
+        entry is published. Same bar as the Gesamtprotokoll: AUDITOR role and a mandatory reason,
+        and every call - accepted or rejected, including one naming an unreadable id - is itself
+        recorded in audit_log with that reason. This path names no person either: an event id has
+        to be known from the list before it can be asked for. What it does not do is make a
+        per-person evaluation impossible - an auditor can fetch a page's entries one by one and
+        group them by their rights snapshot; it makes every one of those fetches carry its own
+        Anlass and its own audit_log entry.
+      parameters:
+        - name: reason
+          in: query
+          required: true
+          description: >
+            Mandatory Anlass for this single entry; a missing or over-length one is rejected, and
+            the rejected attempt is itself recorded in audit_log.
+          schema:
+            type: string
+            maxLength: 1000
+      responses:
+        "200":
+          description: The single protocol entry, including its rights snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiagnosticContextEventDetailResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+components:
+  schemas:
+    DiagnosticTargetKind:
+      type: string
+      description: >
+        Mirrors io.opaa.api.types.DiagnosticTargetKind - whose rights context a diagnosis ran in.
+        PERMISSION_PROFILE is the default; USER is the exception requiring a separate befugnis and a
+        free-text justification.
+      enum: [PERMISSION_PROFILE, USER]
+      example: PERMISSION_PROFILE
+
+    DiagnosticImpersonationGrantRequest:
+      type: object
+      required: [holderUserId, scopeGroupId, validFrom, validUntil]
+      properties:
+        holderUserId:
+          type: string
+          format: uuid
+        scopeGroupId:
+          type: string
+          format: uuid
+          description: >
+            The Organisationseinheit the befugnis applies to: any effective group of an identity
+            provider (ORG_UNIT or IDENTITY_PROVIDER) above the Mindestgruppengröße. An internal
+            group of this house is no scope, nor is a dissolved one, one of a switched-off provider
+            or a token group with a frozen membership (#1879).
+        validFrom:
+          type: string
+          format: date-time
+        validUntil:
+          type: string
+          format: date-time
+          description: At most twelve months after validFrom; there is no "unbefristet" value.
+
+    DiagnosticImpersonationGrantResponse:
+      type: object
+      required:
+        [id, holderUserId, scopeGroupId, validFrom, validUntil, grantedByUserId, grantedAt, active]
+      properties:
+        id:
+          type: string
+          format: uuid
+        holderUserId:
+          type: string
+          format: uuid
+        scopeGroupId:
+          type: string
+          format: uuid
+        validFrom:
+          type: string
+          format: date-time
+        validUntil:
+          type: string
+          format: date-time
+        grantedByUserId:
+          type: string
+          format: uuid
+        grantedAt:
+          type: string
+          format: date-time
+        revokedAt:
+          type: string
+          format: date-time
+          nullable: true
+        active:
+          type: boolean
+          description: Unrevoked and inside its validity window at the time of this response.
+
+    DiagnosticImpersonationGrantListResponse:
+      type: object
+      required: [grants]
+      properties:
+        grants:
+          type: array
+          items:
+            $ref: "#/components/schemas/DiagnosticImpersonationGrantResponse"
+
+    DiagnosticContextRetentionRequest:
+      type: object
+      required: [retentionMonths]
+      properties:
+        retentionMonths:
+          type: integer
+          minimum: 1
+          maximum: 24
+
+    DiagnosticContextRetentionResponse:
+      type: object
+      required: [retentionMonths, updatedAt]
+      properties:
+        retentionMonths:
+          type: integer
+        lastCutoff:
+          type: string
+          format: date-time
+          nullable: true
+        updatedAt:
+          type: string
+          format: date-time
+
+    ClientAddressDiagnosticsResponse:
+      type: object
+      required: [forwardedForTrusted, trustedProxiesConfigured]
+      properties:
+        clientAddress:
+          type: string
+          nullable: true
+          description: >
+            The client address as resolved for this request - the key of the per-address rate
+            limits and the input of OPAA_LOCAL_ADMIN_ALLOWED_CIDRS. Always a numeric address.
+          example: 198.51.100.7
+        remoteAddress:
+          type: string
+          nullable: true
+          description: The address of the connection itself (the proxy's, behind one).
+          example: 172.28.0.3
+        forwardedFor:
+          type: string
+          nullable: true
+          description: The X-Forwarded-For header exactly as it arrived; absent without one.
+          example: "198.51.100.7, 172.28.0.1"
+        forwardedForTrusted:
+          type: boolean
+          description: >
+            Whether the header was honoured - the connection came from a trusted proxy. false with
+            an empty OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS or from an untrusted connection.
+        trustedProxiesConfigured:
+          type: boolean
+          description: Whether OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS names any network at all.
+
+    LibraryDiagnosticsLockRequest:
+      type: object
+      required: [locked]
+      properties:
+        locked:
+          type: boolean
+
+    LibraryDiagnosticsLockResponse:
+      type: object
+      required: [libraryId, locked]
+      properties:
+        libraryId:
+          type: string
+          format: uuid
+        locked:
+          type: boolean
+
+    OwnDiagnosticContextEventResponse:
+      type: object
+      description: >
+        One entry as the affected person sees it - when, by whom, and with which justification.
+        Deliberately carries neither the test question nor the hits.
+      required: [recordedAt]
+      properties:
+        recordedAt:
+          type: string
+          format: date-time
+        actorDisplayName:
+          type: string
+          nullable: true
+        justification:
+          type: string
+          nullable: true
+
+    OwnDiagnosticContextEventPage:
+      type: object
+      required: [events, page, size, hasMore]
+      properties:
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/OwnDiagnosticContextEventResponse"
+        page:
+          type: integer
+        size:
+          type: integer
+        hasMore:
+          type: boolean
+
+    DiagnosticContextEventResponse:
+      type: object
+      description: >
+        One protocol entry as the Gesamtprotokoll shows it. actorRef stays a pseudonym, resolvable
+        only through the separately held mapping table; the entry carries the identifiers of the
+        displayed hits, never the hits themselves. Which kind of target an entry has is visible in
+        targetKind.
+
+        Two fields the stored entry carries are deliberately withheld here, because each of them is
+        a stable, per-person key that a client could GROUP BY and thereby rebuild "Diagnosen je
+        Nutzer" - exactly what Leitplanke (g) rules out: targetRef for a USER target (a stable
+        per-person pseudonym; it is present only for a PERMISSION_PROFILE target, where it is the
+        profile's label and belongs to nobody), and permissionSnapshot (the rights fingerprint of
+        one person, identical across every entry about them until their rights change). Both stay
+        in the stored entry, where Leitplanke (f) requires them, and the rights snapshot is
+        readable one entry at a time through
+        GET /api/v1/audit/diagnostic-context-events/{eventId}, which is the anlassbezogene
+        Auswertung Leitplanke (g) allows.
+
+        What this does not claim: that correlating individual rows is impossible. recordedAt,
+        actorRef and hitRefs remain, and two entries produced by the same test question against the
+        same rights carry the same hitRefs. The response withholds the keys that make grouping by
+        person a one-step operation as long as the test questions vary - with a single, standardised
+        test question, hitRefs itself groups in one step. It does not turn the protocol into
+        unlinkable rows.
+      required:
+        [eventId, recordedAt, actorRef, targetKind, testQuestion, hitCount, hitRefs]
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        recordedAt:
+          type: string
+          format: date-time
+        actorRef:
+          type: string
+        targetKind:
+          $ref: "#/components/schemas/DiagnosticTargetKind"
+        targetRef:
+          type: string
+          nullable: true
+        testQuestion:
+          type: string
+        hitCount:
+          type: integer
+          description: >
+            The number of hits the diagnosis actually displayed. hitRefs may name fewer of them: an
+            oversized identifier list is truncated and then ends in a marker naming how many
+            identifiers were left out, so the two fields never diverge silently.
+        hitRefs:
+          type: string
+        justification:
+          type: string
+          nullable: true
+
+    DiagnosticContextEventPage:
+      type: object
+      description: >
+        A bounded page and nothing else - no totals per target person, no counts, no grouping. The
+        absence is the Zweckbindung of Leitplanke (g), not an omission.
+      required: [events, page, size, hasMore]
+      properties:
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/DiagnosticContextEventResponse"
+        page:
+          type: integer
+        size:
+          type: integer
+        hasMore:
+          type: boolean
+
+    DiagnosticContextEventDetailResponse:
+      type: object
+      description: >
+        One protocol entry as the single-entry view shows it: every field of the list response plus
+        permissionSnapshot, the rights snapshot Leitplanke (f) requires in the stored entry. It is
+        published here and only here: in a list it is a stable per-person key a client can GROUP BY
+        in one step, whereas one entry fetched under its own reason and its own audit_log record is
+        the einzelfall- und anlassbezogene Auswertung Leitplanke (g) provides for. That is a
+        difference in cost and traceability, not in possibility - N fetches rebuild the grouping,
+        and each of them is separately justified and recorded. targetRef follows the same rule as
+        in the list: a profile's identifier is shown, a person's pseudonym is not.
+      required:
+        [
+          eventId,
+          recordedAt,
+          actorRef,
+          targetKind,
+          testQuestion,
+          hitCount,
+          hitRefs,
+          permissionSnapshot,
+        ]
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        recordedAt:
+          type: string
+          format: date-time
+        actorRef:
+          type: string
+        targetKind:
+          $ref: "#/components/schemas/DiagnosticTargetKind"
+        targetRef:
+          type: string
+          nullable: true
+        testQuestion:
+          type: string
+        hitCount:
+          type: integer
+        hitRefs:
+          type: string
+        permissionSnapshot:
+          type: string
+        justification:
+          type: string
+          nullable: true

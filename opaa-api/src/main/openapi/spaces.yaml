@@ -1,0 +1,801 @@
+# Topic "spaces": its tags, paths and the components only this topic uses.
+# Merged with all other fragments at build time, see root.yaml.
+tags:
+  - name: space
+    description: Spaces and their members.
+paths:
+  /api/v1/spaces:
+    get:
+      operationId: listSpaces
+      tags: [space]
+      summary: List spaces the current user is a member of
+      responses:
+        "200":
+          description: List of spaces
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SpaceListResponse"
+
+    post:
+      operationId: createSpace
+      tags: [space]
+      summary: >
+        Create a new space. Needs the capability CREATE_SPACE, delivered to all accounts
+        (ADR-0036, Entscheidung 5); the personal space is provisioned at first sign-in and does
+        not depend on it.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SpaceRequest"
+      responses:
+        "201":
+          description: Space created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpaceResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          description: >
+            The caller lacks the capability CREATE_SPACE (code CAPABILITY_REQUIRED), or named
+            another owner without being a SYSTEM_ADMIN.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/spaces/{spaceId}:
+    parameters:
+      - name: spaceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: getSpace
+      tags: [space]
+      summary: Get space details
+      responses:
+        "200":
+          description: Space details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpaceResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      operationId: updateSpace
+      tags: [space]
+      summary: Update space name, description and visibility (admin or owner only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SpaceUpdateRequest"
+      responses:
+        "200":
+          description: Space updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpaceResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+    delete:
+      operationId: deleteSpace
+      tags: [space]
+      summary: >
+        Delete a space (owner or system admin only). Rejected with 409 while the space still
+        contains any chat, including one a fellow member authored and the caller cannot see or
+        remove themselves (#543) - archiveSpace is the way out of that situation.
+      responses:
+        "204":
+          description: Space deleted
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/spaces/{spaceId}/archive:
+    parameters:
+      - name: spaceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      operationId: archiveSpace
+      tags: [space]
+      summary: >
+        Archive a space (owner or system admin only) - #543. An archived space accepts no new
+        chats, is hidden from listSpaces for members without a chat of their own in it, and stays
+        fully readable for its members' own chats. Idempotent: archiving an already-archived space
+        just returns its current state. See docs/features/spaces-and-assets.md#archivieren-statt-
+        löschen.
+      responses:
+        "200":
+          description: Space archived
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpaceResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/spaces/{spaceId}/access-derivation:
+    parameters:
+      - name: spaceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: getSpaceAccessDerivation
+      tags: [space]
+      summary: >
+        Why one person reaches this space - the Herleitung of ADR-0036, Entscheidung 9 (#1822)
+      description: >
+        Without userId the answer is about the caller themselves: every own way to the effective
+        role - own membership, a membership of one of their groups (with the group's name, origin,
+        mechanism and the moment of the admission), ownership, and the administration. No Vollmacht
+        and no protocol entry: the answer names no member of any group and says nothing about
+        anybody else. With userId the answer is about that member and is reserved for those who
+        manage the membership here - space ADMIN, the owner and SYSTEM_ADMIN, the same bar the
+        member list carries; everybody else gets 403. A protected group (ADR-0036, Entscheidung 9)
+        is never named to a third party: the answer then carries the effective role with
+        pathsWithheld=true and no group path at all, while the person's own answer stays complete.
+      parameters:
+        - name: userId
+          in: query
+          required: false
+          description: >
+            The member whose way to ask about. Absent means the caller themselves. A person this
+            space does not reach at all yields 404, like an unknown space.
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: The ways this person reaches the space
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpaceAccessDerivationResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/spaces/{spaceId}/members:
+    parameters:
+      - name: spaceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: listSpaceMembers
+      tags: [space]
+      summary: >
+        List space members - persons and groups (#144, #1815). Restricted to ADMIN, the owner and
+        system admins; MEMBER and CURATOR only ever see the aggregated roleCounts on
+        SpaceResponse. A group is therefore named only to those who manage its membership here
+        (ADR-0036 Entscheidung 9).
+      responses:
+        "200":
+          description: List of members
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SpaceMemberResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    post:
+      operationId: addSpaceMember
+      tags: [space]
+      summary: >
+        Add a member - a person or a group - to a space (admin only, #1815). A group's members
+        hold the role without a row of their own, and lose it the moment they leave the group.
+        409 when the space is archived (#543 - an archived space accepts no new members), when
+        the subject already holds a membership, or when the group is not effective (dissolved, or
+        belonging to a switched-off identity provider; ADR-0036 Entscheidung 6). An effective but
+        empty group is admitted on purpose and answers with emptyGroup = true.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SpaceAddMemberRequest"
+      responses:
+        "201":
+          description: Member added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpaceMemberResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/spaces/{spaceId}/members/groups/{groupId}/members:
+    parameters:
+      - name: spaceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: groupId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: "#/components/parameters/GroupMemberDisclosureOffset"
+      - $ref: "#/components/parameters/GroupMemberDisclosureLimit"
+
+    get:
+      operationId: listSpaceGroupMembers
+      tags: [space]
+      summary: >
+        The members of a group that is a member of this space - "wer ein Recht gibt, sieht, an
+        wen" (#1880, ADR-0036 Entscheidung 9)
+      description: >
+        Requires ADMIN, the owner or a system administrator - the same bar the member list itself
+        carries - and only while the group is still a member of this space. What the answer
+        withholds and why is described once, at GroupMemberDisclosureResponse; anything the rule
+        refuses answers 404, like an unknown group. There is no object-free variant of this read.
+      responses:
+        "200":
+          description: The group's active members, capped at the requested page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroupMemberDisclosureResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/spaces/{spaceId}/members/{membershipId}:
+    parameters:
+      - name: spaceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: membershipId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    delete:
+      operationId: removeSpaceMember
+      tags: [space]
+      summary: >
+        Remove a member - person or group - from a space (admin only). 409 when the membership is
+        the owner's, or when the space would lose its last capable ADMIN member (ADR-0036
+        Entscheidung 6, Schutzregel 1): a group counts as ADMIN while it is effective and reaches
+        at least one active account.
+      responses:
+        "204":
+          description: Member removed
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/spaces/{spaceId}/members/{membershipId}/role:
+    parameters:
+      - name: spaceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: membershipId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    put:
+      operationId: updateSpaceMemberRole
+      tags: [space]
+      summary: >
+        Update a member's role (admin only). 409 when the membership is the owner's, or when the
+        downgrade would take the space's last capable ADMIN member (ADR-0036 Entscheidung 6,
+        Schutzregel 1).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SpaceRoleUpdateRequest"
+      responses:
+        "200":
+          description: Role updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpaceMemberResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/spaces/{spaceId}/transfer-ownership:
+    parameters:
+      - name: spaceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      operationId: transferSpaceOwnership
+      tags: [space]
+      summary: >
+        Transfer space ownership to a member who is a natural person. Every capable ADMIN member
+        that is a natural person may do this, to themselves or to another such member (ADR-0036
+        Entscheidung 6) - a group never becomes owner. 404 when the target is not a member of the
+        space or not a person.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SpaceTransferOwnershipRequest"
+      responses:
+        "204":
+          description: Ownership transferred
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+components:
+  schemas:
+    SpaceRole:
+      type: string
+      enum: [MEMBER, CURATOR, ADMIN]
+      example: CURATOR
+
+    SpaceVisibility:
+      type: string
+      enum: [PRIVATE, DISCOVERABLE, OPEN]
+      example: PRIVATE
+
+    SpaceRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: Engineering
+        description:
+          type: string
+          maxLength: 2000
+          nullable: true
+          example: Engineering project space
+        visibility:
+          $ref: "#/components/schemas/SpaceVisibility"
+        ownerId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Defaults to the creator; a system admin may set it explicitly
+        initialMembers:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/SpaceMemberRequest"
+        libraryIds:
+          type: array
+          nullable: true
+          maxItems: 100
+          description: >
+            Libraries to associate with the space on creation (#203/#686) - each must be at least
+            readable (VIEWER or above) by the creator, exactly the same rule the dedicated POST
+            /v1/spaces/{spaceId}/assets endpoint enforces afterwards. Optional: a space created
+            without this is not narrower for search, it simply has no associations yet (the
+            permanent transition rule in docs/features/spaces-and-assets.md#suchbereich-je-chatart
+            - "ein Space ohne Assoziationen verengt nie"). Associated atomically with the space
+            itself (SpaceService#createSpace) - if any id cannot be associated (not found, or not
+            readable by the creator), the whole space creation is rolled back rather than left
+            half-created.
+          items:
+            type: string
+            format: uuid
+
+    SpaceUpdateRequest:
+      type: object
+      required: [name]
+      description: >
+        Body for updating an existing space. Deliberately narrower than SpaceRequest: ownerId
+        cannot be changed here (ownership changes go through the dedicated transfer-ownership
+        endpoint), and initialMembers has no meaning for an update.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: Engineering
+        description:
+          type: string
+          maxLength: 2000
+          nullable: true
+          example: Engineering project space
+        visibility:
+          $ref: "#/components/schemas/SpaceVisibility"
+
+    SpaceMemberRequest:
+      type: object
+      required: [userId, role]
+      properties:
+        userId:
+          type: string
+          format: uuid
+        role:
+          $ref: "#/components/schemas/SpaceRole"
+
+    SpaceListResponse:
+      type: object
+      required: [id, name, isDefault, archived, memberCount, memberships, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: Engineering
+        description:
+          type: string
+          nullable: true
+        isDefault:
+          type: boolean
+          description: True for the space created automatically on first login.
+          example: false
+        archived:
+          type: boolean
+          description: >
+            #543: an archived space accepts no new content (chats, messages, renames, members) and
+            is left out of this list for members who have no chat of their own in it and are
+            neither the owner nor a system admin - see
+            docs/features/spaces-and-assets.md#einen-space-stilllegen-archivieren-statt-löschen.
+          example: false
+        visibility:
+          $ref: "#/components/schemas/SpaceVisibility"
+        memberCount:
+          type: integer
+          description: >
+            Number of membership rows, not of people: the sum of memberships.groupCount and
+            memberships.userCount. A group row stands for any number of members and is never
+            resolved to persons (ADR-0036, Entscheidung 9).
+          example: 5
+        memberships:
+          $ref: "#/components/schemas/SpaceMembershipCountsResponse"
+        libraryCount:
+          type: integer
+          description: >
+            #682: number of knowledge libraries assigned to the space - the "Quellen" figure of
+            the overview card. Follows the same rule as the space's association list: CURATOR,
+            ADMIN, the owner and system admins count every association, a plain MEMBER only the
+            libraries they may read. Optional so older clients keep working.
+          example: 3
+        chatCount:
+          type: integer
+          description: >
+            #682: number of chats the caller owns in this space. Chats are private to their
+            author (#525), so this is the caller's view, not a space-wide total. Optional so
+            older clients keep working.
+          example: 12
+        userRole:
+          $ref: "#/components/schemas/SpaceRole"
+        successionOpen:
+          type: boolean
+          description: >
+            Same derived state as on SpaceResponse, from the same derivation (ADR-0036
+            Entscheidung 6) - the overview card carries it too, so it is visible without opening
+            the space.
+          example: false
+        succession:
+          description: >
+            The marking the overview shows, from the same derivation as SpaceResponse.succession:
+            state and addressee, deliberately without date, previous owner or reason. ADR-0036,
+            Entscheidung 6 asks for it in "Übersicht und Detailansicht"; without it here the
+            overview card could only show the bare flag and not who is meant to act.
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/SuccessionStateResponse"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    SpaceMembershipCountsResponse:
+      type: object
+      required: [groupCount, userCount]
+      description: >
+        The membership rows of a space split by subject type - the figures an overview turns into
+        its member badge ("3 Gruppen, 2 Personen", "nur Sie"), worded like AssetReachResponse. A
+        group counts as one row and is never resolved to its members (ADR-0036, Entscheidung 9).
+      properties:
+        groupCount:
+          type: integer
+          description: Membership rows of a group.
+          example: 1
+        userCount:
+          type: integer
+          description: Membership rows of a single person.
+          example: 2
+
+    SpaceMemberResponse:
+      type: object
+      required: [id, subjectType, subjectId, role, createdAt]
+      description: >
+        One membership of a space - a person or a group (#1815, ADR-0036 Entscheidung 6). A group
+        row carries the role every member of that group holds in the space without a row of their
+        own; a person who also holds a direct membership keeps both rows and reaches the space
+        with the better of the two roles.
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: >
+            The membership itself, the way an asset grant is addressed by its own id. Path
+            parameter of the remove and role-change operations, so a person and a group carrying
+            the same id can never be confused.
+        subjectType:
+          $ref: "#/components/schemas/PermissionSubjectType"
+        subjectId:
+          type: string
+          format: uuid
+          description: The user or group id, depending on subjectType.
+        displayName:
+          type: string
+          nullable: true
+          description: >
+            The member's display name (person, falling back to email) or the group's name,
+            resolved server-side. Null if the referenced row itself is gone - and null for a
+            protected group, which appears in another person's list as a nameless row
+            (ADR-0036, Entscheidung 9); protectedGroup says which of the two it is.
+        protectedGroup:
+          type: boolean
+          nullable: true
+          description: >
+            Group rows only: true for a group of the staff council and the comparable bodies. Its
+            name is withheld here and it carries no growth signal - there the size is the actual
+            disclosure. The row itself stays, so an ADMIN can end a membership they cannot see.
+        role:
+          $ref: "#/components/schemas/SpaceRole"
+        memberCountAtGrant:
+          type: integer
+          nullable: true
+          description: >
+            Group rows only: how many active accounts the group had when it became a member
+            (ADR-0036 Entscheidung 9) - the passive growth signal for whoever admitted it. Null
+            for a person, and null whenever smallGroup is true.
+        memberCountNow:
+          type: integer
+          nullable: true
+          description: >
+            Group rows only: how many active accounts the group has right now, for the comparison
+            "23 bei Erteilung, heute 41". Null for a person, and null whenever smallGroup is true.
+        smallGroup:
+          type: boolean
+          nullable: true
+          description: >
+            Group rows only: true when either figure lies below the enforced minimum group size,
+            in which case both are withheld - the difference alone would reconstruct the withheld
+            one (ADR-0036 Entscheidung 9, "einschliesslich der Werte, die sich aus dem Vergleich
+            errechnen liessen").
+        emptyGroup:
+          type: boolean
+          nullable: true
+          description: >
+            Group rows only: true when the group currently reaches no account at all. An effective
+            but empty group may be admitted on purpose (ADR-0036 Entscheidung 6) - this is the
+            warning that goes with it.
+        createdAt:
+          type: string
+          format: date-time
+
+    SpaceResponse:
+      type: object
+      required:
+        [id, name, isDefault, archived, ownerId, memberCount, roleCounts, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: Engineering
+        description:
+          type: string
+          nullable: true
+        isDefault:
+          type: boolean
+          description: >
+            True for the space created automatically on first login. Exactly one per user and not
+            deletable; an ordinary space in every other respect.
+          example: false
+        archived:
+          type: boolean
+          description: >
+            #543: an archived space accepts no new content (chats, messages, renames, members).
+            See docs/features/spaces-and-assets.md#einen-space-stilllegen-archivieren-statt-
+            löschen.
+          example: false
+        visibility:
+          $ref: "#/components/schemas/SpaceVisibility"
+        ownerId:
+          type: string
+          format: uuid
+        memberCount:
+          type: integer
+          description: >
+            Number of membership rows, not of people - see SpaceListResponse.memberCount. The same
+            holds for roleCounts, which counts rows per role.
+          example: 5
+        userRole:
+          $ref: "#/components/schemas/SpaceRole"
+        roleCounts:
+          type: object
+          additionalProperties:
+            type: integer
+            format: int64
+          example:
+            MEMBER: 2
+            CURATOR: 1
+            ADMIN: 1
+        successionOpen:
+          type: boolean
+          description: >
+            True while the space has no capable ADMIN member that could act for it (ADR-0036
+            Entscheidung 6) - derived on every read, never stored, and from the same derivation
+            the succession field below carries, so the two never disagree (the personal space has
+            no succession and therefore neither flag). Carried for every reader, with neither a
+            date nor the previous owner: the operational list with those figures is #1819's. The
+            space stays fully usable; nothing is deleted.
+          example: false
+        lastTransfer:
+          $ref: "#/components/schemas/PermissionTransferMarkResponse"
+        succession:
+          description: >
+            Set while this object has no capable responsible party (#1819, ADR-0036 Entscheidung
+            6) - state and addressee, deliberately without date, previous owner or reason. The
+            object stays usable and keeps every right it has; only its reach is frozen.
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/SuccessionStateResponse"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    SpaceAddMemberRequest:
+      type: object
+      required: [subjectType, subjectId]
+      description: >
+        Admits a person or a group to the space (#1815). Same subject shape as
+        AssetGrantRequest, so both rights axes are addressed the same way.
+      properties:
+        subjectType:
+          $ref: "#/components/schemas/PermissionSubjectType"
+        subjectId:
+          type: string
+          format: uuid
+          description: The user or group id, depending on subjectType.
+        role:
+          $ref: "#/components/schemas/SpaceRole"
+
+    SpaceRoleUpdateRequest:
+      type: object
+      required: [role]
+      properties:
+        role:
+          $ref: "#/components/schemas/SpaceRole"
+
+    SpaceTransferOwnershipRequest:
+      type: object
+      required: [userId]
+      properties:
+        userId:
+          type: string
+          format: uuid
+
+    SpaceAccessDerivationResponse:
+      type: object
+      required: [spaceId, userId, paths, pathsWithheld]
+      properties:
+        spaceId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+          description: The person the answer is about - the caller, unless userId was given.
+        effectiveRole:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/SpaceRole"
+          description: >
+            Null for a system administrator who reaches the space through the administration alone
+            - that is no membership role, and naming one would be a wrong statement.
+        paths:
+          type: array
+          items:
+            $ref: "#/components/schemas/AccessPathResponse"
+        pathsWithheld:
+          type: boolean
+          description: >
+            True when a way runs through a protected group and the answer is about somebody else:
+            the effective role is then stated without the group path. Without this, a space with
+            exactly one protected group would name that group by elimination, and the namelessness
+            of ADR-0036, Entscheidung 9 would be worthless. The person's own answer never withholds.

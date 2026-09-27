@@ -1,0 +1,2141 @@
+# Topic "search": its tags, paths and the components only this topic uses.
+# Merged with all other fragments at build time, see root.yaml.
+tags:
+  - name: query
+    description: Asking a question and receiving a grounded answer.
+  - name: search
+    description: Document search across the libraries the caller may read.
+  - name: search-admin
+    description: Search diagnosis and index inspection for administrators.
+paths:
+  /api/v1/query:
+    post:
+      operationId: submitQuery
+      tags: [query]
+      summary: >
+        Ask a question against indexed documents. If chatId resolves to an owned, persisted chat
+        whose space is archived (#543), the turn is rejected with 409 and not persisted - an
+        archived space accepts no new turns in an existing chat either.
+      description: >
+        The turn calls the configured AI provider on the request thread - the embedding of the
+        search queries and the generation of the answer - and therefore answers for it: 503 while
+        the provider is unreachable, overloaded or rate-limiting, and while no chat model is
+        active at all; 502 once the provider answered but not usefully, which is the shape of a
+        misconfiguration (unknown model identifier, rejected key) rather than of a passing
+        disturbance. The 503 carries Retry-After where the provider named a waiting time. Nothing
+        of the turn is persisted in either case.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QueryRequest"
+      responses:
+        "200":
+          description: Query answered successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QueryResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          description: >
+            The author of the named chat is no longer a member of its space (#525): querying
+            is chatting, so the turn is refused where merely reading the chat is not. Or
+            usedPromptId names a prompt the caller may not read (anymore), with code
+            PROMPT_NOT_USABLE - an unknown prompt and one of another organization answer the same
+            way, so a foreign id is never confirmed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "502":
+          $ref: "#/components/responses/BadGateway"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /api/v1/search/metadata-filter-options:
+    get:
+      operationId: getMetadataFilterOptions
+      tags: [search]
+      summary: >
+        The Füllstand and the offered values of the filterable core fields in the caller's search
+        scope (#1070). The scope is resolved exactly as POST /api/v1/query resolves it: from the
+        named chat's own settings when chatId names a chat the caller authored, otherwise from
+        useKnowledge/libraryIds - always narrowed to what the caller may read.
+      parameters:
+        - name: chatId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: useKnowledge
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: true
+        - name: libraryIds
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+              format: uuid
+      responses:
+        "200":
+          description: The filter options for this person and scope
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MetadataFilterOptionsResponse"
+
+  /api/v1/search:
+    post:
+      operationId: searchKnowledge
+      tags: [search]
+      summary: >
+        Hits without a generated answer (#1720, docs/features/external-access.md, "Was ein
+        Fremdzugang erreicht"). Runs the same retrieval the answer of POST /api/v1/query is built
+        from - sub-questions, vector and full-text search, fusion, reranking and the permission
+        filter inside the search itself - and returns its passages instead of an answer. No chat
+        model is asked to generate anything, and nothing is persisted. Open to every signed-in
+        person; it does not hang on the external-access switch, which is the emergency stop of the
+        external-access channel, not of this endpoint.
+      description: >
+        No chat model generates anything here, but the retrieval itself calls the configured AI
+        provider on the request thread: every search query is embedded before it can be compared
+        against the stored chunks. This operation therefore answers for the provider exactly like
+        POST /api/v1/query does - 503 while it is unreachable, overloaded or rate-limiting, 502
+        once it answered but not usefully. A failed sub-question decomposition is not one of
+        these: it falls back to searching the question as it was asked.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SearchRequest"
+      responses:
+        "200":
+          description: The hits for this question, best first
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "502":
+          $ref: "#/components/responses/BadGateway"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /api/v1/search/libraries:
+    get:
+      operationId: listSearchableLibraries
+      tags: [search]
+      summary: >
+        The libraries POST /api/v1/search may search for this caller (#1720) - identifier, name and
+        description, sorted by name. The answer to "worin kann ich hier suchen?", and the only place
+        a foreign tool learns the extent of its access. For a signed-in person these are the
+        libraries she may read; for an access token the intersection of rights, external-access
+        release and token selection, resolved per call.
+      responses:
+        "200":
+          description: The libraries of the effective view
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SearchableLibrary"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/search/hits/{hitId}:
+    get:
+      operationId: fetchSearchHit
+      tags: [search]
+      summary: >
+        The text behind one hit of POST /api/v1/search (#1720). By default the hit's own passage
+        with its adjoining passages and its heading path - not the whole document: an assistant
+        works with a bounded context window, and whoever wants the holdings themselves has to ask
+        for them explicitly. full=true returns the document's whole extracted text, capped at a
+        server-side character limit. A hitId outside the caller's effective view answers exactly
+        like an unknown one, so the endpoint never confirms a foreign id.
+      parameters:
+        - name: hitId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: full
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          description: The passage or the whole document
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchHitContentResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/admin/search/status:
+    get:
+      operationId: getSearchStatus
+      tags: [search-admin]
+      summary: >
+        The active retrieval configuration as a read-only status display (system admin only, #1053,
+        hybrid-retrieval.md "Was die Seite anzeigt")
+      description: >
+        Model roles, search paths and per-library index state of the caller's own organization. A
+        status display, never an editor: this API has no counterpart that writes any of it. Access
+        keys never appear in this response, not even shortened - the same write-only convention
+        LlmModelResponse already establishes.
+      responses:
+        "200":
+          description: The active configuration and index state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchStatusResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/search/diagnosis-context:
+    get:
+      operationId: getSearchDiagnosisContext
+      tags: [search-admin]
+      summary: The rights contexts the diagnosis can be run in (system admin only, #1053, #1150)
+      description: >
+        The permission profiles - a group together with the library set it may read, the default
+        context of hybrid-retrieval.md's Berechtigungs-Leitplanken (d) - plus whether the calling
+        administrator may choose the person context at all. The person context needs the separately
+        granted "Sicht als" befugnis (#1052); holding SYSTEM_ADMIN confers nothing here, so the
+        answer is a property of the caller and not of their role. No person is listed: the target of
+        a person context is named by id, never picked from a directory this page would have to
+        expose.
+      responses:
+        "200":
+          description: The profiles of the caller's own organization and their own person-context permission
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchDiagnosisContextResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/search/diagnosis:
+    post:
+      operationId: runSearchDiagnosis
+      tags: [search-admin]
+      summary: >
+        Run a test question through the retrieval pipeline and return its explanation protocol
+        (system admin only, #1053, hybrid-retrieval.md "Das Diagnosewerkzeug")
+      description: >
+        Answers "why does this document not appear?" from the pipeline's own Erklärprotokoll
+        (#1046) - not from a reconstruction: every stage in the response is one the pipeline
+        actually ran, in the order it ran them. Three invariants hold, all of them Baubedingung
+        rather than Ausbaustufe (hybrid-retrieval.md, Berechtigungs-Leitplanken): the run never
+        reads an existing chat, it answers the Jetzt-Zustand only and is no
+        Zugriffshistorien-Nachweis, and it applies a permission filter like every other search - it
+        sets that filter differently, it never omits it. No answer is generated; the run stops
+        after retrieval.
+
+
+        The person context (contextType USER, #1150) runs through ForeignDiagnosticContextService
+        and through nothing else: befugnis, mandatory justification, subtraction of
+        diagnosegesperrte libraries and the protocol entry happen in that one call. Without the
+        befugnis the answer is 403, whatever the caller's role. The result of such a run is
+        returned once and stored nowhere (Leitplanke (j)).
+
+
+        The scope of the befugnis is measured at the time of the use (ADR-0036, Entscheidung 3,
+        #1879): a group of seven active accounts at the time of granting can have one half a year
+        later. Below the Mindestgruppengröße the answer is 403 with the code
+        IMPERSONATION_SCOPE_NOT_USABLE - deliberately without the figure, which the house withholds
+        below that threshold anyway. A holder of several befugnisse is judged by the usable one; a
+        shrunk scope hides no intact one. The befugnis stays valid and unrevoked - it is not usable,
+        which is why neither the protocol nor the administration's overview shows a break;
+        getSearchDiagnosisContext answers personContextAvailable = false for the same reason and
+        says so in personContextHint.
+
+
+        The run goes through the same retrieval pipeline as POST /api/v1/query and POST
+        /api/v1/search and therefore answers for the configured AI provider the same way: 503
+        while it is unreachable, overloaded or rate-limiting, 502 once it answered but not
+        usefully. A diagnosis that fails this way produced no protocol - it is a disturbed run,
+        not a run whose Erklärprotokoll says the question found nothing.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SearchDiagnosisRequest"
+      responses:
+        "200":
+          description: The stage-by-stage protocol of this run
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchDiagnosisResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "502":
+          $ref: "#/components/responses/BadGateway"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /api/v1/admin/search/chunks/{chunkId}:
+    get:
+      operationId: getSearchChunk
+      tags: [search-admin]
+      summary: >
+        Text and metadata of one stored chunk, as the retrieval pipeline sees it (system admin
+        only, #1230, hybrid-retrieval.md "Das Diagnosewerkzeug")
+      description: >
+        The content behind a chunkId of a diagnosis verdict or final-selection entry - the
+        chunking boundaries, context prefix and pass-through metadata the indexing pipeline
+        actually persisted. Scoped to the caller's own organization via the documents table, not
+        via the chunk's own organization_id metadatum (older chunks may lack it); a chunk of another
+        organization, a chunk whose document no longer exists, and an unknown id are all 404. The
+        embedding is never part of this response. The role alone does not open the text: a chunk
+        carries the document's own content, so the caller additionally has to be able to read the
+        document's library - the same formula the search evaluates, with no system-administration
+        floor. Without it, 403 (#1828).
+      parameters:
+        - name: chunkId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The stored chunk
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChunkInspectionResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/admin/search/documents/{documentId}/chunks:
+    get:
+      operationId: listDocumentChunks
+      tags: [search-admin]
+      summary: >
+        Every stored chunk of one document in chunk order (system admin only, #1230,
+        hybrid-retrieval.md "Das Diagnosewerkzeug")
+      description: >
+        The document must exist and belong to the caller's own organization, otherwise 404. The
+        list is what the vector store holds right now, ordered by chunk_index; chunkCount is the
+        number the document entity recorded at indexing time, so a gap between the two is itself a
+        finding. Embeddings are never part of this response. The role alone does not open the text:
+        the chunks carry the document's own content, so the caller additionally has to be able to
+        read its library - the same formula the search evaluates, with no system-administration
+        floor. Without it, 403 (#1828), decided before a single chunk is read.
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: The document's chunks in order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentChunksResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+components:
+  schemas:
+    QueryRequest:
+      type: object
+      required: [question]
+      properties:
+        question:
+          type: string
+          minLength: 1
+          maxLength: 2000
+          pattern: "[\\s\\S]*\\S[\\s\\S]*"
+          example: What is the project architecture?
+        chatId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >
+            The persisted chat (#525) this question and its answer belong to - the question,
+            answer and sources are appended to it as ChatMessages, and the search scope for this
+            query is taken from the chat's useKnowledge/referencedLibraryIds settings rather than
+            useKnowledge/libraryIds below. Must be a chat the caller authored (see POST
+            /api/v1/spaces/{spaceId}/chats) or the request runs ephemerally instead of being
+            rejected, exactly as if chatId had been omitted (see useKnowledge below) - not
+            persisted, and remembered only for the lifetime of the in-memory conversation cache
+            keyed by the returned chatId.
+        useKnowledge:
+          type: boolean
+          nullable: true
+          default: true
+          description: >
+            Ignored when chatId names a chat the caller authored - that chat's own useKnowledge
+            setting applies instead (#525). Otherwise (#526): whether the query searches the
+            knowledge base at all. When true (the default), the search scope is every knowledge
+            library the caller may read; libraryIds is ignored in this mode. When false, the
+            search scope is libraryIds narrowed to the libraries the caller may read - never
+            widened beyond it - and an empty (or entirely unreadable) libraryIds performs no
+            retrieval at all, see QueryMetadata.answeredWithoutKnowledge.
+        libraryIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: >
+            Ignored when chatId names a chat the caller authored - that chat's own sticky
+            @-references apply instead (#525). Otherwise (#526): knowledge libraries explicitly
+            referenced for the query. Only consulted when useKnowledge is false.
+        metadataFilter:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/MetadataFilter"
+          description: >
+            The core-field filter for this query (#1070, docs/features/metadata-schema.md,
+            Wirkstelle 1), applied inside both search paths before ranking and always subordinate
+            to the permission filter. Ignored when chatId names a chat the caller authored - that
+            chat's own persisted metadataFilter applies instead, exactly like its search scope.
+            Absent or empty: no metadata filter.
+        usedPromptId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >
+            The prompt the question was built from
+            (docs/features/spaces-and-assets.md#prompt-im-chat). The client resolves the prompt's
+            text and variables itself and sends the finished question; the server only checks that
+            the caller may read the prompt's library (403 otherwise) and, for a persisted chat,
+            keeps the prompt's id and its current title as a snapshot on the question's message.
+            It changes nothing about the model call.
+
+    QueryResponse:
+      type: object
+      required: [answer, sources, metadata, chatId]
+      properties:
+        answer:
+          type: string
+          example: The project uses a modular monolith architecture...
+        sources:
+          type: array
+          items:
+            $ref: "#/components/schemas/SourceReference"
+        metadata:
+          $ref: "#/components/schemas/QueryMetadata"
+        chatId:
+          type: string
+          format: uuid
+          description: >
+            The chat this turn was appended to, or - for an ephemeral query that supplied no
+            chatId - a freshly generated id identifying only the in-memory conversation cache
+            entry, not a persisted chat.
+        chatTitle:
+          type: string
+          nullable: true
+          description: >
+            The persisted chat's current title immediately after this turn (#557), or null for an
+            ephemeral query. On the very first turn this is still the mechanical prefix-of-the-
+            question fallback, never the LLM-derived title: title generation runs asynchronously
+            after the answer is returned, precisely so it can never delay this response - the
+            frontend picks up the LLM-derived title (if generation succeeds) on a later reload of
+            the chat, e.g. GET /chats/{chatId}.
+          example: Rückstellung für Altlastensanierung
+        noteItems:
+          type: array
+          nullable: true
+          description: >
+            The Gesprächsnotiz state that went into *this* answer (#1487), oldest point first, or
+            null for an ephemeral query that has no persisted chat. Like chatTitle above, this is
+            deliberately never the state of the condensation this turn triggers: that runs
+            asynchronously after the answer is returned, so a point condensed from this turn's own
+            question first appears with the next answer or on a reload of the chat.
+          items:
+            $ref: "#/components/schemas/ChatNoteItem"
+
+    SourceReference:
+      type: object
+      required: [fileName, relevanceScore, matchCount, cited]
+      properties:
+        fileName:
+          type: string
+          example: architecture-overview.md
+        relevanceScore:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1
+          description: >-
+            Reciprocal of this source's 1-based position in this answer's sources array (1.0 for
+            the first entry, 0.5 for the second) - not a similarity score, and counted per source,
+            not per retrieved chunk, so a source contributing several chunks still occupies exactly
+            one position. A raw score is not comparable across sources since a lexical-only chunk
+            carries a ts_rank and a vector chunk a cosine similarity; the rank is. 0 for a synthetic
+            entry no retrieved chunk backs.
+          example: 1.0
+        matchCount:
+          type: integer
+          example: 3
+        indexedAt:
+          type: string
+          format: date-time
+          nullable: true
+        documentId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >
+            The document id chunks were retrieved from (#739) - lets a client open the original via
+            GET /api/v1/documents/{documentId}/content for every sourceType (#747: that endpoint now
+            proxies HTTP_DIRECTORY/RSS_FEED server-side from sourceUrl below instead of answering
+            404). Null for a synthetic entry (#386) whose citation named a document id that matched
+            no retrieved chunk at all - there is nothing real to link to.
+          example: 3f9a6b2e-1c4d-4e8a-9f0b-2d6c8e1a5b7d
+        sourceType:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/SourceTypeKey"
+          description: >
+            The retrieved document's own source type (#739). Every sourceType opens through GET
+            /api/v1/documents/{documentId}/content (#747); sourceUrl below is secondary information
+            for HTTP_DIRECTORY/RSS_FEED, not itself a deep link a client should navigate to directly
+            (the source may only be reachable from OPAA's own network). Null exactly when documentId
+            is null.
+          example: FILESYSTEM
+        sourceUrl:
+          type: string
+          nullable: true
+          description: >
+            The document's own remote location for sourceType HTTP_DIRECTORY/RSS_FEED (#739),
+            mirroring LibraryDocumentResponse.sourceUrl - shown as secondary information alongside
+            the documentId deep link (#747), e.g. as a tooltip, since the source itself may not be
+            reachable from the caller's own network. Null for UPLOAD/FILESYSTEM (use documentId
+            instead) and for a synthetic entry.
+          example: https://example.gov/verzeichnis/dienstanweisung-2024.pdf
+        sourceEntryUrl:
+          type: string
+          nullable: true
+          description: >
+            For a citation of an attachment discovered on an RSS entry's detail page (#468), the
+            URL of the entry it was found on - lets the citation trace the attachment back to the
+            feed entry it belongs to. Null for every other document, and for a citation merged from
+            chunks whose underlying documents disagree on this value.
+          example: https://example.com/feed/entry-123
+        cited:
+          type: boolean
+          example: true
+        citationValid:
+          type: boolean
+          nullable: true
+          default: true
+          description: >
+            Deterministic citation validation (#386): whether the citation(s) pointing at this
+            source actually match the chunks retrieved for this answer - document id, section
+            (chunk index) and file name must all agree with the retrieved set. False means at
+            least one citation naming this source was invalid: it named a document id not among
+            the retrieved chunks, a section number that document does not have among them, or a
+            file name that does not match the id it claimed. An invalid citation is never silently
+            dropped from the answer text nor silently accepted as genuine - it stays in the answer
+            and its source entry is flagged here instead, including a synthetic entry (zero
+            relevance, zero match count) for a citation whose document id matches no retrieved
+            chunk at all. Absent/true for a source no citation flagged as invalid, and for a
+            source that was never cited in the first place.
+          example: true
+
+        chunkLocations:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/ChunkLocation"
+          description: >
+            Where each retrieved chunk of this document sits in the original (#667) - the Fundort
+            mockup 1a prints next to a footnote ("Abschn. 4.2 ‚Fristsetzung'", "S. 2–4"). One entry
+            per retrieved chunk, keyed by the chunk index the citation marker carries
+            (【source: <documentId>#<chunkIndex> | …】), so a client resolves footnote number → chunk
+            index → location without a second request. The location itself is null where the
+            indexing pipeline could not determine one (plain text without headings, a format without
+            page breaks). Absent for a synthetic entry (#386).
+
+        metadata:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/SourceMetadataEntry"
+          description: >-
+            The cited document's schema metadata as a generic field-value list (#1066; Maintainer-
+            Beschluss vom 04.09.2026 am Epic #1065): the core fields first (Titel, Dokumentart,
+            Datum/Stand), later a library's own fields appended (#1071). Read from the document
+            itself - not from the chunk - so every chunk of a document reports the same values. A
+            field without a value is simply absent, and a client renders the list without knowing
+            any field. Null for a synthetic entry (#386) and for a document without any value.
+        metadataFilterMatch:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/MetadataFilterMatch"
+          description: >-
+            Set only when a metadata filter was active for this answer (#1070): whether this
+            document matched on every filtered field or was kept as "ohne Angabe". Null without a
+            filter and for a synthetic entry.
+
+    ChunkLocation:
+      type: object
+      required: [chunkIndex]
+      properties:
+        chunkIndex:
+          type: integer
+          description: The chunk_index the citation marker names.
+          example: 3
+        location:
+          type: string
+          nullable: true
+          description: >
+            Human-readable location of the chunk in its document (#667), German, as the indexing
+            pipeline derived it from the document's own structure: the page range for formats with
+            page breaks (PDF, Office documents), the heading path for Markdown-style headings, both
+            when both are known. Null when nothing could be derived.
+          example: S. 2–4 · Abschn. 4.2 ‚Fristsetzung'
+
+    QueryMetadata:
+      type: object
+      required: [model, tokenCount, durationMs]
+      properties:
+        model:
+          type: string
+          example: gpt-4o
+        tokenCount:
+          type: integer
+          example: 847
+        durationMs:
+          type: integer
+          format: int64
+          example: 1523
+        answeredWithoutKnowledge:
+          type: boolean
+          nullable: true
+          default: false
+          description: >
+            True when useKnowledge was false and libraryIds resolved to no readable library, so no
+            vector search ran and the answer was generated without any document context (#526). The
+            frontend uses this to show the corresponding hint instead of inferring it from an empty
+            sources list, which alone cannot distinguish "no knowledge searched" from "searched but
+            found nothing".
+        noKnowledgeAvailableInSpace:
+          type: boolean
+          nullable: true
+          default: false
+          description: >
+            True for the distinct #203 fail-open case: the chat's space has @Alles-Wissen active
+            and carries at least one library association, but none of the associated libraries are
+            readable by the caller - the search scope resolves to empty even though the space is
+            curated, not because the caller chose to search nothing
+            (docs/features/spaces-and-assets.md#suchbereich-je-chatart, "In diesem Space ist für
+            dich derzeit kein Wissen verfügbar"). Mutually exclusive with
+            answeredWithoutKnowledge, which covers the unrelated case of useKnowledge being
+            deliberately false. Never true for an ephemeral query without a persisted chat, and
+            never true for a space without any association (that case falls back to every readable
+            library instead, per the permanent transition rule).
+
+        searchedLibraries:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/SearchedLibrary"
+          description: >
+            The libraries the vector search actually ran against for this turn (#667) - the
+            effective search scope after permissions and the chat's own settings were applied,
+            sorted by name. Lets a client print mockup 1a's "Durchsucht wurden: …" line under an
+            answer that could not be substantiated, naming exactly what was looked at. Empty when no
+            search ran (answeredWithoutKnowledge / noKnowledgeAvailableInSpace).
+
+    SearchedLibrary:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: Dienstanweisungen
+
+    SearchableLibrary:
+      type: object
+      required: [id, name]
+      description: >-
+        One library of the caller's effective view (#1720). Deliberately three fields: a foreign
+        model needs name and description to decide whether a question belongs here, and nothing
+        else.
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: Dienstanweisungen
+        description:
+          type: string
+          nullable: true
+          example: Dienstanweisungen des Hauses seit 2019
+
+    SearchRequest:
+      type: object
+      required: [question]
+      properties:
+        question:
+          type: string
+          minLength: 1
+          maxLength: 2000
+          pattern: "[\\s\\S]*\\S[\\s\\S]*"
+          example: Welche Frist gilt für den Widerspruch?
+        libraryIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: >
+            Narrows the search to these libraries, always intersected with the caller's effective
+            view and never widened beyond it - a referenced but unreadable library simply yields no
+            hits. Absent or empty: every library of the effective view.
+        metadataFilter:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/MetadataFilter"
+          description: >
+            The same core-field filter POST /api/v1/query takes, applied inside both search paths
+            and always subordinate to the permission filter. Absent or empty: no filter.
+        maxHits:
+          type: integer
+          nullable: true
+          minimum: 1
+          description: >
+            Upper bound on the returned hits. Capped server-side; a larger value is silently
+            reduced to the cap rather than rejected. Absent: the configured default.
+          example: 10
+
+    SearchResponse:
+      type: object
+      required: [hits, searchedLibraries]
+      properties:
+        hits:
+          type: array
+          items:
+            $ref: "#/components/schemas/SearchHit"
+          description: >
+            The retrieved passages, best first - the same selection and the same order the answer
+            of POST /api/v1/query is built from for this question and this rights context.
+        searchedLibraries:
+          type: array
+          items:
+            $ref: "#/components/schemas/SearchedLibrary"
+          description: >
+            The libraries the search actually ran against, sorted by name - the effective scope
+            after permissions and the request's own narrowing, never the request itself. Empty when
+            the caller may read nothing.
+
+    SearchHit:
+      type: object
+      required: [hitId, title, excerpt, relevanceScore]
+      description: >-
+        One retrieved passage with its origin (#1720). Deliberately per passage, not per document:
+        the hit is what a foreign tool quotes and what GET /api/v1/search/hits/{hitId} fetches.
+      properties:
+        hitId:
+          type: string
+          description: >-
+            The stable, unguessable identifier of this passage, and the only key
+            GET /api/v1/search/hits/{hitId} accepts. Not a countable number by design: an
+            enumerable id would turn the fetch path into a listing over foreign holdings even
+            though every single fetch checks rights. The permission filter stays the barrier -
+            unguessability is the second layer, not the first.
+          example: 9f3d0a72-5f64-4c06-9d2c-2a1f7b0e1c33
+        title:
+          type: string
+          description: The document's Titel from its metadata, or its file name where it has none.
+          example: Dienstanweisung Widerspruchsverfahren
+        excerpt:
+          type: string
+          description: >-
+            The passage's own wording, capped at a server-side length - the stored chunk text, not
+            a rendering of it, so a table reads as the Markdown the chat path is given.
+        libraryId:
+          type: string
+          format: uuid
+          nullable: true
+        libraryName:
+          type: string
+          nullable: true
+        documentId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >-
+            The document the passage belongs to. Null only for a passage whose document row no
+            longer resolves.
+        fileName:
+          type: string
+          nullable: true
+        chunkIndex:
+          type: integer
+          nullable: true
+          description: The passage's position in the document, as the citation markers count it.
+        location:
+          type: string
+          nullable: true
+          description: >-
+            Where the passage sits in the original - "Abschn. 4.2 › Fristsetzung", "S. 2-4" - or
+            null where the indexing pipeline could determine none (plain text without headings, a
+            format without page breaks).
+          example: Abschn. 4.2 › Fristsetzung
+        metadata:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/SourceMetadataEntry"
+          description: >-
+            The document's schema metadata, read from the document and therefore identical for
+            every passage of it. Null for a document without any value.
+        relevanceScore:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1
+          description: >-
+            Reciprocal of this hit's 1-based position (1.0 for the first, 0.5 for the second) - a
+            rank, not a similarity: a lexical hit carries a ts_rank and a vector hit a cosine
+            similarity, which are not comparable, while the rank is.
+          example: 1.0
+        downloadUrl:
+          type: string
+          nullable: true
+          description: >-
+            Path of the original behind this hit (GET /api/v1/documents/{documentId}/content),
+            relative to this API. Offered only for a library inside the effective view of this very
+            request, never merely because a document id is known; null otherwise. A caller treats
+            it as an offer, not as a guarantee - the content endpoint checks rights again.
+          example: /api/v1/documents/3f9a6b2e-1c4d-4e8a-9f0b-2d6c8e1a5b7d/content
+
+    SearchHitContentResponse:
+      type: object
+      required: [hitId, text, whole, truncated, characterLimit]
+      description: >-
+        The text behind one hit (#1720): the passage with its neighbours by default, the whole
+        extracted text of the document with full=true.
+      properties:
+        hitId:
+          type: string
+        documentId:
+          type: string
+          format: uuid
+        fileName:
+          type: string
+          nullable: true
+        title:
+          type: string
+          nullable: true
+        libraryId:
+          type: string
+          format: uuid
+          nullable: true
+        libraryName:
+          type: string
+          nullable: true
+        chunkIndex:
+          type: integer
+          nullable: true
+        location:
+          type: string
+          nullable: true
+        headingPath:
+          type: array
+          nullable: true
+          items:
+            type: string
+          description: >-
+            The headings above the passage, outermost first - the structural context an assistant
+            needs to place a quotation. Empty for a passage whose Fundort names a page, a slide or
+            a row rather than a section.
+          example: [Verfahren, Fristsetzung]
+        text:
+          type: string
+          description: >-
+            The passage with its adjoining passages, or - with full=true - the whole extracted
+            text of the document, in both cases as the chat path receives it (tables as Markdown).
+            The overlap two adjoining passages share is joined once, not twice.
+        whole:
+          type: boolean
+          description: True when full=true was honoured and the whole document is behind text.
+        truncated:
+          type: boolean
+          description: >-
+            True when text was cut at characterLimit - possible on both paths. With the delivered
+            values a passage and its neighbours stay far below the cap, but the number of adjoining
+            passages and the chunk size are configurable upwards and the cap downwards, so a client
+            must read this field rather than infer it from full.
+        characterLimit:
+          type: integer
+          description: The server-side character cap of this endpoint.
+          example: 200000
+        metadata:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/SourceMetadataEntry"
+        downloadUrl:
+          type: string
+          nullable: true
+          description: >-
+            Path of the original, under the same rule as SearchHit.downloadUrl: offered only for a
+            library inside the effective view of this very request.
+
+    SourceMetadataEntry:
+      type: object
+      required: [fieldKey, label, value, displayValue, origin]
+      description: >-
+        One metadata value of a cited document (docs/features/metadata-schema.md, Wirkstelle 3),
+        self-describing so a client renders it without field knowledge: the German label, the
+        display text, the machine-readable value and the value's origin.
+      properties:
+        fieldKey:
+          type: string
+          description: >-
+            The stable field key - title, document_type or document_date for the core fields; a
+            library field's own key later (#1071).
+          example: document_type
+        label:
+          type: string
+          description: The German field label ("Titel", "Dokumentart", "Datum/Stand").
+          example: Dokumentart
+        value:
+          type: string
+          description: >-
+            The machine-readable value - the vocabulary code for a controlled field, the ISO-8601
+            calendar date (padded to the first day of what datePrecision leaves unknown) for a
+            date, the text itself otherwise.
+          example: DIENSTANWEISUNG
+        displayValue:
+          type: string
+          description: >-
+            What a client shows - the German vocabulary label, or a date at its own precision
+            ("12.03.2026", "03/2026", "2024" - never a padded "01.01.2024").
+          example: Dienstanweisung
+        origin:
+          $ref: "#/components/schemas/MetadataOrigin"
+        datePrecision:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/DatePrecision"
+          description: Set for a date value only.
+        detailOnly:
+          type: boolean
+          nullable: true
+          default: false
+          description: >-
+            True for a value that belongs into the Beleg detail view but not into the one-line
+            Fundstellenzeile (#1242): a mail's recipient list is unbounded and names nobody useful
+            for identifying the passage, while the line has to stay readable in the flow of an
+            answer. Absent/false for every other entry.
+
+    MetadataFilter:
+      type: object
+      additionalProperties: false
+      description: >-
+        A filter on the filterable schema fields (#1070, docs/features/metadata-schema.md,
+        Wirkstelle 1): the core fields Dokumentart and Datum/Stand, a library's own fields and the
+        filterable format fields. The title is not filterable, a display field like a mail's Betreff
+        is not, and free keywords never are; a request naming any other field is rejected with 400. Every condition is
+        applied inside both search paths, AND-ed to the permission filter, so a filter can narrow
+        the readable set but never widen it. A document without a value for a filtered field is
+        not excluded ("Leerwerte schließen nicht aus"); its source entry carries
+        metadataFilterMatch = NO_VALUE instead. An object without any condition is no filter.
+      properties:
+        documentTypes:
+          type: array
+          nullable: true
+          items:
+            type: string
+          description: >-
+            Vocabulary codes (GET /api/v1/metadata/document-types); a document matches when its
+            Dokumentart is one of them or it has none. Empty or absent: no condition on the
+            Dokumentart. A code outside the vocabulary is rejected with 400.
+          example: [DIENSTANWEISUNG, VERMERK]
+        documentDateFrom:
+          type: string
+          nullable: true
+          pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+          description: >-
+            Inclusive start of the Datum/Stand window as an ISO-8601 calendar date. A stored value
+            covers the whole span its precision leaves open (YEAR 2024 = 2024-01-01..2024-12-31,
+            MONTH 2024-03 = the month) and matches when that span overlaps the window. Absent:
+            open start. An impossible date is rejected with 400.
+          example: "2024-01-01"
+        documentDateTo:
+          type: string
+          nullable: true
+          pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+          description: >-
+            Inclusive end of the window, same overlap rule. Must not precede documentDateFrom
+            (400).
+          example: "2024-12-31"
+        libraryFields:
+          type: array
+          nullable: true
+          description: >-
+            Conditions on library fields (#1071) - the third kind of condition a filter can carry.
+            Absent or empty: no condition on any library field.
+          items:
+            $ref: "#/components/schemas/MetadataFilterLibraryFieldCondition"
+        formatFields:
+          type: array
+          nullable: true
+          description: >-
+            Conditions on the filterable format fields (#1242) - the fourth and last kind. A format
+            field is built in and only filled where the format declares it (a mail's Absender);
+            naming a field that is not filterable - the Betreff is a display field - or a value the
+            field's pattern does not accept is rejected with 400.
+          items:
+            $ref: "#/components/schemas/MetadataFilterFormatFieldCondition"
+
+    MetadataFilterMatch:
+      type: string
+      description: >-
+        How a retrieved document related to the active metadata filter (#1070): MATCHED - every
+        filtered field carried a matching value; NO_VALUE - at least one filtered field had no
+        value on this document (empty or "kein Wert ermittelbar"), and the document was kept by the
+        Leerwert rule. A client marks NO_VALUE hits as "ohne Angabe" in the result list.
+      enum: [MATCHED, NO_VALUE]
+      example: NO_VALUE
+
+    MetadataFilterFieldOption:
+      type: object
+      required: [fieldKey, label, filledDocuments, totalDocuments, fillShare, threshold, offered]
+      description: >-
+        The Füllstand of one filterable core field in the caller's search scope, and whether the
+        filter interface offers the field (metadata-schema.md, "Eintrittsbedingung für den
+        Kernfeld-Filter").
+      properties:
+        fieldKey:
+          type: string
+          example: document_type
+        label:
+          type: string
+          example: Dokumentart
+        filledDocuments:
+          type: integer
+          format: int64
+          description: >-
+            Indexed documents of the scope with a value or the mark "kein Wert ermittelbar" - both
+            count as answered for the Füllstand.
+        totalDocuments:
+          type: integer
+          format: int64
+          description: Indexed documents of the scope.
+        fillShare:
+          type: number
+          format: double
+          description: filledDocuments / totalDocuments in 0..1; 0 for an empty scope.
+        threshold:
+          type: number
+          format: double
+          description: >-
+            The committed Füllstand a field must reach to be offered (ADR-0012; Dokumentart 0.90,
+            Datum/Stand 0.75 as of 04.09.2026).
+        offered:
+          type: boolean
+          description: >-
+            fillShare >= threshold on a non-empty scope. A field below is not offered, with the
+            reason visible.
+
+    MetadataFilterDocumentTypeOption:
+      type: object
+      required: [code, label, documentCount]
+      description: One Dokumentart that actually occurs in the caller's search scope.
+      properties:
+        code:
+          type: string
+          example: DIENSTANWEISUNG
+        label:
+          type: string
+          example: Dienstanweisung
+        documentCount:
+          type: integer
+          format: int64
+
+    MetadataFilterOptionsResponse:
+      type: object
+      required: [totalDocuments, fields, documentTypes]
+      description: >-
+        What the filter interface needs for one person and one search scope (#1070): the
+        Füllstand per field with the entry condition, the Dokumentart values occurring in that
+        scope and the span of the Datum/Stand values. Built in the rights context of the caller
+        over the libraries the next question would search; never a global aggregate
+        (metadata-schema.md, Rechte-Invariante). May be served from a per-person cache keyed by
+        person and scope, discarded on every rights change of that person.
+      properties:
+        totalDocuments:
+          type: integer
+          format: int64
+        fields:
+          type: array
+          items:
+            $ref: "#/components/schemas/MetadataFilterFieldOption"
+        documentTypes:
+          type: array
+          items:
+            $ref: "#/components/schemas/MetadataFilterDocumentTypeOption"
+        documentDateMin:
+          type: string
+          nullable: true
+          description: >-
+            Earliest Datum/Stand value in the scope as an ISO-8601 calendar date (padded to its
+            precision's first day), null without any.
+          example: "2019-01-01"
+        documentDateMax:
+          type: string
+          nullable: true
+          example: "2026-03-12"
+        libraryFields:
+          type: array
+          description: >-
+            The filterable library fields of the scope (#1071), one entry per library and field,
+            each with its own Füllstand, entry condition and occurring values.
+          items:
+            $ref: "#/components/schemas/MetadataFilterLibraryFieldOption"
+        formatFields:
+          type: array
+          description: >-
+            The filterable format fields with the values occurring in the scope (#1242).
+          items:
+            $ref: "#/components/schemas/MetadataFilterFormatFieldOption"
+
+    ContextPrefixRerunStatusResponse:
+      type: object
+      required:
+        [totalDocuments, currentDocuments, pendingDocuments, lastSkippedDocuments, complete]
+      description: >
+        The Kontextpraefix state of one library (#1072, metadata-schema.md "Nachlauf im Betrieb"):
+        the defined, permitted Mischzustand of a library whose prefix is being changed -
+        verarbeitet, ausstehend, fehlgeschlagen. The search stays available over both halves.
+      properties:
+        totalDocuments:
+          type: integer
+          format: int64
+        currentDocuments:
+          type: integer
+          format: int64
+          description: Indexed documents already embedded under their current prefix.
+        pendingDocuments:
+          type: integer
+          format: int64
+          description: >
+            Indexed documents whose prefix stamp was cleared by a change to their own prefix, plus
+            the bestand that never carried one. A manual correction of a prefix-effective value
+            lands here too - it hands the document to the Nachlauf instead of re-embedding on the
+            spot.
+        lastSkippedDocuments:
+          type: integer
+          format: int64
+          description: >
+            Documents the most recent Nachlauf call for this library could not advance - a
+            process-lifetime figure (ADR-0021), 0 before the first call.
+        complete:
+          type: boolean
+          description: True when pendingDocuments is 0.
+
+    MetadataFilterLibraryFieldCondition:
+      type: object
+      additionalProperties: false
+      required: [libraryId, fieldKey]
+      description: >-
+        One condition on a library field (#1071). The field identity is the pair (libraryId,
+        fieldKey), never the key alone: two libraries may each define "fassung" with their own
+        value lists, and those are two fields. Exactly one shape is used, following the field's
+        type - codes for SELECT, the window for DATE, value for PATTERN; naming a shape that does
+        not fit the field's type is rejected with 400, as is an unknown field or a code outside the
+        field's configured list. A document without a value for the field - and every document of
+        another library - is not excluded ("Leerwerte schließen nicht aus").
+      properties:
+        libraryId:
+          type: string
+          format: uuid
+        fieldKey:
+          type: string
+          description: The field's own key, without the namespace prefix.
+          example: fassung
+        codes:
+          type: array
+          nullable: true
+          items:
+            type: string
+          description: For a SELECT field - codes of its configured value list.
+        dateFrom:
+          type: string
+          nullable: true
+          pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+          description: >-
+            For a DATE field - inclusive window start, same span semantics as the Kernfeld
+            Datum/Stand.
+        dateTo:
+          type: string
+          nullable: true
+          pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        value:
+          type: string
+          nullable: true
+          description: >-
+            For a PATTERN field - the exact value a document must carry. Deliberately exact and not
+            a prefix or substring match: the type exists so an identifier is checkable, and a
+            partial match would turn it back into a text search.
+
+    MetadataFilterLibraryFieldValueOption:
+      type: object
+      required: [code, label, documentCount]
+      description: One value of a library field that actually occurs in the caller's search scope.
+      properties:
+        code:
+          type: string
+        label:
+          type: string
+        documentCount:
+          type: integer
+          format: int64
+
+    MetadataFilterLibraryFieldOption:
+      type: object
+      required:
+        [
+          libraryId,
+          libraryName,
+          fieldKey,
+          label,
+          type,
+          filledDocuments,
+          totalDocuments,
+          fillShare,
+          threshold,
+          offered,
+          values,
+        ]
+      description: >-
+        The Füllstand of one filterable library field within the caller's search scope, and whether
+        the filter interface offers it (#1071). The base of fillShare is the field's own library,
+        not the whole scope: the field exists only there, and measuring it against libraries that
+        cannot carry it would keep a well-maintained field of a small library permanently below the
+        threshold. The listed values are the ones documents in the caller's rights context actually
+        carry - not the configured list (metadata-schema.md, Rechte-Invariante).
+      properties:
+        libraryId:
+          type: string
+          format: uuid
+        libraryName:
+          type: string
+        fieldKey:
+          type: string
+        label:
+          type: string
+        type:
+          $ref: "#/components/schemas/LibraryMetadataFieldType"
+        filledDocuments:
+          type: integer
+          format: int64
+        totalDocuments:
+          type: integer
+          format: int64
+          description: Indexed documents of the field's own library within the scope.
+        fillShare:
+          type: number
+          format: double
+        threshold:
+          type: number
+          format: double
+        offered:
+          type: boolean
+        values:
+          type: array
+          items:
+            $ref: "#/components/schemas/MetadataFilterLibraryFieldValueOption"
+        dateMin:
+          type: string
+          nullable: true
+          description: For a DATE field - earliest value in the scope, null without any.
+        dateMax:
+          type: string
+          nullable: true
+
+    MetadataFilterFormatFieldCondition:
+      type: object
+      additionalProperties: false
+      required: [fieldKey, values]
+      description: >-
+        One condition on a built-in format field (#1242). The values are matched exactly - the
+        field carries a checked identifier, and a partial match would turn it back into the text
+        search the specification rules out. A document without a value for the field - every
+        document that is not of this format - is not excluded ("Leerwerte schließen nicht aus").
+      properties:
+        fieldKey:
+          type: string
+          description: The field's own key, without the namespace prefix.
+          example: mail_sender
+        values:
+          type: array
+          items:
+            type: string
+          description: >-
+            The values a document may carry; a document matches when its value is one of them or it
+            has none.
+          example: [poststelle@stadt.de]
+
+    MetadataFilterFormatFieldOption:
+      type: object
+      required: [fieldKey, label, filledDocuments, totalDocuments, values, offered]
+      description: >-
+        The values of one filterable format field occurring in the caller's search scope (#1242),
+        and whether the filter interface offers it. Unlike a core or library field, a format field
+        is offered as soon as at least one document of the scope carries a value: it is filled
+        deterministically for every document of its format and structurally absent for every other,
+        so a share over a mixed bestand would measure the format mix, not the metadata quality.
+      properties:
+        fieldKey:
+          type: string
+          example: mail_sender
+        label:
+          type: string
+          example: Absender
+        filledDocuments:
+          type: integer
+          format: int64
+          description: Indexed documents of the scope carrying a value for the field.
+        totalDocuments:
+          type: integer
+          format: int64
+          description: Indexed documents of the scope.
+        values:
+          type: array
+          items:
+            $ref: "#/components/schemas/MetadataFilterLibraryFieldValueOption"
+          description: >-
+            The values documents in the caller's rights context actually carry, most frequent first
+            and capped at 20: the value set of a format field is open - a postbox has as many
+            senders as correspondents -, and a complete list would be an unbounded response of
+            personal addresses.
+        valuesCapped:
+          type: boolean
+          nullable: true
+          default: false
+          description: >-
+            True when the scope carries more values than the list shows. A client then offers a free
+            input for an exact value beside the list.
+        offered:
+          type: boolean
+          description: >-
+            True as soon as one document of the scope carries a value. Unlike a core or library
+            field there is no Füllstand threshold: the field is filled deterministically for every
+            document of its format and structurally absent for every other, so a share over a mixed
+            bestand would measure the format mix rather than the metadata quality.
+
+    CoreMetadataFieldFillResponse:
+      type: object
+      description: >
+        The Füllgrad of one core field in one library (#1067): how many of the library's indexed
+        documents carry a value for it. Computed at query time in the administrative context - the
+        organization is the rights context here - never precomputed.
+      required:
+        [
+          fieldKey,
+          label,
+          filledDocuments,
+          filledShare,
+          notDeterminableDocuments,
+          documentsWithoutValue,
+          missingShare,
+        ]
+      properties:
+        fieldKey:
+          type: string
+          example: document_type
+        label:
+          type: string
+          description: The German field label, as the Beleg-Anzeige shows it.
+          example: Dokumentart
+        filledDocuments:
+          type: integer
+          format: int64
+        filledShare:
+          type: number
+          format: double
+          description: filledDocuments / totalDocuments, in 0..1; 0 for a library without documents.
+        notDeterminableDocuments:
+          type: integer
+          format: int64
+          description: >-
+            Documents a person marked as "kein Wert ermittelbar" for this field (#1069). Neither
+            filled nor open - the reason documentsWithoutValue below is not totalDocuments minus
+            filledDocuments.
+        documentsWithoutValue:
+          type: integer
+          format: int64
+          description: >-
+            The Pflege-Anker of this library and field (#1069): documents with neither a value nor
+            a "kein Wert ermittelbar" mark. The same figure GET
+            /api/v1/libraries/{libraryId}/metadata/maintenance shows in the library's own settings,
+            counted here over the organization instead (the administrative exception of the
+            Rechte-Invariante, Beschluss 1 am Epic #1065).
+          example: 12
+        missingShare:
+          type: number
+          format: double
+          description: documentsWithoutValue / totalDocuments, in 0..1.
+
+    MetadataBackfillStatusResponse:
+      type: object
+      description: >
+        The core-metadata extraction state of one library (#1067, metadata-schema.md "Nachlauf im
+        Betrieb"): how much of its indexed bestand carries the current extraction version, how much
+        is still pending, and the Füllgrad per core field. Pending documents are a defined,
+        permitted operating state - the search keeps running over them with their old fields.
+      required:
+        [
+          extractionVersion,
+          totalDocuments,
+          currentDocuments,
+          pendingDocuments,
+          awaitingConnectorRunDocuments,
+          lastSkippedDocuments,
+          complete,
+          fields,
+        ]
+      properties:
+        extractionVersion:
+          type: integer
+          description: The current CoreMetadataExtractor version every document is measured against.
+        totalDocuments:
+          type: integer
+          format: int64
+          description: Indexed documents of the library - the base of every share below.
+        currentDocuments:
+          type: integer
+          format: int64
+          description: Indexed documents already at the current extraction version.
+        pendingDocuments:
+          type: integer
+          format: int64
+          description: >
+            Indexed documents never extracted or extracted with an older version. A superset of
+            what a metadata-backfill call selects: it includes the documents in
+            awaitingConnectorRunDocuments, which no further call advances.
+        awaitingConnectorRunDocuments:
+          type: integer
+          format: int64
+          description: >
+            The subset of pendingDocuments whose bytes live on a remote (HTTP directory, remote
+            attachment) and whose change markers are cleared - marked for their next connector run,
+            which re-reads and re-extracts them. A backfill call reports done while these remain;
+            they are the reason pendingDocuments can stay above 0 after a completed run.
+        lastSkippedDocuments:
+          type: integer
+          format: int64
+          description: >
+            Documents the most recent metadata-backfill call for this library could not advance.
+            A process-lifetime figure (ADR-0021, single instance): it resets on restart and is 0
+            before the first call.
+        complete:
+          type: boolean
+          description: True when pendingDocuments is 0.
+        fields:
+          type: array
+          description: One entry per core field, in schema order (Titel, Dokumentart, Datum/Stand).
+          items:
+            $ref: "#/components/schemas/CoreMetadataFieldFillResponse"
+
+    SearchModelRole:
+      type: string
+      description: >
+        The three model roles of the Modell-Schichtenmodell (hybrid-retrieval.md, Arbeitspaket 4):
+        reranking sits on the same level as chat and embedding, not inside the search as a built-in
+        procedure.
+      enum: [CHAT, EMBEDDING, RERANK]
+      example: RERANK
+
+    SearchModelRoleState:
+      type: string
+      description: >
+        DISABLED is an explicit statement, not an absence: only a role whose switch is deliberately
+        off reports it. UNCONFIGURED and UNREACHABLE are the two Störungszustände - a role that is
+        switched on but unbelegt, and one that is belegt but not reachable.
+      enum: [ACTIVE, DISABLED, UNCONFIGURED, UNREACHABLE]
+      example: DISABLED
+
+    SearchModelRoleStatusResponse:
+      type: object
+      required: [role, state, faulted, detail]
+      properties:
+        role:
+          $ref: "#/components/schemas/SearchModelRole"
+        state:
+          $ref: "#/components/schemas/SearchModelRoleState"
+        endpoint:
+          type: string
+          nullable: true
+          description: >
+            The role's base address, or null when no endpoint is configured. The access key is
+            never part of this response, not even shortened.
+          example: http://localhost:11434/v1
+        modelIdentifier:
+          type: string
+          nullable: true
+          example: qwen3:8b
+        faulted:
+          type: boolean
+          description: >
+            Whether this role's state is a Störungsmeldung rather than a Fußnote - true for exactly
+            UNCONFIGURED and UNREACHABLE. Carried explicitly so a client cannot decide it from a
+            state enum that may gain further values.
+        detail:
+          type: string
+          description: The user-facing German explanation of this state.
+
+    SearchPath:
+      type: string
+      enum: [VECTOR, FULL_TEXT]
+      example: FULL_TEXT
+
+    SearchPathState:
+      type: string
+      description: >
+        INCOMPLETE - the vector path runs, but documents are still waiting to be indexed.
+        OUTDATED - the full-text path runs over every chunk, but some rows were written under an
+        older content_tsv_version and lack the lexemes the current one adds until the pipeline
+        re-index has rewritten them (ADR-0028). Both states hybrid-retrieval.md demands be visible
+        rather than only noticeable in bad answers.
+      enum: [ACTIVE, DISABLED, INCOMPLETE, OUTDATED]
+      example: OUTDATED
+
+    SearchPathStatusResponse:
+      type: object
+      required: [path, state, detail]
+      properties:
+        path:
+          $ref: "#/components/schemas/SearchPath"
+        state:
+          $ref: "#/components/schemas/SearchPathState"
+        detail:
+          type: string
+          description: The user-facing German explanation of this state.
+
+    LibraryIndexState:
+      type: string
+      description: >
+        EMPTY - the library holds no chunk at all. READY - this index is up to date for every
+        chunk. INCOMPLETE - documents of this library are still waiting to be indexed (vector
+        index). OUTDATED - full-text rows of this library were written under an older
+        content_tsv_version; they are still found, they only lack the lexemes the current version
+        adds, until the pipeline re-index has rewritten them (ADR-0028). Nothing rewrites them in
+        the background (#1270).
+      enum: [EMPTY, READY, INCOMPLETE, OUTDATED]
+      example: OUTDATED
+
+    LibrarySearchStatusResponse:
+      type: object
+      required:
+        [
+          libraryId,
+          libraryName,
+          documentCount,
+          indexedDocumentCount,
+          pendingDocumentCount,
+          failedDocumentCount,
+          lowChunkDocumentCount,
+          chunkCount,
+          vectorChunkCount,
+          vectorIndexState,
+          fullTextIndexState,
+          fullTextIndexedChunks,
+          fullTextOutdatedChunks,
+          metadataBackfill,
+          modelExtraction,
+          contextPrefixRerun,
+          metadataSchemaChanges,
+        ]
+      properties:
+        libraryId:
+          type: string
+          format: uuid
+        libraryName:
+          type: string
+          example: Satzungen & Gebührenordnungen
+        documentCount:
+          type: integer
+          format: int64
+        indexedDocumentCount:
+          type: integer
+          format: int64
+        pendingDocumentCount:
+          type: integer
+          format: int64
+          description: The Rückstand - documents still waiting to be indexed.
+        failedDocumentCount:
+          type: integer
+          format: int64
+        lowChunkDocumentCount:
+          type: integer
+          format: int64
+          description: >
+            Documents geführt as INDEXED with null or auffällig wenige chunks (#1055/#1090) - a
+            permanent operational metric, not a one-off cleanup number.
+        chunkCount:
+          type: integer
+          format: int64
+          description: Chunks the documents of this library are recorded as having produced.
+        vectorChunkCount:
+          type: integer
+          format: int64
+          description: >
+            Chunks of this library that actually sit in the vector store - the reference count the
+            full-text index is measured against. A visible gap to chunkCount means the two stores
+            disagree, which is itself the finding.
+        lastIndexedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: The latest indexing time across this library's documents; null if none ran.
+        vectorIndexState:
+          $ref: "#/components/schemas/LibraryIndexState"
+        fullTextIndexState:
+          $ref: "#/components/schemas/LibraryIndexState"
+        fullTextIndexedChunks:
+          type: integer
+          format: int64
+          description: >
+            Full-text rows of this library at the current content_tsv_version - the part of the
+            index an update has already brought up to date.
+        fullTextOutdatedChunks:
+          type: integer
+          format: int64
+          description: >
+            Full-text rows of this library that are not at the current content_tsv_version and wait
+            for the pipeline re-index. They are still found by the lexical path, they only lack the
+            lexemes the current version adds (ADR-0028). A chunk's full-text row is written in the
+            same transaction as its vector row, so only the version of a row can lag behind, never
+            the row itself. The same data source the display of this backlog reads.
+        metadataBackfill:
+          $ref: "#/components/schemas/MetadataBackfillStatusResponse"
+        modelExtraction:
+          $ref: "#/components/schemas/MetadataModelExtractionStatsResponse"
+        contextPrefixRerun:
+          $ref: "#/components/schemas/ContextPrefixRerunStatusResponse"
+        metadataSchemaChanges:
+          $ref: "#/components/schemas/MetadataSchemaChangeStatusResponse"
+
+    MetadataSchemaChangeStatusResponse:
+      type: object
+      required: [pendingChanges, pendingDocuments, lastSkippedDocuments]
+      description: >
+        The running value mappings and field deletions of one library (#1361, metadata-schema.md
+        "Nachlauf im Betrieb"). A library in this state carries a defined Mischzustand: every
+        document keeps a value the schema still lists until its turn comes. The run is driven from
+        the library's own settings by whoever holds the management right, not from this page.
+      properties:
+        pendingChanges:
+          type: integer
+          format: int64
+          description: Retired list values and retired fields waiting to be worked off.
+        pendingDocuments:
+          type: integer
+          format: int64
+          description: Documents those changes still have to rewrite.
+        lastSkippedDocuments:
+          type: integer
+          format: int64
+          description: >-
+            Documents the most recent Charge could not advance - a process-lifetime figure
+            (ADR-0021), 0 before the first call.
+
+    SearchStatusResponse:
+      type: object
+      required: [modelRoles, searchPaths, libraries]
+      properties:
+        modelRoles:
+          type: array
+          items:
+            $ref: "#/components/schemas/SearchModelRoleStatusResponse"
+        searchPaths:
+          type: array
+          items:
+            $ref: "#/components/schemas/SearchPathStatusResponse"
+        libraries:
+          type: array
+          description: Every library of the caller's own organization, by name.
+          items:
+            $ref: "#/components/schemas/LibrarySearchStatusResponse"
+
+    SearchPermissionProfileResponse:
+      type: object
+      required: [id, name, libraryCount]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: Sachbearbeitung Bürgerbüro
+        libraryCount:
+          type: integer
+          description: How many libraries this profile may read.
+
+    SearchDiagnosisContextType:
+      type: string
+      description: >
+        SELF runs in the calling administrator's own rights context; PERMISSION_PROFILE runs in a
+        group's; USER runs in one named person's (#1150). USER is the exception of
+        Berechtigungs-Leitplanke (d): it needs the "Sicht als" befugnis and a free-text
+        justification, it is never the preselected context, and it runs only through
+        ForeignDiagnosticContextService - the one path that also subtracts diagnosegesperrte
+        libraries and writes the protocol entry.
+      enum: [SELF, PERMISSION_PROFILE, USER]
+      example: PERMISSION_PROFILE
+
+    SearchDiagnosisContextResponse:
+      type: object
+      required: [permissionProfiles, personContextAvailable, personContextHint]
+      properties:
+        permissionProfiles:
+          type: array
+          description: >
+            The profiles of the caller's own organization, by name. Empty where the organization
+            has no groups - a permission profile is a group, and none are derived from grant
+            patterns.
+          items:
+            $ref: "#/components/schemas/SearchPermissionProfileResponse"
+        personContextAvailable:
+          type: boolean
+          description: >
+            Whether the caller currently holds a valid, unrevoked and <b>usable</b> "Sicht als"
+            befugnis - usable meaning its scope is still above the Mindestgruppengröße (#1879).
+            False makes
+            the person context unselectable in the user interface; the endpoint enforces the same
+            rule again and answers 403 regardless of what a client sends.
+        personContextHint:
+          type: string
+          description: >
+            The German explanation of that permission, shown next to the disabled choice. It tells
+            the three states apart (#1879): a usable befugnis, one whose scope is currently too
+            small, and none at all - "Sie halten keine" would be wrong for the middle one.
+
+    SearchDiagnosisRequest:
+      type: object
+      required: [question, contextType]
+      properties:
+        question:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          description: >
+            A freshly entered test question. There is no way to run this against an existing chat:
+            chats are space-eigener, zunächst privater Inhalt, and this page never reads them.
+          example: Was gilt bei Gebührenbefreiung wegen Bedürftigkeit?
+        contextType:
+          $ref: "#/components/schemas/SearchDiagnosisContextType"
+        permissionProfileId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >
+            Required for PERMISSION_PROFILE, rejected with 400 for SELF and USER. An unknown id
+            yields 404.
+        spaceId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >
+            The space whose Suchbereich to run the profile in (#1835, ADR-0036 Entscheidung 7):
+            the searched set is the intersection of the libraries associated with that space and
+            the libraries the profile may read. Only for PERMISSION_PROFILE; rejected with 400 for
+            SELF and USER, 404 for an unknown space.
+
+            Answered with 403 when fewer than the configured Mindestgruppengroesse of active
+            accounts of that group reach that space on any path (own membership, this group,
+            another group, ownership) - a profile that names one person there would be a person
+            context without its Vollmacht, and the answer says that the person context with a
+            Vollmacht is the way to that question. The figure is read at the moment of the run,
+            not at selection.
+
+            A run with a space context writes exactly one protocol entry
+            (SEARCH_DIAGNOSIS_PROFILE_RUN, with the group id as its subject); a run without one
+            writes none.
+        targetUserId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >
+            The person whose rights context to assume. Required for USER, rejected with 400
+            otherwise, and rejected with 400 when it names the caller themselves - a run in one's
+            own rights context is not a "Sicht als".
+        justification:
+          type: string
+          maxLength: 1000
+          nullable: true
+          description: >
+            The free-text justification Berechtigungs-Leitplanke (d) requires for a person context.
+            Mandatory for USER - a person context without one is not executed - and carried into the
+            protocol entry. Ignored for the other context types, which write no entry.
+        trackedDocumentId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >
+            A document to follow through the whole run. Without it the response still lists every
+            document a search stage found; with it, the response additionally states plainly
+            whether that document was outside the search scope, never retrieved, displaced at a
+            named stage, or in the final selection - the distinction between an indexing problem
+            and a ranking problem.
+        metadataFilter:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/MetadataFilter"
+          description: >
+            The core-field filter to run the diagnosis with (#1070) - applied exactly as a chat
+            query applies it, so "Sicht als" can check what a person's filtered question sees.
+
+    RetrievalStage:
+      type: string
+      description: The named stages of the retrieval pipeline (hybrid-retrieval.md, Arbeitspaket 1).
+      enum:
+        [
+          SEARCH_SCOPE,
+          METADATA_FILTER,
+          SUB_QUERY_DECOMPOSITION,
+          VECTOR_SEARCH,
+          FULL_TEXT_SEARCH,
+          MMR_SELECTION,
+          RANK_FUSION,
+          RERANK,
+          DOCUMENT_COMPLETION,
+        ]
+      example: RANK_FUSION
+
+    RetrievalStageStatus:
+      type: string
+      description: >
+        Whether a registered stage ran. A stage that did not run still appears in the protocol - a
+        stage silently missing is the failure the protocol exists to prevent. UNAVAILABLE means the
+        stage was switched on but could not do its work - its model role is unbound or its endpoint
+        did not answer; the run continued without it.
+      enum: [EXECUTED, DISABLED, NOT_REACHED, UNAVAILABLE]
+      example: EXECUTED
+
+    RetrievalCandidateOutcome:
+      type: string
+      enum: [ADDED, KEPT, DROPPED]
+      example: DROPPED
+
+    RetrievalVerdictReason:
+      type: string
+      description: >
+        The fixed vocabulary a stage attaches to its verdict - a closed set rather than free text,
+        so a consumer can group and translate it instead of parsing sentences.
+      enum:
+        [
+          RETRIEVED_BY_SEARCH,
+          WITHIN_BUDGET,
+          OUTSIDE_LIST_BUDGET,
+          OUTSIDE_FUSION_BUDGET,
+          OUTSIDE_RERANK_BUDGET,
+          COMPLETED_AS_SIBLING,
+          EVICTED_BY_DOCUMENT_COMPLETION_TIER_1,
+          EVICTED_BY_DOCUMENT_COMPLETION_TIER_2,
+        ]
+      example: OUTSIDE_FUSION_BUDGET
+
+    RetrievalVerdictResponse:
+      type: object
+      required: [chunkId, documentKey, outcome, reason]
+      properties:
+        chunkId:
+          type: string
+        documentKey:
+          type: string
+          description: >
+            The chunk's document grouping key - the level the question "why is document Z not in
+            the answer?" is actually asked at.
+        documentTitle:
+          type: string
+          nullable: true
+          description: File name of the document, or null if it is no longer resolvable.
+        libraryName:
+          type: string
+          nullable: true
+        outcome:
+          $ref: "#/components/schemas/RetrievalCandidateOutcome"
+        reason:
+          $ref: "#/components/schemas/RetrievalVerdictReason"
+        listLabel:
+          type: string
+          nullable: true
+          description: Which candidate list this verdict refers to; null once the lists are fused.
+        rank:
+          type: integer
+          nullable: true
+          description: >
+            The candidate's 1-based position in the ordering this stage decided against. Ranks stay
+            comparable across search methods, unlike value.
+        value:
+          type: number
+          format: double
+          nullable: true
+          description: >
+            The stage-internal number the decision was made on. Deliberately not comparable across
+            stages, nor across search methods within one.
+
+    RetrievalStageResponse:
+      type: object
+      required: [stage, status, incomingCount, outgoingCount, notes, verdicts]
+      properties:
+        stage:
+          $ref: "#/components/schemas/RetrievalStage"
+        status:
+          $ref: "#/components/schemas/RetrievalStageStatus"
+        incomingCount:
+          type: integer
+        outgoingCount:
+          type: integer
+          description: >
+            Both counts are list entries, not distinct chunks: the same chunk found by two
+            sub-queries is two entries before fusion and one after.
+        notes:
+          type: array
+          items:
+            type: string
+        verdicts:
+          type: array
+          items:
+            $ref: "#/components/schemas/RetrievalVerdictResponse"
+
+    DiagnosisSelectionEntryResponse:
+      type: object
+      required: [rank, chunkId, documentKey]
+      properties:
+        rank:
+          type: integer
+          description: 1-based position in the final selection.
+        chunkId:
+          type: string
+        documentKey:
+          type: string
+        documentTitle:
+          type: string
+          nullable: true
+        libraryName:
+          type: string
+          nullable: true
+
+    TrackedDocumentOutcome:
+      type: string
+      description: >
+        OUTSIDE_SEARCH_SCOPE - the context may not read this document's library, so no search could
+        have reached it. IN_LOCKED_AREA - its library is diagnosegesperrt and was left out of the
+        run; this follows from the library's lock state alone and says nothing about the target
+        person's rights. NOT_RETRIEVED - inside the
+        scope, but no search stage found any of its chunks: an indexing or chunking problem.
+        DISPLACED - found and dropped at a named stage: a ranking problem. IN_FINAL_SELECTION - it
+        is in the Endauswahl.
+      enum:
+        [OUTSIDE_SEARCH_SCOPE, IN_LOCKED_AREA, NOT_RETRIEVED, DISPLACED, IN_FINAL_SELECTION]
+      example: DISPLACED
+
+    TrackedDocumentResponse:
+      type: object
+      required: [documentId, outcome, retrievedChunkCount, selectedChunkCount]
+      properties:
+        documentId:
+          type: string
+          format: uuid
+        fileName:
+          type: string
+          nullable: true
+          description: >
+            Null for a document outside the searched scope of a person context: naming it would
+            describe a library that run did not search, and for IN_LOCKED_AREA it would be exactly
+            the Dokumenttitel Berechtigungs-Leitplanke (e) rules out.
+        libraryId:
+          type: string
+          format: uuid
+          nullable: true
+        libraryName:
+          type: string
+          nullable: true
+          description: Null under the same rule as fileName.
+        outcome:
+          $ref: "#/components/schemas/TrackedDocumentOutcome"
+        displacedAtStage:
+          allOf:
+            - $ref: "#/components/schemas/RetrievalStage"
+          nullable: true
+          description: Set only for DISPLACED - the first stage that dropped one of its chunks.
+        displacedReason:
+          allOf:
+            - $ref: "#/components/schemas/RetrievalVerdictReason"
+          nullable: true
+        retrievedChunkCount:
+          type: integer
+          description: How many of this document's chunks any search stage returned.
+        selectedChunkCount:
+          type: integer
+          description: How many of them are in the final selection.
+
+    SearchDiagnosisResponse:
+      type: object
+      required:
+        [
+          question,
+          contextType,
+          contextLabel,
+          executedAt,
+          searchScope,
+          searchQueries,
+          stages,
+          finalSelection,
+          lockedLibraryCount,
+        ]
+      properties:
+        question:
+          type: string
+        contextType:
+          $ref: "#/components/schemas/SearchDiagnosisContextType"
+        contextLabel:
+          type: string
+          description: The German label of the rights context this run used.
+        executedAt:
+          type: string
+          format: date-time
+          description: >
+            When this run happened. The diagnosis answers the Jetzt-Zustand only; it is no
+            Zugriffshistorien-Nachweis, and this value dates the answer rather than allowing one.
+        searchScope:
+          type: array
+          description: >
+            The libraries the run was allowed to search - the permission filter every stage
+            applied, never widened by any of them.
+          items:
+            $ref: "#/components/schemas/SearchedLibrary"
+        searchQueries:
+          type: array
+          items:
+            type: string
+        stages:
+          type: array
+          description: One entry per registered stage, in execution order, whether it ran or not.
+          items:
+            $ref: "#/components/schemas/RetrievalStageResponse"
+        finalSelection:
+          type: array
+          items:
+            $ref: "#/components/schemas/DiagnosisSelectionEntryResponse"
+        lockedLibraryCount:
+          type: integer
+          description: >
+            How many libraries of the organization are diagnosegesperrt (Berechtigungs-Leitplanke
+            (e)). Deliberately not intersected with the target person's read rights: an
+            intersection would make "may this person read a locked library?" readable off the
+            answer, which the diagnosis explicitly does not state. Their existence is named,
+            nothing from inside them is: no name, no hit, no count of documents. Always 0 outside
+            the person context, where the lock does not apply.
+        trackedDocument:
+          allOf:
+            - $ref: "#/components/schemas/TrackedDocumentResponse"
+          nullable: true
+          description: Present only when the request named a trackedDocumentId.
+
+    ChunkInspectionResponse:
+      type: object
+      required: [chunkId, documentId, libraryId, content, metadata]
+      properties:
+        chunkId:
+          type: string
+        documentId:
+          type: string
+          format: uuid
+        documentTitle:
+          type: string
+          nullable: true
+          description: File name of the document.
+        libraryId:
+          type: string
+          format: uuid
+          nullable: true
+        libraryName:
+          type: string
+          nullable: true
+        chunkIndex:
+          type: integer
+          nullable: true
+          description: >
+            The chunk's 0-based position within its document as the pipeline recorded it; null for
+            a chunk stored without a chunk_index metadatum.
+        content:
+          type: string
+          description: The stored chunk text, including any context prefix the pipeline prepended.
+        metadata:
+          type: object
+          additionalProperties: true
+          description: >
+            Every metadata key the vector store holds for this chunk (document_id, chunk_index,
+            library_id, file_name, pipeline keys such as location). Never the embedding.
+
+    DocumentChunksResponse:
+      type: object
+      required: [documentId, libraryId, chunkCount, chunks]
+      properties:
+        documentId:
+          type: string
+          format: uuid
+        documentTitle:
+          type: string
+          nullable: true
+        libraryId:
+          type: string
+          format: uuid
+          nullable: true
+        libraryName:
+          type: string
+          nullable: true
+        chunkCount:
+          type: integer
+          description: >
+            The chunk count the document entity recorded when it was last indexed - compare with
+            the length of chunks to spot a stale or partially written index.
+        chunks:
+          type: array
+          description: The stored chunks ordered by chunkIndex.
+          items:
+            $ref: "#/components/schemas/ChunkInspectionResponse"
