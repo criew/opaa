@@ -4,6 +4,9 @@ import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
 import Typography from '@mui/material/Typography'
 import Link from '@mui/material/Link'
+import ButtonBase from '@mui/material/ButtonBase'
+import Tooltip from '@mui/material/Tooltip'
+import { alpha } from '@mui/material/styles'
 import Box from '@mui/material/Box'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
@@ -14,6 +17,8 @@ import type { Components } from 'react-markdown'
 import rehypeNormalizeHeadings, { MD_LEVEL_PROPERTY } from './markdownHeadings'
 import type { CitationIndex } from './citations'
 import { CITATION_MARKER_RE } from './citations'
+import { citationMarkSx } from './citationMark'
+import { focusRingAlpha, fontFamily, motion } from '../../theme/tokens'
 import 'highlight.js/styles/github-dark.css'
 
 interface MarkdownRendererProps {
@@ -36,67 +41,108 @@ interface MarkdownRendererProps {
 const CITATION_RE = new RegExp(CITATION_MARKER_RE.source)
 
 /**
- * Every citation marker becomes a superscript footnote number; clicking it opens the Belegfenster
- * at the Belege it covers. Markers without a resolved number (no citations passed, or an unknown
- * key) are stripped rather than shown raw.
+ * Every citation marker becomes a footnote mark - the same tinted circle EvidenceFooter shows.
+ * Hovering names the cited document, clicking opens the Belegfenster at the Belege it covers.
+ * Markers without a resolved number (no citations passed, or an unknown key) are stripped rather
+ * than shown raw.
  */
 interface ResolvedCitation {
   number: number
   fileName: string
+  location: string | undefined
 }
 
-/** Adjacent citations render as one superscript group; contiguous number runs compress to a
- *  range ("1–3", mockup 1a/1i) so back-to-back markers stay readable (#590 Nachbesserung). */
+/** Diameter of a footnote mark in running text, in px - small enough to keep the line height. */
+const INLINE_MARK_SIZE = 17
+
+function CitationTooltipContent({ citations }: { citations: ResolvedCitation[] }) {
+  return (
+    <Box component="span" sx={{ display: 'grid', gap: 0.5, py: 0.25 }}>
+      {citations.map((citation) => (
+        <Box
+          component="span"
+          key={citation.number}
+          sx={{ display: 'grid', gridTemplateColumns: 'auto 1fr', columnGap: 0.75 }}
+        >
+          <Box component="span" sx={{ fontFamily: fontFamily.mono, fontWeight: 600, opacity: 0.7 }}>
+            {citation.number}
+          </Box>
+          <Box component="span" sx={{ fontWeight: 600, overflowWrap: 'anywhere' }}>
+            {citation.fileName}
+          </Box>
+          {citation.location && (
+            <Box component="span" sx={{ gridColumn: 2, opacity: 0.75 }}>
+              {citation.location}
+            </Box>
+          )}
+        </Box>
+      ))}
+    </Box>
+  )
+}
+
+/** Adjacent citations render as one group; contiguous number runs compress to a range ("1–3",
+ *  mockup 1a/1i) so back-to-back markers stay readable (#590 Nachbesserung). */
 function renderCitationGroup(
   group: ResolvedCitation[],
   key: string,
   onCitationClick: ((numbers: number[]) => void) | undefined,
 ): React.ReactNode {
-  const segments: { first: ResolvedCitation; last: ResolvedCitation }[] = []
+  const segments: ResolvedCitation[][] = []
   for (const citation of group) {
     const current = segments[segments.length - 1]
-    if (current && citation.number === current.last.number + 1) {
-      current.last = citation
-    } else {
-      segments.push({ first: citation, last: citation })
+    if (current && citation.number === current[current.length - 1].number + 1) {
+      current.push(citation)
+    } else if (!current?.some((c) => c.number === citation.number)) {
+      segments.push([citation])
     }
   }
   return (
     <Box
-      component="sup"
+      component="span"
       key={key}
-      sx={{ lineHeight: 0, fontSize: 10.5, fontWeight: 600, mx: 0.125 }}
+      sx={{ display: 'inline-flex', gap: '3px', mx: '2px', whiteSpace: 'nowrap' }}
     >
-      {segments.map((segment, i) => {
-        const label =
-          segment.first.number === segment.last.number
-            ? `${segment.first.number}`
-            : `${segment.first.number}–${segment.last.number}`
-        const ariaLabel =
-          segment.first.number === segment.last.number
-            ? `Fundstelle ${segment.first.number}: ${segment.first.fileName}`
-            : `Fundstellen ${segment.first.number} bis ${segment.last.number}`
-        const segmentNumbers = Array.from(
-          { length: segment.last.number - segment.first.number + 1 },
-          (_, offset) => segment.first.number + offset,
-        )
+      {segments.map((segment) => {
+        const first = segment[0]
+        const last = segment[segment.length - 1]
+        const isRange = first.number !== last.number
         return (
-          <span key={segment.first.number}>
-            {i > 0 && '·'}
-            <Link
-              component="button"
-              type="button"
+          <Tooltip
+            key={first.number}
+            title={<CitationTooltipContent citations={segment} />}
+            describeChild
+            placement="top"
+            enterDelay={150}
+          >
+            <ButtonBase
               aria-haspopup="dialog"
-              onClick={() => onCitationClick?.(segmentNumbers)}
-              underline="hover"
-              aria-label={ariaLabel}
-              // The <sup> keeps line height 0 so the line spacing stays even; the button itself
-              // needs its own, or it collapses to a zero-height, unhittable box.
-              sx={{ font: 'inherit', fontWeight: 600, lineHeight: 1, verticalAlign: 'baseline' }}
+              aria-label={
+                isRange
+                  ? `Fundstellen ${first.number} bis ${last.number}`
+                  : `Fundstelle ${first.number}: ${first.fileName}`
+              }
+              onClick={() => onCitationClick?.(segment.map((c) => c.number))}
+              sx={(theme) => ({
+                ...citationMarkSx(theme, INLINE_MARK_SIZE),
+                // Raised like a superscript, without a <sup> changing the line box.
+                verticalAlign: 'baseline',
+                position: 'relative',
+                top: '-0.3em',
+                transition: `background ${motion.durationFastMs}ms ${motion.easeOut}, color ${motion.durationFastMs}ms ${motion.easeOut}`,
+                '&:hover, &[aria-describedby]': {
+                  background: theme.palette.primary.main,
+                  color: theme.palette.primary.contrastText,
+                },
+                '&.Mui-focusVisible': {
+                  boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.main, focusRingAlpha)}`,
+                },
+                '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
+              })}
             >
-              {label}
-            </Link>
-          </span>
+              {isRange ? `${first.number}–${last.number}` : first.number}
+            </ButtonBase>
+          </Tooltip>
         )
       })}
     </Box>
@@ -129,7 +175,11 @@ function renderWithCitations(
     }
     const number = citations?.numberByKey.get(match[1])
     if (number !== undefined) {
-      group.push({ number, fileName: match[2].trim() })
+      group.push({
+        number,
+        fileName: match[2].trim(),
+        location: citations?.locationByNumber.get(number),
+      })
     }
     lastIndex = regex.lastIndex
   }

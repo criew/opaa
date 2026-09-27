@@ -347,12 +347,14 @@ Vollständige Tastaturbedienung (Pfeile, Enter, Escape) ist Teil der Komponente,
 
 ### 5.8 Fußnoten und Fundstellen (Signaturmuster des Chats)
 
-Belege erscheinen als hochgestellte Ziffern in `accent` im Antworttext (auch Bereiche „1–3").
+Belege erscheinen im Antworttext als **Fußnotenmarken**: die Ziffer in Mono und `accent` in einem
+Kreis mit 10 % `accent`-Fläche (dunkel 22 %), leicht angehoben; ein Bereich „1–3" wird zur Pille.
+Beim Hover oder Fokus füllt sich die Marke in `accent`, und ein Tooltip nennt je Fundstelle
+Ziffer, Dokumentname und Fundort; erst ein Klick öffnet das Belegfenster.
 Unter der Antwort steht keine Quellenliste. Eine 1-px-Haarlinie in `border`, nach rechts
 auslaufend, schließt den Antworttext ab; darunter folgt der Knopf **„Belege anzeigen"** als
-Pille (Rahmen `border`, Radius `pill`). Er trägt links die Fußnotenziffern der Antwort als kleine,
-überlappende Marken in Mono und `accent` — dieselben Ziffern wie im Text, ab der vierten als
-„+n" —, rechts einen Pfeil in `accent`. Beim Hover fächern die Marken leicht auf und der Pfeil
+Pille (Rahmen `border`, Radius `pill`). Er trägt links die Fußnotenmarken der Antwort, überlappend — dieselben Marken wie im
+Text, ab der vierten als „+n" —, rechts einen Pfeil in `accent`. Beim Hover fächern die Marken leicht auf und der Pfeil
 rückt 2 px nach (120 ms, nur `transform`). Daneben die Zählzeile „n Stellen in m Dokumenten ·
 k weitere geprüft" in `fg-2`, mit dem Knopf per `aria-describedby` verbunden. Die Antwort bleibt
 Fließtext, auch in langen Gesprächen. Alle Fundstellen stehen im **Belegfenster** rechts, je Dokument Ziffern +

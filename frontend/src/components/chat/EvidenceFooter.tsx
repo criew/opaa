@@ -7,10 +7,13 @@ import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import DoneAllIcon from '@mui/icons-material/DoneAll'
 import type { CitationIndex } from './citations'
 import { describeEvidenceSummary } from './citations'
-import { focusRingAlpha, fontFamily, motion, radius } from '../../theme/tokens'
+import { citationMarkSx } from './citationMark'
+import { focusRingAlpha, motion, radius } from '../../theme/tokens'
 
 /** Footnote marks shown in the button before the rest folds into "+n". */
 const VISIBLE_MARKS = 3
+/** Diameter of a footnote mark in the button, in px. */
+const MARK_SIZE = 20
 /** How far each mark moves apart on hover, in px - the stack fans out towards the label. */
 const FAN_OUT_PX = 3
 
@@ -101,20 +104,8 @@ export default function EvidenceFooter({ citations, onOpen }: EvidenceFooterProp
                   component="span"
                   className="evidence-mark"
                   sx={(theme) => ({
-                    display: 'inline-grid',
-                    placeItems: 'center',
-                    minWidth: 20,
-                    height: 20,
-                    px: 0.5,
+                    ...citationMarkSx(theme, MARK_SIZE),
                     ml: i === 0 ? 0 : '-5px',
-                    borderRadius: `${radius.pill}px`,
-                    fontFamily: fontFamily.mono,
-                    fontSize: 10,
-                    fontWeight: 600,
-                    fontVariantNumeric: 'tabular-nums',
-                    color: 'primary.main',
-                    // A solid backdrop under the tint, so an overlapping mark covers its neighbour.
-                    background: `linear-gradient(${alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.22 : 0.1)}, ${alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.22 : 0.1)}), ${theme.palette.background.default}`,
                     boxShadow: `0 0 0 2px ${theme.palette.background.default}`,
                     position: 'relative',
                     zIndex: marks.length - i,
