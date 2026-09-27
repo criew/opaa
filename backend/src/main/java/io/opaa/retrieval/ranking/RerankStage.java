@@ -2,10 +2,10 @@ package io.opaa.retrieval.ranking;
 
 import io.opaa.llm.RerankClient.ScoredCandidate;
 import io.opaa.llm.RerankModelRole;
-import io.opaa.retrieval.QueryProperties;
 import io.opaa.retrieval.CandidateList;
 import io.opaa.retrieval.CandidateOutcome;
 import io.opaa.retrieval.CandidateVerdict;
+import io.opaa.retrieval.QueryProperties;
 import io.opaa.retrieval.RerankAvailability;
 import io.opaa.retrieval.RetrievalContext;
 import io.opaa.retrieval.RetrievalListLabel;

@@ -5,8 +5,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import io.opaa.chat.Chat;
-import io.opaa.chat.ChatService;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;

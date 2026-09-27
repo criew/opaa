@@ -5,10 +5,10 @@ import static io.opaa.retrieval.RetrievalPipelineTestSupport.context;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 
-import io.opaa.retrieval.QueryProperties;
 import io.opaa.retrieval.CandidateList;
 import io.opaa.retrieval.CandidateOutcome;
 import io.opaa.retrieval.CandidateVerdict;
+import io.opaa.retrieval.QueryProperties;
 import io.opaa.retrieval.RetrievalContext;
 import io.opaa.retrieval.RetrievalState;
 import io.opaa.retrieval.StageOutcome;

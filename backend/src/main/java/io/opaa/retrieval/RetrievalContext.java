@@ -1,7 +1,6 @@
 package io.opaa.retrieval;
 
 import io.opaa.indexing.metadata.MetadataFilter;
-import io.opaa.retrieval.QueryProperties;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;

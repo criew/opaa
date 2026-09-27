@@ -8,10 +8,11 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 
 /**
- * Wires {@link AuthMetrics} the same way {@code IndexingConfiguration}/{@code RetrievalConfiguration}
- * wire their own {@code io.opaa.observability} metrics beans (#307 review, finding 3) - a plain
- * {@code @Bean} method, not a {@code @Component} on the metrics class itself, so the class stays a
- * simple constructor-injected collaborator rather than something Spring auto-detects.
+ * Wires {@link AuthMetrics} the same way {@code IndexingConfiguration}/{@code
+ * RetrievalConfiguration} wire their own {@code io.opaa.observability} metrics beans (#307 review,
+ * finding 3) - a plain {@code @Bean} method, not a {@code @Component} on the metrics class itself,
+ * so the class stays a simple constructor-injected collaborator rather than something Spring
+ * auto-detects.
  */
 @Configuration
 public class AuthConfiguration {

@@ -17,9 +17,10 @@ Dokument; wer wissen will, wohin es geht, liest `data-indexing-rag.md`.
 Die Stellschrauben-Tabelle in `data-indexing-rag.md` bleibt die eine Quelle der Wahrheit für Parameter und
 ihre Defaults (siehe [Stellschrauben und ihre Wirkung](./data-indexing-rag.md#stellschrauben-und-ihre-wirkung));
 sie wird hier nicht dupliziert, nur je Schritt referenziert. Quelle des Codes ist
-`backend/src/main/java/io/opaa/query/`: der Rahmen (`RetrievalPipeline`, Kontext, Zustand, Protokoll) in
-`retrieval/`, die `*Stage`-Klassen in `retrieval/scope/`, `retrieval/search/` und `retrieval/ranking/`, die
-Fassade `QueryService` mit `QueryProperties` im Wurzelpaket.
+`backend/src/main/java/io/opaa/retrieval/`: der Rahmen (`RetrievalPipeline`, Kontext, Zustand, Protokoll),
+der Einstieg `KnowledgeRetrieval` und `QueryProperties` im Wurzelpaket, die `*Stage`-Klassen in `scope/`,
+`search/` und `ranking/`, die Verdrahtung in `config/`. Die Antwort baut die Fassade `QueryService` in
+`backend/src/main/java/io/opaa/query/` darauf auf.
 
 ---
 
@@ -37,7 +38,7 @@ verabredet:
   Kandidatenpool (`RetrievalState#withSearchResults`); alle übrigen schöpfen daraus.
 - **Keine Stufe kann stumm bleiben.** `StageOutcome` hat keinen Konstruktor ohne `StageExplanation`.
 
-**Die Reihenfolge steht an genau einer Stelle**: `QueryConfiguration#retrievalPipeline`. Dort werden auch
+**Die Reihenfolge steht an genau einer Stelle**: `RetrievalConfiguration#retrievalPipeline`. Dort werden auch
 der Volltextpfad (AP 2) und die Reranking-Stufe (AP 4) eingehängt.
 
 **Jede Stufe ist einzeln abschaltbar** über `opaa.query.pipeline.disabled-stages` (Ebene-1-Wert, in keiner

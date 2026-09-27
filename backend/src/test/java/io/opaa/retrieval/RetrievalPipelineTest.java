@@ -11,7 +11,6 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.indexing.metadata.MetadataFilter;
 import io.opaa.llm.RerankModelRole;
-import io.opaa.retrieval.QueryProperties;
 import io.opaa.retrieval.ranking.ChunkEmbeddingLookup;
 import io.opaa.retrieval.scope.SearchScopeStage;
 import io.opaa.retrieval.search.FullTextChunkSearch;

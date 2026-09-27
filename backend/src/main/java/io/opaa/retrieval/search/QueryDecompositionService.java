@@ -1,8 +1,8 @@
 package io.opaa.retrieval.search;
 
 import io.opaa.llm.ActiveChatModelResolver;
-import io.opaa.observability.QueryMetrics;
 import io.opaa.llm.ChatResponses;
+import io.opaa.observability.QueryMetrics;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;

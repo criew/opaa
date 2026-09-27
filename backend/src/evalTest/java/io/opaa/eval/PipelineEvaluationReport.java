@@ -227,8 +227,8 @@ public record PipelineEvaluationReport(
    *     length of the ranked list the metrics were computed over.
    * @param subQueries the search queries decomposition (or its single-query fallback) produced for
    *     this case in this run — see {@link
-   *     io.opaa.retrieval.RetrievalPipelineResult#searchQueries()}. Recorded on every run,
-   *     not only decomposition-enabled ones, so a multi-run comparison (issue #1044,
+   *     io.opaa.retrieval.RetrievalPipelineResult#searchQueries()}. Recorded on every run, not only
+   *     decomposition-enabled ones, so a multi-run comparison (issue #1044,
    *     docs/features/retrieval-benchmark.md §3) can tell whether decomposition produced a
    *     different sub-query set for the same question across runs.
    */

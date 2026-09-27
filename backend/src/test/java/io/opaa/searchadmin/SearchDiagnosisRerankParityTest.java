@@ -144,10 +144,10 @@ class SearchDiagnosisRerankParityTest {
 
   /**
    * The parity above holds only while every caller obtains its context from {@link
-   * io.opaa.retrieval.RetrievalContextFactory}: a caller that constructed a {@code RetrievalContext}
-   * itself could read the role's state differently from the chat query without any test noticing.
-   * Structural guard: in production code the constructor is called only by the factory and by the
-   * record's own {@code withoutReranking()}.
+   * io.opaa.retrieval.RetrievalContextFactory}: a caller that constructed a {@code
+   * RetrievalContext} itself could read the role's state differently from the chat query without
+   * any test noticing. Structural guard: in production code the constructor is called only by the
+   * factory and by the record's own {@code withoutReranking()}.
    */
   @Test
   void onlyTheFactoryConstructsARetrievalContextInProductionCode() throws IOException {

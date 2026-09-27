@@ -10,12 +10,12 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
+import io.opaa.chat.SearchScopeResolver;
 import io.opaa.common.TooManyRequestsException;
 import io.opaa.indexing.metadata.MetadataFilter;
 import io.opaa.indexing.metadata.MetadataFilterValidator;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.retrieval.KnowledgeRetrieval;
-import io.opaa.chat.SearchScopeResolver;
 import io.opaa.retrieval.RetrievalExplanation;
 import io.opaa.retrieval.RetrievalPipelineResult;
 import java.util.List;

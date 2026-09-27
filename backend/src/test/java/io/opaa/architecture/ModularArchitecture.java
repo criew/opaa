@@ -12,6 +12,7 @@ import static io.opaa.architecture.ModularArchitecture.Module.FOUNDATION;
 import static io.opaa.architecture.ModularArchitecture.Module.IDENTITY;
 import static io.opaa.architecture.ModularArchitecture.Module.KNOWLEDGE;
 import static io.opaa.architecture.ModularArchitecture.Module.LIBRARY;
+import static io.opaa.architecture.ModularArchitecture.Module.RETRIEVAL;
 import static io.opaa.architecture.ModularArchitecture.Module.RIGHTS;
 import static io.opaa.architecture.ModularArchitecture.Module.WORKSPACE;
 import static java.util.Map.entry;
@@ -78,6 +79,7 @@ public final class ModularArchitecture {
           "llm",
           "indexing",
           "library",
+          "retrieval",
           "health",
           "prompt",
           "chat",
@@ -100,6 +102,7 @@ public final class ModularArchitecture {
     CONNECTORS,
     WORKSPACE,
     LIBRARY,
+    RETRIEVAL,
     ASSISTANT,
     EXTERNAL,
     APP
@@ -134,6 +137,7 @@ public final class ModularArchitecture {
           entry("revision", WORKSPACE),
           entry("diagnosticaccess", WORKSPACE),
           entry("library", LIBRARY),
+          entry("retrieval", RETRIEVAL),
           entry("prompt", ASSISTANT),
           entry("chat", ASSISTANT),
           entry("query", ASSISTANT),
@@ -163,9 +167,11 @@ public final class ModularArchitecture {
           entry(CONNECTORS, EnumSet.of(FOUNDATION, FORMAT, KNOWLEDGE)),
           entry(WORKSPACE, EnumSet.of(FOUNDATION, IDENTITY, RIGHTS, KNOWLEDGE)),
           entry(LIBRARY, EnumSet.of(FOUNDATION, FORMAT, IDENTITY, RIGHTS, KNOWLEDGE)),
+          entry(RETRIEVAL, EnumSet.of(FOUNDATION, FORMAT, KNOWLEDGE)),
           entry(
               ASSISTANT,
-              EnumSet.of(FOUNDATION, FORMAT, IDENTITY, RIGHTS, KNOWLEDGE, WORKSPACE, LIBRARY)),
+              EnumSet.of(
+                  FOUNDATION, FORMAT, IDENTITY, RIGHTS, KNOWLEDGE, WORKSPACE, LIBRARY, RETRIEVAL)),
           entry(EXTERNAL, EnumSet.of(FOUNDATION, IDENTITY, RIGHTS, KNOWLEDGE, LIBRARY, ASSISTANT)),
           entry(APP, EnumSet.of(FOUNDATION, IDENTITY, RIGHTS, KNOWLEDGE, LIBRARY)));
 
@@ -210,32 +216,8 @@ public final class ModularArchitecture {
           "indexing.source.confluence.webhook -> indexing.source.confluence",
           "indexing.source.s3 -> indexing.source.s3.events",
           "indexing.source.s3.events -> indexing.source.s3",
-          "query -> query.answer",
-          "query -> query.citation",
-          "query -> query.filter",
-          "query -> query.retrieval",
-          "query -> query.retrieval.ranking",
-          "query -> query.retrieval.scope",
-          "query -> query.retrieval.search",
           "query -> query.spike",
-          "query.answer -> query",
-          "query.answer -> query.citation",
-          "query.citation -> query",
-          "query.citation -> query.retrieval",
-          "query.citation -> query.retrieval.scope",
-          "query.filter -> query",
-          "query.retrieval -> query",
-          "query.retrieval.ranking -> query",
-          "query.retrieval.ranking -> query.retrieval",
-          "query.retrieval.scope -> query.retrieval",
-          "query.retrieval.search -> query",
-          "query.retrieval.search -> query.answer",
-          "query.retrieval.search -> query.retrieval",
-          "query.retrieval.search -> query.retrieval.scope",
-          "query.spike -> query",
-          "query.spike -> query.answer",
-          "query.spike -> query.citation",
-          "query.spike -> query.retrieval");
+          "query.spike -> query");
 
   /** Every direct subpackage of this one, relative to the root, is a connector. */
   static final String CONNECTOR_PARENT = "indexing.source";

@@ -5,7 +5,7 @@
  *
  * <p>This package changes no domain data. It writes protocol entries only: a diagnosis run with a
  * rights profile goes into the audit trail, a "Sicht als" run into the diagnostic protocol through
- * {@code io.opaa.diagnosticaccess}. It is deliberately not part of {@code io.opaa.query}: the
+ * {@code io.opaa.diagnosticaccess}. It is deliberately not part of {@code io.opaa.retrieval}: the
  * pipeline answers questions, this package only observes it - and it reads the pipeline's own
  * explanation protocol rather than reproducing any of its decisions.
  */

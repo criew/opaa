@@ -239,11 +239,11 @@ class FullTextChunkSearchIntegrationTest {
   /**
    * #1130 Befund 1, Querschnittsregel a: PostgreSQL's own parser keeps an email address as one
    * {@code email}-class token, but the question path splits a question into individual word tokens
-   * ({@code io.opaa.retrieval.search.FullTextChunkSearch#wordTokens}) - without the
-   * undecomposed identifier lexeme {@link io.opaa.indexing.chunk.FullTextIdentifiers} now emits, a
-   * chunk whose only occurrence of "max", "mustermann", "example" or "org" is inside the email
-   * address would never be found by a question naming that address, exactly the asymmetry the
-   * file-number test above pins for Aktenzeichen.
+   * ({@code io.opaa.retrieval.search.FullTextChunkSearch#wordTokens}) - without the undecomposed
+   * identifier lexeme {@link io.opaa.indexing.chunk.FullTextIdentifiers} now emits, a chunk whose
+   * only occurrence of "max", "mustermann", "example" or "org" is inside the email address would
+   * never be found by a question naming that address, exactly the asymmetry the file-number test
+   * above pins for Aktenzeichen.
    */
   @Test
   void anEmailAddressIsFoundThoughItOnlyOccursInsideTheAddressItself() {

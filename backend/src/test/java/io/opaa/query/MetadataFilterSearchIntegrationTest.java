@@ -1,5 +1,4 @@
 package io.opaa.query;
-import io.opaa.retrieval.QueryProperties;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -36,6 +35,7 @@ import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.organization.Organization;
 import io.opaa.permission.AssetGrant;
 import io.opaa.permission.AssetGrantRepository;
+import io.opaa.retrieval.QueryProperties;
 import io.opaa.retrieval.RerankAvailability;
 import io.opaa.retrieval.RetrievalContext;
 import io.opaa.retrieval.RetrievalNote;

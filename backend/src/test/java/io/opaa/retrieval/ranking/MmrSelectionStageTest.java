@@ -8,8 +8,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import io.opaa.llm.RerankModelRole;
-import io.opaa.retrieval.QueryProperties;
 import io.opaa.retrieval.CandidateOutcome;
+import io.opaa.retrieval.QueryProperties;
 import io.opaa.retrieval.RetrievalPipeline;
 import io.opaa.retrieval.RetrievalPipelineProperties;
 import io.opaa.retrieval.RetrievalPipelineResult;

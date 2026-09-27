@@ -8,8 +8,6 @@ import io.opaa.indexing.metadata.MetadataFilter;
 import io.opaa.llm.RerankModelRole;
 import io.opaa.llm.RerankRoleState;
 import io.opaa.llm.RerankRoleStatus;
-import io.opaa.retrieval.RerankAvailability;
-import io.opaa.retrieval.RetrievalContext;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;

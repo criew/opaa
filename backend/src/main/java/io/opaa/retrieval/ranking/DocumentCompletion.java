@@ -1,7 +1,7 @@
 package io.opaa.retrieval.ranking;
 
-import io.opaa.retrieval.QueryProperties;
 import io.opaa.retrieval.ChunkGroupingKey;
+import io.opaa.retrieval.QueryProperties;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;

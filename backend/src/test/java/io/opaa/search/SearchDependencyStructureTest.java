@@ -19,9 +19,10 @@ import org.springframework.context.annotation.ClassPathScanningCandidateComponen
  * discipline: the reading path has exactly one way to the data, and it is a domain service.
  *
  * <p>Two forbidden directions, for two different reasons. {@code
- * org.springframework.ai.vectorstore} and {@code io.opaa.retrieval} would be a <b>second
- * ranking path</b> - retrieval belongs behind {@code io.opaa.retrieval.KnowledgeRetrieval}, the one
- * entrance {@code POST /api/v1/query} uses as well, so the two cannot drift apart. {@code
+ * org.springframework.ai.vectorstore} and {@code io.opaa.retrieval} would be a <b>second ranking
+ * path</b> - retrieval belongs behind {@code io.opaa.retrieval.KnowledgeRetrieval}, the one
+ * entrance {@code POST /api/v1/query} uses as well, so the two cannot drift apart; the entrance is
+ * the one type of that package search may name ({@link #PERMITTED_RETRIEVAL_ENTRANCE}). {@code
  * io.opaa.query.answer} would be a <b>generation call</b> - the whole point of this path is that
  * the foreign tool formulates the answer.
  *
@@ -43,6 +44,8 @@ class SearchDependencyStructureTest {
           "io.opaa.retrieval",
           "io.opaa.query.answer",
           "io.opaa.query.citation");
+
+  private static final String PERMITTED_RETRIEVAL_ENTRANCE = "io.opaa.retrieval.KnowledgeRetrieval";
 
   @Test
   void searchRanksNothingItselfAndGeneratesNothing() {
@@ -89,6 +92,9 @@ class SearchDependencyStructureTest {
   }
 
   private void checkType(Class<?> owner, Class<?> referenced, Set<String> offenses) {
+    if (referenced.getName().equals(PERMITTED_RETRIEVAL_ENTRANCE)) {
+      return;
+    }
     String packageName = referenced.getPackageName();
     for (String forbidden : FORBIDDEN_PACKAGE_PREFIXES) {
       if (packageName.equals(forbidden) || packageName.startsWith(forbidden + ".")) {

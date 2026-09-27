@@ -11,7 +11,6 @@ import io.opaa.indexing.metadata.MetadataFilter;
 import io.opaa.llm.RerankClient.ScoredCandidate;
 import io.opaa.llm.RerankModelRole;
 import io.opaa.retrieval.config.RetrievalConfiguration;
-import io.opaa.retrieval.QueryProperties;
 import io.opaa.retrieval.ranking.ChunkEmbeddingLookup;
 import io.opaa.retrieval.ranking.DocumentCompletionStage;
 import io.opaa.retrieval.ranking.MmrSelectionStage;
@@ -36,8 +35,8 @@ import org.springframework.ai.vectorstore.VectorStore;
 
 /**
  * Reranking at the level it is claimed on (docs/features/hybrid-retrieval.md, Arbeitspaket 4): the
- * whole pipeline as {@link RetrievalConfiguration} wires it, with the rerank stage between fusion and
- * document completion.
+ * whole pipeline as {@link RetrievalConfiguration} wires it, with the rerank stage between fusion
+ * and document completion.
  *
  * <p>The budget hand-off is what these tests pin. Fusion keeps the rerank candidate window instead
  * of {@code top-k} while reranking runs, and the rerank stage cuts back to {@code top-k} - so the

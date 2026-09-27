@@ -11,9 +11,9 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import io.opaa.indexing.metadata.MetadataFilter;
-import io.opaa.retrieval.QueryProperties;
 import io.opaa.retrieval.CandidateList;
 import io.opaa.retrieval.CandidateVerdict;
+import io.opaa.retrieval.QueryProperties;
 import io.opaa.retrieval.RerankAvailability;
 import io.opaa.retrieval.RetrievalContext;
 import io.opaa.retrieval.RetrievalState;

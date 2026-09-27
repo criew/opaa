@@ -1,7 +1,5 @@
 package io.opaa.retrieval;
 
-import io.opaa.retrieval.RetrievalPipelineProperties;
-import io.opaa.retrieval.RetrievalStageName;
 import io.opaa.retrieval.ranking.ChunkEmbeddingLookup;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;

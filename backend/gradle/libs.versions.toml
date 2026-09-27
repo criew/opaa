@@ -33,7 +33,7 @@ tika-core = "3.3.2"
 # spec-validation library.
 snakeyaml = "2.7"
 # JDBC binding for the pgvector column type (com.pgvector.PGvector), used directly by
-# io.opaa.query.ChunkEmbeddingLookup to read a chunk's stored embedding back for MMR (#914).
+# io.opaa.retrieval.ranking.ChunkEmbeddingLookup to read a chunk's stored embedding back for MMR (#914).
 # Already on the classpath transitively via spring-ai-pgvector-store; declared explicitly because
 # this module's own code now imports it directly rather than only through Spring AI's PgVectorStore.
 # Version pinned to what that transitive dependency resolves to today (`./gradlew dependencies`).

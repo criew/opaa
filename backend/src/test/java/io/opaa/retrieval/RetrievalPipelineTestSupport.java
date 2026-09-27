@@ -6,7 +6,6 @@ import io.opaa.indexing.metadata.DocumentTypeVocabularyRepository;
 import io.opaa.indexing.metadata.MetadataFilter;
 import io.opaa.llm.RerankModelRole;
 import io.opaa.retrieval.config.RetrievalConfiguration;
-import io.opaa.retrieval.QueryProperties;
 import io.opaa.retrieval.ranking.ChunkEmbeddingLookup;
 import io.opaa.retrieval.ranking.DocumentCompletionStage;
 import io.opaa.retrieval.ranking.MmrSelectionStage;
@@ -27,8 +26,8 @@ import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.VectorStore;
 
 /**
- * Builds the real {@link RetrievalPipeline} - the one {@link RetrievalConfiguration} wires - for tests
- * in the stage packages and outside {@code io.opaa.query}.
+ * Builds the real {@link RetrievalPipeline} - the one {@link RetrievalConfiguration} wires - for
+ * tests in the stage packages and outside {@code io.opaa.query}.
  *
  * <p>Exists so a test of a pipeline <b>caller</b> (the administration's diagnosis) can assert what
  * the pipeline actually did rather than what the caller asked a mocked pipeline to do: a mock would

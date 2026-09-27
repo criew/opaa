@@ -12,7 +12,6 @@ import io.opaa.indexing.metadata.DocumentTypeVocabularyRepository;
 import io.opaa.indexing.metadata.MetadataFilter;
 import io.opaa.llm.RerankModelRole;
 import io.opaa.retrieval.config.RetrievalConfiguration;
-import io.opaa.retrieval.QueryProperties;
 import io.opaa.retrieval.ranking.ChunkEmbeddingLookup;
 import io.opaa.retrieval.ranking.DocumentCompletionStage;
 import io.opaa.retrieval.ranking.MmrSelectionStage;

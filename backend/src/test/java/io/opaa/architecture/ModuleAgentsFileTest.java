@@ -48,6 +48,7 @@ class ModuleAgentsFileTest {
           entry(Module.CONNECTORS, CONNECTOR_PARENT),
           entry(Module.WORKSPACE, "space"),
           entry(Module.LIBRARY, "library"),
+          entry(Module.RETRIEVAL, "retrieval"),
           entry(Module.ASSISTANT, "query"),
           entry(Module.EXTERNAL, "externalaccess"),
           entry(Module.APP, "api"));

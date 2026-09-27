@@ -4,17 +4,19 @@ Pakete (`io.opaa.*`): query, chat, search, searchadmin, prompt, health. Ergänzt
 
 ## Zweck und Grenze
 
-Von der Frage zur belegten Antwort: die Abfragefassade mit der Retrieval-Pipeline (`query`), Chats
-(`chat`), der Leseweg ohne Generierung (`search`), die lesende Betriebssicht auf das Retrieval
-(`searchadmin`), die Prompt-Bibliothek als zweiter Asset-Typ (`prompt`) und die
-Health-Indikatoren der Modelle (`health`). assistant hängt von allen Modulen außer connectors,
-external und app ab.
+Von der Frage zur belegten Antwort: die Abfragefassade mit Antwort und Zitaten (`query`), Chats
+samt Suchbereich eines Turns (`chat`), der Leseweg ohne Generierung (`search`), die lesende
+Betriebssicht auf das Retrieval (`searchadmin`), die Prompt-Bibliothek als zweiter Asset-Typ
+(`prompt`) und die Health-Indikatoren der Modelle (`health`). Die Pipeline selbst ist das Modul
+retrieval (`retrieval/AGENTS.md`). assistant hängt von allen Modulen außer connectors, external und
+app ab.
 
 ## Invarianten und Stolpersteine
 
-- **Genau ein Weg zu den Daten:** `io.opaa.query.KnowledgeRetrieval`, der Einstieg, den auch
-  `POST /api/v1/query` nutzt, und er prüft Rechte. `search` greift weder auf den Vector Store noch
-  auf `query.retrieval` noch auf `query.answer` zu.
+- **Genau ein Weg zu den Daten:** `io.opaa.retrieval.KnowledgeRetrieval`, der Einstieg, den auch
+  `POST /api/v1/query` nutzt. Den Suchbereich löst der Aufrufer über `chat.SearchScopeResolver`
+  auf. `search` greift weder auf den Vector Store noch auf die übrigen Klassen von `retrieval` noch
+  auf `query.answer` zu.
 - **`searchadmin` ändert keine Fachdaten.** Es schreibt nur Protokolleinträge: einen
   Diagnoselauf mit Rechteprofil ins Revisionsprotokoll, „Sicht als" über
   `io.opaa.diagnosticaccess` ins Diagnoseprotokoll. Es liest das Erklärungsprotokoll der
@@ -32,9 +34,8 @@ external und app ab.
   kennt `io.opaa.library` nicht, und kein Fachpaket kennt es. Das gilt auch für `prompt.web`: Die
   Prompts eines Space holt `PromptService` über den Port `SpaceAssetDirectory`.
 - **Web-Schicht:** `prompt.web`, `chat.web`, `query.web`, `search.web`, `searchadmin.web`.
-- **Zyklen zwischen den Unterpaketen von `query`** sind in
-  `ModularArchitecture.KNOWN_SUBPACKAGE_CYCLE_EDGES` eingefroren; neue Kanten auf einem Zyklus
-  brechen den Test.
+- **Zyklen:** Nur `query` ↔ `query.spike` ist in `KNOWN_SUBPACKAGE_CYCLE_EDGES` eingefroren; neue
+  Kanten auf einem Zyklus brechen den Test.
 
 ## Verweise
 
@@ -49,7 +50,7 @@ external und app ab.
 ```bash
 ./gradlew test --tests 'io.opaa.query.*' --tests 'io.opaa.chat.*' --tests 'io.opaa.search.*' \
   --tests 'io.opaa.searchadmin.*' --tests 'io.opaa.prompt.*' --tests 'io.opaa.health.*' \
-  --tests 'io.opaa.architecture.*'
+  --tests 'io.opaa.retrieval.*' --tests 'io.opaa.architecture.*'
 ```
 
 Bei Schemaänderungen: neue Datei unter `db/changelog/assistant/` mit eigenem Delta-Test

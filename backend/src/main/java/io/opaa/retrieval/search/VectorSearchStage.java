@@ -1,8 +1,8 @@
 package io.opaa.retrieval.search;
 
-import io.opaa.retrieval.QueryProperties;
 import io.opaa.retrieval.CandidateList;
 import io.opaa.retrieval.CandidateVerdict;
+import io.opaa.retrieval.QueryProperties;
 import io.opaa.retrieval.RetrievalContext;
 import io.opaa.retrieval.RetrievalListLabel;
 import io.opaa.retrieval.RetrievalNote;

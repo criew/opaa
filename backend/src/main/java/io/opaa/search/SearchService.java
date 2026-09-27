@@ -1,12 +1,12 @@
 package io.opaa.search;
 
 import io.opaa.auth.CurrentUser;
+import io.opaa.chat.SearchScopeResolver;
+import io.opaa.chat.SearchedLibraryRef;
 import io.opaa.indexing.metadata.MetadataFilter;
 import io.opaa.indexing.metadata.MetadataFilterValidator;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.retrieval.KnowledgeRetrieval;
-import io.opaa.chat.SearchScopeResolver;
-import io.opaa.retrieval.SearchedLibraryRef;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;

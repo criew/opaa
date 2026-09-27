@@ -1,6 +1,5 @@
 package io.opaa.retrieval;
 
-import io.opaa.retrieval.QueryProperties;
 import java.util.List;
 import org.springframework.ai.document.Document;
 

@@ -1,7 +1,7 @@
 package io.opaa.query.answer;
-import io.opaa.llm.ChatResponses;
 
 import io.opaa.llm.ActiveChatModelResolver;
+import io.opaa.llm.ChatResponses;
 import io.opaa.retrieval.ConversationNoteBlock;
 import java.util.ArrayList;
 import java.util.List;

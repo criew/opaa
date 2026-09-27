@@ -1,6 +1,6 @@
 package io.opaa.searchadmin;
 
-import io.opaa.retrieval.SearchedLibraryRef;
+import io.opaa.chat.SearchedLibraryRef;
 import io.opaa.retrieval.RetrievalExplanation;
 import java.time.Instant;
 import java.util.List;

@@ -1,4 +1,4 @@
-package io.opaa.retrieval;
+package io.opaa.chat;
 
 import java.util.UUID;
 

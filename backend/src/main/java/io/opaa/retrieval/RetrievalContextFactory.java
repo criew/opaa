@@ -2,9 +2,6 @@ package io.opaa.retrieval;
 
 import io.opaa.indexing.metadata.MetadataFilter;
 import io.opaa.llm.RerankModelRole;
-import io.opaa.retrieval.RerankAvailability;
-import io.opaa.retrieval.RetrievalContext;
-import io.opaa.retrieval.RetrievalPipeline;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
