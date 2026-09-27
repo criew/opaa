@@ -80,9 +80,8 @@ public final class ChatResponseMapper {
   }
 
   /**
-   * The Gesprächsnotiz (#1487). Package-private (not private): reused by {@code
-   * QueryResponseMapper}, where {@code null} - no persisted chat - stays {@code null} rather than
-   * becoming an empty note.
+   * The Gesprächsnotiz (#1487). Also used by {@code QueryResponseMapper}, where {@code null} - no
+   * persisted chat - stays {@code null} rather than becoming an empty note.
    */
   public static List<ChatNoteItem> toNoteItems(List<ChatNotePoint> points) {
     return points == null ? null : points.stream().map(ChatResponseMapper::toNoteItem).toList();
@@ -108,7 +107,7 @@ public final class ChatResponseMapper {
     return response;
   }
 
-  /** Package-private (not private): reused by {@code QueryResponseMapper}. */
+  /** Also used by {@code QueryResponseMapper}. */
   public static List<SourceReference> toSourceReferences(List<ChatSource> sources) {
     return sources == null
         ? null
@@ -133,8 +132,8 @@ public final class ChatResponseMapper {
   }
 
   /**
-   * An absent or empty list maps to null - the Beleg has nothing to render either way.
-   * Package-private (not private): reused by {@code SearchResponseMapper}.
+   * An absent or empty list maps to null - the Beleg has nothing to render either way. Also used by
+   * {@code SearchResponseMapper}.
    */
   public static List<SourceMetadataEntry> toMetadataEntries(List<ChatSourceMetadataEntry> entries) {
     if (entries == null || entries.isEmpty()) {

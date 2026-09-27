@@ -99,15 +99,10 @@ public class PromptService {
   }
 
   /**
-   * Every prompt of every prompt library the caller may read by the formula - the same set {@link
-   * PromptLibraryService#list} shows. Libraries in {@code spaceLibraryIds} come first and are
-   * marked as such; then by library name, within a library by sort order and name. {@code
-   * spaceLibraryIds} only orders: a library in it the caller cannot read is not offered.
-   */
-  /**
-   * {@link #available(CurrentUser, Set)} ordered by the prompt libraries of the space {@code
-   * spaceId}, or unordered without one. Only a member of the space may order by it: an unknown or
-   * foreign space is a {@code 404}, a caller who is no member a {@code 403}.
+   * {@link #available(CurrentUser, Set)} with the prompt libraries of the space {@code spaceId}
+   * first; without a space nothing comes first and the order by name stays. Only a member of the
+   * space may order by it: an unknown or foreign space is a {@code 404}, a caller who is no member
+   * a {@code 403}.
    */
   public List<AvailablePrompt> available(CurrentUser caller, UUID spaceId) {
     Set<UUID> spaceLibraryIds =
@@ -117,6 +112,12 @@ public class PromptService {
     return available(caller, spaceLibraryIds);
   }
 
+  /**
+   * Every prompt of every prompt library the caller may read by the formula - the same set {@link
+   * PromptLibraryService#list} shows. Libraries in {@code spaceLibraryIds} come first and are
+   * marked as such; then by library name, within a library by sort order and name. {@code
+   * spaceLibraryIds} only orders: a library in it the caller cannot read is not offered.
+   */
   public List<AvailablePrompt> available(CurrentUser caller, Set<UUID> spaceLibraryIds) {
     Set<UUID> readable =
         accessService.readableAssetIds(
