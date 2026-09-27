@@ -45,10 +45,17 @@ Geprüft wurde auf zwei Wegen:
 Die Schritte A und B wurden live durchgespielt und danach zurückgesetzt: Mitglied herausnehmen und
 wieder aufnehmen, Keycloak-Mitgliedschaft entfernen, abgleichen, zurückgeben und erneut abgleichen.
 
+**Schritt E zusätzlich mit echtem Modell:** Am 27.09.2026 wurden die Fachfragen aus Schritt E live
+auf der Demo-Instanz opaa.ewerlin.com gestellt (Chat-Modell `claude-haiku-4-5`, Suche auf die
+jeweilige Bibliothek eingeschränkt). Die beiden XLSX-Fragen (BB-3311, BB-3213), die CSV-Frage, die
+Anhang-Frage zum Auftakttermin in Nordfeld (3 von 3 Läufen) und die Frage an die Feuerwache-Anlage aus
+Schritt D lieferten korrekte, zitierte Antworten.
+
 **Was `ai-stub` nicht belegen kann:**
 
 - **Keinen Antworttext.** Der Stub liefert für jede Frage denselben Satz mit Quellenmarken. Die
-  erwarteten Antworten unten beruhen auf den Korpusdateien selbst, nicht auf einem Modelllauf.
+  erwarteten Antworten unten beruhen auf den Korpusdateien selbst; einen Modelllauf gab es nur für
+  Schritt E (siehe oben).
 - **Keine inhaltliche Rangfolge.** Der Stub liefert für jede Eingabe denselben Embedding-Vektor. Die
   Rangfolge trägt deshalb allein die Volltextsuche, und ein Chunk steht als Artefakt immer vorn
   (`03_auskunftssperren-bearbeitung.docx`). Die meisten Belegdateien kamen trotzdem unter die ersten
@@ -378,13 +385,17 @@ Drei Fragen, die sich nur aus einem Nicht-Text-Format beantworten lassen (#2028)
 | Format | Konto und Space | Frage | Erwartete Antwort | Belegt aus |
 |---|---|---|---|---|
 | XLSX | `thomas.klein` in „Kfz-Zulassung" | „Mit welchem Buchungsschlüssel erfasst die Kasse des Bürgerbüros die Reservierung eines Wunschkennzeichens?" | BB-3311, Tarifstelle 4.1, 14,70 Euro | `20_gebuehrenuebersicht-buergerbuero.xlsx` („Satzungen & Gebührenordnungen") |
-| PDF-Anhang einer Mail | `selin.kaya` in „Meldewesen & Ausweise" | „Wer ist am 12. August 2026 für den Sprechtag des mobilen Bürgerbüros in Nordfeld eingeteilt?" | Selin Kaya | `einsatzplan-mobiles-buergerbuero-2026-q3.pdf`, Anhang von `27_rundschreiben-mobiles-buergerbuero-nordfeld.eml` („Interne Dienstanweisungen Meldewesen") |
+| PDF-Anhang einer Mail | `selin.kaya` in „Meldewesen & Ausweise" | „Wer begleitet den Auftakttermin des mobilen Bürgerbüros in Nordfeld, und wann ist er?" | Mittwoch, 8. Juli 2026; Maria Weber und Andrea Vogt (Leitung) | `einsatzplan-mobiles-buergerbuero-2026-q3.pdf`, Anhang von `27_rundschreiben-mobiles-buergerbuero-nordfeld.eml` („Interne Dienstanweisungen Meldewesen") |
 | CSV | `selin.kaya` in „Meldewesen & Ausweise" | „Zu welcher Uhrzeit hält das mobile Bürgerbüro im Bürgertreff Weststadt seinen Sprechtag, und in welchem Raum?" | jeden dritten Donnerstag im Monat, 14:00 bis 17:30 Uhr, Saal im ersten Obergeschoss | `047_sprechtage-mobiles-buergerbuero.csv` („Leistungen Meldewesen & Ausweise") |
 
 - **Zur XLSX-Frage:** Betrag und Tarif nennt auch die Satzung, den Buchungsschlüssel nur die
   Übersicht. Für Maria, Selin und Andrea gibt es dieselbe Frage zum vorläufigen Personalausweis:
   BB-3213, Tarifstelle 1.3, 11,50 Euro.
-- **Zur Anhang-Frage:** Die Antwort steht nur im PDF-Anhang, nicht im Nachrichtentext. Für den
+- **Zur Anhang-Frage:** Das Datum nennt auch der Nachrichtentext, wer den Termin begleitet, steht
+  nur im PDF-Anhang. Fragen nach einer einzelnen Zeile mitten in der Einsatztabelle (etwa „Wer ist am
+  12. August 2026 in Nordfeld eingeteilt?") beantwortete das Modell der Demo-Instanz trotz korrekt
+  gefundener Fundstelle wiederholt mit einer verrutschten Zeile; sie eignen sich nicht für die
+  Vorführung. Für den
   Nachrichtentext selbst: „Wann und wo holt man den Bürgerkoffer für einen Sprechtag ab, und bis wann
   muss er zurück?" Antwort: spätestens eine Stunde vor Beginn bei der IT-Leitstelle; Rückgabe nach
   dem Sprechtag, nach einem Nachmittagstermin wie in Weststadt bis 9:00 Uhr am folgenden Werktag.
