@@ -10,7 +10,7 @@
  * on it, never the other way round. What it needs from one of them it declares itself as a port and
  * lets that package implement: {@link io.opaa.permission.GroupMembershipSource}, {@link
  * io.opaa.permission.GroupSubjectDirectory}, {@link io.opaa.permission.AssetOwnershipDirectory}.
- * {@code io.opaa.permission.PermissionPackageBoundaryTest} holds the direction.
+ * {@code io.opaa.architecture.ModularArchitectureTest} holds the direction.
  *
  * <p><b>Grants are type-independent.</b> A grant names its asset by {@link
  * io.opaa.permission.AssetType} plus id; the values of {@code AssetType} belong to the packages

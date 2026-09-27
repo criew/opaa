@@ -218,7 +218,7 @@ wiederkehrende Quelle verlorener Wartezeit erwiesen.
 - `docs/decisions/` — Architecture Decision Records (ADRs), u. a. [ADR-0021](docs/decisions/0021-single-instance-betrieb.md) zur Single-Instance-Annahme des Backends
 - `docs/features/` — Feature-Spezifikationen
 - `docs/handbuch/` — Produkthandbuch des gebauten Ist-Stands (`deployment.md`, `benutzerverwaltung.md`, `indexierung.md` mit je einem Kapitel pro Konnektor und Format, `metadaten.md`, `suche.md`); Regeln der Kapitel in `docs/handbuch/README.md`, Abschnitt „Konventionen"
-- `backend/AGENTS.md` — Backend-Konventionen (Abhängigkeitsverwaltung, API-/Mapper-Regeln, Spring-Testkontexte, Liquibase); `backend/` ist zugleich Gradle-Root des Multi-Modul-Builds
+- `backend/AGENTS.md` — Backend-Konventionen (Abhängigkeitsverwaltung, API-/Mapper-Regeln, logische Module und Schichtung, Spring-Testkontexte, Liquibase); `backend/` ist zugleich Gradle-Root des Multi-Modul-Builds
 - `opaa-api/` — Gradle-Modul mit OpenAPI-Spec, Generator-Konfiguration und geteilten Domain-Enums (`io.opaa.api.types`), siehe [ADR-0006](docs/decisions/0006-openapi-dto-generation.md) (#896)
 - `frontend/src/test/test-utils.tsx` — Gemeinsame Test-Render-Helfer
 - `e2e/` — Browserbasierte End-to-End-Tests (Playwright), siehe `e2e/README.md`

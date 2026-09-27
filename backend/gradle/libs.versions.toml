@@ -93,6 +93,9 @@ jmustache = "1.16"
 # than as a container, so a send is proved end to end - STARTTLS negotiation, AUTH, the MIME parts
 # - without Docker being required for that particular test. Not managed by the Spring Boot BOM.
 greenmail = "2.1.14"
+# Bytecode-level architecture rules for the logical modules and the package layering of the backend
+# (io.opaa.architecture.ModularArchitectureTest). Test-only; not managed by the Spring Boot BOM.
+archunit = "1.5.1"
 # Transitive-only pin (see the dependencyManagement block in build.gradle.kts). Tika's crypto, pdf,
 # microsoft and digest parser modules resolve Bouncy Castle 1.84, which is affected by
 # CVE-2026-8763 (name constraint bypass) and CVE-2026-13506 (ASN.1 nesting depth reset). All four
@@ -180,6 +183,7 @@ testcontainers-postgresql = { module = "org.testcontainers:testcontainers-postgr
 junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
 awaitility = { module = "org.awaitility:awaitility" }
 greenmail = { module = "com.icegreen:greenmail", version.ref = "greenmail" }
+archunit = { module = "com.tngtech.archunit:archunit", version.ref = "archunit" }
 
 # Version overrides for artifacts that reach the classpath only transitively (see the
 # dependencyManagement block in build.gradle.kts, which is their only consumer). They are declared
@@ -226,6 +230,7 @@ test-deps = [
     "testcontainers-postgresql",
     "awaitility",
     "greenmail",
+    "archunit",
 ]
 test-runtime-deps = ["junit-platform-launcher"]
 opaa-api-test-deps = ["junit-jupiter", "assertj-core", "snakeyaml"]

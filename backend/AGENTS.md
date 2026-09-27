@@ -25,6 +25,67 @@ Die beiden Kernregeln — DTOs nie von Hand, Änderungen beginnen in der Spec �
 
 > Vollständige Begründung: [ADR-0006](../docs/decisions/0006-openapi-dto-generation.md)
 
+## Logische Module und Schichtung
+
+Das Backend ist ein Gradle-Modul, aber in logische Module gegliedert (Epic #1906, #2000).
+`io.opaa.architecture.ModularArchitectureTest` erzwingt sie mit ArchUnit auf den kompilierten
+Hauptklassen, ohne Spring-Kontext, als Teil von `./gradlew test`. Die Definitionen stehen in
+`ModularArchitecture` daneben, die Negativfälle belegt `ModularArchitectureFixtureTest`.
+
+| Modul | Pakete (`io.opaa.*`) |
+|---|---|
+| foundation | common, observability, organization, notification, security, ratelimit, sourceaccess, s3 |
+| identity | audit, branding, mail, auth |
+| rights | permission, asset, group, succession |
+| knowledge | knowledge, llm, indexing (ohne Konnektoren) |
+| connectors | jedes direkte Unterpaket von `indexing.source` |
+| workspace | space, revision, diagnosticaccess |
+| library | library |
+| assistant | prompt, chat, query, search, searchadmin, health |
+| external | externalaccess, mcp |
+| app | api, config, `OpaaApplication` |
+
+Erlaubte Kanten zwischen Modulen (`ALLOWED_MODULE_EDGES`), alle nach unten:
+
+- identity → foundation
+- rights → foundation, identity
+- knowledge → foundation, identity, rights
+- connectors → foundation, knowledge
+- workspace, library → foundation, identity, rights, knowledge
+- assistant → foundation, identity, rights, knowledge, workspace, library
+- external → foundation, identity, rights, knowledge, library, assistant
+- app → alle außer connectors
+
+Der Test prüft außerdem:
+
+- **Schichtung:** `LAYERS` ordnet alle Top-Level-Pakete, unten zuerst. Ein Paket nutzt nur sich
+  selbst und Pakete davor.
+- **Zyklen:** keine zwischen Top-Level-Paketen. Zwischen Unterpaketen sind die heutigen Zyklen als
+  Paketkanten in `KNOWN_SUBPACKAGE_CYCLE_EDGES` eingefroren, vor allem in `indexing` und `query`.
+  Jede weitere Kante auf einem Zyklus lässt den Test fehlschlagen, also jeder neue Zyklus.
+- **Konnektoren:** Kein Konnektor kennt einen anderen, und keine Klasse außerhalb eines Konnektors
+  kennt ihn. Kern, Verwaltung und API erreichen Konnektoren nur über die `SourceConnectorRegistry`.
+- Die Pakete des Gradle-Moduls `opaa-api` (`io.opaa.api.dto`, `io.opaa.api.types`) liegen
+  außerhalb der Schichtung.
+- **Blinder Fleck:** Der Test sieht nur den Bytecode. Liest ein Paket von einem anderen nur eine
+  `static final`-Konstante, die der Compiler einfaltet, ist das für ihn keine Kante. Dasselbe gilt
+  für Verweise, die nur im Javadoc stehen.
+
+**Neues Top-Level-Paket:** in `LAYERS` oberhalb aller Pakete eintragen, die es nutzt, und in
+`MODULES` einem Modul zuordnen. Fehlt der Eintrag, nennt der Test das Paket und beide Stellen.
+Umgekehrt schlägt er fehl, wenn ein gelistetes Paket verschwindet, eine erlaubte Modulkante nicht
+mehr genutzt wird oder eine eingefrorene Zykluskante auf keinem Zyklus mehr liegt. Dann wird der
+Eintrag entfernt.
+
+**Eine neue Kante zwischen Modulen ist eine bewusste Entscheidung** und wird im PR begründet. Den
+Eintrag nicht nur ergänzen, damit der Test grün wird. Zuerst prüfen, ob eine Schnittstelle im
+unteren Modul reicht, die das obere implementiert.
+
+Feinere Regeln als die Paketebene prüfen eigene Strukturtests: `PermissionPackageBoundaryTest`
+(Kanten zwischen Fachpaketen, die die Schichtung zuließe), `KnowledgeLibraryReachWriterTest`
+(Methodenebene) und die `*DependencyStructureTest`-Klassen einzelner Pakete (Unterpakete,
+`opaa-api`-Typen).
+
 ## Objektspeicher-Suite des S3-Konnektors
 
 Die Objektspeicher-Suite des S3-Konnektors (ADR-0027, #1382, #1949) läuft innerhalb von
