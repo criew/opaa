@@ -107,11 +107,12 @@ Quellentyp das Original über `GET /api/v1/documents/{documentId}/content` (dass
 im Browser ins Leere lief. Seit #780 verhält sich „Im Dokument öffnen" an den Fundstellen und im
 Belegfenster wie auf der Dokumentenübersicht: Markdown/Klartext rendern in `DocumentTextPreviewDialog`
 statt still herunterzuladen, jedes andere Format zeigt beim Download eine Snackbar. Beide
-Oberflächen teilen sich dafür in `MessageBubble.tsx` eine einzige `useDocumentPreview()`-Instanz —
-die Fundstellen (`SourceFootnotes.tsx`) und das Belegfenster (`SourceEvidenceDrawer.tsx`) bieten
-dieselbe Aktion für dieselbe Antwort und erhalten `openDocument`/Fehler-/Vorschau-/Download-Zustand
-als Props, statt je einen eigenen Aufruf zu verwalten; Dialog und Snackbar hängen dadurch auch nicht
-am Lebenszyklus des Belegfensters, das seine Kindelemente beim Schließen abbaut. Backendseitig
+Oberflächen teilten sich dafür in `MessageBubble.tsx` eine einzige `useDocumentPreview()`-Instanz;
+Dialog und Snackbar hängen dadurch nicht am Lebenszyklus des Belegfensters, das seine Kindelemente
+beim Schließen abbaut. Seit #1449 entfällt der Fundstellenblock unter der Antwort: Dort steht nur
+noch „Belege anzeigen" mit einer Zählzeile, alle Fundstellen stehen im Belegfenster
+(`SourceEvidenceDrawer.tsx`), und ein Klick auf eine Fußnote öffnet es an der zugehörigen
+Fundstelle und markiert sie dort. Backendseitig
 schlüsselt die Zusammenführung mehrfach zitierter
 Fundstellen (`QueryService#mergeSourceReferences`) auf `documentId` statt auf den Dateinamen: zwei
 unterschiedliche Dokumente mit identischem Dateinamen (etwa zwei RSS-Anlagen) erscheinen dadurch als

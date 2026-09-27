@@ -249,7 +249,10 @@ Gruppen deutlich getrennt (24–48).
   Schatten auf ruhenden Karten.**
 - Ebene 2 (schwebend: Menü, Popover, @-Vorschlagsliste): Rahmen **plus** dezenter Schatten
   `0 2px 6px rgba(1,32,66,0.08)`.
-- Ebene 3 (Dialog, Belegfenster): Rahmen plus `0 8px 24px rgba(1,32,66,0.10)`.
+- Ebene 3 (Dialog, Belegfenster): Rahmen plus `0 8px 24px rgba(1,32,66,0.10)`. Der Grund
+  dahinter tritt unter einem Schleier mit 2 px Unschärfe zurück; der Schleier trägt den Ton des
+  Schemas — hell `navy-900` mit 42 %, dunkel das neutrale `carbon-950` mit 72 %, nie Navy auf
+  dem Carbon-Grund.
 - Im dunklen Schema bleiben die Schattenwerte gleich; die Trennung leisten dort vor allem die
   helleren Flächenstufen.
 
@@ -347,12 +350,25 @@ Vollständige Tastaturbedienung (Pfeile, Enter, Escape) ist Teil der Komponente,
 
 ### 5.8 Fußnoten und Fundstellen (Signaturmuster des Chats)
 
-Belege erscheinen als hochgestellte Ziffern in `accent` im Antworttext (auch Bereiche „1–3");
-unter der Antwort folgt der Fundstellen-Block: Eyebrow „Fundstellen", Zeile „n Stellen in
-m Dokumenten", je Dokument Ziffern + Titel (Gewicht 500) + Fundort und Stand in `fg-3`.
-Ein Beleg, den die Belegvalidierung nicht bestätigt, trägt einen dezenten Hinweis in normaler
-Fundstellen-Typografie — kein Banner, keine Signalfarbe (Ausgestaltung: Issues #590/#592,
-Mockups 1a/1i).
+Belege erscheinen im Antworttext als **Fußnotenmarken**: die Ziffer in Mono und `accent` in einem
+Kreis mit 10 % `accent`-Fläche (dunkel 22 %), hochgestellt über der x-Höhe, ohne den
+Zeilenabstand zu ändern; ein Bereich „1–3" wird zur Pille.
+Beim Hover oder Fokus füllt sich die Marke in `accent-press` mit weißer Ziffer (`accent`
+selbst trüge Weiß im Dunkelschema nur mit 3,3:1); die Ziffer der ruhenden Marke rückt, wo die
+Tönung sie unter 4,5:1 drückt, wie jeder Akzenttext vom Grund weg, und ein Tooltip nennt je Fundstelle
+Ziffer, Dokumentname und Fundort; erst ein Klick öffnet das Belegfenster.
+Unter der Antwort steht keine Quellenliste. Eine 1-px-Haarlinie in `border`, nach rechts
+auslaufend, schließt den Antworttext ab; darunter folgt der Knopf **„Belege anzeigen"** als
+Pille (Rahmen `border`, Radius `pill`). Er trägt links die Fußnotenmarken der Antwort, überlappend — dieselben Marken wie im
+Text, ab der vierten als „+n" —, rechts einen Pfeil in `accent`. Beim Hover fächern die Marken leicht auf und der Pfeil
+rückt 2 px nach (120 ms, nur `transform`). Daneben die Zählzeile „n Stellen in m Dokumenten ·
+k weitere geprüft" in `fg-2`, mit dem Knopf per `aria-describedby` verbunden. Die Antwort bleibt
+Fließtext, auch in langen Gesprächen. Alle Fundstellen stehen im **Belegfenster** rechts, je Dokument Ziffern +
+Titel (Gewicht 500) + Fundort, Metadaten und Stand. Ein Klick auf eine Fußnote öffnet das
+Belegfenster an ihrer Fundstelle und markiert sie dort (Fläche `accent` 7 %, Akzentkante links) —
+markiert wird der Beleg, nicht der Antworttext. Ein Beleg, den die Belegvalidierung nicht
+bestätigt, trägt einen dezenten Hinweis in normaler Beleg-Typografie — kein Banner, keine
+Signalfarbe (Ausgestaltung: Issues #590/#592/#1449, Mockups 1a/1i).
 
 ### 5.9 Popup-Benachrichtigungen
 
@@ -432,7 +448,7 @@ UI-Sprache ist Deutsch, Anrede „Sie", `aria-label` deutsch. Verbindliche Begri
 | **Endpoint**              | die Adresse eines S3-Objektspeichers (`https://host[:port]`, ohne Pfad) |
 | **Verteilungsstufe**      | privat · geteilt · organisationsweit                                                         |
 | **Rolle**                 | Leser · Bearbeiter · Verwalter · Eigentümer                                                  |
-| **Fundstellen**           | Belegblock unter einer Antwort                                                               |
+| **Fundstellen**           | die Stellen in Dokumenten, auf die sich eine Antwort stützt                                  |
 | **Belege / Belegfenster** | alle Fundstellen einer Antwort in der seitlichen Leiste                                      |
 | **Systemverwaltung**      | Admin-Bereich und -Rolle                                                                     |
 | **Anmeldung / Kennung**   | nie „Login"/„Username" in Nutzertexten                                                       |

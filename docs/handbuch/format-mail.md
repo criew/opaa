@@ -82,7 +82,7 @@ mail-eigenen Chunk-Schlüssel — dieselbe Mechanik wie bei den Kernfeldern, mit
 | Feld | Inhalt | Filterbar |
 |---|---|---|
 | **Absender** | die reine Adresse des `From`-Kopfs, kleingeschrieben (`Max Mustermann <Max.Mueller@Stadt.de>` → `max.mueller@stadt.de`) | ja, als Genau-Treffer |
-| **An** | alle Empfänger, mit `; ` getrennt, auf 200 Zeichen gekürzt; nur im Belegfenster, nicht in der Fundstellenzeile | nein |
+| **An** | alle Empfänger, mit `; ` getrennt, auf 200 Zeichen gekürzt; im Belegfenster in eigener Zeile, nicht in der Metadatenzeile | nein |
 | **Betreff** | Betreff der Nachricht | nein |
 | **Datum/Stand** | Kalendertag aus dem `Date`-Kopf (Kernfeld) | ja, als Zeitraum |
 

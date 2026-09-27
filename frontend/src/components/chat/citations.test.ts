@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import {
   buildCitationIndex,
+  describeEvidenceSummary,
   describeMetadata,
   formatMetadataDetails,
   formatMetadataLine,
@@ -284,5 +285,40 @@ describe('metadata detail entries', () => {
   test('shows the detail-only values labelled, for the Belegfenster alone', () => {
     expect(formatMetadataDetails(source)).toBe('An: a@x.de; b@y.de')
     expect(formatMetadataDetails({ ...source, metadata: [] })).toBeUndefined()
+  })
+})
+
+describe('describeEvidenceSummary', () => {
+  const src = (fileName: string, cited: boolean, matchCount = 1): SourceReference => ({
+    fileName,
+    relevanceScore: 0.5,
+    matchCount,
+    cited,
+    indexedAt: null,
+    citationValid: true,
+  })
+
+  test('counts cited passages and the further checked sources', () => {
+    const content = 'A【source: a#0 | a.md】 B【source: a#1 | a.md】 C【source: b#0 | b.md】'
+    const index = buildCitationIndex(content, [
+      src('a.md', true),
+      src('b.md', true),
+      src('c.md', false),
+    ])
+    expect(describeEvidenceSummary(index)).toBe('3 Stellen in 2 Dokumenten · 1 weitere geprüft')
+  })
+
+  test('falls back to matchCount for an answer without markers', () => {
+    const index = buildCitationIndex('Ohne Marken', [src('a.md', true, 2)])
+    expect(describeEvidenceSummary(index)).toBe('2 Stellen in 1 Dokument')
+  })
+
+  test('says so when nothing was cited', () => {
+    const index = buildCitationIndex('Ohne Marken', [src('c.md', false), src('d.md', false)])
+    expect(describeEvidenceSummary(index)).toBe('2 geprüft, keine zitiert')
+  })
+
+  test('is undefined without any source', () => {
+    expect(describeEvidenceSummary(buildCitationIndex('Antwort', []))).toBeUndefined()
   })
 })

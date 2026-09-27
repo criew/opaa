@@ -123,7 +123,7 @@ describe('ChatPage routing (real router)', () => {
   })
 
   // CI follow-up to #548: navigating from an existing, already-loaded chat to ".../chats/new" left
-  // the previous chat's messages (and any source card in them) on screen. The URL-replace effect
+  // the previous chat's messages (and any Belege in them) on screen. The URL-replace effect
   // watches storeChatId to redirect out of "new" once sendMessage has implicitly created a chat -
   // but on the very render where the route just became "new", storeChatId still held the *old*
   // chat's id (the routing effect's startNewChat() call only clears it on a later render). That
@@ -135,7 +135,7 @@ describe('ChatPage routing (real router)', () => {
 
     // chat-personal-1 (fixtures) has a cited source in its history - confirms the old chat is
     // genuinely loaded before we navigate away from it.
-    await screen.findAllByTestId('source-card')
+    await screen.findAllByRole('button', { name: 'Belege anzeigen' })
     expect(useChatStore.getState().messages.length).toBeGreaterThan(0)
 
     fireEvent.click(screen.getByRole('link', { name: 'Neuer Chat' }))
@@ -144,7 +144,7 @@ describe('ChatPage routing (real router)', () => {
       expect(useChatStore.getState().messages).toEqual([])
     })
     expect(useChatStore.getState().chatId).toBeNull()
-    expect(screen.queryAllByTestId('source-card')).toHaveLength(0)
+    expect(screen.queryAllByRole('button', { name: 'Belege anzeigen' })).toHaveLength(0)
   })
 
   // Second half of the CI follow-up: even if the stale-navigation bug above did not exist, a
@@ -172,7 +172,7 @@ describe('ChatPage routing (real router)', () => {
     )
 
     renderChatPageWithNavLinks('/spaces/space-personal/chats/chat-personal-1')
-    await screen.findAllByTestId('source-card')
+    await screen.findAllByRole('button', { name: 'Belege anzeigen' })
 
     fireEvent.click(screen.getByRole('link', { name: 'Neuer Chat' }))
     await waitFor(() => expect(useChatStore.getState().chatId).toBeNull())
@@ -189,7 +189,7 @@ describe('ChatPage routing (real router)', () => {
   // chat's own history, not a mix of the two or a state stuck from the "new" detour in between.
   it('restores the correct chat when navigating from a new chat back to a different existing chat', async () => {
     renderChatPageWithNavLinks('/spaces/space-personal/chats/chat-personal-1')
-    await screen.findAllByTestId('source-card')
+    await screen.findAllByRole('button', { name: 'Belege anzeigen' })
 
     fireEvent.click(screen.getByRole('link', { name: 'Neuer Chat' }))
     await waitFor(() => expect(useChatStore.getState().chatId).toBeNull())

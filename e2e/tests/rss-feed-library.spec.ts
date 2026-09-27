@@ -158,7 +158,7 @@ async function fetchLibraryDocumentFileNames(page: Page, libraryId: string): Pro
  * **Content verification is API-based, not citation-based (Annahme, see PR).** `e2e/ai-stub`
  * always answers `POST /v1/embeddings` with the *same fixed vector* regardless of input (see
  * e2e/README.md, "KI-Stub statt echtem Modell") - the chat/search path this suite otherwise uses
- * (`source-card`, #424) cannot distinguish which of this library's own documents a particular
+ * (`evidence-doc`) cannot distinguish which of this library's own documents a particular
  * query "found", since every chunk in every library the asking user can read is equally
  * "relevant". This spec instead asserts the indexing run's own document counts (via
  * .../indexing/status) and each document's own fileName (via GET .../documents, see

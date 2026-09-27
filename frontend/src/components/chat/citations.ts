@@ -32,11 +32,11 @@ export interface CitationDoc {
 export interface CitationIndex {
   /** Footnote number per marker key (`documentId#chunk`), in order of first appearance. */
   numberByKey: Map<string, number>
-  /** Row index in {@link docs} per footnote number - the in-text anchors point at rows. */
+  /** Row index in {@link docs} per footnote number - a clicked footnote marks these rows. */
   docIndexByNumber: Map<number, number>
   /** Cited documents in first-appearance order, then cited-but-unreferenced sources. */
   docs: CitationDoc[]
-  /** Checked but uncited sources - the collapsible tail of the block (mockup 1a). A filter over
+  /** Checked but uncited sources - listed after the cited ones in the Belegfenster. A filter over
    *  `sources`, so this arrives in the backend's order. */
   uncited: SourceReference[]
   /** #1102: position in the backend's `sources` array per source, for the rows that carry the
@@ -49,7 +49,7 @@ export interface CitationIndex {
   locationByNumber: Map<number, string>
 }
 
-/** Resolves an answer's citation markers into footnote numbers and the Fundstellen rows (#590). */
+/** Resolves an answer's citation markers into footnote numbers and the Belegfenster rows (#590). */
 export function buildCitationIndex(
   content: string,
   sources: SourceReference[] | undefined,
@@ -176,9 +176,40 @@ export function buildCitationIndex(
   }
 }
 
-/** The element id of a Fundstellen row, shared between in-text anchors and the block (#590). */
+/** The element id of a cited document's row in the Belegfenster - the scroll target of a
+ *  clicked footnote. */
 export function citationRowId(messageId: string, docIndex: number): string {
   return `fundstelle-${messageId}-${docIndex}`
+}
+
+/**
+ * "3 Stellen in 2 Dokumenten" - the count line of the cited Belege. Markers are the exact truth;
+ * when an answer carries none (older turns, mock data), the cited sources' matchCount sums to the
+ * honest fallback.
+ */
+export function describeCitedPassages(citations: CitationIndex): string {
+  const { docs, markerCount } = citations
+  const stellenCount =
+    markerCount > 0
+      ? markerCount
+      : docs.reduce((sum, doc) => sum + (doc.source?.matchCount ?? 1), 0)
+  const stellen = stellenCount === 1 ? '1 Stelle' : `${stellenCount} Stellen`
+  const dokumente = docs.length === 1 ? '1 Dokument' : `${docs.length} Dokumenten`
+  return `${stellen} in ${dokumente}`
+}
+
+/**
+ * The summary next to "Belege anzeigen" under an answer: the cited passages plus how many further
+ * sources were checked without being cited. Undefined when the answer has no Belege at all.
+ */
+export function describeEvidenceSummary(citations: CitationIndex): string | undefined {
+  const { docs, uncited } = citations
+  if (docs.length === 0 && uncited.length === 0) return undefined
+  if (docs.length === 0) {
+    return `${uncited.length} geprüft, keine zitiert`
+  }
+  const cited = describeCitedPassages(citations)
+  return uncited.length > 0 ? `${cited} · ${uncited.length} weitere geprüft` : cited
 }
 
 /**
@@ -188,8 +219,7 @@ export function citationRowId(messageId: string, docIndex: number): string {
  * origin per entry, and a library's own fields (#1071) simply appear as further entries. An
  * empty field is not in the list, so it never renders (metadata-schema.md, Wirkstelle 3); a value
  * a model derived is marked as such, so it never looks like a read one. `undefined` when the list
- * is absent or empty, so callers omit the line entirely. Shared between {@code SourceFootnotes}
- * and {@code SourceEvidenceDrawer}.
+ * is absent or empty, so callers omit the line entirely. Rendered by {@code SourceEvidenceDrawer}.
  */
 export function formatMetadataLine(source: SourceReference | undefined): string | undefined {
   const entries = (source?.metadata ?? []).filter((entry) => !entry.detailOnly)

@@ -218,7 +218,7 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
     await askQuestion(page, question)
 
     await expect(page.getByText('Diese Antwort wurde ohne Wissensbasis erstellt.')).toBeVisible()
-    await expect(page.getByTestId('source-card')).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Belege anzeigen' })).toHaveCount(0)
   })
 
   test('4. Rechte-Negativfall: nicht lesbare Bibliothek erscheint nicht in den @-Vorschlägen', async (
