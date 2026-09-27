@@ -19,13 +19,11 @@ from dataclasses import dataclass
 from datetime import datetime
 from html import escape
 from io import BytesIO
-from zipfile import ZIP_DEFLATED, ZipFile
 
 import docx
 import openpyxl
 from docx.shared import Pt
 from openpyxl.styles import Font
-from openpyxl.writer.excel import ExcelWriter
 from pptx import Presentation
 from pptx.util import Pt as PptxPt
 from reportlab.lib import colors
@@ -35,7 +33,7 @@ from reportlab.lib.units import cm
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
 
 import odf_utils
-from zip_utils import normalize_zip_timestamps
+from zip_utils import normalize_zip_timestamps, save_workbook
 
 SYNTHETIC_NOTICE = (
     "Synthetisches Musterdokument der fiktiven Stadt Rheinfurt aus der Bibliothek "
@@ -742,14 +740,7 @@ def _render_xlsx() -> bytes:
     workbook.properties.title = "Gebührenübersicht Formatprüfung – Dateiformat: Excel (.xlsx)"
     workbook.properties.created = FIXED_TIMESTAMP
     workbook.properties.modified = FIXED_TIMESTAMP
-
-    # Written through ExcelWriter instead of Workbook.save: the latter overwrites
-    # properties.modified with the current time right before writing, which alone would make two
-    # runs produce different bytes.
-    buffer = BytesIO()
-    archive = ZipFile(buffer, "w", ZIP_DEFLATED, allowZip64=True)
-    ExcelWriter(workbook, archive).save()
-    return normalize_zip_timestamps(buffer.getvalue(), first_entry="[Content_Types].xml")
+    return save_workbook(workbook)
 
 
 def _render_csv() -> bytes:

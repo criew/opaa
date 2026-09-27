@@ -16,6 +16,9 @@ from __future__ import annotations
 import zipfile
 from io import BytesIO
 
+from openpyxl import Workbook
+from openpyxl.writer.excel import ExcelWriter
+
 # The MS-DOS zip date_time floor (1980-01-01); arbitrary but fixed, and the
 # same floor Python's own zipfile module falls back to for out-of-range
 # timestamps, so it round-trips cleanly on every platform.
@@ -38,3 +41,12 @@ def normalize_zip_timestamps(data: bytes, first_entry: str | None = None) -> byt
             new_info.external_attr = info.external_attr
             target.writestr(new_info, source.read(info.filename))
     return output.getvalue()
+
+
+def save_workbook(workbook: Workbook) -> bytes:
+    """The workbook's reproducible bytes. Written through ExcelWriter instead of Workbook.save: the
+    latter overwrites properties.modified with the current time right before writing."""
+    buffer = BytesIO()
+    archive = zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED, allowZip64=True)
+    ExcelWriter(workbook, archive).save()
+    return normalize_zip_timestamps(buffer.getvalue(), first_entry="[Content_Types].xml")

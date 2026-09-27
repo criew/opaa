@@ -542,7 +542,7 @@ DEMO_PROFILE = Profile(
     libraries=(
         LibraryDef(
             name="Leistungen Meldewesen & Ausweise",
-            description="Leistungsbeschreibungen rund um Meldewesen und Ausweisdokumente.",
+            description="Leistungsbeschreibungen rund um Meldewesen und Ausweisdokumente, dazu die Sprechtage des mobilen Bürgerbüros.",
             source_type="HTTP_DIRECTORY",
             source_url="http://demo-corpus/leistungen-meldewesen-ausweise/",
             # Maria and Selin read these through the Keycloak group "Meldewesen".
@@ -574,7 +574,7 @@ DEMO_PROFILE = Profile(
         ),
         LibraryDef(
             name="Interne Dienstanweisungen Meldewesen",
-            description="Dienstanweisungen, Eskalationsregeln, interne FAQ und Schulungsfolien Meldewesen.",
+            description="Dienstanweisungen, Eskalationsregeln, interne FAQ, Schulungsfolien und Rundschreiben Meldewesen.",
             source_type="UPLOAD",
             viewer_keys=("maria", "selin", "andrea"),
             upload_dir=DEMO_CORPUS_ROOT / "interne-dienstanweisungen-meldewesen",
@@ -585,7 +585,7 @@ DEMO_PROFILE = Profile(
         # information, readable by every fach account like the press releases.
         LibraryDef(
             name="Ratsinformationen Stadt Rheinfurt",
-            description="Niederschriften und Beschlussvorlagen des Stadtrats und des Hauptausschusses, nach Jahrgängen abgelegt.",
+            description="Niederschriften und Beschlussvorlagen des Stadtrats, des Hauptausschusses und des Bauausschusses, nach Jahrgang und Gremium abgelegt; Vorlagen mit Anlagen liegen als Versandmail mit PDF-Anhängen vor.",
             source_type="S3",
             source_url="http://objectstore:9000",
             source_credentials="rheinfurt-archiv:RheinfurtDemo!2026",  # nosec - documented demo credential

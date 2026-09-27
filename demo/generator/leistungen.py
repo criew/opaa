@@ -1,4 +1,4 @@
-"""Builds the "Leistungen Meldewesen & Ausweise" (.md) and "Leistungen
+"""Builds the "Leistungen Meldewesen & Ausweise" (.md + one .csv) and "Leistungen
 Kfz-Zulassung" (.md + .txt) documents from the transformed LHM source files.
 
 See docs/features/demo-instance.md, table "Behördenlandschaft, Bibliotheken
@@ -7,6 +7,8 @@ und Formate", for the target library/format split.
 
 from __future__ import annotations
 
+import csv
+import io
 import re
 
 from leistungen_quelle import SELECTED_KFZ, SELECTED_MELDEWESEN, read_raw
@@ -57,6 +59,70 @@ def render_plain_text(title: str, body: str, sachgebiet: str, az: str, formular:
     )
 
 
+# --- Sprechtage des mobilen Bürgerbüros (.csv) --------------------------------
+#
+# The one synthetic document of this library, not derived from the LHM source. Locations and
+# weekdays follow the Hauptausschuss decisions in rat.py (Rheinau and Weststadt since April 2025,
+# Nordfeld added on 21 April 2026); times and rooms are stated only here.
+
+SPRECHTAGE_FILE_NAME = "sprechtage-mobiles-buergerbuero.csv"
+_SPRECHTAGE_NOTICE = (
+    "Diese Übersicht ist Teil des synthetischen Demo-Korpus der fiktiven Stadt Rheinfurt (siehe "
+    "SOURCE.md im Wurzelverzeichnis dieses Korpus). Standorte, Zeiten und Räume sind frei erfunden."
+)
+_SPRECHTAGE_ANLIEGEN = (
+    "Personalausweis und Reisepass beantragen, Wohnsitz anmelden oder ummelden; "
+    "keine Kfz-Angelegenheiten"
+)
+SPRECHTAGE_ROWS: list[list[str]] = [
+    ["Standort", "Ortsteil", "Sprechtag", "Uhrzeit", "Raum", "Angebot seit", "Anliegen"],
+    [
+        "Stadtteilzentrum Rheinau",
+        "Rheinau",
+        "jeden ersten Dienstag im Monat",
+        "9:00 bis 12:30 Uhr",
+        "Gruppenraum im Erdgeschoss",
+        "April 2025",
+        _SPRECHTAGE_ANLIEGEN,
+    ],
+    [
+        "Bürgertreff Weststadt",
+        "Weststadt",
+        "jeden dritten Donnerstag im Monat",
+        "14:00 bis 17:30 Uhr",
+        "Saal im ersten Obergeschoss",
+        "April 2025",
+        _SPRECHTAGE_ANLIEGEN,
+    ],
+    [
+        "Gemeindezentrum Nordfeld",
+        "Nordfeld",
+        "jeden zweiten Mittwoch im Monat",
+        "9:00 bis 12:30 Uhr",
+        "Besprechungsraum 2",
+        "Juli 2026",
+        _SPRECHTAGE_ANLIEGEN,
+    ],
+    [
+        "Hinweis",
+        "",
+        "Termine über die Online-Terminvergabe des Bürgerbüros",
+        "",
+        "",
+        "",
+        "Mobiles Bürgerbüro Rheinfurt, buergerbuero@stadt-rheinfurt.example. "
+        + _SPRECHTAGE_NOTICE,
+    ],
+]
+
+
+def render_sprechtage_csv() -> bytes:
+    buffer = io.StringIO()
+    writer = csv.writer(buffer, delimiter=";", lineterminator="\n")
+    writer.writerows(SPRECHTAGE_ROWS)
+    return buffer.getvalue().encode("utf-8")
+
+
 def build_meldewesen_documents() -> list[tuple[str, bytes]]:
     documents: list[tuple[str, bytes]] = []
     for index, filename in enumerate(SELECTED_MELDEWESEN, start=1):
@@ -67,6 +133,8 @@ def build_meldewesen_documents() -> list[tuple[str, bytes]]:
         content = render_markdown(title, body, "Meldewesen & Ausweise", az, formular)
         doc_filename = f"{index:03d}_{slugify(title)}.md"
         documents.append((doc_filename, content.encode("utf-8")))
+    index = len(SELECTED_MELDEWESEN) + 1
+    documents.append((f"{index:03d}_{SPRECHTAGE_FILE_NAME}", render_sprechtage_csv()))
     return documents
 
 

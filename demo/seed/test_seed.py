@@ -1185,3 +1185,26 @@ def test_same_named_prompt_library_of_another_owner_is_not_taken_over() -> None:
     ]
     assert len(owned) == 1
     assert api.prompts[foreign["id"]] == []
+
+
+COUNCIL_LIBRARY_FILES = 15  # demo/corpus/ratsinformationen/, see its lines in MANIFEST.sha256
+
+
+def test_council_library_expects_every_file_below_year_and_committee_folders() -> None:
+    """The bucket mirrors demo/corpus/ratsinformationen/ with its <jahr>/<Gremium>/ prefixes; a
+    count over the top level alone would let the seed accept a half-filled bucket. The mail
+    attachments are no files of their own and stay out of the count."""
+    council = next(
+        library
+        for library in profiles.DEMO_PROFILE.libraries
+        if library.name == "Ratsinformationen Stadt Rheinfurt"
+    )
+    manifest = (REPO_ROOT / "demo" / "corpus" / "MANIFEST.sha256").read_text(encoding="utf-8")
+    council_keys = [
+        line.split(" *", 1)[1]
+        for line in manifest.splitlines()
+        if line.split(" *", 1)[1].startswith("ratsinformationen/")
+    ]
+    assert len(council_keys) == COUNCIL_LIBRARY_FILES
+    assert all(len(key.split("/")) == 4 for key in council_keys), council_keys
+    assert seed.expected_document_count(council) == COUNCIL_LIBRARY_FILES

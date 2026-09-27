@@ -97,18 +97,18 @@ sha256sum -c MANIFEST.sha256
 
 ## Umfang
 
-182 Dokumente über sieben Bibliotheken (Zielkorridor 150–300 laut Issue #711 für die
+188 Dokumente über sieben Bibliotheken (Zielkorridor 150–300 laut Issue #711 für die
 sechs fachlichen Bibliotheken; „Formattest auf S3" ist eine technische Schaubibliothek mit genau
 einem Dokument je unterstützter Endung, #1519):
 
 | Bibliothek | Verzeichnis | Anzahl | Formate |
 |---|---|---|---|
-| Leistungen Meldewesen & Ausweise | `leistungen-meldewesen-ausweise/` | 46 | `.md` |
+| Leistungen Meldewesen & Ausweise | `leistungen-meldewesen-ausweise/` | 47 | `.md`, `.csv` |
 | Leistungen Kfz-Zulassung | `leistungen-kfz-zulassung/` | 37 | `.md`, `.txt` |
-| Satzungen & Gebührenordnungen | `satzungen-gebuehrenordnungen/` | 19 | `.pdf` |
+| Satzungen & Gebührenordnungen | `satzungen-gebuehrenordnungen/` | 20 | `.pdf`, `.xlsx` |
 | Pressemitteilungen Stadt Rheinfurt | `pressemitteilungen/` | 28 | RSS-XML, HTML |
-| Interne Dienstanweisungen Meldewesen | `interne-dienstanweisungen-meldewesen/` | 26 | `.docx`, `.pdf`, `.pptx` (Ordner nach Aktenplan) |
-| Ratsinformationen Stadt Rheinfurt | `ratsinformationen/` | 12 | `.md`, `.txt` (ein Präfix je Jahrgang) |
+| Interne Dienstanweisungen Meldewesen | `interne-dienstanweisungen-meldewesen/` | 27 | `.docx`, `.pdf`, `.pptx`, `.eml` mit PDF-Anhang (Ordner nach Aktenplan) |
+| Ratsinformationen Stadt Rheinfurt | `ratsinformationen/` | 15 | `.md`, `.txt`, `.eml` mit PDF-Anlagen (Präfixe Jahrgang/Gremium) |
 | Formattest auf S3 | `formate/` | 14 | je ein Dokument pro unterstützter Endung |
 
-Gesamtgröße rund 1,2 MB.
+Gesamtgröße rund 1,3 MB.

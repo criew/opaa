@@ -537,7 +537,7 @@ lassen.
 
 Ein separater, eigenständig startbarer Lauf gegen das Compose-Profil `demo`
 (`docs/features/demo-instance.md`) — bewusst **kein** Teil dieser Suite oder von `pnpm test`: Die
-Erstindizierung des Rheinfurt-Korpus (~150–300 Dokumente über vier Bibliotheken plus 26 Uploads)
+Erstindizierung des Rheinfurt-Korpus (~150–300 Dokumente über vier Bibliotheken plus 27 Uploads)
 dauert deutlich länger als der minimale `e2e`-Datenprofil-Seed oben, selbst mit `ai-stub` als
 deterministischem Modell. Zuletzt gemessene Laufzeit (Issue #232s eigenes Abnahmekriterium „Die
 Laufzeit ist dokumentiert und bleibt im Rahmen"): **3 Minuten 6 Sekunden gesamt**, davon rund 80s

@@ -5,12 +5,12 @@ Builds all seven demo libraries described in
 docs/features/demo-instance.md ("Behördenlandschaft, Bibliotheken und
 Formate") under demo/corpus/:
 
-- leistungen-meldewesen-ausweise/  (.md)          — rewritten LHM source
+- leistungen-meldewesen-ausweise/  (.md, one .csv) — rewritten LHM source, one synthetic table
 - leistungen-kfz-zulassung/        (.md, .txt)     — rewritten LHM source
-- satzungen-gebuehrenordnungen/    (.pdf)          — synthetic, hand-authored
+- satzungen-gebuehrenordnungen/    (.pdf, one .xlsx) — synthetic, hand-authored
 - pressemitteilungen/              (RSS + .html)   — synthetic, hand-authored
-- interne-dienstanweisungen-meldewesen/<aktenplan>/ (.docx/.pdf/.pptx) — synthetic, Aktenplan folders
-- ratsinformationen/<jahr>/       (.md, .txt)     — synthetic, one prefix per year
+- interne-dienstanweisungen-meldewesen/<aktenplan>/ (.docx/.pdf/.pptx/.eml) — synthetic, Aktenplan folders
+- ratsinformationen/<jahr>/<gremium>/ (.md, .txt, .eml + PDF-Anlagen) — synthetic
 - formate/                        (one file per admitted extension) — synthetic
 
 No network access is required once the pinned LHM raw files are cached under
@@ -143,12 +143,12 @@ LIBRARY_LABELS = {
     "formate": "Formattest auf S3",
 }
 LIBRARY_FORMATS = {
-    "leistungen-meldewesen-ausweise": "`.md`",
+    "leistungen-meldewesen-ausweise": "`.md`, `.csv`",
     "leistungen-kfz-zulassung": "`.md`, `.txt`",
-    "satzungen-gebuehrenordnungen": "`.pdf`",
+    "satzungen-gebuehrenordnungen": "`.pdf`, `.xlsx`",
     "pressemitteilungen": "RSS-XML, HTML",
-    "interne-dienstanweisungen-meldewesen": "`.docx`, `.pdf`, `.pptx` (Ordner nach Aktenplan)",
-    "ratsinformationen": "`.md`, `.txt` (ein Präfix je Jahrgang)",
+    "interne-dienstanweisungen-meldewesen": "`.docx`, `.pdf`, `.pptx`, `.eml` mit PDF-Anhang (Ordner nach Aktenplan)",
+    "ratsinformationen": "`.md`, `.txt`, `.eml` mit PDF-Anlagen (Präfixe Jahrgang/Gremium)",
     "formate": "je ein Dokument pro unterstützter Endung",
 }
 
@@ -194,6 +194,15 @@ def build_satzungen() -> list[tuple[str, str, bytes]]:
         filename = f"{index:02d}_{satzung.slug}.pdf"
         content = satzungen.render_satzung_pdf(satzung)
         written.append((f"satzungen-gebuehrenordnungen/{filename}", satzung.slug, content))
+    # The Gebührenübersicht continues the running number after the last Satzung.
+    filename = f"{len(satzungen.SATZUNGEN) + 1:02d}_{satzungen.GEBUEHRENUEBERSICHT_SLUG}.xlsx"
+    written.append(
+        (
+            f"satzungen-gebuehrenordnungen/{filename}",
+            satzungen.GEBUEHRENUEBERSICHT_SLUG,
+            satzungen.render_gebuehrenuebersicht_xlsx(),
+        )
+    )
     return written
 
 
@@ -222,6 +231,7 @@ def build_intern() -> list[tuple[str, str, bytes]]:
         + [(esk.slug, "docx", render_docx, esk) for esk in intern.ESKALATIONSREGELN]
         + [(faq.slug, "pdf", intern.render_faq_pdf, faq) for faq in intern.FAQS]
         + [(s.slug, "pptx", intern.render_schulung_pptx, s) for s in intern.SCHULUNGEN]
+        + [(r.slug, "eml", intern.render_rundschreiben_eml, r) for r in intern.RUNDSCHREIBEN]
     )
     written = []
     for index, (slug, extension, render, document) in enumerate(documents, start=1):
@@ -247,13 +257,15 @@ def build_intern() -> list[tuple[str, str, bytes]]:
 
 
 def build_rat() -> list[tuple[str, str, bytes]]:
-    """One key prefix per year, as the demo's MinIO bucket is seeded with them (the prefixes
-    become folders of the S3 library)."""
+    """Key prefixes <jahr>/<Gremium>/, as the demo's object store bucket is seeded with them (both
+    levels become folders of the S3 library). A Vorlage with Anlagen is one .eml object that
+    carries them as attachments."""
     written = []
     for n in rat.NIEDERSCHRIFTEN:
         written.append(
             (
-                f"ratsinformationen/{rat.year_of(n.datum)}/{n.slug}.md",
+                f"ratsinformationen/{rat.year_of(n.datum)}/{rat.gremium_folder(n.gremium)}/"
+                f"{n.slug}.md",
                 n.slug,
                 rat.render_niederschrift_md(n),
             )
@@ -261,9 +273,10 @@ def build_rat() -> list[tuple[str, str, bytes]]:
     for v in rat.BESCHLUSSVORLAGEN:
         written.append(
             (
-                f"ratsinformationen/{rat.year_of(v.sitzungsdatum)}/{v.slug}.txt",
+                f"ratsinformationen/{rat.year_of(v.sitzungsdatum)}/{rat.gremium_folder(v.gremium)}/"
+                f"{rat.vorlage_file_name(v)}",
                 v.slug,
-                rat.render_vorlage_txt(v),
+                rat.render_vorlage(v),
             )
         )
     return sorted(written, key=lambda item: item[0])
@@ -337,6 +350,12 @@ def collect_validation_texts(
         texts.append((relative_path, content.decode("utf-8")))
     for satzung in satzungen.SATZUNGEN:
         texts.append((f"satzungen-gebuehrenordnungen/{satzung.slug} (Quelltext)", _satzung_text(satzung)))
+    texts.append(
+        (
+            f"satzungen-gebuehrenordnungen/{satzungen.GEBUEHRENUEBERSICHT_SLUG} (Quelltext)",
+            satzungen.gebuehrenuebersicht_text(),
+        )
+    )
     for meldung in presse.PRESSEMITTEILUNGEN:
         texts.append((f"pressemitteilungen/{meldung.slug} (Quelltext)", _pressemitteilung_text(meldung)))
     for da in intern.DIENSTANWEISUNGEN + intern.ESKALATIONSREGELN:
@@ -349,10 +368,24 @@ def collect_validation_texts(
         texts.append(
             (f"interne-dienstanweisungen-meldewesen/{schulung.slug} (Quelltext)", _schulung_text(schulung))
         )
+    for rundschreiben in intern.RUNDSCHREIBEN:
+        texts.append(
+            (
+                f"interne-dienstanweisungen-meldewesen/{rundschreiben.slug} (Quelltext)",
+                intern.rundschreiben_text(rundschreiben),
+            )
+        )
     for n in rat.NIEDERSCHRIFTEN:
         texts.append((f"ratsinformationen/{n.slug} (Quelltext)", rat.niederschrift_text(n)))
     for v in rat.BESCHLUSSVORLAGEN:
         texts.append((f"ratsinformationen/{v.slug} (Quelltext)", rat.vorlage_text(v)))
+        for anlage in v.anlagen:
+            texts.append(
+                (
+                    f"ratsinformationen/{rat.anlage_file_name(v, anlage)} (Quelltext)",
+                    rat.anlage_text(v, anlage),
+                )
+            )
     for document in formate_documents:
         texts.append((f"formate/{document.file_name} (Quelltext)", document.text))
     texts.append((f"formate/{formate.DOC_FILE_NAME} (Quelltext)", formate.doc_text()))
