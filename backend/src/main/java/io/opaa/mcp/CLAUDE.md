@@ -1,0 +1,1 @@
+@../externalaccess/AGENTS.md

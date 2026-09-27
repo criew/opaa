@@ -20,8 +20,7 @@ Die beiden Kernregeln — DTOs nie von Hand, Änderungen beginnen in der Spec �
 - Die Spec-Fragmente unter `opaa-api/src/main/openapi/` bündelt der Task `:opaa-api:bundleOpenApi` (`io.opaa.api.bundler.OpenApiBundler`, eigenes Source-Set `bundler`). Tests lesen das Bündel wie bisher als Klassenpfad-Ressource `/openapi/opaa-api.yaml`. Das Frontend bündelt dieselben Fragmente mit `frontend/scripts/bundle-openapi.mjs` nach denselben Regeln. Wer die Regeln ändert, ändert beide Bundler (#2002)
 - Domain-Enums in DTOs (z. B. `SpaceRole`, `AssetRole`) werden über `typeMappings`/`importMappings` in `opaa-api/build.gradle.kts` gemappt
 - Beim Hinzufügen neuer Domain-Enums zur API genügen Einträge in `typeMappings` und `importMappings`; der `doLast`-Cleanup-Block im `openApiGenerate`-Task leitet die zu löschenden generierten Dateien mechanisch aus `typeMappings` ab
-- **Domain-Services kennen keine `io.opaa.api.dto`-Typen** (#860): Service-Methoden nehmen Entities, Einzelparameter oder kleine Domain-Parameter-Records entgegen und geben Entities oder Domain-Records zurück. Das Entity→Response-Mapping lebt in einer package-private Mapper-Klasse im Paket des aufrufenden Controllers (heute meist `io.opaa.api`; Vorbild: `BrandingResponseMapper`, `SpaceResponseMapper`). Für angereicherte Ansichten (Response ≠ Entity, z. B. mit einer zusätzlichen Zählung) trägt ein Domain-Record im jeweiligen Fachpaket die zusätzlichen Felder (z. B. `SpaceOverview(space, libraryCount, chatCount)`) — kein Mapping-Framework, handgeschriebene Mapper genügen bei dieser DTO-Größenordnung
-- **Werden Test-Assertions von Response-Feldern auf Entity-Ableitungen umgestellt** (etwa weil ein Service-Test jetzt gegen ein Entity statt ein DTO prüft), **muss die tatsächliche Feldbelegung durch einen Mapper-Unit-Test zugesichert werden** — sonst prüft kein Test mehr, dass der Mapper jedes Feld korrekt befüllt (siehe `SpaceResponseMapperTest`, `SpaceAssetAssociationResponseMapperTest`)
+- **Domain-Services kennen keine `io.opaa.api.dto`-Typen** (#860): Service-Methoden nehmen Entities, Einzelparameter oder kleine Domain-Parameter-Records entgegen und geben Entities oder Domain-Records zurück. Für angereicherte Ansichten (Response ≠ Entity, z. B. mit einer zusätzlichen Zählung) trägt ein Domain-Record im jeweiligen Fachpaket die zusätzlichen Felder (z. B. `SpaceOverview(space, libraryCount, chatCount)`). Wo die Mapper liegen und wie sie getestet werden, steht in der Datei des Moduls app (`io/opaa/api/AGENTS.md`)
 - **Eine Operation deklariert, was sie selbst entscheidet** (#1781). Was die Infrastruktur für alle Operationen gleich entscheidet — `400` bei unlesbarer Anfrage, `401` ohne brauchbare Sitzung, `403` bei erzwungenem Passwortwechsel oder einem Zugangstoken außerhalb seines Kanals, `404` bei unbekannter Route, `405`, `406`, `415`, `500` — steht einmal in `info.description` der Spezifikation und **in dieser Ausprägung** an keiner Operation. Eigene Entscheidungen bleiben deklariert: die Prüfung des eigenen Nutzinhalts (`400`), die eigene Rechteprüfung (`403`), die eigene Ressource (`404`), der eigene Konflikt (`409`), die eigene Größengrenze (`413`), die eigene Abhängigkeit (`503`) — und `401` dort, wo die Operation selbst eine ihr übergebene Berechtigung abweist (Anmeldung, Refresh-Cookie, Webhook-Signatur, Anbieter-Token der Übergabe). `429` steht an genau den Operationen mit einer eigenen Grenze; die Ratenbegrenzung ist endpunktweise, nicht global. `TransportStatusCodeSpecificationTest` hält beide Hälften maschinell fest und leitet die `429`-Erwartung aus der produktiven Verdrahtung von `RateLimitConfiguration` ab
 
 > Vollständige Begründung: [ADR-0006](../docs/decisions/0006-openapi-dto-generation.md)
@@ -87,21 +86,26 @@ Feinere Regeln als die Paketebene prüfen eigene Strukturtests: `PermissionPacka
 (Methodenebene) und die `*DependencyStructureTest`-Klassen einzelner Pakete (Unterpakete,
 `opaa-api`-Typen).
 
-## Objektspeicher-Suite des S3-Konnektors
+### Anweisungen je Modul
 
-Die Objektspeicher-Suite des S3-Konnektors (ADR-0027, #1382, #1949) läuft innerhalb von
-test/build, sobald Docker erreichbar ist (sonst übersprungen). Fußabdruck: **ein** geteilter
-S3-Speicher je Test-JVM (`S3TestFixture`, Image `rustfs/rustfs`, ~1 s Start) — auch der
-Ereignisweg-Test benutzt ihn, seit er die Benachrichtigung selbst zustellt (ADR-0027, Nachtrag zu
-Entscheidung 9); weder ein zweiter Container noch ein sshd-Sidecar. Die Spring-Klassen teilen sich
-den `@OpaaIntegrationTest`-Kontext (kein zusätzlicher Postgres). Bei `maxParallelForks = 2` in der
-CI verdoppelt sich das.
+Jedes Modul hat eine kurze `AGENTS.md` (höchstens 60 Zeilen) mit Zweck und Grenze, Invarianten und
+Stolpersteinen, Verweisen und den Tests, die bei Änderungen laufen sollten. Sie liegt im
+Hauptpaket unter `backend/src/main/java/io/opaa/`:
 
-Eingeschränkte Schlüssel legt `S3TestFixture.createUser(policyJson)` über die MinIO-kompatible
-Admin-API des Images an (SigV4, Klartext-Nutzlast) — kein `mc`, kein `execInContainer`. Wer die
-Fixture auf ein anderes Image umstellt, prüft zuerst diese drei Aufrufe und die beiden Fehlerformen,
-an denen die Kandidatenbewertung in #1949 gescheitert ist: „darf auflisten, aber nicht lesen" und
-die gefilterte Bucket-Liste.
+| Modul | Datei | Modul | Datei |
+|---|---|---|---|
+| foundation | `common/AGENTS.md` | workspace | `space/AGENTS.md` |
+| identity | `auth/AGENTS.md` | library | `library/AGENTS.md` |
+| rights | `permission/AGENTS.md` | assistant | `query/AGENTS.md` |
+| knowledge | `knowledge/AGENTS.md` | external | `externalaccess/AGENTS.md` |
+| connectors | `indexing/source/AGENTS.md` | app | `api/AGENTS.md` |
+
+Daneben liegt eine `CLAUDE.md` mit `@AGENTS.md`; jedes weitere Top-Level-Paket des Moduls hat eine
+`CLAUDE.md`, die die Datei des Moduls importiert (`@../common/AGENTS.md`). Claude Code lädt eine
+`CLAUDE.md` in einem Unterverzeichnis, sobald dort eine Datei gelesen wird. Andere Werkzeuge lesen
+die Datei des Moduls vor der Arbeit im Modul selbst. `ModuleAgentsFileTest` hält Ablage, Import und
+Länge fest; ein neues Top-Level-Paket bekommt eine solche `CLAUDE.md`. Modulspezifisches gehört in
+diese Dateien, hier bleibt nur, was modulübergreifend gilt.
 
 ## Spring-Testkontexte
 
@@ -132,30 +136,11 @@ Familie des `local,dev`-Profils, fünf die des Betriebsmodus `oidc`:
   Schema-Initialisierung). Technischer Grund: eine Nachbarklasse prüft genau den Default, und der
   pgvector-Wächter zerstört und erzeugt `vector_store` neu.
 
-Fünf weitere tragen den Betriebsmodus **`oidc`**, den die vier oben nicht liefern können: Unter
-`local,dev` authentifiziert `DevAuthFilter` jede Anfrage, bevor überhaupt ein Bearer-Token gelesen
-wird — eine lokale Sitzung ist dort nicht fahrbar. Das ist die harte technische Begründung dieser
-zweiten Familie (ADR-0033, #1543):
-
-- **`@OpaaLocalAuthMockMvcTest`** — die Basis: Profil `oidc`, MockMvc, geteiltes Postgres, ein
-  starkes Test-Secret (sonst verweigert `LocalAuthSecretGuard` den Start) und angehobene
-  `opaa.rate-limit.local-auth.*`-Grenzen, weil jede Klasse ihre Anmeldungen von der einen Adresse
-  von MockMvc aus fährt.
-- **`@OpaaLocalAuthLinkTest`** — dieselbe Basis plus `opaa.public-base-url` und den
-  Einstellungs-Schlüssel. Technischer Grund: Ohne Basis-URL sind die Link-Flüsse abgeschaltet, und
-  Klassen auf der Basis prüfen genau das.
-- **`@OpaaLocalAuthSeedTest`** — dieselbe Basis plus eine zustellbare Erstadministrator-Adresse und
-  eine Netzbeschränkung. Technischer Grund: Die Basis trägt den ausgelieferten Vorgabewert, den der
-  Seed ablehnt — und eine Klasse prüft diese Ablehnung.
-- **`@OpaaLocalAuthRateLimitTest`** — dieselbe Basis mit den **echten** Grenzen. Technischer Grund:
-  Die Grenzen sind hier Prüfgegenstand.
-- **`@OpaaLocalAuthProviderTest`** — dieselbe Basis plus einen Ersatz für die Decoder-Fabrik der
-  Anbieter-Registry (`OidcProviderTokenTestConfiguration`, ein echter `NimbusJwtDecoder` über einen
-  lokal erzeugten Schlüssel). Technischer Grund: Die Übergabe eines lokalen Kontos an eine
-  Anbieteridentität (ADR-0033, Entscheidung 12) wird mit einem **prüfbaren Anbieter-Token**
-  eingelöst; die Produktionsfabrik müsste dafür ein JWK-Set aus dem Netz holen. Diesen Ersatz in
-  die Basis zu ziehen, nähme ihn allen Klassen der Familie — auch denen, die unmittelbar daneben
-  den Decoder des lokalen Issuers fahren.
+Fünf weitere tragen den Betriebsmodus **`oidc`**, den die vier oben nicht liefern können, weil unter
+`local,dev` keine lokale Sitzung fahrbar ist (ADR-0033, #1543): `@OpaaLocalAuthMockMvcTest` als
+Basis, dazu `@OpaaLocalAuthLinkTest`, `@OpaaLocalAuthSeedTest`, `@OpaaLocalAuthRateLimitTest` und
+`@OpaaLocalAuthProviderTest`. Was jede von ihnen abweichend trägt und warum, steht in der Datei des
+Moduls identity (`io/opaa/auth/AGENTS.md`).
 
 Die Varianten sind jeweils über die Basis ihrer Familie meta-annotiert und ergänzen nur ihre
 Abweichung. Eine Variante muss **nicht fachlich zusammengehören**: Wo eine Abweichung ohnehin einen
