@@ -39,6 +39,7 @@ class PermissionPackageBoundaryTest {
   private static final String LIBRARY = "io.opaa.library..";
   private static final String KNOWLEDGE = "io.opaa.knowledge..";
   private static final String GROUP = "io.opaa.group..";
+  private static final String DIRECTORY = "io.opaa.directory..";
   private static final String SPACE = "io.opaa.space..";
   private static final String SUCCESSION = "io.opaa.succession..";
   private static final String ASSET = "io.opaa.asset..";
@@ -52,10 +53,13 @@ class PermissionPackageBoundaryTest {
               "a library reaches groups through the permission model's ports - the counter-direction"
                   + " group -> library would close the cycle ADR-0036, Entscheidung 12 resolved"),
           forbid(KNOWLEDGE, GROUP, "the same for the library holdings"),
+          forbid(LIBRARY, DIRECTORY, "the directory synchronisation writes groups"),
+          forbid(KNOWLEDGE, DIRECTORY, "the same for the library holdings"),
           forbid(
               SPACE,
               GROUP,
               "a space reaches groups through the permission model, like every other consumer"),
+          forbid(SPACE, DIRECTORY, "the directory synchronisation writes groups"),
           forbid(
               LIBRARY,
               SPACE,
@@ -77,6 +81,7 @@ class PermissionPackageBoundaryTest {
               PROMPT,
               GROUP,
               "a prompt library reaches groups through the shell and the permission model"),
+          forbid(PROMPT, DIRECTORY, "the directory synchronisation writes groups"),
           forbid(
               PROMPT,
               SUCCESSION,

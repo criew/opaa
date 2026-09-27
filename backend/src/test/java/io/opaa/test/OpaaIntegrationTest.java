@@ -3,7 +3,7 @@ package io.opaa.test;
 import io.opaa.TestcontainersConfiguration;
 import io.opaa.auth.UserRepository;
 import io.opaa.chat.ChatMessageRepository;
-import io.opaa.group.sync.DirectorySyncStatusRecorder;
+import io.opaa.directory.sync.DirectorySyncStatusRecorder;
 import io.opaa.succession.SuccessionCaseRepository;
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;

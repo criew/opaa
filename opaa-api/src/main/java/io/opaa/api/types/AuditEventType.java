@@ -272,7 +272,7 @@ public enum AuditEventType {
    * catch-all governance bucket.
    */
   BRANDING_SETTINGS_CHANGED,
-  /** An identity provider ({@code io.opaa.auth.oidc.OidcProvider}, ADR-0025) was created. */
+  /** An identity provider ({@code io.opaa.auth.OidcProvider}, ADR-0025) was created. */
   OIDC_PROVIDER_CREATED,
   /**
    * An identity provider's editable fields changed - including its default-provider flag, its sort

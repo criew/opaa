@@ -1,9 +1,9 @@
 package io.opaa.externalaccess.token;
 
+import io.opaa.auth.LocalCredentials;
+import io.opaa.auth.LocalCredentialsRepository;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
-import io.opaa.auth.local.LocalCredentials;
-import io.opaa.auth.local.LocalCredentialsRepository;
 import io.opaa.externalaccess.ExternalAccessSettingsService;
 import io.opaa.security.LocalAuthKeyService;
 import io.opaa.security.LocalAuthKeyService.Purpose;

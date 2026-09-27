@@ -5,25 +5,25 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.opaa.api.types.DirectoryConnectorType;
 import io.opaa.api.types.DirectorySyncOutcome;
 import io.opaa.api.types.GroupKind;
+import io.opaa.auth.OidcClaimMapping;
+import io.opaa.auth.OidcProvider;
+import io.opaa.auth.OidcProviderRepository;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
-import io.opaa.auth.oidc.OidcClaimMapping;
-import io.opaa.auth.oidc.OidcProvider;
-import io.opaa.auth.oidc.OidcProviderRepository;
+import io.opaa.directory.sync.DirectoryGroup;
+import io.opaa.directory.sync.DirectorySnapshot;
+import io.opaa.directory.sync.DirectorySyncPendingPlanRepository;
+import io.opaa.directory.sync.DirectorySyncService;
+import io.opaa.directory.sync.DirectorySyncStatusRepository;
+import io.opaa.directory.sync.DirectoryUnavailableException;
+import io.opaa.directory.sync.SyncReport;
+import io.opaa.directory.sync.connector.DirectoryConnectorRepository;
+import io.opaa.directory.sync.connector.DirectoryConnectorService;
+import io.opaa.directory.sync.connector.ProviderDirectoryClient;
 import io.opaa.group.Group;
 import io.opaa.group.GroupMembership;
 import io.opaa.group.GroupMembershipRepository;
 import io.opaa.group.GroupRepository;
-import io.opaa.group.sync.DirectoryGroup;
-import io.opaa.group.sync.DirectorySnapshot;
-import io.opaa.group.sync.DirectorySyncPendingPlanRepository;
-import io.opaa.group.sync.DirectorySyncService;
-import io.opaa.group.sync.DirectorySyncStatusRepository;
-import io.opaa.group.sync.DirectoryUnavailableException;
-import io.opaa.group.sync.SyncReport;
-import io.opaa.group.sync.connector.DirectoryConnectorRepository;
-import io.opaa.group.sync.connector.DirectoryConnectorService;
-import io.opaa.group.sync.connector.ProviderDirectoryClient;
 import io.opaa.organization.Organization;
 import io.opaa.permission.GroupMembershipHistoryRepository;
 import io.opaa.test.FakeDirectoryClient;
@@ -43,12 +43,12 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * nothing, and a group renamed in the directory keeps its identity - and with it its grants.
  *
  * <p><b>Where the seam is.</b> {@code FakeDirectoryClient} is the {@code @Primary} {@link
- * io.opaa.group.sync.DirectoryClient} of the shared context, so a run cannot be made to call the
- * productive one through the bean. This class therefore reads the directory through the productive
- * {@link ProviderDirectoryClient} itself - the real stored access, the real decryption, the real
- * address policy, the real Admin API - and hands exactly that snapshot to the run. Everything
- * between the snapshot and the database is production code; the one thing this cannot show is that
- * {@link ProviderDirectoryClient} is <em>the</em> bean the run resolves, which {@code
+ * io.opaa.directory.sync.DirectoryClient} of the shared context, so a run cannot be made to call
+ * the productive one through the bean. This class therefore reads the directory through the
+ * productive {@link ProviderDirectoryClient} itself - the real stored access, the real decryption,
+ * the real address policy, the real Admin API - and hands exactly that snapshot to the run.
+ * Everything between the snapshot and the database is production code; the one thing this cannot
+ * show is that {@link ProviderDirectoryClient} is <em>the</em> bean the run resolves, which {@code
  * DirectoryConnectorIntegrationTest} does not show either. That gap is the price of the shared
  * context signature (AGENTS.md, "Spring-Testkontexte").
  */

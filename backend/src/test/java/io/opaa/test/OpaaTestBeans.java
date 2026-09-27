@@ -3,7 +3,7 @@ package io.opaa.test;
 import io.opaa.FakeEmbeddingModel;
 import io.opaa.asset.AssetTypeDefinition;
 import io.opaa.auth.UserRepository;
-import io.opaa.group.sync.DirectoryClient;
+import io.opaa.directory.sync.DirectoryClient;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.permission.AssetGrantHistoryRepository;
 import io.opaa.permission.AssetOwnershipHistoryRepository;

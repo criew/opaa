@@ -6,11 +6,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.opaa.api.types.GroupKind;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
+import io.opaa.auth.OidcClaimMapping;
+import io.opaa.auth.OidcProvider;
 import io.opaa.auth.TokenGroups;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
-import io.opaa.auth.oidc.OidcClaimMapping;
-import io.opaa.auth.oidc.OidcProvider;
 import io.opaa.common.ValidationException;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
@@ -46,7 +46,7 @@ class TokenGroupSynchronizerIntegrationTest {
   @Autowired private GroupMembershipResolver membershipResolver;
   @Autowired private UserRepository userRepository;
   @Autowired private OrganizationRepository organizationRepository;
-  @Autowired private io.opaa.auth.oidc.OidcProviderRepository providerRepository;
+  @Autowired private io.opaa.auth.OidcProviderRepository providerRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
 
   private UUID organizationId;

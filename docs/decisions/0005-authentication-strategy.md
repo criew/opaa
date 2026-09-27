@@ -130,7 +130,7 @@ würde weiterhin jede Anfrage abweisen, der Nutzer säße vor einer funktionslos
 Bei authentifizierten Anfragen extrahiert `UserProvisioningFilter` Benutzerinformationen aus dem
 JWT (`sub`, `iss`, `email`, `name`) und legt bzw. aktualisiert einen Datensatz in der
 `users`-Tabelle. Gruppenzugehörigkeiten kommen **nicht** aus dem Token, sondern über
-`DirectoryClient` (`io.opaa.group.sync`) — seit [ADR-0025](0025-mehrere-oidc-anbieter.md) gilt das
+`DirectoryClient` (`io.opaa.directory.sync`) — seit [ADR-0025](0025-mehrere-oidc-anbieter.md) gilt das
 nur noch für Anbieter ohne `groups_claim`; ein Anbieter mit gesetztem `groups_claim` liefert
 Gruppen (und mit `roles_claim` Systemrollen) aus dem Token, siehe dort, Entscheidung 4. Derselbe
 Filter baut aus diesem Datensatz einmalig

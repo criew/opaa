@@ -1,10 +1,10 @@
 package io.opaa.auth.web;
 
+import io.opaa.account.LocalAccountSelfDisclosure;
 import io.opaa.api.dto.UserInfoResponse;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.UserProvisioningFilter;
-import io.opaa.auth.local.LocalAccountSelfDisclosure;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;

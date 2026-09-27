@@ -2,7 +2,6 @@ package io.opaa.auth;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.auth.oidc.OidcClaimMapping;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;

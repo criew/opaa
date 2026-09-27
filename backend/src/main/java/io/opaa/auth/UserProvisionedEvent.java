@@ -1,7 +1,5 @@
 package io.opaa.auth;
 
-import io.opaa.auth.oidc.OidcProvider;
-
 /**
  * Published by {@link UserService} once per provisioning of an account, after the {@code users} row
  * is committed and the token's roles claim has been applied.

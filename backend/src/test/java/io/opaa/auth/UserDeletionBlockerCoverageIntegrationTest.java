@@ -2,7 +2,7 @@ package io.opaa.auth;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.auth.local.LocalUserService;
+import io.opaa.account.LocalUserService;
 import io.opaa.test.OpaaIntegrationTest;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;

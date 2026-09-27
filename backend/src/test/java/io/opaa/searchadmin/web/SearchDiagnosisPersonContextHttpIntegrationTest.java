@@ -61,7 +61,7 @@ class SearchDiagnosisPersonContextHttpIntegrationTest {
   @Autowired private DiagnosticImpersonationGrantRepository grantRepository;
   @Autowired private DiagnosticContextLogRepository logRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
-  @Autowired private io.opaa.auth.oidc.OidcProviderRepository providerRepository;
+  @Autowired private io.opaa.auth.OidcProviderRepository providerRepository;
   @Autowired private GroupMembershipResolver membershipResolver;
   @Autowired private GroupSizeProperties groupSizeProperties;
 

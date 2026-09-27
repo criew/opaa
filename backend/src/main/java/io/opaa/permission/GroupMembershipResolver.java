@@ -2,7 +2,7 @@ package io.opaa.permission;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import io.opaa.auth.AccountActivityService;
+import io.opaa.account.AccountActivityService;
 import io.opaa.auth.UserRepository;
 import java.time.Duration;
 import java.util.Collection;

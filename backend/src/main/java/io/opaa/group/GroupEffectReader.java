@@ -1,8 +1,8 @@
 package io.opaa.group;
 
+import io.opaa.account.AccountActivityService;
 import io.opaa.api.types.SuccessionAddressee;
 import io.opaa.api.types.SuccessionObjectType;
-import io.opaa.auth.AccountActivityService;
 import io.opaa.permission.AssetGrant;
 import io.opaa.permission.AssetGrantRepository;
 import io.opaa.permission.AssetOwnershipDirectory;

@@ -3,11 +3,11 @@ package io.opaa.permission;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.api.types.LockReason;
+import io.opaa.auth.LocalCredentials;
+import io.opaa.auth.LocalCredentialsRepository;
 import io.opaa.auth.LocalIssuer;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
-import io.opaa.auth.local.LocalCredentials;
-import io.opaa.auth.local.LocalCredentialsRepository;
 import io.opaa.group.Group;
 import io.opaa.group.GroupMembership;
 import io.opaa.group.GroupRepository;
