@@ -2,9 +2,9 @@ package io.opaa.retrieval;
 
 import static org.mockito.Mockito.mock;
 
-import io.opaa.indexing.metadata.DocumentTypeVocabularyRepository;
-import io.opaa.indexing.metadata.MetadataFilter;
 import io.opaa.llm.RerankModelRole;
+import io.opaa.metadata.DocumentTypeVocabularyRepository;
+import io.opaa.metadata.MetadataFilter;
 import io.opaa.retrieval.config.RetrievalConfiguration;
 import io.opaa.retrieval.ranking.ChunkEmbeddingLookup;
 import io.opaa.retrieval.ranking.DocumentCompletionStage;

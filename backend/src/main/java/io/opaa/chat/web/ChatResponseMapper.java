@@ -17,7 +17,7 @@ import io.opaa.chat.ChatSourceLocation;
 import io.opaa.chat.ChatSourceMetadataEntry;
 import io.opaa.chat.ChatTurn;
 import io.opaa.chat.UsedPrompt;
-import io.opaa.indexing.web.MetadataFilterMapper;
+import io.opaa.metadata.web.MetadataFilterMapper;
 import java.util.List;
 import org.springframework.data.domain.Page;
 

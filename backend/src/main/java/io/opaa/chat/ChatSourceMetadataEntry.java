@@ -2,10 +2,10 @@ package io.opaa.chat;
 
 import io.opaa.api.types.DatePrecision;
 import io.opaa.api.types.MetadataOrigin;
-import io.opaa.indexing.metadata.CitationFieldValue;
-import io.opaa.indexing.metadata.CoreMetadata;
-import io.opaa.indexing.metadata.CoreMetadataField;
-import io.opaa.indexing.metadata.MetadataValueDisplay;
+import io.opaa.metadata.CitationFieldValue;
+import io.opaa.metadata.CoreMetadata;
+import io.opaa.metadata.CoreMetadataField;
+import io.opaa.metadata.MetadataValueDisplay;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;

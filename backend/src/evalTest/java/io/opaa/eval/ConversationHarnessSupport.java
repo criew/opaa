@@ -4,7 +4,7 @@ import io.opaa.chat.ChatNoteExtractionService;
 import io.opaa.chat.ChatNoteProperties;
 import io.opaa.eval.ConversationEvaluationReport.ConversationRunConfiguration;
 import io.opaa.indexing.IndexingProperties;
-import io.opaa.indexing.metadata.MetadataFilter;
+import io.opaa.metadata.MetadataFilter;
 import io.opaa.retrieval.QueryProperties;
 import io.opaa.retrieval.RetrievalContextFactory;
 import io.opaa.retrieval.RetrievalPipeline;

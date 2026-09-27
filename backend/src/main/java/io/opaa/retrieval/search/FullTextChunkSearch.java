@@ -2,7 +2,7 @@ package io.opaa.retrieval.search;
 
 import io.opaa.indexing.chunk.FullTextChunkStore;
 import io.opaa.indexing.chunk.FullTextIdentifiers;
-import io.opaa.indexing.metadata.MetadataFilter;
+import io.opaa.metadata.MetadataFilter;
 import io.opaa.retrieval.scope.MetadataFilterExpressions;
 import io.opaa.retrieval.scope.MetadataFilterStage;
 import java.util.ArrayList;

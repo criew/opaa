@@ -1,10 +1,10 @@
 package io.opaa.retrieval.scope;
 
-import io.opaa.indexing.metadata.DocumentTypeVocabularyEntry;
-import io.opaa.indexing.metadata.DocumentTypeVocabularyRepository;
-import io.opaa.indexing.metadata.FormatFieldCondition;
-import io.opaa.indexing.metadata.LibraryFieldCondition;
-import io.opaa.indexing.metadata.MetadataFilter;
+import io.opaa.metadata.DocumentTypeVocabularyEntry;
+import io.opaa.metadata.DocumentTypeVocabularyRepository;
+import io.opaa.metadata.FormatFieldCondition;
+import io.opaa.metadata.LibraryFieldCondition;
+import io.opaa.metadata.MetadataFilter;
 import io.opaa.retrieval.RetrievalContext;
 import io.opaa.retrieval.RetrievalNote;
 import io.opaa.retrieval.RetrievalStage;

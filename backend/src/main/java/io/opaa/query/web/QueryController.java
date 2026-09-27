@@ -5,7 +5,7 @@ import io.opaa.api.dto.QueryRequest;
 import io.opaa.api.dto.QueryResponse;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
-import io.opaa.indexing.web.MetadataFilterMapper;
+import io.opaa.metadata.web.MetadataFilterMapper;
 import io.opaa.query.QueryService;
 import io.opaa.query.filter.MetadataFilterOptionsService;
 import jakarta.validation.Valid;

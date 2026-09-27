@@ -1,7 +1,7 @@
 package io.opaa.eval;
 
-import io.opaa.indexing.metadata.DocumentTypeVocabulary;
-import io.opaa.indexing.metadata.TestVocabularies;
+import io.opaa.metadata.DocumentTypeVocabulary;
+import io.opaa.metadata.TestVocabularies;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;

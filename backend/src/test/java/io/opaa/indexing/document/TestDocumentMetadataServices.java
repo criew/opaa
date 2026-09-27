@@ -1,10 +1,10 @@
 package io.opaa.indexing.document;
 
-import io.opaa.indexing.metadata.CoreMetadata;
-import io.opaa.indexing.metadata.DocumentChunkMetadata;
-import io.opaa.indexing.metadata.DocumentMetadataService;
-import io.opaa.indexing.metadata.ModelExtractionOutcome;
-import io.opaa.indexing.metadata.ModelMetadataExtractor;
+import io.opaa.metadata.CoreMetadata;
+import io.opaa.metadata.DocumentChunkMetadata;
+import io.opaa.metadata.DocumentMetadataService;
+import io.opaa.metadata.ModelExtractionOutcome;
+import io.opaa.metadata.ModelMetadataExtractor;
 import org.mockito.Mockito;
 
 /**

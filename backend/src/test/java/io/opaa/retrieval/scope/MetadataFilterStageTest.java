@@ -4,9 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import io.opaa.indexing.metadata.DocumentTypeVocabularyEntry;
-import io.opaa.indexing.metadata.DocumentTypeVocabularyRepository;
-import io.opaa.indexing.metadata.MetadataFilter;
+import io.opaa.metadata.DocumentTypeVocabularyEntry;
+import io.opaa.metadata.DocumentTypeVocabularyRepository;
+import io.opaa.metadata.MetadataFilter;
 import io.opaa.retrieval.QueryProperties;
 import io.opaa.retrieval.RerankAvailability;
 import io.opaa.retrieval.RetrievalContext;

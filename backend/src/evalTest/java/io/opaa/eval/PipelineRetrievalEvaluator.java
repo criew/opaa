@@ -3,7 +3,7 @@ package io.opaa.eval;
 import io.opaa.eval.PipelineEvaluationReport.PipelineQueryResult;
 import io.opaa.eval.PipelineEvaluationReport.PipelineRunConfiguration;
 import io.opaa.eval.PipelineEvaluationReport.SelectionCoverage;
-import io.opaa.indexing.metadata.MetadataFilter;
+import io.opaa.metadata.MetadataFilter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;

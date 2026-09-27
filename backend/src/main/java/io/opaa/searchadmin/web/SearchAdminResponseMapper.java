@@ -28,7 +28,7 @@ import io.opaa.api.dto.TrackedDocumentResponse;
 import io.opaa.chat.SearchedLibraryRef;
 import io.opaa.diagnosticaccess.DiagnosticImpersonationGrantService.ImpersonationAvailability;
 import io.opaa.indexing.web.MetadataBackfillResponseMapper;
-import io.opaa.indexing.web.MetadataExtractionResponseMapper;
+import io.opaa.metadata.web.MetadataExtractionResponseMapper;
 import io.opaa.retrieval.CandidateOutcome;
 import io.opaa.retrieval.CandidateVerdict;
 import io.opaa.retrieval.RetrievalStageName;

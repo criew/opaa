@@ -1,7 +1,7 @@
 package io.opaa.retrieval;
 
-import io.opaa.indexing.metadata.MetadataFilter;
 import io.opaa.llm.RerankModelRole;
+import io.opaa.metadata.MetadataFilter;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
