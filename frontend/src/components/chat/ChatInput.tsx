@@ -8,6 +8,7 @@ import ClickAwayListener from '@mui/material/ClickAwayListener'
 import Paper from '@mui/material/Paper'
 import Popper from '@mui/material/Popper'
 import { alpha } from '@mui/material/styles'
+import visuallyHidden from '@mui/utils/visuallyHidden'
 import { darkRoles, fontFamily, gray, shadow } from '../../theme/tokens'
 import IconButton from '@mui/material/IconButton'
 import TextField from '@mui/material/TextField'
@@ -44,9 +45,13 @@ import {
   withoutLibraryField,
 } from './metadataFilterText'
 
-/** What became of a sent message; `restoreDraft` hands a refused question back to the input. */
+/**
+ * What became of a sent message; `restoreDraft` hands a refused question back to the input, and
+ * `onRestored` is called once it is actually back there.
+ */
 export interface SendOutcome {
   restoreDraft?: string
+  onRestored?: () => void
 }
 
 interface ChatInputProps {
@@ -89,6 +94,20 @@ function lengthCounterText(length: number): string | null {
   const counted = `${length} von ${QUESTION_MAX_LENGTH} Zeichen`
   if (length <= QUESTION_MAX_LENGTH) return counted
   return `${counted} – bitte um ${length - QUESTION_MAX_LENGTH} Zeichen kürzen, damit sich die Frage senden lässt.`
+}
+
+/**
+ * The screen reader announcement for the length: one fixed sentence per threshold state, so it
+ * changes - and is announced - only when the question crosses 90 % or the limit, not per keystroke.
+ */
+function lengthAnnouncement(length: number): string {
+  if (length > QUESTION_MAX_LENGTH) {
+    return `Die Frage ist länger als ${QUESTION_MAX_LENGTH} Zeichen und lässt sich nicht senden.`
+  }
+  if (length >= QUESTION_MAX_LENGTH * LENGTH_COUNTER_THRESHOLD) {
+    return `Die Frage nähert sich der Grenze von ${QUESTION_MAX_LENGTH} Zeichen und lässt sich senden.`
+  }
+  return ''
 }
 
 /**
@@ -354,13 +373,14 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
     setDismissedMentionStart(null)
     closeMention()
     promptCommand.reset()
-    // A question refused for its prompt comes back without the prompt, unless the person has
-    // already started the next one.
+    // A refused question comes back without its prompt, unless the person has already started
+    // the next one or the input is gone.
     void Promise.resolve(outcome).then((result) => {
-      if (result?.restoreDraft) {
-        const draft = result.restoreDraft
-        setValue((current) => (current.trim() === '' ? draft : current))
-      }
+      if (!result?.restoreDraft) return
+      const input = inputRef.current
+      if (!input || input.value.trim() !== '') return
+      setValue(result.restoreDraft)
+      result.onRestored?.()
     })
   }
 
@@ -827,18 +847,18 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
         <Typography component="div" sx={{ fontSize: 12, color: 'text.secondary' }}>
           {scopeNotice ?? INPUT_HINT}
         </Typography>
-        <Typography
-          id={lengthCounterId}
-          component="div"
-          aria-live="polite"
-          sx={{
-            fontSize: 12,
-            color: questionTooLong ? 'error.main' : 'text.secondary',
-            '&:empty': { display: 'none' },
-          }}
-        >
-          {lengthCounter}
-        </Typography>
+        {lengthCounter && (
+          <Typography
+            id={lengthCounterId}
+            component="div"
+            sx={{ fontSize: 12, color: questionTooLong ? 'error.main' : 'text.secondary' }}
+          >
+            {lengthCounter}
+          </Typography>
+        )}
+        <Box component="div" aria-live="polite" sx={visuallyHidden}>
+          {lengthAnnouncement(questionLength)}
+        </Box>
       </Box>
     </Box>
   )

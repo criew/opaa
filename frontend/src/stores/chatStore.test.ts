@@ -349,12 +349,15 @@ describe('chatStore', () => {
       const outcome = await useChatStore.getState().sendMessage('Hello')
 
       const state = useChatStore.getState()
-      expect(state.error).toBe(
+      expect(state.error).toBe('Zu viele Anfragen — bitte versuchen Sie es in Kürze erneut.')
+      expect(state.isLoading).toBe(false)
+      expect(outcome).toMatchObject({ restoreDraft: 'Hello' })
+      expect(state.messages).toEqual([])
+
+      outcome?.onRestored()
+      expect(useChatStore.getState().error).toBe(
         'Zu viele Anfragen — bitte versuchen Sie es in Kürze erneut. Die Frage steht wieder im Eingabefeld.',
       )
-      expect(state.isLoading).toBe(false)
-      expect(outcome).toEqual({ restoreDraft: 'Hello' })
-      expect(state.messages).toEqual([])
     })
 
     it('hands a question the server rejects as invalid back with an understandable message', async () => {
@@ -375,13 +378,55 @@ describe('chatStore', () => {
       const outcome = await useChatStore.getState().sendMessage('Erste Zeile\nzweite Zeile')
 
       const state = useChatStore.getState()
-      expect(outcome).toEqual({ restoreDraft: 'Erste Zeile\nzweite Zeile' })
+      expect(outcome).toMatchObject({ restoreDraft: 'Erste Zeile\nzweite Zeile' })
       expect(state.messages).toEqual([])
       expect(state.error).toBe(
+        'Die Frage konnte nicht gesendet werden. Bitte prüfen Sie die Eingabe (höchstens 2000 Zeichen).',
+      )
+      expect(state.isLoading).toBe(false)
+
+      outcome?.onRestored()
+      expect(useChatStore.getState().error).toBe(
         'Die Frage konnte nicht gesendet werden. Bitte prüfen Sie die Eingabe (höchstens 2000 Zeichen). Die Frage steht wieder im Eingabefeld.',
       )
-      expect(state.error).not.toContain('muss mit')
-      expect(state.isLoading).toBe(false)
+    })
+
+    it('keeps the server message for a 400 that is not about the question', async () => {
+      useChatStore.getState().startNewChat(SPACE_ID)
+      useChatStore.setState({ scope: 'libraries', referencedLibraryIds: ['library-entzogen'] })
+      server.use(
+        http.post('/api/v1/spaces/:spaceId/chats', () =>
+          HttpResponse.json(
+            {
+              error: 'Bibliothek nicht lesbar: library-entzogen',
+              status: 400,
+              timestamp: new Date().toISOString(),
+            },
+            { status: 400 },
+          ),
+        ),
+      )
+
+      const outcome = await useChatStore.getState().sendMessage('Wie lautet die Frist?')
+
+      expect(outcome).toMatchObject({ restoreDraft: 'Wie lautet die Frist?' })
+      expect(useChatStore.getState().error).toBe('Bibliothek nicht lesbar: library-entzogen')
+    })
+
+    it('promises the restored question only once the input confirms it', async () => {
+      useChatStore.getState().startNewChat(SPACE_ID)
+      server.use(
+        http.post('/api/v1/query', () =>
+          HttpResponse.json(
+            { error: 'question: zu lang', status: 400, timestamp: new Date().toISOString() },
+            { status: 400 },
+          ),
+        ),
+      )
+
+      await useChatStore.getState().sendMessage('Hello')
+
+      expect(useChatStore.getState().error).not.toContain('Eingabefeld')
     })
 
     it('keeps the question in the history and the input empty on a server failure', async () => {

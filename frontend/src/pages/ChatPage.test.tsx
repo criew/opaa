@@ -157,7 +157,9 @@ describe('ChatPage', () => {
 
     await waitFor(() => expect(input).toHaveValue('Erste Zeile\nzweite Zeile'))
     expect(
-      screen.getByText(/Die Frage konnte nicht gesendet werden\. Bitte prüfen Sie die Eingabe/),
+      await screen.findByText(
+        'Die Frage konnte nicht gesendet werden. Bitte prüfen Sie die Eingabe (höchstens 2000 Zeichen). Die Frage steht wieder im Eingabefeld.',
+      ),
     ).toBeInTheDocument()
     expect(screen.queryByText('question: ungültig')).not.toBeInTheDocument()
   })
