@@ -262,7 +262,8 @@ class QueryControllerTest {
         .andExpect(status().isOk());
 
     verify(queryService)
-        .query(eq("Erste Zeile\nzweite Zeile\r\n"), any(), any(), anyBoolean(), any(), any(), any());
+        .query(
+            eq("Erste Zeile\nzweite Zeile\r\n"), any(), any(), anyBoolean(), any(), any(), any());
   }
 
   @Test
