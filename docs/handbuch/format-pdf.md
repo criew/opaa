@@ -1,6 +1,6 @@
 # Format: PDF
 
-> **Entwurf.** Pipeline `pdf`, Version 1. Der gemeinsame Rahmen aller Format-Pipelines steht im
+> **Entwurf.** Pipeline `pdf`, Version 2. Der gemeinsame Rahmen aller Format-Pipelines steht im
 > Kapitel [Indexierung](indexierung.md), Abschnitt 5.
 
 ## 1. Zulassung
@@ -14,9 +14,10 @@ verarbeitet und mit „Formatabweichung" protokolliert.
 
 ## 2. Was gelesen wird
 
-Die Pipeline liest PDFs direkt mit Apache PDFBox. Sie nutzt zwei Quellen:
+Die Pipeline liest PDFs direkt mit Apache PDFBox. Sie nutzt drei Quellen:
 
 - den **Text** in Lesereihenfolge, seitenweise,
+- die **Linien** einer Seite, um Tabellen mit Gitter zu erkennen (Abschnitt 3),
 - die **Lesezeichen-Gliederung** (Outline), sofern das Dokument eine hat.
 
 ```mermaid
@@ -47,6 +48,36 @@ dieser Überschriften in Abschnitte geschnitten:
 
 **Ohne Gliederung.** Eine Seite ist ein Chunk. Leere Seiten werden übersprungen. Auch hier gilt
 die Obergrenze von 20.000 Zeichen.
+
+**Tabellen.** Eine Tabelle, deren Zellen vollständig von Linien umschlossen sind, wird wie in
+allen anderen Formaten ausgegeben: jede Tabellenzeile eine Textzeile, Zellen durch ` | `
+getrennt, eine leere Zelle behält ihre Spaltenposition. Bricht der Text einer Zelle um, wird er
+zu einer Zeile zusammengefügt. Die Tabelle steht an der Stelle im Seitentext, an der sie im
+Dokument beginnt; der übrige Text der Seite steht davor und danach in Lesereihenfolge.
+
+```
+Datum | Wochentag | Standort | Besetzung
+4. August 2026 | Dienstag | Stadtteilzentrum Rheinau | Maria Weber
+12. August 2026 | Mittwoch | Gemeindezentrum Nordfeld | Selin Kaya
+```
+
+Die Erkennung ist bewusst streng, damit Briefköpfe, Rahmen und mehrspaltiges Layout nicht als
+Tabelle gelesen werden. Als Tabelle gilt nur ein Gitter aus mindestens drei waagerechten und drei
+senkrechten Linien, die jeweils über die ganze Tabelle reichen, mit Text in mindestens zwei Zeilen
+und zwei Spalten. Alles andere ist Fließtext in Lesereihenfolge, die Wörter einer Zeile nur durch
+Leerzeichen getrennt:
+
+| Fall | Ergebnis |
+|---|---|
+| Tabelle ohne Linien oder nur mit waagerechten Linien | Fließtext |
+| Tabelle mit verbundenen Zellen (eine Linie reicht nicht über die ganze Tabelle) | Fließtext |
+| Kasten um einen Absatz, Formular mit leeren Feldern | Fließtext |
+| gedrehte Seite, Seite mit Artikelfluss (Artikel-Threads) | ganze Seite Fließtext |
+| Seite mit sehr vielen Linien oder Pfadpunkten, etwa ein Plan oder eine Grafik | ganze Seite Fließtext |
+| Fehler beim Lesen der Linien | ganze Seite Fließtext, das Dokument wird trotzdem verarbeitet |
+
+Eine Tabelle, die über mehrere Seiten läuft, erscheint je Seite als eigener Block; die Kopfzeile
+steht nur dort, wo das Dokument sie druckt.
 
 ## 4. Metadaten am Chunk
 
@@ -82,4 +113,4 @@ die Dateigrößengrenze des Konnektors.
 - Texterkennung (OCR) für Scans. Eigenes Vorhaben, siehe Kapitel Indexierung.
 - Formularfelder, Anmerkungen und Kommentare
 - eingebettete Dateien und PDF-Portfolios
-- Tabellenstruktur; Tabellen kommen als Fließtext in Lesereihenfolge an
+- Tabellen ohne vollständiges Gitter aus Linien behalten keine Spaltenstruktur (Abschnitt 3)

@@ -54,7 +54,7 @@ class PipelinePathIsolationTest {
                 + "committed raw-vector baselines' measurementContractVersion or "
                 + "BaselineComparator's fixed-point list being updated to match — reconcile all "
                 + "four rather than adjusting only this assertion")
-        .isEqualTo(12);
+        .isEqualTo(13);
   }
 
   @Test
@@ -72,11 +72,12 @@ class PipelinePathIsolationTest {
     // 2, list items with block content keep their marker), plus 1 from issue #1429
     // (fullTextIndexComplete renamed to fullTextIndexUpToDate and narrowed to the version
     // backlog), plus 1 from issue #1522 (ollamaImage became a checked fixed point), plus 1 from
-    // issue #1652 (ollamaCpuBackend), plus 1 from issue #1650 (contextPrefixFingerprint) — counted
-    // independently of the raw-vector path above, whose own count (2 plus the same
-    // #1144/#1164/#1183/#1070/#1242/#1315/#1357/#1522/#1652/#1650 bumps) moves for unrelated
+    // issue #1652 (ollamaCpuBackend), plus 1 from issue #1650 (contextPrefixFingerprint), plus 1
+    // from issue #2033 (PdfDocumentFormat#version() moved 1 -> 2, ruled tables one line per row)
+    // — counted independently of the raw-vector path above, whose own count (2 plus the same
+    // #1144/#1164/#1183/#1070/#1242/#1315/#1357/#1522/#1652/#1650/#2033 bumps) moves for unrelated
     // reasons at unrelated points in its history.
-    assertThat(PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION).isEqualTo(15);
+    assertThat(PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION).isEqualTo(16);
   }
 
   @Test
