@@ -769,17 +769,61 @@ def test_second_directory_sync_setup_writes_nothing_and_only_runs() -> None:
     assert api.runs == 2
 
 
-def test_stored_secret_that_no_longer_works_is_stored_again() -> None:
+def test_failing_stored_connection_is_never_replaced_by_the_demo_fallback() -> None:
+    """A failed probe of a stored connection may be a Keycloak that is briefly down or an operator's
+    own secret - the documented demo value must not overwrite it; the seed stops instead."""
     sync = DEMO.directory_sync
     api = FakeDirectorySyncApi(sync.client_secret)
     seed.ensure_directory_sync(api, sync)
-    api.stored_secret = "veraltet"
+    api.keycloak_secret = "rotiert-im-keycloak"
+    api.stored_secret = "eigenes-geheimnis"
     api.writes.clear()
 
+    with pytest.raises(SystemExit) as exit_info:
+        seed.ensure_directory_sync(api, sync)
+
+    assert api.writes == []
+    assert api.stored_secret == "eigenes-geheimnis"
+    assert "Anmeldung des Dienstkontos abgewiesen." in str(exit_info.value)
+    assert "--directory-client-secret" in str(exit_info.value)
+
+
+def test_explicit_secret_replaces_a_failing_stored_connection() -> None:
+    sync = DEMO.directory_sync
+    api = FakeDirectorySyncApi(sync.client_secret)
     seed.ensure_directory_sync(api, sync)
+    api.keycloak_secret = "neu-erzeugt"
+    api.writes.clear()
+
+    seed.ensure_directory_sync(api, sync, client_secret="neu-erzeugt")
 
     assert ("PUT", f"{PROVIDER_PATH}/directory-connector") in api.writes
-    assert api.stored_secret == sync.client_secret
+    assert api.stored_secret == "neu-erzeugt"
+
+
+def test_explicit_secret_is_stored_on_first_setup_instead_of_the_demo_value() -> None:
+    api = FakeDirectorySyncApi("zufaellig-erzeugt")
+
+    seed.ensure_directory_sync(api, DEMO.directory_sync, client_secret="zufaellig-erzeugt")
+
+    assert api.stored_secret == "zufaellig-erzeugt"
+
+
+def test_directory_secret_comes_from_the_environment_or_the_option(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("OPAA_DEMO_DIRECTORY_CLIENT_SECRET", raising=False)
+    assert seed.parse_args(["--profile", "demo"]).directory_client_secret is None
+    monkeypatch.setenv("OPAA_DEMO_DIRECTORY_CLIENT_SECRET", "aus-der-umgebung")
+    assert seed.parse_args(["--profile", "demo"]).directory_client_secret == "aus-der-umgebung"
+    args = seed.parse_args(["--profile", "demo", "--directory-client-secret", "aus-der-option"])
+    assert args.directory_client_secret == "aus-der-option"
+
+
+def test_apply_script_sets_the_secret_of_an_existing_client_only_when_given() -> None:
+    """Re-running the script must never reset a rotated secret to the public demo value."""
+    script = APPLY_SCRIPT.read_text(encoding="utf-8")
+    assert "${DIRECTORY_CLIENT_SECRET+x}" in script
 
 
 def test_rejected_service_account_stops_the_seed_with_the_probe_message() -> None:
