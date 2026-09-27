@@ -486,7 +486,13 @@ geteilten `TableText`-Form (`" | "`, eine Zeile je Tabellenzeile) an die Stelle 
 im Seitentext gesetzt (`PdfPageText`); Text außerhalb der Tabelle bleibt unverändert. Bewusst
 konservativ: verbundene Zellen, rahmenlose Tabellen, reine Querlinien, Kästen, Formulare mit
 leeren Feldern (weniger als zwei gefüllte Zeilen oder Spalten), gedrehte Seiten, Seiten mit
-Artikel-Threads und Seiten mit mehr als 2.000 Liniensegmenten bleiben Fließtext wie vorher. Eine
+Artikel-Threads und Seiten mit mehr als 2.000 Liniensegmenten bleiben Fließtext wie vorher. Der
+Linienscan bricht ab, sobald eine Seite mehr als 20.000 Pfadpunkte aufbaut, gemalt oder nicht —
+sonst hielte ein kleiner Flate-Stream mit Millionen `m`-Operatoren ohne Malbefehl jeden Punkt im
+Speicher. Jede Ausnahme aus Linienscan, Gittersuche oder Tabellendurchlauf kostet nur die
+Tabellenform der Seite, nie das Dokument. Eine Glyphe gehört zu der Zelle, in der ihre horizontale
+Mitte liegt, damit ein Zellentext ohne Innenabstand nicht an der Spaltenlinie zerfällt. Jede Zeile
+endet auf `\n`, auch die letzte der Seite. Eine
 Heuristik für rahmenlose Tabellen (Spaltenausrichtung) oder ein Wechsel des Extraktors (Tabula
 setzt noch auf PDFBox 2, Docling ist als Option vermerkt) war nicht nötig. Auf den 26 PDFs des
 Demo-Korpus ändert sich ausschließlich der Text der Gebührenverzeichnisse der Satzungen (Zellen

@@ -13,24 +13,52 @@ import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.apache.pdfbox.text.TextPosition;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
- * One page's text in reading order, lines separated by {@code \n}. A ruled table ({@link
- * PdfTableGrids}) whose text fills at least two rows and two columns is written in the shared
- * {@link TableText} form at the place of its first glyph; everything outside it is extracted
- * exactly as without tables. Whenever the table form cannot be placed unambiguously the whole page
- * falls back to plain extraction.
+ * One page's text in reading order, every line - the last one included - ending in {@code \n}. A
+ * ruled table ({@link PdfTableGrids}) whose text fills at least two rows and two columns is written
+ * in the shared {@link TableText} form at the place of its first glyph; everything outside it is
+ * extracted exactly as without tables. Whenever the table path fails or cannot place a table
+ * unambiguously, the page falls back to plain extraction.
  */
 final class PdfPageText {
 
-  private static final String LINE_SEPARATOR = "\n";
+  private static final Logger log = LoggerFactory.getLogger(PdfPageText.class);
+
+  /** Named apart from {@code PDFTextStripper.LINE_SEPARATOR}, which a subclass would inherit. */
+  private static final String NEWLINE = "\n";
+
+  /** Finds a page's table grids; production uses {@link #candidateGrids}. */
+  @FunctionalInterface
+  interface GridFinder {
+    List<TableGrid> find(PDPage page) throws IOException;
+  }
 
   private PdfPageText() {}
 
-  /** A page whose text cannot be extracted fails the whole document - nothing is known about it. */
+  /** A page whose plain text cannot be extracted fails the whole document. */
   static String extract(PDDocument doc, int pageIndex) throws IOException {
-    PDPage page = doc.getPage(pageIndex);
-    List<TableGrid> grids = candidateGrids(page);
+    return extract(doc, pageIndex, PdfPageText::candidateGrids);
+  }
+
+  static String extract(PDDocument doc, int pageIndex, GridFinder finder) throws IOException {
+    try {
+      String withTables = extractWithTables(doc, pageIndex, finder);
+      if (withTables != null) {
+        return withTables;
+      }
+    } catch (IOException | RuntimeException e) {
+      log.debug("Table detection failed on PDF page {}; using flow text", pageIndex + 1, e);
+    }
+    return plain(doc, pageIndex);
+  }
+
+  /** The page with its tables in place, or null when there is no table to place. */
+  private static String extractWithTables(PDDocument doc, int pageIndex, GridFinder finder)
+      throws IOException {
+    List<TableGrid> grids = finder.find(doc.getPage(pageIndex));
     while (!grids.isEmpty()) {
       TableStripper stripper = new TableStripper(grids);
       String text = strip(stripper, doc, pageIndex);
@@ -41,12 +69,11 @@ final class PdfPageText {
         }
       }
       if (tabular.size() == grids.size()) {
-        String withTables = stripper.placeTables(text);
-        return withTables != null ? withTables : plain(doc, pageIndex);
+        return placeTables(text, stripper.tableTexts());
       }
       grids = tabular;
     }
-    return plain(doc, pageIndex);
+    return null;
   }
 
   /**
@@ -66,16 +93,47 @@ final class PdfPageText {
 
   private static String strip(PDFTextStripper stripper, PDDocument doc, int pageIndex)
       throws IOException {
-    stripper.setLineSeparator(LINE_SEPARATOR);
+    stripper.setLineSeparator(NEWLINE);
+    stripper.setPageEnd(NEWLINE);
     stripper.setStartPage(pageIndex + 1);
     stripper.setEndPage(pageIndex + 1);
     return stripper.getText(doc);
   }
 
   /**
-   * Routes every glyph inside a grid cell to that cell's own list instead of the page's; the first
-   * one of each table also stays in the page's list, as its anchor, where it is written as a marker
-   * that {@link #placeTables} replaces with the table.
+   * {@code text} with table {@code t} in place of {@link #marker(int) marker(t)}, each on lines of
+   * its own, or null unless every marker occurs exactly once. The newline after a table stays even
+   * at the page's end, so the next page's text never continues a table row.
+   */
+  static String placeTables(String text, List<String> tableTexts) {
+    String result = text;
+    for (int t = 0; t < tableTexts.size(); t++) {
+      String marker = marker(t);
+      int at = result.indexOf(marker);
+      if (at < 0 || result.indexOf(marker, at + 1) >= 0) {
+        return null;
+      }
+      String before = result.substring(0, at).stripTrailing();
+      String after = result.substring(at + marker.length()).stripLeading();
+      StringBuilder placed = new StringBuilder(before);
+      if (!before.isEmpty()) {
+        placed.append(NEWLINE);
+      }
+      placed.append(tableTexts.get(t)).append(NEWLINE).append(after);
+      result = placed.toString();
+    }
+    return result;
+  }
+
+  /** Private-use code points around the table index; a page repeating it falls back. */
+  static String marker(int table) {
+    return "\uE000" + table + "\uE001";
+  }
+
+  /**
+   * Routes every glyph whose centre lies inside a grid cell to that cell's own list instead of the
+   * page's; the first one of each table also stays in the page's list, as its anchor, where it is
+   * written as the table's marker.
    */
   private static final class TableStripper extends PDFTextStripper {
 
@@ -102,8 +160,9 @@ final class PdfPageText {
 
     @Override
     protected void processTextPosition(TextPosition text) {
+      float centreX = text.getX() + text.getWidth() / 2;
       for (int t = 0; t < grids.size(); t++) {
-        int cell = grids.get(t).cellAt(text.getX(), text.getY());
+        int cell = grids.get(t).cellAt(centreX, text.getY());
         if (cell < 0) {
           continue;
         }
@@ -183,44 +242,19 @@ final class PdfPageText {
       return filledRows >= 2 && filledColumns >= 2;
     }
 
-    /**
-     * {@code text} with every table in place of its marker, on lines of its own, or null unless
-     * each marker is unique. The line separator after a table stays even at the page's end, so the
-     * next page's text never continues a table row.
-     */
-    String placeTables(String text) {
-      String result = text;
+    /** Every table in the {@link TableText} form, in grid order. */
+    List<String> tableTexts() {
+      List<String> tables = new ArrayList<>(grids.size());
       for (int t = 0; t < grids.size(); t++) {
-        String marker = marker(t);
-        int at = result.indexOf(marker);
-        if (at < 0 || result.indexOf(marker, at + 1) >= 0) {
-          return null;
+        TableGrid grid = grids.get(t);
+        List<String> texts = cellTexts.get(t);
+        List<List<String>> rows = new ArrayList<>(grid.rows());
+        for (int r = 0; r < grid.rows(); r++) {
+          rows.add(texts.subList(r * grid.columns(), (r + 1) * grid.columns()));
         }
-        String before = result.substring(0, at).stripTrailing();
-        String after = result.substring(at + marker.length()).stripLeading();
-        StringBuilder placed = new StringBuilder(before);
-        if (!before.isEmpty()) {
-          placed.append(LINE_SEPARATOR);
-        }
-        placed.append(tableText(t)).append(LINE_SEPARATOR).append(after);
-        result = placed.toString();
+        tables.add(TableText.rows(rows));
       }
-      return result;
-    }
-
-    private String tableText(int table) {
-      TableGrid grid = grids.get(table);
-      List<String> texts = cellTexts.get(table);
-      List<List<String>> rows = new ArrayList<>(grid.rows());
-      for (int r = 0; r < grid.rows(); r++) {
-        rows.add(texts.subList(r * grid.columns(), (r + 1) * grid.columns()));
-      }
-      return TableText.rows(rows);
-    }
-
-    /** Private-use code points around the table index; a page repeating it falls back. */
-    private static String marker(int table) {
-      return "\uE000" + table + "\uE001";
+      return tables;
     }
   }
 }

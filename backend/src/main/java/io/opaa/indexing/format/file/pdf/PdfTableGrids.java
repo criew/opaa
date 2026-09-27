@@ -61,7 +61,7 @@ final class PdfTableGrids {
    */
   private static final float SNAP = 3f;
 
-  /** Bounds the per-page cell bookkeeping; a larger grid stays flow text. */
+  /** Cells one grid may have; a larger grid stays flow text. */
   static final int MAX_CELLS = 5_000;
 
   private PdfTableGrids() {}

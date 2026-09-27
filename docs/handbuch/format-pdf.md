@@ -53,7 +53,7 @@ die Obergrenze von 20.000 Zeichen.
 allen anderen Formaten ausgegeben: jede Tabellenzeile eine Textzeile, Zellen durch ` | `
 getrennt, eine leere Zelle behält ihre Spaltenposition. Bricht der Text einer Zelle um, wird er
 zu einer Zeile zusammengefügt. Die Tabelle steht an der Stelle im Seitentext, an der sie im
-Dokument beginnt; der Text davor und danach bleibt unverändert.
+Dokument beginnt; der übrige Text der Seite steht davor und danach in Lesereihenfolge.
 
 ```
 Datum | Wochentag | Standort | Besetzung
@@ -64,8 +64,8 @@ Datum | Wochentag | Standort | Besetzung
 Die Erkennung ist bewusst streng, damit Briefköpfe, Rahmen und mehrspaltiges Layout nicht als
 Tabelle gelesen werden. Als Tabelle gilt nur ein Gitter aus mindestens drei waagerechten und drei
 senkrechten Linien, die jeweils über die ganze Tabelle reichen, mit Text in mindestens zwei Zeilen
-und zwei Spalten. Alles andere kommt wie bisher als Fließtext in Lesereihenfolge an, die Wörter
-einer Zeile nur durch Leerzeichen getrennt:
+und zwei Spalten. Alles andere ist Fließtext in Lesereihenfolge, die Wörter einer Zeile nur durch
+Leerzeichen getrennt:
 
 | Fall | Ergebnis |
 |---|---|
@@ -73,7 +73,8 @@ einer Zeile nur durch Leerzeichen getrennt:
 | Tabelle mit verbundenen Zellen (eine Linie reicht nicht über die ganze Tabelle) | Fließtext |
 | Kasten um einen Absatz, Formular mit leeren Feldern | Fließtext |
 | gedrehte Seite, Seite mit Artikelfluss (Artikel-Threads) | ganze Seite Fließtext |
-| Seite mit sehr vielen Linien, etwa ein Plan oder eine Grafik | ganze Seite Fließtext |
+| Seite mit sehr vielen Linien oder Pfadpunkten, etwa ein Plan oder eine Grafik | ganze Seite Fließtext |
+| Fehler beim Lesen der Linien | ganze Seite Fließtext, das Dokument wird trotzdem verarbeitet |
 
 Eine Tabelle, die über mehrere Seiten läuft, erscheint je Seite als eigener Block; die Kopfzeile
 steht nur dort, wo das Dokument sie druckt.

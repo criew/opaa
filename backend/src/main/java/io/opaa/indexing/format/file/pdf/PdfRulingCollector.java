@@ -28,6 +28,12 @@ final class PdfRulingCollector extends PDFGraphicsStreamEngine {
   /** A page with more segments than this is a drawing, not a table; it yields no rulings. */
   static final int MAX_RULINGS = 2_000;
 
+  /**
+   * Path points a page may construct in total, painted or not. Beyond this the scan stops at once
+   * and the page yields no rulings, so memory and time stay bounded by this, not by the stream.
+   */
+  static final int MAX_PATH_POINTS = 20_000;
+
   /** Deviation from the axis still counted as straight, and a filled rectangle's thickness cap. */
   private static final float AXIS_TOLERANCE = 1f;
 
@@ -39,7 +45,7 @@ final class PdfRulingCollector extends PDFGraphicsStreamEngine {
   private final List<List<Point2D.Float>> subpaths = new ArrayList<>();
   private final List<Ruling> rulings = new ArrayList<>();
   private List<Point2D.Float> current;
-  private boolean overflow;
+  private int pathPoints;
 
   private PdfRulingCollector(PDPage page) {
     super(page);
@@ -51,12 +57,31 @@ final class PdfRulingCollector extends PDFGraphicsStreamEngine {
 
   static List<Ruling> collect(PDPage page) throws IOException {
     PdfRulingCollector collector = new PdfRulingCollector(page);
-    collector.processPage(page);
-    return collector.overflow ? List.of() : List.copyOf(collector.rulings);
+    try {
+      collector.processPage(page);
+    } catch (ScanLimitReached e) {
+      return List.of();
+    }
+    return List.copyOf(collector.rulings);
+  }
+
+  /** Aborts the page scan; unchecked, so {@code PDFStreamEngine} passes it through unhandled. */
+  private static final class ScanLimitReached extends RuntimeException {
+    ScanLimitReached() {
+      super(null, null, false, false);
+    }
+  }
+
+  private void countPathPoints(int count) {
+    pathPoints += count;
+    if (pathPoints > MAX_PATH_POINTS) {
+      throw new ScanLimitReached();
+    }
   }
 
   @Override
   public void appendRectangle(Point2D p0, Point2D p1, Point2D p2, Point2D p3) {
+    countPathPoints(5);
     List<Point2D.Float> rectangle = new ArrayList<>(5);
     for (Point2D p : List.of(p0, p1, p2, p3, p0)) {
       rectangle.add(new Point2D.Float((float) p.getX(), (float) p.getY()));
@@ -67,6 +92,7 @@ final class PdfRulingCollector extends PDFGraphicsStreamEngine {
 
   @Override
   public void moveTo(float x, float y) {
+    countPathPoints(1);
     current = new ArrayList<>();
     current.add(new Point2D.Float(x, y));
     subpaths.add(current);
@@ -78,6 +104,7 @@ final class PdfRulingCollector extends PDFGraphicsStreamEngine {
       moveTo(x, y);
       return;
     }
+    countPathPoints(1);
     current.add(new Point2D.Float(x, y));
   }
 
@@ -95,6 +122,7 @@ final class PdfRulingCollector extends PDFGraphicsStreamEngine {
   @Override
   public void closePath() {
     if (current != null && !current.isEmpty()) {
+      countPathPoints(1);
       current.add(current.getFirst());
     }
   }
@@ -201,9 +229,6 @@ final class PdfRulingCollector extends PDFGraphicsStreamEngine {
   }
 
   private void addSegment(Point2D.Float from, Point2D.Float to) {
-    if (overflow) {
-      return;
-    }
     float x1 = from.x - cropLeft;
     float x2 = to.x - cropLeft;
     float y1 = cropHeight - (from.y - cropBottom);
@@ -218,8 +243,7 @@ final class PdfRulingCollector extends PDFGraphicsStreamEngine {
       return;
     }
     if (rulings.size() >= MAX_RULINGS) {
-      overflow = true;
-      return;
+      throw new ScanLimitReached();
     }
     rulings.add(ruling);
   }

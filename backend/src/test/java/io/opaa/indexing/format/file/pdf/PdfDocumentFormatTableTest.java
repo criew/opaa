@@ -12,6 +12,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
@@ -272,9 +273,11 @@ class PdfDocumentFormatTableTest {
       doc.save(file.toFile());
     }
 
-    assertThat(onlyChunkText(file))
-        .doesNotContain(" | ")
-        .contains("Datum", "Standort", "4. August 2026", "Rheinau");
+    String flowText;
+    try (PDDocument doc = Loader.loadPDF(file.toFile())) {
+      flowText = PdfPageText.extract(doc, 0, page -> List.of()).strip();
+    }
+    assertThat(onlyChunkText(file)).doesNotContain(" | ").isEqualTo(flowText);
   }
 
   @Test
