@@ -5,8 +5,26 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-09-26T05:16:56Z</updated>
+  <updated>2026-09-27T05:33:03Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Samstag, 26. September 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-09-26.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-09-26.html</id>
+    <updated>2026-09-27T05:33:03Z</updated>
+    <summary type="text">feat: Backend und Frontend modularisieren – Grenzen erzwingen, Kreise auflösen, gezielt in Module aufteilen:
+— Konnektor-Schnittstelle mit Beschreibung umgesetzt
+— Datenbestand als eigenes Paket unter indexing abgetrennt
+— Konnektoren registrieren sich selbst, Anhangverarbeitung in Kern
+— Kleine Paketzyklen und Abhängigkeiten aufgelöst
+feat: UI-Redesign der Admin-Seiten:
+— UI-Politur der Benutzer- und Gruppenverwaltung abgeschlossen
+Sonstiges:
+— Mitgliederliste nur über protokollierten Abruf für Systemverwaltung
+— Notanker-Konto gegen Passwort-Zurücksetzen geschützt
+— Übersichten mit Mitgliederangabe und Badges erweitert
+— Abhängigkeiten aktualisiert</summary>
+  </entry>
   <entry>
     <title>Tagesreport Freitag, 25. September 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-09-25.html"/>
