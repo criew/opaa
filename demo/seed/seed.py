@@ -30,6 +30,7 @@ import requests
 from api_client import ApiError, Client
 from auth import AuthError, DevHeaderAuth, KeycloakPasswordAuth, LocalPasswordAuth
 from profiles import PROFILES, GroupDef, LibraryDef, Profile, SpaceDef, UserDef
+from profiles import PromptDef, PromptLibraryDef, PromptVariableDef
 
 INDEXING_POLL_INTERVAL_SECONDS = 3
 # Transient errors expected right after `docker compose ... up`: the backend/Keycloak container
@@ -363,6 +364,126 @@ def ensure_group_space_membership(
     )
 
 
+def _prompt_variable_body(variable_def: PromptVariableDef) -> dict:
+    body: dict = {
+        "name": variable_def.name,
+        "label": variable_def.label,
+        "type": variable_def.type,
+        "required": variable_def.required,
+    }
+    if variable_def.default_value is not None:
+        body["defaultValue"] = variable_def.default_value
+    if variable_def.options:
+        body["options"] = list(variable_def.options)
+    return body
+
+
+def prompt_request_body(prompt_def: PromptDef) -> dict:
+    """The PromptRequest of prompts.yaml; optional fields the definition leaves open stay absent."""
+    body: dict = {
+        "name": prompt_def.name,
+        "title": prompt_def.title,
+        "text": prompt_def.text,
+        "sortOrder": prompt_def.sort_order,
+    }
+    if prompt_def.description is not None:
+        body["description"] = prompt_def.description
+    if prompt_def.variables:
+        body["variables"] = [_prompt_variable_body(v) for v in prompt_def.variables]
+    return body
+
+
+def ensure_prompt_library(
+    owner_client: Client, owner_id: str, library_def: PromptLibraryDef
+) -> str:
+    """Idempotency: the owner holds OWNER on their own library, so listPromptLibraries through the
+    owner's session always includes it. The lookup also matches the owner, because the list holds
+    every library the caller may read - a same-named one shared by someone else is not this one."""
+    for library in owner_client.get_ok("/v1/prompt-libraries"):
+        if (
+            library["name"] == library_def.name
+            and library["ownerType"] == "USER"
+            and library["ownerId"] == owner_id
+        ):
+            print(f"  Prompt-Bibliothek bereits vorhanden: {library_def.name}")
+            return library["id"]
+    created = owner_client.post_ok(
+        "/v1/prompt-libraries",
+        json={
+            "name": library_def.name,
+            "description": library_def.description,
+            "listed": library_def.listed,
+        },
+        expected=(201,),
+    )
+    print(f"  Prompt-Bibliothek angelegt: {library_def.name} ({created['id']})")
+    return created["id"]
+
+
+def ensure_prompt_library_grants(
+    owner_client: Client, library_id: str, library_def: PromptLibraryDef, user_ids: dict[str, str]
+) -> None:
+    # upsertAssetGrant is idempotent per subject; ALL_ACCOUNTS names no subjectId.
+    grants = []
+    if library_def.all_accounts_viewer:
+        grants.append({"subjectType": "ALL_ACCOUNTS", "role": "VIEWER"})
+    grants += [
+        {"subjectType": "USER", "subjectId": user_ids[key], "role": "VIEWER"}
+        for key in library_def.viewer_keys
+    ]
+    for grant in grants:
+        owner_client.post_ok(
+            f"/v1/assets/PROMPT_LIBRARY/{library_id}/grants", json=grant, expected=(200,)
+        )
+
+
+def ensure_prompts(owner_client: Client, library_id: str, library_def: PromptLibraryDef) -> None:
+    """Creates every prompt not yet present by name; an existing prompt is left as it is."""
+    prompts_path = f"/v1/prompt-libraries/{library_id}/prompts"
+    existing = {prompt["name"] for prompt in owner_client.get_ok(prompts_path)}
+    for prompt_def in library_def.prompts:
+        if prompt_def.name in existing:
+            print(f"    Prompt bereits vorhanden: /{prompt_def.name}")
+            continue
+        owner_client.post_ok(
+            prompts_path,
+            json=prompt_request_body(prompt_def),
+            expected=(201,),
+        )
+        print(f"    Prompt angelegt: /{prompt_def.name}")
+
+
+def seed_prompt_libraries(
+    clients: dict[str, Client],
+    user_ids: dict[str, str],
+    space_ids: dict[str, str],
+    profile: Profile,
+) -> None:
+    """Creates each prompt library through its owner's session, gives its grants, fills in its
+    prompts and associates it with its spaces through each space owner's session - after the
+    grants, because associateSpaceAsset requires that owner to read the library."""
+    space_owner_by_name = {space_def.name: space_def.owner_key for space_def in profile.spaces}
+    for library_def in profile.prompt_libraries:
+        owner_client = clients[library_def.owner_key]
+        library_id = ensure_prompt_library(
+            owner_client, user_ids[library_def.owner_key], library_def
+        )
+        ensure_prompt_library_grants(owner_client, library_id, library_def, user_ids)
+        ensure_prompts(owner_client, library_id, library_def)
+        for space_name in library_def.space_names:
+            if space_name not in space_ids:
+                raise SystemExit(
+                    f"Prompt-Bibliothek '{library_def.name}' referenziert einen unbekannten Space "
+                    f"'{space_name}' - space_names muss auf eine SpaceDef des Profils zeigen."
+                )
+            clients[space_owner_by_name[space_name]].post_ok(
+                f"/v1/spaces/{space_ids[space_name]}/assets",
+                json={"assetType": "PROMPT_LIBRARY", "assetId": library_id},
+                expected=(201,),
+            )
+            print(f"  zugeordnet: {space_name} ← {library_def.name}")
+
+
 def existing_documents_by_name(admin_client: Client, library_id: str) -> dict[str, dict]:
     by_name: dict[str, dict] = {}
     page = 0
@@ -601,6 +722,9 @@ def run(args: argparse.Namespace) -> None:
                 library_ids[library_name],
             )
             print(f"  zugeordnet: {space_def.name} ← {library_name}")
+
+    print("7b/8 Prompt-Bibliotheken mit Prompts, Freigaben und Space-Zuordnung …")
+    seed_prompt_libraries(clients, user_ids, space_ids, profile)
 
     print("8/8 Indizierung je Bibliothek auslösen (ADR-0018) …")
     for library_def in profile.libraries:
