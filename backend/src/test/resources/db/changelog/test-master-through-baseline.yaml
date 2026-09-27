@@ -1,6 +1,6 @@
 # The baseline alone: the baseline file of every module, in master order. The baseline tests of
 # io.opaa.migration judge exactly this state, independent of the changesets written after it. A
-# delta test does not use this file; it takes AbstractMigrationTest.masterChangelogsBefore(...).
+# delta test does not use this file; it takes MasterChangelog.filesExcept(...) or filesBefore(...).
 databaseChangeLog:
   - include:
       file: db/changelog/foundation/2026-09-27-baseline.yaml

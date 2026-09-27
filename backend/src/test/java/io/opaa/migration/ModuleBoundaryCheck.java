@@ -9,18 +9,29 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.TreeMap;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
  * Judges the database objects each module's step creates or changes against a table-to-module
  * assignment and {@link ModularArchitecture#ALLOWED_MODULE_EDGES}. A step may create and change
- * only tables of its own module; a trigger it creates, a table a function it creates names and a
- * foreign key of its tables may reach its own module or one it may depend on. A step may drop or
- * replace only triggers and functions its own module created. Extension objects are not judged.
+ * only tables and views of its own module - columns, their privileges, constraints, indexes, owner,
+ * privileges, row-level security and policies; a trigger it creates, a table a function it creates
+ * names and a foreign key of its tables may reach its own module or one it may depend on, and its
+ * functions write only its own tables. A step may drop or replace only triggers and functions its
+ * own module created. Extension objects are not judged.
  */
 final class ModuleBoundaryCheck {
+
+  /** A table a function writes to, as plain SQL or PL/pgSQL names it. */
+  private static final Pattern WRITE =
+      Pattern.compile(
+          "\\b(?:INSERT\\s+INTO|UPDATE|DELETE\\s+FROM)\\s+(?:ONLY\\s+)?(?:\\w+\\.)?(\\w+)",
+          Pattern.CASE_INSENSITIVE);
 
   /** Applies one module's step to the database the check observes. */
   @FunctionalInterface
@@ -179,6 +190,20 @@ final class ModuleBoundaryCheck {
                               + ", which it may not depend on");
                     }
                   });
+              Matcher write = WRITE.matcher(source);
+              while (write.find()) {
+                Module owner = tableModules.get(write.group(1).toLowerCase(Locale.ROOT));
+                if (owner != null && owner != module) {
+                  violations.add(
+                      module
+                          + " function "
+                          + function
+                          + " writes table "
+                          + write.group(1)
+                          + " of module "
+                          + owner);
+                }
+              }
             });
     previous.functions().keySet().stream()
         .filter(function -> !current.functions().containsKey(function))
@@ -192,6 +217,32 @@ final class ModuleBoundaryCheck {
     if (creator != null && creator != module) {
       violations.add(module + " " + verb + " " + object + ", created by module " + creator);
     }
+  }
+
+  private static final String NL = System.lineSeparator();
+
+  /**
+   * The tables, views, triggers and functions of {@code connection}'s current schema as text, for
+   * comparing the schemas two application orders leave behind.
+   */
+  static String schemaFingerprint(Connection connection) throws SQLException {
+    ModuleBoundaryCheck reader = new ModuleBoundaryCheck(connection, Map.of());
+    StringBuilder fingerprint = new StringBuilder();
+    new TreeMap<>(reader.previous.tables())
+        .forEach((table, state) -> fingerprint.append(table).append(": ").append(state).append(NL));
+    new TreeMap<>(reader.previous.functions())
+        .forEach((name, source) -> fingerprint.append(name).append(": ").append(source).append(NL));
+    reader.query(
+        """
+        SELECT pg_get_triggerdef(t.oid)
+          FROM pg_trigger t
+          JOIN pg_class c ON c.oid = t.tgrelid
+          JOIN pg_namespace n ON n.oid = c.relnamespace
+         WHERE n.nspname = current_schema() AND NOT t.tgisinternal
+         ORDER BY 1
+        """,
+        rs -> fingerprint.append(rs.getString(1)).append(NL));
+    return fingerprint.toString();
   }
 
   private static boolean mayReach(Module from, Module to) {
@@ -212,8 +263,8 @@ final class ModuleBoundaryCheck {
   }
 
   /**
-   * Every table and partition with its logical table (a partition's parent) and a fingerprint of
-   * everything but its triggers: columns, constraints, indexes, owner and privileges.
+   * Every table, partition and view with its logical table (a partition's parent) and a fingerprint
+   * of everything but its triggers.
    */
   private Map<String, TableState> tables() throws SQLException {
     Map<String, TableState> tables = new HashMap<>();
@@ -224,7 +275,8 @@ final class ModuleBoundaryCheck {
                concat_ws(' | ',
                  (SELECT string_agg(a.attname || ' ' || format_type(a.atttypid, a.atttypmod)
                           || CASE WHEN a.attnotnull THEN ' not null' ELSE '' END
-                          || COALESCE(' default ' || pg_get_expr(d.adbin, d.adrelid), ''),
+                          || COALESCE(' default ' || pg_get_expr(d.adbin, d.adrelid), '')
+                          || COALESCE(' acl ' || a.attacl::text, ''),
                           ', ' ORDER BY a.attname)
                     FROM pg_attribute a
                     LEFT JOIN pg_attrdef d ON d.adrelid = a.attrelid AND d.adnum = a.attnum
@@ -236,13 +288,22 @@ final class ModuleBoundaryCheck {
                           ORDER BY pg_get_indexdef(i.indexrelid))
                     FROM pg_index i WHERE i.indrelid = c.oid),
                  pg_get_userbyid(c.relowner),
-                 c.relacl::text)
+                 c.relacl::text,
+                 CASE WHEN c.relrowsecurity THEN 'row security' END,
+                 CASE WHEN c.relforcerowsecurity THEN 'forced row security' END,
+                 (SELECT string_agg(pol.polname || ' ' || pol.polcmd::text || ' ' || pol.polpermissive::text
+                          || ' ' || pol.polroles::text
+                          || COALESCE(' using ' || pg_get_expr(pol.polqual, pol.polrelid), '')
+                          || COALESCE(' check ' || pg_get_expr(pol.polwithcheck, pol.polrelid), ''),
+                          ', ' ORDER BY pol.polname)
+                    FROM pg_policy pol WHERE pol.polrelid = c.oid),
+                 pg_get_viewdef(c.oid))
           FROM pg_class c
           JOIN pg_namespace n ON n.oid = c.relnamespace
           LEFT JOIN pg_inherits inh ON inh.inhrelid = c.oid
           LEFT JOIN pg_class parent ON parent.oid = inh.inhparent
          WHERE n.nspname = current_schema()
-           AND c.relkind IN ('r', 'p')
+           AND c.relkind IN ('r', 'p', 'v', 'm')
            AND c.relname NOT IN ('databasechangelog', 'databasechangeloglock')
         """,
         rs -> tables.put(rs.getString(1), new TableState(rs.getString(2), rs.getString(3))));
@@ -264,12 +325,16 @@ final class ModuleBoundaryCheck {
     return triggers;
   }
 
-  /** Every function outside an extension, keyed by its signature, with its source. */
+  /**
+   * Every function outside an extension, keyed by its signature, with its source - for a {@code
+   * BEGIN ATOMIC} body the parsed one.
+   */
   private Map<String, String> functions() throws SQLException {
     Map<String, String> functions = new HashMap<>();
     query(
         """
-        SELECT p.oid::regprocedure::text, p.prosrc
+        SELECT p.oid::regprocedure::text,
+               concat_ws(' ', p.prosrc, pg_get_function_sqlbody(p.oid))
           FROM pg_proc p
           JOIN pg_namespace n ON n.oid = p.pronamespace
          WHERE n.nspname = current_schema()

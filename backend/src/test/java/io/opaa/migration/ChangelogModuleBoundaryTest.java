@@ -285,6 +285,85 @@ class ChangelogModuleBoundaryTest extends AbstractMigrationTest {
   }
 
   @Test
+  void aColumnGrantOnALowerTableIsAViolation() throws Exception {
+    ModuleBoundaryCheck check = new ModuleBoundaryCheck(connection, FIXTURE_TABLES);
+
+    check.step(FOUNDATION, () -> execute("CREATE TABLE fx_org (id uuid PRIMARY KEY, name text)"));
+    check.step(
+        RIGHTS,
+        () -> {
+          execute("CREATE TABLE fx_grant (id uuid PRIMARY KEY)");
+          execute("GRANT UPDATE (name) ON fx_org TO PUBLIC");
+        });
+    check.step(IDENTITY, () -> execute("CREATE TABLE fx_account (id uuid PRIMARY KEY)"));
+
+    assertThat(check.violations())
+        .containsExactly("RIGHTS changes table fx_org of module FOUNDATION");
+  }
+
+  @Test
+  void enablingRowSecurityOnALowerTableIsAViolation() throws Exception {
+    ModuleBoundaryCheck check = new ModuleBoundaryCheck(connection, FIXTURE_TABLES);
+
+    check.step(FOUNDATION, () -> execute("CREATE TABLE fx_org (id uuid PRIMARY KEY)"));
+    check.step(
+        RIGHTS,
+        () -> {
+          execute("CREATE TABLE fx_grant (id uuid PRIMARY KEY)");
+          execute("ALTER TABLE fx_org ENABLE ROW LEVEL SECURITY");
+        });
+    check.step(IDENTITY, () -> execute("CREATE TABLE fx_account (id uuid PRIMARY KEY)"));
+
+    assertThat(check.violations())
+        .containsExactly("RIGHTS changes table fx_org of module FOUNDATION");
+  }
+
+  @Test
+  void aPolicyOnALowerTableIsAViolation() throws Exception {
+    ModuleBoundaryCheck check = new ModuleBoundaryCheck(connection, FIXTURE_TABLES);
+
+    check.step(FOUNDATION, () -> execute("CREATE TABLE fx_org (id uuid PRIMARY KEY)"));
+    check.step(
+        RIGHTS,
+        () -> {
+          execute("CREATE TABLE fx_grant (id uuid PRIMARY KEY)");
+          execute("CREATE POLICY fx_org_visible ON fx_org FOR SELECT USING (true)");
+        });
+    check.step(IDENTITY, () -> execute("CREATE TABLE fx_account (id uuid PRIMARY KEY)"));
+
+    assertThat(check.violations())
+        .containsExactly("RIGHTS changes table fx_org of module FOUNDATION");
+  }
+
+  /** A module may read a lower table, but its functions write only its own. */
+  @Test
+  void aFunctionWritingALowerTableIsAViolation() throws Exception {
+    ModuleBoundaryCheck check = new ModuleBoundaryCheck(connection, FIXTURE_TABLES);
+
+    check.step(FOUNDATION, () -> execute("CREATE TABLE fx_org (id uuid PRIMARY KEY)"));
+    check.step(
+        RIGHTS,
+        () -> {
+          execute("CREATE TABLE fx_grant (id uuid PRIMARY KEY)");
+          execute(
+              "CREATE FUNCTION fx_count_orgs() RETURNS bigint LANGUAGE sql AS"
+                  + " 'SELECT count(*) FROM fx_org'");
+          execute(
+              "CREATE FUNCTION fx_add_org() RETURNS void LANGUAGE plpgsql AS $$ BEGIN"
+                  + " INSERT INTO fx_org (id) VALUES (gen_random_uuid()); END $$");
+          execute(
+              "CREATE FUNCTION fx_clear_orgs() RETURNS void LANGUAGE sql BEGIN ATOMIC"
+                  + " DELETE FROM fx_org; END");
+        });
+    check.step(IDENTITY, () -> execute("CREATE TABLE fx_account (id uuid PRIMARY KEY)"));
+
+    assertThat(check.violations())
+        .containsExactlyInAnyOrder(
+            "RIGHTS function fx_add_org() writes table fx_org of module FOUNDATION",
+            "RIGHTS function fx_clear_orgs() writes table fx_org of module FOUNDATION");
+  }
+
+  @Test
   void aForeignKeyPointingUpwardIsAViolation() throws Exception {
     ModuleBoundaryCheck check = new ModuleBoundaryCheck(connection, FIXTURE_TABLES);
 

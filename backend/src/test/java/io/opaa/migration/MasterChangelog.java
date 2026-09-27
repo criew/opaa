@@ -60,6 +60,24 @@ final class MasterChangelog {
     return List.copyOf(files.subList(0, index));
   }
 
+  /**
+   * Every file of the master but {@code changelogFiles}, in master order: the state an existing
+   * installation is in when it receives them, which may include files of higher modules and files
+   * of their own module that sort after them. The recommended fixture of a delta test; name every
+   * file of the change that depends on another.
+   */
+  static List<String> filesExcept(String... changelogFiles) {
+    List<String> files = files();
+    List<String> excluded = List.of(changelogFiles);
+    for (String file : excluded) {
+      if (!files.contains(file)) {
+        throw new IllegalArgumentException(
+            file + " is not part of " + PATH + "; its files are " + files);
+      }
+    }
+    return files.stream().filter(file -> !excluded.contains(file)).toList();
+  }
+
   /** The module directory name of a changelog file, e.g. {@code rights}. */
   static String moduleOf(String changelogFile) {
     if (!changelogFile.startsWith(MODULE_ROOT)) {

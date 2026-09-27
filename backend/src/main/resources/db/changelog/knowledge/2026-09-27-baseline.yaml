@@ -606,7 +606,7 @@ databaseChangeLog:
       # No rollback: the baseline is never rolled back - a broken installation is discarded and re-run from an empty database instead.
 
   - changeSet:
-      id: knowledge-2026-09-27-baseline-vector-store-library-id
+      id: knowledge-2026-09-27-baseline--vector-store-library-id
       author: opaa
       comment: >-
         Expression index on vector_store's metadata->>'library_id', backing
@@ -639,13 +639,13 @@ databaseChangeLog:
       # No rollback: the baseline is never rolled back - a broken installation is discarded and re-run from an empty database instead.
 
   - changeSet:
-      id: knowledge-2026-09-27-baseline-vector-store-document-id
+      id: knowledge-2026-09-27-baseline--vector-store-document-id
       author: opaa
       comment: >-
         Expression index on vector_store's metadata->>'document_id', backing
         VectorStoreWriter#updateDocumentMetadata and VectorChunkStore#deleteByDocumentId.
         Same precondition, CONCURRENTLY and retry mechanics as changeSet
-        knowledge-2026-09-27-baseline-vector-store-library-id, for the same reasons - see that changeSet's comment.
+        knowledge-2026-09-27-baseline--vector-store-library-id, for the same reasons - see that changeSet's comment.
       preConditions:
         onFail: CONTINUE
         onFailMessage: >-

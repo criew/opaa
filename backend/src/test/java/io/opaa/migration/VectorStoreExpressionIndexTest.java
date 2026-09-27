@@ -26,8 +26,8 @@ class VectorStoreExpressionIndexTest extends AbstractMigrationTest {
   private static final String BASELINE_PATH = "db/changelog/test-master-through-baseline.yaml";
   private static final List<String> CHANGESET_IDS =
       List.of(
-          "knowledge-2026-09-27-baseline-vector-store-library-id",
-          "knowledge-2026-09-27-baseline-vector-store-document-id");
+          "knowledge-2026-09-27-baseline--vector-store-library-id",
+          "knowledge-2026-09-27-baseline--vector-store-document-id");
   private static final List<String> INDEX_NAMES =
       List.of("idx_vector_store_library_id", "idx_vector_store_document_id");
 

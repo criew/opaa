@@ -424,7 +424,7 @@ Bestandszustand und gehört auf die Administrationsseite, nicht in jede Anfragen
 Auf einer Neuinstallation entsteht dieser Index erst beim **zweiten** Anwendungsstart: `vector_store`
 wird von Spring AI erst nach Liquibase angelegt, das Changeset überspringt sich deshalb beim ersten
 Start selbst und holt die Indexerstellung beim nächsten Start nach (siehe Kommentar zum ChangeSet
-`knowledge-2026-09-27-baseline-vector-store-library-id` in `db/changelog/knowledge/2026-09-27-baseline.yaml`).
+`knowledge-2026-09-27-baseline--vector-store-library-id` in `db/changelog/knowledge/2026-09-27-baseline.yaml`).
 
 ### Die deutschen Besonderheiten
 

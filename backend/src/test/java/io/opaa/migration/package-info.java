@@ -17,9 +17,12 @@
  * own.
  *
  * <p><b>A new changeset</b> gets its own delta test here: its {@code baseFixtureChangelogs()} is
- * {@link io.opaa.migration.MasterChangelog#filesBefore(String)} of its file - everything a fresh
- * installation applies before it - then it seeds representative rows through JDBC, applies only the
- * new file and asserts on the resulting schema and data.
+ * {@link io.opaa.migration.MasterChangelog#filesExcept(String...)} of its file - the state of an
+ * existing installation that receives it - then it seeds representative rows through JDBC, applies
+ * only the new file and asserts on the resulting schema and data. {@link
+ * io.opaa.migration.MasterChangelog#filesBefore(String)} gives the state of a fresh installation
+ * instead; {@link io.opaa.migration.ChangelogOrderTest} checks that both orders leave the same
+ * schema.
  *
  * <p>Every test class extends {@link io.opaa.migration.AbstractMigrationTest}, which owns the
  * Postgres Testcontainer (one per test JVM) and builds the fixture once per class into a template

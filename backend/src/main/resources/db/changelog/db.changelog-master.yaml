@@ -2,21 +2,30 @@ databaseChangeLog:
   # One directory per logical module, in the module order of io.opaa.architecture.ModularArchitecture:
   # a module's changesets only touch its own tables and reference its own or a lower module's.
   # Within a directory includeAll runs the files in ascending name order; a file is named
-  # YYYY-MM-DD-<topic>.yaml, its changeSet ids start with <module>-YYYY-MM-DD-<topic>. The module
-  # library owns no table and therefore has no directory. Rules and tests: backend/AGENTS.md.
+  # YYYY-MM-DD-<topic>.yaml, its changeSet id is <module>-YYYY-MM-DD-<topic>, further changeSets
+  # of the file append --<suffix>. The module library owns no table and therefore has no
+  # directory. Rules and tests: backend/AGENTS.md.
   - includeAll:
       path: db/changelog/foundation/
+      endsWithFilter: .yaml
   - includeAll:
       path: db/changelog/identity/
+      endsWithFilter: .yaml
   - includeAll:
       path: db/changelog/rights/
+      endsWithFilter: .yaml
   - includeAll:
       path: db/changelog/knowledge/
+      endsWithFilter: .yaml
   - includeAll:
       path: db/changelog/connectors/
+      endsWithFilter: .yaml
   - includeAll:
       path: db/changelog/workspace/
+      endsWithFilter: .yaml
   - includeAll:
       path: db/changelog/assistant/
+      endsWithFilter: .yaml
   - includeAll:
       path: db/changelog/external/
+      endsWithFilter: .yaml

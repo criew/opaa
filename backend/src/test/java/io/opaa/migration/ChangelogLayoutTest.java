@@ -28,6 +28,7 @@ class ChangelogLayoutTest {
 
   private static final Path CHANGELOG_ROOT = Path.of("src/main/resources/db/changelog");
   private static final String MASTER_FILE = "db.changelog-master.yaml";
+  private static final Pattern SUFFIX = Pattern.compile("[a-z0-9]+(-[a-z0-9]+)*");
   private static final Pattern FILE_NAME =
       Pattern.compile("(\\d{4}-\\d{2}-\\d{2})-[a-z0-9]+(-[a-z0-9]+)*\\.yaml");
 
@@ -89,8 +90,9 @@ class ChangelogLayoutTest {
   }
 
   /**
-   * Every changeSet id starts with its module, the date and the topic of its file, and is unique
-   * across the master; every author is {@code opaa}.
+   * Every changeSet id is {@code <module>-<file stem>}, further changeSets of a file add {@code
+   * --<suffix>}. A file stem never contains {@code --}, so two files cannot produce the same id.
+   * Every author is {@code opaa}.
    */
   @Test
   void everyChangeSetIdIsPrefixedWithModuleDateAndTopic() {
@@ -101,8 +103,13 @@ class ChangelogLayoutTest {
       String stem = file.substring(file.lastIndexOf('/') + 1).replaceFirst("\\.yaml$", "");
       String prefix = MasterChangelog.moduleOf(file) + "-" + stem;
       String id = changeSet.getId();
-      if (!id.equals(prefix) && !id.startsWith(prefix + "-")) {
-        violations.add(id + " in " + file + " does not start with " + prefix);
+      boolean valid =
+          id.equals(prefix)
+              || id.startsWith(prefix + "--")
+                  && SUFFIX.matcher(id.substring(prefix.length() + 2)).matches();
+      if (!valid) {
+        violations.add(
+            id + " in " + file + " is neither " + prefix + " nor " + prefix + "--<suffix>");
       }
       if (!ids.add(id)) {
         violations.add(id + " is not unique");

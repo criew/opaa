@@ -4,6 +4,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -37,7 +38,7 @@ import org.testcontainers.utility.DockerImageName;
  *       19 individual container starts with one.
  *   <li>A per-class <b>template database</b>: {@link #baseFixtureChangelogs()} names the fixture
  *       changelogs (e.g. {@code db/changelog/test-master-through-baseline.yaml}, or for a delta
- *       test {@link MasterChangelog#filesBefore(String)}) that must be applied once, in full,
+ *       test {@link MasterChangelog#filesExcept(String...)}) that must be applied once, in full,
  *       before the changeSet under test runs. This base class applies them exactly once per class,
  *       in a database named {@code template_<simpleclassname>}, and then every {@code @Test} method
  *       gets its own fresh, fully-isolated database cloned from that template via {@code CREATE
@@ -108,11 +109,12 @@ abstract class AbstractMigrationTest {
 
   private String templateDatabaseName;
   private String currentDatabaseName;
+  private final List<String> siblingDatabaseNames = new ArrayList<>();
 
   /**
    * The classpath paths of the fixture changelogs that build the schema exactly as it exists
    * immediately before the changeSet(s) under test, applied in this order - for a delta test {@link
-   * MasterChangelog#filesBefore(String)} of its changelog file. Applied once per class, into the
+   * MasterChangelog#filesExcept(String...)} of its changelog file. Applied once per class, into the
    * template database; never re-applied per test method.
    */
   protected abstract List<String> baseFixtureChangelogs();
@@ -159,6 +161,25 @@ abstract class AbstractMigrationTest {
     // roles - see {@link
     // #dropCurrentDatabaseNow()}. DROP DATABASE IF EXISTS makes calling it again here harmless.
     dropDatabase(currentDatabaseName);
+    for (String sibling : siblingDatabaseNames) {
+      dropDatabase(sibling);
+    }
+    siblingDatabaseNames.clear();
+  }
+
+  /**
+   * A connection to a further clone of the template for this test method, dropped after it - for a
+   * test that compares two databases built differently.
+   */
+  protected Connection connectToSiblingDatabase() throws SQLException {
+    String name = currentDatabaseName + "_" + siblingDatabaseNames.size();
+    try (Connection admin = bootstrapConnection();
+        Statement statement = admin.createStatement()) {
+      statement.execute("CREATE DATABASE " + name + " TEMPLATE " + templateDatabaseName);
+    }
+    siblingDatabaseNames.add(name);
+    return DriverManager.getConnection(
+        jdbcUrlFor(name), POSTGRES.getUsername(), POSTGRES.getPassword());
   }
 
   /**
