@@ -74,7 +74,7 @@ class LibraryDef:
     source_type: str  # source type key: HTTP_DIRECTORY, RSS_FEED, UPLOAD, S3
     viewer_keys: tuple[str, ...]
     source_url: str | None = None
-    upload_dir: Path | None = None  # every file directly inside is uploaded (non-recursive)
+    upload_dir: Path | None = None  # every file below is uploaded, subdirectories become folders
     # S3 only (ADR-0027): the static key as accessKey:secretKey (write-only in the API) and the
     # typed settings the API's S3Settings schema takes (pathStyle, scopes, patterns). Documented
     # demo values, never secrets - the bucket lives in the demo stack's own object store (docker-compose.yml).
