@@ -5,15 +5,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.opaa.indexing.format.DocumentFormatResult;
 import io.opaa.indexing.format.DocumentFormatSource;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.net.URISyntaxException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
+import org.apache.pdfbox.pdmodel.common.PDStream;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
 import org.apache.pdfbox.pdmodel.interactive.documentnavigation.destination.PDPageXYZDestination;
@@ -193,6 +197,207 @@ class PdfDocumentFormatTableTest {
   }
 
   @Test
+  void twoTablesOnOnePageAreEachWrittenAtTheirOwnPlace() throws IOException {
+    Path file = tempDir.resolve("zwei-tabellen.pdf");
+    Grid first =
+        new Grid(
+            List.of(50f, 200f, 350f),
+            780,
+            List.of(List.of("Datum", "Standort"), List.of("4. August 2026", "Rheinau")));
+    Grid second =
+        new Grid(
+            List.of(50f, 200f, 350f),
+            660,
+            List.of(List.of("Leistung", "Gebuehr"), List.of("Reisepass", "70,00 EUR")));
+    writePage(
+        file,
+        stream -> {
+          first.drawCellTexts(stream);
+          first.strokeAllLines(stream);
+          text(stream, 50, 700, "Zwischen den Tabellen.");
+          second.drawCellTexts(stream);
+          second.strokeAllLines(stream);
+        });
+
+    assertThat(onlyChunkText(file))
+        .isEqualTo(
+            String.join(
+                "\n",
+                "Datum | Standort",
+                "4. August 2026 | Rheinau",
+                "Zwischen den Tabellen.",
+                "Leistung | Gebuehr",
+                "Reisepass | 70,00 EUR"));
+  }
+
+  @Test
+  void aTableOnAPageWithAnOffsetCropBoxIsRecognised() throws IOException {
+    Path file = tempDir.resolve("cropbox.pdf");
+    Grid grid =
+        new Grid(
+            List.of(150f, 300f, 450f),
+            600,
+            List.of(List.of("Datum", "Standort"), List.of("4. August 2026", "Rheinau")));
+    try (PDDocument doc = new PDDocument()) {
+      PDPage page = new PDPage(PDRectangle.A4);
+      page.setCropBox(new PDRectangle(100, 450, 400, 250));
+      doc.addPage(page);
+      try (PDPageContentStream stream = new PDPageContentStream(doc, page)) {
+        grid.drawCellTexts(stream);
+        grid.strokeAllLines(stream);
+      }
+      doc.save(file.toFile());
+    }
+
+    assertThat(onlyChunkText(file))
+        .isEqualTo(String.join("\n", "Datum | Standort", "4. August 2026 | Rheinau"));
+  }
+
+  @Test
+  void aTableOnARotatedPageStaysFlowText() throws IOException {
+    Path file = tempDir.resolve("gedreht.pdf");
+    Grid grid =
+        new Grid(
+            List.of(50f, 200f, 350f),
+            740,
+            List.of(List.of("Datum", "Standort"), List.of("4. August 2026", "Rheinau")));
+    try (PDDocument doc = new PDDocument()) {
+      PDPage page = new PDPage(PDRectangle.A4);
+      page.setRotation(90);
+      doc.addPage(page);
+      try (PDPageContentStream stream = new PDPageContentStream(doc, page)) {
+        grid.drawCellTexts(stream);
+        grid.strokeAllLines(stream);
+      }
+      doc.save(file.toFile());
+    }
+
+    assertThat(onlyChunkText(file))
+        .doesNotContain(" | ")
+        .contains("Datum", "Standort", "4. August 2026", "Rheinau");
+  }
+
+  @Test
+  void aCellTextStartingOnItsColumnLineStaysInItsCell() throws IOException {
+    // Zero cell padding: the first glyph's origin lies a fraction left of the column line.
+    Path file = tempDir.resolve("ohne-innenabstand.pdf");
+    Grid grid = new Grid(List.of(50f, 200f, 380f), 740, List.of(List.of(), List.of()));
+    writePage(
+        file,
+        stream -> {
+          text(stream, 54, 726, "Datum");
+          text(stream, 199.5f, 726, "Standort");
+          text(stream, 54, 706, "4. August 2026");
+          text(stream, 199.5f, 706, "Gemeindezentrum Nordfeld");
+          grid.strokeAllLines(stream);
+        });
+
+    assertThat(onlyChunkText(file))
+        .isEqualTo(
+            String.join("\n", "Datum | Standort", "4. August 2026 | Gemeindezentrum Nordfeld"));
+  }
+
+  @Test
+  void aPageWithMoreRulingsThanTheCapStaysFlowText() throws IOException {
+    Path file = tempDir.resolve("viele-linien.pdf");
+    Grid grid =
+        new Grid(
+            List.of(50f, 200f, 350f),
+            740,
+            List.of(List.of("Datum", "Standort"), List.of("4. August 2026", "Rheinau")));
+    writePage(
+        file,
+        stream -> {
+          grid.drawCellTexts(stream);
+          grid.strokeAllLines(stream);
+          for (int i = 0; i <= PdfRulingCollector.MAX_RULINGS; i++) {
+            hLine(stream, 100 + (i % 200), 400 + (i / 200) * 10, 405 + (i / 200) * 10);
+          }
+          stream.stroke();
+        });
+
+    assertThat(onlyChunkText(file)).doesNotContain(" | ").contains("4. August 2026", "Rheinau");
+  }
+
+  @Test
+  void aPathWithMorePointsThanTheBudgetStaysFlowText() throws IOException {
+    // Path construction without a painting operator: every point is held until the path ends.
+    // 50,000 points lie well above PdfRulingCollector's path-point budget.
+    Path file = tempDir.resolve("viele-punkte.pdf");
+    Grid grid =
+        new Grid(
+            List.of(50f, 200f, 350f),
+            740,
+            List.of(List.of("Datum", "Standort"), List.of("4. August 2026", "Rheinau")));
+    writePage(
+        file,
+        stream -> {
+          for (int i = 0; i < 50_000; i++) {
+            stream.moveTo(10, 10);
+          }
+          stream.fill();
+          grid.drawCellTexts(stream);
+          grid.strokeAllLines(stream);
+        });
+
+    assertThat(onlyChunkText(file)).doesNotContain(" | ").contains("4. August 2026", "Rheinau");
+  }
+
+  // regression guard for #2033: 20 million path points without a painting operator fit into a
+  // small Flate stream; the ruling scan must not hold them, or the heap runs out
+  @Test
+  void aCompressedStreamOfUnpaintedPathPointsDoesNotExhaustTheHeap() throws IOException {
+    Path file = tempDir.resolve("pfadbombe.pdf");
+    try (PDDocument doc = new PDDocument()) {
+      PDPage page = new PDPage(PDRectangle.A4);
+      doc.addPage(page);
+      try (PDPageContentStream stream = new PDPageContentStream(doc, page)) {
+        text(stream, 50, 770, "Hinweis vor der Grafik.");
+      }
+      PDStream bomb = new PDStream(doc);
+      try (OutputStream out = bomb.createOutputStream(COSName.FLATE_DECODE)) {
+        byte[] moveTo = "0 0 m\n".getBytes(StandardCharsets.US_ASCII);
+        byte[] block = new byte[moveTo.length * 10_000];
+        for (int i = 0; i < 10_000; i++) {
+          System.arraycopy(moveTo, 0, block, i * moveTo.length, moveTo.length);
+        }
+        for (int i = 0; i < 2_000; i++) {
+          out.write(block);
+        }
+      }
+      List<PDStream> contents = new ArrayList<>();
+      page.getContentStreams().forEachRemaining(contents::add);
+      contents.add(bomb);
+      page.setContents(contents);
+      doc.save(file.toFile());
+    }
+
+    assertThat(onlyChunkText(file)).isEqualTo("Hinweis vor der Grafik.");
+  }
+
+  @Test
+  void aGridWithMoreCellsThanTheCapStaysFlowText() throws IOException {
+    Path file = tempDir.resolve("riesengitter.pdf");
+    int lines = 72;
+    assertThat((lines - 1) * (lines - 1)).isGreaterThan(PdfTableGrids.MAX_CELLS);
+    writePage(
+        file,
+        stream -> {
+          text(stream, 52, 792, "a1");
+          text(stream, 52, 782, "a2");
+          text(stream, 80, 792, "b1");
+          text(stream, 80, 782, "b2");
+          for (int i = 0; i < lines; i++) {
+            hLine(stream, 800 - i * 10, 50, 50 + (lines - 1) * 7);
+            vLine(stream, 50 + i * 7, 800 - (lines - 1) * 10, 800);
+          }
+          stream.stroke();
+        });
+
+    assertThat(onlyChunkText(file)).doesNotContain(" | ").contains("a1", "b2");
+  }
+
+  @Test
   void columnAlignedTextWithoutRulingsStaysFlowText() throws IOException {
     Path file = tempDir.resolve("ohne-linien.pdf");
     Grid grid =
@@ -300,8 +505,7 @@ class PdfDocumentFormatTableTest {
         pipeline.run(DocumentFormatSource.ofFile(file, file.getFileName().toString(), ".pdf"));
     assertThat(result.outcome()).isEqualTo(DocumentFormatResult.Outcome.CHUNKED);
     assertThat(result.chunks()).hasSize(1);
-    // The assertions are about line structure, not the platform's line separator.
-    return result.chunks().getFirst().getText().replace("\r\n", "\n");
+    return result.chunks().getFirst().getText();
   }
 
   @FunctionalInterface
