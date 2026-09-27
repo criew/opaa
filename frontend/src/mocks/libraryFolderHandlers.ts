@@ -31,7 +31,7 @@ function collectMockFolderSubtreeIds(libraryId: string, folderId: string): Set<s
 export function countMockFolderDocuments(libraryId: string, folderId: string): number {
   const ids = collectMockFolderSubtreeIds(libraryId, folderId)
   return (mockLibraryDocuments[libraryId] ?? []).filter(
-    (doc) => doc.folderId && ids.has(doc.folderId),
+    (doc) => !doc.parentDocumentId && doc.folderId && ids.has(doc.folderId),
   ).length
 }
 

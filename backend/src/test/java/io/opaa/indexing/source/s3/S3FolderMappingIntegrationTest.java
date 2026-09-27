@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.api.types.SystemRole;
+import io.opaa.auth.CurrentUser;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.job.IndexingJob;
@@ -25,6 +26,9 @@ import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryFolder;
 import io.opaa.knowledge.LibraryFolderRepository;
 import io.opaa.knowledge.LibraryFolderService;
+import io.opaa.library.KnowledgeLibraryService;
+import io.opaa.library.LibraryDocumentPage;
+import io.opaa.library.LibraryFolderChild;
 import io.opaa.organization.Organization;
 import io.opaa.s3.S3AccessException;
 import io.opaa.test.OpaaIntegrationTest;
@@ -46,6 +50,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
@@ -69,6 +75,7 @@ class S3FolderMappingIntegrationTest {
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private LibraryFolderRepository folderRepository;
   @Autowired private LibraryFolderService folderService;
+  @Autowired private KnowledgeLibraryService libraryService;
   @Autowired private SourceSyncStateRepository syncStateRepository;
   @Autowired private StaleDocumentCleanupService cleanupService;
   @Autowired private VectorChunkStore vectorChunkStore;
@@ -324,6 +331,47 @@ class S3FolderMappingIntegrationTest {
     assertThat(documentRepository.findByParentDocumentId(mail.getId()))
         .extracting(Document::getFileName)
         .containsExactly("anlage-1.txt");
+  }
+
+  // regression guard for #2031: attachments share their mail's folder, yet the folder view and
+  // every folder count list and count top-level documents only - attachments ride along.
+  @Test
+  void aFolderListsAMailsAttachmentsOnlyUnderTheMailAndCountsTopLevelDocumentsOnly()
+      throws Exception {
+    store
+        .put(
+            "dokumente",
+            "2026/stadtrat/vorlage.eml",
+            mailWithAttachments("anlage-1.txt", "anlage-2.txt"),
+            "message/rfc822")
+        .put("dokumente", "2026/stadtrat/stadtbus.txt", "Vorlage Stadtbus.", "text/plain");
+
+    run();
+
+    LibraryFolder jahr = findFolder(null, "2026").orElseThrow();
+    LibraryFolder stadtrat = findFolder(jahr.getId(), "stadtrat").orElseThrow();
+    Document mail = documentAt("dokumente", "2026/stadtrat/vorlage.eml").orElseThrow();
+    assertThat(documentRepository.findByParentDocumentId(mail.getId()))
+        .allSatisfy(child -> assertThat(child.getFolderId()).isEqualTo(stadtrat.getId()));
+    CurrentUser admin =
+        CurrentUser.of(userId, Organization.DEFAULT_ID, SystemRole.SYSTEM_ADMIN, "S3 Folder IT");
+    PageRequest page = PageRequest.of(0, 20, Sort.by("fileName", "id"));
+
+    LibraryDocumentPage folderPage =
+        libraryService.listDocuments(library.getId(), admin, null, stadtrat.getId(), null, page);
+
+    assertThat(folderPage.totalElements()).isEqualTo(2);
+    assertThat(folderPage.documents())
+        .extracting(entry -> entry.document().getFileName())
+        .containsExactly("stadtbus.txt", "vorlage.eml", "anlage-1.txt", "anlage-2.txt");
+
+    LibraryDocumentPage jahrPage =
+        libraryService.listDocuments(library.getId(), admin, null, jahr.getId(), null, page);
+    assertThat(jahrPage.folders())
+        .extracting(LibraryFolderChild::documentCount)
+        .containsExactly(2L);
+    assertThat(folderService.getFolder(library.getId(), stadtrat.getId(), admin).documentCount())
+        .isEqualTo(2);
   }
 
   @Test

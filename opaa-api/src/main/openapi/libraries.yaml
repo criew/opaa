@@ -1789,10 +1789,10 @@ components:
           type: integer
           format: int64
           description: >
-            Every document inside this subfolder and every one of its own descendant subfolders,
-            recursively - the same semantics as LibraryFolderResponse.documentCount (#821 review:
-            a subfolder row here shows the same number a subsequent delete confirmation for it
-            would). Computed with one bundled query for every subfolder shown, not one per
+            Every top-level document inside this subfolder and every one of its own descendant
+            subfolders, recursively - the same semantics as LibraryFolderResponse.documentCount,
+            so a subfolder row here shows the same number a subsequent delete confirmation for it
+            would. Computed with one bundled query for every subfolder shown, not one per
             subfolder's own subtree walk.
 
     LibraryFolderBreadcrumbItem:
@@ -1959,9 +1959,10 @@ components:
           type: integer
           format: int64
           description: >
-            Total number of documents directly in this folder and every one of its subfolders,
-            recursively (#820) - the count a confirmation dialog shows before DELETE removes them
-            all (ADR-0020, Entscheidung 5).
+            Total number of top-level documents directly in this folder and every one of its
+            subfolders, recursively (#820) - the count a confirmation dialog shows before DELETE
+            removes them all (ADR-0020, Entscheidung 5). Attachments never count; they belong to
+            their parent document, like totalElements of LibraryDocumentPageResponse.
         createdAt:
           type: string
           format: date-time

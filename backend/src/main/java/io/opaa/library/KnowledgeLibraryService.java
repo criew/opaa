@@ -786,7 +786,8 @@ public class KnowledgeLibraryService {
         folderId == null
             ? documentRepository.findByLibraryIdAndFolderIdIsNullAndParentDocumentIdIsNull(
                 libraryId, pageable)
-            : documentRepository.findByLibraryIdAndFolderId(libraryId, folderId, pageable);
+            : documentRepository.findByLibraryIdAndFolderIdAndParentDocumentIdIsNull(
+                libraryId, folderId, pageable);
     Map<UUID, LibraryFolder> foldersById =
         LibraryFolderPaths.loadFoldersById(folderRepository, libraryId);
 
@@ -913,12 +914,11 @@ public class KnowledgeLibraryService {
 
   /**
    * The direct subfolders of {@code folderId} ({@code null} meaning the library's root), each with
-   * its own <em>recursive</em> document count - its own documents plus every document in every one
-   * of its descendant folders, matching {@code LibraryFolderResponse.documentCount}'s semantics
-   * (#821 review round 1, finding 4) so a subfolder row here shows the same number a subsequent
-   * delete confirmation for it would. One recursive-CTE query for every subfolder's count ({@link
-   * DocumentRepository#countRecursiveByFolderIdIn}), not one {@link
-   * DocumentRepository#countByFolderId}/subtree walk per subfolder.
+   * its own <em>recursive</em> top-level document count - its own documents plus every document in
+   * its descendant folders, attachments excluded, matching {@code
+   * LibraryFolderResponse.documentCount}'s semantics. One recursive-CTE query for every subfolder's
+   * count ({@link DocumentRepository#countRecursiveByFolderIdIn}), not one subtree walk per
+   * subfolder.
    */
   private List<LibraryFolderChild> foldersOf(UUID libraryId, UUID folderId) {
     List<LibraryFolder> subfolders =
