@@ -64,7 +64,7 @@ selben Reiter folgen der **„Zeitplan"** und, als **„Läufe"**, das Laufproto
 | Feld der Bibliothek | Regel |
 |---|---|
 | Adresse (`sourceUrl`) | Pflicht. Cloud mit oder ohne `/wiki`; Data Center einschließlich Kontextpfad, etwa `https://wiki.behoerde.example/confluence`. |
-| Edition (`sourceConfluenceEdition`) | Pflicht, `CLOUD` oder `DATA_CENTER`. Wird beim Anlegen erkannt und ist danach unveränderlich; eine migrierte Instanz wird als neue Bibliothek angelegt. |
+| Edition (`sourceSettings.edition`) | Pflicht, `CLOUD` oder `DATA_CENTER`. Wird beim Anlegen erkannt und ist danach unveränderlich; eine migrierte Instanz wird als neue Bibliothek angelegt. |
 | Zugangsdaten (`sourceCredentials`) | Pflicht. Cloud: `<E-Mail>:<API-Token>`; Data Center: Personal Access Token. Verschlüsselt gespeichert, in keiner API-Antwort sichtbar. |
 | Space-Auswahl (`sourceSettings.spaces`) | Pflicht, mindestens ein Space, höchstens 500. Später änderbar; jede Änderung erzwingt beim nächsten Lauf einen Vollabgleich. |
 | Proxy (`sourceProxy`) | optional, `host:port`. Der Proxy-Host unterliegt derselben Zieladressprüfung wie die Instanz. |
@@ -459,6 +459,11 @@ curl -i -X POST "https://<opaa-host>/api/v1/libraries/<id>/push" \
   -H "Content-Type: application/json" -H "X-Hub-Signature: sha256=$SIG" --data "$BODY"
 # 202 Accepted = angenommen; 401 = Geheimnis/Signatur falsch oder Bibliothek ohne Webhook
 ```
+
+Die Eingangsadresse ist `…/libraries/<id>/push`. Die früheren Adressen `…/confluence-webhook`
+und `…/confluence-webhook-secret` gibt es nicht mehr; eine Confluence-Instanz, die noch an
+`…/confluence-webhook` sendet, bekommt ebenfalls `401` und liefert keine Änderungen mehr. Die
+gültige Adresse zeigt der Dialog „Webhook einrichten“ nach dem Erzeugen des Geheimnisses.
 
 ## 14. Grenzen des Konnektors
 

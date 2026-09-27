@@ -779,6 +779,11 @@ curl -i -X POST "https://<opaa-host>/api/v1/libraries/<id>/push" \
 # 202 Accepted = angenommen; 401 = Token falsch oder Bibliothek ohne Token
 ```
 
+Die Eingangsadresse ist `…/libraries/<id>/push`. Die früheren Adressen `…/s3-events` und
+`…/s3-events-token` gibt es nicht mehr; ein Speicher, der noch an `…/s3-events` meldet, bekommt
+ebenfalls `401`, und die Bibliothek erhält keine Ereignisse mehr. Die gültige Adresse zeigt der
+Dialog „Benachrichtigung einrichten“ nach dem Erzeugen des Tokens.
+
 ## 14. Grenzen des Konnektors
 
 - **Freigabefolge der gemeinsamen Bibliothek.** Alles Indizierte ist für jede Leseberechtigung der

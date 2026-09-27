@@ -166,6 +166,23 @@ Frontend und E2E bleiben dabei unverändert. Danach folgt der API-Bruch mit frei
   wäre ungeprüfte Doppelpflege neben dem Einstellungs-Record. Das Feld lässt sich später
   rückwärtskompatibel ergänzen, sobald ein Client es braucht (etwa eine generische Eingabemaske für
   Konnektoren ohne eigene Formularkomponente).
-- **Frontend:** Die Formularkomponenten sind nach Typ-Schlüssel registriert; die Kacheln des
-  Anlage-Assistenten kommen aus `GET /source-types`. Ein Typ, den das Backend kennt, das Frontend
-  aber nicht, erscheint unter seinem Anzeigenamen und ist nicht wählbar.
+- **Frontend:** Jede Quellart registriert sich an genau einer Stelle
+  (`frontend/src/components/library/sources/registry.ts`): Namen, Symbol und – für eine Art mit
+  Quelle – Formular samt Startwerten, Validierung, Anfragefeldern und den Leseansichten des Reiters
+  „Quelle“ (Umfang, Anbindung, Kopfzeile). Die Kacheln des Anlage-Assistenten kommen aus
+  `GET /source-types`. Ein Typ, den das Backend kennt, das Frontend aber nicht, erscheint unter
+  seinem Anzeigenamen, ist nicht wählbar und im Reiter „Quelle“ als nicht konfigurierbar markiert.
+  Schlägt die Liste fehl, nennt der Assistent den Fehler und bietet keine Art an.
+- **Uploads sind eine eigene Fähigkeit** (`uploads` in Beschreibung und `GET /source-types`), nicht
+  „kein Lauf“. Sie entscheidet Anlegerecht, Upload-Annahme, Freigabe-Obergrenze und die
+  Löschsperre bei Bestand. Nur `UPLOAD` darf sie tragen, das prüft die Registry beim Start: Der
+  Upload-Speicher, seine Ordner und Originale sowie die Datenbankprüfungen auf `UPLOAD` hängen am
+  Typ. Ein Konnektor ohne Lauf und ohne Uploads ist damit eine Konnektorbibliothek, die nichts
+  hochladen lässt; die Datenbank blockiert ihn nicht.
+- **Gleiche Antwortzeit am Push-Eingang:** Jede Anfrage läuft durch die Prüfung jedes registrierten
+  Push-Eingangs – die der Bibliothek echt, alle anderen gegen einen Platzhalter
+  (`PushIntakeHandler#rejectForeign`). Unbekannte Bibliothek, Bibliothek ohne Push-Eingang und
+  falsches Geheimnis sind damit weder an der Antwort noch an ihrer Dauer unterscheidbar.
+- **Nachweis:** Zwei Test-Konnektoren nur im Testcode – einer ohne Lauf, einer mit Lauf und
+  Auflistung – werden über die HTTP-API angelegt, geändert, getestet, aufgelistet, geplant und
+  indiziert.

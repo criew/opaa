@@ -671,8 +671,8 @@ Identität ist `s3://<bucket>/<key>` ohne Endpoint — ein Umzug des Speichers b
 neu, ein Umbenennen des Objekts schon (Entscheidung 5); die Präfixspiegelung als Ordner steht
 unter [Ordner in Konnektorbibliotheken](#ordner-in-konnektorbibliotheken-8241277-gebaut).
 
-**Push-Weg (Entscheidung 6).** Der Ereigniseingang `POST /api/v1/libraries/{id}/push` — der
-zweite sitzungslose, schreibende Pfad unter `/api/v1` neben dem Confluence-Webhook (siehe dort) —
+**Push-Weg (Entscheidung 6).** Der Ereigniseingang `POST /api/v1/libraries/{id}/push` — derselbe
+typneutrale, sitzungslose Push-Eingang, über den auch der Confluence-Webhook ankommt (ADR-0038) —
 nimmt das je Bibliothek erzeugte Ereignis-Token in drei Formen an, weil die Anbieter sie vorgeben:
 `Authorization: Bearer` (MinIO-Webhook), `Authorization: Basic` mit dem Token als Passwort (Ceph
 RGW kennt nur `user:password` in der Endpunkt-URI) und die Kopfzeile `X-OPAA-Webhook-Secret`
