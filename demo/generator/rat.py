@@ -438,17 +438,20 @@ NIEDERSCHRIFTEN: list[Niederschrift] = [
             ),
             Tagesordnungspunkt(
                 2,
-                "Sanierung des Brunnens auf dem Rathausplatz: Abschlussbericht",
+                "Sanierung des Marktbrunnens auf dem Rathausplatz: Zwischenbericht",
                 [
-                    "Das Tiefbauamt berichtet, dass die Arbeiten Ende April 2025 abgeschlossen "
-                    "wurden; der Brunnen ist seit dem 2. Mai 2025 wieder in Betrieb. Die "
-                    "Schlussrechnung beläuft sich auf 141.300 Euro und liegt damit 2.700 Euro über "
-                    "der Auftragssumme, weil ein schadhafter Zulaufschieber zusätzlich ersetzt "
-                    "werden musste.",
-                    "Der Zuschuss aus dem Landesprogramm Ortskernsanierung in Höhe von 40 Prozent "
-                    "der förderfähigen Kosten ist ausgezahlt.",
+                    "Das Tiefbauamt berichtet, dass die restauratorische Befunduntersuchung "
+                    "abgeschlossen ist. Die Untere Denkmalbehörde hat der Bemusterung der "
+                    "Natursteine zugestimmt; sie werden ab Herbst 2025 in der Werkstatt "
+                    "aufgearbeitet.",
+                    "Ein schadhafter Zulaufschieber muss zusätzlich ersetzt werden. Die Mehrkosten "
+                    "von 2.700 Euro wurden der Förderstelle vor der Ausführung angezeigt und sind "
+                    "damit förderfähig.",
+                    "Die Arbeiten am Brunnen selbst bleiben für April und Mai 2026 vorgesehen. Der "
+                    "Brunnen besteht 2026 seit 150 Jahren und soll zum Jubiläum am 30. Mai 2026 neu "
+                    "eingeweiht werden.",
                 ],
-                "Der Bauausschuss nimmt den Abschlussbericht zur Kenntnis.",
+                "Der Bauausschuss nimmt den Zwischenbericht zur Kenntnis.",
                 None,
             ),
             Tagesordnungspunkt(
@@ -513,6 +516,9 @@ NIEDERSCHRIFTEN: list[Niederschrift] = [
                     "Ratsmitglied Timo Vahle fragt nach der Evaluation der Fahrradstraße "
                     "Uferstraße. Die Verwaltung kündigt den Bericht für die Sitzung im Oktober "
                     "2026 an.",
+                    "Die Verwaltung teilt mit, dass die Sanierung des Marktbrunnens im Zeitplan "
+                    "liegt. Die Neueinweihung zum 150-jährigen Bestehen findet wie geplant am "
+                    "30. Mai 2026 statt.",
                 ],
             ),
         ],
@@ -551,13 +557,18 @@ BESCHLUSSVORLAGEN: list[Beschlussvorlage] = [
         "Tiefbauamt",
         "Der Bauausschuss beschließt, die Bauleistungen zur Sanierung des Rathausplatzbrunnens an "
         "den wirtschaftlichsten Bieter der öffentlichen Ausschreibung zum Angebotspreis von "
-        "138.600 Euro zu vergeben. Die Arbeiten beginnen im November 2024 und sollen bis Ende "
-        "April 2025 abgeschlossen sein.",
+        "138.600 Euro zu vergeben. Die Arbeiten beginnen im November 2024 mit der restauratorischen "
+        "Befunduntersuchung; die Arbeiten am Brunnen selbst werden so gelegt, dass der "
+        "Marktbrunnen zu seinem 150-jährigen Bestehen am 30. Mai 2026 neu eingeweiht werden kann.",
         [
             "Der Stadtrat hat die Verwaltung am 27. Februar 2024 beauftragt, die Sanierung "
             "auszuschreiben; der Baubeginn sollte nach dem Stadtfest 2024 liegen. Auf die "
             "öffentliche Ausschreibung sind vier Angebote eingegangen. Das wirtschaftlichste liegt "
             "6.400 Euro unter der Kostenschätzung von 145.000 Euro.",
+            "Die Untere Denkmalbehörde verlangt vor der Ausführung eine restauratorische "
+            "Befunduntersuchung und eine Bemusterung der Natursteine. Die Arbeiten am Brunnen "
+            "selbst folgen deshalb erst im April und Mai 2026 und enden rechtzeitig zum "
+            "Jubiläum: Der Marktbrunnen besteht 2026 seit 150 Jahren.",
             "Die Einzelpositionen, die Finanzierung und der Bauzeitenplan stehen in Anlage 1.",
         ],
         "Auftragssumme 138.600 Euro. Der Zuschuss aus dem Landesprogramm Ortskernsanierung "
@@ -568,7 +579,7 @@ BESCHLUSSVORLAGEN: list[Beschlussvorlage] = [
             Anlage(
                 1,
                 "kostenaufstellung-bauzeitenplan",
-                "Kostenaufstellung und Bauzeitenplan: Sanierung Rathausplatzbrunnen",
+                "Kostenaufstellung und Bauzeitenplan: Sanierung des Marktbrunnens",
                 [
                     Abschnitt(
                         "Kosten nach Leistungsbereichen",
@@ -604,13 +615,16 @@ BESCHLUSSVORLAGEN: list[Beschlussvorlage] = [
                     Abschnitt(
                         "Bauzeitenplan",
                         [
-                            "November 2024: Baustelleneinrichtung, Entleerung des Beckens und "
-                            "Rückbau der alten Auskleidung.",
-                            "Dezember 2024 bis Februar 2025: Winterpause für die Abdichtung; die "
-                            "Natursteine werden in dieser Zeit in der Werkstatt aufgearbeitet.",
-                            "März und April 2025: Abdichtung, Versetzen der Natursteine, Einbau der "
-                            "Brunnentechnik.",
-                            "Anfang Mai 2025: Inbetriebnahme des Brunnens.",
+                            "November 2024 bis März 2025: restauratorische Befunduntersuchung und "
+                            "Bemusterung der Natursteine mit der Unteren Denkmalbehörde; der "
+                            "Brunnen bleibt in dieser Zeit in Betrieb.",
+                            "Herbst 2025 bis Frühjahr 2026: Aufarbeitung der Natursteine in der "
+                            "Werkstatt.",
+                            "April und Mai 2026: Baustelleneinrichtung, Entleerung des Beckens, "
+                            "Rückbau der alten Auskleidung, Abdichtung, Versetzen der Natursteine "
+                            "und Einbau der Brunnentechnik.",
+                            "30. Mai 2026: Neueinweihung des Marktbrunnens zu seinem 150-jährigen "
+                            "Bestehen.",
                         ],
                     ),
                     Abschnitt(
@@ -736,7 +750,8 @@ BESCHLUSSVORLAGEN: list[Beschlussvorlage] = [
                     Abschnitt(
                         "Erschließung und Alarmausfahrt",
                         [
-                            "Die Alarmausfahrt liegt an der Südseite zur Hauptverkehrsstraße hin; "
+                            "Die Alarmausfahrt liegt an der Nordseite des Baufelds zur "
+                            "Hauptverkehrsstraße hin und berührt die Veranstaltungsfläche nicht; "
                             "eine Vorrangschaltung der Ampel hält die Kreuzung bei Alarm frei.",
                             "Die Einsatzkräfte erreichen die Wache über eine getrennte Zufahrt von "
                             "Westen mit 40 Stellplätzen. Anfahrende Einsatzkräfte und ausrückende "
@@ -763,10 +778,10 @@ BESCHLUSSVORLAGEN: list[Beschlussvorlage] = [
                         ],
                         [
                             ["Ortsteil", "Standort Festplatz", "bisherige Feuerwache Süd"],
-                            ["Südheim", "4,5 Minuten", "6,0 Minuten"],
-                            ["Rheinau", "5,5 Minuten", "8,5 Minuten"],
-                            ["Wiesengrund", "6,5 Minuten", "9,5 Minuten"],
-                            ["Altfeld", "7,5 Minuten", "10,0 Minuten"],
+                            ["Weidenau", "4,5 Minuten", "6,0 Minuten"],
+                            ["Rheinbogen", "5,5 Minuten", "8,5 Minuten"],
+                            ["Auenfeld", "6,5 Minuten", "9,5 Minuten"],
+                            ["Lindenhof", "7,5 Minuten", "10,0 Minuten"],
                         ],
                     ),
                     Abschnitt(

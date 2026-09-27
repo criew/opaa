@@ -11,7 +11,7 @@ Die Vorsitzende stellt die ordnungsgemäße Ladung und die Beschlussfähigkeit f
 ## Tagesordnung
 
 1. Fahrradstraße Uferstraße: Vorberatung
-2. Sanierung des Brunnens auf dem Rathausplatz: Abschlussbericht
+2. Sanierung des Marktbrunnens auf dem Rathausplatz: Zwischenbericht
 3. Dachsanierung der Sporthalle am Schulzentrum Rheinau
 
 ## TOP 1: Fahrradstraße Uferstraße: Vorberatung
@@ -24,13 +24,15 @@ Aus dem Ausschuss wird angeregt, die Lieferzonen der Gewerbebetriebe vor Beginn 
 
 **Abstimmungsergebnis:** 9 Ja-Stimmen, 3 Nein-Stimmen, 1 Enthaltung
 
-## TOP 2: Sanierung des Brunnens auf dem Rathausplatz: Abschlussbericht
+## TOP 2: Sanierung des Marktbrunnens auf dem Rathausplatz: Zwischenbericht
 
-Das Tiefbauamt berichtet, dass die Arbeiten Ende April 2025 abgeschlossen wurden; der Brunnen ist seit dem 2. Mai 2025 wieder in Betrieb. Die Schlussrechnung beläuft sich auf 141.300 Euro und liegt damit 2.700 Euro über der Auftragssumme, weil ein schadhafter Zulaufschieber zusätzlich ersetzt werden musste.
+Das Tiefbauamt berichtet, dass die restauratorische Befunduntersuchung abgeschlossen ist. Die Untere Denkmalbehörde hat der Bemusterung der Natursteine zugestimmt; sie werden ab Herbst 2025 in der Werkstatt aufgearbeitet.
 
-Der Zuschuss aus dem Landesprogramm Ortskernsanierung in Höhe von 40 Prozent der förderfähigen Kosten ist ausgezahlt.
+Ein schadhafter Zulaufschieber muss zusätzlich ersetzt werden. Die Mehrkosten von 2.700 Euro wurden der Förderstelle vor der Ausführung angezeigt und sind damit förderfähig.
 
-**Beschluss:** Der Bauausschuss nimmt den Abschlussbericht zur Kenntnis.
+Die Arbeiten am Brunnen selbst bleiben für April und Mai 2026 vorgesehen. Der Brunnen besteht 2026 seit 150 Jahren und soll zum Jubiläum am 30. Mai 2026 neu eingeweiht werden.
+
+**Beschluss:** Der Bauausschuss nimmt den Zwischenbericht zur Kenntnis.
 
 ## TOP 3: Dachsanierung der Sporthalle am Schulzentrum Rheinau
 

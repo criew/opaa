@@ -36,6 +36,8 @@ Von den vier vorgesehenen Dächern (Grundschule Weststadt, Stadtbibliothek, Bauh
 
 Ratsmitglied Timo Vahle fragt nach der Evaluation der Fahrradstraße Uferstraße. Die Verwaltung kündigt den Bericht für die Sitzung im Oktober 2026 an.
 
+Die Verwaltung teilt mit, dass die Sanierung des Marktbrunnens im Zeitplan liegt. Die Neueinweihung zum 150-jährigen Bestehen findet wie geplant am 30. Mai 2026 statt.
+
 ---
 
 Für die Richtigkeit der Niederschrift: Schriftführerin Petra Hollmann, Rheinfurt, 12. Mai 2026.
