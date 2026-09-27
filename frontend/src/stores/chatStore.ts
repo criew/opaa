@@ -41,6 +41,20 @@ function toChatMessage(message: ChatMessageResponse): ChatMessage {
   }
 }
 
+/** The longest question the server accepts (`QueryRequest.question`, `maxLength`). */
+export const QUESTION_MAX_LENGTH = 2000
+
+const INVALID_QUESTION_MESSAGE = `Die Frage konnte nicht gesendet werden. Bitte prüfen Sie die Eingabe (höchstens ${QUESTION_MAX_LENGTH} Zeichen).`
+
+const DRAFT_RESTORED_NOTE = 'Die Frage steht wieder im Eingabefeld.'
+
+/** The HTTP status of a failed request, or `null` when no response arrived. */
+function responseStatus(err: unknown): number | null {
+  const cause = err instanceof Error ? err.cause : undefined
+  const status = (cause as { response?: { status?: unknown } } | undefined)?.response?.status
+  return typeof status === 'number' ? status : null
+}
+
 /** The server refused the question because the person may no longer use its prompt. */
 function isPromptNotUsable(err: unknown): boolean {
   const cause = err instanceof Error ? err.cause : undefined
@@ -779,6 +793,18 @@ export const useChatStore = create<ChatState>((set, get) => ({
         set((state) => ({
           messages: state.messages.filter((m) => m !== send.userMessage),
           error: `${message} Die Frage steht wieder im Eingabefeld und lässt sich ohne Prompt senden.`,
+          isLoading,
+        }))
+        return { restoreDraft: question }
+      }
+      // A question the server rejected (4xx) was not persisted: it leaves the history and goes
+      // back to the input to be corrected and sent again.
+      const status = responseStatus(err)
+      if (status !== null && status >= 400 && status < 500) {
+        const reason = status === 400 ? INVALID_QUESTION_MESSAGE : message
+        set((state) => ({
+          messages: state.messages.filter((m) => m !== send.userMessage),
+          error: `${reason} ${DRAFT_RESTORED_NOTE}`,
           isLoading,
         }))
         return { restoreDraft: question }

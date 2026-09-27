@@ -9979,7 +9979,7 @@ components:
           type: string
           minLength: 1
           maxLength: 2000
-          pattern: ".*\\S.*"
+          pattern: "[\\s\\S]*\\S[\\s\\S]*"
           example: What is the project architecture?
         chatId:
           type: string
@@ -10312,7 +10312,7 @@ components:
           type: string
           minLength: 1
           maxLength: 2000
-          pattern: ".*\\S.*"
+          pattern: "[\\s\\S]*\\S[\\s\\S]*"
           example: Welche Frist gilt für den Widerspruch?
         libraryIds:
           type: array

@@ -18,7 +18,7 @@ import SendIcon from '@mui/icons-material/Send'
 import TextSnippetOutlinedIcon from '@mui/icons-material/TextSnippetOutlined'
 import { CHAT_MAX_WIDTH } from '../../theme/theme'
 import { useAuthStore } from '../../stores/authStore'
-import { useChatStore } from '../../stores/chatStore'
+import { QUESTION_MAX_LENGTH, useChatStore } from '../../stores/chatStore'
 import { useLibraryStore } from '../../stores/libraryStore'
 import {
   metadataFilterScopeKey,
@@ -77,6 +77,20 @@ type MentionSuggestion = { kind: 'all' } | { kind: 'library'; library: LibraryLi
  */
 const INPUT_HINT = '@ für Quellen, / für Aktionen'
 
+/** From this share of {@link QUESTION_MAX_LENGTH} on, the input counts the characters. */
+const LENGTH_COUNTER_THRESHOLD = 0.9
+
+/**
+ * The counter under the input, measured on the trimmed text that is actually sent; `null` while
+ * the question is well below the limit.
+ */
+function lengthCounterText(length: number): string | null {
+  if (length < QUESTION_MAX_LENGTH * LENGTH_COUNTER_THRESHOLD) return null
+  const counted = `${length} von ${QUESTION_MAX_LENGTH} Zeichen`
+  if (length <= QUESTION_MAX_LENGTH) return counted
+  return `${counted} – bitte um ${length - QUESTION_MAX_LENGTH} Zeichen kürzen, damit sich die Frage senden lässt.`
+}
+
 /**
  * Finds an in-progress '@' mention ending at the cursor, or null if none is active. Only
  * triggers when '@' starts a word (start of text or preceded by whitespace) and the fragment
@@ -109,6 +123,10 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
   const wasDisabled = useRef(false)
   const mentionListboxId = useId()
   const promptListboxId = useId()
+  const lengthCounterId = useId()
+  const questionLength = value.trim().length
+  const questionTooLong = questionLength > QUESTION_MAX_LENGTH
+  const lengthCounter = lengthCounterText(questionLength)
 
   // The chip bar is the only search-scope control (#560): "Durchsucht wird, was in der Leiste
   // steht." scope 'all' -> the special @Alles-Wissen chip, 'libraries' -> concrete chips,
@@ -328,7 +346,7 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
 
   const handleSend = () => {
     const trimmed = value.trim()
-    if (!trimmed || promptCommand.isInserting) return
+    if (!trimmed || trimmed.length > QUESTION_MAX_LENGTH || promptCommand.isInserting) return
     const outcome = promptCommand.selected
       ? onSend(trimmed, promptCommand.selected)
       : onSend(trimmed)
@@ -637,6 +655,8 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
               'aria-controls': comboboxControls,
               'aria-autocomplete': 'list',
               'aria-activedescendant': activeDescendant,
+              'aria-invalid': questionTooLong,
+              'aria-describedby': lengthCounter ? lengthCounterId : undefined,
             },
           }}
           sx={{
@@ -658,7 +678,7 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
         <IconButton
           color="primary"
           onClick={handleSend}
-          disabled={disabled || !value.trim() || promptCommand.isInserting}
+          disabled={disabled || !value.trim() || questionTooLong || promptCommand.isInserting}
           aria-label="Senden"
           sx={{
             alignSelf: 'flex-end',
@@ -806,6 +826,18 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
       <Box sx={{ maxWidth: CHAT_MAX_WIDTH, mx: 'auto', mt: 0.875 }}>
         <Typography component="div" sx={{ fontSize: 12, color: 'text.secondary' }}>
           {scopeNotice ?? INPUT_HINT}
+        </Typography>
+        <Typography
+          id={lengthCounterId}
+          component="div"
+          aria-live="polite"
+          sx={{
+            fontSize: 12,
+            color: questionTooLong ? 'error.main' : 'text.secondary',
+            '&:empty': { display: 'none' },
+          }}
+        >
+          {lengthCounter}
         </Typography>
       </Box>
     </Box>
