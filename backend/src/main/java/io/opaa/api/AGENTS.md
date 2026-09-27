@@ -5,20 +5,22 @@ Pakete (`io.opaa.*`): api, config. Dazu `OpaaApplication` im Wurzelpaket. Ergän
 
 ## Zweck und Grenze
 
-Die oberste Schicht: REST-Controller, die Abbildung zwischen Domäne und generierten DTOs und die
-Startwächter der Konfiguration. app darf jedes Modul nutzen außer connectors.
+Die oberste Schicht: die Endpunkte und Web-Hilfen, die jedes Modul teilt (Fehlerbehandlung,
+Request-Logging, HTTP-Client, `HealthController`), und die Startwächter der Konfiguration. app darf
+jedes Modul nutzen außer connectors. Die Controller und Mapper der Fachmodule liegen in deren
+`web`-Paketen (`backend/AGENTS.md`, „Web-Schicht je Modul“); was davon noch in `io.opaa.api` liegt,
+nennt `ModularArchitecture.WEB_CLASSES_NOT_YET_MOVED`.
 
 ## Invarianten und Stolpersteine
 
 - **Konnektoren nur über `SourceConnectorRegistry`** und die Fähigkeiten, die sie ausgibt; kein
   Controller nennt eine Konnektorklasse.
-- **Mapper:** Die Abbildung Entity → Response lebt in einer package-private, handgeschriebenen
-  Mapper-Klasse im Paket des Controllers (Vorbild `BrandingResponseMapper`,
-  `SpaceResponseMapper`). Domain-Services sehen keine `io.opaa.api.dto`-Typen.
-- **Werden Test-Assertions von Response-Feldern auf Entity-Ableitungen umgestellt**, sichert ein
-  Mapper-Unit-Test die Feldbelegung (`SpaceResponseMapperTest`,
-  `SpaceAssetAssociationResponseMapperTest`). Sonst prüft kein Test mehr, dass der Mapper jedes
-  Feld befüllt.
+- **In `io.opaa.api` gehört eine Klasse nur, wenn jedes Modul sie teilt;** sie wird dann in
+  `ModularArchitecture.SHARED_API_CLASSES` eingetragen. Fachliche Controller, Mapper und Hilfen
+  gehören in das `web`-Paket ihres Moduls, eine Hilfe mehrerer Module in das tiefste, das alle
+  erreichen (`audit.web.AuditedAdminCall`).
+- **`GlobalExceptionHandler` hat keinen Selektor** und gilt damit für die Controller aller
+  `web`-Pakete.
 - **Statuscodes:** Eine Operation deklariert nur, was sie selbst entscheidet;
   `TransportStatusCodeSpecificationTest` hält das maschinell fest (Regel in `backend/AGENTS.md`).
 - **Startwächter in `config`:** `DatabaseSchemaGuard` verlangt für `opaa.database.schema` einen
@@ -43,5 +45,5 @@ Startwächter der Konfiguration. app darf jedes Modul nutzen außer connectors.
 ./gradlew test --tests 'io.opaa.config.*' --tests 'io.opaa.architecture.*'
 ```
 
-Für einen einzelnen Controller genügen die berührten Testklassen in `io.opaa.api` und die des
+Für einen einzelnen Controller genügen die berührten Testklassen in seinem `web`-Paket und die des
 Fachpakets dahinter.

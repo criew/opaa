@@ -20,7 +20,7 @@ Die beiden Kernregeln — DTOs nie von Hand, Änderungen beginnen in der Spec �
 - Die Spec-Fragmente unter `opaa-api/src/main/openapi/` bündelt der Task `:opaa-api:bundleOpenApi` (`io.opaa.api.bundler.OpenApiBundler`, eigenes Source-Set `bundler`). Tests lesen das Bündel wie bisher als Klassenpfad-Ressource `/openapi/opaa-api.yaml`. Das Frontend bündelt dieselben Fragmente mit `frontend/scripts/bundle-openapi.mjs` nach denselben Regeln. Wer die Regeln ändert, ändert beide Bundler (#2002)
 - Domain-Enums in DTOs (z. B. `SpaceRole`, `AssetRole`) werden über `typeMappings`/`importMappings` in `opaa-api/build.gradle.kts` gemappt
 - Beim Hinzufügen neuer Domain-Enums zur API genügen Einträge in `typeMappings` und `importMappings`; der `doLast`-Cleanup-Block im `openApiGenerate`-Task leitet die zu löschenden generierten Dateien mechanisch aus `typeMappings` ab
-- **Domain-Services kennen keine `io.opaa.api.dto`-Typen** (#860): Service-Methoden nehmen Entities, Einzelparameter oder kleine Domain-Parameter-Records entgegen und geben Entities oder Domain-Records zurück. Für angereicherte Ansichten (Response ≠ Entity, z. B. mit einer zusätzlichen Zählung) trägt ein Domain-Record im jeweiligen Fachpaket die zusätzlichen Felder (z. B. `SpaceOverview(space, libraryCount, chatCount)`). Wo die Mapper liegen und wie sie getestet werden, steht in der Datei des Moduls app (`io/opaa/api/AGENTS.md`)
+- **Domain-Services kennen keine `io.opaa.api.dto`-Typen** (#860): Service-Methoden nehmen Entities, Einzelparameter oder kleine Domain-Parameter-Records entgegen und geben Entities oder Domain-Records zurück. Für angereicherte Ansichten (Response ≠ Entity, z. B. mit einer zusätzlichen Zählung) trägt ein Domain-Record im jeweiligen Fachpaket die zusätzlichen Felder (z. B. `SpaceOverview(space, libraryCount, chatCount)`). Wo Controller und Mapper liegen und wie die Mapper getestet werden, steht unter „Web-Schicht je Modul“
 - **Eine Operation deklariert, was sie selbst entscheidet** (#1781). Was die Infrastruktur für alle Operationen gleich entscheidet — `400` bei unlesbarer Anfrage, `401` ohne brauchbare Sitzung, `403` bei erzwungenem Passwortwechsel oder einem Zugangstoken außerhalb seines Kanals, `404` bei unbekannter Route, `405`, `406`, `415`, `500` — steht einmal in `info.description` der Spezifikation und **in dieser Ausprägung** an keiner Operation. Eigene Entscheidungen bleiben deklariert: die Prüfung des eigenen Nutzinhalts (`400`), die eigene Rechteprüfung (`403`), die eigene Ressource (`404`), der eigene Konflikt (`409`), die eigene Größengrenze (`413`), die eigene Abhängigkeit (`503`) — und `401` dort, wo die Operation selbst eine ihr übergebene Berechtigung abweist (Anmeldung, Refresh-Cookie, Webhook-Signatur, Anbieter-Token der Übergabe). `429` steht an genau den Operationen mit einer eigenen Grenze; die Ratenbegrenzung ist endpunktweise, nicht global. `TransportStatusCodeSpecificationTest` hält beide Hälften maschinell fest und leitet die `429`-Erwartung aus der produktiven Verdrahtung von `RateLimitConfiguration` ab
 
 > Vollständige Begründung: [ADR-0006](../docs/decisions/0006-openapi-dto-generation.md)
@@ -59,9 +59,10 @@ Erlaubte Kanten zwischen Modulen (`ALLOWED_MODULE_EDGES`), alle nach unten:
 Der Test prüft außerdem:
 
 - **Schichtung:** `LAYERS` ordnet alle Top-Level-Pakete, unten zuerst. Ein Paket nutzt nur sich
-  selbst und Pakete davor.
-- **Zyklen:** keine zwischen Top-Level-Paketen. Zwischen Unterpaketen sind die heutigen Zyklen als
-  Paketkanten in `KNOWN_SUBPACKAGE_CYCLE_EDGES` eingefroren, vor allem in `indexing` und `query`.
+  selbst und Pakete davor. Ausgenommen ist die Web-Schicht (siehe „Web-Schicht je Modul“).
+- **Zyklen:** keine zwischen Top-Level-Paketen; ein `web`-Paket zählt dabei für sich. Zwischen
+  Unterpaketen sind die heutigen Zyklen als Paketkanten in `KNOWN_SUBPACKAGE_CYCLE_EDGES`
+  eingefroren, vor allem in `indexing` und `query`.
   Jede weitere Kante auf einem Zyklus lässt den Test fehlschlagen, also jeder neue Zyklus.
 - **Konnektoren:** Kein Konnektor kennt einen anderen, und keine Klasse außerhalb eines Konnektors
   kennt ihn. Kern, Verwaltung und API erreichen Konnektoren nur über die `SourceConnectorRegistry`.
@@ -85,6 +86,36 @@ Feinere Regeln als die Paketebene prüfen eigene Strukturtests: `PermissionPacka
 (Kanten zwischen Fachpaketen, die die Schichtung zuließe), `KnowledgeLibraryReachWriterTest`
 (Methodenebene) und die `*DependencyStructureTest`-Klassen einzelner Pakete (Unterpakete,
 `opaa-api`-Typen).
+
+### Web-Schicht je Modul
+
+Controller, ihre Mapper zwischen Domäne und generierten DTOs und ihre Web-Hilfen liegen im
+Unterpaket `web` eines Top-Level-Pakets (`io.opaa.space.web`, `io.opaa.auth.web`). Jedes
+Top-Level-Paket hat höchstens eines; ein tieferes Paket dieses Namens, etwa der Konnektor
+`indexing.source.web`, ist keines. In `io.opaa.api` bleibt nur, was jedes Modul teilt
+(`ModularArchitecture.SHARED_API_CLASSES`): Fehlerbehandlung, Request-Logging, HTTP-Client und
+`HealthController`.
+
+- **Zuordnung:** Ein Controller liegt im `web`-Paket seiner Ressource. Braucht er ein höheres Modul,
+  liegt er im höchsten beteiligten, im Paket, dessen Dienste er dort nutzt: `AssetController` in
+  `space.web` (Raumzuordnungen eines Assets), `MeController` und `OidcProviderController` in
+  `group.web`, `AuditController` in `revision.web` (Stichtagsauskunft).
+- **Schichtung:** Ein `web`-Paket steht über allen Paketen, die sein Modul erreicht. Es unterliegt
+  deshalb nicht `LAYERS`, nur `ALLOWED_MODULE_EDGES`: `branding.web` darf `auth` nutzen, obwohl
+  `branding` darunter liegt. Umgekehrt nutzt kein Paket außerhalb der Web-Schicht und des Moduls app
+  ein `web`-Paket, und zwischen `web`-Paketen gibt es keinen Zyklus.
+- **Mapper:** Die Abbildung Entity → Response lebt in einer package-private, handgeschriebenen
+  Mapper-Klasse im Paket des Controllers (Vorbild `BrandingResponseMapper`, `SpaceResponseMapper`).
+  Braucht ein anderes `web`-Paket sie, wird sie `public`, und nur mit den Methoden, die es aufruft
+  (`SuccessionResponseMapper#toStateResponse`).
+- **Mapper-Tests:** Werden Test-Assertions von Response-Feldern auf Entity-Ableitungen umgestellt,
+  sichert ein Mapper-Unit-Test die Feldbelegung (`SpaceResponseMapperTest`,
+  `SpaceAssetAssociationResponseMapperTest`). Sonst prüft kein Test mehr, dass der Mapper jedes Feld
+  befüllt. Tests eines Controllers oder Mappers liegen in dessen Paket.
+- `ModularArchitectureTest` hält das fest: Klassen mit `@Controller` oder `@RestController` und
+  `*ResponseMapper` liegen nur in einem `web`-Paket oder in `io.opaa.api`, und `io.opaa.api` hält nur
+  die gelisteten Klassen. Bis zum Abschluss von #2034 führt `WEB_CLASSES_NOT_YET_MOVED` die Klassen,
+  die noch in `io.opaa.api` liegen.
 
 ### Anweisungen je Modul
 

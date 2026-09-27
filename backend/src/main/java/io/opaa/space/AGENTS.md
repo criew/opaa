@@ -25,6 +25,9 @@ foundation, identity, rights und knowledge ab.
   Begründung und Diagnosesperre, schreibt den Protokolleintrag im selben Aufruf und speichert nie
   ein Ergebnis. Die Befugnis leitet sich aus keiner Rolle ab
   (`DiagnosticImpersonationGrantService`); die Sperre ist standardmäßig gesetzt.
+- **Web-Schicht:** `space.web` (Räume und `AssetController` für Grants, Herleitung und
+  Raumzuordnungen jedes Asset-Typs), `revision.web` (`/api/v1/audit`), `diagnosticaccess.web`
+  (Befugnisse, Protokoll, Diagnosesperre einer Bibliothek).
 - **Das Diagnoseprotokoll steht unter derselben Eigentümertrennung wie `audit_log`:** Das
   Anwendungskonto hat nur `INSERT` und `SELECT`, gelöscht wird nur per Partitions-Drop einer
   `SECURITY DEFINER`-Funktion nach 12 Monaten.

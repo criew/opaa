@@ -5,8 +5,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 
-import io.opaa.api.MeController;
 import io.opaa.group.GroupService;
+import io.opaa.group.web.MeController;
 import io.opaa.permission.CapabilityService;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.MockMvc;

@@ -14,6 +14,7 @@ import io.opaa.prompt.PromptLibraryCreation;
 import io.opaa.prompt.PromptLibraryUpdate;
 import io.opaa.prompt.PromptLibraryView;
 import io.opaa.prompt.PromptVariable;
+import io.opaa.succession.web.SuccessionResponseMapper;
 import java.util.List;
 
 /** Maps prompt libraries and prompts between the API and the domain of {@code io.opaa.prompt}. */

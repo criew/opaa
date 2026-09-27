@@ -28,6 +28,9 @@ Gruppen samt Verzeichnis-Synchronisation (`group`); der Lebenszyklus „Nachfolg
 - **Der Nachfolgezustand wird nie gespeichert.** `succession_cases` hält nur Beginn und Ende; alles
   andere wird bei jedem Lesen bei den Quellen erfragt.
 - **Rohes SQL gegen die Grant-Tabellen** nennt das Objekt über `asset_type` und `asset_id`.
+- **Web-Schicht:** `permission.web`, `asset.web` (Katalog), `group.web` (auch `/api/v1/me` und die
+  Identitätsanbieter samt Verzeichnis-Konnektor), `succession.web`. Die Grants und Raumzuordnungen
+  eines Assets bedient `AssetController` in `space.web` (workspace).
 - **Gruppenrechte enden mit der Mitgliedschaft:** Aufgelöst wird über `GroupMembershipResolver`,
   dessen Cache nach dem Commit der schreibenden Transaktion invalidiert wird.
 

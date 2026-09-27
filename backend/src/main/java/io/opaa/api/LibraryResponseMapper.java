@@ -23,6 +23,8 @@ import io.opaa.library.LibraryUpdate;
 import io.opaa.permission.AssetReach;
 import io.opaa.permission.PermissionTransferMark;
 import io.opaa.permission.SuccessionFinding;
+import io.opaa.permission.web.PermissionTransferResponseMapper;
+import io.opaa.succession.web.SuccessionResponseMapper;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;

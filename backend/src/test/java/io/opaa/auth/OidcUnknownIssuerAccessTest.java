@@ -26,6 +26,7 @@ import io.opaa.auth.oidc.OidcJwtDecoderFactory;
 import io.opaa.auth.oidc.OidcProvider;
 import io.opaa.auth.oidc.OidcProviderRegistry;
 import io.opaa.auth.oidc.OidcProviderRepository;
+import io.opaa.auth.web.UserInfoController;
 import io.opaa.security.TargetAddressValidator;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Clock;
