@@ -49,15 +49,21 @@ Das Skript:
 2. Schreibt alle sieben Bibliotheken deterministisch neu (vorhandener Inhalt der jeweiligen
    Zielverzeichnisse wird vorher gelöscht, bis auf die unter „Formate ohne Writer" genannten
    committeten Dateien):
-   - `leistungen-meldewesen-ausweise/` (`.md`) und `leistungen-kfz-zulassung/` (`.md`/`.txt`):
-     46 bzw. 37 Dokumente, aus den LHM-Rohdateien München→Rheinfurt umgeschrieben
-     (`rheinfurt_text.py`, `leistungen.py`).
-   - `satzungen-gebuehrenordnungen/` (`.pdf`): 19 synthetische Satzungen mit
-     Gebührenverzeichnis (`satzungen.py`).
+   - `leistungen-meldewesen-ausweise/` (`.md`/`.csv`) und `leistungen-kfz-zulassung/`
+     (`.md`/`.txt`): 46 bzw. 37 Dokumente, aus den LHM-Rohdateien München→Rheinfurt umgeschrieben
+     (`rheinfurt_text.py`, `leistungen.py`); dazu in der ersten Bibliothek eine synthetische
+     Tabelle der Sprechtage des mobilen Bürgerbüros (`.csv`), deren Standorte und Wochentage den
+     Beschlüssen in `rat.py` folgen.
+   - `satzungen-gebuehrenordnungen/` (`.pdf`/`.xlsx`): 19 synthetische Satzungen mit
+     Gebührenverzeichnis (`satzungen.py`) und die Gebührenübersicht des Bürgerbüros als
+     Tabelle. Deren Beträge liest der Generator aus dem Gebührenverzeichnis der
+     Verwaltungsgebührensatzung, statt sie ein zweites Mal zu notieren; weicht die Liste der
+     Tatbestände von der Satzung ab, bricht der Lauf ab.
    - `pressemitteilungen/` (RSS + HTML): ein `rss.xml` plus 27 Detailseiten
      (`presse.py`).
-   - `interne-dienstanweisungen-meldewesen/<aktenplan>/` (`.docx`/`.pdf`/`.pptx`): 26
-     Dienstanweisungen, Eskalationsregeln, FAQ-Dokumente und Schulungsfolien (`intern.py`), abgelegt
+   - `interne-dienstanweisungen-meldewesen/<aktenplan>/` (`.docx`/`.pdf`/`.pptx`/`.eml`): 27
+     Dienstanweisungen, Eskalationsregeln, FAQ-Dokumente, Schulungsfolien und ein Rundschreiben als
+     Mail mit PDF-Anhang (`intern.py`, Mailbausteine in `mail_utils.py`), abgelegt
      in Ordnern nach Aktenplan mit bis zu zwei Ebenen (`intern.AKTENPLAN`, z. B.
      `05 Bürgerbüro/02 Eskalation und Notfälle/`). Die laufende Nummer im Dateinamen bleibt
      bibliotheksweit; ein Dokument ohne Aktenplan-Eintrag oder ein Eintrag ohne Dokument bricht
@@ -210,7 +216,7 @@ sauber extrahierbar.
 
 - **XLSX: `openpyxl`**, dieselbe Begründung wie oben. Zwei Eigenheiten waren dafür zu beheben:
   `Workbook.save` überschreibt `properties.modified` unmittelbar vor dem Schreiben mit der
-  aktuellen Uhrzeit (deshalb schreibt `formate.py` über `ExcelWriter`), und `openpyxl` legt
+  aktuellen Uhrzeit (deshalb schreibt `zip_utils.save_workbook` über `ExcelWriter`), und `openpyxl` legt
   `[Content_Types].xml` als **letzten** Zip-Eintrag ab, wo eine strömende Formaterkennung ihn erst
   nach allen anderen erreicht (deshalb sortiert `zip_utils.normalize_zip_timestamps` ihn auf Wunsch
   nach vorn).
@@ -237,6 +243,7 @@ demo/generator/
 ├── make_doc_fixture.py        Einmal-Schritt für die Word-97-Datei (LibreOffice), siehe „Formate ohne Writer"
 ├── odf_utils.py               Baut deterministische ODT/ODS/ODP-Pakete ohne Writer-Bibliothek
 ├── zip_utils.py               Entfernt nicht-reproduzierbare Zip-Zeitstempel aus DOCX/PPTX/XLSX
+├── mail_utils.py              Kopfzeilen und Base64-Anhänge der erzeugten Mails (.eml)
 ├── validation.py               Abschluss-Assert gegen reale Münchner Identifikatoren
 ├── requirements.txt             Gepinnte Versionen von reportlab/python-docx/python-pptx/openpyxl
 └── raw-source/                 Gecachte LHM-Rohdaten, gitignored

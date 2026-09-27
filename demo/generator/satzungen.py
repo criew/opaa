@@ -15,8 +15,11 @@ container-friendly dependency.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime
 from io import BytesIO
 
+import openpyxl
+from openpyxl.styles import Font
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
@@ -24,6 +27,7 @@ from reportlab.lib.units import cm
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from rheinfurt_text import scale_and_format_fee
+from zip_utils import save_workbook
 
 STYLES = getSampleStyleSheet()
 TITLE_STYLE = ParagraphStyle(
@@ -492,6 +496,120 @@ SATZUNGEN: list[Satzung] = [
         ],
     ),
 ]
+
+
+# --- Gebührenübersicht Bürgerbüro (.xlsx) -------------------------------------
+#
+# The cashier's sheet of the Bürgerbüro: every row of the VGS Gebührenverzeichnis, with the amount
+# read from the Satzung above rather than typed again, plus the columns only this sheet carries
+# (Tarifstelle, Sachgebiet, Buchungsschlüssel der Kasse).
+
+GEBUEHRENUEBERSICHT_FILE_NAME = "20_gebuehrenuebersicht-buergerbuero.xlsx"
+GEBUEHRENUEBERSICHT_TITEL = "Gebührenübersicht Bürgerbüro Rheinfurt 2026"
+_GEBUEHRENUEBERSICHT_AUTOR = "Stadt Rheinfurt, Bürgerbüro – Kasse (synthetisch)"
+_GEBUEHRENUEBERSICHT_STAND = datetime(2026, 1, 5, 8, 0, 0)
+_GEBUEHRENUEBERSICHT_NOTICE = (
+    "Diese Übersicht ist Teil des synthetischen Demo-Korpus der fiktiven Stadt Rheinfurt (siehe "
+    "SOURCE.md im Wurzelverzeichnis dieses Korpus). Tarifstellen, Buchungsschlüssel und Beträge "
+    "sind frei erfunden."
+)
+
+# VGS Gebührentatbestand -> (Tarifstelle, Sachgebiet, Buchungsschlüssel der Kasse)
+_KASSENZUORDNUNG: dict[str, tuple[str, str, str]] = {
+    "Personalausweis (Antragstellende unter 24 Jahren)": ("1.1", "Meldewesen & Ausweise", "BB-3211"),
+    "Personalausweis (Antragstellende ab 24 Jahren)": ("1.2", "Meldewesen & Ausweise", "BB-3212"),
+    "Vorläufiger Personalausweis": ("1.3", "Meldewesen & Ausweise", "BB-3213"),
+    "Reisepass (regulär, 32 Seiten)": ("1.4", "Meldewesen & Ausweise", "BB-3221"),
+    "Führungszeugnis": ("2.1", "Meldewesen & Ausweise", "BB-3241"),
+    "Beglaubigung je Unterschrift": ("2.2", "Meldewesen & Ausweise", "BB-3251"),
+    "Melderegisterauskunft, einfach": ("3.1", "Meldewesen & Ausweise", "BB-3231"),
+    "Anmeldung/Ummeldung des Wohnsitzes": ("3.2", "Meldewesen & Ausweise", "keine Buchung"),
+    "Reservierung Wunschkennzeichen": ("4.1", "Kfz-Zulassung", "BB-3311"),
+}
+
+_GEBUEHRENUEBERSICHT_HINWEISE: list[list[str]] = [
+    ["Hinweis", "Inhalt"],
+    [
+        "Rechtsgrundlage",
+        "Verwaltungsgebührensatzung der Stadt Rheinfurt (VGS), AZ 20.1-2026-0001, "
+        "Gebührenverzeichnis als Anlage zu § 2. Maßgeblich ist allein die Satzung.",
+    ],
+    ["Gültig ab", "1. Januar 2026"],
+    [
+        "Tarifstelle",
+        "Ordnungsnummer dieser Übersicht für Aushang und Kassenbeleg; sie ist nicht Teil der "
+        "Satzung.",
+    ],
+    [
+        "Buchungsschlüssel",
+        "Wird bei jeder Gebührenerfassung in der Kasse des Bürgerbüros angegeben. Gebührenfreie "
+        "Amtshandlungen werden nicht gebucht.",
+    ],
+    [
+        "Ermäßigung und Befreiung",
+        "Auf schriftlichen Antrag nach § 3 VGS; die Kasse bucht in diesem Fall erst nach der "
+        "Entscheidung der Sachgebietsleitung.",
+    ],
+    ["Stand der Übersicht", "5. Januar 2026, Kasse des Bürgerbüros Rheinfurt"],
+]
+
+
+def gebuehrenuebersicht_rows() -> list[list[str]]:
+    """Header plus one row per VGS Gebührenverzeichnis entry, amounts taken from the Satzung.
+
+    Raises ValueError when the Kassenzuordnung and the Gebührenverzeichnis disagree, so a changed
+    Satzung can never leave the sheet showing an outdated or missing Tatbestand."""
+    vgs = next(s for s in SATZUNGEN if s.slug == "verwaltungsgebuehrensatzung")
+    tatbestaende = [zeile.tatbestand for zeile in vgs.gebuehren]
+    if sorted(tatbestaende) != sorted(_KASSENZUORDNUNG):
+        raise ValueError(
+            "Kassenzuordnung der Gebührenübersicht passt nicht zum Gebührenverzeichnis der VGS: "
+            f"{sorted(set(tatbestaende) ^ set(_KASSENZUORDNUNG))}"
+        )
+    rows = [["Tarifstelle", "Gebührentatbestand", "Gebühr", "Sachgebiet", "Buchungsschlüssel"]]
+    for zeile in vgs.gebuehren:
+        tarifstelle, sachgebiet, schluessel = _KASSENZUORDNUNG[zeile.tatbestand]
+        rows.append([tarifstelle, zeile.tatbestand, zeile.betrag, sachgebiet, schluessel])
+    return rows
+
+
+def gebuehrenuebersicht_text() -> str:
+    """The sheet's text as the validation pass reads it."""
+    return "\n".join(
+        [GEBUEHRENUEBERSICHT_TITEL]
+        + [" ".join(row) for row in gebuehrenuebersicht_rows()]
+        + [" ".join(row) for row in _GEBUEHRENUEBERSICHT_HINWEISE]
+        + [_GEBUEHRENUEBERSICHT_NOTICE]
+    )
+
+
+def render_gebuehrenuebersicht_xlsx() -> bytes:
+    workbook = openpyxl.Workbook()
+    sheet = workbook.active
+    sheet.title = "Gebühren 2026"
+    for row in gebuehrenuebersicht_rows():
+        sheet.append(row)
+    for cell in sheet[1]:
+        cell.font = Font(bold=True)
+    for column, width in zip("ABCDE", (12, 52, 14, 24, 20)):
+        sheet.column_dimensions[column].width = width
+
+    hinweise = workbook.create_sheet("Hinweise")
+    for row in _GEBUEHRENUEBERSICHT_HINWEISE:
+        hinweise.append(row)
+    hinweise.append([])
+    hinweise.append([_GEBUEHRENUEBERSICHT_NOTICE])
+    for cell in hinweise[1]:
+        cell.font = Font(bold=True)
+    hinweise.column_dimensions["A"].width = 26
+    hinweise.column_dimensions["B"].width = 90
+
+    workbook.properties.title = GEBUEHRENUEBERSICHT_TITEL
+    workbook.properties.creator = _GEBUEHRENUEBERSICHT_AUTOR
+    workbook.properties.lastModifiedBy = _GEBUEHRENUEBERSICHT_AUTOR
+    workbook.properties.created = _GEBUEHRENUEBERSICHT_STAND
+    workbook.properties.modified = _GEBUEHRENUEBERSICHT_STAND
+    return save_workbook(workbook)
 
 
 def render_satzung_pdf(satzung: Satzung) -> bytes:

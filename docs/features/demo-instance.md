@@ -38,7 +38,8 @@ lesen dürfen.
 2. **Szenario:** das **Bürgerbüro Rheinfurt** mit mehreren Teams (Sachgebieten) — keine konstruierte
    amtsübergreifende Leitungsrolle, sondern die realistische Binnenstruktur eines Amtes mit Amtsleitung.
 3. **Alle Konnektortypen und mehrere Dateiformate:** HTTP-Verzeichnis (Markdown, Klartext und PDF),
-   RSS-Feed (selbst gehostete, statische XML) und manueller Upload (DOCX, PDF, PPTX).
+   RSS-Feed (selbst gehostete, statische XML) und manueller Upload (DOCX, PDF, PPTX, E-Mail mit
+   PDF-Anhang).
 4. **Ein Befehl installiert alles:** Compose-Profil `demo` plus Seed-Skript richten Nutzer, Spaces,
    Bibliotheken, Berechtigungen und Indizierung ein. Angemeldet wird sich über Keycloak, wie in einer
    echten Installation — daneben besteht, wie in jeder Installation, das lokale Konto der
@@ -82,11 +83,11 @@ Vorrat vollständig ab (#1519/#1520):
 
 | Wissensbibliothek | Inhalt | Formate | Quellentyp |
 |---|---|---|---|
-| Leistungen Meldewesen & Ausweise | Leistungsbeschreibungen (Ummeldung, Personalausweis, Reisepass, Führungszeugnis, Beglaubigungen, …) | `.md` | `HTTP_DIRECTORY` |
+| Leistungen Meldewesen & Ausweise | Leistungsbeschreibungen (Ummeldung, Personalausweis, Reisepass, Führungszeugnis, Beglaubigungen, …), Sprechtage des mobilen Bürgerbüros als Tabelle | `.md`, `.csv` | `HTTP_DIRECTORY` |
 | Leistungen Kfz-Zulassung | Leistungsbeschreibungen (Zulassung, Umschreibung, Wunschkennzeichen, Führerschein) | `.md`, `.txt` | `HTTP_DIRECTORY` |
-| Satzungen & Gebührenordnungen | Verwaltungsgebührensatzung, Satzungsauszüge mit Gebührentabellen | `.pdf` | `HTTP_DIRECTORY` |
+| Satzungen & Gebührenordnungen | Verwaltungsgebührensatzung, Satzungsauszüge mit Gebührentabellen, Gebührenübersicht des Bürgerbüros als Tabelle | `.pdf`, `.xlsx` | `HTTP_DIRECTORY` |
 | Pressemitteilungen Stadt Rheinfurt | ~20–30 Meldungen (Sperrungen, geänderte Öffnungszeiten, Stadtfest, Jubiläen) | RSS-XML, je Eintrag eine HTML-Detailseite auf demselben Host | `RSS_FEED` (statisch, selbst gehostet) |
-| Interne Dienstanweisungen Meldewesen | Dienstanweisungen, Eskalationsregeln, interne FAQ, Schulungsfolien, abgelegt in Ordnern nach Aktenplan (Melderecht, Pass- und Ausweiswesen, Datenschutz, Gebühren, Bürgerbüro, Aus- und Fortbildung; teils mit zweiter Ebene) | `.docx`, `.pdf`, `.pptx` | `UPLOAD` (manueller Upload, im Seed automatisiert, Ordner über `folderPath`) |
+| Interne Dienstanweisungen Meldewesen | Dienstanweisungen, Eskalationsregeln, interne FAQ, Schulungsfolien, ein Rundschreiben der Amtsleitung als Mail mit Einsatzplan als PDF-Anhang, abgelegt in Ordnern nach Aktenplan (Melderecht, Pass- und Ausweiswesen, Datenschutz, Gebühren, Bürgerbüro, Aus- und Fortbildung; teils mit zweiter Ebene) | `.docx`, `.pdf`, `.pptx`, `.eml` | `UPLOAD` (manueller Upload, im Seed automatisiert, Ordner über `folderPath`) |
 | Ratsinformationen Stadt Rheinfurt | Niederschriften und Beschlussvorlagen des Stadtrats, des Hauptausschusses und des Bauausschusses 2024–2026, Schlüsselpräfixe Jahrgang › Gremium (`2026/Stadtrat/…`); zwei Vorlagen mit Anlagen als Versandmail des Ratsinformationssystems | `.md`, `.txt`, `.eml` mit PDF-Anhängen | `S3` (Objektspeicher des Demo-Stacks, Bucket `rheinfurt-archiv`, Präfix `ratsinformationen/`; #1383, [ADR-0027](../decisions/0027-s3-konnektor.md)) |
 | Formattest auf S3 | Je ein Dokument pro zugelassener Endung, inhaltlich rund um Dokumentenformate, Posteingang und Langzeitarchivierung; jedes erzeugte Dokument nennt sein eigenes Format | alle oben genannten | `S3` (Objektspeicher des Demo-Stacks, Bucket `formattest`, ohne Präfix; #1519/#1520) |
 

@@ -5,11 +5,11 @@ Builds all seven demo libraries described in
 docs/features/demo-instance.md ("Behördenlandschaft, Bibliotheken und
 Formate") under demo/corpus/:
 
-- leistungen-meldewesen-ausweise/  (.md)          — rewritten LHM source
+- leistungen-meldewesen-ausweise/  (.md, one .csv) — rewritten LHM source, one synthetic table
 - leistungen-kfz-zulassung/        (.md, .txt)     — rewritten LHM source
-- satzungen-gebuehrenordnungen/    (.pdf)          — synthetic, hand-authored
+- satzungen-gebuehrenordnungen/    (.pdf, one .xlsx) — synthetic, hand-authored
 - pressemitteilungen/              (RSS + .html)   — synthetic, hand-authored
-- interne-dienstanweisungen-meldewesen/<aktenplan>/ (.docx/.pdf/.pptx) — synthetic, Aktenplan folders
+- interne-dienstanweisungen-meldewesen/<aktenplan>/ (.docx/.pdf/.pptx/.eml) — synthetic, Aktenplan folders
 - ratsinformationen/<jahr>/<gremium>/ (.md, .txt, .eml + PDF-Anlagen) — synthetic
 - formate/                        (one file per admitted extension) — synthetic
 
@@ -143,11 +143,11 @@ LIBRARY_LABELS = {
     "formate": "Formattest auf S3",
 }
 LIBRARY_FORMATS = {
-    "leistungen-meldewesen-ausweise": "`.md`",
+    "leistungen-meldewesen-ausweise": "`.md`, `.csv`",
     "leistungen-kfz-zulassung": "`.md`, `.txt`",
-    "satzungen-gebuehrenordnungen": "`.pdf`",
+    "satzungen-gebuehrenordnungen": "`.pdf`, `.xlsx`",
     "pressemitteilungen": "RSS-XML, HTML",
-    "interne-dienstanweisungen-meldewesen": "`.docx`, `.pdf`, `.pptx` (Ordner nach Aktenplan)",
+    "interne-dienstanweisungen-meldewesen": "`.docx`, `.pdf`, `.pptx`, `.eml` mit PDF-Anhang (Ordner nach Aktenplan)",
     "ratsinformationen": "`.md`, `.txt`, `.eml` mit PDF-Anlagen (Präfixe Jahrgang/Gremium)",
     "formate": "je ein Dokument pro unterstützter Endung",
 }
@@ -194,6 +194,13 @@ def build_satzungen() -> list[tuple[str, str, bytes]]:
         filename = f"{index:02d}_{satzung.slug}.pdf"
         content = satzungen.render_satzung_pdf(satzung)
         written.append((f"satzungen-gebuehrenordnungen/{filename}", satzung.slug, content))
+    written.append(
+        (
+            f"satzungen-gebuehrenordnungen/{satzungen.GEBUEHRENUEBERSICHT_FILE_NAME}",
+            satzungen.GEBUEHRENUEBERSICHT_FILE_NAME,
+            satzungen.render_gebuehrenuebersicht_xlsx(),
+        )
+    )
     return written
 
 
@@ -222,6 +229,7 @@ def build_intern() -> list[tuple[str, str, bytes]]:
         + [(esk.slug, "docx", render_docx, esk) for esk in intern.ESKALATIONSREGELN]
         + [(faq.slug, "pdf", intern.render_faq_pdf, faq) for faq in intern.FAQS]
         + [(s.slug, "pptx", intern.render_schulung_pptx, s) for s in intern.SCHULUNGEN]
+        + [(r.slug, "eml", intern.render_rundschreiben_eml, r) for r in intern.RUNDSCHREIBEN]
     )
     written = []
     for index, (slug, extension, render, document) in enumerate(documents, start=1):
@@ -340,6 +348,12 @@ def collect_validation_texts(
         texts.append((relative_path, content.decode("utf-8")))
     for satzung in satzungen.SATZUNGEN:
         texts.append((f"satzungen-gebuehrenordnungen/{satzung.slug} (Quelltext)", _satzung_text(satzung)))
+    texts.append(
+        (
+            f"satzungen-gebuehrenordnungen/{satzungen.GEBUEHRENUEBERSICHT_FILE_NAME} (Quelltext)",
+            satzungen.gebuehrenuebersicht_text(),
+        )
+    )
     for meldung in presse.PRESSEMITTEILUNGEN:
         texts.append((f"pressemitteilungen/{meldung.slug} (Quelltext)", _pressemitteilung_text(meldung)))
     for da in intern.DIENSTANWEISUNGEN + intern.ESKALATIONSREGELN:
@@ -351,6 +365,13 @@ def collect_validation_texts(
     for schulung in intern.SCHULUNGEN:
         texts.append(
             (f"interne-dienstanweisungen-meldewesen/{schulung.slug} (Quelltext)", _schulung_text(schulung))
+        )
+    for rundschreiben in intern.RUNDSCHREIBEN:
+        texts.append(
+            (
+                f"interne-dienstanweisungen-meldewesen/{rundschreiben.slug} (Quelltext)",
+                intern.rundschreiben_text(rundschreiben),
+            )
         )
     for n in rat.NIEDERSCHRIFTEN:
         texts.append((f"ratsinformationen/{n.slug} (Quelltext)", rat.niederschrift_text(n)))
