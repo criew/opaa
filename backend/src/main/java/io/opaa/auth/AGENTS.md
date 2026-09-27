@@ -28,8 +28,8 @@ Mailversand und die In-App-Benachrichtigungen. identity hängt nur von foundatio
 - **Branding** ändert nur `BrandingSettingsService`; SVG wird abgelehnt, nicht bereinigt
   (`BrandingImageValidator`).
 - **Web-Schicht:** `auth.web`, `audit.web`, `branding.web`, `mail.web`, `notification.web`.
-  `audit.web.AuditedAdminCall` protokolliert jeden zustandsändernden Verwaltungsaufruf, auch anderer
-  Module. Der Revisionszugriff (`AuditController`) liegt in `revision.web` (workspace), weil er die
+  `audit.web.AuditedAdminCall` protokolliert die zustandsändernden Aufrufe von
+  `IndexingAdminController` und `UploadStoreAdminController`. Der Revisionszugriff (`AuditController`) liegt in `revision.web` (workspace), weil er die
   Stichtagsauskunft braucht; `/api/v1/me` liegt in `group.web` (rights).
 - **Lokale Anmeldung testet nur die Familie `oidc`** der Testkontexte (`@OpaaLocalAuth*`, siehe
   `backend/AGENTS.md`, „Spring-Testkontexte"); unter `local,dev` ist keine lokale Sitzung fahrbar.

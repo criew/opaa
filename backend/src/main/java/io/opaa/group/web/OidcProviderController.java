@@ -1,6 +1,5 @@
 package io.opaa.group.web;
 
-import io.opaa.api.LlmModelController;
 import io.opaa.api.dto.DirectoryConnectorRequest;
 import io.opaa.api.dto.DirectoryConnectorResponse;
 import io.opaa.api.dto.DirectoryConnectorTestRequest;
@@ -39,7 +38,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * Admin API for the identity providers (#1329, ADR-0025), {@code SYSTEM_ADMIN} only - the same
- * access bar and {@code @Caller} pattern as {@link LlmModelController}. A provider is a public
+ * access bar and {@code @Caller} pattern as {@code LlmModelController}. A provider is a public
  * client: no response carries a secret because none exists. Every response carries the registry's
  * view of the provider ({@link OidcProviderRegistry#healthOf}), so the Anbieterverwaltung can show
  * a provider whose decoder could not be built. Disabling or deleting the last enabled OIDC provider

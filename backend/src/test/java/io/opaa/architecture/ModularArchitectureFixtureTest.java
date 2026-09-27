@@ -166,6 +166,20 @@ class ModularArchitectureFixtureTest {
         .isEmpty();
   }
 
+  /**
+   * The exemption of a web package from the layering ends at its module: {@code permission.web ->
+   * space} leaves RIGHTS for WORKSPACE, which the module rule reports.
+   */
+  @Test
+  void aWebPackageThatLeavesItsModuleBreaksTheModules() {
+    Scenario scenario = new Scenario("webacrossmodules");
+
+    assertThat(scenario.violations(ModularArchitecture::modulesDependOnlyOnAllowedModules))
+        .singleElement(STRING)
+        .contains("module RIGHTS -> WORKSPACE is no allowed edge", "web.GrantController");
+    assertThat(scenario.violations(ModularArchitecture::noPackageDependsOnAHigherLayer)).isEmpty();
+  }
+
   /** Web packages are exempt from the layering, so a cycle between two of them is its own slice. */
   @Test
   void aCycleBetweenWebPackagesIsReported() {

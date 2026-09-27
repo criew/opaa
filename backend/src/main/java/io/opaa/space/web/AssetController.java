@@ -13,7 +13,6 @@ import io.opaa.asset.AssetTypes;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import io.opaa.permission.AssetType;
-import io.opaa.permission.web.GroupMemberDisclosureResponseMapper;
 import io.opaa.space.SpaceAssetAssociationService;
 import jakarta.validation.Valid;
 import java.util.List;
