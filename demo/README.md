@@ -431,16 +431,16 @@ nicht, und sie könnte die Prompts ohne eigenes Recht auch nicht lesen.
 
 | Slash-Befehl | Bibliothek | Variablen |
 |---|---|---|
-| `/antwort-buergeranfrage` | Textbausteine Bürgerbüro | Anliegen (mehrzeilig, vorbelegt), Frist (Datum), Tonfall (Auswahl) |
+| `/antwort-buergeranfrage` | Textbausteine Bürgerbüro | Anliegen (mehrzeilig, vorbelegt), Frist (Auswahl), Tonfall (Auswahl) |
 | `/gebuehrenauskunft-personalausweis` | Textbausteine Bürgerbüro | Altersgruppe (Auswahl), Anlass (Auswahl) |
 | `/aktenvermerk` | Textbausteine Bürgerbüro | Aktenzeichen, Sachgebiet (Auswahl), Sachverhalt (mehrzeilig) |
 | `/pressemitteilung-ratsbeschluss` | Textbausteine Bürgerbüro | Thema, Gremium (Auswahl), Sitzungsdatum (Datum, vorbelegt 21.04.2026) |
 | `/wochenbericht-dezernentin` | Vorlagen Amtsleitung | Kalenderwoche, Schwerpunkt (mehrzeilig, optional) |
-| `/stellungnahme-hauptausschuss` | Vorlagen Amtsleitung | Vorlage (vorbelegt: Stellenplan 2025), Sitzungstermin (Datum), Grundhaltung (Auswahl) |
+| `/stellungnahme-hauptausschuss` | Vorlagen Amtsleitung | Vorlage (vorbelegt: Bürgerkoffer, Vorlage 2024/019), Sitzungstermin (Datum, vorbelegt 14.05.2024), Grundhaltung (Auswahl) |
 
 Mehrere Prompts nutzen zusätzlich die Systemvariablen `{{CURRENT_DATE}}` und `{{USER_NAME}}`. Die
 Vorbelegungen zielen auf Inhalte des Korpus — etwa die Niederschrift des Hauptausschusses vom
-21.04.2026 zum mobilen Bürgerbüro oder die Beschlussvorlage zum Stellenplan —, sodass ein Prompt
+21.04.2026 zum mobilen Bürgerbüro oder die Hauptausschuss-Vorlage 2024/019 zum Bürgerkoffer —, sodass ein Prompt
 ohne weiteres Tippen eine belegte Antwort liefert. Vorführen: als Maria im Space „Meldewesen &
 Ausweise" `/` tippen, `/gebuehrenauskunft-personalausweis` wählen, Formular bestätigen und senden.
 Als Thomas erscheint dieselbe Auswahl, die „Vorlagen Amtsleitung" aber weder dort noch im Katalog.

@@ -224,7 +224,7 @@ _DEMO_PROMPT_LIBRARIES = (
                     "Bürgeranfrage:\n\n{{anliegen}}\n\nStütze dich auf die Leistungsbeschreibungen, "
                     "Satzungen und Pressemitteilungen der Stadt Rheinfurt. Nenne die benötigten "
                     "Unterlagen, die anfallenden Gebühren und den Weg zu einem Termin im "
-                    "Bürgerbüro. Weise darauf hin, dass fehlende Unterlagen bis zum {{frist}} "
+                    "Bürgerbüro. Weise darauf hin, dass fehlende Unterlagen {{frist}} "
                     "nachgereicht werden können. Schreibe {{tonfall}} und schließe mit „Mit "
                     "freundlichen Grüßen, {{USER_NAME}}, Bürgerbüro Rheinfurt“."
                 ),
@@ -238,7 +238,17 @@ _DEMO_PROMPT_LIBRARIES = (
                             "die Ummeldung mitbringen, und kostet das etwas?"
                         ),
                     ),
-                    PromptVariableDef(name="frist", label="Frist für Unterlagen", type="DATE"),
+                    PromptVariableDef(
+                        name="frist",
+                        label="Frist für fehlende Unterlagen",
+                        type="SELECT",
+                        default_value="innerhalb von zwei Wochen",
+                        options=(
+                            "innerhalb von zwei Wochen",
+                            "innerhalb von vier Wochen",
+                            "bis zum Termin im Bürgerbüro",
+                        ),
+                    ),
                     PromptVariableDef(
                         name="tonfall",
                         label="Tonfall",
@@ -411,10 +421,16 @@ _DEMO_PROMPT_LIBRARIES = (
                         name="vorlage",
                         label="Vorlage",
                         type="TEXT",
-                        default_value="Stellenplan 2025: Zwei zusätzliche Stellen im Bürgerbüro",
+                        default_value=(
+                            "Beschlussvorlage 2024/019: Anschaffung eines Bürgerkoffers für die "
+                            "mobile Beratung in Pflegeeinrichtungen"
+                        ),
                     ),
                     PromptVariableDef(
-                        name="sitzungstermin", label="Sitzungstermin", type="DATE"
+                        name="sitzungstermin",
+                        label="Sitzungstermin",
+                        type="DATE",
+                        default_value="2024-05-14",
                     ),
                     PromptVariableDef(
                         name="haltung",
