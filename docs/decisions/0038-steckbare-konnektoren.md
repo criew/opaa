@@ -137,7 +137,7 @@ Frontend und E2E bleiben dabei unverändert. Danach folgt der API-Bruch mit frei
 - Ein neuer Konnektor bringt sein Paket, seinen Einstellungs-Record und seine Formularkomponente
   mit. Spezifikation, Schema und Verwaltung bleiben unverändert.
 - Verwaltung, Bestand und API kennen keinen Konnektor beim Namen; die Grenze sichert
-  `IndexingConnectorBoundaryTest`.
+  `IndexingConnectorBoundaryTest` (seit #2000 `ModularArchitectureTest`).
 - Geheimnisse haben weiterhin genau einen Verschlüsselungs- und Verwaltungsweg.
 
 ### Schwieriger
