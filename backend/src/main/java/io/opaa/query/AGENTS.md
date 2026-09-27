@@ -29,7 +29,9 @@ external und app ab.
 - **Keine Auswertung der Prompt-Nutzung:** `chat_messages.used_prompt_id` nennt außer dem
   Entity-Mapping keine Abfrage.
 - **`prompt` baut auf der Asset-Schale auf** und fragt `io.opaa.permission` nur nach Rollen. Es
-  kennt `io.opaa.library` nicht, und kein Fachpaket kennt es.
+  kennt `io.opaa.library` nicht, und kein Fachpaket kennt es. Das gilt auch für `prompt.web`: Die
+  Prompts eines Space holt `PromptService` über den Port `SpaceAssetDirectory`.
+- **Web-Schicht:** `prompt.web`, `chat.web`, `query.web`, `search.web`, `searchadmin.web`.
 - **Zyklen zwischen den Unterpaketen von `query`** sind in
   `ModularArchitecture.KNOWN_SUBPACKAGE_CYCLE_EDGES` eingefroren; neue Kanten auf einem Zyklus
   brechen den Test.

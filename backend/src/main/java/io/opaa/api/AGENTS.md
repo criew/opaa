@@ -6,10 +6,9 @@ Pakete (`io.opaa.*`): api, config. Dazu `OpaaApplication` im Wurzelpaket. Ergän
 ## Zweck und Grenze
 
 Die oberste Schicht: die Endpunkte und Web-Hilfen, die jedes Modul teilt (Fehlerbehandlung,
-Request-Logging, HTTP-Client, `HealthController`), und die Startwächter der Konfiguration. app darf
-jedes Modul nutzen außer connectors. Die Controller und Mapper der Fachmodule liegen in deren
-`web`-Paketen (`backend/AGENTS.md`, „Web-Schicht je Modul“); was davon noch in `io.opaa.api` liegt,
-nennt `ModularArchitecture.WEB_CLASSES_NOT_YET_MOVED`.
+Request-Logging, HTTP-Client, `HealthController`), und die Startwächter der Konfiguration. app nutzt
+foundation, identity, rights, knowledge und library, nie connectors. Die Controller und Mapper der
+Fachmodule liegen in deren `web`-Paketen (`backend/AGENTS.md`, „Web-Schicht je Modul“).
 
 ## Invarianten und Stolpersteine
 

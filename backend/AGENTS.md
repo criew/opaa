@@ -54,7 +54,7 @@ Erlaubte Kanten zwischen Modulen (`ALLOWED_MODULE_EDGES`), alle nach unten:
 - workspace, library → foundation, identity, rights, knowledge
 - assistant → foundation, identity, rights, knowledge, workspace, library
 - external → foundation, identity, rights, knowledge, library, assistant
-- app → alle außer connectors
+- app → foundation, identity, rights, knowledge, library
 
 Der Test prüft außerdem:
 
@@ -117,8 +117,7 @@ Top-Level-Paket hat höchstens eines; ein tieferes Paket dieses Namens, etwa der
   befüllt. Tests eines Controllers oder Mappers liegen in dessen Paket.
 - `ModularArchitectureTest` hält das fest: Klassen mit `@Controller` oder `@RestController` und
   `*ResponseMapper` liegen nur in einem `web`-Paket oder in `io.opaa.api`, und `io.opaa.api` hält nur
-  die gelisteten Klassen. Bis zum Abschluss von #2034 führt `WEB_CLASSES_NOT_YET_MOVED` die Klassen,
-  die noch in `io.opaa.api` liegen.
+  die Klassen aus `SHARED_API_CLASSES`.
 
 ### Anweisungen je Modul
 

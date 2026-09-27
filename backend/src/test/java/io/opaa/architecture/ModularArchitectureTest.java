@@ -6,7 +6,6 @@ import static io.opaa.architecture.ModularArchitecture.KNOWN_SUBPACKAGE_CYCLE_ED
 import static io.opaa.architecture.ModularArchitecture.LAYERS;
 import static io.opaa.architecture.ModularArchitecture.MODULES;
 import static io.opaa.architecture.ModularArchitecture.SHARED_API_CLASSES;
-import static io.opaa.architecture.ModularArchitecture.WEB_CLASSES_NOT_YET_MOVED;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tngtech.archunit.core.domain.Dependency;
@@ -19,7 +18,6 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -30,11 +28,7 @@ import org.junit.jupiter.api.Test;
 class ModularArchitectureTest {
 
   private static final ModularArchitecture ARCHITECTURE =
-      new ModularArchitecture(
-          "io.opaa",
-          KNOWN_SUBPACKAGE_CYCLE_EDGES,
-          Stream.concat(SHARED_API_CLASSES.stream(), WEB_CLASSES_NOT_YET_MOVED.stream())
-              .collect(Collectors.toSet()));
+      new ModularArchitecture("io.opaa", KNOWN_SUBPACKAGE_CYCLE_EDGES);
 
   private static JavaClasses mainClasses;
 
@@ -93,19 +87,17 @@ class ModularArchitectureTest {
     ARCHITECTURE.onlyTheWebLayerAndAppDependOnAWebPackage().check(mainClasses);
   }
 
-  /** A class that has moved leaves the list, so it cannot move back unnoticed. */
+  /** A shared class that is gone leaves the list, so the list names what {@code api} holds. */
   @Test
-  void everyWebClassNotYetMovedIsStillInApi() {
+  void everySharedApiClassIsInApi() {
     Set<String> inApi =
         mainClasses.stream()
             .filter(javaClass -> javaClass.getPackageName().equals("io.opaa." + API))
             .map(JavaClass::getSimpleName)
             .collect(Collectors.toSet());
     assertThat(inApi)
-        .as("remove a class that has moved from WEB_CLASSES_NOT_YET_MOVED")
-        .containsAll(WEB_CLASSES_NOT_YET_MOVED)
+        .as("remove a class that is gone from SHARED_API_CLASSES")
         .containsAll(SHARED_API_CLASSES);
-    assertThat(WEB_CLASSES_NOT_YET_MOVED).doesNotContainAnyElementsOf(SHARED_API_CLASSES);
   }
 
   @Test

@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
-import io.opaa.api.AvailablePromptController;
 import io.opaa.api.dto.AvailablePrompt;
 import io.opaa.api.types.AssetGrantSubjectType;
 import io.opaa.api.types.AssetRole;
@@ -27,6 +26,7 @@ import io.opaa.common.NotFoundException;
 import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
+import io.opaa.prompt.web.AvailablePromptController;
 import io.opaa.query.QueryService;
 import io.opaa.space.Space;
 import io.opaa.space.SpaceAssetAssociationService;

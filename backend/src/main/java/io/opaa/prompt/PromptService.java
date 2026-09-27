@@ -13,6 +13,7 @@ import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.permission.AssetAccessService;
+import io.opaa.permission.SpaceAssetDirectory;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -59,6 +60,7 @@ public class PromptService {
   private final AssetAuthorization authorization;
   private final AssetAccessService accessService;
   private final AuditEventRecorder auditEventRecorder;
+  private final SpaceAssetDirectory spaceAssets;
 
   PromptService(
       PromptLibraryService libraryService,
@@ -66,13 +68,15 @@ public class PromptService {
       PromptLibraryRepository libraryRepository,
       AssetAuthorization authorization,
       AssetAccessService accessService,
-      AuditEventRecorder auditEventRecorder) {
+      AuditEventRecorder auditEventRecorder,
+      SpaceAssetDirectory spaceAssets) {
     this.libraryService = libraryService;
     this.promptRepository = promptRepository;
     this.libraryRepository = libraryRepository;
     this.authorization = authorization;
     this.accessService = accessService;
     this.auditEventRecorder = auditEventRecorder;
+    this.spaceAssets = spaceAssets;
   }
 
   /**
@@ -100,6 +104,19 @@ public class PromptService {
    * marked as such; then by library name, within a library by sort order and name. {@code
    * spaceLibraryIds} only orders: a library in it the caller cannot read is not offered.
    */
+  /**
+   * {@link #available(CurrentUser, Set)} ordered by the prompt libraries of the space {@code
+   * spaceId}, or unordered without one. Only a member of the space may order by it: an unknown or
+   * foreign space is a {@code 404}, a caller who is no member a {@code 403}.
+   */
+  public List<AvailablePrompt> available(CurrentUser caller, UUID spaceId) {
+    Set<UUID> spaceLibraryIds =
+        spaceId == null
+            ? Set.of()
+            : spaceAssets.assetIdsInSpace(spaceId, PromptLibrary.ASSET_TYPE, caller);
+    return available(caller, spaceLibraryIds);
+  }
+
   public List<AvailablePrompt> available(CurrentUser caller, Set<UUID> spaceLibraryIds) {
     Set<UUID> readable =
         accessService.readableAssetIds(

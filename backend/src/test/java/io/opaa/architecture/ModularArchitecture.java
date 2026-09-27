@@ -156,16 +156,7 @@ public final class ModularArchitecture {
           LIBRARY, EnumSet.of(FOUNDATION, IDENTITY, RIGHTS, KNOWLEDGE),
           ASSISTANT, EnumSet.of(FOUNDATION, IDENTITY, RIGHTS, KNOWLEDGE, WORKSPACE, LIBRARY),
           EXTERNAL, EnumSet.of(FOUNDATION, IDENTITY, RIGHTS, KNOWLEDGE, LIBRARY, ASSISTANT),
-          APP,
-              EnumSet.of(
-                  FOUNDATION,
-                  IDENTITY,
-                  RIGHTS,
-                  KNOWLEDGE,
-                  WORKSPACE,
-                  LIBRARY,
-                  ASSISTANT,
-                  EXTERNAL));
+          APP, EnumSet.of(FOUNDATION, IDENTITY, RIGHTS, KNOWLEDGE, LIBRARY));
 
   /**
    * The package edges, relative to the root, that lie on a cycle between the subpackages of one
@@ -302,34 +293,6 @@ public final class ModularArchitecture {
           "HealthController",
           "HttpClientConfig",
           "RequestLoggingFilter");
-
-  /**
-   * Classes still in {@link #API} that belong in the web package of their module; removed from here
-   * as they move, until the list is empty (#2034).
-   */
-  static final Set<String> WEB_CLASSES_NOT_YET_MOVED =
-      Set.of(
-          "AvailablePromptController",
-          "AvailablePromptResponseMapper",
-          "ChatController",
-          "ChatResponseMapper",
-          "ChatSearchResponseMapper",
-          "ExternalAccessSettingsController",
-          "ExternalAccessSettingsResponseMapper",
-          "ExternalAccessTokenAdminController",
-          "ExternalAccessTokenController",
-          "ExternalAccessTokenResponseMapper",
-          "MetadataFilterDeserializer",
-          "MetadataFilterMapper",
-          "MetadataFilterOptionsResponseMapper",
-          "PromptLibraryController",
-          "PromptLibraryResponseMapper",
-          "QueryController",
-          "QueryResponseMapper",
-          "SearchAdminController",
-          "SearchAdminResponseMapper",
-          "SearchController",
-          "SearchResponseMapper");
 
   private final String root;
   private final Set<String> knownCycleEdges;

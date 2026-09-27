@@ -1,0 +1,503 @@
+package io.opaa.searchadmin.web;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import io.opaa.auth.AdminTestSecurityConfig;
+import io.opaa.auth.CurrentUser;
+import io.opaa.auth.User;
+import io.opaa.auth.UserService;
+import io.opaa.common.AccessDeniedException;
+import io.opaa.common.NotFoundException;
+import io.opaa.diagnosticaccess.DiagnosticImpersonationGrantService.ImpersonationAvailability;
+import io.opaa.indexing.maintenance.ContextPrefixRerunProgress;
+import io.opaa.indexing.metadata.CoreMetadataField;
+import io.opaa.indexing.metadata.LibraryMetadataSchemaChangeProgress;
+import io.opaa.indexing.metadata.MetadataBackfillProgress;
+import io.opaa.indexing.metadata.MetadataFieldFill;
+import io.opaa.indexing.metadata.ModelExtractionStats;
+import io.opaa.query.retrieval.RetrievalExplanation;
+import io.opaa.search.ChunkInspection;
+import io.opaa.search.ChunkInspectionService;
+import io.opaa.search.DocumentChunks;
+import io.opaa.searchadmin.DiagnosisContextType;
+import io.opaa.searchadmin.DiagnosisQuery;
+import io.opaa.searchadmin.LibrarySearchStatus;
+import io.opaa.searchadmin.ModelRole;
+import io.opaa.searchadmin.ModelRoleCondition;
+import io.opaa.searchadmin.ModelRoleStatus;
+import io.opaa.searchadmin.SearchDiagnosis;
+import io.opaa.searchadmin.SearchDiagnosisService;
+import io.opaa.searchadmin.SearchStatus;
+import io.opaa.searchadmin.SearchStatusService;
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
+
+/**
+ * {@link SearchAdminController} in isolation - proves the {@code SYSTEM_ADMIN} access bar, that the
+ * caller's own organization drives the status query, and that the diagnosis takes only a freshly
+ * entered question and a permission profile, never a chat and never a person.
+ */
+@WebMvcTest(SearchAdminController.class)
+@ActiveProfiles("dev")
+@Import(AdminTestSecurityConfig.class)
+class SearchAdminControllerTest {
+
+  private static final String TEST_ISSUER = "test-issuer";
+  private static final String TEST_SUBJECT = "test-subject";
+
+  @Autowired private MockMvc mockMvc;
+  @MockitoBean private SearchStatusService searchStatusService;
+  @MockitoBean private SearchDiagnosisService searchDiagnosisService;
+  @MockitoBean private ChunkInspectionService chunkInspectionService;
+  @MockitoBean private UserService userService;
+
+  private final UUID actingAdminId = UUID.randomUUID();
+  private final UUID actingAdminOrganizationId = UUID.randomUUID();
+
+  private RequestPostProcessor asAdmin() {
+    return jwt()
+        .jwt(builder -> builder.subject(TEST_SUBJECT).claim("iss", TEST_ISSUER))
+        .authorities(new SimpleGrantedAuthority("ROLE_SYSTEM_ADMIN"));
+  }
+
+  /** Matches the caller the provisioning filter builds for {@link #asAdmin()}. */
+  private CurrentUser actingAdmin() {
+    return argThat(
+        caller ->
+            caller != null
+                && actingAdminId.equals(caller.id())
+                && actingAdminOrganizationId.equals(caller.organizationId()));
+  }
+
+  private RequestPostProcessor asRegularUser() {
+    return jwt()
+        .jwt(builder -> builder.subject(TEST_SUBJECT).claim("iss", TEST_ISSUER))
+        .authorities(new SimpleGrantedAuthority("ROLE_USER"));
+  }
+
+  @BeforeEach
+  void setUp() {
+    User actingAdmin = new User(TEST_SUBJECT, TEST_ISSUER, "admin@example.com", "Admin");
+    actingAdmin.setOrganizationId(actingAdminOrganizationId);
+    setId(actingAdmin, actingAdminId);
+    when(userService.provisionFromToken(
+            org.mockito.ArgumentMatchers.argThat(
+                token -> token != null && TEST_SUBJECT.equals(token.getSubject()))))
+        .thenReturn(actingAdmin);
+  }
+
+  private void setId(User user, UUID id) {
+    try {
+      var field = User.class.getDeclaredField("id");
+      field.setAccessible(true);
+      field.set(user, id);
+    } catch (ReflectiveOperationException e) {
+      throw new IllegalStateException(e);
+    }
+  }
+
+  @Test
+  void statusIsNotReachableForARegularUser() throws Exception {
+    mockMvc
+        .perform(get("/api/v1/admin/search/status").with(asRegularUser()))
+        .andExpect(status().isForbidden());
+    verifyNoInteractions(searchStatusService);
+  }
+
+  @Test
+  void diagnosisIsNotReachableForARegularUser() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/admin/search/diagnosis")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"question\":\"Test\",\"contextType\":\"SELF\"}")
+                .with(asRegularUser()))
+        .andExpect(status().isForbidden());
+    verifyNoInteractions(searchDiagnosisService);
+  }
+
+  @Test
+  void statusScopesToTheCallersOwnOrganization() throws Exception {
+    when(searchStatusService.statusForOrganization(actingAdminOrganizationId))
+        .thenReturn(
+            new SearchStatus(
+                List.of(
+                    new ModelRoleStatus(
+                        ModelRole.RERANK,
+                        ModelRoleCondition.UNCONFIGURED,
+                        null,
+                        null,
+                        "Reranking ist eingeschaltet, aber unbelegt.")),
+                List.of(),
+                List.of(
+                    new LibrarySearchStatus(
+                        UUID.randomUUID(),
+                        "Satzungen",
+                        5,
+                        5,
+                        0,
+                        0,
+                        2,
+                        100,
+                        100,
+                        Instant.EPOCH,
+                        80,
+                        20,
+                        new MetadataBackfillProgress(
+                            UUID.randomUUID(),
+                            5,
+                            2,
+                            3,
+                            1,
+                            1,
+                            Map.of(
+                                CoreMetadataField.TITLE,
+                                new MetadataFieldFill(5, 2, 0),
+                                CoreMetadataField.DOCUMENT_TYPE,
+                                new MetadataFieldFill(5, 0, 1))),
+                        ModelExtractionStats.empty(UUID.randomUUID()),
+                        new ContextPrefixRerunProgress(UUID.randomUUID(), 5, 4, 1, 0),
+                        LibraryMetadataSchemaChangeProgress.empty(UUID.randomUUID())))));
+
+    mockMvc
+        .perform(get("/api/v1/admin/search/status").with(asAdmin()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.modelRoles[0].role").value("RERANK"))
+        .andExpect(jsonPath("$.modelRoles[0].state").value("UNCONFIGURED"))
+        .andExpect(jsonPath("$.modelRoles[0].faulted").value(true))
+        .andExpect(jsonPath("$.libraries[0].lowChunkDocumentCount").value(2))
+        .andExpect(jsonPath("$.libraries[0].fullTextOutdatedChunks").value(20))
+        .andExpect(jsonPath("$.libraries[0].fullTextIndexState").value("OUTDATED"))
+        .andExpect(jsonPath("$.libraries[0].metadataBackfill.pendingDocuments").value(3))
+        .andExpect(
+            jsonPath("$.libraries[0].metadataBackfill.awaitingConnectorRunDocuments").value(1))
+        .andExpect(jsonPath("$.libraries[0].metadataBackfill.lastSkippedDocuments").value(1))
+        .andExpect(jsonPath("$.libraries[0].metadataBackfill.complete").value(false))
+        .andExpect(jsonPath("$.libraries[0].metadataBackfill.fields[0].fieldKey").value("title"))
+        .andExpect(jsonPath("$.libraries[0].metadataBackfill.fields[0].filledDocuments").value(2));
+
+    verify(searchStatusService).statusForOrganization(actingAdminOrganizationId);
+  }
+
+  @Test
+  void diagnosisPassesQuestionContextAndTrackedDocumentThroughUnchanged() throws Exception {
+    UUID profileId = UUID.randomUUID();
+    UUID trackedId = UUID.randomUUID();
+    when(searchDiagnosisService.diagnose(any(), any()))
+        .thenReturn(
+            new SearchDiagnosis(
+                "Was gilt bei Gebührenbefreiung?",
+                DiagnosisContextType.PERMISSION_PROFILE,
+                "Bürgerbüro",
+                Instant.parse("2026-09-01T10:00:00Z"),
+                List.of(),
+                List.of(),
+                new RetrievalExplanation(List.of()),
+                List.of(),
+                Map.of(),
+                0,
+                null));
+
+    mockMvc
+        .perform(
+            post("/api/v1/admin/search/diagnosis")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"question":"  Was gilt bei Gebührenbefreiung?  ",
+                     "contextType":"PERMISSION_PROFILE",
+                     "permissionProfileId":"%s",
+                     "trackedDocumentId":"%s",
+                     "metadataFilter":{"documentTypes":["VERMERK"],"documentDateTo":"2024-12-31"}}
+                    """
+                        .formatted(profileId, trackedId))
+                .with(asAdmin()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.contextLabel").value("Rechteprofil „Bürgerbüro“"));
+
+    ArgumentCaptor<DiagnosisQuery> captor = ArgumentCaptor.forClass(DiagnosisQuery.class);
+    verify(searchDiagnosisService).diagnose(any(), captor.capture());
+    DiagnosisQuery query = captor.getValue();
+    assertThat(query.question()).isEqualTo("Was gilt bei Gebührenbefreiung?");
+    assertThat(query.contextType()).isEqualTo(DiagnosisContextType.PERMISSION_PROFILE);
+    assertThat(query.permissionProfileId()).isEqualTo(profileId);
+    assertThat(query.trackedDocumentId()).isEqualTo(trackedId);
+    // #1070: the diagnosis runs with the same filter a chat query would.
+    assertThat(query.metadataFilter().documentTypes()).containsExactly("VERMERK");
+    assertThat(query.metadataFilter().documentDateTo())
+        .isEqualTo(java.time.LocalDate.of(2024, 12, 31));
+  }
+
+  @Test
+  void aBlankTestQuestionIsRejectedWith400() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/admin/search/diagnosis")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"question\":\"   \",\"contextType\":\"SELF\"}")
+                .with(asAdmin()))
+        .andExpect(status().isBadRequest());
+    verifyNoInteractions(searchDiagnosisService);
+  }
+
+  @Test
+  void theDiagnosisContextListsTheProfilesAndTheOwnPersonContextPermission() throws Exception {
+    UUID profileId = UUID.randomUUID();
+    when(searchDiagnosisService.diagnosisContext(any()))
+        .thenReturn(
+            new SearchDiagnosisService.DiagnosisContextOptions(
+                List.of(new SearchDiagnosisService.PermissionProfile(profileId, "Bürgerbüro", 4)),
+                ImpersonationAvailability.NONE));
+
+    mockMvc
+        .perform(get("/api/v1/admin/search/diagnosis-context").with(asAdmin()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.permissionProfiles[0].id").value(profileId.toString()))
+        .andExpect(jsonPath("$.permissionProfiles[0].name").value("Bürgerbüro"))
+        .andExpect(jsonPath("$.permissionProfiles[0].libraryCount").value(4))
+        .andExpect(jsonPath("$.personContextAvailable").value(false))
+        .andExpect(
+            jsonPath("$.personContextHint")
+                .value(org.hamcrest.Matchers.containsString("Sicht als")));
+  }
+
+  /**
+   * The person context reaches the service as a person context, with its target and its
+   * justification - without this mapping the context type is not even selectable at the endpoint
+   * (#1150).
+   */
+  @Test
+  void aPersonContextRequestCarriesItsTargetAndJustificationToTheService() throws Exception {
+    UUID targetUserId = UUID.randomUUID();
+    when(searchDiagnosisService.diagnose(any(), any()))
+        .thenReturn(
+            new SearchDiagnosis(
+                "Warum fehlt die Satzung?",
+                DiagnosisContextType.USER,
+                null,
+                Instant.parse("2026-09-01T10:00:00Z"),
+                List.of(),
+                List.of(),
+                new RetrievalExplanation(List.of()),
+                List.of(),
+                Map.of(),
+                1,
+                null));
+
+    mockMvc
+        .perform(
+            post("/api/v1/admin/search/diagnosis")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"question":"Warum fehlt die Satzung?",
+                     "contextType":"USER",
+                     "targetUserId":"%s",
+                     "justification":"Beschwerde vom 02.09., Ticket 4711"}
+                    """
+                        .formatted(targetUserId))
+                .with(asAdmin()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.contextType").value("USER"))
+        .andExpect(jsonPath("$.contextLabel").value("Rechtekontext einer Person"))
+        .andExpect(jsonPath("$.lockedLibraryCount").value(1));
+
+    ArgumentCaptor<DiagnosisQuery> captor = ArgumentCaptor.forClass(DiagnosisQuery.class);
+    verify(searchDiagnosisService).diagnose(any(), captor.capture());
+    DiagnosisQuery query = captor.getValue();
+    assertThat(query.contextType()).isEqualTo(DiagnosisContextType.USER);
+    assertThat(query.targetUserId()).isEqualTo(targetUserId);
+    assertThat(query.justification()).isEqualTo("Beschwerde vom 02.09., Ticket 4711");
+  }
+
+  /**
+   * The befugnis is checked in the domain, not by a role annotation: a SYSTEM_ADMIN without it gets
+   * the domain's own German message rather than a generic denial.
+   */
+  @Test
+  void aPersonContextWithoutTheBefugnisIsForbiddenWithTheDomainsOwnMessage() throws Exception {
+    when(searchDiagnosisService.diagnose(any(), any()))
+        .thenThrow(
+            new io.opaa.common.AccessDeniedException(
+                "Für „Sicht als“ ist eine eigene, befristete Befugnis nötig; Sie halten keine."));
+
+    mockMvc
+        .perform(
+            post("/api/v1/admin/search/diagnosis")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"question":"Warum fehlt die Satzung?",
+                     "contextType":"USER",
+                     "targetUserId":"%s",
+                     "justification":"Beschwerde vom 02.09."}
+                    """
+                        .formatted(UUID.randomUUID()))
+                .with(asAdmin()))
+        .andExpect(status().isForbidden())
+        .andExpect(
+            jsonPath("$.error")
+                .value(
+                    "Für „Sicht als“ ist eine eigene, befristete Befugnis nötig; Sie halten keine."));
+  }
+
+  @Test
+  void chunkEndpointsAreNotReachableForARegularUser() throws Exception {
+    mockMvc
+        .perform(get("/api/v1/admin/search/chunks/abc").with(asRegularUser()))
+        .andExpect(status().isForbidden());
+    mockMvc
+        .perform(
+            get("/api/v1/admin/search/documents/" + UUID.randomUUID() + "/chunks")
+                .with(asRegularUser()))
+        .andExpect(status().isForbidden());
+    verifyNoInteractions(chunkInspectionService);
+  }
+
+  @Test
+  void chunkIsReadInTheCallersOrganizationAndCarriesNoEmbedding() throws Exception {
+    UUID documentId = UUID.randomUUID();
+    UUID libraryId = UUID.randomUUID();
+    when(chunkInspectionService.inspectChunk(actingAdmin(), eq("chunk-1")))
+        .thenReturn(
+            Optional.of(
+                new ChunkInspection(
+                    "chunk-1",
+                    documentId,
+                    "satzung.pdf",
+                    libraryId,
+                    "Satzungen",
+                    3,
+                    "§ 4 Befreiung\nAuf Antrag ...",
+                    Map.of("chunk_index", 3, "location", "Seite 2"))));
+
+    mockMvc
+        .perform(get("/api/v1/admin/search/chunks/chunk-1").with(asAdmin()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.chunkId").value("chunk-1"))
+        .andExpect(jsonPath("$.documentId").value(documentId.toString()))
+        .andExpect(jsonPath("$.documentTitle").value("satzung.pdf"))
+        .andExpect(jsonPath("$.libraryName").value("Satzungen"))
+        .andExpect(jsonPath("$.chunkIndex").value(3))
+        .andExpect(jsonPath("$.content").value("§ 4 Befreiung\nAuf Antrag ..."))
+        .andExpect(jsonPath("$.metadata.location").value("Seite 2"))
+        .andExpect(jsonPath("$.embedding").doesNotExist())
+        .andExpect(jsonPath("$.metadata.embedding").doesNotExist());
+
+    verify(chunkInspectionService).inspectChunk(actingAdmin(), eq("chunk-1"));
+  }
+
+  @Test
+  void anUnknownOrForeignChunkIs404() throws Exception {
+    when(chunkInspectionService.inspectChunk(any(), any())).thenReturn(Optional.empty());
+
+    mockMvc
+        .perform(get("/api/v1/admin/search/chunks/fremd").with(asAdmin()))
+        .andExpect(status().isNotFound());
+  }
+
+  @Test
+  void documentChunksAreListedInOrderWithTheEntitysChunkCount() throws Exception {
+    UUID documentId = UUID.randomUUID();
+    UUID libraryId = UUID.randomUUID();
+    when(chunkInspectionService.inspectDocumentChunks(actingAdmin(), eq(documentId)))
+        .thenReturn(
+            new DocumentChunks(
+                documentId,
+                "satzung.pdf",
+                libraryId,
+                "Satzungen",
+                3,
+                List.of(
+                    new ChunkInspection(
+                        "c0",
+                        documentId,
+                        "satzung.pdf",
+                        libraryId,
+                        "Satzungen",
+                        0,
+                        "Erster",
+                        Map.of()),
+                    new ChunkInspection(
+                        "c1",
+                        documentId,
+                        "satzung.pdf",
+                        libraryId,
+                        "Satzungen",
+                        1,
+                        "Zweiter",
+                        Map.of()))));
+
+    mockMvc
+        .perform(get("/api/v1/admin/search/documents/" + documentId + "/chunks").with(asAdmin()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.documentTitle").value("satzung.pdf"))
+        .andExpect(jsonPath("$.chunkCount").value(3))
+        .andExpect(jsonPath("$.chunks.length()").value(2))
+        .andExpect(jsonPath("$.chunks[0].chunkId").value("c0"))
+        .andExpect(jsonPath("$.chunks[1].content").value("Zweiter"))
+        .andExpect(jsonPath("$.chunks[0].embedding").doesNotExist());
+  }
+
+  @Test
+  void anUnknownOrForeignDocumentIs404() throws Exception {
+    when(chunkInspectionService.inspectDocumentChunks(any(), any()))
+        .thenThrow(new NotFoundException("Das Dokument wurde nicht gefunden."));
+
+    mockMvc
+        .perform(
+            get("/api/v1/admin/search/documents/" + UUID.randomUUID() + "/chunks").with(asAdmin()))
+        .andExpect(status().isNotFound());
+  }
+
+  @Test
+  void aChunkOfALibraryTheAdminMayNotReadIs403() throws Exception {
+    // regression guard for #1828: the SYSTEM_ADMIN bar is not a reading permission - a chunk
+    // carries the document's text, so the refusal must reach the caller as 403, not as a 500.
+    when(chunkInspectionService.inspectChunk(any(), any()))
+        .thenThrow(
+            new AccessDeniedException("Für diese Bibliothek liegt keine Leseberechtigung vor"));
+
+    mockMvc
+        .perform(get("/api/v1/admin/search/chunks/chunk-1").with(asAdmin()))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  void documentChunksOfALibraryTheAdminMayNotReadAre403() throws Exception {
+    when(chunkInspectionService.inspectDocumentChunks(any(), any()))
+        .thenThrow(
+            new AccessDeniedException("Für diese Bibliothek liegt keine Leseberechtigung vor"));
+
+    mockMvc
+        .perform(
+            get("/api/v1/admin/search/documents/" + UUID.randomUUID() + "/chunks").with(asAdmin()))
+        .andExpect(status().isForbidden());
+  }
+}
