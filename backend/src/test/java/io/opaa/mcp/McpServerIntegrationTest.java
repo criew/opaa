@@ -17,7 +17,7 @@ import io.opaa.externalaccess.ExternalAccessMassRetrievalAlarm;
 import io.opaa.externalaccess.ExternalAccessSettings;
 import io.opaa.externalaccess.ExternalAccessSettingsService;
 import io.opaa.externalaccess.token.ExternalAccessTokenService;
-import io.opaa.indexing.chunk.ChunkingService;
+import io.opaa.format.chunk.ChunkingService;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.SourceType;

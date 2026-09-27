@@ -1,5 +1,8 @@
 package io.opaa.indexing.chunk;
 
+import io.opaa.format.chunk.ChunkContextTitle;
+import io.opaa.format.chunk.ChunkingService;
+import io.opaa.format.chunk.MarkdownHeading;
 import io.opaa.knowledge.SourceDocumentContext;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;

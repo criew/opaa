@@ -1,6 +1,7 @@
 package io.opaa.indexing.metadata;
 
 import io.opaa.common.ValidationException;
+import io.opaa.format.FormatMetadataField;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.Set;

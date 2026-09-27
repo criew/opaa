@@ -17,7 +17,7 @@ import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.TooManyRequestsException;
-import io.opaa.indexing.chunk.ChunkingService;
+import io.opaa.format.chunk.ChunkingService;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.SourceType;

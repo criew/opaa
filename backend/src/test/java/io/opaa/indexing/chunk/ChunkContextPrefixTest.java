@@ -2,6 +2,7 @@ package io.opaa.indexing.chunk;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.opaa.format.chunk.ChunkingService;
 import io.opaa.knowledge.SourceDocumentContext;
 import java.util.Arrays;
 import java.util.List;

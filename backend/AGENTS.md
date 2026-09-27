@@ -35,6 +35,7 @@ Hauptklassen, ohne Spring-Kontext, als Teil von `./gradlew test`. Die Definition
 | Modul | Pakete (`io.opaa.*`) |
 |---|---|
 | foundation | common, observability, organization, security, ratelimit, sourceaccess, s3 |
+| format | format |
 | identity | audit, branding, mail, auth, notification |
 | rights | permission, asset, group, succession |
 | knowledge | knowledge, llm, indexing (ohne Konnektoren) |
@@ -47,14 +48,21 @@ Hauptklassen, ohne Spring-Kontext, als Teil von `./gradlew test`. Die Definition
 
 Erlaubte Kanten zwischen Modulen (`ALLOWED_MODULE_EDGES`), alle nach unten:
 
+- format → foundation
 - identity → foundation
 - rights → foundation, identity
-- knowledge → foundation, identity, rights
-- connectors → foundation, knowledge
-- workspace, library → foundation, identity, rights, knowledge
-- assistant → foundation, identity, rights, knowledge, workspace, library
+- knowledge → foundation, format, identity, rights
+- connectors → foundation, format, knowledge
+- workspace → foundation, identity, rights, knowledge
+- library → foundation, format, identity, rights, knowledge
+- assistant → foundation, format, identity, rights, knowledge, workspace, library
 - external → foundation, identity, rights, knowledge, library, assistant
-- app → foundation, identity, rights, knowledge, library
+- app → foundation, format, identity, rights, knowledge, library
+
+format liegt direkt über foundation und kennt nur `sourceaccess`: Die Dokumentparser und ihre
+Bibliotheken bleiben so ohne Wissen über Indexierung, Bestand und Rechte. Wer darüber Formate
+nutzt, zeigt nach unten; was format von oben braucht (Chunkgröße), kommt als Schnittstelle
+(`ChunkSizing`).
 
 Der Test prüft außerdem:
 
@@ -127,11 +135,12 @@ Hauptpaket unter `backend/src/main/java/io/opaa/`:
 
 | Modul | Datei | Modul | Datei |
 |---|---|---|---|
-| foundation | `common/AGENTS.md` | workspace | `space/AGENTS.md` |
+| foundation | `common/AGENTS.md` | connectors | `indexing/source/AGENTS.md` |
+| format | `format/AGENTS.md` | workspace | `space/AGENTS.md` |
 | identity | `auth/AGENTS.md` | library | `library/AGENTS.md` |
 | rights | `permission/AGENTS.md` | assistant | `query/AGENTS.md` |
 | knowledge | `knowledge/AGENTS.md` | external | `externalaccess/AGENTS.md` |
-| connectors | `indexing/source/AGENTS.md` | app | `api/AGENTS.md` |
+| | | app | `api/AGENTS.md` |
 
 Daneben liegt eine `CLAUDE.md` mit `@AGENTS.md`; jedes weitere Top-Level-Paket des Moduls hat eine
 `CLAUDE.md`, die die Datei des Moduls importiert (`@../common/AGENTS.md`). Claude Code lädt eine
@@ -271,7 +280,7 @@ Anwendungskontext noch eine Datenbank starten.
 
 Die Liquibase-Historie wurde dreimal zu einer Baseline zusammengefasst: 08/2026 (#904/PR #906), 09/2026 (#1492/PR #1504) und Ende 09/2026 (#2001/PR #2007). Jedes Mal ein bewusster Einmalvorgang vor Produktionsbetrieb: jede laufende Installation muss danach neu aufgesetzt werden, weil `DATABASECHANGELOG` nicht mehr passt (Handbuch, `deployment.md`, „Migrationen aus älteren Ständen"). Dasselbe gilt für die Aufteilung in Verzeichnisse je Modul (#2003): Liquibase erkennt ein Changeset an `id`, `author` und Dateipfad, und der Pfad hat sich geändert.
 
-**Ablage.** Unter `backend/src/main/resources/db/changelog/` liegt je logischem Modul (siehe „Logische Module und Schichtung") ein Verzeichnis: `foundation/`, `identity/`, `rights/`, `knowledge/`, `connectors/`, `workspace/`, `assistant/`, `external/`. `library` und `app` besitzen keine Tabelle und damit kein Verzeichnis. `db.changelog-master.yaml` bindet die Verzeichnisse per `includeAll` (nur `.yaml`) in der Reihenfolge von `ModularArchitecture.Module` ein; innerhalb eines Verzeichnisses laufen die Dateien aufsteigend nach Namen (Liquibase vergleicht die Pfade als Zeichenketten, `-` sortiert dabei vor `.`). Ein neues Modulverzeichnis braucht einen Eintrag im Master an seiner Stelle in der Modulreihenfolge. Die Baseline ist je Modul die Datei `2026-09-27-baseline.yaml` mit dem Changeset `<modul>-2026-09-27-baseline`. In `knowledge/` stehen dort zusätzlich die beiden `vector_store`-Ausdrucksindexe (`knowledge-2026-09-27-baseline--vector-store-library-id`, `…--vector-store-document-id`): bewusst eigenständige, precondition-geschützte Changesets, die nicht in ein Modul-Changeset gefaltet werden dürfen, sonst überspringt die Precondition beim ersten Start das ganze Modul. Rollback-Blöcke hat die Baseline bewusst keine.
+**Ablage.** Unter `backend/src/main/resources/db/changelog/` liegt je logischem Modul (siehe „Logische Module und Schichtung") ein Verzeichnis: `foundation/`, `identity/`, `rights/`, `knowledge/`, `connectors/`, `workspace/`, `assistant/`, `external/`. `format`, `library` und `app` besitzen keine Tabelle und damit kein Verzeichnis. `db.changelog-master.yaml` bindet die Verzeichnisse per `includeAll` (nur `.yaml`) in der Reihenfolge von `ModularArchitecture.Module` ein; innerhalb eines Verzeichnisses laufen die Dateien aufsteigend nach Namen (Liquibase vergleicht die Pfade als Zeichenketten, `-` sortiert dabei vor `.`). Ein neues Modulverzeichnis braucht einen Eintrag im Master an seiner Stelle in der Modulreihenfolge. Die Baseline ist je Modul die Datei `2026-09-27-baseline.yaml` mit dem Changeset `<modul>-2026-09-27-baseline`. In `knowledge/` stehen dort zusätzlich die beiden `vector_store`-Ausdrucksindexe (`knowledge-2026-09-27-baseline--vector-store-library-id`, `…--vector-store-document-id`): bewusst eigenständige, precondition-geschützte Changesets, die nicht in ein Modul-Changeset gefaltet werden dürfen, sonst überspringt die Precondition beim ersten Start das ganze Modul. Rollback-Blöcke hat die Baseline bewusst keine.
 
 **Neues Changeset: ein Changeset pro Datenbankänderung.**
 

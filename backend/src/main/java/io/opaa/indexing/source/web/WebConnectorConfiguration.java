@@ -1,7 +1,7 @@
 package io.opaa.indexing.source.web;
 
+import io.opaa.format.SupportedDocumentFormats;
 import io.opaa.indexing.document.DocumentIngestService;
-import io.opaa.indexing.format.SupportedDocumentFormats;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.RemoteOriginalAccess;
 import io.opaa.indexing.source.SourceIndexingExecutor;

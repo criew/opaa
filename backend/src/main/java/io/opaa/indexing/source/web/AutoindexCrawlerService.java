@@ -1,6 +1,6 @@
 package io.opaa.indexing.source.web;
 
-import io.opaa.indexing.format.SupportedDocumentFormats;
+import io.opaa.format.SupportedDocumentFormats;
 import io.opaa.indexing.source.SourceFolderPath;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedStreams;

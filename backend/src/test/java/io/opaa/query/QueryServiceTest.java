@@ -33,7 +33,7 @@ import io.opaa.chat.ChatSourceMetadataEntry;
 import io.opaa.chat.UsedPrompt;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
-import io.opaa.indexing.chunk.ChunkingService;
+import io.opaa.format.chunk.ChunkingService;
 import io.opaa.indexing.metadata.CitationMetadataReader;
 import io.opaa.indexing.metadata.CoreMetadata;
 import io.opaa.indexing.metadata.DocumentMetadataService;

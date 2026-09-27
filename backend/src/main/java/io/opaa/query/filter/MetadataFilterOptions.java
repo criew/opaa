@@ -1,8 +1,8 @@
 package io.opaa.query.filter;
 
 import io.opaa.api.types.LibraryMetadataFieldType;
+import io.opaa.format.FormatMetadataField;
 import io.opaa.indexing.metadata.CoreMetadataField;
-import io.opaa.indexing.metadata.FormatMetadataField;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;

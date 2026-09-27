@@ -6,7 +6,7 @@ import io.opaa.api.types.MetadataFilterMatch;
 import io.opaa.chat.ChatSource;
 import io.opaa.chat.ChatSourceLocation;
 import io.opaa.chat.ChatSourceMetadataEntry;
-import io.opaa.indexing.chunk.ChunkingService;
+import io.opaa.format.chunk.ChunkingService;
 import io.opaa.indexing.metadata.CitationFieldValue;
 import io.opaa.indexing.metadata.CitationMetadataReader;
 import io.opaa.indexing.metadata.CoreMetadata;

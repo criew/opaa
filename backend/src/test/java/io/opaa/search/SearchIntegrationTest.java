@@ -21,7 +21,7 @@ import io.opaa.chat.ChatSource;
 import io.opaa.common.NotFoundException;
 import io.opaa.externalaccess.ExternalAccessSettings;
 import io.opaa.externalaccess.ExternalAccessSettingsRepository;
-import io.opaa.indexing.chunk.ChunkingService;
+import io.opaa.format.chunk.ChunkingService;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.metadata.MetadataFilter;
 import io.opaa.knowledge.DocumentRepository;

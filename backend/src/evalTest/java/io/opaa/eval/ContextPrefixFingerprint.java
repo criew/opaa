@@ -1,9 +1,9 @@
 package io.opaa.eval;
 
+import io.opaa.format.DocumentProperties;
+import io.opaa.format.chunk.ChunkingService;
 import io.opaa.indexing.chunk.ChunkContextPrefix;
-import io.opaa.indexing.chunk.ChunkingService;
 import io.opaa.indexing.document.DocumentIngest;
-import io.opaa.indexing.format.DocumentProperties;
 import io.opaa.indexing.metadata.CoreContextPrefixSettings;
 import io.opaa.indexing.metadata.CoreMetadata;
 import io.opaa.indexing.metadata.CoreMetadataExtractor;

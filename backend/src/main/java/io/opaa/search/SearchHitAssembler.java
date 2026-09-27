@@ -1,7 +1,7 @@
 package io.opaa.search;
 
 import io.opaa.chat.ChatSourceMetadataEntry;
-import io.opaa.indexing.chunk.ChunkingService;
+import io.opaa.format.chunk.ChunkingService;
 import io.opaa.indexing.metadata.CitationFieldValue;
 import io.opaa.indexing.metadata.CitationMetadataReader;
 import io.opaa.indexing.metadata.CoreMetadata;

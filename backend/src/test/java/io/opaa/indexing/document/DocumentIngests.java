@@ -2,9 +2,9 @@ package io.opaa.indexing.document;
 
 import static org.mockito.ArgumentMatchers.argThat;
 
-import io.opaa.indexing.format.DocumentProperties;
-import io.opaa.indexing.format.file.html.HtmlDocumentFormat;
-import io.opaa.indexing.format.stream.confluencestorage.ConfluenceStorageFormat;
+import io.opaa.format.DocumentProperties;
+import io.opaa.format.file.html.HtmlDocumentFormat;
+import io.opaa.format.stream.confluencestorage.ConfluenceStorageFormat;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.SourceDocumentContext;
 import io.opaa.knowledge.SourceType;

@@ -7,6 +7,7 @@ import static io.opaa.architecture.ModularArchitecture.Module.APP;
 import static io.opaa.architecture.ModularArchitecture.Module.ASSISTANT;
 import static io.opaa.architecture.ModularArchitecture.Module.CONNECTORS;
 import static io.opaa.architecture.ModularArchitecture.Module.EXTERNAL;
+import static io.opaa.architecture.ModularArchitecture.Module.FORMAT;
 import static io.opaa.architecture.ModularArchitecture.Module.FOUNDATION;
 import static io.opaa.architecture.ModularArchitecture.Module.IDENTITY;
 import static io.opaa.architecture.ModularArchitecture.Module.KNOWLEDGE;
@@ -66,6 +67,7 @@ public final class ModularArchitecture {
           "group",
           "sourceaccess",
           "s3",
+          "format",
           "knowledge",
           "space",
           "succession",
@@ -89,6 +91,7 @@ public final class ModularArchitecture {
   /** The logical modules, in an order in which every allowed edge points to an earlier one. */
   public enum Module {
     FOUNDATION,
+    FORMAT,
     IDENTITY,
     RIGHTS,
     KNOWLEDGE,
@@ -110,6 +113,7 @@ public final class ModularArchitecture {
           entry("ratelimit", FOUNDATION),
           entry("sourceaccess", FOUNDATION),
           entry("s3", FOUNDATION),
+          entry("format", FORMAT),
           entry("audit", IDENTITY),
           entry("branding", IDENTITY),
           entry("mail", IDENTITY),
@@ -146,17 +150,20 @@ public final class ModularArchitecture {
    * declaring class.
    */
   public static final Map<Module, Set<Module>> ALLOWED_MODULE_EDGES =
-      Map.of(
-          FOUNDATION, EnumSet.noneOf(Module.class),
-          IDENTITY, EnumSet.of(FOUNDATION),
-          RIGHTS, EnumSet.of(FOUNDATION, IDENTITY),
-          KNOWLEDGE, EnumSet.of(FOUNDATION, IDENTITY, RIGHTS),
-          CONNECTORS, EnumSet.of(FOUNDATION, KNOWLEDGE),
-          WORKSPACE, EnumSet.of(FOUNDATION, IDENTITY, RIGHTS, KNOWLEDGE),
-          LIBRARY, EnumSet.of(FOUNDATION, IDENTITY, RIGHTS, KNOWLEDGE),
-          ASSISTANT, EnumSet.of(FOUNDATION, IDENTITY, RIGHTS, KNOWLEDGE, WORKSPACE, LIBRARY),
-          EXTERNAL, EnumSet.of(FOUNDATION, IDENTITY, RIGHTS, KNOWLEDGE, LIBRARY, ASSISTANT),
-          APP, EnumSet.of(FOUNDATION, IDENTITY, RIGHTS, KNOWLEDGE, LIBRARY));
+      Map.ofEntries(
+          entry(FOUNDATION, EnumSet.noneOf(Module.class)),
+          entry(FORMAT, EnumSet.of(FOUNDATION)),
+          entry(IDENTITY, EnumSet.of(FOUNDATION)),
+          entry(RIGHTS, EnumSet.of(FOUNDATION, IDENTITY)),
+          entry(KNOWLEDGE, EnumSet.of(FOUNDATION, FORMAT, IDENTITY, RIGHTS)),
+          entry(CONNECTORS, EnumSet.of(FOUNDATION, FORMAT, KNOWLEDGE)),
+          entry(WORKSPACE, EnumSet.of(FOUNDATION, IDENTITY, RIGHTS, KNOWLEDGE)),
+          entry(LIBRARY, EnumSet.of(FOUNDATION, FORMAT, IDENTITY, RIGHTS, KNOWLEDGE)),
+          entry(
+              ASSISTANT,
+              EnumSet.of(FOUNDATION, FORMAT, IDENTITY, RIGHTS, KNOWLEDGE, WORKSPACE, LIBRARY)),
+          entry(EXTERNAL, EnumSet.of(FOUNDATION, IDENTITY, RIGHTS, KNOWLEDGE, LIBRARY, ASSISTANT)),
+          entry(APP, EnumSet.of(FOUNDATION, FORMAT, IDENTITY, RIGHTS, KNOWLEDGE, LIBRARY)));
 
   /**
    * The package edges, relative to the root, that lie on a cycle between the subpackages of one
@@ -176,65 +183,31 @@ public final class ModularArchitecture {
           "group -> group.sync",
           "group.sync -> group",
           "indexing -> indexing.attachment",
-          "indexing -> indexing.chunk",
           "indexing -> indexing.document",
-          "indexing -> indexing.format",
-          "indexing -> indexing.format.file.fallback",
-          "indexing -> indexing.format.file.html",
-          "indexing -> indexing.format.file.mail",
-          "indexing -> indexing.format.file.markdown",
-          "indexing -> indexing.format.file.office",
-          "indexing -> indexing.format.file.pdf",
-          "indexing -> indexing.format.file.tabular",
           "indexing -> indexing.job",
           "indexing -> indexing.maintenance",
           "indexing -> indexing.metadata",
           "indexing -> indexing.source",
           "indexing.attachment -> indexing.document",
-          "indexing.attachment -> indexing.format",
           "indexing.attachment -> indexing.job",
           "indexing.attachment -> indexing.source",
-          "indexing.chunk -> indexing",
           "indexing.document -> indexing",
           "indexing.document -> indexing.attachment",
-          "indexing.document -> indexing.chunk",
-          "indexing.document -> indexing.format",
           "indexing.document -> indexing.job",
           "indexing.document -> indexing.metadata",
           "indexing.document -> indexing.source",
-          "indexing.format -> indexing.metadata",
-          "indexing.format.file.fallback -> indexing.chunk",
-          "indexing.format.file.fallback -> indexing.document",
-          "indexing.format.file.fallback -> indexing.format",
-          "indexing.format.file.html -> indexing.format",
-          "indexing.format.file.mail -> indexing.chunk",
-          "indexing.format.file.mail -> indexing.format",
-          "indexing.format.file.mail -> indexing.metadata",
-          "indexing.format.file.markdown -> indexing.chunk",
-          "indexing.format.file.markdown -> indexing.format",
-          "indexing.format.file.office -> indexing.format",
-          "indexing.format.file.pdf -> indexing.format",
-          "indexing.format.file.tabular -> indexing.chunk",
-          "indexing.format.file.tabular -> indexing.format",
-          "indexing.format.file.tabular -> indexing.format.file.office",
           "indexing.job -> indexing",
           "indexing.job -> indexing.attachment",
           "indexing.job -> indexing.document",
-          "indexing.job -> indexing.format",
           "indexing.job -> indexing.source",
           "indexing.maintenance -> indexing.attachment",
-          "indexing.maintenance -> indexing.chunk",
           "indexing.maintenance -> indexing.document",
-          "indexing.maintenance -> indexing.format",
           "indexing.maintenance -> indexing.job",
           "indexing.maintenance -> indexing.metadata",
           "indexing.maintenance -> indexing.source",
-          "indexing.metadata -> indexing.chunk",
-          "indexing.metadata -> indexing.format",
           "indexing.metadata -> indexing.maintenance",
           "indexing.source -> indexing.attachment",
           "indexing.source -> indexing.document",
-          "indexing.source -> indexing.format",
           "indexing.source -> indexing.job",
           "indexing.source -> indexing.maintenance",
           "indexing.source.confluence -> indexing.source.confluence.webhook",

@@ -1,6 +1,6 @@
 package io.opaa.indexing.job;
 
-import io.opaa.indexing.format.SupportedDocumentFormats;
+import io.opaa.format.SupportedDocumentFormats;
 import io.opaa.knowledge.SourceType;
 import java.util.List;
 import org.slf4j.Logger;

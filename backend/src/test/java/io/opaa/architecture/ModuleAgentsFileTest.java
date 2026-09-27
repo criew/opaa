@@ -41,6 +41,7 @@ class ModuleAgentsFileTest {
   private static final Map<Module, String> MAIN_PACKAGES =
       Map.ofEntries(
           entry(Module.FOUNDATION, "common"),
+          entry(Module.FORMAT, "format"),
           entry(Module.IDENTITY, "auth"),
           entry(Module.RIGHTS, "permission"),
           entry(Module.KNOWLEDGE, "knowledge"),

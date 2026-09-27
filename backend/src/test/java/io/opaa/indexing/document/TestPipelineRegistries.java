@@ -1,8 +1,9 @@
 package io.opaa.indexing.document;
 
-import io.opaa.indexing.chunk.ChunkingService;
-import io.opaa.indexing.format.DocumentFormatRegistry;
-import io.opaa.indexing.format.file.fallback.TikaFallbackFormat;
+import io.opaa.format.DocumentFormatRegistry;
+import io.opaa.format.DocumentService;
+import io.opaa.format.chunk.ChunkingService;
+import io.opaa.format.file.fallback.TikaFallbackFormat;
 import java.util.List;
 
 /**
@@ -29,7 +30,7 @@ public final class TestPipelineRegistries {
       DocumentService documentService, ChunkingService chunkingService) {
     TikaFallbackFormat fallback = new TikaFallbackFormat(documentService, chunkingService);
     return new DocumentFormatRegistry(
-        List.of(fallback, new io.opaa.indexing.format.file.html.HtmlDocumentFormat()), fallback);
+        List.of(fallback, new io.opaa.format.file.html.HtmlDocumentFormat()), fallback);
   }
 
   /**
@@ -41,8 +42,7 @@ public final class TestPipelineRegistries {
       DocumentService documentService, ChunkingService chunkingService) {
     TikaFallbackFormat fallback = new TikaFallbackFormat(documentService, chunkingService);
     return new DocumentFormatRegistry(
-        List.of(fallback, new io.opaa.indexing.format.file.markdown.MarkdownDocumentFormat()),
-        fallback);
+        List.of(fallback, new io.opaa.format.file.markdown.MarkdownDocumentFormat()), fallback);
   }
 
   /** The fallback plus the Confluence page pipeline - for processConfluencePage tests. */
@@ -50,9 +50,7 @@ public final class TestPipelineRegistries {
       DocumentService documentService, ChunkingService chunkingService) {
     TikaFallbackFormat fallback = new TikaFallbackFormat(documentService, chunkingService);
     return new DocumentFormatRegistry(
-        List.of(
-            fallback,
-            new io.opaa.indexing.format.stream.confluencestorage.ConfluenceStorageFormat()),
+        List.of(fallback, new io.opaa.format.stream.confluencestorage.ConfluenceStorageFormat()),
         fallback);
   }
 }
