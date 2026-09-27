@@ -5,7 +5,9 @@ token are different failures and must not share one message), and that the realm
 audience mapper the token path depends on, and how uploads map a corpus folder tree onto library
 folders (against an in-memory stand-in of the document API). The demo profile's groups and the
 effective permission matrix they produce are checked as data, and the group steps run twice against
-an in-memory API to show the second run writes nothing. The seed run as a whole stays out - it is a
+an in-memory API to show the second run writes nothing. The Keycloak groups of the directory sync
+are checked against the realm export and the kcadm script, and the switch of the provider to the
+directory sync runs against an in-memory API. The seed run as a whole stays out - it is a
 sequence of API calls against a live installation, covered by the nightly demo smoke run.
 
 Run from the repository root:
@@ -344,12 +346,13 @@ def all_groups() -> tuple:
 
 
 def effective_readers(library_name: str) -> set[str]:
-    """Direct VIEWER grants plus the members of every group granted VIEWER on the library."""
+    """Direct VIEWER grants plus the members of every group granted VIEWER on the library. The
+    admin account owns every library and is no row of the matrix, even as a group member."""
     readers = set(library(library_name).viewer_keys)
     for group_def in all_groups():
         if library_name in group_def.library_grants:
             readers.update(group_def.member_keys)
-    return readers
+    return readers - {"admin"}
 
 
 def space_members(space_name: str) -> set[str]:
@@ -588,6 +591,11 @@ def test_realm_export_carries_the_directory_service_account() -> None:
     assert service_account["username"] == f"service-account-{sync.client_id}"
     assert set(service_account["clientRoles"]["realm-management"]) == {"view-users", "query-groups"}
     assert "id" in service_account
+
+
+def test_client_descriptions_fit_keycloaks_column() -> None:
+    """CLIENT.DESCRIPTION is varchar(255); a longer one aborts the realm import and Keycloak."""
+    assert all(len(c.get("description", "")) <= 255 for c in realm()["clients"])
 
 
 def test_every_realm_user_keeps_a_fixed_id() -> None:

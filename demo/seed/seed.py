@@ -30,6 +30,7 @@ import requests
 from api_client import ApiError, Client
 from auth import AuthError, DevHeaderAuth, KeycloakPasswordAuth, LocalPasswordAuth
 from profiles import PROFILES, GroupDef, LibraryDef, Profile, SpaceDef, UserDef
+from profiles import DirectorySyncDef, ProviderGroupDef
 from profiles import PromptDef, PromptLibraryDef, PromptVariableDef
 
 INDEXING_POLL_INTERVAL_SECONDS = 3
@@ -263,10 +264,14 @@ def ensure_grant(
     )
 
 
-def ensure_groups_claim(admin_client: Client, display_name: str = "Verzeichnisdienst") -> None:
-    """Sets the default provider's groups_claim to 'groups' (ADR-0036, Entscheidungen 2/3) -
-    matching the group-membership-mapper keycloak/realm-export.json's opaa-frontend and opaa-seed
-    clients both carry. Idempotent: a PUT that changes nothing still succeeds."""
+DIRECTORY_SYNC_RUN_ATTEMPTS = 40
+REALM_SCRIPT_HINT = (
+    "Ein Keycloak mit eigenem Volume liest keycloak/realm-export.json nicht erneut ein - dort "
+    "demo/keycloak/apply-realm-changes.sh ausführen (siehe demo/README.md)."
+)
+
+
+def find_provider(admin_client: Client, display_name: str = "Verzeichnisdienst") -> dict:
     providers = admin_client.get_ok("/v1/admin/oidc-providers")
     provider = next((p for p in providers if p["displayName"] == display_name), None)
     if provider is None:
@@ -274,32 +279,154 @@ def ensure_groups_claim(admin_client: Client, display_name: str = "Verzeichnisdi
             f"Anbieter '{display_name}' nicht gefunden - der Bootstrap aus OPAA_OIDC_* ist "
             "offenbar noch nicht abgeschlossen."
         )
-    claim_mapping = dict(provider.get("claimMapping") or {})
-    if claim_mapping.get("groupsClaim") == "groups":
-        print(f"  groups_claim bereits gesetzt: {display_name}")
-        return
-    claim_mapping["groupsClaim"] = "groups"
-    admin_client.put_ok(
-        f"/v1/admin/oidc-providers/{provider['id']}",
-        json={
-            "displayName": provider["displayName"],
-            "issuerUri": provider["issuerUri"],
-            "clientId": provider["clientId"],
-            "jwkSetUri": provider.get("jwkSetUri"),
-            "claimMapping": claim_mapping,
-        },
+    return provider
+
+
+def keycloak_admin_base_url(jwk_set_uri: str | None) -> str | None:
+    """The address under which the backend reaches Keycloak: the JWK set address without its
+    /realms/{realm}/... part. None when the provider names no Keycloak JWK set address - the
+    backend then derives the address from the issuer URI."""
+    if not jwk_set_uri or "/realms/" not in jwk_set_uri:
+        return None
+    return jwk_set_uri.split("/realms/", 1)[0]
+
+
+def _probe_directory_connector(admin_client: Client, provider_id: str, connector: dict) -> dict:
+    """Probes with the stored secret: the request leaves clientSecret out."""
+    probe = {key: value for key, value in connector.items() if key != "clientSecret"}
+    return admin_client.post_ok(
+        f"/v1/admin/oidc-providers/{provider_id}/directory-connector/test",
+        json=probe,
+        expected=(200,),
     )
-    print(f"  groups_claim gesetzt: {display_name} -> 'groups'")
 
 
-def reprovision_all(clients: dict[str, Client], profile: Profile) -> None:
-    """Re-authenticates every profile account once groups_claim is set (ensure_groups_claim
-    above), so TokenGroupSynchronizer picks up each account's Keycloak group memberships:
-    UserProvisioningFilter re-provisions on *every* request, not only the first, but the very
-    first sign-in in step 1 ran before the provider carried a groups_claim and left every
-    membership unsynchronised."""
-    for user in profile.all_users():
-        clients[user.key].get_ok("/v1/auth/me")
+def ensure_directory_sync(
+    admin_client: Client, directory_sync: DirectorySyncDef, display_name: str = "Verzeichnisdienst"
+) -> str:
+    """Switches the provider from the groups claim to the directory sync (ADR-0036, Entscheidung
+    2/3: one group mechanism per provider), stores the Keycloak connector, enables the scheduled
+    run and runs it once, so the realm's groups exist as ORG_UNIT groups before step 6 gives them
+    rights. Returns the provider id. Writes only what differs; the run happens every time."""
+    provider = find_provider(admin_client, display_name)
+    provider_id = provider["id"]
+    provider_path = f"/v1/admin/oidc-providers/{provider_id}"
+
+    claim_mapping = dict(provider.get("claimMapping") or {})
+    if claim_mapping.get("groupsClaim"):
+        claim_mapping["groupsClaim"] = None
+        admin_client.put_ok(
+            provider_path,
+            json={
+                "displayName": provider["displayName"],
+                "issuerUri": provider["issuerUri"],
+                "clientId": provider["clientId"],
+                "jwkSetUri": provider.get("jwkSetUri"),
+                "claimMapping": claim_mapping,
+            },
+        )
+        print(f"  groups_claim geleert: {display_name} (Gruppen kommen aus dem Verzeichnis)")
+
+    connector = {
+        "type": "KEYCLOAK",
+        "baseUrl": keycloak_admin_base_url(provider.get("jwkSetUri")),
+        "clientId": directory_sync.client_id,
+        "clientSecret": directory_sync.client_secret,
+    }
+    stored = provider.get("directoryConnector") or {}
+    already_stored = stored.get("clientId") == connector["clientId"] and (
+        connector["baseUrl"] is None or stored.get("baseUrl") == connector["baseUrl"]
+    )
+    probe = (
+        _probe_directory_connector(admin_client, provider_id, connector) if already_stored else None
+    )
+    if probe is None or not probe["success"]:
+        admin_client.put_ok(f"{provider_path}/directory-connector", json=connector)
+        print(f"  Verzeichniszugang hinterlegt: {connector['clientId']} → {connector['baseUrl']}")
+        probe = _probe_directory_connector(admin_client, provider_id, connector)
+    if not probe["success"]:
+        raise SystemExit(
+            f"Verbindungstest des Verzeichniszugangs fehlgeschlagen: {probe['message']} "
+            f"Das Dienstkonto '{directory_sync.client_id}' braucht im Realm das Geheimnis aus "
+            "demo/seed/profiles.py und die Rollen view-users und query-groups. "
+            + REALM_SCRIPT_HINT
+        )
+    print(f"  Verbindungstest: {probe['message']}")
+
+    if (
+        not provider.get("directorySyncEnabled")
+        or provider.get("directorySyncIntervalMinutes") != directory_sync.interval_minutes
+    ):
+        admin_client.put_ok(
+            f"{provider_path}/directory-sync",
+            json={"enabled": True, "intervalMinutes": directory_sync.interval_minutes},
+        )
+        print(f"  Verzeichnisabgleich eingeschaltet: alle {directory_sync.interval_minutes} Minuten")
+
+    run_directory_sync(admin_client, provider_id)
+    return provider_id
+
+
+def _error_code(response: requests.Response) -> str | None:
+    try:
+        return response.json().get("code")
+    except ValueError:
+        return None
+
+
+def run_directory_sync(admin_client: Client, provider_id: str) -> dict:
+    """Runs the directory sync on demand and stops the seed unless it applied. A provider that was
+    never run is due at once, so the scheduler's minute tick may be running it already - that 409
+    is waited out."""
+    path = f"/v1/admin/oidc-providers/{provider_id}/directory-sync/run"
+    for _ in range(DIRECTORY_SYNC_RUN_ATTEMPTS):
+        response = admin_client.post(path)
+        if response.status_code == 409 and _error_code(response) == "DIRECTORY_SYNC_ALREADY_RUNNING":
+            time.sleep(3)
+            continue
+        if response.status_code != 200:
+            raise ApiError(response)
+        report = response.json()
+        break
+    else:
+        raise SystemExit(
+            "Verzeichnisabgleich: Ein bereits laufender Abgleich wurde nicht fertig - Stand unter "
+            "Administration → Verzeichnisabgleich prüfen."
+        )
+    if report["outcome"] != "APPLIED":
+        raise SystemExit(
+            f"Verzeichnisabgleich nicht angewendet (Ergebnis {report['outcome']}): "
+            f"{report.get('message')} - Stand und ggf. ausstehenden Plan unter Administration → "
+            "Verzeichnisabgleich prüfen."
+        )
+    created = ", ".join(g["name"] for g in report.get("groupsCreated", [])) or "keine"
+    print(
+        f"  Verzeichnisabgleich angewendet: neue Gruppen {created}, "
+        f"{report.get('membershipsAdded', 0)} Mitgliedschaft(en) hinzugefügt"
+    )
+    locked = report.get("accountsLocked") or []
+    if locked:
+        names = ", ".join(a.get("displayName") or a["userId"] for a in locked)
+        print(f"  Achtung: Der Abgleich hat {len(locked)} Konto/Konten gesperrt: {names}")
+    return report
+
+
+def find_provider_group(admin_client: Client, provider_id: str, group_def: ProviderGroupDef) -> str:
+    """The ORG_UNIT group the directory sync made of the realm group. A same-named token group of
+    the provider - left behind unmaintained by the switch from the groups claim - and a dissolved
+    unit are not it."""
+    for group in admin_client.get_ok("/v1/admin/groups"):
+        if (
+            group["name"] == group_def.name
+            and group["kind"] == "ORG_UNIT"
+            and (group.get("provider") or {}).get("id") == provider_id
+            and not group["dissolved"]
+        ):
+            return group["id"]
+    raise SystemExit(
+        f"Keycloak-Gruppe '{group_def.name}' ist nach dem Verzeichnisabgleich nicht in OPAA "
+        "angekommen - sie fehlt im Realm. " + REALM_SCRIPT_HINT
+    )
 
 
 def ensure_group(admin_client: Client, user_ids: dict[str, str], group_def: GroupDef) -> str:
@@ -699,12 +826,12 @@ def run(args: argparse.Namespace) -> None:
     print("1/8 Nutzer bereitstellen (erste authentifizierte Anfrage je Nutzer) …")
     user_ids = provision_users(clients, profile, bootstrap_admin)
 
-    if profile.auth_mode == "keycloak":
-        print("2/8 Identitätsanbieter: groups_claim setzen (ADR-0036) …")
-        ensure_groups_claim(admin_client)
-        reprovision_all(clients, profile)
+    provider_id: str | None = None
+    if profile.directory_sync is not None:
+        print("2/8 Identitätsanbieter: Verzeichnisabgleich einrichten und ausführen (ADR-0036) …")
+        provider_id = ensure_directory_sync(admin_client, profile.directory_sync)
     else:
-        print("2/8 Identitätsanbieter: übersprungen (kein OIDC-Anbieter im dev-Betriebsmodus) …")
+        print("2/8 Identitätsanbieter: übersprungen (kein Verzeichnisabgleich im Profil) …")
 
     print("3/8 Spaces einrichten …")
     space_ids: dict[str, str] = {}
@@ -735,7 +862,7 @@ def run(args: argparse.Namespace) -> None:
                 timeout_seconds=args.indexing_timeout_seconds,
             )
 
-    print("6/8 Gruppen einrichten (ADR-0036) …")
+    print("6/8 Gruppen einrichten und Rechte der Keycloak-Gruppen vergeben (ADR-0036) …")
     space_owner_by_name = {space_def.name: space_def.owner_key for space_def in profile.spaces}
     for group_def in profile.groups:
         group_id = ensure_group(admin_client, user_ids, group_def)
@@ -750,6 +877,20 @@ def run(args: argparse.Namespace) -> None:
                 clients[space_owner_by_name[space_name]], space_ids[space_name], group_id, role
             )
             print(f"  Space-Mitglied (Gruppe): {group_def.name} ∈ {space_name} ({role})")
+    for provider_group_def in profile.provider_groups:
+        group_id = find_provider_group(admin_client, provider_id, provider_group_def)
+        for library_name in provider_group_def.library_grants:
+            ensure_grant(admin_client, library_ids[library_name], group_id, subject_type="GROUP")
+            print(f"  Leserecht (Keycloak-Gruppe) vergeben: {provider_group_def.name} → {library_name}")
+        if provider_group_def.space_membership:
+            space_name, role = provider_group_def.space_membership
+            ensure_group_space_membership(
+                clients[space_owner_by_name[space_name]], space_ids[space_name], group_id, role
+            )
+            print(
+                f"  Space-Mitglied (Keycloak-Gruppe): {provider_group_def.name} ∈ {space_name} "
+                f"({role})"
+            )
 
     print("7/8 Space↔Bibliothek-Zuordnungen (Assoziation als Kuratierung, #706) …")
     for space_def in profile.spaces:
