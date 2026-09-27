@@ -192,8 +192,9 @@ const {
   ),
 }))
 
-vi.mock('../services/api', async () => {
-  const actual = await vi.importActual<typeof import('../services/api')>('../services/api')
+vi.mock('../services/libraryApi', async () => {
+  const actual =
+    await vi.importActual<typeof import('../services/libraryApi')>('../services/libraryApi')
   return {
     ...actual,
     getLibrary: mockGetLibrary,
@@ -205,15 +206,32 @@ vi.mock('../services/api', async () => {
     createLibraryFolder: mockCreateLibraryFolder,
     renameLibraryFolder: mockRenameLibraryFolder,
     deleteLibraryFolder: mockDeleteLibraryFolder,
+    bulkDeleteLibraryDocuments: mockBulkDeleteLibraryDocuments,
+    testLibrarySource: mockTestLibrarySource,
+  }
+})
+
+vi.mock('../services/indexingApi', async () => {
+  const actual =
+    await vi.importActual<typeof import('../services/indexingApi')>('../services/indexingApi')
+  return {
+    ...actual,
     triggerIndexing: mockTriggerIndexing,
     getIndexingStatus: mockGetIndexingStatus,
+  }
+})
+
+vi.mock('../services/libraryMetadataApi', async () => {
+  const actual = await vi.importActual<typeof import('../services/libraryMetadataApi')>(
+    '../services/libraryMetadataApi',
+  )
+  return {
+    ...actual,
     getDocumentMetadata: mockGetDocumentMetadata,
     bulkSetDocumentMetadata: mockBulkSetDocumentMetadata,
     getDocumentTypeVocabulary: mockGetDocumentTypeVocabulary,
     getLibraryMetadataMaintenance: mockGetLibraryMetadataMaintenance,
     setDocumentMetadataValue: mockSetDocumentMetadataValue,
-    bulkDeleteLibraryDocuments: mockBulkDeleteLibraryDocuments,
-    testLibrarySource: mockTestLibrarySource,
   }
 })
 

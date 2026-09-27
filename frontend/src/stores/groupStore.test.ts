@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { selectGroupMembers, useGroupStore } from './groupStore'
 import { resetAllStores } from './resettableStores'
 import type { GroupResponse } from '../types/api'
-import { getGroup, getGroups } from '../services/api'
+import { getGroup, getGroups } from '../services/groupApi'
 
 const mockCreateGroup = vi.fn()
 const mockAddGroupMember = vi.fn()
@@ -13,7 +13,7 @@ const mockDismissGroupSteward = vi.fn()
 const mockListGroupMembers = vi.fn()
 const mockSetGroupRelease = vi.fn()
 
-vi.mock('../services/api', () => ({
+vi.mock('../services/groupApi', () => ({
   getGroups: vi.fn(async () => [
     {
       id: 'group-b',

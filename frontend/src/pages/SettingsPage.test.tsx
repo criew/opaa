@@ -8,7 +8,7 @@ import SettingsPage from './SettingsPage'
 import { useAuthStore } from '../stores/authStore'
 import { useUiStore } from '../stores/uiStore'
 import { OPAA_BRANDING, useBrandingStore } from '../stores/brandingStore'
-import { mockLocalAccount } from '../mocks/fixtures'
+import { mockLocalAccount } from '../mocks/authFixtures'
 
 function renderPage() {
   return renderWithProviders(<SettingsPage />, { withRouter: true, initialRoute: '/settings' })

@@ -42,8 +42,9 @@ const { mockBrowseSource } = vi.hoisted(() => ({
   ),
 }))
 
-vi.mock('../services/api', async () => {
-  const actual = await vi.importActual<typeof import('../services/api')>('../services/api')
+vi.mock('../services/libraryApi', async () => {
+  const actual =
+    await vi.importActual<typeof import('../services/libraryApi')>('../services/libraryApi')
   return {
     ...actual,
     updateLibrary: mockUpdateLibrary,

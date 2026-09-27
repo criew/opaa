@@ -30,7 +30,7 @@ import type {
   LibraryFolderListItem,
 } from '../../types/api'
 import type { ConfluenceSpaceRef } from '../../utils/confluenceSource'
-import { getLibraryFolder } from '../../services/api'
+import { getLibraryFolder } from '../../services/libraryApi'
 import { confirmAction } from '../../stores/confirmStore'
 import { DEFAULT_PAGE_SIZE, useDocumentStore } from '../../stores/documentStore'
 import { useDocumentPreview } from '../../hooks/useDocumentPreview'

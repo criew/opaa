@@ -1,5 +1,5 @@
 import type { AssetRole, AssetType, PermissionSubjectType } from '../../types/api'
-import { upsertAssetGrant } from '../../services/api'
+import { upsertAssetGrant } from '../../services/assetApi'
 import { notify } from '../../stores/notificationStore'
 import { assetTypeLabel } from '../../utils/labels'
 

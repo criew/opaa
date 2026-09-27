@@ -76,7 +76,7 @@ Integrationstests mit `@Testcontainers(disabledWithoutDocker = true)` werden ohn
 
 ## Repository-Praxis
 
-- **Reihenfolge für neue Endpunkte:** OpenAPI-Spezifikation; generierte Backend-DTOs; Domain-Enum-Mappings und Cleanup in `backend/build.gradle.kts`; `pnpm run generate:api-types`; API-Funktion und Store-Aktion; und ein MSW-Handler in `frontend/src/mocks/handlers.ts`.
+- **Reihenfolge für neue Endpunkte:** OpenAPI-Spezifikation; generierte Backend-DTOs; Domain-Enum-Mappings und Cleanup in `backend/build.gradle.kts`; `pnpm run generate:api-types`; API-Funktion im Themenmodul `frontend/src/services/<thema>Api.ts` und Store-Aktion; ein MSW-Handler im Themenmodul `frontend/src/mocks/<thema>Handlers.ts` (Fixtures in `<thema>Fixtures.ts`), registriert in `frontend/src/mocks/handlers.ts`. Das Thema folgt dem Tag der Spec-Datei.
 - **Generierter Code wird niemals committet:** `build/generated/` und `frontend/src/types/generated/`.
 - **Abhängigkeitsversionen** leben nur in `backend/gradle/libs.versions.toml` und werden über `libs.*` referenziert.
 - **Liquibase:** Eine sequenziell nummerierte Change-Datei hinzufügen und in das Master-Changelog aufnehmen. Niemals ein ausgeführtes changeSet bearbeiten; `ddl-auto` ist `none`.

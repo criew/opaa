@@ -122,7 +122,7 @@ function uint32BE(value: number): Buffer {
  * the issue itself suggests for reaching a second page of results without paying for dozens of UI
  * uploads. Mirrors rss-feed-library.spec.ts's fetchLibraryDocumentFileNames in using
  * page.request directly with the dev-admin header, and LibraryDocumentService#uploadDocument's
- * "file" multipart field name (frontend/src/services/api.ts's uploadDocument).
+ * "file" multipart field name (frontend/src/services/libraryApi.ts's uploadDocument).
  */
 async function uploadFillerDocuments(page: Page, libraryId: string, count: number) {
   for (let i = 1; i <= count; i++) {

@@ -25,8 +25,9 @@ const {
   mockGetMyCapabilities: vi.fn(),
 }))
 
-vi.mock('../../services/api', async () => {
-  const actual = await vi.importActual<typeof import('../../services/api')>('../../services/api')
+vi.mock('../../services/groupApi', async () => {
+  const actual =
+    await vi.importActual<typeof import('../../services/groupApi')>('../../services/groupApi')
   return {
     ...actual,
     getMyStewardedGroups: mockGetMyStewardedGroups,
@@ -35,6 +36,15 @@ vi.mock('../../services/api', async () => {
     setGroupProtection: mockSetGroupProtection,
     appointGroupSteward: mockAppointGroupSteward,
     dismissGroupSteward: mockDismissGroupSteward,
+  }
+})
+
+vi.mock('../../services/capabilityApi', async () => {
+  const actual = await vi.importActual<typeof import('../../services/capabilityApi')>(
+    '../../services/capabilityApi',
+  )
+  return {
+    ...actual,
     getMyCapabilities: mockGetMyCapabilities,
   }
 })

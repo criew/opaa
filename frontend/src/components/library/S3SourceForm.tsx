@@ -20,7 +20,7 @@ import AddIcon from '@mui/icons-material/Add'
 import DeleteIcon from '@mui/icons-material/Delete'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import type { SourceConnectionTestResponse } from '../../types/api'
-import { browseSource, testLibrarySource } from '../../services/api'
+import { browseSource, testLibrarySource } from '../../services/libraryApi'
 import { sameLibrarySourceOrigin } from '../../utils/librarySourceConfig'
 import FieldLabel from '../wizard/FieldLabel'
 

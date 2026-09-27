@@ -6,7 +6,7 @@ import LibraryCreatePage from './LibraryCreatePage'
 import { useLibraryStore } from '../stores/libraryStore'
 import { useIndexingStore } from '../stores/indexingStore'
 import { capabilityMissingMessage } from '../utils/labels'
-import { mockSourceTypes } from '../mocks/fixtures'
+import { mockSourceTypes } from '../mocks/libraryFixtures'
 
 const mockNavigate = vi.fn()
 
@@ -39,15 +39,48 @@ const {
   mockSearchSelectableGroups: vi.fn(),
 }))
 
-vi.mock('../services/api', async () => {
-  const actual = await vi.importActual<typeof import('../services/api')>('../services/api')
+vi.mock('../services/groupApi', async () => {
+  const actual =
+    await vi.importActual<typeof import('../services/groupApi')>('../services/groupApi')
   return {
     ...actual,
     getMyGroups: mockGetMyGroups,
-    getMyCapabilities: mockGetMyCapabilities,
-    getUserSummaries: mockGetUserSummaries,
-    upsertAssetGrant: mockUpsertAssetGrant,
     searchSelectableGroups: mockSearchSelectableGroups,
+  }
+})
+
+vi.mock('../services/capabilityApi', async () => {
+  const actual = await vi.importActual<typeof import('../services/capabilityApi')>(
+    '../services/capabilityApi',
+  )
+  return {
+    ...actual,
+    getMyCapabilities: mockGetMyCapabilities,
+  }
+})
+
+vi.mock('../services/userApi', async () => {
+  const actual = await vi.importActual<typeof import('../services/userApi')>('../services/userApi')
+  return {
+    ...actual,
+    getUserSummaries: mockGetUserSummaries,
+  }
+})
+
+vi.mock('../services/assetApi', async () => {
+  const actual =
+    await vi.importActual<typeof import('../services/assetApi')>('../services/assetApi')
+  return {
+    ...actual,
+    upsertAssetGrant: mockUpsertAssetGrant,
+  }
+})
+
+vi.mock('../services/libraryApi', async () => {
+  const actual =
+    await vi.importActual<typeof import('../services/libraryApi')>('../services/libraryApi')
+  return {
+    ...actual,
     testLibrarySource: mockTestLibrarySource,
     browseSource: mockBrowseSource,
     listSourceTypes: mockListSourceTypes,

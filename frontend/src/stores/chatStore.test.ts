@@ -10,11 +10,13 @@ import { resetAllStores } from './resettableStores'
 import {
   clearManualRenameMarks,
   clearRemovedNoteItemCache,
-  clearSettingsPersistenceCache,
   dropChatSettingsCache,
-  getConfirmedSettingsForTesting,
   useChatStore,
 } from './chatStore'
+import {
+  clearSettingsPersistenceCache,
+  getConfirmedSettingsForTesting,
+} from './chatSettingsPersistence'
 import { useChatListStore } from './chatListStore'
 
 /** Resolves once resolve() is called - lets a test hold an MSW handler open until it explicitly

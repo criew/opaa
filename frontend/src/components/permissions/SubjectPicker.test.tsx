@@ -16,11 +16,20 @@ const { mockSearchSelectableGroups, mockGetUserSummaries } = vi.hoisted(() => ({
   mockGetUserSummaries: vi.fn(async () => [] as UserSummary[]),
 }))
 
-vi.mock('../../services/api', async () => {
-  const actual = await vi.importActual<typeof import('../../services/api')>('../../services/api')
+vi.mock('../../services/groupApi', async () => {
+  const actual =
+    await vi.importActual<typeof import('../../services/groupApi')>('../../services/groupApi')
   return {
     ...actual,
     searchSelectableGroups: mockSearchSelectableGroups,
+  }
+})
+
+vi.mock('../../services/userApi', async () => {
+  const actual =
+    await vi.importActual<typeof import('../../services/userApi')>('../../services/userApi')
+  return {
+    ...actual,
     getUserSummaries: mockGetUserSummaries,
   }
 })

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { searchSelectableGroups } from '../services/api'
+import { searchSelectableGroups } from '../services/groupApi'
 import type { SelectableGroupResponse } from '../types/api'
 
 const SEARCH_DEBOUNCE_MS = 300

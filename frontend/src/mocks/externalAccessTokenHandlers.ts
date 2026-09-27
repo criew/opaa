@@ -6,7 +6,7 @@ import type {
   CreatedExternalAccessTokenResponse,
   OwnExternalAccessTokenResponse,
 } from '../types/api'
-import { mockLibraries } from './fixtures'
+import { mockLibraries } from './libraryFixtures'
 import { mockExternalAccessSettings } from './externalAccessHandlers'
 
 /**

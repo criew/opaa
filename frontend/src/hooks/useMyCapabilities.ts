@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getMyCapabilities } from '../services/api'
+import { getMyCapabilities } from '../services/capabilityApi'
 import type { Capability } from '../types/api'
 
 interface UseMyCapabilitiesResult {

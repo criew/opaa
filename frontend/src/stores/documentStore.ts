@@ -14,7 +14,7 @@ import {
   getLibraryDocuments,
   renameLibraryFolder,
   uploadDocument as uploadDocumentRequest,
-} from '../services/api'
+} from '../services/libraryApi'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
 
 // #822 review, finding 2: normalizeError (services/api.ts) attaches the original AxiosError as

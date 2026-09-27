@@ -35,7 +35,7 @@ const {
   mockDeleteLibraryFolder: vi.fn(),
 }))
 
-vi.mock('../services/api', () => ({
+vi.mock('../services/libraryApi', () => ({
   getLibraryDocuments: mockGetLibraryDocuments,
   uploadDocument: mockUploadDocument,
   deleteLibraryDocument: mockDeleteLibraryDocument,

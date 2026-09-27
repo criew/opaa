@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { getDocumentContent } from '../services/api'
+import { getDocumentContent } from '../services/libraryApi'
 import { openDocumentContent, TEXT_PREVIEW_MAX_BYTES } from './documentContent'
 
-vi.mock('../services/api', () => ({
+vi.mock('../services/libraryApi', () => ({
   getDocumentContent: vi.fn(),
 }))
 

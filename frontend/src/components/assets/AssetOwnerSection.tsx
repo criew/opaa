@@ -16,7 +16,7 @@ import {
 } from '../permissions/subjectSelection'
 import { confirmAction } from '../../stores/confirmStore'
 import { successionAwareMessage } from '../succession/successionConflict'
-import { transferAssetOwnership } from '../../services/api'
+import { transferAssetOwnership } from '../../services/assetApi'
 import type { AssetOwnerType, AssetType } from '../../types/api'
 import { assetTypeLabel } from '../../utils/labels'
 

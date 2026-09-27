@@ -1,6 +1,6 @@
 import { http, HttpResponse } from 'msw'
 import type { AssetType, CatalogEntryResponse } from '../types/api'
-import { mockLibraries } from './fixtures'
+import { mockLibraries } from './libraryFixtures'
 import { mockPromptLibraries, mockUnreadablePromptLibraryIds } from './promptLibraryFixtures'
 
 /** Listed for the organization, but without a right of the mock user - findable, not usable. */

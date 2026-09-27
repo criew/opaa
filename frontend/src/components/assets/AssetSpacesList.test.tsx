@@ -8,8 +8,9 @@ const { mockGetAssetSpaceAssociations } = vi.hoisted(() => ({
   mockGetAssetSpaceAssociations: vi.fn<() => Promise<AssetSpaceAssociationListResponse>>(),
 }))
 
-vi.mock('../../services/api', async () => {
-  const actual = await vi.importActual<typeof import('../../services/api')>('../../services/api')
+vi.mock('../../services/assetApi', async () => {
+  const actual =
+    await vi.importActual<typeof import('../../services/assetApi')>('../../services/assetApi')
   return { ...actual, getAssetSpaceAssociations: mockGetAssetSpaceAssociations }
 })
 
