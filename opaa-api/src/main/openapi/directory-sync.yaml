@@ -1,0 +1,787 @@
+# Topic "directory-sync": its tags, paths and the components only this topic uses.
+# Merged with all other fragments at build time, see root.yaml.
+tags:
+  - name: directory-sync
+    description: Directory connectors and directory synchronisation of identity providers.
+paths:
+  /api/v1/admin/directory-sync/status:
+    get:
+      operationId: listDirectorySyncStatus
+      tags: [directory-sync]
+      summary: The directory run's status line of every provider (system admin only)
+      description: >
+        One entry per identity provider that has the directory run switched on or has ever run
+        one - the management overview of ADR-0036, Entscheidung 3. Each entry carries the age of
+        a pending plan, so a plan waiting for a decision is visible without opening a subpage.
+      responses:
+        "200":
+          description: One status line per provider, in the providers' own order
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DirectorySyncStatusResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/oidc-providers/{providerId}/directory-sync:
+    put:
+      operationId: setOidcProviderDirectorySync
+      tags: [directory-sync]
+      summary: Switch a provider's directory run on or off (system admin only)
+      description: >
+        A provider has exactly one group mechanism (ADR-0036, Entscheidung 2): switching the
+        directory run on requires an empty groups claim, and setting a groups claim requires the
+        directory run to be off. The conflict is refused with 409 (code
+        DIRECTORY_SYNC_MECHANISM_CONFLICT) and a readable reason - otherwise the same directory
+        group would exist twice, with two truths about its membership and two moments of
+        revocation. Refused with 409 for the LOCAL row of the local account management, which has
+        no directory. Switching it on does not run it; the schedule does, and dry-run/run are
+        there for a run on demand.
+      parameters:
+        - name: providerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OidcProviderDirectorySyncRequest"
+      responses:
+        "200":
+          description: Identity provider updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OidcProviderResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/admin/oidc-providers/{providerId}/directory-connector:
+    put:
+      operationId: setDirectoryConnector
+      tags: [directory-sync]
+      summary: Store a provider's directory connection (system admin only)
+      description: >
+        The access this provider's directory run uses (#1817, ADR-0036 Entscheidung 3). The realm
+        is never configured here: it is derived from the provider's own issuer URI, so the run can
+        only ever read the realm the tokens of this provider come from (ADR-0025). The admin API
+        address passes the same address policy as the issuer. The service account's secret is
+        stored encrypted and is never part of any response. Refused with 409 for the LOCAL row,
+        which has no directory, and with 400 when the issuer URI is not a Keycloak realm address.
+        Without OPAA_CREDENTIALS_ENCRYPTION_KEY nothing is stored and the answer is 503 naming the
+        missing key - a write never silently drops a credential.
+      parameters:
+        - name: providerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DirectoryConnectorRequest"
+      responses:
+        "200":
+          description: Connection stored
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DirectoryConnectorResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+    delete:
+      operationId: deleteDirectoryConnector
+      tags: [directory-sync]
+      summary: Remove a provider's directory connection (system admin only)
+      description: >
+        Deletes the stored access, its secret included. The directory run itself stays switched on
+        if it was: without a connection it reports the directory as unreachable, which revokes
+        nothing (#237). Removing an absent connection is not an error.
+      parameters:
+        - name: providerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Connection removed, or there was none
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/admin/oidc-providers/{providerId}/directory-connector/test:
+    post:
+      operationId: testDirectoryConnector
+      tags: [directory-sync]
+      summary: Probe a provider's directory connection (system admin only)
+      description: >
+        Probes the access before it is saved, the same shape as POST /api/v1/admin/oidc-providers/
+        test - a German outcome, never a stack trace. Omitting clientSecret probes the stored
+        secret, so an existing connection can be re-tested without retyping it; without a stored
+        connection, and with a stored one this deployment's key cannot decrypt, the secret is
+        required and its absence is answered with 400. Refused with 409 for the LOCAL row, which
+        has no directory. Never writes anything, and therefore never needs the encryption key.
+      parameters:
+        - name: providerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DirectoryConnectorTestRequest"
+      responses:
+        "200":
+          description: The outcome of the probe, successful or not
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OidcProviderTestResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/admin/oidc-providers/{providerId}/directory-sync/dry-run:
+    post:
+      operationId: runDirectorySyncDryRun
+      tags: [directory-sync]
+      summary: Compute one provider's directory diff without applying it (system admin only)
+      description: >
+        Fetches this provider's directory state and computes what would change, but never writes
+        anything - not even when the run would otherwise be applicable, and it never leaves a
+        pending plan behind either. Members are resolved among the accounts of this provider's
+        issuer only. Refused with 409 while the directory run is switched off for this provider
+        (DIRECTORY_SYNC_NOT_ENABLED), while the provider itself is disabled
+        (DIRECTORY_SYNC_PROVIDER_DISABLED - a disabled provider is no anchor of trust, so its run
+        pauses), and while another run or dry run of the same provider is still in flight
+        (DIRECTORY_SYNC_ALREADY_RUNNING). See #237 and #1816.
+      parameters:
+        - name: providerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Dry-run report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DirectorySyncReportResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/admin/oidc-providers/{providerId}/directory-sync/run:
+    post:
+      operationId: runDirectorySync
+      tags: [directory-sync]
+      summary: Run one provider's directory synchronisation on demand (system admin only)
+      description: >
+        Applies changes only if the directory is reachable, did not return an empty group list
+        while this provider's ORG_UNIT groups already exist, and the fraction of memberships that
+        would be removed does not exceed the configured threshold. Above the threshold the run
+        writes nothing and leaves a pending plan behind (outcome PENDING_CONFIRMATION), replacing
+        any plan this provider already had; an empty group list stays a hard abort and leaves no
+        plan at all. Same 409s as the dry run. See #237 and #1816.
+      parameters:
+        - name: providerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Synchronisation report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DirectorySyncReportResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/admin/oidc-providers/{providerId}/directory-sync/pending-plan:
+    get:
+      operationId: getDirectorySyncPendingPlan
+      tags: [directory-sync]
+      summary: The plan waiting for a decision for this provider (system admin only)
+      description: >
+        404 when this provider has no pending plan - that is the answer, not an error condition
+        worth a field of its own.
+      parameters:
+        - name: providerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: The pending plan, exactly as the run presented it
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DirectorySyncPendingPlanResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/admin/oidc-providers/{providerId}/directory-sync/pending-plan/{planId}/confirm:
+    post:
+      operationId: confirmDirectorySyncPlan
+      tags: [directory-sync]
+      summary: Apply a pending directory plan (system admin only)
+      description: >
+        Recomputes the diff against a fresh directory snapshot and applies it only if the result
+        still matches the plan that was shown (ADR-0036, Entscheidung 3). A result that differs is
+        stored as the new pending plan and refused with 409 (code DIRECTORY_SYNC_PLAN_CHANGED), so
+        nobody confirms a diff they never saw; a planId that is not the pending one any more - a
+        later run replaced it - answers 404. The threshold is not applied again: confirming is
+        exactly the decision it guards. An unreachable directory keeps the plan and reports
+        UNREACHABLE. The reason is mandatory and goes into the run's audit entry together with the
+        confirming person.
+      parameters:
+        - name: providerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: planId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DirectorySyncPlanDecisionRequest"
+      responses:
+        "200":
+          description: Report of the confirmed run
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DirectorySyncReportResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/admin/oidc-providers/{providerId}/directory-sync/pending-plan/{planId}/discard:
+    post:
+      operationId: discardDirectorySyncPlan
+      tags: [directory-sync]
+      summary: Discard a pending directory plan without applying it (system admin only)
+      description: >
+        Removes the plan; nothing is written to groups or memberships. The next scheduled run
+        computes the diff afresh and may present it again - discarding is a decision about this
+        plan, not a suppression of the finding. The reason is mandatory and goes into the audit
+        entry.
+      parameters:
+        - name: providerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: planId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DirectorySyncPlanDecisionRequest"
+      responses:
+        "204":
+          description: Plan discarded
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+components:
+  schemas:
+    DirectorySyncOutcome:
+      type: string
+      description: >
+        What a directory synchronisation run did. APPLIED and DRY_RUN both mean the run computed
+        a valid diff and did (or deliberately did not) write it. PENDING_CONFIRMATION is the
+        confirmation path of ADR-0036, Entscheidung 3: a run above the threshold writes nothing
+        and leaves a pending plan behind that a system administrator confirms or discards.
+        ABORTED_THRESHOLD is the same measurement on a dry run, which never leaves a plan.
+        ABORTED_EMPTY_RESULT stays a hard abort - "the source did not answer the way it should"
+        is nothing anyone may click away - and UNREACHABLE keeps the last known good state in
+        force. See #237 and #1816.
+      enum:
+        [
+          APPLIED,
+          DRY_RUN,
+          PENDING_CONFIRMATION,
+          ABORTED_THRESHOLD,
+          ABORTED_EMPTY_RESULT,
+          UNREACHABLE,
+        ]
+      example: APPLIED
+
+    DirectorySyncGroupChange:
+      type: object
+      required: [externalId, name, memberCount]
+      properties:
+        externalId:
+          type: string
+          example: directory-guid-1
+        name:
+          type: string
+          example: Referat 50
+        previousName:
+          type: string
+          nullable: true
+          description: Only set for a renamed group
+        sourcePath:
+          type: string
+          nullable: true
+          description: >
+            The path the directory reports for this group ("/Haus/Referat 50"), null when it
+            reports none. Tells the same-named subgroups of one directory apart.
+          example: /Haus/Referat 50
+        memberCount:
+          type: integer
+          description: >
+            How many direct members the group has (ADR-0036, Entscheidung 3). For a group the run
+            would create, the number the directory reports - a Keycloak department that only has
+            subgroups is an empty group in OPAA, and this is where the operator sees it before
+            applying. For a renamed, dissolved or no-longer-maintained group, the number of
+            memberships it currently holds.
+          example: 12
+
+    DirectoryConnectorType:
+      type: string
+      description: >
+        Which kind of directory a provider's group synchronisation reads (ADR-0036, Entscheidung
+        3). Keycloak is the first connector: its user id is the token's sub, so a member's
+        identity coincides with the OPAA account without a mapping rule. LDAP and Microsoft Graph
+        follow as their own connectors.
+      enum: [KEYCLOAK]
+      example: KEYCLOAK
+
+    DirectoryConnectorRequest:
+      type: object
+      required: [type, clientId, clientSecret]
+      description: >
+        The service account a directory run signs in with. For KEYCLOAK this is a confidential
+        client with service accounts enabled, holding the realm-management roles view-users and
+        query-groups.
+      properties:
+        type:
+          $ref: "#/components/schemas/DirectoryConnectorType"
+        baseUrl:
+          type: string
+          nullable: true
+          maxLength: 500
+          description: >
+            Backend-side address of the admin API when it differs from the issuer's own origin -
+            the same split as jwkSetUri (browser reaches the provider under the issuer, the
+            backend under this address). Null derives it from the issuer URI by dropping its
+            /realms/{realm} suffix.
+          example: http://keycloak:8180
+        clientId:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: opaa-directory
+        clientSecret:
+          type: string
+          minLength: 1
+          maxLength: 256
+          description: >
+            Stored encrypted; no response ever carries it back. The bound is on characters and the
+            column on bytes (varchar(2000)), so it is set low enough that 256 four-byte characters
+            still fit the base64 of their AES-GCM ciphertext - far above any Keycloak client secret.
+
+    DirectoryConnectorTestRequest:
+      type: object
+      required: [type, clientId]
+      description: >
+        Like DirectoryConnectorRequest, but clientSecret may be omitted to probe with the stored
+        one.
+      properties:
+        type:
+          $ref: "#/components/schemas/DirectoryConnectorType"
+        baseUrl:
+          type: string
+          nullable: true
+          maxLength: 500
+        clientId:
+          type: string
+          minLength: 1
+          maxLength: 255
+        clientSecret:
+          type: string
+          nullable: true
+          maxLength: 256
+
+    DirectoryConnectorResponse:
+      type: object
+      required: [type, baseUrl, realm, clientId, updatedAt]
+      description: >
+        A provider's stored directory access (#1817). Carries no secret - only that one is stored.
+        A secret this deployment's key can no longer decrypt does not change this answer; it shows
+        up when the access is used, as an unreachable directory, and on a probe.
+      properties:
+        type:
+          $ref: "#/components/schemas/DirectoryConnectorType"
+        baseUrl:
+          type: string
+          description: >
+            The admin API address the backend actually uses - the stored override, or the one
+            derived from the issuer URI.
+          example: http://keycloak:8180
+        realm:
+          type: string
+          description: >
+            Derived from the provider's issuer URI, never configured separately: a run reads the
+            realm this provider's tokens come from and no other.
+          example: opaa
+        clientId:
+          type: string
+          example: opaa-directory
+        updatedAt:
+          type: string
+          format: date-time
+
+    DirectorySyncUserRef:
+      type: object
+      required: [userId]
+      properties:
+        userId:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+          nullable: true
+
+    DirectorySyncMembershipChange:
+      type: object
+      required: [externalId, name, added, removed]
+      description: >
+        Which users would gain or lose membership of one group - the level of detail an admin
+        needs to decide before a run that would revoke access is applied (see #237's acceptance
+        criteria: the dry-run report must show what would change, not only how much).
+      properties:
+        externalId:
+          type: string
+          example: directory-guid-1
+        name:
+          type: string
+          example: Referat 50
+        added:
+          type: array
+          items:
+            $ref: "#/components/schemas/DirectorySyncUserRef"
+        removed:
+          type: array
+          items:
+            $ref: "#/components/schemas/DirectorySyncUserRef"
+
+    DirectorySyncReportResponse:
+      type: object
+      required:
+        - outcome
+        - generatedAt
+        - groupsCreated
+        - groupsRenamed
+        - groupsDissolved
+        - unmaintainedTokenGroups
+        - membershipChanges
+        - accountsLocked
+        - accountsUnlocked
+        - accountLocksWithheld
+        - membershipsAdded
+        - membershipsRemoved
+        - changedFraction
+        - thresholdFraction
+        - message
+      properties:
+        outcome:
+          $ref: "#/components/schemas/DirectorySyncOutcome"
+        generatedAt:
+          type: string
+          format: date-time
+        groupsCreated:
+          type: array
+          items:
+            $ref: "#/components/schemas/DirectorySyncGroupChange"
+        groupsRenamed:
+          type: array
+          items:
+            $ref: "#/components/schemas/DirectorySyncGroupChange"
+        groupsDissolved:
+          type: array
+          items:
+            $ref: "#/components/schemas/DirectorySyncGroupChange"
+        unmaintainedTokenGroups:
+          type: array
+          description: >
+            The groups this provider still carries from its groups claim while the directory run
+            is switched on for it - "no longer maintained" (ADR-0036, Entscheidung 3). They keep
+            their frozen membership and are not touched by the run: switching the mechanism
+            revokes nothing silently. Empty in the normal case, since enabling the run requires an
+            empty groups claim and only a provider that once had one can have such groups left.
+          items:
+            $ref: "#/components/schemas/DirectorySyncGroupChange"
+        membershipChanges:
+          type: array
+          items:
+            $ref: "#/components/schemas/DirectorySyncMembershipChange"
+        accountsLocked:
+          type: array
+          description: >
+            The accounts this run takes the access away from: the directory reports them as
+            disabled, or it no longer reports them at all - which is what leaving the organization
+            looks like from here (#1818, ADR-0036 Entscheidung 3). A lock is reversible and
+            revokes no membership; the next run gives the access back once the directory reports
+            the account as enabled again.
+          items:
+            $ref: "#/components/schemas/DirectorySyncUserRef"
+        accountsUnlocked:
+          type: array
+          description: The accounts this run gives the access back to.
+          items:
+            $ref: "#/components/schemas/DirectorySyncUserRef"
+        accountLocksWithheld:
+          type: array
+          description: >
+            Accounts the run would have locked but did not: locking them would have left the
+            installation without a login-capable system administrator (ADR-0036, Entscheidung 6).
+            Named rather than silently left out, so the systems administration can act.
+          items:
+            $ref: "#/components/schemas/DirectorySyncUserRef"
+        membershipsAdded:
+          type: integer
+          example: 4
+        membershipsRemoved:
+          type: integer
+          example: 1
+        unresolvedMemberCount:
+          type: integer
+          description: Directory members whose subject matched no known user; skipped, not an error
+          example: 0
+        changedFraction:
+          type: number
+          format: double
+          description: >
+            The worse of two independent risk measures, each compared against the configured
+            threshold on its own: the fraction of memberships at risk (removals plus the
+            memberships of groups that would be dissolved, relative to the memberships of every
+            group that was active before this run or is reactivated by it - a group that stayed
+            dissolved and unreported is excluded from this side), and the fraction of active
+            groups that would be dissolved this run (relative to all groups active before this
+            run - matched-but-unchanged groups are included in this denominator, since they are
+            part of what "active" means here). The second measure exists because an
+            introduction-phase directory often has ORG_UNIT groups with no members yet, which the
+            first measure cannot see a mass dissolution of; it only applies once the active-group
+            count or the dissolution count is large enough for a fraction to be meaningful, so a
+            single legitimate dissolution in a small organisation is never blocked by it.
+          example: 0.05
+        thresholdFraction:
+          type: number
+          format: double
+          example: 0.3
+        message:
+          type: string
+          example: Synchronisation angewendet.
+
+    DirectorySyncStatusResponse:
+      type: object
+      description: >
+        The status line of one provider's directory run (ADR-0036, Entscheidung 3) - per provider
+        since #1816, not per organization. Every field but the provider's own is null until that
+        provider has run once.
+      required: [providerId, providerDisplayName, providerEnabled, enabled]
+      properties:
+        providerId:
+          type: string
+          format: uuid
+        providerDisplayName:
+          type: string
+          example: Beschäftigte (Keycloak)
+        providerEnabled:
+          type: boolean
+          description: A disabled provider is not synchronised - its run pauses (ADR-0036/2).
+        enabled:
+          type: boolean
+          description: Whether the directory run is switched on for this provider.
+        intervalMinutes:
+          type: integer
+          nullable: true
+          description: How often the run is due; null while the run is switched off.
+          example: 360
+        lastRunAt:
+          type: string
+          format: date-time
+          nullable: true
+        lastOutcome:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/DirectorySyncOutcome"
+        lastMessage:
+          type: string
+          nullable: true
+        lastAppliedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Timestamp of the last run that actually applied changes (outcome APPLIED)
+        lastChangedFraction:
+          type: number
+          format: double
+          nullable: true
+        pendingPlan:
+          allOf:
+            - $ref: "#/components/schemas/DirectorySyncPendingPlanSummary"
+          nullable: true
+          description: >
+            A plan waiting for a decision, if any. A pending plan is a loud state (ADR-0036/3):
+            its age belongs in the status line itself, not only on a subpage - which is why the
+            summary carries createdAt here rather than making a caller fetch the plan for it.
+
+    DirectorySyncPendingPlanSummary:
+      type: object
+      required: [id, createdAt, changedFraction, membershipsRemoved]
+      properties:
+        id:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+          description: When the run that produced this plan read the directory - its age.
+        changedFraction:
+          type: number
+          format: double
+          example: 0.67
+        membershipsRemoved:
+          type: integer
+          example: 12
+        accountsLocked:
+          type: integer
+          description: >
+            How many accounts this plan would lock (#1818) - the second number that makes a
+            pending plan loud on the management overview, next to the withdrawn memberships.
+          example: 40
+
+    DirectorySyncPendingPlanResponse:
+      type: object
+      required: [id, providerId, createdAt, report]
+      description: >
+        The plan a run above the threshold left behind, exactly as it was shown. Confirming it
+        recomputes the diff against a fresh snapshot; a result that differs from this report is
+        presented anew instead of applied (ADR-0036, Entscheidung 3).
+      properties:
+        id:
+          type: string
+          format: uuid
+        providerId:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        report:
+          $ref: "#/components/schemas/DirectorySyncReportResponse"
+
+    DirectorySyncPlanDecisionRequest:
+      type: object
+      required: [reason]
+      description: >
+        The confirming or discarding person's own reason. Mandatory because the audit trail of a
+        run above the threshold names "the confirming person and their reason"
+        (security-and-compliance.md, closed event list).
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+          example: Reorganisation zum 01.10., mit dem Personalreferat abgestimmt
+
+    OidcProviderDirectorySyncRequest:
+      type: object
+      required: [enabled]
+      description: >
+        Switches this provider's directory run on or off and sets its interval (ADR-0036,
+        Entscheidung 2 and 3).
+      properties:
+        enabled:
+          type: boolean
+        intervalMinutes:
+          type: integer
+          minimum: 5
+          maximum: 10080
+          nullable: true
+          description: >
+            How often the run is due. Null keeps the current value, or takes the shipped default
+            of 360 minutes (6 hours) when the run is switched on for the first time. The bounds
+            apply to any value given, including alongside enabled=false - a request naming a
+            value outside them is refused with 400 rather than silently dropped; what a
+            switched-off run does with the value (nothing - it stores none) is a separate matter.
+          example: 360

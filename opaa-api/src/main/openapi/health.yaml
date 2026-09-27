@@ -1,0 +1,28 @@
+# Topic "health": its tags, paths and the components only this topic uses.
+# Merged with all other fragments at build time, see root.yaml.
+tags:
+  - name: health
+    description: Liveness probe of the backend.
+paths:
+  /api/health:
+    get:
+      operationId: getHealth
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          example: UP

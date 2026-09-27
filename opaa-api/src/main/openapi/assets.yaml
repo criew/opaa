@@ -1,0 +1,898 @@
+# Topic "assets": its tags, paths and the components only this topic uses.
+# Merged with all other fragments at build time, see root.yaml.
+tags:
+  - name: asset
+    description: Assets, their grants and their association with spaces.
+paths:
+  /api/v1/assets/{assetType}/{assetId}/grants:
+    parameters:
+      - $ref: "#/components/parameters/AssetTypePath"
+      - $ref: "#/components/parameters/AssetIdPath"
+
+    get:
+      operationId: listAssetGrants
+      tags: [asset]
+      summary: >
+        List the grants on an asset of any type (MANAGER role or above required). See
+        docs/features/spaces-and-assets.md#asset-rollen.
+      responses:
+        "200":
+          description: List of grants
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AssetGrantResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    post:
+      operationId: upsertAssetGrant
+      tags: [asset]
+      summary: >
+        Grant (or update the role of) a user, a group or every account of the organization
+        ("Alle Konten") on an asset (MANAGER role or above required). Idempotent per
+        subject: submitting again for the same subject replaces its role and expiry.
+      description: >
+        Subject ALL_ACCOUNTS reaches every account of the asset's organization and names no
+        subjectId (#1931, ADR-0037). Its role is capped at EDITOR: MANAGER and OWNER are
+        responsibilities - granting rights, ownership, succession - and are refused with 400 for
+        this subject, because a responsibility is borne by a named person or group. It replaces the
+        former release level AssetVisibility, so a connector library's share cap (#797) is enforced
+        here: while the system administration forbids it, such a grant is refused with 409 - the
+        caller's own role is not in question.
+        .
+        While the asset's succession is open (ADR-0036, Entscheidung 6) its reach is frozen: a new
+        grant, a higher role and a postponed expiry are refused with 409 and the code
+        SUCCESSION_OPEN, whose message names who is responsible. Taking reach away stays possible -
+        a downgrade, an earlier expiry and a revocation are never refused for it.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssetGrantRequest"
+      responses:
+        "200":
+          description: Grant created or updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssetGrantResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/assets/{assetType}/{assetId}/grants/{grantId}:
+    parameters:
+      - $ref: "#/components/parameters/AssetTypePath"
+      - $ref: "#/components/parameters/AssetIdPath"
+      - name: grantId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    delete:
+      operationId: revokeAssetGrant
+      tags: [asset]
+      summary: Revoke a grant (MANAGER role or above required). Takes effect on the next query.
+      responses:
+        "204":
+          description: Grant revoked
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/assets/{assetType}/{assetId}/grants/groups/{groupId}/members:
+    parameters:
+      - $ref: "#/components/parameters/AssetTypePath"
+      - $ref: "#/components/parameters/AssetIdPath"
+      - name: groupId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: "#/components/parameters/GroupMemberDisclosureOffset"
+      - $ref: "#/components/parameters/GroupMemberDisclosureLimit"
+
+    get:
+      operationId: listGrantedGroupMembers
+      tags: [asset]
+      summary: >
+        The members of a group that holds a grant on this asset - "wer ein Recht gibt, sieht, an
+        wen" (#1880, ADR-0036 Entscheidung 9)
+      description: >
+        Requires MANAGER or above on the asset, exactly like the grant list itself, and only while
+        the group still holds an unexpired grant here. What the answer withholds and why is
+        described once, at GroupMemberDisclosureResponse; anything the rule refuses answers 404,
+        like an unknown group.
+
+        There is no object-free variant of this read on purpose: the right to see the members
+        comes from the object, so the object is part of the path.
+      responses:
+        "200":
+          description: The group's active members, capped at the requested page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroupMemberDisclosureResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/assets/{assetType}/{assetId}/access-derivation:
+    parameters:
+      - $ref: "#/components/parameters/AssetTypePath"
+      - $ref: "#/components/parameters/AssetIdPath"
+
+    get:
+      operationId: getAssetAccessDerivation
+      tags: [asset]
+      summary: >
+        Why the caller reaches this asset - the Herleitung of ADR-0036, Entscheidung 9 (#1822)
+      description: >
+        Every own way to the effective role: a grant naming the caller, a grant naming one of their
+        groups (with the group's name, origin, mechanism and the moment of the grant), the
+        organization-wide release, and the system administration. Always about the caller
+        themselves - there is no parameter naming somebody else; a question about another person's
+        reach is the Suchdiagnose with "Sicht als" or, for the past, the Stichtagsauskunft. No
+        Vollmacht and no protocol entry, and no member of any group is disclosed. A capability
+        never appears: it opens an Anlegepfad, never an Inhalt (ADR-0036, Entscheidung 5).
+      responses:
+        "200":
+          description: The ways the caller reaches the asset
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssetAccessDerivationResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/assets/{assetType}/{assetId}/spaces:
+    parameters:
+      - $ref: "#/components/parameters/AssetTypePath"
+      - $ref: "#/components/parameters/AssetIdPath"
+
+    get:
+      operationId: listAssetSpaceAssociations
+      tags: [asset]
+      summary: >
+        The spaces this asset is associated with (VIEWER role or above on the asset required) -
+        the "Zuordnungen" view (#203, #1939). For a caller with at least MANAGER on the asset it is
+        never filtered: they see every association, regardless of whether they are a member of the
+        space. Below MANAGER the entry is reduced to spaceId and spaceName, and an association in a
+        PRIVATE space the caller does not belong to is not named at all - it only raises
+        hiddenCount.
+      description: >
+        docs/features/spaces-and-assets.md#assets-in-einen-space-assoziieren: "Der Eigentümer des
+        Assets sieht alle Assoziationen und kann jede davon jederzeit einseitig lösen."
+        narrowerReaderCircle on each entry is the same "not every member can already read this"
+        signal that triggers the owner notification when the association was created (#203) -
+        recomputed live here, not stored, since space membership and asset grants both change
+        independently afterwards. It, the creator and the creation time are disclosed to a caller
+        with at least MANAGER only; a plain reader learns which spaces the asset stands in, nothing
+        about who put it there or who in them may read it - and a PRIVATE space keeps the promise
+        of its own visibility, that only its members know it exists.
+      responses:
+        "200":
+          description: The associations of this asset the caller may see, plus the count of the rest
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssetSpaceAssociationListResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/assets/{assetType}/{assetId}/transfer-ownership:
+    parameters:
+      - $ref: "#/components/parameters/AssetTypePath"
+      - $ref: "#/components/parameters/AssetIdPath"
+
+    post:
+      operationId: transferAssetOwnership
+      tags: [asset]
+      summary: >
+        Hand this one asset to another owner - a person or a group (#1941)
+      description: >
+        The per-asset counterpart of POST /api/v1/permission-transfers, which moves everything a
+        subject holds: here exactly one asset changes hands, and nothing else of the previous
+        owner's does. OWNER on the asset is required. The owner columns, the grant that goes with
+        ownership and the ownership interval move together (ADR-0036, Entscheidung 10), an audit
+        entry is written, and an open succession record of this asset is closed naming the caller -
+        this transfer is the Übernahme the Nachfolgeliste points at. A person target must belong to
+        the caller's organization; a group target follows the rule that governs creating an asset
+        in a group's name - the caller is a member and the group may still receive its MANAGER
+        grant (400 for a dissolved group or one of a disabled provider). A group never holds OWNER,
+        it holds MANAGER; ownership itself is recorded on the asset. Handing the asset to its
+        current owner changes nothing and answers 204.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssetOwnershipTransferRequest"
+      responses:
+        "204":
+          description: Ownership transferred
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/spaces/{spaceId}/assets:
+    parameters:
+      - name: spaceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: listSpaceAssetAssociations
+      tags: [asset]
+      summary: >
+        The assets associated with this space, of every type. For a plain MEMBER, filtered to what
+        they may themselves read (#203 acceptance criterion "two members with different grants see
+        different asset lists"). For a CURATOR, ADMIN or the space owner, unfiltered - every
+        association is listed so they can also detach one they cannot themselves read. Requires
+        space membership.
+      description: >
+        docs/features/spaces-and-assets.md#assets-in-einen-space-assoziieren. An association
+        grants no access by itself - for a plain MEMBER, an asset is listed only if they already
+        have at least VIEWER on it through their own grants, a group grant, or organization-wide
+        visibility. An entry the caller cannot read carries readableByCaller=false and neither name
+        nor description.
+      responses:
+        "200":
+          description: Associated assets
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpaceAssetAssociationListResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    post:
+      operationId: associateSpaceAsset
+      tags: [asset]
+      summary: >
+        Associates an asset with this space (CURATOR role or above on the space required). The
+        caller must themselves have at least VIEWER on the asset - a CURATOR may only associate an
+        asset they can already access themselves
+        (docs/features/spaces-and-assets.md#assets-in-einen-space-assoziieren). Idempotent: an
+        already-associated asset returns its existing association unchanged.
+      description: >
+        If the space has any member without read access to the asset, the asset's owner is
+        actively notified (#203, "Benachrichtigung statt Zustimmung") - no consent required, the
+        association takes effect immediately regardless.
+        While the succession of either side is open (ADR-0036, Entscheidung 6) a new association
+        is refused with 409 and the code SUCCESSION_OPEN; an association that already exists is
+        returned unchanged, as it reaches nobody new.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SpaceAssetAssociationRequest"
+      responses:
+        "201":
+          description: Association created (or already existed)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpaceAssetAssociationResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/spaces/{spaceId}/assets/{assetId}:
+    parameters:
+      - name: spaceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: "#/components/parameters/AssetIdPath"
+
+    delete:
+      operationId: detachSpaceAsset
+      tags: [asset]
+      summary: >
+        Removes the association (not the asset itself). Allowed for a CURATOR or above on the
+        space, or - unilaterally, regardless of their own space membership - for a MANAGER or
+        above on the asset itself
+        (docs/features/spaces-and-assets.md#assets-in-einen-space-assoziieren: "Der Eigentümer des
+        Assets ... kann jede davon jederzeit einseitig lösen").
+      responses:
+        "204":
+          description: Association removed (or did not exist)
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/catalog:
+    get:
+      operationId: listCatalog
+      tags: [asset]
+      summary: >
+        The catalog across every asset type (docs/features/spaces-and-assets.md#der-katalog): the
+        assets the caller may read - direct grant, grant to one of their groups, organization-wide
+        release - united with the listed ones, always within the caller's organization. An entry
+        describes an asset and never carries its content.
+      description: >
+        A listed asset the caller may not read is an entry with accessible = false; its detail
+        view still answers 404 or 403 - being findable is not being accessible. accessible follows
+        the rights formula alone, so a system administrator without a grant sees the listed assets
+        like everybody else and no more. Ordered by name; the search matches name and
+        description, case-insensitive, every character literally.
+      parameters:
+        - name: type
+          in: query
+          required: false
+          description: Only entries of this asset type; all types when absent.
+          schema:
+            $ref: "#/components/schemas/AssetType"
+        - name: q
+          in: query
+          required: false
+          description: Part of the name or the description.
+          schema:
+            type: string
+            maxLength: 200
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: size
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+      responses:
+        "200":
+          description: One page of the catalog
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CatalogPageResponse"
+        "400":
+          description: >
+            A page, size or search text outside the bounds declared above - refused rather than
+            silently answering a different page than the one asked for.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+components:
+  schemas:
+    AssetType:
+      type: string
+      description: >
+        The type of an asset on the asset shell (#1899, docs/features/spaces-and-assets.md#assets).
+        Grants, the Herleitung and the space association name an asset by its type plus id; a type
+        without a registered definition answers 404 like an unknown asset.
+      enum: [KNOWLEDGE_LIBRARY, PROMPT_LIBRARY]
+
+    AssetOrigin:
+      type: string
+      description: >
+        Where an asset comes from: created in this installation (LOCAL) or delivered with it
+        (BUILT_IN, docs/features/spaces-and-assets.md#mitgelieferte-assets).
+      enum: [LOCAL, BUILT_IN]
+
+    CatalogEntryResponse:
+      type: object
+      required: [assetType, assetId, name, ownerType, origin, accessible, listed, itemCount, spaceCount]
+      description: >
+        One asset in the catalog - a description, never a content
+        (docs/features/spaces-and-assets.md#der-katalog).
+      properties:
+        assetType:
+          $ref: "#/components/schemas/AssetType"
+        assetId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        ownerType:
+          $ref: "#/components/schemas/AssetOwnerType"
+        ownerLabel:
+          type: string
+          nullable: true
+          description: >
+            The responsible party - the owning group's or person's display name. Null when it
+            cannot be resolved, when the person has no display name or when the group is protected
+            (ADR-0036, Entscheidung 9); never an e-mail address.
+          example: Referat 50
+        origin:
+          $ref: "#/components/schemas/AssetOrigin"
+        accessible:
+          type: boolean
+          description: >
+            Whether the caller may read the asset by the rights formula. False for an entry that is
+            only listed - its detail view answers 404 or 403.
+        listed:
+          type: boolean
+        itemCount:
+          type: integer
+          format: int64
+          description: >
+            The extent: what the asset holds by its type - top-level documents of a knowledge
+            library, prompts of a prompt library.
+        spaceCount:
+          type: integer
+          format: int64
+          description: The spread - in how many spaces of the organization the asset is associated.
+        succession:
+          description: >
+            Set while the asset has no capable owner (ADR-0036, Entscheidung 6) - state and
+            addressee only, as on the asset's own view.
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/SuccessionStateResponse"
+
+    CatalogPageResponse:
+      type: object
+      required: [entries, page, size, totalElements, totalPages]
+      properties:
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/CatalogEntryResponse"
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+
+    SpaceAssetAssociationRequest:
+      type: object
+      required: [assetType, assetId]
+      properties:
+        assetType:
+          $ref: "#/components/schemas/AssetType"
+        assetId:
+          type: string
+          format: uuid
+
+    SpaceAssetAssociationResponse:
+      type: object
+      required: [assetType, assetId, createdByUserId, createdAt, readableByCaller]
+      description: >
+        One space's view of one associated asset - see
+        docs/features/spaces-and-assets.md#assets-in-einen-space-assoziieren. For a plain MEMBER,
+        only returned for an asset they may themselves read (#203 acceptance criterion "two
+        members with different grants see different asset lists"). For a CURATOR, ADMIN or the
+        space owner, every association is returned, including one they cannot themselves read -
+        readableByCaller distinguishes the two, and name and description are only present when it
+        is true, so an unreadable entry never leaks them to a manager without a grant on the asset.
+      properties:
+        assetType:
+          $ref: "#/components/schemas/AssetType"
+        assetId:
+          type: string
+          format: uuid
+        name:
+          type: string
+          nullable: true
+          example: Rechtsquellen Soziales
+          description: Present only when readableByCaller is true.
+        description:
+          type: string
+          nullable: true
+          description: Present only when readableByCaller is true.
+        readableByCaller:
+          type: boolean
+          description: >
+            Whether the calling user may themselves read this asset. Always true in a plain
+            MEMBER's filtered list; may be false in a CURATOR/ADMIN/owner's unfiltered list.
+        createdByUserId:
+          type: string
+          format: uuid
+        createdByDisplayName:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    SpaceAssetAssociationListResponse:
+      type: object
+      required: [hasAssociations, narrowsSearch, items]
+      description: >
+        The wrapper around GET /v1/spaces/{spaceId}/assets's list, carrying one count-free state
+        field alongside it (#203 review finding on #706). hasAssociations distinguishes two
+        outwardly identical empty-items cases that need different frontend messages: a space with
+        no association at all (search falls back to every readable library, per the permanent
+        transition rule) versus a space that is curated but happens to have nothing the caller may
+        read (docs/features/spaces-and-assets.md#suchbereich-je-chatart, "In diesem Space ist für
+        dich derzeit kein Wissen verfügbar" - a valid state, not an error, and deliberately without
+        a count of the unreadable assets).
+      properties:
+        hasAssociations:
+          type: boolean
+          description: >
+            Whether the space has at least one association at all, regardless of whether the
+            caller may read it - computed unfiltered, independently of items.
+        narrowsSearch:
+          type: boolean
+          description: >
+            Whether the space narrows a chat's search scope: at least one associated knowledge
+            library, readable or not - the rule the search itself applies. An asset of another type
+            carries no documents and narrows nothing.
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/SpaceAssetAssociationResponse"
+
+    AssetSpaceAssociationListResponse:
+      type: object
+      required: [items, hiddenCount]
+      description: >
+        The "Zuordnungen" of one asset: the associations the caller may be shown, and the number of
+        further ones they may not (#1939).
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/AssetSpaceAssociationResponse"
+        hiddenCount:
+          type: integer
+          format: int32
+          minimum: 0
+          description: >
+            How many further spaces the asset stands in that this caller must not learn about -
+            PRIVATE spaces they are no member of. Always 0 for a caller with at least MANAGER on
+            the asset, who sees every association by name.
+          example: 2
+
+    AssetSpaceAssociationResponse:
+      type: object
+      required: [spaceId, spaceName]
+      description: >
+        One asset's view of one space it is associated with - the "Zuordnungen" list
+        (GET /v1/assets/{assetType}/{assetId}/spaces), never filtered by the caller's own space
+        membership. Only spaceId and spaceName are sent to every reader; the remaining fields are
+        present exactly for a caller with at least MANAGER on the asset (#1939).
+      properties:
+        spaceId:
+          type: string
+          format: uuid
+        spaceName:
+          type: string
+          example: Team Leistungsgewährung
+        createdByUserId:
+          type: string
+          format: uuid
+        createdByDisplayName:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        narrowerReaderCircle:
+          type: boolean
+          description: >
+            True if at least one member of this space cannot themselves read the asset - the same
+            condition that triggered the owner notification when the association was created.
+            Recomputed at read time, not stored, since both space membership and asset grants
+            change independently afterwards. Absent below MANAGER: who in a space may read the
+            asset is a management detail, not part of the plain "which spaces" answer.
+
+    AssetOwnerType:
+      type: string
+      description: Who owns a library - a single person or a group.
+      enum: [USER, GROUP]
+      example: USER
+
+    AssetReachResponse:
+      type: object
+      required: [allAccounts, groupCount, userCount]
+      description: >
+        How far an asset reaches right now, derived from its grants rather than stored (#1931,
+        ADR-0037) - the figures an overview turns into a badge ("Alle", "3 Gruppen, 2 Personen",
+        "nur Sie"). Counted are the unexpired grants; the owner's own grant is among userCount.
+      properties:
+        allAccounts:
+          type: boolean
+          description: >
+            Whether a grant to ALL_ACCOUNTS reaches every account of the organization. Outranks
+            the two counts in any wording.
+        groupCount:
+          type: integer
+          description: Unexpired grants to a group.
+        userCount:
+          type: integer
+          description: Unexpired grants to a single person.
+
+    AssetRole:
+      type: string
+      description: >
+        The graded asset role a grant carries - a ranking deliberately separate from SpaceRole; no
+        role name occurs in both. VIEWER uses the asset and sees its configuration, EDITOR
+        additionally changes it, MANAGER additionally shares/grants and sets findability, OWNER
+        additionally deletes and transfers ownership. See
+        docs/features/spaces-and-assets.md#asset-rollen. Exception for a knowledge library: its
+        source connection detail (LibraryResponse's sourcePath/sourceUrl/sourceProxy/
+        sourceInsecureSsl/sourceCredentialsSet) is internal server infrastructure, not merely
+        "configuration" - it stays hidden from a VIEWER and even an EDITOR, matching the MANAGER
+        bar PUT /api/v1/libraries/{libraryId} already enforces for changing it (#507).
+      enum: [VIEWER, EDITOR, MANAGER, OWNER]
+      example: VIEWER
+
+    AssetGrantSubjectType:
+      type: string
+      description: >
+        Who an asset grant targets - a single user, a group, or every account of the organization
+        (ALL_ACCOUNTS, "Alle Konten"). ALL_ACCOUNTS replaces the former release level
+        AssetVisibility.ORGANIZATION: organization-wide reach is a grant like any other, kept in
+        the same list and the same grant history (#1931, ADR-0037). It is deliberately no
+        synthetic group object - such an object would appear in every group picker and would have
+        to be kept out of the directory sync, the stewardship and the transfer one by one. See
+        docs/features/spaces-and-assets.md#rechte-an-einem-asset-erhalten.
+      enum: [USER, GROUP, ALL_ACCOUNTS]
+      example: USER
+
+    AssetGrantRequest:
+      type: object
+      required: [subjectType, role]
+      properties:
+        subjectType:
+          $ref: "#/components/schemas/AssetGrantSubjectType"
+        subjectId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >
+            The user or group id, depending on subjectType. Absent for ALL_ACCOUNTS, which names
+            no row; a value sent with it is rejected with 400.
+        role:
+          $ref: "#/components/schemas/AssetRole"
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: >
+            Null means the grant never expires. Present from the start even though
+            recertification only arrives with #241.
+
+    AssetOwnershipTransferRequest:
+      type: object
+      required: [ownerType, ownerId]
+      description: >
+        Who the asset belongs to from now on. Deliberately the same pair a creation names
+        (LibraryRequest.ownerType/ownerId), so the section that shows the owner and the one that
+        sets it at creation speak of it the same way - and deliberately not the source/target/scope
+        shape of a PermissionTransferRequest, which is about a subject's whole holdings.
+      properties:
+        ownerType:
+          $ref: "#/components/schemas/AssetOwnerType"
+        ownerId:
+          type: string
+          format: uuid
+          description: The person or group taking the asset over, whichever ownerType names.
+
+    AssetGrantResponse:
+      type: object
+      required: [id, subjectType, role, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        subjectType:
+          $ref: "#/components/schemas/AssetGrantSubjectType"
+        subjectId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Null for ALL_ACCOUNTS, which names no row.
+        subjectDisplayName:
+          type: string
+          nullable: true
+          description: >
+            The subject's display name (user, falling back to email if the user's display name
+            itself is unset) or name (group), resolved server-side so a caller without
+            SYSTEM_ADMIN - which GET /v1/admin/users and /v1/admin/groups both require - can still
+            see who a grant targets instead of a raw UUID. Null only if the subject row itself no
+            longer exists (a deleted user, or a group id from before dissolution tracking) - a
+            user's display name being unset does not produce null here, since email is always
+            present. Null as well for a protected group, which appears in another person's list as
+            a nameless row (ADR-0036, Entscheidung 9) - protectedGroup says which of the cases it
+            is. For ALL_ACCOUNTS it carries the fixed label "Alle Konten".
+        protectedGroup:
+          type: boolean
+          nullable: true
+          description: >
+            Group grants only: true for a group of the staff council and the comparable bodies.
+            Its name is withheld here and it carries no growth signal; the grant stays visible and
+            revocable.
+        memberCountAtGrant:
+          type: integer
+          nullable: true
+          description: >
+            Group grants only: how many active accounts the group had when the grant was given
+            (ADR-0036 Entscheidung 9) - the passive growth signal for whoever released to it. Null
+            for a person, for a protected group, whenever smallGroup is true, and for a grant from
+            before this figure was recorded.
+        memberCountNow:
+          type: integer
+          nullable: true
+          description: >
+            Group grants only: how many active accounts the group reaches right now, for the
+            comparison "23 bei Erteilung, heute 41". Null in the same cases as memberCountAtGrant,
+            except that it is present for a grant from before the figure was recorded.
+        smallGroup:
+          type: boolean
+          nullable: true
+          description: >
+            Group grants only: true when either figure lies below the enforced minimum group size,
+            in which case both are withheld - the difference alone would reconstruct the withheld
+            one.
+        emptyGroup:
+          type: boolean
+          nullable: true
+          description: >
+            Group grants only: true when the group currently reaches no account at all - the
+            "Freigabe ohne Empfänger" of ADR-0036, Entscheidung 6.
+        role:
+          $ref: "#/components/schemas/AssetRole"
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        grantedByUserId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >
+            Wer die aktuell eingetragene Rolle verschafft hat - bei einer Rollenaenderung die
+            aendernde Person, nicht die, die den Eintrag urspruenglich angelegt hat. Null nur
+            bei historischen Eintraegen aus der Zeit vor diesem Feld.
+        grantedByDisplayName:
+          type: string
+          nullable: true
+          description: >
+            The granter's display name (falling back to email, same as subjectDisplayName),
+            resolved server-side for the same reason as subjectDisplayName. Null whenever
+            grantedByUserId is null, or if that user row no longer exists.
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    AccessBasis:
+      type: string
+      description: >
+        Why one person reaches one object (ADR-0036, Entscheidung 9). A capability is deliberately
+        no value of this list: it opens an Anlegepfad, never an Inhalt (ADR-0036, Entscheidung 5),
+        and therefore never explains a read access.
+      enum:
+        [
+          DIRECT_GRANT,
+          GROUP_GRANT,
+          ORGANIZATION_WIDE,
+          DIRECT_MEMBERSHIP,
+          GROUP_MEMBERSHIP,
+          OWNERSHIP,
+          SYSTEM_ADMINISTRATION,
+        ]
+      example: GROUP_GRANT
+
+    AccessPathResponse:
+      type: object
+      required: [basis]
+      properties:
+        basis:
+          $ref: "#/components/schemas/AccessBasis"
+        assetRole:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/AssetRole"
+          description: The role this way confers on an asset; null for a space.
+        spaceRole:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/SpaceRole"
+          description: The role this way confers in a space; null for an asset.
+        since:
+          type: string
+          format: date-time
+          nullable: true
+          description: >
+            When this way came into being - the moment of the grant or of the admission. Since
+            #1931 ORGANIZATION_WIDE carries one too: it is a grant to ALL_ACCOUNTS and was written
+            at a knowable instant. Null only where the way has no own moment - the administration.
+        group:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/AccessPathGroup"
+          description: Set for GROUP_GRANT and GROUP_MEMBERSHIP, null otherwise.
+
+    AccessPathGroup:
+      type: object
+      required: [id, name, origin, mechanism]
+      description: >
+        The group a way runs through, as the Herleitung names it: name, origin and the mechanism
+        that maintains its membership. The accuracy of the Rechtehistorie depends on that mechanism
+        (ADR-0036, Entscheidung 3), which is why it is named here and not only in the
+        administration. The members of the group are never part of this answer.
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        origin:
+          $ref: "#/components/schemas/GroupOrigin"
+        mechanism:
+          $ref: "#/components/schemas/GroupMechanism"
+        providerName:
+          type: string
+          nullable: true
+          description: The identity provider's display name; null for an internal group.
+
+    AssetAccessDerivationResponse:
+      type: object
+      required: [assetType, assetId, effectiveRole, paths, pathsWithheld]
+      properties:
+        assetType:
+          $ref: "#/components/schemas/AssetType"
+        assetId:
+          type: string
+          format: uuid
+        effectiveRole:
+          $ref: "#/components/schemas/AssetRole"
+        paths:
+          type: array
+          items:
+            $ref: "#/components/schemas/AccessPathResponse"
+        pathsWithheld:
+          type: boolean
+          description: >
+            Always false here - the asset derivation is only ever about the caller themselves,
+            and an own derivation is never withheld (ADR-0036, Entscheidung 9, Personalrat Z2).

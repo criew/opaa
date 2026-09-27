@@ -1,0 +1,731 @@
+# Topic "auth": its tags, paths and the components only this topic uses.
+# Merged with all other fragments at build time, see root.yaml.
+tags:
+  - name: auth
+    description: Sign-in configuration, the current user and the local sign-in flows.
+paths:
+  /api/v1/auth/config:
+    get:
+      operationId: getAuthConfig
+      tags: [auth]
+      summary: Get authentication configuration
+      responses:
+        "200":
+          description: Authentication configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthConfigResponse"
+
+  /api/v1/auth/me:
+    get:
+      operationId: getCurrentUser
+      tags: [auth]
+      summary: Get current user info
+      responses:
+        "200":
+          description: Current user information
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserInfoResponse"
+
+  /api/v1/auth/local/login:
+    post:
+      operationId: localLogin
+      tags: [auth]
+      security: []
+      summary: >
+        Sign in with a local account (ADR-0033, Entscheidungen 6, 7 and 9): e-mail address and
+        password. On success the body carries a short-lived HS256 access token and the response sets
+        the HttpOnly refresh cookie "opaa_refresh" (Path /api/v1/auth/local, SameSite=Strict,
+        Secure). Every failure - unknown address, wrong password, locked, expired or not yet
+        activated account, local accounts switched off for a non-administrator - is the same 401
+        with the same body and the same response-time class; nothing tells the cases apart. Only
+        exists in the "oidc" profile.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LocalLoginRequest"
+      responses:
+        "200":
+          description: Signed in; the refresh cookie is set
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LocalTokenResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/auth/local/refresh:
+    post:
+      operationId: localRefresh
+      tags: [auth]
+      security: []
+      summary: >
+        Rotate the refresh cookie and mint a new access token (ADR-0033, Entscheidung 7). Reads the
+        "opaa_refresh" cookie and requires the CSRF double-submit token (cookie XSRF-TOKEN echoed
+        as header X-XSRF-TOKEN). Presenting an active token revokes it and sets its successor of the
+        same family; presenting an already rotated token is a replay that revokes every family and
+        every session of the account. Unknown, expired and replayed tokens, an account that is no
+        longer login-capable and a regular account while local accounts are switched off are
+        answered alike: 401 and the cookie cleared. The SPA serialises its refresh calls: two
+        concurrent presentations of the same token are a replay (ADR-0033, Entscheidung 7). Never
+        send an expired Bearer token along - the resource server refuses it before this handler.
+      parameters:
+        - $ref: "#/components/parameters/LocalRefreshCookie"
+        - $ref: "#/components/parameters/CsrfTokenHeader"
+      responses:
+        "200":
+          description: Rotated; the successor cookie is set
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LocalTokenResponse"
+        "401":
+          description: Unknown, expired or replayed token, or the account may not sign in; the cookie is cleared
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: CSRF double-submit token missing or wrong (code CSRF_TOKEN_MISSING)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/auth/local/logout:
+    post:
+      operationId: localLogout
+      tags: [auth]
+      security: []
+      summary: >
+        End the local session (ADR-0033, Entscheidung 7): revokes the refresh family behind the
+        "opaa_refresh" cookie, denylists the presented access token's jti immediately when a Bearer
+        token accompanies the call, and clears the cookie. Requires the CSRF double-submit token.
+        Always 204 - a missing or unknown cookie is not an error. The person's own sign-out is no
+        audit event (Entscheidung 13). Send the Bearer token only while it is still valid: an
+        expired one is refused by the resource server with 401 before this handler runs - repeat
+        the call without it.
+      parameters:
+        - $ref: "#/components/parameters/LocalRefreshCookie"
+        - $ref: "#/components/parameters/CsrfTokenHeader"
+      responses:
+        "204":
+          description: Signed out; the cookie is cleared
+        "403":
+          description: CSRF double-submit token missing or wrong (code CSRF_TOKEN_MISSING)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/auth/local/change-password:
+    post:
+      operationId: localChangePassword
+      tags: [auth]
+      summary: >
+        Change the caller's own password (ADR-0033, Entscheidungen 8, 9 and 11) - the one call a
+        session with passwordChangeRequired may make. Verifies the current password (400 with
+        fieldErrors[currentPassword] = WRONG_PASSWORD otherwise), applies the password policy (400
+        with fieldErrors[newPassword] naming every violated rule: TOO_SHORT, TOO_LONG,
+        EQUALS_EMAIL, TOO_COMMON), stores the new hash, clears the forced change, invalidates every
+        access token issued up to now, revokes every refresh family (PASSWORD_CHANGED) and answers
+        like a login: a fresh access token without the pcr flag and a new "opaa_refresh" cookie
+        for this session. Audited as LOCAL_PASSWORD_CHANGED. 409 for an account of an identity
+        provider.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LocalChangePasswordRequest"
+      responses:
+        "200":
+          description: Password changed; a fresh access token without the pcr flag
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LocalTokenResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/auth/local/set-password:
+    post:
+      operationId: localSetPassword
+      tags: [auth]
+      security: []
+      summary: >
+        Redeem an invitation or a password-reset link (ADR-0033, Entscheidungen 9 and 11): the
+        raw token from the link's token query and the new password. Consumes a SET_PASSWORD or a
+        RESET_PASSWORD token atomically and exactly once; an unknown, expired or already consumed
+        token, a token of another purpose and a token of an account that is meanwhile locked by
+        the administration, locked for inactivity or expired are all the same 400 with code
+        TOKEN_INVALID - nothing tells the cases apart. The password policy answers 400 with
+        fieldErrors[newPassword] (TOO_SHORT, TOO_LONG, EQUALS_EMAIL, TOO_COMMON) and leaves the
+        link open. On success the hash is stored, a forced change cleared, the address confirmed
+        (invitation), a failed-login lockout lifted, every access token issued up to now
+        invalidated and every refresh family revoked; audited as LOCAL_PASSWORD_SET. Only the
+        invitation link confirms the address (the invitation is the administrator's act of
+        vouching for it); a reset link leaves an unconfirmed address to the verification link.
+        Reachable without OPAA_PUBLIC_BASE_URL - a displayed link must stay redeemable. Only
+        exists in the "oidc" profile.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LocalSetPasswordRequest"
+      responses:
+        "204":
+          description: Password set; the account may sign in with it now
+        "400":
+          description: >
+            The link is invalid (code TOKEN_INVALID, no fieldErrors) or the new password
+            violates the policy (fieldErrors on newPassword)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/auth/local/forgot-password:
+    post:
+      operationId: localForgotPassword
+      tags: [auth]
+      security: []
+      summary: >
+        Ask for a password-reset link by e-mail (ADR-0033, Entscheidungen 9 and 11). Exists only
+        while local accounts are switched on, the setting passwordResetEnabled is on and
+        OPAA_PUBLIC_BASE_URL is configured (what GET /api/v1/auth/config reports as
+        localAccounts.passwordResetEnabled); otherwise it answers with the standard 404 - the
+        state is public through /auth/config anyway (an unknown route under /api answers 401
+        without a session, see #1592). Where it exists it always answers 204 after the same
+        response-time class - the work runs off the request thread - whether
+        or not a local account exists under the address: an ACTIVE account and an account in a
+        failed-login lockout receive the mail PASSWORD_RESET with a RESET_PASSWORD link
+        (local_auth_settings.reset_token_ttl_minutes; a newer link voids the older one); an
+        account locked by the administration or for inactivity, an expired account, an open
+        invitation and an unknown address receive nothing and answer the same. Asking changes no
+        state and is not audited; sessions end only when the link is redeemed. Counted per
+        client address and per (hashed) e-mail address.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LocalForgotPasswordRequest"
+      responses:
+        "204":
+          description: Accepted - whether or not an account exists
+        "400":
+          description: The address is not a plausible e-mail address (fieldErrors on email)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: The flow is switched off (standard 404 body)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/auth/local/register:
+    post:
+      operationId: localRegister
+      tags: [auth]
+      security: []
+      summary: >
+        Register a local account (ADR-0033, Entscheidung 11). Exists only while local accounts
+        are switched on, selfRegistrationEnabled is on with a non-empty domain list and
+        OPAA_PUBLIC_BASE_URL is configured (localAccounts.selfRegistrationEnabled in
+        GET /api/v1/auth/config); otherwise it answers with the standard 404 (see
+        localForgotPassword). Where it exists, a plausible address, a display name and a password
+        that passes the policy (400 with fieldErrors on email, displayName or password otherwise -
+        a field error reveals nothing about accounts) always answer 202 after the same
+        response-time class, the work running off the request thread:
+        for a free address whose domain is on the list an account is created (role USER,
+        expiry local_auth_settings.default_expiry_days from now, creation reason
+        "Selbstregistrierung", address unconfirmed and therefore not able to sign in) and the
+        mail REGISTRATION_VERIFICATION carries a VERIFY_EMAIL link valid for 24 hours; a still
+        unconfirmed self-registration of the same address gets a fresh link (the older one is
+        voided; hash and name stay); a taken address (under the local issuer, compared
+        case-insensitively) and a domain outside the list create nothing, send nothing and answer
+        the same. Audited as LOCAL_USER_REGISTERED
+        under the system process local-auth. Counted per client address and per (hashed)
+        e-mail address.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LocalRegisterRequest"
+      responses:
+        "202":
+          description: Accepted - whether or not an account was created
+        "400":
+          description: Field errors on email, displayName or password
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: The flow is switched off (standard 404 body)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/auth/local/verify-email:
+    post:
+      operationId: localVerifyEmail
+      tags: [auth]
+      security: []
+      summary: >
+        Confirm the address of a self-registered account (ADR-0033, Entscheidung 11) with the raw
+        token from the verification link. Consumes the VERIFY_EMAIL token exactly once and sets
+        email_verified_at; the account becomes ACTIVE and may sign in. An unknown, expired or
+        consumed token and a token of an account that is meanwhile locked by the administration
+        or expired are the same 400 with code TOKEN_INVALID. The SPA page behind the link
+        triggers this POST - a link never has a side effect on GET. Reachable without
+        OPAA_PUBLIC_BASE_URL; counted per client address like set-password.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LocalVerifyEmailRequest"
+      responses:
+        "204":
+          description: Address confirmed
+        "400":
+          description: The link is invalid (code TOKEN_INVALID)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/auth/local/handover/preview:
+    post:
+      operationId: localHandoverPreview
+      tags: [auth]
+      security: []
+      summary: >
+        What a handover would move (ADR-0033, Entscheidung 12), read with the raw code from the
+        handover link and nothing else. Deliberately unauthenticated and deliberately a POST: the
+        code is a bearer secret and must not stand in a query string, and the call must reach the
+        backend before any provider token exists. It consumes nothing - the code stays redeemable -
+        and answers the provider the administration chose, the reason it gave, and the person's own
+        scope (personal space, memberships, system role), so the page can name the provider rather
+        than let anybody pick one. An unknown, expired or already consumed code and a code of
+        another purpose are the same 400 with code TOKEN_INVALID. Only exists in the "oidc" profile.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LocalHandoverCodeRequest"
+      responses:
+        "200":
+          description: What the handover would move
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LocalHandoverPreviewResponse"
+        "400":
+          description: The link is invalid (code TOKEN_INVALID)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/auth/local/handover/redeem:
+    post:
+      operationId: localHandoverRedeem
+      tags: [auth]
+      security: []
+      summary: >
+        Redeem a handover (ADR-0033, Entscheidung 12) - the one named exception to the merge ban of
+        ADR-0025, and the person's own act. The provider's access token travels in the **body**,
+        never in the Authorization header: a bearer token reaching the resource server is
+        provisioned by UserProvisioningFilter before any controller runs, which would create the
+        very account this call must find absent. The endpoint is therefore permitAll and verifies
+        the token itself through OidcProviderRegistry - the same decoder, issuer, expiry and azp
+        validators the resource server uses - and the subject it writes comes from that token
+        alone, never from an input of the administration. The identity under (issuer, subject) must
+        not exist yet; nothing is ever merged. On success, in one transaction: users.issuer and
+        users.subject are rewritten, local_credentials and every token row of the account are
+        deleted, every session is revoked (session marker session_revoked:handed_over) and the code
+        is consumed; the mail ACCOUNT_HANDED_OVER and the audit event LOCAL_USER_HANDED_OVER (the
+        provider id and counts, never the subject) follow. There is no way back. Only exists in the
+        "oidc" profile.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LocalHandoverRedeemRequest"
+      responses:
+        "204":
+          description: >
+            Handed over; the account now signs in through the provider, and the SPA may load the
+            session with the provider token it already holds
+        "400":
+          description: The link is invalid (code TOKEN_INVALID)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: >
+            The provider token is missing, unverifiable, expired or of an issuer no enabled
+            provider owns
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: >
+            An account already exists under this provider identity (PROVIDER_ACCOUNT_EXISTS - there
+            is no merge), the token belongs to another provider than the one the handover names
+            (PROVIDER_MISMATCH), the account is the emergency-anchor account (BOOTSTRAP_ACCOUNT) or
+            it is the last login-capable system administrator (LAST_LOGIN_CAPABLE_ADMIN)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+components:
+  schemas:
+    AuthConfigResponse:
+      type: object
+      required: [mode, providers, localAccounts]
+      properties:
+        mode:
+          type: string
+          description: Active authentication mode; "oidc" in production, "dev" for local development and tests
+          example: oidc
+        providers:
+          type: array
+          description: >
+            The enabled identity providers a sign-in can start at right now, in sign-in page order
+            (ADR-0025). Only what the sign-in page shows anyway - no claim mapping, nothing about
+            accounts. Empty in the dev mode. The LOCAL provider row is never listed here - it is
+            localAccounts (ADR-0033, Entscheidung 4).
+          items:
+            $ref: "#/components/schemas/OidcSignInProvider"
+        localAccounts:
+          $ref: "#/components/schemas/LocalAccountsConfig"
+
+    LocalAccountsConfig:
+      type: object
+      description: >
+        What the sign-in page needs to know about local accounts (ADR-0033, Entscheidung 4): the
+        state of the management switch (the enabled flag of the LOCAL provider row; false while no
+        such row exists) and the self-service flows it offers. selfRegistrationEnabled and
+        passwordResetEnabled are true only while the management is enabled, the respective setting
+        is on, self-registration has a non-empty domain list, and the public base URL of the
+        installation is configured (Entscheidung 10) - a flow that would hand out a link nobody
+        can see is reported as unavailable.
+      required: [enabled, selfRegistrationEnabled, passwordResetEnabled, passwordMinLength]
+      properties:
+        enabled:
+          type: boolean
+          description: >
+            Whether regular local accounts may sign in. Local SYSTEM_ADMIN accounts may sign in
+            regardless (the system administrators' sign-in page).
+        selfRegistrationEnabled:
+          type: boolean
+        passwordResetEnabled:
+          type: boolean
+        passwordMinLength:
+          type: integer
+          description: The minimum password length of the password policy, shown before sign-up.
+          example: 12
+
+    LocalLoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          minLength: 1
+          maxLength: 320
+          description: The sign-in identifier; compared case-insensitively (ADR-0033, Entscheidung 1).
+          example: erika.muster@stadt.example
+        password:
+          type: string
+          format: password
+          minLength: 1
+          maxLength: 1024
+
+    LocalTokenResponse:
+      type: object
+      description: >
+        A minted local session (ADR-0033, Entscheidung 6). The refresh token is never in the body;
+        it travels only as the HttpOnly cookie the same response sets.
+      required: [accessToken, expiresInSeconds, passwordChangeRequired]
+      properties:
+        accessToken:
+          type: string
+          format: password
+          description: >
+            HS256 JWT with iss urn:opaa:local, sub = the account id, jti, iat, exp, email, name,
+            pcr. A bearer secret - format password keeps it out of the DTO's toString().
+        expiresInSeconds:
+          type: integer
+          format: int64
+          description: Lifetime of accessToken from now (opaa.auth.local.access-token-ttl, 15 minutes by default).
+          example: 900
+        passwordChangeRequired:
+          type: boolean
+          description: >
+            True when the account must change its password before anything but
+            /api/v1/auth/local/* is reachable - every other call answers 403 with code
+            PASSWORD_CHANGE_REQUIRED and the same reason (ADR-0033, Entscheidung 8).
+        passwordChangeReason:
+          $ref: "#/components/schemas/PasswordChangeReason"
+
+    LocalChangePasswordRequest:
+      type: object
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword:
+          type: string
+          format: password
+          minLength: 1
+          maxLength: 1024
+        newPassword:
+          type: string
+          format: password
+          minLength: 1
+          maxLength: 1024
+          description: >
+            Checked against the password policy (ADR-0033, Entscheidung 9): at least
+            local_auth_settings.password_min_length characters, at most 64 characters and 72 bytes,
+            not equal to the account's e-mail address, not on the shipped list of the most common
+            passwords (compared in lower case). No complexity rules.
+
+    LocalSetPasswordRequest:
+      type: object
+      required: [token, newPassword]
+      properties:
+        token:
+          type: string
+          format: password
+          minLength: 1
+          maxLength: 512
+          description: >
+            The raw token from the link's token query - a secret; format password keeps it out of
+            the DTO's toString().
+        newPassword:
+          type: string
+          format: password
+          minLength: 1
+          maxLength: 1024
+          description: Checked against the password policy (see localChangePassword).
+
+    LocalForgotPasswordRequest:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          minLength: 1
+          maxLength: 320
+          description: The address of the account; compared case-insensitively.
+          example: erika.muster@stadt.example
+
+    LocalRegisterRequest:
+      type: object
+      required: [email, displayName, password]
+      properties:
+        email:
+          type: string
+          minLength: 1
+          maxLength: 320
+          description: The address, whose domain must be on local_auth_settings.self_registration_allowed_domains.
+          example: erika.muster@stadt.example
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: Erika Muster
+        password:
+          type: string
+          format: password
+          minLength: 1
+          maxLength: 1024
+          description: Checked against the password policy (see localChangePassword).
+
+    LocalVerifyEmailRequest:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+          format: password
+          minLength: 1
+          maxLength: 512
+          description: The raw token from the verification link's token query.
+
+    LocalHandoverCodeRequest:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+          format: password
+          minLength: 1
+          maxLength: 512
+          description: The raw code from the handover link's token query.
+
+    LocalHandoverRedeemRequest:
+      type: object
+      required: [token, providerToken]
+      properties:
+        token:
+          type: string
+          format: password
+          minLength: 1
+          maxLength: 512
+          description: The raw code from the handover link's token query.
+        providerToken:
+          type: string
+          format: password
+          minLength: 1
+          maxLength: 8192
+          description: >
+            The access token the provider issued to the person, in the body rather than in the
+            Authorization header (see localHandoverRedeem). Verified here with the provider's own
+            decoder; its sub becomes the account's subject.
+
+    LocalHandoverProvider:
+      type: object
+      description: >
+        The provider the administration chose - the SPA starts the code flow at it. Only the id and
+        the name: the SPA already holds issuer and client id of every enabled provider from
+        GET /api/v1/auth/config, and repeating them here would be a second source for the same two
+        values.
+      required: [id, displayName]
+      properties:
+        id:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+
+    LocalHandoverScope:
+      type: object
+      description: >
+        What moves with the account - the person's own content, counted, so the redemption page can
+        show it before the irreversible step (ADR-0033, Entscheidung 12).
+      required: [spaceMemberships, groupMemberships, systemRole]
+      properties:
+        personalSpaceName:
+          type: string
+          nullable: true
+          description: The name of the personal space, or null while none was provisioned yet.
+        spaceMemberships:
+          type: integer
+          format: int32
+          description: How many spaces the account is a member of.
+        groupMemberships:
+          type: integer
+          format: int32
+          description: How many groups the account is a member of.
+        systemRole:
+          $ref: "#/components/schemas/SystemRole"
+
+    LocalHandoverPreviewResponse:
+      type: object
+      description: >
+        Everything the redemption page shows before the person signs in at the provider. It carries
+        the account's display name for recognition, never its address and never a subject.
+      required: [displayName, reason, provider, scope, expiresAt]
+      properties:
+        displayName:
+          type: string
+          description: The name of the account being handed over - the person's own.
+        reason:
+          type: string
+          description: The reason the administration gave when it started the handover.
+        provider:
+          $ref: "#/components/schemas/LocalHandoverProvider"
+        scope:
+          $ref: "#/components/schemas/LocalHandoverScope"
+        expiresAt:
+          type: string
+          format: date-time
+          description: When the code expires.
+
+    OidcSignInProvider:
+      type: object
+      required: [id, displayName, issuerUri, clientId, isDefault, sortOrder]
+      properties:
+        id:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+        issuerUri:
+          type: string
+          description: The authority the browser starts the authorization code flow (PKCE) at.
+        clientId:
+          type: string
+        isDefault:
+          type: boolean
+        sortOrder:
+          type: integer
+
+    UserInfoResponse:
+      type: object
+      required: [id, email, displayName, systemRole]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          nullable: true
+        displayName:
+          type: string
+          nullable: true
+        systemRole:
+          type: string
+          example: USER
+        createdReason:
+          type: string
+          nullable: true
+          maxLength: 200
+          description: >
+            The creation reason a system administrator recorded when the local account was created
+            (ADR-0033, Entscheidung 11) - part of the person's own self-disclosure, which is why
+            this endpoint carries it and the user settings show it. Null for an account of an
+            identity provider, which has no such reason.
+          example: Projektbefristung Digitalisierung bis 31.12.2026

@@ -1,0 +1,249 @@
+# Shared components used across topics: error envelope, cross-topic enums, parameters, responses.
+# Merged with all other fragments at build time, see root.yaml.
+components:
+  schemas:
+    SystemRole:
+      type: string
+      description: >
+        AUDITOR (#393) grants read access to the revision access paths in io.opaa.audit and
+        nothing else - it carries none of SYSTEM_ADMIN's administrative privileges.
+      enum: [USER, SYSTEM_ADMIN, AUDITOR]
+      example: USER
+
+    ErrorResponse:
+      type: object
+      required: [error, status, timestamp]
+      properties:
+        error:
+          type: string
+          description: The user-facing message, in German.
+        status:
+          type: integer
+        timestamp:
+          type: string
+          format: date-time
+        code:
+          type: string
+          description: >
+            Optional stable, machine-readable code for the cases a client has to act on rather
+            than display - e.g. PASSWORD_CHANGE_REQUIRED (ADR-0033, Entscheidung 8). Absent for
+            errors that only carry a message.
+          example: PASSWORD_CHANGE_REQUIRED
+        reason:
+          type: string
+          description: >
+            Optional qualifier of code - for PASSWORD_CHANGE_REQUIRED the PasswordChangeReason
+            (INITIAL, ADMIN_RESET, SECURITY) the client shows as a plain sentence.
+          example: INITIAL
+        fieldErrors:
+          type: array
+          nullable: true
+          description: >
+            Optional per-field violations of a request - one entry per field and rule, each with
+            a stable code the client can map to its own text (the password policy of ADR-0033
+            reports TOO_SHORT, TOO_LONG, EQUALS_EMAIL, TOO_COMMON on newPassword this way).
+            Absent (not an empty list) on every other error.
+          items:
+            $ref: "#/components/schemas/FieldError"
+
+    FieldError:
+      type: object
+      required: [field, code, message]
+      properties:
+        field:
+          type: string
+          description: The request field the violation concerns, e.g. newPassword.
+        code:
+          type: string
+          description: A stable, machine-readable code of the violated rule.
+          example: TOO_SHORT
+        message:
+          type: string
+          description: The user-facing message, in German.
+
+    PermissionSubjectType:
+      type: string
+      description: >
+        Whether a space membership or an ownership targets a single user or a group. Deliberately
+        without ALL_ACCOUNTS: a space whose member is "everyone" and an asset owned by "everyone"
+        are states the model does not know (ADR-0037, Entscheidung 3).
+      enum: [USER, GROUP]
+      example: USER
+
+  parameters:
+    LocalRefreshCookie:
+      name: opaa_refresh
+      in: cookie
+      required: false
+      description: >
+        The HttpOnly refresh cookie a local sign-in set (Path /api/v1/auth/local, SameSite=Strict,
+        Secure). The browser sends it by itself; it is never read or written by the SPA.
+      schema:
+        type: string
+    CsrfTokenHeader:
+      name: X-XSRF-TOKEN
+      in: header
+      required: true
+      description: >
+        The CSRF double-submit token: the value of the XSRF-TOKEN cookie every response of this
+        API sets, echoed as a header (ADR-0033, Entscheidung 7). Missing or wrong: 403 with code
+        CSRF_TOKEN_MISSING.
+      schema:
+        type: string
+    AuditFrom:
+      name: from
+      in: query
+      required: true
+      description: >
+        Start of the mandatory, bounded time range (inclusive). The range (to - from) must not
+        exceed 92 days (#393 code review, finding 3) - wide enough for the specification's own
+        "alle Rechteänderungen zwischen dem 1. und dem 31. März"-style queries, not wide enough to
+        serve as a disguised full-history extract. A wider request is rejected with 400, not
+        clamped; a multi-year review chains several bounded calls, each auditable on its own.
+      schema:
+        type: string
+        format: date-time
+    AuditTo:
+      name: to
+      in: query
+      required: true
+      description: End of the mandatory, bounded time range (inclusive) - see AuditFrom.
+      schema:
+        type: string
+        format: date-time
+    AuditPage:
+      name: page
+      in: query
+      required: false
+      description: >
+        A value beyond page index 49 (50 pages total) is rejected with 400, not clamped (#393
+        code review, finding 3; #393 re-review, nit 3) - AuditSize alone only bounds a single
+        page; without this, paging through page=0..n against a wide time range would turn
+        "bounded per page" back into an effectively unbounded full extract in slices.
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+    AuditSize:
+      name: size
+      in: query
+      required: false
+      description: Capped server-side at 200 regardless of the requested value - see AuditPage.
+      schema:
+        type: integer
+        minimum: 1
+        default: 50
+    AuditReason:
+      name: reason
+      in: query
+      required: true
+      description: >
+        The mandatory Anlass for this access to audit_log itself (#394,
+        docs/features/security-and-compliance.md#zugriffswege-was-es-gibt-und-was-es-nicht-gibt):
+        "der Anlass ist bei diesen Einträgen ein Pflichtfeld; eine Abfrage ohne Anlass wird
+        abgewiesen". A missing or blank reason is rejected with 400 - and, per the same
+        specification, the rejected attempt itself is recorded with its own audit_log entry, not
+        merely refused. Required here at the contract level even though the server binding accepts
+        a missing value: the rejection has to reach the application to be logged, rather than being
+        short-circuited by a generic "missing parameter" error.
+      schema:
+        type: string
+        maxLength: 1000
+    AssetTypePath:
+      name: assetType
+      in: path
+      required: true
+      description: The type of the asset - an unknown or malformed type answers 404.
+      schema:
+        $ref: "#/components/schemas/AssetType"
+    AssetIdPath:
+      name: assetId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    PromptLibraryIdPath:
+      name: promptLibraryId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    GroupMemberDisclosureOffset:
+      name: offset
+      in: query
+      required: false
+      description: How many members to skip - the paging of a long list (#1880).
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+    GroupMemberDisclosureLimit:
+      name: limit
+      in: query
+      required: false
+      description: >
+        How many members one page carries. Capped server-side at 200 regardless of the requested
+        value, and the cap is the LIMIT of the query itself: a group of 5000 never becomes 5000
+        rows in memory (#1880).
+      schema:
+        type: integer
+        minimum: 1
+        default: 50
+
+  responses:
+    ValidationError:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Forbidden:
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Conflict:
+      description: Conflict
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    PayloadTooLarge:
+      description: Payload too large
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    TooManyRequests:
+      description: Too many requests
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    BadGateway:
+      description: An upstream service answered, but not usefully
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    ServiceUnavailable:
+      description: Service temporarily unavailable
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"

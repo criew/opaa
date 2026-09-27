@@ -1,0 +1,55 @@
+# Root of the OPAA API spec. The opaa-api build (task bundleOpenApi) merges this file with every
+# other *.yaml in this directory, in name order, into one spec: build/openapi-bundle/openapi/
+# opaa-api.yaml. Generator, tests and frontend types all read that bundle.
+# A topic fragment holds only `tags`, `paths` and `components`. Every $ref points into the merged
+# document (#/components/...). Which fragment a change belongs to: AGENTS.md, "API & DTO-Konvention".
+openapi: 3.0.3
+info:
+  title: OPAA API
+  description: |
+    Open Project AI Assistant REST API.
+
+    # Status codes
+
+    **An operation declares what it decides itself. What the infrastructure decides the same way
+    for every operation is described here once and is not repeated per operation.**
+
+    The outcomes below can therefore reach any call without being declared at the operation that
+    produced them:
+
+    | Status | When |
+    | --- | --- |
+    | `400` | The request could not be read at all: an unparseable body, or a path or query parameter of the wrong type. An operation's own validation of its payload is a decision of that operation and *is* declared there. |
+    | `401` | The call carries no usable session - no bearer token, an expired or otherwise invalid one. Declared only where the operation itself refuses a credential it was handed: the sign-in, the refresh cookie, a webhook signature, the provider token of a handover. |
+    | `403` | The call is turned away before it reaches the operation at all: a local token that must change its password first (code `PASSWORD_CHANGE_REQUIRED`) reaches nothing outside `/api/v1/auth/local/`, and an external access token reaches nothing outside the paths its channel owns. An operation's own permission check *is* declared at that operation. |
+    | `404` | No such route. An operation's own "this resource is not there" is a decision of that operation and *is* declared there - including the deliberate `404` that hides an existing but inaccessible resource instead of confirming it with a `403`. |
+    | `405` | The method is not supported for this path. The answer names the supported ones in `Allow`. |
+    | `406` | Nothing this API writes is acceptable to the caller. **This answer carries no body wherever the caller's `Accept` excludes the error envelope as well** - which is every `406` the routes described here can raise, none of them declaring a narrower set of response types. |
+    | `415` | The `Content-Type` of the request is not supported. |
+    | `500` | An unexpected internal error. |
+
+    Error answers carry an `ErrorResponse`, whether they are declared at an operation or listed
+    above. One does not: *one* of the refusals behind the `401` - the resource
+    server's own, which states its reason in `WWW-Authenticate` instead of in a body. The other
+    two do carry one: an access token refused **anywhere** - the external-access chain claims every
+    call that presents one, wherever it is aimed - is answered with `WWW-Authenticate` **and** an
+    `ErrorResponse`, and a call that reaches a handler without any caller identity with the body
+    alone. Independently of all this, a caller whose `Accept` admits nothing
+    this API writes is answered without a body whatever went wrong.
+
+    `429` is deliberately absent from the list: the rate limits are per endpoint, not global. It is
+    declared at exactly those operations that have a budget of their own. Its answer carries
+    `Retry-After` **where the waiting time is known** - a refusal from a concurrency ceiling rather
+    than from a time window has none to name.
+
+    `502` and `503` are absent for the same reason, although they read like infrastructure: they
+    are not answered for every call but only by the operations that themselves depend on something
+    outside this service - the AI provider one of them calls on the request thread, the object
+    store another reads an original from, the worker capacity a run is handed to, the encryption
+    key a stored credential needs. Each such operation declares the status it can produce and names
+    the dependency in its own description; an operation that declares neither cannot produce
+    either.
+  version: 0.1.0
+  license:
+    name: AGPL-3.0
+    url: https://www.gnu.org/licenses/agpl-3.0.html
