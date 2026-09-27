@@ -114,7 +114,7 @@ class DirectorySyncServiceIntegrationTest {
     List<Group> groups = groupRepository.findByOrganizationId(Organization.DEFAULT_ID);
     // #238 code review, finding 2+4: a sync run now historises every membership change it applies,
     // and group_membership_history.user_id is ON DELETE RESTRICT (see
-    // 018-permission-history.yaml's "Deletion survival" comment) - history must go before the
+    // ADR-0016) - history must go before the
     // users below.
     List<UUID> userIds = List.copyOf(createdUserIds);
     if (!userIds.isEmpty()) {

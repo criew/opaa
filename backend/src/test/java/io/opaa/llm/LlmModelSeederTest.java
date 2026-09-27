@@ -364,7 +364,7 @@ class LlmModelSeederTest {
     // above) is retried on every subsequent start until either it succeeds or the operator adds
     // a model by hand in the meantime - the very fallback this class's own ERROR log
     // recommends. Without this repository.count() guard, that hand-added model would collide
-    // with the retried takeover on the next start: ux_llm_models_single_active (migration 058)
+    // with the retried takeover on the next start: ux_llm_models_single_active
     // if the seeded model were activated too, or a silent second, env-sourced model otherwise -
     // either way something the operator never asked for once the key is finally set.
     when(markerRepository.seedAlreadyAttempted()).thenReturn(false);

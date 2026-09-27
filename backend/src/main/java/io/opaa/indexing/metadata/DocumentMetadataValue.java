@@ -13,7 +13,7 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 /**
- * One metadata value of one document for one field (migration 018; ADR-0024): exactly one of {@link
+ * One metadata value of one document for one field (ADR-0024): exactly one of {@link
  * #getTextValue()}, {@link #getVocabularyCode()} and {@link #getDateValue()} is set while {@link
  * #getState()} is {@code SET}. Every row carries its {@link #getOrigin()}; a {@code MANUAL} row is
  * never touched by automatic extraction ({@link DocumentMetadataService}). The document's {@code ON

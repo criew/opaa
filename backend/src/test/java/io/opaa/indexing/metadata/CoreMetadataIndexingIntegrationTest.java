@@ -223,7 +223,7 @@ class CoreMetadataIndexingIntegrationTest {
 
   /**
    * the demo's Satzungen carry the Dokumentart as a Kompositum in the file name - the exact token
-   * match does not see it, the seeded ending of migration 020 does.
+   * match does not see it, the seeded ending does.
    */
   @Test
   void aKompositumInTheFileNameNamesTheDokumentart() throws IOException {

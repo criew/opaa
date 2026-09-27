@@ -18,10 +18,10 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
 
   /**
    * Document identity is scoped to {@code (library_id, file_path)}, enforced by {@code
-   * uk_documents_library_path} (migration 067): the same path or URL indexed into two different
-   * libraries is two independent documents, never a "move" of one into the other. Backs every
-   * dedup/change-detection lookup in {@code DocumentIngestService}, {@code UrlIndexingExecutor} and
-   * {@code RssFeedIndexingExecutor}.
+   * uk_documents_library_path}: the same path or URL indexed into two different libraries is two
+   * independent documents, never a "move" of one into the other. Backs every dedup/change-detection
+   * lookup in {@code DocumentIngestService}, {@code UrlIndexingExecutor} and {@code
+   * RssFeedIndexingExecutor}.
    */
   Optional<Document> findByLibraryIdAndFilePath(UUID libraryId, String filePath);
 
@@ -72,7 +72,7 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   /**
    * Backs {@code LowChunkDocumentAuditService#findLowChunkDocuments}: one organization's {@link
    * DocumentStatus#INDEXED} documents at or below {@code chunkCountThreshold} chunks, paged. Backed
-   * by the partial index {@code idx_documents_indexed_chunk_count} (migration 002).
+   * by the partial index {@code idx_documents_indexed_chunk_count}.
    */
   Page<Document> findByOrganizationIdAndStatusAndChunkCountLessThanEqual(
       UUID organizationId, DocumentStatus status, int chunkCountThreshold, Pageable pageable);

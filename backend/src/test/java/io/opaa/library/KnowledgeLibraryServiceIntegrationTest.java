@@ -86,7 +86,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * and {@code SpaceServiceIntegrationTest}, whose pattern this class follows. Every owner id used
  * here is a real, persisted {@link User} or {@link Group}, because {@code
  * fk_knowledge_libraries_owner_user} and {@code fk_knowledge_libraries_owner_group_organization}
- * (migration 012) are real foreign keys enforced by Liquibase, not by Hibernate's entity mapping.
+ * are real foreign keys enforced by Liquibase, not by Hibernate's entity mapping.
  *
  * <p>{@link
  * #aGroupGrantOnAPersonallyOwnedLibraryReachesItsMembersAndRevocationTakesEffectImmediately()} and
@@ -175,7 +175,7 @@ class KnowledgeLibraryServiceIntegrationTest {
     // #238 code review, finding 3+4: asset_grant_history.subject_user_id and
     // group_membership_history.user_id are ON DELETE RESTRICT (the history must survive a library
     // or group deletion, but an account deletion is deliberately blocked until a pseudonymisation
-    // mechanism exists - see 018-permission-history.yaml's "Deletion survival" comment). Every
+    // mechanism exists - see ADR-0016). Every
     // library/grant/membership operation this class exercises now writes such a row, so it must be
     // purged before this teardown's own user deletion below, which is not a real account deletion
     // but this test's own cleanup.
@@ -192,7 +192,7 @@ class KnowledgeLibraryServiceIntegrationTest {
       userRepository.deleteById(userId);
     }
     // #392: every library/grant operation this class exercises now also writes an audit_log row
-    // (fk_audit_log_organization is ON DELETE RESTRICT, migration 017) - purged the same way
+    // (fk_audit_log_organization is ON DELETE RESTRICT) - purged the same way
     // AuditLogServiceIntegrationTest does, via JdbcTemplate against the Testcontainers superuser
     // account, since AuditLogEntry#isNew() being unconditionally true makes the repository's own
     // deleteAll a silent no-op for it.
@@ -417,7 +417,7 @@ class KnowledgeLibraryServiceIntegrationTest {
   @Test
   void updateLibraryChangingSourceUrlDeletesTheLibrarysOwnStaleRssFeedState() {
     // #646, PR #665 review "should" finding 3: fk_rss_feed_state_library's ON DELETE CASCADE
-    // (migration 045) only fires on a library *deletion* - a sourceUrl change on an
+    // only fires on a library *deletion* - a sourceUrl change on an
     // otherwise-surviving library needs its own cleanup, or a later reconfiguration back to a
     // previously-used address would find this library's own stale ETag/Last-Modified again and end
     // that run in a false 304 (the same defect #646 fixed, one level down: the same library reusing
@@ -614,7 +614,7 @@ class KnowledgeLibraryServiceIntegrationTest {
 
   @Test
   void aMaximumLengthCredentialSurvivesEncryptionWithoutTruncation() {
-    // #483/migration 029: source_credentials was widened from varchar(500) to varchar(3000) to fit
+    // #483: source_credentials was widened from varchar(500) to varchar(3000) to fit
     // the encrypted encoding of exactly the longest plaintext LibraryCreation.sourceCredentials
     // still
     // allows (maxLength: 500, openapi/opaa-api.yaml) - this pins that the column is actually wide
@@ -1769,10 +1769,10 @@ class KnowledgeLibraryServiceIntegrationTest {
     // Before this fix, otherMember - holding only the group's MANAGER grant, never able to touch
     // the creator's OWNER grant directly (see the escalation guard exercised above) - could still
     // delete the whole library outright, taking every grant on it down with it via
-    // fk_asset_grants_library_organization's ON DELETE CASCADE (migration 013): a detour all the
+    // fk_asset_grants_library_organization's ON DELETE CASCADE: a detour all the
     // way around the round-1/round-2 escalation guards instead of being stopped by them. This is
     // strictly worse for a migrated, backfilled group-owned library, which deliberately carries no
-    // OWNER grant at all (013-asset-grants.yaml's backfill comment) - there, every member could
+    // OWNER grant at all (the backfill of #238) - there, every member could
     // delete a library nobody could even downgrade the group's grant on.
     UUID creator = createUser(organizationA);
     UUID otherMember = createUser(organizationA);

@@ -207,7 +207,7 @@ class PermissionHistoryServiceIntegrationTest {
       providerRepository.deleteById(providerId);
     }
     // #392: every library/grant/group operation this class exercises now also writes an audit_log
-    // row (fk_audit_log_organization is ON DELETE RESTRICT, migration 017) - purged via
+    // row (fk_audit_log_organization is ON DELETE RESTRICT) - purged via
     // JdbcTemplate, same reasoning as AuditLogServiceIntegrationTest#tearDown.
     jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organizationId);
     organizationRepository.deleteById(organizationId);

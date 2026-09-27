@@ -43,10 +43,10 @@ import org.springframework.web.server.ResponseStatusException;
  * <p><b>Concurrent activation (#757 review of #763).</b> {@link LlmModelService#activateModel}
  * deactivates the previously active model and flushes before activating the new one, but two
  * concurrent activations of two different models can still collide on {@code
- * ux_llm_models_single_active} (migration 058) when both flush their own "activate" write around
- * the same time. {@link #activateModel} catches that {@link DataIntegrityViolationException} and
- * turns it into a clean 409 rather than letting it surface as an unhandled 500 - the caller is told
- * to retry, not shown a stack trace.
+ * ux_llm_models_single_active} when both flush their own "activate" write around the same time.
+ * {@link #activateModel} catches that {@link DataIntegrityViolationException} and turns it into a
+ * clean 409 rather than letting it surface as an unhandled 500 - the caller is told to retry, not
+ * shown a stack trace.
  *
  * <p><b>Delete guard for the active model (#757, review of the first version of this PR).</b>
  * {@link LlmModelService#deleteModel} itself rejects deleting the active model with 409 - not a

@@ -56,9 +56,9 @@ public class AuditQueryService {
   static final long MAX_TIME_RANGE_DAYS = AuditAccessGate.MAX_TIME_RANGE_DAYS;
 
   /**
-   * Matches {@code audit_log.reason varchar(1000)} (migration 017) - the single source of this
-   * bound; {@code DiagnosticContextLogQueryService} references this constant rather than copying
-   * the number a third time.
+   * Matches {@code audit_log.reason varchar(1000)} - the single source of this bound; {@code
+   * DiagnosticContextLogQueryService} references this constant rather than copying the number a
+   * third time.
    */
   public static final int MAX_REASON_LENGTH = AuditAccessGate.MAX_REASON_LENGTH;
 

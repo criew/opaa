@@ -19,8 +19,8 @@ import org.springframework.stereotype.Component;
 /**
  * An internal group without an active steward (#1819, ADR-0036 Entscheidung 6) - including the
  * groups the migration of #1812 turned into internal ones <b>without</b> stewards: exactly the
- * state that changeset 041 left behind on purpose, to be picked up here. A provider group never
- * counts: it is maintained where it comes from, and its protection mark is the system
+ * state the provider-origin migration left behind on purpose, to be picked up here. A provider
+ * group never counts: it is maintained where it comes from, and its protection mark is the system
  * administration's to decide.
  */
 @Component

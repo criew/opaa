@@ -10,9 +10,9 @@ import java.util.UUID;
  * question and implemented by {@code io.opaa.diagnosticaccess}, which owns the answer; the
  * dependency direction stays {@code diagnosticaccess} &rarr; {@code group}.
  *
- * <p>{@code fk_diagnostic_impersonation_grants_scope_organization} is {@code ON DELETE CASCADE}
- * (changeset 003): a grant disappears with its scope group, silently and without the revocation
- * event ADR-0016 requires. A group carrying one is therefore not "without effect".
+ * <p>{@code fk_diagnostic_impersonation_grants_scope_organization} is {@code ON DELETE CASCADE}: a
+ * grant disappears with its scope group, silently and without the revocation event ADR-0016
+ * requires. A group carrying one is therefore not "without effect".
  */
 public interface GroupScopeUsageDirectory {
 

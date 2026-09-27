@@ -14,7 +14,7 @@ import org.springframework.stereotype.Service;
  * PermissionHistoryClock}. The chain of an account starts with its first state change, not with its
  * creation: {@link #recordLocked} writes the closed {@code ACTIVE} interval from {@code createdAt}
  * along with the {@code LOCKED} one, so the chain is complete from the account's creation without a
- * row per account making every account undeletable (see changelog 064).
+ * row per account making every account undeletable.
  *
  * <p>Every method runs in the caller's own transaction, so the lock and its interval commit or roll
  * back together.

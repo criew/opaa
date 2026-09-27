@@ -12,9 +12,9 @@ import java.util.UUID;
  * io.opaa.space} (ADR-0036, Entscheidung 12). Implemented by {@code
  * GroupSpaceMembershipDirectoryAdapter}.
  *
- * <p>{@code space_memberships.group_id} is {@code ON DELETE RESTRICT} (changelog 043), so without
- * this port a group that is a space member would take its own deletion - and the deletion of its
- * identity provider - into a raw foreign-key violation instead of a 409 that names the work ahead.
+ * <p>{@code space_memberships.group_id} is {@code ON DELETE RESTRICT}, so without this port a group
+ * that is a space member would take its own deletion - and the deletion of its identity provider -
+ * into a raw foreign-key violation instead of a 409 that names the work ahead.
  */
 public interface GroupSpaceMembershipDirectory {
 

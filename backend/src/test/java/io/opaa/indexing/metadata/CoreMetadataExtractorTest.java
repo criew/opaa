@@ -118,7 +118,7 @@ class CoreMetadataExtractorTest {
     }
   }
 
-  /** the Kompositum ending rule seeded per vocabulary value in migration 020. */
+  /** the Kompositum ending rule seeded per vocabulary value in the baseline. */
   @Nested
   class KompositumEndings {
 

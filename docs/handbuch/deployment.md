@@ -894,19 +894,35 @@ nicht aktualisieren, sondern nur neu aufsetzen.** Ob sie betroffen ist, zeigt vo
 
 ```bash
 docker compose exec postgres psql -U opaa -d opaa -tAc \
-  "SELECT count(*) FROM databasechangelog WHERE id = '001-baseline-foundation'"
+  "SELECT count(*) FROM databasechangelog WHERE id = '001-baseline-foundation'
+     AND author = 'opaa' AND filename = 'db/changelog/changes/001-baseline.yaml'"
 ```
 
-`1` heißt: nicht betroffen. `0` heißt: neu aufsetzen, und zwar so:
+`1` heißt: nicht betroffen. `0` heißt: neu aufsetzen. Die Abfrage prüft Kennung, Autor **und** Datei,
+weil Liquibase ein Changeset an genau diesen drei Werten wiedererkennt: Liegt dasselbe Changeset
+später in einer anderen Datei, gilt es für Liquibase als neu, und eine Prüfung nur der Kennung meldete
+eine betroffene Installation als nicht betroffen. Ändert ein Stand die Ablage der Baseline, ändert er
+diese Abfrage mit. Neu aufsetzen geht so:
 
 1. **Was in der Datenbank liegt, geht verloren** — Konten, Anbieter, Gruppen, Bibliotheken samt
    Konfiguration und Rechten, Chats, Nachweisprotokoll und Rechtehistorie. Ein Dump des alten Stands
    lässt sich nicht in den neuen einspielen; wer Inhalte nachschlagen will, zieht ihn trotzdem vorher.
    Die Konfiguration in `.env.docker` und der Korpus im Dateisystem bleiben.
-2. Stapel anhalten und die Datenbank verwerfen: `docker compose down -v` verwirft alle benannten
-   Volumes des Stapels, darunter `opaa-postgres-data`.
+2. Stapel anhalten und **nur** das Datenbank-Volume verwerfen:
+
+   ```bash
+   docker compose down
+   docker volume rm <projekt>_opaa-postgres-data
+   ```
+
+   `<projekt>` ist der Name des Compose-Projekts, ohne eigene Angabe der Name des Verzeichnisses mit
+   der `docker-compose.yml`; `docker volume ls | grep opaa-postgres-data` zeigt den genauen Namen.
+   **Nicht** `docker compose down -v`: Das verwirft alle Volumes des Stapels, auch
+   `<projekt>_opaa-ollama-data` mit den heruntergeladenen Modellen.
 3. Die abgelegten Originale der alten Bibliotheken entfernen — das Verzeichnis `uploads/` bei
-   Ablage im Dateisystem, den Inhalt des Buckets bei Ablage im Objektspeicher. Sonst bleiben
+   Ablage im Dateisystem, den Inhalt des Buckets bei Ablage im Objektspeicher; beim mitgelieferten
+   Objektspeicher genügt `docker volume rm <projekt>_opaa-upload-store-data` (vorher mit
+   `docker compose --profile upload-s3 down` auch dessen Container anhalten). Sonst bleiben
    Originale liegen, auf die keine Zeile mehr zeigt (siehe
    [„Verwaiste Originale aufräumen"](#verwaiste-originale-aufräumen)).
 4. `docker compose pull && docker compose up -d`. Der erste Start legt das Schema neu an, übernimmt

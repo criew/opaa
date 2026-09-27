@@ -418,7 +418,9 @@ class RightsBaselineTest extends AbstractBaselineTest {
 
   /**
    * Every organization starts with the delivered state - four capabilities for all accounts, each
-   * with an open DELIVERED interval - whether it is the seeded one or created later.
+   * with an open DELIVERED interval - whether it is the seeded one or created later. Grant and
+   * interval date from the organization's own creation, so the point-in-time answer never says
+   * "nobody was allowed" for a moment the organization existed.
    */
   @Test
   void everyOrganizationStartsWithTheFourDeliveredCapabilitiesAndAnOpenIntervalEach()
@@ -436,9 +438,11 @@ class RightsBaselineTest extends AbstractBaselineTest {
       assertThat(
               strings(
                   "SELECT h.capability FROM capability_grant_history h JOIN capability_grants g"
-                      + " USING (organization_id, capability) WHERE h.cause = 'DELIVERED'"
+                      + " USING (organization_id, capability) JOIN organizations o"
+                      + " ON o.id = h.organization_id WHERE h.cause = 'DELIVERED'"
                       + " AND h.subject_type = 'ALL_ACCOUNTS' AND h.valid_to IS NULL"
-                      + " AND h.valid_from = g.created_at AND h.organization_id = '"
+                      + " AND h.valid_from = o.created_at AND g.created_at = o.created_at"
+                      + " AND h.organization_id = '"
                       + organization
                       + "' ORDER BY h.capability"))
           .containsExactlyElementsOf(DELIVERED_CAPABILITIES);

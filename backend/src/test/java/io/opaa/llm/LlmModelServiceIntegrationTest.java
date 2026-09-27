@@ -25,10 +25,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * {@link LlmModelService} against a real Postgres with the real, versioned Liquibase schema applied
- * (migrations 058/059, #756). Covers what a test against a mocked repository could not: that the
- * API key really is encrypted before it reaches the database, that two saves of the same key
- * produce different ciphertexts, that at most one model is ever active, and that every change
- * writes exactly one audit event of the right, distinct type.
+ * (#756). Covers what a test against a mocked repository could not: that the API key really is
+ * encrypted before it reaches the database, that two saves of the same key produce different
+ * ciphertexts, that at most one model is ever active, and that every change writes exactly one
+ * audit event of the right, distinct type.
  *
  * <p>{@code @BeforeEach}/{@code @AfterEach} take the catalogue over and hand it back unchanged
  * ({@link io.opaa.test.LlmModelCatalogFixtures}) rather than assuming it starts empty: {@link
@@ -308,7 +308,7 @@ class LlmModelServiceIntegrationTest {
 
   @Test
   void theDatabaseRejectsASecondActiveRowEvenWhenTheServiceIsBypassed() {
-    // The service is the primary defense; this proves the backstop from migration 058 is real, so
+    // The service is the primary defense; this proves the database backstop is real, so
     // a future write path that forgets to deactivate the previous model cannot quietly create two
     // active rows.
     LlmModel modelA =

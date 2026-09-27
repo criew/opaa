@@ -275,7 +275,7 @@ class FilesystemFolderMappingIntegrationTest {
     // pruneOrphanedFoldersRemovesAnOrphanedParentOnlyAfterItsOwnEmptyOrphanedChild) proves the
     // leaf-first *order* pruneRecursive walks in, but only the real Liquibase schema can prove
     // Hibernate actually flushes those deletes in that order within one transaction - a
-    // parent-before-child flush would trip fk_library_folders_parent's RESTRICT (migration 062)
+    // parent-before-child flush would trip fk_library_folders_parent's RESTRICT
     // and fail the whole pruneOrphanedFolders call.
     Files.createDirectories(classTempDir.resolve("Temp/2025"));
     Files.writeString(classTempDir.resolve("Temp/2025/datei.txt"), "Wird bald geloescht.");

@@ -271,10 +271,10 @@ class OidcProviderServiceIntegrationTest {
   }
 
   /**
-   * {@code fk_diagnostic_impersonation_grants_scope_organization} is {@code ON DELETE CASCADE}
-   * (changeset 003): without counting the authorisation as an effect, deleting the provider would
-   * take a valid Diagnose-Vollmacht with it, silently and without the {@code
-   * DIAGNOSTIC_IMPERSONATION_REVOKED} event ADR-0016 requires.
+   * {@code fk_diagnostic_impersonation_grants_scope_organization} is {@code ON DELETE CASCADE}:
+   * without counting the authorisation as an effect, deleting the provider would take a valid
+   * Diagnose-Vollmacht with it, silently and without the {@code DIAGNOSTIC_IMPERSONATION_REVOKED}
+   * event ADR-0016 requires.
    */
   @Test
   void aProviderWhoseGroupIsTheScopeOfADiagnosticAuthorizationIsRefused() {

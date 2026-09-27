@@ -14,17 +14,17 @@ import org.junit.jupiter.api.Test;
  * Guard test against regression of the statement form fixed in the #454 re-review (finding 2):
  * {@link AuditRetentionSettings} must stay read-only end to end, so a future {@code
  * repository.save(entity)} call can never reintroduce the dirty-checked, all-columns {@code UPDATE}
- * that fails against the real, restricted database grant (migration 023 - the application account
- * has {@code UPDATE} only on {@code retention_months}/{@code updated_at}, never {@code
- * last_cutoff}/{@code last_run_month}).
+ * that fails against the real, restricted database grant (the application account has {@code
+ * UPDATE} only on {@code retention_months}/{@code updated_at}, never {@code last_cutoff}/{@code
+ * last_run_month}).
  *
  * <p>Plain reflection, not a database-backed test: the property being guarded ("every mapped column
  * is {@code insertable = false, updatable = false}, and there is no setter") is a static fact about
  * the class, independent of any database state - the actual privilege boundary against a real,
- * restricted role is enforced by migration 023's {@code GRANT UPDATE (retention_months,
- * updated_at)} (baseline, identity changeSet); this test is the cheap, always-run companion that
- * catches the moment someone reintroduces a setter or drops an {@code insertable}/{@code updatable}
- * flag, well before that change ever reaches a database.
+ * restricted role is enforced by the baseline's {@code GRANT UPDATE (retention_months, updated_at)}
+ * (baseline, identity changeSet); this test is the cheap, always-run companion that catches the
+ * moment someone reintroduces a setter or drops an {@code insertable}/{@code updatable} flag, well
+ * before that change ever reaches a database.
  */
 class AuditRetentionSettingsTest {
 
@@ -74,7 +74,7 @@ class AuditRetentionSettingsTest {
                 + " (e.g. setRetentionMonths) would make repository.save(entity) a live option"
                 + " again for callers, and Hibernate's dirty-checked save writes every mapped"
                 + " column regardless of which one a setter actually touched, not just the"
-                + " ones the application account may write (migration 023)")
+                + " ones the application account may write")
         .isEmpty();
   }
 

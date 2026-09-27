@@ -164,7 +164,7 @@ class SearchDiagnosisPersonContextHttpIntegrationTest {
     // Granted to nobody: it counts towards lockedLibraryCount all the same, which is what makes
     // the count a statement about the bestand rather than about the target person.
     ungrantedLockedLibraryId = insertLibrary("Personalrat");
-    // Every library starts diagnosegesperrt (changeset 006); only the open one is unlocked here.
+    // Every library starts diagnosegesperrt; only the open one is unlocked here.
     jdbcTemplate.update(
         "UPDATE knowledge_libraries SET diagnostics_locked = false WHERE id = ?", openLibraryId);
     grantLibraryToTarget(openLibraryId, targetUserId);

@@ -635,7 +635,7 @@ class LibraryDocumentServiceTest {
   @Test
   void aRaceThatSlipsPastTheChecksumCheckIsStillCaughtByTheUniqueIndex() throws IOException {
     // #420 code review, nit 5: the sequential findByLibraryIdAndChecksum check cannot close a
-    // race between two concurrent uploads; uk_documents_library_checksum (migration 020) does, and
+    // race between two concurrent uploads; uk_documents_library_checksum does, and
     // this is the resulting DataIntegrityViolationException translated into the same 409. #434: the
     // save that can now raise it is the PENDING row's own save, done inside this service - not a
     // call into DocumentIngestService any more.
@@ -660,7 +660,7 @@ class LibraryDocumentServiceTest {
   @Test
   void aFolderDeletedBetweenValidationAndInsertAnswers404NotTheChecksumMessage()
       throws IOException {
-    // #821 review round 1, finding 5: fk_documents_folder (migration 062) can fire on the very
+    // #821 review round 1, finding 5: fk_documents_folder can fire on the very
     // same save() the checksum race above tests, if folderId - already confirmed to exist by
     // resolveFolder - is deleted by a concurrent request in the narrow window before this INSERT.
     // That must not surface as "Diese Datei ist bereits in dieser Bibliothek vorhanden" - the file

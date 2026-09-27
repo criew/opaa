@@ -40,10 +40,10 @@ public interface LibraryFolderRepository extends JpaRepository<LibraryFolder, UU
   /**
    * Backs the root-level half of the create/rename conflict check (#820 acceptance criteria:
    * "Doppelte Namen im selben Parent liefern 409") - exact, case-sensitive match, mirroring the
-   * case-sensitive {@code uk_library_folders_root_name} partial unique index (migration 062) this
-   * is a pre-flight for. Split from {@link #findByLibraryIdAndParentFolderIdAndName(UUID, UUID,
-   * String)} rather than accepting a nullable {@code parentFolderId} in one method, the same
-   * explicit-{@code IsNull}-suffix convention {@code AssetGrantHistoryRepository}/{@code
+   * case-sensitive {@code uk_library_folders_root_name} partial unique index this is a pre-flight
+   * for. Split from {@link #findByLibraryIdAndParentFolderIdAndName(UUID, UUID, String)} rather
+   * than accepting a nullable {@code parentFolderId} in one method, the same explicit-{@code
+   * IsNull}-suffix convention {@code AssetGrantHistoryRepository}/{@code
    * AssetVisibilityHistoryRepository} already use for their own nullable columns, instead of
    * relying on a derived query's implicit null-parameter handling.
    */

@@ -80,7 +80,7 @@ import org.springframework.transaction.support.TransactionTemplate;
  * ({@code spring.liquibase.enabled=true}, {@code ddl-auto=none}), mirroring {@code
  * PermissionHistoryServiceIntegrationTest} and {@code SpaceServiceIntegrationTest}: {@code
  * audit_log.organization_id} is a plain {@code UUID} column with a real foreign key ({@code
- * fk_audit_log_organization}, migration 017) that only the versioned changelog creates.
+ * fk_audit_log_organization}) that only the versioned changelog creates.
  */
 @OpaaIntegrationTest
 class AuditEventRecordingIntegrationTest {
@@ -365,7 +365,7 @@ class AuditEventRecordingIntegrationTest {
   @Test
   void grantingToAnUnknownSubjectFailsCleanlyWithoutAnFkViolationOrAnAuditEntry() {
     // #392 code review, finding 2: an unresolvable subjectId must never reach the pseudonym
-    // insert - it would violate fk_audit_actor_pseudonyms_user (migration 017) and surface as an
+    // insert - it would violate fk_audit_actor_pseudonyms_user and surface as an
     // unhandled 500, losing the whole transaction (including the DENIED entry the escalation guard
     // would otherwise have written) instead of the clean 404 every other unresolvable reference in
     // this class already produces.

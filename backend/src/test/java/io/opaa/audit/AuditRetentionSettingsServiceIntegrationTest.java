@@ -20,11 +20,11 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * #395: {@link AuditRetentionSettingsService} against a real Postgres database with the real,
- * versioned Liquibase schema applied (migration 023). Proves the acceptance criteria a plain unit
- * test against a mocked repository could not: the database's own {@code
- * chk_audit_retention_settings_months} bound actually rejects a write outside 1-10 years (not just
- * this service's own pre-check), a retention change writes exactly one {@code
- * AUDIT_LOG_CONFIGURATION_CHANGED} audit entry (never fails silently, never writes more than one).
+ * versioned Liquibase schema applied. Proves the acceptance criteria a plain unit test against a
+ * mocked repository could not: the database's own {@code chk_audit_retention_settings_months} bound
+ * actually rejects a write outside 1-10 years (not just this service's own pre-check), a retention
+ * change writes exactly one {@code AUDIT_LOG_CONFIGURATION_CHANGED} audit entry (never fails
+ * silently, never writes more than one).
  */
 @OpaaIntegrationTest
 class AuditRetentionSettingsServiceIntegrationTest {

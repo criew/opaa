@@ -876,7 +876,7 @@ class RssFeedIndexingExecutorTest {
   @Test
   void aFailedEventWriteNeverPreventsTheRunFromCompleting() throws Exception {
     // A DB hiccup while writing the protocol must never leave the
-    // job stuck RUNNING - uk_indexing_jobs_library_running (migration 028) would then permanently
+    // job stuck RUNNING - uk_indexing_jobs_library_running would then permanently
     // block every future run of this library. IndexingRunEventRecorder must swallow this itself.
     serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/forbidden.html"));
     serve("/forbidden.html", 403, "text/html", "denied");
@@ -1181,7 +1181,7 @@ class RssFeedIndexingExecutorTest {
   @Test
   void aTargetLibraryDeletedDuringTheRunSurfacesAsAGermanRunFailureNotARawJdbcMessage()
       throws Exception {
-    // fk_rss_feed_state_library (migration 045) turns
+    // fk_rss_feed_state_library turns
     // the delete-during-run race into a DataIntegrityViolationException the moment saveFeedState
     // tries to write - simulated here by making the repository throw exactly that, since actually
     // racing KnowledgeLibraryService#deleteLibrary against this executor would need a second,

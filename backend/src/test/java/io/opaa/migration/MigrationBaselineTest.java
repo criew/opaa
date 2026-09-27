@@ -381,14 +381,13 @@ class MigrationBaselineTest extends AbstractBaselineTest {
             new BoundaryException(
                 "space_memberships",
                 "fk_space_memberships_space",
-                "no longer needed - migration 050 removed the redundant constraint this exception"
-                    + " once covered",
+                "no longer needed - the redundant constraint this exception once covered is gone",
                 "#390"));
 
     assertThat(staleExceptionDescriptions(violations, staleException))
         .as(
             "an exception naming a constraint that is not among today's violations must be flagged"
-                + " as stale, since today's schema (after migration 050) no longer has this"
+                + " as stale, since today's schema no longer has this"
                 + " violation")
         .hasSize(1);
   }

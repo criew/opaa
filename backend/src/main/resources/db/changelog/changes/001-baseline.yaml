@@ -1316,10 +1316,13 @@ databaseChangeLog:
                 now()
               );
 
-              -- Delivered capabilities of every organization that already exists (the default one);
+              -- Delivered capabilities of every organization that already exists (the default one),
+              -- dated to the organization's own creation: the point-in-time answer must never say
+              -- "nobody was allowed" for any moment the organization existed.
               -- trg_organizations_seed_capability_grants delivers the same set to every later organization.
               INSERT INTO capability_grants (id, organization_id, capability, subject_type, created_at)
-              SELECT gen_random_uuid(), organizations.id, delivered.capability, 'ALL_ACCOUNTS', now()
+              SELECT gen_random_uuid(), organizations.id, delivered.capability, 'ALL_ACCOUNTS',
+                     organizations.created_at
                 FROM organizations
                 CROSS JOIN (VALUES ('CREATE_SPACE'), ('CREATE_LIBRARY'), ('CREATE_CONNECTOR_LIBRARY'),
                                    ('CREATE_PROMPT_LIBRARY')) AS delivered(capability);
@@ -1327,7 +1330,7 @@ databaseChangeLog:
               INSERT INTO capability_grant_history
                 (id, organization_id, capability, subject_type, cause, valid_from, created_at)
               SELECT gen_random_uuid(), organization_id, capability, 'ALL_ACCOUNTS', 'DELIVERED', created_at,
-                     created_at
+                     now()
                 FROM capability_grants;
       # No rollback: the baseline is never rolled back - a broken installation is discarded and re-run from an empty database instead.
 
