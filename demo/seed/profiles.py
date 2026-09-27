@@ -107,6 +107,46 @@ class GroupDef:
 
 
 @dataclass(frozen=True)
+class PromptVariableDef:
+    """One variable of a prompt (PromptVariable in prompts.yaml). The prompt text uses it as
+    {{name}}; {{CURRENT_DATE}} and {{USER_NAME}} are system variables and never defined here."""
+
+    name: str
+    label: str
+    type: str  # PromptVariableType: TEXT, TEXTAREA, SELECT, DATE
+    required: bool = True
+    default_value: str | None = None  # SELECT: one of options, DATE: yyyy-MM-dd
+    options: tuple[str, ...] = field(default_factory=tuple)  # SELECT only
+
+
+@dataclass(frozen=True)
+class PromptDef:
+    name: str  # the slash command without the slash: lower-case letters, digits, single hyphens
+    title: str
+    text: str
+    description: str | None = None
+    variables: tuple[PromptVariableDef, ...] = field(default_factory=tuple)
+    sort_order: int = 0
+
+
+@dataclass(frozen=True)
+class PromptLibraryDef:
+    """A prompt library, created through the owner's own session (every account holds
+    CREATE_PROMPT_LIBRARY by default) and therefore owned by that person. Its reach is exactly
+    all_accounts_viewer plus viewer_keys; space_names only orders the slash selection in those
+    spaces and grants nothing - each space owner must already be able to read the library."""
+
+    name: str
+    description: str
+    owner_key: str
+    prompts: tuple[PromptDef, ...]
+    listed: bool = False
+    all_accounts_viewer: bool = False
+    viewer_keys: tuple[str, ...] = field(default_factory=tuple)
+    space_names: tuple[str, ...] = field(default_factory=tuple)
+
+
+@dataclass(frozen=True)
 class Profile:
     name: str
     auth_mode: str  # "keycloak" or "dev"
@@ -115,6 +155,7 @@ class Profile:
     spaces: tuple[SpaceDef, ...]
     libraries: tuple[LibraryDef, ...]
     groups: tuple[GroupDef, ...] = field(default_factory=tuple)
+    prompt_libraries: tuple[PromptLibraryDef, ...] = field(default_factory=tuple)
 
     def all_users(self) -> tuple[UserDef, ...]:
         return (self.admin, *self.users)
@@ -156,6 +197,253 @@ _DEMO_ANDREA = UserDef(
     email="andrea.vogt@stadt-rheinfurt.example",
     identity="andrea.vogt",
     password=DEMO_PASSWORD,
+)
+
+# Prompt libraries of the demo. Both belong to Andrea (Amtsleitung): the Textbausteine reach every
+# account through "Alle Konten" and are listed in the catalog; her own Vorlagen stay unlisted and
+# without any further grant, so Maria, Selin and Thomas neither use nor find them. Every prompt asks
+# for what the Rheinfurt corpus answers - Leistungen, Satzungen, Pressemitteilungen, Ratsinformationen.
+_DEMO_PROMPT_LIBRARIES = (
+    PromptLibraryDef(
+        name="Textbausteine Bürgerbüro",
+        description=(
+            "Gemeinsame Formulierungshilfen des Bürgerbüros Rheinfurt für Bürgeranfragen, "
+            "Gebührenauskünfte, Aktenvermerke und Pressemitteilungen. Gepflegt von der Amtsleitung."
+        ),
+        owner_key="andrea",
+        listed=True,
+        all_accounts_viewer=True,
+        space_names=("Meldewesen & Ausweise", "Kfz-Zulassung", "Amtsleitung Bürgerbüro"),
+        prompts=(
+            PromptDef(
+                name="antwort-buergeranfrage",
+                title="Antwort auf Bürgeranfrage",
+                description="Antwortschreiben mit Unterlagen, Gebühren, Terminweg und Frist.",
+                text=(
+                    "Entwirf eine Antwort des Bürgerbüros Rheinfurt auf die folgende "
+                    "Bürgeranfrage:\n\n{{anliegen}}\n\nStütze dich auf die Leistungsbeschreibungen, "
+                    "Satzungen und Pressemitteilungen der Stadt Rheinfurt. Nenne die benötigten "
+                    "Unterlagen, die anfallenden Gebühren und den Weg zu einem Termin im "
+                    "Bürgerbüro. Weise darauf hin, dass fehlende Unterlagen {{frist}} "
+                    "nachgereicht werden können. Schreibe {{tonfall}} und schließe mit „Mit "
+                    "freundlichen Grüßen, {{USER_NAME}}, Bürgerbüro Rheinfurt“."
+                ),
+                variables=(
+                    PromptVariableDef(
+                        name="anliegen",
+                        label="Anliegen der Bürgerin oder des Bürgers",
+                        type="TEXTAREA",
+                        default_value=(
+                            "Ich ziehe nächsten Monat innerhalb von Rheinfurt um. Was muss ich für "
+                            "die Ummeldung mitbringen, und kostet das etwas?"
+                        ),
+                    ),
+                    PromptVariableDef(
+                        name="frist",
+                        label="Frist für fehlende Unterlagen",
+                        type="SELECT",
+                        default_value="innerhalb von zwei Wochen",
+                        options=(
+                            "innerhalb von zwei Wochen",
+                            "innerhalb von vier Wochen",
+                            "bis zum Termin im Bürgerbüro",
+                        ),
+                    ),
+                    PromptVariableDef(
+                        name="tonfall",
+                        label="Tonfall",
+                        type="SELECT",
+                        default_value="sachlich und förmlich",
+                        options=("sachlich und förmlich", "besonders einfach und verständlich"),
+                    ),
+                ),
+                sort_order=10,
+            ),
+            PromptDef(
+                name="gebuehrenauskunft-personalausweis",
+                title="Gebührenauskunft Personalausweis",
+                description="Gebühr, Gültigkeit und Unterlagen je Altersgruppe und Anlass.",
+                text=(
+                    "Welche Gebühr erhebt das Bürgerbüro Rheinfurt für einen Personalausweis in "
+                    "folgendem Fall: antragstellende Person {{altersgruppe}}, Anlass: {{anlass}}? "
+                    "Nenne den Betrag, die Gültigkeitsdauer des Ausweises und die mitzubringenden "
+                    "Unterlagen und verweise auf die Leistungsbeschreibung bzw. die "
+                    "Verwaltungsgebührensatzung der Stadt Rheinfurt. Formuliere die Auskunft so, "
+                    "dass sie unmittelbar an die Bürgerin oder den Bürger gehen kann."
+                ),
+                variables=(
+                    PromptVariableDef(
+                        name="altersgruppe",
+                        label="Alter der antragstellenden Person",
+                        type="SELECT",
+                        default_value="24 Jahre und älter",
+                        options=("unter 24 Jahre", "24 Jahre und älter"),
+                    ),
+                    PromptVariableDef(
+                        name="anlass",
+                        label="Anlass",
+                        type="SELECT",
+                        default_value="Neuausstellung nach Ablauf der Gültigkeit",
+                        options=(
+                            "Erstausstellung",
+                            "Neuausstellung nach Ablauf der Gültigkeit",
+                            "Verlust oder Diebstahl",
+                            "vorläufiger Personalausweis",
+                        ),
+                    ),
+                ),
+                sort_order=20,
+            ),
+            PromptDef(
+                name="aktenvermerk",
+                title="Vermerk für die Akte",
+                description="Aktenvermerk mit Sachverhalt, Rechtsgrundlage und weiterem Vorgehen.",
+                text=(
+                    "Verfasse einen Aktenvermerk im Verwaltungsstil der Stadt Rheinfurt.\n\n"
+                    "Aktenzeichen: {{aktenzeichen}}\nSachgebiet: {{sachgebiet}}\n"
+                    "Datum: {{CURRENT_DATE}}\nBearbeitung: {{USER_NAME}}\n\n"
+                    "Sachverhalt:\n{{sachverhalt}}\n\n"
+                    "Gliedere den Vermerk in Sachverhalt, Rechtsgrundlage und weiteres Vorgehen. "
+                    "Belege die Rechtsgrundlage mit den einschlägigen Leistungsbeschreibungen, "
+                    "Satzungen oder Dienstanweisungen und nenne keine Vorschrift, die in den "
+                    "Quellen nicht vorkommt."
+                ),
+                variables=(
+                    PromptVariableDef(name="aktenzeichen", label="Aktenzeichen", type="TEXT"),
+                    PromptVariableDef(
+                        name="sachgebiet",
+                        label="Sachgebiet",
+                        type="SELECT",
+                        default_value="Meldewesen & Ausweise",
+                        options=(
+                            "Meldewesen & Ausweise",
+                            "Kfz-Zulassung",
+                            "Amtsleitung Bürgerbüro",
+                        ),
+                    ),
+                    PromptVariableDef(name="sachverhalt", label="Sachverhalt", type="TEXTAREA"),
+                ),
+                sort_order=30,
+            ),
+            PromptDef(
+                name="pressemitteilung-ratsbeschluss",
+                title="Pressemitteilung aus Ratsbeschluss",
+                description="Pressemitteilung aus Niederschrift oder Beschlussvorlage eines Gremiums.",
+                text=(
+                    "Suche in den Ratsinformationen der Stadt Rheinfurt den Beschluss zum Thema "
+                    "„{{thema}}“ ({{gremium}}, Sitzung vom {{sitzungsdatum}}) und formuliere daraus "
+                    "eine Pressemitteilung der Stadt Rheinfurt im Stil der bisherigen "
+                    "Pressemitteilungen: Überschrift, kurzer Vorspann, Inhalt des Beschlusses mit "
+                    "Abstimmungsergebnis und was er für die Bürgerinnen und Bürger bedeutet. "
+                    "Erfinde keine Zitate und keine Zahlen, die nicht in der Niederschrift oder "
+                    "Beschlussvorlage stehen."
+                ),
+                variables=(
+                    PromptVariableDef(
+                        name="thema",
+                        label="Thema des Beschlusses",
+                        type="TEXT",
+                        default_value="Mobiles Bürgerbüro",
+                    ),
+                    PromptVariableDef(
+                        name="gremium",
+                        label="Gremium",
+                        type="SELECT",
+                        default_value="Hauptausschuss",
+                        options=("Stadtrat", "Hauptausschuss"),
+                    ),
+                    PromptVariableDef(
+                        name="sitzungsdatum",
+                        label="Sitzungsdatum",
+                        type="DATE",
+                        default_value="2026-04-21",
+                    ),
+                ),
+                sort_order=40,
+            ),
+        ),
+    ),
+    PromptLibraryDef(
+        name="Vorlagen Amtsleitung",
+        description="Persönliche Vorlagen der Amtsleitung Bürgerbüro für Berichte und Gremienarbeit.",
+        owner_key="andrea",
+        space_names=("Amtsleitung Bürgerbüro",),
+        prompts=(
+            PromptDef(
+                name="wochenbericht-dezernentin",
+                title="Wochenbericht an die Dezernentin",
+                description="Wochenbericht aus Ratsbeschlüssen, Pressemitteilungen und Dienstanweisungen.",
+                text=(
+                    "Erstelle den Wochenbericht der Amtsleitung Bürgerbüro Rheinfurt an die "
+                    "Dezernentin für {{kalenderwoche}}. Gliedere ihn in:\n"
+                    "1. Beschlüsse von Stadtrat und Hauptausschuss mit Bezug zum Bürgerbüro (etwa "
+                    "Stellenplan, mobiles Bürgerbüro, Terminvergabe) und ihr Umsetzungsstand,\n"
+                    "2. geänderte Öffnungszeiten, Schließtage und Sperrungen laut den "
+                    "Pressemitteilungen der Stadt,\n"
+                    "3. Hinweise aus den internen Dienstanweisungen, die für den Schalterbetrieb "
+                    "gerade wichtig sind,\n"
+                    "4. Schwerpunkt der Woche: {{schwerpunkt}}.\n"
+                    "Belege jede Aussage mit ihrer Quelle, halte den Bericht auf höchstens einer "
+                    "Seite und schließe mit „Stand {{CURRENT_DATE}}, {{USER_NAME}}, Amtsleitung "
+                    "Bürgerbüro“."
+                ),
+                variables=(
+                    PromptVariableDef(
+                        name="kalenderwoche", label="Kalenderwoche (z. B. KW 40/2026)", type="TEXT"
+                    ),
+                    PromptVariableDef(
+                        name="schwerpunkt",
+                        label="Schwerpunkt der Woche",
+                        type="TEXTAREA",
+                        required=False,
+                        default_value="Wartezeiten auf einen Termin im Meldewesen",
+                    ),
+                ),
+                sort_order=10,
+            ),
+            PromptDef(
+                name="stellungnahme-hauptausschuss",
+                title="Stellungnahme für den Hauptausschuss",
+                description="Stellungnahme der Amtsleitung zu einer Vorlage, mit Beschlussempfehlung.",
+                text=(
+                    "Entwirf eine Stellungnahme der Amtsleitung Bürgerbüro zur Vorlage "
+                    "„{{vorlage}}“ für die Sitzung des Hauptausschusses am {{sitzungstermin}}. "
+                    "Grundhaltung: {{haltung}}.\n\n"
+                    "Fasse zuerst den Inhalt der Vorlage und die bisherigen Beschlüsse von "
+                    "Stadtrat und Hauptausschuss zum selben Thema zusammen. Benenne dann die "
+                    "Auswirkungen auf Personal, Wartezeiten und Gebühren im Bürgerbüro und schließe "
+                    "mit einer Beschlussempfehlung. Stütze dich auf die Ratsinformationen, Satzungen "
+                    "und Leistungsbeschreibungen der Stadt Rheinfurt und kennzeichne, wo die "
+                    "Quellen keine Aussage treffen."
+                ),
+                variables=(
+                    PromptVariableDef(
+                        name="vorlage",
+                        label="Vorlage",
+                        type="TEXT",
+                        default_value=(
+                            "Beschlussvorlage 2024/019: Anschaffung eines Bürgerkoffers für die "
+                            "mobile Beratung in Pflegeeinrichtungen"
+                        ),
+                    ),
+                    PromptVariableDef(
+                        name="sitzungstermin",
+                        label="Sitzungstermin",
+                        type="DATE",
+                        default_value="2024-05-14",
+                    ),
+                    PromptVariableDef(
+                        name="haltung",
+                        label="Grundhaltung der Amtsleitung",
+                        type="SELECT",
+                        default_value="zustimmend mit Ergänzungen",
+                        options=("zustimmend", "zustimmend mit Ergänzungen", "ablehnend"),
+                    ),
+                ),
+                sort_order=20,
+            ),
+        ),
+    ),
 )
 
 DEMO_PROFILE = Profile(
@@ -346,6 +634,7 @@ DEMO_PROFILE = Profile(
             space_membership=("Dienstbesprechung Bürgerbüro", "MEMBER"),
         ),
     ),
+    prompt_libraries=_DEMO_PROMPT_LIBRARIES,
 )
 
 _E2E_ADMIN = UserDef(

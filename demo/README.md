@@ -317,6 +317,10 @@ deren Läufe die Buckets `rheinfurt-archiv` und `formattest` des `objectstore`-C
 Einmal-Schritt `objectstore-seed` muss dafür durchgelaufen sein, siehe Schritt 2). Vollständiger Ablauf,
 Idempotenz und Fehlerfälle: „Seed-Mechanismus (#712)" unten.
 
+Außerdem legt der Seed im Namen von Andrea Vogt die beiden Prompt-Bibliotheken „Textbausteine
+Bürgerbüro" und „Vorlagen Amtsleitung" samt Prompts, Freigaben und Space-Zuordnung an (siehe
+„Prompt-Bibliotheken" unten).
+
 **Wie lange dauert die Erstindizierung, und wie erkennt man, dass sie fertig ist?** Der Seed selbst
 wartet auf jede Indizierung und jeden Upload (Polling gegen `GET
 /api/v1/libraries/{libraryId}/indexing/status` bzw. den Dokumentstatus) und bricht mit einer klaren
@@ -435,6 +439,34 @@ läuft im Token-Modus). Die beiden gleichnamigen „Meldewesen"-Gruppen sind sta
 Herkunft (Anbieter/Realm) unterscheidbar, nicht über einen Quellpfad — wer ihn in der Demo sucht,
 wird ihn nicht finden.
 
+### Prompt-Bibliotheken (#2014)
+
+Der Seed legt zwei Prompt-Bibliotheken an (`demo/seed/profiles.py`, `PromptLibraryDef`). Beide gehören
+**Andrea Vogt**: Der Seed legt sie über ihre eigene Sitzung an, weil das Anlegerecht
+`CREATE_PROMPT_LIBRARY` an „Alle Konten" ausgeliefert ist — die Systemverwaltung braucht es dafür
+nicht, und sie könnte die Prompts ohne eigenes Recht auch nicht lesen.
+
+| Prompt-Bibliothek | Reichweite | Katalog | Zugeordnete Spaces |
+|---|---|---|---|
+| Textbausteine Bürgerbüro | „Alle Konten" (`VIEWER`) | gelistet | „Meldewesen & Ausweise", „Kfz-Zulassung", „Amtsleitung Bürgerbüro" |
+| Vorlagen Amtsleitung | nur Andrea | nicht gelistet | „Amtsleitung Bürgerbüro" |
+
+| Slash-Befehl | Bibliothek | Variablen |
+|---|---|---|
+| `/antwort-buergeranfrage` | Textbausteine Bürgerbüro | Anliegen (mehrzeilig, vorbelegt), Frist (Auswahl), Tonfall (Auswahl) |
+| `/gebuehrenauskunft-personalausweis` | Textbausteine Bürgerbüro | Altersgruppe (Auswahl), Anlass (Auswahl) |
+| `/aktenvermerk` | Textbausteine Bürgerbüro | Aktenzeichen, Sachgebiet (Auswahl), Sachverhalt (mehrzeilig) |
+| `/pressemitteilung-ratsbeschluss` | Textbausteine Bürgerbüro | Thema, Gremium (Auswahl), Sitzungsdatum (Datum, vorbelegt 21.04.2026) |
+| `/wochenbericht-dezernentin` | Vorlagen Amtsleitung | Kalenderwoche, Schwerpunkt (mehrzeilig, optional) |
+| `/stellungnahme-hauptausschuss` | Vorlagen Amtsleitung | Vorlage (vorbelegt: Bürgerkoffer, Vorlage 2024/019), Sitzungstermin (Datum, vorbelegt 14.05.2024), Grundhaltung (Auswahl) |
+
+Mehrere Prompts nutzen zusätzlich die Systemvariablen `{{CURRENT_DATE}}` und `{{USER_NAME}}`. Die
+Vorbelegungen zielen auf Inhalte des Korpus — etwa die Niederschrift des Hauptausschusses vom
+21.04.2026 zum mobilen Bürgerbüro oder die Hauptausschuss-Vorlage 2024/019 zum Bürgerkoffer —, sodass ein Prompt
+ohne weiteres Tippen eine belegte Antwort liefert. Vorführen: als Maria im Space „Meldewesen &
+Ausweise" `/` tippen, `/gebuehrenauskunft-personalausweis` wählen, Formular bestätigen und senden.
+Als Thomas erscheint dieselbe Auswahl, die „Vorlagen Amtsleitung" aber weder dort noch im Katalog.
+
 ---
 
 ## Demo weiterentwickeln
@@ -536,6 +568,17 @@ Der Lauf richtet über die API ein:
    Space-Eigentümers an, denn `associateSpaceLibrary` verlangt CURATOR oder höher im Space plus
    mindestens VIEWER auf der Bibliothek — beides hat der Eigentümer nach Schritt 6 (Thomas liest die
    Pressemitteilungen, die „Kfz-Zulassung" zugeordnet sind, erst über die Gruppe „Presseverteiler Bürgerbüro").
+
+   **7b. Prompt-Bibliotheken** (`profiles.py`s `PromptLibraryDef`, siehe „Prompt-Bibliotheken" oben)
+   — je Definition über die Sitzung der Eigentümerin anlegen (`POST /api/v1/prompt-libraries`) oder
+   per Namens- und Eigentümersuche in `GET /api/v1/prompt-libraries` finden, die Freigaben vergeben
+   (`POST /api/v1/assets/PROMPT_LIBRARY/{id}/grants`, für „Alle Konten" `subjectType=ALL_ACCOUNTS`
+   ohne `subjectId`), fehlende Prompts per Namenssuche ergänzen
+   (`POST /api/v1/prompt-libraries/{id}/prompts`; ein vorhandener Prompt bleibt unverändert) und die
+   Bibliothek über die Sitzung des jeweiligen Space-Eigentümers zuordnen
+   (`POST /api/v1/spaces/{id}/assets`, `assetType=PROMPT_LIBRARY`) — erst nach den Freigaben, weil
+   die Zuordnung Leserecht des Space-Eigentümers verlangt. Das `e2e`-Profil hat keine
+   Prompt-Bibliotheken.
 8. **Indizierung je Bibliothek** über deren eigene Quellkonfiguration (nicht für die `UPLOAD`-Bibliothek
    — die hat keinen eigenen Lauf, ADR-0018, siehe Schritt 5) — der Seed wartet auf `COMPLETED` und
    bricht bei `documentsFailed > 0` ab. Für die beiden `S3`-Bibliotheken prüft er zusätzlich eine
