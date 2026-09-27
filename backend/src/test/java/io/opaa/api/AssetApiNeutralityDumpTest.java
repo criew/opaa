@@ -7,7 +7,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.auth.DevAuthFilter;
 import io.opaa.auth.User;
@@ -17,6 +16,7 @@ import io.opaa.group.GroupRepository;
 import io.opaa.indexing.chunk.ChunkingService;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.knowledge.DocumentRepository;
+import io.opaa.knowledge.SourceType;
 import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.space.SpaceRepository;
@@ -365,7 +365,7 @@ class AssetApiNeutralityDumpTest {
   private void insertDocument(UUID library, String fileName, String text) {
     io.opaa.knowledge.Document document =
         new io.opaa.knowledge.Document(
-            fileName, "/" + fileName, "text/markdown", 100L, DocumentSourceType.UPLOAD);
+            fileName, "/" + fileName, "text/markdown", 100L, SourceType.UPLOAD);
     document.setLibraryId(library);
     document.setOrganizationId(DEFAULT_ORGANIZATION_ID);
     document.setStatus(DocumentStatus.INDEXED);

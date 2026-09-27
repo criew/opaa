@@ -1,8 +1,8 @@
 package io.opaa.library;
 
-import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.SourceConnectionTestResult;
+import io.opaa.indexing.source.confluence.ConfluenceEdition;
 import io.opaa.indexing.source.s3.S3SourceSettings;
 import io.opaa.indexing.source.s3.S3SourceSettingsJson;
 import java.util.LinkedHashMap;

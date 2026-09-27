@@ -11,7 +11,6 @@ import io.opaa.api.dto.SourceReference;
 import io.opaa.api.types.ChatNoteItemKind;
 import io.opaa.api.types.ChatRole;
 import io.opaa.api.types.DatePrecision;
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.MetadataFilterMatch;
 import io.opaa.api.types.MetadataOrigin;
 import io.opaa.chat.Chat;
@@ -237,7 +236,7 @@ class ChatResponseMapperTest {
         new ChatSource("readme.md", 0.85, 3, true)
             .indexedAt(indexedAt)
             .documentId(documentId)
-            .sourceType(DocumentSourceType.UPLOAD)
+            .sourceType("UPLOAD")
             .sourceUrl("https://example.com/readme.md")
             .sourceEntryUrl("https://example.com/feed/entry-1")
             .citationValid(false)
@@ -251,7 +250,7 @@ class ChatResponseMapperTest {
     assertThat(response.getCited()).isTrue();
     assertThat(response.getIndexedAt()).isEqualTo(indexedAt);
     assertThat(response.getDocumentId()).isEqualTo(documentId);
-    assertThat(response.getSourceType()).isEqualTo(DocumentSourceType.UPLOAD);
+    assertThat(response.getSourceType()).isEqualTo("UPLOAD");
     assertThat(response.getSourceUrl()).isEqualTo("https://example.com/readme.md");
     assertThat(response.getSourceEntryUrl()).isEqualTo("https://example.com/feed/entry-1");
     assertThat(response.getCitationValid()).isFalse();

@@ -7,7 +7,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.opaa.api.types.AssetGrantSubjectType;
 import io.opaa.api.types.AssetOwnerType;
 import io.opaa.api.types.AssetRole;
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.ExternalAccessState;
 import io.opaa.api.types.SystemRole;
 import io.opaa.asset.AssetGrantService;
@@ -22,6 +21,7 @@ import io.opaa.common.ValidationException;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
+import io.opaa.knowledge.SourceType;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.permission.AssetGrantHistoryRepository;
@@ -386,7 +386,7 @@ class LibraryExternalAccessServiceIntegrationTest {
   private UUID createLibrary(UUID ownerId) {
     return libraryService
         .createLibrary(
-            libraryCreation("Bibliothek", DocumentSourceType.UPLOAD)
+            libraryCreation("Bibliothek", SourceType.UPLOAD)
                 .ownerType(AssetOwnerType.USER)
                 .ownerId(ownerId)
                 .build(),

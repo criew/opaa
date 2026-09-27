@@ -73,16 +73,11 @@ class TransportStatusCodeSpecificationTest {
   /**
    * The only operations that decide a {@code 401} themselves rather than inheriting the resource
    * server's: the sign-in (wrong credentials), the refresh (unknown, expired or replayed cookie),
-   * the handover (an unusable provider token) and the two webhook intakes (a wrong signature on a
-   * call that carries no session at all).
+   * the handover (an unusable provider token) and the push intake (a wrong signature on a call that
+   * carries no session at all).
    */
   private static final Set<String> OWN_401 =
-      Set.of(
-          "localLogin",
-          "localRefresh",
-          "localHandoverRedeem",
-          "receiveConfluenceWebhook",
-          "receiveS3Events");
+      Set.of("localLogin", "localRefresh", "localHandoverRedeem", "receivePush");
 
   /**
    * Budgets that are not keyed by request path, so {@link RateLimitFilter} cannot reveal them: the
@@ -101,7 +96,7 @@ class TransportStatusCodeSpecificationTest {
    */
   private static final String SHARED_BOUND = "readBounded(";
 
-  private static final String BOUND_OWNER = "ConfluenceWebhookController";
+  private static final String BOUND_OWNER = "PushIntakeController";
 
   private static final List<String> MAPPING_ANNOTATIONS =
       List.of(
@@ -132,9 +127,7 @@ class TransportStatusCodeSpecificationTest {
 
   /** The routes bounded today; the scan may only ever find more of them, never fewer. */
   private static final List<String> KNOWN_INTAKES =
-      List.of(
-          "post /api/v1/libraries/{libraryId}/confluence-webhook",
-          "post /api/v1/libraries/{libraryId}/s3-events");
+      List.of("post /api/v1/libraries/{libraryId}/push");
 
   private static final String CLIENT = "203.0.113.9";
   private static final String PATH_VARIABLE = "11111111-1111-1111-1111-111111111111";
@@ -191,18 +184,18 @@ class TransportStatusCodeSpecificationTest {
   @Test
   void theSharedRawBodyBoundRefusesAnOversizedBody() {
     MockHttpServletRequest oversized = new MockHttpServletRequest("POST", "/api/v1/libraries/x");
-    oversized.setContent(new byte[ConfluenceWebhookController.MAX_BODY_BYTES + 1]);
+    oversized.setContent(new byte[PushIntakeController.MAX_BODY_BYTES + 1]);
 
-    assertThatThrownBy(() -> ConfluenceWebhookController.readBounded(oversized))
+    assertThatThrownBy(() -> PushIntakeController.readBounded(oversized))
         .as("the shared bound no longer refuses an oversized body")
         .isInstanceOf(PayloadTooLargeException.class);
   }
 
   /**
    * A raw-body bound is nowhere visible in the specification, so this half reads the production
-   * sources: whichever mapped handler calls {@link ConfluenceWebhookController#readBounded} has to
-   * declare {@code 413} at its own route. A third intake is found by the same scan, and removing
-   * the declaration from both of today's at once fails here too.
+   * sources: whichever mapped handler calls {@link PushIntakeController#readBounded} has to declare
+   * {@code 413} at its own route. A third intake is found by the same scan, and removing the
+   * declaration from both of today's at once fails here too.
    *
    * <p>Its self-check is a parity, not a threshold: every mapping annotation in the sources has to
    * belong to a parsed member. A threshold grows weaker as handlers are added and lets a signature
@@ -312,16 +305,6 @@ class TransportStatusCodeSpecificationTest {
         .isEqualTo(withASizeLimit);
   }
 
-  /**
-   * Beyond the bound they share, the two intakes also share one rate-limit rule and one
-   * authentication posture, so a status one of them can answer the other can answer too.
-   */
-  @Test
-  void theTwoEventIntakesDeclareTheSameStatuses() {
-    assertThat(declaredStatusesOf("receiveConfluenceWebhook"))
-        .isEqualTo(declaredStatusesOf("receiveS3Events"));
-  }
-
   @Test
   void a401IsDeclaredOnlyWhereTheOperationItselfRefusesACredential() {
     assertThat(operationsDeclaring("401")).isEqualTo(new TreeSet<>(OWN_401));
@@ -415,18 +398,6 @@ class TransportStatusCodeSpecificationTest {
           }
         });
     return declaring;
-  }
-
-  private static Set<String> declaredStatusesOf(String operationId) {
-    Set<String> statuses = new TreeSet<>();
-    forEachOperation(
-        (path, method, operation) -> {
-          if (operationId.equals(operation.get("operationId"))) {
-            statuses.addAll(map(operation, "responses").keySet());
-          }
-        });
-    assertThat(statuses).as("no operation named %s", operationId).isNotEmpty();
-    return statuses;
   }
 
   /** The operation ids the specification answers at a route Spring resolved. */

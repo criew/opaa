@@ -14,7 +14,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.indexing.document.DocumentIngestResult;
 import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.document.DocumentIngests;
@@ -31,6 +30,7 @@ import io.opaa.knowledge.LibraryStorageQuotaService;
 import io.opaa.knowledge.SourceDocumentContext;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.test.ProductionDocumentFormats;
+import io.opaa.test.SourceTypes;
 import java.io.IOException;
 import java.net.http.HttpClient;
 import java.nio.file.Files;
@@ -88,7 +88,7 @@ class AttachmentIndexerTest {
             null,
             UUID.randomUUID(),
             false,
-            DocumentSourceType.RSS_FEED,
+            SourceTypes.RSS_FEED,
             null,
             null,
             null,
@@ -135,7 +135,7 @@ class AttachmentIndexerTest {
                     0)),
             parentDocumentId,
             "https://example.org/entry.html",
-            DocumentSourceType.RSS_FEED,
+            SourceTypes.RSS_FEED,
             limits);
 
     assertThat(indexed).isEmpty();
@@ -168,7 +168,7 @@ class AttachmentIndexerTest {
             null,
             UUID.randomUUID(),
             false,
-            DocumentSourceType.FILESYSTEM,
+            SourceTypes.FILESYSTEM,
             tempDir.toString(),
             null,
             null,
@@ -191,7 +191,7 @@ class AttachmentIndexerTest {
                 new AttachmentSource.LocalFile(extracted, "anlage.txt", "/mail.eml/0/anlage.txt")),
             parentDocumentId,
             "/mail.eml",
-            DocumentSourceType.FILESYSTEM,
+            SourceTypes.FILESYSTEM,
             limits);
 
     // Not part of the created/confirmed return value - but reported as present, and counted as
@@ -225,7 +225,7 @@ class AttachmentIndexerTest {
             null,
             UUID.randomUUID(),
             false,
-            DocumentSourceType.FILESYSTEM,
+            SourceTypes.FILESYSTEM,
             tempDir.toString(),
             null,
             null,
@@ -251,7 +251,7 @@ class AttachmentIndexerTest {
                   List.of(nestedMailSource),
                   parentDocumentId,
                   "/aussen.eml",
-                  DocumentSourceType.FILESYSTEM,
+                  SourceTypes.FILESYSTEM,
                   limits);
               return DocumentIngestResult.PROCESSED;
             })
@@ -264,7 +264,7 @@ class AttachmentIndexerTest {
             List.of(new AttachmentSource.LocalFile(outerMail, "aussen.eml", "/parent.eml/0")),
             parentDocumentId,
             "/parent.eml",
-            DocumentSourceType.FILESYSTEM,
+            SourceTypes.FILESYSTEM,
             limits);
 
     assertThat(mailIndexed).hasSize(1);
@@ -294,7 +294,7 @@ class AttachmentIndexerTest {
                   List.of(nestedFeedSource),
                   parentDocumentId,
                   "https://example.org/aussen.txt",
-                  DocumentSourceType.RSS_FEED,
+                  SourceTypes.RSS_FEED,
                   feedLimits);
               return DocumentIngestResult.PROCESSED;
             })
@@ -313,7 +313,7 @@ class AttachmentIndexerTest {
                     0)),
             parentDocumentId,
             "https://example.org/entry.html",
-            DocumentSourceType.RSS_FEED,
+            SourceTypes.RSS_FEED,
             feedLimits);
 
     assertThat(feedIndexed).hasSize(1);
@@ -335,7 +335,7 @@ class AttachmentIndexerTest {
             null,
             UUID.randomUUID(),
             false,
-            DocumentSourceType.CONFLUENCE,
+            SourceTypes.CONFLUENCE,
             null,
             "https://wiki.example",
             null,
@@ -364,7 +364,7 @@ class AttachmentIndexerTest {
                     "3")),
             parentDocumentId,
             "https://wiki.example/pages/102",
-            DocumentSourceType.CONFLUENCE,
+            SourceTypes.CONFLUENCE,
             limits);
 
     assertThat(indexed).containsExactly("https://wiki.example/download/900/notizen.txt");
@@ -378,7 +378,7 @@ class AttachmentIndexerTest {
                 .marked("3")
                 .sized(7L)
                 .in(confluenceLibrary)
-                .from(DocumentSourceType.CONFLUENCE)
+                .from(SourceTypes.CONFLUENCE)
                 .foundOn("https://wiki.example/pages/102")
                 .childOf(parentDocumentId)
                 .match(),
@@ -406,12 +406,7 @@ class AttachmentIndexerTest {
     for (DocumentIngestResult result : DocumentIngestResult.values()) {
       when(documentIngestService.ingest(DocumentIngests.anyFile(), any())).thenReturn(result);
       indexer.indexAll(
-          access,
-          List.of(source),
-          parentDocumentId,
-          "/mail.eml",
-          DocumentSourceType.FILESYSTEM,
-          limits);
+          access, List.of(source), parentDocumentId, "/mail.eml", SourceTypes.FILESYSTEM, limits);
     }
 
     verify(progress, org.mockito.Mockito.times(1)).recordAttachment(AttachmentOutcome.PROCESSED);
@@ -436,7 +431,7 @@ class AttachmentIndexerTest {
         List.of(new AttachmentSource.LocalFile(file, "werkzeug.exe", "/mail.eml/0/werkzeug.exe")),
         parentDocumentId,
         "/mail.eml",
-        DocumentSourceType.FILESYSTEM,
+        SourceTypes.FILESYSTEM,
         limits);
 
     verify(progress).recordAttachment(AttachmentOutcome.SKIPPED);

@@ -12,12 +12,12 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     while bounding a same-origin navigation cycle to a small, fixed number of requests. {@code 0}
  *     falls back to the default; a negative value is rejected outright.
  * @param maxEntries the maximum number of file entries a single crawl collects before truncating
- *     (logged, not failed) - mirrors {@code IndexingProperties.Rss#maxEntries}'s truncation-not-
- *     failure treatment. Also bounds the total number of directories a crawl visits: a
- *     directory-only symlink cycle would otherwise never grow {@code results} at all and be bounded
- *     by {@link #maxDepth} alone, up to {@code b^maxDepth} requests for a cycle with branching
- *     factor {@code b}. Default 50 000. {@code 0} falls back to the default; a negative value is
- *     rejected outright.
+ *     (logged, not failed) - mirrors the RSS connector's {@code maxEntries} truncation-not- failure
+ *     treatment. Also bounds the total number of directories a crawl visits: a directory-only
+ *     symlink cycle would otherwise never grow {@code results} at all and be bounded by {@link
+ *     #maxDepth} alone, up to {@code b^maxDepth} requests for a cycle with branching factor {@code
+ *     b}. Default 50 000. {@code 0} falls back to the default; a negative value is rejected
+ *     outright.
  * @param maxFileSizeBytes the maximum number of bytes a single crawled entry may transfer before
  *     {@code BoundedDownloader#download} aborts it - enforced while streaming to disk, so neither
  *     the temp partition nor the transfer itself ever holds more than this much of one entry,

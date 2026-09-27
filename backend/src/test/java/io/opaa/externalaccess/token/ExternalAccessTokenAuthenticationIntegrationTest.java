@@ -12,7 +12,6 @@ import ch.qos.logback.core.read.ListAppender;
 import com.jayway.jsonpath.JsonPath;
 import io.opaa.api.types.AssetOwnerType;
 import io.opaa.api.types.AuditEventType;
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.LockReason;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.DevAuthFilter;
@@ -22,7 +21,7 @@ import io.opaa.auth.local.LocalCredentials;
 import io.opaa.auth.local.LocalUserService;
 import io.opaa.externalaccess.ExternalAccessSettings;
 import io.opaa.externalaccess.ExternalAccessSettingsService;
-import io.opaa.library.ConnectorSettingsRequest;
+import io.opaa.knowledge.SourceType;
 import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.library.LibraryCreation;
 import io.opaa.library.LibraryExternalAccessService;
@@ -110,13 +109,13 @@ class ExternalAccessTokenAuthenticationIntegrationTest {
                     AssetOwnerType.USER,
                     owner.getId(),
                     false,
-                    DocumentSourceType.UPLOAD,
+                    SourceType.UPLOAD,
                     null,
                     null,
                     null,
                     null,
                     null,
-                    ConnectorSettingsRequest.NONE,
+                    null,
                     null),
                 CurrentUser.of(
                     owner.getId(), owner.getOrganizationId(), owner.getSystemRole(), "x"))

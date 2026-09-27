@@ -6,7 +6,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import io.opaa.api.types.AssetOwnerType;
 import io.opaa.api.types.AuditEventType;
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.audit.AuditRetentionSettingsService;
 import io.opaa.auth.CurrentUser;
@@ -15,7 +14,7 @@ import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.externalaccess.ExternalAccessSettings;
 import io.opaa.externalaccess.ExternalAccessSettingsService;
-import io.opaa.library.ConnectorSettingsRequest;
+import io.opaa.knowledge.SourceType;
 import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.library.LibraryCreation;
 import io.opaa.mail.SendResult;
@@ -132,13 +131,13 @@ class ExternalAccessTokenLifecycleIntegrationTest {
                 AssetOwnerType.USER,
                 owner.getId(),
                 false,
-                DocumentSourceType.UPLOAD,
+                SourceType.UPLOAD,
                 null,
                 null,
                 null,
                 null,
                 null,
-                ConnectorSettingsRequest.NONE,
+                null,
                 null),
             CurrentUser.of(owner.getId(), owner.getOrganizationId(), owner.getSystemRole(), "x"))
         .library()

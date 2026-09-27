@@ -18,8 +18,6 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.opaa.api.types.ConfluenceEdition;
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.indexing.attachment.AttachmentAccess;
@@ -46,6 +44,7 @@ import io.opaa.knowledge.SourceDocumentContext;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.test.ProductionDocumentFormats;
+import io.opaa.test.SourceTypes;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Duration;
@@ -169,7 +168,7 @@ class ConfluenceIndexingExecutorTest {
 
   private static Document storedPage(
       String title, String path, String version, SourceDocumentContext context) {
-    Document doc = new Document(title, path, "text/html", 10L, DocumentSourceType.CONFLUENCE);
+    Document doc = new Document(title, path, "text/html", 10L, SourceTypes.CONFLUENCE);
     doc.setStatus(DocumentStatus.INDEXED);
     doc.setLastModifiedRemote(version);
     doc.applySourceContext(context);
@@ -228,7 +227,7 @@ class ConfluenceIndexingExecutorTest {
             null,
             UUID.randomUUID(),
             false,
-            DocumentSourceType.CONFLUENCE,
+            SourceTypes.CONFLUENCE,
             null,
             server.baseUrl(),
             null,
@@ -365,7 +364,7 @@ class ConfluenceIndexingExecutorTest {
     assertThat(notizen.changeMarker()).isEqualTo("1");
     assertThat(((DocumentIngest.File) notizen.content()).byteSize()).isEqualTo(19L);
     assertThat(notizen.library()).isSameAs(library);
-    assertThat(notizen.sourceType()).isEqualTo(DocumentSourceType.CONFLUENCE);
+    assertThat(notizen.sourceType()).isEqualTo(SourceTypes.CONFLUENCE);
     assertThat(notizen.sourceEntryUrl()).isEqualTo(abschnitt);
     assertThat(notizen.parentDocumentId()).isEqualTo(storedPage(abschnitt).getId());
     String attachmentPath = notizen.filePath();
@@ -381,7 +380,7 @@ class ConfluenceIndexingExecutorTest {
     verify(cleanupService, timeout(5000))
         .reconcile(
             eq(library),
-            eq(DocumentSourceType.CONFLUENCE),
+            eq(SourceTypes.CONFLUENCE),
             current.capture(),
             any(),
             any(),
@@ -414,7 +413,7 @@ class ConfluenceIndexingExecutorTest {
     start(edition, null, "ENG");
     String abschnitt = pagePath(edition, "ENG", "102");
     Document indexed =
-        new Document("Abschnitt 1.1", abschnitt, "text/html", 10L, DocumentSourceType.CONFLUENCE);
+        new Document("Abschnitt 1.1", abschnitt, "text/html", 10L, SourceTypes.CONFLUENCE);
     indexed.setStatus(DocumentStatus.INDEXED);
     indexed.setLastModifiedRemote("1");
     when(documentRepository.findByLibraryIdAndFilePath(library.getId(), abschnitt))
@@ -536,7 +535,7 @@ class ConfluenceIndexingExecutorTest {
             null,
             UUID.randomUUID(),
             false,
-            DocumentSourceType.CONFLUENCE,
+            SourceTypes.CONFLUENCE,
             null,
             server.baseUrl(),
             null,
@@ -613,15 +612,14 @@ class ConfluenceIndexingExecutorTest {
     start(edition, null, "ENG");
     String abschnitt = pagePath(edition, "ENG", "102");
     Document knownPage =
-        new Document("Abschnitt 1.1", abschnitt, "text/html", 10L, DocumentSourceType.CONFLUENCE);
+        new Document("Abschnitt 1.1", abschnitt, "text/html", 10L, SourceTypes.CONFLUENCE);
     Document knownAttachment =
         confluenceAttachment(
             "notizen.eml", server.baseUrl() + "/download/attachments/102/notizen.eml", knownPage);
     Document nestedAttachment =
         confluenceAttachment(
             "anlage.pdf", knownAttachment.getFilePath() + "/0/anlage.pdf", knownAttachment);
-    when(documentRepository.findByLibraryIdAndSourceType(
-            library.getId(), DocumentSourceType.CONFLUENCE))
+    when(documentRepository.findByLibraryIdAndSourceType(library.getId(), SourceTypes.CONFLUENCE))
         .thenReturn(List.of(knownPage, knownAttachment, nestedAttachment));
     server.hideFromFetch("102");
 
@@ -642,8 +640,7 @@ class ConfluenceIndexingExecutorTest {
 
   private Document confluenceAttachment(String fileName, String filePath, Document parent) {
     Document attachment =
-        new Document(
-            fileName, filePath, "application/octet-stream", 5L, DocumentSourceType.CONFLUENCE);
+        new Document(fileName, filePath, "application/octet-stream", 5L, SourceTypes.CONFLUENCE);
     attachment.setStatus(DocumentStatus.INDEXED);
     attachment.setLibraryId(library.getId());
     attachment.setParentDocumentId(parent.getId());
@@ -657,12 +654,11 @@ class ConfluenceIndexingExecutorTest {
     start(edition, null, "ENG");
     String abschnitt = pagePath(edition, "ENG", "102");
     Document knownPage =
-        new Document("Abschnitt 1.1", abschnitt, "text/html", 10L, DocumentSourceType.CONFLUENCE);
+        new Document("Abschnitt 1.1", abschnitt, "text/html", 10L, SourceTypes.CONFLUENCE);
     Document knownAttachment =
         confluenceAttachment(
             "notizen.txt", server.baseUrl() + "/download/attachments/102/notizen.txt", knownPage);
-    when(documentRepository.findByLibraryIdAndSourceType(
-            library.getId(), DocumentSourceType.CONFLUENCE))
+    when(documentRepository.findByLibraryIdAndSourceType(library.getId(), SourceTypes.CONFLUENCE))
         .thenReturn(List.of(knownPage, knownAttachment));
     when(documentIngestService.ingest(
             DocumentIngests.that().text().titled("Abschnitt 1.1").match(), any()))
@@ -717,7 +713,7 @@ class ConfluenceIndexingExecutorTest {
             null,
             UUID.randomUUID(),
             false,
-            DocumentSourceType.CONFLUENCE,
+            SourceTypes.CONFLUENCE,
             null,
             server.baseUrl(),
             null,
@@ -859,8 +855,7 @@ class ConfluenceIndexingExecutorTest {
     server.updatePage(
         "100", "<p>Willkommen, leicht geändert.</p>", anchor.minus(Duration.ofMinutes(5)));
     String handbuch = pagePath(edition, "ENG", "100");
-    Document indexed =
-        new Document("Handbuch", handbuch, "text/html", 10L, DocumentSourceType.CONFLUENCE);
+    Document indexed = new Document("Handbuch", handbuch, "text/html", 10L, SourceTypes.CONFLUENCE);
     indexed.setStatus(DocumentStatus.INDEXED);
     indexed.setLastModifiedRemote("2");
     when(documentRepository.findByLibraryIdAndFilePath(library.getId(), handbuch))
@@ -939,7 +934,7 @@ class ConfluenceIndexingExecutorTest {
     completedFullSync(NOW.minus(Duration.ofHours(2)));
     String oldPath = pagePath(edition, "HR", "200");
     Document oldDocument =
-        new Document("Onboarding", oldPath, "text/html", 10L, DocumentSourceType.CONFLUENCE);
+        new Document("Onboarding", oldPath, "text/html", 10L, SourceTypes.CONFLUENCE);
     oldDocument.setStatus(DocumentStatus.INDEXED);
     oldDocument.setLastModifiedRemote("1");
     when(documentRepository.findByLibraryIdAndFilePath(library.getId(), oldPath))
@@ -1057,7 +1052,7 @@ class ConfluenceIndexingExecutorTest {
     server.updatePage("101", "<p>Das erste Kapitel, per Webhook.</p>", NOW);
     String abschnitt = pagePath(edition, "ENG", "102");
     Document indexed =
-        new Document("Abschnitt 1.1", abschnitt, "text/html", 10L, DocumentSourceType.CONFLUENCE);
+        new Document("Abschnitt 1.1", abschnitt, "text/html", 10L, SourceTypes.CONFLUENCE);
     indexed.setStatus(DocumentStatus.INDEXED);
     indexed.setLastModifiedRemote("1");
     indexed.applySourceContext(new SourceDocumentContext("ENG", "Handbuch / Kapitel 1"));
@@ -1087,7 +1082,7 @@ class ConfluenceIndexingExecutorTest {
                 .file()
                 .named("notizen.txt")
                 .in(library)
-                .from(DocumentSourceType.CONFLUENCE)
+                .from(SourceTypes.CONFLUENCE)
                 .foundOn(abschnitt)
                 .childOf(indexed.getId())
                 .match(),
@@ -1120,7 +1115,7 @@ class ConfluenceIndexingExecutorTest {
     String kapitel = pagePath(edition, "ENG", "101");
     String abschnitt = pagePath(edition, "ENG", "102");
     Document kapitelDoc =
-        new Document("Kapitel 1", kapitel, "text/html", 10L, DocumentSourceType.CONFLUENCE);
+        new Document("Kapitel 1", kapitel, "text/html", 10L, SourceTypes.CONFLUENCE);
     Document anhang = confluenceAttachment("notizen.eml", kapitel + "#900", kapitelDoc);
     Document nested =
         confluenceAttachment("anlage.pdf", anhang.getFilePath() + "/0/anlage.pdf", anhang);
@@ -1168,7 +1163,7 @@ class ConfluenceIndexingExecutorTest {
             null,
             UUID.randomUUID(),
             false,
-            DocumentSourceType.CONFLUENCE,
+            SourceTypes.CONFLUENCE,
             null,
             server.baseUrl(),
             null,
@@ -1312,7 +1307,7 @@ class ConfluenceIndexingExecutorTest {
                       ingest.filePath(),
                       "text/html",
                       10L,
-                      DocumentSourceType.CONFLUENCE);
+                      SourceTypes.CONFLUENCE);
               doc.setStatus(DocumentStatus.INDEXED);
               doc.setLastModifiedRemote(ingest.changeMarker());
               doc.applySourceContext(ingest.context());

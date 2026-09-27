@@ -13,9 +13,11 @@ import io.opaa.indexing.metadata.CoreMetadata;
 import io.opaa.indexing.metadata.CoreMetadataChunkKeys;
 import io.opaa.indexing.metadata.DocumentMetadataService;
 import io.opaa.indexing.metadata.MetadataFilter;
+import io.opaa.indexing.source.SourceConnectorStubs;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.query.citation.CitationValidator.ValidatedCitation;
+import io.opaa.test.SourceTypes;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -35,7 +37,8 @@ class ChatSourceAssemblerTest {
           documentRepository,
           documentMetadataService,
           mock(CitationMetadataReader.class),
-          mock(KnowledgeLibraryRepository.class));
+          mock(KnowledgeLibraryRepository.class),
+          SourceConnectorStubs.registry());
 
   private static Document chunk(String fileName, String documentId, String text, double score) {
     return Document.builder()
@@ -229,10 +232,13 @@ class ChatSourceAssemblerTest {
       when(documentRepository.findById(withTypeId))
           .thenReturn(
               Optional.of(
-                  new io.opaa.knowledge.Document("satzung.md", "/s.md", "text/markdown", 1L)));
+                  new io.opaa.knowledge.Document(
+                      "satzung.md", "/s.md", "text/markdown", 1L, SourceTypes.FILESYSTEM)));
       when(documentRepository.findById(withoutTypeId))
           .thenReturn(
-              Optional.of(new io.opaa.knowledge.Document("ohne.md", "/o.md", "text/markdown", 1L)));
+              Optional.of(
+                  new io.opaa.knowledge.Document(
+                      "ohne.md", "/o.md", "text/markdown", 1L, SourceTypes.FILESYSTEM)));
 
       List<ChatSource> sources =
           assembler.assemble(

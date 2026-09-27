@@ -1,6 +1,5 @@
 package io.opaa.indexing.source.rss;
 
-import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.attachment.AttachmentIndexer;
 import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.source.IndexingRunTemplate;
@@ -9,11 +8,13 @@ import io.opaa.indexing.source.SourceIndexingExecutor;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.SourceRequestPolicy;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /** Registers the RSS connector; its executor reaches the core through the registry. */
 @Configuration
+@EnableConfigurationProperties(RssFeedProperties.class)
 public class RssConnectorConfiguration {
 
   @Bean
@@ -27,7 +28,7 @@ public class RssConnectorConfiguration {
       RssFeedStateRepository rssFeedStateRepository,
       TargetAddressValidator targetAddressValidator,
       SourceRequestPolicy sourceRequestPolicy,
-      IndexingProperties properties,
+      RssFeedProperties properties,
       RemoteOriginalAccess remoteOriginalAccess) {
     return new RssFeedSourceConnector(
         rssFeedParser,
@@ -50,7 +51,7 @@ public class RssConnectorConfiguration {
       DocumentRepository documentRepository,
       RssFeedStateRepository rssFeedStateRepository,
       AttachmentIndexer attachmentIndexer,
-      IndexingProperties properties,
+      RssFeedProperties properties,
       TargetAddressValidator targetAddressValidator,
       SourceRequestPolicy sourceRequestPolicy,
       IndexingRunTemplate indexingRunTemplate) {

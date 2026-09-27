@@ -13,7 +13,6 @@ import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.api.types.AuditSubjectKind;
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.GroupKind;
 import io.opaa.api.types.SpaceRole;
 import io.opaa.api.types.SpaceVisibility;
@@ -37,6 +36,7 @@ import io.opaa.group.sync.DirectorySyncService;
 import io.opaa.group.sync.DirectorySyncStatusRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.knowledge.SourceType;
 import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.library.LibraryDetail;
 import io.opaa.organization.Organization;
@@ -255,7 +255,7 @@ class AuditEventRecordingIntegrationTest {
   private UUID createLibrary(UUID ownerId) {
     LibraryDetail detail =
         libraryService.createLibrary(
-            libraryCreation("Bibliothek", DocumentSourceType.UPLOAD)
+            libraryCreation("Bibliothek", SourceType.UPLOAD)
                 .ownerType(AssetOwnerType.USER)
                 .ownerId(ownerId)
                 .build(),
@@ -481,7 +481,7 @@ class AuditEventRecordingIntegrationTest {
 
     LibraryDetail detail =
         libraryService.createLibrary(
-            libraryCreation("Rechtsquellen Soziales", DocumentSourceType.UPLOAD)
+            libraryCreation("Rechtsquellen Soziales", SourceType.UPLOAD)
                 .ownerType(AssetOwnerType.GROUP)
                 .ownerId(groupId)
                 .build(),

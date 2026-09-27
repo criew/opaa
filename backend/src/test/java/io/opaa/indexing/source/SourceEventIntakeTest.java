@@ -13,7 +13,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.common.ConflictException;
 import io.opaa.indexing.job.IndexingJob;
@@ -22,6 +21,7 @@ import io.opaa.indexing.job.JobStatus;
 import io.opaa.indexing.job.JobTriggerSource;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.test.SourceTypes;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -64,7 +64,7 @@ class SourceEventIntakeTest {
     indexingJobService = mock(IndexingJobService.class);
     executor = mock(SourceIndexingExecutor.class);
     target = mock(SourceEventTarget.class);
-    when(target.sourceType()).thenReturn(DocumentSourceType.CONFLUENCE);
+    when(target.sourceType()).thenReturn(SourceTypes.CONFLUENCE);
     when(target.executor()).thenReturn(executor);
     when(target.targetedRunMode()).thenReturn(IndexingRunMode.INCREMENTAL);
     when(executor.defaultRunMode(any())).thenReturn(IndexingRunMode.FULL);
@@ -82,7 +82,7 @@ class SourceEventIntakeTest {
             null,
             UUID.randomUUID(),
             false,
-            DocumentSourceType.CONFLUENCE,
+            SourceTypes.CONFLUENCE,
             null,
             "https://wiki.example.org",
             null,
@@ -152,7 +152,7 @@ class SourceEventIntakeTest {
 
   @Test
   void aLibraryOfAnotherSourceTypeIsDroppedAtDrainTime() {
-    when(target.sourceType()).thenReturn(DocumentSourceType.S3);
+    when(target.sourceType()).thenReturn(SourceTypes.S3);
     enqueue("102");
 
     scheduled.get(0).run();

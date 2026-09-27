@@ -1,6 +1,5 @@
 package io.opaa.indexing.source.upload;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.OriginalAccess;
@@ -11,6 +10,7 @@ import io.opaa.indexing.source.SourceSettings;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentContent;
 import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.SourceType;
 import io.opaa.knowledge.UploadedOriginalRef;
 import io.opaa.knowledge.UploadedOriginalStore;
 import java.util.Optional;
@@ -24,7 +24,7 @@ import java.util.Optional;
 public class UploadSourceConnector implements SourceConnector, OriginalAccess {
 
   private static final SourceConnectorDescriptor DESCRIPTOR =
-      new SourceConnectorDescriptor(DocumentSourceType.UPLOAD, false, null, null);
+      new SourceConnectorDescriptor(SourceType.UPLOAD, "Upload", false, false, false, null, null);
 
   private final UploadedOriginalStore uploadedOriginalStore;
 

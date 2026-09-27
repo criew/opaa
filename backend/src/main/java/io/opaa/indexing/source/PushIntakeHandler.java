@@ -10,6 +10,9 @@ import java.util.function.UnaryOperator;
  */
 public interface PushIntakeHandler {
 
+  /** The one German 401 every refused notification gets, whatever the reason. */
+  String UNAUTHORIZED_MESSAGE = "Benachrichtigung nicht autorisiert";
+
   /**
    * Authenticates and queues one notification; returns normally - also for a body that names
    * nothing to look at - once the request proves knowledge of the library's secret.

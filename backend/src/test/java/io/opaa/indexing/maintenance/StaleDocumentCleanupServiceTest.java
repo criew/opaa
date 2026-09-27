@@ -11,7 +11,6 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.job.IndexingEventCategory;
@@ -22,6 +21,7 @@ import io.opaa.indexing.source.VanishedDocumentPolicy;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.test.SourceTypes;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -55,7 +55,7 @@ class StaleDocumentCleanupServiceTest {
           null,
           UUID.randomUUID(),
           false,
-          DocumentSourceType.RSS_FEED,
+          SourceTypes.RSS_FEED,
           null,
           null,
           null,
@@ -80,14 +80,13 @@ class StaleDocumentCleanupServiceTest {
   void deletesAVanishedAttachmentBeforeItsOwnVanishedParent() {
     Document parent = document("Eintrag", "https://feed.example/entry", null);
     Document child = document("Anlage", "https://feed.example/anlage.pdf", parent);
-    when(documentRepository.findByLibraryIdAndSourceType(
-            library.getId(), DocumentSourceType.RSS_FEED))
+    when(documentRepository.findByLibraryIdAndSourceType(library.getId(), SourceTypes.RSS_FEED))
         .thenReturn(List.of(parent, child));
 
     int removed =
         service.cleanupVanished(
             library,
-            DocumentSourceType.RSS_FEED,
+            SourceTypes.RSS_FEED,
             // Neither path is in currentFilePaths - both vanished this run.
             Set.of("https://unrelated.example/still-there"),
             events,
@@ -120,14 +119,13 @@ class StaleDocumentCleanupServiceTest {
             "anlage.pdf",
             "https://feed.example/outer/0/weitergeleitet.eml/0/anlage.pdf",
             innerMail);
-    when(documentRepository.findByLibraryIdAndSourceType(
-            library.getId(), DocumentSourceType.RSS_FEED))
+    when(documentRepository.findByLibraryIdAndSourceType(library.getId(), SourceTypes.RSS_FEED))
         .thenReturn(List.of(grandchildAttachment, outerMail, innerMail));
 
     int removed =
         service.cleanupVanished(
             library,
-            DocumentSourceType.RSS_FEED,
+            SourceTypes.RSS_FEED,
             Set.of("https://unrelated.example/still-there"),
             events,
             removingOnAbsence(),
@@ -217,14 +215,13 @@ class StaleDocumentCleanupServiceTest {
     Document innerMail = document("weitergeleitet.eml", "/mail.eml/0/weitergeleitet.eml", mail);
     Document grandchild =
         document("anlage.pdf", "/mail.eml/0/weitergeleitet.eml/0/anlage.pdf", innerMail);
-    when(documentRepository.findByLibraryIdAndSourceType(
-            library.getId(), DocumentSourceType.FILESYSTEM))
+    when(documentRepository.findByLibraryIdAndSourceType(library.getId(), SourceTypes.FILESYSTEM))
         .thenReturn(List.of(grandchild, mail, innerMail));
 
     int removed =
         service.reconcile(
             library,
-            DocumentSourceType.FILESYSTEM,
+            SourceTypes.FILESYSTEM,
             Set.of("/mail.eml"),
             Set.of(),
             events,
@@ -243,14 +240,13 @@ class StaleDocumentCleanupServiceTest {
     Document mail = document("mail.eml", "/mail.eml", null);
     Document kept = document("behalten.pdf", "/mail.eml/0/behalten.pdf", mail);
     Document gone = document("entfernt.pdf", "/mail.eml/1/entfernt.pdf", mail);
-    when(documentRepository.findByLibraryIdAndSourceType(
-            library.getId(), DocumentSourceType.FILESYSTEM))
+    when(documentRepository.findByLibraryIdAndSourceType(library.getId(), SourceTypes.FILESYSTEM))
         .thenReturn(List.of(mail, kept, gone));
 
     int removed =
         service.reconcile(
             library,
-            DocumentSourceType.FILESYSTEM,
+            SourceTypes.FILESYSTEM,
             Set.of("/mail.eml", "/mail.eml/0/behalten.pdf"),
             Set.of("/mail.eml", "/mail.eml/0/behalten.pdf"),
             events,
@@ -272,14 +268,13 @@ class StaleDocumentCleanupServiceTest {
     Document inner = document("weitergeleitet.eml", "/aussen.eml/0/weitergeleitet.eml", outer);
     Document grandchild =
         document("anlage.pdf", "/aussen.eml/0/weitergeleitet.eml/0/anlage.pdf", inner);
-    when(documentRepository.findByLibraryIdAndSourceType(
-            library.getId(), DocumentSourceType.FILESYSTEM))
+    when(documentRepository.findByLibraryIdAndSourceType(library.getId(), SourceTypes.FILESYSTEM))
         .thenReturn(List.of(grandchild, outer, inner));
 
     int removed =
         service.reconcile(
             library,
-            DocumentSourceType.FILESYSTEM,
+            SourceTypes.FILESYSTEM,
             Set.of("/aussen.eml", "/aussen.eml/0/weitergeleitet.eml"),
             Set.of("/aussen.eml"),
             events,
@@ -293,15 +288,14 @@ class StaleDocumentCleanupServiceTest {
   @Test
   void reconcileDeletesNothingForAnEmptyBestandAndLeavesTheCallersSetsUntouched() {
     Document orphan = document("alt.pdf", "/alt.pdf", null);
-    when(documentRepository.findByLibraryIdAndSourceType(
-            library.getId(), DocumentSourceType.FILESYSTEM))
+    when(documentRepository.findByLibraryIdAndSourceType(library.getId(), SourceTypes.FILESYSTEM))
         .thenReturn(List.of(orphan));
     Set<String> current = Set.of();
 
     int removed =
         service.reconcile(
             library,
-            DocumentSourceType.FILESYSTEM,
+            SourceTypes.FILESYSTEM,
             current,
             Set.of(),
             events,
@@ -323,7 +317,7 @@ class StaleDocumentCleanupServiceTest {
             () ->
                 service.reconcile(
                     library,
-                    DocumentSourceType.RSS_FEED,
+                    SourceTypes.RSS_FEED,
                     Set.of("https://feed.example/entry"),
                     Set.of(),
                     events,
@@ -335,7 +329,8 @@ class StaleDocumentCleanupServiceTest {
   }
 
   private Document document(String fileName, String filePath, Document parent) {
-    Document document = new Document(fileName, filePath, "application/octet-stream", 5L);
+    Document document =
+        new Document(fileName, filePath, "application/octet-stream", 5L, SourceTypes.FILESYSTEM);
     document.setLibraryId(library.getId());
     if (parent != null) {
       document.setParentDocumentId(parent.getId());

@@ -6,7 +6,6 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.DatePrecision;
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.LibraryMetadataFieldType;
 import io.opaa.api.types.MetadataFilterMatch;
 import io.opaa.api.types.SystemRole;
@@ -46,6 +45,7 @@ import io.opaa.query.retrieval.StageExplanation;
 import io.opaa.query.retrieval.search.FullTextChunkSearch;
 import io.opaa.test.OpaaMockedChatModelIntegrationTest;
 import io.opaa.test.OpaaTestDirectory;
+import io.opaa.test.SourceTypes;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -592,7 +592,7 @@ class MetadataFilterSearchIntegrationTest {
             null,
             owner.id(),
             false,
-            DocumentSourceType.FILESYSTEM,
+            SourceTypes.FILESYSTEM,
             sourcePath.toString(),
             null,
             null,

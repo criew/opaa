@@ -478,9 +478,9 @@ opaa:
       max-requests: ${OPAA_RATE_LIMIT_DOCUMENT_CONTENT_MAX_REQUESTS:20}
       window-seconds: ${OPAA_RATE_LIMIT_DOCUMENT_CONTENT_WINDOW_SECONDS:60}
       global-max-requests: ${OPAA_RATE_LIMIT_DOCUMENT_CONTENT_GLOBAL_MAX_REQUESTS:100}
-    # #1140: the Confluence webhook intake is reachable without a session; the limiter bounds the
-    # signature checks an unauthenticated caller can cause. Per library (capture group), generous
-    # enough for a busy space - an author saving every few seconds - and the intake debounces
+    # The push intake is reachable without a session; the limiter bounds the secret checks an
+    # unauthenticated caller can cause. Per library (capture group), generous enough for a busy
+    # source - an author saving every few seconds - and the intake debounces
     # anyway, so a burst above this costs freshness, not correctness.
     webhook:
       max-requests: ${OPAA_RATE_LIMIT_WEBHOOK_MAX_REQUESTS:120}

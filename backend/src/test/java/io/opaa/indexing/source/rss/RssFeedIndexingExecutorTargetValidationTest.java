@@ -9,9 +9,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.sun.net.httpserver.HttpServer;
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
-import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.job.IndexingRunEventRepository;
@@ -24,6 +22,7 @@ import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.RateLimitPolicy;
 import io.opaa.sourceaccess.RedirectFollowingFetcher;
 import io.opaa.sourceaccess.SourceRequestPolicy;
+import io.opaa.test.SourceTypes;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.List;
@@ -66,7 +65,7 @@ class RssFeedIndexingExecutorTargetValidationTest {
           null,
           UUID.randomUUID(),
           false,
-          DocumentSourceType.RSS_FEED,
+          SourceTypes.RSS_FEED,
           null,
           "https://example.com/feed.xml",
           null,
@@ -97,9 +96,7 @@ class RssFeedIndexingExecutorTargetValidationTest {
     // sendFollowingRedirects would already reject the start URL.
     TargetAddressValidator enabledValidator =
         new TargetAddressValidator(true, List.of("127.0.0.1"));
-    IndexingProperties.Rss rss =
-        new IndexingProperties.Rss(200, 10_000, 10_000, 0, null, null, 0, 0);
-    IndexingProperties properties = new IndexingProperties(0, 0, 0, null, rss, null, null, 0);
+    RssFeedProperties rss = new RssFeedProperties(200, 10_000, 10_000, 0, null, null, 0, 0);
     executor =
         new RssFeedIndexingExecutor(
             new RssFeedParser(),
@@ -112,7 +109,7 @@ class RssFeedIndexingExecutorTargetValidationTest {
                 mock(LibraryStorageQuotaService.class),
                 new io.opaa.indexing.attachment.AttachmentProperties(5, 0, 0),
                 io.opaa.test.ProductionDocumentFormats.supportedFormats()),
-            properties,
+            rss,
             enabledValidator,
             requestPolicy(),
             new IndexingRunTemplate(

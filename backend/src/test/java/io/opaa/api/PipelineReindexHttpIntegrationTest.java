@@ -6,7 +6,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.auth.DevAuthFilter;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
@@ -17,6 +16,7 @@ import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.knowledge.SourceType;
 import io.opaa.knowledge.UploadProperties;
 import io.opaa.organization.Organization;
 import io.opaa.test.OpaaIntegrationTest;
@@ -98,7 +98,7 @@ class PipelineReindexHttpIntegrationTest {
             storedFile.toAbsolutePath().toString(),
             "text/plain",
             1024L,
-            DocumentSourceType.UPLOAD);
+            SourceType.UPLOAD);
     document.setLibraryId(library.getId());
     document.setOrganizationId(Organization.DEFAULT_ID);
     document.setChecksum("checksum-vermerk");

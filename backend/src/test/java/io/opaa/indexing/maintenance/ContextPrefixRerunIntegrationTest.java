@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.DatePrecision;
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.LibraryMetadataFieldType;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
@@ -34,6 +33,7 @@ import io.opaa.permission.AssetGrantRepository;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OpaaTestDirectory;
 import io.opaa.test.OwnLibraryFixtures;
+import io.opaa.test.SourceTypes;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -296,7 +296,7 @@ class ContextPrefixRerunIntegrationTest {
                     .text("Für die Ausstellung wird eine Gebühr von 37,00 EUR erhoben.")
                     .filePath("https://wiki.example.test/tiefe-seite")
                     .fileName("Gebühren")
-                    .sourceType(DocumentSourceType.CONFLUENCE)
+                    .sourceType(SourceTypes.CONFLUENCE)
                     .context(new SourceDocumentContext("RF", hierarchyPath))
                     .title("Gebühren")
                     .syntheticName(true)
@@ -526,7 +526,7 @@ class ContextPrefixRerunIntegrationTest {
                     .file(file)
                     .filePath(file.toString())
                     .fileName(fileName)
-                    .sourceType(DocumentSourceType.FILESYSTEM)
+                    .sourceType(SourceTypes.FILESYSTEM)
                     .build(),
                 null))
         .isEqualTo(DocumentIngestResult.PROCESSED);
@@ -596,7 +596,7 @@ class ContextPrefixRerunIntegrationTest {
             null,
             owner.id(),
             false,
-            DocumentSourceType.FILESYSTEM,
+            SourceTypes.FILESYSTEM,
             classTempDir.toString(),
             null,
             null,

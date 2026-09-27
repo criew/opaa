@@ -3,12 +3,12 @@ package io.opaa.indexing.source.s3;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.s3.S3AccessException;
 import io.opaa.s3.S3Credentials;
 import io.opaa.s3.S3TestFixture;
 import io.opaa.security.TargetAddressValidator;
+import io.opaa.test.SourceTypes;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -50,7 +50,7 @@ class S3OriginalAccessIntegrationTest {
             null,
             UUID.randomUUID(),
             false,
-            DocumentSourceType.S3,
+            SourceTypes.S3,
             null,
             endpoint,
             null,

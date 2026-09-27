@@ -9,8 +9,8 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.auth.OidcSecurityConfig;
+import io.opaa.auth.PushIntakeSecurityConfig;
 import io.opaa.auth.UserService;
 import io.opaa.common.UnauthorizedException;
 import io.opaa.indexing.source.SourceConnectorRegistry;
@@ -19,8 +19,13 @@ import io.opaa.indexing.source.confluence.ConfluenceConnectionService;
 import io.opaa.indexing.source.confluence.ConfluenceProperties;
 import io.opaa.indexing.source.confluence.ConfluenceSourceConnector;
 import io.opaa.indexing.source.confluence.webhook.ConfluenceWebhookService;
+import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.library.PushIntakeService;
+import io.opaa.test.SourceTypes;
 import jakarta.servlet.http.HttpServletRequest;
 import java.nio.charset.StandardCharsets;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -44,8 +49,13 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
  * OidcSecurityConfig} chain: an anonymous request must reach the controller (and be judged by the
  * signature check there, not by the filter chain), while its authenticated neighbours stay closed.
  */
-@WebMvcTest(controllers = ConfluenceWebhookController.class)
-@Import({OidcSecurityConfig.class, ConfluenceWebhookPublicAccessTest.CorsStub.class})
+@WebMvcTest(controllers = PushIntakeController.class)
+@Import({
+  OidcSecurityConfig.class,
+  PushIntakeSecurityConfig.class,
+  PushIntakeService.class,
+  ConfluenceWebhookPublicAccessTest.CorsStub.class
+})
 @ActiveProfiles("oidc")
 class ConfluenceWebhookPublicAccessTest {
 
@@ -65,17 +75,34 @@ class ConfluenceWebhookPublicAccessTest {
   @Autowired private MockMvc mockMvc;
   @MockitoBean private ConfluenceWebhookService webhookService;
   @MockitoBean private SourceConnectorRegistry connectors;
+  @MockitoBean private KnowledgeLibraryRepository libraryRepository;
 
   /** The real connector in front of the mocked service, so its header mapping is covered. */
   @BeforeEach
   void wireTheConnector() {
-    when(connectors.pushIntakeHandler(DocumentSourceType.CONFLUENCE))
+    when(libraryRepository.findById(any()))
         .thenReturn(
-            new ConfluenceSourceConnector(
-                mock(ConfluenceConnectionService.class),
-                new ConfluenceProperties(0, null, null, 0, null, 0, 0, 0, null, null, 0),
-                mock(SourceSyncStateRepository.class),
-                webhookService));
+            Optional.of(
+                KnowledgeLibrary.ownedByUser(
+                    UUID.randomUUID(),
+                    "Quelle",
+                    null,
+                    UUID.randomUUID(),
+                    false,
+                    SourceTypes.CONFLUENCE,
+                    null,
+                    "https://quelle.example.org",
+                    null,
+                    null,
+                    false)));
+    when(connectors.pushIntakeHandler(SourceTypes.CONFLUENCE))
+        .thenReturn(
+            Optional.of(
+                new ConfluenceSourceConnector(
+                    mock(ConfluenceConnectionService.class),
+                    new ConfluenceProperties(0, null, null, 0, null, 0, 0, 0, null, null, 0),
+                    mock(SourceSyncStateRepository.class),
+                    webhookService)));
   }
 
   @MockitoBean private UserService userService;
@@ -89,7 +116,7 @@ class ConfluenceWebhookPublicAccessTest {
 
     mockMvc
         .perform(
-            post("/api/v1/libraries/" + libraryId + "/confluence-webhook")
+            post("/api/v1/libraries/" + libraryId + "/push")
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("X-Hub-Signature", "sha256=abcd")
                 .content(BODY))
@@ -105,7 +132,7 @@ class ConfluenceWebhookPublicAccessTest {
 
     mockMvc
         .perform(
-            post("/api/v1/libraries/" + libraryId + "/confluence-webhook")
+            post("/api/v1/libraries/" + libraryId + "/push")
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("X-OPAA-Webhook-Secret", "geheim")
                 .content(BODY))
@@ -114,7 +141,7 @@ class ConfluenceWebhookPublicAccessTest {
     // value next to a wrong duplicate can never authenticate on its own
     mockMvc
         .perform(
-            post("/api/v1/libraries/" + otherLibraryId + "/confluence-webhook")
+            post("/api/v1/libraries/" + otherLibraryId + "/push")
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("X-OPAA-Webhook-Secret", "geheim", "falsch")
                 .content(BODY))
@@ -133,7 +160,7 @@ class ConfluenceWebhookPublicAccessTest {
 
     mockMvc
         .perform(
-            post("/api/v1/libraries/" + libraryId + "/confluence-webhook")
+            post("/api/v1/libraries/" + libraryId + "/push")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(BODY))
         .andExpect(status().isUnauthorized());
@@ -141,12 +168,12 @@ class ConfluenceWebhookPublicAccessTest {
 
   @Test
   void anOversizedBodyIsRefusedBeforeItReachesTheIntake() throws Exception {
-    byte[] oversized = new byte[ConfluenceWebhookController.MAX_BODY_BYTES + 1];
+    byte[] oversized = new byte[PushIntakeController.MAX_BODY_BYTES + 1];
     java.util.Arrays.fill(oversized, (byte) ' ');
 
     mockMvc
         .perform(
-            post("/api/v1/libraries/" + UUID.randomUUID() + "/confluence-webhook")
+            post("/api/v1/libraries/" + UUID.randomUUID() + "/push")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(oversized))
         .andExpect(status().isPayloadTooLarge());
@@ -158,24 +185,18 @@ class ConfluenceWebhookPublicAccessTest {
   void theSecretEndpointAndTheIndexingTriggerStayClosedWithoutCredentials() throws Exception {
     UUID libraryId = UUID.randomUUID();
     mockMvc
-        .perform(post("/api/v1/libraries/" + libraryId + "/confluence-webhook-secret"))
+        .perform(post("/api/v1/libraries/" + libraryId + "/push-secret"))
         .andExpect(status().isUnauthorized());
     mockMvc
         .perform(post("/api/v1/libraries/" + libraryId + "/indexing"))
         .andExpect(status().isUnauthorized());
-    // the Confluence space listing (#1134) is an outbound probe and stays behind authentication too
+    // the listing of a source before it is saved is an outbound probe and stays behind
+    // authentication too
     mockMvc
         .perform(
-            post("/api/v1/libraries/confluence/spaces")
+            post("/api/v1/source-types/CONFLUENCE/browse")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"sourceUrl\":\"http://127.0.0.1:9/confluence\"}"))
-        .andExpect(status().isUnauthorized());
-    // the S3 bucket listing (#1376) is the same kind of outbound probe
-    mockMvc
-        .perform(
-            post("/api/v1/libraries/s3/buckets")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"sourceUrl\":\"http://127.0.0.1:9000\"}"))
         .andExpect(status().isUnauthorized());
     org.mockito.Mockito.verifyNoInteractions(oidcAuthenticationManagerResolver);
   }

@@ -236,11 +236,11 @@ class CapabilityEnforcementIntegrationTest {
     // proof the request passed the capability gate rather than being blocked at it.
     mockMvc
         .perform(
-            post("/api/v1/libraries/confluence/spaces")
+            post("/api/v1/source-types/CONFLUENCE/browse")
                 .with(devUser())
                 .content(
                     "{\"sourceUrl\":\"http://127.0.0.2:9/confluence\","
-                        + "\"confluenceEdition\":\"DATA_CENTER\",\"sourceCredentials\":\"pat\"}"))
+                        + "\"query\":{\"edition\":\"DATA_CENTER\"},\"sourceCredentials\":\"pat\"}"))
         .andExpect(status().isBadRequest());
   }
 
@@ -251,11 +251,11 @@ class CapabilityEnforcementIntegrationTest {
 
     mockMvc
         .perform(
-            post("/api/v1/libraries/confluence/spaces")
+            post("/api/v1/source-types/CONFLUENCE/browse")
                 .with(devUser())
                 .content(
                     "{\"sourceUrl\":\"http://127.0.0.2:9/confluence\","
-                        + "\"confluenceEdition\":\"DATA_CENTER\",\"sourceCredentials\":\"pat\"}"))
+                        + "\"query\":{\"edition\":\"DATA_CENTER\"},\"sourceCredentials\":\"pat\"}"))
         .andExpect(status().isForbidden())
         .andExpect(jsonPath("$.code").value("CAPABILITY_REQUIRED"));
   }
@@ -267,7 +267,7 @@ class CapabilityEnforcementIntegrationTest {
     // proof the request passed the capability gate rather than being blocked at it.
     mockMvc
         .perform(
-            post("/api/v1/libraries/s3/buckets")
+            post("/api/v1/source-types/S3/browse")
                 .with(devUser())
                 .content(
                     "{\"sourceUrl\":\"http://127.0.0.2:9000\","
@@ -282,7 +282,7 @@ class CapabilityEnforcementIntegrationTest {
 
     mockMvc
         .perform(
-            post("/api/v1/libraries/s3/buckets")
+            post("/api/v1/source-types/S3/browse")
                 .with(devUser())
                 .content(
                     "{\"sourceUrl\":\"http://127.0.0.2:9000\","

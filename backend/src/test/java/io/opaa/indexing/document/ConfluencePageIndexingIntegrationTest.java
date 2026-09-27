@@ -2,7 +2,6 @@ package io.opaa.indexing.document;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.indexing.chunk.ChunkingService;
 import io.opaa.indexing.format.ChunkFormatMetadata;
@@ -16,6 +15,7 @@ import io.opaa.knowledge.SourceDocumentContext;
 import io.opaa.organization.Organization;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OwnLibraryFixtures;
+import io.opaa.test.SourceTypes;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.List;
@@ -70,7 +70,7 @@ class ConfluencePageIndexingIntegrationTest {
             null,
             owner,
             false,
-            DocumentSourceType.CONFLUENCE,
+            SourceTypes.CONFLUENCE,
             null,
             "https://wiki.behoerde.example/confluence",
             null,
@@ -78,7 +78,7 @@ class ConfluencePageIndexingIntegrationTest {
             false);
     ConfluenceTestSettings.configure(
         library,
-        io.opaa.api.types.ConfluenceEdition.DATA_CENTER,
+        io.opaa.indexing.source.confluence.ConfluenceEdition.DATA_CENTER,
         List.of(
             new io.opaa.indexing.source.confluence.ConfluenceSpaceSelection("ENG", "Engineering")));
     library = libraryRepository.save(library);

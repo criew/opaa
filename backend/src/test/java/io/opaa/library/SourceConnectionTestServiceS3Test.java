@@ -14,7 +14,6 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.Capability;
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.AccessDeniedException;
@@ -32,6 +31,7 @@ import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
 import io.opaa.permission.CapabilityService;
+import io.opaa.test.SourceTypes;
 import java.net.URI;
 import java.util.List;
 import java.util.Optional;
@@ -87,7 +87,7 @@ class SourceConnectionTestServiceS3Test {
             null,
             currentUserId,
             false,
-            DocumentSourceType.S3,
+            SourceTypes.S3,
             null,
             url,
             "proxy.stored.example:3128",
@@ -111,7 +111,7 @@ class SourceConnectionTestServiceS3Test {
     SourceConnectionTestResult result =
         service.test(
             sourceConnectionTest()
-                .sourceType(DocumentSourceType.S3)
+                .sourceType(SourceTypes.S3)
                 .sourceUrl(URI.create("https://s3.example.org"))
                 .sourceCredentials("ak:sk")
                 .s3Settings(SETTINGS)
@@ -131,7 +131,7 @@ class SourceConnectionTestServiceS3Test {
             () ->
                 service.test(
                     sourceConnectionTest()
-                        .sourceType(DocumentSourceType.S3)
+                        .sourceType(SourceTypes.S3)
                         .sourcePath("/srv/docs")
                         .sourceUrl(URI.create("https://s3.example.org"))
                         .build(),
@@ -139,9 +139,7 @@ class SourceConnectionTestServiceS3Test {
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("sourcePath");
     assertThatThrownBy(
-            () ->
-                service.test(
-                    sourceConnectionTest().sourceType(DocumentSourceType.S3).build(), caller))
+            () -> service.test(sourceConnectionTest().sourceType(SourceTypes.S3).build(), caller))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("sourceUrl");
   }
@@ -156,7 +154,7 @@ class SourceConnectionTestServiceS3Test {
 
     service.test(
         sourceConnectionTest()
-            .sourceType(DocumentSourceType.S3)
+            .sourceType(SourceTypes.S3)
             .sourceUrl(URI.create("https://s3.example.org/"))
             .sourceProxy("attacker.example:8080")
             .sourceInsecureSsl(false)
@@ -187,7 +185,7 @@ class SourceConnectionTestServiceS3Test {
 
     service.test(
         sourceConnectionTest()
-            .sourceType(DocumentSourceType.S3)
+            .sourceType(SourceTypes.S3)
             .sourceUrl(URI.create("https://s3.other.example"))
             .libraryId(libraryId)
             .build(),
@@ -210,7 +208,7 @@ class SourceConnectionTestServiceS3Test {
             () ->
                 service.browse(
                     new SourceBrowseRequest(
-                        DocumentSourceType.S3,
+                        SourceTypes.S3,
                         URI.create("https://s3.example.org"),
                         "ak:sk",
                         null,
@@ -227,7 +225,7 @@ class SourceConnectionTestServiceS3Test {
             () ->
                 service.browse(
                     new SourceBrowseRequest(
-                        DocumentSourceType.S3,
+                        SourceTypes.S3,
                         URI.create("https://s3.example.org"),
                         null,
                         null,
@@ -241,7 +239,7 @@ class SourceConnectionTestServiceS3Test {
             () ->
                 service.browse(
                     new SourceBrowseRequest(
-                        DocumentSourceType.S3,
+                        SourceTypes.S3,
                         null,
                         "ak:sk",
                         null,
@@ -264,7 +262,7 @@ class SourceConnectionTestServiceS3Test {
     SourceListing result =
         service.browse(
             new SourceBrowseRequest(
-                DocumentSourceType.S3,
+                SourceTypes.S3,
                 URI.create("https://s3.example.org"),
                 null,
                 "attacker.example:8080",
@@ -286,7 +284,7 @@ class SourceConnectionTestServiceS3Test {
     // without region and style in the request, the stored settings sign the listing
     service.browse(
         new SourceBrowseRequest(
-            DocumentSourceType.S3,
+            SourceTypes.S3,
             URI.create("https://s3.example.org"),
             null,
             null,
@@ -312,7 +310,7 @@ class SourceConnectionTestServiceS3Test {
     SourceConnectionTestResult result =
         service.test(
             sourceConnectionTest()
-                .sourceType(DocumentSourceType.S3)
+                .sourceType(SourceTypes.S3)
                 .sourceUrl(URI.create("https://s3.example.org"))
                 .sourceCredentials("ak:sk")
                 .s3Settings(SETTINGS)
@@ -335,7 +333,7 @@ class SourceConnectionTestServiceS3Test {
             () ->
                 service.browse(
                     new SourceBrowseRequest(
-                        DocumentSourceType.S3,
+                        SourceTypes.S3,
                         URI.create("https://s3.example.org"),
                         null,
                         null,
@@ -353,7 +351,7 @@ class SourceConnectionTestServiceS3Test {
             null,
             currentUserId,
             false,
-            DocumentSourceType.RSS_FEED,
+            SourceTypes.RSS_FEED,
             null,
             "https://example.org/feed.xml",
             null,
@@ -365,7 +363,7 @@ class SourceConnectionTestServiceS3Test {
             () ->
                 service.browse(
                     new SourceBrowseRequest(
-                        DocumentSourceType.S3,
+                        SourceTypes.S3,
                         URI.create("https://example.org"),
                         null,
                         null,
@@ -382,18 +380,19 @@ class SourceConnectionTestServiceS3Test {
   @Test
   void aTestWithoutSettingsAndWithoutALibraryReachesTheServiceWithNull() throws Exception {
     when(s3ConnectionService.probe(anyString(), isNull(), anyString(), anyBoolean(), isNull()))
-        .thenThrow(new ValidationException("s3Settings sind für den Verbindungstest erforderlich"));
+        .thenThrow(
+            new ValidationException("sourceSettings sind für den Verbindungstest erforderlich"));
 
     assertThatThrownBy(
             () ->
                 service.test(
                     sourceConnectionTest()
-                        .sourceType(DocumentSourceType.S3)
+                        .sourceType(SourceTypes.S3)
                         .sourceUrl(URI.create("https://s3.example.org"))
                         .sourceCredentials("ak:sk")
                         .build(),
                     caller))
         .isInstanceOf(ValidationException.class)
-        .hasMessageContaining("s3Settings");
+        .hasMessageContaining("sourceSettings");
   }
 }

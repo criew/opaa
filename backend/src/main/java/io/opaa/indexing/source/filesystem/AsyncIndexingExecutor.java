@@ -12,7 +12,6 @@ import io.opaa.indexing.job.RejectedDocumentReporter;
 import io.opaa.indexing.source.IndexingRun;
 import io.opaa.indexing.source.IndexingRunFailedException;
 import io.opaa.indexing.source.IndexingRunTemplate;
-import io.opaa.indexing.source.IndexingSourceType;
 import io.opaa.indexing.source.ListingOutcome;
 import io.opaa.indexing.source.ReconcilingAttachmentAccess;
 import io.opaa.indexing.source.SourceFolderMirror;
@@ -21,6 +20,7 @@ import io.opaa.indexing.source.SourceIndexingExecutor;
 import io.opaa.indexing.source.VanishedDocumentPolicy;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.LibraryFolderService;
+import io.opaa.knowledge.SourceType;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -32,7 +32,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
 
 /**
- * Executes indexing runs for {@link IndexingSourceType#FILESYSTEM} (ADR-0017) over the library's
+ * Executes indexing runs for {@link FilesystemSourceConnector#TYPE} (ADR-0017) over the library's
  * own {@link KnowledgeLibrary#getSourcePath()} (ADR-0018). Every discovered file's directory is
  * mirrored into {@code library_folders} (ADR-0020) before the file is processed.
  *
@@ -69,8 +69,8 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
   }
 
   @Override
-  public IndexingSourceType sourceType() {
-    return IndexingSourceType.FILESYSTEM;
+  public SourceType sourceType() {
+    return FilesystemSourceConnector.TYPE;
   }
 
   @Override
@@ -130,7 +130,7 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
     run.progress()
         .addSkipped(
             RejectedDocumentReporter.reportRejected(
-                IndexingSourceType.FILESYSTEM,
+                FilesystemSourceConnector.TYPE,
                 documentDir.toString(),
                 discovered.rejected().stream().map(p -> p.getFileName().toString()).toList(),
                 supportedFormats));

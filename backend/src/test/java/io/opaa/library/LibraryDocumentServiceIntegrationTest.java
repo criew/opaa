@@ -7,7 +7,6 @@ import static org.awaitility.Awaitility.await;
 
 import com.sun.net.httpserver.HttpServer;
 import io.opaa.api.types.AssetRole;
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.SystemRole;
 import io.opaa.asset.AssetGrantService;
@@ -27,6 +26,7 @@ import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryFolder;
 import io.opaa.knowledge.LibraryFolderRepository;
+import io.opaa.knowledge.SourceType;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.permission.AssetGrant;
@@ -36,6 +36,7 @@ import io.opaa.permission.GroupMembershipHistoryRepository;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OpaaTestDirectory;
 import io.opaa.test.OwnLibraryFixtures;
+import io.opaa.test.SourceTypes;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
@@ -133,7 +134,7 @@ class LibraryDocumentServiceIntegrationTest {
     viewer.setOrganizationId(organizationId);
     viewer = userRepository.save(viewer);
 
-    var libraryRequest = libraryCreation("Bibliothek", DocumentSourceType.UPLOAD).build();
+    var libraryRequest = libraryCreation("Bibliothek", SourceType.UPLOAD).build();
     var library = libraryService.createLibrary(libraryRequest, currentUserOf(editor));
     libraryId = library.library().getId();
 
@@ -210,7 +211,7 @@ class LibraryDocumentServiceIntegrationTest {
     // #434: uploadDocument itself only ever returns PENDING - parsing/embedding still run on
     // uploadTaskExecutor after this call has already returned.
     assertThat(response.document().getStatus()).isEqualTo(DocumentStatus.PENDING);
-    assertThat(response.document().getSourceType()).isEqualTo(DocumentSourceType.UPLOAD);
+    assertThat(response.document().getSourceType()).isEqualTo(SourceType.UPLOAD);
     assertThat(response.document().getUploadedByUserId()).isEqualTo(editor.getId());
 
     Document saved = awaitDocumentStatus(response.document().getId(), DocumentStatus.INDEXED);
@@ -282,8 +283,7 @@ class LibraryDocumentServiceIntegrationTest {
         .isInstanceOf(ConflictException.class);
     assertThat(documentRepository.findByLibraryId(libraryId)).hasSize(1);
 
-    var secondLibraryRequest =
-        libraryCreation("Zweite Bibliothek", DocumentSourceType.UPLOAD).build();
+    var secondLibraryRequest = libraryCreation("Zweite Bibliothek", SourceType.UPLOAD).build();
     var secondLibrary = libraryService.createLibrary(secondLibraryRequest, currentUserOf(editor));
     try {
       LibraryDocumentEntry response =
@@ -398,7 +398,7 @@ class LibraryDocumentServiceIntegrationTest {
             crawledFile.toString(),
             "text/plain",
             Files.size(crawledFile),
-            DocumentSourceType.FILESYSTEM);
+            SourceTypes.FILESYSTEM);
     crawlDoc.setLibraryId(libraryId);
     crawlDoc.setOrganizationId(organizationId);
     crawlDoc = documentRepository.save(crawlDoc);
@@ -476,7 +476,7 @@ class LibraryDocumentServiceIntegrationTest {
   void uploadingIntoAConnectorLibraryIsRejectedWithConflict() {
     // #479, ADR-0018 Entscheidung 1: only a UPLOAD library accepts manually uploaded files.
     var connectorLibraryRequest =
-        libraryCreation("Verzeichnis", DocumentSourceType.FILESYSTEM)
+        libraryCreation("Verzeichnis", SourceTypes.FILESYSTEM)
             .sourcePath("/data/documents")
             .build();
     var connectorLibrary =
@@ -503,7 +503,7 @@ class LibraryDocumentServiceIntegrationTest {
     // UPLOAD (see cannotDeleteALibraryThatStillContainsDocuments's UPLOAD-only counterpart in
     // KnowledgeLibraryServiceIntegrationTest).
     var connectorLibraryRequest =
-        libraryCreation("Verzeichnis", DocumentSourceType.FILESYSTEM)
+        libraryCreation("Verzeichnis", SourceTypes.FILESYSTEM)
             .sourcePath("/data/documents")
             .build();
     var connectorLibrary =
@@ -515,7 +515,7 @@ class LibraryDocumentServiceIntegrationTest {
             "/data/documents/dienstanweisung.txt",
             "text/plain",
             10L,
-            DocumentSourceType.FILESYSTEM);
+            SourceTypes.FILESYSTEM);
     crawlDoc.setLibraryId(connectorLibrary.library().getId());
     crawlDoc.setOrganizationId(organizationId);
     crawlDoc = documentRepository.save(crawlDoc);
@@ -703,7 +703,7 @@ class LibraryDocumentServiceIntegrationTest {
     // blank rather than a real URL) has nothing to fetch, the one case loadRemoteContent itself
     // still answers 404 for directly, before ever attempting a network call.
     Document remoteDoc =
-        new Document("extern.pdf", "", "application/pdf", 10L, DocumentSourceType.HTTP_DIRECTORY);
+        new Document("extern.pdf", "", "application/pdf", 10L, SourceTypes.HTTP_DIRECTORY);
     remoteDoc.setLibraryId(libraryId);
     remoteDoc.setOrganizationId(organizationId);
     remoteDoc = documentRepository.save(remoteDoc);
@@ -738,8 +738,7 @@ class LibraryDocumentServiceIntegrationTest {
     remoteBaseUrl = "http://127.0.0.1:" + remoteServer.getAddress().getPort();
   }
 
-  private KnowledgeLibrary saveRemoteLibrary(
-      DocumentSourceType sourceType, String sourceCredentials) {
+  private KnowledgeLibrary saveRemoteLibrary(SourceType sourceType, String sourceCredentials) {
     KnowledgeLibrary library =
         KnowledgeLibrary.ownedByUser(
             organizationId,
@@ -779,7 +778,7 @@ class LibraryDocumentServiceIntegrationTest {
           exchange.getResponseBody().write(bytes);
           exchange.close();
         });
-    KnowledgeLibrary remoteLibrary = saveRemoteLibrary(DocumentSourceType.HTTP_DIRECTORY, null);
+    KnowledgeLibrary remoteLibrary = saveRemoteLibrary(SourceTypes.HTTP_DIRECTORY, null);
     try {
       Document remoteDoc =
           new Document(
@@ -787,7 +786,7 @@ class LibraryDocumentServiceIntegrationTest {
               remoteBaseUrl + "/original.pdf",
               null,
               null,
-              DocumentSourceType.HTTP_DIRECTORY);
+              SourceTypes.HTTP_DIRECTORY);
       remoteDoc.setLibraryId(remoteLibrary.getId());
       remoteDoc.setOrganizationId(organizationId);
       remoteDoc = documentRepository.save(remoteDoc);
@@ -821,16 +820,11 @@ class LibraryDocumentServiceIntegrationTest {
           exchange.getResponseBody().write(bytes);
           exchange.close();
         });
-    KnowledgeLibrary remoteLibrary =
-        saveRemoteLibrary(DocumentSourceType.RSS_FEED, "libuser:libpass");
+    KnowledgeLibrary remoteLibrary = saveRemoteLibrary(SourceTypes.RSS_FEED, "libuser:libpass");
     try {
       Document remoteDoc =
           new Document(
-              "original.pdf",
-              remoteBaseUrl + "/original.pdf",
-              null,
-              null,
-              DocumentSourceType.RSS_FEED);
+              "original.pdf", remoteBaseUrl + "/original.pdf", null, null, SourceTypes.RSS_FEED);
       remoteDoc.setLibraryId(remoteLibrary.getId());
       remoteDoc.setOrganizationId(organizationId);
       remoteDoc = documentRepository.save(remoteDoc);
@@ -862,7 +856,7 @@ class LibraryDocumentServiceIntegrationTest {
     remoteServer.stop(0);
     // The server has already stopped - its own baseUrl is now a closed local port nothing
     // answers on, standing in for "the source is offline" without any real internet access.
-    KnowledgeLibrary remoteLibrary = saveRemoteLibrary(DocumentSourceType.HTTP_DIRECTORY, null);
+    KnowledgeLibrary remoteLibrary = saveRemoteLibrary(SourceTypes.HTTP_DIRECTORY, null);
     try {
       Document remoteDoc =
           new Document(
@@ -870,7 +864,7 @@ class LibraryDocumentServiceIntegrationTest {
               remoteBaseUrl + "/original.pdf",
               null,
               null,
-              DocumentSourceType.HTTP_DIRECTORY);
+              SourceTypes.HTTP_DIRECTORY);
       remoteDoc.setLibraryId(remoteLibrary.getId());
       remoteDoc.setOrganizationId(organizationId);
       var documentId = documentRepository.save(remoteDoc).getId();
@@ -915,7 +909,7 @@ class LibraryDocumentServiceIntegrationTest {
             null,
             editor.getId(),
             true,
-            DocumentSourceType.HTTP_DIRECTORY,
+            SourceTypes.HTTP_DIRECTORY,
             null,
             blockedBaseUrl + "/",
             null,
@@ -938,7 +932,7 @@ class LibraryDocumentServiceIntegrationTest {
               blockedBaseUrl + "/original.pdf",
               null,
               null,
-              DocumentSourceType.HTTP_DIRECTORY);
+              SourceTypes.HTTP_DIRECTORY);
       remoteDoc.setLibraryId(remoteLibrary.getId());
       remoteDoc.setOrganizationId(organizationId);
       var documentId = documentRepository.save(remoteDoc).getId();
@@ -981,7 +975,7 @@ class LibraryDocumentServiceIntegrationTest {
             outsideFile.toString(),
             "text/plain",
             Files.size(outsideFile),
-            DocumentSourceType.UPLOAD);
+            SourceType.UPLOAD);
     escapee.setLibraryId(libraryId);
     escapee.setOrganizationId(organizationId);
     escapee = documentRepository.save(escapee);
@@ -1039,7 +1033,7 @@ class LibraryDocumentServiceIntegrationTest {
             null,
             editor.getId(),
             true,
-            DocumentSourceType.FILESYSTEM,
+            SourceTypes.FILESYSTEM,
             sourcePath,
             null,
             null,
@@ -1079,7 +1073,7 @@ class LibraryDocumentServiceIntegrationTest {
               sourceFile.toString(),
               "text/plain",
               Files.size(sourceFile),
-              DocumentSourceType.FILESYSTEM);
+              SourceTypes.FILESYSTEM);
       doc.setLibraryId(connectorLibrary.getId());
       doc.setOrganizationId(organizationId);
       doc = documentRepository.save(doc);
@@ -1117,7 +1111,7 @@ class LibraryDocumentServiceIntegrationTest {
               outsideFile.toString(),
               "text/plain",
               Files.size(outsideFile),
-              DocumentSourceType.FILESYSTEM);
+              SourceTypes.FILESYSTEM);
       escapee.setLibraryId(connectorLibrary.getId());
       escapee.setOrganizationId(organizationId);
       escapee = documentRepository.save(escapee);
@@ -1146,7 +1140,7 @@ class LibraryDocumentServiceIntegrationTest {
             "/does/not/matter.txt",
             "text/plain",
             10L,
-            DocumentSourceType.FILESYSTEM);
+            SourceTypes.FILESYSTEM);
     doc.setLibraryId(libraryId);
     doc.setOrganizationId(organizationId);
     doc = documentRepository.save(doc);
@@ -1168,7 +1162,7 @@ class LibraryDocumentServiceIntegrationTest {
   // rather than through an actual upload.
   private Document seedDocument(String fileName, UUID folderId) {
     Document document =
-        new Document(fileName, "/seed/" + fileName, "text/plain", 10L, DocumentSourceType.UPLOAD);
+        new Document(fileName, "/seed/" + fileName, "text/plain", 10L, SourceType.UPLOAD);
     document.setLibraryId(libraryId);
     document.setOrganizationId(organizationId);
     document.setStatus(DocumentStatus.INDEXED);
@@ -1460,8 +1454,7 @@ class LibraryDocumentServiceIntegrationTest {
 
   @Test
   void listDocumentsWithAFolderFromAnotherLibraryAnswers404() {
-    var otherLibraryRequest =
-        libraryCreation("Andere Bibliothek", DocumentSourceType.UPLOAD).build();
+    var otherLibraryRequest = libraryCreation("Andere Bibliothek", SourceType.UPLOAD).build();
     var otherLibrary = libraryService.createLibrary(otherLibraryRequest, currentUserOf(editor));
     LibraryFolder foreignFolder =
         folderRepository.save(
@@ -1492,7 +1485,7 @@ class LibraryDocumentServiceIntegrationTest {
             parent.getFilePath() + "/" + index + "/" + fileName,
             "text/plain",
             5L,
-            DocumentSourceType.UPLOAD);
+            SourceType.UPLOAD);
     attachment.setLibraryId(libraryId);
     attachment.setOrganizationId(organizationId);
     attachment.setStatus(DocumentStatus.INDEXED);
@@ -1646,8 +1639,7 @@ class LibraryDocumentServiceIntegrationTest {
 
   @Test
   void uploadDocumentWithAFolderFromAnotherLibraryAnswers404() {
-    var otherLibraryRequest =
-        libraryCreation("Andere Bibliothek", DocumentSourceType.UPLOAD).build();
+    var otherLibraryRequest = libraryCreation("Andere Bibliothek", SourceType.UPLOAD).build();
     var otherLibrary = libraryService.createLibrary(otherLibraryRequest, currentUserOf(editor));
     LibraryFolder foreignFolder =
         folderRepository.save(
@@ -1797,7 +1789,7 @@ class LibraryDocumentServiceIntegrationTest {
   @Test
   void uploadDocumentWithAFolderPathIntoAConnectorLibraryIsRejectedWithConflict() {
     var connectorLibraryRequest =
-        libraryCreation("Verzeichnis", DocumentSourceType.FILESYSTEM)
+        libraryCreation("Verzeichnis", SourceTypes.FILESYSTEM)
             .sourcePath("/data/documents")
             .build();
     var connectorLibrary =
@@ -1877,7 +1869,7 @@ class LibraryDocumentServiceIntegrationTest {
     Document attachment = children.getFirst();
     assertThat(attachment.getStatus()).isEqualTo(DocumentStatus.INDEXED);
     assertThat(attachment.getFileName()).isEqualTo("anlage.txt");
-    assertThat(attachment.getSourceType()).isEqualTo(DocumentSourceType.UPLOAD);
+    assertThat(attachment.getSourceType()).isEqualTo(SourceType.UPLOAD);
     // ADR-0022, Entscheidung 2: the attachment's synthetic file_path embeds the parent's own.
     assertThat(attachment.getFilePath()).startsWith(mail.getFilePath() + "/");
     // #1130 Befund 2, structurally fixed: the attachment's chunks carry its own pipeline's id
@@ -2048,7 +2040,7 @@ class LibraryDocumentServiceIntegrationTest {
           exchange.getResponseBody().write(mailBytes);
           exchange.close();
         });
-    KnowledgeLibrary remoteLibrary = saveRemoteLibrary(DocumentSourceType.HTTP_DIRECTORY, null);
+    KnowledgeLibrary remoteLibrary = saveRemoteLibrary(SourceTypes.HTTP_DIRECTORY, null);
     Document attachment = null;
     Document mail = null;
     try {
@@ -2174,13 +2166,13 @@ class LibraryDocumentServiceIntegrationTest {
   private Document remoteDocumentRow(
       UUID targetLibraryId, String fileName, String filePath, String contentType) {
     return connectorDocumentRow(
-        targetLibraryId, fileName, filePath, contentType, DocumentSourceType.HTTP_DIRECTORY);
+        targetLibraryId, fileName, filePath, contentType, SourceTypes.HTTP_DIRECTORY);
   }
 
   private Document filesystemDocumentRow(
       UUID targetLibraryId, String fileName, String filePath, String contentType) {
     return connectorDocumentRow(
-        targetLibraryId, fileName, filePath, contentType, DocumentSourceType.FILESYSTEM);
+        targetLibraryId, fileName, filePath, contentType, SourceTypes.FILESYSTEM);
   }
 
   private Document connectorDocumentRow(
@@ -2188,7 +2180,7 @@ class LibraryDocumentServiceIntegrationTest {
       String fileName,
       String filePath,
       String contentType,
-      DocumentSourceType sourceType) {
+      SourceType sourceType) {
     Document document = new Document(fileName, filePath, contentType, null, sourceType);
     document.setLibraryId(targetLibraryId);
     document.setOrganizationId(organizationId);

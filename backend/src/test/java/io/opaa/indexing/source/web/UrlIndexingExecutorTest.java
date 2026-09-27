@@ -7,7 +7,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.job.IndexingJobService;
@@ -21,6 +20,7 @@ import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.SourceRequestPolicy;
 import io.opaa.test.ProductionDocumentFormats;
+import io.opaa.test.SourceTypes;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -95,7 +95,7 @@ class UrlIndexingExecutorTest {
             null,
             UUID.randomUUID(),
             false,
-            DocumentSourceType.HTTP_DIRECTORY,
+            SourceTypes.HTTP_DIRECTORY,
             null,
             // Loopback - never reachable from outside the server itself, exactly the class of
             // target the SSRF check rejects.

@@ -1,7 +1,7 @@
 package io.opaa.indexing.job;
 
 import io.opaa.indexing.format.SupportedDocumentFormats;
-import io.opaa.indexing.source.IndexingSourceType;
+import io.opaa.knowledge.SourceType;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,7 +27,7 @@ public final class RejectedDocumentReporter {
    * would have been accepted - derived from the registered formats, never a list of its own.
    */
   public static int reportRejected(
-      IndexingSourceType sourceType,
+      SourceType sourceType,
       String location,
       List<String> rejectedNames,
       SupportedDocumentFormats supportedFormats) {

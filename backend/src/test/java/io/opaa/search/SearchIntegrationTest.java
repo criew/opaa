@@ -11,7 +11,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
@@ -26,6 +25,7 @@ import io.opaa.indexing.chunk.ChunkingService;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.metadata.MetadataFilter;
 import io.opaa.knowledge.DocumentRepository;
+import io.opaa.knowledge.SourceType;
 import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.query.QueryResult;
 import io.opaa.query.QueryService;
@@ -486,7 +486,7 @@ class SearchIntegrationTest {
   private UUID insertDocument(UUID library, String fileName, List<Passage> passages) {
     io.opaa.knowledge.Document document =
         new io.opaa.knowledge.Document(
-            fileName, "/" + fileName, "text/markdown", 100L, DocumentSourceType.UPLOAD);
+            fileName, "/" + fileName, "text/markdown", 100L, SourceType.UPLOAD);
     document.setLibraryId(library);
     document.setOrganizationId(DEFAULT_ORGANIZATION_ID);
     document.setStatus(DocumentStatus.INDEXED);

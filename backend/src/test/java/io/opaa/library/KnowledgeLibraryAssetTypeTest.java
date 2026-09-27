@@ -5,11 +5,11 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.withSettings;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.asset.Asset;
 import io.opaa.common.ConflictException;
 import io.opaa.indexing.source.SourceConnectorStubs;
 import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.test.SourceTypes;
 import java.util.UUID;
 import org.hibernate.proxy.HibernateProxy;
 import org.hibernate.proxy.LazyInitializer;
@@ -50,7 +50,7 @@ class KnowledgeLibraryAssetTypeTest {
             null,
             UUID.randomUUID(),
             false,
-            DocumentSourceType.FILESYSTEM,
+            SourceTypes.FILESYSTEM,
             "/data/dokumente",
             null,
             null,

@@ -1,6 +1,5 @@
 package io.opaa.indexing.source.web;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.indexing.document.DocumentIngest;
 import io.opaa.indexing.document.DocumentIngestResult;
@@ -10,7 +9,6 @@ import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.source.IndexingRun;
 import io.opaa.indexing.source.IndexingRunFailedException;
 import io.opaa.indexing.source.IndexingRunTemplate;
-import io.opaa.indexing.source.IndexingSourceType;
 import io.opaa.indexing.source.ListingOutcome;
 import io.opaa.indexing.source.ReconcilingAttachmentAccess;
 import io.opaa.indexing.source.RequestBudget;
@@ -22,6 +20,7 @@ import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.LibraryFolderService;
+import io.opaa.knowledge.SourceType;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.ProxyAndCredentials;
@@ -43,7 +42,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
 
 /**
- * Executes indexing runs for {@link IndexingSourceType#HTTP_DIRECTORY} via Apache mod_autoindex
+ * Executes indexing runs for {@link HttpDirectorySourceConnector#TYPE} via Apache mod_autoindex
  * crawling (ADR-0017). The crawled directory structure is mirrored into {@code library_folders}
  * (ADR-0020) through the same {@link SourceFolderMirror} the FILESYSTEM executor uses.
  *
@@ -90,8 +89,8 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
   }
 
   @Override
-  public IndexingSourceType sourceType() {
-    return IndexingSourceType.HTTP_DIRECTORY;
+  public SourceType sourceType() {
+    return HttpDirectorySourceConnector.TYPE;
   }
 
   @Override
@@ -327,7 +326,7 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
                   .file(tempFile, fileSize)
                   .filePath(entry.url())
                   .fileName(entry.name())
-                  .sourceType(DocumentSourceType.HTTP_DIRECTORY)
+                  .sourceType(HttpDirectorySourceConnector.TYPE)
                   .context(attachmentAccess.sourceContext())
                   .changeMarker(entry.lastModified())
                   .build(),

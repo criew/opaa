@@ -1,18 +1,20 @@
 package io.opaa.indexing.source.s3.events;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.common.UnauthorizedException;
+import io.opaa.indexing.source.PushIntakeHandler;
 import io.opaa.indexing.source.SourceEventIntake;
 import io.opaa.indexing.source.SourceEventTarget;
 import io.opaa.indexing.source.SourceIndexingExecutor;
 import io.opaa.indexing.source.s3.S3IndexingExecutor;
 import io.opaa.indexing.source.s3.S3KeyPatterns;
 import io.opaa.indexing.source.s3.S3Scope;
+import io.opaa.indexing.source.s3.S3SourceConnector;
 import io.opaa.indexing.source.s3.S3SourceSettings;
 import io.opaa.indexing.source.s3.S3SourceSettingsJson;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.knowledge.SourceType;
 import java.util.LinkedHashSet;
 import java.util.Optional;
 import java.util.Set;
@@ -23,10 +25,10 @@ import org.springframework.stereotype.Service;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * The adapter behind {@code POST /api/v1/libraries/{libraryId}/s3-events} (ADR-0027, Entscheidung
- * 6). Authentication is uniform: an unknown library, a missing token, another source type and a
- * wrong token all answer 401, since the endpoint is reachable without a session and must not say
- * which it hit.
+ * The adapter behind {@code POST /api/v1/libraries/{libraryId}/push} (ADR-0027, Entscheidung 6).
+ * Authentication is uniform: an unknown library, a missing token, another source type and a wrong
+ * token all answer 401, since the endpoint is reachable without a session and must not say which it
+ * hit.
  *
  * <p>Reported objects inside the library's scopes and patterns go to the shared {@link
  * SourceEventIntake} as {@code bucket/key}; its targeted run checks exactly those objects under
@@ -39,7 +41,7 @@ public class S3EventService {
 
   private static final Logger log = LoggerFactory.getLogger(S3EventService.class);
 
-  static final String UNAUTHORIZED_MESSAGE = "Ereignisbenachrichtigung nicht autorisiert";
+  static final String UNAUTHORIZED_MESSAGE = PushIntakeHandler.UNAUTHORIZED_MESSAGE;
 
   private final KnowledgeLibraryRepository libraryRepository;
   private final SourceEventIntake intake;
@@ -57,8 +59,8 @@ public class S3EventService {
     this.target =
         new SourceEventTarget() {
           @Override
-          public DocumentSourceType sourceType() {
-            return DocumentSourceType.S3;
+          public SourceType sourceType() {
+            return S3SourceConnector.TYPE;
           }
 
           @Override
@@ -88,7 +90,7 @@ public class S3EventService {
     Optional<KnowledgeLibrary> library =
         libraryRepository
             .findById(libraryId)
-            .filter(l -> l.getSourceType() == DocumentSourceType.S3);
+            .filter(l -> S3SourceConnector.TYPE.equals(l.getSourceType()));
     String token = library.map(KnowledgeLibrary::getWebhookSecret).orElse(null);
     if (!S3EventAuthentication.verify(authorization, sharedSecret, token)) {
       log.warn("Rejected S3 event notification for library {}: not authenticated", libraryId);

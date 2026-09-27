@@ -14,7 +14,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.indexing.attachment.AttachmentOutcome;
 import io.opaa.indexing.job.IndexingEventCategory;
@@ -26,7 +25,9 @@ import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.LibraryStorageQuotaService;
+import io.opaa.knowledge.SourceType;
 import io.opaa.sourceaccess.SourceRequestMeter;
+import io.opaa.test.SourceTypes;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -56,11 +57,11 @@ class IndexingRunTemplateTest {
           jobService, eventRepository, cleanupService, documentRepository, quotaService);
   private final SourceIndexingExecutor fullListingExecutor =
       executor(
-          IndexingSourceType.FILESYSTEM,
+          SourceTypes.FILESYSTEM,
           Map.of(IndexingRunMode.FULL, VanishedDocumentPolicy.REMOVE_ON_ABSENCE));
   private final SourceIndexingExecutor windowExecutor =
       executor(
-          IndexingSourceType.RSS_FEED,
+          SourceTypes.RSS_FEED,
           Map.of(IndexingRunMode.INCREMENTAL, VanishedDocumentPolicy.KEEP_ON_ABSENCE));
   private final UUID jobId = UUID.randomUUID();
   private final KnowledgeLibrary library =
@@ -70,7 +71,7 @@ class IndexingRunTemplateTest {
           null,
           UUID.randomUUID(),
           false,
-          DocumentSourceType.FILESYSTEM,
+          SourceTypes.FILESYSTEM,
           "/srv/dokumente",
           null,
           null,
@@ -78,7 +79,7 @@ class IndexingRunTemplateTest {
           false);
 
   private static SourceIndexingExecutor executor(
-      IndexingSourceType type, Map<IndexingRunMode, VanishedDocumentPolicy> modes) {
+      SourceType type, Map<IndexingRunMode, VanishedDocumentPolicy> modes) {
     SourceIndexingExecutor executor = mock(SourceIndexingExecutor.class);
     when(executor.sourceType()).thenReturn(type);
     when(executor.runModes()).thenReturn(modes);
@@ -303,7 +304,7 @@ class IndexingRunTemplateTest {
     verify(cleanupService)
         .reconcile(
             eq(library),
-            eq(DocumentSourceType.FILESYSTEM),
+            eq(SourceTypes.FILESYSTEM),
             eq(Set.of("/srv/dokumente/a.txt", "/srv/dokumente/b.txt")),
             eq(Set.of("/srv/dokumente/a.txt")),
             any(),

@@ -2,7 +2,6 @@ package io.opaa.indexing.source.s3;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.api.types.SystemRole;
@@ -32,6 +31,7 @@ import io.opaa.s3.S3TestFixture;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.ProductionDocumentFormats;
+import io.opaa.test.SourceTypes;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -106,7 +106,7 @@ class S3FullSyncIntegrationTest {
   void tearDown() {
     for (KnowledgeLibrary created : createdLibraries) {
       List<Document> documents =
-          documentRepository.findByLibraryIdAndSourceType(created.getId(), DocumentSourceType.S3);
+          documentRepository.findByLibraryIdAndSourceType(created.getId(), SourceTypes.S3);
       documents.stream()
           .sorted(Comparator.comparingInt((Document d) -> d.getFilePath().length()).reversed())
           .forEach(
@@ -150,7 +150,7 @@ class S3FullSyncIntegrationTest {
             null,
             userId,
             false,
-            DocumentSourceType.S3,
+            SourceTypes.S3,
             null,
             store.endpoint().toString(),
             null,
@@ -254,7 +254,7 @@ class S3FullSyncIntegrationTest {
 
     Document sitzung = documentAt(library, bucket, "2025/protokolle/sitzung.txt").orElseThrow();
     assertThat(sitzung.getStatus()).isEqualTo(DocumentStatus.INDEXED);
-    assertThat(sitzung.getSourceType()).isEqualTo(DocumentSourceType.S3);
+    assertThat(sitzung.getSourceType()).isEqualTo(SourceTypes.S3);
     assertThat(sitzung.getLastModifiedRemote())
         .startsWith("e:")
         .endsWith("|" + utf8Length(SESSION_TEXT));

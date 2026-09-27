@@ -4792,77 +4792,61 @@ paths:
         "429":
           $ref: "#/components/responses/TooManyRequests"
 
-  /api/v1/libraries/confluence/spaces:
-    post:
-      operationId: listConfluenceSpaces
+  /api/v1/source-types:
+    get:
+      operationId: listSourceTypes
       tags: [library]
-      summary: >
-        List the spaces a Confluence token may read, for the space selection of a CONFLUENCE
-        library (ADR-0023, #1134).
+      summary: The source types this installation serves (ADR-0038)
       description: >
-        Authenticates against the instance with the given credentials (Cloud: e-mail + API
-        token as HTTP Basic against /wiki/api/v2; Data Center: personal access token as Bearer
-        against /rest/api) and returns every readable space, following the instance's own
-        pagination to the end. A POST because the credentials travel in the body and no library
-        needs to exist yet. Permission bar like the connection test: the capability
-        CREATE_CONNECTOR_LIBRARY without libraryId, AssetRole.MANAGER on that library with it
-        (#1856). Rate-limited like the connection test (opaa.rate-limit.source-test) and subject
-        to the same outbound target
-        validation - a private on-premises address needs its allowlist entry and the error
-        message says so. Credentials appear in no response and no error message.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/ConfluenceSpaceListRequest"
+        One entry per registered connector, from the connector registry - the only list of
+        source types there is. A client builds its source selection from it; a type it has no
+        form for can still be named but not configured. Every authenticated caller may read it.
       responses:
         "200":
-          description: The readable spaces.
+          description: The registered source types, ordered by type key.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ConfluenceSpaceListResponse"
-        "400":
-          $ref: "#/components/responses/ValidationError"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "429":
-          $ref: "#/components/responses/TooManyRequests"
+                type: array
+                items:
+                  $ref: "#/components/schemas/SourceTypeDescriptor"
 
-  /api/v1/libraries/s3/buckets:
+  /api/v1/source-types/{sourceType}/browse:
+    parameters:
+      - name: sourceType
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/SourceTypeKey"
     post:
-      operationId: listS3Buckets
+      operationId: browseSource
       tags: [library]
       summary: >
-        List the buckets an S3 key may see, for the scope selection of an S3 library (ADR-0027,
-        #1376).
+        List what a source offers for selection before its configuration is saved - the spaces
+        of a Confluence token, the buckets of an S3 key (ADR-0038).
       description: >
-        One ListBuckets call with the given key against the given endpoint. A key without
-        s3:ListAllMyBuckets - the normal case for a restricted key - is answered with
-        listingPermitted false and a hint to enter the bucket name by hand, never with an error;
-        refused credentials, a blocked or unreachable endpoint are a 400 with the same German
-        message the connection test would give. A POST because the credentials travel in the
-        body and no library needs to exist yet. Permission bar like the connection test: the
-        capability CREATE_CONNECTOR_LIBRARY without libraryId, AssetRole.MANAGER on that library
-        with it (#1856). Rate-limited like the connection test (opaa.rate-limit.source-test) and
-        subject to the same outbound target validation. Credentials appear in no response and no
-        error message.
+        Answered by the connector of sourceType; a type without a listing is a 400. A POST
+        because the credentials travel in the body and no library needs to exist yet. Permission
+        bar like the connection test: the capability CREATE_CONNECTOR_LIBRARY without libraryId,
+        AssetRole.MANAGER on that library with it (#1856); with libraryId, omitted credentials
+        fall back to the stored ones when sourceUrl names the same origin. Rate-limited like the
+        connection test (opaa.rate-limit.source-test) and subject to the same outbound target
+        validation. Credentials appear in no response and no error message.
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/S3BucketListRequest"
+              $ref: "#/components/schemas/SourceBrowseRequest"
       responses:
         "200":
-          description: The visible buckets, or the fallback for a key that may not list them.
+          description: >
+            What the source offers - complete false when the credentials may not list at all,
+            with a message inviting manual entry, never an error.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/S3BucketListResponse"
+                $ref: "#/components/schemas/SourceBrowseResponse"
         "400":
           $ref: "#/components/responses/ValidationError"
         "403":
@@ -7040,7 +7024,7 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
-  /api/v1/libraries/{libraryId}/confluence-webhook-secret:
+  /api/v1/libraries/{libraryId}/push-secret:
     parameters:
       - name: libraryId
         in: path
@@ -7050,17 +7034,18 @@ paths:
           format: uuid
 
     post:
-      operationId: generateConfluenceWebhookSecret
+      operationId: generatePushSecret
       tags: [library, indexing]
-      summary: Generate or rotate the webhook secret of a CONFLUENCE library
+      summary: Generate or rotate the push secret of a library whose connector has a push intake
       description: >
-        #1140: generates a fresh random secret, stores it encrypted (like sourceCredentials) and
-        returns it exactly once, together with the path the Confluence instance or Automation rule
-        has to call. Calling again rotates: the previous secret stops authenticating immediately.
-        MANAGER or above, the same threshold as every other change of the source configuration.
-        Rejected with 400 for every other sourceType. Recorded in the audit log as
-        LIBRARY_SOURCE_UPDATED with changedFields [confluenceWebhookSecret], never with the value.
-        The secret is stored through the same encryption as sourceCredentials, so this operation
+        #1140, ADR-0027 Entscheidung 6, ADR-0038: generates a fresh random secret, stores it
+        encrypted (like sourceCredentials) and returns it exactly once, together with the path
+        the source has to notify. Calling again rotates: the previous secret stops authenticating
+        immediately. MANAGER or above, the same threshold as every other change of the source
+        configuration. Rejected with 400 for a library whose connector offers no push intake
+        (see SourceTypeDescriptor.pushIntake). Recorded in the audit log as
+        LIBRARY_SOURCE_UPDATED with the connector's own field name, never with the value. The
+        secret is stored through the same encryption as sourceCredentials, so this operation
         needs the credentials encryption key (OPAA_CREDENTIALS_ENCRYPTION_KEY): without a usable
         key no secret is stored and the answer is 503 naming the missing key. Removing a secret
         (DELETE below) does not need the key: it erases the column instead of writing a value
@@ -7071,7 +7056,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ConfluenceWebhookSecretResponse"
+                $ref: "#/components/schemas/PushSecretResponse"
         "400":
           $ref: "#/components/responses/ValidationError"
         "403":
@@ -7082,12 +7067,12 @@ paths:
           $ref: "#/components/responses/ServiceUnavailable"
 
     delete:
-      operationId: removeConfluenceWebhookSecret
+      operationId: removePushSecret
       tags: [library, indexing]
-      summary: Remove the webhook secret of a CONFLUENCE library
+      summary: Remove the push secret of a library
       description: >
-        #1140: from the commit on, the library's webhook endpoint answers every call with 401.
-        Idempotent - removing an absent secret succeeds without an audit entry. MANAGER or above.
+        From the commit on, the library's push intake answers every call with 401. Idempotent -
+        removing an absent secret succeeds without an audit entry. MANAGER or above.
       responses:
         "204":
           description: Secret removed (or none was stored)
@@ -7098,7 +7083,7 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /api/v1/libraries/{libraryId}/confluence-webhook:
+  /api/v1/libraries/{libraryId}/push:
     parameters:
       - name: libraryId
         in: path
@@ -7108,24 +7093,24 @@ paths:
           format: uuid
 
     post:
-      operationId: receiveConfluenceWebhook
+      operationId: receivePush
       tags: [indexing]
-      summary: Receive a change notification from a Confluence instance or Automation rule
+      summary: Receive a change notification a source pushes to a library
       description: >
-        #1140: the only endpoint under /api/v1 a caller reaches without a session - the sender
-        has none. The request authenticates itself with the library's webhook secret instead,
-        either as Confluence Data Center signs it (header X-Hub-Signature: sha256=<hex HMAC-SHA256
-        of the raw body>) or as a Confluence Cloud Automation rule sends it (header
-        X-OPAA-Webhook-Secret carrying the secret itself). An unknown library, a library without
-        a secret or of another sourceType, and a wrong or missing signature are all answered with
-        the same 401; no other information leaves this endpoint. Once authenticated, the page ids
-        the body names (page.id, content.id, attachment.pageId, pageId, pageIds) are queued and,
-        a few seconds later (opaa.indexing.events.debounce), one WEBHOOK run fetches
-        exactly those pages: a page the instance reports as trashed is removed with its
-        attachments, a changed page is re-indexed, a 404 or 403 changes nothing (ADR-0023,
-        Entscheidung 4 - deletion needs the instance's own positive finding, the notification is
-        not one). The event type is deliberately not interpreted. A body naming no page is
-        accepted and ignored. Rate-limited per library (opaa.rate-limit.webhook).
+        Reachable without a session - the sender has none - through its own security chain. The
+        library's connector reads the notification and authenticates it against the library's
+        push secret in the forms its sources send: a Confluence Data Center signature
+        (X-Hub-Signature: sha256=<hex HMAC-SHA256 of the raw body>) or the secret itself in
+        X-OPAA-Webhook-Secret (Confluence Cloud Automation, EventBridge API destination), and for
+        object stores Authorization: Bearer <secret> (MinIO) or Authorization: Basic with the
+        secret as password (Ceph RGW); every comparison is constant-time. An unknown library, a
+        library whose connector has no push intake or no secret, and a wrong or missing secret
+        are all answered with the same 401; no other information leaves this endpoint. What an
+        accepted notification names is queued, debounced (opaa.indexing.events.debounce) and
+        checked by one WEBHOOK-triggered run of the library's connector, which treats every
+        notification as a hint and the source's own answer as the finding (ADR-0023
+        Entscheidung 4, ADR-0027 Entscheidung 6). A body naming nothing is accepted and
+        ignored. Rate-limited per library (opaa.rate-limit.webhook).
       requestBody:
         required: false
         content:
@@ -7133,123 +7118,7 @@ paths:
             schema:
               type: object
               additionalProperties: true
-              description: The sender's own payload; only the page ids named in it are read.
-      responses:
-        "202":
-          description: Accepted and queued (or nothing to queue)
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "413":
-          description: Body larger than 256 KiB
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "429":
-          description: Too many requests
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-
-  /api/v1/libraries/{libraryId}/s3-events-token:
-    parameters:
-      - name: libraryId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-
-    post:
-      operationId: generateS3EventsToken
-      tags: [library, indexing]
-      summary: Generate or rotate the event token of an S3 library
-      description: >
-        #1381 (ADR-0027, Entscheidung 6): generates a fresh random token, stores it encrypted
-        (like sourceCredentials) and returns it exactly once, together with the path the object
-        store has to notify. Calling again rotates: the previous token stops authenticating
-        immediately. MANAGER or above. Rejected with 400 for every other sourceType. Recorded in
-        the audit log as LIBRARY_SOURCE_UPDATED with changedFields [s3EventsToken], never with
-        the value. The token is stored through the same encryption as sourceCredentials, so this
-        operation needs the credentials encryption key (OPAA_CREDENTIALS_ENCRYPTION_KEY): without
-        a usable key no token is stored and the answer is 503 naming the missing key. Removing a
-        token (DELETE below) does not need the key: it erases the column instead of writing a
-        value that would have to be encrypted.
-      responses:
-        "200":
-          description: The new token, shown once
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/S3EventsTokenResponse"
-        "400":
-          $ref: "#/components/responses/ValidationError"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "503":
-          $ref: "#/components/responses/ServiceUnavailable"
-
-    delete:
-      operationId: removeS3EventsToken
-      tags: [library, indexing]
-      summary: Remove the event token of an S3 library
-      description: >
-        #1381: from the commit on, the library's event endpoint answers every call with 401.
-        Idempotent - removing an absent token succeeds without an audit entry. MANAGER or above.
-      responses:
-        "204":
-          description: Token removed (or none was stored)
-        "400":
-          $ref: "#/components/responses/ValidationError"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-  /api/v1/libraries/{libraryId}/s3-events:
-    parameters:
-      - name: libraryId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-
-    post:
-      operationId: receiveS3Events
-      tags: [indexing]
-      summary: Receive S3 event notifications for a library
-      description: >
-        #1381 (ADR-0027, Entscheidung 6): reachable without a session - the sender has none. The
-        request authenticates itself with the library's event token in one of three forms, all
-        compared in constant time: Authorization: Bearer <token> (MinIO's auth_token),
-        Authorization: Basic with the token as password and any user name (Ceph RGW, whose
-        endpoint URI carries user:password), or the header X-OPAA-Webhook-Secret: <token>
-        (EventBridge API destination, any sender with a free header). An unknown library, a
-        library without a token or of another sourceType, and a wrong or missing token are all
-        answered with the same 401. The body is read in three shapes, recognised by structure:
-        the S3 Records format (Records[].s3.bucket.name, Records[].s3.object.key URL-decoded,
-        eventName with or without the s3: prefix - AWS via SNS/SQS forwarding, Ceph, MinIO),
-        the EventBridge envelope (detail-type, detail.bucket.name, detail.object.key raw,
-        detail.deletion-type) and the s3:TestEvent AWS sends on set-up (accepted, no effect).
-        Every event is a hint, the store's answer the finding: the keys are collected per
-        library, debounced (opaa.indexing.events.debounce) and checked in one EVENT run with
-        triggeredBy WEBHOOK - a HeadObject per key, a changed object re-indexed like in a full
-        sync, a 404 removes the document with its attachments, anything else changes nothing. An
-        event for a bucket or key outside the configured scopes or patterns is dropped and
-        counted. A batch past opaa.indexing.events.max-pending-keys runs an ordinary full sync
-        instead. Rate-limited per library (opaa.rate-limit.webhook).
-      requestBody:
-        required: false
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: true
-              description: The store's own notification; only bucket, key and event name are read.
+              description: The sender's own payload, read by the library's connector.
       responses:
         "202":
           description: Accepted and queued (or nothing to queue)
@@ -10121,7 +9990,7 @@ components:
         sourceType:
           nullable: true
           allOf:
-            - $ref: "#/components/schemas/DocumentSourceType"
+            - $ref: "#/components/schemas/SourceTypeKey"
           description: >
             The retrieved document's own source type (#739). Every sourceType opens through GET
             /api/v1/documents/{documentId}/content (#747); sourceUrl below is secondary information
@@ -12317,13 +12186,14 @@ components:
       description: >
         sourceType is required (ADR-0018): a library's quellentyp is chosen at creation and is
         never changed afterwards (see LibraryUpdateRequest). Which of sourcePath/sourceUrl/
-        sourceProxy/sourceCredentials/sourceInsecureSsl may be set depends on sourceType - UPLOAD
-        accepts none of them, FILESYSTEM accepts sourcePath only, HTTP_DIRECTORY and RSS_FEED
-        both accept sourceUrl (sourceProxy/sourceCredentials/sourceInsecureSsl optional).
-        CONFLUENCE (ADR-0023) requires sourceUrl (the instance's base address), sourceCredentials
-        (format depends on confluenceEdition), confluenceEdition and a non-empty confluenceSpaces
-        selection; sourceProxy/sourceInsecureSsl stay optional. A combination that contradicts
-        sourceType is rejected with 400.
+        sourceProxy/sourceCredentials/sourceInsecureSsl/sourceSettings may be set depends on
+        sourceType, whose connector validates them (ADR-0038) - UPLOAD accepts none of them,
+        FILESYSTEM accepts sourcePath only, HTTP_DIRECTORY and RSS_FEED both accept sourceUrl
+        (sourceProxy/sourceCredentials/sourceInsecureSsl optional). CONFLUENCE (ADR-0023)
+        requires sourceUrl (the instance's base address), sourceCredentials (format depends on
+        the edition) and sourceSettings with edition and a non-empty space selection. A
+        combination that contradicts sourceType, or a sourceType no connector serves, is
+        rejected with 400.
       properties:
         name:
           type: string
@@ -12350,7 +12220,7 @@ components:
           nullable: true
           description: Defaults to false
         sourceType:
-          $ref: "#/components/schemas/DocumentSourceType"
+          $ref: "#/components/schemas/SourceTypeKey"
         sourcePath:
           type: string
           maxLength: 2000
@@ -12398,52 +12268,18 @@ components:
             Skip SSL certificate verification - only for sourceType HTTP_DIRECTORY, RSS_FEED or
             CONFLUENCE.
           default: false
-        confluenceEdition:
+        sourceSettings:
           description: >
-            Required for sourceType CONFLUENCE, rejected for every other type. Take the value the
-            connection test detected; the edition cannot be changed after creation.
+            The settings of the library's connector (ADR-0038) - a free object whose shape the
+            connector of sourceType defines and validates, answering a wrong one with 400. Never
+            a secret: credentials travel in sourceCredentials. CONFLUENCE takes edition (CLOUD or
+            DATA_CENTER, as the connection test detected it), spaces (1-500 entries {key, name})
+            and fullSyncIntervalDays (1-365, absent for the instance-wide default); S3 takes
+            region, pathStyle, scopes (1-50 non-overlapping {bucket, prefix}), includePatterns and
+            excludePatterns. Types without settings take none.
           nullable: true
-          allOf:
-            - $ref: "#/components/schemas/ConfluenceEdition"
-        confluenceSpaces:
-          type: array
-          nullable: true
-          minItems: 1
-          maxItems: 500
-          description: >
-            The spaces this library indexes - required and non-empty for sourceType CONFLUENCE
-            (a library without spaces would index nothing and report an empty success), rejected
-            for every other type. Keys must be unique. Changeable after creation via
-            LibraryUpdateRequest; every change forces the next run to be a full sync (ADR-0023).
-            Note the consequence stated before the selection in the UI: everything indexed from
-            every selected space is readable by everyone who may read this library.
-          items:
-            $ref: "#/components/schemas/ConfluenceSpaceRef"
-        confluenceFullSyncIntervalDays:
-          type: integer
-          nullable: true
-          minimum: 1
-          maximum: 365
-          description: >
-            #1200 (ADR-0023, Entscheidung 4): this library's own full-sync rhythm in days -
-            only for sourceType CONFLUENCE, rejected for every other type. Absent or null, the
-            instance-wide default applies (opaa.indexing.confluence.full-sync-interval, default
-            7 days). The rhythm can be lengthened per library but never switched off - a value
-            is always at least one day, and there is no "never" (the full sync is what notices
-            deletions).
-          example: 14
-        s3Settings:
-          description: >
-            Required for sourceType S3, rejected for every other type (ADR-0027). sourceUrl carries
-            the endpoint (http(s)://host[:port], no path), sourceCredentials the static key as
-            accessKey:secretKey[:sessionToken] - neither may contain a colon. The endpoint host, the
-            proxy host and, under virtual-host addressing, every bucket host must pass the target
-            validation; an internal address needs an entry in
-            OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST. Changeable after creation via
-            LibraryUpdateRequest.
-          nullable: true
-          allOf:
-            - $ref: "#/components/schemas/S3Settings"
+          type: object
+          additionalProperties: true
         schedule:
           description: >
             The indexing rhythm, set together with the library rather than in a second call right
@@ -12455,13 +12291,13 @@ components:
           allOf:
             - $ref: "#/components/schemas/LibraryScheduleRequest"
 
-    ConfluenceWebhookSecretResponse:
+    PushSecretResponse:
       type: object
       required: [secret, path]
       description: >
-        The webhook secret of a CONFLUENCE library, returned exactly once at generation (#1140),
-        and the path the instance has to notify. The client composes the absolute URL from its
-        own origin - the backend does not know the address the instance reaches it under.
+        The push secret of a library, returned exactly once at generation, and the path the
+        source has to notify. The client composes the absolute URL from its own origin - the
+        backend does not know the address the source reaches it under.
       properties:
         secret:
           type: string
@@ -12470,23 +12306,7 @@ components:
         path:
           type: string
           description: The endpoint path, relative to the deployment's origin.
-          example: /api/v1/libraries/7f9c2b3e-1d4a-4c8b-9e2f-0a1b2c3d4e5f/confluence-webhook
-
-    S3EventsTokenResponse:
-      type: object
-      required: [token, path]
-      description: >
-        The event token of an S3 library, returned exactly once at generation (#1381), and the
-        path the store has to notify. The client composes the absolute URL from its own origin.
-      properties:
-        token:
-          type: string
-          description: 32 random bytes, Base64url without padding.
-          example: 3q2-7wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-        path:
-          type: string
-          description: The endpoint path, relative to the deployment's origin.
-          example: /api/v1/libraries/7f9c2b3e-1d4a-4c8b-9e2f-0a1b2c3d4e5f/s3-events
+          example: /api/v1/libraries/7f9c2b3e-1d4a-4c8b-9e2f-0a1b2c3d4e5f/push
 
     SourceConnectionTestRequest:
       type: object
@@ -12499,12 +12319,12 @@ components:
         sourceType exactly like LibraryRequest; UPLOAD accepts none and is rejected outright
         (there is nothing to test). CONFLUENCE (ADR-0023) works in two stages with the same
         endpoint: with sourceUrl alone the instance's edition is detected without credentials
-        (response.confluenceEdition, credentialsVerified false); with sourceCredentials in the
+        (response.details.edition, credentialsVerified false); with sourceCredentials in the
         detected edition's format the credentials are verified with a single request
         (credentialsVerified true; the readable spaces come from the listing endpoint).
       properties:
         sourceType:
-          $ref: "#/components/schemas/DocumentSourceType"
+          $ref: "#/components/schemas/SourceTypeKey"
         sourcePath:
           type: string
           maxLength: 2000
@@ -12556,24 +12376,14 @@ components:
             not-found/forbidden split every other library endpoint uses). The library's own
             sourceType must match this request's sourceType, otherwise 400. Absent, this behaves
             exactly like before #544 - a standalone test with no stored library to fall back to.
-        confluenceEdition:
+        sourceSettings:
           description: >
-            Only for sourceType CONFLUENCE, optional: the edition the caller expects (normally the
-            one an earlier detection returned). The test always detects the edition itself and
-            reports a mismatch as not reachable rather than authenticating against the wrong API.
+            The connector settings the probe uses (ADR-0038), shaped like
+            LibraryRequest.sourceSettings. CONFLUENCE reads an expected edition from it; S3 the
+            scopes to probe, falling back to the stored library's with libraryId.
           nullable: true
-          allOf:
-            - $ref: "#/components/schemas/ConfluenceEdition"
-        s3Settings:
-          description: >
-            Required for sourceType S3 (ADR-0027, #1376): region, addressing style and the scopes
-            to probe. sourceUrl is the endpoint, sourceCredentials the static key as
-            accessKey:secretKey[:sessionToken]. Every scope is probed in three steps - bucket
-            reachable, listing allowed, reading allowed - and reported in response.s3Scopes.
-          nullable: true
-          allOf:
-            - $ref: "#/components/schemas/S3Settings"
-
+          type: object
+          additionalProperties: true
     SourceConnectionTestResponse:
       type: object
       required: [reachable, message]
@@ -12596,7 +12406,7 @@ components:
             filtered the same way, not a recursive crawl of the whole tree; RSS_FEED: entries,
             capped at opaa.indexing.rss.max-entries like the run itself; S3: the objects the
             first listing page of every scope showed, at most opaa.indexing.s3.list-page-size per
-            scope - a lower bound when a scope has more, see s3Scopes) - null when reachable is
+            scope - a lower bound when a scope has more, see details.scopes) - null when reachable is
             false, since nothing could be counted, and always null for CONFLUENCE, whose test
             verifies the credentials with a single request and leaves counting to the space
             listing endpoint.
@@ -12604,14 +12414,6 @@ components:
           type: string
           description: German, user-facing summary of the result.
           example: Verzeichnis erreichbar, 42 Dokumente gefunden
-        confluenceEdition:
-          description: >
-            Only for sourceType CONFLUENCE: the edition detected from the instance's own response
-            signature (ADR-0023, Entscheidung 2) - the value a client passes on to LibraryRequest.
-            Absent when no Confluence was recognised or for other source types.
-          nullable: true
-          allOf:
-            - $ref: "#/components/schemas/ConfluenceEdition"
         credentialsVerified:
           type: boolean
           nullable: true
@@ -12620,68 +12422,34 @@ components:
             false after a detection-only test (no credentials given) or when the instance rejected
             them. For sourceType S3: whether the store accepted the key (a refused key, a blocked
             endpoint or an unreachable store report false). Absent for other source types.
-        s3Scopes:
-          type: array
-          nullable: true
+        details:
           description: >
-            Only for sourceType S3 (ADR-0027, #1376): one entry per requested scope, in request
-            order, with how far the three-step probe got. Absent for other source types.
-          items:
-            $ref: "#/components/schemas/S3ScopeCheck"
-
-    S3ScopeCheck:
-      type: object
-      required: [bucket, prefix, bucketReachable, listAllowed, objectCount, objectCountIsLowerBound]
-      description: >
-        The outcome of the connection test for one scope of an S3 library: HeadBucket, then
-        ListObjectsV2 with the prefix, then HeadObject on the first listed object. A refused step
-        ends the probe for that scope; message carries its German diagnosis (which right is
-        missing, a redirect to another region or addressing style, a blocked or unreachable host)
-        and is null when every step passed.
-      properties:
-        bucket:
-          type: string
-        prefix:
-          type: string
-          description: The normalised prefix, empty for the whole bucket.
-        bucketReachable:
-          type: boolean
-        listAllowed:
-          type: boolean
-        readAllowed:
-          type: boolean
+            The connector's own findings (ADR-0038), absent for none. CONFLUENCE reports the
+            detected edition as edition; S3 one entry per probed scope under scopes, each with
+            bucket, prefix, bucketReachable, listAllowed, readAllowed (null when there was nothing
+            to read), objectCount, objectCountIsLowerBound and message (the German diagnosis of
+            the refused step, null when every step passed).
           nullable: true
-          description: null when the scope holds no object to try reading.
-        objectCount:
-          type: integer
-          format: int64
-          description: The objects (folder markers included) the first listing page showed.
-        objectCountIsLowerBound:
-          type: boolean
-          description: true when that page was not the last one - "mindestens objectCount".
-        message:
-          type: string
-          nullable: true
-
-    S3BucketListRequest:
+          type: object
+          additionalProperties: true
+    SourceBrowseRequest:
       type: object
       required: [sourceUrl]
       description: >
-        Connection data for listing the buckets an S3 key may see (ADR-0027, #1376; the wizard's
-        bucket suggestion). Credentials are used for this one request only, never persisted or
-        echoed. With libraryId (an existing S3 library the caller manages), omitted credentials
-        fall back to the stored ones when sourceUrl names the same origin - the same rule the
-        connection test applies.
+        Connection data for listing what a source offers (ADR-0038). Credentials are used for
+        this one request only, never persisted or echoed. With libraryId (an existing library of
+        the path's sourceType the caller manages), omitted credentials fall back to the stored
+        ones when sourceUrl names the same origin - the same rule the connection test applies.
       properties:
         sourceUrl:
           type: string
           format: uri
-          description: The endpoint, normalised like LibraryRequest.sourceUrl for sourceType S3.
+          description: The source's address, as LibraryRequest.sourceUrl for the type.
         sourceCredentials:
           type: string
           maxLength: 500
           nullable: true
-          description: accessKey:secretKey[:sessionToken] (see LibraryRequest.sourceCredentials).
+          description: Credentials in the connector's format (see LibraryRequest.sourceCredentials).
         sourceProxy:
           type: string
           maxLength: 255
@@ -12690,86 +12458,81 @@ components:
           type: boolean
           nullable: true
           default: false
-        region:
-          type: string
-          maxLength: 64
-          nullable: true
-          description: The signing region; absent means us-east-1.
-        pathStyle:
-          type: boolean
-          nullable: true
-          default: false
         libraryId:
           type: string
           format: uuid
           nullable: true
+        query:
+          description: >
+            The listing's own parameters, read by the type's connector: CONFLUENCE takes edition,
+            S3 region and pathStyle (absent, a stored library's own values stand in).
+          nullable: true
+          type: object
+          additionalProperties: true
 
-    S3BucketListResponse:
+    SourceBrowseResponse:
       type: object
-      required: [listingPermitted, buckets]
+      required: [complete, entries]
       description: >
-        The buckets the key may see, in the store's order - or, when the key lacks
-        s3:ListAllMyBuckets, listingPermitted false with an empty list and a message inviting
-        manual entry: a restricted key is the normal case, never an error. Stores like MinIO
-        answer a restricted key with the filtered list instead, which arrives as permitted.
+        What the source offers, in its own order. complete false means the credentials may not
+        list at all (a restricted S3 key, say) - entries is then empty and message invites
+        manual entry. An empty, complete list is a valid answer, distinct from an error.
       properties:
-        listingPermitted:
+        complete:
           type: boolean
-        buckets:
+        entries:
           type: array
           items:
-            type: string
+            $ref: "#/components/schemas/SourceBrowseEntry"
         message:
           type: string
           nullable: true
-          description: German, user-facing; set when the listing was not permitted.
+          description: German, user-facing.
 
-    ConfluenceSpaceListRequest:
+    SourceBrowseEntry:
       type: object
-      required: [sourceUrl, confluenceEdition]
-      description: >
-        Connection data for listing the spaces a Confluence token may read (ADR-0023; the basis
-        of the wizard's space selection). Credentials are used for this one request only, never
-        persisted or echoed. With libraryId (an existing CONFLUENCE library the caller manages),
-        omitted credentials fall back to the stored ones when sourceUrl names the same origin -
-        the same rule the connection test applies.
+      required: [key]
       properties:
-        sourceUrl:
+        key:
           type: string
-          format: uri
-          description: The instance's base address, normalised like LibraryRequest.sourceUrl.
-        confluenceEdition:
-          $ref: "#/components/schemas/ConfluenceEdition"
-        sourceCredentials:
+          description: What a selection stores - a space key, a bucket name.
+        name:
           type: string
-          maxLength: 500
           nullable: true
-          description: Credentials in the edition's format (see LibraryRequest.sourceCredentials).
-        sourceProxy:
+          description: A display name where the source has one.
+
+    SourceTypeDescriptor:
+      type: object
+      required: [type, displayName, indexingRun, pushIntake, browsable]
+      description: >
+        One registered connector as the registry describes it (ADR-0038). The shape of its
+        sourceSettings is documented in its handbook chapter and known to its form in the
+        client; this descriptor carries what a client decides on.
+      properties:
+        type:
+          $ref: "#/components/schemas/SourceTypeKey"
+        displayName:
           type: string
-          maxLength: 255
-          nullable: true
-        sourceInsecureSsl:
+          description: German name of the source type.
+          example: Confluence
+        indexingRun:
           type: boolean
+          description: >
+            Whether a run fills the library - false for UPLOAD, whose documents are uploaded one
+            by one. A library with a run needs the capability CREATE_CONNECTOR_LIBRARY and can be
+            scheduled.
+        pushIntake:
+          type: boolean
+          description: Whether the source can push notifications (see push-secret and push).
+        browsable:
+          type: boolean
+          description: Whether browseSource answers for this type.
+        fullSyncIntervalDefaultDays:
+          type: integer
           nullable: true
-          default: false
-        libraryId:
-          type: string
-          format: uuid
-          nullable: true
-
-    ConfluenceSpaceListResponse:
-      type: object
-      required: [spaces]
-      description: >
-        Every space the credentials may read, fully paginated over both editions, in the
-        instance's order. An empty list is a valid answer (a token without any readable space),
-        distinct from an error.
-      properties:
-        spaces:
-          type: array
-          items:
-            $ref: "#/components/schemas/ConfluenceSpaceRef"
+          description: >
+            The instance-wide rhythm of the type's full reconciliation in whole days, which a
+            library may lengthen; absent for a type whose every run is a full one.
 
     ScheduleFrequency:
       type: string
@@ -12891,7 +12654,7 @@ components:
           nullable: true
           description: Defaults to false
         sourceType:
-          $ref: "#/components/schemas/DocumentSourceType"
+          $ref: "#/components/schemas/SourceTypeKey"
         sourcePath:
           type: string
           maxLength: 2000
@@ -12941,45 +12704,16 @@ components:
             Skip SSL certificate verification - only for sourceType HTTP_DIRECTORY, RSS_FEED or
             CONFLUENCE.
           default: false
-        confluenceEdition:
+        sourceSettings:
           description: >
-            Accepted only when it equals the library's stored edition (like sourceType, ADR-0023:
-            immutable after creation); any other value is rejected with 400.
+            A change of the connector's settings (ADR-0038); absent leaves them untouched. What a
+            present object replaces the connector decides: CONFLUENCE replaces each part it
+            carries - spaces as a whole (non-empty; every change forces a full sync),
+            fullSyncIntervalDays (1-365, 0 returns to the instance-wide default) - and accepts
+            edition only when it equals the stored one; S3 replaces its settings as a whole.
           nullable: true
-          allOf:
-            - $ref: "#/components/schemas/ConfluenceEdition"
-        confluenceSpaces:
-          type: array
-          nullable: true
-          minItems: 1
-          maxItems: 500
-          description: >
-            Replaces the space selection of a CONFLUENCE library as a whole when present; absent
-            leaves the stored selection untouched. Must stay non-empty. Removing a space takes
-            effect with the next full sync, which any change to the selection forces (ADR-0023).
-            Rejected for every other sourceType.
-          items:
-            $ref: "#/components/schemas/ConfluenceSpaceRef"
-        confluenceFullSyncIntervalDays:
-          type: integer
-          nullable: true
-          minimum: 0
-          maximum: 365
-          description: >
-            #1200: replaces this library's own full-sync rhythm when present - a value of 1-365
-            days sets it, 0 returns the library to the instance-wide default, absent leaves the
-            stored value untouched. Only for sourceType CONFLUENCE, rejected for every other
-            type. The rhythm is never switchable off (ADR-0023, Entscheidung 4).
-          example: 14
-        s3Settings:
-          description: >
-            Replaces the typed configuration of an S3 library as a whole when present; absent
-            leaves the stored settings untouched. Rejected for every other sourceType. Removing a
-            scope takes effect with the next full run, which is the only one that deletes
-            (ADR-0027, Entscheidung 3).
-          nullable: true
-          allOf:
-            - $ref: "#/components/schemas/S3Settings"
+          type: object
+          additionalProperties: true
         schedule:
           $ref: "#/components/schemas/LibraryScheduleRequest"
 
@@ -12989,7 +12723,7 @@ components:
       description: >
         Body for PUT /api/v1/libraries/{libraryId}/share-cap (#797). Both fields are required and
         replace the cap as a whole - there is no partial update, the same reasoning
-        LibraryUpdateRequest.s3Settings already follows for its own all-or-nothing replacement.
+        a connector's sourceSettings follow when it replaces them as a whole.
       properties:
         allAccountsGrantAllowed:
           type: boolean
@@ -13057,7 +12791,7 @@ components:
             detail page (#481) can both show the type without a per-library detail round trip -
             previously only the single-library response (LibraryResponse) carried this field.
           allOf:
-            - $ref: "#/components/schemas/DocumentSourceType"
+            - $ref: "#/components/schemas/SourceTypeKey"
         documentCount:
           type: integer
           format: int64
@@ -13152,7 +12886,7 @@ components:
           type: integer
           format: int64
         sourceType:
-          $ref: "#/components/schemas/DocumentSourceType"
+          $ref: "#/components/schemas/SourceTypeKey"
         sourcePath:
           type: string
           nullable: true
@@ -13193,67 +12927,30 @@ components:
             accurate "leave blank to keep the current credential" hint only when one actually
             exists, instead of implying one is configured when none is. Set only if myRole is at
             least MANAGER (#507) - see sourcePath above for why.
-        confluenceEdition:
+        sourceSettings:
           description: >
-            The edition of a CONFLUENCE library (ADR-0023) - present for every reader, absent for
-            other source types. Not configuration detail in the #507 sense: it says which kind of
-            Confluence the library mirrors, not where.
+            The connector's settings as the caller may see them (ADR-0038): every reader what the
+            library covers (a Confluence library's edition and spaces, an S3 library's scopes and
+            patterns - exactly what every reader can see), a MANAGER additionally administration
+            detail such as a Confluence library's fullSyncIntervalDays. A connector shows readers
+            nothing unless it says so. Never carries a secret; absent for a type without settings.
           nullable: true
-          allOf:
-            - $ref: "#/components/schemas/ConfluenceEdition"
-        confluenceSpaces:
-          type: array
-          nullable: true
-          description: >
-            The selected spaces of a CONFLUENCE library, present for every reader (not only
-            MANAGER): the selection is exactly the scope every reader of this library can see, and
-            naming it is part of making that consequence visible (ADR-0023, #1138). Absent for
-            other source types.
-          items:
-            $ref: "#/components/schemas/ConfluenceSpaceRef"
-        confluenceWebhookSecretSet:
+          type: object
+          additionalProperties: true
+        pushSecretSet:
           type: boolean
           nullable: true
           description: >
-            Whether a webhook secret is currently stored for this CONFLUENCE library (#1140) -
-            never the secret itself, which is returned exactly once by POST
-            /api/v1/libraries/{libraryId}/confluence-webhook-secret. Only present for sourceType
-            CONFLUENCE and only if myRole is at least MANAGER (the same gate as
-            sourceCredentialsSet); absent otherwise.
-        s3EventsTokenSet:
-          type: boolean
-          nullable: true
-          description: >
-            Whether an event token is currently stored for this S3 library (#1381) - never the
-            token itself, which is returned exactly once by POST
-            /api/v1/libraries/{libraryId}/s3-events-token. Only present for sourceType S3 and only
-            if myRole is at least MANAGER; absent otherwise.
-        confluenceFullSyncIntervalDays:
+            Whether a push secret is currently stored - never the secret itself, which POST
+            /api/v1/libraries/{libraryId}/push-secret returns exactly once. Only present when the
+            library's connector has a push intake and only if myRole is at least MANAGER.
+        fullSyncIntervalDefaultDays:
           type: integer
           nullable: true
           description: >
-            #1200: this library's own full-sync rhythm in days; null while the library follows
-            the instance-wide default (see confluenceFullSyncIntervalDefaultDays). Only present
-            for sourceType CONFLUENCE and only if myRole is at least MANAGER (the schedule
-            dialog's gate); absent otherwise.
-        confluenceFullSyncIntervalDefaultDays:
-          type: integer
-          nullable: true
-          description: >
-            #1200: the instance-wide full-sync rhythm in days
-            (opaa.indexing.confluence.full-sync-interval, rounded up to whole days) - what
-            applies while confluenceFullSyncIntervalDays is null, so the schedule dialog can
-            name the default instead of hard-coding it. Same presence gate as
-            confluenceFullSyncIntervalDays.
-        s3Settings:
-          description: >
-            The typed configuration of an S3 library (ADR-0027) - region, addressing style, scopes
-            and key patterns - present for every reader like confluenceSpaces: the scopes are
-            exactly what every reader of this library can see. Never carries a credential; absent
-            for other source types.
-          nullable: true
-          allOf:
-            - $ref: "#/components/schemas/S3Settings"
+            The instance-wide full-sync rhythm of the library's connector in whole days, so the
+            schedule dialog can name the default; present only if the connector has one and
+            myRole is at least MANAGER.
         schedule:
           description: >
             The library's indexing schedule (#485) - present only for a connector library
@@ -13362,124 +13059,14 @@ components:
       enum: [PENDING, INDEXED, FAILED]
       example: INDEXED
 
-    DocumentSourceType:
+    SourceTypeKey:
       type: string
-      enum: [FILESYSTEM, HTTP_DIRECTORY, UPLOAD, RSS_FEED, CONFLUENCE, S3]
+      pattern: "^[A-Z][A-Z0-9_]*$"
+      maxLength: 20
+      description: >
+        The open key of a source type (ADR-0038) - which keys exist GET /api/v1/source-types
+        says. Delivered today: UPLOAD, FILESYSTEM, HTTP_DIRECTORY, RSS_FEED, CONFLUENCE, S3.
       example: FILESYSTEM
-
-    S3ScopeRef:
-      type: object
-      required: [bucket]
-      description: >
-        One scope of an S3 library (ADR-0027, Entscheidung 2): a bucket and an optional key
-        prefix. The prefix is normalised on the server - no leading slash, a trailing slash added
-        when not empty - and an empty prefix means the whole bucket. Two scopes of one library must
-        not overlap (neither equal nor one a prefix of the other in the same bucket).
-      properties:
-        bucket:
-          type: string
-          minLength: 3
-          maxLength: 63
-          description: >
-            The bucket name under the AWS naming rules MinIO and Ceph adopt: 3-63 characters,
-            lower-case letters, digits, dots and hyphens, starting and ending with a letter or
-            digit, not shaped like an IP address.
-          example: verwaltung-dokumente
-        prefix:
-          type: string
-          nullable: true
-          maxLength: 1023
-          description: >
-            The key prefix inside the bucket; absent or empty for the whole bucket. At most 1023
-            characters, so the normalised form with its trailing slash stays within S3's key limit.
-          example: 2025/protokolle/
-
-    S3Settings:
-      type: object
-      required: [scopes]
-      description: >
-        The typed configuration of an S3 library (ADR-0027, Entscheidung 1), stored as one JSON
-        document in knowledge_libraries.source_settings and returned to every reader - it names
-        where the library reads, never how it authenticates (endpoint in sourceUrl, credentials
-        write-only in sourceCredentials as accessKey:secretKey[:sessionToken]).
-      properties:
-        region:
-          type: string
-          nullable: true
-          maxLength: 64
-          description: >
-            The region every request is signed for; absent means us-east-1, which MinIO and Ceph
-            accept for any region.
-          example: eu-central-1
-        pathStyle:
-          type: boolean
-          default: false
-          description: >
-            true addresses endpoint/bucket/key (MinIO, Ceph), false bucket.endpoint/key (AWS,
-            Hetzner). Under virtual-host addressing every bucket host must pass the target
-            validation as well.
-        scopes:
-          type: array
-          minItems: 1
-          maxItems: 50
-          description: >
-            One to fifty non-overlapping scopes; required and non-empty (a library without a scope
-            would index nothing). Note the consequence stated before the selection in the UI:
-            everything indexed from every scope is readable by everyone who may read this library.
-          items:
-            $ref: "#/components/schemas/S3ScopeRef"
-        includePatterns:
-          type: array
-          nullable: true
-          maxItems: 50
-          description: >
-            Glob patterns on the object key (e.g. "**/*.pdf"); when present, only keys matching at
-            least one are indexed. Absent or empty means every key.
-          items:
-            type: string
-            minLength: 1
-            maxLength: 255
-        excludePatterns:
-          type: array
-          nullable: true
-          maxItems: 50
-          description: >
-            Glob patterns on the object key; a key matching any of them is skipped, after the
-            include patterns were applied.
-          items:
-            type: string
-            minLength: 1
-            maxLength: 255
-
-    ConfluenceEdition:
-      type: string
-      description: >
-        The Confluence edition a CONFLUENCE library points at (ADR-0023, Entscheidung 2).
-        Detected by the connection test from the instance's own response signature - never
-        guessed from the host name - stored at creation and immutable afterwards, like
-        sourceType itself. CLOUD authenticates with e-mail + API token (HTTP Basic) against
-        /wiki/api/v2, DATA_CENTER with a personal access token (Bearer) against /rest/api.
-      enum: [CLOUD, DATA_CENTER]
-      example: DATA_CENTER
-
-    ConfluenceSpaceRef:
-      type: object
-      required: [key]
-      description: >
-        One space of a CONFLUENCE library's selection (ADR-0023, Entscheidung 1). key is the
-        stable Confluence space key the run lists; name is the display name at the time of
-        selection so the UI can show the selection without asking Confluence again.
-      properties:
-        key:
-          type: string
-          minLength: 1
-          maxLength: 255
-          example: ENG
-        name:
-          type: string
-          maxLength: 255
-          nullable: true
-          example: Engineering
 
     MetadataOrigin:
       type: string
@@ -13568,7 +13155,7 @@ components:
         status:
           $ref: "#/components/schemas/DocumentStatus"
         sourceType:
-          $ref: "#/components/schemas/DocumentSourceType"
+          $ref: "#/components/schemas/SourceTypeKey"
         chunkCount:
           type: integer
         indexedAt:

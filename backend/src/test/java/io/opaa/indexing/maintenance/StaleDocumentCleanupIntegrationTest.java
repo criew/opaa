@@ -3,7 +3,6 @@ package io.opaa.indexing.maintenance;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.indexing.job.DocumentIndexingService;
@@ -18,10 +17,12 @@ import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.knowledge.SourceType;
 import io.opaa.organization.Organization;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OpaaTestDirectory;
 import io.opaa.test.OwnLibraryFixtures;
+import io.opaa.test.SourceTypes;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -92,7 +93,7 @@ class StaleDocumentCleanupIntegrationTest {
                 null,
                 userId,
                 false,
-                DocumentSourceType.FILESYSTEM,
+                SourceTypes.FILESYSTEM,
                 classTempDir.toAbsolutePath().toString(),
                 null,
                 null,
@@ -144,7 +145,7 @@ class StaleDocumentCleanupIntegrationTest {
     return count == null ? 0 : count;
   }
 
-  private void insertDocument(UUID libraryId, String fileName, DocumentSourceType sourceType) {
+  private void insertDocument(UUID libraryId, String fileName, SourceType sourceType) {
     UUID id = UUID.randomUUID();
     jdbcTemplate.update(
         "INSERT INTO documents (id, file_name, file_path, content_type, file_size, chunk_count,"
@@ -155,7 +156,7 @@ class StaleDocumentCleanupIntegrationTest {
         fileName,
         "irrelevant-path-for-" + fileName,
         "checksum-" + id,
-        sourceType.name(),
+        sourceType.key(),
         libraryId,
         Organization.DEFAULT_ID);
   }
@@ -169,8 +170,8 @@ class StaleDocumentCleanupIntegrationTest {
     // regardless of what the FILESYSTEM cleanup below does. Inserted directly, bypassing the
     // "one source type per library" rule ADR-0018 normally enforces at creation time, to prove the
     // cleanup query itself never crosses sourceType even if such a row exists.
-    insertDocument(targetLibraryId, "upload.txt", DocumentSourceType.UPLOAD);
-    insertDocument(targetLibraryId, "feed-entry.html", DocumentSourceType.RSS_FEED);
+    insertDocument(targetLibraryId, "upload.txt", SourceType.UPLOAD);
+    insertDocument(targetLibraryId, "feed-entry.html", SourceTypes.RSS_FEED);
 
     IndexingJob firstJob = triggerIndexing();
     awaitJobCompletion(firstJob);

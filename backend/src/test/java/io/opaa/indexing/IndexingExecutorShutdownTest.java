@@ -101,7 +101,7 @@ class IndexingExecutorShutdownTest {
       return new IndexingConfiguration()
           .indexingTaskExecutor(
               new IndexingProperties(
-                  0, 0, 0, new IndexingProperties.ThreadPool(1, 1, 10), null, null, null, 0));
+                  0, 0, 0, new IndexingProperties.ThreadPool(1, 1, 10), null, null, 0));
     }
   }
 

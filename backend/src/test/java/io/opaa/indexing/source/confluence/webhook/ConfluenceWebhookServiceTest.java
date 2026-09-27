@@ -11,17 +11,17 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import io.opaa.api.types.ConfluenceEdition;
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.common.UnauthorizedException;
 import io.opaa.indexing.source.SourceEventIntake;
 import io.opaa.indexing.source.SourceEventTarget;
+import io.opaa.indexing.source.confluence.ConfluenceEdition;
 import io.opaa.indexing.source.confluence.ConfluenceIndexingExecutor;
 import io.opaa.indexing.source.confluence.ConfluenceSpaceSelection;
 import io.opaa.indexing.source.confluence.ConfluenceTestSettings;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.test.SourceTypes;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
@@ -60,7 +60,7 @@ class ConfluenceWebhookServiceTest {
             null,
             UUID.randomUUID(),
             false,
-            DocumentSourceType.CONFLUENCE,
+            SourceTypes.CONFLUENCE,
             null,
             "https://wiki.example.org",
             null,
@@ -117,7 +117,7 @@ class ConfluenceWebhookServiceTest {
             null,
             UUID.randomUUID(),
             false,
-            DocumentSourceType.S3,
+            SourceTypes.S3,
             null,
             "https://minio.example.org",
             null,
@@ -143,7 +143,7 @@ class ConfluenceWebhookServiceTest {
     ArgumentCaptor<SourceEventTarget> target = ArgumentCaptor.forClass(SourceEventTarget.class);
     verify(intake).enqueue(target.capture(), eq(libraryId), eq(Set.of("102", "103")), eq(0));
     verify(intake).enqueue(any(), eq(libraryId), eq(Set.of("104")), eq(0));
-    assertThat(target.getValue().sourceType()).isEqualTo(DocumentSourceType.CONFLUENCE);
+    assertThat(target.getValue().sourceType()).isEqualTo(SourceTypes.CONFLUENCE);
     assertThat(target.getValue().targetedRunMode()).isEqualTo(IndexingRunMode.INCREMENTAL);
     assertThat(target.getValue().executor()).isSameAs(executor);
   }

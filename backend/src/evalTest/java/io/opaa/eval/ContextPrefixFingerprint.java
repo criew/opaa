@@ -1,6 +1,5 @@
 package io.opaa.eval;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.indexing.chunk.ChunkContextPrefix;
 import io.opaa.indexing.chunk.ChunkingService;
 import io.opaa.indexing.document.DocumentIngest;
@@ -14,6 +13,7 @@ import io.opaa.indexing.metadata.ExtractedCoreMetadata;
 import io.opaa.indexing.metadata.ExtractedDate;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.SourceDocumentContext;
+import io.opaa.test.SourceTypes;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.security.MessageDigest;
@@ -229,14 +229,14 @@ final class ContextPrefixFingerprint {
       return DocumentIngest.text(library, sample.source(), sample.chunkText())
           .title(sample.declaredTitle())
           .context(sample.context())
-          .sourceType(DocumentSourceType.CONFLUENCE)
+          .sourceType(SourceTypes.CONFLUENCE)
           .build();
     }
     return DocumentIngest.builder(library)
         .file(Path.of(sample.source()), 0)
         .filePath("/eval/" + sample.source())
         .fileName(sample.source())
-        .sourceType(DocumentSourceType.FILESYSTEM)
+        .sourceType(SourceTypes.FILESYSTEM)
         .build();
   }
 

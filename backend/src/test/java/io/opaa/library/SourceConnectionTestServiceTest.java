@@ -12,23 +12,24 @@ import static org.mockito.Mockito.when;
 import com.sun.net.httpserver.HttpServer;
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.Capability;
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.FilesystemPathAllowlist;
-import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.document.DocumentService;
 import io.opaa.indexing.source.SourceConnectionTestResult;
 import io.opaa.indexing.source.TestSourceConnectors;
 import io.opaa.indexing.source.rss.RssFeedParser;
+import io.opaa.indexing.source.rss.RssFeedProperties;
 import io.opaa.indexing.source.web.AutoindexCrawlerService;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
+import io.opaa.knowledge.SourceType;
 import io.opaa.permission.CapabilityService;
+import io.opaa.test.SourceTypes;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URI;
@@ -116,7 +117,7 @@ class SourceConnectionTestServiceTest {
     SourceConnectionTestResult response =
         service.test(
             sourceConnectionTest()
-                .sourceType(DocumentSourceType.FILESYSTEM)
+                .sourceType(SourceTypes.FILESYSTEM)
                 .sourcePath(dir.toString())
                 .build(),
             caller);
@@ -134,10 +135,7 @@ class SourceConnectionTestServiceTest {
 
     SourceConnectionTestResult response =
         service.test(
-            sourceConnectionTest()
-                .sourceType(DocumentSourceType.FILESYSTEM)
-                .sourcePath(missing)
-                .build(),
+            sourceConnectionTest().sourceType(SourceTypes.FILESYSTEM).sourcePath(missing).build(),
             caller);
 
     assertThat(response.reachable()).isFalse();
@@ -154,7 +152,7 @@ class SourceConnectionTestServiceTest {
             () ->
                 service.test(
                     sourceConnectionTest()
-                        .sourceType(DocumentSourceType.FILESYSTEM)
+                        .sourceType(SourceTypes.FILESYSTEM)
                         .sourcePath("/etc/shadow")
                         .build(),
                     caller))
@@ -169,7 +167,7 @@ class SourceConnectionTestServiceTest {
             () ->
                 service.test(
                     sourceConnectionTest()
-                        .sourceType(DocumentSourceType.FILESYSTEM)
+                        .sourceType(SourceTypes.FILESYSTEM)
                         .sourcePath("/data/documents")
                         .build(),
                     caller))
@@ -182,7 +180,7 @@ class SourceConnectionTestServiceTest {
             () ->
                 service.test(
                     sourceConnectionTest()
-                        .sourceType(DocumentSourceType.FILESYSTEM)
+                        .sourceType(SourceTypes.FILESYSTEM)
                         .sourcePath("relative/path")
                         .build(),
                     caller))
@@ -198,7 +196,7 @@ class SourceConnectionTestServiceTest {
             () ->
                 service.test(
                     sourceConnectionTest()
-                        .sourceType(DocumentSourceType.FILESYSTEM)
+                        .sourceType(SourceTypes.FILESYSTEM)
                         .sourcePath("/data/documents")
                         .sourceUrl(URI.create("https://files.example.com"))
                         .build(),
@@ -212,7 +210,7 @@ class SourceConnectionTestServiceTest {
             () ->
                 service.test(
                     sourceConnectionTest()
-                        .sourceType(DocumentSourceType.FILESYSTEM)
+                        .sourceType(SourceTypes.FILESYSTEM)
                         .sourcePath("/data/documents")
                         .sourceInsecureSsl(true)
                         .build(),
@@ -244,7 +242,7 @@ class SourceConnectionTestServiceTest {
     SourceConnectionTestResult response =
         service.test(
             sourceConnectionTest()
-                .sourceType(DocumentSourceType.HTTP_DIRECTORY)
+                .sourceType(SourceTypes.HTTP_DIRECTORY)
                 .sourceUrl(URI.create(baseUrl + "/dir/"))
                 .build(),
             caller);
@@ -281,7 +279,7 @@ class SourceConnectionTestServiceTest {
     SourceConnectionTestResult response =
         service.test(
             sourceConnectionTest()
-                .sourceType(DocumentSourceType.HTTP_DIRECTORY)
+                .sourceType(SourceTypes.HTTP_DIRECTORY)
                 .sourceUrl(URI.create(baseUrl + "/dir/"))
                 .build(),
             caller);
@@ -313,7 +311,7 @@ class SourceConnectionTestServiceTest {
     SourceConnectionTestResult response =
         service.test(
             sourceConnectionTest()
-                .sourceType(DocumentSourceType.HTTP_DIRECTORY)
+                .sourceType(SourceTypes.HTTP_DIRECTORY)
                 .sourceUrl(URI.create(baseUrl + "/dir/"))
                 .build(),
             caller);
@@ -344,7 +342,7 @@ class SourceConnectionTestServiceTest {
     SourceConnectionTestResult response =
         service.test(
             sourceConnectionTest()
-                .sourceType(DocumentSourceType.HTTP_DIRECTORY)
+                .sourceType(SourceTypes.HTTP_DIRECTORY)
                 .sourceUrl(URI.create(baseUrl + "/dir/"))
                 .build(),
             caller);
@@ -376,7 +374,7 @@ class SourceConnectionTestServiceTest {
     SourceConnectionTestResult response =
         service.test(
             sourceConnectionTest()
-                .sourceType(DocumentSourceType.HTTP_DIRECTORY)
+                .sourceType(SourceTypes.HTTP_DIRECTORY)
                 .sourceUrl(URI.create(baseUrl + "/dokumente/"))
                 .sourceCredentials("admin:secret")
                 .build(),
@@ -412,7 +410,7 @@ class SourceConnectionTestServiceTest {
     SourceConnectionTestResult response =
         service.test(
             sourceConnectionTest()
-                .sourceType(DocumentSourceType.HTTP_DIRECTORY)
+                .sourceType(SourceTypes.HTTP_DIRECTORY)
                 .sourceUrl(URI.create(baseUrl + "/dokumente/"))
                 .build(),
             caller);
@@ -458,7 +456,7 @@ class SourceConnectionTestServiceTest {
     SourceConnectionTestResult response =
         service.test(
             sourceConnectionTest()
-                .sourceType(DocumentSourceType.HTTP_DIRECTORY)
+                .sourceType(SourceTypes.HTTP_DIRECTORY)
                 .sourceUrl(URI.create(baseUrl + "/dir.v2"))
                 .build(),
             caller);
@@ -491,7 +489,7 @@ class SourceConnectionTestServiceTest {
     SourceConnectionTestResult response =
         service.test(
             sourceConnectionTest()
-                .sourceType(DocumentSourceType.HTTP_DIRECTORY)
+                .sourceType(SourceTypes.HTTP_DIRECTORY)
                 .sourceUrl(URI.create(baseUrl + "/dir/"))
                 .build(),
             caller);
@@ -529,7 +527,7 @@ class SourceConnectionTestServiceTest {
     SourceConnectionTestResult response =
         service.test(
             sourceConnectionTest()
-                .sourceType(DocumentSourceType.HTTP_DIRECTORY)
+                .sourceType(SourceTypes.HTTP_DIRECTORY)
                 .sourceUrl(URI.create(baseUrl + "/dir/index.html"))
                 .build(),
             caller);
@@ -549,16 +547,7 @@ class SourceConnectionTestServiceTest {
             libraryAccessService,
             TestSourceConnectors.connectors()
                 .filesystemAllowlist(filesystemAllowlist)
-                .indexingProperties(
-                    new IndexingProperties(
-                        1000,
-                        0,
-                        50,
-                        null,
-                        new IndexingProperties.Rss(200, 10, 10, 0, null, null, 0, 0),
-                        null,
-                        null,
-                        0))
+                .rssProperties(new RssFeedProperties(200, 10, 10, 0, null, null, 0, 0))
                 .registry(),
             capabilityService);
     String html = "<table>" + "x".repeat(100) + "</table>";
@@ -574,7 +563,7 @@ class SourceConnectionTestServiceTest {
     SourceConnectionTestResult response =
         tightService.test(
             sourceConnectionTest()
-                .sourceType(DocumentSourceType.HTTP_DIRECTORY)
+                .sourceType(SourceTypes.HTTP_DIRECTORY)
                 .sourceUrl(URI.create(baseUrl + "/dir/"))
                 .build(),
             caller);
@@ -589,7 +578,7 @@ class SourceConnectionTestServiceTest {
             () ->
                 service.test(
                     sourceConnectionTest()
-                        .sourceType(DocumentSourceType.HTTP_DIRECTORY)
+                        .sourceType(SourceTypes.HTTP_DIRECTORY)
                         .sourceUrl(URI.create(baseUrl + "/dir/"))
                         .sourcePath("/data/documents")
                         .build(),
@@ -609,7 +598,7 @@ class SourceConnectionTestServiceTest {
     SourceConnectionTestResult response =
         service.test(
             sourceConnectionTest()
-                .sourceType(DocumentSourceType.HTTP_DIRECTORY)
+                .sourceType(SourceTypes.HTTP_DIRECTORY)
                 .sourceUrl(URI.create(baseUrl + "/dir/"))
                 .build(),
             caller);
@@ -624,7 +613,7 @@ class SourceConnectionTestServiceTest {
     SourceConnectionTestResult response =
         service.test(
             sourceConnectionTest()
-                .sourceType(DocumentSourceType.HTTP_DIRECTORY)
+                .sourceType(SourceTypes.HTTP_DIRECTORY)
                 .sourceUrl(URI.create("http://127.0.0.1:1"))
                 .build(),
             caller);
@@ -641,7 +630,7 @@ class SourceConnectionTestServiceTest {
             () ->
                 service.test(
                     sourceConnectionTest()
-                        .sourceType(DocumentSourceType.HTTP_DIRECTORY)
+                        .sourceType(SourceTypes.HTTP_DIRECTORY)
                         .sourceUrl(URI.create("ftp://files.example.com"))
                         .build(),
                     caller))
@@ -673,7 +662,7 @@ class SourceConnectionTestServiceTest {
     SourceConnectionTestResult response =
         service.test(
             sourceConnectionTest()
-                .sourceType(DocumentSourceType.RSS_FEED)
+                .sourceType(SourceTypes.RSS_FEED)
                 .sourceUrl(URI.create(baseUrl + "/feed.xml"))
                 .build(),
             caller);
@@ -693,16 +682,7 @@ class SourceConnectionTestServiceTest {
             libraryAccessService,
             TestSourceConnectors.connectors()
                 .filesystemAllowlist(filesystemAllowlist)
-                .indexingProperties(
-                    new IndexingProperties(
-                        1000,
-                        0,
-                        50,
-                        null,
-                        new IndexingProperties.Rss(1, 0, 0, 0, null, null, 0, 0),
-                        null,
-                        null,
-                        0))
+                .rssProperties(new RssFeedProperties(1, 0, 0, 0, null, null, 0, 0))
                 .registry(),
             capabilityService);
     String rss =
@@ -726,7 +706,7 @@ class SourceConnectionTestServiceTest {
     SourceConnectionTestResult response =
         cappedService.test(
             sourceConnectionTest()
-                .sourceType(DocumentSourceType.RSS_FEED)
+                .sourceType(SourceTypes.RSS_FEED)
                 .sourceUrl(URI.create(baseUrl + "/feed.xml"))
                 .build(),
             caller);
@@ -748,16 +728,7 @@ class SourceConnectionTestServiceTest {
             libraryAccessService,
             TestSourceConnectors.connectors()
                 .filesystemAllowlist(filesystemAllowlist)
-                .indexingProperties(
-                    new IndexingProperties(
-                        1000,
-                        0,
-                        50,
-                        null,
-                        new IndexingProperties.Rss(200, 10, 10, 0, null, null, 0, 0),
-                        null,
-                        null,
-                        0))
+                .rssProperties(new RssFeedProperties(200, 10, 10, 0, null, null, 0, 0))
                 .registry(),
             capabilityService);
     String rss =
@@ -776,7 +747,7 @@ class SourceConnectionTestServiceTest {
     SourceConnectionTestResult response =
         tightService.test(
             sourceConnectionTest()
-                .sourceType(DocumentSourceType.RSS_FEED)
+                .sourceType(SourceTypes.RSS_FEED)
                 .sourceUrl(URI.create(baseUrl + "/feed.xml"))
                 .build(),
             caller);
@@ -791,7 +762,7 @@ class SourceConnectionTestServiceTest {
             () ->
                 service.test(
                     sourceConnectionTest()
-                        .sourceType(DocumentSourceType.RSS_FEED)
+                        .sourceType(SourceTypes.RSS_FEED)
                         .sourceUrl(URI.create(baseUrl + "/feed.xml"))
                         .sourcePath("/data/documents")
                         .build(),
@@ -813,7 +784,7 @@ class SourceConnectionTestServiceTest {
     SourceConnectionTestResult response =
         service.test(
             sourceConnectionTest()
-                .sourceType(DocumentSourceType.RSS_FEED)
+                .sourceType(SourceTypes.RSS_FEED)
                 .sourceUrl(URI.create(baseUrl + "/feed.xml"))
                 .build(),
             caller);
@@ -834,7 +805,7 @@ class SourceConnectionTestServiceTest {
     SourceConnectionTestResult response =
         service.test(
             sourceConnectionTest()
-                .sourceType(DocumentSourceType.RSS_FEED)
+                .sourceType(SourceTypes.RSS_FEED)
                 .sourceUrl(URI.create(baseUrl + "/feed.xml"))
                 .build(),
             caller);
@@ -858,7 +829,7 @@ class SourceConnectionTestServiceTest {
             null,
             currentUserId,
             false,
-            DocumentSourceType.HTTP_DIRECTORY,
+            SourceTypes.HTTP_DIRECTORY,
             null,
             baseUrl + "/dir/",
             null,
@@ -892,7 +863,7 @@ class SourceConnectionTestServiceTest {
     SourceConnectionTestResult response =
         service.test(
             sourceConnectionTest()
-                .sourceType(DocumentSourceType.HTTP_DIRECTORY)
+                .sourceType(SourceTypes.HTTP_DIRECTORY)
                 .sourceUrl(URI.create(baseUrl + "/dir/"))
                 .libraryId(libraryId)
                 .build(),
@@ -921,7 +892,7 @@ class SourceConnectionTestServiceTest {
               null,
               currentUserId,
               false,
-              DocumentSourceType.HTTP_DIRECTORY,
+              SourceTypes.HTTP_DIRECTORY,
               null,
               baseUrl + "/dir/",
               null,
@@ -944,7 +915,7 @@ class SourceConnectionTestServiceTest {
       SourceConnectionTestResult response =
           service.test(
               sourceConnectionTest()
-                  .sourceType(DocumentSourceType.HTTP_DIRECTORY)
+                  .sourceType(SourceTypes.HTTP_DIRECTORY)
                   .sourceUrl(URI.create(otherBaseUrl + "/dir/"))
                   .libraryId(libraryId)
                   .build(),
@@ -981,7 +952,7 @@ class SourceConnectionTestServiceTest {
             null,
             currentUserId,
             false,
-            DocumentSourceType.HTTP_DIRECTORY,
+            SourceTypes.HTTP_DIRECTORY,
             null,
             baseUrl + "/dir/",
             null, // stored sourceProxy: none
@@ -1009,7 +980,7 @@ class SourceConnectionTestServiceTest {
     SourceConnectionTestResult response =
         service.test(
             sourceConnectionTest()
-                .sourceType(DocumentSourceType.HTTP_DIRECTORY)
+                .sourceType(SourceTypes.HTTP_DIRECTORY)
                 .sourceUrl(URI.create(baseUrl + "/dir/"))
                 .sourceProxy("127.0.0.1:1")
                 .sourceInsecureSsl(true)
@@ -1035,7 +1006,7 @@ class SourceConnectionTestServiceTest {
             null,
             UUID.randomUUID(),
             false,
-            DocumentSourceType.FILESYSTEM,
+            SourceTypes.FILESYSTEM,
             "/data/documents",
             null,
             null,
@@ -1057,7 +1028,7 @@ class SourceConnectionTestServiceTest {
             () ->
                 service.test(
                     sourceConnectionTest()
-                        .sourceType(DocumentSourceType.FILESYSTEM)
+                        .sourceType(SourceTypes.FILESYSTEM)
                         .sourcePath("/data/documents")
                         .libraryId(libraryId)
                         .build(),
@@ -1075,7 +1046,7 @@ class SourceConnectionTestServiceTest {
             null,
             currentUserId,
             false,
-            DocumentSourceType.HTTP_DIRECTORY,
+            SourceTypes.HTTP_DIRECTORY,
             null,
             baseUrl + "/dir/",
             null,
@@ -1089,7 +1060,7 @@ class SourceConnectionTestServiceTest {
             () ->
                 service.test(
                     sourceConnectionTest()
-                        .sourceType(DocumentSourceType.HTTP_DIRECTORY)
+                        .sourceType(SourceTypes.HTTP_DIRECTORY)
                         .sourceUrl(URI.create(baseUrl + "/dir/"))
                         .libraryId(libraryId)
                         .build(),
@@ -1114,7 +1085,7 @@ class SourceConnectionTestServiceTest {
             null,
             currentUserId,
             false,
-            DocumentSourceType.HTTP_DIRECTORY,
+            SourceTypes.HTTP_DIRECTORY,
             null,
             baseUrl + "/manager-dir/",
             null,
@@ -1144,7 +1115,7 @@ class SourceConnectionTestServiceTest {
     SourceConnectionTestResult response =
         service.test(
             sourceConnectionTest()
-                .sourceType(DocumentSourceType.HTTP_DIRECTORY)
+                .sourceType(SourceTypes.HTTP_DIRECTORY)
                 .sourceUrl(URI.create(baseUrl + "/manager-dir/"))
                 .sourceCredentials("own:credentials")
                 .libraryId(libraryId)
@@ -1165,7 +1136,7 @@ class SourceConnectionTestServiceTest {
             () ->
                 service.test(
                     sourceConnectionTest()
-                        .sourceType(DocumentSourceType.HTTP_DIRECTORY)
+                        .sourceType(SourceTypes.HTTP_DIRECTORY)
                         .sourceUrl(URI.create(baseUrl + "/dir/"))
                         .libraryId(libraryId)
                         .build(),
@@ -1183,7 +1154,7 @@ class SourceConnectionTestServiceTest {
             null,
             currentUserId,
             false,
-            DocumentSourceType.RSS_FEED,
+            SourceTypes.RSS_FEED,
             null,
             baseUrl + "/feed.xml",
             null,
@@ -1197,7 +1168,7 @@ class SourceConnectionTestServiceTest {
             () ->
                 service.test(
                     sourceConnectionTest()
-                        .sourceType(DocumentSourceType.HTTP_DIRECTORY)
+                        .sourceType(SourceTypes.HTTP_DIRECTORY)
                         .sourceUrl(URI.create(baseUrl + "/dir/"))
                         .libraryId(libraryId)
                         .build(),
@@ -1211,8 +1182,7 @@ class SourceConnectionTestServiceTest {
   void uploadIsRejectedWith400() {
     assertThatThrownBy(
             () ->
-                service.test(
-                    sourceConnectionTest().sourceType(DocumentSourceType.UPLOAD).build(), caller))
+                service.test(sourceConnectionTest().sourceType(SourceType.UPLOAD).build(), caller))
         .isInstanceOf(ValidationException.class);
   }
 
@@ -1237,8 +1207,7 @@ class SourceConnectionTestServiceTest {
 
     assertThatThrownBy(
             () ->
-                service.test(
-                    sourceConnectionTest().sourceType(DocumentSourceType.UPLOAD).build(), caller))
+                service.test(sourceConnectionTest().sourceType(SourceType.UPLOAD).build(), caller))
         .isInstanceOf(AccessDeniedException.class);
   }
 
@@ -1250,8 +1219,7 @@ class SourceConnectionTestServiceTest {
   void sourceTestWithoutLibraryIdChecksTheConnectorCapabilityBeforeRejectingUpload() {
     assertThatThrownBy(
             () ->
-                service.test(
-                    sourceConnectionTest().sourceType(DocumentSourceType.UPLOAD).build(), caller))
+                service.test(sourceConnectionTest().sourceType(SourceType.UPLOAD).build(), caller))
         .isInstanceOf(ValidationException.class);
 
     verify(capabilityService).requireCapability(caller, Capability.CREATE_CONNECTOR_LIBRARY);

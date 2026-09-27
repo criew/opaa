@@ -16,7 +16,6 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.indexing.chunk.VectorChunkStore;
@@ -31,7 +30,6 @@ import io.opaa.indexing.job.IndexingRunEvent;
 import io.opaa.indexing.job.IndexingRunEventRepository;
 import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
 import io.opaa.indexing.source.IndexingRunTemplate;
-import io.opaa.indexing.source.IndexingSourceType;
 import io.opaa.indexing.source.RequestBudgetExhaustedException;
 import io.opaa.indexing.source.SourceSyncState;
 import io.opaa.indexing.source.SourceSyncStateRepository;
@@ -44,6 +42,7 @@ import io.opaa.knowledge.LibraryStorageQuotaService;
 import io.opaa.knowledge.SourceDocumentContext;
 import io.opaa.s3.S3AccessException;
 import io.opaa.test.ProductionDocumentFormats;
+import io.opaa.test.SourceTypes;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.Clock;
@@ -163,7 +162,7 @@ class S3IndexingExecutorTest {
             null,
             UUID.randomUUID(),
             false,
-            DocumentSourceType.S3,
+            SourceTypes.S3,
             null,
             "https://minio.intern.example:9000",
             null,
@@ -177,11 +176,7 @@ class S3IndexingExecutorTest {
   private void stored(String filePath, String marker) {
     Document document =
         new Document(
-            filePath.substring(filePath.lastIndexOf('/') + 1),
-            filePath,
-            PDF,
-            10L,
-            DocumentSourceType.S3);
+            filePath.substring(filePath.lastIndexOf('/') + 1), filePath, PDF, 10L, SourceTypes.S3);
     document.setStatus(DocumentStatus.INDEXED);
     document.setLastModifiedRemote(marker);
     storedDocuments.add(document);
@@ -211,7 +206,7 @@ class S3IndexingExecutorTest {
     verify(cleanupService)
         .reconcile(
             eq(library),
-            eq(DocumentSourceType.S3),
+            eq(SourceTypes.S3),
             sets.capture(),
             sets.capture(),
             any(),
@@ -226,7 +221,7 @@ class S3IndexingExecutorTest {
 
   @Test
   void servesS3WithTheFullModeOnly() {
-    assertThat(executor.sourceType()).isEqualTo(IndexingSourceType.S3);
+    assertThat(executor.sourceType()).isEqualTo(SourceTypes.S3);
     assertThat(executor.runModes())
         .containsEntry(IndexingRunMode.FULL, VanishedDocumentPolicy.REMOVE_ON_ABSENCE)
         .hasSize(2);
@@ -255,7 +250,7 @@ class S3IndexingExecutorTest {
                 .file()
                 .at("s3://dokumente/2025/q1/protokoll-1.pdf")
                 .named("protokoll-1.pdf")
-                .from(DocumentSourceType.S3)
+                .from(SourceTypes.S3)
                 .withContext(new SourceDocumentContext("dokumente", "q1"))
                 .marked(markerOf("dokumente", "2025/q1/protokoll-1.pdf"))
                 .sized(4)
@@ -832,7 +827,7 @@ class S3IndexingExecutorTest {
             null,
             UUID.randomUUID(),
             false,
-            DocumentSourceType.S3,
+            SourceTypes.S3,
             null,
             "https://minio.intern.example:9000",
             null,
@@ -1223,7 +1218,7 @@ class S3IndexingExecutorTest {
     Document gone = storedDocuments.get(1);
     Document attachment =
         new Document(
-            "anlage.txt", "s3://dokumente/2025/weg.pdf#1", "text/plain", 1L, DocumentSourceType.S3);
+            "anlage.txt", "s3://dokumente/2025/weg.pdf#1", "text/plain", 1L, SourceTypes.S3);
     when(documentRepository.findByParentDocumentId(gone.getId())).thenReturn(List.of(attachment));
     UUID jobId = UUID.randomUUID();
 

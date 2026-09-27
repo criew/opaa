@@ -1,7 +1,7 @@
 package io.opaa.indexing.source;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.common.ValidationException;
+import io.opaa.knowledge.SourceType;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.ProxyAndCredentials;
 import java.io.IOException;
@@ -37,7 +37,7 @@ public final class ConnectorChecks {
    * address, {@code sourcePath} is forbidden.
    */
   public static void validateUrlBasedConfiguration(
-      DocumentSourceType sourceType, String sourcePath, String sourceUrl) {
+      SourceType sourceType, String sourcePath, String sourceUrl) {
     if (sourceUrl == null) {
       throw new ValidationException(
           "sourceUrl ist erforderlich, wenn sourceType " + sourceType + " ist");
@@ -53,7 +53,7 @@ public final class ConnectorChecks {
    * The same rule for a connection test, with the test's own wording for a missing address; returns
    * the trimmed address.
    */
-  public static String requireHttpUrl(DocumentSourceType sourceType, SourceSettings settings) {
+  public static String requireHttpUrl(SourceType sourceType, SourceSettings settings) {
     String sourceUrl = blankToNull(settings.sourceUrl());
     if (sourceUrl == null) {
       throw new ValidationException("sourceUrl ist erforderlich");

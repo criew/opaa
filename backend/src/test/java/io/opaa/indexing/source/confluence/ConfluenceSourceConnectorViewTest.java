@@ -3,11 +3,10 @@ package io.opaa.indexing.source.confluence;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
-import io.opaa.api.types.ConfluenceEdition;
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.indexing.source.confluence.webhook.ConfluenceWebhookService;
 import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.test.SourceTypes;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -29,7 +28,7 @@ class ConfluenceSourceConnectorViewTest {
         null,
         UUID.randomUUID(),
         false,
-        DocumentSourceType.CONFLUENCE,
+        SourceTypes.CONFLUENCE,
         null,
         "https://wiki.example.org",
         null,

@@ -1,6 +1,5 @@
 package io.opaa.knowledge;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import java.time.Instant;
 import java.util.Collection;
@@ -83,7 +82,7 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
    * (libraryId, sourceType)} pair, the candidate set a completed connector run checks against its
    * own freshly discovered {@code filePath}s to find what vanished from the source.
    */
-  List<Document> findByLibraryIdAndSourceType(UUID libraryId, DocumentSourceType sourceType);
+  List<Document> findByLibraryIdAndSourceType(UUID libraryId, SourceType sourceType);
 
   /**
    * Backs {@code io.opaa.knowledge.LibraryFolderService#deleteFolder}: every document directly
@@ -352,10 +351,16 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   @Query(
       "update Document d set d.status = io.opaa.api.types.DocumentStatus.FAILED, d.errorMessage ="
           + " :errorMessage where d.status = io.opaa.api.types.DocumentStatus.PENDING and"
-          + " d.sourceType = io.opaa.api.types.DocumentSourceType.UPLOAD and d.createdAt <"
+          + " d.sourceType = :sourceType and d.createdAt <"
           + " :threshold")
-  int failStalePending(
-      @Param("errorMessage") String errorMessage, @Param("threshold") Instant threshold);
+  int failStalePendingOfType(
+      @Param("sourceType") SourceType sourceType,
+      @Param("errorMessage") String errorMessage,
+      @Param("threshold") Instant threshold);
+
+  default int failStalePending(String errorMessage, Instant threshold) {
+    return failStalePendingOfType(SourceType.UPLOAD, errorMessage, threshold);
+  }
 
   /**
    * The {@code file_path} of every row of {@code libraryId}, whatever its status, source type or

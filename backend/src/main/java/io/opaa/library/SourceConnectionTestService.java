@@ -2,7 +2,6 @@ package io.opaa.library;
 
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.Capability;
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
@@ -16,6 +15,7 @@ import io.opaa.indexing.source.SourceSettings;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
+import io.opaa.knowledge.SourceType;
 import io.opaa.permission.CapabilityService;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -88,10 +88,11 @@ public class SourceConnectionTestService {
     if (request.libraryId() == null) {
       capabilityService.requireCapability(caller, Capability.CREATE_CONNECTOR_LIBRARY);
     }
-    DocumentSourceType sourceType = request.sourceType();
+    SourceType sourceType = request.sourceType();
     if (sourceType == null) {
       throw new ValidationException("sourceType ist erforderlich");
     }
+    SourceConnector connector = connectors.connector(sourceType);
     SourceSettings settings =
         new SourceSettings(
             request.sourcePath(),
@@ -99,18 +100,20 @@ public class SourceConnectionTestService {
             request.sourceProxy(),
             request.sourceCredentials(),
             Boolean.TRUE.equals(request.sourceInsecureSsl()),
-            request.connectorSettings());
+            request.connectorSettings() == null
+                ? null
+                : connector.readSettings(request.connectorSettings()));
     ConnectorData stored = null;
     if (request.libraryId() != null) {
       KnowledgeLibrary library = requireManagedLibrary(request.libraryId(), caller);
-      if (library.getSourceType() != sourceType) {
+      if (!sourceType.equals(library.getSourceType())) {
         throw new ValidationException(
             "sourceType passt nicht zum gespeicherten Quellentyp dieser Bibliothek");
       }
       settings = withStoredCredentialsIfOmitted(settings, library);
       stored = ConnectorData.storedIn(library);
     }
-    return connectors.connector(sourceType).testConnection(settings, stored);
+    return connector.testConnection(settings, stored);
   }
 
   /**
@@ -127,7 +130,13 @@ public class SourceConnectionTestService {
     if (request.sourceUrl() == null) {
       throw new ValidationException("sourceUrl ist erforderlich");
     }
-    SourceBrowser browser = connectors.browser(request.sourceType());
+    SourceBrowser browser =
+        connectors
+            .browser(request.sourceType())
+            .orElseThrow(
+                () ->
+                    new ValidationException(
+                        "Für sourceType " + request.sourceType() + " gibt es keine Auflistung"));
     SourceSettings settings =
         new SourceSettings(
             null,
@@ -139,7 +148,7 @@ public class SourceConnectionTestService {
     ConnectorData stored = null;
     if (request.libraryId() != null) {
       KnowledgeLibrary library = requireManagedLibrary(request.libraryId(), caller);
-      if (library.getSourceType() != request.sourceType()) {
+      if (!request.sourceType().equals(library.getSourceType())) {
         throw new ValidationException(browser.otherTypeMessage());
       }
       settings = withStoredCredentialsIfOmitted(settings, library);

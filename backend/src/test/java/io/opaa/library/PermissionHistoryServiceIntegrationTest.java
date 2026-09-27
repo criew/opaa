@@ -7,7 +7,6 @@ import io.opaa.api.types.AssetGrantSubjectType;
 import io.opaa.api.types.AssetOwnerType;
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.DirectorySyncOutcome;
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.GroupKind;
 import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.api.types.PermissionTransferScope;
@@ -40,6 +39,7 @@ import io.opaa.group.sync.SyncReport;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
+import io.opaa.knowledge.SourceType;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.permission.AssetAccessService;
@@ -58,6 +58,7 @@ import io.opaa.permission.PermissionTransferOrder;
 import io.opaa.permission.PermissionTransferService;
 import io.opaa.test.FakeDirectoryClient;
 import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.SourceTypes;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.time.Instant;
@@ -242,7 +243,7 @@ class PermissionHistoryServiceIntegrationTest {
   private UUID createLibrary(UUID ownerId) {
     LibraryDetail response =
         libraryService.createLibrary(
-            libraryCreation("Bibliothek", DocumentSourceType.UPLOAD)
+            libraryCreation("Bibliothek", SourceType.UPLOAD)
                 .ownerType(AssetOwnerType.USER)
                 .ownerId(ownerId)
                 .build(),
@@ -254,7 +255,7 @@ class PermissionHistoryServiceIntegrationTest {
   private UUID createFilesystemLibrary(UUID ownerId) {
     LibraryDetail response =
         libraryService.createLibrary(
-            libraryCreation("Bibliothek", DocumentSourceType.FILESYSTEM)
+            libraryCreation("Bibliothek", SourceTypes.FILESYSTEM)
                 .ownerType(AssetOwnerType.USER)
                 .ownerId(ownerId)
                 .sourcePath("/data/dokumente")

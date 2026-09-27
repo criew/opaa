@@ -7,7 +7,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.MetadataOrigin;
 import io.opaa.api.types.SystemRole;
@@ -26,6 +25,7 @@ import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.organization.Organization;
 import io.opaa.test.OpaaMockedChatModelIntegrationTest;
 import io.opaa.test.OpaaTestDirectory;
+import io.opaa.test.SourceTypes;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -105,7 +105,7 @@ class ModelMetadataExtractionIntegrationTest {
                 null,
                 userId,
                 false,
-                DocumentSourceType.FILESYSTEM,
+                SourceTypes.FILESYSTEM,
                 classTempDir.toString(),
                 null,
                 null,

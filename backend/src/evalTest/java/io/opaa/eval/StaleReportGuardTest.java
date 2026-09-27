@@ -83,7 +83,7 @@ class StaleReportGuardTest {
             .build(),
         mock(ChatNoteExtractionService.class),
         new ChatNoteProperties(10),
-        new IndexingProperties(1000, 200, 50, null, null, null, null, 0),
+        new IndexingProperties(1000, 200, 50, null, null, null, 0),
         UUID.randomUUID(),
         LoggerFactory.getLogger(StaleReportGuardTest.class));
 

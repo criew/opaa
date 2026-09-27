@@ -1,9 +1,9 @@
 package io.opaa.library;
 
-import io.opaa.api.types.ConfluenceEdition;
-import io.opaa.api.types.DocumentSourceType;
+import io.opaa.indexing.source.confluence.ConfluenceEdition;
 import io.opaa.indexing.source.confluence.ConfluenceSpaceSelection;
 import io.opaa.indexing.source.s3.S3SourceSettings;
+import io.opaa.knowledge.SourceType;
 import java.net.URI;
 import java.util.List;
 
@@ -17,7 +17,7 @@ public final class LibraryUpdateBuilder {
   private final String name;
   private String description;
   private Boolean listed;
-  private DocumentSourceType sourceType;
+  private SourceType sourceType;
   private String sourcePath;
   private URI sourceUrl;
   private String sourceProxy;
@@ -47,7 +47,7 @@ public final class LibraryUpdateBuilder {
     return this;
   }
 
-  public LibraryUpdateBuilder sourceType(DocumentSourceType sourceType) {
+  public LibraryUpdateBuilder sourceType(SourceType sourceType) {
     this.sourceType = sourceType;
     return this;
   }
@@ -114,7 +114,7 @@ public final class LibraryUpdateBuilder {
         sourceCredentials,
         sourceInsecureSsl,
         schedule,
-        FlatSourceSettingsFixture.of(
+        TestSourceSettings.of(
             confluenceEdition, confluenceSpaces, confluenceFullSyncIntervalDays, s3Settings));
   }
 }

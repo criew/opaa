@@ -1,6 +1,5 @@
 package io.opaa.indexing.maintenance;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.job.IndexingEventCategory;
@@ -10,6 +9,7 @@ import io.opaa.indexing.source.VanishedDocumentPolicy;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.SourceType;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -60,7 +60,7 @@ public class StaleDocumentCleanupService {
    */
   public int reconcile(
       KnowledgeLibrary library,
-      DocumentSourceType sourceType,
+      SourceType sourceType,
       Set<String> currentPaths,
       Set<String> reprocessedPaths,
       IndexingRunEventRecorder events,
@@ -88,7 +88,7 @@ public class StaleDocumentCleanupService {
    */
   public int cleanupVanished(
       KnowledgeLibrary library,
-      DocumentSourceType sourceType,
+      SourceType sourceType,
       Set<String> currentFilePaths,
       IndexingRunEventRecorder events,
       SourceIndexingExecutor executor,
@@ -109,7 +109,7 @@ public class StaleDocumentCleanupService {
    * guard makes loud instead of letting it empty an index.
    */
   private static void requireRemoveOnAbsence(
-      DocumentSourceType sourceType, SourceIndexingExecutor executor, IndexingRunMode runMode) {
+      SourceType sourceType, SourceIndexingExecutor executor, IndexingRunMode runMode) {
     VanishedDocumentPolicy policy = executor.runModes().get(runMode);
     if (policy != VanishedDocumentPolicy.REMOVE_ON_ABSENCE) {
       throw new IllegalStateException(
@@ -123,7 +123,7 @@ public class StaleDocumentCleanupService {
     }
   }
 
-  private static void logEmptyBestand(KnowledgeLibrary library, DocumentSourceType sourceType) {
+  private static void logEmptyBestand(KnowledgeLibrary library, SourceType sourceType) {
     log.info(
         "Skipping stale-document cleanup for library {} ({}) - this run's own bestand is empty,"
             + " which is not distinguishable here from an unreachable or misconfigured source",
@@ -165,7 +165,7 @@ public class StaleDocumentCleanupService {
    */
   private int removeVanished(
       KnowledgeLibrary library,
-      DocumentSourceType sourceType,
+      SourceType sourceType,
       Set<String> currentFilePaths,
       List<Document> existing,
       IndexingRunEventRecorder events) {

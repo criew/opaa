@@ -5,7 +5,6 @@ import static org.awaitility.Awaitility.await;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.api.types.SystemRole;
@@ -21,6 +20,7 @@ import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
 import io.opaa.s3.S3TestFixture;
 import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.SourceTypes;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -101,7 +101,7 @@ class S3EventPathIntegrationTest {
             null,
             userId,
             false,
-            DocumentSourceType.S3,
+            SourceTypes.S3,
             null,
             store.endpoint().toString(),
             null,
@@ -119,7 +119,7 @@ class S3EventPathIntegrationTest {
   void tearDown() {
     if (library != null) {
       List<Document> documents =
-          documentRepository.findByLibraryIdAndSourceType(library.getId(), DocumentSourceType.S3);
+          documentRepository.findByLibraryIdAndSourceType(library.getId(), SourceTypes.S3);
       documents.stream()
           .sorted(Comparator.comparingInt((Document d) -> d.getFilePath().length()).reversed())
           .forEach(
@@ -154,7 +154,7 @@ class S3EventPathIntegrationTest {
             + "\"}}}]}";
     mockMvc
         .perform(
-            post("/api/v1/libraries/{id}/s3-events", library.getId())
+            post("/api/v1/libraries/{id}/push", library.getId())
                 .header("Authorization", "Bearer " + TOKEN)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body))
@@ -198,14 +198,14 @@ class S3EventPathIntegrationTest {
     // first value must not authenticate a request that also carries a wrong one
     mockMvc
         .perform(
-            post("/api/v1/libraries/{id}/s3-events", library.getId())
+            post("/api/v1/libraries/{id}/push", library.getId())
                 .header("X-OPAA-Webhook-Secret", TOKEN, "falsch")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"Records\":[]}"))
         .andExpect(status().isUnauthorized());
     mockMvc
         .perform(
-            post("/api/v1/libraries/{id}/s3-events", library.getId())
+            post("/api/v1/libraries/{id}/push", library.getId())
                 .header("X-OPAA-Webhook-Secret", TOKEN)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"Records\":[]}"))
@@ -263,8 +263,7 @@ class S3EventPathIntegrationTest {
 
     IndexingJob run = awaitRuns(1);
     assertThat(run.getDocumentsProcessed()).isEqualTo(1);
-    assertThat(
-            documentRepository.findByLibraryIdAndSourceType(library.getId(), DocumentSourceType.S3))
+    assertThat(documentRepository.findByLibraryIdAndSourceType(library.getId(), SourceTypes.S3))
         .extracting(Document::getFilePath)
         .containsExactly(S3FullSync.filePath(bucket, "eigen.txt"));
 

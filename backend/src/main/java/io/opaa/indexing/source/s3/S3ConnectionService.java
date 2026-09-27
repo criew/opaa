@@ -86,7 +86,7 @@ public class S3ConnectionService {
       S3SourceSettings settings)
       throws InterruptedException {
     if (settings == null) {
-      throw new ValidationException("s3Settings sind für den Verbindungstest erforderlich");
+      throw new ValidationException("sourceSettings sind für den Verbindungstest erforderlich");
     }
     URI endpoint = normalizeEndpoint(rawUrl);
     ProxyAndCredentials proxyConfig = parseProxy(proxy);

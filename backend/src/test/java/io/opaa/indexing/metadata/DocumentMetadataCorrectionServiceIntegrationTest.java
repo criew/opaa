@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.DatePrecision;
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.MetadataOrigin;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
@@ -27,6 +26,7 @@ import io.opaa.permission.AssetGrantRepository;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OpaaTestDirectory;
 import io.opaa.test.OwnLibraryFixtures;
+import io.opaa.test.SourceTypes;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -525,7 +525,7 @@ class DocumentMetadataCorrectionServiceIntegrationTest {
             null,
             owner.id(),
             false,
-            DocumentSourceType.FILESYSTEM,
+            SourceTypes.FILESYSTEM,
             sourcePath.toString(),
             null,
             null,

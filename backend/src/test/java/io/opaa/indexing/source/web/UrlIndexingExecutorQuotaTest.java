@@ -15,7 +15,6 @@ import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.indexing.attachment.AttachmentAccess;
 import io.opaa.indexing.attachment.AttachmentOutcome;
@@ -34,6 +33,7 @@ import io.opaa.knowledge.LibraryStorageQuotaService;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.SourceRequestPolicy;
 import io.opaa.test.ProductionDocumentFormats;
+import io.opaa.test.SourceTypes;
 import java.io.IOException;
 import java.net.http.HttpClient;
 import java.nio.charset.StandardCharsets;
@@ -87,7 +87,7 @@ class UrlIndexingExecutorQuotaTest {
             null,
             UUID.randomUUID(),
             false,
-            DocumentSourceType.HTTP_DIRECTORY,
+            SourceTypes.HTTP_DIRECTORY,
             null,
             "https://example.com/docs/",
             null,
@@ -138,7 +138,7 @@ class UrlIndexingExecutorQuotaTest {
             DocumentIngests.that()
                 .file()
                 .in(library)
-                .from(DocumentSourceType.HTTP_DIRECTORY)
+                .from(SourceTypes.HTTP_DIRECTORY)
                 .foundOn(null)
                 .childOf(null)
                 .match(),

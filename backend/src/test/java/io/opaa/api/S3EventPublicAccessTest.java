@@ -11,9 +11,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.auth.OidcSecurityConfig;
-import io.opaa.auth.S3EventSecurityConfig;
+import io.opaa.auth.PushIntakeSecurityConfig;
 import io.opaa.auth.UserService;
 import io.opaa.common.UnauthorizedException;
 import io.opaa.indexing.source.SourceConnectorRegistry;
@@ -23,9 +22,14 @@ import io.opaa.indexing.source.s3.S3ConnectionService;
 import io.opaa.indexing.source.s3.S3OriginalAccess;
 import io.opaa.indexing.source.s3.S3SourceConnector;
 import io.opaa.indexing.source.s3.events.S3EventService;
+import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.library.PushIntakeService;
+import io.opaa.test.SourceTypes;
 import jakarta.servlet.http.HttpServletRequest;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -49,10 +53,11 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
  * is no JWT, and the resource server's bearer filter would answer 401 before the endpoint ever ran
  * - the token check must be the intake's own. The authenticated neighbours stay closed.
  */
-@WebMvcTest(controllers = S3EventController.class)
+@WebMvcTest(controllers = PushIntakeController.class)
 @Import({
   OidcSecurityConfig.class,
-  S3EventSecurityConfig.class,
+  PushIntakeSecurityConfig.class,
+  PushIntakeService.class,
   S3EventPublicAccessTest.CorsStub.class
 })
 @ActiveProfiles("oidc")
@@ -75,18 +80,35 @@ class S3EventPublicAccessTest {
   @Autowired private MockMvc mockMvc;
   @MockitoBean private S3EventService eventService;
   @MockitoBean private SourceConnectorRegistry connectors;
+  @MockitoBean private KnowledgeLibraryRepository libraryRepository;
 
   /** The real connector in front of the mocked service, so its header mapping is covered. */
   @BeforeEach
   void wireTheConnector() {
-    when(connectors.pushIntakeHandler(DocumentSourceType.S3))
+    when(libraryRepository.findById(any()))
         .thenReturn(
-            new S3SourceConnector(
-                mock(S3ConnectionService.class),
-                mock(S3ClientFactory.class),
-                mock(SourceSyncStateRepository.class),
-                mock(S3OriginalAccess.class),
-                eventService));
+            Optional.of(
+                KnowledgeLibrary.ownedByUser(
+                    UUID.randomUUID(),
+                    "Quelle",
+                    null,
+                    UUID.randomUUID(),
+                    false,
+                    SourceTypes.S3,
+                    null,
+                    "https://quelle.example.org",
+                    null,
+                    null,
+                    false)));
+    when(connectors.pushIntakeHandler(SourceTypes.S3))
+        .thenReturn(
+            Optional.of(
+                new S3SourceConnector(
+                    mock(S3ConnectionService.class),
+                    mock(S3ClientFactory.class),
+                    mock(SourceSyncStateRepository.class),
+                    mock(S3OriginalAccess.class),
+                    eventService)));
   }
 
   @MockitoBean private UserService userService;
@@ -100,7 +122,7 @@ class S3EventPublicAccessTest {
 
     mockMvc
         .perform(
-            post("/api/v1/libraries/" + libraryId + "/s3-events")
+            post("/api/v1/libraries/" + libraryId + "/push")
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("Authorization", "Bearer minio-auth-token")
                 .content(BODY))
@@ -119,7 +141,7 @@ class S3EventPublicAccessTest {
 
     mockMvc
         .perform(
-            post("/api/v1/libraries/" + libraryId + "/s3-events")
+            post("/api/v1/libraries/" + libraryId + "/push")
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("X-OPAA-Webhook-Secret", "falsch")
                 .content(BODY))
@@ -129,12 +151,12 @@ class S3EventPublicAccessTest {
 
   @Test
   void anOversizedBodyIsRefusedBeforeItReachesTheIntake() throws Exception {
-    byte[] oversized = new byte[ConfluenceWebhookController.MAX_BODY_BYTES + 1];
+    byte[] oversized = new byte[PushIntakeController.MAX_BODY_BYTES + 1];
     Arrays.fill(oversized, (byte) ' ');
 
     mockMvc
         .perform(
-            post("/api/v1/libraries/" + UUID.randomUUID() + "/s3-events")
+            post("/api/v1/libraries/" + UUID.randomUUID() + "/push")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(oversized))
         .andExpect(status().isPayloadTooLarge());
@@ -146,14 +168,14 @@ class S3EventPublicAccessTest {
   void theTokenEndpointAndTheIndexingTriggerStayClosedWithoutCredentials() throws Exception {
     UUID libraryId = UUID.randomUUID();
     mockMvc
-        .perform(post("/api/v1/libraries/" + libraryId + "/s3-events-token"))
+        .perform(post("/api/v1/libraries/" + libraryId + "/push-secret"))
         .andExpect(status().isUnauthorized());
     mockMvc
         .perform(post("/api/v1/libraries/" + libraryId + "/indexing"))
         .andExpect(status().isUnauthorized());
     // a GET on the intake path is not the intake: the own chain matches POST only
     mockMvc
-        .perform(get("/api/v1/libraries/" + libraryId + "/s3-events"))
+        .perform(get("/api/v1/libraries/" + libraryId + "/push"))
         .andExpect(status().isUnauthorized());
   }
 }

@@ -13,7 +13,6 @@ import com.jayway.jsonpath.JsonPath;
 import io.opaa.api.types.AssetOwnerType;
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.AuditEventType;
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.DevAuthFilter;
@@ -25,7 +24,7 @@ import io.opaa.externalaccess.ExternalAccessSettingsService;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
-import io.opaa.library.ConnectorSettingsRequest;
+import io.opaa.knowledge.SourceType;
 import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.library.LibraryCreation;
 import io.opaa.library.LibraryExternalAccessService;
@@ -160,13 +159,13 @@ class ExternalAccessTokenIntegrationTest {
                 AssetOwnerType.USER,
                 user.getId(),
                 false,
-                DocumentSourceType.UPLOAD,
+                SourceType.UPLOAD,
                 null,
                 null,
                 null,
                 null,
                 null,
-                ConnectorSettingsRequest.NONE,
+                null,
                 null),
             CurrentUser.of(user.getId(), user.getOrganizationId(), user.getSystemRole(), name))
         .library()

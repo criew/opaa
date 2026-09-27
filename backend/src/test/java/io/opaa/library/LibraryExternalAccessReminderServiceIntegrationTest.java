@@ -11,7 +11,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.AssetOwnerType;
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.GroupKind;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
@@ -23,6 +22,7 @@ import io.opaa.group.GroupMembership;
 import io.opaa.group.GroupRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.knowledge.SourceType;
 import io.opaa.mail.MailService;
 import io.opaa.mail.MailTemplateKey;
 import io.opaa.mail.SendResult;
@@ -281,7 +281,7 @@ class LibraryExternalAccessReminderServiceIntegrationTest {
   private UUID createLibrary(UUID ownerId) {
     return libraryService
         .createLibrary(
-            libraryCreation("Bibliothek", DocumentSourceType.UPLOAD)
+            libraryCreation("Bibliothek", SourceType.UPLOAD)
                 .ownerType(AssetOwnerType.USER)
                 .ownerId(ownerId)
                 .build(),
@@ -310,7 +310,7 @@ class LibraryExternalAccessReminderServiceIntegrationTest {
     createdGroupIds.add(group.getId());
     return libraryService
         .createLibrary(
-            libraryCreation("Bibliothek", DocumentSourceType.UPLOAD)
+            libraryCreation("Bibliothek", SourceType.UPLOAD)
                 .ownerType(AssetOwnerType.GROUP)
                 .ownerId(group.getId())
                 .build(),

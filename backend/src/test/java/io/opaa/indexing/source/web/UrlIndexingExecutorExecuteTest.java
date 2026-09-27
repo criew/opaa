@@ -18,7 +18,6 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.sun.net.httpserver.HttpServer;
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.indexing.document.DocumentIngestResult;
 import io.opaa.indexing.document.DocumentIngestService;
@@ -40,6 +39,7 @@ import io.opaa.sourceaccess.ProxyAndCredentials;
 import io.opaa.sourceaccess.RateLimitPolicy;
 import io.opaa.sourceaccess.SourceRequestPolicy;
 import io.opaa.test.ProductionDocumentFormats;
+import io.opaa.test.SourceTypes;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
@@ -91,7 +91,7 @@ class UrlIndexingExecutorExecuteTest {
           null,
           UUID.randomUUID(),
           false,
-          DocumentSourceType.HTTP_DIRECTORY,
+          SourceTypes.HTTP_DIRECTORY,
           null,
           null,
           null,
@@ -367,7 +367,7 @@ class UrlIndexingExecutorExecuteTest {
             DocumentIngests.that()
                 .file()
                 .in(library)
-                .from(DocumentSourceType.HTTP_DIRECTORY)
+                .from(SourceTypes.HTTP_DIRECTORY)
                 .foundOn(null)
                 .childOf(null)
                 .match(),
@@ -382,7 +382,7 @@ class UrlIndexingExecutorExecuteTest {
                 .file()
                 .named("bescheid.csv")
                 .in(library)
-                .from(DocumentSourceType.HTTP_DIRECTORY)
+                .from(SourceTypes.HTTP_DIRECTORY)
                 .foundOn(null)
                 .childOf(null)
                 .match(),
@@ -443,7 +443,7 @@ class UrlIndexingExecutorExecuteTest {
             DocumentIngests.that()
                 .file()
                 .in(library)
-                .from(DocumentSourceType.HTTP_DIRECTORY)
+                .from(SourceTypes.HTTP_DIRECTORY)
                 .foundOn(null)
                 .childOf(null)
                 .match(),
@@ -458,7 +458,7 @@ class UrlIndexingExecutorExecuteTest {
                 .file()
                 .named("outlook-mail-mit-pdf-anhang.msg")
                 .in(library)
-                .from(DocumentSourceType.HTTP_DIRECTORY)
+                .from(SourceTypes.HTTP_DIRECTORY)
                 .foundOn(null)
                 .childOf(null)
                 .match(),
@@ -534,7 +534,7 @@ class UrlIndexingExecutorExecuteTest {
             DocumentIngests.that()
                 .file()
                 .in(library)
-                .from(DocumentSourceType.HTTP_DIRECTORY)
+                .from(SourceTypes.HTTP_DIRECTORY)
                 .foundOn(null)
                 .childOf(null)
                 .match(),
@@ -551,7 +551,7 @@ class UrlIndexingExecutorExecuteTest {
                 .file()
                 .named("klein.txt")
                 .in(library)
-                .from(DocumentSourceType.HTTP_DIRECTORY)
+                .from(SourceTypes.HTTP_DIRECTORY)
                 .foundOn(null)
                 .childOf(null)
                 .match(),
@@ -614,7 +614,7 @@ class UrlIndexingExecutorExecuteTest {
             DocumentIngests.that()
                 .file()
                 .in(library)
-                .from(DocumentSourceType.HTTP_DIRECTORY)
+                .from(SourceTypes.HTTP_DIRECTORY)
                 .foundOn(null)
                 .childOf(null)
                 .match(),
@@ -626,7 +626,7 @@ class UrlIndexingExecutorExecuteTest {
     verify(staleDocumentCleanupService, timeout(5000))
         .reconcile(
             eq(library),
-            eq(DocumentSourceType.HTTP_DIRECTORY),
+            eq(SourceTypes.HTTP_DIRECTORY),
             eq(Set.of(baseUrl + "/files/bericht.txt")),
             eq(Set.of(baseUrl + "/files/bericht.txt")),
             any(),
@@ -655,7 +655,7 @@ class UrlIndexingExecutorExecuteTest {
             DocumentIngests.that()
                 .file()
                 .in(library)
-                .from(DocumentSourceType.HTTP_DIRECTORY)
+                .from(SourceTypes.HTTP_DIRECTORY)
                 .foundOn(null)
                 .childOf(null)
                 .match(),
@@ -694,7 +694,7 @@ class UrlIndexingExecutorExecuteTest {
             DocumentIngests.that()
                 .file()
                 .in(library)
-                .from(DocumentSourceType.HTTP_DIRECTORY)
+                .from(SourceTypes.HTTP_DIRECTORY)
                 .foundOn(null)
                 .childOf(null)
                 .match(),
@@ -728,7 +728,7 @@ class UrlIndexingExecutorExecuteTest {
     verify(staleDocumentCleanupService, timeout(5000))
         .reconcile(
             eq(library),
-            eq(DocumentSourceType.HTTP_DIRECTORY),
+            eq(SourceTypes.HTTP_DIRECTORY),
             eq(Set.of()),
             eq(Set.of()),
             any(),
@@ -755,7 +755,7 @@ class UrlIndexingExecutorExecuteTest {
             DocumentIngests.that()
                 .file()
                 .in(library)
-                .from(DocumentSourceType.HTTP_DIRECTORY)
+                .from(SourceTypes.HTTP_DIRECTORY)
                 .foundOn(null)
                 .childOf(null)
                 .match(),

@@ -2,7 +2,6 @@ package io.opaa.indexing.maintenance;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.api.types.SystemRole;
@@ -24,12 +23,14 @@ import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.knowledge.SourceType;
 import io.opaa.knowledge.UploadProperties;
 import io.opaa.knowledge.UploadStoreUnavailableException;
 import io.opaa.organization.Organization;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OpaaTestDirectory;
 import io.opaa.test.OwnLibraryFixtures;
+import io.opaa.test.SourceTypes;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -116,7 +117,7 @@ class PipelineReindexServiceIntegrationTest {
                 null,
                 userId,
                 false,
-                DocumentSourceType.FILESYSTEM,
+                SourceTypes.FILESYSTEM,
                 classTempDir.toString(),
                 null,
                 null,
@@ -462,7 +463,7 @@ class PipelineReindexServiceIntegrationTest {
   }
 
   private Document persistedRssFeedDocument(String title, String url) {
-    Document document = new Document(title, url, "text/html", 1024L, DocumentSourceType.RSS_FEED);
+    Document document = new Document(title, url, "text/html", 1024L, SourceTypes.RSS_FEED);
     document.setLibraryId(library.getId());
     document.setOrganizationId(Organization.DEFAULT_ID);
     document.setChecksum("checksum-rss");
@@ -486,7 +487,11 @@ class PipelineReindexServiceIntegrationTest {
     }
     Document document =
         new Document(
-            fileName, file.toAbsolutePath().toString(), "application/pdf", Files.size(file));
+            fileName,
+            file.toAbsolutePath().toString(),
+            "application/pdf",
+            Files.size(file),
+            SourceTypes.FILESYSTEM);
     document.setLibraryId(library.getId());
     document.setOrganizationId(Organization.DEFAULT_ID);
     document.setChecksum("checksum-" + fileName);
@@ -645,7 +650,11 @@ class PipelineReindexServiceIntegrationTest {
     Files.writeString(file, content.repeat(30));
     Document document =
         new Document(
-            fileName, file.toAbsolutePath().toString(), "application/pdf", Files.size(file));
+            fileName,
+            file.toAbsolutePath().toString(),
+            "application/pdf",
+            Files.size(file),
+            SourceTypes.FILESYSTEM);
     document.setLibraryId(library.getId());
     document.setOrganizationId(Organization.DEFAULT_ID);
     document.setChecksum("checksum-" + fileName);
@@ -772,8 +781,7 @@ class PipelineReindexServiceIntegrationTest {
     Files.createDirectories(managedDirectory);
     Path file = managedDirectory.resolve(UUID.randomUUID() + "-" + fileName);
     Files.writeString(file, "Ein hochgeladener Vermerk über Verwaltungsgebühren. ".repeat(20));
-    return persistedDocumentPointingAt(
-        fileName, file, DocumentSourceType.UPLOAD, uploadLibrary.getId());
+    return persistedDocumentPointingAt(fileName, file, SourceType.UPLOAD, uploadLibrary.getId());
   }
 
   /** The production service with one collaborator replaced, without touching the bean itself. */
@@ -854,8 +862,7 @@ class PipelineReindexServiceIntegrationTest {
     Path outside = Files.createTempDirectory("outside-allowlist").resolve("geheim.txt");
     Files.writeString(outside, "Inhalt außerhalb des konfigurierten Verzeichnisses. ".repeat(20));
     Document document =
-        persistedDocumentPointingAt(
-            "geheim.txt", outside, DocumentSourceType.FILESYSTEM, library.getId());
+        persistedDocumentPointingAt("geheim.txt", outside, SourceTypes.FILESYSTEM, library.getId());
     seedChunk(document.getId(), "alter chunk", null, null);
 
     PipelineReindexResult result = reindexBatch(10);
@@ -888,7 +895,7 @@ class PipelineReindexServiceIntegrationTest {
                 null,
                 userId,
                 false,
-                DocumentSourceType.FILESYSTEM,
+                SourceTypes.FILESYSTEM,
                 withdrawnDirectory.toString(),
                 null,
                 null,
@@ -896,7 +903,7 @@ class PipelineReindexServiceIntegrationTest {
                 false));
     Document document =
         persistedDocumentPointingAt(
-            "satzung.txt", file, DocumentSourceType.FILESYSTEM, withdrawnLibrary.getId());
+            "satzung.txt", file, SourceTypes.FILESYSTEM, withdrawnLibrary.getId());
     seedChunk(document.getId(), withdrawnLibrary.getId(), "alter chunk", null, null);
 
     PipelineReindexResult result = reindexBatch(10);
@@ -919,8 +926,7 @@ class PipelineReindexServiceIntegrationTest {
     Path file = managedDirectory.resolve(UUID.randomUUID() + "-vermerk.txt");
     Files.writeString(file, "Ein hochgeladener Vermerk über Verwaltungsgebühren. ".repeat(20));
     Document document =
-        persistedDocumentPointingAt(
-            "vermerk.txt", file, DocumentSourceType.UPLOAD, uploadLibrary.getId());
+        persistedDocumentPointingAt("vermerk.txt", file, SourceType.UPLOAD, uploadLibrary.getId());
     seedChunk(document.getId(), uploadLibrary.getId(), "veralteter chunk", null, null);
 
     PipelineReindexResult result = reindexBatch(10);
@@ -938,8 +944,7 @@ class PipelineReindexServiceIntegrationTest {
     Path outside = Files.createTempDirectory("outside-upload-storage").resolve("fremd.txt");
     Files.writeString(outside, "Nicht von diesem Dienst geschrieben. ".repeat(20));
     Document document =
-        persistedDocumentPointingAt(
-            "fremd.txt", outside, DocumentSourceType.UPLOAD, uploadLibrary.getId());
+        persistedDocumentPointingAt("fremd.txt", outside, SourceType.UPLOAD, uploadLibrary.getId());
     seedChunk(document.getId(), uploadLibrary.getId(), "alter chunk", null, null);
 
     PipelineReindexResult result = reindexBatch(10);
@@ -990,7 +995,7 @@ class PipelineReindexServiceIntegrationTest {
         jobId,
         library,
         IndexingRunMode.FULL,
-        DocumentSourceType.HTTP_DIRECTORY,
+        SourceTypes.HTTP_DIRECTORY,
         new IndexingRunProgress(jobService, jobId),
         new IndexingRunEventRecorder(
             org.mockito.Mockito.mock(IndexingRunEventRepository.class), jobService, jobId),
@@ -1064,7 +1069,7 @@ class PipelineReindexServiceIntegrationTest {
     Files.write(emlFile, DefaultMessageWriter.asBytes(message));
     Document mailDocument =
         persistedDocumentPointingAt(
-            "anfrage.eml", emlFile, DocumentSourceType.FILESYSTEM, library.getId());
+            "anfrage.eml", emlFile, SourceTypes.FILESYSTEM, library.getId());
     seedChunk(
         mailDocument.getId(),
         "alter Mail-Chunk mit eingebettetem Anhang",
@@ -1112,13 +1117,14 @@ class PipelineReindexServiceIntegrationTest {
     Files.write(emlFile, DefaultMessageWriter.asBytes(message));
     Document mailDocument =
         persistedDocumentPointingAt(
-            "bescheid.eml", emlFile, DocumentSourceType.FILESYSTEM, library.getId());
+            "bescheid.eml", emlFile, SourceTypes.FILESYSTEM, library.getId());
     Document attachmentDocument =
         new Document(
             "anlage.pdf",
             emlFile.toAbsolutePath() + "/0/anlage.pdf",
             "application/pdf",
-            (long) pdfBytes.length);
+            (long) pdfBytes.length,
+            SourceTypes.FILESYSTEM);
     attachmentDocument.setLibraryId(library.getId());
     attachmentDocument.setOrganizationId(Organization.DEFAULT_ID);
     // The genuine checksum of the attachment bytes, as a real indexing run would have stored it -
@@ -1180,14 +1186,14 @@ class PipelineReindexServiceIntegrationTest {
     Files.write(emlFile, DefaultMessageWriter.asBytes(message));
     Document mailDocument =
         persistedDocumentPointingAt(
-            "bescheid.eml", emlFile, DocumentSourceType.UPLOAD, uploadLibrary.getId());
+            "bescheid.eml", emlFile, SourceType.UPLOAD, uploadLibrary.getId());
     Document attachmentDocument =
         new Document(
             "anlage.pdf",
             emlFile.toAbsolutePath() + "/0/anlage.pdf",
             "application/pdf",
             (long) pdfBytes.length,
-            DocumentSourceType.UPLOAD);
+            SourceType.UPLOAD);
     attachmentDocument.setLibraryId(uploadLibrary.getId());
     attachmentDocument.setOrganizationId(Organization.DEFAULT_ID);
     attachmentDocument.setChecksum(new ChecksumService().computeSha256(pdfBytes));
@@ -1225,7 +1231,7 @@ class PipelineReindexServiceIntegrationTest {
             "https://example.test/mail.eml/0/anlage.pdf",
             "application/pdf",
             1024L,
-            DocumentSourceType.HTTP_DIRECTORY);
+            SourceTypes.HTTP_DIRECTORY);
     attachment.setLibraryId(library.getId());
     attachment.setOrganizationId(Organization.DEFAULT_ID);
     attachment.setChecksum("checksum-attachment");
@@ -1275,11 +1281,16 @@ class PipelineReindexServiceIntegrationTest {
     Files.write(emlFile, DefaultMessageWriter.asBytes(message));
     Document mailDocument =
         persistedDocumentPointingAt(
-            "geaendert.eml", emlFile, DocumentSourceType.FILESYSTEM, library.getId());
+            "geaendert.eml", emlFile, SourceTypes.FILESYSTEM, library.getId());
     // The row was created for the mail's FORMER attachment at index 0 (b.pdf) - its checksum
     // belongs to bytes that today's index 0 no longer carries.
     Document attachmentDocument =
-        new Document("b.pdf", emlFile.toAbsolutePath() + "/0/b.pdf", "application/pdf", 1024L);
+        new Document(
+            "b.pdf",
+            emlFile.toAbsolutePath() + "/0/b.pdf",
+            "application/pdf",
+            1024L,
+            SourceTypes.FILESYSTEM);
     attachmentDocument.setLibraryId(library.getId());
     attachmentDocument.setOrganizationId(Organization.DEFAULT_ID);
     attachmentDocument.setChecksum(
@@ -1336,7 +1347,12 @@ class PipelineReindexServiceIntegrationTest {
     Path file = classTempDir.resolve(UUID.randomUUID() + "-" + fileName);
     Files.writeString(file, content.repeat(20));
     Document document =
-        new Document(fileName, file.toAbsolutePath().toString(), "text/plain", Files.size(file));
+        new Document(
+            fileName,
+            file.toAbsolutePath().toString(),
+            "text/plain",
+            Files.size(file),
+            SourceTypes.FILESYSTEM);
     document.setLibraryId(library.getId());
     document.setOrganizationId(Organization.DEFAULT_ID);
     document.setChecksum("checksum-" + fileName);
@@ -1344,8 +1360,7 @@ class PipelineReindexServiceIntegrationTest {
   }
 
   private Document persistedDocumentPointingAt(
-      String fileName, Path file, DocumentSourceType sourceType, UUID libraryId)
-      throws IOException {
+      String fileName, Path file, SourceType sourceType, UUID libraryId) throws IOException {
     Document document =
         new Document(
             fileName, file.toAbsolutePath().toString(), "text/plain", Files.size(file), sourceType);
@@ -1357,8 +1372,7 @@ class PipelineReindexServiceIntegrationTest {
 
   private Document persistedRemoteDocument(String url) {
     Document document =
-        new Document(
-            "satzung.pdf", url, "application/pdf", 1024L, DocumentSourceType.HTTP_DIRECTORY);
+        new Document("satzung.pdf", url, "application/pdf", 1024L, SourceTypes.HTTP_DIRECTORY);
     document.setLibraryId(library.getId());
     document.setOrganizationId(Organization.DEFAULT_ID);
     document.setChecksum("checksum-remote");
@@ -1368,7 +1382,7 @@ class PipelineReindexServiceIntegrationTest {
   /** A Confluence page row as the full sync writes it: identity URL, version as marker. */
   private Document persistedConfluenceDocument(String url) {
     Document document =
-        new Document("Abschnitt 1.1", url, "text/html", 1024L, DocumentSourceType.CONFLUENCE);
+        new Document("Abschnitt 1.1", url, "text/html", 1024L, SourceTypes.CONFLUENCE);
     document.setLibraryId(library.getId());
     document.setOrganizationId(Organization.DEFAULT_ID);
     document.setChecksum("checksum-remote");

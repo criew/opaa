@@ -88,22 +88,20 @@ public class RateLimitConfiguration {
     String indexingTriggerPattern = "^/api/v1/libraries/([^/]+)/indexing$";
     // No capture group here (unlike the indexing trigger above): these probes carry no library -
     // there is none yet - so the per-IP limiter is keyed by the client alone. The alternation is
-    // non-capturing on purpose: a capturing group would give each path its own bucket and double
-    // the outbound probe budget. The Confluence space listing (ADR-0023) and the S3 bucket
-    // listing (ADR-0027) are the same kind of synchronous outbound probe as the connection test
-    // and share its limit.
-    String sourceTestPattern = "^/api/v1/libraries/(?:source-test|confluence/spaces|s3/buckets)$";
+    // non-capturing on purpose: a capturing group would give each path its own bucket and multiply
+    // the outbound probe budget. The listing of a source before it is saved is the same kind of
+    // synchronous outbound probe as the connection test and shares its limit.
+    String sourceTestPattern = "^/api/v1/(?:libraries/source-test|source-types/[^/]+/browse)$";
     // #748 review, finding 1: a flat pattern, mirroring source-test above rather than the
     // per-library indexing trigger's capture group - unlike triggering an indexing run, "Im
     // Dokument öffnen" is a routine per-document click any VIEWER can make on any document, so
     // keying the limiter by document id would let the same caller bypass the limit simply by
     // clicking a different document each time.
     String documentContentPattern = "^/api/v1/documents/[^/]+/content$";
-    // #1140: the webhook intakes are the only POSTs under /api/v1 reachable without a session. The
-    // capture group keys the per-IP limiter by library, like the indexing trigger: one instance
-    // notifying several libraries is several senders, not one.
-    // ADR-0027, Entscheidung 6: the S3 event intake shares the pot - same posture, same limits.
-    String webhookPattern = "^/api/v1/libraries/([^/]+)/(?:confluence-webhook|s3-events)$";
+    // The push intake is the only POST under /api/v1 reachable without a session. The capture
+    // group keys the per-IP limiter by library, like the indexing trigger: one source notifying
+    // several libraries is several senders, not one.
+    String webhookPattern = "^/api/v1/libraries/([^/]+)/push$";
 
     List<Rule> rules = new ArrayList<>();
     rules.add(rule("query", "^/api/v1/query", properties.query()));

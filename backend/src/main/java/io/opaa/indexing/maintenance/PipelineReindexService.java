@@ -1,6 +1,5 @@
 package io.opaa.indexing.maintenance;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.indexing.attachment.AttachmentAccess;
 import io.opaa.indexing.attachment.StandaloneAttachmentAccess;
 import io.opaa.indexing.chunk.FullTextChunkStore;
@@ -243,7 +242,7 @@ public class PipelineReindexService {
       return Advance.ORPHAN_REMOVED;
     }
     Document document = found.get();
-    if (StoredDocumentSourceAccess.isRemote(document)) {
+    if (sourceAccess.isRemote(document)) {
       // Never deletes the row itself (ADR-0022, Entscheidung 3): this only clears the change
       // markers a future connector run consults, which then re-processes the entry through the
       // executor's own update-in-place path if its content actually changed - so an RSS entry's
@@ -349,12 +348,12 @@ public class PipelineReindexService {
 
   /**
    * The {@link AttachmentAccess} a re-index hands to {@link DocumentIngestService#ingest} so
-   * attachments a re-run pipeline discovers reach the generalized attachment path - FILESYSTEM and
-   * UPLOAD, the two source types whose files this machine can re-read. There is no job here, so
-   * events are only logged and no progress counted.
+   * attachments a re-run pipeline discovers reach the generalized attachment path - only for a
+   * document whose file this machine can re-read. There is no job here, so events are only logged
+   * and no progress counted.
    */
-  private static AttachmentAccess attachmentAccessFor(Document document, KnowledgeLibrary library) {
-    if (StoredDocumentSourceAccess.isRemote(document)) {
+  private AttachmentAccess attachmentAccessFor(Document document, KnowledgeLibrary library) {
+    if (sourceAccess.isRemote(document)) {
       return null;
     }
     return new StandaloneAttachmentAccess(library, "Pipeline re-index");
@@ -387,13 +386,12 @@ public class PipelineReindexService {
   }
 
   /**
-   * The SQL literal list of every {@link DocumentSourceType} whose file this machine can re-read -
-   * derived from the enum, so a new source type is never missed here.
+   * The SQL literal list of every source type whose file this machine can re-read, from the
+   * connector registry - a key has the form {@code [A-Z][A-Z0-9_]*}, so it is safe as a literal.
    */
-  static String localSourceTypeSqlList() {
-    return java.util.Arrays.stream(DocumentSourceType.values())
-        .filter(type -> !type.isRemote())
-        .map(type -> "'" + type.name() + "'")
+  String localSourceTypeSqlList() {
+    return sourceAccess.localSourceTypes().stream()
+        .map(type -> "'" + type.key() + "'")
         .collect(Collectors.joining(", "));
   }
 

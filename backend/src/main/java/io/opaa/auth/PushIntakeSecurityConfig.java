@@ -13,23 +13,23 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 
 /**
- * The security chain of the S3 event intake (ADR-0027, Entscheidung 6), in every profile: ordered
- * before the {@code oidc} and {@code dev} chains and matching only {@code POST
- * /api/v1/libraries/*}/s3-events}. It carries no resource server, no session and no CSRF - an
- * object store authenticates with the library's event token as {@code Authorization: Bearer}, and
- * the resource server's bearer filter of the {@code oidc} chain would reject that token as a
- * malformed JWT before the endpoint ever ran. Checking the token is the endpoint's own job ({@code
- * S3EventService#accept}); nothing is readable through this path.
+ * The security chain of the push intake (ADR-0027, Entscheidung 6; ADR-0038), in every profile:
+ * ordered before the {@code oidc} and {@code dev} chains and matching only {@code POST
+ * /api/v1/libraries/*}/push}. It carries no resource server, no session and no CSRF - an object
+ * store authenticates with the library's push secret as {@code Authorization: Bearer}, and the
+ * resource server's bearer filter of the {@code oidc} chain would reject that secret as a malformed
+ * JWT before the endpoint ever ran. Checking the secret is the connector's own job; nothing is
+ * readable through this path.
  */
 @Configuration
-public class S3EventSecurityConfig {
+public class PushIntakeSecurityConfig {
 
   @Bean
   @Order(Ordered.HIGHEST_PRECEDENCE + 10)
-  SecurityFilterChain s3EventSecurityFilterChain(HttpSecurity http) throws Exception {
+  SecurityFilterChain pushIntakeSecurityFilterChain(HttpSecurity http) throws Exception {
     return http.securityMatcher(
             PathPatternRequestMatcher.withDefaults()
-                .matcher(HttpMethod.POST, "/api/v1/libraries/*/s3-events"))
+                .matcher(HttpMethod.POST, "/api/v1/libraries/*/push"))
         .csrf(AbstractHttpConfigurer::disable)
         .cors(Customizer.withDefaults())
         .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

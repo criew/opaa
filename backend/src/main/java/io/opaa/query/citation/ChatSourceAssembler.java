@@ -12,6 +12,7 @@ import io.opaa.indexing.metadata.CitationMetadataReader;
 import io.opaa.indexing.metadata.CoreMetadata;
 import io.opaa.indexing.metadata.DocumentMetadataService;
 import io.opaa.indexing.metadata.MetadataFilter;
+import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.query.SearchedLibraryRef;
@@ -56,12 +57,15 @@ public class ChatSourceAssembler {
   private final DocumentMetadataService documentMetadataService;
   private final CitationMetadataReader citationMetadataReader;
   private final KnowledgeLibraryRepository knowledgeLibraryRepository;
+  private final SourceConnectorRegistry connectors;
 
   public ChatSourceAssembler(
       DocumentRepository documentRepository,
       DocumentMetadataService documentMetadataService,
       CitationMetadataReader citationMetadataReader,
-      KnowledgeLibraryRepository knowledgeLibraryRepository) {
+      KnowledgeLibraryRepository knowledgeLibraryRepository,
+      SourceConnectorRegistry connectors) {
+    this.connectors = connectors;
     this.documentRepository = documentRepository;
     this.documentMetadataService = documentMetadataService;
     this.citationMetadataReader = citationMetadataReader;
@@ -261,9 +265,11 @@ public class ChatSourceAssembler {
                           .indexedAt(indexedAt)
                           .documentId(parseDocumentId(documentId))
                           .sourceType(
-                              sourceDocument != null ? sourceDocument.getSourceType() : null)
+                              sourceDocument != null && sourceDocument.getSourceType() != null
+                                  ? sourceDocument.getSourceType().key()
+                                  : null)
                           .sourceUrl(
-                              sourceDocument != null ? sourceDocument.getDeepLinkSourceUrl() : null)
+                              sourceDocument != null ? connectors.deepLink(sourceDocument) : null)
                           .sourceEntryUrl(sourceEntryUrl)
                           .citationValid(citationValid)
                           .chunkLocations(chunkLocationOf(chunk))

@@ -1,7 +1,6 @@
 package io.opaa.knowledge;
 
 import io.opaa.api.types.AssetOwnerType;
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.ExternalAccessState;
 import io.opaa.asset.Asset;
 import io.opaa.permission.AssetType;
@@ -118,9 +117,8 @@ public class KnowledgeLibrary extends Asset {
    * can change after creation via {@link #updateSourceConfiguration} and {@link
    * #updateSourceSettings}.
    */
-  @Enumerated(EnumType.STRING)
-  @Column(name = "source_type", nullable = false, length = 20)
-  private DocumentSourceType sourceType;
+  @Column(name = "source_type", nullable = false, length = SourceType.MAX_LENGTH)
+  private SourceType sourceType;
 
   @Column(name = "source_path", length = 2000)
   private String sourcePath;
@@ -171,10 +169,9 @@ public class KnowledgeLibrary extends Asset {
 
   /**
    * Whether this library's indexing runs are triggered automatically on a schedule (#485) - always
-   * {@code false} for {@code UPLOAD} (no run exists for it at all, {@link
-   * DocumentSourceType#UPLOAD}) and enforced by {@code chk_knowledge_libraries_schedule} (migration
-   * 051) alongside {@link #scheduleCron}. See {@link #updateSchedule} for how the pair changes
-   * together.
+   * {@code false} for {@code UPLOAD} (no run exists for it at all, {@link SourceType#UPLOAD}) and
+   * enforced by {@code chk_knowledge_libraries_schedule} (migration 051) alongside {@link
+   * #scheduleCron}. See {@link #updateSchedule} for how the pair changes together.
    */
   @Column(name = "schedule_enabled", nullable = false)
   private boolean scheduleEnabled;
@@ -242,7 +239,7 @@ public class KnowledgeLibrary extends Asset {
       UUID ownerUserId,
       UUID ownerGroupId,
       boolean listed,
-      DocumentSourceType sourceType,
+      SourceType sourceType,
       String sourcePath,
       String sourceUrl,
       String sourceProxy,
@@ -267,8 +264,8 @@ public class KnowledgeLibrary extends Asset {
 
   /**
    * Convenience overload for callers that do not care about the quellentyp - defaults to {@link
-   * DocumentSourceType#UPLOAD} with no configuration, the type every library predating ADR-0018 has
-   * after migration 027's backfill.
+   * SourceType#UPLOAD} with no configuration, the type every library predating ADR-0018 has after
+   * migration 027's backfill.
    */
   public static KnowledgeLibrary ownedByUser(
       UUID organizationId, String name, String description, UUID ownerUserId, boolean listed) {
@@ -278,7 +275,7 @@ public class KnowledgeLibrary extends Asset {
         description,
         ownerUserId,
         listed,
-        DocumentSourceType.UPLOAD,
+        SourceType.UPLOAD,
         null,
         null,
         null,
@@ -292,7 +289,7 @@ public class KnowledgeLibrary extends Asset {
       String description,
       UUID ownerUserId,
       boolean listed,
-      DocumentSourceType sourceType,
+      SourceType sourceType,
       String sourcePath,
       String sourceUrl,
       String sourceProxy,
@@ -316,7 +313,7 @@ public class KnowledgeLibrary extends Asset {
 
   /**
    * Convenience overload for callers that do not care about the quellentyp - defaults to {@link
-   * DocumentSourceType#UPLOAD} with no configuration, mirroring the no-config overload of {@link
+   * SourceType#UPLOAD} with no configuration, mirroring the no-config overload of {@link
    * #ownedByUser(UUID, String, String, UUID, boolean)}.
    */
   public static KnowledgeLibrary ownedByGroup(
@@ -327,7 +324,7 @@ public class KnowledgeLibrary extends Asset {
         description,
         ownerGroupId,
         listed,
-        DocumentSourceType.UPLOAD,
+        SourceType.UPLOAD,
         null,
         null,
         null,
@@ -341,7 +338,7 @@ public class KnowledgeLibrary extends Asset {
       String description,
       UUID ownerGroupId,
       boolean listed,
-      DocumentSourceType sourceType,
+      SourceType sourceType,
       String sourcePath,
       String sourceUrl,
       String sourceProxy,
@@ -517,7 +514,7 @@ public class KnowledgeLibrary extends Asset {
     this.externalAccessReminderSentAt = null;
   }
 
-  public DocumentSourceType getSourceType() {
+  public SourceType getSourceType() {
     return sourceType;
   }
 

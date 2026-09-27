@@ -1,6 +1,5 @@
 package io.opaa.indexing.source.confluence;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.indexing.attachment.AttachmentIndexer;
 import io.opaa.indexing.document.DocumentIngest;
@@ -13,7 +12,6 @@ import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
 import io.opaa.indexing.source.IndexingRun;
 import io.opaa.indexing.source.IndexingRunFailedException;
 import io.opaa.indexing.source.IndexingRunTemplate;
-import io.opaa.indexing.source.IndexingSourceType;
 import io.opaa.indexing.source.ListingOutcome;
 import io.opaa.indexing.source.SourceIndexingExecutor;
 import io.opaa.indexing.source.SourceSyncState;
@@ -23,6 +21,7 @@ import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.SourceDocumentContext;
+import io.opaa.knowledge.SourceType;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -37,7 +36,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
 
 /**
- * Executes indexing runs for {@link IndexingSourceType#CONFLUENCE} (ADR-0023). A full sync lists
+ * Executes indexing runs for {@link ConfluenceSourceConnector#TYPE} (ADR-0023). A full sync lists
  * every selected space completely (identifiers, titles and versions, no body), visits each page
  * ({@link #visitPage}), and reports a complete listing so the run frame reconciles. An incremental
  * run asks CQL for what changed since the anchor, a webhook run fetches exactly the reported pages;
@@ -109,8 +108,8 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
   }
 
   @Override
-  public IndexingSourceType sourceType() {
-    return IndexingSourceType.CONFLUENCE;
+  public SourceType sourceType() {
+    return ConfluenceSourceConnector.TYPE;
   }
 
   @Override
@@ -563,7 +562,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
       DocumentIngestResult result =
           documentIngestService.ingest(
               DocumentIngest.text(run.library, pagePath, storageBody)
-                  .sourceType(DocumentSourceType.CONFLUENCE)
+                  .sourceType(ConfluenceSourceConnector.TYPE)
                   .title(page.title())
                   .context(pageContext)
                   .changeMarker(version)

@@ -1,7 +1,5 @@
 package io.opaa.indexing;
 
-import io.opaa.indexing.attachment.AttachmentProfile;
-import io.opaa.indexing.format.file.html.HtmlContentRoots;
 import io.opaa.indexing.job.JobStatus;
 import java.time.Duration;
 import java.util.List;
@@ -26,9 +24,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     (see that parameter's Javadoc for the actual sizing formula, which is not simply this value).
  * @param threadPool thread pool settings for async indexing. Defaults (core=2, max=4, queue=20) are
  *     conservative values suitable for typical single-server deployments.
- * @param rss settings governing {@code IndexingSourceType#RSS_FEED} runs - obergrenzen and
- *     politeness settings the executor must apply against feed operators it does not control (see
- *     {@link Rss}'s own Javadoc).
  * @param staleJobTimeout how long a run may stay {@link JobStatus#RUNNING} before {@code
  *     IndexingJobRecoveryScheduler} treats it as orphaned and fails it, even without an application
  *     restart - see {@code IndexingJobService#recoverStaleJobs}. Default 4 hours: generous enough
@@ -61,7 +56,6 @@ public record IndexingProperties(
     int chunkOverlap,
     int batchSize,
     ThreadPool threadPool,
-    Rss rss,
     Duration staleJobTimeout,
     TargetValidation targetValidation,
     int embeddingConcurrency) {
@@ -95,9 +89,6 @@ public record IndexingProperties(
     if (threadPool == null) {
       threadPool = new ThreadPool(2, 4, 20);
     }
-    if (rss == null) {
-      rss = new Rss(200, 10_485_760L, 5_242_880L, 1000L, null, null, 0, 0L);
-    }
     if (staleJobTimeout == null) {
       staleJobTimeout = Duration.ofHours(4);
     }
@@ -128,84 +119,6 @@ public record IndexingProperties(
       }
       if (queueCapacity < 0) {
         queueCapacity = 20;
-      }
-    }
-  }
-
-  /**
-   * Politeness and DoS-hardening settings for {@code IndexingSourceType#RSS_FEED} runs. The
-   * addresses an RSS run touches - the feed itself and every entry's detail page - come from the
-   * feed operator, not from OPAA's own configuration; {@code RssFeedParser} deliberately does not
-   * enforce any of these limits itself (it is a pure, unbounded parser meant to run without network
-   * or database), so the executor that drives it is the only place left to apply them. The {@code
-   * User-Agent} and the {@code 429} tolerance are {@link SourceHttpProperties}', shared with every
-   * other connector.
-   *
-   * @param maxEntries the maximum number of feed entries processed in a single run. Excess entries
-   *     are logged and dropped, not treated as an error.
-   * @param maxFeedSizeBytes the maximum number of bytes read from the feed itself before parsing
-   *     aborts. Enforced while streaming the response, not after it has already been fully
-   *     downloaded - the parser has no cap of its own.
-   * @param maxPageSizeBytes the maximum number of bytes read from a single entry's detail page. A
-   *     page exceeding this is skipped like any other rejection by the remote end, not treated as a
-   *     run-ending failure.
-   * @param requestDelayMs the minimum delay, in milliseconds, between two detail-page requests -
-   *     being a well-behaved crawler against sites OPAA does not operate. Default 1000: a
-   *     conservative one request per second.
-   * @param mainContentSelector the CSS selector (Jsoup syntax) used to find a detail page's main
-   *     content, tried against the whole document ({@code HtmlContentRoots}). Falls back to {@code
-   *     body} when it matches nothing, so an unusual page still yields the full page rather than
-   *     nothing at all.
-   * @param attachmentProfile the {@link AttachmentProfile} deciding which links on a detail page
-   *     count as attachments. Defaults to {@link AttachmentProfile#GENERIC}. This is deliberately
-   *     an application property, not a per-request field on {@code IndexingTriggerRequest} -
-   *     ADR-0018 already moves persistent source configuration from the trigger request onto the
-   *     knowledge library.
-   * @param maxAttachmentsPerEntry the maximum number of attachments downloaded per RSS entry.
-   *     Excess candidates are logged and dropped, not treated as an error - mirrors {@link
-   *     #maxEntries}'s truncation-not-failure treatment.
-   * @param maxAttachmentSizeBytes the maximum number of bytes read from a single attachment.
-   *     Enforced while streaming the response, not after it has already been fully downloaded
-   *     (mirrors {@link #maxPageSizeBytes}).
-   */
-  public record Rss(
-      int maxEntries,
-      long maxFeedSizeBytes,
-      long maxPageSizeBytes,
-      long requestDelayMs,
-      String mainContentSelector,
-      AttachmentProfile attachmentProfile,
-      int maxAttachmentsPerEntry,
-      long maxAttachmentSizeBytes) {
-
-    /** The HTML pipeline's own choice, so a file and a feed page are reduced the same way. */
-    static final String DEFAULT_MAIN_CONTENT_SELECTOR =
-        HtmlContentRoots.DEFAULT_MAIN_CONTENT_SELECTOR;
-
-    public Rss {
-      if (maxEntries <= 0) {
-        maxEntries = 200;
-      }
-      if (maxFeedSizeBytes <= 0) {
-        maxFeedSizeBytes = 10_485_760L; // 10 MiB
-      }
-      if (maxPageSizeBytes <= 0) {
-        maxPageSizeBytes = 5_242_880L; // 5 MiB
-      }
-      if (requestDelayMs < 0) {
-        requestDelayMs = 1000L;
-      }
-      if (mainContentSelector == null || mainContentSelector.isBlank()) {
-        mainContentSelector = DEFAULT_MAIN_CONTENT_SELECTOR;
-      }
-      if (attachmentProfile == null) {
-        attachmentProfile = AttachmentProfile.GENERIC;
-      }
-      if (maxAttachmentsPerEntry <= 0) {
-        maxAttachmentsPerEntry = 10;
-      }
-      if (maxAttachmentSizeBytes <= 0) {
-        maxAttachmentSizeBytes = 20_971_520L; // 20 MiB
       }
     }
   }

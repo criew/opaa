@@ -7,14 +7,16 @@ import io.opaa.api.dto.BulkDocumentDeleteFailure;
 import io.opaa.api.dto.BulkDocumentDeleteResponse;
 import io.opaa.api.dto.LibraryDocumentPageResponse;
 import io.opaa.api.dto.LibraryDocumentResponse;
-import io.opaa.api.types.DocumentSourceType;
+import io.opaa.indexing.source.SourceConnectorStubs;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.LibraryFolder;
 import io.opaa.knowledge.SourceDocumentContext;
+import io.opaa.knowledge.SourceType;
 import io.opaa.library.BulkDocumentDeletion;
 import io.opaa.library.LibraryDocumentEntry;
 import io.opaa.library.LibraryDocumentPage;
 import io.opaa.library.LibraryFolderChild;
+import io.opaa.test.SourceTypes;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -37,7 +39,7 @@ class LibraryDocumentResponseMapperTest {
             "https://example.gov/dl/anlage.pdf",
             "application/pdf",
             2048L,
-            DocumentSourceType.RSS_FEED);
+            SourceTypes.RSS_FEED);
     document.setSourceEntryUrl("https://example.gov/aktuelles/dienstanweisung-2024");
 
     LibraryDocumentResponse response = LibraryDocumentResponseMapper.toResponse(document);
@@ -56,7 +58,7 @@ class LibraryDocumentResponseMapperTest {
             "https://wiki.example/pages/viewpage.action?pageId=42",
             "text/html",
             2048L,
-            DocumentSourceType.CONFLUENCE);
+            SourceTypes.CONFLUENCE);
     document.applySourceContext(
         new SourceDocumentContext("IT", "Betriebshandbuch / Kapitel 1 — Netzwerkbetrieb"));
 
@@ -75,7 +77,7 @@ class LibraryDocumentResponseMapperTest {
             "/data/dienstanweisung-2024.pdf",
             "application/pdf",
             2048L,
-            DocumentSourceType.UPLOAD);
+            SourceType.UPLOAD);
 
     LibraryDocumentResponse response = LibraryDocumentResponseMapper.toResponse(document);
 
@@ -91,7 +93,7 @@ class LibraryDocumentResponseMapperTest {
             "/data/dienstanweisung-2024.pdf",
             "application/pdf",
             2048L,
-            DocumentSourceType.UPLOAD);
+            SourceType.UPLOAD);
 
     LibraryDocumentResponse response = LibraryDocumentResponseMapper.toResponse(document);
 
@@ -108,9 +110,9 @@ class LibraryDocumentResponseMapperTest {
             "https://example.gov/verzeichnis/dienstanweisung-2024.pdf",
             "application/pdf",
             2048L,
-            DocumentSourceType.HTTP_DIRECTORY);
+            SourceTypes.HTTP_DIRECTORY);
 
-    LibraryDocumentResponse response = LibraryDocumentResponseMapper.toResponse(document);
+    LibraryDocumentResponse response = LibraryDocumentResponseMapper.toResponse(listed(document));
 
     assertThat(response.getSourceUrl())
         .isEqualTo("https://example.gov/verzeichnis/dienstanweisung-2024.pdf");
@@ -128,9 +130,9 @@ class LibraryDocumentResponseMapperTest {
             "https://example.gov/feed/rundschreiben.pdf",
             "application/pdf",
             2048L,
-            DocumentSourceType.RSS_FEED);
+            SourceTypes.RSS_FEED);
 
-    LibraryDocumentResponse response = LibraryDocumentResponseMapper.toResponse(document);
+    LibraryDocumentResponse response = LibraryDocumentResponseMapper.toResponse(listed(document));
 
     assertThat(response.getSourceUrl()).isEqualTo("https://example.gov/feed/rundschreiben.pdf");
   }
@@ -144,9 +146,9 @@ class LibraryDocumentResponseMapperTest {
             "/data/dienstanweisung-2024.pdf",
             "application/pdf",
             2048L,
-            DocumentSourceType.UPLOAD);
+            SourceType.UPLOAD);
 
-    LibraryDocumentResponse response = LibraryDocumentResponseMapper.toResponse(document);
+    LibraryDocumentResponse response = LibraryDocumentResponseMapper.toResponse(listed(document));
 
     assertThat(response.getSourceUrl()).isNull();
   }
@@ -163,15 +165,11 @@ class LibraryDocumentResponseMapperTest {
             "/mail/posteingang.eml/0/anlage.pdf",
             "application/pdf",
             2048L,
-            DocumentSourceType.UPLOAD);
+            SourceType.UPLOAD);
     attachment.setParentDocumentId(parentId);
     Document topLevel =
         new Document(
-            "posteingang.eml",
-            "/mail/posteingang.eml",
-            "message/rfc822",
-            4096L,
-            DocumentSourceType.UPLOAD);
+            "posteingang.eml", "/mail/posteingang.eml", "message/rfc822", 4096L, SourceType.UPLOAD);
 
     assertThat(LibraryDocumentResponseMapper.toResponse(attachment).getParentDocumentId())
         .isEqualTo(parentId);
@@ -185,11 +183,7 @@ class LibraryDocumentResponseMapperTest {
   void toResponseFromADocumentEntryCarriesTheResolvedFolderPathThrough() {
     Document document =
         new Document(
-            "protokoll.pdf",
-            "/data/protokoll.pdf",
-            "application/pdf",
-            1024L,
-            DocumentSourceType.UPLOAD);
+            "protokoll.pdf", "/data/protokoll.pdf", "application/pdf", 1024L, SourceType.UPLOAD);
     LibraryDocumentEntry entry = new LibraryDocumentEntry(document, "Protokolle/2026");
 
     LibraryDocumentResponse response = LibraryDocumentResponseMapper.toResponse(entry);
@@ -203,8 +197,7 @@ class LibraryDocumentResponseMapperTest {
   @Test
   void toResponseFromADocumentEntryLeavesFolderPathNullForTheLibrarysRoot() {
     Document document =
-        new Document(
-            "wurzel.pdf", "/data/wurzel.pdf", "application/pdf", 512L, DocumentSourceType.UPLOAD);
+        new Document("wurzel.pdf", "/data/wurzel.pdf", "application/pdf", 512L, SourceType.UPLOAD);
     LibraryDocumentEntry entry = new LibraryDocumentEntry(document, null);
 
     assertThat(LibraryDocumentResponseMapper.toResponse(entry).getFolderPath()).isNull();
@@ -218,11 +211,7 @@ class LibraryDocumentResponseMapperTest {
     LibraryFolder year = new LibraryFolder(libraryId, root.getId(), "2026", organizationId);
     Document document =
         new Document(
-            "sitzung.pdf",
-            "/data/sitzung.pdf",
-            "application/pdf",
-            2048L,
-            DocumentSourceType.UPLOAD);
+            "sitzung.pdf", "/data/sitzung.pdf", "application/pdf", 2048L, SourceType.UPLOAD);
     LibraryDocumentEntry entry = new LibraryDocumentEntry(document, "Protokolle/2026");
     LibraryFolderChild folderChild = new LibraryFolderChild(year, 3L);
     LibraryDocumentPage page =
@@ -298,5 +287,11 @@ class LibraryDocumentResponseMapperTest {
 
     assertThat(response.getDeletedDocumentIds()).isEmpty();
     assertThat(response.getFailures()).isEmpty();
+  }
+
+  /** A list entry as the library service builds it, the deep link from the document's connector. */
+  private static LibraryDocumentEntry listed(Document document) {
+    return new LibraryDocumentEntry(
+        document, null, SourceConnectorStubs.registry().deepLink(document));
   }
 }

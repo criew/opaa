@@ -6,7 +6,6 @@ import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.api.types.SystemRole;
@@ -27,6 +26,7 @@ import io.opaa.test.OpaaMockedChatModelIntegrationTest;
 import io.opaa.test.OpaaTestDirectory;
 import io.opaa.test.OwnLibraryFixtures;
 import io.opaa.test.OwnOrganizationFixtures;
+import io.opaa.test.SourceTypes;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -141,7 +141,7 @@ class DocumentIndexingIntegrationTest {
                 null,
                 userId,
                 false,
-                DocumentSourceType.FILESYSTEM,
+                SourceTypes.FILESYSTEM,
                 classTempDir.toAbsolutePath().toString(),
                 null,
                 null,
@@ -330,7 +330,7 @@ class DocumentIndexingIntegrationTest {
                 null,
                 userId,
                 false,
-                DocumentSourceType.FILESYSTEM,
+                SourceTypes.FILESYSTEM,
                 classTempDir.toAbsolutePath().toString(),
                 null,
                 null,
@@ -759,7 +759,7 @@ class DocumentIndexingIntegrationTest {
                 null,
                 userId,
                 false,
-                DocumentSourceType.FILESYSTEM,
+                SourceTypes.FILESYSTEM,
                 classTempDir.toAbsolutePath().toString(),
                 null,
                 null,
@@ -959,7 +959,7 @@ class DocumentIndexingIntegrationTest {
                 null,
                 userId,
                 false,
-                DocumentSourceType.FILESYSTEM,
+                SourceTypes.FILESYSTEM,
                 OpaaTestDirectory.OUTSIDE_ALLOWLIST_DIR
                     .resolve("opaa-484")
                     .toAbsolutePath()
@@ -1123,7 +1123,7 @@ class DocumentIndexingIntegrationTest {
                 null,
                 ownerId,
                 false,
-                DocumentSourceType.FILESYSTEM,
+                SourceTypes.FILESYSTEM,
                 libraryDir.toAbsolutePath().toString(),
                 null,
                 null,

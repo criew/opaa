@@ -1,8 +1,8 @@
 package io.opaa.library;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.auth.CurrentUser;
 import io.opaa.indexing.source.ConnectorData;
+import io.opaa.knowledge.SourceType;
 import java.net.URI;
 import java.util.UUID;
 
@@ -17,7 +17,7 @@ import java.util.UUID;
  *     - with {@code libraryId} the connector decides whether the stored ones stand in
  */
 public record SourceConnectionTest(
-    DocumentSourceType sourceType,
+    SourceType sourceType,
     String sourcePath,
     URI sourceUrl,
     String sourceProxy,

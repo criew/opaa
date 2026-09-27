@@ -1,6 +1,5 @@
 package io.opaa.indexing.source.rss;
 
-import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.source.IndexingRunFailedException;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedStreams;
@@ -36,14 +35,14 @@ class FeedFetcher {
   private final TargetAddressValidator targetAddressValidator;
   private final RssFeedStateRepository feedStateRepository;
   private final RssFeedParser feedParser;
-  private final IndexingProperties.Rss properties;
+  private final RssFeedProperties properties;
   private final SourceRequestPolicy requestPolicy;
 
   FeedFetcher(
       TargetAddressValidator targetAddressValidator,
       RssFeedStateRepository feedStateRepository,
       RssFeedParser feedParser,
-      IndexingProperties.Rss properties,
+      RssFeedProperties properties,
       SourceRequestPolicy requestPolicy) {
     this.targetAddressValidator = targetAddressValidator;
     this.feedStateRepository = feedStateRepository;

@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
-import io.opaa.api.types.DocumentSourceType;
+import io.opaa.test.SourceTypes;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -259,7 +259,7 @@ class FilesystemUploadedOriginalStoreTest {
             libraryDirectory().resolve("egal.txt").toString(),
             "text/plain",
             10L,
-            DocumentSourceType.FILESYSTEM);
+            SourceTypes.FILESYSTEM);
     filesystemDocument.setLibraryId(libraryId);
     filesystemDocument.setOrganizationId(organizationId);
 
@@ -276,7 +276,7 @@ class FilesystemUploadedOriginalStoreTest {
             libraryDirectory().resolve("bescheid.pdf").toString(),
             "application/pdf",
             10L,
-            DocumentSourceType.UPLOAD);
+            SourceType.UPLOAD);
     upload.setLibraryId(libraryId);
 
     assertThat(UploadedOriginalRef.of(upload)).isEmpty();

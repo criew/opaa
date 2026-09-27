@@ -856,7 +856,7 @@ class ChatServiceIntegrationTest {
     assertThat(source.getCited()).isTrue();
     assertThat(source.getIndexedAt()).isEqualTo(Instant.parse("2025-01-15T10:30:00Z"));
     assertThat(source.getDocumentId()).isEqualTo(documentId);
-    assertThat(source.getSourceType()).isEqualTo(io.opaa.api.types.DocumentSourceType.UPLOAD);
+    assertThat(source.getSourceType()).isEqualTo("UPLOAD");
     assertThat(source.getCitationValid()).isTrue();
     assertThat(source.getChunkLocations()).hasSize(1);
     assertThat(source.getChunkLocations().getFirst().getChunkIndex()).isEqualTo(3);

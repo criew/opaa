@@ -16,6 +16,10 @@ import java.util.Map;
  */
 public final class S3SourceSettingsJson {
 
+  /** The fields the settings consist of. */
+  public static final java.util.Set<String> KEYS =
+      java.util.Set.of("region", "pathStyle", "scopes", "includePatterns", "excludePatterns");
+
   private S3SourceSettingsJson() {}
 
   /**

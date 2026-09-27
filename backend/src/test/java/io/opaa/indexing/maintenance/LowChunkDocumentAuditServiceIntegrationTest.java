@@ -10,6 +10,7 @@ import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OwnLibraryFixtures;
+import io.opaa.test.SourceTypes;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -128,7 +129,9 @@ class LowChunkDocumentAuditServiceIntegrationTest {
 
   private Document indexedDocument(
       KnowledgeLibrary targetLibrary, String fileName, int chunkCount) {
-    Document document = new Document(fileName, "/path/" + fileName, "application/pdf", 100L);
+    Document document =
+        new Document(
+            fileName, "/path/" + fileName, "application/pdf", 100L, SourceTypes.FILESYSTEM);
     document.setLibraryId(targetLibrary.getId());
     document.setOrganizationId(targetLibrary.getOrganizationId());
     document.setStatus(DocumentStatus.INDEXED);

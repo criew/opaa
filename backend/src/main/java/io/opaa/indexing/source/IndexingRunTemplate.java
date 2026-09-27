@@ -86,7 +86,7 @@ public class IndexingRunTemplate {
             jobId,
             library,
             runMode,
-            executor.sourceType().documentSourceType(),
+            executor.sourceType(),
             progress,
             events,
             documentRepository,

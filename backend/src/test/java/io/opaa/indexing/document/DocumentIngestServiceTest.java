@@ -19,7 +19,6 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.attachment.AttachmentAccess;
@@ -46,7 +45,9 @@ import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.LibraryProperties;
 import io.opaa.knowledge.LibraryStorageQuotaService;
 import io.opaa.knowledge.SourceDocumentContext;
+import io.opaa.knowledge.SourceType;
 import io.opaa.observability.IndexingMetrics;
+import io.opaa.test.SourceTypes;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -171,7 +172,7 @@ class DocumentIngestServiceTest {
   // embeddingConcurrency=1: every test in this class exercises the sequential storeChunks path (a
   // single vectorStore.add call) - see EmbeddingConcurrencyTest for the fan-out.
   private static IndexingProperties defaultIndexingProperties() {
-    return new IndexingProperties(1000, 0, 50, null, null, null, null, 1);
+    return new IndexingProperties(1000, 0, 50, null, null, null, 1);
   }
 
   // Mirrors VectorChunkStore#deleteByDocumentId's own filter construction.
@@ -214,7 +215,12 @@ class DocumentIngestServiceTest {
 
   private Document existingIndexed(Path file, String checksum, long size) {
     Document existing =
-        new Document(file.getFileName().toString(), file.toAbsolutePath().toString(), null, size);
+        new Document(
+            file.getFileName().toString(),
+            file.toAbsolutePath().toString(),
+            null,
+            size,
+            SourceTypes.FILESYSTEM);
     existing.setChecksum(checksum);
     existing.setStatus(DocumentStatus.INDEXED);
     existing.setLibraryId(targetLibrary.getId());
@@ -435,15 +441,14 @@ class DocumentIngestServiceTest {
     void aRoutingFailureOnAnExistingRowMarksItFailedInsteadOfLeavingItPending() {
       // An upload's row is already PENDING when the pipeline is chosen - a wiring error there
       // must still reach a terminal status, with the row's chunks (none, for an upload) kept.
-      Document existing =
-          new Document("seite.html", PAGE_URL, "text/html", 40L, DocumentSourceType.UPLOAD);
+      Document existing = new Document("seite.html", PAGE_URL, "text/html", 40L, SourceType.UPLOAD);
       when(checksumService.computeSha256(any(byte[].class))).thenReturn("sha256");
       when(documentRepository.findByLibraryIdAndFilePath(targetLibrary.getId(), PAGE_URL))
           .thenReturn(Optional.of(existing));
       DocumentIngest page =
           DocumentIngest.text(targetLibrary, PAGE_URL, "<p>Text</p>")
               .fileName("seite.html")
-              .sourceType(DocumentSourceType.UPLOAD)
+              .sourceType(SourceType.UPLOAD)
               .pipelineId("confluence")
               .existingRow()
               .build();
@@ -478,7 +483,7 @@ class DocumentIngestServiceTest {
       Document saved = savedDocument();
       assertThat(saved.getLibraryId()).isEqualTo(targetLibrary.getId());
       assertThat(saved.getOrganizationId()).isEqualTo(targetLibrary.getOrganizationId());
-      assertThat(saved.getSourceType()).isEqualTo(DocumentSourceType.FILESYSTEM);
+      assertThat(saved.getSourceType()).isEqualTo(targetLibrary.getSourceType());
       assertThat(saved.getFilePath()).isEqualTo(file.toAbsolutePath().toString());
       // content_type is what the routing's own content detection saw, not a guess from the name.
       assertThat(saved.getContentType()).isEqualTo("text/plain");
@@ -560,7 +565,7 @@ class DocumentIngestServiceTest {
       // document again, and the new title and place reach both the row and its chunks - a Beleg
       // must not go on citing the old title or place forever.
       Document existing =
-          new Document("Abschnitt 1.1", PAGE_URL, "text/html", 40L, DocumentSourceType.CONFLUENCE);
+          new Document("Abschnitt 1.1", PAGE_URL, "text/html", 40L, SourceTypes.CONFLUENCE);
       existing.setStatus(DocumentStatus.INDEXED);
       existing.setChecksum("sha256-of-page");
       existing.setChunkCount(2);
@@ -608,7 +613,7 @@ class DocumentIngestServiceTest {
       // CitationValidator, ChunkGroupingKey): a renamed page without a place change must not
       // leave its chunks citing the old title forever, even though the context keys stay put.
       Document existing =
-          new Document("Abschnitt 1.1", PAGE_URL, "text/html", 40L, DocumentSourceType.CONFLUENCE);
+          new Document("Abschnitt 1.1", PAGE_URL, "text/html", 40L, SourceTypes.CONFLUENCE);
       existing.setStatus(DocumentStatus.INDEXED);
       existing.setChecksum("sha256-of-page");
       existing.setChunkCount(2);
@@ -652,7 +657,7 @@ class DocumentIngestServiceTest {
       // rewriteChunkProvenance/sourceContextMetadata, untested until now: an inverted null-check
       // there would still leave this suite green without a case that hits it.
       Document existing =
-          new Document("Abschnitt 1.1", PAGE_URL, "text/html", 40L, DocumentSourceType.CONFLUENCE);
+          new Document("Abschnitt 1.1", PAGE_URL, "text/html", 40L, SourceTypes.CONFLUENCE);
       existing.setStatus(DocumentStatus.INDEXED);
       existing.setChecksum("sha256-of-page");
       existing.setChunkCount(2);
@@ -690,7 +695,7 @@ class DocumentIngestServiceTest {
       // hierarchy path - regression guard: without the fix, source_container_key/
       // source_hierarchy_path drifted apart between the row and its chunks, permanently.
       Document existing =
-          new Document("Abschnitt 1.1", PAGE_URL, "text/html", 40L, DocumentSourceType.CONFLUENCE);
+          new Document("Abschnitt 1.1", PAGE_URL, "text/html", 40L, SourceTypes.CONFLUENCE);
       existing.setStatus(DocumentStatus.INDEXED);
       existing.setChecksum("sha256-of-page");
       existing.setChunkCount(2);
@@ -745,7 +750,7 @@ class DocumentIngestServiceTest {
       // name and context onto it first, that save would silently revert the row update the same
       // call just made above it - even though the chunks already carry the new values.
       Document existing =
-          new Document("Abschnitt 1.1", PAGE_URL, "text/html", 40L, DocumentSourceType.CONFLUENCE);
+          new Document("Abschnitt 1.1", PAGE_URL, "text/html", 40L, SourceTypes.CONFLUENCE);
       existing.setStatus(DocumentStatus.INDEXED);
       existing.setChecksum("sha256-of-page");
       existing.setChunkCount(2);
@@ -760,7 +765,7 @@ class DocumentIngestServiceTest {
       DocumentIngestResult result =
           service.ingest(
               DocumentIngest.text(targetLibrary, PAGE_URL, "unveränderter Text")
-                  .sourceType(DocumentSourceType.CONFLUENCE)
+                  .sourceType(SourceTypes.CONFLUENCE)
                   .title("Abschnitt 1.1 (umbenannt)")
                   .context(new SourceDocumentContext("ENG", "Handbuch / Kapitel 2"))
                   .changeMarker("8")
@@ -784,8 +789,7 @@ class DocumentIngestServiceTest {
     void anUnchangedDocumentWhoseProvenanceDidNotChangeWritesNothing() throws IOException {
       // The refresh is conditional: an entry re-seen under the same marker, title and place
       // costs no UPDATE at all.
-      Document existing =
-          new Document("Titel", ENTRY_URL, "text/html", 10L, DocumentSourceType.RSS_FEED);
+      Document existing = new Document("Titel", ENTRY_URL, "text/html", 10L, SourceTypes.RSS_FEED);
       existing.setStatus(DocumentStatus.INDEXED);
       existing.setChecksum("sha256-of-entry");
       existing.setLastModifiedRemote(PUBLISHED_AT);
@@ -814,7 +818,7 @@ class DocumentIngestServiceTest {
       Path file = fileNamed("unchanged-url.pdf", "pdf content");
       String url = "https://example.com/docs/unchanged-url.pdf";
       Document existing =
-          new Document("unchanged-url.pdf", url, null, 1024L, DocumentSourceType.HTTP_DIRECTORY);
+          new Document("unchanged-url.pdf", url, null, 1024L, SourceTypes.HTTP_DIRECTORY);
       existing.setChecksum("same-sha256");
       existing.setStatus(DocumentStatus.INDEXED);
       existing.setLastModifiedRemote("2025-06-15 10:30");
@@ -864,7 +868,7 @@ class DocumentIngestServiceTest {
     @Test
     void aChangedTextDocumentTakesItsNewTitleAndPlaceWithTheRow() throws IOException {
       Document existing =
-          new Document("Abschnitt 1.1", PAGE_URL, "text/html", 40L, DocumentSourceType.CONFLUENCE);
+          new Document("Abschnitt 1.1", PAGE_URL, "text/html", 40L, SourceTypes.CONFLUENCE);
       existing.setStatus(DocumentStatus.INDEXED);
       existing.setChecksum("sha256-old");
       existing.setLibraryId(targetLibrary.getId());
@@ -936,7 +940,12 @@ class DocumentIngestServiceTest {
       Path file = fileNamed("independent.txt", "same path indexed into two libraries");
       KnowledgeLibrary otherLibrary = library();
       Document docInOtherLibrary =
-          new Document("independent.txt", file.toAbsolutePath().toString(), null, 10L);
+          new Document(
+              "independent.txt",
+              file.toAbsolutePath().toString(),
+              null,
+              10L,
+              SourceTypes.FILESYSTEM);
       docInOtherLibrary.setLibraryId(otherLibrary.getId());
       docInOtherLibrary.setChecksum("same-checksum");
       docInOtherLibrary.setStatus(DocumentStatus.INDEXED);
@@ -1001,7 +1010,7 @@ class DocumentIngestServiceTest {
           service.ingest(
               DocumentIngests.downloadedFile(
                       targetLibrary, fileFromFirstEntry, "anlage.pdf", attachmentUrl, null, 17)
-                  .sourceType(DocumentSourceType.RSS_FEED)
+                  .sourceType(SourceTypes.RSS_FEED)
                   .sourceEntryUrl("https://example.gov/artikel/erster-artikel")
                   .build(),
               null);
@@ -1009,7 +1018,7 @@ class DocumentIngestServiceTest {
           service.ingest(
               DocumentIngests.downloadedFile(
                       targetLibrary, fileFromSecondEntry, "anlage.pdf", attachmentUrl, null, 17)
-                  .sourceType(DocumentSourceType.RSS_FEED)
+                  .sourceType(SourceTypes.RSS_FEED)
                   .sourceEntryUrl("https://example.gov/artikel/zweiter-artikel")
                   .build(),
               null);
@@ -1073,7 +1082,7 @@ class DocumentIngestServiceTest {
     @Test
     void aChangedTextDocumentPassesTheDeltaToTheQuotaCheck() throws IOException {
       Document existing =
-          new Document("Alter Titel", ENTRY_URL, "text/html", 1_000L, DocumentSourceType.RSS_FEED);
+          new Document("Alter Titel", ENTRY_URL, "text/html", 1_000L, SourceTypes.RSS_FEED);
       existing.setLibraryId(targetLibrary.getId());
       existing.setOrganizationId(targetLibrary.getOrganizationId());
       existing.setChecksum("old-sha256");
@@ -1102,7 +1111,7 @@ class DocumentIngestServiceTest {
       // Checked before anything is touched: a rejected update never leaves a previously working
       // row INDEXED with a stale checksum and no chunks behind.
       Document existing =
-          new Document("Alter Titel", ENTRY_URL, "text/html", 10L, DocumentSourceType.RSS_FEED);
+          new Document("Alter Titel", ENTRY_URL, "text/html", 10L, SourceTypes.RSS_FEED);
       existing.setLibraryId(targetLibrary.getId());
       existing.setChecksum("old-sha256");
       existing.setStatus(DocumentStatus.INDEXED);
@@ -1160,7 +1169,7 @@ class DocumentIngestServiceTest {
       Document saved = savedDocument();
       assertThat(saved.getFileName()).isEqualTo("my-report.pdf");
       assertThat(saved.getFilePath()).isEqualTo(remoteUrl);
-      assertThat(saved.getSourceType()).isEqualTo(DocumentSourceType.HTTP_DIRECTORY);
+      assertThat(saved.getSourceType()).isEqualTo(SourceTypes.HTTP_DIRECTORY);
       // The size the source reported, not the local copy's.
       assertThat(saved.getFileSize()).isEqualTo(1024L);
       verify(documentRepository)
@@ -1182,7 +1191,7 @@ class DocumentIngestServiceTest {
       DocumentIngestResult result =
           service.ingest(
               DocumentIngests.downloadedFile(targetLibrary, file, "notizen.txt", url, "3", 7L)
-                  .sourceType(DocumentSourceType.CONFLUENCE)
+                  .sourceType(SourceTypes.CONFLUENCE)
                   .sourceEntryUrl(PAGE_URL)
                   .parentDocumentId(pageDocumentId)
                   .context(new SourceDocumentContext("ENG", "Handbuch / Abschnitt 1.1"))
@@ -1191,7 +1200,7 @@ class DocumentIngestServiceTest {
 
       assertThat(result).isEqualTo(DocumentIngestResult.PROCESSED);
       Document saved = savedDocument();
-      assertThat(saved.getSourceType()).isEqualTo(DocumentSourceType.CONFLUENCE);
+      assertThat(saved.getSourceType()).isEqualTo(SourceTypes.CONFLUENCE);
       assertThat(saved.getParentDocumentId()).isEqualTo(pageDocumentId);
       assertThat(saved.getSourceEntryUrl()).isEqualTo(PAGE_URL);
       assertThat(saved.getSourceContainerKey()).isEqualTo("ENG");
@@ -1226,7 +1235,7 @@ class DocumentIngestServiceTest {
       assertThat(saved.getFileName()).isEqualTo("Titel");
       assertThat(saved.getFilePath()).isEqualTo(ENTRY_URL);
       assertThat(saved.getContentType()).isEqualTo("text/html");
-      assertThat(saved.getSourceType()).isEqualTo(DocumentSourceType.RSS_FEED);
+      assertThat(saved.getSourceType()).isEqualTo(SourceTypes.RSS_FEED);
       assertThat(saved.getFileSize()).isEqualTo((long) "entry main text".length());
       // No routing decision was ever made for text, so no routing key is written.
       assertThat(storedChunks().getFirst().getMetadata())
@@ -1370,13 +1379,13 @@ class DocumentIngestServiceTest {
 
       service.ingest(
           DocumentIngests.downloadedFile(targetLibrary, file, "001_satzung.pdf", url, null, 1024)
-              .sourceType(DocumentSourceType.RSS_FEED)
+              .sourceType(SourceTypes.RSS_FEED)
               .sourceEntryUrl("https://example.gov/artikel/mein-artikel")
               .build(),
           null);
 
       Document saved = savedDocument();
-      assertThat(saved.getSourceType()).isEqualTo(DocumentSourceType.RSS_FEED);
+      assertThat(saved.getSourceType()).isEqualTo(SourceTypes.RSS_FEED);
       assertThat(saved.getSourceEntryUrl()).isEqualTo("https://example.gov/artikel/mein-artikel");
       assertThat(storedChunks().getFirst().getFormattedContent(MetadataMode.EMBED))
           .isEqualTo("[satzung]\n\nfirst chunk text");
@@ -1409,7 +1418,7 @@ class DocumentIngestServiceTest {
 
       assertThat(result).isEqualTo(DocumentIngestResult.PROCESSED);
       Document saved = savedDocument();
-      assertThat(saved.getSourceType()).isEqualTo(DocumentSourceType.CONFLUENCE);
+      assertThat(saved.getSourceType()).isEqualTo(SourceTypes.CONFLUENCE);
       assertThat(saved.getFileName()).isEqualTo("Abschnitt 1.1");
       assertThat(saved.getFilePath()).isEqualTo(PAGE_URL);
       assertThat(saved.getSourceContainerKey()).isEqualTo("ENG");
@@ -1516,7 +1525,7 @@ class DocumentIngestServiceTest {
               sources.capture(),
               eq(parent.getId()),
               eq(ENTRY_URL),
-              eq(DocumentSourceType.RSS_FEED),
+              eq(SourceTypes.RSS_FEED),
               any());
       AttachmentSource.LocalFile source =
           (AttachmentSource.LocalFile) sources.getValue().getFirst();
@@ -1536,7 +1545,7 @@ class DocumentIngestServiceTest {
               tempDir.resolve(fileName).toString(),
               "application/pdf",
               5L,
-              DocumentSourceType.UPLOAD);
+              SourceType.UPLOAD);
       doc.setLibraryId(targetLibrary.getId());
       doc.setOrganizationId(targetLibrary.getOrganizationId());
       doc.setUploadedByUserId(UUID.randomUUID());
@@ -1554,7 +1563,7 @@ class DocumentIngestServiceTest {
           .file(file)
           .filePath(doc.getFilePath())
           .fileName(doc.getFileName())
-          .sourceType(DocumentSourceType.UPLOAD)
+          .sourceType(SourceType.UPLOAD)
           .existingRow()
           .build();
     }
@@ -1605,7 +1614,7 @@ class DocumentIngestServiceTest {
                   .file(file)
                   .filePath(file.toString())
                   .fileName("deleted-before-processing.pdf")
-                  .sourceType(DocumentSourceType.UPLOAD)
+                  .sourceType(SourceType.UPLOAD)
                   .existingRow()
                   .build(),
               null);

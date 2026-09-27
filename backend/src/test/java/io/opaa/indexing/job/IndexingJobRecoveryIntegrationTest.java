@@ -7,7 +7,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import io.opaa.api.types.AssetRole;
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
@@ -19,6 +18,7 @@ import io.opaa.permission.AssetGrantRepository;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OpaaTestDirectory;
 import io.opaa.test.OwnLibraryFixtures;
+import io.opaa.test.SourceTypes;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
@@ -93,7 +93,7 @@ class IndexingJobRecoveryIntegrationTest {
                 null,
                 devAdmin.getId(),
                 false,
-                DocumentSourceType.FILESYSTEM,
+                SourceTypes.FILESYSTEM,
                 documentDir.toAbsolutePath().toString(),
                 null,
                 null,

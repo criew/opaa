@@ -1,6 +1,5 @@
 package io.opaa.knowledge;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -49,9 +48,8 @@ public class Document {
   @Column(name = "status", nullable = false, length = 20)
   private DocumentStatus status = DocumentStatus.PENDING;
 
-  @Enumerated(EnumType.STRING)
   @Column(name = "source_type", nullable = false, length = 20)
-  private DocumentSourceType sourceType = DocumentSourceType.FILESYSTEM;
+  private SourceType sourceType;
 
   @Column(name = "last_modified_remote", length = 64)
   private String lastModifiedRemote;
@@ -206,11 +204,7 @@ public class Document {
   }
 
   public Document(
-      String fileName,
-      String filePath,
-      String contentType,
-      Long fileSize,
-      DocumentSourceType sourceType) {
+      String fileName, String filePath, String contentType, Long fileSize, SourceType sourceType) {
     this(fileName, filePath, contentType, fileSize);
     this.sourceType = sourceType;
   }
@@ -286,11 +280,11 @@ public class Document {
     this.checksum = checksum;
   }
 
-  public DocumentSourceType getSourceType() {
+  public SourceType getSourceType() {
     return sourceType;
   }
 
-  public void setSourceType(DocumentSourceType sourceType) {
+  public void setSourceType(SourceType sourceType) {
     this.sourceType = sourceType;
   }
 
@@ -418,17 +412,5 @@ public class Document {
 
   public String getContextPrefixTitle() {
     return contextPrefixTitle;
-  }
-
-  /**
-   * The deep link target for a document with no local file: {@link #getFilePath()} holds the remote
-   * URL itself for the HTTP-based remote types, but a server-local storage path for {@code
-   * UPLOAD}/{@code FILESYSTEM}, which must stay internal, and an {@code s3://} identity for {@code
-   * S3} that opens nowhere ({@link DocumentSourceType#hasDeepLink}). Shared by the library listing
-   * and the citation deep links, so both compute it from one place. Deliberately visible to every
-   * VIEWER: it names one document's origin, not the library's source configuration.
-   */
-  public String getDeepLinkSourceUrl() {
-    return sourceType != null && sourceType.hasDeepLink() ? filePath : null;
   }
 }

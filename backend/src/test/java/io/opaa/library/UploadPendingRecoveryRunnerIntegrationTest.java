@@ -3,7 +3,6 @@ package io.opaa.library;
 import static io.opaa.library.LibraryCreationBuilder.libraryCreation;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
@@ -11,12 +10,14 @@ import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
+import io.opaa.knowledge.SourceType;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.permission.AssetGrantHistoryRepository;
 import io.opaa.permission.GroupMembershipHistoryRepository;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OwnLibraryFixtures;
+import io.opaa.test.SourceTypes;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -68,7 +69,7 @@ class UploadPendingRecoveryRunnerIntegrationTest {
     editor.setOrganizationId(organizationId);
     editor = userRepository.save(editor);
 
-    var libraryRequest = libraryCreation("Bibliothek", DocumentSourceType.UPLOAD).build();
+    var libraryRequest = libraryCreation("Bibliothek", SourceType.UPLOAD).build();
     CurrentUser editorCaller =
         CurrentUser.of(editor.getId(), organizationId, SystemRole.USER, editor.getDisplayName());
     libraryId = libraryService.createLibrary(libraryRequest, editorCaller).library().getId();
@@ -97,9 +98,7 @@ class UploadPendingRecoveryRunnerIntegrationTest {
         saveIndexedDocument("staleIndexed.pdf", Instant.now().minus(2, ChronoUnit.HOURS));
     UUID staleConnectorPendingId =
         savePendingDocument(
-            "staleConnector.pdf",
-            Instant.now().minus(2, ChronoUnit.HOURS),
-            DocumentSourceType.FILESYSTEM);
+            "staleConnector.pdf", Instant.now().minus(2, ChronoUnit.HOURS), SourceTypes.FILESYSTEM);
 
     runner.run(NO_ARGS);
 
@@ -127,11 +126,10 @@ class UploadPendingRecoveryRunnerIntegrationTest {
   }
 
   private UUID savePendingDocument(String fileName, Instant createdAt) {
-    return savePendingDocument(fileName, createdAt, DocumentSourceType.UPLOAD);
+    return savePendingDocument(fileName, createdAt, SourceType.UPLOAD);
   }
 
-  private UUID savePendingDocument(
-      String fileName, Instant createdAt, DocumentSourceType sourceType) {
+  private UUID savePendingDocument(String fileName, Instant createdAt, SourceType sourceType) {
     Document document = newDocument(fileName, sourceType);
     document = documentRepository.save(document);
     backdateCreatedAt(document.getId(), createdAt);
@@ -139,14 +137,14 @@ class UploadPendingRecoveryRunnerIntegrationTest {
   }
 
   private UUID saveIndexedDocument(String fileName, Instant createdAt) {
-    Document document = newDocument(fileName, DocumentSourceType.UPLOAD);
+    Document document = newDocument(fileName, SourceType.UPLOAD);
     document.setStatus(DocumentStatus.INDEXED);
     document = documentRepository.save(document);
     backdateCreatedAt(document.getId(), createdAt);
     return document.getId();
   }
 
-  private Document newDocument(String fileName, DocumentSourceType sourceType) {
+  private Document newDocument(String fileName, SourceType sourceType) {
     Document document =
         new Document(fileName, "/uploads/" + fileName, "application/pdf", 10L, sourceType);
     document.setLibraryId(libraryId);

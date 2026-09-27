@@ -1,6 +1,5 @@
 package io.opaa.indexing.source;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.indexing.document.DocumentIngestOutcomes;
 import io.opaa.indexing.document.DocumentIngestResult;
@@ -12,6 +11,7 @@ import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.LibraryStorageQuotaService;
 import io.opaa.knowledge.SourceDocumentContext;
+import io.opaa.knowledge.SourceType;
 import io.opaa.sourceaccess.SourceRequestMeter;
 import java.util.Collections;
 import java.util.HashSet;
@@ -52,7 +52,7 @@ public final class IndexingRun {
   private final UUID jobId;
   private final KnowledgeLibrary library;
   private final IndexingRunMode runMode;
-  private final DocumentSourceType sourceType;
+  private final SourceType sourceType;
   private final IndexingRunProgress progress;
   private final IndexingRunEventRecorder events;
   private final DocumentRepository documentRepository;
@@ -68,7 +68,7 @@ public final class IndexingRun {
       UUID jobId,
       KnowledgeLibrary library,
       IndexingRunMode runMode,
-      DocumentSourceType sourceType,
+      SourceType sourceType,
       IndexingRunProgress progress,
       IndexingRunEventRecorder events,
       DocumentRepository documentRepository,
@@ -95,7 +95,7 @@ public final class IndexingRun {
     return runMode;
   }
 
-  public DocumentSourceType sourceType() {
+  public SourceType sourceType() {
     return sourceType;
   }
 

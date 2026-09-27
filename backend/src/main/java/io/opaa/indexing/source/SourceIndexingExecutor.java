@@ -2,13 +2,14 @@ package io.opaa.indexing.source;
 
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.SourceType;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
 /**
  * A run-based way of getting documents into the index (ADR-0017, decision 3). Every implementation
- * declares the single {@link IndexingSourceType} it serves and is registered with the {@link
+ * declares the single {@link SourceType} it serves and is registered with the {@link
  * IndexingSourceExecutorRegistry} as a Spring bean - a new source type is added by implementing
  * this interface and declaring the bean in the connector package's own {@code @Configuration},
  * never by editing the indexing core, an existing implementation or the registry itself.
@@ -46,7 +47,7 @@ public interface SourceIndexingExecutor {
   }
 
   /** The source type this executor serves. Used as the registry's lookup key. */
-  IndexingSourceType sourceType();
+  SourceType sourceType();
 
   /**
    * Runs asynchronously and reports progress/completion through {@code IndexingJobService}, the

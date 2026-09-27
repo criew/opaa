@@ -3,7 +3,6 @@ package io.opaa.indexing.source.confluence;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.opaa.api.types.ConfluenceEdition;
 import org.junit.jupiter.api.Test;
 
 class ConfluenceConnectionTest {

@@ -367,8 +367,8 @@ class OperationalFailureStatusSpecificationTest {
    */
   @Test
   void everyOperationThatStoresAPushSecretDeclaresTheMissingKey() {
-    Set<String> generating = Set.of("generateConfluenceWebhookSecret", "generateS3EventsToken");
-    Set<String> erasing = Set.of("removeConfluenceWebhookSecret", "removeS3EventsToken");
+    Set<String> generating = Set.of("generatePushSecret");
+    Set<String> erasing = Set.of("removePushSecret");
     Set<String> known = allOperationIds();
     assertThat(known).as("the named push-secret operations").containsAll(generating);
     assertThat(known).as("the named push-secret operations").containsAll(erasing);

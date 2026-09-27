@@ -35,11 +35,11 @@ class RateLimitFilterTest {
 
   private static final String QUERY = "^/api/v1/query";
   private static final String INDEXING = "^/api/v1/libraries/([^/]+)/indexing$";
-  // #514/PR #537 review, finding 3: mirrors RateLimitConfiguration's own registration of the
-  // probe endpoints - the connection test and the two listings share one bucket.
+  // mirrors RateLimitConfiguration's own registration of the probe endpoints - the connection
+  // test and every type's listing share one bucket.
   private static final String SOURCE_TEST =
-      "^/api/v1/libraries/(?:source-test|confluence/spaces|s3/buckets)$";
-  private static final String WEBHOOK = "^/api/v1/libraries/([^/]+)/confluence-webhook$";
+      "^/api/v1/(?:libraries/source-test|source-types/[^/]+/browse)$";
+  private static final String WEBHOOK = "^/api/v1/libraries/([^/]+)/push$";
   private static final String LOGIN = "^/api/v1/auth/local/login$";
 
   private RateLimitFilter filter;
@@ -180,8 +180,7 @@ class RateLimitFilterTest {
     UUID library = UUID.randomUUID();
     when(webhookLimiter.tryAcquire(anyString())).thenReturn(REJECTED);
 
-    var request =
-        new MockHttpServletRequest("POST", "/api/v1/libraries/" + library + "/confluence-webhook");
+    var request = new MockHttpServletRequest("POST", "/api/v1/libraries/" + library + "/push");
     request.setRemoteAddr("203.0.113.7");
     var response = new MockHttpServletResponse();
     var chain = new MockFilterChain();
@@ -200,7 +199,7 @@ class RateLimitFilterTest {
     // the space listing - one limiter, keyed by the client alone
     when(sourceTestLimiter.tryAcquire(anyString())).thenReturn(REJECTED);
     for (String path :
-        List.of("/api/v1/libraries/s3/buckets", "/api/v1/libraries/confluence/spaces")) {
+        List.of("/api/v1/source-types/S3/browse", "/api/v1/source-types/CONFLUENCE/browse")) {
       var request = new MockHttpServletRequest("POST", path);
       request.setRemoteAddr("203.0.113.7");
       var response = new MockHttpServletResponse();

@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.api.types.AssetRole;
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.MetadataOrigin;
 import io.opaa.api.types.SystemRole;
@@ -16,6 +15,7 @@ import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
+import io.opaa.knowledge.SourceType;
 import io.opaa.organization.Organization;
 import io.opaa.permission.AssetGrant;
 import io.opaa.permission.AssetGrantRepository;
@@ -64,7 +64,7 @@ class LibraryMetadataExtractionServiceIntegrationTest {
                 null,
                 owner.id(),
                 false,
-                DocumentSourceType.UPLOAD,
+                SourceType.UPLOAD,
                 null,
                 null,
                 null,
@@ -226,7 +226,7 @@ class LibraryMetadataExtractionServiceIntegrationTest {
             "/uploads/" + UUID.randomUUID() + "/" + fileName,
             "application/pdf",
             1L,
-            DocumentSourceType.UPLOAD);
+            SourceType.UPLOAD);
     document.setLibraryId(library.getId());
     document.setOrganizationId(Organization.DEFAULT_ID);
     document.setStatus(DocumentStatus.INDEXED);

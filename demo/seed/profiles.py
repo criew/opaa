@@ -71,7 +71,7 @@ class SpaceDef:
 class LibraryDef:
     name: str
     description: str
-    source_type: str  # DocumentSourceType: HTTP_DIRECTORY, RSS_FEED, UPLOAD, S3
+    source_type: str  # source type key: HTTP_DIRECTORY, RSS_FEED, UPLOAD, S3
     viewer_keys: tuple[str, ...]
     source_url: str | None = None
     upload_dir: Path | None = None  # every file directly inside is uploaded (non-recursive)

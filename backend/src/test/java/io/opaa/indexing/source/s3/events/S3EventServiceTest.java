@@ -11,7 +11,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.common.UnauthorizedException;
 import io.opaa.indexing.source.SourceEventIntake;
@@ -22,6 +21,7 @@ import io.opaa.indexing.source.s3.S3SourceSettings;
 import io.opaa.indexing.source.s3.S3TestSettings;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.test.SourceTypes;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
@@ -61,7 +61,7 @@ class S3EventServiceTest {
             null,
             UUID.randomUUID(),
             false,
-            DocumentSourceType.S3,
+            SourceTypes.S3,
             null,
             "https://minio.intern.example:9000",
             null,
@@ -130,7 +130,7 @@ class S3EventServiceTest {
             null,
             UUID.randomUUID(),
             false,
-            DocumentSourceType.CONFLUENCE,
+            SourceTypes.CONFLUENCE,
             null,
             "https://wiki.example.org",
             null,
@@ -158,7 +158,7 @@ class S3EventServiceTest {
     verify(intake)
         .enqueue(target.capture(), eq(libraryId), eq(Set.of("dokumente/2025/a.pdf")), eq(2));
     verify(intake).enqueue(any(), eq(libraryId), eq(Set.of("satzungen/haupt.txt")), eq(1));
-    assertThat(target.getValue().sourceType()).isEqualTo(DocumentSourceType.S3);
+    assertThat(target.getValue().sourceType()).isEqualTo(SourceTypes.S3);
     assertThat(target.getValue().targetedRunMode()).isEqualTo(IndexingRunMode.EVENT);
     assertThat(target.getValue().executor()).isSameAs(executor);
   }
@@ -181,7 +181,7 @@ class S3EventServiceTest {
             null,
             UUID.randomUUID(),
             false,
-            DocumentSourceType.S3,
+            SourceTypes.S3,
             null,
             "https://minio.intern.example:9000",
             null,

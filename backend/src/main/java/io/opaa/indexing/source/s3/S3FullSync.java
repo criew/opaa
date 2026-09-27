@@ -1,6 +1,5 @@
 package io.opaa.indexing.source.s3;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.common.ByteSizes;
 import io.opaa.indexing.document.DocumentIngest;
@@ -690,7 +689,7 @@ final class S3FullSync implements AutoCloseable {
                   .file(file, download.size())
                   .filePath(filePath)
                   .fileName(fileName)
-                  .sourceType(DocumentSourceType.S3)
+                  .sourceType(S3SourceConnector.TYPE)
                   .context(context)
                   .changeMarker(changeMarker)
                   .folder(folderId)

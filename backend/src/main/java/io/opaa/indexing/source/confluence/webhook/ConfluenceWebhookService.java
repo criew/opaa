@@ -1,14 +1,16 @@
 package io.opaa.indexing.source.confluence.webhook;
 
-import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.common.UnauthorizedException;
+import io.opaa.indexing.source.PushIntakeHandler;
 import io.opaa.indexing.source.SourceEventIntake;
 import io.opaa.indexing.source.SourceEventTarget;
 import io.opaa.indexing.source.SourceIndexingExecutor;
 import io.opaa.indexing.source.confluence.ConfluenceIndexingExecutor;
+import io.opaa.indexing.source.confluence.ConfluenceSourceConnector;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.knowledge.SourceType;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -18,9 +20,9 @@ import org.springframework.stereotype.Service;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * The adapter behind {@code POST /api/v1/libraries/{libraryId}/confluence-webhook}. Authentication
- * is uniform: an unknown library, a missing secret, a wrong source type and a bad signature all
- * answer 401, since the endpoint is reachable without a session and must not say which it hit.
+ * The adapter behind {@code POST /api/v1/libraries/{libraryId}/push}. Authentication is uniform: an
+ * unknown library, a missing secret, a wrong source type and a bad signature all answer 401, since
+ * the endpoint is reachable without a session and must not say which it hit.
  *
  * <p>The page ids the body names go to the shared {@link SourceEventIntake}; its targeted run
  * fetches exactly those pages under {@link IndexingRunMode#INCREMENTAL}, an overflowed batch runs
@@ -32,7 +34,7 @@ public class ConfluenceWebhookService {
 
   private static final Logger log = LoggerFactory.getLogger(ConfluenceWebhookService.class);
 
-  static final String UNAUTHORIZED_MESSAGE = "Webhook nicht autorisiert";
+  static final String UNAUTHORIZED_MESSAGE = PushIntakeHandler.UNAUTHORIZED_MESSAGE;
 
   private final KnowledgeLibraryRepository libraryRepository;
   private final SourceEventIntake intake;
@@ -50,8 +52,8 @@ public class ConfluenceWebhookService {
     this.target =
         new SourceEventTarget() {
           @Override
-          public DocumentSourceType sourceType() {
-            return DocumentSourceType.CONFLUENCE;
+          public SourceType sourceType() {
+            return ConfluenceSourceConnector.TYPE;
           }
 
           @Override
@@ -81,7 +83,7 @@ public class ConfluenceWebhookService {
     Optional<KnowledgeLibrary> library =
         libraryRepository
             .findById(libraryId)
-            .filter(l -> l.getSourceType() == DocumentSourceType.CONFLUENCE);
+            .filter(l -> ConfluenceSourceConnector.TYPE.equals(l.getSourceType()));
     String secret = library.map(KnowledgeLibrary::getWebhookSecret).orElse(null);
     if (!ConfluenceWebhookSignature.verify(rawBody, hubSignature, sharedSecret, secret)) {
       log.warn("Rejected Confluence webhook for library {}: not authenticated", libraryId);

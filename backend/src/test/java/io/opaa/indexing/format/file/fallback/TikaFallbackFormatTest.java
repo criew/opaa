@@ -38,7 +38,7 @@ class TikaFallbackFormatTest {
   private static final String PDF_MAGIC_BYTES = "%PDF-1.4\n%mock-pdf-body-for-magic-byte-detection";
 
   private final IndexingProperties properties =
-      new IndexingProperties(1000, 100, 50, null, null, null, null, 1);
+      new IndexingProperties(1000, 100, 50, null, null, null, 1);
   private final DocumentService documentService = new DocumentService();
   private final ChunkingService chunkingService = new ChunkingService(properties);
   private final TikaFallbackFormat pipeline =

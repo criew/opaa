@@ -11,6 +11,7 @@ import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.test.SourceTypes;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -46,7 +47,9 @@ class LowChunkDocumentAuditServiceTest {
   }
 
   private static Document indexedDocument(UUID libraryId, String fileName, long size, int chunks) {
-    Document document = new Document(fileName, "/path/" + fileName, "application/pdf", size);
+    Document document =
+        new Document(
+            fileName, "/path/" + fileName, "application/pdf", size, SourceTypes.FILESYSTEM);
     document.setLibraryId(libraryId);
     document.setStatus(DocumentStatus.INDEXED);
     document.setChunkCount(chunks);

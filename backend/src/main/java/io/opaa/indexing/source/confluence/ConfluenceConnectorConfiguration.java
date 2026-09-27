@@ -2,6 +2,7 @@ package io.opaa.indexing.source.confluence;
 
 import io.opaa.indexing.attachment.AttachmentIndexer;
 import io.opaa.indexing.document.DocumentIngestService;
+import io.opaa.indexing.format.stream.confluencestorage.ConfluenceStorageFormat;
 import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.SourceSyncStateRepository;
@@ -33,6 +34,16 @@ public class ConfluenceConnectorConfiguration {
       SourceRequestPolicy sourceRequestPolicy) {
     return new ConfluenceClientFactory(
         confluenceProperties, targetAddressValidator, sourceRequestPolicy);
+  }
+
+  /**
+   * Confluence page pipeline (ingestion-pipelines.md, Teil 3, Punkt 6) - claims no format, {@code
+   * DocumentIngestService#ingest} looks it up by id. Registered with the connector whose pages it
+   * cuts.
+   */
+  @Bean
+  ConfluenceStorageFormat confluenceDocumentPipeline() {
+    return new ConfluenceStorageFormat();
   }
 
   @Bean

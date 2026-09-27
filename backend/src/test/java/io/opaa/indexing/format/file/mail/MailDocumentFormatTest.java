@@ -69,7 +69,7 @@ class MailDocumentFormatTest {
   private static final int MAX_CHUNK_CHARS_FOR_CONFIGURED_SIZE = 6000;
 
   private static ChunkingService defaultChunkingService() {
-    return new ChunkingService(new IndexingProperties(1000, 100, 50, null, null, null, null, 1));
+    return new ChunkingService(new IndexingProperties(1000, 100, 50, null, null, null, 1));
   }
 
   private MailDocumentFormat pipeline(MailProperties properties) {
@@ -364,7 +364,7 @@ class MailDocumentFormatTest {
             .build();
     Path file = writeEml(DefaultMessageWriter.asBytes(message));
     ChunkingService realisticChunking =
-        new ChunkingService(new IndexingProperties(1000, 100, 50, null, null, null, null, 1));
+        new ChunkingService(new IndexingProperties(1000, 100, 50, null, null, null, 1));
 
     DocumentFormatResult result =
         pipeline(defaultProperties, realisticChunking)
@@ -437,7 +437,7 @@ class MailDocumentFormatTest {
     Path file = writeEml(DefaultMessageWriter.asBytes(message));
     Set<Path> mailTempFilesBefore = mailAttachmentTempFiles();
     ChunkingService throwingChunking =
-        new ChunkingService(new IndexingProperties(1000, 100, 50, null, null, null, null, 1)) {
+        new ChunkingService(new IndexingProperties(1000, 100, 50, null, null, null, 1)) {
           @Override
           public List<Document> chunkDocuments(String fileName, List<Document> documents) {
             throw new IllegalStateException("Chunking kaputt");
@@ -614,7 +614,7 @@ class MailDocumentFormatTest {
             .build();
     Path file = writeEml(DefaultMessageWriter.asBytes(message));
     ChunkingService realisticChunking =
-        new ChunkingService(new IndexingProperties(1000, 100, 50, null, null, null, null, 1));
+        new ChunkingService(new IndexingProperties(1000, 100, 50, null, null, null, 1));
 
     DocumentFormatResult result =
         pipeline(defaultProperties, realisticChunking)
@@ -676,7 +676,7 @@ class MailDocumentFormatTest {
             .build();
     Path file = writeEml(DefaultMessageWriter.asBytes(message));
     ChunkingService tinyChunking =
-        new ChunkingService(new IndexingProperties(20, 5, 50, null, null, null, null, 1));
+        new ChunkingService(new IndexingProperties(20, 5, 50, null, null, null, 1));
 
     DocumentFormatResult result =
         pipeline(defaultProperties, tinyChunking)

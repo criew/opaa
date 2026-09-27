@@ -1,11 +1,13 @@
 package io.opaa.indexing.source;
 
+import io.opaa.common.ValidationException;
 import io.opaa.knowledge.KnowledgeLibrary;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -74,6 +76,18 @@ public final class ConnectorData {
 
   public boolean isEmpty() {
     return values.isEmpty();
+  }
+
+  /**
+   * Refuses the first key outside {@code known} with a German 400 naming it - a connector's check
+   * that a request carries only fields it reads.
+   */
+  public void requireOnly(Set<String> known) {
+    for (String key : values.keySet()) {
+      if (!known.contains(key)) {
+        throw new ValidationException("sourceSettings: das Feld " + key + " ist nicht vorgesehen");
+      }
+    }
   }
 
   private static Map<String, Object> copyObject(Map<?, ?> source) {
