@@ -7,9 +7,9 @@ import java.util.UUID;
 import java.util.function.Function;
 
 /**
- * The chargen loop the resumable document runs share: pipeline re-index ({@link
+ * The chargen loop the resumable document runs share: pipeline re-index ({@code
  * PipelineReindexService}), the deterministic Bestandslauf ({@code MetadataBackfillService}), the
- * Kontextpräfix rerun ({@link ContextPrefixRerunService}) and the schema changes of a library field
+ * Kontextpräfix rerun ({@code ContextPrefixRerunService}) and the schema changes of a library field
  * ({@code LibraryMetadataSchemaChangeService}). Selection and processing unit are the caller's; the
  * loop owns only the mechanics they all need.
  *

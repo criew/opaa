@@ -10,9 +10,8 @@
  *
  * <p>Uses {@code document} and {@code chunk} to read and rewrite, {@code format} and {@code
  * metadata} to redo what an ingest did, and the protocol of {@code job} to report what it removed.
- * Its callers sit outside this package: the administration endpoints, the search status page, the
- * run frame in {@code source} for reconciliation by absence, and {@code
- * metadata.LibraryMetadataFieldService} for its own field remapping - so {@code metadata} and this
- * package depend on each other in code, in both directions.
+ * Its callers sit outside this package: the administration endpoints, the search status page and
+ * the run frame in {@code source} for reconciliation by absence. {@code io.opaa.metadata} lies
+ * below and reaches the Nachlauf only through {@link io.opaa.metadata.ContextPrefixBacklog}.
  */
 package io.opaa.indexing.maintenance;
