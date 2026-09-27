@@ -6,7 +6,7 @@ import io.opaa.api.types.MetadataFilterMatch;
 import io.opaa.chat.ChatSource;
 import io.opaa.chat.ChatSourceLocation;
 import io.opaa.chat.ChatSourceMetadataEntry;
-import io.opaa.indexing.chunk.ChunkingService;
+import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.indexing.metadata.CitationFieldValue;
 import io.opaa.indexing.metadata.CitationMetadataReader;
 import io.opaa.indexing.metadata.CoreMetadata;
@@ -455,7 +455,7 @@ public class ChatSourceAssembler {
     } catch (NumberFormatException e) {
       return new ArrayList<>();
     }
-    Object location = chunk.getMetadata().get(ChunkingService.LOCATION_METADATA_KEY);
+    Object location = chunk.getMetadata().get(ChunkMetadataKeys.LOCATION_METADATA_KEY);
     List<ChatSourceLocation> result = new ArrayList<>(1);
     result.add(
         new ChatSourceLocation(chunkIndex).location(location != null ? location.toString() : null));

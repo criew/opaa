@@ -4,7 +4,7 @@ import io.opaa.api.dto.DocumentPipelineResponse;
 import io.opaa.api.dto.LibraryPipelineVersionResponse;
 import io.opaa.api.dto.PipelineReindexResponse;
 import io.opaa.api.dto.PipelineVersionStatusResponse;
-import io.opaa.indexing.format.DocumentFormat;
+import io.opaa.format.DocumentFormat;
 import io.opaa.indexing.maintenance.PipelineReindexResult;
 import io.opaa.indexing.maintenance.PipelineVersionProgress;
 import java.util.Collection;

@@ -1,9 +1,9 @@
 package io.opaa.test;
 
-import io.opaa.indexing.format.DocumentFormat;
-import io.opaa.indexing.format.DocumentFormatResult;
-import io.opaa.indexing.format.DocumentFormatSource;
-import io.opaa.indexing.format.FormatAdmission;
+import io.opaa.format.DocumentFormat;
+import io.opaa.format.DocumentFormatResult;
+import io.opaa.format.DocumentFormatSource;
+import io.opaa.format.FormatAdmission;
 import java.util.List;
 import java.util.Set;
 import org.springframework.ai.document.Document;

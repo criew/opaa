@@ -2,8 +2,8 @@ package io.opaa.indexing.source;
 
 import static org.mockito.Mockito.mock;
 
+import io.opaa.format.DocumentService;
 import io.opaa.indexing.FilesystemPathAllowlist;
-import io.opaa.indexing.document.DocumentService;
 import io.opaa.indexing.source.confluence.ConfluenceConnectionService;
 import io.opaa.indexing.source.confluence.ConfluenceProperties;
 import io.opaa.indexing.source.confluence.ConfluenceSourceConnector;

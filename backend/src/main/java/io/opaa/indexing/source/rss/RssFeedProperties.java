@@ -1,7 +1,7 @@
 package io.opaa.indexing.source.rss;
 
+import io.opaa.format.file.html.HtmlContentRoots;
 import io.opaa.indexing.attachment.AttachmentProfile;
-import io.opaa.indexing.format.file.html.HtmlContentRoots;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**

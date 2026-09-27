@@ -3,9 +3,10 @@ package io.opaa.indexing.document;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.api.types.DocumentStatus;
-import io.opaa.indexing.chunk.ChunkingService;
-import io.opaa.indexing.format.ChunkFormatMetadata;
-import io.opaa.indexing.format.stream.confluencestorage.ConfluenceStorageFormat;
+import io.opaa.format.ChunkFormatMetadata;
+import io.opaa.format.chunk.ChunkMetadataKeys;
+import io.opaa.format.stream.confluencestorage.ConfluenceStorageFormat;
+import io.opaa.indexing.chunk.SourceChunkMetadataKeys;
 import io.opaa.indexing.source.confluence.ConfluenceTestSettings;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
@@ -146,19 +147,24 @@ class ConfluencePageIndexingIntegrationTest {
     assertThat(hits)
         .allMatch(
             hit ->
-                "ENG".equals(hit.getMetadata().get(ChunkingService.SOURCE_CONTAINER_METADATA_KEY)));
+                "ENG"
+                    .equals(
+                        hit.getMetadata()
+                            .get(SourceChunkMetadataKeys.SOURCE_CONTAINER_METADATA_KEY)));
     assertThat(hits)
         .allMatch(
             hit ->
                 "Handbuch / Kapitel 1"
-                    .equals(hit.getMetadata().get(ChunkingService.SOURCE_HIERARCHY_METADATA_KEY)));
+                    .equals(
+                        hit.getMetadata()
+                            .get(SourceChunkMetadataKeys.SOURCE_HIERARCHY_METADATA_KEY)));
     org.springframework.ai.document.Document deadline =
         hits.stream()
             .filter(hit -> hit.getText().contains("Bauantrag | 14 Tage"))
             .findFirst()
             .orElseThrow();
     assertThat(deadline.getMetadata())
-        .containsEntry(ChunkingService.LOCATION_METADATA_KEY, "Abschn. Zuständigkeiten");
+        .containsEntry(ChunkMetadataKeys.LOCATION_METADATA_KEY, "Abschn. Zuständigkeiten");
     assertThat(deadline.getText()).startsWith("Zuständigkeiten\n\n");
     String all =
         String.join(

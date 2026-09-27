@@ -11,9 +11,9 @@ import io.opaa.api.types.IndexingRunMode;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.NotFoundException;
-import io.opaa.indexing.chunk.ChunkingService;
-import io.opaa.indexing.document.DocumentService;
-import io.opaa.indexing.format.ChunkFormatMetadata;
+import io.opaa.format.ChunkFormatMetadata;
+import io.opaa.format.DocumentService;
+import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
@@ -526,7 +526,7 @@ class DocumentIndexingIntegrationTest {
         .allMatch(
             r ->
                 "Abschn. Personalausweis beantragen"
-                    .equals(r.getMetadata().get(ChunkingService.LOCATION_METADATA_KEY)));
+                    .equals(r.getMetadata().get(ChunkMetadataKeys.LOCATION_METADATA_KEY)));
   }
 
   @Test
@@ -566,7 +566,7 @@ class DocumentIndexingIntegrationTest {
             r -> "pptx".equals(r.getMetadata().get(ChunkFormatMetadata.PIPELINE_ID_METADATA_KEY)));
     assertThat(results)
         .allMatch(
-            r -> "Folie 1".equals(r.getMetadata().get(ChunkingService.LOCATION_METADATA_KEY)));
+            r -> "Folie 1".equals(r.getMetadata().get(ChunkMetadataKeys.LOCATION_METADATA_KEY)));
   }
 
   @Test

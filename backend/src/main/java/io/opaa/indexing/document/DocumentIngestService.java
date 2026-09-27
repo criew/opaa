@@ -1,24 +1,26 @@
 package io.opaa.indexing.document;
 
 import io.opaa.api.types.DocumentStatus;
+import io.opaa.format.ChunkFormatMetadata;
+import io.opaa.format.DiscoveredAttachment;
+import io.opaa.format.DocumentFormat;
+import io.opaa.format.DocumentFormatRegistry;
+import io.opaa.format.DocumentFormatResult;
+import io.opaa.format.DocumentFormatRunner;
+import io.opaa.format.DocumentFormatSource;
+import io.opaa.format.DocumentService;
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.attachment.AttachmentAccess;
 import io.opaa.indexing.attachment.AttachmentIndexer;
 import io.opaa.indexing.attachment.AttachmentLimits;
 import io.opaa.indexing.attachment.AttachmentSource;
 import io.opaa.indexing.chunk.ChunkContextPrefix;
-import io.opaa.indexing.chunk.ChunkingService;
+import io.opaa.indexing.chunk.SourceChunkMetadataKeys;
 import io.opaa.indexing.chunk.VectorChunkStore;
-import io.opaa.indexing.format.ChunkFormatMetadata;
-import io.opaa.indexing.format.DiscoveredAttachment;
-import io.opaa.indexing.format.DocumentFormat;
-import io.opaa.indexing.format.DocumentFormatRegistry;
-import io.opaa.indexing.format.DocumentFormatResult;
-import io.opaa.indexing.format.DocumentFormatRunner;
-import io.opaa.indexing.format.DocumentFormatSource;
 import io.opaa.indexing.metadata.CoreMetadataChunkKeys;
 import io.opaa.indexing.metadata.DocumentChunkMetadata;
 import io.opaa.indexing.metadata.DocumentMetadataService;
+import io.opaa.indexing.metadata.LibraryMetadataFieldKeys;
 import io.opaa.indexing.metadata.ModelExtractionOutcome;
 import io.opaa.indexing.metadata.ModelExtractionPrompt;
 import io.opaa.indexing.metadata.ModelMetadataExtractor;
@@ -101,6 +103,7 @@ public class DocumentIngestService {
       AttachmentLimits mailAttachmentLimits,
       DocumentMetadataService documentMetadataService,
       ModelMetadataExtractor modelMetadataExtractor) {
+    requireNoSchemaPassthroughKeys(pipelineRegistry);
     this.pipelineRegistry = pipelineRegistry;
     this.documentRepository = documentRepository;
     this.vectorChunkStore = vectorChunkStore;
@@ -114,6 +117,27 @@ public class DocumentIngestService {
     this.mailAttachmentLimits = mailAttachmentLimits;
     this.documentMetadataService = documentMetadataService;
     this.modelMetadataExtractor = modelMetadataExtractor;
+  }
+
+  /**
+   * The schema keys hang on the document (ADR-0024, Entscheidung 5) and are written by {@link
+   * #storeChunks} alone. A format declaring one as passthrough would silently win on a chunk whose
+   * document has no value, so it fails the construction and with it the context startup.
+   */
+  private static void requireNoSchemaPassthroughKeys(DocumentFormatRegistry registry) {
+    for (DocumentFormat pipeline : registry.pipelines()) {
+      for (String key : pipeline.passthroughMetadataKeys()) {
+        if (CoreMetadataChunkKeys.ALL.contains(key)
+            || LibraryMetadataFieldKeys.isLibraryChunkKey(key)) {
+          throw new IllegalStateException(
+              "Document pipeline "
+                  + pipeline.id()
+                  + " declares the document-level schema metadata key "
+                  + key
+                  + " as a passthrough key");
+        }
+      }
+    }
   }
 
   /**
@@ -465,10 +489,10 @@ public class DocumentIngestService {
     }
     Set<String> keysToClear = new HashSet<>();
     if (context.containerKey() == null) {
-      keysToClear.add(ChunkingService.SOURCE_CONTAINER_METADATA_KEY);
+      keysToClear.add(SourceChunkMetadataKeys.SOURCE_CONTAINER_METADATA_KEY);
     }
     if (context.hierarchyPath() == null) {
-      keysToClear.add(ChunkingService.SOURCE_HIERARCHY_METADATA_KEY);
+      keysToClear.add(SourceChunkMetadataKeys.SOURCE_HIERARCHY_METADATA_KEY);
     }
     vectorChunkStore.updateDocumentMetadata(documentId, values, keysToClear);
   }
@@ -486,10 +510,10 @@ public class DocumentIngestService {
     }
     Map<String, Object> values = new HashMap<>();
     if (context.containerKey() != null) {
-      values.put(ChunkingService.SOURCE_CONTAINER_METADATA_KEY, context.containerKey());
+      values.put(SourceChunkMetadataKeys.SOURCE_CONTAINER_METADATA_KEY, context.containerKey());
     }
     if (context.hierarchyPath() != null) {
-      values.put(ChunkingService.SOURCE_HIERARCHY_METADATA_KEY, context.hierarchyPath());
+      values.put(SourceChunkMetadataKeys.SOURCE_HIERARCHY_METADATA_KEY, context.hierarchyPath());
     }
     return values;
   }

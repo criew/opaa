@@ -2,9 +2,9 @@ package io.opaa.eval;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.indexing.format.DocumentFormatSource;
-import io.opaa.indexing.format.DocumentProperties;
-import io.opaa.indexing.format.file.markdown.MarkdownDocumentFormat;
+import io.opaa.format.DocumentFormatSource;
+import io.opaa.format.DocumentProperties;
+import io.opaa.format.file.markdown.MarkdownDocumentFormat;
 import io.opaa.indexing.metadata.CoreMetadataExtractor;
 import io.opaa.indexing.metadata.ExtractedCoreMetadata;
 import io.opaa.indexing.metadata.TestVocabularies;

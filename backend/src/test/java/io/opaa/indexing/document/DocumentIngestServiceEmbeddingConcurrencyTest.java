@@ -11,8 +11,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import io.opaa.format.DocumentService;
+import io.opaa.format.chunk.ChunkingService;
 import io.opaa.indexing.IndexingProperties;
-import io.opaa.indexing.chunk.ChunkingService;
 import io.opaa.indexing.chunk.EmbeddingRateEstimator;
 import io.opaa.indexing.chunk.FullTextChunkStore;
 import io.opaa.indexing.chunk.VectorChunkStore;

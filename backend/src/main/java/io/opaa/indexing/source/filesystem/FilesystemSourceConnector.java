@@ -5,9 +5,9 @@ import static io.opaa.indexing.source.ConnectorChecks.reachable;
 import static io.opaa.indexing.source.ConnectorChecks.unreachable;
 
 import io.opaa.common.ValidationException;
+import io.opaa.format.DocumentService;
+import io.opaa.format.SupportedDocumentFormats;
 import io.opaa.indexing.FilesystemPathAllowlist;
-import io.opaa.indexing.document.DocumentService;
-import io.opaa.indexing.format.SupportedDocumentFormats;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.OriginalAccess;
 import io.opaa.indexing.source.SourceConnectionTestResult;

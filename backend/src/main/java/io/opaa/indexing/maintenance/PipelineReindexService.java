@@ -1,5 +1,8 @@
 package io.opaa.indexing.maintenance;
 
+import io.opaa.format.ChunkFormatMetadata;
+import io.opaa.format.DocumentFormat;
+import io.opaa.format.DocumentFormatRegistry;
 import io.opaa.indexing.attachment.AttachmentAccess;
 import io.opaa.indexing.attachment.StandaloneAttachmentAccess;
 import io.opaa.indexing.chunk.FullTextChunkStore;
@@ -8,9 +11,6 @@ import io.opaa.indexing.document.DocumentIngest;
 import io.opaa.indexing.document.DocumentIngestResult;
 import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.document.StoredDocumentSourceAccess;
-import io.opaa.indexing.format.ChunkFormatMetadata;
-import io.opaa.indexing.format.DocumentFormat;
-import io.opaa.indexing.format.DocumentFormatRegistry;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;

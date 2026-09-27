@@ -7,7 +7,7 @@ import static io.opaa.indexing.source.ConnectorChecks.requireHttpUrl;
 import static io.opaa.indexing.source.ConnectorChecks.translateConnectionError;
 import static io.opaa.indexing.source.ConnectorChecks.unreachable;
 
-import io.opaa.indexing.format.SupportedDocumentFormats;
+import io.opaa.format.SupportedDocumentFormats;
 import io.opaa.indexing.source.ConnectorChecks;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.OriginalAccess;

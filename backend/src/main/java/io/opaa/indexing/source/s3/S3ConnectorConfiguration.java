@@ -1,7 +1,7 @@
 package io.opaa.indexing.source.s3;
 
+import io.opaa.format.SupportedDocumentFormats;
 import io.opaa.indexing.document.DocumentIngestService;
-import io.opaa.indexing.format.SupportedDocumentFormats;
 import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.SourceSyncStateRepository;

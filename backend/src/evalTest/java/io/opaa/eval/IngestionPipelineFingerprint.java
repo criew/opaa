@@ -1,7 +1,7 @@
 package io.opaa.eval;
 
-import io.opaa.indexing.format.DocumentFormat;
-import io.opaa.indexing.format.DocumentFormatRegistry;
+import io.opaa.format.DocumentFormat;
+import io.opaa.format.DocumentFormatRegistry;
 import java.util.Comparator;
 import java.util.stream.Collectors;
 

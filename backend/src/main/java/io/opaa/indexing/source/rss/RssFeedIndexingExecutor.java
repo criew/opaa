@@ -1,6 +1,8 @@
 package io.opaa.indexing.source.rss;
 
 import io.opaa.api.types.IndexingRunMode;
+import io.opaa.format.DocumentProperties;
+import io.opaa.format.file.html.HtmlDocumentFormat;
 import io.opaa.indexing.attachment.AttachmentCandidate;
 import io.opaa.indexing.attachment.AttachmentIndexer;
 import io.opaa.indexing.attachment.AttachmentLimits;
@@ -8,8 +10,6 @@ import io.opaa.indexing.attachment.AttachmentSource;
 import io.opaa.indexing.document.DocumentIngest;
 import io.opaa.indexing.document.DocumentIngestResult;
 import io.opaa.indexing.document.DocumentIngestService;
-import io.opaa.indexing.format.DocumentProperties;
-import io.opaa.indexing.format.file.html.HtmlDocumentFormat;
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.job.IndexingRunEventRecorder;
 import io.opaa.indexing.job.IndexingRunProgress;

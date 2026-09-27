@@ -11,9 +11,9 @@ import io.opaa.api.types.DocumentStatus;
 import io.opaa.auth.DevAuthFilter;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.group.Group;
 import io.opaa.group.GroupRepository;
-import io.opaa.indexing.chunk.ChunkingService;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.SourceType;
@@ -378,7 +378,7 @@ class AssetApiNeutralityDumpTest {
     metadata.put("library_id", library.toString());
     metadata.put("file_name", fileName);
     metadata.put("chunk_index", 0);
-    metadata.put(ChunkingService.LOCATION_METADATA_KEY, "Abschn. " + fileName);
+    metadata.put(ChunkMetadataKeys.LOCATION_METADATA_KEY, "Abschn. " + fileName);
     vectorStore.add(List.of(new Document(text + " in " + fileName, metadata)));
   }
 

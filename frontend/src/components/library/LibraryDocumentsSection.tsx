@@ -48,7 +48,7 @@ import FieldLabel from '../wizard/FieldLabel'
 import LibraryDocumentList from './LibraryDocumentList'
 
 // Mirrors what the registered DocumentFormats admit (DocumentFormat#admittedFormats,
-// backend/src/main/java/io/opaa/indexing/format) - only a client-side hint for the file picker;
+// backend/src/main/java/io/opaa/format) - only a client-side hint for the file picker;
 // the backend remains the authority on what is accepted.
 // Exported so directoryEntries.test.ts exercises filterAcceptedFiles against the same list rather
 // than a copy that can silently drift out of sync with it.

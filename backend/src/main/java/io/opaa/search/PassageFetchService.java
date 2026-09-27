@@ -2,7 +2,7 @@ package io.opaa.search;
 
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.NotFoundException;
-import io.opaa.indexing.chunk.ChunkingService;
+import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import java.util.List;
@@ -214,7 +214,7 @@ public class PassageFetchService {
   }
 
   private static String locationOf(ChunkInspection chunk) {
-    Object location = chunk.metadata().get(ChunkingService.LOCATION_METADATA_KEY);
+    Object location = chunk.metadata().get(ChunkMetadataKeys.LOCATION_METADATA_KEY);
     return location == null ? null : location.toString();
   }
 }

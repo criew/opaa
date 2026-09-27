@@ -1,8 +1,8 @@
 package io.opaa.indexing.source.confluence;
 
+import io.opaa.format.stream.confluencestorage.ConfluenceStorageFormat;
 import io.opaa.indexing.attachment.AttachmentIndexer;
 import io.opaa.indexing.document.DocumentIngestService;
-import io.opaa.indexing.format.stream.confluencestorage.ConfluenceStorageFormat;
 import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.SourceSyncStateRepository;

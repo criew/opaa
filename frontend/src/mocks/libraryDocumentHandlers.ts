@@ -19,7 +19,7 @@ import { countMockFolderDocuments } from './libraryFolderHandlers'
 import { canManageMockLibrary } from './libraryHandlers'
 
 // Mirrors what the registered DocumentFormats admit (DocumentFormat#admittedFormats,
-// backend/src/main/java/io/opaa/indexing/format) - kept as a literal list here rather than
+// backend/src/main/java/io/opaa/format) - kept as a literal list here rather than
 // importing across the frontend/backend boundary.
 const SUPPORTED_DOCUMENT_EXTENSIONS = [
   '.csv',

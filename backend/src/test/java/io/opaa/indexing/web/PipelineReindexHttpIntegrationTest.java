@@ -9,9 +9,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import io.opaa.auth.DevAuthFilter;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.format.ChunkFormatMetadata;
+import io.opaa.format.file.fallback.TikaFallbackFormat;
 import io.opaa.indexing.chunk.VectorChunkStore;
-import io.opaa.indexing.format.ChunkFormatMetadata;
-import io.opaa.indexing.format.file.fallback.TikaFallbackFormat;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;

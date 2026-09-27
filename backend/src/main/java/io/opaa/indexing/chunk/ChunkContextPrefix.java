@@ -1,5 +1,8 @@
 package io.opaa.indexing.chunk;
 
+import io.opaa.format.chunk.ChunkContextTitle;
+import io.opaa.format.chunk.ChunkMetadataKeys;
+import io.opaa.format.chunk.MarkdownHeading;
 import io.opaa.knowledge.SourceDocumentContext;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -163,7 +166,7 @@ public final class ChunkContextPrefix {
             documentWasSplit,
             title,
             values,
-            chunk.getMetadata().get(ChunkingService.LOCATION_METADATA_KEY),
+            chunk.getMetadata().get(ChunkMetadataKeys.LOCATION_METADATA_KEY),
             chunk.getText());
     chunk.setContentFormatter(
         prefix == null
