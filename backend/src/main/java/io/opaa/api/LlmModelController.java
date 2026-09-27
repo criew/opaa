@@ -7,6 +7,7 @@ import io.opaa.api.dto.LlmModelTestRequest;
 import io.opaa.api.dto.LlmModelTestResponse;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
+import io.opaa.group.web.GroupController;
 import io.opaa.llm.EmbeddingInfo;
 import io.opaa.llm.EmbeddingInfoService;
 import io.opaa.llm.LlmModel;

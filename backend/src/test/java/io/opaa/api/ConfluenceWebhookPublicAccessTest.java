@@ -45,9 +45,10 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 /**
  * #1140: the webhook intake is the one POST under {@code /api/v1} a Confluence instance reaches
- * without a session, so - like {@link BrandingPublicAccessTest} - this runs against the real {@link
- * OidcSecurityConfig} chain: an anonymous request must reach the controller (and be judged by the
- * signature check there, not by the filter chain), while its authenticated neighbours stay closed.
+ * without a session, so - like {@link io.opaa.branding.web.BrandingPublicAccessTest} - this runs
+ * against the real {@link OidcSecurityConfig} chain: an anonymous request must reach the controller
+ * (and be judged by the signature check there, not by the filter chain), while its authenticated
+ * neighbours stay closed.
  */
 @WebMvcTest(controllers = PushIntakeController.class)
 @Import({

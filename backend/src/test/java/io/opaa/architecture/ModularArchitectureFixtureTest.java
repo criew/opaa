@@ -14,7 +14,8 @@ import org.junit.jupiter.api.Test;
 /**
  * Proves that every rule of {@link ModularArchitecture} fires. Each example tree under {@code
  * io.opaa.architecture.fixture.<scenario>} mirrors the top-level packages of the backend and breaks
- * one rule; the rules are applied with that scenario package as their root.
+ * one rule; the rules are applied with that scenario package as their root. Fixture controllers are
+ * abstract, so the component scan of the test contexts under {@code io.opaa} never registers them.
  */
 class ModularArchitectureFixtureTest {
 
@@ -125,6 +126,57 @@ class ModularArchitectureFixtureTest {
         .anySatisfy(violation -> assertThat(violation).contains("module KNOWLEDGE -> CONNECTORS"));
   }
 
+  /** The connector package {@code indexing.source.web} is no web package. */
+  @Test
+  void aWebClassOutsideAWebPackageIsReported() {
+    Scenario scenario = new Scenario("weboutsideweb");
+
+    assertThat(scenario.violations(ModularArchitecture::webClassesResideInAWebPackage))
+        .hasSize(3)
+        .anySatisfy(violation -> assertThat(violation).contains("library.LibraryController "))
+        .anySatisfy(violation -> assertThat(violation).contains("library.LibraryResponseMapper "))
+        .anySatisfy(violation -> assertThat(violation).contains("web.WebhookController "));
+  }
+
+  @Test
+  void aClassInApiThatIsNotListedIsReported() {
+    Scenario scenario = new Scenario("unlistedapiclass");
+
+    assertThat(scenario.violations(ModularArchitecture::apiHoldsOnlyItsListedClasses))
+        .singleElement(STRING)
+        .contains("api.SpaceController is not shared by every module");
+    assertThat(scenario.violations(ModularArchitecture::webClassesResideInAWebPackage)).isEmpty();
+    assertThat(
+            new Scenario(
+                    "unlistedapiclass", Set.of(), Set.of("HealthController", "SpaceController"))
+                .violations(ModularArchitecture::apiHoldsOnlyItsListedClasses))
+        .isEmpty();
+  }
+
+  /** {@code library -> permission.web} passes the layering and the modules, but not this rule. */
+  @Test
+  void aDomainClassThatUsesAWebPackageIsReported() {
+    Scenario scenario = new Scenario("domainusesweb");
+
+    assertThat(scenario.violations(ModularArchitecture::onlyTheWebLayerAndAppDependOnAWebPackage))
+        .singleElement(STRING)
+        .contains("library.Library", "permission.web.GrantResponseMapper");
+    assertThat(scenario.violations(ModularArchitecture::noPackageDependsOnAHigherLayer)).isEmpty();
+    assertThat(scenario.violations(ModularArchitecture::modulesDependOnlyOnAllowedModules))
+        .isEmpty();
+  }
+
+  /** Web packages are exempt from the layering, so a cycle between two of them is its own slice. */
+  @Test
+  void aCycleBetweenWebPackagesIsReported() {
+    Scenario scenario = new Scenario("webcycle");
+
+    assertThat(scenario.violations(ModularArchitecture::topLevelPackagesAreFreeOfCycles))
+        .singleElement(STRING)
+        .contains("Cycle detected", "auth.web", "branding.web");
+    assertThat(scenario.violations(ModularArchitecture::noPackageDependsOnAHigherLayer)).isEmpty();
+  }
+
   /** One example tree and the rules rooted at it. */
   private static final class Scenario {
 
@@ -136,8 +188,12 @@ class ModularArchitectureFixtureTest {
     }
 
     Scenario(String name, Set<String> knownCycleEdges) {
+      this(name, knownCycleEdges, ModularArchitecture.SHARED_API_CLASSES);
+    }
+
+    Scenario(String name, Set<String> knownCycleEdges, Set<String> apiClasses) {
       String root = FIXTURES + "." + name;
-      this.architecture = new ModularArchitecture(root, knownCycleEdges);
+      this.architecture = new ModularArchitecture(root, knownCycleEdges, apiClasses);
       this.classes = new ClassFileImporter().importPackages(root);
       assertThat(classes).as("the fixture classes of %s", name).isNotEmpty();
     }

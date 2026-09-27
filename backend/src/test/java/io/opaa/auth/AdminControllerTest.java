@@ -16,6 +16,7 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.local.LocalAdminAvailabilityGuard;
+import io.opaa.auth.web.AdminController;
 import io.opaa.common.ConflictException;
 import java.util.List;
 import java.util.UUID;

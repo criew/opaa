@@ -351,6 +351,7 @@ val testShards = mapOf(
         "io.opaa.chat.*", "io.opaa.space.*", "io.opaa.group.*", "io.opaa.permission.*",
         "io.opaa.branding.*",
         "io.opaa.security.*", "io.opaa.diagnosticaccess.*", "io.opaa.sourceaccess.*",
+        "io.opaa.asset.web.*", "io.opaa.mail.web.*", "io.opaa.revision.web.*", "io.opaa.succession.web.*",
     ),
     "indexing" to listOf("io.opaa.indexing.*", "io.opaa.llm.*"),
 )

@@ -9,8 +9,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import io.opaa.auth.TestSecurityConfig;
 import io.opaa.auth.UserService;
 import io.opaa.auth.local.LocalAuthRateLimiter;
-import io.opaa.auth.local.LocalSelfServiceController;
 import io.opaa.auth.local.LocalSelfServiceService;
+import io.opaa.auth.web.LocalSelfServiceController;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;

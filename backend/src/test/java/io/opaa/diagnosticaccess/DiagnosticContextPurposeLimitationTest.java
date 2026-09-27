@@ -2,8 +2,8 @@ package io.opaa.diagnosticaccess;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.api.DiagnosticContextLogController;
 import io.opaa.auth.CurrentUser;
+import io.opaa.diagnosticaccess.web.DiagnosticContextLogController;
 import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;

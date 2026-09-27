@@ -11,6 +11,7 @@ import io.opaa.api.dto.PipelineVersionStatusResponse;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.audit.web.AuditedAdminCall;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import io.opaa.indexing.format.DocumentFormat;

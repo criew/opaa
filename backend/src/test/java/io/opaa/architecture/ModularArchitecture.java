@@ -22,6 +22,8 @@ import com.tngtech.archunit.lang.ArchCondition;
 import com.tngtech.archunit.lang.ArchRule;
 import com.tngtech.archunit.lang.ConditionEvents;
 import com.tngtech.archunit.lang.SimpleConditionEvent;
+import com.tngtech.archunit.library.dependencies.SliceAssignment;
+import com.tngtech.archunit.library.dependencies.SliceIdentifier;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
@@ -29,13 +31,14 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import org.springframework.stereotype.Controller;
 
 /**
- * The logical modules of the backend and the layering of its top-level packages, as ArchUnit rules
- * over a root package. {@link ModularArchitectureTest} applies them to the main classes under
- * {@code io.opaa}; {@link ModularArchitectureFixtureTest} to example trees that break one rule
- * each. Only compiled dependencies count: a type named only in Javadoc, or only through a {@code
- * static final} constant the compiler inlines, is none.
+ * The logical modules of the backend, the layering of its top-level packages and the place of its
+ * web layer, as ArchUnit rules over a root package. {@link ModularArchitectureTest} applies them to
+ * the main classes under {@code io.opaa}; {@link ModularArchitectureFixtureTest} to example trees
+ * that break one rule each. Only compiled dependencies count: a type named only in Javadoc, or only
+ * through a {@code static final} constant the compiler inlines, is none.
  */
 public final class ModularArchitecture {
 
@@ -280,8 +283,79 @@ public final class ModularArchitecture {
   /** Packages of the separate {@code opaa-api} Gradle module: a library below all layers. */
   static final List<String> OUTSIDE_THE_LAYERING = List.of("api.dto", "api.types");
 
+  /**
+   * The web layer of a top-level package lives in its direct subpackage of this name ({@code
+   * space.web}): its controllers, their response mappers and web helpers. A deeper package of that
+   * name, such as the connector {@code indexing.source.web}, is none.
+   */
+  static final String WEB = "web";
+
+  /** The package of the endpoints and web helpers every module shares. */
+  static final String API = "api";
+
+  /** The classes {@link #API} holds: what every module shares. */
+  static final Set<String> SHARED_API_CLASSES =
+      Set.of(
+          "ErrorBodyNegotiator",
+          "ErrorSanitizer",
+          "GlobalExceptionHandler",
+          "HealthController",
+          "HttpClientConfig",
+          "RequestLoggingFilter");
+
+  /**
+   * Classes still in {@link #API} that belong in the web package of their module; removed from here
+   * as they move, until the list is empty (#2034).
+   */
+  static final Set<String> WEB_CLASSES_NOT_YET_MOVED =
+      Set.of(
+          "AvailablePromptController",
+          "AvailablePromptResponseMapper",
+          "ChatController",
+          "ChatResponseMapper",
+          "ChatSearchResponseMapper",
+          "DocumentController",
+          "DocumentMetadataController",
+          "DocumentMetadataResponseMapper",
+          "ExternalAccessSettingsController",
+          "ExternalAccessSettingsResponseMapper",
+          "ExternalAccessTokenAdminController",
+          "ExternalAccessTokenController",
+          "ExternalAccessTokenResponseMapper",
+          "IndexingAdminController",
+          "LibraryController",
+          "LibraryDocumentResponseMapper",
+          "LibraryExternalAccessController",
+          "LibraryExternalAccessResponseMapper",
+          "LibraryFolderResponseMapper",
+          "LibraryMetadataFieldController",
+          "LibraryMetadataFieldResponseMapper",
+          "LibraryResponseMapper",
+          "LlmModelController",
+          "LowChunkDocumentResponseMapper",
+          "MetadataBackfillResponseMapper",
+          "MetadataExtractionResponseMapper",
+          "MetadataFilterDeserializer",
+          "MetadataFilterMapper",
+          "MetadataFilterOptionsResponseMapper",
+          "OrphanedOriginalResponseMapper",
+          "PipelineVersionResponseMapper",
+          "PromptLibraryController",
+          "PromptLibraryResponseMapper",
+          "PushIntakeController",
+          "QueryController",
+          "QueryResponseMapper",
+          "SearchAdminController",
+          "SearchAdminResponseMapper",
+          "SearchController",
+          "SearchResponseMapper",
+          "SourceConnectionTestResponseMapper",
+          "SourceTypeController",
+          "UploadStoreAdminController");
+
   private final String root;
   private final Set<String> knownCycleEdges;
+  private final Set<String> apiClasses;
 
   public ModularArchitecture(String root) {
     this(root, Set.of());
@@ -291,8 +365,17 @@ public final class ModularArchitecture {
    * Rules over {@code root} that let the subpackage cycle edges in {@code knownCycleEdges} pass.
    */
   ModularArchitecture(String root, Set<String> knownCycleEdges) {
+    this(root, knownCycleEdges, SHARED_API_CLASSES);
+  }
+
+  /**
+   * Rules over {@code root} that let the subpackage cycle edges in {@code knownCycleEdges} pass and
+   * allow exactly the classes named in {@code apiClasses} in {@link #API}.
+   */
+  ModularArchitecture(String root, Set<String> knownCycleEdges, Set<String> apiClasses) {
     this.root = root;
     this.knownCycleEdges = knownCycleEdges;
+    this.apiClasses = apiClasses;
   }
 
   ArchRule everyPackageIsAssigned() {
@@ -302,6 +385,10 @@ public final class ModularArchitecture {
         .allowEmptyShould(true);
   }
 
+  /**
+   * A web package is exempt: it sits above every package its module may reach, so the module rule
+   * bounds it, and {@link #onlyTheWebLayerAndAppDependOnAWebPackage} keeps the edges into it.
+   */
   ArchRule noPackageDependsOnAHigherLayer() {
     return classes()
         .that(areInTheRoot())
@@ -309,7 +396,7 @@ public final class ModularArchitecture {
             dependOnly(
                 "depend on no higher layer",
                 (origin, target) -> {
-                  int from = indexOf(layerOf(origin));
+                  int from = isInAWebPackage(origin) ? -1 : indexOf(layerOf(origin));
                   int to = indexOf(layerOf(target));
                   return from < 0 || to <= from
                       ? null
@@ -344,8 +431,96 @@ public final class ModularArchitecture {
         .allowEmptyShould(true);
   }
 
+  /** Each web package forms a slice of its own, apart from its top-level package. */
   ArchRule topLevelPackagesAreFreeOfCycles() {
-    return slices().matching(root + ".(*)..").should().beFreeOfCycles().allowEmptyShould(true);
+    return slices()
+        .assignedFrom(
+            new SliceAssignment() {
+              @Override
+              public SliceIdentifier getIdentifierOf(JavaClass javaClass) {
+                String relative = relative(javaClass.getPackageName());
+                if (relative == null || relative.isEmpty()) {
+                  return SliceIdentifier.ignore();
+                }
+                return SliceIdentifier.of(
+                    isWebPackage(relative) ? topLevel(relative) + "." + WEB : topLevel(relative));
+              }
+
+              @Override
+              public String getDescription() {
+                return "top-level packages of " + root + ", each web package apart";
+              }
+            })
+        .should()
+        .beFreeOfCycles()
+        .allowEmptyShould(true);
+  }
+
+  /**
+   * Controllers and response mappers live in the web package of a top-level package, or in {@link
+   * #API} as far as {@link #apiHoldsOnlyItsListedClasses} allows.
+   */
+  ArchRule webClassesResideInAWebPackage() {
+    return classes()
+        .that(areInTheRoot())
+        .and(DescribedPredicate.describe("are controllers or response mappers", this::isWebClass))
+        .should(
+            new ArchCondition<>("reside in a web package or in " + root + "." + API) {
+              @Override
+              public void check(JavaClass javaClass, ConditionEvents events) {
+                String relative = relative(javaClass.getPackageName());
+                if (!isWebPackage(relative) && !API.equals(relative)) {
+                  events.add(
+                      SimpleConditionEvent.violated(
+                          javaClass,
+                          javaClass.getName()
+                              + " is a web class outside a web package: move it to the package"
+                              + " <top-level package>."
+                              + WEB
+                              + " of its module"));
+                }
+              }
+            })
+        .allowEmptyShould(true);
+  }
+
+  ArchRule apiHoldsOnlyItsListedClasses() {
+    return classes()
+        .that(
+            DescribedPredicate.describe(
+                "are in " + root + "." + API,
+                javaClass -> API.equals(relative(javaClass.getPackageName()))))
+        .should(
+            new ArchCondition<>("be listed as shared by every module") {
+              @Override
+              public void check(JavaClass javaClass, ConditionEvents events) {
+                String name = outermostSimpleName(javaClass);
+                if (!name.equals("package-info") && !apiClasses.contains(name)) {
+                  events.add(
+                      SimpleConditionEvent.violated(
+                          javaClass,
+                          javaClass.getName()
+                              + " is not shared by every module: move it to the web package of"
+                              + " its module"));
+                }
+              }
+            })
+        .allowEmptyShould(true);
+  }
+
+  ArchRule onlyTheWebLayerAndAppDependOnAWebPackage() {
+    DescribedPredicate<JavaClass> webClass =
+        DescribedPredicate.describe("are in a web package", this::isInAWebPackage);
+    return noClasses()
+        .that(areInTheRoot())
+        .and(DescribedPredicate.not(webClass))
+        .and(
+            DescribedPredicate.describe(
+                "are outside module " + APP, javaClass -> moduleOf(javaClass) != APP))
+        .should()
+        .dependOnClassesThat(webClass)
+        .because("the web layer sits on top of its module; the domain never reaches back into it")
+        .allowEmptyShould(true);
   }
 
   ArchRule subpackagesAreFreeOfCycles() {
@@ -449,7 +624,38 @@ public final class ModularArchitecture {
         topLevelPackagesAreFreeOfCycles(),
         subpackagesAreFreeOfCycles(),
         connectorsDoNotKnowEachOther(),
-        noOneOutsideAConnectorKnowsIt());
+        noOneOutsideAConnectorKnowsIt(),
+        webClassesResideInAWebPackage(),
+        apiHoldsOnlyItsListedClasses(),
+        onlyTheWebLayerAndAppDependOnAWebPackage());
+  }
+
+  /** Whether {@code javaClass} lies in the web package of a top-level package. */
+  boolean isInAWebPackage(JavaClass javaClass) {
+    return isWebPackage(relative(javaClass.getBaseComponentType().getPackageName()));
+  }
+
+  /** A controller or a response mapper. */
+  private boolean isWebClass(JavaClass javaClass) {
+    return javaClass.isAnnotatedWith(Controller.class)
+        || javaClass.isMetaAnnotatedWith(Controller.class)
+        || javaClass.getSimpleName().endsWith("ResponseMapper");
+  }
+
+  /** {@code <top-level package>.web} or below it; {@code relative} may be {@code null}. */
+  private static boolean isWebPackage(String relative) {
+    if (relative == null) {
+      return false;
+    }
+    String[] segments = relative.split("\\.");
+    return segments.length >= 2 && segments[1].equals(WEB);
+  }
+
+  /** The simple name of the top-level class that declares {@code javaClass}. */
+  private static String outermostSimpleName(JavaClass javaClass) {
+    String name = javaClass.getName().substring(javaClass.getPackageName().length() + 1);
+    int nested = name.indexOf('$');
+    return nested < 0 ? name : name.substring(0, nested);
   }
 
   /** The layer of {@code javaClass}, or {@code null} outside the root or the layering. */
