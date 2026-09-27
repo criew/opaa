@@ -194,10 +194,12 @@ def build_satzungen() -> list[tuple[str, str, bytes]]:
         filename = f"{index:02d}_{satzung.slug}.pdf"
         content = satzungen.render_satzung_pdf(satzung)
         written.append((f"satzungen-gebuehrenordnungen/{filename}", satzung.slug, content))
+    # The Gebührenübersicht continues the running number after the last Satzung.
+    filename = f"{len(satzungen.SATZUNGEN) + 1:02d}_{satzungen.GEBUEHRENUEBERSICHT_SLUG}.xlsx"
     written.append(
         (
-            f"satzungen-gebuehrenordnungen/{satzungen.GEBUEHRENUEBERSICHT_FILE_NAME}",
-            satzungen.GEBUEHRENUEBERSICHT_FILE_NAME,
+            f"satzungen-gebuehrenordnungen/{filename}",
+            satzungen.GEBUEHRENUEBERSICHT_SLUG,
             satzungen.render_gebuehrenuebersicht_xlsx(),
         )
     )
@@ -350,7 +352,7 @@ def collect_validation_texts(
         texts.append((f"satzungen-gebuehrenordnungen/{satzung.slug} (Quelltext)", _satzung_text(satzung)))
     texts.append(
         (
-            f"satzungen-gebuehrenordnungen/{satzungen.GEBUEHRENUEBERSICHT_FILE_NAME} (Quelltext)",
+            f"satzungen-gebuehrenordnungen/{satzungen.GEBUEHRENUEBERSICHT_SLUG} (Quelltext)",
             satzungen.gebuehrenuebersicht_text(),
         )
     )

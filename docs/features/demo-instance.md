@@ -37,7 +37,7 @@ lesen dürfen.
    Gebührenordnungen, Formularnummern, Amtsdeutsch.
 2. **Szenario:** das **Bürgerbüro Rheinfurt** mit mehreren Teams (Sachgebieten) — keine konstruierte
    amtsübergreifende Leitungsrolle, sondern die realistische Binnenstruktur eines Amtes mit Amtsleitung.
-3. **Alle Konnektortypen und mehrere Dateiformate:** HTTP-Verzeichnis (Markdown, Klartext und PDF),
+3. **Alle Konnektortypen und mehrere Dateiformate:** HTTP-Verzeichnis (Markdown, Klartext, PDF, XLSX und CSV),
    RSS-Feed (selbst gehostete, statische XML) und manueller Upload (DOCX, PDF, PPTX, E-Mail mit
    PDF-Anhang).
 4. **Ein Befehl installiert alles:** Compose-Profil `demo` plus Seed-Skript richten Nutzer, Spaces,

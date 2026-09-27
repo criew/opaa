@@ -504,7 +504,7 @@ SATZUNGEN: list[Satzung] = [
 # read from the Satzung above rather than typed again, plus the columns only this sheet carries
 # (Tarifstelle, Sachgebiet, Buchungsschlüssel der Kasse).
 
-GEBUEHRENUEBERSICHT_FILE_NAME = "20_gebuehrenuebersicht-buergerbuero.xlsx"
+GEBUEHRENUEBERSICHT_SLUG = "gebuehrenuebersicht-buergerbuero"
 GEBUEHRENUEBERSICHT_TITEL = "Gebührenübersicht Bürgerbüro Rheinfurt 2026"
 _GEBUEHRENUEBERSICHT_AUTOR = "Stadt Rheinfurt, Bürgerbüro – Kasse (synthetisch)"
 _GEBUEHRENUEBERSICHT_STAND = datetime(2026, 1, 5, 8, 0, 0)
