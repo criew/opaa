@@ -199,7 +199,7 @@ dazu passende Art von Zugangsdaten; mit Zugangsdaten prüft er sie und zählt di
 Confluence ist der Test nicht optional: Die Anlage bestätigt die Edition erneut gegen die Instanz und
 lehnt eine Edition ab, die die Instanz nicht ist (eine spätere Adressänderung prüft die gespeicherte
 Edition nicht erneut — die Edition ist unveränderlich, die Adresse muss dieselbe Instanz nennen), und
-die Space-Auswahl kommt aus einer eigenen Auflistung (`POST /api/v1/libraries/confluence/spaces`),
+die Space-Auswahl kommt aus einer eigenen Auflistung (`POST /api/v1/source-types/CONFLUENCE/browse`),
 die nur mit gültigen Zugangsdaten antwortet. Beide Sonden unterliegen wie jeder Lauf der Zielprüfung
 (#267) — ein selbst betriebenes Confluence Data Center im privaten Adressbereich braucht deshalb den
 Eintrag in `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST`, und die Fehlermeldung nennt ihn. `S3` (#1376,
@@ -209,7 +209,7 @@ auf das erste Objekt) — und zählt die Objekte der ersten Auflistungsseite (�
 voll ist); die Meldung nennt das fehlende Recht (`s3:ListBucket`, `s3:GetObject`), einen Verweis auf
 eine andere Region oder einen anderen Adressstil, abgelehnte Zugangsdaten oder einen gesperrten Host,
 und nennt beim Zertifikatsfehler das Aussetzen der TLS-Prüfung nur als letzte Option. Eine eigene
-Auflistung (`POST /api/v1/libraries/s3/buckets`) nennt die Buckets, die der Schlüssel sehen darf —
+Auflistung (`POST /api/v1/source-types/S3/browse`) nennt die Buckets, die der Schlüssel sehen darf —
 ein Schlüssel ohne `s3:ListAllMyBuckets` bekommt keine Fehlermeldung, sondern den Hinweis, den
 Bucket-Namen von Hand einzutragen; beide Sonden teilen den Rate-Limit-Topf `source-test` und die
 Zielprüfung mit dem Verbindungstest. Für die
@@ -220,7 +220,7 @@ Zielprüfung (gebaut, #267)** — konfigurierbar über `opaa.indexing.target-val
 [deployment.md](../handbuch/deployment.md). Er ist zusätzlich rate-limitiert (`opaa.rate-limit.source-test`),
 damit er nicht als schneller interner Portscanner missbraucht werden kann. Ohne Bezug zu einer
 bestehenden Bibliothek verlangt die Quellprobe wie die beiden Auswahl-Endpunkte
-(`confluence/spaces`, `s3/buckets`) das Anlegerecht `CREATE_CONNECTOR_LIBRARY` (gebaut, #1856,
+(`source-types/{sourceType}/browse`) das Anlegerecht `CREATE_CONNECTOR_LIBRARY` (gebaut, #1856,
 [ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md) Entscheidung 5) —
 dasselbe Recht, das die Anlage der Bibliothek ohnehin verlangt. Mit `libraryId` bleibt es bei der
 bestehenden `MANAGER`-Schranke der Bibliothek.
@@ -306,9 +306,9 @@ angezeigt, verschlüsselt abgelegt wie das Token, jederzeit neu erzeugbar oder e
 Audit-Protokoll als `LIBRARY_SOURCE_UPDATED` mit dem Feldnamen, nie mit dem Wert) und hinterlegt es in
 Confluence — Data Center signiert jede Nachricht damit (`X-Hub-Signature`, HMAC-SHA256 über den
 Rohkörper), eine Cloud-Automation-Regel „Web-Anfrage senden“ schickt es als Header
-`X-OPAA-Webhook-Secret` mit. Der Eingang `POST /api/v1/libraries/{id}/confluence-webhook` ist —
-neben dem S3-Ereigniseingang `s3-events` (#1381) — einer von zwei Pfaden unter `/api/v1`, die ohne
-Sitzung erreichbar sind; er antwortet auf jede nicht
+`X-OPAA-Webhook-Secret` mit. Der Eingang `POST /api/v1/libraries/{id}/push` ist —
+zugleich der S3-Ereigniseingang (#1381, typneutral seit #1977) — der eine Pfad unter `/api/v1`, der ohne
+Sitzung erreichbar ist; er antwortet auf jede nicht
 authentifizierte Anfrage gleichförmig mit `401`, ist je Bibliothek ratenbegrenzt
 (`OPAA_RATE_LIMIT_WEBHOOK_*`) und liest aus dem Körper nur die genannten Seiten-IDs — **nicht die
 Ereignisart**. Die gemeldeten Seiten werden je Bibliothek gesammelt
@@ -671,7 +671,7 @@ Identität ist `s3://<bucket>/<key>` ohne Endpoint — ein Umzug des Speichers b
 neu, ein Umbenennen des Objekts schon (Entscheidung 5); die Präfixspiegelung als Ordner steht
 unter [Ordner in Konnektorbibliotheken](#ordner-in-konnektorbibliotheken-8241277-gebaut).
 
-**Push-Weg (Entscheidung 6).** Der Ereigniseingang `POST /api/v1/libraries/{id}/s3-events` — der
+**Push-Weg (Entscheidung 6).** Der Ereigniseingang `POST /api/v1/libraries/{id}/push` — der
 zweite sitzungslose, schreibende Pfad unter `/api/v1` neben dem Confluence-Webhook (siehe dort) —
 nimmt das je Bibliothek erzeugte Ereignis-Token in drei Formen an, weil die Anbieter sie vorgeben:
 `Authorization: Bearer` (MinIO-Webhook), `Authorization: Basic` mit dem Token als Passwort (Ceph

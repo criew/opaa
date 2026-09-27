@@ -66,10 +66,10 @@ selben Reiter folgen der **„Zeitplan"** und, als **„Läufe"**, das Laufproto
 | Adresse (`sourceUrl`) | Pflicht. Cloud mit oder ohne `/wiki`; Data Center einschließlich Kontextpfad, etwa `https://wiki.behoerde.example/confluence`. |
 | Edition (`sourceConfluenceEdition`) | Pflicht, `CLOUD` oder `DATA_CENTER`. Wird beim Anlegen erkannt und ist danach unveränderlich; eine migrierte Instanz wird als neue Bibliothek angelegt. |
 | Zugangsdaten (`sourceCredentials`) | Pflicht. Cloud: `<E-Mail>:<API-Token>`; Data Center: Personal Access Token. Verschlüsselt gespeichert, in keiner API-Antwort sichtbar. |
-| Space-Auswahl (`confluenceSpaces`) | Pflicht, mindestens ein Space, höchstens 500. Später änderbar; jede Änderung erzwingt beim nächsten Lauf einen Vollabgleich. |
+| Space-Auswahl (`sourceSettings.spaces`) | Pflicht, mindestens ein Space, höchstens 500. Später änderbar; jede Änderung erzwingt beim nächsten Lauf einen Vollabgleich. |
 | Proxy (`sourceProxy`) | optional, `host:port`. Der Proxy-Host unterliegt derselben Zieladressprüfung wie die Instanz. |
 | Zertifikatsprüfung aussetzen (`sourceInsecureSsl`) | optional, nur für Testinstanzen. Ein eigenes Zertifikat der Behörden-CA gehört in den Truststore des Backend-Containers (siehe [Deployment](deployment.md)). |
-| Vollabgleich-Rhythmus (`confluenceFullSyncIntervalDays`) | optional, 1 bis 365 Tage, im Zeitplan-Dialog („Vollabgleich alle … Tage"); leer bedeutet die instanzweite Vorgabe (Standard sieben Tage). |
+| Vollabgleich-Rhythmus (`sourceSettings.fullSyncIntervalDays`) | optional, 1 bis 365 Tage, im Zeitplan-Dialog („Vollabgleich alle … Tage"); leer bedeutet die instanzweite Vorgabe (Standard sieben Tage). |
 | Webhook-Geheimnis | optional, in OPAA erzeugt (Abschnitt 8). |
 
 **Das gestufte Quellformular** — im Schritt „Quelle" des Assistenten wie hinter „Bearbeiten" im
@@ -268,7 +268,7 @@ nur später.**
 Bibliothek, Reiter „Quelle", Abschnitt **Anbindung** (Verwaltende), Zeile **Webhook**,
 **„Webhook einrichten"**. OPAA
 zeigt das Geheimnis **genau einmal** zusammen mit der Adresse des Eingangs
-(`https://<opaa-host>/api/v1/libraries/<Bibliotheks-ID>/confluence-webhook`). Beides jetzt in
+(`https://<opaa-host>/api/v1/libraries/<Bibliotheks-ID>/push`). Beides jetzt in
 Confluence hinterlegen; danach ist das Geheimnis nur noch als „eingerichtet" sichtbar. „Geheimnis
 neu erzeugen" rotiert (das alte gilt sofort nicht mehr), „Webhook entfernen" schließt den Eingang.
 Beide Aktionen fragen nach, denn Confluence merkt nichts davon, wenn OPAA seine Nachrichten abweist.
@@ -277,7 +277,8 @@ Wert.
 
 Der Eingang muss für die Instanz erreichbar sein (Firewall- oder Proxy-Regel von Confluence zu
 OPAA). Er ist einer der wenigen Pfade unter `/api/v1`, die ohne Anmeldung erreichbar sind, und
-neben dem S3-Ereigniseingang (`s3-events`) einer von zwei schreibenden; die Nachricht weist sich
+derselbe typneutrale Push-Eingang (`push`), den auch S3-Ereignisse nutzen - der einzige schreibende unter
+ihnen; die Nachricht weist sich
 mit dem Geheimnis aus. Der vorgelagerte Proxy **muss**
 `X-Forwarded-For` autoritativ setzen (siehe [Deployment](deployment.md)), sonst greift die
 Ratenbegrenzung je Client nicht.
@@ -454,7 +455,7 @@ Signatur eines Webhook-Tests von Hand (Data-Center-Format):
 ```bash
 BODY='{"event":"page_updated","page":{"id":"102"}}'
 SIG=$(printf '%s' "$BODY" | openssl dgst -sha256 -hmac "<geheimnis>" | sed 's/^.* //')
-curl -i -X POST "https://<opaa-host>/api/v1/libraries/<id>/confluence-webhook" \
+curl -i -X POST "https://<opaa-host>/api/v1/libraries/<id>/push" \
   -H "Content-Type: application/json" -H "X-Hub-Signature: sha256=$SIG" --data "$BODY"
 # 202 Accepted = angenommen; 401 = Geheimnis/Signatur falsch oder Bibliothek ohne Webhook
 ```

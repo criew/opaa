@@ -77,10 +77,10 @@ Reiter folgen der **„Zeitplan"** und, als **„Läufe"**, das Laufprotokoll.
 | Feld der Bibliothek | Regel |
 |---|---|
 | Endpoint (`sourceUrl`) | Pflicht. `http(s)://host[:port]` **ohne Pfad**, Abfrage oder Zugangsdaten; wird normalisiert gespeichert (Schema und Host kleingeschrieben). Bucket und Präfix gehören in die Geltungsbereiche, nicht in den Endpoint. |
-| Region (`s3Settings.region`) | optional, höchstens 64 Zeichen aus Buchstaben, Ziffern und Bindestrichen. Leer bedeutet `us-east-1`, was MinIO und Ceph erwarten; AWS verlangt die Region des Buckets, Hetzner den Ort. |
-| Adressstil (`s3Settings.pathStyle`) | `true` spricht `endpoint/bucket/key` an (MinIO, Ceph), `false` `bucket.endpoint/key` (AWS, Hetzner). |
-| Geltungsbereiche (`s3Settings.scopes`) | Pflicht, ein bis fünfzig Einträge aus Bucket und optionalem Präfix. Bucket nach den AWS-Namensregeln (3 bis 63 Zeichen, Kleinbuchstaben, Ziffern, Punkte, Bindestriche, keine IP-Adresse). Das Präfix wird normalisiert: kein führender, ein abschließender Schrägstrich (`2025/protokolle` wird `2025/protokolle/`); leer ist der ganze Bucket. Zwei Bereiche derselben Bibliothek dürfen sich **nicht überschneiden**; die Anlage weist das mit beiden Bereichen ab. Später änderbar; jede Änderung verwirft den Wiederaufnahmezustand. |
-| Ein-/Ausschlussmuster (`s3Settings.includePatterns`, `excludePatterns`) | optional, je Liste höchstens 50 Glob-Muster bis 255 Zeichen auf den **vollständigen Schlüssel** einschließlich Bereichspräfix. Mit Einschlussmustern muss ein Schlüssel mindestens eines treffen; ein Ausschlussmuster gewinnt danach. `*` bleibt in einem Segment, `**` überschreitet Schrägstriche: `**/*.pdf` trifft PDFs in Unterordnern, `*.pdf` nur auf oberster Ebene. Was die Muster ausschließen, gehört nicht zum Bestand und wird mit dem nächsten Vollabgleich entfernt. |
+| Region (`sourceSettings.region`) | optional, höchstens 64 Zeichen aus Buchstaben, Ziffern und Bindestrichen. Leer bedeutet `us-east-1`, was MinIO und Ceph erwarten; AWS verlangt die Region des Buckets, Hetzner den Ort. |
+| Adressstil (`sourceSettings.pathStyle`) | `true` spricht `endpoint/bucket/key` an (MinIO, Ceph), `false` `bucket.endpoint/key` (AWS, Hetzner). |
+| Geltungsbereiche (`sourceSettings.scopes`) | Pflicht, ein bis fünfzig Einträge aus Bucket und optionalem Präfix. Bucket nach den AWS-Namensregeln (3 bis 63 Zeichen, Kleinbuchstaben, Ziffern, Punkte, Bindestriche, keine IP-Adresse). Das Präfix wird normalisiert: kein führender, ein abschließender Schrägstrich (`2025/protokolle` wird `2025/protokolle/`); leer ist der ganze Bucket. Zwei Bereiche derselben Bibliothek dürfen sich **nicht überschneiden**; die Anlage weist das mit beiden Bereichen ab. Später änderbar; jede Änderung verwirft den Wiederaufnahmezustand. |
+| Ein-/Ausschlussmuster (`sourceSettings.includePatterns`, `excludePatterns`) | optional, je Liste höchstens 50 Glob-Muster bis 255 Zeichen auf den **vollständigen Schlüssel** einschließlich Bereichspräfix. Mit Einschlussmustern muss ein Schlüssel mindestens eines treffen; ein Ausschlussmuster gewinnt danach. `*` bleibt in einem Segment, `**` überschreitet Schrägstriche: `**/*.pdf` trifft PDFs in Unterordnern, `*.pdf` nur auf oberster Ebene. Was die Muster ausschließen, gehört nicht zum Bestand und wird mit dem nächsten Vollabgleich entfernt. |
 | Zugangsdaten (`sourceCredentials`) | Pflicht. `accessKey:secretKey`, optional gefolgt von `:sessionToken` (zeitlich begrenzte STS-Schlüssel). **Access Key und Secret Key dürfen keinen Doppelpunkt enthalten** — MinIO und Ceph lassen beide frei wählen, und ein Doppelpunkt würde still falsch zerlegt und als Signaturfehler erscheinen; die Eingabe weist ihn ab. Zusammen höchstens 500 Zeichen. Verschlüsselt gespeichert, in keiner API-Antwort, keinem Protokoll und keiner Fehlermeldung sichtbar. |
 | Proxy (`sourceProxy`) | optional, `host:port`. Der Proxy-Host unterliegt derselben Zieladressprüfung wie der Endpoint. |
 | Zertifikatsprüfung aussetzen (`sourceInsecureSsl`) | optional, nur für ein bekanntes, selbstsigniertes Zertifikat im Hausnetz — die Oberfläche warnt, dass sich dann jeder Server als der Objektspeicher ausgeben und den Schlüssel mitlesen kann. Ein eigenes Zertifikat der Behörden-CA gehört in den Truststore des Backend-Containers (siehe [Deployment](deployment.md)). |
@@ -488,7 +488,7 @@ nichts falsch, nur später**, und ein verlorenes Ereignis holt der nächste gepl
 Bibliothek, Reiter „Quelle", Abschnitt **Anbindung** (Verwaltende), Zeile
 **Ereignisbenachrichtigung**, **„Benachrichtigung
 einrichten"**. OPAA zeigt das Token **genau einmal** zusammen mit der Adresse des Eingangs
-(`https://<opaa-host>/api/v1/libraries/<Bibliotheks-ID>/s3-events`) und den Einrichtungsbefehlen je
+(`https://<opaa-host>/api/v1/libraries/<Bibliotheks-ID>/push`) und den Einrichtungsbefehlen je
 Anbieter (unten). Beides jetzt im Objektspeicher hinterlegen; danach ist das Token nur noch als
 „Token hinterlegt" sichtbar. „Token neu erzeugen" rotiert (das alte gilt sofort nicht mehr),
 „Benachrichtigung entfernen" schließt den Eingang. Beide Aktionen fragen nach, denn der Speicher
@@ -525,7 +525,7 @@ Der Dialog zeigt die Befehle mit eingesetzter Adresse und Token; `ALIAS` ist der
 Servers, eine Zeile `mc event add` je Geltungsbereich (mit `--prefix` bei einem Präfix):
 
 ```bash
-mc admin config set ALIAS notify_webhook:opaa endpoint="https://<opaa-host>/api/v1/libraries/<id>/s3-events" auth_token="<token>"
+mc admin config set ALIAS notify_webhook:opaa endpoint="https://<opaa-host>/api/v1/libraries/<id>/push" auth_token="<token>"
 mc admin service restart ALIAS
 mc event add ALIAS/dokumente arn:minio:sqs::opaa:webhook --event put,delete --prefix "2025/protokolle/"
 ```
@@ -546,7 +546,7 @@ des Topics den Endpunkt mit dem Token als Passwort angeben — **nur über `http
 Token im Klartext über das Netz:
 
 ```
-push-endpoint=https://opaa:<token>@<opaa-host>/api/v1/libraries/<id>/s3-events
+push-endpoint=https://opaa:<token>@<opaa-host>/api/v1/libraries/<id>/push
 ```
 
 Anschließend je Bucket eine Benachrichtigung auf das Topic für `s3:ObjectCreated:*` und
@@ -774,7 +774,7 @@ Probe des Ereigniseingangs von Hand (S3-`Records`-Format, wie MinIO und Ceph es 
 
 ```bash
 BODY='{"Records":[{"eventName":"s3:ObjectCreated:Put","s3":{"bucket":{"name":"dokumente"},"object":{"key":"2025/protokolle/sitzung.pdf"}}}]}'
-curl -i -X POST "https://<opaa-host>/api/v1/libraries/<id>/s3-events" \
+curl -i -X POST "https://<opaa-host>/api/v1/libraries/<id>/push" \
   -H "Content-Type: application/json" -H "Authorization: Bearer <token>" --data "$BODY"
 # 202 Accepted = angenommen; 401 = Token falsch oder Bibliothek ohne Token
 ```

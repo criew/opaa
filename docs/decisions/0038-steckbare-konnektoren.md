@@ -150,3 +150,22 @@ Frontend und E2E bleiben dabei unverändert. Danach folgt der API-Bruch mit frei
   nicht im generierten Typ; Spec-Validierung und generierte Frontend-Typen entfallen dafür.
 - **Eine Umbenennung von Einstellungs-Schlüsseln braucht künftig eine Datenmigration über
   `jsonb`**, sobald es Bestandssysteme gibt.
+
+## Nachtrag: Umsetzung des API-Bruchs (#1977, Teil B)
+
+- **Endpunkte:** `GET /api/v1/source-types` listet je Konnektor Schlüssel, Anzeigename und
+  Fähigkeiten (Indizierungslauf, Push-Eingang, Auflistung, Vorgabe des Vollabgleichsrhythmus).
+  Die Auflistung vor dem Speichern heißt `POST /api/v1/source-types/{sourceType}/browse` und trägt
+  die konnektoreigenen Parameter in `query`; das Push-Geheimnis heißt
+  `POST|DELETE /api/v1/libraries/{libraryId}/push-secret`, der Push-Eingang
+  `POST /api/v1/libraries/{libraryId}/push`. Welcher Konnektor eine Push-Nachricht liest, entscheidet
+  der Typ der Bibliothek, nicht der Pfad.
+- **Kein JSON-Schema je Konnektor in diesem Schritt.** `GET /source-types` liefert kein Schema der
+  Einstellungen. Die Formularkomponente je Typ ist ohnehin handgeschrieben und prüft ihre Eingaben
+  selbst, maßgeblich bleibt die Validierung im Konnektor, und ein Schema, das kein Client liest,
+  wäre ungeprüfte Doppelpflege neben dem Einstellungs-Record. Das Feld lässt sich später
+  rückwärtskompatibel ergänzen, sobald ein Client es braucht (etwa eine generische Eingabemaske für
+  Konnektoren ohne eigene Formularkomponente).
+- **Frontend:** Die Formularkomponenten sind nach Typ-Schlüssel registriert; die Kacheln des
+  Anlage-Assistenten kommen aus `GET /source-types`. Ein Typ, den das Backend kennt, das Frontend
+  aber nicht, erscheint unter seinem Anzeigenamen und ist nicht wählbar.
