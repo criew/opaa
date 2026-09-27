@@ -249,7 +249,10 @@ Gruppen deutlich getrennt (24–48).
   Schatten auf ruhenden Karten.**
 - Ebene 2 (schwebend: Menü, Popover, @-Vorschlagsliste): Rahmen **plus** dezenter Schatten
   `0 2px 6px rgba(1,32,66,0.08)`.
-- Ebene 3 (Dialog, Belegfenster): Rahmen plus `0 8px 24px rgba(1,32,66,0.10)`.
+- Ebene 3 (Dialog, Belegfenster): Rahmen plus `0 8px 24px rgba(1,32,66,0.10)`. Der Grund
+  dahinter tritt unter einem Schleier mit 2 px Unschärfe zurück; der Schleier trägt den Ton des
+  Schemas — hell `navy-900` mit 42 %, dunkel das neutrale `carbon-950` mit 72 %, nie Navy auf
+  dem Carbon-Grund.
 - Im dunklen Schema bleiben die Schattenwerte gleich; die Trennung leisten dort vor allem die
   helleren Flächenstufen.
 
