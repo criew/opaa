@@ -12503,7 +12503,7 @@ components:
 
     SourceTypeDescriptor:
       type: object
-      required: [type, displayName, indexingRun, pushIntake, browsable]
+      required: [type, displayName, indexingRun, uploads, pushIntake, browsable]
       description: >
         One registered connector as the registry describes it (ADR-0038). The shape of its
         sourceSettings is documented in its handbook chapter and known to its form in the
@@ -12518,9 +12518,15 @@ components:
         indexingRun:
           type: boolean
           description: >
-            Whether a run fills the library - false for UPLOAD, whose documents are uploaded one
-            by one. A library with a run needs the capability CREATE_CONNECTOR_LIBRARY and can be
-            scheduled.
+            Whether a run fills the library; only a library with a run can be scheduled and
+            triggered.
+        uploads:
+          type: boolean
+          description: >
+            Whether the library is curated document by document through uploads - true for UPLOAD
+            alone. Such a library needs the capability CREATE_LIBRARY and has no source
+            configuration; every other type is a connector library under
+            CREATE_CONNECTOR_LIBRARY.
         pushIntake:
           type: boolean
           description: Whether the source can push notifications (see push-secret and push).

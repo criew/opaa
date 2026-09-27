@@ -176,14 +176,13 @@ public class KnowledgeLibraryService {
   }
 
   /**
-   * Which capability a library of this source type needs (ADR-0036, Entscheidung 5). A library with
-   * an indexing run is its own capability because it reaches server paths and stored credentials; a
-   * missing source type - rejected by {@code validateSourceConfiguration} inside {@link
-   * #createLibrary} - takes the upload capability, so an unreadable request never decides which
-   * right is checked.
+   * Which capability a library of this source type needs (ADR-0036, Entscheidung 5). A connector
+   * library is its own capability because it reaches server paths and stored credentials; a missing
+   * source type - rejected by {@code validateSourceConfiguration} inside {@link #createLibrary} -
+   * takes the upload capability, so an unreadable request never decides which right is checked.
    */
   private Capability capabilityFor(SourceType sourceType) {
-    return sourceType == null || !connectors.descriptor(sourceType).indexingRun()
+    return sourceType == null || connectors.descriptor(sourceType).uploads()
         ? Capability.CREATE_LIBRARY
         : Capability.CREATE_CONNECTOR_LIBRARY;
   }
@@ -537,7 +536,7 @@ public class KnowledgeLibraryService {
           "Nur die Systemverwaltung darf die Freigabe-Obergrenze einer Bibliothek setzen");
     }
     KnowledgeLibrary library = loadLibrary(libraryId, caller);
-    if (!hasIndexingRun(library)) {
+    if (acceptsUploads(library)) {
       throw new ValidationException(
           "Upload-Bibliotheken tragen keine Freigabe-Obergrenze - jedes Dokument wird ohnehin"
               + " einzeln von der Eigentümerin kuratiert");
@@ -607,7 +606,7 @@ public class KnowledgeLibraryService {
     // and vector store chunks) rather than being blocked.
     long documentCount = documentRepository.countByLibraryId(libraryId);
     long documentsRemoved = 0;
-    if (!hasIndexingRun(library)) {
+    if (acceptsUploads(library)) {
       if (documentCount > 0) {
         throw new ConflictException(
             "Die Bibliothek enthält noch Dokumente und kann nicht gelöscht werden");
@@ -1089,9 +1088,9 @@ public class KnowledgeLibraryService {
     return requested == null ? null : connectors.connector(type).readSettings(requested);
   }
 
-  /** Whether a run fills {@code library}, as its connector describes it. */
-  private boolean hasIndexingRun(KnowledgeLibrary library) {
-    return connectors.descriptor(library.getSourceType()).indexingRun();
+  /** Whether {@code library} is curated through uploads, as its connector describes it. */
+  private boolean acceptsUploads(KnowledgeLibrary library) {
+    return connectors.descriptor(library.getSourceType()).uploads();
   }
 
   private String blankToNull(String value) {
@@ -1330,12 +1329,12 @@ public class KnowledgeLibraryService {
         storageQuotaService.quotaBytes(),
         storageQuotaService.usedBytes(library.getId()),
         externalAccessService.describe(library),
-        // #797: a library without a run never carries a cap narrower than the unrestricted default
+        // #797: an upload library never carries a cap narrower than the unrestricted default
         // (chk_knowledge_libraries_share_cap_upload_unrestricted) - null here rather than the
         // always-true value keeps a MANAGER from reading a ceiling into a library that in fact has
         // none.
-        descriptor.indexingRun() ? library.isAllAccountsGrantAllowed() : null,
-        descriptor.indexingRun() ? library.isListedCap() : null);
+        descriptor.uploads() ? null : library.isAllAccountsGrantAllowed(),
+        descriptor.uploads() ? null : library.isListedCap());
   }
 
   private LibraryDocumentEntry toLibraryDocumentEntry(

@@ -23,4 +23,11 @@ public interface PushIntakeHandler {
    *     library, another source type, no secret or a wrong one alike
    */
   void acceptNotification(UUID libraryId, byte[] body, UnaryOperator<String> header);
+
+  /**
+   * Does the work of refusing a notification for a library without this handler's secret - the same
+   * checks against a stand-in, result discarded - so the answer time of the shared intake does not
+   * tell whether a library exists or which connector it has.
+   */
+  void rejectForeign(byte[] body, UnaryOperator<String> header);
 }

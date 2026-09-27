@@ -11,7 +11,9 @@ import org.springframework.stereotype.Service;
 /**
  * Hands a pushed notification to the push intake of its library's connector (ADR-0038). Reachable
  * without a session: an unknown library and one whose connector has no push intake are answered
- * with the same 401 as a wrong secret, so the endpoint tells a stranger nothing.
+ * with the same 401 as a wrong secret, and every request costs every registered intake's check once
+ * - the library's own for real, the others against a stand-in - so neither the answer nor its time
+ * tells a stranger whether the library exists or which connector it has.
  */
 @Service
 public class PushIntakeService {
@@ -31,11 +33,19 @@ public class PushIntakeService {
    * @throws UnauthorizedException for every request that does not authenticate
    */
   public void accept(UUID libraryId, byte[] body, UnaryOperator<String> header) {
-    PushIntakeHandler handler =
+    PushIntakeHandler own =
         libraryRepository
             .findById(libraryId)
             .flatMap(library -> connectors.pushIntakeHandler(library.getSourceType()))
-            .orElseThrow(() -> new UnauthorizedException(PushIntakeHandler.UNAUTHORIZED_MESSAGE));
-    handler.acceptNotification(libraryId, body, header);
+            .orElse(null);
+    for (PushIntakeHandler handler : connectors.pushIntakeHandlers()) {
+      if (handler != own) {
+        handler.rejectForeign(body, header);
+      }
+    }
+    if (own == null) {
+      throw new UnauthorizedException(PushIntakeHandler.UNAUTHORIZED_MESSAGE);
+    }
+    own.acceptNotification(libraryId, body, header);
   }
 }

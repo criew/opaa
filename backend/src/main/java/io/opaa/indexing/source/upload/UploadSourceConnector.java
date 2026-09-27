@@ -24,7 +24,7 @@ import java.util.Optional;
 public class UploadSourceConnector implements SourceConnector, OriginalAccess {
 
   private static final SourceConnectorDescriptor DESCRIPTOR =
-      new SourceConnectorDescriptor(SourceType.UPLOAD, "Upload", false, false, false, null, null);
+      SourceConnectorDescriptor.acceptingUploads(SourceType.UPLOAD, "Upload");
 
   private final UploadedOriginalStore uploadedOriginalStore;
 

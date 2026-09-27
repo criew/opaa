@@ -25,7 +25,7 @@ public class ProbeSourceConnector implements SourceConnector {
 
   @Override
   public SourceConnectorDescriptor descriptor() {
-    return new SourceConnectorDescriptor(TYPE, "Testquelle", false, true, false, null, null);
+    return new SourceConnectorDescriptor(TYPE, "Testquelle", false, true, false, false, null, null);
   }
 
   @Override

@@ -150,6 +150,14 @@ public class S3SourceConnector
   }
 
   @Override
+  public void rejectForeign(byte[] body, UnaryOperator<String> header) {
+    S3EventAuthentication.verify(
+        header.apply(HttpHeaders.AUTHORIZATION),
+        header.apply(S3EventAuthentication.SHARED_SECRET_HEADER),
+        null);
+  }
+
+  @Override
   public SourceConnectorDescriptor descriptor() {
     return DESCRIPTOR;
   }

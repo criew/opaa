@@ -13,8 +13,9 @@ import java.util.Optional;
  * Every {@link SourceConnector} by the source type it serves - the one way the administration
  * reaches a connector, and the only list of source types there is (ADR-0038). Built from the
  * connector beans; startup fails when two connectors serve the same type, when no connector serves
- * {@link SourceType#UPLOAD} without a run, or when a connector names a push intake without handling
- * one or the other way round.
+ * {@link SourceType#UPLOAD}, when a connector other than that one accepts uploads (the upload
+ * store, its folders and originals are keyed to {@code UPLOAD}), or when a connector names a push
+ * intake without handling one or the other way round.
  */
 public class SourceConnectorRegistry {
 
@@ -31,10 +32,13 @@ public class SourceConnectorRegistry {
         throw new IllegalStateException(
             "SourceConnector for " + type + " must name a push intake exactly when it handles one");
       }
+      if (descriptor.uploads() != SourceType.UPLOAD.equals(type)) {
+        throw new IllegalStateException(
+            "SourceConnector for " + type + " must accept uploads exactly when it serves UPLOAD");
+      }
     }
-    SourceConnector upload = connectors.get(SourceType.UPLOAD);
-    if (upload == null || upload.descriptor().indexingRun()) {
-      throw new IllegalStateException("No SourceConnector serves UPLOAD without an indexing run");
+    if (!connectors.containsKey(SourceType.UPLOAD)) {
+      throw new IllegalStateException("No SourceConnector serves UPLOAD");
     }
   }
 
@@ -70,6 +74,15 @@ public class SourceConnectorRegistry {
     return find(type)
         .filter(PushIntakeHandler.class::isInstance)
         .map(PushIntakeHandler.class::cast);
+  }
+
+  /** Every registered push intake handler, in a stable order. */
+  public List<PushIntakeHandler> pushIntakeHandlers() {
+    return descriptors().stream()
+        .map(descriptor -> connectors.get(descriptor.type()))
+        .filter(PushIntakeHandler.class::isInstance)
+        .map(PushIntakeHandler.class::cast)
+        .toList();
   }
 
   /** How originals of {@code type} are served; empty for a type without an original to serve. */

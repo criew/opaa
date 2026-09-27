@@ -15,9 +15,7 @@ public final class SourceConnectorStubs {
   public static SourceConnectorRegistry registry() {
     return new SourceConnectorRegistry(
         List.of(
-            new Inert(
-                new SourceConnectorDescriptor(
-                    SourceType.UPLOAD, "Upload", false, false, false, null, null)),
+            new Inert(SourceConnectorDescriptor.acceptingUploads(SourceType.UPLOAD, "Upload")),
             new Inert(SourceConnectorDescriptor.localRun(SourceTypes.FILESYSTEM, "Dateisystem")),
             new Inert(
                 SourceConnectorDescriptor.remoteRun(SourceTypes.HTTP_DIRECTORY, "Webverzeichnis")),

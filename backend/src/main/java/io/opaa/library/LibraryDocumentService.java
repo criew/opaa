@@ -947,15 +947,15 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
   }
 
   /**
-   * ADR-0018, Entscheidung 1: only a {@code UPLOAD} library accepts manually uploaded files - a
-   * lauf-basierte (connector) library's content comes exclusively from its own indexing run, so a
-   * human upload into it would be indistinguishable from a crawled document the next run considers
-   * gone (ADR-0017, Entscheidung 5's "je Quelle, niemals bibliotheksweit" absence check has no way
-   * to tell the two apart). {@code 409} rather than {@code 400}: the request is well-formed, it
-   * simply conflicts with this library's fixed, immutable source type (#479).
+   * ADR-0018, Entscheidung 1: only a library whose connector accepts uploads takes manually
+   * uploaded files - a connector library's content comes exclusively from its connector, so a human
+   * upload into it would be indistinguishable from a crawled document the next run considers gone
+   * (ADR-0017, Entscheidung 5's "je Quelle, niemals bibliotheksweit" absence check has no way to
+   * tell the two apart). {@code 409} rather than {@code 400}: the request is well-formed, it simply
+   * conflicts with this library's fixed, immutable source type (#479).
    */
   private void requireUploadLibrary(KnowledgeLibrary library) {
-    if (connectors.descriptor(library.getSourceType()).indexingRun()) {
+    if (!connectors.descriptor(library.getSourceType()).uploads()) {
       throw new ConflictException(
           "Diese Bibliothek ist eine Konnektorbibliothek und akzeptiert keine manuellen Uploads");
     }

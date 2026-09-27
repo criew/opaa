@@ -146,6 +146,7 @@ class SourceConnectionTestResponseMapperTest {
     assertThat(descriptor.getType()).isEqualTo("CONFLUENCE");
     assertThat(descriptor.getDisplayName()).isEqualTo("Confluence");
     assertThat(descriptor.getIndexingRun()).isTrue();
+    assertThat(descriptor.getUploads()).isFalse();
     assertThat(descriptor.getPushIntake()).isTrue();
     assertThat(descriptor.getBrowsable()).isTrue();
     assertThat(descriptor.getFullSyncIntervalDefaultDays()).isEqualTo(1);

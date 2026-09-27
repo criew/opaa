@@ -86,6 +86,15 @@ public class ConfluenceSourceConnector
         header.apply(ConfluenceWebhookSignature.SHARED_SECRET_HEADER));
   }
 
+  @Override
+  public void rejectForeign(byte[] body, UnaryOperator<String> header) {
+    ConfluenceWebhookSignature.verify(
+        body == null ? new byte[0] : body,
+        header.apply(ConfluenceWebhookSignature.HUB_SIGNATURE_HEADER),
+        header.apply(ConfluenceWebhookSignature.SHARED_SECRET_HEADER),
+        null);
+  }
+
   /** Refuses a field the settings do not know and a part of the wrong kind; the rest waits. */
   @Override
   public ConnectorData readSettings(ConnectorData requested) {

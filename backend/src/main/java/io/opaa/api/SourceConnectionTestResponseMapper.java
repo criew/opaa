@@ -65,6 +65,7 @@ final class SourceConnectionTestResponseMapper {
             descriptor.type().key(),
             descriptor.displayName(),
             descriptor.indexingRun(),
+            descriptor.uploads(),
             descriptor.pushIntake() != null,
             browsable)
         .fullSyncIntervalDefaultDays(

@@ -45,6 +45,10 @@ class SourceConnectorRegistryTest {
         .containsSame((SourceBrowser) registry.connector(SourceTypes.S3));
     assertThat(registry.pushIntakeHandler(SourceTypes.RSS_FEED)).isEmpty();
     assertThat(registry.browser(SourceTypes.RSS_FEED)).isEmpty();
+    assertThat(registry.pushIntakeHandlers())
+        .containsExactly(
+            (PushIntakeHandler) registry.connector(SourceTypes.CONFLUENCE),
+            (PushIntakeHandler) registry.connector(SourceTypes.S3));
   }
 
   @Test
@@ -86,6 +90,22 @@ class SourceConnectorRegistryTest {
   }
 
   @Test
+  void onlyUploadAcceptsUploads() {
+    List<SourceConnector> connectors = complete();
+    connectors.add(
+        plain(SourceConnectorDescriptor.acceptingUploads(SourceType.of("ABLAGE"), "Ablage")));
+
+    assertThatThrownBy(() -> new SourceConnectorRegistry(connectors))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("ABLAGE must accept uploads exactly when it serves UPLOAD");
+    assertThatThrownBy(
+            () ->
+                new SourceConnectorDescriptor(
+                    SourceType.UPLOAD, "Upload", true, false, false, true, null, null))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
   void aPushIntakeWithoutHandlerOrAHandlerWithoutPushIntakeFailsStartup() {
     List<SourceConnector> withoutHandler = complete();
     withoutHandler.removeIf(c -> c.descriptor().type().equals(SourceTypes.RSS_FEED));
@@ -111,7 +131,7 @@ class SourceConnectorRegistryTest {
     assertThatThrownBy(
             () ->
                 new SourceConnectorDescriptor(
-                    SourceTypes.FILESYSTEM, "Dateisystem", true, false, true, null, null))
+                    SourceTypes.FILESYSTEM, "Dateisystem", true, false, true, false, null, null))
         .isInstanceOf(IllegalArgumentException.class);
   }
 
@@ -166,10 +186,7 @@ class SourceConnectorRegistryTest {
   /** One connector per built-in source type, with the abilities the production ones offer. */
   private List<SourceConnector> complete() {
     List<SourceConnector> connectors = new ArrayList<>();
-    connectors.add(
-        plain(
-            new SourceConnectorDescriptor(
-                SourceType.UPLOAD, "Upload", false, false, false, null, null)));
+    connectors.add(plain(SourceConnectorDescriptor.acceptingUploads(SourceType.UPLOAD, "Upload")));
     connectors.add(
         plain(SourceConnectorDescriptor.localRun(SourceTypes.FILESYSTEM, "Dateisystem")));
     connectors.add(
@@ -224,6 +241,9 @@ class SourceConnectorRegistryTest {
 
     @Override
     public void acceptNotification(UUID libraryId, byte[] body, UnaryOperator<String> header) {}
+
+    @Override
+    public void rejectForeign(byte[] body, UnaryOperator<String> header) {}
   }
 
   private static class OriginalStub extends Stub implements OriginalAccess {
