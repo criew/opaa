@@ -514,7 +514,7 @@ DEMO_PROFILE = Profile(
     libraries=(
         LibraryDef(
             name="Leistungen Meldewesen & Ausweise",
-            description="Leistungsbeschreibungen rund um Meldewesen und Ausweisdokumente.",
+            description="Leistungsbeschreibungen rund um Meldewesen und Ausweisdokumente, dazu die Sprechtage des mobilen Bürgerbüros.",
             source_type="HTTP_DIRECTORY",
             source_url="http://demo-corpus/leistungen-meldewesen-ausweise/",
             viewer_keys=("maria", "selin", "andrea"),
@@ -543,7 +543,7 @@ DEMO_PROFILE = Profile(
         ),
         LibraryDef(
             name="Interne Dienstanweisungen Meldewesen",
-            description="Dienstanweisungen, Eskalationsregeln, interne FAQ und Schulungsfolien Meldewesen.",
+            description="Dienstanweisungen, Eskalationsregeln, interne FAQ, Schulungsfolien und Rundschreiben Meldewesen.",
             source_type="UPLOAD",
             viewer_keys=("maria", "selin", "andrea"),
             upload_dir=DEMO_CORPUS_ROOT / "interne-dienstanweisungen-meldewesen",

@@ -1,4 +1,4 @@
-"""Data and DOCX/PDF/PPTX rendering for the "Interne Dienstanweisungen
+"""Data and DOCX/PDF/PPTX/EML rendering for the "Interne Dienstanweisungen
 Meldewesen" library (UPLOAD connector, see docs/features/demo-instance.md).
 
 This is the one library the concept's demo script relies on being visible to
@@ -25,8 +25,9 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import cm
-from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
+from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
+from mail_utils import base64_lines, header_value
 from zip_utils import normalize_zip_timestamps
 
 SYNTHETIC_NOTICE = (
@@ -846,6 +847,201 @@ def render_schulung_pptx(schulung: Schulung) -> bytes:
     return normalize_zip_timestamps(buffer.getvalue())
 
 
+# --- Rundschreiben als E-Mail mit PDF-Anhang (.eml) ----------------------------
+
+
+@dataclass
+class MailAnhang:
+    datei: str
+    titel: str
+    kopf: str
+    abschnitte: list[tuple[str, list[str]]]
+    tabelle: list[list[str]]  # first row is the header, rendered after the first section
+
+
+@dataclass
+class Rundschreiben:
+    slug: str
+    betreff: str
+    aktenzeichen: str
+    von: str
+    an: str
+    datum: str  # RFC 5322 date, a fixed literal
+    message_id: str
+    text: str
+    anhang: MailAnhang
+
+
+RUNDSCHREIBEN: list[Rundschreiben] = [
+    Rundschreiben(
+        "rundschreiben-mobiles-buergerbuero-nordfeld",
+        "Mobiles Bürgerbüro: Sprechtag Nordfeld ab Juli und Einsatzplan 3. Quartal 2026",
+        "AZ 32.1-MB-2026-001",
+        "Andrea Vogt <andrea.vogt@stadt-rheinfurt.example>",
+        "Sachgebiet Meldewesen & Ausweise <meldewesen@stadt-rheinfurt.example>",
+        "Mon, 15 Jun 2026 09:30:00 +0200",
+        "<mobiles-buergerbuero-2026-q3@buergerbuero.stadt-rheinfurt.example>",
+        "Liebe Kolleginnen und Kollegen,\n"
+        "\n"
+        "der Hauptausschuss hat am 21. April 2026 beschlossen, das mobile Bürgerbüro unbefristet\n"
+        "fortzuführen und um einen Sprechtag im Ortsteil Nordfeld zu erweitern. Der neue Sprechtag\n"
+        "findet ab Juli 2026 jeden zweiten Mittwoch im Monat vormittags im Gemeindezentrum Nordfeld\n"
+        "statt. Der erste Termin ist Mittwoch, der 8. Juli 2026.\n"
+        "\n"
+        "Die Sprechtage im Stadtteilzentrum Rheinau (jeden ersten Dienstag) und im Bürgertreff\n"
+        "Weststadt (jeden dritten Donnerstag) bleiben unverändert.\n"
+        "\n"
+        "Den Einsatzplan für Juli bis September 2026 finden Sie im Anhang. Tauschwünsche bitte bis\n"
+        "zum 26. Juni 2026 an mich; bei Krankheit gilt die Vertretungsregelung im Sachgebiet\n"
+        "Meldewesen.\n"
+        "\n"
+        "Zur Organisation:\n"
+        "\n"
+        "- Den Bürgerkoffer holt die eingeteilte Kollegin spätestens eine Stunde vor Beginn des\n"
+        "  Sprechtags bei der IT-Leitstelle ab und gibt ihn nach dem Ende des Sprechtags dort\n"
+        "  zurück; nach einem Nachmittagstermin wie in Weststadt bis 9:00 Uhr am folgenden\n"
+        "  Werktag.\n"
+        "- Die Online-Terminvergabe gibt für jeden Sprechtag zwölf Termine frei. Vorsprachen ohne\n"
+        "  Termin nehmen Sie an, soweit am Ende des Sprechtags Zeit bleibt.\n"
+        "\n"
+        "Mit freundlichen Grüßen\n"
+        "Andrea Vogt\n"
+        "Leitung Bürgerbüro Rheinfurt\n"
+        "\n"
+        "Aktenzeichen: AZ 32.1-MB-2026-001\n",
+        MailAnhang(
+            "einsatzplan-mobiles-buergerbuero-2026-q3.pdf",
+            "Einsatzplan mobiles Bürgerbüro, 3. Quartal 2026",
+            "Anlage zum Rundschreiben AZ 32.1-MB-2026-001 vom 15. Juni 2026 · Stand: 15. Juni 2026",
+            [
+                (
+                    "Einsätze Juli bis September 2026",
+                    [
+                        "Jeder Sprechtag ist mit einer Sachbearbeiterin besetzt. Den Auftakttermin in "
+                        "Nordfeld am 8. Juli 2026 begleitet zusätzlich die Leitung des Bürgerbüros.",
+                    ],
+                ),
+                (
+                    "Mitzunehmen",
+                    [
+                        "Bürgerkoffer mit Fingerabdruckscanner und Signaturpad, Antragsvordrucke für "
+                        "Personalausweis und Reisepass, Vordrucke der Wohnungsgeberbestätigung, "
+                        "Dienstausweis.",
+                    ],
+                ),
+                (
+                    "Gebühren",
+                    [
+                        "An den Sprechtagen wird nicht kassiert. Die Gebühr wird mit dem Antrag "
+                        "erfasst und ist nach § 4 VGS spätestens bei Aushändigung der Urkunde fällig.",
+                    ],
+                ),
+            ],
+            [
+                ["Datum", "Wochentag", "Standort", "Besetzung"],
+                ["7. Juli 2026", "Dienstag", "Stadtteilzentrum Rheinau", "Selin Kaya"],
+                ["8. Juli 2026", "Mittwoch", "Gemeindezentrum Nordfeld", "Maria Weber, Andrea Vogt"],
+                ["16. Juli 2026", "Donnerstag", "Bürgertreff Weststadt", "Selin Kaya"],
+                ["4. August 2026", "Dienstag", "Stadtteilzentrum Rheinau", "Maria Weber"],
+                ["12. August 2026", "Mittwoch", "Gemeindezentrum Nordfeld", "Selin Kaya"],
+                ["20. August 2026", "Donnerstag", "Bürgertreff Weststadt", "Maria Weber"],
+                ["1. September 2026", "Dienstag", "Stadtteilzentrum Rheinau", "Selin Kaya"],
+                ["9. September 2026", "Mittwoch", "Gemeindezentrum Nordfeld", "Maria Weber"],
+                ["17. September 2026", "Donnerstag", "Bürgertreff Weststadt", "Selin Kaya"],
+            ],
+        ),
+    ),
+]
+
+
+def render_anhang_pdf(anhang: MailAnhang) -> bytes:
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        leftMargin=2.2 * cm,
+        rightMargin=2.2 * cm,
+        topMargin=2 * cm,
+        bottomMargin=2 * cm,
+        title=anhang.titel,
+        author="Bürgerbüro Rheinfurt (synthetisch)",
+    )
+    story = [
+        Paragraph(anhang.titel, FAQ_TITLE_STYLE),
+        Paragraph(anhang.kopf, FAQ_FOOTER_STYLE),
+        Spacer(1, 0.4 * cm),
+    ]
+    for index, (ueberschrift, absaetze) in enumerate(anhang.abschnitte):
+        story.append(Paragraph(ueberschrift, FAQ_QUESTION_STYLE))
+        for absatz in absaetze:
+            story.append(Paragraph(absatz, FAQ_ANSWER_STYLE))
+        if index == 0:
+            table = Table(anhang.tabelle, hAlign="LEFT")
+            table.setStyle(
+                TableStyle(
+                    [
+                        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#2f3e4e")),
+                        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                        ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                        ("FONTSIZE", (0, 0), (-1, -1), 9),
+                        ("TOPPADDING", (0, 0), (-1, -1), 4),
+                        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                    ]
+                )
+            )
+            story.append(table)
+    story.append(Spacer(1, 0.6 * cm))
+    story.append(Paragraph(SYNTHETIC_NOTICE, FAQ_FOOTER_STYLE))
+    doc.build(story)
+    return buffer.getvalue()
+
+
+def render_rundschreiben_eml(rundschreiben: Rundschreiben) -> bytes:
+    """A multipart mail: the circular as plain-text body, its Anlage as one PDF attachment."""
+    boundary = f"=_rheinfurt-buergerbuero-{rundschreiben.slug}"
+    anhang = rundschreiben.anhang
+    parts = [
+        "MIME-Version: 1.0",
+        f"Date: {rundschreiben.datum}",
+        f"Message-ID: {rundschreiben.message_id}",
+        f"From: {rundschreiben.von}",
+        f"To: {header_value(rundschreiben.an)}",
+        f"Subject: {header_value(rundschreiben.betreff)}",
+        f'Content-Type: multipart/mixed; boundary="{boundary}"',
+        "",
+        f"--{boundary}",
+        'Content-Type: text/plain; charset="utf-8"',
+        "Content-Transfer-Encoding: 8bit",
+        "",
+        rundschreiben.text,
+        SYNTHETIC_NOTICE,
+        "",
+        f"--{boundary}",
+        f'Content-Type: application/pdf; name="{anhang.datei}"',
+        "Content-Transfer-Encoding: base64",
+        f'Content-Disposition: attachment; filename="{anhang.datei}"',
+        "",
+        base64_lines(render_anhang_pdf(anhang)),
+        f"--{boundary}--",
+        "",
+    ]
+    return "\n".join(parts).encode("utf-8")
+
+
+def rundschreiben_text(rundschreiben: Rundschreiben) -> str:
+    """Body and attachment text as the validation pass reads them."""
+    anhang = rundschreiben.anhang
+    parts = [rundschreiben.betreff, rundschreiben.von, rundschreiben.an, rundschreiben.text]
+    parts += [anhang.titel, anhang.kopf]
+    for ueberschrift, absaetze in anhang.abschnitte:
+        parts.append(ueberschrift)
+        parts.extend(absaetze)
+    parts += [" ".join(row) for row in anhang.tabelle]
+    return "\n".join(parts)
+
+
 # --- Aktenplan (Ordnerstruktur der Bibliothek) -------------------------------
 
 # Folder of every document, relative to the library root, levels separated by "/". The seed
@@ -879,6 +1075,7 @@ AKTENPLAN: dict[str, str] = {
     "deeskalationstraining-schalter": "06 Aus- und Fortbildung",
     "barrierefreie-kommunikation": "06 Aus- und Fortbildung",
     "fachanwendung-meldesoft": "06 Aus- und Fortbildung",
+    "rundschreiben-mobiles-buergerbuero-nordfeld": "05 Bürgerbüro/04 Mobiles Bürgerbüro",
 }
 
 
@@ -887,7 +1084,7 @@ def verify_aktenplan() -> None:
     generator clears the corpus, so a broken Aktenplan leaves the committed files untouched."""
     slugs = {
         document.slug
-        for document in DIENSTANWEISUNGEN + ESKALATIONSREGELN + FAQS + SCHULUNGEN
+        for document in DIENSTANWEISUNGEN + ESKALATIONSREGELN + FAQS + SCHULUNGEN + RUNDSCHREIBEN
     }
     missing = sorted(slugs - set(AKTENPLAN))
     stale = sorted(set(AKTENPLAN) - slugs)

@@ -23,9 +23,7 @@ All dates are fixed literals; the output is byte-identical across generator runs
 
 from __future__ import annotations
 
-import base64
 from dataclasses import dataclass, field
-from email.header import Header
 from io import BytesIO
 from xml.sax.saxutils import escape as xml_escape
 
@@ -34,6 +32,8 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import cm
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+
+from mail_utils import base64_lines, header_value
 
 SYNTHETIC_NOTICE = (
     "Dieses Dokument ist Teil des synthetischen Demo-Korpus der fiktiven Stadt Rheinfurt "
@@ -1086,17 +1086,6 @@ def _versand_text(v: Beschlussvorlage) -> str:
     ) + render_vorlage_txt(v).decode("utf-8")
 
 
-def _header_value(value: str) -> str:
-    if value.isascii():
-        return value
-    return Header(value, "utf-8").encode()
-
-
-def _base64_lines(data: bytes) -> str:
-    encoded = base64.b64encode(data).decode("ascii")
-    return "\n".join(encoded[i : i + 76] for i in range(0, len(encoded), 76))
-
-
 def render_vorlage_eml(v: Beschlussvorlage) -> bytes:
     """The dispatch mail: the Vorlage text as body, every Anlage a PDF attachment."""
     if v.versand is None:
@@ -1109,7 +1098,7 @@ def render_vorlage_eml(v: Beschlussvorlage) -> bytes:
         f"Message-ID: <vorlage-{nummer}@ratsinfo.stadt-rheinfurt.example>",
         f"From: {_VERSAND_FROM}",
         f"To: {v.versand.an}",
-        "Subject: " + _header_value(f"Beschlussvorlage Nr. {v.vorlagennummer}: {v.betreff}"),
+        "Subject: " + header_value(f"Beschlussvorlage Nr. {v.vorlagennummer}: {v.betreff}"),
         f'Content-Type: multipart/mixed; boundary="{boundary}"',
         "",
         f"--{boundary}",
@@ -1126,7 +1115,7 @@ def render_vorlage_eml(v: Beschlussvorlage) -> bytes:
             "Content-Transfer-Encoding: base64",
             f'Content-Disposition: attachment; filename="{file_name}"',
             "",
-            _base64_lines(render_anlage_pdf(v, anlage)),
+            base64_lines(render_anlage_pdf(v, anlage)),
         ]
     parts += [f"--{boundary}--", ""]
     return "\n".join(parts).encode("utf-8")

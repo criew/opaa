@@ -15,11 +15,11 @@ demo/
 ├── generator/     Python-Generator, siehe generator/README.md für Reproduktion und Werkzeugwahl
 ├── seed/          Seed-Skript (Datenprofile "demo" und "e2e"), siehe "Seed-Mechanismus (#712)" unten
 └── corpus/        generierter Korpus, committet
-    ├── leistungen-meldewesen-ausweise/       .md
+    ├── leistungen-meldewesen-ausweise/       .md, .csv
     ├── leistungen-kfz-zulassung/             .md, .txt
-    ├── satzungen-gebuehrenordnungen/         .pdf
+    ├── satzungen-gebuehrenordnungen/         .pdf, .xlsx
     ├── pressemitteilungen/                   rss.xml + .html
-    ├── interne-dienstanweisungen-meldewesen/ .docx, .pdf, .pptx in Aktenplan-Ordnern (Upload mit folderPath, #2015)
+    ├── interne-dienstanweisungen-meldewesen/ .docx, .pdf, .pptx, .eml in Aktenplan-Ordnern (Upload mit folderPath, #2015)
     ├── ratsinformationen/<jahr>/<Gremium>/   .md, .txt, .eml mit PDF-Anlagen (S3-Bucket des Demo-Stacks, #1383, #2016)
     ├── formate/                              je ein Dokument pro unterstützter Endung (S3-Bucket des Demo-Stacks, #1519)
     ├── MANIFEST.sha256                       SHA-256 über alle Dokumente
@@ -38,11 +38,11 @@ Konnektortypen und mehrere Dateiformate:
 
 | Wissensbibliothek | Formate | Quellentyp |
 |---|---|---|
-| Leistungen Meldewesen & Ausweise | `.md` | `HTTP_DIRECTORY` |
+| Leistungen Meldewesen & Ausweise | `.md`, `.csv` | `HTTP_DIRECTORY` |
 | Leistungen Kfz-Zulassung | `.md`, `.txt` | `HTTP_DIRECTORY` |
-| Satzungen & Gebührenordnungen | `.pdf` | `HTTP_DIRECTORY` |
+| Satzungen & Gebührenordnungen | `.pdf`, `.xlsx` | `HTTP_DIRECTORY` |
 | Pressemitteilungen Stadt Rheinfurt | RSS-XML + HTML-Detailseiten | `RSS_FEED` (statisch, selbst gehostet) |
-| Interne Dienstanweisungen Meldewesen | `.docx`, `.pdf`, `.pptx` (Ordner nach Aktenplan, bis zu zwei Ebenen) | `UPLOAD` (im Seed automatisiert) |
+| Interne Dienstanweisungen Meldewesen | `.docx`, `.pdf`, `.pptx`, `.eml` mit PDF-Anhang (Ordner nach Aktenplan, bis zu zwei Ebenen) | `UPLOAD` (im Seed automatisiert) |
 | Ratsinformationen Stadt Rheinfurt | `.md`, `.txt`, `.eml` mit PDF-Anhängen (Ordner Jahrgang › Gremium) | `S3` (Objektspeicher des Demo-Stacks, Bucket `rheinfurt-archiv`; #1383, #2016) |
 | Formattest auf S3 | je ein Dokument pro unterstützter Endung | `S3` (Objektspeicher des Demo-Stacks, Bucket `formattest`; #1520) |
 
@@ -152,7 +152,7 @@ Herkunft und Zwang jeder einzelnen Variable:
   eine vollständige Neuindizierung (siehe [`../docs/handbuch/deployment.md`, „Was ein Update mit dem
   Index macht"](../docs/handbuch/deployment.md#was-ein-update-mit-dem-index-macht)).
 - `OPAA_UPLOAD_THREAD_POOL_QUEUE_CAPACITY=30` hebt die Standard-Warteschlange von
-  `uploadTaskExecutor` (Default 20, `opaa.upload.thread-pool`) an: Der Seed lädt die 26 Dokumente der
+  `uploadTaskExecutor` (Default 20, `opaa.upload.thread-pool`) an: Der Seed lädt die 27 Dokumente der
   Bibliothek „Interne Dienstanweisungen Meldewesen" sequentiell und ohne Pause hoch, und mit lokal
   betriebenen Ollama-Embeddings (langsamer als ein Cloud-Anbieter) füllt sich die Warteschlange eher
   als mit einem schnellen Anbieter — ohne die Anhebung kann der letzte Upload oder die letzten zwei
@@ -226,7 +226,7 @@ Das startet zusätzlich zu `postgres`/`backend`/`frontend`:
   |---|---|---|
   | `rheinfurt-archiv` | Quelle der Bibliothek „Ratsinformationen Stadt Rheinfurt" | `demo/corpus/ratsinformationen/` unter dem Präfix `ratsinformationen/`, Jahrgangs- und Gremiumsordner inklusive |
   | `formattest` | Quelle der Bibliothek „Formattest auf S3" | `demo/corpus/formate/`, je ein Dokument pro unterstützter Endung |
-  | `opaa-uploads` | **Ablage** der hochgeladenen Originale der Demo | was über die Oberfläche hochgeladen wird, einschließlich der 26 Dokumente der Upload-Bibliothek, die der Seed einspielt — je Original ein Objekt unter `<Organisations-ID>/<Bibliotheks-ID>/<Zufallsname><Endung>` ([ADR-0030](../docs/decisions/0030-originalablage-der-uploads.md), Entscheidung 4 mit Nachtrag) |
+  | `opaa-uploads` | **Ablage** der hochgeladenen Originale der Demo | was über die Oberfläche hochgeladen wird, einschließlich der 27 Dokumente der Upload-Bibliothek, die der Seed einspielt — je Original ein Objekt unter `<Organisations-ID>/<Bibliotheks-ID>/<Zufallsname><Endung>` ([ADR-0030](../docs/decisions/0030-originalablage-der-uploads.md), Entscheidung 4 mit Nachtrag) |
 
   Der Einmal-Schritt **`objectstore-seed`** legt alle drei Buckets an, spiegelt die beiden
   Korpus-Buckets (`aws s3 sync --delete`, idempotent; Fortschritt mit
@@ -311,7 +311,7 @@ Der Seed richtet über die öffentliche API alle vier Demo-Nutzer plus das Admin
 Spaces und sieben Wissensbibliotheken an, vergibt die Leserechte, richtet drei interne Gruppen mit
 benannter Verantwortung ein, ordnet den vier gemeinsamen Spaces ihre Bibliotheken
 als Datenquellen zu (Assoziation als reine Kuratierung, #706 — Marias persönlicher Space bleibt
-bewusst ohne Zuordnung), lädt die 26 Dokumente der internen Upload-Bibliothek hoch und stößt die
+bewusst ohne Zuordnung), lädt die 27 Dokumente der internen Upload-Bibliothek hoch und stößt die
 Indizierung der sechs konnektorgespeisten Bibliotheken an — darunter die beiden `S3`-Bibliotheken,
 deren Läufe die Buckets `rheinfurt-archiv` und `formattest` des `objectstore`-Containers lesen (der
 Einmal-Schritt `objectstore-seed` muss dafür durchgelaufen sein, siehe Schritt 2). Vollständiger Ablauf,
@@ -325,8 +325,9 @@ Bürgerbüro" und „Vorlagen Amtsleitung" samt Prompts, Freigaben und Space-Zuo
 wartet auf jede Indizierung und jeden Upload (Polling gegen `GET
 /api/v1/libraries/{libraryId}/indexing/status` bzw. den Dokumentstatus) und bricht mit einer klaren
 Fehlermeldung ab, wenn etwas schiefgeht — läuft `seed.py` bis zur Ausgabe „Seed-Profil 'demo'
-abgeschlossen." durch, ist die Instanz vollständig gefüllt und durchsuchbar. Bei den 181 Dokumenten
-des Korpus (46 + 37 + 19 + 27 + 12 + 14 in den sechs konnektorgespeisten Bibliotheken, 26 Uploads) und
+abgeschlossen." durch, ist die Instanz vollständig gefüllt und durchsuchbar. Bei den 187 Dateien
+des Korpus (47 + 37 + 20 + 27 + 15 + 14 in den sechs konnektorgespeisten Bibliotheken, 27 Uploads;
+die PDF-Anhänge der Mails kommen als eigene Dokumente hinzu) und
 lokal betriebenen Modellen ist mit einigen Minuten zu rechnen, je nach Ollama-Hardware; ein zweiter Lauf
 gegen dieselbe Instanz ist idempotent und legt nichts doppelt an.
 
@@ -548,7 +549,7 @@ Der Lauf richtet über die API ein:
    [ADR-0027](../docs/decisions/0027-s3-konnektor.md)). „Formattest auf S3" ist die einzige
    Bibliothek ohne `viewer_keys` und ohne Space-Zuordnung — sie bleibt beim anlegenden Admin-Konto.
 5. **VIEWER-Rechte** exakt nach der Matrix aus `docs/features/demo-instance.md` (die eigenen Grants;
-   die mit „G" markierten Gruppenrechte folgen in Schritt 6) sowie die 26
+   die mit „G" markierten Gruppenrechte folgen in Schritt 6) sowie die 27
    Upload-Dokumente aus `demo/corpus/interne-dienstanweisungen-meldewesen/` — der Seed wartet nach
    dem Hochladen, bis kein Dokument mehr `PENDING` ist (Tika-Parsing und Embedding laufen asynchron,
    #434), und bricht bei `FAILED` mit der jeweiligen `errorMessage` ab. Das Upload-Verzeichnis wird
@@ -634,7 +635,7 @@ Eigentümers, da ein Space nur für seine eigenen Mitglieder sichtbar ist), Uplo
 Dateiname und Status übersprungen (ein zuvor `FAILED`es Dokument wird dagegen erneut hochgeladen),
 `upsertAssetGrant` ersetzt statt zu duplizieren, und `associateSpaceLibrary` liefert bei bereits
 bestehender Zuordnung die vorhandene Assoziation unverändert zurück. Bricht der Seed beim `demo`-Profil
-mit „Die Verarbeitung ist derzeit ausgelastet - bitte später erneut versuchen." ab (die 26
+mit „Die Verarbeitung ist derzeit ausgelastet - bitte später erneut versuchen." ab (die 27
 sequentiellen Uploads der internen Bibliothek können `uploadTaskExecutor`s Warteschlange füllen, siehe
 „Installation mit einem Befehl", Schritt 1 oben), behebt genau diese Idempotenz das: Ein zweiter
 `python seed.py --profile demo`-Lauf lädt die als `FAILED` markierten Dokumente erneut hoch, ohne
