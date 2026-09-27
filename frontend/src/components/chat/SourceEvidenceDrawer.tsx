@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Drawer from '@mui/material/Drawer'
@@ -7,11 +7,14 @@ import InputAdornment from '@mui/material/InputAdornment'
 import Link from '@mui/material/Link'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
+import { alpha } from '@mui/material/styles'
 import CloseIcon from '@mui/icons-material/Close'
 import ReportProblemOutlinedIcon from '@mui/icons-material/ReportProblemOutlined'
 import SearchIcon from '@mui/icons-material/Search'
 import type { CitationIndex } from './citations'
 import {
+  citationRowId,
+  describeCitedPassages,
   describeMetadata,
   formatMetadataDetails,
   formatMetadataLine,
@@ -24,13 +27,17 @@ import { fontFamily } from '../../theme/tokens'
 interface SourceEvidenceDrawerProps {
   open: boolean
   onClose: () => void
+  /** Scopes the rows' element ids to this answer - several answers each own a Belegfenster. */
+  messageId: string
   citations: CitationIndex
+  /** Rows in {@link CitationIndex.docs} a clicked footnote points at: they are marked, and the
+   *  first one is scrolled into view on opening. Empty when opened via "Belege anzeigen". */
+  focusedDocIndexes?: number[]
   /** When the answer arrived - mockup 1i's footer line. */
   answeredAt: Date
-  /** #739/#747/#780: MessageBubble's single `useDocumentPreview()` instance (../../hooks/
-   *  useDocumentPreview), shared with SourceFootnotes - the preview dialog/download snackbar it
+  /** MessageBubble's `useDocumentPreview()` instance - the preview dialog/download snackbar it
    *  drives are rendered by MessageBubble as siblings of this Drawer, not inside it, so they
-   *  survive the Drawer unmounting its children on close (#781 review, Nit 5; Wichtig 1). */
+   *  survive the Drawer unmounting its children on close. */
   openDocument: (document: OpenableDocument) => Promise<void>
 }
 
@@ -38,6 +45,10 @@ interface EvidenceDoc {
   fileName: string
   numbers: number[]
   cited: boolean
+  /** The row's index in {@link CitationIndex.docs}; undefined for an uncited source. */
+  docIndex?: number
+  /** #667: the Fundorte of this row's footnotes ("S. 2–4 · Abschn. Fristsetzung"). */
+  locations: string[]
   /** #386: false when the backend's deterministic check found at least one citation naming this
    *  source that does not match the chunks actually retrieved for this answer. */
   citationValid: boolean
@@ -87,12 +98,37 @@ function formatAnsweredAt(answeredAt: Date): string {
 export default function SourceEvidenceDrawer({
   open,
   onClose,
+  messageId,
   citations,
+  focusedDocIndexes = [],
   answeredAt,
   openDocument,
 }: SourceEvidenceDrawerProps) {
   const [query, setQuery] = useState('')
   const [citedOnly, setCitedOnly] = useState(false)
+
+  // Every opening starts unfiltered, so a footnote's Beleg is never hidden behind a search or
+  // "Nur zitierte" left over from the last visit. State adjustment during render, not an effect.
+  const [wasOpen, setWasOpen] = useState(open)
+  if (open !== wasOpen) {
+    setWasOpen(open)
+    if (open) {
+      setQuery('')
+      setCitedOnly(false)
+    }
+  }
+
+  const firstFocusedDocIndex = focusedDocIndexes[0]
+  useEffect(() => {
+    if (!open || firstFocusedDocIndex === undefined) return
+    // The Drawer mounts its rows in the same commit; one frame later they are laid out.
+    const frame = requestAnimationFrame(() =>
+      document
+        .getElementById(citationRowId(messageId, firstFocusedDocIndex))
+        ?.scrollIntoView?.({ block: 'center' }),
+    )
+    return () => cancelAnimationFrame(frame)
+  }, [open, firstFocusedDocIndex, messageId])
 
   // #739/#747: a document with a documentId opens through the Bearer-authenticated content
   // endpoint (a plain <a href> cannot carry the token, ADR-0005), which proxies
@@ -111,10 +147,12 @@ export default function SourceEvidenceDrawer({
   }
 
   const docs = useMemo((): EvidenceDoc[] => {
-    const cited: EvidenceDoc[] = citations.docs.map((doc) => ({
+    const cited: EvidenceDoc[] = citations.docs.map((doc, docIndex) => ({
       fileName: doc.fileName,
       numbers: doc.numbers,
       cited: true,
+      docIndex,
+      locations: doc.locations,
       citationValid: doc.source?.citationValid !== false,
       relevanceScore: doc.source?.relevanceScore,
       sourceIndex: doc.sourceIndex,
@@ -132,6 +170,7 @@ export default function SourceEvidenceDrawer({
       fileName: source.fileName,
       numbers: [],
       cited: false,
+      locations: [],
       citationValid: source.citationValid !== false,
       relevanceScore: source.relevanceScore,
       sourceIndex: citations.sourceIndexByReference.get(source) ?? Number.MAX_SAFE_INTEGER,
@@ -186,10 +225,6 @@ export default function SourceEvidenceDrawer({
       )
   }, [citedOnly, docs, query])
 
-  const stellen = citations.markerCount === 1 ? '1 Stelle' : `${citations.markerCount} Stellen`
-  const dokumente =
-    citations.docs.length === 1 ? '1 Dokument' : `${citations.docs.length} Dokumenten`
-
   return (
     <Drawer
       anchor="right"
@@ -218,7 +253,8 @@ export default function SourceEvidenceDrawer({
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography sx={{ fontSize: 16, fontWeight: 600 }}>Belege dieser Antwort</Typography>
           <Typography sx={{ fontSize: 11, color: 'text.secondary', mt: 0.25 }}>
-            {stellen} in {dokumente} · zitierte nach Zitatnummer, übrige nach Relevanzrang sortiert
+            {describeCitedPassages(citations)} · zitierte nach Zitatnummer, übrige nach Relevanzrang
+            sortiert
           </Typography>
         </Box>
         <IconButton size="small" onClick={onClose} aria-label="Belegfenster schließen">
@@ -261,149 +297,176 @@ export default function SourceEvidenceDrawer({
             Kein Beleg passt zur Suche.
           </Typography>
         ) : (
-          visibleDocs.map((doc) => (
-            <Box
-              // #739: two distinct documents may share a file name and each get their own row,
-              // so the file name alone is not a unique key.
-              key={doc.documentId ?? doc.fileName}
-              data-testid="evidence-doc"
-              data-file={doc.fileName}
-              data-cited={doc.cited ? 'true' : 'false'}
-              data-citation-valid={doc.citationValid ? 'true' : 'false'}
-              sx={{
-                py: 1.25,
-                borderBottom: 1,
-                borderColor: 'divider',
-                opacity: doc.cited ? 1 : 0.65,
-              }}
-            >
-              <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
-                {doc.numbers.length > 0 && (
+          visibleDocs.map((doc) => {
+            const focused = doc.docIndex !== undefined && focusedDocIndexes.includes(doc.docIndex)
+            return (
+              <Box
+                // #739: two distinct documents may share a file name and each get their own row,
+                // so the file name alone is not a unique key.
+                key={doc.documentId ?? doc.fileName}
+                id={doc.docIndex !== undefined ? citationRowId(messageId, doc.docIndex) : undefined}
+                data-testid="evidence-doc"
+                data-file={doc.fileName}
+                data-cited={doc.cited ? 'true' : 'false'}
+                data-citation-valid={doc.citationValid ? 'true' : 'false'}
+                data-focused={focused ? 'true' : undefined}
+                aria-current={focused ? 'true' : undefined}
+                sx={(theme) => ({
+                  // Full-bleed rows, so the mark of a footnote's Beleg spans the panel's width.
+                  mx: -2.5,
+                  px: 2.5,
+                  py: 1.25,
+                  borderBottom: 1,
+                  borderColor: 'divider',
+                  opacity: doc.cited ? 1 : 0.65,
+                  scrollMarginBlock: theme.spacing(2),
+                  ...(focused && {
+                    bgcolor: alpha(
+                      theme.palette.primary.main,
+                      theme.palette.mode === 'dark' ? 0.16 : 0.07,
+                    ),
+                    boxShadow: `inset 3px 0 0 ${theme.palette.primary.main}`,
+                  }),
+                })}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
+                  {doc.numbers.length > 0 && (
+                    <Typography
+                      component="span"
+                      sx={{
+                        flex: 'none',
+                        fontFamily: fontFamily.mono,
+                        fontSize: 10.5,
+                        fontWeight: 600,
+                        color: 'primary.main',
+                      }}
+                    >
+                      {doc.numbers.join('·')}
+                    </Typography>
+                  )}
+                  <Typography component="span" noWrap sx={{ fontSize: 13, fontWeight: 500 }}>
+                    {doc.fileName}
+                  </Typography>
+                  {!doc.cited && (
+                    <Typography component="span" sx={{ fontSize: 10.5, color: 'text.secondary' }}>
+                      geprüft, nicht zitiert
+                    </Typography>
+                  )}
+                  {!doc.citationValid && (
+                    // #697 review, Befund 2: reiner Text in warning.main unterschreitet auf heller
+                    // Fläche 4,5:1 (docs/design/accessibility.md 2.4, rund 1,8:1 gemessen). Die Farbe
+                    // trägt hier ohnehin nicht allein die Bedeutung (2.4, letzter Punkt) - das Icon in
+                    // error.main erfüllt die UI-Komponentenschwelle von 3:1 in beiden Schemata, der Text
+                    // selbst läuft in text.secondary (kontraststark, siehe "geprüft, nicht zitiert" oben).
+                    <Box
+                      component="span"
+                      sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}
+                    >
+                      <ReportProblemOutlinedIcon sx={{ fontSize: 13, color: 'error.main' }} />
+                      <Typography component="span" sx={{ fontSize: 10.5, color: 'text.secondary' }}>
+                        Beleg nicht bestätigt
+                      </Typography>
+                    </Box>
+                  )}
+                </Box>
+                {/* #667: where in the document the cited passages sit. */}
+                {doc.locations.length > 0 && (
                   <Typography
                     component="span"
-                    sx={{
-                      flex: 'none',
-                      fontFamily: fontFamily.mono,
-                      fontSize: 10.5,
-                      fontWeight: 600,
-                      color: 'primary.main',
-                    }}
+                    data-testid="source-location"
+                    sx={{ display: 'block', fontSize: 11.5, color: 'text.secondary', mt: 0.25 }}
                   >
-                    {doc.numbers.join('·')}
+                    {doc.locations.join(' · ')}
                   </Typography>
                 )}
-                <Typography component="span" noWrap sx={{ fontSize: 13, fontWeight: 500 }}>
-                  {doc.fileName}
-                </Typography>
-                {!doc.cited && (
-                  <Typography component="span" sx={{ fontSize: 10.5, color: 'text.secondary' }}>
-                    geprüft, nicht zitiert
-                  </Typography>
-                )}
-                {!doc.citationValid && (
-                  // #697 review, Befund 2: reiner Text in warning.main unterschreitet auf heller
-                  // Fläche 4,5:1 (docs/design/accessibility.md 2.4, rund 1,8:1 gemessen). Die Farbe
-                  // trägt hier ohnehin nicht allein die Bedeutung (2.4, letzter Punkt) - das Icon in
-                  // error.main erfüllt die UI-Komponentenschwelle von 3:1 in beiden Schemata, der Text
-                  // selbst läuft in text.secondary (kontraststark, siehe "geprüft, nicht zitiert" oben).
-                  <Box
-                    component="span"
-                    sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}
-                  >
-                    <ReportProblemOutlinedIcon sx={{ fontSize: 13, color: 'error.main' }} />
-                    <Typography component="span" sx={{ fontSize: 10.5, color: 'text.secondary' }}>
-                      Beleg nicht bestätigt
-                    </Typography>
-                  </Box>
-                )}
-              </Box>
-              {/* #1066: the schema metadata line, rendered from the generic list without field
+                {/* #1066: the schema metadata line, rendered from the generic list without field
                   knowledge - only for a document that actually carries a value. */}
-              {doc.metadataLine && (
-                <Typography
-                  component="span"
-                  data-testid="source-metadata"
-                  aria-label={doc.metadataDescription}
-                  sx={{ display: 'block', fontSize: 11.5, color: 'text.secondary', mt: 0.25 }}
-                >
-                  {doc.metadataLine}
-                </Typography>
-              )}
-              {/* #1242: values that belong into the detail view but not into the one-line Beleg -
+                {doc.metadataLine && (
+                  <Typography
+                    component="span"
+                    data-testid="source-metadata"
+                    aria-label={doc.metadataDescription}
+                    sx={{ display: 'block', fontSize: 11.5, color: 'text.secondary', mt: 0.25 }}
+                  >
+                    {doc.metadataLine}
+                  </Typography>
+                )}
+                {/* #1242: values that belong into the detail view but not into the one-line Beleg -
                   a mail's recipient list identifies no passage and would crowd out what does. */}
-              {doc.metadataDetails && (
-                <Typography
-                  component="span"
-                  data-testid="source-metadata-details"
-                  sx={{ display: 'block', fontSize: 11.5, color: 'text.secondary', mt: 0.25 }}
+                {doc.metadataDetails && (
+                  <Typography
+                    component="span"
+                    data-testid="source-metadata-details"
+                    sx={{ display: 'block', fontSize: 11.5, color: 'text.secondary', mt: 0.25 }}
+                  >
+                    {doc.metadataDetails}
+                  </Typography>
+                )}
+                {/* #1070: the Leerwert mark of a hit kept under an active filter. */}
+                {doc.filterMatchLabel && (
+                  <Typography
+                    component="span"
+                    data-testid="source-filter-match"
+                    aria-label="Metadatenfilter: ohne Angabe im gefilterten Feld"
+                    sx={{ display: 'block', fontSize: 11, color: 'text.secondary', mt: 0.25 }}
+                  >
+                    {doc.filterMatchLabel}
+                  </Typography>
+                )}
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'baseline',
+                    gap: 1,
+                    flexWrap: 'wrap',
+                    mt: 0.25,
+                  }}
                 >
-                  {doc.metadataDetails}
-                </Typography>
-              )}
-              {/* #1070: the Leerwert mark of a hit kept under an active filter. */}
-              {doc.filterMatchLabel && (
-                <Typography
-                  component="span"
-                  data-testid="source-filter-match"
-                  aria-label="Metadatenfilter: ohne Angabe im gefilterten Feld"
-                  sx={{ display: 'block', fontSize: 11, color: 'text.secondary', mt: 0.25 }}
-                >
-                  {doc.filterMatchLabel}
-                </Typography>
-              )}
-              <Box
-                sx={{
-                  display: 'flex',
-                  alignItems: 'baseline',
-                  gap: 1,
-                  flexWrap: 'wrap',
-                  mt: 0.25,
-                }}
-              >
-                <Typography component="span" sx={{ fontSize: 11.5, color: 'text.secondary' }}>
-                  {[
-                    doc.rank !== undefined ? `Rang ${doc.rank}` : null,
-                    doc.indexedAt
-                      ? `indiziert ${new Date(doc.indexedAt).toLocaleDateString('de-DE', { dateStyle: 'medium' })}`
-                      : null,
-                  ]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </Typography>
-                {/* #747: every sourceType with a documentId opens via the content endpoint
+                  <Typography component="span" sx={{ fontSize: 11.5, color: 'text.secondary' }}>
+                    {[
+                      doc.rank !== undefined ? `Rang ${doc.rank}` : null,
+                      doc.indexedAt
+                        ? `indiziert ${new Date(doc.indexedAt).toLocaleDateString('de-DE', { dateStyle: 'medium' })}`
+                        : null,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </Typography>
+                  {/* #747: every sourceType with a documentId opens via the content endpoint
                     (LibraryDetailPage#handleOpenOriginal, #738); sourceEntryUrl/sourceUrl is
                     shown alongside it as secondary information (a small "Quelle" link carrying
                     the raw URL as its title tooltip and aria-label - #748 review, nit 5: a plain
                     title alone is generally not announced by a screen reader once the element
                     already has visible text), since that address may only be reachable from
                     OPAA's own network, not the caller's browser. */}
-                {doc.documentId && (
-                  <Link
-                    component="button"
-                    type="button"
-                    underline="hover"
-                    onClick={() => void handleOpenLocalOriginal(doc)}
-                    sx={{ fontSize: 11.5 }}
-                  >
-                    Im Dokument öffnen
-                  </Link>
-                )}
-                {(doc.sourceEntryUrl ?? doc.sourceUrl) && (
-                  <Link
-                    href={doc.sourceEntryUrl ?? doc.sourceUrl ?? undefined}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    underline="hover"
-                    title={doc.sourceEntryUrl ?? doc.sourceUrl ?? undefined}
-                    aria-label={`Quelle: ${doc.sourceEntryUrl ?? doc.sourceUrl ?? ''}`}
-                    sx={{ fontSize: 11.5, color: 'text.disabled' }}
-                  >
-                    Quelle
-                  </Link>
-                )}
+                  {doc.documentId && (
+                    <Link
+                      component="button"
+                      type="button"
+                      underline="hover"
+                      onClick={() => void handleOpenLocalOriginal(doc)}
+                      sx={{ fontSize: 11.5 }}
+                    >
+                      Im Dokument öffnen
+                    </Link>
+                  )}
+                  {(doc.sourceEntryUrl ?? doc.sourceUrl) && (
+                    <Link
+                      href={doc.sourceEntryUrl ?? doc.sourceUrl ?? undefined}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      underline="hover"
+                      title={doc.sourceEntryUrl ?? doc.sourceUrl ?? undefined}
+                      aria-label={`Quelle: ${doc.sourceEntryUrl ?? doc.sourceUrl ?? ''}`}
+                      sx={{ fontSize: 11.5, color: 'text.disabled' }}
+                    >
+                      Quelle
+                    </Link>
+                  )}
+                </Box>
               </Box>
-            </Box>
-          ))
+            )
+          })
         )}
       </Box>
 

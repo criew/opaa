@@ -347,12 +347,15 @@ Vollständige Tastaturbedienung (Pfeile, Enter, Escape) ist Teil der Komponente,
 
 ### 5.8 Fußnoten und Fundstellen (Signaturmuster des Chats)
 
-Belege erscheinen als hochgestellte Ziffern in `accent` im Antworttext (auch Bereiche „1–3");
-unter der Antwort folgt der Fundstellen-Block: Eyebrow „Fundstellen", Zeile „n Stellen in
-m Dokumenten", je Dokument Ziffern + Titel (Gewicht 500) + Fundort und Stand in `fg-3`.
-Ein Beleg, den die Belegvalidierung nicht bestätigt, trägt einen dezenten Hinweis in normaler
-Fundstellen-Typografie — kein Banner, keine Signalfarbe (Ausgestaltung: Issues #590/#592,
-Mockups 1a/1i).
+Belege erscheinen als hochgestellte Ziffern in `accent` im Antworttext (auch Bereiche „1–3").
+Unter der Antwort steht keine Quellenliste, sondern nur der Knopf **„Belege anzeigen"** mit der
+Zählzeile „n Stellen in m Dokumenten · k weitere geprüft" in `fg-2` — die Antwort bleibt Fließtext,
+auch in langen Gesprächen. Alle Fundstellen stehen im **Belegfenster** rechts, je Dokument Ziffern +
+Titel (Gewicht 500) + Fundort, Metadaten und Stand. Ein Klick auf eine Fußnote öffnet das
+Belegfenster an ihrer Fundstelle und markiert sie dort (Fläche `accent` 7 %, Akzentkante links) —
+markiert wird der Beleg, nicht der Antworttext. Ein Beleg, den die Belegvalidierung nicht
+bestätigt, trägt einen dezenten Hinweis in normaler Beleg-Typografie — kein Banner, keine
+Signalfarbe (Ausgestaltung: Issues #590/#592/#1449, Mockups 1a/1i).
 
 ### 5.9 Popup-Benachrichtigungen
 
@@ -432,7 +435,7 @@ UI-Sprache ist Deutsch, Anrede „Sie", `aria-label` deutsch. Verbindliche Begri
 | **Endpoint**              | die Adresse eines S3-Objektspeichers (`https://host[:port]`, ohne Pfad) |
 | **Verteilungsstufe**      | privat · geteilt · organisationsweit                                                         |
 | **Rolle**                 | Leser · Bearbeiter · Verwalter · Eigentümer                                                  |
-| **Fundstellen**           | Belegblock unter einer Antwort                                                               |
+| **Fundstellen**           | die Stellen in Dokumenten, auf die sich eine Antwort stützt                                  |
 | **Belege / Belegfenster** | alle Fundstellen einer Antwort in der seitlichen Leiste                                      |
 | **Systemverwaltung**      | Admin-Bereich und -Rolle                                                                     |
 | **Anmeldung / Kennung**   | nie „Login"/„Username" in Nutzertexten                                                       |

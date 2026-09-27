@@ -1,15 +1,16 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import { alpha } from '@mui/material/styles'
 import Box from '@mui/material/Box'
+import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
 import TextSnippetOutlinedIcon from '@mui/icons-material/TextSnippetOutlined'
+import FormatQuoteOutlinedIcon from '@mui/icons-material/FormatQuoteOutlined'
 import type { ChatMessage } from '../../types/chat'
 import { blue } from '../../theme/tokens'
-import { buildCitationIndex } from './citations'
+import { buildCitationIndex, describeEvidenceSummary } from './citations'
 import MarkdownRenderer from './MarkdownRenderer'
 import SourceEvidenceDrawer from './SourceEvidenceDrawer'
-import SourceFootnotes from './SourceFootnotes'
 import DocumentTextPreviewDialog from '../DocumentTextPreviewDialog'
 import { useDocumentPreview } from '../../hooks/useDocumentPreview'
 
@@ -20,26 +21,20 @@ interface MessageBubbleProps {
 export default function MessageBubble({ message }: MessageBubbleProps) {
   const isUser = message.role === 'user'
 
-  // Mockup 1a (#590): the answer's citation markers resolve to footnote numbers, rendered as
-  // superscripts in the text and as the Fundstellen block below it.
+  // The answer's citation markers resolve to footnote numbers; the Belege themselves live only in
+  // the Belegfenster - under the answer stays a single "Belege anzeigen" with a count line.
   const citations = useMemo(
     () => buildCitationIndex(message.content, message.sources),
     [message.content, message.sources],
   )
+  const evidenceSummary = describeEvidenceSummary(citations)
 
-  // A clicked footnote highlights every row it covers - the URL hash can only carry one target,
-  // a range like "3–4" covers several (#590 Nachbesserung). Transient, so the flash reads as a
-  // pointer rather than a persistent selection.
-  const [highlightedDocIndexes, setHighlightedDocIndexes] = useState<number[]>([])
   const [evidenceOpen, setEvidenceOpen] = useState(false)
-  const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // The Belege a clicked footnote covers - a range like "3–4" covers several documents.
+  const [focusedDocIndexes, setFocusedDocIndexes] = useState<number[]>([])
 
-  // #739/#780: a single instance shared by SourceFootnotes (the Fundstellen block under the
-  // answer) and SourceEvidenceDrawer (the Belegfenster) - both offer the same "Im Dokument
-  // öffnen" action for the same message's sources, so one preview dialog/download snackbar
-  // suffices; rendered here, as a sibling of both, so neither unmounting (in particular the
-  // Belegfenster closing, which unmounts its children) closes it prematurely (#781 review,
-  // Wichtig 1/Nit 5).
+  // One instance for the Belegfenster, rendered here as a sibling of it: the Drawer unmounts its
+  // children on close, which must not close a preview dialog or download snackbar it started.
   const documentPreview = useDocumentPreview()
   const handleCitationClick = useCallback(
     (numbers: number[]) => {
@@ -50,12 +45,15 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
             .filter((i): i is number => i !== undefined),
         ),
       ]
-      setHighlightedDocIndexes(docIndexes)
-      if (highlightTimer.current) clearTimeout(highlightTimer.current)
-      highlightTimer.current = setTimeout(() => setHighlightedDocIndexes([]), 2400)
+      setFocusedDocIndexes(docIndexes)
+      setEvidenceOpen(true)
     },
     [citations],
   )
+  const openAllEvidence = () => {
+    setFocusedDocIndexes([])
+    setEvidenceOpen(true)
+  }
 
   return (
     <Box
@@ -123,7 +121,6 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
             <MarkdownRenderer
               content={message.content}
               citations={citations}
-              messageId={message.id}
               onCitationClick={handleCitationClick}
             />
           )}
@@ -145,7 +142,7 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
 
           {/* #667, mockup 1a: an answer that substantiates nothing still says what was looked at
               - the effective search scope by name, straight from QueryMetadata#searchedLibraries.
-              Only when the answer cites nothing; under a Fundstellen block the list is noise. */}
+              Only when the answer cites nothing; next to cited Belege the list is noise. */}
           {!isUser &&
             citations.docs.length === 0 &&
             (message.searchedLibraries?.length ?? 0) > 0 && (
@@ -158,24 +155,42 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
               </Typography>
             )}
 
-          {!isUser && (
-            <SourceFootnotes
-              messageId={message.id}
-              citations={citations}
-              highlightedDocIndexes={highlightedDocIndexes}
-              onOpenEvidence={
-                citations.docs.length > 0 || citations.uncited.length > 0
-                  ? () => setEvidenceOpen(true)
-                  : undefined
-              }
-              openDocument={documentPreview.openDocument}
-            />
+          {!isUser && evidenceSummary && (
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                columnGap: 1,
+                mt: 1.25,
+              }}
+            >
+              <Button
+                size="small"
+                variant="text"
+                aria-haspopup="dialog"
+                onClick={openAllEvidence}
+                startIcon={<FormatQuoteOutlinedIcon aria-hidden />}
+                sx={{ ml: -1, px: 1, fontSize: 12.5, fontWeight: 500 }}
+              >
+                Belege anzeigen
+              </Button>
+              <Typography
+                component="span"
+                data-testid="evidence-summary"
+                sx={{ fontSize: 11.5, color: 'text.secondary' }}
+              >
+                {evidenceSummary}
+              </Typography>
+            </Box>
           )}
           {!isUser && (
             <SourceEvidenceDrawer
               open={evidenceOpen}
               onClose={() => setEvidenceOpen(false)}
+              messageId={message.id}
               citations={citations}
+              focusedDocIndexes={focusedDocIndexes}
               answeredAt={message.timestamp}
               openDocument={documentPreview.openDocument}
             />

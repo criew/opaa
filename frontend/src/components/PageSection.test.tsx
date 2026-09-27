@@ -112,8 +112,6 @@ const VERWALTUNGSDATEIEN = Object.keys(QUELLEN).filter((pfad) => {
  * - `MessageBubble`: die Blase grenzt zwei Sprecher voneinander ab. Nur die Frage trägt sie; die
  *   Antwort steht schon als Fließtext ohne Blase. Ohne diese eine Fläche verlöre der Verlauf
  *   seinen Wechsel.
- * - `SourceFootnotes`: kein Kasten um Inhalt, sondern ein 11 px großes Etikett am Treffer
- *   („ohne Angabe im gefilterten Feld") — derselbe Fall wie ein Chip.
  * - `ChatInput`: die Eingabezeile ist ein Bedienelement, und ihr Vorschlagsfeld eine schwebende
  *   Ebene. Beides bringt seine Fläche zu Recht mit.
  * - `PromptCommandMenu`: das Vorschlagsfeld des `/`-Befehls über derselben Eingabezeile (#1903) —
@@ -138,7 +136,6 @@ const AUSNAHMEN = [
   'SetupLinkDialog.tsx',
   'HandoverLinkDialog.tsx',
   'MessageBubble.tsx',
-  'SourceFootnotes.tsx',
   'ChatInput.tsx',
   'PromptCommandMenu.tsx',
   'LibraryManagementPage.tsx',

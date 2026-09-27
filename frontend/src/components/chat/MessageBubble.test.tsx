@@ -1,25 +1,8 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi, describe, expect, it } from 'vitest'
 import MessageBubble from './MessageBubble'
-import NotificationHost from '../NotificationHost'
-import { useNotificationStore } from '../../stores/notificationStore'
 import type { ChatMessage } from '../../types/chat'
-import type { OpenDocumentContentResult } from '../../utils/documentContent'
-
-// #781 review, Wichtig 1: "Im Dokument öffnen" in the Fundstellen block (SourceFootnotes) shares
-// MessageBubble's single `useDocumentPreview()` instance with the Belegfenster
-// (SourceEvidenceDrawer) - these tests exercise that wiring end-to-end (text-preview dialog,
-// download snackbar) at the level where the hook actually lives, mirroring
-// SourceEvidenceDrawer.test.tsx's own mock of this module.
-const { mockOpenDocumentContent } = vi.hoisted(() => ({
-  mockOpenDocumentContent: vi.fn<() => Promise<OpenDocumentContentResult>>(async () => ({
-    kind: 'blob-preview',
-  })),
-}))
-vi.mock('../../utils/documentContent', () => ({
-  openDocumentContent: mockOpenDocumentContent,
-}))
 
 const citedSource = {
   fileName: 'test.md',
@@ -117,9 +100,8 @@ describe('MessageBubble', () => {
     expect(screen.queryByText('not bold')?.tagName).not.toBe('STRONG')
   })
 
-  it('highlights every row of a combined footnote range on click (#590 Nachbesserung)', async () => {
-    const user = userEvent.setup()
-    const msg: ChatMessage = {
+  function twoCitedMessage(): ChatMessage {
+    return {
       id: 'r1',
       role: 'assistant',
       content: 'Beleg【source: a#0 | erste.md】【source: b#0 | zweite.md】.',
@@ -140,109 +122,102 @@ describe('MessageBubble', () => {
           indexedAt: null,
           citationValid: true,
         },
+        { ...uncitedSource, fileName: 'dritte.md' },
       ],
       timestamp: new Date(),
     }
-    render(<MessageBubble message={msg} />)
+  }
 
-    await user.click(screen.getByRole('link', { name: 'Fundstellen 1 bis 2' }))
+  function evidenceRow(fileName: string): HTMLElement {
+    const drawer = screen.getByRole('dialog', { name: 'Belege dieser Antwort' })
+    const row = within(drawer)
+      .getAllByTestId('evidence-doc')
+      .find((el) => el.getAttribute('data-file') === fileName)
+    if (!row) throw new Error(`no Beleg row for ${fileName}`)
+    return row
+  }
 
-    expect(screen.getByText('erste.md').closest('[data-testid="source-card"]')).toHaveAttribute(
-      'data-highlighted',
-      'true',
-    )
-    expect(screen.getByText('zweite.md').closest('[data-testid="source-card"]')).toHaveAttribute(
-      'data-highlighted',
-      'true',
+  it('shows no source list under the answer, only "Belege anzeigen" with a count line', () => {
+    render(<MessageBubble message={twoCitedMessage()} />)
+
+    expect(screen.queryByText('erste.md')).not.toBeInTheDocument()
+    expect(screen.queryByText('dritte.md')).not.toBeInTheDocument()
+    expect(screen.queryByText('Fundstellen')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Belege anzeigen' })).toBeInTheDocument()
+    expect(screen.getByTestId('evidence-summary')).toHaveTextContent(
+      '2 Stellen in 2 Dokumenten · 1 weitere geprüft',
     )
   })
 
-  it('fades both rows of a range together - no row stays lit via the URL hash', async () => {
-    vi.useFakeTimers()
+  it('counts checked sources when the answer cites none', () => {
+    const msg: ChatMessage = {
+      id: '6',
+      role: 'assistant',
+      content: 'Answer',
+      sources: [uncitedSource],
+      timestamp: new Date(),
+    }
+    render(<MessageBubble message={msg} />)
+    expect(screen.getByTestId('evidence-summary')).toHaveTextContent('1 geprüft, keine zitiert')
+  })
+
+  it('offers no "Belege anzeigen" for an answer without sources', () => {
+    const msg: ChatMessage = {
+      id: '2b',
+      role: 'assistant',
+      content: 'Here is the answer',
+      sources: [],
+      timestamp: new Date(),
+    }
+    render(<MessageBubble message={msg} />)
+    expect(screen.queryByRole('button', { name: 'Belege anzeigen' })).not.toBeInTheDocument()
+  })
+
+  it('opens every Beleg, cited and uncited, without a mark via "Belege anzeigen"', async () => {
+    const user = userEvent.setup()
+    render(<MessageBubble message={twoCitedMessage()} />)
+
+    await user.click(screen.getByRole('button', { name: 'Belege anzeigen' }))
+
+    expect(evidenceRow('erste.md')).not.toHaveAttribute('data-focused')
+    expect(evidenceRow('zweite.md')).not.toHaveAttribute('data-focused')
+    expect(evidenceRow('dritte.md')).toHaveAttribute('data-cited', 'false')
+  })
+
+  it('opens the Belegfenster at every Beleg of a clicked footnote range', async () => {
+    const user = userEvent.setup()
+    render(<MessageBubble message={twoCitedMessage()} />)
+
+    await user.click(screen.getByRole('button', { name: 'Fundstellen 1 bis 2' }))
+
+    expect(evidenceRow('erste.md')).toHaveAttribute('data-focused', 'true')
+    expect(evidenceRow('zweite.md')).toHaveAttribute('data-focused', 'true')
+    expect(evidenceRow('dritte.md')).not.toHaveAttribute('data-focused')
+  })
+
+  it('marks only the Beleg of a single footnote and scrolls it into view', async () => {
+    const scrollIntoView = vi.fn()
+    Element.prototype.scrollIntoView = scrollIntoView
     try {
-      const msg: ChatMessage = {
-        id: 'r3',
-        role: 'assistant',
-        content: 'Beleg【source: a#0 | erste.md】【source: b#0 | zweite.md】.',
-        sources: [
-          {
-            fileName: 'erste.md',
-            relevanceScore: 0.9,
-            matchCount: 1,
-            cited: true,
-            indexedAt: null,
-            citationValid: true,
-          },
-          {
-            fileName: 'zweite.md',
-            relevanceScore: 0.8,
-            matchCount: 1,
-            cited: true,
-            indexedAt: null,
-            citationValid: true,
-          },
-        ],
-        timestamp: new Date(),
-      }
+      const user = userEvent.setup()
+      const msg = twoCitedMessage()
+      msg.content = 'Erst【source: a#0 | erste.md】, dann【source: b#0 | zweite.md】.'
       render(<MessageBubble message={msg} />)
 
-      fireEvent.click(screen.getByRole('link', { name: 'Fundstellen 1 bis 2' }))
-      expect(document.querySelectorAll('[data-highlighted="true"]')).toHaveLength(2)
+      await user.click(screen.getByRole('button', { name: 'Fundstelle 2: zweite.md' }))
 
-      act(() => {
-        vi.advanceTimersByTime(3000)
-      })
-
-      expect(document.querySelectorAll('[data-highlighted="true"]')).toHaveLength(0)
+      expect(evidenceRow('zweite.md')).toHaveAttribute('data-focused', 'true')
+      expect(evidenceRow('erste.md')).not.toHaveAttribute('data-focused')
+      await waitFor(() => expect(scrollIntoView).toHaveBeenCalled())
+      expect(scrollIntoView.mock.contexts[0]).toBe(evidenceRow('zweite.md'))
     } finally {
-      vi.useRealTimers()
+      // @ts-expect-error jsdom has no scrollIntoView; restore that state
+      delete Element.prototype.scrollIntoView
     }
   })
 
-  it('unfolds the block when a clicked range covers a folded row (#590 Nachbesserung)', async () => {
+  it('shows the Fundort of a cited document in the Belegfenster (#667)', async () => {
     const user = userEvent.setup()
-    const files = ['d1.md', 'd2.md', 'd3.md', 'd4.md', 'd5.md']
-    const msg: ChatMessage = {
-      id: 'r2',
-      role: 'assistant',
-      content: 'Beleg' + files.map((f, i) => `【source: k${i}#0 | ${f}】`).join('') + '.',
-      sources: files.map((fileName) => ({
-        fileName,
-        relevanceScore: 0.9,
-        matchCount: 1,
-        cited: true,
-        indexedAt: null,
-        citationValid: true,
-      })),
-      timestamp: new Date(),
-    }
-    render(<MessageBubble message={msg} />)
-    expect(screen.queryByText('d5.md')).not.toBeInTheDocument()
-
-    await user.click(screen.getByRole('link', { name: 'Fundstellen 1 bis 5' }))
-
-    expect(await screen.findByText('d5.md')).toBeVisible()
-    expect(screen.getByText('d5.md').closest('[data-testid="source-card"]')).toHaveAttribute(
-      'data-highlighted',
-      'true',
-    )
-  })
-
-  it('lists cited sources in the Fundstellen block (#590)', () => {
-    const msg: ChatMessage = {
-      id: '3',
-      role: 'assistant',
-      content: 'Answer【source: aa#0 | test.md】',
-      sources: [citedSource],
-      timestamp: new Date(),
-    }
-    render(<MessageBubble message={msg} />)
-    expect(screen.getByText('Fundstellen')).toBeInTheDocument()
-    expect(screen.getByText('1 Stelle in 1 Dokument')).toBeInTheDocument()
-    expect(screen.getByText('test.md')).toBeInTheDocument()
-  })
-
-  it('shows the Fundort next to a cited document (#667)', () => {
     const msg: ChatMessage = {
       id: '30',
       role: 'assistant',
@@ -257,7 +232,10 @@ describe('MessageBubble', () => {
       timestamp: new Date(),
     }
     render(<MessageBubble message={msg} />)
-    expect(screen.getByTestId('source-location')).toHaveTextContent('S. 2–4 · Abschn. Fristsetzung')
+    await user.click(screen.getByRole('button', { name: 'Belege anzeigen' }))
+    expect(within(evidenceRow('test.md')).getByTestId('source-location')).toHaveTextContent(
+      'S. 2–4 · Abschn. Fristsetzung',
+    )
   })
 
   it('names the searched libraries under an answer that cites nothing (#667)', () => {
@@ -291,22 +269,6 @@ describe('MessageBubble', () => {
     expect(screen.queryByTestId('searched-libraries')).not.toBeInTheDocument()
   })
 
-  it('hides uncited sources behind collapsible section', () => {
-    const msg: ChatMessage = {
-      id: '6',
-      role: 'assistant',
-      content: 'Answer',
-      sources: [citedSource, uncitedSource],
-      timestamp: new Date(),
-    }
-    render(<MessageBubble message={msg} />)
-    expect(screen.getByText('test.md')).toBeInTheDocument()
-    expect(
-      screen.getByText(/Weitere geprüfte, nicht zitierte Treffer \(1\) anzeigen/),
-    ).toBeInTheDocument()
-    expect(screen.queryByText('other.pdf')).not.toBeVisible()
-  })
-
   it('shows a hint when the answer was generated without knowledge', () => {
     const msg: ChatMessage = {
       id: '8',
@@ -333,107 +295,5 @@ describe('MessageBubble', () => {
     expect(
       screen.queryByText('Diese Antwort wurde ohne Wissensbasis erstellt.'),
     ).not.toBeInTheDocument()
-  })
-
-  it('expands uncited sources on click', async () => {
-    const user = userEvent.setup()
-    const msg: ChatMessage = {
-      id: '7',
-      role: 'assistant',
-      content: 'Answer',
-      sources: [citedSource, uncitedSource],
-      timestamp: new Date(),
-    }
-    render(<MessageBubble message={msg} />)
-    await user.click(screen.getByText(/Weitere geprüfte, nicht zitierte Treffer \(1\) anzeigen/))
-    expect(await screen.findByText('other.pdf')).toBeVisible()
-  })
-
-  // #781 review, Wichtig 1: before this fix, clicking "Im Dokument öffnen" in the Fundstellen
-  // block called openDocumentContent and discarded the result - a text-preview outcome produced
-  // neither a dialog nor a download, worse than main's silent download.
-  describe('"Im Dokument öffnen" in the Fundstellen block (#781 review, Wichtig 1)', () => {
-    const mdSource = {
-      fileName: '001_personalausweis.md',
-      relevanceScore: 0.9,
-      matchCount: 1,
-      indexedAt: null,
-      cited: true,
-      citationValid: true,
-      documentId: 'doc-1',
-      sourceType: 'UPLOAD' as const,
-    }
-
-    function messageWithMdSource(): ChatMessage {
-      return {
-        id: 'md-1',
-        role: 'assistant',
-        content: 'Beleg【source: doc-1#0 | 001_personalausweis.md】.',
-        sources: [mdSource],
-        timestamp: new Date(),
-      }
-    }
-
-    it('opens a Markdown text preview dialog instead of silently discarding the result', async () => {
-      mockOpenDocumentContent.mockResolvedValueOnce({
-        kind: 'text-preview',
-        fileName: '001_personalausweis.md',
-        contentType: 'text/markdown',
-        content: '# Personalausweis\n\nAusgestellt am 1. März.',
-      })
-      const user = userEvent.setup()
-      render(<MessageBubble message={messageWithMdSource()} />)
-
-      await user.click(screen.getByRole('button', { name: 'Im Dokument öffnen' }))
-
-      expect(await screen.findByRole('dialog')).toBeInTheDocument()
-      // #1016: heading elements are normalised per rendered content (rank compression from h2);
-      // the h5 LOOK of "#" survives as the Typography variant.
-      const previewHeading = screen.getByText('Personalausweis').closest('h2')
-      expect(previewHeading).toBeInTheDocument()
-      expect(previewHeading).toHaveClass('MuiTypography-h5')
-      expect(screen.getByText(/Ausgestellt am 1\. März\./)).toBeInTheDocument()
-    })
-
-    it('shows a snackbar with the file name when a DOCX download starts', async () => {
-      mockOpenDocumentContent.mockResolvedValueOnce({ kind: 'download', fileName: 'bescheid.docx' })
-      const user = userEvent.setup()
-      const msg = messageWithMdSource()
-      msg.sources = [{ ...mdSource, fileName: 'bescheid.docx' }]
-      msg.content = 'Beleg【source: doc-1#0 | bescheid.docx】.'
-      // Guidelines 5.9: download feedback is a global popup notification, rendered by
-      // NotificationHost (mounted app-wide in AppShell; mirrored here).
-      useNotificationStore.getState().reset()
-      render(
-        <>
-          <MessageBubble message={msg} />
-          <NotificationHost />
-        </>,
-      )
-
-      await user.click(screen.getByRole('button', { name: 'Im Dokument öffnen' }))
-
-      expect(await screen.findByText('bescheid.docx wird heruntergeladen')).toBeInTheDocument()
-    })
-
-    it('shows a German error message when opening the original fails (e.g. 404)', async () => {
-      mockOpenDocumentContent.mockRejectedValueOnce(
-        new Error('Das Originaldokument wurde nicht gefunden.'),
-      )
-      const user = userEvent.setup()
-      useNotificationStore.getState().reset()
-      render(
-        <>
-          <MessageBubble message={messageWithMdSource()} />
-          <NotificationHost />
-        </>,
-      )
-
-      await user.click(screen.getByRole('button', { name: 'Im Dokument öffnen' }))
-
-      expect(
-        await screen.findByText('Das Originaldokument wurde nicht gefunden.'),
-      ).toBeInTheDocument()
-    })
   })
 })

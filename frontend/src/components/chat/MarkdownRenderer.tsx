@@ -13,7 +13,7 @@ import TableRow from '@mui/material/TableRow'
 import type { Components } from 'react-markdown'
 import rehypeNormalizeHeadings, { MD_LEVEL_PROPERTY } from './markdownHeadings'
 import type { CitationIndex } from './citations'
-import { CITATION_MARKER_RE, citationRowId } from './citations'
+import { CITATION_MARKER_RE } from './citations'
 import 'highlight.js/styles/github-dark.css'
 
 interface MarkdownRendererProps {
@@ -21,10 +21,8 @@ interface MarkdownRendererProps {
   /** Footnote resolution for the answer's citation markers (#590); absent markers are stripped
    *  unless {@link preserveCitationMarkers} is set. */
   citations?: CitationIndex
-  /** Needed for the footnote anchors' target ids; only used together with `citations`. */
-  messageId?: string
-  /** Fires with every footnote number a clicked anchor covers - a range like "3–4" covers two
-   *  rows, which the URL hash alone cannot highlight (#590 Nachbesserung). */
+  /** Fires with every footnote number a clicked marker covers - a range like "3–4" covers two
+   *  Belege, all of which the Belegfenster marks. */
   onCitationClick?: (numbers: number[]) => void
   /** #780/#781 review, Nit 6: `content` here is a chat answer the backend generated with its own
    *  `【source: …】` marker syntax baked in, which the default behaviour above resolves into
@@ -38,13 +36,12 @@ interface MarkdownRendererProps {
 const CITATION_RE = new RegExp(CITATION_MARKER_RE.source)
 
 /**
- * Mockup 1a (#590): every citation marker becomes a superscript footnote number linking to its
- * Fundstellen row below the answer. Markers without a resolved number (no citations passed, or
- * an unknown key) are stripped rather than shown raw.
+ * Every citation marker becomes a superscript footnote number; clicking it opens the Belegfenster
+ * at the Belege it covers. Markers without a resolved number (no citations passed, or an unknown
+ * key) are stripped rather than shown raw.
  */
 interface ResolvedCitation {
   number: number
-  docIndex: number | undefined
   fileName: string
 }
 
@@ -52,7 +49,6 @@ interface ResolvedCitation {
  *  range ("1–3", mockup 1a/1i) so back-to-back markers stay readable (#590 Nachbesserung). */
 function renderCitationGroup(
   group: ResolvedCitation[],
-  messageId: string | undefined,
   key: string,
   onCitationClick: ((numbers: number[]) => void) | undefined,
 ): React.ReactNode {
@@ -88,15 +84,15 @@ function renderCitationGroup(
           <span key={segment.first.number}>
             {i > 0 && '·'}
             <Link
-              href={
-                messageId !== undefined && segment.first.docIndex !== undefined
-                  ? `#${citationRowId(messageId, segment.first.docIndex)}`
-                  : undefined
-              }
+              component="button"
+              type="button"
+              aria-haspopup="dialog"
               onClick={() => onCitationClick?.(segmentNumbers)}
-              underline="none"
+              underline="hover"
               aria-label={ariaLabel}
-              sx={{ fontWeight: 600 }}
+              // The <sup> keeps line height 0 so the line spacing stays even; the button itself
+              // needs its own, or it collapses to a zero-height, unhittable box.
+              sx={{ font: 'inherit', fontWeight: 600, lineHeight: 1, verticalAlign: 'baseline' }}
             >
               {label}
             </Link>
@@ -110,7 +106,6 @@ function renderCitationGroup(
 function renderWithCitations(
   text: string,
   citations: CitationIndex | undefined,
-  messageId: string | undefined,
   onCitationClick: ((numbers: number[]) => void) | undefined,
 ): React.ReactNode[] {
   const parts: React.ReactNode[] = []
@@ -120,7 +115,7 @@ function renderWithCitations(
 
   const flushGroup = (key: string) => {
     if (group.length > 0) {
-      parts.push(renderCitationGroup(group, messageId, key, onCitationClick))
+      parts.push(renderCitationGroup(group, key, onCitationClick))
       group = []
     }
   }
@@ -134,11 +129,7 @@ function renderWithCitations(
     }
     const number = citations?.numberByKey.get(match[1])
     if (number !== undefined) {
-      group.push({
-        number,
-        docIndex: citations?.docIndexByNumber.get(number),
-        fileName: match[2].trim(),
-      })
+      group.push({ number, fileName: match[2].trim() })
     }
     lastIndex = regex.lastIndex
   }
@@ -151,7 +142,6 @@ function renderWithCitations(
 
 function makeProcessChildren(
   citations: CitationIndex | undefined,
-  messageId: string | undefined,
   onCitationClick: ((numbers: number[]) => void) | undefined,
   preserveCitationMarkers: boolean,
 ) {
@@ -164,16 +154,14 @@ function makeProcessChildren(
     }
     if (typeof children === 'string') {
       if (CITATION_RE.test(children)) {
-        return renderWithCitations(children, citations, messageId, onCitationClick)
+        return renderWithCitations(children, citations, onCitationClick)
       }
       return children
     }
     if (Array.isArray(children)) {
       return children.map((child, i) => {
         if (typeof child === 'string' && CITATION_RE.test(child)) {
-          return (
-            <span key={i}>{renderWithCitations(child, citations, messageId, onCitationClick)}</span>
-          )
+          return <span key={i}>{renderWithCitations(child, citations, onCitationClick)}</span>
         }
         return child
       })
@@ -298,16 +286,12 @@ function makeComponents(
 export default function MarkdownRenderer({
   content,
   citations,
-  messageId,
   onCitationClick,
   preserveCitationMarkers = false,
 }: MarkdownRendererProps) {
   const components = useMemo(
-    () =>
-      makeComponents(
-        makeProcessChildren(citations, messageId, onCitationClick, preserveCitationMarkers),
-      ),
-    [citations, messageId, onCitationClick, preserveCitationMarkers],
+    () => makeComponents(makeProcessChildren(citations, onCitationClick, preserveCitationMarkers)),
+    [citations, onCitationClick, preserveCitationMarkers],
   )
   return (
     <ReactMarkdown

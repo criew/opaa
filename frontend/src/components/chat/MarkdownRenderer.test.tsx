@@ -1,5 +1,6 @@
 import { screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import userEvent from '@testing-library/user-event'
+import { describe, expect, it, vi } from 'vitest'
 import { renderWithProviders } from '../../test/test-utils'
 import MarkdownRenderer from './MarkdownRenderer'
 import { buildCitationIndex } from './citations'
@@ -96,32 +97,33 @@ describe('MarkdownRenderer', () => {
     expect(cells[0].textContent).toBe('Name')
   })
 
-  it('renders citation markers as superscript footnote anchors (#590)', () => {
+  it('renders citation markers as superscript footnote buttons that open the Belege', async () => {
     const content = 'The answer is 42【source: doc-1#0 | readme.md】.'
+    const onCitationClick = vi.fn()
     renderWithProviders(
       <MarkdownRenderer
         content={content}
         citations={buildCitationIndex(content, undefined)}
-        messageId="m1"
+        onCitationClick={onCitationClick}
       />,
     )
     expect(screen.getByText(/The answer is 42/)).toBeInTheDocument()
-    const anchor = screen.getByRole('link', { name: 'Fundstelle 1: readme.md' })
-    expect(anchor).toHaveTextContent('1')
-    expect(anchor).toHaveAttribute('href', '#fundstelle-m1-0')
+    const marker = screen.getByRole('button', { name: 'Fundstelle 1: readme.md' })
+    expect(marker).toHaveTextContent('1')
+    expect(marker.closest('sup')).not.toBeNull()
+    expect(marker).toHaveAttribute('aria-haspopup', 'dialog')
+
+    await userEvent.setup().click(marker)
+    expect(onCitationClick).toHaveBeenCalledWith([1])
   })
 
   it('numbers multiple citations in order of appearance (#590)', () => {
     const content = 'Info【source: id-1#0 | arch.md】 und【source: id-2#3 | deploy.pdf】.'
     renderWithProviders(
-      <MarkdownRenderer
-        content={content}
-        citations={buildCitationIndex(content, undefined)}
-        messageId="m2"
-      />,
+      <MarkdownRenderer content={content} citations={buildCitationIndex(content, undefined)} />,
     )
-    expect(screen.getByRole('link', { name: 'Fundstelle 1: arch.md' })).toHaveTextContent('1')
-    expect(screen.getByRole('link', { name: 'Fundstelle 2: deploy.pdf' })).toHaveTextContent('2')
+    expect(screen.getByRole('button', { name: 'Fundstelle 1: arch.md' })).toHaveTextContent('1')
+    expect(screen.getByRole('button', { name: 'Fundstelle 2: deploy.pdf' })).toHaveTextContent('2')
   })
 
   it('strips markers when no citation index is provided', () => {

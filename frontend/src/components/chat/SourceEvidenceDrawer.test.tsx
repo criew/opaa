@@ -62,7 +62,7 @@ function message(): ChatMessage {
 async function openDrawer() {
   const user = userEvent.setup()
   renderWithProviders(<MessageBubble message={message()} />)
-  await user.click(screen.getByRole('button', { name: 'Alle als Liste im Belegfenster öffnen' }))
+  await user.click(screen.getByRole('button', { name: 'Belege anzeigen' }))
   return { user, drawer: await screen.findByRole('dialog', { name: 'Belege dieser Antwort' }) }
 }
 
@@ -71,7 +71,7 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
     vi.clearAllMocks()
   })
 
-  it('opens from the Fundstellen block with header, count line and answer timestamp', async () => {
+  it('opens from "Belege anzeigen" with header, count line and answer timestamp', async () => {
     const { drawer } = await openDrawer()
 
     expect(within(drawer).getByText('Belege dieser Antwort')).toBeInTheDocument()
@@ -117,7 +117,7 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
         }}
       />,
     )
-    await user.click(screen.getByRole('button', { name: 'Alle als Liste im Belegfenster öffnen' }))
+    await user.click(screen.getByRole('button', { name: 'Belege anzeigen' }))
     const drawer = await screen.findByRole('dialog', { name: 'Belege dieser Antwort' })
 
     const rows = within(drawer).getAllByTestId('evidence-doc')
@@ -151,7 +151,7 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
         }}
       />,
     )
-    await user.click(screen.getByRole('button', { name: 'Alle als Liste im Belegfenster öffnen' }))
+    await user.click(screen.getByRole('button', { name: 'Belege anzeigen' }))
     const drawer = await screen.findByRole('dialog', { name: 'Belege dieser Antwort' })
 
     const names = within(drawer)
@@ -188,7 +188,7 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
         }}
       />,
     )
-    await user.click(screen.getByRole('button', { name: 'Alle als Liste im Belegfenster öffnen' }))
+    await user.click(screen.getByRole('button', { name: 'Belege anzeigen' }))
     const drawer = await screen.findByRole('dialog', { name: 'Belege dieser Antwort' })
 
     const rows = within(drawer).getAllByTestId('evidence-doc')
@@ -217,7 +217,7 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
         }}
       />,
     )
-    await user.click(screen.getByRole('button', { name: 'Alle als Liste im Belegfenster öffnen' }))
+    await user.click(screen.getByRole('button', { name: 'Belege anzeigen' }))
     const drawer = await screen.findByRole('dialog', { name: 'Belege dieser Antwort' })
 
     const rows = within(drawer).getAllByTestId('evidence-doc')
@@ -258,7 +258,7 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
         }}
       />,
     )
-    await user.click(screen.getByRole('button', { name: 'Alle als Liste im Belegfenster öffnen' }))
+    await user.click(screen.getByRole('button', { name: 'Belege anzeigen' }))
     const drawer = await screen.findByRole('dialog', { name: 'Belege dieser Antwort' })
 
     const rows = within(drawer).getAllByTestId('evidence-doc')
@@ -281,6 +281,33 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
       .getAllByTestId('evidence-doc')
       .map((el) => el.getAttribute('data-file'))
     expect(names).toEqual(['zweiter.md'])
+  })
+
+  it('reopens unfiltered, so a clicked footnote never lands on a hidden Beleg', async () => {
+    const { user, drawer } = await openDrawer()
+    await user.type(within(drawer).getByPlaceholderText('In Belegen suchen …'), 'zweiter')
+    await user.click(within(drawer).getByRole('button', { name: 'Nur zitierte' }))
+    await user.keyboard('{Escape}')
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'Belege dieser Antwort' }),
+      ).not.toBeInTheDocument(),
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Fundstelle 3: dritter.md' }))
+
+    const reopened = await screen.findByRole('dialog', { name: 'Belege dieser Antwort' })
+    expect(within(reopened).getByPlaceholderText('In Belegen suchen …')).toHaveValue('')
+    expect(within(reopened).getByRole('button', { name: 'Nur zitierte' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    )
+    expect(within(reopened).getAllByTestId('evidence-doc')).toHaveLength(4)
+    expect(
+      within(reopened)
+        .getAllByTestId('evidence-doc')
+        .find((el) => el.getAttribute('data-focused') === 'true'),
+    ).toHaveAttribute('data-file', 'dritter.md')
   })
 
   it('hides checked-but-uncited sources behind the "Nur zitierte" filter', async () => {
@@ -307,7 +334,7 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
         }}
       />,
     )
-    await user.click(screen.getByRole('button', { name: 'Alle als Liste im Belegfenster öffnen' }))
+    await user.click(screen.getByRole('button', { name: 'Belege anzeigen' }))
     const drawer = await screen.findByRole('dialog', { name: 'Belege dieser Antwort' })
 
     const doc = within(drawer).getByTestId('evidence-doc')
@@ -361,7 +388,7 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
         }}
       />,
     )
-    await user.click(screen.getByRole('button', { name: 'Alle als Liste im Belegfenster öffnen' }))
+    await user.click(screen.getByRole('button', { name: 'Belege anzeigen' }))
     const drawer = await screen.findByRole('dialog', { name: 'Belege dieser Antwort' })
 
     const doc = within(drawer).getByTestId('evidence-doc')
@@ -388,9 +415,7 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
         screen.queryByRole('dialog', { name: 'Belege dieser Antwort' }),
       ).not.toBeInTheDocument(),
     )
-    expect(
-      screen.getByRole('button', { name: 'Alle als Liste im Belegfenster öffnen' }),
-    ).toHaveFocus()
+    expect(screen.getByRole('button', { name: 'Belege anzeigen' })).toHaveFocus()
   })
 
   describe('"Im Dokument öffnen" (#739)', () => {
@@ -407,9 +432,7 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
           }}
         />,
       )
-      await user.click(
-        screen.getByRole('button', { name: 'Alle als Liste im Belegfenster öffnen' }),
-      )
+      await user.click(screen.getByRole('button', { name: 'Belege anzeigen' }))
       const drawer = await screen.findByRole('dialog', { name: 'Belege dieser Antwort' })
       return { user, drawer }
     }
