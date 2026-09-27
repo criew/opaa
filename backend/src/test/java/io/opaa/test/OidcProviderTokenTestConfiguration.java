@@ -1,6 +1,6 @@
 package io.opaa.test;
 
-import io.opaa.auth.oidc.OidcJwtDecoderFactory;
+import io.opaa.auth.OidcJwtDecoderFactory;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
@@ -14,7 +14,7 @@ import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
  * builds the same {@link NimbusJwtDecoder} the production factory builds, only over a locally
  * generated public key instead of a fetched JWK set, with the standard validators (signature,
  * expiry, issuer byte for byte against the provider row). Only the {@code azp} check is missing,
- * because its validator is package-private to {@code io.opaa.auth.oidc}.
+ * because its validator is package-private to {@code io.opaa.auth}.
  *
  * <p>A top-level {@code @TestConfiguration} imported by {@link OpaaLocalAuthProviderTest} rather
  * than a nested one, so every class on that signature shares one Spring context (AGENTS.md,

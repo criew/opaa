@@ -1,8 +1,8 @@
 package io.opaa.test;
 
-import io.opaa.auth.oidc.OidcClaimMapping;
-import io.opaa.auth.oidc.OidcProvider;
-import io.opaa.auth.oidc.OidcProviderRepository;
+import io.opaa.auth.OidcClaimMapping;
+import io.opaa.auth.OidcProvider;
+import io.opaa.auth.OidcProviderRepository;
 import java.util.UUID;
 
 /**
@@ -31,6 +31,20 @@ public final class ProviderFixtures {
   /** A provider that reads its groups from the named token claim. */
   public static OidcProvider tokenProvider(OidcProviderRepository repository, String groupsClaim) {
     return save(repository, groupsClaim, false);
+  }
+
+  /** An unsaved provider with the Keycloak-shaped claim mapping, for tests without a database. */
+  public static OidcProvider provider(
+      String name, String issuer, boolean enabled, boolean isDefault) {
+    OidcProvider provider =
+        new OidcProvider(name, issuer, "opaa-frontend", null, OidcClaimMapping.keycloakDefaults());
+    if (!enabled) {
+      provider.disable();
+    }
+    if (isDefault) {
+      provider.markDefault();
+    }
+    return provider;
   }
 
   private static OidcProvider save(

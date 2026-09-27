@@ -9,7 +9,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import io.opaa.auth.OidcSecurityConfig;
+import io.opaa.account.OidcSecurityConfig;
 import io.opaa.auth.PushIntakeSecurityConfig;
 import io.opaa.auth.UserService;
 import io.opaa.common.UnauthorizedException;

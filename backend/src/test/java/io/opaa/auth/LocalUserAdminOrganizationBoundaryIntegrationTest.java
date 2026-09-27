@@ -9,10 +9,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.jayway.jsonpath.JsonPath;
+import io.opaa.account.LocalAccountLinks;
 import io.opaa.api.types.SystemRole;
-import io.opaa.auth.local.LocalAccountLinks;
-import io.opaa.auth.local.LocalCredentials;
-import io.opaa.auth.local.LocalCredentialsRepository;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.test.OpaaIntegrationTest;

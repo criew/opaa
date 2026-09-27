@@ -68,7 +68,7 @@ class DiagnosticAccessIntegrationTest {
   @Autowired private GroupRepository groupRepository;
   @Autowired private GroupMembershipResolver membershipResolver;
   @Autowired private JdbcTemplate jdbcTemplate;
-  @Autowired private io.opaa.auth.oidc.OidcProviderRepository providerRepository;
+  @Autowired private io.opaa.auth.OidcProviderRepository providerRepository;
 
   private UUID organizationId;
   private CurrentUser admin;

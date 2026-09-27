@@ -26,14 +26,14 @@ import io.opaa.auth.UserRepository;
 import io.opaa.auth.UserService;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.NotFoundException;
+import io.opaa.directory.sync.DirectoryGroup;
+import io.opaa.directory.sync.DirectorySyncService;
+import io.opaa.directory.sync.DirectorySyncStatusRepository;
 import io.opaa.group.Group;
 import io.opaa.group.GroupCreation;
 import io.opaa.group.GroupRepository;
 import io.opaa.group.GroupService;
 import io.opaa.group.GroupUpdate;
-import io.opaa.group.sync.DirectoryGroup;
-import io.opaa.group.sync.DirectorySyncService;
-import io.opaa.group.sync.DirectorySyncStatusRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.SourceType;
@@ -100,8 +100,11 @@ class AuditEventRecordingIntegrationTest {
   @Autowired private SpaceRepository spaceRepository;
   @Autowired private DirectorySyncService directorySyncService;
   @Autowired private DirectorySyncStatusRepository directorySyncStatusRepository;
-  @Autowired private io.opaa.group.sync.DirectorySyncPendingPlanRepository pendingPlanRepository;
-  @Autowired private io.opaa.auth.oidc.OidcProviderRepository oidcProviderRepository;
+
+  @Autowired
+  private io.opaa.directory.sync.DirectorySyncPendingPlanRepository pendingPlanRepository;
+
+  @Autowired private io.opaa.auth.OidcProviderRepository oidcProviderRepository;
   @Autowired private FakeDirectoryClient directoryClient;
   @Autowired private UserRepository userRepository;
   @Autowired private UserService userService;
@@ -113,7 +116,7 @@ class AuditEventRecordingIntegrationTest {
   private UUID organizationId;
 
   /** The provider every directory run of this class is bound to (#1816). */
-  private io.opaa.auth.oidc.OidcProvider syncProvider;
+  private io.opaa.auth.OidcProvider syncProvider;
 
   private final List<UUID> createdUserIds = new ArrayList<>();
   private final List<UUID> createdGroupIds = new ArrayList<>();
@@ -129,12 +132,12 @@ class AuditEventRecordingIntegrationTest {
     organizationId =
         organizationRepository.save(new Organization(UUID.randomUUID(), "Audit Org")).getId();
     syncProvider =
-        new io.opaa.auth.oidc.OidcProvider(
+        new io.opaa.auth.OidcProvider(
             "Verzeichnis " + UUID.randomUUID(),
             "https://idp.example/realms/" + UUID.randomUUID(),
             "opaa-frontend",
             null,
-            io.opaa.auth.oidc.OidcClaimMapping.keycloakDefaults());
+            io.opaa.auth.OidcClaimMapping.keycloakDefaults());
     syncProvider.configureDirectorySync(true, 360);
     oidcProviderRepository.save(syncProvider);
     directoryClient.respondWith();

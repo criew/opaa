@@ -36,8 +36,8 @@ Hauptklassen, ohne Spring-Kontext, als Teil von `./gradlew test`. Die Definition
 |---|---|
 | foundation | common, observability, organization, security, ratelimit, sourceaccess, s3 |
 | format | format |
-| identity | audit, branding, mail, auth, notification |
-| rights | permission, asset, group, succession |
+| identity | audit, branding, mail, auth, account, notification |
+| rights | permission, asset, group, directory, succession |
 | knowledge | knowledge, llm, indexing (ohne Konnektoren) |
 | connectors | jedes direkte Unterpaket von `indexing.source` |
 | workspace | space, revision, diagnosticaccess |
@@ -106,8 +106,8 @@ Top-Level-Paket hat höchstens eines; ein tieferes Paket dieses Namens, etwa der
 
 - **Zuordnung:** Ein Controller liegt im `web`-Paket seiner Ressource. Braucht er ein höheres Modul,
   liegt er im höchsten beteiligten, im Paket, dessen Dienste er dort nutzt: `AssetController` in
-  `space.web` (Raumzuordnungen eines Assets), `MeController` und `OidcProviderController` in
-  `group.web`, `AuditController` in `revision.web` (Stichtagsauskunft).
+  `space.web` (Raumzuordnungen eines Assets), `MeController` in `group.web`, `AuditController` in
+  `revision.web` (Stichtagsauskunft).
 - **Schichtung:** Ein `web`-Paket steht über allen Paketen, die sein Modul erreicht. Es unterliegt
   deshalb nicht `LAYERS`, nur `ALLOWED_MODULE_EDGES`: `branding.web` darf `auth` nutzen, obwohl
   `branding` darunter liegt. Umgekehrt nutzt kein Paket außerhalb der Web-Schicht und des Moduls app

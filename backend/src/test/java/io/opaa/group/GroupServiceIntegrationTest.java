@@ -64,7 +64,7 @@ class GroupServiceIntegrationTest {
 
   @Autowired private GroupService groupService;
   @Autowired private GroupRepository groupRepository;
-  @Autowired private io.opaa.auth.oidc.OidcProviderRepository providerRepository;
+  @Autowired private io.opaa.auth.OidcProviderRepository providerRepository;
 
   /** Every ORG_UNIT group carries its provider since #1816 (chk_groups_provider_kind). */
   private UUID directoryProviderId;

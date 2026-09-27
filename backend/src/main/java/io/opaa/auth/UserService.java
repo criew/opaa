@@ -7,15 +7,6 @@ import io.opaa.api.types.AuditSubjectKind;
 import io.opaa.api.types.SystemRole;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
-import io.opaa.auth.local.LocalAdminAvailabilityGuard;
-import io.opaa.auth.local.LocalCredentials;
-import io.opaa.auth.local.LocalCredentialsRepository;
-import io.opaa.auth.local.LocalUserService;
-import io.opaa.auth.oidc.OidcClaimMapping;
-import io.opaa.auth.oidc.OidcIssuerUris;
-import io.opaa.auth.oidc.OidcProvider;
-import io.opaa.auth.oidc.OidcProviderRegistry;
-import io.opaa.auth.oidc.OidcProviderRepository;
 import io.opaa.common.ConflictException;
 import io.opaa.organization.Organization;
 import java.time.Clock;
@@ -43,6 +34,9 @@ public class UserService {
   // Throttles lastLoginAt writes to at most once per user per interval (#833) - 5 minutes of
   // staleness is an acceptable trade for dropping the per-request UPDATE.
   private static final Duration LAST_LOGIN_UPDATE_THRESHOLD = Duration.ofMinutes(5);
+
+  private static final String BOOTSTRAP_ROLE_MESSAGE =
+      "Die Rolle des Notanker-Kontos der Systemverwaltung kann nicht geändert werden.";
 
   private final UserRepository userRepository;
   private final InitialAdminPolicy initialAdminPolicy;
@@ -318,8 +312,7 @@ public class UserService {
     if (role != SystemRole.SYSTEM_ADMIN
         && role != user.getSystemRole()
         && localCredentials.findById(userId).filter(LocalCredentials::isBootstrap).isPresent()) {
-      throw new ConflictException(
-          LocalUserService.BOOTSTRAP_ROLE_MESSAGE, LocalUserService.BOOTSTRAP_ACCOUNT);
+      throw new ConflictException(BOOTSTRAP_ROLE_MESSAGE, LocalCredentials.BOOTSTRAP_ACCOUNT);
     }
     // ADR-0025, Entscheidung 4: an enabled provider with a roles claim is authoritative - a role
     // written here would be overwritten by the account's next request. A disabled provider issues

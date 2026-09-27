@@ -1,9 +1,9 @@
 package io.opaa.group;
 
+import io.opaa.account.AccountActivityService;
 import io.opaa.api.types.SuccessionAddressee;
 import io.opaa.api.types.SuccessionKind;
 import io.opaa.api.types.SuccessionObjectType;
-import io.opaa.auth.AccountActivityService;
 import io.opaa.permission.SuccessionFinding;
 import io.opaa.permission.SuccessionFindingSource;
 import java.util.ArrayList;

@@ -1,10 +1,10 @@
 package io.opaa.test;
 
-import io.opaa.group.sync.DirectoryAccount;
-import io.opaa.group.sync.DirectoryClient;
-import io.opaa.group.sync.DirectoryGroup;
-import io.opaa.group.sync.DirectorySnapshot;
-import io.opaa.group.sync.DirectoryUnavailableException;
+import io.opaa.directory.sync.DirectoryAccount;
+import io.opaa.directory.sync.DirectoryClient;
+import io.opaa.directory.sync.DirectoryGroup;
+import io.opaa.directory.sync.DirectorySnapshot;
+import io.opaa.directory.sync.DirectoryUnavailableException;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.HashSet;

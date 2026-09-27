@@ -19,11 +19,15 @@ import io.opaa.asset.AssetVisibilityHistoryCause;
 import io.opaa.asset.AssetVisibilityHistoryRepository;
 import io.opaa.asset.AssetVisibilityHistoryService;
 import io.opaa.auth.CurrentUser;
+import io.opaa.auth.OidcClaimMapping;
+import io.opaa.auth.OidcProvider;
 import io.opaa.auth.TokenGroups;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
-import io.opaa.auth.oidc.OidcClaimMapping;
-import io.opaa.auth.oidc.OidcProvider;
+import io.opaa.directory.sync.DirectoryGroup;
+import io.opaa.directory.sync.DirectorySyncService;
+import io.opaa.directory.sync.DirectorySyncStatusRepository;
+import io.opaa.directory.sync.SyncReport;
 import io.opaa.group.Group;
 import io.opaa.group.GroupMembership;
 import io.opaa.group.GroupMembershipRepository;
@@ -32,10 +36,6 @@ import io.opaa.group.GroupService;
 import io.opaa.group.GroupSteward;
 import io.opaa.group.GroupStewardRepository;
 import io.opaa.group.TokenGroupSynchronizer;
-import io.opaa.group.sync.DirectoryGroup;
-import io.opaa.group.sync.DirectorySyncService;
-import io.opaa.group.sync.DirectorySyncStatusRepository;
-import io.opaa.group.sync.SyncReport;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
@@ -132,10 +132,13 @@ class PermissionHistoryServiceIntegrationTest {
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private DirectorySyncService directorySyncService;
   @Autowired private DirectorySyncStatusRepository directorySyncStatusRepository;
-  @Autowired private io.opaa.group.sync.DirectorySyncPendingPlanRepository pendingPlanRepository;
+
+  @Autowired
+  private io.opaa.directory.sync.DirectorySyncPendingPlanRepository pendingPlanRepository;
+
   @Autowired private FakeDirectoryClient directoryClient;
   @Autowired private TokenGroupSynchronizer synchronizer;
-  @Autowired private io.opaa.auth.oidc.OidcProviderRepository providerRepository;
+  @Autowired private io.opaa.auth.OidcProviderRepository providerRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private ApplicationContext applicationContext;
 
@@ -147,7 +150,7 @@ class PermissionHistoryServiceIntegrationTest {
   private final List<UUID> createdProviderIds = new ArrayList<>();
 
   /** The provider every directory run of this class is bound to (#1816). */
-  private io.opaa.auth.oidc.OidcProvider syncProvider;
+  private io.opaa.auth.OidcProvider syncProvider;
 
   @BeforeEach
   void setUp() {
@@ -157,12 +160,12 @@ class PermissionHistoryServiceIntegrationTest {
     organizationId =
         organizationRepository.save(new Organization(UUID.randomUUID(), "Org")).getId();
     syncProvider =
-        new io.opaa.auth.oidc.OidcProvider(
+        new io.opaa.auth.OidcProvider(
             "Verzeichnis " + UUID.randomUUID(),
             "https://idp.example/realms/" + UUID.randomUUID(),
             "opaa-frontend",
             null,
-            io.opaa.auth.oidc.OidcClaimMapping.keycloakDefaults());
+            io.opaa.auth.OidcClaimMapping.keycloakDefaults());
     syncProvider.configureDirectorySync(true, 360);
     providerRepository.save(syncProvider);
     createdProviderIds.add(syncProvider.getId());
@@ -1524,14 +1527,14 @@ class PermissionHistoryServiceIntegrationTest {
     // Its own provider, so the run sees exactly this one unit: every entry of this test shares one
     // organization, and the plausibility threshold measured over all of its units would otherwise
     // decide whether this path needs a confirmation at all.
-    io.opaa.auth.oidc.OidcProvider provider =
+    io.opaa.auth.OidcProvider provider =
         providerRepository.save(
-            new io.opaa.auth.oidc.OidcProvider(
+            new io.opaa.auth.OidcProvider(
                 "Verzeichnis Bestätigung",
                 "https://idp.example/realms/" + UUID.randomUUID(),
                 "opaa-frontend",
                 null,
-                io.opaa.auth.oidc.OidcClaimMapping.keycloakDefaults()));
+                io.opaa.auth.OidcClaimMapping.keycloakDefaults()));
     provider.configureDirectorySync(true, 360);
     providerRepository.save(provider);
     createdProviderIds.add(provider.getId());

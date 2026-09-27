@@ -6,17 +6,17 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import io.opaa.account.LocalAuthSettings;
+import io.opaa.account.LocalAuthSettingsRepository;
+import io.opaa.account.LocalSelfServiceAvailability;
 import io.opaa.auth.AuthProperties;
 import io.opaa.auth.LocalIssuer;
+import io.opaa.auth.OidcClaimMapping;
+import io.opaa.auth.OidcProvider;
+import io.opaa.auth.OidcProviderRegistry;
+import io.opaa.auth.OidcProviderRepository;
 import io.opaa.auth.TestSecurityConfig;
 import io.opaa.auth.UserService;
-import io.opaa.auth.local.LocalAuthSettings;
-import io.opaa.auth.local.LocalAuthSettingsRepository;
-import io.opaa.auth.local.LocalSelfServiceAvailability;
-import io.opaa.auth.oidc.OidcClaimMapping;
-import io.opaa.auth.oidc.OidcProvider;
-import io.opaa.auth.oidc.OidcProviderRegistry;
-import io.opaa.auth.oidc.OidcProviderRepository;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;

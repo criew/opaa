@@ -1,10 +1,10 @@
 package io.opaa.asset;
 
+import io.opaa.account.AccountActivityService;
 import io.opaa.api.types.AssetOwnerType;
 import io.opaa.api.types.SuccessionAddressee;
 import io.opaa.api.types.SuccessionKind;
 import io.opaa.api.types.SuccessionObjectType;
-import io.opaa.auth.AccountActivityService;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.permission.GroupCapabilityService;

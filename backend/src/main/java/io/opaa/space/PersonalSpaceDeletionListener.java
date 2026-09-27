@@ -1,11 +1,11 @@
 package io.opaa.space;
 
+import io.opaa.account.LocalAccountDeletionEvent;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
-import io.opaa.auth.local.LocalAccountDeletionEvent;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
