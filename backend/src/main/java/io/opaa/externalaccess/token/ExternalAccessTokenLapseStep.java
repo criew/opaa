@@ -1,6 +1,6 @@
 package io.opaa.externalaccess.token;
 
-import io.opaa.auth.local.LocalAccountMaintenanceStep;
+import io.opaa.account.LocalAccountMaintenanceStep;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;

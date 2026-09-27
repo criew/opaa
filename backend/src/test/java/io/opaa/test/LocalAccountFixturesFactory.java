@@ -1,10 +1,10 @@
 package io.opaa.test;
 
+import io.opaa.account.LocalRefreshTokenRepository;
+import io.opaa.account.LocalRevokedTokenRepository;
+import io.opaa.auth.LocalCredentialsRepository;
+import io.opaa.auth.OidcProviderRepository;
 import io.opaa.auth.UserRepository;
-import io.opaa.auth.local.LocalCredentialsRepository;
-import io.opaa.auth.local.LocalRefreshTokenRepository;
-import io.opaa.auth.local.LocalRevokedTokenRepository;
-import io.opaa.auth.oidc.OidcProviderRepository;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;

@@ -1,6 +1,6 @@
 package io.opaa.diagnosticaccess;
 
-import io.opaa.auth.local.LocalAccountDeletionEvent;
+import io.opaa.account.LocalAccountDeletionEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;

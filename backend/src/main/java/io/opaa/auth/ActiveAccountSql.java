@@ -1,5 +1,7 @@
 package io.opaa.auth;
 
+import io.opaa.account.AccountActivityService;
+
 /**
  * The SQL sibling of {@link AccountActivityService#activeAmong}: the same definition of an active
  * account, for a caller that only wants the <b>number</b> and must not load the accounts to get it

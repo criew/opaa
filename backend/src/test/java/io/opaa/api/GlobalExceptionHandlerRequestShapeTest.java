@@ -6,11 +6,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import io.opaa.account.LocalAuthRateLimiter;
+import io.opaa.account.LocalSelfServiceService;
+import io.opaa.account.web.LocalSelfServiceController;
 import io.opaa.auth.TestSecurityConfig;
 import io.opaa.auth.UserService;
-import io.opaa.auth.local.LocalAuthRateLimiter;
-import io.opaa.auth.local.LocalSelfServiceService;
-import io.opaa.auth.web.LocalSelfServiceController;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;

@@ -3,9 +3,6 @@ package io.opaa.auth;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.opaa.auth.oidc.OidcClaimMapping;
-import io.opaa.auth.oidc.OidcProvider;
-import io.opaa.auth.oidc.OidcProviderRepository;
 import io.opaa.organization.Organization;
 import io.opaa.test.OpaaIntegrationTest;
 import java.util.List;

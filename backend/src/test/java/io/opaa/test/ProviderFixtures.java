@@ -1,8 +1,8 @@
 package io.opaa.test;
 
-import io.opaa.auth.oidc.OidcClaimMapping;
-import io.opaa.auth.oidc.OidcProvider;
-import io.opaa.auth.oidc.OidcProviderRepository;
+import io.opaa.auth.OidcClaimMapping;
+import io.opaa.auth.OidcProvider;
+import io.opaa.auth.OidcProviderRepository;
 import java.util.UUID;
 
 /**

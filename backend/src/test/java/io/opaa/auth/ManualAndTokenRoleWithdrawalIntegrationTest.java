@@ -4,10 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 
 import io.opaa.api.types.SystemRole;
-import io.opaa.auth.local.LocalAdminAvailabilityGuard;
-import io.opaa.auth.oidc.OidcClaimMapping;
-import io.opaa.auth.oidc.OidcProvider;
-import io.opaa.auth.oidc.OidcProviderRepository;
 import io.opaa.common.ConflictException;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;

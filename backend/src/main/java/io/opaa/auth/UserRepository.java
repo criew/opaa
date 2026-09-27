@@ -50,7 +50,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
   /**
    * How many accounts were provisioned through {@code issuer} - what {@code
-   * io.opaa.auth.oidc.OidcProviderService} refuses to cut off by changing a provider's issuer
+   * io.opaa.directory.OidcProviderService} refuses to cut off by changing a provider's issuer
    * (ADR-0025, Entscheidung 2).
    */
   long countByIssuer(String issuer);
@@ -74,10 +74,9 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
   /**
    * Serializes the changes that could remove the last login-capable administrator of one
-   * organization for the rest of the transaction ({@code
-   * io.opaa.auth.local.LocalAdminAvailabilityGuard}, ADR-0033 Entscheidung 4): the "does another
-   * administrator remain?" count is only sound when no second change counts this one's row as still
-   * remaining.
+   * organization for the rest of the transaction ({@code io.opaa.auth.LocalAdminAvailabilityGuard},
+   * ADR-0033 Entscheidung 4): the "does another administrator remain?" count is only sound when no
+   * second change counts this one's row as still remaining.
    */
   @Query(
       value =

@@ -1,15 +1,15 @@
 package io.opaa.auth.web;
 
+import io.opaa.account.LocalAuthSettings;
+import io.opaa.account.LocalAuthSettingsRepository;
+import io.opaa.account.LocalSelfServiceAvailability;
 import io.opaa.api.dto.AuthConfigResponse;
 import io.opaa.api.dto.LocalAccountsConfig;
 import io.opaa.api.dto.OidcSignInProvider;
 import io.opaa.auth.AuthProperties;
-import io.opaa.auth.local.LocalAuthSettings;
-import io.opaa.auth.local.LocalAuthSettingsRepository;
-import io.opaa.auth.local.LocalSelfServiceAvailability;
-import io.opaa.auth.oidc.OidcProvider;
-import io.opaa.auth.oidc.OidcProviderRegistry;
-import io.opaa.auth.oidc.OidcProviderRepository;
+import io.opaa.auth.OidcProvider;
+import io.opaa.auth.OidcProviderRegistry;
+import io.opaa.auth.OidcProviderRepository;
 import java.util.List;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.web.bind.annotation.GetMapping;

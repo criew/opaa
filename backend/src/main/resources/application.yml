@@ -160,7 +160,7 @@ opaa:
     # (HKDF, io.opaa.security.LocalAuthKeyService - access-token signature, refresh-token lookup,
     # action-token lookup) and the session limits of the local issuer. No default for the secret on
     # purpose: the "oidc" profile refuses to start without a strong one (at least 32 characters, no
-    # placeholder - io.opaa.auth.local.LocalAuthSecretGuard); the dev profile below sets an
+    # placeholder - io.opaa.account.LocalAuthSecretGuard); the dev profile below sets an
     # explicitly-marked non-production value. Rotating the secret ends every local session and
     # invalidates every open invitation, reset and handover link - the documented step after a
     # database restore. The limits are validated at startup in every profile (LocalAuthProperties):
@@ -183,7 +183,7 @@ opaa:
       initial-admin-password: ${OPAA_INITIAL_ADMIN_PASSWORD:}
       admin-reset: ${OPAA_LOCAL_ADMIN_RESET:}
       admin-allowed-cidrs: ${OPAA_LOCAL_ADMIN_ALLOWED_CIDRS:}
-      # Lockout after failed sign-ins (Entscheidung 9; io.opaa.auth.local.LocalAccountLockoutListener):
+      # Lockout after failed sign-ins (Entscheidung 9; io.opaa.account.LocalAccountLockoutListener):
       # a fixed duration, no progressive extension; the counter returns to zero on success. The
       # single failed attempt is an application-log line, the lock an audit event.
       lockout:
@@ -497,7 +497,7 @@ opaa:
     # register, forgot-password, set-password and verify-email are keyed by client address in
     # RateLimitFilter; change-password by the authenticated account, register and forgot-password
     # additionally by the (hashed) e-mail address they name - both in
-    # io.opaa.auth.local.LocalAuthRateLimiter. The global ceilings of login, register and
+    # io.opaa.account.LocalAuthRateLimiter. The global ceilings of login, register and
     # forgot-password are the operator's early warning against distributed credential stuffing:
     # exceeding one is a WARN line and a metric.
     local-auth:
@@ -671,7 +671,7 @@ opaa:
   auth:
     mode: oidc
     # Bootstrap block (ADR-0025): read once, on the first start, to create the first provider row
-    # (io.opaa.auth.oidc.OidcProviderSeeder); afterwards the database leads and these values are
+    # (io.opaa.auth.OidcProviderSeeder); afterwards the database leads and these values are
     # not evaluated again - except by the address policy, whose allowlist always includes the
     # hosts named here. OPAA_OIDC_BOOTSTRAP=force restores the environment provider once.
     # Deliberately without defaults: a fresh installation that sets nothing must not seed an

@@ -1,5 +1,6 @@
 package io.opaa.auth;
 
+import io.opaa.account.OidcSecurityConfig;
 import jakarta.annotation.PostConstruct;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;

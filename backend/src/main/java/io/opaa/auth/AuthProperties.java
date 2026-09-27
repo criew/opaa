@@ -21,9 +21,9 @@ public record AuthProperties(String mode, OidcAuth oidc, DevAuth dev, String ini
 
   /**
    * The bootstrap block of the {@code oidc} mode (ADR-0025, Entscheidung 3): read once by {@code
-   * io.opaa.auth.oidc.OidcProviderSeeder} to create the first provider row, and by the address
-   * policy for the hosts that are always allowed. {@code bootstrap = "force"} makes the seeder
-   * ignore its marker once and restore the environment provider; {@code targetValidation} is the
+   * io.opaa.auth.OidcProviderSeeder} to create the first provider row, and by the address policy
+   * for the hosts that are always allowed. {@code bootstrap = "force"} makes the seeder ignore its
+   * marker once and restore the environment provider; {@code targetValidation} is the
    * anmeldeseitige SSRF allowlist, deliberately separate from the indexing one.
    */
   public record OidcAuth(

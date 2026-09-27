@@ -3,9 +3,6 @@ package io.opaa.auth;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.api.types.SystemRole;
-import io.opaa.auth.oidc.OidcClaimMapping;
-import io.opaa.auth.oidc.OidcProvider;
-import io.opaa.auth.oidc.OidcProviderRepository;
 import io.opaa.test.OpaaIntegrationTest;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;

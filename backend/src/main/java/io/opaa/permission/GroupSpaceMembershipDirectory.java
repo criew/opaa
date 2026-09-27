@@ -7,7 +7,7 @@ import java.util.UUID;
 
 /**
  * Where a group is a space member - the port that lets {@code io.opaa.group} and {@code
- * io.opaa.auth.oidc} refuse a deletion with a countable reason, and {@link
+ * io.opaa.directory} refuse a deletion with a countable reason, and {@link
  * PermissionTransferService} move those memberships, without any of them knowing {@code
  * io.opaa.space} (ADR-0036, Entscheidung 12). Implemented by {@code
  * GroupSpaceMembershipDirectoryAdapter}.

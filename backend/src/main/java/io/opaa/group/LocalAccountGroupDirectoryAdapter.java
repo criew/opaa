@@ -1,6 +1,6 @@
 package io.opaa.group;
 
-import io.opaa.auth.local.LocalAccountGroupDirectory;
+import io.opaa.account.LocalAccountGroupDirectory;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
 

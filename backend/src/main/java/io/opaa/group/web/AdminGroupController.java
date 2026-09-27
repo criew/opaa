@@ -1,5 +1,6 @@
 package io.opaa.group.web;
 
+import io.opaa.account.web.AdminListSortParams;
 import io.opaa.api.dto.GroupEffectsResponse;
 import io.opaa.api.dto.GroupListResponse;
 import io.opaa.api.dto.GroupPageResponse;
@@ -8,7 +9,6 @@ import io.opaa.api.types.GroupOrigin;
 import io.opaa.api.types.GroupState;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
-import io.opaa.auth.web.AdminListSortParams;
 import io.opaa.group.GroupEffectsService;
 import io.opaa.group.GroupEffectsView;
 import io.opaa.group.GroupListQuery;

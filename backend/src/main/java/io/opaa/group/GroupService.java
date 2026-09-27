@@ -12,17 +12,15 @@ import io.opaa.api.types.NotificationType;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
+import io.opaa.auth.OidcProvider;
+import io.opaa.auth.OidcProviderRepository;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
-import io.opaa.auth.oidc.OidcProvider;
-import io.opaa.auth.oidc.OidcProviderRepository;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.OrganizationScopedLoader;
 import io.opaa.common.ValidationException;
-import io.opaa.group.sync.DirectorySyncStatus;
-import io.opaa.group.sync.DirectorySyncStatusRepository;
 import io.opaa.notification.NotificationService;
 import io.opaa.permission.AssetGrantRepository;
 import io.opaa.permission.AssetOwnershipDirectory;
@@ -107,7 +105,7 @@ public class GroupService {
   private final GroupStewardRepository stewardRepository;
   private final UserRepository userRepository;
   private final OidcProviderRepository providerRepository;
-  private final DirectorySyncStatusRepository directorySyncStatusRepository;
+  private final DirectorySyncRuns directorySyncRuns;
   private final GroupMembershipResolver membershipResolver;
   private final GroupSizeProperties groupSizeProperties;
   private final GroupSpaceMembershipDirectory spaceMembershipDirectory;
@@ -124,7 +122,7 @@ public class GroupService {
       GroupStewardRepository stewardRepository,
       UserRepository userRepository,
       OidcProviderRepository providerRepository,
-      DirectorySyncStatusRepository directorySyncStatusRepository,
+      DirectorySyncRuns directorySyncRuns,
       GroupMembershipResolver membershipResolver,
       GroupSizeProperties groupSizeProperties,
       GroupSpaceMembershipDirectory spaceMembershipDirectory,
@@ -139,7 +137,7 @@ public class GroupService {
     this.stewardRepository = stewardRepository;
     this.userRepository = userRepository;
     this.providerRepository = providerRepository;
-    this.directorySyncStatusRepository = directorySyncStatusRepository;
+    this.directorySyncRuns = directorySyncRuns;
     this.membershipResolver = membershipResolver;
     this.groupSizeProperties = groupSizeProperties;
     this.spaceMembershipDirectory = spaceMembershipDirectory;
@@ -490,10 +488,7 @@ public class GroupService {
   private GroupProviderView toProviderView(OidcProvider provider, UUID organizationId) {
     Instant lastSyncAt =
         provider.isDirectorySyncEnabled()
-            ? directorySyncStatusRepository
-                .findByOrganizationIdAndProviderId(organizationId, provider.getId())
-                .map(DirectorySyncStatus::getLastRunAt)
-                .orElse(null)
+            ? directorySyncRuns.lastRunAt(organizationId, provider.getId()).orElse(null)
             : null;
     return new GroupProviderView(
         provider.getId(),

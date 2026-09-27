@@ -1,12 +1,14 @@
 # Modul identity
 
-Pakete (`io.opaa.*`): auth, audit, branding, mail, notification. Ergänzt `backend/AGENTS.md`.
+Pakete (`io.opaa.*`): auth, account, audit, branding, mail, notification. Ergänzt `backend/AGENTS.md`.
 
 ## Zweck und Grenze
 
-Wer jemand ist und was über ihn protokolliert wird: Konten und Authentifizierung (`dev`, `oidc` mit
-lokalen Konten und mehreren Identitätsanbietern), das Revisionsprotokoll, das Branding, der
-Mailversand und die In-App-Benachrichtigungen. identity hängt nur von foundation ab.
+Wer jemand ist und was über ihn protokolliert wird. `auth` ist der Identitätskern: Kontoidentität,
+Tokenprüfung, Registratur der Identitätsanbieter, Anmeldefähigkeit. `account` sind die lokalen
+Konten (Passwörter, lokaler Issuer, Self-Service, Übergabe, Verwaltung) samt Filterkette des Modus
+`oidc`. Dazu Revisionsprotokoll, Branding, Mailversand und Benachrichtigungen. identity hängt nur
+von foundation ab.
 
 ## Invarianten und Stolpersteine
 
@@ -18,6 +20,11 @@ Mailversand und die In-App-Benachrichtigungen. identity hängt nur von foundatio
 - **Die Kontoidentität ist `users(subject, issuer)` in `io.opaa.auth`**, lokale Konten tragen
   `LocalIssuer#URN`. Das Profil `oidc` startet nicht ohne starkes `OPAA_AUTH_JWT_SECRET`
   (`LocalAuthSecretGuard`).
+- **`auth` kennt `account` nicht.** Was Tokenverarbeitung und Rollenpflege vom lokalen Konto
+  brauchen, liegt im Kern: `LocalCredentials`, die Regel `LocalAccountAccess` und
+  `LocalAdminAvailabilityGuard` („nie ohne anmeldefähigen Systemverwalter“). Den Schalter der
+  lokalen Konten erreicht `account` nur über den Port `LocalAccountsSwitch`; die Verwaltung der
+  Anbieter liegt in `io.opaa.directory` (rights).
 - **Das Revisionsprotokoll ist nur anfügbar.** Geschrieben wird über `AuditLogService#record` (oder
   `AuditEventRecorder`), gelesen nur über `AuditQueryService`. `AuditLogRepository` ist
   package-private. Das Anwendungskonto hat auf `audit_log` nur `INSERT` und `SELECT`; entfernt wird
@@ -27,12 +34,12 @@ Mailversand und die In-App-Benachrichtigungen. identity hängt nur von foundatio
   zweiten Sendeweg.
 - **Branding** ändert nur `BrandingSettingsService`; SVG wird abgelehnt, nicht bereinigt
   (`BrandingImageValidator`).
-- **Web-Schicht:** `auth.web`, `audit.web`, `branding.web`, `mail.web`, `notification.web`.
-  `audit.web.AuditedAdminCall` protokolliert die zustandsändernden Aufrufe von
-  `IndexingAdminController` und `UploadStoreAdminController`. Der Revisionszugriff (`AuditController`) liegt in `revision.web` (workspace), weil er die
-  Stichtagsauskunft braucht; `/api/v1/me` liegt in `group.web` (rights).
-- **Lokale Anmeldung testet nur die Familie `oidc`** der Testkontexte (`@OpaaLocalAuth*`, siehe
-  `backend/AGENTS.md`, „Spring-Testkontexte"); unter `local,dev` ist keine lokale Sitzung fahrbar.
+- **Web-Schicht:** `auth.web`, `account.web`, `audit.web`, `branding.web`, `mail.web`,
+  `notification.web`; `audit.web.AuditedAdminCall` protokolliert `IndexingAdminController` und
+  `UploadStoreAdminController`. `AuditController` liegt in `revision.web` (workspace), `/api/v1/me`
+  in `group.web` und die Anbieterverwaltung in `directory.web` (beide rights).
+- **Lokale Anmeldung testet nur die Familie `oidc`** der Testkontexte (`@OpaaLocalAuth*`); unter
+  `local,dev` ist keine lokale Sitzung fahrbar.
 
 ## Verweise
 
@@ -44,8 +51,8 @@ Mailversand und die In-App-Benachrichtigungen. identity hängt nur von foundatio
 ## Tests bei Änderungen
 
 ```bash
-./gradlew test --tests 'io.opaa.auth.*' --tests 'io.opaa.audit.*' --tests 'io.opaa.branding.*' \
-  --tests 'io.opaa.mail.*' --tests 'io.opaa.architecture.*'
+./gradlew test --tests 'io.opaa.auth.*' --tests 'io.opaa.account.*' --tests 'io.opaa.audit.*' \
+  --tests 'io.opaa.branding.*' --tests 'io.opaa.mail.*' --tests 'io.opaa.architecture.*'
 ```
 
 Bei Schemaänderungen: neue Datei unter `db/changelog/identity/` mit eigenem Delta-Test
