@@ -15,7 +15,7 @@ import io.opaa.chat.ChatConversation;
 import io.opaa.chat.ChatCreation;
 import io.opaa.chat.ChatPatch;
 import io.opaa.chat.ChatService;
-import io.opaa.indexing.web.MetadataFilterMapper;
+import io.opaa.metadata.web.MetadataFilterMapper;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;

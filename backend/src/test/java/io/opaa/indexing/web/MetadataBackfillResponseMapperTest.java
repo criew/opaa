@@ -3,7 +3,7 @@ package io.opaa.indexing.web;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.api.dto.MetadataBackfillResponse;
-import io.opaa.indexing.metadata.MetadataBackfillResult;
+import io.opaa.metadata.MetadataBackfillResult;
 import org.junit.jupiter.api.Test;
 
 /**

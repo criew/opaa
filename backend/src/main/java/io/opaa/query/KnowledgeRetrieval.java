@@ -1,6 +1,6 @@
 package io.opaa.query;
 
-import io.opaa.indexing.metadata.MetadataFilter;
+import io.opaa.metadata.MetadataFilter;
 import io.opaa.query.retrieval.RetrievalPipeline;
 import io.opaa.query.retrieval.RetrievalPipelineResult;
 import java.util.List;

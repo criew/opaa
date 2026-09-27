@@ -2,14 +2,16 @@ package io.opaa.indexing.maintenance;
 
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.common.NotFoundException;
-import io.opaa.indexing.chunk.ChunkContextPrefix;
 import io.opaa.indexing.chunk.VectorChunkStore;
-import io.opaa.indexing.metadata.DocumentChunkMetadata;
-import io.opaa.indexing.metadata.DocumentMetadataService;
 import io.opaa.knowledge.Document;
+import io.opaa.knowledge.DocumentBatchLoop;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.metadata.ChunkContextPrefix;
+import io.opaa.metadata.ContextPrefixBacklog;
+import io.opaa.metadata.DocumentChunkMetadata;
+import io.opaa.metadata.DocumentMetadataService;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -40,7 +42,7 @@ import tools.jackson.databind.ObjectMapper;
  * selected. Resumable by construction, idempotent, and only ever driven by an explicit admin call.
  */
 @Service
-public class ContextPrefixRerunService {
+public class ContextPrefixRerunService implements ContextPrefixBacklog {
 
   private static final Logger log = LoggerFactory.getLogger(ContextPrefixRerunService.class);
 
@@ -243,6 +245,7 @@ public class ContextPrefixRerunService {
   }
 
   /** Indexed documents of {@code libraryId} waiting for the Nachlauf - the settings-page hint. */
+  @Override
   public long pendingDocuments(UUID libraryId) {
     Long pending =
         jdbcTemplate.queryForObject(

@@ -9,8 +9,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import io.opaa.indexing.metadata.MetadataFilter;
 import io.opaa.llm.RerankModelRole;
+import io.opaa.metadata.MetadataFilter;
 import io.opaa.query.QueryProperties;
 import io.opaa.query.retrieval.ranking.ChunkEmbeddingLookup;
 import io.opaa.query.retrieval.scope.SearchScopeStage;

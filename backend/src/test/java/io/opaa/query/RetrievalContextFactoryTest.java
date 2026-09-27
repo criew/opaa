@@ -4,10 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import io.opaa.indexing.metadata.MetadataFilter;
 import io.opaa.llm.RerankModelRole;
 import io.opaa.llm.RerankRoleState;
 import io.opaa.llm.RerankRoleStatus;
+import io.opaa.metadata.MetadataFilter;
 import io.opaa.query.retrieval.RerankAvailability;
 import io.opaa.query.retrieval.RetrievalContext;
 import java.util.List;

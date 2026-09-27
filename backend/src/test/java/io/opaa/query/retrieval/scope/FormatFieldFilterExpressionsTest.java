@@ -5,8 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.common.ValidationException;
 import io.opaa.format.FormatMetadataField;
-import io.opaa.indexing.metadata.FormatFieldCondition;
-import io.opaa.indexing.metadata.MetadataFilter;
+import io.opaa.metadata.FormatFieldCondition;
+import io.opaa.metadata.MetadataFilter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;

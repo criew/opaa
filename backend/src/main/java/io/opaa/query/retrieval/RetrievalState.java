@@ -1,6 +1,6 @@
 package io.opaa.query.retrieval;
 
-import io.opaa.indexing.metadata.MetadataFilter;
+import io.opaa.metadata.MetadataFilter;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;

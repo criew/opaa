@@ -8,9 +8,9 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.opaa.indexing.metadata.MetadataFilter;
 import io.opaa.llm.RerankClient.ScoredCandidate;
 import io.opaa.llm.RerankModelRole;
+import io.opaa.metadata.MetadataFilter;
 import io.opaa.query.QueryProperties;
 import io.opaa.query.retrieval.CandidateList;
 import io.opaa.query.retrieval.CandidateOutcome;

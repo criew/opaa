@@ -4,8 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.api.types.DatePrecision;
 import io.opaa.api.types.MetadataOrigin;
-import io.opaa.indexing.metadata.CitationFieldValue;
-import io.opaa.indexing.metadata.CoreMetadata;
+import io.opaa.metadata.CitationFieldValue;
+import io.opaa.metadata.CoreMetadata;
 import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.Test;

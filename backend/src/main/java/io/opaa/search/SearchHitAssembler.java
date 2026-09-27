@@ -2,14 +2,14 @@ package io.opaa.search;
 
 import io.opaa.chat.ChatSourceMetadataEntry;
 import io.opaa.format.chunk.ChunkMetadataKeys;
-import io.opaa.indexing.metadata.CitationFieldValue;
-import io.opaa.indexing.metadata.CitationMetadataReader;
-import io.opaa.indexing.metadata.CoreMetadata;
-import io.opaa.indexing.metadata.DocumentMetadataService;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.metadata.CitationFieldValue;
+import io.opaa.metadata.CitationMetadataReader;
+import io.opaa.metadata.CoreMetadata;
+import io.opaa.metadata.DocumentMetadataService;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;

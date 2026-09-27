@@ -1,8 +1,8 @@
 package io.opaa.chat;
 
-import io.opaa.indexing.metadata.FormatFieldCondition;
-import io.opaa.indexing.metadata.LibraryFieldCondition;
-import io.opaa.indexing.metadata.MetadataFilter;
+import io.opaa.metadata.FormatFieldCondition;
+import io.opaa.metadata.LibraryFieldCondition;
+import io.opaa.metadata.MetadataFilter;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;

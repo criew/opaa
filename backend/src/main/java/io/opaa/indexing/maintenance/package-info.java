@@ -4,9 +4,9 @@
  * removing documents a source no longer contains, and the read-only audits over what is already
  * indexed (low chunk counts, full-text index fill state).
  *
- * <p>The resumable passes share the shape {@link io.opaa.indexing.maintenance.DocumentBatchLoop}
- * describes: the remaining work is re-derived on every call, a document that cannot be advanced is
- * scanned past by offset rather than falsified, and pausing is not calling again.
+ * <p>The resumable passes share the shape {@link io.opaa.knowledge.DocumentBatchLoop} describes:
+ * the remaining work is re-derived on every call, a document that cannot be advanced is scanned
+ * past by offset rather than falsified, and pausing is not calling again.
  *
  * <p>Uses {@code document} and {@code chunk} to read and rewrite, {@code format} and {@code
  * metadata} to redo what an ingest did, and the protocol of {@code job} to report what it removed.

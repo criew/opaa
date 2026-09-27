@@ -1,7 +1,7 @@
 package io.opaa.eval;
 
 import io.opaa.indexing.IndexingProperties;
-import io.opaa.indexing.metadata.MetadataFilter;
+import io.opaa.metadata.MetadataFilter;
 import io.opaa.query.QueryProperties;
 import io.opaa.query.RetrievalContextFactory;
 import io.opaa.query.retrieval.RetrievalContext;

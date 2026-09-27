@@ -6,7 +6,7 @@ import io.opaa.api.dto.MetadataFilterFieldOption;
 import io.opaa.api.dto.MetadataFilterFormatFieldOption;
 import io.opaa.api.dto.MetadataFilterOptionsResponse;
 import io.opaa.format.FormatMetadataField;
-import io.opaa.indexing.metadata.CoreMetadataField;
+import io.opaa.metadata.CoreMetadataField;
 import io.opaa.query.filter.MetadataFilterOptions;
 import java.time.LocalDate;
 import java.util.List;

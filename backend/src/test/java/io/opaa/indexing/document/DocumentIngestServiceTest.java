@@ -37,7 +37,6 @@ import io.opaa.indexing.attachment.AttachmentAccess;
 import io.opaa.indexing.attachment.AttachmentIndexer;
 import io.opaa.indexing.attachment.AttachmentLimits;
 import io.opaa.indexing.attachment.AttachmentSource;
-import io.opaa.indexing.chunk.EmbeddingRateEstimator;
 import io.opaa.indexing.chunk.FullTextChunkStore;
 import io.opaa.indexing.chunk.SourceChunkMetadataKeys;
 import io.opaa.indexing.chunk.VectorChunkStore;
@@ -49,6 +48,7 @@ import io.opaa.knowledge.LibraryProperties;
 import io.opaa.knowledge.LibraryStorageQuotaService;
 import io.opaa.knowledge.SourceDocumentContext;
 import io.opaa.knowledge.SourceType;
+import io.opaa.metadata.EmbeddingRateEstimator;
 import io.opaa.observability.IndexingMetrics;
 import io.opaa.test.SourceTypes;
 import java.io.IOException;
@@ -1334,10 +1334,10 @@ class DocumentIngestServiceTest {
     void theDeclaredPropertiesReachTheCoreFieldExtraction() throws IOException {
       // The headline, the synthetic name and the publication instant are the source's own
       // declarations (ADR-0024) - laid over what the pipeline found, before the extraction runs.
-      io.opaa.indexing.metadata.DocumentMetadataService metadataService =
-          Mockito.mock(io.opaa.indexing.metadata.DocumentMetadataService.class);
+      io.opaa.metadata.DocumentMetadataService metadataService =
+          Mockito.mock(io.opaa.metadata.DocumentMetadataService.class);
       when(metadataService.applyDeterministicExtraction(any(), any(), any()))
-          .thenReturn(io.opaa.indexing.metadata.DocumentChunkMetadata.EMPTY);
+          .thenReturn(io.opaa.metadata.DocumentChunkMetadata.EMPTY);
       DocumentIngestService probing =
           new DocumentIngestService(
               TestPipelineRegistries.fallbackOnly(documentService, chunkingService),

@@ -5,7 +5,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import io.opaa.indexing.metadata.MetadataFilter;
+import io.opaa.metadata.MetadataFilter;
 import io.opaa.query.KnowledgeRetrieval;
 import io.opaa.query.retrieval.RetrievalExplanation;
 import io.opaa.query.retrieval.RetrievalPipelineResult;

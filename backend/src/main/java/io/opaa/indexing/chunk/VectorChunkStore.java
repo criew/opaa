@@ -1,5 +1,7 @@
 package io.opaa.indexing.chunk;
 
+import io.opaa.metadata.ChunkMetadataStore;
+import io.opaa.metadata.EmbeddingRateEstimator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -25,7 +27,7 @@ import org.springframework.stereotype.Component;
  * atomic statement, idempotent if only one of the two ever runs.
  */
 @Component
-public class VectorChunkStore {
+public class VectorChunkStore implements ChunkMetadataStore {
 
   public static final String DOCUMENT_ID_METADATA_KEY = "document_id";
   public static final String LIBRARY_ID_METADATA_KEY = "library_id";
@@ -92,6 +94,7 @@ public class VectorChunkStore {
    *
    * @return the number of chunks updated
    */
+  @Override
   public int updateDocumentMetadata(
       UUID documentId, Map<String, Object> values, Set<String> keysToClear) {
     return vectorStoreWriter.updateDocumentMetadata(documentId, values, keysToClear);

@@ -4,8 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.api.types.DatePrecision;
-import io.opaa.indexing.metadata.LibraryFieldCondition;
-import io.opaa.indexing.metadata.MetadataFilter;
+import io.opaa.metadata.LibraryFieldCondition;
+import io.opaa.metadata.MetadataFilter;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;

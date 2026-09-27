@@ -7,6 +7,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import io.opaa.metadata.EmbeddingRateEstimator;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;

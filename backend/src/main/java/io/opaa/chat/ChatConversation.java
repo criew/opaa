@@ -1,7 +1,7 @@
 package io.opaa.chat;
 
 import io.opaa.api.types.ChatStatus;
-import io.opaa.indexing.metadata.MetadataFilter;
+import io.opaa.metadata.MetadataFilter;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
