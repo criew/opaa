@@ -462,7 +462,7 @@ bedeutungsleer, mit ihr eine beantwortbare Frage.
 
 #### Umgesetzt (#1061)
 
-`PdfDocumentFormat` (`id` `pdf`, Version 1), `DocxDocumentFormat` (`id` `docx`, Version 3 seit
+`PdfDocumentFormat` (`id` `pdf`, Version 1; seit #2033 Version 2, siehe unten), `DocxDocumentFormat` (`id` `docx`, Version 3 seit
 #1187) und `PptxDocumentFormat` (`id` `pptx`, Version 1) sind registriert und beanspruchen `.pdf`,
 `.docx` bzw. `.pptx` in der `DocumentFormatRegistry`. `.doc` bleibt unverändert bei
 `TikaFallbackFormat` — POIs OOXML-Leser kann das ältere Binärformat gar nicht öffnen.
@@ -474,6 +474,28 @@ bedeutungsleer, mit ihr eine beantwortbare Frage.
 Alle drei — sowie `HtmlDocumentFormat` — nutzen dieselbe, geteilte `HeadingSectionSplitter`-Logik (Überschriftenpfad, Soft-/Hard-Zeichenlimit, „Abschn. …“-Fundort, Unterdrückung körperloser Abschnitte): `HtmlDocumentFormat` baut seinen eigenen Block-/Überschriftenpfad-Zustand aus der DOM-Traversierung auf, ruft für die Abschnittsbildung selbst aber `HeadingSectionSplitter.flushSection`/`capChunkLength` direkt statt einer eigenen Kopie (#1104 Review, Nit 9) — die #1100-Nachbesserungen an dieser Logik leben damit an genau einer Stelle.
 
 **Chunk-Größe: gesetzt, nicht gemessen** für alle drei — der bestehende Evaluierungskorpus enthält keine PDF-, DOCX- oder PPTX-Dokumente. **Baseline unberührt** — kein Korpusdokument dieses Typs.
+
+**PDF-Tabellen mit Gitter (#2033, PDF Version 2).** PDFBox liefert eine Tabelle als Zeilen, deren
+Zellen nur durch Leerzeichen getrennt sind; ein kleineres Chatmodell ordnete Zellen des
+Demo-Einsatzplans reproduzierbar der Nachbarzeile zu. Die Pipeline liest deshalb zusätzlich die
+Linien jeder Seite (`PdfRulingCollector`: gestrichene gerade Segmente und dünne gefüllte Rechtecke,
+die beiden üblichen Arten, Tabellenrahmen zu zeichnen) und erkennt daraus nur **vollständige
+Gitter** (`PdfTableGrids`: mindestens drei Zeilen- und drei Spaltenlinien, jede über die ganze
+Tabelle). Der Text jeder Zelle wird über denselben `PDFTextStripper` gewonnen, die Tabelle in der
+geteilten `TableText`-Form (`" | "`, eine Zeile je Tabellenzeile) an die Stelle ihres ersten Glyphs
+im Seitentext gesetzt (`PdfPageText`); Text außerhalb der Tabelle bleibt unverändert. Bewusst
+konservativ: verbundene Zellen, rahmenlose Tabellen, reine Querlinien, Kästen, Formulare mit
+leeren Feldern (weniger als zwei gefüllte Zeilen oder Spalten), gedrehte Seiten, Seiten mit
+Artikel-Threads und Seiten mit mehr als 2.000 Liniensegmenten bleiben Fließtext wie vorher. Eine
+Heuristik für rahmenlose Tabellen (Spaltenausrichtung) oder ein Wechsel des Extraktors (Tabula
+setzt noch auf PDFBox 2, Docling ist als Option vermerkt) war nicht nötig. Auf den 26 PDFs des
+Demo-Korpus ändert sich ausschließlich der Text der Gebührenverzeichnisse der Satzungen (Zellen
+mit „ | " getrennt), alle übrigen Seiten sind zeichengleich.
+
+**Baseline unberührt** — kein Korpusdokument ist ein PDF. Der Versionsschritt verschiebt
+`ingestionPipelineFingerprint` (`pdf:1` → `pdf:2`); die sieben Baselines sind als reine
+Fixpunkt-Ergänzung nachgezogen (Rohvektor-Messvertrag 12 → 13, Pipeline 15 → 16, Mehrrunden-Pfad
+5 → 6).
 
 **`MarkdownDocumentFormat` (`id` `markdown`, Version 1) ist seit #1103 als Bean registriert**, anstelle von `TikaFallbackFormat` für `.md`. Der gesamte Evaluierungskorpus (`eval/corpus/`) ist Markdown; das Umschalten war deshalb — anders als bei PDF/DOCX/PPTX — keine für den Bestand verhaltensneutrale Änderung, sondern eine Messvertrags-Änderung, siehe [ADR-0012, Nachtrag „Strukturbewusstes Markdown-Chunking"](decisions/0012-messvertrag-retrieval-harness.md#nachtrag-strukturbewusstes-markdown-chunking-issue-1103) für die gemessene Verschiebung und die Baseline-Folgen. Ein Fund bei der Registrierung: Alle drei Korpora beginnen jedes Dokument mit einem YAML-Frontmatter-Block vor der ersten Überschrift, den `HeadingSectionSplitter` sonst zu einem eigenen, überschriftslosen ersten Chunk gemacht hätte — `MarkdownDocumentFormat` verwirft einen `---`-begrenzten Block am Dateianfang deshalb, statt ihn zu chunken (siehe die Pipeline-eigene Javadoc).
 

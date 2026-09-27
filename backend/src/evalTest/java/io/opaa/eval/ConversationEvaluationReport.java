@@ -74,8 +74,12 @@ public record ConversationEvaluationReport(
    * <p>Version 5 (issue #1684): a turn can expect no search. Such a turn enters no metric aggregate
    * - {@code overall}, {@code byCategory} and {@code byTurn} count turns with search only - and is
    * judged in {@code noSearch}; its {@link TurnResult} carries no metric values.
+   *
+   * <p>Version 6 (issue #2033): {@code PdfDocumentFormat#version()} moved 1 → 2, shifting the
+   * shared pipeline block's {@code ingestionPipelineFingerprint} - fingerprint-only, no corpus in
+   * this repository routes a document through that pipeline.
    */
-  public static final int CONVERSATION_MEASUREMENT_CONTRACT_VERSION = 5;
+  public static final int CONVERSATION_MEASUREMENT_CONTRACT_VERSION = 6;
 
   /**
    * The Einpfad-Regel of docs/features/retrieval-benchmark.md §5, recorded <b>once per report</b>:

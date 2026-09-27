@@ -22,7 +22,6 @@ import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.interactive.documentnavigation.outline.PDDocumentOutline;
 import org.apache.pdfbox.pdmodel.interactive.documentnavigation.outline.PDOutlineItem;
 import org.apache.pdfbox.pdmodel.interactive.documentnavigation.outline.PDOutlineNode;
-import org.apache.pdfbox.text.PDFTextStripper;
 import org.springframework.ai.document.Document;
 
 /**
@@ -33,7 +32,8 @@ import org.springframework.ai.document.Document;
  * between their titles. Without an outline, chunking falls back to one chunk per non-blank page.
  *
  * <p>Every page's text is extracted exactly once, into {@link PdfContent}; a page range is the
- * concatenation of its pages, which is what the stripper itself produces for that range.
+ * concatenation of its pages. A table enclosed by a complete ruled grid is written one line per
+ * row, cells joined as in every other format ({@link PdfPageText}).
  *
  * <p>Scan detection is answered from this pipeline's own extraction: a PDF whose text is entirely
  * blank is rejected as {@code NO_EXTRACTABLE_TEXT}.
@@ -41,7 +41,7 @@ import org.springframework.ai.document.Document;
 public class PdfDocumentFormat extends FileDocumentFormat<PdfDocumentFormat.PdfContent> {
 
   static final String ID = "pdf";
-  static final short VERSION = 1;
+  static final short VERSION = 2;
 
   @Override
   public String id() {
@@ -296,11 +296,7 @@ public class PdfDocumentFormat extends FileDocumentFormat<PdfDocumentFormat.PdfC
     return String.join("", pageTexts.subList(startPageIndex, endPageIndexExclusive));
   }
 
-  /** A page whose text cannot be extracted fails the whole document - nothing is known about it. */
   private static String extractPageText(PDDocument doc, int pageIndex) throws IOException {
-    PDFTextStripper stripper = new PDFTextStripper();
-    stripper.setStartPage(pageIndex + 1);
-    stripper.setEndPage(pageIndex + 1);
-    return stripper.getText(doc);
+    return PdfPageText.extract(doc, pageIndex);
   }
 }
