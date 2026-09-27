@@ -37,7 +37,7 @@ import java.util.TreeSet;
  * each. Only compiled dependencies count: a type named only in Javadoc, or only through a {@code
  * static final} constant the compiler inlines, is none.
  */
-final class ModularArchitecture {
+public final class ModularArchitecture {
 
   /** The layer of the classes directly in the root package ({@code OpaaApplication}). */
   static final String ROOT = "(root)";
@@ -84,7 +84,7 @@ final class ModularArchitecture {
           ROOT);
 
   /** The logical modules, in an order in which every allowed edge points to an earlier one. */
-  enum Module {
+  public enum Module {
     FOUNDATION,
     IDENTITY,
     RIGHTS,
@@ -103,7 +103,6 @@ final class ModularArchitecture {
           entry("common", FOUNDATION),
           entry("observability", FOUNDATION),
           entry("organization", FOUNDATION),
-          entry("notification", FOUNDATION),
           entry("security", FOUNDATION),
           entry("ratelimit", FOUNDATION),
           entry("sourceaccess", FOUNDATION),
@@ -112,6 +111,7 @@ final class ModularArchitecture {
           entry("branding", IDENTITY),
           entry("mail", IDENTITY),
           entry("auth", IDENTITY),
+          entry("notification", IDENTITY),
           entry("permission", RIGHTS),
           entry("asset", RIGHTS),
           entry("group", RIGHTS),
@@ -142,7 +142,7 @@ final class ModularArchitecture {
    * io.opaa.asset.Asset}: a method reference such as {@code KnowledgeLibrary::getId} names the
    * declaring class.
    */
-  static final Map<Module, Set<Module>> ALLOWED_MODULE_EDGES =
+  public static final Map<Module, Set<Module>> ALLOWED_MODULE_EDGES =
       Map.of(
           FOUNDATION, EnumSet.noneOf(Module.class),
           IDENTITY, EnumSet.of(FOUNDATION),
@@ -283,7 +283,7 @@ final class ModularArchitecture {
   private final String root;
   private final Set<String> knownCycleEdges;
 
-  ModularArchitecture(String root) {
+  public ModularArchitecture(String root) {
     this(root, Set.of());
   }
 
@@ -463,11 +463,19 @@ final class ModularArchitecture {
 
   /** The module of {@code javaClass}, or {@code null} outside the root or unassigned. */
   Module moduleOf(JavaClass javaClass) {
-    if (isConnector(javaClass)) {
+    return moduleOfPackage(javaClass.getBaseComponentType().getPackageName());
+  }
+
+  /** The module of {@code packageName}, or {@code null} outside the root or unassigned. */
+  public Module moduleOfPackage(String packageName) {
+    String relative = relative(packageName);
+    if (relative == null || isOutsideTheLayering(relative)) {
+      return null;
+    }
+    if (relative.startsWith(CONNECTOR_PARENT + ".")) {
       return CONNECTORS;
     }
-    String layer = layerOf(javaClass);
-    return layer == null ? null : MODULES.get(layer);
+    return MODULES.get(relative.isEmpty() ? ROOT : topLevel(relative));
   }
 
   boolean isConnector(JavaClass javaClass) {

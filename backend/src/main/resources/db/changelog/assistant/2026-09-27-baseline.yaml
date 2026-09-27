@@ -1,0 +1,211 @@
+databaseChangeLog:
+  - changeSet:
+      id: assistant-2026-09-27-baseline
+      author: opaa
+      comment: "Module assistant: chats with their messages, library references, note items and personal marks, and the prompt libraries."
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE FUNCTION chat_library_references_set_organization() RETURNS trigger
+                  LANGUAGE plpgsql
+                  SET search_path TO 'pg_catalog', '${database.defaultSchemaName}', 'pg_temp'
+                  AS $$ BEGIN
+                SELECT organization_id INTO STRICT NEW.organization_id
+                FROM chats
+                WHERE id = NEW.chat_id;
+                RETURN NEW;
+              END; $$;
+
+              CREATE FUNCTION chat_note_items_set_organization() RETURNS trigger
+                  LANGUAGE plpgsql
+                  SET search_path TO 'pg_catalog', '${database.defaultSchemaName}', 'pg_temp'
+                  AS $$ BEGIN
+                SELECT organization_id INTO STRICT NEW.organization_id
+                FROM chats
+                WHERE id = NEW.chat_id;
+                RETURN NEW;
+              END; $$;
+
+              CREATE FUNCTION chat_personal_marks_set_organization() RETURNS trigger
+                  LANGUAGE plpgsql
+                  SET search_path TO 'pg_catalog', '${database.defaultSchemaName}', 'pg_temp'
+                  AS $$ BEGIN
+                SELECT organization_id INTO STRICT NEW.organization_id
+                FROM chats
+                WHERE id = NEW.chat_id;
+                RETURN NEW;
+              END; $$;
+
+              CREATE TABLE chat_library_references (
+                  chat_id uuid NOT NULL,
+                  library_id uuid NOT NULL,
+                  organization_id uuid NOT NULL
+              );
+
+              CREATE TABLE chat_messages (
+                  id uuid NOT NULL,
+                  chat_id uuid NOT NULL,
+                  sequence integer NOT NULL,
+                  role character varying(20) NOT NULL,
+                  content text NOT NULL,
+                  sources json,
+                  created_at timestamp with time zone DEFAULT now() NOT NULL,
+                  content_tsv tsvector GENERATED ALWAYS AS (to_tsvector('german'::regconfig, content)) STORED,
+                  used_prompt_id uuid,
+                  used_prompt_title character varying(255),
+                  CONSTRAINT chk_chat_messages_role CHECK ((role IN ('USER', 'ASSISTANT'))),
+                  CONSTRAINT chk_chat_messages_used_prompt CHECK ((((used_prompt_id IS NULL) AND (used_prompt_title IS NULL)) OR ((used_prompt_id IS NOT NULL) AND (used_prompt_title IS NOT NULL) AND ((role)::text = 'USER'::text))))
+              );
+
+              CREATE TABLE chat_note_items (
+                  id uuid NOT NULL,
+                  chat_id uuid NOT NULL,
+                  organization_id uuid NOT NULL,
+                  "position" integer NOT NULL,
+                  text character varying(200) NOT NULL,
+                  kind character varying(20) NOT NULL,
+                  created_at timestamp with time zone DEFAULT now() NOT NULL,
+                  CONSTRAINT chk_chat_note_items_kind CHECK ((kind IN ('RAHMEN', 'ANTWORTFORM'))),
+                  CONSTRAINT chk_chat_note_items_position CHECK (("position" >= 0))
+              );
+
+              CREATE TABLE chat_personal_marks (
+                  chat_id uuid NOT NULL,
+                  user_id uuid NOT NULL,
+                  organization_id uuid NOT NULL,
+                  pinned_at timestamp with time zone,
+                  archived_at timestamp with time zone,
+                  CONSTRAINT chk_chat_personal_marks_not_pinned_and_archived CHECK (((pinned_at IS NULL) OR (archived_at IS NULL)))
+              );
+
+              CREATE TABLE chats (
+                  id uuid NOT NULL,
+                  space_id uuid NOT NULL,
+                  author_id uuid NOT NULL,
+                  organization_id uuid NOT NULL,
+                  title character varying(255),
+                  use_knowledge boolean DEFAULT true NOT NULL,
+                  status character varying(20) DEFAULT 'PRIVATE'::character varying NOT NULL,
+                  created_at timestamp with time zone DEFAULT now() NOT NULL,
+                  updated_at timestamp with time zone DEFAULT now() NOT NULL,
+                  title_source character varying(20) DEFAULT 'GENERATED'::character varying NOT NULL,
+                  metadata_filter jsonb,
+                  CONSTRAINT chk_chats_status CHECK (((status)::text = 'PRIVATE'::text)),
+                  CONSTRAINT chk_chats_title_source CHECK ((title_source IN ('GENERATED', 'CUSTOM')))
+              );
+
+              CREATE TABLE prompt_libraries (
+                  id uuid NOT NULL,
+                  asset_type character varying(30) DEFAULT 'PROMPT_LIBRARY'::character varying NOT NULL,
+                  organization_id uuid NOT NULL,
+                  CONSTRAINT chk_prompt_libraries_asset_type CHECK (((asset_type)::text = 'PROMPT_LIBRARY'::text))
+              );
+
+              CREATE TABLE prompts (
+                  id uuid NOT NULL,
+                  library_id uuid NOT NULL,
+                  organization_id uuid NOT NULL,
+                  name character varying(64) NOT NULL,
+                  title character varying(255) NOT NULL,
+                  description character varying(2000),
+                  text text NOT NULL,
+                  variables jsonb DEFAULT '[]'::jsonb NOT NULL,
+                  sort_order integer DEFAULT 0 NOT NULL,
+                  created_at timestamp with time zone DEFAULT now() NOT NULL,
+                  updated_at timestamp with time zone DEFAULT now() NOT NULL,
+                  CONSTRAINT chk_prompts_name_format CHECK (((name)::text ~ '^[a-z0-9]+(-[a-z0-9]+)*$'::text)),
+                  CONSTRAINT chk_prompts_text_length CHECK (((char_length(text) >= 1) AND (char_length(text) <= 8000))),
+                  CONSTRAINT chk_prompts_title_not_blank CHECK ((btrim((title)::text) <> ''::text)),
+                  CONSTRAINT chk_prompts_variables_array CHECK ((jsonb_typeof(variables) = 'array'::text))
+              );
+
+              ALTER TABLE ONLY chat_messages
+                  ADD CONSTRAINT chat_messages_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY chat_note_items
+                  ADD CONSTRAINT chat_note_items_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY chat_personal_marks
+                  ADD CONSTRAINT chat_personal_marks_pkey PRIMARY KEY (chat_id, user_id);
+
+              ALTER TABLE ONLY chats
+                  ADD CONSTRAINT chats_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY chat_library_references
+                  ADD CONSTRAINT pk_chat_library_references PRIMARY KEY (chat_id, library_id);
+
+              ALTER TABLE ONLY prompt_libraries
+                  ADD CONSTRAINT prompt_libraries_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY prompts
+                  ADD CONSTRAINT prompts_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY chat_messages
+                  ADD CONSTRAINT uk_chat_messages_chat_sequence UNIQUE (chat_id, sequence);
+
+              ALTER TABLE ONLY chat_note_items
+                  ADD CONSTRAINT uk_chat_note_items_chat_position UNIQUE (chat_id, "position");
+
+              ALTER TABLE ONLY chats
+                  ADD CONSTRAINT uk_chats_id_organization UNIQUE (id, organization_id);
+
+              ALTER TABLE ONLY prompt_libraries
+                  ADD CONSTRAINT uk_prompt_libraries_id_organization UNIQUE (id, organization_id);
+
+              ALTER TABLE ONLY prompts
+                  ADD CONSTRAINT uk_prompts_library_name UNIQUE (library_id, name);
+
+              CREATE INDEX idx_chat_messages_chat_id ON chat_messages USING btree (chat_id);
+
+              CREATE INDEX idx_chat_messages_content_tsv ON chat_messages USING gin (content_tsv);
+
+              CREATE INDEX idx_chat_note_items_chat_id ON chat_note_items USING btree (chat_id);
+
+              CREATE INDEX idx_chat_personal_marks_user_archived_at ON chat_personal_marks USING btree (user_id, archived_at DESC) WHERE (archived_at IS NOT NULL);
+
+              CREATE INDEX idx_chat_personal_marks_user_id ON chat_personal_marks USING btree (user_id);
+
+              CREATE INDEX idx_chats_author_id ON chats USING btree (author_id);
+
+              CREATE INDEX idx_chats_space_id ON chats USING btree (space_id);
+
+              CREATE TRIGGER trg_chat_library_references_set_organization BEFORE INSERT ON chat_library_references FOR EACH ROW EXECUTE FUNCTION chat_library_references_set_organization();
+
+              CREATE TRIGGER trg_chat_note_items_set_organization BEFORE INSERT ON chat_note_items FOR EACH ROW EXECUTE FUNCTION chat_note_items_set_organization();
+
+              CREATE TRIGGER trg_chat_personal_marks_set_organization BEFORE INSERT ON chat_personal_marks FOR EACH ROW EXECUTE FUNCTION chat_personal_marks_set_organization();
+
+              ALTER TABLE ONLY chat_library_references
+                  ADD CONSTRAINT fk_chat_library_references_chat_organization FOREIGN KEY (chat_id, organization_id) REFERENCES chats(id, organization_id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY chat_library_references
+                  ADD CONSTRAINT fk_chat_library_references_library_organization FOREIGN KEY (library_id, organization_id) REFERENCES knowledge_libraries(id, organization_id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY chat_messages
+                  ADD CONSTRAINT fk_chat_messages_chat FOREIGN KEY (chat_id) REFERENCES chats(id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY chat_note_items
+                  ADD CONSTRAINT fk_chat_note_items_chat_organization FOREIGN KEY (chat_id, organization_id) REFERENCES chats(id, organization_id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY chat_personal_marks
+                  ADD CONSTRAINT fk_chat_personal_marks_chat_organization FOREIGN KEY (chat_id, organization_id) REFERENCES chats(id, organization_id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY chat_personal_marks
+                  ADD CONSTRAINT fk_chat_personal_marks_user_organization FOREIGN KEY (user_id, organization_id) REFERENCES users(id, organization_id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY chats
+                  ADD CONSTRAINT fk_chats_author_organization FOREIGN KEY (author_id, organization_id) REFERENCES users(id, organization_id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY chats
+                  ADD CONSTRAINT fk_chats_organization FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY chats
+                  ADD CONSTRAINT fk_chats_space_organization FOREIGN KEY (space_id, organization_id) REFERENCES spaces(id, organization_id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY prompt_libraries
+                  ADD CONSTRAINT fk_prompt_libraries_asset FOREIGN KEY (id, asset_type, organization_id) REFERENCES assets(id, asset_type, organization_id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY prompts
+                  ADD CONSTRAINT fk_prompts_library_organization FOREIGN KEY (library_id, organization_id) REFERENCES prompt_libraries(id, organization_id) ON DELETE CASCADE;
+      # No rollback: the baseline is never rolled back - a broken installation is discarded and re-run from an empty database instead.

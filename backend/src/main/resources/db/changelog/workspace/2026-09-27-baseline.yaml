@@ -1,0 +1,356 @@
+databaseChangeLog:
+  - changeSet:
+      id: workspace-2026-09-27-baseline
+      author: opaa
+      comment: "Module workspace: spaces with their memberships, membership history and asset associations, and the diagnostics ('Sicht als' grants and the protocol of diagnoses in a foreign rights context, partitioned by month and owned by opaa_audit_owner from the identity changeSet, with its own retention-settings seed row)."
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE TABLE diagnostic_impersonation_grants (
+                  id uuid NOT NULL,
+                  organization_id uuid NOT NULL,
+                  holder_user_id uuid NOT NULL,
+                  scope_group_id uuid NOT NULL,
+                  valid_from timestamp with time zone NOT NULL,
+                  valid_until timestamp with time zone NOT NULL,
+                  granted_by_user_id uuid NOT NULL,
+                  granted_at timestamp with time zone NOT NULL,
+                  revoked_at timestamp with time zone,
+                  revoked_by_user_id uuid,
+                  CONSTRAINT chk_diagnostic_impersonation_grants_revocation CHECK ((((revoked_at IS NULL) AND (revoked_by_user_id IS NULL)) OR ((revoked_at IS NOT NULL) AND (revoked_by_user_id IS NOT NULL)))),
+                  CONSTRAINT chk_diagnostic_impersonation_grants_validity CHECK (((valid_until > valid_from) AND (valid_until <= (valid_from + '1 year'::interval))))
+              );
+
+              CREATE TABLE space_asset_associations (
+                  id uuid NOT NULL,
+                  space_id uuid NOT NULL,
+                  asset_id uuid CONSTRAINT space_asset_associations_library_id_not_null NOT NULL,
+                  organization_id uuid NOT NULL,
+                  created_by_user_id uuid NOT NULL,
+                  created_at timestamp with time zone DEFAULT now() NOT NULL
+              );
+
+              CREATE TABLE space_membership_history (
+                  id uuid NOT NULL,
+                  space_id uuid NOT NULL,
+                  organization_id uuid NOT NULL,
+                  subject_type character varying(20) NOT NULL,
+                  subject_user_id uuid,
+                  subject_group_id uuid,
+                  role character varying(20) NOT NULL,
+                  member_count_at_grant integer,
+                  cause character varying(30) NOT NULL,
+                  actor_user_id uuid,
+                  valid_from timestamp with time zone NOT NULL,
+                  valid_to timestamp with time zone,
+                  created_at timestamp with time zone DEFAULT now() NOT NULL,
+                  transfer_id uuid,
+                  CONSTRAINT chk_space_membership_history_cause CHECK ((cause IN ('ADDED', 'ROLE_CHANGED', 'REMOVED', 'BACKFILL', 'SPACE_DELETED', 'TRANSFERRED_IN', 'TRANSFERRED_OUT'))),
+                  CONSTRAINT chk_space_membership_history_role CHECK ((role IN ('MEMBER', 'CURATOR', 'ADMIN'))),
+                  CONSTRAINT chk_space_membership_history_subject CHECK (((((subject_type)::text = 'USER'::text) AND (subject_user_id IS NOT NULL) AND (subject_group_id IS NULL)) OR (((subject_type)::text = 'GROUP'::text) AND (subject_group_id IS NOT NULL) AND (subject_user_id IS NULL)))),
+                  CONSTRAINT chk_space_membership_history_subject_type CHECK ((subject_type IN ('USER', 'GROUP')))
+              );
+
+              CREATE TABLE space_memberships (
+                  id uuid CONSTRAINT workspace_memberships_id_not_null NOT NULL,
+                  user_id uuid,
+                  space_id uuid CONSTRAINT workspace_memberships_workspace_id_not_null NOT NULL,
+                  role character varying(20) CONSTRAINT workspace_memberships_role_not_null NOT NULL,
+                  created_at timestamp with time zone DEFAULT now() CONSTRAINT workspace_memberships_created_at_not_null NOT NULL,
+                  organization_id uuid NOT NULL,
+                  subject_type character varying(20) NOT NULL,
+                  group_id uuid,
+                  member_count_at_grant integer,
+                  CONSTRAINT chk_space_memberships_member_count CHECK (((member_count_at_grant IS NULL) OR (((subject_type)::text = 'GROUP'::text) AND (member_count_at_grant >= 0)))),
+                  CONSTRAINT chk_space_memberships_role CHECK ((role IN ('MEMBER', 'CURATOR', 'ADMIN'))),
+                  CONSTRAINT chk_space_memberships_subject CHECK (((((subject_type)::text = 'USER'::text) AND (user_id IS NOT NULL) AND (group_id IS NULL)) OR (((subject_type)::text = 'GROUP'::text) AND (group_id IS NOT NULL) AND (user_id IS NULL)))),
+                  CONSTRAINT chk_space_memberships_subject_type CHECK ((subject_type IN ('USER', 'GROUP')))
+              );
+
+              CREATE TABLE spaces (
+                  id uuid CONSTRAINT workspaces_id_not_null NOT NULL,
+                  name character varying(255) CONSTRAINT workspaces_name_not_null NOT NULL,
+                  description character varying(2000),
+                  owner_id uuid CONSTRAINT workspaces_owner_id_not_null NOT NULL,
+                  created_at timestamp with time zone DEFAULT now() CONSTRAINT workspaces_created_at_not_null NOT NULL,
+                  updated_at timestamp with time zone DEFAULT now() CONSTRAINT workspaces_updated_at_not_null NOT NULL,
+                  visibility character varying(20) DEFAULT 'PRIVATE'::character varying NOT NULL,
+                  organization_id uuid NOT NULL,
+                  is_default boolean DEFAULT false NOT NULL,
+                  archived boolean DEFAULT false NOT NULL,
+                  CONSTRAINT chk_spaces_visibility CHECK ((visibility IN ('PRIVATE', 'DISCOVERABLE', 'OPEN')))
+              );
+
+              ALTER TABLE ONLY diagnostic_impersonation_grants
+                  ADD CONSTRAINT diagnostic_impersonation_grants_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY space_asset_associations
+                  ADD CONSTRAINT space_asset_associations_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY space_membership_history
+                  ADD CONSTRAINT space_membership_history_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY space_asset_associations
+                  ADD CONSTRAINT uk_space_asset_associations_space_asset UNIQUE (space_id, asset_id);
+
+              ALTER TABLE ONLY spaces
+                  ADD CONSTRAINT uk_spaces_id_organization UNIQUE (id, organization_id);
+
+              ALTER TABLE ONLY space_memberships
+                  ADD CONSTRAINT workspace_memberships_pkey PRIMARY KEY (id);
+
+              ALTER TABLE ONLY spaces
+                  ADD CONSTRAINT workspaces_pkey PRIMARY KEY (id);
+
+              CREATE INDEX idx_diagnostic_impersonation_grants_holder ON diagnostic_impersonation_grants USING btree (organization_id, holder_user_id, valid_until);
+
+              CREATE INDEX idx_space_asset_associations_asset_organization ON space_asset_associations USING btree (asset_id, organization_id);
+
+              CREATE INDEX idx_space_membership_history_space ON space_membership_history USING btree (space_id);
+
+              CREATE INDEX idx_space_membership_history_subject_group_organization ON space_membership_history USING btree (subject_group_id, organization_id, valid_from) WHERE ((subject_type)::text = 'GROUP'::text);
+
+              CREATE INDEX idx_space_membership_history_subject_user_organization ON space_membership_history USING btree (subject_user_id, organization_id, valid_from) WHERE ((subject_type)::text = 'USER'::text);
+
+              CREATE INDEX idx_space_membership_history_transfer ON space_membership_history USING btree (transfer_id) WHERE (transfer_id IS NOT NULL);
+
+              CREATE INDEX idx_space_memberships_group_organization ON space_memberships USING btree (group_id, organization_id) WHERE ((subject_type)::text = 'GROUP'::text);
+
+              CREATE INDEX idx_space_memberships_space_id ON space_memberships USING btree (space_id);
+
+              CREATE UNIQUE INDEX uk_space_membership_history_open_group ON space_membership_history USING btree (space_id, subject_group_id) WHERE (((subject_type)::text = 'GROUP'::text) AND (valid_to IS NULL));
+
+              CREATE UNIQUE INDEX uk_space_membership_history_open_user ON space_membership_history USING btree (space_id, subject_user_id) WHERE (((subject_type)::text = 'USER'::text) AND (valid_to IS NULL));
+
+              CREATE UNIQUE INDEX uk_space_memberships_group_subject ON space_memberships USING btree (space_id, group_id) WHERE ((subject_type)::text = 'GROUP'::text);
+
+              CREATE UNIQUE INDEX uk_space_memberships_user_subject ON space_memberships USING btree (space_id, user_id) WHERE ((subject_type)::text = 'USER'::text);
+
+              CREATE UNIQUE INDEX uk_spaces_default_owner ON spaces USING btree (owner_id) WHERE is_default;
+
+              ALTER TABLE ONLY diagnostic_impersonation_grants
+                  ADD CONSTRAINT fk_diagnostic_impersonation_grants_granter_organization FOREIGN KEY (granted_by_user_id, organization_id) REFERENCES users(id, organization_id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY diagnostic_impersonation_grants
+                  ADD CONSTRAINT fk_diagnostic_impersonation_grants_holder_organization FOREIGN KEY (holder_user_id, organization_id) REFERENCES users(id, organization_id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY diagnostic_impersonation_grants
+                  ADD CONSTRAINT fk_diagnostic_impersonation_grants_organization FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY diagnostic_impersonation_grants
+                  ADD CONSTRAINT fk_diagnostic_impersonation_grants_revoker_organization FOREIGN KEY (revoked_by_user_id, organization_id) REFERENCES users(id, organization_id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY diagnostic_impersonation_grants
+                  ADD CONSTRAINT fk_diagnostic_impersonation_grants_scope_organization FOREIGN KEY (scope_group_id, organization_id) REFERENCES groups(id, organization_id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY space_asset_associations
+                  ADD CONSTRAINT fk_space_asset_associations_asset_organization FOREIGN KEY (asset_id, organization_id) REFERENCES assets(id, organization_id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY space_asset_associations
+                  ADD CONSTRAINT fk_space_asset_associations_created_by_user_organization FOREIGN KEY (created_by_user_id, organization_id) REFERENCES users(id, organization_id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY space_asset_associations
+                  ADD CONSTRAINT fk_space_asset_associations_space_organization FOREIGN KEY (space_id, organization_id) REFERENCES spaces(id, organization_id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY space_membership_history
+                  ADD CONSTRAINT fk_space_membership_history_actor_user_organization FOREIGN KEY (actor_user_id, organization_id) REFERENCES users(id, organization_id) ON DELETE SET NULL (actor_user_id);
+
+              ALTER TABLE ONLY space_membership_history
+                  ADD CONSTRAINT fk_space_membership_history_subject_user_organization FOREIGN KEY (subject_user_id, organization_id) REFERENCES users(id, organization_id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY space_membership_history
+                  ADD CONSTRAINT fk_space_membership_history_transfer FOREIGN KEY (transfer_id, organization_id) REFERENCES permission_transfers(id, organization_id) ON DELETE SET NULL (transfer_id);
+
+              ALTER TABLE ONLY space_memberships
+                  ADD CONSTRAINT fk_space_memberships_group_organization FOREIGN KEY (group_id, organization_id) REFERENCES groups(id, organization_id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY space_memberships
+                  ADD CONSTRAINT fk_space_memberships_organization FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY space_memberships
+                  ADD CONSTRAINT fk_space_memberships_space_organization FOREIGN KEY (space_id, organization_id) REFERENCES spaces(id, organization_id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY space_memberships
+                  ADD CONSTRAINT fk_space_memberships_user_organization FOREIGN KEY (user_id, organization_id) REFERENCES users(id, organization_id) ON DELETE CASCADE;
+
+              ALTER TABLE ONLY spaces
+                  ADD CONSTRAINT fk_spaces_organization FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY spaces
+                  ADD CONSTRAINT fk_spaces_owner_organization FOREIGN KEY (owner_id, organization_id) REFERENCES users(id, organization_id) ON DELETE RESTRICT;
+
+              CREATE TABLE diagnostic_context_log (
+                  event_id uuid NOT NULL,
+                  recorded_at timestamp with time zone NOT NULL,
+                  organization_id uuid NOT NULL,
+                  actor_ref character varying(255) NOT NULL,
+                  target_kind character varying(20) NOT NULL,
+                  target_ref character varying(255) NOT NULL,
+                  test_question character varying(2000) NOT NULL,
+                  hit_count integer NOT NULL,
+                  hit_refs text NOT NULL,
+                  permission_snapshot text NOT NULL,
+                  justification character varying(1000),
+                  CONSTRAINT chk_diagnostic_context_log_target_kind
+                      CHECK ((target_kind IN ('PERMISSION_PROFILE', 'USER'))),
+                  CONSTRAINT chk_diagnostic_context_log_hit_count CHECK ((hit_count >= 0)),
+                  CONSTRAINT chk_diagnostic_context_log_justification
+                      CHECK (((target_kind <> 'USER')
+                              OR ((justification IS NOT NULL) AND (btrim(justification) <> ''))))
+              )
+              PARTITION BY RANGE (recorded_at);
+
+              ALTER TABLE ONLY diagnostic_context_log
+                  ADD CONSTRAINT diagnostic_context_log_pkey PRIMARY KEY (event_id, recorded_at);
+
+              ALTER TABLE diagnostic_context_log
+                  ADD CONSTRAINT fk_diagnostic_context_log_organization
+                  FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE RESTRICT;
+
+              CREATE INDEX idx_diagnostic_context_log_time_range
+                  ON diagnostic_context_log USING btree (organization_id, recorded_at);
+
+              -- The only read path that filters by target_ref at all is Leitplanke (h)'s right of access: a
+              -- person sees the entries about their own pseudonym. That is what this index is for - not an
+              -- evaluation by target person, which Leitplanke (g) forbids and no read path of this
+              -- application offers.
+              CREATE INDEX idx_diagnostic_context_log_target
+                  ON diagnostic_context_log USING btree (organization_id, target_kind, target_ref, recorded_at);
+
+              -- Same fixed horizon of monthly partitions as audit_log in the identity changeSet - three months
+              -- back through 16 years forward from the moment this migration runs; no DEFAULT partition, so a
+              -- write outside this horizon fails loudly instead of landing somewhere retention deletion can
+              -- never reclaim.
+              DO $$
+              DECLARE
+                start_month date := date_trunc('month', now() - interval '3 months');
+                i integer;
+                partition_start date;
+                partition_end date;
+                partition_name text;
+              BEGIN
+                FOR i IN 0..194 LOOP
+                  partition_start := (start_month + (i || ' months')::interval)::date;
+                  partition_end := (start_month + ((i + 1) || ' months')::interval)::date;
+                  partition_name := 'diagnostic_context_log_' || to_char(partition_start, 'YYYY_MM');
+                  EXECUTE format(
+                    'CREATE TABLE IF NOT EXISTS %I PARTITION OF diagnostic_context_log FOR VALUES FROM (%L) TO (%L)',
+                    partition_name, partition_start, partition_end
+                  );
+                END LOOP;
+              END $$;
+
+              CREATE TABLE diagnostic_context_retention_settings (
+                  id integer DEFAULT 1 NOT NULL,
+                  retention_months integer NOT NULL,
+                  last_cutoff timestamp with time zone,
+                  last_run_month date,
+                  updated_at timestamp with time zone NOT NULL,
+                  CONSTRAINT chk_diagnostic_context_retention_months
+                      CHECK (((retention_months >= 1) AND (retention_months <= 24))),
+                  CONSTRAINT chk_diagnostic_context_retention_singleton CHECK ((id = 1))
+              );
+
+              ALTER TABLE ONLY diagnostic_context_retention_settings
+                  ADD CONSTRAINT diagnostic_context_retention_settings_pkey PRIMARY KEY (id);
+
+              INSERT INTO diagnostic_context_retention_settings
+                (id, retention_months, last_cutoff, last_run_month, updated_at)
+              VALUES (
+                1, 12,
+                date_trunc('month', now()) - interval '12 months',
+                date_trunc('month', now())::date,
+                now()
+              );
+
+              -- Ownership separation per ADR-0015, exactly as for audit_log: the application account creates
+              -- these objects and is therefore their owner at first; ownership moves to opaa_audit_owner, and
+              -- the application account is left only the narrow grants below. The membership is taken briefly
+              -- and given back - the ADMIN OPTION residual that cannot be revoked is documented as open in
+              -- ADR-0015.
+              DO $$
+              BEGIN
+                EXECUTE format('GRANT opaa_audit_owner TO %I WITH SET TRUE', current_user);
+              END $$;
+
+              ALTER TABLE diagnostic_context_log OWNER TO opaa_audit_owner;
+              ALTER TABLE diagnostic_context_retention_settings OWNER TO opaa_audit_owner;
+
+              DO $$
+              DECLARE
+                partition regclass;
+              BEGIN
+                FOR partition IN
+                  SELECT inhrelid::regclass FROM pg_inherits
+                  WHERE inhparent = 'diagnostic_context_log'::regclass
+                LOOP
+                  EXECUTE format('ALTER TABLE %s OWNER TO opaa_audit_owner', partition);
+                END LOOP;
+              END $$;
+
+              REVOKE ALL ON TABLE diagnostic_context_log, diagnostic_context_retention_settings FROM PUBLIC;
+              DO $$
+              BEGIN
+                EXECUTE format('GRANT INSERT, SELECT ON TABLE diagnostic_context_log TO %I', current_user);
+                EXECUTE format('GRANT SELECT ON TABLE diagnostic_context_retention_settings TO %I', current_user);
+                EXECUTE format('GRANT UPDATE (retention_months, updated_at) ON TABLE diagnostic_context_retention_settings TO %I', current_user);
+              END $$;
+
+              -- Deletion itself cannot be switched off (Leitplanke (i)): there is no on/off flag, the retention
+              -- period is bounded to 1-24 months by chk_diagnostic_context_retention_months, and this function
+              -- is the only way anything can ever disappear from diagnostic_context_log. It never removes
+              -- individual rows, only fully expired monthly partitions; last_cutoff is a high-water mark that
+              -- never moves back.
+              CREATE FUNCTION opaa_diagnostic_context_delete_expired_partitions() RETURNS SETOF text
+                  LANGUAGE plpgsql SECURITY DEFINER
+                  SET search_path TO 'pg_catalog', '${database.defaultSchemaName}', 'pg_temp'
+                  AS $_$ DECLARE
+                cfg RECORD;
+                current_month date := date_trunc('month', now())::date;
+                new_cutoff timestamptz;
+                rec RECORD;
+                partition_month date;
+              BEGIN
+                SELECT retention_months, last_cutoff INTO cfg
+                FROM diagnostic_context_retention_settings WHERE id = 1 FOR UPDATE;
+
+                IF NOT FOUND THEN
+                  RAISE EXCEPTION 'diagnostic_context_retention_settings has no row with id=1 - the baseline should have seeded it; refusing to silently skip retention deletion';
+                END IF;
+
+                new_cutoff := current_month
+                  - (cfg.retention_months::text || ' months')::interval;
+
+                FOR rec IN
+                  SELECT inhrelid::regclass AS partition_rel,
+                         inhrelid::regclass::text AS partition_name
+                  FROM pg_catalog.pg_inherits
+                  WHERE inhparent = 'diagnostic_context_log'::regclass
+                LOOP
+                  partition_month := to_date(
+                    substring(rec.partition_name from 'diagnostic_context_log_(\d{4}_\d{2})$'), 'YYYY_MM');
+                  IF partition_month IS NOT NULL
+                     AND (partition_month + interval '1 month') <= new_cutoff THEN
+                    EXECUTE format('DROP TABLE %s', rec.partition_rel);
+                    RETURN NEXT rec.partition_name;
+                  END IF;
+                END LOOP;
+
+                UPDATE diagnostic_context_retention_settings
+                SET last_cutoff = GREATEST(cfg.last_cutoff, new_cutoff),
+                    last_run_month = current_month
+                WHERE id = 1;
+
+                RETURN;
+              END; $_$;
+
+              ALTER FUNCTION opaa_diagnostic_context_delete_expired_partitions() OWNER TO opaa_audit_owner;
+              GRANT EXECUTE ON FUNCTION opaa_diagnostic_context_delete_expired_partitions() TO CURRENT_USER;
+              REVOKE EXECUTE ON FUNCTION opaa_diagnostic_context_delete_expired_partitions() FROM PUBLIC;
+
+              DO $$
+              BEGIN
+                EXECUTE format('REVOKE opaa_audit_owner FROM %I', current_user);
+              END $$;
+      # No rollback: the baseline is never rolled back - a broken installation is discarded and re-run from an empty database instead.

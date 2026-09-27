@@ -886,16 +886,18 @@ benennt (`io.opaa.config.OpenAiBaseUrlGuard`).
 
 **Neu aufsetzen: Datenbank-Baseline je Modul (seit Ende September 2026).** OPAA legt sein Schema mit
 Liquibase an und verzeichnet in der Tabelle `databasechangelog`, welche Changesets gelaufen sind. Die
-Historie ist zu einer neuen Baseline zusammengefasst, die je Modul ein Changeset trägt
-(`001-baseline-foundation` bis `001-baseline-external`). Zu einer Datenbank, die vor diesem Stand
-angelegt wurde, passt diese Liste nicht mehr: Liquibase spielte die Baseline in eine Datenbank ein,
-deren Tabellen schon existieren, und das Backend startet nicht. **Eine solche Installation lässt sich
-nicht aktualisieren, sondern nur neu aufsetzen.** Ob sie betroffen ist, zeigt vor dem Update:
+Historie ist zu einer neuen Baseline zusammengefasst, und die Changesets liegen in einem Verzeichnis
+je Modul (`db/changelog/foundation/` bis `db/changelog/external/`). Zu einer Datenbank, die vor diesem
+Stand angelegt wurde, passt diese Liste nicht mehr: Liquibase spielte die Baseline in eine Datenbank
+ein, deren Tabellen schon existieren, und das Backend startet nicht. Das gilt auch für eine
+Installation, die erst mit der zusammengefassten Baseline angelegt wurde, solange diese noch in einer
+einzigen Datei lag. **Eine solche Installation lässt sich nicht aktualisieren, sondern nur neu
+aufsetzen.** Ob sie betroffen ist, zeigt vor dem Update:
 
 ```bash
 docker compose exec postgres psql -U opaa -d opaa -tAc \
-  "SELECT count(*) FROM databasechangelog WHERE id = '001-baseline-foundation'
-     AND author = 'opaa' AND filename = 'db/changelog/changes/001-baseline.yaml'"
+  "SELECT count(*) FROM databasechangelog WHERE id = 'foundation-2026-09-27-baseline'
+     AND author = 'opaa' AND filename = 'db/changelog/foundation/2026-09-27-baseline.yaml'"
 ```
 
 `1` heißt: nicht betroffen. `0` heißt: neu aufsetzen. Die Abfrage prüft Kennung, Autor **und** Datei,

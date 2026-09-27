@@ -4,6 +4,8 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 import liquibase.Contexts;
@@ -34,16 +36,17 @@ import org.testcontainers.utility.DockerImageName;
  *       JVM/Gradle test worker (Testcontainers' documented manual singleton pattern - not
  *       {@code @Container}, which would start one container per class). This alone replaces up to
  *       19 individual container starts with one.
- *   <li>A per-class <b>template database</b>: {@link #baseFixtureChangelogPath()} names the fixture
- *       changelog (e.g. {@code db/changelog/test-master-through-baseline.yaml}) that must be
- *       applied once, in full, before the changeSet under test runs. This base class applies it
- *       exactly once per class, in a database named {@code template_<simpleclassname>}, and then
- *       every {@code @Test} method gets its own fresh, fully-isolated database cloned from that
- *       template via {@code CREATE DATABASE ... TEMPLATE ...} (~0.1-0.2s) instead of re-running the
- *       whole fixture changelog again (~1-2s, growing with every migration added to the chain). The
- *       changeSet(s) actually under test are deliberately <b>not</b> part of the template - each
- *       {@code @Test} still applies them itself, exactly as before, so every test still exercises a
- *       schema built from scratch by Liquibase for the one changeSet it is proving something about.
+ *   <li>A per-class <b>template database</b>: {@link #baseFixtureChangelogs()} names the fixture
+ *       changelogs (e.g. {@code db/changelog/test-master-through-baseline.yaml}, or for a delta
+ *       test {@link MasterChangelog#filesExcept(String...)}) that must be applied once, in full,
+ *       before the changeSet under test runs. This base class applies them exactly once per class,
+ *       in a database named {@code template_<simpleclassname>}, and then every {@code @Test} method
+ *       gets its own fresh, fully-isolated database cloned from that template via {@code CREATE
+ *       DATABASE ... TEMPLATE ...} (~0.1-0.2s) instead of re-running the whole fixture changelog
+ *       again (~1-2s, growing with every migration added to the chain). The changeSet(s) actually
+ *       under test are deliberately <b>not</b> part of the template - each {@code @Test} still
+ *       applies them itself, exactly as before, so every test still exercises a schema built from
+ *       scratch by Liquibase for the one changeSet it is proving something about.
  * </ul>
  *
  * <p><b>Why the per-test database is dropped and recreated rather than the old {@code DROP SCHEMA
@@ -56,15 +59,15 @@ import org.testcontainers.utility.DockerImageName;
  * <p><b>Cluster-wide roles are not part of this optimization and remain each subclass's own
  * responsibility.</b> {@code CREATE ROLE}/{@code DROP ROLE} (e.g. for {@code opaa_audit_owner},
  * created by the baseline's audit-log privilege restriction, see {@code
- * db/changelog/changes/001-baseline.yaml}, identity changeSet) act on the whole Postgres cluster,
- * not on one database - they survive a {@code DROP DATABASE} exactly as they survived the old
- * {@code DROP SCHEMA CASCADE}. Subclasses that create such roles must keep creating and dropping
- * them per test method, and must never bake them into the template database: a role dropped by one
- * test would otherwise be missing for the next test cloned from the same template.
+ * db/changelog/identity/2026-09-27-baseline.yaml}) act on the whole Postgres cluster, not on one
+ * database - they survive a {@code DROP DATABASE} exactly as they survived the old {@code DROP
+ * SCHEMA CASCADE}. Subclasses that create such roles must keep creating and dropping them per test
+ * method, and must never bake them into the template database: a role dropped by one test would
+ * otherwise be missing for the next test cloned from the same template.
  *
  * <p><b>Important asymmetry a subclass must get right:</b> a role can only be dropped per test
  * method if the class's own fixture chain does not itself create that role at template-build time.
- * A class whose {@link #baseFixtureChangelogPath()} stops before the changeSet that creates a given
+ * A class whose {@link #baseFixtureChangelogs()} stop before the changeSet that creates a given
  * role gets that role created fresh, per test method, after cloning - so per-test {@code DROP ROLE}
  * is safe there. A class whose fixture chain runs *past* that changeSet instead gets the role
  * created once, at template-build time - and every per-test clone then owns objects under that role
@@ -106,15 +109,15 @@ abstract class AbstractMigrationTest {
 
   private String templateDatabaseName;
   private String currentDatabaseName;
+  private final List<String> siblingDatabaseNames = new ArrayList<>();
 
   /**
-   * The classpath path of the fixture changelog that builds the schema exactly as it existed
-   * immediately before the changeSet(s) under test - e.g. {@code
-   * db/changelog/test-master-through-baseline.yaml} for a delta test of the first changeset added
-   * after the baseline. Applied once per class, into the template database; never re-applied per
-   * test method.
+   * The classpath paths of the fixture changelogs that build the schema exactly as it exists
+   * immediately before the changeSet(s) under test, applied in this order - for a delta test {@link
+   * MasterChangelog#filesExcept(String...)} of its changelog file. Applied once per class, into the
+   * template database; never re-applied per test method.
    */
-  protected abstract String baseFixtureChangelogPath();
+  protected abstract List<String> baseFixtureChangelogs();
 
   @BeforeAll
   void buildTemplateDatabaseOnce() throws Exception {
@@ -130,13 +133,9 @@ abstract class AbstractMigrationTest {
     try (Connection templateConnection =
         DriverManager.getConnection(
             jdbcUrlFor(templateDatabaseName), POSTGRES.getUsername(), POSTGRES.getPassword())) {
-      Liquibase liquibase =
-          new Liquibase(
-              baseFixtureChangelogPath(),
-              new ClassLoaderResourceAccessor(),
-              liquibaseDatabase(templateConnection));
-      liquibase.update(new Contexts());
-      templateConnection.setAutoCommit(true);
+      for (String changelog : baseFixtureChangelogs()) {
+        applyChangelog(templateConnection, changelog);
+      }
     }
   }
 
@@ -162,6 +161,25 @@ abstract class AbstractMigrationTest {
     // roles - see {@link
     // #dropCurrentDatabaseNow()}. DROP DATABASE IF EXISTS makes calling it again here harmless.
     dropDatabase(currentDatabaseName);
+    for (String sibling : siblingDatabaseNames) {
+      dropDatabase(sibling);
+    }
+    siblingDatabaseNames.clear();
+  }
+
+  /**
+   * A connection to a further clone of the template for this test method, dropped after it - for a
+   * test that compares two databases built differently.
+   */
+  protected Connection connectToSiblingDatabase() throws SQLException {
+    String name = currentDatabaseName + "_" + siblingDatabaseNames.size();
+    try (Connection admin = bootstrapConnection();
+        Statement statement = admin.createStatement()) {
+      statement.execute("CREATE DATABASE " + name + " TEMPLATE " + templateDatabaseName);
+    }
+    siblingDatabaseNames.add(name);
+    return DriverManager.getConnection(
+        jdbcUrlFor(name), POSTGRES.getUsername(), POSTGRES.getPassword());
   }
 
   /**
@@ -248,7 +266,7 @@ abstract class AbstractMigrationTest {
                     + "': it still owns objects, most likely in this class's own template database"
                     + " (template_"
                     + getClass().getSimpleName().toLowerCase(Locale.ROOT)
-                    + "). This means the class's fixture chain (see baseFixtureChangelogPath())"
+                    + "). This means the class's fixture chain (see baseFixtureChangelogs())"
                     + " itself creates this role at template-build time - such a class must not"
                     + " drop this role per test method (see AbstractMigrationTest's Javadoc,"
                     + " \"Important asymmetry a subclass must get right\").",

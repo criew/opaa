@@ -1,0 +1,21 @@
+databaseChangeLog:
+  - changeSet:
+      id: foundation-2026-09-27-baseline
+      author: opaa
+      comment: "Module foundation: the tenant root (organizations) every other table is scoped to, and its single default organization."
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE TABLE organizations (
+                  id uuid NOT NULL,
+                  name character varying(255) NOT NULL,
+                  created_at timestamp with time zone DEFAULT now() NOT NULL
+              );
+
+              ALTER TABLE ONLY organizations
+                  ADD CONSTRAINT organizations_pkey PRIMARY KEY (id);
+
+              INSERT INTO organizations (id, name)
+              VALUES ('00000000-0000-0000-0000-000000000001', 'Default');
+      # No rollback: the baseline is never rolled back - a broken installation is discarded and re-run from an empty database instead.

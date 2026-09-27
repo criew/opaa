@@ -16,12 +16,11 @@ import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 
 /**
- * Applies {@code db/changelog/changes/001-baseline.yaml} to an empty database and asserts what
- * spans the whole baseline: one changeSet per logical module in dependency order, the complete
- * table inventory, pgvector, the delivered seed rows, the partitioned {@code audit_log} owned by
- * the restricted role, and the organization-boundary composite-foreign-key rule (#390), which
- * judges the delivered schema rather than the baseline alone - see {@code
- * applyEveryChangesetAfterTheBaseline()}.
+ * Applies the baseline file of every module to an empty database and asserts what spans the whole
+ * baseline: one changeSet per logical module in dependency order, the complete table inventory,
+ * pgvector, the delivered seed rows, the partitioned {@code audit_log} owned by the restricted
+ * role, and the organization-boundary composite-foreign-key rule (#390), which judges the delivered
+ * schema rather than the baseline alone - see {@code applyEveryChangesetAfterTheBaseline()}.
  *
  * <p>The invariants of the individual modules live in one class per module ({@link
  * IdentityBaselineTest}, {@link RightsBaselineTest}, {@link KnowledgeBaselineTest}, {@link
@@ -81,14 +80,14 @@ class MigrationBaselineTest extends AbstractBaselineTest {
 
     assertThat(executed)
         .containsExactly(
-            "001-baseline-foundation",
-            "001-baseline-identity",
-            "001-baseline-rights",
-            "001-baseline-knowledge",
-            "001-baseline-connectors",
-            "001-baseline-workspace",
-            "001-baseline-assistant",
-            "001-baseline-external");
+            "foundation-2026-09-27-baseline",
+            "identity-2026-09-27-baseline",
+            "rights-2026-09-27-baseline",
+            "knowledge-2026-09-27-baseline",
+            "connectors-2026-09-27-baseline",
+            "workspace-2026-09-27-baseline",
+            "assistant-2026-09-27-baseline",
+            "external-2026-09-27-baseline");
   }
 
   /**
