@@ -5,14 +5,14 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * The delivered Dokumentart vocabulary of migrations 018 and 020 as an in-memory snapshot for tests
- * that run without a database - codes, labels, synonyms, Kompositum endings and their exclusions
- * exactly as seeded. {@code DocumentTypeVocabularySeedReconciliationTest} fails as soon as this
- * snapshot and the Liquibase seed differ in a single value.
+ * The delivered Dokumentart vocabulary of the baseline as an in-memory snapshot for tests that run
+ * without a database - codes, labels, synonyms, Kompositum endings and their exclusions exactly as
+ * seeded. {@code DocumentTypeVocabularySeedReconciliationTest} fails as soon as this snapshot and
+ * the Liquibase seed differ in a single value.
  */
 public final class TestVocabularies {
 
-  /** Minimum prefix length every seeded ending of migration 020 carries. */
+  /** Minimum prefix length every seeded ending carries. */
   private static final int MIN_PREFIX_LENGTH = 3;
 
   private TestVocabularies() {}

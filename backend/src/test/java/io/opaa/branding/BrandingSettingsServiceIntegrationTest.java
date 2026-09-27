@@ -28,12 +28,12 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * #582: {@link BrandingSettingsService} against a real Postgres with the real, versioned Liquibase
- * schema applied (migrations 041/042). Covers what a test against a mocked repository could not -
- * that an unconfigured deployment really does resolve to the OPAA standard field by field, that a
- * change writes exactly one {@link AuditEventType#BRANDING_SETTINGS_CHANGED} entry carrying the
- * effective before/after state, that a logo survives a round trip through the {@code bytea} column,
- * and that the database's own constraints reject what the service rejects (they are the backstop,
- * not the primary defense - see the service's Javadoc).
+ * schema applied. Covers what a test against a mocked repository could not - that an unconfigured
+ * deployment really does resolve to the OPAA standard field by field, that a change writes exactly
+ * one {@link AuditEventType#BRANDING_SETTINGS_CHANGED} entry carrying the effective before/after
+ * state, that a logo survives a round trip through the {@code bytea} column, and that the
+ * database's own constraints reject what the service rejects (they are the backstop, not the
+ * primary defense - see the service's Javadoc).
  *
  * <p>Carries the canonical {@link io.opaa.test.OpaaIntegrationTest} signature (AGENTS.md, "Spring-
  * Testkontexte"), so it shares one cached context and one container with every other class on that
@@ -233,7 +233,7 @@ class BrandingSettingsServiceIntegrationTest {
 
   @Test
   void theDatabaseRejectsAnInvalidColourEvenWhenTheServiceIsBypassed() {
-    // The service is the primary defense; this proves the backstop from migration 041 is real, so
+    // The service is the primary defense; this proves the database backstop is real, so
     // a future write path that forgets to validate cannot quietly store nonsense.
     assertThatThrownBy(
             () ->
@@ -254,7 +254,7 @@ class BrandingSettingsServiceIntegrationTest {
         .hasMessageContaining("chk_branding_settings_logo_complete");
   }
 
-  /** The same backstop for the two slots migration 089 added - one constraint each, not shared. */
+  /** The same backstop for the two sign-in image slots - one constraint each, not shared. */
   @Test
   void theDatabaseRejectsPartialSignInImagesToo() {
     assertThatThrownBy(

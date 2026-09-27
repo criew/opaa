@@ -344,7 +344,7 @@ class LibraryControllerCredentialsIntegrationTest {
     // guards against a fix that only special-cased the FILESYSTEM branch above. The database's own
     // chk_knowledge_libraries_upload_without_source (whose error text would include every column
     // value, credentials included, per ADR-0018 Entscheidung 4) is exercised directly, without any
-    // HTTP layer in between (Migration092ConnectorSettingsTest).
+    // HTTP layer in between (KnowledgeBaselineTest).
     String body =
         """
         {

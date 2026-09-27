@@ -20,9 +20,9 @@ import org.springframework.stereotype.Component;
  * {@code SpaceAccessPolicy#hasCapableAdmin} from #1815 - the same one the protection of the last
  * capable {@code ADMIN} decides on, so the state and the guard can never disagree.
  *
- * <p><b>The personal space is left out</b>, as changesets 044 and 052 leave it out of the history:
- * nobody decides its ownership, it has no successor by construction, and listing one per locked
- * account would bury the list under entries nobody can act on.
+ * <p><b>The personal space is left out</b>, as the permission history leaves it out: nobody decides
+ * its ownership, it has no successor by construction, and listing one per locked account would bury
+ * the list under entries nobody can act on.
  */
 @Component
 class SpaceSuccessionSource implements SuccessionFindingSource {

@@ -2,49 +2,35 @@
  * Tests that apply real, versioned Liquibase changelogs in isolation against a Postgres
  * Testcontainer - not against Hibernate-generated schema and not against an empty database.
  *
- * <p><b>Since the second baseline consolidation (#1492, after #904):</b> the whole changelog
- * history lives in one file again ({@code db/changelog/changes/001-baseline.yaml}); {@link
- * io.opaa.migration.MigrationBaselineTest} applies it against an empty database and asserts the
- * invariants a broken baseline would violate - see that class's own Javadoc, and {@link
- * io.opaa.migration.AuditPrivilegeModelTest}, {@link
- * io.opaa.migration.DiagnosticContextPrivilegeModelTest} and {@link
- * io.opaa.migration.VectorStoreExpressionIndexTest} for the three areas that keep a test of their
- * own. From here on, one changeset per schema change again: a future changeset's own delta test
- * follows the pattern the pre-baseline history established (see e.g. the deleted {@code
- * Migration033SourceSyncStateTest} in git history for a worked example) - apply everything up to
- * (and including) the changeSet immediately preceding the one under test via a fixture changelog
- * starting from {@code db/changelog/test-master-through-baseline.yaml}, seed representative rows
- * directly through JDBC, apply only the new changelog file, and assert on the resulting schema and
- * data.
+ * <p><b>The baseline:</b> the whole schema lives in {@code db/changelog/changes/001-baseline.yaml},
+ * one changeSet per logical module. {@link io.opaa.migration.MigrationBaselineTest} asserts what
+ * spans all modules; each module's invariants live in its own subclass of {@link
+ * io.opaa.migration.AbstractBaselineTest} ({@code IdentityBaselineTest}, {@code
+ * RightsBaselineTest}, ...), next to the privilege models, the retention deletion and the guarded
+ * {@code vector_store} changeSets, which keep classes of their own.
  *
- * <p>Every test class in this package extends {@link io.opaa.migration.AbstractMigrationTest},
- * which owns the Postgres Testcontainer (a single instance shared across this whole package, not
- * one per class) and the fixture changelog application (built once per class into a template
- * database, then cloned per test method via {@code CREATE DATABASE ... TEMPLATE ...} instead of
- * re-applied per test method). See that class's own Javadoc for the full reasoning, in particular
- * why cluster-wide roles (as used by the baseline's {@code opaa_audit_owner}) are deliberately kept
- * out of the template and still created/dropped per test method by any future test that needs one.
+ * <p><b>A new changeset</b> gets its own delta test here: apply everything up to the changeSet
+ * immediately preceding it via a fixture changelog starting from {@code
+ * db/changelog/test-master-through-baseline.yaml}, seed representative rows through JDBC, apply
+ * only the new changelog file, and assert on the resulting schema and data.
+ *
+ * <p>Every test class extends {@link io.opaa.migration.AbstractMigrationTest}, which owns the
+ * Postgres Testcontainer (one per test JVM) and builds the fixture once per class into a template
+ * database that each test method clones. Cluster-wide roles such as {@code opaa_audit_owner} are
+ * not part of the template - see that class's Javadoc.
  *
  * <p><b>Mandatory teardown pattern (#288):</b> {@code Liquibase.update(...)} leaves the JDBC
- * connection's auto-commit disabled. Every test class in this package MUST call {@code
- * connection.setAutoCommit(true)} immediately after each {@code update()} call - unconditionally,
- * not only when a further statement happens to be needed afterwards. This fixes the root cause:
- * every raw JDBC statement after that point then commits independently, exactly like the
- * application does in production, instead of silently accumulating in an open transaction that gets
- * rolled back when the connection closes - see {@link io.opaa.migration.MigrationBaselineTest} for
- * the current, binding example.
- *
- * <p>Do not use {@code connection.rollback()} in {@code tearDown()} as an alternative - it only
- * discards whatever happened to still be uncommitted at that point and leaves the underlying
- * auto-commit problem in place for the next statement executed on the same connection. {@code
- * setAutoCommit(true)} was chosen as the binding pattern for this package during the review of
- * #283; new migration tests (see #201, #202, #238) must follow it.
+ * connection's auto-commit disabled. Every test class MUST call {@code
+ * connection.setAutoCommit(true)} immediately after each {@code update()} call - unconditionally.
+ * Every later raw JDBC statement then commits on its own, exactly as the application does, instead
+ * of accumulating in an open transaction that is rolled back when the connection closes. {@code
+ * connection.rollback()} in a teardown is no substitute: it leaves the auto-commit problem in
+ * place.
  *
  * <p><b>One deliberate exception to the delta pattern:</b> {@link
  * io.opaa.migration.DocumentTypeVocabularySeedReconciliationTest} applies the whole {@code
- * db.changelog-master.yaml} instead of a single changelog file. It proves no property of one
- * changeSet but reconciles the delivered Dokumentart seed with the database-free snapshot {@code
- * TestVocabularies} - so any later changeSet extending or correcting that seed must reach the
+ * db.changelog-master.yaml}: it reconciles the delivered Dokumentart seed with the database-free
+ * snapshot {@code TestVocabularies}, so any later changeSet extending that seed must reach the
  * comparison too.
  */
 package io.opaa.migration;

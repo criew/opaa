@@ -117,6 +117,6 @@ public class AuditRetentionSettingsService {
                 new IllegalStateException(
                     "audit_retention_settings hat keine Zeile mit id="
                         + AuditRetentionSettings.SINGLETON_ID
-                        + " - migration 023 haette sie anlegen muessen"));
+                        + " - die Baseline haette sie anlegen muessen"));
   }
 }

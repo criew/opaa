@@ -1,119 +1,154 @@
 package io.opaa.migration;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 import java.util.stream.Collectors;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Applies {@code db/changelog/changes/001-baseline.yaml} to an empty database and asserts the
- * invariants a broken baseline would violate: representative tables per schema group exist (and the
- * historical intermediate ones do not), pgvector is enabled, {@code audit_log} is partitioned and
- * owned by the restricted role, the seed rows are present, and the current-state constraints the
- * deleted per-changeset delta tests covered as a side effect of testing their own transition. The
- * organization-boundary composite-foreign-key rule (formerly {@code
- * OrganizationBoundarySchemaTest}, #390) lives here too, but judges the delivered schema rather
- * than the baseline alone - see {@code applyEveryChangesetAfterTheBaseline()}.
+ * Applies {@code db/changelog/changes/001-baseline.yaml} to an empty database and asserts what
+ * spans the whole baseline: one changeSet per logical module in dependency order, the complete
+ * table inventory, pgvector, the delivered seed rows, the partitioned {@code audit_log} owned by
+ * the restricted role, and the organization-boundary composite-foreign-key rule (#390), which
+ * judges the delivered schema rather than the baseline alone - see {@code
+ * applyEveryChangesetAfterTheBaseline()}.
  *
- * <p>Three sibling tests carry the rest: {@link AuditPrivilegeModelTest} and {@link
- * DiagnosticContextPrivilegeModelTest} for the two ADR-0015 privilege models, and {@link
- * VectorStoreExpressionIndexTest} for the two precondition-guarded {@code vector_store} changeSets.
- *
- * <p>A deleted delta test asserted a transition (schema state N-1 to N) that no longer exists after
- * the consolidation; the equivalence between the old chain and the baseline is a one-time proof
- * (see the #1492 pull request description for the pg_dump diff), not an ongoing regression guard.
- * That pull request also lists which of the deleted assertions were ported here and which were
- * deliberately dropped. Future changesets get their own delta test under this package again,
- * against a fixture chain starting from {@code db/changelog/test-master-through-baseline.yaml}.
+ * <p>The invariants of the individual modules live in one class per module ({@link
+ * IdentityBaselineTest}, {@link RightsBaselineTest}, {@link KnowledgeBaselineTest}, {@link
+ * ConnectorsBaselineTest}, {@link WorkspaceBaselineTest}, {@link AssistantBaselineTest}, {@link
+ * ExternalBaselineTest}); the two privilege models, the retention deletion and the two guarded
+ * {@code vector_store} changeSets have classes of their own.
  */
-class MigrationBaselineTest extends AbstractMigrationTest {
-
-  private static final String SEEDED_ORGANIZATION_ID = "00000000-0000-0000-0000-000000000001";
+class MigrationBaselineTest extends AbstractBaselineTest {
 
   /**
    * Every entry carries table, constraint name, a mandatory justification and the issue it was
-   * created under (ported from {@code OrganizationBoundarySchemaTest}, #390 review - see {@link
-   * BoundaryException}). {@link #everyOrganizationScopedForeignKeyIsComposite()} also fails if a
-   * listed exception no longer describes an actual violation, so stale entries cannot linger
-   * unnoticed. Empty today: the schema holds the rule without exception.
+   * created under (see {@link BoundaryException}). {@link
+   * #everyOrganizationScopedForeignKeyIsComposite()} also fails if a listed exception no longer
+   * describes an actual violation, so stale entries cannot linger unnoticed. Empty today: the
+   * schema holds the rule without exception.
    */
   private static final List<BoundaryException> DOCUMENTED_EXCEPTIONS = List.of();
 
-  private Connection connection;
-
-  @Override
-  protected String baseFixtureChangelogPath() {
-    return "db/changelog/test-master-through-baseline.yaml";
-  }
-
-  @BeforeEach
-  void setUp() throws SQLException {
-    connection = connect();
-    connection.setAutoCommit(true);
-  }
-
-  @AfterEach
-  void tearDown() throws SQLException {
-    connection.close();
-  }
+  /** The rows the baseline delivers; every other table starts empty. */
+  private static final Map<String, Long> SEEDED_ROW_COUNTS =
+      Map.ofEntries(
+          Map.entry("organizations", 1L),
+          Map.entry("branding_settings", 1L),
+          Map.entry("mail_settings", 1L),
+          Map.entry("local_auth_settings", 1L),
+          Map.entry("audit_retention_settings", 1L),
+          Map.entry("permission_history_retention_settings", 1L),
+          Map.entry("capability_grants", 4L),
+          Map.entry("capability_grant_history", 4L),
+          Map.entry("document_type_vocabulary", 9L),
+          Map.entry("document_type_synonyms", 34L),
+          Map.entry("document_type_suffixes", 7L),
+          Map.entry("document_type_suffix_exclusions", 14L),
+          Map.entry("diagnostic_context_retention_settings", 1L),
+          Map.entry("external_access_settings", 1L));
 
   // ---------------------------------------------------------------------------------------------
   // Baseline smoke tests
   // ---------------------------------------------------------------------------------------------
 
   /**
-   * The complete table inventory the baseline builds, compared in both directions: a table missing
-   * from the baseline fails here, and so does one the baseline creates without this list naming it.
-   * The equivalence proof against the old changelog chain was a one-time exercise (#1492), so this
-   * list is the standing guard that replaces it - a future changeset adding or dropping a table
-   * extends or shortens it. {@code vector_store} is deliberately absent: Spring AI creates it at
-   * application startup, never Liquibase (see {@link VectorStoreExpressionIndexTest}).
+   * One changeSet per logical module, in the order modules may depend on each other, with the two
+   * precondition-guarded {@code vector_store} changeSets after the knowledge module. They stay
+   * unrecorded here because the fixture database has no {@code vector_store} (see {@link
+   * VectorStoreExpressionIndexTest}).
    */
   @Test
-  void createsEveryTableAcrossAllSchemaGroups() throws SQLException {
+  void consistsOfOneChangeSetPerModuleInDependencyOrder() throws SQLException {
+    List<String> executed = new ArrayList<>();
+    try (Statement statement = connection.createStatement();
+        ResultSet rs =
+            statement.executeQuery("SELECT id FROM databasechangelog ORDER BY orderexecuted")) {
+      while (rs.next()) {
+        executed.add(rs.getString(1));
+      }
+    }
+
+    assertThat(executed)
+        .containsExactly(
+            "001-baseline-foundation",
+            "001-baseline-identity",
+            "001-baseline-rights",
+            "001-baseline-knowledge",
+            "001-baseline-connectors",
+            "001-baseline-workspace",
+            "001-baseline-assistant",
+            "001-baseline-external");
+  }
+
+  /**
+   * The complete table inventory, compared in both directions: a table missing from the baseline
+   * fails here, and so does one the baseline creates without this list naming it. {@code
+   * vector_store} is deliberately absent: Spring AI creates it at application startup.
+   */
+  @Test
+  void createsEveryTableOfEveryModule() throws SQLException {
     assertThat(baseTableNames())
         .containsExactlyInAnyOrder(
-            // (b) organizations, users, identity providers
+            // foundation
             "organizations",
+            // identity
             "users",
             "oidc_providers",
             "oidc_provider_seed_marker",
-            // (c) spaces, groups, memberships
-            "spaces",
+            "local_credentials",
+            "local_refresh_tokens",
+            "local_revoked_tokens",
+            "local_action_tokens",
+            "local_auth_settings",
+            "local_admin_seed_marker",
+            "branding_settings",
+            "mail_settings",
+            "mail_templates",
+            "notifications",
+            "audit_log",
+            "audit_actor_pseudonyms",
+            "audit_retention_settings",
+            "audit_incident_scope_grants",
+            // rights
             "groups",
             "group_memberships",
-            "space_memberships",
+            "group_stewards",
             "directory_sync_status",
-            // (d) libraries, folders, grants
+            "directory_sync_pending_plans",
+            "directory_connectors",
+            "assets",
+            "asset_visibility_history",
+            "asset_grants",
+            "asset_grant_history",
+            "asset_ownership_history",
+            "capability_grants",
+            "capability_grant_history",
+            "group_membership_history",
+            "permission_history_retention_settings",
+            "permission_transfers",
+            "permission_transfer_objects",
+            "account_state_history",
+            "succession_cases",
+            "succession_reviews",
+            // knowledge
             "knowledge_libraries",
             "library_folders",
-            "asset_grants",
-            "space_asset_associations",
-            "knowledge_library_confluence_spaces",
-            // (e) documents
             "documents",
-            // (f) indexing runs and source state
             "indexing_jobs",
             "indexing_run_events",
             "source_sync_state",
-            "rss_feed_state",
-            // (g) full-text index
             "chunk_full_text",
-            // (h) metadata schema
             "document_type_vocabulary",
             "document_type_synonyms",
             "document_type_suffixes",
@@ -121,866 +156,86 @@ class MigrationBaselineTest extends AbstractMigrationTest {
             "document_metadata_values",
             "library_metadata_fields",
             "library_metadata_field_values",
+            "library_metadata_schema_changes",
             "document_keywords",
             "metadata_model_extraction_stats",
             "metadata_model_rejections",
-            // (i) chat and model catalogue
-            "chats",
-            "chat_messages",
-            "chat_library_references",
             "llm_models",
             "llm_model_seed_marker",
-            // (j) audit and permission history
-            "audit_log",
-            "audit_actor_pseudonyms",
-            "audit_retention_settings",
-            "audit_incident_scope_grants",
-            "asset_grant_history",
-            "group_membership_history",
-            "library_visibility_history",
-            // (k) diagnostics
+            // connectors
+            "rss_feed_state",
+            // workspace
+            "spaces",
+            "space_memberships",
+            "space_membership_history",
+            "space_asset_associations",
             "diagnostic_impersonation_grants",
             "diagnostic_context_log",
             "diagnostic_context_retention_settings",
-            // (l) notifications and branding
-            "notifications",
-            "branding_settings");
+            // assistant
+            "chats",
+            "chat_messages",
+            "chat_library_references",
+            "chat_note_items",
+            "chat_personal_marks",
+            "prompt_libraries",
+            "prompts",
+            // external
+            "external_access_settings",
+            "external_access_tokens",
+            "external_access_token_libraries");
   }
 
   /**
-   * The counterpart of the list above: tables that existed only as a step on the way to today's
-   * schema must not be re-created by the consolidation (#1492) - the two per-connector sync-state
-   * tables {@code source_sync_state} replaced, and the full-text backfill's poison-chunk
-   * bookkeeping, which was created and dropped again while the backfill existed.
+   * Tables that existed only as a step on the way to today's schema must not be re-created by a
+   * consolidation: the per-connector sync-state tables {@code source_sync_state} replaced, the
+   * full-text backfill's poison-chunk bookkeeping, the Confluence space selection that became part
+   * of {@code source_settings}, and the library-only visibility history the asset shell replaced.
    */
   @Test
   void createsNoTableThatOnlyEverExistedBetweenTwoHistoricalChangesets() throws SQLException {
-    for (String table : List.of("confluence_sync_state", "s3_sync_state", "chunk_full_text_skip")) {
-      assertThat(tableExists(table)).as("table %s must not exist", table).isFalse();
+    for (String table :
+        List.of(
+            "confluence_sync_state",
+            "s3_sync_state",
+            "chunk_full_text_skip",
+            "knowledge_library_confluence_spaces",
+            "library_visibility_history")) {
+      assertThat(baseTableNames()).as("table %s must not exist", table).doesNotContain(table);
     }
   }
 
   @Test
   void enablesPgvectorExtension() throws SQLException {
-    try (Statement statement = connection.createStatement();
-        ResultSet rs =
-            statement.executeQuery("SELECT 1 FROM pg_extension WHERE extname = 'vector'")) {
-      assertThat(rs.next()).as("vector extension must be enabled").isTrue();
-    }
+    assertThat(countWhere("pg_extension", "extname = 'vector'")).isEqualTo(1);
   }
 
+  /**
+   * The seed rows, counted against every table: the singletons, the delivered capabilities with
+   * their intervals and the Dokumentart vocabulary - and nothing else. Their contents are asserted
+   * in the module classes and in {@link DocumentTypeVocabularySeedReconciliationTest}.
+   */
   @Test
-  void seedsExactlyOneOrganizationOneBrandingSettingsRowAndOneAuditRetentionSettingsRow()
-      throws SQLException {
-    assertThat(countRows("organizations")).isEqualTo(1);
-    try (Statement statement = connection.createStatement();
-        ResultSet rs =
-            statement.executeQuery(
-                "SELECT id, name FROM organizations "
-                    + "WHERE id = '00000000-0000-0000-0000-000000000001'")) {
-      assertThat(rs.next()).isTrue();
-      assertThat(rs.getString("name")).isEqualTo("Default");
+  void seedsExactlyTheDeliveredRowsAndLeavesEveryOtherTableEmpty() throws SQLException {
+    for (String table : baseTableNames()) {
+      assertThat(countRows(table))
+          .as("rows in %s", table)
+          .isEqualTo(SEEDED_ROW_COUNTS.getOrDefault(table, 0L));
     }
-
-    assertThat(countRows("branding_settings")).isEqualTo(1);
-    try (Statement statement = connection.createStatement();
-        ResultSet rs = statement.executeQuery("SELECT id FROM branding_settings WHERE id = 1")) {
-      assertThat(rs.next()).isTrue();
-    }
-
-    // The third seed row (baseline group (j), not (m) - see that group's own comment in
-    // 001-baseline.yaml for why it cannot be deferred to group (m) with the other two).
-    assertThat(countRows("audit_retention_settings")).isEqualTo(1);
-    try (Statement statement = connection.createStatement();
-        ResultSet rs =
-            statement.executeQuery(
-                "SELECT retention_months FROM audit_retention_settings WHERE id = 1")) {
-      assertThat(rs.next()).isTrue();
-      assertThat(rs.getInt("retention_months")).isEqualTo(36);
-    }
+    assertThat(
+            stringOf("SELECT name FROM organizations WHERE id = '" + SEEDED_ORGANIZATION_ID + "'"))
+        .isEqualTo("Default");
+    assertThat(longOf("SELECT retention_months FROM audit_retention_settings WHERE id = 1"))
+        .isEqualTo(36);
   }
 
   @Test
   void partitionsAuditLogByMonthAndOwnsItViaTheRestrictedRole() throws SQLException {
-    try (Statement statement = connection.createStatement();
-        ResultSet rs =
-            statement.executeQuery(
-                "SELECT count(*) FROM pg_inherits WHERE inhparent = 'audit_log'::regclass")) {
-      rs.next();
-      // The horizon is 3 months back through 194 months forward (195 total) - see the baseline's
-      // own comment on this DO block for the full rationale.
-      assertThat(rs.getInt(1)).isEqualTo(195);
-    }
-
-    try (Statement statement = connection.createStatement();
-        ResultSet rs =
-            statement.executeQuery(
-                "SELECT relowner::regrole::text FROM pg_class WHERE relname = 'audit_log'")) {
-      rs.next();
-      assertThat(rs.getString(1)).isEqualTo("opaa_audit_owner");
-    }
-  }
-
-  // ---------------------------------------------------------------------------------------------
-  // Current-state invariants ported from the per-changeset tests #904 deleted (that pull request
-  // description lists what else those classes covered and why it was not ported)
-  // ---------------------------------------------------------------------------------------------
-
-  @Test
-  void rejectsASecondConcurrentRunningIndexingJobForTheSameLibrary() throws SQLException {
-    UUID libraryId = insertLibrary(insertUser());
-    insertIndexingJob(libraryId, "RUNNING");
-
-    assertThatThrownBy(() -> insertIndexingJob(libraryId, "RUNNING"))
-        .isInstanceOf(SQLException.class)
-        .hasMessageContaining("uk_indexing_jobs_library_running");
-  }
-
-  @Test
-  void allowsRunningIndexingJobsForDifferentLibrariesAtTheSameTime() throws SQLException {
-    UUID firstLibrary = insertLibrary(insertUser());
-    UUID secondLibrary = insertLibrary(insertUser());
-
-    insertIndexingJob(firstLibrary, "RUNNING");
-    insertIndexingJob(secondLibrary, "RUNNING");
-
-    assertThat(countRows("indexing_jobs")).isEqualTo(2);
-  }
-
-  @Test
-  void rejectsASecondDocumentWithTheSamePathInTheSameLibrary() throws SQLException {
-    UUID libraryId = insertLibrary(insertUser());
-    insertDocument(libraryId, "/corpus/report.pdf");
-
-    assertThatThrownBy(() -> insertDocument(libraryId, "/corpus/report.pdf"))
-        .isInstanceOf(SQLException.class)
-        .hasMessageContaining("uk_documents_library_path");
-  }
-
-  @Test
-  void allowsTheSameDocumentPathInTwoDifferentLibraries() throws SQLException {
-    // The exact case #877 fixed: two libraries indexing the same source path/URL must yield two
-    // independent documents, not one library "stealing" the other's document.
-    UUID firstLibrary = insertLibrary(insertUser());
-    UUID secondLibrary = insertLibrary(insertUser());
-
-    insertDocument(firstLibrary, "/corpus/report.pdf");
-    insertDocument(secondLibrary, "/corpus/report.pdf");
-
-    assertThat(countRows("documents")).isEqualTo(2);
-  }
-
-  @Test
-  void rssFeedStateLetsTwoLibrariesEachHoldTheirOwnStateForTheSameFeedUrl() throws SQLException {
-    // The exact fix #646 required: rss_feed_state is keyed by (library_id, feed_url), not feed_url
-    // alone, so two libraries configured with the same feed address no longer collide.
-    String feedUrl = "https://example.com/feed.xml";
-    UUID libraryA = insertRssFeedLibrary(feedUrl);
-    UUID libraryB = insertRssFeedLibrary(feedUrl);
-
-    insertFeedState(libraryA, feedUrl, "\"etag-a\"");
-    insertFeedState(libraryB, feedUrl, "\"etag-b\"");
-
-    assertThat(countRows("rss_feed_state")).isEqualTo(2);
-  }
-
-  @Test
-  void deletingALibraryCascadesToItsOwnRssFeedStateRowOnly() throws SQLException {
-    String feedUrl = "https://example.com/feed.xml";
-    UUID libraryA = insertRssFeedLibrary(feedUrl);
-    UUID libraryB = insertRssFeedLibrary(feedUrl);
-    insertFeedState(libraryA, feedUrl, "\"etag-a\"");
-    insertFeedState(libraryB, feedUrl, "\"etag-b\"");
-
-    try (Statement statement = connection.createStatement()) {
-      statement.execute("DELETE FROM knowledge_libraries WHERE id = '" + libraryA + "'");
-    }
-
-    assertThat(feedStateExists(libraryA, feedUrl)).isFalse();
-    assertThat(feedStateExists(libraryB, feedUrl)).isTrue();
-  }
-
-  @Test
-  void rejectsASecondRssFeedStateRowForTheSameLibraryAndFeedUrl() throws SQLException {
-    String feedUrl = "https://example.com/feed.xml";
-    UUID libraryId = insertRssFeedLibrary(feedUrl);
-    insertFeedState(libraryId, feedUrl, "\"etag-a\"");
-
-    assertThatThrownBy(() -> insertFeedState(libraryId, feedUrl, "\"etag-a-again\""))
-        .isInstanceOf(SQLException.class)
-        .hasMessageContaining("uk_rss_feed_state_library_feed_url");
-  }
-
-  @Test
-  void deletingTheRecipientDeletesTheirNotifications() throws SQLException {
-    // #862 (Epic #826, Befund B4) dropped chk_notifications_type in migration 066 - the closed
-    // vocabulary is Java-enum-enforced only from there on, so an unrecognised type is deliberately
-    // not asserted as rejected here anymore (it would fail against the current, correct baseline).
-    UUID recipient = insertUser();
-    try (Statement statement = connection.createStatement()) {
-      statement.execute(
-          "INSERT INTO notifications (id, organization_id, recipient_user_id, type, title,"
-              + " created_at) VALUES ('"
-              + UUID.randomUUID()
-              + "', '"
-              + SEEDED_ORGANIZATION_ID
-              + "', '"
-              + recipient
-              + "', 'LIBRARY_ASSOCIATED_TO_MIXED_SPACE', 'Titel', now())");
-    }
-
-    try (Statement statement = connection.createStatement()) {
-      statement.execute("DELETE FROM users WHERE id = '" + recipient + "'");
-    }
-
-    try (Statement statement = connection.createStatement();
-        ResultSet rs =
-            statement.executeQuery(
-                "SELECT count(*) FROM notifications WHERE recipient_user_id = '"
-                    + recipient
-                    + "'")) {
-      rs.next();
-      assertThat(rs.getInt(1)).isZero();
-    }
-  }
-
-  @Test
-  void llmModelSeedMarkerStartsEmptyAndAcceptsExactlyOneRow() throws SQLException {
-    assertThat(countRows("llm_model_seed_marker")).isZero();
-
-    try (Statement statement = connection.createStatement()) {
-      statement.execute("INSERT INTO llm_model_seed_marker (id, seeded_at) VALUES (1, now())");
-    }
-    assertThat(countRows("llm_model_seed_marker")).isEqualTo(1);
-
-    assertThatThrownBy(
-            () ->
-                connection
-                    .createStatement()
-                    .execute("INSERT INTO llm_model_seed_marker (id, seeded_at) VALUES (2, now())"))
-        .isInstanceOf(SQLException.class)
-        .hasMessageContaining("chk_llm_model_seed_marker_singleton");
-  }
-
-  // ---------------------------------------------------------------------------------------------
-  // Current-state invariants ported from the 31 delta tests the second consolidation (#1492)
-  // deleted. Each of these asserts something about the schema the baseline builds today, not about
-  // a transition; the #1492 pull request description lists what those classes additionally covered
-  // and why it was not ported.
-  // ---------------------------------------------------------------------------------------------
-
-  @Test
-  void aDiagnosticImpersonationGrantNeedsBothAScopeAndAnEnd() throws SQLException {
-    UUID holder = insertUser();
-    UUID scope = insertGroup("ORG_UNIT", "ou-1");
-
-    assertThatThrownBy(() -> insertImpersonationGrant(holder, null, "12 months"))
-        .isInstanceOf(SQLException.class)
-        .hasMessageContaining("scope_group_id");
-    assertThatThrownBy(() -> insertImpersonationGrant(holder, scope, null))
-        .isInstanceOf(SQLException.class)
-        .hasMessageContaining("valid_until");
-  }
-
-  @Test
-  void aDiagnosticImpersonationGrantIsBoundedToTwelveMonthsAndANonEmptyWindow()
-      throws SQLException {
-    UUID holder = insertUser();
-    UUID scope = insertGroup("ORG_UNIT", "ou-1");
-
-    insertImpersonationGrant(holder, scope, "12 months");
-    assertThatThrownBy(() -> insertImpersonationGrant(holder, scope, "13 months"))
-        .isInstanceOf(SQLException.class)
-        .hasMessageContaining("chk_diagnostic_impersonation_grants_validity");
-    assertThatThrownBy(() -> insertImpersonationGrant(holder, scope, "0 months"))
-        .isInstanceOf(SQLException.class)
-        .hasMessageContaining("chk_diagnostic_impersonation_grants_validity");
-  }
-
-  @Test
-  void aHalfRecordedRevocationOfADiagnosticImpersonationGrantIsRejected() throws SQLException {
-    UUID holder = insertUser();
-    UUID scope = insertGroup("ORG_UNIT", "ou-1");
-    insertImpersonationGrant(holder, scope, "6 months");
-
-    assertThatThrownBy(
-            () ->
-                execute(
-                    "UPDATE diagnostic_impersonation_grants SET revoked_at = now()"
-                        + " WHERE holder_user_id = '"
-                        + holder
-                        + "'"))
-        .isInstanceOf(SQLException.class)
-        .hasMessageContaining("chk_diagnostic_impersonation_grants_revocation");
-  }
-
-  /**
-   * The Diagnosesperre falls in favour of protection: a library is locked for "Sicht als" the
-   * moment it is created, and the column cannot be emptied to sidestep that.
-   */
-  @Test
-  void aNewLibraryIsLockedForDiagnosticsAndTheLockCannotBeEmptied() throws SQLException {
-    UUID libraryId = insertLibrary(insertUser());
-
-    assertThat(booleanOf("knowledge_libraries", "diagnostics_locked", libraryId)).isTrue();
-    assertThatThrownBy(
-            () ->
-                execute(
-                    "UPDATE knowledge_libraries SET diagnostics_locked = NULL WHERE id = '"
-                        + libraryId
-                        + "'"))
-        .isInstanceOf(SQLException.class)
-        .hasMessageContaining("diagnostics_locked");
-  }
-
-  @Test
-  void libraryAndDocumentSourceTypeAcceptExactlyTheSixDeliveredConnectors() throws SQLException {
-    UUID library = insertLibrary(insertUser());
-    for (String sourceType :
-        List.of("FILESYSTEM", "HTTP_DIRECTORY", "UPLOAD", "RSS_FEED", "CONFLUENCE", "S3")) {
-      insertDocumentWithSourceType(library, "/corpus/" + sourceType, sourceType);
-    }
-
-    assertThatThrownBy(() -> insertDocumentWithSourceType(library, "/corpus/gcs", "GCS"))
-        .isInstanceOf(SQLException.class)
-        .hasMessageContaining("chk_documents_source_type");
-    // Either source CHECK may fire first: an unknown type matches no arm of the configuration
-    // constraint either, and PostgreSQL reports whichever it evaluates first.
-    assertThatThrownBy(
-            () -> insertSourceLibrary("GCS", null, "gs://bucket", "enc:v1:a", null, null))
-        .isInstanceOf(SQLException.class)
-        .hasMessageContaining("chk_knowledge_libraries_source_");
-  }
-
-  @Test
-  void theConfluenceArmNeedsAddressCredentialsAndEditionAndForbidsAPath() throws SQLException {
-    insertSourceLibrary("CONFLUENCE", null, "https://wiki.example.org", "enc:v1:a", "CLOUD", null);
-
-    assertThatThrownBy(
-            () -> insertSourceLibrary("CONFLUENCE", null, null, "enc:v1:a", "DATA_CENTER", null))
-        .isInstanceOf(SQLException.class)
-        .hasMessageContaining("chk_knowledge_libraries_source_configuration");
-    assertThatThrownBy(
-            () ->
-                insertSourceLibrary(
-                    "CONFLUENCE", null, "https://wiki.example.org", null, "CLOUD", null))
-        .isInstanceOf(SQLException.class)
-        .hasMessageContaining("chk_knowledge_libraries_source_configuration");
-    assertThatThrownBy(
-            () ->
-                insertSourceLibrary(
-                    "CONFLUENCE", null, "https://wiki.example.org", "enc:v1:a", null, null))
-        .isInstanceOf(SQLException.class)
-        .hasMessageContaining("chk_knowledge_libraries_source_configuration");
-    assertThatThrownBy(
-            () ->
-                insertSourceLibrary(
-                    "CONFLUENCE",
-                    "/srv/docs",
-                    "https://wiki.example.org",
-                    "enc:v1:a",
-                    "CLOUD",
-                    null))
-        .isInstanceOf(SQLException.class)
-        .hasMessageContaining("chk_knowledge_libraries_source_configuration");
-  }
-
-  @Test
-  void theS3ArmNeedsANonEmptyScopeListAndCarriesNoConfluenceEdition() throws SQLException {
-    String settings = "{\"region\": \"eu-central-1\", \"scopes\": [\"bucket/prefix\"]}";
-    insertSourceLibrary("S3", null, "https://s3.example.org", "enc:v1:a", null, settings);
-
-    assertThatThrownBy(
-            () -> insertSourceLibrary("S3", null, "https://s3.example.org", "enc:v1:a", null, null))
-        .isInstanceOf(SQLException.class)
-        .hasMessageContaining("chk_knowledge_libraries_source_configuration");
-    assertThatThrownBy(
-            () ->
-                insertSourceLibrary(
-                    "S3", null, "https://s3.example.org", "enc:v1:a", null, "{\"scopes\": []}"))
-        .isInstanceOf(SQLException.class)
-        .hasMessageContaining("chk_knowledge_libraries_source_configuration");
-    // jsonb_typeof of a non-array is not 'array', and jsonb_array_length would raise instead of
-    // returning false - the CHECK's CASE is what turns that into a plain rejection.
-    assertThatThrownBy(
-            () ->
-                insertSourceLibrary(
-                    "S3",
-                    null,
-                    "https://s3.example.org",
-                    "enc:v1:a",
-                    null,
-                    "{\"scopes\": \"bucket\"}"))
-        .isInstanceOf(SQLException.class)
-        .hasMessageContaining("chk_knowledge_libraries_source_configuration");
-    assertThatThrownBy(
-            () ->
-                insertSourceLibrary(
-                    "S3", null, "https://s3.example.org", "enc:v1:a", "CLOUD", settings))
-        .isInstanceOf(SQLException.class)
-        .hasMessageContaining("chk_knowledge_libraries_source_configuration");
-  }
-
-  @Test
-  void aSourceTypeWithoutAConnectorConfigurationCarriesNeitherEditionNorSettings()
-      throws SQLException {
-    String settings = "{\"scopes\": [\"bucket/prefix\"]}";
-
-    assertThatThrownBy(() -> insertSourceLibrary("UPLOAD", null, null, null, "CLOUD", null))
-        .isInstanceOf(SQLException.class)
-        .hasMessageContaining("chk_knowledge_libraries_source_configuration");
-    assertThatThrownBy(() -> insertSourceLibrary("UPLOAD", null, null, null, null, settings))
-        .isInstanceOf(SQLException.class)
-        .hasMessageContaining("chk_knowledge_libraries_source_configuration");
-    assertThatThrownBy(
-            () ->
-                insertSourceLibrary(
-                    "HTTP_DIRECTORY", null, "https://files.example.org/", null, null, settings))
-        .isInstanceOf(SQLException.class)
-        .hasMessageContaining("chk_knowledge_libraries_source_configuration");
-    insertSourceLibrary("FILESYSTEM", "/srv/docs", null, null, null, null);
-    insertSourceLibrary("RSS_FEED", null, "https://example.org/feed.xml", null, null, null);
-  }
-
-  /**
-   * The Confluence space selection is the list-valued part of a library's source configuration
-   * (ADR-0023, Entscheidung 1): a key is unique per library, and the selection dies with it.
-   */
-  @Test
-  void theConfluenceSpaceSelectionIsKeyedPerLibraryAndCascadesWithIt() throws SQLException {
-    UUID first =
-        insertSourceLibrary(
-            "CONFLUENCE", null, "https://wiki.example.org", "enc:v1:a", "CLOUD", null);
-    UUID second =
-        insertSourceLibrary(
-            "CONFLUENCE", null, "https://wiki.example.org", "enc:v1:a", "CLOUD", null);
-    insertConfluenceSpace(first, "ENG");
-    insertConfluenceSpace(second, "ENG");
-
-    assertThatThrownBy(() -> insertConfluenceSpace(first, "ENG"))
-        .isInstanceOf(SQLException.class)
-        .hasMessageContaining("pk_knowledge_library_confluence_spaces");
-
-    execute("DELETE FROM knowledge_libraries WHERE id = '" + first + "'");
-    assertThat(countWhere("knowledge_library_confluence_spaces", "library_id = '" + first + "'"))
-        .isZero();
-    assertThat(countWhere("knowledge_library_confluence_spaces", "library_id = '" + second + "'"))
-        .isEqualTo(1);
-  }
-
-  @Test
-  void anIndexingRunDeclaresOneOfThreeRunModesAndOneOfThreeTriggerSources() throws SQLException {
-    UUID library = insertLibrary(insertUser());
-
-    for (String runMode : List.of("FULL", "INCREMENTAL", "EVENT")) {
-      insertIndexingJob(library, "COMPLETED", runMode, "MANUAL");
-    }
-    for (String trigger : List.of("MANUAL", "SCHEDULED", "WEBHOOK")) {
-      insertIndexingJob(library, "COMPLETED", "FULL", trigger);
-    }
-
-    assertThatThrownBy(() -> insertIndexingJob(library, "COMPLETED", "DELTA", "MANUAL"))
-        .isInstanceOf(SQLException.class)
-        .hasMessageContaining("chk_indexing_jobs_run_mode");
-    assertThatThrownBy(() -> insertIndexingJob(library, "COMPLETED", "FULL", "API"))
-        .isInstanceOf(SQLException.class)
-        .hasMessageContaining("chk_indexing_jobs_triggered_by");
-  }
-
-  /**
-   * Deleting a parent document is application code, never a database cascade (ADR-0022): a cascade
-   * would drop the attachment row and leave its pgvector chunks orphaned.
-   */
-  @Test
-  void deletingAParentDocumentThatStillHasAChildFailsInsteadOfCascading() throws SQLException {
-    UUID library = insertLibrary(insertUser());
-    UUID parent = insertDocument(library, "/corpus/mail.eml");
-    UUID child = insertAttachment(library, "/corpus/mail.eml/0/anlage.pdf", parent, null);
-
-    assertThatThrownBy(() -> execute("DELETE FROM documents WHERE id = '" + parent + "'"))
-        .isInstanceOf(SQLException.class)
-        .hasMessageContaining("fk_documents_parent");
-
-    execute("DELETE FROM documents WHERE id = '" + child + "'");
-    execute("DELETE FROM documents WHERE id = '" + parent + "'");
-    assertThat(countRows("documents")).isZero();
-  }
-
-  /**
-   * Upload dedup is a promise about what users upload, not about content derived from it: the
-   * unique index is partial on parentless rows, so two mails carrying an identical attachment do
-   * not collide (#1218).
-   */
-  @Test
-  void uploadChecksumDedupAppliesToParentlessRowsOnly() throws SQLException {
-    UUID library = insertLibrary(insertUser());
-    UUID firstMail = insertDocument(library, "/uploads/a.eml");
-    UUID secondMail = insertDocument(library, "/uploads/b.eml");
-
-    insertAttachment(library, "/uploads/a.eml/0/anlage.pdf", firstMail, "same-bytes");
-    insertAttachment(library, "/uploads/b.eml/0/anlage.pdf", secondMail, "same-bytes");
-    insertAttachment(library, "/uploads/plain.pdf", null, "duplicate");
-
-    assertThatThrownBy(() -> insertAttachment(library, "/uploads/other.pdf", null, "duplicate"))
-        .isInstanceOf(SQLException.class)
-        .hasMessageContaining("uk_documents_library_checksum");
-    insertAttachment(insertLibrary(insertUser()), "/uploads/plain.pdf", null, "duplicate");
-  }
-
-  @Test
-  void sourceSyncStateHoldsExactlyOneRowPerLibraryAndDisappearsWithIt() throws SQLException {
-    UUID library = insertLibrary(insertUser());
-    insertSourceSyncState(library);
-
-    assertThatThrownBy(() -> insertSourceSyncState(library))
-        .isInstanceOf(SQLException.class)
-        .hasMessageContaining("uk_source_sync_state_library");
-    assertThatThrownBy(() -> insertSourceSyncState(UUID.randomUUID()))
-        .isInstanceOf(SQLException.class)
-        .hasMessageContaining("fk_source_sync_state_library");
-
-    execute("DELETE FROM knowledge_libraries WHERE id = '" + library + "'");
-    assertThat(countRows("source_sync_state")).isZero();
-  }
-
-  @Test
-  void aDocumentTypeOutsideTheVocabularyIsNotStorable() throws SQLException {
-    UUID document = insertDocument(insertLibrary(insertUser()), "/uploads/a.pdf");
-
-    insertVocabularyValue(document, "DIENSTANWEISUNG");
-    assertThatThrownBy(
-            () ->
-                insertVocabularyValue(
-                    insertDocument(insertLibrary(insertUser()), "/uploads/b.pdf"), "DA"))
-        .isInstanceOf(SQLException.class)
-        .hasMessageContaining("fk_document_metadata_values_vocabulary");
-  }
-
-  @Test
-  void aCoreFieldValueIsPinnedToExactlyOneValueColumn() throws SQLException {
-    UUID document = insertDocument(insertLibrary(insertUser()), "/uploads/a.pdf");
-
-    assertThatThrownBy(
-            () -> insertMetadataValue(document, "document_type", "SET", "Vermerk", null, "MANUAL"))
-        .isInstanceOf(SQLException.class)
-        .hasMessageContaining("chk_document_metadata_values_core_field_type");
-    assertThatThrownBy(() -> insertMetadataValue(document, "title", "SET", null, null, "MANUAL"))
-        .isInstanceOf(SQLException.class)
-        .hasMessageContaining("chk_document_metadata_values_one_value");
-    assertThatThrownBy(
-            () ->
-                insertMetadataValue(document, "document_date", "SET", null, "2026-03-12", "MANUAL"))
-        .as("a date without its precision loses the only thing that makes it readable")
-        .isInstanceOf(SQLException.class)
-        .hasMessageContaining("chk_document_metadata_values_date_has_precision");
-  }
-
-  @Test
-  void confidenceIsOnlyStorableWithADerivedOriginAndAnAutomaticValueCarriesItsVersion()
-      throws SQLException {
-    UUID document = insertDocument(insertLibrary(insertUser()), "/uploads/a.pdf");
-
-    assertThatThrownBy(
-            () ->
-                execute(
-                    "INSERT INTO document_metadata_values (id, document_id, field_key, text_value,"
-                        + " origin, extraction_version, confidence, created_at, updated_at) VALUES"
-                        + " ('"
-                        + UUID.randomUUID()
-                        + "', '"
-                        + document
-                        + "', 'title', 'Titel', 'DETERMINISTIC', 1, 0.9, now(), now())"))
-        .isInstanceOf(SQLException.class)
-        .hasMessageContaining("chk_document_metadata_values_confidence_only_derived");
-    assertThatThrownBy(
-            () -> insertMetadataValue(document, "title", "SET", "Titel", null, "DETERMINISTIC"))
-        .as("only a manual value may omit the extraction version")
-        .isInstanceOf(SQLException.class)
-        .hasMessageContaining("chk_document_metadata_values_extraction_version");
-  }
-
-  @Test
-  void notDeterminableIsOnlyStorableManuallyAndWithoutAValue() throws SQLException {
-    UUID document = insertDocument(insertLibrary(insertUser()), "/uploads/a.pdf");
-
-    assertThatThrownBy(
-            () ->
-                insertMetadataValue(document, "title", "NOT_DETERMINABLE", "Titel", null, "MANUAL"))
-        .isInstanceOf(SQLException.class)
-        .hasMessageContaining("chk_document_metadata_values_one_value");
-    insertMetadataValue(document, "title", "NOT_DETERMINABLE", null, null, "MANUAL");
-  }
-
-  @Test
-  void oneMetadataValueRowPerDocumentAndFieldAndTheyDieWithTheDocument() throws SQLException {
-    UUID document = insertDocument(insertLibrary(insertUser()), "/uploads/a.pdf");
-    insertMetadataValue(document, "title", "SET", "Erster Titel", null, "MANUAL");
-
-    assertThatThrownBy(
-            () -> insertMetadataValue(document, "title", "SET", "Zweiter Titel", null, "MANUAL"))
-        .isInstanceOf(SQLException.class)
-        .hasMessageContaining("uk_document_metadata_values_document_field");
-
-    execute("DELETE FROM documents WHERE id = '" + document + "'");
-    assertThat(countRows("document_metadata_values")).isZero();
-  }
-
-  /** The Aufnahmeregel of the specification, written into the database (#1071). */
-  @Test
-  void aLibraryMetadataFieldMustServeTheFilterOrTheContextPrefix() throws SQLException {
-    UUID library = insertLibrary(insertUser());
-
-    assertThatThrownBy(() -> insertLibraryField(library, "ohne_wirkung", false, false, null))
-        .isInstanceOf(SQLException.class)
-        .hasMessageContaining("chk_library_metadata_fields_retrieval_effect");
-    insertLibraryField(library, "fassung", true, false, null);
-    insertLibraryField(library, "gremium", false, true, null);
-  }
-
-  @Test
-  void atMostTwoLibraryFieldsCarryACitationPositionPerLibrary() throws SQLException {
-    UUID library = insertLibrary(insertUser());
-    insertLibraryField(library, "fassung", true, false, 1);
-    insertLibraryField(library, "gremium", true, false, 2);
-
-    assertThatThrownBy(() -> insertLibraryField(library, "projekt", true, false, 1))
-        .isInstanceOf(SQLException.class)
-        .hasMessageContaining("uk_library_metadata_fields_citation_position");
-    assertThatThrownBy(() -> insertLibraryField(library, "phase", true, false, 3))
-        .isInstanceOf(SQLException.class)
-        .hasMessageContaining("chk_library_metadata_fields_citation_position");
-    insertLibraryField(insertLibrary(insertUser()), "fassung", true, false, 1);
-  }
-
-  /**
-   * "A document carrying a value the schema no longer has" is not a reachable state: the value is a
-   * real foreign key and removing a list entry a document still carries is blocked.
-   */
-  @Test
-  void aLibraryValueStillCarriedByADocumentIsNotRemovable() throws SQLException {
-    UUID library = insertLibrary(insertUser());
-    UUID field = insertLibraryField(library, "fassung", true, false, null);
-    UUID value = insertLibraryFieldValue(field, "FASSUNG_2026");
-    UUID document = insertDocument(library, "/uploads/a.pdf");
-
-    assertThatThrownBy(() -> insertLibraryValue(document, "fassung", field, value))
-        .as("the lib: namespace and the field reference are pinned to each other")
-        .isInstanceOf(SQLException.class)
-        .hasMessageContaining("chk_document_metadata_values_library_field");
-    insertLibraryValue(document, "lib:fassung", field, value);
-
-    assertThatThrownBy(
-            () -> execute("DELETE FROM library_metadata_field_values WHERE id = '" + value + "'"))
-        .isInstanceOf(SQLException.class)
-        .hasMessageContaining("fk_document_metadata_values_library_value");
-  }
-
-  @Test
-  void aDocumentTypeEndingNeedsAKnownDokumentartAndAPrefixOfAtLeastOneCharacter()
-      throws SQLException {
-    assertThatThrownBy(
-            () ->
-                execute(
-                    "INSERT INTO document_type_suffixes (code, suffix) VALUES"
-                        + " ('RUNDSCHREIBEN', 'rundschreiben')"))
-        .isInstanceOf(SQLException.class)
-        .hasMessageContaining("fk_document_type_suffixes_code");
-    assertThatThrownBy(
-            () ->
-                execute(
-                    "INSERT INTO document_type_suffixes (code, suffix, min_prefix_length) VALUES"
-                        + " ('VERMERK', 'merk', 0)"))
-        .isInstanceOf(SQLException.class)
-        .hasMessageContaining("chk_document_type_suffixes_min_prefix_length");
-
-    execute("DELETE FROM document_type_vocabulary WHERE code = 'VERMERK'");
-    assertThat(countWhere("document_type_suffixes", "code = 'VERMERK'")).isZero();
-    assertThat(countWhere("document_type_suffix_exclusions", "code = 'VERMERK'")).isZero();
-    assertThat(countWhere("document_type_synonyms", "code = 'VERMERK'")).isZero();
-  }
-
-  /**
-   * A lower-cased abbreviation collides with everyday German words ("da"), which would empty an
-   * otherwise unambiguous Dokumentart - so the delivered synonym list carries no short token. The
-   * seed's actual content is reconciled elsewhere ({@link
-   * DocumentTypeVocabularySeedReconciliationTest}); this is the rule that content must obey.
-   */
-  @Test
-  void noDeliveredSynonymIsShorterThanFourCharacters() throws SQLException {
-    assertThat(countWhere("document_type_synonyms", "length(synonym) < 4")).isZero();
-  }
-
-  @Test
-  void rejectsASecondOidcProviderWhoseIssuerDiffersOnlyInTrailingSlashes() throws SQLException {
-    insertOidcProvider("Beschäftigte", "https://idp.example/realms/a/", true);
-
-    assertThatThrownBy(() -> insertOidcProvider("Partner", "https://idp.example/realms/a", false))
-        .isInstanceOf(SQLException.class)
-        .hasMessageContaining("ux_oidc_providers_issuer_uri_normalized");
-    assertThatThrownBy(() -> insertOidcProvider("Partner", "https://idp.example/realms/a//", false))
-        .isInstanceOf(SQLException.class)
-        .hasMessageContaining("ux_oidc_providers_issuer_uri_normalized");
-
-    // Stored byte for byte: a token's "iss" claim is compared against it unchanged.
-    try (Statement statement = connection.createStatement();
-        ResultSet rs = statement.executeQuery("SELECT issuer_uri FROM oidc_providers")) {
-      assertThat(rs.next()).isTrue();
-      assertThat(rs.getString("issuer_uri")).isEqualTo("https://idp.example/realms/a/");
-    }
-  }
-
-  @Test
-  void allowsAtMostOneDefaultOidcProviderAndSeedsItsMarkerAtMostOnce() throws SQLException {
-    insertOidcProvider("Beschäftigte", "https://idp.example/realms/a", true);
-    insertOidcProvider("Partner", "https://idp.example/realms/b", false);
-    insertOidcProvider("Land", "https://idp.example/realms/c", false);
-
-    assertThatThrownBy(
-            () -> insertOidcProvider("Zweiter Standard", "https://idp.example/realms/d", true))
-        .isInstanceOf(SQLException.class)
-        .hasMessageContaining("ux_oidc_providers_single_default");
-
-    assertThat(countRows("oidc_provider_seed_marker")).isZero();
-    execute("INSERT INTO oidc_provider_seed_marker (id, seeded_at) VALUES (1, now())");
-    assertThatThrownBy(
-            () ->
-                execute("INSERT INTO oidc_provider_seed_marker (id, seeded_at) VALUES (2, now())"))
-        .isInstanceOf(SQLException.class)
-        .hasMessageContaining("chk_oidc_provider_seed_marker_singleton");
-  }
-
-  @Test
-  void onlyTheTwoKnownRejectionReasonsAreStorableAndTheCounterRowStartsAtZero()
-      throws SQLException {
-    UUID library = insertLibrary(insertUser());
-    UUID document = insertDocument(library, "/uploads/a.pdf");
-
-    insertRejection(library, document, "BELOW_THRESHOLD");
-    insertRejection(library, document, "OUTSIDE_VOCABULARY");
-    assertThatThrownBy(() -> insertRejection(library, document, "ACCEPTED"))
-        .isInstanceOf(SQLException.class)
-        .hasMessageContaining("chk_metadata_model_rejections_reason");
-
-    execute("INSERT INTO metadata_model_extraction_stats (library_id) VALUES ('" + library + "')");
-    assertThatThrownBy(
-            () ->
-                execute(
-                    "INSERT INTO metadata_model_extraction_stats (library_id) VALUES ('"
-                        + library
-                        + "')"))
-        .isInstanceOf(SQLException.class)
-        .hasMessageContaining("metadata_model_extraction_stats_pkey");
-    try (Statement statement = connection.createStatement();
-        ResultSet rs =
-            statement.executeQuery(
-                "SELECT calls, accepted_values, rejected_below_threshold,"
-                    + " rejected_outside_vocabulary, failures, rejected_pool_full,"
-                    + " keywords_assigned, last_call_at FROM metadata_model_extraction_stats")) {
-      assertThat(rs.next()).isTrue();
-      for (String column :
-          List.of(
-              "calls",
-              "accepted_values",
-              "rejected_below_threshold",
-              "rejected_outside_vocabulary",
-              "failures",
-              "rejected_pool_full",
-              "keywords_assigned")) {
-        assertThat(rs.getLong(column)).as("counter %s starts at zero", column).isZero();
-      }
-      assertThat(rs.getTimestamp("last_call_at")).isNull();
-    }
-  }
-
-  @Test
-  void aKeywordIsStoredOncePerDocumentAndDiesWithIt() throws SQLException {
-    UUID library = insertLibrary(insertUser());
-    UUID document = insertDocument(library, "/uploads/a.pdf");
-    insertKeyword(document, library, "abfallentsorgung");
-
-    assertThatThrownBy(() -> insertKeyword(document, library, "abfallentsorgung"))
-        .isInstanceOf(SQLException.class)
-        .hasMessageContaining("uq_document_keywords_document_keyword");
-
-    execute("DELETE FROM documents WHERE id = '" + document + "'");
-    assertThat(countRows("document_keywords")).isZero();
-  }
-
-  /**
-   * A provider group's external id is namespaced per provider, so two providers delivering a group
-   * of the same name yield two groups rather than colliding on {@code
-   * uk_groups_organization_external_id}.
-   */
-  @Test
-  void sameNamedGroupsOfTwoIdentityProvidersStaySeparate() throws SQLException {
-    UUID first = insertGroupNamed("IDENTITY_PROVIDER", "oidc:provider-a:Sachbearbeitung", "Sach");
-    UUID second = insertGroupNamed("IDENTITY_PROVIDER", "oidc:provider-b:Sachbearbeitung", "Sach");
-
-    assertThat(first).isNotEqualTo(second);
-    assertThat(countWhere("groups", "kind = 'IDENTITY_PROVIDER'")).isEqualTo(2);
-    assertThatThrownBy(
-            () ->
-                insertGroupNamed("IDENTITY_PROVIDER", "oidc:provider-a:Sachbearbeitung", "Nochmal"))
-        .isInstanceOf(SQLException.class)
-        .hasMessageContaining("uk_groups_organization_external_id");
-    assertThatThrownBy(() -> insertGroupNamed("EVERYONE", "everyone", "Alle"))
-        .isInstanceOf(SQLException.class)
-        .hasMessageContaining("chk_groups_kind");
-  }
-
-  @Test
-  void chunkFullTextIsKeyedByChunkIdAndDefaultsItsAnalysisVersionToOne() throws SQLException {
-    UUID chunkId = UUID.randomUUID();
-    insertChunkFullText(chunkId, "Die Gebührensatzung der Stadt");
-
-    assertThatThrownBy(() -> insertChunkFullText(chunkId, "Ein anderer Text"))
-        .isInstanceOf(SQLException.class)
-        .hasMessageContaining("chunk_full_text_pkey");
-    try (Statement statement = connection.createStatement();
-        ResultSet rs = statement.executeQuery("SELECT content_tsv_version FROM chunk_full_text")) {
-      assertThat(rs.next()).isTrue();
-      assertThat(rs.getInt(1)).isEqualTo(1);
-    }
-  }
-
-  @Test
-  void theGinIndexOnChunkFullTextIsValidAndAnswersAFullTextQuery() throws SQLException {
-    insertChunkFullText(UUID.randomUUID(), "Die Gebührensatzung der Stadt");
-
-    try (Statement statement = connection.createStatement();
-        ResultSet rs =
-            statement.executeQuery(
-                "SELECT indisvalid FROM pg_index WHERE indexrelid ="
-                    + " 'idx_chunk_full_text_content_tsv'::regclass")) {
-      assertThat(rs.next()).as("the GIN index must exist").isTrue();
-      assertThat(rs.getBoolean(1)).as("and must have finished building").isTrue();
-    }
-    try (Statement statement = connection.createStatement();
-        ResultSet rs =
-            statement.executeQuery(
-                "SELECT count(*) FROM chunk_full_text WHERE content_tsv @@"
-                    + " to_tsquery('german', 'gebührensatzung')")) {
-      rs.next();
-      assertThat(rs.getInt(1)).isEqualTo(1);
-    }
-  }
-
-  /**
-   * Not just "the index exists": the predicate is what makes it a cheap scan for {@code
-   * LowChunkDocumentAuditService}, which only ever asks about indexed documents.
-   */
-  @Test
-  void theLowChunkAuditIndexIsPartialOnIndexedDocuments() throws SQLException {
-    try (Statement statement = connection.createStatement();
-        ResultSet rs =
-            statement.executeQuery(
-                "SELECT indexdef FROM pg_indexes WHERE indexname ="
-                    + " 'idx_documents_indexed_chunk_count'")) {
-      assertThat(rs.next()).isTrue();
-      assertThat(rs.getString("indexdef"))
-          .contains("(organization_id, chunk_count)")
-          .contains("WHERE ((status)::text = 'INDEXED'::text)");
-    }
+    // Three months back through 191 months forward (195 in total), see the baseline's own comment.
+    assertThat(longOf("SELECT count(*) FROM pg_inherits WHERE inhparent = 'audit_log'::regclass"))
+        .isEqualTo(195);
+    assertThat(stringOf("SELECT relowner::regrole::text FROM pg_class WHERE relname = 'audit_log'"))
+        .isEqualTo("opaa_audit_owner");
   }
 
   // ---------------------------------------------------------------------------------------------
@@ -1126,14 +381,13 @@ class MigrationBaselineTest extends AbstractMigrationTest {
             new BoundaryException(
                 "space_memberships",
                 "fk_space_memberships_space",
-                "no longer needed - migration 050 removed the redundant constraint this exception"
-                    + " once covered",
+                "no longer needed - the redundant constraint this exception once covered is gone",
                 "#390"));
 
     assertThat(staleExceptionDescriptions(violations, staleException))
         .as(
             "an exception naming a constraint that is not among today's violations must be flagged"
-                + " as stale, since today's schema (after migration 050) no longer has this"
+                + " as stale, since today's schema no longer has this"
                 + " violation")
         .hasSize(1);
   }
@@ -1429,11 +683,11 @@ class MigrationBaselineTest extends AbstractMigrationTest {
   }
 
   // ---------------------------------------------------------------------------------------------
-  // Shared JDBC helpers
+  // Catalogue helpers
   // ---------------------------------------------------------------------------------------------
 
   /**
-   * Every ordinary and partitioned table in {@code public}, without the partitions themselves
+   * Every ordinary and partitioned table in the current schema, without the partitions themselves
    * ({@code relispartition}) and without Liquibase's own two bookkeeping tables.
    */
   private List<String> baseTableNames() throws SQLException {
@@ -1451,468 +705,5 @@ class MigrationBaselineTest extends AbstractMigrationTest {
       }
     }
     return tables;
-  }
-
-  private boolean tableExists(String tableName) throws SQLException {
-    try (PreparedStatement statement =
-        connection.prepareStatement(
-            "SELECT 1 FROM information_schema.tables "
-                + "WHERE table_schema = current_schema() AND table_name = ?")) {
-      statement.setString(1, tableName);
-      try (ResultSet rs = statement.executeQuery()) {
-        return rs.next();
-      }
-    }
-  }
-
-  private long countRows(String table) throws SQLException {
-    return countWhere(table, "true");
-  }
-
-  private long countWhere(String table, String whereClause) throws SQLException {
-    try (Statement statement = connection.createStatement();
-        ResultSet rs =
-            statement.executeQuery("SELECT count(*) FROM " + table + " WHERE " + whereClause)) {
-      rs.next();
-      return rs.getLong(1);
-    }
-  }
-
-  private void execute(String sql) throws SQLException {
-    try (Statement statement = connection.createStatement()) {
-      statement.execute(sql);
-    }
-  }
-
-  private boolean booleanOf(String table, String column, UUID id) throws SQLException {
-    try (Statement statement = connection.createStatement();
-        ResultSet rs =
-            statement.executeQuery(
-                "SELECT " + column + " FROM " + table + " WHERE id = '" + id + "'")) {
-      rs.next();
-      return rs.getBoolean(1);
-    }
-  }
-
-  private String quoted(String value) {
-    return value == null ? "NULL" : "'" + value + "'";
-  }
-
-  private UUID insertUser() throws SQLException {
-    UUID id = UUID.randomUUID();
-    try (Statement statement = connection.createStatement()) {
-      statement.execute(
-          "INSERT INTO users (id, subject, issuer, system_role, organization_id, created_at) "
-              + "VALUES ('"
-              + id
-              + "', '"
-              + id
-              + "', 'test-issuer', 'USER', '"
-              + SEEDED_ORGANIZATION_ID
-              + "', now())");
-    }
-    return id;
-  }
-
-  /** A plain, USER-owned, UPLOAD-sourced library - {@code SYSTEM} owners no longer exist (#521). */
-  private UUID insertLibrary(UUID ownerId) throws SQLException {
-    UUID id = UUID.randomUUID();
-    try (Statement statement = connection.createStatement()) {
-      statement.execute(
-          "INSERT INTO knowledge_libraries "
-              + "(id, organization_id, name, owner_type, owner_user_id, owner_group_id,"
-              + " visibility, listed, source_type, created_at, updated_at) VALUES ('"
-              + id
-              + "', '"
-              + SEEDED_ORGANIZATION_ID
-              + "', 'Bibliothek "
-              + id
-              + "', 'USER', '"
-              + ownerId
-              + "', NULL, 'PRIVATE', false, 'UPLOAD', now(), now())");
-    }
-    return id;
-  }
-
-  private UUID insertRssFeedLibrary(String feedUrl) throws SQLException {
-    UUID ownerId = insertUser();
-    UUID id = UUID.randomUUID();
-    try (Statement statement = connection.createStatement()) {
-      statement.execute(
-          "INSERT INTO knowledge_libraries "
-              + "(id, organization_id, name, owner_type, owner_user_id, owner_group_id,"
-              + " visibility, listed, source_type, source_url, created_at, updated_at) VALUES ('"
-              + id
-              + "', '"
-              + SEEDED_ORGANIZATION_ID
-              + "', 'Feed-Bibliothek "
-              + id
-              + "', 'USER', '"
-              + ownerId
-              + "', NULL, 'PRIVATE', false, 'RSS_FEED', '"
-              + feedUrl
-              + "', now(), now())");
-    }
-    return id;
-  }
-
-  private void insertIndexingJob(UUID libraryId, String status) throws SQLException {
-    try (Statement statement = connection.createStatement()) {
-      statement.execute(
-          "INSERT INTO indexing_jobs (id, status, started_at, last_progress_at, library_id,"
-              + " organization_id) VALUES ('"
-              + UUID.randomUUID()
-              + "', '"
-              + status
-              + "', now(), now(), '"
-              + libraryId
-              + "', '"
-              + SEEDED_ORGANIZATION_ID
-              + "')");
-    }
-  }
-
-  private UUID insertDocument(UUID libraryId, String filePath) throws SQLException {
-    return insertDocumentWithSourceType(libraryId, filePath, "HTTP_DIRECTORY");
-  }
-
-  private UUID insertDocumentWithSourceType(UUID libraryId, String filePath, String sourceType)
-      throws SQLException {
-    UUID id = UUID.randomUUID();
-    execute(
-        "INSERT INTO documents (id, file_name, file_path, status, source_type, library_id,"
-            + " organization_id) VALUES ('"
-            + id
-            + "', 'report.pdf', '"
-            + filePath
-            + "', 'INDEXED', '"
-            + sourceType
-            + "', '"
-            + libraryId
-            + "', '"
-            + SEEDED_ORGANIZATION_ID
-            + "')");
-    return id;
-  }
-
-  /** An UPLOAD-sourced row that may hang off a parent document and carry a dedup checksum. */
-  private UUID insertAttachment(UUID libraryId, String filePath, UUID parent, String checksum)
-      throws SQLException {
-    UUID id = UUID.randomUUID();
-    execute(
-        "INSERT INTO documents (id, file_name, file_path, status, source_type, library_id,"
-            + " organization_id, parent_document_id, checksum) VALUES ('"
-            + id
-            + "', 'anlage.pdf', '"
-            + filePath
-            + "', 'INDEXED', 'UPLOAD', '"
-            + libraryId
-            + "', '"
-            + SEEDED_ORGANIZATION_ID
-            + "', "
-            + (parent == null ? "NULL" : "'" + parent + "'")
-            + ", "
-            + quoted(checksum)
-            + ")");
-    return id;
-  }
-
-  private UUID insertGroup(String kind, String externalId) throws SQLException {
-    return insertGroupNamed(kind, externalId, "Gruppe " + externalId);
-  }
-
-  private UUID insertGroupNamed(String kind, String externalId, String name) throws SQLException {
-    UUID id = UUID.randomUUID();
-    execute(
-        "INSERT INTO groups (id, organization_id, kind, name, external_id) VALUES ('"
-            + id
-            + "', '"
-            + SEEDED_ORGANIZATION_ID
-            + "', '"
-            + kind
-            + "', '"
-            + name
-            + "', "
-            + quoted(externalId)
-            + ")");
-    return id;
-  }
-
-  /** {@code duration} is a PostgreSQL interval literal; {@code null} leaves the end open. */
-  private void insertImpersonationGrant(UUID holder, UUID scopeGroup, String duration)
-      throws SQLException {
-    execute(
-        "INSERT INTO diagnostic_impersonation_grants (id, organization_id, holder_user_id,"
-            + " scope_group_id, valid_from, valid_until, granted_by_user_id, granted_at) VALUES ('"
-            + UUID.randomUUID()
-            + "', '"
-            + SEEDED_ORGANIZATION_ID
-            + "', '"
-            + holder
-            + "', "
-            + (scopeGroup == null ? "NULL" : "'" + scopeGroup + "'")
-            + ", now(), "
-            + (duration == null ? "NULL" : "now() + interval '" + duration + "'")
-            + ", '"
-            + holder
-            + "', now())");
-  }
-
-  private UUID insertSourceLibrary(
-      String sourceType,
-      String sourcePath,
-      String sourceUrl,
-      String credentials,
-      String confluenceEdition,
-      String sourceSettings)
-      throws SQLException {
-    UUID id = UUID.randomUUID();
-    execute(
-        "INSERT INTO knowledge_libraries (id, organization_id, name, owner_type, owner_user_id,"
-            + " visibility, listed, source_type, source_path, source_url, source_credentials,"
-            + " source_confluence_edition, source_settings) VALUES ('"
-            + id
-            + "', '"
-            + SEEDED_ORGANIZATION_ID
-            + "', 'Bibliothek "
-            + id
-            + "', 'USER', '"
-            + insertUser()
-            + "', 'PRIVATE', false, '"
-            + sourceType
-            + "', "
-            + quoted(sourcePath)
-            + ", "
-            + quoted(sourceUrl)
-            + ", "
-            + quoted(credentials)
-            + ", "
-            + quoted(confluenceEdition)
-            + ", "
-            + (sourceSettings == null ? "NULL" : "'" + sourceSettings + "'::jsonb")
-            + ")");
-    return id;
-  }
-
-  private void insertIndexingJob(UUID libraryId, String status, String runMode, String triggeredBy)
-      throws SQLException {
-    execute(
-        "INSERT INTO indexing_jobs (id, status, run_mode, triggered_by, started_at,"
-            + " last_progress_at, library_id, organization_id) VALUES ('"
-            + UUID.randomUUID()
-            + "', '"
-            + status
-            + "', '"
-            + runMode
-            + "', '"
-            + triggeredBy
-            + "', now(), now(), '"
-            + libraryId
-            + "', '"
-            + SEEDED_ORGANIZATION_ID
-            + "')");
-  }
-
-  private void insertConfluenceSpace(UUID libraryId, String spaceKey) throws SQLException {
-    execute(
-        "INSERT INTO knowledge_library_confluence_spaces (library_id, space_key, space_name) VALUES"
-            + " ('"
-            + libraryId
-            + "', '"
-            + spaceKey
-            + "', 'Engineering')");
-  }
-
-  private void insertSourceSyncState(UUID libraryId) throws SQLException {
-    execute(
-        "INSERT INTO source_sync_state (id, library_id, updated_at) VALUES ('"
-            + UUID.randomUUID()
-            + "', '"
-            + libraryId
-            + "', now())");
-  }
-
-  private void insertVocabularyValue(UUID documentId, String code) throws SQLException {
-    execute(
-        "INSERT INTO document_metadata_values (id, document_id, field_key, vocabulary_code, origin,"
-            + " extraction_version, created_at, updated_at) VALUES ('"
-            + UUID.randomUUID()
-            + "', '"
-            + documentId
-            + "', 'document_type', '"
-            + code
-            + "', 'DETERMINISTIC', 1, now(), now())");
-  }
-
-  /** Never sets {@code extraction_version} - only a MANUAL value may omit it. */
-  private void insertMetadataValue(
-      UUID documentId,
-      String fieldKey,
-      String valueState,
-      String textValue,
-      String isoDate,
-      String origin)
-      throws SQLException {
-    execute(
-        "INSERT INTO document_metadata_values (id, document_id, field_key, value_state, text_value,"
-            + " date_value, origin, created_at, updated_at) VALUES ('"
-            + UUID.randomUUID()
-            + "', '"
-            + documentId
-            + "', '"
-            + fieldKey
-            + "', '"
-            + valueState
-            + "', "
-            + quoted(textValue)
-            + ", "
-            + (isoDate == null ? "NULL" : "'" + isoDate + "'::date")
-            + ", '"
-            + origin
-            + "', now(), now())");
-  }
-
-  private UUID insertLibraryField(
-      UUID libraryId,
-      String fieldKey,
-      boolean filterEnabled,
-      boolean contextPrefixEnabled,
-      Integer citationPosition)
-      throws SQLException {
-    UUID id = UUID.randomUUID();
-    execute(
-        "INSERT INTO library_metadata_fields (id, library_id, field_key, label, field_type,"
-            + " filter_enabled, context_prefix_enabled, citation_enabled, citation_position,"
-            + " sort_order, created_at, updated_at) VALUES ('"
-            + id
-            + "', '"
-            + libraryId
-            + "', '"
-            + fieldKey
-            + "', 'Label', 'SELECT', "
-            + filterEnabled
-            + ", "
-            + contextPrefixEnabled
-            + ", "
-            + (citationPosition != null)
-            + ", "
-            + (citationPosition == null ? "NULL" : citationPosition)
-            + ", 10, now(), now())");
-    return id;
-  }
-
-  private UUID insertLibraryFieldValue(UUID fieldId, String code) throws SQLException {
-    UUID id = UUID.randomUUID();
-    execute(
-        "INSERT INTO library_metadata_field_values (id, field_id, code, label, sort_order) VALUES"
-            + " ('"
-            + id
-            + "', '"
-            + fieldId
-            + "', '"
-            + code
-            + "', 'Label', 10)");
-    return id;
-  }
-
-  private void insertLibraryValue(UUID documentId, String fieldKey, UUID fieldId, UUID valueId)
-      throws SQLException {
-    execute(
-        "INSERT INTO document_metadata_values (id, document_id, field_key, text_value,"
-            + " library_field_id, library_value_id, origin, created_at, updated_at) VALUES ('"
-            + UUID.randomUUID()
-            + "', '"
-            + documentId
-            + "', '"
-            + fieldKey
-            + "', 'Fassung 2026', '"
-            + fieldId
-            + "', '"
-            + valueId
-            + "', 'MANUAL', now(), now())");
-  }
-
-  private void insertOidcProvider(String displayName, String issuerUri, boolean isDefault)
-      throws SQLException {
-    execute(
-        "INSERT INTO oidc_providers (id, display_name, enabled, is_default, issuer_uri, client_id)"
-            + " VALUES (gen_random_uuid(), '"
-            + displayName
-            + "', true, "
-            + isDefault
-            + ", '"
-            + issuerUri
-            + "', 'opaa-frontend')");
-  }
-
-  private void insertRejection(UUID libraryId, UUID documentId, String reason) throws SQLException {
-    execute(
-        "INSERT INTO metadata_model_rejections (id, library_id, document_id, field_key,"
-            + " proposed_value, confidence, reason) VALUES ('"
-            + UUID.randomUUID()
-            + "', '"
-            + libraryId
-            + "', '"
-            + documentId
-            + "', 'document_type', 'Rundschreiben', 0.4, '"
-            + reason
-            + "')");
-  }
-
-  private void insertKeyword(UUID documentId, UUID libraryId, String keyword) throws SQLException {
-    execute(
-        "INSERT INTO document_keywords (id, document_id, library_id, keyword) VALUES ('"
-            + UUID.randomUUID()
-            + "', '"
-            + documentId
-            + "', '"
-            + libraryId
-            + "', '"
-            + keyword
-            + "')");
-  }
-
-  private void insertChunkFullText(UUID chunkId, String content) throws SQLException {
-    execute(
-        "INSERT INTO chunk_full_text (chunk_id, document_id, library_id, content_tsv) VALUES ('"
-            + chunkId
-            + "', '"
-            + UUID.randomUUID()
-            + "', '"
-            + UUID.randomUUID()
-            + "', to_tsvector('german', '"
-            + content
-            + "'))");
-  }
-
-  private void insertFeedState(UUID libraryId, String feedUrl, String etag) throws SQLException {
-    try (Statement statement = connection.createStatement()) {
-      statement.execute(
-          "INSERT INTO rss_feed_state (id, library_id, feed_url, etag, updated_at) VALUES ('"
-              + UUID.randomUUID()
-              + "', '"
-              + libraryId
-              + "', '"
-              + feedUrl
-              + "', '"
-              + etag
-              + "', '"
-              + Instant.now()
-              + "')");
-    }
-  }
-
-  private boolean feedStateExists(UUID libraryId, String feedUrl) throws SQLException {
-    try (Statement statement = connection.createStatement();
-        ResultSet result =
-            statement.executeQuery(
-                "SELECT count(*) FROM rss_feed_state WHERE library_id = '"
-                    + libraryId
-                    + "' AND feed_url = '"
-                    + feedUrl
-                    + "'")) {
-      result.next();
-      return result.getInt(1) > 0;
-    }
   }
 }

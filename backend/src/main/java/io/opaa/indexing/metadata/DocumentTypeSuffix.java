@@ -4,11 +4,11 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 
 /**
- * One seeded Kompositum ending of a Dokumentart (migration 020): a token that <em>ends</em> on
- * {@code suffix} and carries at least {@code minPrefixLength} further characters in front of it
- * denotes this Dokumentart - {@code verwaltungsgebuehrensatzung} is a Satzung, {@code anordnung} is
- * not an Ordnung. Deterministic string comparison, no distance measure; the seed is where an
- * installation tunes both the endings and the minimum, not the code.
+ * One seeded Kompositum ending of a Dokumentart: a token that <em>ends</em> on {@code suffix} and
+ * carries at least {@code minPrefixLength} further characters in front of it denotes this
+ * Dokumentart - {@code verwaltungsgebuehrensatzung} is a Satzung, {@code anordnung} is not an
+ * Ordnung. Deterministic string comparison, no distance measure; the seed is where an installation
+ * tunes both the endings and the minimum, not the code.
  */
 @Embeddable
 public class DocumentTypeSuffix {

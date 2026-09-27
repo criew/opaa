@@ -24,10 +24,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * #1536, ADR-0033 Entscheidung 10: {@link MailSettingsService} against a real Postgres with the
- * versioned Liquibase schema (changeset 011). Covers what a mocked repository could not - that the
- * password really is only ever in the database as ciphertext, that the three-way {@code ***} rule
- * behaves, that the audit entry carries no password value, and that the snapshot every send reads
- * follows a committed change without a restart.
+ * versioned Liquibase schema. Covers what a mocked repository could not - that the password really
+ * is only ever in the database as ciphertext, that the three-way {@code ***} rule behaves, that the
+ * audit entry carries no password value, and that the snapshot every send reads follows a committed
+ * change without a restart.
  *
  * <p>Carries the canonical {@link OpaaIntegrationTest} signature (AGENTS.md,
  * "Spring-Testkontexte"), so it shares one context and one container with the other classes on that

@@ -153,7 +153,7 @@ class IndexingJobServiceTest {
     // DocumentIndexingService's own isJobRunning check and this
     // insert are not atomic - a concurrent second trigger for the same library can pass that check
     // before either has inserted, so the database's partial unique index
-    // (uk_indexing_jobs_library_running, migration 028) is the guard that actually always holds.
+    // (uk_indexing_jobs_library_running) is the guard that actually always holds.
     UUID libraryId = UUID.randomUUID();
     when(indexingJobRepository.saveAndFlush(any(IndexingJob.class)))
         .thenThrow(new DataIntegrityViolationException("duplicate key"));

@@ -12,9 +12,9 @@ import org.springframework.transaction.annotation.Transactional;
  * or extend a run - the configured period alone decides what a call removes, and the application
  * account could not remove a single row even if this class tried.
  *
- * <p>A shortening of the period takes effect with the next pass, in full (changeset 078, #1851); a
- * lengthening takes effect at once and takes nothing back, since {@code last_cutoff} is a
- * high-water mark that never moves backwards.
+ * <p>A shortening of the period takes effect with the next pass, in full (#1851); a lengthening
+ * takes effect at once and takes nothing back, since {@code last_cutoff} is a high-water mark that
+ * never moves backwards.
  */
 @Service
 public class DiagnosticContextRetentionDeletionService {

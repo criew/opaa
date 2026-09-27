@@ -13,11 +13,11 @@ import java.util.Set;
 import org.hibernate.annotations.BatchSize;
 
 /**
- * One delivered Dokumentart (migration 018 seed): a stable code that never changes once documents
+ * One delivered Dokumentart (baseline seed): a stable code that never changes once documents
  * reference it, its German label, the synonyms {@link DocumentTypeVocabulary} matches exactly
- * against, and - since migration 020 - the Kompositum endings it may additionally be recognized by,
- * plus the tokens those endings must never claim. Read-only from the application's point of view -
- * an installation extends the lists by inserting rows.
+ * against, and the Kompositum endings it may additionally be recognized by, plus the tokens those
+ * endings must never claim. Read-only from the application's point of view - an installation
+ * extends the lists by inserting rows.
  */
 @Entity
 @Table(name = "document_type_vocabulary")

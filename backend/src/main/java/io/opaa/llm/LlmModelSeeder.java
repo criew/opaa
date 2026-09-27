@@ -156,7 +156,7 @@ class LlmModelSeeder {
       // is retried on every subsequent start until it either succeeds or the operator adds a
       // model by hand in the meantime - the very fallback this class's own ERROR log recommends.
       // Without this check, that hand-added model would collide with the retried takeover the
-      // next time it runs: ux_llm_models_single_active (migration 058) if the seeded model were
+      // next time it runs: ux_llm_models_single_active if the seeded model were
       // activated too, or a silent second row - either way, a taken-over environment
       // configuration the operator never asked for once the key finally is set. The marker
       // still is the primary guard (PR #763 review) for the ordinary case; this is only reached

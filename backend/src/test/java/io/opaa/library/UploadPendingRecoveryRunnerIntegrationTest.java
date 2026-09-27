@@ -34,8 +34,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * Runs {@link UploadPendingRecoveryRunner} against a real Postgres database with the real,
  * versioned Liquibase schema applied - the same {@code spring.liquibase.enabled=true}, {@code
  * ddl-auto=none} pattern {@code LibraryDocumentServiceIntegrationTest} uses, needed here because
- * {@code documents.created_at} (migration 041) only exists once Liquibase has actually run
- * (AGENTS.md, "Reproduktionsnachweis").
+ * {@code documents.created_at} only exists once Liquibase has actually run (AGENTS.md,
+ * "Reproduktionsnachweis").
  *
  * <p>Calls {@link UploadPendingRecoveryRunner#run} directly rather than relying on it having
  * already run once at this test class's own {@code @SpringBootTest} context startup - the rows this

@@ -230,7 +230,7 @@ public class GroupService {
    * <p>Also filters to the caller's organization, mirroring {@link #listGroups}: as of migration
    * 047 this filter is structurally unreachable, not merely unexercised - {@code
    * fk_group_memberships_user_organization} (composite on {@code user_id, organization_id}) and
-   * {@code fk_group_memberships_group_organization} (migration 009, composite on {@code group_id,
+   * {@code fk_group_memberships_group_organization} (composite on {@code group_id,
    * organization_id}) together force a membership row's {@code organization_id} to match both the
    * member's and the group's actual organization, so no row this filter would ever reject can exist
    * in the first place - see {@code

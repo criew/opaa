@@ -42,16 +42,15 @@ import org.springframework.transaction.support.TransactionTemplate;
  * spring.liquibase.enabled=true}, {@code ddl-auto=none}), not Hibernate-generated DDL - see #308.
  * {@code KnowledgeLibrary.ownerGroupId} and {@code AssetGrant.subjectGroupId} carry composite
  * foreign keys against {@code groups(id, organization_id)} ({@code
- * fk_knowledge_libraries_owner_group_organization}, migration 012; {@code
- * fk_asset_grants_subject_group_organization}, migration 013) that only the versioned changelog
- * creates - Hibernate's {@code create-drop} schema (used here before #308) never materialised
- * either constraint, so {@link #cannotDeleteAGroupThatStillOwnsALibrary} could not actually prove
- * the {@link GroupService#deleteGroup} guard against {@code
+ * fk_assets_owner_group_organization}; {@code fk_asset_grants_subject_group_organization}) that
+ * only the versioned changelog creates - Hibernate's {@code create-drop} schema (used here before
+ * #308) never materialised either constraint, so {@link #cannotDeleteAGroupThatStillOwnsALibrary}
+ * could not actually prove the {@link GroupService#deleteGroup} guard against {@code
  * fk_knowledge_libraries_owner_group_organization}: without the guard it failed with "expected a
  * throwable to be thrown" instead of the real foreign-key violation the guard exists to turn into a
  * clean 409 (see #200/#201/#305). {@code groups.organization_id} and {@code users.organization_id}
- * are also real, RESTRICT foreign keys to {@code organizations} (migrations 009/008), so every test
- * below creates real {@link Organization} rows instead of bare random UUIDs, mirroring {@code
+ * are also real, RESTRICT foreign keys to {@code organizations}, so every test below creates real
+ * {@link Organization} rows instead of bare random UUIDs, mirroring {@code
  * SpaceServiceIntegrationTest} and {@code UserServicePersonalSpaceIntegrationTest} (#288).
  *
  * <p>Unlike the narrower JPA test slice this class used to be, plain {@code @SpringBootTest} test
@@ -113,7 +112,7 @@ class GroupServiceIntegrationTest {
                     l.getOrganizationId().equals(organizationA)
                         || l.getOrganizationId().equals(organizationB))
             .toList());
-    // #238: group_membership_history.user_id is ON DELETE RESTRICT (migration 018) - deleteGroup
+    // #238: group_membership_history.user_id is ON DELETE RESTRICT - deleteGroup
     // writes one row per removed member before the group itself is deleted, so those rows must be
     // purged before the users below can go.
     membershipHistoryRepository.deleteByUserIdIn(createdUserIds);
@@ -127,7 +126,7 @@ class GroupServiceIntegrationTest {
     userRepository.deleteAllById(createdUserIds);
     // #392: GroupService writes real audit_log rows now that this class runs against the real
     // schema - audit_log is insert-only at the application layer and fk_audit_log_organization is
-    // ON DELETE RESTRICT (migration 017), so these must be purged via JdbcTemplate before the
+    // ON DELETE RESTRICT, so these must be purged via JdbcTemplate before the
     // organizations below can go, exactly like AuditEventRecordingIntegrationTest#tearDown.
     jdbcTemplate.update(
         "DELETE FROM audit_log WHERE organization_id IN (?, ?)", organizationA, organizationB);
@@ -444,7 +443,7 @@ class GroupServiceIntegrationTest {
     // #308: this test used to construct a cross-organization membership row directly against the
     // repository (bypassing addMember's requireUserInOrganization check) to prove listMyGroups'
     // own filter as a second, independent defense line - see #199/PR #305's review. Against the
-    // real Liquibase schema, fk_group_memberships_user_organization (migration 047's composite key
+    // real Liquibase schema, fk_group_memberships_user_organization (a composite key
     // on user_id, organization_id) now rejects such a row outright: organization_id can no longer
     // diverge from the member's actual organization at all, so there is nothing left for
     // listMyGroups' own filter to defend against by construction, only by the database itself.

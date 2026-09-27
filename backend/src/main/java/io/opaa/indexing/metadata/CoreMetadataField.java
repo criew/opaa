@@ -4,7 +4,7 @@ package io.opaa.indexing.metadata;
  * The three built-in core fields (metadata-schema.md, Teil II (a)), their persisted {@code
  * field_key} and the German label every display of the field uses. A library-defined field gets its
  * own key namespace beside these; the keys here are pinned by {@code
- * chk_document_metadata_values_core_field_type} in migration 018.
+ * chk_document_metadata_values_core_field_type}.
  */
 public enum CoreMetadataField {
   TITLE("title", "Titel"),

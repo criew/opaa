@@ -47,12 +47,12 @@ import org.springframework.web.multipart.MultipartFile;
  * Runs {@link LibraryFolderService} against a real Postgres database with the real, versioned
  * Liquibase schema applied ({@code spring.liquibase.enabled=true}, {@code ddl-auto=none}) - mirrors
  * {@code LibraryDocumentServiceIntegrationTest}, needed here because {@code
- * fk_library_folders_parent}/{@code fk_documents_folder} (migration 062) and the two partial unique
- * indexes {@code uk_library_folders_root_name}/{@code uk_library_folders_child_name} are real,
- * enforced constraints that {@code ddl-auto=create-drop} would not generate from the entity mapping
- * alone (AGENTS.md, "Reproduktionsnachweis"). Exercises the #820 acceptance criteria end to end:
- * nested creation, renaming, a name conflict on the same level, the EDITOR/UPLOAD-only gates, and -
- * the part a mocked {@link LibraryDocumentService} in the unit test cannot prove - that a recursive
+ * fk_library_folders_parent}/{@code fk_documents_folder} and the two partial unique indexes {@code
+ * uk_library_folders_root_name}/{@code uk_library_folders_child_name} are real, enforced
+ * constraints that {@code ddl-auto=create-drop} would not generate from the entity mapping alone
+ * (AGENTS.md, "Reproduktionsnachweis"). Exercises the #820 acceptance criteria end to end: nested
+ * creation, renaming, a name conflict on the same level, the EDITOR/UPLOAD-only gates, and - the
+ * part a mocked {@link LibraryDocumentService} in the unit test cannot prove - that a recursive
  * delete actually removes every contained document's row, vector store chunks and stored file.
  */
 @OpaaIntegrationTest
@@ -190,7 +190,7 @@ class LibraryFolderServiceIntegrationTest {
   @Test
   void concurrentCreatesOfTheSameFolderNameProduceExactlyOneFolder() throws Exception {
     // Review finding on PR #827: the sequential ensureNameAvailable pre-check alone cannot close
-    // this race - only uk_library_folders_root_name (migration 062) can, and only a genuine
+    // this race - only uk_library_folders_root_name can, and only a genuine
     // concurrent attempt (real threads, real Postgres) exercises it rather than the sequential
     // fast-path check the mocked LibraryFolderServiceTest is limited to. Also proves
     // createFolder's saveAndFlush (not a plain save) actually surfaces the unique violation inside

@@ -32,9 +32,9 @@ public class AuditRetentionDeletionService {
    * Runs one deletion pass. Idempotent and safe to call more often than the schedule requires - a
    * second call in the same calendar month reaches the same cutoff and finds nothing left.
    *
-   * <p>A shortening of the period takes effect with the next pass, in full (changeset 078, #1851);
-   * a lengthening takes effect at once and takes nothing back, since {@code last_cutoff} is a
-   * high-water mark that never moves backwards.
+   * <p>A shortening of the period takes effect with the next pass, in full (#1851); a lengthening
+   * takes effect at once and takes nothing back, since {@code last_cutoff} is a high-water mark
+   * that never moves backwards.
    */
   @Transactional
   public List<String> runOnce() {

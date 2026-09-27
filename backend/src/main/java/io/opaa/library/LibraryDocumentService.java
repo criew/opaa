@@ -288,7 +288,7 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
           throw new ConflictException("Diese Datei ist bereits in dieser Bibliothek vorhanden");
         }
         // #589 review, item 3: a FAILED row must not block a retry of the same file forever - the
-        // per-library dedup check above (and uk_documents_library_checksum, migration 020) can't
+        // per-library dedup check above (and uk_documents_library_checksum) can't
         // otherwise tell "this content already succeeded" from "this content failed once and the
         // user is trying again", so it replaces the old FAILED row instead of rejecting the new
         // upload. A FAILED connector row can legitimately still have chunks since #1268 (a version
@@ -327,7 +327,7 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
       document.setUploadedByUserId(currentUserId);
       document.setFolderId(effectiveFolderId);
       // Set on this first (and only synchronous) save: this is where a concurrent duplicate
-      // upload race against uk_documents_library_checksum (migration 020) is meant to be settled -
+      // upload race against uk_documents_library_checksum is meant to be settled -
       // before any embedding work starts, not after (#420 second code review round, finding 1,
       // still true now that the embedding work itself has moved off this thread entirely).
       document.setChecksum(checksum);
@@ -377,7 +377,7 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
       storedRow = document;
     } catch (DataIntegrityViolationException e) {
       // #821 review round 1, finding 5: the save() above can violate two different constraints,
-      // and they must not share one message. fk_documents_folder (migration 062) fires when
+      // and they must not share one message. fk_documents_folder fires when
       // folderId - already confirmed to exist by resolveFolder above - is deleted by a concurrent
       // request in the narrow window between that check and this INSERT; without this
       // distinction, that race surfaced as the same "Diese Datei ist bereits in dieser Bibliothek
@@ -390,7 +390,7 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
       // Race-safety net for the findByLibraryIdAndChecksum check above (#420 code review, nit 5):
       // that check and the eventual INSERT are two separate steps with no database guarantee
       // between them, so two concurrent uploads of the same file into the same library could both
-      // pass it. uk_documents_library_checksum (migration 020) is the actual guarantee; this maps
+      // pass it. uk_documents_library_checksum is the actual guarantee; this maps
       // its violation - and any other DataIntegrityViolationException this INSERT could still
       // raise - to the same 409 the sequential check already produces, kept as the neutral
       // fallback rather than assuming every violation is the folder race handled above.
@@ -1041,9 +1041,9 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
   }
 
   /**
-   * Whether {@code e} was raised by {@code fk_documents_folder} (migration 062) specifically, not
-   * {@code uk_documents_library_checksum} or anything else {@code documentRepository.save} could
-   * violate (#821 review round 1, finding 5) - inspects the wrapped Hibernate {@link
+   * Whether {@code e} was raised by {@code fk_documents_folder} specifically, not {@code
+   * uk_documents_library_checksum} or anything else {@code documentRepository.save} could violate
+   * (#821 review round 1, finding 5) - inspects the wrapped Hibernate {@link
    * ConstraintViolationException}'s own {@code constraintName} (populated from the database
    * driver's error detail, {@code PostgreSQLDialect}'s violated-constraint-name extractor for
    * Postgres) rather than guessing from {@link DataIntegrityViolationException#getMessage()} alone,

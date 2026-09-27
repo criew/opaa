@@ -8,8 +8,10 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -21,23 +23,31 @@ import org.junit.jupiter.api.Test;
  * constructor lets through but the column rejects surfaces as a failed write in production, and one
  * the column lets through but the converter rejects takes down every entity read of the table.
  *
- * <p>Reads both regexes out of the changesets rather than restating them here - a copy in the test
+ * <p>Reads the regexes out of the baseline rather than restating them here - a copy in the test
  * would drift with the same silence as the copy it is meant to catch. Length is deliberately not
  * compared: the column's own {@code varchar(30)} holds that half, and {@link AssetType} refuses it
  * one layer earlier.
  */
 class AssetTypeFormatParityTest {
 
-  private static final List<Path> CHANGESETS =
-      List.of(
-          Path.of("src/main/resources/db/changelog/changes/038-asset-grants-type-independent.yaml"),
-          Path.of(
-              "src/main/resources/db/changelog/changes/"
-                  + "039-asset-grant-history-type-independent.yaml"));
+  private static final Path BASELINE =
+      Path.of("src/main/resources/db/changelog/changes/001-baseline.yaml");
 
-  /** {@code CHECK ((asset_type ~ '...'))} as the changesets write it. */
+  /** Every table that names an asset by type and id, each with its own format check. */
+  private static final Set<String> TYPE_INDEPENDENT_TABLES =
+      Set.of(
+          "assets",
+          "asset_grants",
+          "asset_grant_history",
+          "asset_ownership_history",
+          "asset_visibility_history",
+          "permission_transfer_objects");
+
+  /** {@code CONSTRAINT chk_<table>_asset_type_format CHECK (...)} as the baseline writes it. */
   private static final Pattern FORMAT_CHECK =
-      Pattern.compile("CHECK\\s*\\(\\(asset_type\\s*~\\s*'([^']+)'\\)\\)");
+      Pattern.compile(
+          "CONSTRAINT chk_(\\w+)_asset_type_format CHECK \\(\\(\\(asset_type\\)::text ~"
+              + " '([^']+)'::text\\)\\)");
 
   /**
    * Probes on both sides of every rule either expression states: case, first character, allowed
@@ -65,20 +75,18 @@ class AssetTypeFormatParityTest {
           "PROMPT_LIBRARY\n");
 
   @Test
-  void bothChangesetsStateTheSameFormat() {
-    Set<String> expressions = new LinkedHashSet<>();
-    for (Path changeset : CHANGESETS) {
-      expressions.add(formatExpressionOf(changeset));
-    }
+  void everyTypeIndependentTableStatesTheSameFormat() {
+    Map<String, String> expressions = formatExpressions();
 
-    assertThat(expressions)
-        .as("the live table and its history must accept the same asset types")
+    assertThat(expressions.keySet()).containsExactlyInAnyOrderElementsOf(TYPE_INDEPENDENT_TABLES);
+    assertThat(new LinkedHashSet<>(expressions.values()))
+        .as("the shell, the grants and every history must accept the same asset types")
         .hasSize(1);
   }
 
   @Test
   void theDatabaseCheckAcceptsExactlyWhatAssetTypeAccepts() {
-    Pattern databaseCheck = asPostgresWouldApplyIt(formatExpressionOf(CHANGESETS.getFirst()));
+    Pattern databaseCheck = asPostgresWouldApplyIt(formatExpression());
 
     for (String probe : PROBES) {
       boolean acceptedByDatabase = databaseCheck.matcher(probe).find();
@@ -97,7 +105,7 @@ class AssetTypeFormatParityTest {
    */
   @Test
   void theDatabaseCheckIsAnchoredAtBothEnds() {
-    String expression = formatExpressionOf(CHANGESETS.getFirst());
+    String expression = formatExpression();
 
     assertThat(expression).startsWith("^").endsWith("$");
   }
@@ -112,10 +120,20 @@ class AssetTypeFormatParityTest {
     return Pattern.compile("\\A" + expression.substring(1, expression.length() - 1) + "\\z");
   }
 
-  private static String formatExpressionOf(Path changeset) {
-    Matcher check = FORMAT_CHECK.matcher(read(changeset));
-    assertThat(check.find()).as("%s must carry a format check on asset_type", changeset).isTrue();
-    return check.group(1);
+  /** The format expression per table, as the baseline states it. */
+  private static Map<String, String> formatExpressions() {
+    Map<String, String> expressions = new LinkedHashMap<>();
+    Matcher check = FORMAT_CHECK.matcher(read(BASELINE));
+    while (check.find()) {
+      expressions.put(check.group(1), check.group(2));
+    }
+    return expressions;
+  }
+
+  private static String formatExpression() {
+    String expression = formatExpressions().get("asset_grants");
+    assertThat(expression).as("asset_grants must carry a format check on asset_type").isNotNull();
+    return expression;
   }
 
   private static String quoted(String probe) {

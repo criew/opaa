@@ -68,7 +68,7 @@ public class PermissionHistoryRetentionDeletionService {
                     new IllegalStateException(
                         "permission_history_retention_settings has no row with id="
                             + PermissionHistoryRetentionSettings.SINGLETON_ID
-                            + " - changelog 045 should have seeded it; refusing to silently skip"
+                            + " - the baseline should have seeded it; refusing to silently skip"
                             + " the retention deletion"));
 
     Instant cutoff = cutoffFor(settings.getRetentionMonths());

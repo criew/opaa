@@ -90,10 +90,10 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  *
  * <p>A third owner kind, {@code SYSTEM}, existed from #201 until #521: exactly one library per
  * organization, seeded {@code PRIVATE} with no grants and reachable only to a system administrator.
- * #521 deleted that library and its content outright (migration {@code
- * 031-delete-system-library.yaml}) rather than keep carrying the special case - see the issue and
- * the deleted {@code LibraryOwnerType.SYSTEM} for the history. Every library now has a real owner,
- * and {@link #createLibrary}/{@link #deleteLibrary} carry no owner-kind-specific exception.
+ * #521 deleted that library and its content outright (by a data migration) rather than keep
+ * carrying the special case - see the issue and the deleted {@code LibraryOwnerType.SYSTEM} for the
+ * history. Every library now has a real owner, and {@link #createLibrary}/{@link #deleteLibrary}
+ * carry no owner-kind-specific exception.
  *
  * <p>An automatically provisioned personal library (the {@code personal} flag, {@code
  * ensurePersonalLibrary}) existed from #201 until #522: every user's first login used to create a
@@ -594,7 +594,7 @@ public class KnowledgeLibraryService {
           "Die Bibliothek wird gerade indiziert und kann erst nach Abschluss des Laufs gelöscht"
               + " werden");
     }
-    // fk_documents_library_organization is RESTRICT (migration 012): deleting a library that
+    // fk_documents_library_organization is RESTRICT: deleting a library that
     // still contains documents would otherwise surface as an unhandled
     // DataIntegrityViolationException -> HTTP 500 with no indication of the actual cause.
     // ADR-0018, Entscheidung 5: the "blocked while non-empty" guard stays in force only for
@@ -1102,8 +1102,7 @@ public class KnowledgeLibraryService {
    * (#485) and returns the {@code (enabled, cron)} pair {@link KnowledgeLibrary#updateSchedule}
    * takes - {@code cron} built by {@link LibraryScheduleCodec#toCron}. Rejects a schedule on a
    * {@code UPLOAD} library outright (#485, Zuschnitt 21.08.2026: "nur Konnektorbibliotheken"),
-   * mirroring the database's own {@code chk_knowledge_libraries_schedule} (migration 054) as a
-   * 400-before-insert.
+   * mirroring the database's own {@code chk_knowledge_libraries_schedule} as a 400-before-insert.
    */
   private ValidatedSchedule validateSchedule(LibraryScheduleUpdate request, SourceType sourceType) {
     ScheduleFrequency frequency = request.frequency();

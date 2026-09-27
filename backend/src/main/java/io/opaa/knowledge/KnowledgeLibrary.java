@@ -137,8 +137,8 @@ public class KnowledgeLibrary extends Asset {
    * no longer be decrypted (key lost/rotated, corrupted value), in which case the converter logs a
    * warning and this field reads as {@code null} rather than failing the whole load (PR #504
    * review). The column itself holds {@code enc:v1:<base64>} (or a legacy pre-#483 cleartext value,
-   * see that converter's Javadoc). Column width (3000, migration 029) accounts for the encrypted
-   * encoding of the 500-character plaintext {@code LibraryRequest.sourceCredentials} still allows.
+   * see that converter's Javadoc). Column width (3000) accounts for the encrypted encoding of the
+   * 500-character plaintext {@code LibraryRequest.sourceCredentials} still allows.
    */
   @Convert(converter = SourceCredentialsConverter.class)
   @Column(name = "source_credentials", length = 3000)
@@ -170,17 +170,17 @@ public class KnowledgeLibrary extends Asset {
   /**
    * Whether this library's indexing runs are triggered automatically on a schedule (#485) - always
    * {@code false} for {@code UPLOAD} (no run exists for it at all, {@link SourceType#UPLOAD}) and
-   * enforced by {@code chk_knowledge_libraries_schedule} (migration 051) alongside {@link
-   * #scheduleCron}. See {@link #updateSchedule} for how the pair changes together.
+   * enforced by {@code chk_knowledge_libraries_schedule} alongside {@link #scheduleCron}. See
+   * {@link #updateSchedule} for how the pair changes together.
    */
   @Column(name = "schedule_enabled", nullable = false)
   private boolean scheduleEnabled;
 
   /**
    * The schedule as a cron expression, non-null exactly when {@link #scheduleEnabled} is {@code
-   * true} (migration 054's check constraint) - never a raw value a client sends: {@code
-   * LibraryScheduleCodec} is the only place that turns the four UI intervalstufen (#485, Zuschnitt
-   * 21.08.2026) into this string and back.
+   * true} (a check constraint) - never a raw value a client sends: {@code LibraryScheduleCodec} is
+   * the only place that turns the four UI intervalstufen (#485, Zuschnitt 21.08.2026) into this
+   * string and back.
    */
   @Column(name = "schedule_cron", length = 100)
   private String scheduleCron;
@@ -264,8 +264,7 @@ public class KnowledgeLibrary extends Asset {
 
   /**
    * Convenience overload for callers that do not care about the quellentyp - defaults to {@link
-   * SourceType#UPLOAD} with no configuration, the type every library predating ADR-0018 has after
-   * migration 027's backfill.
+   * SourceType#UPLOAD} with no configuration, the type every library predating ADR-0018 was given.
    */
   public static KnowledgeLibrary ownedByUser(
       UUID organizationId, String name, String description, UUID ownerUserId, boolean listed) {

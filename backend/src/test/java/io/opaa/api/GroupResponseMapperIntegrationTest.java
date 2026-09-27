@@ -59,13 +59,13 @@ class GroupResponseMapperIntegrationTest {
         groupRepository.findAll().stream()
             .filter(g -> g.getOrganizationId().equals(organizationId))
             .toList());
-    // #238: group_membership_history.user_id is ON DELETE RESTRICT (migration 018) - addMember
+    // #238: group_membership_history.user_id is ON DELETE RESTRICT - addMember
     // writes one row per added member, so those rows must be purged before the users below can go
     // (mirrors GroupServiceIntegrationTest#tearDown).
     membershipHistoryRepository.deleteByUserIdIn(createdUserIds);
     userRepository.deleteAllById(createdUserIds);
     // #392: GroupService writes audit_log rows for GROUP_CREATED/GROUP_MEMBER_ADDED, and
-    // fk_audit_log_organization is ON DELETE RESTRICT (migration 017) - mirrors
+    // fk_audit_log_organization is ON DELETE RESTRICT - mirrors
     // GroupServiceIntegrationTest#tearDown.
     jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organizationId);
     organizationRepository.deleteById(organizationId);

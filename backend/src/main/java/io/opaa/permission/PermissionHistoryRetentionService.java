@@ -123,7 +123,7 @@ public class PermissionHistoryRetentionService {
                 new IllegalStateException(
                     "permission_history_retention_settings has no row with id="
                         + PermissionHistoryRetentionSettings.SINGLETON_ID
-                        + " - changelog 045 should have seeded it"));
+                        + " - the baseline should have seeded it"));
   }
 
   private void requireSystemAdmin(CurrentUser actor) {

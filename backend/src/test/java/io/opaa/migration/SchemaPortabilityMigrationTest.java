@@ -23,7 +23,8 @@ import org.junit.jupiter.api.Test;
  * the application configures it (ADR-0034): the connection's {@code search_path} starts with the
  * target schema, followed by {@code public}, and Liquibase's default schema names it. Every object
  * of OPAA must land in the target schema, and the SECURITY DEFINER functions must pin exactly that
- * schema in their own {@code search_path}.
+ * schema in their own {@code search_path}. The session runs fourteen hours off UTC, so a seed that
+ * followed the session zone instead of UTC shows as well.
  */
 class SchemaPortabilityMigrationTest extends AbstractMigrationTest {
 
@@ -46,6 +47,7 @@ class SchemaPortabilityMigrationTest extends AbstractMigrationTest {
       statement.execute("DROP TABLE public.databasechangelog, public.databasechangeloglock");
       statement.execute("CREATE SCHEMA " + SCHEMA);
       statement.execute("SET search_path TO " + SCHEMA + ", public");
+      statement.execute("SET TIME ZONE 'Pacific/Kiritimati'");
     }
     applyMasterChangelog();
   }
@@ -116,6 +118,21 @@ class SchemaPortabilityMigrationTest extends AbstractMigrationTest {
     strings("SELECT * FROM opaa_diagnostic_context_delete_expired_partitions()");
 
     assertThat(strings("SELECT last_run_month::text FROM audit_retention_settings")).hasSize(1);
+  }
+
+  /**
+   * The rights history's deletion pass computes its target month in UTC, so the seeded progress
+   * must be midnight on the first of a month read in UTC - otherwise it sits hours beside that
+   * target for ever and every pass reports a period that is "not fully effective yet".
+   */
+  @Test
+  void seedsThePermissionHistoryRetentionProgressOnAUtcMonthBoundary() throws SQLException {
+    assertThat(
+            strings(
+                "SELECT ((last_cutoff AT TIME ZONE 'UTC')::time = time '00:00:00'"
+                    + " AND date_part('day', last_cutoff AT TIME ZONE 'UTC') = 1)::text"
+                    + " FROM permission_history_retention_settings WHERE id = 1"))
+        .containsExactly("true");
   }
 
   @Test

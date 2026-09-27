@@ -56,11 +56,11 @@ import org.testcontainers.utility.DockerImageName;
  * <p><b>Cluster-wide roles are not part of this optimization and remain each subclass's own
  * responsibility.</b> {@code CREATE ROLE}/{@code DROP ROLE} (e.g. for {@code opaa_audit_owner},
  * created by the baseline's audit-log privilege restriction, see {@code
- * db/changelog/changes/001-baseline.yaml}, group (j)) act on the whole Postgres cluster, not on one
- * database - they survive a {@code DROP DATABASE} exactly as they survived the old {@code DROP
- * SCHEMA CASCADE}. Subclasses that create such roles must keep creating and dropping them per test
- * method, and must never bake them into the template database: a role dropped by one test would
- * otherwise be missing for the next test cloned from the same template.
+ * db/changelog/changes/001-baseline.yaml}, identity changeSet) act on the whole Postgres cluster,
+ * not on one database - they survive a {@code DROP DATABASE} exactly as they survived the old
+ * {@code DROP SCHEMA CASCADE}. Subclasses that create such roles must keep creating and dropping
+ * them per test method, and must never bake them into the template database: a role dropped by one
+ * test would otherwise be missing for the next test cloned from the same template.
  *
  * <p><b>Important asymmetry a subclass must get right:</b> a role can only be dropped per test
  * method if the class's own fixture chain does not itself create that role at template-build time.
