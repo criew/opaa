@@ -587,6 +587,11 @@ Konsequenzen für den Betrieb:
 - Wird ein Elterndokument neu verarbeitet und ein früher bekannter Anhang nicht mehr gemeldet,
   gilt er als entfernt und wird gelöscht. Wird das Elterndokument als unverändert übersprungen,
   bleiben seine Anhänge unangetastet.
+- In der Dokumentliste einer Bibliothek steht ein Anhang nur unter seinem Elterndokument, auch
+  wenn er wie bei `S3` und `HTTP_DIRECTORY` im Ordner seines Elterndokuments liegt. Die
+  Dokumentzahlen der Dokumentliste, der Ordner sowie Kachel und Kennzahl der Bibliothek zählen nur
+  Dokumente der obersten Ebene. Die Laufzähler (Abschnitt 8.1) und die Bestandszahlen der
+  Suchverwaltung zählen Anhänge dagegen mit.
 
 Die Dokumentstrecke weiß nicht, woher ein Anhang stammt. Jeder Konnektor, der Anhänge
 liefert, und jede Format-Pipeline, die welche findet, nutzt denselben Weg; die Grenzwerte für

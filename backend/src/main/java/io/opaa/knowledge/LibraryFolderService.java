@@ -427,7 +427,7 @@ public class LibraryFolderService {
   }
 
   private long countDocumentsRecursive(UUID libraryId, UUID folderId) {
-    long count = documentRepository.countByFolderId(folderId);
+    long count = documentRepository.countByFolderIdAndParentDocumentIdIsNull(folderId);
     for (LibraryFolder child :
         folderRepository.findByLibraryIdAndParentFolderIdOrderByNameAsc(libraryId, folderId)) {
       count += countDocumentsRecursive(libraryId, child.getId());
