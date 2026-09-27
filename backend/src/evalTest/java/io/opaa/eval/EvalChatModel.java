@@ -1,7 +1,7 @@
 package io.opaa.eval;
 
 import io.opaa.llm.ActiveChatModelResolver;
-import io.opaa.query.answer.ChatResponses;
+import io.opaa.llm.ChatResponses;
 import io.opaa.security.SettingsEncryptor;
 import java.math.BigDecimal;
 import java.util.Optional;

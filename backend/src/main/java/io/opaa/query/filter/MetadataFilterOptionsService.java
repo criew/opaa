@@ -18,7 +18,7 @@ import io.opaa.indexing.metadata.MetadataFillCounter;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
-import io.opaa.query.SearchScopeResolver;
+import io.opaa.chat.SearchScopeResolver;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;

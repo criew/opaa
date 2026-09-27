@@ -1,4 +1,5 @@
 package io.opaa.query;
+import io.opaa.retrieval.QueryProperties;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -35,14 +36,14 @@ import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.organization.Organization;
 import io.opaa.permission.AssetGrant;
 import io.opaa.permission.AssetGrantRepository;
-import io.opaa.query.retrieval.RerankAvailability;
-import io.opaa.query.retrieval.RetrievalContext;
-import io.opaa.query.retrieval.RetrievalNote;
-import io.opaa.query.retrieval.RetrievalPipeline;
-import io.opaa.query.retrieval.RetrievalPipelineResult;
-import io.opaa.query.retrieval.RetrievalStageName;
-import io.opaa.query.retrieval.StageExplanation;
-import io.opaa.query.retrieval.search.FullTextChunkSearch;
+import io.opaa.retrieval.RerankAvailability;
+import io.opaa.retrieval.RetrievalContext;
+import io.opaa.retrieval.RetrievalNote;
+import io.opaa.retrieval.RetrievalPipeline;
+import io.opaa.retrieval.RetrievalPipelineResult;
+import io.opaa.retrieval.RetrievalStageName;
+import io.opaa.retrieval.StageExplanation;
+import io.opaa.retrieval.search.FullTextChunkSearch;
 import io.opaa.test.OpaaMockedChatModelIntegrationTest;
 import io.opaa.test.OpaaTestDirectory;
 import io.opaa.test.SourceTypes;

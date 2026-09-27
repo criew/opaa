@@ -24,13 +24,13 @@ import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
 import io.opaa.permission.GroupSizeProperties;
-import io.opaa.query.RetrievalContextFactory;
-import io.opaa.query.SearchedLibraryRef;
-import io.opaa.query.retrieval.CandidateOutcome;
-import io.opaa.query.retrieval.CandidateVerdict;
-import io.opaa.query.retrieval.RetrievalPipeline;
-import io.opaa.query.retrieval.RetrievalPipelineResult;
-import io.opaa.query.retrieval.StageExplanation;
+import io.opaa.retrieval.RetrievalContextFactory;
+import io.opaa.retrieval.SearchedLibraryRef;
+import io.opaa.retrieval.CandidateOutcome;
+import io.opaa.retrieval.CandidateVerdict;
+import io.opaa.retrieval.RetrievalPipeline;
+import io.opaa.retrieval.RetrievalPipelineResult;
+import io.opaa.retrieval.StageExplanation;
 import io.opaa.space.SpaceGroupContext;
 import io.opaa.space.SpaceService;
 import java.time.Clock;
@@ -458,7 +458,7 @@ public class SearchDiagnosisService {
 
     Set<String> retrievedChunkIds = new HashSet<>();
     CandidateVerdict lastDrop = null;
-    io.opaa.query.retrieval.RetrievalStageName lastDropStage = null;
+    io.opaa.retrieval.RetrievalStageName lastDropStage = null;
     for (StageExplanation stage : result.explanation().stages()) {
       for (CandidateVerdict verdict : stage.verdicts()) {
         if (!keys.contains(verdict.documentKey())) {

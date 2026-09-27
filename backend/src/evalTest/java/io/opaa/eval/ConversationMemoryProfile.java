@@ -1,7 +1,7 @@
 package io.opaa.eval;
 
 import io.opaa.chat.ChatNoteProperties;
-import io.opaa.query.QueryProperties;
+import io.opaa.retrieval.QueryProperties;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;

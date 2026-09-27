@@ -2,12 +2,12 @@ package io.opaa.eval;
 
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.metadata.MetadataFilter;
-import io.opaa.query.QueryProperties;
-import io.opaa.query.RetrievalContextFactory;
-import io.opaa.query.retrieval.RetrievalContext;
-import io.opaa.query.retrieval.RetrievalPipeline;
-import io.opaa.query.retrieval.RetrievalPipelineProperties;
-import io.opaa.query.retrieval.RetrievalPipelineResult;
+import io.opaa.retrieval.QueryProperties;
+import io.opaa.retrieval.RetrievalContextFactory;
+import io.opaa.retrieval.RetrievalContext;
+import io.opaa.retrieval.RetrievalPipeline;
+import io.opaa.retrieval.RetrievalPipelineProperties;
+import io.opaa.retrieval.RetrievalPipelineResult;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.Duration;

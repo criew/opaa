@@ -33,7 +33,7 @@ class McpDependencyStructureTest {
   private static final Set<String> FORBIDDEN_PACKAGE_PREFIXES =
       Set.of(
           "org.springframework.ai.vectorstore",
-          "io.opaa.query.retrieval",
+          "io.opaa.retrieval",
           "io.opaa.query.answer",
           "io.opaa.query.citation",
           "io.opaa.indexing.chunk",

@@ -1,4 +1,7 @@
 package io.opaa.query;
+import io.opaa.chat.SearchScopeResolver;
+import io.opaa.retrieval.RetrievalContextFactory;
+import io.opaa.retrieval.KnowledgeRetrieval;
 
 import io.opaa.api.types.ChatNoteItemKind;
 import io.opaa.auth.CurrentUser;
@@ -16,14 +19,14 @@ import io.opaa.observability.QueryMetrics;
 import io.opaa.prompt.Prompt;
 import io.opaa.prompt.PromptService;
 import io.opaa.query.answer.AnswerGenerationService;
-import io.opaa.query.answer.ChatResponses;
+import io.opaa.llm.ChatResponses;
 import io.opaa.query.answer.ConversationWindowMessages;
 import io.opaa.query.citation.ChatSourceAssembler;
 import io.opaa.query.citation.CitationParser;
 import io.opaa.query.citation.CitationValidator;
-import io.opaa.query.retrieval.RetrievalPipeline;
-import io.opaa.query.retrieval.RetrievalPipelineResult;
-import io.opaa.query.retrieval.search.SubQueryDecompositionStage;
+import io.opaa.retrieval.RetrievalPipeline;
+import io.opaa.retrieval.RetrievalPipelineResult;
+import io.opaa.retrieval.search.SubQueryDecompositionStage;
 import io.opaa.query.spike.SpikeToolLoopQueryHandler;
 import java.util.List;
 import java.util.Optional;

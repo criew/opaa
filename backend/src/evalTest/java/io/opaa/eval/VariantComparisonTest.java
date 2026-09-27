@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.opaa.query.QueryProperties;
+import io.opaa.retrieval.QueryProperties;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 

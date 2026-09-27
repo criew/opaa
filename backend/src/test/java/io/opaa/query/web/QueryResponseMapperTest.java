@@ -8,7 +8,7 @@ import io.opaa.chat.ChatNotePoint;
 import io.opaa.chat.ChatSource;
 import io.opaa.query.QueryOutcome;
 import io.opaa.query.QueryResult;
-import io.opaa.query.SearchedLibraryRef;
+import io.opaa.retrieval.SearchedLibraryRef;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;

@@ -11,12 +11,12 @@ import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.observability.QueryMetrics;
 import io.opaa.query.QueryOutcome;
 import io.opaa.query.QueryResult;
-import io.opaa.query.answer.ChatResponses;
+import io.opaa.llm.ChatResponses;
 import io.opaa.query.answer.ConversationWindowMessages;
 import io.opaa.query.citation.ChatSourceAssembler;
 import io.opaa.query.citation.CitationParser;
 import io.opaa.query.citation.CitationValidator;
-import io.opaa.query.retrieval.ChunkGroupingKey;
+import io.opaa.retrieval.ChunkGroupingKey;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -41,7 +41,7 @@ import org.springframework.stereotype.Service;
 /**
  * Handles a chat turn whose question begins with {@code "@test "} while {@code
  * opaa.spike.tool-loop.enabled} is set (#1789) - a throwaway path ahead of epic #1747 that bypasses
- * {@code io.opaa.query.retrieval.RetrievalPipeline} and {@code AnswerGenerationService} entirely in
+ * {@code io.opaa.retrieval.RetrievalPipeline} and {@code AnswerGenerationService} entirely in
  * favour of a model-driven tool-calling loop over the one {@link SearchKnowledgeTool}. {@code
  * io.opaa.query.QueryService#query} calls {@link #handle} after resolving the chat, the space
  * guards, the readable libraries and the search scope, so rights and scope are exactly those of an

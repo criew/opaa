@@ -4,7 +4,7 @@ import io.opaa.api.dto.SearchHitContentResponse;
 import io.opaa.api.dto.SearchResponse;
 import io.opaa.api.dto.SearchedLibrary;
 import io.opaa.chat.web.ChatResponseMapper;
-import io.opaa.query.SearchedLibraryRef;
+import io.opaa.retrieval.SearchedLibraryRef;
 import io.opaa.search.FetchedPassage;
 import io.opaa.search.SearchHit;
 import io.opaa.search.SearchOutcome;

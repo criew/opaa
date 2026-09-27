@@ -2,9 +2,9 @@ package io.opaa.eval;
 
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.llm.RerankModelRole;
-import io.opaa.query.QueryProperties;
-import io.opaa.query.RetrievalContextFactory;
-import io.opaa.query.retrieval.RetrievalPipeline;
+import io.opaa.retrieval.QueryProperties;
+import io.opaa.retrieval.RetrievalContextFactory;
+import io.opaa.retrieval.RetrievalPipeline;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.Instant;

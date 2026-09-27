@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.opaa.api.types.DatePrecision;
 import io.opaa.api.types.MetadataOrigin;
 import io.opaa.chat.ChatSourceMetadataEntry;
-import io.opaa.query.SearchedLibraryRef;
+import io.opaa.retrieval.SearchedLibraryRef;
 import io.opaa.search.FetchedPassage;
 import io.opaa.search.SearchHit;
 import io.opaa.search.SearchOutcome;

@@ -15,7 +15,7 @@ import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.SourceCredentialsConverter;
 import io.opaa.knowledge.UploadProperties;
 import io.opaa.query.answer.AnswerGenerationService;
-import io.opaa.query.retrieval.RetrievalPipeline;
+import io.opaa.retrieval.RetrievalPipeline;
 import io.opaa.security.CredentialsEncryptionKeyMissingException;
 import io.opaa.security.CredentialsEncryptionProperties;
 import io.opaa.security.CredentialsEncryptor;

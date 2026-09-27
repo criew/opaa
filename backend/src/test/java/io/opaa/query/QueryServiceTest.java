@@ -1,4 +1,10 @@
 package io.opaa.query;
+import io.opaa.retrieval.config.RetrievalConfiguration;
+import io.opaa.chat.SearchScopeResolver;
+import io.opaa.retrieval.SearchedLibraryRef;
+import io.opaa.retrieval.QueryProperties;
+import io.opaa.retrieval.RetrievalContextFactory;
+import io.opaa.retrieval.KnowledgeRetrieval;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -54,20 +60,20 @@ import io.opaa.query.answer.ConversationMemoryConfiguration;
 import io.opaa.query.citation.ChatSourceAssembler;
 import io.opaa.query.citation.CitationParser;
 import io.opaa.query.citation.CitationValidator;
-import io.opaa.query.retrieval.RetrievalPipeline;
-import io.opaa.query.retrieval.RetrievalPipelineProperties;
-import io.opaa.query.retrieval.ranking.ChunkEmbeddingLookup;
-import io.opaa.query.retrieval.ranking.DocumentCompletionStage;
-import io.opaa.query.retrieval.ranking.MmrSelectionStage;
-import io.opaa.query.retrieval.ranking.RankFusionStage;
-import io.opaa.query.retrieval.ranking.RerankStage;
-import io.opaa.query.retrieval.scope.MetadataFilterStage;
-import io.opaa.query.retrieval.scope.SearchScopeStage;
-import io.opaa.query.retrieval.search.FullTextChunkSearch;
-import io.opaa.query.retrieval.search.FullTextSearchStage;
-import io.opaa.query.retrieval.search.QueryDecompositionService;
-import io.opaa.query.retrieval.search.SubQueryDecompositionStage;
-import io.opaa.query.retrieval.search.VectorSearchStage;
+import io.opaa.retrieval.RetrievalPipeline;
+import io.opaa.retrieval.RetrievalPipelineProperties;
+import io.opaa.retrieval.ranking.ChunkEmbeddingLookup;
+import io.opaa.retrieval.ranking.DocumentCompletionStage;
+import io.opaa.retrieval.ranking.MmrSelectionStage;
+import io.opaa.retrieval.ranking.RankFusionStage;
+import io.opaa.retrieval.ranking.RerankStage;
+import io.opaa.retrieval.scope.MetadataFilterStage;
+import io.opaa.retrieval.scope.SearchScopeStage;
+import io.opaa.retrieval.search.FullTextChunkSearch;
+import io.opaa.retrieval.search.FullTextSearchStage;
+import io.opaa.retrieval.search.QueryDecompositionService;
+import io.opaa.retrieval.search.SubQueryDecompositionStage;
+import io.opaa.retrieval.search.VectorSearchStage;
 import io.opaa.query.spike.SpikeToolLoopQueryHandler;
 import io.opaa.test.SourceTypes;
 import java.lang.reflect.Method;
@@ -133,7 +139,7 @@ class QueryServiceTest {
 
   /**
    * Assembles the production pipeline around this class's mocked collaborators - through {@link
-   * QueryConfiguration#retrievalPipeline} itself, not a second stage list of its own, so these
+   * RetrievalConfiguration#retrievalPipeline} itself, not a second stage list of its own, so these
    * tests can never run a different stage order than the application does.
    */
   private QueryService newQueryService(QueryProperties queryProperties, ChatMemory memory) {
@@ -150,7 +156,7 @@ class QueryServiceTest {
       ChatMemory memory,
       ObjectProvider<SpikeToolLoopQueryHandler> spikeHandlerProvider) {
     RetrievalPipeline pipeline =
-        new QueryConfiguration()
+        new RetrievalConfiguration()
             .retrievalPipeline(
                 new SearchScopeStage(),
                 new MetadataFilterStage(mock(DocumentTypeVocabularyRepository.class)),

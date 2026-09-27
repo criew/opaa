@@ -6,7 +6,7 @@ import io.opaa.api.dto.SearchedLibrary;
 import io.opaa.chat.web.ChatResponseMapper;
 import io.opaa.query.QueryOutcome;
 import io.opaa.query.QueryResult;
-import io.opaa.query.SearchedLibraryRef;
+import io.opaa.retrieval.SearchedLibraryRef;
 import java.util.List;
 
 /**

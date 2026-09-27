@@ -13,7 +13,7 @@ import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ValidationException;
 import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.GroupSizeProperties;
-import io.opaa.query.SearchedLibraryRef;
+import io.opaa.retrieval.SearchedLibraryRef;
 import io.opaa.test.OpaaIntegrationTest;
 import java.util.ArrayList;
 import java.util.List;

@@ -19,8 +19,8 @@ import org.springframework.context.annotation.ClassPathScanningCandidateComponen
  * discipline: the reading path has exactly one way to the data, and it is a domain service.
  *
  * <p>Two forbidden directions, for two different reasons. {@code
- * org.springframework.ai.vectorstore} and {@code io.opaa.query.retrieval} would be a <b>second
- * ranking path</b> - retrieval belongs behind {@code io.opaa.query.KnowledgeRetrieval}, the one
+ * org.springframework.ai.vectorstore} and {@code io.opaa.retrieval} would be a <b>second
+ * ranking path</b> - retrieval belongs behind {@code io.opaa.retrieval.KnowledgeRetrieval}, the one
  * entrance {@code POST /api/v1/query} uses as well, so the two cannot drift apart. {@code
  * io.opaa.query.answer} would be a <b>generation call</b> - the whole point of this path is that
  * the foreign tool formulates the answer.
@@ -40,7 +40,7 @@ class SearchDependencyStructureTest {
   private static final Set<String> FORBIDDEN_PACKAGE_PREFIXES =
       Set.of(
           "org.springframework.ai.vectorstore",
-          "io.opaa.query.retrieval",
+          "io.opaa.retrieval",
           "io.opaa.query.answer",
           "io.opaa.query.citation");
 
@@ -53,7 +53,7 @@ class SearchDependencyStructureTest {
 
     assertThat(offenses)
         .as(
-            "io.opaa.search must reach the index only through io.opaa.query.KnowledgeRetrieval and"
+            "io.opaa.search must reach the index only through io.opaa.retrieval.KnowledgeRetrieval and"
                 + " must never reference an answer generator: a second ranking path would be a"
                 + " second quality truth, and a generation call would make this the assistant"
                 + " interface it is explicitly not (ADR-0035, Entscheidung 5)")

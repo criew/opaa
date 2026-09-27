@@ -2,7 +2,7 @@ package io.opaa.eval;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.query.QueryProperties;
+import io.opaa.retrieval.QueryProperties;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
