@@ -240,7 +240,8 @@ class SourceConnectorRegistryTest {
     }
 
     @Override
-    public void acceptNotification(UUID libraryId, byte[] body, UnaryOperator<String> header) {}
+    public void acceptNotification(
+        KnowledgeLibrary library, byte[] body, UnaryOperator<String> header) {}
 
     @Override
     public void rejectForeign(byte[] body, UnaryOperator<String> header) {}

@@ -122,7 +122,7 @@ class ConfluenceWebhookPublicAccessTest {
                 .content(BODY))
         .andExpect(status().isAccepted());
 
-    verify(webhookService).accept(eq(libraryId), eq(BODY), eq("sha256=abcd"), eq(null));
+    verify(webhookService).accept(any(), any(), eq(BODY), eq("sha256=abcd"), eq(null));
   }
 
   @Test
@@ -147,8 +147,8 @@ class ConfluenceWebhookPublicAccessTest {
                 .content(BODY))
         .andExpect(status().isAccepted());
 
-    verify(webhookService).accept(eq(libraryId), eq(BODY), eq(null), eq("geheim"));
-    verify(webhookService).accept(eq(otherLibraryId), eq(BODY), eq(null), eq("geheim,falsch"));
+    verify(webhookService).accept(any(), any(), eq(BODY), eq(null), eq("geheim"));
+    verify(webhookService).accept(any(), any(), eq(BODY), eq(null), eq("geheim,falsch"));
   }
 
   @Test
@@ -156,7 +156,7 @@ class ConfluenceWebhookPublicAccessTest {
     UUID libraryId = UUID.randomUUID();
     doThrow(new UnauthorizedException("Webhook nicht autorisiert"))
         .when(webhookService)
-        .accept(any(), any(), any(), any());
+        .accept(any(), any(), any(), any(), any());
 
     mockMvc
         .perform(

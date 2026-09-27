@@ -3,6 +3,7 @@ package io.opaa.library;
 import io.opaa.common.UnauthorizedException;
 import io.opaa.indexing.source.PushIntakeHandler;
 import io.opaa.indexing.source.SourceConnectorRegistry;
+import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import java.util.UUID;
 import java.util.function.UnaryOperator;
@@ -33,11 +34,9 @@ public class PushIntakeService {
    * @throws UnauthorizedException for every request that does not authenticate
    */
   public void accept(UUID libraryId, byte[] body, UnaryOperator<String> header) {
+    KnowledgeLibrary library = libraryRepository.findById(libraryId).orElse(null);
     PushIntakeHandler own =
-        libraryRepository
-            .findById(libraryId)
-            .flatMap(library -> connectors.pushIntakeHandler(library.getSourceType()))
-            .orElse(null);
+        library == null ? null : connectors.pushIntakeHandler(library.getSourceType()).orElse(null);
     for (PushIntakeHandler handler : connectors.pushIntakeHandlers()) {
       if (handler != own) {
         handler.rejectForeign(body, header);
@@ -46,6 +45,6 @@ public class PushIntakeService {
     if (own == null) {
       throw new UnauthorizedException(PushIntakeHandler.UNAUTHORIZED_MESSAGE);
     }
-    own.acceptNotification(libraryId, body, header);
+    own.acceptNotification(library, body, header);
   }
 }

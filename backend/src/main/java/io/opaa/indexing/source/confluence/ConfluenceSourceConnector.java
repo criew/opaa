@@ -24,7 +24,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 import java.util.function.UnaryOperator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -78,9 +77,11 @@ public class ConfluenceSourceConnector
   }
 
   @Override
-  public void acceptNotification(UUID libraryId, byte[] body, UnaryOperator<String> header) {
+  public void acceptNotification(
+      KnowledgeLibrary library, byte[] body, UnaryOperator<String> header) {
     webhookService.accept(
-        libraryId,
+        library.getId(),
+        library,
         body,
         header.apply(ConfluenceWebhookSignature.HUB_SIGNATURE_HEADER),
         header.apply(ConfluenceWebhookSignature.SHARED_SECRET_HEADER));

@@ -86,11 +86,27 @@ public class S3EventService {
    * test message and for a body that names no object - once it does.
    */
   public void accept(UUID libraryId, byte[] body, String authorization, String sharedSecret) {
+    accept(
+        libraryId,
+        libraryRepository.findById(libraryId).orElse(null),
+        body,
+        authorization,
+        sharedSecret);
+  }
+
+  /**
+   * The same for a library the caller has already loaded, {@code null} for none - the shared push
+   * intake loads it once for every request, so no path costs an extra query.
+   */
+  public void accept(
+      UUID libraryId,
+      KnowledgeLibrary loaded,
+      byte[] body,
+      String authorization,
+      String sharedSecret) {
     byte[] rawBody = body == null ? new byte[0] : body;
     Optional<KnowledgeLibrary> library =
-        libraryRepository
-            .findById(libraryId)
-            .filter(l -> S3SourceConnector.TYPE.equals(l.getSourceType()));
+        Optional.ofNullable(loaded).filter(l -> S3SourceConnector.TYPE.equals(l.getSourceType()));
     String token = library.map(KnowledgeLibrary::getWebhookSecret).orElse(null);
     if (!S3EventAuthentication.verify(authorization, sharedSecret, token)) {
       log.warn("Rejected S3 event notification for library {}: not authenticated", libraryId);

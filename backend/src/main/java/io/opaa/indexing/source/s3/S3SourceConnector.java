@@ -39,7 +39,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.Set;
-import java.util.UUID;
 import java.util.function.UnaryOperator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -141,9 +140,11 @@ public class S3SourceConnector
   }
 
   @Override
-  public void acceptNotification(UUID libraryId, byte[] body, UnaryOperator<String> header) {
+  public void acceptNotification(
+      KnowledgeLibrary library, byte[] body, UnaryOperator<String> header) {
     eventService.accept(
-        libraryId,
+        library.getId(),
+        library,
         body,
         header.apply(HttpHeaders.AUTHORIZATION),
         header.apply(S3EventAuthentication.SHARED_SECRET_HEADER));

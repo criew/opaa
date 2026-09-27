@@ -172,7 +172,11 @@ Frontend und E2E bleiben dabei unverändert. Danach folgt der API-Bruch mit frei
   „Quelle“ (Umfang, Anbindung, Kopfzeile). Die Kacheln des Anlage-Assistenten kommen aus
   `GET /source-types`. Ein Typ, den das Backend kennt, das Frontend aber nicht, erscheint unter
   seinem Anzeigenamen, ist nicht wählbar und im Reiter „Quelle“ als nicht konfigurierbar markiert.
-  Schlägt die Liste fehl, nennt der Assistent den Fehler und bietet keine Art an.
+  Schlägt die Liste fehl, nennt der Assistent den Fehler und bietet keine Art an. Auch die
+  typabhängigen Beschriftungen und Wege außerhalb der Quellformulare kommen aus der Registrierung
+  (Container-Bezeichnung einer Dokumentzeile, Öffnen an der Quelle, Laufart-Anzeige, Zählweise eines
+  Feed-Laufs). Nach dem Typ verzweigt das Frontend sonst nur noch auf den Kerntyp `UPLOAD` und in
+  den konnektoreigenen Formular- und Hilfsmodulen.
 - **Uploads sind eine eigene Fähigkeit** (`uploads` in Beschreibung und `GET /source-types`), nicht
   „kein Lauf“. Sie entscheidet Anlegerecht, Upload-Annahme, Freigabe-Obergrenze und die
   Löschsperre bei Bestand. Nur `UPLOAD` darf sie tragen, das prüft die Registry beim Start: Der
@@ -181,8 +185,9 @@ Frontend und E2E bleiben dabei unverändert. Danach folgt der API-Bruch mit frei
   hochladen lässt; die Datenbank blockiert ihn nicht.
 - **Gleiche Antwortzeit am Push-Eingang:** Jede Anfrage läuft durch die Prüfung jedes registrierten
   Push-Eingangs – die der Bibliothek echt, alle anderen gegen einen Platzhalter
-  (`PushIntakeHandler#rejectForeign`). Unbekannte Bibliothek, Bibliothek ohne Push-Eingang und
-  falsches Geheimnis sind damit weder an der Antwort noch an ihrer Dauer unterscheidbar.
+  (`PushIntakeHandler#rejectForeign`); die Bibliothek wird dafür genau einmal geladen und an den
+  Eingang durchgereicht. Unbekannte Bibliothek, Bibliothek ohne Push-Eingang und falsches
+  Geheimnis sind damit weder an der Antwort noch an der Zahl der Abfragen unterscheidbar.
 - **Nachweis:** Zwei Test-Konnektoren nur im Testcode – einer ohne Lauf, einer mit Lauf und
   Auflistung – werden über die HTTP-API angelegt, geändert, getestet, aufgelistet, geplant und
   indiziert.

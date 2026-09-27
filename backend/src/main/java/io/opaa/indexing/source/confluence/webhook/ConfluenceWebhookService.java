@@ -79,10 +79,27 @@ public class ConfluenceWebhookService {
    * that names no page - once it does.
    */
   public void accept(UUID libraryId, byte[] body, String hubSignature, String sharedSecret) {
+    accept(
+        libraryId,
+        libraryRepository.findById(libraryId).orElse(null),
+        body,
+        hubSignature,
+        sharedSecret);
+  }
+
+  /**
+   * The same for a library the caller has already loaded, {@code null} for none - the shared push
+   * intake loads it once for every request, so no path costs an extra query.
+   */
+  public void accept(
+      UUID libraryId,
+      KnowledgeLibrary loaded,
+      byte[] body,
+      String hubSignature,
+      String sharedSecret) {
     byte[] rawBody = body == null ? new byte[0] : body;
     Optional<KnowledgeLibrary> library =
-        libraryRepository
-            .findById(libraryId)
+        Optional.ofNullable(loaded)
             .filter(l -> ConfluenceSourceConnector.TYPE.equals(l.getSourceType()));
     String secret = library.map(KnowledgeLibrary::getWebhookSecret).orElse(null);
     if (!ConfluenceWebhookSignature.verify(rawBody, hubSignature, sharedSecret, secret)) {

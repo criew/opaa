@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -59,6 +60,7 @@ class PushIntakeServiceTest {
     verify(s3).rejectForeign(BODY, HEADER);
     verify(confluence, never()).acceptNotification(any(), any(), any());
     verify(s3, never()).acceptNotification(any(), any(), any());
+    verify(libraries, times(1)).findById(unknown);
   }
 
   @Test
@@ -97,7 +99,8 @@ class PushIntakeServiceTest {
 
     InOrder order = inOrder(s3, confluence);
     order.verify(s3).rejectForeign(BODY, HEADER);
-    order.verify(confluence).acceptNotification(wiki.getId(), BODY, HEADER);
+    order.verify(confluence).acceptNotification(wiki, BODY, HEADER);
+    verify(libraries, times(1)).findById(wiki.getId());
     verify(confluence, never()).rejectForeign(any(), any());
   }
 }
