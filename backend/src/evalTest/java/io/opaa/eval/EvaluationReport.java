@@ -94,8 +94,13 @@ public record EvaluationReport(
    * <p><b>Bumped to 12 by issue #1650:</b> {@code contextPrefixFingerprint} became a checked fixed
    * point - the form of the Kontextpräfix moves every multi-chunk embedding without moving a
    * pipeline version (ADR-0012, Nachtrag Kontextpräfix-Form).
+   *
+   * <p><b>Bumped to 13 by issue #2033:</b> {@code PdfDocumentFormat#version()} moved 1 → 2 (a table
+   * enclosed by a complete ruled grid is written one line per row, cells joined by {@code " | "}),
+   * shifting the collective fingerprint - no corpus in this repository routes a document through
+   * that pipeline, so this is a fingerprint-only bump.
    */
-  public static final int CURRENT_MEASUREMENT_CONTRACT_VERSION = 12;
+  public static final int CURRENT_MEASUREMENT_CONTRACT_VERSION = 13;
 
   /** Configuration of the measured run — lets a reader trace a number back to what produced it. */
   public record RunConfiguration(

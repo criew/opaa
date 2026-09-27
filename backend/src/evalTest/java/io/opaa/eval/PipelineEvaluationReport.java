@@ -113,8 +113,12 @@ public record PipelineEvaluationReport(
    *
    * <p>Version 15 (issue #1650): {@code contextPrefixFingerprint} became a checked fixed point on
    * this path too (ADR-0012, Nachtrag Kontextpräfix-Form).
+   *
+   * <p>Version 16 (issue #2033): {@code PdfDocumentFormat#version()} moved 1 → 2 (ruled tables
+   * written one line per row) - fingerprint-only, same collective-fingerprint reasoning as versions
+   * 5 and 6 above; no corpus in this repository routes a document through that pipeline.
    */
-  public static final int PIPELINE_MEASUREMENT_CONTRACT_VERSION = 15;
+  public static final int PIPELINE_MEASUREMENT_CONTRACT_VERSION = 16;
 
   /**
    * The fixed points of a pipeline run — everything that must match for two pipeline reports to be
