@@ -107,7 +107,7 @@ einem Dokument je unterstützter Endung, #1519):
 | Leistungen Kfz-Zulassung | `leistungen-kfz-zulassung/` | 37 | `.md`, `.txt` |
 | Satzungen & Gebührenordnungen | `satzungen-gebuehrenordnungen/` | 19 | `.pdf` |
 | Pressemitteilungen Stadt Rheinfurt | `pressemitteilungen/` | 28 | RSS-XML, HTML |
-| Interne Dienstanweisungen Meldewesen | `interne-dienstanweisungen-meldewesen/` | 26 | `.docx`, `.pdf`, `.pptx` |
+| Interne Dienstanweisungen Meldewesen | `interne-dienstanweisungen-meldewesen/` | 26 | `.docx`, `.pdf`, `.pptx` (Ordner nach Aktenplan) |
 | Ratsinformationen Stadt Rheinfurt | `ratsinformationen/` | 15 | `.md`, `.txt`, `.eml` mit PDF-Anlagen (Präfixe Jahrgang/Gremium) |
 | Formattest auf S3 | `formate/` | 14 | je ein Dokument pro unterstützter Endung |
 

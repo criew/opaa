@@ -30,6 +30,7 @@ import requests
 from api_client import ApiError, Client
 from auth import AuthError, DevHeaderAuth, KeycloakPasswordAuth, LocalPasswordAuth
 from profiles import PROFILES, GroupDef, LibraryDef, Profile, SpaceDef, UserDef
+from profiles import PromptDef, PromptLibraryDef, PromptVariableDef
 
 INDEXING_POLL_INTERVAL_SECONDS = 3
 # Transient errors expected right after `docker compose ... up`: the backend/Keycloak container
@@ -219,7 +220,7 @@ def ensure_library(admin_client: Client, library_def: LibraryDef) -> str:
         "name": library_def.name,
         "description": library_def.description,
         "sourceType": library_def.source_type,
-        # No grant to "Alle Konten" anywhere in the demo (#1931,
+        # No grant to "Alle Konten" on any knowledge library of the demo (#1931,
         # docs/features/spaces-and-assets.md): such a grant reaches every account regardless of the
         # demo's own VIEWER matrix (Thomas must not read the internal Meldewesen instructions).
         # "listed" still surfaces the library in the marketplace for everyone
@@ -363,44 +364,209 @@ def ensure_group_space_membership(
     )
 
 
-def existing_documents_by_name(admin_client: Client, library_id: str) -> dict[str, dict]:
-    by_name: dict[str, dict] = {}
-    page = 0
-    while True:
-        result = admin_client.get_ok(
-            f"/v1/libraries/{library_id}/documents", params={"page": page, "size": 100}
+def _prompt_variable_body(variable_def: PromptVariableDef) -> dict:
+    body: dict = {
+        "name": variable_def.name,
+        "label": variable_def.label,
+        "type": variable_def.type,
+        "required": variable_def.required,
+    }
+    if variable_def.default_value is not None:
+        body["defaultValue"] = variable_def.default_value
+    if variable_def.options:
+        body["options"] = list(variable_def.options)
+    return body
+
+
+def prompt_request_body(prompt_def: PromptDef) -> dict:
+    """The PromptRequest of prompts.yaml; optional fields the definition leaves open stay absent."""
+    body: dict = {
+        "name": prompt_def.name,
+        "title": prompt_def.title,
+        "text": prompt_def.text,
+        "sortOrder": prompt_def.sort_order,
+    }
+    if prompt_def.description is not None:
+        body["description"] = prompt_def.description
+    if prompt_def.variables:
+        body["variables"] = [_prompt_variable_body(v) for v in prompt_def.variables]
+    return body
+
+
+def ensure_prompt_library(
+    owner_client: Client, owner_id: str, library_def: PromptLibraryDef
+) -> str:
+    """Idempotency: the owner holds OWNER on their own library, so listPromptLibraries through the
+    owner's session always includes it. The lookup also matches the owner, because the list holds
+    every library the caller may read - a same-named one shared by someone else is not this one."""
+    for library in owner_client.get_ok("/v1/prompt-libraries"):
+        if (
+            library["name"] == library_def.name
+            and library["ownerType"] == "USER"
+            and library["ownerId"] == owner_id
+        ):
+            print(f"  Prompt-Bibliothek bereits vorhanden: {library_def.name}")
+            return library["id"]
+    created = owner_client.post_ok(
+        "/v1/prompt-libraries",
+        json={
+            "name": library_def.name,
+            "description": library_def.description,
+            "listed": library_def.listed,
+        },
+        expected=(201,),
+    )
+    print(f"  Prompt-Bibliothek angelegt: {library_def.name} ({created['id']})")
+    return created["id"]
+
+
+def ensure_prompt_library_grants(
+    owner_client: Client, library_id: str, library_def: PromptLibraryDef, user_ids: dict[str, str]
+) -> None:
+    # upsertAssetGrant is idempotent per subject; ALL_ACCOUNTS names no subjectId.
+    grants = []
+    if library_def.all_accounts_viewer:
+        grants.append({"subjectType": "ALL_ACCOUNTS", "role": "VIEWER"})
+    grants += [
+        {"subjectType": "USER", "subjectId": user_ids[key], "role": "VIEWER"}
+        for key in library_def.viewer_keys
+    ]
+    for grant in grants:
+        owner_client.post_ok(
+            f"/v1/assets/PROMPT_LIBRARY/{library_id}/grants", json=grant, expected=(200,)
         )
-        for item in result["items"]:
-            by_name[item["fileName"]] = item
-        if (page + 1) * result["size"] >= result["totalElements"] or not result["items"]:
-            break
-        page += 1
-    return by_name
+
+
+def ensure_prompts(owner_client: Client, library_id: str, library_def: PromptLibraryDef) -> None:
+    """Creates every prompt not yet present by name; an existing prompt is left as it is."""
+    prompts_path = f"/v1/prompt-libraries/{library_id}/prompts"
+    existing = {prompt["name"] for prompt in owner_client.get_ok(prompts_path)}
+    for prompt_def in library_def.prompts:
+        if prompt_def.name in existing:
+            print(f"    Prompt bereits vorhanden: /{prompt_def.name}")
+            continue
+        owner_client.post_ok(
+            prompts_path,
+            json=prompt_request_body(prompt_def),
+            expected=(201,),
+        )
+        print(f"    Prompt angelegt: /{prompt_def.name}")
+
+
+def seed_prompt_libraries(
+    clients: dict[str, Client],
+    user_ids: dict[str, str],
+    space_ids: dict[str, str],
+    profile: Profile,
+) -> None:
+    """Creates each prompt library through its owner's session, gives its grants, fills in its
+    prompts and associates it with its spaces through each space owner's session - after the
+    grants, because associateSpaceAsset requires that owner to read the library."""
+    space_owner_by_name = {space_def.name: space_def.owner_key for space_def in profile.spaces}
+    for library_def in profile.prompt_libraries:
+        owner_client = clients[library_def.owner_key]
+        library_id = ensure_prompt_library(
+            owner_client, user_ids[library_def.owner_key], library_def
+        )
+        ensure_prompt_library_grants(owner_client, library_id, library_def, user_ids)
+        ensure_prompts(owner_client, library_id, library_def)
+        for space_name in library_def.space_names:
+            if space_name not in space_ids:
+                raise SystemExit(
+                    f"Prompt-Bibliothek '{library_def.name}' referenziert einen unbekannten Space "
+                    f"'{space_name}' - space_names muss auf eine SpaceDef des Profils zeigen."
+                )
+            clients[space_owner_by_name[space_name]].post_ok(
+                f"/v1/spaces/{space_ids[space_name]}/assets",
+                json={"assetType": "PROMPT_LIBRARY", "assetId": library_id},
+                expected=(201,),
+            )
+            print(f"  zugeordnet: {space_name} ← {library_def.name}")
+
+
+def existing_documents(admin_client: Client, library_id: str) -> dict[tuple[str, str], dict]:
+    """Every document of the library keyed by (folder path, file name), the folder path relative
+    to the library root with "/" between levels and "" for the root. The document list only shows
+    one folder level per request, so this walks the folder tree from the root."""
+    found: dict[tuple[str, str], dict] = {}
+    pending: list[tuple[str | None, str]] = [(None, "")]
+    while pending:
+        folder_id, folder_path = pending.pop()
+        subfolders: dict[str, str] = {}
+        page = 0
+        while True:
+            params = {"page": page, "size": 100}
+            if folder_id is not None:
+                params["folderId"] = folder_id
+            result = admin_client.get_ok(f"/v1/libraries/{library_id}/documents", params=params)
+            for item in result["items"]:
+                found[(folder_path, item["fileName"])] = item
+            for folder in result.get("folders", []):
+                subfolders[folder["id"]] = folder["name"]
+            if (page + 1) * result["size"] >= result["totalElements"] or not result["items"]:
+                break
+            page += 1
+        for subfolder_id, name in subfolders.items():
+            pending.append((subfolder_id, f"{folder_path}/{name}" if folder_path else name))
+    return found
 
 
 def upload_documents(admin_client: Client, library_id: str, upload_dir: Path) -> None:
-    """Uploads every file in upload_dir not already present with status PENDING/INDEXED. A
-    document whose previous attempt ended FAILED is re-uploaded rather than skipped - "already
-    there" only means so for a document that actually succeeded or is still being processed."""
-    existing = existing_documents_by_name(admin_client, library_id)
-    for file_path in sorted(p for p in upload_dir.iterdir() if p.is_file()):
-        current = existing.get(file_path.name)
+    """Uploads every file below upload_dir not already present with status PENDING/INDEXED, into
+    the library folder matching its subdirectory (folderPath, created on demand by the API). A
+    document counts as present only under the same folder path and file name. One whose previous
+    attempt ended FAILED is re-uploaded rather than skipped.
+
+    Stops before the first upload when the library holds, in its root, a file that belongs in a
+    subfolder: the API would create the folder chain and then reject the same content with 409."""
+    existing = existing_documents(admin_client, library_id)
+    local_files = []
+    for file_path in sorted(p for p in upload_dir.rglob("*") if p.is_file()):
+        folder_path = file_path.parent.relative_to(upload_dir).as_posix()
+        local_files.append(("" if folder_path == "." else folder_path, file_path))
+
+    misplaced = sorted(
+        {
+            file_path.name
+            for folder_path, file_path in local_files
+            if folder_path
+            and ("", file_path.name) in existing
+            and not any(f == "" and p.name == file_path.name for f, p in local_files)
+        }
+    )
+    if misplaced:
+        raise SystemExit(
+            f"Die Bibliothek führt {len(misplaced)} Dokument(e) noch flach in der Wurzel, die "
+            f"inzwischen in Ordnern liegen (z. B. {', '.join(misplaced[:3])}). Ein Seed kann sie "
+            "nicht umsortieren - die Demo neu aufsetzen (siehe demo/README.md)."
+        )
+
+    for folder_path, file_path in local_files:
+        label = f"{folder_path}/{file_path.name}" if folder_path else file_path.name
+        current = existing.get((folder_path, file_path.name))
         if current is not None and current["status"] != "FAILED":
-            print(f"    bereits hochgeladen: {file_path.name} ({current['status']})")
+            print(f"    bereits hochgeladen: {label} ({current['status']})")
             continue
         if current is not None:
-            print(
-                f"    erneuter Versuch nach FAILED: {file_path.name} "
-                f"({current.get('errorMessage')})"
-            )
+            print(f"    erneuter Versuch nach FAILED: {label} ({current.get('errorMessage')})")
         content_type = mimetypes.guess_type(file_path.name)[0] or "application/octet-stream"
         with file_path.open("rb") as handle:
-            admin_client.post_ok(
-                f"/v1/libraries/{library_id}/documents",
-                files={"file": (file_path.name, handle, content_type)},
-                expected=(201,),
-            )
-        print(f"    hochgeladen: {file_path.name}")
+            try:
+                admin_client.post_ok(
+                    f"/v1/libraries/{library_id}/documents",
+                    files={"file": (file_path.name, handle, content_type)},
+                    data={"folderPath": folder_path} if folder_path else None,
+                    expected=(201,),
+                )
+            except ApiError as error:
+                if error.status_code != 409:
+                    raise
+                raise SystemExit(
+                    f"Upload von '{label}' abgelehnt: Derselbe Inhalt liegt bereits an anderer "
+                    "Stelle dieser Bibliothek. Ein Seed kann Dokumente nicht verschieben - die "
+                    "Demo neu aufsetzen (siehe demo/README.md)."
+                ) from error
+        print(f"    hochgeladen: {label}")
 
 
 def wait_for_uploads_indexed(
@@ -413,7 +579,7 @@ def wait_for_uploads_indexed(
     deadline = time.monotonic() + timeout_seconds
     documents: list[dict] = []
     while True:
-        documents = list(existing_documents_by_name(admin_client, library_id).values())
+        documents = list(existing_documents(admin_client, library_id).values())
         pending = [d for d in documents if d["status"] == "PENDING"]
         if not pending:
             break
@@ -603,6 +769,9 @@ def run(args: argparse.Namespace) -> None:
                 library_ids[library_name],
             )
             print(f"  zugeordnet: {space_def.name} ← {library_name}")
+
+    print("7b/8 Prompt-Bibliotheken mit Prompts, Freigaben und Space-Zuordnung …")
+    seed_prompt_libraries(clients, user_ids, space_ids, profile)
 
     print("8/8 Indizierung je Bibliothek auslösen (ADR-0018) …")
     for library_def in profile.libraries:

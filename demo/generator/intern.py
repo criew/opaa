@@ -844,3 +844,55 @@ def render_schulung_pptx(schulung: Schulung) -> bytes:
     buffer = BytesIO()
     presentation.save(buffer)
     return normalize_zip_timestamps(buffer.getvalue())
+
+
+# --- Aktenplan (Ordnerstruktur der Bibliothek) -------------------------------
+
+# Folder of every document, relative to the library root, levels separated by "/". The seed
+# uploads each file with this path as folderPath, so the library shows the same tree. Every slug
+# above needs exactly one entry, checked by verify_aktenplan(). No document here is marked as
+# außer Kraft, hence no "99 Außer Kraft" folder.
+AKTENPLAN: dict[str, str] = {
+    "faq-ummeldung": "01 Melderecht/01 An- und Ummeldung",
+    "auskunftssperren-bearbeitung": "01 Melderecht/02 Auskünfte und Übermittlungen",
+    "amtshilfe-meldebehoerden": "01 Melderecht/02 Auskünfte und Übermittlungen",
+    "vier-augen-prinzip-ausweisausstellung": "02 Pass- und Ausweiswesen/01 Antrag und Ausstellung",
+    "faq-ausweisbeantragung": "02 Pass- und Ausweiswesen/01 Antrag und Ausstellung",
+    "identitaetszweifel-ausweisantrag": "02 Pass- und Ausweiswesen/02 Echtheitsprüfung",
+    "betrugserkennung-ausweisdokumente": "02 Pass- und Ausweiswesen/02 Echtheitsprüfung",
+    "datenschutz-melderegisterauskunft": "03 Datenschutz und Informationssicherheit",
+    "verlust-dienstlicher-zugangsdaten": "03 Datenschutz und Informationssicherheit",
+    "datenschutzgrundlagen-meldewesen": "03 Datenschutz und Informationssicherheit",
+    "gebuehrenbefreiung-beduerftigkeit": "04 Gebühren",
+    "vertretungsregelung-meldewesen": "05 Bürgerbüro/01 Dienstbetrieb",
+    "terminvergabe-wartezeitmanagement": "05 Bürgerbüro/01 Dienstbetrieb",
+    "umgang-aggressives-verhalten": "05 Bürgerbüro/02 Eskalation und Notfälle",
+    "eskalation-beschwerden-buergerbuero": "05 Bürgerbüro/02 Eskalation und Notfälle",
+    "eskalation-it-ausfall": "05 Bürgerbüro/02 Eskalation und Notfälle",
+    "eskalation-kindeswohlgefaehrdung": "05 Bürgerbüro/02 Eskalation und Notfälle",
+    "eskalation-medizinischer-notfall": "05 Bürgerbüro/02 Eskalation und Notfälle",
+    "faq-kfz-schalterfragen": "05 Bürgerbüro/03 Zusammenarbeit mit anderen Stellen",
+    "faq-fundsachen-empfang": "05 Bürgerbüro/03 Zusammenarbeit mit anderen Stellen",
+    "faq-presseanfragen-schalter": "05 Bürgerbüro/03 Zusammenarbeit mit anderen Stellen",
+    "faq-standesamt-zusammenarbeit": "05 Bürgerbüro/03 Zusammenarbeit mit anderen Stellen",
+    "onboarding-buergerbuero": "06 Aus- und Fortbildung",
+    "deeskalationstraining-schalter": "06 Aus- und Fortbildung",
+    "barrierefreie-kommunikation": "06 Aus- und Fortbildung",
+    "fachanwendung-meldesoft": "06 Aus- und Fortbildung",
+}
+
+
+def verify_aktenplan() -> None:
+    """SystemExit unless AKTENPLAN places exactly the documents of this library. Runs before the
+    generator clears the corpus, so a broken Aktenplan leaves the committed files untouched."""
+    slugs = {
+        document.slug
+        for document in DIENSTANWEISUNGEN + ESKALATIONSREGELN + FAQS + SCHULUNGEN
+    }
+    missing = sorted(slugs - set(AKTENPLAN))
+    stale = sorted(set(AKTENPLAN) - slugs)
+    if missing or stale:
+        raise SystemExit(
+            f"intern.AKTENPLAN passt nicht zu den Dokumenten: ohne Ordner {missing}, "
+            f"Eintrag ohne Dokument {stale}"
+        )

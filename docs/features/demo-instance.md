@@ -86,7 +86,7 @@ Vorrat vollständig ab (#1519/#1520):
 | Leistungen Kfz-Zulassung | Leistungsbeschreibungen (Zulassung, Umschreibung, Wunschkennzeichen, Führerschein) | `.md`, `.txt` | `HTTP_DIRECTORY` |
 | Satzungen & Gebührenordnungen | Verwaltungsgebührensatzung, Satzungsauszüge mit Gebührentabellen | `.pdf` | `HTTP_DIRECTORY` |
 | Pressemitteilungen Stadt Rheinfurt | ~20–30 Meldungen (Sperrungen, geänderte Öffnungszeiten, Stadtfest, Jubiläen) | RSS-XML, je Eintrag eine HTML-Detailseite auf demselben Host | `RSS_FEED` (statisch, selbst gehostet) |
-| Interne Dienstanweisungen Meldewesen | Dienstanweisungen, Eskalationsregeln, interne FAQ, Schulungsfolien | `.docx`, `.pdf`, `.pptx` | `UPLOAD` (manueller Upload, im Seed automatisiert) |
+| Interne Dienstanweisungen Meldewesen | Dienstanweisungen, Eskalationsregeln, interne FAQ, Schulungsfolien, abgelegt in Ordnern nach Aktenplan (Melderecht, Pass- und Ausweiswesen, Datenschutz, Gebühren, Bürgerbüro, Aus- und Fortbildung; teils mit zweiter Ebene) | `.docx`, `.pdf`, `.pptx` | `UPLOAD` (manueller Upload, im Seed automatisiert, Ordner über `folderPath`) |
 | Ratsinformationen Stadt Rheinfurt | Niederschriften und Beschlussvorlagen des Stadtrats, des Hauptausschusses und des Bauausschusses 2024–2026, Schlüsselpräfixe Jahrgang › Gremium (`2026/Stadtrat/…`); zwei Vorlagen mit Anlagen als Versandmail des Ratsinformationssystems | `.md`, `.txt`, `.eml` mit PDF-Anhängen | `S3` (Objektspeicher des Demo-Stacks, Bucket `rheinfurt-archiv`, Präfix `ratsinformationen/`; #1383, [ADR-0027](../decisions/0027-s3-konnektor.md)) |
 | Formattest auf S3 | Je ein Dokument pro zugelassener Endung, inhaltlich rund um Dokumentenformate, Posteingang und Langzeitarchivierung; jedes erzeugte Dokument nennt sein eigenes Format | alle oben genannten | `S3` (Objektspeicher des Demo-Stacks, Bucket `formattest`, ohne Präfix; #1519/#1520) |
 
@@ -165,6 +165,29 @@ Damit sind die Vorführmomente konstruierbar: Maria und Thomas stellen dieselbe 
 Dienstanweisung — Maria erhält die belegte Antwort, Thomas die Auskunft, dass dazu nichts vorliegt. Die
 Amtsleitung sieht amtsweit alles. Weil die Berechtigungsprüfung Teil der Vektorsuche ist und nicht ein
 Nachfilter, ist der unberechtigte Treffer bei Thomas nicht nur unterdrückt, sondern nie geladen.
+
+### Prompt-Bibliotheken
+
+Neben den Wissensbibliotheken richtet der Seed zwei
+[Prompt-Bibliotheken](./spaces-and-assets.md#prompt-bibliothek) ein (#2014). Beide legt Andrea Vogt
+über ihr eigenes Konto an — das Anlegerecht `CREATE_PROMPT_LIBRARY` ist an „Alle Konten" ausgeliefert
+— und ist deshalb ihre Eigentümerin; anders als die Wissensbibliotheken gehören sie nicht dem
+Admin-Konto. Jeder Prompt fragt nach etwas, das der Korpus beantwortet, und bringt Variablen mit, damit
+Slash-Befehl und Variablenformular im Chat vorführbar sind.
+
+| Prompt-Bibliothek | Reichweite | Katalog | Space-Zuordnung | Prompts (Slash-Befehl) |
+|---|---|---|---|---|
+| Textbausteine Bürgerbüro | „Alle Konten" (`VIEWER`) | gelistet | „Meldewesen & Ausweise", „Kfz-Zulassung", „Amtsleitung Bürgerbüro" | `/antwort-buergeranfrage`, `/gebuehrenauskunft-personalausweis`, `/aktenvermerk`, `/pressemitteilung-ratsbeschluss` |
+| Vorlagen Amtsleitung | nur Andrea (Eigentümerin) | nicht gelistet | „Amtsleitung Bürgerbüro" | `/wochenbericht-dezernentin`, `/stellungnahme-hauptausschuss` |
+
+Vorführbar ist damit: der Slash-Befehl mit Variablenformular in jedem Fachkonto, die Reichweite
+„Alle Konten" als Badge und Freigabe, der Katalog mit einer gelisteten Prompt-Bibliothek und die Grenze
+einer persönlichen Bibliothek — die „Vorlagen Amtsleitung" sind für Maria, Selin und Thomas weder in der
+Slash-Auswahl noch im Katalog zu finden. Die Space-Zuordnung ordnet nur: In den zugeordneten Spaces
+stehen die Bibliotheken in der Slash-Auswahl voran. Ein Prompt verändert die Rechtematrix oben nicht —
+er landet als Text im Eingabefeld und wird wie jede getippte Frage mit den Leserechten der fragenden
+Person beantwortet; die Gebührenauskunft zum Personalausweis fällt bei Thomas deshalb knapper aus als
+bei Maria, weil er die Leistungsbeschreibungen Meldewesen nicht liest.
 
 ---
 

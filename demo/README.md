@@ -19,7 +19,7 @@ demo/
     ├── leistungen-kfz-zulassung/             .md, .txt
     ├── satzungen-gebuehrenordnungen/         .pdf
     ├── pressemitteilungen/                   rss.xml + .html
-    ├── interne-dienstanweisungen-meldewesen/ .docx, .pdf, .pptx
+    ├── interne-dienstanweisungen-meldewesen/ .docx, .pdf, .pptx in Aktenplan-Ordnern (Upload mit folderPath, #2015)
     ├── ratsinformationen/<jahr>/<Gremium>/   .md, .txt, .eml mit PDF-Anlagen (S3-Bucket des Demo-Stacks, #1383, #2016)
     ├── formate/                              je ein Dokument pro unterstützter Endung (S3-Bucket des Demo-Stacks, #1519)
     ├── MANIFEST.sha256                       SHA-256 über alle Dokumente
@@ -42,7 +42,7 @@ Konnektortypen und mehrere Dateiformate:
 | Leistungen Kfz-Zulassung | `.md`, `.txt` | `HTTP_DIRECTORY` |
 | Satzungen & Gebührenordnungen | `.pdf` | `HTTP_DIRECTORY` |
 | Pressemitteilungen Stadt Rheinfurt | RSS-XML + HTML-Detailseiten | `RSS_FEED` (statisch, selbst gehostet) |
-| Interne Dienstanweisungen Meldewesen | `.docx`, `.pdf`, `.pptx` | `UPLOAD` (im Seed automatisiert) |
+| Interne Dienstanweisungen Meldewesen | `.docx`, `.pdf`, `.pptx` (Ordner nach Aktenplan, bis zu zwei Ebenen) | `UPLOAD` (im Seed automatisiert) |
 | Ratsinformationen Stadt Rheinfurt | `.md`, `.txt`, `.eml` mit PDF-Anhängen (Ordner Jahrgang › Gremium) | `S3` (Objektspeicher des Demo-Stacks, Bucket `rheinfurt-archiv`; #1383, #2016) |
 | Formattest auf S3 | je ein Dokument pro unterstützter Endung | `S3` (Objektspeicher des Demo-Stacks, Bucket `formattest`; #1520) |
 
@@ -317,6 +317,10 @@ deren Läufe die Buckets `rheinfurt-archiv` und `formattest` des `objectstore`-C
 Einmal-Schritt `objectstore-seed` muss dafür durchgelaufen sein, siehe Schritt 2). Vollständiger Ablauf,
 Idempotenz und Fehlerfälle: „Seed-Mechanismus (#712)" unten.
 
+Außerdem legt der Seed im Namen von Andrea Vogt die beiden Prompt-Bibliotheken „Textbausteine
+Bürgerbüro" und „Vorlagen Amtsleitung" samt Prompts, Freigaben und Space-Zuordnung an (siehe
+„Prompt-Bibliotheken" unten).
+
 **Wie lange dauert die Erstindizierung, und wie erkennt man, dass sie fertig ist?** Der Seed selbst
 wartet auf jede Indizierung und jeden Upload (Polling gegen `GET
 /api/v1/libraries/{libraryId}/indexing/status` bzw. den Dokumentstatus) und bricht mit einer klaren
@@ -413,6 +417,34 @@ läuft im Token-Modus). Die beiden gleichnamigen „Meldewesen"-Gruppen sind sta
 Herkunft (Anbieter/Realm) unterscheidbar, nicht über einen Quellpfad — wer ihn in der Demo sucht,
 wird ihn nicht finden.
 
+### Prompt-Bibliotheken (#2014)
+
+Der Seed legt zwei Prompt-Bibliotheken an (`demo/seed/profiles.py`, `PromptLibraryDef`). Beide gehören
+**Andrea Vogt**: Der Seed legt sie über ihre eigene Sitzung an, weil das Anlegerecht
+`CREATE_PROMPT_LIBRARY` an „Alle Konten" ausgeliefert ist — die Systemverwaltung braucht es dafür
+nicht, und sie könnte die Prompts ohne eigenes Recht auch nicht lesen.
+
+| Prompt-Bibliothek | Reichweite | Katalog | Zugeordnete Spaces |
+|---|---|---|---|
+| Textbausteine Bürgerbüro | „Alle Konten" (`VIEWER`) | gelistet | „Meldewesen & Ausweise", „Kfz-Zulassung", „Amtsleitung Bürgerbüro" |
+| Vorlagen Amtsleitung | nur Andrea | nicht gelistet | „Amtsleitung Bürgerbüro" |
+
+| Slash-Befehl | Bibliothek | Variablen |
+|---|---|---|
+| `/antwort-buergeranfrage` | Textbausteine Bürgerbüro | Anliegen (mehrzeilig, vorbelegt), Frist (Auswahl), Tonfall (Auswahl) |
+| `/gebuehrenauskunft-personalausweis` | Textbausteine Bürgerbüro | Altersgruppe (Auswahl), Anlass (Auswahl) |
+| `/aktenvermerk` | Textbausteine Bürgerbüro | Aktenzeichen, Sachgebiet (Auswahl), Sachverhalt (mehrzeilig) |
+| `/pressemitteilung-ratsbeschluss` | Textbausteine Bürgerbüro | Thema, Gremium (Auswahl), Sitzungsdatum (Datum, vorbelegt 21.04.2026) |
+| `/wochenbericht-dezernentin` | Vorlagen Amtsleitung | Kalenderwoche, Schwerpunkt (mehrzeilig, optional) |
+| `/stellungnahme-hauptausschuss` | Vorlagen Amtsleitung | Vorlage (vorbelegt: Bürgerkoffer, Vorlage 2024/019), Sitzungstermin (Datum, vorbelegt 14.05.2024), Grundhaltung (Auswahl) |
+
+Mehrere Prompts nutzen zusätzlich die Systemvariablen `{{CURRENT_DATE}}` und `{{USER_NAME}}`. Die
+Vorbelegungen zielen auf Inhalte des Korpus — etwa die Niederschrift des Hauptausschusses vom
+21.04.2026 zum mobilen Bürgerbüro oder die Hauptausschuss-Vorlage 2024/019 zum Bürgerkoffer —, sodass ein Prompt
+ohne weiteres Tippen eine belegte Antwort liefert. Vorführen: als Maria im Space „Meldewesen &
+Ausweise" `/` tippen, `/gebuehrenauskunft-personalausweis` wählen, Formular bestätigen und senden.
+Als Thomas erscheint dieselbe Auswahl, die „Vorlagen Amtsleitung" aber weder dort noch im Katalog.
+
 ---
 
 ## Demo weiterentwickeln
@@ -495,7 +527,18 @@ Der Lauf richtet über die API ein:
 5. **VIEWER-Rechte** exakt nach der Matrix aus `docs/features/demo-instance.md` sowie die 26
    Upload-Dokumente aus `demo/corpus/interne-dienstanweisungen-meldewesen/` — der Seed wartet nach
    dem Hochladen, bis kein Dokument mehr `PENDING` ist (Tika-Parsing und Embedding laufen asynchron,
-   #434), und bricht bei `FAILED` mit der jeweiligen `errorMessage` ab.
+   #434), und bricht bei `FAILED` mit der jeweiligen `errorMessage` ab. Das Upload-Verzeichnis wird
+   rekursiv gelesen: Jedes Unterverzeichnis wird zum gleichnamigen Bibliotheksordner (`folderPath`
+   relativ zur Bibliothekswurzel, die API legt fehlende Ordner selbst an). Die Dienstanweisungen
+   liegen so in ihren Aktenplan-Ordnern (`01 Melderecht/02 Auskünfte und Übermittlungen/…`, Zuordnung
+   in `generator/intern.py`, `AKTENPLAN`). Als „schon hochgeladen" gilt ein Dokument nur mit
+   gleichem Ordnerpfad und gleichem Dateinamen; der Seed liest dafür den Ordnerbaum der Bibliothek
+   von der Wurzel ab. Eine Instanz, die die Dokumente noch flach in der Wurzel führt, lässt sich
+   nicht nachträglich umsortieren — die API lehnt denselben Inhalt in derselben Bibliothek mit 409
+   ab, legt den Ordnerpfad aber vorher schon an. Der Seed erkennt diesen Fall deshalb vor dem
+   ersten Upload und bricht mit dem Hinweis ab, die Demo neu aufzusetzen; es entsteht kein
+   Ordner. Trifft ein Upload trotzdem auf 409 (derselbe Inhalt an anderer Stelle), bricht der Seed
+   mit derselben Empfehlung ab; der eben angelegte Ordner bleibt dann leer zurück.
 6. **Gruppen** (ADR-0036, `profiles.py`s `GroupDef`, siehe „Gruppen" oben) — je Gruppendefinition:
    anlegen oder per Namenssuche über `GET /api/v1/admin/groups` finden, die benannten
    Verantwortlichen ernennen und die automatische Erstverantwortung des Admin-Kontos wieder
@@ -510,6 +553,17 @@ Der Lauf richtet über die API ein:
    weiter auf alle lesbaren Bibliotheken zurück). Die Zuordnung legt die Session des jeweiligen
    Space-Eigentümers an, denn `associateSpaceLibrary` verlangt CURATOR oder höher im Space plus
    mindestens VIEWER auf der Bibliothek — beides hat der Eigentümer nach Schritt 5.
+
+   **7b. Prompt-Bibliotheken** (`profiles.py`s `PromptLibraryDef`, siehe „Prompt-Bibliotheken" oben)
+   — je Definition über die Sitzung der Eigentümerin anlegen (`POST /api/v1/prompt-libraries`) oder
+   per Namens- und Eigentümersuche in `GET /api/v1/prompt-libraries` finden, die Freigaben vergeben
+   (`POST /api/v1/assets/PROMPT_LIBRARY/{id}/grants`, für „Alle Konten" `subjectType=ALL_ACCOUNTS`
+   ohne `subjectId`), fehlende Prompts per Namenssuche ergänzen
+   (`POST /api/v1/prompt-libraries/{id}/prompts`; ein vorhandener Prompt bleibt unverändert) und die
+   Bibliothek über die Sitzung des jeweiligen Space-Eigentümers zuordnen
+   (`POST /api/v1/spaces/{id}/assets`, `assetType=PROMPT_LIBRARY`) — erst nach den Freigaben, weil
+   die Zuordnung Leserecht des Space-Eigentümers verlangt. Das `e2e`-Profil hat keine
+   Prompt-Bibliotheken.
 8. **Indizierung je Bibliothek** über deren eigene Quellkonfiguration (nicht für die `UPLOAD`-Bibliothek
    — die hat keinen eigenen Lauf, ADR-0018, siehe Schritt 5) — der Seed wartet auf `COMPLETED` und
    bricht bei `documentsFailed > 0` ab. Für die beiden `S3`-Bibliotheken prüft er zusätzlich eine

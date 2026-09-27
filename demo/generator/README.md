@@ -56,8 +56,12 @@ Das Skript:
      Gebührenverzeichnis (`satzungen.py`).
    - `pressemitteilungen/` (RSS + HTML): ein `rss.xml` plus 27 Detailseiten
      (`presse.py`).
-   - `interne-dienstanweisungen-meldewesen/` (`.docx`/`.pdf`/`.pptx`): 26 Dienstanweisungen,
-     Eskalationsregeln, FAQ-Dokumente und Schulungsfolien (`intern.py`).
+   - `interne-dienstanweisungen-meldewesen/<aktenplan>/` (`.docx`/`.pdf`/`.pptx`): 26
+     Dienstanweisungen, Eskalationsregeln, FAQ-Dokumente und Schulungsfolien (`intern.py`), abgelegt
+     in Ordnern nach Aktenplan mit bis zu zwei Ebenen (`intern.AKTENPLAN`, z. B.
+     `05 Bürgerbüro/02 Eskalation und Notfälle/`). Die laufende Nummer im Dateinamen bleibt
+     bibliotheksweit; ein Dokument ohne Aktenplan-Eintrag oder ein Eintrag ohne Dokument bricht
+     den Lauf ab, bevor irgendeine Bibliothek geleert wird.
    - `ratsinformationen/<jahr>/<Gremium>/` (`.md`/`.txt`/`.eml`): 15 Niederschriften und
      Beschlussvorlagen von Stadtrat, Hauptausschuss und Bauausschuss, je Jahrgang ein
      Unterverzeichnis und darin eines je Gremium (`rat.py`) — der Ausschnitt, den der Demo-Stack in
