@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { mockOidcProviders } from '../mocks/fixtures'
+import { mockOidcProviders } from '../mocks/identityProviderFixtures'
 import { useOidcProviderStore } from './oidcProviderStore'
 
 function ids(): string[] {

@@ -2,7 +2,8 @@ import { http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { server } from '../mocks/server'
 import type { ChatDetail, QueryRequest } from '../types/api'
-import { clearSettingsPersistenceCache, useChatStore } from './chatStore'
+import { clearSettingsPersistenceCache } from './chatSettingsPersistence'
+import { useChatStore } from './chatStore'
 
 const CHAT_ID = 'chat-prompt-1'
 

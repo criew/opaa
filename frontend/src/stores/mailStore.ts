@@ -16,7 +16,7 @@ import {
   sendMailTemplateTest,
   updateMailSettings,
   updateMailTemplate,
-} from '../services/api'
+} from '../services/mailApi'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
 
 /**

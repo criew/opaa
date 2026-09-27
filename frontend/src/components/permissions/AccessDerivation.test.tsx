@@ -8,11 +8,20 @@ const { mockGetAssetAccessDerivation, mockGetSpaceAccessDerivation } = vi.hoiste
   mockGetSpaceAccessDerivation: vi.fn(),
 }))
 
-vi.mock('../../services/api', async () => {
-  const actual = await vi.importActual<typeof import('../../services/api')>('../../services/api')
+vi.mock('../../services/assetApi', async () => {
+  const actual =
+    await vi.importActual<typeof import('../../services/assetApi')>('../../services/assetApi')
   return {
     ...actual,
     getAssetAccessDerivation: mockGetAssetAccessDerivation,
+  }
+})
+
+vi.mock('../../services/spaceApi', async () => {
+  const actual =
+    await vi.importActual<typeof import('../../services/spaceApi')>('../../services/spaceApi')
+  return {
+    ...actual,
     getSpaceAccessDerivation: mockGetSpaceAccessDerivation,
   }
 })

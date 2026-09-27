@@ -13,7 +13,7 @@ import {
   mockSearchDiagnosis,
   mockSearchDiagnosisContext,
   mockSearchStatus,
-} from '../mocks/fixtures'
+} from '../mocks/searchAdminFixtures'
 import SearchIndexingAdminPage from './SearchIndexingAdminPage'
 
 function signInAs(systemRole: 'SYSTEM_ADMIN' | 'USER') {

@@ -10,10 +10,9 @@ import {
   getDocumentChunks,
   getSearchDiagnosisContext,
   getSearchStatus,
-  runContextPrefixRerunBatch,
-  runMetadataBackfillBatch,
   runSearchDiagnosis,
-} from '../services/api'
+} from '../services/searchAdminApi'
+import { runContextPrefixRerunBatch, runMetadataBackfillBatch } from '../services/indexingApi'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
 
 /**

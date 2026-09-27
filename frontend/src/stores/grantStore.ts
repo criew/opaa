@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { AssetGrantRequest, AssetGrantResponse, AssetType } from '../types/api'
-import { getAssetGrants, revokeAssetGrant, upsertAssetGrant } from '../services/api'
+import { getAssetGrants, revokeAssetGrant, upsertAssetGrant } from '../services/assetApi'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
 
 /** The key of one asset's grant list: an asset id alone is not unique across asset types. */

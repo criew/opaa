@@ -1,4 +1,4 @@
-import { getLibraries } from '../../services/api'
+import { getLibraries } from '../../services/libraryApi'
 import SpaceAssetAssociationSection from './SpaceAssetAssociationSection'
 
 interface SpaceKnowledgeSectionProps {

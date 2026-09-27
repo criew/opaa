@@ -5,7 +5,7 @@ import type {
   IndexingRunResponse,
   IndexingStatus,
 } from '../types/api'
-import { triggerIndexing, getIndexingStatus, getIndexingRuns } from '../services/api'
+import { triggerIndexing, getIndexingStatus, getIndexingRuns } from '../services/indexingApi'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
 import { sourceRegistration } from '../components/library/sources/registry'
 

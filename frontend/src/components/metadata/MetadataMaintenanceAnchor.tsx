@@ -4,7 +4,7 @@ import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import type { LibraryMetadataMaintenanceResponse } from '../../types/api'
-import { getLibraryMetadataMaintenance } from '../../services/api'
+import { getLibraryMetadataMaintenance } from '../../services/libraryMetadataApi'
 import { formatShare } from '../../utils/labels'
 import PageSection from '../PageSection'
 

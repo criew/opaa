@@ -8,7 +8,7 @@ import { ANSWER_ARRIVED_ANNOUNCEMENT } from '../components/chat/MessageList'
 import { clearRemovedNoteItemCache, useChatStore } from '../stores/chatStore'
 import { useSpaceStore } from '../stores/spaceStore'
 import { useChatListStore } from '../stores/chatListStore'
-import { mockChatArchive } from '../mocks/fixtures'
+import { mockChatArchive } from '../mocks/chatFixtures'
 import { server } from '../mocks/server'
 
 let currentSpaceId: string | undefined = 'space-personal'

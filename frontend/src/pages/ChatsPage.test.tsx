@@ -6,7 +6,7 @@ import { answerConfirm, renderWithProviders } from '../test/test-utils'
 import ChatsPage from './ChatsPage'
 import { useChatListStore } from '../stores/chatListStore'
 import { useSpaceStore } from '../stores/spaceStore'
-import { mockChatArchive, mockChatDetails, mockSearchChats } from '../mocks/fixtures'
+import { mockChatArchive, mockChatDetails, mockSearchChats } from '../mocks/chatFixtures'
 import { server } from '../mocks/server'
 import type { ChatSearchRequest, ChatSearchResponse } from '../types/api'
 

@@ -1,4 +1,4 @@
-import { getDocumentContent } from '../services/api'
+import { getDocumentContent } from '../services/libraryApi'
 
 // #738/#739/#780: shared between the library document list's "Original öffnen" action (#738), the
 // citation deep link (#739) and the Belegfenster's "Im Dokument öffnen" action - all three need to

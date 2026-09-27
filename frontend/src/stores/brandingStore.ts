@@ -1,12 +1,12 @@
 import { create } from 'zustand'
 import type { BrandingResponse, BrandingUpdateRequest } from '../types/api'
-import type { BrandingImageSlot } from '../services/api'
+import type { BrandingImageSlot } from '../services/brandingApi'
 import {
   deleteBrandingImage,
   getBranding,
   updateBranding,
   uploadBrandingImage,
-} from '../services/api'
+} from '../services/brandingApi'
 
 /**
  * What an operator may upload, in the order the branding form shows it (#582, #1910). `maxBytes`

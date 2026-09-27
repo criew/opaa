@@ -5,7 +5,7 @@ import { Route, Routes } from 'react-router'
 import { renderWithProviders } from '../test/test-utils'
 import { useAuthStore } from '../stores/authStore'
 import { LOCAL_ACCOUNTS_DISABLED } from '../types/auth'
-import { setMockLocalAccounts } from '../mocks/fixtures'
+import { setMockLocalAccounts } from '../mocks/authFixtures'
 import { MOCK_RATE_LIMITED_EMAIL } from '../mocks/localAuthFixtures'
 import ForgotPasswordPage from './ForgotPasswordPage'
 

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { useLibraryStore } from './libraryStore'
 import { resetAllStores } from './resettableStores'
-import { getLibraries } from '../services/api'
+import { getLibraries } from '../services/libraryApi'
 import type { LibraryListResponse } from '../types/api'
 
 /** Resolves once resolve() is called - lets a test hold loadLibraries()'s request open until it
@@ -32,7 +32,7 @@ function library(overrides: Partial<LibraryListResponse> = {}): LibraryListRespo
   }
 }
 
-vi.mock('../services/api', () => ({
+vi.mock('../services/libraryApi', () => ({
   getLibraries: vi.fn(async () => [
     { id: 'library-b', name: 'B' },
     { id: 'library-a', name: 'A' },

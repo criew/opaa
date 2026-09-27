@@ -7,7 +7,8 @@ import type {
   PromptRequest,
   PromptResponse,
 } from '../types/api'
-import { mockGroups, mockMyCapabilities, mockMyGroups } from './fixtures'
+import { mockGroups, mockMyGroups } from './groupFixtures'
+import { mockMyCapabilities } from './capabilityFixtures'
 import {
   MOCK_PROMPT_SPACE_ID,
   MOCK_PROMPT_SPACE_LIBRARY_ID,

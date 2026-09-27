@@ -6,7 +6,7 @@ import Typography from '@mui/material/Typography'
 import PublicOutlinedIcon from '@mui/icons-material/PublicOutlined'
 import AreaPageHeader from '../components/AreaPageHeader'
 import type { ExternalAccessLibraryResponse } from '../types/api'
-import { getExternalAccessLibraries } from '../services/api'
+import { getExternalAccessLibraries } from '../services/externalAccessApi'
 import { contentWidth } from '../theme/tokens'
 
 function formatDate(value: string | null | undefined): string {

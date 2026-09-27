@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { listSourceTypes } from '../services/api'
+import { listSourceTypes } from '../services/libraryApi'
 import type { SourceTypeDescriptor } from '../types/api'
 
 export interface SourceTypesState {

@@ -34,7 +34,7 @@ import {
   runLibraryMetadataSchemaChanges,
   updateCoreContextPrefix,
   updateLibraryMetadataField,
-} from '../../services/api'
+} from '../../services/libraryMetadataApi'
 import type {
   CoreContextPrefixResponse,
   LibraryMetadataFieldResponse,

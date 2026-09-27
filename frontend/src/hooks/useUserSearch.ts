@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { getUserSummaries } from '../services/api'
+import { getUserSummaries } from '../services/userApi'
 import type { UserSummary } from '../types/api'
 
 const SEARCH_DEBOUNCE_MS = 300

@@ -11,7 +11,7 @@ import { apiClient, normalizeError } from './api'
 /**
  * The prompt library endpoints (docs/features/spaces-and-assets.md#prompt-bibliothek). Rights,
  * derivation and space association of a prompt library go through the asset-shell functions in
- * `api.ts` with `assetType = 'PROMPT_LIBRARY'` - there is no type-specific rights path.
+ * `assetApi.ts` with `assetType = 'PROMPT_LIBRARY'` - there is no type-specific rights path.
  */
 export async function getPromptLibraries(): Promise<PromptLibraryResponse[]> {
   try {

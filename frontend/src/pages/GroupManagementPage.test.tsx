@@ -56,11 +56,19 @@ vi.mock('../services/permissionTransferApi', async () => {
   return { ...actual, getGroupEffects: vi.fn(async () => []) }
 })
 
-vi.mock('../services/api', async () => {
-  const actual = await vi.importActual<typeof import('../services/api')>('../services/api')
+vi.mock('../services/userApi', async () => {
+  const actual = await vi.importActual<typeof import('../services/userApi')>('../services/userApi')
   return {
     ...actual,
     getUsers: vi.fn(async () => []),
+  }
+})
+
+vi.mock('../services/groupApi', async () => {
+  const actual =
+    await vi.importActual<typeof import('../services/groupApi')>('../services/groupApi')
+  return {
+    ...actual,
     getGroups: vi.fn(async () => listed.groups),
     getGroup: vi.fn(async (groupId: string) => {
       const details = mockFetchedDetails[groupId]

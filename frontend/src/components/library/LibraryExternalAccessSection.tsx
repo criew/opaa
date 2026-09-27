@@ -10,7 +10,8 @@ import Typography from '@mui/material/Typography'
 import { successionAwareMessage } from '../succession/successionConflict'
 import SectionHead from '../SectionHead'
 import type { LibraryExternalAccessResponse } from '../../types/api'
-import { getLibrary, updateLibraryExternalAccess } from '../../services/api'
+import { getLibrary } from '../../services/libraryApi'
+import { updateLibraryExternalAccess } from '../../services/externalAccessApi'
 
 interface LibraryExternalAccessSectionProps {
   libraryId: string

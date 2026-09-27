@@ -9,7 +9,7 @@ const { mockTriggerIndexing, mockGetIndexingStatus, mockGetIndexingRuns } = vi.h
   mockGetIndexingRuns: vi.fn(),
 }))
 
-vi.mock('../services/api', () => ({
+vi.mock('../services/indexingApi', () => ({
   triggerIndexing: mockTriggerIndexing,
   getIndexingStatus: mockGetIndexingStatus,
   getIndexingRuns: mockGetIndexingRuns,

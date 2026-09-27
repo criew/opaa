@@ -3,7 +3,8 @@ import Alert from '@mui/material/Alert'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import type { AccessPathResponse, AssetType } from '../../types/api'
-import { getAssetAccessDerivation, getSpaceAccessDerivation } from '../../services/api'
+import { getAssetAccessDerivation } from '../../services/assetApi'
+import { getSpaceAccessDerivation } from '../../services/spaceApi'
 import {
   accessBasisLabel,
   assetRoleLabel,

@@ -12,19 +12,21 @@ import type {
 import {
   addSpaceMember,
   archiveSpace,
-  associateSpaceAsset,
   createSpace,
   deleteSpace,
-  detachSpaceAsset,
   getSpace,
-  getSpaceAssetAssociations,
   getSpaces,
   listSpaceMembers,
   removeSpaceMember,
   transferSpaceOwnership,
   updateSpaceDetails,
   updateSpaceMemberRole,
-} from '../services/api'
+} from '../services/spaceApi'
+import {
+  associateSpaceAsset,
+  detachSpaceAsset,
+  getSpaceAssetAssociations,
+} from '../services/assetApi'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
 
 // #783 review: module-level, mirroring chatStore's chatLoadSequence - guards loadAssetAssociations

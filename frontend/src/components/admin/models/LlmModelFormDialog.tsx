@@ -10,7 +10,7 @@ import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import type { LlmModelResponse } from '../../../types/api'
-import { testLlmModel } from '../../../services/api'
+import { testLlmModel } from '../../../services/modelApi'
 import { useLlmModelStore } from '../../../stores/llmModelStore'
 
 export const BASE_URL_HELP_TEXT =

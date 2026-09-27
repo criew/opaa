@@ -1,12 +1,14 @@
 import type {
   AdminExternalAccessTokenResponse,
   EligibleExternalAccessLibraryResponse,
+  ExternalAccessLibraryResponse,
   CreateExternalAccessTokenRequest,
   CreatedExternalAccessTokenResponse,
   ExternalAccessChannelInfoResponse,
   ExternalAccessSettingsResponse,
   ExternalAccessSettingsUpdateRequest,
   ExternalAccessTokenStatus,
+  LibraryExternalAccessResponse,
   OwnExternalAccessTokenResponse,
 } from '../types/api'
 import { apiClient, normalizeError } from './api'
@@ -138,6 +140,39 @@ export async function blockExternalAccessTokensOfOwner(ownerUserId: string): Pro
       { ownerUserId },
     )
     return data.blocked
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/**
+ * Setzt oder nimmt die Freigabe der Bibliothek für Fremdzugänge zurück (#1731). `expiresAt` ist
+ * beim Setzen Pflicht und darf beim Zurücknehmen nicht mitgegeben werden - das Backend weist beides
+ * ab, statt es stillschweigend zu ergänzen.
+ */
+export async function updateLibraryExternalAccess(
+  libraryId: string,
+  enabled: boolean,
+  expiresAt: string | null,
+): Promise<LibraryExternalAccessResponse> {
+  try {
+    const { data } = await apiClient.put<LibraryExternalAccessResponse>(
+      `/v1/libraries/${libraryId}/external-access`,
+      enabled ? { enabled, expiresAt } : { enabled },
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** Die aktuell für Fremdzugänge freigegebenen Bibliotheken (nur Systemverwaltung). */
+export async function getExternalAccessLibraries(): Promise<ExternalAccessLibraryResponse[]> {
+  try {
+    const { data } = await apiClient.get<ExternalAccessLibraryResponse[]>(
+      '/v1/admin/external-access/libraries',
+    )
+    return data
   } catch (err) {
     normalizeError(err)
   }

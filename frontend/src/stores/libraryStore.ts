@@ -12,9 +12,9 @@ import {
   getLibrary,
   getLibraries,
   updateLibrary,
-  updateLibraryDiagnosticsLock,
   updateLibraryShareCap,
-} from '../services/api'
+} from '../services/libraryApi'
+import { updateLibraryDiagnosticsLock } from '../services/diagnosticAccessApi'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
 
 interface LibraryState {

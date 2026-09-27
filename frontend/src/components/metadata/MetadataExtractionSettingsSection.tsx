@@ -14,7 +14,7 @@ import {
   getLibraryMetadataExtractionSettings,
   getLibraryMetadataQuality,
   updateLibraryMetadataExtractionSettings,
-} from '../../services/api'
+} from '../../services/libraryMetadataApi'
 import { formatShare } from '../../utils/labels'
 
 interface MetadataExtractionSettingsSectionProps {
