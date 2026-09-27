@@ -23,9 +23,10 @@ const DEMO_USERNAME = 'maria.weber'
 const DEMO_PASSWORD = 'RheinfurtDemo!2026'
 const DEMO_ADMIN_USERNAME = 'demo-admin'
 
-// The sixth demo library (#1383): fed from the demo stack's MinIO bucket over the S3 connector
-// (demo/seed/profiles.py, docker-compose.yml's "minio"/"minio-seed"). Its documents are the
-// council records under demo/corpus/ratsinformationen/<jahr>/, named <datum>-<gremium>-<art>-….
+// The sixth demo library (#1383): fed from the demo stack's object store bucket over the S3
+// connector (demo/seed/profiles.py, docker-compose.yml's "objectstore"/"objectstore-seed"). Its
+// documents are the council records under demo/corpus/ratsinformationen/<jahr>/, named
+// <datum>-<gremium>-<art>-….
 const S3_LIBRARY_NAME = 'Ratsinformationen Stadt Rheinfurt'
 const S3_DOCUMENT_NAME_PATTERN = /\d{4}-\d{2}-\d{2}-(stadtrat|hauptausschuss)-/
 

@@ -4,8 +4,8 @@ library (S3 connector, see docs/features/demo-instance.md and docs/handbuch/konn
 Council minutes (Niederschriften, .md) and decision papers (Beschlussvorlagen, .txt) of the
 Stadtrat and the Hauptausschuss, laid out under one key prefix per year - the shape of a
 records archive an administration keeps in an object store. The keys are what the demo's
-MinIO bucket is seeded with (docker-compose.yml, service "minio-seed"), so the year prefixes
-become folders in the library.
+object store bucket is seeded with (docker-compose.yml, service "objectstore-seed"), so the year
+prefixes become folders in the library.
 
 The council decisions here (budgets, the digitalisation strategy, the mobile citizen office, the
 fire station, the school bus, heat planning) are covered by no other library - a question about

@@ -365,7 +365,7 @@ async function main() {
 
   // The "e2e" target names its services explicitly (only the ones this suite needs); the "demo"
   // target relies on `--profile demo` (already in composeArgs above) to pull in
-  // keycloak/demo-corpus/demo-presse/minio alongside the always-on postgres/backend/frontend/ai-stub -
+  // keycloak/demo-corpus/demo-presse/objectstore alongside the always-on postgres/backend/frontend/ai-stub -
   // naming a profile-gated service explicitly does not start it without its profile also active,
   // so composeArgs' `--profile demo` is what actually does the work either way.
   const services = isDemo
@@ -376,8 +376,8 @@ async function main() {
         'keycloak',
         'demo-corpus',
         'demo-presse',
-        'minio',
-        'minio-seed',
+        'objectstore',
+        'objectstore-seed',
         'ai-stub',
       ]
     : isLocalAuth
