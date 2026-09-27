@@ -5,10 +5,12 @@
 #
 # What it brings in line with the export (realm "opaa" unless KC_REALM says otherwise):
 #   - the groups "Bürgerbüro Rheinfurt", "Meldewesen", "Kfz-Zulassung" and their memberships,
-#   - the confidential service-account client "opaa-directory" of the directory sync, its secret
-#     and exactly the realm-management roles view-users and query-groups,
+#   - the confidential service-account client "opaa-directory" of the directory sync and exactly
+#     the realm-management roles view-users and query-groups,
 #   - the audience mapper "opaa-frontend-audience" on the seed client "opaa-seed".
-# It never removes a group, a member, a role or a client, and it touches no password.
+# It never removes a group, a member, a role or a client, and it touches no password. The secret
+# of opaa-directory is set when the client is created, and on an existing client only when
+# DIRECTORY_CLIENT_SECRET is given - a rotated secret is never reset to the demo value.
 #
 # Usage (see demo/README.md, "Realm-Änderungen in ein bestehendes Keycloak übertragen"):
 #   KC_CONTAINER=opaa-keycloak KC_SERVER=http://localhost:8180/idp \
@@ -19,15 +21,22 @@
 #               instance serves Keycloak under /idp, also inside its container)
 # KC_ADMIN_USER / KC_ADMIN_PASSWORD  an administrator of the master realm (required)
 # KC_REALM      target realm (default opaa)
-# DIRECTORY_CLIENT_SECRET  secret of opaa-directory (default: the documented demo value); must
-#               match what OPAA stores as the provider's directory connection
+# DIRECTORY_CLIENT_SECRET  secret of opaa-directory; must match what OPAA stores as the
+#               provider's directory connection. Unset: a new client gets the documented demo value
+#               (local and CI stacks only), an existing one keeps its secret. A reachable instance
+#               always passes its own generated value.
 
 set -euo pipefail
 
 KC_SERVER="${KC_SERVER:-http://localhost:8180}"
 KC_REALM="${KC_REALM:-opaa}"
 DIRECTORY_CLIENT_ID="opaa-directory"
-DIRECTORY_CLIENT_SECRET="${DIRECTORY_CLIENT_SECRET:-RheinfurtVerzeichnis!2026}"
+if [ -n "${DIRECTORY_CLIENT_SECRET+x}" ] && [ -n "$DIRECTORY_CLIENT_SECRET" ]; then
+  SECRET_GIVEN=true
+else
+  SECRET_GIVEN=false
+  DIRECTORY_CLIENT_SECRET="RheinfurtVerzeichnis!2026"
+fi
 SEED_CLIENT_ID="opaa-seed"
 AUDIENCE_MAPPER="opaa-frontend-audience"
 AUDIENCE_CLIENT_ID="opaa-frontend"
@@ -115,13 +124,21 @@ if [ -z "$directory_uuid" ]; then
     -s standardFlowEnabled=false -s implicitFlowEnabled=false \
     -s directAccessGrantsEnabled=false -s serviceAccountsEnabled=true \
     -s secret="$DIRECTORY_CLIENT_SECRET" >/dev/null
-  echo "  Client angelegt: $DIRECTORY_CLIENT_ID"
+  if [ "$SECRET_GIVEN" = true ]; then
+    echo "  Client angelegt: $DIRECTORY_CLIENT_ID (Geheimnis aus DIRECTORY_CLIENT_SECRET)"
+  else
+    echo "  Client angelegt: $DIRECTORY_CLIENT_ID (dokumentierter Demo-Wert - nur für lokale Stacks)"
+  fi
 else
   kc update "clients/$directory_uuid" -r "$KC_REALM" -s enabled=true -s publicClient=false \
     -s standardFlowEnabled=false -s implicitFlowEnabled=false \
-    -s directAccessGrantsEnabled=false -s serviceAccountsEnabled=true \
-    -s secret="$DIRECTORY_CLIENT_SECRET"
-  echo "  Client vorhanden, Einstellungen und Geheimnis gesetzt: $DIRECTORY_CLIENT_ID"
+    -s directAccessGrantsEnabled=false -s serviceAccountsEnabled=true
+  if [ "$SECRET_GIVEN" = true ]; then
+    kc update "clients/$directory_uuid" -r "$KC_REALM" -s secret="$DIRECTORY_CLIENT_SECRET"
+    echo "  Client vorhanden, Geheimnis aus DIRECTORY_CLIENT_SECRET gesetzt: $DIRECTORY_CLIENT_ID"
+  else
+    echo "  Client vorhanden, Geheimnis unverändert: $DIRECTORY_CLIENT_ID"
+  fi
 fi
 
 # add-roles is idempotent: a role the service account already holds stays as it is.

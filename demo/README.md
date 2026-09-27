@@ -395,8 +395,9 @@ Demo-Konten, `demo-admin` eingeschlossen — genau die Mindestgruppengröße der
 „Meldewesen" (Maria, Selin) und „Kfz-Zulassung" (Thomas). Seit #2017 kommen sie über den
 **Verzeichnisabgleich** nach OPAA, nicht mehr über den Gruppen-Claim der Tokens: Der Realm-Export
 führt dafür das Dienstkonto `opaa-directory` (vertraulicher Client ohne Anmeldefluss, Geheimnis
-`RheinfurtVerzeichnis!2026` — ein offener Demo-Wert wie die Passwörter oben, Rollen `view-users` und
-`query-groups` aus `realm-management`), und der Seed richtet am Anbieter „Verzeichnisdienst" ein
+`RheinfurtVerzeichnis!2026` — ein offener Demo-Wert nur für lokale und CI-Stacks; eine erreichbare
+Instanz bekommt ein eigenes, siehe „Realm-Änderungen in ein bestehendes Keycloak übertragen" —,
+Rollen `view-users` und `query-groups` aus `realm-management`), und der Seed richtet am Anbieter „Verzeichnisdienst" ein
 (Schritt 2 unten):
 
 | Einstellung | Wert in der Demo |
@@ -430,7 +431,8 @@ Die Gruppen-Mapper (Claim `groups`) auf `opaa-frontend` und `opaa-seed` bleiben 
 diesen Anbieter aber nicht mehr ausgewertet. Eine Instanz, die vor #2017 im Token-Modus lief, behält
 ihre drei Token-Gruppen mit eingefrorener Mitgliedschaft; sie stehen in der Gruppenverwaltung als
 „Wird nicht mehr gepflegt" neben den gleichnamigen Organisationseinheiten und tragen keine Rechte.
-Wer sie nicht sehen will, setzt die Demo neu auf.
+Für die Umstellung einer bestehenden Instanz gilt deshalb: neu aufsetzen (siehe „Realm-Änderungen
+in ein bestehendes Keycloak übertragen" unten).
 
 Zusätzlich richtet der Seed (Schritt 6) die interne Gruppe **„Vertretung Meldewesen"** ein
 (`demo/seed/profiles.py`, `GroupDef`): Maria ist ihre alleinige, benannte Verantwortliche (nicht das
@@ -567,14 +569,17 @@ Der Lauf richtet über die API ein:
 2. **Identitätsanbieter: Verzeichnisabgleich** (nur im `demo`-Profil, ADR-0036 Entscheidungen 2
    und 3, siehe „Gruppen" oben) — am Anbieter „Verzeichnisdienst" leert der Seed einen gesetzten
    Gruppen-Claim (`PUT /api/v1/admin/oidc-providers/{id}`), hinterlegt den Verzeichniszugang
-   (`PUT …/directory-connector` mit `opaa-directory` und dem Demo-Geheimnis; die Adresse leitet er
-   aus der JWK-Set-Adresse des Anbieters ab), prüft ihn (`POST …/directory-connector/test`),
+   (`PUT …/directory-connector` mit `opaa-directory` und dem Geheimnis aus
+   `OPAA_DEMO_DIRECTORY_CLIENT_SECRET`/`--directory-client-secret`, ohne beides dem Demo-Wert; die
+   Adresse leitet er aus der JWK-Set-Adresse des Anbieters ab), prüft ihn (`POST …/directory-connector/test`),
    schaltet den Abgleich mit 60 Minuten Intervall ein (`PUT …/directory-sync`) und stößt einen
    Lauf an (`POST …/directory-sync/run`). Jeder Lauf muss mit `APPLIED` enden, sonst bricht der
    Seed mit dem Ergebnis ab; ein `409` des gerade vom Zeitplan gestarteten Laufs wartet er ab.
    Gespeichert wird nur, was abweicht — ein hinterlegter Zugang, dessen Verbindungstest gelingt,
-   bleibt stehen. Scheitert der Verbindungstest, fehlt dem Realm meist das Dienstkonto: siehe
-   „Realm-Änderungen in ein bestehendes Keycloak übertragen" unten. Das `e2e`-Profil überspringt
+   bleibt stehen; scheitert sein Test, bricht der Seed ab und ersetzt ihn nur durch ein
+   ausdrücklich übergebenes Geheimnis. Scheitert der Test eines neu hinterlegten Zugangs, fehlt dem
+   Realm meist das Dienstkonto: siehe „Realm-Änderungen in ein bestehendes Keycloak übertragen"
+   unten. Das `e2e`-Profil überspringt
    den Schritt — der dev-Betriebsmodus kennt keine Anbieterzeile (ADR-0036, Entscheidung 3).
 3. **Spaces** gemäß `docs/features/demo-instance.md` — „Meldewesen & Ausweise" (Maria Weber; Selin
    Kaya kommt in Schritt 6 über die Keycloak-Gruppe „Meldewesen" hinzu), Marias eigener Space ohne
@@ -732,20 +737,15 @@ abhängt, per `kcadm` in den bestehenden Realm:
 
 - die Gruppen „Bürgerbüro Rheinfurt", „Meldewesen", „Kfz-Zulassung" und die Mitgliedschaften der
   fünf Demo-Konten darin,
-- den Client `opaa-directory` (vertraulich, nur Dienstkonto) samt Geheimnis und den Rollen
-  `view-users` und `query-groups` aus `realm-management`,
+- den Client `opaa-directory` (vertraulich, nur Dienstkonto) und die Rollen `view-users` und
+  `query-groups` aus `realm-management`,
 - den Audience-Mapper `opaa-frontend-audience` am Client `opaa-seed`.
 
 Das Skript ist idempotent: Es prüft jeden Punkt und legt nur an, was fehlt; ein zweiter Lauf ändert
 nichts. Es entfernt nichts und setzt kein Passwort — die Härtung der Konten auf einer erreichbaren
-Instanz bleibt unberührt. Aufruf auf dem Host des Keycloak-Containers:
-
-```bash
-KC_CONTAINER=opaa-keycloak \
-KC_SERVER=http://localhost:8180/idp \
-KC_ADMIN_USER=<Administrator des master-Realms> KC_ADMIN_PASSWORD=<sein Passwort> \
-  bash demo/keycloak/apply-realm-changes.sh
-```
+Instanz bleibt unberührt. **Das Geheimnis von `opaa-directory`** setzt es nur beim Anlegen des
+Clients oder wenn `DIRECTORY_CLIENT_SECRET` ausdrücklich übergeben ist; ein vorhandener Client
+behält sonst sein Geheimnis, ein rotiertes fällt also nie still auf den Demo-Wert zurück.
 
 | Variable | Bedeutung | Vorgabe |
 |---|---|---|
@@ -753,13 +753,50 @@ KC_ADMIN_USER=<Administrator des master-Realms> KC_ADMIN_PASSWORD=<sein Passwort
 | `KC_SERVER` | Keycloak-Adresse aus Sicht von `kcadm`; auf der öffentlichen Instanz liegt Keycloak auch containerintern unter `/idp` | `http://localhost:8180` |
 | `KC_ADMIN_USER`, `KC_ADMIN_PASSWORD` | Administrator des `master`-Realms | Pflicht |
 | `KC_REALM` | Ziel-Realm | `opaa` |
-| `DIRECTORY_CLIENT_SECRET` | Geheimnis von `opaa-directory`; muss zu dem passen, was der Seed in OPAA hinterlegt | `RheinfurtVerzeichnis!2026` |
+| `DIRECTORY_CLIENT_SECRET` | Geheimnis von `opaa-directory`; muss zu dem passen, was der Seed in OPAA hinterlegt | ungesetzt: neuer Client bekommt den Demo-Wert `RheinfurtVerzeichnis!2026` (nur lokal/CI), vorhandener behält seins |
 
-Im lokalen Compose-Stack heißt der Container `<Projektname>-keycloak-1`, Server und Vorgabe
-stimmen dort. Danach `seed.py` wie gewohnt laufen lassen; er schaltet den Anbieter auf den
-Verzeichnisabgleich um (Schritt 2 oben). Wer auf einer erreichbaren Instanz ein eigenes Geheimnis
-für `opaa-directory` setzt, hinterlegt es danach unter Administration → Verzeichnisabgleich; der
-Seed überschreibt einen Zugang, dessen Verbindungstest gelingt, nicht.
+Der Seed nimmt dasselbe Geheimnis aus `OPAA_DEMO_DIRECTORY_CLIENT_SECRET` bzw.
+`--directory-client-secret`. Ohne beides hinterlegt er den Demo-Wert — aber nur, solange in OPAA
+noch kein Verzeichniszugang steht. Scheitert der Verbindungstest eines hinterlegten Zugangs (Keycloak
+nicht erreichbar oder Geheimnis rotiert), bricht er ab, statt ihn zu überschreiben; ersetzt wird ein
+hinterlegter Zugang nur durch ein ausdrücklich übergebenes Geheimnis.
+
+**Lokaler Compose-Stack und CI:** Nichts zu tun — der Realm-Export bringt `opaa-directory` mit dem
+Demo-Wert mit, und der Seed hinterlegt denselben. Das Skript ist dort nur nötig, um einen eigenen
+Keycloak mit Volume nachzuziehen; der Container heißt dann `<Projektname>-keycloak-1`.
+
+**Öffentlich erreichbare Instanz** (etwa opaa.ewerlin.com, deren Admin-API von außen erreichbar ist):
+Der Demo-Wert steht im Repository und öffnet über `client_credentials` den ganzen Verzeichnisabzug.
+Deshalb dort immer ein eigenes Geheimnis erzeugen, auf dem Server ablegen und an Skript **und** Seed
+durchreichen:
+
+```bash
+# einmalig: Geheimnis erzeugen und nur für root lesbar ablegen
+umask 077; openssl rand -base64 32 | tr -d '\n' > /srv/opaa/.directory-client-secret
+
+# Realm nachziehen - setzt das Geheimnis auch an einem schon vorhandenen Client
+KC_CONTAINER=opaa-keycloak \
+KC_SERVER=http://localhost:8180/idp \
+KC_ADMIN_USER=<Administrator des master-Realms> KC_ADMIN_PASSWORD=<sein Passwort> \
+DIRECTORY_CLIENT_SECRET="$(cat /srv/opaa/.directory-client-secret)" \
+  bash demo/keycloak/apply-realm-changes.sh
+
+# Seed - hinterlegt dasselbe Geheimnis als Verzeichniszugang
+OPAA_DEMO_DIRECTORY_CLIENT_SECRET="$(cat /srv/opaa/.directory-client-secret)" \
+  python seed.py --profile demo --base-url https://opaa.ewerlin.com/api \
+  --keycloak-url https://opaa.ewerlin.com/idp
+```
+
+Wer das Geheimnis später rotiert, erzeugt die Datei neu und lässt beide Aufrufe erneut laufen.
+
+**Bestehende Instanz: neu aufsetzen, nicht nur nachziehen.** Der Seed entzieht nichts. Auf einer
+Instanz, die vor der Umstellung gesät wurde, behalten Maria, Selin, Thomas und Andrea ihre eigenen
+Grants auf Satzungen, Ratsinformationen und die Leistungsbibliotheken, und Selin bleibt einzeln
+Mitglied von „Meldewesen & Ausweise"; die Spalte „K" der Matrix („ausschließlich über die
+Keycloak-Gruppe") stimmt dort also nicht, und die Vorführung „Thomas aus ‚Kfz-Zulassung' nehmen"
+ginge ins Leere. Außerdem blieben die alten Token-Gruppen als „Wird nicht mehr gepflegt" stehen.
+Für die Umstellung deshalb: Skript ausführen, dann die OPAA-Datenbank zurücksetzen (Postgres-Volume
+verwerfen; das Keycloak-Volume bleibt) und neu seeden.
 
 ### Öffentliche Instanz betreiben (opaa.ewerlin.com)
 
@@ -910,10 +947,16 @@ Der (erneute) Seed der Instanz läuft im Profil `demo` von einer Arbeitsstation 
 API und Keycloak, nicht auf dem Server selbst:
 
 ```bash
+OPAA_DEMO_DIRECTORY_CLIENT_SECRET="$(cat /srv/opaa/.directory-client-secret)" \
 python seed.py --profile demo \
   --base-url https://opaa.ewerlin.com/api \
   --keycloak-url https://opaa.ewerlin.com/idp
 ```
+
+Das Geheimnis des Verzeichnis-Dienstkontos `opaa-directory` ist dort ein eigener, auf dem Server
+abgelegter Zufallswert, nie der dokumentierte Demo-Wert — Erzeugung und Weitergabe an Realm-Skript
+und Seed: „Realm-Änderungen in ein bestehendes Keycloak übertragen" oben. Läuft der Seed von einer
+Arbeitsstation, wird der Wert von dort übergeben.
 
 Voraussetzung dafür ist der Keycloak-Client `opaa-seed` — siehe
 [„Härtung für erreichbare Deployments"](../docs/handbuch/deployment.md#härtung-für-erreichbare-deployments),

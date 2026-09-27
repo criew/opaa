@@ -122,8 +122,9 @@ class ProviderGroupDef:
 @dataclass(frozen=True)
 class DirectorySyncDef:
     """The Keycloak connector of the provider's directory sync: the confidential service-account
-    client of keycloak/realm-export.json, holding view-users and query-groups. The secret is a
-    documented demo value, like every password of this profile."""
+    client of keycloak/realm-export.json, holding view-users and query-groups. client_secret is the
+    documented demo value and only the fallback for local and CI stacks; a reachable instance hands
+    the seed its own secret (seed.py --directory-client-secret)."""
 
     client_id: str
     client_secret: str

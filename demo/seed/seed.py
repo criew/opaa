@@ -302,12 +302,18 @@ def _probe_directory_connector(admin_client: Client, provider_id: str, connector
 
 
 def ensure_directory_sync(
-    admin_client: Client, directory_sync: DirectorySyncDef, display_name: str = "Verzeichnisdienst"
+    admin_client: Client,
+    directory_sync: DirectorySyncDef,
+    client_secret: str | None = None,
+    display_name: str = "Verzeichnisdienst",
 ) -> str:
     """Switches the provider from the groups claim to the directory sync (ADR-0036, Entscheidung
     2/3: one group mechanism per provider), stores the Keycloak connector, enables the scheduled
     run and runs it once, so the realm's groups exist as ORG_UNIT groups before step 6 gives them
-    rights. Returns the provider id. Writes only what differs; the run happens every time."""
+    rights. Returns the provider id. Writes only what differs; the run happens every time.
+
+    client_secret is the secret given explicitly; without it the profile's demo value is used, but
+    only for a connection not stored yet - a stored one whose probe fails is never overwritten."""
     provider = find_provider(admin_client, display_name)
     provider_id = provider["id"]
     provider_path = f"/v1/admin/oidc-providers/{provider_id}"
@@ -331,7 +337,7 @@ def ensure_directory_sync(
         "type": "KEYCLOAK",
         "baseUrl": keycloak_admin_base_url(provider.get("jwkSetUri")),
         "clientId": directory_sync.client_id,
-        "clientSecret": directory_sync.client_secret,
+        "clientSecret": client_secret or directory_sync.client_secret,
     }
     stored = provider.get("directoryConnector") or {}
     already_stored = stored.get("clientId") == connector["clientId"] and (
@@ -340,6 +346,15 @@ def ensure_directory_sync(
     probe = (
         _probe_directory_connector(admin_client, provider_id, connector) if already_stored else None
     )
+    if probe is not None and not probe["success"] and not client_secret:
+        raise SystemExit(
+            f"Verbindungstest des hinterlegten Verzeichniszugangs fehlgeschlagen: {probe['message']} "
+            "Entweder ist Keycloak gerade nicht erreichbar, oder das hinterlegte Geheimnis passt "
+            f"nicht mehr zum Dienstkonto '{directory_sync.client_id}'. Der Seed ersetzt einen "
+            "hinterlegten Zugang nie durch den Demo-Wert; ein neues Geheimnis ausdrücklich "
+            "übergeben (--directory-client-secret bzw. OPAA_DEMO_DIRECTORY_CLIENT_SECRET) oder "
+            "unter Administration → Verzeichnisabgleich hinterlegen."
+        )
     if probe is None or not probe["success"]:
         admin_client.put_ok(f"{provider_path}/directory-connector", json=connector)
         print(f"  Verzeichniszugang hinterlegt: {connector['clientId']} → {connector['baseUrl']}")
@@ -347,9 +362,8 @@ def ensure_directory_sync(
     if not probe["success"]:
         raise SystemExit(
             f"Verbindungstest des Verzeichniszugangs fehlgeschlagen: {probe['message']} "
-            f"Das Dienstkonto '{directory_sync.client_id}' braucht im Realm das Geheimnis aus "
-            "demo/seed/profiles.py und die Rollen view-users und query-groups. "
-            + REALM_SCRIPT_HINT
+            f"Das Dienstkonto '{directory_sync.client_id}' braucht im Realm dasselbe Geheimnis, das "
+            "der Seed übergibt, und die Rollen view-users und query-groups. " + REALM_SCRIPT_HINT
         )
     print(f"  Verbindungstest: {probe['message']}")
 
@@ -831,7 +845,9 @@ def run(args: argparse.Namespace) -> None:
     provider_id: str | None = None
     if profile.directory_sync is not None:
         print("2/8 Identitätsanbieter: Verzeichnisabgleich einrichten und ausführen (ADR-0036) …")
-        provider_id = ensure_directory_sync(admin_client, profile.directory_sync)
+        provider_id = ensure_directory_sync(
+            admin_client, profile.directory_sync, client_secret=args.directory_client_secret
+        )
     else:
         print("2/8 Identitätsanbieter: übersprungen (kein Verzeichnisabgleich im Profil) …")
 
@@ -963,6 +979,13 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         "--local-admin-password",
         default=os.environ.get("OPAA_INITIAL_ADMIN_PASSWORD", ""),
         help="Password of that account (default: $OPAA_INITIAL_ADMIN_PASSWORD)",
+    )
+    parser.add_argument(
+        "--directory-client-secret",
+        default=os.environ.get("OPAA_DEMO_DIRECTORY_CLIENT_SECRET") or None,
+        help="Secret of the Keycloak service account opaa-directory for the directory sync "
+        "(default: $OPAA_DEMO_DIRECTORY_CLIENT_SECRET; without either, the documented demo value "
+        "is used for a connection not stored yet - required on a reachable instance)",
     )
     return parser.parse_args(argv)
 
