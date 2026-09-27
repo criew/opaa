@@ -2,9 +2,9 @@ package io.opaa.chat;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.indexing.metadata.FormatFieldCondition;
-import io.opaa.indexing.metadata.LibraryFieldCondition;
-import io.opaa.indexing.metadata.MetadataFilter;
+import io.opaa.metadata.FormatFieldCondition;
+import io.opaa.metadata.LibraryFieldCondition;
+import io.opaa.metadata.MetadataFilter;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;

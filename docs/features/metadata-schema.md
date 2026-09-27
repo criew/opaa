@@ -1343,7 +1343,7 @@ API, die Filter-Oberfläche mit Füllstand und Eintrittsbedingung. Der zweite Te
 `MetadataFilterAudit`, Fixpunkt und Baseline-Neuziehung — die Messung der beiden Fehlerrichtungen)
 steht in [`retrieval-benchmark.md`, „Umgesetzt (#1070, Teil 2)"](./retrieval-benchmark.md#umgesetzt-1070-teil-2).
 
-**Filtermodell.** `MetadataFilter` (`io.opaa.indexing.metadata`) trägt genau die zwei filterbaren
+**Filtermodell.** `MetadataFilter` (`io.opaa.metadata`) trägt genau die zwei filterbaren
 Kernfelder: eine Menge von Dokumentart-Codes und ein inklusives Datumsfenster `documentDateFrom`/
 `documentDateTo`. Der Titel ist nicht filterbar, Schlagworte gibt es nicht — und ein Test hält fest,
 dass der Record keine weiteren Komponenten hat. An der API (`MetadataFilter`-Schema) wird ein

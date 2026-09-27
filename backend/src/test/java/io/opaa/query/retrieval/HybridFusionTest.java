@@ -8,9 +8,9 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import io.opaa.indexing.metadata.DocumentTypeVocabularyRepository;
-import io.opaa.indexing.metadata.MetadataFilter;
 import io.opaa.llm.RerankModelRole;
+import io.opaa.metadata.DocumentTypeVocabularyRepository;
+import io.opaa.metadata.MetadataFilter;
 import io.opaa.query.QueryConfiguration;
 import io.opaa.query.QueryProperties;
 import io.opaa.query.retrieval.ranking.ChunkEmbeddingLookup;

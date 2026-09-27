@@ -16,7 +16,7 @@ import java.util.TreeMap;
  * (docs/features/metadata-schema.md, Teil III; ADR-0024): what the file format itself declares
  * about the document. A pipeline fills what it has cheaply at hand and never interprets - every
  * rule that turns these into a Titel, Dokumentart or Datum/Stand lives in {@code
- * io.opaa.indexing.metadata.CoreMetadataExtractor}. Blank strings normalize to {@code null}; {@code
+ * io.opaa.metadata.CoreMetadataExtractor}. Blank strings normalize to {@code null}; {@code
  * frontmatter} keys are lower-cased.
  *
  * @param title the format's own title property (PDF Info Title, OOXML/ODF dc:title, HTML title)

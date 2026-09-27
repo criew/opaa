@@ -1,19 +1,24 @@
 # Modul knowledge
 
-Pakete (`io.opaa.*`): knowledge, llm, indexing. Die Konnektoren darunter bilden das Modul
+Pakete (`io.opaa.*`): knowledge, llm, metadata, indexing. Die Konnektoren darunter bilden das Modul
 connectors. Ergänzt `backend/AGENTS.md`; für den Konnektorvertrag in `indexing.source` gilt zusätzlich `indexing/source/AGENTS.md`.
 
 ## Zweck und Grenze
 
 Der Bestand einer Wissensbibliothek — Bibliothek, Ordner, Dokumente, Zugriffsprüfung, Ablage der
-Originale (`knowledge`) —, der Weg vom Dokument in den Index (`indexing`) und die verwalteten
-Chat-Modelle (`llm`). knowledge hängt nur von foundation, format, identity und rights ab.
+Originale (`knowledge`) —, das Metadatenschema (`metadata`), der Weg vom Dokument in den Index
+(`indexing`) und die verwalteten Chat-Modelle (`llm`). knowledge hängt nur von foundation, format,
+identity und rights ab.
 
 ## Invarianten und Stolpersteine
 
 - **`knowledge` liegt unter `indexing` und `library` und nennt keines von beiden.** Was es von oben
   braucht, deklariert es als Schnittstelle, die das obere Paket implementiert
   (`FolderDocumentDeleter`).
+- **`metadata` liegt zwischen `knowledge` und `indexing`** (Schema, Kernfelder, Vokabular,
+  Extraktion, Korrektur, Filter, Kontextpräfix) und kennt keine Pipeline-Klasse. Den Chunk-Store und
+  den Nachlauf erreicht es über `ChunkMetadataStore` und `ContextPrefixBacklog`. Bestandslauf und
+  Nachlauf selbst liegen in `indexing.maintenance`.
 - **Ein Aufnahmeweg:** Jede Quelle und jeder Upload geht durch `DocumentIngestService#ingest`
   (parsen, schneiden, speichern, markieren). Die `Document`-Zeile gehört `knowledge`.
 - **`indexing.job` besitzt den Lauf** (Zeile, Lebenszyklus, Protokoll, Zeitpläne) und weiß nichts
@@ -23,15 +28,15 @@ Chat-Modelle (`llm`). knowledge hängt nur von foundation, format, identity und 
   Format ab, das einen Schemaschlüssel als Passthrough-Schlüssel deklariert.
 - **`IndexingConfiguration` verdrahtet den Kern und kennt keinen Konnektor**; die Unterpakete
   kennen voneinander nichts über das Wurzelpaket `indexing`.
-- **Zyklen zwischen den Unterpaketen von `indexing`** sind in
-  `ModularArchitecture.KNOWN_SUBPACKAGE_CYCLE_EDGES` eingefroren. Jede weitere Kante auf einem
-  Zyklus lässt `ModularArchitectureTest` fehlschlagen.
+- **Zyklen zwischen den Unterpaketen von `indexing`** sind in `KNOWN_SUBPACKAGE_CYCLE_EDGES`
+  eingefroren; jede weitere Kante auf einem Zyklus lässt `ModularArchitectureTest` fehlschlagen.
 - **Chat-Modelle:** `LlmModelService` ist der einzige Einstieg. Der optionale API-Schlüssel wird
   über `SettingsEncryptor` verschlüsselt, bevor die Datenbank ihn sieht; jede Änderung wird
   protokolliert. Genau ein Modell ist systemweit aktiv.
-- **Web-Schicht:** `llm.web` (Modellverwaltung), `indexing.web` (Indexierungsverwaltung,
-  Dokument- und Bibliotheksmetadaten, der Metadatenfilter aller Such- und Chat-Anfragen samt
-  strengem `MetadataFilterDeserializer`). Die Endpunkte der Bibliothek liegen in `library.web`.
+- **Web-Schicht:** `llm.web` (Modellverwaltung), `indexing.web` (Indexierungsverwaltung, Bestands-
+  und Nachlauf), `metadata.web` (Dokument- und Bibliotheksmetadaten, der Metadatenfilter aller
+  Such- und Chat-Anfragen samt strengem `MetadataFilterDeserializer`). Die Endpunkte der Bibliothek
+  liegen in `library.web`.
 
 ## Verweise
 
@@ -42,7 +47,7 @@ Chat-Modelle (`llm`). knowledge hängt nur von foundation, format, identity und 
 ## Tests bei Änderungen
 
 ```bash
-./gradlew test -PtestShard=indexing      # io.opaa.indexing.*, io.opaa.format.*, io.opaa.llm.*
+./gradlew test -PtestShard=indexing      # indexing, format, metadata, llm
 ./gradlew test --tests 'io.opaa.knowledge.*' --tests 'io.opaa.architecture.*'
 ```
 

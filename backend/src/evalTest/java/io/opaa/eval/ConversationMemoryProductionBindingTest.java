@@ -11,8 +11,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import io.opaa.indexing.metadata.MetadataFilter;
 import io.opaa.llm.ActiveChatModelResolver;
+import io.opaa.metadata.MetadataFilter;
 import io.opaa.query.QueryProperties;
 import io.opaa.query.answer.AnswerGenerationService;
 import io.opaa.query.answer.CaffeineChatMemoryRepository;

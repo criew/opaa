@@ -38,7 +38,7 @@ Hauptklassen, ohne Spring-Kontext, als Teil von `./gradlew test`. Die Definition
 | format | format |
 | identity | audit, branding, mail, auth, account, notification |
 | rights | permission, asset, group, directory, succession |
-| knowledge | knowledge, llm, indexing (ohne Konnektoren) |
+| knowledge | knowledge, llm, metadata, indexing (ohne Konnektoren) |
 | connectors | jedes direkte Unterpaket von `indexing.source` |
 | workspace | space, revision, diagnosticaccess |
 | library | library |

@@ -1,6 +1,6 @@
 package io.opaa.search;
 
-import io.opaa.indexing.chunk.ChunkContextPrefix;
+import io.opaa.metadata.ChunkContextPrefix;
 import java.util.ArrayList;
 import java.util.List;
 

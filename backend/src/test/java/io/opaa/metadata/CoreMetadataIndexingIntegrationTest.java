@@ -1,0 +1,817 @@
+package io.opaa.metadata;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
+
+import io.opaa.api.types.DatePrecision;
+import io.opaa.api.types.MetadataOrigin;
+import io.opaa.api.types.SystemRole;
+import io.opaa.format.DocumentFormatRegistry;
+import io.opaa.format.FormatMetadataField;
+import io.opaa.indexing.chunk.VectorChunkStore;
+import io.opaa.indexing.document.DocumentIngest;
+import io.opaa.indexing.document.DocumentIngestResult;
+import io.opaa.indexing.document.DocumentIngestService;
+import io.opaa.indexing.document.DocumentIngests;
+import io.opaa.knowledge.Document;
+import io.opaa.knowledge.DocumentRepository;
+import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.knowledge.SourceDocumentContext;
+import io.opaa.organization.Organization;
+import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.OpaaTestDirectory;
+import io.opaa.test.OwnLibraryFixtures;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.GregorianCalendar;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDDocumentInformation;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import org.apache.pdfbox.pdmodel.common.PDRectangle;
+import org.apache.pdfbox.pdmodel.font.PDType1Font;
+import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
+import org.apache.poi.xslf.usermodel.XMLSlideShow;
+import org.apache.poi.xslf.usermodel.XSLFSlide;
+import org.apache.poi.xslf.usermodel.XSLFTextBox;
+import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.apache.poi.xwpf.usermodel.XWPFParagraph;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.PlatformTransactionManager;
+
+/**
+ * The core fields end to end (ADR-0024): a PDF, a DOCX and a Markdown file with frontmatter go
+ * through {@link DocumentIngestService#processFile}; their values land at the document with origin
+ * and extraction version, their filterable keys on every chunk, and a manual value survives a
+ * re-extraction that rewrites the chunk metadata without touching the chunks. Also the three
+ * further Dokumentart sources against the seeded vocabulary of the database: the Kompositum ending
+ * in a file name, the document head, and the file format.
+ */
+@OpaaIntegrationTest
+class CoreMetadataIndexingIntegrationTest {
+
+  private static final Path classTempDir = OpaaTestDirectory.subdirectory("core-metadata-indexing");
+
+  @Autowired private DocumentIngestService documentIngestService;
+  @Autowired private DocumentMetadataService documentMetadataService;
+  @Autowired private CitationMetadataReader citationMetadataReader;
+  @Autowired private LibraryMetadataFieldRepository libraryFieldRepository;
+  @Autowired private DocumentKeywordRepository keywordRepository;
+  @Autowired private LibraryMetadataFieldValueRepository libraryValueRepository;
+  @Autowired private DocumentMetadataValueRepository valueRepository;
+  @Autowired private DocumentRepository documentRepository;
+  @Autowired private DocumentTypeVocabularyRepository vocabularyRepository;
+  @Autowired private DocumentFormatRegistry pipelineRegistry;
+  @Autowired private PlatformTransactionManager transactionManager;
+  @Autowired private KnowledgeLibraryRepository libraryRepository;
+  @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private OwnLibraryFixtures ownLibraryFixtures;
+
+  private KnowledgeLibrary targetLibrary;
+  private UUID userId;
+
+  @BeforeEach
+  void setUp() {
+    userId = UUID.randomUUID();
+    jdbcTemplate.update(
+        "INSERT INTO users (id, subject, issuer, email, display_name, created_at, system_role,"
+            + " organization_id) VALUES (?, ?, 'test-issuer', 'core-metadata-it@example.com',"
+            + " 'Core Metadata IT User', now(), ?, ?)",
+        userId,
+        "core-metadata-it-" + userId,
+        SystemRole.SYSTEM_ADMIN.name(),
+        Organization.DEFAULT_ID);
+    targetLibrary =
+        libraryRepository.save(
+            KnowledgeLibrary.ownedByUser(
+                Organization.DEFAULT_ID, "Kernfelder", null, userId, false));
+  }
+
+  @AfterEach
+  void removeOwnRows() {
+    ownLibraryFixtures.removeLibraries(targetLibrary.getId());
+    jdbcTemplate.update("DELETE FROM users WHERE id = ?", userId);
+  }
+
+  /** The one document of this class's own library - the suite shares one documents table. */
+  private Document onlyOwnDocument() {
+    List<Document> own = documentRepository.findByLibraryId(targetLibrary.getId());
+    assertThat(own).hasSize(1);
+    return own.getFirst();
+  }
+
+  @Test
+  void pdfPropertiesAndFileNameConventionFillAllThreeFieldsAtTheDocumentAndOnEveryChunk()
+      throws IOException {
+    Path file = classTempDir.resolve("2026-03-12_Dienstanweisung_IT-Nutzung.pdf");
+    writePdf(file, "Dienstanweisung zur IT-Nutzung", LocalDate.of(2025, 6, 30));
+
+    assertThat(
+            documentIngestService.ingest(
+                DocumentIngest.localFile(targetLibrary, file).build(), null))
+        .isEqualTo(DocumentIngestResult.PROCESSED);
+
+    Document document = onlyOwnDocument();
+    assertThat(document.getMetadataExtractionVersion())
+        .isEqualTo(CoreMetadataExtractor.EXTRACTION_VERSION);
+    List<DocumentMetadataValue> values = valueRepository.findByDocumentId(document.getId());
+    assertThat(values).hasSize(3);
+    assertThat(values)
+        .allSatisfy(
+            value -> {
+              assertThat(value.getOrigin()).isEqualTo(MetadataOrigin.DETERMINISTIC);
+              assertThat(value.getExtractionVersion())
+                  .isEqualTo(CoreMetadataExtractor.EXTRACTION_VERSION);
+              assertThat(value.getConfidence()).isNull();
+              assertThat(value.getActorUserId()).isNull();
+              assertThat(value.getCreatedAt()).isNotNull();
+            });
+    CoreMetadata core = documentMetadataService.coreMetadataFor(document.getId());
+    // The Info dictionary's title beats the file name; the file name's ISO date beats the PDF's
+    // own dates; the Dokumentart comes from the file name token.
+    assertThat(core.title()).isEqualTo("Dienstanweisung zur IT-Nutzung");
+    assertThat(core.documentTypeCode()).isEqualTo("DIENSTANWEISUNG");
+    assertThat(core.documentTypeLabel()).isEqualTo("Dienstanweisung");
+    assertThat(core.documentDate()).isEqualTo(LocalDate.of(2026, 3, 12));
+    assertThat(core.documentDatePrecision()).isEqualTo(DatePrecision.DAY);
+
+    assertThat(chunkMetadata(document.getId()))
+        .isNotEmpty()
+        .allSatisfy(
+            metadata -> {
+              assertThat(metadata).containsEntry("doc_type", "DIENSTANWEISUNG");
+              assertThat(metadata).containsEntry("doc_date", "2026-03-12");
+              assertThat(metadata).containsEntry("doc_date_precision", "DAY");
+              assertThat(metadata).doesNotContainKey("title");
+            });
+  }
+
+  @Test
+  void docxCorePropertiesSupplyTitleAndDateWhenTheFileNameDeclaresNothing() throws IOException {
+    Path file = classTempDir.resolve("anlage.docx");
+    writeDocx(file, "Vermerk zur Fristsetzung", LocalDate.of(2024, 11, 5));
+
+    assertThat(
+            documentIngestService.ingest(
+                DocumentIngest.localFile(targetLibrary, file).build(), null))
+        .isEqualTo(DocumentIngestResult.PROCESSED);
+
+    Document document = onlyOwnDocument();
+    CoreMetadata core = documentMetadataService.coreMetadataFor(document.getId());
+    assertThat(core.title()).isEqualTo("Vermerk zur Fristsetzung");
+    assertThat(core.documentDate()).isEqualTo(LocalDate.of(2024, 11, 5));
+    assertThat(core.documentDatePrecision()).isEqualTo(DatePrecision.DAY);
+    // Neither the file name nor a property declares a Dokumentart: the field stays empty - no
+    // row, no chunk key - rather than falling to any default.
+    assertThat(core.documentTypeCode()).isNull();
+    assertThat(valueRepository.findByDocumentId(document.getId())).hasSize(2);
+    assertThat(chunkMetadata(document.getId()))
+        .isNotEmpty()
+        .allSatisfy(metadata -> assertThat(metadata).doesNotContainKey("doc_type"));
+  }
+
+  @Test
+  void markdownFrontmatterIsADeterministicSourceMatchedExactlyAgainstTheVocabulary()
+      throws IOException {
+    Path file = classTempDir.resolve("verwaltung-0002_sozialgebuehrenbefreiungssatzung.md");
+    Files.writeString(
+        file,
+        """
+        ---
+        titel: "Sozialgebührenbefreiungssatzung"
+        dokumentart: "satzung"
+        fassung: 2024
+        stand_datum: "2024-01-01"
+        ---
+
+        # Sozialgebührenbefreiungssatzung
+
+        ## § 1 Geltungsbereich
+
+        Diese Satzung regelt die Befreiung von Gebühren.
+        """);
+
+    assertThat(
+            documentIngestService.ingest(
+                DocumentIngest.localFile(targetLibrary, file).build(), null))
+        .isEqualTo(DocumentIngestResult.PROCESSED);
+
+    Document document = onlyOwnDocument();
+    CoreMetadata core = documentMetadataService.coreMetadataFor(document.getId());
+    assertThat(core.title()).isEqualTo("Sozialgebührenbefreiungssatzung");
+    assertThat(core.documentTypeCode()).isEqualTo("SATZUNG_ORDNUNG");
+    assertThat(core.documentTypeLabel()).isEqualTo("Satzung/Ordnung");
+    assertThat(core.documentDate()).isEqualTo(LocalDate.of(2024, 1, 1));
+    assertThat(core.documentDatePrecision()).isEqualTo(DatePrecision.DAY);
+  }
+
+  /**
+   * the demo's Satzungen carry the Dokumentart as a Kompositum in the file name - the exact token
+   * match does not see it, the seeded ending does.
+   */
+  @Test
+  void aKompositumInTheFileNameNamesTheDokumentart() throws IOException {
+    Path file = classTempDir.resolve("01_verwaltungsgebuehrensatzung.pdf");
+    writePdf(file, null, null);
+
+    assertThat(
+            documentIngestService.ingest(
+                DocumentIngest.localFile(targetLibrary, file).build(), null))
+        .isEqualTo(DocumentIngestResult.PROCESSED);
+
+    Document document = onlyOwnDocument();
+    CoreMetadata core = documentMetadataService.coreMetadataFor(document.getId());
+    assertThat(core.documentTypeCode()).isEqualTo("SATZUNG_ORDNUNG");
+    assertThat(core.documentTypeOrigin()).isEqualTo(MetadataOrigin.DETERMINISTIC);
+  }
+
+  /**
+   * the demo's Dienstanweisungen are named after their subject, not their Dokumentart - the
+   * document head is the source that carries it.
+   */
+  @Test
+  void theDocumentHeadNamesTheDokumentartWhenTheFileNameDoesNot() throws IOException {
+    Path file = classTempDir.resolve("01_identitaetszweifel-ausweisantrag.docx");
+    writeDocxWithHead(
+        file,
+        "Dienstanweisung Nr. 1 - Identitätszweifel beim Ausweisantrag",
+        "Diese Regelung gilt fuer alle Mitarbeitenden des Buergerbueros.");
+
+    assertThat(
+            documentIngestService.ingest(
+                DocumentIngest.localFile(targetLibrary, file).build(), null))
+        .isEqualTo(DocumentIngestResult.PROCESSED);
+
+    Document document = onlyOwnDocument();
+    CoreMetadata core = documentMetadataService.coreMetadataFor(document.getId());
+    assertThat(core.documentTypeCode()).isEqualTo("DIENSTANWEISUNG");
+    assertThat(core.documentTypeOrigin()).isEqualTo(MetadataOrigin.DETERMINISTIC);
+    assertThat(chunkMetadata(document.getId()))
+        .isNotEmpty()
+        .allSatisfy(metadata -> assertThat(metadata).containsEntry("doc_type", "DIENSTANWEISUNG"));
+  }
+
+  /**
+   * the demo's Leistungsbeschreibungen carry the Formular they point to as a label line right below
+   * their title - a reference, never a self-designation.
+   */
+  @Test
+  void aLabelLineBelowTheTitleNeverNamesTheDokumentart() throws IOException {
+    Path file = classTempDir.resolve("13_fabrikneues-fahrzeug-anmelden.md");
+    Files.writeString(
+        file,
+        """
+        # Fabrikneues Fahrzeug anmelden
+
+        **Formular:** RF-KFZ-001
+
+        Die Zulassungsstelle nimmt den Antrag persoenlich entgegen.
+        """);
+
+    assertThat(
+            documentIngestService.ingest(
+                DocumentIngest.localFile(targetLibrary, file).build(), null))
+        .isEqualTo(DocumentIngestResult.PROCESSED);
+
+    Document document = onlyOwnDocument();
+    CoreMetadata core = documentMetadataService.coreMetadataFor(document.getId());
+    assertThat(core.documentTypeCode()).isNull();
+    assertThat(chunkMetadata(document.getId()))
+        .isNotEmpty()
+        .allSatisfy(metadata -> assertThat(metadata).doesNotContainKey("doc_type"));
+  }
+
+  /**
+   * a level-1 heading from inside the document is no title line - a section naming the Formular a
+   * service needs is the same reference as the label line above.
+   */
+  @Test
+  void aSectionHeadingFromInsideTheDocumentNeverNamesTheDokumentart() throws IOException {
+    Path file = classTempDir.resolve("14_gebrauchtfahrzeug-umschreiben.md");
+    Files.writeString(
+        file,
+        """
+        ## Gebrauchtfahrzeug umschreiben
+
+        Die Umschreibung erfolgt in der Zulassungsstelle.
+
+        # Benoetigtes Formular
+
+        RF-KFZ-002 liegt vor Ort aus.
+        """);
+
+    assertThat(
+            documentIngestService.ingest(
+                DocumentIngest.localFile(targetLibrary, file).build(), null))
+        .isEqualTo(DocumentIngestResult.PROCESSED);
+
+    Document document = onlyOwnDocument();
+    CoreMetadata core = documentMetadataService.coreMetadataFor(document.getId());
+    assertThat(core.documentTypeCode()).isNull();
+  }
+
+  /**
+   * a FAQ that cites a Dienstanweisung in its opening text is none - below the title line the head
+   * is not read for the Dokumentart.
+   */
+  @Test
+  void aQuotationBelowTheTitleLineNeverNamesTheDokumentart() throws IOException {
+    Path file = classTempDir.resolve("15_faq-ausweisbeantragung.pdf");
+    writePdfPage(
+        file,
+        List.of(
+            "Haeufige Fragen zur Ausweisbeantragung",
+            "Termine werden nach der Dienstanweisung zur Terminvergabe vergeben.",
+            "Die Gebuehr ist bei Antragstellung faellig."));
+
+    assertThat(
+            documentIngestService.ingest(
+                DocumentIngest.localFile(targetLibrary, file).build(), null))
+        .isEqualTo(DocumentIngestResult.PROCESSED);
+
+    Document document = onlyOwnDocument();
+    CoreMetadata core = documentMetadataService.coreMetadataFor(document.getId());
+    assertThat(core.documentTypeCode()).isNull();
+    // The backfill reads the file the same way, without chunking.
+    assertThat(documentMetadataService.reextractFromFile(document, file).documentTypeCode())
+        .isNull();
+  }
+
+  /** a presentation is a Präsentation - the format is the last source, and a sure one. */
+  @Test
+  void aPresentationGetsItsDokumentartFromTheFormatAlone() throws IOException {
+    Path file = classTempDir.resolve("21_onboarding-buergerbuero.pptx");
+    writePptx(file, "Onboarding Buergerbuero", "Ablauf der ersten Woche im Buergerbuero.");
+
+    assertThat(
+            documentIngestService.ingest(
+                DocumentIngest.localFile(targetLibrary, file).build(), null))
+        .isEqualTo(DocumentIngestResult.PROCESSED);
+
+    Document document = onlyOwnDocument();
+    CoreMetadata core = documentMetadataService.coreMetadataFor(document.getId());
+    assertThat(core.documentTypeCode()).isEqualTo("PRAESENTATION");
+    assertThat(core.documentTypeLabel()).isEqualTo("Präsentation");
+    assertThat(core.documentTypeOrigin()).isEqualTo(MetadataOrigin.DETERMINISTIC);
+    // The backfill reads the same three sources from the file alone, without chunking.
+    assertThat(documentMetadataService.reextractFromFile(document, file).documentTypeCode())
+        .isEqualTo("PRAESENTATION");
+  }
+
+  /**
+   * an RSS entry names other documents than itself - neither its body text (no Kopfbereich) nor its
+   * headline (no file name) may become a Dokumentart, and its headline is no Stand either.
+   */
+  @Test
+  void anRssEntryNeitherReadsItsBodyAsAKopfbereichNorItsHeadlineAsAFileName() throws IOException {
+    assertThat(
+            documentIngestService.ingest(
+                DocumentIngests.rssEntry(
+                    targetLibrary,
+                    "Der Rat hat in seiner Sitzung die neue Hundesteuersatzung beschlossen. Der"
+                        + " Vortrag dazu findet am Montag statt.",
+                    "Rat beschliesst Hundesteuersatzung fuer 2024",
+                    "https://feed.example/rat-beschluss",
+                    "2026-03-12T10:00:00Z"),
+                null))
+        .isEqualTo(DocumentIngestResult.PROCESSED);
+
+    Document document = onlyOwnDocument();
+    CoreMetadata core = documentMetadataService.coreMetadataFor(document.getId());
+    assertThat(core.documentTypeCode()).isNull();
+    assertThat(core.title()).isEqualTo("Rat beschliesst Hundesteuersatzung fuer 2024");
+    // The feed's publication instant, not the year in the headline.
+    assertThat(core.documentDate()).isEqualTo(LocalDate.of(2026, 3, 12));
+    assertThat(core.documentDatePrecision()).isEqualTo(DatePrecision.DAY);
+  }
+
+  /**
+   * A Confluence page title is free text, not a file name - "Gebuehrensatzung 2024" is neither a
+   * Dokumentart nor a Stand, exactly as an RSS headline is not. It stays the title.
+   */
+  @Test
+  void aConfluencePageTitleIsNoFileNameSoItYieldsNeitherDokumentartNorDatum() throws IOException {
+    assertThat(
+            documentIngestService.ingest(
+                DocumentIngests.confluencePage(
+                    targetLibrary,
+                    "<h1>Uebersicht</h1><p>Die Verwaltung erhebt Entgelte fuer Amtshandlungen im"
+                        + " Buergerbuero.</p>",
+                    "Gebuehrensatzung 2024",
+                    "https://wiki.example/pages/viewpage.action?pageId=4711",
+                    "7",
+                    null,
+                    new SourceDocumentContext("BAU", "Handbuch")),
+                null))
+        .isEqualTo(DocumentIngestResult.PROCESSED);
+
+    Document document = onlyOwnDocument();
+    CoreMetadata core = documentMetadataService.coreMetadataFor(document.getId());
+    assertThat(core.title()).isEqualTo("Gebuehrensatzung 2024");
+    assertThat(core.documentTypeCode()).isNull();
+    // Neither the version marker nor the year in the title is a date: without a page version
+    // instant the field stays empty rather than guessed.
+    assertThat(core.documentDate()).isNull();
+    assertThat(document.getLastModifiedRemote()).isEqualTo("7");
+  }
+
+  /**
+   * The Stand of a page is when its current version was written - the one date Confluence itself
+   * declares, and the reason the title never has to supply one.
+   */
+  @Test
+  void aConfluencePageTakesItsStandFromThePageVersionNotFromItsTitle() throws IOException {
+    assertThat(
+            documentIngestService.ingest(
+                DocumentIngests.confluencePage(
+                    targetLibrary,
+                    "<h1>Uebersicht</h1><p>Die Verwaltung erhebt Entgelte fuer Amtshandlungen im"
+                        + " Buergerbuero.</p>",
+                    "Gebuehrensatzung 2024",
+                    "https://wiki.example/pages/viewpage.action?pageId=4712",
+                    "7",
+                    java.time.Instant.parse("2026-03-12T10:00:00Z"),
+                    new SourceDocumentContext("BAU", "Handbuch")),
+                null))
+        .isEqualTo(DocumentIngestResult.PROCESSED);
+
+    Document document = onlyOwnDocument();
+    CoreMetadata core = documentMetadataService.coreMetadataFor(document.getId());
+    assertThat(core.documentDate()).isEqualTo(LocalDate.of(2026, 3, 12));
+    assertThat(core.documentDatePrecision()).isEqualTo(DatePrecision.DAY);
+    assertThat(core.documentDateOrigin()).isEqualTo(MetadataOrigin.DETERMINISTIC);
+    // Still no naming convention: the year in the title never competes with the page version.
+    assertThat(core.documentTypeCode()).isNull();
+  }
+
+  @Test
+  void aDocumentTypeOutsideTheVocabularyLeavesTheFieldEmpty() throws IOException {
+    Path file = classTempDir.resolve("Rundschreiben_2024.md");
+    Files.writeString(
+        file,
+        """
+        ---
+        dokumentart: "formularhinweis"
+        ---
+
+        # Rundschreiben
+
+        Hinweise zum Ausfüllen.
+        """);
+
+    documentIngestService.ingest(DocumentIngest.localFile(targetLibrary, file).build(), null);
+
+    Document document = onlyOwnDocument();
+    CoreMetadata core = documentMetadataService.coreMetadataFor(document.getId());
+    assertThat(core.documentTypeCode()).isNull();
+    assertThat(core.documentDate()).isEqualTo(LocalDate.of(2024, 1, 1));
+    assertThat(core.documentDatePrecision()).isEqualTo(DatePrecision.YEAR);
+  }
+
+  @Test
+  void aManualValueSurvivesReextractionWhichRewritesChunkMetadataWithoutTouchingTheChunks()
+      throws IOException {
+    Path file = classTempDir.resolve("2026-03-12_Dienstanweisung_Homeoffice.pdf");
+    writePdf(file, null, LocalDate.of(2025, 6, 30));
+    documentIngestService.ingest(DocumentIngest.localFile(targetLibrary, file).build(), null);
+    Document document = onlyOwnDocument();
+    List<UUID> chunkIdsBefore = chunkIds(document.getId());
+
+    // A person overrides the Dokumentart (the ingest read DIENSTANWEISUNG from the file name) and
+    // the title (which came from the file name's humanization).
+    DocumentMetadataValue manualType =
+        valueRepository.findByDocumentId(document.getId()).stream()
+            .filter(v -> v.getFieldKey().equals(CoreMetadataField.DOCUMENT_TYPE.key()))
+            .findFirst()
+            .orElseThrow();
+    valueRepository.delete(manualType);
+    valueRepository.save(
+        DocumentMetadataValue.manual(document.getId(), CoreMetadataField.DOCUMENT_TYPE, null)
+            .assignVocabularyCode("VERMERK"));
+    valueRepository.flush();
+
+    CoreMetadata core = documentMetadataService.reextractFromFile(document, file);
+
+    assertThat(core.documentTypeCode()).isEqualTo("VERMERK");
+    assertThat(core.documentTypeOrigin()).isEqualTo(MetadataOrigin.MANUAL);
+    assertThat(core.title()).isEqualTo("Dienstanweisung Homeoffice");
+    assertThat(core.titleOrigin()).isEqualTo(MetadataOrigin.DETERMINISTIC);
+    assertThat(chunkIds(document.getId()))
+        .as("re-extraction never rewrites or re-embeds a chunk")
+        .containsExactlyElementsOf(chunkIdsBefore);
+    assertThat(chunkMetadata(document.getId()))
+        .allSatisfy(metadata -> assertThat(metadata).containsEntry("doc_type", "VERMERK"));
+  }
+
+  @Test
+  void anEmptiedFieldDisappearsFromDocumentAndChunksOnReextraction() throws IOException {
+    Path file = classTempDir.resolve("Protokoll_Sitzung.pdf");
+    writePdf(file, null, null);
+    documentIngestService.ingest(DocumentIngest.localFile(targetLibrary, file).build(), null);
+    Document document = onlyOwnDocument();
+    assertThat(documentMetadataService.coreMetadataFor(document.getId()).documentTypeCode())
+        .isEqualTo("PROTOKOLL");
+    // Simulate a corrected file name whose tokens no longer name a Dokumentart.
+    jdbcTemplate.update(
+        "UPDATE documents SET file_name = 'Sitzung.pdf' WHERE id = ?", document.getId());
+    Document renamed = documentRepository.findById(document.getId()).orElseThrow();
+
+    CoreMetadata core = documentMetadataService.reextractFromFile(renamed, file);
+
+    assertThat(core.documentTypeCode()).isNull();
+    assertThat(valueRepository.findByDocumentId(document.getId()))
+        .noneMatch(v -> v.getFieldKey().equals(CoreMetadataField.DOCUMENT_TYPE.key()));
+    assertThat(chunkMetadata(document.getId()))
+        .isNotEmpty()
+        .allSatisfy(metadata -> assertThat(metadata).doesNotContainKey("doc_type"));
+  }
+
+  /**
+   * Document values and the chunk-key propagation are one transaction - a failing chunk update
+   * leaves the document's rows and its extraction version exactly as they were.
+   */
+  @Test
+  void aFailingChunkUpdateLeavesTheDocumentValuesAndExtractionVersionUntouched()
+      throws IOException {
+    Path file = classTempDir.resolve("Protokoll_Sitzung.pdf");
+    writePdf(file, null, null);
+    documentIngestService.ingest(DocumentIngest.localFile(targetLibrary, file).build(), null);
+    Document document = onlyOwnDocument();
+    jdbcTemplate.update(
+        "UPDATE documents SET file_name = 'Vermerk_2020-01-01.pdf', metadata_extraction_version ="
+            + " NULL WHERE id = ?",
+        document.getId());
+    Document renamed = documentRepository.findById(document.getId()).orElseThrow();
+    DocumentMetadataService withFailingChunkUpdate =
+        new DocumentMetadataService(
+            valueRepository,
+            vocabularyRepository,
+            documentRepository,
+            pipelineRegistry,
+            new VectorChunkStore(null, null, null, null, null, new EmbeddingRateEstimator(4.0)) {
+              @Override
+              public int updateDocumentMetadata(
+                  UUID id, Map<String, Object> values, Set<String> keysToClear) {
+                throw new IllegalStateException("simulated chunk update failure");
+              }
+            },
+            libraryFieldRepository,
+            keywordRepository,
+            libraryValueRepository,
+            libraryRepository,
+            transactionManager);
+
+    assertThatThrownBy(() -> withFailingChunkUpdate.reextractFromFile(renamed, file))
+        .isInstanceOf(IllegalStateException.class);
+
+    CoreMetadata core = documentMetadataService.coreMetadataFor(document.getId());
+    assertThat(core.documentTypeCode()).isEqualTo("PROTOKOLL");
+    assertThat(core.documentDate()).isNull();
+    assertThat(
+            documentRepository
+                .findById(document.getId())
+                .orElseThrow()
+                .getMetadataExtractionVersion())
+        .isNull();
+    assertThat(chunkMetadata(document.getId()))
+        .allSatisfy(metadata -> assertThat(metadata).containsEntry("doc_type", "PROTOKOLL"));
+  }
+
+  /**
+   * A model-derived value fills exactly the gap the deterministic step leaves - an empty
+   * deterministic result must not delete it, only a real result replaces it.
+   */
+  @Test
+  void aDerivedValueSurvivesAnEmptyDeterministicResultButYieldsToARealOne() throws IOException {
+    Path file = classTempDir.resolve("anlage.pdf");
+    writePdf(file, null, null);
+    documentIngestService.ingest(DocumentIngest.localFile(targetLibrary, file).build(), null);
+    Document document = onlyOwnDocument();
+    valueRepository.save(
+        DocumentMetadataValue.derived(
+                document.getId(), CoreMetadataField.DOCUMENT_TYPE, "test-model", 0.8, 1)
+            .assignVocabularyCode("VERMERK"));
+    valueRepository.flush();
+
+    CoreMetadata afterEmptyResult = documentMetadataService.reextractFromFile(document, file);
+    assertThat(afterEmptyResult.documentTypeCode()).isEqualTo("VERMERK");
+    assertThat(afterEmptyResult.documentTypeOrigin()).isEqualTo(MetadataOrigin.DERIVED);
+
+    jdbcTemplate.update(
+        "UPDATE documents SET file_name = 'Protokoll_anlage.pdf' WHERE id = ?", document.getId());
+    Document renamed = documentRepository.findById(document.getId()).orElseThrow();
+    CoreMetadata afterRealResult = documentMetadataService.reextractFromFile(renamed, file);
+    assertThat(afterRealResult.documentTypeCode()).isEqualTo("PROTOKOLL");
+    assertThat(afterRealResult.documentTypeOrigin()).isEqualTo(MetadataOrigin.DETERMINISTIC);
+  }
+
+  /**
+   * #1242: a mail's Kopfdaten are schema values of the document, not chunk keys of their own - the
+   * Absender rides on every chunk because it filters, the Betreff does not because it only shows,
+   * and the Beleg reads all of them through the generic field-value list.
+   */
+  @Test
+  void mailKopfdatenBecomeFormatFieldValuesAtTheDocumentAndOnlyTheAbsenderRidesOnTheChunks()
+      throws IOException {
+    Path file = classTempDir.resolve("bebauungsplan.eml");
+    Files.writeString(
+        file,
+        """
+        From: Max Mustermann <Max.Mueller@Stadt.de>
+        To: poststelle@stadt.de
+        Subject: Bebauungsplan Nord
+        Date: Thu, 12 Mar 2026 09:15:00 +0100
+        Content-Type: text/plain; charset=UTF-8
+
+        Bitte pruefen Sie den Bebauungsplan Nord bis Freitag.
+        """);
+
+    assertThat(
+            documentIngestService.ingest(
+                DocumentIngest.localFile(targetLibrary, file).build(), null))
+        .isEqualTo(DocumentIngestResult.PROCESSED);
+
+    Document document = onlyOwnDocument();
+    Map<String, DocumentMetadataValue> byKey = new java.util.HashMap<>();
+    valueRepository
+        .findByDocumentId(document.getId())
+        .forEach(value -> byKey.put(value.getFieldKey(), value));
+    assertThat(byKey)
+        .containsKeys(
+            FormatMetadataField.MAIL_SENDER.documentFieldKey(),
+            FormatMetadataField.MAIL_RECIPIENTS.documentFieldKey(),
+            FormatMetadataField.MAIL_SUBJECT.documentFieldKey());
+    DocumentMetadataValue sender = byKey.get(FormatMetadataField.MAIL_SENDER.documentFieldKey());
+    assertThat(sender.getTextValue()).isEqualTo("max.mueller@stadt.de");
+    assertThat(sender.getOrigin()).isEqualTo(MetadataOrigin.DETERMINISTIC);
+    assertThat(sender.getExtractionVersion()).isEqualTo(CoreMetadataExtractor.EXTRACTION_VERSION);
+    assertThat(byKey.get(FormatMetadataField.MAIL_SUBJECT.documentFieldKey()).getTextValue())
+        .isEqualTo("Bebauungsplan Nord");
+    assertThat(byKey.get(FormatMetadataField.MAIL_RECIPIENTS.documentFieldKey()).getTextValue())
+        .isEqualTo("poststelle@stadt.de");
+
+    assertThat(chunkMetadata(document.getId()))
+        .isNotEmpty()
+        .allSatisfy(
+            metadata -> {
+              assertThat(metadata)
+                  .containsEntry(FormatMetadataField.MAIL_SENDER.chunkKey(), "max.mueller@stadt.de")
+                  .containsEntry(
+                      FormatMetadataField.MAIL_SENDER.presenceChunkKey(),
+                      FormatMetadataField.PRESENCE_VALUE)
+                  .containsEntry("doc_date", "2026-03-12");
+              assertThat(metadata.keySet())
+                  .doesNotContain(
+                      FormatMetadataField.MAIL_SUBJECT.chunkKey(),
+                      "mail_from",
+                      "mail_to",
+                      "mail_subject",
+                      "mail_date");
+            });
+
+    List<CitationFieldValue> citation =
+        citationMetadataReader.forDocuments(List.of(document)).get(document.getId());
+    assertThat(citation)
+        .extracting(
+            CitationFieldValue::label, CitationFieldValue::value, CitationFieldValue::detailOnly)
+        .containsExactly(
+            tuple("Absender", "max.mueller@stadt.de", false),
+            // The recipient list belongs into the Beleg detail view, never into the one line
+            // (#1242): it is unbounded and identifies no passage.
+            tuple("An", "poststelle@stadt.de", true),
+            tuple("Betreff", "Bebauungsplan Nord", false));
+  }
+
+  private List<Map<String, Object>> chunkMetadata(UUID documentId) {
+    return jdbcTemplate.query(
+        "SELECT metadata::text AS metadata FROM vector_store WHERE metadata->>'document_id' = ?",
+        (rs, i) -> parseJson(rs.getString("metadata")),
+        documentId.toString());
+  }
+
+  private List<UUID> chunkIds(UUID documentId) {
+    return jdbcTemplate.query(
+        "SELECT id FROM vector_store WHERE metadata->>'document_id' = ? ORDER BY id",
+        (rs, i) -> UUID.fromString(rs.getString("id")),
+        documentId.toString());
+  }
+
+  @SuppressWarnings("unchecked")
+  private static Map<String, Object> parseJson(String json) {
+    return new tools.jackson.databind.ObjectMapper().readValue(json, Map.class);
+  }
+
+  /** A PDF whose first page carries {@code lines} as separate text lines. */
+  private static void writePdfPage(Path file, List<String> lines) throws IOException {
+    try (PDDocument doc = new PDDocument()) {
+      PDPage page = new PDPage(PDRectangle.A4);
+      doc.addPage(page);
+      try (PDPageContentStream content = new PDPageContentStream(doc, page)) {
+        content.beginText();
+        content.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), 12);
+        content.setLeading(16);
+        content.newLineAtOffset(50, 700);
+        for (String line : lines) {
+          content.showText(line);
+          content.newLine();
+        }
+        content.endText();
+      }
+      doc.save(file.toFile());
+    }
+  }
+
+  private static void writePdf(Path file, String title, LocalDate creationDate) throws IOException {
+    try (PDDocument doc = new PDDocument()) {
+      for (String text :
+          List.of(
+              "Diese Anweisung regelt die Nutzung der IT.",
+              "Passwoerter sind vertraulich zu behandeln.",
+              "Private Nutzung ist untersagt.")) {
+        PDPage page = new PDPage(PDRectangle.A4);
+        doc.addPage(page);
+        try (PDPageContentStream content = new PDPageContentStream(doc, page)) {
+          content.beginText();
+          content.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), 12);
+          content.newLineAtOffset(50, 700);
+          content.showText(text);
+          content.endText();
+        }
+      }
+      PDDocumentInformation info = doc.getDocumentInformation();
+      if (title != null) {
+        info.setTitle(title);
+      }
+      if (creationDate != null) {
+        Calendar calendar = new GregorianCalendar();
+        calendar.setTime(Date.from(creationDate.atStartOfDay(ZoneId.systemDefault()).toInstant()));
+        info.setCreationDate(calendar);
+        info.setModificationDate(calendar);
+      }
+      doc.save(file.toFile());
+    }
+  }
+
+  /** A DOCX whose Dokumentart stands in its first lines and nowhere else. */
+  private static void writeDocxWithHead(Path file, String head, String body) throws IOException {
+    try (XWPFDocument doc = new XWPFDocument()) {
+      for (String text : List.of(head, body)) {
+        XWPFParagraph paragraph = doc.createParagraph();
+        paragraph.createRun().setText(text);
+      }
+      try (OutputStream out = Files.newOutputStream(file)) {
+        doc.write(out);
+      }
+    }
+  }
+
+  private static void writePptx(Path file, String title, String body) throws IOException {
+    try (XMLSlideShow show = new XMLSlideShow()) {
+      XSLFSlide slide = show.createSlide();
+      for (String text : List.of(title, body)) {
+        XSLFTextBox box = slide.createTextBox();
+        box.setText(text);
+      }
+      try (OutputStream out = Files.newOutputStream(file)) {
+        show.write(out);
+      }
+    }
+  }
+
+  private static void writeDocx(Path file, String title, LocalDate modified) throws IOException {
+    try (XWPFDocument doc = new XWPFDocument()) {
+      doc.getProperties().getCoreProperties().setTitle(title);
+      // OOXML core properties are W3CDTF in UTC; the reader resolves the day in UTC as well.
+      Date date = Date.from(modified.atStartOfDay(java.time.ZoneOffset.UTC).toInstant());
+      doc.getProperties().getCoreProperties().setCreated(java.util.Optional.of(date));
+      doc.getProperties().getCoreProperties().setModified(java.util.Optional.of(date));
+      for (String text :
+          List.of(
+              "Die Frist beginnt mit Zugang des Bescheids.",
+              "Eine Verlaengerung ist schriftlich zu beantragen.",
+              "Der Antrag ist zu begruenden.")) {
+        XWPFParagraph paragraph = doc.createParagraph();
+        paragraph.createRun().setText(text);
+      }
+      try (OutputStream out = Files.newOutputStream(file)) {
+        doc.write(out);
+      }
+    }
+  }
+}

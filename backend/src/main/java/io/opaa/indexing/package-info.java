@@ -4,8 +4,8 @@
  * io.opaa.indexing.chunk} (where a chunk lands), {@link io.opaa.indexing.job} (run, schedule,
  * protocol), {@link io.opaa.indexing.maintenance} (passes over the existing stock), {@link
  * io.opaa.indexing.attachment} (attachments as their own documents), {@link
- * io.opaa.indexing.source} (the run frame and the connectors) and {@link io.opaa.indexing.metadata}
- * (the schema fields). Parsing and cutting per format live below, in {@link io.opaa.format}.
+ * io.opaa.indexing.source} (the run frame and the connectors) and {@link io.opaa.metadata} (the
+ * schema fields). Parsing and cutting per format live below, in {@link io.opaa.format}.
  *
  * <p>What stays here is what all of them share: the core wiring ({@link
  * io.opaa.indexing.IndexingConfiguration}) and the bound properties. Each connector wires itself in

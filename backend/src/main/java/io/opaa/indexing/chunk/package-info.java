@@ -1,6 +1,6 @@
 /**
- * Where a chunk lands and what the index adds to it: the context prefix of its embedding, the
- * source keys every chunk of a document carries ({@link
+ * Where a chunk lands and what the index adds to it: the context prefix of its embedding ({@link
+ * io.opaa.metadata.ChunkContextPrefix}), the source keys every chunk of a document carries ({@link
  * io.opaa.indexing.chunk.SourceChunkMetadataKeys}), and the two stores a chunk is written to - the
  * pgvector {@code vector_store} through {@link io.opaa.indexing.chunk.VectorChunkStore} and the
  * lexical {@code chunk_full_text} through {@link io.opaa.indexing.chunk.FullTextChunkStore}, which

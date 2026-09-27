@@ -2,8 +2,8 @@ package io.opaa.migration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.indexing.metadata.DocumentTypeVocabularyEntry;
-import io.opaa.indexing.metadata.TestVocabularies;
+import io.opaa.metadata.DocumentTypeVocabularyEntry;
+import io.opaa.metadata.TestVocabularies;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;

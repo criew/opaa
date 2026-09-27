@@ -1,6 +1,6 @@
 package io.opaa.searchadmin;
 
-import io.opaa.indexing.metadata.MetadataFilter;
+import io.opaa.metadata.MetadataFilter;
 import java.util.UUID;
 
 /**

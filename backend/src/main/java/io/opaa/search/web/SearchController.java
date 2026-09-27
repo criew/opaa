@@ -6,7 +6,7 @@ import io.opaa.api.dto.SearchResponse;
 import io.opaa.api.dto.SearchableLibrary;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
-import io.opaa.indexing.web.MetadataFilterMapper;
+import io.opaa.metadata.web.MetadataFilterMapper;
 import io.opaa.search.PassageFetchService;
 import io.opaa.search.SearchService;
 import jakarta.validation.Valid;

@@ -10,7 +10,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import io.opaa.indexing.metadata.MetadataFilter;
+import io.opaa.metadata.MetadataFilter;
 import io.opaa.query.QueryProperties;
 import io.opaa.query.retrieval.CandidateList;
 import io.opaa.query.retrieval.CandidateVerdict;

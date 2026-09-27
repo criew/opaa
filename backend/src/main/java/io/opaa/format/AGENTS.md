@@ -26,7 +26,7 @@ und kennt weder indexing noch knowledge noch library.
   (implementiert von `IndexingProperties`). Dass kein Format einen Schemaschlüssel als
   Passthrough-Schlüssel deklariert, prüft `DocumentIngestService`, der diese Schlüssel schreibt.
 - **Formatfelder** (`FormatMetadataField`) deklariert das Format, das sie füllt; Speicherung und
-  Filter liegen in `indexing.metadata`.
+  Filter liegen in `metadata`.
 - **Leser brauchen nur Schlüssel:** Suche und Chat lesen den Fundort über `ChunkMetadataKeys`,
   nicht über den Schnitt.
 - **Bekannte Grenze:** format trennt noch keine öffentliche Schnittstelle von Interna. Konnektoren
