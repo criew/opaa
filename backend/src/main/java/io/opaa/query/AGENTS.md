@@ -15,8 +15,8 @@ app ab.
 
 - **Genau ein Weg zu den Daten:** `io.opaa.retrieval.KnowledgeRetrieval`, der Einstieg, den auch
   `POST /api/v1/query` nutzt. Den Suchbereich löst der Aufrufer über `chat.SearchScopeResolver`
-  auf. `search` greift weder auf den Vector Store noch auf die übrigen Klassen von `retrieval` noch
-  auf `query.answer` zu.
+  auf. `search` nennt aus `retrieval` nur den Einstieg und dessen `RetrievalPipelineResult` und
+  greift weder auf den Vector Store noch auf `query.answer` zu.
 - **`searchadmin` ändert keine Fachdaten.** Es schreibt nur Protokolleinträge: einen
   Diagnoselauf mit Rechteprofil ins Revisionsprotokoll, „Sicht als" über
   `io.opaa.diagnosticaccess` ins Diagnoseprotokoll. Es liest das Erklärungsprotokoll der

@@ -1,7 +1,13 @@
 package io.opaa.search;
 
+import static com.tngtech.archunit.base.DescribedPredicate.not;
+import static com.tngtech.archunit.core.domain.JavaClass.Predicates.resideInAPackage;
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.tngtech.archunit.base.DescribedPredicate;
+import com.tngtech.archunit.core.domain.JavaClass;
+import io.opaa.architecture.MainClasses;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
@@ -19,10 +25,11 @@ import org.springframework.context.annotation.ClassPathScanningCandidateComponen
  * discipline: the reading path has exactly one way to the data, and it is a domain service.
  *
  * <p>Two forbidden directions, for two different reasons. {@code
- * org.springframework.ai.vectorstore} and {@code io.opaa.retrieval} would be a <b>second ranking
- * path</b> - retrieval belongs behind {@code io.opaa.retrieval.KnowledgeRetrieval}, the one
- * entrance {@code POST /api/v1/query} uses as well, so the two cannot drift apart; the entrance is
- * the one type of that package search may name ({@link #PERMITTED_RETRIEVAL_ENTRANCE}). {@code
+ * org.springframework.ai.vectorstore} and the rest of {@code io.opaa.retrieval} would be a
+ * <b>second ranking path</b> - retrieval belongs behind {@code
+ * io.opaa.retrieval.KnowledgeRetrieval}, the one entrance {@code POST /api/v1/query} uses as well,
+ * so the two cannot drift apart. From that package search names only the entrance and its result
+ * ({@link #PERMITTED_RETRIEVAL_TYPES}), checked on the bytecode, method bodies included. {@code
  * io.opaa.query.answer} would be a <b>generation call</b> - the whole point of this path is that
  * the foreign tool formulates the answer.
  *
@@ -30,22 +37,39 @@ import org.springframework.context.annotation.ClassPathScanningCandidateComponen
  * compares a copied snippet of {@code AnswerGenerationService}'s system prompt and would silently
  * stop checking anything if the prompt were reworded. It stays as a supplement, not as the barrier.
  *
- * <p>Modeled after {@link io.opaa.sourceaccess.SourceAccessDependencyStructureTest}, including its
- * caveat: a local variable inside a method body that references a forbidden type without it
- * appearing in a field, parameter or return type is not caught. Closing that gap would need
- * bytecode analysis; at the size of this package the signature-level check covers the realistic
- * case - a class reaching for a vector store or an answer generator it also stores or returns.
+ * <p>The other prefixes are modeled after {@link
+ * io.opaa.sourceaccess.SourceAccessDependencyStructureTest}, including its caveat: a local variable
+ * inside a method body that references a forbidden type without it appearing in a field, parameter
+ * or return type is not caught. Closing that gap would need bytecode analysis; at the size of this
+ * package the signature-level check covers the realistic case - a class reaching for a vector store
+ * or an answer generator it also stores or returns.
  */
 class SearchDependencyStructureTest {
 
   private static final Set<String> FORBIDDEN_PACKAGE_PREFIXES =
       Set.of(
-          "org.springframework.ai.vectorstore",
-          "io.opaa.retrieval",
-          "io.opaa.query.answer",
-          "io.opaa.query.citation");
+          "org.springframework.ai.vectorstore", "io.opaa.query.answer", "io.opaa.query.citation");
 
-  private static final String PERMITTED_RETRIEVAL_ENTRANCE = "io.opaa.retrieval.KnowledgeRetrieval";
+  private static final Set<String> PERMITTED_RETRIEVAL_TYPES =
+      Set.of("io.opaa.retrieval.KnowledgeRetrieval", "io.opaa.retrieval.RetrievalPipelineResult");
+
+  @Test
+  void searchReachesRetrievalOnlyThroughItsEntrance() {
+    noClasses()
+        .that()
+        .resideInAPackage("io.opaa.search..")
+        .should()
+        .dependOnClassesThat(
+            resideInAPackage("io.opaa.retrieval..")
+                .and(
+                    not(
+                        DescribedPredicate.describe(
+                            "are the entrance or its result",
+                            (JavaClass target) ->
+                                PERMITTED_RETRIEVAL_TYPES.contains(target.getName())))))
+        .because("a second ranking path would be a second quality truth (ADR-0035, Entscheidung 5)")
+        .check(MainClasses.get());
+  }
 
   @Test
   void searchRanksNothingItselfAndGeneratesNothing() {
@@ -92,9 +116,6 @@ class SearchDependencyStructureTest {
   }
 
   private void checkType(Class<?> owner, Class<?> referenced, Set<String> offenses) {
-    if (referenced.getName().equals(PERMITTED_RETRIEVAL_ENTRANCE)) {
-      return;
-    }
     String packageName = referenced.getPackageName();
     for (String forbidden : FORBIDDEN_PACKAGE_PREFIXES) {
       if (packageName.equals(forbidden) || packageName.startsWith(forbidden + ".")) {
