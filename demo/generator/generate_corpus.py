@@ -9,7 +9,7 @@ Formate") under demo/corpus/:
 - leistungen-kfz-zulassung/        (.md, .txt)     — rewritten LHM source
 - satzungen-gebuehrenordnungen/    (.pdf)          — synthetic, hand-authored
 - pressemitteilungen/              (RSS + .html)   — synthetic, hand-authored
-- interne-dienstanweisungen-meldewesen/ (.docx/.pdf/.pptx) — synthetic
+- interne-dienstanweisungen-meldewesen/<aktenplan>/ (.docx/.pdf/.pptx) — synthetic, Aktenplan folders
 - ratsinformationen/<jahr>/       (.md, .txt)     — synthetic, one prefix per year
 - formate/                        (one file per admitted extension) — synthetic
 
@@ -147,7 +147,7 @@ LIBRARY_FORMATS = {
     "leistungen-kfz-zulassung": "`.md`, `.txt`",
     "satzungen-gebuehrenordnungen": "`.pdf`",
     "pressemitteilungen": "RSS-XML, HTML",
-    "interne-dienstanweisungen-meldewesen": "`.docx`, `.pdf`, `.pptx`",
+    "interne-dienstanweisungen-meldewesen": "`.docx`, `.pdf`, `.pptx` (Ordner nach Aktenplan)",
     "ratsinformationen": "`.md`, `.txt` (ein Präfix je Jahrgang)",
     "formate": "je ein Dokument pro unterstützter Endung",
 }
@@ -214,48 +214,25 @@ def build_presse() -> list[tuple[str, str, bytes]]:
 
 
 def build_intern() -> list[tuple[str, str, bytes]]:
+    """Files keep their library-wide running number; the Aktenplan (intern.AKTENPLAN) only decides
+    the folder each one lies in."""
+    render_docx = intern.render_dienstanweisung_docx
+    documents = (
+        [(da.slug, "docx", render_docx, da) for da in intern.DIENSTANWEISUNGEN]
+        + [(esk.slug, "docx", render_docx, esk) for esk in intern.ESKALATIONSREGELN]
+        + [(faq.slug, "pdf", intern.render_faq_pdf, faq) for faq in intern.FAQS]
+        + [(s.slug, "pptx", intern.render_schulung_pptx, s) for s in intern.SCHULUNGEN]
+    )
     written = []
-    index = 1
-    for da in intern.DIENSTANWEISUNGEN:
-        filename = f"{index:02d}_{da.slug}.docx"
+    for index, (slug, extension, render, document) in enumerate(documents, start=1):
+        folder = intern.AKTENPLAN[slug]
         written.append(
             (
-                f"interne-dienstanweisungen-meldewesen/{filename}",
-                da.slug,
-                intern.render_dienstanweisung_docx(da),
+                f"interne-dienstanweisungen-meldewesen/{folder}/{index:02d}_{slug}.{extension}",
+                slug,
+                render(document),
             )
         )
-        index += 1
-    for esk in intern.ESKALATIONSREGELN:
-        filename = f"{index:02d}_{esk.slug}.docx"
-        written.append(
-            (
-                f"interne-dienstanweisungen-meldewesen/{filename}",
-                esk.slug,
-                intern.render_dienstanweisung_docx(esk),
-            )
-        )
-        index += 1
-    for faq in intern.FAQS:
-        filename = f"{index:02d}_{faq.slug}.pdf"
-        written.append(
-            (
-                f"interne-dienstanweisungen-meldewesen/{filename}",
-                faq.slug,
-                intern.render_faq_pdf(faq),
-            )
-        )
-        index += 1
-    for schulung in intern.SCHULUNGEN:
-        filename = f"{index:02d}_{schulung.slug}.pptx"
-        written.append(
-            (
-                f"interne-dienstanweisungen-meldewesen/{filename}",
-                schulung.slug,
-                intern.render_schulung_pptx(schulung),
-            )
-        )
-        index += 1
     return written
 
 
@@ -553,6 +530,7 @@ Gesamtgröße rund {f"{total_bytes / (1024 * 1024):.1f}".replace(".", ",")} MB.
 
 def main() -> None:
     leistungen_quelle.ensure_raw_files()
+    intern.verify_aktenplan()
     clean_library_dirs()
 
     leistungen_meldewesen = build_leistungen_meldewesen()
