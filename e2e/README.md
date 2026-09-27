@@ -254,8 +254,8 @@ Für neue Assertions bevorzugt in dieser Reihenfolge:
 `getByPlaceholder`/`getByText` auf sichtbaren, für Menschen formulierten Text (wie im aktuellen
 Rauchtest) sind **zu vermeiden**, sobald sich das vermeiden lässt: Sie brechen bei jeder
 Textänderung (inkl. Sonderzeichen wie `…`) und sind kein stabiler Vertrag zwischen Frontend und
-Suite. Ein `data-testid` ist die Ausnahme und braucht einen Grund: `source-card` in
-`SourceFootnotes.tsx` etwa (ergänzt für #424 — eine Quellenkarte im Chat hat keine für Rolle/Label
+Suite. Ein `data-testid` ist die Ausnahme und braucht einen Grund: `evidence-doc` in
+`SourceEvidenceDrawer.tsx` etwa (eine Belegzeile im Belegfenster hat keine für Rolle/Label
 geeignete feste Beschriftung, weil sie einen zur Laufzeit ermittelten Dateinamen zeigt). Die
 Modellverwaltung kommt umgekehrt seit #1621 ohne einen aus: Die Chat-Modelle stehen in einer
 Tabelle, deren Zeilen über ihren Anzeigenamen (`getByRole('row', { name: … })`) und deren

@@ -590,7 +590,10 @@ des ersten Auftretens in der Endauswahl:
 | „ohne Angabe" | unter aktivem Filter: das Dokument wurde nur durch die Leerwert-Regel gefunden |
 | Quelle | Quellentyp und Link zum Dokument bzw. zur Seite in der Quelle, Indexierungszeitpunkt |
 
-Die Fundstellenzeile unter der Antwort und das Belegfenster zeigen dieselben Fundstellen; das
+Die Fundstellen stehen im Belegfenster; unter der Antwort steht nur „Belege anzeigen" mit der
+Zahl der zitierten Stellen und der weiteren geprüften Treffer. Fährt man mit der Maus über eine
+Fußnote im Antworttext, nennt ein Tooltip Dokument und Fundort; ein Klick öffnet das Belegfenster
+an der zugehörigen Fundstelle und markiert sie dort. Das
 Belegfenster stellt zitierte vor nicht zitierte und zeigt den Auszug jedes Chunks.
 
 ### 7.1 Suchen ohne Antwort

@@ -86,8 +86,9 @@ Die Klickwege unten benutzen diese Begriffe:
   gewählter Space öffnet einen neuen Chat. Einen weiteren beginnt „Neu“ neben „Chats“.
 - **Persönlicher Space:** Jedes Konto hat seinen persönlichen Space „Meine Dokumente“. Er hat keine
   zugeordneten Bibliotheken, `@Alles-Wissen` durchsucht dort alle lesbaren.
-- **Quellen einer Antwort:** stehen unter der Antwort im Block „Fundstellen“. Jede Fundstelle hat
-  „Im Dokument öffnen“.
+- **Quellen einer Antwort:** „Belege anzeigen“ unter der Antwort öffnet das Belegfenster rechts;
+  ein Klick auf eine Fußnotenziffer im Text öffnet es direkt an dieser Fundstelle. Jede Fundstelle
+  hat „Im Dokument öffnen“.
 
 **Vor den Fragen 5 bis 7 wichtig:** In einem Space mit zugeordneten Bibliotheken durchsucht
 `@Alles-Wissen` nur diese Bibliotheken, und davon nur die für das Konto lesbaren. Wo eine Frage

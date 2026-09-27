@@ -101,65 +101,69 @@ export async function expectTopSidebarChatToBeNamed(page: Page): Promise<void> {
 }
 
 /**
- * Waits for fileName's source card to appear in the current answer, cited - unfolding
- * SourceFootnotes' own "N weitere Dokumente anzeigen" toggle first if the card is not among the
- * first three cited documents (SourceFootnotes.tsx's VISIBLE_DOCS, #590): those extra rows are
- * genuinely cited but stay out of the DOM entirely until that toggle is clicked, a frontend UX
- * decision independent of retrieval - a scenario whose expected document ends up beyond the third
- * citation (an unscoped @Alles-Wissen search over a corpus #1152 deliberately widened the
- * retrieval window for) would otherwise see the same "element(s) not found" failure the
- * unraised retrieval window itself used to cause, for an unrelated reason.
+ * Opens the Belegfenster behind the page's last "Belege anzeigen" and hands the drawer to
+ * `check`, closing it again afterwards so the chat is back in its normal state. The sources of an
+ * answer live only there - under the answer stands just that button.
+ *
+ * Contract: "last" is the newest answer only in a chat with exactly one answered question - an
+ * earlier answer's button would already be visible while a new one is still pending. Every caller
+ * asks a single question in a fresh chat; the answer arrives complete, sources included, so there
+ * is no half-rendered answer to race.
  */
-export async function expectCitedSource(page: Page, fileName: string): Promise<void> {
-  const card = page.getByTestId('source-card').filter({ hasText: fileName })
-  await unfoldSourcesIfNeeded(page, card)
-  await expect(card).toHaveAttribute('data-cited', 'true', { timeout: 15_000 })
+async function withLatestEvidence(page: Page, check: (drawer: Locator) => Promise<void>) {
+  const showEvidence = page.getByRole('button', { name: 'Belege anzeigen' }).last()
+  await expect(showEvidence).toBeVisible({ timeout: 15_000 })
+  await showEvidence.click()
+  const drawer = page.getByRole('dialog', { name: 'Belege dieser Antwort' })
+  await expect(drawer).toBeVisible()
+  await check(drawer)
+  await page.keyboard.press('Escape')
+  await expect(drawer).toBeHidden()
 }
 
-async function unfoldSourcesIfNeeded(page: Page, card: Locator): Promise<void> {
-  // data-testid, not a text/role match on the toggle's label ("N weitere Dokumente"/"1 weiteres
-  // Dokument mit 1 Stelle anzeigen", see SourceFootnotes.tsx's foldedLabel) - a label-text regex
-  // would need to cover both German singular and plural forms and stays coupled to copy that is
-  // free to change (README.md's "Selektor-Konvention").
-  const foldToggle = page.getByTestId('source-footnotes-fold-toggle')
-  await expect(async () => {
-    if ((await card.count()) > 0) return
-    if ((await foldToggle.count()) > 0) {
-      await foldToggle.first().click()
-    }
-    expect(await card.count()).toBeGreaterThan(0)
-  }).toPass({ timeout: 15_000 })
+/** The Belegfenster row of one source (`evidence-doc`, SourceEvidenceDrawer.tsx). */
+function evidenceRow(drawer: Locator, fileName: string): Locator {
+  return drawer.getByTestId('evidence-doc').filter({ hasText: fileName })
+}
+
+/** Waits for the answer to carry Belege and asserts fileName among them, cited. */
+export async function expectCitedSource(page: Page, fileName: string): Promise<void> {
+  await withLatestEvidence(page, async (drawer) => {
+    await expect(evidenceRow(drawer, fileName)).toHaveAttribute('data-cited', 'true')
+  })
 }
 
 /**
- * Waits for *some* source card to appear cited, without pinning down which file. For scenarios
- * whose point is the chat mechanism itself (an answer with sources exists, and survives a reload)
- * rather than which library the default, unscoped @Alles-Wissen search actually reached (#560):
- * that search runs topK over the *entire* readable corpus, which by the time a given scenario
- * runs also holds whatever every earlier-sorting spec file left behind (same fixed ai-stub
- * embedding for every chunk, see ai-stub/server.mjs) - a specific document can legitimately fall
- * out of the top results as the corpus grows, without anything actually being broken. Scenarios
- * that need to prove *which* library a search reached still use expectCitedSource/
- * expectCitedExclusively with an explicit @-reference, which replaces @Alles-Wissen and scopes
- * the search deterministically regardless of corpus size.
+ * Waits for the answer to cite *some* source, without pinning down which file. For scenarios whose
+ * point is the chat mechanism itself (an answer with sources exists, and survives a reload) rather
+ * than which library the default, unscoped @Alles-Wissen search actually reached (#560): that
+ * search runs topK over the *entire* readable corpus, which by the time a given scenario runs also
+ * holds whatever every earlier-sorting spec file left behind (same fixed ai-stub embedding for
+ * every chunk, see ai-stub/server.mjs) - a specific document can legitimately fall out of the top
+ * results as the corpus grows, without anything actually being broken. Scenarios that need to
+ * prove *which* library a search reached still use expectCitedSource/expectCitedExclusively with
+ * an explicit @-reference, which replaces @Alles-Wissen and scopes the search deterministically
+ * regardless of corpus size.
  */
 export async function expectAnyCitedSource(page: Page): Promise<void> {
-  const citedCard = page.locator('[data-testid="source-card"][data-cited="true"]').first()
-  await expect(citedCard).toBeVisible({ timeout: 15_000 })
+  await withLatestEvidence(page, async (drawer) => {
+    const citedRow = drawer.locator('[data-testid="evidence-doc"][data-cited="true"]').first()
+    await expect(citedRow).toBeVisible()
+  })
 }
 
-// Not "no source card at all": a plain absence check would pass just as happily before the
-// answer has even come back as after it confirmed exclusion. Asserting a real found-vs-excluded
-// split closes that gap - see e.g. test(e2e) #424 review, nit 1.
+// Not "no source at all": a plain absence check would pass just as happily before the answer has
+// even come back as after it confirmed exclusion. Asserting a real found-vs-excluded split closes
+// that gap - see e.g. test(e2e) #424 review, nit 1.
 export async function expectCitedExclusively(
   page: Page,
   citedFileName: string,
   excludedFileName: string,
 ): Promise<void> {
-  await expectCitedSource(page, citedFileName)
-  await expect(page.getByTestId('source-card').filter({ hasText: excludedFileName })).toHaveCount(
-    0,
-  )
+  await withLatestEvidence(page, async (drawer) => {
+    await expect(evidenceRow(drawer, citedFileName)).toHaveAttribute('data-cited', 'true')
+    await expect(evidenceRow(drawer, excludedFileName)).toHaveCount(0)
+  })
 }
 
 // GET /api/v1/libraries is what decides whether a library is listed (or suggested) at all -

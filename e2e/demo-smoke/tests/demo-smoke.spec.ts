@@ -336,8 +336,14 @@ test.describe('Demo-Smoke (#232)', () => {
     // the wording is symbolic with ai-stub, see the first scenario.
     await askQuestion(page, 'Wann hat der Stadtrat den Grundsatzbeschluss zum Neubau der Feuerwache Süd gefasst?')
 
-    const citedCard = page.locator('[data-testid="source-card"][data-cited="true"]').first()
-    await expect(citedCard).toBeVisible({ timeout: 15_000 })
-    await expect(citedCard).toContainText(S3_DOCUMENT_NAME_PATTERN)
+    // The sources of an answer live only in its Belegfenster, opened via "Belege anzeigen" - this
+    // chat holds exactly one answer, so the last button is this answer's.
+    const showEvidence = page.getByRole('button', { name: 'Belege anzeigen' }).last()
+    await expect(showEvidence).toBeVisible({ timeout: 15_000 })
+    await showEvidence.click()
+    const drawer = page.getByRole('dialog', { name: 'Belege dieser Antwort' })
+    const citedRow = drawer.locator('[data-testid="evidence-doc"][data-cited="true"]').first()
+    await expect(citedRow).toBeVisible()
+    await expect(citedRow).toContainText(S3_DOCUMENT_NAME_PATTERN)
   })
 })
