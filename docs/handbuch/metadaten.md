@@ -464,7 +464,7 @@ Was der Filter tut:
   offenlässt: „Fassung 2024" liegt im Fenster 2024, im Fenster „ab 15.06.2024", nicht im Fenster
   2023. Im Zweifel zu weit, nie zu eng.
 - **Leerwerte schließen nicht aus.** Ein Dokument ohne Wert für das gefilterte Feld wird gefunden
-  und in Fundstellenzeile und Belegfenster als **„ohne Angabe"** gekennzeichnet. Ein zu weiter
+  und im Belegfenster als **„ohne Angabe"** gekennzeichnet. Ein zu weiter
   Filter ist ein sichtbares Ärgernis, ein zu enger ein unsichtbarer Fehler.
 - Das Erklärprotokoll einer Antwort nennt den aktiven Filter und je Pfad, wie viele Kandidaten nur
   wegen der Leerwert-Regel enthalten sind. Die Diagnose auf „Suche & Indexierung" — im gleichnamigen
@@ -512,12 +512,12 @@ filtert oder nur im Beleg steht, lässt den Abdruck unberührt.
 
 ## 10. Beleg-Anzeige
 
-Die Fundstellenzeile und das Belegfenster einer Antwort zeigen Titel, Dokumentart und Datum/Stand
+Das Belegfenster einer Antwort zeigt je Dokument Titel, Dokumentart und Datum/Stand
 des zitierten Dokuments, mit „ · " verbunden; ein leeres Feld erscheint gar nicht, ein abgeleiteter
 Wert ist als „(abgeleitet)" gekennzeichnet. Die Ortsangabe im Dokument bleibt daneben bestehen. Die
 Formatfelder eines Dokuments stehen als weitere Einträge derselben Liste dahinter; ein Wert, den der
 Titel bereits wörtlich zeigt — bei einer Mail der Betreff —, wird nicht zweimal aufgeführt. Der
-Empfänger einer Mail erscheint **nur im Belegfenster**, nicht in der Fundstellenzeile: Eine
+Empfänger einer Mail steht in einer eigenen Zeile darunter, nicht in der Metadatenzeile: Eine
 Verteilerliste ist lang und ordnet die Fundstelle nicht ein.
 
 ## 11. Rechte und Sichtbarkeit

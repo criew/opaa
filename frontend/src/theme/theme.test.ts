@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'vitest'
+import { alpha } from '@mui/material/styles'
 import { createAppTheme } from './theme'
 import {
   blue,
@@ -124,6 +125,22 @@ describe('createAppTheme', () => {
     expect(theme.palette.primary.main).toBe(blue[700])
     expect(theme.palette.divider).toBe(lightRoles.border)
     expect(theme.palette.error.main).toBe(semanticColors.danger)
+  })
+
+  // The scrim behind a dialog or the Belegfenster takes the scheme's own ground: the dark scheme
+  // is neutral carbon, and a navy scrim over it read as a blue cast.
+  test.each([
+    ['light', alpha(navy[900], 0.42)],
+    ['dark', alpha(carbon[950], 0.72)],
+  ] as const)('the %s scheme dims behind a floating layer in its own tone', (mode, scrim) => {
+    const theme = createAppTheme(mode)
+    const backdrop = theme.components?.MuiBackdrop?.styleOverrides?.root as Record<
+      string,
+      { backgroundColor: string; backdropFilter: string }
+    >
+
+    expect(backdrop['&:not(.MuiBackdrop-invisible)'].backgroundColor).toBe(scrim)
+    expect(backdrop['&:not(.MuiBackdrop-invisible)'].backdropFilter).toBe('blur(2px)')
   })
 
   test('dark scheme maps the neutral carbon roles onto the MUI palette (#654)', () => {

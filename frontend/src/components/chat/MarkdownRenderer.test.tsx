@@ -1,5 +1,6 @@
 import { screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import userEvent from '@testing-library/user-event'
+import { describe, expect, it, vi } from 'vitest'
 import { renderWithProviders } from '../../test/test-utils'
 import MarkdownRenderer from './MarkdownRenderer'
 import { buildCitationIndex } from './citations'
@@ -96,32 +97,104 @@ describe('MarkdownRenderer', () => {
     expect(cells[0].textContent).toBe('Name')
   })
 
-  it('renders citation markers as superscript footnote anchors (#590)', () => {
+  it('renders citation markers as superscript footnote buttons that open the Belege', async () => {
     const content = 'The answer is 42【source: doc-1#0 | readme.md】.'
+    const onCitationClick = vi.fn()
     renderWithProviders(
       <MarkdownRenderer
         content={content}
         citations={buildCitationIndex(content, undefined)}
-        messageId="m1"
+        onCitationClick={onCitationClick}
       />,
     )
     expect(screen.getByText(/The answer is 42/)).toBeInTheDocument()
-    const anchor = screen.getByRole('link', { name: 'Fundstelle 1: readme.md' })
-    expect(anchor).toHaveTextContent('1')
-    expect(anchor).toHaveAttribute('href', '#fundstelle-m1-0')
+    const marker = screen.getByRole('button', { name: 'Fundstelle 1: readme.md' })
+    expect(marker).toHaveTextContent('1')
+    expect(marker).toHaveAttribute('aria-haspopup', 'dialog')
+
+    await userEvent.setup().click(marker)
+    expect(onCitationClick).toHaveBeenCalledWith([1])
+  })
+
+  it('names the cited document and its Fundort on hover, before any click', async () => {
+    const content = 'Frist【source: doc-1#2 | fristen.md】.'
+    const onCitationClick = vi.fn()
+    renderWithProviders(
+      <MarkdownRenderer
+        content={content}
+        citations={buildCitationIndex(content, [
+          {
+            fileName: 'fristen.md',
+            documentId: 'doc-1',
+            relevanceScore: 1,
+            matchCount: 1,
+            cited: true,
+            indexedAt: null,
+            citationValid: true,
+            chunkLocations: [{ chunkIndex: 2, location: 'Abschn. 4.2' }],
+          },
+        ])}
+        onCitationClick={onCitationClick}
+      />,
+    )
+    const marker = screen.getByRole('button', { name: 'Fundstelle 1: fristen.md' })
+
+    await userEvent.setup().hover(marker)
+
+    const tooltip = await screen.findByRole('tooltip')
+    expect(tooltip).toHaveTextContent('fristen.md')
+    expect(tooltip).toHaveTextContent('Abschn. 4.2')
+    expect(marker).toHaveAccessibleName('Fundstelle 1: fristen.md')
+    expect(onCitationClick).not.toHaveBeenCalled()
+  })
+
+  it('lists every document of a range in its tooltip', async () => {
+    const content = 'Beleg【source: a#0 | erste.md】【source: b#0 | zweite.md】.'
+    renderWithProviders(
+      <MarkdownRenderer content={content} citations={buildCitationIndex(content, undefined)} />,
+    )
+    const marker = screen.getByRole('button', { name: 'Fundstellen 1 bis 2' })
+    expect(marker).toHaveTextContent('1–2')
+
+    await userEvent.setup().hover(marker)
+
+    const tooltip = await screen.findByRole('tooltip')
+    expect(tooltip).toHaveTextContent('erste.md')
+    expect(tooltip).toHaveTextContent('zweite.md')
   })
 
   it('numbers multiple citations in order of appearance (#590)', () => {
     const content = 'Info【source: id-1#0 | arch.md】 und【source: id-2#3 | deploy.pdf】.'
     renderWithProviders(
-      <MarkdownRenderer
-        content={content}
-        citations={buildCitationIndex(content, undefined)}
-        messageId="m2"
-      />,
+      <MarkdownRenderer content={content} citations={buildCitationIndex(content, undefined)} />,
     )
-    expect(screen.getByRole('link', { name: 'Fundstelle 1: arch.md' })).toHaveTextContent('1')
-    expect(screen.getByRole('link', { name: 'Fundstelle 2: deploy.pdf' })).toHaveTextContent('2')
+    expect(screen.getByRole('button', { name: 'Fundstelle 1: arch.md' })).toHaveTextContent('1')
+    expect(screen.getByRole('button', { name: 'Fundstelle 2: deploy.pdf' })).toHaveTextContent('2')
+  })
+
+  it('sets a mark directly after the word, dropping the space before it', () => {
+    const content =
+      'kostet 42,60 Euro 【source: a#0 | gebuehren.md】. Termin nötig  【source: b#0 | termin.md】'
+    renderWithProviders(
+      <MarkdownRenderer content={content} citations={buildCitationIndex(content, undefined)} />,
+    )
+    const paragraph = screen.getByText(/kostet 42,60 Euro/)
+    expect(paragraph.textContent).toBe('kostet 42,60 Euro1. Termin nötig2')
+  })
+
+  // regression guard: a number repeated from an earlier segment of the same group rendered twice
+  it('shows each number of a marker group once, even when it repeats', () => {
+    const content =
+      'Erst【source: a#0 | a.md】 dann【source: b#0 | b.md】 und【source: c#0 | c.md】【source: a#0 | a.md】【source: c#0 | c.md】.'
+    renderWithProviders(
+      <MarkdownRenderer content={content} citations={buildCitationIndex(content, undefined)} />,
+    )
+    expect(screen.getAllByRole('button').map((b) => b.getAttribute('aria-label'))).toEqual([
+      'Fundstelle 1: a.md',
+      'Fundstelle 2: b.md',
+      'Fundstelle 3: c.md',
+      'Fundstelle 1: a.md',
+    ])
   })
 
   it('strips markers when no citation index is provided', () => {
