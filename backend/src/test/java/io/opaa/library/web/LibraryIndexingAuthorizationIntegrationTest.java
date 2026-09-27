@@ -1,0 +1,324 @@
+package io.opaa.library.web;
+
+import static org.awaitility.Awaitility.await;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import io.opaa.api.types.AssetRole;
+import io.opaa.api.types.SystemRole;
+import io.opaa.auth.DevAuthFilter;
+import io.opaa.auth.User;
+import io.opaa.auth.UserRepository;
+import io.opaa.indexing.job.IndexingJobRepository;
+import io.opaa.indexing.job.JobStatus;
+import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.organization.Organization;
+import io.opaa.permission.AssetGrant;
+import io.opaa.permission.AssetGrantRepository;
+import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.OpaaTestDirectory;
+import io.opaa.test.OwnLibraryFixtures;
+import io.opaa.test.SourceTypes;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.web.servlet.MockMvc;
+
+/**
+ * #478/ADR-0018: proves the {@code EDITOR} authorization on {@code POST
+ * /api/v1/libraries/{libraryId}/indexing} is real at the HTTP endpoint - and that the former {@code
+ * SYSTEM_ADMIN} requirement of {@code POST /api/v1/indexing/trigger} is genuinely gone (ADR-0018,
+ * Entscheidung 2), not merely bypassed by a permissive test security config. Runs the full {@code
+ * dev} security chain ({@link DevAuthFilter}, {@code UserProvisioningFilter}) against a real
+ * Postgres, mirroring {@code IndexingControllerAuthorizationIntegrationTest} this replaces.
+ */
+@OpaaIntegrationTest
+class LibraryIndexingAuthorizationIntegrationTest {
+
+  // Underneath the suite-wide allowlisted base directory, so it needs no allowlist entry of its
+  // own.
+  private static final Path documentDir =
+      OpaaTestDirectory.subdirectory("library-indexing-authorization");
+
+  @Autowired private MockMvc mockMvc;
+  @Autowired private UserRepository userRepository;
+  @Autowired private KnowledgeLibraryRepository libraryRepository;
+  @Autowired private AssetGrantRepository grantRepository;
+  @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private IndexingJobRepository indexingJobRepository;
+
+  @Autowired private OwnLibraryFixtures ownLibraryFixtures;
+
+  private User devAdmin;
+
+  /**
+   * The libraries a test method created. Most are owned by the shared dev admin, so the teardown
+   * goes by these ids - never by owner or name.
+   */
+  private final List<UUID> ownLibraryIds = new ArrayList<>();
+
+  /** Runs and grants go with their library (see {@link OwnLibraryFixtures}). */
+  @AfterEach
+  void removeCreatedRows() {
+    ownLibraryFixtures.removeLibraries(ownLibraryIds.toArray(new UUID[0]));
+    ownLibraryIds.clear();
+    removeForeignOwner();
+  }
+
+  /** The class's one fixed-address user with its libraries - in both hooks. */
+  private void removeForeignOwner() {
+    ownLibraryFixtures.removeLibraries(
+        jdbcTemplate
+            .queryForList(
+                "SELECT id FROM assets WHERE owner_user_id IN (SELECT id FROM users"
+                    + " WHERE email = 'foreign-owner-478@example.com')",
+                UUID.class)
+            .toArray(new UUID[0]));
+    jdbcTemplate.update("DELETE FROM users WHERE email = 'foreign-owner-478@example.com'");
+  }
+
+  @BeforeEach
+  void setUp() throws Exception {
+    removeForeignOwner();
+
+    // Provisions "dev-admin" as SYSTEM_ADMIN (opaa.auth.initial-admin-email matches its seeded
+    // email, application.yml) via the real UserProvisioningFilter - triggered by any authenticated
+    // request, not a hand-inserted row. GET .../indexing/status on a fresh, random id 404s but
+    // still runs the filter chain.
+    mockMvc.perform(
+        get("/api/v1/libraries/" + UUID.randomUUID() + "/indexing/status").with(devUser(null)));
+    devAdmin =
+        userRepository.findAll().stream()
+            .filter(u -> "admin@opaa.local".equals(u.getEmail()))
+            .findFirst()
+            .orElseThrow();
+    org.assertj.core.api.Assertions.assertThat(devAdmin.getSystemRole())
+        .isEqualTo(SystemRole.SYSTEM_ADMIN);
+  }
+
+  private org.springframework.test.web.servlet.request.RequestPostProcessor devUser(
+      String subject) {
+    return request -> {
+      if (subject != null) {
+        request.addHeader(DevAuthFilter.DEV_USER_HEADER, subject);
+      }
+      return request;
+    };
+  }
+
+  private void awaitJobFinished(UUID libraryId) {
+    await()
+        .atMost(10, TimeUnit.SECONDS)
+        .untilAsserted(
+            () ->
+                org.assertj.core.api.Assertions.assertThat(
+                        indexingJobRepository.existsByStatusAndLibraryIdAndOrganizationId(
+                            JobStatus.RUNNING, libraryId, Organization.DEFAULT_ID))
+                    .isFalse());
+  }
+
+  private KnowledgeLibrary createFilesystemLibrary(String name, UUID ownerId) throws IOException {
+    KnowledgeLibrary library =
+        libraryRepository.save(
+            KnowledgeLibrary.ownedByUser(
+                Organization.DEFAULT_ID,
+                name,
+                null,
+                ownerId,
+                false,
+                SourceTypes.FILESYSTEM,
+                documentDir.toAbsolutePath().toString(),
+                null,
+                null,
+                null,
+                false));
+    ownLibraryIds.add(library.getId());
+    return library;
+  }
+
+  @Test
+  void systemAdminWithoutAGrantOnAForeignLibraryGetsNotFound() throws Exception {
+    // ADR-0018, Entscheidung 2: EDITOR is required regardless of system-admin status - a system
+    // admin without any grant must not be able to trigger a run into a library they do not own or
+    // manage. #436: "no grant at all" answers 404, not 403 - a system admin's own lack of a grant
+    // must not be distinguishable from the library not existing, matching what GET
+    // /libraries/{id} already answers the same caller for the same library.
+    UUID foreignLibraryId = createForeignLibraryWithNoGrantForDevAdmin().getId();
+
+    mockMvc
+        .perform(post("/api/v1/libraries/" + foreignLibraryId + "/indexing").with(devUser(null)))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.error").value("Bibliothek nicht gefunden"));
+  }
+
+  @Test
+  void aRegularUserWithAnExplicitEditorGrantSucceedsWithoutBeingSystemAdmin() throws Exception {
+    // ADR-0018, Entscheidung 2: the former SYSTEM_ADMIN @PreAuthorize requirement is gone - an
+    // ordinary EDITOR grant is now sufficient on its own. Owned by a foreign user (not devAdmin),
+    // so the only thing that can possibly let devAdmin's trigger through is the EDITOR grant below.
+    // No pre-grant trigger call here (unlike systemAdminWithoutAGrantOnAForeignLibraryGetsForbidden
+    // above, which covers exactly that case): LibraryAccessService caches a library's grants
+    // (grantsByLibrary), and this test bypasses AssetGrantService's own cache invalidation by
+    // writing the grant directly - an earlier call on this same library would cache the pre-grant
+    // (empty) state and make the assertion below flaky against a cache that has not expired yet.
+    KnowledgeLibrary library = createForeignLibraryWithNoGrantForDevAdmin();
+
+    grantRepository.save(
+        AssetGrant.forUser(
+            KnowledgeLibrary.ASSET_TYPE,
+            library.getId(),
+            Organization.DEFAULT_ID,
+            devAdmin.getId(),
+            AssetRole.EDITOR,
+            null,
+            devAdmin.getId()));
+
+    mockMvc
+        .perform(post("/api/v1/libraries/" + library.getId() + "/indexing").with(devUser(null)))
+        .andExpect(status().isAccepted());
+
+    awaitJobFinished(library.getId());
+  }
+
+  @Test
+  void aNonAdminUserWithAnExplicitEditorGrantSucceeds() throws Exception {
+    // #500 review, finding 4: aRegularUserWithAnExplicitEditorGrantSucceedsWithoutBeingSystemAdmin
+    // above actually runs as devAdmin (devUser(null) defaults to the configured default user, which
+    // is SYSTEM_ADMIN) - it only proves the missing grant on that one library, not that a genuinely
+    // non-privileged caller can trigger a run at all. "dev-user" (application.yml) does not match
+    // opaa.auth.initial-admin-email, so UserProvisioningFilter provisions it as a plain USER.
+    User regularUser = provisionDevUser();
+
+    KnowledgeLibrary library = createForeignLibraryWithNoGrantForDevAdmin();
+    grantRepository.save(
+        AssetGrant.forUser(
+            KnowledgeLibrary.ASSET_TYPE,
+            library.getId(),
+            Organization.DEFAULT_ID,
+            regularUser.getId(),
+            AssetRole.EDITOR,
+            null,
+            devAdmin.getId()));
+
+    mockMvc
+        .perform(
+            post("/api/v1/libraries/" + library.getId() + "/indexing").with(devUser("dev-user")))
+        .andExpect(status().isAccepted());
+
+    awaitJobFinished(library.getId());
+  }
+
+  private User provisionDevUser() throws Exception {
+    mockMvc.perform(
+        get("/api/v1/libraries/" + UUID.randomUUID() + "/indexing/status")
+            .with(devUser("dev-user")));
+    User user =
+        userRepository.findAll().stream()
+            .filter(u -> "dev-user@opaa.local".equals(u.getEmail()))
+            .findFirst()
+            .orElseThrow();
+    org.assertj.core.api.Assertions.assertThat(user.getSystemRole()).isEqualTo(SystemRole.USER);
+    return user;
+  }
+
+  @Test
+  void anUploadLibraryIsRejectedWithConflict() throws Exception {
+    KnowledgeLibrary library =
+        libraryRepository.save(
+            KnowledgeLibrary.ownedByUser(
+                Organization.DEFAULT_ID, "Test-Bibliothek Upload", null, devAdmin.getId(), false));
+    ownLibraryIds.add(library.getId());
+    grantRepository.save(
+        AssetGrant.forUser(
+            KnowledgeLibrary.ASSET_TYPE,
+            library.getId(),
+            Organization.DEFAULT_ID,
+            devAdmin.getId(),
+            AssetRole.EDITOR,
+            null,
+            devAdmin.getId()));
+
+    mockMvc
+        .perform(post("/api/v1/libraries/" + library.getId() + "/indexing").with(devUser(null)))
+        .andExpect(status().isConflict());
+  }
+
+  @Test
+  void aSecondTriggerOfTheSameLibraryWhileRunningIsRejectedButAnotherLibraryRunsInParallel()
+      throws Exception {
+    // #478 acceptance criteria: concurrency is per library - a second trigger of the *same*
+    // library while a run is in progress is a 409, but a *different* library may run at the same
+    // time.
+    KnowledgeLibrary libraryA = createFilesystemLibrary("Test-Bibliothek A", devAdmin.getId());
+    KnowledgeLibrary libraryB = createFilesystemLibrary("Test-Bibliothek B", devAdmin.getId());
+    grantRepository.save(
+        AssetGrant.forUser(
+            KnowledgeLibrary.ASSET_TYPE,
+            libraryA.getId(),
+            Organization.DEFAULT_ID,
+            devAdmin.getId(),
+            AssetRole.EDITOR,
+            null,
+            devAdmin.getId()));
+    grantRepository.save(
+        AssetGrant.forUser(
+            KnowledgeLibrary.ASSET_TYPE,
+            libraryB.getId(),
+            Organization.DEFAULT_ID,
+            devAdmin.getId(),
+            AssetRole.EDITOR,
+            null,
+            devAdmin.getId()));
+
+    mockMvc
+        .perform(post("/api/v1/libraries/" + libraryA.getId() + "/indexing").with(devUser(null)))
+        .andExpect(status().isAccepted());
+
+    // A different library's trigger must not be blocked by libraryA's run.
+    mockMvc
+        .perform(post("/api/v1/libraries/" + libraryB.getId() + "/indexing").with(devUser(null)))
+        .andExpect(status().isAccepted());
+
+    awaitJobFinished(libraryA.getId());
+    awaitJobFinished(libraryB.getId());
+  }
+
+  private KnowledgeLibrary createForeignLibraryWithNoGrantForDevAdmin() throws IOException {
+    UUID foreignOwnerId = UUID.randomUUID();
+    jdbcTemplate.update(
+        "INSERT INTO users (id, subject, issuer, email, display_name, created_at, system_role,"
+            + " organization_id) VALUES (?, ?, 'opaa-dev', 'foreign-owner-478@example.com',"
+            + " 'Foreign Owner', now(), 'USER', ?)",
+        foreignOwnerId,
+        "foreign-owner-478-" + foreignOwnerId,
+        Organization.DEFAULT_ID);
+
+    KnowledgeLibrary library =
+        libraryRepository.save(
+            KnowledgeLibrary.ownedByUser(
+                Organization.DEFAULT_ID,
+                "Test-Bibliothek Fremd",
+                null,
+                foreignOwnerId,
+                false,
+                SourceTypes.FILESYSTEM,
+                documentDir.toAbsolutePath().toString(),
+                null,
+                null,
+                null,
+                false));
+    ownLibraryIds.add(library.getId());
+    return library;
+  }
+}

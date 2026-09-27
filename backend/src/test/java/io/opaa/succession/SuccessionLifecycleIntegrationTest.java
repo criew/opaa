@@ -531,6 +531,25 @@ class SuccessionLifecycleIntegrationTest {
             });
   }
 
+  /**
+   * The detail view carries the marking in its domain record, and it is exactly the finding the
+   * lifecycle reports for the library - with its hints, as the detail view has always shown it.
+   */
+  @Test
+  void theLibraryDetailCarriesTheFindingOfTheLifecycle() {
+    CurrentUser owner = user(SystemRole.USER);
+    UUID library = libraryOwnedByUser(owner.id());
+
+    assertThat(libraryService.getLibrary(library, admin).succession()).isNull();
+
+    lock(owner.id());
+
+    assertThat(libraryService.getLibrary(library, admin).succession())
+        .isNotNull()
+        .isEqualTo(
+            successionService.findingForAsset(KnowledgeLibrary.ASSET_TYPE, library).orElseThrow());
+  }
+
   /** "War Mitglied von …" is Bestandsinformation of the list, filled from the directory (E4). */
   @Test
   void theListNamesTheGroupsTheDepartedOwnerBelongedTo() {

@@ -31,6 +31,8 @@ Chat-Modelle (`llm`). knowledge hängt nur von foundation, identity und rights a
 - **Chat-Modelle:** `LlmModelService` ist der einzige Einstieg. Der optionale API-Schlüssel wird
   über `SettingsEncryptor` verschlüsselt, bevor die Datenbank ihn sieht; jede Änderung wird
   protokolliert. Genau ein Modell ist systemweit aktiv.
+- **Web-Schicht:** `llm.web` (Modellverwaltung), `indexing.web` (Indexierungsverwaltung,
+  Dokument- und Bibliotheksmetadaten). Die Endpunkte der Bibliothek liegen in `library.web`.
 
 ## Verweise
 

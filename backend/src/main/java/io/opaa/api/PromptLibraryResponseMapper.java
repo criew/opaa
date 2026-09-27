@@ -7,6 +7,7 @@ import io.opaa.api.dto.PromptLibraryUpdateRequest;
 import io.opaa.api.dto.PromptRequest;
 import io.opaa.api.dto.PromptResponse;
 import io.opaa.permission.AssetReach;
+import io.opaa.permission.web.SuccessionStateResponseMapper;
 import io.opaa.prompt.Prompt;
 import io.opaa.prompt.PromptContent;
 import io.opaa.prompt.PromptLibrary;
@@ -14,7 +15,6 @@ import io.opaa.prompt.PromptLibraryCreation;
 import io.opaa.prompt.PromptLibraryUpdate;
 import io.opaa.prompt.PromptLibraryView;
 import io.opaa.prompt.PromptVariable;
-import io.opaa.succession.web.SuccessionResponseMapper;
 import java.util.List;
 
 /** Maps prompt libraries and prompts between the API and the domain of {@code io.opaa.prompt}. */
@@ -51,7 +51,7 @@ final class PromptLibraryResponseMapper {
             library.getUpdatedAt())
         .description(library.getDescription())
         .ownerName(view.ownerName())
-        .succession(SuccessionResponseMapper.toStateResponse(view.succession()));
+        .succession(SuccessionStateResponseMapper.toStateResponse(view.succession()));
   }
 
   static List<PromptLibraryResponse> toResponses(List<PromptLibraryView> views) {

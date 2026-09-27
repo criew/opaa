@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.api.dto.SuccessionEntryResponse;
 import io.opaa.api.dto.SuccessionListResponse;
-import io.opaa.api.dto.SuccessionStateResponse;
 import io.opaa.api.types.SuccessionAddressee;
 import io.opaa.api.types.SuccessionObjectType;
 import io.opaa.permission.AssetType;
@@ -17,9 +16,8 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 /**
- * The mapper of the operational list. Two of its promises are only visible here: every field of a
- * line arrives, and the marking at an object carries <b>state and addressee only</b> - no date, no
- * previous owner, no reason (ADR-0036 Entscheidung 6, Personalrat Z5).
+ * The mapper of the operational list: every field of a line arrives. The marking at an object is
+ * held by {@code io.opaa.permission.web.SuccessionStateResponseMapperTest}.
  */
 class SuccessionResponseMapperTest {
 
@@ -115,33 +113,5 @@ class SuccessionResponseMapperTest {
     assertThat(response.getSize()).isEqualTo(50);
     assertThat(response.getTotalElements()).isEqualTo(101);
     assertThat(response.getTotalPages()).isEqualTo(3);
-  }
-
-  /**
-   * The marking at the object is the one place where the reduction has to hold: whatever the
-   * finding knows, only the two fields of {@code SuccessionStateResponse} leave it.
-   */
-  @Test
-  void theMarkingAtTheObjectNamesStateAndAddresseeAndNothingElse() {
-    SuccessionStateResponse response =
-        SuccessionResponseMapper.toStateResponse(
-            SuccessionFinding.ofAsset(
-                    AssetType.of("KNOWLEDGE_LIBRARY"),
-                    UUID.randomUUID(),
-                    "Vergabeakten 2025",
-                    SuccessionAddressee.SYSTEM_ADMINISTRATION)
-                .withOwnerHint("Andrea Vogt")
-                .withMembershipHints(List.of("Referat 50")));
-
-    assertThat(response.getAddressee()).isEqualTo(SuccessionAddressee.SYSTEM_ADMINISTRATION);
-    assertThat(response.getAddresseeLabel()).isEqualTo("die Systemverwaltung");
-    assertThat(SuccessionStateResponse.class.getDeclaredFields())
-        .as("no date, no previous owner, no reason may be added here - Personalrat Z5")
-        .hasSize(2);
-  }
-
-  @Test
-  void anObjectWithoutTheStateIsMarkedNotAtAll() {
-    assertThat(SuccessionResponseMapper.toStateResponse(null)).isNull();
   }
 }

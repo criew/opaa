@@ -9,12 +9,12 @@ import io.opaa.permission.GroupSizeSignal;
 import io.opaa.permission.PermissionTransferMark;
 import io.opaa.permission.SuccessionFinding;
 import io.opaa.permission.web.PermissionTransferResponseMapper;
+import io.opaa.permission.web.SuccessionStateResponseMapper;
 import io.opaa.space.Space;
 import io.opaa.space.SpaceDetail;
 import io.opaa.space.SpaceMemberView;
 import io.opaa.space.SpaceMembership;
 import io.opaa.space.SpaceOverview;
-import io.opaa.succession.web.SuccessionResponseMapper;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -70,7 +70,7 @@ final class SpaceResponseMapper {
         .userRole(detail.userRole())
         .successionOpen(detail.successionOpen())
         .lastTransfer(PermissionTransferResponseMapper.toResponse(lastTransfer))
-        .succession(SuccessionResponseMapper.toStateResponse(succession));
+        .succession(SuccessionStateResponseMapper.toStateResponse(succession));
   }
 
   static SpaceListResponse toListResponse(SpaceOverview overview) {
@@ -88,7 +88,7 @@ final class SpaceResponseMapper {
         .visibility(space.getVisibility())
         .userRole(overview.userRole())
         .successionOpen(overview.successionOpen())
-        .succession(SuccessionResponseMapper.toStateResponse(overview.succession()))
+        .succession(SuccessionStateResponseMapper.toStateResponse(overview.succession()))
         .libraryCount(overview.libraryCount())
         .chatCount(overview.chatCount());
   }
