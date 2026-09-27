@@ -38,7 +38,7 @@ Geprüft wurde auf zwei Wegen:
   - Treffer von `POST /api/v1/search`
   - Gruppen, Verzeichnisabgleich, Prompts, Ordner und Anhänge
 - **In der Oberfläche** per Playwright mit Bildschirmfotos. So sind alle unten genannten
-  Beschriftungen abgeglichen: „Meine Gruppen“, Administration → „Gruppen“ und „Verzeichnisabgleich“,
+  Beschriftungen abgeglichen: „Meine Gruppen“, „Admin“ → „Gruppen“ und „Verzeichnisabgleich“,
   Slash-Menü und Variablenformular, Prompt-Nachweis im Verlauf, „Prompts“, „Katalog“,
   Ordnernavigation und Anhänge.
 
@@ -78,7 +78,8 @@ sind sie mit dem neuen Stand gegenzuprüfen.
 
 Die Klickwege unten benutzen diese Begriffe:
 
-- **Linke Leiste:** „Spaces“, „Wissen“, „Prompts“, „Katalog“. Bei `demo-admin` kommt „Admin“ hinzu.
+- **Linke Leiste:** „Spaces“, „Wissen“, „Prompts“, „Katalog“. Bei `demo-admin` kommt „Admin“ hinzu; auf
+  opaa.ewerlin.com meldet sich damit nur der Maintainer an (Passwort rotiert), sonst am lokalen Stack.
   Unten sitzt der Avatar mit dem Kontomenü (Bedienhilfe „Profil und Einstellungen“) und den
   Einträgen „Einstellungen“ und „Abmelden“.
 - **Space wählen:** über „Spaces“ in der Leiste oder oben in der Space-Spalte (Feld „Space“). Ein
@@ -246,9 +247,21 @@ diesen Fall nicht von selbst. Bleibt offen für eine spätere, gezielt konstruie
 
 ## Vorführschritte zu Gruppen, Prompts, Ordnern und Fachformaten
 
-Die Schritte A und B ändern Rechte. Beide enden deshalb mit dem Zurücksetzen; ohne es fehlen danach
-Antworten aus den Fragen 4 und 5. Für A und B lohnen sich zwei Browserfenster, eines davon privat,
-damit zwei Konten gleichzeitig angemeldet sind.
+Die Schritte A und B ändern Rechte. Beide enden deshalb mit dem Zurücksetzen. Ohne es fehlt danach:
+
+- nach A Thomas' Zugriff als Vertretung: die Gegenfälle zu Frage 5 und 7 sowie die internen
+  Dienstanweisungen in Schritt D,
+- nach B die Kfz-Quellen: Frage 4 und die Kfz-Hälfte von Frage 7.
+
+Für A und B lohnen sich zwei Browserfenster, eines davon privat, damit zwei Konten gleichzeitig
+angemeldet sind.
+
+**Auf der öffentlichen Instanz opaa.ewerlin.com** wirkt jede Rechteänderung sofort für alle
+Besucher und bleibt bestehen; die Instanz wird nachts nur aktualisiert, nicht zurückgesetzt. Zwei
+gleichzeitige Vorführungen von Schritt A stören sich deshalb gegenseitig. Unterbleibt das
+Zurücksetzen von A, stellt nur ein erneuter Seed durch den Maintainer die Gruppenmitgliedschaft
+wieder her. Schritt B und die Verwaltungsteile (alles unter „Admin“) kann dort nur der Maintainer
+vorführen; alle anderen nutzen dafür den lokalen Stack.
 
 ### A. Interne Gruppe: Das Recht hängt an der Mitgliedschaft
 
@@ -270,7 +283,9 @@ damit zwei Konten gleichzeitig angemeldet sind.
   - Kein Recht an der Bibliothek und keine Space-Mitgliedschaft wurde angefasst; weggefallen ist nur
     die Mitgliedschaft in der Gruppe.
 - **Gegenprobe in der Verwaltung** (`demo-admin`, „Admin" → „Gruppen"): „Vertretung Meldewesen" hat
-  die Herkunft „Intern" und in der Spalte „Verwendung" den Eintrag „1 Bibliothek · 1 Space".
+  die Herkunft „Intern" und in der Spalte „Verwendung" den Eintrag „1 Bibliothek · 1 Space". Auf
+  opaa.ewerlin.com nur durch den Maintainer vorführbar (das Passwort von `demo-admin` ist dort
+  rotiert); sonst am lokalen Stack.
 - **Zurücksetzen:** als Maria im selben Abschnitt „Mitglieder" im Feld „Person suchen …" Thomas Klein
   wählen und „Mitglied hinzufügen" klicken.
 - **Zeigt:** Die Fachseite pflegt ihre Vertretung selbst, ohne Systemverwaltung. Ein Recht über eine
@@ -278,9 +293,12 @@ damit zwei Konten gleichzeitig angemeldet sind.
 
 ### B. Anbietergruppe aus Keycloak: Herkunft, Verzeichnisabgleich, Recht über das Verzeichnis
 
+- **Wer vorführen kann:** Auf opaa.ewerlin.com nur der Maintainer: Das Passwort von `demo-admin` ist
+  dort nach jedem Seed rotiert, und den Keycloak-Adminzugang hat nur er. Alle anderen führen
+  Schritt B am lokalen Stack vor.
 - **Konten:** `demo-admin`, dazu `thomas.klein` zur Kontrolle und die Keycloak-Adminkonsole. Lokal
   läuft sie unter <http://localhost:8180/admin>, Anmeldung mit `admin`/`admin` (Vorgabe in
-  `docker-compose.yml`). Auf der öffentlichen Instanz hat die Zugangsdaten der Maintainer.
+  `docker-compose.yml`).
 - **Ausgangslage:** Die Keycloak-Gruppen „Bürgerbüro Rheinfurt", „Meldewesen" und „Kfz-Zulassung"
   kommen über den Verzeichnisabgleich des Anbieters „Verzeichnisdienst" nach OPAA. Ihre Rechte tragen
   sie allein: Thomas liest „Leistungen Kfz-Zulassung" nur über „Kfz-Zulassung", alle vier Fachkonten
@@ -311,8 +329,12 @@ damit zwei Konten gleichzeitig angemeldet sind.
   - Als Thomas (neu laden) fehlt unter „Wissen" die Bibliothek „Leistungen Kfz-Zulassung".
   - Frage 4 liefert keine Quelle mehr aus `008_wunschkennzeichen.txt`.
   - In OPAA wurde kein Recht angefasst.
-- **Zurücksetzen:** in Keycloak Thomas wieder in „Kfz-Zulassung" aufnehmen („Join Group"), in OPAA
-  „Jetzt abgleichen" klicken. Ohne den Klick holt der stündliche Abgleich es erst später nach.
+- **Zurücksetzen (Pflicht):** in Keycloak Thomas wieder in „Kfz-Zulassung" aufnehmen („Join
+  Group"), in OPAA „Jetzt abgleichen" klicken. Ohne den Klick holt der stündliche Abgleich es erst
+  später nach. Unterbleibt dagegen die Rückgabe in Keycloak, macht der stündliche Abgleich den
+  Verlust dauerhaft: Frage 4 und die Kfz-Hälfte von Frage 7 fallen für alle aus. Auch ein erneuter
+  Seed stellt das nicht wieder her, denn er ändert keine Keycloak-Mitgliedschaften, und ein Keycloak
+  mit eigenem Volume liest den Realm-Export nicht erneut.
 - **Zeigt:** Rechte folgen dem Verzeichnis der Organisation. Wer dort die Abteilung wechselt, verliert
   das Leserecht der alten Abteilung mit dem nächsten Abgleich, auch ohne sich neu anzumelden.
 
