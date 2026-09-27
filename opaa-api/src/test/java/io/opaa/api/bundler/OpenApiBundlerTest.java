@@ -143,6 +143,25 @@ class OpenApiBundlerTest {
         .hasMessageContaining("common.yaml: top-level key 'info' is not allowed");
   }
 
+  @Test
+  void namesTheFragmentOfASyntaxError() throws IOException {
+    write("root.yaml", ROOT);
+    write("common.yaml", "components:\n  schemas:\n    Role: [unclosed\n");
+
+    assertThatThrownBy(() -> OpenApiBundler.bundle(dir)).hasMessageStartingWith("common.yaml: ");
+  }
+
+  @Test
+  void rejectsAnchorsAndAliases() throws IOException {
+    write("root.yaml", ROOT);
+    write(
+        "common.yaml",
+        "components:\n  schemas:\n    Role: &role\n      type: string\n    Other: *role\n");
+
+    assertThatThrownBy(() -> OpenApiBundler.bundle(dir))
+        .hasMessageContaining("common.yaml: YAML anchors and aliases are not allowed");
+  }
+
   private void write(String name, String content) throws IOException {
     Files.writeString(dir.resolve(name), content);
   }

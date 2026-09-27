@@ -1,11 +1,13 @@
 // Merges the OpenAPI fragments under opaa-api/src/main/openapi into one spec for openapi-typescript.
 // Same rules as io.opaa.api.bundler.OpenApiBundler (the opaa-api Gradle build): root.yaml first,
 // then every other *.yaml in name order; fragments hold only tags, paths and components; a key
-// defined twice is an error. The Java bundler additionally validates $refs and tags - it runs in
-// the backend CI for every spec change. Works on YAML nodes so every scalar keeps its source form.
+// defined twice is an error, and so is any YAML anchor or alias. The Java bundler additionally
+// validates $refs and tags. Works on YAML nodes: strings keep their quoting and block style, but
+// numbers are re-emitted in canonical form (1e3 -> 1e+3). The CI job openapi-bundle-parity checks
+// that both bundles load to the same tree.
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import { Document, isMap, isSeq, parseDocument, YAMLMap, YAMLSeq } from 'yaml'
+import { Document, isAlias, isMap, isSeq, parseDocument, visit, YAMLMap, YAMLSeq } from 'yaml'
 
 const [fragmentDir, outFile] = process.argv.slice(2)
 if (!fragmentDir || !outFile) {
@@ -16,8 +18,15 @@ const ROOT = 'root.yaml'
 const FRAGMENT_KEYS = new Set(['tags', 'paths', 'components'])
 
 function load(file) {
-  const doc = parseDocument(readFileSync(join(fragmentDir, file), 'utf8'))
+  const doc = parseDocument(readFileSync(join(fragmentDir, file), 'utf8'), { intAsBigInt: true })
   if (doc.errors.length > 0) throw new Error(`${file}: ${doc.errors[0].message}`)
+  visit(doc, {
+    Node(_key, node) {
+      if (isAlias(node) || node.anchor) {
+        throw new Error(`${file}: YAML anchors and aliases are not allowed`)
+      }
+    },
+  })
   if (!isMap(doc.contents)) throw new Error(`${file}: document must be a mapping`)
   return doc.contents
 }

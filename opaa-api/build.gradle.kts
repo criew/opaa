@@ -23,7 +23,7 @@ repositories {
 // (currently only :backend) get them transitively through this module's main sourceSet, so a
 // spec-only change now only invalidates this module's compileJava/openApiGenerate, not the whole
 // backend (issue #826 T2 / #896's whole point).
-// The spec is kept as one fragment per topic under src/main/openapi (issue #2002) and merged into
+// The spec is kept as one fragment per topic under src/main/openapi and merged into
 // build/openapi-bundle/openapi/opaa-api.yaml. The generator and the tests (classpath resource
 // /openapi/opaa-api.yaml) read only that bundle; the frontend merges the same fragments with
 // frontend/scripts/bundle-openapi.mjs by the same rules.

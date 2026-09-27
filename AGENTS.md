@@ -91,7 +91,7 @@ pnpm test                               # Stack via Docker Compose starten, Suit
   - Ein Schema steht in der Datei des Themas, dem es fachlich gehört, auch wenn andere Themen es referenzieren (`SpaceRole` in `spaces.yaml`). Nur Bausteine ohne fachlichen Besitzer stehen in `common.yaml`: Fehlerhülle (`ErrorResponse`), übergreifende Enums wie `SystemRole`, gemeinsame Parameter und Antworten.
   - `root.yaml` enthält nur `openapi` und `info`, einschließlich der Beschreibung der Statuscodes.
   - Ein neues Thema bekommt eine neue Datei (`[a-z0-9-]+.yaml`) mit eigenem Eintrag unter `tags`.
-  - Alle `$ref` zeigen in die gebündelte Spec (`#/components/schemas/...`), auch über Dateigrenzen hinweg. Der Build bricht ab bei doppelten Pfaden oder Komponenten, bei nicht auflösbaren `$ref` und bei Operationen ohne genau ein Tag aus der eigenen Datei.
+  - Alle `$ref` zeigen in die gebündelte Spec (`#/components/schemas/...`), auch über Dateigrenzen hinweg. Der Build bricht ab bei doppelten Pfaden oder Komponenten, bei nicht auflösbaren `$ref`, bei YAML-Ankern und -Aliasen und bei Operationen ohne genau ein Tag aus der eigenen Datei.
 - Weitere Backend-Regeln — Abhängigkeitsverwaltung, Enum-Mapping, Mapper-Schicht, Statuscode-Deklaration, Spring-Testkontexte, Liquibase — stehen in [backend/AGENTS.md](backend/AGENTS.md). **Vor jeder Änderung unter `backend/` oder `opaa-api/` lesen.**
 
 > Vollständige Begründung: [ADR-0006](docs/decisions/0006-openapi-dto-generation.md)

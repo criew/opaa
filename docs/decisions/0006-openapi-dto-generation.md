@@ -71,5 +71,5 @@ Die Spec war auf rund 19.600 Zeilen gewachsen und wurde in 145 von 763 Commits a
 ### Konsequenzen
 
 - Eine Spec-Änderung berührt in der Regel nur die Datei ihres Themas. Die größte Datei hat rund 2.100 Zeilen.
-- Es gibt zwei Bundler mit denselben Regeln. Wer die Regeln ändert, ändert beide. Die Prüfungen laufen nur im Java-Bundler, also in der Backend-CI, und die läuft bei jeder Spec-Änderung.
+- Es gibt zwei Bundler mit denselben Regeln. Wer die Regeln ändert, ändert beide. Die inhaltlichen Prüfungen laufen nur im Java-Bundler. Beide lehnen YAML-Anker und -Aliase ab. Der CI-Job `openapi-bundle-parity` erzeugt bei jeder Änderung an Fragmenten oder Bundlern beide Bündel. Er lädt sie nach YAML 1.1 und vergleicht die Wertebäume. Sein Ergebnis fließt in den Pflicht-Check `backend` ein.
 - Innerhalb eines Fragments zeigt ein Editor Verweise auf Schemas anderer Dateien als nicht auflösbar an. Maßgeblich ist das Bündel.

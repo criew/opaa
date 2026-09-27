@@ -18,6 +18,7 @@ import java.util.stream.Stream;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
+import org.yaml.snakeyaml.error.YAMLException;
 import org.yaml.snakeyaml.nodes.MappingNode;
 import org.yaml.snakeyaml.nodes.Node;
 import org.yaml.snakeyaml.nodes.NodeTuple;
@@ -34,9 +35,9 @@ import org.yaml.snakeyaml.nodes.Tag;
  * and resolves exactly as it did in the fragment. {@code frontend/scripts/bundle-openapi.mjs}
  * implements the same rules for the frontend build, which has no JVM.
  *
- * <p>Validation: every {@code $ref} is local ({@code #/...}) and resolves in the merged document;
- * every operation carries exactly one tag, declared in the {@code tags} of its own fragment; every
- * declared tag is used.
+ * <p>Validation: no YAML anchors or aliases; every {@code $ref} is local ({@code #/...}) and
+ * resolves in the merged document; every operation carries exactly one tag, declared in the {@code
+ * tags} of its own fragment; every declared tag is used.
  */
 public final class OpenApiBundler {
 
@@ -229,9 +230,27 @@ public final class OpenApiBundler {
   private static MappingNode compose(Path file) throws IOException {
     LoaderOptions options = new LoaderOptions();
     options.setCodePointLimit(Integer.MAX_VALUE);
+    String name = file.getFileName().toString();
     try (Reader reader = Files.newBufferedReader(file, StandardCharsets.UTF_8)) {
       Node node = new Yaml(options).compose(reader);
-      return asMapping(node, file.getFileName().toString(), "document");
+      rejectAnchors(node, name);
+      return asMapping(node, name, "document");
+    } catch (YAMLException e) {
+      throw fail(name, e.getMessage());
+    }
+  }
+
+  private static void rejectAnchors(Node node, String file) {
+    if (node.getAnchor() != null) {
+      throw fail(file, "YAML anchors and aliases are not allowed (&" + node.getAnchor() + ")");
+    }
+    if (node instanceof MappingNode map) {
+      for (NodeTuple t : map.getValue()) {
+        rejectAnchors(t.getKeyNode(), file);
+        rejectAnchors(t.getValueNode(), file);
+      }
+    } else if (node instanceof SequenceNode seq) {
+      seq.getValue().forEach(n -> rejectAnchors(n, file));
     }
   }
 

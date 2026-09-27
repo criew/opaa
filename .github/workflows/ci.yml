@@ -40,6 +40,7 @@ jobs:
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
       backendCore: ${{ steps.filter.outputs.backendCore }}
+      bundleParity: ${{ steps.filter.outputs.bundleParity }}
       frontend: ${{ steps.filter.outputs.frontend }}
       scripts: ${{ steps.filter.outputs.scripts }}
       seed: ${{ steps.filter.outputs.seed }}
@@ -54,7 +55,7 @@ jobs:
           # file that isn't the excluded path — it never actually excludes anything.
           # 'some-with-excludes' evaluates excludes against files that already matched
           # a positive pattern instead (#1123). No other filter here uses negation, so
-          # this is a no-op for frontend, scripts and backendCore.
+          # this is a no-op for frontend, scripts, backendCore and bundleParity.
           predicate-quantifier: 'some-with-excludes'
           filters: |
             # backendCore gates the paid OpenAI integration tests (job
@@ -85,6 +86,15 @@ jobs:
             frontend:
               - 'frontend/**'
               - 'opaa-api/src/main/openapi/**'
+              - '.github/workflows/ci.yml'
+            bundleParity:
+              - 'opaa-api/src/main/openapi/**'
+              - 'opaa-api/src/bundler/**'
+              - 'opaa-api/build.gradle.kts'
+              - 'frontend/scripts/bundle-openapi.mjs'
+              - 'frontend/scripts/check-openapi-bundle-parity.mjs'
+              - 'frontend/package.json'
+              - 'frontend/pnpm-lock.yaml'
               - '.github/workflows/ci.yml'
             scripts:
               - '.github/scripts/**'
@@ -189,22 +199,79 @@ jobs:
           path: backend/build/reports/tests/
           retention-days: 14
 
-  backend:
-    needs: [changes, backend-build, backend-test]
-    # always(): the aggregate must run even when a shard failed, otherwise it would be skipped
-    # and a skipped required check reads as passed. The path-filter condition is repeated so a
-    # PR without backend changes still skips this job exactly like the old single job did.
-    if: always() && (github.event_name != 'pull_request' || needs.changes.outputs.backend == 'true')
+  # Both bundlers must turn the spec fragments into the same spec: the Gradle one feeds the
+  # generated DTOs and the backend tests, the Node one the frontend types. Runs whenever either
+  # bundler or the fragments change, independent of which side's job would otherwise run.
+  openapi-bundle-parity:
+    needs: changes
+    if: github.event_name != 'pull_request' || needs.changes.outputs.bundleParity == 'true'
     runs-on: ubuntu-latest
     steps:
-      - name: Ergebnisse von backend-build und backend-test zusammenfassen
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25.0.4+101.0.LTS'
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      - uses: pnpm/action-setup@v6
+        with:
+          package_json_file: frontend/package.json
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Gradle-Bündel erzeugen
+        working-directory: backend/
+        run: ./gradlew :opaa-api:bundleOpenApi
+
+      - name: Frontend-Bündel erzeugen
+        working-directory: frontend/
+        run: |
+          pnpm install --frozen-lockfile
+          node scripts/bundle-openapi.mjs ../opaa-api/src/main/openapi build/openapi/opaa-api.yaml
+
+      - name: Beide Bündel vergleichen
+        working-directory: frontend/
+        run: node scripts/check-openapi-bundle-parity.mjs ../opaa-api/build/openapi-bundle/openapi/opaa-api.yaml build/openapi/opaa-api.yaml
+
+  # Required status check. Also aggregates openapi-bundle-parity, so the parity check blocks a
+  # merge without a change to the branch protection.
+  backend:
+    needs: [changes, backend-build, backend-test, openapi-bundle-parity]
+    # always(): the aggregate must run even when a shard failed, otherwise it would be skipped
+    # and a skipped required check reads as passed. The path-filter condition is repeated so a
+    # PR without backend or bundle changes still skips this job.
+    if: >-
+      always() && (github.event_name != 'pull_request'
+      || needs.changes.outputs.backend == 'true'
+      || needs.changes.outputs.bundleParity == 'true')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ergebnisse von backend-build, backend-test und openapi-bundle-parity zusammenfassen
         env:
           BUILD_RESULT: ${{ needs.backend-build.result }}
           TEST_RESULT: ${{ needs.backend-test.result }}
+          PARITY_RESULT: ${{ needs.openapi-bundle-parity.result }}
+          BACKEND_EXPECTED: ${{ github.event_name != 'pull_request' || needs.changes.outputs.backend == 'true' }}
+          PARITY_EXPECTED: ${{ github.event_name != 'pull_request' || needs.changes.outputs.bundleParity == 'true' }}
         run: |
-          echo "backend-build: $BUILD_RESULT"
-          echo "backend-test:  $TEST_RESULT"
-          if [ "$BUILD_RESULT" != "success" ] || [ "$TEST_RESULT" != "success" ]; then
+          echo "backend-build:         $BUILD_RESULT (erwartet: $BACKEND_EXPECTED)"
+          echo "backend-test:          $TEST_RESULT (erwartet: $BACKEND_EXPECTED)"
+          echo "openapi-bundle-parity: $PARITY_RESULT (erwartet: $PARITY_EXPECTED)"
+          failed=0
+          if [ "$BACKEND_EXPECTED" = "true" ] && { [ "$BUILD_RESULT" != "success" ] || [ "$TEST_RESULT" != "success" ]; }; then
+            failed=1
+          fi
+          if [ "$PARITY_EXPECTED" = "true" ] && [ "$PARITY_RESULT" != "success" ]; then
+            failed=1
+          fi
+          if [ "$failed" = "1" ]; then
             echo "::error::Mindestens ein Backend-Job ist nicht erfolgreich."
             exit 1
           fi
