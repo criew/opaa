@@ -26,7 +26,7 @@ Aus dem Ausschuss wird angeregt, die Lieferzonen der Gewerbebetriebe vor Beginn 
 
 ## TOP 2: Sanierung des Marktbrunnens auf dem Rathausplatz: Zwischenbericht
 
-Das Tiefbauamt berichtet, dass die restauratorische Befunduntersuchung abgeschlossen ist. Die Untere Denkmalbehörde hat der Bemusterung der Natursteine zugestimmt; sie werden ab Herbst 2025 in der Werkstatt aufgearbeitet.
+Das Tiefbauamt berichtet, dass die restauratorische Befunduntersuchung abgeschlossen ist. Die Untere Denkmalbehörde hat der Bemusterung der Natursteine zugestimmt. Die Einfassungssteine des Beckenrands werden ab Herbst 2025 einzeln abgenommen und in der Werkstatt aufgearbeitet; das Becken bleibt bis zum Beginn der Arbeiten am Brunnen im April 2026 gefüllt.
 
 Ein schadhafter Zulaufschieber muss zusätzlich ersetzt werden. Die Mehrkosten von 2.700 Euro wurden der Förderstelle vor der Ausführung angezeigt und sind damit förderfähig.
 
