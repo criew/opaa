@@ -1,0 +1,1 @@
+@../auth/AGENTS.md
