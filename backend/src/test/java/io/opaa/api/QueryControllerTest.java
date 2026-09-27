@@ -240,6 +240,44 @@ class QueryControllerTest {
         .andExpect(jsonPath("$.error").exists());
   }
 
+  // regression guard for #1993: the question pattern must accept line breaks
+  @Test
+  void queryWithMultilineQuestionIsAccepted() throws Exception {
+    when(queryService.query(anyString(), any(), any(), anyBoolean(), any(), any(), any()))
+        .thenReturn(
+            new QueryResult(
+                "Answer",
+                List.of(),
+                new QueryOutcome("gpt-4o", 100, 500L, false, false, null),
+                UUID.randomUUID(),
+                null,
+                null));
+
+    mockMvc
+        .perform(
+            post("/api/v1/query")
+                .with(asTestUser())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"question\": \"Erste Zeile\\nzweite Zeile\\r\\n\"}"))
+        .andExpect(status().isOk());
+
+    verify(queryService)
+        .query(eq("Erste Zeile\nzweite Zeile\r\n"), any(), any(), anyBoolean(), any(), any(), any());
+  }
+
+  @Test
+  void queryWithWhitespaceAndLineBreaksOnlyReturns400() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/query")
+                .with(asTestUser())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"question\": \" \\n\\t\\r\\n \"}"))
+        .andExpect(status().isBadRequest());
+
+    verifyNoInteractions(queryService);
+  }
+
   @Test
   void queryWithMissingBodyReturns400() throws Exception {
     mockMvc
