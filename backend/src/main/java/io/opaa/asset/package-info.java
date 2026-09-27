@@ -13,7 +13,7 @@
  * <p><b>Dependencies.</b> This package builds on {@code io.opaa.permission} (the rights formula,
  * the grant rows, the rights history) and never reaches a business package: {@code io.opaa.library}
  * and {@code io.opaa.space} depend on it, not the other way round, and {@code io.opaa.permission}
- * does not depend on it either. {@code io.opaa.permission.PermissionPackageBoundaryTest} holds the
+ * does not depend on it either. {@code io.opaa.architecture.ModularArchitectureTest} holds the
  * direction.
  *
  * <p><b>Foreign keys.</b> The live tables that name an asset - {@code asset_grants} and {@code

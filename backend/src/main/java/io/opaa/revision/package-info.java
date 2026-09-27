@@ -7,7 +7,7 @@
  * organization-wide release) and {@code io.opaa.space} (space memberships) - and all three already
  * depend on {@code io.opaa.audit} to write their events. Putting the composition there would make
  * every one of those edges a cycle. This package sits above them all and nothing depends on it but
- * {@code io.opaa.api}; {@code PermissionPackageBoundaryTest} holds that direction.
+ * {@code io.opaa.api}; {@code io.opaa.architecture.ModularArchitectureTest} holds the layering.
  *
  * <p>The bar of every revision access - the AUDITOR role, the mandatory Anlass, the bounded window
  * and the bounded paging - stays in {@code io.opaa.audit.AuditAccessGate}, shared with the audit

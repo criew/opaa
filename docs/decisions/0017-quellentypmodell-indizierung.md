@@ -231,7 +231,8 @@ Dieser ADR entscheidet **nicht**:
   > der Konfiguration und Verbindungstest liegen im Konnektor. Optionale Fähigkeiten sind weitere
   > Schnittstellen desselben Konnektors: Auswahl vor dem Speichern (`SourceBrowser`), Ausliefern
   > von Originalen (`OriginalAccess`) und Push-Eingang (`PushIntakeHandler`). Verwaltung und API
-  > kennen kein Konnektor-Paket mehr, `IndexingConnectorBoundaryTest` sichert das ab. API, Schema
+  > kennen kein Konnektor-Paket mehr, `IndexingConnectorBoundaryTest` sichert das ab (seit #2000
+  > `ModularArchitectureTest`). API, Schema
   > und `DocumentSourceType` als geschlossenes Enum bleiben dabei unverändert (#1977).
 
 ## Konsequenzen
