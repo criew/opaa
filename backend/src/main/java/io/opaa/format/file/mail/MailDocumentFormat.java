@@ -7,6 +7,7 @@ import io.opaa.format.DocumentFormatSource;
 import io.opaa.format.DocumentProperties;
 import io.opaa.format.FormatAdmission;
 import io.opaa.format.FormatMetadataField;
+import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.format.chunk.ChunkingService;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -275,7 +276,7 @@ public class MailDocumentFormat implements DocumentFormat {
         Map<String, Object> metadata = new HashMap<>();
         String location = locationFor(i, segments.size(), j, parts.size());
         if (location != null) {
-          metadata.put(ChunkingService.LOCATION_METADATA_KEY, location);
+          metadata.put(ChunkMetadataKeys.LOCATION_METADATA_KEY, location);
         }
         chunks.add(new Document(parts.get(j).getText(), metadata));
       }
@@ -287,7 +288,7 @@ public class MailDocumentFormat implements DocumentFormat {
         Map<String, Object> metadata = new HashMap<>();
         String location = locationFor(0, 1, j, headerParts.size());
         if (location != null) {
-          metadata.put(ChunkingService.LOCATION_METADATA_KEY, location);
+          metadata.put(ChunkMetadataKeys.LOCATION_METADATA_KEY, location);
         }
         chunks.add(new Document(headerParts.get(j).getText(), metadata));
       }

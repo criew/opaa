@@ -134,10 +134,10 @@ class ChunkingServiceTest {
     assertThat(result).hasSizeGreaterThan(2);
     assertThat(result.getFirst().getMetadata())
         .containsEntry(
-            ChunkingService.LOCATION_METADATA_KEY, "Abschn. Dienstanweisung › 4 Fristen");
+            ChunkMetadataKeys.LOCATION_METADATA_KEY, "Abschn. Dienstanweisung › 4 Fristen");
     assertThat(result.getLast().getMetadata())
         .containsEntry(
-            ChunkingService.LOCATION_METADATA_KEY, "Abschn. Dienstanweisung › 5 Zuständigkeit");
+            ChunkMetadataKeys.LOCATION_METADATA_KEY, "Abschn. Dienstanweisung › 5 Zuständigkeit");
   }
 
   /** the overlap prefix carried over from the predecessor must not shift a chunk's location. */
@@ -150,7 +150,7 @@ class ChunkingServiceTest {
 
     assertThat(result).hasSizeGreaterThan(2);
     assertThat(result.getLast().getMetadata())
-        .containsEntry(ChunkingService.LOCATION_METADATA_KEY, "Abschn. Beta");
+        .containsEntry(ChunkMetadataKeys.LOCATION_METADATA_KEY, "Abschn. Beta");
   }
 
   /** page-break markers become "S. n" locations and never reach the stored chunk text. */
@@ -163,7 +163,7 @@ class ChunkingServiceTest {
 
     assertThat(result).hasSize(1);
     assertThat(result.getFirst().getMetadata())
-        .containsEntry(ChunkingService.LOCATION_METADATA_KEY, "S. 1–2");
+        .containsEntry(ChunkMetadataKeys.LOCATION_METADATA_KEY, "S. 1–2");
     assertThat(result.getFirst().getText()).doesNotContain("\f").contains("Zweite Seite");
   }
 
@@ -175,6 +175,6 @@ class ChunkingServiceTest {
         service.chunkDocuments("notes.txt", List.of(new Document("Nur ein flacher Text.")));
 
     assertThat(result.getFirst().getMetadata())
-        .doesNotContainKey(ChunkingService.LOCATION_METADATA_KEY);
+        .doesNotContainKey(ChunkMetadataKeys.LOCATION_METADATA_KEY);
   }
 }

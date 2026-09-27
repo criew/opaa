@@ -8,7 +8,7 @@ import io.opaa.format.DocumentFormatResult;
 import io.opaa.format.DocumentFormatRunner;
 import io.opaa.format.DocumentFormatSource;
 import io.opaa.format.PassthroughMetadataKeysTestSupport;
-import io.opaa.format.chunk.ChunkingService;
+import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.format.file.office.CountingOdfOpener;
 import io.opaa.format.file.office.OdfPackage;
 import io.opaa.format.shared.HeadingSectionSplitter;
@@ -68,7 +68,8 @@ class TabularDocumentFormatTest {
         .contains("Tabelle: Gebühren")
         .contains("Leistung | Betrag")
         .contains("Personalausweis | 37,00 EUR");
-    assertThat(result.chunks().getFirst().getMetadata().get(ChunkingService.LOCATION_METADATA_KEY))
+    assertThat(
+            result.chunks().getFirst().getMetadata().get(ChunkMetadataKeys.LOCATION_METADATA_KEY))
         .isEqualTo("Blatt Gebühren · Zeile 2");
     // A key this pipeline actually produced that also belongs to the registry-wide passthrough
     // union must be part of its own declaration - storeChunks copies any union key it finds on a
@@ -508,7 +509,8 @@ class TabularDocumentFormatTest {
         .contains("Tabelle: Gebühren")
         .contains("Leistung | Betrag")
         .contains("Personalausweis | 37,00 EUR");
-    assertThat(result.chunks().getFirst().getMetadata().get(ChunkingService.LOCATION_METADATA_KEY))
+    assertThat(
+            result.chunks().getFirst().getMetadata().get(ChunkMetadataKeys.LOCATION_METADATA_KEY))
         .isEqualTo("Blatt Gebühren · Zeile 2");
   }
 
@@ -674,7 +676,8 @@ class TabularDocumentFormatTest {
     assertThat(result.outcome()).isEqualTo(DocumentFormatResult.Outcome.CHUNKED);
     assertThat(result.chunks()).hasSize(1);
     // Header at row 1, "Müller" at row 2, five blank filler rows (3-7), "Schmidt" at row 8.
-    assertThat(result.chunks().getFirst().getMetadata().get(ChunkingService.LOCATION_METADATA_KEY))
+    assertThat(
+            result.chunks().getFirst().getMetadata().get(ChunkMetadataKeys.LOCATION_METADATA_KEY))
         .isEqualTo("Blatt Blatt1 · Zeilen 2–8");
   }
 

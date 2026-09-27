@@ -1,7 +1,7 @@
 package io.opaa.search;
 
 import io.opaa.chat.ChatSourceMetadataEntry;
-import io.opaa.format.chunk.ChunkingService;
+import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.indexing.metadata.CitationFieldValue;
 import io.opaa.indexing.metadata.CitationMetadataReader;
 import io.opaa.indexing.metadata.CoreMetadata;
@@ -93,7 +93,7 @@ class SearchHitAssembler {
               document != null ? document.getId() : null,
               fileName,
               chunkIndex(chunk),
-              metadataValue(chunk, ChunkingService.LOCATION_METADATA_KEY),
+              metadataValue(chunk, ChunkMetadataKeys.LOCATION_METADATA_KEY),
               metadata.isEmpty() ? null : metadata,
               // The reciprocal of the 1-based position, exactly as a Beleg carries it: a raw
               // score is not comparable between the lexical and the vector path, a rank is.

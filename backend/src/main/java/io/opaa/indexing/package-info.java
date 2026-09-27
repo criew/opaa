@@ -11,7 +11,7 @@
  * io.opaa.indexing.IndexingConfiguration}) and the bound properties. Each connector wires itself in
  * its own package; the core configuration knows none of them. The admission decision over a file's
  * content is {@link io.opaa.format.SupportedDocumentFormats}, next to the formats it admits for;
- * the configuration registers every format as a bean. The configuration knows every core subpackage
+ * {@code FormatConfiguration} registers the formats. The configuration knows every core subpackage
  * because it wires them; the subpackages know only the properties from here, never each other
  * through this package.
  */

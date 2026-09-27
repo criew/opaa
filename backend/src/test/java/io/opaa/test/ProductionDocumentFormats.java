@@ -21,9 +21,9 @@ import java.time.Clock;
 import java.util.List;
 
 /**
- * The set of {@link DocumentFormat} beans {@code IndexingConfiguration} wires, built without a
- * Spring context - for a unit test that needs the admission set the application actually applies
- * ({@link #supportedFormats()}) rather than a hand-picked one.
+ * The set of {@link DocumentFormat} beans {@code FormatConfiguration} wires, built without a Spring
+ * context - for a unit test that needs the admission set the application actually applies ({@link
+ * #supportedFormats()}) rather than a hand-picked one.
  *
  * <p>Constructed with {@code null}/zero collaborators: nothing here is ever run, only asked what it
  * admits and declares. {@code DocumentFormatRegistryRoutingIntegrationTest} asserts this list

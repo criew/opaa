@@ -19,7 +19,7 @@ Chat-Modelle (`llm`). knowledge hängt nur von foundation, format, identity und 
 - **`indexing.job` besitzt den Lauf** (Zeile, Lebenszyklus, Protokoll, Zeitpläne) und weiß nichts
   von Parsen, Schneiden oder Chunk-Speichern. `maintenance` hängt von `document` ab, nie umgekehrt.
 - **Formate** liegen im Modul format (`io.opaa.format`, siehe `format/AGENTS.md`).
-  `IndexingConfiguration` registriert jedes Format als Bean; `DocumentIngestService` lehnt ein
+  `FormatConfiguration` registriert die Dateiformate als Beans; `DocumentIngestService` lehnt ein
   Format ab, das einen Schemaschlüssel als Passthrough-Schlüssel deklariert.
 - **`IndexingConfiguration` verdrahtet den Kern und kennt keinen Konnektor**; die Unterpakete
   kennen voneinander nichts über das Wurzelpaket `indexing`.

@@ -21,7 +21,7 @@ import io.opaa.chat.ChatSource;
 import io.opaa.common.NotFoundException;
 import io.opaa.externalaccess.ExternalAccessSettings;
 import io.opaa.externalaccess.ExternalAccessSettingsRepository;
-import io.opaa.format.chunk.ChunkingService;
+import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.metadata.MetadataFilter;
 import io.opaa.knowledge.DocumentRepository;
@@ -502,7 +502,7 @@ class SearchIntegrationTest {
       metadata.put("file_name", fileName);
       metadata.put("chunk_index", passage.index());
       if (passage.location() != null) {
-        metadata.put(ChunkingService.LOCATION_METADATA_KEY, passage.location());
+        metadata.put(ChunkMetadataKeys.LOCATION_METADATA_KEY, passage.location());
       }
       chunks.add(new Document(passage.text(), metadata));
     }

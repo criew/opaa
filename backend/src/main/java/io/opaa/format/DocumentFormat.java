@@ -1,6 +1,6 @@
 package io.opaa.format;
 
-import io.opaa.format.chunk.ChunkingService;
+import io.opaa.format.chunk.ChunkMetadataKeys;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -85,6 +85,6 @@ public interface DocumentFormat {
    * DocumentFormatRegistry#allPassthroughMetadataKeys()}). Never {@code null}.
    */
   default Set<String> passthroughMetadataKeys() {
-    return Set.of(ChunkingService.LOCATION_METADATA_KEY);
+    return Set.of(ChunkMetadataKeys.LOCATION_METADATA_KEY);
   }
 }

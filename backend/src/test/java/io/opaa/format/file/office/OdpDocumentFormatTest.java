@@ -8,7 +8,7 @@ import io.opaa.format.DocumentFormatResult;
 import io.opaa.format.DocumentFormatRunner;
 import io.opaa.format.DocumentFormatSource;
 import io.opaa.format.PassthroughMetadataKeysTestSupport;
-import io.opaa.format.chunk.ChunkingService;
+import io.opaa.format.chunk.ChunkMetadataKeys;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -161,13 +161,13 @@ class OdpDocumentFormatTest {
     assertThat(result.chunks().get(0).getText())
         .startsWith("Einfuehrung")
         .contains("Buergerversammlung");
-    assertThat(result.chunks().get(0).getMetadata().get(ChunkingService.LOCATION_METADATA_KEY))
+    assertThat(result.chunks().get(0).getMetadata().get(ChunkMetadataKeys.LOCATION_METADATA_KEY))
         .isEqualTo("Folie 1: Einfuehrung");
     assertThat(result.chunks().get(1).getText())
         .startsWith("Gebuehren")
         .contains("37,00 EUR")
         .contains("Notizen: Bitte langsam sprechen.");
-    assertThat(result.chunks().get(1).getMetadata().get(ChunkingService.LOCATION_METADATA_KEY))
+    assertThat(result.chunks().get(1).getMetadata().get(ChunkMetadataKeys.LOCATION_METADATA_KEY))
         .isEqualTo("Folie 2: Gebuehren");
     // A key this pipeline actually produced that also belongs to the registry-wide passthrough
     // union must be part of its own declaration - storeChunks copies any union key it finds on a
@@ -215,7 +215,8 @@ class OdpDocumentFormatTest {
     assertThat(result.outcome()).isEqualTo(DocumentFormatResult.Outcome.CHUNKED);
     assertThat(result.chunks()).hasSize(2);
     assertThat(result.chunks().getFirst().getText()).contains("Stadt Musterstadt · Az. 12-34/2026");
-    assertThat(result.chunks().getFirst().getMetadata().get(ChunkingService.LOCATION_METADATA_KEY))
+    assertThat(
+            result.chunks().getFirst().getMetadata().get(ChunkMetadataKeys.LOCATION_METADATA_KEY))
         .isEqualTo("Masterfolie");
     assertThat(result.chunks().get(1).getText()).startsWith("Einfuehrung");
   }

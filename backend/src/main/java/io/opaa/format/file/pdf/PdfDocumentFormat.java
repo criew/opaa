@@ -5,7 +5,7 @@ import io.opaa.format.DocumentFormatSource;
 import io.opaa.format.DocumentProperties;
 import io.opaa.format.FileDocumentFormat;
 import io.opaa.format.FormatAdmission;
-import io.opaa.format.chunk.ChunkingService;
+import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.format.shared.DocumentTitleLine;
 import io.opaa.format.shared.HeadingSectionSplitter;
 import java.io.IOException;
@@ -276,7 +276,7 @@ public class PdfDocumentFormat extends FileDocumentFormat<PdfDocumentFormat.PdfC
         continue;
       }
       Map<String, Object> metadata = new HashMap<>();
-      metadata.put(ChunkingService.LOCATION_METADATA_KEY, "S. " + (i + 1));
+      metadata.put(ChunkMetadataKeys.LOCATION_METADATA_KEY, "S. " + (i + 1));
       chunks.add(new Document(HeadingSectionSplitter.capChunkLength(text.strip()), metadata));
     }
     if (chunks.isEmpty()) {

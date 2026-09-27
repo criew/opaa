@@ -5,7 +5,7 @@ import io.opaa.format.DocumentFormatSource;
 import io.opaa.format.DocumentProperties;
 import io.opaa.format.FileDocumentFormat;
 import io.opaa.format.FormatAdmission;
-import io.opaa.format.chunk.ChunkingService;
+import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.format.shared.DeduplicatedLines;
 import io.opaa.format.shared.HeadingSectionSplitter;
 import io.opaa.format.shared.RepeatingHeaderChunk;
@@ -27,7 +27,7 @@ import org.xml.sax.helpers.DefaultHandler;
  * counterpart of {@link PptxDocumentFormat}, reading {@code content.xml} through the hardened SAX
  * parser {@link OdfPackage}, since POI never reads OpenDocument. Every {@code draw:page} with text
  * becomes one chunk, a {@code presentation:class} of {@code "title"} its leading line and {@link
- * ChunkingService#LOCATION_METADATA_KEY location}, notes a final labeled paragraph.
+ * ChunkMetadataKeys#LOCATION_METADATA_KEY location}, notes a final labeled paragraph.
  *
  * <p>{@code styles.xml}'s master page text becomes one deduplicated leading chunk (see {@link
  * RepeatingHeaderChunk}); a malformed one forfeits only that chunk. A presentation whose slides
@@ -150,7 +150,7 @@ public class OdpDocumentFormat extends FileDocumentFormat<OdpDocumentFormat.OdpC
       return null;
     }
     Object location =
-        content.slideChunks().getFirst().getMetadata().get(ChunkingService.LOCATION_METADATA_KEY);
+        content.slideChunks().getFirst().getMetadata().get(ChunkMetadataKeys.LOCATION_METADATA_KEY);
     if (location instanceof String text) {
       int separator = text.indexOf(": ");
       if (separator >= 0) {
@@ -363,7 +363,7 @@ public class OdpDocumentFormat extends FileDocumentFormat<OdpDocumentFormat.OdpC
         text = location;
       }
       Map<String, Object> metadata = new HashMap<>();
-      metadata.put(ChunkingService.LOCATION_METADATA_KEY, location);
+      metadata.put(ChunkMetadataKeys.LOCATION_METADATA_KEY, location);
       chunks.add(new Document(HeadingSectionSplitter.capChunkLength(text), metadata));
       anySlideHasText |= hasText;
       hasSlide = false;

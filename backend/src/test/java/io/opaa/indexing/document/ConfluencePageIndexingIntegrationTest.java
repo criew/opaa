@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.format.ChunkFormatMetadata;
-import io.opaa.format.chunk.ChunkingService;
+import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.format.stream.confluencestorage.ConfluenceStorageFormat;
 import io.opaa.indexing.chunk.SourceChunkMetadataKeys;
 import io.opaa.indexing.source.confluence.ConfluenceTestSettings;
@@ -164,7 +164,7 @@ class ConfluencePageIndexingIntegrationTest {
             .findFirst()
             .orElseThrow();
     assertThat(deadline.getMetadata())
-        .containsEntry(ChunkingService.LOCATION_METADATA_KEY, "Abschn. Zuständigkeiten");
+        .containsEntry(ChunkMetadataKeys.LOCATION_METADATA_KEY, "Abschn. Zuständigkeiten");
     assertThat(deadline.getText()).startsWith("Zuständigkeiten\n\n");
     String all =
         String.join(

@@ -163,7 +163,7 @@ public final class ModularArchitecture {
               ASSISTANT,
               EnumSet.of(FOUNDATION, FORMAT, IDENTITY, RIGHTS, KNOWLEDGE, WORKSPACE, LIBRARY)),
           entry(EXTERNAL, EnumSet.of(FOUNDATION, IDENTITY, RIGHTS, KNOWLEDGE, LIBRARY, ASSISTANT)),
-          entry(APP, EnumSet.of(FOUNDATION, FORMAT, IDENTITY, RIGHTS, KNOWLEDGE, LIBRARY)));
+          entry(APP, EnumSet.of(FOUNDATION, IDENTITY, RIGHTS, KNOWLEDGE, LIBRARY)));
 
   /**
    * The package edges, relative to the root, that lie on a cycle between the subpackages of one

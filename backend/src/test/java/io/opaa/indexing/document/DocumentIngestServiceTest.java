@@ -28,6 +28,7 @@ import io.opaa.format.DocumentFormatResult;
 import io.opaa.format.DocumentFormatSource;
 import io.opaa.format.DocumentProperties;
 import io.opaa.format.DocumentService;
+import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.format.chunk.ChunkingService;
 import io.opaa.format.file.fallback.TikaFallbackFormat;
 import io.opaa.format.stream.confluencestorage.ConfluenceStorageFormat;
@@ -523,7 +524,7 @@ class DocumentIngestServiceTest {
           .thenReturn(
               List.of(
                   new org.springframework.ai.document.Document(
-                      "chunk1", Map.of(ChunkingService.LOCATION_METADATA_KEY, "S. 2"))));
+                      "chunk1", Map.of(ChunkMetadataKeys.LOCATION_METADATA_KEY, "S. 2"))));
 
       service.ingest(localFile(file), null);
 
@@ -540,7 +541,7 @@ class DocumentIngestServiceTest {
       assertThat(metadata).containsEntry("library_id", targetLibrary.getId().toString());
       assertThat(metadata)
           .containsEntry("organization_id", targetLibrary.getOrganizationId().toString());
-      assertThat(metadata).containsEntry(ChunkingService.LOCATION_METADATA_KEY, "S. 2");
+      assertThat(metadata).containsEntry(ChunkMetadataKeys.LOCATION_METADATA_KEY, "S. 2");
       // ingestion-pipelines.md, Querschnittsregel (d): every chunk names the verfahren that
       // produced it and the routing key actually used.
       assertThat(metadata)

@@ -33,7 +33,7 @@ import io.opaa.chat.ChatSourceMetadataEntry;
 import io.opaa.chat.UsedPrompt;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
-import io.opaa.format.chunk.ChunkingService;
+import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.indexing.metadata.CitationMetadataReader;
 import io.opaa.indexing.metadata.CoreMetadata;
 import io.opaa.indexing.metadata.DocumentMetadataService;
@@ -420,7 +420,7 @@ class QueryServiceTest {
                     documentId.toString(),
                     "chunk_index",
                     3,
-                    ChunkingService.LOCATION_METADATA_KEY,
+                    ChunkMetadataKeys.LOCATION_METADATA_KEY,
                     "Abschn. 4.2 Fristsetzung"))
             .score(0.9)
             .build();

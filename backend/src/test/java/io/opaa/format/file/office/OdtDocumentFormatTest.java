@@ -8,7 +8,7 @@ import io.opaa.format.DocumentFormatResult;
 import io.opaa.format.DocumentFormatRunner;
 import io.opaa.format.DocumentFormatSource;
 import io.opaa.format.PassthroughMetadataKeysTestSupport;
-import io.opaa.format.chunk.ChunkingService;
+import io.opaa.format.chunk.ChunkMetadataKeys;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -115,7 +115,7 @@ class OdtDocumentFormatTest {
     assertThat(result.chunks().get(0).getText())
         .startsWith("Verwaltungsgebuehrensatzung")
         .contains("regelt die Gebuehren");
-    assertThat(result.chunks().get(0).getMetadata().get(ChunkingService.LOCATION_METADATA_KEY))
+    assertThat(result.chunks().get(0).getMetadata().get(ChunkMetadataKeys.LOCATION_METADATA_KEY))
         .isEqualTo("Abschn. Verwaltungsgebuehrensatzung");
     assertThat(result.chunks().get(1).getText())
         .startsWith("Verwaltungsgebuehrensatzung › Personaldokumente")
@@ -274,7 +274,8 @@ class OdtDocumentFormatTest {
     assertThat(result.chunks().getFirst().getText())
         .contains("Stadt Musterstadt")
         .contains("Az. 12-34/2026");
-    assertThat(result.chunks().getFirst().getMetadata().get(ChunkingService.LOCATION_METADATA_KEY))
+    assertThat(
+            result.chunks().getFirst().getMetadata().get(ChunkMetadataKeys.LOCATION_METADATA_KEY))
         .isEqualTo("Kopf-/Fußzeile");
     assertThat(result.chunks().get(1).getText()).startsWith("Antrag");
   }

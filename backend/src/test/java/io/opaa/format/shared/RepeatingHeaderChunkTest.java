@@ -2,7 +2,7 @@ package io.opaa.format.shared;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.format.chunk.ChunkingService;
+import io.opaa.format.chunk.ChunkMetadataKeys;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.document.Document;
 
@@ -14,7 +14,7 @@ class RepeatingHeaderChunkTest {
 
     assertThat(chunk).isNotNull();
     assertThat(chunk.getText()).isEqualTo("Stadt Musterstadt");
-    assertThat(chunk.getMetadata().get(ChunkingService.LOCATION_METADATA_KEY))
+    assertThat(chunk.getMetadata().get(ChunkMetadataKeys.LOCATION_METADATA_KEY))
         .isEqualTo("Kopf-/Fußzeile");
   }
 

@@ -40,7 +40,7 @@ class OverlappingTokenTextSplitter extends TextSplitter {
 
   /**
    * Splits like {@link TextSplitter#apply}, and additionally stamps every chunk with its {@link
-   * ChunkingService#LOCATION_METADATA_KEY}, derived from where the chunk's own text - before the
+   * ChunkMetadataKeys#LOCATION_METADATA_KEY}, derived from where the chunk's own text - before the
    * overlap prefix - sits in the source, so the location describes the chunk's beginning rather
    * than its predecessor's tail. Page-break markers are stripped after locating, since they must
    * not reach the embedding; a chunk whose text cannot be found again carries no location.
@@ -62,7 +62,7 @@ class OverlappingTokenTextSplitter extends TextSplitter {
           searchFrom = start + 1;
           String location = resolver.locate(start, start + original.length());
           if (location != null) {
-            metadata.put(ChunkingService.LOCATION_METADATA_KEY, location);
+            metadata.put(ChunkMetadataKeys.LOCATION_METADATA_KEY, location);
           }
         }
         result.add(new Document(stripPageBreaks(chunks.get(i)), metadata));

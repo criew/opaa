@@ -10,6 +10,7 @@ import io.opaa.format.DocumentFormatSource;
 import io.opaa.format.DocumentProperties;
 import io.opaa.format.FormatMetadataField;
 import io.opaa.format.PassthroughMetadataKeysTestSupport;
+import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.format.chunk.ChunkingService;
 import io.opaa.indexing.IndexingProperties;
 import java.io.IOException;
@@ -96,7 +97,7 @@ class MailDocumentFormatTest {
   void passesThroughTheFundortAndNoMailSpecificKeyAtAll() {
     MailDocumentFormat pipeline = pipeline(defaultProperties);
     assertThat(pipeline.passthroughMetadataKeys())
-        .containsExactly(ChunkingService.LOCATION_METADATA_KEY);
+        .containsExactly(ChunkMetadataKeys.LOCATION_METADATA_KEY);
   }
 
   /**
@@ -200,7 +201,7 @@ class MailDocumentFormatTest {
     // #1242: no mail-specific chunk key survives - the Kopfdaten hang on the document now.
     assertThat(chunk.getMetadata().keySet()).doesNotContain("mail_from", "mail_subject");
     // Single message, no thread split: no "Nachricht n von N" location needed.
-    assertThat(chunk.getMetadata()).doesNotContainKey(ChunkingService.LOCATION_METADATA_KEY);
+    assertThat(chunk.getMetadata()).doesNotContainKey(ChunkMetadataKeys.LOCATION_METADATA_KEY);
     assertThat(result.discoveredAttachments()).isEmpty();
     // A produced key that is part of the registry-wide passthrough union must be declared - only a
     // union key can ever ride along onto the persisted chunk.
@@ -278,7 +279,8 @@ class MailDocumentFormatTest {
                 + "An: b@example.org");
     assertThat(result.properties().formatFields())
         .containsEntry(FormatMetadataField.MAIL_SUBJECT.key(), "Leer");
-    assertThat(headerChunk.getMetadata()).doesNotContainKey(ChunkingService.LOCATION_METADATA_KEY);
+    assertThat(headerChunk.getMetadata())
+        .doesNotContainKey(ChunkMetadataKeys.LOCATION_METADATA_KEY);
     assertThat(result.discoveredAttachments()).hasSize(1);
     assertThat(result.discoveredAttachments().getFirst().fileName()).isEqualTo("bescheid.csv");
   }
@@ -653,7 +655,7 @@ class MailDocumentFormatTest {
     // The context block lands only on the first chunk - not repeated onto the
     // second thread segment, the Verwässerungsproblem a repeated page header shows.
     assertThat(result.chunks().get(0).getText()).endsWith("\n\nPasst, danke.");
-    assertThat(result.chunks().get(0).getMetadata().get(ChunkingService.LOCATION_METADATA_KEY))
+    assertThat(result.chunks().get(0).getMetadata().get(ChunkMetadataKeys.LOCATION_METADATA_KEY))
         .isEqualTo("Nachricht 1 von 2");
     assertThat(result.chunks().get(1).getText())
         .doesNotContain("Von:")
@@ -691,7 +693,7 @@ class MailDocumentFormatTest {
     assertThat(result.chunks())
         .allSatisfy(
             chunk ->
-                assertThat(chunk.getMetadata().get(ChunkingService.LOCATION_METADATA_KEY))
+                assertThat(chunk.getMetadata().get(ChunkMetadataKeys.LOCATION_METADATA_KEY))
                     .asString()
                     .startsWith("Teil "));
     // The context block itself is subject to the same token splitter - it lands only in the

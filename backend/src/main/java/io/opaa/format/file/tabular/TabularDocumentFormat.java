@@ -5,7 +5,7 @@ import io.opaa.format.DocumentFormatResult;
 import io.opaa.format.DocumentFormatSource;
 import io.opaa.format.FormatAdmission;
 import io.opaa.format.chunk.ChunkContextTitle;
-import io.opaa.format.chunk.ChunkingService;
+import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.format.file.office.OdfPackage;
 import io.opaa.format.shared.HeadingSectionSplitter;
 import io.opaa.format.shared.TableText;
@@ -576,7 +576,7 @@ public class TabularDocumentFormat implements DocumentFormat {
     String location = sheetName != null ? "Blatt " + sheetName + " · " + rowRange : rowRange;
 
     Map<String, Object> metadata = new HashMap<>();
-    metadata.put(ChunkingService.LOCATION_METADATA_KEY, location);
+    metadata.put(ChunkMetadataKeys.LOCATION_METADATA_KEY, location);
     return new Document(text, metadata);
   }
 
@@ -654,7 +654,7 @@ public class TabularDocumentFormat implements DocumentFormat {
     String location = sheetName != null ? "Blatt " + sheetName + " · " + rowRange : rowRange;
 
     Map<String, Object> metadata = new HashMap<>();
-    metadata.put(ChunkingService.LOCATION_METADATA_KEY, location);
+    metadata.put(ChunkMetadataKeys.LOCATION_METADATA_KEY, location);
     return new Document(
         HeadingSectionSplitter.capChunkLength(text.toString().stripTrailing()), metadata);
   }

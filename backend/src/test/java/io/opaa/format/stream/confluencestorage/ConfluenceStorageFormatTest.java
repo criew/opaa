@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.format.DocumentFormatResult;
 import io.opaa.format.DocumentFormatSource;
-import io.opaa.format.chunk.ChunkingService;
+import io.opaa.format.chunk.ChunkMetadataKeys;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.document.Document;
@@ -65,7 +65,7 @@ class ConfluenceStorageFormatTest {
     assertThat(pipeline.id()).isEqualTo("confluence");
     assertThat(pipeline.version()).isEqualTo((short) 2);
     assertThat(pipeline.passthroughMetadataKeys())
-        .containsExactlyInAnyOrder(ChunkingService.LOCATION_METADATA_KEY);
+        .containsExactlyInAnyOrder(ChunkMetadataKeys.LOCATION_METADATA_KEY);
   }
 
   @Test
@@ -76,15 +76,15 @@ class ConfluenceStorageFormatTest {
     assertThat(chunks.get(0).getText())
         .startsWith("Diese Seite beschreibt das Bauantragsverfahren");
     assertThat(chunks.get(0).getMetadata())
-        .doesNotContainKey(ChunkingService.LOCATION_METADATA_KEY);
+        .doesNotContainKey(ChunkMetadataKeys.LOCATION_METADATA_KEY);
     assertThat(chunks.get(1).getMetadata())
-        .containsEntry(ChunkingService.LOCATION_METADATA_KEY, "Abschn. Zuständigkeiten");
+        .containsEntry(ChunkMetadataKeys.LOCATION_METADATA_KEY, "Abschn. Zuständigkeiten");
     assertThat(chunks.get(2).getMetadata())
         .containsEntry(
-            ChunkingService.LOCATION_METADATA_KEY, "Abschn. Zuständigkeiten › Unterlagen");
+            ChunkMetadataKeys.LOCATION_METADATA_KEY, "Abschn. Zuständigkeiten › Unterlagen");
     assertThat(chunks.get(3).getMetadata())
         .containsEntry(
-            ChunkingService.LOCATION_METADATA_KEY,
+            ChunkMetadataKeys.LOCATION_METADATA_KEY,
             "Abschn. Zuständigkeiten › Unterlagen › Kontakt");
     assertThat(chunks.get(3).getText())
         .isEqualTo("Zuständigkeiten › Unterlagen › Kontakt\n\nTelefon 0123 456");
@@ -191,9 +191,9 @@ class ConfluenceStorageFormatTest {
 
     assertThat(chunks).hasSize(2);
     assertThat(chunks.get(0).getMetadata())
-        .containsEntry(ChunkingService.LOCATION_METADATA_KEY, "Abschn. Antrag Entwurf");
+        .containsEntry(ChunkMetadataKeys.LOCATION_METADATA_KEY, "Abschn. Antrag Entwurf");
     assertThat(chunks.get(1).getMetadata())
-        .containsEntry(ChunkingService.LOCATION_METADATA_KEY, "Abschn. Antrag Entwurf › Kapitel");
+        .containsEntry(ChunkMetadataKeys.LOCATION_METADATA_KEY, "Abschn. Antrag Entwurf › Kapitel");
     assertThat(chunks.get(0).getText()).doesNotContain("Green");
     assertThat(chunks.get(1).getText()).doesNotContain("BAU-1");
   }

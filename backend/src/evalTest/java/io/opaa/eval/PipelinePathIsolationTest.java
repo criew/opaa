@@ -293,9 +293,9 @@ class PipelinePathIsolationTest {
    * version bump on any one of them (not only {@code MarkdownDocumentFormat}, the only pipeline
    * this eval corpus actually routes through) would otherwise go unnoticed here and fail 70 minutes
    * into the nightly Docker regression job instead of in this Docker-free {@code check}. Builds the
-   * registry with the exact production wiring {@code
-   * IndexingConfiguration#documentPipelineRegistry} assembles - real pipeline instances, not a
-   * hand-maintained id/version list that could itself drift.
+   * registry with the exact production wiring {@code FormatConfiguration#documentPipelineRegistry}
+   * assembles - real pipeline instances, not a hand-maintained id/version list that could itself
+   * drift.
    */
   @Test
   void committedIngestionPipelineFingerprintsMatchTheRealRegistry() throws java.io.IOException {
@@ -332,7 +332,7 @@ class PipelinePathIsolationTest {
   }
 
   /**
-   * The exact set of pipeline beans {@code IndexingConfiguration} wires into {@code
+   * The exact set of pipeline beans {@code FormatConfiguration} wires into {@code
    * documentPipelineRegistry} - constructed directly rather than through a Spring context, since
    * every constructor here only stores its arguments (verified by reading each one) and this class
    * stays Docker-free by construction. A property record's compact constructor self-defaults on a

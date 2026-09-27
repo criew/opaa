@@ -2,9 +2,6 @@ package io.opaa;
 
 import io.opaa.auth.AuthProperties;
 import io.opaa.common.PublicBaseUrlProperties;
-import io.opaa.format.file.mail.MailProperties;
-import io.opaa.format.file.office.OdfProperties;
-import io.opaa.format.file.tabular.TabularProperties;
 import io.opaa.indexing.FilesystemProperties;
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.SourceHttpProperties;
@@ -43,9 +40,6 @@ import org.springframework.scheduling.annotation.EnableScheduling;
   SourceEventProperties.class,
   FilesystemProperties.class,
   AttachmentProperties.class,
-  TabularProperties.class,
-  MailProperties.class,
-  OdfProperties.class,
   RerankProperties.class,
   SmtpProperties.class,
   PublicBaseUrlProperties.class,

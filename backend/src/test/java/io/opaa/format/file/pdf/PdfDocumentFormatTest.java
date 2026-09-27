@@ -7,7 +7,7 @@ import io.opaa.format.DocumentFormatResult;
 import io.opaa.format.DocumentFormatRunner;
 import io.opaa.format.DocumentFormatSource;
 import io.opaa.format.PassthroughMetadataKeysTestSupport;
-import io.opaa.format.chunk.ChunkingService;
+import io.opaa.format.chunk.ChunkMetadataKeys;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -71,12 +71,12 @@ class PdfDocumentFormatTest {
     // Preamble (page 1, before the first outline entry), § 1 (page 2), Abs. 2 (page 3, nested).
     assertThat(result.chunks()).hasSize(3);
     assertThat(result.chunks().get(0).getText()).contains("regelt die Gebuehren");
-    assertThat(result.chunks().get(0).getMetadata().get(ChunkingService.LOCATION_METADATA_KEY))
+    assertThat(result.chunks().get(0).getMetadata().get(ChunkMetadataKeys.LOCATION_METADATA_KEY))
         .isNull();
     assertThat(result.chunks().get(1).getText())
         .startsWith("§ 1 Personaldokumente")
         .contains("37,00 EUR");
-    assertThat(result.chunks().get(1).getMetadata().get(ChunkingService.LOCATION_METADATA_KEY))
+    assertThat(result.chunks().get(1).getMetadata().get(ChunkMetadataKeys.LOCATION_METADATA_KEY))
         .isEqualTo("Abschn. § 1 Personaldokumente");
     assertThat(result.chunks().get(2).getText())
         .startsWith("§ 1 Personaldokumente › Abs. 2 Ermaessigung")
@@ -195,10 +195,10 @@ class PdfDocumentFormatTest {
     assertThat(result.outcome()).isEqualTo(DocumentFormatResult.Outcome.CHUNKED);
     assertThat(result.chunks()).hasSize(2);
     assertThat(result.chunks().get(0).getText()).contains("ersten Seite");
-    assertThat(result.chunks().get(0).getMetadata().get(ChunkingService.LOCATION_METADATA_KEY))
+    assertThat(result.chunks().get(0).getMetadata().get(ChunkMetadataKeys.LOCATION_METADATA_KEY))
         .isEqualTo("S. 1");
     assertThat(result.chunks().get(1).getText()).contains("zweiten Seite");
-    assertThat(result.chunks().get(1).getMetadata().get(ChunkingService.LOCATION_METADATA_KEY))
+    assertThat(result.chunks().get(1).getMetadata().get(ChunkMetadataKeys.LOCATION_METADATA_KEY))
         .isEqualTo("S. 2");
   }
 

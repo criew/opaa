@@ -5,7 +5,7 @@ import io.opaa.format.DocumentFormatSource;
 import io.opaa.format.DocumentProperties;
 import io.opaa.format.FileDocumentFormat;
 import io.opaa.format.FormatAdmission;
-import io.opaa.format.chunk.ChunkingService;
+import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.format.shared.HeadingSectionSplitter;
 import io.opaa.format.shared.TableText;
 import java.io.IOException;
@@ -37,8 +37,8 @@ import org.springframework.ai.document.Document;
  * slides carry no text at all is rejected as {@code NO_EXTRACTABLE_TEXT}.
  *
  * <p>The title placeholder becomes the chunk's leading line and its {@link
- * ChunkingService#LOCATION_METADATA_KEY location}, every other shape's text follows in shape order,
- * and speaker notes are appended as a final labeled paragraph.
+ * ChunkMetadataKeys#LOCATION_METADATA_KEY location}, every other shape's text follows in shape
+ * order, and speaker notes are appended as a final labeled paragraph.
  */
 public class PptxDocumentFormat extends FileDocumentFormat<PptxDocumentFormat.PptxContent> {
 
@@ -146,7 +146,7 @@ public class PptxDocumentFormat extends FileDocumentFormat<PptxDocumentFormat.Pp
       text = location;
     }
     Map<String, Object> metadata = new HashMap<>();
-    metadata.put(ChunkingService.LOCATION_METADATA_KEY, location);
+    metadata.put(ChunkMetadataKeys.LOCATION_METADATA_KEY, location);
     return new SlideChunk(
         new Document(HeadingSectionSplitter.capChunkLength(text), metadata), hasText);
   }

@@ -6,7 +6,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.opaa.format.DocumentFormatResult;
 import io.opaa.format.DocumentFormatSource;
 import io.opaa.format.PassthroughMetadataKeysTestSupport;
-import io.opaa.format.chunk.ChunkingService;
+import io.opaa.format.chunk.ChunkMetadataKeys;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -157,22 +157,22 @@ class HtmlDocumentFormatTest {
     assertThat(result.chunks().get(0).getText())
         .startsWith("Personalausweis beantragen")
         .contains("amtliches Ausweisdokument");
-    assertThat(result.chunks().get(0).getMetadata().get(ChunkingService.LOCATION_METADATA_KEY))
+    assertThat(result.chunks().get(0).getMetadata().get(ChunkMetadataKeys.LOCATION_METADATA_KEY))
         .isEqualTo("Abschn. Personalausweis beantragen");
     assertThat(result.chunks().get(1).getText())
         .startsWith("Personalausweis beantragen › Voraussetzungen")
         .contains("biometrisches Lichtbild");
-    assertThat(result.chunks().get(1).getMetadata().get(ChunkingService.LOCATION_METADATA_KEY))
+    assertThat(result.chunks().get(1).getMetadata().get(ChunkMetadataKeys.LOCATION_METADATA_KEY))
         .isEqualTo("Abschn. Personalausweis beantragen › Voraussetzungen");
     assertThat(result.chunks().get(2).getText())
         .startsWith("Personalausweis beantragen › Voraussetzungen › Fuer Minderjaehrige")
         .contains("Erziehungsberechtigten");
-    assertThat(result.chunks().get(2).getMetadata().get(ChunkingService.LOCATION_METADATA_KEY))
+    assertThat(result.chunks().get(2).getMetadata().get(ChunkMetadataKeys.LOCATION_METADATA_KEY))
         .isEqualTo("Abschn. Personalausweis beantragen › Voraussetzungen › Fuer Minderjaehrige");
     assertThat(result.chunks().get(3).getText())
         .startsWith("Personalausweis beantragen › Gebuehren")
         .contains("37,00 EUR");
-    assertThat(result.chunks().get(3).getMetadata().get(ChunkingService.LOCATION_METADATA_KEY))
+    assertThat(result.chunks().get(3).getMetadata().get(ChunkMetadataKeys.LOCATION_METADATA_KEY))
         .isEqualTo("Abschn. Personalausweis beantragen › Gebuehren");
     // A key this pipeline actually produced that also belongs to the registry-wide passthrough
     // union must be part of its own declaration - storeChunks copies any union key it finds on a
@@ -194,7 +194,8 @@ class HtmlDocumentFormatTest {
     DocumentFormatResult result = pipeline.run(sourceFor(REALISTIC_PAGE));
 
     String lastPath =
-        (String) result.chunks().getLast().getMetadata().get(ChunkingService.LOCATION_METADATA_KEY);
+        (String)
+            result.chunks().getLast().getMetadata().get(ChunkMetadataKeys.LOCATION_METADATA_KEY);
     assertThat(lastPath).doesNotContain("Minderjaehrige");
   }
 

@@ -1,6 +1,6 @@
 package io.opaa.format.shared;
 
-import io.opaa.format.chunk.ChunkingService;
+import io.opaa.format.chunk.ChunkMetadataKeys;
 import java.util.HashMap;
 import java.util.Map;
 import org.springframework.ai.document.Document;
@@ -32,7 +32,7 @@ public final class RepeatingHeaderChunk {
       return null;
     }
     Map<String, Object> metadata = new HashMap<>();
-    metadata.put(ChunkingService.LOCATION_METADATA_KEY, location);
+    metadata.put(ChunkMetadataKeys.LOCATION_METADATA_KEY, location);
     return new Document(HeadingSectionSplitter.capChunkLength(stripped), metadata);
   }
 }

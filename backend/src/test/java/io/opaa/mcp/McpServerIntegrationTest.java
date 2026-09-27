@@ -17,7 +17,7 @@ import io.opaa.externalaccess.ExternalAccessMassRetrievalAlarm;
 import io.opaa.externalaccess.ExternalAccessSettings;
 import io.opaa.externalaccess.ExternalAccessSettingsService;
 import io.opaa.externalaccess.token.ExternalAccessTokenService;
-import io.opaa.format.chunk.ChunkingService;
+import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.SourceType;
@@ -788,7 +788,7 @@ class McpServerIntegrationTest {
       metadata.put("file_name", fileName);
       metadata.put("chunk_index", passage.index());
       if (passage.location() != null) {
-        metadata.put(ChunkingService.LOCATION_METADATA_KEY, passage.location());
+        metadata.put(ChunkMetadataKeys.LOCATION_METADATA_KEY, passage.location());
       }
       chunks.add(new Document(passage.text(), metadata));
     }

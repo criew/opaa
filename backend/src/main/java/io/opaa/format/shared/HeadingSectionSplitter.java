@@ -1,6 +1,6 @@
 package io.opaa.format.shared;
 
-import io.opaa.format.chunk.ChunkingService;
+import io.opaa.format.chunk.ChunkMetadataKeys;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -129,7 +129,7 @@ public final class HeadingSectionSplitter {
           headingLine == null ? body : body.isEmpty() ? headingLine : headingLine + "\n\n" + body;
       Map<String, Object> metadata = new HashMap<>();
       if (location != null) {
-        metadata.put(ChunkingService.LOCATION_METADATA_KEY, location);
+        metadata.put(ChunkMetadataKeys.LOCATION_METADATA_KEY, location);
       }
       chunks.add(new Document(capChunkLength(text), metadata));
     }

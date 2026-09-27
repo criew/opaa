@@ -1,7 +1,7 @@
 package io.opaa.eval;
 
 import io.opaa.format.DocumentProperties;
-import io.opaa.format.chunk.ChunkingService;
+import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.indexing.chunk.ChunkContextPrefix;
 import io.opaa.indexing.document.DocumentIngest;
 import io.opaa.indexing.metadata.CoreContextPrefixSettings;
@@ -212,7 +212,7 @@ final class ContextPrefixFingerprint {
     Map<String, Object> metadata = new HashMap<>();
     metadata.put("file_name", ingest.fileName());
     if (sample.location() != null) {
-      metadata.put(ChunkingService.LOCATION_METADATA_KEY, sample.location());
+      metadata.put(ChunkMetadataKeys.LOCATION_METADATA_KEY, sample.location());
     }
     Document chunk = new Document(sample.chunkText(), metadata);
     ChunkContextPrefix.applyTo(

@@ -17,7 +17,7 @@ import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.TooManyRequestsException;
-import io.opaa.format.chunk.ChunkingService;
+import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.SourceType;
@@ -89,7 +89,7 @@ class PassageFetchServiceTest {
         "Akten",
         index,
         "Absatz " + index + ". ",
-        Map.of(ChunkingService.LOCATION_METADATA_KEY, "Abschn. Teil A › Absatz " + index));
+        Map.of(ChunkMetadataKeys.LOCATION_METADATA_KEY, "Abschn. Teil A › Absatz " + index));
   }
 
   private static CurrentUser caller() {

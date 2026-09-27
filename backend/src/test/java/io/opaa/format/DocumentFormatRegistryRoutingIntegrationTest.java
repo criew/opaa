@@ -2,7 +2,7 @@ package io.opaa.format;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.format.chunk.ChunkingService;
+import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.format.file.markdown.MarkdownDocumentFormat;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.ProductionDocumentFormats;
@@ -15,11 +15,12 @@ import org.springframework.context.ApplicationContext;
 /**
  * Pins the routing matrix {@link DocumentFormatRegistry} actually resolves in a real, fully
  * Spring-wired {@link ApplicationContext} - every {@link DocumentFormat} bean {@link
- * IndexingConfiguration} registers, not the hand-picked fakes {@link DocumentFormatRegistryTest}
- * uses to cover the routing algorithm itself (docs/features/ingestion-pipelines.md, Teil 1). A bean
- * wiring mistake (a pipeline never registered, or registered under the wrong format) would
- * otherwise only surface as a behavioural change in an end-to-end indexing test, not as a routing
- * assertion of its own. Reuses {@code @OpaaIntegrationTest} verbatim - no class-local
+ * io.opaa.format.config.FormatConfiguration} registers, not the hand-picked fakes {@link
+ * DocumentFormatRegistryTest} uses to cover the routing algorithm itself
+ * (docs/features/ingestion-pipelines.md, Teil 1). A bean wiring mistake (a pipeline never
+ * registered, or registered under the wrong format) would otherwise only surface as a behavioural
+ * change in an end-to-end indexing test, not as a routing assertion of its own. Reuses
+ * {@code @OpaaIntegrationTest} verbatim - no class-local
  * {@code @DynamicPropertySource}/{@code @Import}/{@code @MockitoBean} - so this class shares the
  * cached context with every other class carrying that same signature (AGENTS.md,
  * Spring-Testkontexte).
@@ -55,8 +56,8 @@ class DocumentFormatRegistryRoutingIntegrationTest {
   /**
    * {@code ProductionDocumentFormats} builds the same format set without a Spring context, for the
    * unit tests that need the admission the application actually applies. A format added to {@code
-   * IndexingConfiguration} and forgotten there would silently give those tests a narrower
-   * admission, so the two are compared here, where the wired context is available.
+   * io.opaa.format.config.FormatConfiguration} and forgotten there would silently give those tests
+   * a narrower admission, so the two are compared here, where the wired context is available.
    */
   @Test
   void theDockerFreeTestHelperMirrorsTheWiredFormats() {
@@ -173,17 +174,17 @@ class DocumentFormatRegistryRoutingIntegrationTest {
   void everyPipelineDeclaresExactlyItsOwnMetadataKeys() {
     Map<String, Set<String>> expectedByPipelineId =
         Map.ofEntries(
-            Map.entry("pdf", Set.of(ChunkingService.LOCATION_METADATA_KEY)),
-            Map.entry("docx", Set.of(ChunkingService.LOCATION_METADATA_KEY)),
-            Map.entry("pptx", Set.of(ChunkingService.LOCATION_METADATA_KEY)),
-            Map.entry("tabular", Set.of(ChunkingService.LOCATION_METADATA_KEY)),
-            Map.entry("html", Set.of(ChunkingService.LOCATION_METADATA_KEY)),
-            Map.entry("tika-fallback", Set.of(ChunkingService.LOCATION_METADATA_KEY)),
-            Map.entry("odt", Set.of(ChunkingService.LOCATION_METADATA_KEY)),
-            Map.entry("odp", Set.of(ChunkingService.LOCATION_METADATA_KEY)),
-            Map.entry("markdown", Set.of(ChunkingService.LOCATION_METADATA_KEY)),
-            Map.entry("confluence", Set.of(ChunkingService.LOCATION_METADATA_KEY)),
-            Map.entry("email", Set.of(ChunkingService.LOCATION_METADATA_KEY)));
+            Map.entry("pdf", Set.of(ChunkMetadataKeys.LOCATION_METADATA_KEY)),
+            Map.entry("docx", Set.of(ChunkMetadataKeys.LOCATION_METADATA_KEY)),
+            Map.entry("pptx", Set.of(ChunkMetadataKeys.LOCATION_METADATA_KEY)),
+            Map.entry("tabular", Set.of(ChunkMetadataKeys.LOCATION_METADATA_KEY)),
+            Map.entry("html", Set.of(ChunkMetadataKeys.LOCATION_METADATA_KEY)),
+            Map.entry("tika-fallback", Set.of(ChunkMetadataKeys.LOCATION_METADATA_KEY)),
+            Map.entry("odt", Set.of(ChunkMetadataKeys.LOCATION_METADATA_KEY)),
+            Map.entry("odp", Set.of(ChunkMetadataKeys.LOCATION_METADATA_KEY)),
+            Map.entry("markdown", Set.of(ChunkMetadataKeys.LOCATION_METADATA_KEY)),
+            Map.entry("confluence", Set.of(ChunkMetadataKeys.LOCATION_METADATA_KEY)),
+            Map.entry("email", Set.of(ChunkMetadataKeys.LOCATION_METADATA_KEY)));
 
     assertThat(registry.pipelines())
         .extracting(DocumentFormat::id)
